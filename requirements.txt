@@ -1,0 +1,10 @@
+# Pinned to versions tested in the convmem conda env (miniPC deploy).
+# Re-run tests after bumping any pin.
+chromadb==1.5.9
+typer==0.25.1
+rich==15.0.0
+requests==2.34.2
+watchdog==6.0.0
+sentence-transformers==5.6.0
+# torch is pulled by sentence-transformers (CPU build by default).
+# For CUDA reranking see README — install torch with CUDA *before* sentence-transformers.

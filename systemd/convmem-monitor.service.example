@@ -1,0 +1,23 @@
+# User systemd oneshot — copy to ~/.config/systemd/user/convmem-monitor.service
+#
+# Triggered by convmem-monitor.timer (hourly). Not meant to run standalone
+# unless debugging:
+#   systemctl --user start convmem-monitor
+#   journalctl --user -u convmem-monitor -n 50
+#
+# Requires: network reachability to target site, Ollama for embed on ingest.
+
+[Unit]
+Description=convmem HTTP security monitor (F2b staging2)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Projects/convmem
+EnvironmentFile=%h/.config/convmem/env.systemd
+ExecStart=%h/miniforge3/envs/convmem/bin/python %h/Projects/convmem/convmem.py monitor --site staging2.willowyhollow.com
+# Optional: append JSON lines to a log (uncomment and mkdir -p ~/.local/share/convmem/logs)
+# ExecStartPost=/bin/sh -c 'journalctl --user -u convmem-monitor -n 1 --no-pager >> %h/.local/share/convmem/logs/monitor.log'
+
+[Install]
+WantedBy=default.target

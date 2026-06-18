@@ -1,0 +1,28 @@
+# Local index state (machine-specific — lives under ~/.local/share/convmem/ by default)
+inventory.jsonl
+processed.json
+knowledge_units.jsonl
+refine_stats.json
+dedupe_queue.jsonl
+link_queue.jsonl
+refine.lock
+watch.lock
+refine_undo/
+
+# Chroma persistence (if ever created inside the repo)
+chroma/
+
+# Local config (copy from config.example.toml)
+config.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# Editor / OS
+.DS_Store
+*.swp

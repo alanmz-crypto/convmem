@@ -1,0 +1,22 @@
+# User systemd timer — copy to ~/.config/systemd/user/convmem-monitor.timer
+#
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now convmem-monitor.timer
+#   systemctl --user list-timers convmem-monitor.timer
+#   journalctl --user -u convmem-monitor -f
+#
+# Default: hourly with up to 5 min jitter (avoid thundering herd if other timers align).
+# Edit OnCalendar for a different cadence, e.g.:
+#   OnCalendar=*:0/30    # every 30 minutes
+#   OnCalendar=Mon..Fri 08:00  # weekdays 08:00
+
+[Unit]
+Description=Hourly convmem monitor for staging2 (F2b)
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

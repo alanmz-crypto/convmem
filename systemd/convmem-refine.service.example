@@ -1,0 +1,23 @@
+# User systemd unit — copy to ~/.config/systemd/user/convmem-refine.service
+#
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now convmem-refine
+#   journalctl --user -u convmem-refine -f
+#
+# Runs F1 refine jobs on an interval. Requires Ollama + DEEPSEEK for backfill_domain.
+
+[Unit]
+Description=convmem index refinement (F1)
+After=network-online.target convmem-watch.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/convmem
+EnvironmentFile=%h/.config/convmem/env.systemd
+ExecStart=%h/miniforge3/envs/convmem/bin/python %h/Projects/convmem/convmem.py refine
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

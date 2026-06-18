@@ -1,0 +1,1 @@
+{"id":"ver_001","kind":"verification","domain":"web_stack.security","author_model":"kiro-review","site":"staging2.willowyhollow.com","relates_to":"obs001","result":"pass","summary":"Content-Security-Policy header present after deploy","notes":"Header present after deploy","timestamp":"2026-06-17T21:30:00Z"}

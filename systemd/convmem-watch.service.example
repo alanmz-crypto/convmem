@@ -1,0 +1,30 @@
+# User systemd unit — copy to ~/.config/systemd/user/convmem-watch.service
+#
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now convmem-watch
+#   journalctl --user -u convmem-watch -f
+#
+# Requires: mamba/conda env, Ollama running, DEEPSEEK_API_KEY in env.local
+#
+# inotify limits (large ~/.cursor/projects trees):
+#   cat /proc/sys/fs/inotify/max_user_watches    # default often 8192
+# If watch roots span many subdirs, ensure headroom (~1000 watches per tree).
+# Raise persistently if needed:
+#   echo fs.inotify.max_user_watches=524288 | sudo tee /etc/sysctl.d/99-inotify.conf
+#   sudo sysctl --system
+
+[Unit]
+Description=convmem filesystem watch (F0 incremental index)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/convmem
+EnvironmentFile=%h/.config/convmem/env.systemd
+ExecStart=%h/miniforge3/envs/convmem/bin/python %h/Projects/convmem/convmem.py watch
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

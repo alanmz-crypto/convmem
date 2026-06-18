@@ -1,0 +1,66 @@
+[sources]
+paths = [
+  "~/.local/share/kiro-cli/data.sqlite3",
+  "~/.config/cursor/chats",
+  "~/.cursor/projects",
+  "~/.continue/sessions",
+  "~/.local/share/convmem/imports/webui.db",
+]
+inventory = "~/.local/share/convmem/inventory.jsonl"
+
+# Crush: discovered via **/.crush/crush.db under $HOME (see docs/F2c-CRUSH-ADAPTER.md).
+# Re-run `python inventory.py` after adding new Crush project dirs.
+
+[index]
+chroma_dir    = "~/.local/share/convmem/chroma"
+processed_log = "~/.local/share/convmem/processed.json"
+units_export  = "~/.local/share/convmem/knowledge_units.jsonl"
+chunk_size    = 60
+chunk_overlap = 10
+
+[models]
+embed_model       = "nomic-embed-text"
+summarize_model   = "llama3.1:8b"
+distill_model     = "deepseek-v4-flash"
+ollama_host       = "http://localhost:11434"
+rerank_model      = "BAAI/bge-reranker-v2-m3"
+deepseek_base_url = "https://api.deepseek.com"
+
+[distill]
+min_confidence = 0.6
+
+[domains]
+# Extra dotted-path domains beyond domains.py:DEFAULT_DOMAINS that you don't
+# want flagged as drift in `convmem stats`. Domains are never rejected —
+# this only silences the "not in taxonomy" warning for ones you've chosen.
+allow_extra = []
+
+[query]
+top_k_candidates = 20
+top_k_results    = 5
+rerank           = true
+# recency_weight = 0.1  # not yet implemented — deferred (F2+)
+
+[watch]
+debounce_seconds = 30
+# Optional: override [sources].paths for watch only (defaults to sources.paths)
+# paths = [
+#   "~/.config/cursor/chats",
+#   "~/.cursor/projects",
+# ]
+
+[refine]
+enabled = true
+batch_size = 10
+interval_seconds = 300
+jobs = ["chroma_dedupe", "ledger_link", "semantic_dedupe", "confidence_audit"]
+# backfill_domain — add back if a large untagged legacy intake appears
+untagged_priority = true
+queue_max_depth = 100
+dedupe_similarity = 0.92
+min_confidence_redistill = 0.6
+
+[refine.cost]
+backfill_domain_calls_per_hour = 60
+redistill_calls_per_hour = 15
+semantic_dedupe_calls_per_hour = 20
