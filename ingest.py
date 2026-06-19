@@ -210,6 +210,19 @@ def index(
         fmt = detect_format(path)
         tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
 
+        path_key = str(Path(path).expanduser().resolve())
+        if force_file:
+            n_units_del = 0
+            n_sum_del = 0
+            for sp in dict.fromkeys([path, path_key]):
+                n_units_del += store.delete_units_for_source(sp)
+                n_sum_del += store.delete_summaries_for_source(sp)
+            if verbose and (n_units_del or n_sum_del):
+                print(
+                    f"  [reindex] cleared {n_units_del} units, "
+                    f"{n_sum_del} summaries for {Path(path).name}",
+                )
+
         try:
             messages = parser(path)
         except Exception as e:
@@ -249,11 +262,11 @@ def index(
                 continue
 
             doc_id = hashlib.sha256(
-                f"{path}:{ch['start_offset']}".encode()
+                f"{path_key}:{ch['start_offset']}".encode()
             ).hexdigest()
             session_meta = _chunk_session_meta(ch["messages"], path)
             metadata = {
-                "source_path": path,
+                "source_path": path_key,
                 "tool": tool,
                 "date": _chunk_date(ch["messages"]),
                 "message_count": len(ch["messages"]),
@@ -279,14 +292,16 @@ def index(
                     print(f"    [warn] chunk {ch['start_offset']} distill failed: {e}")
                 continue
 
-            for raw in raw_units:
+            for unit_idx, raw in enumerate(raw_units):
                 unit = normalize_unit(
                     raw,
-                    source_path=path,
+                    source_path=path_key,
                     tool=tool,
                     date=chunk_date,
                     min_confidence=min_confidence,
                     author_model=models["distill_model"],
+                    start_offset=ch["start_offset"],
+                    unit_index=unit_idx,
                 )
                 if unit is None:
                     continue
@@ -323,7 +338,7 @@ def index(
                 n_units += 1
 
         processed[file_hash] = {
-            "path": path,
+            "path": path_key,
             "chunks": n_indexed,
             "units": n_units,
         }

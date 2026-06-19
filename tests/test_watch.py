@@ -12,6 +12,8 @@ from watch import (
     DebounceScheduler,
     flush_path,
     is_indexable,
+    is_live_watch_db,
+    is_watchable,
     watch_roots,
 )
 
@@ -82,6 +84,16 @@ class WatchPathTests(unittest.TestCase):
             stats = flush_path(str(path), index_fn=mock_index, verbose=False)
             mock_index.assert_called_once()
             self.assertEqual(stats["files_processed"], 1)
+
+    def test_is_live_watch_db_kiro(self):
+        self.assertTrue(
+            is_live_watch_db("/home/lauer/.local/share/kiro-cli/data.sqlite3")
+        )
+
+    def test_is_watchable_skips_live_db(self):
+        self.assertFalse(
+            is_watchable("/home/lauer/.local/share/kiro-cli/data.sqlite3")
+        )
 
     def test_flush_path_skips_unsupported(self):
         with tempfile.TemporaryDirectory() as td:
