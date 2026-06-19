@@ -19,11 +19,7 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP("convmem", instructions="Local knowledge corpus. Search past AI sessions, ask questions with citations, traverse evidence chains.")
 
 
-@mcp.tool()
-def search(query: str, top_k: int = 5, domain: str = "") -> str:
-    """Search the knowledge corpus for relevant units. Returns scored results."""
-    from query import query_units
-    results = query_units(query, top_k=top_k, domain=domain or None)
+def _search_payload(results: list[dict]) -> str:
     out = []
     for r in results:
         meta = r.get("metadata", {})
@@ -41,58 +37,50 @@ def search(query: str, top_k: int = 5, domain: str = "") -> str:
 
 
 @mcp.tool()
-def ask(question: str, top_k: int = 5, domain: str = "", evidence: bool = False) -> str:
-    """Answer a question using retrieved memories. Returns answer + citations.
-
-    Attempts LLM synthesis (DeepSeek). On timeout or failure, degrades
-    gracefully to formatted raw retrieval results.
-    """
+def search_fast(query: str, top_k: int = 5, domain: str = "") -> str:
+    """Fast retrieval-only search (no LLM synthesis). Use for low-latency lookups."""
     from query import query_units
 
-    # Step 1: retrieval — always fast
-    results = query_units(question, top_k=top_k, domain=domain or None)
+    results = query_units(query, top_k=top_k, domain=domain or None)
     if not results:
-        return json.dumps({"answer": "No relevant knowledge units found.", "citations": []})
+        return json.dumps({"results": [], "message": "No relevant knowledge units found."})
+    return _search_payload(results)
 
-    # Step 2: attempt synthesis with MCP-safe timeout
-    try:
-        from ask import ask as run_ask
-        result = run_ask(question, top_k=top_k, domain=domain or None, raw=False)
-        return json.dumps({
-            "answer": result.get("answer", ""),
-            "confidence": result.get("confidence"),
-            "warning": result.get("warning"),
-            "citations": [
-                {
-                    "n": c.get("n"),
-                    "title": c.get("title", ""),
-                    "type": c.get("type", ""),
-                    "tool": c.get("tool", ""),
-                    "source_path": c.get("source_path", ""),
-                    "domain": c.get("domain", ""),
-                    "when": c.get("when", ""),
-                    "score": c.get("score"),
-                }
-                for c in (result.get("citations") or [])
-            ],
-        }, indent=2)
-    except Exception as e:
-        # Step 3: degrade to raw retrieval results
-        fallback = []
-        for r in results:
-            meta = r.get("metadata", {})
-            fallback.append({
-                "score": r.get("score"),
-                "title": meta.get("title", ""),
-                "document": (r.get("document") or "")[:300],
-                "domain": meta.get("domain", ""),
-                "tool": meta.get("tool", ""),
-            })
-        return json.dumps({
-            "answer": f"[Synthesis unavailable: {type(e).__name__}] Raw retrieval results below.",
-            "warning": str(e)[:200],
-            "citations": fallback,
-        }, indent=2)
+
+@mcp.tool()
+def search(query: str, top_k: int = 5, domain: str = "") -> str:
+    """Search the knowledge corpus for relevant units. Returns scored results."""
+    from query import query_units
+
+    results = query_units(query, top_k=top_k, domain=domain or None)
+    return _search_payload(results)
+
+
+@mcp.tool()
+def ask(question: str, top_k: int = 5, domain: str = "", evidence: bool = False) -> str:
+    """Answer a question using retrieved memories. Returns answer + citations."""
+    from ask import ask as run_ask
+
+    result = run_ask(question, top_k=top_k, domain=domain or None, raw=False, evidence=evidence)
+    return json.dumps({
+        "answer": result.get("answer", ""),
+        "confidence": result.get("confidence"),
+        "warning": result.get("warning"),
+        "synthesis_failed": result.get("synthesis_failed", False),
+        "citations": [
+            {
+                "n": c.get("n"),
+                "title": c.get("title", ""),
+                "type": c.get("type", ""),
+                "tool": c.get("tool", ""),
+                "source_path": c.get("source_path", ""),
+                "domain": c.get("domain", ""),
+                "when": c.get("when", ""),
+                "score": c.get("score"),
+            }
+            for c in (result.get("citations") or [])
+        ],
+    }, indent=2)
 
 
 @mcp.tool()
@@ -159,4 +147,7 @@ def stats() -> str:
 
 if __name__ == "__main__":
     import asyncio
+
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
     asyncio.run(mcp.run_stdio_async())
