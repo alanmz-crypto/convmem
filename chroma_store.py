@@ -100,9 +100,20 @@ class ChromaStore:
         return filtered[:top_k]
 
     def count_units(self, *, include_superseded: bool = False) -> int:
+        total = self._collection(UNITS).count()
         if include_superseded:
-            return self._collection(UNITS).count()
-        return len(self.units_metadata(include_superseded=False))
+            return total
+        # Use Chroma's where filter to count superseded, subtract from total.
+        # Faster than loading all metadata into Python.
+        try:
+            superseded = self._collection(UNITS).get(
+                where={"superseded": True}, include=[]
+            )
+            n_superseded = len(superseded.get("ids") or [])
+        except Exception:
+            # Fallback if where filter fails (e.g., field doesn't exist on old units)
+            n_superseded = 0
+        return total - n_superseded
 
     def units_metadata(self, *, include_superseded: bool = False) -> list[dict]:
         col = self._collection(UNITS)
