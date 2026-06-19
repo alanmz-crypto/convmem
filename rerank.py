@@ -1,4 +1,5 @@
 import os
+import sys
 
 # Must be set before transformers/sentence-transformers load models.
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
@@ -16,7 +17,11 @@ def get_model(model_name: str) -> CrossEncoder:
     global _model
     if _model is None:
         with redirect_stderr(StringIO()):
-            _model = CrossEncoder(model_name, device="cuda")
+            try:
+                _model = CrossEncoder(model_name, device="cuda")
+            except (RuntimeError, Exception) as e:
+                print(f"[rerank] CUDA failed ({e}), falling back to CPU", file=sys.stderr)
+                _model = CrossEncoder(model_name, device="cpu")
     return _model
 
 
