@@ -44,6 +44,8 @@ _MAX_CONTEXT_CHARS = 12000
 _MAX_HISTORY_CHARS = 4000
 _LOW_CONFIDENCE = 0.55
 _ASK_TOP_K = 8
+# MCP / agent callers: degrade to retrieval-only before client tool timeout.
+_ASK_SYNTHESIS_TIMEOUT = 45.0
 
 
 def _format_history(history: list[tuple[str, str]]) -> str:
@@ -278,14 +280,32 @@ def ask(
     else:
         prompt = ASK_PROMPT.format(question=question, context=context)
     model = models.get("distill_model", "deepseek-v4-flash")
-    answer = generate(
-        prompt,
-        model=model,
-        ollama_host=models["ollama_host"],
-        deepseek_base_url=models.get("deepseek_base_url", "https://api.deepseek.com"),
-    )
+    synthesis_failed = False
+    try:
+        answer = generate(
+            prompt,
+            model=model,
+            ollama_host=models["ollama_host"],
+            deepseek_base_url=models.get("deepseek_base_url", "https://api.deepseek.com"),
+            timeout=_ASK_SYNTHESIS_TIMEOUT,
+        )
+    except Exception as e:
+        synthesis_failed = True
+        cite_lines = [
+            f"[{c['n']}] {c.get('title', 'Untitled')} ({c.get('tool', '?')}, score {c.get('score')})"
+            for c in citations[:top_k]
+        ]
+        answer = (
+            "[Synthesis unavailable — retrieval results below. "
+            f"Reason: {type(e).__name__}: {e}]\n\n"
+            + "\n".join(cite_lines)
+        )
+        synth_warn = (
+            f"Synthesis failed ({type(e).__name__}); returning retrieval citations only."
+        )
+        warning = f"{warning}\n{synth_warn}" if warning else synth_warn
 
-    return {
+    out = {
         "answer": answer,
         "citations": citations[:top_k],
         "results": results[:top_k],
@@ -294,6 +314,9 @@ def ask(
         "retrieval_query": search_q,
         "evidence": evidence,
     }
+    if synthesis_failed:
+        out["synthesis_failed"] = True
+    return out
 
 
 def run_interactive(

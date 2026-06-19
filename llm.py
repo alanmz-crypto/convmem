@@ -43,7 +43,7 @@ def ollama_embed(text: str, model: str, host: str) -> list[float]:
     return embedding
 
 
-def _ollama_generate(prompt: str, model: str, host: str) -> str:
+def _ollama_generate(prompt: str, model: str, host: str, *, timeout: float = 300) -> str:
     resp = requests.post(
         f"{host.rstrip('/')}/api/generate",
         json={
@@ -52,13 +52,15 @@ def _ollama_generate(prompt: str, model: str, host: str) -> str:
             "stream": False,
             "options": {"num_ctx": 8192, "temperature": 0.2},
         },
-        timeout=300,
+        timeout=timeout,
     )
     resp.raise_for_status()
     return resp.json().get("response", "").strip()
 
 
-def _deepseek_generate(prompt: str, model: str, base_url: str) -> str:
+def _deepseek_generate(
+    prompt: str, model: str, base_url: str, *, timeout: float = 300
+) -> str:
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -73,7 +75,7 @@ def _deepseek_generate(prompt: str, model: str, base_url: str) -> str:
             "temperature": 0.2,
             "stream": False,
         },
-        timeout=45,
+        timeout=timeout,
     )
     resp.raise_for_status()
     return resp.json()["choices"][0]["message"]["content"].strip()
@@ -84,16 +86,20 @@ def generate(
     model: str,
     ollama_host: str,
     deepseek_base_url: str = "https://api.deepseek.com",
+    *,
+    timeout: float = 300,
 ) -> str:
     """Provider-aware text generation (summarization, distillation, etc.)."""
     if "deepseek-v4" in model:
         api_key = os.environ.get("DEEPSEEK_API_KEY")
         if api_key:
-            return _deepseek_generate(prompt, model, deepseek_base_url)
+            return _deepseek_generate(
+                prompt, model, deepseek_base_url, timeout=timeout
+            )
         # No API key — fall back to local Ollama using the same model slot name
         # is wrong; caller should pass a local model in config when no key exists.
         model = os.environ.get("CONVMEM_FALLBACK_MODEL", "llama3.1:8b")
-    return _ollama_generate(prompt, model, ollama_host)
+    return _ollama_generate(prompt, model, ollama_host, timeout=timeout)
 
 
 def summarize(

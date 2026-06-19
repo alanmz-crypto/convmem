@@ -34,8 +34,8 @@ def load_processed(path: str) -> dict:
         return {}
     try:
         return json.loads(p.read_text())
-    except Exception:
-        return {}
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"processed.json corrupt at {p}: {e}") from e
 
 
 def save_processed(path: str, data: dict) -> None:
