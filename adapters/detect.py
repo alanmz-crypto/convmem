@@ -34,7 +34,7 @@ _PARSERS: dict[str, Optional[Callable[[str], list[dict]]]] = {
     "json_continue_sessions": json_chat.parse,
     "aider_markdown": markdown_chat.parse,
     "sqlite_crush": sqlite_chat.parse,
-    "sqlite_cursor_store": None,
+    "sqlite_cursor_store": sqlite_chat.parse,
 }
 
 

@@ -346,7 +346,7 @@ Rerank: fetch 20 → CrossEncoder → top 5 (`[query] rerank = true`). Displayed
 | Limit | Notes |
 |-------|-------|
 | Rerank can't fix recall | Right unit must be in top-20 embedding hits |
-| Cursor `store.db` | Not indexed yet (JSONL transcripts work) |
+| **Cursor `store.db`** | Indexed via `latestRootBlobId` blob walk — Composer chats not covered by JSONL alone |
 | Crush `.crush/crush.db` | Indexed via `**/.crush/crush.db` home glob — run `python inventory.py` after new projects |
 | `units_export` on upsert | `knowledge_units.jsonl` only appends on add, not update |
 | `find_unit_by_ledger_id` | Full metadata scan; fine at ~1.5k units |
