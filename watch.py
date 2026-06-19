@@ -13,6 +13,55 @@ from typing import Callable
 
 from adapters.detect import get_parser
 
+# Live databases that change constantly — watch re-index causes OOM + duplication.
+_LIVE_WATCH_SKIP_SUFFIXES = (
+    "kiro-cli/data.sqlite3",
+    "convmem/imports/webui.db",
+)
+
+
+def is_live_watch_db(path: Path | str) -> bool:
+    """True for append-heavy DBs that must not be watch re-indexed."""
+    s = str(Path(path).expanduser().resolve())
+    return any(s.endswith(suffix) for suffix in _LIVE_WATCH_SKIP_SUFFIXES)
+
+
+def is_excluded_from_index(path: Path | str) -> bool:
+    """True when processed.json marks this path excluded."""
+    from config import load_config
+    from ingest import load_processed, sha256_file
+
+    p = Path(path).expanduser().resolve()
+    try:
+        file_hash = sha256_file(str(p))
+    except OSError:
+        return False
+    cfg = load_config()
+    processed = load_processed(cfg["index"]["processed_log"])
+    entry = processed.get(file_hash)
+    if isinstance(entry, dict) and entry.get("excluded"):
+        return True
+    path_key = str(p)
+    for entry in processed.values():
+        if not isinstance(entry, dict) or not entry.get("excluded"):
+            continue
+        ep = entry.get("path")
+        if ep and str(Path(ep).expanduser().resolve()) == path_key:
+            return True
+    return False
+
+
+def is_watchable(path: Path | str) -> bool:
+    """True if watch should index this path (parser exists, not live DB, not excluded)."""
+    p = Path(path)
+    if not is_indexable(p):
+        return False
+    if is_live_watch_db(p):
+        return False
+    if is_excluded_from_index(p):
+        return False
+    return True
+
 
 def is_indexable(path: Path | str) -> bool:
     """True if ingest has a parser for this path."""
@@ -67,8 +116,13 @@ def flush_path(
         if verbose:
             print(f"[watch] skip (not a file): {path}", file=sys.stderr)
         return None
-    if not is_indexable(p):
-        if verbose:
+    if not is_watchable(p):
+        if verbose and is_indexable(p):
+            if is_live_watch_db(p):
+                print(f"[watch] skip (live DB): {path}", file=sys.stderr)
+            elif is_excluded_from_index(p):
+                print(f"[watch] skip (excluded): {path}", file=sys.stderr)
+        elif verbose:
             print(f"[watch] skip (no parser): {path}", file=sys.stderr)
         return None
     if verbose:
@@ -173,7 +227,7 @@ def run_watch(
             if event.is_directory:
                 return
             path = Path(event.src_path)
-            if not is_indexable(path):
+            if not is_watchable(path):
                 return
             scheduler.note(str(path.resolve()))
 

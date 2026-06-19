@@ -50,6 +50,25 @@ class SupersededFilterTests(unittest.TestCase):
         self.assertFalse(is_superseded({"superseded": False}))
         self.assertFalse(is_superseded({}))
 
+    def test_delete_units_for_source(self):
+        self.store.add_unit(
+            "u1",
+            "doc",
+            [1.0, 0.0],
+            {"id": "u1", "title": "a", "source_path": "/tmp/chat.jsonl"},
+        )
+        self.store.add_unit(
+            "u2",
+            "doc",
+            [1.0, 0.0],
+            {"id": "u2", "title": "b", "source_path": "/other.jsonl"},
+        )
+        n = self.store.delete_units_for_source("/tmp/chat.jsonl")
+        self.assertEqual(n, 1)
+        ids = {m["id"] for m in self.store.units_metadata(include_superseded=True)}
+        self.assertNotIn("u1", ids)
+        self.assertIn("u2", ids)
+
     def test_units_metadata_excludes_tombstone(self):
         metas = self.store.units_metadata(include_superseded=False)
         ids = {m["id"] for m in metas}

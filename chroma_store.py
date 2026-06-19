@@ -63,7 +63,7 @@ class ChromaStore:
         embedding: list[float],
         metadata: dict,
     ) -> None:
-        self._collection(UNITS).add(
+        self._collection(UNITS).upsert(
             ids=[unit_id],
             documents=[document],
             embeddings=[embedding],
@@ -199,6 +199,24 @@ class ChromaStore:
             embeddings=[embedding],
             metadatas=[metadata],
         )
+
+    def delete_units_for_source(self, source_path: str) -> int:
+        """Remove all knowledge units indexed from ``source_path``."""
+        col = self._collection(UNITS)
+        res = col.get(where={"source_path": source_path}, include=[])
+        ids = res.get("ids") or []
+        if ids:
+            col.delete(ids=ids)
+        return len(ids)
+
+    def delete_summaries_for_source(self, source_path: str) -> int:
+        """Remove all conversation summaries indexed from ``source_path``."""
+        col = self._collection(SUMMARIES)
+        res = col.get(where={"source_path": source_path}, include=[])
+        ids = res.get("ids") or []
+        if ids:
+            col.delete(ids=ids)
+        return len(ids)
 
     @staticmethod
     def _flatten(res: dict) -> list[dict]:

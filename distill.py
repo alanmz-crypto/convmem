@@ -9,9 +9,9 @@ confidence field are unchanged, so old parsing/validation logic still
 applies; only one new optional-with-fallback field was added.
 """
 
+import hashlib
 import json
 import re
-import uuid
 
 from domains import normalize_domain
 from llm import generate
@@ -90,6 +90,18 @@ def distill(
 UNIT_TYPES = ("solution", "decision", "explanation", "pattern", "observation")
 
 
+def make_unit_id(source_path: str, start_offset: int | None, title: str, unit_index: int = 0) -> str:
+    """Stable id for a unit within a source file (survives watch re-index).
+
+    Uses source_path + start_offset + unit_index only — title is excluded because LLM
+    distillation produces slightly different titles on each run, which would
+    defeat deduplication.
+    """
+    offset = "" if start_offset is None else str(start_offset)
+    key = f"{source_path}\0{offset}\0{unit_index}"
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
 def normalize_unit(
     raw: dict,
     *,
@@ -98,6 +110,8 @@ def normalize_unit(
     date: str,
     min_confidence: float,
     author_model: str = "unknown",
+    start_offset: int | None = None,
+    unit_index: int = 0,
 ) -> dict | None:
     """Validate and enrich a single distilled unit, or return None if rejected."""
     if not isinstance(raw, dict):
@@ -132,7 +146,7 @@ def normalize_unit(
     domain = normalize_domain(raw.get("domain"))
 
     return {
-        "id": str(uuid.uuid4()),
+        "id": make_unit_id(source_path, start_offset, title, unit_index),
         "type": unit_type,
         "title": title,
         "summary": summary,
