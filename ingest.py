@@ -187,6 +187,20 @@ def index(
                 print(f"  [skip] excluded {Path(path).name}")
             continue
 
+        # Path-based skip: if this path was previously processed under a
+        # different hash (file grew/changed), skip unless explicitly forced.
+        # Prevents mass re-ingest when a live DB (e.g., Kiro sqlite) changes
+        # hash between watch cycles.
+        if not force_file and file_hash not in processed:
+            already = any(
+                e.get("path") == path for e in processed.values() if isinstance(e, dict)
+            )
+            if already:
+                stats["files_skipped"] += 1
+                if verbose:
+                    print(f"  [skip] path already processed (hash changed): {Path(path).name}")
+                continue
+
         if not force_file and file_hash in processed:
             stats["files_skipped"] += 1
             if verbose:
