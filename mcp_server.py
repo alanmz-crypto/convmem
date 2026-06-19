@@ -42,27 +42,57 @@ def search(query: str, top_k: int = 5, domain: str = "") -> str:
 
 @mcp.tool()
 def ask(question: str, top_k: int = 5, domain: str = "", evidence: bool = False) -> str:
-    """Answer a question using retrieved memories. Returns answer + citations."""
-    from ask import ask as run_ask
-    result = run_ask(question, top_k=top_k, domain=domain or None, raw=False)
-    return json.dumps({
-        "answer": result.get("answer", ""),
-        "confidence": result.get("confidence"),
-        "warning": result.get("warning"),
-        "citations": [
-            {
-                "n": c.get("n"),
-                "title": c.get("title", ""),
-                "type": c.get("type", ""),
-                "tool": c.get("tool", ""),
-                "source_path": c.get("source_path", ""),
-                "domain": c.get("domain", ""),
-                "when": c.get("when", ""),
-                "score": c.get("score"),
-            }
-            for c in (result.get("citations") or [])
-        ],
-    }, indent=2)
+    """Answer a question using retrieved memories. Returns answer + citations.
+
+    Attempts LLM synthesis (DeepSeek). On timeout or failure, degrades
+    gracefully to formatted raw retrieval results.
+    """
+    from query import query_units
+
+    # Step 1: retrieval — always fast
+    results = query_units(question, top_k=top_k, domain=domain or None)
+    if not results:
+        return json.dumps({"answer": "No relevant knowledge units found.", "citations": []})
+
+    # Step 2: attempt synthesis with MCP-safe timeout
+    try:
+        from ask import ask as run_ask
+        result = run_ask(question, top_k=top_k, domain=domain or None, raw=False)
+        return json.dumps({
+            "answer": result.get("answer", ""),
+            "confidence": result.get("confidence"),
+            "warning": result.get("warning"),
+            "citations": [
+                {
+                    "n": c.get("n"),
+                    "title": c.get("title", ""),
+                    "type": c.get("type", ""),
+                    "tool": c.get("tool", ""),
+                    "source_path": c.get("source_path", ""),
+                    "domain": c.get("domain", ""),
+                    "when": c.get("when", ""),
+                    "score": c.get("score"),
+                }
+                for c in (result.get("citations") or [])
+            ],
+        }, indent=2)
+    except Exception as e:
+        # Step 3: degrade to raw retrieval results
+        fallback = []
+        for r in results:
+            meta = r.get("metadata", {})
+            fallback.append({
+                "score": r.get("score"),
+                "title": meta.get("title", ""),
+                "document": (r.get("document") or "")[:300],
+                "domain": meta.get("domain", ""),
+                "tool": meta.get("tool", ""),
+            })
+        return json.dumps({
+            "answer": f"[Synthesis unavailable: {type(e).__name__}] Raw retrieval results below.",
+            "warning": str(e)[:200],
+            "citations": fallback,
+        }, indent=2)
 
 
 @mcp.tool()

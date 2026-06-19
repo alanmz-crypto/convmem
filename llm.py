@@ -73,7 +73,7 @@ def _deepseek_generate(prompt: str, model: str, base_url: str) -> str:
             "temperature": 0.2,
             "stream": False,
         },
-        timeout=300,
+        timeout=45,
     )
     resp.raise_for_status()
     return resp.json()["choices"][0]["message"]["content"].strip()
