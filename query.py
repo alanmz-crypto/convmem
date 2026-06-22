@@ -20,6 +20,7 @@ from domains import domain_breadcrumb, domain_matches, is_known_domain, normaliz
 from llm import ollama_embed
 from meta_format import when_from_meta
 from open_source import resolve_open_target
+from site_filter import filter_results_by_site, normalize_site
 
 # ---------------------------------------------------------------------------
 # Query logic (unchanged)
@@ -34,7 +35,12 @@ def _unit_domain(meta: dict) -> str | None:
     return str(raw)
 
 
-def query_units(text: str, top_k: int = 5, domain: str | None = None) -> list[dict]:
+def query_units(
+    text: str,
+    top_k: int = 5,
+    domain: str | None = None,
+    site: str | None = None,
+) -> list[dict]:
     cfg = load_config()
     models = cfg["models"]
     qcfg = cfg.get("query", {})
@@ -46,7 +52,8 @@ def query_units(text: str, top_k: int = 5, domain: str | None = None) -> list[di
     use_rerank = bool(qcfg.get("rerank", False))
     n_fetch = qcfg.get("top_k_candidates", 20) if use_rerank else top_k
     domain = normalize_domain(domain) if domain else None
-    if domain:
+    site_norm = normalize_site(site) if site else None
+    if domain or site_norm:
         # Domain filtering is hierarchical (parent matches children), which
         # Chroma's exact-match `where` can't express, so over-fetch and
         # filter client-side before reranking/truncating.
@@ -57,6 +64,8 @@ def query_units(text: str, top_k: int = 5, domain: str | None = None) -> list[di
         results = store.query_units(embedding, n_fetch)
     finally:
         store.close()
+    if site_norm:
+        results = filter_results_by_site(results, site_norm)
     if domain:
         results = [
             r for r in results
@@ -76,22 +85,26 @@ def query_units(text: str, top_k: int = 5, domain: str | None = None) -> list[di
     return results[:top_k]
 
 
-def query_raw(text: str, top_k: int = 5) -> list[dict]:
+def query_raw(text: str, top_k: int = 5, site: str | None = None) -> list[dict]:
     cfg = load_config()
     models = cfg["models"]
 
     embedding = ollama_embed(
         text, model=models["embed_model"], host=models["ollama_host"]
     )
+    site_norm = normalize_site(site) if site else None
+    n_fetch = top_k * 3 if site_norm else top_k
     store = open_chroma_for_read(cfg["index"]["chroma_dir"])
     try:
-        results = store.query_summaries(embedding, top_k)
+        results = store.query_summaries(embedding, n_fetch)
     finally:
         store.close()
+    if site_norm:
+        results = filter_results_by_site(results, site_norm)
     for r in results:
         d = r.get("distance")
         r["score"] = round(1.0 - d, 4) if d is not None else None
-    return results
+    return results[:top_k]
 
 
 # ---------------------------------------------------------------------------

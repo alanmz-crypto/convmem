@@ -5,6 +5,7 @@ Usage:
   convmem "query" --raw      explicit fallback over conversation summaries
   convmem "query" --top 10   more results
   convmem "query" --domain web_stack.security   scope to a domain (+children)
+  convmem "query" --site staging2.example.com   scope to a client site
   convmem "query" --open 1        search and open result #1 in source app
   convmem index              ingest all sources, skip unchanged
   convmem index --file PATH  force re-ingest one file
@@ -67,6 +68,9 @@ def search(
     domain: str | None = typer.Option(
         None, "--domain", help="Scope to a domain and its children, e.g. web_stack.security"
     ),
+    site: str | None = typer.Option(
+        None, "--site", help="Scope to a site hostname, e.g. staging2.willowyhollow.com"
+    ),
     open_at: int | None = typer.Option(
         None, "--open", min=1, help="Open result # in its source chat app"
     ),
@@ -77,7 +81,7 @@ def search(
     if raw:
         if domain:
             render_warning("--domain has no effect with --raw (summaries aren't domain-tagged).")
-        results = query_raw(query, top_k=top)
+        results = query_raw(query, top_k=top, site=site)
         render_search_results(results, units=False)
     else:
         if not _primary_search_ready():
@@ -91,7 +95,7 @@ def search(
                 "primary search is thin. Use --raw until backfill completes, or:\n"
                 "rm ~/.local/share/convmem/processed.json && convmem index"
             )
-        results = query_units(query, top_k=top, domain=domain)
+        results = query_units(query, top_k=top, domain=domain, site=site)
         render_search_results(results, units=True)
 
     if open_at and results:
@@ -142,6 +146,9 @@ def ask_command(
     domain: str | None = typer.Option(
         None, "--domain", help="Scope to a domain and its children, e.g. web_stack.wordpress"
     ),
+    site: str | None = typer.Option(
+        None, "--site", help="Scope to a site hostname, e.g. staging2.willowyhollow.com"
+    ),
     evidence: bool = typer.Option(
         False,
         "--evidence",
@@ -156,13 +163,13 @@ def ask_command(
     from query import render_ask_output, render_error
 
     if interactive:
-        run_interactive(top_k=top, raw=raw, first_question=question, domain=domain, evidence=evidence)
+        run_interactive(top_k=top, raw=raw, first_question=question, domain=domain, site=site, evidence=evidence)
         return
     if not question:
         render_error("Provide a question, or use -i for interactive mode.")
         raise typer.Exit(1)
 
-    out = ask(question, top_k=top, raw=raw, domain=domain, evidence=evidence)
+    out = ask(question, top_k=top, raw=raw, domain=domain, site=site, evidence=evidence)
     render_ask_output(out)
     if open_at and out.get("citations"):
         idx = open_at - 1
