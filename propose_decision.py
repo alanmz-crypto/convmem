@@ -29,9 +29,7 @@ def approved_path(cfg: dict) -> Path:
 
 def is_valid_signer(signer: str) -> bool:
     s = signer.strip()
-    if s in VALID_SIGNERS:
-        return True
-    return s.startswith("kiro-")
+    return s in VALID_SIGNERS
 
 
 def generate_proposal_id() -> str:
