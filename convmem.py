@@ -27,6 +27,7 @@ Usage:
   convmem monitor                  HTTP security probes (F2b)
   convmem brief                    shared context block for all agents
   convmem brief --print            stdout only (paste into ChatGPT sessions)
+  convmem propose_decision         queue a decision for Ryan/Kiro review
 """
 
 import json
@@ -41,7 +42,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
-    "watch", "refine", "monitor", "exclude", "brief",
+    "watch", "refine", "monitor", "exclude", "brief", "propose_decision",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -511,6 +512,150 @@ def brief(
     if print_:
         typer.echo(text)
     typer.echo(f"Written → {path}")
+
+
+@app.command("propose_decision")
+def propose_decision_command(
+    list_: bool = typer.Option(False, "--list", help="Show pending proposals"),
+    all_: bool = typer.Option(False, "--all", help="With --list: include approved/rejected"),
+    json_out: bool = typer.Option(False, "--json", help="With --list: emit raw JSONL records"),
+    approve: str | None = typer.Option(None, "--approve", help="Approve a proposal id"),
+    reject: str | None = typer.Option(None, "--reject", help="Reject a proposal id"),
+    signer: str | None = typer.Option(None, "--signer", help="Signer (ryan or kiro-review)"),
+    reason: str | None = typer.Option(None, "--reason", help="Required for --reject"),
+    ledger_id: str | None = typer.Option(
+        None, "--ledger-id", help="Canonical ledger id on approve (default: proposal id)"
+    ),
+    parse_doc: str | None = typer.Option(
+        None, "--parse-doc", help="Scan inter-model doc for DECISION PROPOSED blocks (v2)"
+    ),
+    relates_to: str | None = typer.Option(None, "--relates-to", help="Parent observation/decision id"),
+    summary: str | None = typer.Option(None, "--summary", help="One-sentence choice"),
+    rationale: str | None = typer.Option(None, "--rationale", help="Why this choice"),
+    author: str | None = typer.Option(None, "--author", help="Proposing model or human id"),
+    alternative: list[str] | None = typer.Option(
+        None, "--alternative", help="Rejected alternative (repeatable)"
+    ),
+    alternatives_rejected: list[str] | None = typer.Option(
+        None, "--alternatives-rejected", help="Rejected alternative (repeatable)"
+    ),
+    constraint: list[str] | None = typer.Option(
+        None, "--constraint", help="Hard constraint (repeatable)"
+    ),
+    constraints: list[str] | None = typer.Option(
+        None, "--constraints", help="Hard constraint (repeatable)"
+    ),
+    domain: str = typer.Option("coding.tooling", "--domain", help="Domain tag"),
+    site: str = typer.Option("", "--site", help="Site tag (optional)"),
+    confidence: float = typer.Option(0.8, "--confidence", help="Confidence 0–1"),
+    proposal_id: str | None = typer.Option(None, "--id", help="Explicit proposal id"),
+):
+    """Propose, list, approve, or reject decisions (queue file only — never Chroma)."""
+    from config import load_config
+    from propose_decision import (
+        approve as do_approve,
+        approved_path,
+        list_proposals,
+        propose as do_propose,
+        queue_path,
+        reject as do_reject,
+    )
+    from query import render_error
+
+    if parse_doc:
+        render_error("--parse-doc is not yet implemented (reserved for v2)")
+        raise typer.Exit(1)
+
+    cfg = load_config()
+
+    if list_:
+        rows = list_proposals(cfg, show_all=all_)
+        if json_out:
+            for row in rows:
+                typer.echo(json.dumps(row, ensure_ascii=False))
+            return
+        if not rows:
+            typer.echo("No proposals." if all_ else "No pending proposals.")
+            return
+        typer.echo(f"{'PENDING' if not all_ else 'ALL'} ({len(rows)})")
+        for row in rows:
+            pid = row.get("id", "?")
+            status = row.get("status", "PENDING")
+            site_s = row.get("site") or "(no site)"
+            typer.echo(f"  {pid}  [{status}]  {site_s}  {row.get('domain', '')}")
+            typer.echo(f"    {row.get('summary', '')}")
+            typer.echo(
+                f"    proposed by {row.get('proposed_by', '?')} · "
+                f"relates_to {row.get('relates_to', '?')} · {row.get('proposed_at', '?')}"
+            )
+            if row.get("rejection_reason"):
+                typer.echo(f"    rejected: {row['rejection_reason']}")
+        return
+
+    if approve:
+        if not signer:
+            render_error("--signer is required with --approve")
+            raise typer.Exit(1)
+        try:
+            proposal, ledger = do_approve(
+                cfg, approve, signer=signer, ledger_id=ledger_id
+            )
+        except ValueError as e:
+            render_error(str(e))
+            raise typer.Exit(1) from e
+        typer.echo(f"Approved: {proposal['id']}")
+        typer.echo(f"  Signer: {signer}")
+        typer.echo(f"  Ledger id: {ledger['id']}")
+        typer.echo(f"  Written to: {approved_path(cfg)}")
+        typer.echo(f"  Next: convmem add --file {approved_path(cfg)} --upsert")
+        return
+
+    if reject:
+        if not signer:
+            render_error("--signer is required with --reject")
+            raise typer.Exit(1)
+        try:
+            proposal = do_reject(cfg, reject, signer=signer, reason=reason or "")
+        except ValueError as e:
+            render_error(str(e))
+            raise typer.Exit(1) from e
+        typer.echo(f"Rejected: {proposal['id']}")
+        typer.echo(f"  Reason: {proposal.get('rejection_reason', '')}")
+        return
+
+    alts = list(alternative or []) + list(alternatives_rejected or [])
+    cons = list(constraint or []) + list(constraints or [])
+
+    if not relates_to or not summary or not rationale or not author:
+        render_error(
+            "Propose requires --relates-to, --summary, --rationale, and --author "
+            "(or use --list / --approve / --reject)"
+        )
+        raise typer.Exit(1)
+
+    try:
+        rec = do_propose(
+            cfg,
+            relates_to=relates_to,
+            summary=summary,
+            rationale=rationale,
+            author=author,
+            alternatives=alts,
+            constraints=cons,
+            domain=domain,
+            site=site,
+            confidence=confidence,
+            proposal_id=proposal_id,
+        )
+    except ValueError as e:
+        render_error(str(e))
+        raise typer.Exit(1) from e
+
+    typer.echo(f"Proposed: {rec['id']}  (status: PENDING)")
+    typer.echo(f"  Summary: {rec['summary']}")
+    typer.echo(f"  Relates-to: {rec['relates_to']}")
+    typer.echo(f"  Queue: {queue_path(cfg)}")
+    typer.echo("  Run `convmem propose_decision --list` to review.")
 
 
 @app.command()
