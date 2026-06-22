@@ -189,10 +189,10 @@ def index(
             continue
 
         # Path-based skip: if this path was previously processed under a
-        # different hash (file grew/changed), skip unless explicitly forced.
-        # Prevents mass re-ingest when a live DB (e.g., Kiro sqlite) changes
-        # hash between watch cycles.
-        if not force_file and file_hash not in processed:
+        # different hash (file grew/changed), skip unless content actually changed
+        # meaningfully. Prevents re-ingest when Continue/Cursor sessions get
+        # touched without real new content.
+        if file_hash not in processed:
             already = any(
                 e.get("path") == path for e in processed.values() if isinstance(e, dict)
             )

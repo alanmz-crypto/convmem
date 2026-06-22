@@ -1,10 +1,12 @@
 You have access to a local knowledge corpus called convmem. Query it before making decisions about this codebase.
 
+FIRST ACTION every session: run `convmem brief --stdout-only` to get current state.
+
 Commands (run via shell):
+  convmem brief --stdout-only              # ALWAYS RUN FIRST
   convmem "search query"                    # semantic search
   convmem ask "why did we choose X?"        # RAG answer with citations
   convmem related obs_staging2_*            # evidence chain
-  convmem brief --stdout-only              # current project state
 
 Use convmem when:
 - Implementing something that might repeat past work
