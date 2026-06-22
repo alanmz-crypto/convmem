@@ -58,12 +58,37 @@ def _run_test_count() -> int | None:
             text=True,
             timeout=120,
         )
-        for line in (proc.stderr or "").splitlines():
+        combined = (proc.stdout or "") + (proc.stderr or "")
+        for line in combined.splitlines():
             if line.startswith("Ran ") and " test" in line:
                 return int(line.split()[1])
     except (OSError, subprocess.TimeoutExpired, ValueError):
         pass
     return None
+
+
+def _watch_process_memory() -> dict[str, int] | None:
+    """VmPeak/VmRSS/VmData for convmem-watch main pid (from /proc)."""
+    try:
+        out = subprocess.run(
+            ["systemctl", "--user", "show", "convmem-watch", "-p", "MainPID", "--value"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        pid = int((out.stdout or "").strip())
+        if pid <= 0:
+            return None
+        status = Path(f"/proc/{pid}/status").read_text(encoding="utf-8")
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    vals: dict[str, int] = {}
+    for key in ("VmPeak", "VmRSS", "VmData"):
+        for line in status.splitlines():
+            if line.startswith(f"{key}:"):
+                vals[key] = int(line.split()[1])
+                break
+    return vals or None
 
 
 def _kiro_excluded(cfg: dict) -> bool:
@@ -163,6 +188,7 @@ def gather_brief_data(cfg: dict | None = None, *, with_tests: bool = False) -> d
         },
         "kiro_db_excluded": _kiro_excluded(cfg),
         "mcp": _mcp_registration(),
+        "watch_memory_kb": _watch_process_memory(),
         "recent_decisions": _recent_decisions(chroma_dir),
         "recent_monitor": _recent_monitor_units(chroma_dir),
         "pending_decision_files": _pending_decision_ingest(),
@@ -200,9 +226,15 @@ def render_brief_markdown(data: dict) -> str:
         f"- Kiro live DB excluded: **{'yes' if data['kiro_db_excluded'] else 'no'}**",
         f"- MCP: cursor={mcp.get('cursor', '?')} crush={mcp.get('crush', '?')} crush_live={mcp.get('crush_live', '?')}",
         f"- MCP stdio: {mcp.get('stdio', 'unknown')}",
-        "",
-        "## Active P0",
     ]
+    wm = data.get("watch_memory_kb") or {}
+    if wm:
+        peak_m = wm.get("VmPeak", 0) / (1024 * 1024)
+        rss_m = wm.get("VmRSS", 0) / (1024 * 1024)
+        lines.append(
+            f"- Watch memory: VmPeak **{peak_m:.2f}G**, VmRSS **{rss_m:.2f}G** (from /proc; not ps)"
+        )
+    lines.extend(["", "## Active P0"])
 
     p0: list[str] = []
     if not data["kiro_db_excluded"]:

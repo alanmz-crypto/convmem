@@ -133,10 +133,35 @@ def _files_from_inventory(inventory_path: str) -> list[dict]:
     return records
 
 
+def watch_skip_reason(path: str | Path, *, processed: dict | None = None) -> str | None:
+    """Why watch should skip this file without opening Chroma. None = may ingest."""
+    p = Path(path).expanduser().resolve()
+    if processed is None:
+        cfg = load_config()
+        processed = load_processed(cfg["index"]["processed_log"])
+    try:
+        file_hash = sha256_file(str(p))
+    except OSError:
+        return "unreadable"
+    path_str = str(p)
+    if file_hash in processed and processed[file_hash].get("excluded"):
+        return "excluded"
+    if file_hash not in processed:
+        already = any(
+            e.get("path") == path_str for e in processed.values() if isinstance(e, dict)
+        )
+        if already:
+            return "already processed"
+    if file_hash in processed:
+        return "unchanged"
+    return None
+
+
 def index(
     force_file: str | None = None,
     limit_files: int | None = None,
     verbose: bool = True,
+    force_reindex: bool = False,
 ) -> dict:
     """Run the summary ingest. Returns a stats dict."""
     cfg = load_config()
@@ -188,25 +213,34 @@ def index(
                 print(f"  [skip] excluded {Path(path).name}")
             continue
 
+        if force_reindex and force_file:
+            path_str = str(Path(path).expanduser().resolve())
+            for key, entry in list(processed.items()):
+                if isinstance(entry, dict) and entry.get("path") == path_str:
+                    del processed[key]
+
         # Path-based skip: if this path was previously processed under a
         # different hash (file grew/changed), skip unless content actually changed
         # meaningfully. Prevents re-ingest when Continue/Cursor sessions get
         # touched without real new content.
-        if file_hash not in processed:
-            already = any(
-                e.get("path") == path for e in processed.values() if isinstance(e, dict)
-            )
-            if already:
+        if not force_reindex:
+            if file_hash not in processed:
+                already = any(
+                    e.get("path") == path for e in processed.values() if isinstance(e, dict)
+                )
+                if already:
+                    stats["files_skipped"] += 1
+                    if verbose:
+                        print(
+                            f"  [skip] path already processed (hash changed): {Path(path).name}"
+                        )
+                    continue
+
+            if file_hash in processed:
                 stats["files_skipped"] += 1
                 if verbose:
-                    print(f"  [skip] path already processed (hash changed): {Path(path).name}")
+                    print(f"  [skip] unchanged {Path(path).name}")
                 continue
-
-        if file_hash in processed:
-            stats["files_skipped"] += 1
-            if verbose:
-                print(f"  [skip] unchanged {Path(path).name}")
-            continue
 
         fmt = detect_format(path)
         tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")

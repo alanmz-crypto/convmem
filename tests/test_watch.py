@@ -115,6 +115,20 @@ class WatchPathTests(unittest.TestCase):
             )
         )
 
+    def test_flush_path_skips_already_processed(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "agent-transcripts" / "x.jsonl"
+            path.parent.mkdir()
+            path.write_text(
+                '{"role":"user","message":{"content":[{"type":"text","text":"test"}]}}\n'
+            )
+            mock_index = mock.Mock()
+            with mock.patch("ingest.watch_skip_reason", return_value="unchanged"):
+                self.assertIsNone(
+                    flush_path(str(path), index_fn=mock_index, verbose=False)
+                )
+            mock_index.assert_not_called()
+
     def test_flush_path_skips_unsupported(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "nope.jsonl"
