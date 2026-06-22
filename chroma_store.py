@@ -11,6 +11,38 @@ SUMMARIES = "conversation_summaries"
 UNITS = "knowledge_units"
 
 
+def is_chroma_contention_error(exc: BaseException) -> bool:
+    """True when another process holds the Chroma sqlite write lock."""
+    msg = str(exc).lower()
+    return (
+        "readonly" in msg
+        or "database is locked" in msg
+        or "code: 8" in msg
+    )
+
+
+def open_chroma_for_read(chroma_dir: str, *, retries: int = 5) -> "ChromaStore":
+    """Open Chroma for vector queries; retry briefly on writer contention."""
+    import time
+
+    last: Exception | None = None
+    for attempt in range(retries):
+        store = ChromaStore(chroma_dir)
+        try:
+            store._collection(UNITS).count()
+            return store
+        except Exception as e:
+            store.close()
+            last = e
+            if is_chroma_contention_error(e) and attempt + 1 < retries:
+                time.sleep(0.15 * (attempt + 1))
+                continue
+            raise
+    if last:
+        raise last
+    raise RuntimeError("open_chroma_for_read failed")
+
+
 def is_superseded(meta: dict) -> bool:
     """True when a unit was tombstoned by chroma_dedupe (F1)."""
     return meta.get("superseded") is True
@@ -18,9 +50,28 @@ def is_superseded(meta: dict) -> bool:
 
 class ChromaStore:
     def __init__(self, chroma_dir: str):
+        self.chroma_dir = chroma_dir
         self.client = chromadb.PersistentClient(path=chroma_dir)
 
+    def close(self) -> None:
+        """Release the PersistentClient so readers can open the corpus."""
+        client = self.client
+        self.client = None
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
+
+    def __enter__(self) -> "ChromaStore":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
     def _collection(self, name: str):
+        if self.client is None:
+            raise RuntimeError("ChromaStore is closed")
         return self.client.get_or_create_collection(
             name=name, metadata={"hnsw:space": "cosine"}
         )

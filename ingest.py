@@ -41,7 +41,9 @@ def load_processed(path: str) -> dict:
 def save_processed(path: str, data: dict) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(data, indent=2))
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    tmp.replace(p)
 
 
 def chunk_messages(messages: list[dict], size: int, overlap: int) -> list[dict]:
@@ -144,7 +146,6 @@ def index(
     min_confidence = float(distill_cfg.get("min_confidence", 0.6))
     units_export = Path(idx.get("units_export", "")).expanduser()
 
-    store = ChromaStore(idx["chroma_dir"])
     processed = load_processed(idx["processed_log"])
 
     chunk_size = idx.get("chunk_size", 60)
@@ -211,17 +212,20 @@ def index(
         tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
 
         path_key = str(Path(path).expanduser().resolve())
+        chroma_dir = idx["chroma_dir"]
+
         if force_file:
-            n_units_del = 0
-            n_sum_del = 0
-            for sp in dict.fromkeys([path, path_key]):
-                n_units_del += store.delete_units_for_source(sp)
-                n_sum_del += store.delete_summaries_for_source(sp)
-            if verbose and (n_units_del or n_sum_del):
-                print(
-                    f"  [reindex] cleared {n_units_del} units, "
-                    f"{n_sum_del} summaries for {Path(path).name}",
-                )
+            with ChromaStore(chroma_dir) as store:
+                n_units_del = 0
+                n_sum_del = 0
+                for sp in dict.fromkeys([path, path_key]):
+                    n_units_del += store.delete_units_for_source(sp)
+                    n_sum_del += store.delete_summaries_for_source(sp)
+                if verbose and (n_units_del or n_sum_del):
+                    print(
+                        f"  [reindex] cleared {n_units_del} units, "
+                        f"{n_sum_del} summaries for {Path(path).name}",
+                    )
 
         try:
             messages = parser(path)
@@ -251,7 +255,7 @@ def index(
                         "deepseek_base_url", "https://api.deepseek.com"
                     ),
                 )
-                embedding = ollama_embed(
+                summary_embedding = ollama_embed(
                     summary,
                     model=models["embed_model"],
                     host=models["ollama_host"],
@@ -261,23 +265,6 @@ def index(
                     print(f"    [warn] chunk {ch['start_offset']} summarize failed: {e}")
                 continue
 
-            doc_id = hashlib.sha256(
-                f"{path_key}:{ch['start_offset']}".encode()
-            ).hexdigest()
-            session_meta = _chunk_session_meta(ch["messages"], path)
-            metadata = {
-                "source_path": path_key,
-                "tool": tool,
-                "date": _chunk_date(ch["messages"]),
-                "message_count": len(ch["messages"]),
-                "start_offset": ch["start_offset"],
-                "end_offset": ch["end_offset"],
-                **session_meta,
-            }
-            store.add_summary(doc_id, summary, embedding, metadata)
-            n_indexed += 1
-
-            # Distillation (primary layer)
             try:
                 raw_units = distill(
                     text,
@@ -290,8 +277,10 @@ def index(
             except Exception as e:
                 if verbose:
                     print(f"    [warn] chunk {ch['start_offset']} distill failed: {e}")
-                continue
+                raw_units = []
 
+            session_meta = _chunk_session_meta(ch["messages"], path)
+            units_to_add: list[tuple] = []
             for unit_idx, raw in enumerate(raw_units):
                 unit = normalize_unit(
                     raw,
@@ -330,12 +319,30 @@ def index(
                     "verifier_model": unit["verifier_model"] or "",
                     **session_meta,
                 }
-                store.add_unit(unit["id"], doc, unit_embedding, unit_meta)
-                if units_export:
-                    units_export.parent.mkdir(parents=True, exist_ok=True)
-                    with open(units_export, "a", encoding="utf-8") as uf:
-                        uf.write(json.dumps(unit) + "\n")
-                n_units += 1
+                units_to_add.append((unit, doc, unit_embedding, unit_meta))
+
+            doc_id = hashlib.sha256(
+                f"{path_key}:{ch['start_offset']}".encode()
+            ).hexdigest()
+            metadata = {
+                "source_path": path_key,
+                "tool": tool,
+                "date": _chunk_date(ch["messages"]),
+                "message_count": len(ch["messages"]),
+                "start_offset": ch["start_offset"],
+                "end_offset": ch["end_offset"],
+                **session_meta,
+            }
+            with ChromaStore(chroma_dir) as store:
+                store.add_summary(doc_id, summary, summary_embedding, metadata)
+                n_indexed += 1
+                for unit, doc, unit_embedding, unit_meta in units_to_add:
+                    store.add_unit(unit["id"], doc, unit_embedding, unit_meta)
+                    if units_export:
+                        units_export.parent.mkdir(parents=True, exist_ok=True)
+                        with open(units_export, "a", encoding="utf-8") as uf:
+                            uf.write(json.dumps(unit) + "\n")
+                    n_units += 1
 
         processed[file_hash] = {
             "path": path_key,
@@ -346,5 +353,13 @@ def index(
         stats["files_processed"] += 1
         stats["chunks_indexed"] += n_indexed
         stats["units_indexed"] += n_units
+
+    if stats["files_processed"] > 0:
+        try:
+            from brief import refresh_brief_after_change
+
+            refresh_brief_after_change(cfg)
+        except Exception:
+            pass
 
     return stats

@@ -547,17 +547,26 @@ def run_job(
     if job in ("backfill_domain", "semantic_dedupe"):
         kwargs["limiter"] = limiter
 
-    result = _JOBS[job](store, cfg, **kwargs)
-    result.setdefault("llm_calls", 0)
+    try:
+        result = _JOBS[job](store, cfg, **kwargs)
+        result.setdefault("llm_calls", 0)
 
-    all_stats = load_stats(cfg)
-    all_stats.setdefault("jobs", {})
-    all_stats["jobs"][job] = {
-        "last_run": _now_iso(),
-        **result,
-    }
-    save_stats(cfg, all_stats)
-    return result
+        all_stats = load_stats(cfg)
+        all_stats.setdefault("jobs", {})
+        all_stats["jobs"][job] = {
+            "last_run": _now_iso(),
+            **result,
+        }
+        save_stats(cfg, all_stats)
+        try:
+            from brief import refresh_brief_after_change
+
+            refresh_brief_after_change(cfg)
+        except Exception:
+            pass
+        return result
+    finally:
+        store.close()
 
 
 def run_refine_daemon(*, verbose: bool = True, use_lock: bool = True) -> None:
