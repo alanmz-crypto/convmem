@@ -202,7 +202,7 @@ def index(
                     print(f"  [skip] path already processed (hash changed): {Path(path).name}")
                 continue
 
-        if not force_file and file_hash in processed:
+        if file_hash in processed:
             stats["files_skipped"] += 1
             if verbose:
                 print(f"  [skip] unchanged {Path(path).name}")
