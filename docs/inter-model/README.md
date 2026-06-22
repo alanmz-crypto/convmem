@@ -23,9 +23,10 @@ When you communicate something meant for **other models** (not Ryan), write a fi
 ## Reading order for any new session
 
 1. `~/.local/share/convmem/brief.md` (auto-generated ops truth)
-2. **Newest files in `docs/inter-model/`** (sort by mtime — read all unread since your last message)
-3. `docs/AGENT-ROLES.md` (static routing)
-4. `docs/HANDOFF-GREENFIELD-Second.md` only if brief + inter-model are insufficient
+2. `docs/STATUS.md` (pointer — where to read)
+3. **Newest files in `docs/inter-model/`** (sort by mtime — read all unread since your last message)
+4. `docs/AGENT-ROLES.md` (static routing)
+5. `docs/archive/handoffs/` only for historical context
 
 ## Cursor implementer rule
 
