@@ -1,0 +1,407 @@
+{
+  "$schema": "https://charm.land/crush.json",
+  "providers": {
+    "ollama-coding": {
+      "name": "Ollama Coding",
+      "type": "openai-compat",
+      "base_url": "http://localhost:11434/v1/",
+      "api_key": "ollama",
+      "default_large_model_id": "qwen3-coder:30b",
+      "default_small_model_id": "qwen2.5-coder:7b",
+      "system_prompt_prefix": "When using tools, respond ONLY with a flat JSON object: {\"tool\":\"toolname\",\"param1\":\"value1\"}. No {\"name\":...,\"arguments\":...} wrapping. No <function> tags. No markdown. Just the JSON.",
+      "models": [
+        {
+          "id": "qwen3-coder-next:latest",
+          "name": "qwen3-coder-next",
+          "context_window": 262144,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "qwen3-coder:latest",
+          "name": "qwen3-coder",
+          "context_window": 262144,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "qwen3-coder:30b",
+          "name": "qwen3-coder-30b",
+          "context_window": 262144,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "options": {
+            "provider_options": {
+              "temperature": 0.05,
+              "top_p": 0.9
+            }
+          }
+        },
+        {
+          "id": "qwen2.5-coder:32b",
+          "name": "qwen2.5-coder-32b",
+          "context_window": 131072,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "qwen2.5-coder:14b",
+          "name": "qwen2.5-coder-14b",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "qwen2.5-coder:7b",
+          "name": "qwen2.5-coder-7b",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "deepseek-coder-v2:16b",
+          "name": "deepseek-coder-v2-16b",
+          "context_window": 163840,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "deepseek-coder:33b",
+          "name": "deepseek-coder-33b",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "devstral-small-2:latest",
+          "name": "devstral-small-2",
+          "context_window": 393216,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        }
+      ]
+    },
+    "ollama-research": {
+      "name": "Ollama Research",
+      "type": "openai-compat",
+      "base_url": "http://localhost:11434/v1/",
+      "api_key": "ollama",
+      "default_large_model_id": "qwen3:32b",
+      "default_small_model_id": "qwen2.5-coder:14b",
+      "models": [
+        {
+          "id": "qwen3:32b",
+          "name": "qwen3-32b",
+          "context_window": 40960,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "qwen3.6:35b",
+          "name": "qwen3.6-35b",
+          "context_window": 131072,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "can_reason": true,
+          "options": {
+            "provider_options": {
+              "temperature": 0.1,
+              "top_p": 0.9,
+              "think": false
+            }
+          }
+        },
+        {
+          "id": "qwen3.5:35b",
+          "name": "qwen3.5-35b",
+          "context_window": 40960,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "qwen3.5:latest",
+          "name": "qwen3.5",
+          "context_window": 40960,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "qwen3-coder-next:latest",
+          "name": "qwen3-coder-next",
+          "context_window": 262144,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "qwen2.5-coder:14b",
+          "name": "qwen2.5-coder-14b",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "hf.co/mradermacher/Qwen3-30B-A3B-abliterated-GGUF:Q4_K_M",
+          "name": "qwen3-30b-abliterated-hf-Q4_K_M",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "can_reason": true
+        },
+        {
+          "id": "deepseek-r1:32b",
+          "name": "deepseek-r1-32b",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "deepseek-r1:14b",
+          "name": "deepseek-r1-14b",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        }
+      ]
+    },
+    "ollama-general": {
+      "name": "Ollama General",
+      "type": "openai-compat",
+      "base_url": "http://localhost:11434/v1/",
+      "api_key": "ollama",
+      "default_large_model_id": "gemma4:26b",
+      "default_small_model_id": "gemma3:4b",
+      "models": [
+        {
+          "id": "llama3.3:latest",
+          "name": "llama3.3",
+          "context_window": 131072,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "gemini-3-flash-preview:latest",
+          "name": "gemini-3-flash-preview",
+          "context_window": 131072,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "gemma4:26b",
+          "name": "gemma4-26b",
+          "context_window": 131072,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "gemma4:latest",
+          "name": "gemma4",
+          "context_window": 131072,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "qwen3.6:27b",
+          "name": "qwen3.6-27b",
+          "context_window": 40960,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "qwen3.6-27b-unsloth-32k",
+          "name": "qwen3.6-27b-unsloth-q3-32k",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "can_reason": true,
+          "options": {
+            "provider_options": {
+              "temperature": 0.1,
+              "top_p": 0.9,
+              "think": false
+            }
+          }
+        },
+        {
+          "id": "qwen3.6-27b-iq3-crush",
+          "name": "qwen3.6-27b-iq3-32k-crush",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "can_reason": true,
+          "options": {
+            "provider_options": {
+              "think": false
+            }
+          }
+        },
+        {
+          "id": "qwen3.6-27b-unsloth-8k",
+          "name": "qwen3.6-27b-unsloth-8k",
+          "context_window": 8192,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "can_reason": true
+        },
+        {
+          "id": "qwen3.6-27b-unsloth-16k",
+          "name": "qwen3.6-27b-unsloth-16k",
+          "context_window": 16384,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "can_reason": true
+        },
+        {
+          "id": "qwen3.6-27b-iq3-32k",
+          "name": "qwen3.6-27b-iq3-32k",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "can_reason": true
+        },
+        {
+          "id": "batiai/qwen3.6-27b:iq3",
+          "name": "batiai-qwen3.6-27b-iq3",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "can_reason": true
+        },
+        {
+          "id": "hf.co/unsloth/Qwen3.6-27B-GGUF:Q3_K_M",
+          "name": "qwen3.6-27b-hf-Q3_K_M",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "can_reason": true
+        },
+        {
+          "id": "hf.co/lmstudio-community/Qwen3.6-27B-GGUF:Q8_0",
+          "name": "qwen3.6-27b-hf-Q8_0",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0,
+          "can_reason": true
+        },
+        {
+          "id": "gemma3:27b",
+          "name": "gemma3-27b",
+          "context_window": 131072,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "gemma3:12b",
+          "name": "gemma3-12b",
+          "context_window": 131072,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "mistral-small:22b",
+          "name": "mistral-small-22b",
+          "context_window": 32768,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "llama3.1:8b",
+          "name": "llama3.1-8b",
+          "context_window": 131072,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        },
+        {
+          "id": "gemma3:4b",
+          "name": "gemma3-4b",
+          "context_window": 131072,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0,
+          "cost_per_1m_out": 0
+        }
+      ]
+    },
+    "gemini-search": {
+      "name": "Gemini",
+      "type": "google",
+      "api_key": "$GEMINI_API_KEY",
+      "api_endpoint": "https://generativelanguage.googleapis.com",
+      "default_large_model_id": "gemini-2.5-pro-search",
+      "default_small_model_id": "gemini-2.5-flash-search",
+      "models": [
+        {
+          "id": "gemini-2.5-pro-search",
+          "name": "Gemini 2.5 Pro Search",
+          "context_window": 1048576,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 1.25,
+          "cost_per_1m_out": 10
+        },
+        {
+          "id": "gemini-2.5-flash-search",
+          "name": "Gemini 2.5 Flash Search",
+          "context_window": 1048576,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0.3,
+          "cost_per_1m_out": 2.499
+        },
+        {
+          "id": "gemini-3-flash-preview-search",
+          "name": "Gemini 3 Flash Preview Search",
+          "context_window": 1048576,
+          "default_max_tokens": -1,
+          "cost_per_1m_in": 0.5,
+          "cost_per_1m_out": 3
+        }
+      ]
+    }
+  },
+  "mcp": {
+    "convmem": {
+      "type": "stdio",
+      "command": "/home/lauer/miniforge3/envs/convmem/bin/python",
+      "args": [
+        "/home/lauer/Projects/convmem/mcp_server.py"
+      ],
+      "env": {
+        "HOME": "/home/lauer",
+        "DEEPSEEK_API_KEY": "***REDACTED*** (set via env.systemd on dev machine)"
+      },
+      "timeout": 120
+    }
+  }
+}
