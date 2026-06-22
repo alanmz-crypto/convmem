@@ -27,7 +27,7 @@ def unit_matches_site(meta: dict, site: str) -> bool:
 
     meta_site = (meta.get("site") or "").strip().lower()
     if meta_site:
-        if meta_site == normalized or meta_site.startswith(f"{short}."):
+        if meta_site == normalized:
             return True
 
     src = (meta.get("source_path") or "").lower()
