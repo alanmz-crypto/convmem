@@ -182,13 +182,18 @@ def ask_command(
 
 @app.command()
 def index(
-    file: str = typer.Option(None, "--file", help="Force re-ingest a single file"),
+    file: str = typer.Option(None, "--file", help="Ingest a single file"),
     limit: int = typer.Option(None, "--limit", help="Max files to process (debug)"),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="With --file: bypass path/hash skip and re-ingest (clears processed entry)",
+    ),
 ):
-    """Ingest all sources (skip unchanged), or force one file."""
+    """Ingest all sources (skip unchanged), or one file (--file; add --force to re-ingest)."""
     from ingest import index as run_index
 
-    stats = run_index(force_file=file, limit_files=limit)
+    stats = run_index(force_file=file, limit_files=limit, force_reindex=force)
     typer.echo("")
     typer.echo(
         f"Done. files_processed={stats['files_processed']} "

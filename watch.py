@@ -133,6 +133,13 @@ def flush_path(
         elif verbose:
             print(f"[watch] skip (no parser): {path}", file=sys.stderr)
         return None
+    from ingest import watch_skip_reason
+
+    skip = watch_skip_reason(p)
+    if skip:
+        if verbose:
+            print(f"[watch] skip ({skip}): {p.name}", file=sys.stderr)
+        return None
     if verbose:
         print(f"[watch] indexing {p.name}", file=sys.stderr)
     return index_fn(force_file=str(p.resolve()), verbose=verbose)
