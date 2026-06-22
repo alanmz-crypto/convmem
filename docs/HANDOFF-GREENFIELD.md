@@ -1,4 +1,22 @@
+> **⚠️ SUPERSEDED** — Use `docs/HANDOFF-MULTI-AGENT.md` instead. This file has internal inconsistencies (two conflicting MCP sections from different edit passes). Kept for reference only.
+
 # convmem — Greenfield Handoff for New Agent
+
+**Read me first:** This doc serves **multiple agents**. Jump to your section — don't assume the whole doc is for you.
+
+| If you are… | Read… | Do not… |
+|-------------|-------|---------|
+| **Sonnet** (MCP seed — new session, no prior context) | § MCP integration (authoritative) + this tar if no filesystem | Re-trust removed duplicate MCP sections |
+| **Claude** (architecture/strategy, *different* session) | `docs/HANDOFF-FOR-CLAUDE.md` | Own Crush verification on dev machine |
+| **Cursor / Opus** (implementation) | Key files, CLI, Constraints | — |
+
+**Identity note:** “Sonnet” = the **MCP verification seed** (you may be a fresh Claude Sonnet session). “Claude” in the roles table = **architecture brainstorming only**, not the MCP seed.
+
+**MCP single source of truth:** § **MCP integration** only. Anything else mentioning MCP (including removed duplicate sections) is stale.
+
+**Multi-agent coordination:** see **`docs/HANDOFF-MULTI-AGENT.md`** for latest state + per-model tasks (written by Cursor implementer).
+
+---
 
 ## What this is
 
@@ -11,9 +29,9 @@ Local-first CLI that turns AI chat history into a searchable, citeable knowledge
 
 ## Current state (2026-06-19)
 
-- **Rebuild in progress** — `convmem index` running (PID 1128957), wiped old corrupted/duplicated Chroma, rebuilding clean from 122 source files. ~926 units so far, will finish at ~1,500–2,500.
-- **Watch disabled** — re-enable after rebuild: `systemctl --user enable --now convmem-watch`
-- **Refine active** — `convmem-refine.service` running (dedupe, link, audit jobs)
+- **Rebuild complete** — `convmem index` finished (~1028 units, 263 summaries, **121/122** files in `processed.json`). One inventory file may remain unprocessed — check logs before calling corpus 100% done.
+- **Watch disabled** — re-enable after Kiro exclude: `convmem exclude ~/.local/share/kiro-cli/data.sqlite3` then `systemctl --user enable --now convmem-watch`
+- **Refine** — restart after rebuild: `systemctl --user start convmem-refine`
 - **Monitor active** — `convmem-monitor.timer` probes staging2.willowyhollow.com hourly
 - **69 tests passing**
 - **MCP server** registered for Cursor, Crush, Continue (stdio transport)
@@ -114,13 +132,15 @@ convmem refine --once --job confidence_audit
 
 | Agent | Role |
 |-------|------|
-| **Sonnet (you)** | **MCP expert** — Crush/Cursor MCP integration, tool contracts, stdio/protocol debugging, post-rebuild MCP verification. Own everything in § MCP below. |
+| **Sonnet** | **MCP expert** — Crush/Cursor MCP integration, tool contracts, stdio/protocol debugging, post-rebuild MCP verification. Own **§ MCP integration** only. |
+| **Claude** | Architecture brainstorming, ecosystem strategy, W5H product direction (`HANDOFF-FOR-CLAUDE.md`). Can *advise* on MCP architecture but **does not** own wire-up or verification on the dev machine. |
 | **Kiro** | Design reviewer, sanity checker, decision signer |
 | **Cursor (Opus Auto)** | Primary implementer (CLI, ingest, adapters) |
-| **Claude** | Architecture brainstorming, ecosystem strategy (not MCP wire-up) |
 | **DeepSeek** | `convmem ask` synthesis + distillation API |
 
-**Sonnet seed prompt:** Read this file, then **§ MCP integration** end-to-end. Your job is to get Crush reliably calling convmem tools after rebuild — not to re-audit ingest/watch unless MCP depends on it.
+**Sonnet seed prompt:** Read this file § MCP integration end-to-end. P0: verify Crush calls `mcp_convmem_search_fast` and `ask` after rebuild.
+
+**Claude seed prompt:** Read `HANDOFF-FOR-CLAUDE.md` for strategy. Use this file for current state only; for MCP facts cite § MCP integration, not second-hand summaries.
 
 ---
 
@@ -182,10 +202,31 @@ convmem refine --once --job confidence_audit
 
 #### Cursor
 
-- Config: `~/.cursor/mcp.json` (separate from Crush)
-- Same command/args; Cursor spawn may leave **stale long-lived** `mcp_server.py` — restart if tools behave like pre-fix code
+- Config: `~/.cursor/mcp.json` — key format **`mcpServers.convmem`** (Cursor uses legacy key name; Crush uses `mcp`)
+- Same command/args as Crush; Cursor spawn may leave **stale long-lived** `mcp_server.py` — restart if tools behave like pre-fix code
 
-### Spawn environment (what works without shell activation)
+#### Continue (optional / lower priority)
+
+- Config: `~/.continue/mcpServers/convmem.json` — key **`mcpServers.convmem`** (same shape as Cursor)
+- Same command/args; **untested** post-refactor at handoff time
+
+### Timeout stack (authoritative)
+
+| Layer | Value | Notes |
+|-------|-------|-------|
+| Crush `mcp.convmem.timeout` | **120 s** | Safety ceiling in `~/.config/crush/crush.json` |
+| `ask` synthesis (`llm.generate`) | **45 s** | Internal cap; degrades to retrieval-only |
+| Ingest / distill `generate()` | 300 s | Not on MCP path |
+| Crush default (if unset) | 15 s | Too tight for `ask` — do not remove explicit 120 |
+
+**Latency note:** `search_fast` is ~**3 s** (Ollama embed + Chroma), not sub-second — plan agent flows accordingly.
+
+### Protocol version (authoritative)
+
+- **Production handshake:** Crush sends **`2025-11-25`**; server echoes it. Use this in verification commands.
+- Server also accepts older client offers (`2024-11-05`, etc.) during negotiation tests — that is not what Crush sends in the field.
+
+---
 
 Crush spawns with **minimal env** (not full conda `PATH`). Verified with `env -i HOME=...`:
 
@@ -257,6 +298,7 @@ pkill -f 'mcp_server.py'   # Cursor/Crush will respawn on next session
 | Confirm `ask` returns within 120 s with `synthesis_failed` on API slowness | P1 |
 | Update `docs/HANDOFF-CRUSH-MCP-DEBUG.md` (still shows `mcpServers`) | P2 |
 | Consider hardcoded API key in crush.json → shell expansion only | P2 security |
+| Future: `propose_decision` write tool (human confirm → ingest) | backlog |
 | Future: ingest MCP tool would need `processed.json` file lock | backlog |
 
 ### What MCP does NOT depend on
@@ -297,57 +339,6 @@ convmem stats                                   # corpus overview
 convmem refine --once --job confidence_audit    # run one refine job
 convmem monitor --site staging2.willowyhollow.com --dry-run
 ```
-
-## MCP Server (Sonnet's area)
-
-**File:** `mcp_server.py` — FastMCP (Python `mcp` SDK v1.28.0), stdio transport.
-
-**Tools exposed:**
-| Tool | Latency | LLM call | Notes |
-|------|---------|----------|-------|
-| `search_fast` | ~50ms | No | Retrieval only, no synthesis |
-| `ask` | 2–45s | Yes (DeepSeek) | Degrades to raw results on timeout/failure |
-| `related` | ~100ms | No | Graph traversal via ledger_id |
-| `stats` | ~200ms | No | Corpus counts |
-
-**Registered in:**
-| Client | Config file | Key format |
-|--------|-------------|-----------|
-| Cursor | `~/.cursor/mcp.json` | `mcpServers.convmem` |
-| Crush | `~/.config/crush/crush.json` | `mcp.convmem` + `type: stdio` |
-| Continue | `~/.continue/mcpServers/convmem.json` | `mcpServers.convmem` |
-
-**Timeout architecture:**
-- Crush client timeout: 60s (set in crush.json `timeout` field)
-- DeepSeek API timeout: 45s (in `llm.py`)
-- `ask` catches all exceptions → returns raw retrieval results on failure
-- `search_fast` never calls LLM → always responds in <1s
-
-**Env vars passed to subprocess (in config `env` blocks):**
-- `HOME` (for config.toml path expansion)
-- `DEEPSEEK_API_KEY` (for `ask` synthesis)
-
-**Protocol:** Server negotiates to client's requested version (tested 2024-11-05 and 2025-03-26). No stdout pollution in tool paths — all print goes to stderr or is absent.
-
-**Current status:**
-- Cursor: should work (untested since latest refactor)
-- Crush: config fixed (`mcp` key, `type: stdio`, `timeout: 60`), needs restart to verify connection
-- Continue: config dropped in `~/.continue/mcpServers/`, untested
-
-**Known issues:**
-- Crush wasn't connecting pre-fix (wrong config keys). Post-fix untested.
-- No write tools exposed (search/ask/related/stats are all read-only)
-- Future: `propose_decision` tool (agent proposes, human confirms, then ingest)
-
-**Testing the server manually:**
-```bash
-printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}\n{"jsonrpc":"2.0","method":"notifications/initialized"}\n{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}\n' | /home/lauer/miniforge3/envs/convmem/bin/python /home/lauer/Projects/convmem/mcp_server.py 2>/dev/null
-```
-
-**Next MCP work:**
-1. Verify Crush connects after config fix (restart Crush, ask agent to call `search_fast`)
-2. Add `propose_decision` write tool with human-confirm gate
-3. Consider streaming for `ask` if 45s feels too slow for interactive use
 
 ## Constraints
 
