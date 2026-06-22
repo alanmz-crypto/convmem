@@ -90,9 +90,29 @@ class WatchPathTests(unittest.TestCase):
             is_live_watch_db("/home/lauer/.local/share/kiro-cli/data.sqlite3")
         )
 
+    def test_is_live_watch_db_cursor_store(self):
+        self.assertTrue(
+            is_live_watch_db(
+                "/home/lauer/.config/cursor/chats/abc123/session-1/store.db"
+            )
+        )
+
+    def test_is_live_watch_db_other_store_db_not_live(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "store.db"
+            path.touch()
+            self.assertFalse(is_live_watch_db(path))
+
     def test_is_watchable_skips_live_db(self):
         self.assertFalse(
             is_watchable("/home/lauer/.local/share/kiro-cli/data.sqlite3")
+        )
+
+    def test_is_watchable_skips_cursor_store_db(self):
+        self.assertFalse(
+            is_watchable(
+                "/home/lauer/.config/cursor/chats/abc123/session-1/store.db"
+            )
         )
 
     def test_flush_path_skips_unsupported(self):

@@ -25,6 +25,8 @@ Usage:
   convmem refine                   background index refinement (F1)
   convmem refine --once --job JOB  run one refine job
   convmem monitor                  HTTP security probes (F2b)
+  convmem brief                    shared context block for all agents
+  convmem brief --print            stdout only (paste into ChatGPT sessions)
 """
 
 import json
@@ -32,21 +34,24 @@ import sys
 
 import typer
 
+from chroma_readonly import collection_count
 from open_source import run_open
 
 app = typer.Typer(add_completion=False, help="Search your past AI conversations.")
 
-_SUBCOMMANDS = {"index", "stats", "search", "ask", "open", "add", "verify", "related", "watch", "refine", "monitor", "exclude"}
+_SUBCOMMANDS = {
+    "index", "stats", "search", "ask", "open", "add", "verify", "related",
+    "watch", "refine", "monitor", "exclude", "brief",
+}
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
 
 
 def _unit_count() -> int:
-    from chroma_store import ChromaStore
     from config import load_config
 
     cfg = load_config()
-    return ChromaStore(cfg["index"]["chroma_dir"]).count_units()
+    return collection_count(cfg["index"]["chroma_dir"], "knowledge_units")
 
 
 def _primary_search_ready() -> bool:
@@ -473,6 +478,34 @@ def monitor_command(
         verbose=True,
     )
     typer.echo(json.dumps(stats, indent=2))
+    from brief import refresh_brief_after_change
+
+    refresh_brief_after_change(cfg)
+
+
+@app.command()
+def brief(
+    print_: bool = typer.Option(False, "--print", help="Also print brief to stdout"),
+    out: str | None = typer.Option(None, "--out", help="Output path (default ~/.local/share/convmem/brief.md)"),
+    with_tests: bool = typer.Option(False, "--with-tests", help="Run unit tests and include count in brief"),
+    stdout_only: bool = typer.Option(False, "--stdout-only", help="Print only; do not write brief.md"),
+):
+    """Generate a read-only shared context block for multi-agent sessions."""
+    from config import load_config
+    from brief import gather_brief_data, render_brief_markdown, write_brief
+
+    cfg = load_config()
+    data = gather_brief_data(cfg, with_tests=with_tests)
+    text = render_brief_markdown(data)
+
+    if stdout_only:
+        typer.echo(text)
+        return
+
+    path = write_brief(cfg, out_path=out, with_tests=with_tests, quiet=True)
+    if print_:
+        typer.echo(text)
+    typer.echo(f"Written → {path}")
 
 
 @app.command()

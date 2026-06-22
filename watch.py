@@ -18,12 +18,20 @@ _LIVE_WATCH_SKIP_SUFFIXES = (
     "kiro-cli/data.sqlite3",
     "convmem/imports/webui.db",
 )
+_CURSOR_CHAT_STORE_ROOT = Path("~/.config/cursor/chats").expanduser()
 
 
 def is_live_watch_db(path: Path | str) -> bool:
     """True for append-heavy DBs that must not be watch re-indexed."""
-    s = str(Path(path).expanduser().resolve())
-    return any(s.endswith(suffix) for suffix in _LIVE_WATCH_SKIP_SUFFIXES)
+    p = Path(path).expanduser().resolve()
+    s = str(p)
+    if any(s.endswith(suffix) for suffix in _LIVE_WATCH_SKIP_SUFFIXES):
+        return True
+    try:
+        p.relative_to(_CURSOR_CHAT_STORE_ROOT)
+    except ValueError:
+        return False
+    return p.name == "store.db"
 
 
 def is_excluded_from_index(path: Path | str) -> bool:

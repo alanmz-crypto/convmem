@@ -29,6 +29,8 @@ StartLimitIntervalSec=3600
 StartLimitBurst=3
 MemoryMax=4G
 MemoryHigh=3G
+MemorySwapMax=0
+OOMPolicy=stop
 # Notify only on failure (not manual `systemctl stop`).
 ExecStopPost=/usr/bin/sh -c 'case "$SERVICE_RESULT" in oom-kill|timeout|exit-code|signal|resources) /usr/bin/notify-send -u critical "convmem-watch failed" "Result: $SERVICE_RESULT. Check: journalctl --user -u convmem-watch -n 30" ;; esac'
 

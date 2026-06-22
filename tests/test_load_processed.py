@@ -29,6 +29,17 @@ class LoadProcessedTests(unittest.TestCase):
                 load_processed(str(p))
             self.assertIn("corrupt", str(ctx.exception).lower())
 
+    def test_save_processed_atomic_replace(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "processed.json"
+            from ingest import save_processed
+
+            save_processed(str(p), {"a": {"path": "/x"}})
+            self.assertEqual(json.loads(p.read_text()), {"a": {"path": "/x"}})
+            save_processed(str(p), {"b": {"path": "/y"}})
+            self.assertEqual(json.loads(p.read_text()), {"b": {"path": "/y"}})
+            self.assertFalse(p.with_suffix(p.suffix + ".tmp").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

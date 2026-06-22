@@ -13,7 +13,8 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-from chroma_store import ChromaStore
+from chroma_store import ChromaStore, open_chroma_for_read
+from chroma_readonly import collection_metadata_rows
 from config import load_config
 from domains import domain_breadcrumb, domain_matches, is_known_domain, normalize_domain
 from llm import ollama_embed
@@ -37,7 +38,6 @@ def query_units(text: str, top_k: int = 5, domain: str | None = None) -> list[di
     cfg = load_config()
     models = cfg["models"]
     qcfg = cfg.get("query", {})
-    store = ChromaStore(cfg["index"]["chroma_dir"])
 
     embedding = ollama_embed(
         text, model=models["embed_model"], host=models["ollama_host"]
@@ -51,7 +51,12 @@ def query_units(text: str, top_k: int = 5, domain: str | None = None) -> list[di
         # Chroma's exact-match `where` can't express, so over-fetch and
         # filter client-side before reranking/truncating.
         n_fetch = max(n_fetch, qcfg.get("top_k_candidates", 20)) * 3
-    results = store.query_units(embedding, n_fetch)
+
+    store = open_chroma_for_read(cfg["index"]["chroma_dir"])
+    try:
+        results = store.query_units(embedding, n_fetch)
+    finally:
+        store.close()
     if domain:
         results = [
             r for r in results
@@ -74,12 +79,15 @@ def query_units(text: str, top_k: int = 5, domain: str | None = None) -> list[di
 def query_raw(text: str, top_k: int = 5) -> list[dict]:
     cfg = load_config()
     models = cfg["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
 
     embedding = ollama_embed(
         text, model=models["embed_model"], host=models["ollama_host"]
     )
-    results = store.query_summaries(embedding, top_k)
+    store = open_chroma_for_read(cfg["index"]["chroma_dir"])
+    try:
+        results = store.query_summaries(embedding, top_k)
+    finally:
+        store.close()
     for r in results:
         d = r.get("distance")
         r["score"] = round(1.0 - d, 4) if d is not None else None
@@ -382,6 +390,7 @@ def render_ask_output(out: dict, *, show_search: bool = False) -> None:
 
 def _coverage_counts(cfg: dict) -> tuple[int, int, int, int]:
     from adapters.detect import detect_format, get_parser
+    from ingest import sha256_file
 
     inv_path = Path(
         cfg.get("sources", {}).get("inventory")
@@ -406,7 +415,8 @@ def _coverage_counts(cfg: dict) -> tuple[int, int, int, int]:
             processed = json.loads(proc_path.read_text())
         except Exception:
             pass
-    indexed_paths = {v.get("path") for v in processed.values()}
+    indexed_paths = {v.get("path") for v in processed.values() if isinstance(v, dict)}
+    indexed_hashes = set(processed.keys())
 
     deferred = not_indexed = 0
     for rec in records:
@@ -415,6 +425,12 @@ def _coverage_counts(cfg: dict) -> tuple[int, int, int, int]:
         if fmt and get_parser(path) is None:
             deferred += 1
         elif path not in indexed_paths and fmt:
+            try:
+                file_hash = sha256_file(path)
+            except OSError:
+                file_hash = ""
+            if file_hash and file_hash in indexed_hashes:
+                continue  # same bytes indexed under another path (moved transcript)
             not_indexed += 1
     return len(records), len(indexed_paths), not_indexed, deferred
 
@@ -423,12 +439,12 @@ def render_stats(cfg: dict | None = None) -> None:
     """Print index statistics as Rich tables."""
     if cfg is None:
         cfg = load_config()
-    store = ChromaStore(cfg["index"]["chroma_dir"])
 
     from adapters.detect import TOOL_BY_FORMAT, detect_format
 
-    summary_metas = store.summaries_metadata()
-    unit_metas = store.units_metadata()
+    chroma_dir = cfg["index"]["chroma_dir"]
+    summary_metas = collection_metadata_rows(chroma_dir, "conversation_summaries")
+    unit_metas = collection_metadata_rows(chroma_dir, "knowledge_units")
     chunks_by_tool = Counter(m.get("tool", "?") for m in summary_metas)
     units_by_tool = Counter(m.get("tool", "?") for m in unit_metas)
 

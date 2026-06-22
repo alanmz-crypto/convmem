@@ -42,7 +42,7 @@ rerank           = true
 # recency_weight = 0.1  # not yet implemented — deferred (F2+)
 
 [watch]
-debounce_seconds = 30
+debounce_seconds = 90
 # Optional: override [sources].paths for watch only (defaults to sources.paths)
 # paths = [
 #   "~/.config/cursor/chats",
