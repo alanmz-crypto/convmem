@@ -67,8 +67,8 @@ def _run_test_count() -> int | None:
     return None
 
 
-def _watch_process_memory() -> dict[str, int] | None:
-    """VmPeak/VmRSS/VmData for convmem-watch main pid (from /proc)."""
+def _watch_main_pid() -> int | None:
+    """Resolve convmem-watch PID via systemctl, else pgrep (Crush-safe fallback)."""
     try:
         out = subprocess.run(
             ["systemctl", "--user", "show", "convmem-watch", "-p", "MainPID", "--value"],
@@ -76,11 +76,37 @@ def _watch_process_memory() -> dict[str, int] | None:
             text=True,
             timeout=3,
         )
-        pid = int((out.stdout or "").strip())
-        if pid <= 0:
-            return None
-        status = Path(f"/proc/{pid}/status").read_text(encoding="utf-8")
+        if out.returncode == 0:
+            pid = int((out.stdout or "").strip())
+            if pid > 0:
+                return pid
     except (OSError, subprocess.TimeoutExpired, ValueError):
+        pass
+    try:
+        out = subprocess.run(
+            ["pgrep", "-f", "convmem.py watch"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        if out.returncode == 0:
+            for line in (out.stdout or "").splitlines():
+                line = line.strip()
+                if line:
+                    return int(line)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        pass
+    return None
+
+
+def _watch_process_memory() -> dict[str, int] | None:
+    """VmPeak/VmRSS/VmData for convmem-watch main pid (from /proc)."""
+    pid = _watch_main_pid()
+    if pid is None:
+        return None
+    try:
+        status = Path(f"/proc/{pid}/status").read_text(encoding="utf-8")
+    except OSError:
         return None
     vals: dict[str, int] = {}
     for key in ("VmPeak", "VmRSS", "VmData"):

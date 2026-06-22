@@ -34,29 +34,28 @@ def is_live_watch_db(path: Path | str) -> bool:
     return p.name == "store.db"
 
 
-def is_excluded_from_index(path: Path | str) -> bool:
-    """True when processed.json marks this path excluded."""
+def is_excluded_by_path(path: Path | str, *, processed: dict | None = None) -> bool:
+    """True when processed.json marks this resolved path excluded (no file hash)."""
     from config import load_config
-    from ingest import load_processed, sha256_file
+    from ingest import _processed_path_str, load_processed
 
     p = Path(path).expanduser().resolve()
-    try:
-        file_hash = sha256_file(str(p))
-    except OSError:
-        return False
-    cfg = load_config()
-    processed = load_processed(cfg["index"]["processed_log"])
-    entry = processed.get(file_hash)
-    if isinstance(entry, dict) and entry.get("excluded"):
-        return True
     path_key = str(p)
+    if processed is None:
+        cfg = load_config()
+        processed = load_processed(cfg["index"]["processed_log"])
     for entry in processed.values():
         if not isinstance(entry, dict) or not entry.get("excluded"):
             continue
         ep = entry.get("path")
-        if ep and str(Path(ep).expanduser().resolve()) == path_key:
+        if ep and _processed_path_str(ep) == path_key:
             return True
     return False
+
+
+def is_excluded_from_index(path: Path | str) -> bool:
+    """Alias for path-based exclusion check (watch hot path avoids hashing)."""
+    return is_excluded_by_path(path)
 
 
 def is_watchable(path: Path | str) -> bool:
@@ -119,30 +118,38 @@ def flush_path(
     verbose: bool = True,
 ) -> dict | None:
     """Run incremental index for one file. Returns stats or None if skipped."""
-    p = Path(path)
+    from config import load_config
+    from ingest import load_processed, watch_skip_reason
+
+    p = Path(path).expanduser().resolve()
     if not p.is_file():
         if verbose:
             print(f"[watch] skip (not a file): {path}", file=sys.stderr)
         return None
-    if not is_watchable(p):
-        if verbose and is_indexable(p):
-            if is_live_watch_db(p):
-                print(f"[watch] skip (live DB): {path}", file=sys.stderr)
-            elif is_excluded_from_index(p):
-                print(f"[watch] skip (excluded): {path}", file=sys.stderr)
-        elif verbose:
-            print(f"[watch] skip (no parser): {path}", file=sys.stderr)
+    if not is_indexable(p):
+        if verbose:
+            print(f"[watch] skip (no parser): {p.name}", file=sys.stderr)
         return None
-    from ingest import watch_skip_reason
+    if is_live_watch_db(p):
+        if verbose:
+            print(f"[watch] skip (live DB): {p.name}", file=sys.stderr)
+        return None
 
-    skip = watch_skip_reason(p)
+    cfg = load_config()
+    processed = load_processed(cfg["index"]["processed_log"])
+    if is_excluded_by_path(p, processed=processed):
+        if verbose:
+            print(f"[watch] skip (excluded): {p.name}", file=sys.stderr)
+        return None
+
+    skip = watch_skip_reason(p, processed=processed)
     if skip:
         if verbose:
             print(f"[watch] skip ({skip}): {p.name}", file=sys.stderr)
         return None
     if verbose:
         print(f"[watch] indexing {p.name}", file=sys.stderr)
-    return index_fn(force_file=str(p.resolve()), verbose=verbose)
+    return index_fn(force_file=str(p), verbose=verbose)
 
 
 def _lock_path_from_config(cfg: dict) -> Path:

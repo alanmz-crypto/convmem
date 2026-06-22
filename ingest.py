@@ -133,25 +133,48 @@ def _files_from_inventory(inventory_path: str) -> list[dict]:
     return records
 
 
-def watch_skip_reason(path: str | Path, *, processed: dict | None = None) -> str | None:
+def _processed_path_str(entry_path: str) -> str:
+    return str(Path(entry_path).expanduser().resolve())
+
+
+def watch_skip_reason(
+    path: str | Path,
+    *,
+    processed: dict | None = None,
+    file_hash: str | None = None,
+) -> str | None:
     """Why watch should skip this file without opening Chroma. None = may ingest."""
     p = Path(path).expanduser().resolve()
     if processed is None:
         cfg = load_config()
         processed = load_processed(cfg["index"]["processed_log"])
-    try:
-        file_hash = sha256_file(str(p))
-    except OSError:
-        return "unreadable"
     path_str = str(p)
+
+    for entry in processed.values():
+        if not isinstance(entry, dict) or not entry.get("excluded"):
+            continue
+        ep = entry.get("path")
+        if ep and _processed_path_str(ep) == path_str:
+            return "excluded"
+
+    path_known = any(
+        isinstance(e, dict)
+        and e.get("path")
+        and not e.get("excluded")
+        and _processed_path_str(e["path"]) == path_str
+        for e in processed.values()
+    )
+    if path_known:
+        return "unchanged"
+
+    if file_hash is None:
+        try:
+            file_hash = sha256_file(str(p))
+        except OSError:
+            return "unreadable"
+
     if file_hash in processed and processed[file_hash].get("excluded"):
         return "excluded"
-    if file_hash not in processed:
-        already = any(
-            e.get("path") == path_str for e in processed.values() if isinstance(e, dict)
-        )
-        if already:
-            return "already processed"
     if file_hash in processed:
         return "unchanged"
     return None
