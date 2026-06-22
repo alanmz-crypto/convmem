@@ -197,6 +197,7 @@ def ask(
     raw: bool = False,
     history: list[tuple[str, str]] | None = None,
     domain: str | None = None,
+    site: str | None = None,
     evidence: bool = False,
 ) -> dict:
     """Retrieve relevant memories and generate a cited answer.
@@ -205,6 +206,7 @@ def ask(
         history: Prior (question, answer) turns in this session for follow-ups.
         domain: Optional dotted-path scope (e.g. "web_stack.security"). Only
             applies to the units layer — raw summaries aren't domain-tagged.
+        site: Optional site hostname (e.g. staging2.willowyhollow.com).
         evidence: Re-rank units by ledger graph (unresolved > failed > resolved).
 
     Returns:
@@ -218,10 +220,10 @@ def ask(
     search_q = _retrieval_query(question, history)
 
     if raw:
-        results = query_raw(search_q, top_k=fetch_k)
+        results = query_raw(search_q, top_k=fetch_k, site=site)
         context, citations = _format_context(results, units=False)
     else:
-        units = query_units(search_q, top_k=fetch_k, domain=domain)
+        units = query_units(search_q, top_k=fetch_k, domain=domain, site=site)
         if evidence:
             from chroma_store import ChromaStore
             from evidence import apply_evidence_rerank
@@ -232,7 +234,7 @@ def ask(
         best = _max_score(units)
         # If primary units are weak, supplement with raw summaries (hybrid).
         if not evidence and (best is None or best < _LOW_CONFIDENCE):
-            raw_hits = query_raw(search_q, top_k=fetch_k)
+            raw_hits = query_raw(search_q, top_k=fetch_k, site=site)
             merged = _merge_results(units, raw_hits, fetch_k)
             lines: list[str] = []
             citations = []
@@ -325,6 +327,7 @@ def run_interactive(
     raw: bool = False,
     first_question: str | None = None,
     domain: str | None = None,
+    site: str | None = None,
     evidence: bool = False,
 ) -> None:
     """REPL: multi-turn ask with session memory."""
@@ -336,6 +339,8 @@ def run_interactive(
         err_console.print("[dim]convmem ask — interactive mode[/dim]")
         if domain:
             err_console.print(f"[dim]  Scoped to domain: {domain}[/dim]")
+        if site:
+            err_console.print(f"[dim]  Scoped to site: {site}[/dim]")
         if evidence:
             err_console.print("[dim]  Evidence-aware ranking: unresolved findings preferred[/dim]")
         err_console.print("[dim]  Type a question, or: exit | /clear[/dim]")
@@ -355,7 +360,15 @@ def run_interactive(
             history = []
             render_warning("Session cleared.")
             return
-        out = ask(q, top_k=top_k, raw=raw, history=history or None, domain=domain, evidence=evidence)
+        out = ask(
+            q,
+            top_k=top_k,
+            raw=raw,
+            history=history or None,
+            domain=domain,
+            site=site,
+            evidence=evidence,
+        )
         _print_out(out)
         history.append((q, out["answer"]))
 
