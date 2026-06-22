@@ -17,4 +17,4 @@ Long-form handoffs moved to `docs/archive/handoffs/` (2026-06-22). Historical co
 
 ## Stability
 
-Watch soak in progress. P0-complete withdrawn until 24h clean journal (no oom-kill, peak under 3G). Kiro signs after pass.
+Watch soak **conditional pass** (2026-06-22): re-index loop fixed; memory headroom tight; skip logging verified. Deferred ops/needles: `docs/inter-model/DEEPSEEK-BACKLOG-SAVED-2026-06-22.md`.
