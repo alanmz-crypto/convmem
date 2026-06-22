@@ -1,6 +1,8 @@
 # Workspace standard
 
-**Convention only** — not enforced by tooling. Signed 2026-06-22 (Codex, Kiro, Cursor).
+**Convention only** — not enforced by tooling. **Confirmed by Ryan, 2026-06-22.**
+
+Signed by models: Codex, Kiro, Cursor.
 
 Machine copy: [`~/Projects/WORKSPACE.md`](file:///home/lauer/Projects/WORKSPACE.md) (keep in sync with this file).
 
