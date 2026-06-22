@@ -33,9 +33,10 @@ def unit_matches_site(meta: dict, site: str) -> bool:
     src = (meta.get("source_path") or "").lower()
     if src.startswith(f"site:{normalized}"):
         return True
-    if normalized in src:
+    # Boundary-aware: site must appear as a path component or URL host, not substring
+    if f"/{normalized}/" in src or src.endswith(f"/{normalized}"):
         return True
-    if short and short in src:
+    if f"//{normalized}" in src:  # URL like https://staging2.willowyhollow.com/...
         return True
 
     domain = (meta.get("domain") or "").strip()
