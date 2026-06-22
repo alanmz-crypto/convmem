@@ -270,7 +270,10 @@ def run_watch(
     try:
         while True:
             for path in scheduler.ready():
-                flush_path(path, index_fn=run_index, verbose=verbose)
+                try:
+                    flush_path(path, index_fn=run_index, verbose=verbose)
+                except Exception as e:
+                    print(f"[watch] error processing {path}: {e}", file=sys.stderr)
                 scheduler.forget(path)
             time.sleep(1)
     except KeyboardInterrupt:
