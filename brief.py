@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -16,6 +17,11 @@ from query import _coverage_counts
 DEFAULT_BRIEF_PATH = Path("~/.local/share/convmem/brief.md").expanduser()
 CRUSH_VERIFIED_FLAG = Path("~/.local/share/convmem/mcp_crush_verified").expanduser()
 KIRO_DB = Path("~/.local/share/kiro-cli/data.sqlite3").expanduser()
+_INTER_MODEL_SKIP = frozenset({"README.md", "LATEST.md"})
+_UPDATED_LINE = re.compile(
+    r"^\*\*Updated:\*\*\s*(?P<date>\S+)(?:\s+by\s+(?P<author>.+))?\s*$",
+    re.IGNORECASE,
+)
 
 
 def _now_iso() -> str:
@@ -145,6 +151,96 @@ def _pending_decision_ingest() -> list[str]:
     return [str(p.relative_to(repo)) for p in candidates if p.is_file()]
 
 
+def _format_age(seconds: float) -> str:
+    if seconds < 60:
+        return "just now"
+    if seconds < 3600:
+        return f"{int(seconds // 60)}m ago"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)}h ago"
+    return f"{int(seconds // 86400)}d ago"
+
+
+def _latest_handoff_info(inbox: Path) -> dict | None:
+    """LATEST.md mtime + optional **Updated:** line from the pointer file."""
+    latest = inbox / "LATEST.md"
+    if not latest.is_file():
+        return None
+    try:
+        stat = latest.stat()
+    except OSError:
+        return None
+    mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+    age_s = max(0.0, (datetime.now(timezone.utc) - mtime).total_seconds())
+    author = None
+    date_label = None
+    try:
+        for line in latest.read_text(encoding="utf-8").splitlines()[:8]:
+            m = _UPDATED_LINE.match(line.strip())
+            if m:
+                date_label = m.group("date")
+                author = (m.group("author") or "").strip() or None
+                break
+    except OSError:
+        pass
+    return {
+        "path": str(latest),
+        "mtime_iso": mtime.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "age_label": _format_age(age_s),
+        "age_seconds": age_s,
+        "date_label": date_label,
+        "author": author,
+    }
+
+
+def _recent_inter_model_titles(inbox: Path, *, limit: int = 3) -> list[str]:
+    if not inbox.is_dir():
+        return []
+    files = [p for p in inbox.glob("*.md") if p.name not in _INTER_MODEL_SKIP]
+    files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return [p.name for p in files[:limit]]
+
+
+def _newest_inter_model_file(inbox: Path) -> tuple[str, float] | None:
+    """Return (filename, mtime) for newest inter-model note (excl. LATEST/README)."""
+    if not inbox.is_dir():
+        return None
+    newest: tuple[str, float] | None = None
+    for p in inbox.glob("*.md"):
+        if p.name in _INTER_MODEL_SKIP:
+            continue
+        try:
+            mt = p.stat().st_mtime
+        except OSError:
+            continue
+        if newest is None or mt > newest[1]:
+            newest = (p.name, mt)
+    return newest
+
+
+def _handoff_staleness(inbox: Path) -> dict | None:
+    """True when an inter-model file is newer than LATEST.md (DeepSeek stale-context alarm)."""
+    latest = inbox / "LATEST.md"
+    if not latest.is_file():
+        return None
+    try:
+        latest_mtime = latest.stat().st_mtime
+    except OSError:
+        return None
+    newest = _newest_inter_model_file(inbox)
+    if not newest:
+        return {"stale": False}
+    name, newest_mtime = newest
+    if newest_mtime <= latest_mtime:
+        return {"stale": False, "newest_file": name}
+    age_s = max(0.0, datetime.now(timezone.utc).timestamp() - newest_mtime)
+    return {
+        "stale": True,
+        "newest_file": name,
+        "newest_age_label": _format_age(age_s),
+    }
+
+
 def _recent_monitor_units(chroma_dir: str | Path, *, limit: int = 3) -> list[dict]:
     hits = [
         meta
@@ -195,6 +291,8 @@ def gather_brief_data(cfg: dict | None = None, *, with_tests: bool = False) -> d
     test_count = _run_test_count() if with_tests else None
     chroma_dir = cfg["index"]["chroma_dir"]
 
+    inbox = Path(__file__).resolve().parent / "docs" / "inter-model"
+
     return {
         "generated_at": _now_iso(),
         "units": collection_count(chroma_dir, "knowledge_units"),
@@ -218,7 +316,10 @@ def gather_brief_data(cfg: dict | None = None, *, with_tests: bool = False) -> d
         "recent_decisions": _recent_decisions(chroma_dir),
         "recent_monitor": _recent_monitor_units(chroma_dir),
         "pending_decision_files": _pending_decision_ingest(),
-        "inter_model_inbox": Path(__file__).resolve().parent / "docs" / "inter-model",
+        "inter_model_inbox": inbox,
+        "latest_handoff": _latest_handoff_info(inbox),
+        "handoff_staleness": _handoff_staleness(inbox),
+        "recent_inter_model_titles": _recent_inter_model_titles(inbox),
     }
 
 
@@ -260,9 +361,31 @@ def render_brief_markdown(data: dict) -> str:
         lines.append(
             f"- Watch memory: VmPeak **{peak_m:.2f}G**, VmRSS **{rss_m:.2f}G** (from /proc; not ps)"
         )
+    handoff = data.get("latest_handoff")
+    if handoff:
+        who = f", {handoff['author']}" if handoff.get("author") else ""
+        when = handoff.get("date_label") or handoff.get("mtime_iso", "")[:10]
+        stale = " **(stale)**" if handoff.get("age_seconds", 0) > 86400 else ""
+        lines.append(
+            f"- LATEST.md: updated **{handoff['age_label']}** ({when}{who}){stale}"
+        )
+    titles = data.get("recent_inter_model_titles") or []
+    if titles:
+        lines.append(f"- Recent inter-model: {', '.join(titles)}")
+    stale = data.get("handoff_staleness") or {}
+    if stale.get("stale"):
+        lines.append(
+            f"- **⚠ STALE HANDOFF:** `LATEST.md` is older than `{stale['newest_file']}` "
+            f"(newest {stale.get('newest_age_label', '?')}) — read newest file or update LATEST"
+        )
+    lines.append(f"- brief @ `{data['generated_at']}`")
     lines.extend(["", "## Active P0"])
 
     p0: list[str] = []
+    if stale.get("stale"):
+        p0.append(
+            f"Update LATEST.md or read `{stale['newest_file']}` before cross-model handoff"
+        )
     if not data["kiro_db_excluded"]:
         p0.append("Apply Kiro sqlite exclude before re-enabling watch")
     if inv["pending"] > 0:
@@ -276,7 +399,7 @@ def render_brief_markdown(data: dict) -> str:
             p0.append("Do not re-enable watch until Kiro DB is excluded")
 
     if not p0:
-        lines.append("- (none — maintain watch journal for 24h)")
+        lines.append("- (none)")
     else:
         for i, item in enumerate(p0, 1):
             lines.append(f"{i}. {item}")
@@ -317,12 +440,11 @@ def render_brief_markdown(data: dict) -> str:
             "",
             "## Open Risks",
             "- Watch OOM if live DBs indexed (Kiro sqlite, Cursor store.db) — both skipped in watch",
-            "- Re-enable watch only after 24h clean journal with per-chunk ingest + MemorySwapMax=0",
+            "- Watch RSS high (~3–4G) — little headroom under MemoryMax=4G",
             "- Crush MCP live path still unverified until `mcp_crush_verified` flag set",
-            "- Handoff doc sprawl — prefer brief + `docs/inter-model/`",
             "",
             "## Before Working",
-            "- Read newest files in `docs/inter-model/`",
+            "- Protocol: `brief` → `convmem ask` → `docs/inter-model/LATEST.md` → `convmem propose_decision -i` for durable facts",
             "- Agent roles: `docs/AGENT-ROLES.md`",
             "- Use `convmem search` / MCP `search_fast` for targeted prior art",
             "- Treat proposals as pending until human/Kiro approval",

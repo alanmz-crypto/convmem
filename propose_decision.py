@@ -232,3 +232,42 @@ def reject(
     proposal["rejection_reason"] = reason
     save_queue(qpath, records)
     return proposal
+
+
+def collect_interactive_fields(
+    *,
+    relates_to: str = "",
+    summary: str = "",
+    rationale: str = "",
+    author: str = "",
+    domain: str = "coding.tooling",
+    site: str = "",
+    constraints: list[str] | None = None,
+    prompt,
+) -> dict:
+    """Prompt for proposal fields one at a time (npm init style)."""
+    rt = relates_to.strip() or prompt(
+        "relates_to (parent decision or observation id, e.g. dec_prop_...)"
+    ).strip()
+    sm = summary.strip() or prompt("summary (one sentence)").strip()
+    ra = rationale.strip() or prompt("rationale (why this choice)").strip()
+    au = author.strip() or prompt("author", default="cursor-session").strip()
+    dom = domain.strip() or prompt("domain", default="coding.tooling").strip()
+    st = site.strip() if site else prompt("site (optional, press Enter to skip)", default="").strip()
+    cons = list(constraints or [])
+    while True:
+        extra = prompt(
+            "constraint (optional, press Enter when done)", default=""
+        ).strip()
+        if not extra:
+            break
+        cons.append(extra)
+    return {
+        "relates_to": rt,
+        "summary": sm,
+        "rationale": ra,
+        "author": au,
+        "domain": dom or "coding.tooling",
+        "site": st,
+        "constraints": cons,
+    }

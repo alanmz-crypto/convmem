@@ -29,6 +29,7 @@ Usage:
   convmem brief                    shared context block for all agents
   convmem brief --print            stdout only (paste into ChatGPT sessions)
   convmem propose_decision         queue a decision for Ryan/Kiro review
+  convmem propose_decision -i      interactive prompts (no flags)
 """
 
 import json
@@ -526,6 +527,12 @@ def propose_decision_command(
     list_: bool = typer.Option(False, "--list", help="Show pending proposals"),
     all_: bool = typer.Option(False, "--all", help="With --list: include approved/rejected"),
     json_out: bool = typer.Option(False, "--json", help="With --list: emit raw JSONL records"),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        "-i",
+        help="Prompt for fields one at a time (no flags required)",
+    ),
     approve: str | None = typer.Option(None, "--approve", help="Approve a proposal id"),
     reject: str | None = typer.Option(None, "--reject", help="Reject a proposal id"),
     signer: str | None = typer.Option(None, "--signer", help="Signer (ryan or kiro-review)"),
@@ -562,6 +569,7 @@ def propose_decision_command(
     from propose_decision import (
         approve as do_approve,
         approved_path,
+        collect_interactive_fields,
         list_proposals,
         propose as do_propose,
         queue_path,
@@ -633,10 +641,29 @@ def propose_decision_command(
     alts = list(alternative or []) + list(alternatives_rejected or [])
     cons = list(constraint or []) + list(constraints or [])
 
+    if interactive:
+        fields = collect_interactive_fields(
+            relates_to=relates_to or "",
+            summary=summary or "",
+            rationale=rationale or "",
+            author=author or "",
+            domain=domain,
+            site=site,
+            constraints=cons,
+            prompt=typer.prompt,
+        )
+        relates_to = fields["relates_to"]
+        summary = fields["summary"]
+        rationale = fields["rationale"]
+        author = fields["author"]
+        domain = fields["domain"]
+        site = fields["site"]
+        cons = fields["constraints"]
+
     if not relates_to or not summary or not rationale or not author:
         render_error(
             "Propose requires --relates-to, --summary, --rationale, and --author "
-            "(or use --list / --approve / --reject)"
+            "(or use --interactive / --list / --approve / --reject)"
         )
         raise typer.Exit(1)
 

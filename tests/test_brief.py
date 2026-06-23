@@ -8,7 +8,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from brief import gather_brief_data, render_brief_markdown, write_brief
+from brief import (
+    _format_age,
+    _latest_handoff_info,
+    _recent_inter_model_titles,
+    gather_brief_data,
+    render_brief_markdown,
+    write_brief,
+)
 
 
 class BriefTests(unittest.TestCase):
@@ -42,10 +49,25 @@ class BriefTests(unittest.TestCase):
             "recent_monitor": [],
             "pending_decision_files": [],
             "inter_model_inbox": Path("docs/inter-model"),
+            "latest_handoff": {
+                "path": "docs/inter-model/LATEST.md",
+                "mtime_iso": "2026-06-23T10:00:00Z",
+                "age_label": "2h ago",
+                "age_seconds": 7200,
+                "date_label": "2026-06-23",
+                "author": "Codex",
+            },
+            "recent_inter_model_titles": [
+                "DEEPSEEK-CODEX-2026-06-23-aligned.md",
+                "CODEX-2026-06-15-plot-the-course.md",
+            ],
         }
         text = render_brief_markdown(data)
         self.assertIn("# CONVMEM BRIEF", text)
         self.assertIn("1028", text)
+        self.assertIn("LATEST.md: updated **2h ago**", text)
+        self.assertIn("Recent inter-model:", text)
+        self.assertIn("DEEPSEEK-CODEX-2026-06-23-aligned.md", text)
         self.assertIn("## Active P0", text)
         self.assertIn("Kiro sqlite exclude", text)
         self.assertIn("dec_test", text)
@@ -96,6 +118,82 @@ class BriefTests(unittest.TestCase):
             ), patch("brief.collection_metadata_rows", return_value=[]):
                 data = gather_brief_data(cfg)
             self.assertTrue(data["kiro_db_excluded"])
+
+    def test_format_age(self):
+        self.assertEqual(_format_age(30), "just now")
+        self.assertEqual(_format_age(120), "2m ago")
+        self.assertEqual(_format_age(7200), "2h ago")
+        self.assertEqual(_format_age(90000), "1d ago")
+
+    def test_latest_handoff_parses_updated_line(self):
+        with tempfile.TemporaryDirectory() as td:
+            inbox = Path(td)
+            latest = inbox / "LATEST.md"
+            latest.write_text(
+                "# Latest\n\n**Updated:** 2026-06-23 by Codex\n",
+                encoding="utf-8",
+            )
+            info = _latest_handoff_info(inbox)
+            self.assertIsNotNone(info)
+            assert info is not None
+            self.assertEqual(info["author"], "Codex")
+            self.assertEqual(info["date_label"], "2026-06-23")
+            self.assertTrue(info["age_label"])
+
+    def test_recent_inter_model_titles_skips_pointer(self):
+        with tempfile.TemporaryDirectory() as td:
+            inbox = Path(td)
+            (inbox / "README.md").write_text("x", encoding="utf-8")
+            (inbox / "LATEST.md").write_text("x", encoding="utf-8")
+            (inbox / "A-note.md").write_text("x", encoding="utf-8")
+            (inbox / "B-note.md").write_text("x", encoding="utf-8")
+            titles = _recent_inter_model_titles(inbox, limit=2)
+            self.assertEqual(len(titles), 2)
+            self.assertNotIn("LATEST.md", titles)
+            self.assertNotIn("README.md", titles)
+
+    def test_handoff_staleness_when_newer_file_exists(self):
+        from brief import _handoff_staleness
+        import os
+        import time
+
+        with tempfile.TemporaryDirectory() as td:
+            inbox = Path(td)
+            latest = inbox / "LATEST.md"
+            latest.write_text("# LATEST\n", encoding="utf-8")
+            newer = inbox / "NEWER.md"
+            newer.write_text("# newer\n", encoding="utf-8")
+            os.utime(latest, (time.time() - 10, time.time() - 10))
+            os.utime(newer, (time.time(), time.time()))
+            stale = _handoff_staleness(inbox)
+            self.assertIsNotNone(stale)
+            assert stale is not None
+            self.assertTrue(stale["stale"])
+            self.assertEqual(stale["newest_file"], "NEWER.md")
+
+    def test_render_stale_handoff_warning(self):
+        data = {
+            "generated_at": "2026-06-23T10:00:00Z",
+            "units": 1,
+            "summaries": 1,
+            "inventory": {"total": 1, "indexed": 1, "pending": 0, "deferred": 0},
+            "tests": None,
+            "rerank": False,
+            "services": {"watch": "enabled/active", "refine": "enabled/active", "monitor_timer": "enabled/active"},
+            "kiro_db_excluded": True,
+            "mcp": {"cursor": "registered", "crush": "registered", "crush_live": "unverified", "stdio": "x"},
+            "watch_memory_kb": None,
+            "latest_handoff": None,
+            "handoff_staleness": {"stale": True, "newest_file": "X.md", "newest_age_label": "5m ago"},
+            "recent_inter_model_titles": [],
+            "recent_decisions": [],
+            "recent_monitor": [],
+            "pending_decision_files": [],
+            "inter_model_inbox": Path("docs/inter-model"),
+        }
+        text = render_brief_markdown(data)
+        self.assertIn("STALE HANDOFF", text)
+        self.assertIn("brief @", text)
 
 
 if __name__ == "__main__":
