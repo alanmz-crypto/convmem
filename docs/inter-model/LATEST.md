@@ -7,6 +7,9 @@
 - **Kiro approved:** stale alarm (`141623`), interactive wizard (`142453`), session lock (`143448`); **rejected** lint (`141624`).
 - **Shipped now:** `propose_decision -i` shows fresh brief + pending queue + confirm before submit.
 - **Protocol:** `brief` → `ask` → `LATEST.md` → `propose_decision -i`.
+- Payoff test done: staging2 CSP → `a66c` (no nginx on SG shared)
+- Ask supersession shipped: `04af` + commit `8c3af11`
+- staging2 **deploy** still open; ledger answer = Site Tools or `.htaccess`
 
 ## Decision
 
@@ -16,6 +19,7 @@
 
 ## Next
 
-- **Ryan/Kiro:** `convmem add --file ~/.local/share/convmem/decisions-approved.jsonl --upsert` if not done.
-- **All models:** `convmem brief` every session; use `-i` for durable facts.
-- **Cursor:** change feed only after 14d payoff check.
+- **All models:** `convmem brief` every session; `ask --site` for client work; `propose_decision -i` for durable facts.
+- **Change feed:** deferred until 14d payoff review (2026-07-07).
+- **staging2 CSP deploy:** open (Site Tools or `.htaccess` per `a66c`) — client work, not coordination.
+
