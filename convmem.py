@@ -567,9 +567,12 @@ def propose_decision_command(
     """Propose, list, approve, or reject decisions (queue file only — never Chroma)."""
     from config import load_config
     from propose_decision import (
+        InteractiveLockError,
         approve as do_approve,
         approved_path,
         collect_interactive_fields,
+        confirm_interactive_submit,
+        interactive_session_lock,
         list_proposals,
         propose as do_propose,
         queue_path,
@@ -642,23 +645,61 @@ def propose_decision_command(
     cons = list(constraint or []) + list(constraints or [])
 
     if interactive:
-        fields = collect_interactive_fields(
-            relates_to=relates_to or "",
-            summary=summary or "",
-            rationale=rationale or "",
-            author=author or "",
-            domain=domain,
-            site=site,
-            constraints=cons,
-            prompt=typer.prompt,
-        )
-        relates_to = fields["relates_to"]
-        summary = fields["summary"]
-        rationale = fields["rationale"]
-        author = fields["author"]
-        domain = fields["domain"]
-        site = fields["site"]
-        cons = fields["constraints"]
+        try:
+            with interactive_session_lock(cfg):
+                fields = collect_interactive_fields(
+                    relates_to=relates_to or "",
+                    summary=summary or "",
+                    rationale=rationale or "",
+                    author=author or "",
+                    domain=domain,
+                    site=site,
+                    constraints=cons,
+                    prompt=typer.prompt,
+                )
+                relates_to = fields["relates_to"]
+                summary = fields["summary"]
+                rationale = fields["rationale"]
+                author = fields["author"]
+                domain = fields["domain"]
+                site = fields["site"]
+                cons = fields["constraints"]
+                if not relates_to or not summary or not rationale or not author:
+                    render_error("Interactive propose requires all core fields")
+                    raise typer.Exit(1)
+                if not confirm_interactive_submit(
+                    cfg,
+                    fields,
+                    confirm=typer.confirm,
+                    echo=typer.echo,
+                ):
+                    typer.echo("Cancelled — proposal not submitted.")
+                    raise typer.Exit(0)
+                rec = do_propose(
+                    cfg,
+                    relates_to=relates_to,
+                    summary=summary,
+                    rationale=rationale,
+                    author=author,
+                    alternatives=alts,
+                    constraints=cons,
+                    domain=domain,
+                    site=site,
+                    confidence=confidence,
+                    proposal_id=proposal_id,
+                )
+        except InteractiveLockError as e:
+            render_error(str(e))
+            raise typer.Exit(1) from e
+        except ValueError as e:
+            render_error(str(e))
+            raise typer.Exit(1) from e
+        typer.echo(f"Proposed: {rec['id']}  (status: PENDING)")
+        typer.echo(f"  Summary: {rec['summary']}")
+        typer.echo(f"  Relates-to: {rec['relates_to']}")
+        typer.echo(f"  Queue: {queue_path(cfg)}")
+        typer.echo("  Run `convmem propose_decision --list` to review.")
+        return
 
     if not relates_to or not summary or not rationale or not author:
         render_error(

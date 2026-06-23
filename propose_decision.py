@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import json
+import os
 import secrets
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 PROPOSAL_KIND = "decision_proposal"
 VALID_SIGNERS = frozenset({"ryan", "kiro-review"})
+INTERACTIVE_LOCK_NAME = "propose_interactive.lock"
+
+
+class InteractiveLockError(ValueError):
+    """Another propose_decision -i session holds the lock."""
 
 
 def _now_iso() -> str:
@@ -234,6 +241,40 @@ def reject(
     return proposal
 
 
+def interactive_lock_path(cfg: dict) -> Path:
+    return data_dir(cfg) / INTERACTIVE_LOCK_NAME
+
+
+@contextmanager
+def interactive_session_lock(cfg: dict):
+    """Exclusive lock for propose_decision -i (one wizard session at a time)."""
+    path = interactive_lock_path(cfg)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError as e:
+        holder = "unknown"
+        try:
+            lines = path.read_text(encoding="utf-8").strip().splitlines()
+            if lines:
+                holder = f"pid {lines[0]} since {lines[1] if len(lines) > 1 else '?'}"
+        except OSError:
+            pass
+        raise InteractiveLockError(
+            f"propose_decision -i already running ({holder}). "
+            f"Lock: {path}. Remove only if that process is dead."
+        ) from e
+    try:
+        os.write(fd, f"{os.getpid()}\n{_now_iso()}\n".encode())
+        os.close(fd)
+        yield path
+    finally:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+
+
 def collect_interactive_fields(
     *,
     relates_to: str = "",
@@ -271,3 +312,40 @@ def collect_interactive_fields(
         "site": st,
         "constraints": cons,
     }
+
+
+def interactive_submit_snapshot(cfg: dict) -> dict:
+    """Fresh brief + queue state immediately before interactive submit."""
+    from brief import gather_brief_data
+
+    data = gather_brief_data(cfg, with_tests=False)
+    pending = list_proposals(cfg)
+    stale = data.get("handoff_staleness") or {}
+    return {
+        "brief_at": data.get("generated_at", "?"),
+        "stale_handoff": bool(stale.get("stale")),
+        "stale_file": stale.get("newest_file"),
+        "pending": pending,
+    }
+
+
+def confirm_interactive_submit(
+    cfg: dict,
+    fields: dict,
+    *,
+    confirm,
+    echo,
+) -> bool:
+    """Show fresh state and ask before writing the proposal."""
+    snap = interactive_submit_snapshot(cfg)
+    echo("\n--- Submit check (fresh state) ---")
+    echo(f"brief @ {snap['brief_at']}")
+    if snap["stale_handoff"]:
+        echo(f"STALE HANDOFF: LATEST.md older than {snap.get('stale_file')}")
+    echo(f"Pending proposals in queue: {len(snap['pending'])}")
+    for row in snap["pending"][:5]:
+        echo(f"  - {row.get('id')}: {row.get('summary', '')[:60]}")
+    echo(f"Your summary: {fields['summary']}")
+    echo(f"  relates_to: {fields['relates_to']}")
+    echo(f"  author: {fields['author']}")
+    return bool(confirm("Submit this proposal?", default=True))

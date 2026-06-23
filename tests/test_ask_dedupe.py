@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from ask import _dedupe_results_by_ledger_id
+from ask import _dedupe_results_by_ledger_id, _filter_superseded_decisions
 
 
 class AskDedupeTests(unittest.TestCase):
@@ -23,6 +23,47 @@ class AskDedupeTests(unittest.TestCase):
             {"id": "y", "metadata": {"title": "other chunk"}},
         ]
         self.assertEqual(len(_dedupe_results_by_ledger_id(results)), 2)
+
+    def test_filter_superseded_parent_decision(self):
+        child = {
+            "id": "child",
+            "metadata": {
+                "ledger_id": "dec_prop_20260623_153615_a66c",
+                "ledger_kind": "decision",
+                "relates_to": "dec_prop_20260622_234011_d1ba",
+            },
+        }
+        parent = {
+            "id": "parent",
+            "metadata": {
+                "ledger_id": "dec_prop_20260622_234011_d1ba",
+                "ledger_kind": "decision",
+                "relates_to": "obs_staging2_monitor_csp-missing",
+            },
+        }
+        out = _filter_superseded_decisions([child, parent])
+        self.assertEqual([r["id"] for r in out], ["child"])
+
+    def test_filter_keeps_unrelated_decisions(self):
+        results = [
+            {
+                "id": "a",
+                "metadata": {
+                    "ledger_id": "dec_a",
+                    "ledger_kind": "decision",
+                    "relates_to": "obs_x",
+                },
+            },
+            {
+                "id": "b",
+                "metadata": {
+                    "ledger_id": "dec_b",
+                    "ledger_kind": "decision",
+                    "relates_to": "obs_y",
+                },
+            },
+        ]
+        self.assertEqual(len(_filter_superseded_decisions(results)), 2)
 
 
 if __name__ == "__main__":

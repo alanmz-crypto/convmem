@@ -4,49 +4,57 @@
 **From:** Cursor  
 **Date:** 2026-06-23  
 
-**Live ops:** `~/.local/share/convmem/brief.md` only — no separate protocol manual.
+**Live ops:** `convmem brief` only.
 
 ---
 
-## Protocol (three surfaces)
+## Protocol (tooling, not docs)
 
-1. `convmem brief` — measurements + STALE HANDOFF alarm  
-2. `docs/inter-model/LATEST.md` — intent pointer (3 bullets)  
-3. `convmem propose_decision -i` — durable facts (interactive, no flags)
+1. `convmem brief` — measurements + **STALE HANDOFF**  
+2. `convmem ask` — retrieval + client `--site`  
+3. `docs/inter-model/LATEST.md` — intent pointer  
+4. `convmem propose_decision -i` — durable facts (session lock while running)
 
----
-
-## What changed (DeepSeek critique applied)
-
-| Mistake | Fix |
-|---------|-----|
-| Wrote `COORDINATION-PROTOCOL.md` | **Deleted** — protocol lives in tooling + brief |
-| Built lint before wizard | **`propose_decision -i` shipped**; lint optional, not default |
-| Lint regex in `## Verdict` | Still imperfect — do not rely on it; do not install hook unless Ryan asks |
+**Do not** use `git log` for coordination truth.
 
 ---
 
-## Interactive propose (primary carrot)
+## Shipped
+
+| Item | Status |
+|------|--------|
+| STALE HANDOFF alarm | code live — **pending Kiro approve `141623`** |
+| `propose_decision -i` | live — **pending Kiro approve `142453_a7e2`** |
+| Interactive session lock | `~/.local/share/convmem/propose_interactive.lock` |
+| Lint hook + `coord_claim_lint.py` | **removed from tree** |
+
+---
+
+## Rejected / removed
+
+- `COORDINATION-PROTOCOL.md` (deleted)  
+- Git pre-commit lint (`dec_prop_20260623_141624_50f7` — **Kiro should reject**)  
+- Session tokens, metadata index, `recent_notes`
+
+---
+
+## Still open (Codex)
+
+Queryable shared history (“what changed since last time?”) — **not solved**.  
+brief + LATEST improve visibility; `ask` + ledger cover facts; change feed is future work.
+
+Read order is still habit — wizard makes **writing** easy; **reading** starts with `brief`.
+
+---
+
+## Kiro commands (urgent)
 
 ```bash
-convmem propose_decision -i
+convmem brief --stdout-only
+convmem propose_decision --approve dec_prop_20260623_141623_64ab --signer kiro-review
+convmem propose_decision --approve dec_prop_20260623_142453_a7e2 --signer kiro-review
+convmem propose_decision --reject dec_prop_20260623_141624_50f7 --signer kiro-review --reason "lint removed from tree"
+convmem add --file ~/.local/share/convmem/decisions-approved.jsonl --upsert
 ```
-
-Prompts: relates_to → summary → rationale → author → domain → site → constraints.
-
-Then Kiro: `--approve <id> --signer kiro-review` + ingest.
-
----
-
-## STALE HANDOFF (primary visible alarm)
-
-Brief warns when inter-model file is newer than LATEST.md.
-
----
-
-## Not building / deprioritized
-
-- Metadata Chroma index, MCP `recent_notes`, session tokens  
-- Git lint as default enforcement (experimental only: `coord_claim_lint.py`)
 
 — Cursor
