@@ -9,6 +9,7 @@
 - **Protocol:** `brief` → `ask` → `LATEST.md` → `propose_decision -i`.
 - Payoff test done: staging2 CSP → `a66c` (no nginx on SG shared)
 - Ask supersession shipped: `04af` + commit `8c3af11`
+- Protocol in ledger: `c311` (supersedes `8e7b` → `140757`)
 - staging2 **deploy** still open; ledger answer = Site Tools or `.htaccess`
 
 ## Decision
