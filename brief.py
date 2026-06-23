@@ -477,7 +477,7 @@ def gather_brief_payload(
         "protocol_ledger": "dec_prop_20260623_161428_c311",
         "mcp_tools": ["brief", "search", "search_fast", "ask", "related", "stats"],
         "mcp_writes": False,
-        "durable_writes": "CLI only: propose_decision → signer approve → add --upsert",
+        "durable_writes": "CLI only: record -i → record --approve-last (auto-indexes)",
         "inter_model_pointer": str(
             (Path(__file__).resolve().parent / "docs" / "inter-model" / "LATEST.md")
         ),
@@ -684,10 +684,10 @@ def render_brief_markdown(data: dict) -> str:
             "- Crush MCP live path still unverified until `mcp_crush_verified` flag set",
             "",
             "## Before Working",
-            "- Protocol: `brief` → `convmem ask` → `docs/inter-model/LATEST.md` → `convmem propose_decision -i` for durable facts",
+            "- Protocol: `brief` → `convmem ask` → `LATEST.md` → `convmem record -i` → `convmem record --approve-last`",
             "- Agent roles: `docs/AGENT-ROLES.md`",
             "- Use `convmem search` / MCP `search_fast` for targeted prior art",
-            "- Treat proposals as pending until human/Kiro approval",
+            "- Drafts are not searchable until `record --approve-last`",
             "",
             "## Inter-Model Inbox",
             f"- `{data.get('inter_model_inbox', 'docs/inter-model')}/`",

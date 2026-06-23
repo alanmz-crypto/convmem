@@ -28,11 +28,13 @@ Usage:
   convmem monitor                  HTTP security probes (F2b)
   convmem brief                    shared context block for all agents
   convmem brief --print            stdout only (paste into ChatGPT sessions)
-  convmem propose_decision         queue a decision for Ryan/Kiro review
-  convmem propose_decision -i      interactive prompts (no flags)
+  convmem record -i                record a durable fact (interactive)
+  convmem record --approve-last    approve newest pending + index (searchable)
+  convmem propose_decision         same as record (legacy name)
 """
 
 import json
+import os
 import sys
 
 import typer
@@ -44,7 +46,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
-    "watch", "refine", "monitor", "exclude", "brief", "propose_decision",
+    "watch", "refine", "monitor", "exclude", "brief", "propose_decision", "record",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -522,20 +524,73 @@ def brief(
     typer.echo(f"Written → {path}")
 
 
+def _resolve_approve_signer(signer: str | None) -> str:
+    return (signer or os.environ.get("CONVMEM_SIGNER") or "ryan").strip()
+
+
+def _finish_record_messages(
+    proposal: dict,
+    ledger: dict,
+    *,
+    indexed: bool,
+    ingest: dict | None = None,
+    approved_file: str | None = None,
+) -> None:
+    summary = (proposal.get("summary") or "").strip()
+    lid = ledger.get("id", proposal.get("id", "?"))
+    site = (proposal.get("site") or "").strip()
+    q = summary[:72] if summary else lid
+    if site:
+        q = f"{site} {q}"[:80]
+    typer.echo(f"✓ Recorded: {summary or lid}")
+    typer.echo(f"  Ledger id: {lid}")
+    if indexed:
+        if ingest:
+            typer.echo(
+                f"  Indexed (accepted={ingest.get('accepted', 0)}, "
+                f"updated={ingest.get('updated', 0)})"
+            )
+        else:
+            typer.echo("  Indexed — searchable via convmem search / MCP ask.")
+    elif approved_file:
+        typer.echo(
+            f"  Skipped index (--no-index). Run: convmem add --file {approved_file} --upsert"
+        )
+    typer.echo(f'  Try: convmem search "{q}"')
+
+
+def _pending_record_hint() -> None:
+    typer.echo("  Finish recording: convmem record --approve-last")
+
+
 @app.command("propose_decision")
 def propose_decision_command(
-    list_: bool = typer.Option(False, "--list", help="Show pending proposals"),
+    list_: bool = typer.Option(False, "--list", help="Show pending drafts"),
     all_: bool = typer.Option(False, "--all", help="With --list: include approved/rejected"),
     json_out: bool = typer.Option(False, "--json", help="With --list: emit raw JSONL records"),
     interactive: bool = typer.Option(
         False,
         "--interactive",
         "-i",
-        help="Prompt for fields one at a time (no flags required)",
+        help="Record a fact interactively (prompts for each field)",
     ),
-    approve: str | None = typer.Option(None, "--approve", help="Approve a proposal id"),
-    reject: str | None = typer.Option(None, "--reject", help="Reject a proposal id"),
-    signer: str | None = typer.Option(None, "--signer", help="Signer (ryan or kiro-review)"),
+    approve: str | None = typer.Option(None, "--approve", help="Approve a specific draft id"),
+    approve_last: bool = typer.Option(
+        False,
+        "--approve-last",
+        help="Approve the newest pending draft (no id to remember)",
+    ),
+    no_index: bool = typer.Option(
+        False,
+        "--no-index",
+        help="On approve: skip auto-index (default indexes into search)",
+    ),
+    reject: str | None = typer.Option(None, "--reject", help="Reject a draft id"),
+    signer: str | None = typer.Option(
+        None,
+        "--signer",
+        help="Signer on approve/reject (default on approve: ryan or CONVMEM_SIGNER)",
+    ),
     reason: str | None = typer.Option(None, "--reason", help="Required for --reject"),
     ledger_id: str | None = typer.Option(
         None, "--ledger-id", help="Canonical ledger id on approve (default: proposal id)"
@@ -564,7 +619,10 @@ def propose_decision_command(
     confidence: float = typer.Option(0.8, "--confidence", help="Confidence 0–1"),
     proposal_id: str | None = typer.Option(None, "--id", help="Explicit proposal id"),
 ):
-    """Propose, list, approve, or reject decisions (queue file only — never Chroma)."""
+    """Record a durable fact (alias: `convmem record`).
+
+    Draft: `record -i` or flags. Finish: `record --approve-last` (indexes automatically).
+    """
     from config import load_config
     from propose_decision import (
         InteractiveLockError,
@@ -572,16 +630,21 @@ def propose_decision_command(
         approved_path,
         collect_interactive_fields,
         confirm_interactive_submit,
+        ingest_approved_file,
         interactive_session_lock,
+        latest_pending,
         list_proposals,
         propose as do_propose,
-        queue_path,
         reject as do_reject,
     )
     from query import render_error
 
     if parse_doc:
         render_error("--parse-doc is not yet implemented (reserved for v2)")
+        raise typer.Exit(1)
+
+    if approve and approve_last:
+        render_error("Use --approve or --approve-last, not both")
         raise typer.Exit(1)
 
     cfg = load_config()
@@ -593,7 +656,11 @@ def propose_decision_command(
                 typer.echo(json.dumps(row, ensure_ascii=False))
             return
         if not rows:
-            typer.echo("No proposals." if all_ else "No pending proposals.")
+            typer.echo(
+                "No pending drafts." if not all_ else "No drafts."
+            )
+            if not all_:
+                typer.echo("  Start one: convmem record -i")
             return
         typer.echo(f"{'PENDING' if not all_ else 'ALL'} ({len(rows)})")
         for row in rows:
@@ -608,24 +675,44 @@ def propose_decision_command(
             )
             if row.get("rejection_reason"):
                 typer.echo(f"    rejected: {row['rejection_reason']}")
+        if not all_ and rows:
+            typer.echo("")
+            typer.echo("  Finish newest: convmem record --approve-last")
         return
 
-    if approve:
-        if not signer:
-            render_error("--signer is required with --approve")
+    approve_id = approve
+    if approve_last:
+        pending = latest_pending(cfg)
+        if pending is None:
+            render_error("No pending drafts to approve. Record one with: convmem record -i")
             raise typer.Exit(1)
+        approve_id = pending["id"]
+
+    if approve_id:
+        resolved_signer = _resolve_approve_signer(signer)
         try:
             proposal, ledger = do_approve(
-                cfg, approve, signer=signer, ledger_id=ledger_id
+                cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id
             )
         except ValueError as e:
             render_error(str(e))
             raise typer.Exit(1) from e
-        typer.echo(f"Approved: {proposal['id']}")
-        typer.echo(f"  Signer: {signer}")
-        typer.echo(f"  Ledger id: {ledger['id']}")
-        typer.echo(f"  Written to: {approved_path(cfg)}")
-        typer.echo(f"  Next: convmem add --file {approved_path(cfg)} --upsert")
+        ingest_result = None
+        apath = str(approved_path(cfg))
+        if not no_index:
+            try:
+                ingest_result = ingest_approved_file(cfg)
+            except Exception as e:
+                render_error(f"Approved but index failed: {e}")
+                typer.echo(f"  Retry: convmem add --file {apath} --upsert")
+                raise typer.Exit(1) from e
+        _finish_record_messages(
+            proposal,
+            ledger,
+            indexed=not no_index,
+            ingest=ingest_result,
+            approved_file=apath if no_index else None,
+        )
         return
 
     if reject:
@@ -694,17 +781,16 @@ def propose_decision_command(
         except ValueError as e:
             render_error(str(e))
             raise typer.Exit(1) from e
-        typer.echo(f"Proposed: {rec['id']}  (status: PENDING)")
+        typer.echo(f"Draft saved (pending): {rec['id']}")
         typer.echo(f"  Summary: {rec['summary']}")
         typer.echo(f"  Relates-to: {rec['relates_to']}")
-        typer.echo(f"  Queue: {queue_path(cfg)}")
-        typer.echo("  Run `convmem propose_decision --list` to review.")
+        _pending_record_hint()
         return
 
     if not relates_to or not summary or not rationale or not author:
         render_error(
-            "Propose requires --relates-to, --summary, --rationale, and --author "
-            "(or use --interactive / --list / --approve / --reject)"
+            "Record requires --relates-to, --summary, --rationale, and --author "
+            "(or use -i / --list / --approve / --approve-last / --reject)"
         )
         raise typer.Exit(1)
 
@@ -726,11 +812,75 @@ def propose_decision_command(
         render_error(str(e))
         raise typer.Exit(1) from e
 
-    typer.echo(f"Proposed: {rec['id']}  (status: PENDING)")
+    typer.echo(f"Draft saved (pending): {rec['id']}")
     typer.echo(f"  Summary: {rec['summary']}")
     typer.echo(f"  Relates-to: {rec['relates_to']}")
-    typer.echo(f"  Queue: {queue_path(cfg)}")
-    typer.echo("  Run `convmem propose_decision --list` to review.")
+    _pending_record_hint()
+
+
+@app.command("record")
+def record_command(
+    list_: bool = typer.Option(False, "--list", help="Show pending drafts"),
+    all_: bool = typer.Option(False, "--all", help="With --list: include approved/rejected"),
+    json_out: bool = typer.Option(False, "--json", help="With --list: emit raw JSONL records"),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        "-i",
+        help="Record a fact interactively",
+    ),
+    approve: str | None = typer.Option(None, "--approve", help="Approve a specific draft id"),
+    approve_last: bool = typer.Option(
+        False,
+        "--approve-last",
+        help="Approve newest pending draft and index (default workflow)",
+    ),
+    no_index: bool = typer.Option(False, "--no-index", help="On approve: skip auto-index"),
+    reject: str | None = typer.Option(None, "--reject", help="Reject a draft id"),
+    signer: str | None = typer.Option(None, "--signer", help="Signer (default on approve: ryan)"),
+    reason: str | None = typer.Option(None, "--reason", help="Required for --reject"),
+    ledger_id: str | None = typer.Option(None, "--ledger-id", help="Canonical ledger id on approve"),
+    parse_doc: str | None = typer.Option(None, "--parse-doc", hidden=True),
+    relates_to: str | None = typer.Option(None, "--relates-to"),
+    summary: str | None = typer.Option(None, "--summary"),
+    rationale: str | None = typer.Option(None, "--rationale"),
+    author: str | None = typer.Option(None, "--author"),
+    alternative: list[str] | None = typer.Option(None, "--alternative"),
+    alternatives_rejected: list[str] | None = typer.Option(None, "--alternatives-rejected"),
+    constraint: list[str] | None = typer.Option(None, "--constraint"),
+    constraints: list[str] | None = typer.Option(None, "--constraints"),
+    domain: str = typer.Option("coding.tooling", "--domain"),
+    site: str = typer.Option("", "--site"),
+    confidence: float = typer.Option(0.8, "--confidence"),
+    proposal_id: str | None = typer.Option(None, "--id"),
+):
+    """Record a durable fact for all agents (`record -i` → `record --approve-last`)."""
+    propose_decision_command(
+        list_=list_,
+        all_=all_,
+        json_out=json_out,
+        interactive=interactive,
+        approve=approve,
+        approve_last=approve_last,
+        no_index=no_index,
+        reject=reject,
+        signer=signer,
+        reason=reason,
+        ledger_id=ledger_id,
+        parse_doc=parse_doc,
+        relates_to=relates_to,
+        summary=summary,
+        rationale=rationale,
+        author=author,
+        alternative=alternative,
+        alternatives_rejected=alternatives_rejected,
+        constraint=constraint,
+        constraints=constraints,
+        domain=domain,
+        site=site,
+        confidence=confidence,
+        proposal_id=proposal_id,
+    )
 
 
 @app.command()
