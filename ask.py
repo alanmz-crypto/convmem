@@ -11,6 +11,7 @@ If the excerpts do not contain enough information to answer, say so clearly — 
 Cite sources inline as [1], [2], etc. matching the excerpt numbers below.
 Each excerpt header includes a date when known — use it when the user asks about "today", "recently", or timing.
 If excerpts are only tangentially related (same tool but different topic), say the index has related material but not this specific answer.
+For decisions: when one excerpt's relates_to points to another excerpt's ledger_id, the child decision replaces the parent — follow the child only; do not recommend the superseded parent approach.
 
 Question:
 {question}
@@ -26,6 +27,7 @@ If the excerpts do not contain enough information to answer, say so clearly — 
 Cite sources inline as [1], [2], etc. matching the excerpt numbers below.
 Each excerpt header includes a date when known — use it when the user asks about "today", "recently", or timing.
 If excerpts are only tangentially related (same tool but different topic), say the index has related material but not this specific answer.
+For decisions: when one excerpt's relates_to points to another excerpt's ledger_id, the child decision replaces the parent — follow the child only; do not recommend the superseded parent approach.
 
 The user is in a multi-turn session. Use the conversation so far to interpret follow-ups (e.g. "how did it improve CLS" refers to the prior topic). Still ground every claim in the excerpts — do not rely on the prior assistant reply as fact.
 
@@ -99,6 +101,25 @@ def _max_score(results: list[dict]) -> float | None:
     return max(scores) if scores else None
 
 
+def _filter_superseded_decisions(results: list[dict]) -> list[dict]:
+    """Drop parent decisions when a newer decision in results relates_to them."""
+    parent_ids: set[str] = set()
+    for r in results:
+        meta = r.get("metadata") or {}
+        if (meta.get("ledger_kind") or "").strip() != "decision":
+            continue
+        relates_to = (meta.get("relates_to") or "").strip()
+        if relates_to.startswith("dec_"):
+            parent_ids.add(relates_to)
+    if not parent_ids:
+        return results
+    return [
+        r
+        for r in results
+        if (r.get("metadata") or {}).get("ledger_id") not in parent_ids
+    ]
+
+
 def _dedupe_results_by_ledger_id(results: list[dict]) -> list[dict]:
     """Keep one hit per ledger_id (first wins — list should already be rank-sorted)."""
     seen: set[str] = set()
@@ -128,8 +149,15 @@ def _format_context(results: list[dict], *, units: bool) -> tuple[str, list[dict
             when = when_label(meta)
             domain = meta.get("domain") or "general"
             author = meta.get("author_model") or "unknown"
+            ledger_id = (meta.get("ledger_id") or "").strip()
+            relates_to = (meta.get("relates_to") or "").strip()
+            header_bits = [f"domain={domain}", f"by={author}"]
+            if ledger_id:
+                header_bits.append(f"ledger_id={ledger_id}")
+            if relates_to:
+                header_bits.append(f"relates_to={relates_to}")
             lines.append(
-                f"[{i}] ({utype}, {tool}, {when}, domain={domain}, by={author}) {title}\n"
+                f"[{i}] ({utype}, {tool}, {when}, {', '.join(header_bits)}) {title}\n"
                 f"    {doc}\n"
                 f"    Source: {src}"
             )
@@ -251,7 +279,7 @@ def ask(
                     "Answer may be incomplete — topic may not be in the index."
                 )
         else:
-            results = units[:top_k]
+            results = _filter_superseded_decisions(units[:top_k])
             context, citations = _format_context(results, units=True)
 
     if not results:

@@ -4,17 +4,18 @@
 
 ## State
 
-- **Protocol = tooling only:** `brief` → `ask` → `LATEST.md` → `convmem propose_decision -i` (no separate protocol doc).
-- **Shipped:** STALE HANDOFF alarm in brief; **interactive `propose_decision -i`** (npm init prompts).
-- **Lint hook:** optional/experimental — not primary; likely false-positives in `## Verdict`; do not install by default.
+- **Kiro approved:** stale alarm (`141623`), interactive wizard (`142453`), session lock (`143448`); **rejected** lint (`141624`).
+- **Shipped now:** `propose_decision -i` shows fresh brief + pending queue + confirm before submit.
+- **Protocol:** `brief` → `ask` → `LATEST.md` → `propose_decision -i`.
 
 ## Decision
 
-- **Carrot before stick:** wizard pulls models into pipeline; lint is backstop only if needed later.
-- Removed `COORDINATION-PROTOCOL.md` — if models need a manual, tooling was wrong.
+- Inter-model markdown = archive; ledger + brief = truth.
+- Lint removed from tree permanently.
+- **Open:** queryable change feed (Codex) — deferred.
 
 ## Next
 
-- **All models:** `convmem propose_decision -i` for durable facts (easier than markdown).
-- **Kiro:** approve `dec_prop_20260623_141623_64ab` (stale alarm); skip or reject lint proposal unless Ryan wants stick.
-- **Ryan:** 14d proof — relay count + client payoff; hook not required for success.
+- **Ryan/Kiro:** `convmem add --file ~/.local/share/convmem/decisions-approved.jsonl --upsert` if not done.
+- **All models:** `convmem brief` every session; use `-i` for durable facts.
+- **Cursor:** change feed only after 14d payoff check.

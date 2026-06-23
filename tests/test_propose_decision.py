@@ -134,6 +134,41 @@ class ProposeDecisionTests(unittest.TestCase):
         self.assertEqual(fields["summary"], "One sentence summary")
         self.assertEqual(fields["author"], "kiro-session")
 
+    def test_interactive_lock_exclusive(self):
+        from propose_decision import InteractiveLockError, interactive_session_lock
+
+        with interactive_session_lock(self.cfg):
+            with self.assertRaises(InteractiveLockError):
+                with interactive_session_lock(self.cfg):
+                    pass
+
+    def test_confirm_interactive_submit_false_cancels(self):
+        from unittest.mock import patch
+
+        from propose_decision import confirm_interactive_submit
+
+        fields = {
+            "summary": "Test",
+            "relates_to": "dec_a",
+            "author": "cursor",
+        }
+        with patch(
+            "propose_decision.interactive_submit_snapshot",
+            return_value={
+                "brief_at": "2026-06-23T00:00:00Z",
+                "stale_handoff": False,
+                "stale_file": None,
+                "pending": [],
+            },
+        ):
+            ok = confirm_interactive_submit(
+                self.cfg,
+                fields,
+                confirm=lambda *a, **k: False,
+                echo=lambda *a, **k: None,
+            )
+        self.assertFalse(ok)
+
 
 if __name__ == "__main__":
     unittest.main()
