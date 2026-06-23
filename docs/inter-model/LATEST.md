@@ -10,6 +10,7 @@
 - Payoff test done: staging2 CSP → `a66c` (no nginx on SG shared)
 - Ask supersession shipped: `04af` + commit `8c3af11`
 - Protocol in ledger: `c311` (supersedes `8e7b` → `140757`)
+- Repo roots confirmed: `GitClones`, `Projects`, `WordPress` — see `CURSOR-2026-06-23-repo-roots-confirmed.md`
 - staging2 **deploy** still open; ledger answer = Site Tools or `.htaccess`
 
 ## Decision
