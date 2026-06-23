@@ -175,6 +175,43 @@ def list_proposals(
     return [r for r in records if (r.get("status") or "PENDING") == "PENDING"]
 
 
+def latest_pending(cfg: dict) -> dict | None:
+    """Newest PENDING proposal by proposed_at (ISO), then queue order."""
+    records = load_queue(queue_path(cfg))
+    pending_indexed = [
+        (i, r)
+        for i, r in enumerate(records)
+        if (r.get("status") or "PENDING") == "PENDING"
+    ]
+    if not pending_indexed:
+        return None
+    pending_indexed.sort(
+        key=lambda t: (t[1].get("proposed_at") or "", t[0]),
+    )
+    return pending_indexed[-1][1]
+
+
+def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
+    """Upsert decisions-approved.jsonl into Chroma."""
+    from chroma_store import ChromaStore
+    from observe import ingest_observation_file
+
+    models = cfg.get("models")
+    if not models:
+        from config import load_config
+
+        models = load_config()["models"]
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    return ingest_observation_file(
+        str(approved_path(cfg)),
+        store=store,
+        embed_model=models["embed_model"],
+        ollama_host=models["ollama_host"],
+        upsert=True,
+        verbose=verbose,
+    )
+
+
 def approve(
     cfg: dict,
     proposal_id: str,
@@ -342,10 +379,10 @@ def confirm_interactive_submit(
     echo(f"brief @ {snap['brief_at']}")
     if snap["stale_handoff"]:
         echo(f"STALE HANDOFF: LATEST.md older than {snap.get('stale_file')}")
-    echo(f"Pending proposals in queue: {len(snap['pending'])}")
+    echo(f"Pending drafts in queue: {len(snap['pending'])}")
     for row in snap["pending"][:5]:
         echo(f"  - {row.get('id')}: {row.get('summary', '')[:60]}")
     echo(f"Your summary: {fields['summary']}")
     echo(f"  relates_to: {fields['relates_to']}")
     echo(f"  author: {fields['author']}")
-    return bool(confirm("Submit this proposal?", default=True))
+    return bool(confirm("Save this draft?", default=True))

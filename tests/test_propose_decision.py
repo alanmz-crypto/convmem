@@ -11,6 +11,7 @@ from ledger import normalize_ledger_record
 from propose_decision import (
     PROPOSAL_KIND,
     approve,
+    latest_pending,
     list_proposals,
     propose,
     queue_path,
@@ -168,6 +169,29 @@ class ProposeDecisionTests(unittest.TestCase):
                 echo=lambda *a, **k: None,
             )
         self.assertFalse(ok)
+
+    def test_latest_pending_returns_newest(self):
+        r1 = propose(
+            self.cfg,
+            relates_to="dec_a",
+            summary="First",
+            rationale="R1",
+            author="cursor",
+        )
+        r2 = propose(
+            self.cfg,
+            relates_to="dec_b",
+            summary="Second",
+            rationale="R2",
+            author="cursor",
+        )
+        latest = latest_pending(self.cfg)
+        self.assertIsNotNone(latest)
+        self.assertEqual(latest["id"], r2["id"])
+        self.assertNotEqual(latest["id"], r1["id"])
+
+    def test_latest_pending_empty_queue(self):
+        self.assertIsNone(latest_pending(self.cfg))
 
 
 if __name__ == "__main__":
