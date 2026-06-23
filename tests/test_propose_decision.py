@@ -111,6 +111,29 @@ class ProposeDecisionTests(unittest.TestCase):
         raw = {"kind": PROPOSAL_KIND, "summary": "x", "author_model": "a", "relates_to": "y"}
         self.assertIsNone(normalize_ledger_record(raw))
 
+    def test_collect_interactive_fields(self):
+        from propose_decision import collect_interactive_fields
+
+        answers = iter(
+            [
+                "dec_parent",
+                "One sentence summary",
+                "Because reasons",
+                "kiro-session",
+                "coding.tooling",
+                "",
+                "",
+            ]
+        )
+
+        def fake_prompt(label, default=""):
+            return next(answers) or default
+
+        fields = collect_interactive_fields(prompt=fake_prompt)
+        self.assertEqual(fields["relates_to"], "dec_parent")
+        self.assertEqual(fields["summary"], "One sentence summary")
+        self.assertEqual(fields["author"], "kiro-session")
+
 
 if __name__ == "__main__":
     unittest.main()

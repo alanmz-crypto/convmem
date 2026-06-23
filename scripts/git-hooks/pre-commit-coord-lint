@@ -1,0 +1,17 @@
+#!/bin/sh
+# Install: ./scripts/install-coord-git-hook.sh
+# Rejects commits that add unsigned status claims in docs/inter-model/ verdict sections.
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep 'docs/inter-model/.*\.md$' || true)
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+PYTHON="${CONVMEM_PYTHON:-/home/lauer/miniforge3/envs/convmem/bin/python}"
+for f in $STAGED; do
+  if [ -f "$f" ]; then
+  "$PYTHON" "$ROOT/coord_claim_lint.py" "$f" || exit 1
+  fi
+done
+exit 0

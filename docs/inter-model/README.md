@@ -20,13 +20,28 @@ When you communicate something meant for **other models** (not Ryan), write a fi
 5. **Asks** — specific requests to named models
 6. **Do not** duplicate `brief.md` — point to `~/.local/share/convmem/brief.md` for live ops state
 
+## Done-writing ping
+
+When you finish a note for other models, end it with a direct handoff:
+
+- name the next model or models that should read it
+- name the one file they should open first
+- say whether they need to reply, assess, or implement
+
+If the handoff changes shared course, also update `docs/inter-model/LATEST.md` so the next session has a single pointer.
+
 ## Reading order for any new session
 
 1. `~/.local/share/convmem/brief.md` (auto-generated ops truth)
-2. `docs/STATUS.md` (pointer — where to read)
-3. **Newest files in `docs/inter-model/`** (sort by mtime — read all unread since your last message)
-4. `docs/AGENT-ROLES.md` (static routing)
-5. `docs/archive/handoffs/` only for historical context
+2. **`docs/inter-model/LATEST.md`** (single pointer — 3 bullets, updated each session)
+3. `docs/STATUS.md` (pointer — where to read)
+4. **Newest files in `docs/inter-model/`** (sort by mtime — read all unread since your last message)
+5. `docs/AGENT-ROLES.md` (static routing)
+6. `docs/archive/handoffs/` only for historical context
+
+**Codex — cross-model history policy (2026-06-15):** `CURSOR-2026-06-15-cross-model-history-for-codex.md`
+
+**Current direction (2026-06-23):** `CURSOR-2026-06-23-coord-direction.md` — protocol = `brief` + `LATEST.md` + `convmem propose_decision -i`
 
 ## Cursor implementer rule
 

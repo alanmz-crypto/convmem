@@ -59,7 +59,7 @@ convmem propose_decision --approve dec_prop_20260622_143201_a3f2 \
   --ledger-id dec_my_canonical_id   # optional; default proposal id
 ```
 
-Signers: `ryan`, `kiro-review`, or any `kiro-*` identity. **Agents cannot approve.**
+Signers: `ryan`, `kiro-review` (exact match only). **Agents cannot approve.**
 
 ### Reject
 

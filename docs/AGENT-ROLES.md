@@ -2,7 +2,7 @@
 
 | Agent | Lane |
 |-------|------|
-| **Kiro** | Design review, milestone sign-off; query `convmem brief` at session start |
+| **Kiro** | Design review, milestone sign-off; session start: `convmem brief` → `ask` → `LATEST.md`; **approve via `propose_decision --approve --signer kiro-review`**, not markdown sign-off |
 | **Cursor** | Implementer on canonical dev machine; read `brief.md` + `docs/inter-model/` |
 | **Sonnet** | MCP verification (static source + live Crush handshake) |
 | **ChatGPT** | Orchestration/strategy; paste-only access to corpus |

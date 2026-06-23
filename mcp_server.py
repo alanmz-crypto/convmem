@@ -28,6 +28,7 @@ def _search_payload(results: list[dict]) -> str:
             "title": meta.get("title", ""),
             "type": meta.get("type", ""),
             "domain": meta.get("domain", ""),
+            "site": meta.get("site", ""),
             "tool": meta.get("tool", ""),
             "source_path": meta.get("source_path", ""),
             "ledger_id": meta.get("ledger_id", ""),
@@ -37,31 +38,48 @@ def _search_payload(results: list[dict]) -> str:
 
 
 @mcp.tool()
-def search_fast(query: str, top_k: int = 5, domain: str = "") -> str:
+def search_fast(query: str, top_k: int = 5, domain: str = "", site: str = "") -> str:
     """Fast retrieval-only search (no LLM synthesis). Use for low-latency lookups."""
     from query import query_units
 
-    results = query_units(query, top_k=top_k, domain=domain or None)
+    results = query_units(
+        query, top_k=top_k, domain=domain or None, site=site or None
+    )
     if not results:
         return json.dumps({"results": [], "message": "No relevant knowledge units found."})
     return _search_payload(results)
 
 
 @mcp.tool()
-def search(query: str, top_k: int = 5, domain: str = "") -> str:
+def search(query: str, top_k: int = 5, domain: str = "", site: str = "") -> str:
     """Search the knowledge corpus for relevant units. Returns scored results."""
     from query import query_units
 
-    results = query_units(query, top_k=top_k, domain=domain or None)
+    results = query_units(
+        query, top_k=top_k, domain=domain or None, site=site or None
+    )
     return _search_payload(results)
 
 
 @mcp.tool()
-def ask(question: str, top_k: int = 5, domain: str = "", evidence: bool = False) -> str:
+def ask(
+    question: str,
+    top_k: int = 5,
+    domain: str = "",
+    site: str = "",
+    evidence: bool = False,
+) -> str:
     """Answer a question using retrieved memories. Returns answer + citations."""
     from ask import ask as run_ask
 
-    result = run_ask(question, top_k=top_k, domain=domain or None, raw=False, evidence=evidence)
+    result = run_ask(
+        question,
+        top_k=top_k,
+        domain=domain or None,
+        site=site or None,
+        raw=False,
+        evidence=evidence,
+    )
     return json.dumps({
         "answer": result.get("answer", ""),
         "confidence": result.get("confidence"),
