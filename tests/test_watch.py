@@ -10,6 +10,8 @@ from unittest import mock
 
 from watch import (
     DebounceScheduler,
+    _is_live_watch_pid,
+    acquire_lock,
     flush_path,
     is_indexable,
     is_live_watch_db,
@@ -136,6 +138,43 @@ class WatchPathTests(unittest.TestCase):
             mock_index = mock.Mock()
             self.assertIsNone(flush_path(str(path), index_fn=mock_index, verbose=False))
             mock_index.assert_not_called()
+
+    def test_flush_path_subprocess(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "agent-transcripts" / "x.jsonl"
+            path.parent.mkdir()
+            path.write_text(
+                '{"role":"user","message":{"content":[{"type":"text","text":"test"}]}}\n'
+            )
+            with mock.patch("watch._flush_path_subprocess", return_value={"subprocess": True}) as sp:
+                out = flush_path(str(path), verbose=False, use_subprocess=True)
+            sp.assert_called_once()
+            self.assertEqual(out, {"subprocess": True})
+
+    def test_is_live_watch_pid_matches_cmdline(self):
+        with mock.patch("watch.os.kill", return_value=None):
+            with mock.patch(
+                "watch._pid_cmdline",
+                return_value="/usr/bin/python convmem.py watch",
+            ):
+                self.assertTrue(_is_live_watch_pid(12345))
+
+    def test_is_live_watch_pid_rejects_pid_reuse(self):
+        with mock.patch("watch.os.kill", return_value=None):
+            with mock.patch(
+                "watch._pid_cmdline",
+                return_value="/usr/bin/bash",
+            ):
+                self.assertFalse(_is_live_watch_pid(12345))
+
+    def test_acquire_lock_removes_stale_pid(self):
+        with tempfile.TemporaryDirectory() as td:
+            lock = Path(td) / "watch.lock"
+            lock.write_text("99999", encoding="utf-8")
+            with mock.patch("watch._is_live_watch_pid", return_value=False):
+                with mock.patch("watch.os.getpid", return_value=4242):
+                    acquire_lock(lock)
+            self.assertEqual(lock.read_text().strip(), "4242")
 
 
 if __name__ == "__main__":

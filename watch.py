@@ -1,6 +1,7 @@
 """Filesystem watch — incremental index on transcript changes (Milestone F0).
 
-Uses watchdog (inotify on Linux) with debounce, then calls ingest.index(force_file=…).
+Uses watchdog (inotify on Linux) with debounce, then spawns `convmem index --file`
+in a subprocess so Chroma/ML memory is not retained in the watch parent.
 """
 
 from __future__ import annotations
@@ -111,11 +112,37 @@ class DebounceScheduler:
         return len(self._last_event)
 
 
+def _convmem_cli_argv() -> list[str]:
+    return [sys.executable, str(Path(__file__).resolve().parent / "convmem.py")]
+
+
+def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
+    """Run index in a child process so ML/Chroma memory is released after each file."""
+    import subprocess
+
+    cmd = _convmem_cli_argv() + ["index", "--file", path]
+    if verbose:
+        print(f"[watch] spawn: {' '.join(cmd[-3:])}", file=sys.stderr)
+    proc = subprocess.run(
+        cmd,
+        text=True,
+        capture_output=not verbose,
+    )
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        raise RuntimeError(err or f"index subprocess exit {proc.returncode}")
+    if verbose and proc.stdout:
+        for line in proc.stdout.splitlines():
+            print(line, file=sys.stderr)
+    return {"subprocess": True, "path": path}
+
+
 def flush_path(
     path: str,
     *,
-    index_fn: Callable[..., dict],
+    index_fn: Callable[..., dict] | None = None,
     verbose: bool = True,
+    use_subprocess: bool = False,
 ) -> dict | None:
     """Run incremental index for one file. Returns stats or None if skipped."""
     from config import load_config
@@ -147,6 +174,14 @@ def flush_path(
         if verbose:
             print(f"[watch] skip ({skip}): {p.name}", file=sys.stderr)
         return None
+    if use_subprocess:
+        if verbose:
+            print(f"[watch] indexing {p.name}", file=sys.stderr)
+        return _flush_path_subprocess(str(p), verbose=verbose)
+    if index_fn is None:
+        from ingest import index as index_fn_impl
+
+        index_fn = index_fn_impl
     if verbose:
         print(f"[watch] indexing {p.name}", file=sys.stderr)
     return index_fn(force_file=str(p), verbose=verbose)
@@ -160,6 +195,26 @@ def _lock_path_from_config(cfg: dict) -> Path:
     return chroma.parent / "watch.lock"
 
 
+def _pid_cmdline(pid: int) -> str:
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except OSError:
+        return ""
+    return raw.replace(b"\x00", b" ").decode(errors="replace")
+
+
+def _is_live_watch_pid(pid: int) -> bool:
+    """True when pid is a running convmem watch process (not PID reuse)."""
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    cmd = _pid_cmdline(pid)
+    return "convmem" in cmd and " watch" in cmd
+
+
 def acquire_lock(lock_path: Path) -> None:
     """Create a PID lock; exit if another live watch holds it."""
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -168,18 +223,13 @@ def acquire_lock(lock_path: Path) -> None:
             other_pid = int(lock_path.read_text().strip())
         except ValueError:
             other_pid = 0
-        if other_pid > 0:
-            try:
-                os.kill(other_pid, 0)
-            except OSError:
-                pass
-            else:
-                print(
-                    f"[watch] another instance is running (pid {other_pid}). "
-                    f"Lock: {lock_path}",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+        if _is_live_watch_pid(other_pid):
+            print(
+                f"[watch] another instance is running (pid {other_pid}). "
+                f"Lock: {lock_path}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         lock_path.unlink(missing_ok=True)
     lock_path.write_text(str(os.getpid()), encoding="utf-8")
 
@@ -213,7 +263,6 @@ def run_watch(
 ) -> None:
     """Block until interrupted; debounce and index changed ingestible files."""
     from config import load_config
-    from ingest import index as run_index
 
     try:
         from watchdog.events import FileSystemEvent, FileSystemEventHandler
@@ -263,7 +312,8 @@ def run_watch(
     observer.start()
     if verbose:
         print(
-            f"[watch] started (debounce={debounce}s, pid={os.getpid()}). Ctrl+C to stop.",
+            f"[watch] started (debounce={debounce}s, pid={os.getpid()}, "
+            f"subprocess_index=on). Ctrl+C to stop.",
             file=sys.stderr,
         )
 
@@ -271,7 +321,7 @@ def run_watch(
         while True:
             for path in scheduler.ready():
                 try:
-                    flush_path(path, index_fn=run_index, verbose=verbose)
+                    flush_path(path, verbose=verbose, use_subprocess=True)
                 except Exception as e:
                     print(f"[watch] error processing {path}: {e}", file=sys.stderr)
                 scheduler.forget(path)

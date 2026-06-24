@@ -1,0 +1,10 @@
+# Append to ~/.continue/config.yaml (requires schema: v1 at top of file).
+# Also copy config/continue-mcp.json.example → ~/.continue/mcpServers/convmem.json
+# if your Continue build still reads the JSON path (see scripts/verify-continue.sh).
+
+mcpServers:
+  - name: convmem
+    type: stdio
+    command: /home/lauer/miniforge3/envs/convmem/bin/python
+    args:
+      - /home/lauer/Projects/convmem/mcp_server.py
