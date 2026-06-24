@@ -321,14 +321,39 @@ def run_watch(
 
     scheduler = DebounceScheduler(debounce_seconds=debounce)
 
+    # Batching: the inotify handler thread only records raw paths (no detection).
+    # The main loop drains the batch and runs expensive is_watchable() + format
+    # detection once per unique path per cycle, avoiding thousands of JSON.parse
+    # and sqlite3.connect calls per minute from high-frequency store.db writes.
+    from threading import Lock
+
+    _batch_lock = Lock()
+    _batch: list[str] = []
+
     class Handler(FileSystemEventHandler):
         def on_any_event(self, event: FileSystemEvent) -> None:
             if event.is_directory:
                 return
-            path = Path(event.src_path)
-            if not is_watchable(path):
+            # Fast: just record the path. Main loop does detection.
+            with _batch_lock:
+                _batch.append(event.src_path)
+
+    def _drain_batch() -> None:
+        with _batch_lock:
+            if not _batch:
                 return
-            scheduler.note(str(path.resolve()))
+            paths = _batch.copy()
+            _batch.clear()
+        # Deduplicate: only run detection once per unique path per cycle.
+        seen: set[str] = set()
+        for raw in paths:
+            p = Path(raw)
+            path_str = str(p.resolve())
+            if path_str in seen:
+                continue
+            seen.add(path_str)
+            if is_watchable(p):
+                scheduler.note(path_str)
 
     observer = Observer()
     handler = Handler()
@@ -347,6 +372,7 @@ def run_watch(
 
     try:
         while True:
+            _drain_batch()
             for path in scheduler.ready():
                 try:
                     flush_path(path, verbose=verbose, use_subprocess=True)
