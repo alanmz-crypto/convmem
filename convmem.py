@@ -28,6 +28,8 @@ Usage:
   convmem monitor                  HTTP security probes (F2b)
   convmem brief                    shared context block for all agents
   convmem brief --print            stdout only (paste into ChatGPT sessions)
+  convmem doctor                   health checks (v0); --v1 for watch/systemd
+  convmem doctor --verify          also run scripts/verify-continue.sh
   convmem record -i                record a durable fact (interactive)
   convmem record --approve-last    approve newest pending + index (searchable)
   convmem propose_decision         same as record (legacy name)
@@ -46,7 +48,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
-    "watch", "refine", "monitor", "exclude", "brief", "propose_decision", "record",
+    "watch", "refine", "monitor", "exclude", "brief", "doctor", "propose_decision", "record",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -522,6 +524,30 @@ def brief(
     if print_:
         typer.echo(text)
     typer.echo(f"Written → {path}")
+
+
+@app.command()
+def doctor(
+    v1: bool = typer.Option(False, "--v1", help="Include watch RSS, systemd, and lock checks"),
+    verify: bool = typer.Option(False, "--verify", help="Run scripts/verify-continue.sh smoke test"),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON instead of text"),
+):
+    """Health checks for the canonical host (reuse brief probes; exit 0 = PASS)."""
+    import json
+
+    from doctor import doctor_exit_code, doctor_payload, render_doctor_text, run_doctor
+
+    try:
+        checks = run_doctor(v1=v1, run_verify=verify)
+    except FileNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+
+    if json_out:
+        typer.echo(json.dumps(doctor_payload(checks), indent=2))
+    else:
+        typer.echo(render_doctor_text(checks))
+    raise typer.Exit(doctor_exit_code(checks))
 
 
 def _resolve_approve_signer(signer: str | None) -> str:
