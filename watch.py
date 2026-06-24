@@ -35,16 +35,35 @@ def is_live_watch_db(path: Path | str) -> bool:
     return p.name == "store.db"
 
 
+# Module-level cache for the hot inotify path — avoid re-loading config
+# and processed.json on every event (thousands/min from Cursor store.db writes).
+_processed_cache: dict | None = None
+
+
+def _cached_processed() -> dict:
+    global _processed_cache
+    if _processed_cache is None:
+        from config import load_config
+        from ingest import load_processed
+
+        cfg = load_config()
+        _processed_cache = load_processed(cfg["index"]["processed_log"])
+    return _processed_cache
+
+
+def _invalidate_processed_cache() -> None:
+    global _processed_cache
+    _processed_cache = None
+
+
 def is_excluded_by_path(path: Path | str, *, processed: dict | None = None) -> bool:
     """True when processed.json marks this resolved path excluded (no file hash)."""
-    from config import load_config
-    from ingest import _processed_path_str, load_processed
+    from ingest import _processed_path_str
 
     p = Path(path).expanduser().resolve()
     path_key = str(p)
     if processed is None:
-        cfg = load_config()
-        processed = load_processed(cfg["index"]["processed_log"])
+        processed = _cached_processed()
     for entry in processed.values():
         if not isinstance(entry, dict) or not entry.get("excluded"):
             continue
@@ -60,11 +79,18 @@ def is_excluded_from_index(path: Path | str) -> bool:
 
 
 def is_watchable(path: Path | str) -> bool:
-    """True if watch should index this path (parser exists, not live DB, not excluded)."""
+    """True if watch should index this path (parser exists, not live DB, not excluded).
+
+    Live-DB check runs FIRST — avoids opening SQLite connections on store.db
+    writes (Cursor fires inotify events on every chat message). The old order
+    (is_indexable before is_live_watch_db) leaked ~35 MB/min from repeated
+    sqlite3.connect() → schema query → close cycles.
+    """
     p = Path(path)
-    if not is_indexable(p):
-        return False
+    # Fast path: skip known live databases before any expensive detection.
     if is_live_watch_db(p):
+        return False
+    if not is_indexable(p):
         return False
     if is_excluded_from_index(p):
         return False
@@ -177,7 +203,9 @@ def flush_path(
     if use_subprocess:
         if verbose:
             print(f"[watch] indexing {p.name}", file=sys.stderr)
-        return _flush_path_subprocess(str(p), verbose=verbose)
+        result = _flush_path_subprocess(str(p), verbose=verbose)
+        _invalidate_processed_cache()
+        return result
     if index_fn is None:
         from ingest import index as index_fn_impl
 
