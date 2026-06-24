@@ -29,6 +29,8 @@ source ~/.config/convmem/env.local   # DEEPSEEK_API_KEY + convmem alias
 convmem stats
 ```
 
+**After data loss:** see [docs/RECOVER.md](docs/RECOVER.md). MCP wiring examples live in `config/*.example`.
+
 If `convmem` is not defined:
 
 ```bash

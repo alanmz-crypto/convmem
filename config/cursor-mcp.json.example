@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "convmem": {
+      "command": "/home/lauer/miniforge3/envs/convmem/bin/python",
+      "args": [
+        "/home/lauer/Projects/convmem/mcp_server.py"
+      ],
+      "env": {
+        "DEEPSEEK_API_KEY": "REPLACE_ME_OR_OMIT_IF_IN_env.local"
+      }
+    }
+  }
+}

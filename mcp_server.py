@@ -21,7 +21,8 @@ mcp = FastMCP(
     instructions=(
         "Local knowledge corpus. Start with brief (optionally project=repo-slug). "
         "Then search_fast / ask with citations. related() walks ledger chains. "
-        "Read-only: no propose_decision or add on MCP — durable writes are CLI + signer only."
+        "Read-only: no propose_decision or add on MCP — durable writes are CLI + signer only. "
+        "On session close: --relates-to must be ledger id dec_prop_… or obs_… from search; NEVER system-maintenance or topic slugs; fallback c311 for new unrelated work."
     ),
 )
 

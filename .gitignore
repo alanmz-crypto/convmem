@@ -27,3 +27,7 @@ __pycache__/
 .DS_Store
 *.swp
 .venv/
+
+# Handoff bundles (built locally; not committed)
+handoff-tar/*.tar.gz
+handoff-tar/*.manifest.txt

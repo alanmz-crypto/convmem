@@ -478,6 +478,7 @@ def gather_brief_payload(
         "mcp_tools": ["brief", "search", "search_fast", "ask", "related", "stats"],
         "mcp_writes": False,
         "durable_writes": "CLI only: record -i → record --approve-last (auto-indexes)",
+        "session_close": "SESSION-CLOSE-RECORD.md — --relates-to must be ledger id (dec_prop_…/obs_…); never topic slugs like system-maintenance; fallback c311",
         "inter_model_pointer": str(
             (Path(__file__).resolve().parent / "docs" / "inter-model" / "LATEST.md")
         ),
@@ -685,6 +686,7 @@ def render_brief_markdown(data: dict) -> str:
             "",
             "## Before Working",
             "- Protocol: `brief` → `convmem ask` → `LATEST.md` → `convmem record -i` → `convmem record --approve-last`",
+            "- Session close: `SESSION-CLOSE-RECORD.md` — `convmem record --relates-to … --summary … --rationale … --author …`; then `--approve-last`; never `record` alone or fake flags",
             "- Agent roles: `docs/AGENT-ROLES.md`",
             "- Use `convmem search` / MCP `search_fast` for targeted prior art",
             "- Drafts are not searchable until `record --approve-last`",
