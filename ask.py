@@ -257,7 +257,12 @@ def ask(
             from evidence import apply_evidence_rerank
 
             store = ChromaStore(cfg["index"]["chroma_dir"])
-            units = apply_evidence_rerank(units, store)
+            qcfg = cfg.get("query", {})
+            rw = float(qcfg.get("recency_weight", 0.0))
+            rhl = float(qcfg.get("recency_half_life_days", 30.0))
+            units = apply_evidence_rerank(
+                units, store, recency_weight=rw, recency_half_life_days=rhl
+            )
             units = _dedupe_results_by_ledger_id(units)
         best = _max_score(units)
         # If primary units are weak, supplement with raw summaries (hybrid).

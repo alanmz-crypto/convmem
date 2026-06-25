@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import unittest
+from datetime import datetime, timedelta, timezone
 
-from evidence import apply_evidence_rerank, evidence_boost
+from evidence import apply_evidence_rerank, evidence_boost, recency_boost
 
 
 def _meta(
@@ -102,6 +103,52 @@ class EvidenceRerankTests(unittest.TestCase):
         self.assertEqual(ranked[0]["id"], "c2")
         self.assertEqual(ranked[0]["evidence_status"], "unresolved")
         self.assertGreater(ranked[0]["rank_score"], ranked[1]["rank_score"])
+
+    # -- recency_boost --------------------------------------------------------
+
+    def test_recency_boost_recent(self):
+        """A 6-day-old entry gets ~0.082 with weight=0.1 and half-life=30."""
+        ts = (datetime.now(timezone.utc) - timedelta(days=6)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        boost = recency_boost({"timestamp": ts}, weight=0.1, half_life_days=30)
+        self.assertAlmostEqual(boost, 0.0819, places=3)
+
+    def test_recency_boost_half_life(self):
+        """At exactly half-life days, boost = weight * exp(-1)."""
+        ts = (datetime.now(timezone.utc) - timedelta(days=30)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        boost = recency_boost({"timestamp": ts}, weight=0.1, half_life_days=30)
+        self.assertAlmostEqual(boost, 0.0368, places=3)
+
+    def test_recency_boost_no_timestamp(self):
+        boost = recency_boost({}, weight=0.1)
+        self.assertEqual(boost, 0.0)
+
+    def test_recency_boost_weight_zero(self):
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        boost = recency_boost({"timestamp": ts}, weight=0.0)
+        self.assertEqual(boost, 0.0)
+
+    def test_recency_boost_date_only(self):
+        """Plain YYYY-MM-DD timestamps should parse."""
+        ts = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%d")
+        boost = recency_boost({"timestamp": ts}, weight=0.1, half_life_days=30)
+        self.assertGreater(boost, 0.08)
+
+    def test_recency_in_rerank(self):
+        """Newer unit gets recency boost and moves above older unit."""
+        store = FakeStore([])
+        recent_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        old_ts = (datetime.now(timezone.utc) - timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        results = [
+            {"id": "old", "score": 0.85, "metadata": {"timestamp": old_ts, "type": "observation"}, "document": "old"},
+            {"id": "new", "score": 0.85, "metadata": {"timestamp": recent_ts, "type": "observation"}, "document": "new"},
+        ]
+        ranked = apply_evidence_rerank(results, store, recency_weight=0.2)
+        self.assertEqual(ranked[0]["id"], "new")
+        self.assertGreater(ranked[0]["recency_boost"], ranked[1]["recency_boost"])
 
 
 if __name__ == "__main__":

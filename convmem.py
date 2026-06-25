@@ -49,6 +49,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "brief", "doctor", "propose_decision", "record",
+    "unresolved",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -915,15 +916,54 @@ def related(
 ):
     """Traverse the evidence graph around a ledger id (not semantic search)."""
     from config import load_config
-    from chroma_store import ChromaStore
+    from chroma_readonly import open_readonly_unit_store
     from query import render_error
     from related import render_related
 
     cfg = load_config()
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store = open_readonly_unit_store(cfg["index"]["chroma_dir"])
     if not render_related(store, ledger_id):
         render_error(f"Ledger id not found: {ledger_id.strip()}")
         raise typer.Exit(1)
+
+
+@app.command("unresolved")
+def unresolved_command(
+    site: str | None = typer.Option(None, "--site", help="Filter by site hostname"),
+    domain: str | None = typer.Option(None, "--domain", help="Filter by domain"),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON instead of table"),
+):
+    """List open observations — no LLM, just the ledger graph.
+
+    Shows every observation without a passing verification, plus any with a
+    failed check. Filter by --site and/or --domain.
+    """
+    import json
+
+    from config import load_config
+    from chroma_readonly import open_readonly_unit_store
+    from unresolved import list_unresolved, render_unresolved
+
+    cfg = load_config()
+    store = open_readonly_unit_store(cfg["index"]["chroma_dir"])
+    results = list_unresolved(store, site=site, domain=domain)
+
+    if json_out:
+        out = []
+        for r in results:
+            out.append({
+                "ledger_id": r["ledger_id"],
+                "severity": r["severity"],
+                "site": r["site"],
+                "domain": r["domain"],
+                "title": r["title"],
+                "status": r["status"],
+                "last_touched": r["last_touched"],
+                "summary": r["summary"],
+            })
+        typer.echo(json.dumps(out, indent=2))
+    else:
+        render_unresolved(results)
 
 
 @app.command("exclude")

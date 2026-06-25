@@ -21,10 +21,12 @@ Symptom: intermittent `readonly database` / lock errors when search collides wit
 
 ### Layer 1 — Metadata reads (no PersistentClient)
 
-Use `chroma_readonly.collection_count()` / `collection_metadata_rows()` for:
+Use `chroma_readonly.collection_count()` / `collection_metadata_rows()` / `ReadonlyUnitStore` for:
 
 - `convmem brief`
 - `convmem stats` (counts + breakdown tables)
+- `convmem unresolved` (ledger graph over metadata rows)
+- `convmem related --ledger-id …` (metadata-only related lookup)
 
 ### Layer 2 — Writers: short-lived client
 

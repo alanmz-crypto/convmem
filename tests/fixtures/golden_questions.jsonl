@@ -1,0 +1,10 @@
+{"id": 1, "type": "search", "query": "sync-preview-to-practice.sh clone preview practice files DB", "assert": "top_contains", "value": "dec_prop_20260625_012720_3e2f", "top_n": 3}
+{"id": 2, "type": "search", "query": "View Transition API document.startViewTransition same-page shared element", "assert": "top_contains", "value": "dec_prop_20260625_021300_b748", "top_n": 3}
+{"id": 3, "type": "search", "query": "Thai Massage cross-document View Transition home card dedicated page", "assert": "top_contains", "value": "dec_prop_20260625_023920_7c75", "top_n": 3}
+{"id": 4, "type": "search", "query": "willowyhollow wp-login 404 custom slug localhost override wh-local-dev SG Security", "assert": "top_contains", "value": "dec_prop_20260624_025115_862b", "top_n": 3}
+{"id": 5, "type": "search", "query": "practice-local stack 8081 live DB dump backup restore", "assert": "top_contains", "value": "dec_prop_20260623_203527_c4dd", "top_n": 3}
+{"id": 6, "type": "search", "query": "staging2 Content-Security-Policy missing absent monitor failed", "assert": "top_contains", "value": "obs_staging2_monitor_csp-missing", "top_n": 3}
+{"id": 7, "type": "search", "query": "View Transition animation curve fade-forward cubic-bezier morph crossfade", "assert": "top_contains", "value": "dec_prop_20260625_024511_239e", "top_n": 3}
+{"id": 8, "type": "unresolved", "args": ["--site", "staging2.willowyhollow.com"], "assert": "stdout_contains", "value": "obs_staging2_monitor_csp-missing"}
+{"id": 9, "type": "related", "args": ["dec_prop_20260625_021935_62d6"], "assert": "stdout_contains", "value": "Decision"}
+{"id": 10, "type": "brief", "args": ["--stdout-only"], "assert": "stdout_contains", "value": "willowyhollow-dev"}

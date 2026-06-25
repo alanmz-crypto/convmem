@@ -8,6 +8,44 @@ from pathlib import Path
 from ledger import build_ledger_index, ledger_unit_metadata, normalize_ledger_record
 
 
+def _upsert_jsonl_line(
+    units_export: Path,
+    ledger_id: str,
+    unit: dict,
+) -> None:
+    """Replace the line in units_export matching ledger_id, or append if not found."""
+    if not units_export.exists():
+        units_export.parent.mkdir(parents=True, exist_ok=True)
+        with open(units_export, "a", encoding="utf-8") as f:
+            f.write(json.dumps(unit) + "\n")
+        return
+
+    lines: list[str] = []
+    found = False
+    with open(units_export, encoding="utf-8") as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line:
+                lines.append(raw_line)  # preserve blank lines
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                lines.append(raw_line)
+                continue
+            if (rec.get("ledger_id") or "").strip() == ledger_id:
+                lines.append(json.dumps(unit) + "\n")
+                found = True
+            else:
+                lines.append(raw_line)
+
+    if not found:
+        lines.append(json.dumps(unit) + "\n")
+
+    with open(units_export, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+
 def normalize_observation(raw: dict, *, min_confidence: float = 0.0) -> dict | None:
     """Validate a ledger JSONL record (observation, decision, or verification)."""
     return normalize_ledger_record(raw, min_confidence=min_confidence)
@@ -48,6 +86,8 @@ def ingest_observation(
             store.update_unit(chroma_id, doc, embedding, meta)
             unit["id"] = chroma_id
             unit["_upserted"] = True
+            if units_export:
+                _upsert_jsonl_line(units_export, lid, unit)
             return unit
 
     store.add_unit(unit["id"], doc, embedding, meta)

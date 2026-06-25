@@ -8,7 +8,7 @@
 | **ChatGPT** | Orchestration/strategy; paste-only access to corpus |
 | **Crush** | Runtime agent with MCP read tools |
 | **DeepSeek** | Runtime synthesis only (`ask` / distill API) |
-| **Codex** | Shell + `AGENTS.md`; change-feed design lane (deferred); no MCP |
+| **Codex** | Shell + `AGENTS.md` (`~/.codex/AGENTS.md` global + repo root); change-feed design lane (deferred); no MCP |
 | **Continue** | MCP read (`brief`, `search_fast`, `ask`); rules in `~/.continue/config.yaml` |
 
 **Session close (all models):** read `docs/inter-model/SESSION-CLOSE-RECORD.md`; output **`convmem record --relates-to … --summary … --rationale … --author …`** then **`convmem record --approve-last`**. Never `record` alone or fake flags (`session=`, `detail=`). Agent must search for `--relates-to`.

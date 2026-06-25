@@ -88,3 +88,59 @@ def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
     finally:
         conn.close()
     return int(row[0]) if row and row[0] is not None else 0
+
+
+class ReadonlyUnitStore:
+    """ChromaStore-compatible read facade using sqlite only (no PersistentClient writes).
+
+    Safe inside Codex/sandbox when the corpus directory is read-only or writers hold
+    the Chroma lock — avoids get_or_create_collection touching the DB.
+    """
+
+    def __init__(self, chroma_dir: str | Path):
+        from chroma_store import UNITS, is_superseded
+
+        self.chroma_dir = str(Path(chroma_dir).expanduser())
+        metas: list[dict] = []
+        units: dict[str, dict] = {}
+        for meta in collection_metadata_rows(self.chroma_dir, UNITS):
+            if is_superseded(meta):
+                continue
+            chroma_id = (meta.get("id") or "").strip()
+            if not chroma_id:
+                continue
+            row = dict(meta)
+            row["id"] = chroma_id
+            metas.append(row)
+            units[chroma_id] = {
+                "id": chroma_id,
+                "metadata": row,
+                "document": row.get("document") or row.get("title") or "",
+            }
+        self._metas = metas
+        self._units = units
+
+    def units_metadata(self, *, include_superseded: bool = False) -> list[dict]:
+        if include_superseded:
+            return [dict(m) for m in self._metas]
+        from chroma_store import is_superseded
+
+        return [dict(m) for m in self._metas if not is_superseded(m)]
+
+    def get_unit(self, unit_id: str) -> dict | None:
+        hit = self._units.get(unit_id.strip())
+        if hit:
+            return dict(hit)
+        for meta in self._metas:
+            if (meta.get("ledger_id") or "").strip() == unit_id.strip():
+                cid = meta["id"]
+                return {
+                    "id": cid,
+                    "metadata": meta,
+                    "document": meta.get("document") or meta.get("title") or "",
+                }
+        return None
+
+
+def open_readonly_unit_store(chroma_dir: str | Path) -> ReadonlyUnitStore:
+    return ReadonlyUnitStore(chroma_dir)

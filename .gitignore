@@ -14,6 +14,7 @@ chroma/
 
 # Local config (copy from config.example.toml)
 config.toml
+!.codex/config.toml.example
 
 # Python
 __pycache__/
