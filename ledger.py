@@ -17,6 +17,7 @@ from domains import normalize_domain
 
 LEDGER_KINDS = ("observation", "decision", "verification")
 _SEVERITIES = {"critical", "high", "medium", "low", "info"}
+_LEDGER_INDEX_CACHE: dict[str, tuple[dict[str, dict], dict[str, list[dict]]]] = {}
 _KIND_TO_TYPE = {
     "observation": "observation",
     "decision": "decision",
@@ -289,18 +290,19 @@ def ledger_unit_metadata(unit: dict) -> dict:
 
 
 def find_unit_by_ledger_id(store, ledger_id: str) -> dict | None:
-    """Look up a stored unit by external ledger id (e.g. obs_20260617_001).
+    """Look up a stored unit by external ledger id using the index.
 
-    Future optimization: maintain an in-memory ledger_id -> chroma_id map
-    generated during ingest/index to avoid scanning all metadata at scale.
+    Delegates to build_ledger_index() so we share a single metadata scan
+    with related_chain() and resolve_unit_ref() — no duplicated walk.
     """
     needle = ledger_id.strip()
     if not needle:
         return None
-    for meta in store.units_metadata():
-        if meta.get("ledger_id") == needle:
-            return store.get_unit(meta["id"])
-    return None
+    by_ledger_id, _ = build_ledger_index(store)
+    meta = by_ledger_id.get(needle)
+    if meta is None:
+        return None
+    return store.get_unit(meta["id"])
 
 
 def build_ledger_index(
@@ -309,7 +311,15 @@ def build_ledger_index(
     """Single metadata pass: ledger_id -> meta, relates_to -> [meta, ...].
 
     Legacy units (no ledger_id) are skipped. Empty relates_to is ignored.
+    Result is cached by store identity (chroma_dir) for the lifetime of the
+    process — find_unit_by_ledger_id, related_chain, and resolve_unit_ref
+    all share one scan with no duplicate walks.
     """
+    # Session-level cache keyed by chroma_dir — one scan per process lifetime.
+    cache_key = getattr(store, "chroma_dir", "")
+    if cache_key and cache_key in _LEDGER_INDEX_CACHE:
+        return _LEDGER_INDEX_CACHE[cache_key]
+
     by_ledger_id: dict[str, dict] = {}
     by_relates_to: dict[str, list[dict]] = {}
     for meta in store.units_metadata():
@@ -320,7 +330,20 @@ def build_ledger_index(
         parent = (meta.get("relates_to") or "").strip()
         if parent:
             by_relates_to.setdefault(parent, []).append(meta)
-    return by_ledger_id, by_relates_to
+
+    result = (by_ledger_id, by_relates_to)
+    if cache_key:
+        _LEDGER_INDEX_CACHE[cache_key] = result
+    return result
+
+
+def invalidate_ledger_index_cache(chroma_dir: str | None = None) -> None:
+    """Clear the session-level ledger index cache (called after ingest)."""
+    global _LEDGER_INDEX_CACHE
+    if chroma_dir:
+        _LEDGER_INDEX_CACHE.pop(chroma_dir, None)
+    else:
+        _LEDGER_INDEX_CACHE = {}
 
 
 def resolve_unit_ref_indexed(
