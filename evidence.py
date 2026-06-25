@@ -1,11 +1,15 @@
 """Evidence-aware retrieval boosts for ask/search (Milestone E).
 
 Re-ranks semantic hits using the ledger graph: prefer unresolved observations,
-failed verifications; deprioritize resolved/passed items. Display dedupe and
-ingest upsert remain separate concerns.
+failed verifications; deprioritize resolved/passed items. Also applies recency
+time-decay (newer results rank slightly higher). Display dedupe and ingest
+upsert remain separate concerns.
 """
 
 from __future__ import annotations
+
+import math
+from datetime import datetime, timezone
 
 from ledger import _dedupe_by_ledger_id, _kind, build_ledger_index
 
@@ -70,11 +74,51 @@ def evidence_boost(
     return 0.0, ""
 
 
+def recency_boost(
+    meta: dict,
+    *,
+    weight: float = 0.0,
+    half_life_days: float = 30.0,
+) -> float:
+    """Time-decay boost: newer units get a small bump.
+
+    boost = weight * exp(-age_days / half_life_days)
+
+    Returns 0.0 if weight is 0 or no timestamp is available.
+    """
+    if weight <= 0:
+        return 0.0
+
+    ts = (meta.get("timestamp") or "").strip()
+    if not ts:
+        return 0.0
+
+    try:
+        if "T" in ts:
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        else:
+            dt = datetime.strptime(ts[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        return 0.0
+
+    age_days = (datetime.now(timezone.utc) - dt).total_seconds() / 86400.0
+    if age_days < 0:
+        return 0.0
+
+    return weight * math.exp(-age_days / half_life_days)
+
+
 def apply_evidence_rerank(
     results: list[dict],
     store,
+    *,
+    recency_weight: float = 0.0,
+    recency_half_life_days: float = 30.0,
 ) -> list[dict]:
-    """Re-order retrieval hits by semantic score + evidence graph boosts."""
+    """Re-order retrieval hits by semantic score + evidence graph boosts + recency.
+
+    rank_score = base_score + evidence_boost + recency_boost
+    """
     if not results:
         return results
 
@@ -86,11 +130,15 @@ def apply_evidence_rerank(
         base = r.get("score")
         if base is None:
             base = 0.0
-        boost, status = evidence_boost(meta, by_relates_to=by_relates_to)
+        eboost, status = evidence_boost(meta, by_relates_to=by_relates_to)
+        rboost = recency_boost(
+            meta, weight=recency_weight, half_life_days=recency_half_life_days
+        )
         out = dict(r)
-        out["evidence_boost"] = round(boost, 4)
+        out["evidence_boost"] = round(eboost, 4)
         out["evidence_status"] = status
-        out["rank_score"] = round(base + boost, 4)
+        out["recency_boost"] = round(rboost, 4)
+        out["rank_score"] = round(base + eboost + rboost, 4)
         scored.append((out["rank_score"], i, out))
 
     scored.sort(key=lambda t: (-t[0], t[1]))

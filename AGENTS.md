@@ -1,10 +1,12 @@
 You have access to a local knowledge corpus called convmem. Query it before making decisions about this codebase.
 
-FIRST ACTION every session: run `convmem doctor` to confirm host health (exit 0 required), then `convmem brief --stdout-only` for current state.
+FIRST ACTION every session: run `convmem doctor` to confirm host health (exit 0 required), then `convmem brief --stdout-only` for current state, then `convmem unresolved` for open issues.
 
 Commands (run via shell):
   convmem doctor                            # ALWAYS RUN FIRST — exit 0 before ask/search
   convmem brief --stdout-only               # session orientation
+  convmem unresolved                        # open observations (no LLM)
+  convmem unresolved --site staging2...     # open issues for a client site
   convmem "search query"                    # semantic search
   convmem ask "why did we choose X?"        # RAG answer with citations
   convmem related obs_staging2_*            # evidence chain
@@ -13,6 +15,16 @@ Use convmem when:
 - Implementing something that might repeat past work
 - The user asks about past decisions or history
 - Working on staging2.willowyhollow.com security
+
+## Session start (client work)
+
+```
+convmem doctor
+convmem unresolved --site <hostname>
+convmem ask "current state of <feature> on <site>"
+```
+
+**Codex:** copy `.codex/config.toml.example` → `.codex/config.toml` so sandbox allows localhost (Ollama/DeepSeek). `unresolved`/`related`/`brief` use read-only Chroma (no write lock).
 
 ## Session close
 

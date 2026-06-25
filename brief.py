@@ -504,6 +504,17 @@ def gather_brief_data(
     inbox = Path(__file__).resolve().parent / "docs" / "inter-model"
     proj_limit = 12 if project.strip() else 8
 
+    # Count unresolved observations (fast — no LLM, just ledger graph).
+    try:
+        from chroma_readonly import open_readonly_unit_store
+        from unresolved import list_unresolved
+
+        store = open_readonly_unit_store(chroma_dir)
+        ur_list = list_unresolved(store)
+        unresolved_count = len(ur_list)
+    except Exception:
+        unresolved_count = None
+
     return {
         "generated_at": _now_iso(),
         "units": collection_count(chroma_dir, "knowledge_units"),
@@ -528,6 +539,7 @@ def gather_brief_data(
         "recent_monitor": _recent_monitor_units(chroma_dir),
         "pending_decision_files": _pending_decision_ingest(),
         "inter_model_inbox": inbox,
+        "unresolved_count": unresolved_count,
         "latest_handoff": _latest_handoff_info(inbox),
         "handoff_staleness": _handoff_staleness(inbox),
         "recent_inter_model_titles": _recent_inter_model_titles(inbox),
@@ -589,6 +601,9 @@ def render_brief_markdown(data: dict) -> str:
     titles = data.get("recent_inter_model_titles") or []
     if titles:
         lines.append(f"- Recent inter-model: {', '.join(titles)}")
+    ur_count = data.get("unresolved_count")
+    if ur_count is not None:
+        lines.append(f"- Unresolved observations: **{ur_count}** (run `convmem unresolved`)")
     stale = data.get("handoff_staleness") or {}
     if stale.get("stale"):
         lines.append(

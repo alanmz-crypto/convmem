@@ -1,98 +1,106 @@
 ---
-status: draft
-# Mirrors Cursor plan: convmem lauer roadmap
+status: active
+ledger: dec_prop_20260623_215943_5abe
+# Graduate → ROADMAP.md after ~1 week CLI soak (see "Now" below).
 ---
 
-# convmem Roadmap — Lauer (canonical host)
+# convmem Roadmap — Lauer
 
-North-star for convmem on **one machine**: lauer miniPC owns `~/.local/share/convmem/chroma/`, runs watch/refine/monitor, serves MCP.
+North-star for the **canonical miniPC host**.
 
-**Axes:** (1) Ops stability — watch, doctor, F2a, locks. (2) Agent workflow — `unresolved` + MCP `open` only.
+**Planner state (indexed):** P0 through **P1b complete**. Golden eval **10/10**. Test suite **127/127**. Retrieval layer is good enough — next gate is **how agents actually work**, not more search.
 
 ---
 
-## Phased roadmap (revised)
+## Completed (do not reopen)
+
+| Phase | What shipped |
+|-------|----------------|
+| Watch soak | PASS — ~82 MB flat (not 3.5 GB) |
+| doctor v0 + v1 | `convmem doctor` / `--v1` — commit e30667c, 302a9a9 |
+| F2a | Store API, ask `--evidence` citation dedupe, `ledger_id` index |
+| P1a | `convmem unresolved` CLI; `recency_boost` in [`evidence.py`](../evidence.py); JSONL upsert sync in [`observe.py`](../observe.py) |
+| P1b | [`tests/fixtures/golden_questions.jsonl`](../tests/fixtures/golden_questions.jsonl) + [`tests/test_eval_golden.py`](../tests/test_eval_golden.py) — 10/10 in ~27s |
+| Cheap wins | [`AGENTS.md`](../AGENTS.md) session start: **doctor → unresolved → ask**; [`brief.py`](../brief.py) shows unresolved count |
+
+---
+
+## Where we are now
 
 ```text
-Now (pre-flight):  commit tree, ensure mcp installed, restart watch, verify-continue PASS
-Now (doctor v0):   doctor.py + convmem.py — reuse brief.py
-P0 (watch):        verify RSS <512MB after 24h soak (fix coded — soak starts at restart)
-P0 (F2a):          get_units_with_embeddings, ask dedupe, ledger_id index
-P0 (doctor v1):    RSS soak result, locks, systemd
-P1a:               unresolved + ledger_id index + recency_weight
-P1b:               eval harness (10 golden queries)
-P2:                MCP unresolved/open + brief(compact)
-P3:                OpenClaw, dedupe, hybrid retrieval, export --redact
+Now (~1 week):   live CLI workflow soak; graduate ROADMAP-DRAFT → ROADMAP.md
+P2 (gated):      MCP unresolved/open — ONLY if agents still bypass CLI despite 10/10 eval
+P3:              expansion backlog
 ```
 
-### Efficient sequencing
+**P2 gate clarified:** Eval proves retrieval works. P2 is about **agent habit** (PATH, steering, Bash instead of MCP) — not search quality. Kiro lesson: even good tools get skipped without explicit session rules.
 
-1. **Commit + restart watch** — deploy subprocess fix; start 24h soak clock
-2. **Build doctor v0** — while soak runs
-3. **F2a** — parallel during soak (small, independent)
-4. **Doctor v1** — validates soak RSS + locks + systemd
+---
 
-Do not build doctor first, then start soak, then wait.
+## Session workflow (use this daily)
 
-```mermaid
-flowchart LR
-  A[Commit restart watch] --> B[Soak 24h]
-  A --> C[doctor v0]
-  C --> D[F2a]
-  B --> E[doctor v1]
-  D --> E
+```text
+convmem doctor          # health
+convmem unresolved      # what's still open?
+convmem ask "…"         # needs: source ~/.config/convmem/env.local (DEEPSEEK_API_KEY)
 ```
 
----
-
-## Pre-flight (~10 min)
-
-| Fix | Effort | Why |
-|-----|--------|-----|
-| Commit working tree | git commit | Watch subprocess fix uncommitted; PID on old code (~3.5GB RSS) |
-| Restart watch | `systemctl --user restart convmem-watch` | Deploy fix; start soak |
-| Ensure `mcp` installed | `pip install mcp` | doctor v0 + tests import mcp; pin at [`requirements.txt`](../requirements.txt) line 9 |
-| verify-continue PASS | smoke | Doctor v0 dependency; uses `$CONVMEM_ROOT` |
-
-**Done when:** committed + watch restarted + mcp import OK + verify-continue PASS.
+MCP today: `brief`, `search_fast`, `ask`, `related`, `stats` — read-only.
 
 ---
 
-## Now (doctor v0)
+## P2 — agent workflow (gated)
 
-`convmem doctor` — reuse [`brief.py`](../brief.py), exit codes. Checks: Ollama, key, Chroma, corpus, MCP, verify-continue.
+Ship **only if** graded sessions ([`grade-continue-session.sh`](../scripts/grade-continue-session.sh)) or Cursor transcripts show agents ignoring CLI/MCP after a week of AGENTS.md workflow:
 
-**Done when:** doctor exits 0; MCP `brief` without Bash ([`CONTINUE-VERIFY.md`](inter-model/CONTINUE-VERIFY.md)).
+1. MCP `unresolved`
+2. MCP `open` ([`open_source.py`](../open_source.py))
+3. `brief(compact=true)`
 
----
-
-## Success criteria
-
-| Check | PASS |
-|-------|------|
-| Watch soak | RSS < 512MB / 24h with committed fix |
-| Doctor | `convmem doctor` exit 0 |
-| MCP | Agent calls `brief` without Bash |
-| Corpus | `search_fast` hits staging2 ledger facts |
+**Do not ship** because eval failed — it didn't. Ship because agents still take shortcuts.
 
 ---
 
-## P0 — stability
+## P3 — later
 
-- **Watch:** fix coded in [`watch.py`](../watch.py) — pre-flight deploys it; doctor v1 validates soak
-- **F2a:** [`F2a-SCOPING.md`](F2a-SCOPING.md)
-- **Doctor v1:** RSS threshold, locks, systemd
-- **Rerank:** measure before enabling CUDA
+OpenClaw, dedupe approval UI, hybrid retrieval, `export --redact`, domain backfill in brief, rerank/CUDA if latency matters.
 
-## P1a / P1b / P2 / P3
+---
 
-- **P1a:** `unresolved`, `recency_weight`, JSONL upsert sync
-- **P1b:** eval harness gates P2/P3
-- **P2:** MCP `unresolved`, `open`, `brief(compact)` if graded sessions fail
-- **P3:** OpenClaw, dedupe, hybrid (eval-gated), export --redact
+## Success criteria (current)
+
+| Check | Status |
+|-------|--------|
+| Watch RAM | ✓ ~82 MB |
+| Doctor | ✓ exit 0 |
+| Search / eval | ✓ 10/10 golden |
+| Agent habit | **In soak** — observe ~1 week |
+| MCP P2 | Pending gate |
+
+---
+
+## Open (out of planner scope)
+
+| Item | Lane |
+|------|------|
+| staging2 CSP deploy | Client / willowyhollow — tracked in MCP decisions, not convmem infra |
+| `convmem ask` in shell | Requires `source ~/.config/convmem/env.local` for `DEEPSEEK_API_KEY` |
+
+---
+
+## Graduate to ROADMAP.md
+
+After ~1 week CLI soak with no surprises:
+
+1. Rename this file → `ROADMAP.md`
+2. Link from [`README.md`](../README.md)
+3. Keep [`AGENTS.md`](../AGENTS.md) as the live session contract
 
 ---
 
 ## Avoid
 
-Cloud corpus; MCP auto-writes; auto-merge dedupe; full reindex routine; hybrid without eval; watch healthy before soak; doctor before pre-flight commit+restart.
+- Hybrid retrieval / embed upgrades — eval passes; no evidence of recall failure
+- MCP auto-writes; auto-merge dedupe; cloud corpus
+- P2 MCP tools "because we planned them" — gate on agent habit only
+- convmem infra work masquerading as client deploy (CSP, etc.)

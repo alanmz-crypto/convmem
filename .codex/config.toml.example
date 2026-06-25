@@ -1,0 +1,4 @@
+# Copy to config.toml (gitignored) for Codex sessions in this repo.
+# Enables localhost Ollama + DeepSeek for `convmem ask` / doctor.
+[sandbox_workspace_write]
+network_access = true
