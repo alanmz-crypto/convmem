@@ -1,9 +1,10 @@
 You have access to a local knowledge corpus called convmem. Query it before making decisions about this codebase.
 
-FIRST ACTION every session: run `convmem brief --stdout-only` to get current state.
+FIRST ACTION every session: run `convmem doctor` to confirm host health (exit 0 required), then `convmem brief --stdout-only` for current state.
 
 Commands (run via shell):
-  convmem brief --stdout-only              # ALWAYS RUN FIRST
+  convmem doctor                            # ALWAYS RUN FIRST — exit 0 before ask/search
+  convmem brief --stdout-only               # session orientation
   convmem "search query"                    # semantic search
   convmem ask "why did we choose X?"        # RAG answer with citations
   convmem related obs_staging2_*            # evidence chain
