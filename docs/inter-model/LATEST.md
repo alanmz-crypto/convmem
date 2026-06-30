@@ -6,7 +6,9 @@
 
 **Phase 1 gate:** **CLOSED.** Documents `13bf8547` PASS, linuxbrew `77a57494` PASS. Strict script + `--exclude Search` is the enforceable path for graded workspace_local smokes.
 
-**Phase 2 (optional):** `cn --auto` PARTIAL documentation run — not blocking. See [`CONTINUE-VERIFY.md`](CONTINUE-VERIFY.md).
+**Phase 2 gate — CLOSED (2026-06-29):** `f358d4f0` — `cn --auto` on Documents, PARTIAL ritual, v5 payload PASS (`inventory.total: 0`). **Qwen Continue verify lane complete.**
+
+**Phase 2 (optional):** superseded — see Phase 2 section in [`CONTINUE-VERIFY.md`](CONTINUE-VERIFY.md).
 
 **Archive:** [`HANDOFF-CLAUDE-CLOUD-2026-06-29-qwen-continue-verify.md`](HANDOFF-CLAUDE-CLOUD-2026-06-29-qwen-continue-verify.md) + `handoff-claude-cloud-qwen-continue-2026-06-29.tar.gz`
 
