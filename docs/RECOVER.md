@@ -43,7 +43,11 @@ Back up this file offline; without it you cannot restore from the Restic repo.
 
 **Config:** `~/.config/convmem/restic.env` (from `config/restic.env.example`).
 
-### Live writes (use wrapper — not bare convmem)
+### Live writes
+
+`convmem record --approve-last` and `convmem add --file … --upsert` run the Restic gate **fail-closed** before writing Chroma.
+
+Optional wrapper (same gate, then `convmem`):
 
 ```bash
 ~/Projects/convmem/scripts/convmem-live-write.sh record --approve-last
@@ -157,5 +161,6 @@ Approved decisions in `decisions-approved.jsonl` can be re-ingested with
 
 - `config.example.toml` — index paths and models
 - `scripts/verify-continue.sh` — CLI MCP smoke test
-- `docs/MINIPC-DEPLOY.md` — systemd + env details
+- `docs/SYSTEMD-DEPLOY.md` — systemd + env details
+- `docs/archive/minipc-deploy/` — archived miniPC deploy (historical; do not run)
 - `docs/inter-model/CONTINUE-VERIFY.md` — Continue UI checklist

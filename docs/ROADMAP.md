@@ -3,9 +3,9 @@ status: active
 ledger: dec_prop_20260623_215943_5abe
 ---
 
-# convmem Roadmap — Lauer (canonical miniPC)
+# convmem Roadmap — Lauer
 
-North-star: local evidence bus on the **canonical miniPC host**. **Operate-and-document** — not foundation-build.
+North-star: local evidence bus on **this workstation** (Arch Linux, Ollama local). Watch/refine/monitor run as user systemd units here — no separate corpus host. **Operate-and-document** — not foundation-build.
 
 Test count at publish: run `convmem brief --with-tests` (currently **159**).
 
@@ -27,14 +27,21 @@ Daily ritual: `doctor` → `unresolved` → `ask` / `record --approve-last`.
 
 ## Pre-live-write gate (Restic)
 
-Before any live Chroma upsert or write-path merge, use the **external wrapper** (not bare `convmem`):
+Before any live Chroma upsert or write-path merge, Restic runs **fail-closed** (snapshot if stale; block on failure):
+
+```bash
+convmem record --approve-last          # gate built into CLI
+convmem add --file … --upsert          # gate built into CLI
+```
+
+Equivalent external wrapper (runs the same gate, then `convmem`):
 
 ```bash
 ~/Projects/convmem/scripts/convmem-live-write.sh record --approve-last
 ~/Projects/convmem/scripts/convmem-live-write.sh add --file … --upsert
 ```
 
-The wrapper calls `scripts/restic-ensure-chroma-snapshot.sh` first. **Fail-closed:** any Restic error (binary missing, bad repo, password missing, backup failure) **blocks** the live write — no warn-and-continue.
+Tests may set `CONVMEM_SKIP_RESTIC_GATE=1`. The wrapper calls `scripts/restic-ensure-chroma-snapshot.sh` first. **Fail-closed:** any Restic error (binary missing, bad repo, password missing, backup failure) **blocks** the live write — no warn-and-continue.
 
 **Stale threshold (pinned):** latest snapshot tagged `convmem-chroma` must have a snapshot time on the **same local calendar day** as now (≥ local midnight today). Not last git commit, not last approved write.
 

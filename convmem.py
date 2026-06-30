@@ -277,6 +277,12 @@ def add(
 
     cfg = load_config()
     models = cfg["models"]
+
+    if upsert:
+        from restic_gate import ensure_chroma_snapshot_for_live_write
+
+        ensure_chroma_snapshot_for_live_write()
+
     store = ChromaStore(cfg["index"]["chroma_dir"])
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
@@ -729,6 +735,9 @@ def propose_decision_command(
         ingest_result = None
         apath = str(approved_path(cfg))
         if not no_index:
+            from restic_gate import ensure_chroma_snapshot_for_live_write
+
+            ensure_chroma_snapshot_for_live_write()
             try:
                 ingest_result = ingest_approved_ledger(cfg, ledger)
             except Exception as e:
