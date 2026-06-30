@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -146,6 +147,48 @@ def _check_continue_mcp() -> DoctorCheck:
     return DoctorCheck("mcp_continue", True, "Continue MCP wiring present")
 
 
+def _check_restic() -> DoctorCheck:
+    """Restic live-write gate: toolchain + snapshot covers today (fail-closed policy)."""
+    script = Path(__file__).resolve().parent / "scripts" / "restic-ensure-chroma-snapshot.sh"
+    if not script.is_file():
+        return DoctorCheck("restic_gate", False, f"missing {script}")
+    if shutil.which("restic") is None:
+        return DoctorCheck(
+            "restic_gate",
+            False,
+            "restic not on PATH (pacman -S restic or conda-forge; see config/restic.env.example)",
+        )
+    env_file = Path("~/.config/convmem/restic.env").expanduser()
+    if not env_file.is_file():
+        return DoctorCheck(
+            "restic_gate",
+            False,
+            f"missing {env_file} — run scripts/setup-restic-chroma.sh",
+        )
+    try:
+        proc = subprocess.run(
+            [str(script), "--require-current"],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            env=os.environ,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return DoctorCheck("restic_gate", False, str(exc))
+    if proc.returncode == 0:
+        return DoctorCheck(
+            "restic_gate",
+            True,
+            "snapshot covers today (tag=convmem-chroma; threshold=local calendar day)",
+        )
+    tail = (proc.stdout or proc.stderr or "").strip().splitlines()[-2:]
+    return DoctorCheck(
+        "restic_gate",
+        False,
+        "Restic gate not ready — " + " ".join(tail),
+    )
+
+
 def _check_verify_script(*, run: bool) -> DoctorCheck:
     root = Path(__file__).resolve().parent
     script = root / "scripts" / "verify-continue.sh"
@@ -222,6 +265,7 @@ def run_doctor(
         _check_deepseek_key(),
         _check_ollama(cfg),
         _check_chroma(cfg),
+        _check_restic(),
         _check_mcp_import(),
         _check_mcp_wiring(),
         _check_continue_mcp(),

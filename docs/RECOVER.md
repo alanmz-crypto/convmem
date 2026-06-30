@@ -20,6 +20,56 @@ fast recovery without reindexing.
 
 ---
 
+## Restic snapshot gate (live Chroma writes)
+
+**Policy:** fail-closed. If Restic cannot verify or create a current snapshot, **do not**
+run live `record --approve-last` or `add --upsert` on the production corpus.
+
+**Stale threshold (pinned):** latest snapshot tagged `convmem-chroma` must be from the
+**current local calendar day** (snapshot time ≥ local midnight today).
+
+### One-time setup
+
+```bash
+# Install restic (pick one)
+sudo pacman -S restic
+# or: conda install -n convmem -c conda-forge restic && ln -sf ~/miniforge3/envs/convmem/bin/restic ~/.local/bin/restic
+
+bash ~/Projects/convmem/scripts/setup-restic-chroma.sh
+```
+
+**Manual secret (Ryan):** `~/.config/convmem/restic.password` — created by setup if missing.
+Back up this file offline; without it you cannot restore from the Restic repo.
+
+**Config:** `~/.config/convmem/restic.env` (from `config/restic.env.example`).
+
+### Live writes (use wrapper — not bare convmem)
+
+```bash
+~/Projects/convmem/scripts/convmem-live-write.sh record --approve-last
+~/Projects/convmem/scripts/convmem-live-write.sh add --file ~/.local/share/convmem/decisions-approved.jsonl --upsert
+```
+
+### Verify gate
+
+```bash
+restic snapshots --tag convmem-chroma          # list chroma backups
+bash ~/Projects/convmem/scripts/restic-ensure-chroma-snapshot.sh --check-only
+bash ~/Projects/convmem/scripts/verify-restic-gate.sh   # happy + fail-closed negative
+convmem doctor                                   # includes restic_gate check
+```
+
+### Restore chroma from Restic
+
+```bash
+source ~/.config/convmem/restic.env
+export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE
+restic restore latest --tag convmem-chroma --target /tmp/convmem-chroma-restore
+# Inspect, then stop watch/refine and replace ~/.local/share/convmem/chroma/ deliberately
+```
+
+---
+
 ## Fast path (project backup only)
 
 Use when Tier 1 corpus still exists or you accept reindexing later.
