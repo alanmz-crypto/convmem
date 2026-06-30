@@ -44,7 +44,7 @@ import json, sys
 sys.path.insert(0, "$CONVMEM_ROOT")
 import mcp_server
 
-for name in ("brief", "search_fast", "search", "ask", "related", "stats"):
+for name in ("brief", "folder_state", "search_fast", "search", "ask", "related", "stats"):
     fn = getattr(mcp_server, name, None)
     if fn is None:
         print(f"  FAIL: missing tool {name}")
@@ -66,6 +66,25 @@ if "record" not in br["coordination"]["durable_writes"]:
     print("  WARN: brief durable_writes may not mention record workflow")
 else:
     print("  OK: brief mentions record workflow")
+
+# 2b. System runbook cwd (CORE 8 — /etc, /boot, not repo slugs)
+import os
+_prev = os.getcwd()
+try:
+    os.chdir("/etc")
+    br_sys = json.loads(mcp_server.brief(""))
+    if br_sys.get("brief_mode") != "system_runbook":
+        print("  FAIL: brief from /etc missing brief_mode=system_runbook")
+        sys.exit(1)
+    if br_sys.get("focus_project"):
+        print("  FAIL: brief from /etc should not set focus_project")
+        sys.exit(1)
+    if not (br_sys.get("runbook_hint") or {}).get("suggested_search_fast"):
+        print("  FAIL: brief from /etc missing runbook_hint.suggested_search_fast")
+        sys.exit(1)
+    print("  OK: brief system_runbook from /etc cwd")
+finally:
+    os.chdir(_prev)
 PY
 
 # 3. Continue session indexing

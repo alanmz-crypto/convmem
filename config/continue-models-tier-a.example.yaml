@@ -1,0 +1,83 @@
+# Continue Tier-A local agent models — merge into ~/.continue/config.yaml
+#
+# 1. Open ~/.continue/config.yaml (requires schema: v1 at top).
+# 2. Under existing `models:`, insert these blocks after qwen3-coder:30b (picker order).
+# 3. Patch qwen3-coder:30b with capabilities + defaultCompletionOptions (see bottom).
+# 4. Optional: add `capabilities: [tool_use]` to legacy chat-only 27B/35B entries.
+# 5. Restart any running `cn` session after edits.
+#
+# Related examples (MCP + rules only — no models):
+#   config/continue-mcp-servers.yaml.example
+#   config/continue-rules-session-close.example.yaml
+#
+# Ollama tags must match exactly (no :latest suffix in model field).
+# Verify: ollama list | grep -E 'qwen2.5-coder:14b|qwen3-coder:30b|iq3'
+# Soak: docs/inter-model/CONTINUE-VERIFY.md
+
+# --- Insert after qwen3-coder:30b ---
+
+  - name: qwen2.5-coder:14b
+    provider: openai
+    apiBase: http://localhost:11434/v1
+    apiKey: ollama
+    model: qwen2.5-coder:14b
+    roles:
+      - chat
+      - edit
+      - apply
+    capabilities:
+      - tool_use
+    defaultCompletionOptions:
+      contextLength: 32768
+      temperature: 0.05
+      keepAlive: 300
+
+  - name: qwen3.6-27b-iq3-32k
+    provider: openai
+    apiBase: http://localhost:11434/v1
+    apiKey: ollama
+    model: qwen3.6-27b-iq3-32k
+    roles:
+      - chat
+    capabilities:
+      - tool_use
+    defaultCompletionOptions:
+      contextLength: 32768
+      keepAlive: 300
+
+  - name: qwen3.6-27b-iq3-crush
+    provider: openai
+    apiBase: http://localhost:11434/v1
+    apiKey: ollama
+    model: qwen3.6-27b-iq3-crush
+    roles:
+      - chat
+    capabilities:
+      - tool_use
+    defaultCompletionOptions:
+      contextLength: 32768
+      keepAlive: 300
+
+# --- Patch existing qwen3-coder:30b block (add under roles) ---
+# Prefer openai provider → Ollama /v1 for native tool calling (avoids <function=...> XML leak).
+
+#   - name: qwen3-coder:30b
+#     provider: openai
+#     apiBase: http://localhost:11434/v1
+#     apiKey: ollama
+#     model: qwen3-coder:30b
+#     roles:
+#       - chat
+#       - edit
+#       - apply
+#     capabilities:
+#       - tool_use
+#     defaultCompletionOptions:
+#       contextLength: 32768
+#       temperature: 0.05
+#       topP: 0.9
+#       keepAlive: 300
+#     chatOptions:
+#       baseAgentSystemMessage: |
+#         After convmem MCP tools, answer ONLY from tool JSON and workspace files.
+#         Never invent hardware, packages, or paths. Use brief.projects[] for project state.
