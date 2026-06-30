@@ -3,7 +3,7 @@
 | Agent | Lane |
 |-------|------|
 | **Kiro** | Design review, milestone sign-off; query `convmem brief` at session start |
-| **Cursor** | Implementer on canonical dev machine; read `brief.md` + `docs/inter-model/` |
+| **Cursor** | Implementer on local workstation; read `brief.md` + `docs/inter-model/` |
 | **Sonnet** | MCP verification (static source + live Crush handshake) |
 | **ChatGPT** | Orchestration/strategy; paste-only access to corpus |
 | **Crush** | Runtime agent with MCP read tools |

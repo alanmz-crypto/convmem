@@ -38,7 +38,11 @@ todos:
 isProject: false
 ---
 
-# Global convmem protocol — instructions follow the human
+# Global convmem protocol — instructions follow the human (archival)
+
+> **Archival record only** — planner + gap analysis from **2026-06-25**. All todos **shipped** or **cancelled**; soak **closed**.  
+> **Do not treat** gap tables, phase gates, or "entering soak" prose as current work.  
+> **Active protocol:** [`config/agent-protocol.md`](config/agent-protocol.md) · **Shipped summary:** [`docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`](docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md) § Plan 2
 
 ## Problem
 

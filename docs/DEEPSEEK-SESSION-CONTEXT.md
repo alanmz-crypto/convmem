@@ -134,7 +134,7 @@ Decision fields that matter for retrieval: `summary`, `rationale`, `alternatives
 | 2 | ingest, refine, watch | Short-lived `ChromaStore` writers; per-chunk open/close |
 | 3 | search, ask, MCP | `open_chroma_for_read()` + retry + close |
 
-**Single-writer rule:** One machine owns Chroma; no rsync between hosts (`dec_convmem_single_writer_chroma`).
+**Single-writer rule:** One workstation owns Chroma; do not rsync chroma/ to another machine (`dec_convmem_single_writer_chroma`).
 
 ### Watch (`watch.py` + systemd)
 

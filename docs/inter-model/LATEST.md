@@ -1,6 +1,7 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-06-29 (Phase 1 **CLOSED** — Qwen Continue workspace_local)
+**Updated:** 2026-06-30  
+**Live counts:** run `convmem brief` — snapshot at refresh: **3575** units, **635** summaries.
 
 ## Active handoff
 
@@ -10,7 +11,7 @@
 
 **Phase 2 (optional):** superseded — see Phase 2 section in [`CONTINUE-VERIFY.md`](CONTINUE-VERIFY.md).
 
-**Archive:** [`HANDOFF-CLAUDE-CLOUD-2026-06-29-qwen-continue-verify.md`](HANDOFF-CLAUDE-CLOUD-2026-06-29-qwen-continue-verify.md) + `handoff-claude-cloud-qwen-continue-2026-06-29.tar.gz`
+**Archive:** [`HANDOFF-CLAUDE-CLOUD-2026-06-29-qwen-continue-verify.md`](HANDOFF-CLAUDE-CLOUD-2026-06-29-qwen-continue-verify.md). Tarball removed during residue cleanup.
 
 ## State
 
@@ -19,7 +20,7 @@
 - **Deployed:** Cursor `.mdc`, Kiro steering + `permissions.yaml` (incl. `echo *`), Crush Tier A + `crush.json` permissions + bash hook, Continue MCP `instructions=`.
 - **Post-permissions retest (Ryan):** **Cursor PASS ×2**, **Kiro PASS**, **Crush PASS**, **Continue qwen3-coder:30b PASS** — no convmem permission prompts.
 - **ChatGPT Tier C:** out of scope (ignored).
-- **Corpus:** **1590** units, **343** summaries; `doctor` all PASS.
+- **Corpus:** see `convmem brief` (snapshot 2026-06-30: **3575** units, **635** summaries); `doctor` all PASS.
 - **P2 gate:** still **hold** (MCP `unresolved` tool optional next).
 - **Tests:** run `convmem brief --with-tests` or pytest when needed.
 

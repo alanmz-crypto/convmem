@@ -1,4 +1,4 @@
-# Pinned to versions tested in the convmem conda env (miniPC deploy).
+# Pinned to versions tested in the convmem conda env.
 # Re-run tests after bumping any pin.
 chromadb==1.5.9
 hnswlib==0.8.0
