@@ -5,6 +5,11 @@ Two collections are defined per the design, but Step 4 only uses
 is created lazily in Step 5.
 """
 
+from __future__ import annotations
+
+import time
+from pathlib import Path
+
 import chromadb
 
 SUMMARIES = "conversation_summaries"
@@ -23,17 +28,20 @@ def is_chroma_contention_error(exc: BaseException) -> bool:
 
 def open_chroma_for_read(chroma_dir: str, *, retries: int = 5) -> "ChromaStore":
     """Open Chroma for vector queries; retry briefly on writer contention."""
-    import time
-
     last: Exception | None = None
     for attempt in range(retries):
-        store = ChromaStore(chroma_dir)
+        store: ChromaStore | None = None
         try:
+            store = ChromaStore(chroma_dir)
             store._collection(UNITS).count()
             return store
         except Exception as e:
-            store.close()
             last = e
+            if store is not None:
+                try:
+                    store.close()
+                except Exception:
+                    pass
             if is_chroma_contention_error(e) and attempt + 1 < retries:
                 time.sleep(0.15 * (attempt + 1))
                 continue
@@ -50,8 +58,11 @@ def is_superseded(meta: dict) -> bool:
 
 class ChromaStore:
     def __init__(self, chroma_dir: str):
-        self.chroma_dir = chroma_dir
-        self.client = chromadb.PersistentClient(path=chroma_dir)
+        self.chroma_dir = str(Path(chroma_dir).expanduser())
+        # SegmentAPI + hnswlib compat shim can count() but fails upsert on
+        # existing persistent HNSW ("Index seems to be corrupted or unsupported").
+        self.client_mode = "PersistentClient"
+        self.client = chromadb.PersistentClient(path=self.chroma_dir)
 
     def close(self) -> None:
         """Release the PersistentClient so readers can open the corpus."""
@@ -154,15 +165,12 @@ class ChromaStore:
         total = self._collection(UNITS).count()
         if include_superseded:
             return total
-        # Use Chroma's where filter to count superseded, subtract from total.
-        # Faster than loading all metadata into Python.
         try:
             superseded = self._collection(UNITS).get(
                 where={"superseded": True}, include=[]
             )
             n_superseded = len(superseded.get("ids") or [])
         except Exception:
-            # Fallback if where filter fails (e.g., field doesn't exist on old units)
             n_superseded = 0
         return total - n_superseded
 
@@ -182,11 +190,7 @@ class ChromaStore:
     def get_units_with_embeddings(
         self, *, include_superseded: bool = False
     ) -> list[dict]:
-        """Return knowledge units with embeddings for refine jobs (F2a).
-
-        Each row: ``{"id", "metadata", "embedding"}`` with ``metadata["id"]``
-        bound to the Chroma row id (same as ``units_metadata``).
-        """
+        """Return knowledge units with embeddings for refine jobs (F2a)."""
         col = self._collection(UNITS)
         res = col.get(include=["metadatas", "embeddings"])
         ids = res.get("ids") or []
@@ -225,13 +229,7 @@ class ChromaStore:
         return {"id": ids[0], "metadata": meta, "document": docs[0]}
 
     def update_unit_metadata(self, unit_id: str, metadata: dict) -> None:
-        """Replace metadata for an existing unit.
-
-        Chroma's update replaces the stored metadata dict wholesale, so
-        callers (see verify.py) must read the existing metadata first,
-        mutate a copy, and pass the complete dict back — not just the
-        changed fields.
-        """
+        """Replace metadata for an existing unit."""
         meta = dict(metadata)
         meta["id"] = unit_id
         self._collection(UNITS).update(ids=[unit_id], metadatas=[meta])
