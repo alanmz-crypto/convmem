@@ -1,0 +1,17 @@
+# User systemd service — invoked by convmem-cross-project-digest.timer
+#
+# Copy to ~/.config/systemd/user/convmem-cross-project-digest.service
+
+[Unit]
+Description=convmem cross-project digest (read-only)
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=HOME=%h
+# Phase 1: read-only digest. Phase 2: append --propose to queue a draft for Ryan.
+ExecStart=%h/Projects/convmem/scripts/cross-project-digest.sh
+# ExecStart=%h/Projects/convmem/scripts/cross-project-digest.sh --propose
+
+[Install]
+WantedBy=default.target

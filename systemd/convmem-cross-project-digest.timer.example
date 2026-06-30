@@ -1,0 +1,22 @@
+# User systemd timer — weekly cross-project digest (read-only)
+#
+#   cp systemd/convmem-cross-project-digest.{service,timer}.example ~/.config/systemd/user/
+#   # Edit paths in the service unit if not using default miniforge env
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now convmem-cross-project-digest.timer
+#   journalctl --user -u convmem-cross-project-digest -f
+#
+# Default: Monday 09:00 local, 10 min jitter.
+# Digest file: ~/.local/share/convmem/digests/YYYY-MM-DD.md
+# Optional synthesis proposal: add --propose to ExecStart (Ryan reviews before approve).
+
+[Unit]
+Description=Weekly convmem cross-project coordination digest
+
+[Timer]
+OnCalendar=Mon *-*-* 09:00:00
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

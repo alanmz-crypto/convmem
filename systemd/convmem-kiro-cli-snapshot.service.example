@@ -1,0 +1,8 @@
+[Unit]
+Description=Index kiro-cli sqlite snapshot into convmem
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=CONVMEM_ROOT=%h/Projects/convmem
+ExecStart=%h/Projects/convmem/scripts/index-kiro-cli-snapshot.sh

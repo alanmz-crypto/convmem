@@ -1,44 +1,10 @@
-You have access to a local knowledge corpus called convmem. Query it before making decisions about this codebase.
+## convmem protocol
 
-FIRST ACTION every session: run `convmem doctor` to confirm host health (exit 0 required), then `convmem brief --stdout-only` for current state, then `convmem unresolved` for open issues.
+Canonical session-start protocol: `config/agent-protocol.md` (three capability tiers).
 
-Commands (run via shell):
-  convmem doctor                            # ALWAYS RUN FIRST — exit 0 before ask/search
-  convmem brief --stdout-only               # session orientation
-  convmem unresolved                        # open observations (no LLM)
-  convmem unresolved --site staging2...     # open issues for a client site
-  convmem "search query"                    # semantic search
-  convmem ask "why did we choose X?"        # RAG answer with citations
-  convmem related obs_staging2_*            # evidence chain
+Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
+Deployed via `scripts/deploy-agent-protocol.sh`.
 
-Use convmem when:
-- Implementing something that might repeat past work
-- The user asks about past decisions or history
-- Working on staging2.willowyhollow.com security
+**Do not duplicate session-start steps here** — they live in the global rule (Cursor `.mdc`, MCP `instructions=`, Codex global).
 
-## Session start (client work)
-
-```
-convmem doctor
-convmem unresolved --site <hostname>
-convmem ask "current state of <feature> on <site>"
-```
-
-**Codex:** copy `.codex/config.toml.example` → `.codex/config.toml` so sandbox allows localhost (Ollama/DeepSeek). `unresolved`/`related`/`brief` use read-only Chroma (no write lock).
-
-## Session close
-
-When Ryan closes or asks for a **record block**: read `docs/inter-model/SESSION-CLOSE-RECORD.md`.
-
-Output a **copy-paste shell block** using real convmem flags:
-
-```bash
-convmem record --relates-to <id> --summary "..." --rationale "..." --author ...
-convmem record --approve-last
-```
-
-**Never** output `record -i` alone, `session=`, `detail=`, topic slugs as `--relates-to` (`system-maintenance`), or omit `--relates-to`. Valid ids look like **`dec_prop_20260623_161428_c311`**. Search first; fallback **`dec_prop_20260623_161428_c311`** for unrelated new work.
-
-Read-only. Do not run convmem add/index/verify without user direction.
-
-**Recovery:** `docs/RECOVER.md` — runtime corpus is outside Git; project backup restores source + MCP templates.
+**Repo-specific only:** `.codex/config.toml.example` for sandbox network override in this repo. Copy to `.codex/config.toml` to allow `convmem ask` in Codex.

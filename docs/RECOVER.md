@@ -12,7 +12,7 @@ from the repo**, and what needs a **separate data backup**.
 |------|----------|----------|------------|
 | **1 — Corpus** | `~/.local/share/convmem/` | Restore from your **data backup** or full reindex (slow) | **Blocks** shell delete/move/truncate |
 | **2 — Runtime config** | `~/.config/convmem/` | Copy examples below; re-enter API key | **Blocks** shell delete/move/truncate |
-| **3 — Wiring + source** | `~/Projects/convmem`, `~/.cursor/mcp.json`, Continue YAML | Restore project backup or git; copy MCP examples | **Not blocked** — edits encouraged |
+| **3 — Wiring + source** | `~/Projects/convmem`, `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, `~/.kiro/settings/permissions.yaml`, `~/.config/crush/crush.json`, Continue YAML | Restore project backup or git; copy MCP/permissions examples | **Not blocked** — edits encouraged |
 
 **Not in the Git repo:** Tier 1 (`chroma/`, `processed.json`, `knowledge_units.jsonl`,
 `decisions-approved.jsonl`, etc.). Include `~/.local/share/convmem/` in backups if you want
@@ -47,6 +47,7 @@ cp ~/Projects/convmem/config/cursor-mcp.json.example ~/.cursor/mcp.json
 mkdir -p ~/.continue/mcpServers
 cp ~/Projects/convmem/config/continue-mcp.json.example ~/.continue/mcpServers/convmem.json
 # Add mcpServers block from config/continue-mcp-servers.yaml.example to ~/.continue/config.yaml
+# Tier-A agent models: merge config/continue-models-tier-a.example.yaml under models:
 
 # 6. Systemd (optional always-on)
 cp ~/Projects/convmem/systemd/convmem-watch.service.example ~/.config/systemd/user/convmem-watch.service
@@ -54,10 +55,15 @@ cp ~/Projects/convmem/systemd/convmem-refine.service.example ~/.config/systemd/u
 systemctl --user daemon-reload
 systemctl --user enable --now convmem-watch.service convmem-refine.service
 
-# 7. Verify
+# 7. Deploy agent protocol surfaces (Cursor .mdc, Codex AGENTS.md, Kiro steering + MCP + permissions.yaml, Crush)
+bash ~/Projects/convmem/scripts/deploy-agent-protocol.sh
+# Kiro: enable MCP in Settings after deploy (see script manual steps)
+
+# 8. Verify
 convmem stats
 ~/Projects/convmem/scripts/verify-continue.sh
-# Restart Cursor / Continue after MCP config changes
+# Restart Cursor / Continue / Kiro after MCP config changes
+# After mcp_server.py updates: bash scripts/restart-convmem-mcp.sh (kills stale stdio subprocesses)
 ```
 
 ---
@@ -87,7 +93,7 @@ Approved decisions in `decisions-approved.jsonl` can be re-ingested with
 
 - Any file under `~/Projects/convmem/` (code, tests, docs)
 - `mcp_server.py`, `watch.py`, `brief.py`, etc.
-- `~/.cursor/mcp.json` and Continue `mcpServers` (MCP wiring)
+- `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, and Continue `mcpServers` (MCP wiring)
 - `~/.config/convmem/config.toml` (paths, models)
 
 ## What needs Ryan (hook blocks shell destruction)

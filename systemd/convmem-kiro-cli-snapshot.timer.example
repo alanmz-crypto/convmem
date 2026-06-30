@@ -1,0 +1,19 @@
+# User systemd timer — weekly kiro-cli sqlite snapshot index
+#
+#   cp systemd/convmem-kiro-cli-snapshot.{service,timer}.example ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now convmem-kiro-cli-snapshot.timer
+#
+# Indexes ~/.local/share/convmem/imports/kiro-cli-snapshot.sqlite3 only.
+# Current kiro-cli chats: watch ~/.kiro/sessions (jsonl) — see docs/KIRO-SESSION-ADAPTER.md
+
+[Unit]
+Description=Weekly kiro-cli sqlite snapshot index for convmem
+
+[Timer]
+OnCalendar=Sun *-*-* 08:00:00
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

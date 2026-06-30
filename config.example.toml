@@ -1,6 +1,8 @@
 [sources]
 paths = [
   "~/.local/share/kiro-cli/data.sqlite3",
+  "~/.kiro/sessions",
+  "~/.codex/history.jsonl",
   "~/.config/cursor/chats",
   "~/.cursor/projects",
   "~/.continue/sessions",
@@ -9,6 +11,9 @@ paths = [
 inventory = "~/.local/share/convmem/inventory.jsonl"
 
 # Crush: discovered via **/.crush/crush.db under $HOME (see docs/F2c-CRUSH-ADAPTER.md).
+# kiro-cli 2.x transcripts: ~/.kiro/sessions/**/sess_*/messages.jsonl (see docs/KIRO-SESSION-ADAPTER.md).
+# Legacy kiro-cli sqlite: snapshot via scripts/index-kiro-cli-snapshot.sh — do not watch live DB.
+# Codex: ~/.codex/history.jsonl is user prompts only (source_type=prompt_only).
 # Re-run `python inventory.py` after adding new Crush project dirs.
 
 [index]

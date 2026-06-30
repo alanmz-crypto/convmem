@@ -236,8 +236,6 @@ Prompt:
 - **Graded workspace_local:** use **`cn-convmem-smoke.sh`** / `cn-workspace-convmem.sh` (no `--auto`; `--exclude Search`). qwen3-coder:30b proven at this bar.
 - **`cn --auto` on alien cwds:** **PARTIAL-acceptable** (documented structural limit — `--auto` ignores `--exclude`). Real failure mode: Bash-first, convmem turn 2+ (`e46bb58d`). v5 stats-zeroing improves turn-2+ answers (no global corpus bleed). Known limitation, not a blocker.
 
-**Phase 2 (optional):** document `cn --auto` PARTIAL behavior with answer-quality notes; not blocking.
-
 ## Phase 2 — `cn --auto` policy run (**CLOSED** 2026-06-29)
 
 **Purpose:** Confirm v5 stats-zeroing helps **turn-2+** answers when turn-1 ritual slips under daily mode (`cn --auto` ignores `--exclude`).
@@ -289,6 +287,40 @@ UUID=$(ls -t ~/.continue/sessions/*.json | grep -v sessions.json | head -1)
 (no `--auto`; List/Read/Bash/**Search** blocked except `Bash(convmem*)`; run from **real terminal** — see bounded transcript section)
 
 **Pattern:** `cn --auto` → Bash-first PARTIAL on workspace paths; strict script → PASS when turn 1 is `folder_state()`.
+
+## Phase 3 — CORE 8 system runbook (in progress)
+
+**Purpose:** Confirm `brief_mode: system_runbook` on `/etc`, `/boot`, etc. under `cn --auto` + qwen3-coder:30b.
+
+**Script (real terminal — prefer interactive over headless `-p`):**
+
+```bash
+~/Projects/convmem/scripts/cn-phase3-system-runbook-smoke.sh /etc \
+  "What is the state of my pacman configuration?"
+
+~/Projects/convmem/scripts/cn-phase3-system-runbook-smoke.sh /boot/loader/entries \
+  "What is the state of boot entries?"
+```
+
+**Gate (Phase 3):**
+
+| Check | Pass criterion |
+|-------|----------------|
+| Ritual | Turn 1 `brief()` or `folder_state()` |
+| MCP payload | JSON includes `brief_mode: system_runbook`, `runbook_hint`, `mcp_cwd` |
+| Follow-through | `search_fast` with `runbook_hint.suggested_search_fast` or subject terms |
+| Answer prose | Cites pacman.conf / mirrorlist / boot entries — **not** convmem project dump |
+
+**`/etc` result (`688ae5ee`, qwen3-coder:30b, `cn --auto -p`, 2026-06-30, agent shell):**
+
+| Check | Result |
+|-------|--------|
+| Ritual | **PASS** — turn 1 `folder_state()` |
+| MCP payload | **PASS** — `brief_mode: system_runbook`, `runbook_hint.subject: pacman configuration`, `mcp_cwd: /etc`, `suggested_search_fast: pacman configuration mirrorlist reflector` |
+| Follow-through | **FAIL** — no `search_fast`; headless `-p` exited after one tool round |
+| Answer prose | **FAIL** — summarized brief JSON (convmem projects) instead of pacman config |
+
+**Next:** rerun `/etc` interactively from real terminal (let session continue for `search_fast` + Read); then `/boot/loader/entries`.
 
 
 Prompt:
