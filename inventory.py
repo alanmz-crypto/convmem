@@ -10,12 +10,16 @@ import sqlite3
 from collections import Counter
 from pathlib import Path
 
+from adapters.kiro_session_jsonl import is_kiro_session_jsonl
+from adapters.codex_history_jsonl import is_codex_history_jsonl
 from adapters.sqlite_chat import is_sqlite_crush_schema
 
 OUTPUT = Path("~/.local/share/convmem/inventory.jsonl").expanduser()
 
 SOURCES = [
     "~/.local/share/kiro-cli/data.sqlite3",
+    "~/.kiro/sessions",
+    "~/.codex/history.jsonl",
     "~/.config/cursor/chats",
     "~/.cursor/projects",
     "~/.continue/sessions",
@@ -32,10 +36,14 @@ def detect_format(path: Path) -> str | None:
     if path.suffix == ".md":
         return None
 
-    # JSONL — only Cursor agent-transcripts
+    # JSONL — Cursor agent-transcripts, kiro-cli sessions, Codex history
     if path.suffix == ".jsonl":
         if "agent-transcripts" in path.parts:
             return "jsonl_cursor"
+        if is_kiro_session_jsonl(path):
+            return "jsonl_kiro_session"
+        if is_codex_history_jsonl(path):
+            return "jsonl_codex_history"
         return None  # metrics, telemetry, other jsonl — skip
 
     # SQLite

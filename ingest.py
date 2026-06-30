@@ -112,11 +112,17 @@ def _chunk_session_meta(messages: list[dict], path: str) -> dict:
         (m.get("workspace_directory") for m in messages if m.get("workspace_directory")),
         "",
     )
-    return {
+    source_type = next(
+        (m.get("source_type") for m in messages if m.get("source_type")), ""
+    )
+    meta = {
         "conversation_id": conv_id or "",
         "session_id": session_id or "",
         "workspace_directory": workspace or "",
     }
+    if source_type:
+        meta["source_type"] = source_type
+    return meta
 
 
 def _files_from_inventory(inventory_path: str) -> list[dict]:
@@ -135,6 +141,17 @@ def _files_from_inventory(inventory_path: str) -> list[dict]:
 
 def _processed_path_str(entry_path: str) -> str:
     return str(Path(entry_path).expanduser().resolve())
+
+
+def _stored_hash_for_path(path_str: str, processed: dict) -> str | None:
+    """Return processed.json key (content hash) for a resolved path, if any."""
+    for key, entry in processed.items():
+        if not isinstance(entry, dict) or entry.get("excluded"):
+            continue
+        ep = entry.get("path")
+        if ep and _processed_path_str(ep) == path_str:
+            return key
+    return None
 
 
 def watch_skip_reason(
@@ -157,15 +174,16 @@ def watch_skip_reason(
         if ep and _processed_path_str(ep) == path_str:
             return "excluded"
 
-    path_known = any(
-        isinstance(e, dict)
-        and e.get("path")
-        and not e.get("excluded")
-        and _processed_path_str(e["path"]) == path_str
-        for e in processed.values()
-    )
-    if path_known:
-        return "unchanged"
+    path_known_hash = _stored_hash_for_path(path_str, processed)
+    if path_known_hash is not None:
+        if file_hash is None:
+            try:
+                file_hash = sha256_file(str(p))
+            except OSError:
+                return "unreadable"
+        if file_hash == path_known_hash:
+            return "unchanged"
+        return None
 
     if file_hash is None:
         try:
@@ -242,23 +260,15 @@ def index(
                 if isinstance(entry, dict) and entry.get("path") == path_str:
                     del processed[key]
 
-        # Path-based skip: if this path was previously processed under a
-        # different hash (file grew/changed), skip unless content actually changed
-        # meaningfully. Prevents re-ingest when Continue/Cursor sessions get
-        # touched without real new content.
-        if not force_reindex:
-            if file_hash not in processed:
-                already = any(
-                    e.get("path") == path for e in processed.values() if isinstance(e, dict)
-                )
-                if already:
-                    stats["files_skipped"] += 1
-                    if verbose:
-                        print(
-                            f"  [skip] path already processed (hash changed): {Path(path).name}"
-                        )
-                    continue
+        path_key = str(Path(path).expanduser().resolve())
 
+        # Growing append-only transcripts: drop stale processed entry when hash changes.
+        if force_file and not force_reindex:
+            stale = _stored_hash_for_path(path_key, processed)
+            if stale and stale != file_hash:
+                del processed[stale]
+
+        if not force_reindex:
             if file_hash in processed:
                 stats["files_skipped"] += 1
                 if verbose:
@@ -268,7 +278,6 @@ def index(
         fmt = detect_format(path)
         tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
 
-        path_key = str(Path(path).expanduser().resolve())
         chroma_dir = idx["chroma_dir"]
 
         if force_file:

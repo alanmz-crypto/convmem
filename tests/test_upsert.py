@@ -107,9 +107,27 @@ class UpsertTests(unittest.TestCase):
             verbose=False,
             upsert=True,
         )
-        self.assertEqual(r2["updated"], 1)
+        self.assertEqual(r2["skipped"], 1)
         self.assertEqual(r2["accepted"], 0)
+        self.assertEqual(r2["updated"], 0)
         self.assertEqual(self.store.count_units(), 1)
+
+    @patch("llm.ollama_embed", side_effect=_fake_embed)
+    def test_upsert_skips_unchanged_reembed(self, mock_embed):
+        ingest_observation(
+            _RECORD,
+            store=self.store,
+            embed_model="test",
+            ollama_host="local",
+        )
+        ingest_observation(
+            _RECORD,
+            store=self.store,
+            embed_model="test",
+            ollama_host="local",
+            upsert=True,
+        )
+        self.assertEqual(mock_embed.call_count, 1)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from brief import (
+    _brief_row_matches_project,
     _format_age,
     _latest_handoff_info,
     _recent_inter_model_titles,
@@ -194,6 +195,59 @@ class BriefTests(unittest.TestCase):
         text = render_brief_markdown(data)
         self.assertIn("STALE HANDOFF", text)
         self.assertIn("brief @", text)
+
+    def test_brief_row_matches_project_by_slug(self):
+        row = {"title": "pavlomassage-practice stack on :8082", "document": ""}
+        self.assertTrue(_brief_row_matches_project(row, "pavlomassage-practice"))
+        self.assertFalse(_brief_row_matches_project(row, "willowyhollow-dev"))
+
+    def test_brief_row_matches_project_rejects_unrelated(self):
+        row = {
+            "title": "Arch Linux system health prompt matrix",
+            "document": "pacman configuration boot entries",
+        }
+        self.assertFalse(_brief_row_matches_project(row, "pavlomassage-practice"))
+
+    @patch("brief._kiro_excluded", return_value=True)
+    @patch("brief._mcp_registration", return_value={})
+    @patch("brief._watch_process_memory", return_value=None)
+    @patch("brief._systemd_state", return_value="enabled/active")
+    @patch("brief._recent_decisions")
+    @patch("brief._recent_monitor_units")
+    @patch("brief.gather_project_activity", return_value=[{"slug": "pavlomassage-practice"}])
+    @patch("brief.collection_count", return_value=1)
+    @patch("brief._coverage_counts", return_value=(1, 1, 0, 0))
+    @patch("brief.load_config")
+    def test_gather_brief_data_filters_decisions_when_project_set(
+        self,
+        mock_load,
+        _cov,
+        _count,
+        _proj,
+        mock_monitor,
+        mock_decisions,
+        _sysd,
+        _watch,
+        _mcp,
+        _kiro,
+    ):
+        mock_load.return_value = {
+            "index": {"chroma_dir": "/tmp/x", "processed_log": "/tmp/p.json"},
+            "query": {},
+        }
+        mock_decisions.return_value = [
+            {"title": "Arch Linux runbook", "document": "pacman"},
+            {"title": "pavlomassage-practice docker stack", "document": "8082"},
+        ]
+        mock_monitor.return_value = [
+            {"site": "staging2.willowyhollow.com", "title": "TLS check"},
+        ]
+        data = gather_brief_data(project="pavlomassage-practice")
+        self.assertEqual(data["brief_scope"], "project")
+        self.assertEqual(len(data["recent_decisions"]), 1)
+        self.assertIn("pavlomassage", data["recent_decisions"][0]["title"])
+        self.assertEqual(data["recent_monitor"], [])
+        self.assertIn("answer_from", data)
 
 
 if __name__ == "__main__":

@@ -146,6 +146,27 @@ def _recent_decisions(chroma_dir: str | Path, *, limit: int = 5) -> list[dict]:
     return decisions[:limit]
 
 
+def _brief_row_matches_project(row: dict, project_slug: str) -> bool:
+    """True if a brief ledger row plausibly belongs to the focused project slug."""
+    needle = project_slug.strip().lower()
+    if not needle:
+        return True
+    haystacks = (
+        row.get("title") or "",
+        row.get("document") or "",
+        row.get("site") or "",
+        row.get("source_path") or "",
+    )
+    blob = " ".join(str(h) for h in haystacks).lower()
+    if needle in blob:
+        return True
+    # Slug tokens: pavlomassage-practice → also match pavlomassage, practice-local-pavo
+    for token in needle.replace("_", "-").split("-"):
+        if len(token) >= 4 and token in blob:
+            return True
+    return False
+
+
 def _pending_decision_ingest() -> list[str]:
     """JSONL decision files on disk not yet represented in Chroma."""
     repo = Path(__file__).resolve().parent
@@ -429,7 +450,14 @@ def gather_project_activity(
         agents_exists = bool(repo_path and Path(agents_md).is_file())
         titles = bucket.get("unit_titles") or []
         titles.sort(key=lambda x: x[0], reverse=True)
-        recent_titles = [t for _, t in titles[:3]]
+        if filt:
+            recent_titles = [
+                t
+                for _, t in titles
+                if _brief_row_matches_project({"title": t, "document": t}, slug)
+            ][:3]
+        else:
+            recent_titles = [t for _, t in titles[:3]]
         newest_age = (
             _format_age(
                 max(
@@ -515,7 +543,22 @@ def gather_brief_data(
     except Exception:
         unresolved_count = None
 
-    return {
+    project_slug = project.strip()
+    recent_decisions = _recent_decisions(chroma_dir)
+    recent_monitor = _recent_monitor_units(chroma_dir)
+    if project_slug:
+        recent_decisions = [
+            row
+            for row in recent_decisions
+            if _brief_row_matches_project(row, project_slug)
+        ]
+        recent_monitor = [
+            row
+            for row in recent_monitor
+            if _brief_row_matches_project(row, project_slug)
+        ]
+
+    payload = {
         "generated_at": _now_iso(),
         "units": collection_count(chroma_dir, "knowledge_units"),
         "summaries": collection_count(chroma_dir, "conversation_summaries"),
@@ -535,8 +578,8 @@ def gather_brief_data(
         "kiro_db_excluded": _kiro_excluded(cfg),
         "mcp": _mcp_registration(),
         "watch_memory_kb": _watch_process_memory(),
-        "recent_decisions": _recent_decisions(chroma_dir),
-        "recent_monitor": _recent_monitor_units(chroma_dir),
+        "recent_decisions": recent_decisions,
+        "recent_monitor": recent_monitor,
         "pending_decision_files": _pending_decision_ingest(),
         "inter_model_inbox": inbox,
         "unresolved_count": unresolved_count,
@@ -550,6 +593,25 @@ def gather_brief_data(
             limit=proj_limit,
         ),
     }
+    if project_slug:
+        payload["brief_scope"] = "project"
+        payload["focus_project"] = project_slug
+        payload["recent_inter_model_titles"] = []
+        payload["answer_from"] = (
+            "Project-state answers must come from projects[] and files in this repo. "
+            "Do not call search_fast for Continue IDE, VS Code extensions, Docker Compose, "
+            "or Composer unless the user explicitly asked. Do not invent search queries."
+        )
+        payload["search_policy"] = (
+            "search_fast queries must include this project slug or user-stated terms. "
+            "Forbidden for unprompted project-state: Continue, VS Code extension, Docker Compose plugin, Compose UI."
+        )
+        if project_slug.lower() == "convmem":
+            payload["project_slug_warning"] = (
+                "project=convmem only when cwd IS ~/Projects/convmem. "
+                "If cwd is another repo, use its directory basename (e.g. comfyuiimprov)."
+            )
+    return payload
 
 
 def _clip(text: str, n: int = 120) -> str:

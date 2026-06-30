@@ -39,6 +39,11 @@ def _session_id_from_path(path: str) -> str | None:
     p = Path(path)
     if "agent-transcripts" in p.parts:
         return p.parent.name
+    if p.name == "messages.jsonl" and p.parent.name.startswith("sess_"):
+        from adapters.kiro_session_jsonl import read_session_meta
+
+        meta = read_session_meta(path)
+        return meta.get("session_id") or p.parent.name
     if p.name == "store.db" and "cursor" in p.parts and "chats" in p.parts:
         return p.parent.name
     if p.suffix == ".json" and ".continue" in p.parts:
@@ -85,7 +90,9 @@ def resolve_open_target(meta: dict) -> OpenTarget:
     )
     editor = os.environ.get("EDITOR", "cursor")
 
-    if tool == "kiro" or "kiro-cli" in path:
+    if tool == "kiro" or "kiro-cli" in path or (
+        ".kiro" in p.parts and p.name == "messages.jsonl"
+    ):
         if conversation_id:
             cmd = ["kiro-cli", "chat", "--resume-id", conversation_id]
             return OpenTarget(
@@ -93,9 +100,34 @@ def resolve_open_target(meta: dict) -> OpenTarget:
                 command=cmd,
                 hint=f"kiro-cli chat --resume-id {conversation_id}",
             )
+        kiro_meta: dict = {}
+        if p.name == "messages.jsonl" and p.parent.name.startswith("sess_"):
+            from adapters.kiro_session_jsonl import read_session_meta
+
+            kiro_meta = read_session_meta(path)
+        title = kiro_meta.get("title") or ""
+        workspace = kiro_meta.get("workspace_directory") or ""
+        sid = session_id or kiro_meta.get("session_id") or ""
+        parts = ["kiro-cli chat --resume-picker"]
+        if title:
+            parts.append(f"  (session: {title})")
+        if workspace:
+            parts.append(f"  cwd hint: {workspace}")
+        if sid:
+            parts.append(f"  id: {sid}")
         return OpenTarget(
-            label="Kiro database",
-            hint="kiro-cli chat --resume-picker  (conversation id not indexed — re-run convmem index)",
+            label="Kiro session transcript",
+            hint="".join(parts),
+            cwd=workspace if workspace and os.path.isdir(workspace) else None,
+        )
+
+    if tool == "codex" or (p.name == "history.jsonl" and ".codex" in p.parts):
+        return OpenTarget(
+            label="Codex prompt history",
+            hint=(
+                "User prompts only in ~/.codex/history.jsonl — "
+                "no assistant replies stored locally"
+            ),
         )
 
     if tool == "cursor" or "agent-transcripts" in p.parts or (

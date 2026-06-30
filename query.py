@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import json
 import sys
+import re
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-from chroma_store import ChromaStore, open_chroma_for_read
+from chroma_store import ChromaStore, is_superseded, open_chroma_for_read
 from chroma_readonly import collection_metadata_rows
 from config import load_config
 from domains import domain_breadcrumb, domain_matches, is_known_domain, normalize_domain
@@ -33,6 +34,131 @@ def _unit_domain(meta: dict) -> str | None:
     if raw is None or raw == "":
         return None
     return str(raw)
+
+
+_SEARCH_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "be",
+    "but",
+    "for",
+    "from",
+    "how",
+    "in",
+    "is",
+    "it",
+    "of",
+    "on",
+    "or",
+    "the",
+    "this",
+    "to",
+    "what",
+    "whats",
+    "where",
+    "with",
+}
+
+
+def _search_tokens(text: str) -> list[str]:
+    tokens = re.findall(r"[a-z0-9][a-z0-9._:/-]*", text.lower())
+    return [tok for tok in tokens if tok not in _SEARCH_STOPWORDS]
+
+
+def _search_blob(meta: dict) -> str:
+    parts = [
+        meta.get("title", ""),
+        meta.get("document", ""),
+        meta.get("ledger_id", ""),
+        meta.get("domain", ""),
+        meta.get("site", ""),
+        meta.get("source_path", ""),
+        meta.get("tool", ""),
+        meta.get("type", ""),
+        meta.get("status", ""),
+        meta.get("result", ""),
+        meta.get("notes", ""),
+        meta.get("rationale", ""),
+        meta.get("source_type", ""),
+        meta.get("workspace_directory", ""),
+        meta.get("conversation_id", ""),
+    ]
+    return " ".join(str(part) for part in parts if part)
+
+
+def _keyword_score(query: str, meta: dict) -> float:
+    q = query.lower().strip()
+    blob = _search_blob(meta).lower()
+    tokens = _search_tokens(q)
+    if not tokens and q:
+        tokens = [q]
+
+    score = 0.0
+    if q and q in blob:
+        score += 3.0
+    for tok in dict.fromkeys(tokens):
+        if tok in blob:
+            score += 1.0
+            if tok in str(meta.get("title", "")).lower():
+                score += 0.5
+            if tok in str(meta.get("ledger_id", "")).lower():
+                score += 1.5
+            if tok in str(meta.get("source_path", "")).lower():
+                score += 0.5
+            if tok in str(meta.get("domain", "")).lower():
+                score += 0.5
+            if tok in str(meta.get("site", "")).lower():
+                score += 0.5
+    return score
+
+
+def _fallback_query_rows(
+    collection_name: str,
+    text: str,
+    top_k: int,
+    *,
+    domain: str | None = None,
+    site: str | None = None,
+) -> list[dict]:
+    cfg = load_config()
+    chroma_dir = cfg["index"]["chroma_dir"]
+    domain_norm = normalize_domain(domain) if domain else None
+    site_norm = normalize_site(site) if site else None
+
+    rows = collection_metadata_rows(chroma_dir, collection_name)
+    results: list[dict] = []
+    for meta in rows:
+        if collection_name == "knowledge_units" and is_superseded(meta):
+            continue
+        if site_norm and not filter_results_by_site([{"metadata": meta}], site_norm):
+            continue
+        if domain_norm:
+            unit_domain = _unit_domain(meta)
+            if unit_domain is None or not domain_matches(unit_domain, domain_norm):
+                continue
+        score = _keyword_score(text, meta)
+        if score <= 0:
+            continue
+        results.append(
+            {
+                "id": meta.get("id", ""),
+                "metadata": meta,
+                "document": meta.get("document") or meta.get("title") or "",
+                "score": round(min(score / 6.0, 0.99), 4),
+            }
+        )
+
+    results.sort(
+        key=lambda r: (
+            r.get("score", 0.0),
+            len(str(r.get("metadata", {}).get("title", ""))),
+        ),
+        reverse=True,
+    )
+    return results[:top_k]
 
 
 def query_units(
@@ -59,22 +185,32 @@ def query_units(
         # filter client-side before reranking/truncating.
         n_fetch = max(n_fetch, qcfg.get("top_k_candidates", 20)) * 3
 
-    store = open_chroma_for_read(cfg["index"]["chroma_dir"])
     try:
-        results = store.query_units(embedding, n_fetch)
-    finally:
-        store.close()
-    if site_norm:
-        results = filter_results_by_site(results, site_norm)
-    if domain:
-        results = [
-            r for r in results
-            if (ud := _unit_domain(r.get("metadata", {}))) is not None
-            and domain_matches(ud, domain)
-        ]
+        store = open_chroma_for_read(cfg["index"]["chroma_dir"])
+        try:
+            results = store.query_units(embedding, n_fetch)
+        finally:
+            store.close()
+        if site_norm:
+            results = filter_results_by_site(results, site_norm)
+        if domain:
+            results = [
+                r for r in results
+                if (ud := _unit_domain(r.get("metadata", {}))) is not None
+                and domain_matches(ud, domain)
+            ]
+    except Exception:
+        results = _fallback_query_rows(
+            "knowledge_units",
+            text,
+            n_fetch,
+            domain=domain,
+            site=site,
+        )
     for r in results:
         d = r.get("distance")
-        r["score"] = round(1.0 - d, 4) if d is not None else None
+        if d is not None:
+            r["score"] = round(1.0 - d, 4)
 
     fetch_for_rerank = qcfg.get("top_k_candidates", 20) if use_rerank else top_k
     if use_rerank and results:
@@ -94,16 +230,25 @@ def query_raw(text: str, top_k: int = 5, site: str | None = None) -> list[dict]:
     )
     site_norm = normalize_site(site) if site else None
     n_fetch = top_k * 3 if site_norm else top_k
-    store = open_chroma_for_read(cfg["index"]["chroma_dir"])
     try:
-        results = store.query_summaries(embedding, n_fetch)
-    finally:
-        store.close()
-    if site_norm:
-        results = filter_results_by_site(results, site_norm)
+        store = open_chroma_for_read(cfg["index"]["chroma_dir"])
+        try:
+            results = store.query_summaries(embedding, n_fetch)
+        finally:
+            store.close()
+        if site_norm:
+            results = filter_results_by_site(results, site_norm)
+    except Exception:
+        results = _fallback_query_rows(
+            "conversation_summaries",
+            text,
+            n_fetch,
+            site=site,
+        )
     for r in results:
         d = r.get("distance")
-        r["score"] = round(1.0 - d, 4) if d is not None else None
+        if d is not None:
+            r["score"] = round(1.0 - d, 4)
     return results[:top_k]
 
 

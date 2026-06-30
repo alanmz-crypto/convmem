@@ -193,6 +193,8 @@ def latest_pending(cfg: dict) -> dict | None:
 
 def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
     """Upsert decisions-approved.jsonl into Chroma."""
+    from pathlib import Path
+
     from chroma_store import ChromaStore
     from observe import ingest_observation_file
 
@@ -202,6 +204,8 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
 
         models = load_config()["models"]
     store = ChromaStore(cfg["index"]["chroma_dir"])
+    units_export = cfg["index"].get("units_export")
+    units_export_path = Path(units_export).expanduser() if units_export else None
     return ingest_observation_file(
         str(approved_path(cfg)),
         store=store,
@@ -209,7 +213,45 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
         ollama_host=models["ollama_host"],
         upsert=True,
         verbose=verbose,
+        units_export=units_export_path,
     )
+
+
+def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) -> dict:
+    """Index one approved decision (fast path for record --approve-last)."""
+    from pathlib import Path
+
+    from chroma_store import ChromaStore
+    from ledger import invalidate_ledger_index_cache
+    from observe import ingest_observation
+
+    models = cfg.get("models")
+    if not models:
+        from config import load_config
+
+        models = load_config()["models"]
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    units_export = cfg["index"].get("units_export")
+    units_export_path = Path(units_export).expanduser() if units_export else None
+    unit = ingest_observation(
+        ledger,
+        store=store,
+        embed_model=models["embed_model"],
+        ollama_host=models["ollama_host"],
+        upsert=True,
+        units_export=units_export_path,
+    )
+    stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
+    if unit is None:
+        stats["rejected"] = 1
+    elif unit.pop("_upserted", False):
+        stats["updated"] = 1
+    elif unit.pop("_skipped", False):
+        stats["skipped"] = 1
+    else:
+        stats["accepted"] = 1
+    invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
+    return stats
 
 
 def approve(

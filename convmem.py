@@ -575,7 +575,8 @@ def _finish_record_messages(
         if ingest:
             typer.echo(
                 f"  Indexed (accepted={ingest.get('accepted', 0)}, "
-                f"updated={ingest.get('updated', 0)})"
+                f"updated={ingest.get('updated', 0)}, "
+                f"skipped={ingest.get('skipped', 0)})"
             )
         else:
             typer.echo("  Indexed — searchable via convmem search / MCP ask.")
@@ -658,6 +659,7 @@ def propose_decision_command(
         collect_interactive_fields,
         confirm_interactive_submit,
         ingest_approved_file,
+        ingest_approved_ledger,
         interactive_session_lock,
         latest_pending,
         list_proposals,
@@ -728,7 +730,7 @@ def propose_decision_command(
         apath = str(approved_path(cfg))
         if not no_index:
             try:
-                ingest_result = ingest_approved_file(cfg)
+                ingest_result = ingest_approved_ledger(cfg, ledger)
             except Exception as e:
                 render_error(f"Approved but index failed: {e}")
                 typer.echo(f"  Retry: convmem add --file {apath} --upsert")

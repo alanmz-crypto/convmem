@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "allowed_tools": [
+      "mcp_convmem_brief",
+      "mcp_convmem_search_fast",
+      "mcp_convmem_search",
+      "mcp_convmem_ask",
+      "mcp_convmem_related",
+      "mcp_convmem_stats"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^bash$",
+        "command": "HOOK_PATH_PLACEHOLDER"
+      },
+      {
+        "matcher": "^ls$",
+        "command": "HOOK_PATH_PLACEHOLDER"
+      },
+      {
+        "matcher": "^view$",
+        "command": "HOOK_PATH_PLACEHOLDER"
+      },
+      {
+        "matcher": "^glob$",
+        "command": "HOOK_PATH_PLACEHOLDER"
+      },
+      {
+        "matcher": "^grep$",
+        "command": "HOOK_PATH_PLACEHOLDER"
+      },
+      {
+        "matcher": "^read$",
+        "command": "HOOK_PATH_PLACEHOLDER"
+      },
+      {
+        "matcher": "^agent$",
+        "command": "HOOK_PATH_PLACEHOLDER"
+      },
+      {
+        "matcher": "^mcp_convmem_",
+        "command": "HOOK_PATH_PLACEHOLDER"
+      }
+    ]
+  }
+}

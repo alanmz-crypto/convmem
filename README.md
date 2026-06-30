@@ -18,6 +18,8 @@ Local-first system that ingests AI chat logs and **tool-sourced evidence** into 
 
 Past conversations and security findings become a **queryable evidence bus** — not live agent-to-agent chat.
 
+**Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
+
 **First webdev target:** `staging2.willowyhollow.com`
 
 ---
@@ -258,7 +260,7 @@ cd ~/Projects/convmem
 ~/miniforge3/envs/convmem/bin/python -m unittest discover -s tests -v
 ```
 
-Expect **28 tests, all OK** — covers ledger graph, stable ids, upsert, evidence rerank, ask dedupe.
+Expect **159 tests, all OK** — covers ledger graph, stable ids, upsert, Chroma approve-index regression, evidence rerank, ask dedupe, doctor, protocol adapters.
 
 ### 2. Seed evidence chain (optional, for graph/ask tests)
 

@@ -31,6 +31,10 @@ Manual `convmem index --file` only. Enforced in `watch.py` (`is_live_watch_db`) 
 - `~/.config/cursor/chats/**/store.db`
 - `~/.local/share/convmem/imports/webui.db`
 
+**Watch OK (kiro-cli 2.x):** `~/.kiro/sessions/**/sess_*/messages.jsonl` — see [KIRO-SESSION-ADAPTER.md](KIRO-SESSION-ADAPTER.md).
+
+**Codex:** `~/.codex/history.jsonl` — user prompts only (`source_type=prompt_only`).
+
 ## Tool state ≠ source
 
 Not project source: `.crush/`, `.lighthouseci/`, `node_modules/`, ComfyUI caches, `~/.local/share/convmem/chroma/`.

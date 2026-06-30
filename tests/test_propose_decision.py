@@ -6,11 +6,13 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from ledger import normalize_ledger_record
 from propose_decision import (
     PROPOSAL_KIND,
     approve,
+    ingest_approved_ledger,
     latest_pending,
     list_proposals,
     propose,
@@ -83,6 +85,22 @@ class ProposeDecisionTests(unittest.TestCase):
         self.assertEqual(ledger["id"], "dec_test_approved")
         self.assertEqual(ledger["author_model"], "ryan")
         self.assertEqual(ledger["relates_to"], "dec_convmem_workspace_standard")
+
+    @patch("observe.ingest_observation")
+    def test_ingest_approved_ledger_indexes_one(self, mock_ingest):
+        mock_ingest.return_value = {"id": "u1", "ledger_id": "dec_test_approved"}
+        ledger = {
+            "id": "dec_test_approved",
+            "kind": "decision",
+            "status": "accepted",
+            "relates_to": "dec_parent",
+            "summary": "Fast index",
+            "rationale": "One record only",
+            "author_model": "ryan",
+        }
+        stats = ingest_approved_ledger(self.cfg, ledger)
+        self.assertEqual(stats["accepted"], 1)
+        mock_ingest.assert_called_once()
 
     def test_reject_requires_reason(self):
         rec = propose(

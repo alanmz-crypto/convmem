@@ -1,0 +1,24 @@
+# Kiro IDE 1.0+ — unified permissions (ACP policy engine).
+# mcp.json autoApprove is NOT used by vibe mode; use this file instead.
+# User scope: ~/.kiro/settings/permissions.yaml
+#
+# Shell: Kiro splits on | ; && || — each segment needs its own match.
+# Agents often pipe convmem output to head/tail, or use echo separators between
+# multi-site unresolved calls (;) — allow read-only truncators and echo.
+rules:
+  - capability: shell
+    effect: allow
+    match:
+      - "convmem doctor*"
+      - "convmem brief*"
+      - "convmem unresolved*"
+      - "convmem search*"
+      - "convmem ask*"
+      - "convmem stats*"
+      - "head *"
+      - "tail *"
+      - "echo *"
+  - capability: mcp
+    effect: allow
+    match:
+      - "convmem/*"

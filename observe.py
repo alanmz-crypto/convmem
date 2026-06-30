@@ -51,6 +51,15 @@ def normalize_observation(raw: dict, *, min_confidence: float = 0.0) -> dict | N
     return normalize_ledger_record(raw, min_confidence=min_confidence)
 
 
+def _ledger_unchanged_in_index(existing: dict, unit: dict) -> bool:
+    """True when Chroma already has this ledger row with the same durable text."""
+    return (
+        (existing.get("title") or "") == (unit.get("title") or "")
+        and (existing.get("rationale") or "") == (unit.get("rationale") or "")
+        and (existing.get("relates_to") or "") == (unit.get("relates_to") or "")
+    )
+
+
 def ingest_observation(
     record: dict,
     *,
@@ -63,8 +72,6 @@ def ingest_observation(
     by_ledger_id: dict[str, dict] | None = None,
 ) -> dict | None:
     """Validate, embed, and store one ledger record. Returns the stored unit or None."""
-    from llm import ollama_embed
-
     unit = normalize_ledger_record(record, min_confidence=min_confidence)
     if unit is None:
         return None
@@ -73,8 +80,6 @@ def ingest_observation(
     rationale = unit.get("rationale") or ""
     if rationale:
         doc = doc + " Rationale: " + rationale
-    embedding = ollama_embed(doc, model=embed_model, host=ollama_host)
-    meta = ledger_unit_metadata(unit)
     lid = (unit.get("ledger_id") or "").strip()
 
     if upsert and lid:
@@ -82,6 +87,14 @@ def ingest_observation(
             by_ledger_id, _ = build_ledger_index(store)
         existing = by_ledger_id.get(lid)
         if existing:
+            if _ledger_unchanged_in_index(existing, unit):
+                unit["id"] = existing["id"]
+                unit["_skipped"] = True
+                return unit
+            from llm import ollama_embed
+
+            embedding = ollama_embed(doc, model=embed_model, host=ollama_host)
+            meta = ledger_unit_metadata(unit)
             chroma_id = existing["id"]
             store.update_unit(chroma_id, doc, embedding, meta)
             unit["id"] = chroma_id
@@ -89,6 +102,11 @@ def ingest_observation(
             if units_export:
                 _upsert_jsonl_line(units_export, lid, unit)
             return unit
+
+    from llm import ollama_embed
+
+    embedding = ollama_embed(doc, model=embed_model, host=ollama_host)
+    meta = ledger_unit_metadata(unit)
 
     store.add_unit(unit["id"], doc, embedding, meta)
 
@@ -112,7 +130,7 @@ def ingest_observation_file(
     upsert: bool = False,
 ) -> dict:
     """Ingest a JSONL file of ledger records. Returns counts."""
-    stats = {"accepted": 0, "rejected": 0, "updated": 0}
+    stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
     by_ledger_id: dict[str, dict] | None = None
     if upsert:
         by_ledger_id, _ = build_ledger_index(store)
@@ -151,6 +169,11 @@ def ingest_observation_file(
                         f"  [upd] {unit['ledger_kind']:<14} {unit['domain']:<28} "
                         f"{lid}  {unit['title'][:50]}"
                     )
+            elif unit.pop("_skipped", False):
+                stats["skipped"] += 1
+                if verbose:
+                    lid = unit.get("ledger_id", unit["id"][:8])
+                    print(f"  [skip] unchanged {lid}")
             else:
                 stats["accepted"] += 1
                 if by_ledger_id is not None:

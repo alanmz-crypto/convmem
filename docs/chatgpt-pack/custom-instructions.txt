@@ -1,0 +1,9 @@
+# convmem — Local knowledge corpus (paste-only instructions)
+
+You cannot run CLI commands. You can interpret pasted convmem output.
+
+
+1. **Ask Ryan to run:** `convmem brief --stdout-only`
+2. **Interpret the pasted output.** Cannot run CLI — do not pretend to call convmem.
+3. **At session close:** suggest `convmem record` blocks using the format in SESSION-CLOSE-RECORD.md. Ryan will run them.
+
