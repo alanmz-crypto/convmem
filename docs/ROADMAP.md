@@ -27,13 +27,26 @@ Daily ritual: `doctor` → `unresolved` → `ask` / `record --approve-last`.
 
 ## Pre-live-write gate (Restic)
 
-Before any live Chroma upsert or write-path merge:
+Before any live Chroma upsert or write-path merge, use the **external wrapper** (not bare `convmem`):
 
-1. Last Restic snapshot of `~/.local/share/convmem/chroma` must cover corpus **as of today**.
-2. If stale → run a fresh Restic snapshot, then proceed.
-3. If Restic cannot snapshot → **block** live upsert.
+```bash
+~/Projects/convmem/scripts/convmem-live-write.sh record --approve-last
+~/Projects/convmem/scripts/convmem-live-write.sh add --file … --upsert
+```
 
-Corpus rollback: [`RECOVER.md`](RECOVER.md). If `restic` is not on PATH, ensure a Tier-1 data backup exists before live writes.
+The wrapper calls `scripts/restic-ensure-chroma-snapshot.sh` first. **Fail-closed:** any Restic error (binary missing, bad repo, password missing, backup failure) **blocks** the live write — no warn-and-continue.
+
+**Stale threshold (pinned):** latest snapshot tagged `convmem-chroma` must have a snapshot time on the **same local calendar day** as now (≥ local midnight today). Not last git commit, not last approved write.
+
+| Condition | Action |
+|-----------|--------|
+| **Current** | Wrapper proceeds to `convmem` |
+| **Stale** | Wrapper runs `restic backup` of `chroma/`, then proceeds |
+| **Any Restic failure** | **Block** — exit 1, no live write |
+
+Setup: `bash ~/Projects/convmem/scripts/setup-restic-chroma.sh` (once). Manual secret: `~/.config/convmem/restic.password` — see `config/restic.env.example`.
+
+Corpus rollback: [`RECOVER.md`](RECOVER.md).
 
 ---
 
