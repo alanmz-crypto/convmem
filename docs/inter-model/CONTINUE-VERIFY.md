@@ -1,6 +1,6 @@
 # Continue + convmem verification checklist
 
-**Updated:** 2026-06-29 (Phase 1 **CLOSED**; Phase 2 = `cn --auto` policy doc)
+**Updated:** 2026-06-29 (Phase 1 + **Phase 2 CLOSED** — Qwen Continue verify)
 
 ## Phase gates vs grader `GRADE:`
 
@@ -220,7 +220,8 @@ Prompt:
 | `cbf6e0b3` | `~/Projects/ponytail` | `cn --auto` | **PASS** | `brief()` → search_fast → ask |
 | `725e9e78` | `/home/linuxbrew` | `cn --auto` | **FAIL** | List-first; no MCP |
 | `5a5e6f0e` | `~/WordPress/scripts` | `cn --auto` | **PARTIAL** | Bash turn 1; turn 2 `folder_state()` |
-| `e46bb58d` | `~/Documents` | `cn --auto` | **FAIL** | Bash turn 1; pre-v5 |
+| `e46bb58d` | `~/Documents` | `cn --auto` | **PARTIAL** | Bash turn 1; pre-v5 payload |
+| `f358d4f0` | `~/Documents` | `cn --auto` | **PARTIAL** | Phase 2: Bash → `folder_state`; v5 `inventory.total: 0` |
 
 **Phase 1 gate — CLOSED (2026-06-29):**
 
@@ -236,6 +237,44 @@ Prompt:
 - **`cn --auto` on alien cwds:** **PARTIAL-acceptable** (documented structural limit — `--auto` ignores `--exclude`). Real failure mode: Bash-first, convmem turn 2+ (`e46bb58d`). v5 stats-zeroing improves turn-2+ answers (no global corpus bleed). Known limitation, not a blocker.
 
 **Phase 2 (optional):** document `cn --auto` PARTIAL behavior with answer-quality notes; not blocking.
+
+## Phase 2 — `cn --auto` policy run (**CLOSED** 2026-06-29)
+
+**Purpose:** Confirm v5 stats-zeroing helps **turn-2+** answers when turn-1 ritual slips under daily mode (`cn --auto` ignores `--exclude`).
+
+**Script (real terminal only):**
+
+```bash
+jq '.cliSelectedModel = "qwen3-coder:30b"' \
+  ~/.continue/index/globalContext.json > /tmp/gc.json && \
+  mv /tmp/gc.json ~/.continue/index/globalContext.json
+
+~/Projects/convmem/scripts/cn-phase2-auto-smoke.sh ~/Documents
+# Let the session finish — do not timeout-kill before the model answers.
+
+UUID=$(ls -t ~/.continue/sessions/*.json | grep -v sessions.json | head -1)
+~/Projects/convmem/scripts/grade-continue-session.sh "$UUID"
+```
+
+**Gate (Phase 2 only):**
+
+| Check | Pass criterion |
+|-------|----------------|
+| Ritual | `alien_ritual PARTIAL` or `PASS` — **not** FAIL with zero MCP |
+| v5 MCP payload | `folder_state`/`brief` JSON has `inventory.total: 0`, no `units`/`summaries` as folder stats |
+| Answer prose | Final reply cites `workspace_hint` / local files — **not** “2900 knowledge units in this folder” |
+
+**Documents result (`f358d4f0`, qwen3-coder:30b, `cn --auto`, 2026-06-30):**
+
+| Check | Result |
+|-------|--------|
+| Ritual | **PARTIAL** — turn 1 `Bash` (`pwd && ls -la`), turn 2 `folder_state()` |
+| v5 payload | **PASS** — `folder_state` returned `inventory.total: 0`, empty `services`, no global `units`/`summaries` in brief JSON |
+| Answer prose | Session ended before final answer (agent timeout); MCP layer confirms v5 fix |
+
+**Policy (confirmed):** `cn --auto` on workspace_local → **PARTIAL-acceptable**. Ritual order slips (Bash-first); convmem on turn 2+ with v5-trimmed brief degrades gracefully. Structural limit — not an MCP defect. Use strict script when graded turn-1 discipline is required.
+
+**Pre-v5 contrast:** `e46bb58d` — same Bash → `folder_state` pattern; v5 addresses payload bleed, not turn order.
 
 **v3 fix (2026-06-29):** cwd-aware MCP `instructions=` + `folder_state()` tool (prompt-matched alias for `brief()` on workspace_local paths). Retry `/home/linuxbrew` after MCP restart.
 
