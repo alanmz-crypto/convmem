@@ -68,6 +68,14 @@ def tool_names(turn):
     msg = turn.get("message") or {}
     return [tc.get("function", {}).get("name") for tc in (msg.get("toolCalls") or [])]
 
+def tool_args(turn):
+    msg = turn.get("message") or {}
+    out = []
+    for tc in msg.get("toolCalls") or []:
+        fn = tc.get("function") or {}
+        out.append((fn.get("name"), fn.get("arguments") or ""))
+    return out
+
 def user_text(turn):
     return (turn.get("message") or {}).get("content") or ""
 
@@ -125,6 +133,83 @@ print(f"Session: {path.name}")
 print(f"Title:   {data.get('title', '')}")
 print()
 fail = 0
+
+# Cursor/agent shell can inject CheckBackgroundJob before the model's first real tool.
+ENV_ARTIFACT_TOOLS = frozenset({"CheckBackgroundJob"})
+alien_env = any(
+    (t.get("message") or {}).get("role") == "assistant"
+    and ENV_ARTIFACT_TOOLS.intersection(tool_names(t))
+    for t in history
+)
+
+# Alien-workspace: first assistant tool call should be brief or convmem shell ritual
+alien_ok = None
+alien_note = ""
+for turn in history:
+    if (turn.get("message") or {}).get("role") != "assistant":
+        continue
+    names = [n for n in tool_names(turn) if n and n not in ENV_ARTIFACT_TOOLS]
+    if not names:
+        continue
+    first = names[0]
+    args_blob = " ".join(a for _, a in tool_args(turn)).lower()
+    if first in ("brief", "mcp_convmem_brief", "folder_state"):
+        alien_ok = True
+        alien_note = f"first tool: {first}"
+    elif first in ("run_terminal_cmd", "Bash", "bash"):
+        if "convmem doctor" in args_blob or "convmem brief" in args_blob:
+            alien_ok = True
+            alien_note = f"first tool: {first} (convmem ritual)"
+        else:
+            alien_ok = False
+            alien_note = f"first tool: {first} (no convmem)"
+    else:
+        alien_ok = False
+        alien_note = f"first tool: {first}"
+    break
+
+if alien_env:
+    print(
+        "  alien_ritual SKIP (CheckBackgroundJob — agent shell artifact; "
+        "rerun from real terminal)"
+    )
+elif alien_ok is True:
+    print(f"  alien_ritual PASS ({alien_note})")
+elif alien_ok is False:
+    # Turn 2+ convmem after Bash/List turn 1 (common cn --auto partial)
+    partial = False
+    seen_bad_first = False
+    for turn in history:
+        if (turn.get("message") or {}).get("role") != "assistant":
+            continue
+        names = [n for n in tool_names(turn) if n and n not in ENV_ARTIFACT_TOOLS]
+        if not names:
+            continue
+        first = names[0]
+        if not seen_bad_first:
+            if first in ("brief", "mcp_convmem_brief", "folder_state"):
+                break
+            if first in ("run_terminal_cmd", "Bash", "bash"):
+                args_blob = " ".join(a for _, a in tool_args(turn)).lower()
+                if "convmem doctor" not in args_blob and "convmem brief" not in args_blob:
+                    seen_bad_first = True
+                    continue
+            else:
+                seen_bad_first = True
+                continue
+        if first in ("brief", "mcp_convmem_brief", "folder_state"):
+            partial = True
+            alien_note = f"turn 2+ {first} after {alien_note.split(': ', 1)[-1]}"
+            break
+    if partial:
+        print(f"  alien_ritual PARTIAL ({alien_note}) — use cn-convmem-smoke.sh for strict PASS")
+    else:
+        print(f"  alien_ritual FAIL ({alien_note})")
+        fail += 1
+else:
+    print("  alien_ritual SKIP (no tool calls)")
+
+print()
 for key, r in results.items():
     status = "SKIP"
     if r["called"] or r["cheated"]:

@@ -1,0 +1,19 @@
+# Continue ~/.continue/config.yaml — rules: block (session-close ONLY)
+#
+# Session-start protocol lives in MCP instructions= (agent-protocol-mcp.txt).
+# Remove the named-tool rule ("When the user names a convmem MCP tool...") —
+# MCP tool docstrings + instructions= cover named-tool discipline.
+#
+# Merge: replace the entire `rules:` list with the single entry below.
+
+rules:
+  - |
+    Session close (Continue): Ryan copy-pastes ONLY from a ```bash code block. No prose before/after the block.
+    Format exactly — backslash line breaks, NO newlines inside quoted strings:
+    convmem record \
+      --relates-to <dec_prop_… from search_fast "Continue verify" OR chain dec_prop_20260623_215943_5abe> \
+      --summary "<one sentence; lead with Continue MCP verify / convmem coordination>" \
+      --rationale "<MCP tools used; pass/fail; config changes; not client deploy>" \
+      --author continue-session
+    convmem record --approve-last
+    NEVER --author DeepSeek, deepseek, or model names. NEVER --relates-to a ledger you only cited as a test hit (e.g. practice stack c4dd) unless that decision IS the session topic. Full rules: ~/Projects/convmem/docs/inter-model/SESSION-CLOSE-RECORD.md

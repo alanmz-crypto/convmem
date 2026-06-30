@@ -1,27 +1,56 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-06-24 by Cursor
+**Updated:** 2026-06-29 (Phase 1 **CLOSED** — Qwen Continue workspace_local)
+
+## Active handoff
+
+**Phase 1 gate:** **CLOSED.** Documents `13bf8547` PASS, linuxbrew `77a57494` PASS. Strict script + `--exclude Search` is the enforceable path for graded workspace_local smokes.
+
+**Phase 2 (optional):** `cn --auto` PARTIAL documentation run — not blocking. See [`CONTINUE-VERIFY.md`](CONTINUE-VERIFY.md).
+
+**Archive:** [`HANDOFF-CLAUDE-CLOUD-2026-06-29-qwen-continue-verify.md`](HANDOFF-CLAUDE-CLOUD-2026-06-29-qwen-continue-verify.md) + `handoff-claude-cloud-qwen-continue-2026-06-29.tar.gz`
 
 ## State
 
-- **Record UX:** `record -i` → `record --approve-last` (auto-index). Protocol ledger: `c311`.
-- **Continue integrated:** MCP verify **PASS** (`dec_prop_20260623_233059_7ad3`) — Tiers 2–4 + Tier 6 cold recall **PASS**; grader `scripts/grade-continue-session.sh`; checklist `CONTINUE-VERIFY.md`.
-- **Continue config:** `~/.continue/config.yaml` — `schema: v1`, `mcpServers` → convmem; DeepSeek **V4 Flash / Flash (Think) / Pro**.
-- **Session-close rules:** `SESSION-CLOSE-RECORD.md` + Continue rule — `--author continue-session`, chain coordination thread (not test-subject ledger like practice `c4dd`).
-- **Tier 6 DONE:** practice CSP tighten (6.1, chain `0f73`→`9de7`) + staging2 read-only probe (6.2, chain `503c`→`51e9`).
-- **Practice lab:** `~/WordPress/willowyhollow-practice` on **:8081**, site tag `practice-local`; **runtime = `docker compose`** (`scripts/stack.sh`); WPCode CSP snippet **1116** (`purple-practice-csp-8081`); reset = `restore-from-backup.sh` (`dec_prop_20260623_231223_1403`).
-- **Preview stack:** `~/WordPress/willowyhollow` on **:8080**; **runtime = `podman-compose`** (`scripts/stack.sh`). Do **not** use `podman compose` for practice (delegates to Docker; `podman exec` breaks).
-- **Port conflicts:** `~/WordPress/scripts/cleanup-duplicate-stacks.sh` — removes stale underscore Podman containers fighting Docker/Podman dash stacks.
-- **Docker/Podman fix:** `dec_prop_20260624_025115_862b` (chains `51e9`).
-- **Watch:** subprocess index (watch parent stays light); stale `watch.lock` checks `/proc/pid/cmdline` — restart after deploy (`systemctl --user restart convmem-watch`).
-- **Repo roots:** `GitClones`, `Projects`, `WordPress` — see `CURSOR-2026-06-23-repo-roots-confirmed.md`.
-- **staging2 CSP deploy:** still open (Site Tools or `.htaccess` per `a66c` / `51e9`) — **client work**, not coordination.
-- **willowyhollow-dev docs:** `ENVIRONMENTS.md` (four surfaces / lanes; staging2 ≠ git), `HABITS.md` (pre-client, CSP loop); `WORKFLOW.md` + `AGENTS.md` updated; `wh-*` aliases in `~/.zshrc` (`source ~/.zshrc` once).
+- **Global protocol:** **Closed.** All active surfaces **PASS** alien soak + post-permissions retest (Ryan). See `SOAK-REPORT-2026-06-25.md`.
+- **Gap-fix (pre-P2):** Deploy permissions verify, Crush session-close slice, Continue trim template, verification matrix, grader alien check — **shipped**. Ryan manual: Continue trim + Codex/blank-dir soaks.
+- **Deployed:** Cursor `.mdc`, Kiro steering + `permissions.yaml` (incl. `echo *`), Crush Tier A + `crush.json` permissions + bash hook, Continue MCP `instructions=`.
+- **Post-permissions retest (Ryan):** **Cursor PASS ×2**, **Kiro PASS**, **Crush PASS**, **Continue qwen3-coder:30b PASS** — no convmem permission prompts.
+- **ChatGPT Tier C:** out of scope (ignored).
+- **Corpus:** **1590** units, **343** summaries; `doctor` all PASS.
+- **P2 gate:** still **hold** (MCP `unresolved` tool optional next).
+- **Tests:** run `convmem brief --with-tests` or pytest when needed.
+
+## Architecture diagram
+
+```
+flowchart TD
+  canonical["config/agent-protocol.md\n(canonical SSoT)"]
+  mcp["mcp_server.py\nloads MCP slice"]
+  cursor["~/.cursor/rules/convmem.mdc"]
+  codex["~/.codex/AGENTS.md"]
+  kiro["~/.kiro/steering/convmem.md"]
+  crush["~/.config/crush/rules/convmem.md"]
+  continue["~/.continue/config.yaml rules"]
+  chatgpt["docs/chatgpt-pack/\ncustom-instructions.txt"]
+  recover["docs/RECOVER.md +\ndeploy script"]
+
+  canonical --> mcp
+  canonical --> cursor
+  canonical --> codex
+  canonical --> kiro
+  canonical --> crush
+  canonical --> continue
+  canonical --> chatgpt
+  canonical --> recover
+```
 
 ## Decision
 
 - Inter-model markdown = archive; **ledger + brief** = truth.
 - **Change feed** (Codex): deferred until payoff review **2026-07-07**.
+- **Crush tier:** Tier A (shell + MCP) — soak #8 showed MCP-only rules ignored; redeployed with shell ritual.
+- **P2 gate held:** Do not accelerate. Fix surface coverage first, then re-evaluate MCP tools.
 
 ## Record a fact (two commands)
 
@@ -47,19 +76,31 @@ Search for `--relates-to` (never topic slugs). Fallback root: `dec_prop_20260623
 
 | Layer | Ledger id |
 |-------|-----------|
+| **Phase 2 deployment (Crush slice + soak report)** | `dec_prop_20260625_233830_b9af` |
+| **Continue+Crush alien-workspace fail: zero convmem** | `dec_prop_20260625_225404_11cf` |
+| **Continue alien-workspace fail: pavlomassage-practice** | `dec_prop_20260625_223006_528c` |
+| **Soak: alien-workspace spot-check logged** | `dec_prop_20260625_220647_47d9` |
+| **Global protocol post-deploy soak** | `dec_prop_20260625_203408_f9b3` |
+| **Thai Massage image darkening fix** | `dec_prop_20260623_215943_5abe` |
 | **Docker/Podman stack fix** | `dec_prop_20260624_025115_862b` |
-| **Tier 6.2 staging2 probe complete** | `dec_prop_20260624_022340_51e9` |
-| **Tier 6.1 practice CSP step 4** | `dec_prop_20260624_011707_9de7` |
-| **Continue MCP verify** | `dec_prop_20260623_233059_7ad3` |
-| Cursor close (convmem arc) | `dec_prop_20260623_215943_5abe` |
-| Protocol root (fallback) | `dec_prop_20260623_161428_c311` |
+| **Protocol root (fallback)** | `dec_prop_20260623_161428_c311` |
 
 **Rule:** chain under the **newest relevant** id from `search_fast`, not a ledger you only cited during a test.
 
 ## Next
 
-- **All models:** `convmem brief` at session start; `search_fast` / `ask --site` before guessing; `record` for durable handoffs.
-- **Practice ops:** `source scripts/stack.sh` + `docker compose` on `:8081`; `cleanup-duplicate-stacks.sh` if CSP/ports look wrong.
-- **staging2 CSP:** client deploy when Ryan chooses — policy template from practice lab; delivery per `a66c`.
-- **Ops:** confirm watch RSS after restart; staging2 CSP when Ryan chooses.
+- **Default:** `convmem doctor` → `brief` → `unresolved` (shell) or MCP `brief()` first (MCP-only); `search_fast` before guessing.
+- **Ryan manual:** See [VERIFICATION-MATRIX.md](VERIFICATION-MATRIX.md) — Continue `rules:` trim, Codex alien soak, blank-dir checks.
 - **Change feed:** hold until **2026-07-07**.
+- **P2:** MCP `unresolved` tool — **hold** until post-fix matrix green.
+
+### Optional close (Ryan — search for newer `--relates-to` first)
+
+```bash
+convmem record \
+  --relates-to dec_prop_20260625_233830_b9af \
+  --summary "Global convmem protocol: all surfaces PASS + gap-fix deploy" \
+  --rationale "Cursor/Kiro/Crush/Continue qwen verified; permissions echo*; deploy verify shipped; P2 deferred." \
+  --author ryan
+convmem record --approve-last
+```
