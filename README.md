@@ -61,6 +61,8 @@ Tools (wp-sec, Lighthouse) ──► observe.py (add/upsert) ──┘
 
 **Persistence:** JSONL exchange format at ingest + Chroma only. No graph DB.
 
+**Deployment:** Single workstation. Corpus at `~/.local/share/convmem/`. Optional user systemd units (`watch`, `refine`, `monitor`) on the same machine — see [docs/SYSTEMD-DEPLOY.md](docs/SYSTEMD-DEPLOY.md). No remote corpus host or rsync between machines.
+
 ---
 
 ## Milestones (signed off)
@@ -72,7 +74,7 @@ Tools (wp-sec, Lighthouse) ──► observe.py (add/upsert) ──┘
 | **C** | Scanner auto-ingest + upsert | `export_lighthouse.py`, `add --upsert`, `scripts/ingest-*.sh` |
 | **E** | Evidence-aware ask | `evidence.py`, `ask --evidence` |
 | **D** | OpenClaw probes | *deferred* |
-| **F0/F1/F2b** | Always-on watch + refine + monitor | See [docs/MILESTONE-F.md](docs/MILESTONE-F.md), [docs/MINIPC-DEPLOY.md](docs/MINIPC-DEPLOY.md) |
+| **F0/F1/F2b** | Always-on watch + refine + monitor | See [docs/MILESTONE-F.md](docs/MILESTONE-F.md), [docs/SYSTEMD-DEPLOY.md](docs/SYSTEMD-DEPLOY.md) |
 
 ---
 
@@ -122,12 +124,12 @@ convmem refine --once --job chroma_dedupe --limit 20
 convmem refine --once --job confidence_audit
 convmem refine --once --job backfill_domain --limit 10   # LLM — uses DeepSeek
 convmem refine --stats
-convmem refine                     # daemon (systemd on miniPC)
+convmem refine                     # daemon (systemd user units)
 convmem monitor --site staging2.willowyhollow.com          # F2b HTTP probes
 convmem monitor --site staging2.willowyhollow.com --dry-run
 ./scripts/monitor-staging2.sh
 
-Always-on deploy: [docs/MINIPC-DEPLOY.md](docs/MINIPC-DEPLOY.md) (watch + refine + monitor timer).
+Always-on deploy: [docs/SYSTEMD-DEPLOY.md](docs/SYSTEMD-DEPLOY.md) (watch + refine + monitor timer).
 ```
 
 Tombstoned duplicates are hidden from search/stats (`superseded: true` in metadata). See `systemd/convmem-refine.service.example`.

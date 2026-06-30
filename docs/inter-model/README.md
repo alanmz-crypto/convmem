@@ -41,7 +41,7 @@ If the handoff changes shared course, also update `docs/inter-model/LATEST.md` s
 
 **Codex — cross-model history policy (2026-06-15):** `CURSOR-2026-06-15-cross-model-history-for-codex.md`
 
-**Current direction (2026-06-23):** `CURSOR-2026-06-23-coord-direction.md` — protocol = `brief` + `LATEST.md` + `convmem propose_decision -i`
+**Current direction:** [`config/agent-protocol.md`](../config/agent-protocol.md) — `brief` → `search_fast` / `ask`; session close via `convmem record` + `convmem record --approve-last` (see [`SESSION-CLOSE-RECORD.md`](SESSION-CLOSE-RECORD.md)). Legacy CLI name: `propose_decision`.
 
 ## Cursor implementer rule
 

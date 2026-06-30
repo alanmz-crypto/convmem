@@ -1,1 +1,0 @@
-{"id":"dec_001","kind":"decision","domain":"web_stack.security","author_model":"kiro-review","site":"staging2.willowyhollow.com","relates_to":"obs001","summary":"Add CSP through nginx config","status":"accepted","timestamp":"2026-06-17T20:00:00Z"}

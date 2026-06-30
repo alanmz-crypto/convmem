@@ -6,7 +6,7 @@ Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
 | Agent | Lane | Capability tier |
 |-------|------|-----------------|
 | **Kiro** | Design review, milestone sign-off; session start: `convmem brief` → `ask` → `LATEST.md`; **finish facts via `convmem record --approve-last --signer kiro-review`**, not markdown sign-off | Tier A (shell + MCP via `~/.kiro/settings/mcp.json` + steering) |
-| **Cursor** | Implementer on canonical dev machine; global `convmem.mdc` rule drives session start | Tier A (shell + MCP) |
+| **Cursor** | Implementer on local workstation; global `convmem.mdc` rule drives session start | Tier A (shell + MCP) |
 | **Sonnet** | MCP verification (static source + live Crush handshake) | Tier A via Cursor |
 | **ChatGPT** | Orchestration/strategy; paste-only access to corpus | Tier C (paste-only) |
 | **Crush** | Runtime agent with shell + MCP read tools | Tier A (shell + MCP; soak #8 showed MCP-only rules ignored) |

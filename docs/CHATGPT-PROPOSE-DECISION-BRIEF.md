@@ -1,3 +1,5 @@
+> **Superseded (2026-06-22 assignment).** Shipped as `convmem record` + `--approve-last`. Current ChatGPT pack: [`docs/chatgpt-pack/README-START-HERE.md`](chatgpt-pack/README-START-HERE.md).
+
 # ChatGPT assignment: `convmem propose_decision` spec
 
 **To:** ChatGPT (cloud — paste or upload this tar)  
@@ -43,7 +45,7 @@ See included `ledger.py` — `Decision` dataclass fields:
 Ingest today:
 
 ```bash
-convmem add --file examples/decisions-session-2026-06-18.jsonl --upsert
+convmem add --file docs/chatgpt-pack/examples/decisions-session-2026-06-18.jsonl --upsert
 ```
 
 Rationale is appended to the embedded document in `observe.py`:

@@ -32,4 +32,8 @@ __pycache__/
 # Handoff bundles (built locally; not committed)
 handoff-tar/*.tar.gz
 handoff-tar/*.manifest.txt
+handoff-tar/*/
+handoff-*.tar.gz
+review-bundles/*/
+review-bundles/*.tar.gz
 .aider*

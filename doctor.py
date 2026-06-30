@@ -1,4 +1,4 @@
-"""Health checks for the canonical convmem host — reuses brief.py probes."""
+"""Health checks for the local convmem installation — reuses brief.py probes."""
 
 from __future__ import annotations
 

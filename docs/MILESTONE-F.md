@@ -12,9 +12,9 @@ All decisions in this document are **final**. Do not reopen architecture questio
 
 ## Purpose
 
-Use always-on compute (miniPC) to **refine** the index over time — not just cron `index`. Today ingest is append-and-skip (`processed.json` hash); ~1470 legacy units lack `domain`; twin Chroma UUIDs can share one `ledger_id`. F closes that gap incrementally without blocking interactive `ask`.
+Use always-on compute to **refine** the index over time — not just cron `index`. Today ingest is append-and-skip (`processed.json` hash); ~1470 legacy units lack `domain`; twin Chroma UUIDs can share one `ledger_id`. F closes that gap incrementally without blocking interactive `ask`.
 
-**Single writer:** One host owns `~/.local/share/convmem/chroma/`. Document the choice (miniPC canonical recommended). Use `refine.lock` on daemon start; abort if lock exists with live PID.
+**Single writer:** One machine owns `~/.local/share/convmem/chroma/`. `watch.lock` / `refine.lock` prevent duplicate daemons. Do not rsync the corpus to another host while services run (`dec_convmem_single_writer_chroma`).
 
 ---
 
@@ -22,7 +22,7 @@ Use always-on compute (miniPC) to **refine** the index over time — not just cr
 
 | Phase | Deliverable | Notes |
 |-------|-------------|-------|
-| **F0** | `convmem watch` | inotify → `index --file`; validates miniPC deployment **before** F1 |
+| **F0** | `convmem watch` | inotify → `index --file`; validates always-on deployment **before** F1 |
 | **F1** | `convmem refine` | Job queue + daemon; jobs below |
 | **F2a** | Store API + citation dedupe | See [`F2a-SCOPING.md`](F2a-SCOPING.md) — Builder brief |
 | **F2b** | `convmem monitor` | ✅ — see [`F2b-MONITOR-POLICY.md`](F2b-MONITOR-POLICY.md) |
@@ -51,7 +51,7 @@ pip install watchdog
 convmem watch
 ```
 
-**Known F0 follow-ups (non-blocking):** lock unit tests deferred to F1 (`refine.lock` shares pattern); Kiro sqlite parent-dir watch coalesced by debounce on miniPC.
+**Known F0 follow-ups (non-blocking):** lock unit tests deferred to F1 (`refine.lock` shares pattern); Kiro sqlite parent-dir watch coalesced by debounce.
 
 ---
 

@@ -38,7 +38,7 @@ CONVMEM_CONTINUE_TIMEOUT=180 \
 
 **Do not** run `cn-convmem-smoke.sh` from Cursor/Codex agent subprocess shells for graded Phase 1 smokes.
 
-- **Valid:** interactive terminal on the miniPC (Ryan)
+- **Valid:** interactive terminal on Ryan's dev machine
 - **Invalid for Phase 1 grading:** Cursor Auto / Codex agent shell invocation of the smoke script
 - Harness is fine (`--exclude Search` confirmed in transcript command line); execution environment is not
 

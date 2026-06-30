@@ -6,9 +6,19 @@ ledger: dec_prop_20260623_215943_5abe
 
 # convmem Roadmap — Lauer (draft — superseded)
 
-**→ See [`ROADMAP.md`](ROADMAP.md) for the active roadmap.**
+> **Archival record only** — frozen planner text from **before 2026-06-30 graduation**.  
+> **Do not execute** checklists, gaps, or "graduate" steps below.  
+> **Active roadmap:** [`ROADMAP.md`](ROADMAP.md) · **Session contract:** [`config/agent-protocol.md`](../config/agent-protocol.md)
 
-North-star for the **canonical miniPC host**.
+Internal references to `ROADMAP-DRAFT` in the body are part of this snapshot, not live pointers.
+
+---
+
+## Historical record (2026-06-24 → 2026-06-30)
+
+**→ Superseded by [`ROADMAP.md`](ROADMAP.md).**
+
+North-star for **one workstation**: transcripts, Chroma, and daemons all live on the machine where Cursor/Kiro/Continue run.
 
 **Planner state (indexed):** P0 through **P1b complete**. Golden eval **10/10**. Test suite **127/127**. Retrieval layer is good enough — next gate is **how agents actually work**, not more search.
 
@@ -145,7 +155,7 @@ OpenClaw, dedupe approval UI, hybrid retrieval, `export --redact`, domain backfi
 
 ## Graduate to ROADMAP.md
 
-After ~1 week CLI soak with no surprises:
+**Done (2026-06-30).** See [`ROADMAP.md`](ROADMAP.md). The steps below are historical.
 
 1. Rename this file → `ROADMAP.md`
 2. Link from [`README.md`](../README.md)
