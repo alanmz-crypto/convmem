@@ -35,12 +35,14 @@ def load_questions(path: Path = FIXTURE) -> list[dict]:
 def run_convmem(args: list[str], *, timeout: int = TIMEOUT) -> tuple[str, int]:
     """Run `convmem <args>`, return (stdout+stderr, exit_code)."""
     cmd = [sys.executable, "-m", "convmem"] + args
+    env = {**__import__("os").environ, "NO_COLOR": "1", "TERM": "dumb"}
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         timeout=timeout,
         cwd=str(Path(__file__).resolve().parent.parent),
+        env=env,
     )
     return (result.stdout + result.stderr), result.returncode
 
