@@ -25,7 +25,7 @@
 | 2 | `905f8d5` | chore: consolidate residue into date bucket; rename root LATEST to SYNTHESIS-STATUS | 12 residue → `2026-06-22/`; `sed` BUILT-PLANS cross-ref; also picked up pre-existing handoff docs + execution log start |
 | 3 | `339a597` | chore: archive June-22 inter-model soak files to dated bucket | 102 inbox + GLOBAL-CONVMEM; **0 grep KEEP**; archive README + inter-model README pointer |
 | 4 | `2e23e55` | docs: add docs/README.md navigation index | Option A documented; flat nav |
-| 5 | *(pending commit)* | chore: archive 2026-06-30 org-planning meta-docs | 29 files → `2026-06-30-org-planning/`; LATEST.md updated |
+| 5 | `e02ac5f` | chore: archive 2026-06-30 org-planning meta-docs | 29 org docs + LATEST pointer; verify-continue PASS |
 
 ---
 
