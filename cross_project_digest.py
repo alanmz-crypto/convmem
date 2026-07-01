@@ -14,6 +14,7 @@ from pathlib import Path
 from ask import ask
 from brief import gather_brief_payload
 from config import load_config
+from ledger_recent import load_recent_decisions
 from propose_decision import data_dir, propose, queue_path
 from unresolved import list_unresolved
 
@@ -61,32 +62,6 @@ def is_coordination_unresolved(obs: dict, *, site: str = "") -> bool:
     return any(domain.startswith(p) for p in COORDINATION_DOMAIN_PREFIXES)
 
 
-def load_recent_decisions(
-    approved_path: Path,
-    *,
-    days: int = 7,
-    limit: int = 15,
-) -> list[dict]:
-    if not approved_path.is_file():
-        return []
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    rows: list[dict] = []
-    for line in approved_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            rec = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        ts = _parse_ts(rec.get("timestamp") or "")
-        if ts and ts < cutoff:
-            continue
-        rows.append(rec)
-    rows.sort(key=lambda r: r.get("timestamp") or "", reverse=True)
-    return rows[:limit]
-
-
 def load_link_queue(path: Path, *, limit: int = 30) -> list[dict]:
     if not path.is_file():
         return []
@@ -123,17 +98,50 @@ def _pick_relates_to(brief: dict, ask_answer: str) -> str:
     return DEFAULT_RELATES_TO
 
 
-def _first_sentence(text: str, *, max_len: int = 200) -> str:
+def _first_sentence(text: str, *, max_len: int = 120) -> str:
+    """Extract the first substantive sentence for use as a decision summary.
+
+    Skips common LLM preamble patterns ('Based on...', 'According to...',
+    'Here is/are...'). Falls back to truncation if no clean sentence found.
+    """
+    import re
+
     s = (text or "").replace("\n", " ").strip()
     if not s:
         return "Cross-project coordination digest (no synthesis text)"
-    for sep in (". ", ".\n"):
-        if sep in s:
-            s = s.split(sep, 1)[0] + "."
-            break
-    if len(s) > max_len:
-        s = s[: max_len - 1].rstrip() + "…"
-    return s
+
+    # Strip markdown bold/italic markers and list markers for cleaner summaries
+    s = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", s)
+    s = re.sub(r"\s*-\s+", " ", s)
+    s = re.sub(r"\s{2,}", " ", s)
+
+    # Skip preamble sentences that don't carry substance
+    _PREAMBLE_RE = re.compile(
+        r"^(Based on|According to|Here (is|are)|The following|As (noted|shown|described)|"
+        r"From the|Looking at|In (the|this)|Per the|All .{0,30} cited)\b",
+        re.IGNORECASE,
+    )
+
+    # Split into sentences (period followed by space and capital letter)
+    sentences = re.split(r"(?<=\.) (?=[A-Z])", s)
+
+    # Find first non-preamble sentence with meaningful content (>20 chars)
+    for sent in sentences:
+        sent = sent.strip()
+        if not sent or len(sent) < 20:
+            continue
+        if _PREAMBLE_RE.match(sent):
+            continue
+        # Found a substantive sentence
+        if len(sent) > max_len:
+            sent = sent[: max_len - 1].rstrip() + "…"
+        return sent
+
+    # All sentences are preamble — fall back to first one, truncated
+    first = sentences[0].strip() if sentences else s
+    if len(first) > max_len:
+        first = first[: max_len - 1].rstrip() + "…"
+    return first
 
 
 def render_digest_markdown(
@@ -268,7 +276,7 @@ def run_digest(
             DIGEST_ASK_QUESTION,
             domain=None,
             site=site or None,
-            evidence=False,
+            evidence=True,
         )
 
     body = render_digest_markdown(
