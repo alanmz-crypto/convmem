@@ -217,6 +217,36 @@ def _check_verify_script(*, run: bool) -> DoctorCheck:
     )
 
 
+def _check_synthesis_gate() -> DoctorCheck:
+    """P1c gate: count synthesis failures in the last 7 days."""
+    import json as _json
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+
+    log_path = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
+    if not log_path.is_file():
+        return DoctorCheck("synthesis_gate", True, "0 failures in 7d (gate: >=3 triggers P1c)")
+    cutoff = _dt.now(_tz.utc) - _td(days=7)
+    count = 0
+    for line in log_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = _json.loads(line)
+            ts = _dt.strptime(entry["ts"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=_tz.utc)
+            if ts >= cutoff:
+                count += 1
+        except (KeyError, ValueError, _json.JSONDecodeError):
+            continue
+    if count >= 3:
+        return DoctorCheck(
+            "synthesis_gate",
+            False,
+            f"{count} failures in 7d — P1c streaming gate TRIGGERED (>=3)",
+        )
+    return DoctorCheck("synthesis_gate", True, f"{count} failures in 7d (gate: >=3 triggers P1c)")
+
+
 def _check_watch_memory() -> DoctorCheck:
     mem = _watch_process_memory()
     if mem is None:
@@ -266,6 +296,7 @@ def run_doctor(
         _check_ollama(cfg),
         _check_chroma(cfg),
         _check_restic(),
+        _check_synthesis_gate(),
         _check_mcp_import(),
         _check_mcp_wiring(),
         _check_continue_mcp(),
