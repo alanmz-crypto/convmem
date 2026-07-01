@@ -49,7 +49,36 @@ Log each run below with date, false-link count, and whether Ryan filed a `convme
 |-----|------|-------------|---------------|
 | 2 | 2026-06-29 | 0 | Yes — `dec_prop_20260629_150516_6d70` (Arch matrix), `dec_prop_20260629_150527_46f0` (soak close) |
 | 3 | 2026-06-29 | 0 | N/A (validation rerun post-records) |
-| 4 | | | (timer: Mon 09:00 weekly) |
+| 4 | 2026-07-01 | 0 | Pending Ryan — Phase 0 close (see Run 4 section) |
+
+---
+
+## Run 4 — 2026-07-01 (post v4 org cleanup)
+
+**Context:** After v4 repo organization shipped (`dec_prop_20260701_000837_8ab4`, inbox 160→33). First run after `SYNTHESIS-STATUS.md` rename.
+
+**Commands:**
+
+```bash
+convmem doctor
+convmem brief --stdout-only
+~/Projects/convmem/scripts/cross-project-digest.sh
+convmem ask "Cross-project themes and open threads this week; cite ledger ids only. Focus coordination lane (convmem protocol, surface coverage, agent habit) not client deploy."
+```
+
+**Output:** `~/.local/share/convmem/digests/2026-07-01.md`
+
+**Quality notes:**
+
+| Check | Result |
+|-------|--------|
+| Recency | **Split** — digest header lists Jul 1 v4/org decisions (`000837`, `001127`, etc.); embedded ask synthesis still anchors on `dec_prop_20260629_054023_84ac` / Jun 25 `f9b3` (same recency lag as run 1) |
+| False links | 0 |
+| Client deploy bleed | Low — coordination lane; 7 coordination unresolved obs |
+| Actionable | Yes — habit soak + tooling.kiro obs + v4 ship visible in recent-decisions block |
+| Standalone ask | Thin — only cited `054023` chain; confirms recency gap in raw ask without digest context |
+
+**Verdict:** **Phase 0 complete.** Phase 1 automation stable post-v4. **`--propose` eligible for evaluation** (trial run OK; still propose-only). Linker Phase 2 product remains **held** on agent-habit gate (`213047`).
 
 ---
 
@@ -106,4 +135,4 @@ Copy-paste templates for these are obsolete — search ledger ids for full ratio
 
 ## Phase 2 (cron + `--propose`)
 
-Timer install is host ops (see `systemd/convmem-cross-project-digest.{service,timer}.example`). **Plan gate:** enable `--propose` in the service unit only after pilot run **4** looks good.
+Timer install is host ops (see `systemd/convmem-cross-project-digest.{service,timer}.example`). **Plan gate (2026-07-01):** pilot run **4** passed — `--propose` trial runs are **eligible**; do not enable in timer until Ryan approves. Agent-habit gate still blocks treating Phase 2 as shipped product.
