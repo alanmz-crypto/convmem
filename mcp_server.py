@@ -533,7 +533,7 @@ def ask(
     top_k: int = 5,
     domain: str = "",
     site: str = "",
-    evidence: bool = False,
+    evidence: bool = True,
 ) -> str:
     """Answer a question using retrieved memories. Returns answer + citations."""
     blocked = _blocked_until_brief_json()
@@ -568,6 +568,26 @@ def ask(
             for c in (result.get("citations") or [])
         ],
     }, indent=2)
+
+
+@mcp.tool()
+def unresolved(site: str = "", domain: str = "") -> str:
+    """List open observations (read-only). Returns count + items JSON."""
+    blocked = _blocked_until_brief_json()
+    if blocked:
+        return blocked
+    from chroma_readonly import open_readonly_unit_store
+    from config import load_config
+    from unresolved import unresolved_payload
+
+    cfg = load_config()
+    store = open_readonly_unit_store(cfg["index"]["chroma_dir"])
+    payload = unresolved_payload(
+        store,
+        site=site or None,
+        domain=domain or None,
+    )
+    return json.dumps(payload, indent=2)
 
 
 @mcp.tool()
