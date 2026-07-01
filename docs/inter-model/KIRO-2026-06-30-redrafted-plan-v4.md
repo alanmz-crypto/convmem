@@ -71,6 +71,33 @@ If Commit 3 fails verification, do not proceed to Commits 4–5.
 
 ---
 
+## Pre-flight (run once before Commit 1)
+
+```bash
+convmem doctor                             # must exit 0 — if not, fix before starting
+pytest                                     # note: test_eval_golden may fail (pre-existing embedding drift) — all others must pass
+ls docs/inter-model/*.md | wc -l           # record baseline count
+ls docs/inter-model/*2026-06-22* | wc -l   # confirm ~102
+```
+
+If `doctor` fails or `pytest` has new failures beyond `test_eval_golden`, **stop and investigate** — do not begin execution on a dirty baseline.
+
+---
+
+## Execution log requirement
+
+The executor **must** write `docs/logs/2026-06-30-v4-execution.md` during the run, recording:
+
+- Baseline counts (pre-Commit 1)
+- Each commit SHA after it lands
+- Verification output after each commit (doctor exit code, brief stale check, file counts)
+- Any grep-gate "KEEP" files encountered in Commit 3
+- Final counts after Commit 5
+
+This log is cited in the closing record block. Without it, the record has no evidence.
+
+---
+
 ## Ordering constraint
 
 Commits execute strictly in order 1 → 2 → 3 → 4 → 5. Specifically:
@@ -134,9 +161,9 @@ git mv docs/archive/residue/README-FOR-CHATGPT.md docs/archive/inter-model/2026-
 
 # Option A (decided):
 git mv LATEST.md SYNTHESIS-STATUS.md
-# Live cross-ref (root README.md has no LATEST refs):
-# docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md line ~1311:
-#   ../../LATEST.md → ../../SYNTHESIS-STATUS.md
+
+# REQUIRED EDIT — apply in this commit (not just a comment):
+sed -i 's|../../LATEST.md|../../SYNTHESIS-STATUS.md|g' docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md
 ```
 
 **Verify:**
@@ -206,7 +233,7 @@ Truth: ledger + brief.
 convmem doctor                             # HARD GATE: must exit 0
 pytest                                     # HARD GATE: must pass
 convmem brief --stdout-only                # HARD GATE: no false stale alarm
-ls docs/inter-model/*.md | wc -l           # ADVISORY: expect ~55–60
+ls docs/inter-model/*.md | wc -l           # ADVISORY: expect ~55–60; if outside 45–70, pause and investigate before proceeding
 ```
 
 ---
@@ -271,7 +298,8 @@ git mv docs/inter-model/CURSOR-2026-06-30-v4-final-additions.md docs/archive/int
 
 ```bash
 convmem brief --stdout-only
-ls docs/inter-model/*.md | wc -l   # ADVISORY: expect ~30–35
+ls docs/inter-model/*.md | wc -l   # ADVISORY: expect ~30–35; if outside 25–45, pause and investigate
+scripts/verify-continue.sh || true  # optional smoke — non-blocking; note result in execution log
 ```
 
 ---
