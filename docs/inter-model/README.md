@@ -2,6 +2,8 @@
 
 When you communicate something meant for **other models** (not Ryan), write a file here.
 
+**Historical context (pre-2026-06-24 soak):** [`docs/archive/inter-model/2026-06-22/`](../archive/inter-model/2026-06-22/) — date-bucketed archive; not scanned by brief staleness.
+
 ## Convention
 
 - **Path:** `docs/inter-model/<MODEL>-<YYYY-MM-DD>-<topic>.md`
