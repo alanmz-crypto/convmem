@@ -1,5 +1,9 @@
 """RAG answer layer — retrieve context, then synthesize an answer with citations."""
 
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
 from config import load_config
 from llm import generate
 from meta_format import when_from_meta, when_label
@@ -48,6 +52,25 @@ _LOW_CONFIDENCE = 0.55
 _ASK_TOP_K = 8
 # MCP / agent callers: degrade to retrieval-only before client tool timeout.
 _ASK_SYNTHESIS_TIMEOUT = 45.0
+
+# Lightweight telemetry for P1c gate detection (>=3 failures/week triggers streaming work).
+_SYNTHESIS_FAIL_LOG = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
+
+
+def _log_synthesis_failure(question: str, error: Exception) -> None:
+    """Append one JSONL line per synthesis failure. Non-blocking — never raises."""
+    try:
+        _SYNTHESIS_FAIL_LOG.parent.mkdir(parents=True, exist_ok=True)
+        entry = {
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "error_type": type(error).__name__,
+            "error": str(error)[:200],
+            "question": question[:200],
+        }
+        with _SYNTHESIS_FAIL_LOG.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass  # Telemetry must never break ask
 
 
 def _format_history(history: list[tuple[str, str]]) -> str:
@@ -326,6 +349,7 @@ def ask(
         )
     except Exception as e:
         synthesis_failed = True
+        _log_synthesis_failure(question, e)
         cite_lines = [
             f"[{c['n']}] {c.get('title', 'Untitled')} ({c.get('tool', '?')}, score {c.get('score')})"
             for c in citations[:top_k]
