@@ -40,3 +40,9 @@ review-bundles/*.tar.gz
 
 # Builder-reference staging extracts (local-only source slices)
 staging/builder-reference/
+
+# Accidental repo-root artifacts (never commit)
+/convmem.db
+/argparse
+/json
+/sys
