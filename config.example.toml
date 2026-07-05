@@ -50,7 +50,10 @@ recency_half_life_days = 30
 [watch]
 debounce_seconds = 90
 # Optional: override [sources].paths for watch only (defaults to sources.paths)
-# Optional: watch repo coordination docs (uncomment path on this machine)
+# Optional: append repo coordination docs without replacing transcript roots
+# extra_paths = [
+#   "~/Projects/convmem/docs/inter-model",
+# ]
 # paths = [
 #   "~/.config/cursor/chats",
 #   "~/.cursor/projects",

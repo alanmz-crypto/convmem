@@ -275,7 +275,7 @@ Copy-paste templates for these are obsolete — search ledger ids for full ratio
 
 ## Phase 2 (cron + `--propose`)
 
-Timer install is host ops (see `systemd/convmem-cross-project-digest.{service,timer}.example`). **Run 8 `--propose` trial (2026-07-05):** closed — `2c96` rejected; Ryan OK with manual record prose. Agent-habit gate still blocks treating Phase 2 linker as shipped product (`obs_806985bc5697`).
+Timer install is host ops — **active** on this machine (`convmem-cross-project-digest.timer`, Mon 09:00 read-only; refresh via `scripts/install-cross-project-digest-timer.sh`). **Run 8 `--propose` trial (2026-07-05):** closed — `2c96` rejected; Ryan OK with manual record prose. Agent-habit gate still blocks treating Phase 2 linker as shipped product (`obs_806985bc5697`).
 
 ---
 

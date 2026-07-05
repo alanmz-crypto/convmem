@@ -275,11 +275,13 @@ def release_lock(lock_path: Path) -> None:
 def load_watch_settings(cfg: dict) -> tuple[float, list[str], Path]:
     watch_cfg = cfg.get("watch") or {}
     debounce = float(watch_cfg.get("debounce_seconds", 30))
-    paths = watch_cfg.get("paths") or cfg.get("sources", {}).get("paths") or []
+    base = watch_cfg.get("paths") or cfg.get("sources", {}).get("paths") or []
+    extra = watch_cfg.get("extra_paths") or []
+    paths = list(base) + list(extra)
     if not paths:
         raise ValueError("No watch paths — set [sources].paths or [watch].paths in config.toml")
     lock_path = _lock_path_from_config(cfg)
-    return debounce, list(paths), lock_path
+    return debounce, paths, lock_path
 
 
 def run_watch(

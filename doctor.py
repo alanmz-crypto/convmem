@@ -399,6 +399,34 @@ def _check_write_lane(cfg: dict) -> DoctorCheck:
     return DoctorCheck("write_lane", blocked is None, detail)
 
 
+def _check_empty_ledger_documents(cfg: dict) -> DoctorCheck:
+    """Informational — empty Chroma documents on decision/verification units."""
+    try:
+        from observe import repair_empty_ledger_documents
+
+        stats = repair_empty_ledger_documents(cfg, dry_run=True, verbose=False)
+    except Exception as exc:
+        return DoctorCheck("ledger_documents", False, str(exc))
+    empty = int(stats.get("empty") or 0)
+    if empty == 0:
+        return DoctorCheck(
+            "ledger_documents",
+            True,
+            f"0 empty decision/verification docs ({stats.get('scanned', 0)} scanned)",
+        )
+    return DoctorCheck(
+        "ledger_documents",
+        True,
+        f"{empty} empty — repair: bash ~/Projects/convmem/scripts/repair-ledger-documents.sh",
+    )
+
+
+def _check_digest_timer() -> DoctorCheck:
+    state = _systemd_state("convmem-cross-project-digest.timer")
+    ok = state.endswith("/active") or state == "active/active"
+    return DoctorCheck("digest_timer", ok, state or "not installed")
+
+
 def run_doctor(
     *,
     v1: bool = False,
@@ -416,6 +444,7 @@ def run_doctor(
         _check_restic(),
         _check_synthesis_gate(),
         _check_index_gate(),
+        _check_empty_ledger_documents(cfg),
         _check_mcp_import(),
         _check_mcp_wiring(),
         _check_continue_mcp(),
@@ -428,6 +457,7 @@ def run_doctor(
                 _check_systemd("convmem-watch"),
                 _check_systemd("convmem-refine"),
                 _check_systemd("convmem-monitor.timer"),
+                _check_digest_timer(),
                 _check_lock(
                     "watch_lock",
                     Path(cfg["index"]["chroma_dir"]).expanduser().parent / "watch.lock",
