@@ -94,6 +94,28 @@ Agents may search, ask, brief, and related freely. Do not run `convmem add`, `co
 
 ---
 
+## Workflow routing (when unsure what to run)
+
+<!-- WORKFLOW_ROUTING_START -->
+
+**Cheat sheet:** `docs/MODEL-WORKFLOW.md` — read when lost.
+
+| If cwd / task is… | Read first | Run |
+|-------------------|------------|-----|
+| Any session | — | `convmem doctor` → `brief` → `unresolved` |
+| `~/Projects/convmem` + cross-project digest | `docs/CROSS-PROJECT-DIGEST-ATTEMPTS.md` | `scripts/cross-project-digest.sh --skip-ask`; smoke: `scripts/smoke-cross-project-digest.sh` |
+| `~/Projects/convmem` + architecture | `docs/builder-reference/README.md` | matching digest, then code |
+| `~/Projects/convmem-lab` | `docs/lab-reference/NOTES.md` | `scripts/convmem-lab.sh doctor`; `lab/scripts/compile-synthesis-brief.sh`; `lab/scripts/smoke-synthesis.sh` |
+| Session close / record | `docs/inter-model/SESSION-CLOSE-RECORD.md` | output `convmem record` block; Ryan approves |
+
+**Split:** `lab-reference/` = lab gates & synthesis smoke (lab repo). `builder-reference/` = prod architecture. Never mix prod/lab data paths. Lab: no MCP registration. `--propose` on prod digest: Ryan-gated.
+
+**Codex / DeepSeek:** verify shipped work via `docs/CODEX-DEEPSEEK-VERIFY.md` (independent checklist — do not trust chat claims alone).
+
+<!-- WORKFLOW_ROUTING_END -->
+
+---
+
 ## Tool lanes by model
 
 See `docs/AGENT-ROLES.md` for per-model capability details (which tier each model operates under, Crush vs Cursor vs Codex distinctions).

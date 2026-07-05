@@ -1,8 +1,15 @@
 # Plan: Streaming synthesis for `convmem ask`
 
+---
+builder_lens:
+  primary: ousterhout
+  secondary: manning
+  verify: golden queries + convmem ask
+---
+
 **Date**: 2026-06-29
 **Author**: DeepSeek V4 Pro (Crush)
-**Status**: draft — not implemented
+**Status**: Phase 1 **shipped** (2026-07-05); Phase 2 draft — pre-flight pending
 **Relates to**: `dec_prop_20260623_161428_c311`
 
 ## Problem
@@ -20,12 +27,11 @@ progressively — partial synthesis instead of a hard fallback at the wall. The 
 
 | Piece | Where | Status |
 |-------|-------|--------|
-| LLM streaming | `llm.py:52,76` | `"stream": False` hardcoded both providers |
-| Timeout | `ask.py:49-50` | `_ASK_SYNTHESIS_TIMEOUT = 45.0` |
-| Fallback | `ask.py:327-341` | `try/except` → raw citation dump, `synthesis_failed: True` |
-| MCP transport | `mcp_server.py:691` | `mcp.run_stdio_async()` — stdio only |
-| HTTP/SSE support | `mcp==1.28.0` | `FastMCP.run_streamable_http_async` available but unused |
-| Dependencies | `requirements.txt` | `uvicorn`, `starlette` already installed (pulled by `mcp`) |
+| LLM streaming | `llm.py` | `generate_stream()` — DeepSeek SSE + Ollama NDJSON (**Phase 1 shipped**) |
+| Timeout | `ask.py` | `_ASK_SYNTHESIS_TIMEOUT = 45.0`; wall-clock via `threading.Timer` |
+| Fallback | `ask.py` | partial → `synthesis_interrupted`; empty buffer → `synthesis_failed` |
+| MCP `ask` fields | `mcp_server.py` | `synthesis_failed`, `synthesis_interrupted` in JSON response |
+| MCP transport | `mcp_server.py` | `mcp.run_stdio_async()` — stdio only (Phase 2 pending pre-flight) |
 
 ## Design
 

@@ -1,10 +1,14 @@
 """Tests for cross_project_digest (no LLM)."""
 
 from cross_project_digest import (
+    digest_ask_question,
     is_coordination_unresolved,
+    load_attempts,
     load_link_queue,
     load_recent_decisions,
+    recency_check,
     render_digest_markdown,
+    render_recency_check_section,
     _pick_relates_to,
 )
 
@@ -67,3 +71,63 @@ def test_pick_relates_to_from_ask_citation():
     brief = {"recent_decisions": [{"id": "dec_prop_20260601_120000_abcd"}]}
     answer = "Theme [4] cites dec_prop_20260629_005903_51b4 for protocol."
     assert _pick_relates_to(brief, answer) == "dec_prop_20260629_005903_51b4"
+
+
+def test_digest_ask_question_injects_recent_ids():
+    recent = [
+        {"id": "dec_prop_20260701_211650_5a62", "summary": "dedupe"},
+        {"id": "dec_prop_20260701_182803_987b", "summary": "builder"},
+    ]
+    q = digest_ask_question(recent)
+    assert "dec_prop_20260701_211650_5a62" in q
+    assert "Prioritize these recent approved decisions" in q
+
+
+def test_recency_check_overlap_pass():
+    recent = [{"id": "dec_prop_a"}, {"id": "dec_prop_b"}]
+    ask = {
+        "answer": "Theme dec_prop_a and dec_prop_c.",
+        "citations": [{"ledger_id": "dec_prop_a", "n": 1}],
+    }
+    check = recency_check(recent, ask)
+    assert check["pass"] is True
+    assert "dec_prop_a" in check["overlap"]
+
+
+def test_recency_check_warn_when_no_overlap():
+    recent = [{"id": "dec_prop_new"}]
+    ask = {"answer": "Old theme.", "citations": [{"ledger_id": "dec_prop_old", "n": 1}]}
+    check = recency_check(recent, ask)
+    assert check["pass"] is False
+    md = "\n".join(render_recency_check_section(check))
+    assert "WARN" in md
+
+
+def test_load_attempts_tail(tmp_path):
+    path = tmp_path / "attempts.jsonl"
+    path.write_text(
+        '{"obs_id":"obs_001","outcome":"failed","path":"a.py","summary":"fail"}\n'
+        '{"obs_id":"obs_002","outcome":"partial","path":"b.py","summary":"partial"}\n',
+        encoding="utf-8",
+    )
+    rows = load_attempts(path, limit=1)
+    assert len(rows) == 1
+    assert rows[0]["obs_id"] == "obs_002"
+
+
+def test_render_digest_do_not_retry():
+    attempts = [
+        {"obs_id": "obs_001", "outcome": "failed", "path": "a.py", "summary": "fail"},
+        {"obs_id": "obs_002", "outcome": "partial", "path": "b.py", "summary": "partial"},
+    ]
+    md = render_digest_markdown(
+        brief={"units": 100, "unresolved_count": 0, "handoff_staleness": {}, "projects": []},
+        coordination_unresolved=[],
+        recent_decisions=[],
+        link_queue=[],
+        ask_result=None,
+        attempts=attempts,
+    )
+    assert "## Do not retry" in md
+    assert "FAILED" in md
+    assert "PARTIAL" in md

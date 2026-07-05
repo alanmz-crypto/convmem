@@ -38,6 +38,8 @@ Usage:
 import json
 import os
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 
 import typer
 
@@ -64,6 +66,40 @@ def _unit_count() -> int:
 
 def _primary_search_ready() -> bool:
     return _unit_count() >= _MIN_UNITS_FOR_PRIMARY
+
+
+# Lightweight telemetry for delayed-index detection (ledger-approved, Chroma-failed).
+_INDEX_FAIL_LOG = Path("~/.local/share/convmem/index_failures.jsonl").expanduser()
+
+
+def _log_index_failure(proposal_id: str, error: Exception) -> None:
+    """Append one JSONL line when approval succeeds but Chroma indexing fails. Never raises."""
+    try:
+        _INDEX_FAIL_LOG.parent.mkdir(parents=True, exist_ok=True)
+        entry = {
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "proposal_id": proposal_id,
+            "error_type": type(error).__name__,
+            "error": str(error)[:200],
+        }
+        with _INDEX_FAIL_LOG.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass  # Telemetry must never break record
+
+
+def _guard_write() -> None:
+    """Refuse prod/lab cross-lane writes unless CONVMEM_CONFIRM_* is set."""
+    from config import load_config
+    from query import render_error
+    from runtime_guard import require_write_consent
+
+    cfg = load_config()
+    try:
+        require_write_consent(cfg["index"]["chroma_dir"])
+    except RuntimeError as exc:
+        render_error(str(exc))
+        raise typer.Exit(2) from exc
 
 
 @app.command()
@@ -205,6 +241,7 @@ def index(
     ),
 ):
     """Ingest all sources (skip unchanged), or one file (--file; add --force to re-ingest)."""
+    _guard_write()
     from ingest import index as run_index
 
     stats = run_index(force_file=file, limit_files=limit, force_reindex=force)
@@ -269,6 +306,7 @@ def add(
     parsers, HTTP probes, OpenClaw browser sessions, etc. Either pass a
     single record via flags, or --file a JSONL batch (one record per line).
     """
+    _guard_write()
     from config import load_config
     from chroma_store import ChromaStore
     from observe import ingest_observation, ingest_observation_file
@@ -361,6 +399,7 @@ def verify_command(
     ),
 ):
     """Record a verifier's check on an existing observation (metadata + ledger record)."""
+    _guard_write()
     import json
     from pathlib import Path
 
@@ -431,6 +470,7 @@ def watch(
     no_lock: bool = typer.Option(False, "--no-lock", help="Skip PID lock (debug only)"),
 ):
     """Watch transcript paths and run incremental index when files change."""
+    _guard_write()
     from watch import run_watch
 
     extra = path if path else None
@@ -448,11 +488,32 @@ def refine(
     job: str | None = typer.Option(None, "--job", help=f"Job name: {', '.join(__import__('refine').JOB_NAMES)}"),
     limit: int | None = typer.Option(None, "--limit", help="Max items per job run"),
     stats_only: bool = typer.Option(False, "--stats", help="Print refine_stats.json and exit"),
+    approve_dedupe: str | None = typer.Option(
+        None,
+        "--approve-dedupe",
+        help="Apply approved dedupe_queue row (1-based line) or 'all'",
+    ),
     no_lock: bool = typer.Option(False, "--no-lock", help="Skip PID lock (daemon only)"),
 ):
     """Background index refinement — dedupe, domain backfill, audit queue (F1)."""
-    from refine import JOB_NAMES, print_stats, run_job, run_refine_daemon
+    if not stats_only:
+        _guard_write()
+    from refine import (
+        JOB_NAMES,
+        apply_approved_dedupe,
+        print_stats,
+        run_job,
+        run_refine_daemon,
+    )
 
+    if approve_dedupe is not None:
+        try:
+            result = apply_approved_dedupe(approve_dedupe, verbose=True)
+        except ValueError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result, indent=2))
+        return
     if stats_only:
         print_stats()
         return
@@ -480,6 +541,8 @@ def monitor_command(
     ),
 ):
     """HTTP security probes — observations or advisory verifications (F2b)."""
+    if not dry_run:
+        _guard_write()
     import json
     from pathlib import Path
 
@@ -715,6 +778,8 @@ def propose_decision_command(
             typer.echo("  Finish newest: convmem record --approve-last")
         return
 
+    _guard_write()
+
     approve_id = approve
     if approve_last:
         pending = latest_pending(cfg)
@@ -741,9 +806,10 @@ def propose_decision_command(
             try:
                 ingest_result = ingest_approved_ledger(cfg, ledger)
             except Exception as e:
-                render_error(f"Approved but index failed: {e}")
-                typer.echo(f"  Retry: convmem add --file {apath} --upsert")
-                raise typer.Exit(1) from e
+                _log_index_failure(approve_id, e)
+                typer.echo(f"\n⚠  Approved (ledger) but index deferred: {e}")
+                typer.echo(f"  Recovery: convmem add --file {apath} --upsert")
+                typer.echo(f"  The decision is durable in the ledger; Chroma will catch up on next index.\n")
         _finish_record_messages(
             proposal,
             ledger,
@@ -953,28 +1019,16 @@ def unresolved_command(
 
     from config import load_config
     from chroma_readonly import open_readonly_unit_store
-    from unresolved import list_unresolved, render_unresolved
+    from unresolved import list_unresolved, render_unresolved, unresolved_payload
 
     cfg = load_config()
     store = open_readonly_unit_store(cfg["index"]["chroma_dir"])
-    results = list_unresolved(store, site=site, domain=domain)
+    payload = unresolved_payload(store, site=site, domain=domain)
 
     if json_out:
-        out = []
-        for r in results:
-            out.append({
-                "ledger_id": r["ledger_id"],
-                "severity": r["severity"],
-                "site": r["site"],
-                "domain": r["domain"],
-                "title": r["title"],
-                "status": r["status"],
-                "last_touched": r["last_touched"],
-                "summary": r["summary"],
-            })
-        typer.echo(json.dumps(out, indent=2))
+        typer.echo(json.dumps(payload["items"], indent=2))
     else:
-        render_unresolved(results)
+        render_unresolved(list_unresolved(store, site=site, domain=domain))
 
 
 @app.command("exclude")
@@ -1011,6 +1065,8 @@ def exclude_command(
             typer.echo(f"    reason: {r}")
             typer.echo()
         return
+
+    _guard_write()
 
     if undo:
         target = str(Path(undo).expanduser().resolve())

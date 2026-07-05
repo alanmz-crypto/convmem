@@ -389,6 +389,9 @@ def _search_payload(results: list[dict]) -> str:
         meta = r.get("metadata", {})
         out.append({
             "score": r.get("score"),
+            "rank_score": r.get("rank_score"),
+            "recency_boost": r.get("recency_boost"),
+            "ledger_lookup": r.get("ledger_lookup", False),
             "title": meta.get("title", ""),
             "type": meta.get("type", ""),
             "domain": meta.get("domain", ""),
@@ -554,6 +557,7 @@ def ask(
         "confidence": result.get("confidence"),
         "warning": result.get("warning"),
         "synthesis_failed": result.get("synthesis_failed", False),
+        "synthesis_interrupted": result.get("synthesis_interrupted", False),
         "citations": [
             {
                 "n": c.get("n"),

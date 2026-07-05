@@ -13,6 +13,7 @@ from typing import Callable, Optional
 
 from adapters import (
     codex_history_jsonl,
+    inter_model_doc,
     jsonl_chat,
     json_chat,
     kiro_session_jsonl,
@@ -32,6 +33,7 @@ TOOL_BY_FORMAT = {
     "aider_markdown": "aider",
     "sqlite_crush": "crush",
     "sqlite_cursor_store": "cursor",
+    "inter_model_doc": "inter-model",
 }
 
 # Map detected format -> parse callable. None means "recognized but not yet
@@ -46,6 +48,7 @@ _PARSERS: dict[str, Optional[Callable[[str], list[dict]]]] = {
     "aider_markdown": markdown_chat.parse,
     "sqlite_crush": sqlite_chat.parse,
     "sqlite_cursor_store": sqlite_chat.parse,
+    "inter_model_doc": inter_model_doc.parse,
 }
 
 
@@ -55,6 +58,8 @@ def detect_format(path: Path | str) -> Optional[str]:
 
     if path.name == ".aider.chat.history.md":
         return "aider_markdown"
+    if inter_model_doc.is_inter_model_doc(path):
+        return "inter_model_doc"
     if path.suffix == ".md":
         return None
 

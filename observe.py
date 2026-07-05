@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ledger import build_ledger_index, ledger_unit_metadata, normalize_ledger_record
+from ledger import build_ledger_index, ledger_unit_document, ledger_unit_metadata, normalize_ledger_record
 
 
 def _upsert_jsonl_line(
@@ -51,8 +51,16 @@ def normalize_observation(raw: dict, *, min_confidence: float = 0.0) -> dict | N
     return normalize_ledger_record(raw, min_confidence=min_confidence)
 
 
-def _ledger_unchanged_in_index(existing: dict, unit: dict) -> bool:
+def _ledger_unchanged_in_index(existing: dict, unit: dict, store) -> bool:
     """True when Chroma already has this ledger row with the same durable text."""
+    existing_unit = store.get_unit(existing["id"])
+    if existing_unit is None:
+        return False
+    existing_doc = (existing_unit.get("document") or "").strip()
+    if not existing_doc:
+        return False
+    if existing_doc != ledger_unit_document(unit):
+        return False
     return (
         (existing.get("title") or "") == (unit.get("title") or "")
         and (existing.get("rationale") or "") == (unit.get("rationale") or "")
@@ -76,10 +84,7 @@ def ingest_observation(
     if unit is None:
         return None
 
-    doc = unit["summary"] + " " + " ".join(unit["keywords"])
-    rationale = unit.get("rationale") or ""
-    if rationale:
-        doc = doc + " Rationale: " + rationale
+    doc = ledger_unit_document(unit)
     lid = (unit.get("ledger_id") or "").strip()
 
     if upsert and lid:
@@ -87,7 +92,7 @@ def ingest_observation(
             by_ledger_id, _ = build_ledger_index(store)
         existing = by_ledger_id.get(lid)
         if existing:
-            if _ledger_unchanged_in_index(existing, unit):
+            if _ledger_unchanged_in_index(existing, unit, store):
                 unit["id"] = existing["id"]
                 unit["_skipped"] = True
                 return unit
@@ -188,4 +193,69 @@ def ingest_observation_file(
                         f"  [add] {unit['ledger_kind']:<14} {unit['domain']:<28} "
                         f"{lid}  {unit['title'][:50]}"
                     )
+    return stats
+
+
+def repair_empty_ledger_documents(
+    cfg: dict,
+    *,
+    dry_run: bool = False,
+    limit: int = 0,
+    verbose: bool = True,
+) -> dict:
+    """Re-embed ledger units whose Chroma document is empty (decision/verification)."""
+    from chroma_store import ChromaStore
+    from config import load_config
+    from ledger import invalidate_ledger_index_cache
+    from ledger_recent import load_approved_decision_by_id
+
+    if not cfg:
+        cfg = load_config()
+    models = cfg["models"]
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    by_ledger_id, _ = build_ledger_index(store)
+    stats = {"scanned": 0, "empty": 0, "repaired": 0, "skipped": 0, "missing_source": 0}
+
+    try:
+        for lid, meta in by_ledger_id.items():
+            kind = (meta.get("ledger_kind") or "").strip()
+            if kind not in ("decision", "verification"):
+                continue
+            stats["scanned"] += 1
+            row = store.get_unit(meta["id"])
+            if row is None or (row.get("document") or "").strip():
+                continue
+            stats["empty"] += 1
+            rec = load_approved_decision_by_id(cfg, lid)
+            if rec is None:
+                stats["missing_source"] += 1
+                if verbose:
+                    print(f"  [miss] no approved row for {lid}")
+                continue
+            if dry_run:
+                stats["repaired"] += 1
+                if verbose:
+                    print(f"  [dry-run] would repair {lid}")
+                continue
+            unit = ingest_observation(
+                rec,
+                store=store,
+                embed_model=models["embed_model"],
+                ollama_host=models["ollama_host"],
+                upsert=True,
+                by_ledger_id=by_ledger_id,
+            )
+            if unit is None:
+                stats["missing_source"] += 1
+            elif unit.pop("_skipped", False):
+                stats["skipped"] += 1
+            elif unit.pop("_upserted", False) or unit:
+                stats["repaired"] += 1
+                if verbose:
+                    print(f"  [repair] {lid}")
+            if limit and stats["repaired"] >= limit:
+                break
+    finally:
+        store.close()
+    invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
     return stats

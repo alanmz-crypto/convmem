@@ -8,6 +8,7 @@
 #
 # Default: Monday 09:00 local, 10 min jitter.
 # Digest file: ~/.local/share/convmem/digests/YYYY-MM-DD.md
+# Phase 0 closed (Run 6, 2026-07-01): timer runs read-only digest only.
 # Optional synthesis proposal: add --propose to ExecStart (Ryan reviews before approve).
 
 [Unit]

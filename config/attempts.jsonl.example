@@ -1,0 +1,2 @@
+{"obs_id":"obs_example_coord_001","outcome":"failed","path":"cross_project_digest.py","summary":"Example: digest --propose failed during ask() — replace with real obs_id and summary","timestamp":"2026-07-05T12:00:00Z"}
+{"obs_id":"obs_example_staging_001","outcome":"partial","path":"staging/nginx.conf","summary":"Example: partial fix attempt — outcome partial or failed only appear in Do not retry","timestamp":"2026-07-05T13:00:00Z"}

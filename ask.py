@@ -5,7 +5,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config import load_config
-from llm import generate
+from ledger_recent import (
+    RECENT_DECISIONS_DAYS,
+    RECENT_DECISIONS_LIMIT,
+    decision_record_to_unit,
+    recent_decisions_for_cfg,
+)
+from llm import generate_stream
 from meta_format import when_from_meta, when_label
 from query import query_raw, query_units
 
@@ -157,6 +163,30 @@ def _dedupe_results_by_ledger_id(results: list[dict]) -> list[dict]:
     return out
 
 
+def _prepend_recent_decisions(
+    semantic: list[dict],
+    recent_records: list[dict],
+    *,
+    max_recent: int = RECENT_DECISIONS_LIMIT,
+    total_limit: int,
+) -> list[dict]:
+    """Force recent approved decisions into the context block (dedupe by ledger_id)."""
+    recent_units = [decision_record_to_unit(r) for r in recent_records[:max_recent]]
+    recent_ids = {
+        (u.get("metadata") or {}).get("ledger_id", "").strip()
+        for u in recent_units
+        if (u.get("metadata") or {}).get("ledger_id")
+    }
+    rest: list[dict] = []
+    for unit in semantic:
+        lid = ((unit.get("metadata") or {}).get("ledger_id") or "").strip()
+        if lid and lid in recent_ids:
+            continue
+        rest.append(unit)
+    slots = max(total_limit - len(recent_units), 0)
+    return recent_units + rest[:slots]
+
+
 def _format_context(results: list[dict], *, units: bool) -> tuple[str, list[dict]]:
     """Build numbered context block and citation list."""
     lines: list[str] = []
@@ -287,6 +317,13 @@ def ask(
                 units, store, recency_weight=rw, recency_half_life_days=rhl
             )
             units = _dedupe_results_by_ledger_id(units)
+            recent = recent_decisions_for_cfg(
+                cfg, days=RECENT_DECISIONS_DAYS, limit=RECENT_DECISIONS_LIMIT
+            )
+            if recent:
+                units = _prepend_recent_decisions(
+                    units, recent, total_limit=fetch_k
+                )
         best = _max_score(units)
         # If primary units are weak, supplement with raw summaries (hybrid).
         if not evidence and (best is None or best < _LOW_CONFIDENCE):
@@ -339,30 +376,43 @@ def ask(
         prompt = ASK_PROMPT.format(question=question, context=context)
     model = models.get("distill_model", "deepseek-v4-flash")
     synthesis_failed = False
+    synthesis_interrupted = False
+    buffer: list[str] = []
     try:
-        answer = generate(
+        for token in generate_stream(
             prompt,
             model=model,
             ollama_host=models["ollama_host"],
             deepseek_base_url=models.get("deepseek_base_url", "https://api.deepseek.com"),
             timeout=_ASK_SYNTHESIS_TIMEOUT,
-        )
+        ):
+            buffer.append(token)
+        answer = "".join(buffer)
     except Exception as e:
-        synthesis_failed = True
-        _log_synthesis_failure(question, e)
-        cite_lines = [
-            f"[{c['n']}] {c.get('title', 'Untitled')} ({c.get('tool', '?')}, score {c.get('score')})"
-            for c in citations[:top_k]
-        ]
-        answer = (
-            "[Synthesis unavailable — retrieval results below. "
-            f"Reason: {type(e).__name__}: {e}]\n\n"
-            + "\n".join(cite_lines)
-        )
-        synth_warn = (
-            f"Synthesis failed ({type(e).__name__}); returning retrieval citations only."
-        )
-        warning = f"{warning}\n{synth_warn}" if warning else synth_warn
+        if buffer:
+            synthesis_interrupted = True
+            answer = "".join(buffer) + (
+                f"\n\n[Synthesis interrupted ({type(e).__name__}). "
+                f"Partial answer above.]"
+            )
+            synth_warn = "Synthesis interrupted; partial answer returned."
+            warning = f"{warning}\n{synth_warn}" if warning else synth_warn
+        else:
+            synthesis_failed = True
+            _log_synthesis_failure(question, e)
+            cite_lines = [
+                f"[{c['n']}] {c.get('title', 'Untitled')} ({c.get('tool', '?')}, score {c.get('score')})"
+                for c in citations[:top_k]
+            ]
+            answer = (
+                "[Synthesis unavailable — retrieval results below. "
+                f"Reason: {type(e).__name__}: {e}]\n\n"
+                + "\n".join(cite_lines)
+            )
+            synth_warn = (
+                f"Synthesis failed ({type(e).__name__}); returning retrieval citations only."
+            )
+            warning = f"{warning}\n{synth_warn}" if warning else synth_warn
 
     out = {
         "answer": answer,
@@ -375,6 +425,8 @@ def ask(
     }
     if synthesis_failed:
         out["synthesis_failed"] = True
+    if synthesis_interrupted:
+        out["synthesis_interrupted"] = True
     return out
 
 

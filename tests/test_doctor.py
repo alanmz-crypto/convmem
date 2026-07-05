@@ -7,6 +7,7 @@ from doctor import DoctorCheck, doctor_exit_code, run_doctor
 
 
 class DoctorTests(unittest.TestCase):
+    @patch("doctor._check_index_drift")
     @patch("doctor._check_restic")
     @patch("doctor._check_verify_script")
     @patch("doctor._check_continue_mcp")
@@ -29,10 +30,11 @@ class DoctorTests(unittest.TestCase):
         mock_cont,
         mock_verify,
         mock_restic,
+        mock_drift,
     ):
         mock_load.return_value = {"index": {"chroma_dir": "/tmp/c"}, "models": {}}
         ok = DoctorCheck("x", True, "ok")
-        for mock in (mock_cfg, mock_key, mock_ollama, mock_chroma, mock_restic, mock_mcp, mock_wire, mock_cont):
+        for mock in (mock_cfg, mock_key, mock_ollama, mock_chroma, mock_drift, mock_restic, mock_mcp, mock_wire, mock_cont):
             mock.return_value = ok
         mock_verify.return_value = DoctorCheck("verify_continue", True, "skipped")
 

@@ -37,3 +37,6 @@ handoff-*.tar.gz
 review-bundles/*/
 review-bundles/*.tar.gz
 .aider*
+
+# Builder-reference staging extracts (local-only source slices)
+staging/builder-reference/

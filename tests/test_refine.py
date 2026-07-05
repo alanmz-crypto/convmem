@@ -201,5 +201,89 @@ class ChromaDedupeIdMismatchTests(unittest.TestCase):
             self.assertEqual(stats2["tombstoned"], 0)
 
 
+class ApproveDedupeTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        root = Path(self.tmp.name)
+        self.chroma_dir = root / "chroma"
+        self.chroma_dir.mkdir()
+        self.store = ChromaStore(str(self.chroma_dir))
+        self.cfg = {
+            "index": {
+                "chroma_dir": str(self.chroma_dir),
+                "processed_log": str(root / "processed.json"),
+            },
+            "refine": {"batch_size": 10},
+            "models": {
+                "distill_model": "deepseek-v4-flash",
+                "ollama_host": "http://localhost:11434",
+            },
+        }
+        self.store.add_unit(
+            "canon",
+            "canonical doc",
+            [1.0, 0.0],
+            {
+                "id": "canon",
+                "ledger_id": "obs_sem",
+                "confidence": 0.9,
+                "timestamp": "2026-06-01T00:00:00Z",
+                "title": "Canon",
+            },
+        )
+        self.store.add_unit(
+            "dup",
+            "duplicate doc",
+            [1.0, 0.0],
+            {
+                "id": "dup",
+                "ledger_id": "obs_sem2",
+                "confidence": 0.7,
+                "timestamp": "2026-01-01T00:00:00Z",
+                "title": "Dup",
+            },
+        )
+        from refine import dedupe_queue_path, save_dedupe_queue
+
+        save_dedupe_queue(
+            self.cfg,
+            [
+                {
+                    "id_a": "canon",
+                    "id_b": "dup",
+                    "status": "approved_merge_a_canonical",
+                    "canonical_id": "canon",
+                    "tombstone_id": "dup",
+                    "similarity": 0.99,
+                }
+            ],
+        )
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_apply_approved_dedupe_tombstones_and_marks_queue(self):
+        from refine import apply_dedupe_queue_record, load_dedupe_queue
+
+        stats = apply_dedupe_queue_record(
+            self.store, self.cfg, load_dedupe_queue(self.cfg)[0], verbose=False
+        )
+        self.assertEqual(stats["tombstoned"], 1)
+        dup = self.store.get_unit("dup")
+        assert dup is not None
+        self.assertTrue(dup["metadata"]["superseded"])
+        self.assertEqual(dup["metadata"]["superseded_by"], "canon")
+
+    def test_apply_approved_dedupe_idempotent(self):
+        from refine import apply_dedupe_queue_record, load_dedupe_queue
+
+        rec = load_dedupe_queue(self.cfg)[0]
+        first = apply_dedupe_queue_record(self.store, self.cfg, rec, verbose=False)
+        second = apply_dedupe_queue_record(self.store, self.cfg, rec, verbose=False)
+        self.assertEqual(first["tombstoned"], 1)
+        self.assertEqual(second["tombstoned"], 0)
+        self.assertEqual(second["skipped"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -9,7 +9,8 @@ After=network-online.target
 [Service]
 Type=oneshot
 Environment=HOME=%h
-# Phase 1: read-only digest. Phase 2: append --propose to queue a draft for Ryan.
+# Phase 1: read-only digest (Phase 0 closed 2026-07-01). Phase 2: append --propose.
+# Digest includes Recency check (header recent decisions ↔ ask citations).
 ExecStart=%h/Projects/convmem/scripts/cross-project-digest.sh
 # ExecStart=%h/Projects/convmem/scripts/cross-project-digest.sh --propose
 

@@ -12,6 +12,7 @@ from pathlib import Path
 
 from adapters.kiro_session_jsonl import is_kiro_session_jsonl
 from adapters.codex_history_jsonl import is_codex_history_jsonl
+from adapters.inter_model_doc import is_inter_model_doc
 from adapters.sqlite_chat import is_sqlite_crush_schema
 
 OUTPUT = Path("~/.local/share/convmem/inventory.jsonl").expanduser()
@@ -31,6 +32,9 @@ def detect_format(path: Path) -> str | None:
     # Aider — filename-exact match only
     if path.name == ".aider.chat.history.md":
         return "aider_markdown"
+
+    if is_inter_model_doc(path):
+        return "inter_model_doc"
 
     # All other markdown — skip
     if path.suffix == ".md":

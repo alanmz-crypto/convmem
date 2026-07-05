@@ -43,7 +43,7 @@ North-star for **one workstation**: transcripts, Chroma, and daemons all live on
 
 ```text
 Now:             graduate ROADMAP-DRAFT → ROADMAP.md + README hygiene
-P1c:             ask streaming Phase 1 — partial synthesis on timeout (no API change)
+P1c:             ask streaming Phase 1 — partial synthesis on timeout (no API change) — **shipped 2026-07-05**
 P2 (gated):      MCP unresolved/open — agent habit only
 P2-stream (gated): ask streaming Phase 2 — streamable HTTP + ask_stream (client pre-flight)
 P3:              expansion backlog
@@ -69,7 +69,11 @@ MCP today: `brief`, `search_fast`, `ask`, `related`, `stats` — read-only.
 
 ## P1c — Ask streaming (Phase 1) — ship next
 
-**Problem:** `convmem ask` uses a 45s synthesis timeout; on timeout the user gets raw citations only (`synthesis_failed: True`). DeepSeek/Ollama support streaming but [`llm.py`](../llm.py) hardcodes `stream: False`.
+**Problem:** `convmem ask` uses a 45s synthesis timeout. On timeout with no
+tokens buffered, the user gets raw citations only (`synthesis_failed: True`).
+With tokens buffered, Phase 1 returns partial synthesis + `synthesis_interrupted`.
+DeepSeek/Ollama support streaming; [`llm.py`](../llm.py) now uses
+`generate_stream()`.
 
 **Phase 1** (~60 lines, **no API surface change**):
 - Add `generate_stream()` in `llm.py`
@@ -136,7 +140,7 @@ OpenClaw, dedupe approval UI, hybrid retrieval, `export --redact`, domain backfi
 |-----|----------|-------|
 | ROADMAP not graduated | Doc | Still draft; README test count stale |
 | Agent habit | P2 gate | Matrix mostly PASS; Continue qwen2.5/qwen3.6 still FAIL unprompted brief |
-| recency on plain search | Partial P1a | Only `ask --evidence`, not `query.py` / `search_fast` |
+| recency on plain search | **Shipped** (2026-07-05) | `query_units` + `apply_recency_rerank`; MCP exposes `rank_score` |
 | P2 MCP tools | Intentional | Shell `unresolved` interim; no MCP wrapper yet |
 | 47 inventory pending | Hygiene | Sources not indexed |
 | rerank at runtime | Check | Example config `true`; brief reports `false` |

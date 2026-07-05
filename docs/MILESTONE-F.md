@@ -177,7 +177,7 @@ refine_undo/<job>/<timestamp>.jsonl
 - Embedding similarity > threshold (config, e.g. 0.92) → queue candidate pair
 - **F1-lite:** queues on embedding similarity only (no LLM verdict pass yet)
 - Uses `get_units_with_embeddings()` on `ChromaStore` (F2a)
-- Kiro approves: `convmem refine --approve-dedupe <id>` (implement in F1)
+- Kiro approves: `convmem refine --approve-dedupe <id>` (implement in F1) — **shipped 2026-07-01** (`<line>` or `all`)
 - **No auto-merge in v1** — no `--auto-merge-above` until calibrated post-Kiro batches
 - Pause job if `queue_max_depth` exceeded (config)
 
@@ -245,7 +245,7 @@ Track in `refine_stats.json`:
 - [x] `chroma_dedupe` idempotent on live index (2nd pass `tombstoned: 0`)
 - [x] `refine --stats` emits JSON via `refine_stats.json`
 - [x] `redistill` exits 1 without prior `confidence_audit`
-- [ ] `refine --once --job backfill_domain --limit 10` on live corpus (<60s) — run manually
+- [x] `refine --once --job backfill_domain --limit 10` on live corpus (<60s) — run manually (2026-07-01: 0 untagged, 0 processed)
 - [x] Kiro sign-off on F1 (2026-06-18)
 
 ---

@@ -258,6 +258,21 @@ def normalize_ledger_record(raw: dict, *, min_confidence: float = 0.0) -> dict |
     }
 
 
+def ledger_unit_document(unit: dict) -> str:
+    """Embed text for a normalized ledger unit (summary + keywords + rationale)."""
+    summary = (unit.get("summary") or "").strip()
+    keywords = unit.get("keywords") or []
+    parts: list[str] = []
+    if summary:
+        parts.append(summary)
+    if keywords:
+        parts.append(" ".join(str(k) for k in keywords if k))
+    rationale = (unit.get("rationale") or "").strip()
+    if rationale:
+        parts.append(f"Rationale: {rationale}")
+    return " ".join(p for p in parts if p).strip()
+
+
 def ledger_unit_metadata(unit: dict) -> dict:
     """Chroma metadata dict for a normalized ledger unit."""
     return {

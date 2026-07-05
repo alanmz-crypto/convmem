@@ -150,6 +150,27 @@ class EvidenceRerankTests(unittest.TestCase):
         self.assertEqual(ranked[0]["id"], "new")
         self.assertGreater(ranked[0]["recency_boost"], ranked[1]["recency_boost"])
 
+    def test_apply_recency_rerank_only(self):
+        """Search path: recency without evidence graph."""
+        recent_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        old_ts = (datetime.now(timezone.utc) - timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        results = [
+            {"id": "old", "score": 0.85, "metadata": {"timestamp": old_ts}},
+            {"id": "new", "score": 0.85, "metadata": {"timestamp": recent_ts}},
+        ]
+        from evidence import apply_recency_rerank
+
+        ranked = apply_recency_rerank(results, recency_weight=0.2)
+        self.assertEqual(ranked[0]["id"], "new")
+        self.assertIn("rank_score", ranked[0])
+        self.assertNotIn("evidence_status", ranked[0])
+
+    def test_apply_recency_rerank_weight_zero_noop(self):
+        from evidence import apply_recency_rerank
+
+        results = [{"id": "a", "score": 0.5, "metadata": {}}]
+        self.assertIs(apply_recency_rerank(results, recency_weight=0.0), results)
+
 
 if __name__ == "__main__":
     unittest.main()

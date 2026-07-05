@@ -125,6 +125,187 @@ def _pick_canonical(group: list[dict]) -> dict:
     return max(group, key=key)
 
 
+APPROVED_DEDUPE_STATUSES = frozenset(
+    {"approved_merge_a_canonical", "approved_merge_b_canonical"}
+)
+
+
+def dedupe_queue_path(cfg: dict) -> Path:
+    return _refine_data_dir(cfg) / "dedupe_queue.jsonl"
+
+
+def load_dedupe_queue(cfg: dict) -> list[dict]:
+    path = dedupe_queue_path(cfg)
+    if not path.is_file():
+        return []
+    rows: list[dict] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            rows.append(json.loads(line))
+    return rows
+
+
+def save_dedupe_queue(cfg: dict, rows: list[dict]) -> None:
+    path = dedupe_queue_path(cfg)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "\n".join(json.dumps(r, separators=(",", ":")) for r in rows) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _tombstone_semantic_duplicate(
+    store: ChromaStore,
+    cfg: dict,
+    *,
+    tombstone_id: str,
+    canonical_id: str,
+    verbose: bool = True,
+) -> bool:
+    """Mark tombstone_id superseded by canonical_id (semantic dedupe approval)."""
+    if tombstone_id == canonical_id:
+        return False
+    row = store.get_unit(tombstone_id)
+    if not row:
+        if verbose:
+            print(f"  [skip] missing tombstone unit {tombstone_id[:8]}", file=sys.stderr)
+        return False
+    meta = dict(row.get("metadata") or {})
+    if is_superseded(meta):
+        if verbose:
+            print(
+                f"  [skip] already tombstoned {tombstone_id[:8]}",
+                file=sys.stderr,
+            )
+        return False
+    canon = store.get_unit(canonical_id)
+    if not canon:
+        raise ValueError(f"canonical unit not found: {canonical_id}")
+    if is_superseded(canon.get("metadata") or {}):
+        raise ValueError(f"canonical unit is tombstoned: {canonical_id}")
+    meta["id"] = tombstone_id
+    write_undo_snapshot(cfg, "semantic_dedupe", [meta])
+    new_meta = dict(meta)
+    new_meta["superseded"] = True
+    new_meta["superseded_by"] = canonical_id
+    new_meta["updated_at"] = _now_iso()
+    store.update_unit_metadata(tombstone_id, new_meta)
+    if verbose:
+        print(
+            f"  [tombstone] {tombstone_id[:8]} → {canonical_id[:8]}",
+            file=sys.stderr,
+        )
+    return True
+
+
+def apply_dedupe_queue_record(
+    store: ChromaStore,
+    cfg: dict,
+    record: dict,
+    *,
+    verbose: bool = True,
+) -> dict:
+    """Apply one approved dedupe_queue row to Chroma (idempotent)."""
+    stats = {"tombstoned": 0, "skipped": 0, "errors": 0}
+    if record.get("chroma_applied"):
+        stats["skipped"] += 1
+        return stats
+    status = record.get("status")
+    if status not in APPROVED_DEDUPE_STATUSES:
+        stats["skipped"] += 1
+        return stats
+    tombstone_id = (record.get("tombstone_id") or "").strip()
+    canonical_id = (record.get("canonical_id") or "").strip()
+    if not tombstone_id or not canonical_id:
+        stats["errors"] += 1
+        if verbose:
+            print("  [error] approved row missing tombstone_id/canonical_id", file=sys.stderr)
+        return stats
+    try:
+        if _tombstone_semantic_duplicate(
+            store,
+            cfg,
+            tombstone_id=tombstone_id,
+            canonical_id=canonical_id,
+            verbose=verbose,
+        ):
+            stats["tombstoned"] += 1
+        else:
+            stats["skipped"] += 1
+    except Exception as e:
+        stats["errors"] += 1
+        if verbose:
+            print(f"  [error] {tombstone_id[:8]}: {e}", file=sys.stderr)
+    return stats
+
+
+def apply_approved_dedupe(
+    target: str,
+    *,
+    verbose: bool = True,
+) -> dict:
+    """Apply approved dedupe_queue rows. target: 1-based line number or 'all'."""
+    from config import load_config
+
+    cfg = load_config()
+    rows = load_dedupe_queue(cfg)
+    if not rows:
+        return {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
+
+    if target.strip().lower() == "all":
+        indices = list(range(len(rows)))
+    else:
+        try:
+            line = int(target)
+        except ValueError as e:
+            raise ValueError(
+                f"--approve-dedupe expects 1-based line number or 'all', got {target!r}"
+            ) from e
+        if line < 1 or line > len(rows):
+            raise ValueError(f"dedupe_queue line {line} out of range (1–{len(rows)})")
+        indices = [line - 1]
+
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    totals = {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
+    try:
+        for idx in indices:
+            rec = rows[idx]
+            row_stats = apply_dedupe_queue_record(store, cfg, rec, verbose=verbose)
+            totals["processed"] += 1
+            for k in ("tombstoned", "skipped", "errors"):
+                totals[k] += row_stats[k]
+            if row_stats["tombstoned"] or (
+                row_stats["skipped"] and rec.get("status") in APPROVED_DEDUPE_STATUSES
+            ):
+                if row_stats["tombstoned"]:
+                    rec["chroma_applied"] = True
+                    rec["chroma_applied_at"] = _now_iso()
+                elif rec.get("chroma_applied") is not True:
+                    unit = store.get_unit((rec.get("tombstone_id") or ""))
+                    if unit and is_superseded(unit.get("metadata") or {}):
+                        rec["chroma_applied"] = True
+                        rec["chroma_applied_at"] = rec.get("chroma_applied_at") or _now_iso()
+        save_dedupe_queue(cfg, rows)
+
+        all_stats = load_stats(cfg)
+        all_stats.setdefault("jobs", {})
+        all_stats["jobs"]["approve_dedupe"] = {
+            "last_run": _now_iso(),
+            **totals,
+        }
+        save_stats(cfg, all_stats)
+        try:
+            from brief import refresh_brief_after_change
+
+            refresh_brief_after_change(cfg)
+        except Exception:
+            pass
+        return totals
+    finally:
+        store.close()
+
+
 def job_chroma_dedupe(
     store: ChromaStore,
     cfg: dict,

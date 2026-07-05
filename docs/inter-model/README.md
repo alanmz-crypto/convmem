@@ -32,6 +32,20 @@ When you finish a note for other models, end it with a direct handoff:
 
 If the handoff changes shared course, also update `docs/inter-model/LATEST.md` so the next session has a single pointer.
 
+## Anti-sprawl
+
+Keep this inbox small and active. Treat planning notes as temporary unless they remain the current decision record.
+
+- **One active inbox rule:** archive or merge planning output once the decision lands.
+- **No orphan plans:** every plan or red-flag note should state `Status:`, `Owner:`, and `Sunset:` in its header.
+- **Decision-first execution:** freeze the one open choice before bulk moves or folder changes.
+- **Record block required:** major cleanup decisions and session closes should end with a `convmem record` block.
+- **Archive before taxonomize:** move history out first; do not add new folder hierarchy just because the tree feels messy.
+- **No duplicate canonical pointers:** keep one protocol pointer and one synthesis pointer, with names that make the difference obvious.
+- **Review stale residue routinely:** use `convmem brief --stdout-only` and `convmem unresolved` to check for drift.
+
+Do not add a separate governance doc for this. Do not create new taxonomy as a cleanup reflex.
+
 ## Reading order for any new session
 
 1. `~/.local/share/convmem/brief.md` (auto-generated ops truth)

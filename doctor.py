@@ -13,7 +13,7 @@ import requests
 
 from brief import _mcp_registration, _systemd_state, _watch_main_pid, _watch_process_memory
 from chroma_readonly import collection_count
-from config import load_config
+from config import CONFIG_PATH, load_config
 
 WATCH_RSS_PASS_KB = 512 * 1024  # 512 MB
 
@@ -28,7 +28,7 @@ class DoctorCheck:
 def _check_config() -> DoctorCheck:
     try:
         load_config()
-        return DoctorCheck("config", True, "~/.config/convmem/config.toml readable")
+        return DoctorCheck("config", True, f"{CONFIG_PATH} readable")
     except FileNotFoundError as exc:
         return DoctorCheck("config", False, str(exc))
 
@@ -109,6 +109,69 @@ def _check_chroma(cfg: dict) -> DoctorCheck:
     )
 
 
+def _jsonl_unit_stats(export: Path) -> tuple[int, int]:
+    """Return (line_count, unique_unit_id_count) for units_export JSONL."""
+    import json
+
+    lines = 0
+    ids: set[str] = set()
+    if not export.is_file():
+        return 0, 0
+    for line in export.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        lines += 1
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        uid = (rec.get("id") or rec.get("ledger_id") or "").strip()
+        if uid:
+            ids.add(uid)
+    return lines, len(ids)
+
+
+def _check_index_drift(cfg: dict) -> DoctorCheck:
+    """Compare Chroma knowledge_units count to units_export JSONL unique ids."""
+    chroma_dir = Path(cfg["index"]["chroma_dir"]).expanduser()
+    export = Path(cfg["index"].get("units_export", "")).expanduser()
+    chroma_count = collection_count(str(chroma_dir), "knowledge_units")
+    if not export.is_file():
+        return DoctorCheck(
+            "index_drift",
+            True,
+            f"no units_export at {export} (Chroma={chroma_count})",
+        )
+    line_count, unique_count = _jsonl_unit_stats(export)
+    if chroma_count < 1 and (line_count > 0 or unique_count > 0):
+        return DoctorCheck(
+            "index_drift",
+            False,
+            f"Chroma empty but JSONL has {line_count} lines ({unique_count} unique ids)",
+        )
+    if unique_count < 1:
+        return DoctorCheck(
+            "index_drift",
+            True,
+            f"empty units_export (Chroma={chroma_count})",
+        )
+    ratio = chroma_count / unique_count
+    detail = (
+        f"Chroma {chroma_count} vs JSONL {unique_count} unique ids "
+        f"({line_count} lines, {ratio:.0%} indexed)"
+    )
+    if ratio < 0.15 and unique_count > 500:
+        return DoctorCheck(
+            "index_drift",
+            False,
+            detail + " — run: rm ~/.local/share/convmem/processed.json && convmem index",
+        )
+    if ratio < 0.3 and unique_count > 500:
+        return DoctorCheck("index_drift", True, f"WARN: {detail}")
+    return DoctorCheck("index_drift", True, detail)
+
+
 def _check_mcp_import() -> DoctorCheck:
     try:
         import mcp_server  # noqa: F401
@@ -116,7 +179,7 @@ def _check_mcp_import() -> DoctorCheck:
         return DoctorCheck("mcp_import", False, f"mcp_server import failed: {exc}")
     missing = [
         name
-        for name in ("brief", "search_fast", "search", "ask", "related", "stats")
+        for name in ("brief", "search_fast", "search", "ask", "related", "stats", "unresolved")
         if not hasattr(mcp_server, name)
     ]
     if missing:
@@ -224,7 +287,11 @@ def _check_synthesis_gate() -> DoctorCheck:
 
     log_path = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
     if not log_path.is_file():
-        return DoctorCheck("synthesis_gate", True, "0 failures in 7d (gate: >=3 triggers P1c)")
+        return DoctorCheck(
+            "synthesis_gate",
+            True,
+            "0 failures in 7d (gate: >=3/week investigate ask pipeline; P1c Phase 1 shipped)",
+        )
     cutoff = _dt.now(_tz.utc) - _td(days=7)
     count = 0
     for line in log_path.read_text(encoding="utf-8").splitlines():
@@ -242,9 +309,49 @@ def _check_synthesis_gate() -> DoctorCheck:
         return DoctorCheck(
             "synthesis_gate",
             False,
-            f"{count} failures in 7d — P1c streaming gate TRIGGERED (>=3)",
+            f"{count} failures in 7d — synthesis gate TRIGGERED (>=3; investigate ask pipeline)",
         )
-    return DoctorCheck("synthesis_gate", True, f"{count} failures in 7d (gate: >=3 triggers P1c)")
+    return DoctorCheck(
+        "synthesis_gate",
+        True,
+        f"{count} failures in 7d (gate: >=3/week investigate; partial synthesis on timeout shipped)",
+    )
+
+
+def _check_index_gate() -> DoctorCheck:
+    """Detect approved decisions whose Chroma indexing failed (delayed-index)."""
+    import json as _json
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+
+    log_path = Path("~/.local/share/convmem/index_failures.jsonl").expanduser()
+    if not log_path.is_file():
+        return DoctorCheck("index_gate", True, "0 index failures (all approved decisions indexed)")
+    cutoff = _dt.now(_tz.utc) - _td(days=7)
+    count = 0
+    latest_id = ""
+    for line in log_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = _json.loads(line)
+            ts = _dt.strptime(entry["ts"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=_tz.utc)
+            if ts >= cutoff:
+                count += 1
+                latest_id = entry.get("proposal_id", "")
+        except (KeyError, ValueError, _json.JSONDecodeError):
+            continue
+    if count >= 3:
+        return DoctorCheck(
+            "index_gate",
+            False,
+            f"{count} index failures in 7d — >=3; recovery: convmem add --file <approved.jsonl> --upsert (gate)",
+        )
+    if count > 0:
+        return DoctorCheck(
+            "index_gate", True, f"{count} index failures in 7d (latest: {latest_id})"
+        )
+    return DoctorCheck("index_gate", True, "0 index failures in 7d")
 
 
 def _check_watch_memory() -> DoctorCheck:
@@ -283,6 +390,15 @@ def _check_lock(name: str, path: Path) -> DoctorCheck:
     return DoctorCheck(name, True, f"present ({raw[:80]})")
 
 
+def _check_write_lane(cfg: dict) -> DoctorCheck:
+    from runtime_guard import runtime_summary, write_boundary_message
+
+    chroma = cfg["index"]["chroma_dir"]
+    blocked = write_boundary_message(chroma)
+    detail = runtime_summary(chroma)
+    return DoctorCheck("write_lane", blocked is None, detail)
+
+
 def run_doctor(
     *,
     v1: bool = False,
@@ -292,11 +408,14 @@ def run_doctor(
     cfg = load_config()
     checks: list[DoctorCheck] = [
         _check_config(),
+        _check_write_lane(cfg),
         _check_deepseek_key(),
         _check_ollama(cfg),
         _check_chroma(cfg),
+        _check_index_drift(cfg),
         _check_restic(),
         _check_synthesis_gate(),
+        _check_index_gate(),
         _check_mcp_import(),
         _check_mcp_wiring(),
         _check_continue_mcp(),

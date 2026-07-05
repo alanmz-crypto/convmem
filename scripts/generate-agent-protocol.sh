@@ -39,6 +39,19 @@ extract_section() {
   echo ""
   extract_section SESSION_CLOSE
 } > config/agent-protocol-mcp.txt
+# Append workflow routing for MCP-only agents
+{
+  echo ""
+  echo "## Workflow routing (when unsure)"
+  echo ""
+  extract_section WORKFLOW_ROUTING
+} >> config/agent-protocol-mcp.txt
+{
+  echo ""
+  echo "## Verify shipped work (DeepSeek / MCP agents)"
+  echo ""
+  echo "Read \`docs/CODEX-DEEPSEEK-VERIFY.md\` — use \`search_fast\` + \`ask\` for sections marked DeepSeek; ask Ryan to paste shell output for Codex-only steps."
+} >> config/agent-protocol-mcp.txt
 echo "  -> config/agent-protocol-mcp.txt"
 
 # --- Cursor .mdc rule ---
@@ -62,6 +75,10 @@ FRONTMATTER
   extract_section TIER_B
   echo ""
   extract_section SESSION_CLOSE
+  echo ""
+  echo "## Workflow routing (when unsure)"
+  echo ""
+  extract_section WORKFLOW_ROUTING
 } >> config/cursor-rules-convmem.mdc.example
 echo "  -> config/cursor-rules-convmem.mdc.example"
 
@@ -74,9 +91,28 @@ echo "  -> config/cursor-rules-convmem.mdc.example"
   echo ""
   extract_section TIER_A
   echo ""
+  echo "## Builder reference"
+  echo ""
+  echo "Before convmem architecture edits, read the relevant digest in \`docs/builder-reference/\`."
+  echo ""
+  echo "- \`ousterhout-builder-digest.md\` for module boundaries and protocol surfaces"
+  echo "- \`manning-builder-digest.md\` for ranking, chunking, retrieval, and evaluation"
+  echo "- \`zeller-builder-digest.md\` for reproduction, triage, and verification"
+  echo "- \`hard-parts-builder-digest.md\` for trade-offs, data ownership, and split decisions"
+  echo ""
   echo "## Read-only guard"
   echo ""
   echo "Do not run \`convmem add\`, \`convmem index\`, or \`convmem verify\` without user direction."
+  echo ""
+  echo "## Workflow routing (when unsure)"
+  echo ""
+  extract_section WORKFLOW_ROUTING
+  echo ""
+  echo "Full cheat sheet: \`docs/MODEL-WORKFLOW.md\`"
+  echo ""
+  echo "## Verify shipped work (Codex / DeepSeek)"
+  echo ""
+  echo "Independent checklist: \`docs/CODEX-DEEPSEEK-VERIFY.md\` — pytest, smoke scripts, MCP spot-checks. Do not trust prior chat claims without running it."
 } > config/codex-agents-convmem.example.md
 echo "  -> config/codex-agents-convmem.example.md"
 
@@ -106,6 +142,10 @@ FRONTMATTER
   echo "## Session close"
   echo ""
   extract_section SESSION_CLOSE
+  echo ""
+  echo "## Workflow routing (when unsure)"
+  echo ""
+  extract_section WORKFLOW_ROUTING
 } >> config/kiro-steering-convmem.example.md
 echo "  -> config/kiro-steering-convmem.example.md"
 
@@ -157,6 +197,10 @@ echo "  -> docs/chatgpt-pack/README.md"
   echo "## Session close"
   echo ""
   extract_section SESSION_CLOSE
+  echo ""
+  echo "## Workflow routing (when unsure)"
+  echo ""
+  extract_section WORKFLOW_ROUTING
 } > config/crush-rules-convmem.example.md
 echo "  -> config/crush-rules-convmem.example.md"
 
