@@ -86,6 +86,39 @@ def list_unresolved(
     return collected
 
 
+def unresolved_items(results: list[dict]) -> list[dict]:
+    """Public JSON-serializable rows (no metadata blob)."""
+    return [
+        {
+            "ledger_id": r["ledger_id"],
+            "severity": r["severity"],
+            "site": r["site"],
+            "domain": r["domain"],
+            "title": r["title"],
+            "status": r["status"],
+            "last_touched": r["last_touched"],
+            "summary": r["summary"],
+        }
+        for r in results
+    ]
+
+
+def unresolved_payload(
+    store,
+    *,
+    site: str | None = None,
+    domain: str | None = None,
+) -> dict:
+    results = list_unresolved(store, site=site, domain=domain)
+    return {"count": len(results), "items": unresolved_items(results)}
+
+
+def render_unresolved_json(payload: dict) -> str:
+    import json
+
+    return json.dumps(payload, indent=2)
+
+
 def render_unresolved(results: list[dict]) -> None:
     """Print a table of open observations."""
     if not results:

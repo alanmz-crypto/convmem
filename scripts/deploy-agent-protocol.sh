@@ -438,6 +438,12 @@ fi
 
 echo ""
 
+if [ -x scripts/deploy-builder-reference.sh ]; then
+  echo ""
+  echo "=== Deploying builder reference ==="
+  bash scripts/deploy-builder-reference.sh
+fi
+
 # --- Manual steps ---
 echo "=== Manual steps ==="
 echo ""

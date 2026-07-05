@@ -27,6 +27,11 @@ from site_filter import filter_results_by_site, normalize_site
 # Query logic (unchanged)
 # ---------------------------------------------------------------------------
 
+_LEDGER_ID_RE = re.compile(
+    r"\b(dec_prop_\d{8}_\d{6}_[0-9a-f]{4}|obs_[a-z0-9_-]+|ver_[a-z0-9_-]+)\b",
+    re.IGNORECASE,
+)
+
 
 def _unit_domain(meta: dict) -> str | None:
     """Return tagged domain, or None for pre-Step-8 units without domain metadata."""
@@ -82,6 +87,8 @@ def _search_blob(meta: dict) -> str:
         meta.get("result", ""),
         meta.get("notes", ""),
         meta.get("rationale", ""),
+        meta.get("relates_to", ""),
+        meta.get("summary", ""),
         meta.get("source_type", ""),
         meta.get("workspace_directory", ""),
         meta.get("conversation_id", ""),
@@ -161,6 +168,82 @@ def _fallback_query_rows(
     return results[:top_k]
 
 
+def _extract_ledger_ids(text: str) -> list[str]:
+    return list(dict.fromkeys(_LEDGER_ID_RE.findall(text)))
+
+
+def _result_dedupe_key(r: dict) -> str:
+    meta = r.get("metadata") or {}
+    lid = (meta.get("ledger_id") or "").strip()
+    if lid:
+        return f"ledger:{lid}"
+    return f"id:{r.get('id', '')}"
+
+
+def _merge_priority_hits(primary: list[dict], extras: list[dict]) -> list[dict]:
+    """Prepend exact ledger / anchor hits; dedupe by ledger id or chroma id."""
+    seen: set[str] = set()
+    merged: list[dict] = []
+    for r in extras + primary:
+        key = _result_dedupe_key(r)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(r)
+    return merged
+
+
+def _ledger_lookup_hits(cfg: dict, store, query: str) -> list[dict]:
+    """Exact ledger id lookup + protocol fallback anchor from approved JSONL."""
+    from ledger import find_unit_by_ledger_id
+    from ledger_recent import (
+        PROTOCOL_FALLBACK_LEDGER_ID,
+        approved_decision_hit,
+        is_protocol_anchor_query,
+    )
+
+    hits: list[dict] = []
+    seen: set[str] = set()
+
+    def _add(hit: dict | None) -> None:
+        if not hit:
+            return
+        lid = ((hit.get("metadata") or {}).get("ledger_id") or "").strip()
+        if lid and lid in seen:
+            return
+        if lid:
+            seen.add(lid)
+        hits.append(hit)
+
+    for lid in _extract_ledger_ids(query):
+        unit = find_unit_by_ledger_id(store, lid) if store is not None else None
+        if unit:
+            meta = unit.get("metadata") or {}
+            doc = (unit.get("document") or "").strip()
+            if not doc:
+                enriched = approved_decision_hit(cfg, lid)
+                if enriched:
+                    _add(enriched)
+                    continue
+            _add(
+                {
+                    "id": unit.get("id", ""),
+                    "metadata": meta,
+                    "document": doc or meta.get("title") or "",
+                    "score": 0.99,
+                    "rank_score": 0.99,
+                    "ledger_lookup": True,
+                }
+            )
+        else:
+            _add(approved_decision_hit(cfg, lid))
+
+    if is_protocol_anchor_query(query):
+        _add(approved_decision_hit(cfg, PROTOCOL_FALLBACK_LEDGER_ID))
+
+    return hits
+
+
 def query_units(
     text: str,
     top_k: int = 5,
@@ -185,10 +268,12 @@ def query_units(
         # filter client-side before reranking/truncating.
         n_fetch = max(n_fetch, qcfg.get("top_k_candidates", 20)) * 3
 
+    ledger_extras: list[dict] = []
     try:
         store = open_chroma_for_read(cfg["index"]["chroma_dir"])
         try:
             results = store.query_units(embedding, n_fetch)
+            ledger_extras = _ledger_lookup_hits(cfg, store, text)
         finally:
             store.close()
         if site_norm:
@@ -207,10 +292,20 @@ def query_units(
             domain=domain,
             site=site,
         )
+        ledger_extras = _ledger_lookup_hits(cfg, None, text)
     for r in results:
         d = r.get("distance")
         if d is not None:
             r["score"] = round(1.0 - d, 4)
+
+    rw = float(qcfg.get("recency_weight", 0.0) or 0.0)
+    rhl = float(qcfg.get("recency_half_life_days", 30.0))
+    if rw > 0 and results:
+        from evidence import apply_recency_rerank
+
+        results = apply_recency_rerank(
+            results, recency_weight=rw, recency_half_life_days=rhl
+        )
 
     fetch_for_rerank = qcfg.get("top_k_candidates", 20) if use_rerank else top_k
     if use_rerank and results:
@@ -218,6 +313,7 @@ def query_units(
 
         results = rerank_fn(text, results[:fetch_for_rerank], models["rerank_model"], top_k)
 
+    results = _merge_priority_hits(results, ledger_extras)
     return results[:top_k]
 
 
@@ -347,11 +443,19 @@ def _open_text(meta: dict) -> Text:
 
 
 def _panel_title(
-    n: int, score: float | None, meta: dict, *, units: bool
+    n: int, score: float | None, meta: dict, *, units: bool, result: dict | None = None
 ) -> Text:
     t = Text()
     t.append(f"[{n}]  ", style="bold")
-    t.append_text(_score_text(score))
+    display_score = None
+    if result:
+        display_score = result.get("rank_score", result.get("score"))
+    else:
+        display_score = score
+    t.append_text(_score_text(display_score))
+    rboost = (result or {}).get("recency_boost")
+    if rboost:
+        t.append(f" +{rboost:.3f}rec", style="dim cyan")
     t.append(" ─ ", style="dim")
     if units:
         t.append(meta.get("type", "?"), style="dim cyan")
@@ -443,7 +547,7 @@ def render_search_results(results: list[dict], *, units: bool = True) -> None:
         meta = r.get("metadata", {})
         panel = Panel(
             _result_body(r, meta, units=units),
-            title=_panel_title(i, r.get("score"), meta, units=units),
+            title=_panel_title(i, r.get("score"), meta, units=units, result=r),
             title_align="left",
             border_style="bright_black",
             padding=(0, 1),

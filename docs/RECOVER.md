@@ -15,7 +15,7 @@ from the repo**, and what needs a **separate data backup**.
 | **3 — Wiring + source** | `~/Projects/convmem`, `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, `~/.kiro/settings/permissions.yaml`, `~/.config/crush/crush.json`, Continue YAML | Restore project backup or git; copy MCP/permissions examples | **Not blocked** — edits encouraged |
 
 **Not in the Git repo:** Tier 1 (`chroma/`, `processed.json`, `knowledge_units.jsonl`,
-`decisions-approved.jsonl`, etc.). Include `~/.local/share/convmem/` in backups if you want
+`decisions-approved.jsonl`, `attempts.jsonl` (optional), etc.). Include `~/.local/share/convmem/` in backups if you want
 fast recovery without reindexing.
 
 ---
@@ -140,6 +140,23 @@ convmem stats
 
 Approved decisions in `decisions-approved.jsonl` can be re-ingested with
 `convmem add` if you still have that file from backup.
+
+### Index drift (doctor `index_drift` check)
+
+`convmem doctor` compares Chroma `knowledge_units` count to
+`knowledge_units.jsonl` (config `index.units_export`). Compares Chroma count to
+**unique unit ids** in the export (append-only JSONL may have duplicate lines).
+WARN below ~30% indexed; FAIL below ~15% or empty Chroma with non-empty export.
+
+**One-command rebuild** (Ryan terminal — clears incremental index state):
+
+```bash
+rm ~/.local/share/convmem/processed.json
+convmem index
+convmem doctor   # index_drift should pass
+```
+
+If Chroma itself is corrupt, restore from Restic (above) before reindexing.
 
 ---
 

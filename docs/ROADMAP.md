@@ -16,7 +16,7 @@ Test count at publish: run `convmem brief --with-tests` (currently **159**).
 | Phase | What shipped |
 |-------|----------------|
 | P0 | Watch soak PASS (~99 MB RSS); `doctor` v0+v1; F2a store API |
-| P1a | `convmem unresolved`; `recency_boost` on `ask --evidence`; JSONL upsert sync |
+| P1a | `convmem unresolved`; `recency_boost` on search + `ask --evidence`; JSONL upsert sync |
 | P1b | Golden eval 10/10 |
 | Protocol | Global rollout — [`config/agent-protocol.md`](../config/agent-protocol.md), verification matrix, soak closed |
 | Chroma write path | `PersistentClient`-only; `record --approve-last` index regression test — commit `4c82f35` |
@@ -71,11 +71,11 @@ MCP (read-only): `brief`, `search_fast`, `ask`, `related`, `stats`.
 
 ## Optional gates (manual — do not build unless triggered)
 
-| Gate | Trigger | Action |
-|------|---------|--------|
-| **P1c** | ≥3 `synthesis_failed` / week on `ask` | Phase 1 streaming synthesis — [`PLAN-2026-06-29-streaming-synthesis.md`](inter-model/PLAN-2026-06-29-streaming-synthesis.md) |
-| **P2** | New FAIL in [`VERIFICATION-MATRIX.md`](inter-model/VERIFICATION-MATRIX.md) | MCP `unresolved` / `open`; agent-habit fixes only |
-| **P2-stream** | After P1c + client pre-flight | Streamable HTTP + `ask_stream` — same plan doc |
+| Gate | Trigger | Action | Builder lens |
+|------|---------|--------|--------------|
+| **P1c** | ≥3 `synthesis_failed` / week on `ask` | Phase 1 streaming synthesis **shipped** (partial on timeout) — [`PLAN-2026-06-29-streaming-synthesis.md`](inter-model/PLAN-2026-06-29-streaming-synthesis.md) | ouster, manning |
+| **P2** | New FAIL in [`VERIFICATION-MATRIX.md`](inter-model/VERIFICATION-MATRIX.md) | MCP `unresolved` / `open`; agent-habit fixes only | hard-parts, zeller |
+| **P2-stream** | After P1c + client pre-flight | Streamable HTTP + `ask_stream` — same plan doc | ouster, manning |
 
 **rerank:** Manual spot-check only — eyeball `config.toml` vs `brief`; no automation.
 
@@ -83,7 +83,7 @@ MCP (read-only): `brief`, `search_fast`, `ask`, `related`, `stats`.
 
 ## P3 — later
 
-OpenClaw, dedupe approval UI, hybrid retrieval, `export --redact`, domain backfill in brief, rerank/CUDA if latency matters.
+OpenClaw, dedupe approval UI, hybrid retrieval (`manning`), `export --redact`, domain backfill in brief, rerank/CUDA if latency matters.
 
 Cross-project digest: [`scripts/cross-project-digest.sh`](../scripts/cross-project-digest.sh), pilot [`CROSS-PROJECT-DIGEST-PILOT.md`](inter-model/CROSS-PROJECT-DIGEST-PILOT.md).
 

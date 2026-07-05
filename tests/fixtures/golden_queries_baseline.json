@@ -1,0 +1,123 @@
+{
+  "count": 6,
+  "p_at_1": 0.6666666666666666,
+  "p_at_k": 1.0,
+  "results": [
+    {
+      "query": "Global convmem protocol soak close",
+      "acceptable_ids": [
+        "dec_prop_20260629_005903_51b4",
+        "dec_prop_20260629_150527_46f0",
+        "dec_prop_20260625_203408_f9b3"
+      ],
+      "top_k": 5,
+      "hit_ids": [
+        "dec_prop_20260629_005903_51b4",
+        "dec_prop_20260625_203408_f9b3",
+        "",
+        "",
+        ""
+      ],
+      "matched_id": "dec_prop_20260629_005903_51b4",
+      "rank": 1,
+      "p_at_1": true,
+      "p_at_k": true
+    },
+    {
+      "query": "Arch Linux health prompt matrix",
+      "acceptable_ids": [
+        "dec_prop_20260629_150516_6d70"
+      ],
+      "top_k": 8,
+      "hit_ids": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "dec_prop_20260629_150516_6d70",
+        "dec_prop_20260629_125349_99f1"
+      ],
+      "matched_id": "dec_prop_20260629_150516_6d70",
+      "rank": 7,
+      "p_at_1": false,
+      "p_at_k": true
+    },
+    {
+      "query": "Continue alien workspace convmem fail",
+      "acceptable_ids": [
+        "dec_prop_20260625_223006_528c",
+        "dec_prop_20260625_225404_11cf"
+      ],
+      "top_k": 5,
+      "hit_ids": [
+        "",
+        "dec_prop_20260625_223006_528c",
+        "dec_prop_20260625_225404_11cf",
+        "",
+        ""
+      ],
+      "matched_id": "dec_prop_20260625_223006_528c",
+      "rank": 2,
+      "p_at_1": false,
+      "p_at_k": true
+    },
+    {
+      "query": "Crush Tier A shell slice deploy",
+      "acceptable_ids": [
+        "dec_prop_20260625_233830_b9af",
+        "dec_prop_20260625_235954_85ea"
+      ],
+      "top_k": 5,
+      "hit_ids": [
+        "dec_prop_20260625_235954_85ea",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "matched_id": "dec_prop_20260625_235954_85ea",
+      "rank": 1,
+      "p_at_1": true,
+      "p_at_k": true
+    },
+    {
+      "query": "v4 repo organization convmem",
+      "acceptable_ids": [
+        "dec_prop_20260701_000837_8ab4",
+        "dec_prop_20260630_233939_df93"
+      ],
+      "top_k": 5,
+      "hit_ids": [
+        "dec_prop_20260630_233939_df93",
+        "dec_prop_20260630_221036_6e74",
+        "dec_prop_20260701_000837_8ab4",
+        "dec_prop_20260630_234007_c0cd",
+        ""
+      ],
+      "matched_id": "dec_prop_20260630_233939_df93",
+      "rank": 1,
+      "p_at_1": true,
+      "p_at_k": true
+    },
+    {
+      "query": "convmem record relates-to fallback root",
+      "acceptable_ids": [
+        "dec_prop_20260623_161428_c311"
+      ],
+      "top_k": 5,
+      "hit_ids": [
+        "dec_prop_20260623_161428_c311",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "matched_id": "dec_prop_20260623_161428_c311",
+      "rank": 1,
+      "p_at_1": true,
+      "p_at_k": true
+    }
+  ]
+}

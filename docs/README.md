@@ -15,6 +15,22 @@ Flat navigation for active docs. **No subfolder taxonomy** — historical materi
 | [`RECOVER.md`](RECOVER.md) | Disaster recovery |
 | [`inter-model/LATEST.md`](inter-model/LATEST.md) | Single cross-model handoff pointer |
 | [`../SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) | Background synthesis / digest status (Phase 0–3) |
+| [`MODEL-WORKFLOW.md`](MODEL-WORKFLOW.md) | **Agent cheat sheet** — prod vs lab, digest, references, smoke |
+| [`CODEX-DEEPSEEK-VERIFY.md`](CODEX-DEEPSEEK-VERIFY.md) | **Verification checklist** for Codex (shell) and DeepSeek (MCP) |
+
+---
+
+## Builder reference
+
+Curated tier-A book digests for agent surfaces (Ousterhout, Manning IR, Zeller).
+Deploy: `bash scripts/deploy-builder-reference.sh` · Verify: `bash scripts/verify-builder-reference.sh` · Surfaces: `bash scripts/validate-builder-reference-surfaces.sh`
+
+| Doc | Role |
+|-----|------|
+| [`builder-reference/README.md`](builder-reference/README.md) | Index — when to read which digest |
+| [`builder-reference/SOURCES.md`](builder-reference/SOURCES.md) | PDF paths + page ranges (local) |
+| [`inter-model/PLAN-2026-07-01-apply-builder-reference.md`](inter-model/PLAN-2026-07-01-apply-builder-reference.md) | **Active plan** — apply digests to past/future work (paused for literature review) |
+| [`inter-model/HANDOFF-KIRO-CRUSH-CODEX-2026-07-01-builder-reference.md`](inter-model/HANDOFF-KIRO-CRUSH-CODEX-2026-07-01-builder-reference.md) | Kiro / Crush / Codex — read before builder-reference implementation |
 
 ---
 
@@ -35,10 +51,12 @@ Flat navigation for active docs. **No subfolder taxonomy** — historical materi
 
 | Doc | Role |
 |-----|------|
+| [`inter-model/PLAN-2026-07-01-apply-builder-reference.md`](inter-model/PLAN-2026-07-01-apply-builder-reference.md) | **Active** — builder-reference application plan (enriched; execution paused) |
 | [`MILESTONE-F.md`](MILESTONE-F.md) | Milestone F scope |
 | [`ROADMAP-DRAFT.md`](ROADMAP-DRAFT.md) | Draft roadmap (archival banner; live link from ROADMAP) |
 | [`inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`](inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md) | Filed plans + synthesis gates |
 | [`inter-model/CROSS-PROJECT-DIGEST-PILOT.md`](inter-model/CROSS-PROJECT-DIGEST-PILOT.md) | Manual digest pilot log |
+| [`CROSS-PROJECT-DIGEST-ATTEMPTS.md`](CROSS-PROJECT-DIGEST-ATTEMPTS.md) | `attempts.jsonl` schema, precheck, prod smoke |
 
 ---
 

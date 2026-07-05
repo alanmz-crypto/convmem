@@ -44,14 +44,17 @@ allow_extra = []
 top_k_candidates = 20
 top_k_results    = 5
 rerank           = true
-recency_weight   = 0.1  # time-decay boost for newer knowledge units
+recency_weight   = 0.1  # time-decay boost for newer knowledge units (search + ask --evidence)
+recency_half_life_days = 30
 
 [watch]
 debounce_seconds = 90
 # Optional: override [sources].paths for watch only (defaults to sources.paths)
+# Optional: watch repo coordination docs (uncomment path on this machine)
 # paths = [
 #   "~/.config/cursor/chats",
 #   "~/.cursor/projects",
+#   "~/Projects/convmem/docs/inter-model",
 # ]
 
 [refine]

@@ -14,12 +14,11 @@ The `-l` flag sources `~/.zshrc`/`~/.bashrc` where Ollama's PATH is set. For per
 
 
 
-1. **`brief()` first** every session — before List/Read/bash. **Repo cwd** (`~/Projects/*`, `~/WordPress/*`): pass `project=<basename>` or infer from cwd. **System runbook cwd** (`/boot`, `/etc`, `/var`, systemd): `brief()` **unscoped** (no project slug — never use `entries` or other dir names as slugs). **Local workspace cwd** (`~/Documents`, paths outside Projects/WordPress/GitClones): `brief()` unscoped → `search_fast(workspace_hint.suggested_search_fast)` → Read README.md; cataloging answers must cite `has_crush_db`, corpus hits, README — never folder names alone.
+1. **`brief()` first** every session. Pass `project=<repo-slug>` to focus one repo (e.g. `pavlomassage-dev`, `willowyhollow-practice`, `convmem`). **If omitted:** infer from workspace — git repo basename, parent dir name, or tags in README/AGENTS.md; do not substitute a unrelated slug (e.g. do not use `willowyhollow-dev` when cwd is `pavlomassage-practice`).
 2. **Check `unresolved_count`** in the brief response. If >0 and working on a client site, surface open issues before proceeding.
-3. **After `brief`:** repo work — answer from **`projects[]`** and repo files. System runbook — `search_fast(user subject)` then read files under cwd.
-4. **`search_fast()`** — repo: include project slug; system runbook: user subject (boot entries, pacman, journal). **Never** search Continue IDE, VS Code extension, Docker Compose plugin, or Compose UI unless the user explicitly asked.
-5. **`related()`** walks the evidence chain for any ledger id (`dec_prop_…` or `obs_…`).
-6. **If `ask()` fails with network error** (Codex sandbox): retry via `bash -lc 'convmem ask "..."'`.
+3. **Before answering history/architecture questions:** call `search_fast()` then `ask()` with citations.
+4. **`related()`** walks the evidence chain for any ledger id (`dec_prop_…` or `obs_…`).
+5. **If `ask()` fails with network error** (Codex sandbox): retry via `bash -lc 'convmem ask "..."'`.
 
 **Read-only via MCP.** No propose_decision, add, index, or verify on MCP — durable writes are CLI `convmem record` + `--approve-last` only, run by Ryan.
 
@@ -50,3 +49,25 @@ convmem record --approve-last
 
 Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add `--signer kiro-review` on `--approve-last` when signing durable facts.
 
+
+## Workflow routing (when unsure)
+
+
+**Cheat sheet:** `docs/MODEL-WORKFLOW.md` — read when lost.
+
+| If cwd / task is… | Read first | Run |
+|-------------------|------------|-----|
+| Any session | — | `convmem doctor` → `brief` → `unresolved` |
+| `~/Projects/convmem` + cross-project digest | `docs/CROSS-PROJECT-DIGEST-ATTEMPTS.md` | `scripts/cross-project-digest.sh --skip-ask`; smoke: `scripts/smoke-cross-project-digest.sh` |
+| `~/Projects/convmem` + architecture | `docs/builder-reference/README.md` | matching digest, then code |
+| `~/Projects/convmem-lab` | `docs/lab-reference/NOTES.md` | `scripts/convmem-lab.sh doctor`; `lab/scripts/compile-synthesis-brief.sh`; `lab/scripts/smoke-synthesis.sh` |
+| Session close / record | `docs/inter-model/SESSION-CLOSE-RECORD.md` | output `convmem record` block; Ryan approves |
+
+**Split:** `lab-reference/` = lab gates & synthesis smoke (lab repo). `builder-reference/` = prod architecture. Never mix prod/lab data paths. Lab: no MCP registration. `--propose` on prod digest: Ryan-gated.
+
+**Codex / DeepSeek:** verify shipped work via `docs/CODEX-DEEPSEEK-VERIFY.md` (independent checklist — do not trust chat claims alone).
+
+
+## Verify shipped work (DeepSeek / MCP agents)
+
+Read `docs/CODEX-DEEPSEEK-VERIFY.md` — use `search_fast` + `ask` for sections marked DeepSeek; ask Ryan to paste shell output for Codex-only steps.

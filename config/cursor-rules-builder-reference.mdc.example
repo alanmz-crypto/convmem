@@ -1,0 +1,34 @@
+---
+description: convmem builder reference digests
+alwaysApply: false
+globs: "**/Projects/convmem/**"
+---
+
+# Builder reference
+
+Use the curated digests in `docs/builder-reference/` when changing convmem
+architecture, retrieval, or debugging workflow.
+
+## Read this when
+
+- touching module boundaries, CLI surfaces, or MCP handlers
+- changing ranking, chunking, or evaluation behavior
+- changing triage, reproduction, or verification flow
+- evaluating service splits, data ownership, or ingest/watch boundaries
+- F1 refine job queue, tombstones, ledger/Chroma replication
+- adding or modifying automated checks, fitness functions, or threshold gates
+
+## Tier A (deployed — Crush standing context)
+
+- `docs/builder-reference/ousterhout-builder-digest.md`
+- `docs/builder-reference/manning-builder-digest.md`
+- `docs/builder-reference/zeller-builder-digest.md`
+- `docs/builder-reference/hard-parts-builder-digest.md`
+- `docs/builder-reference/ddia-builder-digest.md`
+- `docs/builder-reference/arch-patterns-python-builder-digest.md`
+- `docs/builder-reference/evolutionary-architectures-builder-digest.md`
+
+## Tier B
+
+Read the relevant digest first, then make the change. Keep the protocol rules
+lean; put book knowledge in the digests.

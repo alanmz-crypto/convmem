@@ -10,7 +10,10 @@ This keeps the system local-first while leaving a one-line switch to the
 DeepSeek API once a key is available.
 """
 
+import json
 import os
+import threading
+from collections.abc import Iterator
 
 import requests
 
@@ -79,6 +82,130 @@ def _deepseek_generate(
     )
     resp.raise_for_status()
     return resp.json()["choices"][0]["message"]["content"].strip()
+
+
+def _check_stream_stop(stop: threading.Event | None, timeout: float | None) -> None:
+    if stop is not None and stop.is_set():
+        limit = timeout if timeout is not None else 0
+        raise TimeoutError(f"synthesis exceeded {limit}s wall clock")
+
+
+def _ollama_generate_stream(
+    prompt: str,
+    model: str,
+    host: str,
+    *,
+    stop: threading.Event | None = None,
+    timeout: float | None = None,
+    connection_timeout: float = 10,
+) -> Iterator[str]:
+    resp = requests.post(
+        f"{host.rstrip('/')}/api/generate",
+        json={
+            "model": model,
+            "prompt": prompt,
+            "stream": True,
+            "options": {"num_ctx": 8192, "temperature": 0.2},
+        },
+        timeout=connection_timeout,
+        stream=True,
+    )
+    resp.raise_for_status()
+    for line in resp.iter_lines(decode_unicode=True):
+        _check_stream_stop(stop, timeout)
+        if not line:
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        chunk = (data.get("response") or "").strip("\0")
+        if chunk:
+            yield chunk
+        if data.get("done"):
+            break
+
+
+def _deepseek_generate_stream(
+    prompt: str,
+    model: str,
+    base_url: str,
+    *,
+    stop: threading.Event | None = None,
+    timeout: float | None = None,
+    connection_timeout: float = 10,
+) -> Iterator[str]:
+    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "summarize_model requests DeepSeek but DEEPSEEK_API_KEY is not set."
+        )
+    resp = requests.post(
+        f"{base_url.rstrip('/')}/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2,
+            "stream": True,
+        },
+        timeout=connection_timeout,
+        stream=True,
+    )
+    resp.raise_for_status()
+    for line in resp.iter_lines(decode_unicode=True):
+        _check_stream_stop(stop, timeout)
+        if not line or not line.startswith("data: "):
+            continue
+        payload = line[6:].strip()
+        if payload == "[DONE]":
+            break
+        try:
+            data = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+        choices = data.get("choices") or []
+        if not choices:
+            continue
+        delta = choices[0].get("delta") or {}
+        content = delta.get("content") or ""
+        if content:
+            yield content
+
+
+def generate_stream(
+    prompt: str,
+    model: str,
+    ollama_host: str,
+    deepseek_base_url: str = "https://api.deepseek.com",
+    *,
+    timeout: float | None = None,
+) -> Iterator[str]:
+    """Yield synthesis tokens. Raises TimeoutError when wall-clock limit hits."""
+    stop = threading.Event()
+    timer: threading.Timer | None = None
+    if timeout is not None and timeout > 0:
+        timer = threading.Timer(timeout, stop.set)
+        timer.start()
+    try:
+        if "deepseek-v4" in model:
+            api_key = os.environ.get("DEEPSEEK_API_KEY")
+            if api_key:
+                yield from _deepseek_generate_stream(
+                    prompt,
+                    model,
+                    deepseek_base_url,
+                    stop=stop,
+                    timeout=timeout,
+                )
+                return
+            model = os.environ.get("CONVMEM_FALLBACK_MODEL", "llama3.1:8b")
+        yield from _ollama_generate_stream(
+            prompt, model, ollama_host, stop=stop, timeout=timeout
+        )
+    finally:
+        if timer is not None:
+            timer.cancel()
 
 
 def generate(

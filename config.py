@@ -1,9 +1,12 @@
 """Load convmem configuration from ~/.config/convmem/config.toml."""
 
+import os
 import tomllib
 from pathlib import Path
 
-CONFIG_PATH = Path("~/.config/convmem/config.toml").expanduser()
+CONFIG_PATH = Path(
+    os.environ.get("CONVMEM_CONFIG", "~/.config/convmem/config.toml")
+).expanduser()
 
 # Keys whose string values are filesystem paths and should be expanduser()'d.
 _PATH_KEYS = {"chroma_dir", "processed_log", "units_export", "inventory"}

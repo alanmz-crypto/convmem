@@ -143,3 +143,34 @@ def apply_evidence_rerank(
 
     scored.sort(key=lambda t: (-t[0], t[1]))
     return [r for _, _, r in scored]
+
+
+def apply_recency_rerank(
+    results: list[dict],
+    *,
+    recency_weight: float = 0.0,
+    recency_half_life_days: float = 30.0,
+) -> list[dict]:
+    """Re-order retrieval hits by semantic score + recency_boost (search path).
+
+    Lightweight alternative to apply_evidence_rerank — no ledger graph walk.
+    """
+    if not results or recency_weight <= 0:
+        return results
+
+    scored: list[tuple[float, int, dict]] = []
+    for i, r in enumerate(results):
+        meta = r.get("metadata") or {}
+        base = r.get("score")
+        if base is None:
+            base = 0.0
+        rboost = recency_boost(
+            meta, weight=recency_weight, half_life_days=recency_half_life_days
+        )
+        out = dict(r)
+        out["recency_boost"] = round(rboost, 4)
+        out["rank_score"] = round(base + rboost, 4)
+        scored.append((out["rank_score"], i, out))
+
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    return [r for _, _, r in scored]

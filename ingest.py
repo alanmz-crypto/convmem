@@ -300,6 +300,41 @@ def index(
                 print(f"  [skip] parse failed {path}: {e}")
             continue
 
+        if fmt == "inter_model_doc":
+            chroma_dir = idx["chroma_dir"]
+            if force_file:
+                with ChromaStore(chroma_dir) as store:
+                    n_del = store.delete_units_for_source(path_key)
+                    if verbose and n_del:
+                        print(f"  [reindex] cleared {n_del} units for {Path(path).name}")
+            try:
+                from inter_model_index import index_inter_model_messages
+
+                n_units = index_inter_model_messages(
+                    path,
+                    messages,
+                    path_key=path_key,
+                    chroma_dir=chroma_dir,
+                    embed_model=models["embed_model"],
+                    ollama_host=models["ollama_host"],
+                    verbose=verbose,
+                    units_export=units_export if units_export else None,
+                )
+            except Exception as e:
+                if verbose:
+                    print(f"  [skip] inter-model index failed {path}: {e}")
+                continue
+
+            processed[file_hash] = {
+                "path": path_key,
+                "chunks": 0,
+                "units": n_units,
+            }
+            save_processed(idx["processed_log"], processed)
+            stats["files_processed"] += 1
+            stats["units_indexed"] += n_units
+            continue
+
         chunks = chunk_messages(messages, chunk_size, overlap)
         if verbose:
             print(f"  [index] {Path(path).name}  ({len(messages)} msgs, {len(chunks)} chunks)")
