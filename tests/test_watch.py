@@ -16,6 +16,7 @@ from watch import (
     is_indexable,
     is_live_watch_db,
     is_watchable,
+    load_watch_settings,
     watch_roots,
 )
 
@@ -59,6 +60,16 @@ class WatchPathTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             roots = watch_roots([td])
             self.assertEqual(roots, [Path(td)])
+
+    def test_load_watch_settings_extra_paths(self):
+        cfg = {
+            "index": {"chroma_dir": "/tmp/chroma"},
+            "sources": {"paths": ["/transcripts"]},
+            "watch": {"debounce_seconds": 10, "extra_paths": ["/coord-docs"]},
+        }
+        debounce, paths, _ = load_watch_settings(cfg)
+        self.assertEqual(debounce, 10.0)
+        self.assertEqual(paths, ["/transcripts", "/coord-docs"])
 
     def test_is_indexable_cursor_jsonl(self):
         with tempfile.TemporaryDirectory() as td:

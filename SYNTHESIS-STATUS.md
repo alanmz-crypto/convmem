@@ -51,7 +51,7 @@
 ### Later (after gates)
 
 - Trial: `cross-project-digest.sh --propose` — **trial complete (Run 8)**; auto-draft `2c96` rejected; Ryan accepts prose drafts via normal `record` filing
-- Optional: install timer from `systemd/convmem-cross-project-digest.{service,timer}.example`
+- Optional: install timer from `systemd/convmem-cross-project-digest.{service,timer}.example` — **installed** (`scripts/install-cross-project-digest-timer.sh`; Mon 09:00 read-only)
 - Change feed (Phase 3) — temporal diff, separate from thematic linking
 
 ---
