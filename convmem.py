@@ -627,6 +627,7 @@ def tldr(
     if "willowyhollow" in str(ctx_lane):
         emit_next_steps(
             [
+                "Session loop: ~/Projects/convmem/docs/WILLOWYHOLLOW-SESSION-LOOP.md",
                 "Full: ~/Projects/convmem/docs/WILLOWYHOLLOW-WEBDEV-GUIDE.md",
                 "convmem brief --stdout-only",
             ]

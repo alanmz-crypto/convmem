@@ -21,7 +21,7 @@ MCP (Cursor): `brief()` → `search_fast()` / `ask()` before history questions.
 
 | Workspace | TLDR |
 |-----------|------|
-| `willowyhollow-practice` | `convmem tldr` (auto) or [`WILLOWYHOLLOW-TLDR.md`](WILLOWYHOLLOW-TLDR.md) |
+| `willowyhollow-practice` | `convmem tldr` (auto) · [`WILLOWYHOLLOW-TLDR.md`](WILLOWYHOLLOW-TLDR.md) · loop: [`WILLOWYHOLLOW-SESSION-LOOP.md`](WILLOWYHOLLOW-SESSION-LOOP.md) |
 | `convmem` repo | this file |
 | Lab experiments | `~/Projects/convmem-lab/scripts/convmem-lab.sh doctor` — **no prod MCP** |
 

@@ -1,6 +1,7 @@
 # convmem for Willowy Hollow web development
 
 **TLDR:** [`WILLOWYHOLLOW-TLDR.md`](WILLOWYHOLLOW-TLDR.md)  
+**Session loop:** [`WILLOWYHOLLOW-SESSION-LOOP.md`](WILLOWYHOLLOW-SESSION-LOOP.md)  
 **Full guide:** this file
 
 ---

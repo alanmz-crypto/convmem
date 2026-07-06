@@ -77,6 +77,7 @@ def after_doctor(*, passed: bool, v1: bool = False) -> None:
         lines.extend(
             [
                 "TLDR: ~/Projects/convmem/docs/WILLOWYHOLLOW-TLDR.md",
+                "Loop: ~/Projects/convmem/docs/WILLOWYHOLLOW-SESSION-LOOP.md",
                 "Read: Deploy Workflow — willowyhollow.md (exact deploy commands)",
                 f"Guide: {ctx.get('guide', '')}",
             ]
