@@ -60,6 +60,15 @@ Ryan: **"ingest your chat"** = A · **"index the log"** = B · **"ingest everyth
 
 **Intentional prod write from lab cwd:** `CONVMEM_CONFIRM_PROD=1 convmem index …` (use sparingly).
 
+**Ryan habit — you will forget the flag:** from **any** cwd, index prod session chat with:
+
+```bash
+bash ~/Projects/convmem/scripts/convmem-index-prod.sh ~/.kiro/sessions/.../messages.jsonl --force
+bash ~/Projects/convmem/scripts/convmem-index-prod.sh ~/.cursor/projects/.../agent-transcripts/.../....jsonl --force
+```
+
+Same wrapper for Codex rollout, Crush `.crush/crush.db`, etc. — always prod Chroma, no lab/prod mix-up.
+
 **Check before writes:** `convmem doctor` includes `write_lane` — shows `lane=`, `workspace=`, `write_guard=OK|BLOCKED`.
 
 ---
