@@ -1,6 +1,7 @@
 # Willowy Hollow + convmem — TLDR
 
-**Full guide:** [`WILLOWYHOLLOW-WEBDEV-GUIDE.md`](WILLOWYHOLLOW-WEBDEV-GUIDE.md)
+**Session loop (full):** [`WILLOWYHOLLOW-SESSION-LOOP.md`](WILLOWYHOLLOW-SESSION-LOOP.md)  
+**Guide:** [`WILLOWYHOLLOW-WEBDEV-GUIDE.md`](WILLOWYHOLLOW-WEBDEV-GUIDE.md)
 
 ---
 
@@ -8,13 +9,24 @@
 
 ```bash
 convmem doctor
-convmem tldr                   # one-page cheat sheet (auto lane)
+convmem tldr
 convmem brief --stdout-only
 convmem unresolved --site staging2.willowyhollow.com
 convmem "your question"
 ```
 
 Cursor: *“Brief me for Willowy Hollow and what’s open on staging2.”*
+
+---
+
+## Full session loop (7 beats)
+
+```text
+OPEN practice  →  ORIENT (doctor/brief/unresolved)  →  ASK memory
+WORK (repo scripts)  →  RECORD (you approve)  →  VERIFY  →  git close
+```
+
+Details: [`WILLOWYHOLLOW-SESSION-LOOP.md`](WILLOWYHOLLOW-SESSION-LOOP.md)
 
 ---
 
@@ -53,14 +65,13 @@ convmem record --approve-last   # you approve
 
 ---
 
-## After each command
+## Footers
 
-Look for **── Next steps ──** at the bottom.  
-Mute: `CONVMEM_NO_NEXT_STEPS=1`
+**── Next steps ──** after most commands. Mute: `CONVMEM_NO_NEXT_STEPS=1`
 
 ---
 
 ## Git deploy (theme only)
 
-Preview first → copy `public_html/.../functions.php` → `willowyhollow-dev` staging branch → `git add` that file only → push.  
-DB/pages: use `push-practice-to-staging2.sh`, not git.
+Preview first → copy `public_html/.../functions.php` → `willowyhollow-dev` staging → `git add` that file only → push.  
+DB/pages: `push-practice-to-staging2.sh`, not git.

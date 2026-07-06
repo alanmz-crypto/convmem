@@ -18,6 +18,7 @@ Flat navigation for active docs. **No subfolder taxonomy** — historical materi
 | [`MODEL-WORKFLOW.md`](MODEL-WORKFLOW.md) | **Agent cheat sheet** — prod vs lab, digest, references, smoke |
 | [`WILLOWYHOLLOW-WEBDEV-GUIDE.md`](WILLOWYHOLLOW-WEBDEV-GUIDE.md) | **Willowy Hollow** — convmem for web dev (beginner) |
 | [`WILLOWYHOLLOW-TLDR.md`](WILLOWYHOLLOW-TLDR.md) | **Willowy Hollow** — one-page cheat sheet |
+| [`WILLOWYHOLLOW-SESSION-LOOP.md`](WILLOWYHOLLOW-SESSION-LOOP.md) | **Willowy Hollow** — full session loop (Steps 1–10) |
 | [`CODEX-DEEPSEEK-VERIFY.md`](CODEX-DEEPSEEK-VERIFY.md) | **Verification checklist** for Codex (shell) and DeepSeek (MCP) |
 
 ---
