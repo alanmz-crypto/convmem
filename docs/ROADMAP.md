@@ -87,6 +87,10 @@ OpenClaw, dedupe approval UI, hybrid retrieval (`manning`), `export --redact`, d
 
 Cross-project digest: [`scripts/cross-project-digest.sh`](../scripts/cross-project-digest.sh), pilot [`CROSS-PROJECT-DIGEST-PILOT.md`](inter-model/CROSS-PROJECT-DIGEST-PILOT.md).
 
+**Pinned (2026-07-06):** Codex `rollout-*.jsonl` adapter — **shipped** — full assistant+user sessions under `~/.codex/sessions` (not `history.jsonl` prompts-only). Unified handoff: `scripts/sync-willowyhollow-handoff.sh`.
+
+**Pinned (2026-07-05):** `convmem index --file --supersede` — **shipped** — tombstones prior units (`superseded` / `superseded_by`) instead of hard delete. Default remains replace-delete. Use for evolving findings docs. Sync script: `scripts/sync-willowyhollow-findings-index.sh`.
+
 ---
 
 ## Hygiene (pinned)

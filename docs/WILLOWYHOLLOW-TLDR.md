@@ -56,7 +56,15 @@ Details: [`WILLOWYHOLLOW-SESSION-LOOP.md`](WILLOWYHOLLOW-SESSION-LOOP.md)
 
 ---
 
-## Save a win
+## Cross-model handoff
+
+```bash
+bash ~/Projects/convmem/scripts/sync-willowyhollow-handoff.sh   # Crush + Kiro + Codex + logs
+```
+
+Phrasebook: **ingest your chat** = session only · **index the log** = markdown · **ingest everything** = both. Handoff ≠ `record`.
+
+---
 
 ```bash
 convmem record -i

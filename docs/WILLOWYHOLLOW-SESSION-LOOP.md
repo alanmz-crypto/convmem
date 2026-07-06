@@ -88,6 +88,32 @@ Agents may draft the block; **you** run `--approve-last`.
 
 ---
 
+## 5b. Cross-model handoff (Crush → Codex → Kiro)
+
+When switching models mid-sprint — **not** the same as `record` (that's one signed conclusion at the end).
+
+| Ryan says | What runs |
+|-----------|-----------|
+| **Ingest your chat** | Track A — session transcript only |
+| **Index the log** | Track B — findings/audit markdown |
+| **Ingest everything** / **full handoff** | A then B |
+
+**One command (Willowy Hollow bug sprint):**
+
+```bash
+bash ~/Projects/convmem/scripts/sync-willowyhollow-handoff.sh
+```
+
+That indexes Crush `.crush/crush.db`, latest Kiro `messages.jsonl`, latest Codex `rollout-*.jsonl` (full chat — not `history.jsonl`), plus synced findings + audit into `docs/inter-model/`.
+
+**Tell the next model:** *“Search convmem for finding N”* — not *“read what you wrote”* (that skips chat).
+
+**Team charter (full):** [`TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md) — lane names, not model weights. Say **Crush found it**, not "DeepSeek found it."
+
+**Tier 2 habit:** 3 consecutive clean handoffs (Track A + B, no wrong record offers) — checklist in TEAM-CHARTER doc §7.
+
+---
+
 ## 6. Verify memory stuck
 
 ```bash

@@ -69,7 +69,29 @@ class SupersededFilterTests(unittest.TestCase):
         self.assertNotIn("u1", ids)
         self.assertIn("u2", ids)
 
-    def test_units_metadata_excludes_tombstone(self):
+    def test_supersede_units_for_source(self):
+        src = "/tmp/findings.md"
+        self.store.add_unit(
+            "f1",
+            "finding one",
+            [1.0, 0.0],
+            {"id": "f1", "title": "1", "source_path": src},
+        )
+        self.store.add_unit(
+            "f2",
+            "finding two",
+            [1.0, 0.0],
+            {"id": "f2", "title": "2", "source_path": src},
+        )
+        n = self.store.supersede_units_for_source(src, superseded_by="findings@v2")
+        self.assertEqual(n, 2)
+        active = {m["id"] for m in self.store.units_metadata(include_superseded=False)}
+        self.assertEqual(active, {"canonical"})
+        twin = self.store.get_unit("f1")
+        assert twin is not None
+        self.assertTrue(twin["metadata"]["superseded"])
+        self.assertEqual(twin["metadata"]["superseded_by"], "findings@v2")
+
         metas = self.store.units_metadata(include_superseded=False)
         ids = {m["id"] for m in metas}
         self.assertIn("canonical", ids)

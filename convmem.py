@@ -253,12 +253,22 @@ def index(
         "--force",
         help="With --file: bypass path/hash skip and re-ingest (clears processed entry)",
     ),
+    supersede: bool = typer.Option(
+        False,
+        "--supersede",
+        help="With --file: tombstone prior units for this path instead of deleting",
+    ),
 ):
     """Ingest all sources (skip unchanged), or one file (--file; add --force to re-ingest)."""
     _guard_write()
     from ingest import index as run_index
 
-    stats = run_index(force_file=file, limit_files=limit, force_reindex=force)
+    stats = run_index(
+        force_file=file,
+        limit_files=limit,
+        force_reindex=force,
+        supersede_on_reindex=supersede,
+    )
     typer.echo("")
     typer.echo(
         f"Done. files_processed={stats['files_processed']} "

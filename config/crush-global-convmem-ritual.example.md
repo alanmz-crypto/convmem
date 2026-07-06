@@ -8,4 +8,6 @@ convmem doctor && convmem brief --stdout-only && convmem unresolved
 
 All models including **DeepSeek V4 Flash/Pro**: run this on "project state" / "what's the current state" questions. Do not start with repo survey.
 
+**Crush lane:** you are Crush even when running DeepSeek V4 — say **Crush found it**, not "DeepSeek found it."
+
 Full protocol: `~/.config/crush/rules/convmem.md`

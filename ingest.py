@@ -203,6 +203,7 @@ def index(
     limit_files: int | None = None,
     verbose: bool = True,
     force_reindex: bool = False,
+    supersede_on_reindex: bool = False,
 ) -> dict:
     """Run the summary ingest. Returns a stats dict."""
     cfg = load_config()
@@ -284,12 +285,21 @@ def index(
             with ChromaStore(chroma_dir) as store:
                 n_units_del = 0
                 n_sum_del = 0
+                tombstone_tag = f"{path_key}#{file_hash[:12]}"
                 for sp in dict.fromkeys([path, path_key]):
-                    n_units_del += store.delete_units_for_source(sp)
-                    n_sum_del += store.delete_summaries_for_source(sp)
+                    if supersede_on_reindex:
+                        n_units_del += store.supersede_units_for_source(
+                            sp, superseded_by=tombstone_tag
+                        )
+                        # Summaries have no tombstone metadata yet — still hard-delete.
+                        n_sum_del += store.delete_summaries_for_source(sp)
+                    else:
+                        n_units_del += store.delete_units_for_source(sp)
+                        n_sum_del += store.delete_summaries_for_source(sp)
                 if verbose and (n_units_del or n_sum_del):
+                    verb = "superseded" if supersede_on_reindex else "cleared"
                     print(
-                        f"  [reindex] cleared {n_units_del} units, "
+                        f"  [reindex] {verb} {n_units_del} units, "
                         f"{n_sum_del} summaries for {Path(path).name}",
                     )
 
@@ -304,9 +314,19 @@ def index(
             chroma_dir = idx["chroma_dir"]
             if force_file:
                 with ChromaStore(chroma_dir) as store:
-                    n_del = store.delete_units_for_source(path_key)
-                    if verbose and n_del:
-                        print(f"  [reindex] cleared {n_del} units for {Path(path).name}")
+                    tombstone_tag = f"{path_key}#{file_hash[:12]}"
+                    if supersede_on_reindex:
+                        n_del = store.supersede_units_for_source(
+                            path_key, superseded_by=tombstone_tag
+                        )
+                        if verbose and n_del:
+                            print(
+                                f"  [reindex] superseded {n_del} units for {Path(path).name}",
+                            )
+                    else:
+                        n_del = store.delete_units_for_source(path_key)
+                        if verbose and n_del:
+                            print(f"  [reindex] cleared {n_del} units for {Path(path).name}")
             try:
                 from inter_model_index import index_inter_model_messages
 
