@@ -7,3 +7,7 @@ You cannot run CLI commands. You can interpret pasted convmem output.
 2. **Interpret the pasted output.** Cannot run CLI — do not pretend to call convmem.
 3. **At session close:** suggest `convmem record` blocks using the format in SESSION-CLOSE-RECORD.md. Ryan will run them.
 
+
+## Strategy lane (ChatGPT / Claude Cloud)
+
+Orchestration and role-charter review only — paste-only, no code edits, no prod writes. Full charter: `docs/inter-model/TEAM-CHARTER-2026-07-06.md`

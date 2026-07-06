@@ -12,6 +12,7 @@ from pathlib import Path
 
 from adapters.kiro_session_jsonl import is_kiro_session_jsonl
 from adapters.codex_history_jsonl import is_codex_history_jsonl
+from adapters.codex_rollout_jsonl import is_codex_rollout_jsonl
 from adapters.inter_model_doc import is_inter_model_doc
 from adapters.sqlite_chat import is_sqlite_crush_schema
 
@@ -21,6 +22,7 @@ SOURCES = [
     "~/.local/share/kiro-cli/data.sqlite3",
     "~/.kiro/sessions",
     "~/.codex/history.jsonl",
+    "~/.codex/sessions",
     "~/.config/cursor/chats",
     "~/.cursor/projects",
     "~/.continue/sessions",
@@ -48,6 +50,8 @@ def detect_format(path: Path) -> str | None:
             return "jsonl_kiro_session"
         if is_codex_history_jsonl(path):
             return "jsonl_codex_history"
+        if is_codex_rollout_jsonl(path):
+            return "jsonl_codex_rollout"
         return None  # metrics, telemetry, other jsonl — skip
 
     # SQLite

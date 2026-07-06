@@ -11,6 +11,9 @@ Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
 | **ChatGPT** | Orchestration/strategy; paste-only access to corpus | Tier C (paste-only) |
 | **Crush** | Runtime agent with shell + MCP read tools | Tier A (shell + MCP; soak #8 showed MCP-only rules ignored) |
 | **DeepSeek** | Runtime synthesis only (`ask` / distill API) | Tier B (MCP-only) |
+
+**DeepSeek vs Crush:** DeepSeek row = Tier B synthesis API behind `convmem ask` only — not a bug-hunter. Crush running DeepSeek V4 weights is still **Crush lane** (Tier A shell). Bug discovery owner = **Crush**, not DeepSeek. Full audit: [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md).
+
 | **Codex** | Shell + `AGENTS.md` (`~/.codex/AGENTS.md` global + repo root); change-feed design lane (deferred); no MCP | Tier A (shell, but no MCP) — use CLI `convmem` commands |
 | **Continue** | MCP read (`brief`, `search_fast`, `ask`); MCP `instructions=` carries expanded protocol | Tier A (shell + MCP) |
 

@@ -8,6 +8,7 @@
 | [`config/agent-protocol.md`](../config/agent-protocol.md) | Session start/close (deployed to Cursor, MCP, Codex, Kiro) |
 | [`SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) | Cross-project digest phase status |
 | [`docs/inter-model/SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md) | Record block format |
+| [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md) | HITL team roles — lost on who does what? |
 
 ---
 
@@ -28,7 +29,14 @@ MCP-only: `brief()` → check `unresolved_count` → `search_fast` / `ask` befor
 `query.recency_weight` > 0 in config — inspect `rank_score` in MCP JSON.
 See [`builder-reference/notes/suggested-application-of-builder-material.md`](builder-reference/notes/suggested-application-of-builder-material.md).
 
-**Do not** `convmem record` for session-start alone. Record only when Ryan closes or substantive work finished.
+**Session tracking — two tracks (do not confuse):**
+
+- **A — Session chat** (`crush.db`, Kiro `messages.jsonl`, Codex `rollout-*.jsonl`, Cursor `agent-transcripts`): **required** at handoff — `convmem index --file <session-path>`
+- **B — Log artifact** (`logs/*.md` → inter-model): only if a log was written; **does not replace A**
+
+Ryan: **"ingest your chat"** = A · **"index the log"** = B · **"ingest everything"** = A then B. Avoid **"index what you wrote"** (models skip chat).
+
+**Do not** `convmem record` for session-start alone. Record only when Ryan closes or substantive work finished (one conclusion, not per-finding).
 
 ---
 

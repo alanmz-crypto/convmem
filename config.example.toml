@@ -3,6 +3,7 @@ paths = [
   "~/.local/share/kiro-cli/data.sqlite3",
   "~/.kiro/sessions",
   "~/.codex/history.jsonl",
+  "~/.codex/sessions",
   "~/.config/cursor/chats",
   "~/.cursor/projects",
   "~/.continue/sessions",

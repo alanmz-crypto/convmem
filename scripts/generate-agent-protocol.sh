@@ -48,6 +48,10 @@ extract_section() {
 } >> config/agent-protocol-mcp.txt
 {
   echo ""
+  extract_section TEAM_CHARTER
+} >> config/agent-protocol-mcp.txt
+{
+  echo ""
   echo "## Verify shipped work (DeepSeek / MCP agents)"
   echo ""
   echo "Read \`docs/CODEX-DEEPSEEK-VERIFY.md\` — use \`search_fast\` + \`ask\` for sections marked DeepSeek; ask Ryan to paste shell output for Codex-only steps."
@@ -76,6 +80,13 @@ FRONTMATTER
   echo ""
   extract_section SESSION_CLOSE
   echo ""
+  echo "## Handoff vs record"
+  echo ""
+  echo "- Handoff / **ingest your chat** → \`convmem index --file\` this chat's \`agent-transcripts/...jsonl\` (Track A). **No record block** unless Ryan asks."
+  echo "- Do **not** create new markdown logs unless Ryan requested a file."
+  echo ""
+  extract_section TEAM_CHARTER
+  echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
   extract_section WORKFLOW_ROUTING
@@ -102,7 +113,16 @@ echo "  -> config/cursor-rules-convmem.mdc.example"
   echo ""
   echo "## Read-only guard"
   echo ""
-  echo "Do not run \`convmem add\`, \`convmem index\`, or \`convmem verify\` without user direction."
+  echo "Do not run \`convmem add\`, bulk \`convmem index\` (no \`--file\`), or \`convmem verify\` without user direction."
+  echo "Allowed: \`convmem index --file <path> [--supersede]\` for session tracking (Tier A)."
+  echo ""
+  extract_section TEAM_CHARTER
+  echo ""
+  echo "## Codex — no improvised logs"
+  echo ""
+  echo "- Do **not** create new \`logs/*.md\`, audit files, or handoff markdown unless Ryan explicitly asked for a file."
+  echo "- Preserve work: \`convmem index --file\` on **this session's** \`~/.codex/sessions/**/rollout-*.jsonl\` (full chat — not \`history.jsonl\` prompts-only)."
+  echo "- Handoff ≠ record — no \`convmem record\` unless Ryan says **record block** or **closing**."
   echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
@@ -143,6 +163,14 @@ FRONTMATTER
   echo ""
   extract_section SESSION_CLOSE
   echo ""
+  echo "## Kiro — handoff vs record (critical)"
+  echo ""
+  echo "- Verification, read-only review, bug audit, or Ryan says **ingest your chat** → run \`convmem index --file\` on **this session's** \`~/.kiro/sessions/.../messages.jsonl\`. **Stop. No record block.**"
+  echo "- **Never volunteer** \`convmem record\` at task end — important work is already in chat ingest."
+  echo "- \`convmem record\` **only** when Ryan says **record block**, **closing**, or **end session**."
+  echo ""
+  extract_section TEAM_CHARTER
+  echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
   extract_section WORKFLOW_ROUTING
@@ -156,6 +184,10 @@ echo "  -> config/kiro-steering-convmem.example.md"
   echo "You cannot run CLI commands. You can interpret pasted convmem output."
   echo ""
   extract_section TIER_C
+  echo ""
+  echo "## Strategy lane (ChatGPT / Claude Cloud)"
+  echo ""
+  echo "Orchestration and role-charter review only — paste-only, no code edits, no prod writes. Full charter: \`docs/inter-model/TEAM-CHARTER-2026-07-06.md\`"
 } > docs/chatgpt-pack/custom-instructions.txt
 echo "  -> docs/chatgpt-pack/custom-instructions.txt"
 
@@ -197,6 +229,14 @@ echo "  -> docs/chatgpt-pack/README.md"
   echo "## Session close"
   echo ""
   extract_section SESSION_CLOSE
+  echo ""
+  echo "## Crush — handoff vs record"
+  echo ""
+  echo "- You are **Crush lane**; never call yourself DeepSeek in handoff text (DeepSeek V4 is runtime weights only)."
+  echo "- Handoff / **ingest your chat** → \`convmem index --file <project>/.crush/crush.db\` (Track A). **No record block** unless Ryan asks."
+  echo "- Do **not** create new markdown logs unless Ryan requested a file."
+  echo ""
+  extract_section TEAM_CHARTER
   echo ""
   echo "## Workflow routing (when unsure)"
   echo ""

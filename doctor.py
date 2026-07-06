@@ -23,6 +23,12 @@ class DoctorCheck:
     name: str
     ok: bool
     detail: str
+    status: str = ""  # "pass", "fail", or "skip"; derived from ok if empty
+
+    def effective_status(self) -> str:
+        if self.status:
+            return self.status
+        return "pass" if self.ok else "fail"
 
 
 def _check_config() -> DoctorCheck:
@@ -391,12 +397,19 @@ def _check_lock(name: str, path: Path) -> DoctorCheck:
 
 
 def _check_write_lane(cfg: dict) -> DoctorCheck:
-    from runtime_guard import runtime_summary, write_boundary_message
+    from runtime_guard import runtime_summary, write_boundary_message, workspace_repo
 
     chroma = cfg["index"]["chroma_dir"]
     blocked = write_boundary_message(chroma)
     detail = runtime_summary(chroma)
-    return DoctorCheck("write_lane", blocked is None, detail)
+    if blocked is None:
+        return DoctorCheck("write_lane", True, detail)
+    # Cross-lane block is expected when workspace doesn't match config lane.
+    # Report as skip (informational) rather than failure.
+    workspace = workspace_repo()
+    if workspace and workspace != "prod":
+        return DoctorCheck("write_lane", False, detail, status="skip")
+    return DoctorCheck("write_lane", False, detail)
 
 
 def _check_empty_ledger_documents(cfg: dict) -> DoctorCheck:
@@ -474,25 +487,29 @@ def run_doctor(
 def render_doctor_text(checks: list[DoctorCheck]) -> str:
     lines: list[str] = []
     for c in checks:
-        mark = "PASS" if c.ok else "FAIL"
-        lines.append(f"[{mark}] {c.name}: {c.detail}")
-    failed = sum(1 for c in checks if not c.ok)
+        lines.append(f"[{c.effective_status().upper()}] {c.name}: {c.detail}")
+    failed = sum(1 for c in checks if c.effective_status() == "fail")
+    skipped = sum(1 for c in checks if c.effective_status() == "skip")
     lines.append("")
     if failed:
         lines.append(f"doctor: {failed} check(s) failed")
     else:
         lines.append("doctor: all checks passed")
+    if skipped:
+        lines.append(f"  ({skipped} skipped — expected for cross-lane workspace)")
     return "\n".join(lines)
 
 
 def doctor_payload(checks: list[DoctorCheck]) -> dict:
-    failed = sum(1 for c in checks if not c.ok)
+    failed = sum(1 for c in checks if c.effective_status() == "fail")
+    skipped = sum(1 for c in checks if c.effective_status() == "skip")
     return {
         "ok": failed == 0,
         "failed": failed,
+        "skipped": skipped,
         "checks": [asdict(c) for c in checks],
     }
 
 
 def doctor_exit_code(checks: list[DoctorCheck]) -> int:
-    return 1 if any(not c.ok for c in checks) else 0
+    return 1 if any(c.effective_status() == "fail" for c in checks) else 0

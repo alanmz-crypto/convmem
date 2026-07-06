@@ -258,6 +258,33 @@ class ChromaStore:
             col.delete(ids=ids)
         return len(ids)
 
+    def supersede_units_for_source(
+        self,
+        source_path: str,
+        *,
+        superseded_by: str,
+    ) -> int:
+        """Tombstone active units for ``source_path`` (refine-style; keeps history)."""
+        col = self._collection(UNITS)
+        res = col.get(where={"source_path": source_path}, include=["metadatas"])
+        ids = res.get("ids") or []
+        metas = res.get("metadatas") or []
+        n = 0
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        for unit_id, meta in zip(ids, metas):
+            row = dict(meta or {})
+            if is_superseded(row):
+                continue
+            row["superseded"] = True
+            row["superseded_by"] = superseded_by
+            row["updated_at"] = now
+            row["id"] = unit_id
+            col.update(ids=[unit_id], metadatas=[row])
+            n += 1
+        return n
+
     def delete_summaries_for_source(self, source_path: str) -> int:
         """Remove all conversation summaries indexed from ``source_path``."""
         col = self._collection(SUMMARIES)
