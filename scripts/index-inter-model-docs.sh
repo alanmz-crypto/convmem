@@ -22,3 +22,4 @@ for f in "${files[@]}"; do
   convmem index --file "$f" --force
 done
 echo "Done. ${#files[@]} inter-model doc(s) indexed (prod)."
+bash "$ROOT/scripts/emit-next-steps.sh" index-inter-model

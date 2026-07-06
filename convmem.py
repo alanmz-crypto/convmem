@@ -29,6 +29,7 @@ Usage:
   convmem brief                    shared context block for all agents
   convmem brief --print            stdout only (paste into ChatGPT sessions)
   convmem doctor                   health checks (v0); --v1 for watch/systemd
+  convmem tldr                     one-page cheat sheet (cwd-aware)
   convmem doctor --verify          also run scripts/verify-continue.sh
   convmem record -i                record a durable fact (interactive)
   convmem record --approve-last    approve newest pending + index (searchable)
@@ -51,7 +52,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "brief", "doctor", "propose_decision", "record",
-    "unresolved",
+    "unresolved", "tldr",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -140,6 +141,10 @@ def search(
         results = query_units(query, top_k=top, domain=domain, site=site)
         render_search_results(results, units=True)
 
+    from next_steps import after_search
+
+    after_search(query=query, site=site, n_results=len(results or []))
+
     if open_at and results:
         idx = open_at - 1
         if 0 <= idx < len(results):
@@ -213,6 +218,15 @@ def ask_command(
 
     out = ask(question, top_k=top, raw=raw, domain=domain, site=site, evidence=evidence)
     render_ask_output(out)
+    from next_steps import after_ask
+
+    after_ask(
+        question=question,
+        site=site,
+        n_citations=len(out.get("citations") or []),
+        synthesis_failed=bool(out.get("synthesis_failed")),
+        synthesis_interrupted=bool(out.get("synthesis_interrupted")),
+    )
     if open_at and out.get("citations"):
         idx = open_at - 1
         if 0 <= idx < len(out["citations"]):
@@ -251,6 +265,12 @@ def index(
         f"files_skipped={stats['files_skipped']} "
         f"chunks_indexed={stats['chunks_indexed']} "
         f"units_indexed={stats.get('units_indexed', 0)}"
+    )
+    from next_steps import after_index
+
+    after_index(
+        files_processed=stats["files_processed"],
+        units_indexed=stats.get("units_indexed", 0),
     )
 
 
@@ -572,6 +592,55 @@ def monitor_command(
 
 
 @app.command()
+def tldr(
+    lane: str | None = typer.Option(
+        None,
+        "--lane",
+        help="Force lane: willowyhollow-practice | convmem (default: infer from cwd)",
+    ),
+    list_lanes: bool = typer.Option(False, "--list", help="List available TLDR lanes"),
+):
+    """Print a one-page cheat sheet for the current workspace (or --lane)."""
+    from query import render_error
+    from tldr import list_lanes as lanes, read_tldr, resolve_tldr_path
+
+    if list_lanes:
+        typer.echo("TLDR lanes:")
+        for name in lanes():
+            path = resolve_tldr_path(lane=name)
+            typer.echo(f"  {name}  →  {path}")
+        return
+
+    try:
+        path = resolve_tldr_path(lane=lane)
+        text = read_tldr(lane=lane)
+    except FileNotFoundError as exc:
+        render_error(str(exc))
+        raise typer.Exit(1) from exc
+
+    typer.echo(text.rstrip())
+    typer.echo("")
+    typer.echo(f"(from {path})")
+    from next_steps import emit_next_steps
+
+    ctx_lane = lane or __import__("next_steps").workspace_context().get("lane", "")
+    if "willowyhollow" in str(ctx_lane):
+        emit_next_steps(
+            [
+                "Full: ~/Projects/convmem/docs/WILLOWYHOLLOW-WEBDEV-GUIDE.md",
+                "convmem brief --stdout-only",
+            ]
+        )
+    else:
+        emit_next_steps(
+            [
+                "Full: ~/Projects/convmem/docs/MODEL-WORKFLOW.md",
+                "convmem brief --stdout-only",
+            ]
+        )
+
+
+@app.command()
 def brief(
     print_: bool = typer.Option(False, "--print", help="Also print brief to stdout"),
     out: str | None = typer.Option(None, "--out", help="Output path (default ~/.local/share/convmem/brief.md)"),
@@ -588,12 +657,26 @@ def brief(
 
     if stdout_only:
         typer.echo(text)
+        from next_steps import after_brief
+
+        stale = (data.get("handoff_staleness") or {}).get("stale", False)
+        after_brief(
+            unresolved_count=int(data.get("unresolved_count") or 0),
+            stale_handoff=bool(stale),
+        )
         return
 
     path = write_brief(cfg, out_path=out, with_tests=with_tests, quiet=True)
     if print_:
         typer.echo(text)
     typer.echo(f"Written → {path}")
+    from next_steps import after_brief
+
+    stale = (data.get("handoff_staleness") or {}).get("stale", False)
+    after_brief(
+        unresolved_count=int(data.get("unresolved_count") or 0),
+        stale_handoff=bool(stale),
+    )
 
 
 @app.command()
@@ -617,6 +700,9 @@ def doctor(
         typer.echo(json.dumps(doctor_payload(checks), indent=2))
     else:
         typer.echo(render_doctor_text(checks))
+        from next_steps import after_doctor
+
+        after_doctor(passed=doctor_exit_code(checks) == 0, v1=v1)
     raise typer.Exit(doctor_exit_code(checks))
 
 
@@ -654,10 +740,16 @@ def _finish_record_messages(
             f"  Skipped index (--no-index). Run: convmem add --file {approved_file} --upsert"
         )
     typer.echo(f'  Try: convmem search "{q}"')
+    from next_steps import after_record_approved
+
+    after_record_approved(summary=summary, ledger_id=lid, site=site)
 
 
 def _pending_record_hint() -> None:
+    from next_steps import after_record_pending
+
     typer.echo("  Finish recording: convmem record --approve-last")
+    after_record_pending()
 
 
 @app.command("propose_decision")
@@ -1028,7 +1120,11 @@ def unresolved_command(
     if json_out:
         typer.echo(json.dumps(payload["items"], indent=2))
     else:
-        render_unresolved(list_unresolved(store, site=site, domain=domain))
+        items = list_unresolved(store, site=site, domain=domain)
+        render_unresolved(items)
+        from next_steps import after_unresolved
+
+        after_unresolved(site=site, count=len(items))
 
 
 @app.command("exclude")

@@ -11,3 +11,4 @@ systemctl --user enable convmem-cross-project-digest.timer
 systemctl --user start convmem-cross-project-digest.timer
 systemctl --user list-timers convmem-cross-project-digest.timer --no-pager
 echo "Installed read-only weekly digest timer (Mon 09:00 local + jitter)."
+bash "$ROOT/scripts/emit-next-steps.sh" install-digest-timer

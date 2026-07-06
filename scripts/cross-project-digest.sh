@@ -46,4 +46,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 convmem doctor >/dev/null
-exec "$PY" "$ROOT/cross_project_digest.py" "${ARGS[@]}"
+"$PY" "$ROOT/cross_project_digest.py" "${ARGS[@]}"
+SKIP=0
+for a in "${ARGS[@]}"; do [[ "$a" == "--skip-ask" ]] && SKIP=1; done
+bash "$ROOT/scripts/emit-next-steps.sh" cross-project-digest "skip_ask=$SKIP"
