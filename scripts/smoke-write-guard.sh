@@ -21,3 +21,4 @@ pass "CONVMEM_CONFIRM_PROD=1 bypasses cross-lane guard"
 
 echo ""
 echo -e "${GREEN}=== smoke-write-guard: PASS ===${NC}"
+bash "$ROOT/scripts/emit-next-steps.sh" smoke-write-guard

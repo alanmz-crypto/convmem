@@ -16,6 +16,8 @@ Flat navigation for active docs. **No subfolder taxonomy** — historical materi
 | [`inter-model/LATEST.md`](inter-model/LATEST.md) | Single cross-model handoff pointer |
 | [`../SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) | Background synthesis / digest status (Phase 0–3) |
 | [`MODEL-WORKFLOW.md`](MODEL-WORKFLOW.md) | **Agent cheat sheet** — prod vs lab, digest, references, smoke |
+| [`WILLOWYHOLLOW-WEBDEV-GUIDE.md`](WILLOWYHOLLOW-WEBDEV-GUIDE.md) | **Willowy Hollow** — convmem for web dev (beginner) |
+| [`WILLOWYHOLLOW-TLDR.md`](WILLOWYHOLLOW-TLDR.md) | **Willowy Hollow** — one-page cheat sheet |
 | [`CODEX-DEEPSEEK-VERIFY.md`](CODEX-DEEPSEEK-VERIFY.md) | **Verification checklist** for Codex (shell) and DeepSeek (MCP) |
 
 ---

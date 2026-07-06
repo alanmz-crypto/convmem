@@ -61,3 +61,4 @@ pass "unit tests"
 
 echo ""
 echo -e "${GREEN}=== smoke-cross-project-digest: PASS ===${NC}"
+bash "$ROOT/scripts/emit-next-steps.sh" smoke-cross-project-digest
