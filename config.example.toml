@@ -76,3 +76,13 @@ min_confidence_redistill = 0.6
 backfill_domain_calls_per_hour = 60
 redistill_calls_per_hour = 15
 semantic_dedupe_calls_per_hour = 20
+
+[eval]
+# Pass thresholds for scripts/eval-*.py (see docs plan "Model quality eval harness").
+retrieval_p_at_1_min  = 0.5
+summary_structural_min = 0.8
+synthesis_pass_min    = 0.8
+# Doctor summarization canary (doctor.py:_check_summarization_canary):
+# max wall-clock for one llama3.1:8b summarize before flagging (proxy for a
+# silent GPU->CPU fallback / contention). Pin to normal GPU-path timing.
+canary_latency_ms_max = 15000

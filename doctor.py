@@ -324,6 +324,84 @@ def _check_synthesis_gate() -> DoctorCheck:
     )
 
 
+# Fixed known-good excerpt for the summarization canary — a good summarizer
+# must produce a structurally valid 3-sentence + Keywords summary from this.
+_CANARY_EXCERPT = (
+    "User: what is the ollama model used for in convmem?\n"
+    "Assistant: Ollama runs locally at http://localhost:11434 and serves embeddings "
+    "via nomic-embed-text plus summarization via llama3.1:8b. The distill path prefers "
+    "deepseek-v4-flash through the DeepSeek API when a key is set, else falls back to "
+    "the local llama3.1:8b. This keeps the system local-first."
+)
+
+
+def _check_summarization_canary(cfg: dict) -> DoctorCheck:
+    """Cheap real-time output-quality probe for the local summarizer.
+
+    Not a full eval — one fixed excerpt, one call. Catches gross quality
+    collapse between scheduled eval runs: (a) structural validity of the summary
+    and (b) latency under a threshold (a silent GPU->CPU fallback or contention
+    shows up as a large latency jump well before output looks obviously broken).
+    """
+    import time
+
+    models = cfg.get("models") or {}
+    model = models.get("summarize_model", "llama3.1:8b")
+    host = models.get("ollama_host", "http://localhost:11434")
+    latency_max_ms = int(((cfg.get("eval") or {}).get("canary_latency_ms_max")) or 15000)
+    # Bound the call generously above the latency threshold.
+    timeout_s = max(30.0, (latency_max_ms / 1000.0) * 2)
+
+    try:
+        from eval_grading import grade_summary
+        from llm import SUMMARIZE_PROMPT, generate
+
+        prompt = SUMMARIZE_PROMPT.format(messages=_CANARY_EXCERPT)
+        start = time.perf_counter()
+        summary = generate(
+            prompt,
+            model=model,
+            ollama_host=host,
+            deepseek_base_url=models.get("deepseek_base_url", "https://api.deepseek.com"),
+            timeout=timeout_s,
+        )
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+    except requests.RequestException as exc:
+        # Infra problem (unreachable / timeout) — _check_ollama owns reachability.
+        return DoctorCheck(
+            "summarization_canary", True,
+            f"skipped: summarizer call failed ({type(exc).__name__}); see ollama check",
+            status="skip",
+        )
+    except Exception as exc:
+        return DoctorCheck(
+            "summarization_canary", True,
+            f"skipped: {type(exc).__name__}: {str(exc)[:120]}",
+            status="skip",
+        )
+
+    grade = grade_summary(summary)
+    structural_ok = grade["structural_pass"]
+    latency_ok = elapsed_ms <= latency_max_ms
+
+    if structural_ok and latency_ok:
+        return DoctorCheck(
+            "summarization_canary", True,
+            f"{model} OK ({elapsed_ms}ms; 3 sentences + {grade['n_keywords']} keywords)",
+        )
+    reasons = []
+    if not structural_ok:
+        reasons.append(
+            f"structure invalid (sentences={grade['n_sentences']}, keywords={grade['n_keywords']})"
+        )
+    if not latency_ok:
+        reasons.append(f"latency {elapsed_ms}ms > {latency_max_ms}ms (possible CPU fallback/contention)")
+    return DoctorCheck(
+        "summarization_canary", False,
+        f"{model}: " + "; ".join(reasons),
+    )
+
+
 def _check_index_gate() -> DoctorCheck:
     """Detect approved decisions whose Chroma indexing failed (delayed-index)."""
     import json as _json
@@ -456,6 +534,7 @@ def run_doctor(
         _check_index_drift(cfg),
         _check_restic(),
         _check_synthesis_gate(),
+        _check_summarization_canary(cfg),
         _check_index_gate(),
         _check_empty_ledger_documents(cfg),
         _check_mcp_import(),

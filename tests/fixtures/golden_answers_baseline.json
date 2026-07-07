@@ -1,0 +1,79 @@
+{
+  "count": 3,
+  "pass_rate": 1.0,
+  "abstain_correct": true,
+  "results": [
+    {
+      "id": "ans_backup_cycle",
+      "pass": true,
+      "mode": "answer",
+      "n_citations": 6,
+      "detail": {
+        "missing_include": [],
+        "cite_ok": true,
+        "cites": [
+          3,
+          3,
+          4,
+          3,
+          3,
+          1,
+          3,
+          1,
+          3,
+          4,
+          5,
+          1
+        ],
+        "invalid_cites": []
+      },
+      "answer": "In the willowyhollow backup cycle hardening (2026-07-07), `backup-all.sh` is the central script that performs automated backups of all targeted surfaces. Specifically, it covers **staging2, preview (:8080), practice (:8081), production, and uploads** [3]. It uses:\n\n- **`ssh_backup()`** \u2014 connects via the dedicated `~/.ssh/willowyhollow-backup` key (no passphrase, no agent) [3][4].\n- **`safe_sql_gzip_dump()`** \u2014 creates `PIPESTATUS`-safe compressed SQL dumps [3].\n- **`verify_sql_gz()`** \u2014 validates each dump with `gunzip -t` and checks decompressed output is \u226510\u202fKB [3].\n- **`tar_ec`** \u2014 handles uploads with a soft-fail guard (preview `public_html/wp-content/uploads` tar.gz) [1][3].\n- **Practice** \u2014 can be skipped if port `:8081` is down [1][3].\n\nThe script runs directly (no agent) via systemd timer at 03:00 daily with `SSH_AUTH_SOCK=` cleared [4]. Previously, `backup-all.sh` only covered databases and always exited 0, leading to silent partial failures; the hardening added the fault-matrix checks and extra surfaces [5][1]."
+    },
+    {
+      "id": "ans_ksweep",
+      "pass": true,
+      "mode": "answer",
+      "n_citations": 6,
+      "detail": {
+        "missing_include": [],
+        "cite_ok": true,
+        "cites": [
+          2,
+          3,
+          5,
+          3,
+          5,
+          6
+        ],
+        "invalid_cites": []
+      },
+      "answer": "Ksweep steering files are human-readable markdown files (not scripts) placed under `.kiro/steering/` that define a checklist of system checks or tasks for an AI agent to execute interactively [2][3]. They are invoked via chat commands like `#ksweep-<name>` (e.g., `#ksweep-willowyhollow`), and the agent runs each check one by one, reporting PASS/WARN/INFO results live along with a final summary table [5]. \n\nCommon use cases include consolidating multiple health queries (stack health, backups, git status, security, disk usage, etc.) into a single sweep [3][5], and they can be scoped to specific domains such as performance, security, networking, project, backup, or services [6]."
+    },
+    {
+      "id": "ans_negative_control",
+      "pass": true,
+      "mode": "abstain",
+      "n_citations": 6,
+      "detail": {
+        "abstained": true,
+        "cites": [
+          1,
+          3,
+          2,
+          4,
+          5,
+          6
+        ],
+        "invalid_cites": []
+      },
+      "answer": "The retrieved excerpts contain no information about the airspeed velocity of an unladen swallow. The excerpts that mention `convmem` ([1], [3]) discuss lab surveys, Antigravity integration analysis, and roadmap decisions for coding tooling\u2014none relate to swallows, airspeed, or ornithological measurements. The remaining excerpts cover unrelated topics such as backup pipeline hardening [2], LLM model selection [4][5], and RAG retrieval verification [6]. Therefore, the question cannot be answered from the provided material."
+    }
+  ],
+  "provenance": {
+    "model_name": "deepseek-v4-flash",
+    "model_digest": "remote",
+    "quant": "",
+    "ollama_version": "0.30.11",
+    "fixture_hash": "d25f6008c407197d"
+  }
+}
