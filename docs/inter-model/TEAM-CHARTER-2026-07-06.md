@@ -94,9 +94,12 @@ bash ~/Projects/convmem/scripts/sync-willowyhollow-handoff.sh
 
 | Tier | Description | Ready? |
 |------|-------------|--------|
-| **1** | Manual Crush→Codex→Kiro handoff with shared memory | **Yes now** |
-| **2** | 3+ clean handoffs without Track A/B or record correction | **2–4 weeks habit soak** — use checklist below |
-| **3** | Event-driven supervisor | **Deferred** — needs thin orchestrator beyond convmem |
+| **1** | **Shared memory bus** — manual Crush→Codex→Kiro handoff with indexed archive | **Yes — bug sprint** ([BUG-SPRINT-SUCCESS-2026-07-06.md](BUG-SPRINT-SUCCESS-2026-07-06.md)) |
+| **1.5** | Proactive discovery (`unresolved()` triage surfacing) | **Deferred** — post-sprint; gate = `tier_1_5_gate: UNLOCKED` in sprint checklist |
+| **2** | 3+ clean handoffs without Track A/B or record correction | **2–4 weeks habit soak** — checklist §7 |
+| **3** | **Orchestration** — state file + notify on index (no auto-invoke) | **Lab design spike** — not prod until Tier 1 evidence |
+
+**Do not call Tier 1 "orchestration."** See [ORCHESTRATION-APPROACH-2026-07-06.md](ORCHESTRATION-APPROACH-2026-07-06.md).
 
 ---
 

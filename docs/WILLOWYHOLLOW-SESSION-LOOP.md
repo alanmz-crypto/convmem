@@ -1,7 +1,8 @@
 # Willowy Hollow — session loop (Steps 1–10)
 
 **TLDR:** [`WILLOWYHOLLOW-TLDR.md`](WILLOWYHOLLOW-TLDR.md)  
-**Full guide:** [`WILLOWYHOLLOW-WEBDEV-GUIDE.md`](WILLOWYHOLLOW-WEBDEV-GUIDE.md)
+**Full guide:** [`WILLOWYHOLLOW-WEBDEV-GUIDE.md`](WILLOWYHOLLOW-WEBDEV-GUIDE.md)  
+**Promotion gates:** [`site-reference/NOTES.md`](site-reference/NOTES.md)
 
 One checklist for every sit-down in `willowyhollow-practice`. convmem handles **memory**; repo markdown and scripts handle **execution**.
 
@@ -72,6 +73,20 @@ Details: **`Deploy Workflow — willowyhollow.md`**.
 
 ---
 
+## 4b. Pre-promote gates (before staging2 or production)
+
+Read [`site-reference/NOTES.md`](site-reference/NOTES.md) — all three gates are **blocking**:
+
+| Gate | Slice | Quick check |
+|------|-------|-------------|
+| URL identity | [`site-address-consistency.md`](site-reference/site-address-consistency.md) | `stack_wp option get siteurl` / `home` |
+| PHP parity | [`php-version-parity.md`](site-reference/php-version-parity.md) | `php -v` or `stack_wp eval 'echo PHP_VERSION;'` on source + target |
+| Fresh backup | [`backup-before-write-gate.md`](site-reference/backup-before-write-gate.md) | `ls -lhtr ~/WordPress/willowyhollow/backups/` + `gunzip -t` |
+
+Mismatch on any gate → do not promote; fix or flag the test as unverified.
+
+---
+
 ## 5. Save what you learned (you approve)
 
 Only when something should survive for future sessions:
@@ -109,6 +124,8 @@ That indexes Crush `.crush/crush.db`, latest Kiro `messages.jsonl`, latest Codex
 **Tell the next model:** *“Search convmem for finding N”* — not *“read what you wrote”* (that skips chat).
 
 **Team charter (full):** [`TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md) — lane names, not model weights. Say **Crush found it**, not "DeepSeek found it."
+
+**Bug sprint evidence:** [`BUG-SPRINT-SUCCESS-2026-07-06.md`](inter-model/BUG-SPRINT-SUCCESS-2026-07-06.md) — five checks; score at sprint end to unlock Tier 1.5 gate.
 
 **Tier 2 habit:** 3 consecutive clean handoffs (Track A + B, no wrong record offers) — checklist in TEAM-CHARTER doc §7.
 
