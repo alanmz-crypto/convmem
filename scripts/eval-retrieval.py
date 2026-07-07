@@ -60,10 +60,17 @@ def eval_row(row: dict) -> dict:
 
 def summarize(results: list[dict]) -> dict:
     n = len(results) or 1
+    # MRR: mean reciprocal rank of the first acceptable hit (0 when no hit).
+    mrr = sum(1.0 / r["rank"] for r in results if r["rank"]) / n
+    # recall@k here == hit@k: acceptable_ids are alternative correct answers,
+    # so a row is "recalled" if any acceptable id lands within its top_k.
+    recall_at_k = sum(1 for r in results if r["p_at_k"]) / n
     return {
         "count": len(results),
         "p_at_1": sum(1 for r in results if r["p_at_1"]) / n,
         "p_at_k": sum(1 for r in results if r["p_at_k"]) / n,
+        "mrr": round(mrr, 4),
+        "recall_at_k": round(recall_at_k, 4),
         "results": results,
     }
 
@@ -87,6 +94,8 @@ def main() -> int:
     print(f"Golden queries: {report['count']}")
     print(f"P@1: {report['p_at_1']:.2%}")
     print(f"P@k: {report['p_at_k']:.2%}")
+    print(f"MRR: {report['mrr']:.4f}")
+    print(f"Recall@k: {report['recall_at_k']:.2%}")
     for r in report["results"]:
         mark = "PASS" if r["p_at_k"] else "FAIL"
         rank = r["rank"] or "-"

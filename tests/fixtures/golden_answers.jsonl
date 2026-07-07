@@ -1,0 +1,3 @@
+{"id": "ans_backup_cycle", "question": "What does backup-all.sh do in the willowyhollow backup cycle hardening?", "must_include": ["backup"], "must_cite": true, "should_abstain": false, "acceptable_ids": []}
+{"id": "ans_ksweep", "question": "What are ksweep steering files used for?", "must_include": ["ksweep"], "must_cite": true, "should_abstain": false, "acceptable_ids": []}
+{"id": "ans_negative_control", "question": "What is the airspeed velocity of an unladen swallow according to convmem?", "must_include": [], "must_cite": false, "should_abstain": true, "acceptable_ids": []}

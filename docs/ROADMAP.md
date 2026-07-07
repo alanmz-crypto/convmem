@@ -108,6 +108,7 @@ Cross-project digest: [`scripts/cross-project-digest.sh`](../scripts/cross-proje
 |------|------|
 | staging2 CSP (unresolved obs) | Client |
 | `convmem ask` in shell | `source env.local` for DeepSeek key |
+| Model-quality **remediation** (eval harness ships detection/classification only) | convmem — retry temp/prompt at ingest, extractive non-generative fallback, or flag-and-continue + human `--supersede`; pick per triage. Detector = `scripts/eval-*.py` + `doctor` summarization canary |
 
 ---
 

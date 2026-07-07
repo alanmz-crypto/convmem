@@ -1,0 +1,41 @@
+{
+  "count": 3,
+  "structural_pass_rate": 1.0,
+  "keyword_recall": 1.0,
+  "results": [
+    {
+      "id": "sum_ollama_roles",
+      "structural_pass": true,
+      "keyword_recall": 1.0,
+      "n_sentences": 3,
+      "n_keywords": 8,
+      "missing_mentions": [],
+      "summary": "Here are 3 sentences summarizing the conversation:\n\nThe Ollama model is used in ConvMem for serving embeddings via nomic-embed-text and summarization via LLaMA 3.1:8b. The model runs locally at http://localhost:11434, with a fallback to the local LLaMA 3.1:8b when not using the DeepSeek API. The system is designed to be local-first, with an option to switch to the cloud model via the DEEPSEEK_API_KEY.\n\nKeywords: Ollama, ConvMem, nomic-embed-text, LLaMA 3.1:8b, deepseek-v4-flash, DeepSeek API, DEEPSEEK_API_KEY, localhost:11434"
+    },
+    {
+      "id": "sum_wp_login_404",
+      "structural_pass": true,
+      "keyword_recall": 1.0,
+      "n_sentences": 3,
+      "n_keywords": 7,
+      "missing_mentions": [],
+      "summary": "Here is a summary of the conversation and topic keywords:\n\nThe issue was resolved by identifying that the SG Security plugin had renamed the login slug on staging2, causing the 404 error. To fix this, the custom slug override in wh-local-dev needed to be applied on staging2, either by setting the login slug in SiteGround Security settings or accessing it directly. The solution was verified and recorded for future reference.\n\nKeywords: wp-login, SG Security plugin, staging2, wh-local-dev, custom slug override, SiteGround Security settings, dec_prop_20260624_025115_862b."
+    },
+    {
+      "id": "sum_view_transition",
+      "structural_pass": true,
+      "keyword_recall": 1.0,
+      "n_sentences": 3,
+      "n_keywords": 7,
+      "missing_mentions": [],
+      "summary": "Here is a summary of the conversation:\n\nThe implementation of the Thai Massage card morph on willowyhollow used the View Transition API to create a seamless transition between the home card and the dedicated Thai Massage page. The crossfade effect utilizes a cubic-bezier fade-forward curve, resulting in improved perceived performance and CLS (Cumulative Layout Shift). This solution enables a smooth user experience by morphing between the two views.\n\nKeywords: View Transition API, document.startViewTransition, shared view-transition-name, cubic-bezier fade-forward curve, CLS, willowyhollow, Thai Massage card morph."
+    }
+  ],
+  "provenance": {
+    "model_name": "llama3.1:8b",
+    "model_digest": "46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e",
+    "quant": "Q4_K_M",
+    "ollama_version": "0.30.11",
+    "fixture_hash": "01d083181dabaef2"
+  }
+}
