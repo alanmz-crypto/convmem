@@ -1,0 +1,21 @@
+# User systemd service — invoked by convmem-restic-external.timer
+#
+# Copies the latest convmem-chroma snapshot from the local Restic repo to the
+# external (offsite) USB repo. Non-fatal: skips cleanly when the drive is absent.
+#
+#   cp systemd/convmem-restic-external.{service,timer}.example ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now convmem-restic-external.timer
+#   journalctl --user -u convmem-restic-external -f
+
+[Unit]
+Description=convmem offsite Restic copy (local -> external USB)
+
+[Service]
+Type=oneshot
+Environment=HOME=%h
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/Projects/convmem/scripts/restic-copy-external.sh
+
+[Install]
+WantedBy=default.target
