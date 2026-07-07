@@ -198,6 +198,8 @@ Agents may search, ask, brief, and related freely.
 
 **Handoff ≠ record.** Index session chat at handoff; `record --approve-last` only when Ryan says record block / closing.
 
+**Tier 1 = shared memory bus** (not orchestration). Orchestration reserved for Tier 3 notify. Sprint checks: `docs/inter-model/BUG-SPRINT-SUCCESS-2026-07-06.md`.
+
 Full charter + review rationale: `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
 <!-- TEAM_CHARTER_END -->
 
