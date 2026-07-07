@@ -29,6 +29,9 @@ __pycache__/
 *.swp
 .venv/
 
+# Cursor debug-mode logs (local runtime instrumentation artifacts)
+.cursor/debug-*.log
+
 # Handoff bundles (built locally; not committed)
 handoff-tar/*.tar.gz
 handoff-tar/*.manifest.txt
