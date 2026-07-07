@@ -1,0 +1,21 @@
+# User systemd timer — offsite Restic copy every 2 hours
+#
+#   cp systemd/convmem-restic-external.{service,timer}.example ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now convmem-restic-external.timer
+#   systemctl --user list-timers convmem-restic-external.timer
+#
+# Runs every 2 hours (on the even hour). Persistent=true catches up one missed
+# run after the drive is reconnected / the machine wakes. The copy itself is a
+# no-op when the USB drive is unplugged, so extra wakeups are cheap.
+
+[Unit]
+Description=convmem offsite Restic copy every 2h
+
+[Timer]
+OnCalendar=*-*-* 00/2:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

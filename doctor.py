@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from pathlib import Path
 
 import requests
@@ -256,6 +258,147 @@ def _check_restic() -> DoctorCheck:
         False,
         "Restic gate not ready — " + " ".join(tail),
     )
+
+
+def _check_restic_external() -> DoctorCheck:
+    """Offsite Restic repo freshness (RESTIC_EXTERNAL_REPOSITORY).
+
+    Non-fatal by design: this is the removable-drive copy, decoupled from the
+    live-write gate. Never returns fail — pass when the offsite copy covers
+    today, warn when it is stale/empty (drive mounted), skip when disabled or
+    the drive is unplugged.
+    """
+    name = "restic_external"
+    env_file = Path("~/.config/convmem/restic.env").expanduser()
+    env = _parse_env_file(env_file)
+    repo = env.get("RESTIC_EXTERNAL_REPOSITORY", "").strip()
+    if not repo:
+        return DoctorCheck(
+            name,
+            True,
+            "no RESTIC_EXTERNAL_REPOSITORY configured (offsite copy disabled)",
+            status="skip",
+        )
+    if shutil.which("restic") is None:
+        return DoctorCheck(name, True, "restic not on PATH", status="skip")
+
+    pass_file = env.get("RESTIC_PASSWORD_FILE", "").strip()
+    if not pass_file or not Path(pass_file).expanduser().is_file():
+        return DoctorCheck(
+            name, True, f"RESTIC_PASSWORD_FILE missing ({pass_file or 'unset'})", status="skip"
+        )
+
+    if not (Path(repo).expanduser() / "config").is_file():
+        return DoctorCheck(
+            name, True, f"offsite repo not mounted/reachable: {repo} (USB unplugged?)", status="skip"
+        )
+
+    probe_env = dict(os.environ)
+    probe_env["RESTIC_PASSWORD_FILE"] = str(Path(pass_file).expanduser())
+    try:
+        proc = subprocess.run(
+            ["restic", "-r", repo, "snapshots", "--tag", "convmem-chroma", "--json"],
+            capture_output=True,
+            text=True,
+            env=probe_env,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return DoctorCheck(name, True, f"offsite repo probe failed: {exc}", status="skip")
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip().splitlines()[-1:]
+        return DoctorCheck(
+            name, True, "offsite repo unreadable — " + " ".join(detail), status="skip"
+        )
+
+    try:
+        snaps = json.loads(proc.stdout or "[]")
+    except json.JSONDecodeError:
+        return DoctorCheck(name, True, "offsite snapshots JSON unparsable", status="skip")
+
+    if not snaps:
+        return DoctorCheck(
+            name,
+            True,
+            "offsite repo has no convmem-chroma snapshots — run scripts/restic-copy-external.sh",
+            status="warn",
+        )
+
+    latest = max(snaps, key=lambda s: s["time"])
+    ts = datetime.fromisoformat(latest["time"].replace("Z", "+00:00"))
+    local_day = ts.astimezone().date()
+    today = datetime.now().astimezone().date()
+    if local_day >= today:
+        return DoctorCheck(name, True, f"offsite copy covers today (last={local_day})")
+    return DoctorCheck(
+        name,
+        True,
+        f"offsite copy STALE (last={local_day}) — check convmem-restic-external.timer "
+        "or run scripts/restic-copy-external.sh",
+        status="warn",
+    )
+
+
+def _check_restic_password_backup() -> DoctorCheck:
+    """Offline copy of the Restic password (RESTIC_PASSWORD_BACKUP_FILE).
+
+    The password unlocks BOTH repos. With only one copy inside ~/.config/convmem,
+    a Tier-2 config wipe orphans everything. Non-fatal: warn until a second,
+    independent copy exists and matches.
+    """
+    name = "restic_password_backup"
+    env_file = Path("~/.config/convmem/restic.env").expanduser()
+    env = _parse_env_file(env_file)
+    primary = env.get("RESTIC_PASSWORD_FILE", "").strip()
+    if not primary:
+        return DoctorCheck(name, True, "no RESTIC_PASSWORD_FILE configured", status="skip")
+    primary_path = Path(primary).expanduser()
+    if not primary_path.is_file():
+        return DoctorCheck(name, True, f"primary password missing ({primary})", status="skip")
+
+    backup = env.get("RESTIC_PASSWORD_BACKUP_FILE", "").strip()
+    if not backup:
+        return DoctorCheck(
+            name,
+            True,
+            "no offline password copy (RESTIC_PASSWORD_BACKUP_FILE unset) — a config wipe "
+            "orphans both repos; run scripts/backup-restic-password.sh <dest>",
+            status="warn",
+        )
+    backup_path = Path(backup).expanduser()
+    if not backup_path.is_file():
+        return DoctorCheck(
+            name,
+            True,
+            f"offline password copy missing at {backup} — run scripts/backup-restic-password.sh",
+            status="warn",
+        )
+
+    config_dir = str(Path("~/.config/convmem").expanduser())
+    if str(backup_path).startswith(config_dir):
+        return DoctorCheck(
+            name,
+            True,
+            f"offline copy is inside {config_dir} — won't survive a config wipe; "
+            "store it on separate media",
+            status="warn",
+        )
+
+    try:
+        import hashlib
+
+        h_primary = hashlib.sha256(primary_path.read_bytes()).hexdigest()
+        h_backup = hashlib.sha256(backup_path.read_bytes()).hexdigest()
+    except OSError as exc:
+        return DoctorCheck(name, True, f"could not read password files: {exc}", status="warn")
+    if h_primary != h_backup:
+        return DoctorCheck(
+            name,
+            True,
+            f"offline copy at {backup} is STALE/mismatched — run scripts/backup-restic-password.sh",
+            status="warn",
+        )
+    return DoctorCheck(name, True, f"offline password copy present and matches ({backup})")
 
 
 def _check_verify_script(*, run: bool) -> DoctorCheck:
@@ -533,6 +676,8 @@ def run_doctor(
         _check_chroma(cfg),
         _check_index_drift(cfg),
         _check_restic(),
+        _check_restic_external(),
+        _check_restic_password_backup(),
         _check_synthesis_gate(),
         _check_summarization_canary(cfg),
         _check_index_gate(),
@@ -568,12 +713,15 @@ def render_doctor_text(checks: list[DoctorCheck]) -> str:
     for c in checks:
         lines.append(f"[{c.effective_status().upper()}] {c.name}: {c.detail}")
     failed = sum(1 for c in checks if c.effective_status() == "fail")
+    warned = sum(1 for c in checks if c.effective_status() == "warn")
     skipped = sum(1 for c in checks if c.effective_status() == "skip")
     lines.append("")
     if failed:
         lines.append(f"doctor: {failed} check(s) failed")
     else:
         lines.append("doctor: all checks passed")
+    if warned:
+        lines.append(f"  ({warned} warning(s) — non-fatal)")
     if skipped:
         lines.append(f"  ({skipped} skipped — expected for cross-lane workspace)")
     return "\n".join(lines)
@@ -581,10 +729,12 @@ def render_doctor_text(checks: list[DoctorCheck]) -> str:
 
 def doctor_payload(checks: list[DoctorCheck]) -> dict:
     failed = sum(1 for c in checks if c.effective_status() == "fail")
+    warned = sum(1 for c in checks if c.effective_status() == "warn")
     skipped = sum(1 for c in checks if c.effective_status() == "skip")
     return {
         "ok": failed == 0,
         "failed": failed,
+        "warned": warned,
         "skipped": skipped,
         "checks": [asdict(c) for c in checks],
     }
