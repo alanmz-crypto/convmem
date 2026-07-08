@@ -11,14 +11,15 @@ Not a phase guide — excluded from Planning Guide Contract scanning.
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Architecture Planning (design) | **CLOSED** | Frozen summary in §2 below |
+| Architecture Planning (scaffold design) | **CLOSED** | Frozen summary in §Frozen architecture summary below |
+| Architecture Planning (phase guide) | **CLOSED** | Operational guide @ this commit on `main` |
 | Execution Planning | **CLOSED** | Operational guide @ this commit on `main` |
 | Execute Task (implementation) | **CLOSED** | Operational @ `4c3c213`; approved active-failure/debug @ `7b1e58a` on `main` |
 | Revise Planning + P1 | **CLOSED** | Probe Version drift fixed |
 | HITL verify (ad-hoc) | **CLOSED** | doctor + pytest PASS |
-| **Guide content** | **PARTIAL** | **3/4 planning guides operational; ARCHITECTURE-PLANNING.md remains the only stub.** |
+| **Guide content** | **CLOSED** | **4/4 planning guides operational** |
 
-**Honest line:** Planning OS **implementation CLOSED**; **guide content partially closed** — 3/4 planning guides operational; `ARCHITECTURE-PLANNING.md` remains the only stub.
+**Honest line:** Planning OS **implementation CLOSED**; **guide content CLOSED** — 4/4 planning guides operational. Planning OS scaffold architecture was already closed (§Frozen architecture summary). `ARCHITECTURE-PLANNING.md` phase guide is now operational.
 
 ---
 
@@ -64,11 +65,10 @@ active-failure/debug execution.
 ### Shipped files
 
 - `docs/PLANNING-PROTOCOL.md` — kernel
-- `docs/reasoning-modes.md` — Revise + Execution Planning + Execute modes complete; Architecture placeholder
+- `docs/reasoning-modes.md` — all four phase modes complete
 - `docs/builder-reference.md` — thin router
 - `docs/planning/CONTRACT.md` + `planning_contract.py` — Contract v1 SSoT
-- `docs/planning/REVISE-PLANNING.md`, `EXECUTION-PLANNING.md`, `EXECUTE-TASK.md` — complete phase guides
-- `docs/planning/ARCHITECTURE-PLANNING.md` — contract stub (TBD)
+- `docs/planning/REVISE-PLANNING.md`, `ARCHITECTURE-PLANNING.md`, `EXECUTION-PLANNING.md`, `EXECUTE-TASK.md` — complete phase guides
 - `doctor.py` — `_check_planning_guide_contract()` hard-fail; **no** open register row
 
 ### Contract v1
@@ -92,8 +92,9 @@ HITL: `Cursor must stop here.` + `Await HITL.`
 | `7b1e58a` | EXECUTE-TASK active-failure branch D0–D6; Debug Investigator |
 | `e6a9a1d` | Debug-route architecture approval in closure; EXECUTE-TASK Objective scope |
 | this commit | EXECUTION-PLANNING operational; reasoning-modes sync |
+| this commit | ARCHITECTURE-PLANNING operational; reasoning-modes sync |
 
-Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`.
+Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`; Architecture Planning guide from `wip/2026-07-08-architecture-planning`.
 
 ---
 
@@ -112,7 +113,7 @@ Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`.
 
 | ID | Finding | Disposition |
 |----|---------|-------------|
-| **F1** | Doctor passes while guides are TBD; "executable spec" overclaims | **Documented** — Contract v1 = structure only (`CONTRACT.md` §Structure vs operational); 3/4 planning guides operational; `ARCHITECTURE-PLANNING.md` remains the only stub |
+| **F1** | Doctor passes while guides are TBD; "executable spec" overclaims | **Documented** — Contract v1 = structure only (`CONTRACT.md` §Structure vs operational); 4/4 planning guides operational |
 | **F2** | No bug/troubleshoot/verify route in workflow; EXECUTE-TASK empty | **Fixed** @ `4c3c213` (implementation loop) + `7b1e58a` (active-failure D0–D6) |
 | **F3** | `AGENT-ROLES.md` contradicted agent-protocol on record at close | **Fixed** this closure batch |
 | **F4** | Contract parser weak (substring slice, duplicate headings) | **Deferred** to Contract v2 — limitation documented, no parser change |
@@ -121,7 +122,8 @@ Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`.
 
 ## Implementation routes
 
-Task shaping: [`EXECUTION-PLANNING.md`](EXECUTION-PLANNING.md). Execution:
+Direction setting: [`ARCHITECTURE-PLANNING.md`](ARCHITECTURE-PLANNING.md). Task shaping:
+[`EXECUTION-PLANNING.md`](EXECUTION-PLANNING.md). Execution:
 [`EXECUTE-TASK.md`](EXECUTE-TASK.md) — normal loop (0–6) and approved
 active-failure branch (D0–D6). Execution discipline, not a verification
 framework. No Verify OS.
@@ -138,7 +140,10 @@ framework. No Verify OS.
 
 ## Deferred gates
 
-- Fill `ARCHITECTURE-PLANNING.md` (only remaining planning guide stub)
+- Verify OS / `docs/verify/`
+- Contract v2 parser hardening (duplicate-heading reject, content checks)
+- `config/cursor-rules-planning.mdc.example` deploy
+- `convmem record` for this arc (unless Ryan requests)
 
 ---
 
