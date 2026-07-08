@@ -88,6 +88,7 @@ HITL: `Cursor must stop here.` + `Await HITL.`
 | `4c3c213` | EXECUTE-TASK.md operational implementation loop |
 | `8bdb30a` | docs: fix Planning OS drift after EXECUTE-TASK operational guide |
 | `7b1e58a` | EXECUTE-TASK active-failure branch D0–D6; Debug Investigator |
+| `e6a9a1d` | Debug-route architecture approval in closure; EXECUTE-TASK Objective scope |
 
 Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`.
 
