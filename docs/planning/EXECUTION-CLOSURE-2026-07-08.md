@@ -66,6 +66,7 @@ HITL: `Cursor must stop here.` + `Await HITL.`
 | `bcd3ed9` | P1 — enforce Probe Version in contract |
 | `24151d5` | Closure batch — traceability, AGENT-ROLES fix |
 | `4c3c213` | EXECUTE-TASK.md operational implementation loop |
+| `8bdb30a` | docs: fix Planning OS drift after EXECUTE-TASK operational guide |
 
 Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`.
 
@@ -75,7 +76,7 @@ Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`.
 
 | Check | Result (2026-07-08) |
 |-------|---------------------|
-| `pytest -q` | 343 passed |
+| `pytest -q` | 344 passed, 10 subtests passed |
 | `convmem doctor` | PASS — `planning_guide_contract: contract v1: 4 guide(s) ok` |
 | `convmem doctor --v1` | PASS |
 | P1 Probe Version | In `REQUIRED_METADATA`; all four guides; `test_missing_probe_version_fails` |
