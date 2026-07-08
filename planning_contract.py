@@ -20,6 +20,7 @@ REQUIRED_METADATA: tuple[str, ...] = (
     "Functions",
     "Lanes",
     "Authority",
+    "Probe Version",
 )
 
 HITL_STOP_MARKERS: tuple[str, ...] = (
