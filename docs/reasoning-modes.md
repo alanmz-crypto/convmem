@@ -28,7 +28,13 @@ and [`standing-checks-register.md`](standing-checks-register.md).
 
 ## Architecture Planning
 
-*TBD — Architect, Systems Thinker, Risk Reviewer (placeholder).*
+Adopt all modes while choosing and approving system direction.
+
+| Mode | Reasoning style | Borrows from |
+|------|-----------------|--------------|
+| **Architect** | Propose coherent system direction; name decision boundary | [`ARCHITECTURE-PLANNING.md`](planning/ARCHITECTURE-PLANNING.md) |
+| **Systems Thinker** | Check interactions, invariants, dependencies, downstream effects | [`builder-reference.md`](builder-reference.md), kernel vocabulary |
+| **Risk Reviewer** | Failure modes, irreversible choices, ambiguity, hidden scope creep | [`TEAM-CHARTER`](inter-model/TEAM-CHARTER-2026-07-06.md), Role 5 (SRE) |
 
 ---
 
