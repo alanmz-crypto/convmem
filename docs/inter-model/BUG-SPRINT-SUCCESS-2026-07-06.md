@@ -31,20 +31,20 @@ bash ~/Projects/convmem/scripts/sync-willowyhollow-handoff.sh
 Fill this block when the sprint ends. **`tier_1_5_gate: UNLOCKED`** is the sole trigger for Tier 1.5 triage-scoring build (pass or fail on checks both unlock).
 
 ```
-scored_date: YYYY-MM-DD
-verdict: pass | fail | inconclusive    # pass = 4+/5 checks
+scored_date: 2026-07-08
+verdict: pass
 ```
 
 | # | Result | Note |
 |---|--------|------|
-| 1 | pass / fail / n/a | |
-| 2 | pass / fail / n/a | |
-| 3 | pass / fail / n/a | |
-| 4 | pass / fail / n/a | |
-| 5 | pass / fail / n/a | evidence: `<ledger id or quote if pass>` |
+| 1 | pass | All handoffs Jul 6–8 indexed chat (Track A); no log-only ingests |
+| 2 | pass | Codex never asked Ryan to re-paste Crush findings; retrieved from corpus |
+| 3 | pass | Umbrella decisions filed (Bug 4, Bug 5/6 grouped), not per-finding records |
+| 4 | pass | Kiro used index-only handoffs; no volunteered record blocks |
+| 5 | pass | evidence: agents routinely surface prior-session content from other models/chats without Ryan restating |
 
 ```
-tier_1_5_gate: LOCKED | UNLOCKED
+tier_1_5_gate: UNLOCKED
 ```
 
 Until `tier_1_5_gate: UNLOCKED` appears above, Tier 1.5 code stays out of scope.
