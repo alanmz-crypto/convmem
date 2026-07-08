@@ -17,7 +17,11 @@ Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
 | **Codex** | Shell + `AGENTS.md` (`~/.codex/AGENTS.md` global + repo root); change-feed design lane (deferred); no MCP | Tier A (shell, but no MCP) — use CLI `convmem` commands |
 | **Continue** | MCP read (`brief`, `search_fast`, `ask`); MCP `instructions=` carries expanded protocol | Tier A (shell + MCP) |
 
-**Session close (all models):** read `docs/inter-model/SESSION-CLOSE-RECORD.md`; output **`convmem record --relates-to … --summary … --rationale … --author …`** then **`convmem record --approve-last`**. Never `record` alone or fake flags (`session=`, `detail=`). Agent must search for `--relates-to`.
+**Session close (all models):** follow [`config/agent-protocol.md`](../config/agent-protocol.md) and [`SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md).
+
+- **Handoff (default):** index session chat — `convmem index --file <session-path>` (Track A). **Handoff is not a record.**
+- **Record block:** output a copy-paste `convmem record …` block **only** when Ryan says `record block`, `closing`, `end session`, or `record this`. Agents **never** run `convmem record --approve-last`.
+- **`--approve-last`:** Ryan-gated only. Kiro uses `--signer kiro-review` when Ryan approves.
 
 Cross-model messages: `docs/inter-model/<MODEL>-<date>-<topic>.md`
 
