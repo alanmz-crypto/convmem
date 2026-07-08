@@ -39,7 +39,11 @@ _record_progress() {
 }
 
 _seen_search() {
-  [ -f "${progress_base}.search_seen" ]
+  [ -f "${progress_base}.search_seen" ] && return 0
+  # Mirror _ritual_complete: child sessions inherit parent search completion
+  # (Codex 2026-07-07 asymmetric inheritance finding).
+  [ "$base_session" != "$session" ] && [ -f "${base_progress}.search_seen" ] && return 0
+  return 1
 }
 
 _record_search() {

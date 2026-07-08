@@ -721,13 +721,17 @@ def render_brief_markdown(data: dict) -> str:
         p0.append(
             f"Update LATEST.md or read `{stale['newest_file']}` before cross-model handoff"
         )
-    if not data["kiro_db_excluded"]:
+    watch_state = str(data["services"].get("watch") or "")
+    watch_active = not watch_state.startswith("disabled")
+    # Watch hard-skips kiro-cli/data.sqlite3 (watch._LIVE_WATCH_SKIP_SUFFIXES); the
+    # processed.json exclude is hygiene only when watch is already running.
+    if not data["kiro_db_excluded"] and not watch_active:
         p0.append("Apply Kiro sqlite exclude before re-enabling watch")
     if inv["pending"] > 0:
         p0.append(f"Ingest {inv['pending']} pending inventory file(s)")
     if mcp.get("crush_live") == "unverified":
         p0.append("Crush live MCP session test (search_fast from agent)")
-    if data["services"]["watch"].startswith("disabled"):
+    if watch_state.startswith("disabled"):
         if data["kiro_db_excluded"]:
             p0.append("Re-enable convmem-watch after Crush MCP verify")
         else:

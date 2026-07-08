@@ -96,6 +96,15 @@ class BriefTests(unittest.TestCase):
         text = render_brief_markdown(data)
         self.assertNotIn("STANDING CHECKS DUE", text)
 
+    def test_kiro_exclude_p0_suppressed_when_watch_active(self):
+        """Watch hard-skips Kiro DB; P0 'before re-enabling' is stale when watch is on."""
+        data = self._min_data()
+        data["kiro_db_excluded"] = False
+        data["services"]["watch"] = "enabled/active"
+        text = render_brief_markdown(data)
+        self.assertNotIn("before re-enabling watch", text)
+        self.assertNotIn("Apply Kiro sqlite exclude before re-enabling watch", text)
+
     def test_standing_due_absent_is_silent(self):
         text = render_brief_markdown(self._min_data())
         self.assertNotIn("STANDING CHECKS DUE", text)

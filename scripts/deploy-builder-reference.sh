@@ -156,7 +156,9 @@ opts = cfg.setdefault("options", {})
 original = list(opts.get("global_context_paths") or [])
 
 digest_set = set(digests)
-head = [ritual] if ritual in original else []
+# Ritual must always head the list (Codex 2026-07-07): presence-only skip left
+# partially migrated configs without CONVMEM-RITUAL.md after builder-reference deploy.
+head = [ritual]
 tail = [crush_md] if crush_md in original else []
 middle = [p for p in original if p not in digest_set and p != ritual and p != crush_md]
 ordered = head + middle + digests + tail

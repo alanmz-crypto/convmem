@@ -117,6 +117,52 @@ class DeployInteractionTests(unittest.TestCase):
                 real_config.stat().st_mtime_ns, real_mtime, "test touched the real crush.json"
             )
 
+    def _seed_sandbox_ritual_absent(self, home: Path) -> Path:
+        """Digests + CRUSH.md present; ritual marker missing (partial migration)."""
+        crush_dir = home / ".config" / "crush"
+        crush_dir.mkdir(parents=True)
+        digest = lambda name: str(crush_dir / "rules" / f"builder-reference-{name}.md")  # noqa: E731
+        partial = [
+            digest("ousterhout"),
+            digest("manning"),
+            "~/.config/crush/rules/convmem.md",
+            CRUSH_MD,
+        ]
+        config = crush_dir / "crush.json"
+        config.write_text(
+            json.dumps({"options": {"global_context_paths": partial}}, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        return config
+
+    def test_restores_ritual_when_absent_from_paths(self):
+        """Codex finding: last-writer must prepend ritual when marker is missing."""
+        real_config = Path.home() / ".config" / "crush" / "crush.json"
+        real_mtime = real_config.stat().st_mtime_ns if real_config.is_file() else None
+
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            config = self._seed_sandbox_ritual_absent(home)
+
+            first = self._run_deploy(home)
+            self.assertEqual(first.returncode, 0, first.stderr or first.stdout)
+            paths = self._paths(config)
+            basenames = [Path(str(p)).name for p in paths]
+            self.assertEqual(basenames[0], "CONVMEM-RITUAL.md", paths)
+            self.assertEqual(basenames[-1], "CRUSH.md", paths)
+            self.assertEqual(paths.count(RITUAL), 1)
+
+            second = self._run_deploy(home)
+            self.assertEqual(second.returncode, 0, second.stderr or second.stdout)
+            self.assertEqual(
+                self._paths(config), paths, "second deploy changed order — not idempotent"
+            )
+
+        if real_mtime is not None:
+            self.assertEqual(
+                real_config.stat().st_mtime_ns, real_mtime, "test touched the real crush.json"
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
