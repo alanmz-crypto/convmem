@@ -20,3 +20,19 @@ Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
 **Session close (all models):** read `docs/inter-model/SESSION-CLOSE-RECORD.md`; output **`convmem record --relates-to … --summary … --rationale … --author …`** then **`convmem record --approve-last`**. Never `record` alone or fake flags (`session=`, `detail=`). Agent must search for `--relates-to`.
 
 Cross-model messages: `docs/inter-model/<MODEL>-<date>-<topic>.md`
+
+---
+
+## Planning OS (lane terminology)
+
+The Planning OS uses vocabulary distinct from this table:
+
+| Term | Source | Meaning |
+|------|--------|---------|
+| **Lane** | This file | Agent surface + capability tier + must-not rules |
+| **Function** | Phase guides under [`planning/`](planning/) | Workflow job (Planner, Reviewer, Implementer) |
+| **Role** | [`role-charters.md`](role-charters.md) | Engineering-team ownership (seven cards) |
+
+Kernel: [`PLANNING-PROTOCOL.md`](PLANNING-PROTOCOL.md). Do not add Planner/Reviewer
+rows to the agent table above — those are **Functions**, not lanes.
+

@@ -5,6 +5,7 @@
 | Doc | Role |
 |-----|------|
 | **This file** | Which repo, which script, which reference |
+| [`docs/PLANNING-PROTOCOL.md`](PLANNING-PROTOCOL.md) | Planning OS workflow — where am I in architecture / execution / revise? |
 | [`config/agent-protocol.md`](../config/agent-protocol.md) | Session start/close (deployed to Cursor, MCP, Codex, Kiro) |
 | [`SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) | Cross-project digest phase status |
 | [`docs/inter-model/SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md) | Record block format |
