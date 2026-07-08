@@ -1,6 +1,6 @@
 # Execute Task
 
-Answers: **How do I implement an approved task with evidence and a clean handoff?**
+Answers: **How do I implement an approved task — including an approved active-failure or bug-fix — with evidence and a clean handoff?**
 
 ---
 
@@ -28,6 +28,11 @@ change, verify with evidence, hand off for review — then stop.
 
 Enter after **Execution Planning + HITL approval**, or when Ryan directs
 ad-hoc execution with an explicit scope waiver.
+
+This guide supports **normal implementation** and **approved active-failure/debug
+execution** (§Active failure branch). It is execution discipline, not Verify OS.
+It does not authorize greenfield bug discovery — that stays upstream (Crush /
+[`TEAM-CHARTER`](../inter-model/TEAM-CHARTER-2026-07-06.md)).
 
 ---
 
