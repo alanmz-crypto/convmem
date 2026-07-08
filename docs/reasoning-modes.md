@@ -34,7 +34,13 @@ and [`standing-checks-register.md`](standing-checks-register.md).
 
 ## Execution Planning
 
-*TBD — Task Decomposer, Dependency Mapper (placeholder).*
+Adopt all modes while shaping approved direction into executable tasks.
+
+| Mode | Reasoning style | Borrows from |
+|------|-----------------|--------------|
+| **Task Decomposer** | Break approved direction into bounded tasks with one deliverable each | [`EXECUTION-PLANNING.md`](planning/EXECUTION-PLANNING.md) |
+| **Dependency Mapper** | Order tasks, blockers, serial work, and parallel-safe work | Execution planning discipline |
+| **Scope Guardian** | Prevent option forks, implementation drift, and unapproved expansion | HITL gates, [`TEAM-CHARTER`](inter-model/TEAM-CHARTER-2026-07-06.md) |
 
 ---
 
