@@ -88,6 +88,15 @@ class TestPlanningGuideContract(unittest.TestCase):
             (guides / "CONTRACT.md").write_text("no headings", encoding="utf-8")
             self.assertIn("no planning guides", validate_planning_guides(root)[0])
 
+    def test_execution_closure_not_checked_as_guide(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            guides = root / "docs" / "planning"
+            guides.mkdir(parents=True)
+            (guides / "EXECUTION-CLOSURE-2026-07-08.md").write_text("no headings", encoding="utf-8")
+            (guides / "REVISE-PLANNING.md").write_text(_valid_guide(), encoding="utf-8")
+            self.assertEqual(validate_planning_guides(root), [])
+
 
 if __name__ == "__main__":
     unittest.main()

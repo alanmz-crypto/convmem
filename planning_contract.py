@@ -28,9 +28,18 @@ HITL_STOP_MARKERS: tuple[str, ...] = (
     "Await HITL.",
 )
 
-# Guides under docs/planning/ checked by doctor (CONTRACT.md is meta, not a guide).
+# Guides under docs/planning/ checked by doctor (meta files excluded).
 GUIDE_GLOB = "*.md"
 CONTRACT_FILENAME = "CONTRACT.md"
+EXECUTION_CLOSURE_PREFIX = "EXECUTION-CLOSURE"
+
+
+def _is_meta_planning_doc(name: str) -> bool:
+    if name == CONTRACT_FILENAME:
+        return True
+    if name.startswith(EXECUTION_CLOSURE_PREFIX):
+        return True
+    return False
 
 
 def planning_guides_dir(root: Path | None = None) -> Path:
@@ -43,7 +52,7 @@ def iter_guide_paths(root: Path | None = None) -> list[Path]:
     if not guides_dir.is_dir():
         return []
     paths = sorted(guides_dir.glob(GUIDE_GLOB))
-    return [p for p in paths if p.name != CONTRACT_FILENAME]
+    return [p for p in paths if not _is_meta_planning_doc(p.name)]
 
 
 def validate_planning_guides(root: Path | None = None) -> list[str]:

@@ -25,6 +25,12 @@ The Phase Initialization section must name these fields:
 - Authority
 - Probe Version
 
+## Structure vs operational content
+
+Contract v1 verifies **structure only** (headings, metadata field names, HITL
+stop lines). A guide may pass doctor while Objective/Responsibilities remain
+TBD — that means the skeleton is valid, not that the phase is operational.
+
 ## Required exit intent
 
 Every guide must contain:

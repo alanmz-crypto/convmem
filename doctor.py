@@ -15,7 +15,7 @@ import requests
 from brief import _mcp_registration, _systemd_state, _watch_main_pid, _watch_process_memory
 from chroma_readonly import collection_count, open_readonly_unit_store
 from config import CONFIG_PATH, load_config
-from planning_contract import CONTRACT_VERSION, validate_planning_guides
+from planning_contract import CONTRACT_VERSION, iter_guide_paths, validate_planning_guides
 
 WATCH_RSS_PASS_KB = 512 * 1024  # 512 MB
 
@@ -1068,7 +1068,7 @@ def _check_planning_guide_contract() -> DoctorCheck:
         if len(problems) > 5:
             detail += f"; +{len(problems) - 5} more"
         return DoctorCheck("planning_guide_contract", False, detail)
-    n = len([p for p in (root / "docs" / "planning").glob("*.md") if p.name != "CONTRACT.md"])
+    n = len(iter_guide_paths(root))
     return DoctorCheck("planning_guide_contract", True, f"contract {CONTRACT_VERSION}: {n} guide(s) ok")
 
 
