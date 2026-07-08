@@ -7,7 +7,7 @@ ledger: dec_prop_20260623_215943_5abe
 
 North-star: local evidence bus on **this workstation** (Arch Linux, Ollama local). Watch/refine/monitor run as user systemd units here — no separate corpus host. **Operate-and-document** — not foundation-build.
 
-Test count at publish: run `convmem brief --with-tests` (currently **159**).
+Test count at publish: run `convmem brief --with-tests` (currently **307**).
 
 ---
 
@@ -42,6 +42,8 @@ Equivalent external wrapper (runs the same gate, then `convmem`):
 ```
 
 Tests may set `CONVMEM_SKIP_RESTIC_GATE=1`. The wrapper calls `scripts/restic-ensure-chroma-snapshot.sh` first. **Fail-closed:** any Restic error (binary missing, bad repo, password missing, backup failure) **blocks** the live write — no warn-and-continue.
+
+**Scope boundary (adopted, not accidental):** the gate protects *overwrite / durable-merge* writes — `record --approve-last` and `add --upsert` (replace-by-id, where a bad merge is unrecoverable). `convmem index` and plain `convmem add` (no `--upsert`) are **intentionally ungated**: they are append-only and reindexable (corpus recovery = "restore or reindex"), so a snapshot is not a precondition. Gating every Chroma mutation ("gate everything") was considered and **declined** — this is the standing invariant, not a gap. `CONVMEM_SKIP_RESTIC_GATE=1` is the one deliberate escape hatch (tests / lab). Enforcement is inline in the bare CLI (`restic_gate.ensure_chroma_snapshot_for_live_write()` at both call sites) — a behavioral regression test (`tests/test_write_gate_effect.py`) asserts a forced gate failure blocks each path and leaves the corpus unchanged, so the wiring cannot silently regress.
 
 **Stale threshold (pinned):** latest snapshot tagged `convmem-chroma` must have a snapshot time on the **same local calendar day** as now (≥ local midnight today). Not last git commit, not last approved write.
 
@@ -86,6 +88,8 @@ MCP (read-only): `brief`, `search_fast`, `ask`, `related`, `stats`.
 OpenClaw, dedupe approval UI, hybrid retrieval (`manning`), `export --redact`, domain backfill in brief, rerank/CUDA if latency matters.
 
 Cross-project digest: [`scripts/cross-project-digest.sh`](../scripts/cross-project-digest.sh), pilot [`CROSS-PROJECT-DIGEST-PILOT.md`](inter-model/CROSS-PROJECT-DIGEST-PILOT.md).
+
+**Pinned (2026-07-07):** Engineering-team design, two layers — **shipped** — Layer 1 role charters ([`role-charters.md`](role-charters.md), retrieval-triggered via `.cursor/rules/role-charter.mdc`) + Layer 2 standing-checks register ([`standing-checks-register.json`](standing-checks-register.json), evaluated by `doctor` `standing_register`, advisory warn). Live triggers and closed rows are tracked in the register JSON itself (single source of truth — not enumerated here, where the list would drift). First merge-order evaluation caught a live crush.json order violation (pre-fix insert-at-front deploy logic); remediated same day. Mapping: [`role-mapping.md`](role-mapping.md). **Design complete (2026-07-07):** register end state **12 open / 2 standing / 2 closed** (the two Tech-Writer manual-by-design rows relabeled `trigger: charter` / `status: standing` — traceable, never doctor-due); the pre-live-write gate boundary (Option 1) is documented above and behaviorally regression-tested (`tests/test_write_gate_effect.py`). See the completion addendum in [`engineering-team-retro-2026-07-07.md`](engineering-team-retro-2026-07-07.md).
 
 **Pinned (2026-07-06):** Codex `rollout-*.jsonl` adapter — **shipped** — full assistant+user sessions under `~/.codex/sessions` (not `history.jsonl` prompts-only). Unified handoff: `scripts/sync-willowyhollow-handoff.sh`.
 

@@ -75,6 +75,41 @@ class BriefTests(unittest.TestCase):
         self.assertIn("## Before Working", text)
         self.assertIn("AGENT-ROLES", text)
 
+    def _min_data(self) -> dict:
+        return {
+            "generated_at": "2026-07-07T10:00:00Z",
+            "units": 10,
+            "summaries": 5,
+            "inventory": {"total": 1, "indexed": 1, "pending": 0, "deferred": 0},
+            "tests": 47,
+            "rerank": False,
+            "services": {"watch": "enabled/active", "refine": "enabled/active",
+                         "monitor_timer": "enabled/active"},
+            "kiro_db_excluded": True,
+            "mcp": {"cursor": "registered", "crush": "registered",
+                    "crush_live": "verified", "stdio": "verified"},
+        }
+
+    def test_standing_due_silent_when_none(self):
+        data = self._min_data()
+        data["standing_due"] = {"open": 12, "due": []}
+        text = render_brief_markdown(data)
+        self.assertNotIn("STANDING CHECKS DUE", text)
+
+    def test_standing_due_absent_is_silent(self):
+        text = render_brief_markdown(self._min_data())
+        self.assertNotIn("STANDING CHECKS DUE", text)
+
+    def test_standing_due_renders_when_due(self):
+        data = self._min_data()
+        data["standing_due"] = {"open": 12, "due": [
+            {"id": "ksweep-sunset", "detail": "manual: 120d since verified (limit 90d)"},
+        ]}
+        text = render_brief_markdown(data)
+        self.assertIn("STANDING CHECKS DUE (1)", text)
+        self.assertIn("ksweep-sunset", text)
+        self.assertIn("convmem doctor", text)
+
     def test_write_brief_creates_file(self):
         with tempfile.TemporaryDirectory() as td:
             cfg = {

@@ -34,14 +34,18 @@ def _synth_model(cfg: dict) -> str:
     """The model that actually produced the answer (for judge independence).
 
     Mirrors ask.py / llm.generate_stream: deepseek distill model when a key is
-    present, else the local fallback.
+    present, else the local fallback. Delegates the swap to
+    ``llm._resolve_fallback_model`` so the provider-fallback decision (and its
+    warn-once / CONVMEM_FAIL_ON_FALLBACK behavior) lives in one place.
     """
     import os
+
+    import llm
 
     models = cfg["models"]
     distill = models.get("distill_model", "deepseek-v4-flash")
     if "deepseek-v4" in distill and not os.environ.get("DEEPSEEK_API_KEY"):
-        return os.environ.get("CONVMEM_FALLBACK_MODEL", "llama3.1:8b")
+        return llm._resolve_fallback_model(distill)
     return distill
 
 

@@ -12,6 +12,7 @@ DeepSeek API once a key is available.
 
 import json
 import os
+import sys
 import threading
 from collections.abc import Iterator
 
@@ -173,6 +174,44 @@ def _deepseek_generate_stream(
             yield content
 
 
+class ModelFallbackError(RuntimeError):
+    """Raised when a ``deepseek-v4`` model would silently fall back to a local
+    model (no ``DEEPSEEK_API_KEY``) but ``CONVMEM_FAIL_ON_FALLBACK=1`` forbids
+    the silent degrade. Opt-in fail-closed; default behavior is warn-and-continue."""
+
+
+# Best-effort "warn once per process" so watch/refine don't spam the journal on
+# a local-only setup. A rare duplicate across threads is acceptable.
+_warned_fallback = False
+
+
+def _resolve_fallback_model(configured_model: str) -> str:
+    """Resolve the local model to use when a ``deepseek-v4`` model has no API key.
+
+    This is the single source of truth for the provider fallback (Role 5 SRE:
+    silent-degradation detection). Fail-closed when ``CONVMEM_FAIL_ON_FALLBACK=1``
+    (raise, no silent degrade); otherwise warn once to stderr and return
+    ``CONVMEM_FALLBACK_MODEL`` (default ``llama3.1:8b``). Only called on the
+    genuine no-key fallback path.
+    """
+    global _warned_fallback
+    fallback = os.environ.get("CONVMEM_FALLBACK_MODEL", "llama3.1:8b")
+    if os.environ.get("CONVMEM_FAIL_ON_FALLBACK") == "1":
+        raise ModelFallbackError(
+            f"model {configured_model!r} needs DEEPSEEK_API_KEY (unset); "
+            f"CONVMEM_FAIL_ON_FALLBACK=1 forbids the local fallback to {fallback!r}"
+        )
+    if not _warned_fallback:
+        _warned_fallback = True
+        print(
+            f"convmem: WARNING - {configured_model!r} requested but DEEPSEEK_API_KEY "
+            f"is unset; falling back to local {fallback!r} (degraded synthesis "
+            f"quality). Set the key, or CONVMEM_FAIL_ON_FALLBACK=1 to fail instead.",
+            file=sys.stderr,
+        )
+    return fallback
+
+
 def generate_stream(
     prompt: str,
     model: str,
@@ -199,7 +238,7 @@ def generate_stream(
                     timeout=timeout,
                 )
                 return
-            model = os.environ.get("CONVMEM_FALLBACK_MODEL", "llama3.1:8b")
+            model = _resolve_fallback_model(model)
         yield from _ollama_generate_stream(
             prompt, model, ollama_host, stop=stop, timeout=timeout
         )
@@ -223,9 +262,7 @@ def generate(
             return _deepseek_generate(
                 prompt, model, deepseek_base_url, timeout=timeout
             )
-        # No API key — fall back to local Ollama using the same model slot name
-        # is wrong; caller should pass a local model in config when no key exists.
-        model = os.environ.get("CONVMEM_FALLBACK_MODEL", "llama3.1:8b")
+        model = _resolve_fallback_model(model)
     return _ollama_generate(prompt, model, ollama_host, timeout=timeout)
 
 
@@ -243,5 +280,5 @@ def summarize(
     if "deepseek-v4" in model and os.environ.get("DEEPSEEK_API_KEY"):
         return _deepseek_generate(prompt, model, deepseek_base_url)
     if "deepseek-v4" in model:
-        model = "llama3.1:8b"
+        model = _resolve_fallback_model(model)
     return _ollama_generate(prompt, model, ollama_host)

@@ -1,0 +1,26 @@
+---
+description: Willowy Hollow site-reference promotion gates
+alwaysApply: false
+globs: "**/WordPress/willowyhollow-practice/**,**/WordPress/willowyhollow/**,**/GitClones/willowyhollow-dev/**"
+---
+
+# Site reference
+
+Use the curated slices in `~/Projects/convmem/docs/site-reference/` before
+promoting changes across environments or writing to production.
+
+## Read this when
+
+- comparing test results across practice, preview, staging2, or prod
+- after sync scripts (`sync-staging2-to-practice.sh`, `sync-practice-to-preview.sh`)
+- before git push to `willowyhollow-dev` staging or any production write
+
+## Slices (pre-promote order)
+
+1. `docs/site-reference/site-address-consistency.md` — `siteurl` / `home` match this env
+2. `docs/site-reference/php-version-parity.md` — major.minor matches test and target
+3. `docs/site-reference/backup-before-write-gate.md` — fresh verified backup before prod
+
+Application guide: `docs/site-reference/NOTES.md`
+
+Any gate failure is **blocking**. Session loop: `docs/WILLOWYHOLLOW-SESSION-LOOP.md` step 4b.

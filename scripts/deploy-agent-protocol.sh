@@ -291,9 +291,11 @@ done
 if [ -n "$CRUSH_RULES" ]; then
   cp config/crush-rules-00-ritual.example.md "$CRUSH_RULES/00-convmem-ritual.md"
   cp config/crush-rules-convmem.example.md "$CRUSH_RULES/convmem.md"
+  cp config/crush-rules-ksweep-routing.example.md "$CRUSH_RULES/ksweep-routing.md"
   echo "  [deploy] $CRUSH_RULES/00-convmem-ritual.md"
   echo "  [deploy] $CRUSH_RULES/convmem.md"
-  DEPLOY_REPORT+="  - Deployed Crush convmem rules (00-ritual + Tier A)\n"
+  echo "  [deploy] $CRUSH_RULES/ksweep-routing.md"
+  DEPLOY_REPORT+="  - Deployed Crush convmem rules (00-ritual + Tier A + ksweep-routing)\n"
 else
   echo "  [skip]   Crush rules directory not found (probed: ~/.config/crush/rules, ~/.crush/rules)"
   SKIPPED+="  - Crush (no rules dir found)\n"

@@ -15,6 +15,31 @@ import chromadb
 SUMMARIES = "conversation_summaries"
 UNITS = "knowledge_units"
 
+# Cache for superseded count — avoids O(n) metadata scan on every stats/search call.
+# Superseded status changes only during refine dedupe or forget, not in normal reads.
+_superseded_cache: dict[str, tuple[int, float]] = {}  # chroma_dir -> (count, expiry_ts)
+_SUPERSEDED_CACHE_TTL = 30.0  # seconds
+
+
+def _get_superseded_count(collection, chroma_dir: str) -> int:
+    """Return cached or fresh superseded count. Cache TTL = 30s."""
+    now = time.monotonic()
+    cached = _superseded_cache.get(chroma_dir)
+    if cached is not None and now < cached[1]:
+        return cached[0]
+    try:
+        res = collection.get(where={"superseded": True}, include=[])
+        n = len(res.get("ids") or [])
+    except Exception:
+        n = 0
+    _superseded_cache[chroma_dir] = (n, now + _SUPERSEDED_CACHE_TTL)
+    return n
+
+
+def invalidate_superseded_cache(chroma_dir: str) -> None:
+    """Call after tombstoning or undoing a unit (refine dedupe, forget, approve)."""
+    _superseded_cache.pop(chroma_dir, None)
+
 
 def is_chroma_contention_error(exc: BaseException) -> bool:
     """True when another process holds the Chroma sqlite write lock."""
@@ -165,13 +190,7 @@ class ChromaStore:
         total = self._collection(UNITS).count()
         if include_superseded:
             return total
-        try:
-            superseded = self._collection(UNITS).get(
-                where={"superseded": True}, include=[]
-            )
-            n_superseded = len(superseded.get("ids") or [])
-        except Exception:
-            n_superseded = 0
+        n_superseded = _get_superseded_count(self._collection(UNITS), self.chroma_dir)
         return total - n_superseded
 
     def units_metadata(self, *, include_superseded: bool = False) -> list[dict]:
@@ -258,6 +277,32 @@ class ChromaStore:
             col.delete(ids=ids)
         return len(ids)
 
+    def preview_supersede_for_source(self, source_path: str) -> list[dict]:
+        """Read-only provenance preview of what supersede_units_for_source would tombstone.
+
+        Returns the active (not-yet-superseded) units for ``source_path`` with
+        their identity/provenance fields. No writes — safe to call before a
+        neutralize run to echo what is about to be tombstoned.
+        """
+        col = self._collection(UNITS)
+        res = col.get(where={"source_path": source_path}, include=["metadatas"])
+        ids = res.get("ids") or []
+        metas = res.get("metadatas") or []
+        preview: list[dict] = []
+        for unit_id, meta in zip(ids, metas):
+            row = dict(meta or {})
+            if is_superseded(row):
+                continue
+            preview.append(
+                {
+                    "id": unit_id,
+                    "title": row.get("title") or "",
+                    "created_at": row.get("created_at") or "",
+                    "updated_at": row.get("updated_at") or "",
+                }
+            )
+        return preview
+
     def supersede_units_for_source(
         self,
         source_path: str,
@@ -283,6 +328,8 @@ class ChromaStore:
             row["id"] = unit_id
             col.update(ids=[unit_id], metadatas=[row])
             n += 1
+        if n:
+            invalidate_superseded_cache(self.chroma_dir)
         return n
 
     def delete_summaries_for_source(self, source_path: str) -> int:

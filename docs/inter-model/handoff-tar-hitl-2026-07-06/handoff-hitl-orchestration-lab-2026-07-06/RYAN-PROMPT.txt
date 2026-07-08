@@ -1,0 +1,10 @@
+Read HANDOFF.md first, then TEAM-ROLES-SPRINT-AUDIT.md and LAB-ERRORS-AND-GUARDRAILS.md.
+
+We are preparing a HITL multi-agent orchestration experiment with convmem as shared memory. DeepSeek-in-Crush is hunting bugs on Willowy Hollow practice now.
+
+Tell us:
+1. Have we used correct team roles?
+2. What errors did the lab or sprint create?
+3. What team charter do we need for a competent final result?
+
+Markdown only — no code changes.

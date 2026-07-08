@@ -543,6 +543,16 @@ def gather_brief_data(
     except Exception:
         unresolved_count = None
 
+    # Layer 2 standing checks due at session start. Lazy import: doctor imports
+    # from brief at module load, so a top-level import here would be circular.
+    try:
+        from doctor import standing_register_status
+
+        open_n, due = standing_register_status(cfg)
+        standing_due = {"open": open_n, "due": due}
+    except Exception:
+        standing_due = None
+
     project_slug = project.strip()
     recent_decisions = _recent_decisions(chroma_dir)
     recent_monitor = _recent_monitor_units(chroma_dir)
@@ -583,6 +593,7 @@ def gather_brief_data(
         "pending_decision_files": _pending_decision_ingest(),
         "inter_model_inbox": inbox,
         "unresolved_count": unresolved_count,
+        "standing_due": standing_due,
         "latest_handoff": _latest_handoff_info(inbox),
         "handoff_staleness": _handoff_staleness(inbox),
         "recent_inter_model_titles": _recent_inter_model_titles(inbox),
@@ -666,6 +677,12 @@ def render_brief_markdown(data: dict) -> str:
     ur_count = data.get("unresolved_count")
     if ur_count is not None:
         lines.append(f"- Unresolved observations: **{ur_count}** (run `convmem unresolved`)")
+    sd = data.get("standing_due") or {}
+    if sd.get("due"):
+        ids = ", ".join(r["id"] for r in sd["due"])
+        lines.append(
+            f"- **⚠ STANDING CHECKS DUE ({len(sd['due'])}):** {ids} (run `convmem doctor`)"
+        )
     stale = data.get("handoff_staleness") or {}
     if stale.get("stale"):
         lines.append(

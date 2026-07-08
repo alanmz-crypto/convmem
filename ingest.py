@@ -198,6 +198,70 @@ def watch_skip_reason(
     return None
 
 
+def _deduplicate_units_export(export_path: Path) -> int:
+    """Rewrite knowledge_units.jsonl keeping only the last occurrence of each unit ID.
+
+    This prevents unbounded growth from repeated re-indexing. Returns lines removed.
+    """
+    if not export_path.is_file():
+        return 0
+    seen: dict[str, str] = {}  # unit_id -> json_line
+    n_before = 0
+    for line in export_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        n_before += 1
+        try:
+            rec = json.loads(stripped)
+            uid = rec.get("id", "")
+            if uid:
+                seen[uid] = stripped
+        except json.JSONDecodeError:
+            pass  # preserve unparseable lines
+    if n_before == 0:
+        return 0
+    n_after = len(seen)
+    if n_after >= n_before:
+        return 0  # nothing to compact
+    tmp = export_path.with_suffix(export_path.suffix + ".compact.tmp")
+    tmp.write_text("\n".join(seen.values()) + "\n", encoding="utf-8")
+    tmp.replace(export_path)
+    return n_before - n_after
+
+
+def _echo_neutralize_preview(
+    preview: list, display_name: str, tombstone_tag: str, verbose: bool
+) -> None:
+    """Unconditional provenance echo before a supersede (neutralize) run.
+
+    Guardrail for the neutralize-provenance-confirm standing check: a supersede
+    cannot execute without the affected source, unit count, timestamp range,
+    and tombstone tag being printed first. One line per logical file —
+    --supersede runs at every handoff sync, so this must stay compact.
+    """
+    if not preview:
+        return
+    stamps = sorted(
+        t[:10]
+        for unit in preview
+        for t in (unit.get("created_at"), unit.get("updated_at"))
+        if t
+    )
+    span = f" ({stamps[0]}..{stamps[-1]})" if stamps else ""
+    print(
+        f"  [neutralize] {len(preview)} active units for {display_name}{span}"
+        f" -> tombstone as {tombstone_tag}"
+    )
+    if verbose:
+        sample = ", ".join(
+            f"{u['id']} \"{u['title']}\"" if u.get("title") else str(u["id"])
+            for u in preview[:5]
+        )
+        more = f" (+{len(preview) - 5} more)" if len(preview) > 5 else ""
+        print(f"  [neutralize]   {sample}{more}")
+
+
 def index(
     force_file: str | None = None,
     limit_files: int | None = None,
@@ -286,6 +350,16 @@ def index(
                 n_units_del = 0
                 n_sum_del = 0
                 tombstone_tag = f"{path_key}#{file_hash[:12]}"
+                if supersede_on_reindex:
+                    # One echo per logical file: merge previews across the
+                    # path/path_key variants, deduped by unit id.
+                    merged: dict[str, dict] = {}
+                    for sp in dict.fromkeys([path, path_key]):
+                        for unit in store.preview_supersede_for_source(sp):
+                            merged.setdefault(unit["id"], unit)
+                    _echo_neutralize_preview(
+                        list(merged.values()), Path(path).name, tombstone_tag, verbose
+                    )
                 for sp in dict.fromkeys([path, path_key]):
                     if supersede_on_reindex:
                         n_units_del += store.supersede_units_for_source(
@@ -316,6 +390,12 @@ def index(
                 with ChromaStore(chroma_dir) as store:
                     tombstone_tag = f"{path_key}#{file_hash[:12]}"
                     if supersede_on_reindex:
+                        _echo_neutralize_preview(
+                            store.preview_supersede_for_source(path_key),
+                            Path(path).name,
+                            tombstone_tag,
+                            verbose,
+                        )
                         n_del = store.supersede_units_for_source(
                             path_key, superseded_by=tombstone_tag
                         )
@@ -350,6 +430,18 @@ def index(
                 "chunks": 0,
                 "units": n_units,
             }
+
+            # Purge stale entries for the same resolved path.
+            stale_keys = [
+                k
+                for k, v in processed.items()
+                if isinstance(v, dict)
+                and v.get("path") == path_key
+                and k != file_hash
+            ]
+            for k in stale_keys:
+                del processed[k]
+
             save_processed(idx["processed_log"], processed)
             stats["files_processed"] += 1
             stats["units_indexed"] += n_units
@@ -470,6 +562,19 @@ def index(
             "chunks": n_indexed,
             "units": n_units,
         }
+
+        # Purge stale entries for the same resolved path (different content hash).
+        stale_keys = [
+            k
+            for k, v in processed.items()
+            if isinstance(v, dict)
+            and v.get("path") == path_key
+            and k != file_hash
+        ]
+        for k in stale_keys:
+            del processed[k]
+            stats["files_skipped"] += 1
+
         save_processed(idx["processed_log"], processed)
         stats["files_processed"] += 1
         stats["chunks_indexed"] += n_indexed
@@ -482,5 +587,11 @@ def index(
             refresh_brief_after_change(cfg)
         except Exception:
             pass
+
+    # Compact the JSONL export to remove duplicate unit IDs from re-indexing.
+    if units_export and units_export.is_file():
+        removed = _deduplicate_units_export(units_export)
+        if removed:
+            stats["export_duplicates_removed"] = removed
 
     return stats

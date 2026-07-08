@@ -6,7 +6,6 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -14,7 +13,7 @@ from pathlib import Path
 import requests
 
 from brief import _mcp_registration, _systemd_state, _watch_main_pid, _watch_process_memory
-from chroma_readonly import collection_count
+from chroma_readonly import collection_count, open_readonly_unit_store
 from config import CONFIG_PATH, load_config
 
 WATCH_RSS_PASS_KB = 512 * 1024  # 512 MB
@@ -581,6 +580,404 @@ def _check_index_gate() -> DoctorCheck:
     return DoctorCheck("index_gate", True, "0 index failures in 7d")
 
 
+def _standing_register_path() -> Path:
+    return Path(__file__).resolve().parent / "docs" / "standing-checks-register.json"
+
+
+def _eval_provenance_probe(row: dict, root: Path) -> tuple[bool, str]:
+    """Probe: every scripts/eval-*.py must call model_context()/judge() unless exempt.
+
+    Encodes the QA/Eval discipline that a *newly added* eval wires provenance +
+    judge-independence. Exemptions carry a reason (e.g. deterministic retrieval
+    metrics with no LLM output under test).
+    """
+    trig = row.get("trigger") or {}
+    exempt = set()
+    for entry in trig.get("exempt") or []:
+        path = (entry.get("path") or "").strip()
+        if path:
+            exempt.add(path)
+            exempt.add(Path(path).name)
+    scripts_dir = root / "scripts"
+    unwired: list[str] = []
+    for py in sorted(scripts_dir.glob("eval-*.py")):
+        rel = f"scripts/{py.name}"
+        if rel in exempt or py.name in exempt:
+            continue
+        try:
+            text = py.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        if "model_context(" not in text and "judge(" not in text:
+            unwired.append(py.name)
+    if unwired:
+        return True, "eval scripts missing provenance/judge wiring: " + ", ".join(unwired)
+    return False, "all eval scripts wired (or exempt)"
+
+
+def _charter_register_consistency_probe(all_rows: list, root: Path) -> tuple[bool, str]:
+    """Probe: charter register_refs and register ids stay in sync (dogfoods Layer 2).
+
+    Parses ``register_refs: [...]`` blocks from docs/role-charters.md and compares
+    against the loaded register rows. Due if (a) a charter ref points to no
+    register id (dangling) or (b) a tracked register row (status open or
+    standing) is cited by no charter (orphan). Missing charter file -> not due
+    (advisory, never crash).
+    """
+    import re
+
+    charter = root / "docs" / "role-charters.md"
+    if not charter.is_file():
+        return False, f"charter file not found ({charter})"
+    text = charter.read_text(encoding="utf-8", errors="ignore")
+    charter_refs: set[str] = set()
+    for m in re.finditer(r"register_refs:\s*\[([^\]]*)\]", text):
+        for tok in m.group(1).split(","):
+            tok = tok.strip().strip("`\"'")
+            # Skip template placeholders like "<Layer 2 check IDs ...>".
+            if tok and "<" not in tok and ">" not in tok:
+                charter_refs.add(tok)
+    all_ids = {str(r.get("id")) for r in all_rows if isinstance(r, dict) and r.get("id")}
+    # Require both open backlog rows and charter-owned "standing" rows to be
+    # cited: standing rows exist for the charter<->register traceability link,
+    # so a dropped citation must still be caught. Closed rows are exempt.
+    tracked_ids = {
+        str(r.get("id"))
+        for r in all_rows
+        if isinstance(r, dict) and r.get("status") in ("open", "standing") and r.get("id")
+    }
+    dangling = sorted(charter_refs - all_ids)
+    orphan = sorted(tracked_ids - charter_refs)
+    problems: list[str] = []
+    if dangling:
+        problems.append("dangling charter refs (no register row): " + ", ".join(dangling))
+    if orphan:
+        problems.append("orphan tracked rows (no charter ref): " + ", ".join(orphan))
+    if problems:
+        return True, "; ".join(problems)
+    return False, f"{len(charter_refs)} charter refs match {len(tracked_ids)} tracked (open+standing) rows"
+
+
+def _merge_order_probe(row: dict, root: Path) -> tuple[bool, str]:
+    """Probe: crush.json global_context_paths canonical order on the Crush surface.
+
+    Asserts CONVMEM-RITUAL.md is first AND CRUSH.md (when present) is last —
+    the two ends of the canonical order enforced by deploy-builder-reference.sh.
+    Note verify-builder-reference.sh only asserts ritual-first; this probe covers
+    both ends. Scope is Crush only (other surfaces have no merge order).
+
+    Mirrors the order assertion in scripts/verify-builder-reference.sh, but runs
+    on every doctor pass instead of only (non-fatally) at deploy end — closing
+    the residual where a manual crush.json edit breaks salience order between
+    deploys. Remediation: bash scripts/deploy-builder-reference.sh (designated
+    last writer; re-sorts to ritual-first / CRUSH-last).
+    """
+    trig = row.get("trigger") or {}
+    injected = (trig.get("crush_config") or "").strip()
+    candidates = (
+        [Path(injected).expanduser()]
+        if injected
+        else [
+            Path("~/.config/crush/crush.json").expanduser(),
+            Path("~/.crush/crush.json").expanduser(),
+        ]
+    )
+    config = next((p for p in candidates if p.is_file()), None)
+    if config is None:
+        return False, "crush.json not found (no Crush surface on this machine)"
+    try:
+        cfg_json = json.loads(config.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return True, f"crush.json unreadable ({type(exc).__name__}) — order unverifiable"
+    paths = list((cfg_json.get("options") or {}).get("global_context_paths") or [])
+    if not paths:
+        return False, "no global_context_paths configured"
+    problems: list[str] = []
+    # Basename equality, not suffix match — "00-CRUSH.md".endswith("CRUSH.md") is True.
+    if Path(str(paths[0])).name != "CONVMEM-RITUAL.md":
+        problems.append(f"CONVMEM-RITUAL.md not first (paths[0]={paths[0]})")
+    # CRUSH.md, when present, must be last (canonical order: ritual -> ... -> CRUSH.md).
+    crush_positions = [i for i, p in enumerate(paths) if Path(str(p)).name == "CRUSH.md"]
+    if crush_positions and crush_positions[-1] != len(paths) - 1:
+        problems.append(f"CRUSH.md not last (index {crush_positions[-1]} of {len(paths) - 1})")
+    if problems:
+        return True, "; ".join(problems) + " — run: bash scripts/deploy-builder-reference.sh"
+    return False, f"ritual first, CRUSH.md last-or-absent ({len(paths)} paths)"
+
+
+# The two design docs where a live UNVERIFIED marker would be a resting state.
+# Deliberately excludes the retro artifact ("UNVERIFIED sweep" heading) and the
+# retro template (instructs in uppercase) — both would false-fire this probe.
+_UNVERIFIED_SCOPE = ("docs/role-mapping.md", "docs/role-charters.md")
+
+
+def _unverified_resting_state_probe(row: dict, root: Path) -> tuple[bool, str]:
+    """Probe: no live UNVERIFIED marker left sitting in the mapping/charter docs.
+
+    Mechanizes the 2026-07-07 retro rule that UNVERIFIED is a todo-with-an-owner,
+    not a fifth resting category. Convention: a *live* mark is written uppercase
+    ``UNVERIFIED`` (typically ``UNVERIFIED(owner)``); historical lowercase prose
+    ("was unverified") is invisible to the probe. Case-sensitive whole-word match
+    over exactly the two files in ``_UNVERIFIED_SCOPE``. Due lists file:line hits;
+    missing files are skipped (advisory, never crash).
+    """
+    import re
+
+    marker = re.compile(r"\bUNVERIFIED\b")
+    hits: list[str] = []
+    for rel in _UNVERIFIED_SCOPE:
+        doc = root / rel
+        if not doc.is_file():
+            continue
+        for lineno, line in enumerate(
+            doc.read_text(encoding="utf-8", errors="ignore").splitlines(), 1
+        ):
+            if marker.search(line):
+                hits.append(f"{rel}:{lineno}")
+    if hits:
+        return True, "live UNVERIFIED marker(s) — assign an owner and resolve: " + ", ".join(hits)
+    return False, f"no live UNVERIFIED marker in {len(_UNVERIFIED_SCOPE)} design docs"
+
+
+def _exposure_window_probe(row: dict, cfg: dict) -> tuple[bool, str]:
+    """Probe: corpus confirmed clean after every critical/high observation close.
+
+    The flagship "P0 done != corpus clean" gap: closing a P0 observation in the
+    ledger does not mean stale/poisoned units were swept. Due when any
+    critical/high observation has a closed status (per evidence_boost, the same
+    machinery as `convmem unresolved`) whose close date is after this row's
+    last_verified. Unlike corpus_size rows, bumping last_verified IS the reset
+    here — it records "corpus-clean scan done after that close".
+
+    Close date = pass-verification child timestamps (or the observation's own
+    timestamp when it carries verification_result: pass), NOT last_touched —
+    a later note attached to a closed P0 must not re-fire the row.
+    """
+    from evidence import evidence_boost
+    from ledger import _dedupe_by_ledger_id, _kind, build_ledger_index
+    from unresolved import OPEN_STATUSES
+
+    raw = str(row.get("last_verified") or "").strip()
+    try:
+        last_verified = datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError:
+        return True, f"exposure-window: last_verified unparseable ({raw!r})"
+
+    def _ts_date(ts: str):
+        ts = (ts or "").strip()
+        if not ts:
+            return None
+        try:
+            if "T" in ts:
+                return datetime.fromisoformat(ts.replace("Z", "+00:00")).date()
+            return datetime.strptime(ts[:10], "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            return None
+
+    store = open_readonly_unit_store(cfg["index"]["chroma_dir"])
+    by_ledger_id, by_relates_to = build_ledger_index(store)
+
+    latest_close = None
+    latest_lid = ""
+    closed_count = 0
+    for lid, meta in by_ledger_id.items():
+        kind = _kind(meta)
+        if kind != "observation" and (meta.get("type") or "").strip().lower() != "observation":
+            continue
+        if (meta.get("severity") or "medium").strip().lower() not in ("critical", "high"):
+            continue
+        _, status = evidence_boost(meta, by_relates_to=by_relates_to)
+        if status in OPEN_STATUSES:
+            continue
+        closed_count += 1
+        children = _dedupe_by_ledger_id(
+            by_relates_to.get(lid, []) + by_relates_to.get(meta.get("id", ""), [])
+        )
+        pass_ts = [
+            c.get("timestamp", "")
+            for c in children
+            if _kind(c) == "verification"
+            and (c.get("result") or c.get("verification_result") or "").strip().lower() == "pass"
+        ]
+        if pass_ts:
+            close_dates = [d for d in (_ts_date(t) for t in pass_ts) if d]
+        elif (meta.get("verification_result") or "").strip().lower() == "pass":
+            close_dates = [d for d in [_ts_date(meta.get("timestamp", ""))] if d]
+        else:
+            # Closed with no verification evidence: fall back to last_touched.
+            all_ts = [meta.get("timestamp", "")] + [c.get("timestamp", "") for c in children]
+            close_dates = [d for d in (_ts_date(t) for t in all_ts) if d]
+        if not close_dates:
+            continue
+        close = max(close_dates)
+        if latest_close is None or close > latest_close:
+            latest_close, latest_lid = close, lid
+
+    if closed_count == 0:
+        return False, "no closed critical/high observations"
+    if latest_close is not None and latest_close > last_verified:
+        return True, (
+            f"P0 {latest_lid} closed {latest_close}, corpus-clean scan not recorded "
+            f"(last_verified {last_verified})"
+        )
+    return False, f"clean-scan recorded after last P0 close ({closed_count} closed)"
+
+
+def _standing_row_due(
+    row: dict, cfg: dict, root: Path, all_rows: list
+) -> tuple[bool, str]:
+    """Evaluate one register row's trigger against live state. Returns (due, detail)."""
+    trig = row.get("trigger") or {}
+    ttype = trig.get("type", "none")
+
+    if ttype == "none":
+        return False, "tracked, no trigger"
+
+    if ttype == "charter":
+        # Charter-owned standing habit: the trigger is the Role 6 charter
+        # read_when retrieval hook (a human evaluates it in-situ), not a
+        # doctor-polled condition. Never doctor-due by design. Normally
+        # unreachable here because status="standing" rows are filtered before
+        # this call — kept for direct callers and as self-documentation.
+        return False, "charter-triggered (read_when hook); never doctor-due"
+
+    if ttype in ("manual", "cadence"):
+        raw = str(row.get("last_verified") or "").strip()
+        try:
+            last = datetime.strptime(raw, "%Y-%m-%d").date()
+        except ValueError:
+            return True, f"{ttype}: last_verified unparseable ({raw!r})"
+        age = (datetime.now().date() - last).days
+        if ttype == "manual":
+            limit = int(trig.get("max_age_days") or row.get("max_age_days") or 90)
+            return (age > limit, f"manual: {age}d since verified (limit {limit}d)")
+        interval = int(trig.get("interval_days") or 30)
+        return (age > interval, f"cadence: {age}d since verified (interval {interval}d)")
+
+    if ttype == "corpus_size":
+        baseline = int(trig.get("baseline") or 0)
+        multiple = float(trig.get("multiple") or 2.0)
+        if baseline <= 0:
+            return False, "corpus_size: no baseline recorded"
+        count = collection_count(cfg["index"]["chroma_dir"], "knowledge_units")
+        threshold = baseline * multiple
+        return (count > threshold, f"corpus_size: {count} vs threshold {threshold:.0f}")
+
+    if ttype == "probe":
+        probe = trig.get("probe") or row.get("id")
+        if probe in ("eval_provenance_wiring", "eval-provenance-wiring"):
+            return _eval_provenance_probe(row, root)
+        if probe in ("charter_register_consistency", "charter-register-consistency"):
+            return _charter_register_consistency_probe(all_rows, root)
+        if probe in ("merge_order_position", "merge-order-position"):
+            return _merge_order_probe(row, root)
+        if probe in ("exposure_window_tracking", "exposure-window-tracking"):
+            return _exposure_window_probe(row, cfg)
+        if probe in ("unverified_resting_state", "unverified-resting-state"):
+            return _unverified_resting_state_probe(row, root)
+        return False, f"unknown probe {probe!r} (treated as not due)"
+
+    return False, f"unknown trigger type {ttype!r}"
+
+
+def _evaluate_standing_rows(
+    rows: list, cfg: dict, base: Path
+) -> tuple[int, list[dict]]:
+    """Evaluate every open register row's trigger. Returns (open_count, due_rows)
+    where due_rows is ``[{"id":.., "detail":..}]``. A broken probe nags (is_due)
+    rather than crashing — same contract as the doctor check.
+
+    ``status: standing`` rows (charter-owned review habits) are excluded from the
+    open-count and never evaluated here by design — they are backlog-adjacent but
+    not fireable work. Do not "fix" the apparent omission by counting them."""
+    open_count = 0
+    due: list[dict] = []
+    for row in rows:
+        if not isinstance(row, dict) or row.get("status") != "open":
+            continue
+        open_count += 1
+        try:
+            is_due, detail = _standing_row_due(row, cfg, base, rows)
+        except Exception as exc:  # a broken probe should nag, never crash
+            is_due, detail = True, f"probe error: {type(exc).__name__}"
+        if is_due:
+            due.append({"id": row.get("id", "?"), "detail": detail})
+    return open_count, due
+
+
+def standing_register_status(
+    cfg: dict,
+    *,
+    register_path: Path | None = None,
+    root: Path | None = None,
+) -> tuple[int, list[dict]]:
+    """Structured Layer 2 status for brief/programmatic callers.
+
+    Returns ``(open_count, due_rows)`` with ``due_rows = [{"id":.., "detail":..}]``.
+    A missing / unreadable / malformed register yields ``(0, [])`` — nothing to
+    nag — so callers can treat it as "quiet" without special-casing.
+    """
+    path = register_path or _standing_register_path()
+    base = root or Path(__file__).resolve().parent
+    if not path.is_file():
+        return 0, []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 0, []
+    rows = data.get("checks") if isinstance(data, dict) else data
+    if not isinstance(rows, list):
+        return 0, []
+    return _evaluate_standing_rows(rows, cfg, base)
+
+
+def _check_standing_register(
+    cfg: dict,
+    *,
+    register_path: Path | None = None,
+    root: Path | None = None,
+) -> DoctorCheck:
+    """Layer 2 Standing Checks — advisory nag for state-dependent maintenance jobs.
+
+    Generalizes ``_check_synthesis_gate`` / ``_check_index_gate``: read a
+    persistent register, evaluate each open row's trigger, warn on any that are
+    due. Advisory only — always returns ``ok=True`` (status ``warn`` when due)
+    so it never changes the doctor exit code; malformed/missing register skips.
+    """
+    path = register_path or _standing_register_path()
+    base = root or Path(__file__).resolve().parent
+    if not path.is_file():
+        return DoctorCheck("standing_register", True, f"no register at {path}", status="skip")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return DoctorCheck(
+            "standing_register", True, f"register unreadable: {exc}", status="skip"
+        )
+    rows = data.get("checks") if isinstance(data, dict) else data
+    if not isinstance(rows, list):
+        return DoctorCheck(
+            "standing_register", True, "register has no checks list", status="skip"
+        )
+
+    open_count, due_rows = _evaluate_standing_rows(rows, cfg, base)
+    standing_count = sum(
+        1 for r in rows if isinstance(r, dict) and r.get("status") == "standing"
+    )
+    standing_suffix = f" ({standing_count} charter-standing)" if standing_count else ""
+    if not due_rows:
+        return DoctorCheck(
+            "standing_register", True, f"{open_count} open checks, 0 due{standing_suffix}"
+        )
+    due = [f"{r['id']} ({r['detail']})" for r in due_rows]
+    return DoctorCheck(
+        "standing_register",
+        True,  # advisory — keep ok True so exit code stays 0
+        f"{len(due)}/{open_count} standing checks DUE: " + "; ".join(due),
+        status="warn",
+    )
+
+
 def _check_watch_memory() -> DoctorCheck:
     mem = _watch_process_memory()
     if mem is None:
@@ -666,7 +1063,7 @@ def run_doctor(
     v1: bool = False,
     run_verify: bool = False,
 ) -> list[DoctorCheck]:
-    """Run health checks. v0 = core; v1 adds watch RSS, systemd, locks."""
+    """Run health checks. v0 = core; v1 adds watch RSS, summarization canary, systemd, locks."""
     cfg = load_config()
     checks: list[DoctorCheck] = [
         _check_config(),
@@ -679,8 +1076,8 @@ def run_doctor(
         _check_restic_external(),
         _check_restic_password_backup(),
         _check_synthesis_gate(),
-        _check_summarization_canary(cfg),
         _check_index_gate(),
+        _check_standing_register(cfg),
         _check_empty_ledger_documents(cfg),
         _check_mcp_import(),
         _check_mcp_wiring(),
@@ -691,6 +1088,7 @@ def run_doctor(
         checks.extend(
             [
                 _check_watch_memory(),
+                _check_summarization_canary(cfg),
                 _check_systemd("convmem-watch"),
                 _check_systemd("convmem-refine"),
                 _check_systemd("convmem-monitor.timer"),

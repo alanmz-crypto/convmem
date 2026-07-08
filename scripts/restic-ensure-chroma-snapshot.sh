@@ -58,6 +58,10 @@ source "$ENV_FILE"
 CHROMA_DIR="${CONVMEM_CHROMA_DIR:-$HOME/.local/share/convmem/chroma}"
 [[ -d "$CHROMA_DIR" ]] || fail "chroma dir missing: $CHROMA_DIR"
 
+CACHE_ROOT="${RESTIC_CACHE_DIR:-${CONVMEM_RESTIC_CACHE_DIR:-${TMPDIR:-/tmp}/convmem-restic-cache}}"
+mkdir -p "$CACHE_ROOT"
+export RESTIC_CACHE_DIR="$CACHE_ROOT"
+
 export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE
 
 snapshot_freshness() {
@@ -95,10 +99,7 @@ PY
 }
 
 ensure_repo() {
-  if restic snapshots --tag "$TAG" >/dev/null 2>&1; then
-    return 0
-  fi
-  if restic snapshots >/dev/null 2>&1; then
+  if restic cat config >/dev/null 2>&1; then
     return 0
   fi
   if $DRY_RUN; then

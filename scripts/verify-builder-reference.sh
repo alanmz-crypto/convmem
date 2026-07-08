@@ -191,14 +191,20 @@ with open(config_path) as f:
     cfg = json.load(f)
 paths = list((cfg.get("options") or {}).get("global_context_paths") or [])
 missing = [p for p in expected if p not in paths]
+ritual_first = bool(paths) and paths[0].endswith("CONVMEM-RITUAL.md")
 if missing:
     print("MISSING:" + "|".join(missing))
+elif not ritual_first:
+    print("ORDER:" + (paths[0] if paths else "<empty>"))
 else:
     print("OK")
 PY
 )"
   if [ "$missing_paths" = "OK" ]; then
-    status_line "Crush json" PASS "global_context_paths lists all four"
+    status_line "Crush json" PASS "global_context_paths lists all digests; CONVMEM-RITUAL first"
+  elif [ "${missing_paths#ORDER:}" != "$missing_paths" ]; then
+    status_line "Crush json" FAIL "global_context_paths order: CONVMEM-RITUAL not first (paths[0]=${missing_paths#ORDER:})"
+    crush_ok=0
   else
     status_line "Crush json" FAIL "global_context_paths missing digest paths"
     crush_ok=0

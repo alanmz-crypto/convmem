@@ -1,3 +1,8 @@
+<!-- Synced for convmem index. Edit source in practice repo, re-run this script. -->
+
+**Edit source:** `/home/lauer/WordPress/willowyhollow-practice/logs/2026-07-05-code-review-findings-audit.md`
+**Index:** `bash scripts/sync-willowyhollow-audit-index.sh`
+
 # Audit: `logs/2026-07-05-code-review-findings.md`
 
 This is a verification audit of the Crush bug log against the live practice stack

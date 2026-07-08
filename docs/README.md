@@ -23,6 +23,18 @@ Flat navigation for active docs. **No subfolder taxonomy** — historical materi
 
 ---
 
+## Site reference (Willowy Hollow)
+
+Curated promotion-gate slices for client-site work (PHP parity, URL identity, backup-before-write).
+Deploy: `bash scripts/deploy-site-reference.sh` · Verify: `bash scripts/verify-site-reference.sh` · Surfaces: `bash scripts/validate-site-reference-surfaces.sh` · Smoke: `bash scripts/smoke-site-reference-surfaces.sh`
+
+| Doc | Role |
+|-----|------|
+| [`site-reference/README.md`](site-reference/README.md) | Index — when to read which slice |
+| [`site-reference/NOTES.md`](site-reference/NOTES.md) | Pre-promote gate sequence + registry |
+
+---
+
 ## Builder reference
 
 Curated tier-A book digests for agent surfaces (Ousterhout, Manning IR, Zeller).

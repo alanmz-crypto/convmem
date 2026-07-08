@@ -2,6 +2,7 @@
 
 **TLDR:** [`WILLOWYHOLLOW-TLDR.md`](WILLOWYHOLLOW-TLDR.md)  
 **Session loop:** [`WILLOWYHOLLOW-SESSION-LOOP.md`](WILLOWYHOLLOW-SESSION-LOOP.md)  
+**Promotion gates:** [`site-reference/NOTES.md`](site-reference/NOTES.md)  
 **Full guide:** this file
 
 ---
