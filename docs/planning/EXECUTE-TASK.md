@@ -9,7 +9,7 @@ Answers: **How do I implement an approved task with evidence and a clean handoff
 | Field | Value |
 |-------|-------|
 | **Phase** | Execute Task |
-| **Characters** | Implementer, Test-First Reviewer |
+| **Characters** | Implementer, Test-First Reviewer, Debug Investigator (active failure branch only) |
 | **Functions** | Implementer |
 | **Lanes** | Cursor (Tier A active); Codex only if Ryan requests independent audit after handoff |
 | **Engineering References** | [`builder-reference.md`](../builder-reference.md) when touching infra |
@@ -45,6 +45,9 @@ Lanes:        Cursor
 Authority:    HITL-approved task or Ryan-directed waiver
 ```
 
+When active failure branch: add `Debug Investigator` to Characters line in
+emitted status.
+
 Start authority = approved to execute. End authority = await review at HITL
 stop below.
 
@@ -53,6 +56,9 @@ stop below.
 - After Execution Planning and HITL approval (normal loop)
 - Ryan explicitly waves planning and names scope (document the waiver in the
   evidence table)
+- Approved **bug-fix** task (post Crush discovery + HITL)
+- Ryan-directed **active failure** investigation with named scope
+- **Not** greenfield bug discovery without approval (→ [`TEAM-CHARTER`](../inter-model/TEAM-CHARTER-2026-07-06.md) / Crush lane)
 - **Not** for plan revision (→ [`REVISE-PLANNING.md`](REVISE-PLANNING.md)) or
   greenfield design (→ ARCHITECTURE stub / builder-reference)
 
@@ -80,6 +86,25 @@ Optional when relevant: `convmem doctor`, `convmem brief`, `convmem "query"`
 | **5** | **Handoff** | Nudge Track A: `convmem index --file <session-transcript>`; **no** `convmem record` unless Ryan says record block / closing |
 | **6** | **HITL stop** | Exit criteria below; do not self-advance to Revise or Architecture |
 
+D3–D6 of the active failure branch rejoin the standard implementation loop
+where noted.
+
+### Active failure branch (ordered)
+
+Use when an approved bug-fix or Ryan-directed active failure investigation
+applies. Adopt **Debug Investigator** reasoning (see
+[`reasoning-modes.md`](../reasoning-modes.md)).
+
+| Step | Name | Actions |
+|------|------|---------|
+| **D0** | **Capture symptom** | Command, exit code, surface, env; minimal bug-report fields per [`zeller-builder-digest.md`](../builder-reference/zeller-builder-digest.md) |
+| **D1** | **Reproduce** | Smallest repro; if not reproducible, document and **stop** — do not guess at fix |
+| **D2** | **Isolate** | Remove irrelevant state; compare pass vs fail runs |
+| **D3** | **Hypothesis → scoped change** | Join main loop step 2; minimal diff only |
+| **D4** | **Verify against repro** | Original failure must be gone before regression gates |
+| **D5** | **Regression gates** | `pytest -q`, `convmem doctor`, task-specific checks (§Verification routes) |
+| **D6** | **Evidence + handoff** | Main loop steps 4–6; Track A nudge; no record unless Ryan asks |
+
 ### Verification routes (interim — not Verify OS)
 
 Link only; no new subsystem.
@@ -89,7 +114,7 @@ Link only; no new subsystem.
 | Default convmem change | `pytest -q`; `convmem doctor`; `convmem doctor --v1` when infra touched |
 | Shipped-work independent check | [`CODEX-DEEPSEEK-VERIFY.md`](../CODEX-DEEPSEEK-VERIFY.md) |
 | Bug discovery (upstream) | [`TEAM-CHARTER`](../inter-model/TEAM-CHARTER-2026-07-06.md) — Crush lane; Execute implements after approval |
-| Active failure / debug | [`zeller-builder-digest.md`](../builder-reference/zeller-builder-digest.md); doctor output |
+| Active failure / debug | §Active failure branch above; [`zeller-builder-digest.md`](../builder-reference/zeller-builder-digest.md); `convmem doctor` output |
 | Client site promote | [`site-reference/NOTES.md`](../site-reference/NOTES.md) |
 | Surface soaks (when cited) | [`VERIFICATION-MATRIX.md`](../inter-model/VERIFICATION-MATRIX.md) |
 | Post-execute plan cleanup | [`REVISE-PLANNING.md`](REVISE-PLANNING.md) |
@@ -121,6 +146,7 @@ This phase ends when:
   4. What standards apply? → builder-reference
 - [ ] Task scope restated; out-of-scope items explicitly deferred
 - [ ] Branch/files inspected; bug repro confirmed or N/A documented
+- [ ] Active failure (if applicable): repro captured, fix verified against repro, or N/A documented
 - [ ] Change is minimal and matches conventions
 - [ ] Verification gates run; evidence table complete (PASS/FAIL/DEFERRED)
 - [ ] Handoff nudge issued (Track A); handoff ≠ record stated
