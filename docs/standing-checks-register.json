@@ -1,0 +1,155 @@
+{
+  "_comment": "Source of truth for the Layer 2 Standing Checks register. Read by _check_standing_register() in doctor.py. Human narrative lives in standing-checks-register.md (which does NOT duplicate these rows). trigger.type: manual | cadence | corpus_size | probe | charter | none. status: open (backlog — counted + evaluated) | standing (charter-owned review habit — excluded from the open count, never doctor-due; trigger.type is charter) | closed (mechanized elsewhere, kept for history). Only open rows with a real trigger can be 'due'; type=charter/none never nag. Advisory only — doctor reports due rows as a warn, never a fail.",
+  "checks": [
+    {
+      "id": "ksweep-sunset",
+      "check": "ksweep routing rule still in effect",
+      "role": "Platform",
+      "trigger": {"type": "manual", "max_age_days": 90},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Confirmed gap: sunset clause lives only as an HTML comment in config/crush-rules-ksweep-routing.example.md (lines 24-27). Retire once P1 contradiction-aware ranking ships. Bump last_verified when re-checked."
+    },
+    {
+      "id": "eval-provenance-wiring",
+      "check": "new eval calls model_context()/judge() correctly",
+      "role": "QA/Eval",
+      "trigger": {
+        "type": "probe",
+        "probe": "eval_provenance_wiring",
+        "exempt": [
+          {"path": "scripts/eval-retrieval.py", "reason": "deterministic retrieval metrics, no LLM output under test"}
+        ]
+      },
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Discipline is per-eval, not enforced at add-time. Probe scans scripts/eval-*.py for model_context(/judge( calls; exempt list carries reasons."
+    },
+    {
+      "id": "exposure-window-tracking",
+      "check": "corpus confirmed clean after P0 close",
+      "role": "SRE",
+      "trigger": {"type": "probe", "probe": "exposure-window-tracking"},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Probe (promoted from trigger:none 2026-07-07): the P0-close event feed already exists in the ledger — observations with severity critical/high, closed per evidence_boost (same status machinery as convmem unresolved), close date from pass-verification children (not last_touched, so later notes on a closed P0 do not re-fire it). Due when the latest close date is after last_verified. IMPORTANT: bumping last_verified here means 'corpus-clean scan done after that close' — it IS the reset, unlike the corpus_size rows where only re-recording the baseline resets. Currently vacuous (no critical/high observations exist yet); fires on the first real P0 close. FEED REQUIREMENT (verified 2026-07-07: 21 of 26 live observations carry no severity field, defaulting to medium): a P0 observation only enters this probe's feed if recorded with severity critical or high — record P0s with explicit severity (convmem add --severity critical, shipped 2026-07-07) or the probe stays blind to them."
+    },
+    {
+      "id": "merge-order-position",
+      "check": "global_context_paths merge order verified in doctor",
+      "role": "Platform",
+      "trigger": {"type": "probe", "probe": "merge_order_position"},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Probe (promoted from trigger:none 2026-07-07): asserts CONVMEM-RITUAL.md is paths[0] AND CRUSH.md (when present) is last in crush.json global_context_paths on every doctor pass — closes the residual where verify-builder-reference.sh only ran non-fatally at deploy end. Scope: Crush surface only. Remediation when due: bash scripts/deploy-builder-reference.sh (designated last writer). First evaluation caught a live violation from the pre-fix insert-at-front deploy logic; remediated 2026-07-07."
+    },
+    {
+      "id": "deploy-script-interaction",
+      "check": "combined effect of deploy scripts re-tested",
+      "role": "Platform",
+      "trigger": {"type": "none"},
+      "status": "closed",
+      "last_verified": "2026-07-07",
+      "notes": "Closed (mechanized 2026-07-07): combined-effect test in tests/test_deploy_interaction.py — sandbox $HOME, crush.json seeded scrambled (digests first, ritual mid-list, CRUSH.md not last), runs deploy-builder-reference.sh, asserts ritual-first / CRUSH-last / no duplicates / middle entries preserved, then re-runs and asserts idempotence. Variant B (seeded protocol-state + builder-reference, the designated last writer) rather than the full deploy-agent-protocol.sh chain, because the protocol script regenerates repo artifacts (generate-agent-protocol.sh at line 19) and is not hermetic; its crush stanza only prepends the ritual marker, which the seed reproduces. Runs in the pytest suite continuously — no register nag needed."
+    },
+    {
+      "id": "adapter-parity-scan",
+      "check": "stale-fact scan run across all 5 surfaces equally",
+      "role": "Data/Knowledge",
+      "trigger": {"type": "cadence", "interval_days": 60},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Cadence (promoted from trigger:none 2026-07-07): Cursor was heaviest contributor (16/49) last scan; attention drifts to last incident. Remediation when due: run stale-fact scan across all 5 surfaces equally, then bump last_verified. Bump last_verified ONLY after actually running the scan — a doc-edit bump silently resets this nag. The 'after any single-surface incident closes' half of the intended trigger stays manual (no incident feed exists for doctor to read)."
+    },
+    {
+      "id": "recency-boost-retune",
+      "check": "recency weight/half-life re-evaluated",
+      "role": "Retrieval",
+      "trigger": {"type": "corpus_size", "baseline": 5714, "multiple": 2.0},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Corpus-size trigger (promoted from trigger:none 2026-07-07): 0.1 weight / 30-day half-life set once, never scheduled for revisit. Nags when knowledge_units count exceeds baseline * multiple. Baseline 5714 recorded 2026-07-07 at promotion via collection_count(chroma_dir, 'knowledge_units') — the exact call the trigger uses — NOT at the original tune date (count at tune time unknown; first nag is therefore conservative). Remediation when due: re-run recency eval, re-tune weight/half-life, re-record baseline from collection_count at that time. Bumping last_verified does NOT reset this trigger — only re-recording the baseline does."
+    },
+    {
+      "id": "latency-budget",
+      "check": "ask vs search_fast latency delta re-measured",
+      "role": "Retrieval",
+      "trigger": {"type": "cadence", "interval_days": 90},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Cadence (promoted from trigger:none 2026-07-07): +8s finding was a one-time measurement, not tracked over time. Remediation when due: re-measure ask vs search_fast latency delta, then bump last_verified. Bump last_verified ONLY after actually re-measuring — a doc-edit bump silently resets this nag."
+    },
+    {
+      "id": "escalation-threshold-retune",
+      "check": "canary/gate thresholds re-tuned for current volume",
+      "role": "SRE",
+      "trigger": {"type": "corpus_size", "baseline": 5708, "multiple": 2.0},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Corpus-size trigger (promoted from trigger:none 2026-07-07): thresholds are static (>=3/week for synthesis_gate and index_gate) and were calibrated at current activity. Corpus growth is a PROXY for event volume — the gate logs record failures only (no attempt denominator), so true volume is unmeasurable today; retarget this trigger if attempt logging ever ships. Baseline 5708 recorded 2026-07-07 via collection_count. Intentional clustering: recency-boost-retune holds a near-identical baseline, so both fire together at corpus doubling — coherent, both are 're-tune what was calibrated at the old size' jobs. Remediation when due: review >=3/week on both gates against current activity, adjust, re-record baseline. Bumping last_verified does NOT reset this trigger — only the baseline does."
+    },
+    {
+      "id": "cross-doc-consistency-handwritten",
+      "check": "hand-written docs updated after a rename/renumber",
+      "role": "Technical Writer",
+      "trigger": {"type": "charter"},
+      "status": "standing",
+      "last_verified": "2026-07-07",
+      "notes": "Charter-owned (b): the real trigger is the Role 6 charter read_when hook ('renaming or renumbering something'), evaluated in-situ by whoever makes the change — not a doctor-polled condition, so never doctor-due. Generated docs are covered by generator scripts; ROADMAP/canon slices are not. status:standing keeps it out of the open backlog count while retaining the charter<->register traceability link (still cited from role-charters.md; the consistency probe requires standing rows to stay cited). Relabeled from trigger:none 2026-07-07 — an honest naming of the by-design-manual state, not a new mechanism."
+    },
+    {
+      "id": "deferred-decision-closure",
+      "check": "discussed decision actually written to ROADMAP/record block",
+      "role": "Technical Writer",
+      "trigger": {"type": "charter"},
+      "status": "standing",
+      "last_verified": "2026-07-07",
+      "notes": "Charter-owned (b): the real trigger is the Role 6 charter read_when hook ('closing a decision discussion'), evaluated in-situ by whoever closes the loop — not a doctor-polled condition, so never doctor-due. 'Was this discussed decision actually written down' has no evaluable state. status:standing keeps it out of the open backlog count while retaining the charter<->register traceability link (still cited from role-charters.md). Relabeled from trigger:none 2026-07-07 — an honest naming of the by-design-manual state, not a new mechanism."
+    },
+    {
+      "id": "neutralize-provenance-confirm",
+      "check": "source DB / timestamp / adjacent units confirmed before neutralize",
+      "role": "Data/Knowledge",
+      "trigger": {"type": "none"},
+      "status": "closed",
+      "last_verified": "2026-07-07",
+      "notes": "Closed (mechanized 2026-07-07): unconditional provenance echo on the supersede path — preview_supersede_for_source (chroma_store.py, read-only) + [neutralize] line in ingest.py printed before both supersede call sites. A neutralize run cannot execute without source file, active-unit count, timestamp range, and tombstone tag being printed first; the two path/path_key variants are merged into one echo per logical file. Residual: actually reading the echo is human judgment (Role 2 charter). Echo kept to one line (plus a verbose sample) because --supersede runs at every handoff sync."
+    },
+    {
+      "id": "mechanized-claims-audit",
+      "check": "all (a)-classified and closed-row mechanization claims re-verified against current code",
+      "role": "Technical Writer",
+      "trigger": {"type": "cadence", "interval_days": 90},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Added by the 2026-07-07 retrospective: everything marked mechanized was true when someone checked, but code moves — without a recurring pass the ledger silently becomes fiction (the ksweep-comment failure mode). Remediation when due: re-verify every (a) claim in docs/role-mapping.md and both closed rows against current code with file:line citations, using the citation table in docs/engineering-team-retro-2026-07-07.md as the template; fix any drifted claim, then bump last_verified. Bump ONLY after actually running the sweep. Baseline sweep run 2026-07-07 (seeds this last_verified legitimately)."
+    },
+    {
+      "id": "unverified-resting-state",
+      "check": "no live UNVERIFIED marker left sitting in the mapping/charter docs",
+      "role": "Technical Writer",
+      "trigger": {"type": "probe", "probe": "unverified_resting_state"},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Added by the 2026-07-07 retro (mechanizes leak 2: UNVERIFIED is a todo-with-an-owner, not a fifth resting category). Probe greps docs/role-mapping.md and docs/role-charters.md ONLY, case-sensitive whole-word UNVERIFIED. Convention: a live mark is written uppercase UNVERIFIED(owner); historical lowercase prose ('was unverified') is invisible to the probe. Scope deliberately excludes the retro artifact (has an 'UNVERIFIED sweep' heading) and docs/retro-template.md (instructs in uppercase) — either in scope would false-fire on day one. Remediation when due: assign an owner to each flagged marker and resolve it to a real bucket (a/b/c/closed), then the marker leaves the doc."
+    },
+    {
+      "id": "retro-loop-closure",
+      "check": "previous retro's action items were audited",
+      "role": "Technical Writer",
+      "trigger": {"type": "manual", "max_age_days": 90},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Added by the 2026-07-07 retro (closes the loop on itself: a retro whose action items are never re-checked is as dead as the ksweep comment). Due when 90 days pass without auditing the previous retro's action items. Aligned with mechanized-claims-audit (also 90d) so both nag at the same quarterly checkpoint. Remediation when due: run step 0 of docs/retro-template.md against the most recent docs/engineering-team-retro-*.md — cite each countermeasure and mark done/not-done — then bump last_verified. Bump ONLY after actually running the audit."
+    },
+    {
+      "id": "charter-register-consistency",
+      "check": "charter register_refs and register ids stay in sync",
+      "role": "Technical Writer",
+      "trigger": {"type": "probe", "probe": "charter_register_consistency"},
+      "status": "open",
+      "last_verified": "2026-07-07",
+      "notes": "Probe parses register_refs:[...] blocks from docs/role-charters.md; due if a charter ref has no matching register id (dangling) or an open register row is cited by no charter (orphan). Dogfoods Layer 2 against the drift that prompted it."
+    }
+  ]
+}

@@ -64,14 +64,6 @@ def safe_json_parse(text: str) -> list:
     return []
 
 
-def _resolve_model(model: str) -> str:
-    import os
-
-    if "deepseek-v4" in model and not os.environ.get("DEEPSEEK_API_KEY"):
-        return "llama3.1:8b"
-    return model
-
-
 def distill(
     chunk_text: str,
     model: str,
@@ -82,7 +74,9 @@ def distill(
     if len(chunk_text) > _MAX_CHUNK_CHARS:
         chunk_text = chunk_text[:_MAX_CHUNK_CHARS]
     prompt = DISTILL_PROMPT.format(chunk=chunk_text)
-    model = _resolve_model(model)
+    # Pass the configured model straight through; llm.generate owns the
+    # provider fallback (warn-once / CONVMEM_FAIL_ON_FALLBACK) so the
+    # distillation path can no longer swap silently.
     raw = generate(prompt, model, ollama_host, deepseek_base_url)
     return safe_json_parse(raw)
 

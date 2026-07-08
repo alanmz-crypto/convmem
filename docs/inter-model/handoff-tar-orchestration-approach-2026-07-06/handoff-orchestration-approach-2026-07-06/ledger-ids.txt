@@ -1,0 +1,8 @@
+# Ledger anchors for HANDOFF-CLAUDE-CLOUD-2026-07-06-orchestration-approach-review
+
+dec_prop_20260623_161428_c311   # protocol root — fallback --relates-to
+dec_prop_20260629_213047_8f73   # plans vs records; linker Phase 2 held
+obs_806985bc5697                # agent-habit / coordination gate
+dec_prop_20260706_192446_9ca8   # write_lane SKIP + restic refresh
+dec_prop_20260706_185537_f731   # team-roles audit — charter merged
+dec_prop_20260705_151004_1e00   # lab S1-S5 + lab-reference shipped

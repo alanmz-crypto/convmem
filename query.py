@@ -244,6 +244,35 @@ def _ledger_lookup_hits(cfg: dict, store, query: str) -> list[dict]:
     return hits
 
 
+def _apply_keyword_rank(text: str, results: list[dict]) -> list[dict]:
+    """Blend a small lexical boost into semantic ranking.
+
+    Chroma embeddings are good at broad recall, but golden search queries in
+    this repo often hinge on a crisp phrase or page title. Add a modest keyword
+    component so exact lexical anchors bubble up without replacing semantic
+    ranking entirely.
+    """
+    if not results:
+        return results
+
+    scored: list[tuple[float, int, dict]] = []
+    for i, r in enumerate(results):
+        meta = r.get("metadata") or {}
+        base = r.get("rank_score")
+        if base is None:
+            base = r.get("score")
+        if base is None:
+            base = 0.0
+        kw = _keyword_score(text, meta)
+        out = dict(r)
+        out["keyword_boost"] = round(kw, 4)
+        out["rank_score"] = round(float(base) + (kw * 0.02), 4)
+        scored.append((out["rank_score"], i, out))
+
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    return [r for _, _, r in scored]
+
+
 def query_units(
     text: str,
     top_k: int = 5,
@@ -259,14 +288,15 @@ def query_units(
     )
 
     use_rerank = bool(qcfg.get("rerank", False))
-    n_fetch = qcfg.get("top_k_candidates", 20) if use_rerank else top_k
+    candidate_k = max(top_k, int(qcfg.get("top_k_candidates", 20) or 20))
+    n_fetch = candidate_k
     domain = normalize_domain(domain) if domain else None
     site_norm = normalize_site(site) if site else None
     if domain or site_norm:
         # Domain filtering is hierarchical (parent matches children), which
         # Chroma's exact-match `where` can't express, so over-fetch and
         # filter client-side before reranking/truncating.
-        n_fetch = max(n_fetch, qcfg.get("top_k_candidates", 20)) * 3
+        n_fetch = candidate_k * 3
 
     ledger_extras: list[dict] = []
     try:
@@ -307,12 +337,13 @@ def query_units(
             results, recency_weight=rw, recency_half_life_days=rhl
         )
 
-    fetch_for_rerank = qcfg.get("top_k_candidates", 20) if use_rerank else top_k
+    fetch_for_rerank = candidate_k if use_rerank else top_k
     if use_rerank and results:
         from rerank import rerank as rerank_fn
 
         results = rerank_fn(text, results[:fetch_for_rerank], models["rerank_model"], top_k)
 
+    results = _apply_keyword_rank(text, results)
     results = _merge_priority_hits(results, ledger_extras)
     return results[:top_k]
 

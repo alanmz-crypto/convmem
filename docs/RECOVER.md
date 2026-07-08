@@ -45,7 +45,7 @@ Back up this file offline; without it you cannot restore from the Restic repo.
 
 ### Live writes
 
-`convmem record --approve-last` and `convmem add --file … --upsert` run the Restic gate **fail-closed** before writing Chroma.
+`convmem record --approve-last` and `convmem add --file … --upsert` run the Restic gate **fail-closed** before writing Chroma. **Scope:** only these overwrite/durable-merge paths gate; `convmem index` and plain `add` (no `--upsert`) are append-only and reindexable, so they are intentionally ungated (see ROADMAP "Pre-live-write gate"). Gating every mutation was declined by design.
 
 Optional wrapper (same gate, then `convmem`):
 

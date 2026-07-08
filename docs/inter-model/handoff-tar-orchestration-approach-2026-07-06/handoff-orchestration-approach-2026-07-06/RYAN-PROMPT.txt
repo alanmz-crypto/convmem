@@ -1,0 +1,15 @@
+Read HANDOFF.md first, then ORCHESTRATION-TIER-GAP.md.
+
+We shipped the HITL team charter and Tier 1 handoff tooling today (2026-07-06). Ryan is starting a Willowy Hollow bug sprint.
+
+Ryan's challenge: Tier 1 still feels like what we already do — open the next chat app, successors read a shared archive, Ryan triggers each lane. Not live observers; not auto-triggering.
+
+Tell us:
+1. Is Tier 1 → Tier 2 habit → Tier 3 orchestrator the right sequencing, or should we pivot?
+2. What should the bug sprint prove for Tier 1 to be worth it?
+3. Sketch minimal Tier 3 (what component beyond convmem makes this feel different to a layperson)?
+4. Should we rename/reframe Tier 1 publicly (memory bus vs orchestration)?
+
+Team roles are settled in TEAM-CHARTER-2026-07-06.md — do not re-audit lanes unless orchestration design requires it.
+
+Markdown only — no code changes.

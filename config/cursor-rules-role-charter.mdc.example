@@ -1,0 +1,40 @@
+---
+description: convmem role charters — whose job is this maintenance/auditing work
+alwaysApply: false
+globs: "**/Projects/convmem/**"
+---
+
+# Role charters (Layer 1)
+
+When it is unclear **whose job** a piece of convmem maintenance or auditing work
+is, read the matching card in `docs/role-charters.md`. Each card names the core
+responsibilities, the easy-to-overlook duties, what is already mechanized, and
+the Layer 2 register rows (`docs/standing-checks-register.json`) that role owns.
+
+## Whose job is this? Read the card when…
+
+- **Retrieval / ML** — tuning retrieval quality, adding a ranking signal, or
+  investigating a slow/stale-feeling answer (recency-boost, latency budget).
+- **Data / Knowledge** — adding an adapter, deciding whether a fact is stale, or
+  before any bulk neutralize/delete (adapter parity, neutralize provenance).
+- **Platform / Backend** — touching deploy scripts, changing `global_context_paths`
+  merge order, or adding a stopgap rule with an expiry (ksweep sunset, merge order).
+- **QA / Eval** — adding a new eval, interpreting a regression, or changing the
+  judge model (provenance + judge-independence wiring).
+- **SRE / Reliability** — closing a P0, adding a canary, or revisiting alert
+  thresholds (exposure windows, escalation thresholds).
+- **Technical Writer / Docs** — renaming/renumbering, writing a canon slice, or
+  closing a decision discussion (cross-doc consistency, deferred-decision closure,
+  charter-register consistency).
+- **Tech Lead / EM** — sequencing, tier gating, go/no-go. Not delegated to an
+  agent; kept in the charter for reference only.
+
+## Standing checks
+
+The state-dependent half of these duties is tracked in
+`docs/standing-checks-register.json` and surfaced by `convmem doctor`
+(`standing_register` check). Charter `register_refs` and register ids are kept in
+sync by the `charter-register-consistency` probe.
+
+<!-- Multi-surface promotion (Kiro/Codex/Crush) is a deferred follow-up; this is
+Cursor-only for now. Deploy target for this copy: ~/.cursor/rules/role-charter.mdc -->

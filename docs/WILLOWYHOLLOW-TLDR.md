@@ -1,7 +1,8 @@
 # Willowy Hollow + convmem — TLDR
 
 **Session loop (full):** [`WILLOWYHOLLOW-SESSION-LOOP.md`](WILLOWYHOLLOW-SESSION-LOOP.md)  
-**Guide:** [`WILLOWYHOLLOW-WEBDEV-GUIDE.md`](WILLOWYHOLLOW-WEBDEV-GUIDE.md)
+**Guide:** [`WILLOWYHOLLOW-WEBDEV-GUIDE.md`](WILLOWYHOLLOW-WEBDEV-GUIDE.md)  
+**Promotion gates:** [`site-reference/NOTES.md`](site-reference/NOTES.md)
 
 ---
 
@@ -36,6 +37,7 @@ Details: [`WILLOWYHOLLOW-SESSION-LOOP.md`](WILLOWYHOLLOW-SESSION-LOOP.md)
 |-------|----------|
 | **convmem** | Memory — past decisions, open bugs, search |
 | **Repo markdown** | Exact commands — `Deploy Workflow — willowyhollow.md`, `AGENTS.md` |
+| **Site reference** | Pre-promote gates — [`site-reference/NOTES.md`](site-reference/NOTES.md) |
 | **Terminal scripts** | Do the work — `stack_up`, `sync-practice-to-preview.sh`, git push |
 
 ---

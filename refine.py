@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from chroma_store import ChromaStore, is_superseded
+from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
 from domains import DEFAULT_DOMAINS, normalize_domain
 from process_lock import acquire_lock, release_lock
 
@@ -191,6 +191,7 @@ def _tombstone_semantic_duplicate(
     new_meta["superseded_by"] = canonical_id
     new_meta["updated_at"] = _now_iso()
     store.update_unit_metadata(tombstone_id, new_meta)
+    invalidate_superseded_cache(store.chroma_dir)
     if verbose:
         print(
             f"  [tombstone] {tombstone_id[:8]} → {canonical_id[:8]}",
@@ -357,6 +358,8 @@ def job_chroma_dedupe(
                 stats["errors"] += 1
                 if verbose:
                     print(f"  [error] {m['id']}: {e}", file=sys.stderr)
+        if stats["tombstoned"]:
+            invalidate_superseded_cache(store.chroma_dir)
         stats["processed"] += 1
     return stats
 

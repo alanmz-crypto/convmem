@@ -1,0 +1,16 @@
+---
+description: Willowy Hollow site-reference promotion gates (workspace)
+alwaysApply: true
+---
+
+# Site reference
+
+Read `~/Projects/convmem/docs/site-reference/NOTES.md` before promoting changes or writing to staging2/production.
+
+## Pre-promote gates (blocking — run in order)
+
+1. [site-address-consistency.md](~/Projects/convmem/docs/site-reference/site-address-consistency.md) — `siteurl` / `home` match this environment
+2. [php-version-parity.md](~/Projects/convmem/docs/site-reference/php-version-parity.md) — major.minor matches test source and deploy target
+3. [backup-before-write-gate.md](~/Projects/convmem/docs/site-reference/backup-before-write-gate.md) — fresh verified DB+files backup before prod
+
+Session loop step 4b: `~/Projects/convmem/docs/WILLOWYHOLLOW-SESSION-LOOP.md`

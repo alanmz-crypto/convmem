@@ -1,0 +1,8 @@
+# Ledger anchors for HANDOFF-CLAUDE-CLOUD-2026-07-06-hitl-orchestration-lab
+
+dec_prop_20260623_161428_c311   # protocol root — fallback --relates-to
+dec_prop_20260629_213047_8f73   # plans vs records; linker Phase 2 held
+dec_prop_20260629_150527_46f0   # cross-project synthesis Phase 0
+dec_prop_20260705_151004_1e00   # lab S1-S5 + lab-reference shipped
+dec_prop_20260705_152603_2c96   # --propose trial REJECTED (pipeline OK)
+obs_806985bc5697                # agent-habit / coordination gate

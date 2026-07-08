@@ -6,14 +6,12 @@ set -euo pipefail
 tool="${CRUSH_TOOL_NAME:-bash}"
 cmd="${CRUSH_TOOL_INPUT_COMMAND:-}"
 session="${CRUSH_SESSION_ID:-unknown}"
-project="${CRUSH_PROJECT_DIR:-${CRUSH_CWD:-}}"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/convmem-crush-ritual"
 base_session="${session%%\$\$*}"
-project_hash="$(printf '%s' "$project" | sha256sum | awk '{print $1}' | cut -c1-16)"
 progress_base="$cache_dir/progress-$session"
 base_progress="$cache_dir/progress-$base_session"
-project_complete="$cache_dir/project-$project_hash.complete"
 ritual_msg="convmem ritual required before repo survey. Run: convmem doctor && convmem brief --stdout-only && convmem unresolved"
+search_first_msg="The convmem corpus has the answers. Use mcp_convmem_search_fast(query) or convmem search before grep/glob/ls/view."
 
 # Fallback: parse stdin JSON for bash when env not set
 if [ "$tool" = "bash" ] && [ -z "$cmd" ] && [ ! -t 0 ]; then
@@ -30,10 +28,6 @@ _progress_complete() {
 _ritual_complete() {
   _progress_complete "$progress_base" && return 0
   [ "$base_session" != "$session" ] && _progress_complete "$base_progress" && return 0
-  if [ -f "$project_complete" ]; then
-    local age=$(( $(date +%s) - $(stat -c %Y "$project_complete" 2>/dev/null || echo 0) ))
-    [ "$age" -lt 43200 ] && return 0
-  fi
   return 1
 }
 
@@ -42,13 +36,19 @@ _record_progress() {
   echo "$cmd" | grep -qE 'convmem[[:space:]]+doctor' && touch "${progress_base}.doctor" || true
   echo "$cmd" | grep -qE 'convmem[[:space:]]+brief' && touch "${progress_base}.brief" || true
   echo "$cmd" | grep -qE 'convmem[[:space:]]+unresolved' && touch "${progress_base}.unresolved" || true
-  if _progress_complete "$progress_base"; then
-    touch "$project_complete" || true
-  fi
+}
+
+_seen_search() {
+  [ -f "${progress_base}.search_seen" ]
+}
+
+_record_search() {
+  touch "${progress_base}.search_seen" || true
 }
 
 _deny() {
   echo "$1" >&2
+  echo "{\"decision\":\"deny\",\"message\":\"$1\"}"
   exit 2
 }
 
@@ -80,6 +80,9 @@ _allow_readonly_convmem_bash() {
 if [ "$tool" = "bash" ] && [ -n "$cmd" ]; then
   if _allow_readonly_convmem_bash; then
     _record_progress
+    if echo "$cmd" | grep -qE 'convmem[[:space:]]+search|convmem[[:space:]]+ask'; then
+      _record_search
+    fi
     exit 0
   fi
 fi
@@ -94,7 +97,7 @@ if ! _ritual_complete; then
     _deny "$ritual_msg"
   fi
   if [ "$tool" = "bash" ] && [ -n "$cmd" ]; then
-    if echo "$cmd" | grep -qE 'convmem[[:space:]]'; then
+    if echo "$cmd" | grep -qE 'convmem[[:space:]]+(doctor|brief|unresolved|search|ask|stats)([[:space:]]|$)'; then
       exit 0
     fi
     _deny "$ritual_msg"
@@ -105,6 +108,19 @@ if [ "$tool" = "bash" ] && [ -n "$cmd" ]; then
   if _allow_readonly_convmem_bash; then
     exit 0
   fi
+fi
+
+# Auto-allow + record search when MCP search/ask is called
+case "$tool" in
+  mcp_convmem_search_fast|mcp_convmem_search|mcp_convmem_ask)
+    _record_search
+    exit 0
+    ;;
+esac
+
+# Ritual complete but search not yet used: block survey tools
+if _survey_tool && ! _seen_search; then
+  _deny "$search_first_msg"
 fi
 
 exit 0

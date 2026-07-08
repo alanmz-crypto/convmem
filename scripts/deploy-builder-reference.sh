@@ -139,24 +139,30 @@ from pathlib import Path
 
 config_path = Path(sys.argv[1])
 rules_dir = config_path.parent / "rules"
-paths = [
+digests = [
     str((rules_dir / f"builder-reference-{name}.md").expanduser())
     for name in ("ousterhout", "manning", "zeller", "hard-parts", "ddia", "arch-patterns-python", "evolutionary-architectures")
 ]
+# Canonical global_context_paths order (single source of truth; this script is the
+# last writer in a full deploy): CONVMEM-RITUAL -> other context -> builder digests -> CRUSH.md.
+# The ritual MUST stay first so it loads before CRUSH.md ponytail; see docs/inter-model/CRUSH-VERIFY.md.
+ritual = "~/.config/crush/CONVMEM-RITUAL.md"
+crush_md = "~/.config/crush/CRUSH.md"
 
 with open(config_path) as f:
     cfg = json.load(f)
 
 opts = cfg.setdefault("options", {})
-existing = list(opts.get("global_context_paths") or [])
-changed = False
-for path in reversed(paths):
-    if path not in existing:
-        existing.insert(0, path)
-        changed = True
+original = list(opts.get("global_context_paths") or [])
 
-if changed:
-    opts["global_context_paths"] = existing
+digest_set = set(digests)
+head = [ritual] if ritual in original else []
+tail = [crush_md] if crush_md in original else []
+middle = [p for p in original if p not in digest_set and p != ritual and p != crush_md]
+ordered = head + middle + digests + tail
+
+if ordered != original:
+    opts["global_context_paths"] = ordered
     with open(config_path, "w") as f:
         json.dump(cfg, f, indent=2)
         f.write("\n")

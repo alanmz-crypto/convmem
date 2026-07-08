@@ -28,7 +28,7 @@ Usage:
   convmem monitor                  HTTP security probes (F2b)
   convmem brief                    shared context block for all agents
   convmem brief --print            stdout only (paste into ChatGPT sessions)
-  convmem doctor                   health checks (v0); --v1 for watch/systemd
+  convmem doctor                   health checks (v0); --v1 for watch/systemd/canary
   convmem tldr                     one-page cheat sheet (cwd-aware)
   convmem doctor --verify          also run scripts/verify-continue.sh
   convmem record -i                record a durable fact (interactive)
@@ -51,7 +51,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
-    "watch", "refine", "monitor", "exclude", "brief", "doctor", "propose_decision", "record",
+    "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
     "unresolved", "tldr",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
@@ -321,6 +321,12 @@ def add(
     ),
     confidence: float = typer.Option(0.8, "--confidence"),
     tool: str = typer.Option("observation", "--tool", help="Tool name, e.g. openclaw"),
+    severity: str | None = typer.Option(
+        None,
+        "--severity",
+        help="critical | high | medium | low | info — P0s need critical/high "
+        "to enter the exposure-window feed (doctor standing_register)",
+    ),
     source_path: str | None = typer.Option(
         None, "--source-path", help="URL, log path, or 'runtime:checkout-page'"
     ),
@@ -340,7 +346,7 @@ def add(
     from config import load_config
     from chroma_store import ChromaStore
     from observe import ingest_observation, ingest_observation_file
-    from query import render_error, render_warning
+    from query import render_error
     from pathlib import Path
 
     cfg = load_config()
@@ -379,6 +385,13 @@ def add(
     if len(keyword) < 3:
         render_error("Need at least 3 --keyword values.")
         raise typer.Exit(1)
+    if severity is not None:
+        from ledger import _SEVERITIES
+
+        severity = severity.strip().lower()
+        if severity not in _SEVERITIES:
+            render_error("--severity must be one of: " + ", ".join(sorted(_SEVERITIES)) + ".")
+            raise typer.Exit(1)
 
     record = {
         "title": title,
@@ -390,6 +403,7 @@ def add(
         "confidence": confidence,
         "tool": tool,
         "source_path": source_path,
+        "severity": severity,
     }
     unit = ingest_observation(
         record,
@@ -696,7 +710,7 @@ def doctor(
     verify: bool = typer.Option(False, "--verify", help="Run scripts/verify-continue.sh smoke test"),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON instead of text"),
 ):
-    """Health checks for the canonical host (reuse brief probes; exit 0 = PASS)."""
+    """Health checks (v0=core; --v1 adds watch/systemd/canary/locks; exit 0 = PASS)."""
     import json
 
     from doctor import doctor_exit_code, doctor_payload, render_doctor_text, run_doctor
@@ -830,7 +844,6 @@ def propose_decision_command(
         approved_path,
         collect_interactive_fields,
         confirm_interactive_submit,
-        ingest_approved_file,
         ingest_approved_ledger,
         interactive_session_lock,
         latest_pending,
@@ -912,7 +925,7 @@ def propose_decision_command(
                 _log_index_failure(approve_id, e)
                 typer.echo(f"\n⚠  Approved (ledger) but index deferred: {e}")
                 typer.echo(f"  Recovery: convmem add --file {apath} --upsert")
-                typer.echo(f"  The decision is durable in the ledger; Chroma will catch up on next index.\n")
+                typer.echo("  The decision is durable in the ledger; Chroma will catch up on next index.\n")
         _finish_record_messages(
             proposal,
             ledger,
@@ -1150,7 +1163,7 @@ def exclude_command(
 
     from config import load_config
     from ingest import load_processed, save_processed, sha256_file
-    from query import render_error, render_warning
+    from query import render_error
 
     cfg = load_config()
     processed_path = cfg["index"]["processed_log"]
@@ -1219,6 +1232,78 @@ def exclude_command(
     typer.echo(f"Excluded: {Path(target).name}")
     if reason:
         typer.echo(f"  reason: {reason}")
+
+
+@app.command("forget")
+def forget_command(
+    unit_id: str = typer.Argument(None, help="Knowledge unit id to tombstone (from search_fast / related output)"),
+    reason: str = typer.Option("", "--reason", help="Why this unit is being invalidated"),
+    undo: bool = typer.Option(False, "--undo", help="Reverse a prior forget (clear superseded)"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt"),
+):
+    """Tombstone one stale knowledge unit (superseded=True) so it drops out of search.
+
+    Per-unit counterpart to `exclude` (which acts on whole source files). Use when a single
+    distilled fact is wrong but its source conversation still holds good units. Reversible
+    with --undo; history is retained (tombstone, not delete).
+    """
+    from datetime import datetime, timezone
+
+    from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
+    from config import load_config
+    from query import render_error
+
+    if not unit_id:
+        render_error("Provide a knowledge unit id (see search_fast / related output).")
+        raise typer.Exit(1)
+
+    _guard_write()
+    cfg = load_config()
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    unit = store.get_unit(unit_id)
+    if unit is None:
+        render_error(f"No unit found with id {unit_id}.")
+        raise typer.Exit(1)
+
+    meta = dict(unit["metadata"] or {})
+    doc = unit["document"] or ""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    typer.echo(f"unit:       {unit_id}")
+    typer.echo(f"source:     {meta.get('source_path')}")
+    typer.echo(f"type/title: {meta.get('type')} / {meta.get('title')}")
+    typer.echo(f"superseded: {meta.get('superseded')}")
+    typer.echo(f"document:   {doc[:280]}")
+
+    if undo:
+        if not is_superseded(meta):
+            typer.echo("Unit is not superseded — nothing to undo.")
+            return
+        # Chroma update() merges metadata keys rather than replacing the dict,
+        # so popping keys leaves the stored superseded=True intact. Overwrite
+        # with a not-superseded value instead (is_superseded checks `is True`).
+        meta["superseded"] = False
+        meta["superseded_by"] = ""
+        meta["updated_at"] = now
+        store.update_unit_metadata(unit_id, meta)
+        invalidate_superseded_cache(store.chroma_dir)
+        typer.echo("Restored: unit is active again (superseded cleared).")
+        return
+
+    if is_superseded(meta):
+        typer.echo("Already superseded — nothing to do.")
+        return
+
+    if not yes and not typer.confirm("Tombstone this unit (exclude from search)?"):
+        typer.echo("Aborted.")
+        raise typer.Exit(1)
+
+    meta["superseded"] = True
+    meta["superseded_by"] = f"forget-cli:{reason or 'manual'}"
+    meta["updated_at"] = now
+    store.update_unit_metadata(unit_id, meta)
+    invalidate_superseded_cache(store.chroma_dir)
+    typer.echo(f"Tombstoned {unit_id} — excluded from search results (reversible with --undo).")
 
 
 def main():
