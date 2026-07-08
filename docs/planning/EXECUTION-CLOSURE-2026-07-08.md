@@ -1,7 +1,7 @@
 # Planning OS — Execution Closure (2026-07-08)
 
 Closure record for the Planning OS scaffold. Shipped on `main` (merged from
-`wip/2026-07-08-design-bug5` @ `24151d5`; Execute Task guide @ `4c3c213`).
+`wip/2026-07-08-design-bug5` @ `24151d5`; Execute Task @ `4c3c213`; active-failure branch @ `7b1e58a`).
 Not a phase guide — excluded from Planning Guide Contract scanning.
 
 ---
@@ -12,12 +12,32 @@ Not a phase guide — excluded from Planning Guide Contract scanning.
 |-------|--------|-------|
 | Architecture Planning (design) | **CLOSED** | Frozen summary in §2 below |
 | Execution Planning | **CLOSED** | Session plan `planning_os_execute_v2` |
-| Execute Task (implementation) | **CLOSED** | Operational guide @ `4c3c213` on `main` |
+| Execute Task (implementation) | **CLOSED** | Operational @ `4c3c213`; approved active-failure/debug @ `7b1e58a` on `main` |
 | Revise Planning + P1 | **CLOSED** | Probe Version drift fixed |
 | HITL verify (ad-hoc) | **CLOSED** | doctor + pytest PASS |
 | **Guide content** | **OPEN** | 2/4 phase guides still TBD |
 
 **Honest line:** Planning OS **implementation CLOSED**; **guide content OPEN**.
+
+---
+
+## Debug route approval (2026-07-08)
+
+**Verdict:** Not a mistake — valid EXECUTE-TASK extension when architecture
+approved before execution. Execution discipline for approved bug-fix / active-
+failure tasks; **not** Verify OS and not greenfield bug discovery.
+
+| Loop | Steps | When |
+|------|-------|------|
+| Normal implementation | 0–6 | Approved feature / change |
+| Active-failure execution | D0–D6 | Approved bug-fix or Ryan-directed failure investigation |
+
+- Greenfield discovery stays upstream: Crush / [`TEAM-CHARTER`](../inter-model/TEAM-CHARTER-2026-07-06.md)
+- Does not replace Crush, Codex independent audit, or future Verify OS
+- Shipped @ `7b1e58a` (2 files: `EXECUTE-TASK.md`, `reasoning-modes.md`)
+
+**Status:** EXECUTE-TASK.md operational for normal implementation and approved
+active-failure/debug execution.
 
 ---
 
@@ -67,6 +87,7 @@ HITL: `Cursor must stop here.` + `Await HITL.`
 | `24151d5` | Closure batch — traceability, AGENT-ROLES fix |
 | `4c3c213` | EXECUTE-TASK.md operational implementation loop |
 | `8bdb30a` | docs: fix Planning OS drift after EXECUTE-TASK operational guide |
+| `7b1e58a` | EXECUTE-TASK active-failure branch D0–D6; Debug Investigator |
 
 Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`.
 
@@ -88,7 +109,7 @@ Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`.
 | ID | Finding | Disposition |
 |----|---------|-------------|
 | **F1** | Doctor passes while guides are TBD; "executable spec" overclaims | **Documented** — Contract v1 = structure only (`CONTRACT.md` §Structure vs operational); 2/4 guides remain TBD |
-| **F2** | No bug/troubleshoot/verify route in workflow; EXECUTE-TASK empty | **Fixed** @ `4c3c213` — operational loop + interim route links in `EXECUTE-TASK.md` |
+| **F2** | No bug/troubleshoot/verify route in workflow; EXECUTE-TASK empty | **Fixed** @ `4c3c213` (implementation loop) + `7b1e58a` (active-failure D0–D6) |
 | **F3** | `AGENT-ROLES.md` contradicted agent-protocol on record at close | **Fixed** this closure batch |
 | **F4** | Contract parser weak (substring slice, duplicate headings) | **Deferred** to Contract v2 — limitation documented, no parser change |
 
@@ -96,7 +117,8 @@ Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`.
 
 ## Implementation routes
 
-Primary: [`EXECUTE-TASK.md`](EXECUTE-TASK.md) §Verification routes. No Verify OS.
+Primary: [`EXECUTE-TASK.md`](EXECUTE-TASK.md) — normal loop (0–6) and approved
+active-failure branch (D0–D6). Execution discipline, not a verification framework. No Verify OS.
 
 | Need | Route |
 |------|-------|
