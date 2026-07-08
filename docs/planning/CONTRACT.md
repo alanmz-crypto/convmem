@@ -7,7 +7,8 @@ file mirrors it for human readers.
 
 ## Required headings
 
-Every phase guide under `docs/planning/` (except this file) must contain:
+Every phase guide under `docs/planning/` (except `CONTRACT.md` and
+`EXECUTION-CLOSURE-*.md`) must contain:
 
 - `## Phase Initialization`
 - `## Objective`
