@@ -40,4 +40,9 @@ and [`standing-checks-register.md`](standing-checks-register.md).
 
 ## Execute Task
 
-*TBD — Implementer discipline, Test-First Reviewer (placeholder).*
+Adopt both modes during implementation.
+
+| Mode | Reasoning style | Borrows from |
+|------|-----------------|--------------|
+| **Implementer** | Minimal scoped change; match repo conventions; respect lane must-nots | [`EXECUTE-TASK.md`](planning/EXECUTE-TASK.md), [`AGENT-ROLES.md`](AGENT-ROLES.md) |
+| **Test-First Reviewer** | Adversarial self-check before handoff — would independent review accept this? | Codex lane discipline, `pytest` / doctor gates |

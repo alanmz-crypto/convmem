@@ -1,6 +1,7 @@
 # Planning OS — Execution Closure (2026-07-08)
 
-Closure record for the Planning OS scaffold shipped on `wip/2026-07-08-design-bug5`.
+Closure record for the Planning OS scaffold. Shipped on `main` (merged from
+`wip/2026-07-08-design-bug5` @ `24151d5`; Execute Task guide @ `4c3c213`).
 Not a phase guide — excluded from Planning Guide Contract scanning.
 
 ---
@@ -11,10 +12,10 @@ Not a phase guide — excluded from Planning Guide Contract scanning.
 |-------|--------|-------|
 | Architecture Planning (design) | **CLOSED** | Frozen summary in §2 below |
 | Execution Planning | **CLOSED** | Session plan `planning_os_execute_v2` |
-| Execute Task (implementation) | **CLOSED** | @ `bcd3ed9` on WIP |
+| Execute Task (implementation) | **CLOSED** | Operational guide @ `4c3c213` on `main` |
 | Revise Planning + P1 | **CLOSED** | Probe Version drift fixed |
 | HITL verify (ad-hoc) | **CLOSED** | doctor + pytest PASS |
-| **Guide content** | **OPEN** | 3/4 phase guides still TBD |
+| **Guide content** | **OPEN** | 2/4 phase guides still TBD |
 
 **Honest line:** Planning OS **implementation CLOSED**; **guide content OPEN**.
 
@@ -42,11 +43,11 @@ Not a phase guide — excluded from Planning Guide Contract scanning.
 ### Shipped files
 
 - `docs/PLANNING-PROTOCOL.md` — kernel
-- `docs/reasoning-modes.md` — Revise modes complete; other phases placeholder
+- `docs/reasoning-modes.md` — Revise + Execute modes complete; Architecture / Execution Planning placeholder
 - `docs/builder-reference.md` — thin router
 - `docs/planning/CONTRACT.md` + `planning_contract.py` — Contract v1 SSoT
-- `docs/planning/REVISE-PLANNING.md` — first complete phase guide
-- `docs/planning/ARCHITECTURE-PLANNING.md`, `EXECUTION-PLANNING.md`, `EXECUTE-TASK.md` — contract stubs (TBD)
+- `docs/planning/REVISE-PLANNING.md`, `EXECUTE-TASK.md` — complete phase guides
+- `docs/planning/ARCHITECTURE-PLANNING.md`, `EXECUTION-PLANNING.md` — contract stubs (TBD)
 - `doctor.py` — `_check_planning_guide_contract()` hard-fail; **no** open register row
 
 ### Contract v1
@@ -63,8 +64,10 @@ HITL: `Cursor must stop here.` + `Await HITL.`
 |--------|---------|
 | `7b4323b` | Planning OS kernel, guides, doctor check |
 | `bcd3ed9` | P1 — enforce Probe Version in contract |
+| `24151d5` | Closure batch — traceability, AGENT-ROLES fix |
+| `4c3c213` | EXECUTE-TASK.md operational implementation loop |
 
-Branch: `wip/2026-07-08-design-bug5` · **not merged to `main`**.
+Branch: `main` · merged from `wip/2026-07-08-design-bug5` @ `24151d5`.
 
 ---
 
@@ -83,16 +86,16 @@ Branch: `wip/2026-07-08-design-bug5` · **not merged to `main`**.
 
 | ID | Finding | Disposition |
 |----|---------|-------------|
-| **F1** | Doctor passes while 3/4 guides are TBD; "executable spec" overclaims | **Documented** — Contract v1 = structure only (`CONTRACT.md` §Structure vs operational) |
-| **F2** | No bug/troubleshoot/verify route in workflow; EXECUTE-TASK empty | **Interim routes** below; EXECUTE-TASK fill = separate Architecture task |
+| **F1** | Doctor passes while guides are TBD; "executable spec" overclaims | **Documented** — Contract v1 = structure only (`CONTRACT.md` §Structure vs operational); 2/4 guides remain TBD |
+| **F2** | No bug/troubleshoot/verify route in workflow; EXECUTE-TASK empty | **Fixed** @ `4c3c213` — operational loop + interim route links in `EXECUTE-TASK.md` |
 | **F3** | `AGENT-ROLES.md` contradicted agent-protocol on record at close | **Fixed** this closure batch |
 | **F4** | Contract parser weak (substring slice, duplicate headings) | **Deferred** to Contract v2 — limitation documented, no parser change |
 
 ---
 
-## Interim routes (until EXECUTE-TASK is written)
+## Implementation routes
 
-No Verify OS. Use existing canon:
+Primary: [`EXECUTE-TASK.md`](EXECUTE-TASK.md) §Verification routes. No Verify OS.
 
 | Need | Route |
 |------|-------|
@@ -106,8 +109,7 @@ No Verify OS. Use existing canon:
 
 ## Deferred gates
 
-- Merge `wip/2026-07-08-design-bug5` → `main` (Ryan only)
-- Fill stub phase guides (Architecture / Execution Planning / Execute Task)
+- Fill stub phase guides (Architecture Planning / Execution Planning)
 - Verify OS / `docs/verify/`
 - Contract v2 parser hardening (duplicate-heading reject, content checks)
 - `config/cursor-rules-planning.mdc.example` deploy
