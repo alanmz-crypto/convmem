@@ -8,6 +8,7 @@
 | **Characters** | TBD |
 | **Functions** | Implementer |
 | **Lanes** | Cursor (Tier A) |
+| **Probe Version** | v1 |
 | **Authority** | Awaiting HITL |
 
 ---

@@ -65,6 +65,16 @@ class TestPlanningGuideContract(unittest.TestCase):
             problems = validate_planning_guides(root)
             self.assertTrue(any("Functions" in p for p in problems))
 
+    def test_missing_probe_version_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            guides = root / "docs" / "planning"
+            guides.mkdir(parents=True)
+            text = _valid_guide().replace("**Probe Version**", "**ProbeVer**")
+            (guides / "BAD.md").write_text(text, encoding="utf-8")
+            problems = validate_planning_guides(root)
+            self.assertTrue(any("Probe Version" in p for p in problems))
+
     def test_doctor_check_passes_on_repo_guides(self):
         c = _check_planning_guide_contract()
         self.assertTrue(c.ok, c.detail)

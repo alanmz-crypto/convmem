@@ -23,6 +23,7 @@ The Phase Initialization section must name these fields:
 - Functions
 - Lanes
 - Authority
+- Probe Version
 
 ## Required exit intent
 
