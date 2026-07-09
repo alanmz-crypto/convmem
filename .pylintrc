@@ -10,3 +10,10 @@ disable=
     missing-class-docstring,
     missing-function-docstring,
     too-few-public-methods
+
+[DESIGN]
+max-args=8
+max-locals=30
+max-branches=25
+max-statements=120
+max-returns=12
