@@ -10,6 +10,7 @@ disable=
     missing-class-docstring,
     missing-function-docstring,
     too-few-public-methods
+    import-outside-toplevel
 
 [DESIGN]
 max-args=8
