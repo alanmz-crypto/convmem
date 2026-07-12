@@ -1,27 +1,27 @@
 ---
 name: Chroma Restore Drill
 overview: "Architecture for closing the gap between 'Restic backup exists' and 'restore actually recovers a working, queryable Chroma store' — a bounded, reversible drill against a temporary run directory. Incorporates two rounds of Codex review: restored-root discovery, verification-only open, structural count source-of-truth, mandatory offline vector round-trip (no embedding service needed), asserted no-mutation via filesystem fingerprint, and pinned fixtures."
-status: gates accepted 2026-07-12 (defaults 1–6) — EXECUTION next
+status: executed 2026-07-12 — happy-path + intentional-failure PASS
 todos:
   - id: ryan-decide
     content: Ryan answers gates 1–6 below (run-dir scheme, count source of truth, cadence, failure-mode selection, manifest-at-snapshot, integrity preflight)
     status: completed
   - id: exec-plan
     content: "After gates: write EXECUTION-chroma-restore-drill.md and implement, incl. --chroma-dir injection for eval-retrieval.py, verification-only open path, vector round-trip check, and fingerprint assertion"
-    status: pending
+    status: completed
   - id: happy-path
     content: Run restore → discover root → verify (mandatory offline incl. vector round-trip + optional semantic) → report → cleanup drill once, end to end
-    status: pending
+    status: completed
   - id: failure-mode
     content: Exercise intentional failure with a nonexistent snapshot ID; confirm the runbook fails clearly and nonzero
-    status: pending
+    status: completed
 isProject: false
 ---
 
 # Architecture: Chroma Restore Drill
 
 **Audience:** Ryan (decision + verification owner)
-**Status:** Gates accepted 2026-07-12 (defaults 1–6). Architecture locked; EXECUTION plan is the next artifact — no implementation until EXECUTION is authorized.
+**Status:** Executed 2026-07-12 on `plan/2026-07-12-chroma-restore-drill` — happy-path + intentional-missing-snapshot PASS. Fingerprint is logical (collections + embedding ids) because PersistentClient read-opens rewrite sqlite/HNSW bytes.
 **Prior arcs this builds on:** Branching Safety Foundation, Git Hygiene Baseline, Always-Available GitHub Fallback (source-code recoverability). This arc addresses the ChromaDB knowledge store instead — data, not code.
 **Review folded in:** Codex, two rounds — (1) restore-path discovery, verification-only open, count source-of-truth, mandatory/optional check split, run-dir hygiene, explicit snapshot selection, failure-mode choice; (2) mandatory offline vector round-trip, asserted no-mutation via fingerprint, pinned fixtures, snapshot-specific count requirement.
 

@@ -76,17 +76,30 @@ def open_chroma_for_read(chroma_dir: str, *, retries: int = 5) -> "ChromaStore":
     raise RuntimeError("open_chroma_for_read failed")
 
 
+def open_chroma_for_verify(chroma_dir: str) -> "ChromaStore":
+    """Open an existing Chroma root read-only for restore-drill verification.
+
+    Uses ``get_collection`` only — never ``get_or_create_collection`` — so a
+    missing collection fails instead of mutating the restored store.
+    """
+    store = ChromaStore(chroma_dir, create_collections=False)
+    # Touch primary collection so open fails early if restore is incomplete.
+    store._collection(UNITS)
+    return store
+
+
 def is_superseded(meta: dict) -> bool:
     """True when a unit was tombstoned by chroma_dedupe (F1)."""
     return meta.get("superseded") is True
 
 
 class ChromaStore:
-    def __init__(self, chroma_dir: str):
+    def __init__(self, chroma_dir: str, *, create_collections: bool = True):
         self.chroma_dir = str(Path(chroma_dir).expanduser())
         # SegmentAPI + hnswlib compat shim can count() but fails upsert on
         # existing persistent HNSW ("Index seems to be corrupted or unsupported").
         self.client_mode = "PersistentClient"
+        self.create_collections = create_collections
         self.client = chromadb.PersistentClient(path=self.chroma_dir)
 
     def close(self) -> None:
@@ -108,9 +121,12 @@ class ChromaStore:
     def _collection(self, name: str):
         if self.client is None:
             raise RuntimeError("ChromaStore is closed")
-        return self.client.get_or_create_collection(
-            name=name, metadata={"hnsw:space": "cosine"}
-        )
+        if self.create_collections:
+            return self.client.get_or_create_collection(
+                name=name, metadata={"hnsw:space": "cosine"}
+            )
+        # Verification / restore-drill path: never create missing collections.
+        return self.client.get_collection(name=name)
 
     def add_summary(
         self,
@@ -233,11 +249,12 @@ class ChromaStore:
             out.append({"id": chroma_id, "metadata": meta, "embedding": emb})
         return out
 
-    def get_unit(self, unit_id: str) -> dict | None:
+    def get_unit(self, unit_id: str, *, include_embedding: bool = False) -> dict | None:
         """Fetch a single unit by id, or None if it doesn't exist."""
-        res = self._collection(UNITS).get(
-            ids=[unit_id], include=["metadatas", "documents"]
-        )
+        include = ["metadatas", "documents"]
+        if include_embedding:
+            include.append("embeddings")
+        res = self._collection(UNITS).get(ids=[unit_id], include=include)
         ids = res.get("ids") or []
         if not ids:
             return None
@@ -245,7 +262,16 @@ class ChromaStore:
         docs = res.get("documents") or [""]
         meta = dict(metas[0] or {})
         meta["id"] = ids[0]
-        return {"id": ids[0], "metadata": meta, "document": docs[0]}
+        out: dict = {"id": ids[0], "metadata": meta, "document": docs[0]}
+        if include_embedding:
+            embs = res.get("embeddings")
+            emb = None
+            if embs is not None and len(embs) > 0:
+                emb = embs[0]
+                if emb is not None and hasattr(emb, "tolist"):
+                    emb = emb.tolist()
+            out["embedding"] = emb
+        return out
 
     def update_unit_metadata(self, unit_id: str, metadata: dict) -> None:
         """Replace metadata for an existing unit."""
