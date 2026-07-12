@@ -15,7 +15,8 @@
 | N4 CONFLICT_CLEARED | pytest |
 | N5 idempotent legacy import | pytest |
 | N6 proposal_id survives ledger_unit_metadata | pytest |
-| N8–N10 write-sequence / uncertain apply recovery | pytest |
+| N12 proposal_id on decisions-approved.jsonl row / durable proposal-keyed linkage | pytest |
+| N8–N10 write-sequence / uncertain apply recovery (lookup by proposal_id) | pytest |
 | N11 writer bypass closed | see inventory |
 | Barrier race + crash recovery (arch) | pytest |
 | Lock from data root (alternate chroma_dir) | smoke |
