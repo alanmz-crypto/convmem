@@ -125,11 +125,13 @@ while read -r sha; do
     || { echo "FAIL: invalid SHA $sha"; exit 1; }
 done < .git-blame-ignore-revs
 echo "blame-ignore SHAs resolvable OK (or header-only)"
-# V2h — spot-check one omit row from the audit table (config-only candidates)
-# Pick a SHA marked omit for .pylintrc / workflow — e.g. 5da5aaa (expand to full if needed)
-OMIT_SPOT=$(git rev-parse 5da5aaa)
+# V2h — spot-check one omit row from the audit table (config-only candidates).
+# IMPORTANT: replace OMIT_SPOT with an actual SHA marked "omit" in
+# docs/plans/git-hygiene-baseline.md at review time — do not run 5da5aaa
+# verbatim if that row is absent or the table lists a different abbrev.
+OMIT_SPOT=$(git rev-parse 5da5aaa)   # placeholder — swap for real omit-row SHA
 git show --stat --oneline -1 "$OMIT_SPOT"
-# Fail if any path outside pylint config/workflow appears in the stat summary
+# Fail if any path outside pylint config/workflow appears in the file list
 if git show --name-only --format= "$OMIT_SPOT" | grep -vE '^$|^\.pylintrc$|^\.github/workflows/pylint\.yml$'; then
   echo "FAIL: omitted SHA touches non-config"
 else
@@ -158,7 +160,7 @@ grep -F 'install-repo-config.sh' docs/plans/git-hygiene-baseline.md
 | V2e | Tag version fix (branching-strategy) | No `v0.2` in branching-strategy closure; `v0.1.0-branching-foundation` present |
 | V2f | Plan SSoT rewritten | `SSoT rewrite OK`; no stale `v0.2.0` / table or prose `Status: draft` / “optional tag v0.2”; audit + installer present |
 | V2g | Blame-ignore SHAs are real commits | Each `^[0-9a-f]{40}$` line passes `git cat-file -e ${sha}^{commit}`; header-only → PASS via empty loop |
-| V2h | Omit judgment spot-check | One table-omitted config SHA (`5da5aaa` or equivalent) touches only `.pylintrc` / pylint workflow — `omit judgment OK` |
+| V2h | Omit judgment spot-check | One table-omitted config SHA (pick from audit table at review time — `5da5aaa` is placeholder only) touches only `.pylintrc` / pylint workflow — `omit judgment OK` |
 
 **FAIL if:** pylintrc-only SHAs listed “to fill the file,” any `merge=union` in `.gitattributes`, old draft markers remain in `git-hygiene-baseline.md`, an ignore-revs SHA does not resolve, or the omit spot-check touches non-config paths.
 
