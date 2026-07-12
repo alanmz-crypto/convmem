@@ -87,6 +87,14 @@ class ProposeDecisionTests(unittest.TestCase):
         self.assertEqual(ledger["relates_to"], "dec_convmem_workspace_standard")
         self.assertEqual(ledger["proposal_id"], rec["id"])
 
+    def test_recovery_uses_proposal_id_not_reused_ledger_id(self):
+        from propose_decision import approved_for_proposal, recovery_action
+        rec = propose(self.cfg, relates_to="dec_a", summary="One", rationale="R", author="cursor")
+        _, ledger = approve(self.cfg, rec["id"], signer="ryan", ledger_id="dec_shared")
+        self.assertEqual(approved_for_proposal(self.cfg, rec["id"]), ledger)
+        self.assertEqual(recovery_action(self.cfg, rec["id"], base_hash="b", proposed_hash="p"), "retry_chroma")
+        self.assertEqual(recovery_action(self.cfg, rec["id"], live_hash="p", proposed_hash="p"), "repair_marker")
+
     @patch("observe.ingest_observation")
     def test_ingest_approved_ledger_indexes_one(self, mock_ingest):
         mock_ingest.return_value = {"id": "u1", "ledger_id": "dec_test_approved"}

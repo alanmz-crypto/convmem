@@ -75,6 +75,33 @@ def append_approved(path: Path, record: dict) -> None:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def approved_for_proposal(cfg: dict, proposal_id: str) -> dict | None:
+    """Find the durable approved intent by proposal id, never by ledger id alone."""
+    path = approved_path(cfg)
+    if not path.exists():
+        return None
+    for raw in reversed(path.read_text(encoding="utf-8").splitlines()):
+        try:
+            row = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if row.get("proposal_id") == proposal_id:
+            return row
+    return None
+
+
+def recovery_action(cfg: dict, proposal_id: str, *, live_marker: str = "", live_hash: str = "", base_hash: str = "", proposed_hash: str = "") -> str:
+    """Classify an APPROVAL_STARTED recovery without performing a blind retry."""
+    if live_marker == proposal_id and live_hash == proposed_hash:
+        return "approve"
+    row = approved_for_proposal(cfg, proposal_id)
+    if row and live_hash == proposed_hash:
+        return "repair_marker"
+    if row and (not live_hash or live_hash == base_hash):
+        return "retry_chroma"
+    return "review"
+
+
 def find_proposal(records: list[dict], proposal_id: str) -> dict | None:
     needle = proposal_id.strip()
     for rec in reversed(records):
