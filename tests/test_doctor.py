@@ -9,7 +9,10 @@ from unittest.mock import patch
 from doctor import (
     DoctorCheck,
     _charter_register_consistency_probe,
+    _check_direct_commits_on_main,
+    _check_hooks_path,
     _check_standing_register,
+    _check_wip_on_main,
     _exposure_window_probe,
     _merge_order_probe,
     _standing_row_due,
@@ -804,6 +807,97 @@ class MergeOrderProbeTests(unittest.TestCase):
             due, detail = _merge_order_probe(self._row(p), tmp)
         self.assertTrue(due)
         self.assertIn("unverifiable", detail)
+
+
+class BranchingDoctorTests(unittest.TestCase):
+    def _git(self, repo: Path, *args: str) -> None:
+        import os
+        import subprocess
+
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@t",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@t",
+        }
+        subprocess.run(
+            ["git", *args], cwd=repo, check=True, capture_output=True, text=True, env=env
+        )
+
+    def test_hooks_path_warns_when_unset(self):
+        with tempfile.TemporaryDirectory() as d:
+            repo = Path(d)
+            self._git(repo, "init", "-b", "main")
+            c = _check_hooks_path(root=repo)
+        self.assertTrue(c.ok)
+        self.assertEqual(c.effective_status(), "warn")
+        self.assertIn("unset", c.detail.lower())
+        self.assertIn("install-git-hooks", c.detail)
+
+    def test_wip_on_main_warns(self):
+        import os
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as d:
+            repo = Path(d)
+            env = {
+                **os.environ,
+                "GIT_AUTHOR_NAME": "t",
+                "GIT_AUTHOR_EMAIL": "t@t",
+                "GIT_COMMITTER_NAME": "t",
+                "GIT_COMMITTER_EMAIL": "t@t",
+            }
+            self._git(repo, "init", "-b", "main")
+            (repo / "a.txt").write_text("a\n", encoding="utf-8")
+            self._git(repo, "add", "a.txt")
+            self._git(repo, "commit", "-m", "chore: init")
+            (repo / "b.txt").write_text("b\n", encoding="utf-8")
+            self._git(repo, "add", "b.txt")
+            subprocess.run(
+                ["git", "commit", "-m", "WIP: should warn"],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            c = _check_wip_on_main(root=repo)
+        self.assertTrue(c.ok)
+        self.assertEqual(c.effective_status(), "warn")
+        self.assertIn("WIP", c.detail)
+
+    def test_direct_commits_reflog_heuristic(self):
+        import os
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as d:
+            repo = Path(d)
+            env = {
+                **os.environ,
+                "GIT_AUTHOR_NAME": "t",
+                "GIT_AUTHOR_EMAIL": "t@t",
+                "GIT_COMMITTER_NAME": "t",
+                "GIT_COMMITTER_EMAIL": "t@t",
+            }
+            self._git(repo, "init", "-b", "main")
+            (repo / "a.txt").write_text("a\n", encoding="utf-8")
+            self._git(repo, "add", "a.txt")
+            self._git(repo, "commit", "-m", "chore: init")
+            (repo / "b.txt").write_text("b\n", encoding="utf-8")
+            self._git(repo, "add", "b.txt")
+            subprocess.run(
+                ["git", "commit", "-m", "feat: direct on main"],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            c = _check_direct_commits_on_main(root=repo)
+        self.assertTrue(c.ok)
+        self.assertEqual(c.effective_status(), "warn")
+        self.assertIn("heuristic", c.detail)
 
 
 if __name__ == "__main__":
