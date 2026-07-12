@@ -11,7 +11,7 @@ Authority:    Post-Execute HITL — do not trust Cursor session claims alone
 ```
 
 **Subject:** `feat/2026-07-11-git-hygiene-baseline`  
-**Tip (at plan write):** `8f64562` — `feat: Git Hygiene Baseline — installer, blame-ignore, markdown diffs, protocol`  
+**Tip (at plan write):** `35ed450` (VERIFY plan) atop `8f64562` (hygiene implement)  
 **Base:** `origin/main` @ `2957e0b` (Foundation already merged; tag `v0.1.0-branching-foundation` exists)  
 **Sources:** [`EXECUTION-git-hygiene-baseline.md`](EXECUTION-git-hygiene-baseline.md), [`git-hygiene-baseline.md`](git-hygiene-baseline.md), [`CODEX-DEEPSEEK-VERIFY.md`](../CODEX-DEEPSEEK-VERIFY.md) format  
 **Goal:** Confirm repo-local hygiene (unified installer, attrs, blame policy, protocol) matches locked decisions — without expanding scope into Work Start, global config, JSONL union, or new doctor checks.
@@ -19,7 +19,7 @@ Authority:    Post-Execute HITL — do not trust Cursor session claims alone
 **Report format:** For each check, state **PASS / FAIL / SKIP / DEFERRED / GATE** and one line of evidence (exit code, command output snippet, or `file:line`).  
 **GATE** = process step for Ryan (merge); not a mechanical agent PASS.
 
-**Sign-off (required for T5b):** After overall PASS, append `Kiro reviewed: YYYY-MM-DD` to [`git-hygiene-baseline.md`](git-hygiene-baseline.md) **and** note the same date in session handoff.
+**Flow:** Complete **V0–V5** → declare **Mechanical PASS** → then **V6c sign-off** (separate step) → Ryan **V6d GATE**. Do not fold sign-off into the mechanical verdict.
 
 ---
 
@@ -32,6 +32,7 @@ Authority:    Post-Execute HITL — do not trust Cursor session claims alone
 | Header-only or audited `.git-blame-ignore-revs` | `_check_tag_freshness` / hygiene doctor |
 | Protocol: tag propose, pull.ff/rebase, `git rerere diff`, stash auth, clone install | “work start” / `convmem work *` language |
 | Fix Foundation tag docs → `v0.1.0-branching-foundation` | Tagging every feat; worktrees |
+| Rewrite plan SSoT (replace draft) | Leaving stale draft `v0.2.0` / “Status: draft” prose in SSoT |
 
 ---
 
@@ -56,18 +57,54 @@ git diff --stat origin/main...origin/feat/2026-07-11-git-hygiene-baseline
 ## 1. Diff inventory (Kiro — read first)
 
 ```bash
-git diff origin/main...origin/feat/2026-07-11-git-hygiene-baseline --name-only
+git diff origin/main...origin/feat/2026-07-11-git-hygiene-baseline --name-only | sort
+```
+
+**Exact expected path set** (order irrelevant; any extra path = FAIL; any missing path = FAIL):
+
+```
+.git-blame-ignore-revs
+.gitattributes
+config/agent-protocol-mcp.txt
+config/agent-protocol.md
+config/codex-agents-convmem.example.md
+config/crush-rules-convmem.example.md
+config/cursor-rules-convmem.mdc.example
+config/kiro-steering-convmem.example.md
+docs/plans/EXECUTION-git-hygiene-baseline.md
+docs/plans/VERIFY-git-hygiene-baseline.md
+docs/plans/branching-strategy.md
+docs/plans/git-hygiene-baseline.md
+scripts/install-git-hooks.sh
+scripts/install-repo-config.sh
+```
+
+Compare with:
+
+```bash
+diff -u <(printf '%s\n' \
+  .git-blame-ignore-revs .gitattributes \
+  config/agent-protocol-mcp.txt config/agent-protocol.md \
+  config/codex-agents-convmem.example.md config/crush-rules-convmem.example.md \
+  config/cursor-rules-convmem.mdc.example config/kiro-steering-convmem.example.md \
+  docs/plans/EXECUTION-git-hygiene-baseline.md docs/plans/VERIFY-git-hygiene-baseline.md \
+  docs/plans/branching-strategy.md docs/plans/git-hygiene-baseline.md \
+  scripts/install-git-hooks.sh scripts/install-repo-config.sh | sort) \
+  <(git diff origin/main...origin/feat/2026-07-11-git-hygiene-baseline --name-only | sort)
+# empty diff = V1a PASS
 ```
 
 | ID | Expect | PASS |
 |----|--------|------|
-| V1a | Expected paths only | Roughly: `.git-blame-ignore-revs`, `.gitattributes`, `scripts/install-repo-config.sh`, `scripts/install-git-hooks.sh`, `config/agent-protocol*` + generated surfaces, `docs/plans/{git-hygiene-baseline,EXECUTION-git-hygiene-baseline,branching-strategy}.md` |
+| V1a | Exact path set only | `diff -u` of expected vs actual name-only is empty |
 | V1b | No surprise runtime | Diff does **not** add doctor `_check_*` for tags/hygiene, work-start CLI, or global config scripts |
 | V1c | Allowlist not smuggled | Diff does **not** include `WILLOWYHOLLOW-BUG-TRIAGE*`, `TODO-WH-PRACTICE*`, `s2_hotfix_reconcile.md` |
 
+If a later commit on the same branch legitimately adds paths, update this expected set in VERIFY before re-running V1a — do not use “roughly.”
+
 ---
 
-## 2. Blame-ignore + attributes
+## 2. Blame-ignore + attributes + SSoT rewrite
 
 ```bash
 cd ~/Projects/convmem
@@ -80,6 +117,12 @@ grep -F '*.md diff=markdown' .gitattributes
 (grep -qF 'merge=union' .gitattributes && echo FAIL) || echo "no union OK"
 grep -n 'v0\.2' docs/plans/branching-strategy.md && echo FAIL || echo "no phantom v0.2 OK"
 grep -F 'v0.1.0-branching-foundation' docs/plans/branching-strategy.md
+
+# SSoT must be a rewrite (old draft gone), not an append leaving stale markers:
+(grep -nE 'v0\.2\.0|Status \| \*\*draft\*\*|optional tag `v0\.2' docs/plans/git-hygiene-baseline.md \
+  && echo FAIL) || echo "SSoT rewrite OK (no stale draft/v0.2.0)"
+grep -F 'Blame-ignore audit' docs/plans/git-hygiene-baseline.md
+grep -F 'install-repo-config.sh' docs/plans/git-hygiene-baseline.md
 ```
 
 | ID | Expect | PASS |
@@ -88,9 +131,10 @@ grep -F 'v0.1.0-branching-foundation' docs/plans/branching-strategy.md
 | V2b | Audit table in plan SSoT | [`git-hygiene-baseline.md`](git-hygiene-baseline.md) has blame audit table; omit reasons match eligibility (logic pollution only) |
 | V2c | Markdown diff only | `*.md diff=markdown` present |
 | V2d | No JSONL union | `no union OK` |
-| V2e | Tag version fix | No `v0.2` in branching-strategy closure; `v0.1.0-branching-foundation` present |
+| V2e | Tag version fix (branching-strategy) | No `v0.2` in branching-strategy closure; `v0.1.0-branching-foundation` present |
+| V2f | Plan SSoT rewritten | `SSoT rewrite OK`; no stale `v0.2.0` / `**draft**` status / “optional tag v0.2”; audit + installer present |
 
-**FAIL if:** pylintrc-only SHAs listed “to fill the file,” or any `merge=union` in `.gitattributes`.
+**FAIL if:** pylintrc-only SHAs listed “to fill the file,” any `merge=union` in `.gitattributes`, or old draft markers remain in `git-hygiene-baseline.md`.
 
 ---
 
@@ -149,24 +193,33 @@ head -5 scripts/install-git-hooks.sh | grep -q install-repo-config && echo "wrap
 cd ~/Projects/convmem
 rg -nF 'install-repo-config.sh' config/agent-protocol.md
 rg -nF 'git rerere diff' config/agent-protocol.md config/cursor-rules-convmem.mdc.example
-rg -n 'pull.ff|pull --ff-only' config/agent-protocol.md
+rg -n 'pull\.ff|pull --ff-only' config/agent-protocol.md
 rg -n 'stash' config/agent-protocol.md | head -5
 (rg -n "work start" config/agent-protocol.md && echo FAIL) || echo "no work start OK"
-# Generated surfaces should carry the same Git hygiene paragraph
-rg -nF 'Git Hygiene Baseline' config/cursor-rules-convmem.mdc.example \
-  config/codex-agents-convmem.example.md config/kiro-steering-convmem.example.md
+
+# V4f: each generated surface must carry locked content (not heading-only)
+for f in \
+  config/cursor-rules-convmem.mdc.example \
+  config/codex-agents-convmem.example.md \
+  config/kiro-steering-convmem.example.md \
+  config/crush-rules-convmem.example.md \
+  config/agent-protocol-mcp.txt
+do
+  rg -nF 'install-repo-config.sh' "$f" || { echo "FAIL: missing install-repo-config.sh in $f"; exit 1; }
+done
+echo "V4f locked content in surfaces OK"
 ```
 
 | ID | Expect | PASS |
 |----|--------|------|
-| V4a | Clone install one-liner | `install-repo-config.sh` in Tier A |
+| V4a | Clone install one-liner | `install-repo-config.sh` in Tier A (`agent-protocol.md`) |
 | V4b | Rerere review wording | Exact phrase `git rerere diff` in protocol + Cursor example |
-| V4c | pull.ff / rebase / ff-only | Present in protocol |
+| V4c | pull.ff / rebase / ff-only | `rg -n 'pull\.ff|pull --ff-only'` hits in protocol |
 | V4d | Stash: own OK; Ryan dirt needs plan auth | Present; not “never stash” absolute |
 | V4e | No Work Start | `no work start OK` |
-| V4f | Surfaces regenerated | Hygiene paragraph in Cursor/Codex/Kiro examples |
+| V4f | Surfaces carry locked content | Each listed surface contains `install-repo-config.sh` (heading alone is FAIL) |
 
-**Locked content checklist (all must appear):**
+**Locked content checklist (all must appear in `config/agent-protocol.md`):**
 
 1. Propose `vX.Y.Z-<slug>` or `milestone/<slug>`; Ryan tags; `git switch -c <branch> <tag>`
 2. Feature: `git fetch origin && git rebase origin/main`; clean main: `git pull --ff-only`
@@ -183,35 +236,45 @@ cd ~/Projects/convmem
 python -m pytest tests/test_doctor.py tests/test_git_hooks.py -q
 echo "pytest exit: $?"
 
-git config --global --list 2>/dev/null | grep -E 'pull\.|rerere\.|blame\.' \
-  && echo "FAIL: global hygiene keys present" || echo "no global hygiene keys"
+# Prefer clean: no global hygiene keys
+if git config --global --list 2>/dev/null | grep -E 'pull\.|rerere\.|blame\.'; then
+  echo "Global hygiene-looking keys found — prove origin (SKIP path only if not from this arc):"
+  git config --global --show-origin --get-regexp '^(pull\.|rerere\.|blame\.)' || true
+  # FAIL if origin is this repo's install scripts or a path under ~/Projects/convmem/scripts/
+  # SKIP only if origin is clearly unrelated (e.g. ~/.gitconfig from another project) and
+  # scripts/install-repo-config.sh / install-git-hooks.sh contain no --global (V3a already PASS)
+  echo "Document SKIP evidence or FAIL"
+else
+  echo "no global hygiene keys"
+fi
 ```
 
-| ID | Expect | PASS |
-|----|--------|------|
+| ID | Expect | PASS / SKIP |
+|----|--------|-------------|
 | V5a | Foundation tests still green | pytest exit `0` |
-| V5b | No global hygiene drift from this arc | `no global hygiene keys` (or pre-existing keys documented as SKIP with evidence they were not set by these scripts) |
+| V5b | No global hygiene drift from this arc | **PASS:** `no global hygiene keys`. **SKIP:** keys exist but `git config --global --show-origin --get-regexp '^(pull\.|rerere\.|blame\.)'` shows an origin **outside** this arc’s install scripts (record origin lines). **FAIL:** origin points at convmem install scripts or cannot be proven unrelated |
 
 ---
 
-## 6. Async / process (not blocking mechanical PASS)
+## 6. Async / process (after Mechanical PASS)
 
-| ID | Check | PASS / GATE |
+| ID | Check | Result type |
 |----|-------|-------------|
-| V6a | Foundation tag exists | `git rev-parse v0.1.0-branching-foundation` — **informational** (T6); hygiene T5b PASS does not require creating the tag |
-| V6b | Plan SSoT status | [`git-hygiene-baseline.md`](git-hygiene-baseline.md) reflects active execute + audit table |
-| V6c | Kiro sign-off line | After review: set `Kiro reviewed: YYYY-MM-DD` in plan SSoT + handoff |
+| V6a | Foundation tag exists | Informational — `git rev-parse v0.1.0-branching-foundation` (T6); not required for Mechanical PASS |
+| V6b | Plan SSoT status | Informational cross-check — active execute + audit table (mechanical detail already in V2f) |
+| V6c | Kiro sign-off | **Sign-off step** — only after Mechanical PASS: set `Kiro reviewed: YYYY-MM-DD` in plan SSoT + handoff |
 | V6d | Ryan merge | **GATE** — Ryan `--ff-only` or squash merge after V6c (T7) |
 
 ---
 
-## Overall verdict
+## Verdicts (ordered)
 
 | Result | When |
 |--------|------|
-| **PASS** | V0–V5 all PASS (or justified SKIP); V6c completed |
-| **FAIL** | Any scope-lock violation, wrapper restores hooks only, `merge=union`, `work start`, `--global` in install scripts, or phantom `v0.2` tag docs |
-| **GATE** | V6d Ryan merge only |
+| **Mechanical PASS** | V0–V5 all PASS (or V5b justified SKIP with `--show-origin` evidence) |
+| **FAIL** | Any scope-lock violation, V1a path-set mismatch, wrapper restores hooks only, `merge=union`, `work start`, `--global` in install scripts, phantom `v0.2` / stale draft SSoT, or V4f heading-only surfaces |
+| **Sign-off (V6c)** | After Mechanical PASS only — date in [`git-hygiene-baseline.md`](git-hygiene-baseline.md) + handoff |
+| **GATE (V6d)** | Ryan merge after V6c |
 
 **Accepted limitations (do not FAIL):** fresh-clone silent gap until install runs; header-only blame-ignore; wrapper stdout includes hygiene lines.
 
@@ -222,13 +285,13 @@ git config --global --list 2>/dev/null | grep -E 'pull\.|rerere\.|blame\.' \
 ```text
 VERIFY-git-hygiene-baseline — tip <sha>
 V0: …
-V1: …
-V2: …
+V1a: path-set diff empty: PASS/FAIL
+V2f: SSoT rewrite OK: PASS/FAIL
 V3: wrapper four-key restore: PASS/FAIL
-V4: no work start OK; install-repo-config + git rerere diff: PASS/FAIL
-V5: pytest …; no global hygiene keys: PASS/FAIL
-Overall: PASS|FAIL
-Kiro reviewed: YYYY-MM-DD
+V4: no work start OK; V4f install-repo-config in surfaces: PASS/FAIL
+V5: pytest …; V5b global: PASS|SKIP(origin=…)|FAIL
+Mechanical: PASS|FAIL
+V6c Kiro reviewed: YYYY-MM-DD   # only if Mechanical PASS
 ```
 
 Then edit [`git-hygiene-baseline.md`](git-hygiene-baseline.md): replace `_(pending T5b)_` with the date.
