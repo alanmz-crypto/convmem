@@ -53,7 +53,7 @@ Today approve appends `decisions-approved.jsonl` **before** Chroma index (`convm
 
 1. Validate (siblings, hashes, create-if-absent).
 2. Append `APPROVAL_STARTED` → flush → fsync.
-3. Append approved record to `decisions-approved.jsonl` → flush → fsync (durable content intent; same shape as today).
+3. Append approved record to `decisions-approved.jsonl` → flush → fsync. The row **must include `proposal_id`** (the approving proposal’s id) as a durable field — or an equally durable unambiguous linkage keyed by proposal ID. Ledger `id` alone is insufficient when a targeted update uses a different `ledger_id` or multiple approved revisions share one ledger id.
 4. Chroma upsert of normalized unit **including `proposal_id` marker in metadata** in the **same** upsert (marker must survive `ledger_unit_metadata` / normalize path — extend emit list).
 5. Append `APPROVED` → flush → fsync.
 6. Release lock.
@@ -63,8 +63,8 @@ Today approve appends `decisions-approved.jsonl` **before** Chroma index (`convm
 | Observed | Action |
 |----------|--------|
 | `APPROVAL_STARTED` + Chroma marker=`proposal_id` + hash=proposed | Append `APPROVED` |
-| `APPROVAL_STARTED` + row in `decisions-approved.jsonl` for this proposal/ledger + no Chroma marker + live still base (or absent) | **Retry Chroma upsert only** (idempotent); then `APPROVED` |
-| `APPROVAL_STARTED` + approved JSONL present + live hash=proposed but marker missing | Repair: re-upsert with marker; then `APPROVED` |
+| `APPROVAL_STARTED` + row in `decisions-approved.jsonl` with matching **`proposal_id`** + no Chroma marker + live still base (or absent) | **Retry Chroma upsert only** (idempotent); then `APPROVED` |
+| `APPROVAL_STARTED` + approved JSONL row keyed by **`proposal_id`** + live hash=proposed but Chroma marker missing | Repair: re-upsert with marker; then `APPROVED` |
 | Uncertain upsert error/timeout after step 2 or 3 | Leave `APPROVAL_STARTED`; do not append failure; run reconciliation before any further approve on that target |
 
 Do not treat “approved JSONL exists” alone as license to skip sibling/hash checks on a **new** approval of a different proposal.
@@ -96,7 +96,7 @@ Ship single-host serialized optimistic concurrency for governed ledger writes wi
 | T1 | EXECUTION + VERIFY amended | Docs | — | HITL |
 | T2 | Shared hash module schema v1 | Full semantic field set; per-field tests; marker excluded from hash | T1 | pytest |
 | T3 | Event log + reducer + flock (data-root lock) | **Named tests:** duplicate `event_id`; illegal lifecycle transition; truncated/malformed final JSONL line fail-closed; `CONFLICT_CLEARED` updates active set; append order | T2 | pytest |
-| T4 | Propose + approve/apply under lock | Write sequence § above; create-if-absent; siblings; **proposal_id in metadata emit**; uncertain-outcome leave `APPROVAL_STARTED` | T3 | integration |
+| T4 | Propose + approve/apply under lock | Write sequence § above; create-if-absent; siblings; **`proposal_id` on decisions-approved.jsonl row** + Chroma metadata emit; uncertain-outcome leave `APPROVAL_STARTED` | T3 | integration |
 | T5 | Legacy import + Gate 5 | **Named test:** idempotent import preserves `proposal_id`; hashless → warn/block policy; no dup events | T3 | pytest |
 | T6 | Close direct writers | Enumerate and gate/forbid governed semantic replace via **`monitor.py`**, **`ingest.py`**, **`inter_model_index.py`**, **`convmem add --upsert`** (and approve/ingest_approved only through protocol). Fill VERIFY inventory with pass/fail per path | T4 | code + evidence |
 | T7 | Acceptance suite | Arch tests + constraint tests below + race/crash + marker round-trip after normalize | T4–T6 | pytest |
@@ -113,7 +113,8 @@ Ship single-host serialized optimistic concurrency for governed ledger writes wi
 | N5 | Idempotent legacy `pending_decisions.jsonl` import; stable `proposal_id`; no duplicate `PROPOSED` |
 | N6 | `proposal_id` marker present after `ledger_unit_metadata` / normalize round-trip |
 | N7 | Each semantic hash field flips hash; bookkeeping fields do not |
-| N8–N10 | Write-sequence recovery: approved-JSONL-before-Chroma retry; marker+hash → APPROVED; uncertain upsert stays `APPROVAL_STARTED` |
+| N8–N10 | Write-sequence recovery: approved-JSONL-before-Chroma retry **lookup by proposal_id**; marker+hash → APPROVED; uncertain upsert stays `APPROVAL_STARTED` |
+| N12 | Approved JSONL row persists `proposal_id` (or equivalent durable proposal-keyed linkage); recovery finds the row by proposal id even if `ledger_id` differs or multiple revisions share a ledger id |
 | N11 | `monitor.py` / `ingest.py` / `inter_model_index.py` / `add --upsert` cannot replace governed ledger semantic content without protocol (or are documented blocked) |
 
 ### Out of scope
@@ -122,7 +123,7 @@ Distributed locks, force-approve, MCP writes, similarity collision, doctor nag, 
 
 ### Evidence (Execute)
 
-- pytest including N1–N11 and arch barrier/crash tests
+- pytest including N1–N12 and arch barrier/crash tests
 - VERIFY writer table with concrete paths above
 - Schema-deploy timestamp path + migration report sample
 - Lock path derived from data root (demo with alternate `chroma_dir`)
@@ -147,6 +148,7 @@ Distributed locks, force-approve, MCP writes, similarity collision, doctor nag, 
 - [x] Execution constraints turned into named tests N1–N11
 - [x] Direct writers named for T6
 - [x] `proposal_id` marker survival required
+- [x] Durable `proposal_id` on `decisions-approved.jsonl` (N12) required
 - [ ] No code until Ryan HITL / `execute`
 
 Cursor must stop here. Await HITL.
