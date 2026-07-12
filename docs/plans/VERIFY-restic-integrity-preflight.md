@@ -37,5 +37,5 @@ python scripts/restic_integrity_check.py --intentional-missing-repo
 - Tip SHA: filled at commit time below
 
 ```text
-Mechanical PASS: 2026-07-12 — tip PENDING_COMMIT
+Mechanical PASS: 2026-07-12 — tip aa317b0
 ```
