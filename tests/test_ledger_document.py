@@ -61,7 +61,7 @@ class EmptyDocumentRepairTests(unittest.TestCase):
             self.assertEqual(unit.get("document"), "")
 
             ingest_observation(
-                _DECISION,
+                {**_DECISION, "_governed_protocol": True, "proposal_id": "dec_prop_repair"},
                 store=store,
                 embed_model="test",
                 ollama_host="local",

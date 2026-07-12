@@ -851,6 +851,11 @@ def propose_decision_command(
         help="Signer on approve/reject (default on approve: ryan or CONVMEM_SIGNER)",
     ),
     reason: str | None = typer.Option(None, "--reason", help="Required for --reject"),
+    recover: str | None = typer.Option(
+        None,
+        "--recover",
+        help="Reconcile APPROVAL_STARTED proposal (no blind retry)",
+    ),
     ledger_id: str | None = typer.Option(
         None, "--ledger-id", help="Canonical ledger id on approve (default: proposal id)"
     ),
@@ -896,6 +901,7 @@ def propose_decision_command(
         latest_pending,
         list_proposals,
         propose as do_propose,
+        recover_approval,
         reject as do_reject,
     )
     from query import render_error
@@ -939,6 +945,20 @@ def propose_decision_command(
         if not all_ and rows:
             typer.echo("")
             typer.echo("  Finish newest: convmem record --approve-last")
+        return
+
+    if recover:
+        _guard_write()
+        try:
+            action = recover_approval(cfg, recover)
+        except ValueError as e:
+            render_error(str(e))
+            raise typer.Exit(1) from e
+        except Exception as e:
+            _log_index_failure(recover, e)
+            typer.echo(f"\n⚠ Recovery deferred for review: {e}")
+            raise typer.Exit(1) from e
+        typer.echo(f"Recovered {recover}: {action}")
         return
 
     _guard_write()
