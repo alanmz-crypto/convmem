@@ -1,4 +1,4 @@
-"""Tests for git_hooks classification and pre-push evaluation."""
+"""Tests for git_hooks classification and main-guard evaluation."""
 
 from __future__ import annotations
 
@@ -9,9 +9,11 @@ import unittest
 from pathlib import Path
 
 from git_hooks import (
-    REJECTION_STDERR,
+    REJECTION_PUSH_MAIN,
     conventional_feat_fix_subject,
+    evaluate_pre_commit,
     evaluate_pre_push_stdin,
+    valid_task_branch,
     wip_commit_blocked,
 )
 
@@ -59,91 +61,88 @@ class ConventionalSubjectTests(unittest.TestCase):
         self.assertFalse(conventional_feat_fix_subject("WIP: x"))
 
 
+class TaxonomyTests(unittest.TestCase):
+    def test_valid(self):
+        self.assertTrue(valid_task_branch("feat/2026-07-12-slug"))
+        self.assertTrue(valid_task_branch("docs/2026-07-12-x"))
+        self.assertFalse(valid_task_branch("main"))
+        self.assertFalse(valid_task_branch("feat/no-date"))
+        self.assertFalse(valid_task_branch("feature/2026-07-12-x"))
+
+
 class PrePushIntegrationTests(unittest.TestCase):
     def _init_repo(self, d: Path) -> Path:
         repo = d / "repo"
         repo.mkdir()
-        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
-               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@t",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@t",
+        }
         _git(repo, "init", "-b", "main", env=env)
         (repo / "a.txt").write_text("a\n", encoding="utf-8")
         _git(repo, "add", "a.txt", env=env)
         _git(repo, "commit", "-m", "chore: init", env=env)
         return repo
 
-    def test_rejects_wip_push_to_main(self):
+    def test_rejects_any_push_to_main(self):
         with tempfile.TemporaryDirectory() as td:
             repo = self._init_repo(Path(td))
-            env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
-                   "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+            env = {
+                **os.environ,
+                "GIT_AUTHOR_NAME": "t",
+                "GIT_AUTHOR_EMAIL": "t@t",
+                "GIT_COMMITTER_NAME": "t",
+                "GIT_COMMITTER_EMAIL": "t@t",
+            }
             main_sha = subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=repo, text=True
             ).strip()
             (repo / "b.txt").write_text("b\n", encoding="utf-8")
             _git(repo, "add", "b.txt", env=env)
-            _git(repo, "commit", "-m", "WIP: do not push", env=env)
+            _git(repo, "commit", "-m", "feat: should not push to main", env=env)
             new_sha = subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=repo, text=True
             ).strip()
-            zeros = "0" * 40
-            # Simulate push of new commits to remote main (remote had main_sha)
             stdin = f"refs/heads/main {new_sha} refs/heads/main {main_sha}\n"
-            # Clear bypass if set in environment
-            old = os.environ.pop("CONVMEM_SKIP_WIP_HOOK", None)
-            try:
-                rc = evaluate_pre_push_stdin(repo, stdin)
-            finally:
-                if old is not None:
-                    os.environ["CONVMEM_SKIP_WIP_HOOK"] = old
-            self.assertEqual(rc, 1)
+            for key in ("CONVMEM_SKIP_MAIN_HOOK", "CONVMEM_SKIP_WIP_HOOK"):
+                os.environ.pop(key, None)
+            self.assertEqual(evaluate_pre_push_stdin(repo, stdin), 1)
+            self.assertIn("must not push to main", REJECTION_PUSH_MAIN)
 
-            # feat: commit allowed
-            _git(repo, "reset", "--hard", main_sha, env=env)
-            (repo / "c.txt").write_text("c\n", encoding="utf-8")
-            _git(repo, "add", "c.txt", env=env)
-            _git(repo, "commit", "-m", "feat: allowed on main", env=env)
+            # Feature branch push OK
+            _git(repo, "checkout", "-b", "feat/2026-07-12-x", env=env)
             feat_sha = subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=repo, text=True
             ).strip()
-            stdin2 = f"refs/heads/main {feat_sha} refs/heads/main {main_sha}\n"
-            self.assertEqual(evaluate_pre_push_stdin(repo, stdin2), 0)
-
-            # Feature branch push with WIP is OK (not targeting main)
-            _git(repo, "checkout", "-b", "feat/x", env=env)
-            (repo / "d.txt").write_text("d\n", encoding="utf-8")
-            _git(repo, "add", "d.txt", env=env)
-            _git(repo, "commit", "-m", "WIP: ok on feature branch", env=env)
-            wip_feat = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=repo, text=True
-            ).strip()
             zeros = "0" * 40
-            stdin3 = f"refs/heads/feat/x {wip_feat} refs/heads/feat/x {zeros}\n"
-            self.assertEqual(evaluate_pre_push_stdin(repo, stdin3), 0)
+            stdin_feat = f"refs/heads/feat/2026-07-12-x {feat_sha} refs/heads/feat/2026-07-12-x {zeros}\n"
+            self.assertEqual(evaluate_pre_push_stdin(repo, stdin_feat), 0)
 
-    def test_skip_env_bypasses(self):
-        with tempfile.TemporaryDirectory() as td:
-            repo = self._init_repo(Path(td))
-            env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
-                   "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
-            main_sha = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=repo, text=True
-            ).strip()
-            (repo / "b.txt").write_text("b\n", encoding="utf-8")
-            _git(repo, "add", "b.txt", env=env)
-            _git(repo, "commit", "-m", "WIP: bypass", env=env)
-            new_sha = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=repo, text=True
-            ).strip()
-            stdin = f"refs/heads/main {new_sha} refs/heads/main {main_sha}\n"
-            os.environ["CONVMEM_SKIP_WIP_HOOK"] = "1"
+            # Bypass env allows main push (hook skip only)
+            os.environ["CONVMEM_SKIP_MAIN_HOOK"] = "1"
             try:
                 self.assertEqual(evaluate_pre_push_stdin(repo, stdin), 0)
             finally:
-                del os.environ["CONVMEM_SKIP_WIP_HOOK"]
+                os.environ.pop("CONVMEM_SKIP_MAIN_HOOK", None)
 
-    def test_rejection_message_constant(self):
-        self.assertIn("Push rejected: WIP commits on main", REJECTION_STDERR)
-        self.assertIn("CONVMEM_SKIP_WIP_HOOK=1", REJECTION_STDERR)
+    def test_pre_commit_rejects_main(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = self._init_repo(Path(td))
+            for key in ("CONVMEM_SKIP_MAIN_HOOK", "CONVMEM_SKIP_WIP_HOOK"):
+                os.environ.pop(key, None)
+            self.assertEqual(evaluate_pre_commit(repo), 1)
+            env = {
+                **os.environ,
+                "GIT_AUTHOR_NAME": "t",
+                "GIT_AUTHOR_EMAIL": "t@t",
+                "GIT_COMMITTER_NAME": "t",
+                "GIT_COMMITTER_EMAIL": "t@t",
+            }
+            _git(repo, "checkout", "-b", "feat/2026-07-12-y", env=env)
+            self.assertEqual(evaluate_pre_commit(repo), 0)
 
 
 if __name__ == "__main__":

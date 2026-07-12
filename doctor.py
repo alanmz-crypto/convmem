@@ -1083,35 +1083,53 @@ def _check_wip_on_main(*, root: Path | None = None) -> DoctorCheck:
     )
 
 
-def _check_direct_commits_on_main(*, root: Path | None = None) -> DoctorCheck:
-    """Heuristic advisory: main reflog commit: entries with feat:/fix: subjects."""
-    name = "direct_commits_on_main"
+def _check_dirty_main(*, root: Path | None = None) -> DoctorCheck:
+    """WARN when tracked files are dirty while on main (Always-GitHub-Fallback)."""
+    name = "dirty_main"
     base = root or _repo_root()
-    from git_hooks import direct_feat_fix_via_reflog
+    from git_hooks import dirty_tracked_on_main
 
     try:
-        err, flagged = direct_feat_fix_via_reflog(base, limit=50)
+        dirty, detail = dirty_tracked_on_main(base)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return DoctorCheck(name, True, f"git probe failed: {exc}", status="skip")
+    if dirty:
+        return DoctorCheck(
+            name,
+            True,
+            f"{detail} — use convmem work start/resume (do not edit on main)",
+            status="warn",
+        )
+    return DoctorCheck(name, True, detail)
+
+
+def _check_unpushed_commits(*, root: Path | None = None) -> DoctorCheck:
+    """WARN when current branch has commits not on upstream."""
+    name = "unpushed_commits"
+    base = root or _repo_root()
+    from git_hooks import current_branch, unpushed_commits
+
+    branch = current_branch(base)
+    if branch in ("main", "master", ""):
+        return DoctorCheck(name, True, f"skip on {branch or 'detached'}", status="skip")
+    try:
+        err, subjects = unpushed_commits(base)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return DoctorCheck(name, True, f"git probe failed: {exc}", status="skip")
     if err:
         return DoctorCheck(
             name,
             True,
-            f"heuristic: {err}",
-            status="skip",
+            f"{err} — push with explicit refspec after work start",
+            status="warn",
         )
-    if not flagged:
-        return DoctorCheck(
-            name,
-            True,
-            "heuristic: 0 feat:/fix: commit: entries in main reflog (last 50)",
-        )
-    sample = "; ".join(flagged[:3])
+    if not subjects:
+        return DoctorCheck(name, True, "0 unpushed commits vs upstream")
+    sample = "; ".join(subjects[:3])
     return DoctorCheck(
         name,
         True,
-        f"heuristic: {len(flagged)} feat:/fix: commit: on main reflog "
-        f"(may include squash merges): {sample}",
+        f"{len(subjects)} unpushed commit(s) — push immediately: {sample}",
         status="warn",
     )
 
@@ -1167,9 +1185,10 @@ def run_doctor(
     checks: list[DoctorCheck] = [
         _check_config(),
         _check_write_lane(cfg),
-        _check_hooks_path(),  # before WIP/direct — root cause if hook missing
+        _check_hooks_path(),  # before WIP/dirty — root cause if hook missing
         _check_wip_on_main(),
-        _check_direct_commits_on_main(),
+        _check_dirty_main(),
+        _check_unpushed_commits(),
         _check_deepseek_key(),
         _check_ollama(cfg),
         _check_chroma(cfg),

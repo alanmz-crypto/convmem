@@ -9,9 +9,10 @@ from unittest.mock import patch
 from doctor import (
     DoctorCheck,
     _charter_register_consistency_probe,
-    _check_direct_commits_on_main,
+    _check_dirty_main,
     _check_hooks_path,
     _check_standing_register,
+    _check_unpushed_commits,
     _check_wip_on_main,
     _exposure_window_probe,
     _merge_order_probe,
@@ -867,37 +868,31 @@ class BranchingDoctorTests(unittest.TestCase):
         self.assertEqual(c.effective_status(), "warn")
         self.assertIn("WIP", c.detail)
 
-    def test_direct_commits_reflog_heuristic(self):
-        import os
-        import subprocess
-
+    def test_dirty_main_warns(self):
         with tempfile.TemporaryDirectory() as d:
             repo = Path(d)
-            env = {
-                **os.environ,
-                "GIT_AUTHOR_NAME": "t",
-                "GIT_AUTHOR_EMAIL": "t@t",
-                "GIT_COMMITTER_NAME": "t",
-                "GIT_COMMITTER_EMAIL": "t@t",
-            }
             self._git(repo, "init", "-b", "main")
             (repo / "a.txt").write_text("a\n", encoding="utf-8")
             self._git(repo, "add", "a.txt")
             self._git(repo, "commit", "-m", "chore: init")
-            (repo / "b.txt").write_text("b\n", encoding="utf-8")
-            self._git(repo, "add", "b.txt")
-            subprocess.run(
-                ["git", "commit", "-m", "feat: direct on main"],
-                cwd=repo,
-                check=True,
-                capture_output=True,
-                text=True,
-                env=env,
-            )
-            c = _check_direct_commits_on_main(root=repo)
+            (repo / "a.txt").write_text("changed\n", encoding="utf-8")
+            c = _check_dirty_main(root=repo)
         self.assertTrue(c.ok)
         self.assertEqual(c.effective_status(), "warn")
-        self.assertIn("heuristic", c.detail)
+        self.assertIn("dirty", c.detail.lower())
+
+    def test_unpushed_skips_without_upstream(self):
+        with tempfile.TemporaryDirectory() as d:
+            repo = Path(d)
+            self._git(repo, "init", "-b", "main")
+            (repo / "a.txt").write_text("a\n", encoding="utf-8")
+            self._git(repo, "add", "a.txt")
+            self._git(repo, "commit", "-m", "chore: init")
+            self._git(repo, "checkout", "-b", "feat/2026-07-12-z")
+            c = _check_unpushed_commits(root=repo)
+        self.assertTrue(c.ok)
+        self.assertEqual(c.effective_status(), "warn")
+        self.assertIn("upstream", c.detail.lower())
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 # Never uses git config --global.
 #
 # Sets:
-#   core.hooksPath          → scripts/git-hooks (WIP-on-main pre-push)
+#   core.hooksPath          → scripts/git-hooks (pre-commit + pre-push block main)
 #   pull.ff                 → only
 #   rerere.enabled          → true
 #   blame.ignoreRevsFile    → .git-blame-ignore-revs
@@ -13,21 +13,26 @@
 #   Feature branch:  git fetch origin && git rebase origin/main
 #   Clean main:      git fetch origin && git pull --ff-only
 # If pull still fails, stop and inspect — do not force a merge pull.
+#
+# Local CONVMEM_SKIP_MAIN_HOOK=1 skips hooks only (not GitHub authz).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-HOOK="$ROOT/scripts/git-hooks/pre-push"
+PRE_PUSH="$ROOT/scripts/git-hooks/pre-push"
+PRE_COMMIT="$ROOT/scripts/git-hooks/pre-commit"
 BLAME="$ROOT/.git-blame-ignore-revs"
 
-if [[ ! -f "$HOOK" ]]; then
-  echo "missing $HOOK" >&2
-  exit 1
-fi
+for hook in "$PRE_PUSH" "$PRE_COMMIT"; do
+  if [[ ! -f "$hook" ]]; then
+    echo "missing $hook" >&2
+    exit 1
+  fi
+  chmod +x "$hook"
+done
 if [[ ! -f "$BLAME" ]]; then
   echo "missing $BLAME (create header-only file before install)" >&2
   exit 1
 fi
 
-chmod +x "$HOOK"
 cd "$ROOT"
 
 git config --local core.hooksPath scripts/git-hooks
@@ -39,4 +44,4 @@ echo "core.hooksPath = $(git config --get core.hooksPath)"
 echo "pull.ff = $(git config --get pull.ff)"
 echo "rerere.enabled = $(git config --get rerere.enabled)"
 echo "blame.ignoreRevsFile = $(git config --get blame.ignoreRevsFile)"
-echo "Installed. WIP-pattern pushes to main will be rejected (CONVMEM_SKIP_WIP_HOOK=1 to bypass)."
+echo "Installed. Commits/pushes to main are rejected (CONVMEM_SKIP_MAIN_HOOK=1 = local hook skip only)."

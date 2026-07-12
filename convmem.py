@@ -52,7 +52,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
-    "unresolved", "tldr",
+    "unresolved", "tldr", "work",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -729,6 +729,51 @@ def doctor(
 
         after_doctor(passed=doctor_exit_code(checks) == 0, v1=v1)
     raise typer.Exit(doctor_exit_code(checks))
+
+
+work_app = typer.Typer(help="Always-GitHub-Fallback: start/resume task branches.")
+app.add_typer(work_app, name="work")
+
+
+@work_app.command("start")
+def work_start_cmd(
+    kind: str = typer.Argument(..., help="feat|fix|docs|plan|wip"),
+    slug: str = typer.Argument(..., help="short-slug (no spaces)"),
+    worktree: bool = typer.Option(
+        False,
+        "--worktree",
+        help="Create under ~/.local/share/convmem/worktrees/ instead of switching shared checkout",
+    ),
+):
+    """Create task branch from origin/main and push with explicit refspec (fail closed)."""
+    from work_git import WorkError, work_start
+
+    try:
+        branch = work_start(kind, slug, worktree=worktree)
+    except WorkError as exc:
+        typer.echo(f"work start failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Started and pushed {branch}. Edit only on this branch; push every commit.")
+
+
+@work_app.command("resume")
+def work_resume_cmd(
+    branch: str = typer.Argument(..., help="feat|fix|docs|plan|wip/YYYY-MM-DD-slug"),
+    worktree: bool = typer.Option(
+        False,
+        "--worktree",
+        help="Attach a dedicated worktree instead of switching shared checkout",
+    ),
+):
+    """Resume an existing pushed task branch (origin-only safe); fail closed."""
+    from work_git import WorkError, work_resume
+
+    try:
+        name = work_resume(branch, worktree=worktree)
+    except WorkError as exc:
+        typer.echo(f"work resume failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Resumed {name}. Push every commit; do not merge main.")
 
 
 def _resolve_approve_signer(signer: str | None) -> str:
