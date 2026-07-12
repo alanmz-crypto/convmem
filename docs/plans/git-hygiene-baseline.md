@@ -101,7 +101,31 @@ Sets (all `--local`): `core.hooksPath`, `pull.ff=only`, `rerere.enabled=true`, `
 
 `scripts/install-git-hooks.sh` is a thin wrapper that `exec`s the unified installer (legacy name preserved).
 
-**`pull.ff=only` failure:** histories diverged — do not force a merge pull. Recover with `git fetch origin` then either `git rebase origin/main` (feature branch) or investigate before `git pull --ff-only` on a clean `main`.
+---
+
+## Git hygiene recovery kit
+
+No. This is a git hygiene recovery kit, not a general undo system.
+
+It covers a limited set of mistakes we can reliably recover from in this repo:
+
+| Failure | Recovery |
+|---------|----------|
+| Bad or diverged `git pull` | Fails closed (`pull.ff=only`), then fetch + rebase or inspect the divergence |
+| WIP committed toward `main` | Pre-push rejects it; move the work to a branch |
+| Broken feature branch | Recreate from `origin/main` or from `v0.1.0-branching-foundation` |
+| Fresh clone missing repo hygiene | Run `bash scripts/install-repo-config.sh` |
+| Need Foundation-era state | `git switch -c <branch> v0.1.0-branching-foundation` |
+
+It does **not** reliably recover from:
+
+- Deleted or stashed files that were never safely handed off
+- A bad rebase that was already force-pushed
+- Non-git failures like restic staleness, Ollama, Chroma, or corpus loss
+- Concurrent writers in one checkout
+- Arbitrary runtime or product bugs
+
+**Bottom line:** this repo can return you to a known-good git state, but not to “any previous error.” The best proof is still to finish the current branch cleanly through handoff and merge.
 
 ---
 
