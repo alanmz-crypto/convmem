@@ -105,6 +105,8 @@ def proposal_to_ledger(
         "confidence": float(proposal.get("confidence", 0.8)),
         "timestamp": _now_iso(),
         "tool": signer.strip(),
+        # This link is required for recovery when ledger_id is reused by revisions.
+        "proposal_id": proposal["id"],
     }
 
 
@@ -157,10 +159,25 @@ def propose(
         "rejection_reason": None,
     }
 
-    qpath = queue_path(cfg)
-    records = load_queue(qpath)
-    records.append(record)
-    save_queue(qpath, records)
+    # The legacy queue remains a compatibility input until T5 migration; the
+    # event is the protocol record used for conflict/lifecycle reduction.
+    from conflict_events import append_event, governed_lock, new_event
+    with governed_lock(cfg):
+        qpath = queue_path(cfg)
+        records = load_queue(qpath)
+        if find_proposal(records, pid) is not None:
+            raise ValueError(f"Proposal already exists: {pid}")
+        records.append(record)
+        save_queue(qpath, records)
+        append_event(cfg, new_event("PROPOSED", pid, proposal={
+            "target_ledger_id": None,
+            "base_content_hash": None,
+            "proposed_content_hash": None,
+            "hash_schema_version": 1,
+            "summary": summary,
+            "rationale": rationale,
+            "proposed_by": author,
+        }))
     return record
 
 
@@ -266,25 +283,34 @@ def approve(
             f"Invalid --signer {signer!r}; use ryan or kiro-review (or kiro-* identity)"
         )
 
-    qpath = queue_path(cfg)
-    records = load_queue(qpath)
-    proposal = find_proposal(records, proposal_id)
-    if proposal is None:
-        raise ValueError(f"Proposal not found: {proposal_id}")
-    if proposal.get("status") != "PENDING":
-        raise ValueError(
-            f"Proposal {proposal_id} is not PENDING (status={proposal.get('status')})"
-        )
-
-    now = _now_iso()
-    proposal["status"] = "APPROVED"
-    proposal["signer"] = signer.strip()
-    proposal["signed_at"] = now
-    save_queue(qpath, records)
-
-    ledger = proposal_to_ledger(proposal, signer=signer, ledger_id=ledger_id)
-    append_approved(approved_path(cfg), ledger)
+    from conflict_events import append_event, governed_lock, new_event
+    with governed_lock(cfg):
+        qpath = queue_path(cfg)
+        records = load_queue(qpath)
+        proposal = find_proposal(records, proposal_id)
+        if proposal is None:
+            raise ValueError(f"Proposal not found: {proposal_id}")
+        if proposal.get("status") != "PENDING":
+            raise ValueError(
+                f"Proposal {proposal_id} is not PENDING (status={proposal.get('status')})"
+            )
+        append_event(cfg, new_event("APPROVAL_STARTED", proposal_id))
+        now = _now_iso()
+        proposal["status"] = "APPROVED"
+        proposal["signer"] = signer.strip()
+        proposal["signed_at"] = now
+        save_queue(qpath, records)
+        ledger = proposal_to_ledger(proposal, signer=signer, ledger_id=ledger_id)
+        append_approved(approved_path(cfg), ledger)
+        # Chroma reconciliation is performed by the caller before APPROVED.
     return proposal, ledger
+
+
+def mark_approved(cfg: dict, proposal_id: str) -> None:
+    """Finish a successfully indexed approval while holding the same data-root lock."""
+    from conflict_events import append_event, governed_lock, new_event
+    with governed_lock(cfg):
+        append_event(cfg, new_event("APPROVED", proposal_id))
 
 
 def reject(
