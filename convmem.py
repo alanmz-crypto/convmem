@@ -886,6 +886,7 @@ def propose_decision_command(
     from propose_decision import (
         InteractiveLockError,
         approve as do_approve,
+        approve_and_ingest,
         approved_path,
         collect_interactive_fields,
         confirm_interactive_submit,
@@ -952,27 +953,22 @@ def propose_decision_command(
 
     if approve_id:
         resolved_signer = _resolve_approve_signer(signer)
+        ingest_result = None
         try:
-            proposal, ledger = do_approve(
-                cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id
-            )
+            if no_index:
+                proposal, ledger = do_approve(cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id)
+            else:
+                from restic_gate import ensure_chroma_snapshot_for_live_write
+                ensure_chroma_snapshot_for_live_write()
+                proposal, ledger, ingest_result = approve_and_ingest(cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id)
         except ValueError as e:
             render_error(str(e))
             raise typer.Exit(1) from e
-        ingest_result = None
+        except Exception as e:
+            _log_index_failure(approve_id, e)
+            typer.echo(f"\n⚠ Approval apply deferred for recovery: {e}")
+            raise typer.Exit(1) from e
         apath = str(approved_path(cfg))
-        if not no_index:
-            from restic_gate import ensure_chroma_snapshot_for_live_write
-
-            ensure_chroma_snapshot_for_live_write()
-            try:
-                ingest_result = ingest_approved_ledger(cfg, ledger)
-                mark_approved(cfg, approve_id)
-            except Exception as e:
-                _log_index_failure(approve_id, e)
-                typer.echo(f"\n⚠  Approved (ledger) but index deferred: {e}")
-                typer.echo(f"  Recovery: convmem add --file {apath} --upsert")
-                typer.echo("  The decision is durable in the ledger; Chroma will catch up on next index.\n")
         _finish_record_messages(
             proposal,
             ledger,
