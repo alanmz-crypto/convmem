@@ -3,16 +3,16 @@
 **Date:** 2026-07-12  
 **Branch:** `plan/2026-07-12-restic-integrity-preflight`  
 **Predecessor:** [`ARCHITECTURE-chroma-restore-drill.md`](ARCHITECTURE-chroma-restore-drill.md) (merged — Mechanical PASS @ `7e5a1ce`, PR #1)  
-**Phase:** Architecture Planning → HITL before Execution Planning
+**Phase:** Architecture accepted 2026-07-12 (Ryan: accept defaults) → Execution Planning
 
 ```
 Planning Status
 
-Phase:        Architecture Planning
+Phase:        Architecture Planning (closed)
 Characters:   Architect, Systems Thinker, Risk Reviewer
 Functions:    Planner
-Lanes:        Cursor (Tier A); Codex read-only if Ryan requests direction audit
-Authority:    Awaiting HITL
+Lanes:        Cursor (Tier A)
+Authority:    Gates 1–6 accepted 2026-07-12 (Ryan: accept defaults)
 ```
 
 ---
@@ -20,7 +20,7 @@ Authority:    Awaiting HITL
 ## Architecture Direction — Restic repository integrity preflight
 
 **Source:** Ryan “pick the next … task” after Chroma Restore Drill closed; Gate 6 deferred in restore-drill architecture until the basic drill (incl. vector round-trip) was proven.  
-**Authority:** Awaiting HITL @ 2026-07-12  
+**Authority:** Gates 1–6 accepted 2026-07-12 (Ryan: accept defaults)  
 **Problem:** A successful restore proves a *snapshot* is usable; it does **not** prove the *Restic repository* (packs/trees/indexes) is structurally sound or that pack data is readable — that is `restic check`.
 
 ### System boundary
@@ -131,3 +131,9 @@ Authority:    Awaiting HITL
 ## Gates
 
 Await Ryan: **accept defaults** or override rows 1–6 above. Then Cursor shapes EXECUTION on this branch.
+
+---
+
+## Gates (accepted 2026-07-12)
+
+Ryan accepted defaults for gates 1–6 (doctor freshness deferred; no cadence this pass). Next: EXECUTION plan → HITL → implement one-time runner.
