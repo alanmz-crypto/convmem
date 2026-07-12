@@ -276,9 +276,13 @@ cd ~/Projects/convmem
 python -m pytest tests/test_doctor.py tests/test_git_hooks.py -q
 echo "pytest exit: $?"
 
-# V5c — live CLI (pytest ≠ doctor process); WARN-only checks must not force non-zero exit
+# V5c — live CLI (pytest ≠ doctor process)
 convmem doctor
-echo "doctor exit: $?"   # expect 0
+echo "doctor exit: $?"
+# PASS: exit 0.
+# SKIP: non-zero solely from unrelated ops checks (e.g. restic_gate freshness) —
+#   record FAIL lines; require [PASS] hooks_path and no new hygiene-related FAIL.
+# FAIL: hooks_path FAIL, or unexplained non-zero without SKIP evidence.
 
 # Prefer clean: no global hygiene keys
 if git config --global --list 2>/dev/null | grep -E 'pull\.|rerere\.|blame\.'; then
@@ -297,7 +301,7 @@ fi
 |----|--------|-------------|
 | V5a | Foundation tests still green | pytest exit `0` |
 | V5b | No global hygiene drift from this arc | **PASS:** `no global hygiene keys`. **SKIP:** keys exist but `git config --global --show-origin --get-regexp '^(pull\.|rerere\.|blame\.)'` shows an origin **outside** this arc’s install scripts (record origin lines). **FAIL:** origin points at convmem install scripts or cannot be proven unrelated |
-| V5c | Live `convmem doctor` | Exit `0` (historical WIP / heuristic WARNs OK; FAIL only on non-zero exit) |
+| V5c | Live `convmem doctor` | **PASS:** exit `0`. **SKIP:** exit non-zero but sole FAIL(s) are unrelated ops (e.g. `restic_gate` freshness) — paste FAIL lines; must still show `[PASS] hooks_path`. Historical WIP / `direct_commits_on_main` WARNs OK. **FAIL:** `hooks_path` FAIL or other unexplained FAIL |
 
 ---
 
@@ -316,12 +320,12 @@ fi
 
 | Result | When |
 |--------|------|
-| **Mechanical PASS** | V0–V5 all PASS (or V5b justified SKIP with `--show-origin` evidence) |
-| **FAIL** | Any scope-lock violation, V0e WIP subject on branch, V1a path-set mismatch, wrapper restores hooks only, `merge=union`, `work start`, `--global` in install scripts, phantom `v0.2` / stale draft SSoT, V4f heading-only surfaces, unresolvable blame SHA, omit spot-check fail, installer non-idempotent, or live doctor non-zero |
+| **Mechanical PASS** | V0–V5 all PASS (or V5b / V5c justified SKIP with evidence) |
+| **FAIL** | Any scope-lock violation, V0e WIP subject on branch, V1a path-set mismatch, wrapper restores hooks only, `merge=union`, `work start`, `--global` in install scripts, phantom `v0.2` / stale draft SSoT, V4f heading-only surfaces, unresolvable blame SHA, omit spot-check fail, installer non-idempotent, or live doctor hygiene-related FAIL |
 | **Sign-off (V6c)** | After Mechanical PASS only — date in [`git-hygiene-baseline.md`](git-hygiene-baseline.md) + handoff |
 | **GATE (V6d)** | Ryan merge after V6c |
 
-**Accepted limitations (do not FAIL):** fresh-clone silent gap until install runs; header-only blame-ignore; wrapper stdout includes hygiene lines; doctor WARN on historical WIP / `direct_commits_on_main` heuristic (exit still 0).
+**Accepted limitations (do not FAIL):** fresh-clone silent gap until install runs; header-only blame-ignore; wrapper stdout includes hygiene lines; doctor WARN on historical WIP / `direct_commits_on_main` heuristic; doctor FAIL on unrelated `restic_gate` (V5c SKIP with evidence).
 
 ---
 
@@ -337,7 +341,7 @@ V2h: omit judgment OK: PASS/FAIL
 V3: wrapper four-key restore: PASS/FAIL
 V3f: idempotent rerun exit 0: PASS/FAIL
 V4: no work start OK; V4f install-repo-config in surfaces: PASS/FAIL
-V5a: pytest …; V5c doctor exit …; V5b global: PASS|SKIP(origin=…)|FAIL
+V5a: pytest …; V5c doctor: PASS|SKIP(fail=restic_gate…)|FAIL; V5b global: PASS|SKIP(origin=…)|FAIL
 Mechanical: PASS|FAIL
 V6c Kiro reviewed: YYYY-MM-DD   # only if Mechanical PASS
 ```
