@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-12  
 **Branch:** `plan/2026-07-12-knowledge-unit-conflict-detection`  
-**Status:** Awaiting HITL on final gate set (architecture only — not executed)  
+**Status:** Gates 1–10 accepted 2026-07-12 (Ryan: accept defaults). Execution constraints recorded below — not code-executed yet.  
 **Reviews folded in:** Claude Cloud (×2) + final determinism pass (lifecycle vs conflicts, rebase, create-if-absent, single event log, recovery matrix, flock/fsync, single-host wording)
 
 ## Problem
@@ -200,3 +200,15 @@ Distributed locks, auto-merge, LLM winner-picking, force-approve, MCP write/appr
 ## Ask of HITL
 
 Reply **`accept defaults`** (these final ten gates) or list overrides. Then Cursor writes EXECUTION on this branch.
+
+---
+
+## Gates (accepted 2026-07-12)
+
+Ryan accepted defaults for gates 1–10. **Execution Planning must preserve:**
+
+1. Lock identity derived from the canonical governed data store (same store → same lockfile).
+2. Deterministic event reduction + idempotent legacy import of `pending_decisions.jsonl`.
+3. Uncertain Chroma apply outcomes leave `APPROVAL_STARTED` until §7 reconciliation — no definitive failure event and no blind retry.
+
+Next: EXECUTION plan → HITL → Execute.
