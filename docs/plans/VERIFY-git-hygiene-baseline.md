@@ -119,7 +119,9 @@ grep -n 'v0\.2' docs/plans/branching-strategy.md && echo FAIL || echo "no phanto
 grep -F 'v0.1.0-branching-foundation' docs/plans/branching-strategy.md
 
 # SSoT must be a rewrite (old draft gone), not an append leaving stale markers:
-(grep -nE 'v0\.2\.0|Status \| \*\*draft\*\*|optional tag `v0\.2' docs/plans/git-hygiene-baseline.md \
+# Table cell "Status | **draft**" and prose "Status: draft" / "Status: **draft**".
+(grep -nE 'v0\.2\.0|Status[[:space:]]*\|[[:space:]]*\*\*draft\*\*|Status:[[:space:]]*\*\*draft\*\*|Status:[[:space:]]*draft([^[:alnum:]]|$)|optional tag `v0\.2' \
+  docs/plans/git-hygiene-baseline.md \
   && echo FAIL) || echo "SSoT rewrite OK (no stale draft/v0.2.0)"
 grep -F 'Blame-ignore audit' docs/plans/git-hygiene-baseline.md
 grep -F 'install-repo-config.sh' docs/plans/git-hygiene-baseline.md
@@ -132,7 +134,7 @@ grep -F 'install-repo-config.sh' docs/plans/git-hygiene-baseline.md
 | V2c | Markdown diff only | `*.md diff=markdown` present |
 | V2d | No JSONL union | `no union OK` |
 | V2e | Tag version fix (branching-strategy) | No `v0.2` in branching-strategy closure; `v0.1.0-branching-foundation` present |
-| V2f | Plan SSoT rewritten | `SSoT rewrite OK`; no stale `v0.2.0` / `**draft**` status / “optional tag v0.2”; audit + installer present |
+| V2f | Plan SSoT rewritten | `SSoT rewrite OK`; no stale `v0.2.0` / table or prose `Status: draft` / “optional tag v0.2”; audit + installer present |
 
 **FAIL if:** pylintrc-only SHAs listed “to fill the file,” any `merge=union` in `.gitattributes`, or old draft markers remain in `git-hygiene-baseline.md`.
 
@@ -184,6 +186,10 @@ head -5 scripts/install-git-hooks.sh | grep -q install-repo-config && echo "wrap
 | V3c | Installer sets four keys + prints them | Values match table above |
 | V3d | Wrapper is thin `exec` → full installer | After unset-all four, wrapper restores all four |
 | V3e | Pre-push still executable | `test -x` passes (Foundation hook not broken) |
+
+**Locked local key set (V3c/V3d — today):** `core.hooksPath`, `pull.ff`, `rerere.enabled`, `blame.ignoreRevsFile`.
+
+If a future arc adds a fifth (or changes) repo-local key in `install-repo-config.sh`, update this VERIFY doc in the same change: extend unset-all, the post-wrapper `test` lines, the installer status echo list, and this note. Same maintenance rule as V1a’s expected path set — the wrapper test proves current four-key correctness only; it does not auto-grow.
 
 ---
 
