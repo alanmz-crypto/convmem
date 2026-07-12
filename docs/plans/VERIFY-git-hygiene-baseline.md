@@ -44,12 +44,16 @@ Authority:    Post-Execute HITL — do not trust Cursor session claims alone
 | V0b | Diff base is post-Foundation main | `git merge-base --is-ancestor 6d8980a origin/main` | Exit 0 |
 | V0c | Dirty allowlist ignored | `git status --short` | WH triage / TODO-WH / `s2_hotfix_reconcile` dirt does **not** fail verify |
 | V0d | Working tree for review | Prefer `git switch feat/2026-07-11-git-hygiene-baseline` or review via `git diff origin/main...origin/feat/2026-07-11-git-hygiene-baseline` | Evidence recorded |
+| V0e | No WIP subjects on this branch | See command below | `no WIP commits OK` |
 
 ```bash
 cd ~/Projects/convmem
 git fetch origin
 git log origin/main..origin/feat/2026-07-11-git-hygiene-baseline --oneline
 git diff --stat origin/main...origin/feat/2026-07-11-git-hygiene-baseline
+# V0e — branch must itself pass the WIP-on-main subject policy it sits atop
+git log origin/main..origin/feat/2026-07-11-git-hygiene-baseline --format='%s' \
+  | grep -iE '^wip[:(! ]' && echo "FAIL: WIP commit on hygiene branch" || echo "no WIP commits OK"
 ```
 
 ---
@@ -113,6 +117,24 @@ test -f .git-blame-ignore-revs
 grep -F 'No mass-reformat SHAs as of' .git-blame-ignore-revs
 # Body SHAs (if any) must be full 40-char; pylintrc-only must not appear
 grep -E '^[0-9a-f]{40}$' .git-blame-ignore-revs || echo "header-only OK"
+# V2g — every non-comment body line must be a real commit in this repo
+# (blame.ignoreRevsFile silently skips unresolvable lines)
+while read -r sha; do
+  [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || continue
+  git cat-file -e "${sha}^{commit}" 2>/dev/null \
+    || { echo "FAIL: invalid SHA $sha"; exit 1; }
+done < .git-blame-ignore-revs
+echo "blame-ignore SHAs resolvable OK (or header-only)"
+# V2h — spot-check one omit row from the audit table (config-only candidates)
+# Pick a SHA marked omit for .pylintrc / workflow — e.g. 5da5aaa (expand to full if needed)
+OMIT_SPOT=$(git rev-parse 5da5aaa)
+git show --stat --oneline -1 "$OMIT_SPOT"
+# Fail if any path outside pylint config/workflow appears in the stat summary
+if git show --name-only --format= "$OMIT_SPOT" | grep -vE '^$|^\.pylintrc$|^\.github/workflows/pylint\.yml$'; then
+  echo "FAIL: omitted SHA touches non-config"
+else
+  echo "omit judgment OK"
+fi
 grep -F '*.md diff=markdown' .gitattributes
 (grep -qF 'merge=union' .gitattributes && echo FAIL) || echo "no union OK"
 grep -n 'v0\.2' docs/plans/branching-strategy.md && echo FAIL || echo "no phantom v0.2 OK"
@@ -135,8 +157,10 @@ grep -F 'install-repo-config.sh' docs/plans/git-hygiene-baseline.md
 | V2d | No JSONL union | `no union OK` |
 | V2e | Tag version fix (branching-strategy) | No `v0.2` in branching-strategy closure; `v0.1.0-branching-foundation` present |
 | V2f | Plan SSoT rewritten | `SSoT rewrite OK`; no stale `v0.2.0` / table or prose `Status: draft` / “optional tag v0.2”; audit + installer present |
+| V2g | Blame-ignore SHAs are real commits | Each `^[0-9a-f]{40}$` line passes `git cat-file -e ${sha}^{commit}`; header-only → PASS via empty loop |
+| V2h | Omit judgment spot-check | One table-omitted config SHA (`5da5aaa` or equivalent) touches only `.pylintrc` / pylint workflow — `omit judgment OK` |
 
-**FAIL if:** pylintrc-only SHAs listed “to fill the file,” any `merge=union` in `.gitattributes`, or old draft markers remain in `git-hygiene-baseline.md`.
+**FAIL if:** pylintrc-only SHAs listed “to fill the file,” any `merge=union` in `.gitattributes`, old draft markers remain in `git-hygiene-baseline.md`, an ignore-revs SHA does not resolve, or the omit spot-check touches non-config paths.
 
 ---
 
@@ -177,6 +201,15 @@ test "$(git config --get pull.ff)" = "only"
 test "$(git config --get rerere.enabled)" = "true"
 test "$(git config --get blame.ignoreRevsFile)" = ".git-blame-ignore-revs"
 head -5 scripts/install-git-hooks.sh | grep -q install-repo-config && echo "wrapper exec OK"
+
+# V3f — idempotent second run (normal re-bootstrap / every future clone)
+bash scripts/install-repo-config.sh
+bash scripts/install-repo-config.sh
+echo "idempotent rerun: exit $?"
+test "$(git config --get core.hooksPath)" = "scripts/git-hooks"
+test "$(git config --get pull.ff)" = "only"
+test "$(git config --get rerere.enabled)" = "true"
+test "$(git config --get blame.ignoreRevsFile)" = ".git-blame-ignore-revs"
 ```
 
 | ID | Expect | PASS |
@@ -186,6 +219,7 @@ head -5 scripts/install-git-hooks.sh | grep -q install-repo-config && echo "wrap
 | V3c | Installer sets four keys + prints them | Values match table above |
 | V3d | Wrapper is thin `exec` → full installer | After unset-all four, wrapper restores all four |
 | V3e | Pre-push still executable | `test -x` passes (Foundation hook not broken) |
+| V3f | Installer idempotent | Second `install-repo-config.sh` exits `0`; four keys unchanged |
 
 **Locked local key set (V3c/V3d — today):** `core.hooksPath`, `pull.ff`, `rerere.enabled`, `blame.ignoreRevsFile`.
 
@@ -242,6 +276,10 @@ cd ~/Projects/convmem
 python -m pytest tests/test_doctor.py tests/test_git_hooks.py -q
 echo "pytest exit: $?"
 
+# V5c — live CLI (pytest ≠ doctor process); WARN-only checks must not force non-zero exit
+convmem doctor
+echo "doctor exit: $?"   # expect 0
+
 # Prefer clean: no global hygiene keys
 if git config --global --list 2>/dev/null | grep -E 'pull\.|rerere\.|blame\.'; then
   echo "Global hygiene-looking keys found — prove origin (SKIP path only if not from this arc):"
@@ -259,6 +297,7 @@ fi
 |----|--------|-------------|
 | V5a | Foundation tests still green | pytest exit `0` |
 | V5b | No global hygiene drift from this arc | **PASS:** `no global hygiene keys`. **SKIP:** keys exist but `git config --global --show-origin --get-regexp '^(pull\.|rerere\.|blame\.)'` shows an origin **outside** this arc’s install scripts (record origin lines). **FAIL:** origin points at convmem install scripts or cannot be proven unrelated |
+| V5c | Live `convmem doctor` | Exit `0` (historical WIP / heuristic WARNs OK; FAIL only on non-zero exit) |
 
 ---
 
@@ -278,11 +317,11 @@ fi
 | Result | When |
 |--------|------|
 | **Mechanical PASS** | V0–V5 all PASS (or V5b justified SKIP with `--show-origin` evidence) |
-| **FAIL** | Any scope-lock violation, V1a path-set mismatch, wrapper restores hooks only, `merge=union`, `work start`, `--global` in install scripts, phantom `v0.2` / stale draft SSoT, or V4f heading-only surfaces |
+| **FAIL** | Any scope-lock violation, V0e WIP subject on branch, V1a path-set mismatch, wrapper restores hooks only, `merge=union`, `work start`, `--global` in install scripts, phantom `v0.2` / stale draft SSoT, V4f heading-only surfaces, unresolvable blame SHA, omit spot-check fail, installer non-idempotent, or live doctor non-zero |
 | **Sign-off (V6c)** | After Mechanical PASS only — date in [`git-hygiene-baseline.md`](git-hygiene-baseline.md) + handoff |
 | **GATE (V6d)** | Ryan merge after V6c |
 
-**Accepted limitations (do not FAIL):** fresh-clone silent gap until install runs; header-only blame-ignore; wrapper stdout includes hygiene lines.
+**Accepted limitations (do not FAIL):** fresh-clone silent gap until install runs; header-only blame-ignore; wrapper stdout includes hygiene lines; doctor WARN on historical WIP / `direct_commits_on_main` heuristic (exit still 0).
 
 ---
 
@@ -290,12 +329,15 @@ fi
 
 ```text
 VERIFY-git-hygiene-baseline — tip <sha>
-V0: …
+V0e: no WIP commits OK: PASS/FAIL
 V1a: path-set diff empty: PASS/FAIL
 V2f: SSoT rewrite OK: PASS/FAIL
+V2g: blame SHAs resolvable: PASS/FAIL
+V2h: omit judgment OK: PASS/FAIL
 V3: wrapper four-key restore: PASS/FAIL
+V3f: idempotent rerun exit 0: PASS/FAIL
 V4: no work start OK; V4f install-repo-config in surfaces: PASS/FAIL
-V5: pytest …; V5b global: PASS|SKIP(origin=…)|FAIL
+V5a: pytest …; V5c doctor exit …; V5b global: PASS|SKIP(origin=…)|FAIL
 Mechanical: PASS|FAIL
 V6c Kiro reviewed: YYYY-MM-DD   # only if Mechanical PASS
 ```
