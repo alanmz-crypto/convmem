@@ -127,15 +127,15 @@ If heuristic WARNs and Ryan confirms true direct commits (not squash noise) → 
 This arc is a **milestone** (subsystem operational), not a routine feat merge. After Ryan merges `feat/2026-07-11-branching-strategy` to `main`:
 
 ```bash
-git tag -a v0.2.0-branching-foundation \
+git tag -a v0.1.0-branching-foundation \
   -m "Branching Safety Foundation operational — WIP pre-push, doctor checks, protocol"
-git push origin refs/tags/v0.2.0-branching-foundation
+git push origin refs/tags/v0.1.0-branching-foundation
 ```
 
-Recovery from the tag (do not leave detached HEAD):
+Recovery from the tag (do not leave detached HEAD; any branch name is fine):
 
 ```bash
-git switch -c recovery/branching-foundation v0.2.0-branching-foundation
+git switch -c feat/from-branching-foundation v0.1.0-branching-foundation
 ```
 
 Agents may **suggest** a tag name in handoff for milestone closures; **Ryan** creates and pushes tags. Do not tag every `feat/` merge — see follow-up [`git-hygiene-baseline.md`](git-hygiene-baseline.md).

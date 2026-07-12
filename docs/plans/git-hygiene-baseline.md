@@ -1,134 +1,146 @@
-# Git Hygiene Baseline — follow-up arc (draft)
+# Git Hygiene Baseline
+
+```
+Planning Status
+
+Phase:        Execute (agent T1–T5)
+Characters:   Cursor (writer)
+Lanes:        Cursor → Kiro (T5b) → Ryan (T7)
+Authority:    HITL + T0 satisfied 2026-07-11
+```
 
 | Field | Value |
 |-------|-------|
 | Plan ID | `git_hygiene_baseline_20260711` |
-| Status | **draft** — start after Branching Safety Foundation merges |
-| Depends on | `feat/2026-07-11-branching-strategy` merged + optional tag `v0.2.0-branching-foundation` |
+| Status | **active** — executing on `feat/2026-07-11-git-hygiene-baseline` |
+| Depends on | Branching Safety Foundation on `origin/main` (`6d8980a`); tag `v0.1.0-branching-foundation` (T6 done) |
 | Scope | `~/Projects/convmem` only |
-
-**Not part of Branching Safety Foundation.** That arc stays bounded (protocol + roles + WIP hook + three doctor checks). This plan is the coherent follow-up Claude recommended.
+| Execution plan | [`EXECUTION-git-hygiene-baseline.md`](EXECUTION-git-hygiene-baseline.md) |
+| Direction plan | `~/.cursor/plans/git_hygiene_baseline_d048ae33.plan.md` |
 
 ---
 
 ## Problem
 
-Branching Safety Foundation ships agent-facing git *behavior*. Separately, the repo lacks baseline *hygiene*: no milestone tags, blame polluted by pylint formatting commits, no repo-local pull/rerere preferences, no markdown diff driver. Crush proposed a global tooling dump; Claude narrowed it — adopt carefully, repository-local, no expansion of the live branching arc.
+Branching Safety Foundation ships agent-facing git *behavior*. Separately, the repo lacked baseline *hygiene*: no milestone tags, no repo-local pull/rerere/blame preferences, no markdown diff driver. This arc closes that gap — repository-local only.
 
 ---
 
-## Principles (from Claude review)
+## Principles
 
 - Tags mark **milestone closures**, not every `feat/` merge
-- Prefer **repo-local** git config over `--global` (WordPress / other clones must not inherit convmem defaults)
+- Prefer **repo-local** git config over `--global`
 - Ambiguity stops execution (`pull.ff only`) rather than silent rebase/merge
-- Agents must **not** stash Ryan’s unrelated work without explicit plan authority
-- `merge=union` only on path-proven append-only files — never `*.jsonl` globally
-- Doctor/protocol tooling only where agents make recurring decisions; one-time config stays install-script / commit-and-forget
+- Agents may stash **own** work; must **not** stash Ryan’s unrelated dirty files without execution-plan authorization
+- No blanket `*.jsonl merge=union`
+- No new doctor checks in this arc (`_check_tag_freshness` deferred)
 
 ---
 
-## In scope
+## Deliverables
 
 | # | Item | How |
 |---|------|-----|
-| 1 | First annotated milestone tag | Ryan: `v0.2.0-branching-foundation` after Foundation merge (see branching-strategy closure) |
-| 2 | `.git-blame-ignore-revs` | Audit pylint/format SHAs as behavior-neutral; add file; `git config --local blame.ignoreRevsFile .git-blame-ignore-revs` via install script |
-| 3 | Install/bootstrap | Document + set local blame ignore (and other local configs below) in existing install path (`scripts/install-git-hooks.sh` or sibling) |
-| 4 | `pull.ff only` | **Repo-local only** — `git config --local pull.ff only`. Protocol: `git fetch` + explicit `rebase` / `pull --ff-only` |
-| 5 | `rerere.enabled` | **Repo-local** — `git config --local rerere.enabled true`. Protocol note: reused resolutions must be reviewed in final diff |
-| 6 | `.gitattributes` | `*.md diff=markdown` only in this pass |
-| 7 | JSONL merge drivers | Investigate individual files; path-specific `merge=union` only if append-only + duplicate-tolerant + validated |
-| 8 | Stash policy | Document: agents do **not** stash unrelated user work without explicit authorization; prefer allowlist / preservation branch / worktree |
+| 1 | Milestone tag | Ryan: `v0.1.0-branching-foundation` (done async as T6) |
+| 2 | `.git-blame-ignore-revs` | Header-only until eligible mechanical SHAs exist; `blame.ignoreRevsFile` via installer |
+| 3 | Unified installer | `scripts/install-repo-config.sh`; `install-git-hooks.sh` thin `exec` wrapper |
+| 4 | `pull.ff only` | Repo-local; protocol: fetch + rebase / `pull --ff-only` |
+| 5 | `rerere.enabled` | Repo-local; review with `git rerere diff` |
+| 6 | `.gitattributes` | `*.md diff=markdown` only |
+| 7 | JSONL union | Declined for fixtures/examples (see inventory) |
+| 8 | Protocol notes | Tag propose, pull.ff/rebase, rerere diff, stash auth, clone install one-liner |
+
+---
+
+## Blame-ignore audit (2026-07-11)
+
+Eligibility: commits that pollute **logic** blame — typically >5 `*.py` with trivial/mechanical diffs. Config-only (`.pylintrc`, workflow) omitted.
+
+### Wide `*.py` touch sets (`git log` on `origin/main`)
+
+| SHA | Subject | `*.py` count | Include? | Why |
+|-----|---------|--------------|----------|-----|
+| `5014b30` | WIP: preserve progress on Bug 5… | 13 | No | Behavioral WIP |
+| `3bad9ab` | feat: HITL team charter… | 7 | No | Feature |
+| `9fdd115` | feat: retrieval hardening… | 20 | No | Feature |
+| `7d51e0d` | Ship global agent protocol… | 13 | No | Feature |
+| `6cfa5bb` | P1a/P1b: unresolved CLI… | 7 | No | Feature |
+| `9b6add2` | Coordination protocol… | 6 | No | Feature |
+| `036de85` | Watch OOM fixes… | 8 | No | Feature |
+| `0c8ed9b` | Fix re-index duplication… | 6 | No | Bugfix |
+
+### Pylint / config candidates (Crush list)
+
+| SHA | Files | Include? | Why |
+|-----|-------|----------|-----|
+| `25e16f0` | `.github/workflows/pylint.yml` | No | Workflow-only; no logic-blame pollution |
+| `5da5aaa` | `.pylintrc` | No | Config-only |
+| `d6511f8` | `.pylintrc` | No | Config-only |
+| `6d50da8` | `.pylintrc` | No | Config-only |
+| `60bda66` | `.pylintrc` | No | Config-only |
+
+**Outcome:** header-only `.git-blame-ignore-revs` (no SHAs). Add full SHAs when a true mass-reformat lands.
+
+---
+
+## JSONL inventory (union declined)
+
+Tracked JSONL today is fixtures/examples only (`tests/fixtures/golden_*.jsonl`, `examples/*.jsonl`, `docs/chatgpt-pack/examples/*.jsonl`). None are append-only production ledgers in-repo. **No** path-specific `merge=union` in this arc.
+
+---
+
+## Install / clone
+
+After clone (or to refresh local hygiene):
+
+```bash
+bash scripts/install-repo-config.sh
+```
+
+Sets (all `--local`): `core.hooksPath`, `pull.ff=only`, `rerere.enabled=true`, `blame.ignoreRevsFile=.git-blame-ignore-revs`.
+
+`scripts/install-git-hooks.sh` is a thin wrapper that `exec`s the unified installer (legacy name preserved).
+
+**`pull.ff=only` failure:** histories diverged — do not force a merge pull. Recover with `git fetch origin` then either `git rebase origin/main` (feature branch) or investigate before `git pull --ff-only` on a clean `main`.
+
+---
+
+## Tagging (sparse milestones)
+
+1. Agent proposes `vX.Y.Z-<slug>` or `milestone/<slug>` at milestone handoff  
+2. Ryan creates annotated tag + pushes  
+3. Work from tag: `git switch -c <branch> <tag>` (no fixed `recovery/` prefix)
+
+Foundation tag: `v0.1.0-branching-foundation` (exists).
+
+---
 
 ## Out of scope
 
 | Item | Why |
 |------|-----|
-| Global `pull.rebase=true` | Changes every repo on the machine — rejected |
-| `_check_tag_freshness()` doctor | Premature; “N commits since tag” is arbitrary — revisit after 2–3 arcs if tags are forgotten |
-| Tag-every-feat protocol rule | Too broad — milestones only |
-| Agent-default stash discipline | Hides Ryan’s work; allowlist stays for branching-style arcs |
-| Global `*.jsonl merge=union` | Duplicates / contradictory records risk |
-| Worktrees / commit signing / aliases | Deferred (worktrees when concurrent writers; signing N/A) |
-| Automated Work Start (`convmem work *`) | Separate arc, gated on branching 2-week data |
-
----
-
-## Tagging discipline (lightweight — two layers only)
-
-1. **Handoff:** on milestone closure, agent suggests `vX.Y.Z-<slug>` in session chat  
-2. **Ryan:** creates annotated tag + pushes  
-
-```bash
-git tag -a v0.2.0-branching-foundation -m "…"
-git push origin refs/tags/v0.2.0-branching-foundation
-```
-
-Recovery:
-
-```bash
-git switch -c recovery/<slug> v0.2.0-branching-foundation
-```
-
-**Do not** add doctor tag-freshness until evidence shows tags are being skipped.
-
----
-
-## Blame-ignore audit gate
-
-Before listing any SHA in `.git-blame-ignore-revs`:
-
-```bash
-git show --stat <sha>
-git show <sha> -- '*.py' | head   # spot-check: formatting/config only
-```
-
-If any commit mixes behavior change with formatting → **omit** that SHA (or split history later — do not ignore).
-
-Candidate range from Crush (verify each): `25e16f0` … `60bda66` pylint/config scaffolding on recent main.
-
----
-
-## Protocol / install touchpoints (this arc only)
-
-| Change | File |
-|--------|------|
-| Suggest milestone tags at handoff; Ryan tags | Short note in `config/agent-protocol.md` Tier A / handoff — **no** every-feat rule |
-| `pull.ff only` + fetch/rebase wording | Protocol one-liner + install script |
-| rerere review note | Protocol one-liner |
-| No agent stash without authority | Protocol one-liner |
-| Local git config | `scripts/install-git-hooks.sh` or `scripts/install-git-hygiene.sh` |
-
-No new doctor checks in v1 of this arc.
-
----
-
-## Suggested tasks (execution planning later)
-
-| ID | Deliverable |
-|----|-------------|
-| H1 | Annotated tag `v0.2.0-branching-foundation` (Ryan, post-merge) |
-| H2 | Audit + commit `.git-blame-ignore-revs` |
-| H3 | `.gitattributes` with `*.md diff=markdown` |
-| H4 | Install script sets local `blame.ignoreRevsFile`, `pull.ff only`, `rerere.enabled` |
-| H5 | Protocol notes (tag suggest / pull.ff / rerere review / no unauthorized stash) |
-| H6 | JSONL inventory note — candidates for path-specific union or “none” |
+| Global `pull.rebase` / any `--global` hygiene | Cross-repo blast radius |
+| `_check_tag_freshness` / hygiene doctor | Deferred |
+| Tag-every-feat | Too broad |
+| Agent-default stash of Ryan’s files | Hides dirty allowlist work |
+| `*.jsonl merge=union` | Duplicate / contradiction risk |
+| Automated Work Start / worktrees | Separate arcs |
 
 ---
 
 ## Success criteria
 
-- One annotated milestone tag exists for Branching Foundation  
-- `git blame` on pylint-touched files skips ignored revs after local config  
-- Accidental `git pull` on diverged main fails closed (`pull.ff only`) instead of merge commit  
-- No global git config changes from this arc  
-- No `*.jsonl merge=union` unless a specific path is proven  
+- Installer configs live after `install-repo-config.sh` / wrapper regression
+- Blame policy applied (header-only or SHAs)
+- Protocol deployed; no `work start`; no global hygiene keys; no JSONL union
+- T5b Kiro sign-off dated below → Ryan merge (T7)
+
+**Kiro reviewed:** _(pending T5b)_
 
 ---
 
 ## Related
 
-- Branching Foundation: [`branching-strategy.md`](branching-strategy.md)  
-- Verify: [`VERIFY-branching-safety-foundation.md`](VERIFY-branching-safety-foundation.md)  
-- Next after hygiene + 2-week branching data: Automated Work Start
+- Branching Foundation: [`branching-strategy.md`](branching-strategy.md)
+- Verify Foundation: [`VERIFY-branching-safety-foundation.md`](VERIFY-branching-safety-foundation.md)
+- Execution: [`EXECUTION-git-hygiene-baseline.md`](EXECUTION-git-hygiene-baseline.md)
