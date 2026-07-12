@@ -170,8 +170,8 @@ grep -F 'install-repo-config.sh' docs/plans/git-hygiene-baseline.md
 
 ```bash
 cd ~/Projects/convmem
-# Installer must never use --global
-rg -n 'config --global|git config --global' scripts/install-repo-config.sh scripts/install-git-hooks.sh \
+# Installer must never invoke --global (comments that forbid it are OK)
+rg -n '^[^#]*git config --global|^[^#]*\bconfig --global' scripts/install-repo-config.sh scripts/install-git-hooks.sh \
   && echo FAIL || echo "no global OK"
 # pull.ff failure comment present
 rg -n 'pull\.ff|diverged|rebase origin/main|pull --ff-only' scripts/install-repo-config.sh
