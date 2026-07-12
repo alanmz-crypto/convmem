@@ -1,0 +1,7 @@
+# Commits to ignore when running git blame (repo-local via blame.ignoreRevsFile).
+# Eligibility: mechanical refactors that pollute logic-file blame (>5 *.py, format-only).
+# Config-only commits (e.g. .pylintrc, workflow YAML) are intentionally omitted —
+# they do not pollute Python logic blame.
+#
+# No mass-reformat SHAs as of 2026-07-11. Add full SHAs here when mechanical
+# refactors occur. See docs/plans/git-hygiene-baseline.md for the audit table.
