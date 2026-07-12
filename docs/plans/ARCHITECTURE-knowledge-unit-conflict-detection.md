@@ -70,27 +70,34 @@ active_conflicts:  stale_base | target_missing | target_tombstoned | pending_sib
 
 ### 4. Hash contract (schema v1)
 
-Canonical object:
+Hash the **normalized semantic ledger record** (not a thin 5-field metadata slice). Canonical object includes every field that defines decision/observation meaning after `normalize_ledger_record`:
 
 ```json
 {
   "hash_schema_version": 1,
-  "document": "...",
-  "metadata": {
-    "ledger_id": "...",
-    "kind": "...",
-    "status": "...",
-    "domain": "...",
-    "site": "..."
-  }
+  "ledger_id": "...",
+  "kind": "...",
+  "status": "...",
+  "title": "...",
+  "summary": "...",
+  "rationale": "...",
+  "relates_to": "...",
+  "confidence": 0.0,
+  "domain": "...",
+  "site": "...",
+  "notes": "...",
+  "result": "...",
+  "alternatives_rejected": [],
+  "constraints": []
 }
 ```
 
-- Absent allowlisted values → JSON `null` (not omitted)
+- Absent values → JSON `null` (arrays → `[]` when empty list is the normalized form)
 - `json.dumps(..., sort_keys=True, separators=(",", ":"), ensure_ascii=False)` → UTF-8 → SHA-256 → lowercase hex
-- Document: NFC; preserve internal newlines; strip at most one trailing `\n` from file reads; other whitespace is semantic
-- Allowlist = semantic fields only; revisit when ledger schema gains semantic fields
-- **One shared hash module** for propose and approve
+- Strings: NFC; confidence as JSON number; test **each** field for hash sensitivity
+- Exclude operational/bookkeeping only (e.g. chroma uuid, timestamps used purely for indexing, hnsw internals)
+- **One shared hash module**; revisit when ledger schema gains semantic fields
+- `proposal_id` apply-marker is **not** part of the semantic hash; it must still be emitted through `ledger_unit_metadata` so it survives normalization
 
 ### 5. Approve critical section
 
@@ -163,7 +170,7 @@ Distributed locks, auto-merge, LLM winner-picking, force-approve, MCP write/appr
 | # | Decision | Default |
 |---|----------|---------|
 | 1 | Storage | **One** append-only event log; `PROPOSED` event carries full proposal |
-| 2 | Hash | Schema v1 + shared module (contract above) |
+| 2 | Hash | Schema v1 over **full normalized semantic record** + shared module |
 | 3 | Fail closed | Conflict **set** on `active_conflicts`; no force-ack |
 | 4 | Collision | Exact target / create-id; propose + approve; under flock |
 | 5 | Legacy | Warn until earlier of: zero hashless targeted unresolved, or **14 days after recorded schema-deploy timestamp**; then block; one-shot migration report at ship |
