@@ -255,6 +255,8 @@ def normalize_ledger_record(raw: dict, *, min_confidence: float = 0.0) -> dict |
         "constraints_json": json.dumps(
             raw.get("constraints") or [], separators=(",", ":")
         ) if raw.get("constraints") else "",
+        # Protocol metadata: not semantic content, but durable enough for apply recovery.
+        "proposal_id": str(raw.get("proposal_id") or "").strip(),
     }
 
 
@@ -301,6 +303,7 @@ def ledger_unit_metadata(unit: dict) -> dict:
         "rationale": unit.get("rationale") or "",
         "alternatives_rejected_json": unit.get("alternatives_rejected_json") or "",
         "constraints_json": unit.get("constraints_json") or "",
+        "proposal_id": unit.get("proposal_id") or "",
     }
 
 

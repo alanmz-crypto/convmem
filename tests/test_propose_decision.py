@@ -85,6 +85,7 @@ class ProposeDecisionTests(unittest.TestCase):
         self.assertEqual(ledger["id"], "dec_test_approved")
         self.assertEqual(ledger["author_model"], "ryan")
         self.assertEqual(ledger["relates_to"], "dec_convmem_workspace_standard")
+        self.assertEqual(ledger["proposal_id"], rec["id"])
 
     @patch("observe.ingest_observation")
     def test_ingest_approved_ledger_indexes_one(self, mock_ingest):

@@ -890,6 +890,7 @@ def propose_decision_command(
         collect_interactive_fields,
         confirm_interactive_submit,
         ingest_approved_ledger,
+        mark_approved,
         interactive_session_lock,
         latest_pending,
         list_proposals,
@@ -966,6 +967,7 @@ def propose_decision_command(
             ensure_chroma_snapshot_for_live_write()
             try:
                 ingest_result = ingest_approved_ledger(cfg, ledger)
+                mark_approved(cfg, approve_id)
             except Exception as e:
                 _log_index_failure(approve_id, e)
                 typer.echo(f"\n⚠  Approved (ledger) but index deferred: {e}")
