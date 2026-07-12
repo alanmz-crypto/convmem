@@ -36,10 +36,10 @@
 
 ## Evidence
 
-- Tip SHA: _(filled on commit)_
+- Tip SHA:  (706db2804c66c248082bc57160d2cfde48b7fe89)
 - pytest summary: `39 passed in 0.83s`
 - Schema deploy timestamp path: `hash_schema_version=1` on every `PROPOSED` event (`propose` + legacy import)
 
 ```text
-Mechanical PASS: 2026-07-12 — tip pending-commit
+Mechanical PASS: 2026-07-12 — tip 706db28
 ```
