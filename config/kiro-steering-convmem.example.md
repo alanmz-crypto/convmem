@@ -16,6 +16,8 @@ You have **shell** (`convmem` CLI) and **MCP** (`@convmem/brief`, etc.) on this 
 3. **`convmem unresolved`** — check open observations. Add `--site <hostname>` for client-specific issues (e.g. `--site staging2.willowyhollow.com`). For multiple sites, prefer **separate** `convmem unresolved --site …` calls (or one call without `--site`). Avoid `echo` separators unless comparing output side-by-side.
 4. **Before answering history/architecture questions:** use `convmem "search query"` or `convmem ask "question"` to ground responses in the ledger.
 
+**Branching (convmem prod only — Branching Safety Foundation):** After doctor/brief/unresolved, when cwd is `~/Projects/convmem`, run `git branch --show-current`. If on `main` and the task is multi-commit `feat`/`fix`/`docs`/`plan` work → create a branch **before the first commit** (`feat|fix|docs|plan|wip/<YYYY-MM-DD>-<slug>`). Single-file doc typos may stay on `main` (non-WIP subjects). Graduate `wip/` with `git branch -m wip/old feat/YYYY-MM-DD-slug` — never merge `wip/` directly. Push the branch; **do not merge or force-push `main`**. Pre-push rejects WIP-pattern subjects on `main` — if rejected, create/switch to a branch and push that. **Single active writer:** do not switch branches under another agent in the same checkout. Handoff: run `git branch --show-current`, then notify Ryan in session chat with branch name + `git log main..HEAD --oneline`. Full rules: `docs/plans/branching-strategy.md`.
+
 **Cursor with shell:** run `convmem doctor` before MCP `brief()` — doctor confirms infra; brief does not.
 
 **Codex-specific:** if `convmem ask` fails with a network error (sandbox blocks localhost), retry with:
@@ -135,13 +137,14 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 
 | Phase | Owner (lane) | Must not |
 |-------|--------------|----------|
-| Bug discovery | Crush | self-approve fixes; write `record` |
-| Independent audit | Codex | new `logs/*.md` unless Ryan asks |
-| Design / sign-off | Kiro | volunteer `record` at task end |
-| Implementation (convmem) | Cursor | client WP in same session |
+| Bug discovery | Crush | self-approve fixes; write `record`; merge to `main` |
+| Independent audit | Codex | new `logs/*.md` unless Ryan asks; merge to `main` |
+| Design / sign-off | Kiro | volunteer `record` at task end; merge to `main`; create `feat/`/`fix/` branches |
+| Implementation (convmem) | Cursor | client WP in same session; merge to `main` |
 | Implementation (client WP) | Cursor / Ryan | convmem ledger writes |
 | Memory ingest | Whoever closes session | Track A **and** B — never one alone |
 | Durable conclusions | Ryan only | per-finding records; agents never `--approve-last` |
+| Merge to `main` | Ryan only | agents never merge or force-push `main` |
 | Strategy review | ChatGPT / Claude Cloud | code edits; prod writes |
 | Synthesis | DeepSeek API (`ask`) | primary bug author |
 

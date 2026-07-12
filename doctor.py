@@ -1031,6 +1031,91 @@ def _check_write_lane(cfg: dict) -> DoctorCheck:
     return DoctorCheck("write_lane", False, detail)
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parent
+
+
+def _check_hooks_path(*, root: Path | None = None) -> DoctorCheck:
+    """Advisory: core.hooksPath must point at scripts/git-hooks with executable pre-push."""
+    name = "hooks_path"
+    base = root or _repo_root()
+    if not (base / ".git").exists() and not (base / ".git").is_file():
+        # worktree .git may be a file
+        git_dir = base / ".git"
+        if not git_dir.exists():
+            return DoctorCheck(name, True, "not a git repo", status="skip")
+    from git_hooks import hooks_path_ok
+
+    ok, detail = hooks_path_ok(base)
+    if ok:
+        return DoctorCheck(name, True, detail)
+    return DoctorCheck(name, True, detail, status="warn")
+
+
+def _check_wip_on_main(*, root: Path | None = None) -> DoctorCheck:
+    """Advisory: main must not carry WIP-pattern commit subjects (last 50)."""
+    name = "wip_on_main"
+    base = root or _repo_root()
+    from git_hooks import wip_subjects_on_main
+
+    try:
+        wip = wip_subjects_on_main(base, limit=50)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return DoctorCheck(name, True, f"git probe failed: {exc}", status="skip")
+    # Empty list + failed git log: distinguish via probing main
+    probe = subprocess.run(
+        ["git", "rev-parse", "--verify", "main"],
+        cwd=base,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    if probe.returncode != 0:
+        return DoctorCheck(name, True, "main branch unavailable", status="skip")
+    if not wip:
+        return DoctorCheck(name, True, "main: 0 WIP commits in last 50")
+    sample = "; ".join(wip[:3])
+    return DoctorCheck(
+        name,
+        True,
+        f"main has {len(wip)} WIP commit(s) — move to wip/<slug> branch: {sample}",
+        status="warn",
+    )
+
+
+def _check_direct_commits_on_main(*, root: Path | None = None) -> DoctorCheck:
+    """Heuristic advisory: main reflog commit: entries with feat:/fix: subjects."""
+    name = "direct_commits_on_main"
+    base = root or _repo_root()
+    from git_hooks import direct_feat_fix_via_reflog
+
+    try:
+        err, flagged = direct_feat_fix_via_reflog(base, limit=50)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return DoctorCheck(name, True, f"git probe failed: {exc}", status="skip")
+    if err:
+        return DoctorCheck(
+            name,
+            True,
+            f"heuristic: {err}",
+            status="skip",
+        )
+    if not flagged:
+        return DoctorCheck(
+            name,
+            True,
+            "heuristic: 0 feat:/fix: commit: entries in main reflog (last 50)",
+        )
+    sample = "; ".join(flagged[:3])
+    return DoctorCheck(
+        name,
+        True,
+        f"heuristic: {len(flagged)} feat:/fix: commit: on main reflog "
+        f"(may include squash merges): {sample}",
+        status="warn",
+    )
+
+
 def _check_empty_ledger_documents(cfg: dict) -> DoctorCheck:
     """Informational — empty Chroma documents on decision/verification units."""
     try:
@@ -1082,6 +1167,9 @@ def run_doctor(
     checks: list[DoctorCheck] = [
         _check_config(),
         _check_write_lane(cfg),
+        _check_hooks_path(),  # before WIP/direct — root cause if hook missing
+        _check_wip_on_main(),
+        _check_direct_commits_on_main(),
         _check_deepseek_key(),
         _check_ollama(cfg),
         _check_chroma(cfg),
