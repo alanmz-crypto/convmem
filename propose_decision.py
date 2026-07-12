@@ -358,6 +358,20 @@ def mark_approved(cfg: dict, proposal_id: str) -> None:
         append_event(cfg, new_event("APPROVED", proposal_id))
 
 
+def approve_and_ingest(cfg: dict, proposal_id: str, *, signer: str, ledger_id: str | None = None) -> tuple[dict, dict, dict]:
+    """Run the durable approval saga under one data-root flock.
+
+    An apply error deliberately leaves APPROVAL_STARTED for proposal-keyed
+    recovery; it is not converted into a terminal failure event.
+    """
+    from conflict_events import governed_lock
+    with governed_lock(cfg):
+        proposal, ledger = approve(cfg, proposal_id, signer=signer, ledger_id=ledger_id)
+        stats = ingest_approved_ledger(cfg, ledger)
+        mark_approved(cfg, proposal_id)
+        return proposal, ledger, stats
+
+
 def reject(
     cfg: dict,
     proposal_id: str,
