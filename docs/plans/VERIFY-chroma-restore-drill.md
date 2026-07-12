@@ -31,8 +31,8 @@ python scripts/chroma_restore_drill.py --intentional-missing-snapshot
 
 - Happy-path report: `~/.local/share/convmem/restore-drill/reports/drill-20260712T174915Z.json` (snapshot `1584dccd`)
 - Failure report: `~/.local/share/convmem/restore-drill/reports/drill-20260712T174731Z.json` (`--intentional-missing-snapshot`)
-- Tip SHA: `dd8f525`
+- Tip SHA: `7e5a1ce`
 
 ```text
-Mechanical PASS: 2026-07-12 — tip dd8f525
+Mechanical PASS: 2026-07-12 — tip 7e5a1ce
 ```
