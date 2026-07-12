@@ -247,8 +247,18 @@ def repair_empty_ledger_documents(
                 if verbose:
                     print(f"  [dry-run] would repair {lid}")
                 continue
+            # Document repair is not a semantic replace; mark protocol-safe.
+            repair_rec = {
+                **rec,
+                "_governed_protocol": True,
+                "proposal_id": (
+                    rec.get("proposal_id")
+                    or meta.get("proposal_id")
+                    or f"repair:{lid}"
+                ),
+            }
             unit = ingest_observation(
-                rec,
+                repair_rec,
                 store=store,
                 embed_model=models["embed_model"],
                 ollama_host=models["ollama_host"],

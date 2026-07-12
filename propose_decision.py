@@ -73,6 +73,8 @@ def append_approved(path: Path, record: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
 
 
 def approved_for_proposal(cfg: dict, proposal_id: str) -> dict | None:
@@ -117,6 +119,148 @@ def validate_governed_apply(*, target_ledger_id: str | None, live_hash: str | No
     elif live_hash is not None:
         return "create_target_exists"
     return None
+
+
+def event_proposal(cfg: dict, proposal_id: str) -> dict:
+    """Return the PROPOSED payload for a proposal id (empty dict if missing)."""
+    from conflict_events import load_events, reduce_events
+    states = reduce_events(load_events(cfg))
+    state = states.get(proposal_id) or {}
+    proposal = state.get("proposal") or {}
+    return dict(proposal) if isinstance(proposal, dict) else {}
+
+
+def unresolved_target_ids(cfg: dict) -> set[str]:
+    """Ledger ids claimed by unresolved proposals (targets or create ids)."""
+    from conflict_events import load_events, reduce_events, unresolved
+    out: set[str] = set()
+    for pid, state in unresolved(reduce_events(load_events(cfg))).items():
+        prop = state.get("proposal") or {}
+        target = prop.get("target_ledger_id")
+        if target:
+            out.add(str(target))
+        else:
+            # create-if-absent: proposed ledger id defaults to proposal id
+            out.add(str(prop.get("proposed_ledger_id") or pid))
+    return out
+
+
+def live_decision_snapshot(cfg: dict, ledger_id: str) -> tuple[str, str]:
+    """Return (proposal_id_marker, content_hash) for a live decision, or ("", "")."""
+    if not ledger_id:
+        return "", ""
+    try:
+        from chroma_store import ChromaStore
+        from ledger import find_unit_by_ledger_id
+    except Exception:
+        return "", ""
+    chroma_dir = (cfg.get("index") or {}).get("chroma_dir")
+    if not chroma_dir:
+        return "", ""
+    try:
+        store = ChromaStore(chroma_dir)
+        unit = find_unit_by_ledger_id(store, ledger_id)
+    except Exception:
+        return "", ""
+    if unit is None:
+        return "", ""
+    meta = dict(unit.get("metadata") or {})
+    marker = str(meta.get("proposal_id") or "").strip()
+    live_hash = str(meta.get("content_hash") or "").strip()
+    if live_hash:
+        return marker, live_hash
+    # Fallback: recompute from durable metadata when older units lack content_hash.
+    try:
+        import json as _json
+        from ledger_content_hash import ledger_content_hash
+
+        def _list(key: str) -> list:
+            raw = meta.get(key) or "[]"
+            if isinstance(raw, list):
+                return list(raw)
+            try:
+                val = _json.loads(raw)
+                return list(val) if isinstance(val, list) else []
+            except Exception:
+                return []
+
+        record = {
+            "ledger_id": meta.get("ledger_id") or ledger_id,
+            "kind": meta.get("ledger_kind") or meta.get("type") or "decision",
+            "status": meta.get("status") or "",
+            "title": meta.get("title") or "",
+            "summary": meta.get("summary") or "",
+            "rationale": meta.get("rationale") or "",
+            "relates_to": meta.get("relates_to") or "",
+            "confidence": meta.get("confidence"),
+            "domain": meta.get("domain") or "",
+            "site": meta.get("site") or "",
+            "notes": meta.get("notes") or "",
+            "result": meta.get("result") or "",
+            "alternatives_rejected": _list("alternatives_rejected_json"),
+            "constraints": _list("constraints_json"),
+        }
+        return marker, ledger_content_hash(record)
+    except Exception:
+        return marker, ""
+
+
+def recover_approval(cfg: dict, proposal_id: str) -> str:
+    """Reconcile an APPROVAL_STARTED proposal per the recovery matrix.
+
+    Returns the action taken: approve | retry_chroma | repair_marker.
+    Raises ValueError when human review is required.
+    """
+    from conflict_events import append_event, governed_lock, load_events, new_event, reduce_events
+
+    proposal_id = proposal_id.strip()
+    with governed_lock(cfg):
+        states = reduce_events(load_events(cfg))
+        state = states.get(proposal_id)
+        if state is None:
+            raise ValueError(f"Proposal not found in event log: {proposal_id}")
+        if state.get("lifecycle_state") == "APPROVED":
+            return "approve"
+        if state.get("lifecycle_state") != "APPROVAL_STARTED":
+            raise ValueError(
+                f"Proposal {proposal_id} is not recoverable "
+                f"(lifecycle={state.get('lifecycle_state')})"
+            )
+        prop = dict(state.get("proposal") or {})
+        target = str(prop.get("target_ledger_id") or prop.get("proposed_ledger_id") or proposal_id)
+        base_hash = str(prop.get("base_content_hash") or "")
+        proposed_hash = str(prop.get("proposed_content_hash") or "")
+        live_marker, live_hash = live_decision_snapshot(cfg, target)
+        # Prefer hashes from approved JSONL row when event payload lacked them.
+        row = approved_for_proposal(cfg, proposal_id)
+        if row and not proposed_hash:
+            from ledger_content_hash import ledger_content_hash
+            proposed_hash = ledger_content_hash(row)
+        action = recovery_action(
+            cfg,
+            proposal_id,
+            live_marker=live_marker,
+            live_hash=live_hash,
+            base_hash=base_hash,
+            proposed_hash=proposed_hash,
+        )
+        if action == "review":
+            raise ValueError(
+                f"Proposal {proposal_id} needs human review "
+                f"(marker={live_marker!r} live_hash={live_hash[:12]!r} "
+                f"base={base_hash[:12]!r} proposed={proposed_hash[:12]!r})"
+            )
+        if action == "approve":
+            append_event(cfg, new_event("APPROVED", proposal_id))
+            return action
+        if row is None:
+            raise ValueError(
+                f"Proposal {proposal_id} has APPROVAL_STARTED but no approved JSONL row"
+            )
+        # retry_chroma / repair_marker: re-upsert then APPROVED
+        ingest_approved_ledger(cfg, {**row, "_governed_protocol": True})
+        append_event(cfg, new_event("APPROVED", proposal_id))
+        return action
 
 
 def find_proposal(records: list[dict], proposal_id: str) -> dict | None:
@@ -168,6 +312,7 @@ def propose(
     confidence: float = 0.8,
     proposal_id: str | None = None,
     source: str = "cli",
+    target_ledger_id: str | None = None,
 ) -> dict:
     relates_to = relates_to.strip()
     summary = summary.strip()
@@ -183,6 +328,7 @@ def propose(
         raise ValueError("--author is required")
 
     pid = (proposal_id or generate_proposal_id()).strip()
+    target = (target_ledger_id or "").strip() or None
     record = {
         "id": pid,
         "kind": PROPOSAL_KIND,
@@ -201,26 +347,50 @@ def propose(
         "signer": None,
         "signed_at": None,
         "rejection_reason": None,
+        "target_ledger_id": target,
     }
 
     # The legacy queue remains a compatibility input until T5 migration; the
     # event is the protocol record used for conflict/lifecycle reduction.
     from conflict_events import append_event, governed_lock, new_event
+    from ledger_content_hash import HASH_SCHEMA_VERSION, ledger_content_hash
     with governed_lock(cfg):
         qpath = queue_path(cfg)
         records = load_queue(qpath)
         if find_proposal(records, pid) is not None:
             raise ValueError(f"Proposal already exists: {pid}")
+        # Snapshot hashes under the same lock as the PROPOSED append.
+        proposed_ledger_id = target or pid
+        draft = proposal_to_ledger(record, signer=author, ledger_id=proposed_ledger_id)
+        proposed_hash = ledger_content_hash(draft)
+        base_hash = None
+        if target:
+            _marker, base_hash = live_decision_snapshot(cfg, target)
+            base_hash = base_hash or None
+        if target and target in unresolved_target_ids(cfg):
+            raise ValueError(f"pending_sibling for target {target}")
+        if (not target) and pid in unresolved_target_ids(cfg):
+            raise ValueError(f"pending_create_collision for {pid}")
+        record["base_content_hash"] = base_hash
+        record["proposed_content_hash"] = proposed_hash
+        record["hash_schema_version"] = HASH_SCHEMA_VERSION
         records.append(record)
         save_queue(qpath, records)
         append_event(cfg, new_event("PROPOSED", pid, proposal={
-            "target_ledger_id": None,
-            "base_content_hash": None,
-            "proposed_content_hash": None,
-            "hash_schema_version": 1,
+            "target_ledger_id": target,
+            "proposed_ledger_id": proposed_ledger_id,
+            "base_content_hash": base_hash,
+            "proposed_content_hash": proposed_hash,
+            "hash_schema_version": HASH_SCHEMA_VERSION,
             "summary": summary,
             "rationale": rationale,
             "proposed_by": author,
+            "relates_to": relates_to,
+            "alternatives_rejected": list(alternatives or []),
+            "constraints": list(constraints or []),
+            "domain": record["domain"],
+            "site": record["site"],
+            "confidence": confidence,
         }))
     return record
 
@@ -316,6 +486,77 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
     return stats
 
 
+def _approve_unlocked(
+    cfg: dict,
+    proposal_id: str,
+    *,
+    signer: str,
+    ledger_id: str | None = None,
+) -> tuple[dict, dict]:
+    """Apply APPROVAL_STARTED + approved JSONL. Caller MUST hold governed_lock."""
+    from conflict_events import append_event, load_events, new_event, reduce_events, unresolved
+    from ledger_content_hash import ledger_content_hash
+
+    qpath = queue_path(cfg)
+    records = load_queue(qpath)
+    proposal = find_proposal(records, proposal_id)
+    if proposal is None:
+        raise ValueError(f"Proposal not found: {proposal_id}")
+    if proposal.get("status") != "PENDING":
+        raise ValueError(
+            f"Proposal {proposal_id} is not PENDING (status={proposal.get('status')})"
+        )
+
+    prop = event_proposal(cfg, proposal_id)
+    target = (ledger_id or prop.get("target_ledger_id") or prop.get("proposed_ledger_id")
+              or proposal.get("target_ledger_id") or proposal_id)
+    target = str(target).strip()
+    base_hash = prop.get("base_content_hash")
+    if base_hash is None:
+        base_hash = proposal.get("base_content_hash")
+
+    # Exclude this proposal from sibling set for the duration of its own approve.
+    unresolved_targets = set()
+    for pid, state in unresolved(reduce_events(load_events(cfg))).items():
+        if pid == proposal_id:
+            continue
+        p = state.get("proposal") or {}
+        t = p.get("target_ledger_id") or p.get("proposed_ledger_id") or pid
+        unresolved_targets.add(str(t))
+
+    live_marker, live_hash = live_decision_snapshot(cfg, target)
+    live_hash_or_none = live_hash or None
+    # create-if-absent when proposal has no target_ledger_id
+    target_for_validate = prop.get("target_ledger_id") or proposal.get("target_ledger_id")
+    conflict = validate_governed_apply(
+        target_ledger_id=target_for_validate,
+        live_hash=live_hash_or_none,
+        base_hash=base_hash,
+        unresolved_targets=unresolved_targets,
+        proposal_id=proposal_id,
+        proposed_ledger_id=target,
+    )
+    if conflict:
+        raise ValueError(conflict)
+
+    append_event(cfg, new_event("APPROVAL_STARTED", proposal_id))
+    now = _now_iso()
+    proposal["status"] = "APPROVED"
+    proposal["signer"] = signer.strip()
+    proposal["signed_at"] = now
+    save_queue(qpath, records)
+    ledger = proposal_to_ledger(proposal, signer=signer, ledger_id=target)
+    # Keep proposed hash aligned with the durable approved row.
+    if not prop.get("proposed_content_hash"):
+        prop_hash = ledger_content_hash(ledger)
+    else:
+        prop_hash = prop.get("proposed_content_hash")
+    ledger["_proposed_content_hash"] = prop_hash  # not persisted long-term; stripped below
+    row = {k: v for k, v in ledger.items() if not k.startswith("_")}
+    append_approved(approved_path(cfg), row)
+    return proposal, row
+
+
 def approve(
     cfg: dict,
     proposal_id: str,
@@ -328,34 +569,22 @@ def approve(
             f"Invalid --signer {signer!r}; use ryan or kiro-review (or kiro-* identity)"
         )
 
-    from conflict_events import append_event, governed_lock, new_event
+    from conflict_events import governed_lock
     with governed_lock(cfg):
-        qpath = queue_path(cfg)
-        records = load_queue(qpath)
-        proposal = find_proposal(records, proposal_id)
-        if proposal is None:
-            raise ValueError(f"Proposal not found: {proposal_id}")
-        if proposal.get("status") != "PENDING":
-            raise ValueError(
-                f"Proposal {proposal_id} is not PENDING (status={proposal.get('status')})"
-            )
-        append_event(cfg, new_event("APPROVAL_STARTED", proposal_id))
-        now = _now_iso()
-        proposal["status"] = "APPROVED"
-        proposal["signer"] = signer.strip()
-        proposal["signed_at"] = now
-        save_queue(qpath, records)
-        ledger = proposal_to_ledger(proposal, signer=signer, ledger_id=ledger_id)
-        append_approved(approved_path(cfg), ledger)
-        # Chroma reconciliation is performed by the caller before APPROVED.
-    return proposal, ledger
+        return _approve_unlocked(cfg, proposal_id, signer=signer, ledger_id=ledger_id)
+
+
+def _mark_approved_unlocked(cfg: dict, proposal_id: str) -> None:
+    """Append APPROVED. Caller MUST hold governed_lock."""
+    from conflict_events import append_event, new_event
+    append_event(cfg, new_event("APPROVED", proposal_id))
 
 
 def mark_approved(cfg: dict, proposal_id: str) -> None:
     """Finish a successfully indexed approval while holding the same data-root lock."""
-    from conflict_events import append_event, governed_lock, new_event
+    from conflict_events import governed_lock
     with governed_lock(cfg):
-        append_event(cfg, new_event("APPROVED", proposal_id))
+        _mark_approved_unlocked(cfg, proposal_id)
 
 
 def approve_and_ingest(cfg: dict, proposal_id: str, *, signer: str, ledger_id: str | None = None) -> tuple[dict, dict, dict]:
@@ -364,11 +593,15 @@ def approve_and_ingest(cfg: dict, proposal_id: str, *, signer: str, ledger_id: s
     An apply error deliberately leaves APPROVAL_STARTED for proposal-keyed
     recovery; it is not converted into a terminal failure event.
     """
+    if not is_valid_signer(signer):
+        raise ValueError(
+            f"Invalid --signer {signer!r}; use ryan or kiro-review (or kiro-* identity)"
+        )
     from conflict_events import governed_lock
     with governed_lock(cfg):
-        proposal, ledger = approve(cfg, proposal_id, signer=signer, ledger_id=ledger_id)
+        proposal, ledger = _approve_unlocked(cfg, proposal_id, signer=signer, ledger_id=ledger_id)
         stats = ingest_approved_ledger(cfg, ledger)
-        mark_approved(cfg, proposal_id)
+        _mark_approved_unlocked(cfg, proposal_id)
         return proposal, ledger, stats
 
 
