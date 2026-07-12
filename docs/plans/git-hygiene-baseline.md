@@ -143,4 +143,5 @@ Foundation tag: `v0.1.0-branching-foundation` (exists).
 
 - Branching Foundation: [`branching-strategy.md`](branching-strategy.md)
 - Verify Foundation: [`VERIFY-branching-safety-foundation.md`](VERIFY-branching-safety-foundation.md)
+- Verify this arc (T5b): [`VERIFY-git-hygiene-baseline.md`](VERIFY-git-hygiene-baseline.md)
 - Execution: [`EXECUTION-git-hygiene-baseline.md`](EXECUTION-git-hygiene-baseline.md)

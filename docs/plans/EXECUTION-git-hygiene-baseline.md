@@ -44,7 +44,7 @@ Ryan merge of Foundation is a **stop point**, not part of this arc’s agent wor
 | **T3** | Unified installer | `scripts/install-repo-config.sh` (hooksPath + pull.ff + rerere + blame); `install-git-hooks.sh` → thin `exec` wrapper; status echo of four keys; pull.ff failure comment in script | **T2** (needs `.git-blame-ignore-revs` to exist) | See T3 gates | Cursor |
 | **T4** | Protocol + deploy | Tier A notes (tag propose, pull.ff/rebase, `git rerere diff`, stash auth); generate + deploy; **no work start** language | T3 | See T4 gates | Cursor |
 | **T5** | Agent verify (H7) | Installer status; configs; wrapper regression (unset-then-reinstall); global drift; protocol negatives | T4 | See T5 gates — **no tag required** | Cursor |
-| **T5b** | Independent review | Push branch; Kiro reviews `git diff origin/main...HEAD`; sign-off recorded as one line in session handoff **and** append to plan SSoT status (e.g. `Kiro reviewed: YYYY-MM-DD` in `docs/plans/git-hygiene-baseline.md`) | T5 | Handoff + plan file both note Kiro date | Kiro |
+| **T5b** | Independent review | Push branch; Kiro runs [`VERIFY-git-hygiene-baseline.md`](VERIFY-git-hygiene-baseline.md) against `git diff origin/main...HEAD`; sign-off in session handoff **and** `Kiro reviewed: YYYY-MM-DD` in `docs/plans/git-hygiene-baseline.md` | T5 | Handoff + plan file both note Kiro date | Kiro |
 | **T6** | Ryan tag (H1 / H1′) | Annotated `v0.1.0-branching-foundation`; push tag | T0 (parallel to T1–T5) | `git rev-parse v0.1.0-branching-foundation` — **async, not in T5 PASS** | Ryan |
 | **T7** | Ryan merge | Merge hygiene branch after T5b | T5b | Ryan `--ff-only` or `--squash` | Ryan |
 
