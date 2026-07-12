@@ -36,10 +36,10 @@
 
 ## Evidence
 
-- Tip SHA: `ae6f44a` (ae6f44a63b17e30a1290392f83224af473c90998)
+- Tip SHA: `f56739a` (f56739ac7e3ddc8a26988265bb2bedb69620fc41)
 - pytest summary: `50 passed in 1.11s` (acceptance slice)
 - Schema deploy timestamp path: `hash_schema_version=1` on every `PROPOSED` event (`propose` + legacy import)
 
 ```text
-Mechanical PASS: 2026-07-12 — tip ae6f44a
+Mechanical PASS: 2026-07-12 — tip f56739a
 ```
