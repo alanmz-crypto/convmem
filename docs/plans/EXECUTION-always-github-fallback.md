@@ -68,7 +68,7 @@ Authority:    Executive plan authorized; gates accepted as defaults 2026-07-12
 **Kiro (V6c):** review per [`../inter-model/HANDOFF-KIRO-2026-07-12-always-github-fallback-signoff.md`](../inter-model/HANDOFF-KIRO-2026-07-12-always-github-fallback-signoff.md), then replace this line:
 
 ```text
-Kiro reviewed: PENDING
+Kiro reviewed: 2026-07-12
 ```
 
 **Ryan (V6d):** merge GATE after V6c. Enable Pro + branch protection when ready for V6a PASS.
