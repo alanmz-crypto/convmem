@@ -3,7 +3,7 @@
 ```
 Planning Status
 
-Phase:        Execution Planning → awaiting HITL before Execute
+Phase:        Execute (Mechanical PASS pending tip SHA)
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Functions:    Planner
 Lanes:        Cursor (Tier A); Codex read-only if Ryan requests plan audit
@@ -86,6 +86,7 @@ Prove the local Restic repo (tag `convmem-chroma`) passes structural integrity p
 - [x] 1–5 bounded tasks; no option forks
 - [x] Dependencies and gates named
 - [x] Doctor freshness explicitly out of scope
-- [ ] No self-transition to Execute until Ryan HITL
+- [x] Ryan authorized Execute (`execute`)
+- [x] T2–T5 complete (runner, hermetic tests, happy-path + intentional-failure reports)
 
-Cursor must stop here. Await HITL.
+Mechanical PASS evidence in VERIFY; Ryan merges when satisfied.

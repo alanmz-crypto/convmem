@@ -30,10 +30,12 @@ python scripts/restic_integrity_check.py --intentional-missing-repo
 
 ## Evidence (fill after runs)
 
-- Happy-path report: _(path)_
-- Failure report: _(path)_
-- Tip SHA: _(sha)_
+- Happy-path report: `~/.local/share/convmem/integrity-check/reports/integrity-20260712T182314Z.json` (argv includes `--tag convmem-chroma --read-data-subset 5%`; duration ~0.8s)
+- Failure report: `~/.local/share/convmem/integrity-check/reports/integrity-20260712T182311Z.json` (`--intentional-missing-repo`, exit 10 / `restic_missing_repo`)
+- Hermetic: `pytest -q tests/test_restic_integrity_check.py` → 8 passed
+- Doctor probe: none added (`rg` clean on doctor freshness for integrity)
+- Tip SHA: filled at commit time below
 
 ```text
-Mechanical PASS: YYYY-MM-DD — tip <sha>   # Cursor fills after T4–T5
+Mechanical PASS: 2026-07-12 — tip PENDING_COMMIT
 ```
