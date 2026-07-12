@@ -278,10 +278,12 @@ def query_units(
     top_k: int = 5,
     domain: str | None = None,
     site: str | None = None,
+    chroma_dir: str | None = None,
 ) -> list[dict]:
     cfg = load_config()
     models = cfg["models"]
     qcfg = cfg.get("query", {})
+    chroma_path = chroma_dir or cfg["index"]["chroma_dir"]
 
     embedding = ollama_embed(
         text, model=models["embed_model"], host=models["ollama_host"]
@@ -300,7 +302,7 @@ def query_units(
 
     ledger_extras: list[dict] = []
     try:
-        store = open_chroma_for_read(cfg["index"]["chroma_dir"])
+        store = open_chroma_for_read(chroma_path)
         try:
             results = store.query_units(embedding, n_fetch)
             ledger_extras = _ledger_lookup_hits(cfg, store, text)
