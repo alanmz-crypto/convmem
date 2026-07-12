@@ -294,8 +294,9 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
     store = ChromaStore(cfg["index"]["chroma_dir"])
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
+    protocol_ledger = {**ledger, "_governed_protocol": True}
     unit = ingest_observation(
-        ledger,
+        protocol_ledger,
         store=store,
         embed_model=models["embed_model"],
         ollama_host=models["ollama_host"],

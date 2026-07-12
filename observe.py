@@ -8,6 +8,15 @@ from pathlib import Path
 from ledger import build_ledger_index, ledger_unit_document, ledger_unit_metadata, normalize_ledger_record
 
 
+def _reject_governed_bypass(record: dict, *, upsert: bool) -> None:
+    """Only the approval protocol may replace an existing governed decision."""
+    if not upsert:
+        return
+    ledger_id = str(record.get("id") or record.get("ledger_id") or "")
+    if ledger_id.startswith("dec_") and not (str(record.get("proposal_id") or "").strip() or record.get("_governed_protocol")):
+        raise ValueError("governed decision upsert requires proposal_id from approval protocol")
+
+
 def _upsert_jsonl_line(
     units_export: Path,
     ledger_id: str,
@@ -80,6 +89,7 @@ def ingest_observation(
     by_ledger_id: dict[str, dict] | None = None,
 ) -> dict | None:
     """Validate, embed, and store one ledger record. Returns the stored unit or None."""
+    _reject_governed_bypass(record, upsert=upsert)
     unit = normalize_ledger_record(record, min_confidence=min_confidence)
     if unit is None:
         return None
