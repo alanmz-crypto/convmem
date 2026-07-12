@@ -135,7 +135,7 @@ Foundation tag: `v0.1.0-branching-foundation` (exists).
 - Protocol deployed; no `work start`; no global hygiene keys; no JSONL union
 - T5b Kiro sign-off dated below → Ryan merge (T7)
 
-**Kiro reviewed:** _(pending T5b)_
+**Kiro reviewed:** 2026-07-11
 
 ---
 
