@@ -70,7 +70,8 @@ Lab smoke (`smoke-synthesis.sh`, PASS 2026-07-06): no prod Chroma corruption whe
 - **Ingest your chat** → index session transcript (Track A)
 - **Index the log** → findings/audit markdown only (Track B)
 - **Ingest everything** → both tracks
-- **Record block** → Ryan runs `record --approve-last`; agents do not
+- **Find a stopping point** / **wrap up** / **park it** → soft close: stabilize, push, verbal summary, Track A. **No record block.** See `SESSION-CLOSE-RECORD.md § Stopping point`.
+- **Closing** / **end session** / **record block** → hard close: Track A + output `convmem record` block for Ryan to run
 
 **Willowy Hollow one-command handoff:**
 
