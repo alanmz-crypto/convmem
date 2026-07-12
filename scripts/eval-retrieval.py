@@ -31,13 +31,13 @@ def ledger_ids_from_hits(hits: list[dict]) -> list[str]:
     return out
 
 
-def eval_row(row: dict) -> dict:
+def eval_row(row: dict, *, chroma_dir: str | None = None) -> dict:
     from query import query_units
 
     query = row["query"]
     top_k = int(row.get("top_k") or 5)
     acceptable = list(row.get("acceptable_ids") or [])
-    hits = query_units(query, top_k=top_k)
+    hits = query_units(query, top_k=top_k, chroma_dir=chroma_dir)
     ids = ledger_ids_from_hits(hits)
     rank = None
     matched = ""
@@ -81,15 +81,30 @@ def main() -> int:
     parser.add_argument("--baseline", type=Path, default=BASELINE)
     parser.add_argument("--update-baseline", action="store_true")
     parser.add_argument("--top-k", type=int, default=0, help="Override top_k for all rows")
+    parser.add_argument(
+        "--chroma-dir",
+        type=Path,
+        default=None,
+        help="Query against this Chroma root instead of config index.chroma_dir",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="Evaluate only the first N golden rows (0 = all)",
+    )
     args = parser.parse_args()
 
     sys.path.insert(0, str(REPO))
     rows = load_golden(args.golden)
+    if args.limit and args.limit > 0:
+        rows = rows[: args.limit]
     if args.top_k:
         for row in rows:
             row["top_k"] = args.top_k
 
-    report = summarize([eval_row(r) for r in rows])
+    chroma_dir = str(args.chroma_dir.expanduser()) if args.chroma_dir else None
+    report = summarize([eval_row(r, chroma_dir=chroma_dir) for r in rows])
 
     print(f"Golden queries: {report['count']}")
     print(f"P@1: {report['p_at_1']:.2%}")
