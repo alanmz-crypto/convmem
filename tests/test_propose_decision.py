@@ -95,6 +95,14 @@ class ProposeDecisionTests(unittest.TestCase):
         self.assertEqual(recovery_action(self.cfg, rec["id"], base_hash="b", proposed_hash="p"), "retry_chroma")
         self.assertEqual(recovery_action(self.cfg, rec["id"], live_hash="p", proposed_hash="p"), "repair_marker")
 
+    def test_governed_apply_rejects_sibling_stale_and_create_collision(self):
+        from propose_decision import validate_governed_apply
+        common = {"unresolved_targets": set(), "proposal_id": "p", "proposed_ledger_id": "dec_new"}
+        assert validate_governed_apply(target_ledger_id="dec_a", live_hash="new", base_hash="old", **common) == "stale_base"
+        assert validate_governed_apply(target_ledger_id=None, live_hash="exists", base_hash=None, **common) == "create_target_exists"
+        common["unresolved_targets"] = {"dec_a"}
+        assert validate_governed_apply(target_ledger_id="dec_a", live_hash="old", base_hash="old", **common) == "pending_sibling"
+
     @patch("observe.ingest_observation")
     def test_ingest_approved_ledger_indexes_one(self, mock_ingest):
         mock_ingest.return_value = {"id": "u1", "ledger_id": "dec_test_approved"}

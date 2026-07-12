@@ -102,6 +102,23 @@ def recovery_action(cfg: dict, proposal_id: str, *, live_marker: str = "", live_
     return "review"
 
 
+def validate_governed_apply(*, target_ledger_id: str | None, live_hash: str | None,
+                           base_hash: str | None, unresolved_targets: set[str],
+                           proposal_id: str, proposed_ledger_id: str) -> str | None:
+    """Return the fail-closed conflict reason, if any, before a governed write."""
+    target = target_ledger_id or proposed_ledger_id
+    if target in unresolved_targets:
+        return "pending_sibling"
+    if target_ledger_id:
+        if live_hash is None:
+            return "target_missing"
+        if base_hash is None or live_hash != base_hash:
+            return "stale_base"
+    elif live_hash is not None:
+        return "create_target_exists"
+    return None
+
+
 def find_proposal(records: list[dict], proposal_id: str) -> dict | None:
     needle = proposal_id.strip()
     for rec in reversed(records):
