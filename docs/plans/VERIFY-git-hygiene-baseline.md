@@ -11,7 +11,7 @@ Authority:    Post-Execute HITL — do not trust Cursor session claims alone
 ```
 
 **Subject:** `feat/2026-07-11-git-hygiene-baseline`  
-**Tip (at plan write):** `73aa04b` (VERIFY maintenance notes) atop hygiene implement `8f64562`  
+**Tip:** use `git rev-parse origin/feat/2026-07-11-git-hygiene-baseline` at review time (implement commit `8f64562`; VERIFY iterations follow)  
 **Base:** `origin/main` @ `2957e0b` (Foundation already merged; tag `v0.1.0-branching-foundation` exists)  
 **Sources:** [`EXECUTION-git-hygiene-baseline.md`](EXECUTION-git-hygiene-baseline.md), [`git-hygiene-baseline.md`](git-hygiene-baseline.md), [`CODEX-DEEPSEEK-VERIFY.md`](../CODEX-DEEPSEEK-VERIFY.md) format  
 **Goal:** Confirm repo-local hygiene (unified installer, attrs, blame policy, protocol) matches locked decisions — without expanding scope into Work Start, global config, JSONL union, or new doctor checks.
