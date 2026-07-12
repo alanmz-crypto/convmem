@@ -57,3 +57,18 @@ Authority:    Executive plan authorized; gates accepted as defaults 2026-07-12
 - Remote-backed claims
 - Making the GitHub private-repo protection API work without Pro
 - Expanding policy to non-convmem repos
+
+---
+
+## Sign-off
+
+**Mechanical PASS:** 2026-07-12 — tip `f4b4993` (see VERIFY evidence).  
+**V6a:** SKIP (GitHub protection API HTTP 403 — Pro required). Do not claim main protected.
+
+**Kiro (V6c):** review per [`../inter-model/HANDOFF-KIRO-2026-07-12-always-github-fallback-signoff.md`](../inter-model/HANDOFF-KIRO-2026-07-12-always-github-fallback-signoff.md), then replace this line:
+
+```text
+Kiro reviewed: PENDING
+```
+
+**Ryan (V6d):** merge GATE after V6c. Enable Pro + branch protection when ready for V6a PASS.
