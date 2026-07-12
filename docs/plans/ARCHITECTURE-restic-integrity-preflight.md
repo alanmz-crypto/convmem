@@ -29,7 +29,6 @@ Authority:    Awaiting HITL
 
 - One-shot (this pass) integrity proof against the **local** `RESTIC_REPOSITORY` for tag `convmem-chroma`
 - A small runner + durable report (outside any temp dir), same report/trap discipline as the restore drill
-- Optional doctor **warn** surfacing “last integrity report age” (non-fatal; does **not** join the live-write gate)
 - Hermetic tests for report shape / CLI wiring (no live Restic required for unit tests)
 
 **Out of scope**
@@ -38,6 +37,7 @@ Authority:    Awaiting HITL
 - Full `--read-data` of every pack as the default (cost)
 - Offsite/`RESTIC_EXTERNAL_REPOSITORY` integrity (doctor already has `restic_external` freshness; separate ops)
 - Folding `restic check` into every restore-drill happy path (keeps restore drill fast)
+- Doctor freshness / age probe for integrity reports (recurring advisory — deferred; no cadence this pass — needs separate Ryan approval later)
 - Bad-credentials exercise, manifest-at-snapshot recording (still deferred from restore-drill gates 4/5)
 - Remediating today’s stale offsite copy (ops: `scripts/restic-copy-external.sh` / timer) — related but not this arc’s deliverable
 - Stopping or mutating live Chroma
@@ -46,7 +46,7 @@ Authority:    Awaiting HITL
 
 | Item | Owner |
 |------|--------|
-| Recurring timer for integrity check | Ryan after one-time PASS |
+| Recurring timer or doctor freshness for integrity check | Ryan after one-time PASS + explicit approval |
 | External-repo `restic check` | Separate arc if needed |
 | Wire integrity into restore-drill as optional `--with-integrity-preflight` | Only if one-time PASS proves value |
 
@@ -69,15 +69,15 @@ Authority:    Awaiting HITL
 
 ### Chosen direction
 
-**Option B, as a separate on-demand runner** (not part of the restore-drill happy path): run `restic check` against the local repo with tag filter `convmem-chroma`, structural verification **plus** a bounded `--read-data-subset` (default **5%**), write a durable JSON/MD report under `~/.local/share/convmem/integrity-check/reports/`, and expose a doctor **warn** (never fail) when no successful report exists within a configurable age (default **14 days**). Do **not** change the live-write gate. Optional later: restore-drill `--with-integrity-preflight` after this pass PASSes once.
+**Option B, as a separate on-demand runner** (not part of the restore-drill happy path): run `restic check` against the local repo with tag filter `convmem-chroma`, structural verification **plus** a bounded `--read-data-subset` (default **5%**), and write a durable JSON/MD report under `~/.local/share/convmem/integrity-check/reports/`. **No doctor freshness probe this pass** (deferred; no cadence this pass). Do **not** change the live-write gate. Optional later: restore-drill `--with-integrity-preflight` or a recurring advisory doctor probe — each needs separate Ryan approval after this one-time proof PASSes.
 
 ### Risks and reversibility
 
-- **Runtime:** even 5% read-data can take minutes on a large repo — keep cadence one-time/on-demand; doctor warn only
+- **Runtime:** even 5% read-data can take minutes on a large repo — keep this pass one-time/on-demand
 - **False confidence:** subset ≠ full read — document in report; full `--read-data` remains a manual Ryan override flag
 - **Lock contention:** `restic check` can fail with exit 11 if repo locked — report must record lock errors distinctly; do not retry forever
-- **Scope creep into fail-closed:** doctor must stay warn/skip; reversing would be a separate HITL decision
-- **Rollback:** delete runner + doctor probe + reports; no data-path changes
+- **Scope creep into fail-closed or recurring doctor nag:** neither joins the live-write gate this pass; a future doctor freshness probe needs explicit HITL (not implied by one-time proof)
+- **Rollback:** delete runner + reports; no data-path changes
 
 ### Downstream handoff
 
@@ -92,7 +92,7 @@ Authority:    Awaiting HITL
 |---|----------|------------------------------------------|
 | 1 | Check depth | **Structural `restic check` + `--read-data-subset 5%`**; optional `--full-read-data` override for manual deep runs |
 | 2 | Cadence this pass | **One-time proof** (like restore drill); no systemd timer yet |
-| 3 | Doctor coupling | **Warn-only** if last PASS report older than **14 days** (or missing); never fail `doctor` / never join live-write gate |
+| 3 | Doctor coupling | **Defer** — no doctor freshness probe this pass (same bucket as restore-drill cadence deferral); never join live-write gate |
 | 4 | Coupling to restore drill | **Separate script** (`scripts/restic_integrity_check.py` or `.sh`); no change to restore-drill happy path |
 | 5 | Repo scope | **Local `RESTIC_REPOSITORY` only**; external stays `restic_external` freshness |
 | 6 | Report home | **`~/.local/share/convmem/integrity-check/reports/`** (sibling of restore-drill reports) |
@@ -111,9 +111,9 @@ Authority:    Awaiting HITL
 ## Success (executive bar)
 
 - One successful local-repo integrity run produces a durable report with command flags, duration, exit code, and subset parameters
-- Doctor surfaces stale/missing integrity reports as **warn**, not fail
 - Hermetic tests cover report wiring without requiring a live Restic repo
-- Intentional failure path (e.g. wrong password file / missing repo) exits nonzero and still writes a report when possible
+- Intentional failure path (e.g. wrong password file / missing repo / lock) exits nonzero and still writes a report when possible
+- No doctor freshness probe shipped in this pass
 
 ---
 
