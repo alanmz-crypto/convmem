@@ -3,10 +3,10 @@
 ```text
 Planning Status
 
-Phase:        Stage 3 convmem-only default shipped; behavioral verification remains open (PR #17; LATEST updated via PR #20)
+Phase:        Stage 3 behaviorally verified and accepted by Ryan on 2026-07-13 (PR #22 closed doctor-first gate)
 Characters:   Cursor → Codex → Ryan
-Lanes:        Cursor executes; Codex reviews promotion evidence; Ryan accepts Stage 3 after behavioral gates
-Authority:    Architecture accepted by Claude R2; Stage 1–2 PASS; Ryan authorized Stage 3; convmem-only default on main via PR #17; LATEST reconciled via PR #20
+Lanes:        Cursor executes; Codex reviews; Ryan accepted Stage 3
+Authority:    Architecture accepted by Claude R2; Stage 1–2 PASS; Stage 3 accepted 2026-07-13; PR #22 closed doctor-first; Cursor `/home/lauer` MCP caveat remains a separate token-cut gap (do not claim PR #19 mechanically verified for Cursor); next: human-readable pending-decision approval view (JSONL remains canonical machine data)
 ```
 
 **Architecture SSoT:** [`ARCHITECTURE-token-efficient-bounded-autonomy.md`](ARCHITECTURE-token-efficient-bounded-autonomy.md)
