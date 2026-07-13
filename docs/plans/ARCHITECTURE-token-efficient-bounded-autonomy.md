@@ -2,12 +2,14 @@
 
 | Field | Value |
 |---|---|
-| Status | **Proposed pilot** — no protocol deployment or runtime changes yet |
+| Status | **Claude R2 accepted; ready for execution planning** — no protocol deployment or runtime changes yet |
 | Scope | Three routine tasks in the real convmem repository, executed through Cursor; WordPress remains separately probationary |
 | Owner | Ryan owns the task brief, external-change authorization, pilot resume, durable conclusions, and merge to `main` |
 | Objective | Reduce model-token waste to the lowest safe coordination overhead while preserving expert reasoning, evidence gathering, verification, and existing lane gates |
 | Architecture style | Prompt-policy overlay on the existing local monolith and HITL charter; no new service, CLI command, database, or pilot log |
 | Promotion gate | Three consecutive clean convmem tasks plus a non-mutating external-authorization probe |
+
+**Execution:** [`EXECUTION-token-efficient-bounded-autonomy.md`](EXECUTION-token-efficient-bounded-autonomy.md)
 
 ## Decision
 
