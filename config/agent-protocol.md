@@ -86,6 +86,16 @@ Avoid **"index what you wrote"** alone — models treat that as the markdown log
 
 ---
 
+## After Tier A — MCP tools (shell+MCP)
+
+<!-- MCP_AFTER_TIER_A_START -->
+
+After Tier A (`doctor` → CLI `brief` → `unresolved`) completes once: use MCP `search_fast()`, `ask()`, `related()`, or `stats()` as needed. Do **not** repeat MCP `brief()` — shell brief already oriented the session. Read-only MCP only.
+
+<!-- MCP_AFTER_TIER_A_END -->
+
+---
+
 ## Tier B — MCP-only (no shell, MCP connected)
 
 <!-- TIER_B_START -->
