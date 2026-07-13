@@ -106,3 +106,33 @@ Distributed locks, force-approve, MCP writes, **similarity-based collision**, hy
 1. Confirm the six points are satisfied or name residual gaps.  
 2. Confirm the three evidence cases are sufficient for close, or name missing fixtures.  
 3. Sign off end-of-arc VERIFY, or list blocking follow-ups before similarity work.
+
+---
+
+## Round-2 closure (Claude 2026-07-12 follow-up)
+
+### Self-collision (point 4 terminology)
+
+**Direct answer:** There is **no** same-author / same-session exception. Sibling checks are **target-based only**. If the same author revises a still-pending proposal against the same `target_ledger_id` via a second `propose`, it registers as `pending_sibling` against the prior unresolved draft.
+
+**Intended refine path:** `convmem record --rebase <proposal_id>` (or `rebase_proposal`) — new `proposal_id`, old → `SUPERSEDED` with links — or reject then re-propose. Error text now points at `--rebase`.
+
+**Named test:** `test_same_author_repropose_is_pending_sibling_no_author_exception`.
+
+### `--recover` / APPROVAL_STARTED idempotence
+
+**Named test added:** `test_recover_approval_started_idempotent_no_double_apply`
+
+- Leave `APPROVAL_STARTED` + approved JSONL (no Chroma / no `APPROVED`)
+- First `recover_approval` → `retry_chroma`, one ingest, lifecycle `APPROVED`
+- Second `recover_approval` → `approve`, **ingest call_count unchanged**, no extra `APPROVED` event
+
+(Existing N8/N9 cover single-shot matrix paths; this test specifically proves no double-apply.)
+
+### SEMANTIC_FIELDS maintenance flag
+
+Architecture hash section now notes: bump `HASH_SCHEMA_VERSION` in the same change when `SEMANTIC_FIELDS` / canonicalization changes; cross-version hash equality is undefined.
+
+### Sign-off ask
+
+Both hold items from Claude round-2 are closed in code + tests. PR #6 carries the review package + these closures — ready for full arc close on merge.

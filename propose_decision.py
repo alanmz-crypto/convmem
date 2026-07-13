@@ -383,7 +383,13 @@ def propose(
             _marker, base_hash = live_decision_snapshot(cfg, target)
             base_hash = base_hash or None
         if target and target in unresolved_target_ids(cfg):
-            raise ValueError(f"pending_sibling for target {target}")
+            # Target-based only: same author revising their own pending draft is
+            # also a sibling. Iterate via rebase_proposal / record --rebase
+            # (SUPERSEDES the prior PENDING), or reject then re-propose.
+            raise ValueError(
+                f"pending_sibling for target {target} "
+                f"(no same-author exception; refine with: convmem record --rebase <proposal_id>)"
+            )
         if (not target) and pid in unresolved_target_ids(cfg):
             raise ValueError(f"pending_create_collision for {pid}")
         record["base_content_hash"] = base_hash
