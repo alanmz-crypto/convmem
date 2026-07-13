@@ -1,3 +1,5 @@
+## Path: shell (Tier A)
+
 
 1. **`convmem doctor`** — run alone first. Must exit 0 before any brief/ask/search. Confirms Ollama/Chroma health.
 2. **`convmem brief --stdout-only`** — session orientation: corpus state, recent decisions, monitor results, unresolved count. When also calling MCP **`brief()`**, pass **project=<slug>** inferred from cwd (see Tier B).
@@ -71,6 +73,14 @@ Avoid **"index what you wrote"** alone — models treat that as the markdown log
 1. **Search first** — `convmem "topic"` / `ask` before re-deriving from scratch.
 2. **`record`** — one closing **conclusion** only (not per-finding). Detail stays in chat ingest + indexed logs.
 
+
+## Path: post-shell MCP (after Tier A)
+
+
+After Tier A (`doctor` → CLI `brief` → `unresolved`) completes once: use MCP `search_fast()`, `ask()`, `related()`, or `stats()` as needed. Do **not** repeat MCP `brief()` — shell brief already oriented the session. Read-only MCP only.
+
+
+## Path: MCP-only (Tier B — no shell; brief-first)
 
 
 1. **`brief()` first** every session. Pass `project=<repo-slug>` to focus one repo (e.g. `pavlomassage-dev`, `willowyhollow-practice`, `convmem`). **If omitted:** infer from workspace — git repo basename, parent dir name, or tags in README/AGENTS.md; do not substitute a unrelated slug (e.g. do not use `willowyhollow-dev` when cwd is `pavlomassage-practice`).

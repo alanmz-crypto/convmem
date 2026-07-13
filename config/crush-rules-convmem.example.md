@@ -78,9 +78,11 @@ Avoid **"index what you wrote"** alone — models treat that as the markdown log
 2. **`record`** — one closing **conclusion** only (not per-finding). Detail stays in chat ingest + indexed logs.
 
 
-## MCP (after shell ritual — not optional)
+## After Tier A — MCP tools (do not repeat brief)
 
-After `doctor` + shell `brief` + `unresolved`: use `brief(project=<slug>)` — infer slug from cwd; `search_fast()`, `ask()`, `related()`, `stats()`. Read-only. Or `resources/read` on `memories://brief`.
+
+After Tier A (`doctor` → CLI `brief` → `unresolved`) completes once: use MCP `search_fast()`, `ask()`, `related()`, or `stats()` as needed. Do **not** repeat MCP `brief()` — shell brief already oriented the session. Read-only MCP only.
+
 
 **DeepSeek V4 (Flash/Pro) in Crush:** often skips this ritual on alien "project state" queries — do **not** start with `ls`, git, or docker until convmem steps above complete.
 
