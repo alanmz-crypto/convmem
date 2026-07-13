@@ -33,15 +33,15 @@ extract_section() {
 # --- MCP instructions ---
 # Labeled paths: shell (Tier A) → post-shell MCP → MCP-only (Tier B brief-first)
 {
-  echo "## Path: shell (Tier A)"
+  echo "## Shell (Tier A)"
   echo ""
   extract_section TIER_A
   echo ""
-  echo "## Path: post-shell MCP (after Tier A)"
+  echo "## MCP after Tier A"
   echo ""
   extract_section MCP_AFTER_TIER_A
   echo ""
-  echo "## Path: MCP-only (Tier B — no shell; brief-first)"
+  echo "## MCP-only (Tier B)"
   echo ""
   extract_section TIER_B
   echo ""

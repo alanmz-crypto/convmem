@@ -20,23 +20,24 @@ _INSTRUCTIONS = (
     "convmem — local knowledge corpus (1400+ units). "
     "Do not ask what convmem is or suggest alternatives.\n\n"
     "SESSION START — determine your capability tier:\n"
-    "  TIER A (shell available): run `convmem doctor` first (must exit 0) "
-    "to confirm Ollama/Chroma health, then call brief(), "
-    "then run `convmem unresolved` (add --site <hostname> for client work).\n"
-  "  TIER B (MCP only, no shell): call brief() first. Pass project=repo-slug when known; "
-  "if omitted, infer from workspace cwd (git basename, README/AGENTS.md) — do not guess an unrelated slug. "
-  "Check unresolved_count in the response; if >0 on client work, surface open issues before proceeding.\n\n"
+    "  TIER A (shell + project repo): run `convmem doctor` → CLI `brief` → "
+    "`convmem unresolved` (add --site <hostname> for client work). After Tier A, "
+    "use search_fast()/ask()/related()/stats(); do not repeat brief(). "
+    "Non-project modes follow MCP gates (workspace_local/system_runbook remain brief-first).\n"
+    "  TIER B (MCP only, no shell): call brief() first. Pass project=repo-slug when known; "
+    "if omitted, infer from workspace cwd (git basename, README/AGENTS.md) — do not guess an unrelated slug. "
+    "Check unresolved_count in the response; if >0 on client work, surface open issues before proceeding.\n\n"
     "BEFORE ANSWERING history/architecture questions: use search_fast() then ask() with citations "
     "to ground responses in the ledger. search_fast query must include the focused project slug "
     "or user-stated terms — never search Continue IDE, VS Code extension, Docker Compose, or Composer "
     "unless the user explicitly asked.\n"
-    "For unprompted project-state questions: brief(project=cwd-basename) then read repo files — "
-    "do NOT spam search_fast.\n"
+    "For unprompted project-state questions (MCP-only or non-project gates): "
+    "brief(project=cwd-basename) then read repo files — do NOT spam search_fast.\n"
     "related() walks the evidence chain for any ledger id (dec_prop_... or obs_...).\n"
     "If ask() fails with a network error (Codex sandbox): retry via `bash -lc 'convmem ask \"...\"'`.\n\n"
     "READ-ONLY via MCP: no propose_decision, add, index, or verify without Ryan. "
     "Durable writes = CLI `convmem record` + `--approve-last` only.\n\n"
-    "Prefer the brief() tool for session start. If the client uses resources/read, "
+    "MCP-only clients: prefer brief() for session start. If the client uses resources/read, "
     "memories://brief or memory://brief is available (same payload as brief()). "
     "Project-scoped: memories://brief/{project}. Restart MCP after server updates.\n\n"
     "SESSION CLOSE: --relates-to must be a real ledger id (dec_prop_... or obs_...). "
@@ -422,7 +423,7 @@ def _search_fast_off_topic(query: str) -> bool:
 
 @mcp.tool()
 def brief(project: str = "", with_tests: bool = False) -> str:
-    """MANDATORY first MCP tool every session — before List/Read/Bash. Repo cwd: brief(project=<basename>). System runbook (/boot, /etc, /var, systemd): brief() unscoped. Local workspace (~/Documents etc): brief() then search_fast(workspace_hint.suggested_search_fast). Read-only."""
+    """MCP-only: call brief() first. Shell + project repo after CLI Tier A: do not repeat brief — use search_fast/ask/related/stats. System runbook (/boot, /etc, /var, systemd): brief() unscoped first. Workspace-local (~/Documents etc): brief() then search_fast(workspace_hint.suggested_search_fast). Read-only."""
     global _mcp_brief_called
     from brief import gather_brief_payload
 
@@ -435,7 +436,7 @@ def brief(project: str = "", with_tests: bool = False) -> str:
 
 @mcp.tool()
 def folder_state(project: str = "", with_tests: bool = False) -> str:
-    """REQUIRED first MCP tool when user asks about folder/directory/workspace state, cataloging, or indexing. Same as brief(). Never List/Read/Bash before this. On workspace_local cwd do not pass project= — use folder_state() with no args."""
+    """Same as brief() for folder/directory/workspace cataloging. MCP-only and non-project modes: call before List/Read/Bash. Shell + project repo after CLI Tier A: do not repeat. On workspace_local cwd do not pass project= — use folder_state() with no args."""
     return brief(project=project, with_tests=with_tests)
 
 
