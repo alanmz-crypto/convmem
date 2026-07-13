@@ -1,0 +1,5 @@
+Read ARCHITECTURE-token-efficient-bounded-autonomy.md first, then the charter and protocol context.
+
+Audit whether this Cursor-first convmem pilot cuts coordination tokens to the lowest safe practical bound without cutting expert reasoning, evidence, verification, or authority gates. Look specifically for false-PASS paths, standing-token costs, redundant review, and gaps in cross-session Track A coordination.
+
+Recommend only changes that materially improve safety or reduce tokens. Return Markdown only; do not edit code, merge branches, write records, or mutate external systems.
