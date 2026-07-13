@@ -1,0 +1,5 @@
+Perform a narrow R3 operational review. Read EXECUTION-token-efficient-bounded-autonomy.md first and consult the accepted architecture only for fidelity.
+
+Check task selection, Cursor sequencing, completion evidence, separate fitness verdicts, read-only probes, Ryan's promotion matrix, and the Stage 2 compact-protocol rollout. Identify only execution blockers or material token waste introduced by the runbook.
+
+Return a concise execution-ready verdict or the smallest blocking edits. Markdown only; no code, runtime activation, merge, record, or external writes.
