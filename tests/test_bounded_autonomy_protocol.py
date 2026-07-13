@@ -1,8 +1,8 @@
-"""Fitness checks for the Stage 2 opt-in BOUNDED_AUTONOMY protocol slice.
+"""Fitness checks for the Stage 3 convmem-default BOUNDED_AUTONOMY protocol slice.
 
 Protects against standing-token bloat (word ceiling), surface drift (exact body
-once on execution surfaces), and accidental default activation (phrase + ChatGPT
-absence).
+once on execution surfaces), accidental inheritance outside convmem routine work,
+and ChatGPT strategy-pack omission.
 """
 
 from __future__ import annotations
@@ -13,7 +13,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SSOT = REPO_ROOT / "config" / "agent-protocol.md"
-ACTIVATION_PHRASE = "Mode: bounded autonomy"
+OPT_IN_PHRASE = "Mode: bounded autonomy"
+REVIEW_REQUIRED_PHRASE = "Mode: review required"
 WORD_CEILING = 130
 
 EXECUTION_SURFACES = (
@@ -42,7 +43,7 @@ def _canonical_body() -> str:
 
 
 class BoundedAutonomyProtocolTests(unittest.TestCase):
-    def test_canonical_body_word_ceiling_and_activation(self):
+    def test_canonical_body_word_ceiling(self):
         body = _canonical_body()
         words = body.split()
         self.assertLessEqual(
@@ -50,7 +51,32 @@ class BoundedAutonomyProtocolTests(unittest.TestCase):
             WORD_CEILING,
             f"BOUNDED_AUTONOMY body is {len(words)} words (ceiling {WORD_CEILING})",
         )
-        self.assertIn(ACTIVATION_PHRASE, body)
+
+    def test_convmem_only_default_for_routine_reversible(self):
+        body = _canonical_body()
+        self.assertIn("Default for Routine-reversible work only in convmem", body)
+        self.assertNotIn("never default", body)
+
+    def test_review_required_override(self):
+        body = _canonical_body()
+        self.assertIn(f"`{REVIEW_REQUIRED_PHRASE}`", body)
+        self.assertIn("disables it", body)
+
+    def test_opt_in_phrase_preserved(self):
+        body = _canonical_body()
+        self.assertIn(f"`{OPT_IN_PHRASE}`", body)
+        self.assertIn("opts in where higher rules permit", body)
+
+    def test_wordpress_probation_not_inherited(self):
+        body = _canonical_body()
+        self.assertIn("WordPress stays review-required pending separate probation", body)
+
+    def test_excluded_domains_never_inherit(self):
+        body = _canonical_body()
+        self.assertIn(
+            "Other repos, architecture, security, and external-configuration work never inherit it",
+            body,
+        )
 
     def test_exact_body_once_on_execution_surfaces(self):
         body = _canonical_body()
@@ -64,16 +90,22 @@ class BoundedAutonomyProtocolTests(unittest.TestCase):
                     f"{path.name}: expected exact canonical body once",
                 )
                 self.assertEqual(
-                    text.count(ACTIVATION_PHRASE),
+                    text.count(OPT_IN_PHRASE),
                     1,
-                    f"{path.name}: expected activation phrase once",
+                    f"{path.name}: expected opt-in phrase once",
+                )
+                self.assertEqual(
+                    text.count(REVIEW_REQUIRED_PHRASE),
+                    1,
+                    f"{path.name}: expected review-required phrase once",
                 )
 
     def test_absent_from_chatgpt_strategy_pack(self):
         body = _canonical_body()
         text = CHATGPT_PACK.read_text(encoding="utf-8")
         self.assertEqual(text.count(body), 0)
-        self.assertNotIn(ACTIVATION_PHRASE, text)
+        self.assertNotIn(OPT_IN_PHRASE, text)
+        self.assertNotIn(REVIEW_REQUIRED_PHRASE, text)
 
 
 if __name__ == "__main__":
