@@ -906,6 +906,32 @@ def _evaluate_standing_rows(
     return open_count, due
 
 
+def _load_standing_register(
+    *,
+    register_path: Path | None = None,
+    root: Path | None = None,
+) -> tuple[Path, Path, list | None, str | None]:
+    """Shared load/parse for the standing-checks register JSON.
+
+    Returns ``(path, base, rows, error)``. On success ``error`` is ``None`` and
+    ``rows`` is the checks list. On failure ``rows`` is ``None`` and ``error`` is
+    one of: ``"missing"``, ``"unreadable:<exc>"``, or ``"no_checks_list"``.
+    Callers map those differently (quiet ``(0, [])`` vs doctor skip messages).
+    """
+    path = register_path or _standing_register_path()
+    base = root or Path(__file__).resolve().parent
+    if not path.is_file():
+        return path, base, None, "missing"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return path, base, None, f"unreadable:{exc}"
+    rows = data.get("checks") if isinstance(data, dict) else data
+    if not isinstance(rows, list):
+        return path, base, None, "no_checks_list"
+    return path, base, rows, None
+
+
 def standing_register_status(
     cfg: dict,
     *,
@@ -918,16 +944,10 @@ def standing_register_status(
     A missing / unreadable / malformed register yields ``(0, [])`` — nothing to
     nag — so callers can treat it as "quiet" without special-casing.
     """
-    path = register_path or _standing_register_path()
-    base = root or Path(__file__).resolve().parent
-    if not path.is_file():
-        return 0, []
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return 0, []
-    rows = data.get("checks") if isinstance(data, dict) else data
-    if not isinstance(rows, list):
+    _path, base, rows, error = _load_standing_register(
+        register_path=register_path, root=root
+    )
+    if error is not None or rows is None:
         return 0, []
     return _evaluate_standing_rows(rows, cfg, base)
 
@@ -945,18 +965,17 @@ def _check_standing_register(
     due. Advisory only — always returns ``ok=True`` (status ``warn`` when due)
     so it never changes the doctor exit code; malformed/missing register skips.
     """
-    path = register_path or _standing_register_path()
-    base = root or Path(__file__).resolve().parent
-    if not path.is_file():
+    path, base, rows, error = _load_standing_register(
+        register_path=register_path, root=root
+    )
+    if error == "missing":
         return DoctorCheck("standing_register", True, f"no register at {path}", status="skip")
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    if error is not None and error.startswith("unreadable:"):
+        detail = error[len("unreadable:") :]
         return DoctorCheck(
-            "standing_register", True, f"register unreadable: {exc}", status="skip"
+            "standing_register", True, f"register unreadable: {detail}", status="skip"
         )
-    rows = data.get("checks") if isinstance(data, dict) else data
-    if not isinstance(rows, list):
+    if error == "no_checks_list" or rows is None:
         return DoctorCheck(
             "standing_register", True, "register has no checks list", status="skip"
         )
