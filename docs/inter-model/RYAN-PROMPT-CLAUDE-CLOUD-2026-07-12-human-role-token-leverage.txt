@@ -1,0 +1,5 @@
+Read HANDOFF.md first, then the context files.
+
+We want the smallest human role that reduces model-token waste without requiring Ryan to become a technical decision-maker. A prior suggestion—decision triage—was challenged because models are used precisely for deep knowledge. Assess the stronger alternative: Ryan as brief owner/scope-locker who supplies priorities, non-goals, a definition of done, and a stop rule while agents do the technical work. Recommend a more effective role if warranted.
+
+Return the requested operating loop and templates in Markdown only; no code changes or ledger writes.
