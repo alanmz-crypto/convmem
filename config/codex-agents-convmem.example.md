@@ -3,7 +3,7 @@
 You have access to a local knowledge corpus via convmem. Use it before repeating past work.
 
 
-1. **`convmem doctor`** — run first. Must exit 0 before any ask/search. Confirms Ollama/Chroma health.
+1. **`convmem doctor`** — run alone first. Must exit 0 before any brief/ask/search. Confirms Ollama/Chroma health.
 2. **`convmem brief --stdout-only`** — session orientation: corpus state, recent decisions, monitor results, unresolved count. When also calling MCP **`brief()`**, pass **project=<slug>** inferred from cwd (see Tier B).
 3. **`convmem unresolved`** — check open observations. Add `--site <hostname>` for client-specific issues (e.g. `--site staging2.willowyhollow.com`). For multiple sites, prefer **separate** `convmem unresolved --site …` calls (or one call without `--site`). Avoid `echo` separators unless comparing output side-by-side.
 4. **Before answering history/architecture questions:** use `convmem "search query"` or `convmem ask "question"` to ground responses in the ledger.
@@ -15,8 +15,6 @@ You have access to a local knowledge corpus via convmem. Use it before repeating
 **DB backups (WordPress repos).** Before any DB mutation (`eval-file`, direct SQL, sync scripts) — take a `practice_backup` or `mysqldump`. This is operational safety for content, separate from git.
 
 **Git hygiene (convmem prod — Git Hygiene Baseline):** After cloning `~/Projects/convmem`, run `bash scripts/install-repo-config.sh` (sets `core.hooksPath`, `pull.ff only`, `rerere.enabled`, `blame.ignoreRevsFile` — repo-local only). Feature branch update: `git fetch origin && git rebase origin/main`. Clean `main`: `git pull --ff-only`. If plain `git pull` fails under `pull.ff only`, histories diverged — stop and inspect (do not force a merge pull). When rerere reuses a resolution, review with `git rerere diff` (textual reuse ≠ semantic correctness). Milestone closures: propose `vX.Y.Z-<slug>` or `milestone/<slug>` in handoff; Ryan tags; work from a tag via `git switch -c <branch> <tag>` (no fixed `recovery/` prefix). Stash: may stash **own** uncommitted work to unblock a branch switch; must **not** stash Ryan’s unrelated dirty files without execution-plan authorization (`git stash push -u -m "<reason>" -- <paths>` + handoff note if authorized). Full rules: `docs/plans/git-hygiene-baseline.md`.
-
-**Cursor with shell:** run `convmem doctor` before MCP `brief()` — doctor confirms infra; brief does not.
 
 **Codex-specific:** if `convmem ask` fails with a network error (sandbox blocks localhost), retry with:
 ```
