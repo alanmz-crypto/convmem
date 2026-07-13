@@ -78,7 +78,7 @@ class WriteGateEffectTests(unittest.TestCase):
         finally:
             store.close()
 
-    def _run_gate_failing(self, args):
+    def _run_gate_failing(self, args, input_text: str | None = None):
         """Invoke the CLI with the Restic gate forced to return non-zero."""
         gate_call = MagicMock(
             return_value=subprocess.CompletedProcess(
@@ -90,7 +90,7 @@ class WriteGateEffectTests(unittest.TestCase):
         ), patch("restic_gate.subprocess.run", gate_call), patch(
             "llm.ollama_embed", side_effect=_fake_embed
         ):
-            result = self.runner.invoke(convmem.app, args)
+            result = self.runner.invoke(convmem.app, args, input=input_text)
         return result, gate_call
 
     def test_add_upsert_blocked_leaves_corpus_unchanged(self):
@@ -117,7 +117,10 @@ class WriteGateEffectTests(unittest.TestCase):
             rationale="verify record --approve-last gates before the Chroma index write",
             author="ryan",
         )
-        result, gate_call = self._run_gate_failing(["record", "--approve-last"])
+        result, gate_call = self._run_gate_failing(
+            ["record", "--approve-last"],
+            input_text="y\n",
+        )
         self.assertNotEqual(result.exit_code, 0, "record --approve-last should abort on gate failure")
         self.assertGreaterEqual(gate_call.call_count, 1, "the Restic gate must run on this path")
         self.assertEqual(self._count(), self.baseline, "the approved decision must not reach Chroma when the gate fails")
