@@ -284,6 +284,66 @@ def find_proposal(records: list[dict], proposal_id: str) -> dict | None:
     return None
 
 
+def format_proposal_review(row: dict) -> str:
+    """Pure human-readable review card for a proposal row (JSONL stays canonical)."""
+
+    def _scalar(key: str, *, default: str = "") -> str:
+        val = row.get(key)
+        if val is None:
+            return default
+        text = str(val).strip() if isinstance(val, str) else str(val)
+        return text if text else default
+
+    def _block(label: str, text: str) -> list[str]:
+        if not text:
+            return [f"{label}:"]
+        lines = text.splitlines() or [text]
+        if len(lines) == 1:
+            return [f"{label}: {lines[0]}"]
+        out = [f"{label}:"]
+        out.extend(f"  {line}" for line in lines)
+        return out
+
+    def _bullets(label: str, items) -> list[str]:
+        out = [f"{label}:"]
+        if not items:
+            out.append("  (none)")
+            return out
+        for item in items:
+            text = str(item).strip() if item is not None else ""
+            if not text:
+                out.append("  -")
+                continue
+            item_lines = text.splitlines() or [text]
+            out.append(f"  - {item_lines[0]}")
+            out.extend(f"    {line}" for line in item_lines[1:])
+        return out
+
+    target = row.get("target_ledger_id")
+    target_s = _scalar("target_ledger_id") if target not in (None, "") else "(none)"
+    site = _scalar("site")
+    conf = row.get("confidence")
+    conf_s = "" if conf is None else str(conf)
+
+    lines: list[str] = [
+        "── Decision draft ──",
+        f"id: {_scalar('id', default='?')}",
+        f"status: {_scalar('status', default='PENDING')}",
+        *_block("summary", _scalar("summary")),
+        *_block("rationale", _scalar("rationale")),
+        f"relates_to: {_scalar('relates_to')}",
+        f"proposed_by: {_scalar('proposed_by')}",
+        f"proposed_at: {_scalar('proposed_at')}",
+        f"domain: {_scalar('domain')}",
+        f"site: {site if site else '(none)'}",
+        f"confidence: {conf_s}",
+        f"target_ledger_id: {target_s}",
+        *_bullets("alternatives_rejected", row.get("alternatives_rejected")),
+        *_bullets("constraints", row.get("constraints")),
+    ]
+    return "\n".join(lines)
+
+
 def proposal_to_ledger(
     proposal: dict,
     *,
