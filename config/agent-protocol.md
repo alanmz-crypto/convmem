@@ -216,6 +216,26 @@ Full charter + review rationale: `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
 
 ---
 
+## Bounded autonomy
+
+<!-- BOUNDED_AUTONOMY_START -->
+
+Activates only on exact phrase `Mode: bounded autonomy`; never default.
+
+Precedence (high→low): system/tool guards → lane must-nots + protocol → DB/secrets/external safety → exact brief authorizations → autonomy defaults. Lower cannot override higher.
+
+Interrupt only for: security/privacy; unauthorized external change; cost/commitment; public API/schema change; out-of-lane action; ambiguous outcome. Else choose one path and continue.
+
+Reuse existing DB-backup, lane, and record safeguards by reference.
+
+External auth requires exact resource, operation, and final value (or named one-shot) in `Authorized external changes`; never infer from outcome.
+
+Done: result, verification, largest material trade-off/risk, branch/push; Track A at handoff.
+
+<!-- BOUNDED_AUTONOMY_END -->
+
+---
+
 ## Tool lanes by model
 
 Compact charter above. Full table: `docs/AGENT-ROLES.md` and `docs/inter-model/TEAM-CHARTER-2026-07-06.md`.
