@@ -900,16 +900,14 @@ def propose_decision_command(
         approved_path,
         collect_interactive_fields,
         confirm_interactive_submit,
-        find_proposal,
         format_proposal_review,
         ingest_approved_ledger,
         mark_approved,
         interactive_session_lock,
         latest_pending,
         list_proposals,
-        load_queue,
+        pending_proposal_for_review,
         propose as do_propose,
-        queue_path,
         recover_approval,
         rebase_proposal,
         reject as do_reject,
@@ -940,11 +938,25 @@ def propose_decision_command(
                 typer.echo("  Start one: convmem record -i")
             return
         typer.echo(f"{'PENDING' if not all_ else 'ALL'} ({len(rows)})")
-        for i, row in enumerate(rows):
-            if i:
-                typer.echo("")
-            typer.echo(format_proposal_review(row))
-        if not all_ and rows:
+        if all_:
+            # Compact history view (preserves rejection_reason; avoids card sprawl).
+            for row in rows:
+                pid = row.get("id", "?")
+                status = row.get("status", "PENDING")
+                site_s = row.get("site") or "(no site)"
+                typer.echo(f"  {pid}  [{status}]  {site_s}  {row.get('domain', '')}")
+                typer.echo(f"    {row.get('summary', '')}")
+                typer.echo(
+                    f"    proposed by {row.get('proposed_by', '?')} · "
+                    f"relates_to {row.get('relates_to', '?')} · {row.get('proposed_at', '?')}"
+                )
+                if row.get("rejection_reason"):
+                    typer.echo(f"    rejected: {row['rejection_reason']}")
+        else:
+            for i, row in enumerate(rows):
+                if i:
+                    typer.echo("")
+                typer.echo(format_proposal_review(row))
             typer.echo("")
             typer.echo("  Finish newest: convmem record --approve-last")
         return
@@ -985,10 +997,11 @@ def propose_decision_command(
         approve_id = pending["id"]
 
     if approve_id:
-        preview = find_proposal(load_queue(queue_path(cfg)), approve_id)
-        if preview is None:
-            render_error(f"Proposal not found: {approve_id}")
-            raise typer.Exit(1)
+        try:
+            preview = pending_proposal_for_review(cfg, approve_id)
+        except ValueError as e:
+            render_error(str(e))
+            raise typer.Exit(1) from e
         typer.echo(format_proposal_review(preview))
         try:
             confirmed = typer.confirm("Approve this draft?", default=False)

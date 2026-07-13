@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
 
 import convmem
-from propose_decision import approve, format_proposal_review, list_proposals, propose, queue_path
+from propose_decision import approve, format_proposal_review, list_proposals, propose, queue_path, reject
 
 
 class RecordReviewCliTests(unittest.TestCase):
@@ -160,6 +160,47 @@ class RecordReviewCliTests(unittest.TestCase):
         self.assertNotEqual(cancelled.exit_code, 0)
         self.assertIn("Approve this draft?", cancelled.output)
         snap.assert_not_called()
+
+    def test_list_all_stays_compact_with_rejection_reason(self):
+        pending = self._seed(summary="Still pending")
+        approved = self._seed(summary="Already approved")
+        approve(self.cfg, approved["id"], signer="ryan")
+        rejected = self._seed(summary="Already rejected")
+        reject(self.cfg, rejected["id"], signer="ryan", reason="duplicate of parent")
+        result = self._invoke(["record", "--list", "--all"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("ALL (", result.output)
+        self.assertNotIn("── Decision draft ──", result.output)
+        self.assertNotIn("rationale:", result.output)
+        self.assertNotIn("alternatives_rejected:", result.output)
+        self.assertIn(f"  {pending['id']}  [PENDING]", result.output)
+        self.assertIn(f"  {approved['id']}  [APPROVED]", result.output)
+        self.assertIn(f"  {rejected['id']}  [REJECTED]", result.output)
+        self.assertIn("rejected: duplicate of parent", result.output)
+        # Compact history lines, not full review cards.
+        self.assertIn("proposed by cursor · relates_to dec_parent", result.output)
+
+    def test_approve_non_pending_fails_before_confirm(self):
+        approved = self._seed(summary="Done")
+        approve(self.cfg, approved["id"], signer="ryan")
+        rejected = self._seed(summary="Nope")
+        reject(self.cfg, rejected["id"], signer="ryan", reason="stale")
+        q_before = queue_path(self.cfg).read_text(encoding="utf-8")
+
+        for pid, status in ((approved["id"], "APPROVED"), (rejected["id"], "REJECTED")):
+            with patch("restic_gate.ensure_chroma_snapshot_for_live_write") as snap, patch(
+                "propose_decision.approve_and_ingest"
+            ) as ingest, patch("propose_decision.approve") as do_approve:
+                result = self._invoke(["record", "--approve", pid], input_text="y\n")
+            self.assertNotEqual(result.exit_code, 0, result.output)
+            self.assertIn("not PENDING", result.output)
+            self.assertIn(status, result.output)
+            self.assertNotIn("Approve this draft?", result.output)
+            self.assertNotIn("── Decision draft ──", result.output)
+            snap.assert_not_called()
+            ingest.assert_not_called()
+            do_approve.assert_not_called()
+        self.assertEqual(queue_path(self.cfg).read_text(encoding="utf-8"), q_before)
 
 
 if __name__ == "__main__":
