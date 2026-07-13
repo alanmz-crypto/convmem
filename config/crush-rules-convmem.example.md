@@ -6,7 +6,7 @@ convmem is a local-first knowledge corpus on this machine. You have **bash** and
 
 
 1. **`convmem doctor`** — run alone first. Must exit 0 before any brief/ask/search. Confirms Ollama/Chroma health.
-2. **`convmem brief --stdout-only`** — session orientation: corpus state, recent decisions, monitor results, unresolved count. When also calling MCP **`brief()`**, pass **project=<slug>** inferred from cwd (see Tier B).
+2. **`convmem brief --stdout-only`** — session orientation: corpus state, recent decisions, monitor results, unresolved count.
 3. **`convmem unresolved`** — check open observations. Add `--site <hostname>` for client-specific issues (e.g. `--site staging2.willowyhollow.com`). For multiple sites, prefer **separate** `convmem unresolved --site …` calls (or one call without `--site`). Avoid `echo` separators unless comparing output side-by-side.
 4. **Before answering history/architecture questions:** use `convmem "search query"` or `convmem ask "question"` to ground responses in the ledger.
 
@@ -78,9 +78,11 @@ Avoid **"index what you wrote"** alone — models treat that as the markdown log
 2. **`record`** — one closing **conclusion** only (not per-finding). Detail stays in chat ingest + indexed logs.
 
 
-## MCP (after shell ritual — not optional)
+## After Tier A — MCP tools (do not repeat brief)
 
-After `doctor` + shell `brief` + `unresolved`: use `brief(project=<slug>)` — infer slug from cwd; `search_fast()`, `ask()`, `related()`, `stats()`. Read-only. Or `resources/read` on `memories://brief`.
+
+After Tier A in a project repo, use read-only MCP `search_fast()`, `ask()`, `related()`, or `stats()`. Do **not** repeat `brief()`. Non-project modes follow MCP gates.
+
 
 **DeepSeek V4 (Flash/Pro) in Crush:** often skips this ritual on alien "project state" queries — do **not** start with `ls`, git, or docker until convmem steps above complete.
 

@@ -31,9 +31,17 @@ extract_section() {
 }
 
 # --- MCP instructions ---
-# Tier B + shell preamble + Codex retry note + session close
+# Labeled paths: shell (Tier A) → post-shell MCP → MCP-only (Tier B brief-first)
 {
+  echo "## Shell (Tier A)"
+  echo ""
   extract_section TIER_A
+  echo ""
+  echo "## MCP after Tier A"
+  echo ""
+  extract_section MCP_AFTER_TIER_A
+  echo ""
+  echo "## MCP-only (Tier B)"
   echo ""
   extract_section TIER_B
   echo ""
@@ -65,7 +73,7 @@ extract_section() {
 echo "  -> config/agent-protocol-mcp.txt"
 
 # --- Cursor .mdc rule ---
-# Cursor has both shell and MCP, so include Tier A + B + session close
+# Shell+MCP: Tier A + MCP_AFTER_TIER_A (not full MCP-only Tier B)
 cat > config/cursor-rules-convmem.mdc.example << 'FRONTMATTER'
 ---
 description: convmem cross-session memory — session start/close protocol
@@ -80,9 +88,9 @@ FRONTMATTER
   echo ""
   extract_section TIER_A
   echo ""
-  echo "## If you have MCP only — or after Tier A shell ritual (Tier B)"
+  echo "## After Tier A — MCP tools (do not repeat brief)"
   echo ""
-  extract_section TIER_B
+  extract_section MCP_AFTER_TIER_A
   echo ""
   extract_section SESSION_CLOSE
   echo ""
@@ -169,9 +177,9 @@ FRONTMATTER
   echo ""
   extract_section TIER_A
   echo ""
-  echo "## MCP (after shell ritual, or use MCP first if no shell step yet)"
+  echo "## After Tier A — MCP tools (do not repeat brief)"
   echo ""
-  extract_section TIER_B
+  extract_section MCP_AFTER_TIER_A
   echo ""
   echo "## Session close"
   echo ""
@@ -238,9 +246,9 @@ echo "  -> docs/chatgpt-pack/README.md"
   echo ""
   extract_section TIER_A
   echo ""
-  echo "## MCP (after shell ritual — not optional)"
+  echo "## After Tier A — MCP tools (do not repeat brief)"
   echo ""
-  echo "After \`doctor\` + shell \`brief\` + \`unresolved\`: use \`brief(project=<slug>)\` — infer slug from cwd; \`search_fast()\`, \`ask()\`, \`related()\`, \`stats()\`. Read-only. Or \`resources/read\` on \`memories://brief\`."
+  extract_section MCP_AFTER_TIER_A
   echo ""
   echo "**DeepSeek V4 (Flash/Pro) in Crush:** often skips this ritual on alien \"project state\" queries — do **not** start with \`ls\`, git, or docker until convmem steps above complete."
   echo ""
