@@ -6,6 +6,7 @@
         "/home/lauer/Projects/convmem/mcp_server.py"
       ],
       "env": {
+        "CONVMEM_MCP_PROFILE": "shell",
         "DEEPSEEK_API_KEY": "REPLACE_ME_OR_OMIT_IF_IN_env.local"
       },
       "disabled": false,

@@ -2,7 +2,8 @@
 # generate-agent-protocol.sh — emit per-surface protocol slices from canonical SSoT
 #
 # Reads config/agent-protocol.md (section-delimited), writes:
-#   config/agent-protocol-mcp.txt           — MCP instructions= content
+#   config/agent-protocol-mcp.txt            — MCP instructions= content (full/default)
+#   config/agent-protocol-mcp-shell.txt      — shell-profile MCP slice (MCP_AFTER_TIER_A only)
 #   config/cursor-rules-convmem.mdc.example  — Cursor global-always rule
 #   config/codex-agents-convmem.example.md   — Codex global AGENTS.md
 #   config/kiro-steering-convmem.example.md  — Kiro steering file
@@ -71,6 +72,10 @@ extract_section() {
   echo "Read \`docs/CODEX-DEEPSEEK-VERIFY.md\` — use \`search_fast\` + \`ask\` for sections marked DeepSeek; ask Ryan to paste shell output for Codex-only steps."
 } >> config/agent-protocol-mcp.txt
 echo "  -> config/agent-protocol-mcp.txt"
+
+# --- Compact shell-profile MCP instructions (MCP_AFTER_TIER_A only; ≤40 words) ---
+extract_section MCP_AFTER_TIER_A | sed '/^[[:space:]]*$/d' > config/agent-protocol-mcp-shell.txt
+echo "  -> config/agent-protocol-mcp-shell.txt"
 
 # --- Cursor .mdc rule ---
 # Shell+MCP: Tier A + MCP_AFTER_TIER_A (not full MCP-only Tier B)
