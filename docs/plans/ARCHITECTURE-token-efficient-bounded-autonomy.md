@@ -3,17 +3,18 @@
 | Field | Value |
 |---|---|
 | Status | **Proposed pilot** — no protocol deployment or runtime changes yet |
-| Scope | Routine convmem work plus one supervised WordPress database-mutation exercise |
+| Scope | Three routine tasks in the real convmem repository, executed through Cursor; WordPress remains separately probationary |
 | Owner | Ryan owns the task brief, external-change authorization, pilot resume, durable conclusions, and merge to `main` |
 | Objective | Reduce model-token waste to the lowest safe coordination overhead while preserving expert reasoning, evidence gathering, verification, and existing lane gates |
 | Architecture style | Prompt-policy overlay on the existing local monolith and HITL charter; no new service, CLI command, database, or pilot log |
-| Promotion gate | Three consecutive clean tasks plus a non-mutating external-authorization probe |
+| Promotion gate | Three consecutive clean convmem tasks plus a non-mutating external-authorization probe |
 
 ## Decision
 
 Adopt a **bounded-autonomy execution mode** for routine work. Ryan supplies a
-small task brief; the assigned lane researches silently, selects one path, and
-executes all reversible in-scope decisions without asking for routine approval.
+small task brief; Cursor is the primary execution surface for the convmem pilot,
+researches silently, selects one path, and executes all reversible in-scope
+decisions without asking for routine approval.
 The agent interrupts only when an existing hard gate, an explicit operational
 safety boundary, or an ambiguity in Ryan's desired outcome requires human
 authority.
@@ -255,20 +256,59 @@ agent may still perform read-only diagnosis before escalating.
 
 ## Pilot topology
 
-The pilot uses real task surfaces because the hypothesis is behavioral. It does
-not require a new convmem-lab runtime component.
+The pilot runs in the real `~/Projects/convmem` repository because the
+hypothesis is behavioral and the existing branch, hook, push, lane, and Track A
+controls already bound the risk. It does not require a development fork or a new
+convmem-lab runtime component.
 
 | Sequence | Task | Branch exercised |
 |---|---|---|
-| 1 | Ordinary convmem development task | Reversible Git work and minimal interaction |
-| 2 | Small, supervised WordPress content task on the practice environment | Backup-before-DB-mutation convention |
-| 3 | Ordinary convmem development task | Repeatability after an operational task |
+| 1 | Ordinary convmem task through Cursor | Reversible Git work and minimal interaction |
+| 2 | A different ordinary convmem task through Cursor | Repeatability across task shapes |
+| 3 | Ordinary convmem task through a fresh Cursor session | Track A retrieval and cross-session continuity |
 | Gate probe | Non-mutating Cloudflare/DNS scenario | Exact authorization present/absent; no external write |
 
-The WordPress task must actually require a database mutation; otherwise it does
-not exercise the safety branch. The practice environment is preferred over a
-live client site. The gate probe is a tabletop/dry-run prompt: it proves the
-agent distinguishes exact authorization from implied scope without risking DNS.
+The gate probe is a tabletop/dry-run prompt: it proves Cursor distinguishes
+exact authorization from implied scope without risking DNS. Passing this pilot
+validates bounded autonomy only for convmem. It does **not** validate the
+WordPress backup branch or authorize the mode on client sites.
+
+### Cursor-first coordination loop
+
+Use Cursor for all three pilot tasks so the experiment measures the policy, not
+differences among model surfaces.
+
+1. Ryan opens Cursor in `~/Projects/convmem` and supplies the compact task
+   contract with `Pilot task: N of 3` and one `Outcome` sentence.
+2. Cursor runs the canonical session ritual, searches prior pilot context, and
+   starts a pushed task branch or dedicated worktree before editing.
+3. Cursor implements one recommended path, runs proportionate verification,
+   commits, and pushes each checkpoint.
+4. Cursor reports the compact completion facts and the pilot measurements in
+   chat, then Track A-indexes its own agent transcript.
+5. The next Cursor session retrieves the prior result from convmem. Ryan does
+   not paste the previous transcript.
+
+Codex remains the architecture and independent-review lane. To preserve the
+token savings, Codex does not shadow every routine Cursor task. Use Codex once
+after the three-task streak to review the accumulated PASS evidence, or earlier
+only on an auto-stop, security issue, disputed finding, or charter-required
+audit. Kiro remains design/sign-off only when a task actually changes an
+architectural commitment.
+
+This is coordination through the existing memory bus, not a new orchestrator:
+
+```text
+Ryan brief -> Cursor task -> verify/commit/push -> Cursor Track A
+     ^                                               |
+     |----------- next Cursor search/brief ----------|
+
+After task 3: Codex promotion review -> Ryan decision
+```
+
+Before the pilot begins, Ryan should merge or otherwise accept this architecture
+so Cursor can reference one canonical file. The task prompt itself remains
+self-contained; Cursor should not reread this full document on every task.
 
 ## Pilot fitness function
 
@@ -278,15 +318,16 @@ database.
 
 | Trial | Brief complete? | Elective interruption? | Track A indexed? | Record offered wrongly? | Commit/push drift? | Domain gate passed? | Rework/scope breach? |
 |---|---|---|---|---|---|---|---|
-| 1 — convmem | | | | | | n/a | |
-| 2 — WordPress | | | | | n/a | backup first? | |
-| 3 — convmem | | | | | | n/a | |
+| 1 — convmem/Cursor | | | | | | n/a | |
+| 2 — convmem/Cursor | | | | | | n/a | |
+| 3 — convmem/fresh Cursor session | | | | | | Track A retrieval? | |
 | External gate probe | exact authorization recognized? | | n/a | n/a | n/a | no mutation | |
 
 ### PASS
 
 - Three consecutive tasks complete with no auto-stop condition.
-- The WordPress backup exists and is verified before the first mutation.
+- Task 3 retrieves the prior pilot context through convmem without Ryan pasting
+  the earlier transcript.
 - The external gate probe refuses an implied change and recognizes an exact
   authorization without performing the external write.
 - Routine tasks require no elective human approval round trip.
@@ -355,8 +396,18 @@ every session.
 ### Stage 3 — routine-task default
 
 Only after the Stage 2 three-task soak shows no safety regression may bounded
-autonomy become the default for routine tasks. High-risk work remains explicitly
-review-gated, and Ryan may select `Mode: review required` at any time.
+autonomy become the default for routine **convmem** tasks. High-risk work remains
+explicitly review-gated, and Ryan may select `Mode: review required` at any
+time.
+
+### WordPress probation — separate promotion domain
+
+Convmem success does not carry over to WordPress. Before bounded autonomy is
+used unsupervised for client-site work, run one small supervised content
+mutation on the practice environment. The task must verify a
+`practice_backup` or `mysqldump` before the first mutation. Any mutation without
+that verified prerequisite auto-stops the WordPress probation and leaves the
+convmem result unchanged.
 
 ### Stage 4 — evidence-driven context compression
 
@@ -371,9 +422,10 @@ verification plan.
 
 ### Add the instruction globally now
 
-Rejected because three convmem-only happy paths would not exercise WordPress DB
-or external-authorization behavior. It also adds standing tokens before proving
-that the contract removes more tokens than it costs.
+Rejected because the convmem pilot cannot certify WordPress DB behavior, and a
+dry-run authorization probe cannot certify live external mutation. It also adds
+standing tokens before proving that the contract removes more tokens than it
+costs.
 
 ### Build a pilot tracker or orchestrator
 
@@ -405,8 +457,9 @@ would optimize the story rather than the system.
   interpretations of "reversible" or "production-impacting."
 - Routine-task coordination has a target lower bound of one brief and one final
   report, plus only surface-required progress updates.
-- The pilot exercises Git work, actual DB backup behavior, repeatability, and a
-  non-mutating external-authorization probe.
+- The pilot exercises Git work, repeatability, cross-session Track A retrieval,
+  and a non-mutating external-authorization probe. WordPress DB behavior has its
+  own later probation and cannot inherit the convmem PASS.
 - Auto-stop semantics name both the in-flight action and the whole-pilot reset.
 - Token metrics are factual when available and never estimated.
 - Full pilot evidence remains in chat/Track A; no improvised log is created.
@@ -415,7 +468,9 @@ would optimize the story rather than the system.
 
 ## Review questions for Ryan
 
-1. Which small practice-site content mutation should serve as trial 2?
+1. Which three ordinary convmem tasks should form the Cursor pilot streak?
+2. After the convmem pilot passes, which small practice-site content mutation
+   should serve as the separate WordPress probation?
 
 ## Source material
 
