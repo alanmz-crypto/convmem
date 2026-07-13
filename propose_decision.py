@@ -353,8 +353,10 @@ def propose(
     # The legacy queue remains a compatibility input until T5 migration; the
     # event is the protocol record used for conflict/lifecycle reduction.
     from conflict_events import append_event, governed_lock, new_event
+    from hash_schema_gate import ensure_schema_deploy_recorded
     from ledger_content_hash import HASH_SCHEMA_VERSION, ledger_content_hash
     with governed_lock(cfg):
+        ensure_schema_deploy_recorded(cfg)
         qpath = queue_path(cfg)
         records = load_queue(qpath)
         if find_proposal(records, pid) is not None:
@@ -508,6 +510,22 @@ def _approve_unlocked(
         )
 
     prop = event_proposal(cfg, proposal_id)
+    # Gate 5: hashless targeted proposals warn then block after graduation.
+    from hash_schema_gate import enforce_hashless_on_approve, ensure_schema_deploy_recorded
+    ensure_schema_deploy_recorded(cfg)
+    gate5_payload = {
+        **prop,
+        "id": proposal_id,
+        "target_ledger_id": prop.get("target_ledger_id") or proposal.get("target_ledger_id"),
+        "base_content_hash": prop.get("base_content_hash") or proposal.get("base_content_hash"),
+        "proposed_content_hash": prop.get("proposed_content_hash") or proposal.get("proposed_content_hash"),
+    }
+    gate5_warning = enforce_hashless_on_approve(cfg, gate5_payload)
+    if gate5_warning:
+        # Surface via stderr for CLI operators; library callers can inspect later.
+        import sys
+        print(f"⚠ Gate 5: {gate5_warning}", file=sys.stderr)
+
     target = (ledger_id or prop.get("target_ledger_id") or prop.get("proposed_ledger_id")
               or proposal.get("target_ledger_id") or proposal_id)
     target = str(target).strip()

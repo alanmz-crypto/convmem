@@ -117,9 +117,16 @@ def unresolved(states: dict[str, dict]) -> dict[str, dict]:
 
 
 def import_legacy_queue(cfg: dict) -> int:
-    """Import legacy pending rows once, preserving their proposal ids."""
+    """Import legacy pending rows once, preserving their proposal ids.
+
+    Also records the Gate 5 schema-deploy timestamp (idempotent) and writes
+    the one-shot migration report on first deploy.
+    """
+    from hash_schema_gate import ensure_schema_deploy_recorded
     from propose_decision import load_queue, queue_path
     with governed_lock(cfg):
+        # Clock starts at first legacy import / Gate 5 activation.
+        ensure_schema_deploy_recorded(cfg)
         states = reduce_events(load_events(cfg))
         added = 0
         for row in load_queue(queue_path(cfg)):
@@ -135,4 +142,6 @@ def import_legacy_queue(cfg: dict) -> int:
                 "proposed_by": row.get("proposed_by"),
             }))
             added += 1
+        # Refresh report inventory after import if this was first deploy's report
+        # already written; report is one-shot so leave as-is.
         return added
