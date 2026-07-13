@@ -21,6 +21,7 @@
 | Barrier race + crash recovery (arch) | PASS (nested flock fixed; N10 leaves `APPROVAL_STARTED`) |
 | Lock from data root (alternate chroma_dir) | PASS (`test_lock_is_scoped_to_data_root`) |
 | Ordinary non-governed index unlocked | PASS (chat/inter-model units non-`dec_` unaffected) |
+| Gate 5 hashless warn/block + schema-deploy timestamp | PASS (`tests/test_hash_schema_gate.py`) |
 
 ## Writer inventory (fill pass/fail)
 
@@ -38,7 +39,9 @@
 
 - Tip SHA: `f56739a` (f56739ac7e3ddc8a26988265bb2bedb69620fc41)
 - pytest summary: `50 passed in 1.11s` (acceptance slice)
-- Schema deploy timestamp path: `hash_schema_version=1` on every `PROPOSED` event (`propose` + legacy import)
+- Schema deploy timestamp path: data-root `hash_schema_deploy.json` (recorded once via `ensure_schema_deploy_recorded`; `hash_schema_version=1`)
+- Migration report path: data-root `hash_schema_migration_report.json` (one-shot at first deploy)
+- Gate 5 graduation: warn until zero hashless targeted unresolved **or** 14d after deploy; then block (`hash_schema_gate.py`; `tests/test_hash_schema_gate.py`)
 
 ```text
 Mechanical PASS: 2026-07-12 — tip f56739a
