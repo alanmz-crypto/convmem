@@ -900,11 +900,13 @@ def propose_decision_command(
         approved_path,
         collect_interactive_fields,
         confirm_interactive_submit,
+        format_proposal_review,
         ingest_approved_ledger,
         mark_approved,
         interactive_session_lock,
         latest_pending,
         list_proposals,
+        pending_proposal_for_review,
         propose as do_propose,
         recover_approval,
         rebase_proposal,
@@ -936,24 +938,32 @@ def propose_decision_command(
                 typer.echo("  Start one: convmem record -i")
             return
         typer.echo(f"{'PENDING' if not all_ else 'ALL'} ({len(rows)})")
-        for row in rows:
-            pid = row.get("id", "?")
-            status = row.get("status", "PENDING")
-            site_s = row.get("site") or "(no site)"
-            typer.echo(f"  {pid}  [{status}]  {site_s}  {row.get('domain', '')}")
-            typer.echo(f"    {row.get('summary', '')}")
-            typer.echo(
-                f"    proposed by {row.get('proposed_by', '?')} · "
-                f"relates_to {row.get('relates_to', '?')} · {row.get('proposed_at', '?')}"
-            )
-            if row.get("rejection_reason"):
-                typer.echo(f"    rejected: {row['rejection_reason']}")
-        if not all_ and rows:
+        if all_:
+            # Compact history view (preserves rejection_reason; avoids card sprawl).
+            for row in rows:
+                pid = row.get("id", "?")
+                status = row.get("status", "PENDING")
+                site_s = row.get("site") or "(no site)"
+                typer.echo(f"  {pid}  [{status}]  {site_s}  {row.get('domain', '')}")
+                typer.echo(f"    {row.get('summary', '')}")
+                typer.echo(
+                    f"    proposed by {row.get('proposed_by', '?')} · "
+                    f"relates_to {row.get('relates_to', '?')} · {row.get('proposed_at', '?')}"
+                )
+                if row.get("rejection_reason"):
+                    typer.echo(f"    rejected: {row['rejection_reason']}")
+        else:
+            for i, row in enumerate(rows):
+                if i:
+                    typer.echo("")
+                typer.echo(format_proposal_review(row))
             typer.echo("")
             typer.echo("  Finish newest: convmem record --approve-last")
         return
 
-    if recover:
+    # Plain-Python callers (e.g. record → propose_decision) may leave Typer
+    # Option defaults as OptionInfo; only real strings activate these paths.
+    if isinstance(recover, str) and recover:
         _guard_write()
         try:
             action = recover_approval(cfg, recover)
@@ -967,7 +977,7 @@ def propose_decision_command(
         typer.echo(f"Recovered {recover}: {action}")
         return
 
-    if rebase:
+    if isinstance(rebase, str) and rebase:
         _guard_write()
         try:
             draft = rebase_proposal(cfg, rebase, author=author)
@@ -978,8 +988,6 @@ def propose_decision_command(
         typer.echo(f"  target={draft.get('target_ledger_id')} base={str(draft.get('base_content_hash') or '')[:12]}")
         return
 
-    _guard_write()
-
     approve_id = approve
     if approve_last:
         pending = latest_pending(cfg)
@@ -989,6 +997,22 @@ def propose_decision_command(
         approve_id = pending["id"]
 
     if approve_id:
+        try:
+            preview = pending_proposal_for_review(cfg, approve_id)
+        except ValueError as e:
+            render_error(str(e))
+            raise typer.Exit(1) from e
+        typer.echo(format_proposal_review(preview))
+        try:
+            confirmed = typer.confirm("Approve this draft?", default=False)
+        except typer.Abort:
+            typer.echo("Cancelled — draft not approved.")
+            raise typer.Exit(1)
+        if not confirmed:
+            typer.echo("Cancelled — draft not approved.")
+            raise typer.Exit(1)
+        # Confirm before any restic / ledger / Chroma write (fail closed).
+        _guard_write()
         resolved_signer = _resolve_approve_signer(signer)
         ingest_result = None
         try:
@@ -1014,6 +1038,8 @@ def propose_decision_command(
             approved_file=apath if no_index else None,
         )
         return
+
+    _guard_write()
 
     if reject:
         if not signer:
@@ -1155,6 +1181,8 @@ def record_command(
     proposal_id: str | None = typer.Option(None, "--id"),
 ):
     """Record a durable fact for all agents (`record -i` → `record --approve-last`)."""
+    # Pass recover/rebase explicitly: Typer Option defaults are OptionInfo objects
+    # when this wrapper calls the shared command as a plain Python function.
     propose_decision_command(
         list_=list_,
         all_=all_,
@@ -1166,6 +1194,8 @@ def record_command(
         reject=reject,
         signer=signer,
         reason=reason,
+        recover=None,
+        rebase=None,
         ledger_id=ledger_id,
         parse_doc=parse_doc,
         relates_to=relates_to,
