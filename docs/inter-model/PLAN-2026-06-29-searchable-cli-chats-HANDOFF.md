@@ -122,7 +122,7 @@ If watch is touching a live Crush DB it shouldn’t, that surfaces **before** OO
 
 Tag units with `source_type: prompt_only` in the adapter module docstring **and** on each parsed message / indexed unit metadata. v1: metadata only; ask-path handling deferred — but the hook must exist from day one so ask can branch later.
 
-**Repo status:** ✅ Shipped — [`adapters/codex_history_jsonl.py`](../adapters/codex_history_jsonl.py) (module docstring + `source_type` on messages), [`tests/test_codex_history_jsonl.py`](../tests/test_codex_history_jsonl.py), note in [`config.example.toml`](../config.example.toml) and [`docs/WORKSPACE-STANDARD.md`](../WORKSPACE-STANDARD.md)
+**Repo status:** ✅ Verified 2026-07-12 (Cursor Stage 2 soak task 2) — adapter previously shipped ([`adapters/codex_history_jsonl.py`](../adapters/codex_history_jsonl.py), [`tests/test_codex_history_jsonl.py`](../tests/test_codex_history_jsonl.py), notes in [`config.example.toml`](../config.example.toml) + [`docs/WORKSPACE-STANDARD.md`](../WORKSPACE-STANDARD.md)). Runtime: `pytest -q tests/test_codex_history_jsonl.py` (3 passed); `convmem doctor` exit 0; `convmem search "Run: convmem doctor && convmem unresolved --site staging2"` hit with `source_path` under `~/.codex/history.jsonl`. No adapter or bulk-index change. Ryan backfill remains Ryan-gated.
 
 ---
 
@@ -148,7 +148,7 @@ Tag units with `source_type: prompt_only` in the adapter module docstring **and*
    - `convmem search "convmem doctor"` → path under `~/.kiro/sessions/` (**Phase 1 sign-off**)
    - `convmem search "<april kiro title>"` → sqlite snapshot
    - Continue / Crush markers as before
-   - Optional: `convmem search "<known codex prompt>"` → `history.jsonl`
+   - Optional: `convmem search "<known codex prompt>"` → `history.jsonl` — ✅ 2026-07-12 (Stage 2 soak task 2; marker above)
 
 ---
 
@@ -162,4 +162,5 @@ Tag units with `source_type: prompt_only` in the adapter module docstring **and*
 | kiro-cli snapshot script | ✅ |
 | Codex adapter + `source_type: prompt_only` | ✅ |
 | Phase 3 Crush verify grep | ✅ 2026-07-12 (doctor + config grep + stats) |
+| Phase 4 Codex `history.jsonl` spot-verify | ✅ 2026-07-12 (pytest + doctor + search hit; no adapter change) |
 | Ryan backfill + sign-off search | ⏳ Ryan |
