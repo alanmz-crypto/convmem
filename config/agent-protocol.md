@@ -10,7 +10,8 @@ convmem is a local-first knowledge corpus on this machine (1457+ units). It inde
 
 <!-- TIER_A_START -->
 
-1. **`convmem doctor`** — run alone first. Must exit 0 before any brief/ask/search. Confirms Ollama/Chroma health.
+1. **`convmem doctor`** — the only tool call in the first batch. Wait for exit 0 before
+   calling anything else.
 2. **`convmem brief --stdout-only`** — session orientation: corpus state, recent decisions, monitor results, unresolved count.
 3. **`convmem unresolved`** — check open observations. Add `--site <hostname>` for client-specific issues (e.g. `--site staging2.willowyhollow.com`). For multiple sites, prefer **separate** `convmem unresolved --site …` calls (or one call without `--site`). Avoid `echo` separators unless comparing output side-by-side.
 4. **Before answering history/architecture questions:** use `convmem "search query"` or `convmem ask "question"` to ground responses in the ledger.
