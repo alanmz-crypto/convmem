@@ -218,7 +218,7 @@ Full charter + review rationale: `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
 
 <!-- BOUNDED_AUTONOMY_START -->
 
-Activates only on exact phrase `Mode: bounded autonomy`; never default.
+Default for Routine-reversible work only in convmem. `Mode: review required` disables it; `Mode: bounded autonomy` opts in where higher rules permit. WordPress stays review-required pending separate probation. Other repos, architecture, security, and external-configuration work never inherit it.
 
 Precedence (high→low): system/tool guards → lane must-nots + protocol → DB/secrets/external safety → exact brief authorizations → autonomy defaults. Lower cannot override higher.
 
