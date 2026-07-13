@@ -1,0 +1,5 @@
+Perform a narrow R2 correction review. Read HANDOFF-R2.md, then the revised architecture.
+
+Verify only whether the Task 3 false-PASS/false-reset gap, quiet-bad-judgment gap, progress-cadence advisory, bug-audit conditionality, and ambiguous authorization probe were correctly incorporated. The builder citations and remaining architecture were already accepted; do not re-audit them without a new blocker.
+
+Return a concise ready-for-pilot verdict or the smallest blocking edit. Markdown only; no code, merge, record, or external writes.
