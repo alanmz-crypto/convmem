@@ -14,9 +14,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SSOT = REPO_ROOT / "config" / "agent-protocol.md"
 
-# Distinctive consolidated step-1 fragment (must match SSoT exactly once per surface).
+# Full consolidated step-1 sentence (whitespace-normalized before match).
 CONSOLIDATED_RULE = (
-    "run alone first. Must exit 0 before any brief/ask/search."
+    "the only tool call in the first batch. Wait for exit 0 before "
+    "calling anything else."
 )
 REMOVED_DUPLICATE = "**Cursor with shell:**"
 
@@ -34,6 +35,11 @@ _MARKER_RE = re.compile(
 )
 
 
+def _normalize_ws(text: str) -> str:
+    """Collapse all whitespace so generated line wraps do not weaken matching."""
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def _tier_a_body(text: str) -> str:
     match = _MARKER_RE.search(text)
     if not match:
@@ -41,11 +47,15 @@ def _tier_a_body(text: str) -> str:
     return "\n".join(line.lstrip() for line in match.group(1).splitlines()).strip()
 
 
+def _rule_count(text: str) -> int:
+    return _normalize_ws(text).count(_normalize_ws(CONSOLIDATED_RULE))
+
+
 class DoctorAloneBeforeBriefTests(unittest.TestCase):
     def test_ssot_has_consolidated_rule_once_and_no_cursor_duplicate(self):
         text = SSOT.read_text(encoding="utf-8")
         body = _tier_a_body(text)
-        self.assertEqual(body.count(CONSOLIDATED_RULE), 1)
+        self.assertEqual(_rule_count(body), 1)
         self.assertNotIn(REMOVED_DUPLICATE, body)
         self.assertNotIn(REMOVED_DUPLICATE, text)
 
@@ -54,7 +64,7 @@ class DoctorAloneBeforeBriefTests(unittest.TestCase):
             with self.subTest(surface=path.name):
                 text = path.read_text(encoding="utf-8")
                 self.assertEqual(
-                    text.count(CONSOLIDATED_RULE),
+                    _rule_count(text),
                     1,
                     f"{path.name}: expected consolidated doctor-alone rule once",
                 )
