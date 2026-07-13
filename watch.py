@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Callable
 
 from adapters.detect import get_parser
+from process_lock import release_lock
 
 # Live databases that change constantly — watch re-index causes OOM + duplication.
 _LIVE_WATCH_SKIP_SUFFIXES = (
@@ -260,16 +261,6 @@ def acquire_lock(lock_path: Path) -> None:
             sys.exit(1)
         lock_path.unlink(missing_ok=True)
     lock_path.write_text(str(os.getpid()), encoding="utf-8")
-
-
-def release_lock(lock_path: Path) -> None:
-    if not lock_path.exists():
-        return
-    try:
-        if int(lock_path.read_text().strip()) == os.getpid():
-            lock_path.unlink(missing_ok=True)
-    except (ValueError, OSError):
-        lock_path.unlink(missing_ok=True)
 
 
 def load_watch_settings(cfg: dict) -> tuple[float, list[str], Path]:
