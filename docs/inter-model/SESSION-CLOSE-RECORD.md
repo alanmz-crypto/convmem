@@ -1,6 +1,38 @@
 # Session close — record handoff (all models)
 
-When Ryan says **closing**, **reboot**, **end session**, or **record block**: output a **terminal-ready** `convmem record` command. Ryan copy-pastes and runs it.
+This doc covers **two** distinct close types. Know which one you're in.
+
+---
+
+## Stopping point (soft close)
+
+**Trigger phrases:** "find a stopping point", "good stopping point", "let's wrap up", "let's pause here", "wind down", "park it"
+
+**This is NOT a record block.** Do not output `convmem record`. Do:
+
+1. **Finish or checkpoint current work** — leave the system stable. No half-applied DB mutations, no broken containers, no uncommitted branch changes that will confuse the next agent.
+2. **Push any commits** on the working branch (remote = backup).
+3. **Verbal handoff summary** — state clearly in chat:
+   - What was done (bullet list, concrete).
+   - What's pending / blocked (e.g. "needs reboot", "waiting on Ryan to merge").
+   - What the next agent (or Ryan) should do first on resume.
+4. **Index session chat (Track A):**
+   ```bash
+   convmem index --file <session-transcript-path>
+   ```
+   Use the path for your surface (Kiro: `~/.kiro/sessions/…/messages.jsonl`, Crush: `.crush/crush.db`, Cursor: agent transcript `.jsonl`, Codex: rollout `.jsonl`).
+5. **If you wrote a `logs/*.md` file** (only if Ryan asked), also run Track B sync script.
+6. **Do NOT** output a `convmem record` block, create new markdown files, or propose decisions.
+
+**The stopping-point close preserves work via chat ingest (Track A). Watch auto-indexes after debounce. The next agent sees it via `brief()` + `search`.**
+
+---
+
+## Record block (hard close)
+
+**Trigger phrases:** "closing", "reboot", "end session", "record block", "record this"
+
+When Ryan says one of these: output a **terminal-ready** `convmem record` command. Ryan copy-pastes and runs it.
 
 ---
 

@@ -67,6 +67,8 @@ bash ~/Projects/convmem/scripts/sync-willowyhollow-handoff.sh
 | **Ingest your chat** / **index your session** | Track **A** only |
 | **Index the log** | Track **B** only |
 | **Ingest everything** / **full handoff** | **A then B** (both if a log exists) |
+| **Find a stopping point** / **wrap up** / **park it** | **Soft close** — stabilize, push, verbal summary, Track A. **No record block.** |
+| **Closing** / **end session** / **record block** | **Hard close** — Track A + output `convmem record` block for Ryan to run. |
 
 Avoid **"index what you wrote"** alone — models treat that as the markdown log, skip chat.
 
