@@ -228,6 +228,63 @@ class ProposeDecisionTests(unittest.TestCase):
     def test_latest_pending_empty_queue(self):
         self.assertIsNone(latest_pending(self.cfg))
 
+    def test_format_proposal_review_full_fields(self):
+        from propose_decision import format_proposal_review
+
+        card = format_proposal_review(
+            {
+                "id": "dec_prop_review_full",
+                "status": "PENDING",
+                "summary": "Ship human review cards",
+                "rationale": "Line one\nLine two",
+                "relates_to": "dec_parent",
+                "proposed_by": "cursor",
+                "proposed_at": "2026-07-13T18:00:00Z",
+                "domain": "coding.tooling",
+                "site": "example.com",
+                "confidence": 0.9,
+                "target_ledger_id": "dec_target",
+                "alternatives_rejected": ["blind approve", "web UI\nphase 2"],
+                "constraints": ["JSONL canonical", "no --yes"],
+            }
+        )
+        for needle in (
+            "id: dec_prop_review_full",
+            "status: PENDING",
+            "summary: Ship human review cards",
+            "rationale:",
+            "Line one",
+            "Line two",
+            "relates_to: dec_parent",
+            "proposed_by: cursor",
+            "proposed_at: 2026-07-13T18:00:00Z",
+            "domain: coding.tooling",
+            "site: example.com",
+            "confidence: 0.9",
+            "target_ledger_id: dec_target",
+            "alternatives_rejected:",
+            "- blind approve",
+            "- web UI",
+            "phase 2",
+            "constraints:",
+            "- JSONL canonical",
+            "- no --yes",
+        ):
+            self.assertIn(needle, card)
+
+    def test_format_proposal_review_missing_optionals(self):
+        from propose_decision import format_proposal_review
+
+        card = format_proposal_review({"id": "dec_prop_sparse"})
+        self.assertIn("id: dec_prop_sparse", card)
+        self.assertIn("status: PENDING", card)
+        self.assertIn("site: (none)", card)
+        self.assertIn("target_ledger_id: (none)", card)
+        self.assertIn("alternatives_rejected:", card)
+        self.assertIn("constraints:", card)
+        self.assertIn("(none)", card)
+        self.assertNotIn("None", card.split("confidence:", 1)[1].splitlines()[0])
+
 
 if __name__ == "__main__":
     unittest.main()
