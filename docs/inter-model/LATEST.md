@@ -1,10 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-12 (Always-Available GitHub Fallback — Mechanical PASS; Kiro V6c sign-off)  
+**Updated:** 2026-07-12 (Stage 1 bounded-autonomy pilot completed — Ryan authorized Stage 2)  
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
+- **Stage 1 bounded-autonomy pilot completed (2026-07-12):** Autonomy **PASS**, coordination **PASS**, authorization probes **PASS**, no auto-stop. Pilot Task 2 merged in [PR #9](https://github.com/alanmz-crypto/convmem/pull/9); Pilot Task 3 merged in [PR #10](https://github.com/alanmz-crypto/convmem/pull/10). Ryan authorized Stage 2. **Next:** Cursor implements the compact opt-in protocol. Plans: [`EXECUTION-token-efficient-bounded-autonomy.md`](../plans/EXECUTION-token-efficient-bounded-autonomy.md), [`ARCHITECTURE-token-efficient-bounded-autonomy.md`](../plans/ARCHITECTURE-token-efficient-bounded-autonomy.md).
 - **Kiro — Always-Available GitHub Fallback sign-off (2026-07-12):** Mechanical PASS on `feat/2026-07-12-always-github-fallback` @ `f4b4993`. **Kiro:** read [`HANDOFF-KIRO-2026-07-12-always-github-fallback-signoff.md`](HANDOFF-KIRO-2026-07-12-always-github-fallback-signoff.md) → write `Kiro reviewed: YYYY-MM-DD` in EXECUTION (V6c). Do **not** claim GitHub main protected (403 Pro). Ryan merges after sign-off. VERIFY: [`../plans/VERIFY-always-github-fallback.md`](../plans/VERIFY-always-github-fallback.md).
 - **Bug sprint scored (2026-07-08):** 5/5 PASS. `tier_1_5_gate: UNLOCKED`. Bug 5 (provider fallback) fixed same day — `_resolve_fallback_model` + warn-once + `CONVMEM_FAIL_ON_FALLBACK=1`. Scored in [`BUG-SPRINT-SUCCESS-2026-07-06.md`](BUG-SPRINT-SUCCESS-2026-07-06.md). Convmem now clear for willowyhollow-practice bug work.
 - **Orchestration approach (2026-07-06, merged):** Claude Cloud **Option B** — Tier 1 = **shared memory bus** (not orchestration); bug sprint proves value via [BUG-SPRINT-SUCCESS-2026-07-06.md](BUG-SPRINT-SUCCESS-2026-07-06.md); Tier 1.5 deferred until `tier_1_5_gate: UNLOCKED`; Tier 3 design in convmem-lab. Canonical: [ORCHESTRATION-APPROACH-2026-07-06.md](ORCHESTRATION-APPROACH-2026-07-06.md). Framing: [ORCHESTRATION-FRAMING.md](ORCHESTRATION-FRAMING.md). Prior handoff closed: [HANDOFF-CLAUDE-CLOUD-2026-07-06-orchestration-approach-review.md](HANDOFF-CLAUDE-CLOUD-2026-07-06-orchestration-approach-review.md).
