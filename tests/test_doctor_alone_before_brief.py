@@ -16,7 +16,7 @@ SSOT = REPO_ROOT / "config" / "agent-protocol.md"
 
 # Distinctive consolidated step-1 fragment (must match SSoT exactly once per surface).
 CONSOLIDATED_RULE = (
-    "run alone first. Must exit 0 before any brief/ask/search."
+    "the only tool call in the first batch. Wait for exit 0 before"
 )
 REMOVED_DUPLICATE = "**Cursor with shell:**"
 
