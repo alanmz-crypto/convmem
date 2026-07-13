@@ -106,18 +106,25 @@ def recovery_action(cfg: dict, proposal_id: str, *, live_marker: str = "", live_
 
 def validate_governed_apply(*, target_ledger_id: str | None, live_hash: str | None,
                            base_hash: str | None, unresolved_targets: set[str],
-                           proposal_id: str, proposed_ledger_id: str) -> str | None:
+                           proposal_id: str, proposed_ledger_id: str,
+                           live_tombstoned: bool = False,
+                           unresolved_creates: set[str] | None = None) -> str | None:
     """Return the fail-closed conflict reason, if any, before a governed write."""
-    target = target_ledger_id or proposed_ledger_id
-    if target in unresolved_targets:
-        return "pending_sibling"
+    creates = unresolved_creates if unresolved_creates is not None else set()
     if target_ledger_id:
+        if target_ledger_id in unresolved_targets:
+            return "pending_sibling"
+        if live_tombstoned:
+            return "target_tombstoned"
         if live_hash is None:
             return "target_missing"
         if base_hash is None or live_hash != base_hash:
             return "stale_base"
-    elif live_hash is not None:
-        return "create_target_exists"
+    else:
+        if proposed_ledger_id in creates or proposed_ledger_id in unresolved_targets:
+            return "pending_create_collision"
+        if live_hash is not None:
+            return "create_target_exists"
     return None
 
 
@@ -145,31 +152,31 @@ def unresolved_target_ids(cfg: dict) -> set[str]:
     return out
 
 
-def live_decision_snapshot(cfg: dict, ledger_id: str) -> tuple[str, str]:
-    """Return (proposal_id_marker, content_hash) for a live decision, or ("", "")."""
+def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
+    """Return (proposal_id_marker, content_hash, tombstoned) for a live decision."""
     if not ledger_id:
-        return "", ""
+        return "", "", False
     try:
-        from chroma_store import ChromaStore
+        from chroma_store import ChromaStore, is_superseded
         from ledger import find_unit_by_ledger_id
     except Exception:
-        return "", ""
+        return "", "", False
     chroma_dir = (cfg.get("index") or {}).get("chroma_dir")
     if not chroma_dir:
-        return "", ""
+        return "", "", False
     try:
         store = ChromaStore(chroma_dir)
         unit = find_unit_by_ledger_id(store, ledger_id)
     except Exception:
-        return "", ""
+        return "", "", False
     if unit is None:
-        return "", ""
+        return "", "", False
     meta = dict(unit.get("metadata") or {})
     marker = str(meta.get("proposal_id") or "").strip()
+    tombstoned = is_superseded(meta)
     live_hash = str(meta.get("content_hash") or "").strip()
     if live_hash:
-        return marker, live_hash
-    # Fallback: recompute from durable metadata when older units lack content_hash.
+        return marker, live_hash, tombstoned
     try:
         import json as _json
         from ledger_content_hash import ledger_content_hash
@@ -200,9 +207,15 @@ def live_decision_snapshot(cfg: dict, ledger_id: str) -> tuple[str, str]:
             "alternatives_rejected": _list("alternatives_rejected_json"),
             "constraints": _list("constraints_json"),
         }
-        return marker, ledger_content_hash(record)
+        return marker, ledger_content_hash(record), tombstoned
     except Exception:
-        return marker, ""
+        return marker, "", tombstoned
+
+
+def live_decision_snapshot(cfg: dict, ledger_id: str) -> tuple[str, str]:
+    """Return (proposal_id_marker, content_hash) for a live decision, or ("", "")."""
+    marker, live_hash, _tomb = live_decision_state(cfg, ledger_id)
+    return marker, live_hash
 
 
 def recover_approval(cfg: dict, proposal_id: str) -> str:
@@ -534,15 +547,18 @@ def _approve_unlocked(
         base_hash = proposal.get("base_content_hash")
 
     # Exclude this proposal from sibling set for the duration of its own approve.
-    unresolved_targets = set()
+    unresolved_targets: set[str] = set()
+    unresolved_creates: set[str] = set()
     for pid, state in unresolved(reduce_events(load_events(cfg))).items():
         if pid == proposal_id:
             continue
         p = state.get("proposal") or {}
-        t = p.get("target_ledger_id") or p.get("proposed_ledger_id") or pid
-        unresolved_targets.add(str(t))
+        if p.get("target_ledger_id"):
+            unresolved_targets.add(str(p["target_ledger_id"]))
+        else:
+            unresolved_creates.add(str(p.get("proposed_ledger_id") or pid))
 
-    live_marker, live_hash = live_decision_snapshot(cfg, target)
+    live_marker, live_hash, live_tombstoned = live_decision_state(cfg, target)
     live_hash_or_none = live_hash or None
     # create-if-absent when proposal has no target_ledger_id
     target_for_validate = prop.get("target_ledger_id") or proposal.get("target_ledger_id")
@@ -553,6 +569,8 @@ def _approve_unlocked(
         unresolved_targets=unresolved_targets,
         proposal_id=proposal_id,
         proposed_ledger_id=target,
+        live_tombstoned=live_tombstoned,
+        unresolved_creates=unresolved_creates,
     )
     if conflict:
         raise ValueError(conflict)
@@ -623,6 +641,123 @@ def approve_and_ingest(cfg: dict, proposal_id: str, *, signer: str, ledger_id: s
         return proposal, ledger, stats
 
 
+
+def rebase_proposal(
+    cfg: dict,
+    proposal_id: str,
+    *,
+    author: str | None = None,
+) -> dict:
+    """Gate 9: stale-base resolution — new proposal_id; old → SUPERSEDED.
+
+    Never mutates the old proposal's base hash. Fresh base is snapshotted under lock.
+    """
+    from conflict_events import append_event, governed_lock, load_events, new_event, reduce_events
+    from ledger_content_hash import HASH_SCHEMA_VERSION, ledger_content_hash
+
+    proposal_id = proposal_id.strip()
+    with governed_lock(cfg):
+        qpath = queue_path(cfg)
+        records = load_queue(qpath)
+        old = find_proposal(records, proposal_id)
+        if old is None:
+            raise ValueError(f"Proposal not found: {proposal_id}")
+        if old.get("status") != "PENDING":
+            raise ValueError(
+                f"Proposal {proposal_id} is not PENDING (status={old.get('status')})"
+            )
+        states = reduce_events(load_events(cfg))
+        state = states.get(proposal_id)
+        if state is not None and state.get("lifecycle_state") not in {"PROPOSED"}:
+            raise ValueError(
+                f"Proposal {proposal_id} cannot rebase "
+                f"(lifecycle={state.get('lifecycle_state')})"
+            )
+        prop = dict((state or {}).get("proposal") or {})
+        target = (
+            prop.get("target_ledger_id")
+            or old.get("target_ledger_id")
+        )
+        if not target:
+            raise ValueError("rebase requires a targeted update proposal (target_ledger_id)")
+
+        _marker, live_hash, tombstoned = live_decision_state(cfg, str(target))
+        if tombstoned:
+            raise ValueError("target_tombstoned: cannot rebase onto a tombstoned unit")
+        if not live_hash:
+            raise ValueError("target_missing: cannot rebase without a live base hash")
+
+        new_id = generate_proposal_id()
+        author_s = (author or old.get("proposed_by") or "rebase").strip()
+        draft = {
+            "id": new_id,
+            "kind": PROPOSAL_KIND,
+            "status": "PENDING",
+            "relates_to": old["relates_to"],
+            "summary": old["summary"],
+            "rationale": old.get("rationale") or "",
+            "alternatives_rejected": list(old.get("alternatives_rejected") or []),
+            "constraints": list(old.get("constraints") or []),
+            "domain": old.get("domain") or "coding.tooling",
+            "site": old.get("site") or "",
+            "confidence": float(old.get("confidence", 0.8)),
+            "proposed_by": author_s,
+            "proposed_at": _now_iso(),
+            "source": "rebase",
+            "signer": None,
+            "signed_at": None,
+            "rejection_reason": None,
+            "target_ledger_id": target,
+            "base_content_hash": live_hash,
+            "rebases_proposal_id": proposal_id,
+            "hash_schema_version": HASH_SCHEMA_VERSION,
+        }
+        proposed_hash = ledger_content_hash(
+            proposal_to_ledger(draft, signer=author_s, ledger_id=str(target))
+        )
+        draft["proposed_content_hash"] = proposed_hash
+
+        old["status"] = "SUPERSEDED"
+        old["superseded_by_proposal_id"] = new_id
+        old["signed_at"] = _now_iso()
+        records.append(draft)
+        save_queue(qpath, records)
+
+        append_event(
+            cfg,
+            new_event(
+                "SUPERSEDED",
+                proposal_id,
+                superseded_by_proposal_id=new_id,
+            ),
+        )
+        append_event(
+            cfg,
+            new_event(
+                "PROPOSED",
+                new_id,
+                proposal={
+                    "target_ledger_id": target,
+                    "proposed_ledger_id": target,
+                    "base_content_hash": live_hash,
+                    "proposed_content_hash": proposed_hash,
+                    "hash_schema_version": HASH_SCHEMA_VERSION,
+                    "summary": draft["summary"],
+                    "rationale": draft["rationale"],
+                    "proposed_by": author_s,
+                    "relates_to": draft["relates_to"],
+                    "alternatives_rejected": draft["alternatives_rejected"],
+                    "constraints": draft["constraints"],
+                    "domain": draft["domain"],
+                    "site": draft["site"],
+                    "confidence": draft["confidence"],
+                    "rebases_proposal_id": proposal_id,
+                },
+            ),
+        )
+        return draft
+
+
 def reject(
     cfg: dict,
     proposal_id: str,
@@ -638,22 +773,25 @@ def reject(
     if not reason:
         raise ValueError("--reason is required for reject")
 
-    qpath = queue_path(cfg)
-    records = load_queue(qpath)
-    proposal = find_proposal(records, proposal_id)
-    if proposal is None:
-        raise ValueError(f"Proposal not found: {proposal_id}")
-    if proposal.get("status") != "PENDING":
-        raise ValueError(
-            f"Proposal {proposal_id} is not PENDING (status={proposal.get('status')})"
-        )
+    from conflict_events import append_event, governed_lock, new_event
+    with governed_lock(cfg):
+        qpath = queue_path(cfg)
+        records = load_queue(qpath)
+        proposal = find_proposal(records, proposal_id)
+        if proposal is None:
+            raise ValueError(f"Proposal not found: {proposal_id}")
+        if proposal.get("status") != "PENDING":
+            raise ValueError(
+                f"Proposal {proposal_id} is not PENDING (status={proposal.get('status')})"
+            )
 
-    proposal["status"] = "REJECTED"
-    proposal["signer"] = signer.strip()
-    proposal["signed_at"] = _now_iso()
-    proposal["rejection_reason"] = reason
-    save_queue(qpath, records)
-    return proposal
+        proposal["status"] = "REJECTED"
+        proposal["signer"] = signer.strip()
+        proposal["signed_at"] = _now_iso()
+        proposal["rejection_reason"] = reason
+        save_queue(qpath, records)
+        append_event(cfg, new_event("REJECTED", proposal_id, reason=reason))
+        return proposal
 
 
 def interactive_lock_path(cfg: dict) -> Path:
