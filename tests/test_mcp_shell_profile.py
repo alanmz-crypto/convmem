@@ -229,6 +229,33 @@ class McpShellProfileTests(unittest.TestCase):
             )
             self.assertEqual(proc2.stdout.strip(), "unchanged")
 
+    def test_merge_missing_convmem_leaves_cursor_config_byte_identical(self):
+        """No convmem block → missing + no write (do not invent a server)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            cursor = Path(tmp) / "cursor-mcp.json"
+            # Deliberately odd formatting so json.dump rewrite would change bytes.
+            original = (
+                '{\n'
+                '  "mcpServers" : {\n'
+                '    "other-server":{"command":"echo","args":["hi"]}\n'
+                '  }\n'
+                '}\n'
+            )
+            cursor.write_text(original, encoding="utf-8")
+            before = cursor.read_bytes()
+
+            proc = subprocess.run(
+                [PYTHON, str(MERGE_SCRIPT), str(cursor), "cursor"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            self.assertEqual(proc.stdout.strip(), "missing")
+            self.assertEqual(cursor.read_bytes(), before)
+            data = json.loads(cursor.read_text(encoding="utf-8"))
+            self.assertNotIn("convmem", data.get("mcpServers", {}))
+            self.assertEqual(set(data["mcpServers"]), {"other-server"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -80,6 +80,10 @@ if [ -n "$CURSOR_MCP" ]; then
       echo "  [skip]   $CURSOR_MCP already has CONVMEM_MCP_PROFILE=shell"
       DEPLOY_REPORT+="  - Cursor MCP shell profile already set\n"
       ;;
+    missing)
+      echo "  [skip]   $CURSOR_MCP has no convmem server block"
+      DEPLOY_REPORT+="  - Cursor MCP shell profile skipped (no convmem block)\n"
+      ;;
     *)
       echo "  [warn]   Could not merge Cursor MCP shell profile"
       SKIPPED+="  - Cursor MCP shell profile (merge failed)\n"
@@ -191,6 +195,10 @@ PY
     unchanged)
       echo "  [skip]   $KIRO_MCP already has CONVMEM_MCP_PROFILE=shell"
       DEPLOY_REPORT+="  - Kiro MCP shell profile already set\n"
+      ;;
+    missing)
+      echo "  [skip]   $KIRO_MCP has no convmem server block"
+      DEPLOY_REPORT+="  - Kiro MCP shell profile skipped (no convmem block)\n"
       ;;
     *)
       echo "  [warn]   Could not merge Kiro MCP shell profile"
@@ -420,6 +428,10 @@ if [ -n "$CRUSH_CONFIG" ]; then
       unchanged)
         echo "  [skip]   $CRUSH_CONFIG already has CONVMEM_MCP_PROFILE=shell"
         DEPLOY_REPORT+="  - Crush MCP shell profile already set\n"
+        ;;
+      missing)
+        echo "  [skip]   $CRUSH_CONFIG has no convmem server block"
+        DEPLOY_REPORT+="  - Crush MCP shell profile skipped (no convmem block)\n"
         ;;
       *)
         echo "  [warn]   Could not merge Crush MCP shell profile"

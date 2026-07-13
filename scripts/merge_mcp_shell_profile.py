@@ -4,7 +4,7 @@
 Usage:
   python3 scripts/merge_mcp_shell_profile.py <config.json> <cursor|kiro|crush>
 
-Prints one of: added | updated | unchanged
+Prints one of: added | updated | unchanged | missing
 Never prints env values.
 """
 
@@ -26,25 +26,31 @@ SERVER_PATHS = {
 
 
 def merge_shell_profile(config_path: Path, client: str) -> str:
-    """Set CONVMEM_MCP_PROFILE=shell on the convmem server env; preserve other keys."""
+    """Set CONVMEM_MCP_PROFILE=shell on the convmem server env; preserve other keys.
+
+    Returns ``missing`` (no write) when the target convmem server block is absent.
+    """
     if client not in SERVER_PATHS:
         raise ValueError(f"unknown client: {client}")
     path = SERVER_PATHS[client]
     with open(config_path, encoding="utf-8") as f:
-        cfg = json.load(f)
+        raw = f.read()
+    cfg = json.loads(raw)
 
-    cur: dict = cfg
+    cur: object = cfg
     for key in path[:-1]:
+        if not isinstance(cur, dict):
+            return "missing"
         nxt = cur.get(key)
         if not isinstance(nxt, dict):
-            nxt = {}
-            cur[key] = nxt
+            return "missing"
         cur = nxt
+    if not isinstance(cur, dict):
+        return "missing"
     server_key = path[-1]
     server = cur.get(server_key)
     if not isinstance(server, dict):
-        server = {}
-        cur[server_key] = server
+        return "missing"
 
     env = server.get("env")
     if not isinstance(env, dict):
