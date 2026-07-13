@@ -108,7 +108,7 @@ grep -r "crush.db" ~/.config/convmem/config.toml || true
 
 If watch is touching a live Crush DB it shouldn’t, that surfaces **before** OOM. Crush is normally discovered via `**/.crush/crush.db` home glob in inventory — verify behavior matches intent ([`docs/F2c-CRUSH-ADAPTER.md`](../F2c-CRUSH-ADAPTER.md)).
 
-**Repo status:** 🔄 Verify pass documented here; run Ryan/manual once.
+**Repo status:** ✅ Verified 2026-07-12 (Cursor bounded-autonomy pilot task 2) — `convmem doctor` exit 0; no `crush.db` in `~/.config/convmem/config.toml`; `convmem stats` continue 93/332 and crush 31/298. No adapter change.
 
 ---
 
@@ -143,7 +143,7 @@ Tag units with `source_type: prompt_only` in the adapter module docstring **and*
 3. Run jsonl backfill (`find … -exec convmem index --file {} \;`)
 4. Run `scripts/index-kiro-cli-snapshot.sh` once (historical sqlite)
 5. `convmem doctor` → exit 0
-6. Phase 3 verify (stats + Crush config grep above)
+6. Phase 3 verify (stats + Crush config grep above) — ✅ 2026-07-12
 7. Spot-checks:
    - `convmem search "convmem doctor"` → path under `~/.kiro/sessions/` (**Phase 1 sign-off**)
    - `convmem search "<april kiro title>"` → sqlite snapshot
@@ -161,5 +161,5 @@ Tag units with `source_type: prompt_only` in the adapter module docstring **and*
 | Backfill count gate | ✅ documented |
 | kiro-cli snapshot script | ✅ |
 | Codex adapter + `source_type: prompt_only` | ✅ |
-| Phase 3 Crush verify grep | 📋 this handoff |
+| Phase 3 Crush verify grep | ✅ 2026-07-12 (doctor + config grep + stats) |
 | Ryan backfill + sign-off search | ⏳ Ryan |
