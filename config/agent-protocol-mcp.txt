@@ -167,7 +167,7 @@ Activates only on exact phrase `Mode: bounded autonomy`; never default.
 
 Precedence (high→low): system/tool guards → lane must-nots + protocol → DB/secrets/external safety → exact brief authorizations → autonomy defaults. Lower cannot override higher.
 
-Interrupt only for: security/privacy; unauthorized external change; cost/commitment; public API/schema change; out-of-lane action; ambiguous outcome. Else choose one path and continue.
+Interrupt only for: security/privacy exposure; unauthorized external change; external cost/commitment; public API/schema change; out-of-lane action; ambiguous outcome. Else choose one path and continue.
 
 Reuse existing DB-backup, lane, and record safeguards by reference.
 
