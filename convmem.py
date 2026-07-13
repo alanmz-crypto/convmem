@@ -856,6 +856,11 @@ def propose_decision_command(
         "--recover",
         help="Reconcile APPROVAL_STARTED proposal (no blind retry)",
     ),
+    rebase: str | None = typer.Option(
+        None,
+        "--rebase",
+        help="Gate 9: supersede stale proposal with a new id + fresh base hash",
+    ),
     ledger_id: str | None = typer.Option(
         None, "--ledger-id", help="Canonical ledger id on approve (default: proposal id)"
     ),
@@ -902,6 +907,7 @@ def propose_decision_command(
         list_proposals,
         propose as do_propose,
         recover_approval,
+        rebase_proposal,
         reject as do_reject,
     )
     from query import render_error
@@ -959,6 +965,17 @@ def propose_decision_command(
             typer.echo(f"\n⚠ Recovery deferred for review: {e}")
             raise typer.Exit(1) from e
         typer.echo(f"Recovered {recover}: {action}")
+        return
+
+    if rebase:
+        _guard_write()
+        try:
+            draft = rebase_proposal(cfg, rebase, author=author)
+        except ValueError as e:
+            render_error(str(e))
+            raise typer.Exit(1) from e
+        typer.echo(f"Rebased {rebase} → {draft['id']}")
+        typer.echo(f"  target={draft.get('target_ledger_id')} base={str(draft.get('base_content_hash') or '')[:12]}")
         return
 
     _guard_write()
