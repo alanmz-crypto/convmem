@@ -1,0 +1,1 @@
+After Tier A in a project repo, use read-only MCP `search_fast()`, `ask()`, `related()`, or `stats()`. Do **not** repeat `brief()`. Non-project modes follow MCP gates.

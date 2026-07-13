@@ -44,9 +44,32 @@ _INSTRUCTIONS = (
     "Never use topic slugs. Fallback for unrelated new work: dec_prop_20260623_161428_c311."
 )
 
+_SHELL_AFTER_TIER_A = (
+    "After Tier A in a project repo, use read-only MCP `search_fast()`, `ask()`, "
+    "`related()`, or `stats()`. Do **not** repeat `brief()`. "
+    "Non-project modes follow MCP gates."
+)
+
+
+def _mcp_profile() -> str:
+    """MCP instruction/tool surface: 'shell' or 'full' (default)."""
+    import os
+
+    raw = (os.environ.get("CONVMEM_MCP_PROFILE") or "").strip().lower()
+    return "shell" if raw == "shell" else "full"
+
+
 # Optional: load from generated file for easier auditing
 _instructions_path = Path(__file__).parent / "config" / "agent-protocol-mcp.txt"
-if _instructions_path.exists():
+_shell_instructions_path = (
+    Path(__file__).parent / "config" / "agent-protocol-mcp-shell.txt"
+)
+if _mcp_profile() == "shell":
+    if _shell_instructions_path.exists():
+        _BASE_INSTRUCTIONS = _shell_instructions_path.read_text().strip()
+    else:
+        _BASE_INSTRUCTIONS = _SHELL_AFTER_TIER_A
+elif _instructions_path.exists():
     _BASE_INSTRUCTIONS = _instructions_path.read_text().strip()
 else:
     _BASE_INSTRUCTIONS = _INSTRUCTIONS
@@ -110,6 +133,16 @@ def _cwd_is_project_root(cwd: Path) -> bool:
     if (cwd / "AGENTS.md").is_file() or (cwd / "STATUS.md").is_file():
         return True
     return False
+
+
+def _shell_profile_omits_brief_endpoints() -> bool:
+    """Shell profile + project-repo cwd: brief tools/resources must be absent."""
+    import os
+
+    if _mcp_profile() != "shell":
+        return False
+    cwd = Path(os.getcwd()).resolve()
+    return _cwd_is_project_root(cwd)
 
 
 def _is_alien_workspace_cwd(cwd: Path) -> bool:
@@ -449,44 +482,45 @@ def _brief_resource_json(project: str = "") -> str:
     return json.dumps(payload, indent=2, default=str)
 
 
-@mcp.resource(
-    "memories://brief",
-    name="brief",
-    description="Session orientation JSON (same as brief() tool). Prefer brief() when invoking tools.",
-    mime_type="application/json",
-)
-def brief_resource() -> str:
-    return _brief_resource_json("")
+# Shell + project-repo: omit brief resources (mechanical no-repeat-brief boundary).
+# Non-project shell modes and full/default profile keep them.
+if not _shell_profile_omits_brief_endpoints():
 
+    @mcp.resource(
+        "memories://brief",
+        name="brief",
+        description="Session orientation JSON (same as brief() tool). Prefer brief() when invoking tools.",
+        mime_type="application/json",
+    )
+    def brief_resource() -> str:
+        return _brief_resource_json("")
 
-@mcp.resource(
-    "memory://brief",
-    name="brief-memory-scheme",
-    description="Alias of memories://brief (some clients use memory://).",
-    mime_type="application/json",
-)
-def brief_resource_memory_scheme() -> str:
-    return _brief_resource_json("")
+    @mcp.resource(
+        "memory://brief",
+        name="brief-memory-scheme",
+        description="Alias of memories://brief (some clients use memory://).",
+        mime_type="application/json",
+    )
+    def brief_resource_memory_scheme() -> str:
+        return _brief_resource_json("")
 
+    @mcp.resource(
+        "memories://brief/{project}",
+        name="brief-project",
+        description="Session orientation for one repo slug (same as brief(project=...)).",
+        mime_type="application/json",
+    )
+    def brief_project_resource(project: str) -> str:
+        return _brief_resource_json(project)
 
-@mcp.resource(
-    "memories://brief/{project}",
-    name="brief-project",
-    description="Session orientation for one repo slug (same as brief(project=...)).",
-    mime_type="application/json",
-)
-def brief_project_resource(project: str) -> str:
-    return _brief_resource_json(project)
-
-
-@mcp.resource(
-    "memory://brief/{project}",
-    name="brief-project-memory-scheme",
-    description="Alias of memories://brief/{project}.",
-    mime_type="application/json",
-)
-def brief_project_resource_memory_scheme(project: str) -> str:
-    return _brief_resource_json(project)
+    @mcp.resource(
+        "memory://brief/{project}",
+        name="brief-project-memory-scheme",
+        description="Alias of memories://brief/{project}.",
+        mime_type="application/json",
+    )
+    def brief_project_resource_memory_scheme(project: str) -> str:
+        return _brief_resource_json(project)
 
 
 @mcp.tool()
@@ -658,6 +692,12 @@ def stats() -> str:
         "by_tool": dict(by_tool.most_common(10)),
         "by_domain": dict(by_domain.most_common(15)),
     }, indent=2)
+
+
+# Shell + project-repo: remove brief tools after registration (FastMCP public API).
+if _shell_profile_omits_brief_endpoints():
+    mcp.remove_tool("brief")
+    mcp.remove_tool("folder_state")
 
 
 if __name__ == "__main__":

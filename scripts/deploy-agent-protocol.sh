@@ -59,6 +59,37 @@ fi
 
 echo "=== Deployment ==="
 
+MERGE_SHELL_PROFILE="$(pwd)/scripts/merge_mcp_shell_profile.py"
+
+# --- Deploy Cursor MCP shell profile (preserve unrelated env values) ---
+CURSOR_MCP=""
+for candidate in "$HOME/.cursor/mcp.json" "$HOME/.config/Cursor/mcp.json" "$HOME/.config/cursor/mcp.json"; do
+  if [ -f "$candidate" ]; then
+    CURSOR_MCP="$candidate"
+    break
+  fi
+done
+if [ -n "$CURSOR_MCP" ]; then
+  merge_cursor=$(python3 "$MERGE_SHELL_PROFILE" "$CURSOR_MCP" cursor)
+  case "$merge_cursor" in
+    added|updated)
+      echo "  [deploy] $CURSOR_MCP (CONVMEM_MCP_PROFILE=shell; other env preserved)"
+      DEPLOY_REPORT+="  - Cursor MCP shell profile ($merge_cursor)\n"
+      ;;
+    unchanged)
+      echo "  [skip]   $CURSOR_MCP already has CONVMEM_MCP_PROFILE=shell"
+      DEPLOY_REPORT+="  - Cursor MCP shell profile already set\n"
+      ;;
+    *)
+      echo "  [warn]   Could not merge Cursor MCP shell profile"
+      SKIPPED+="  - Cursor MCP shell profile (merge failed)\n"
+      ;;
+  esac
+else
+  echo "  [skip]   Cursor mcp.json not found (probed: ~/.cursor/mcp.json)"
+  SKIPPED+="  - Cursor MCP shell profile (no mcp.json)\n"
+fi
+
 # --- Deploy Cursor .mdc ---
 if [ -n "$CURSOR_RULES" ]; then
   # Migrate: remove stale convmem.md
@@ -150,6 +181,22 @@ PY
         ;;
     esac
   fi
+  # Shell profile env (preserve unrelated keys; never print values)
+  merge_kiro_profile=$(python3 "$MERGE_SHELL_PROFILE" "$KIRO_MCP" kiro)
+  case "$merge_kiro_profile" in
+    added|updated)
+      echo "  [deploy] $KIRO_MCP (CONVMEM_MCP_PROFILE=shell; other env preserved)"
+      DEPLOY_REPORT+="  - Kiro MCP shell profile ($merge_kiro_profile)\n"
+      ;;
+    unchanged)
+      echo "  [skip]   $KIRO_MCP already has CONVMEM_MCP_PROFILE=shell"
+      DEPLOY_REPORT+="  - Kiro MCP shell profile already set\n"
+      ;;
+    *)
+      echo "  [warn]   Could not merge Kiro MCP shell profile"
+      SKIPPED+="  - Kiro MCP shell profile (merge failed)\n"
+      ;;
+  esac
 
   # --- Deploy Kiro permissions.yaml (IDE 1.0+ ACP; mcp.json autoApprove ignored) ---
   KIRO_PERMS="$KIRO_SETTINGS/permissions.yaml"
@@ -362,6 +409,24 @@ if [ -n "$CRUSH_CONFIG" ]; then
   mkdir -p "$CRUSH_HOOKS_DIR"
   cp scripts/crush-hook-convmem-allow.sh "$CRUSH_HOOK"
   chmod +x "$CRUSH_HOOK"
+  # Shell profile on Crush MCP (preserve unrelated env; never print values)
+  if python3 -c "import json,sys; c=json.load(open(sys.argv[1])); raise SystemExit(0 if isinstance((c.get('mcp') or {}).get('convmem'), dict) else 1)" "$CRUSH_CONFIG"; then
+    merge_crush_profile=$(python3 "$MERGE_SHELL_PROFILE" "$CRUSH_CONFIG" crush)
+    case "$merge_crush_profile" in
+      added|updated)
+        echo "  [deploy] $CRUSH_CONFIG (CONVMEM_MCP_PROFILE=shell; other env preserved)"
+        DEPLOY_REPORT+="  - Crush MCP shell profile ($merge_crush_profile)\n"
+        ;;
+      unchanged)
+        echo "  [skip]   $CRUSH_CONFIG already has CONVMEM_MCP_PROFILE=shell"
+        DEPLOY_REPORT+="  - Crush MCP shell profile already set\n"
+        ;;
+      *)
+        echo "  [warn]   Could not merge Crush MCP shell profile"
+        SKIPPED+="  - Crush MCP shell profile (merge failed)\n"
+        ;;
+    esac
+  fi
   merge_crush=$(python3 - <<'PY' "$CRUSH_CONFIG" "$(pwd)/config/crush-permissions.fragment.json" "$CRUSH_HOOK"
 import json, sys
 from pathlib import Path
