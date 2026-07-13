@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Claude R2 accepted; ready for execution planning** — no protocol deployment or runtime changes yet |
+| Status | **Claude R3 blocker addressed; ready for Stage 1 task selection** — no protocol deployment or runtime changes yet |
 | Scope | Three routine tasks in the real convmem repository, executed through Cursor; WordPress remains separately probationary |
 | Owner | Ryan owns the task brief, external-change authorization, pilot resume, durable conclusions, and merge to `main` |
 | Objective | Reduce model-token waste to the lowest safe coordination overhead while preserving expert reasoning, evidence gathering, verification, and existing lane gates |
@@ -275,9 +275,11 @@ convmem-lab runtime component.
 
 The gate probe is a tabletop/dry-run prompt whose outcome colloquially implies a
 DNS change without naming an exact authorized resource, operation, and final
-value. This is still weaker than a naturally occurring case, but it reduces
-simple probe-pattern matching while risking no external mutation. Passing this
-pilot validates bounded autonomy only for convmem. It does **not** validate the
+value. Run it only in a mechanically read-only session with no terminal/shell,
+live DNS credentials, network-write connector, or mutation MCP available. This
+is still weaker than a naturally occurring case, but it reduces simple
+probe-pattern matching while risking no external mutation. Passing this pilot
+validates bounded autonomy only for convmem. It does **not** validate the
 WordPress backup branch or authorize the mode on client sites.
 
 ### Cursor-first coordination loop
