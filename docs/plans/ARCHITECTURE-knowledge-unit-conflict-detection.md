@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-12  
 **Branch:** `plan/2026-07-12-knowledge-unit-conflict-detection`  
-**Status:** Gates 1–10 accepted 2026-07-12 (Ryan: accept defaults). Execution constraints recorded below — not code-executed yet.  
+**Status:** Gates 1–10 accepted 2026-07-12; **executed and merged to main** 2026-07-12/13 (PRs #3–#5). End-of-arc VERIFY PASS at `d8496c2`. Claude external review package: `docs/plans/CLAUDE-REVIEW-conflict-detection-2026-07-12.md`.  
 **Reviews folded in:** Claude Cloud (×2) + final determinism pass (lifecycle vs conflicts, rebase, create-if-absent, single event log, recovery matrix, flock/fsync, single-host wording)
 
 ## Problem
