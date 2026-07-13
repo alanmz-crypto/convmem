@@ -3,10 +3,10 @@
 ```text
 Planning Status
 
-Phase:        Ready for Stage 1 pilot selection
+Phase:        Stage 2 three-task soak (opt-in protocol shipped — PR #12)
 Characters:   Cursor → Codex → Ryan
 Lanes:        Cursor executes; Codex reviews promotion evidence; Ryan selects outcomes and approves promotion
-Authority:    Architecture accepted by Claude R2; Ryan authorized an execution plan
+Authority:    Architecture accepted by Claude R2; Stage 1 PASS; Ryan authorized Stage 2; protocol on main via PR #12
 ```
 
 **Architecture SSoT:** [`ARCHITECTURE-token-efficient-bounded-autonomy.md`](ARCHITECTURE-token-efficient-bounded-autonomy.md)
