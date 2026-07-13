@@ -851,6 +851,11 @@ def propose_decision_command(
         help="Signer on approve/reject (default on approve: ryan or CONVMEM_SIGNER)",
     ),
     reason: str | None = typer.Option(None, "--reason", help="Required for --reject"),
+    recover: str | None = typer.Option(
+        None,
+        "--recover",
+        help="Reconcile APPROVAL_STARTED proposal (no blind retry)",
+    ),
     ledger_id: str | None = typer.Option(
         None, "--ledger-id", help="Canonical ledger id on approve (default: proposal id)"
     ),
@@ -886,14 +891,17 @@ def propose_decision_command(
     from propose_decision import (
         InteractiveLockError,
         approve as do_approve,
+        approve_and_ingest,
         approved_path,
         collect_interactive_fields,
         confirm_interactive_submit,
         ingest_approved_ledger,
+        mark_approved,
         interactive_session_lock,
         latest_pending,
         list_proposals,
         propose as do_propose,
+        recover_approval,
         reject as do_reject,
     )
     from query import render_error
@@ -939,6 +947,20 @@ def propose_decision_command(
             typer.echo("  Finish newest: convmem record --approve-last")
         return
 
+    if recover:
+        _guard_write()
+        try:
+            action = recover_approval(cfg, recover)
+        except ValueError as e:
+            render_error(str(e))
+            raise typer.Exit(1) from e
+        except Exception as e:
+            _log_index_failure(recover, e)
+            typer.echo(f"\n⚠ Recovery deferred for review: {e}")
+            raise typer.Exit(1) from e
+        typer.echo(f"Recovered {recover}: {action}")
+        return
+
     _guard_write()
 
     approve_id = approve
@@ -951,26 +973,22 @@ def propose_decision_command(
 
     if approve_id:
         resolved_signer = _resolve_approve_signer(signer)
+        ingest_result = None
         try:
-            proposal, ledger = do_approve(
-                cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id
-            )
+            if no_index:
+                proposal, ledger = do_approve(cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id)
+            else:
+                from restic_gate import ensure_chroma_snapshot_for_live_write
+                ensure_chroma_snapshot_for_live_write()
+                proposal, ledger, ingest_result = approve_and_ingest(cfg, approve_id, signer=resolved_signer, ledger_id=ledger_id)
         except ValueError as e:
             render_error(str(e))
             raise typer.Exit(1) from e
-        ingest_result = None
+        except Exception as e:
+            _log_index_failure(approve_id, e)
+            typer.echo(f"\n⚠ Approval apply deferred for recovery: {e}")
+            raise typer.Exit(1) from e
         apath = str(approved_path(cfg))
-        if not no_index:
-            from restic_gate import ensure_chroma_snapshot_for_live_write
-
-            ensure_chroma_snapshot_for_live_write()
-            try:
-                ingest_result = ingest_approved_ledger(cfg, ledger)
-            except Exception as e:
-                _log_index_failure(approve_id, e)
-                typer.echo(f"\n⚠  Approved (ledger) but index deferred: {e}")
-                typer.echo(f"  Recovery: convmem add --file {apath} --upsert")
-                typer.echo("  The decision is durable in the ledger; Chroma will catch up on next index.\n")
         _finish_record_messages(
             proposal,
             ledger,
