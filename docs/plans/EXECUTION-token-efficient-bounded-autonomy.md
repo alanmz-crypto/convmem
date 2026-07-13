@@ -6,7 +6,7 @@ Planning Status
 Phase:        Stage 3 behaviorally verified and accepted by Ryan on 2026-07-13 (PR #22 closed doctor-first gate)
 Characters:   Cursor → Codex → Ryan
 Lanes:        Cursor executes; Codex reviews; Ryan accepted Stage 3
-Authority:    Architecture accepted by Claude R2; Stage 1–2 PASS; Stage 3 accepted 2026-07-13; PR #22 closed doctor-first; Cursor `/home/lauer` MCP caveat remains a separate token-cut gap (do not claim PR #19 mechanically verified for Cursor); next: human-readable pending-decision approval view (JSONL remains canonical machine data)
+Authority:    Architecture accepted by Claude R2; Stage 1–2 PASS; Stage 3 accepted 2026-07-13; PR #22 closed doctor-first; PR #24 shipped human-readable pending-decision review (JSONL remains canonical); Ryan manually verified `record --list` readable, `record --approve-last` shows full card, default-No cancellation leaves draft unchanged; Cursor `/home/lauer` MCP caveat remains a separate open token-cut gap (do not claim PR #19 mechanically verified for Cursor)
 ```
 
 **Architecture SSoT:** [`ARCHITECTURE-token-efficient-bounded-autonomy.md`](ARCHITECTURE-token-efficient-bounded-autonomy.md)
