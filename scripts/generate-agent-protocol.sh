@@ -52,6 +52,12 @@ extract_section() {
 } >> config/agent-protocol-mcp.txt
 {
   echo ""
+  echo "## Bounded autonomy"
+  echo ""
+  extract_section BOUNDED_AUTONOMY
+} >> config/agent-protocol-mcp.txt
+{
+  echo ""
   echo "## Verify shipped work (DeepSeek / MCP agents)"
   echo ""
   echo "Read \`docs/CODEX-DEEPSEEK-VERIFY.md\` — use \`search_fast\` + \`ask\` for sections marked DeepSeek; ask Ryan to paste shell output for Codex-only steps."
@@ -87,6 +93,10 @@ FRONTMATTER
   echo ""
   extract_section TEAM_CHARTER
   echo ""
+  echo "## Bounded autonomy"
+  echo ""
+  extract_section BOUNDED_AUTONOMY
+  echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
   extract_section WORKFLOW_ROUTING
@@ -117,6 +127,10 @@ echo "  -> config/cursor-rules-convmem.mdc.example"
   echo "Allowed: \`convmem index --file <path> [--supersede]\` for session tracking (Tier A)."
   echo ""
   extract_section TEAM_CHARTER
+  echo ""
+  echo "## Bounded autonomy"
+  echo ""
+  extract_section BOUNDED_AUTONOMY
   echo ""
   echo "## Codex — no improvised logs"
   echo ""
@@ -170,6 +184,10 @@ FRONTMATTER
   echo "- \`convmem record\` **only** when Ryan says **record block**, **closing**, or **end session**."
   echo ""
   extract_section TEAM_CHARTER
+  echo ""
+  echo "## Bounded autonomy"
+  echo ""
+  extract_section BOUNDED_AUTONOMY
   echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
@@ -237,6 +255,10 @@ echo "  -> docs/chatgpt-pack/README.md"
   echo "- Do **not** create new markdown logs unless Ryan requested a file."
   echo ""
   extract_section TEAM_CHARTER
+  echo ""
+  echo "## Bounded autonomy"
+  echo ""
+  extract_section BOUNDED_AUTONOMY
   echo ""
   echo "## Workflow routing (when unsure)"
   echo ""

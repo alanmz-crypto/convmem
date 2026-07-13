@@ -67,7 +67,7 @@ bash ~/Projects/convmem/scripts/sync-willowyhollow-handoff.sh
 | **Ingest your chat** / **index your session** | Track **A** only |
 | **Index the log** | Track **B** only |
 | **Ingest everything** / **full handoff** | **A then B** (both if a log exists) |
-| **Find a stopping point** / **wrap up** / **park it** | **Soft close** — stabilize, push, verbal summary, Track A. **No record block.** |
+| **Find a stopping point** / **good stopping point** / **let's wrap up** / **park it** | **Soft close** — stabilize work, push commits, verbal summary, Track A. **No record block.** See `SESSION-CLOSE-RECORD.md § Stopping point`. |
 | **Closing** / **end session** / **record block** | **Hard close** — Track A + output `convmem record` block for Ryan to run. |
 
 Avoid **"index what you wrote"** alone — models treat that as the markdown log, skip chat.
@@ -116,6 +116,22 @@ Allowed: `convmem index --file <path> [--supersede]` for session tracking (Tier 
 **Tier 1 = shared memory bus** (not orchestration). Orchestration reserved for Tier 3 notify. Sprint checks: `docs/inter-model/BUG-SPRINT-SUCCESS-2026-07-06.md`.
 
 Full charter + review rationale: `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
+
+## Bounded autonomy
+
+
+Activates only on exact phrase `Mode: bounded autonomy`; never default.
+
+Precedence (high→low): system/tool guards → lane must-nots + protocol → DB/secrets/external safety → exact brief authorizations → autonomy defaults. Lower cannot override higher.
+
+Interrupt only for: security/privacy; unauthorized external change; cost/commitment; public API/schema change; out-of-lane action; ambiguous outcome. Else choose one path and continue.
+
+Reuse existing DB-backup, lane, and record safeguards by reference.
+
+External auth requires exact resource, operation, and final value (or named one-shot) in `Authorized external changes`; never infer from outcome.
+
+Done: result, verification, largest material trade-off/risk, branch/push; Track A at handoff.
+
 
 ## Codex — no improvised logs
 
