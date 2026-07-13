@@ -50,10 +50,10 @@
 
 ## Evidence
 
-- Tip SHA: _(filled on commit)_
-- pytest: arc-verify + Gate 5 + conflict slice
+- Tip SHA: `43ce2c5` (43ce2c5412ba42bc492beeee91fd263ee2e94948)
+- pytest: 45 passed (arc-verify + Gate 5 + conflict slice)
 - Schema deploy: `hash_schema_deploy.json` / `hash_schema_migration_report.json`
 
 ```text
-End-of-arc VERIFY PASS: YYYY-MM-DD — tip pending
+End-of-arc VERIFY PASS: 2026-07-12 — tip 43ce2c5
 ```
