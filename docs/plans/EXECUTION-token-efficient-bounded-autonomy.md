@@ -3,10 +3,10 @@
 ```text
 Planning Status
 
-Phase:        Stage 2 three-task soak (opt-in protocol shipped — PR #12)
+Phase:        Stage 3 convmem-only default shipped; behavioral verification remains open (PR #17; LATEST updated via PR #20)
 Characters:   Cursor → Codex → Ryan
-Lanes:        Cursor executes; Codex reviews promotion evidence; Ryan selects outcomes and approves promotion
-Authority:    Architecture accepted by Claude R2; Stage 1 PASS; Ryan authorized Stage 2; protocol on main via PR #12
+Lanes:        Cursor executes; Codex reviews promotion evidence; Ryan accepts Stage 3 after behavioral gates
+Authority:    Architecture accepted by Claude R2; Stage 1–2 PASS; Ryan authorized Stage 3; convmem-only default on main via PR #17; LATEST reconciled via PR #20
 ```
 
 **Architecture SSoT:** [`ARCHITECTURE-token-efficient-bounded-autonomy.md`](ARCHITECTURE-token-efficient-bounded-autonomy.md)
