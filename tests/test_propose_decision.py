@@ -85,6 +85,23 @@ class ProposeDecisionTests(unittest.TestCase):
         self.assertEqual(ledger["id"], "dec_test_approved")
         self.assertEqual(ledger["author_model"], "ryan")
         self.assertEqual(ledger["relates_to"], "dec_convmem_workspace_standard")
+        self.assertEqual(ledger["proposal_id"], rec["id"])
+
+    def test_recovery_uses_proposal_id_not_reused_ledger_id(self):
+        from propose_decision import approved_for_proposal, recovery_action
+        rec = propose(self.cfg, relates_to="dec_a", summary="One", rationale="R", author="cursor")
+        _, ledger = approve(self.cfg, rec["id"], signer="ryan", ledger_id="dec_shared")
+        self.assertEqual(approved_for_proposal(self.cfg, rec["id"]), ledger)
+        self.assertEqual(recovery_action(self.cfg, rec["id"], base_hash="b", proposed_hash="p"), "retry_chroma")
+        self.assertEqual(recovery_action(self.cfg, rec["id"], live_hash="p", proposed_hash="p"), "repair_marker")
+
+    def test_governed_apply_rejects_sibling_stale_and_create_collision(self):
+        from propose_decision import validate_governed_apply
+        common = {"unresolved_targets": set(), "proposal_id": "p", "proposed_ledger_id": "dec_new"}
+        assert validate_governed_apply(target_ledger_id="dec_a", live_hash="new", base_hash="old", **common) == "stale_base"
+        assert validate_governed_apply(target_ledger_id=None, live_hash="exists", base_hash=None, **common) == "create_target_exists"
+        common["unresolved_targets"] = {"dec_a"}
+        assert validate_governed_apply(target_ledger_id="dec_a", live_hash="old", base_hash="old", **common) == "pending_sibling"
 
     @patch("observe.ingest_observation")
     def test_ingest_approved_ledger_indexes_one(self, mock_ingest):

@@ -255,6 +255,8 @@ def normalize_ledger_record(raw: dict, *, min_confidence: float = 0.0) -> dict |
         "constraints_json": json.dumps(
             raw.get("constraints") or [], separators=(",", ":")
         ) if raw.get("constraints") else "",
+        # Protocol metadata: not semantic content, but durable enough for apply recovery.
+        "proposal_id": str(raw.get("proposal_id") or "").strip(),
     }
 
 
@@ -275,6 +277,42 @@ def ledger_unit_document(unit: dict) -> str:
 
 def ledger_unit_metadata(unit: dict) -> dict:
     """Chroma metadata dict for a normalized ledger unit."""
+    import json as _json
+    from ledger_content_hash import ledger_content_hash
+
+    def _list_field(key: str) -> list:
+        raw = unit.get(key)
+        if isinstance(raw, list):
+            return list(raw)
+        blob = unit.get(f"{key}_json") or "[]"
+        try:
+            val = _json.loads(blob) if isinstance(blob, str) else blob
+            return list(val) if isinstance(val, list) else []
+        except Exception:
+            return []
+
+    content_hash = ""
+    if (unit.get("ledger_kind") or unit.get("type") or "") in ("decision",) or str(
+        unit.get("ledger_id") or unit.get("id") or ""
+    ).startswith("dec_"):
+        content_hash = ledger_content_hash(
+            {
+                "ledger_id": unit.get("ledger_id") or unit.get("id"),
+                "kind": unit.get("ledger_kind") or unit.get("type") or "decision",
+                "status": unit.get("status") or "",
+                "title": unit.get("title") or "",
+                "summary": unit.get("summary") or "",
+                "rationale": unit.get("rationale") or "",
+                "relates_to": unit.get("relates_to") or "",
+                "confidence": unit.get("confidence"),
+                "domain": unit.get("domain") or "",
+                "site": unit.get("site") or "",
+                "notes": unit.get("notes") or "",
+                "result": unit.get("result") or "",
+                "alternatives_rejected": _list_field("alternatives_rejected"),
+                "constraints": _list_field("constraints"),
+            }
+        )
     return {
         "id": unit["id"],
         "type": unit["type"],
@@ -301,6 +339,9 @@ def ledger_unit_metadata(unit: dict) -> dict:
         "rationale": unit.get("rationale") or "",
         "alternatives_rejected_json": unit.get("alternatives_rejected_json") or "",
         "constraints_json": unit.get("constraints_json") or "",
+        "proposal_id": unit.get("proposal_id") or "",
+        "content_hash": content_hash,
+        "summary": unit.get("summary") or "",
     }
 
 

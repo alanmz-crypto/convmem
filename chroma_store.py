@@ -166,11 +166,25 @@ class ChromaStore:
         embedding: list[float],
         metadata: dict,
     ) -> None:
+        meta = dict(metadata or {})
+        # Block semantic *replace* of governed decisions outside the approval protocol.
+        # First-time creates (and legacy seed/repair into empty ids) remain allowed;
+        # observe._reject_governed_bypass covers upsert=True without proposal_id.
+        existing = self.get_unit(unit_id)
+        if existing is not None:
+            existing_meta = existing.get("metadata") or {}
+            existing_lid = str(
+                existing_meta.get("ledger_id") or existing.get("id") or unit_id or ""
+            ).strip()
+            if existing_lid.startswith("dec_") and not str(meta.get("proposal_id") or "").strip():
+                raise ValueError(
+                    "governed decision replace requires proposal_id from approval protocol"
+                )
         self._collection(UNITS).upsert(
             ids=[unit_id],
             documents=[document],
             embeddings=[embedding],
-            metadatas=[metadata],
+            metadatas=[meta],
         )
 
     def query_units(
