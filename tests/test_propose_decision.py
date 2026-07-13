@@ -285,6 +285,41 @@ class ProposeDecisionTests(unittest.TestCase):
         self.assertIn("(none)", card)
         self.assertNotIn("None", card.split("confidence:", 1)[1].splitlines()[0])
 
+    def test_pending_proposal_for_review_requires_pending(self):
+        from propose_decision import pending_proposal_for_review
+
+        rec = propose(
+            self.cfg,
+            relates_to="dec_a",
+            summary="Pending then not",
+            rationale="R",
+            author="cursor",
+        )
+        got = pending_proposal_for_review(self.cfg, rec["id"])
+        self.assertEqual(got["id"], rec["id"])
+        approve(self.cfg, rec["id"], signer="ryan")
+        with self.assertRaises(ValueError) as approved_err:
+            pending_proposal_for_review(self.cfg, rec["id"])
+        self.assertIn("not PENDING", str(approved_err.exception))
+        self.assertIn("APPROVED", str(approved_err.exception))
+
+        rejected = propose(
+            self.cfg,
+            relates_to="dec_b",
+            summary="Reject me",
+            rationale="R",
+            author="cursor",
+        )
+        reject(self.cfg, rejected["id"], signer="ryan", reason="duplicate")
+        with self.assertRaises(ValueError) as rejected_err:
+            pending_proposal_for_review(self.cfg, rejected["id"])
+        self.assertIn("not PENDING", str(rejected_err.exception))
+        self.assertIn("REJECTED", str(rejected_err.exception))
+
+        with self.assertRaises(ValueError) as missing_err:
+            pending_proposal_for_review(self.cfg, "dec_prop_missing")
+        self.assertIn("not found", str(missing_err.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

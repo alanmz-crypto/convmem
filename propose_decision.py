@@ -284,6 +284,20 @@ def find_proposal(records: list[dict], proposal_id: str) -> dict | None:
     return None
 
 
+def pending_proposal_for_review(cfg: dict, proposal_id: str) -> dict:
+    """Load one PENDING proposal for human review, or raise ValueError."""
+    needle = (proposal_id or "").strip()
+    if not needle:
+        raise ValueError("Proposal id is required")
+    proposal = find_proposal(load_queue(queue_path(cfg)), needle)
+    if proposal is None:
+        raise ValueError(f"Proposal not found: {needle}")
+    status = proposal.get("status") or "PENDING"
+    if status != "PENDING":
+        raise ValueError(f"Proposal {needle} is not PENDING (status={status})")
+    return proposal
+
+
 def format_proposal_review(row: dict) -> str:
     """Pure human-readable review card for a proposal row (JSONL stays canonical)."""
 
