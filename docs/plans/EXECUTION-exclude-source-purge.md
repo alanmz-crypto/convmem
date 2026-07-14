@@ -45,14 +45,14 @@ Authority:    Architecture gates 1–12 proposed 2026-07-14 (amended); awaiting 
 | T3 | Path-candidate builder | `build_path_candidates(target) -> list[str]`; `line_matches_purge(rec, candidates) -> bool`; skips empty/non-filesystem/`ledger:*` values; no cwd canonicalization | — | pytest |
 | T4 | JSONL purge function | `purge_source_from_jsonl(export_path, candidates) -> int`; acquires export lock internally; atomic tmp+rename; exact-path match via path-candidate builder; fail-closed on malformed lines; returns lines removed | T2, T3 | pytest |
 | T5 | Chroma purge function | `purge_source_from_chroma(store, candidates) -> dict`; deletes from both collections via candidate list; calls `invalidate_superseded_cache`; returns `{units_deleted, summaries_deleted}` | T3 | pytest |
-| T6 | Preview function | `preview_purge(cfg, canonical_path) -> PurgePreview`; read-only; opens Chroma read-only; counts from JSONL via path candidates; no locks; no mutations | T3, T5 | pytest |
+| T6 | Preview function | `preview_purge(cfg, canonical_path) -> PurgePreview`; mechanically read-only: uses `chroma_readonly` / `create_collections=False`; never `get_or_create_collection` or `PersistentClient` in write mode; no locks, no directory/collection creation, no mtime changes; counts from JSONL via path candidates (read-only open); tested by N21 (filesystem snapshot before/after) | T3, T5 | pytest |
 | T7 | Purge orchestrator | `execute_purge(cfg, canonical_path, reason) -> PurgeResult`; acquires source lock → marks exclusion (handles missing-file key) → Chroma purge → JSONL purge → postcondition check → returns exit status | T1–T6 | integration |
 | T8 | CLI integration | Wire `--purge` and `--yes` into `exclude_command`; calls preview then execute; confirmation prompt in CLI only; output formatting; exit codes; handles missing-file warning | T6, T7 | CLI test |
 | T9 | Ingest lock integration | Modify ingest batch-write to: acquire source flock + re-check exclusion before Chroma upsert; acquire export flock before JSONL append; verify no lock held during parse/LLM/embed | T1, T2 | pytest + existing tests pass |
 | T10 | Inter-model index integration | Same source flock + export flock pattern for `inter_model_index.py` batch write | T9 | pytest |
 | T11 | Observe.py export lock | All `observe.py` JSONL writers (`ingest_observation` append, `_upsert_jsonl_line` rewrite) acquire export flock | T2 | pytest |
 | T12 | Deduplicate export lock | `_deduplicate_units_export` acquires export flock | T2 | pytest |
-| T13 | Acceptance test suite | All named tests N1–N19; deterministic race tests using threading barriers; failure injection | T7–T12 | pytest |
+| T13 | Acceptance test suite | All named tests N1–N21; deterministic race tests using threading barriers; failure injection; preview side-effect assertion | T7–T12 | pytest |
 | T14 | Commit + push | Explicit refspec; CI green | T1–T13 | remote |
 
 ---
@@ -73,13 +73,15 @@ Authority:    Architecture gates 1–12 proposed 2026-07-14 (amended); awaiting 
 | N10 | Malformed JSONL line: purge aborts rewrite, original file unchanged, nonzero exit | T4, T13 |
 | N11 | --yes skips confirmation: purge proceeds without interactive prompt | T8, T13 |
 | N12 | --undo after purge: exclusion cleared, sinks still empty, re-index required for data | T8, T13 |
-| N13 | Legacy path variant: Chroma rows stored with non-canonical path found and deleted by canonical purge | T5, T13 |
+| N13 | Legacy path variant: Chroma rows stored with expanduser-only (non-resolved) spelling are found and deleted because `build_path_candidates` includes both forms as exact query strings | T5, T13 |
 | N14 | Concurrent purge of same source: second purge blocks, then succeeds (zero rows, exit 0) — idempotent | T7, T13 |
 | N15 | Alternate data root: temp config with non-default paths; ingest and purge compute identical source lock path; no live paths touched | T1, T13 |
 | N16 | Missing-file exclusion: purge a path whose file has been deleted; synthetic marker created; --list shows it; --undo clears it; watch_skip_reason returns "excluded" | T7, T8, T13 |
 | N17 | No lock during LLM/embed: instrument lock acquire/release; assert no source or export lock held between parse-start and batch-write-start | T9, T13 |
-| N18a–h | Failure injection at each of 8 boundaries (F1–F8 in crash matrix): simulated crash → exclusion intact (where applicable) → retry converges | T7, T13 |
+| N18a–j | Failure injection at each of 10 boundaries (F1–F10 in crash matrix): simulated crash → exclusion intact (where applicable) → retry converges. F9=Chroma locked, F10=malformed JSONL | T7, T13 |
 | N19 | Superseded cache invalidation: after purge deletes units (some of which were superseded=True), `count_units(include_superseded=False)` returns correct count without stale cache | T5, T13 |
+| N20 | Postcondition window barrier: purge holds source+export locks during JSONL postcondition count; concurrent unrelated JSONL append blocks on export lock; postcondition sees zero for purged source; append succeeds after release | T7, T13 |
+| N21 | Preview no-side-effects: snapshot filesystem state (directory listing + mtimes of Chroma dir, lock dir, export dir) before and after `preview_purge`; assert identical; no directories created, no collections created, no lock files created | T6, T13 |
 
 ---
 
@@ -125,7 +127,7 @@ T12 (deduplicate export lock) ────────────────�
 
 ## Evidence (Execute)
 
-- pytest passing for N1–N19 (including N18a–h failure injection)
+- pytest passing for N1–N21 (including N18a–j failure injection, N20 postcondition barrier, N21 preview side-effects)
 - Behavioral demo using temporary config + Chroma + processed + export:
   - `convmem exclude /tmp/test-source.jsonl --purge --yes` → exit 0, postcondition passes
   - `convmem exclude /tmp/test-source.jsonl --purge` (no --yes) → preview, decline, no mutation
@@ -150,7 +152,7 @@ T12 (deduplicate export lock) ────────────────�
 - [x] Architecture gates 1–12 proposed with trade-off analysis
 - [x] Lock ordering defined; three locks identified with derivation rules
 - [x] Crash/failure matrix expanded with injection at every boundary (F1–F10)
-- [x] Named tests N1–N19 mapped to tasks
+- [x] Named tests N1–N21 mapped to tasks
 - [x] JSONL writer inventory (all 6) identified and locked
 - [x] Lock identity derived from config, not hardcoded
 - [x] Missing-file exclusion key designed

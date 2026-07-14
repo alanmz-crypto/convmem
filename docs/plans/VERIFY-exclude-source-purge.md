@@ -17,8 +17,8 @@
 | V3 | Race closure: ingest-then-purge | N2: threading barrier — purge deletes just-written rows, postcondition passes | |
 | V4 | Unrelated data preserved (export lock) | N3: source B lines intact; concurrent append survives purge rewrite | |
 | V5 | Exact path matching | N4: similar paths not confused; N13: legacy variants found | |
-| V6 | Crash idempotency (all failure points) | N18a–h: simulated crash at each of 8 boundaries; retry converges | |
-| V7 | Dry-run safety (separate preview function) | N6: preview_purge → zero mutations; CLI decline → no mutation | |
+| V6 | Crash idempotency (all failure points) | N18a–j: simulated crash at each of 10 boundaries (F1–F10); retry converges | |
+| V7 | Dry-run safety (mechanically read-only preview) | N6: preview_purge → zero mutations; N21: filesystem snapshot identical before/after preview (no dirs, collections, locks, mtime changes) | |
 | V8 | Malformed JSONL fail-closed | N10: abort rewrite, original intact, nonzero exit | |
 | V9 | Lock ordering enforced | N9: reverse acquisition raises/asserts | |
 | V10 | Inter-model path covered | N7: inter_model_doc units deleted by purge | |
@@ -26,14 +26,16 @@
 | V12 | --undo after purge | N12: exclusion cleared, sinks still empty, re-index required | |
 | V13 | Concurrent same-source purge | N14: second purge idempotent (zero rows, exit 0) | |
 | V14 | Existing test suite unbroken | `test_processed_exclude_race.py` PASS; `test_chroma_superseded.py` PASS; full suite green | |
-| V15 | No purged content in new artifacts; residual bytes acknowledged | Grep lock dir + tmp dir for source content → zero. Architecture doc explicitly states Chroma free-space/FS blocks/Restic may retain bytes. No false forensic claim. | |
+| V15 | No purged content in new artifacts; residual bytes acknowledged | Grep lock dir + tmp dir for source content → zero. Architecture doc explicitly states Chroma SQLite/HNSW free-space pages, filesystem blocks, and Restic snapshots may retain bytes after logical removal. V15 verifies no **new files** created by purge contain purged content — it does not claim forensic erasure of underlying storage. | |
 | V16 | Source lock identity from config | N15: alternate-data-root test; ingest + purge compute same lock path; no live paths touched | |
 | V17 | Missing-file exclusion | N16: purge deleted file → synthetic key; --list shows; --undo clears; watch_skip_reason = "excluded" | |
 | V18 | No lock during LLM/embed | N17: instrumented lock tracking; no source/export lock held between parse-start and batch-write-start | |
 | V19 | Postcondition check works | N18h: inject residual row after delete → postcondition fails → nonzero exit | |
 | V20 | Superseded cache invalidated | N19: purge units (some superseded=True) → count_units returns correct count without stale cache | |
 | V21 | All six JSONL writers use export lock | Code review + integration test: normal ingest, inter-model, observe append, observe upsert, deduplicate, purge — all acquire export flock | |
-| V22 | Path-candidate builder shared | Code review: preview, Chroma delete, JSONL rewrite all receive candidates from same `build_path_candidates` call | |
+| V22 | Path-candidate builder shared | Code review: preview, Chroma delete, JSONL rewrite, and postcondition count all receive candidates from same `build_path_candidates` call. Matching contract identical across sinks (stored value ∈ candidates, no runtime resolve of stored values). | |
+| V23 | Postcondition JSONL count under export lock | N20: barrier test — JSONL postcondition count runs inside export lock; concurrent unrelated append blocked until postcondition completes | |
+| V24 | Preview uses chroma_readonly / create_collections=False | N21: preview does not call `get_or_create_collection`; no new directories or WAL/SHM files created; filesystem snapshot identical | |
 
 ---
 
@@ -95,7 +97,7 @@ Before marking this plan as accepted:
 
 After execution completes:
 
-6. All V1–V22 cells filled PASS
+6. All V1–V24 cells filled PASS
 7. All B1–B7 cells filled PASS (using temp config/corpus only)
 8. Full pytest suite green
 9. Branch pushed; PR ready for Ryan merge
