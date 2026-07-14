@@ -8,6 +8,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 _GATE = Path(__file__).resolve().parents[1] / "scripts" / "pylint_regression_gate.py"
@@ -21,6 +22,8 @@ baseline_to_counter = _gate.baseline_to_counter
 BaselineResolveError = _gate.BaselineResolveError
 ensure_git_commit = _gate.ensure_git_commit
 resolve_baseline_bytes = _gate.resolve_baseline_bytes
+probe_baseline_path_in_commit = _gate.probe_baseline_path_in_commit
+git_show_text = _gate.git_show_text
 compare_reports = _gate.compare_reports
 count_fingerprints = _gate.count_fingerprints
 find_regressions = _gate.find_regressions
@@ -550,6 +553,123 @@ class GitProvenanceTests(unittest.TestCase):
                 0,
             )
             del raw
+
+    def test_path_probe_git_failure_rejects_bootstrap(self):
+        """Simulated ls-tree failure must not bootstrap; CI returns failure."""
+        msgs = [_msg("a.py", "unused-import", "W0611", "Unused import x")]
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td) / "repo"
+            repo.mkdir()
+            self._init_repo(repo)
+            (repo / "README").write_text("seed\n", encoding="utf-8")
+            self._git(repo, "add", "README")
+            self._git(repo, "commit", "-m", "seed without baseline")
+            sha = self._git(repo, "rev-parse", "HEAD")
+
+            report = repo / "report.json"
+            branch_base = repo / "ci" / "pylint-baseline.json"
+            branch_base.parent.mkdir(parents=True)
+            report.write_text(json.dumps(msgs), encoding="utf-8")
+            branch_base.write_text(
+                json.dumps(counter_to_baseline(count_fingerprints(msgs))),
+                encoding="utf-8",
+            )
+
+            real_git = _gate._git
+
+            def flaky_ls_tree(args, *, cwd=None):
+                if args and args[0] == "ls-tree":
+                    return subprocess.CompletedProcess(
+                        args=["git", *args],
+                        returncode=128,
+                        stdout="",
+                        stderr="fatal: simulated ls-tree failure\n",
+                    )
+                return real_git(args, cwd=cwd)
+
+            with mock.patch.object(_gate, "_git", side_effect=flaky_ls_tree):
+                with self.assertRaises(BaselineResolveError) as ctx:
+                    resolve_baseline_bytes(
+                        base_ref=sha,
+                        branch_baseline=branch_base,
+                        git_cwd=repo,
+                    )
+                self.assertIn("ls-tree", str(ctx.exception))
+                rc = main(
+                    [
+                        "ci",
+                        "--report",
+                        str(report),
+                        "--pylint-status",
+                        "0",
+                        "--branch-baseline",
+                        str(branch_base),
+                        "--base-ref",
+                        sha,
+                        "--git-cwd",
+                        str(repo),
+                    ]
+                )
+                self.assertEqual(rc, 1)
+
+    def test_present_baseline_show_failure_fail_closed(self):
+        """ls-tree says present but git show fails → fail closed, no bootstrap."""
+        msgs = [_msg("a.py", "unused-import", "W0611", "Unused import x")]
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td) / "repo"
+            repo.mkdir()
+            self._init_repo(repo)
+            base_path = repo / "ci" / "pylint-baseline.json"
+            base_path.parent.mkdir(parents=True)
+            base_path.write_text(
+                json.dumps(counter_to_baseline(count_fingerprints(msgs))),
+                encoding="utf-8",
+            )
+            self._git(repo, "add", "ci/pylint-baseline.json")
+            self._git(repo, "commit", "-m", "baseline present")
+            sha = self._git(repo, "rev-parse", "HEAD")
+
+            report = repo / "report.json"
+            report.write_text(json.dumps(msgs), encoding="utf-8")
+            # Branch file still present on disk (would tempt a mistaken bootstrap).
+            self.assertTrue(base_path.is_file())
+
+            real_git = _gate._git
+
+            def show_fails(args, *, cwd=None):
+                if args and args[0] == "show":
+                    return subprocess.CompletedProcess(
+                        args=["git", *args],
+                        returncode=128,
+                        stdout="",
+                        stderr="fatal: simulated git show failure\n",
+                    )
+                return real_git(args, cwd=cwd)
+
+            with mock.patch.object(_gate, "_git", side_effect=show_fails):
+                with self.assertRaises(BaselineResolveError) as ctx:
+                    resolve_baseline_bytes(
+                        base_ref=sha,
+                        branch_baseline=base_path,
+                        git_cwd=repo,
+                    )
+                self.assertIn("git show failed", str(ctx.exception))
+                rc = main(
+                    [
+                        "ci",
+                        "--report",
+                        str(report),
+                        "--pylint-status",
+                        "0",
+                        "--branch-baseline",
+                        str(base_path),
+                        "--base-ref",
+                        sha,
+                        "--git-cwd",
+                        str(repo),
+                    ]
+                )
+                self.assertEqual(rc, 1)
 
     def test_direct_main_push_cannot_self_bless(self):
         """Push-to-main vs event.before: raised baseline + matching report FAIL."""
