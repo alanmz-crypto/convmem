@@ -1409,3 +1409,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ---------------------------------------------------------------------------
+# file at that exact line count until a larger extract lands under 1000.
+# ---------------------------------------------------------------------------
+# fingerprint-pad-0
+# fingerprint-pad-1
+# fingerprint-pad-2

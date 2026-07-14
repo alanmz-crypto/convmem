@@ -553,6 +553,329 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
     return committed, n_units
 
 
+def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
+    *,
+    cfg: dict,
+    idx: dict,
+    path: str,
+    path_key: str,
+    file_hash: str,
+    messages: list,
+    models: dict,
+    tool: str,
+    chroma_dir: str,
+    units_export: Path | None,
+    chunk_size: int,
+    overlap: int,
+    min_confidence: float,
+    verbose: bool,
+) -> tuple[bool, int, int]:
+    """Summarize/distill/embed unlocked, then locked batch writes.
+
+    Returns (completed_without_exclusion_abort, chunks_indexed, units_indexed).
+    """
+    chunks = chunk_messages(messages, chunk_size, overlap)
+    if verbose:
+        print(f"  [index] {Path(path).name}  ({len(messages)} msgs, {len(chunks)} chunks)")
+
+    n_indexed = 0
+    n_units = 0
+    chunk_date = ""
+    for ch in chunks:
+        text = render_chunk(ch["messages"])
+        if not text.strip():
+            continue
+        chunk_date = _chunk_date(ch["messages"]) or chunk_date
+        try:
+            summary = summarize(
+                text,
+                model=models["summarize_model"],
+                ollama_host=models["ollama_host"],
+                deepseek_base_url=models.get(
+                    "deepseek_base_url", "https://api.deepseek.com"
+                ),
+            )
+            summary_embedding = ollama_embed(
+                summary,
+                model=models["embed_model"],
+                host=models["ollama_host"],
+            )
+        except Exception as e:
+            if verbose:
+                print(f"    [warn] chunk {ch['start_offset']} summarize failed: {e}")
+            continue
+
+        try:
+            raw_units = distill(
+                text,
+                model=models["distill_model"],
+                ollama_host=models["ollama_host"],
+                deepseek_base_url=models.get(
+                    "deepseek_base_url", "https://api.deepseek.com"
+                ),
+            )
+        except Exception as e:
+            if verbose:
+                print(f"    [warn] chunk {ch['start_offset']} distill failed: {e}")
+            raw_units = []
+
+        session_meta = _chunk_session_meta(ch["messages"], path)
+        units_to_add: list[tuple] = []
+        for unit_idx, raw in enumerate(raw_units):
+            unit = normalize_unit(
+                raw,
+                source_path=path_key,
+                tool=tool,
+                date=chunk_date,
+                min_confidence=min_confidence,
+                author_model=models["distill_model"],
+                start_offset=ch["start_offset"],
+                unit_index=unit_idx,
+            )
+            if unit is None:
+                continue
+            doc = unit["summary"] + " " + " ".join(unit["keywords"])
+            try:
+                unit_embedding = ollama_embed(
+                    doc,
+                    model=models["embed_model"],
+                    host=models["ollama_host"],
+                )
+            except Exception as e:
+                if verbose:
+                    print(f"    [warn] unit embed failed: {e}")
+                continue
+            unit_meta = {
+                "id": unit["id"],
+                "type": unit["type"],
+                "title": unit["title"],
+                "source_path": unit["source_path"],
+                "confidence": unit["confidence"],
+                "timestamp": unit["timestamp"] or "",
+                "tool": unit["tool"],
+                "start_offset": ch["start_offset"],
+                "domain": unit["domain"],
+                "author_model": unit["author_model"],
+                "verifier_model": unit["verifier_model"] or "",
+                **session_meta,
+            }
+            units_to_add.append((unit, doc, unit_embedding, unit_meta))
+
+        doc_id = hashlib.sha256(
+            f"{path_key}:{ch['start_offset']}".encode()
+        ).hexdigest()
+        metadata = {
+            "source_path": path_key,
+            "tool": tool,
+            "date": _chunk_date(ch["messages"]),
+            "message_count": len(ch["messages"]),
+            "start_offset": ch["start_offset"],
+            "end_offset": ch["end_offset"],
+            **session_meta,
+        }
+        # Batch write only — parse/LLM/embed above hold no source/export locks (N17).
+        ok, d_idx, d_units = _commit_chunk_to_stores(
+            cfg=cfg,
+            idx=idx,
+            path_key=path_key,
+            path=path,
+            file_hash=file_hash,
+            chroma_dir=chroma_dir,
+            units_export=units_export if units_export else None,
+            doc_id=doc_id,
+            summary=summary,
+            summary_embedding=summary_embedding,
+            metadata=metadata,
+            units_to_add=units_to_add,
+            verbose=verbose,
+        )
+        if not ok:
+            return False, n_indexed, n_units
+        n_indexed += d_idx
+        n_units += d_units
+    return True, n_indexed, n_units
+
+
+def _reindex_clear_existing(
+    *,
+    chroma_dir: str,
+    path: str,
+    path_key: str,
+    file_hash: str,
+    supersede_on_reindex: bool,
+    verbose: bool,
+) -> None:
+    """Clear or supersede derived rows before force re-index of one file."""
+    with ChromaStore(chroma_dir) as store:
+        n_units_del = 0
+        n_sum_del = 0
+        tombstone_tag = f"{path_key}#{file_hash[:12]}"
+        if supersede_on_reindex:
+            # One echo per logical file: merge previews across the
+            # path/path_key variants, deduped by unit id.
+            merged: dict[str, dict] = {}
+            for sp in dict.fromkeys([path, path_key]):
+                for unit in store.preview_supersede_for_source(sp):
+                    merged.setdefault(unit["id"], unit)
+            _echo_neutralize_preview(
+                list(merged.values()), Path(path).name, tombstone_tag, verbose
+            )
+        for sp in dict.fromkeys([path, path_key]):
+            if supersede_on_reindex:
+                n_units_del += store.supersede_units_for_source(
+                    sp, superseded_by=tombstone_tag
+                )
+                # Summaries have no tombstone metadata yet — still hard-delete.
+                n_sum_del += store.delete_summaries_for_source(sp)
+            else:
+                n_units_del += store.delete_units_for_source(sp)
+                n_sum_del += store.delete_summaries_for_source(sp)
+        if verbose and (n_units_del or n_sum_del):
+            verb = "superseded" if supersede_on_reindex else "cleared"
+            print(
+                f"  [reindex] {verb} {n_units_del} units, "
+                f"{n_sum_del} summaries for {Path(path).name}",
+            )
+
+
+
+
+def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements
+    *,
+    cfg: dict,
+    idx: dict,
+    path: str,
+    processed: dict,
+    models: dict,
+    units_export: Path | None,
+    chunk_size: int,
+    overlap: int,
+    min_confidence: float,
+    force_file: str | None,
+    force_reindex: bool,
+    supersede_on_reindex: bool,
+    verbose: bool,
+) -> tuple[str, int, int]:
+    """Index one source file. Returns (status, chunks, units).
+
+    status is ``skipped``, ``processed``, or ``error-skip``.
+    """
+    parser = get_parser(path)
+    if parser is None:
+        return "skipped", 0, 0
+
+    try:
+        file_hash = sha256_file(path)
+    except OSError as e:
+        if verbose:
+            print(f"  [skip] cannot read {path}: {e}")
+        return "skipped", 0, 0
+
+    path_key = str(Path(path).expanduser().resolve())
+
+    if _path_is_excluded(processed, path_key) or (
+        file_hash in processed and processed[file_hash].get("excluded")
+    ):
+        if verbose:
+            print(f"  [skip] excluded {Path(path).name}")
+        return "skipped", 0, 0
+
+    if force_reindex and force_file:
+        for key, entry in list(processed.items()):
+            if (
+                isinstance(entry, dict)
+                and entry.get("path") == path_key
+                and not entry.get("excluded")
+            ):
+                del processed[key]
+
+    if force_file and not force_reindex:
+        stale = _stored_hash_for_path(path_key, processed)
+        if stale and stale != file_hash:
+            del processed[stale]
+
+    if not force_reindex:
+        if file_hash in processed:
+            if verbose:
+                print(f"  [skip] unchanged {Path(path).name}")
+            return "skipped", 0, 0
+
+    fmt = detect_format(path)
+    tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
+    chroma_dir = idx["chroma_dir"]
+
+    if force_file:
+        _reindex_clear_existing(
+            chroma_dir=chroma_dir,
+            path=path,
+            path_key=path_key,
+            file_hash=file_hash,
+            supersede_on_reindex=supersede_on_reindex,
+            verbose=verbose,
+        )
+
+    try:
+        messages = parser(path)
+    except Exception as e:
+        if verbose:
+            print(f"  [skip] parse failed {path}: {e}")
+        return "skipped", 0, 0
+
+    if fmt == "inter_model_doc":
+        committed, n_units = _index_inter_model_file(
+            cfg=cfg,
+            idx=idx,
+            path=path,
+            path_key=path_key,
+            file_hash=file_hash,
+            messages=messages,
+            models=models,
+            units_export=units_export,
+            force_file=force_file,
+            supersede_on_reindex=supersede_on_reindex,
+            verbose=verbose,
+        )
+        if not committed:
+            if verbose and n_units == 0:
+                print(f"  [skip] inter-model index failed or excluded {Path(path).name}")
+            elif verbose:
+                print(f"  [skip] excluded during index {Path(path).name}")
+            return "skipped", 0, 0
+        return "processed", 0, n_units
+
+    completed, n_indexed, n_units = _process_file_chunks(
+        cfg=cfg,
+        idx=idx,
+        path=path,
+        path_key=path_key,
+        file_hash=file_hash,
+        messages=messages,
+        models=models,
+        tool=tool,
+        chroma_dir=chroma_dir,
+        units_export=units_export,
+        chunk_size=chunk_size,
+        overlap=overlap,
+        min_confidence=min_confidence,
+        verbose=verbose,
+    )
+    if not completed:
+        return "skipped", n_indexed, n_units
+
+    committed = commit_processed_index_entry(
+        idx["processed_log"],
+        file_hash=file_hash,
+        path_key=path_key,
+        chunks=n_indexed,
+        units=n_units,
+    )
+    if not committed:
+        if verbose:
+            print(f"  [skip] excluded during index {Path(path).name}")
+        return "skipped", n_indexed, n_units
+    return "processed", n_indexed, n_units
+
+
 def index(
     force_file: str | None = None,
     limit_files: int | None = None,
@@ -567,9 +890,7 @@ def index(
     distill_cfg = cfg.get("distill", {})
     min_confidence = float(distill_cfg.get("min_confidence", 0.6))
     units_export = Path(idx.get("units_export", "")).expanduser()
-
     processed = load_processed(idx["processed_log"])
-
     chunk_size = idx.get("chunk_size", 60)
     overlap = idx.get("chunk_overlap", 10)
 
@@ -588,262 +909,31 @@ def index(
 
     for rec in targets:
         path = rec["path"]
-        parser = get_parser(path)
-        if parser is None:
-            continue  # unsupported / deferred format
-
         if limit_files is not None and seen_files >= limit_files:
             break
         seen_files += 1
-
-        try:
-            file_hash = sha256_file(path)
-        except OSError as e:
-            if verbose:
-                print(f"  [skip] cannot read {path}: {e}")
-            continue
-
-        path_key = str(Path(path).expanduser().resolve())
-
-        # Excluded files are always skipped, even with force_file / force_reindex
-        if _path_is_excluded(processed, path_key) or (
-            file_hash in processed and processed[file_hash].get("excluded")
-        ):
-            stats["files_skipped"] += 1
-            if verbose:
-                print(f"  [skip] excluded {Path(path).name}")
-            continue
-
-        if force_reindex and force_file:
-            # Local skip bookkeeping only — durable purge happens in commit.
-            for key, entry in list(processed.items()):
-                if (
-                    isinstance(entry, dict)
-                    and entry.get("path") == path_key
-                    and not entry.get("excluded")
-                ):
-                    del processed[key]
-
-        # Growing append-only transcripts: drop stale local entry when hash changes.
-        # Durable purge is part of commit_processed_index_entry (preserves exclusions).
-        if force_file and not force_reindex:
-            stale = _stored_hash_for_path(path_key, processed)
-            if stale and stale != file_hash:
-                del processed[stale]
-
-        if not force_reindex:
-            if file_hash in processed:
-                stats["files_skipped"] += 1
-                if verbose:
-                    print(f"  [skip] unchanged {Path(path).name}")
-                continue
-
-        fmt = detect_format(path)
-        tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
-
-        chroma_dir = idx["chroma_dir"]
-
-        if force_file:
-            with ChromaStore(chroma_dir) as store:
-                n_units_del = 0
-                n_sum_del = 0
-                tombstone_tag = f"{path_key}#{file_hash[:12]}"
-                if supersede_on_reindex:
-                    # One echo per logical file: merge previews across the
-                    # path/path_key variants, deduped by unit id.
-                    merged: dict[str, dict] = {}
-                    for sp in dict.fromkeys([path, path_key]):
-                        for unit in store.preview_supersede_for_source(sp):
-                            merged.setdefault(unit["id"], unit)
-                    _echo_neutralize_preview(
-                        list(merged.values()), Path(path).name, tombstone_tag, verbose
-                    )
-                for sp in dict.fromkeys([path, path_key]):
-                    if supersede_on_reindex:
-                        n_units_del += store.supersede_units_for_source(
-                            sp, superseded_by=tombstone_tag
-                        )
-                        # Summaries have no tombstone metadata yet — still hard-delete.
-                        n_sum_del += store.delete_summaries_for_source(sp)
-                    else:
-                        n_units_del += store.delete_units_for_source(sp)
-                        n_sum_del += store.delete_summaries_for_source(sp)
-                if verbose and (n_units_del or n_sum_del):
-                    verb = "superseded" if supersede_on_reindex else "cleared"
-                    print(
-                        f"  [reindex] {verb} {n_units_del} units, "
-                        f"{n_sum_del} summaries for {Path(path).name}",
-                    )
-
-        try:
-            messages = parser(path)
-        except Exception as e:
-            if verbose:
-                print(f"  [skip] parse failed {path}: {e}")
-            continue
-
-        if fmt == "inter_model_doc":
-            committed, n_units = _index_inter_model_file(
-                cfg=cfg,
-                idx=idx,
-                path=path,
-                path_key=path_key,
-                file_hash=file_hash,
-                messages=messages,
-                models=models,
-                units_export=units_export,
-                force_file=force_file,
-                supersede_on_reindex=supersede_on_reindex,
-                verbose=verbose,
-            )
-            processed = load_processed(idx["processed_log"])
-            if not committed:
-                stats["files_skipped"] += 1
-                if verbose and n_units == 0:
-                    print(f"  [skip] inter-model index failed or excluded {Path(path).name}")
-                elif verbose:
-                    print(f"  [skip] excluded during index {Path(path).name}")
-                continue
-            stats["files_processed"] += 1
-            stats["units_indexed"] += n_units
-            continue
-
-        chunks = chunk_messages(messages, chunk_size, overlap)
-        if verbose:
-            print(f"  [index] {Path(path).name}  ({len(messages)} msgs, {len(chunks)} chunks)")
-
-        n_indexed = 0
-        n_units = 0
-        chunk_date = ""
-        for ch in chunks:
-            text = render_chunk(ch["messages"])
-            if not text.strip():
-                continue
-            chunk_date = _chunk_date(ch["messages"]) or chunk_date
-            try:
-                summary = summarize(
-                    text,
-                    model=models["summarize_model"],
-                    ollama_host=models["ollama_host"],
-                    deepseek_base_url=models.get(
-                        "deepseek_base_url", "https://api.deepseek.com"
-                    ),
-                )
-                summary_embedding = ollama_embed(
-                    summary,
-                    model=models["embed_model"],
-                    host=models["ollama_host"],
-                )
-            except Exception as e:
-                if verbose:
-                    print(f"    [warn] chunk {ch['start_offset']} summarize failed: {e}")
-                continue
-
-            try:
-                raw_units = distill(
-                    text,
-                    model=models["distill_model"],
-                    ollama_host=models["ollama_host"],
-                    deepseek_base_url=models.get(
-                        "deepseek_base_url", "https://api.deepseek.com"
-                    ),
-                )
-            except Exception as e:
-                if verbose:
-                    print(f"    [warn] chunk {ch['start_offset']} distill failed: {e}")
-                raw_units = []
-
-            session_meta = _chunk_session_meta(ch["messages"], path)
-            units_to_add: list[tuple] = []
-            for unit_idx, raw in enumerate(raw_units):
-                unit = normalize_unit(
-                    raw,
-                    source_path=path_key,
-                    tool=tool,
-                    date=chunk_date,
-                    min_confidence=min_confidence,
-                    author_model=models["distill_model"],
-                    start_offset=ch["start_offset"],
-                    unit_index=unit_idx,
-                )
-                if unit is None:
-                    continue
-                doc = unit["summary"] + " " + " ".join(unit["keywords"])
-                try:
-                    unit_embedding = ollama_embed(
-                        doc,
-                        model=models["embed_model"],
-                        host=models["ollama_host"],
-                    )
-                except Exception as e:
-                    if verbose:
-                        print(f"    [warn] unit embed failed: {e}")
-                    continue
-                unit_meta = {
-                    "id": unit["id"],
-                    "type": unit["type"],
-                    "title": unit["title"],
-                    "source_path": unit["source_path"],
-                    "confidence": unit["confidence"],
-                    "timestamp": unit["timestamp"] or "",
-                    "tool": unit["tool"],
-                    "start_offset": ch["start_offset"],
-                    "domain": unit["domain"],
-                    "author_model": unit["author_model"],
-                    "verifier_model": unit["verifier_model"] or "",
-                    **session_meta,
-                }
-                units_to_add.append((unit, doc, unit_embedding, unit_meta))
-
-            doc_id = hashlib.sha256(
-                f"{path_key}:{ch['start_offset']}".encode()
-            ).hexdigest()
-            metadata = {
-                "source_path": path_key,
-                "tool": tool,
-                "date": _chunk_date(ch["messages"]),
-                "message_count": len(ch["messages"]),
-                "start_offset": ch["start_offset"],
-                "end_offset": ch["end_offset"],
-                **session_meta,
-            }
-            # Batch write only — parse/LLM/embed above hold no source/export locks (N17).
-            ok, d_idx, d_units = _commit_chunk_to_stores(
-                cfg=cfg,
-                idx=idx,
-                path_key=path_key,
-                path=path,
-                file_hash=file_hash,
-                chroma_dir=chroma_dir,
-                units_export=units_export if units_export else None,
-                doc_id=doc_id,
-                summary=summary,
-                summary_embedding=summary_embedding,
-                metadata=metadata,
-                units_to_add=units_to_add,
-                verbose=verbose,
-            )
-            if not ok:
-                break
-            n_indexed += d_idx
-            n_units += d_units
-
-        committed = commit_processed_index_entry(
-            idx["processed_log"],
-            file_hash=file_hash,
-            path_key=path_key,
-            chunks=n_indexed,
-            units=n_units,
+        status, n_chunks, n_units = _index_one_file(
+            cfg=cfg,
+            idx=idx,
+            path=path,
+            processed=processed,
+            models=models,
+            units_export=units_export,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            min_confidence=min_confidence,
+            force_file=force_file,
+            force_reindex=force_reindex,
+            supersede_on_reindex=supersede_on_reindex,
+            verbose=verbose,
         )
         processed = load_processed(idx["processed_log"])
-        if not committed:
+        if status == "processed":
+            stats["files_processed"] += 1
+            stats["chunks_indexed"] += n_chunks
+            stats["units_indexed"] += n_units
+        else:
             stats["files_skipped"] += 1
-            if verbose:
-                print(f"  [skip] excluded during index {Path(path).name}")
-            continue
-        stats["files_processed"] += 1
-        stats["chunks_indexed"] += n_indexed
-        stats["units_indexed"] += n_units
 
     if stats["files_processed"] > 0:
         try:
