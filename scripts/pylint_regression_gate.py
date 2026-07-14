@@ -39,10 +39,58 @@ PYLINT_MESSAGE_BITS = (
 
 # R0801 embeds ranges like ``==adapters.detect:[121:127]`` (module kept).
 _EMBEDDED_LINE_RANGE = re.compile(r"(==[^\s\[:]+):\[\d+:\d+\]")
+_CYCLIC_IMPORT = re.compile(
+    r"^(Cyclic import \()([^)]+)(\))\s*$", re.MULTILINE
+)
 
 
-def normalize_message(message: str) -> str:
-    """Normalize only embedded ``==name:[n:m]`` ranges; keep modules/body."""
+def _canonicalize_cyclic_import(message: str) -> str:
+    """Stabilize R0401: same module set → same fingerprint regardless of ring order."""
+
+    def repl(match: re.Match[str]) -> str:
+        parts = [p.strip() for p in match.group(2).split("->") if p.strip()]
+        if len(parts) < 2:
+            return match.group(0)
+        # Sorted unique module set — Pylint varies both rotation and which
+        # equivalent import rings it surfaces between runs.
+        uniq = sorted(set(parts))
+        return f"Cyclic import modules: {', '.join(uniq)}"
+
+    return _CYCLIC_IMPORT.sub(repl, message.strip())
+
+
+def _canonicalize_duplicate_code(message: str) -> str:
+    """Stabilize R0801: range-normalize, sort ==module headers, keep body text."""
+    message = _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message)
+    lines = message.split("\n")
+    if not lines:
+        return message
+    out: list[str] = []
+    i = 0
+    if lines[0].startswith("Similar lines"):
+        out.append(lines[0])
+        i = 1
+    mod_lines: list[str] = []
+    while i < len(lines) and lines[i].startswith("=="):
+        mod_lines.append(lines[i])
+        i += 1
+    out.extend(sorted(mod_lines))
+    out.extend(lines[i:])
+    return "\n".join(out)
+
+
+def normalize_message(message: str, *, symbol: str = "", msg_id: str = "") -> str:
+    """Normalize unstable Pylint message shapes before fingerprinting.
+
+    - Always rewrite embedded ``==name:[n:m]`` ranges to ``[#:#]``.
+    - R0801: sort module header lines; preserve duplicate-code body.
+    - R0401: rotate the import cycle to a canonical start.
+    """
+    message = message.strip()
+    if msg_id == "R0401" or symbol == "cyclic-import":
+        return _canonicalize_cyclic_import(message)
+    if msg_id == "R0801" or symbol == "duplicate-code":
+        return _canonicalize_duplicate_code(message)
     return _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message)
 
 
@@ -58,7 +106,9 @@ def fingerprint_from_message(msg: dict[str, Any]) -> Fingerprint:
     path = _norm_path(str(msg.get("path") or msg.get("module") or ""))
     symbol = str(msg.get("symbol") or "")
     msg_id = str(msg.get("message-id") or msg.get("message_id") or "")
-    message = normalize_message(str(msg.get("message") or "").strip())
+    message = normalize_message(
+        str(msg.get("message") or "").strip(), symbol=symbol, msg_id=msg_id
+    )
     return (path, symbol, msg_id, message)
 
 
@@ -89,11 +139,17 @@ def baseline_to_counter(baseline: Any) -> Counter[Fingerprint]:
         for row in baseline:
             if not isinstance(row, dict):
                 continue
+            symbol = str(row.get("symbol") or "")
+            msg_id = str(row.get("msg_id") or row.get("message-id") or "")
             fp = (
                 _norm_path(str(row.get("path") or "")),
-                str(row.get("symbol") or ""),
-                str(row.get("msg_id") or row.get("message-id") or ""),
-                normalize_message(str(row.get("message") or "").strip()),
+                symbol,
+                msg_id,
+                normalize_message(
+                    str(row.get("message") or "").strip(),
+                    symbol=symbol,
+                    msg_id=msg_id,
+                ),
             )
             counts[fp] += int(row.get("count") or 1)
         return counts

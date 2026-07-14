@@ -1936,63 +1936,84 @@
       "path": "work_git.py",
       "symbol": "cyclic-import",
       "msg_id": "R0401",
-      "message": "Cyclic import (ask -> query -> ingest -> brief -> doctor -> mcp_server)",
+      "message": "Cyclic import modules: ask, brief, doctor, ingest, mcp_server, query",
       "count": 1
     },
     {
       "path": "work_git.py",
       "symbol": "cyclic-import",
       "msg_id": "R0401",
-      "message": "Cyclic import (brief -> doctor -> observe -> ledger_recent -> propose_decision)",
+      "message": "Cyclic import modules: ask, brief, doctor, ledger_recent, mcp_server, propose_decision",
       "count": 1
     },
     {
       "path": "work_git.py",
       "symbol": "cyclic-import",
       "msg_id": "R0401",
-      "message": "Cyclic import (brief -> ingest)",
+      "message": "Cyclic import modules: brief, doctor, ingest, mcp_server, query",
       "count": 1
     },
     {
       "path": "work_git.py",
       "symbol": "cyclic-import",
       "msg_id": "R0401",
-      "message": "Cyclic import (brief -> query -> ingest)",
+      "message": "Cyclic import modules: brief, doctor, ledger_recent, observe, propose_decision",
       "count": 1
     },
     {
       "path": "work_git.py",
       "symbol": "cyclic-import",
       "msg_id": "R0401",
-      "message": "Cyclic import (brief -> query -> ledger_recent -> propose_decision)",
+      "message": "Cyclic import modules: brief, doctor, mcp_server",
       "count": 1
     },
     {
       "path": "work_git.py",
       "symbol": "cyclic-import",
       "msg_id": "R0401",
-      "message": "Cyclic import (conflict_events -> hash_schema_gate)",
+      "message": "Cyclic import modules: brief, ingest",
       "count": 1
     },
     {
       "path": "work_git.py",
       "symbol": "cyclic-import",
       "msg_id": "R0401",
-      "message": "Cyclic import (conflict_events -> propose_decision -> hash_schema_gate)",
+      "message": "Cyclic import modules: brief, ingest, query",
       "count": 1
     },
     {
       "path": "work_git.py",
       "symbol": "cyclic-import",
       "msg_id": "R0401",
-      "message": "Cyclic import (conflict_events -> propose_decision)",
+      "message": "Cyclic import modules: brief, ledger_recent, propose_decision, query",
       "count": 1
     },
     {
       "path": "work_git.py",
       "symbol": "cyclic-import",
       "msg_id": "R0401",
-      "message": "Cyclic import (ledger_recent -> propose_decision -> observe)",
+      "message": "Cyclic import modules: conflict_events, hash_schema_gate",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "cyclic-import",
+      "msg_id": "R0401",
+      "message": "Cyclic import modules: conflict_events, hash_schema_gate, propose_decision",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "cyclic-import",
+      "msg_id": "R0401",
+      "message": "Cyclic import modules: conflict_events, propose_decision",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "cyclic-import",
+      "msg_id": "R0401",
+      "message": "Cyclic import modules: ledger_recent, observe, propose_decision",
       "count": 1
     },
     {
@@ -2055,6 +2076,13 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==adapters.json_chat:[#:#]\n==adapters.jsonl_chat:[#:#]\n                if not isinstance(block, dict):\n                    continue\n                if block.get(\"type\") != \"text\":\n                    continue\n                text = block.get(\"text\")\n                if isinstance(text, str):",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==adapters.json_chat:[#:#]\n==adapters.jsonl_chat:[#:#]\n            if not isinstance(block, dict):\n                continue\n            if block.get(\"type\") != \"text\":\n                continue\n            text = block.get(\"text\")\n            if isinstance(text, str):",
       "count": 1
     },
@@ -2063,6 +2091,13 @@
       "symbol": "duplicate-code",
       "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==adapters.json_chat:[#:#]\n==adapters.kiro_session_jsonl:[#:#]\n            data = json.load(f)\n    except (OSError, json.JSONDecodeError):\n        return {}\n    if not isinstance(data, dict):\n        return {}",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==adapters.json_chat:[#:#]\n==adapters.sqlite_chat:[#:#]\n            if not isinstance(block, dict):\n                continue\n            if block.get(\"type\") != \"text\":\n                continue\n            text = block.get(\"text\")",
       "count": 1
     },
     {
@@ -2091,6 +2126,13 @@
       "symbol": "duplicate-code",
       "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==adapters.jsonl_chat:[#:#]\n==adapters.sqlite_chat:[#:#]\n            if not content.strip():\n                continue\n\n            messages.append(\n                {\n                    \"role\": role,\n                    \"content\": content,",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==adapters.jsonl_chat:[#:#]\n==adapters.sqlite_chat:[#:#]\n        if not content.strip():\n            continue\n\n        messages.append(\n            {\n                \"role\": role,\n                \"content\": content,",
       "count": 1
     },
     {
@@ -2139,6 +2181,13 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==conflict_events:[#:#]\n==ingest:[#:#]\n        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)\n        try:\n            yield\n        finally:\n            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)\n\n\ndef append_event(cfg: dict, event: dict) -> None:",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==conflict_events:[#:#]\n==ingest:[#:#]\n        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)\n        try:\n            yield\n        finally:\n            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)\n\n\ndef mutate_processed(processed_path: str, mutator: Callable[[dict], None]) -> dict:\n    \"\"\"Lock, reload on-disk state, mutate, atomic-save, unlock.\n\n    Hold only for read+mutate+write. Never across parse/LLM/embed/Chroma work.\n    Always releases the lock on exception paths (via `_processed_lock`).\n    \"\"\"",
       "count": 1
     },
@@ -2167,6 +2216,13 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==cross_project_digest:[#:#]\n==ledger_recent:[#:#]\n    ts = (ts or \"\").strip()\n    if not ts:\n        return None\n    for fmt in (\"%Y-%m-%dT%H:%M:%SZ\", \"%Y-%m-%dT%H:%M:%S\"):\n        try:\n            return datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)\n        except ValueError:\n            continue\n    return None\n\n\ndef load_recent_decisions(\n    approved_path_arg: Path,\n    *,\n    days: int = 7,\n    limit: int = 15,\n) -> list[dict]:\n    \"\"\"Return recent approved decision records, newest first.\"\"\"",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==cross_project_digest:[#:#]\n==propose_decision:[#:#]\n    for line in path.read_text(encoding=\"utf-8\").splitlines():\n        line = line.strip()\n        if not line:\n            continue\n        try:",
       "count": 1
     },
@@ -2182,6 +2238,13 @@
       "symbol": "duplicate-code",
       "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==distill:[#:#]\n==ledger:[#:#]\n        \"type\": unit_type,\n        \"title\": title,\n        \"summary\": summary,\n        \"keywords\": keywords,\n        \"source_path\": source_path,\n        \"confidence\": confidence,",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==eval-retrieval:[#:#]\n==refine:[#:#]\n    rows: list[dict] = []\n    for line in path.read_text(encoding=\"utf-8\").splitlines():\n        line = line.strip()\n        if line:\n            rows.append(json.loads(line))\n    return rows\n\n\ndef ledger_ids_from_hits(hits: list[dict]) -> list[str]:",
       "count": 1
     },
     {
@@ -2223,6 +2286,13 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==eval-summaries:[#:#]\n==eval-synthesis:[#:#]\n    if args.update_baseline:\n        args.baseline.write_text(json.dumps(report, indent=2) + \"\\n\", encoding=\"utf-8\")\n        print(f\"\\nWrote baseline {args.baseline}\")\n        return EXIT_OK\n\n    if not args.baseline.is_file():\n        print(f\"\\nNo baseline at {args.baseline} \u2014 run with --update-baseline\", file=sys.stderr)\n        return 1\n\n    baseline = json.loads(args.baseline.read_text(encoding=\"utf-8\"))",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==eval-summaries:[#:#]\n==eval-synthesis:[#:#]\n    if args.update_baseline:\n        args.baseline.write_text(json.dumps(report, indent=2) + \"\\n\", encoding=\"utf-8\")\n        print(f\"\\nWrote baseline {args.baseline}\")\n        return EXIT_OK\n\n    if not args.baseline.is_file():\n        print(f\"\\nNo baseline at {args.baseline} \u2014 run with --update-baseline\", file=sys.stderr)\n        return 1\n\n    baseline = json.loads(args.baseline.read_text(encoding=\"utf-8\"))\n    # Regression = structural pass rate dropped below baseline (deterministic gate).\n    # Judge mean is compared ONLY when independent \u2014 otherwise informational.",
       "count": 1
     },
@@ -2251,6 +2321,13 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==ingest:[#:#]\n==ledger:[#:#]\n                    \"id\": unit[\"id\"],\n                    \"type\": unit[\"type\"],\n                    \"title\": unit[\"title\"],\n                    \"source_path\": unit[\"source_path\"],\n                    \"confidence\": unit[\"confidence\"],",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==ingest:[#:#]\n==ledger:[#:#]\n        \"id\": unit[\"id\"],\n        \"type\": unit[\"type\"],\n        \"title\": unit[\"title\"],\n        \"source_path\": unit[\"source_path\"],\n        \"confidence\": unit[\"confidence\"],",
       "count": 1
     },
@@ -2265,7 +2342,21 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==ingest:[#:#]\n==propose_decision:[#:#]\n        line = line.strip()\n        if not line:\n            continue\n        try:\n            records.append(json.loads(line))\n        except json.JSONDecodeError:\n            continue\n    return records\n\n\ndef save_queue(path: Path, records: list[dict]) -> None:",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==ingest:[#:#]\n==watch:[#:#]\n    for entry in processed.values():\n        if not isinstance(entry, dict) or not entry.get(\"excluded\"):\n            continue\n        ep = entry.get(\"path\")\n        if ep and _processed_path_str(ep) == path_key:\n            return True\n    return False\n\n\ndef _purge_stale_same_path(\n    processed: dict,\n    path_key: str,\n    keep_hash: str,\n    *,\n    preserve_exclusions: bool = True,\n) -> int:\n    \"\"\"Remove other same-path keys. Exclusions survive when preserve_exclusions=True.\"\"\"",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==ingest:[#:#]\n==watch:[#:#]\n    for entry in processed.values():\n        if not isinstance(entry, dict) or not entry.get(\"excluded\"):\n            continue\n        ep = entry.get(\"path\")\n        if ep and _processed_path_str(ep) == path_key:\n            return True\n    return False\n\n\ndef is_excluded_from_index(path: Path | str) -> bool:\n    \"\"\"Alias for path-based exclusion check (watch hot path avoids hashing).\"\"\"",
       "count": 1
     },
     {
@@ -2336,7 +2427,7 @@
       "symbol": "duplicate-code",
       "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==monitor:[#:#]\n==observe:[#:#]\n            unit = ingest_observation(\n                record,\n                store=store,\n                embed_model=embed_model,\n                ollama_host=ollama_host,",
-      "count": 1
+      "count": 2
     },
     {
       "path": "work_git.py",
@@ -2412,7 +2503,21 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==tests.test_codex_history_jsonl:[#:#]\n==tests.test_codex_rollout_jsonl:[#:#]\n        self.assertEqual(TOOL_BY_FORMAT[fmt], \"codex\")\n        parser = get_parser(path)\n        self.assertIsNotNone(parser)\n        messages = parser(str(path))\n        self.assertGreater(len(messages), 0)",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==tests.test_codex_history_jsonl:[#:#]\n==tests.test_codex_rollout_jsonl:[#:#]\n    self.assertEqual(TOOL_BY_FORMAT[fmt], \"codex\")\n    parser = get_parser(path)\n    self.assertIsNotNone(parser)\n    messages = parser(str(path))\n    self.assertGreater(len(messages), 0)",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==tests.test_doctor:[#:#]\n==tests.test_git_hooks:[#:#]\n                cwd=repo,\n                check=True,\n                capture_output=True,\n                text=True,\n                env=env,\n            )",
       "count": 1
     },
     {
@@ -2447,6 +2552,13 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==tests.test_git_hooks:[#:#]\n==tests.test_work_git:[#:#]\n    env = {\n        **os.environ,\n        \"GIT_AUTHOR_NAME\": \"t\",\n        \"GIT_AUTHOR_EMAIL\": \"t@t\",\n        \"GIT_COMMITTER_NAME\": \"t\",\n        \"GIT_COMMITTER_EMAIL\": \"t@t\",\n    }",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==tests.test_ledger_related:[#:#]\n==tests.test_monitor:[#:#]\nclass FakeStore:\n    def __init__(self, metas: list[dict]):\n        self._metas = [dict(m) for m in metas]\n        self._units = {\n            m[\"id\"]: {\"id\": m[\"id\"], \"metadata\": m, \"document\": m.get(\"title\", \"\")}\n            for m in self._metas\n        }\n\n    def units_metadata(self):\n        return self._metas\n\n    def get_unit(self, uid: str):\n        return self._units.get(uid)\n\n\ndef _chain_fixture() -> FakeStore:",
       "count": 1
     },
@@ -2454,7 +2566,21 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==tests.test_load_processed:[#:#]\n==tests.test_processed_exclude_race:[#:#]\n        with tempfile.TemporaryDirectory() as td:\n            p = Path(td) / \"processed.json\"\n            from ingest import save_processed\n\n            save_processed(str(p), {\"a\": {\"path\": \"/x\"}})\n            self.assertEqual(json.loads(p.read_text()), {\"a\": {\"path\": \"/x\"}})\n            save_processed(str(p), {\"b\": {\"path\": \"/y\"}})\n            self.assertEqual(json.loads(p.read_text()), {\"b\": {\"path\": \"/y\"}})\n            self.assertFalse(p.with_suffix(p.suffix + \".tmp\").exists())",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==tests.test_load_processed:[#:#]\n==tests.test_processed_exclude_race:[#:#]\n        with tempfile.TemporaryDirectory() as td:\n            p = Path(td) / \"processed.json\"\n            save_processed(str(p), {\"a\": {\"path\": \"/x\"}})\n            self.assertEqual(json.loads(p.read_text()), {\"a\": {\"path\": \"/x\"}})\n            save_processed(str(p), {\"b\": {\"path\": \"/y\"}})\n            self.assertEqual(json.loads(p.read_text()), {\"b\": {\"path\": \"/y\"}})\n            self.assertFalse(p.with_suffix(p.suffix + \".tmp\").exists())\n\n    def test_commit_preserves_unrelated_entry(self):\n        import tempfile",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==tests.test_watch:[#:#]\n==tests.test_watch_skip:[#:#]\n            mock_index.assert_not_called()\n\n    def test_flush_path_reindexes_when_hash_changed(self):\n        with tempfile.TemporaryDirectory() as td:\n            path = Path(td) / \"agent-transcripts\" / \"x.jsonl\"\n            path.parent.mkdir()\n            path.write_text(\n                '{\"role\":\"user\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"test\"}]}}\\n'\n            )",
       "count": 1
     },
     {
