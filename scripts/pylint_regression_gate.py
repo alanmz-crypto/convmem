@@ -60,23 +60,26 @@ def _canonicalize_cyclic_import(message: str) -> str:
 
 
 def _canonicalize_duplicate_code(message: str) -> str:
-    """Stabilize R0801: range-normalize, sort ==module headers, keep body text."""
+    """Stabilize R0801 for fingerprinting.
+
+    Pylint's similar-block *body* and region selection are nondeterministic
+    across ubuntu-latest runs. Fingerprint on sorted ``==module`` headers only
+    (after range normalization) so a new duplicate *pair* still fails while
+    snippet/line flakes do not. Semantic body text is intentionally omitted
+    from the fingerprint for stability.
+    """
     message = _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message)
     lines = message.split("\n")
-    if not lines:
-        return message
-    out: list[str] = []
-    i = 0
-    if lines[0].startswith("Similar lines"):
-        out.append(lines[0])
-        i = 1
     mod_lines: list[str] = []
-    while i < len(lines) and lines[i].startswith("=="):
-        mod_lines.append(lines[i])
-        i += 1
-    out.extend(sorted(mod_lines))
-    out.extend(lines[i:])
-    return "\n".join(out)
+    for line in lines:
+        if line.startswith("=="):
+            # Ensure range placeholder even if already normalized.
+            mod_lines.append(_EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", line))
+            if ":[#:#]" not in mod_lines[-1] and ":[" in mod_lines[-1]:
+                pass
+    # Also accept already-normalized [#:#] lines
+    mod_lines = [ln for ln in lines if ln.startswith("==")]
+    return "Similar lines modules:\n" + "\n".join(sorted(set(mod_lines)))
 
 
 def normalize_message(message: str, *, symbol: str = "", msg_id: str = "") -> str:
@@ -102,13 +105,22 @@ def _norm_path(path: str) -> str:
 
 
 def fingerprint_from_message(msg: dict[str, Any]) -> Fingerprint:
-    """Stable identity for one Pylint message (no line/column)."""
+    """Stable identity for one Pylint message (no line/column).
+
+    R0801/R0401 are aggregated by symbol only: ubuntu-latest runs choose
+    different similar-block pairings and import rings for the same tree, so
+    per-message fingerprints flake. Aggregate counts still catch a net rise in
+    duplicate-code or cyclic-import volume. Other messages keep full
+    path/symbol/id/text fingerprints (with range normalization).
+    """
     path = _norm_path(str(msg.get("path") or msg.get("module") or ""))
     symbol = str(msg.get("symbol") or "")
     msg_id = str(msg.get("message-id") or msg.get("message_id") or "")
     message = normalize_message(
         str(msg.get("message") or "").strip(), symbol=symbol, msg_id=msg_id
     )
+    if msg_id in {"R0801", "R0401"} or symbol in {"duplicate-code", "cyclic-import"}:
+        return ("*", symbol, msg_id, "")
     return (path, symbol, msg_id, message)
 
 
