@@ -308,6 +308,12 @@ class ChromaStore:
             metadatas=[metadata],
         )
 
+    def count_for_source_path(self, collection_name: str, source_path: str) -> int:
+        """Count rows in a collection with exact source_path metadata."""
+        col = self._collection(collection_name)
+        res = col.get(where={"source_path": source_path}, include=[])
+        return len(res.get("ids") or [])
+
     def delete_units_for_source(self, source_path: str) -> int:
         """Remove all knowledge units indexed from ``source_path``."""
         col = self._collection(UNITS)

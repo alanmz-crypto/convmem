@@ -8,7 +8,7 @@ os.environ.setdefault("TQDM_DISABLE", "1")
 from contextlib import redirect_stderr
 from io import StringIO
 
-from sentence_transformers import CrossEncoder
+from sentence_transformers import CrossEncoder  # pylint: disable=import-error
 
 _model = None
 
