@@ -1943,35 +1943,7 @@
       "path": "work_git.py",
       "symbol": "cyclic-import",
       "msg_id": "R0401",
-      "message": "Cyclic import (brief -> doctor -> mcp_server -> query -> ingest)",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "cyclic-import",
-      "msg_id": "R0401",
-      "message": "Cyclic import (brief -> doctor -> mcp_server -> query -> ledger_recent -> propose_decision)",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "cyclic-import",
-      "msg_id": "R0401",
-      "message": "Cyclic import (brief -> doctor -> mcp_server)",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "cyclic-import",
-      "msg_id": "R0401",
       "message": "Cyclic import (brief -> doctor -> observe -> ledger_recent -> propose_decision)",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "cyclic-import",
-      "msg_id": "R0401",
-      "message": "Cyclic import (brief -> doctor)",
       "count": 1
     },
     {
@@ -1986,6 +1958,13 @@
       "symbol": "cyclic-import",
       "msg_id": "R0401",
       "message": "Cyclic import (brief -> query -> ingest)",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "cyclic-import",
+      "msg_id": "R0401",
+      "message": "Cyclic import (brief -> query -> ledger_recent -> propose_decision)",
       "count": 1
     },
     {
@@ -2027,7 +2006,7 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==adapters.codex_history_jsonl:[#:#]\n==brief:[#:#]\n        for line in f:\n            line = line.strip()\n            if not line:\n                continue\n            try:",
+      "message": "Similar lines in 2 files\n==adapters.codex_history_jsonl:[#:#]\n==brief:[#:#]\n            for line in f:\n                line = line.strip()\n                if not line:\n                    continue\n                try:",
       "count": 1
     },
     {
@@ -2055,7 +2034,7 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==adapters.detect:[#:#]\n==inventory:[#:#]\n        path.relative_to(sessions_dir)\n    except ValueError:\n        return None\n    try:\n        with open(path) as f:\n            data = json.load(f)",
+      "message": "Similar lines in 2 files\n==adapters.detect:[#:#]\n==inventory:[#:#]\n        path.relative_to(sessions_dir)  # raises ValueError if not under sessions\n    except ValueError:\n        return None\n    try:\n        with open(path) as f:\n            data = json.load(f)",
       "count": 1
     },
     {
@@ -2069,7 +2048,7 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==adapters.json_chat:[#:#]\n==adapters.jsonl_chat:[#:#]\n            continue\n\n        messages.append(\n            {\n                \"role\": role,\n                \"content\": content,\n                \"timestamp\": None,",
+      "message": "Similar lines in 2 files\n==adapters.json_chat:[#:#]\n==adapters.jsonl_chat:[#:#]\n                continue\n\n            messages.append(\n                {\n                    \"role\": role,\n                    \"content\": content,\n                    \"timestamp\": None,",
       "count": 1
     },
     {
@@ -2097,7 +2076,7 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==adapters.jsonl_chat:[#:#]\n==adapters.kiro_session_jsonl:[#:#]\n    messages: list[dict] = []\n    with open(filepath, \"r\", encoding=\"utf-8\") as f:\n        for line in f:\n            line = line.strip()\n            if not line:\n                continue\n            try:\n                record = json.loads(line)\n            except json.JSONDecodeError:\n                continue\n            if not isinstance(record, dict):\n                continue",
+      "message": "Similar lines in 2 files\n==adapters.jsonl_chat:[#:#]\n==adapters.kiro_session_jsonl:[#:#]\n    messages: list[dict] = []\n\n    with open(filepath, \"r\", encoding=\"utf-8\") as f:\n        for line in f:\n            line = line.strip()\n            if not line:\n                continue\n\n            try:\n                record = json.loads(line)\n            except json.JSONDecodeError:\n                continue\n\n            if not isinstance(record, dict):\n                continue",
       "count": 1
     },
     {
@@ -2125,14 +2104,49 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==conflict_events:[#:#]\n==ingest:[#:#]\n        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)\n        try:\n            yield\n        finally:\n            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)\n\n\ndef append_event(cfg: dict, event: dict) -> None:",
+      "message": "Similar lines in 2 files\n==chroma_restore_drill:[#:#]\n==restic_integrity_check:[#:#]\n        for s in self.steps:\n            detail = (s.get(\"detail\") or \"\").replace(\"|\", \"\\\\|\")\n            lines.append(f\"| {s['name']} | {s['status']} | {detail} |\")\n        lines.append(\"\")\n        md.write_text(\"\\n\".join(lines) + \"\\n\", encoding=\"utf-8\")\n\n\ndef timed(fn: Callable[[], Any]) -> tuple[Any, float]:\n    t0 = time.monotonic()\n    out = fn()\n    return out, time.monotonic() - t0\n\n\ndef restic_restore(env: dict[str, str], snapshot_id: str, target: Path) -> None:",
       "count": 1
     },
     {
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==convmem:[#:#]\n==query:[#:#]\n                    \"source_path\": c.get(\"source_path\"),\n                    \"tool\": c.get(\"tool\"),\n                    \"start_offset\": c.get(\"start_offset\"),\n                    \"conversation_id\": c.get(\"conversation_id\"),\n                    \"session_id\": c.get(\"session_id\"),\n                }",
+      "message": "Similar lines in 2 files\n==chroma_restore_drill:[#:#]\n==restic_integrity_check:[#:#]\n        line = line.strip()\n        if not line or line.startswith(\"#\") or \"=\" not in line:\n            continue\n        key, _, val = line.partition(\"=\")\n        key = key.strip()\n        val = val.strip().strip(\"'\").strip('\"')\n        if key:\n            env[key] = val\n    if not env.get(\"RESTIC_REPOSITORY\"):",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==chroma_restore_drill:[#:#]\n==restic_integrity_check:[#:#]\n        }\n        self._write()\n\n    def set_meta(self, **kwargs: Any) -> None:\n        self.meta.update(kwargs)\n        self._write()\n\n    def step(\n        self,\n        name: str,\n        status: str,\n        detail: str = \"\",\n        duration_s: float | None = None,\n        **extra: Any,\n    ) -> None:\n        entry: dict[str, Any] = {\n            \"name\": name,\n            \"status\": status,\n            \"detail\": detail,\n            \"at\": _utc_now(),\n        }\n        if duration_s is not None:\n            entry[\"duration_s\"] = round(duration_s, 3)\n        entry.update(extra)\n        self.steps.append(entry)\n        self._write()\n\n    def finalize(self, status: str, detail: str = \"\") -> None:\n        self.meta[\"status\"] = status\n        self.meta[\"finished_at\"] = _utc_now()\n        if detail:\n            self.meta[\"final_detail\"] = detail\n        self._write()\n\n    def _write(self) -> None:\n        self.path.parent.mkdir(parents=True, exist_ok=True)\n        payload = {\"meta\": self.meta, \"steps\": self.steps}\n        self.path.write_text(json.dumps(payload, indent=2) + \"\\n\", encoding=\"utf-8\")\n        md = self.path.with_suffix(\".md\")\n        lines = [",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==chroma_restore_drill:[#:#]\n==restic_integrity_check:[#:#]\n    cache = env.get(\"RESTIC_CACHE_DIR\") or env.get(\"CONVMEM_RESTIC_CACHE_DIR\")\n    if not cache:\n        cache = str(Path(os.environ.get(\"TMPDIR\", \"/tmp\")) / \"convmem-restic-cache\")\n    Path(cache).mkdir(parents=True, exist_ok=True)\n    env[\"RESTIC_CACHE_DIR\"] = cache\n    return env\n\n\ndef build_check_argv(\n    *,\n    tag: str = TAG,\n    subset: str | None = DEFAULT_SUBSET,\n    full_read_data: bool = False,\n) -> list[str]:",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==chroma_restore_drill:[#:#]\n==restic_integrity_check:[#:#]\nclass Report:\n    def __init__(self, path: Path):\n        self.path = path\n        self.started = _utc_now()\n        self.steps: list[dict[str, Any]] = []\n        self.meta: dict[str, Any] = {\n            \"status\": \"in_progress\",\n            \"started_at\": self.started,\n            \"finished_at\": None,",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==conflict_events:[#:#]\n==ingest:[#:#]\n        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)\n        try:\n            yield\n        finally:\n            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)\n\n\ndef mutate_processed(processed_path: str, mutator: Callable[[dict], None]) -> dict:\n    \"\"\"Lock, reload on-disk state, mutate, atomic-save, unlock.\n\n    Hold only for read+mutate+write. Never across parse/LLM/embed/Chroma work.\n    Always releases the lock on exception paths (via `_processed_lock`).\n    \"\"\"",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==convmem:[#:#]\n==query:[#:#]\n        \"source_path\": c.get(\"source_path\"),\n        \"tool\": c.get(\"tool\"),\n        \"start_offset\": c.get(\"start_offset\"),\n        \"conversation_id\": c.get(\"conversation_id\"),\n        \"session_id\": c.get(\"session_id\"),\n    }",
       "count": 1
     },
     {
@@ -2146,7 +2160,7 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==cross_project_digest:[#:#]\n==ledger_recent:[#:#]\n    ts = (ts or \"\").strip()\n    if not ts:\n        return None\n    for fmt in (\"%Y-%m-%dT%H:%M:%SZ\", \"%Y-%m-%dT%H:%M:%S\"):\n        try:\n            return datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)\n        except ValueError:\n            continue\n    return None\n\n\ndef load_recent_decisions(\n    approved_path_arg: Path,\n    *,\n    days: int = 7,\n    limit: int = 15,\n) -> list[dict]:\n    \"\"\"Return recent approved decision records, newest first.\"\"\"",
+      "message": "Similar lines in 2 files\n==cross_project_digest:[#:#]\n==ledger_recent:[#:#]\n    ts = (ts or \"\").strip()\n    if not ts:\n        return None\n    for fmt in (\"%Y-%m-%dT%H:%M:%SZ\", \"%Y-%m-%dT%H:%M:%S\"):\n        try:\n            return datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)\n        except ValueError:\n            continue\n    return None\n\n\ndef is_coordination_unresolved(obs: dict, *, site: str = \"\") -> bool:\n    \"\"\"Default lane: tooling/coordination obs without client site.\"\"\"",
       "count": 1
     },
     {
@@ -2174,6 +2188,62 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==eval-retrieval:[#:#]\n==refine:[#:#]\n    rows: list[dict] = []\n    for line in path.read_text(encoding=\"utf-8\").splitlines():\n        line = line.strip()\n        if line:\n            rows.append(json.loads(line))\n    return rows\n\n\ndef save_dedupe_queue(cfg: dict, rows: list[dict]) -> None:",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==eval-summaries:[#:#]\n==eval-synthesis:[#:#]\n        \"results\": results,\n    }\n    if use_judge:\n        jrs = [\n            JudgeResult(\n                score=r[\"judge\"][\"score\"],\n                reason=r[\"judge\"][\"reason\"],\n                independent=r[\"judge\"][\"independent\"],\n                judge_model=r[\"judge\"][\"judge_model\"],\n                under_test_model=r[\"judge\"][\"under_test_model\"],\n            )\n            for r in results\n            if \"judge\" in r\n        ]\n        report.update(aggregate(jrs))\n    return report\n\n\ndef main() -> int:",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==eval-summaries:[#:#]\n==eval-synthesis:[#:#]\n    args = parser.parse_args()\n\n    sys.path.insert(0, str(REPO))\n    from config import load_config\n    from eval_provenance import EXIT_OK, classify, model_context\n\n    cfg = load_config()\n    rows = load_golden(args.golden)\n    results = [eval_row(r, cfg, use_judge=args.judge) for r in rows]\n    report = summarize_report(results, use_judge=args.judge)",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==eval-summaries:[#:#]\n==eval-synthesis:[#:#]\n    if (\n        report.get(\"judge_independent\")\n        and baseline.get(\"judge_independent\")\n        and report.get(\"judge_mean\") is not None\n        and baseline.get(\"judge_mean\") is not None\n        and report[\"judge_mean\"] < baseline[\"judge_mean\"]\n    ):\n        regressed = True\n\n    code, msg = classify(\n        regressed=regressed,\n        current_ctx=report[\"provenance\"],\n        baseline_ctx=baseline.get(\"provenance\", {}),\n    )\n    print(f\"\\n{msg}\")\n    return code\n\n\nif __name__ == \"__main__\":\n    raise SystemExit(main())",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==eval-summaries:[#:#]\n==eval-synthesis:[#:#]\n    if args.judge:\n        indep = report.get(\"judge_independent\")\n        tag = \"INDEPENDENT\" if indep else \"NON-INDEPENDENT (informational only)\"\n        print(f\"Judge mean: {report.get('judge_mean')} [{tag}] model={report.get('judge_model')}\")\n    for r in results:",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==eval-summaries:[#:#]\n==eval-synthesis:[#:#]\n    if args.update_baseline:\n        args.baseline.write_text(json.dumps(report, indent=2) + \"\\n\", encoding=\"utf-8\")\n        print(f\"\\nWrote baseline {args.baseline}\")\n        return EXIT_OK\n\n    if not args.baseline.is_file():\n        print(f\"\\nNo baseline at {args.baseline} \u2014 run with --update-baseline\", file=sys.stderr)\n        return 1\n\n    baseline = json.loads(args.baseline.read_text(encoding=\"utf-8\"))\n    # Regression = structural pass rate dropped below baseline (deterministic gate).\n    # Judge mean is compared ONLY when independent \u2014 otherwise informational.",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==eval-summaries:[#:#]\n==eval-synthesis:[#:#]\n    rows: list[dict] = []\n    for line in path.read_text(encoding=\"utf-8\").splitlines():\n        line = line.strip()\n        if line:\n            rows.append(json.loads(line))\n    return rows\n\n\ndef eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:\n    from eval_grading import grade_summary, keyword_recall\n    from llm import summarize\n\n    models = cfg[\"models\"]",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==eval-summaries:[#:#]\n==tests.test_eval_synthesis:[#:#]\n        report.get(\"judge_independent\")\n        and baseline.get(\"judge_independent\")\n        and report.get(\"judge_mean\") is not None\n        and baseline.get(\"judge_mean\") is not None\n        and report[\"judge_mean\"] < baseline[\"judge_mean\"]",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==export_lighthouse:[#:#]\n==export_report_to_observations:[#:#]\n        raise SystemExit(0)\n\n    lines = [json.dumps(r, ensure_ascii=False) for r in records]\n    if args.print:\n        print(\"\\n\".join(lines))\n    else:\n        args.output.write_text(\"\\n\".join(lines) + \"\\n\", encoding=\"utf-8\")\n        print(f\"Wrote {len(records)} observation(s) \u2192 {args.output}\")\n\n\nif __name__ == \"__main__\":\n    main()",
       "count": 1
     },
@@ -2181,7 +2251,7 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==ingest:[#:#]\n==ledger:[#:#]\n                    \"id\": unit[\"id\"],\n                    \"type\": unit[\"type\"],\n                    \"title\": unit[\"title\"],\n                    \"source_path\": unit[\"source_path\"],\n                    \"confidence\": unit[\"confidence\"],",
+      "message": "Similar lines in 2 files\n==ingest:[#:#]\n==ledger:[#:#]\n        \"id\": unit[\"id\"],\n        \"type\": unit[\"type\"],\n        \"title\": unit[\"title\"],\n        \"source_path\": unit[\"source_path\"],\n        \"confidence\": unit[\"confidence\"],",
       "count": 1
     },
     {
@@ -2202,7 +2272,7 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==inter_model_index:[#:#]\n==observe:[#:#]\n    store.add_unit(unit[\"id\"], doc, embedding, meta)\n\n    if units_export:\n        units_export.parent.mkdir(parents=True, exist_ok=True)\n        with open(units_export, \"a\", encoding=\"utf-8\") as uf:\n            uf.write(json.dumps(unit) + \"\\n\")",
+      "message": "Similar lines in 2 files\n==inter_model_index:[#:#]\n==observe:[#:#]\n            store.add_unit(unit[\"id\"], doc, embedding, meta)\n            if units_export:\n                units_export.parent.mkdir(parents=True, exist_ok=True)\n                with open(units_export, \"a\", encoding=\"utf-8\") as uf:\n                    uf.write(json.dumps(unit) + \"\\n\")",
       "count": 1
     },
     {
@@ -2258,8 +2328,15 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
+      "message": "Similar lines in 2 files\n==monitor:[#:#]\n==observe:[#:#]\n                unit = ingest_observation(\n                    record,\n                    store=store,\n                    embed_model=embed_model,\n                    ollama_host=ollama_host,",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==monitor:[#:#]\n==observe:[#:#]\n            unit = ingest_observation(\n                record,\n                store=store,\n                embed_model=embed_model,\n                ollama_host=ollama_host,",
-      "count": 2
+      "count": 1
     },
     {
       "path": "work_git.py",
@@ -2293,7 +2370,7 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==process_lock:[#:#]\n==watch:[#:#]\n                    f\"Lock: {lock_path}\",\n                    file=sys.stderr,\n                )\n                sys.exit(1)\n        lock_path.unlink(missing_ok=True)\n    lock_path.write_text(str(os.getpid()), encoding=\"utf-8\")\n\n\ndef release_lock(lock_path: Path) -> None:",
+      "message": "Similar lines in 2 files\n==process_lock:[#:#]\n==watch:[#:#]\n                f\"Lock: {lock_path}\",\n                file=sys.stderr,\n            )\n            sys.exit(1)\n        lock_path.unlink(missing_ok=True)\n    lock_path.write_text(str(os.getpid()), encoding=\"utf-8\")\n\n\ndef load_watch_settings(cfg: dict) -> tuple[float, list[str], Path]:",
       "count": 1
     },
     {
@@ -2301,97 +2378,6 @@
       "symbol": "duplicate-code",
       "msg_id": "R0801",
       "message": "Similar lines in 2 files\n==process_lock:[#:#]\n==watch:[#:#]\n    lock_path.parent.mkdir(parents=True, exist_ok=True)\n    if lock_path.exists():\n        try:\n            other_pid = int(lock_path.read_text().strip())\n        except ValueError:\n            other_pid = 0",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==refine:[#:#]\n==scripts.eval-retrieval:[#:#]\n    rows: list[dict] = []\n    for line in path.read_text(encoding=\"utf-8\").splitlines():\n        line = line.strip()\n        if line:\n            rows.append(json.loads(line))\n    return rows\n\n\ndef save_dedupe_queue(cfg: dict, rows: list[dict]) -> None:",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.chroma_restore_drill:[#:#]\n==scripts.restic_integrity_check:[#:#]\n        for s in self.steps:\n            detail = (s.get(\"detail\") or \"\").replace(\"|\", \"\\\\|\")\n            lines.append(f\"| {s['name']} | {s['status']} | {detail} |\")\n        lines.append(\"\")\n        md.write_text(\"\\n\".join(lines) + \"\\n\", encoding=\"utf-8\")\n\n\ndef timed(fn: Callable[[], Any]) -> tuple[Any, float]:\n    t0 = time.monotonic()\n    out = fn()\n    return out, time.monotonic() - t0\n\n\ndef restic_restore(env: dict[str, str], snapshot_id: str, target: Path) -> None:",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.chroma_restore_drill:[#:#]\n==scripts.restic_integrity_check:[#:#]\n        line = line.strip()\n        if not line or line.startswith(\"#\") or \"=\" not in line:\n            continue\n        key, _, val = line.partition(\"=\")\n        key = key.strip()\n        val = val.strip().strip(\"'\").strip('\"')\n        if key:\n            env[key] = val\n    if not env.get(\"RESTIC_REPOSITORY\"):",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.chroma_restore_drill:[#:#]\n==scripts.restic_integrity_check:[#:#]\n        }\n        self._write()\n\n    def set_meta(self, **kwargs: Any) -> None:\n        self.meta.update(kwargs)\n        self._write()\n\n    def step(\n        self,\n        name: str,\n        status: str,\n        detail: str = \"\",\n        duration_s: float | None = None,\n        **extra: Any,\n    ) -> None:\n        entry: dict[str, Any] = {\n            \"name\": name,\n            \"status\": status,\n            \"detail\": detail,\n            \"at\": _utc_now(),\n        }\n        if duration_s is not None:\n            entry[\"duration_s\"] = round(duration_s, 3)\n        entry.update(extra)\n        self.steps.append(entry)\n        self._write()\n\n    def finalize(self, status: str, detail: str = \"\") -> None:\n        self.meta[\"status\"] = status\n        self.meta[\"finished_at\"] = _utc_now()\n        if detail:\n            self.meta[\"final_detail\"] = detail\n        self._write()\n\n    def _write(self) -> None:\n        self.path.parent.mkdir(parents=True, exist_ok=True)\n        payload = {\"meta\": self.meta, \"steps\": self.steps}\n        self.path.write_text(json.dumps(payload, indent=2) + \"\\n\", encoding=\"utf-8\")\n        md = self.path.with_suffix(\".md\")\n        lines = [",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.chroma_restore_drill:[#:#]\n==scripts.restic_integrity_check:[#:#]\n    cache = env.get(\"RESTIC_CACHE_DIR\") or env.get(\"CONVMEM_RESTIC_CACHE_DIR\")\n    if not cache:\n        cache = str(Path(os.environ.get(\"TMPDIR\", \"/tmp\")) / \"convmem-restic-cache\")\n    Path(cache).mkdir(parents=True, exist_ok=True)\n    env[\"RESTIC_CACHE_DIR\"] = cache\n    return env\n\n\ndef list_tagged_snapshots(env: dict[str, str], tag: str = \"convmem-chroma\") -> list[dict]:",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.chroma_restore_drill:[#:#]\n==scripts.restic_integrity_check:[#:#]\nclass Report:\n    def __init__(self, path: Path):\n        self.path = path\n        self.started = _utc_now()\n        self.steps: list[dict[str, Any]] = []\n        self.meta: dict[str, Any] = {\n            \"status\": \"in_progress\",\n            \"started_at\": self.started,\n            \"finished_at\": None,",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.eval-summaries:[#:#]\n==scripts.eval-synthesis:[#:#]\n        \"results\": results,\n    }\n    if use_judge:\n        jrs = [\n            JudgeResult(\n                score=r[\"judge\"][\"score\"],\n                reason=r[\"judge\"][\"reason\"],\n                independent=r[\"judge\"][\"independent\"],\n                judge_model=r[\"judge\"][\"judge_model\"],\n                under_test_model=r[\"judge\"][\"under_test_model\"],\n            )\n            for r in results\n            if \"judge\" in r\n        ]\n        report.update(aggregate(jrs))\n    return report\n\n\ndef main() -> int:",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.eval-summaries:[#:#]\n==scripts.eval-synthesis:[#:#]\n    args = parser.parse_args()\n\n    sys.path.insert(0, str(REPO))\n    from config import load_config\n    from eval_provenance import EXIT_OK, classify, model_context\n\n    cfg = load_config()\n    rows = load_golden(args.golden)\n    results = [eval_row(r, cfg, use_judge=args.judge) for r in rows]\n    report = summarize_report(results, use_judge=args.judge)",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.eval-summaries:[#:#]\n==scripts.eval-synthesis:[#:#]\n    if (\n        report.get(\"judge_independent\")\n        and baseline.get(\"judge_independent\")\n        and report.get(\"judge_mean\") is not None\n        and baseline.get(\"judge_mean\") is not None\n        and report[\"judge_mean\"] < baseline[\"judge_mean\"]\n    ):\n        regressed = True\n\n    code, msg = classify(\n        regressed=regressed,\n        current_ctx=report[\"provenance\"],\n        baseline_ctx=baseline.get(\"provenance\", {}),\n    )\n    print(f\"\\n{msg}\")\n    return code\n\n\nif __name__ == \"__main__\":\n    raise SystemExit(main())",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.eval-summaries:[#:#]\n==scripts.eval-synthesis:[#:#]\n    if args.judge:\n        indep = report.get(\"judge_independent\")\n        tag = \"INDEPENDENT\" if indep else \"NON-INDEPENDENT (informational only)\"\n        print(f\"Judge mean: {report.get('judge_mean')} [{tag}] model={report.get('judge_model')}\")\n    for r in results:",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.eval-summaries:[#:#]\n==scripts.eval-synthesis:[#:#]\n    if args.update_baseline:\n        args.baseline.write_text(json.dumps(report, indent=2) + \"\\n\", encoding=\"utf-8\")\n        print(f\"\\nWrote baseline {args.baseline}\")\n        return EXIT_OK\n\n    if not args.baseline.is_file():\n        print(f\"\\nNo baseline at {args.baseline} \u2014 run with --update-baseline\", file=sys.stderr)\n        return 1\n\n    baseline = json.loads(args.baseline.read_text(encoding=\"utf-8\"))",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.eval-summaries:[#:#]\n==scripts.eval-synthesis:[#:#]\n    rows: list[dict] = []\n    for line in path.read_text(encoding=\"utf-8\").splitlines():\n        line = line.strip()\n        if line:\n            rows.append(json.loads(line))\n    return rows\n\n\ndef eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:\n    from eval_grading import grade_summary, keyword_recall\n    from llm import summarize\n\n    models = cfg[\"models\"]",
-      "count": 1
-    },
-    {
-      "path": "work_git.py",
-      "symbol": "duplicate-code",
-      "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==scripts.eval-summaries:[#:#]\n==tests.test_eval_synthesis:[#:#]\n            report.get(\"judge_independent\")\n            and baseline.get(\"judge_independent\")\n            and report.get(\"judge_mean\") is not None\n            and baseline.get(\"judge_mean\") is not None\n            and report[\"judge_mean\"] < baseline[\"judge_mean\"]",
       "count": 1
     },
     {
@@ -2426,7 +2412,7 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==tests.test_codex_history_jsonl:[#:#]\n==tests.test_codex_rollout_jsonl:[#:#]\n        self.assertEqual(TOOL_BY_FORMAT[fmt], \"codex\")\n        parser = get_parser(path)\n        self.assertIsNotNone(parser)\n        messages = parser(str(path))\n        self.assertGreater(len(messages), 0)",
+      "message": "Similar lines in 2 files\n==tests.test_codex_history_jsonl:[#:#]\n==tests.test_codex_rollout_jsonl:[#:#]\n    self.assertEqual(TOOL_BY_FORMAT[fmt], \"codex\")\n    parser = get_parser(path)\n    self.assertIsNotNone(parser)\n    messages = parser(str(path))\n    self.assertGreater(len(messages), 0)",
       "count": 1
     },
     {
@@ -2461,14 +2447,14 @@
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==tests.test_ledger_related:[#:#]\n==tests.test_monitor:[#:#]\nclass FakeStore:\n    def __init__(self, metas: list[dict]):\n        self._metas = [dict(m) for m in metas]\n        self._units = {\n            m[\"id\"]: {\"id\": m[\"id\"], \"metadata\": m, \"document\": m.get(\"title\", \"\")}\n            for m in self._metas\n        }\n\n    def units_metadata(self, **kwargs):\n        return self._metas\n\n    def get_unit(self, uid: str):\n        return self._units.get(uid)\n\n    def add_unit(self, unit_id, document, embedding, metadata):",
+      "message": "Similar lines in 2 files\n==tests.test_ledger_related:[#:#]\n==tests.test_monitor:[#:#]\nclass FakeStore:\n    def __init__(self, metas: list[dict]):\n        self._metas = [dict(m) for m in metas]\n        self._units = {\n            m[\"id\"]: {\"id\": m[\"id\"], \"metadata\": m, \"document\": m.get(\"title\", \"\")}\n            for m in self._metas\n        }\n\n    def units_metadata(self):\n        return self._metas\n\n    def get_unit(self, uid: str):\n        return self._units.get(uid)\n\n\ndef _chain_fixture() -> FakeStore:",
       "count": 1
     },
     {
       "path": "work_git.py",
       "symbol": "duplicate-code",
       "msg_id": "R0801",
-      "message": "Similar lines in 2 files\n==tests.test_load_processed:[#:#]\n==tests.test_processed_exclude_race:[#:#]\n        with tempfile.TemporaryDirectory() as td:\n            p = Path(td) / \"processed.json\"\n            from ingest import save_processed\n\n            save_processed(str(p), {\"a\": {\"path\": \"/x\"}})\n            self.assertEqual(json.loads(p.read_text()), {\"a\": {\"path\": \"/x\"}})\n            save_processed(str(p), {\"b\": {\"path\": \"/y\"}})\n            self.assertEqual(json.loads(p.read_text()), {\"b\": {\"path\": \"/y\"}})\n            self.assertFalse(p.with_suffix(p.suffix + \".tmp\").exists())",
+      "message": "Similar lines in 2 files\n==tests.test_load_processed:[#:#]\n==tests.test_processed_exclude_race:[#:#]\n        with tempfile.TemporaryDirectory() as td:\n            p = Path(td) / \"processed.json\"\n            save_processed(str(p), {\"a\": {\"path\": \"/x\"}})\n            self.assertEqual(json.loads(p.read_text()), {\"a\": {\"path\": \"/x\"}})\n            save_processed(str(p), {\"b\": {\"path\": \"/y\"}})\n            self.assertEqual(json.loads(p.read_text()), {\"b\": {\"path\": \"/y\"}})\n            self.assertFalse(p.with_suffix(p.suffix + \".tmp\").exists())\n\n    def test_commit_preserves_unrelated_entry(self):\n        import tempfile",
       "count": 1
     },
     {
