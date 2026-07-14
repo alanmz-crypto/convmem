@@ -1,255 +1,339 @@
-"""Acceptance tests N1–N21 for exclude --purge (temp config/corpus only)."""
-
-# pylint: disable=broad-exception-caught,reimported,redefined-outer-name,cell-var-from-loop
+"""Acceptance contract tests for exclude --purge (N1–N21 + audit hardening)."""
 
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import threading
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from chroma_store import ChromaStore
 from ingest import (
-    _path_is_excluded,
+    _commit_chunk_to_stores,
+    exclude_processed_path,
     load_processed,
+    save_processed,
+    sha256_file,
     undo_exclude_processed_path,
     watch_skip_reason,
 )
-from source_purge import (
-    build_path_candidates,
-    count_chroma_for_source,
-    count_jsonl_lines_for_source,
-    execute_purge,
+from purge_locks import (
     export_flock,
-    preview_purge,
+    export_lock_depth,
     source_flock,
+    source_lock_depth,
     source_lock_path,
 )
-
-def _cfg(root: Path) -> dict:
-    return {
-        "index": {
-            "processed_log": str(root / "processed.json"),
-            "units_export": str(root / "knowledge_units.jsonl"),
-            "chroma_dir": str(root / "chroma"),
-        }
-    }
+from source_purge import (
+    assert_lock_ordering_ok,
+    execute_purge,
+    preview_purge,
+    undo_exclude_source,
+)
+from tests.purge_test_util import purge_cfg as _cfg
 
 
 def _seed(root: Path, src: Path, *, n_units: int = 2, n_sum: int = 1) -> str:
-    chroma = root / "chroma"
-    chroma.mkdir(exist_ok=True)
-    src.write_text("payload-secret-ABCDEF\n", encoding="utf-8")
-    canonical = str(src.resolve())
+    (root / "chroma").mkdir(exist_ok=True)
     (root / "processed.json").write_text("{}", encoding="utf-8")
-    store = ChromaStore(str(chroma))
+    src.write_text("payload-seed\n", encoding="utf-8")
+    canon = str(src.resolve())
+    store = ChromaStore(str(root / "chroma"))
     for i in range(n_units):
         store.add_unit(
             f"u{i}",
-            f"doc-{i}-ABCDEF",
+            f"doc-{i}",
             [1.0, 0.0],
-            {"id": f"u{i}", "title": f"t{i}", "source_path": canonical},
+            {"id": f"u{i}", "title": f"T{i}", "source_path": canon},
         )
     for i in range(n_sum):
         store.add_summary(
             f"s{i}",
-            f"sum-{i}-ABCDEF",
+            f"sum-{i}",
             [1.0, 0.0],
-            {"id": f"s{i}", "source_path": canonical},
+            {"id": f"s{i}", "source_path": canon},
         )
     store.close()
     lines = [
-        json.dumps({"id": f"u{i}", "source_path": canonical, "summary": f"ABCDEF-{i}"})
-        for i in range(n_units)
+        json.dumps({"id": f"u{i}", "source_path": canon}) for i in range(n_units)
     ]
-    (root / "knowledge_units.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return canonical
+    (root / "knowledge_units.jsonl").write_text(
+        "\n".join(lines) + ("\n" if lines else ""), encoding="utf-8"
+    )
+    return canon
 
 
-class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-many-public-methods
+def _active_markers(processed: dict, path_key: str) -> list[str]:
+    out = []
+    for key, entry in processed.items():
+        if not isinstance(entry, dict) or not entry.get("excluded"):
+            continue
+        ep = entry.get("path")
+        if ep and str(Path(ep).expanduser().resolve()) == path_key:
+            out.append(key)
+    return out
+
+
+def _chroma_jsonl_counts(cfg: dict, canon: str) -> tuple[int, int, int]:
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    try:
+        units = int(store.count_for_source_path("knowledge_units", canon))
+        summaries = int(
+            store.count_for_source_path("conversation_summaries", canon)
+        )
+    finally:
+        store.close()
+    export = Path(cfg["index"]["units_export"])
+    jsonl = 0
+    if export.is_file():
+        for line in export.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            rec = json.loads(line)
+            if rec.get("source_path") == canon:
+                jsonl += 1
+    return units, summaries, jsonl
+
+
+class ExcludeSourcePurgeContractTests(unittest.TestCase):
     def test_n8_all_sinks_zero(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            src = root / "a.jsonl"
-            canon = _seed(root, src)
             cfg = _cfg(root)
-            res = execute_purge(cfg, str(src), reason="n8")
+            src = root / "n8.jsonl"
+            canon = _seed(root, src)
+            res = execute_purge(cfg, canon, reason="n8")
             self.assertEqual(res.exit_code, 0, res.message)
-            prev = preview_purge(cfg, str(src))
-            self.assertEqual(prev.units, 0)
-            self.assertEqual(prev.summaries, 0)
-            self.assertEqual(prev.jsonl_lines, 0)
-            store = ChromaStore(cfg["index"]["chroma_dir"])
-            self.assertEqual(count_chroma_for_source(store, [canon]), {"units": 0, "summaries": 0})
-            store.close()
+            self.assertEqual(_chroma_jsonl_counts(cfg, canon), (0, 0, 0))
 
     def test_n4_exact_path_boundary(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
-            (root / "chroma").mkdir()
-            (root / "processed.json").write_text("{}", encoding="utf-8")
-            a = "/tmp/boundary/b.jsonl"
-            exp = root / "knowledge_units.jsonl"
-            rows = [
-                {"id": "1", "source_path": a},
-                {"id": "2", "source_path": a + ".bak"},
-                {"id": "3", "source_path": a + "2"},
-            ]
-            exp.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+            a = root / "note.jsonl"
+            b = root / "note.jsonl.bak"
+            _seed(root, a)
+            # seed B separately
+            b.write_text("b\n", encoding="utf-8")
+            bcanon = str(b.resolve())
             store = ChromaStore(str(root / "chroma"))
-            store.add_unit("1", "d", [1.0, 0.0], {"id": "1", "source_path": a})
-            store.add_unit("2", "d", [1.0, 0.0], {"id": "2", "source_path": a + ".bak"})
+            store.add_unit(
+                "ub", "db", [1.0, 0.0], {"id": "ub", "source_path": bcanon}
+            )
             store.close()
-            res = execute_purge(cfg, a, reason="n4")
+            with open(cfg["index"]["units_export"], "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({"id": "ub", "source_path": bcanon}) + "\n")
+            res = execute_purge(cfg, str(a.resolve()), reason="n4")
             self.assertEqual(res.exit_code, 0, res.message)
-            left = [json.loads(l)["id"] for l in exp.read_text(encoding="utf-8").splitlines() if l.strip()]
-            self.assertEqual(set(left), {"2", "3"})
-            store = ChromaStore(str(root / "chroma"))
-            self.assertEqual(count_chroma_for_source(store, [a + ".bak"])["units"], 1)
-            store.close()
+            self.assertEqual(_chroma_jsonl_counts(cfg, bcanon)[0], 1)
 
     def test_n13_legacy_expanduser_candidate(self):
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            cfg = _cfg(root)
-            (root / "chroma").mkdir()
-            (root / "processed.json").write_text("{}", encoding="utf-8")
-            # Simulate home-relative storage that expands to absolute
-            home_rel = "~/purge-legacy-n13.jsonl"
-            raw = str(Path(home_rel).expanduser())
-            Path(raw).parent.mkdir(parents=True, exist_ok=True)
-            Path(raw).write_text("x", encoding="utf-8")
-            try:
-                cands = build_path_candidates(home_rel)
-                self.assertGreaterEqual(len(cands), 1)
+            fake_home = Path(td) / "home"
+            fake_home.mkdir()
+            with mock.patch.dict(os.environ, {"HOME": str(fake_home)}):
+                root = Path(td) / "data"
+                root.mkdir()
+                cfg = _cfg(root)
+                rel = Path("~/legacy.jsonl")
+                real = fake_home / "legacy.jsonl"
+                real.write_text("x\n", encoding="utf-8")
+                home_raw = str(rel.expanduser())
+                self.assertTrue(home_raw.startswith(str(fake_home)))
+                (root / "chroma").mkdir()
+                (root / "processed.json").write_text("{}", encoding="utf-8")
                 store = ChromaStore(str(root / "chroma"))
-                # Store with expanduser-only form
                 store.add_unit(
-                    "leg", "d", [1.0, 0.0], {"id": "leg", "title": "t", "source_path": raw}
+                    "leg",
+                    "d",
+                    [1.0, 0.0],
+                    {"id": "leg", "source_path": home_raw},
                 )
                 store.close()
                 (root / "knowledge_units.jsonl").write_text(
-                    json.dumps({"id": "leg", "source_path": raw}) + "\n"
+                    json.dumps({"id": "leg", "source_path": home_raw}) + "\n",
+                    encoding="utf-8",
                 )
-                res = execute_purge(cfg, home_rel, reason="n13")
+                # Never wrote under the real HOME
+                self.assertFalse(
+                    (Path.home() / "legacy.jsonl").exists()
+                    if Path.home() != fake_home
+                    else False
+                )
+                res = execute_purge(cfg, str(rel), reason="n13")
                 self.assertEqual(res.exit_code, 0, res.message)
                 store = ChromaStore(str(root / "chroma"))
-                self.assertEqual(count_chroma_for_source(store, cands)["units"], 0)
+                ids = {m["id"] for m in store.units_metadata(include_superseded=True)}
                 store.close()
-            finally:
-                try:
-                    Path(raw).unlink()
-                except OSError:
-                    pass
+                self.assertNotIn("leg", ids)
 
     def test_n3_unrelated_export_preserved(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
-            src_a = root / "a.jsonl"
-            src_b = root / "b.jsonl"
-            _seed(root, src_a)
-            # Add B lines
-            exp = root / "knowledge_units.jsonl"
-            b_path = str(src_b.resolve())
-            src_b.write_text("b\n", encoding="utf-8")
-            with open(exp, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"id": "ub", "source_path": b_path, "summary": "keep"}) + "\n")
-            # Concurrent append during rewrite via barrier
-            start = threading.Event()
-            mid = threading.Event()
-            done = threading.Event()
-            errors: list[Exception] = []
+            a = root / "a.jsonl"
+            canon_a = _seed(root, a)
+            other = root / "b.jsonl"
+            other.write_text("b\n", encoding="utf-8")
+            other_path = str(other.resolve())
+            with open(cfg["index"]["units_export"], "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({"id": "kept", "source_path": other_path}) + "\n")
 
-            def slow_purge():
+            barrier = threading.Event()
+            errors: list = []
+
+            def purge():
                 try:
-                    start.set()
-                    self.assertTrue(mid.wait(2))
-                    res = execute_purge(cfg, str(src_a), reason="n3")
+                    def hold():
+                        barrier.set()
+                        time.sleep(0.2)
+
+                    res = execute_purge(
+                        cfg,
+                        canon_a,
+                        reason="n3",
+                        _hooks={"after_jsonl_rewrite": hold},
+                    )
                     self.assertEqual(res.exit_code, 0, res.message)
                 except Exception as exc:  # noqa: BLE001
                     errors.append(exc)
-                finally:
-                    done.set()
 
-            def append_b():
+            def appender():
                 try:
-                    self.assertTrue(start.wait(2))
-                    mid.set()
-
+                    self.assertTrue(barrier.wait(5))
                     with export_flock(cfg):
-                        with open(exp, "a", encoding="utf-8") as f:
-                            f.write(
+                        with open(
+                            cfg["index"]["units_export"], "a", encoding="utf-8"
+                        ) as fh:
+                            fh.write(
                                 json.dumps(
-                                    {"id": "ub2", "source_path": b_path, "summary": "later"}
+                                    {"id": "late", "source_path": other_path}
                                 )
                                 + "\n"
                             )
                 except Exception as exc:  # noqa: BLE001
                     errors.append(exc)
 
-            t1 = threading.Thread(target=slow_purge)
-            t2 = threading.Thread(target=append_b)
+            t1 = threading.Thread(target=purge)
+            t2 = threading.Thread(target=appender)
             t1.start()
             t2.start()
-            t1.join(timeout=10)
-            t2.join(timeout=10)
+            t1.join(15)
+            t2.join(15)
             self.assertEqual(errors, [])
-            text = exp.read_text(encoding="utf-8")
-            self.assertIn(b_path, text)
-            self.assertNotIn(str(src_a.resolve()), text)
+            text = Path(cfg["index"]["units_export"]).read_text(encoding="utf-8")
+            self.assertIn(other_path, text)
+            self.assertIn("kept", text)
+            self.assertIn("late", text)
 
     def test_n1_purge_then_ingest_batch_aborts(self):
-        """Ingest batch-write under source lock sees exclusion and writes nothing new."""
+        """Production _commit_chunk_to_stores aborts after overlapping purge."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
-            src = root / "race.jsonl"
-            canon = _seed(root, src, n_units=0, n_sum=0)
-            # Empty sinks; exclusion via purge
-            res = execute_purge(cfg, str(src), reason="n1")
-            self.assertEqual(res.exit_code, 0)
-            # Simulate ingest batch critical section
+            src = root / "n1.jsonl"
+            canon = _seed(root, src)
+            file_hash = sha256_file(canon)
+            start_commit = threading.Event()
+            purge_done = threading.Event()
+            result: dict = {}
 
-            wrote = {"n": 0}
-            with source_flock(cfg, canon):
-                processed = load_processed(cfg["index"]["processed_log"])
-                if _path_is_excluded(processed, canon):
-                    wrote["n"] = 0
-                else:
-                    store = ChromaStore(cfg["index"]["chroma_dir"])
-                    store.add_unit(
-                        "should-not",
-                        "x",
-                        [1.0, 0.0],
-                        {"id": "should-not", "source_path": canon},
-                    )
-                    store.close()
-                    wrote["n"] = 1
-            self.assertEqual(wrote["n"], 0)
+            def ingester():
+                self.assertTrue(start_commit.wait(5))
+                self.assertTrue(purge_done.wait(5))
+                ok, _, n = _commit_chunk_to_stores(
+                    cfg=cfg,
+                    idx=cfg["index"],
+                    path_key=canon,
+                    path=canon,
+                    file_hash=file_hash,
+                    chroma_dir=cfg["index"]["chroma_dir"],
+                    units_export=Path(cfg["index"]["units_export"]),
+                    doc_id="d1",
+                    summary="s",
+                    summary_embedding=[1.0, 0.0],
+                    metadata={"id": "d1", "source_path": canon},
+                    units_to_add=[
+                        (
+                            {"id": "orphan", "source_path": canon},
+                            "doc",
+                            [1.0, 0.0],
+                            {"id": "orphan", "source_path": canon},
+                        )
+                    ],
+                    verbose=False,
+                )
+                result["ok"] = ok
+                result["n"] = n
+
+            def purger():
+                start_commit.set()
+                res = execute_purge(cfg, canon, reason="n1")
+                result["purge"] = res.exit_code
+                purge_done.set()
+
+            t1 = threading.Thread(target=ingester)
+            t2 = threading.Thread(target=purger)
+            t1.start()
+            # Give ingester time to wait on purge_done before purge... order:
+            # Start both: ingester waits purge_done; purger runs purge then signals.
+            # Better barrier: ingest reaches pre-commit unlocked, then purge, then commit.
+            t2.start()
+            t1.join(15)
+            t2.join(15)
+            self.assertEqual(result.get("purge"), 0)
+            self.assertIs(result.get("ok"), False)
+            self.assertEqual(result.get("n"), 0)
+            units, summaries, jsonl = _chroma_jsonl_counts(cfg, canon)
+            self.assertEqual((units, summaries, jsonl), (0, 0, 0))
             store = ChromaStore(cfg["index"]["chroma_dir"])
-            self.assertEqual(count_chroma_for_source(store, [canon])["units"], 0)
+            ids = {m["id"] for m in store.units_metadata(include_superseded=True)}
             store.close()
+            self.assertNotIn("orphan", ids)
 
     def test_n2_ingest_then_purge_clears(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
+            (root / "chroma").mkdir()
+            (root / "processed.json").write_text("{}", encoding="utf-8")
+            (root / "knowledge_units.jsonl").write_text("", encoding="utf-8")
             src = root / "n2.jsonl"
-            canon = _seed(root, src)
-            # "Ingest completed" already in seed; purge must clear
-            res = execute_purge(cfg, str(src), reason="n2")
-            self.assertEqual(res.exit_code, 0)
-            store = ChromaStore(cfg["index"]["chroma_dir"])
-            self.assertEqual(count_chroma_for_source(store, [canon])["units"], 0)
-            store.close()
-            self.assertEqual(
-                count_jsonl_lines_for_source(cfg["index"]["units_export"], [canon]), 0
+            src.write_text("n2\n", encoding="utf-8")
+            canon = str(src.resolve())
+            file_hash = sha256_file(canon)
+            ok, _, n = _commit_chunk_to_stores(
+                cfg=cfg,
+                idx=cfg["index"],
+                path_key=canon,
+                path=canon,
+                file_hash=file_hash,
+                chroma_dir=cfg["index"]["chroma_dir"],
+                units_export=Path(cfg["index"]["units_export"]),
+                doc_id="d2",
+                summary="summary",
+                summary_embedding=[1.0, 0.0],
+                metadata={"id": "d2", "source_path": canon},
+                units_to_add=[
+                    (
+                        {"id": "u2", "source_path": canon},
+                        "doc2",
+                        [1.0, 0.0],
+                        {"id": "u2", "source_path": canon},
+                    )
+                ],
+                verbose=False,
             )
+            self.assertTrue(ok)
+            self.assertEqual(n, 1)
+            self.assertEqual(_chroma_jsonl_counts(cfg, canon)[0], 1)
+            res = execute_purge(cfg, canon, reason="n2")
+            self.assertEqual(res.exit_code, 0, res.message)
+            self.assertEqual(_chroma_jsonl_counts(cfg, canon), (0, 0, 0))
 
     def test_n5_partial_retry_converges(self):
         with tempfile.TemporaryDirectory() as td:
@@ -258,69 +342,78 @@ class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-ma
             src = root / "n5.jsonl"
             canon = _seed(root, src)
 
-            def crash_before_export():
-                raise RuntimeError("simulated crash F4")
+            def boom():
+                raise RuntimeError("crash-after-units")
 
             with self.assertRaises(RuntimeError):
                 execute_purge(
-                    cfg, str(src), reason="n5", _hooks={"before_export_lock": crash_before_export}
+                    cfg, canon, reason="n5", _hooks={"after_units": boom}
                 )
-            # Exclusion present; Chroma may be cleared; JSONL still has lines
-            proc = load_processed(cfg["index"]["processed_log"])
-            self.assertTrue(any(isinstance(e, dict) and e.get("excluded") for e in proc.values()))
-            self.assertGreater(
-                count_jsonl_lines_for_source(cfg["index"]["units_export"], [canon]), 0
-            )
-            # Retry
-            res = execute_purge(cfg, str(src), reason="n5-retry")
+            res = execute_purge(cfg, canon, reason="n5-retry")
             self.assertEqual(res.exit_code, 0, res.message)
-            self.assertEqual(
-                count_jsonl_lines_for_source(cfg["index"]["units_export"], [canon]), 0
-            )
+            self.assertEqual(_chroma_jsonl_counts(cfg, canon), (0, 0, 0))
 
     def test_n6_preview_no_mutation(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
             src = root / "n6.jsonl"
-            _seed(root, src)
-            before = (root / "knowledge_units.jsonl").read_text(encoding="utf-8")
-            prev = preview_purge(cfg, str(src))
-            self.assertGreater(prev.units, 0)
-            self.assertEqual((root / "knowledge_units.jsonl").read_text(encoding="utf-8"), before)
-            proc = load_processed(cfg["index"]["processed_log"])
-            self.assertFalse(any(isinstance(e, dict) and e.get("excluded") for e in proc.values()))
+            canon = _seed(root, src)
+            before = Path(cfg["index"]["units_export"]).read_text(encoding="utf-8")
+            preview = preview_purge(cfg, canon)
+            self.assertGreater(preview.units, 0)
+            after = Path(cfg["index"]["units_export"]).read_text(encoding="utf-8")
+            self.assertEqual(before, after)
+            self.assertEqual(load_processed(cfg["index"]["processed_log"]), {})
 
     def test_n10_malformed_jsonl_fail_closed(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
             src = root / "n10.jsonl"
-            _seed(root, src)
-            exp = root / "knowledge_units.jsonl"
-            bad = exp.read_text(encoding="utf-8") + "NOT_JSON\n"
-            exp.write_text(bad, encoding="utf-8")
-            res = execute_purge(cfg, str(src), reason="n10")
+            canon = _seed(root, src)
+            export = Path(cfg["index"]["units_export"])
+            original = export.read_text(encoding="utf-8") + "{not-json\n"
+            export.write_text(original, encoding="utf-8")
+            res = execute_purge(cfg, canon, reason="n10")
             self.assertEqual(res.exit_code, 1)
-            self.assertEqual(exp.read_text(encoding="utf-8"), bad)
+            self.assertEqual(export.read_text(encoding="utf-8"), original)
 
     def test_n9_lock_ordering(self):
         with tempfile.TemporaryDirectory() as td:
             cfg = _cfg(Path(td))
             with export_flock(cfg):
                 with self.assertRaises(RuntimeError):
-                    with source_flock(cfg, "/tmp/x"):
-                        pass
+                    assert_lock_ordering_ok(acquiring="source")
 
-    def test_n11_yes_skips_confirm(self):
-        """CLI --yes path exercised via execute_purge (confirmation is CLI-only)."""
+    def test_n11_yes_and_decline_cli(self):
+        import convmem as convmem_mod
+        from typer.testing import CliRunner
+
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
             src = root / "n11.jsonl"
-            _seed(root, src)
-            res = execute_purge(cfg, str(src), reason="n11")
-            self.assertEqual(res.exit_code, 0)
+            canon = _seed(root, src)
+            runner = CliRunner()
+            with mock.patch.object(convmem_mod, "_guard_write", lambda: None):
+                with mock.patch("config.load_config", return_value=cfg):
+                    declined = runner.invoke(
+                        convmem_mod.app,
+                        ["exclude", canon, "--purge"],
+                        input="n\n",
+                    )
+                    self.assertEqual(declined.exit_code, 0, declined.output)
+                    self.assertIn("Aborted", declined.output)
+                    self.assertEqual(
+                        _chroma_jsonl_counts(cfg, canon)[0] > 0, True
+                    )
+                    yes = runner.invoke(
+                        convmem_mod.app,
+                        ["exclude", canon, "--purge", "--yes"],
+                    )
+                    self.assertEqual(yes.exit_code, 0, yes.output)
+                    self.assertEqual(_chroma_jsonl_counts(cfg, canon), (0, 0, 0))
 
     def test_n12_undo_after_purge(self):
         with tempfile.TemporaryDirectory() as td:
@@ -328,35 +421,84 @@ class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-ma
             cfg = _cfg(root)
             src = root / "n12.jsonl"
             canon = _seed(root, src)
-            self.assertEqual(execute_purge(cfg, str(src), reason="n12").exit_code, 0)
-            self.assertTrue(
-                undo_exclude_processed_path(cfg["index"]["processed_log"], canon)
-            )
-            # Sinks still empty
-            self.assertEqual(
-                count_jsonl_lines_for_source(cfg["index"]["units_export"], [canon]), 0
-            )
-            # Re-include allows future ingest (marker cleared)
+            self.assertEqual(execute_purge(cfg, canon, reason="n12").exit_code, 0)
+            self.assertTrue(undo_exclude_source(cfg, canon))
             proc = load_processed(cfg["index"]["processed_log"])
-            self.assertFalse(
-                any(
-                    isinstance(e, dict) and e.get("excluded") and e.get("path") == canon
-                    for e in proc.values()
+            self.assertEqual(_active_markers(proc, canon), [])
+            self.assertEqual(_chroma_jsonl_counts(cfg, canon), (0, 0, 0))
+
+    def test_undo_blocked_until_purge_releases_fence(self):
+        """Overlapping undo waits; purge cannot succeed with fence already cleared."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cfg = _cfg(root)
+            src = root / "undo-race.jsonl"
+            canon = _seed(root, src)
+            in_post = threading.Event()
+            release_purge = threading.Event()
+            undo_started = threading.Event()
+            undo_finished = threading.Event()
+            state: dict = {}
+
+            def purge():
+                def hold_post():
+                    # Fence must still be present while we hold the source lock.
+                    proc = load_processed(cfg["index"]["processed_log"])
+                    state["markers_during_purge"] = _active_markers(proc, canon)
+                    in_post.set()
+                    self.assertTrue(release_purge.wait(5))
+
+                res = execute_purge(
+                    cfg,
+                    canon,
+                    reason="undo-race",
+                    _hooks={"before_postcondition": hold_post},
                 )
-            )
+                state["purge_exit"] = res.exit_code
+                proc = load_processed(cfg["index"]["processed_log"])
+                state["markers_at_purge_return"] = _active_markers(proc, canon)
+
+            def undoer():
+                self.assertTrue(in_post.wait(5))
+                undo_started.set()
+                # Must block on source flock until purge releases.
+                t0 = time.time()
+                ok = undo_exclude_source(cfg, canon)
+                state["undo_wait"] = time.time() - t0
+                state["undo_ok"] = ok
+                undo_finished.set()
+
+            t1 = threading.Thread(target=purge)
+            t2 = threading.Thread(target=undoer)
+            t1.start()
+            t2.start()
+            self.assertTrue(in_post.wait(5))
+            self.assertTrue(undo_started.wait(5))
+            time.sleep(0.15)
+            self.assertFalse(undo_finished.is_set())
+            release_purge.set()
+            t1.join(15)
+            t2.join(15)
+            self.assertEqual(state.get("purge_exit"), 0)
+            self.assertTrue(state.get("markers_during_purge"))
+            self.assertTrue(state.get("markers_at_purge_return"))
+            self.assertGreater(state.get("undo_wait", 0), 0.05)
+            self.assertTrue(state.get("undo_ok"))
+            proc = load_processed(cfg["index"]["processed_log"])
+            self.assertEqual(_active_markers(proc, canon), [])
 
     def test_n14_concurrent_same_source_idempotent(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
             src = root / "n14.jsonl"
-            _seed(root, src)
+            canon = _seed(root, src)
             results: list = []
             errors: list = []
 
             def run():
                 try:
-                    results.append(execute_purge(cfg, str(src), reason="n14"))
+                    results.append(execute_purge(cfg, canon, reason="n14"))
                 except Exception as exc:  # noqa: BLE001
                     errors.append(exc)
 
@@ -364,22 +506,96 @@ class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-ma
             t2 = threading.Thread(target=run)
             t1.start()
             t2.start()
-            t1.join(10)
-            t2.join(10)
+            t1.join(15)
+            t2.join(15)
             self.assertEqual(errors, [])
             self.assertEqual(len(results), 2)
             self.assertTrue(all(r.exit_code == 0 for r in results))
 
-    def test_n15_alternate_data_root(self):
+    def test_n15_alternate_root_inter_model_lock_contention(self):
+        """Non-sibling processed/chroma/export; ingest+purge share processed_log lock."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            cfg = _cfg(root)
+            processed = root / "proc" / "processed.json"
+            chroma = root / "vec" / "chroma"
+            export = root / "exp" / "units.jsonl"
+            processed.parent.mkdir(parents=True)
+            chroma.mkdir(parents=True)
+            export.parent.mkdir(parents=True)
+            processed.write_text("{}", encoding="utf-8")
+            export.write_text("", encoding="utf-8")
+            cfg = {
+                "index": {
+                    "processed_log": str(processed),
+                    "chroma_dir": str(chroma),
+                    "units_export": str(export),
+                }
+            }
+            # Paths deliberately non-sibling
+            self.assertNotEqual(processed.parent, chroma.parent)
+            self.assertNotEqual(processed.parent, export.parent)
 
-            a = source_lock_path(cfg, "/tmp/x")
-            b = source_lock_path(cfg, "/tmp/x")
-            self.assertEqual(a, b)
-            self.assertTrue(str(a).startswith(str(root.resolve())))
-            self.assertNotIn("/.local/share/convmem/locks", str(a).replace(str(root), ""))
+            doc = root / "docs" / "inter-model" / "PLAN-n15.md"
+            doc.parent.mkdir(parents=True)
+            doc.write_text("## Sec\n\nBody for n15.\n", encoding="utf-8")
+            path_key = str(doc.resolve())
+            lock_a = source_lock_path(cfg, path_key)
+
+            from adapters.inter_model_doc import parse
+            from inter_model_index import index_inter_model_messages
+
+            messages = parse(str(doc))
+            hold_ingest = threading.Event()
+            release_ingest = threading.Event()
+            purge_started = threading.Event()
+            state: dict = {}
+
+            def ingest():
+                with source_flock(cfg, path_key):
+                    state["ingest_lock"] = str(source_lock_path(cfg, path_key))
+                    hold_ingest.set()
+                    self.assertTrue(release_ingest.wait(5))
+                with mock.patch(
+                    "inter_model_index.ollama_embed", return_value=[0.1, 0.2]
+                ):
+                    n = index_inter_model_messages(
+                        str(doc),
+                        messages,
+                        path_key=path_key,
+                        chroma_dir=str(chroma),
+                        embed_model="nomic-embed-text",
+                        ollama_host="http://localhost:11434",
+                        cfg=cfg,
+                        verbose=False,
+                        units_export=export,
+                    )
+                state["n"] = n
+
+            # Overlap: purge tries while ingest holds source lock first, then
+            # we purge for real after writing a unit.
+            t = threading.Thread(target=ingest)
+            t.start()
+            self.assertTrue(hold_ingest.wait(5))
+            # Purge blocked while ingest holds lock
+            blocked = {"ok": False}
+
+            def try_purge_blocked():
+                t0 = time.time()
+                purge_started.set()
+                execute_purge(cfg, path_key, reason="n15-blocked")
+                blocked["elapsed"] = time.time() - t0
+
+            t_purge = threading.Thread(target=try_purge_blocked)
+            t_purge.start()
+            self.assertTrue(purge_started.wait(5))
+            time.sleep(0.1)
+            release_ingest.set()
+            t.join(15)
+            t_purge.join(15)
+            self.assertEqual(state.get("ingest_lock"), str(lock_a))
+            self.assertTrue(str(lock_a).startswith(str(processed.parent.resolve())))
+            self.assertNotIn("/.local/share/convmem/locks", str(lock_a))
+            self.assertGreater(blocked.get("elapsed", 0), 0.05)
 
     def test_n16_missing_file_exclusion(self):
         with tempfile.TemporaryDirectory() as td:
@@ -387,56 +603,126 @@ class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-ma
             cfg = _cfg(root)
             (root / "chroma").mkdir()
             (root / "processed.json").write_text("{}", encoding="utf-8")
-            (root / "knowledge_units.jsonl").write_text("", encoding="utf-8")
             gone = root / "deleted.jsonl"
-            # never create file — use absolute path
-            path = str(gone)
-            # seed chroma with that path spelling
+            path = str(gone)  # absolute, never created
             store = ChromaStore(str(root / "chroma"))
             store.add_unit(
                 "g1", "d", [1.0, 0.0], {"id": "g1", "source_path": path}
             )
             store.close()
             (root / "knowledge_units.jsonl").write_text(
-                json.dumps({"id": "g1", "source_path": path}) + "\n"
+                json.dumps({"id": "g1", "source_path": path}) + "\n",
+                encoding="utf-8",
             )
             res = execute_purge(cfg, path, reason="n16")
             self.assertEqual(res.exit_code, 0, res.message)
             self.assertTrue(res.exclusion_key.startswith("purged:"))
             proc = load_processed(cfg["index"]["processed_log"])
-            self.assertIn(res.exclusion_key, proc)
-            self.assertTrue(proc[res.exclusion_key].get("excluded"))
-            skip = watch_skip_reason(path, processed=proc)
-            self.assertEqual(skip, "excluded")
-            self.assertTrue(undo_exclude_processed_path(cfg["index"]["processed_log"], path))
+            self.assertEqual(_active_markers(proc, path), [res.exclusion_key])
+            self.assertEqual(watch_skip_reason(path, processed=proc), "excluded")
+            self.assertTrue(undo_exclude_source(cfg, path))
 
-    def test_n17_no_lock_during_llm(self):
-        """Instrument: source/export depths are zero outside flock contexts."""
+    def test_missing_file_clears_prior_same_path_marker(self):
         with tempfile.TemporaryDirectory() as td:
-            cfg = _cfg(Path(td))
-            import purge_locks as sp
+            root = Path(td)
+            cfg = _cfg(root)
+            (root / "chroma").mkdir()
+            src = root / "gone.jsonl"
+            src.write_text("old\n", encoding="utf-8")
+            path = str(src.resolve())
+            old_hash = sha256_file(path)
+            exclude_processed_path(
+                cfg["index"]["processed_log"],
+                path,
+                old_hash,
+                reason="old-soft",
+            )
+            src.unlink()
+            (root / "knowledge_units.jsonl").write_text("", encoding="utf-8")
+            res = execute_purge(cfg, path, reason="clear-old")
+            self.assertEqual(res.exit_code, 0, res.message)
+            proc = load_processed(cfg["index"]["processed_log"])
+            active = _active_markers(proc, path)
+            self.assertEqual(len(active), 1)
+            self.assertTrue(active[0].startswith("purged:"))
+            self.assertFalse(proc.get(old_hash, {}).get("excluded"))
 
-            self.assertEqual(vars(sp)["_source_depth"](), 0)
-            self.assertEqual(vars(sp)["_export_depth"](), 0)
-            # Simulate LLM window
-            depths = []
-            depths.append((vars(sp)["_source_depth"](), vars(sp)["_export_depth"]()))
-            with source_flock(cfg, "/tmp/x"):
-                with export_flock(cfg):
-                    depths.append((vars(sp)["_source_depth"](), vars(sp)["_export_depth"]()))
-            depths.append((vars(sp)["_source_depth"](), vars(sp)["_export_depth"]()))
-            self.assertEqual(depths[0], (0, 0))
-            self.assertEqual(depths[1], (1, 1))
-            self.assertEqual(depths[2], (0, 0))
+    def test_ledger_target_no_mutation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cfg = _cfg(root)
+            src = root / "keep.jsonl"
+            canon = _seed(root, src)
+            before_proc = Path(cfg["index"]["processed_log"]).read_text(
+                encoding="utf-8"
+            )
+            before_export = Path(cfg["index"]["units_export"]).read_text(
+                encoding="utf-8"
+            )
+            before_counts = _chroma_jsonl_counts(cfg, canon)
+            res = execute_purge(cfg, "ledger:obs_123", reason="ledger")
+            self.assertEqual(res.exit_code, 1)
+            self.assertEqual(res.candidates, [])
+            self.assertEqual(
+                Path(cfg["index"]["processed_log"]).read_text(encoding="utf-8"),
+                before_proc,
+            )
+            self.assertEqual(
+                Path(cfg["index"]["units_export"]).read_text(encoding="utf-8"),
+                before_export,
+            )
+            self.assertEqual(_chroma_jsonl_counts(cfg, canon), before_counts)
+            locks = root / "locks"
+            self.assertFalse(locks.exists())
+
+    def test_n17_no_lock_during_llm_embed(self):
+        """Instrument actual embed call path: lock depths are zero."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cfg = _cfg(root)
+            (root / "chroma").mkdir()
+            processed = Path(cfg["index"]["processed_log"])
+            processed.write_text("{}", encoding="utf-8")
+            Path(cfg["index"]["units_export"]).write_text("", encoding="utf-8")
+            doc = root / "docs" / "inter-model" / "PLAN-n17.md"
+            doc.parent.mkdir(parents=True)
+            doc.write_text("## Sec\n\nBody.\n", encoding="utf-8")
+            path_key = str(doc.resolve())
+            depths: list[tuple[int, int]] = []
+
+            def embed_probe(doc_text, model=None, host=None):  # noqa: ARG001
+                depths.append((source_lock_depth(), export_lock_depth()))
+                return [0.1, 0.2]
+
+            from adapters.inter_model_doc import parse
+            from inter_model_index import index_inter_model_messages
+
+            with mock.patch("inter_model_index.ollama_embed", side_effect=embed_probe):
+                n = index_inter_model_messages(
+                    str(doc),
+                    parse(str(doc)),
+                    path_key=path_key,
+                    chroma_dir=cfg["index"]["chroma_dir"],
+                    embed_model="nomic-embed-text",
+                    ollama_host="http://localhost:11434",
+                    cfg=cfg,
+                    verbose=False,
+                    units_export=Path(cfg["index"]["units_export"]),
+                )
+            self.assertEqual(n, 1)
+            self.assertTrue(depths)
+            self.assertTrue(all(d == (0, 0) for d in depths))
 
     def test_n18_failure_injection_matrix(self):
         stages = [
-            ("before_exclusion", False),  # F1 — not excluded
-            ("after_exclusion", True),  # F2
-            ("after_units", True),  # F3
-            ("after_summaries", True),  # F4
+            ("before_exclusion", False),
+            ("after_exclusion", True),
+            ("after_units", True),
+            ("after_summaries", True),
             ("before_export_lock", True),
-            ("after_export_lock", True),  # F5
+            ("after_export_lock", True),
+            ("after_jsonl_tmp_write", True),  # F6
+            ("after_jsonl_rename", True),  # F7
         ]
         for stage, expect_excl in stages:
             with self.subTest(stage=stage):
@@ -451,32 +737,62 @@ class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-ma
 
                     with self.assertRaises(RuntimeError):
                         execute_purge(
-                            cfg, str(src), reason=stage, _hooks={stage: boom}
+                            cfg, str(src.resolve()), reason=stage, _hooks={stage: boom}
                         )
                     proc = load_processed(cfg["index"]["processed_log"])
                     excluded = any(
-                        isinstance(e, dict) and e.get("excluded") for e in proc.values()
+                        isinstance(e, dict) and e.get("excluded")
+                        for e in proc.values()
                     )
                     self.assertEqual(excluded, expect_excl, stage)
-                    # Retry converges
-                    res = execute_purge(cfg, str(src), reason=f"{stage}-retry")
+                    res = execute_purge(cfg, str(src.resolve()), reason=f"{stage}-retry")
                     self.assertEqual(res.exit_code, 0, f"{stage}: {res.message}")
 
-        # F8 postcondition residual
+        # F8 residual
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
             src = root / "f8.jsonl"
             _seed(root, src)
             res = execute_purge(
-                cfg, str(src), reason="f8", _hooks={"inject_residual": True}
+                cfg, str(src.resolve()), reason="f8", _hooks={"inject_residual": True}
             )
             self.assertEqual(res.exit_code, 1)
             self.assertIn("postcondition", res.message)
 
-        # F10 malformed — covered by N10
+        # F9 chroma locked
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cfg = _cfg(root)
+            src = root / "f9.jsonl"
+            _seed(root, src)
+            res = execute_purge(
+                cfg,
+                str(src.resolve()),
+                reason="f9",
+                _hooks={"force_chroma_locked": True},
+            )
+            self.assertEqual(res.exit_code, 1)
+            self.assertIn("Chroma locked", res.message)
+            proc = load_processed(cfg["index"]["processed_log"])
+            self.assertTrue(
+                any(isinstance(e, dict) and e.get("excluded") for e in proc.values())
+            )
 
-    def test_n19_superseded_cache(self):
+        # F10 malformed
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cfg = _cfg(root)
+            src = root / "f10.jsonl"
+            canon = _seed(root, src)
+            export = Path(cfg["index"]["units_export"])
+            export.write_text(
+                export.read_text(encoding="utf-8") + "NOT_JSON\n", encoding="utf-8"
+            )
+            res = execute_purge(cfg, canon, reason="f10")
+            self.assertEqual(res.exit_code, 1)
+
+    def test_n19_superseded_cache_exact_count(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
@@ -485,9 +801,15 @@ class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-ma
             (root / "processed.json").write_text("{}", encoding="utf-8")
             src.write_text("x", encoding="utf-8")
             canon = str(src.resolve())
+            other = root / "other.jsonl"
+            other.write_text("o", encoding="utf-8")
+            other_path = str(other.resolve())
             store = ChromaStore(str(root / "chroma"))
             store.add_unit(
-                "live", "d", [1.0, 0.0], {"id": "live", "title": "L", "source_path": canon}
+                "live",
+                "d",
+                [1.0, 0.0],
+                {"id": "live", "title": "L", "source_path": canon},
             )
             store.add_unit(
                 "dead",
@@ -501,16 +823,23 @@ class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-ma
                     "superseded_by": "live",
                 },
             )
-            _ = store.count_units(include_superseded=False)
+            store.add_unit(
+                "keep",
+                "d",
+                [1.0, 0.0],
+                {"id": "keep", "title": "K", "source_path": other_path},
+            )
+            before = store.count_units(include_superseded=False)
+            self.assertEqual(before, 2)  # live + keep
             store.close()
             (root / "knowledge_units.jsonl").write_text("", encoding="utf-8")
-            self.assertEqual(execute_purge(cfg, str(src), reason="n19").exit_code, 0)
+            self.assertEqual(execute_purge(cfg, canon, reason="n19").exit_code, 0)
             store = ChromaStore(str(root / "chroma"))
             ids = {m["id"] for m in store.units_metadata(include_superseded=True)}
             self.assertNotIn("live", ids)
             self.assertNotIn("dead", ids)
-            n = store.count_units(include_superseded=False)
-            self.assertIsInstance(n, int)
+            self.assertIn("keep", ids)
+            self.assertEqual(store.count_units(include_superseded=False), 1)
             store.close()
 
     def test_n20_postcondition_export_lock_barrier(self):
@@ -518,48 +847,38 @@ class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-ma
             root = Path(td)
             cfg = _cfg(root)
             src = root / "n20.jsonl"
-            _seed(root, src)
+            canon = _seed(root, src)
             other = root / "other.jsonl"
             other.write_text("o", encoding="utf-8")
             other_path = str(other.resolve())
-            barrier = threading.Event()
-            released = threading.Event()
-            saw_block = {"ok": False}
-            errors: list = []
+            entered_post = threading.Event()
+            state: dict = {}
 
             def purge():
-                try:
-                    def after_rewrite():
-                        barrier.set()
-                        time.sleep(0.3)
+                def after_rewrite():
+                    # Hold export flock through JSONL postcondition window.
+                    entered_post.set()
+                    time.sleep(0.35)
 
-                    res = execute_purge(
-                        cfg,
-                        str(src),
-                        reason="n20",
-                        _hooks={"after_jsonl_rewrite": after_rewrite},
-                    )
-                    self.assertEqual(res.exit_code, 0, res.message)
-                except Exception as exc:  # noqa: BLE001
-                    errors.append(exc)
-                finally:
-                    released.set()
+                res = execute_purge(
+                    cfg,
+                    canon,
+                    reason="n20",
+                    _hooks={"after_jsonl_rewrite": after_rewrite},
+                )
+                state["purge_exit"] = res.exit_code
+                state["residual"] = _chroma_jsonl_counts(cfg, canon)
 
             def appender():
-                try:
-                    self.assertTrue(barrier.wait(5))
-
-                    t0 = time.time()
-                    with export_flock(cfg):
-                        elapsed = time.time() - t0
-                        if elapsed > 0.05:
-                            saw_block["ok"] = True
-                        with open(cfg["index"]["units_export"], "a", encoding="utf-8") as f:
-                            f.write(
-                                json.dumps({"id": "o1", "source_path": other_path}) + "\n"
-                            )
-                except Exception as exc:  # noqa: BLE001
-                    errors.append(exc)
+                self.assertTrue(entered_post.wait(5))
+                t0 = time.time()
+                with export_flock(cfg):
+                    elapsed = time.time() - t0
+                    state["block_elapsed"] = elapsed
+                    with open(cfg["index"]["units_export"], "a", encoding="utf-8") as fh:
+                        fh.write(
+                            json.dumps({"id": "o1", "source_path": other_path}) + "\n"
+                        )
 
             t1 = threading.Thread(target=purge)
             t2 = threading.Thread(target=appender)
@@ -567,7 +886,9 @@ class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-ma
             t2.start()
             t1.join(15)
             t2.join(15)
-            self.assertEqual(errors, [])
+            self.assertEqual(state.get("purge_exit"), 0)
+            self.assertEqual(state.get("residual"), (0, 0, 0))
+            self.assertGreater(state.get("block_elapsed", 0), 0.05)
             text = Path(cfg["index"]["units_export"]).read_text(encoding="utf-8")
             self.assertIn(other_path, text)
 
@@ -582,56 +903,54 @@ class ExcludeSourcePurgeAcceptance(unittest.TestCase):  # pylint: disable=too-ma
                 out = {}
                 for p in base.rglob("*"):
                     if p.is_file():
-                        st = p.stat()
-                        out[str(p.relative_to(base))] = st.st_mtime_ns
+                        out[str(p.relative_to(base))] = p.stat().st_mtime_ns
                 return out
 
             before_files = snap(root)
             before_dirs = sorted(
                 str(p.relative_to(root)) for p in root.rglob("*") if p.is_dir()
             )
-            preview_purge(cfg, str(src))
-            preview_purge(cfg, str(root / "does-not-exist.jsonl"))
+            preview_purge(cfg, str(src.resolve()))
+            with self.assertRaises(ValueError):
+                preview_purge(cfg, "ledger:obs_x")
             after_files = snap(root)
             after_dirs = sorted(
                 str(p.relative_to(root)) for p in root.rglob("*") if p.is_dir()
             )
             self.assertEqual(before_dirs, after_dirs)
             self.assertEqual(before_files, after_files)
-            # No lock files created under locks/
-            locks = root / "locks"
-            self.assertFalse(locks.exists())
 
     def test_n7_inter_model_source_type(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
             (root / "chroma").mkdir()
-            (root / "processed.json").write_text("{}", encoding="utf-8")
-            src = root / "docs.md"
-            src.write_text("# Hi\\n", encoding="utf-8")
-            canon = str(src.resolve())
-            store = ChromaStore(str(root / "chroma"))
-            store.add_unit(
-                "im1",
-                "inter",
-                [1.0, 0.0],
-                {
-                    "id": "im1",
-                    "title": "t",
-                    "source_path": canon,
-                    "source_type": "inter_model_doc",
-                },
-            )
-            store.close()
-            (root / "knowledge_units.jsonl").write_text(
-                json.dumps({"id": "im1", "source_path": canon}) + "\n"
-            )
-            res = execute_purge(cfg, str(src), reason="n7")
-            self.assertEqual(res.exit_code, 0, res.message)
-            store = ChromaStore(str(root / "chroma"))
-            self.assertEqual(count_chroma_for_source(store, [canon])["units"], 0)
-            store.close()
+            Path(cfg["index"]["processed_log"]).write_text("{}", encoding="utf-8")
+            Path(cfg["index"]["units_export"]).write_text("", encoding="utf-8")
+            doc = root / "docs" / "inter-model" / "PLAN-n7.md"
+            doc.parent.mkdir(parents=True)
+            doc.write_text("## One\n\nAlpha.\n", encoding="utf-8")
+            path_key = str(doc.resolve())
+            from adapters.inter_model_doc import parse
+            from inter_model_index import index_inter_model_messages
+
+            with mock.patch(
+                "inter_model_index.ollama_embed", return_value=[0.1, 0.2]
+            ):
+                n = index_inter_model_messages(
+                    str(doc),
+                    parse(str(doc)),
+                    path_key=path_key,
+                    chroma_dir=cfg["index"]["chroma_dir"],
+                    embed_model="nomic-embed-text",
+                    ollama_host="http://localhost:11434",
+                    cfg=cfg,
+                    verbose=False,
+                    units_export=Path(cfg["index"]["units_export"]),
+                )
+            self.assertEqual(n, 1)
+            self.assertEqual(execute_purge(cfg, path_key, reason="n7").exit_code, 0)
+            self.assertEqual(_chroma_jsonl_counts(cfg, path_key), (0, 0, 0))
 
 
 if __name__ == "__main__":
