@@ -575,7 +575,7 @@ class GitProvenanceTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            real_git = _gate._git
+            real_git = vars(_gate)["_git"]
 
             def flaky_ls_tree(args, *, cwd=None):
                 if args and args[0] == "ls-tree":
@@ -587,7 +587,7 @@ class GitProvenanceTests(unittest.TestCase):
                     )
                 return real_git(args, cwd=cwd)
 
-            with mock.patch.object(_gate, "_git", side_effect=flaky_ls_tree):
+            with mock.patch("pylint_regression_gate._git", side_effect=flaky_ls_tree):
                 with self.assertRaises(BaselineResolveError) as ctx:
                     resolve_baseline_bytes(
                         base_ref=sha,
@@ -634,7 +634,7 @@ class GitProvenanceTests(unittest.TestCase):
             # Branch file still present on disk (would tempt a mistaken bootstrap).
             self.assertTrue(base_path.is_file())
 
-            real_git = _gate._git
+            real_git = vars(_gate)["_git"]
 
             def show_fails(args, *, cwd=None):
                 if args and args[0] == "show":
@@ -646,7 +646,7 @@ class GitProvenanceTests(unittest.TestCase):
                     )
                 return real_git(args, cwd=cwd)
 
-            with mock.patch.object(_gate, "_git", side_effect=show_fails):
+            with mock.patch("pylint_regression_gate._git", side_effect=show_fails):
                 with self.assertRaises(BaselineResolveError) as ctx:
                     resolve_baseline_bytes(
                         base_ref=sha,
