@@ -641,6 +641,7 @@ def index(
                     chroma_dir=chroma_dir,
                     embed_model=models["embed_model"],
                     ollama_host=models["ollama_host"],
+                    cfg=cfg,
                     verbose=verbose,
                     units_export=units_export if units_export else None,
                 )
