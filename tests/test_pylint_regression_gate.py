@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import json
 import sys
 import tempfile
@@ -17,6 +18,9 @@ sys.modules["pylint_regression_gate"] = _gate
 _spec.loader.exec_module(_gate)
 
 baseline_to_counter = _gate.baseline_to_counter
+BaselineResolveError = _gate.BaselineResolveError
+ensure_git_commit = _gate.ensure_git_commit
+resolve_baseline_bytes = _gate.resolve_baseline_bytes
 compare_reports = _gate.compare_reports
 count_fingerprints = _gate.count_fingerprints
 find_regressions = _gate.find_regressions
@@ -160,7 +164,8 @@ class FingerprintTests(unittest.TestCase):
         self.assertEqual(a, b)
         self.assertEqual(a, ("*", "cyclic-import", "R0401", ""))
 
-    def test_r0801_whitespace_body_collapses(self):
+    def test_r0801_distinct_bodies_still_aggregate(self):
+        """Different bodies/ranges collapse — aggregate blind spot by design."""
         a = fingerprint_from_message(
             _msg(
                 "work_git.py",
@@ -179,7 +184,7 @@ class FingerprintTests(unittest.TestCase):
         )
         self.assertEqual(a, b)
 
-    def test_r0801_module_header_order_canonical(self):
+    def test_r0801_module_header_order_irrelevant_under_aggregate(self):
         a_msg = (
             "Similar lines in 2 files\n"
             "==inventory:[#:#]\n"
@@ -274,6 +279,7 @@ class CompareTests(unittest.TestCase):
         self.assertTrue(ok)
 
     def test_r0801_range_only_movement_passes_vs_baseline(self):
+        """Exact-shape: range-only movement shares the aggregate fingerprint."""
         baseline = count_fingerprints(
             [_msg("work_git.py", "duplicate-code", "R0801", _R0801_A)]
         )
@@ -282,12 +288,31 @@ class CompareTests(unittest.TestCase):
         )
         ok, lines = compare_reports(baseline, current)
         self.assertTrue(ok, lines)
-        # Same modules / different body still passes (modules-only fingerprint)
-        same = count_fingerprints(
+
+    def test_r0801_increased_aggregate_count_fails(self):
+        baseline = count_fingerprints(
+            [_msg("work_git.py", "duplicate-code", "R0801", _R0801_A)]
+        )
+        current = count_fingerprints(
+            [
+                _msg("work_git.py", "duplicate-code", "R0801", _R0801_A),
+                _msg("other.py", "duplicate-code", "R0801", _R0801_SEMANTIC),
+            ]
+        )
+        ok, lines = compare_reports(baseline, current)
+        self.assertFalse(ok)
+        self.assertTrue(any("R0801" in line for line in lines))
+
+    def test_r0801_equal_count_semantic_replacement_is_blind_spot(self):
+        """Documented blind spot: equal aggregate count, different body → PASS."""
+        baseline = count_fingerprints(
+            [_msg("work_git.py", "duplicate-code", "R0801", _R0801_A)]
+        )
+        replaced = count_fingerprints(
             [_msg("work_git.py", "duplicate-code", "R0801", _R0801_SEMANTIC)]
         )
-        ok2, _ = compare_reports(baseline, same)
-        self.assertTrue(ok2)
+        ok, _ = compare_reports(baseline, replaced)
+        self.assertTrue(ok)
 
 
 class StatusTests(unittest.TestCase):
@@ -400,7 +425,7 @@ class CliTests(unittest.TestCase):
                 1,
             )
 
-    def test_ci_bootstrap_and_base_ref(self):
+    def test_ci_empty_base_ref_uses_branch_file(self):
         msgs = [_msg("a.py", "unused-import", "W0611", "Unused import x")]
         with tempfile.TemporaryDirectory() as td:
             td_path = Path(td)
@@ -412,7 +437,6 @@ class CliTests(unittest.TestCase):
                 json.dumps(counter_to_baseline(count_fingerprints(msgs))),
                 encoding="utf-8",
             )
-            # Empty base-ref → branch HEAD baseline (not BOOTSTRAP)
             self.assertEqual(
                 main(
                     [
@@ -429,7 +453,20 @@ class CliTests(unittest.TestCase):
                 ),
                 0,
             )
-            # Nonexistent base SHA (git show fails) → BOOTSTRAP to branch file
+
+    def test_invalid_base_ref_fails_closed(self):
+        """deadbeef / unresolvable SHA must FAIL — never bootstrap."""
+        msgs = [_msg("a.py", "unused-import", "W0611", "Unused import x")]
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            report = td_path / "report.json"
+            branch_base = td_path / "ci" / "pylint-baseline.json"
+            branch_base.parent.mkdir(parents=True)
+            report.write_text(json.dumps(msgs), encoding="utf-8")
+            branch_base.write_text(
+                json.dumps(counter_to_baseline(count_fingerprints(msgs))),
+                encoding="utf-8",
+            )
             self.assertEqual(
                 main(
                     [
@@ -444,8 +481,122 @@ class CliTests(unittest.TestCase):
                         "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
                     ]
                 ),
+                1,
+            )
+            with self.assertRaises(BaselineResolveError):
+                ensure_git_commit("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+
+
+class GitProvenanceTests(unittest.TestCase):
+    def _git(self, repo: Path, *args: str) -> str:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return proc.stdout.strip()
+
+    def _init_repo(self, repo: Path) -> None:
+        self._git(repo, "init")
+        self._git(repo, "config", "user.email", "test@example.com")
+        self._git(repo, "config", "user.name", "Test")
+        # Avoid depending on default-branch name across git versions.
+        self._git(repo, "checkout", "-b", "main")
+
+    def test_valid_commit_without_baseline_bootstraps(self):
+        msgs = [_msg("a.py", "unused-import", "W0611", "Unused import x")]
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td) / "repo"
+            repo.mkdir()
+            self._init_repo(repo)
+            (repo / "README").write_text("seed\n", encoding="utf-8")
+            self._git(repo, "add", "README")
+            self._git(repo, "commit", "-m", "seed without baseline")
+            sha = self._git(repo, "rev-parse", "HEAD")
+
+            report = repo / "report.json"
+            branch_base = repo / "ci" / "pylint-baseline.json"
+            branch_base.parent.mkdir(parents=True)
+            report.write_text(json.dumps(msgs), encoding="utf-8")
+            branch_base.write_text(
+                json.dumps(counter_to_baseline(count_fingerprints(msgs))),
+                encoding="utf-8",
+            )
+
+            raw, provenance = resolve_baseline_bytes(
+                base_ref=sha,
+                branch_baseline=branch_base,
+                git_cwd=repo,
+            )
+            self.assertTrue(provenance.startswith("BOOTSTRAP"), provenance)
+            self.assertEqual(
+                main(
+                    [
+                        "ci",
+                        "--report",
+                        str(report),
+                        "--pylint-status",
+                        "0",
+                        "--branch-baseline",
+                        str(branch_base),
+                        "--base-ref",
+                        sha,
+                        "--git-cwd",
+                        str(repo),
+                    ]
+                ),
                 0,
             )
+            del raw
+
+    def test_direct_main_push_cannot_self_bless(self):
+        """Push-to-main vs event.before: raised baseline + matching report FAIL."""
+        clean = [_msg("a.py", "unused-import", "W0611", "Unused import x")]
+        blessed = clean + [
+            _msg("b.py", "unused-variable", "W0612", "Unused variable hide")
+        ]
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td) / "repo"
+            repo.mkdir()
+            self._init_repo(repo)
+
+            base_path = repo / "ci" / "pylint-baseline.json"
+            base_path.parent.mkdir(parents=True)
+            base_path.write_text(
+                json.dumps(counter_to_baseline(count_fingerprints(clean))),
+                encoding="utf-8",
+            )
+            self._git(repo, "add", "ci/pylint-baseline.json")
+            self._git(repo, "commit", "-m", "baseline on main")
+            before = self._git(repo, "rev-parse", "HEAD")
+
+            # Simulate a direct push that raises the baseline and invents
+            # matching lint debt (as if event.before = prior main tip).
+            base_path.write_text(
+                json.dumps(counter_to_baseline(count_fingerprints(blessed))),
+                encoding="utf-8",
+            )
+            report = repo / "report.json"
+            report.write_text(json.dumps(blessed), encoding="utf-8")
+
+            rc = main(
+                [
+                    "ci",
+                    "--report",
+                    str(report),
+                    "--pylint-status",
+                    "0",
+                    "--branch-baseline",
+                    str(base_path),
+                    "--base-ref",
+                    before,
+                    "--git-cwd",
+                    str(repo),
+                ]
+            )
+            self.assertEqual(rc, 1)
 
 
 if __name__ == "__main__":

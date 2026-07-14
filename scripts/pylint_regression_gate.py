@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """Compare Pylint JSON findings to a committed baseline (regression gate).
 
-Fingerprints ignore physical line/column and normalize R0801 embedded
-``==module:[start:end]`` ranges so pure line movement does not fail.
+Fingerprints ignore physical line/column. Embedded ``==module:[start:end]``
+ranges in non-aggregate messages are normalized so pure line movement does
+not fail.
+
+**R0801 / R0401 aggregation:** duplicate-code and cyclic-import collapse to a
+single fingerprint ``(*, symbol, msg_id, "")``. Only an *increased* aggregate
+count fails. Accepted blind spot: replacing one pairing/ring with a different
+semantic instance at the same aggregate count does not fail.
 
 A run fails when any fingerprint's occurrence count exceeds the baseline
 (new finding or more duplicates). Improvements (removed or fewer findings)
@@ -11,6 +17,11 @@ pass.
 Pylint exit bits: fatal (1) and usage (32) always fail closed. Ordinary
 message bits (error/warning/refactor/convention) are allowed when the
 regression comparison passes.
+
+Baseline provenance: with ``--base-ref``, the commit must resolve first.
+BOOTSTRAP (use branch file) only when that valid commit lacks the baseline
+path. Invalid SHA, null OID, shallow/missing history, and git errors fail
+closed — they must never bootstrap.
 """
 
 from __future__ import annotations
@@ -37,64 +48,29 @@ PYLINT_MESSAGE_BITS = (
     PYLINT_ERROR | PYLINT_WARNING | PYLINT_REFACTOR | PYLINT_CONVENTION
 )
 
-# R0801 embeds ranges like ``==adapters.detect:[121:127]`` (module kept).
+# Non-aggregate messages may still embed ranges like ``==mod:[121:127]``.
 _EMBEDDED_LINE_RANGE = re.compile(r"(==[^\s\[:]+):\[\d+:\d+\]")
-_CYCLIC_IMPORT = re.compile(
-    r"^(Cyclic import \()([^)]+)(\))\s*$", re.MULTILINE
-)
+
+# Aggregate symbols/ids — fingerprinted by count only (see module docstring).
+_AGGREGATE_MSG_IDS = frozenset({"R0801", "R0401"})
+_AGGREGATE_SYMBOLS = frozenset({"duplicate-code", "cyclic-import"})
+
+# GitHub push "before" on branch creation (also reject shorter all-zero OIDs).
+_NULL_OID = frozenset({"0" * 40, "0" * 64})
 
 
-def _canonicalize_cyclic_import(message: str) -> str:
-    """Stabilize R0401: same module set → same fingerprint regardless of ring order."""
-
-    def repl(match: re.Match[str]) -> str:
-        parts = [p.strip() for p in match.group(2).split("->") if p.strip()]
-        if len(parts) < 2:
-            return match.group(0)
-        # Sorted unique module set — Pylint varies both rotation and which
-        # equivalent import rings it surfaces between runs.
-        uniq = sorted(set(parts))
-        return f"Cyclic import modules: {', '.join(uniq)}"
-
-    return _CYCLIC_IMPORT.sub(repl, message.strip())
-
-
-def _canonicalize_duplicate_code(message: str) -> str:
-    """Stabilize R0801 for fingerprinting.
-
-    Pylint's similar-block *body* and region selection are nondeterministic
-    across ubuntu-latest runs. Fingerprint on sorted ``==module`` headers only
-    (after range normalization) so a new duplicate *pair* still fails while
-    snippet/line flakes do not. Semantic body text is intentionally omitted
-    from the fingerprint for stability.
-    """
-    message = _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message)
-    lines = message.split("\n")
-    mod_lines: list[str] = []
-    for line in lines:
-        if line.startswith("=="):
-            # Ensure range placeholder even if already normalized.
-            mod_lines.append(_EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", line))
-            if ":[#:#]" not in mod_lines[-1] and ":[" in mod_lines[-1]:
-                pass
-    # Also accept already-normalized [#:#] lines
-    mod_lines = [ln for ln in lines if ln.startswith("==")]
-    return "Similar lines modules:\n" + "\n".join(sorted(set(mod_lines)))
+class BaselineResolveError(RuntimeError):
+    """Base ref cannot be resolved or git failed — fail closed (never bootstrap)."""
 
 
 def normalize_message(message: str, *, symbol: str = "", msg_id: str = "") -> str:
-    """Normalize unstable Pylint message shapes before fingerprinting.
+    """Normalize unstable shapes for *non-aggregate* fingerprints.
 
-    - Always rewrite embedded ``==name:[n:m]`` ranges to ``[#:#]``.
-    - R0801: sort module header lines; preserve duplicate-code body.
-    - R0401: rotate the import cycle to a canonical start.
+    Rewrites embedded ``==name:[n:m]`` ranges to ``[#:#]``. R0801/R0401 are
+    not normalized here — they use aggregate fingerprints instead.
     """
-    message = message.strip()
-    if msg_id == "R0401" or symbol == "cyclic-import":
-        return _canonicalize_cyclic_import(message)
-    if msg_id == "R0801" or symbol == "duplicate-code":
-        return _canonicalize_duplicate_code(message)
-    return _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message)
+    del symbol, msg_id  # API kept for call sites; aggregates bypass this.
+    return _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message.strip())
 
 
 def _norm_path(path: str) -> str:
@@ -107,20 +83,19 @@ def _norm_path(path: str) -> str:
 def fingerprint_from_message(msg: dict[str, Any]) -> Fingerprint:
     """Stable identity for one Pylint message (no line/column).
 
-    R0801/R0401 are aggregated by symbol only: ubuntu-latest runs choose
-    different similar-block pairings and import rings for the same tree, so
-    per-message fingerprints flake. Aggregate counts still catch a net rise in
-    duplicate-code or cyclic-import volume. Other messages keep full
+    R0801/R0401 → aggregate ``(*, symbol, msg_id, "")`` so CI pairing/ring
+    flakes do not fail; increased aggregate counts still fail. Blind spot:
+    equal-count semantic replacement passes. Other messages keep full
     path/symbol/id/text fingerprints (with range normalization).
     """
     path = _norm_path(str(msg.get("path") or msg.get("module") or ""))
     symbol = str(msg.get("symbol") or "")
     msg_id = str(msg.get("message-id") or msg.get("message_id") or "")
+    if msg_id in _AGGREGATE_MSG_IDS or symbol in _AGGREGATE_SYMBOLS:
+        return ("*", symbol, msg_id, "")
     message = normalize_message(
         str(msg.get("message") or "").strip(), symbol=symbol, msg_id=msg_id
     )
-    if msg_id in {"R0801", "R0401"} or symbol in {"duplicate-code", "cyclic-import"}:
-        return ("*", symbol, msg_id, "")
     return (path, symbol, msg_id, message)
 
 
@@ -245,16 +220,54 @@ def pylint_status_ok(exit_status: int) -> tuple[bool, str]:
     return True, f"Pylint status {status}: accepted (no fatal/usage bits)"
 
 
-def git_show_text(ref: str, path: str) -> str | None:
-    """Return file contents at ref:path, or None if missing."""
-    proc = subprocess.run(
-        ["git", "show", f"{ref}:{path}"],
+def _git(
+    args: list[str], *, cwd: Path | None = None
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *args],
         capture_output=True,
         text=True,
         check=False,
+        cwd=str(cwd) if cwd is not None else None,
     )
+
+
+def _is_null_oid(ref: str) -> bool:
+    return ref in _NULL_OID or (len(ref) >= 40 and set(ref) == {"0"})
+
+
+def ensure_git_commit(ref: str, *, cwd: Path | None = None) -> str:
+    """Return the resolved commit SHA, or raise BaselineResolveError."""
+    if not ref or _is_null_oid(ref):
+        raise BaselineResolveError(
+            f"base ref {ref!r} is missing or a null OID — cannot resolve commit"
+        )
+    proc = _git(["rev-parse", "--verify", f"{ref}^{{commit}}"], cwd=cwd)
     if proc.returncode != 0:
-        return None
+        err = (proc.stderr or proc.stdout or "").strip() or f"exit {proc.returncode}"
+        raise BaselineResolveError(
+            f"Cannot resolve base ref {ref!r} as a commit "
+            f"(invalid SHA, shallow/missing history, or git error): {err}"
+        )
+    return proc.stdout.strip()
+
+
+def git_path_exists_in_commit(
+    ref: str, path: str, *, cwd: Path | None = None
+) -> bool:
+    """True when ``ref:path`` is a git object (file present in that commit)."""
+    proc = _git(["cat-file", "-e", f"{ref}:{path}"], cwd=cwd)
+    return proc.returncode == 0
+
+
+def git_show_text(ref: str, path: str, *, cwd: Path | None = None) -> str:
+    """Return file contents at ref:path; raise BaselineResolveError on failure."""
+    proc = _git(["show", f"{ref}:{path}"], cwd=cwd)
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip() or f"exit {proc.returncode}"
+        raise BaselineResolveError(
+            f"git show failed for {ref}:{path}: {err}"
+        )
     return proc.stdout
 
 
@@ -263,22 +276,26 @@ def resolve_baseline_bytes(
     base_ref: str | None,
     branch_baseline: Path,
     baseline_repo_path: str = "ci/pylint-baseline.json",
+    git_cwd: Path | None = None,
 ) -> tuple[bytes, str]:
     """Load baseline from base_ref when present; else branch file.
 
-    BOOTSTRAP provenance is only returned when a base_ref was provided and the
-    file is genuinely missing there (first introduction of the baseline).
+    When ``base_ref`` is set:
+      1. Verify it resolves as a commit (else BaselineResolveError — no bootstrap).
+      2. If ``base_ref:baseline_repo_path`` exists → use that content.
+      3. Else BOOTSTRAP to the branch file (introduction only).
 
     Returns (raw_json_bytes, provenance_label).
     """
     if base_ref:
-        text = git_show_text(base_ref, baseline_repo_path)
-        if text is not None:
-            return text.encode("utf-8"), f"base:{base_ref}"
-        # Base checked out / resolvable but file absent → first-time bootstrap.
+        sha = ensure_git_commit(base_ref, cwd=git_cwd)
+        if git_path_exists_in_commit(sha, baseline_repo_path, cwd=git_cwd):
+            content = git_show_text(sha, baseline_repo_path, cwd=git_cwd)
+            return content.encode("utf-8"), f"base:{sha}"
+        # Valid commit, file genuinely absent → first-time bootstrap.
         if not branch_baseline.is_file():
             raise FileNotFoundError(
-                f"No baseline at {baseline_repo_path} on base {base_ref} "
+                f"No baseline at {baseline_repo_path} on base {sha} "
                 f"and no branch file at {branch_baseline}"
             )
         return branch_baseline.read_bytes(), "BOOTSTRAP:branch"
@@ -344,7 +361,10 @@ def main(argv: list[str] | None = None) -> int:
     p_ci.add_argument(
         "--base-ref",
         default="",
-        help="Git SHA of PR base / parent (empty → treat as bootstrap if needed)",
+        help=(
+            "Prior commit SHA: PR base.sha or push event.before. "
+            "Must resolve as a commit; empty skips git lookup (local only)."
+        ),
     )
     p_ci.add_argument(
         "--branch-baseline",
@@ -356,6 +376,12 @@ def main(argv: list[str] | None = None) -> int:
         "--baseline-repo-path",
         default="ci/pylint-baseline.json",
         help="Path inside the git tree for base_ref lookup",
+    )
+    p_ci.add_argument(
+        "--git-cwd",
+        type=Path,
+        default=None,
+        help="Working tree for git resolve (tests / non-ambient repos)",
     )
 
     args = parser.parse_args(argv)
@@ -398,11 +424,19 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
         base_ref = (args.base_ref or "").strip() or None
-        raw, provenance = resolve_baseline_bytes(
-            base_ref=base_ref,
-            branch_baseline=args.branch_baseline,
-            baseline_repo_path=args.baseline_repo_path,
-        )
+        try:
+            raw, provenance = resolve_baseline_bytes(
+                base_ref=base_ref,
+                branch_baseline=args.branch_baseline,
+                baseline_repo_path=args.baseline_repo_path,
+                git_cwd=args.git_cwd,
+            )
+        except BaselineResolveError as exc:
+            print(f"Baseline resolution FAIL: {exc}")
+            return 1
+        except FileNotFoundError as exc:
+            print(f"Baseline resolution FAIL: {exc}")
+            return 1
         if provenance.startswith("BOOTSTRAP"):
             print(
                 "BOOTSTRAP: base ref lacks "
