@@ -117,7 +117,7 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
         return 0
 
     # Embeds above run unlocked; source/export locks only wrap the batch write.
-    from ingest import _path_is_excluded, load_processed
+    # Avoid importing ingest here (ingest lazily imports this module).
     from purge_locks import export_flock_path, source_flock
 
     processed_log = cfg["index"]["processed_log"]
@@ -127,9 +127,24 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
         else Path(cfg["index"]["units_export"]).expanduser()
     )
 
+    def _load_processed(path: str) -> dict:
+        pp = Path(path)
+        if not pp.is_file():
+            return {}
+        return json.loads(pp.read_text(encoding="utf-8") or "{}")
+
+    def _path_excluded(processed: dict, key: str) -> bool:
+        for entry in processed.values():
+            if not isinstance(entry, dict) or not entry.get("excluded"):
+                continue
+            ep = entry.get("path")
+            if ep and str(Path(ep).expanduser().resolve()) == key:
+                return True
+        return False
+
     with source_flock(cfg, path_key):
-        processed = load_processed(processed_log)
-        if _path_is_excluded(processed, path_key):
+        processed = _load_processed(processed_log)
+        if _path_excluded(processed, path_key):
             if verbose:
                 print(f"  [skip] excluded during inter-model write {Path(path).name}")
             return 0

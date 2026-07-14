@@ -246,63 +246,32 @@ def undo_exclude_source(cfg: dict, target: str) -> bool:
 def mark_purge_exclusion(cfg: dict, canonical_path: str, reason: str) -> str:
     """Write exclusion marker (processed flock). Returns exclusion key used.
 
-    Clears all prior active same-path exclusion markers in the same
-    ``mutate_processed`` transaction, preserves latest-reason semantics, and
-    stamps ``purged_at`` atomically (including synthetic ``purged:<sha>`` keys).
+    Clears prior same-path markers and stamps ``purged_at`` atomically via
+    ``exclude_processed_path`` (content-hash or synthetic ``purged:<sha>`` key).
     """
     from datetime import datetime, timezone
 
-    from ingest import _processed_path_str, mutate_processed, sha256_file
+    from ingest import exclude_processed_path, sha256_file
 
     processed_path = cfg["index"]["processed_log"]
-    reason_text = reason or "purge"
-    if not reason_text.startswith("purge"):
-        reason_text = f"purge: {reason_text}"
-    path_key = _processed_path_str(canonical_path)
-    path_obj = Path(canonical_path)
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    if path_obj.is_file():
-        file_hash = sha256_file(canonical_path)
-        key = file_hash
+    if Path(canonical_path).is_file():
+        key = sha256_file(canonical_path)
     else:
         key = purged_exclusion_key(canonical_path)
-
-    def mutator(data: dict) -> None:
-        # Match exclude_processed_path: explicit reason wins; else carry prior.
-        carried_reason = reason_text if reason else ""
-        if not carried_reason:
-            for entry in data.values():
-                if not isinstance(entry, dict) or not entry.get("excluded"):
-                    continue
-                ep = entry.get("path")
-                if ep and _processed_path_str(ep) == path_key:
-                    prior = entry.get("exclude_reason") or ""
-                    if prior:
-                        carried_reason = prior
-                        break
-        if not carried_reason:
-            carried_reason = reason_text
-
-        for entry in data.values():
-            if not isinstance(entry, dict) or not entry.get("excluded"):
-                continue
-            ep = entry.get("path")
-            if ep and _processed_path_str(ep) == path_key:
-                entry.pop("excluded", None)
-                entry.pop("exclude_reason", None)
-                entry.pop("purged_at", None)
-
-        entry = data.get(key, {})
-        if not isinstance(entry, dict):
-            entry = {}
-        entry["path"] = path_key
-        entry["excluded"] = True
-        entry["exclude_reason"] = carried_reason
-        entry["purged_at"] = now
-        data[key] = entry
-
-    mutate_processed(processed_path, mutator)
+    if reason:
+        reason_text = reason if reason.startswith("purge") else f"purge: {reason}"
+    else:
+        reason_text = "purge"
+    # Pass explicit reason_text so marker always has a purge reason; carry is
+    # unused when reason_text is non-empty (same as soft-exclude with reason).
+    exclude_processed_path(
+        processed_path,
+        canonical_path,
+        key,
+        reason=reason_text,
+        purged_at=now,
+    )
     return key
 
 

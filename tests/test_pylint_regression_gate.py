@@ -30,6 +30,9 @@ find_regressions = _gate.find_regressions
 fingerprint_from_message = _gate.fingerprint_from_message
 main = _gate.main
 normalize_message = _gate.normalize_message
+complexity_metric = _gate.complexity_metric
+count_fingerprints_with_metrics = _gate.count_fingerprints_with_metrics
+baseline_to_counter_with_metrics = _gate.baseline_to_counter_with_metrics
 pylint_status_ok = _gate.pylint_status_ok
 validate_baseline_change = _gate.validate_baseline_change
 counter_to_baseline = _gate.counter_to_baseline
@@ -75,6 +78,77 @@ _R0801_SEMANTIC = (
     "        path.relative_to(OTHER_DIR)\n"
     "        return False"
 )
+
+
+
+class ComplexityMetricRegressionTests(unittest.TestCase):
+    """Complexity (N/limit) increases must fail; decreases must not."""
+
+    def test_branch_count_16_to_40_fails(self):
+        baseline_msgs = [
+            _msg("a.py", "too-many-branches", "R0912", "Too many branches (16/15)")
+        ]
+        current_msgs = [
+            _msg("a.py", "too-many-branches", "R0912", "Too many branches (40/15)")
+        ]
+        base, base_m = count_fingerprints_with_metrics(baseline_msgs)
+        cur, cur_m = count_fingerprints_with_metrics(current_msgs)
+        ok, lines = compare_reports(
+            base, cur, baseline_metrics=base_m, current_metrics=cur_m
+        )
+        self.assertFalse(ok)
+        self.assertTrue(any("complexity 16 -> 40" in line for line in lines))
+
+    def test_branch_count_decrease_passes(self):
+        baseline_msgs = [
+            _msg("a.py", "too-many-branches", "R0912", "Too many branches (40/15)")
+        ]
+        current_msgs = [
+            _msg("a.py", "too-many-branches", "R0912", "Too many branches (16/15)")
+        ]
+        base, base_m = count_fingerprints_with_metrics(baseline_msgs)
+        cur, cur_m = count_fingerprints_with_metrics(current_msgs)
+        ok, _lines = compare_reports(
+            base, cur, baseline_metrics=base_m, current_metrics=cur_m
+        )
+        self.assertTrue(ok)
+
+    def test_c0302_line_increase_fails(self):
+        baseline_msgs = [
+            _msg(
+                "convmem.py",
+                "too-many-lines",
+                "C0302",
+                "Too many lines in module (1418/1000)",
+            )
+        ]
+        current_msgs = [
+            _msg(
+                "convmem.py",
+                "too-many-lines",
+                "C0302",
+                "Too many lines in module (1471/1000)",
+            )
+        ]
+        base, base_m = count_fingerprints_with_metrics(baseline_msgs)
+        cur, cur_m = count_fingerprints_with_metrics(current_msgs)
+        ok, lines = compare_reports(
+            base, cur, baseline_metrics=base_m, current_metrics=cur_m
+        )
+        self.assertFalse(ok)
+        self.assertTrue(any("complexity 1418 -> 1471" in line for line in lines))
+
+    def test_blind_strip_would_hide_increase_but_metric_does_not(self):
+        """Identity shares (#/#); metrics still catch N growth."""
+        a = fingerprint_from_message(
+            _msg("a.py", "too-many-branches", "R0912", "Too many branches (16/15)")
+        )
+        b = fingerprint_from_message(
+            _msg("a.py", "too-many-branches", "R0912", "Too many branches (40/15)")
+        )
+        self.assertEqual(a, b)
+        self.assertEqual(complexity_metric("Too many branches (16/15)"), 16)
+        self.assertEqual(complexity_metric("Too many branches (40/15)"), 40)
 
 
 class FingerprintTests(unittest.TestCase):
