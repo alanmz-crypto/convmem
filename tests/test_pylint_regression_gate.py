@@ -99,6 +99,34 @@ class FingerprintTests(unittest.TestCase):
         self.assertEqual(a, b)
         self.assertEqual(a, ("*", "duplicate-code", "R0801", ""))
 
+    def test_baseline_loads_aggregate_r0801(self):
+        """Stored aggregate R0801 rows must match live fingerprints (empty message)."""
+        baseline = {
+            "version": 1,
+            "fingerprint": ["path", "symbol", "msg_id", "message"],
+            "findings": [
+                {
+                    "path": "*",
+                    "symbol": "duplicate-code",
+                    "msg_id": "R0801",
+                    "message": "",
+                    "count": 72,
+                }
+            ],
+        }
+        counts = baseline_to_counter(baseline)
+        live = fingerprint_from_message(
+            _msg("work_git.py", "duplicate-code", "R0801", _R0801_A)
+        )
+        self.assertEqual(counts[live], 72)
+        ok, _ = compare_reports(
+            counts,
+            count_fingerprints(
+                [_msg("x.py", "duplicate-code", "R0801", _R0801_A) for _ in range(72)]
+            ),
+        )
+        self.assertTrue(ok)
+
     def test_r0801_aggregated_fingerprint(self):
         """R0801 messages collapse to one aggregate key (CI pairing flakes)."""
         a = fingerprint_from_message(
