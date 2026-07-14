@@ -16,9 +16,7 @@ from ingest import (
     _commit_chunk_to_stores,
     exclude_processed_path,
     load_processed,
-    save_processed,
     sha256_file,
-    undo_exclude_processed_path,
     watch_skip_reason,
 )
 from purge_locks import (
@@ -99,7 +97,7 @@ def _chroma_jsonl_counts(cfg: dict, canon: str) -> tuple[int, int, int]:
     return units, summaries, jsonl
 
 
-class ExcludeSourcePurgeContractTests(unittest.TestCase):
+class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_n8_all_sinks_zero(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -199,7 +197,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):
                         _hooks={"after_jsonl_rewrite": hold},
                     )
                     self.assertEqual(res.exit_code, 0, res.message)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:  # pylint: disable=broad-exception-caught
                     errors.append(exc)
 
             def appender():
@@ -215,7 +213,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):
                                 )
                                 + "\n"
                             )
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:  # pylint: disable=broad-exception-caught
                     errors.append(exc)
 
             t1 = threading.Thread(target=purge)
@@ -499,7 +497,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):
             def run():
                 try:
                     results.append(execute_purge(cfg, canon, reason="n14"))
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:  # pylint: disable=broad-exception-caught
                     errors.append(exc)
 
             t1 = threading.Thread(target=run)
@@ -690,7 +688,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):
             path_key = str(doc.resolve())
             depths: list[tuple[int, int]] = []
 
-            def embed_probe(doc_text, model=None, host=None):  # noqa: ARG001
+            def embed_probe(*_args, **_kwargs):
                 depths.append((source_lock_depth(), export_lock_depth()))
                 return [0.1, 0.2]
 
