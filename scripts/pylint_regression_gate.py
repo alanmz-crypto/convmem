@@ -63,21 +63,39 @@ class BaselineResolveError(RuntimeError):
     """Base ref cannot be resolved or git failed — fail closed (never bootstrap)."""
 
 
-_COMPLEXITY_COUNT = re.compile(r"\s*\(\d+/\d+\)")
+_COMPLEXITY_COUNT = re.compile(r"^(.*?)\((\d+)/(\d+)\)\s*$")
+
+
+def _is_complexity_finding(*, symbol: str, msg_id: str) -> bool:
+    return bool(
+        msg_id.startswith("R09")
+        or msg_id == "C0302"
+        or symbol.startswith("too-many")
+        or symbol == "too-many-lines"
+    )
+
+
+def complexity_metric(message: str) -> int | None:
+    """Return the measured N from a ``(N/limit)`` complexity message, else None."""
+    match = _COMPLEXITY_COUNT.match(message.strip())
+    if not match:
+        return None
+    return int(match.group(2))
 
 
 def normalize_message(message: str, *, symbol: str = "", msg_id: str = "") -> str:
     """Normalize unstable shapes for *non-aggregate* fingerprints.
 
-    Rewrites embedded ``==name:[n:m]`` ranges to ``[#:#]``. Strips ``(n/m)``
-    suffixes on complexity messages so line/branch-count drift does not invent
-    new fingerprints. R0801/R0401 use aggregate fingerprints instead.
+    Rewrites embedded ``==name:[n:m]`` ranges to ``[#:#]``. For complexity /
+    too-many-lines messages, replaces ``(N/limit)`` with ``(#/#)`` so identity
+    is stable while ``complexity_metric`` / ``find_regressions`` still detect
+    increases in N. R0801/R0401 use aggregate fingerprints instead.
     """
     message = message.strip()
-    if msg_id.startswith("R09") or symbol.startswith("too-many"):
-        message = _COMPLEXITY_COUNT.sub("", message)
-    if msg_id == "C0302" or symbol == "too-many-lines":
-        message = _COMPLEXITY_COUNT.sub("", message)
+    if _is_complexity_finding(symbol=symbol, msg_id=msg_id):
+        match = _COMPLEXITY_COUNT.match(message)
+        if match:
+            message = f"{match.group(1).rstrip()} (#/#)"
     return _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message)
 
 
@@ -118,16 +136,44 @@ def load_report_messages(report: Any) -> list[dict[str, Any]]:
     raise ValueError("Pylint report must be a JSON list of messages")
 
 
-def count_fingerprints(messages: Iterable[dict[str, Any]]) -> Counter[Fingerprint]:
-    counts: Counter[Fingerprint] = Counter()
-    for msg in messages:
-        counts[fingerprint_from_message(msg)] += 1
+def count_fingerprints(
+    messages: Iterable[dict[str, Any]],
+) -> Counter[Fingerprint]:
+    counts, _metrics = count_fingerprints_with_metrics(messages)
     return counts
+
+
+def count_fingerprints_with_metrics(
+    messages: Iterable[dict[str, Any]],
+) -> tuple[Counter[Fingerprint], dict[Fingerprint, int]]:
+    """Occurrence counts plus max complexity metric N per fingerprint."""
+    counts: Counter[Fingerprint] = Counter()
+    metrics: dict[Fingerprint, int] = {}
+    for msg in messages:
+        fp = fingerprint_from_message(msg)
+        counts[fp] += 1
+        symbol = str(msg.get("symbol") or "")
+        msg_id = str(msg.get("message-id") or msg.get("message_id") or "")
+        if _is_complexity_finding(symbol=symbol, msg_id=msg_id):
+            metric = complexity_metric(str(msg.get("message") or ""))
+            if metric is not None:
+                prev = metrics.get(fp)
+                metrics[fp] = metric if prev is None else max(prev, metric)
+    return counts, metrics
 
 
 def baseline_to_counter(baseline: Any) -> Counter[Fingerprint]:
     """Load baseline as list of {path,symbol,msg_id,message,count}."""
+    counts, _metrics = baseline_to_counter_with_metrics(baseline)
+    return counts
+
+
+def baseline_to_counter_with_metrics(
+    baseline: Any,
+) -> tuple[Counter[Fingerprint], dict[Fingerprint, int]]:
+    """Load baseline occurrence counts and complexity metrics."""
     counts: Counter[Fingerprint] = Counter()
+    metrics: dict[Fingerprint, int] = {}
     if isinstance(baseline, dict) and "findings" in baseline:
         baseline = baseline["findings"]
     if isinstance(baseline, list):
@@ -135,18 +181,23 @@ def baseline_to_counter(baseline: Any) -> Counter[Fingerprint]:
             if not isinstance(row, dict):
                 continue
             # Must match fingerprint_from_message (incl. R0801/R0401 aggregates).
-            # Re-running normalize_message on an already-aggregated empty message
-            # used to invent "Similar lines modules:\n" and miss the live "*"/"" key.
-            fp = fingerprint_from_message(
-                {
-                    "path": row.get("path") or "",
-                    "symbol": row.get("symbol") or "",
-                    "message-id": row.get("msg_id") or row.get("message-id") or "",
-                    "message": row.get("message") or "",
-                }
-            )
+            raw_message = row.get("message") or ""
+            msg = {
+                "path": row.get("path") or "",
+                "symbol": row.get("symbol") or "",
+                "message-id": row.get("msg_id") or row.get("message-id") or "",
+                "message": raw_message,
+            }
+            fp = fingerprint_from_message(msg)
             counts[fp] += int(row.get("count") or 1)
-        return counts
+            symbol = str(msg["symbol"])
+            msg_id = str(msg["message-id"])
+            if _is_complexity_finding(symbol=symbol, msg_id=msg_id):
+                metric = complexity_metric(str(raw_message))
+                if metric is not None:
+                    prev = metrics.get(fp)
+                    metrics[fp] = metric if prev is None else max(prev, metric)
+        return counts, metrics
     raise ValueError("baseline must be a list of finding objects (or {findings: [...]})")
 
 
@@ -171,30 +222,68 @@ def counter_to_baseline(counts: Counter[Fingerprint]) -> dict[str, Any]:
 
 
 def find_regressions(
-    baseline: Counter[Fingerprint], current: Counter[Fingerprint]
-) -> list[tuple[Fingerprint, int, int]]:
-    """Return (fingerprint, baseline_count, current_count) for each regression."""
-    regressions: list[tuple[Fingerprint, int, int]] = []
+    baseline: Counter[Fingerprint],
+    current: Counter[Fingerprint],
+    *,
+    baseline_metrics: dict[Fingerprint, int] | None = None,
+    current_metrics: dict[Fingerprint, int] | None = None,
+) -> list[tuple[Fingerprint, int, int, str]]:
+    """Return regressions for occurrence increases or complexity metric increases.
+
+    Each item is ``(fingerprint, baseline_value, current_value, kind)`` where
+    ``kind`` is ``"count"`` (occurrence) or ``"metric"`` (complexity N).
+    """
+    baseline_metrics = baseline_metrics or {}
+    current_metrics = current_metrics or {}
+    regressions: list[tuple[Fingerprint, int, int, str]] = []
     for fp, cur in sorted(current.items(), key=lambda kv: (kv[0][0], kv[0][2], kv[0][3])):
         base = baseline.get(fp, 0)
         if cur > base:
-            regressions.append((fp, base, cur))
+            regressions.append((fp, base, cur, "count"))
+    for fp, cur_metric in sorted(
+        current_metrics.items(), key=lambda kv: (kv[0][0], kv[0][2], kv[0][3])
+    ):
+        base_metric = baseline_metrics.get(fp)
+        if base_metric is None:
+            # New complexity fingerprint with no baseline metric — occurrence
+            # path already reports new findings; skip duplicate metric noise.
+            if fp not in baseline:
+                continue
+            continue
+        if cur_metric > base_metric:
+            regressions.append((fp, base_metric, cur_metric, "metric"))
     return regressions
 
 
-def format_regression(fp: Fingerprint, base: int, cur: int) -> str:
+def format_regression(
+    fp: Fingerprint, base: int, cur: int, kind: str = "count"
+) -> str:
     path, symbol, msg_id, message = fp
     delta = cur - base
     msg = message if len(message) <= 120 else message[:117] + "..."
     where = path or "(no-path)"
+    if kind == "metric":
+        return (
+            f"+metric {where} {msg_id}/{symbol}: {msg} "
+            f"(complexity {base} -> {cur})"
+        )
     return f"+{delta} {where} {msg_id}/{symbol}: {msg} (was {base}, now {cur})"
 
 
 def compare_reports(
-    baseline_counts: Counter[Fingerprint], current_counts: Counter[Fingerprint]
+    baseline_counts: Counter[Fingerprint],
+    current_counts: Counter[Fingerprint],
+    *,
+    baseline_metrics: dict[Fingerprint, int] | None = None,
+    current_metrics: dict[Fingerprint, int] | None = None,
 ) -> tuple[bool, list[str]]:
-    """Return (ok, lines). ok True when no count increases."""
-    regs = find_regressions(baseline_counts, current_counts)
+    """Return (ok, lines). ok True when no occurrence/metric increases."""
+    regs = find_regressions(
+        baseline_counts,
+        current_counts,
+        baseline_metrics=baseline_metrics,
+        current_metrics=current_metrics,
+    )
     if not regs:
         return True, [
             f"Pylint regression gate PASS "
@@ -205,8 +294,8 @@ def compare_reports(
         f"Pylint regression gate FAIL: {len(regs)} new/increased fingerprint(s)"
     ]
     shown = regs[:40]
-    for fp, base, cur in shown:
-        lines.append(format_regression(fp, base, cur))
+    for fp, base, cur, kind in shown:
+        lines.append(format_regression(fp, base, cur, kind))
     if len(regs) > len(shown):
         lines.append(f"... and {len(regs) - len(shown)} more")
     return False, lines
@@ -340,10 +429,19 @@ def resolve_baseline_bytes(
 
 
 def validate_baseline_change(
-    base_counts: Counter[Fingerprint], branch_counts: Counter[Fingerprint]
+    base_counts: Counter[Fingerprint],
+    branch_counts: Counter[Fingerprint],
+    *,
+    base_metrics: dict[Fingerprint, int] | None = None,
+    branch_metrics: dict[Fingerprint, int] | None = None,
 ) -> tuple[bool, list[str]]:
     """Reject baseline edits that introduce new/increased fingerprints."""
-    regs = find_regressions(base_counts, branch_counts)
+    regs = find_regressions(
+        base_counts,
+        branch_counts,
+        baseline_metrics=base_metrics,
+        current_metrics=branch_metrics,
+    )
     if not regs:
         return True, [
             "Baseline change validation PASS "
@@ -353,8 +451,8 @@ def validate_baseline_change(
         f"Baseline change validation FAIL: branch baseline blesses "
         f"{len(regs)} new/increased fingerprint(s) — refuse self-blessing"
     ]
-    for fp, base, cur in regs[:40]:
-        lines.append(format_regression(fp, base, cur))
+    for fp, base, cur, kind in regs[:40]:
+        lines.append(format_regression(fp, base, cur, kind))
     if len(regs) > 40:
         lines.append(f"... and {len(regs) - 40} more")
     return False, lines
@@ -362,6 +460,70 @@ def validate_baseline_change(
 
 def _load_json_bytes(raw: bytes) -> Any:
     return json.loads(raw.decode("utf-8"))
+
+
+def _cmd_ci(args: argparse.Namespace) -> int:
+    status_ok, status_msg = pylint_status_ok(args.pylint_status)
+    print(status_msg)
+    if not status_ok:
+        return 1
+
+    base_ref = (args.base_ref or "").strip() or None
+    try:
+        raw, provenance = resolve_baseline_bytes(
+            base_ref=base_ref,
+            branch_baseline=args.branch_baseline,
+            baseline_repo_path=args.baseline_repo_path,
+            git_cwd=args.git_cwd,
+        )
+    except BaselineResolveError as exc:
+        print(f"Baseline resolution FAIL: {exc}")
+        return 1
+    except FileNotFoundError as exc:
+        print(f"Baseline resolution FAIL: {exc}")
+        return 1
+    if provenance.startswith("BOOTSTRAP"):
+        print(
+            "BOOTSTRAP: base ref lacks "
+            f"{args.baseline_repo_path}; using branch baseline "
+            f"at {args.branch_baseline} for this introduction only"
+        )
+    else:
+        print(f"Using baseline from {provenance}")
+
+    reference, reference_metrics = baseline_to_counter_with_metrics(
+        _load_json_bytes(raw)
+    )
+
+    if provenance.startswith("base:") and args.branch_baseline.is_file():
+        branch_counts, branch_metrics = baseline_to_counter_with_metrics(
+            json.loads(args.branch_baseline.read_text(encoding="utf-8"))
+        )
+        if branch_counts != reference or branch_metrics != reference_metrics:
+            bok, blines = validate_baseline_change(
+                reference,
+                branch_counts,
+                base_metrics=reference_metrics,
+                branch_metrics=branch_metrics,
+            )
+            for line in blines:
+                print(line)
+            if not bok:
+                return 1
+
+    report_raw = json.loads(args.report.read_text(encoding="utf-8"))
+    current, current_metrics = count_fingerprints_with_metrics(
+        load_report_messages(report_raw)
+    )
+    ok, lines = compare_reports(
+        reference,
+        current,
+        baseline_metrics=reference_metrics,
+        current_metrics=current_metrics,
+    )
+    for line in lines:
+        print(line)
+    return 0 if ok else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -437,74 +599,22 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         baseline_raw = json.loads(args.baseline.read_text(encoding="utf-8"))
         report_raw = json.loads(args.report.read_text(encoding="utf-8"))
-        baseline = baseline_to_counter(baseline_raw)
-        current = count_fingerprints(load_report_messages(report_raw))
-        ok, lines = compare_reports(baseline, current)
+        baseline, baseline_metrics = baseline_to_counter_with_metrics(baseline_raw)
+        current, current_metrics = count_fingerprints_with_metrics(
+            load_report_messages(report_raw)
+        )
+        ok, lines = compare_reports(
+            baseline,
+            current,
+            baseline_metrics=baseline_metrics,
+            current_metrics=current_metrics,
+        )
         for line in lines:
             print(line)
         return 0 if ok else 1
 
     if args.cmd == "ci":
-        status_ok, status_msg = pylint_status_ok(args.pylint_status)
-        print(status_msg)
-        if not status_ok:
-            # Fail closed even if a partial JSON report exists.
-            print(
-                "Refusing to accept report after fatal/usage Pylint status "
-                "(partial nonempty report is not success)."
-            )
-            return 1
-
-        base_ref = (args.base_ref or "").strip() or None
-        try:
-            raw, provenance = resolve_baseline_bytes(
-                base_ref=base_ref,
-                branch_baseline=args.branch_baseline,
-                baseline_repo_path=args.baseline_repo_path,
-                git_cwd=args.git_cwd,
-            )
-        except BaselineResolveError as exc:
-            print(f"Baseline resolution FAIL: {exc}")
-            return 1
-        except FileNotFoundError as exc:
-            print(f"Baseline resolution FAIL: {exc}")
-            return 1
-        if provenance.startswith("BOOTSTRAP"):
-            print(
-                "BOOTSTRAP: base ref lacks "
-                f"{args.baseline_repo_path}; using branch baseline "
-                f"at {args.branch_baseline} for this introduction only"
-            )
-        else:
-            print(f"Using baseline from {provenance}")
-
-        reference = baseline_to_counter(_load_json_bytes(raw))
-
-        # If base had a baseline and the branch also has one, ensure the branch
-        # file does not raise the bar (no self-blessing of new debt).
-        if (
-            provenance.startswith("base:")
-            and args.branch_baseline.is_file()
-        ):
-            branch_counts = baseline_to_counter(
-                json.loads(args.branch_baseline.read_text(encoding="utf-8"))
-            )
-            # Only enforce when branch file content differs from base.
-            if branch_counts != reference:
-                bok, blines = validate_baseline_change(reference, branch_counts)
-                for line in blines:
-                    print(line)
-                if not bok:
-                    return 1
-
-        report_raw = json.loads(args.report.read_text(encoding="utf-8"))
-        current = count_fingerprints(load_report_messages(report_raw))
-        # Always compare the live report to the *reference* baseline (base SHA
-        # when present), never to a branch-raised baseline.
-        ok, lines = compare_reports(reference, current)
-        for line in lines:
-            print(line)
-        return 0 if ok else 1
+        return _cmd_ci(args)
 
     parser.error(f"unknown command {args.cmd}")
     return 2

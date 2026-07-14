@@ -259,13 +259,16 @@ def exclude_processed_path(
     target: str,
     file_hash: str,
     reason: str = "",
+    *,
+    purged_at: str | None = None,
 ) -> None:
     """Mark a resolved path excluded under the processed-state lock.
 
     Canonicalizes path exclusion across content hashes: clears other active
     same-path exclusion markers, keeps one marker on ``file_hash``, and
     preserves the latest explicit reason (or carries forward a prior reason
-    when re-excluding without a new reason).
+    when re-excluding without a new reason). Optional ``purged_at`` stamps the
+    surviving marker in the same transaction (purge path).
     """
     path_key = _processed_path_str(target)
 
@@ -288,6 +291,7 @@ def exclude_processed_path(
             if ep and _processed_path_str(ep) == path_key:
                 entry.pop("excluded", None)
                 entry.pop("exclude_reason", None)
+                entry.pop("purged_at", None)
 
         entry = data.get(file_hash, {})
         if not isinstance(entry, dict):
@@ -298,6 +302,10 @@ def exclude_processed_path(
             entry["exclude_reason"] = carried_reason
         else:
             entry.pop("exclude_reason", None)
+        if purged_at:
+            entry["purged_at"] = purged_at
+        else:
+            entry.pop("purged_at", None)
         data[file_hash] = entry
 
     mutate_processed(processed_path, mutator)
@@ -479,6 +487,72 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
         return True, 1, n_units
 
 
+def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-locals
+    *,
+    cfg: dict,
+    idx: dict,
+    path: str,
+    path_key: str,
+    file_hash: str,
+    messages: list,
+    models: dict,
+    units_export: Path | None,
+    force_file: str | None,
+    supersede_on_reindex: bool,
+    verbose: bool,
+) -> tuple[bool, int]:
+    """Index one inter-model doc. Returns (committed, n_units)."""
+    from inter_model_index import index_inter_model_messages
+
+    chroma_dir = idx["chroma_dir"]
+    if force_file:
+        with ChromaStore(chroma_dir) as store:
+            tombstone_tag = f"{path_key}#{file_hash[:12]}"
+            if supersede_on_reindex:
+                _echo_neutralize_preview(
+                    store.preview_supersede_for_source(path_key),
+                    Path(path).name,
+                    tombstone_tag,
+                    verbose,
+                )
+                n_del = store.supersede_units_for_source(
+                    path_key, superseded_by=tombstone_tag
+                )
+                if verbose and n_del:
+                    print(
+                        f"  [reindex] superseded {n_del} units for {Path(path).name}",
+                    )
+            else:
+                n_del = store.delete_units_for_source(path_key)
+                if verbose and n_del:
+                    print(f"  [reindex] cleared {n_del} units for {Path(path).name}")
+    try:
+        n_units = index_inter_model_messages(
+            path,
+            messages,
+            path_key=path_key,
+            chroma_dir=chroma_dir,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            cfg=cfg,
+            verbose=verbose,
+            units_export=units_export if units_export else None,
+        )
+    except Exception as e:
+        if verbose:
+            print(f"  [skip] inter-model index failed {path}: {e}")
+        return False, 0
+
+    committed = commit_processed_index_entry(
+        idx["processed_log"],
+        file_hash=file_hash,
+        path_key=path_key,
+        chunks=0,
+        units=n_units,
+    )
+    return committed, n_units
+
+
 def index(
     force_file: str | None = None,
     limit_files: int | None = None,
@@ -609,59 +683,25 @@ def index(
             continue
 
         if fmt == "inter_model_doc":
-            chroma_dir = idx["chroma_dir"]
-            if force_file:
-                with ChromaStore(chroma_dir) as store:
-                    tombstone_tag = f"{path_key}#{file_hash[:12]}"
-                    if supersede_on_reindex:
-                        _echo_neutralize_preview(
-                            store.preview_supersede_for_source(path_key),
-                            Path(path).name,
-                            tombstone_tag,
-                            verbose,
-                        )
-                        n_del = store.supersede_units_for_source(
-                            path_key, superseded_by=tombstone_tag
-                        )
-                        if verbose and n_del:
-                            print(
-                                f"  [reindex] superseded {n_del} units for {Path(path).name}",
-                            )
-                    else:
-                        n_del = store.delete_units_for_source(path_key)
-                        if verbose and n_del:
-                            print(f"  [reindex] cleared {n_del} units for {Path(path).name}")
-            try:
-                from inter_model_index import index_inter_model_messages
-
-                n_units = index_inter_model_messages(
-                    path,
-                    messages,
-                    path_key=path_key,
-                    chroma_dir=chroma_dir,
-                    embed_model=models["embed_model"],
-                    ollama_host=models["ollama_host"],
-                    cfg=cfg,
-                    verbose=verbose,
-                    units_export=units_export if units_export else None,
-                )
-            except Exception as e:
-                if verbose:
-                    print(f"  [skip] inter-model index failed {path}: {e}")
-                continue
-
-            committed = commit_processed_index_entry(
-                idx["processed_log"],
-                file_hash=file_hash,
+            committed, n_units = _index_inter_model_file(
+                cfg=cfg,
+                idx=idx,
+                path=path,
                 path_key=path_key,
-                chunks=0,
-                units=n_units,
+                file_hash=file_hash,
+                messages=messages,
+                models=models,
+                units_export=units_export,
+                force_file=force_file,
+                supersede_on_reindex=supersede_on_reindex,
+                verbose=verbose,
             )
-            # Refresh local view so later files see concurrent exclusions/commits.
             processed = load_processed(idx["processed_log"])
             if not committed:
                 stats["files_skipped"] += 1
-                if verbose:
+                if verbose and n_units == 0:
+                    print(f"  [skip] inter-model index failed or excluded {Path(path).name}")
+                elif verbose:
                     print(f"  [skip] excluded during index {Path(path).name}")
                 continue
             stats["files_processed"] += 1

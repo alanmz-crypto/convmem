@@ -18,14 +18,7 @@ from source_purge import (
 )
 
 
-def _cfg(td: Path) -> dict:
-    return {
-        "index": {
-            "processed_log": str(td / "processed.json"),
-            "units_export": str(td / "knowledge_units.jsonl"),
-            "chroma_dir": str(td / "chroma"),
-        }
-    }
+from tests.purge_test_util import purge_cfg as _cfg
 
 
 class JsonlPurgeTests(unittest.TestCase):
