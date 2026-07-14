@@ -63,14 +63,22 @@ class BaselineResolveError(RuntimeError):
     """Base ref cannot be resolved or git failed — fail closed (never bootstrap)."""
 
 
+_COMPLEXITY_COUNT = re.compile(r"\s*\(\d+/\d+\)")
+
+
 def normalize_message(message: str, *, symbol: str = "", msg_id: str = "") -> str:
     """Normalize unstable shapes for *non-aggregate* fingerprints.
 
-    Rewrites embedded ``==name:[n:m]`` ranges to ``[#:#]``. R0801/R0401 are
-    not normalized here — they use aggregate fingerprints instead.
+    Rewrites embedded ``==name:[n:m]`` ranges to ``[#:#]``. Strips ``(n/m)``
+    suffixes on complexity messages so line/branch-count drift does not invent
+    new fingerprints. R0801/R0401 use aggregate fingerprints instead.
     """
-    del symbol, msg_id  # API kept for call sites; aggregates bypass this.
-    return _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message.strip())
+    message = message.strip()
+    if msg_id.startswith("R09") or symbol.startswith("too-many"):
+        message = _COMPLEXITY_COUNT.sub("", message)
+    if msg_id == "C0302" or symbol == "too-many-lines":
+        message = _COMPLEXITY_COUNT.sub("", message)
+    return _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message)
 
 
 def _norm_path(path: str) -> str:

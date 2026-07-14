@@ -1,142 +1,32 @@
 #!/usr/bin/env python3
-"""Exclude --purge: per-source + export locks and path-candidate matching.
+"""Exclude --purge sinks and orchestrator (preview/execute).
 
-Design A (ARCHITECTURE-exclude-source-purge.md): source flock serializes
-purge vs same-source ingest; export flock serializes all knowledge_units.jsonl
-mutations. Never hold either lock across parse/LLM/embed/network work.
+Locks and path-candidate matching live in ``purge_locks`` (import-light).
 """
 
 from __future__ import annotations
 
 import json
-import fcntl
-import hashlib
-import threading
-from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
+from purge_locks import (
+    build_path_candidates,
+    export_flock,
+    line_matches_purge,
+    purged_exclusion_key,
+    source_flock,
+)
 
-# Thread-local lock depth for ordering assertions (N9).
-_tls = threading.local()
+# Re-exports for stable public API / tests.
+import purge_locks as _purge_locks
 
-
-def _export_depth() -> int:
-    return int(getattr(_tls, "export_depth", 0) or 0)
-
-
-def _source_depth() -> int:
-    return int(getattr(_tls, "source_depth", 0) or 0)
-
-
-def assert_lock_ordering_ok(*, acquiring: str) -> None:
-    """Raise if acquiring would violate source-then-export ordering.
-
-    Allowed: source alone, export alone, source then export.
-    Forbidden: export then source (hold export while acquiring source).
-    """
-    if acquiring == "source" and _export_depth() > 0:
-        raise RuntimeError(
-            "lock ordering violation: cannot acquire source lock while holding export lock"
-        )
-
-
-def source_lock_dir(cfg: dict) -> Path:
-    """Lock directory derived from configured data root (parent of processed_log)."""
-    data_root = Path(cfg["index"]["processed_log"]).expanduser().resolve().parent
-    return data_root / "locks" / "source"
-
-
-def source_lock_path(cfg: dict, canonical_path: str) -> Path:
-    """Per-source lock file. Identity = SHA-256 of canonical path."""
-    path_hash = hashlib.sha256(canonical_path.encode()).hexdigest()
-    return source_lock_dir(cfg) / f"{path_hash}.lock"
-
-
-def export_lock_path_for_file(export_path: Path | str) -> Path:
-    """Export lock sidecar for a knowledge_units.jsonl path."""
-    p = Path(export_path).expanduser().resolve()
-    return p.with_suffix(p.suffix + ".lock")
-
-
-def export_lock_path(cfg: dict) -> Path:
-    """Export lock sidecar of configured units_export."""
-    return export_lock_path_for_file(cfg["index"]["units_export"])
-
-
-@contextmanager
-def source_flock(cfg: dict, canonical_path: str) -> Iterator[Path]:
-    """Exclusive advisory lock for one source path (Lock 1)."""
-    assert_lock_ordering_ok(acquiring="source")
-    lock = source_lock_path(cfg, canonical_path)
-    lock.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock, "a+", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        _tls.source_depth = _source_depth() + 1
-        try:
-            yield lock
-        finally:
-            _tls.source_depth = max(0, _source_depth() - 1)
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-
-
-@contextmanager
-def export_flock_path(export_path: Path | str) -> Iterator[Path]:
-    """Exclusive advisory lock for a JSONL export path (Lock 2)."""
-    lock = export_lock_path_for_file(export_path)
-    lock.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock, "a+", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        _tls.export_depth = _export_depth() + 1
-        try:
-            yield lock
-        finally:
-            _tls.export_depth = max(0, _export_depth() - 1)
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-
-
-@contextmanager
-def export_flock(cfg: dict) -> Iterator[Path]:
-    """Exclusive advisory lock for configured units_export (Lock 2)."""
-    with export_flock_path(cfg["index"]["units_export"]) as lock:
-        yield lock
-
-
-def build_path_candidates(target: str) -> list[str]:
-    """Exact path candidates for all sink queries (canonical + expanduser-only).
-
-    Does NOT canonicalize empty, relative, or non-filesystem prefixes into cwd.
-    """
-    if not target or not str(target).strip():
-        return []
-    s = str(target).strip()
-    # Non-filesystem / relative markers are never purge targets as CLI input
-    # for matching stored values — but we still build candidates for absolute paths.
-    if not s.startswith(("/", "~")):
-        return []
-    raw = str(Path(s).expanduser())
-    try:
-        canonical = str(Path(s).expanduser().resolve())
-    except OSError:
-        canonical = raw
-    return list(dict.fromkeys([canonical, raw]))
-
-
-def line_matches_purge(rec: dict[str, Any], candidates: list[str]) -> bool:
-    """Exact-string match of stored source_path against candidates."""
-    sp = rec.get("source_path", "")
-    if not isinstance(sp, str) or not sp or not sp.startswith("/"):
-        return False
-    return sp in candidates
-
-
-def purged_exclusion_key(canonical_path: str) -> str:
-    """Synthetic processed.json key when the source file is missing."""
-    digest = hashlib.sha256(canonical_path.encode()).hexdigest()
-    return f"purged:{digest}"
-
-
+assert_lock_ordering_ok = _purge_locks.assert_lock_ordering_ok
+export_flock_path = _purge_locks.export_flock_path
+export_lock_path = _purge_locks.export_lock_path
+source_lock_dir = _purge_locks.source_lock_dir
+source_lock_path = _purge_locks.source_lock_path
 
 class MalformedJsonlError(ValueError):
     """JSONL contains a malformed line — fail closed, do not rewrite."""
@@ -211,17 +101,13 @@ def purge_source_from_jsonl(
 
 def count_chroma_for_source(store: Any, candidates: list[str]) -> dict[str, int]:
     """Count units and summaries matching any candidate source_path."""
+    from chroma_store import SUMMARIES, UNITS
+
     units = 0
     summaries = 0
     for candidate in candidates:
-        ures = store._collection("knowledge_units").get(  # noqa: SLF001
-            where={"source_path": candidate}, include=[]
-        )
-        units += len(ures.get("ids") or [])
-        sres = store._collection("conversation_summaries").get(  # noqa: SLF001
-            where={"source_path": candidate}, include=[]
-        )
-        summaries += len(sres.get("ids") or [])
+        units += int(store.count_for_source_path(UNITS, candidate))
+        summaries += int(store.count_for_source_path(SUMMARIES, candidate))
     return {"units": units, "summaries": summaries}
 
 
@@ -257,7 +143,7 @@ class PurgePreview:
 
 
 @dataclass
-class PurgeResult:
+class PurgeResult:  # pylint: disable=too-many-instance-attributes
     exit_code: int
     canonical_path: str
     candidates: list[str]
