@@ -19,7 +19,7 @@
       "symbol": "duplicate-code",
       "msg_id": "R0801",
       "message": "",
-      "count": 72
+      "count": 73
     },
     {
       "path": "adapters/__init__.py",
