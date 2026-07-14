@@ -151,17 +151,16 @@ def baseline_to_counter(baseline: Any) -> Counter[Fingerprint]:
         for row in baseline:
             if not isinstance(row, dict):
                 continue
-            symbol = str(row.get("symbol") or "")
-            msg_id = str(row.get("msg_id") or row.get("message-id") or "")
-            fp = (
-                _norm_path(str(row.get("path") or "")),
-                symbol,
-                msg_id,
-                normalize_message(
-                    str(row.get("message") or "").strip(),
-                    symbol=symbol,
-                    msg_id=msg_id,
-                ),
+            # Must match fingerprint_from_message (incl. R0801/R0401 aggregates).
+            # Re-running normalize_message on an already-aggregated empty message
+            # used to invent "Similar lines modules:\n" and miss the live "*"/"" key.
+            fp = fingerprint_from_message(
+                {
+                    "path": row.get("path") or "",
+                    "symbol": row.get("symbol") or "",
+                    "message-id": row.get("msg_id") or row.get("message-id") or "",
+                    "message": row.get("message") or "",
+                }
             )
             counts[fp] += int(row.get("count") or 1)
         return counts
