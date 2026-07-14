@@ -1272,7 +1272,12 @@ def exclude_command(
     from pathlib import Path
 
     from config import load_config
-    from ingest import load_processed, save_processed, sha256_file
+    from ingest import (
+        exclude_processed_path,
+        load_processed,
+        sha256_file,
+        undo_exclude_processed_path,
+    )
     from query import render_error
 
     cfg = load_config()
@@ -1300,19 +1305,11 @@ def exclude_command(
 
     if undo:
         target = str(Path(undo).expanduser().resolve())
-        found = False
-        for h, entry in processed.items():
-            if isinstance(entry, dict) and entry.get("path") == target and entry.get("excluded"):
-                entry.pop("excluded", None)
-                entry.pop("exclude_reason", None)
-                save_processed(processed_path, processed)
-                typer.echo(f"Re-included: {target}")
-                typer.echo("Run 'convmem index' to ingest it.")
-                found = True
-                break
-        if not found:
+        if not undo_exclude_processed_path(processed_path, target):
             render_error(f"Not found in excluded list: {target}")
             raise typer.Exit(1)
+        typer.echo(f"Re-included: {target}")
+        typer.echo("Run 'convmem index' to ingest it.")
         return
 
     if not path:
@@ -1330,15 +1327,7 @@ def exclude_command(
         render_error(f"Cannot read file: {e}")
         raise typer.Exit(1)
 
-    entry = processed.get(file_hash, {})
-    if not isinstance(entry, dict):
-        entry = {}
-    entry["path"] = target
-    entry["excluded"] = True
-    if reason:
-        entry["exclude_reason"] = reason
-    processed[file_hash] = entry
-    save_processed(processed_path, processed)
+    exclude_processed_path(processed_path, target, file_hash, reason=reason)
     typer.echo(f"Excluded: {Path(target).name}")
     if reason:
         typer.echo(f"  reason: {reason}")

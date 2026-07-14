@@ -9,8 +9,11 @@ For each source file:
       distill   -> embed -> knowledge_units       (primary search, Step 5+)
 """
 
+import fcntl
 import hashlib
 import json
+from collections.abc import Callable
+from contextlib import contextmanager
 from pathlib import Path
 
 from adapters.detect import detect_format, get_parser, TOOL_BY_FORMAT
@@ -44,6 +47,38 @@ def save_processed(path: str, data: dict) -> None:
     tmp = p.with_suffix(p.suffix + ".tmp")
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
     tmp.replace(p)
+
+
+def processed_lock_path(processed_path: str) -> Path:
+    """Stable sidecar lock path (not processed.json — atomic replace changes inode)."""
+    p = Path(processed_path)
+    return p.with_name(p.name + ".lock")
+
+
+@contextmanager
+def _processed_lock(processed_path: str):
+    """Exclusive advisory lock on the processed-state sidecar."""
+    lock = processed_lock_path(processed_path)
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock, "a+", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def mutate_processed(processed_path: str, mutator: Callable[[dict], None]) -> dict:
+    """Lock, reload on-disk state, mutate, atomic-save, unlock.
+
+    Hold only for read+mutate+write. Never across parse/LLM/embed/Chroma work.
+    Always releases the lock on exception paths (via `_processed_lock`).
+    """
+    with _processed_lock(processed_path):
+        data = load_processed(processed_path)
+        mutator(data)
+        save_processed(processed_path, data)
+        return data
 
 
 def chunk_messages(messages: list[dict], size: int, overlap: int) -> list[dict]:
@@ -152,6 +187,111 @@ def _stored_hash_for_path(path_str: str, processed: dict) -> str | None:
         if ep and _processed_path_str(ep) == path_str:
             return key
     return None
+
+
+def _path_is_excluded(processed: dict, path_key: str) -> bool:
+    for entry in processed.values():
+        if not isinstance(entry, dict) or not entry.get("excluded"):
+            continue
+        ep = entry.get("path")
+        if ep and _processed_path_str(ep) == path_key:
+            return True
+    return False
+
+
+def _purge_stale_same_path(
+    processed: dict,
+    path_key: str,
+    keep_hash: str,
+    *,
+    preserve_exclusions: bool = True,
+) -> int:
+    """Remove other same-path keys. Exclusions survive when preserve_exclusions=True."""
+    removed = 0
+    for key, entry in list(processed.items()):
+        if key == keep_hash or not isinstance(entry, dict):
+            continue
+        ep = entry.get("path")
+        if not ep or _processed_path_str(ep) != path_key:
+            continue
+        if preserve_exclusions and entry.get("excluded"):
+            continue
+        del processed[key]
+        removed += 1
+    return removed
+
+
+def commit_processed_index_entry(
+    processed_path: str,
+    *,
+    file_hash: str,
+    path_key: str,
+    chunks: int,
+    units: int,
+) -> bool:
+    """Merge one file's index metadata under the processed-state lock.
+
+    Reloads latest disk state; never writes a whole stale pre-index snapshot.
+    Returns False when a path-based exclusion blocks the commit (exclusion kept).
+    """
+    result = {"committed": False}
+
+    def mutator(data: dict) -> None:
+        if _path_is_excluded(data, path_key):
+            return
+        existing = data.get(file_hash)
+        if isinstance(existing, dict) and existing.get("excluded"):
+            return
+        data[file_hash] = {
+            "path": path_key,
+            "chunks": chunks,
+            "units": units,
+        }
+        _purge_stale_same_path(data, path_key, file_hash, preserve_exclusions=True)
+        result["committed"] = True
+
+    mutate_processed(processed_path, mutator)
+    return result["committed"]
+
+
+def exclude_processed_path(
+    processed_path: str,
+    target: str,
+    file_hash: str,
+    reason: str = "",
+) -> None:
+    """Mark a resolved path excluded under the processed-state lock."""
+
+    def mutator(data: dict) -> None:
+        entry = data.get(file_hash, {})
+        if not isinstance(entry, dict):
+            entry = {}
+        entry["path"] = target
+        entry["excluded"] = True
+        if reason:
+            entry["exclude_reason"] = reason
+        data[file_hash] = entry
+
+    mutate_processed(processed_path, mutator)
+
+
+def undo_exclude_processed_path(processed_path: str, target: str) -> bool:
+    """Clear exclusion flags for one resolved path. Returns True if found."""
+    found = {"ok": False}
+
+    def mutator(data: dict) -> None:
+        for entry in data.values():
+            if not isinstance(entry, dict) or not entry.get("excluded"):
+                continue
+            ep = entry.get("path")
+            if ep and _processed_path_str(ep) == target:
+                entry.pop("excluded", None)
+                entry.pop("exclude_reason", None)
+                found["ok"] = True
+                break
+
+    mutate_processed(processed_path, mutator)
+    return found["ok"]
 
 
 def watch_skip_reason(
@@ -312,22 +452,29 @@ def index(
                 print(f"  [skip] cannot read {path}: {e}")
             continue
 
-        # Excluded files are always skipped, even with force_file
-        if file_hash in processed and processed[file_hash].get("excluded"):
+        path_key = str(Path(path).expanduser().resolve())
+
+        # Excluded files are always skipped, even with force_file / force_reindex
+        if _path_is_excluded(processed, path_key) or (
+            file_hash in processed and processed[file_hash].get("excluded")
+        ):
             stats["files_skipped"] += 1
             if verbose:
                 print(f"  [skip] excluded {Path(path).name}")
             continue
 
         if force_reindex and force_file:
-            path_str = str(Path(path).expanduser().resolve())
+            # Local skip bookkeeping only — durable purge happens in commit.
             for key, entry in list(processed.items()):
-                if isinstance(entry, dict) and entry.get("path") == path_str:
+                if (
+                    isinstance(entry, dict)
+                    and entry.get("path") == path_key
+                    and not entry.get("excluded")
+                ):
                     del processed[key]
 
-        path_key = str(Path(path).expanduser().resolve())
-
-        # Growing append-only transcripts: drop stale processed entry when hash changes.
+        # Growing append-only transcripts: drop stale local entry when hash changes.
+        # Durable purge is part of commit_processed_index_entry (preserves exclusions).
         if force_file and not force_reindex:
             stale = _stored_hash_for_path(path_key, processed)
             if stale and stale != file_hash:
@@ -425,24 +572,20 @@ def index(
                     print(f"  [skip] inter-model index failed {path}: {e}")
                 continue
 
-            processed[file_hash] = {
-                "path": path_key,
-                "chunks": 0,
-                "units": n_units,
-            }
-
-            # Purge stale entries for the same resolved path.
-            stale_keys = [
-                k
-                for k, v in processed.items()
-                if isinstance(v, dict)
-                and v.get("path") == path_key
-                and k != file_hash
-            ]
-            for k in stale_keys:
-                del processed[k]
-
-            save_processed(idx["processed_log"], processed)
+            committed = commit_processed_index_entry(
+                idx["processed_log"],
+                file_hash=file_hash,
+                path_key=path_key,
+                chunks=0,
+                units=n_units,
+            )
+            # Refresh local view so later files see concurrent exclusions/commits.
+            processed = load_processed(idx["processed_log"])
+            if not committed:
+                stats["files_skipped"] += 1
+                if verbose:
+                    print(f"  [skip] excluded during index {Path(path).name}")
+                continue
             stats["files_processed"] += 1
             stats["units_indexed"] += n_units
             continue
@@ -557,25 +700,19 @@ def index(
                             uf.write(json.dumps(unit) + "\n")
                     n_units += 1
 
-        processed[file_hash] = {
-            "path": path_key,
-            "chunks": n_indexed,
-            "units": n_units,
-        }
-
-        # Purge stale entries for the same resolved path (different content hash).
-        stale_keys = [
-            k
-            for k, v in processed.items()
-            if isinstance(v, dict)
-            and v.get("path") == path_key
-            and k != file_hash
-        ]
-        for k in stale_keys:
-            del processed[k]
+        committed = commit_processed_index_entry(
+            idx["processed_log"],
+            file_hash=file_hash,
+            path_key=path_key,
+            chunks=n_indexed,
+            units=n_units,
+        )
+        processed = load_processed(idx["processed_log"])
+        if not committed:
             stats["files_skipped"] += 1
-
-        save_processed(idx["processed_log"], processed)
+            if verbose:
+                print(f"  [skip] excluded during index {Path(path).name}")
+            continue
         stats["files_processed"] += 1
         stats["chunks_indexed"] += n_indexed
         stats["units_indexed"] += n_units
