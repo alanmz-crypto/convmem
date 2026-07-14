@@ -49,22 +49,20 @@ jobs:
       - name: Pylint regression gate
         env:
           PYLINT_STATUS: ${{ steps.pylint_run.outputs.pylint_status }}
-          BASE_REF: ${{ github.event.pull_request.base.sha }}
+          # PR checks: base.sha. Push to main: event.before (prior tip).
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          # pull_request: compare vs baseline at base SHA.
-          # push to main: empty BASE_REF → committed branch baseline (post-merge).
-          if [ -n "${BASE_REF}" ]; then
-            python scripts/pylint_regression_gate.py ci \
-              --report pylint-report.json \
-              --pylint-status "${PYLINT_STATUS}" \
-              --branch-baseline ci/pylint-baseline.json \
-              --base-ref "${BASE_REF}"
-          else
-            python scripts/pylint_regression_gate.py ci \
-              --report pylint-report.json \
-              --pylint-status "${PYLINT_STATUS}" \
-              --branch-baseline ci/pylint-baseline.json
+          # Live findings and any baseline edit are compared against BASE_REF.
+          # Null / empty before (branch creation) must fail closed — never bootstrap.
+          if [ -z "${BASE_REF}" ] || [ "${BASE_REF}" = "0000000000000000000000000000000000000000" ]; then
+            echo "Baseline resolution FAIL: BASE_REF missing or null OID"
+            exit 1
           fi
+          python scripts/pylint_regression_gate.py ci \
+            --report pylint-report.json \
+            --pylint-status "${PYLINT_STATUS}" \
+            --branch-baseline ci/pylint-baseline.json \
+            --base-ref "${BASE_REF}"
 
       - name: Upload Pylint report
         if: failure()
