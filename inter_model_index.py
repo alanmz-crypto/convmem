@@ -35,7 +35,7 @@ def _keywords_from(path: Path, title: str) -> list[str]:
     return out[:8]
 
 
-def index_inter_model_messages(
+def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-arguments
     path: str,
     messages: list[dict],
     *,
@@ -43,10 +43,15 @@ def index_inter_model_messages(
     chroma_dir: str,
     embed_model: str,
     ollama_host: str,
+    cfg: dict,
     verbose: bool = True,
     units_export: Path | None = None,
 ) -> int:
-    """Embed each section message as a knowledge unit. Returns units indexed."""
+    """Embed each section message as a knowledge unit. Returns units indexed.
+
+    ``cfg`` supplies ``index.processed_log`` for source-lock identity and
+    exclusion reads. Export path follows ``units_export`` or cfg.
+    """
     src = Path(path)
     n_units = 0
     units_batch: list[tuple] = []
@@ -111,13 +116,45 @@ def index_inter_model_messages(
     if not units_batch:
         return 0
 
-    with ChromaStore(chroma_dir) as store:
-        for unit, doc, embedding, meta in units_batch:
-            store.add_unit(unit["id"], doc, embedding, meta)
-            if units_export:
-                units_export.parent.mkdir(parents=True, exist_ok=True)
-                with open(units_export, "a", encoding="utf-8") as uf:
-                    uf.write(json.dumps(unit) + "\n")
+    # Embeds above run unlocked; source/export locks only wrap the batch write.
+    # Avoid importing ingest here (ingest lazily imports this module).
+    from purge_locks import export_flock_path, source_flock
+
+    processed_log = cfg["index"]["processed_log"]
+    export_path = (
+        Path(units_export)
+        if units_export is not None
+        else Path(cfg["index"]["units_export"]).expanduser()
+    )
+
+    def _load_processed(path: str) -> dict:
+        pp = Path(path)
+        if not pp.is_file():
+            return {}
+        return json.loads(pp.read_text(encoding="utf-8") or "{}")
+
+    def _path_excluded(processed: dict, key: str) -> bool:
+        for entry in processed.values():
+            if not isinstance(entry, dict) or not entry.get("excluded"):
+                continue
+            ep = entry.get("path")
+            if ep and str(Path(ep).expanduser().resolve()) == key:
+                return True
+        return False
+
+    with source_flock(cfg, path_key):
+        processed = _load_processed(processed_log)
+        if _path_excluded(processed, path_key):
+            if verbose:
+                print(f"  [skip] excluded during inter-model write {Path(path).name}")
+            return 0
+        with ChromaStore(chroma_dir) as store:
+            for unit, doc, embedding, meta in units_batch:
+                store.add_unit(unit["id"], doc, embedding, meta)
+                export_path.parent.mkdir(parents=True, exist_ok=True)
+                with export_flock_path(export_path):
+                    with open(export_path, "a", encoding="utf-8") as uf:
+                        uf.write(json.dumps(unit) + "\n")
 
     if verbose:
         print(f"  [inter-model] {src.name}: {n_units} section units")

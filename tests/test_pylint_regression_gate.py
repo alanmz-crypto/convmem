@@ -77,6 +77,8 @@ _R0801_SEMANTIC = (
 )
 
 
+
+
 class FingerprintTests(unittest.TestCase):
     def test_line_ignored_in_fingerprint(self):
         a = fingerprint_from_message(

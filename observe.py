@@ -23,36 +23,39 @@ def _upsert_jsonl_line(
     unit: dict,
 ) -> None:
     """Replace the line in units_export matching ledger_id, or append if not found."""
-    if not units_export.exists():
-        units_export.parent.mkdir(parents=True, exist_ok=True)
-        with open(units_export, "a", encoding="utf-8") as f:
-            f.write(json.dumps(unit) + "\n")
-        return
+    from purge_locks import export_flock_path
 
-    lines: list[str] = []
-    found = False
-    with open(units_export, encoding="utf-8") as f:
-        for raw_line in f:
-            line = raw_line.strip()
-            if not line:
-                lines.append(raw_line)  # preserve blank lines
-                continue
-            try:
-                rec = json.loads(line)
-            except json.JSONDecodeError:
-                lines.append(raw_line)
-                continue
-            if (rec.get("ledger_id") or "").strip() == ledger_id:
-                lines.append(json.dumps(unit) + "\n")
-                found = True
-            else:
-                lines.append(raw_line)
+    with export_flock_path(units_export):
+        if not units_export.exists():
+            units_export.parent.mkdir(parents=True, exist_ok=True)
+            with open(units_export, "a", encoding="utf-8") as f:
+                f.write(json.dumps(unit) + "\n")
+            return
 
-    if not found:
-        lines.append(json.dumps(unit) + "\n")
+        lines: list[str] = []
+        found = False
+        with open(units_export, encoding="utf-8") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line:
+                    lines.append(raw_line)  # preserve blank lines
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    lines.append(raw_line)
+                    continue
+                if (rec.get("ledger_id") or "").strip() == ledger_id:
+                    lines.append(json.dumps(unit) + "\n")
+                    found = True
+                else:
+                    lines.append(raw_line)
 
-    with open(units_export, "w", encoding="utf-8") as f:
-        f.writelines(lines)
+        if not found:
+            lines.append(json.dumps(unit) + "\n")
+
+        with open(units_export, "w", encoding="utf-8") as f:
+            f.writelines(lines)
 
 
 def normalize_observation(raw: dict, *, min_confidence: float = 0.0) -> dict | None:
@@ -126,9 +129,12 @@ def ingest_observation(
     store.add_unit(unit["id"], doc, embedding, meta)
 
     if units_export:
+        from purge_locks import export_flock_path
+
         units_export.parent.mkdir(parents=True, exist_ok=True)
-        with open(units_export, "a", encoding="utf-8") as uf:
-            uf.write(json.dumps(unit) + "\n")
+        with export_flock_path(units_export):
+            with open(units_export, "a", encoding="utf-8") as uf:
+                uf.write(json.dumps(unit) + "\n")
 
     return unit
 

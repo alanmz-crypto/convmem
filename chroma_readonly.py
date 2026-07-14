@@ -11,6 +11,14 @@ def _db_path(chroma_dir: str | Path) -> Path:
     return Path(chroma_dir).expanduser() / "chroma.sqlite3"
 
 
+def _connect_readonly(db: Path) -> sqlite3.Connection:
+    """Open chroma.sqlite3 with URI mode=ro (never creates WAL/SHM or the DB)."""
+    if not db.is_file():
+        raise FileNotFoundError(str(db))
+    uri = f"file:{db.resolve().as_posix()}?mode=ro"
+    return sqlite3.connect(uri, uri=True)
+
+
 def _coerce_value(string_value, int_value, float_value, bool_value):
     if bool_value is not None:
         return bool(bool_value)
@@ -26,7 +34,7 @@ def _coerce_value(string_value, int_value, float_value, bool_value):
 def collection_metadata_rows(chroma_dir: str | Path, collection_name: str) -> list[dict]:
     """Return one dict per embedding_id from the metadata segment of a collection."""
     db = _db_path(chroma_dir)
-    conn = sqlite3.connect(db)
+    conn = _connect_readonly(db)
     conn.row_factory = sqlite3.Row
     try:
         cur = conn.cursor()
@@ -71,7 +79,7 @@ def collection_metadata_rows(chroma_dir: str | Path, collection_name: str) -> li
 def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
     """Count distinct embeddings in the metadata segment of a collection."""
     db = _db_path(chroma_dir)
-    conn = sqlite3.connect(db)
+    conn = _connect_readonly(db)
     try:
         cur = conn.cursor()
         cur.execute(
