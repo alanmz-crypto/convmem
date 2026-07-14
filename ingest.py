@@ -745,6 +745,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     cfg: dict,
     idx: dict,
     path: str,
+    parser,
     processed: dict,
     models: dict,
     units_export: Path | None,
@@ -756,20 +757,19 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     supersede_on_reindex: bool,
     verbose: bool,
 ) -> tuple[str, int, int]:
-    """Index one source file. Returns (status, chunks, units).
+    """Index one already-resolved source file. Returns (status, chunks, units).
 
-    status is ``skipped``, ``processed``, or ``error-skip``.
+    status:
+      - ``ignored`` — unreadable or parse-failed (does not increment files_skipped)
+      - ``skipped`` — excluded / unchanged / inter-model or commit exclusion
+      - ``processed`` — durable commit succeeded
     """
-    parser = get_parser(path)
-    if parser is None:
-        return "skipped", 0, 0
-
     try:
         file_hash = sha256_file(path)
     except OSError as e:
         if verbose:
             print(f"  [skip] cannot read {path}: {e}")
-        return "skipped", 0, 0
+        return "ignored", 0, 0
 
     path_key = str(Path(path).expanduser().resolve())
 
@@ -819,7 +819,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     except Exception as e:
         if verbose:
             print(f"  [skip] parse failed {path}: {e}")
-        return "skipped", 0, 0
+        return "ignored", 0, 0
 
     if fmt == "inter_model_doc":
         committed, n_units = _index_inter_model_file(
@@ -909,6 +909,10 @@ def index(
 
     for rec in targets:
         path = rec["path"]
+        parser = get_parser(path)
+        if parser is None:
+            continue  # unsupported / deferred — ignore, do not consume limit_files
+
         if limit_files is not None and seen_files >= limit_files:
             break
         seen_files += 1
@@ -916,6 +920,7 @@ def index(
             cfg=cfg,
             idx=idx,
             path=path,
+            parser=parser,
             processed=processed,
             models=models,
             units_export=units_export,
@@ -932,8 +937,9 @@ def index(
             stats["files_processed"] += 1
             stats["chunks_indexed"] += n_chunks
             stats["units_indexed"] += n_units
-        else:
+        elif status == "skipped":
             stats["files_skipped"] += 1
+        # status == "ignored": unreadable / parse-failed — prior behavior: no files_skipped
 
     if stats["files_processed"] > 0:
         try:
