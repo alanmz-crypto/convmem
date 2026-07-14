@@ -35,7 +35,7 @@ def _keywords_from(path: Path, title: str) -> list[str]:
     return out[:8]
 
 
-def index_inter_model_messages(
+def index_inter_model_messages(  # pylint: disable=too-many-locals
     path: str,
     messages: list[dict],
     *,
@@ -45,7 +45,6 @@ def index_inter_model_messages(
     ollama_host: str,
     verbose: bool = True,
     units_export: Path | None = None,
-    cfg: dict | None = None,
 ) -> int:
     """Embed each section message as a knowledge unit. Returns units indexed."""
     src = Path(path)
@@ -113,26 +112,31 @@ def index_inter_model_messages(
         return 0
 
     # Embeds above run unlocked; source/export locks only wrap the batch write.
-    from source_purge import export_flock_path, source_flock
+    from purge_locks import export_flock_path, source_flock
 
-    lock_cfg = cfg
-    if lock_cfg is None:
-        # Derive data-root locks from chroma/export siblings when caller omits cfg.
-        data_root = Path(chroma_dir).expanduser().resolve().parent
-        lock_cfg = {
-            "index": {
-                "processed_log": str(data_root / "processed.json"),
-                "units_export": str(units_export)
-                if units_export
-                else str(data_root / "knowledge_units.jsonl"),
-            }
+    data_root = Path(chroma_dir).expanduser().resolve().parent
+    lock_cfg = {
+        "index": {
+            "processed_log": str(data_root / "processed.json"),
+            "units_export": str(units_export)
+            if units_export
+            else str(data_root / "knowledge_units.jsonl"),
         }
+    }
 
     with source_flock(lock_cfg, path_key):
-        from ingest import _path_is_excluded, load_processed
+        from ingest import load_processed
 
         processed = load_processed(lock_cfg["index"]["processed_log"])
-        if _path_is_excluded(processed, path_key):
+        excluded = False
+        for entry in processed.values():
+            if not isinstance(entry, dict) or not entry.get("excluded"):
+                continue
+            ep = entry.get("path")
+            if ep and str(Path(ep).expanduser().resolve()) == path_key:
+                excluded = True
+                break
+        if excluded:
             if verbose:
                 print(f"  [skip] excluded during inter-model write {Path(path).name}")
             return 0

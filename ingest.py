@@ -375,7 +375,7 @@ def _deduplicate_units_export(export_path: Path) -> int:
     This prevents unbounded growth from repeated re-indexing. Returns lines removed.
     Holds the export flock for the full rewrite.
     """
-    from source_purge import export_flock_path
+    from purge_locks import export_flock_path
 
     if not export_path.is_file():
         return 0
@@ -435,6 +435,48 @@ def _echo_neutralize_preview(
         )
         more = f" (+{len(preview) - 5} more)" if len(preview) > 5 else ""
         print(f"  [neutralize]   {sample}{more}")
+
+
+
+def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-locals
+    *,
+    cfg: dict,
+    idx: dict,
+    path_key: str,
+    path: str,
+    file_hash: str,
+    chroma_dir: str,
+    units_export: Path | None,
+    doc_id: str,
+    summary: str,
+    summary_embedding: list,
+    metadata: dict,
+    units_to_add: list,
+    verbose: bool,
+) -> tuple[bool, int, int]:
+    """Source/export-locked batch write. Returns (ok, n_indexed_delta, n_units_delta)."""
+    from purge_locks import export_flock, source_flock
+
+    with source_flock(cfg, path_key):
+        processed = load_processed(idx["processed_log"])
+        if _path_is_excluded(processed, path_key) or (
+            file_hash in processed and processed[file_hash].get("excluded")
+        ):
+            if verbose:
+                print(f"  [skip] excluded during batch-write {Path(path).name}")
+            return False, 0, 0
+        n_units = 0
+        with ChromaStore(chroma_dir) as store:
+            store.add_summary(doc_id, summary, summary_embedding, metadata)
+            for unit, doc, unit_embedding, unit_meta in units_to_add:
+                store.add_unit(unit["id"], doc, unit_embedding, unit_meta)
+                if units_export:
+                    units_export.parent.mkdir(parents=True, exist_ok=True)
+                    with export_flock(cfg):
+                        with open(units_export, "a", encoding="utf-8") as uf:
+                            uf.write(json.dumps(unit) + "\n")
+                n_units += 1
+        return True, 1, n_units
 
 
 def index(
@@ -601,7 +643,6 @@ def index(
                     ollama_host=models["ollama_host"],
                     verbose=verbose,
                     units_export=units_export if units_export else None,
-                    cfg=cfg,
                 )
             except Exception as e:
                 if verbose:
@@ -726,28 +767,25 @@ def index(
                 **session_meta,
             }
             # Batch write only — parse/LLM/embed above hold no source/export locks (N17).
-            from source_purge import export_flock, source_flock
-
-            with source_flock(cfg, path_key):
-                # Fresh exclusion check under source lock (purge race).
-                processed = load_processed(idx["processed_log"])
-                if _path_is_excluded(processed, path_key) or (
-                    file_hash in processed and processed[file_hash].get("excluded")
-                ):
-                    if verbose:
-                        print(f"  [skip] excluded during batch-write {Path(path).name}")
-                    break
-                with ChromaStore(chroma_dir) as store:
-                    store.add_summary(doc_id, summary, summary_embedding, metadata)
-                    n_indexed += 1
-                    for unit, doc, unit_embedding, unit_meta in units_to_add:
-                        store.add_unit(unit["id"], doc, unit_embedding, unit_meta)
-                        if units_export:
-                            units_export.parent.mkdir(parents=True, exist_ok=True)
-                            with export_flock(cfg):
-                                with open(units_export, "a", encoding="utf-8") as uf:
-                                    uf.write(json.dumps(unit) + "\n")
-                        n_units += 1
+            ok, d_idx, d_units = _commit_chunk_to_stores(
+                cfg=cfg,
+                idx=idx,
+                path_key=path_key,
+                path=path,
+                file_hash=file_hash,
+                chroma_dir=chroma_dir,
+                units_export=units_export if units_export else None,
+                doc_id=doc_id,
+                summary=summary,
+                summary_embedding=summary_embedding,
+                metadata=metadata,
+                units_to_add=units_to_add,
+                verbose=verbose,
+            )
+            if not ok:
+                break
+            n_indexed += d_idx
+            n_units += d_units
 
         committed = commit_processed_index_entry(
             idx["processed_log"],

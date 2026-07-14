@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from chroma_store import ChromaStore, invalidate_superseded_cache
+from chroma_store import ChromaStore
 from source_purge import (
     MalformedJsonlError,
     build_path_candidates,
@@ -85,10 +85,7 @@ class ChromaPurgeTests(unittest.TestCase):
             chroma = Path(td) / "chroma"
             chroma.mkdir()
             store = ChromaStore(str(chroma))
-            # Store with expanduser-only form
-            raw = str(Path.home() / "purge-test-raw.jsonl")
-            canon = str(Path(raw).expanduser().resolve()) if Path(raw).expanduser().exists() else raw
-            # Use paths under td that differ only by resolve if possible
+            # Use paths under td
             src = Path(td) / "src.jsonl"
             src.write_text("x")
             canonical = str(src.resolve())

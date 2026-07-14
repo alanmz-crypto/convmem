@@ -23,7 +23,7 @@ def _upsert_jsonl_line(
     unit: dict,
 ) -> None:
     """Replace the line in units_export matching ledger_id, or append if not found."""
-    from source_purge import export_flock_path
+    from purge_locks import export_flock_path
 
     with export_flock_path(units_export):
         if not units_export.exists():
@@ -129,7 +129,7 @@ def ingest_observation(
     store.add_unit(unit["id"], doc, embedding, meta)
 
     if units_export:
-        from source_purge import export_flock_path
+        from purge_locks import export_flock_path
 
         units_export.parent.mkdir(parents=True, exist_ok=True)
         with export_flock_path(units_export):

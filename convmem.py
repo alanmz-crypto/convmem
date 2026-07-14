@@ -1262,7 +1262,7 @@ def unresolved_command(
 
 
 @app.command("exclude")
-def exclude_command(
+def exclude_command(  # pylint: disable=too-many-arguments,too-many-locals,too-many-positional-arguments
     path: str = typer.Argument(None, help="File path to exclude from indexing"),
     reason: str = typer.Option("", "--reason", help="Why this conversation is excluded"),
     list_: bool = typer.Option(False, "--list", help="Show all excluded conversations"),
