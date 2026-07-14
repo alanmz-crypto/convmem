@@ -62,13 +62,22 @@ class InterModelIndexTests(unittest.TestCase):
                 encoding="utf-8",
             )
             messages = parse(str(path))
+            cfg = {
+                "index": {
+                    "processed_log": str(Path(td) / "processed.json"),
+                    "units_export": str(Path(td) / "knowledge_units.jsonl"),
+                    "chroma_dir": str(Path(td) / "chroma"),
+                }
+            }
+            Path(cfg["index"]["processed_log"]).write_text("{}", encoding="utf-8")
             n = index_inter_model_messages(
                 str(path),
                 messages,
                 path_key=str(path.resolve()),
-                chroma_dir=str(Path(td) / "chroma"),
+                chroma_dir=cfg["index"]["chroma_dir"],
                 embed_model="nomic-embed-text",
                 ollama_host="http://localhost:11434",
+                cfg=cfg,
                 verbose=False,
             )
             self.assertEqual(n, 1)
