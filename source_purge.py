@@ -8,6 +8,7 @@ mutations. Never hold either lock across parse/LLM/embed/network work.
 
 from __future__ import annotations
 
+import json
 import fcntl
 import hashlib
 import threading
@@ -121,3 +122,111 @@ def purged_exclusion_key(canonical_path: str) -> str:
     """Synthetic processed.json key when the source file is missing."""
     digest = hashlib.sha256(canonical_path.encode()).hexdigest()
     return f"purged:{digest}"
+
+
+
+class MalformedJsonlError(ValueError):
+    """JSONL contains a malformed line — fail closed, do not rewrite."""
+
+
+def count_jsonl_lines_for_source(export_path: Path | str, candidates: list[str]) -> int:
+    """Count JSONL records whose source_path is in candidates (read-only)."""
+    path = Path(export_path)
+    if not path.is_file():
+        return 0
+    n = 0
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            rec = json.loads(stripped)
+        except json.JSONDecodeError as exc:
+            raise MalformedJsonlError(f"malformed JSONL line: {exc}") from exc
+        if not isinstance(rec, dict):
+            raise MalformedJsonlError("malformed JSONL line: not an object")
+        if line_matches_purge(rec, candidates):
+            n += 1
+    return n
+
+
+def purge_source_from_jsonl(
+    cfg: dict,
+    export_path: Path | str,
+    candidates: list[str],
+    *,
+    already_locked: bool = False,
+) -> int:
+    """Rewrite JSONL removing matching source lines. Returns lines removed.
+
+    Acquires export lock unless ``already_locked`` (caller holds export_flock).
+    Fail-closed on malformed lines (original file unchanged).
+    """
+    path = Path(export_path)
+
+    def _rewrite() -> int:
+        if not path.is_file():
+            return 0
+        kept: list[str] = []
+        removed = 0
+        for line in path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                rec = json.loads(stripped)
+            except json.JSONDecodeError as exc:
+                raise MalformedJsonlError(f"malformed JSONL line: {exc}") from exc
+            if not isinstance(rec, dict):
+                raise MalformedJsonlError("malformed JSONL line: not an object")
+            if line_matches_purge(rec, candidates):
+                removed += 1
+            else:
+                kept.append(stripped)
+        if removed == 0:
+            return 0
+        tmp = path.with_suffix(path.suffix + ".purge.tmp")
+        tmp.write_text(("\n".join(kept) + ("\n" if kept else "")), encoding="utf-8")
+        tmp.replace(path)
+        return removed
+
+    if already_locked:
+        return _rewrite()
+    with export_flock(cfg):
+        return _rewrite()
+
+
+def count_chroma_for_source(store: Any, candidates: list[str]) -> dict[str, int]:
+    """Count units and summaries matching any candidate source_path."""
+    units = 0
+    summaries = 0
+    for candidate in candidates:
+        ures = store._collection("knowledge_units").get(  # noqa: SLF001
+            where={"source_path": candidate}, include=[]
+        )
+        units += len(ures.get("ids") or [])
+        sres = store._collection("conversation_summaries").get(  # noqa: SLF001
+            where={"source_path": candidate}, include=[]
+        )
+        summaries += len(sres.get("ids") or [])
+    return {"units": units, "summaries": summaries}
+
+
+def purge_source_from_chroma(store: Any, candidates: list[str]) -> dict[str, int]:
+    """Hard-delete units and summaries for each path candidate.
+
+    Calls invalidate_superseded_cache after unit deletions.
+    """
+    from chroma_store import invalidate_superseded_cache
+
+    units_deleted = 0
+    summaries_deleted = 0
+    for candidate in candidates:
+        units_deleted += int(store.delete_units_for_source(candidate))
+        summaries_deleted += int(store.delete_summaries_for_source(candidate))
+    if units_deleted:
+        invalidate_superseded_cache(store.chroma_dir)
+    return {
+        "units_deleted": units_deleted,
+        "summaries_deleted": summaries_deleted,
+    }
