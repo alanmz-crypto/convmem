@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import threading
 import time
@@ -22,7 +23,6 @@ from ingest import (
 from purge_locks import (
     export_flock,
     export_lock_depth,
-    source_flock,
     source_lock_depth,
     source_lock_path,
 )
@@ -32,7 +32,7 @@ from source_purge import (
     preview_purge,
     undo_exclude_source,
 )
-from tests.purge_test_util import purge_cfg as _cfg
+from tests.purge_test_util import patch_export_flock, patch_source_flock, purge_cfg as _cfg
 
 
 def _seed(root: Path, src: Path, *, n_units: int = 2, n_sum: int = 1) -> str:
@@ -426,64 +426,63 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             self.assertEqual(_chroma_jsonl_counts(cfg, canon), (0, 0, 0))
 
     def test_undo_blocked_until_purge_releases_fence(self):
-        """Overlapping undo waits; purge cannot succeed with fence already cleared."""
+        """Overlapping undo waits on production source_flock; fence intact at purge return."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
             src = root / "undo-race.jsonl"
             canon = _seed(root, src)
-            in_post = threading.Event()
             release_purge = threading.Event()
-            undo_started = threading.Event()
-            undo_finished = threading.Event()
+            fence_held = threading.Event()
             state: dict = {}
+            undo_ok = {"ok": False}
+            patch_ready = threading.Event()
 
-            def purge():
-                def hold_post():
-                    # Fence must still be present while we hold the source lock.
-                    proc = load_processed(cfg["index"]["processed_log"])
-                    state["markers_during_purge"] = _active_markers(proc, canon)
-                    in_post.set()
-                    self.assertTrue(release_purge.wait(5))
+            def after_exclusion():
+                fence_held.set()
+                release_purge.wait(10)
 
-                res = execute_purge(
-                    cfg,
-                    canon,
-                    reason="undo-race",
-                    _hooks={"before_postcondition": hold_post},
-                )
-                state["purge_exit"] = res.exit_code
-                proc = load_processed(cfg["index"]["processed_log"])
-                state["markers_at_purge_return"] = _active_markers(proc, canon)
+            def purge_thread():
+                with patch_source_flock() as ev:
+                    state["ev"] = ev
+                    patch_ready.set()
+                    res = execute_purge(
+                        cfg,
+                        canon,
+                        reason="undo-race",
+                        _hooks={"after_exclusion": after_exclusion},
+                    )
+                    state["purge_exit"] = res.exit_code
+                    state["markers_at_purge_return"] = _active_markers(
+                        load_processed(cfg["index"]["processed_log"]), canon
+                    )
 
-            def undoer():
-                self.assertTrue(in_post.wait(5))
-                undo_started.set()
-                # Must block on source flock until purge releases.
-                t0 = time.time()
-                ok = undo_exclude_source(cfg, canon)
-                state["undo_wait"] = time.time() - t0
-                state["undo_ok"] = ok
-                undo_finished.set()
+            def undo_thread():
+                undo_ok["ok"] = undo_exclude_source(cfg, canon)
 
-            t1 = threading.Thread(target=purge)
-            t2 = threading.Thread(target=undoer)
-            t1.start()
-            t2.start()
-            self.assertTrue(in_post.wait(5))
-            self.assertTrue(undo_started.wait(5))
-            time.sleep(0.15)
-            self.assertFalse(undo_finished.is_set())
+            t_purge = threading.Thread(target=purge_thread, name="purge")
+            t_purge.start()
+            self.assertTrue(patch_ready.wait(5))
+            self.assertTrue(fence_held.wait(5))
+            self.assertTrue(
+                _active_markers(load_processed(cfg["index"]["processed_log"]), canon)
+            )
+            t_undo = threading.Thread(target=undo_thread, name="undo")
+            t_undo.start()
+            self.assertTrue(state["ev"]["wait_undo"].wait(5))
+            self.assertFalse(state["ev"]["acq_undo"].is_set())
             release_purge.set()
-            t1.join(15)
-            t2.join(15)
+            t_purge.join(10)
+            t_undo.join(10)
             self.assertEqual(state.get("purge_exit"), 0)
-            self.assertTrue(state.get("markers_during_purge"))
             self.assertTrue(state.get("markers_at_purge_return"))
-            self.assertGreater(state.get("undo_wait", 0), 0.05)
-            self.assertTrue(state.get("undo_ok"))
-            proc = load_processed(cfg["index"]["processed_log"])
-            self.assertEqual(_active_markers(proc, canon), [])
+            self.assertTrue(state["ev"]["acq_undo"].is_set())
+            self.assertTrue(undo_ok["ok"])
+            self.assertEqual(
+                _active_markers(load_processed(cfg["index"]["processed_log"]), canon),
+                [],
+            )
+
 
     def test_n14_concurrent_same_source_idempotent(self):
         with tempfile.TemporaryDirectory() as td:
@@ -511,7 +510,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             self.assertTrue(all(r.exit_code == 0 for r in results))
 
     def test_n15_alternate_root_inter_model_lock_contention(self):
-        """Non-sibling processed/chroma/export; ingest+purge share processed_log lock."""
+        """Non-sibling paths: purge blocks on production inter-model source_flock."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             processed = root / "proc" / "processed.json"
@@ -529,71 +528,63 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                     "units_export": str(export),
                 }
             }
-            # Paths deliberately non-sibling
-            self.assertNotEqual(processed.parent, chroma.parent)
-            self.assertNotEqual(processed.parent, export.parent)
-
+            self.assertNotEqual(processed.parent.resolve(), chroma.parent.resolve())
+            self.assertNotEqual(processed.parent.resolve(), export.parent.resolve())
             doc = root / "docs" / "inter-model" / "PLAN-n15.md"
             doc.parent.mkdir(parents=True)
             doc.write_text("## Sec\n\nBody for n15.\n", encoding="utf-8")
             path_key = str(doc.resolve())
-            lock_a = source_lock_path(cfg, path_key)
-
+            expected_lock = source_lock_path(cfg, path_key)
+            self.assertTrue(str(expected_lock).startswith(str(processed.parent.resolve())))
+            self.assertNotIn("/.local/share/convmem/locks", str(expected_lock))
             from adapters.inter_model_doc import parse
             from inter_model_index import index_inter_model_messages
-
             messages = parse(str(doc))
-            hold_ingest = threading.Event()
             release_ingest = threading.Event()
-            purge_started = threading.Event()
             state: dict = {}
+            patch_ready = threading.Event()
 
-            def ingest():
-                with source_flock(cfg, path_key):
-                    state["ingest_lock"] = str(source_lock_path(cfg, path_key))
-                    hold_ingest.set()
-                    self.assertTrue(release_ingest.wait(5))
-                with mock.patch(
-                    "inter_model_index.ollama_embed", return_value=[0.1, 0.2]
-                ):
-                    n = index_inter_model_messages(
-                        str(doc),
-                        messages,
-                        path_key=path_key,
-                        chroma_dir=str(chroma),
-                        embed_model="nomic-embed-text",
-                        ollama_host="http://localhost:11434",
-                        cfg=cfg,
-                        verbose=False,
-                        units_export=export,
-                    )
-                state["n"] = n
+            def hold():
+                release_ingest.wait(10)
 
-            # Overlap: purge tries while ingest holds source lock first, then
-            # we purge for real after writing a unit.
-            t = threading.Thread(target=ingest)
-            t.start()
-            self.assertTrue(hold_ingest.wait(5))
-            # Purge blocked while ingest holds lock
-            blocked = {"ok": False}
+            def ingest_thread():
+                with patch_source_flock(after_acquire={"ingest": hold}) as ev:
+                    state["ev"] = ev
+                    patch_ready.set()
+                    with mock.patch(
+                        "inter_model_index.ollama_embed", return_value=[0.1, 0.2]
+                    ):
+                        state["n"] = index_inter_model_messages(
+                            str(doc),
+                            messages,
+                            path_key=path_key,
+                            chroma_dir=str(chroma),
+                            embed_model="nomic-embed-text",
+                            ollama_host="http://localhost:11434",
+                            cfg=cfg,
+                            verbose=False,
+                            units_export=export,
+                        )
 
-            def try_purge_blocked():
-                t0 = time.time()
-                purge_started.set()
-                execute_purge(cfg, path_key, reason="n15-blocked")
-                blocked["elapsed"] = time.time() - t0
+            def purge_thread():
+                state["purge"] = execute_purge(cfg, path_key, reason="n15")
 
-            t_purge = threading.Thread(target=try_purge_blocked)
+            t_ing = threading.Thread(target=ingest_thread, name="ingest")
+            t_ing.start()
+            self.assertTrue(patch_ready.wait(5))
+            self.assertTrue(state["ev"]["acq_ingest"].wait(5))
+            t_purge = threading.Thread(target=purge_thread, name="purge")
             t_purge.start()
-            self.assertTrue(purge_started.wait(5))
-            time.sleep(0.1)
+            self.assertTrue(state["ev"]["wait_purge"].wait(5))
+            self.assertFalse(state["ev"]["acq_purge"].is_set())
             release_ingest.set()
-            t.join(15)
-            t_purge.join(15)
-            self.assertEqual(state.get("ingest_lock"), str(lock_a))
-            self.assertTrue(str(lock_a).startswith(str(processed.parent.resolve())))
-            self.assertNotIn("/.local/share/convmem/locks", str(lock_a))
-            self.assertGreater(blocked.get("elapsed", 0), 0.05)
+            t_ing.join(10)
+            t_purge.join(10)
+            self.assertEqual(state.get("n"), 1)
+            self.assertTrue(state["ev"]["acq_purge"].is_set())
+            self.assertEqual(state["purge"].exit_code, 0, state["purge"].message)
+            self.assertEqual(_chroma_jsonl_counts(cfg, path_key), (0, 0, 0))
+
 
     def test_n16_missing_file_exclusion(self):
         with tempfile.TemporaryDirectory() as td:
@@ -674,42 +665,78 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             self.assertFalse(locks.exists())
 
     def test_n17_no_lock_during_llm_embed(self):
-        """Instrument actual embed call path: lock depths are zero."""
+        """Normal ingest: summarize/distill/embed run with lock depths zero."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
             (root / "chroma").mkdir()
-            processed = Path(cfg["index"]["processed_log"])
-            processed.write_text("{}", encoding="utf-8")
+            Path(cfg["index"]["processed_log"]).write_text("{}", encoding="utf-8")
             Path(cfg["index"]["units_export"]).write_text("", encoding="utf-8")
-            doc = root / "docs" / "inter-model" / "PLAN-n17.md"
-            doc.parent.mkdir(parents=True)
-            doc.write_text("## Sec\n\nBody.\n", encoding="utf-8")
-            path_key = str(doc.resolve())
-            depths: list[tuple[int, int]] = []
+            src = root / "agent-transcripts" / "sess" / "chat.jsonl"
+            src.parent.mkdir(parents=True)
+            src.write_text(
+                json.dumps(
+                    {
+                        "role": "user",
+                        "message": {
+                            "content": [
+                                {"type": "text", "text": "Hello n17 contract path."}
+                            ]
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            depths = {"summarize": [], "distill": [], "embed": []}
 
-            def embed_probe(*_args, **_kwargs):
-                depths.append((source_lock_depth(), export_lock_depth()))
+            def summarize_probe(*_a, **_k):
+                depths["summarize"].append((source_lock_depth(), export_lock_depth()))
+                return "summary for n17"
+
+            def distill_probe(*_a, **_k):
+                depths["distill"].append((source_lock_depth(), export_lock_depth()))
+                return [
+                    {
+                        "type": "explanation",
+                        "title": "N17",
+                        "summary": "unit summary",
+                        "keywords": ["n17"],
+                        "confidence": 0.9,
+                        "domain": "coding.tooling",
+                    }
+                ]
+
+            def embed_probe(*_a, **_k):
+                depths["embed"].append((source_lock_depth(), export_lock_depth()))
                 return [0.1, 0.2]
 
-            from adapters.inter_model_doc import parse
-            from inter_model_index import index_inter_model_messages
+            full_cfg = {
+                "index": {**cfg["index"], "chunk_size": 60, "chunk_overlap": 10},
+                "models": {
+                    "summarize_model": "dummy",
+                    "distill_model": "dummy",
+                    "embed_model": "dummy",
+                    "ollama_host": "http://localhost:11434",
+                },
+                "distill": {"min_confidence": 0.1},
+                "sources": {"inventory": str(root / "inventory.json")},
+            }
+            (root / "inventory.json").write_text("[]", encoding="utf-8")
+            with mock.patch("ingest.load_config", return_value=full_cfg), mock.patch(
+                "ingest.summarize", side_effect=summarize_probe
+            ), mock.patch("ingest.distill", side_effect=distill_probe), mock.patch(
+                "ingest.ollama_embed", side_effect=embed_probe
+            ), mock.patch("brief.refresh_brief_after_change", lambda *_a, **_k: None):
+                from ingest import index as ingest_index
+                stats = ingest_index(force_file=str(src), verbose=False)
+            self.assertEqual(stats["files_processed"], 1)
+            self.assertTrue(depths["summarize"])
+            self.assertTrue(depths["distill"])
+            self.assertTrue(depths["embed"])
+            for phase, samples in depths.items():
+                self.assertTrue(all(d == (0, 0) for d in samples), phase)
 
-            with mock.patch("inter_model_index.ollama_embed", side_effect=embed_probe):
-                n = index_inter_model_messages(
-                    str(doc),
-                    parse(str(doc)),
-                    path_key=path_key,
-                    chroma_dir=cfg["index"]["chroma_dir"],
-                    embed_model="nomic-embed-text",
-                    ollama_host="http://localhost:11434",
-                    cfg=cfg,
-                    verbose=False,
-                    units_export=Path(cfg["index"]["units_export"]),
-                )
-            self.assertEqual(n, 1)
-            self.assertTrue(depths)
-            self.assertTrue(all(d == (0, 0) for d in depths))
 
     def test_n18_failure_injection_matrix(self):
         stages = [
@@ -841,6 +868,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             store.close()
 
     def test_n20_postcondition_export_lock_barrier(self):
+        """JSONL postcondition under export lock; append waits then succeeds."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cfg = _cfg(root)
@@ -849,46 +877,55 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             other = root / "other.jsonl"
             other.write_text("o", encoding="utf-8")
             other_path = str(other.resolve())
-            entered_post = threading.Event()
+            release_purge = threading.Event()
+            in_post = threading.Event()
             state: dict = {}
+            patch_ready = threading.Event()
 
-            def purge():
-                def after_rewrite():
-                    # Hold export flock through JSONL postcondition window.
-                    entered_post.set()
-                    time.sleep(0.35)
+            def after_rewrite():
+                in_post.set()
+                release_purge.wait(10)
 
-                res = execute_purge(
-                    cfg,
-                    canon,
-                    reason="n20",
-                    _hooks={"after_jsonl_rewrite": after_rewrite},
-                )
-                state["purge_exit"] = res.exit_code
-                state["residual"] = _chroma_jsonl_counts(cfg, canon)
+            def purge_thread():
+                with patch_export_flock(extra_modules=[sys.modules[__name__]]) as ev:
+                    state["ev"] = ev
+                    patch_ready.set()
+                    res = execute_purge(
+                        cfg,
+                        canon,
+                        reason="n20",
+                        _hooks={"after_jsonl_rewrite": after_rewrite},
+                    )
+                    state["purge_exit"] = res.exit_code
+                    state["residual"] = _chroma_jsonl_counts(cfg, canon)
 
-            def appender():
-                self.assertTrue(entered_post.wait(5))
-                t0 = time.time()
+            def append_thread():
                 with export_flock(cfg):
-                    elapsed = time.time() - t0
-                    state["block_elapsed"] = elapsed
                     with open(cfg["index"]["units_export"], "a", encoding="utf-8") as fh:
                         fh.write(
                             json.dumps({"id": "o1", "source_path": other_path}) + "\n"
                         )
+                    state["appended"] = True
 
-            t1 = threading.Thread(target=purge)
-            t2 = threading.Thread(target=appender)
-            t1.start()
-            t2.start()
-            t1.join(15)
-            t2.join(15)
+            t_purge = threading.Thread(target=purge_thread, name="purge")
+            t_purge.start()
+            self.assertTrue(patch_ready.wait(5))
+            self.assertTrue(in_post.wait(5))
+            self.assertTrue(state["ev"]["acq_purge"].is_set())
+            t_app = threading.Thread(target=append_thread, name="append")
+            t_app.start()
+            self.assertTrue(state["ev"]["wait_append"].wait(5))
+            self.assertFalse(state["ev"]["acq_append"].is_set())
+            release_purge.set()
+            t_purge.join(10)
+            t_app.join(10)
             self.assertEqual(state.get("purge_exit"), 0)
             self.assertEqual(state.get("residual"), (0, 0, 0))
-            self.assertGreater(state.get("block_elapsed", 0), 0.05)
+            self.assertTrue(state["ev"]["acq_append"].is_set())
+            self.assertTrue(state.get("appended"))
             text = Path(cfg["index"]["units_export"]).read_text(encoding="utf-8")
             self.assertIn(other_path, text)
+
 
     def test_n21_preview_filesystem_snapshot(self):
         with tempfile.TemporaryDirectory() as td:
