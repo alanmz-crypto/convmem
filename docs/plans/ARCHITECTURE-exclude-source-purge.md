@@ -5,7 +5,7 @@
 **Worktree:** `~/.local/share/convmem/worktrees/plan-2026-07-14-exclude-source-purge`
 **Status:** Architecture planning — awaiting HITL before Execution
 **Lane:** Kiro (design/sign-off)
-**Amendments:** 12 review corrections integrated (export writer inventory, lock identity derivation, missing-file exclusion key, guarantee correction, logical-vs-forensic framing, expanded failure injection, no-lock-during-LLM test, path-candidate builder, superseded cache invalidation, preview/mutation separation, architecture contradiction resolved, temp-config behavioral demos)
+**Amendments:** 12 review corrections + 3 HOLD corrections (postcondition lock coverage, read-only preview mechanical definition, path matching contract unified) + numbering reconciliation
 
 ---
 
@@ -168,16 +168,22 @@ Use a synthetic hash key: `"purged:<sha256-of-canonical-path>"` as the processed
 
 ### Postcondition check
 
-After all delete operations and before releasing the source lock:
+After all delete operations and before releasing the source lock. The JSONL count is performed **inside** the export lock (held through rewrite + count); the Chroma counts are performed under the source lock only (no concurrent same-source writer possible):
 
 ```python
-# Under source flock:
-remaining_units = store.count_units_for_source(canonical_path)
-remaining_summaries = store.count_summaries_for_source(canonical_path)
-remaining_jsonl = count_jsonl_lines_for_source(export_path, canonical_path)
-if remaining_units + remaining_summaries + remaining_jsonl > 0:
-    return PurgeResult(exit_code=1, message="postcondition failed: residual rows")
+# Under source flock (Lock 1):
+#   ... Chroma deletes done ...
+#   with export_flock (Lock 2):
+#       ... JSONL rewrite done ...
+#       remaining_jsonl = count_jsonl_lines_for_source(export_path, candidates)
+#   (export lock released)
+#   remaining_units = count_units_for_source(store, candidates)
+#   remaining_summaries = count_summaries_for_source(store, candidates)
+#   if remaining_units + remaining_summaries + remaining_jsonl > 0:
+#       return PurgeResult(exit_code=1, ...)
 ```
+
+This eliminates the window where an unrelated JSONL append could interleave with the JSONL postcondition count.
 
 ---
 
@@ -291,11 +297,20 @@ with source_flock(cfg, canonical_path):               # Lock 1
     delete_chroma_units(store, path_candidates)
     delete_chroma_summaries(store, path_candidates)
     invalidate_superseded_cache(chroma_dir)           # Amendment §9
-    with export_flock(cfg):                           # Lock 2
+    with export_flock(cfg):                           # Lock 2 — held through JSONL postcondition
         rewrite_jsonl_without_source(export_path, path_candidates)
-    # Postcondition check (Amendment §4):
-    assert_all_sinks_zero(store, export_path, path_candidates)
+        # Postcondition: JSONL zero check while export lock prevents interleaving append
+        remaining_jsonl = count_jsonl_lines_for_source(export_path, path_candidates)
+    # Postcondition: Chroma zero check (source lock prevents new Chroma writes)
+    remaining_units = count_units_for_source(store, path_candidates)
+    remaining_summaries = count_summaries_for_source(store, path_candidates)
+    if remaining_units + remaining_summaries + remaining_jsonl > 0:
+        return PurgeResult(exit_code=1, message="postcondition failed: residual rows")
 ```
+
+**Why export lock covers the JSONL postcondition:** Without it, an unrelated append could land between the rewrite and the count, producing a false-positive residual (the new line has a different source, but the count function would re-scan). More importantly, if the count function uses `line_matches_purge`, it correctly ignores unrelated lines — but holding the export lock eliminates the need to reason about interleaving at all. The Chroma postcondition needs only the source lock (no concurrent writer for this source can add rows while source lock is held).
+
+**Barrier test (N20):** Thread A performs purge (holds source + export locks, runs postcondition). Thread B attempts unrelated JSONL append during the postcondition window. Thread B blocks on export lock. After A releases, B's append succeeds. Postcondition in A saw zero for the purged source.
 
 **Ingest batch write lock sequence:**
 
@@ -315,38 +330,60 @@ with source_flock(cfg, canonical_path):               # Lock 1
 ---
 
 
-## Path-Candidate Builder (Amendment §8)
+## Path-Candidate Builder and Matching Contract (Amendment §8, Correction §3)
 
-One shared function produces the set of path strings to query across preview and all three purge sinks. This prevents divergence between what preview counts and what purge deletes.
+### Single matching contract
+
+One path-matching contract applies to **preview, deletion, and postcondition** across all three sinks. The contract:
+
+1. `build_path_candidates(target)` produces the **exact strings** to query.
+2. **Chroma** is queried with `where={"source_path": candidate}` for each candidate — this is exact string equality in Chroma's metadata filter. No canonicalization of stored metadata at query time.
+3. **JSONL** lines are matched by comparing the stored `source_path` field **as a raw string** against the candidate list — no runtime canonicalization of stored values. This matches the Chroma behavior: if the stored path doesn't literally equal a candidate, it is not matched.
+
+This means both sinks use the same matching rule: **stored value ∈ candidates**. The candidate list is where canonicalization happens (once, at build time), not at query time against stored values.
 
 ```python
 def build_path_candidates(target: str) -> list[str]:
-    """Exact path candidates for Chroma/JSONL queries.
+    """Exact path candidates for all sink queries.
 
-    Rules:
-    - expanduser + resolve for canonical form
-    - Also include expanduser-only (legacy stored paths may lack resolve)
-    - Deduplicate (dict.fromkeys preserves order)
-    - Do NOT canonicalize empty strings or non-filesystem prefixes (e.g., "ledger:*")
-      into cwd — return them unchanged or skip them
+    Produces the set of literal strings to match against stored source_path values.
+    - canonical = expanduser + resolve (current indexing convention)
+    - raw = expanduser only (legacy stored paths before resolve was added)
+    - Deduplicated, order preserved
+    - Does NOT canonicalize empty, relative, or non-filesystem prefixes into cwd
     """
     raw = str(Path(target).expanduser())
     canonical = str(Path(target).expanduser().resolve())
     return list(dict.fromkeys([canonical, raw]))
 ```
 
-**JSONL matching uses the same candidates:**
+### Matching in each sink
 
 ```python
+# Chroma (both collections):
+for candidate in candidates:
+    store.delete_units_where_source_path(candidate)
+    store.delete_summaries_where_source_path(candidate)
+
+# JSONL:
 def line_matches_purge(rec: dict, candidates: list[str]) -> bool:
     sp = rec.get("source_path", "")
-    if not sp or sp.startswith("ledger:") or not sp.startswith("/"):
-        return False  # non-filesystem paths are never purge targets
-    resolved = str(Path(sp).expanduser().resolve())
-    return resolved in candidates or sp in candidates
+    if not sp or not sp.startswith("/"):
+        return False  # non-absolute paths (ledger:*, empty, relative) are never purge targets
+    return sp in candidates  # exact string match — no runtime resolve
+
+# Postcondition counts use the same logic.
 ```
 
-**Preview, Chroma delete, and JSONL rewrite all receive the same `candidates` list** from `build_path_candidates`. No separate canonicalization logic per sink.
+### What N13 (legacy path variant) actually tests
+
+N13 tests the scenario where Chroma rows were stored with the **expanduser-only** form (before `resolve()` was consistently applied at index time). The candidate list includes both forms, so the exact-string Chroma query finds them. N13 does **not** claim that arbitrary stored spellings will be found — only the two specific forms the candidate list contains.
+
+### Non-filesystem values
+
+`source_path` values that are empty, relative, or prefixed with non-filesystem markers (e.g., `ledger:obs_123`) are never purge targets. `build_path_candidates` is only called with user-supplied CLI arguments (absolute paths). The matching functions skip non-absolute stored values.
+
+**Preview, Chroma delete, JSONL rewrite, and postcondition count all receive the same `candidates` list** from one `build_path_candidates` call at the top of both `preview_purge` and `execute_purge`.
 
 ---
 
@@ -364,8 +401,8 @@ Failure injection must be testable at every boundary:
 | F6 | During JSONL write (tmp written, rename not reached) | Excluded; Chroma clean; original JSONL intact | Retry sees original, rewrites | Yes | N18f |
 | F7 | After JSONL rename, before postcondition check | Excluded; all sinks empty | Retry postcondition passes | Yes | N18g |
 | F8 | Postcondition check finds residual rows | Excluded; some rows remain (bug or race) | Returns nonzero; operator investigates | Yes on retry if cause resolved | N18h |
-| F9 | Chroma "database is locked" | Excluded; partial Chroma delete | Retry with backoff; idempotent deletes | Yes | N5 |
-| F10 | JSONL has malformed line | Excluded; Chroma clean; JSONL rewrite aborted | Operator fixes line; retry succeeds | Yes (manual) | N10 |
+| F9 | Chroma "database is locked" | Excluded; partial Chroma delete | Retry with backoff; idempotent deletes | Yes | N18i (also covered by N5) |
+| F10 | JSONL has malformed line | Excluded; Chroma clean; JSONL rewrite aborted | Operator fixes line; retry succeeds | Yes (manual) | N18j (also covered by N10) |
 
 **Invariant across all failure points:** The exclusion marker, once written (F2+), prevents any automatic writer from adding new derived rows. Failed purge may leave existing rows searchable, but cannot grow.
 
@@ -405,7 +442,12 @@ Failure injection must be testable at every boundary:
 
 The purge implementation is split into two independent functions:
 
-1. **`preview_purge(cfg, canonical_path) -> PurgePreview`** — read-only. Opens Chroma read-only, scans JSONL, returns counts per sink. No locks acquired (read-only queries). No mutations. Can be called without confirmation.
+1. **`preview_purge(cfg, canonical_path) -> PurgePreview`** — **mechanically read-only:**
+   - Opens Chroma via `chroma_readonly.open_readonly_unit_store` (which uses `get_collection`, never `get_or_create_collection`) — same pattern as `unresolved`, `related`, and `query` paths.
+   - If Chroma is opened via `PersistentClient`, it must be in a mode that does not create WAL/SHM files or new directories. Alternatively, use the existing `open_chroma_for_read` with `create_collections=False`.
+   - Scans JSONL by reading the file (no open-for-write, no tmp file, no rename).
+   - **Must not:** create directories, create collections, acquire any advisory lock, create lock files, change mtime on any existing file.
+   - **Test (N21):** snapshot filesystem state (directory listing + mtimes) before and after `preview_purge`; assert identical. Preview on a non-existent source returns zero counts without side effects.
 
 2. **`execute_purge(cfg, canonical_path, reason) -> PurgeResult`** — mutating. Acquires source lock, marks exclusion, deletes from sinks, runs postcondition. Returns exit status.
 
