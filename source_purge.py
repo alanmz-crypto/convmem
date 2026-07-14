@@ -54,10 +54,15 @@ def source_lock_path(cfg: dict, canonical_path: str) -> Path:
     return source_lock_dir(cfg) / f"{path_hash}.lock"
 
 
+def export_lock_path_for_file(export_path: Path | str) -> Path:
+    """Export lock sidecar for a knowledge_units.jsonl path."""
+    p = Path(export_path).expanduser().resolve()
+    return p.with_suffix(p.suffix + ".lock")
+
+
 def export_lock_path(cfg: dict) -> Path:
     """Export lock sidecar of configured units_export."""
-    export_path = Path(cfg["index"]["units_export"]).expanduser().resolve()
-    return export_path.with_suffix(export_path.suffix + ".lock")
+    return export_lock_path_for_file(cfg["index"]["units_export"])
 
 
 @contextmanager
@@ -77,9 +82,9 @@ def source_flock(cfg: dict, canonical_path: str) -> Iterator[Path]:
 
 
 @contextmanager
-def export_flock(cfg: dict) -> Iterator[Path]:
-    """Exclusive advisory lock for knowledge_units.jsonl mutations (Lock 2)."""
-    lock = export_lock_path(cfg)
+def export_flock_path(export_path: Path | str) -> Iterator[Path]:
+    """Exclusive advisory lock for a JSONL export path (Lock 2)."""
+    lock = export_lock_path_for_file(export_path)
     lock.parent.mkdir(parents=True, exist_ok=True)
     with open(lock, "a+", encoding="utf-8") as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
@@ -89,6 +94,13 @@ def export_flock(cfg: dict) -> Iterator[Path]:
         finally:
             _tls.export_depth = max(0, _export_depth() - 1)
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def export_flock(cfg: dict) -> Iterator[Path]:
+    """Exclusive advisory lock for configured units_export (Lock 2)."""
+    with export_flock_path(cfg["index"]["units_export"]) as lock:
+        yield lock
 
 
 def build_path_candidates(target: str) -> list[str]:

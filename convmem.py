@@ -1267,6 +1267,16 @@ def exclude_command(
     reason: str = typer.Option("", "--reason", help="Why this conversation is excluded"),
     list_: bool = typer.Option(False, "--list", help="Show all excluded conversations"),
     undo: str = typer.Option(None, "--undo", help="Re-include a previously excluded file path"),
+    purge: bool = typer.Option(
+        False,
+        "--purge",
+        help="Also logically delete derived Chroma/JSONL rows for this exact source",
+    ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        help="Skip confirmation prompt for --purge",
+    ),
 ):
     """Mark a conversation as excluded from indexing, or list/undo exclusions."""
     from pathlib import Path
@@ -1315,6 +1325,49 @@ def exclude_command(
     if not path:
         render_error("Provide a file path to exclude, or use --list / --undo.")
         raise typer.Exit(1)
+
+    if purge:
+        from source_purge import execute_purge, preview_purge
+
+        raw_target = str(Path(path).expanduser())
+        try:
+            canonical = str(Path(path).expanduser().resolve())
+        except OSError:
+            canonical = raw_target
+        if not Path(canonical).is_file() and not Path(raw_target).is_file():
+            typer.echo(
+                f"Warning: file not found on disk ({path}); "
+                "purging derived rows and writing synthetic exclusion marker."
+            )
+        preview = preview_purge(cfg, path)
+        typer.echo(f"Purge preview for: {preview.canonical_path}")
+        typer.echo(f"  Chroma knowledge_units:        {preview.units} units")
+        typer.echo(f"  Chroma conversation_summaries: {preview.summaries} summaries")
+        typer.echo(f"  knowledge_units.jsonl:          {preview.jsonl_lines} lines")
+        typer.echo("")
+        typer.echo("This is logical removal from active derived stores.")
+        typer.echo(
+            "Residual bytes may persist in Chroma free-space, filesystem blocks, "
+            "and Restic snapshots."
+        )
+        typer.echo(
+            "This cannot be undone (re-indexing from source required after --undo)."
+        )
+        if not yes:
+            proceed = typer.confirm("Proceed?", default=False)
+            if not proceed:
+                typer.echo("Aborted.")
+                raise typer.Exit(0)
+        result = execute_purge(cfg, path, reason=reason)
+        if result.exit_code == 0:
+            typer.echo(
+                f"Purged: {Path(result.canonical_path).name} "
+                f"(units={result.units_deleted} summaries={result.summaries_deleted} "
+                f"jsonl={result.jsonl_removed})"
+            )
+        else:
+            render_error(result.message or "purge incomplete")
+        raise typer.Exit(result.exit_code)
 
     target = str(Path(path).expanduser().resolve())
     if not Path(target).is_file():
