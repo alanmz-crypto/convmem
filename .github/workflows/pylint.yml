@@ -24,8 +24,29 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pylint
+          pip install pylint==4.0.6
 
-      - name: Run Pylint
+      - name: Run Pylint (JSON report)
         run: |
-          pylint $(git ls-files "*.py")
+          # Capture the report even when pylint exits non-zero for pre-existing debt.
+          # Do not use pylint --exit-zero; the regression gate owns the pass/fail decision.
+          set +e
+          pylint $(git ls-files "*.py") --output-format=json > pylint-report.json
+          pylint_status=$?
+          set -e
+          echo "pylint_exit=$pylint_status"
+          test -s pylint-report.json
+
+      - name: Pylint regression gate
+        run: |
+          python scripts/pylint_regression_gate.py compare \
+            --baseline ci/pylint-baseline.json \
+            --report pylint-report.json
+
+      - name: Upload Pylint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pylint-report
+          path: pylint-report.json
+          if-no-files-found: ignore
