@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
-
-import importlib.util
-import sys
 
 _GATE = Path(__file__).resolve().parents[1] / "scripts" / "pylint_regression_gate.py"
 _spec = importlib.util.spec_from_file_location("pylint_regression_gate", _GATE)
@@ -16,12 +15,17 @@ assert _spec and _spec.loader
 _gate = importlib.util.module_from_spec(_spec)
 sys.modules["pylint_regression_gate"] = _gate
 _spec.loader.exec_module(_gate)
+
 baseline_to_counter = _gate.baseline_to_counter
 compare_reports = _gate.compare_reports
 count_fingerprints = _gate.count_fingerprints
 find_regressions = _gate.find_regressions
 fingerprint_from_message = _gate.fingerprint_from_message
 main = _gate.main
+normalize_message = _gate.normalize_message
+pylint_status_ok = _gate.pylint_status_ok
+validate_baseline_change = _gate.validate_baseline_change
+counter_to_baseline = _gate.counter_to_baseline
 
 
 def _msg(
@@ -43,6 +47,29 @@ def _msg(
     }
 
 
+_R0801_A = (
+    "Similar lines in 2 files\n"
+    "==adapters.detect:[121:127]\n"
+    "==inventory:[94:100]\n"
+    "        path.relative_to(sessions_dir)\n"
+    "        return True"
+)
+_R0801_B = (
+    "Similar lines in 2 files\n"
+    "==adapters.detect:[200:206]\n"
+    "==inventory:[150:156]\n"
+    "        path.relative_to(sessions_dir)\n"
+    "        return True"
+)
+_R0801_SEMANTIC = (
+    "Similar lines in 2 files\n"
+    "==adapters.detect:[121:127]\n"
+    "==inventory:[94:100]\n"
+    "        path.relative_to(OTHER_DIR)\n"
+    "        return False"
+)
+
+
 class FingerprintTests(unittest.TestCase):
     def test_line_ignored_in_fingerprint(self):
         a = fingerprint_from_message(
@@ -61,6 +88,27 @@ class FingerprintTests(unittest.TestCase):
             _msg("pkg/a.py", "unused-import", "W0611", "Unused import x")
         )
         self.assertEqual(a, b)
+
+    def test_r0801_range_only_movement_same_fingerprint(self):
+        a = fingerprint_from_message(
+            _msg("work_git.py", "duplicate-code", "R0801", _R0801_A, line=1)
+        )
+        b = fingerprint_from_message(
+            _msg("work_git.py", "duplicate-code", "R0801", _R0801_B, line=1)
+        )
+        self.assertEqual(a, b)
+        self.assertIn("adapters.detect:[#:#]", a[3])
+        self.assertIn("inventory:[#:#]", a[3])
+        self.assertNotIn("[121:127]", a[3])
+
+    def test_r0801_semantic_body_change_differs(self):
+        a = fingerprint_from_message(
+            _msg("work_git.py", "duplicate-code", "R0801", _R0801_A)
+        )
+        b = fingerprint_from_message(
+            _msg("work_git.py", "duplicate-code", "R0801", _R0801_SEMANTIC)
+        )
+        self.assertNotEqual(a, b)
 
 
 class CompareTests(unittest.TestCase):
@@ -136,7 +184,63 @@ class CompareTests(unittest.TestCase):
         ok, _ = compare_reports(baseline, current)
         self.assertTrue(ok)
 
-    def test_cli_compare_and_write_baseline(self):
+    def test_r0801_range_only_movement_passes_vs_baseline(self):
+        baseline = count_fingerprints(
+            [_msg("work_git.py", "duplicate-code", "R0801", _R0801_A)]
+        )
+        current = count_fingerprints(
+            [_msg("work_git.py", "duplicate-code", "R0801", _R0801_B)]
+        )
+        ok, lines = compare_reports(baseline, current)
+        self.assertTrue(ok, lines)
+        # Semantic change still fails
+        worse = count_fingerprints(
+            [_msg("work_git.py", "duplicate-code", "R0801", _R0801_SEMANTIC)]
+        )
+        ok2, _ = compare_reports(baseline, worse)
+        self.assertFalse(ok2)
+
+
+class StatusTests(unittest.TestCase):
+    def test_status_0_and_30_accepted(self):
+        ok0, msg0 = pylint_status_ok(0)
+        ok30, msg30 = pylint_status_ok(30)
+        self.assertTrue(ok0, msg0)
+        self.assertTrue(ok30, msg30)
+
+    def test_status_1_32_33_rejected(self):
+        for code in (1, 32, 33):
+            ok, msg = pylint_status_ok(code)
+            self.assertFalse(ok, msg)
+            self.assertIn(str(code), msg)
+
+
+class BaselineBlessingTests(unittest.TestCase):
+    def test_pr_modified_baseline_cannot_hide_new_finding(self):
+        """Raising the baseline to include a new finding is rejected."""
+        base = count_fingerprints(
+            [_msg("a.py", "unused-import", "W0611", "Unused import x")]
+        )
+        # Branch "blesses" a new finding into the baseline
+        blessed = count_fingerprints(
+            [
+                _msg("a.py", "unused-import", "W0611", "Unused import x"),
+                _msg("b.py", "unused-variable", "W0612", "Unused variable hide"),
+            ]
+        )
+        ok, lines = validate_baseline_change(base, blessed)
+        self.assertFalse(ok)
+        self.assertTrue(any("self-blessing" in line or "FAIL" in line for line in lines))
+
+        # And even if someone tried to use the blessed baseline for compare,
+        # ci path compares the *report* to the base reference — new finding fails.
+        report = blessed  # live report matches the "blessed" raised baseline
+        ok_report, _ = compare_reports(base, report)
+        self.assertFalse(ok_report)
+
+
+class CliTests(unittest.TestCase):
+    def test_cli_compare_write_and_status(self):
         msgs = [_msg("a.py", "unused-import", "W0611", "Unused import x", line=7)]
         with tempfile.TemporaryDirectory() as td:
             td_path = Path(td)
@@ -155,8 +259,6 @@ class CompareTests(unittest.TestCase):
                 ),
                 0,
             )
-            loaded = baseline_to_counter(json.loads(baseline.read_text()))
-            self.assertEqual(loaded, count_fingerprints(msgs))
             self.assertEqual(
                 main(
                     [
@@ -165,11 +267,27 @@ class CompareTests(unittest.TestCase):
                         str(baseline),
                         "--report",
                         str(report),
+                        "--pylint-status",
+                        "30",
                     ]
                 ),
                 0,
             )
-            # Extra finding fails CLI
+            # Fatal status rejected even with clean report
+            self.assertEqual(
+                main(
+                    [
+                        "compare",
+                        "--baseline",
+                        str(baseline),
+                        "--report",
+                        str(report),
+                        "--pylint-status",
+                        "1",
+                    ]
+                ),
+                1,
+            )
             worse = td_path / "worse.json"
             worse.write_text(
                 json.dumps(
@@ -186,9 +304,58 @@ class CompareTests(unittest.TestCase):
                         str(baseline),
                         "--report",
                         str(worse),
+                        "--pylint-status",
+                        "0",
                     ]
                 ),
                 1,
+            )
+
+    def test_ci_bootstrap_and_base_ref(self):
+        msgs = [_msg("a.py", "unused-import", "W0611", "Unused import x")]
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            report = td_path / "report.json"
+            branch_base = td_path / "ci" / "pylint-baseline.json"
+            branch_base.parent.mkdir(parents=True)
+            report.write_text(json.dumps(msgs), encoding="utf-8")
+            branch_base.write_text(
+                json.dumps(counter_to_baseline(count_fingerprints(msgs))),
+                encoding="utf-8",
+            )
+            # Empty base-ref → branch HEAD baseline (not BOOTSTRAP)
+            self.assertEqual(
+                main(
+                    [
+                        "ci",
+                        "--report",
+                        str(report),
+                        "--pylint-status",
+                        "0",
+                        "--branch-baseline",
+                        str(branch_base),
+                        "--base-ref",
+                        "",
+                    ]
+                ),
+                0,
+            )
+            # Nonexistent base SHA (git show fails) → BOOTSTRAP to branch file
+            self.assertEqual(
+                main(
+                    [
+                        "ci",
+                        "--report",
+                        str(report),
+                        "--pylint-status",
+                        "0",
+                        "--branch-baseline",
+                        str(branch_base),
+                        "--base-ref",
+                        "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                    ]
+                ),
+                0,
             )
 
 

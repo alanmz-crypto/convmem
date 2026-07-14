@@ -2,6 +2,7 @@ name: Pylint
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -14,6 +15,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Need base SHA history to read ci/pylint-baseline.json from PR base.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -24,27 +28,43 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pylint==4.0.6
+          pip install pylint==4.0.6 pytest
 
       - name: Run Pylint (JSON report)
+        id: pylint_run
         run: |
-          # Capture the report even when pylint exits non-zero for pre-existing debt.
-          # Do not use pylint --exit-zero; the regression gate owns the pass/fail decision.
+          # Capture the report even when pylint exits non-zero for preexisting debt.
+          # Do not use pylint --exit-zero; the regression gate owns pass/fail.
           set +e
           pylint $(git ls-files "*.py") --output-format=json > pylint-report.json
           pylint_status=$?
           set -e
           echo "pylint_exit=$pylint_status"
+          echo "pylint_status=$pylint_status" >> "$GITHUB_OUTPUT"
           test -s pylint-report.json
 
       - name: Pylint regression gate
+        env:
+          PYLINT_STATUS: ${{ steps.pylint_run.outputs.pylint_status }}
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: |
-          python scripts/pylint_regression_gate.py compare \
-            --baseline ci/pylint-baseline.json \
-            --report pylint-report.json
+          # pull_request: compare vs baseline at base SHA.
+          # push to main: empty BASE_REF → committed branch baseline (post-merge).
+          if [ -n "${BASE_REF}" ]; then
+            python scripts/pylint_regression_gate.py ci \
+              --report pylint-report.json \
+              --pylint-status "${PYLINT_STATUS}" \
+              --branch-baseline ci/pylint-baseline.json \
+              --base-ref "${BASE_REF}"
+          else
+            python scripts/pylint_regression_gate.py ci \
+              --report pylint-report.json \
+              --pylint-status "${PYLINT_STATUS}" \
+              --branch-baseline ci/pylint-baseline.json
+          fi
 
       - name: Upload Pylint report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: pylint-report
