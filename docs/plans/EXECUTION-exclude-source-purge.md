@@ -3,11 +3,11 @@
 ```
 Planning Status
 
-Phase:        Execution Planning — awaiting HITL before Execute
+Phase:        Complete — implementation merged in PR #29
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Functions:    Planner
 Lanes:        Cursor (Tier A implementation); Kiro (design/sign-off)
-Authority:    Architecture gates 1–12 proposed 2026-07-14 (amended); awaiting Ryan acceptance
+Authority:    Ryan accepted gates 1–12, Design A, the three-lock hierarchy, and logical-not-forensic scope on 2026-07-14
 ```
 
 **Architecture SSoT:** [`ARCHITECTURE-exclude-source-purge.md`](ARCHITECTURE-exclude-source-purge.md)
@@ -16,7 +16,7 @@ Authority:    Architecture gates 1–12 proposed 2026-07-14 (amended); awaiting 
 
 ---
 
-## Gate decisions (proposed — awaiting HITL)
+## Gate decisions (accepted by Ryan)
 
 | # | Choice |
 |---|--------|
@@ -140,10 +140,10 @@ T12 (deduplicate export lock) ────────────────�
 
 ---
 
-## Execute entry
+## Execute entry (completed)
 
-- First code task: **T1** (source lock module) + **T3** (path candidates) in parallel, after Ryan says `execute`.
-- Implementation branch: `feat/2026-MM-DD-exclude-source-purge` (created at execute time, not now).
+- Ryan authorized execution after accepting gates 1–12 and Design A.
+- Implementation branch: `feat/2026-07-14-exclude-source-purge`; merged in PR #29.
 
 ---
 
@@ -161,6 +161,6 @@ T12 (deduplicate export lock) ────────────────�
 - [x] Preview/mutation separation specified
 - [x] Architecture contradiction (source-lock-covers-export) resolved
 - [x] Behavioral demos restricted to temp config/corpus
-- [ ] No code until Ryan HITL / `execute`
+- [x] Ryan HITL / `execute` authorization received before code began
 
-Cursor must stop here. Await HITL.
+HITL was satisfied before Cursor execution; implementation and verification are complete.

@@ -3,7 +3,7 @@
 **Date:** 2026-07-14 (amended)
 **Branch:** `plan/2026-07-14-exclude-source-purge`
 **Worktree:** `~/.local/share/convmem/worktrees/plan-2026-07-14-exclude-source-purge`
-**Status:** Architecture planning — awaiting HITL before Execution
+**Status:** Complete — gates 1–12 accepted; implementation merged in PR #29
 **Lane:** Kiro (design/sign-off)
 **Amendments:** 12 review corrections + 3 HOLD corrections (postcondition lock coverage, read-only preview mechanical definition, path matching contract unified) + numbering reconciliation
 
@@ -547,6 +547,6 @@ convmem exclude PATH --purge [--reason REASON] [--yes]
 
 ## Sign-off
 
-**Architecture Planning:** this artifact (amended).
-**HITL:** Ryan approves gates 1–12 and Design A before Execution begins.
-**Execution:** separate `EXECUTION-exclude-source-purge.md` after gate acceptance.
+**Architecture Planning:** Complete (amended).
+**HITL:** Satisfied — Ryan accepted gates 1–12 and Design A before Execution began.
+**Execution:** Implemented by Cursor and merged in PR #29; see `EXECUTION-exclude-source-purge.md`.
