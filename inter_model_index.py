@@ -45,6 +45,7 @@ def index_inter_model_messages(
     ollama_host: str,
     verbose: bool = True,
     units_export: Path | None = None,
+    cfg: dict | None = None,
 ) -> int:
     """Embed each section message as a knowledge unit. Returns units indexed."""
     src = Path(path)
@@ -111,13 +112,38 @@ def index_inter_model_messages(
     if not units_batch:
         return 0
 
-    with ChromaStore(chroma_dir) as store:
-        for unit, doc, embedding, meta in units_batch:
-            store.add_unit(unit["id"], doc, embedding, meta)
-            if units_export:
-                units_export.parent.mkdir(parents=True, exist_ok=True)
-                with open(units_export, "a", encoding="utf-8") as uf:
-                    uf.write(json.dumps(unit) + "\n")
+    # Embeds above run unlocked; source/export locks only wrap the batch write.
+    from source_purge import export_flock_path, source_flock
+
+    lock_cfg = cfg
+    if lock_cfg is None:
+        # Derive data-root locks from chroma/export siblings when caller omits cfg.
+        data_root = Path(chroma_dir).expanduser().resolve().parent
+        lock_cfg = {
+            "index": {
+                "processed_log": str(data_root / "processed.json"),
+                "units_export": str(units_export)
+                if units_export
+                else str(data_root / "knowledge_units.jsonl"),
+            }
+        }
+
+    with source_flock(lock_cfg, path_key):
+        from ingest import _path_is_excluded, load_processed
+
+        processed = load_processed(lock_cfg["index"]["processed_log"])
+        if _path_is_excluded(processed, path_key):
+            if verbose:
+                print(f"  [skip] excluded during inter-model write {Path(path).name}")
+            return 0
+        with ChromaStore(chroma_dir) as store:
+            for unit, doc, embedding, meta in units_batch:
+                store.add_unit(unit["id"], doc, embedding, meta)
+                if units_export:
+                    units_export.parent.mkdir(parents=True, exist_ok=True)
+                    with export_flock_path(units_export):
+                        with open(units_export, "a", encoding="utf-8") as uf:
+                            uf.write(json.dumps(unit) + "\n")
 
     if verbose:
         print(f"  [inter-model] {src.name}: {n_units} section units")

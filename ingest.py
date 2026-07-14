@@ -373,32 +373,36 @@ def _deduplicate_units_export(export_path: Path) -> int:
     """Rewrite knowledge_units.jsonl keeping only the last occurrence of each unit ID.
 
     This prevents unbounded growth from repeated re-indexing. Returns lines removed.
+    Holds the export flock for the full rewrite.
     """
+    from source_purge import export_flock_path
+
     if not export_path.is_file():
         return 0
-    seen: dict[str, str] = {}  # unit_id -> json_line
-    n_before = 0
-    for line in export_path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        n_before += 1
-        try:
-            rec = json.loads(stripped)
-            uid = rec.get("id", "")
-            if uid:
-                seen[uid] = stripped
-        except json.JSONDecodeError:
-            pass  # preserve unparseable lines
-    if n_before == 0:
-        return 0
-    n_after = len(seen)
-    if n_after >= n_before:
-        return 0  # nothing to compact
-    tmp = export_path.with_suffix(export_path.suffix + ".compact.tmp")
-    tmp.write_text("\n".join(seen.values()) + "\n", encoding="utf-8")
-    tmp.replace(export_path)
-    return n_before - n_after
+    with export_flock_path(export_path):
+        seen: dict[str, str] = {}  # unit_id -> json_line
+        n_before = 0
+        for line in export_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            n_before += 1
+            try:
+                rec = json.loads(stripped)
+                uid = rec.get("id", "")
+                if uid:
+                    seen[uid] = stripped
+            except json.JSONDecodeError:
+                pass  # preserve unparseable lines
+        if n_before == 0:
+            return 0
+        n_after = len(seen)
+        if n_after >= n_before:
+            return 0  # nothing to compact
+        tmp = export_path.with_suffix(export_path.suffix + ".compact.tmp")
+        tmp.write_text("\n".join(seen.values()) + "\n", encoding="utf-8")
+        tmp.replace(export_path)
+        return n_before - n_after
 
 
 def _echo_neutralize_preview(
@@ -597,6 +601,7 @@ def index(
                     ollama_host=models["ollama_host"],
                     verbose=verbose,
                     units_export=units_export if units_export else None,
+                    cfg=cfg,
                 )
             except Exception as e:
                 if verbose:
@@ -720,16 +725,29 @@ def index(
                 "end_offset": ch["end_offset"],
                 **session_meta,
             }
-            with ChromaStore(chroma_dir) as store:
-                store.add_summary(doc_id, summary, summary_embedding, metadata)
-                n_indexed += 1
-                for unit, doc, unit_embedding, unit_meta in units_to_add:
-                    store.add_unit(unit["id"], doc, unit_embedding, unit_meta)
-                    if units_export:
-                        units_export.parent.mkdir(parents=True, exist_ok=True)
-                        with open(units_export, "a", encoding="utf-8") as uf:
-                            uf.write(json.dumps(unit) + "\n")
-                    n_units += 1
+            # Batch write only — parse/LLM/embed above hold no source/export locks (N17).
+            from source_purge import export_flock, source_flock
+
+            with source_flock(cfg, path_key):
+                # Fresh exclusion check under source lock (purge race).
+                processed = load_processed(idx["processed_log"])
+                if _path_is_excluded(processed, path_key) or (
+                    file_hash in processed and processed[file_hash].get("excluded")
+                ):
+                    if verbose:
+                        print(f"  [skip] excluded during batch-write {Path(path).name}")
+                    break
+                with ChromaStore(chroma_dir) as store:
+                    store.add_summary(doc_id, summary, summary_embedding, metadata)
+                    n_indexed += 1
+                    for unit, doc, unit_embedding, unit_meta in units_to_add:
+                        store.add_unit(unit["id"], doc, unit_embedding, unit_meta)
+                        if units_export:
+                            units_export.parent.mkdir(parents=True, exist_ok=True)
+                            with export_flock(cfg):
+                                with open(units_export, "a", encoding="utf-8") as uf:
+                                    uf.write(json.dumps(unit) + "\n")
+                        n_units += 1
 
         committed = commit_processed_index_entry(
             idx["processed_log"],
