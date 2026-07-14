@@ -260,23 +260,55 @@ def exclude_processed_path(
     file_hash: str,
     reason: str = "",
 ) -> None:
-    """Mark a resolved path excluded under the processed-state lock."""
+    """Mark a resolved path excluded under the processed-state lock.
+
+    Canonicalizes path exclusion across content hashes: clears other active
+    same-path exclusion markers, keeps one marker on ``file_hash``, and
+    preserves the latest explicit reason (or carries forward a prior reason
+    when re-excluding without a new reason).
+    """
+    path_key = _processed_path_str(target)
 
     def mutator(data: dict) -> None:
+        carried_reason = reason
+        if not carried_reason:
+            for entry in data.values():
+                if not isinstance(entry, dict) or not entry.get("excluded"):
+                    continue
+                ep = entry.get("path")
+                if ep and _processed_path_str(ep) == path_key:
+                    prior = entry.get("exclude_reason") or ""
+                    if prior:
+                        carried_reason = prior
+
+        for entry in data.values():
+            if not isinstance(entry, dict) or not entry.get("excluded"):
+                continue
+            ep = entry.get("path")
+            if ep and _processed_path_str(ep) == path_key:
+                entry.pop("excluded", None)
+                entry.pop("exclude_reason", None)
+
         entry = data.get(file_hash, {})
         if not isinstance(entry, dict):
             entry = {}
-        entry["path"] = target
+        entry["path"] = path_key
         entry["excluded"] = True
-        if reason:
-            entry["exclude_reason"] = reason
+        if carried_reason:
+            entry["exclude_reason"] = carried_reason
+        else:
+            entry.pop("exclude_reason", None)
         data[file_hash] = entry
 
     mutate_processed(processed_path, mutator)
 
 
 def undo_exclude_processed_path(processed_path: str, target: str) -> bool:
-    """Clear exclusion flags for one resolved path. Returns True if found."""
+    """Clear every active exclusion for one resolved path in one transaction.
+
+    Returns True if at least one active marker was cleared. Other paths untouched.
+    """
+    path_key = _processed_path_str(target)
     found = {"ok": False}
 
     def mutator(data: dict) -> None:
@@ -284,11 +316,10 @@ def undo_exclude_processed_path(processed_path: str, target: str) -> bool:
             if not isinstance(entry, dict) or not entry.get("excluded"):
                 continue
             ep = entry.get("path")
-            if ep and _processed_path_str(ep) == target:
+            if ep and _processed_path_str(ep) == path_key:
                 entry.pop("excluded", None)
                 entry.pop("exclude_reason", None)
                 found["ok"] = True
-                break
 
     mutate_processed(processed_path, mutator)
     return found["ok"]
