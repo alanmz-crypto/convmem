@@ -3,7 +3,7 @@
 **Architecture:** [`ARCHITECTURE-exclude-source-purge.md`](ARCHITECTURE-exclude-source-purge.md)
 **Execution:** [`EXECUTION-exclude-source-purge.md`](EXECUTION-exclude-source-purge.md)
 **Branch:** `plan/2026-07-14-exclude-source-purge`
-**Status:** Awaiting architecture HITL; verification criteria defined (amended)
+**Status:** Complete — implementation merged in PR #29; V1–V24 and B1–B7 PASS
 
 ---
 
