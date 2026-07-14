@@ -1286,7 +1286,6 @@ def exclude_command(  # pylint: disable=too-many-arguments,too-many-locals,too-m
         exclude_processed_path,
         load_processed,
         sha256_file,
-        undo_exclude_processed_path,
     )
     from query import render_error
 
@@ -1314,11 +1313,23 @@ def exclude_command(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     _guard_write()
 
     if undo:
-        target = str(Path(undo).expanduser().resolve())
-        if not undo_exclude_processed_path(processed_path, target):
-            render_error(f"Not found in excluded list: {target}")
+        from source_purge import undo_exclude_source
+
+        # Resolve existing relative paths at the CLI; missing targets stay as given
+        # for build_path_candidates (absolute or ~-qualified).
+        undo_target = undo
+        undo_path = Path(undo).expanduser()
+        if not str(undo).startswith(("/", "~")) and undo_path.is_file():
+            undo_target = str(undo_path.resolve())
+        elif str(undo).startswith(("/", "~")):
+            try:
+                undo_target = str(undo_path.resolve())
+            except OSError:
+                undo_target = str(undo_path)
+        if not undo_exclude_source(cfg, undo_target):
+            render_error(f"Not found in excluded list: {undo_target}")
             raise typer.Exit(1)
-        typer.echo(f"Re-included: {target}")
+        typer.echo(f"Re-included: {undo_target}")
         typer.echo("Run 'convmem index' to ingest it.")
         return
 
@@ -1329,17 +1340,34 @@ def exclude_command(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     if purge:
         from source_purge import execute_purge, preview_purge
 
-        raw_target = str(Path(path).expanduser())
+        purge_target = path
+        path_obj = Path(path).expanduser()
+        # Existing relative files: resolve at CLI before the purge API.
+        if not str(path).startswith(("/", "~")):
+            if path_obj.is_file():
+                purge_target = str(path_obj.resolve())
+            else:
+                render_error(
+                    "Missing-file purge targets must be absolute or home-qualified "
+                    f"(got {path!r})"
+                )
+                raise typer.Exit(1)
+        else:
+            try:
+                resolved = str(path_obj.resolve())
+            except OSError:
+                resolved = str(path_obj)
+            purge_target = resolved
+            if not Path(purge_target).is_file() and not path_obj.is_file():
+                typer.echo(
+                    f"Warning: file not found on disk ({path}); "
+                    "purging derived rows and writing synthetic exclusion marker."
+                )
         try:
-            canonical = str(Path(path).expanduser().resolve())
-        except OSError:
-            canonical = raw_target
-        if not Path(canonical).is_file() and not Path(raw_target).is_file():
-            typer.echo(
-                f"Warning: file not found on disk ({path}); "
-                "purging derived rows and writing synthetic exclusion marker."
-            )
-        preview = preview_purge(cfg, path)
+            preview = preview_purge(cfg, purge_target)
+        except ValueError as exc:
+            render_error(str(exc))
+            raise typer.Exit(1) from exc
         typer.echo(f"Purge preview for: {preview.canonical_path}")
         typer.echo(f"  Chroma knowledge_units:        {preview.units} units")
         typer.echo(f"  Chroma conversation_summaries: {preview.summaries} summaries")
@@ -1358,7 +1386,7 @@ def exclude_command(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             if not proceed:
                 typer.echo("Aborted.")
                 raise typer.Exit(0)
-        result = execute_purge(cfg, path, reason=reason)
+        result = execute_purge(cfg, purge_target, reason=reason)
         if result.exit_code == 0:
             typer.echo(
                 f"Purged: {Path(result.canonical_path).name} "

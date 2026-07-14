@@ -59,6 +59,7 @@ def purge_source_from_jsonl(
     candidates: list[str],
     *,
     already_locked: bool = False,
+    _hooks: dict | None = None,
 ) -> int:
     """Rewrite JSONL removing matching source lines. Returns lines removed.
 
@@ -66,6 +67,12 @@ def purge_source_from_jsonl(
     Fail-closed on malformed lines (original file unchanged).
     """
     path = Path(export_path)
+    hooks = _hooks or {}
+
+    def _hook(name: str) -> None:
+        fn = hooks.get(name)
+        if callable(fn):
+            fn()
 
     def _rewrite() -> int:
         if not path.is_file():
@@ -90,7 +97,9 @@ def purge_source_from_jsonl(
             return 0
         tmp = path.with_suffix(path.suffix + ".purge.tmp")
         tmp.write_text(("\n".join(kept) + ("\n" if kept else "")), encoding="utf-8")
+        _hook("after_jsonl_tmp_write")  # F6: tmp written, rename not reached
         tmp.replace(path)
+        _hook("after_jsonl_rename")  # F7
         return removed
 
     if already_locked:
@@ -180,24 +189,22 @@ def _count_chroma_readonly(chroma_dir: Path | str, candidates: list[str]) -> dic
 
 
 def preview_purge(cfg: dict, target: str) -> PurgePreview:
-    """Mechanically read-only purge preview (no locks, no mutations)."""
+    """Mechanically read-only purge preview (no locks, no mutations).
+
+    Rejects empty/relative/non-filesystem targets (no candidate rebuild).
+    """
     candidates = build_path_candidates(target)
-    if not candidates and target:
-        # Absolute missing path: still form candidates from expanduser/resolve
-        raw = str(Path(target).expanduser())
-        try:
-            canonical = str(Path(target).expanduser().resolve())
-        except OSError:
-            canonical = raw
-        candidates = list(dict.fromkeys([canonical, raw]))
-    canonical = candidates[0] if candidates else str(Path(target).expanduser())
+    if not candidates:
+        raise ValueError(
+            "purge target must be an absolute or home-qualified filesystem path"
+        )
+    canonical = candidates[0]
     chroma_dir = cfg["index"]["chroma_dir"]
     export = Path(cfg["index"]["units_export"]).expanduser()
     counts = _count_chroma_readonly(chroma_dir, candidates)
     jsonl_n = 0
     if export.is_file():
-        # Read-only scan; treat malformed as count-abort? Preview should not mutate;
-        # skip malformed lines for preview counts (count only valid objects).
+        # Read-only scan; skip malformed lines for preview counts.
         for line in export.read_text(encoding="utf-8").splitlines():
             stripped = line.strip()
             if not stripped:
@@ -217,43 +224,83 @@ def preview_purge(cfg: dict, target: str) -> PurgePreview:
     )
 
 
+
+def undo_exclude_source(cfg: dict, target: str) -> bool:
+    """Clear exclusion for target under the same per-source flock as purge.
+
+    Serializes with ``execute_purge`` so undo cannot remove the fence while a
+    purge for that source is still in progress. ``target`` must already be
+    absolute or home-qualified (CLI resolves existing relative paths).
+    """
+    from ingest import undo_exclude_processed_path
+
+    candidates = build_path_candidates(target)
+    if not candidates:
+        return False
+    canonical = candidates[0]
+    processed_path = cfg["index"]["processed_log"]
+    with source_flock(cfg, canonical):
+        return undo_exclude_processed_path(processed_path, canonical)
+
+
 def mark_purge_exclusion(cfg: dict, canonical_path: str, reason: str) -> str:
-    """Write exclusion marker (processed flock). Returns exclusion key used."""
+    """Write exclusion marker (processed flock). Returns exclusion key used.
+
+    Clears all prior active same-path exclusion markers in the same
+    ``mutate_processed`` transaction, preserves latest-reason semantics, and
+    stamps ``purged_at`` atomically (including synthetic ``purged:<sha>`` keys).
+    """
     from datetime import datetime, timezone
 
-    from ingest import exclude_processed_path, mutate_processed, sha256_file
+    from ingest import _processed_path_str, mutate_processed, sha256_file
 
     processed_path = cfg["index"]["processed_log"]
     reason_text = reason or "purge"
     if not reason_text.startswith("purge"):
         reason_text = f"purge: {reason_text}"
+    path_key = _processed_path_str(canonical_path)
     path_obj = Path(canonical_path)
-    if path_obj.is_file():
-        file_hash = sha256_file(canonical_path)
-        exclude_processed_path(
-            processed_path, canonical_path, file_hash, reason=reason_text
-        )
-        # Stamp purged_at
-        def stamp(data: dict) -> None:
-            entry = data.get(file_hash)
-            if isinstance(entry, dict):
-                entry["purged_at"] = datetime.now(timezone.utc).strftime(
-                    "%Y-%m-%dT%H:%M:%SZ"
-                )
-
-        mutate_processed(processed_path, stamp)
-        return file_hash
-
-    key = purged_exclusion_key(canonical_path)
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    if path_obj.is_file():
+        file_hash = sha256_file(canonical_path)
+        key = file_hash
+    else:
+        key = purged_exclusion_key(canonical_path)
+
     def mutator(data: dict) -> None:
-        data[key] = {
-            "path": canonical_path,
-            "excluded": True,
-            "exclude_reason": reason_text,
-            "purged_at": now,
-        }
+        # Match exclude_processed_path: explicit reason wins; else carry prior.
+        carried_reason = reason_text if reason else ""
+        if not carried_reason:
+            for entry in data.values():
+                if not isinstance(entry, dict) or not entry.get("excluded"):
+                    continue
+                ep = entry.get("path")
+                if ep and _processed_path_str(ep) == path_key:
+                    prior = entry.get("exclude_reason") or ""
+                    if prior:
+                        carried_reason = prior
+                        break
+        if not carried_reason:
+            carried_reason = reason_text
+
+        for entry in data.values():
+            if not isinstance(entry, dict) or not entry.get("excluded"):
+                continue
+            ep = entry.get("path")
+            if ep and _processed_path_str(ep) == path_key:
+                entry.pop("excluded", None)
+                entry.pop("exclude_reason", None)
+                entry.pop("purged_at", None)
+
+        entry = data.get(key, {})
+        if not isinstance(entry, dict):
+            entry = {}
+        entry["path"] = path_key
+        entry["excluded"] = True
+        entry["exclude_reason"] = carried_reason
+        entry["purged_at"] = now
+        data[key] = entry
 
     mutate_processed(processed_path, mutator)
     return key
@@ -276,12 +323,14 @@ def execute_purge(
     hooks = _hooks or {}
     candidates = build_path_candidates(target)
     if not candidates:
-        raw = str(Path(target).expanduser())
-        try:
-            canonical = str(Path(target).expanduser().resolve())
-        except OSError:
-            canonical = raw
-        candidates = list(dict.fromkeys([canonical, raw]))
+        return PurgeResult(
+            exit_code=1,
+            canonical_path=str(target or ""),
+            candidates=[],
+            message=(
+                "purge target must be an absolute or home-qualified filesystem path"
+            ),
+        )
     canonical = candidates[0]
     export = Path(cfg["index"]["units_export"]).expanduser()
     chroma_dir = str(Path(cfg["index"]["chroma_dir"]).expanduser())
@@ -300,12 +349,39 @@ def execute_purge(
         try:
             units_deleted = 0
             summaries_deleted = 0
-            for candidate in candidates:
-                units_deleted += int(store.delete_units_for_source(candidate))
-            _hook("after_units")  # F3
-            for candidate in candidates:
-                summaries_deleted += int(store.delete_summaries_for_source(candidate))
-            _hook("after_summaries")  # F4
+            if hooks.get("force_chroma_locked"):
+                return PurgeResult(
+                    exit_code=1,
+                    canonical_path=canonical,
+                    candidates=candidates,
+                    units_deleted=units_deleted,
+                    summaries_deleted=summaries_deleted,
+                    jsonl_removed=0,
+                    message="Chroma locked: injected",
+                    exclusion_key=exclusion_key,
+                )
+            try:
+                for candidate in candidates:
+                    units_deleted += int(store.delete_units_for_source(candidate))
+                _hook("after_units")  # F3
+                for candidate in candidates:
+                    summaries_deleted += int(
+                        store.delete_summaries_for_source(candidate)
+                    )
+                _hook("after_summaries")  # F4
+            except Exception as exc:  # noqa: BLE001 — surface locked/IO for retry
+                if "database is locked" in str(exc).lower():
+                    return PurgeResult(
+                        exit_code=1,
+                        canonical_path=canonical,
+                        candidates=candidates,
+                        units_deleted=units_deleted,
+                        summaries_deleted=summaries_deleted,
+                        jsonl_removed=0,
+                        message=f"Chroma locked: {exc}",
+                        exclusion_key=exclusion_key,
+                    )
+                raise
             if units_deleted:
                 from chroma_store import invalidate_superseded_cache
 
@@ -318,9 +394,13 @@ def execute_purge(
                 with export_flock(cfg):
                     _hook("after_export_lock")  # F5
                     jsonl_removed = purge_source_from_jsonl(
-                        cfg, export, candidates, already_locked=True
+                        cfg,
+                        export,
+                        candidates,
+                        already_locked=True,
+                        _hooks=hooks,
                     )
-                    _hook("after_jsonl_rewrite")  # F7 (rename done)
+                    _hook("after_jsonl_rewrite")  # alias after rename
                     remaining_jsonl = count_jsonl_lines_for_source(export, candidates)
             except MalformedJsonlError as exc:
                 return PurgeResult(
