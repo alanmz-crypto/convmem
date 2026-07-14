@@ -111,6 +111,49 @@ class FingerprintTests(unittest.TestCase):
         self.assertNotEqual(a, b)
 
 
+    def test_r0401_cycle_order_canonical(self):
+        a = fingerprint_from_message(
+            _msg(
+                "work_git.py",
+                "cyclic-import",
+                "R0401",
+                "Cyclic import (brief -> doctor -> mcp_server)",
+            )
+        )
+        b = fingerprint_from_message(
+            _msg(
+                "work_git.py",
+                "cyclic-import",
+                "R0401",
+                "Cyclic import (mcp_server -> brief -> doctor)",
+            )
+        )
+        self.assertEqual(a, b)
+        self.assertEqual(
+            a[3], "Cyclic import modules: brief, doctor, mcp_server"
+        )
+
+    def test_r0801_module_header_order_canonical(self):
+        a_msg = (
+            "Similar lines in 2 files\n"
+            "==inventory:[#:#]\n"
+            "==adapters.detect:[#:#]\n"
+            "        return True"
+        )
+        b_msg = (
+            "Similar lines in 2 files\n"
+            "==adapters.detect:[#:#]\n"
+            "==inventory:[#:#]\n"
+            "        return True"
+        )
+        a = fingerprint_from_message(
+            _msg("work_git.py", "duplicate-code", "R0801", a_msg)
+        )
+        b = fingerprint_from_message(
+            _msg("work_git.py", "duplicate-code", "R0801", b_msg)
+        )
+        self.assertEqual(a, b)
+
 class CompareTests(unittest.TestCase):
     def test_identical_baseline_passes(self):
         msgs = [
