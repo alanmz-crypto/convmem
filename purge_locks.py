@@ -20,6 +20,16 @@ def _export_depth() -> int:
     return int(getattr(_tls, "export_depth", 0) or 0)
 
 
+def source_lock_depth() -> int:
+    """Current thread's source-flock nesting depth (tests/instrumentation)."""
+    return _source_depth()
+
+
+def export_lock_depth() -> int:
+    """Current thread's export-flock nesting depth (tests/instrumentation)."""
+    return _export_depth()
+
+
 def _source_depth() -> int:
     return int(getattr(_tls, "source_depth", 0) or 0)
 
