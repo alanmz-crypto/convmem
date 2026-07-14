@@ -9,6 +9,7 @@ import json
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from ingest import (
     commit_processed_index_entry,
@@ -270,6 +271,176 @@ class ProcessedAtomicSaveStillWorks(unittest.TestCase):
             data = load_processed(str(p))
             self.assertEqual(data["keep"]["path"], "/keep.jsonl")
             self.assertEqual(data["new"]["units"], 3)
+
+
+class MultiHashExclusionCanonicalizationTests(unittest.TestCase):
+    """Codex FAIL: undo cleared only the first hash; path stayed excluded."""
+
+    def _proc(self, td: str) -> Path:
+        return Path(td) / "processed.json"
+
+    def _td(self):
+        import tempfile
+
+        return tempfile.TemporaryDirectory()
+
+    def _active_for_path(self, data: dict, path_key: str) -> list[str]:
+        from ingest import _processed_path_str
+
+        key = _processed_path_str(path_key)
+        return [
+            h
+            for h, e in data.items()
+            if isinstance(e, dict)
+            and e.get("excluded")
+            and e.get("path")
+            and _processed_path_str(e["path"]) == key
+        ]
+
+    def test_exclude_old_then_new_then_undo_clears_all(self):
+        with self._td() as td:
+            p = self._proc(td)
+            grow = Path(td) / "grow.jsonl"
+            grow.write_text("v1\n")
+            path_key = str(grow.resolve())
+            other = Path(td) / "other.jsonl"
+            other.write_text("o\n")
+            other_key = str(other.resolve())
+
+            exclude_processed_path(str(p), path_key, "oldhash", reason="v1")
+            grow.write_text("v1\nv2\n")  # content hash would change; we plant new hash
+            exclude_processed_path(str(p), path_key, "newhash", reason="v2")
+
+            # Simulate legacy multi-marker state Codex found (pre-canonicalize race).
+            # Then undo must clear all same-path markers.
+            save_processed(
+                str(p),
+                {
+                    "oldhash": {
+                        "path": path_key,
+                        "excluded": True,
+                        "exclude_reason": "v1",
+                    },
+                    "newhash": {
+                        "path": path_key,
+                        "excluded": True,
+                        "exclude_reason": "v2",
+                    },
+                    "oh": {
+                        "path": other_key,
+                        "excluded": True,
+                        "exclude_reason": "keep",
+                    },
+                },
+            )
+            undo_reported = undo_exclude_processed_path(str(p), path_key)
+            data = load_processed(str(p))
+            remaining = self._active_for_path(data, path_key)
+            self.assertTrue(undo_reported)
+            self.assertEqual(remaining, [])
+            self.assertTrue(data["oh"].get("excluded"))
+            self.assertNotEqual(
+                watch_skip_reason(path_key, processed=data), "excluded"
+            )
+
+    def test_reexclude_leaves_one_canonical_active_marker(self):
+        with self._td() as td:
+            p = self._proc(td)
+            grow = Path(td) / "grow.jsonl"
+            grow.write_text("v1\n")
+            path_key = str(grow.resolve())
+            exclude_processed_path(str(p), path_key, "oldhash", reason="first")
+            exclude_processed_path(str(p), path_key, "newhash", reason="latest")
+            data = load_processed(str(p))
+            active = self._active_for_path(data, path_key)
+            self.assertEqual(active, ["newhash"])
+            self.assertEqual(data["newhash"].get("exclude_reason"), "latest")
+            self.assertFalse(data.get("oldhash", {}).get("excluded", False))
+
+    def test_reexclude_preserves_other_path_and_carries_reason(self):
+        with self._td() as td:
+            p = self._proc(td)
+            a = Path(td) / "a.jsonl"
+            b = Path(td) / "b.jsonl"
+            a.write_text("a\n")
+            b.write_text("b\n")
+            a_key, b_key = str(a.resolve()), str(b.resolve())
+            exclude_processed_path(str(p), a_key, "ha1", reason="keep-me")
+            exclude_processed_path(str(p), b_key, "hb", reason="other")
+            # Re-exclude A under new hash with empty reason → carry forward.
+            exclude_processed_path(str(p), a_key, "ha2", reason="")
+            data = load_processed(str(p))
+            self.assertEqual(self._active_for_path(data, a_key), ["ha2"])
+            self.assertEqual(data["ha2"].get("exclude_reason"), "keep-me")
+            self.assertEqual(self._active_for_path(data, b_key), ["hb"])
+            self.assertEqual(data["hb"].get("exclude_reason"), "other")
+
+    def test_cli_list_undo_agrees_with_helper_state(self):
+        """CLI list/undo path uses the same helpers; assert end state matches."""
+        from typer.testing import CliRunner
+        import convmem as convmem_mod
+
+        with self._td() as td:
+            p = self._proc(td)
+            grow = Path(td) / "grow.jsonl"
+            grow.write_text("v1\n")
+            path_key = str(grow.resolve())
+            other = Path(td) / "other.jsonl"
+            other.write_text("o\n")
+            other_key = str(other.resolve())
+
+            # Dual markers + unrelated (Codex uncovered shape).
+            save_processed(
+                str(p),
+                {
+                    "oldhash": {
+                        "path": path_key,
+                        "excluded": True,
+                        "exclude_reason": "old",
+                    },
+                    "newhash": {
+                        "path": path_key,
+                        "excluded": True,
+                        "exclude_reason": "new",
+                    },
+                    "oh": {
+                        "path": other_key,
+                        "excluded": True,
+                        "exclude_reason": "keep",
+                    },
+                },
+            )
+            cfg = {"index": {"processed_log": str(p)}}
+            runner = CliRunner()
+            with mock.patch.object(convmem_mod, "_guard_write", lambda: None):
+                with mock.patch("config.load_config", return_value=cfg):
+                    listed = runner.invoke(
+                        convmem_mod.app, ["exclude", "--list"]
+                    )
+                    self.assertEqual(listed.exit_code, 0, listed.output)
+                    self.assertIn(path_key, listed.output)
+                    self.assertIn(other_key, listed.output)
+
+                    undone = runner.invoke(
+                        convmem_mod.app, ["exclude", "--undo", path_key]
+                    )
+                    self.assertEqual(undone.exit_code, 0, undone.output)
+                    self.assertIn("Re-included", undone.output)
+
+                    listed2 = runner.invoke(
+                        convmem_mod.app, ["exclude", "--list"]
+                    )
+                    self.assertEqual(listed2.exit_code, 0, listed2.output)
+                    self.assertNotIn(path_key, listed2.output)
+                    self.assertIn(other_key, listed2.output)
+
+            data = load_processed(str(p))
+            self.assertEqual(self._active_for_path(data, path_key), [])
+            self.assertEqual(self._active_for_path(data, other_key), ["oh"])
+            self.assertNotEqual(
+                watch_skip_reason(path_key, processed=data), "excluded"
+            )
+
 
 
 if __name__ == "__main__":
