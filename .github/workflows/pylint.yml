@@ -24,6 +24,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # Regenerate ci/pylint-baseline.json on ubuntu-latest with the same
+      # install steps (requirements + pylint==4.0.6 + pytest). Do not use a
+      # local env that adds stray packages or scripts/__init__.py package marks.
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip

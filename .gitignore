@@ -49,3 +49,5 @@ staging/builder-reference/
 /argparse
 /json
 /sys
+# Agent worktree probe — must not package scripts/ for Pylint module names
+scripts/__init__.py
