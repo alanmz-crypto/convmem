@@ -252,12 +252,32 @@ def ensure_git_commit(ref: str, *, cwd: Path | None = None) -> str:
     return proc.stdout.strip()
 
 
-def git_path_exists_in_commit(
+def probe_baseline_path_in_commit(
     ref: str, path: str, *, cwd: Path | None = None
-) -> bool:
-    """True when ``ref:path`` is a git object (file present in that commit)."""
-    proc = _git(["cat-file", "-e", f"{ref}:{path}"], cwd=cwd)
-    return proc.returncode == 0
+) -> str:
+    """Tri-state path probe via ``git ls-tree --name-only``.
+
+    Returns:
+      ``"present"`` — exit 0 and stdout is exactly ``path``
+      ``"absent"`` — exit 0 and empty stdout (only condition that may bootstrap)
+
+    Any nonzero git status, or exit 0 with unexpected stdout, raises
+    ``BaselineResolveError`` (fail closed — never bootstrap).
+    """
+    proc = _git(["ls-tree", "--name-only", ref, "--", path], cwd=cwd)
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip() or f"exit {proc.returncode}"
+        raise BaselineResolveError(
+            f"git ls-tree failed probing {path!r} at {ref}: {err}"
+        )
+    lines = [ln.strip() for ln in (proc.stdout or "").splitlines() if ln.strip()]
+    if not lines:
+        return "absent"
+    if lines == [path]:
+        return "present"
+    raise BaselineResolveError(
+        f"git ls-tree returned unexpected paths for {ref}:{path}: {lines!r}"
+    )
 
 
 def git_show_text(ref: str, path: str, *, cwd: Path | None = None) -> str:
@@ -282,17 +302,21 @@ def resolve_baseline_bytes(
 
     When ``base_ref`` is set:
       1. Verify it resolves as a commit (else BaselineResolveError — no bootstrap).
-      2. If ``base_ref:baseline_repo_path`` exists → use that content.
-      3. Else BOOTSTRAP to the branch file (introduction only).
+      2. Probe ``baseline_repo_path`` with ``git ls-tree --name-only``:
+         present → ``git show`` base baseline; absent (empty) → BOOTSTRAP;
+         any probe/show error → BaselineResolveError (never bootstrap).
 
     Returns (raw_json_bytes, provenance_label).
     """
     if base_ref:
         sha = ensure_git_commit(base_ref, cwd=git_cwd)
-        if git_path_exists_in_commit(sha, baseline_repo_path, cwd=git_cwd):
+        state = probe_baseline_path_in_commit(
+            sha, baseline_repo_path, cwd=git_cwd
+        )
+        if state == "present":
             content = git_show_text(sha, baseline_repo_path, cwd=git_cwd)
             return content.encode("utf-8"), f"base:{sha}"
-        # Valid commit, file genuinely absent → first-time bootstrap.
+        # state == "absent": only empty ls-tree may bootstrap.
         if not branch_baseline.is_file():
             raise FileNotFoundError(
                 f"No baseline at {baseline_repo_path} on base {sha} "
