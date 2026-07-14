@@ -1,0 +1,1971 @@
+{
+  "version": 1,
+  "fingerprint": [
+    "path",
+    "symbol",
+    "msg_id",
+    "message"
+  ],
+  "findings": [
+    {
+      "path": "*",
+      "symbol": "cyclic-import",
+      "msg_id": "R0401",
+      "message": "",
+      "count": 12
+    },
+    {
+      "path": "*",
+      "symbol": "duplicate-code",
+      "msg_id": "R0801",
+      "message": "",
+      "count": 73
+    },
+    {
+      "path": "adapters/__init__.py",
+      "symbol": "trailing-newlines",
+      "msg_id": "C0305",
+      "message": "Trailing newlines",
+      "count": 1
+    },
+    {
+      "path": "adapters/detect.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 2
+    },
+    {
+      "path": "adapters/detect.py",
+      "symbol": "unspecified-encoding",
+      "msg_id": "W1514",
+      "message": "Using open without explicitly specifying an encoding",
+      "count": 1
+    },
+    {
+      "path": "adapters/sqlite_chat.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'Path' (imported line 13)",
+      "count": 1
+    },
+    {
+      "path": "adapters/sqlite_chat.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'Path' from outer scope (line 13)",
+      "count": 1
+    },
+    {
+      "path": "ask.py",
+      "symbol": "too-many-locals",
+      "msg_id": "R0914",
+      "message": "Too many local variables (44/30)",
+      "count": 1
+    },
+    {
+      "path": "ask.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 2
+    },
+    {
+      "path": "brief.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (143/120)",
+      "count": 1
+    },
+    {
+      "path": "brief.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (161/120)",
+      "count": 1
+    },
+    {
+      "path": "brief.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (187/120)",
+      "count": 1
+    },
+    {
+      "path": "brief.py",
+      "symbol": "unsubscriptable-object",
+      "msg_id": "E1136",
+      "message": "Value 'newest' is unsubscriptable",
+      "count": 1
+    },
+    {
+      "path": "brief.py",
+      "symbol": "too-many-branches",
+      "msg_id": "R0912",
+      "message": "Too many branches (31/25)",
+      "count": 1
+    },
+    {
+      "path": "brief.py",
+      "symbol": "too-many-locals",
+      "msg_id": "R0914",
+      "message": "Too many local variables (40/30)",
+      "count": 1
+    },
+    {
+      "path": "brief.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 3
+    },
+    {
+      "path": "brief.py",
+      "symbol": "subprocess-run-check",
+      "msg_id": "W1510",
+      "message": "'subprocess.run' used without explicitly defining the value for 'check'.",
+      "count": 5
+    },
+    {
+      "path": "chroma_store.py",
+      "symbol": "consider-using-enumerate",
+      "msg_id": "C0200",
+      "message": "Consider using enumerate instead of iterating with range and len",
+      "count": 1
+    },
+    {
+      "path": "chroma_store.py",
+      "symbol": "protected-access",
+      "msg_id": "W0212",
+      "message": "Access to a protected member _collection of a client class",
+      "count": 2
+    },
+    {
+      "path": "chroma_store.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 3
+    },
+    {
+      "path": "conflict_events.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (124/120)",
+      "count": 1
+    },
+    {
+      "path": "conflict_events.py",
+      "symbol": "multiple-statements",
+      "msg_id": "C0321",
+      "message": "More than one statement on a single line",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (130/120)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-lines",
+      "msg_id": "C0302",
+      "message": "Too many lines in module (1418/1000)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-branches",
+      "msg_id": "R0912",
+      "message": "Too many branches (38/25)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-arguments",
+      "msg_id": "R0913",
+      "message": "Too many arguments (12/8)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-arguments",
+      "msg_id": "R0913",
+      "message": "Too many arguments (24/8)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-arguments",
+      "msg_id": "R0913",
+      "message": "Too many arguments (26/8)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-locals",
+      "msg_id": "R0914",
+      "message": "Too many local variables (69/30)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-statements",
+      "msg_id": "R0915",
+      "message": "Too many statements (154/120)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-positional-arguments",
+      "msg_id": "R0917",
+      "message": "Too many positional arguments (12/5)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-positional-arguments",
+      "msg_id": "R0917",
+      "message": "Too many positional arguments (24/5)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-positional-arguments",
+      "msg_id": "R0917",
+      "message": "Too many positional arguments (26/5)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-positional-arguments",
+      "msg_id": "R0917",
+      "message": "Too many positional arguments (6/5)",
+      "count": 2
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-positional-arguments",
+      "msg_id": "R0917",
+      "message": "Too many positional arguments (7/5)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "too-many-positional-arguments",
+      "msg_id": "R0917",
+      "message": "Too many positional arguments (8/5)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'Path' (imported line 43)",
+      "count": 4
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'datetime' (imported line 42)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'json' (imported line 39)",
+      "count": 4
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'timezone' (imported line 42)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused ingest_approved_ledger imported from propose_decision",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused mark_approved imported from propose_decision",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'Path' from outer scope (line 43)",
+      "count": 4
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'datetime' from outer scope (line 42)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'json' from outer scope (line 39)",
+      "count": 4
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'stats' from outer scope (line 288)",
+      "count": 2
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'timezone' from outer scope (line 42)",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "raise-missing-from",
+      "msg_id": "W0707",
+      "message": "Consider explicitly re-raising using 'except Exception as exc' and 'raise typer.Exit(1) from exc'",
+      "count": 1
+    },
+    {
+      "path": "convmem.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 1
+    },
+    {
+      "path": "cross_project_digest.py",
+      "symbol": "invalid-name",
+      "msg_id": "C0103",
+      "message": "Variable name \"_PREAMBLE_RE\" doesn't conform to snake_case naming style",
+      "count": 1
+    },
+    {
+      "path": "cross_project_digest.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 're' (imported line 10)",
+      "count": 1
+    },
+    {
+      "path": "cross_project_digest.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused timedelta imported from datetime",
+      "count": 1
+    },
+    {
+      "path": "cross_project_digest.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 're' from outer scope (line 10)",
+      "count": 1
+    },
+    {
+      "path": "distill.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'title'",
+      "count": 1
+    },
+    {
+      "path": "docs/chatgpt-pack/ledger.py",
+      "symbol": "too-many-instance-attributes",
+      "msg_id": "R0902",
+      "message": "Too many instance attributes (14/7)",
+      "count": 1
+    },
+    {
+      "path": "docs/chatgpt-pack/ledger.py",
+      "symbol": "too-many-instance-attributes",
+      "msg_id": "R0902",
+      "message": "Too many instance attributes (15/7)",
+      "count": 1
+    },
+    {
+      "path": "docs/chatgpt-pack/ledger.py",
+      "symbol": "too-many-instance-attributes",
+      "msg_id": "R0902",
+      "message": "Too many instance attributes (17/7)",
+      "count": 1
+    },
+    {
+      "path": "docs/chatgpt-pack/ledger.py",
+      "symbol": "self-assigning-variable",
+      "msg_id": "W0127",
+      "message": "Assigning the same variable 'severity' to itself",
+      "count": 1
+    },
+    {
+      "path": "docs/chatgpt-pack/ledger.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'result'",
+      "count": 1
+    },
+    {
+      "path": "doctor.py",
+      "symbol": "too-many-lines",
+      "msg_id": "C0302",
+      "message": "Too many lines in module (1283/1000)",
+      "count": 1
+    },
+    {
+      "path": "doctor.py",
+      "symbol": "no-name-in-module",
+      "msg_id": "E0611",
+      "message": "No name 'repair_empty_ledger_documents' in module 'observe'",
+      "count": 1
+    },
+    {
+      "path": "doctor.py",
+      "symbol": "too-many-return-statements",
+      "msg_id": "R0911",
+      "message": "Too many return statements (14/12)",
+      "count": 1
+    },
+    {
+      "path": "doctor.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'datetime' (imported line 10)",
+      "count": 2
+    },
+    {
+      "path": "doctor.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'json' (imported line 5)",
+      "count": 3
+    },
+    {
+      "path": "doctor.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'root'",
+      "count": 1
+    },
+    {
+      "path": "doctor.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'row'",
+      "count": 1
+    },
+    {
+      "path": "doctor.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'json' from outer scope (line 5)",
+      "count": 1
+    },
+    {
+      "path": "doctor.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 3
+    },
+    {
+      "path": "doctor.py",
+      "symbol": "subprocess-run-check",
+      "msg_id": "W1510",
+      "message": "'subprocess.run' used without explicitly defining the value for 'check'.",
+      "count": 4
+    },
+    {
+      "path": "eval_judge.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 1
+    },
+    {
+      "path": "export_report_to_observations.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from ledger_ids import observation_id, wpsec_finding_key\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "export_report_to_observations.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'i'",
+      "count": 1
+    },
+    {
+      "path": "export_report_to_observations.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'pending_fix'",
+      "count": 1
+    },
+    {
+      "path": "extract_procedures.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 1
+    },
+    {
+      "path": "git_hooks.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'repo'",
+      "count": 1
+    },
+    {
+      "path": "git_hooks.py",
+      "symbol": "subprocess-run-check",
+      "msg_id": "W1510",
+      "message": "'subprocess.run' used without explicitly defining the value for 'check'.",
+      "count": 1
+    },
+    {
+      "path": "hash_schema_gate.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused timedelta imported from datetime",
+      "count": 1
+    },
+    {
+      "path": "ingest.py",
+      "symbol": "too-many-branches",
+      "msg_id": "R0912",
+      "message": "Too many branches (56/25)",
+      "count": 1
+    },
+    {
+      "path": "ingest.py",
+      "symbol": "too-many-locals",
+      "msg_id": "R0914",
+      "message": "Too many local variables (62/30)",
+      "count": 1
+    },
+    {
+      "path": "ingest.py",
+      "symbol": "too-many-statements",
+      "msg_id": "R0915",
+      "message": "Too many statements (174/120)",
+      "count": 1
+    },
+    {
+      "path": "ingest.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 6
+    },
+    {
+      "path": "ingest.py",
+      "symbol": "unspecified-encoding",
+      "msg_id": "W1514",
+      "message": "Using open without explicitly specifying an encoding",
+      "count": 2
+    },
+    {
+      "path": "inter_model_index.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 1
+    },
+    {
+      "path": "inventory.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'f' from outer scope (line 211)",
+      "count": 1
+    },
+    {
+      "path": "inventory.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'records' from outer scope (line 210)",
+      "count": 2
+    },
+    {
+      "path": "inventory.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 2
+    },
+    {
+      "path": "inventory.py",
+      "symbol": "unspecified-encoding",
+      "msg_id": "W1514",
+      "message": "Using open without explicitly specifying an encoding",
+      "count": 2
+    },
+    {
+      "path": "ledger.py",
+      "symbol": "too-many-instance-attributes",
+      "msg_id": "R0902",
+      "message": "Too many instance attributes (14/7)",
+      "count": 1
+    },
+    {
+      "path": "ledger.py",
+      "symbol": "too-many-instance-attributes",
+      "msg_id": "R0902",
+      "message": "Too many instance attributes (15/7)",
+      "count": 1
+    },
+    {
+      "path": "ledger.py",
+      "symbol": "too-many-instance-attributes",
+      "msg_id": "R0902",
+      "message": "Too many instance attributes (17/7)",
+      "count": 1
+    },
+    {
+      "path": "ledger.py",
+      "symbol": "self-assigning-variable",
+      "msg_id": "W0127",
+      "message": "Assigning the same variable 'severity' to itself",
+      "count": 1
+    },
+    {
+      "path": "ledger.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'json' (imported line 9)",
+      "count": 1
+    },
+    {
+      "path": "ledger.py",
+      "symbol": "global-statement",
+      "msg_id": "W0603",
+      "message": "Using the global statement",
+      "count": 1
+    },
+    {
+      "path": "ledger.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'result'",
+      "count": 1
+    },
+    {
+      "path": "ledger.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 1
+    },
+    {
+      "path": "ledger_ids.py",
+      "symbol": "too-many-return-statements",
+      "msg_id": "R0911",
+      "message": "Too many return statements (14/12)",
+      "count": 1
+    },
+    {
+      "path": "ledger_recent.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (129/120)",
+      "count": 1
+    },
+    {
+      "path": "ledger_recent.py",
+      "symbol": "no-name-in-module",
+      "msg_id": "E0611",
+      "message": "No name 'ledger_unit_document' in module 'ledger'",
+      "count": 1
+    },
+    {
+      "path": "llm.py",
+      "symbol": "invalid-name",
+      "msg_id": "C0103",
+      "message": "Constant name \"_warned_fallback\" doesn't conform to UPPER_CASE naming style",
+      "count": 1
+    },
+    {
+      "path": "llm.py",
+      "symbol": "global-statement",
+      "msg_id": "W0603",
+      "message": "Using the global statement",
+      "count": 1
+    },
+    {
+      "path": "mcp_server.py",
+      "symbol": "invalid-name",
+      "msg_id": "C0103",
+      "message": "Constant name \"_mcp_brief_called\" doesn't conform to UPPER_CASE naming style",
+      "count": 1
+    },
+    {
+      "path": "mcp_server.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (127/120)",
+      "count": 1
+    },
+    {
+      "path": "mcp_server.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (261/120)",
+      "count": 1
+    },
+    {
+      "path": "mcp_server.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (314/120)",
+      "count": 1
+    },
+    {
+      "path": "mcp_server.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from mcp.server.fastmcp import FastMCP\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "mcp_server.py",
+      "symbol": "global-statement",
+      "msg_id": "W0603",
+      "message": "Using the global statement",
+      "count": 1
+    },
+    {
+      "path": "monitor.py",
+      "symbol": "too-many-branches",
+      "msg_id": "R0912",
+      "message": "Too many branches (31/25)",
+      "count": 1
+    },
+    {
+      "path": "monitor.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'headers'",
+      "count": 1
+    },
+    {
+      "path": "next_steps.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'site'",
+      "count": 1
+    },
+    {
+      "path": "next_steps.py",
+      "symbol": "f-string-without-interpolation",
+      "msg_id": "W1309",
+      "message": "Using an f-string that does not have any interpolated variables",
+      "count": 1
+    },
+    {
+      "path": "observe.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (127/120)",
+      "count": 1
+    },
+    {
+      "path": "observe.py",
+      "symbol": "no-name-in-module",
+      "msg_id": "E0611",
+      "message": "No name 'invalidate_ledger_index_cache' in module 'ledger'",
+      "count": 1
+    },
+    {
+      "path": "observe.py",
+      "symbol": "no-name-in-module",
+      "msg_id": "E0611",
+      "message": "No name 'ledger_unit_document' in module 'ledger'",
+      "count": 1
+    },
+    {
+      "path": "open_source.py",
+      "symbol": "too-many-return-statements",
+      "msg_id": "R0911",
+      "message": "Too many return statements (14/12)",
+      "count": 1
+    },
+    {
+      "path": "open_source.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 1
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (125/120)",
+      "count": 1
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (149/120)",
+      "count": 1
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "no-name-in-module",
+      "msg_id": "E0611",
+      "message": "No name 'invalidate_ledger_index_cache' in module 'ledger'",
+      "count": 1
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "too-many-arguments",
+      "msg_id": "R0913",
+      "message": "Too many arguments (13/8)",
+      "count": 1
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "too-many-locals",
+      "msg_id": "R0914",
+      "message": "Too many local variables (36/30)",
+      "count": 1
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'Path' (imported line 10)",
+      "count": 2
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'json' (imported line 5)",
+      "count": 1
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'live_marker'",
+      "count": 1
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'proposal_id'",
+      "count": 1
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'verbose'",
+      "count": 1
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'Path' from outer scope (line 10)",
+      "count": 2
+    },
+    {
+      "path": "propose_decision.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 4
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-order",
+      "msg_id": "C0411",
+      "message": "third party import \"rich.box\" should be placed before first party imports \"chroma_store.ChromaStore\", \"chroma_readonly.collection_metadata_rows\", \"config.load_config\" (...) \"meta_format.when_from_meta\", \"open_source.resolve_open_target\", \"site_filter.filter_results_by_site\"",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-order",
+      "msg_id": "C0411",
+      "message": "third party import \"rich.console.Console\" should be placed before first party imports \"chroma_store.ChromaStore\", \"chroma_readonly.collection_metadata_rows\", \"config.load_config\" (...) \"meta_format.when_from_meta\", \"open_source.resolve_open_target\", \"site_filter.filter_results_by_site\"",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-order",
+      "msg_id": "C0411",
+      "message": "third party import \"rich.panel.Panel\" should be placed before first party imports \"chroma_store.ChromaStore\", \"chroma_readonly.collection_metadata_rows\", \"config.load_config\" (...) \"meta_format.when_from_meta\", \"open_source.resolve_open_target\", \"site_filter.filter_results_by_site\"",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-order",
+      "msg_id": "C0411",
+      "message": "third party import \"rich.rule.Rule\" should be placed before first party imports \"chroma_store.ChromaStore\", \"chroma_readonly.collection_metadata_rows\", \"config.load_config\" (...) \"meta_format.when_from_meta\", \"open_source.resolve_open_target\", \"site_filter.filter_results_by_site\"",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-order",
+      "msg_id": "C0411",
+      "message": "third party import \"rich.table.Table\" should be placed before first party imports \"chroma_store.ChromaStore\", \"chroma_readonly.collection_metadata_rows\", \"config.load_config\" (...) \"meta_format.when_from_meta\", \"open_source.resolve_open_target\", \"site_filter.filter_results_by_site\"",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-order",
+      "msg_id": "C0411",
+      "message": "third party import \"rich.text.Text\" should be placed before first party imports \"chroma_store.ChromaStore\", \"chroma_readonly.collection_metadata_rows\", \"config.load_config\" (...) \"meta_format.when_from_meta\", \"open_source.resolve_open_target\", \"site_filter.filter_results_by_site\"",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from rich import box\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from rich.console import Console, Group\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from rich.panel import Panel\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from rich.rule import Rule\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from rich.table import Table\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from rich.text import Text\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused ChromaStore imported from chroma_store",
+      "count": 1
+    },
+    {
+      "path": "query.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 4
+    },
+    {
+      "path": "query.py",
+      "symbol": "unspecified-encoding",
+      "msg_id": "W1514",
+      "message": "Using open without explicitly specifying an encoding",
+      "count": 3
+    },
+    {
+      "path": "refine.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'limit'",
+      "count": 1
+    },
+    {
+      "path": "refine.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'verbose'",
+      "count": 1
+    },
+    {
+      "path": "refine.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 7
+    },
+    {
+      "path": "rerank.py",
+      "symbol": "invalid-name",
+      "msg_id": "C0103",
+      "message": "Constant name \"_model\" doesn't conform to UPPER_CASE naming style",
+      "count": 1
+    },
+    {
+      "path": "rerank.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from contextlib import redirect_stderr\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "rerank.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from io import StringIO\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "rerank.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from sentence_transformers import CrossEncoder\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "rerank.py",
+      "symbol": "global-statement",
+      "msg_id": "W0603",
+      "message": "Using the global statement",
+      "count": 1
+    },
+    {
+      "path": "rerank.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 1
+    },
+    {
+      "path": "restic_gate.py",
+      "symbol": "subprocess-run-check",
+      "msg_id": "W1510",
+      "message": "'subprocess.run' used without explicitly defining the value for 'check'.",
+      "count": 1
+    },
+    {
+      "path": "scripts/chroma_restore_drill.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from chroma_store import SUMMARIES, UNITS, open_chroma_for_verify\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "scripts/chroma_restore_drill.py",
+      "symbol": "protected-access",
+      "msg_id": "W0212",
+      "message": "Access to a protected member _collection of a client class",
+      "count": 2
+    },
+    {
+      "path": "scripts/chroma_restore_drill.py",
+      "symbol": "protected-access",
+      "msg_id": "W0212",
+      "message": "Access to a protected member _write of a client class",
+      "count": 1
+    },
+    {
+      "path": "scripts/chroma_restore_drill.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'head'",
+      "count": 1
+    },
+    {
+      "path": "scripts/chroma_restore_drill.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'i'",
+      "count": 1
+    },
+    {
+      "path": "scripts/chroma_restore_drill.py",
+      "symbol": "raise-missing-from",
+      "msg_id": "W0707",
+      "message": "Consider explicitly re-raising using 'except ValueError as exc' and 'raise DrillError('snapshot_time', f'unparseable snapshot time: {raw!r}') from exc'",
+      "count": 1
+    },
+    {
+      "path": "scripts/chroma_restore_drill.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 3
+    },
+    {
+      "path": "scripts/chroma_restore_drill.py",
+      "symbol": "f-string-without-interpolation",
+      "msg_id": "W1309",
+      "message": "Using an f-string that does not have any interpolated variables",
+      "count": 1
+    },
+    {
+      "path": "scripts/eval-retrieval.py",
+      "symbol": "invalid-name",
+      "msg_id": "C0103",
+      "message": "Module name \"eval-retrieval\" doesn't conform to snake_case naming style",
+      "count": 1
+    },
+    {
+      "path": "scripts/eval-summaries.py",
+      "symbol": "invalid-name",
+      "msg_id": "C0103",
+      "message": "Module name \"eval-summaries\" doesn't conform to snake_case naming style",
+      "count": 1
+    },
+    {
+      "path": "scripts/eval-synthesis.py",
+      "symbol": "invalid-name",
+      "msg_id": "C0103",
+      "message": "Module name \"eval-synthesis\" doesn't conform to snake_case naming style",
+      "count": 1
+    },
+    {
+      "path": "scripts/eval-synthesis.py",
+      "symbol": "protected-access",
+      "msg_id": "W0212",
+      "message": "Access to a protected member _resolve_fallback_model of a client class",
+      "count": 1
+    },
+    {
+      "path": "scripts/repair-ledger-documents.py",
+      "symbol": "invalid-name",
+      "msg_id": "C0103",
+      "message": "Module name \"repair-ledger-documents\" doesn't conform to snake_case naming style",
+      "count": 1
+    },
+    {
+      "path": "scripts/repair-ledger-documents.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from config import load_config\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "scripts/repair-ledger-documents.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from observe import repair_empty_ledger_documents\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "scripts/repair-ledger-documents.py",
+      "symbol": "no-name-in-module",
+      "msg_id": "E0611",
+      "message": "No name 'repair_empty_ledger_documents' in module 'observe'",
+      "count": 1
+    },
+    {
+      "path": "scripts/restic_integrity_check.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 1
+    },
+    {
+      "path": "site_filter.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'short'",
+      "count": 1
+    },
+    {
+      "path": "tests/__init__.py",
+      "symbol": "trailing-newlines",
+      "msg_id": "C0305",
+      "message": "Trailing newlines",
+      "count": 1
+    },
+    {
+      "path": "tests/test_ask_streaming.py",
+      "symbol": "unreachable",
+      "msg_id": "W0101",
+      "message": "Unreachable code",
+      "count": 1
+    },
+    {
+      "path": "tests/test_ask_streaming.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'decode_unicode'",
+      "count": 2
+    },
+    {
+      "path": "tests/test_brief.py",
+      "symbol": "unspecified-encoding",
+      "msg_id": "W1514",
+      "message": "Using open without explicitly specifying an encoding",
+      "count": 3
+    },
+    {
+      "path": "tests/test_brief_projects.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'FakePath'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_chroma_approve_index.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 1
+    },
+    {
+      "path": "tests/test_chroma_approve_index.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'host'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_chroma_approve_index.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'model'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_chroma_restore_drill.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 1
+    },
+    {
+      "path": "tests/test_chroma_restore_drill.py",
+      "symbol": "protected-access",
+      "msg_id": "W0212",
+      "message": "Access to a protected member _collection of a client class",
+      "count": 3
+    },
+    {
+      "path": "tests/test_chroma_superseded.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 1
+    },
+    {
+      "path": "tests/test_codex_history_jsonl.py",
+      "symbol": "bad-indentation",
+      "msg_id": "W0311",
+      "message": "Bad indentation. Found 2 spaces, expected 4",
+      "count": 4
+    },
+    {
+      "path": "tests/test_codex_history_jsonl.py",
+      "symbol": "bad-indentation",
+      "msg_id": "W0311",
+      "message": "Bad indentation. Found 4 spaces, expected 8",
+      "count": 14
+    },
+    {
+      "path": "tests/test_codex_history_jsonl.py",
+      "symbol": "bad-indentation",
+      "msg_id": "W0311",
+      "message": "Bad indentation. Found 6 spaces, expected 12",
+      "count": 11
+    },
+    {
+      "path": "tests/test_conflict_detection_arc_verify.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused append_event imported from conflict_events",
+      "count": 1
+    },
+    {
+      "path": "tests/test_conflict_detection_arc_verify.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 1
+    },
+    {
+      "path": "tests/test_conflict_events.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (127/120)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_conflict_events.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (183/120)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_conflict_events.py",
+      "symbol": "multiple-statements",
+      "msg_id": "C0321",
+      "message": "More than one statement on a single line",
+      "count": 3
+    },
+    {
+      "path": "tests/test_conflict_events.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused append_event imported from conflict_events",
+      "count": 1
+    },
+    {
+      "path": "tests/test_conflict_events.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'cfg' from outer scope (line 10)",
+      "count": 3
+    },
+    {
+      "path": "tests/test_crush.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 1
+    },
+    {
+      "path": "tests/test_crush_hook_search_inheritance.py",
+      "symbol": "subprocess-run-check",
+      "msg_id": "W1510",
+      "message": "'subprocess.run' used without explicitly defining the value for 'check'.",
+      "count": 1
+    },
+    {
+      "path": "tests/test_cursor_store.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 1
+    },
+    {
+      "path": "tests/test_deploy_interaction.py",
+      "symbol": "unnecessary-lambda-assignment",
+      "msg_id": "C3001",
+      "message": "Lambda expression assigned to a variable. Define a function using the \"def\" keyword instead.",
+      "count": 2
+    },
+    {
+      "path": "tests/test_deploy_interaction.py",
+      "symbol": "subprocess-run-check",
+      "msg_id": "W1510",
+      "message": "'subprocess.run' used without explicitly defining the value for 'check'.",
+      "count": 1
+    },
+    {
+      "path": "tests/test_doctor.py",
+      "symbol": "too-many-arguments",
+      "msg_id": "R0913",
+      "message": "Too many arguments (13/8)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_doctor.py",
+      "symbol": "too-many-positional-arguments",
+      "msg_id": "R0917",
+      "message": "Too many positional arguments (13/5)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_doctor.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'json' (imported line 3)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_eval_golden.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'marker'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_eval_golden.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'rc'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_eval_golden.py",
+      "symbol": "subprocess-run-check",
+      "msg_id": "W1510",
+      "message": "'subprocess.run' used without explicitly defining the value for 'check'.",
+      "count": 1
+    },
+    {
+      "path": "tests/test_eval_golden.py",
+      "symbol": "unspecified-encoding",
+      "msg_id": "W1514",
+      "message": "Using open without explicitly specifying an encoding",
+      "count": 1
+    },
+    {
+      "path": "tests/test_eval_summaries.py",
+      "symbol": "use-maxsplit-arg",
+      "msg_id": "C0207",
+      "message": "Use GOOD_SUMMARY.split('\\nKeywords', maxsplit=1)[0] instead",
+      "count": 1
+    },
+    {
+      "path": "tests/test_eval_summaries.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from eval_grading import count_sentences, grade_summary, keyword_recall\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "tests/test_eval_summaries.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from eval_provenance import EXIT_NEEDS_REBASELINE, EXIT_OK, EXIT_REGRESSION, classify\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "tests/test_eval_synthesis.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from eval_grading import grade_answer\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "tests/test_eval_synthesis.py",
+      "symbol": "wrong-import-position",
+      "msg_id": "C0413",
+      "message": "Import \"from eval_judge import JudgeResult, aggregate\" should be placed at the top of the module",
+      "count": 1
+    },
+    {
+      "path": "tests/test_evidence_rerank.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (121/120)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_evidence_rerank.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'br'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_governed_recovery_and_writers.py",
+      "symbol": "no-name-in-module",
+      "msg_id": "E0611",
+      "message": "No name '_reject_governed_bypass' in module 'observe'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_governed_recovery_and_writers.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 3
+    },
+    {
+      "path": "tests/test_governed_recovery_and_writers.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused import json",
+      "count": 1
+    },
+    {
+      "path": "tests/test_governed_recovery_and_writers.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused recovery_action imported from propose_decision",
+      "count": 1
+    },
+    {
+      "path": "tests/test_governed_writer_gate.py",
+      "symbol": "no-name-in-module",
+      "msg_id": "E0611",
+      "message": "No name '_reject_governed_bypass' in module 'observe'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_hash_schema_gate.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused patch imported from unittest.mock",
+      "count": 1
+    },
+    {
+      "path": "tests/test_kiro_session_jsonl.py",
+      "symbol": "bad-indentation",
+      "msg_id": "W0311",
+      "message": "Bad indentation. Found 10 spaces, expected 20",
+      "count": 1
+    },
+    {
+      "path": "tests/test_kiro_session_jsonl.py",
+      "symbol": "bad-indentation",
+      "msg_id": "W0311",
+      "message": "Bad indentation. Found 2 spaces, expected 4",
+      "count": 7
+    },
+    {
+      "path": "tests/test_kiro_session_jsonl.py",
+      "symbol": "bad-indentation",
+      "msg_id": "W0311",
+      "message": "Bad indentation. Found 4 spaces, expected 8",
+      "count": 10
+    },
+    {
+      "path": "tests/test_kiro_session_jsonl.py",
+      "symbol": "bad-indentation",
+      "msg_id": "W0311",
+      "message": "Bad indentation. Found 6 spaces, expected 12",
+      "count": 17
+    },
+    {
+      "path": "tests/test_kiro_session_jsonl.py",
+      "symbol": "bad-indentation",
+      "msg_id": "W0311",
+      "message": "Bad indentation. Found 8 spaces, expected 16",
+      "count": 2
+    },
+    {
+      "path": "tests/test_kiro_session_jsonl.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused parse imported from adapters.kiro_session_jsonl",
+      "count": 1
+    },
+    {
+      "path": "tests/test_ledger_document.py",
+      "symbol": "no-name-in-module",
+      "msg_id": "E0611",
+      "message": "No name 'ledger_unit_document' in module 'ledger'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_ledger_document.py",
+      "symbol": "no-name-in-module",
+      "msg_id": "E0611",
+      "message": "No name 'repair_empty_ledger_documents' in module 'observe'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_ledger_document.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 2
+    },
+    {
+      "path": "tests/test_ledger_document.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'host'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_ledger_document.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'model'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_llm_fallback.py",
+      "symbol": "use-implicit-booleaness-not-comparison",
+      "msg_id": "C1803",
+      "message": "\"x == []\" can be simplified to \"not x\", if it is strictly a sequence, as an empty list is falsey",
+      "count": 12
+    },
+    {
+      "path": "tests/test_llm_fallback.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'deepseek_base_url'",
+      "count": 2
+    },
+    {
+      "path": "tests/test_llm_fallback.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'ollama_host'",
+      "count": 2
+    },
+    {
+      "path": "tests/test_llm_fallback.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'prompt'",
+      "count": 4
+    },
+    {
+      "path": "tests/test_llm_fallback.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'stop'",
+      "count": 2
+    },
+    {
+      "path": "tests/test_llm_fallback.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'timeout'",
+      "count": 4
+    },
+    {
+      "path": "tests/test_mcp_site.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (135/120)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_mcp_site.py",
+      "symbol": "protected-access",
+      "msg_id": "W0212",
+      "message": "Access to a protected member _build_mcp_instructions of a client class",
+      "count": 1
+    },
+    {
+      "path": "tests/test_mcp_site.py",
+      "symbol": "protected-access",
+      "msg_id": "W0212",
+      "message": "Access to a protected member _mcp_brief_called of a client class",
+      "count": 3
+    },
+    {
+      "path": "tests/test_mcp_site.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused import os",
+      "count": 1
+    },
+    {
+      "path": "tests/test_mcp_site.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'mock_payload'",
+      "count": 2
+    },
+    {
+      "path": "tests/test_monitor.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'embedding'",
+      "count": 2
+    },
+    {
+      "path": "tests/test_monitor.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'kwargs'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_processed_exclude_race.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception BaseException",
+      "count": 3
+    },
+    {
+      "path": "tests/test_processed_exclude_race.py",
+      "symbol": "unspecified-encoding",
+      "msg_id": "W1514",
+      "message": "Using open without explicitly specifying an encoding",
+      "count": 4
+    },
+    {
+      "path": "tests/test_propose_decision.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (124/120)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_propose_decision.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (129/120)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_propose_decision.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (133/120)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_propose_decision.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 1
+    },
+    {
+      "path": "tests/test_propose_decision.py",
+      "symbol": "reimported",
+      "msg_id": "W0404",
+      "message": "Reimport 'patch' (imported line 9)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_propose_decision.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'label'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_propose_decision.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'patch' from outer scope (line 9)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_readonly_store.py",
+      "symbol": "protected-access",
+      "msg_id": "W0212",
+      "message": "Access to a protected member _metas of a client class",
+      "count": 2
+    },
+    {
+      "path": "tests/test_readonly_store.py",
+      "symbol": "protected-access",
+      "msg_id": "W0212",
+      "message": "Access to a protected member _units of a client class",
+      "count": 1
+    },
+    {
+      "path": "tests/test_readonly_store.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused collection_metadata_rows imported from chroma_readonly",
+      "count": 1
+    },
+    {
+      "path": "tests/test_readonly_store.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused import tempfile",
+      "count": 1
+    },
+    {
+      "path": "tests/test_record_review_cli.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 1
+    },
+    {
+      "path": "tests/test_record_review_cli.py",
+      "symbol": "use-dict-literal",
+      "msg_id": "R1735",
+      "message": "Consider using '{\"relates_to\": 'dec_parent', \"summary\": 'Review card seed', \"rationale\": 'Why approve matters\\nsecond line', ... }' instead of a call to 'dict'.",
+      "count": 1
+    },
+    {
+      "path": "tests/test_record_review_cli.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'rec'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_refine.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 3
+    },
+    {
+      "path": "tests/test_refine.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused dedupe_queue_path imported from refine",
+      "count": 1
+    },
+    {
+      "path": "tests/test_restic_gate.py",
+      "symbol": "too-many-instance-attributes",
+      "msg_id": "R0902",
+      "message": "Too many instance attributes (9/7)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_restic_gate.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 1
+    },
+    {
+      "path": "tests/test_restic_gate.py",
+      "symbol": "subprocess-run-check",
+      "msg_id": "W1510",
+      "message": "'subprocess.run' used without explicitly defining the value for 'check'.",
+      "count": 1
+    },
+    {
+      "path": "tests/test_restic_integrity_check.py",
+      "symbol": "redefined-outer-name",
+      "msg_id": "W0621",
+      "message": "Redefining name 'mod' from outer scope (line 27)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_upsert.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 1
+    },
+    {
+      "path": "tests/test_upsert.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'host'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_upsert.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'model'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_work_git.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'dirs'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_write_gate_effect.py",
+      "symbol": "line-too-long",
+      "msg_id": "C0301",
+      "message": "Line too long (121/120)",
+      "count": 1
+    },
+    {
+      "path": "tests/test_write_gate_effect.py",
+      "symbol": "consider-using-with",
+      "msg_id": "R1732",
+      "message": "Consider using 'with' for resource-allocating operations",
+      "count": 1
+    },
+    {
+      "path": "tests/test_write_gate_effect.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'host'",
+      "count": 1
+    },
+    {
+      "path": "tests/test_write_gate_effect.py",
+      "symbol": "unused-argument",
+      "msg_id": "W0613",
+      "message": "Unused argument 'model'",
+      "count": 1
+    },
+    {
+      "path": "unresolved.py",
+      "symbol": "wrong-import-order",
+      "msg_id": "C0411",
+      "message": "standard import \"datetime.datetime\" should be placed before third party import \"typer\"",
+      "count": 1
+    },
+    {
+      "path": "unresolved.py",
+      "symbol": "unused-variable",
+      "msg_id": "W0612",
+      "message": "Unused variable 'boost'",
+      "count": 1
+    },
+    {
+      "path": "verify.py",
+      "symbol": "too-many-arguments",
+      "msg_id": "R0913",
+      "message": "Too many arguments (10/8)",
+      "count": 1
+    },
+    {
+      "path": "watch.py",
+      "symbol": "invalid-name",
+      "msg_id": "C0103",
+      "message": "Constant name \"_processed_cache\" doesn't conform to UPPER_CASE naming style",
+      "count": 1
+    },
+    {
+      "path": "watch.py",
+      "symbol": "global-statement",
+      "msg_id": "W0603",
+      "message": "Using the global statement",
+      "count": 2
+    },
+    {
+      "path": "watch.py",
+      "symbol": "broad-exception-caught",
+      "msg_id": "W0718",
+      "message": "Catching too general exception Exception",
+      "count": 1
+    },
+    {
+      "path": "watch.py",
+      "symbol": "subprocess-run-check",
+      "msg_id": "W1510",
+      "message": "'subprocess.run' used without explicitly defining the value for 'check'.",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "consider-using-in",
+      "msg_id": "R1714",
+      "message": "Consider merging these comparisons with 'in' by using 'cur in ('main', 'master')'. Use a set instead if elements are hashable.",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "unused-import",
+      "msg_id": "W0611",
+      "message": "Unused import sys",
+      "count": 1
+    },
+    {
+      "path": "work_git.py",
+      "symbol": "subprocess-run-check",
+      "msg_id": "W1510",
+      "message": "'subprocess.run' used without explicitly defining the value for 'check'.",
+      "count": 2
+    }
+  ]
+}
