@@ -1,7 +1,7 @@
 # Correction trail — exclude purge / purge-drift (Claude Cloud)
 
-**Date:** 2026-07-15  
-**Source lane:** Claude Cloud (advisory review of purge-drift / exclude `--purge`)  
+**Date:** 2026-07-15
+**Source lane:** Claude Cloud (advisory review of purge-drift / exclude `--purge`)
 **Capture note:** Cloud sessions have no local transcript. This file is the compact
 **correction trail** for shared memory — not the full conversation. GitHub PR #32
 body also carries this trail; PR descriptions are not auto-ingested into convmem.
