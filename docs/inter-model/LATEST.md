@@ -1,6 +1,7 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
 **Updated:** 2026-07-14 (background-synthesis status reconciled; Stage 3 still accepted)
+**⚠️ Mid-session arc (may be newer):** see [CURRENT-ARC.md](CURRENT-ARC.md)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
