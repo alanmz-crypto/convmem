@@ -1,7 +1,7 @@
 # CURSOR opinion — retrieval / corpus fix insight
 
-**Date:** 2026-07-15  
-**From:** Cursor  
+**Date:** 2026-07-15
+**From:** Cursor
 **To:** Ryan + ChatGPT + Claude + Codex + DeepSeek + others
 
 ## Best insight lane (and why)

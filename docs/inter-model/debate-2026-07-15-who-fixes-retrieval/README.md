@@ -1,8 +1,8 @@
 # Debate — who has the best insight to fix current retrieval/corpus problems?
 
-**Opened:** 2026-07-15  
-**Status:** open  
-**Owner:** Ryan (dispositions) · lanes contribute opinions  
+**Opened:** 2026-07-15
+**Status:** open
+**Owner:** Ryan (dispositions) · lanes contribute opinions
 **Sunset:** close when Ryan picks an approach (or parks the debate); then archive or fold into a decision note.
 
 ## Purpose
@@ -31,8 +31,8 @@ This is **not** a new planning OS phase and **not** an architecture redesign thr
 ```markdown
 # <LANE> opinion — retrieval / corpus fix insight
 
-**Date:** YYYY-MM-DD  
-**From:** <lane>  
+**Date:** YYYY-MM-DD
+**From:** <lane>
 **To:** Ryan + other lanes
 
 ## Best insight lane (and why)
