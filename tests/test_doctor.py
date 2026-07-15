@@ -4,17 +4,25 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 from unittest.mock import patch
+
+from chroma_store import ChromaStore
+from ingest import exclude_processed_path
+from source_purge import execute_purge
+from tests.purge_test_util import purge_cfg
 
 from doctor import (
     DoctorCheck,
     _charter_register_consistency_probe,
     _check_dirty_main,
     _check_hooks_path,
+    _check_purge_drift,
     _check_standing_register,
     _check_unpushed_commits,
     _check_wip_on_main,
     _exposure_window_probe,
+    _load_purge_markers,
     _merge_order_probe,
     _standing_row_due,
     _unverified_resting_state_probe,
@@ -25,6 +33,7 @@ from doctor import (
 
 
 class DoctorTests(unittest.TestCase):
+    @patch("doctor._check_purge_drift")
     @patch("doctor._check_index_drift")
     @patch("doctor._check_restic_password_backup")
     @patch("doctor._check_restic_external")
@@ -53,8 +62,12 @@ class DoctorTests(unittest.TestCase):
         mock_restic_external,
         mock_restic_password_backup,
         mock_drift,
+        mock_purge_drift,
     ):
-        mock_load.return_value = {"index": {"chroma_dir": "/tmp/c"}, "models": {}}
+        mock_load.return_value = {
+            "index": {"chroma_dir": "/tmp/c", "processed_log": "/tmp/c/processed.json"},
+            "models": {},
+        }
         ok = DoctorCheck("x", True, "ok")
         for mock in (
             mock_cfg,
@@ -62,6 +75,7 @@ class DoctorTests(unittest.TestCase):
             mock_ollama,
             mock_chroma,
             mock_drift,
+            mock_purge_drift,
             mock_restic,
             mock_restic_external,
             mock_restic_password_backup,
@@ -82,6 +96,126 @@ class DoctorTests(unittest.TestCase):
             DoctorCheck("b", False, "bad"),
         ]
         self.assertEqual(doctor_exit_code(checks), 1)
+
+
+def _seed(root: Path, src: Path, *, n_units: int = 1, n_sum: int = 1) -> str:
+    (root / "chroma").mkdir(exist_ok=True)
+    (root / "processed.json").write_text("{}", encoding="utf-8")
+    src.write_text("payload-seed\n", encoding="utf-8")
+    canon = str(src.resolve())
+    store = ChromaStore(str(root / "chroma"))
+    for i in range(n_units):
+        store.add_unit(
+            f"u{i}",
+            f"doc-{i}",
+            [1.0, 0.0],
+            {"id": f"u{i}", "title": f"T{i}", "source_path": canon},
+        )
+    for i in range(n_sum):
+        store.add_summary(
+            f"s{i}",
+            f"sum-{i}",
+            [1.0, 0.0],
+            {"id": f"s{i}", "source_path": canon},
+        )
+    store.close()
+    lines = [json.dumps({"id": f"u{i}", "source_path": canon}) for i in range(n_units)]
+    (root / "knowledge_units.jsonl").write_text(
+        "\n".join(lines) + ("\n" if lines else ""), encoding="utf-8"
+    )
+    return canon
+
+
+class PurgeDriftCheckTests(unittest.TestCase):
+    """Tests for _check_purge_drift — restore-revival reconciliation."""
+
+    def test_no_markers_passes(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cfg = purge_cfg(root)
+            (root / "chroma").mkdir()
+            (root / "processed.json").write_text("{}", encoding="utf-8")
+            check = _check_purge_drift(cfg)
+            self.assertTrue(check.ok)
+            self.assertEqual(check.name, "purge_drift")
+
+    def test_restore_revived_row_flagged(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cfg = purge_cfg(root)
+            src = root / "n_drift.jsonl"
+            canon = _seed(root, src)
+            res = execute_purge(cfg, canon, reason="drift-test")
+            self.assertEqual(res.exit_code, 0, res.message)
+            clean = _check_purge_drift(cfg)
+            self.assertTrue(clean.ok, clean.detail)
+
+            # Simulate a partial restore reviving one Chroma row without
+            # reviving the processed.json marker's absence.
+            store = ChromaStore(cfg["index"]["chroma_dir"])
+            store.add_unit(
+                "u-restored",
+                "restored-doc",
+                [1.0, 0.0],
+                {"id": "u-restored", "source_path": canon},
+            )
+            store.close()
+
+            drifted = _check_purge_drift(cfg)
+            self.assertFalse(drifted.ok)
+            self.assertIn(canon, drifted.detail)
+            self.assertIn("units=1", drifted.detail)
+
+    def test_soft_exclude_with_live_rows_not_flagged(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cfg = purge_cfg(root)
+            src = root / "n_soft.jsonl"
+            canon = _seed(root, src)
+            # Soft exclude: excluded=True, no purged_at — rows intentionally retained.
+            exclude_processed_path(
+                cfg["index"]["processed_log"],
+                canon,
+                "soft-key",
+                reason="soft exclude",
+            )
+            check = _check_purge_drift(cfg)
+            self.assertTrue(check.ok, check.detail)
+
+    def test_export_read_once_regardless_of_marker_count(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cfg = purge_cfg(root)
+            (root / "chroma").mkdir()
+            processed = {}
+            for i in range(50):
+                src = root / f"src{i}.jsonl"
+                src.write_text(f"payload-{i}\n", encoding="utf-8")
+                canon = str(src.resolve())
+                processed[f"hash{i}"] = {
+                    "path": canon,
+                    "excluded": True,
+                    "purged_at": "2026-07-01T00:00:00Z",
+                }
+            (root / "processed.json").write_text(
+                json.dumps(processed), encoding="utf-8"
+            )
+            (root / "knowledge_units.jsonl").write_text(
+                json.dumps({"id": "x", "source_path": "/no/match"}) + "\n",
+                encoding="utf-8",
+            )
+            read_calls = {"n": 0}
+            real_read_text = Path.read_text
+
+            def counting_read_text(self, *a, **kw):
+                if self == Path(cfg["index"]["units_export"]):
+                    read_calls["n"] += 1
+                return real_read_text(self, *a, **kw)
+
+            with mock.patch.object(Path, "read_text", counting_read_text):
+                check = _check_purge_drift(cfg)
+            self.assertTrue(check.ok, check.detail)
+            self.assertEqual(read_calls["n"], 1)
 
 
 class StandingRegisterTests(unittest.TestCase):
