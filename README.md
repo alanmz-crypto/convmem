@@ -262,7 +262,7 @@ cd ~/Projects/convmem
 ~/miniforge3/envs/convmem/bin/python -m unittest discover -s tests -v
 ```
 
-Expect **159 tests, all OK** — covers ledger graph, stable ids, upsert, Chroma approve-index regression, evidence rerank, ask dedupe, doctor, protocol adapters.
+Expect the suite to finish **OK**. Do not trust hard-coded totals in docs — get the current count with `python -m unittest discover -s tests -q` (or `convmem brief --with-tests`). Coverage includes ledger graph, stable ids, upsert, Chroma approve-index regression, evidence rerank, ask dedupe, doctor, and protocol adapters.
 
 ### 2. Seed evidence chain (optional, for graph/ask tests)
 
@@ -385,7 +385,7 @@ Workflow: `examples/AGENTS-FLOW.md`
 | C | Stable ids, Lighthouse export, `--upsert`, scanner hooks |
 | E | `ask --evidence` |
 
-**Live corpus (approx.):** ~1470+ knowledge units (majority legacy chat distillations without `ledger_id`).
+**Live corpus size** drifts constantly — do not rely on a number in this README. Run `convmem doctor` or `convmem brief --stdout-only` for current knowledge-unit and summary counts. Many older units are legacy chat distillations without `ledger_id`.
 
 ---
 
