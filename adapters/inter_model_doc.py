@@ -13,12 +13,28 @@ from pathlib import Path
 _SECTION_RE = re.compile(r"^(#{2,3})\s+(.+)$", re.MULTILINE)
 
 
+_EXCLUDE_PATH_TOKENS = frozenset({".kiro", "snapshots"})
+
+
 def is_inter_model_doc(path: Path | str) -> bool:
-    """True for active coordination docs: docs/inter-model/*.md (not archive/)."""
+    """True for active coordination docs: docs/inter-model/*.md (not archive/).
+
+    Explicitly excludes Kiro session snapshot copies (e.g.
+    ~/.kiro/sessions/.../snapshots/<hash>/docs/inter-model/*.md) which
+    satisfy the structural check but are byte-identical duplicates of
+    canonical repo files.  See CONTINUE-DEEPSEEK-2026-07-15 retrieval
+    diagnosis, Layer 0.
+    """
     p = Path(path).expanduser().resolve()
     if p.suffix != ".md":
         return False
     if "archive" in p.parts:
+        return False
+    # Exclude Kiro snapshot copies — they live under paths containing
+    # ".kiro" (the Kiro data directory) and "snapshots" (the checkpoint
+    # subdirectory).  These tokens are checked against all path components
+    # so they catch nested paths regardless of depth.
+    if _EXCLUDE_PATH_TOKENS & set(p.parts):
         return False
     return p.parent.name == "inter-model" and p.parent.parent.name == "docs"
 
