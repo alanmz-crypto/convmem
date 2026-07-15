@@ -97,7 +97,7 @@ Total:    102 units (single source, large document with ~50 unique sections × 2
 
 ---
 
-## Seven-Layer Failure Stack
+## Multi-Layer Failure Stack (10-Layer, Post-Scout)
 
 ### Layer 0: KIRO SNAPSHOT MULTIPLICATION (Root Cause)
 See above. 459 units from Kiro session snapshots, all containing near-identical content to files that already exist (or should exist) at the canonical repo path. The fix requires **excluding Kiro snapshot directories from inter-model ingest**, not just running dedupe.
@@ -122,14 +122,126 @@ Live config: `rerank = false`. The `BAAI/bge-reranker-v2-m3` cross-encoder is th
 
 ---
 
+## Layer 7: DOUBLE KIRO INGESTION (Compound Amplifier)
+
+### The Problem
+
+Kiro content enters the corpus through **two separate ingestion paths**, creating ~1,684 units from overlapping content:
+
+| Source | Path | Units | Type |
+|--------|------|-------|------|
+| Legacy static import | `~/.local/share/convmem/imports/kiro-cli-snapshot.sqlite3` | 338 | One-time snapshot |
+| Live session scan | `~/.kiro/sessions` | 1,346 | Continuous inventory |
+
+Both paths contain the same Kiro conversations, just at different points in time. The static snapshot was imported once; the sessions directory is continuously scanned. Together they form the third-largest tool corpus after Cursor and Codex.
+
+### Why It Matters
+
+The static snapshot predates the session scan. Units from both paths share identical semantic neighborhoods but may have different ledger_ids, timestamps, and embedding vectors. This means:
+- `chroma_dedupe` (keyed on `ledger_id`) can't de-duplicate them — different ledger_ids
+- `semantic_dedupe` (keyed on embedding cosine similarity) could catch them — but is excluded from refine.jobs
+- The 338 snapshot units act as an additional voting bloc for any Kiro-heavy topic
+
+### Verified (ChromaDB SQLite)
+
+```sql
+-- kiro tool units by source path category
+source_path LIKE '%kiro-cli-snapshot%'  →  338 units (kiro source_type)
+source_path LIKE '%/.kiro/sessions%'   →  1,346 units (inter_model_doc + kiro source_types)
+```
+
+---
+
+## Layer 8: CURSOR PROJECT PATH MULTIPLICATION
+
+### The Problem
+
+Cursor creates a separate project directory for every workspace path. The convmem repo has been opened from **6+ different Cursor project directories**, each generating independent agent transcripts that overlap:
+
+| Cursor Project Dir | Transcripts | Source |
+|---|---|---|
+| `home-lauer-Projects-convmem` | 42 | Canonical path |
+| `home-lauer-Documents-Computing-Projects-Convmem` | 5 | Alternate symlink/backup path |
+| `home-lauer-Projects-convem` | 6 | **Typo** in project name |
+| `home-lauer-Projects-convmem-fix-ask-trace` | ~1 | Worktree branch |
+| `home-lauer-Projects-convmem-lab-docs-lab-reference` | ~1 | Worktree branch |
+| 5× `home-lauer-local-share-convmem-worktrees-*` | varies | Git worktrees |
+
+**Total: ~56 Cursor transcripts for the same project, from 11 different paths.**
+
+### Why It Matters
+
+This is the Cursor equivalent of Kiro snapshot multiplication. The same conversations, same project context, indexed from multiple Cursor project directories. Unlike Kiro snapshots (which are byte-identical), Cursor transcripts may differ slightly (different session boundaries) but cover the same semantic ground.
+
+**ChromaDB evidence:** Cursor is the largest tool corpus (3,997 units), with convmem-repo transcripts representing a significant fraction. The multi-path problem means querying "convmem plan" hits multiple copies of the same conceptual material.
+
+**Note:** Only the 6 paths producing agent transcripts are listed. The 100 total Cursor project directories include non-convmem projects (WordPress, system paths, tmp dirs) — those are nil-to-minor noise, not duplication.
+
+---
+
+## Layer 9: chroma_dedupe IS LEDGER-ID-KEYED (Blind to Content Dupes)
+
+### The Mechanism
+
+```python
+# refine.py job_chroma_dedupe
+by_lid: dict[str, list[dict]] = defaultdict(list)
+for m in metas:
+    if is_superseded(m): continue
+    lid = (m.get("ledger_id") or "").strip()
+    if not lid: continue          # ← EMPTY ledger_id → SKIPPED
+    by_lid[lid].append(m)
+```
+
+`chroma_dedupe` groups units by `ledger_id` and picks a canonical (highest confidence, newest timestamp). Units without a `ledger_id` are **silently skipped**. Kiro snapshot inter-model units have no `ledger_id` — they inherit properties from the inter_model_doc adapter, which doesn't assign one. Cursor transcripts may or may not have them depending on whether `ledger_link` has processed them.
+
+### Consequences
+
+- **370 Kiro snapshot duplicates:** All skipped (no ledger_id). Zero tombstoned.
+- **0 superseded units in entire corpus:** Confirmed via `SELECT COUNT(*) FROM embedding_metadata WHERE key='superseded'` → 0 rows. The tombstone mechanism has never fired.
+- **555 exact-content duplicate chunks:** 9,258 total `chroma:document` entries, 8,703 unique → 555 byte-identical duplicates exist with different IDs.
+
+### Why `semantic_dedupe` Matters
+
+`job_semantic_dedupe` compares embeddings via cosine similarity — it doesn't care about ledger_id. With threshold 0.92, it would catch both cross-path Kiro duplicates AND Cursor project-path duplicates. But it's excluded from the live refine.jobs list.
+
+---
+
+## Evidence Chain Collapse
+
+### The Problem
+
+The evidence chain — the mechanism that connects observations to decisions to verifications — is effectively dead:
+
+| Metadata Key | Total Rows | With Content | Empty/Null |
+|---|---|---|---|
+| `evidence_json` | 406 | **10** (2.5%) | 396 (97.5%) |
+| `ledger_kind` | 406 | 406 (100%) | 0 |
+| `ledger_id` | 406 | 406 (100%) | 0 |
+
+The 10 evidence entries that DO have content are all web security probes (`{"probe":"csp","passed":false}`) — none are convmem-related.
+
+### Why It Matters for Retrieval
+
+`_prepend_recent_decisions` (query.py) loads recent decisions to broaden context. When evidence chains are empty, there's no citation graph to traverse. A decision about "plan arc" should chain to related observations and verifications, expanding the retrieval context. Instead, every decision is an island.
+
+### Root Cause
+
+Evidence chains are populated by `ledger_link` (queues candidate pairs) and manual review. The refine daemon runs `ledger_link` every 5 minutes with a batch_size of 10 — but `ledger_link` only pairs observations, not decisions-to-evidence. The pipeline has no automated evidence backfill job.
+
+---
+
 ## Live Config vs Example Config — Key Deltas
 
-| Setting | config.example.toml | Live (from brief) | Impact |
+| Setting | config.example.toml | Live (`~/.config/convmem/config.toml`) | Impact |
 |---------|---------------------|-------------------|--------|
-| `rerank` | `true` | `false` | Cross-encoder OFF |
-| `refine.jobs` | includes `semantic_dedupe` | excludes `semantic_dedupe` | Post-F1 removal; dedupe never runs |
-| `recency_weight` | `0.1` | `0.1` | Active but useless for 59% |
-| `sources.paths` | includes `~/.kiro/sessions` | includes `~/.kiro/sessions` | **Layer 0 enabler** — snapshots are scanned |
+| `rerank` | `true` | `false` | Cross-encoder OFF (Layer 3) |
+| `refine.jobs` | `chroma_dedupe, ledger_link, semantic_dedupe, confidence_audit` | `chroma_dedupe, ledger_link, confidence_audit, stale_source_flag` | `semantic_dedupe` excluded — no cross-path duplicate detection (Layer 9) |
+| `recency_weight` | `0.1` | `0.1` | Active but useless for 46-59% of units (Layer 4) |
+| `recency_half_life_days` | `30` | **missing** | No decay curve configured; fallback behavior unknown |
+| `sources.paths` | includes `~/.kiro/sessions` | includes `~/.kiro/sessions` | **Layer 0/7 enabler** — snapshots + legacy import scanned |
+| `[refine.cost]` | full rate-limit section (3 jobs) | **missing entirely** | No per-job LLM call caps; backfill/semantic_dedupe unbounded if enabled |
+| `[watch].extra_paths` | commented out | `["~/Projects/convmem/docs/inter-model"]` | Double-ingests inter-model docs: once via inventory scan, once via watch trigger. BUILT-PLANS 102-unit anomaly may stem from this. |
 
 ---
 
@@ -216,6 +328,46 @@ Backfill timestamps from source file mtime for Cursor/Continue units.
 The debate (ChatGPT, Claude, Codex, Crush, Cursor, Kiro) all operated from corpus queries and code reading — none of them inspected the **raw ChromaDB SQLite file** or **processed.json** to trace the actual source paths of the duplicate units. They saw "370 units, 20 titles" and assumed re-indexing of a single file. The real mechanism — 25 different Kiro session snapshots at 25 different paths — is only visible by examining the actual `source_path` metadata in the ChromaDB embedding_metadata table and cross-referencing with processed.json's path entries.
 
 **Methodological advantage:** Continue-DeepSeek had the breadth to read 10 source files, run 6 corpus queries, inspect ChromaDB SQLite directly, and cross-reference processed.json — all in a single session. This is the kind of expansive search that reveals root causes invisible to agents limited to `convmem ask` or single-code-file reads.
+
+---
+
+## Nil-to-Minor Problems (Not Debate-Impacting)
+
+These were found during the scout but do not materially affect the "plan arc" retrieval debate:
+
+| Problem | Detail | Impact |
+|---|---|---|
+| System paths in Cursor projects | `home-lauer` (home dir), `opt-lampp` (XAMPP), `run-media-lauer-nym-ollama-1T-fs` (external drive), `empty-window` (15 sessions) | Noise in different semantic neighborhoods; won't rank for "plan arc" |
+| Garbage test units | `"test summary a b c"`, `"test upsert debug f22bbd2"`, `"doc"` | 3 units out of 9,258 (0.03%) — negligible |
+| Low-signal short units | 1,357 units are 50-200 chars | These are mostly Cursor agent summary lines — valid but terse |
+| `queue_max_depth` delta | Live: 200, Example: 100 | Higher is actually better (more queue capacity) |
+| `dedupe_similarity` missing | Not in live config, defaults to 0.92 internally | Same as example default; no change needed |
+| `untagged_priority` missing | Not in live config, defaults to true internally | Same as example default |
+| Confidence histogram stability | Unchanged across 15h of daemon cycles: `{'0.0': 2, '0.4': 10, '0.6': 36, '0.7': 311, '0.8': 1909, '0.9': 3539, '1.0': 2228}` | Daemon is stable but not improving — refine.jobs can't fix the problems above |
+| `recency_half_life_days` missing | Not in live config; default behavior if unset needs verification | Minor sub-item; recency is already broken (Layer 4) regardless of half-life |
+
+---
+
+## Impact Summary (Post-Scout)
+
+The original 6-layer stack + 3 new layers + evidence chain collapse = **10 distinct failure modes** contributing to the retrieval miss:
+
+| Layer | Name | Type | Fix Complexity |
+|---|---|---|---|
+| 0 | Kiro snapshot multiplication | Ingestion path | 5-line exclude |
+| 1 | Language gap | Semantic | Coordination doc |
+| 2 | Duplicate voting bloc | Consequence of L0+L7+L8 | Resolved by P0a+P0b |
+| 3 | Rerank disabled | Config | 1-line toggle |
+| 4 | Recency broken | Data quality | Timestamp backfill |
+| 5 | No citation diversification | Query pipeline | ~30 lines |
+| 6 | Evidence path noise | Query pipeline | ~15 lines |
+| 7 | Double Kiro ingestion | Ingestion path | Remove stale import |
+| 8 | Cursor project path multiplication | Ingestion path | Path canonicalization |
+| 9 | chroma_dedupe ledger-id-keyed | Refine mechanism | Add semantic_dedupe to jobs |
+| — | Evidence chain collapse | Data quality | Auto-backfill job |
+
+**P0 fixes (Layers 0, 3, 7, 9):** ~15 lines of code + 2 config toggles. Impact: removes ~2,100 duplicate/low-quality units from retrieval path.
+**P1 fixes (Layers 1, 2, 4, 5, 6, 8, evidence):** ~100 lines total. Impact: defense-in-depth for future queries.
 
 ---
 
