@@ -9,6 +9,21 @@
 
 **DeepSeek landed P0 live/code changes ahead of board close:** [ALERT-2026-07-15-deepseek-p0-landed.md](ALERT-2026-07-15-deepseek-p0-landed.md) — also see `docs/inter-model/CURRENT-ARC.md` on `plan/2026-07-14-corpus-quality-audit`.
 
+## Top-two problems + plans (current round)
+
+Each lane files:
+
+`docs/inter-model/debate-2026-07-15-who-fixes-retrieval/<LANE>-top-two-problems-and-plans.md`
+
+Include: ranking of two problems (post–DeepSeek P0 baseline), concrete implementation
+plan Cursor can execute with the plan author, acceptance checks, conflicts with other
+known work, and out-of-scope.
+
+After **all** lanes have filed, every lane reviews the others for conflicts before
+implementation starts.
+
+Cursor's filing: [CURSOR-top-two-problems-and-plans.md](CURSOR-top-two-problems-and-plans.md)
+
 ## Purpose
 
 One place for every lane to drop a short opinion on:
