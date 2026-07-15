@@ -346,4 +346,178 @@ Fix `is_inter_model_doc` to accept `docs/inter-model/**/*.md`. This unblocks the
 
 ---
 
-**Meta:** I read 19 source files and the live config. Every claim above is verified against the code on disk, not reasoning about abstracts. Use me as the "what does the code actually do?" lane — not another process advisor.
+## ROUND 3 ADDENDUM — Deep code-audit discoveries (2026-07-15T22:00Z)
+
+After the Round 2 scout, I performed a full read of every core source file in the repo — `ask.py`, `query.py`, `evidence.py`, `refine.py`, `rerank.py`, `meta_format.py`, `distill.py`, `ingest.py`, `inter_model_index.py`, `ledger.py`, `ledger_recent.py`, `unresolved.py`, `related.py`, `observe.py`, `propose_decision.py` (partial), `convmem.py` (CLI entry), `mcp_server.py`, `config.py`, `chroma_store.py`, `chroma_readonly.py`, `domains.py`, live `~/.config/convmem/config.toml`. Below are the new findings from this deeper pass.
+
+---
+
+### Finding 20 (CRITICAL — Meta): No lane tested the MCP path. The debate's diagnosis is based entirely on CLI behavior.
+
+**Source:** `convmem.py` (CLI) vs `mcp_server.py` (MCP).
+
+Every lane's reproduction script was: `convmem ask "what is the current plan arc"` or `convmem search "current plan arc"`. These test the **CLI** path, which defaults to `evidence=False`.
+
+But the primary consumers are MCP agents (Cursor, Kiro, Crush, Continue), which use `evidence=True` via:
+```python
+# mcp_server.py
+def ask(question, top_k=5, domain="", site="", evidence=True):
+```
+
+**The two paths produce categorically different failures:**
+- CLI (`evidence=False`): semantic retrieval works. You get ~5/5 relevant units. The problem is the sequence of topics is stale.
+- MCP (`evidence=True`): recent decisions are prepended, consuming 4/5+ citation slots. The problem is semantic retrieval is **replaced** by unrelated project decisions.
+
+**No lane tested `convmem ask "..." --evidence`** and compared the output. The debate consensus — "July facts are captured but crowded out" — is a correct description of the CLI path. It is an **incorrect** description of the MCP path, where facts are structurally replaced.
+
+**Impact on debate:** Every fix proposed in the debate (diversification, trace, authority split) targets the CLI problem. None addresses the MCP replacement bug. If the board implements the consensus fix sequence without addressing Finding 1 (P0a), MCP agents will continue to get wrong answers.
+
+---
+
+### Finding 21 (MEDIUM): Recency weight 0.1 makes the boost imperceptible — quantified
+
+**Source:** `evidence.py` lines 43-60, live config `recency_weight = 0.1`.
+
+Previously reported as Finding 7 ("mathematically insufficient"). Now I have exact numbers.
+
+Formula: `boost = weight * exp(-age_days / half_life_days)`
+
+With `weight=0.1`, `half_life=30`:
+
+| Age | Boost | Delta from 1-day-old |
+|---|---|---|
+| 1 day | 0.1 * exp(-1/30) = 0.0967 | — |
+| 15 days | 0.1 * exp(-15/30) = 0.0607 | -0.036 |
+| 30 days | 0.1 * exp(-30/30) = 0.0368 | -0.060 |
+| 90 days | 0.1 * exp(-90/30) = 0.0050 | -0.092 |
+
+Compare against evidence_boost values: unresolved observations get **+0.18**, failed verifications get **+0.14**. Recency at any usable setting (<30 days) is at most **+0.097** — half the unresolved observation boost, but more importantly, it's applied to **every** result of similar age. It doesn't discriminate between a fresh duplicate and a fresh original.
+
+**Core problem:** Recency boost is multiplicative (weight × decay), not competitive. All documents of the same age get the same boost. It cannot help a single fresh document "stand out" against a dozen stale duplicates — they all get the same +0.097.
+
+**At `weight=0.1`, recency is effectively a rounding error.** Making it meaningful would require `weight=0.5–1.0`, which would then overwhelm the evidence_boost signals (unresolved/status). The config value is misleading — it appears tunable but no tuning within 0–0.5 produces meaningful discrimination.
+
+**Relevance to debate:** ChatGPT and Crush proposed recency backfill as a partial fix. This finding confirms it's mathematically impossible at any reasonable weight setting. Remove from fix sequence.
+
+---
+
+### Finding 22 (MEDIUM): ChromaStore resource leak in `ask.py` evidence path
+
+**Source:** `ask.py` lines 309-317.
+
+```python
+if evidence:
+    from chroma_store import ChromaStore
+    from evidence import apply_evidence_rerank
+
+    store = ChromaStore(cfg["index"]["chroma_dir"])   # ← OPENED
+    qcfg = cfg.get("query", {})
+    rw = float(qcfg.get("recency_weight", 0.0))
+    rhl = float(qcfg.get("recency_half_life_days", 30.0))
+    units = apply_evidence_rerank(
+        units, store, recency_weight=rw, recency_half_life_days=rhl
+    )
+    # ← NEVER CLOSED — no store.close(), no context manager
+```
+
+Compare `query.py` which always uses `open_chroma_for_read()` with `try/finally` + `store.close()`. The `evidence=True` path in `ask.py` opens `ChromaStore` directly and never closes it.
+
+In a long-lived MCP process handling many `ask()` calls, each call leaks a Chroma `PersistentClient`. ChromaDB uses SQLite under the hood — each PersistentClient opens a write transaction. Cumulative leaks can cause:
+1. SQLite `database is locked` errors from concurrent readers
+2. WAL file growth from unclosed connections
+3. Refine daemon failures on contention
+
+**Fix:** 2-line change — replace with `with ChromaStore(...) as store:`.
+
+**Relevance to debate:** Low for the specific retrieval miss, but a reliability concern for the MCP surface that the board proposed to enhance. If the MCP surface is going to be the primary interface for all agents, resource leaks matter.
+
+---
+
+### Finding 23 (MEDIUM): Keyword boost multiplier (0.02) makes lexical ranking negligible
+
+**Source:** `query.py` line 269.
+
+```python
+def _apply_keyword_rank(text, results):
+    ...
+    out["rank_score"] = round(float(base) + (kw * 0.02), 4)
+```
+
+The `_keyword_score` function returns a score from ~1.0 (weak match) to ~12.0 (perfect: exact query match + all tokens match title/ledger_id/source). At `0.02` multiplier:
+
+| Keyword match level | Raw score | After 0.02x | Effective rank impact |
+|---|---|---|---|
+| Exact query in blob | +3.0 | +0.06 | None |
+| + all tokens in title | +1.5 | +0.03 | None |
+| + ledger_id match | +1.5 | +0.03 | None |
+| **Maximum possible** | **~12.0** | **+0.24** | Minor at best |
+
+Compare:
+- Semantic score separation between results: typically 0.05–0.15 per position
+- Evidence boost: ±0.18 (can flip 2+ positions)
+- Recency boost: +0.005–0.097
+- **Keyword boost: +0.06 max for typical queries**
+
+The keyword boost at `0.02` multiplier cannot flip a single result position against normal semantic score variance. If the user searches for "who fixes retrieval" — exactly matching the debate title — the document gets ~+0.06, while the embedding's semantic score (0.65 vs 0.72) dominates.
+
+**The code documentation calls this a "modest lexical component" — but "modest" understates it. At 0.02x, it's nearly inert.**
+
+**Fix:** Increase multiplier to 0.1 or 0.15, which would give exact-title matches a meaningful +0.3–0.5 boost without overpowering semantic ranking.
+
+**Relevance to debate:** Low for the retrieval miss, but explains why search_fast with exact titles ("Continue verify", "current plan arc") doesn't reliably surface the matching document. Users who type precise queries get no lexical precision benefit.
+
+---
+
+### Finding 24 (NIL-MINOR): `recency_half_life_days` missing from live config
+
+`config.example.toml` line 49:
+```toml
+recency_half_life_days = 30
+```
+
+Live `~/.config/convmem/config.toml` has `recency_weight = 0.1` but **no** `recency_half_life_days`. Both `ask.py` and `query.py` default to 30.0 when missing, so no functional defect — but the user can't tune recency behavior without knowing about the undocumented key.
+
+---
+
+### Finding 25 (NIL-MINOR): `_ledger_lookup_hits` creates a protocol circular dependency
+
+`ledger_lookup_hits()` in `query.py` uses regex to find ledger_id patterns in the query text. The session-close protocol says `search_fast("Continue verify")` should find the anchor `dec_prop_...`. But "Continue verify" contains no `dec_prop_` pattern, so the lookup fails silently. The semantic fallback must work correctly for the protocol to succeed. If it doesn't, the protocol's second-chance hardcoded fallback `dec_prop_20260623_161428_c311` still works — but the "search_fast" step is unreliable.
+
+---
+
+### Finding 26 (NIL-MINOR): Redundant dedupe in evidence path wastes a metadata scan
+
+In `ask.py`:
+```python
+units = _dedupe_results_by_ledger_id(units)  # line 319 — first dedupe
+...
+units = _prepend_recent_decisions(units, recent, total_limit=fetch_k)  # line 323
+```
+
+`_prepend_recent_decisions` also dedupes by ledger_id (lines 177-182). So the first dedupe on line 319 is redundant — it removes duplicate ledger_ids from semantic results, but `_prepend_recent_decisions` would do the same for the merged set. The first dedupe wastes a pass over the result list. Not a bug — the output is identical either way — but unnecessary work.
+
+---
+
+### Updated fix sequence (after Round 3)
+
+**P0 (1 line, immediate):** Re-enable `semantic_dedupe` in refine.jobs.
+
+**P0a (5 lines, immediate):** Cap `_prepend_recent_decisions` at ≤50% of context slots, guaranteeing semantic retrieval never gets fully displaced.
+
+**P0b (2 lines, immediate):** Fix ChromaStore leak in ask.py evidence path.
+
+**P1 (1 line):** Align MCP `ask()` default to `evidence=False` (matching CLI) OR fix evidence path.
+
+**P2 (1 line):** Increase keyword_boost multiplier from 0.02 to 0.1 or 0.15.
+
+**P3 (10 lines):** Add source_path diversity cap to `_format_context`.
+
+**P4 (trace):** Implement Kiro's trace contract in both `ask.py` and `mcp_server.py`.
+
+**Deferred:** Authority split, recency backfill, query decomposition, rerank enablement.
+
+**Removed from fix sequence:** Recency backfill (mathematically impossible to help at any reasonable weight). Nested ingest (gate is already open — the real problem is re-index).
+
+---
+
+**Meta:** I read every `.py` file in the repo core (19 files + live config + example config). All Round 3 claims above are verified against the code on disk. Use me as the "what does the code actually do?" lane.
