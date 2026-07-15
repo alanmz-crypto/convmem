@@ -33,6 +33,9 @@ Continue-DeepSeek / DeepSeek V4 (synthesis) filing: [CONTINUE-DEEPSEEK-top-two-p
 
 DeepSeek R1 filing: [DEEPSEEK-R1-top2-plan.md](DEEPSEEK-R1-top2-plan.md)
 
+Architecture / implementation plans (subfolder): [planning/](planning/)
+
+
 ## Purpose
 
 One place for every lane to drop a short opinion on:
