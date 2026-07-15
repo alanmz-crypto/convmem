@@ -117,8 +117,25 @@ Live config: `rerank = false`. The `BAAI/bge-reranker-v2-m3` cross-encoder is th
 ### Layer 5: NO CITATION DIVERSIFICATION
 `_format_context` is a pure formatter. No source cap, no tool diversity, no domain diversity, no dedupe-by-content. All 5 citations can come from the same Kiro v4 snapshot.
 
-### Layer 6: EVIDENCE PATH NOISE
-`_prepend_recent_decisions` loads ALL recent decisions with zero domain/site filtering. WordPress willowyhollow decisions inject irrelevant context into convmem queries.
+### Layer 6: EVIDENCE PATH NOISE (Corrected)
+`_prepend_recent_decisions` is **gated behind `--evidence`** — not active in normal `ask`:
+
+```python
+# ask.py:310-326
+if evidence:
+    ...
+    recent = recent_decisions_for_cfg(...)
+    if recent:
+        units = _prepend_recent_decisions(units, recent, total_limit=fetch_k)
+```
+
+Without `--evidence`, **zero** approved decisions are injected into context. This means:
+- 346 approved decisions exist on disk (160 convmem-related, 61 corpus/audit/retrieval-related)
+- 2 decisions from today's retrieval debate (`dec_prop_20260715_201620_6b7e`, `dec_prop_20260715_204605_7a55`)
+- None of them reach context in a default `ask` query
+- When `--evidence` IS used, ALL recent decisions load with zero domain/site filtering. WordPress willowyhollow decisions inject irrelevant context into convmem queries.
+
+**Verified:** `decisions-approved.jsonl` has 346 entries (7 days: 4 entries, 3 willowyhollow arc closure + 1 DeepSeek R1 retrieval debate).
 
 ---
 
@@ -231,6 +248,181 @@ Evidence chains are populated by `ledger_link` (queues candidate pairs) and manu
 
 ---
 
+## Layer 10: SEMANTIC CROSS-PROJECT POLLUTION (Primary Blocker for "plan arc")
+
+### Discovery (live query trace)
+
+Running `query_units('current plan arc', top_k=10)` against the live corpus:
+
+| Rank | Score | Title | Source |
+|------|-------|-------|--------|
+| 1 | 0.738 | "Definition of a work arc in Planning OS" | willowyhollow-practice Cursor transcript |
+| 2 | 0.713 | "Definition of an 'arc' in Planning OS" | willowyhollow-practice Cursor transcript |
+| 3 | 0.700 | "Definition of 'arc' in Planning OS" | convmem Cursor transcript |
+| 4 | 0.594 | "Execute Task arc must be closed before next Planning arc" | Codex rollout |
+| 5 | 0.669 | "Meaning of 'separate arc'" | convmem Cursor transcript |
+
+**Zero July 14-15 HANDOFF/CONTINUE-DEEPSEEK results in top 10.** Zero LATEST.md. The first inter-model unit appears at rank 10: "Recommended path (phased)" from BUILT-PLANS (June 24-29).
+
+The domain distribution across top 20 confirms the pollution:
+```
+web_stack.wordpress.content_management:  3
+workflow.planning_os.terminology:         2
+project_management.workflow:              2
+... (14 more scattered domains)
+convmem.workflow.session_hygiene:         1  ← only convmem domain
+```
+ZERO hits in `coding.tools.convmem` or `coding.backend.convmem`.
+
+### Root Cause
+
+The nomic-embed-text model collapses "plan arc" (convmem project planning) with "Planning OS arc" (a WordPress project concept). The convmem corpus has extensively indexed Planning OS arc discussions from willowyhollow and convmem Cursor sessions. These dominate the "plan arc" semantic space.
+
+Meanwhile, the July 14-15 convmem docs use completely different vocabulary:
+- HANDOFF-DEEPSEEK: `audit`, `corpus quality`, `tombstone`, `dedupe`, `junk`
+- CONTINUE-DEEPSEEK diagnosis: `retrieval`, `ChromaDB`, `snapshot`, `Layer 0`
+- LATEST.md: `corpus-quality-audit`, `handoff`
+
+None of these overlap with "plan arc" in nomic-embed-text space.
+
+### Proof: July Content IS Retrievable
+
+The same corpus, different queries — July content surfaces immediately:
+
+| Query | Top Result | Score |
+|-------|-----------|-------|
+| "corpus quality audit" | "Handoff document for corpus quality audit" (Kiro transcript, Jul 15) | 0.681 |
+| "retrieval diagnosis" | "Recommended Sequence (Revised with Root Cause)" (CONTINUE-DEEPSEEK, Jul 15) | 0.687 |
+| "Kiro snapshot duplication" | "Layer 0: KIRO SNAPSHOT MULTIPLICATION" (CONTINUE-DEEPSEEK, Jul 15) | 0.696 |
+| "convmem corpus audit July" | "Corpus State (as of 2026-07-14)" (HANDOFF-DEEPSEEK, Jul 14) | 0.633 |
+
+**July 14-15 documents are correctly indexed and embedding-ranked.** The failure to retrieve them for "current plan arc" is purely a vocabulary/semantic neighborhood mismatch, not a duplication/ingestion problem.
+
+### How the Duplication Does Appear
+
+When the semantic match IS strong, Kiro snapshot duplication creates visible noise:
+
+```
+Query: "corpus quality audit"
+  [2] score=0.729  repo: ...docs/inter-model/HANDOFF-DEEPSEEK-...corpus-quality-audit.md
+  [4] score=0.694  kiro: ...snapshots/5d54061a/docs/inter-model/HANDOFF-DEEPSEEK-...corpus...
+```
+Same content, two paths, both in top 5 — users see duplicate citations.
+
+### BUILT-PLANS Dominance
+
+BUILT-PLANS (101 units, June 24-29, `coding.tooling` domain) is the primary inter-model document competing for "plan" queries. With domain `coding`, it claims 5+ of the top 10 slots. Its vocabulary (`roadmap`, `phases`, `recommended path`, `plan`) bridges naturally to "plan arc", but its content is 2+ weeks stale.
+
+---
+
+## Revised Diagnosis: Two Separate Root Causes
+
+The original diagnosis assumed Kiro snapshot duplication (Layer 0) was the primary blocker for "current plan arc." Live query tracing reveals:
+
+| Query | Primary Blocker | Mechanism |
+|-------|----------------|-----------|
+| "current plan arc" | **Layer 10** (cross-project pollution) | WordPress "arc" definitions outrank convmem July docs by 0.07+ score margin |
+| "Kiro plan v4" | **Layer 0** (snapshot multiplication) | 25 copies of KIRO v4 dominate; Kiro content IS the query topic |
+| "corpus quality audit" | Layers 0+2 (duplicate voting) | July content ranks #1-2, but Kiro snapshot copy appears at #4 |
+| "retrieval diagnosis" | Clean (no blocker) | July 15 content dominates top 5; no duplicates |
+
+The duplicate mass (Layers 0, 2, 7, 8, 9) degrades retrieval quality across the board but is NOT the primary cause of the "current plan arc" miss. The semantic gap (Layer 1) is the real culprit — specifically, the cross-project pollution variant where WordPress arc terminology hijacks the convmem "plan arc" semantic space.
+
+---
+
+### Updated Recommended Sequence
+
+**P0a-P0c unchanged** (fix duplication infrastructure — still critical for overall corpus health).
+
+**P0d (NEW): Vocabulary bridge doc — IMMEDIATE (~30 lines, 0 risk)**
+Create `docs/inter-model/CURRENT-ARC.md` with explicit searchable vocabulary:
+```markdown
+# Current Plan Arc — 2026-07-15
+
+Active work: **corpus quality audit** (see HANDOFF-DEEPSEEK-2026-07-14-corpus-quality-audit.md)
+Diagnosis: CONTINUE-DEEPSEEK-2026-07-15-retrieval-diagnosis.md
+Latest coordination: LATEST.md → corpus-quality-audit
+
+Keywords: plan, arc, current, active, now, today, latest, what are we doing
+```
+**Rationale:** Bridges the semantic gap. "plan arc" now embeds near a document that explicitly links to July 14-15 content. This is the only fix that directly addresses the Layer 10 blocker.
+**Risk:** Must be updated when the arc changes. Add to session-close protocol.
+
+**P1: Verify — 0 code changes**
+After P0a-P0d, re-run `convmem ask "current plan arc"` and verify July 14-15 facts reach top-5.
+
+### Revised Impact Assessment
+
+The original "Without Layer 0" score landscape was speculative and wrong. Live query tracing shows the actual landscape:
+
+**Current (broken):** WordPress arc definitions at 0.738 → July content invisible
+**After P0d (vocabulary bridge):** CURRENT-ARC.md at ~0.700 → linked July docs at ~0.680 → HANDOFF ranks ~3-5
+**After P0a+P0c+P0d (full fix):** CURRENT-ARC.md → HANDOFF (deduplicated) → CONTINUE-DEEPSEEK → expected behavior
+
+---
+
+## Layer 11: LATEST.md CANONICAL POINTER STALENESS
+
+### The Problem
+
+`docs/inter-model/LATEST.md` is the single-pointer coordination doc — the answer to "what are we working on now?" It lists **14 active handoffs**, none mentioning the corpus quality audit or retrieval diagnosis:
+
+| LATEST.md Section | Date | Topic |
+|---|---|---|
+| Active handoff | 2026-07-13 | Stage 3 bounded-autonomy accepted |
+| Always-Available GitHub Fallback | 2026-07-12 | Kiro V6c signed |
+| Bug sprint scored | 2026-07-08 | 5/5 PASS |
+| Orchestration approach | 2026-07-06 | Option B — shared memory bus |
+| HITL team charter | 2026-07-06 | shipped |
+| Retrieval + synthesis hardening | 2026-07-05 | shipped |
+| Ops closure | 2026-07-05 | digest timer active |
+| ... | ... | (8 more shipped/closed items) |
+
+**Grep for corpus/audit/retrieval in LATEST.md only matches "Retrieval + synthesis hardening (2026-07-05)"** — a shipped item from 10 days ago, not the active corpus quality audit arc.
+
+The corpus quality audit HANDOFF-DEEPSEEK file (dated 2026-07-14) and the CONTINUE-DEEPSEEK retrieval diagnosis (dated 2026-07-15) exist in `docs/inter-model/` but LATEST.md never points to them.
+
+### Why It Matters
+
+Even perfect retrieval — if `ask` found July 14-15 content at rank 1 — would return audit/diagnosis documents. But LATEST.md, the canonical "current state" pointer, says the active arc is bounded-autonomy acceptance from July 13. **The retrieval system can't fix a documentation gap.**
+
+This is not a retrieval failure. It's a coordination failure: the corpus quality audit is the de facto current arc (today's entire session is devoted to it, 2 decisions recorded, 16 debate files exchanged), but the canonical pointer was never updated to reflect it.
+
+### Root Cause
+
+LATEST.md is updated at session end via `convmem record`. The corpus quality audit session has not ended — it's still in progress. The pointer update happens at session close, not session start. This is by design (avoid churn on in-progress arcs), but it means any model asking "current plan arc" mid-session gets stale information even before retrieval runs.
+
+### Impact on the Debate
+
+This is arguably **more fundamental than retrieval**. The question "what is the current plan arc?" has a canonical answer mechanism (LATEST.md), and that mechanism says "bounded-autonomy acceptance." The retrieval system could return HANDOFF-DEEPSEEK at rank 1, and a model would still need to reconcile it against LATEST.md's conflicting claim.
+
+The debate focused entirely on retrieval — why the corpus doesn't return July 14-15 facts. But the retrieval miss compounds a deeper problem: the coordination infrastructure itself thinks the current arc is something else.
+
+### Fix
+
+**P0e: Add mid-session arc pointer to LATEST.md** — 3 lines:
+```markdown
+- **Corpus quality audit (2026-07-14, active):** HANDOFF-DEEPSEEK-2026-07-14-corpus-quality-audit.md.
+  Retrieval diagnosis: CONTINUE-DEEPSEEK-2026-07-15-retrieval-diagnosis.md.
+  Debate: debate-2026-07-15-who-fixes-retrieval/.
+```
+
+**Rationale:** The session-close convention is correct for finalized arcs, but an in-progress arc needs a pointer visible during the session itself. Adding it to LATEST.md bridges the mid-session gap.
+**Risk:** Must be removed/replaced at session close with the final arc record. Add to session-close checklist.
+
+---
+
+## Updated Layer 6 Impact Assessment
+
+The evidence gate means two things for the "current plan arc" query:
+
+1. **Regular `ask` (default):** 0 of 346 approved decisions injected. Today's retrieval debate decisions are invisible. This is correct behavior — decisions are evidence-chain entries, not general context.
+2. **`ask --evidence`:** 4 recent decisions injected (3 willowyhollow arc closure + 1 DeepSeek retrieval debate). The willowyhollow decisions add noise; the DeepSeek decision adds signal. Net neutral — doesn't fix or break the query.
+
+The evidence gate is not a bug. It's correct that decisions aren't injected by default. But Layer 6's original claim ("loads ALL recent decisions") was wrong for the default path. The corrected finding is: `--evidence` exists and would help, but has cross-project noise unless domain-scoped.
+
+---
+
 ## Live Config vs Example Config — Key Deltas
 
 | Setting | config.example.toml | Live (`~/.config/convmem/config.toml`) | Impact |
@@ -245,23 +437,38 @@ Evidence chains are populated by `ledger_link` (queues candidate pairs) and manu
 
 ---
 
-## What Each Layer Costs
+## What Each Layer Costs (Revised with Live Query Trace)
 
-For the query "current plan arc", here's the approximate score landscape:
+**Previous score landscape was speculative and wrong.** Live queries reveal the actual ranking:
 
-| Position | Unit | Base Score | Recency | Keyword | Final |
-|----------|------|-----------|---------|---------|-------|
-| 1 | Kiro v4 "Changes from drafts" (snap 76a76c1e) | 0.855 | +0.061 | +0.02 | 0.936 |
-| 2 | Kiro v4 "Changes from drafts" (snap 181a6d99) | 0.853 | +0.061 | +0.02 | 0.934 |
-| 3 | Kiro v4 "Changes from drafts" (snap 27572cdf) | 0.852 | +0.061 | +0.02 | 0.933 |
-| ... | ... (15 more copies of same 20 titles) | | | | |
-| 22 | HANDOFF Arc 2 section (Jul 14, repo path) | 0.715 | +0.097 | +0.01 | 0.822 |
-| 23 | HANDOFF Arc 2 section (Jul 14, kiro snap) | 0.714 | +0.097 | +0.01 | 0.821 |
-| 24 | LATEST.md active handoff (Jul 14) | 0.700 | +0.097 | +0.01 | 0.807 |
+### For "current plan arc" (no domain filter):
+| Position | Unit | Score | Source |
+|----------|------|-------|--------|
+| 1 | "Definition of a work arc in Planning OS" | 0.738 | willowyhollow Cursor |
+| 2 | "Definition of an 'arc' in Planning OS" | 0.713 | willowyhollow Cursor |
+| 3 | "Definition of 'arc' in Planning OS" | 0.700 | convmem Cursor |
+| ... | (WordPress/Cursor arc definitions) | | |
+| 10 | "Recommended path (phased)" | 0.567 | BUILT-PLANS (June 24-29) |
+| 30+ | July 14-15 HANDOFF/CONTINUE-DEEPSEEK | <0.55 | Not in top 30 |
 
-**Without Layer 0 (snapshot exclusion):** Kiro v4 drops from 370 units to ~15 → HANDOFF ranks ~3-5.
-**Without Layer 3 (rerank enabled):** Cross-encoder pushes HANDOFF above Kiro v4 → rank ~1-2.
-**With both fixes:** HANDOFF Arc 2 and LATEST.md would be top results.
+**Kiro v4 duplicates do NOT appear in top 30 for "current plan arc."** The WordPress Semantic Pollution (Layer 10) is the sole blocker.
+
+### For "corpus quality audit" (vocabulary-matched):
+| Position | Unit | Score | Source |
+|----------|------|-------|--------|
+| 1 | "Handoff document for corpus quality audit" | 0.681 | Kiro transcript (Jul 15) |
+| 2 | "Corpus State (as of 2026-07-14)" | 0.729 | HANDOFF-DEEPSEEK (Kiro snapshot) |
+| 3 | "Corpus State (as of 2026-07-14)" | 0.729 | HANDOFF-DEEPSEEK (repo path) |
+| 4 | "Severity" | 0.721 | HANDOFF-DEEPSEEK (repo path) |
+| 5 | "Specific Audit Tasks for DeepSeek" | 0.694 | HANDOFF-DEEPSEEK (Kiro snapshot) |
+
+**Kiro snapshot duplication creates duplicate citations (positions 2/3, 4/5) but does not block retrieval.**
+
+### For "Kiro plan v4" (hypothetical):
+Kiro v4 duplicates would dominate top 20 due to:
+- 25 copies × ~15 units = 370 units all matching "Kiro plan"
+- Layer 0 ingestion + Layer 9 (chroma_dedupe blind to these)
+- Score landscape would show 18-20 Kiro v4 units before any other content
 
 ---
 
@@ -323,11 +530,17 @@ Backfill timestamps from source file mtime for Cursor/Continue units.
 
 ---
 
-## Why the Debate Missed the Root Cause
+## Why the Debate Missed the Root Cause(s)
 
-The debate (ChatGPT, Claude, Codex, Crush, Cursor, Kiro) all operated from corpus queries and code reading — none of them inspected the **raw ChromaDB SQLite file** or **processed.json** to trace the actual source paths of the duplicate units. They saw "370 units, 20 titles" and assumed re-indexing of a single file. The real mechanism — 25 different Kiro session snapshots at 25 different paths — is only visible by examining the actual `source_path` metadata in the ChromaDB embedding_metadata table and cross-referencing with processed.json's path entries.
+The debate (ChatGPT, Claude, Codex, Crush, Cursor, Kiro) operated under a shared assumption: that the retrieval failure was caused by duplicate mass pushing July content below the top-k threshold. This was reasonable — the Kiro v4 duplicate mass (370 units) is real and alarming — but it was wrong for the specific query "current plan arc."
 
-**Methodological advantage:** Continue-DeepSeek had the breadth to read 10 source files, run 6 corpus queries, inspect ChromaDB SQLite directly, and cross-reference processed.json — all in a single session. This is the kind of expansive search that reveals root causes invisible to agents limited to `convmem ask` or single-code-file reads.
+**What the debate correctly identified:** Kiro snapshot duplication is a serious infrastructure problem that degrades retrieval quality for queries matching Kiro v4 vocabulary.
+
+**What the debate missed:** The "current plan arc" query never reaches July 14-15 content because it maps to an entirely different semantic neighborhood (WordPress Planning OS arc definitions) with a 0.07+ score margin. Removing all Kiro duplicates would NOT fix this query — WordPress arc definitions would still occupy positions 1-9.
+
+**Why only live query tracing found this:** The debate models analyzed code and corpus statistics but none ran actual `query_units('current plan arc')` against the live ChromaDB. The speculative score landscape in v2 of this diagnosis (showing Kiro v4 at positions 1-20) was wrong because it assumed "plan" + "arc" would match Kiro v4 document vocabulary. In reality, nomic-embed-text maps "plan arc" to a completely different cluster.
+
+**Methodological advantage:** Continue-DeepSeek ran 5 live query traces against the corpus with different query phrasings, which revealed the semantic pollution. This is the difference between reading the map and walking the terrain.
 
 ---
 
@@ -345,6 +558,12 @@ These were found during the scout but do not materially affect the "plan arc" re
 | `untagged_priority` missing | Not in live config, defaults to true internally | Same as example default |
 | Confidence histogram stability | Unchanged across 15h of daemon cycles: `{'0.0': 2, '0.4': 10, '0.6': 36, '0.7': 311, '0.8': 1909, '0.9': 3539, '1.0': 2228}` | Daemon is stable but not improving — refine.jobs can't fix the problems above |
 | `recency_half_life_days` missing | Not in live config; default behavior if unset needs verification | Minor sub-item; recency is already broken (Layer 4) regardless of half-life |
+| Reranker model not downloaded | `BAAI/bge-reranker-v2-m3` not found in any HuggingFace cache directory. `transformers` is installed. | Even setting `rerank=true` won't work until the model is pulled. First query would trigger a ~1.3 GB download. |
+| Repo-level tarball duplicates | 11 files in `docs/inter-model/handoff-tar-*` subdirectories (LATEST.md, MODEL-WORKFLOW.md, TEAM-CHARTER, agent-protocol.md, HANDOFF.md) | Harmless — `is_inter_model_doc` returns False (parent is `handoff-*`, not `inter-model`) |
+| dedupe_queue frozen since June 22 | All 10 entries from June 22, all web sec/general domains. `semantic_dedupe` excluded from `refine.jobs` → queue never refilled. | Already covered by Layer 9; no convmem duplicates in queue |
+| backfill_domain completed July 2 | 1,518 undo snapshots from June 18-July 1. Last run July 2 with 0 untagged units → corpus fully domain-tagged. | Historical — job completed successfully; daemon removed it from jobs list |
+| 1139 Kiro snapshots total | 52 inter-model `.md` files across them; 17 unique filenames. 165 session dirs with `messages.jsonl`. | Already quantified in Layer 0; detail confirms snapshot scale |
+| decisions-approved.jsonl exists | 346 approved decisions, 160 convmem-related. Most recent: 2 from today (DeepSeek R1 retrieval debate). | Covered by Layer 6 correction — exist but gated behind `--evidence` |
 
 ---
 
@@ -355,18 +574,20 @@ The original 6-layer stack + 3 new layers + evidence chain collapse = **10 disti
 | Layer | Name | Type | Fix Complexity |
 |---|---|---|---|
 | 0 | Kiro snapshot multiplication | Ingestion path | 5-line exclude |
-| 1 | Language gap | Semantic | Coordination doc |
+| 1 | Language gap | Semantic | Vocabulary bridge doc |
 | 2 | Duplicate voting bloc | Consequence of L0+L7+L8 | Resolved by P0a+P0b |
-| 3 | Rerank disabled | Config | 1-line toggle |
+| 3 | Rerank disabled | Config | 1-line toggle (needs model download) |
 | 4 | Recency broken | Data quality | Timestamp backfill |
 | 5 | No citation diversification | Query pipeline | ~30 lines |
-| 6 | Evidence path noise | Query pipeline | ~15 lines |
+| 6 | Evidence path noise (evidence-gated) | Query pipeline | ~15 lines |
 | 7 | Double Kiro ingestion | Ingestion path | Remove stale import |
 | 8 | Cursor project path multiplication | Ingestion path | Path canonicalization |
 | 9 | chroma_dedupe ledger-id-keyed | Refine mechanism | Add semantic_dedupe to jobs |
+| 10 | Semantic cross-project pollution | Embedding space | Vocabulary bridge doc (P0d) |
+| 11 | LATEST.md canonical pointer staleness | Coordination | 3-line mid-session update (P0e) |
 | — | Evidence chain collapse | Data quality | Auto-backfill job |
 
-**P0 fixes (Layers 0, 3, 7, 9):** ~15 lines of code + 2 config toggles. Impact: removes ~2,100 duplicate/low-quality units from retrieval path.
+**P0 fixes (Layers 0, 3, 7, 9, 10, 11):** ~48 lines of code + 2 config toggles + 1 new file + 3-line LATEST.md update. Impact: fixes the "current plan arc" retrieval (P0d, P0e) AND removes ~2,100 duplicate/low-quality units (P0a-c).
 **P1 fixes (Layers 1, 2, 4, 5, 6, 8, evidence):** ~100 lines total. Impact: defense-in-depth for future queries.
 
 ---
