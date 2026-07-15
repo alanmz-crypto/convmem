@@ -5,6 +5,10 @@
 **Owner:** Ryan (dispositions) · lanes contribute opinions
 **Sunset:** close when Ryan picks an approach (or parks the debate); then archive or fold into a decision note.
 
+## ⚠ ALERT (read first)
+
+**DeepSeek landed P0 live/code changes ahead of board close:** [ALERT-2026-07-15-deepseek-p0-landed.md](ALERT-2026-07-15-deepseek-p0-landed.md) — also see `docs/inter-model/CURRENT-ARC.md` on `plan/2026-07-14-corpus-quality-audit`.
+
 ## Purpose
 
 One place for every lane to drop a short opinion on:
