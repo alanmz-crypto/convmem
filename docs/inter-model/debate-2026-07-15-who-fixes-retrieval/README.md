@@ -28,6 +28,11 @@ Kiro's filing: [KIRO-top2-problems.md](KIRO-top2-problems.md)
 
 Codex's filing (submitted by Cursor after Codex hit a payment wall mid-write — Codex never completed this file in-repo): [CODEX-top-two-problems-and-plans.md](CODEX-top-two-problems-and-plans.md)
 
+Continue-DeepSeek / DeepSeek V4 (synthesis) filing: [CONTINUE-DEEPSEEK-top-two-problems-and-plans.md](CONTINUE-DEEPSEEK-top-two-problems-and-plans.md)
+(split sources also filed: problem-1 / problem-2)
+
+DeepSeek R1 filing: [DEEPSEEK-R1-top2-plan.md](DEEPSEEK-R1-top2-plan.md)
+
 ## Purpose
 
 One place for every lane to drop a short opinion on:
