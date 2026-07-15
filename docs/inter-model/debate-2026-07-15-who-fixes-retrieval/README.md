@@ -24,6 +24,10 @@ implementation starts.
 
 Cursor's filing: [CURSOR-top-two-problems-and-plans.md](CURSOR-top-two-problems-and-plans.md)
 
+Kiro's filing: [KIRO-top2-problems.md](KIRO-top2-problems.md)
+
+Codex's filing (submitted by Cursor after Codex hit a payment wall mid-write — Codex never completed this file in-repo): [CODEX-top-two-problems-and-plans.md](CODEX-top-two-problems-and-plans.md)
+
 ## Purpose
 
 One place for every lane to drop a short opinion on:
