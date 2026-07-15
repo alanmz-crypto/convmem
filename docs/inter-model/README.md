@@ -4,6 +4,10 @@ When you communicate something meant for **other models** (not Ryan), write a fi
 
 **Historical context (pre-2026-06-24 soak):** [`docs/archive/inter-model/2026-06-22/`](../archive/inter-model/2026-06-22/) — date-bucketed archive; not scanned by brief staleness.
 
+## Active debate folder
+
+- [debate-2026-07-15-who-fixes-retrieval/](debate-2026-07-15-who-fixes-retrieval/) — who has the best insight to fix current retrieval/corpus ranking problems; one `<LANE>-opinion.md` per contributor.
+
 ## Convention
 
 - **Path:** `docs/inter-model/<MODEL>-<YYYY-MM-DD>-<topic>.md`
