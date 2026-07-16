@@ -181,10 +181,11 @@ def open_hit(
 
 
 @app.command("ask")
-def ask_command(
+def ask_command(  # pylint: disable=too-many-arguments
     question: str | None = typer.Argument(
         None, help="Question (omit with -i for interactive mode)"
     ),
+    *,
     interactive: bool = typer.Option(
         False, "-i", "--interactive", help="Multi-turn session with follow-ups"
     ),
@@ -211,8 +212,6 @@ def ask_command(
     ),
 ):
     """Answer questions using retrieved memories from past sessions."""
-    import json as _json
-
     from ask import ask, run_interactive
     from query import err_console, render_ask_output, render_error
 
@@ -234,7 +233,7 @@ def ask_command(
     )
     render_ask_output(out)
     if show_trace and out.get("trace") is not None:
-        err_console.print(_json.dumps(out["trace"], indent=2, default=str))
+        err_console.print(json.dumps(out["trace"], indent=2, default=str))
     from next_steps import after_ask
 
     after_ask(

@@ -50,6 +50,25 @@ PYLINT_MESSAGE_BITS = (
 
 # Non-aggregate messages may still embed ranges like ``==mod:[121:127]``.
 _EMBEDDED_LINE_RANGE = re.compile(r"(==[^\s\[:]+):\[\d+:\d+\]")
+# Counts and source lines in messages shift when unrelated lines are edited.
+_COUNT_PAIR = re.compile(r"\((\d+)/(\d+)\)")
+_OUTER_SCOPE_LINE = re.compile(r"\(line \d+\)")
+
+
+def normalize_message(message: str, *, symbol: str = "", msg_id: str = "") -> str:
+    """Normalize unstable shapes for *non-aggregate* fingerprints.
+
+    Rewrites embedded ``==name:[n:m]`` ranges to ``[#:#]``. Also rewrites
+    ``(N/M)`` complexity counts and ``(line N)`` outer-scope refs so edits that
+    only shift line numbers or change debt magnitude do not invent new
+    fingerprints. R0801/R0401 use aggregate fingerprints instead.
+    """
+    del symbol, msg_id  # API kept for call sites; aggregates bypass this.
+    text = _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message.strip())
+    text = _COUNT_PAIR.sub("(#/#)", text)
+    text = _OUTER_SCOPE_LINE.sub("(line #)", text)
+    return text
+
 
 # Aggregate symbols/ids — fingerprinted by count only (see module docstring).
 _AGGREGATE_MSG_IDS = frozenset({"R0801", "R0401"})
@@ -61,16 +80,6 @@ _NULL_OID = frozenset({"0" * 40, "0" * 64})
 
 class BaselineResolveError(RuntimeError):
     """Base ref cannot be resolved or git failed — fail closed (never bootstrap)."""
-
-
-def normalize_message(message: str, *, symbol: str = "", msg_id: str = "") -> str:
-    """Normalize unstable shapes for *non-aggregate* fingerprints.
-
-    Rewrites embedded ``==name:[n:m]`` ranges to ``[#:#]``. R0801/R0401 are
-    not normalized here — they use aggregate fingerprints instead.
-    """
-    del symbol, msg_id  # API kept for call sites; aggregates bypass this.
-    return _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message.strip())
 
 
 def _norm_path(path: str) -> str:

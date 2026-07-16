@@ -572,6 +572,7 @@ def ask(
     domain: str = "",
     site: str = "",
     evidence: bool = True,
+    *,
     trace: bool = False,
 ) -> str:
     """Answer a question using retrieved memories. Returns answer + citations.

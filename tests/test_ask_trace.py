@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from unittest import mock
 from unittest.mock import patch
 
 from ask import (
@@ -14,6 +15,18 @@ from ask import (
 )
 
 
+def _cfg(**extra) -> dict:
+    base = {
+        "models": {
+            "distill_model": "deepseek-v4-flash",
+            "ollama_host": "http://127.0.0.1:11434",
+            "deepseek_base_url": "https://api.deepseek.com",
+        }
+    }
+    base.update(extra)
+    return base
+
+
 def _unit(uid: str, score: float, title: str = "T", **extra) -> dict:
     meta = {
         "title": title,
@@ -22,9 +35,11 @@ def _unit(uid: str, score: float, title: str = "T", **extra) -> dict:
         "source_path": f"/tmp/{uid}.md",
         "ledger_id": extra.pop("ledger_id", ""),
         "ledger_kind": extra.pop("ledger_kind", None),
-        "domain": "coding.tooling",
+        "domain": extra.pop("domain", "coding.tooling"),
         "author_model": "test",
     }
+    if "site" in extra:
+        meta["site"] = extra.pop("site")
     row = {
         "id": uid,
         "document": f"body-{uid}",
@@ -49,6 +64,25 @@ def _raw(uid: str, score: float) -> dict:
     }
 
 
+def _recent_rec(
+    rid: str,
+    *,
+    domain: str = "coding.tooling",
+    site: str = "",
+) -> dict:
+    return {
+        "id": rid,
+        "timestamp": "2026-07-15T00:00:00+00:00",
+        "summary": f"summary-{rid}",
+        "rationale": "r",
+        "author_model": "test",
+        "domain": domain,
+        "site": site,
+        "relates_to": "",
+        "status": "proposed",
+    }
+
+
 class TestAskTrace(unittest.TestCase):
     def test_compact_row_no_document_body(self):
         row = _compact_trace_row(_unit("a", 0.9, "Alpha"), origin="unit")
@@ -58,11 +92,7 @@ class TestAskTrace(unittest.TestCase):
         self.assertNotIn("body", json.dumps(row))
 
     def test_context_delivery_char_truncation(self):
-        selection = [
-            _unit("a", 0.9, document="AAAA"),
-            _unit("b", 0.8, document="BBBB"),
-        ]
-        # Force known block texts
+        selection = [_unit("a", 0.9), _unit("b", 0.8)]
         blocks = ["BLOCK-A", "BLOCK-B-LONG"]
         context = "\n\n".join(blocks)
         delivered, meta = _apply_context_char_limit(
@@ -71,7 +101,7 @@ class TestAskTrace(unittest.TestCase):
         self.assertTrue(meta["truncated"])
         self.assertEqual(meta["max_chars"], 10)
         self.assertEqual(meta["chars_before"], len(context))
-        self.assertGreater(meta["chars_after"], 10)  # includes marker
+        self.assertGreater(meta["chars_after"], 10)
         self.assertIn("[… context truncated …]", delivered)
         self.assertEqual(meta["last_fully_included_id"], "a")
         self.assertEqual(meta["partial_id"], "b")
@@ -79,16 +109,77 @@ class TestAskTrace(unittest.TestCase):
     @patch("ask.query_units")
     @patch("ask.load_config")
     @patch("ask.generate_stream")
+    def test_prompt_parity_and_numbering(self, mock_stream, mock_cfg, mock_units):
+        mock_units.return_value = [
+            _unit("a", 0.95),
+            _unit("b", 0.9),
+            _unit("c", 0.85),
+        ]
+        mock_cfg.return_value = _cfg()
+        prompts: list[str] = []
+
+        def _stream(*_a, **kwargs):
+            prompts.append(kwargs.get("prompt") or (_a[0] if _a else ""))
+            return iter(["ok"])
+
+        # generate_stream(prompt, model=..., ...) — first positional is prompt
+        def _stream2(prompt, **_kwargs):
+            prompts.append(prompt)
+            return iter(["ok"])
+
+        mock_stream.side_effect = _stream2
+
+        plain = ask("q", top_k=3, trace=False)
+        traced = ask("q", top_k=3, trace=True)
+        self.assertEqual(len(prompts), 2)
+        self.assertEqual(prompts[0], prompts[1])
+        self.assertIn("[1]", prompts[0])
+        self.assertIn("[2]", prompts[0])
+        self.assertIn("[3]", prompts[0])
+        # Excerpt headers (not the prompt template's "[1], [2], etc.")
+        self.assertEqual(prompts[0].count("[1] ("), 1)
+        self.assertEqual(prompts[0].count("[2] ("), 1)
+        self.assertEqual(prompts[0].count("[3] ("), 1)
+
+        plain_keys = set(plain) - {"trace"}
+        traced_keys = set(traced) - {"trace"}
+        self.assertEqual(plain_keys, traced_keys)
+        for k in plain_keys:
+            self.assertEqual(plain[k], traced[k], msg=k)
+        self.assertNotIn("trace", plain)
+        self.assertIn("trace", traced)
+
+    @patch("ask.query_raw")
+    @patch("ask.query_units")
+    @patch("ask.load_config")
+    @patch("ask.generate_stream")
+    def test_empty_shape_trace_false_and_true(
+        self, mock_stream, mock_cfg, mock_units, mock_raw
+    ):
+        mock_units.return_value = []
+        mock_raw.return_value = []
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
+
+        plain = ask("q", trace=False)
+        self.assertEqual(
+            set(plain.keys()),
+            {"answer", "citations", "results", "confidence", "warning"},
+        )
+        traced = ask("q", trace=True)
+        self.assertEqual(
+            set(traced.keys()),
+            {"answer", "citations", "results", "confidence", "warning", "trace"},
+        )
+        self.assertEqual(traced["trace"]["schema"], TRACE_SCHEMA)
+
+    @patch("ask.query_units")
+    @patch("ask.load_config")
+    @patch("ask.generate_stream")
     def test_trace_absent_by_default(self, mock_stream, mock_cfg, mock_units):
         mock_units.return_value = [_unit("a", 0.95), _unit("b", 0.9)]
-        mock_cfg.return_value = {
-            "models": {
-                "distill_model": "deepseek-v4-flash",
-                "ollama_host": "http://127.0.0.1:11434",
-                "deepseek_base_url": "https://api.deepseek.com",
-            }
-        }
-        mock_stream.side_effect = lambda *a, **k: iter(["ok"])
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
         plain = ask("q", top_k=2)
         self.assertNotIn("trace", plain)
 
@@ -100,14 +191,8 @@ class TestAskTrace(unittest.TestCase):
     ):
         units = [_unit("a", 0.95), _unit("b", 0.9), _unit("c", 0.85)]
         mock_units.return_value = units
-        mock_cfg.return_value = {
-            "models": {
-                "distill_model": "deepseek-v4-flash",
-                "ollama_host": "http://127.0.0.1:11434",
-                "deepseek_base_url": "https://api.deepseek.com",
-            }
-        }
-        mock_stream.side_effect = lambda *a, **k: iter(["ok"])
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
 
         traced = ask("q", top_k=2, trace=True)
         tr = traced["trace"]
@@ -137,7 +222,6 @@ class TestAskTrace(unittest.TestCase):
         self.assertEqual(final_ids, ["a", "b"])
         self.assertFalse(stages["final_context"]["truncated"])
         self.assertEqual(stages["final_context"]["items_total"], 2)
-        # No document bodies in any compact row
         blob = json.dumps(tr)
         self.assertNotIn("body-a", blob)
 
@@ -147,24 +231,20 @@ class TestAskTrace(unittest.TestCase):
     def test_raw_path_final_context(self, mock_stream, mock_cfg, mock_raw):
         hits = [_raw("r1", 0.9), _raw("r2", 0.8), _raw("r3", 0.7)]
         mock_raw.return_value = hits
-        mock_cfg.return_value = {
-            "models": {
-                "distill_model": "deepseek-v4-flash",
-                "ollama_host": "http://127.0.0.1:11434",
-                "deepseek_base_url": "https://api.deepseek.com",
-            }
-        }
-        mock_stream.side_effect = lambda *a, **k: iter(["ok"])
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
         traced = ask("q", top_k=2, raw=True, trace=True)
         stages = traced["trace"]["stages"]
         self.assertEqual(stages["evidence_reranked"]["reason"], "raw_mode")
         self.assertEqual(stages["ledger_deduped"]["reason"], "raw_mode")
         self.assertEqual(stages["recent_injected"]["reason"], "raw_mode")
         final_ids = [r["id"] for r in stages["final_context"]["items"]]
-        # raw formats all fetch_k hits (max(top_k, 8) => 8 but only 3 available)
         self.assertEqual(final_ids, ["r1", "r2", "r3"])
         self.assertTrue(
-            all(r.get("origin") == "raw_summary" for r in stages["final_context"]["items"])
+            all(
+                r.get("origin") == "raw_summary"
+                for r in stages["final_context"]["items"]
+            )
         )
 
     @patch("ask.query_raw")
@@ -174,17 +254,10 @@ class TestAskTrace(unittest.TestCase):
     def test_hybrid_path_final_context_origins(
         self, mock_stream, mock_cfg, mock_units, mock_raw
     ):
-        # Low scores force hybrid when evidence=False
         mock_units.return_value = [_unit("u1", 0.2)]
         mock_raw.return_value = [_raw("r1", 0.9), _raw("r2", 0.8)]
-        mock_cfg.return_value = {
-            "models": {
-                "distill_model": "deepseek-v4-flash",
-                "ollama_host": "http://127.0.0.1:11434",
-                "deepseek_base_url": "https://api.deepseek.com",
-            }
-        }
-        mock_stream.side_effect = lambda *a, **k: iter(["ok"])
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
         traced = ask("q", top_k=5, trace=True)
         items = traced["trace"]["stages"]["final_context"]["items"]
         origins = {r["id"]: r.get("origin") for r in items}
@@ -193,39 +266,30 @@ class TestAskTrace(unittest.TestCase):
         self.assertTrue(any(o == "raw_summary" for o in origins.values()))
 
     @patch("ask.recent_decisions_for_cfg")
-    @patch("ask.apply_evidence_rerank", create=True)
-    @patch("ask.ChromaStore", create=True)
     @patch("ask.query_units")
     @patch("ask.load_config")
     @patch("ask.generate_stream")
-    def test_evidence_stages_separated_and_admitted_recent(
+    def test_evidence_dedupe_and_admitted_recent_edges(
         self,
         mock_stream,
         mock_cfg,
         mock_units,
-        mock_store_cls,
-        mock_rerank,
         mock_recent,
     ):
-        # Import path uses chroma_store.ChromaStore and evidence.apply_evidence_rerank
-        units = [_unit("a", 0.95, ledger_id="dec_a"), _unit("b", 0.9, ledger_id="dec_b")]
+        # Duplicate ledger_id so dedupe drops one; recent overlaps + over-cap + domain miss
+        units = [
+            _unit("a", 0.95, ledger_id="dec_a"),
+            _unit("a_dup", 0.94, ledger_id="dec_a"),
+            _unit("b", 0.9, ledger_id="dec_b"),
+        ]
         mock_units.return_value = units
-        mock_cfg.return_value = {
-            "models": {
-                "distill_model": "deepseek-v4-flash",
-                "ollama_host": "http://127.0.0.1:11434",
-                "deepseek_base_url": "https://api.deepseek.com",
-            },
-            "index": {"chroma_dir": "/tmp/chroma"},
-            "query": {"recency_weight": 0.0, "recency_half_life_days": 30.0},
-        }
-        mock_stream.side_effect = lambda *a, **k: iter(["ok"])
+        mock_cfg.return_value = _cfg(
+            index={"chroma_dir": "/tmp/chroma"},
+            query={"recency_weight": 0.0, "recency_half_life_days": 30.0},
+        )
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
 
-        store = mock_store_cls.return_value
-        store.__enter__.return_value = store
-        store.__exit__.return_value = False
-
-        def _rerank(u, *a, **k):
+        def _rerank(u, *_a, **_k):
             out = []
             for row in u:
                 c = dict(row)
@@ -234,33 +298,91 @@ class TestAskTrace(unittest.TestCase):
                 out.append(c)
             return out
 
+        mock_store = mock.MagicMock()
+        mock_store.__enter__.return_value = mock_store
+        mock_store.__exit__.return_value = False
+
+        mock_recent.return_value = [
+            _recent_rec("dec_a"),  # overlaps semantic — excluded
+            _recent_rec("dec_r1"),
+            _recent_rec("dec_r2"),
+            _recent_rec("dec_r3"),
+            _recent_rec("dec_r4"),
+            _recent_rec("dec_r5"),
+            _recent_rec("dec_r6"),
+            _recent_rec("dec_r7"),
+            _recent_rec("dec_r8"),
+            _recent_rec("dec_other", domain="web_stack.security"),  # domain miss
+        ]
+
         with patch("evidence.apply_evidence_rerank", side_effect=_rerank), patch(
-            "chroma_store.ChromaStore", mock_store_cls
+            "chroma_store.ChromaStore", return_value=mock_store
         ):
-            mock_recent.return_value = [
-                {
-                    "id": "dec_recent",
-                    "timestamp": "2026-07-15T00:00:00+00:00",
-                    "summary": "recent",
-                    "rationale": "r",
-                    "author_model": "test",
-                    "domain": "coding.tooling",
-                    "site": "",
-                    "relates_to": "",
-                    "status": "proposed",
-                }
-            ]
-            traced = ask("q", top_k=5, evidence=True, trace=True)
+            traced = ask(
+                "q",
+                top_k=5,
+                evidence=True,
+                trace=True,
+                domain="coding.tooling",
+            )
 
         stages = traced["trace"]["stages"]
         self.assertEqual(stages["evidence_reranked"]["status"], "ok")
         self.assertEqual(stages["ledger_deduped"]["status"], "ok")
-        self.assertIsNot(stages["evidence_reranked"], stages["ledger_deduped"])
-        admitted = stages["recent_injected"]["items"]
-        self.assertTrue(admitted)
-        self.assertTrue(
-            all(r.get("evidence_status") == "recent_decision" for r in admitted)
+        self.assertGreater(
+            stages["evidence_reranked"]["items_total"],
+            stages["ledger_deduped"]["items_total"],
         )
+        admitted_ids = {
+            (r.get("ledger_id") or "") for r in stages["recent_injected"]["items"]
+        }
+        self.assertNotIn("dec_a", admitted_ids)
+        self.assertNotIn("dec_other", admitted_ids)
+        self.assertTrue(
+            all(
+                r.get("evidence_status") == "recent_decision"
+                for r in stages["recent_injected"]["items"]
+            )
+        )
+        # Minority cap on fetch_k=8 → at most floor(8/3)=2 or max(1,...) = 2
+        self.assertLessEqual(len(stages["recent_injected"]["items"]), 2)
+
+    @patch("ask.query_raw")
+    @patch("ask.load_config")
+    @patch("ask.generate_stream")
+    def test_final_context_trace_limit_prefix(self, mock_stream, mock_cfg, mock_raw):
+        hits = [_raw(f"r{i}", 0.9 - i * 0.01) for i in range(12)]
+        mock_raw.return_value = hits
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
+        with patch("ask.TRACE_LIMIT_DEFAULT", 5):
+            traced = ask("q", top_k=12, raw=True, trace=True)
+        fc = traced["trace"]["stages"]["final_context"]
+        self.assertTrue(fc["truncated"])
+        self.assertEqual(fc["items_total"], 12)
+        self.assertEqual(len(fc["items"]), 5)
+        self.assertEqual(
+            [r["id"] for r in fc["items"]],
+            [f"r{i}" for i in range(5)],
+        )
+
+    @patch("ask.query_units")
+    @patch("ask.load_config")
+    @patch("ask.generate_stream")
+    def test_a2_e2e_via_ask_max_chars(self, mock_stream, mock_cfg, mock_units):
+        mock_units.return_value = [
+            _unit("a", 0.95),
+            _unit("b", 0.9),
+            _unit("c", 0.85),
+        ]
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
+        with patch("ask._MAX_CONTEXT_CHARS", 40):
+            traced = ask("q", top_k=3, trace=True)
+        delivery = traced["trace"]["context_delivery"]
+        self.assertTrue(delivery["truncated"])
+        self.assertEqual(delivery["max_chars"], 40)
+        self.assertGreater(delivery["chars_after"], 40)
 
     @patch("ask.query_units")
     @patch("ask.load_config")
@@ -268,15 +390,9 @@ class TestAskTrace(unittest.TestCase):
     def test_trace_limit_truncation_flag(self, mock_stream, mock_cfg, mock_units):
         units = [_unit(f"u{i}", 0.9 - i * 0.01) for i in range(25)]
         mock_units.return_value = units
-        mock_cfg.return_value = {
-            "models": {
-                "distill_model": "deepseek-v4-flash",
-                "ollama_host": "http://127.0.0.1:11434",
-                "deepseek_base_url": "https://api.deepseek.com",
-            }
-        }
-        mock_stream.side_effect = lambda *a, **k: iter(["ok"])
-        traced = ask("q", top_k=5, trace=True, trace_limit=20)
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
+        traced = ask("q", top_k=5, trace=True)
         tr = traced["trace"]
         self.assertTrue(tr["truncated"])
         self.assertEqual(tr["stages"]["candidates"]["items_total"], 25)
@@ -315,6 +431,31 @@ class TestAskTrace(unittest.TestCase):
                 run_ask.return_value["trace"] = {"schema": TRACE_SCHEMA}
                 payload2 = json.loads(mcp_server.ask("q", trace=True))
                 self.assertEqual(payload2["trace"]["schema"], TRACE_SCHEMA)
+
+    @patch("ask.query_units")
+    @patch("ask.load_config")
+    @patch("ask.generate_stream")
+    def test_cli_trace_writes_json_stderr(
+        self, mock_stream, mock_cfg, mock_units
+    ):
+        from typer.testing import CliRunner
+
+        import convmem
+
+        mock_units.return_value = [_unit("a", 0.95), _unit("b", 0.9)]
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
+
+        runner = CliRunner()
+        result = runner.invoke(
+            convmem.app, ["ask", "hello trace", "--trace"], catch_exceptions=False
+        )
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        # stderr should contain trace JSON
+        err = result.stderr or ""
+        self.assertIn("convmem.ask.trace.v1", err)
+        payload = json.loads(err[err.index("{") :])
+        self.assertEqual(payload["schema"], TRACE_SCHEMA)
 
 
 if __name__ == "__main__":

@@ -721,5 +721,24 @@ class GitProvenanceTests(unittest.TestCase):
             self.assertEqual(rc, 1)
 
 
+
+
+class TestNormalizeMessage(unittest.TestCase):
+    def test_normalize_count_and_line(self):
+        from pylint_regression_gate import normalize_message
+
+        self.assertEqual(
+            normalize_message("Too many arguments (10/8)"),
+            "Too many arguments (#/#)",
+        )
+        self.assertEqual(
+            normalize_message("Too many lines in module (1436/1000)"),
+            "Too many lines in module (#/#)",
+        )
+        self.assertEqual(
+            normalize_message("Redefining name 'stats' from outer scope (line 306)"),
+            "Redefining name 'stats' from outer scope (line #)",
+        )
+
 if __name__ == "__main__":
     unittest.main()
