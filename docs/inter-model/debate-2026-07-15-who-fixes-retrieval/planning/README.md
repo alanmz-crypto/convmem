@@ -1,10 +1,11 @@
-# Planning (active round)
+# Planning (active — Round 2)
 
-Architecture, conflict disposition, execution runbooks, and partner sign-offs
-for the **current** implementable slice live here.
+| File | Purpose |
+|---|---|
+| [CURSOR-architecture-round-2-trace.md](CURSOR-architecture-round-2-trace.md) | **Current** architecture — PR #35 rebase, trace-only now |
+| [CURSOR-conflict-disposition-round-2-trace.md](CURSOR-conflict-disposition-round-2-trace.md) | Kiro vote reconciled; Phase B deferred |
 
-Round 1 planning artifacts moved to
-[../reference/round-1-evidence-and-nested/planning/](../reference/round-1-evidence-and-nested/planning/).
+Round 1 planning: [../reference/round-1-evidence-and-nested/planning/](../reference/round-1-evidence-and-nested/planning/).
 
-Round 2: file architecture here after partners review
-[../CURSOR-top-two-problems-and-plans.md](../CURSOR-top-two-problems-and-plans.md).
+Board decision (tally): [../CURSOR-round-2-board-decision.md](../CURSOR-round-2-board-decision.md).
+Kiro vote: [../KIRO-round2-vote.md](../KIRO-round2-vote.md).
