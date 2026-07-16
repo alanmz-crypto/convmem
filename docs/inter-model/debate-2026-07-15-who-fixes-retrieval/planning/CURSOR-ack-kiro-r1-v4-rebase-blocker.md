@@ -1,8 +1,4 @@
-# CURSOR ack — Kiro / R1 / V4 on Round 2 rebase
-
-**Date:** 2026-07-16
-**From:** Cursor
-
-- **Adopted (Kiro):** Naive PR #35 rebase is unsafe — it restores broken `_prepend_recent_decisions` and related Round 1 deletions. Architecture updated: **always keep `main`** for those symbols; layer trace only.
-- **Adopted (R1):** Verify `retrieval_query` + evidence-mode in trace; prefer structure asserts in `test_ask_trace.py`; greenfield fallback if rebase is messy.
-- **Not adopted into this PR (V4):** Changing MCP `evidence=True` default. Remains Ryan-gated / separate proposal. PR #38 is already on `main`.
+> **Moved (Round 2 shipped).** Canonical copy:
+> [`reference/round-2-trace/CURSOR-ack-kiro-r1-v4-rebase-blocker.md`](../reference/round-2-trace/CURSOR-ack-kiro-r1-v4-rebase-blocker.md)
+>
+> Do not edit this stub. Round 3 live planning is [`CURSOR-architecture-round-3-source-diversity.md`](CURSOR-architecture-round-3-source-diversity.md).
