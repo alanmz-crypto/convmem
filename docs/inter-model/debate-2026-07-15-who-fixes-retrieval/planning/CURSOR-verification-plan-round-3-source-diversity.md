@@ -1,6 +1,6 @@
 # Round 3 verification plan — source diversification
 
-**Status:** **MERGE-READY** — partner PASSes recorded on exact tip `5946d19`. Ryan merges when ready.
+**Status:** **SHIPPED** on `main` @ `549f74d` via [PR #39](https://github.com/alanmz-crypto/convmem/pull/39) (squash of tip `5946d19`).
 **PR:** [#39](https://github.com/alanmz-crypto/convmem/pull/39) (`fix/2026-07-16-source-diversity` @ `5946d19e5f589ebf146f22bff21187a6e3185ad1`)
 **Parent:** `main` @ `950e830` (Round 2 trace)
 **Architecture:** [CURSOR-architecture-round-3-source-diversity.md](CURSOR-architecture-round-3-source-diversity.md)
@@ -86,7 +86,7 @@ convmem ask --evidence --trace "current plan arc" 2>/dev/null | head -c 2000
 - [x] Focused suites green
 - [x] GitHub Pylint green on `5946d19`
 - [x] One (or more) independent partner PASS on exact tip
-- [ ] Ryan merges PR #39
+- [x] Ryan merges PR #39 → `549f74d`
 
 Agents do not merge `main`.
 
