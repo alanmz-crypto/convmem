@@ -12,7 +12,7 @@ This file supersedes the earlier architecture draft in this folder for implement
 
 ## Architect (post-review): evidence budget + nested ingest
 
-**IDE plan (prior):** `/home/lauer/.cursor/plans/evidence_and_nested_ingest_83cc407b.plan.md`  
+**IDE plan (prior):** `/home/lauer/.cursor/plans/evidence_and_nested_ingest_83cc407b.plan.md`
 **Board copy:** [`docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/`](docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/) — refresh on next file/push with this revision.
 
 Partners signed: R1 accepts disposition; V4 correctness catches; Kiro approved and withdrew `//2` floor ([`KIRO-review-cursor-architecture.md`](docs/inter-model/debate-2026-07-15-who-fixes-retrieval/planning/KIRO-review-cursor-architecture.md)).
