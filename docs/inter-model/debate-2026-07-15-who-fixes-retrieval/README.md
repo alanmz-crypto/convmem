@@ -33,6 +33,7 @@ Naming: use `reference/`, never `archive/` (ingest path filter).
 | Lane | File |
 |---|---|
 | Cursor | [CURSOR-top-two-problems-and-plans.md](CURSOR-top-two-problems-and-plans.md) |
+| ChatGPT | [CHATGPT-top-two-problems-and-plans.md](CHATGPT-top-two-problems-and-plans.md) |
 | Grok | [GROK-top-two-problems-and-plans.md](GROK-top-two-problems-and-plans.md) |
 | DeepSeek R1 (proxy push) | [DEEPSEEK-R1-top-two-problems-and-plans.md](DEEPSEEK-R1-top-two-problems-and-plans.md) ([next-top2](DEEPSEEK-R1-next-top2.md)) |
 | Continue-DeepSeek V4 (proxy push) | [CONTINUE-DEEPSEEK-top-two-problems-and-plans.md](CONTINUE-DEEPSEEK-top-two-problems-and-plans.md) |
