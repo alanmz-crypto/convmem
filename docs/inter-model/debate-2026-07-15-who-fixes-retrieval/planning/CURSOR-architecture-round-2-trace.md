@@ -1,98 +1,115 @@
-# CURSOR — Round 2 architecture: ask(trace) via PR #35 rebase
+# CURSOR — Round 2 architecture (executive lock): ask(trace)
 
-**Date:** 2026-07-15
+**Date:** 2026-07-16
 **From:** Cursor (implementer + plan maker)
+**Status:** **Authorized for implementation.** Merge gated on contract fidelity + Round 1 invariants green.
 **Baseline:** `main` after PR #38 (`48e816f`)
-**Board decision:** [../CURSOR-round-2-board-decision.md](../CURSOR-round-2-board-decision.md)
-**Kiro vote:** [../KIRO-round2-vote.md](../KIRO-round2-vote.md)
-**Delivery vehicle:** rebase [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace`)
+**Delivery:** rebase [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) onto `main`, preserve Round 1, rewrite stage contract as below (or greenfield if rebase unsafe).
 
-**Kiro blocker:** [KIRO-review-round-2-trace-blockers.md](KIRO-review-round-2-trace-blockers.md) —
-PR #35 was cut **before** PR #38 and its diff **restores** the pre–Round-1 broken
-`_prepend_recent_decisions` (no minority cap / domain-site / semantic-wins dedupe /
-ChromaStore `with`), deletes Round 1 `test_ledger_recent` coverage, and can drop
-`_EXCLUDE_PATH_TOKENS` from `inter_model_doc.py`. Trace helpers themselves are fine.
-
-
-## Conflict check → resolution (zero conflicts on what ships next)
-
-| Item | Cursor board decision | Kiro vote | Resolution |
-|---|---|---|---|
-| Problem 1 | Versioned `ask(trace=True)` | Same — unanimous | **Authorize now** |
-| Problem 2 | Retrieval eval in this round | Defer until trace exists | **Phase B after trace on `main`** |
-| Delivery | Greenfield / optional `retrieve_for_ask` | Rebase PR #35; drop nested-ingest | **Rebase #35** |
-| ChatGPT extraction | Prefer in trace arc | Ship without it first | **Defer extraction** until eval needs it |
-
-Diversification stays Round 3+. MCP `evidence` default flip stays Ryan-only.
+**Partner chain:** ChatGPT (REVISE → authorize-with-merge-gates) → Kiro (blocker + clear) → R1 (clear) → Continue-V4 (clear; evidence-default deferred).
 
 ---
 
-## Problem 1 — delivery path (authorized slice)
+## Partner verdicts
 
-**Branch:** rebase `fix/2026-07-15-ask-trace` onto `origin/main` (post-`48e816f`).
-
-**Preserve from `main` (never take #35’s version):**
-
-| File / symbol | Why |
+| Lane | Verdict |
 |---|---|
-| `ask.py` `_prepend_recent_decisions` | Round 1 minority cap, domain/site, semantic-wins, post-dedupe cap |
-| `ask.py` evidence `with ChromaStore(...)` | Round 1 leak fix |
-| `tests/test_ledger_recent.py` | Round 1 regression suite (~145 lines #35 deletes) |
-| `adapters/inter_model_doc.py` | Nested ingest + `_EXCLUDE_PATH_TOKENS` from #38 |
+| ChatGPT | Catastrophic #35-reverts-#38 risk fixed in architecture. Authorize impl; merge gated on schema/stages/`recent_injected`/`final_context`. |
+| Kiro | Preserve-main rules adopted; no further blockers; will confirm after push. |
+| R1 | Blocker cleared; verify `retrieval_query` + evidence mode; structure tests; greenfield fallback OK. |
+| Continue-V4 | Trace field list + citation piggyback + evidence in request adopted. MCP `evidence` default flip **out** (Ryan-only). Docs must match `main`: `max(1, total_limit // 3)`. |
 
-**Take from #35 (layer on top of `main` only):**
+---
 
-- `_trace_entries()` / stage snapshots (`candidates` → `reranked` → `final` + `recent_injected`)
-- `ask(..., trace=False)` + `trace_info` construction
-- MCP `trace` param + payload; omit `trace` key when false
-- CLI `--trace`
-- `tests/test_ask_trace.py` (assert **structure**/ordering, not brittle post-#38 counts)
+## A — Preserve-main rebase (never take #35’s Round 1 bodies)
 
-**Also during rebase / align:**
+| Keep from `main` | Why |
+|---|---|
+| `_prepend_recent_decisions` | Cap `min(max_recent, max(1, total_limit // 3))`, domain/site, semantic-wins, cap-after-dedupe |
+| `with ChromaStore(...)` | Round 1 leak fix |
+| `tests/test_ledger_recent.py` | Round 1 suite (#35 deletes ~145 lines) |
+| `adapters/inter_model_doc.py` | Nested ingest + `_EXCLUDE_PATH_TOKENS` |
 
+**Layer from #35 / rewrite on top:** `_trace_entries`, `ask(..., trace=)`, MCP/CLI `--trace`, `tests/test_ask_trace.py` — then fix stage semantics to section B (do **not** ship #35’s `reranked`/`None`/raw-recent labeling as-is).
 
-- `ask(..., trace=False)` → optional stage snapshots when `True` (PR #35 stages: candidates / reranked / final / recent_injected — map toward ChatGPT `convmem.ask.trace.v1` where cheap; do not block rebase on full 11-stage enum).
-- CLI `convmem ask --trace`.
-- MCP `ask(trace=False)` default; when true, append trace; when false, **omit** `trace` key (not null).
-- Compact candidate rows: `id`, `score`, `rank_score`, `evidence_boost`, `recency_boost`, `evidence_status`, `title`, `type`, `tool`, `source_path`, `domain`, `ledger_id`, `ledger_kind` — **no** full `document` bodies.
-- Piggyback: MCP citations include `evidence_status` + `ledger_id` even when `trace=False` (`mcp_server.py` ask tool).
-- Tests: keep/extend `tests/test_ask_trace.py`.
+On every conflict involving Round 1 files: **keep `main`**. Confirm invariants after rebase; do not trust conflict resolution alone.
 
-**Out of this PR:** `retrieve_for_ask` extraction, ChatGPT-style `eval-retrieval` rewrite, diversification, MCP evidence-default flip.
+---
 
-Note: `scripts/eval-retrieval.py` already exists as a simple `query_units` golden P@k tool — Phase B extends or replaces; do not conflate with this PR.
+## B — Mandatory trace contract (merge gates)
+
+### Envelope (`trace=True`)
+
+```json
+{
+  "schema": "convmem.ask.trace.v1",
+  "request": {
+    "retrieval_query": "...",
+    "top_k": 5,
+    "fetch_k": 8,
+    "raw": false,
+    "evidence": true,
+    "domain": null,
+    "site": null
+  },
+  "stages": {},
+  "trace_limit": 20,
+  "truncated": false
+}
+```
+
+- Hard-cap items per stage at `trace_limit` (default **20**); set `truncated: true` if any stage was cut.
+- Compact rows only — **no** full document bodies.
+- Compact fields: `id`, `score`, `rank_score`, `evidence_boost`, `recency_boost`, `evidence_status`, `title`, `type`, `tool`, `source_path`, `domain`, `ledger_id`, `ledger_kind`.
+
+### Stages (truthful; never `null`)
+
+| Stage | Meaning |
+|---|---|
+| `candidates` | After semantic (or raw) retrieve |
+| `evidence_reranked` | After `apply_evidence_rerank` only; or `{ "status": "skipped", "reason": "evidence_disabled", "items": [] }` |
+| `ledger_deduped` | After ledger-id dedupe of units |
+| `recent_injected` | Units **actually admitted** with `evidence_status == "recent_decision"` **after** `_prepend_recent_decisions` (not the raw recent load) |
+| `final_context` | Exact ordered items used to build the synthesis context (may exceed `top_k` in raw/hybrid). Do **not** change retrieval behavior to force `≤ top_k`. |
 
 ```mermaid
 flowchart LR
-  askCall[ask trace flag] --> retrieve[existing retrieve path]
-  retrieve --> stages[stage snapshots if trace]
-  stages --> synth[synthesize]
-  synth --> mcpOut[MCP or CLI]
-  mcpOut -->|trace false| slim[answer plus citations]
-  mcpOut -->|trace true| slimPlus[slim plus versioned trace]
+  cand[candidates] --> er[evidence_reranked or skipped]
+  er --> ld[ledger_deduped]
+  ld --> ri[recent_injected post prepend]
+  ri --> fc[final_context for synthesis]
 ```
 
-## Acceptance (Problem 1 PR)
+### MCP / CLI
 
-- [ ] `trace=False`: MCP/CLI default shape unchanged except citation `evidence_status` / `ledger_id` enrichment.
-- [ ] `trace=True`: stages present; diagnosable “in candidates / not in final”; no ranking/synthesis change.
-- [ ] Focused + full tests; durable probe with `--trace` in PR body.
-- [ ] Round 1 evidence-budget tests still green (`test_ledger_recent`); no semantic-slot zeroing under 8 recent.
-- [ ] Kiro + R1 review field completeness.
+- `trace=False` (default): omit `trace` key. Answer, selection, citation order, and existing citation fields unchanged; may add **only** `evidence_status` and `ledger_id` to each MCP citation.
+- `trace=True`: append versioned envelope above.
+- CLI: `convmem ask "..." --trace`.
 
-## Cursor execution steps
+---
 
-1. Rebase PR #35 onto `origin/main`. On every conflict involving Round 1 files: **keep `main`**.
-2. Confirm `ask.py` still has `max(1, total_limit // 3)` cap, domain/site args, semantic-wins dedupe, and `with ChromaStore`.
-3. Confirm `test_ledger_recent.py` and `inter_model_doc.py` match `main` (no #35 reverts).
-4. Layer only trace additions from #35; align compact-row fields; strip document bodies from trace.
-5. Ensure trace payload includes `retrieval_query` and evidence-mode flag if missing (R1).
-6. Piggyback MCP citation enrichment (`evidence_status`, `ledger_id`) when `trace=False`.
-7. Fix `test_ask_trace.py` if it asserts brittle pre-#38 counts — prefer structure/order asserts.
-8. Run Round 1 + trace tests; durable `--trace` probe; push; Kiro + R1 review.
+## C — Out of this PR
 
-If rebase is irreconcilably messy: greenfield trace-only on a fresh `fix/` from `main` using the same field contract (~125 lines) — do **not** copy #35’s old prepend body.
+- MCP `evidence` default True→False (Continue Problem 3 Fix 1 — Ryan-only).
+- Source diversification; ChatGPT retrieval-eval rewrite; `retrieve_for_ask` extraction.
 
-## Phase B (not this PR)
+---
 
-After merge: ChatGPT retrieval-eval contract using production path + trace; hermetic then live canary; then reopen diversification only if crowding proven.
+## D — Acceptance (merge gate)
+
+- [ ] Round 1 symbols unchanged vs `main` (prepend formula, ChromaStore `with`, ledger tests, inter_model_doc).
+- [ ] `trace=False`: no `trace` key; citation delta is only `evidence_status` / `ledger_id`.
+- [ ] `trace=True`: `schema == convmem.ask.trace.v1`; `request` has `retrieval_query` + `evidence`; stages as named above; bounds/`truncated` work; no document bodies.
+- [ ] `recent_injected` ⊆ post-prepend `recent_decision` items.
+- [ ] `final_context` matches synthesis context for normal, raw, and low-confidence hybrid paths.
+- [ ] Rerank and ledger dedupe are separate stages (not one mislabeled `reranked`).
+- [ ] `test_ledger_recent` + `test_ask_trace` + full suite green; durable `--trace` probe in PR body.
+- [ ] Kiro + R1 confirm after push.
+
+## E — Cursor execution steps
+
+1. Rebase #35 onto `origin/main`; keep `main` on Round 1 conflicts.
+2. Verify Round 1 invariants on the branch tip.
+3. Implement section B stage rewrite + envelope (on top of #35 helpers or greenfield).
+4. MCP/CLI surfaces + citation piggyback.
+5. Tests listed under B/D; push; partner review; Ryan merges when gates green.
