@@ -37,3 +37,8 @@ Naming: use `reference/`, never `archive/` (ingest path filter).
 | Grok | [GROK-top-two-problems-and-plans.md](GROK-top-two-problems-and-plans.md) |
 | DeepSeek R1 (proxy push) | [DEEPSEEK-R1-top-two-problems-and-plans.md](DEEPSEEK-R1-top-two-problems-and-plans.md) ([next-top2](DEEPSEEK-R1-next-top2.md)) |
 | Continue-DeepSeek V4 (proxy push) | [CONTINUE-DEEPSEEK-top-two-problems-and-plans.md](CONTINUE-DEEPSEEK-top-two-problems-and-plans.md) |
+| Cursor board decision | [CURSOR-round-2-board-decision.md](CURSOR-round-2-board-decision.md) |
+
+## Board decision (Round 2)
+
+[CURSOR-round-2-board-decision.md](CURSOR-round-2-board-decision.md) — next two: versioned `ask(trace=True)`, then dedicated retrieval regression evaluator. Source diversification deferred until those gates exist.
