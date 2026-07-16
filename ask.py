@@ -169,22 +169,50 @@ def _prepend_recent_decisions(
     *,
     max_recent: int = RECENT_DECISIONS_LIMIT,
     total_limit: int,
+    domain: str | None = None,
+    site: str | None = None,
 ) -> list[dict]:
-    """Force recent approved decisions into the context block (dedupe by ledger_id)."""
-    recent_units = [decision_record_to_unit(r) for r in recent_records[:max_recent]]
-    recent_ids = {
-        (u.get("metadata") or {}).get("ledger_id", "").strip()
-        for u in recent_units
-        if (u.get("metadata") or {}).get("ledger_id")
+    """Inject novel recent decisions as a minority of the context block.
+
+    Pipeline: optional domain/site filter on raw records → convert → drop
+    recent units whose ledger_id already appears in semantic (semantic wins)
+    → minority-cap with ``min(max_recent, max(1, total_limit // 3))`` →
+    prepend capped recent then fill from semantic to ``total_limit``.
+    """
+    records = list(recent_records)
+    if site:
+        site_key = site.strip()
+        records = [r for r in records if (r.get("site") or "").strip() == site_key]
+    if domain:
+        prefix = domain.split(".")[0].strip()
+        if prefix:
+            records = [
+                r
+                for r in records
+                if (r.get("domain") or "").startswith(prefix)
+            ]
+
+    recent_units = [decision_record_to_unit(r) for r in records[:max_recent]]
+    semantic_ids = {
+        ((u.get("metadata") or {}).get("ledger_id") or "").strip()
+        for u in semantic
+        if ((u.get("metadata") or {}).get("ledger_id") or "").strip()
     }
-    rest: list[dict] = []
-    for unit in semantic:
-        lid = ((unit.get("metadata") or {}).get("ledger_id") or "").strip()
-        if lid and lid in recent_ids:
-            continue
-        rest.append(unit)
-    slots = max(total_limit - len(recent_units), 0)
-    return recent_units + rest[:slots]
+    recent_after_dedupe = [
+        u
+        for u in recent_units
+        if not (
+            ((u.get("metadata") or {}).get("ledger_id") or "").strip()
+            and ((u.get("metadata") or {}).get("ledger_id") or "").strip()
+            in semantic_ids
+        )
+    ]
+    if total_limit <= 0:
+        return []
+    cap = min(max_recent, max(1, total_limit // 3))
+    capped = recent_after_dedupe[:cap]
+    slots = total_limit - len(capped)
+    return capped + list(semantic)[:slots]
 
 
 def _format_context(results: list[dict], *, units: bool) -> tuple[str, list[dict]]:
@@ -309,20 +337,24 @@ def ask(
             from chroma_store import ChromaStore
             from evidence import apply_evidence_rerank
 
-            store = ChromaStore(cfg["index"]["chroma_dir"])
             qcfg = cfg.get("query", {})
             rw = float(qcfg.get("recency_weight", 0.0))
             rhl = float(qcfg.get("recency_half_life_days", 30.0))
-            units = apply_evidence_rerank(
-                units, store, recency_weight=rw, recency_half_life_days=rhl
-            )
+            with ChromaStore(cfg["index"]["chroma_dir"]) as store:
+                units = apply_evidence_rerank(
+                    units, store, recency_weight=rw, recency_half_life_days=rhl
+                )
             units = _dedupe_results_by_ledger_id(units)
             recent = recent_decisions_for_cfg(
                 cfg, days=RECENT_DECISIONS_DAYS, limit=RECENT_DECISIONS_LIMIT
             )
             if recent:
                 units = _prepend_recent_decisions(
-                    units, recent, total_limit=fetch_k
+                    units,
+                    recent,
+                    total_limit=fetch_k,
+                    domain=domain,
+                    site=site,
                 )
         best = _max_score(units)
         # If primary units are weak, supplement with raw summaries (hybrid).
