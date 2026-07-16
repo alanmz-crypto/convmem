@@ -54,6 +54,8 @@ Replace behavior at ~167–188. Exact pipeline:
 4. Cap: `capped = recent_after_dedupe[: min(max_recent, max(1, total_limit // 3))]`.
 5. Return `capped + semantic[: total_limit - len(capped)]` (merged length == `total_limit`).
 
+When `len(recent_after_dedupe) < cap`, the slice returns the whole short list (Python slicing past end); merge still fills remaining slots from semantic so `len(result) == total_limit` whenever enough semantic units exist (or shorter only if both pools are short).
+
 Wire call site (~324): pass `domain=` / `site=` from `ask()`.
 
 Do **not** change MCP `evidence=True` default.
@@ -78,6 +80,7 @@ spot-check that injected units still carry that field (Codex audit surface).
 ### 1.4 Tests — `tests/test_ledger_recent.py`
 
 - 8 recent + 8 semantic, `total_limit=8` → ≤2 recent, length 8; simulated `[:5]` ≥3 semantic.
+- Assert each capped recent unit has `evidence_status == "recent_decision"` (via unit/`metadata` as set by `decision_record_to_unit`) — closes R1 audit note with a test, not an assumption.
 - Cap-after-dedupe: overlapping ledger_ids reduce recent *before* cap.
 - Small `total_limit` (e.g. 2): `max(1, 0)=1` still allows one recent when records exist.
 - Explicit `domain` / `site` filters mismatched records.
