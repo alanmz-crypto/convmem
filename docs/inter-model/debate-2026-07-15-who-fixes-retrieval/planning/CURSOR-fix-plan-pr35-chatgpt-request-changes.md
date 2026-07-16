@@ -2,29 +2,31 @@
 
 **Date:** 2026-07-16
 **From:** Cursor
-**Status:** Ready to execute when Ryan says go — **do not merge** tip `503add7`
+**Status:** **APPROVED for execution** (ChatGPT + Grok recheck). Awaiting Ryan’s **go**. **Do not merge** tip `503add7`.
 **PR:** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace` @ `503add7`)
-**Verification plan (superseded pending this fix):** [CURSOR-verification-plan-round-2-trace.md](CURSOR-verification-plan-round-2-trace.md)
+**Stale checklist (do not use for sign-off):** [CURSOR-verification-plan-round-2-trace.md](CURSOR-verification-plan-round-2-trace.md) — rewrite only after §§1–4 land (this plan §5).
 
-## Partner disposition
+## Partner recheck (ChatGPT → Grok → Kiro → R1 → V4)
 
-| Lane | Verdict | Action |
+| Lane | Verdict | Disposition |
 |---|---|---|
-| ChatGPT | **REQUEST CHANGES** — numbering, empty shape, red Pylint, weak tests | **Authoritative blockers** — implement all required fixes |
-| Kiro | Confirm (missed numbering + CI) | Do not merge on this alone; re-confirm after fix tip |
-| R1 | Confirm (missed same) | Same |
-| V4 | Hold for independent verify | Still holds; gaps absorbed where cheap |
-| Grok | Sound but not merge-ready | Absorb A2 e2e + A1 final_context truncation tests |
+| ChatGPT | **Approve fix plan for execution.** Do not approve stale verification plan or tip `503add7`. One improvement: exact Pylint CI command (locked below). | Absorbed |
+| Grok | Verification plan stale / false confidence on `503add7`. Fix plan §5 not yet applied. Do not use checklist to approve merge. | Absorbed |
+| Kiro | Prior confirm **superseded**. Numbering + empty-shape + Pylint blockers real. Re-confirm after fix tip. | Absorbed |
+| R1 | Checklist A–E “PASS / ready for merge” on `503add7` | **Superseded / false confidence** — stale checklist does not catch numbering, empty shape, or Pylint. Local `test_mcp_site` tweak was **not** pushed (tip still 4 files @ `503add7`). |
+| V4 | “Merge-ready pending Kiro+R1” on `503add7` | **Superseded** — same false confidence; Grok flags #1–2 fixed but ChatGPT blockers remain |
 
-Confirmed on tip `503add7`:
+**Authority for merge:** ChatGPT fix plan §§1–4 land → §5 new verification checklist → Kiro + R1 re-confirm new tip → CI Pylint green → Ryan merges.
 
-1. `_format_selection` calls `_format_context([r])` → every context block is `[1]` while citation `n` is rewritten (affects **all** paths, including `trace=False`).
-2. Empty path adds top-level `retrieval_query` / `evidence`; `origin/main` empty return does not (success path on main already has those keys — leave success path alone).
-3. GitHub Actions **Pylint regression gate** fail (+15 fingerprints: ask branches/args/locals, convmem/mcp arg counts, unused test mocks).
+Confirmed still on remote tip `503add7`:
+
+1. `_format_selection` → every prompt block `[1]` (citations renumbered; synthesis sees all `[1]`). Affects `trace=False` too.
+2. Empty path adds top-level `retrieval_query` / `evidence` (main empty return does not).
+3. GitHub Actions **Pylint regression gate** fail (+15 fingerprints).
 
 ```mermaid
 flowchart TD
-  chatgpt[ChatGPT REQUEST CHANGES] --> fixNum[Fix context numbering]
+  chatgpt[ChatGPT APPROVE fix plan] --> fixNum[Fix context numbering]
   chatgpt --> fixEmpty[Restore empty shape]
   chatgpt --> fixLint[Clear Pylint gate]
   chatgpt --> fixTests[Strengthen tests]
@@ -32,8 +34,9 @@ flowchart TD
   fixEmpty --> verify
   fixLint --> verify
   fixTests --> verify
-  verify --> push[force-with-lease push]
-  push --> partners[Kiro + R1 re-confirm]
+  verify --> rewrite[Rewrite verification plan section 5]
+  rewrite --> push[force-with-lease push]
+  push --> partners[Kiro + R1 re-confirm new tip]
   partners --> ryan[Ryan merge]
 ```
 
@@ -43,7 +46,7 @@ flowchart TD
 
 In `ask.py`:
 
-- Add `_format_context_item(result, *, units: bool, n: int) -> tuple[str, dict]` that renders with the correct `[n]` header (extract shared body from `_format_context`, or pass start index into `_format_context`).
+- Add `_format_context_item(result, *, units: bool, n: int) -> tuple[str, dict]` that renders with the correct `[n]` header.
 - Change `_format_selection` to use that helper so **prompt text** and citation `n` match: `[1]`, `[2]`, `[3]`.
 - Prefer this over post-hoc string rewrite.
 
@@ -55,7 +58,7 @@ Empty early-return when `trace=False`:
 {"answer", "citations", "results", "confidence", "warning"}
 ```
 
-When `trace=True`, add only `"trace"` (request fields stay inside the envelope). Do **not** add top-level `retrieval_query` / `evidence` on the empty path.
+When `trace=True`, add only `"trace"`. Do **not** add top-level `retrieval_query` / `evidence` on the empty path.
 
 Success-path keys stay as on `main` (already include `retrieval_query` / `evidence`).
 
@@ -63,37 +66,59 @@ Success-path keys stay as on `main` (already include `retrieval_query` / `eviden
 
 Do **not** bless new findings into `ci/pylint-baseline.json`.
 
-Reduce new fingerprints by refactoring (primary) and cleaning tests:
+Refactor `ask()` (extract stage/path helpers) + clean unused test mocks to clear R0912/R0913/R0914/R0917/W0613 (and related) without baseline edits.
 
-- Extract stage/path helpers from `ask()` to cut R0912/R0914 (branches/locals).
-- Prefer keyword-only params; avoid new positional MCP/CLI args where the gate flags R0917.
-- Fix test W0613 unused mocks in `tests/test_ask_trace.py`.
-- For unavoidable `ask(..., trace=, trace_limit=)` arg-count: extract first; collapse options only if still over threshold.
+### Exact local reproduce (matches CI — ChatGPT improvement)
 
-Re-run the same compare CI uses; CI must go green on the new tip.
+From a checkout of the PR tip (same deps as [`.github/workflows/pylint.yml`](../../../../.github/workflows/pylint.yml): `requirements.txt` + `pylint==4.0.6`):
+
+```bash
+set +e
+pylint $(git ls-files "*.py") --output-format=json > pylint-report.json
+PYLINT_STATUS=$?
+set -e
+test -s pylint-report.json
+
+# BASE_REF = merge-base with main (PR base SHA), e.g.:
+BASE_REF=$(git merge-base HEAD origin/main)
+
+python3 scripts/pylint_regression_gate.py ci \
+  --report pylint-report.json \
+  --pylint-status "${PYLINT_STATUS}" \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref "${BASE_REF}"
+```
+
+**PASS:** gate exits 0. Alternately, require the GitHub Actions job **Pylint / Pylint regression gate** green on the new tip SHA.
 
 ## 4. Strengthen tests (ChatGPT + Grok)
 
-Extend `tests/test_ask_trace.py`:
+Extend `tests/test_ask_trace.py` (and CLI coverage as needed):
 
-- **Prompt parity:** capture `generate_stream` prompt; `trace=False` vs `True` identical prompts; context labels `[1]`/`[2]`/`[3]`; output keys equal except optional `trace`.
-- **Empty shape:** `trace=False` empty → exact main keys only; `trace=True` empty → same + `trace` only.
-- **Stage separation:** duplicate ledger IDs so `ledger_deduped.items_total < evidence_reranked.items_total`.
-- **Admitted recent:** overlap semantic ledger_id, over-cap, and domain/site miss → not in `recent_injected`.
-- **A1:** force `final_context.items_total > trace_limit`; assert prefix equality + `truncated`.
-- **A2 e2e:** patch `_MAX_CONTEXT_CHARS` small inside `ask()`; assert `context_delivery.truncated`.
+- **Prompt parity:** `trace=False` vs `True` identical prompts; labels `[1]`/`[2]`/`[3]`; outputs equal except optional `trace`.
+- **Empty shape:** `trace=False` empty → exact main keys; `trace=True` empty → same + `trace` only.
+- **Stage separation:** duplicate ledger IDs → `ledger_deduped.items_total < evidence_reranked.items_total`.
+- **Admitted recent:** overlap, over-cap, domain/site miss excluded from `recent_injected`.
+- **A1:** `final_context.items_total > trace_limit` → prefix equality + `truncated`.
+- **A2 e2e:** patch `_MAX_CONTEXT_CHARS` through `ask()` → `context_delivery.truncated`.
 - **CLI:** `--trace` writes valid JSON to stderr.
+- If `test_mcp_site` needs `trace=False` in expected kwargs (R1 local note), include that fix in the same tip.
 
-## 5. Update verification plan + PR body
+## 5. Rewrite verification plan + PR body (after §§1–4)
 
-Update `CURSOR-verification-plan-round-2-trace.md`:
+Replace stale [CURSOR-verification-plan-round-2-trace.md](CURSOR-verification-plan-round-2-trace.md) content (or add a new-tip checklist) with:
 
-- Work-log addendum: ChatGPT REQUEST CHANGES; tip after fix; prior Kiro/R1 confirm superseded.
-- Add **Pylint regression gate** section (CI must pass).
-- Add **pre-push self-check** paste block.
-- Note “MERGEABLE ≠ checks green.”
+- Work-log addendum: ChatGPT REQUEST CHANGES → fix tip SHA; prior Kiro/R1/V4/R1 “merge ready” **superseded**
+- Section **G — Pylint** with the exact commands above (or “GH Actions Pylint regression gate green”)
+- Pre-push self-check paste block (acceptance item 8)
+- “MERGEABLE ≠ checks green”
+- New test rows for numbering, empty shape, dedupe counts, admitted-recent edges, A1 prefix, A2 e2e, CLI
+- Focused suites always green; baseline-relative only for full discover/doctor
+- Map sections → executive acceptance items 1–8
+- Note E may be satisfied by unit tests unless live MCP audit desired
+- Live probe D must also assert prompt `[1]`/`[2]`/`[3]` alignment
 
-Refresh PR #35 body with baseline SHA, self-check greps, probe, and new tip SHA after push.
+Refresh PR #35 body accordingly.
 
 ## 6. Verify and push
 
@@ -103,11 +128,11 @@ Worktree: `~/Projects/convmem-fix-ask-trace`
 python3 -m unittest tests.test_ledger_recent tests.test_ask_trace -v
 python3 -m unittest discover -s tests -q
 python3 convmem.py doctor
-# pylint gate green
+# then exact Pylint commands from §3
 git push --force-with-lease origin HEAD:fix/2026-07-15-ask-trace
 ```
 
-Then request **Kiro + R1 re-confirm** on the new tip. Ryan merges only when ChatGPT blockers are cleared and CI green.
+Request **Kiro + R1 re-confirm** on the **new** tip only. Ryan merges when ChatGPT blockers cleared and CI green.
 
 ## Out of scope
 

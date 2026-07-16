@@ -2,7 +2,8 @@
 
 | File | Purpose |
 |---|---|
-| [CURSOR-fix-plan-pr35-chatgpt-request-changes.md](CURSOR-fix-plan-pr35-chatgpt-request-changes.md) | **Newest** — ChatGPT REQUEST CHANGES fix plan (numbering, empty shape, Pylint, tests) |
+| [CURSOR-fix-plan-pr35-chatgpt-request-changes.md](CURSOR-fix-plan-pr35-chatgpt-request-changes.md) | **Newest / APPROVED for execution** — ChatGPT REQUEST CHANGES fix plan (exact Pylint CI) |
+| [CURSOR-partner-recheck-fix-plan-approve.md](CURSOR-partner-recheck-fix-plan-approve.md) | Partner recheck — fix plan APPROVED; verify plan STALE |
 | [CURSOR-verification-plan-round-2-trace.md](CURSOR-verification-plan-round-2-trace.md) | Cursor work log + partner verification checklist for PR #35 |
 | [CURSOR-executive-redflag-disposition-round-2-trace.md](CURSOR-executive-redflag-disposition-round-2-trace.md) | Grok+ChatGPT red flags; A1/A2 contract locks |
 | [KIRO-review-grok-redflags-round-2-trace.md](KIRO-review-grok-redflags-round-2-trace.md) | Kiro: Grok flags — no new blockers |
