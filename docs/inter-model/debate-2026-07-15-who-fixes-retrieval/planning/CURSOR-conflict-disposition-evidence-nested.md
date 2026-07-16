@@ -1,26 +1,40 @@
 # CURSOR — conflict disposition (evidence + nested ingest)
 
-**Date:** 2026-07-15
+**Date:** 2026-07-15 (post R1 / V4 / Kiro)
 **From:** Cursor
-**Status:** Locked for architecture; partners may nitpick formula/tests, not reopen ranking.
+**Status:** Locked for implementation authorization.
 **Full plan:** [CURSOR-architecture-evidence-and-nested-ingest.md](CURSOR-architecture-evidence-and-nested-ingest.md)
 
-## Locked decisions
+## Partner sign-off
 
-| Dispute | Decision | Why |
-|---|---|---|
-| Kiro `slots = max(..., total_limit // 2)` only | **Reject as sole fix** | Recent units are prepended; `units[:top_k]` takes the front. Slot floor alone still yields all-recent final citations. |
-| Cursor/Codex `floor(total_limit/3)` recent cap | **Adopt** | Truncate converted recent **before** merge. |
-| Keyword / top-hit domain inference | **Drop** | Scope only on explicit caller `domain` / `site`. |
-| Kiro/Continue “50% semantic” intent | **Met as consequence** of minority cap + `[:top_k]`. |
-| Implement order | Evidence first, nested second | MCP impact first. |
-| R1 `ask(trace=True)` | **Phase 3 follow-on** | Ryan: not in this PR series. |
+| Lane | Verdict |
+|---|---|
+| DeepSeek R1 | Accept Cursor disposition; slots-only superseded; unscoped ≤2 cross-project accepted non-blocker |
+| Continue-DeepSeek V4 | Architecture sound; required `max(1,…)` floor + verify context manager |
+| Kiro | Approved; withdrew `//2` floor; require cap-after-dedupe |
 
-## Final-context contract
+## Phase 1 (ship) vs follow-on
 
-`fetch_k=8`, `top_k=5`: recent ≤ `8//3` = 2; final five citations ≥ 3 semantic when ≥ 5 semantic candidates exist.
+| Phase 1 | Why |
+|---|---|
+| `min(max_recent, max(1, total_limit // 3))` | Bare `//3` zeros evidence at small fetch_k |
+| `with ChromaStore(...)` | MCP SQLite leak on every evidence ask |
+| Cap after ledger-id dedupe | Cap = `len(recent_after_dedupe)` |
+| Nested Kiro snapshot rejection test | Safety rail on check order |
+| Explicit domain/site only | Trust contract |
 
-## Partner asks
+| Follow-on | Why |
+|---|---|
+| Citation `(recent decision)` labels | UX; non-blocking |
+| Uncapped-when-domain-scoped | Harmless redundancy |
+| Domain inference | Stay rejected / explicit |
 
-- **Kiro:** confirm ≥3/5 semantic final-context math.
-- **R1:** confirm slots-only one-liner correctly superseded; store `close()` required in Phase 1.
+## Cap-after-dedupe (verify)
+
+If 5 recent and 3 share `ledger_id` with semantic → those 3 drop from recent → 2 remain → `max(1, 8//3)=2` does not cut further.
+
+## Still rejected
+
+- Kiro original `slots = max(..., total_limit // 2)` as sole fix (breaks total_limit; loses to `[:top_k]`)
+- Query/top-hit domain inference in this series
+- Phase 3 `ask(trace=True)` until Phases 1–2 land
