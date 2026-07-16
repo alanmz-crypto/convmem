@@ -26,3 +26,11 @@
 | Cap-after-dedupe | Adopted |
 | Nested Kiro snapshot test | Adopted |
 | Labels / uncapped-scoped / inference | Follow-on |
+
+## Third look (execution runbook)
+
+| Lane | Verdict |
+|---|---|
+| Continue-DeepSeek V4 | Ship on Ryan authorization. One non-blocking ask: add `evidence_status` assert to test 1.4 (now in runbook). |
+| DeepSeek R1 | Ready; short-list-after-dedupe clarity note added to runbook. No further R1 iteration. |
+| Kiro | No critique; execution plan correct and ready to authorize. |
