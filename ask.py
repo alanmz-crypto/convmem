@@ -615,6 +615,7 @@ def _select_units_or_hybrid(
     fetch_k: int,
     site: str | None,
     evidence: bool,
+    cfg: dict,
 ) -> tuple[
     list[dict],
     list[dict],
@@ -634,7 +635,7 @@ def _select_units_or_hybrid(
     warning: str | None = None
     best = _max_score(units)
     if not evidence and (best is None or best < _LOW_CONFIDENCE):
-        raw_hits = query_raw(search_q, top_k=fetch_k, site=site)
+        raw_hits = query_raw(search_q, top_k=fetch_k, site=site, cfg=cfg)
         merged = _merge_results(units, raw_hits, fetch_k)
         pair_slice = merged[:fetch_k]
         cands = [r for r, _ in pair_slice]
@@ -796,7 +797,7 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
     dropped: list[dict] = []
 
     if raw:
-        results = query_raw(search_q, top_k=fetch_k, site=site)
+        results = query_raw(search_q, top_k=fetch_k, site=site, cfg=cfg)
         if trace:
             stages["candidates"] = _trace_stage(
                 results, limit=limit, origins=["raw_summary"] * len(results)
@@ -809,7 +810,9 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
         origins = ["raw_summary"] * len(selection)
         context, citations, blocks = _format_selection(selection, unit_flags)
     else:
-        units = query_units(search_q, top_k=fetch_k, domain=domain, site=site)
+        units = query_units(
+            search_q, top_k=fetch_k, domain=domain, site=site, cfg=cfg
+        )
         if trace:
             stages["candidates"] = _trace_stage(
                 units, limit=limit, origins=["unit"] * len(units)
@@ -847,6 +850,7 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
             fetch_k=fetch_k,
             site=site,
             evidence=evidence,
+            cfg=cfg,
         )
 
     if trace:
