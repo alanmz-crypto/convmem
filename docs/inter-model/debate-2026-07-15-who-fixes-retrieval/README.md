@@ -43,4 +43,4 @@ Naming: use `reference/`, never `archive/` (ingest path filter).
 
 [CURSOR-round-2-board-decision.md](CURSOR-round-2-board-decision.md) — next two: versioned `ask(trace=True)`, then dedicated retrieval regression evaluator. Source diversification deferred until those gates exist.
 
-Active architecture: [planning/CURSOR-architecture-round-2-trace.md](planning/CURSOR-architecture-round-2-trace.md).
+Active architecture: [planning/CURSOR-architecture-round-2-trace.md](planning/CURSOR-architecture-round-2-trace.md) — **authorized for implementation; merge gated on contract fidelity**.
