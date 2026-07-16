@@ -129,8 +129,10 @@ def _fallback_query_rows(
     *,
     domain: str | None = None,
     site: str | None = None,
+    cfg: dict | None = None,
 ) -> list[dict]:
-    cfg = load_config()
+    if cfg is None:
+        cfg = load_config()
     chroma_dir = cfg["index"]["chroma_dir"]
     domain_norm = normalize_domain(domain) if domain else None
     site_norm = normalize_site(site) if site else None
@@ -279,8 +281,11 @@ def query_units(
     domain: str | None = None,
     site: str | None = None,
     chroma_dir: str | None = None,
+    *,
+    cfg: dict | None = None,
 ) -> list[dict]:
-    cfg = load_config()
+    if cfg is None:
+        cfg = load_config()
     models = cfg["models"]
     qcfg = cfg.get("query", {})
     chroma_path = chroma_dir or cfg["index"]["chroma_dir"]
@@ -323,6 +328,7 @@ def query_units(
             n_fetch,
             domain=domain,
             site=site,
+            cfg=cfg,
         )
         ledger_extras = _ledger_lookup_hits(cfg, None, text)
     for r in results:
@@ -350,8 +356,15 @@ def query_units(
     return results[:top_k]
 
 
-def query_raw(text: str, top_k: int = 5, site: str | None = None) -> list[dict]:
-    cfg = load_config()
+def query_raw(
+    text: str,
+    top_k: int = 5,
+    site: str | None = None,
+    *,
+    cfg: dict | None = None,
+) -> list[dict]:
+    if cfg is None:
+        cfg = load_config()
     models = cfg["models"]
 
     embedding = ollama_embed(
@@ -373,6 +386,7 @@ def query_raw(text: str, top_k: int = 5, site: str | None = None) -> list[dict]:
             text,
             n_fetch,
             site=site,
+            cfg=cfg,
         )
     for r in results:
         d = r.get("distance")

@@ -73,5 +73,64 @@ class TestRetrieveForAskNoLLM(unittest.TestCase):
         mock_stream.assert_not_called()
 
 
+class TestQueryCfgThreading(unittest.TestCase):
+    """Lock 2: supplied cfg must not trigger query.load_config (or fallback reload)."""
+
+    def _full_cfg(self) -> dict:
+        return {
+            "models": {
+                "embed_model": "nomic-embed-text",
+                "ollama_host": "http://127.0.0.1:11434",
+                "distill_model": "deepseek-v4-flash",
+                "deepseek_base_url": "https://api.deepseek.com",
+                "rerank_model": "rerank",
+            },
+            "index": {"chroma_dir": "/tmp/convmem-test-chroma"},
+            "query": {},
+        }
+
+    @patch("query.collection_metadata_rows", return_value=[])
+    @patch("query.open_chroma_for_read", side_effect=RuntimeError("force fallback"))
+    @patch("query.ollama_embed", return_value=[0.1, 0.2, 0.3])
+    @patch("query.load_config")
+    def test_query_units_cfg_skips_load_config(
+        self, mock_qcfg, _embed, _open, _rows
+    ):
+        from query import query_units
+
+        cfg = self._full_cfg()
+        query_units("hello", top_k=1, cfg=cfg)
+        mock_qcfg.assert_not_called()
+
+    @patch("query.collection_metadata_rows", return_value=[])
+    @patch("query.open_chroma_for_read", side_effect=RuntimeError("force fallback"))
+    @patch("query.ollama_embed", return_value=[0.1, 0.2, 0.3])
+    @patch("query.load_config")
+    def test_query_raw_cfg_skips_load_config(
+        self, mock_qcfg, _embed, _open, _rows
+    ):
+        from query import query_raw
+
+        cfg = self._full_cfg()
+        query_raw("hello", top_k=1, cfg=cfg)
+        mock_qcfg.assert_not_called()
+
+    @patch("query.collection_metadata_rows", return_value=[])
+    @patch("query.open_chroma_for_read", side_effect=RuntimeError("force fallback"))
+    @patch("query.ollama_embed", return_value=[0.1, 0.2, 0.3])
+    @patch("query.load_config")
+    @patch("ask.load_config")
+    @patch("ask.generate_stream")
+    def test_retrieve_for_ask_threads_cfg_no_query_reload(
+        self, mock_stream, mock_ask_cfg, mock_qcfg, _embed, _open, _rows
+    ):
+        cfg = self._full_cfg()
+        retrieve_for_ask("q", top_k=1, cfg=cfg, raw=False)
+        retrieve_for_ask("q", top_k=1, cfg=cfg, raw=True)
+        mock_qcfg.assert_not_called()
+        mock_ask_cfg.assert_not_called()
+        mock_stream.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
