@@ -7,7 +7,7 @@
 
 **Date:** 2026-07-16
 **From:** Cursor
-**Status:** Shipped on PR tip — awaiting independent partner verification (Kiro + R1), then Ryan merge
+**Status:** SUPERSEDED — retained as first-round verification record only. Do not use for sign-off. See [CURSOR-fix-plan-pr35-chatgpt-request-changes.md](CURSOR-fix-plan-pr35-chatgpt-request-changes.md).
 **PR:** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace` @ `503add7`)
 **Architecture:** [CURSOR-architecture-round-2-trace.md](CURSOR-architecture-round-2-trace.md)
 **Red-flag disposition (A1/A2):** [CURSOR-executive-redflag-disposition-round-2-trace.md](CURSOR-executive-redflag-disposition-round-2-trace.md)
