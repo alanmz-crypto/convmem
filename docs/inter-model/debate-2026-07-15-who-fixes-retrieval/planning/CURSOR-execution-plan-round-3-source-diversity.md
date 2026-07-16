@@ -1,6 +1,6 @@
 # Round 3 execution plan — source diversification
 
-**Status:** Phase 2 **in review** — PR #39 tip `5946d19`. Awaiting one partner PASS + Ryan merge.
+**Status:** Phase 2 **MERGE-READY** — PR #39 tip `5946d19`. Partner PASSes recorded in [CURSOR-verification-plan-round-3-source-diversity.md](CURSOR-verification-plan-round-3-source-diversity.md). Ryan merges.
 **Date:** 2026-07-16
 **Branch (docs):** `docs/2026-07-15-debate-insight-folder`
 **Code base:** `main` @ `950e830` ([PR #35](https://github.com/alanmz-crypto/convmem/pull/35))
