@@ -572,8 +572,14 @@ def ask(
     domain: str = "",
     site: str = "",
     evidence: bool = True,
+    *,
+    trace: bool = False,
 ) -> str:
-    """Answer a question using retrieved memories. Returns answer + citations."""
+    """Answer a question using retrieved memories. Returns answer + citations.
+
+    Set trace=True for versioned retrieval stages (convmem.ask.trace.v1).
+    Citations always include evidence_status and ledger_id when present.
+    """
     blocked = _blocked_until_brief_json()
     if blocked:
         return blocked
@@ -586,8 +592,9 @@ def ask(
         site=site or None,
         raw=False,
         evidence=evidence,
+        trace=trace,
     )
-    return json.dumps({
+    payload = {
         "answer": result.get("answer", ""),
         "confidence": result.get("confidence"),
         "warning": result.get("warning"),
@@ -603,10 +610,15 @@ def ask(
                 "domain": c.get("domain", ""),
                 "when": c.get("when", ""),
                 "score": c.get("score"),
+                "evidence_status": c.get("evidence_status") or "",
+                "ledger_id": c.get("ledger_id"),
             }
             for c in (result.get("citations") or [])
         ],
-    }, indent=2)
+    }
+    if trace and result.get("trace") is not None:
+        payload["trace"] = result["trace"]
+    return json.dumps(payload, indent=2)
 
 
 @mcp.tool()
