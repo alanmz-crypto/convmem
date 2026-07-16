@@ -1,7 +1,9 @@
 {
-  "count": 6,
-  "p_at_1": 0.6666666666666666,
+  "count": 8,
+  "p_at_1": 0.75,
   "p_at_k": 1.0,
+  "mrr": 0.875,
+  "recall_at_k": 1.0,
   "results": [
     {
       "query": "Global convmem protocol soak close",
@@ -13,10 +15,10 @@
       "top_k": 5,
       "hit_ids": [
         "dec_prop_20260629_005903_51b4",
+        "",
         "dec_prop_20260625_203408_f9b3",
         "",
-        "",
-        ""
+        "dec_prop_20260625_220647_47d9"
       ],
       "matched_id": "dec_prop_20260629_005903_51b4",
       "rank": 1,
@@ -31,16 +33,16 @@
       "top_k": 8,
       "hit_ids": [
         "",
-        "",
-        "",
-        "",
-        "",
-        "",
         "dec_prop_20260629_150516_6d70",
-        "dec_prop_20260629_125349_99f1"
+        "",
+        "dec_prop_20260629_174317_45d3",
+        "",
+        "",
+        "",
+        ""
       ],
       "matched_id": "dec_prop_20260629_150516_6d70",
-      "rank": 7,
+      "rank": 2,
       "p_at_1": false,
       "p_at_k": true
     },
@@ -52,15 +54,15 @@
       ],
       "top_k": 5,
       "hit_ids": [
-        "",
         "dec_prop_20260625_223006_528c",
         "dec_prop_20260625_225404_11cf",
         "",
-        ""
+        "",
+        "dec_prop_20260629_053445_e6b5"
       ],
       "matched_id": "dec_prop_20260625_223006_528c",
-      "rank": 2,
-      "p_at_1": false,
+      "rank": 1,
+      "p_at_1": true,
       "p_at_k": true
     },
     {
@@ -71,15 +73,15 @@
       ],
       "top_k": 5,
       "hit_ids": [
+        "",
         "dec_prop_20260625_235954_85ea",
         "",
-        "",
-        "",
+        "dec_prop_20260625_235644_7441",
         ""
       ],
       "matched_id": "dec_prop_20260625_235954_85ea",
-      "rank": 1,
-      "p_at_1": true,
+      "rank": 2,
+      "p_at_1": false,
       "p_at_k": true
     },
     {
@@ -94,7 +96,7 @@
         "dec_prop_20260630_221036_6e74",
         "dec_prop_20260701_000837_8ab4",
         "dec_prop_20260630_234007_c0cd",
-        ""
+        "dec_prop_20260630_235019_d316"
       ],
       "matched_id": "dec_prop_20260630_233939_df93",
       "rank": 1,
@@ -115,6 +117,44 @@
         ""
       ],
       "matched_id": "dec_prop_20260623_161428_c311",
+      "rank": 1,
+      "p_at_1": true,
+      "p_at_k": true
+    },
+    {
+      "query": "staging2 Content-Security-Policy absent",
+      "acceptable_ids": [
+        "ver_staging2_mon_csp",
+        "obs_staging2_monitor_csp-missing"
+      ],
+      "top_k": 5,
+      "hit_ids": [
+        "ver_staging2_mon_csp",
+        "obs_staging2_monitor_csp-missing",
+        "ver_staging2_mon_referrer-policy",
+        "",
+        ""
+      ],
+      "matched_id": "ver_staging2_mon_csp",
+      "rank": 1,
+      "p_at_1": true,
+      "p_at_k": true
+    },
+    {
+      "query": "Referrer-Policy staging2 willowyhollow",
+      "acceptable_ids": [
+        "ver_staging2_mon_referrer-policy",
+        "obs_staging2_monitor_header-referrer-policy"
+      ],
+      "top_k": 5,
+      "hit_ids": [
+        "ver_staging2_mon_referrer-policy",
+        "obs_staging2_monitor_header-referrer-policy",
+        "",
+        "",
+        "obs_staging2_monitor_csp-missing"
+      ],
+      "matched_id": "ver_staging2_mon_referrer-policy",
       "rank": 1,
       "p_at_1": true,
       "p_at_k": true
