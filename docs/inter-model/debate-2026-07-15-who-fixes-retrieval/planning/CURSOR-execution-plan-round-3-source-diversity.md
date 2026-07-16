@@ -1,6 +1,6 @@
 # Round 3 execution plan — source diversification
 
-**Status:** Filed for partner view. **Phase 2 code HOLD** until Ryan says **go** on `fix/2026-07-16-source-diversity`.
+**Status:** Phase 2 **in review** — PR #39 tip `5946d19`. Awaiting one partner PASS + Ryan merge.
 **Date:** 2026-07-16
 **Branch (docs):** `docs/2026-07-15-debate-insight-folder`
 **Code base:** `main` @ `950e830` ([PR #35](https://github.com/alanmz-crypto/convmem/pull/35))
@@ -37,6 +37,8 @@
    ```
 
    Cap `dropped_items` at `trace_limit`. **Not** a bare `dropped_source_cap` list.
+
+   **Truncation lock (ChatGPT Phase 2 GO):** when `source_diversity.truncated` is true, top-level `trace.truncated` must also be true. Do **not** set `final_context.truncated=true` unless `final_context.items` itself was truncated. Dropped compact rows stay body-free.
 
 4. **Fixture** — pool `A, A, A, B, C, D`, limit 5 → kept `A, A, B, C, D`; one dropped `A` with `drop_reason: "source_cap"`.
 5. **Merge** — one partner (Kiro or R1) PASS on final diff + exact PR tip; no Round-2 ack-chain.
