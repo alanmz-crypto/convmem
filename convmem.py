@@ -201,13 +201,20 @@ def ask_command(
         "--evidence",
         help="Prefer unresolved observations and failed verifications (ledger graph)",
     ),
+    show_trace: bool = typer.Option(
+        False,
+        "--trace",
+        help="Print retrieval trace JSON (convmem.ask.trace.v1) on stderr",
+    ),
     open_at: int | None = typer.Option(
         None, "--open", min=1, help="After answering, open source citation #"
     ),
 ):
     """Answer questions using retrieved memories from past sessions."""
+    import json as _json
+
     from ask import ask, run_interactive
-    from query import render_ask_output, render_error
+    from query import err_console, render_ask_output, render_error
 
     if interactive:
         run_interactive(top_k=top, raw=raw, first_question=question, domain=domain, site=site, evidence=evidence)
@@ -216,8 +223,18 @@ def ask_command(
         render_error("Provide a question, or use -i for interactive mode.")
         raise typer.Exit(1)
 
-    out = ask(question, top_k=top, raw=raw, domain=domain, site=site, evidence=evidence)
+    out = ask(
+        question,
+        top_k=top,
+        raw=raw,
+        domain=domain,
+        site=site,
+        evidence=evidence,
+        trace=show_trace,
+    )
     render_ask_output(out)
+    if show_trace and out.get("trace") is not None:
+        err_console.print(_json.dumps(out["trace"], indent=2, default=str))
     from next_steps import after_ask
 
     after_ask(
