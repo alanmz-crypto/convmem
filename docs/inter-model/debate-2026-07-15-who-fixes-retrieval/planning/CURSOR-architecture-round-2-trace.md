@@ -7,6 +7,13 @@
 **Kiro vote:** [../KIRO-round2-vote.md](../KIRO-round2-vote.md)
 **Delivery vehicle:** rebase [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace`)
 
+**Kiro blocker:** [KIRO-review-round-2-trace-blockers.md](KIRO-review-round-2-trace-blockers.md) —
+PR #35 was cut **before** PR #38 and its diff **restores** the pre–Round-1 broken
+`_prepend_recent_decisions` (no minority cap / domain-site / semantic-wins dedupe /
+ChromaStore `with`), deletes Round 1 `test_ledger_recent` coverage, and can drop
+`_EXCLUDE_PATH_TOKENS` from `inter_model_doc.py`. Trace helpers themselves are fine.
+
+
 ## Conflict check → resolution (zero conflicts on what ships next)
 
 | Item | Cursor board decision | Kiro vote | Resolution |
@@ -24,9 +31,25 @@ Diversification stays Round 3+. MCP `evidence` default flip stays Ryan-only.
 
 **Branch:** rebase `fix/2026-07-15-ask-trace` onto `origin/main` (post-`48e816f`).
 
-**Drop from #35:** `adapters/inter_model_doc.py` / `tests/test_inter_model_doc.py` hunks (already on `main` via #38).
+**Preserve from `main` (never take #35’s version):**
 
-**Keep / align:**
+| File / symbol | Why |
+|---|---|
+| `ask.py` `_prepend_recent_decisions` | Round 1 minority cap, domain/site, semantic-wins, post-dedupe cap |
+| `ask.py` evidence `with ChromaStore(...)` | Round 1 leak fix |
+| `tests/test_ledger_recent.py` | Round 1 regression suite (~145 lines #35 deletes) |
+| `adapters/inter_model_doc.py` | Nested ingest + `_EXCLUDE_PATH_TOKENS` from #38 |
+
+**Take from #35 (layer on top of `main` only):**
+
+- `_trace_entries()` / stage snapshots (`candidates` → `reranked` → `final` + `recent_injected`)
+- `ask(..., trace=False)` + `trace_info` construction
+- MCP `trace` param + payload; omit `trace` key when false
+- CLI `--trace`
+- `tests/test_ask_trace.py` (assert **structure**/ordering, not brittle post-#38 counts)
+
+**Also during rebase / align:**
+
 
 - `ask(..., trace=False)` → optional stage snapshots when `True` (PR #35 stages: candidates / reranked / final / recent_injected — map toward ChatGPT `convmem.ask.trace.v1` where cheap; do not block rebase on full 11-stage enum).
 - CLI `convmem ask --trace`.
@@ -54,15 +77,21 @@ flowchart LR
 - [ ] `trace=False`: MCP/CLI default shape unchanged except citation `evidence_status` / `ledger_id` enrichment.
 - [ ] `trace=True`: stages present; diagnosable “in candidates / not in final”; no ranking/synthesis change.
 - [ ] Focused + full tests; durable probe with `--trace` in PR body.
+- [ ] Round 1 evidence-budget tests still green (`test_ledger_recent`); no semantic-slot zeroing under 8 recent.
 - [ ] Kiro + R1 review field completeness.
 
 ## Cursor execution steps
 
-1. Rebase PR #35 onto `origin/main`; drop nested-ingest hunks.
-2. Align trace fields with Kiro/R1 compact-row contract; strip document bodies from trace.
-3. Piggyback MCP citation enrichment (`evidence_status`, `ledger_id`).
-4. Run acceptance; publish stage snapshot for durable purge-drift (or agreed) query.
-5. Push; request Kiro + R1 review.
+1. Rebase PR #35 onto `origin/main`. On every conflict involving Round 1 files: **keep `main`**.
+2. Confirm `ask.py` still has `max(1, total_limit // 3)` cap, domain/site args, semantic-wins dedupe, and `with ChromaStore`.
+3. Confirm `test_ledger_recent.py` and `inter_model_doc.py` match `main` (no #35 reverts).
+4. Layer only trace additions from #35; align compact-row fields; strip document bodies from trace.
+5. Ensure trace payload includes `retrieval_query` and evidence-mode flag if missing (R1).
+6. Piggyback MCP citation enrichment (`evidence_status`, `ledger_id`) when `trace=False`.
+7. Fix `test_ask_trace.py` if it asserts brittle pre-#38 counts — prefer structure/order asserts.
+8. Run Round 1 + trace tests; durable `--trace` probe; push; Kiro + R1 review.
+
+If rebase is irreconcilably messy: greenfield trace-only on a fresh `fix/` from `main` using the same field contract (~125 lines) — do **not** copy #35’s old prepend body.
 
 ## Phase B (not this PR)
 
