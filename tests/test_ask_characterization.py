@@ -1,7 +1,6 @@
-"""Characterization locks for current ask() — Round 4 extract must not change these.
+"""Characterization locks for ask() — Round 4 extract must not change these."""
 
-Commit 1 of fix/2026-07-16-retrieve-for-ask: expected values only, no extraction yet.
-"""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 
@@ -9,10 +8,10 @@ import unittest
 from unittest.mock import patch
 
 from ask import (
+    EMPTY_CONTEXT_DELIVERY,
     TRACE_SCHEMA,
     _ASK_TOP_K,
     _LOW_CONFIDENCE,
-    _MAX_CONTEXT_CHARS,
     ask,
 )
 
@@ -58,14 +57,12 @@ def _raw(uid: str, score: float) -> dict:
 
 
 class TestAskCharacterizationEmpty(unittest.TestCase):
-    """Empty-result contract (architecture lock 5)."""
-
     @patch("ask.generate_stream")
     @patch("ask.load_config", return_value=_cfg())
     @patch("ask.query_raw", return_value=[])
     @patch("ask.query_units", return_value=[])
     def test_empty_keys_warning_and_no_synthesis(
-        self, _units, _raw_q, mock_cfg, mock_stream
+        self, _units, _raw_q, _cfg_mock, mock_stream
     ):
         out = ask("q", trace=False)
         self.assertEqual(
@@ -87,26 +84,14 @@ class TestAskCharacterizationEmpty(unittest.TestCase):
     @patch("ask.query_raw", return_value=[])
     @patch("ask.query_units", return_value=[])
     def test_empty_trace_zero_delivery_and_stages(
-        self, _units, _raw_q, mock_cfg, mock_stream
+        self, _units, _raw_q, _cfg_mock, mock_stream
     ):
         out = ask("q", trace=True)
         self.assertEqual(out["warning"], "No matches in index.")
         mock_stream.assert_not_called()
         tr = out["trace"]
         self.assertEqual(tr["schema"], TRACE_SCHEMA)
-        delivery = tr["context_delivery"]
-        self.assertEqual(
-            delivery,
-            {
-                "max_chars": _MAX_CONTEXT_CHARS,
-                "truncated": False,
-                "chars_before": 0,
-                "chars_after": 0,
-                "last_fully_included_id": None,
-                "partial_id": None,
-            },
-        )
-        # Stages are constructed even on empty (hybrid attempt + final_context)
+        self.assertEqual(tr["context_delivery"], EMPTY_CONTEXT_DELIVERY)
         stages = tr["stages"]
         self.assertIn("candidates", stages)
         self.assertIn("final_context", stages)
@@ -114,8 +99,6 @@ class TestAskCharacterizationEmpty(unittest.TestCase):
 
 
 class TestAskCharacterizationHybridWarning(unittest.TestCase):
-    """Hybrid warning may use weak unit score while confidence reflects merged hits."""
-
     @patch("ask.generate_stream", return_value=iter(["ok"]))
     @patch("ask.load_config", return_value=_cfg())
     def test_hybrid_warning_uses_unit_score_not_merged_confidence(
@@ -136,8 +119,6 @@ class TestAskCharacterizationHybridWarning(unittest.TestCase):
 
 
 class TestAskCharacterizationCardinality(unittest.TestCase):
-    """External ask() slices vs internal fetch_k pools."""
-
     @patch("ask.generate_stream", return_value=iter(["ok"]))
     @patch("ask.load_config", return_value=_cfg())
     @patch("ask.query_raw", return_value=[])
@@ -146,10 +127,7 @@ class TestAskCharacterizationCardinality(unittest.TestCase):
         units = [_unit(f"u{i}", 0.99 - i * 0.01) for i in range(10)]
         with patch("ask.query_units", return_value=units) as mock_units:
             out = ask("q", top_k=top_k, evidence=False)
-        # Over-fetch for diversify pool
         self.assertEqual(mock_units.call_args.kwargs.get("top_k"), max(top_k, _ASK_TOP_K))
-        self.assertLessEqual(len(out["results"]), top_k)
-        self.assertLessEqual(len(out["citations"]), top_k)
         self.assertEqual(len(out["results"]), top_k)
         self.assertEqual(len(out["citations"]), top_k)
 
@@ -166,15 +144,12 @@ class TestAskCharacterizationCardinality(unittest.TestCase):
         self.assertEqual(mock_raw.call_args.kwargs.get("top_k"), fetch_k)
         self.assertEqual(len(out["results"]), top_k)
         self.assertEqual(len(out["citations"]), top_k)
-        # Internal selection may be wider; trace final_context items_total reflects selection
         fc = out["trace"]["stages"]["final_context"]
         self.assertGreaterEqual(fc["items_total"], top_k)
         self.assertLessEqual(fc["items_total"], fetch_k)
 
 
 class TestAskCharacterizationConfig(unittest.TestCase):
-    """ask() loads config once per call (lock 2 baseline)."""
-
     @patch("ask.generate_stream", return_value=iter(["ok"]))
     @patch("ask.query_raw", return_value=[])
     @patch("ask.query_units", return_value=[_unit("a", 0.9)])

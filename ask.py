@@ -1,5 +1,7 @@
 """RAG answer layer — retrieve context, then synthesize an answer with citations."""
 
+# pylint: disable=too-many-lines
+
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -57,6 +59,14 @@ _MAX_CONTEXT_CHARS = 12000
 _MAX_HISTORY_CHARS = 4000
 _LOW_CONFIDENCE = 0.55
 _ASK_TOP_K = 8
+EMPTY_CONTEXT_DELIVERY = {
+    "max_chars": _MAX_CONTEXT_CHARS,
+    "truncated": False,
+    "chars_before": 0,
+    "chars_after": 0,
+    "last_fully_included_id": None,
+    "partial_id": None,
+}
 # MCP / agent callers: degrade to retrieval-only before client tool timeout.
 _ASK_SYNTHESIS_TIMEOUT = 45.0
 
@@ -736,7 +746,7 @@ def _synthesize_answer(
 
 
 @dataclass(frozen=True)
-class RetrievalBundle:
+class RetrievalBundle:  # pylint: disable=too-many-instance-attributes
     """Pre-synthesis retrieval outputs for ask() and future retrieval-eval.
 
     Cardinalities (Round 4 lock):
@@ -756,7 +766,7 @@ class RetrievalBundle:
     trace: dict | None
 
 
-def retrieve_for_ask(  # pylint: disable=too-many-locals
+def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
     question: str,
     *,
     top_k: int = 5,
@@ -858,14 +868,7 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals
     )
 
     if not results:
-        empty_delivery = {
-            "max_chars": _MAX_CONTEXT_CHARS,
-            "truncated": False,
-            "chars_before": 0,
-            "chars_after": 0,
-            "last_fully_included_id": None,
-            "partial_id": None,
-        }
+        empty_delivery = dict(EMPTY_CONTEXT_DELIVERY)
         envelope = None
         if trace:
             envelope = _build_trace_envelope(
