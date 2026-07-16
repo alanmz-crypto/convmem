@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-16
 **From:** Cursor
-**Status:** Tip refreshed after ChatGPT CI follow-up — ready for **Kiro + R1** re-verification on tip `43b5f33` — then Ryan merge when Pylint CI green
+**Status:** **MERGE-READY** — Kiro + R1 confirmed on `43b5f33`; GitHub Pylint green. Ryan merges.
 **PR:** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace` @ `43b5f33`)
 **Supersedes:** first-round checklist on `503add7` (ChatGPT REQUEST CHANGES)
 
@@ -141,8 +141,8 @@ Unit tests cover E1–E3 (`test_mcp_omit_trace_key_and_piggyback_fields`). Live 
 
 | Lane | Status |
 |---|---|
-| Kiro | pending re-confirm on `43b5f33` |
-| R1 | pending re-confirm on `43b5f33` |
+| Kiro | **PASS** on `43b5f33` |
+| R1 | **PASS** on `43b5f33` |
 | Ryan | merge when checklist + Pylint CI green |
 
 ## Out of scope
