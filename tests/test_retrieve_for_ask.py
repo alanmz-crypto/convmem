@@ -73,6 +73,78 @@ class TestRetrieveForAskNoLLM(unittest.TestCase):
         mock_stream.assert_not_called()
 
 
+class TestRetrieveForAskIntegrationGaps(unittest.TestCase):
+    """Round 5 option B: close supersession + site seams through retrieve_for_ask."""
+
+    def _decision_unit(
+        self,
+        uid: str,
+        ledger_id: str,
+        score: float,
+        *,
+        relates_to: str | None = None,
+    ) -> dict:
+        meta = {
+            "title": uid,
+            "type": "decision",
+            "tool": "cursor",
+            "source_path": f"/tmp/{uid}.md",
+            "domain": "web_stack.security",
+            "author_model": "test",
+            "ledger_id": ledger_id,
+            "ledger_kind": "decision",
+        }
+        if relates_to:
+            meta["relates_to"] = relates_to
+        return {
+            "id": uid,
+            "document": f"body-{uid}",
+            "score": score,
+            "metadata": meta,
+        }
+
+    @patch("ask.query_raw", return_value=[])
+    @patch("ask.query_units")
+    @patch("ask.load_config", return_value=_cfg())
+    def test_superseded_parent_dropped_through_retrieve(
+        self, _cfg_mock, mock_units, _raw
+    ):
+        child = self._decision_unit(
+            "child",
+            "dec_prop_20260623_153615_a66c",
+            0.9,
+            relates_to="dec_prop_20260622_234011_d1ba",
+        )
+        parent = self._decision_unit(
+            "parent",
+            "dec_prop_20260622_234011_d1ba",
+            0.85,
+            relates_to="obs_staging2_monitor_csp-missing",
+        )
+        mock_units.return_value = [child, parent]
+        bundle = retrieve_for_ask("csp decision supersession", top_k=5)
+        result_ids = [r["id"] for r in bundle.results]
+        selection_ids = [r["id"] for r in bundle.selection]
+        self.assertIn("child", result_ids)
+        self.assertNotIn("parent", result_ids)
+        self.assertNotIn("parent", selection_ids)
+
+    @patch("ask.query_raw", return_value=[])
+    @patch("ask.query_units")
+    @patch("ask.load_config", return_value=_cfg())
+    def test_site_forwarded_through_retrieve_paths(
+        self, _cfg_mock, mock_units, mock_raw
+    ):
+        site = "staging2.willowyhollow.com"
+        mock_units.return_value = [_unit("a", 0.9)]
+
+        retrieve_for_ask("csp status", site=site, raw=False)
+        self.assertEqual(mock_units.call_args.kwargs.get("site"), site)
+
+        retrieve_for_ask("csp status", site=site, raw=True)
+        self.assertEqual(mock_raw.call_args.kwargs.get("site"), site)
+
+
 class TestQueryCfgThreading(unittest.TestCase):
     """Lock 2: supplied cfg must not trigger query.load_config (or fallback reload)."""
 
