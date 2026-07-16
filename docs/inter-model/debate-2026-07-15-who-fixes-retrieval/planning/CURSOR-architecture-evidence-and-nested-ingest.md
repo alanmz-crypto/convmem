@@ -62,6 +62,15 @@ flowchart LR
   Merge --> Cut["units top_k"]
 ```
 
+
+## Citation provenance (R1 audit note)
+
+Injected recent decisions retain `evidence_status='recent_decision'` in citation metadata (existing behavior — confirm it survives the cap change so auditors can distinguish inject vs semantic without UX labels).
+
+## Dedupe direction (V4 flag; Kiro confirmed)
+
+Identity collision drops matching units from **recent** (semantic keeps the unit), then the minority cap applies to remaining recent. This is intentional and differs from the prior “recent wins / strip semantic” behavior.
+
 ## Implementation (after Ryan authorizes code)
 
 **Branch:** `fix/YYYY-MM-DD-ask-evidence-budget` via `convmem work start` off `origin/main`.

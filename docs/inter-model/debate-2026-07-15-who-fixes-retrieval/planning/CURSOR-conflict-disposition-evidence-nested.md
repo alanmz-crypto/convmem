@@ -38,3 +38,7 @@ If 5 recent and 3 share `ledger_id` with semantic → those 3 drop from recent �
 - Kiro original `slots = max(..., total_limit // 2)` as sole fix (breaks total_limit; loses to `[:top_k]`)
 - Query/top-hit domain inference in this series
 - Phase 3 `ask(trace=True)` until Phases 1–2 land
+
+## Partner final sign-off
+
+See [CURSOR-partner-signoff-2026-07-15.md](CURSOR-partner-signoff-2026-07-15.md). Ready for Ryan authorization.
