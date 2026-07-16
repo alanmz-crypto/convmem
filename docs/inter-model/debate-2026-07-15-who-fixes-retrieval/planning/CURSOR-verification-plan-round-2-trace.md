@@ -1,5 +1,10 @@
 # CURSOR — Verification plan: Round 2 ask(trace)
 
+> **STALE — do not use for sign-off or merge approval.**
+> Tip `503add7` has ChatGPT merge blockers (context numbering, empty shape, red Pylint).
+> Authoritative next step: [CURSOR-fix-plan-pr35-chatgpt-request-changes.md](CURSOR-fix-plan-pr35-chatgpt-request-changes.md) (**APPROVED for execution**).
+> This checklist will be rewritten after the fix tip lands (fix plan §5).
+
 **Date:** 2026-07-16
 **From:** Cursor
 **Status:** Shipped on PR tip — awaiting independent partner verification (Kiro + R1), then Ryan merge
