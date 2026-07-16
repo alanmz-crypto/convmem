@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-16
 **From:** Cursor
-**Status:** **APPROVED to execute** (ChatGPT final APPROVE + partner chain). Go lock: [CURSOR-executive-approve-go-round-2-trace.md](CURSOR-executive-approve-go-round-2-trace.md).
+**Status:** **REVISE contract (A1/A2) then execute** — see [CURSOR-executive-redflag-disposition-round-2-trace.md](CURSOR-executive-redflag-disposition-round-2-trace.md). Prior APPROVE/go: [CURSOR-executive-approve-go-round-2-trace.md](CURSOR-executive-approve-go-round-2-trace.md).
 **Supersedes runbook detail in:** [CURSOR-execution-plan-round-2-trace.md](CURSOR-execution-plan-round-2-trace.md) (this file is the board-facing executive + runbook lock).
 **Architecture:** [CURSOR-architecture-round-2-trace.md](CURSOR-architecture-round-2-trace.md)
 **PR:** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace`)
@@ -110,7 +110,11 @@ Post-rebase: assert Round 1 formula still present. If rebase is unsafe → **gre
 2. `evidence_reranked` or skipped (`evidence_disabled` / `raw_mode`)
 3. `ledger_deduped` or skipped (`raw_mode`)
 4. `recent_injected` — admitted `recent_decision` **after** prepend only; skipped in raw
-5. `final_context` — exact synthesis inputs (may exceed `top_k`)
+5. `final_context` — ordered selection for formatting (may exceed `top_k`); exact ID equality only when `final_context.truncated == false` (A1)
+
+Envelope also includes `context_delivery` after `_MAX_CONTEXT_CHARS` cut (A2): `max_chars`, `truncated`, `chars_before`/`chars_after`, `last_fully_included_id`, `partial_id`.
+
+Each stage object includes `items_total` and per-stage `truncated`. Envelope `truncated` if any stage was cut.
 
 Compact rows: `id`, `score`, `rank_score`, `evidence_boost`, `recency_boost`, `evidence_status`, `title`, `type`, `tool`, `source_path`, `domain`, `ledger_id`, `ledger_kind`, plus `origin` (`unit` | `raw_summary`). No document bodies.
 
@@ -125,7 +129,8 @@ Extend `tests/test_ask_trace.py`:
 - Schema `convmem.ask.trace.v1`; bounds / `truncated`
 - Stage separation (rerank ≠ ledger dedupe)
 - Admitted-recent semantics for `recent_injected`
-- **`final_context` fidelity for all three paths** (ChatGPT): normal semantic/evidence, raw, and low-confidence hybrid — ordered IDs in `trace.stages.final_context` must equal ordered results passed into context formatting
+- **`final_context` selection fidelity** for normal / raw / hybrid per A1 (exact when untruncated; prefix + `items_total` when truncated)
+- **`context_delivery`** char-truncation metadata (patch `_MAX_CONTEXT_CHARS` in test)
 - MCP omit-when-false; no document bodies
 - Keep `tests/test_ledger_recent.py` green
 
@@ -137,7 +142,10 @@ Extend `tests/test_ask_trace.py`:
 python3 -m unittest tests.test_ledger_recent tests.test_ask_trace -v
 python3 -m unittest discover -s tests -q
 python3 convmem.py doctor
-# durable --trace probe; paste stage summary + baseline SHA in PR body
+# Pre-push Round 1 self-check (Grok #5): formula present; ledger tests not reverted
+rg -n 'max\(1, total_limit // 3\)' ask.py
+git diff origin/main -- tests/test_ledger_recent.py | head
+# durable --trace probe; paste stage summary + baseline SHA + self-check in PR body
 git push --force-with-lease origin HEAD:fix/2026-07-15-ask-trace
 ```
 
