@@ -20,7 +20,7 @@ Naming: use `reference/`, never `archive/` (ingest path filter).
 |---|---|---|
 | 1 | Evidence minority-cap + nested `docs/inter-model/**` | **Shipped** [PR #38](https://github.com/alanmz-crypto/convmem/pull/38) — [reference/round-1-evidence-and-nested/](reference/round-1-evidence-and-nested/) |
 | 2 | Versioned `ask(trace=True)` / `convmem.ask.trace.v1` | **Shipped** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) @ `950e830` — planning in [reference/round-2-trace/](reference/round-2-trace/) |
-| 3 | Source diversification (`max_per_source=2`) | **Open** — architecture: [planning/CURSOR-architecture-round-3-source-diversity.md](planning/CURSOR-architecture-round-3-source-diversity.md). Phase 1 hygiene done; **Phase 2 code HOLD** until Ryan authorizes. |
+| 3 | Source diversification (`max_per_source=2`) | **Open** — [architecture](planning/CURSOR-architecture-round-3-source-diversity.md) · [execution plan](planning/CURSOR-execution-plan-round-3-source-diversity.md). Phase 1 hygiene done; **Phase 2 code HOLD** until Ryan says go. |
 
 ### Board-order override (Round 3)
 
