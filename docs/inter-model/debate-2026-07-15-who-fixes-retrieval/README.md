@@ -6,11 +6,10 @@ Shared board for multi-lane retrieval / corpus-quality coordination.
 
 | Path | Role |
 |---|---|
-| [planning/](planning/) | **Active** Round 3 architecture (source diversification) |
-| [reference/round-2-trace/](reference/round-2-trace/) | Round 2 shipped planning trail |
-| [reference/round-1-evidence-and-nested/](reference/round-1-evidence-and-nested/) | Round 1 shipped filings |
-| `*-top-two-problems-and-plans.md` (folder root) | Historical Round 2 lane filings (kept for discovery) |
-| [CONTINUE-DEEPSEEK-problem-4-…](CONTINUE-DEEPSEEK-problem-4-format-context-source-diversity.md) | Round 3 input spec (source diversity) |
+| [planning/](planning/) | **Active** Round 4 architecture (`retrieve_for_ask`) |
+| [reference/round-3-source-diversity/](reference/round-3-source-diversity/) | Round 3 shipped |
+| [reference/round-2-trace/](reference/round-2-trace/) | Round 2 shipped |
+| [reference/round-1-evidence-and-nested/](reference/round-1-evidence-and-nested/) | Round 1 shipped |
 
 Naming: use `reference/`, never `archive/` (ingest path filter).
 
@@ -18,30 +17,14 @@ Naming: use `reference/`, never `archive/` (ingest path filter).
 
 | Round | Problems | Status |
 |---|---|---|
-| 1 | Evidence minority-cap + nested `docs/inter-model/**` | **Shipped** [PR #38](https://github.com/alanmz-crypto/convmem/pull/38) — [reference/round-1-evidence-and-nested/](reference/round-1-evidence-and-nested/) |
-| 2 | Versioned `ask(trace=True)` / `convmem.ask.trace.v1` | **Shipped** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) @ `950e830` — planning in [reference/round-2-trace/](reference/round-2-trace/) |
-| 3 | Source diversification (`max_per_source=2`) | **Shipped** [PR #39](https://github.com/alanmz-crypto/convmem/pull/39) @ `549f74d` — [verification](planning/CURSOR-verification-plan-round-3-source-diversity.md) |
-| 4 | `retrieve_for_ask` extraction (parity-only) | **Open (draft)** — [architecture](planning/CURSOR-architecture-round-4-retrieve-for-ask.md). Eval rewrite = follow-on arc. |
-
-### Board-order override (Round 3)
-
-Round 2 board text sequenced **retrieval-eval before diversification**. Ryan + partners override: merged `ask(trace=True)` is the falsifiability gate for same-source crowding. Full retrieval-eval remains deferred; do not cite the old board order as blocking Round 3.
+| 1 | Evidence minority-cap + nested `docs/inter-model/**` | **Shipped** [PR #38](https://github.com/alanmz-crypto/convmem/pull/38) |
+| 2 | `ask(trace=True)` / `convmem.ask.trace.v1` | **Shipped** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) @ `950e830` |
+| 3 | Source diversification (`max_per_source=2`) | **Shipped** [PR #39](https://github.com/alanmz-crypto/convmem/pull/39) @ `549f74d` — [reference/round-3-source-diversity/](reference/round-3-source-diversity/) |
+| 4 | `retrieve_for_ask` extraction (parity-only) | **Open** — [architecture](planning/CURSOR-architecture-round-4-retrieve-for-ask.md) (ChatGPT REVISE). **Code HOLD** until Ryan go. Eval = follow-on arc. |
 
 ## Process
 
-1. Lane filings / conflict review (as needed).
-2. Cursor locks architecture under `planning/` (**one** arch doc for Round 3 — light process).
-3. Ryan authorizes; Cursor implements on `fix/…` off `main`.
-4. One independent partner reviews final diff + tests before merge.
-5. When shipped, move that round’s planning into `reference/round-N-…/` (copy + redirect stubs).
-
-## Round 2 filings (historical — shipped)
-
-| Lane | File |
-|---|---|
-| Cursor | [CURSOR-top-two-problems-and-plans.md](CURSOR-top-two-problems-and-plans.md) |
-| ChatGPT | [CHATGPT-top-two-problems-and-plans.md](CHATGPT-top-two-problems-and-plans.md) |
-| Grok | [GROK-top-two-problems-and-plans.md](GROK-top-two-problems-and-plans.md) |
-| DeepSeek R1 | [DEEPSEEK-R1-top-two-problems-and-plans.md](DEEPSEEK-R1-top-two-problems-and-plans.md) |
-| Continue-DeepSeek V4 | [CONTINUE-DEEPSEEK-top-two-problems-and-plans.md](CONTINUE-DEEPSEEK-top-two-problems-and-plans.md) |
-| Board decision | [CURSOR-round-2-board-decision.md](CURSOR-round-2-board-decision.md) |
+1. Architecture under `planning/` (light — one doc).
+2. Ryan authorizes; Cursor implements on `fix/…` off `main` (code never mixes debate-branch docs).
+3. One independent partner reviews final diff + tests before merge.
+4. When shipped, move that round’s planning into `reference/round-N-…/` (copy + redirect stubs).
