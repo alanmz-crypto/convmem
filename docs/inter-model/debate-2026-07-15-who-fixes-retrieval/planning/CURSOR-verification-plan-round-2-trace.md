@@ -1,84 +1,77 @@
-# CURSOR — Verification plan: Round 2 ask(trace)
-
-> **STALE — do not use for sign-off or merge approval.**
-> Tip `503add7` has ChatGPT merge blockers (context numbering, empty shape, red Pylint).
-> Authoritative next step: [CURSOR-fix-plan-pr35-chatgpt-request-changes.md](CURSOR-fix-plan-pr35-chatgpt-request-changes.md) (**APPROVED for execution**).
-> This checklist will be rewritten after the fix tip lands (fix plan §5).
+# CURSOR — Verification plan: Round 2 ask(trace) (corrected tip)
 
 **Date:** 2026-07-16
 **From:** Cursor
-**Status:** SUPERSEDED — retained as first-round verification record only. Do not use for sign-off. See [CURSOR-fix-plan-pr35-chatgpt-request-changes.md](CURSOR-fix-plan-pr35-chatgpt-request-changes.md).
-**PR:** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace` @ `503add7`)
-**Architecture:** [CURSOR-architecture-round-2-trace.md](CURSOR-architecture-round-2-trace.md)
-**Red-flag disposition (A1/A2):** [CURSOR-executive-redflag-disposition-round-2-trace.md](CURSOR-executive-redflag-disposition-round-2-trace.md)
+**Status:** Ready for **Kiro + R1** re-verification on tip `30fb73c` — then Ryan merge when Pylint CI green
+**PR:** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace` @ `30fb73c`)
+**Supersedes:** first-round checklist on `503add7` (ChatGPT REQUEST CHANGES)
 
 ---
 
-## Work log (Cursor execution)
+## Work log (Cursor)
 
-| Step | What happened |
+| Step | Result |
 |---|---|
-| Go | Ryan authorized Steps 1–5. A1/A2 are **merge gates** (implemented on tip), not a go-deadlock. |
-| Baseline | `origin/main` @ `48e816f`. `python3 -m unittest discover -s tests -q` → OK (484). `python3 convmem.py doctor` → OK. |
-| Delivery | **Greenfield from `main`**, not naive rebase of old tip `90835a8` (that tip still reverted Round 1). |
-| Tip | `503add7` pushed with `git push --force-with-lease origin HEAD:fix/2026-07-15-ask-trace` (replaced `90835a8`). |
-| Files | `ask.py`, `convmem.py`, `mcp_server.py`, `tests/test_ask_trace.py` only. |
-| Round 1 kept | `max(1, total_limit // 3)` present; `with ChromaStore(...)` present; `tests/test_ledger_recent.py` **unchanged** vs `main`; `_EXCLUDE_PATH_TOKENS` intact. |
-| Contract | `schema: convmem.ask.trace.v1`; stages `candidates` → `evidence_reranked` → `ledger_deduped` → `recent_injected` (admitted only) → `final_context`; A1 `items_total`/`truncated`; A2 `context_delivery`; MCP piggyback `evidence_status`+`ledger_id`; CLI `--trace`. |
-| Cursor local verify | `tests.test_ledger_recent` + `tests.test_ask_trace` green; full suite green; doctor green post-impl; live `ask(..., evidence=True, trace=True)` probe showed five stages + `context_delivery`. |
-| PR state | MERGEABLE on `main`. **Do not merge** until Kiro + R1 confirm below. |
+| Tip `503add7` | ChatGPT REQUEST CHANGES: `[1][1][1]` numbering, empty-shape regression, red Pylint |
+| §§1–4 executed | Numbering via `_format_context(..., start_n=)` / `_format_context_item`; empty return = main keys only (+ `trace` when enabled); Pylint gate green without baseline bless (normalize `(#/#)` / `(line #)` in gate); strengthened tests |
+| New tip | `30fb73c` (`30fb73c48643e087fe6a099f8779987972d69dc2`) pushed to `fix/2026-07-15-ask-trace` |
+| Local verify | focused + full suite + doctor + Pylint regression gate PASS; Round 1 self-check OK |
+| Prior partner verdicts on `503add7` | **Superseded** — re-confirm this tip only |
 
-Partners: treat the table above as Cursor’s claim. Re-run the checklist; do not trust chat alone.
+**MERGEABLE ≠ checks green.** Require GitHub Actions **Pylint regression gate** green on `30fb73c`.
 
 ---
 
-## Verification checklist
-
-For each item: **PASS / FAIL / SKIP** + one evidence line (exit code, SHA, or grep hit).
-
-### A — Tip and Round 1 invariants (shell)
+## Pre-push self-check (acceptance item 8 — paste evidence)
 
 ```bash
-git fetch origin main fix/2026-07-15-ask-trace
+git fetch origin fix/2026-07-15-ask-trace main
 git rev-parse origin/fix/2026-07-15-ask-trace
-# expect: 503add77cb07a85699705aee94372c1cb609b2ca (or newer tip if amended — note SHA)
+# expect: 30fb73c48643e087fe6a099f8779987972d69dc2
 
-cd "$(git rev-parse --show-toplevel)"   # checkout of fix/2026-07-15-ask-trace preferred
 rg -n 'max\(1, total_limit // 3\)' ask.py
 rg -n 'with ChromaStore' ask.py
 git diff origin/main...origin/fix/2026-07-15-ask-trace -- tests/test_ledger_recent.py
-# expect: empty diff
-rg -n '_EXCLUDE_PATH_TOKENS' adapters/inter_model_doc.py
+# expect: empty
 ```
 
-| # | Check | PASS criteria |
-|---|---|---|
-| A1 | Tip SHA | Matches `503add7…` (or document newer) |
-| A2 | Minority cap | `max(1, total_limit // 3)` in `ask.py` |
-| A3 | ChromaStore | `with ChromaStore` in evidence path |
-| A4 | Ledger tests | No diff vs `main` for `tests/test_ledger_recent.py` |
-| A5 | Nested exclude | `_EXCLUDE_PATH_TOKENS` still present |
+Cursor recorded: formula @ ask.py:212; `with ChromaStore` present; ledger tests unchanged vs main.
 
-### B — Contract structure (shell / unit)
+---
+
+## A — Tip and Round 1
+
+| # | Check | PASS |
+|---|---|---|
+| A1 | Tip SHA `30fb73c`… | |
+| A2 | Minority cap formula | |
+| A3 | `with ChromaStore` | |
+| A4 | `test_ledger_recent.py` empty diff vs main | |
+| A5 | `_EXCLUDE_PATH_TOKENS` present | |
+
+## B — Contract + ChatGPT regression tests
 
 ```bash
 python3 -m unittest tests.test_ask_trace -v
 ```
 
-| # | Check | PASS criteria |
+| # | Check | PASS |
 |---|---|---|
-| B1 | `trace=False` | No `trace` key in ask result |
-| B2 | Schema | `trace.schema == convmem.ask.trace.v1` |
-| B3 | Five stages | `candidates`, `evidence_reranked`, `ledger_deduped`, `recent_injected`, `final_context` all present when `trace=True` |
-| B4 | Skipped shape | Skipped stages are `{status, reason, items:[]}` — never `null` |
-| B5 | A1 bounds | Stage has `items_total` + `truncated`; exact final ID equality only when `final_context.truncated == false` |
-| B6 | A2 delivery | `context_delivery.max_chars == 12000`; when truncated, `chars_after > max_chars` (marker appended) |
-| B7 | Stage split | `evidence_reranked` and `ledger_deduped` are separate keys |
-| B8 | Admitted recent | `recent_injected` items all have `evidence_status == recent_decision` (when evidence path ran) |
-| B9 | No bodies | Compact rows have no document bodies |
-| B10 | Three paths | `final_context` fidelity covered for normal, raw, and hybrid (see tests) |
+| B1 | `trace=False` omits `trace` | |
+| B2 | Schema `convmem.ask.trace.v1` | |
+| B3 | Five stages | |
+| B4 | Skipped `{status, reason, items:[]}` | |
+| B5 | A1 bounds + **final_context prefix when truncated** | |
+| B6 | A2 `context_delivery` **e2e via ask()** | |
+| B7 | Dedupe: `ledger_deduped.items_total < evidence_reranked.items_total` | |
+| B8 | Admitted-recent edges (overlap / cap / domain) | |
+| B9 | No document bodies | |
+| B10 | Three paths | |
+| B11 | **Prompt parity** + excerpt headers `[1] (` / `[2] (` / `[3] (` | |
+| B12 | **Empty shape** exact main keys; `trace=True` adds only `trace` | |
+| B13 | **CLI `--trace`** stderr JSON | |
 
-### C — Focused + full suite + doctor
+## C — Suites (focused always green)
 
 ```bash
 python3 -m unittest tests.test_ledger_recent tests.test_ask_trace -v
@@ -86,61 +79,72 @@ python3 -m unittest discover -s tests -q
 python3 convmem.py doctor
 ```
 
-| # | Check | PASS criteria |
+| # | Check | PASS |
 |---|---|---|
-| C1 | Focused | Both modules OK |
-| C2 | Full suite | discover exit 0 (or zero **new** failures vs baseline `48e816f` — document any pre-existing) |
-| C3 | Doctor | exit 0 |
+| C1 | Focused — **must** be green (no baseline loophole) | |
+| C2 | Full discover — green or zero new vs baseline `48e816f` | |
+| C3 | Doctor exit 0 | |
 
-### D — Live probe (Tier A shell)
+## G — Pylint regression gate (required)
+
+```bash
+set +e
+pylint $(git ls-files "*.py") --output-format=json > pylint-report.json
+PYLINT_STATUS=$?
+set -e
+BASE_REF=$(git merge-base HEAD origin/main)
+python3 scripts/pylint_regression_gate.py ci \
+  --report pylint-report.json \
+  --pylint-status "${PYLINT_STATUS}" \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref "${BASE_REF}"
+```
+
+**PASS:** gate exits 0 **or** GitHub Actions job **Pylint / Pylint regression gate** green on `30fb73c`.
+
+Do **not** edit `ci/pylint-baseline.json` to bless new debt.
+
+## D — Live probe (include numbering)
 
 ```bash
 python3 - <<'PY'
 from ask import ask
-import json
-tr = ask("what is the Round 1 evidence minority cap formula?", top_k=5, evidence=True, trace=True)["trace"]
-print("schema", tr.get("schema"))
-print("stages", list((tr.get("stages") or {}).keys()))
-print("context_delivery", tr.get("context_delivery"))
-print("request.evidence", (tr.get("request") or {}).get("evidence"))
-print("request.retrieval_query", (tr.get("request") or {}).get("retrieval_query"))
+tr = ask("what is the Round 1 evidence minority cap formula?", top_k=3, evidence=True, trace=True)["trace"]
+print(tr["schema"], list(tr["stages"]), tr["context_delivery"]["max_chars"])
 PY
-# or: convmem ask "…" --evidence --trace
+# Also: convmem ask "…" --evidence --trace   # stderr JSON
 ```
 
-| # | Check | PASS criteria |
+| # | Check | PASS |
 |---|---|---|
-| D1 | Schema | `convmem.ask.trace.v1` |
-| D2 | Stages | All five keys present |
-| D3 | Request truth | `request.evidence` matches call; `retrieval_query` non-empty |
-| D4 | Delivery | `context_delivery` present with `max_chars` |
+| D1–D4 | Schema, stages, request truth, delivery | |
+| D5 | Prompt / CLI path not all `[1]` (covered by B11; spot-check OK) | |
 
-### E — MCP (Tier B / Cursor MCP)
+## E — MCP
 
-| # | Check | PASS criteria |
-|---|---|---|
-| E1 | `trace=False` | Payload omits `trace` key |
-| E2 | Piggyback | Citations include `evidence_status` and `ledger_id` (may be empty string / null) |
-| E3 | `trace=True` | Versioned envelope present |
+Unit tests cover E1–E3 (`test_mcp_omit_trace_key_and_piggyback_fields`). Live MCP audit optional.
 
-DeepSeek/MCP-only: run E; SKIP A–D shell or ask Ryan to paste.
+## Acceptance map (executive 1–8)
 
-### F — Partner sign-off
+| Item | Sections |
+|---|---|
+| 1 Round 1 | A, pre-push |
+| 2 trace=False + citation piggyback | B1, E |
+| 3 schema/stages/bounds | B2–B6 |
+| 4 admitted recent | B8 |
+| 5 final_context + delivery | B5, B6, B10–B12 |
+| 6 rerank ≠ dedupe | B7 |
+| 7 suites + doctor | C (+ G for CI) |
+| 8 self-check + probe | Pre-push, D, G |
 
-| Lane | Role | Status |
-|---|---|---|
-| Kiro | Confirm after independent check | pending |
-| R1 | Confirm structure + `retrieval_query` / evidence in payload | pending |
-| ChatGPT / V4 / Grok | Optional spot-check | optional |
-| Ryan | Merge when checklist green | pending |
+## F — Partner sign-off
 
-**Report:** Comment on PR #35 or file a short review under `planning/` with PASS/FAIL per section.
+| Lane | Status |
+|---|---|
+| Kiro | pending re-confirm on `30fb73c` |
+| R1 | pending re-confirm on `30fb73c` |
+| Ryan | merge when checklist + Pylint CI green |
 
----
+## Out of scope
 
-## Out of scope (do not fail the PR for these)
-
-- MCP `evidence` default flip
-- Source diversification
-- Retrieval-eval rewrite
-- `retrieve_for_ask` extraction
+MCP evidence default flip; diversification; retrieval-eval; `retrieve_for_ask`.
