@@ -27,3 +27,12 @@ Naming: use `reference/`, never `archive/` (ingest path filter).
 3. Cursor (+ plan maker) locks architecture under `planning/`.
 4. Partners sign off; Ryan authorizes; Cursor implements on `fix/…` off `main`.
 5. When shipped, move that round’s chat filings into `reference/round-N-…/`.
+
+## Round 2 filings (active)
+
+| Lane | File |
+|---|---|
+| Cursor | [CURSOR-top-two-problems-and-plans.md](CURSOR-top-two-problems-and-plans.md) |
+| Grok | [GROK-top-two-problems-and-plans.md](GROK-top-two-problems-and-plans.md) |
+| DeepSeek R1 (proxy push) | [DEEPSEEK-R1-top-two-problems-and-plans.md](DEEPSEEK-R1-top-two-problems-and-plans.md) ([next-top2](DEEPSEEK-R1-next-top2.md)) |
+| Continue-DeepSeek V4 (proxy push) | [CONTINUE-DEEPSEEK-top-two-problems-and-plans.md](CONTINUE-DEEPSEEK-top-two-problems-and-plans.md) |
