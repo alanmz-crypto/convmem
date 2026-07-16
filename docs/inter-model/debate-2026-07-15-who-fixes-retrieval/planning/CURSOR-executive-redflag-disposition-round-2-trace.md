@@ -56,6 +56,8 @@ Tests: force a tiny max in unit test (patch constant) and assert truncation meta
 
 ## B — Grok red flags (disposition)
 
+**Kiro (2026-07-16):** No new blockers from Grok #1–9; #6 FALSE on Ryan host ([KIRO-review-grok-redflags-round-2-trace.md](KIRO-review-grok-redflags-round-2-trace.md)). Cheap mitigations below remain; A1/A2 still mandatory.
+
 | # | Flag | Severity | Disposition |
 |---|---|---|---|
 | 1 | PR #35 @ `90835a8` still reverts Round 1 if merged as-is | Critical / known | **Do not merge #35 until checklist.** Prefer greenfield if any Round 1 symbol differs from `origin/main`. PR body banner: `DO NOT MERGE — preserve-main rebase required`. |
