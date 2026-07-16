@@ -21,6 +21,7 @@ Naming: use `reference/`, never `archive/` (ingest path filter).
 | 1 | Evidence minority-cap + nested `docs/inter-model/**` | **Shipped** [PR #38](https://github.com/alanmz-crypto/convmem/pull/38) — [reference/round-1-evidence-and-nested/](reference/round-1-evidence-and-nested/) |
 | 2 | Versioned `ask(trace=True)` / `convmem.ask.trace.v1` | **Shipped** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) @ `950e830` — planning in [reference/round-2-trace/](reference/round-2-trace/) |
 | 3 | Source diversification (`max_per_source=2`) | **Shipped** [PR #39](https://github.com/alanmz-crypto/convmem/pull/39) @ `549f74d` — [verification](planning/CURSOR-verification-plan-round-3-source-diversity.md) |
+| 4 | `retrieve_for_ask` extraction (parity-only) | **Open (draft)** — [architecture](planning/CURSOR-architecture-round-4-retrieve-for-ask.md). Eval rewrite = follow-on arc. |
 
 ### Board-order override (Round 3)
 
