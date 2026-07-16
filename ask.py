@@ -218,7 +218,58 @@ def _prepend_recent_decisions(
 
 TRACE_SCHEMA = "convmem.ask.trace.v1"
 TRACE_LIMIT_DEFAULT = 20
+MAX_PER_SOURCE = 2
 _CONTEXT_TRUNCATION_SUFFIX = "\n\n[… context truncated …]"
+
+
+def _diversify_by_source(
+    candidates: list[dict],
+    *,
+    limit: int,
+    max_per_source: int = MAX_PER_SOURCE,
+) -> tuple[list[dict], list[dict]]:
+    """Fill ``limit`` slots with at most ``max_per_source`` hits per source_path.
+
+    Empty ``source_path`` is always admissible (no shared empty bucket).
+    ``dropped`` are same-source skips only — not mere tail truncation past limit.
+    """
+    kept: list[dict] = []
+    dropped: list[dict] = []
+    counts: dict[str, int] = {}
+    for result in candidates:
+        meta = result.get("metadata") or {}
+        src = meta.get("source_path") or ""
+        if src:
+            if counts.get(src, 0) >= max_per_source:
+                dropped.append(result)
+                continue
+            counts[src] = counts.get(src, 0) + 1
+        kept.append(result)
+        if len(kept) >= limit:
+            break
+    return kept, dropped
+
+
+def _source_diversity_block(
+    dropped: list[dict],
+    *,
+    trace_limit: int,
+    max_per_source: int = MAX_PER_SOURCE,
+) -> dict:
+    """Bounded dropped-row metadata for final_context (body-free compact rows)."""
+    total = len(dropped)
+    truncated = total > trace_limit
+    items = []
+    for result in dropped[:trace_limit]:
+        row = _compact_trace_row(result)
+        row["drop_reason"] = "source_cap"
+        items.append(row)
+    return {
+        "max_per_source": max_per_source,
+        "dropped_items": items,
+        "dropped_items_total": total,
+        "truncated": truncated,
+    }
 
 
 def _compact_trace_row(result: dict, *, origin: str | None = None) -> dict:
@@ -360,9 +411,19 @@ def _build_trace_envelope(
     trace_limit: int,
     context_delivery: dict,
 ) -> dict:
-    any_trunc = any(
-        isinstance(s, dict) and s.get("truncated") for s in stages.values()
-    )
+    # Envelope truncated when any stage item list is cut OR source_diversity
+    # dropped_items exceed trace_limit. Stage.truncated stays about items only.
+    any_trunc = False
+    for stage in stages.values():
+        if not isinstance(stage, dict):
+            continue
+        if stage.get("truncated"):
+            any_trunc = True
+            break
+        diversity = stage.get("source_diversity")
+        if isinstance(diversity, dict) and diversity.get("truncated"):
+            any_trunc = True
+            break
     return {
         "schema": TRACE_SCHEMA,
         "request": request,
@@ -543,18 +604,35 @@ def _select_units_or_hybrid(
     fetch_k: int,
     site: str | None,
     evidence: bool,
-) -> tuple[list[dict], list[dict], list[bool], list[str], str, list[dict], list[str], str | None]:
-    """Return results, selection, flags, origins, context, citations, blocks, warning."""
+) -> tuple[
+    list[dict],
+    list[dict],
+    list[bool],
+    list[str],
+    str,
+    list[dict],
+    list[str],
+    str | None,
+    list[dict],
+]:
+    """Return results, selection, flags, origins, context, citations, blocks, warning, dropped.
+
+    ``results`` stay pre-diversity; ``selection``/citations are diversified.
+    Evidence pools may be small after minority-cap — shortfall is acceptable.
+    """
     warning: str | None = None
     best = _max_score(units)
     if not evidence and (best is None or best < _LOW_CONFIDENCE):
         raw_hits = query_raw(search_q, top_k=fetch_k, site=site)
         merged = _merge_results(units, raw_hits, fetch_k)
         pair_slice = merged[:fetch_k]
-        selection = [r for r, _ in pair_slice]
-        unit_flags = [is_unit for _, is_unit in pair_slice]
+        cands = [r for r, _ in pair_slice]
+        flag_by_id = {r.get("id"): is_unit for r, is_unit in pair_slice}
+        selection, dropped = _diversify_by_source(cands, limit=fetch_k)
+        unit_flags = [bool(flag_by_id.get(r.get("id"), False)) for r in selection]
         origins = [
-            "unit" if is_unit else "raw_summary" for _, is_unit in pair_slice
+            "unit" if flag_by_id.get(r.get("id"), False) else "raw_summary"
+            for r in selection
         ]
         context, citations, blocks = _format_selection(selection, unit_flags)
         results = [r for r, _ in merged]
@@ -563,14 +641,36 @@ def _select_units_or_hybrid(
                 f"Low retrieval confidence (best score {best:.3f}). "
                 "Answer may be incomplete — topic may not be in the index."
             )
-        return results, selection, unit_flags, origins, context, citations, blocks, warning
+        return (
+            results,
+            selection,
+            unit_flags,
+            origins,
+            context,
+            citations,
+            blocks,
+            warning,
+            dropped,
+        )
 
-    results = _filter_superseded_decisions(units[:top_k])
-    selection = list(results)
+    # Longer pool for refill; results slice stays pre-diversity top_k.
+    pool = _filter_superseded_decisions(units[:fetch_k])
+    results = pool[:top_k]
+    selection, dropped = _diversify_by_source(pool, limit=top_k)
     unit_flags = [True] * len(selection)
     origins = ["unit"] * len(selection)
     context, citations, blocks = _format_selection(selection, unit_flags)
-    return results, selection, unit_flags, origins, context, citations, blocks, warning
+    return (
+        results,
+        selection,
+        unit_flags,
+        origins,
+        context,
+        citations,
+        blocks,
+        warning,
+        dropped,
+    )
 
 
 def _synthesize_answer(
@@ -674,6 +774,7 @@ def ask(  # pylint: disable=too-many-locals
     context = ""
     citations: list[dict] = []
     blocks: list[str] = []
+    dropped: list[dict] = []
 
     if raw:
         results = query_raw(search_q, top_k=fetch_k, site=site)
@@ -684,7 +785,7 @@ def ask(  # pylint: disable=too-many-locals
             stages["evidence_reranked"] = _skipped_stage("raw_mode")
             stages["ledger_deduped"] = _skipped_stage("raw_mode")
             stages["recent_injected"] = _skipped_stage("raw_mode")
-        selection = list(results)
+        selection, dropped = _diversify_by_source(results, limit=fetch_k)
         unit_flags = [False] * len(selection)
         origins = ["raw_summary"] * len(selection)
         context, citations, blocks = _format_selection(selection, unit_flags)
@@ -719,6 +820,7 @@ def ask(  # pylint: disable=too-many-locals
             citations,
             blocks,
             warning,
+            dropped,
         ) = _select_units_or_hybrid(
             units,
             search_q=search_q,
@@ -731,6 +833,9 @@ def ask(  # pylint: disable=too-many-locals
     if trace:
         stages["final_context"] = _trace_stage(
             selection, limit=limit, origins=origins[: len(selection)]
+        )
+        stages["final_context"]["source_diversity"] = _source_diversity_block(
+            dropped, trace_limit=limit
         )
 
     if not results:
