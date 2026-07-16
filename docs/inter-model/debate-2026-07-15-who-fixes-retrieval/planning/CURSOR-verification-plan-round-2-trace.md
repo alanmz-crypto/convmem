@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-16
 **From:** Cursor
-**Status:** Ready for **Kiro + R1** re-verification on tip `30fb73c` — then Ryan merge when Pylint CI green
-**PR:** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace` @ `30fb73c`)
+**Status:** Tip refreshed after ChatGPT CI follow-up — ready for **Kiro + R1** re-verification on tip `43b5f33` — then Ryan merge when Pylint CI green
+**PR:** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace` @ `43b5f33`)
 **Supersedes:** first-round checklist on `503add7` (ChatGPT REQUEST CHANGES)
 
 ---
@@ -14,11 +14,11 @@
 |---|---|
 | Tip `503add7` | ChatGPT REQUEST CHANGES: `[1][1][1]` numbering, empty-shape regression, red Pylint |
 | §§1–4 executed | Numbering via `_format_context(..., start_n=)` / `_format_context_item`; empty return = main keys only (+ `trace` when enabled); Pylint gate green without baseline bless (normalize `(#/#)` / `(line #)` in gate); strengthened tests |
-| New tip | `30fb73c` (`30fb73c48643e087fe6a099f8779987972d69dc2`) pushed to `fix/2026-07-15-ask-trace` |
+| New tip | `43b5f33` (`43b5f3348643e087fe6a099f8779987972d69dc2`) pushed to `fix/2026-07-15-ask-trace` |
 | Local verify | focused + full suite + doctor + Pylint regression gate PASS; Round 1 self-check OK |
 | Prior partner verdicts on `503add7` | **Superseded** — re-confirm this tip only |
 
-**MERGEABLE ≠ checks green.** Require GitHub Actions **Pylint regression gate** green on `30fb73c`.
+**MERGEABLE ≠ checks green.** Require GitHub Actions **Pylint regression gate** green on `43b5f33`.
 
 ---
 
@@ -27,7 +27,7 @@
 ```bash
 git fetch origin fix/2026-07-15-ask-trace main
 git rev-parse origin/fix/2026-07-15-ask-trace
-# expect: 30fb73c48643e087fe6a099f8779987972d69dc2
+# expect: 43b5f3348643e087fe6a099f8779987972d69dc2
 
 rg -n 'max\(1, total_limit // 3\)' ask.py
 rg -n 'with ChromaStore' ask.py
@@ -43,7 +43,7 @@ Cursor recorded: formula @ ask.py:212; `with ChromaStore` present; ledger tests 
 
 | # | Check | PASS |
 |---|---|---|
-| A1 | Tip SHA `30fb73c`… | |
+| A1 | Tip SHA `43b5f33`… | |
 | A2 | Minority cap formula | |
 | A3 | `with ChromaStore` | |
 | A4 | `test_ledger_recent.py` empty diff vs main | |
@@ -100,7 +100,7 @@ python3 scripts/pylint_regression_gate.py ci \
   --base-ref "${BASE_REF}"
 ```
 
-**PASS:** gate exits 0 **or** GitHub Actions job **Pylint / Pylint regression gate** green on `30fb73c`.
+**PASS:** gate exits 0 **or** GitHub Actions job **Pylint / Pylint regression gate** green on `43b5f33`.
 
 Do **not** edit `ci/pylint-baseline.json` to bless new debt.
 
@@ -141,8 +141,8 @@ Unit tests cover E1–E3 (`test_mcp_omit_trace_key_and_piggyback_fields`). Live 
 
 | Lane | Status |
 |---|---|
-| Kiro | pending re-confirm on `30fb73c` |
-| R1 | pending re-confirm on `30fb73c` |
+| Kiro | pending re-confirm on `43b5f33` |
+| R1 | pending re-confirm on `43b5f33` |
 | Ryan | merge when checklist + Pylint CI green |
 
 ## Out of scope
