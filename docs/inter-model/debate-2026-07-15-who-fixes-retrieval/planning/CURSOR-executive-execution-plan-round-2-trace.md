@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-16
 **From:** Cursor
-**Status:** **AUTHORIZED to execute** after ChatGPT REVISE absorbed (force-with-lease + verification additions).
+**Status:** **APPROVED to execute** (ChatGPT final APPROVE + partner chain). Go lock: [CURSOR-executive-approve-go-round-2-trace.md](CURSOR-executive-approve-go-round-2-trace.md).
 **Supersedes runbook detail in:** [CURSOR-execution-plan-round-2-trace.md](CURSOR-execution-plan-round-2-trace.md) (this file is the board-facing executive + runbook lock).
 **Architecture:** [CURSOR-architecture-round-2-trace.md](CURSOR-architecture-round-2-trace.md)
 **PR:** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) (`fix/2026-07-15-ask-trace`)
@@ -155,6 +155,6 @@ Update PR #35 description; request **Kiro + R1** confirm. **Ryan merges** when c
 4. `recent_injected` ⊆ admitted recent decisions only
 5. `final_context` matches synthesis inputs on **normal, raw, and hybrid** paths
 6. Rerank and ledger dedupe are separate stages
-7. Full test suite green; `doctor` green; durable `--trace` probe + baseline SHA in PR body
+7. Full suite + `doctor` green when baseline green; else zero new failures vs recorded baseline (pre-existing documented); durable `--trace` probe + baseline SHA in PR body
 8. Kiro + R1 confirm after push
 
