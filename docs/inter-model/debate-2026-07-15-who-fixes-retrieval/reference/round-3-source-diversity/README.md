@@ -5,4 +5,4 @@
 Architecture / execution / verification trail for `max_per_source=2` selection filter.
 Stubs remain under [`../../planning/`](../../planning/) for old links.
 
-**Active Round 4 plan:** [`../../planning/CURSOR-architecture-round-4-retrieve-for-ask.md`](../../planning/CURSOR-architecture-round-4-retrieve-for-ask.md)
+**Active next arc:** retrieval-eval rewrite against `RetrievalBundle` (not yet filed under `planning/`).
