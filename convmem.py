@@ -213,7 +213,7 @@ def ask_command(  # pylint: disable=too-many-arguments
 ):
     """Answer questions using retrieved memories from past sessions."""
     from ask import ask, run_interactive
-    from query import err_console, render_ask_output, render_error
+    from query import render_ask_output, render_error
 
     if interactive:
         run_interactive(top_k=top, raw=raw, first_question=question, domain=domain, site=site, evidence=evidence)
@@ -233,7 +233,8 @@ def ask_command(  # pylint: disable=too-many-arguments
     )
     render_ask_output(out)
     if show_trace and out.get("trace") is not None:
-        err_console.print(json.dumps(out["trace"], indent=2, default=str))
+        # Plain stderr JSON (no Rich markup/highlight) for machine parse.
+        print(json.dumps(out["trace"], indent=2, default=str), file=sys.stderr)
     from next_steps import after_ask
 
     after_ask(
