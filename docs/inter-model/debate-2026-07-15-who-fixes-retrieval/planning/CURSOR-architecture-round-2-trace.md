@@ -59,8 +59,24 @@ On every conflict involving Round 1 files: **keep `main`**. Confirm invariants a
 ```
 
 - Hard-cap items per stage at `trace_limit` (default **20**); set `truncated: true` if any stage was cut.
+- When `trace=True`, also emit `context_delivery` (A2) for `_MAX_CONTEXT_CHARS` cuts.
 - Compact rows only — **no** full document bodies.
 - Compact fields: `id`, `score`, `rank_score`, `evidence_boost`, `recency_boost`, `evidence_status`, `title`, `type`, `tool`, `source_path`, `domain`, `ledger_id`, `ledger_kind`.
+
+### Bounds vs exact final_context (ChatGPT A1)
+
+- Hard-cap compact rows per stage at `trace_limit` (default **20**); envelope `truncated: true` if any stage was cut.
+- Each stage includes `items_total` and per-stage `truncated`.
+- Exact ordered-ID equality vs the list passed into context formatting holds **only when** `stages.final_context.truncated == false`; otherwise equality is required for the traced prefix only.
+- Do **not** change retrieval / `--top` behavior to satisfy the trace bound.
+
+### Context char delivery (ChatGPT A2)
+
+After context formatting, `ask.py` may cut at `_MAX_CONTEXT_CHARS` (12000) before synthesis. Envelope MUST include `context_delivery`:
+
+    max_chars, truncated, chars_before, chars_after, last_fully_included_id, partial_id
+
+`final_context` = selection for formatting; `context_delivery` = what the synthesis prompt actually received.
 
 ### Stages (truthful; never `null`)
 
@@ -70,7 +86,7 @@ On every conflict involving Round 1 files: **keep `main`**. Confirm invariants a
 | `evidence_reranked` | After `apply_evidence_rerank` only; or `{ "status": "skipped", "reason": "evidence_disabled", "items": [] }` |
 | `ledger_deduped` | After ledger-id dedupe of units |
 | `recent_injected` | Units **actually admitted** with `evidence_status == "recent_decision"` **after** `_prepend_recent_decisions` (not the raw recent load) |
-| `final_context` | Exact ordered items used to build the synthesis context (may exceed `top_k` in raw/hybrid). Do **not** change retrieval behavior to force `≤ top_k`. |
+| `final_context` | Ordered selection used to build the context string (may exceed `top_k` in raw/hybrid). Exact ID equality only when untruncated (A1). Char-cut reported in `context_delivery` (A2). Do **not** change retrieval to force `≤ top_k`. |
 
 ```mermaid
 flowchart LR
