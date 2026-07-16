@@ -1,6 +1,7 @@
 """RAG answer layer — retrieve context, then synthesize an answer with citations."""
 
 import json
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -734,7 +735,28 @@ def _synthesize_answer(
     return answer, warning, synthesis_failed, synthesis_interrupted
 
 
-def ask(  # pylint: disable=too-many-locals
+@dataclass(frozen=True)
+class RetrievalBundle:
+    """Pre-synthesis retrieval outputs for ask() and future retrieval-eval.
+
+    Cardinalities (Round 4 lock):
+    - results: normal/evidence pre-diversity ≤ top_k; hybrid/raw pre-diversity ≤ fetch_k
+    - selection / citations: full ordered context (may be fetch_k on raw/hybrid)
+    - ask() still returns results[:top_k] and citations[:top_k]
+    """
+
+    search_q: str
+    results: list[dict]
+    selection: list[dict]
+    citations: list[dict]
+    context: str
+    context_delivery: dict
+    confidence: float | None
+    warning: str | None
+    trace: dict | None
+
+
+def retrieve_for_ask(  # pylint: disable=too-many-locals
     question: str,
     *,
     top_k: int = 5,
@@ -744,24 +766,11 @@ def ask(  # pylint: disable=too-many-locals
     site: str | None = None,
     evidence: bool = False,
     trace: bool = False,
-) -> dict:
-    """Retrieve relevant memories and generate a cited answer.
-
-    Args:
-        history: Prior (question, answer) turns in this session for follow-ups.
-        domain: Optional dotted-path scope (e.g. "web_stack.security"). Only
-            applies to the units layer — raw summaries aren't domain-tagged.
-        site: Optional site hostname (e.g. staging2.willowyhollow.com).
-        evidence: Re-rank units by ledger graph (unresolved > failed > resolved).
-        trace: When True, include versioned retrieval trace (convmem.ask.trace.v1).
-
-    Returns:
-        {"answer": str, "citations": list[dict], "results": list[dict],
-         "confidence": float|None, "warning": str|None}
-        With trace=True, also ``trace`` envelope (stages + context_delivery).
-    """
-    cfg = load_config()
-    models = cfg["models"]
+    cfg: dict | None = None,
+) -> RetrievalBundle:
+    """Retrieval-only pipeline (no LLM). Behavior matches pre-extraction ask()."""
+    if cfg is None:
+        cfg = load_config()
     fetch_k = max(top_k, _ASK_TOP_K)
     warning: str | None = None
     search_q = _retrieval_query(question, history)
@@ -838,38 +847,41 @@ def ask(  # pylint: disable=too-many-locals
             dropped, trace_limit=limit
         )
 
+    req = _trace_request(
+        search_q=search_q,
+        top_k=top_k,
+        fetch_k=fetch_k,
+        raw=raw,
+        evidence=evidence,
+        domain=domain,
+        site=site,
+    )
+
     if not results:
-        empty = {
-            "answer": "No relevant excerpts found in the index for that question.",
-            "citations": [],
-            "results": [],
-            "confidence": None,
-            "warning": "No matches in index.",
+        empty_delivery = {
+            "max_chars": _MAX_CONTEXT_CHARS,
+            "truncated": False,
+            "chars_before": 0,
+            "chars_after": 0,
+            "last_fully_included_id": None,
+            "partial_id": None,
         }
+        envelope = None
         if trace:
-            empty_delivery = {
-                "max_chars": _MAX_CONTEXT_CHARS,
-                "truncated": False,
-                "chars_before": 0,
-                "chars_after": 0,
-                "last_fully_included_id": None,
-                "partial_id": None,
-            }
-            empty["trace"] = _build_trace_envelope(
-                _trace_request(
-                    search_q=search_q,
-                    top_k=top_k,
-                    fetch_k=fetch_k,
-                    raw=raw,
-                    evidence=evidence,
-                    domain=domain,
-                    site=site,
-                ),
-                stages,
-                trace_limit=limit,
-                context_delivery=empty_delivery,
+            envelope = _build_trace_envelope(
+                req, stages, trace_limit=limit, context_delivery=empty_delivery
             )
-        return empty
+        return RetrievalBundle(
+            search_q=search_q,
+            results=[],
+            selection=selection,
+            citations=[],
+            context="",
+            context_delivery=empty_delivery,
+            confidence=None,
+            warning="No matches in index.",
+            trace=envelope,
+        )
 
     confidence = _max_score(results)
     if warning is None and confidence is not None and confidence < _LOW_CONFIDENCE:
@@ -881,45 +893,99 @@ def ask(  # pylint: disable=too-many-locals
     context, context_delivery = _apply_context_char_limit(
         context, selection, blocks, max_chars=_MAX_CONTEXT_CHARS
     )
-
-    answer, warning, synthesis_failed, synthesis_interrupted = _synthesize_answer(
-        question=question,
-        context=context,
-        history=history,
-        models=models,
+    envelope = None
+    if trace:
+        envelope = _build_trace_envelope(
+            req, stages, trace_limit=limit, context_delivery=context_delivery
+        )
+    return RetrievalBundle(
+        search_q=search_q,
+        results=results,
+        selection=selection,
         citations=citations,
-        top_k=top_k,
+        context=context,
+        context_delivery=context_delivery,
+        confidence=confidence,
         warning=warning,
+        trace=envelope,
     )
 
+
+def ask(
+    question: str,
+    *,
+    top_k: int = 5,
+    raw: bool = False,
+    history: list[tuple[str, str]] | None = None,
+    domain: str | None = None,
+    site: str | None = None,
+    evidence: bool = False,
+    trace: bool = False,
+) -> dict:
+    """Retrieve relevant memories and generate a cited answer.
+
+    Args:
+        history: Prior (question, answer) turns in this session for follow-ups.
+        domain: Optional dotted-path scope (e.g. "web_stack.security"). Only
+            applies to the units layer — raw summaries aren't domain-tagged.
+        site: Optional site hostname (e.g. staging2.willowyhollow.com).
+        evidence: Re-rank units by ledger graph (unresolved > failed > resolved).
+        trace: When True, include versioned retrieval trace (convmem.ask.trace.v1).
+
+    Returns:
+        {"answer": str, "citations": list[dict], "results": list[dict],
+         "confidence": float|None, "warning": str|None}
+        With trace=True, also ``trace`` envelope (stages + context_delivery).
+    """
+    cfg = load_config()
+    bundle = retrieve_for_ask(
+        question,
+        top_k=top_k,
+        raw=raw,
+        history=history,
+        domain=domain,
+        site=site,
+        evidence=evidence,
+        trace=trace,
+        cfg=cfg,
+    )
+    if not bundle.results:
+        empty = {
+            "answer": "No relevant excerpts found in the index for that question.",
+            "citations": [],
+            "results": [],
+            "confidence": None,
+            "warning": "No matches in index.",
+        }
+        if bundle.trace is not None:
+            empty["trace"] = bundle.trace
+        return empty
+
+    models = cfg["models"]
+    answer, warning, synthesis_failed, synthesis_interrupted = _synthesize_answer(
+        question=question,
+        context=bundle.context,
+        history=history,
+        models=models,
+        citations=bundle.citations,
+        top_k=top_k,
+        warning=bundle.warning,
+    )
     out = {
         "answer": answer,
-        "citations": citations[:top_k],
-        "results": results[:top_k],
-        "confidence": confidence,
+        "citations": bundle.citations[:top_k],
+        "results": bundle.results[:top_k],
+        "confidence": bundle.confidence,
         "warning": warning,
-        "retrieval_query": search_q,
+        "retrieval_query": bundle.search_q,
         "evidence": evidence,
     }
     if synthesis_failed:
         out["synthesis_failed"] = True
     if synthesis_interrupted:
         out["synthesis_interrupted"] = True
-    if trace:
-        out["trace"] = _build_trace_envelope(
-            _trace_request(
-                search_q=search_q,
-                top_k=top_k,
-                fetch_k=fetch_k,
-                raw=raw,
-                evidence=evidence,
-                domain=domain,
-                site=site,
-            ),
-            stages,
-            trace_limit=limit,
-            context_delivery=context_delivery,
-        )
+    if bundle.trace is not None:
+        out["trace"] = bundle.trace
     return out
 
 
