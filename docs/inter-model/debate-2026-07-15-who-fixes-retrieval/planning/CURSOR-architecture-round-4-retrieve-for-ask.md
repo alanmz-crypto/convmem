@@ -1,6 +1,6 @@
 # Round 4 architecture — `retrieve_for_ask` extraction
 
-**Status:** Revised per ChatGPT REVISE (2026-07-16) — **Round 3 docs close-out DONE**; **Phase 1 code HOLD** until this revision is the tip partners cite.
+**Status:** Revised per ChatGPT REVISE (2026-07-16) — Round 3 docs DONE; execution plan filed — [CURSOR-execution-plan-round-4-retrieve-for-ask.md](CURSOR-execution-plan-round-4-retrieve-for-ask.md). ChatGPT authorized Op B; Cursor starts when Ryan says go.
 **Author:** Cursor (ChatGPT REVISE locks)
 **Date:** 2026-07-16
 **Base:** `main` @ `549f74d` ([PR #39](https://github.com/alanmz-crypto/convmem/pull/39))
