@@ -5,6 +5,7 @@
 | [CURSOR-fix-plan-pr35-chatgpt-request-changes.md](CURSOR-fix-plan-pr35-chatgpt-request-changes.md) | **Newest / APPROVED for execution** — ChatGPT REQUEST CHANGES (§§1–4 then §5) |
 | [CURSOR-partner-recheck-fix-plan-approve.md](CURSOR-partner-recheck-fix-plan-approve.md) | Partner recheck — fix plan APPROVED; verify plan STALE |
 | [CURSOR-ack-chatgpt-routing-stale-status.md](CURSOR-ack-chatgpt-routing-stale-status.md) | Ack — SUPERSEDED status + README STALE label |
+| [CURSOR-ack-chatgpt-pr35-body-banner.md](CURSOR-ack-chatgpt-pr35-body-banner.md) | Ack — PR #35 REQUEST CHANGES banner on body |
 | [CURSOR-verification-plan-round-2-trace.md](CURSOR-verification-plan-round-2-trace.md) | **STALE** first-round checklist — do not use; rewrite after corrected PR tip |
 | [CURSOR-executive-redflag-disposition-round-2-trace.md](CURSOR-executive-redflag-disposition-round-2-trace.md) | Grok+ChatGPT red flags; A1/A2 contract locks |
 | [KIRO-review-grok-redflags-round-2-trace.md](KIRO-review-grok-redflags-round-2-trace.md) | Kiro: Grok flags — no new blockers |
