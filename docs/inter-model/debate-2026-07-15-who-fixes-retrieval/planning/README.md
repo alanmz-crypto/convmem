@@ -2,11 +2,12 @@
 
 | File | Purpose |
 |---|---|
-| [CURSOR-executive-redflag-disposition-round-2-trace.md](CURSOR-executive-redflag-disposition-round-2-trace.md) | **Newest** — Grok+ChatGPT red flags; A1/A2 contract REVISE; hold go |
-| [KIRO-review-grok-redflags-round-2-trace.md](KIRO-review-grok-redflags-round-2-trace.md) | Kiro: Grok flags — no new blockers; #6 false here |
-| [CURSOR-ack-kiro-grok-flags.md](CURSOR-ack-kiro-grok-flags.md) | Cursor ack — Grok cleared; A1/A2 still hold go |
-| [CURSOR-executive-approve-go-round-2-trace.md](CURSOR-executive-approve-go-round-2-trace.md) | APPROVE in principle; go held for A1/A2 |
-| [CURSOR-executive-execution-plan-round-2-trace.md](CURSOR-executive-execution-plan-round-2-trace.md) | Full execution steps (includes A1/A2 + pre-push check) |
+| [CURSOR-verification-plan-round-2-trace.md](CURSOR-verification-plan-round-2-trace.md) | **Newest** — Cursor work log + partner verification checklist for PR #35 |
+| [CURSOR-executive-redflag-disposition-round-2-trace.md](CURSOR-executive-redflag-disposition-round-2-trace.md) | Grok+ChatGPT red flags; A1/A2 contract locks |
+| [KIRO-review-grok-redflags-round-2-trace.md](KIRO-review-grok-redflags-round-2-trace.md) | Kiro: Grok flags — no new blockers |
+| [CURSOR-ack-kiro-grok-flags.md](CURSOR-ack-kiro-grok-flags.md) | Cursor ack — Grok cleared |
+| [CURSOR-executive-approve-go-round-2-trace.md](CURSOR-executive-approve-go-round-2-trace.md) | APPROVE / go lock |
+| [CURSOR-executive-execution-plan-round-2-trace.md](CURSOR-executive-execution-plan-round-2-trace.md) | Full execution steps |
 | [CURSOR-architecture-round-2-trace.md](CURSOR-architecture-round-2-trace.md) | Architecture lock (+ A1/A2) |
 | [CURSOR-partner-chain-round-2-approve-go.md](CURSOR-partner-chain-round-2-approve-go.md) | Prior APPROVE partner chain |
 | [CURSOR-partner-chain-round-2-exec-revise.md](CURSOR-partner-chain-round-2-exec-revise.md) | Prior REVISE partner chain |
