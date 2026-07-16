@@ -6,10 +6,11 @@ Shared board for multi-lane retrieval / corpus-quality coordination.
 
 | Path | Role |
 |---|---|
-| [CURSOR-top-two-problems-and-plans.md](CURSOR-top-two-problems-and-plans.md) | **Active** Cursor Round 2 top-two + plans |
-| [GROK-top-two-problems-and-plans.md](GROK-top-two-problems-and-plans.md) | **Active** Grok Round 2 top-two + plans (same ranking; prefers rebase of PR #35 stage-trace) |
-| [planning/](planning/) | Active architecture / execution / sign-off (empty until Round 2 locks) |
-| [reference/](reference/) | Completed rounds (opinions, stances, Round 1 planning) |
+| [planning/](planning/) | **Active** Round 3 architecture (source diversification) |
+| [reference/round-2-trace/](reference/round-2-trace/) | Round 2 shipped planning trail |
+| [reference/round-1-evidence-and-nested/](reference/round-1-evidence-and-nested/) | Round 1 shipped filings |
+| `*-top-two-problems-and-plans.md` (folder root) | Historical Round 2 lane filings (kept for discovery) |
+| [CONTINUE-DEEPSEEK-problem-4-…](CONTINUE-DEEPSEEK-problem-4-format-context-source-diversity.md) | Round 3 input spec (source diversity) |
 
 Naming: use `reference/`, never `archive/` (ingest path filter).
 
@@ -17,30 +18,29 @@ Naming: use `reference/`, never `archive/` (ingest path filter).
 
 | Round | Problems | Status |
 |---|---|---|
-| 1 | Evidence minority-cap + nested `docs/inter-model/**` | **Shipped** [PR #38](https://github.com/alanmz-crypto/convmem/pull/38) — filings in [reference/round-1-evidence-and-nested/](reference/round-1-evidence-and-nested/) |
-| 2 | `ask(trace=True)` + source diversification (trace-gated) | **Open** — Cursor + Grok top-twos filed; remaining partners file `<LANE>-top-two-problems-and-plans.md` here, then conflict review |
+| 1 | Evidence minority-cap + nested `docs/inter-model/**` | **Shipped** [PR #38](https://github.com/alanmz-crypto/convmem/pull/38) — [reference/round-1-evidence-and-nested/](reference/round-1-evidence-and-nested/) |
+| 2 | Versioned `ask(trace=True)` / `convmem.ask.trace.v1` | **Shipped** [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) @ `950e830` — planning in [reference/round-2-trace/](reference/round-2-trace/) |
+| 3 | Source diversification (`max_per_source=2`) | **Open** — architecture: [planning/CURSOR-architecture-round-3-source-diversity.md](planning/CURSOR-architecture-round-3-source-diversity.md). Phase 1 hygiene done; **Phase 2 code HOLD** until Ryan authorizes. |
 
-## Process (same as Round 1)
+### Board-order override (Round 3)
 
-1. Each lane files top-two + plans at this folder root.
-2. Conflict review across filings.
-3. Cursor (+ plan maker) locks architecture under `planning/`.
-4. Partners sign off; Ryan authorizes; Cursor implements on `fix/…` off `main`.
-5. When shipped, move that round’s chat filings into `reference/round-N-…/`.
+Round 2 board text sequenced **retrieval-eval before diversification**. Ryan + partners override: merged `ask(trace=True)` is the falsifiability gate for same-source crowding. Full retrieval-eval remains deferred; do not cite the old board order as blocking Round 3.
 
-## Round 2 filings (active)
+## Process
+
+1. Lane filings / conflict review (as needed).
+2. Cursor locks architecture under `planning/` (**one** arch doc for Round 3 — light process).
+3. Ryan authorizes; Cursor implements on `fix/…` off `main`.
+4. One independent partner reviews final diff + tests before merge.
+5. When shipped, move that round’s planning into `reference/round-N-…/` (copy + redirect stubs).
+
+## Round 2 filings (historical — shipped)
 
 | Lane | File |
 |---|---|
 | Cursor | [CURSOR-top-two-problems-and-plans.md](CURSOR-top-two-problems-and-plans.md) |
 | ChatGPT | [CHATGPT-top-two-problems-and-plans.md](CHATGPT-top-two-problems-and-plans.md) |
 | Grok | [GROK-top-two-problems-and-plans.md](GROK-top-two-problems-and-plans.md) |
-| DeepSeek R1 (proxy push) | [DEEPSEEK-R1-top-two-problems-and-plans.md](DEEPSEEK-R1-top-two-problems-and-plans.md) ([next-top2](DEEPSEEK-R1-next-top2.md)) |
-| Continue-DeepSeek V4 (proxy push) | [CONTINUE-DEEPSEEK-top-two-problems-and-plans.md](CONTINUE-DEEPSEEK-top-two-problems-and-plans.md) |
-| Cursor board decision | [CURSOR-round-2-board-decision.md](CURSOR-round-2-board-decision.md) |
-
-## Board decision (Round 2)
-
-[CURSOR-round-2-board-decision.md](CURSOR-round-2-board-decision.md) — next two: versioned `ask(trace=True)`, then dedicated retrieval regression evaluator. Source diversification deferred until those gates exist.
-
-Active architecture: [planning/CURSOR-architecture-round-2-trace.md](planning/CURSOR-architecture-round-2-trace.md) — **authorized for implementation; merge gated on contract fidelity**.
+| DeepSeek R1 | [DEEPSEEK-R1-top-two-problems-and-plans.md](DEEPSEEK-R1-top-two-problems-and-plans.md) |
+| Continue-DeepSeek V4 | [CONTINUE-DEEPSEEK-top-two-problems-and-plans.md](CONTINUE-DEEPSEEK-top-two-problems-and-plans.md) |
+| Board decision | [CURSOR-round-2-board-decision.md](CURSOR-round-2-board-decision.md) |

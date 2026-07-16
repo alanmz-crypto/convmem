@@ -1,9 +1,4 @@
-# CURSOR — Ack Kiro on Grok flags
-
-**Date:** 2026-07-16
-**From:** Cursor
-**Ack:** [KIRO-review-grok-redflags-round-2-trace.md](KIRO-review-grok-redflags-round-2-trace.md)
-
-- Adopt Kiro: Grok #1–9 are **not new blockers**; #6 false on Ryan host.
-- Keep disposition mitigations that are cheap and already locked (focused suites always green; PR-body checklist; `request.evidence` = actual kwarg) — no rollback of A1/A2.
-- **Still hold go** for ChatGPT A1/A2 on the PR tip, then Ryan’s **go**.
+> **Moved (Round 2 shipped).** Canonical copy:
+> [`reference/round-2-trace/CURSOR-ack-kiro-grok-flags.md`](../reference/round-2-trace/CURSOR-ack-kiro-grok-flags.md)
+>
+> Do not edit this stub. Round 3 live planning is [`CURSOR-architecture-round-3-source-diversity.md`](CURSOR-architecture-round-3-source-diversity.md).

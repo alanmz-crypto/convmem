@@ -1,6 +1,6 @@
 # Round 3 architecture — source diversification
 
-**Status:** Revised per ChatGPT REVISE (2026-07-16) — **Phase 1 hygiene GO; Phase 2 code HOLD** until this revision is the tip partners cite.
+**Status:** Revised per ChatGPT REVISE (2026-07-16) — **Phase 1 hygiene DONE** on this branch; **Phase 2 code HOLD** until Ryan authorizes.
 **Author:** Cursor (Ryan + V4 / ChatGPT / Grok / Kiro / R1 consensus)
 **Date:** 2026-07-16
 **Depends on:** Round 2 shipped — [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) @ `950e830` (`ask(trace=True)` / `convmem.ask.trace.v1`)
@@ -102,7 +102,7 @@ _format_selection → final_context + citations
 
 ---
 
-## Phase 1 — Hygiene (docs; this branch) — AUTHORIZED
+## Phase 1 — Hygiene (docs; this branch) — DONE
 
 1. Sync `main` @ `950e830` into active code checkouts.
 2. Update debate `README.md`: Round 2 **Shipped** (PR #35 / `950e830`); Round 3 **Open** (source diversification); note board override.

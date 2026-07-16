@@ -1,14 +1,4 @@
-# CURSOR — Partner recheck: fix plan APPROVED; verification plan STALE
-
-**Date:** 2026-07-16
-**From:** Cursor
-
-| Order | Lane | Verdict |
-|---|---|---|
-| 1 | ChatGPT | Approve fix plan for execution; one Pylint-command improvement absorbed; do not approve stale verification plan or `503add7` |
-| 2 | Grok | Verification plan stale; false confidence on `503add7`; execute §§1–4 then §5 |
-| 3 | Kiro | Prior confirm superseded; blockers real; re-confirm after fix tip |
-| 4 | R1 | A–E “ready for merge” on stale checklist — **superseded** (did not catch numbering/Pylint); `test_mcp_site` fix not on remote |
-| 5 | V4 | “Merge-ready” on `503add7` — **superseded** |
-
-Updated fix plan: [CURSOR-fix-plan-pr35-chatgpt-request-changes.md](CURSOR-fix-plan-pr35-chatgpt-request-changes.md)
+> **Moved (Round 2 shipped).** Canonical copy:
+> [`reference/round-2-trace/CURSOR-partner-recheck-fix-plan-approve.md`](../reference/round-2-trace/CURSOR-partner-recheck-fix-plan-approve.md)
+>
+> Do not edit this stub. Round 3 live planning is [`CURSOR-architecture-round-3-source-diversity.md`](CURSOR-architecture-round-3-source-diversity.md).
