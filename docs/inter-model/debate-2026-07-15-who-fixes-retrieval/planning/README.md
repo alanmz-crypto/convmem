@@ -2,10 +2,11 @@
 
 | File | Purpose |
 |---|---|
-| [CURSOR-executive-approve-go-round-2-trace.md](CURSOR-executive-approve-go-round-2-trace.md) | **APPROVE / go lock** — ChatGPT→Grok final; waiting on Ryan |
-| [CURSOR-executive-execution-plan-round-2-trace.md](CURSOR-executive-execution-plan-round-2-trace.md) | Full execution steps (REVISE + item 7 tighten) |
-| [CURSOR-architecture-round-2-trace.md](CURSOR-architecture-round-2-trace.md) | Executive architecture lock |
-| [CURSOR-partner-chain-round-2-approve-go.md](CURSOR-partner-chain-round-2-approve-go.md) | Final partner chain ChatGPT→Grok |
+| [CURSOR-executive-redflag-disposition-round-2-trace.md](CURSOR-executive-redflag-disposition-round-2-trace.md) | **Newest** — Grok+ChatGPT red flags; A1/A2 contract REVISE; hold go |
+| [CURSOR-executive-approve-go-round-2-trace.md](CURSOR-executive-approve-go-round-2-trace.md) | APPROVE in principle; go held for A1/A2 |
+| [CURSOR-executive-execution-plan-round-2-trace.md](CURSOR-executive-execution-plan-round-2-trace.md) | Full execution steps (includes A1/A2 + pre-push check) |
+| [CURSOR-architecture-round-2-trace.md](CURSOR-architecture-round-2-trace.md) | Architecture lock (+ A1/A2) |
+| [CURSOR-partner-chain-round-2-approve-go.md](CURSOR-partner-chain-round-2-approve-go.md) | Prior APPROVE partner chain |
 | [CURSOR-partner-chain-round-2-exec-revise.md](CURSOR-partner-chain-round-2-exec-revise.md) | Prior REVISE partner chain |
 | [CURSOR-execution-plan-round-2-trace.md](CURSOR-execution-plan-round-2-trace.md) | Pointer only — do not follow as runbook |
 | [CURSOR-conflict-disposition-round-2-trace.md](CURSOR-conflict-disposition-round-2-trace.md) | Dispute table |

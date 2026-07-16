@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-16
 **From:** Cursor (implementer + plan maker)
-**Status:** **Authorized for implementation.** Merge gated on contract fidelity + Round 1 invariants green.
+**Status:** **Authorized for implementation** with ChatGPT A1/A2 truthfulness locks (see red-flag disposition). Merge gated on contract fidelity + Round 1 invariants green.
 **Baseline:** `main` after PR #38 (`48e816f`)
 **Delivery:** rebase [PR #35](https://github.com/alanmz-crypto/convmem/pull/35) onto `main`, preserve Round 1, rewrite stage contract as below (or greenfield if rebase unsafe).
 
@@ -101,9 +101,9 @@ flowchart LR
 - [ ] `trace=False`: no `trace` key; citation delta is only `evidence_status` / `ledger_id`.
 - [ ] `trace=True`: `schema == convmem.ask.trace.v1`; `request` has `retrieval_query` + `evidence`; stages as named above; bounds/`truncated` work; no document bodies.
 - [ ] `recent_injected` ⊆ post-prepend `recent_decision` items.
-- [ ] `final_context` matches synthesis context for normal, raw, and low-confidence hybrid paths.
+- [ ] `final_context` selection equality per A1 (normal/raw/hybrid); `context_delivery` truthful per A2.
 - [ ] Rerank and ledger dedupe are separate stages (not one mislabeled `reranked`).
-- [ ] `test_ledger_recent` + `test_ask_trace` + full suite green; durable `--trace` probe in PR body.
+- [ ] `test_ledger_recent` + `test_ask_trace` always green; full suite/`doctor` green or zero new vs baseline; durable `--trace` probe + pre-push Round 1 self-check in PR body.
 - [ ] Kiro + R1 confirm after push.
 
 ## E — Cursor execution steps
