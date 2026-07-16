@@ -14,7 +14,7 @@
 |---|---|
 | Tip `503add7` | ChatGPT REQUEST CHANGES: `[1][1][1]` numbering, empty-shape regression, red Pylint |
 | §§1–4 executed | Numbering via `_format_context(..., start_n=)` / `_format_context_item`; empty return = main keys only (+ `trace` when enabled); Pylint gate green without baseline bless (normalize `(#/#)` / `(line #)` in gate); strengthened tests |
-| New tip | `43b5f33` (`43b5f3348643e087fe6a099f8779987972d69dc2`) pushed to `fix/2026-07-15-ask-trace` |
+| New tip | `43b5f33` (`43b5f33eea85f4b01ea1db9da921257965c6524d`) pushed to `fix/2026-07-15-ask-trace` |
 | Local verify | focused + full suite + doctor + Pylint regression gate PASS; Round 1 self-check OK |
 | Prior partner verdicts on `503add7` | **Superseded** — re-confirm this tip only |
 
@@ -27,7 +27,7 @@
 ```bash
 git fetch origin fix/2026-07-15-ask-trace main
 git rev-parse origin/fix/2026-07-15-ask-trace
-# expect: 43b5f3348643e087fe6a099f8779987972d69dc2
+# expect: 43b5f33eea85f4b01ea1db9da921257965c6524d
 
 rg -n 'max\(1, total_limit // 3\)' ask.py
 rg -n 'with ChromaStore' ask.py
