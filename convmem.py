@@ -181,10 +181,11 @@ def open_hit(
 
 
 @app.command("ask")
-def ask_command(
+def ask_command(  # pylint: disable=too-many-arguments
     question: str | None = typer.Argument(
         None, help="Question (omit with -i for interactive mode)"
     ),
+    *,
     interactive: bool = typer.Option(
         False, "-i", "--interactive", help="Multi-turn session with follow-ups"
     ),
@@ -201,6 +202,11 @@ def ask_command(
         "--evidence",
         help="Prefer unresolved observations and failed verifications (ledger graph)",
     ),
+    show_trace: bool = typer.Option(
+        False,
+        "--trace",
+        help="Print retrieval trace JSON (convmem.ask.trace.v1) on stderr",
+    ),
     open_at: int | None = typer.Option(
         None, "--open", min=1, help="After answering, open source citation #"
     ),
@@ -216,8 +222,19 @@ def ask_command(
         render_error("Provide a question, or use -i for interactive mode.")
         raise typer.Exit(1)
 
-    out = ask(question, top_k=top, raw=raw, domain=domain, site=site, evidence=evidence)
+    out = ask(
+        question,
+        top_k=top,
+        raw=raw,
+        domain=domain,
+        site=site,
+        evidence=evidence,
+        trace=show_trace,
+    )
     render_ask_output(out)
+    if show_trace and out.get("trace") is not None:
+        # Plain stderr JSON (no Rich markup/highlight) for machine parse.
+        print(json.dumps(out["trace"], indent=2, default=str), file=sys.stderr)
     from next_steps import after_ask
 
     after_ask(

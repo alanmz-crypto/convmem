@@ -182,6 +182,7 @@ class McpSiteTests(unittest.TestCase):
             site="staging2.willowyhollow.com",
             raw=False,
             evidence=True,
+            trace=False,
         )
 
     @patch("brief.gather_brief_payload", return_value={"generated_at": "t", "projects": []})

@@ -215,11 +215,192 @@ def _prepend_recent_decisions(
     return capped + list(semantic)[:slots]
 
 
-def _format_context(results: list[dict], *, units: bool) -> tuple[str, list[dict]]:
+
+TRACE_SCHEMA = "convmem.ask.trace.v1"
+TRACE_LIMIT_DEFAULT = 20
+_CONTEXT_TRUNCATION_SUFFIX = "\n\n[… context truncated …]"
+
+
+def _compact_trace_row(result: dict, *, origin: str | None = None) -> dict:
+    """Compact per-hit row for ask() retrieval traces (no document bodies)."""
+    meta = result.get("metadata") or {}
+    lid = (meta.get("ledger_id") or "").strip() or None
+    row = {
+        "id": result.get("id"),
+        "score": result.get("score"),
+        "rank_score": result.get("rank_score"),
+        "evidence_boost": result.get("evidence_boost"),
+        "recency_boost": result.get("recency_boost"),
+        "evidence_status": result.get("evidence_status") or "",
+        "title": meta.get("title", ""),
+        "type": meta.get("type"),
+        "tool": meta.get("tool"),
+        "source_path": meta.get("source_path", ""),
+        "domain": meta.get("domain"),
+        "ledger_id": lid,
+        "ledger_kind": meta.get("ledger_kind"),
+    }
+    if origin is not None:
+        row["origin"] = origin
+    return row
+
+
+def _trace_stage(
+    results: list[dict],
+    *,
+    limit: int,
+    origins: list[str] | None = None,
+    status: str = "ok",
+    reason: str | None = None,
+) -> dict:
+    """Build a stage object; skipped stages never use null."""
+    if status == "skipped":
+        out: dict = {
+            "status": "skipped",
+            "reason": reason or "skipped",
+            "items": [],
+            "items_total": 0,
+            "truncated": False,
+        }
+        return out
+    total = len(results)
+    truncated = total > limit
+    capped = results[:limit]
+    items = []
+    for i, r in enumerate(capped):
+        origin = origins[i] if origins is not None and i < len(origins) else None
+        items.append(_compact_trace_row(r, origin=origin))
+    out = {
+        "status": status,
+        "items": items,
+        "items_total": total,
+        "truncated": truncated,
+    }
+    if reason:
+        out["reason"] = reason
+    return out
+
+
+def _skipped_stage(reason: str) -> dict:
+    return _trace_stage([], limit=0, status="skipped", reason=reason)
+
+
+def _format_context_item(
+    result: dict, *, units: bool, n: int
+) -> tuple[str, dict]:
+    """Format one result with citation number ``n`` in both text and metadata."""
+    block, cites = _format_context([result], units=units, start_n=n)
+    return block, cites[0]
+
+
+def _format_selection(
+    selection: list[dict], unit_flags: list[bool]
+) -> tuple[str, list[dict], list[str]]:
+    """Format selection into context, citations, and per-item blocks."""
+    blocks: list[str] = []
+    citations: list[dict] = []
+    for i, (r, is_unit) in enumerate(zip(selection, unit_flags), 1):
+        block, cite = _format_context_item(r, units=is_unit, n=i)
+        blocks.append(block)
+        citations.append(cite)
+    return "\n\n".join(blocks), citations, blocks
+
+
+def _apply_context_char_limit(
+    context: str,
+    selection: list[dict],
+    blocks: list[str],
+    *,
+    max_chars: int = _MAX_CONTEXT_CHARS,
+) -> tuple[str, dict]:
+    """Cut context at max_chars; report delivery metadata (ChatGPT A2)."""
+    chars_before = len(context)
+    delivery = {
+        "max_chars": max_chars,
+        "truncated": False,
+        "chars_before": chars_before,
+        "chars_after": chars_before,
+        "last_fully_included_id": selection[-1].get("id") if selection else None,
+        "partial_id": None,
+    }
+    if chars_before <= max_chars:
+        return context, delivery
+
+    delivered = context[:max_chars] + _CONTEXT_TRUNCATION_SUFFIX
+    delivery["truncated"] = True
+    delivery["chars_after"] = len(delivered)
+
+    pos = 0
+    last_full = None
+    partial = None
+    for i, block in enumerate(blocks):
+        if i > 0:
+            if pos >= max_chars:
+                break
+            if pos + 2 > max_chars:
+                break
+            pos += 2
+        block_end = pos + len(block)
+        if block_end <= max_chars:
+            last_full = selection[i].get("id")
+            pos = block_end
+        else:
+            if pos < max_chars:
+                partial = selection[i].get("id")
+            break
+    delivery["last_fully_included_id"] = last_full
+    delivery["partial_id"] = partial
+    return delivered, delivery
+
+
+def _build_trace_envelope(
+    request: dict,
+    stages: dict,
+    *,
+    trace_limit: int,
+    context_delivery: dict,
+) -> dict:
+    any_trunc = any(
+        isinstance(s, dict) and s.get("truncated") for s in stages.values()
+    )
+    return {
+        "schema": TRACE_SCHEMA,
+        "request": request,
+        "stages": stages,
+        "trace_limit": trace_limit,
+        "truncated": any_trunc,
+        "context_delivery": context_delivery,
+    }
+
+
+def _trace_request(
+    *,
+    search_q: str,
+    top_k: int,
+    fetch_k: int,
+    raw: bool,
+    evidence: bool,
+    domain: str | None,
+    site: str | None,
+) -> dict:
+    return {
+        "retrieval_query": search_q,
+        "top_k": top_k,
+        "fetch_k": fetch_k,
+        "raw": raw,
+        "evidence": evidence,
+        "domain": domain,
+        "site": site,
+    }
+
+
+def _format_context(
+    results: list[dict], *, units: bool, start_n: int = 1
+) -> tuple[str, list[dict]]:
     """Build numbered context block and citation list."""
     lines: list[str] = []
     citations: list[dict] = []
-    for i, r in enumerate(results, 1):
+    for i, r in enumerate(results, start_n):
         meta = r.get("metadata", {})
         doc = (r.get("document") or "").strip()
         if units:
@@ -299,105 +480,110 @@ def _format_context(results: list[dict], *, units: bool) -> tuple[str, list[dict
     return "\n\n".join(lines), citations
 
 
-def ask(
-    question: str,
+
+def _apply_evidence_and_recent(
+    units: list[dict],
+    cfg: dict,
     *,
-    top_k: int = 5,
-    raw: bool = False,
-    history: list[tuple[str, str]] | None = None,
-    domain: str | None = None,
-    site: str | None = None,
-    evidence: bool = False,
-) -> dict:
-    """Retrieve relevant memories and generate a cited answer.
+    domain: str | None,
+    site: str | None,
+    fetch_k: int,
+    trace: bool,
+    limit: int,
+) -> tuple[list[dict], dict]:
+    """Evidence rerank, ledger dedupe, recent prepend; optional stage snapshots."""
+    from chroma_store import ChromaStore
+    from evidence import apply_evidence_rerank
 
-    Args:
-        history: Prior (question, answer) turns in this session for follow-ups.
-        domain: Optional dotted-path scope (e.g. "web_stack.security"). Only
-            applies to the units layer — raw summaries aren't domain-tagged.
-        site: Optional site hostname (e.g. staging2.willowyhollow.com).
-        evidence: Re-rank units by ledger graph (unresolved > failed > resolved).
-
-    Returns:
-        {"answer": str, "citations": list[dict], "results": list[dict],
-         "confidence": float|None, "warning": str|None}
-    """
-    cfg = load_config()
-    models = cfg["models"]
-    fetch_k = max(top_k, _ASK_TOP_K)
-    warning: str | None = None
-    search_q = _retrieval_query(question, history)
-
-    if raw:
-        results = query_raw(search_q, top_k=fetch_k, site=site)
-        context, citations = _format_context(results, units=False)
-    else:
-        units = query_units(search_q, top_k=fetch_k, domain=domain, site=site)
-        if evidence:
-            from chroma_store import ChromaStore
-            from evidence import apply_evidence_rerank
-
-            qcfg = cfg.get("query", {})
-            rw = float(qcfg.get("recency_weight", 0.0))
-            rhl = float(qcfg.get("recency_half_life_days", 30.0))
-            with ChromaStore(cfg["index"]["chroma_dir"]) as store:
-                units = apply_evidence_rerank(
-                    units, store, recency_weight=rw, recency_half_life_days=rhl
-                )
-            units = _dedupe_results_by_ledger_id(units)
-            recent = recent_decisions_for_cfg(
-                cfg, days=RECENT_DECISIONS_DAYS, limit=RECENT_DECISIONS_LIMIT
-            )
-            if recent:
-                units = _prepend_recent_decisions(
-                    units,
-                    recent,
-                    total_limit=fetch_k,
-                    domain=domain,
-                    site=site,
-                )
-        best = _max_score(units)
-        # If primary units are weak, supplement with raw summaries (hybrid).
-        if not evidence and (best is None or best < _LOW_CONFIDENCE):
-            raw_hits = query_raw(search_q, top_k=fetch_k, site=site)
-            merged = _merge_results(units, raw_hits, fetch_k)
-            lines: list[str] = []
-            citations = []
-            for i, (r, is_unit) in enumerate(merged[:fetch_k], 1):
-                block, cites = _format_context([r], units=is_unit)
-                lines.append(block)
-                cites[0]["n"] = i
-                citations.append(cites[0])
-            results = [r for r, _ in merged]
-            context = "\n\n".join(lines)
-            if best is not None and best < _LOW_CONFIDENCE:
-                warning = (
-                    f"Low retrieval confidence (best score {best:.3f}). "
-                    "Answer may be incomplete — topic may not be in the index."
-                )
-        else:
-            results = _filter_superseded_decisions(units[:top_k])
-            context, citations = _format_context(results, units=True)
-
-    if not results:
-        return {
-            "answer": "No relevant excerpts found in the index for that question.",
-            "citations": [],
-            "results": [],
-            "confidence": None,
-            "warning": "No matches in index.",
-        }
-
-    confidence = _max_score(results)
-    if warning is None and confidence is not None and confidence < _LOW_CONFIDENCE:
-        warning = (
-            f"Low retrieval confidence (best score {confidence:.3f}). "
-            "Answer may be incomplete — topic may not be in the index."
+    stages: dict = {}
+    qcfg = cfg.get("query", {})
+    rw = float(qcfg.get("recency_weight", 0.0))
+    rhl = float(qcfg.get("recency_half_life_days", 30.0))
+    with ChromaStore(cfg["index"]["chroma_dir"]) as store:
+        units = apply_evidence_rerank(
+            units, store, recency_weight=rw, recency_half_life_days=rhl
         )
+    if trace:
+        stages["evidence_reranked"] = _trace_stage(
+            units, limit=limit, origins=["unit"] * len(units)
+        )
+    units = _dedupe_results_by_ledger_id(units)
+    if trace:
+        stages["ledger_deduped"] = _trace_stage(
+            units, limit=limit, origins=["unit"] * len(units)
+        )
+    recent = recent_decisions_for_cfg(
+        cfg, days=RECENT_DECISIONS_DAYS, limit=RECENT_DECISIONS_LIMIT
+    )
+    if recent:
+        units = _prepend_recent_decisions(
+            units,
+            recent,
+            total_limit=fetch_k,
+            domain=domain,
+            site=site,
+        )
+    if trace:
+        admitted = [
+            u
+            for u in units
+            if (u.get("evidence_status") or "") == "recent_decision"
+        ]
+        stages["recent_injected"] = _trace_stage(
+            admitted, limit=limit, origins=["unit"] * len(admitted)
+        )
+    return units, stages
 
-    if len(context) > _MAX_CONTEXT_CHARS:
-        context = context[:_MAX_CONTEXT_CHARS] + "\n\n[… context truncated …]"
 
+def _select_units_or_hybrid(
+    units: list[dict],
+    *,
+    search_q: str,
+    top_k: int,
+    fetch_k: int,
+    site: str | None,
+    evidence: bool,
+) -> tuple[list[dict], list[dict], list[bool], list[str], str, list[dict], list[str], str | None]:
+    """Return results, selection, flags, origins, context, citations, blocks, warning."""
+    warning: str | None = None
+    best = _max_score(units)
+    if not evidence and (best is None or best < _LOW_CONFIDENCE):
+        raw_hits = query_raw(search_q, top_k=fetch_k, site=site)
+        merged = _merge_results(units, raw_hits, fetch_k)
+        pair_slice = merged[:fetch_k]
+        selection = [r for r, _ in pair_slice]
+        unit_flags = [is_unit for _, is_unit in pair_slice]
+        origins = [
+            "unit" if is_unit else "raw_summary" for _, is_unit in pair_slice
+        ]
+        context, citations, blocks = _format_selection(selection, unit_flags)
+        results = [r for r, _ in merged]
+        if best is not None and best < _LOW_CONFIDENCE:
+            warning = (
+                f"Low retrieval confidence (best score {best:.3f}). "
+                "Answer may be incomplete — topic may not be in the index."
+            )
+        return results, selection, unit_flags, origins, context, citations, blocks, warning
+
+    results = _filter_superseded_decisions(units[:top_k])
+    selection = list(results)
+    unit_flags = [True] * len(selection)
+    origins = ["unit"] * len(selection)
+    context, citations, blocks = _format_selection(selection, unit_flags)
+    return results, selection, unit_flags, origins, context, citations, blocks, warning
+
+
+def _synthesize_answer(
+    *,
+    question: str,
+    context: str,
+    history: list[tuple[str, str]] | None,
+    models: dict,
+    citations: list[dict],
+    top_k: int,
+    warning: str | None,
+) -> tuple[str, str | None, bool, bool]:
+    """Run LLM synthesis; return answer, warning, failed, interrupted."""
     if history:
         prompt = FOLLOWUP_ASK_PROMPT.format(
             history=_format_history(history),
@@ -445,6 +631,161 @@ def ask(
                 f"Synthesis failed ({type(e).__name__}); returning retrieval citations only."
             )
             warning = f"{warning}\n{synth_warn}" if warning else synth_warn
+    return answer, warning, synthesis_failed, synthesis_interrupted
+
+
+def ask(  # pylint: disable=too-many-locals
+    question: str,
+    *,
+    top_k: int = 5,
+    raw: bool = False,
+    history: list[tuple[str, str]] | None = None,
+    domain: str | None = None,
+    site: str | None = None,
+    evidence: bool = False,
+    trace: bool = False,
+) -> dict:
+    """Retrieve relevant memories and generate a cited answer.
+
+    Args:
+        history: Prior (question, answer) turns in this session for follow-ups.
+        domain: Optional dotted-path scope (e.g. "web_stack.security"). Only
+            applies to the units layer — raw summaries aren't domain-tagged.
+        site: Optional site hostname (e.g. staging2.willowyhollow.com).
+        evidence: Re-rank units by ledger graph (unresolved > failed > resolved).
+        trace: When True, include versioned retrieval trace (convmem.ask.trace.v1).
+
+    Returns:
+        {"answer": str, "citations": list[dict], "results": list[dict],
+         "confidence": float|None, "warning": str|None}
+        With trace=True, also ``trace`` envelope (stages + context_delivery).
+    """
+    cfg = load_config()
+    models = cfg["models"]
+    fetch_k = max(top_k, _ASK_TOP_K)
+    warning: str | None = None
+    search_q = _retrieval_query(question, history)
+    limit = max(1, int(TRACE_LIMIT_DEFAULT))
+    stages: dict = {}
+    selection: list[dict] = []
+    unit_flags: list[bool] = []
+    origins: list[str] = []
+    results: list[dict] = []
+    context = ""
+    citations: list[dict] = []
+    blocks: list[str] = []
+
+    if raw:
+        results = query_raw(search_q, top_k=fetch_k, site=site)
+        if trace:
+            stages["candidates"] = _trace_stage(
+                results, limit=limit, origins=["raw_summary"] * len(results)
+            )
+            stages["evidence_reranked"] = _skipped_stage("raw_mode")
+            stages["ledger_deduped"] = _skipped_stage("raw_mode")
+            stages["recent_injected"] = _skipped_stage("raw_mode")
+        selection = list(results)
+        unit_flags = [False] * len(selection)
+        origins = ["raw_summary"] * len(selection)
+        context, citations, blocks = _format_selection(selection, unit_flags)
+    else:
+        units = query_units(search_q, top_k=fetch_k, domain=domain, site=site)
+        if trace:
+            stages["candidates"] = _trace_stage(
+                units, limit=limit, origins=["unit"] * len(units)
+            )
+        if evidence:
+            units, ev_stages = _apply_evidence_and_recent(
+                units,
+                cfg,
+                domain=domain,
+                site=site,
+                fetch_k=fetch_k,
+                trace=trace,
+                limit=limit,
+            )
+            stages.update(ev_stages)
+        elif trace:
+            stages["evidence_reranked"] = _skipped_stage("evidence_disabled")
+            stages["ledger_deduped"] = _skipped_stage("evidence_disabled")
+            stages["recent_injected"] = _skipped_stage("evidence_disabled")
+
+        (
+            results,
+            selection,
+            unit_flags,
+            origins,
+            context,
+            citations,
+            blocks,
+            warning,
+        ) = _select_units_or_hybrid(
+            units,
+            search_q=search_q,
+            top_k=top_k,
+            fetch_k=fetch_k,
+            site=site,
+            evidence=evidence,
+        )
+
+    if trace:
+        stages["final_context"] = _trace_stage(
+            selection, limit=limit, origins=origins[: len(selection)]
+        )
+
+    if not results:
+        empty = {
+            "answer": "No relevant excerpts found in the index for that question.",
+            "citations": [],
+            "results": [],
+            "confidence": None,
+            "warning": "No matches in index.",
+        }
+        if trace:
+            empty_delivery = {
+                "max_chars": _MAX_CONTEXT_CHARS,
+                "truncated": False,
+                "chars_before": 0,
+                "chars_after": 0,
+                "last_fully_included_id": None,
+                "partial_id": None,
+            }
+            empty["trace"] = _build_trace_envelope(
+                _trace_request(
+                    search_q=search_q,
+                    top_k=top_k,
+                    fetch_k=fetch_k,
+                    raw=raw,
+                    evidence=evidence,
+                    domain=domain,
+                    site=site,
+                ),
+                stages,
+                trace_limit=limit,
+                context_delivery=empty_delivery,
+            )
+        return empty
+
+    confidence = _max_score(results)
+    if warning is None and confidence is not None and confidence < _LOW_CONFIDENCE:
+        warning = (
+            f"Low retrieval confidence (best score {confidence:.3f}). "
+            "Answer may be incomplete — topic may not be in the index."
+        )
+
+    context, context_delivery = _apply_context_char_limit(
+        context, selection, blocks, max_chars=_MAX_CONTEXT_CHARS
+    )
+
+    answer, warning, synthesis_failed, synthesis_interrupted = _synthesize_answer(
+        question=question,
+        context=context,
+        history=history,
+        models=models,
+        citations=citations,
+        top_k=top_k,
+        warning=warning,
+    )
 
     out = {
         "answer": answer,
@@ -459,7 +800,23 @@ def ask(
         out["synthesis_failed"] = True
     if synthesis_interrupted:
         out["synthesis_interrupted"] = True
+    if trace:
+        out["trace"] = _build_trace_envelope(
+            _trace_request(
+                search_q=search_q,
+                top_k=top_k,
+                fetch_k=fetch_k,
+                raw=raw,
+                evidence=evidence,
+                domain=domain,
+                site=site,
+            ),
+            stages,
+            trace_limit=limit,
+            context_delivery=context_delivery,
+        )
     return out
+
 
 
 def run_interactive(

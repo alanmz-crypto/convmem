@@ -50,6 +50,32 @@ PYLINT_MESSAGE_BITS = (
 
 # Non-aggregate messages may still embed ranges like ``==mod:[121:127]``.
 _EMBEDDED_LINE_RANGE = re.compile(r"(==[^\s\[:]+):\[\d+:\d+\]")
+# Module line-count in C0302 shifts whenever any line is added/removed.
+_MODULE_LINE_COUNT = re.compile(r"\((\d+)/(\d+)\)")
+# Outer-scope messages embed absolute source lines that shift on unrelated edits.
+_OUTER_SCOPE_LINE = re.compile(r"\(line \d+\)")
+# Only C0302 line-count churn is noise. Complexity (N/M) for args/branches/locals
+# must stay detectable when debt magnitude grows.
+_LINE_COUNT_MSG_IDS = frozenset({"C0302"})
+_LINE_COUNT_SYMBOLS = frozenset({"too-many-lines"})
+
+
+def normalize_message(message: str, *, symbol: str = "", msg_id: str = "") -> str:
+    """Normalize unstable shapes for *non-aggregate* fingerprints.
+
+    Rewrites embedded ``==name:[n:m]`` ranges to ``[#:#]`` and ``(line N)``
+    outer-scope refs to ``(line #)``. For ``C0302`` / ``too-many-lines`` only,
+    rewrites ``(N/M)`` module line counts to ``(#/#)`` so adding/removing
+    unrelated lines does not invent a new fingerprint. Other ``(N/M)`` messages
+    (e.g. too-many-arguments) are left intact so growing complexity stays
+    detectable. R0801/R0401 use aggregate fingerprints instead.
+    """
+    text = _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message.strip())
+    text = _OUTER_SCOPE_LINE.sub("(line #)", text)
+    if msg_id in _LINE_COUNT_MSG_IDS or symbol in _LINE_COUNT_SYMBOLS:
+        text = _MODULE_LINE_COUNT.sub("(#/#)", text)
+    return text
+
 
 # Aggregate symbols/ids — fingerprinted by count only (see module docstring).
 _AGGREGATE_MSG_IDS = frozenset({"R0801", "R0401"})
@@ -61,16 +87,6 @@ _NULL_OID = frozenset({"0" * 40, "0" * 64})
 
 class BaselineResolveError(RuntimeError):
     """Base ref cannot be resolved or git failed — fail closed (never bootstrap)."""
-
-
-def normalize_message(message: str, *, symbol: str = "", msg_id: str = "") -> str:
-    """Normalize unstable shapes for *non-aggregate* fingerprints.
-
-    Rewrites embedded ``==name:[n:m]`` ranges to ``[#:#]``. R0801/R0401 are
-    not normalized here — they use aggregate fingerprints instead.
-    """
-    del symbol, msg_id  # API kept for call sites; aggregates bypass this.
-    return _EMBEDDED_LINE_RANGE.sub(r"\1:[#:#]", message.strip())
 
 
 def _norm_path(path: str) -> str:
