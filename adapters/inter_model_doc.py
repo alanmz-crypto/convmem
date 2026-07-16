@@ -12,15 +12,27 @@ from pathlib import Path
 
 _SECTION_RE = re.compile(r"^(#{2,3})\s+(.+)$", re.MULTILINE)
 
+_EXCLUDE_PATH_TOKENS = frozenset({".kiro", "snapshots"})
+
 
 def is_inter_model_doc(path: Path | str) -> bool:
-    """True for active coordination docs: docs/inter-model/*.md (not archive/)."""
+    """True for active Markdown under docs/inter-model/ at any depth.
+
+    Excludes archive paths and Kiro session snapshot copies (path components
+    ``.kiro`` / ``snapshots``). Nested debate folders are included.
+    """
     p = Path(path).expanduser().resolve()
     if p.suffix != ".md":
         return False
     if "archive" in p.parts:
         return False
-    return p.parent.name == "inter-model" and p.parent.parent.name == "docs"
+    if _EXCLUDE_PATH_TOKENS & set(p.parts):
+        return False
+    parts = p.parts
+    for i, part in enumerate(parts):
+        if part == "inter-model" and i > 0 and parts[i - 1] == "docs":
+            return True
+    return False
 
 
 def _file_date(path: Path) -> str:
