@@ -3,6 +3,7 @@
 | File | Purpose |
 |---|---|
 | [CURSOR-architecture-round-2-trace.md](CURSOR-architecture-round-2-trace.md) | **Executive lock** — implement authorize; merge gated |
+| [CURSOR-execution-plan-round-2-trace.md](CURSOR-execution-plan-round-2-trace.md) | **Execution runbook** — preserve-main rebase + contract rewrite |
 | [CURSOR-conflict-disposition-round-2-trace.md](CURSOR-conflict-disposition-round-2-trace.md) | Dispute table |
 | [KIRO-review-round-2-trace-blockers.md](KIRO-review-round-2-trace-blockers.md) | Original #35 revert blocker |
 | [CHATGPT-review-round-2-trace-post-preserve.md](CHATGPT-review-round-2-trace-post-preserve.md) | Authorize + merge gates |
