@@ -32,6 +32,39 @@ class InterModelDocAdapterTests(unittest.TestCase):
             random_md.write_text("# Notes\n", encoding="utf-8")
             self.assertFalse(is_inter_model_doc(random_md))
 
+
+    def test_nested_and_excluded_inter_model_paths(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            nested = root / "docs" / "inter-model" / "debate-test" / "README.md"
+            nested.parent.mkdir(parents=True)
+            nested.write_text("# Debate\n", encoding="utf-8")
+            self.assertTrue(is_inter_model_doc(nested))
+            self.assertEqual(detect_format(nested), "inter_model_doc")
+            self.assertIsNotNone(get_parser(nested))
+
+            deep = root / "docs" / "inter-model" / "a" / "b" / "c" / "notes.md"
+            deep.parent.mkdir(parents=True)
+            deep.write_text("# Deep\n", encoding="utf-8")
+            self.assertTrue(is_inter_model_doc(deep))
+
+            kiro_snap = (
+                root / ".kiro" / "sessions" / "s" / "snapshots" / "h"
+                / "docs" / "inter-model" / "debate" / "f.md"
+            )
+            kiro_snap.parent.mkdir(parents=True)
+            kiro_snap.write_text("# KIRO\n", encoding="utf-8")
+            self.assertFalse(is_inter_model_doc(kiro_snap))
+
+            wrong_parent = root / "other" / "inter-model" / "file.md"
+            wrong_parent.parent.mkdir(parents=True)
+            wrong_parent.write_text("# Other\n", encoding="utf-8")
+            self.assertFalse(is_inter_model_doc(wrong_parent))
+
+            non_md = root / "docs" / "inter-model" / "debate-test" / "notes.txt"
+            non_md.write_text("txt\n", encoding="utf-8")
+            self.assertFalse(is_inter_model_doc(non_md))
+
     def test_parse_sections(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "docs" / "inter-model" / "HANDOFF-test.md"
