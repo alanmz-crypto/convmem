@@ -1,17 +1,10 @@
-# Planning (implementation architecture)
+# Planning (active round)
 
-Board-shared architecture and reviews for the next implementable slice.
-Top-two problem filings stay in the parent debate folder.
+Architecture, conflict disposition, execution runbooks, and partner sign-offs
+for the **current** implementable slice live here.
 
-| File | Purpose |
-|---|---|
-| [CURSOR-architecture-evidence-and-nested-ingest.md](CURSOR-architecture-evidence-and-nested-ingest.md) | **Current** Cursor architecture (post R1/V4/Kiro) |
-| [CURSOR-execution-plan-evidence-and-nested.md](CURSOR-execution-plan-evidence-and-nested.md) | **Execution runbook** (Phase 1/2 checklists; code not started) |
-| [CURSOR-conflict-disposition-evidence-nested.md](CURSOR-conflict-disposition-evidence-nested.md) | Locked disposition + Phase 1 vs follow-on |
-| [KIRO-review-cursor-architecture.md](KIRO-review-cursor-architecture.md) | Kiro approve + cap-after-dedupe note |
-| [CURSOR-partner-signoff-2026-07-15.md](CURSOR-partner-signoff-2026-07-15.md) | R1/V4/Kiro final sign-off + evidence_status note |
+Round 1 planning artifacts moved to
+[../reference/round-1-evidence-and-nested/planning/](../reference/round-1-evidence-and-nested/planning/).
 
-Local Cursor IDE plans (not in git):
-
-- `/home/lauer/.cursor/plans/evidence_nested_post-review_bc5a465f.plan.md` (current)
-- `/home/lauer/.cursor/plans/evidence_and_nested_ingest_83cc407b.plan.md` (prior)
+Round 2: file architecture here after partners review
+[../CURSOR-top-two-problems-and-plans.md](../CURSOR-top-two-problems-and-plans.md).

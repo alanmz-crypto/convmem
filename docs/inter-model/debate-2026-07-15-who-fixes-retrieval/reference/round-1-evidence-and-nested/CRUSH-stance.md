@@ -74,7 +74,7 @@ when fresh material also scores (ChatGPT). Both need fixing, but in order.
 1. **Split acceptance tests** (Codex/Crush) — no code required:
    - Live state → `brief` + git + GitHub.
    - Historical rationale → `convmem ask` (the memory question).
-   
+
 2. **Implement ChatGPT's ask-time diversification** (Cursor on bounded branch):
    - Collapse same-source/near-title duplicates in final citation selection.
    - Cap one-source domination of final slots.
