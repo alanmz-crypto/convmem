@@ -13,9 +13,10 @@ from pathlib import Path
 import requests
 
 from brief import _mcp_registration, _systemd_state, _watch_main_pid, _watch_process_memory
-from chroma_readonly import collection_count, open_readonly_unit_store
+from chroma_readonly import collection_count, collection_metadata_rows, open_readonly_unit_store
 from config import CONFIG_PATH, load_config
 from planning_contract import CONTRACT_VERSION, iter_guide_paths, validate_planning_guides
+from purge_locks import build_path_candidates
 
 WATCH_RSS_PASS_KB = 512 * 1024  # 512 MB
 
@@ -178,6 +179,84 @@ def _check_index_drift(cfg: dict) -> DoctorCheck:
     if ratio < 0.3 and unique_count > 500:
         return DoctorCheck("index_drift", True, f"WARN: {detail}")
     return DoctorCheck("index_drift", True, detail)
+
+
+def _load_purge_markers(processed_path: Path) -> dict[str, list[str]]:
+    """Entry key -> path candidates, for every excluded+purged_at entry in processed.json."""
+    if not processed_path.is_file():
+        return {}
+    data = json.loads(processed_path.read_text(encoding="utf-8"))
+    markers: dict[str, list[str]] = {}
+    for key, entry in data.items():
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("excluded") and entry.get("purged_at"):
+            path = entry.get("path")
+            if path:
+                markers[key] = build_path_candidates(path)
+    return markers
+
+
+def _check_purge_drift(cfg: dict) -> DoctorCheck:
+    """Reconcile processed.json purge markers against current Chroma + JSONL state.
+
+    Read-only. Flags residual rows for any source marked excluded+purged_at —
+    e.g. left behind by a partial restore that reintroduced Chroma or JSONL
+    rows without reintroducing the processed.json marker's absence. Soft
+    excludes (excluded, no purged_at) are intentionally not checked here.
+    """
+    processed_path = Path(cfg["index"]["processed_log"]).expanduser()
+    markers = _load_purge_markers(processed_path)
+    if not markers:
+        return DoctorCheck("purge_drift", True, "no purge markers")
+
+    all_candidates: set[str] = set()
+    for candidates in markers.values():
+        all_candidates.update(candidates)
+
+    chroma_dir = Path(cfg["index"]["chroma_dir"]).expanduser()
+    export = Path(cfg["index"].get("units_export", "")).expanduser()
+
+    unit_hits: dict[str, int] = {}
+    summary_hits: dict[str, int] = {}
+    db = chroma_dir / "chroma.sqlite3"
+    if db.is_file():
+        try:
+            for row in collection_metadata_rows(str(chroma_dir), "knowledge_units"):
+                sp = row.get("source_path")
+                if sp in all_candidates:
+                    unit_hits[sp] = unit_hits.get(sp, 0) + 1
+            for row in collection_metadata_rows(str(chroma_dir), "conversation_summaries"):
+                sp = row.get("source_path")
+                if sp in all_candidates:
+                    summary_hits[sp] = summary_hits.get(sp, 0) + 1
+        except FileNotFoundError:
+            pass
+
+    jsonl_hits: dict[str, int] = {}
+    if export.is_file():
+        for line in export.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            sp = rec.get("source_path")
+            if sp in all_candidates:
+                jsonl_hits[sp] = jsonl_hits.get(sp, 0) + 1
+
+    drifted = {p for p in all_candidates if p in unit_hits or p in summary_hits or p in jsonl_hits}
+    if not drifted:
+        return DoctorCheck("purge_drift", True, f"{len(markers)} purge marker(s), 0 residual")
+
+    detail = "; ".join(
+        f"{p}: units={unit_hits.get(p, 0)} summaries={summary_hits.get(p, 0)} "
+        f"jsonl={jsonl_hits.get(p, 0)}"
+        for p in sorted(drifted)
+    )
+    return DoctorCheck("purge_drift", False, f"residual rows for purged source(s): {detail}")
 
 
 def _check_mcp_import() -> DoctorCheck:
@@ -1212,6 +1291,7 @@ def run_doctor(
         _check_ollama(cfg),
         _check_chroma(cfg),
         _check_index_drift(cfg),
+        _check_purge_drift(cfg),
         _check_restic(),
         _check_restic_external(),
         _check_restic_password_backup(),
