@@ -664,8 +664,10 @@ def _merge_order_probe(row: dict, root: Path) -> tuple[bool, str]:
 
     Asserts CONVMEM-RITUAL.md is first AND CRUSH.md (when present) is last —
     the two ends of the canonical order enforced by deploy-builder-reference.sh.
-    Note verify-builder-reference.sh only asserts ritual-first; this probe covers
-    both ends. Scope is Crush only (other surfaces have no merge order).
+    After Stage 4 approach A, standing paths are ritual → rules/ → CRUSH.md
+    (builder digests are on-demand under ~/.config/crush/builder-reference/).
+    Note verify-builder-reference.sh asserts the full three-path standing list;
+    this probe covers ritual-first / CRUSH-last only.
 
     Mirrors the order assertion in scripts/verify-builder-reference.sh, but runs
     on every doctor pass instead of only (non-fatally) at deploy end — closing

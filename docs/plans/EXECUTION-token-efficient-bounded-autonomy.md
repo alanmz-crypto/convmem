@@ -337,6 +337,12 @@ arc. First collect real provider telemetry from at least six comparable tasks.
 If input context dominates cost, create a separate architecture plan that reuses
 the existing `brief.py` gather/render boundary and preserves all safety rules.
 
+**Status (2026-07-19):** Telemetry gate PASS (6 Crush / DeepSeek V4 Flash tasks,
+~99.7% input). Draft direction (awaiting HITL):
+[`ARCHITECTURE-stage4-context-compression.md`](ARCHITECTURE-stage4-context-compression.md)
+· [`EXECUTION-stage4-context-compression.md`](EXECUTION-stage4-context-compression.md).
+No compact brief or Crush config change until that HITL accept.
+
 ## Completion criteria
 
 This execution arc is complete when either:
