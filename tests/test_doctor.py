@@ -83,6 +83,7 @@ class DoctorTests(unittest.TestCase):
         ]
         self.assertEqual(doctor_exit_code(checks), 1)
 
+
 class StandingRegisterTests(unittest.TestCase):
     CFG = {"index": {"chroma_dir": "/tmp/c"}, "models": {}}
 
