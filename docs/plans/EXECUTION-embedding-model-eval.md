@@ -1,6 +1,6 @@
 # EXECUTION — Embedding-Model A/B Evaluation (two-gate operator runbook)
 
-**Status:** Gate 1 evaluator harness on `feat/2026-07-19-embed-eval-harness`.  
+**Status:** Gate 1 evaluator harness on `feat/2026-07-19-embed-eval-harness`.
 **Authority:** Architecture Rev 1 (binding) + Gate 1 / Gate 2 human gates.
 
 ## Two-gate model
