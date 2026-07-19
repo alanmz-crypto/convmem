@@ -275,6 +275,36 @@ def _apply_keyword_rank(text: str, results: list[dict]) -> list[dict]:
     return [r for _, _, r in scored]
 
 
+def _resolve_eval_retrieval_view(
+    eval_view: str | None,
+    cfg: dict,
+) -> str | None:
+    """Return evaluation view name or None for production default.
+
+    Evaluation-scoped only. Production callers leave eval_view unset and omit
+    cfg['eval']['retrieval_view'], preserving full ledger-priority behavior.
+    """
+    if eval_view is not None:
+        view = str(eval_view).strip() or None
+    else:
+        view = str((cfg.get("eval") or {}).get("retrieval_view") or "").strip() or None
+    if view is None:
+        return None
+    allowed = {
+        "embedding_influenced",
+        "operational_pipeline",
+        # synonyms accepted for clarity
+        "embedding-influenced",
+        "operational-pipeline",
+    }
+    if view not in allowed:
+        raise ValueError(
+            f"unknown eval retrieval_view {view!r}; "
+            "expected embedding_influenced or operational_pipeline"
+        )
+    return view.replace("-", "_")
+
+
 def query_units(
     text: str,
     top_k: int = 5,
@@ -283,12 +313,16 @@ def query_units(
     chroma_dir: str | None = None,
     *,
     cfg: dict | None = None,
+    eval_view: str | None = None,
 ) -> list[dict]:
     if cfg is None:
         cfg = load_config()
     models = cfg["models"]
     qcfg = cfg.get("query", {})
     chroma_path = chroma_dir or cfg["index"]["chroma_dir"]
+    view = _resolve_eval_retrieval_view(eval_view, cfg)
+    # embedding_influenced: keyword/recency/rerank remain; ledger-priority path off
+    skip_ledger_priority = view == "embedding_influenced"
 
     embedding = ollama_embed(
         text, model=models["embed_model"], host=models["ollama_host"]
@@ -310,7 +344,8 @@ def query_units(
         store = open_chroma_for_read(chroma_path)
         try:
             results = store.query_units(embedding, n_fetch)
-            ledger_extras = _ledger_lookup_hits(cfg, store, text)
+            if not skip_ledger_priority:
+                ledger_extras = _ledger_lookup_hits(cfg, store, text)
         finally:
             store.close()
         if site_norm:
@@ -330,7 +365,8 @@ def query_units(
             site=site,
             cfg=cfg,
         )
-        ledger_extras = _ledger_lookup_hits(cfg, None, text)
+        if not skip_ledger_priority:
+            ledger_extras = _ledger_lookup_hits(cfg, None, text)
     for r in results:
         d = r.get("distance")
         if d is not None:
@@ -352,7 +388,8 @@ def query_units(
         results = rerank_fn(text, results[:fetch_for_rerank], models["rerank_model"], top_k)
 
     results = _apply_keyword_rank(text, results)
-    results = _merge_priority_hits(results, ledger_extras)
+    if not skip_ledger_priority:
+        results = _merge_priority_hits(results, ledger_extras)
     return results[:top_k]
 
 
