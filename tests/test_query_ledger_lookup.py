@@ -9,6 +9,7 @@ from ledger_recent import (
     PROTOCOL_FALLBACK_LEDGER_ID,
     is_protocol_anchor_query,
     load_approved_decision_by_id,
+    parse_ts,
 )
 from query import (
     _extract_ledger_ids,
@@ -122,6 +123,15 @@ class ApprovedDecisionLoadTests(unittest.TestCase):
             self.skipTest("c311 not in local decisions-approved.jsonl")
         self.assertEqual(rec.get("id"), PROTOCOL_FALLBACK_LEDGER_ID)
         self.assertIn("protocol", (rec.get("summary") or "").lower())
+
+
+class ParseTsTests(unittest.TestCase):
+    def test_parse_ts_smoke(self):
+        """Smoke: parse_ts handles both ISO formats and empty input."""
+        self.assertIsNotNone(parse_ts("2026-07-01T12:00:00Z"))
+        self.assertIsNotNone(parse_ts("2026-07-01T12:00:00"))
+        self.assertIsNone(parse_ts(""))
+        self.assertIsNone(parse_ts("not-a-date"))
 
 
 if __name__ == "__main__":
