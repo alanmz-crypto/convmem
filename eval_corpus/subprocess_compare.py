@@ -7,6 +7,7 @@ recorded as plausible misses or 0.0 latency samples.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import statistics
@@ -15,7 +16,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 REPO = Path(__file__).resolve().parent.parent
 WORKER = REPO / "scripts" / "eval_query_arm_worker.py"
@@ -30,6 +31,138 @@ VIEWS = ("embedding_influenced", "operational_pipeline")
 
 class WorkerFailure(RuntimeError):
     """A query worker failed; comparison must stop rather than fake a miss."""
+
+
+EVAL_COLLECTION_NAME = "knowledge_units"
+
+# Provenance keys that must be present and non-empty on every shadow
+# collection in addition to the identity keys checked exactly.
+REQUIRED_PROVENANCE_KEYS = (
+    "convmem:build_manifest_sha256",
+    "convmem:schema_version",
+    "convmem:embed_dimensions",
+)
+
+
+def canonical_id_set_fingerprint(ids: set[str] | list[str]) -> str:
+    """SHA-256 over sorted UTF-8 ids joined by \\n (canonical ID-set hash)."""
+    payload = "\n".join(sorted(str(i) for i in ids)).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def verify_arm_collection_provenance(
+    package_units: list[dict[str, Any]],
+    arms: Mapping[str, tuple[Path, str]],
+    *,
+    collection_name: str = EVAL_COLLECTION_NAME,
+) -> dict[str, Any]:
+    """Read-only gate: both shadow collections must match the approved package.
+
+    Verifies stored ``convmem:*`` collection metadata AND actual contents
+    (row count + exact ID set) against identity recomputed from the package.
+    Stored metadata alone cannot detect an interrupted or partially populated
+    build, because metadata is written before embeddings finish.
+
+    ``arms`` maps arm name -> (chroma_dir, expected embed model tag).
+    Raises ValueError naming the failing key. Never opens a PersistentClient.
+    """
+    from chroma_readonly import collection_config_metadata, collection_ids
+
+    from eval_corpus.fingerprint import corpus_fingerprint_hex, package_sha256_hex
+
+    package_id_list = [str(u.get("id") or "") for u in package_units]
+    if "" in package_id_list:
+        raise ValueError("provenance: package contains a unit without an id")
+    package_ids = set(package_id_list)
+    if len(package_ids) != len(package_id_list):
+        dupes = sorted(
+            {i for i in package_id_list if package_id_list.count(i) > 1}
+        )
+        raise ValueError(f"provenance: duplicate package ids {dupes}")
+
+    expected = {
+        "package_sha256": package_sha256_hex(package_units),
+        "unit_corpus_fingerprint": corpus_fingerprint_hex(package_units),
+        "unit_count": len(package_units),
+        "id_set_fingerprint": canonical_id_set_fingerprint(package_ids),
+    }
+
+    collections: dict[str, dict[str, Any]] = {}
+    for arm, (chroma_dir, model_tag) in arms.items():
+        stored = collection_config_metadata(chroma_dir, collection_name)
+        if not stored:
+            raise ValueError(
+                f"provenance: {arm} collection has missing shadow provenance "
+                f"(no stored metadata) in {chroma_dir}"
+            )
+        for key in REQUIRED_PROVENANCE_KEYS:
+            if not str(stored.get(key) or "").strip():
+                raise ValueError(
+                    f"provenance: {arm} collection missing shadow provenance {key}"
+                )
+        identity_checks = {
+            "convmem:embed_model": str(model_tag),
+            "convmem:package_sha256": expected["package_sha256"],
+            "convmem:unit_corpus_fingerprint": expected["unit_corpus_fingerprint"],
+        }
+        for key, want in identity_checks.items():
+            got = str(stored.get(key) or "")
+            if got != want:
+                raise ValueError(
+                    f"provenance: {arm} {key} mismatch: stored {got!r} "
+                    f"expected {want!r}"
+                )
+        try:
+            stored_count = int(stored.get("convmem:unit_count"))
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"provenance: {arm} convmem:unit_count invalid: "
+                f"{stored.get('convmem:unit_count')!r}"
+            ) from None
+        if stored_count != expected["unit_count"]:
+            raise ValueError(
+                f"provenance: {arm} convmem:unit_count mismatch: stored "
+                f"{stored_count} expected {expected['unit_count']}"
+            )
+        # Actual contents, not just declared metadata.
+        actual_ids = set(collection_ids(chroma_dir, collection_name))
+        if len(actual_ids) != expected["unit_count"]:
+            raise ValueError(
+                f"provenance: {arm} actual row count {len(actual_ids)} != "
+                f"package unit_count {expected['unit_count']} "
+                "(incomplete or over-populated collection)"
+            )
+        if actual_ids != package_ids:
+            missing = sorted(package_ids - actual_ids)[:5]
+            extra = sorted(actual_ids - package_ids)[:5]
+            raise ValueError(
+                f"provenance: {arm} actual id set differs from package: "
+                f"missing={missing} extra={extra}"
+            )
+        collections[arm] = {
+            "stored_metadata": {
+                k: stored.get(k)
+                for k in sorted(stored)
+                if k.startswith("convmem:")
+            },
+            "actual_row_count": len(actual_ids),
+            "actual_id_set_fingerprint": canonical_id_set_fingerprint(actual_ids),
+        }
+
+    arm_names = list(arms)
+    if len(arm_names) == 2:
+        a, b = arm_names
+        for key in ("convmem:package_sha256", "convmem:unit_corpus_fingerprint", "convmem:unit_count"):
+            if collections[a]["stored_metadata"].get(key) != collections[b][
+                "stored_metadata"
+            ].get(key):
+                raise ValueError(
+                    f"provenance: arms disagree on {key}: "
+                    f"{a}={collections[a]['stored_metadata'].get(key)!r} "
+                    f"{b}={collections[b]['stored_metadata'].get(key)!r}"
+                )
+
+    return {**expected, "collections": collections}
 
 
 @dataclass

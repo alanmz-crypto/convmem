@@ -794,6 +794,25 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                     report["arm_identity"]["challenger"]["config_sha256"],
                 )
 
+                # Provenance block: recomputed identity + per-arm contents.
+                prov = report["provenance"]
+                self.assertEqual(prov["unit_count"], 3)
+                self.assertEqual(len(prov["package_sha256"]), 64)
+                self.assertEqual(len(prov["unit_corpus_fingerprint"]), 64)
+                self.assertIsNone(prov["approved_manifest_body_sha256"])
+                self.assertIsNone(prov["run_manifest_file_sha256"])
+                self.assertIsNone(prov["build_result_sha256"])
+                for arm in ("baseline", "challenger"):
+                    coll = prov["collections"][arm]
+                    self.assertEqual(coll["actual_row_count"], 3)
+                    self.assertEqual(
+                        coll["actual_id_set_fingerprint"],
+                        prov["package_id_set_fingerprint"],
+                    )
+                    self.assertEqual(
+                        coll["stored_metadata"]["convmem:embed_model"], "fake-embed"
+                    )
+
                 # Fallback sentinel returned and recorded.
                 self.assertTrue(report["fallback_exercised"])
                 self.assertEqual(
@@ -818,13 +837,18 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                 stop_fake_embed_server(wrong_srv)
 
     def test_worker_failure_stops_comparison(self):
-        """A broken arm must abort the compare, not fabricate misses."""
+        """A broken arm must abort the compare, not fabricate misses.
+
+        The challenger store passes the read-only provenance gate, but its
+        config carries a non-integer query.top_k_candidates, so query_units
+        crashes inside the worker after provenance passed — the compare must
+        exit 5, not report empty hits.
+        """
         from eval_corpus.embed_adapters import (
             start_fake_embed_server,
             stop_fake_embed_server,
         )
         from eval_corpus.reconstruct import build_canonical_unit
-        from eval_corpus.shadow_config import generate_shadow_config
 
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -857,16 +881,22 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                     embed_host=url,
                     live_cfg=live_cfg,
                 )
-                # Challenger's chroma_dir is a regular file: worker must crash.
-                broken_chroma = root / "challenger" / "chroma"
-                broken_chroma.parent.mkdir(parents=True)
-                broken_chroma.write_text("not a directory\n", encoding="utf-8")
-                c_cfg, _v = generate_shadow_config(
+                c_chroma, c_cfg = _build_arm(
+                    arm_dir=root / "challenger",
+                    units=units,
+                    embed_host=url,
                     live_cfg=live_cfg,
-                    out_dir=root / "challenger" / "cfg",
-                    chroma_dir=broken_chroma,
-                    embed_model="fake-embed",
-                    ollama_host=url,
+                )
+                # Poison the challenger worker config (parses fine; identity
+                # checks pass; query_units crashes on int("bogus")).
+                text = c_cfg.read_text(encoding="utf-8")
+                self.assertIn("rerank = false", text)
+                c_cfg.write_text(
+                    text.replace(
+                        "rerank = false",
+                        'rerank = false\ntop_k_candidates = "bogus"',
+                    ),
+                    encoding="utf-8",
                 )
                 for arm_dir in (root / "baseline", root / "challenger"):
                     (arm_dir / "decisions-approved.jsonl").write_text(
@@ -906,7 +936,7 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                         "--baseline-chroma",
                         str(b_chroma),
                         "--challenger-chroma",
-                        str(broken_chroma),
+                        str(c_chroma),
                         "--baseline-config",
                         str(b_cfg),
                         "--challenger-config",
@@ -1014,6 +1044,278 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                 self.assertFalse(out.exists())
             finally:
                 stop_fake_embed_server(srv)
+
+
+class CollectionProvenanceGateTests(unittest.TestCase):
+    """Codex final gate: compare must verify both shadow collections against
+    the approved package — stored metadata AND actual contents — before any
+    worker starts. Each tamper flips exactly one field so the failing guard
+    is unambiguous."""
+
+    COLLECTION = "knowledge_units"
+
+    def _tamper(self, chroma_dir: Path, sql: str, params: tuple = ()) -> None:
+        import sqlite3
+
+        conn = sqlite3.connect(chroma_dir / "chroma.sqlite3")
+        try:
+            conn.execute(sql, params)
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _run_compare(self, ctx: dict) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [
+                sys.executable,
+                str(REPO / "scripts/eval_embed_compare.py"),
+                "--authorize-fixture",
+                "--mode",
+                "subprocess",
+                "--skip-latency",
+                "--golden",
+                str(ctx["golden"]),
+                "--package",
+                str(ctx["package"]),
+                "--out",
+                str(ctx["out"]),
+                "--baseline-chroma",
+                str(ctx["arms"]["baseline"][0]),
+                "--challenger-chroma",
+                str(ctx["arms"]["challenger"][0]),
+                "--baseline-config",
+                str(ctx["arms"]["baseline"][1]),
+                "--challenger-config",
+                str(ctx["arms"]["challenger"][1]),
+                "--embed-host",
+                ctx["url"],
+            ],
+            cwd=str(REPO),
+            capture_output=True,
+            text=True,
+        )
+
+    def _setup_valid_pair(self, root: Path, url: str) -> dict:
+        from eval_corpus.reconstruct import build_canonical_unit
+
+        units = [
+            build_canonical_unit(
+                {
+                    "id": f"ord_prov_{i}",
+                    "summary": f"provenance unit {i} widgets",
+                    "keywords": ["widgets", f"p{i}"],
+                    "tool": "t",
+                    "source_path": "site:x",
+                }
+            )
+            for i in (1, 2)
+        ]
+        live_cfg = {
+            "index": {"chroma_dir": str(root / "dead")},
+            "models": {
+                "embed_model": "x",
+                "ollama_host": "http://127.0.0.1:1",
+                "rerank_model": "x",
+            },
+            "query": {"rerank": False},
+            "eval": {},
+        }
+        arms = {}
+        for arm in ("baseline", "challenger"):
+            arms[arm] = _build_arm(
+                arm_dir=root / arm,
+                units=units,
+                embed_host=url,
+                live_cfg=live_cfg,
+            )
+            (root / arm / "decisions-approved.jsonl").write_text("", encoding="utf-8")
+        golden = root / "golden.jsonl"
+        golden.write_text(
+            json.dumps(
+                {
+                    "query": "provenance widgets",
+                    "relevant": [{"id": "ord_prov_1", "namespace": "unit_id"}],
+                    "recipe_stratum": "ordinary",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        package = root / "package.jsonl"
+        package.write_text(
+            "\n".join(json.dumps(u) for u in units) + "\n", encoding="utf-8"
+        )
+        return {
+            "units": units,
+            "arms": arms,
+            "golden": golden,
+            "package": package,
+            "out": root / "compare.json",
+            "url": url,
+            "live_cfg": live_cfg,
+        }
+
+    def test_isolated_provenance_mismatches_refuse(self):
+        from eval_corpus.embed_adapters import (
+            start_fake_embed_server,
+            stop_fake_embed_server,
+        )
+
+        srv, url, _t, _s = start_fake_embed_server(dimensions=8)
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                ctx = self._setup_valid_pair(root, url)
+                c_chroma = ctx["arms"]["challenger"][0]
+                pristine = root / "challenger_chroma_pristine"
+                shutil.copytree(c_chroma, pristine)
+
+                meta_update = (
+                    "UPDATE collection_metadata SET str_value=? "
+                    "WHERE key=? AND collection_id IN "
+                    "(SELECT id FROM collections WHERE name=?)"
+                )
+                content_row_subquery = (
+                    "SELECT e.id FROM embeddings e "
+                    "JOIN segments s ON e.segment_id=s.id "
+                    "JOIN collections c ON s.collection=c.id "
+                    "WHERE c.name=? AND s.scope='METADATA' AND e.embedding_id=?"
+                )
+                cases = [
+                    (
+                        "fingerprint_only",
+                        meta_update,
+                        ("0" * 64, "convmem:unit_corpus_fingerprint", self.COLLECTION),
+                        "convmem:unit_corpus_fingerprint",
+                    ),
+                    (
+                        "package_sha_only",
+                        meta_update,
+                        ("1" * 64, "convmem:package_sha256", self.COLLECTION),
+                        "convmem:package_sha256",
+                    ),
+                    (
+                        "model_only",
+                        meta_update,
+                        ("other-model", "convmem:embed_model", self.COLLECTION),
+                        "convmem:embed_model",
+                    ),
+                    (
+                        "unit_count_only",
+                        "UPDATE collection_metadata SET int_value=99, str_value=NULL "
+                        "WHERE key='convmem:unit_count' AND collection_id IN "
+                        "(SELECT id FROM collections WHERE name=?)",
+                        (self.COLLECTION,),
+                        "convmem:unit_count",
+                    ),
+                    (
+                        "missing_provenance",
+                        "DELETE FROM collection_metadata "
+                        "WHERE key LIKE 'convmem:%' AND collection_id IN "
+                        "(SELECT id FROM collections WHERE name=?)",
+                        (self.COLLECTION,),
+                        "missing shadow provenance",
+                    ),
+                    (
+                        "incomplete_collection_correct_metadata",
+                        f"DELETE FROM embeddings WHERE id IN ({content_row_subquery})",
+                        (self.COLLECTION, "ord_prov_2"),
+                        "actual row count",
+                    ),
+                    (
+                        "substituted_id_same_count",
+                        "UPDATE embeddings SET embedding_id='ord_SUBSTITUTED' "
+                        f"WHERE id IN ({content_row_subquery})",
+                        (self.COLLECTION, "ord_prov_2"),
+                        "actual id set",
+                    ),
+                ]
+                for name, sql, params, expect in cases:
+                    with self.subTest(case=name):
+                        shutil.rmtree(c_chroma)
+                        shutil.copytree(pristine, c_chroma)
+                        self._tamper(c_chroma, sql, params)
+                        proc = self._run_compare(ctx)
+                        self.assertEqual(proc.returncode, 2, proc.stderr)
+                        self.assertIn("provenance", proc.stderr)
+                        self.assertIn(expect, proc.stderr)
+                        self.assertFalse(ctx["out"].exists())
+
+                # Untampered control: restore and confirm the pair still passes
+                # the gate (refutes "gate always refuses").
+                shutil.rmtree(c_chroma)
+                shutil.copytree(pristine, c_chroma)
+                proc = self._run_compare(ctx)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertTrue(ctx["out"].exists())
+        finally:
+            stop_fake_embed_server(srv)
+
+    def test_composite_different_corpus_refused(self):
+        """Challenger built from a different unit set (composite mismatch)."""
+        from eval_corpus.embed_adapters import (
+            start_fake_embed_server,
+            stop_fake_embed_server,
+        )
+        from eval_corpus.reconstruct import build_canonical_unit
+
+        srv, url, _t, _s = start_fake_embed_server(dimensions=8)
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                ctx = self._setup_valid_pair(root, url)
+                other_units = [
+                    build_canonical_unit(
+                        {
+                            "id": "ord_other_1",
+                            "summary": "a different corpus entirely",
+                            "keywords": ["other"],
+                            "tool": "t",
+                            "source_path": "site:y",
+                        }
+                    )
+                ]
+                # Fresh directory: chromadb caches PersistentClient state per
+                # path in-process, so rebuilding under the same path would
+                # trip the resume guard instead of the compare gate.
+                ctx["arms"]["challenger"] = _build_arm(
+                    arm_dir=root / "challenger_other",
+                    units=other_units,
+                    embed_host=url,
+                    live_cfg=ctx["live_cfg"],
+                )
+                (root / "challenger_other" / "decisions-approved.jsonl").write_text(
+                    "", encoding="utf-8"
+                )
+                proc = self._run_compare(ctx)
+                self.assertEqual(proc.returncode, 2, proc.stderr)
+                self.assertIn("provenance", proc.stderr)
+                self.assertFalse(ctx["out"].exists())
+        finally:
+            stop_fake_embed_server(srv)
+
+    def test_duplicate_package_ids_refused(self):
+        from eval_corpus.embed_adapters import (
+            start_fake_embed_server,
+            stop_fake_embed_server,
+        )
+
+        srv, url, _t, _s = start_fake_embed_server(dimensions=8)
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                ctx = self._setup_valid_pair(root, url)
+                dup = ctx["units"][0]
+                ctx["package"].write_text(
+                    "\n".join(json.dumps(u) for u in [*ctx["units"], dup]) + "\n",
+                    encoding="utf-8",
+                )
+                proc = self._run_compare(ctx)
+                self.assertEqual(proc.returncode, 2, proc.stderr)
+                self.assertIn("duplicate package ids", proc.stderr)
+                self.assertFalse(ctx["out"].exists())
+        finally:
+            stop_fake_embed_server(srv)
 
 
 class RealManifestCompareTests(unittest.TestCase):
@@ -1183,6 +1485,25 @@ class RealManifestCompareTests(unittest.TestCase):
                     )
                     self.assertEqual(
                         tp[f"{arm}_units_per_sec"], build_result["units_per_sec"]
+                    )
+                prov = report["provenance"]
+                self.assertEqual(prov["unit_count"], 1)
+                self.assertEqual(
+                    prov["approved_manifest_body_sha256"],
+                    json.loads(man_skip_ok.read_text(encoding="utf-8"))[
+                        "ryan_approved_manifest_sha256"
+                    ],
+                )
+                self.assertEqual(
+                    prov["run_manifest_file_sha256"], sha256_file(man_skip_ok)
+                )
+                for arm in ("baseline", "challenger"):
+                    self.assertEqual(
+                        prov["build_result_sha256"][arm],
+                        sha256_file(root / arm / "result.json"),
+                    )
+                    self.assertEqual(
+                        prov["collections"][arm]["actual_row_count"], 1
                     )
                 out.unlink()
 

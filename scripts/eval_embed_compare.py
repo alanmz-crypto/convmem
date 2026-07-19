@@ -249,10 +249,33 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Refusing compare: {exc}", file=sys.stderr)
         return 2
 
+    rows = _load_jsonl(golden)
+    package_units = _load_jsonl(package)
+
+    # Collection provenance gate: both shadow stores must have been built
+    # from the approved package (stored metadata AND actual contents).
+    # Runs before any embed endpoint contact or query worker start.
+    provenance = None
+    if args.mode == "subprocess":
+        from eval_corpus.subprocess_compare import verify_arm_collection_provenance
+
+        try:
+            provenance = verify_arm_collection_provenance(
+                package_units,
+                {
+                    "baseline": (baseline_chroma, baseline_id["model_tag"]),
+                    "challenger": (challenger_chroma, challenger_id["model_tag"]),
+                },
+            )
+        except (ValueError, FileNotFoundError) as exc:
+            print(f"Refusing compare: {exc}", file=sys.stderr)
+            return 2
+
     # Real mode: every evidence-affecting control must be bound by the
     # externally approved manifest — nothing is a free CLI choice.
     baseline_ups = args.baseline_units_per_sec
     challenger_ups = args.challenger_units_per_sec
+    build_result_sha256: dict[str, str] = {}
     if auth.execution_mode == "real":
         try:
             if args.scores_json is not None:
@@ -278,11 +301,31 @@ def main(argv: list[str] | None = None) -> int:
                 if not result_file.is_file():
                     raise ValueError(f"{key} missing: {result_file}")
                 data = json.loads(result_file.read_text(encoding="utf-8"))
+                if str(data.get("status")) != "OK":
+                    raise ValueError(f"{key} status is not OK: {data.get('status')!r}")
                 value = data.get("units_per_sec")
                 if not isinstance(value, (int, float)) or value <= 0:
                     raise ValueError(
                         f"{key} lacks a positive units_per_sec: {value!r}"
                     )
+                # Build-result identity must match the corresponding verified
+                # collection (which the provenance gate tied to the package).
+                assert provenance is not None  # real mode is subprocess-only
+                arm_ident = baseline_id if arm == "baseline" else challenger_id
+                build_checks = {
+                    "embed_model": arm_ident["model_tag"],
+                    "package_sha256": provenance["package_sha256"],
+                    "unit_corpus_fingerprint": provenance["unit_corpus_fingerprint"],
+                    "unit_count": provenance["unit_count"],
+                }
+                for field, want in build_checks.items():
+                    got = data.get(field)
+                    if str(got) != str(want):
+                        raise ValueError(
+                            f"{key} {field} mismatch vs verified collection: "
+                            f"build={got!r} expected={want!r}"
+                        )
+                build_result_sha256[arm] = _sha_file(result_file)
                 ups[arm] = float(value)
             baseline_ups = ups["baseline"]
             challenger_ups = ups["challenger"]
@@ -322,9 +365,6 @@ def main(argv: list[str] | None = None) -> int:
     for k in DEFAULT_UNCERTAINTY:
         if k in auth.manifest:
             uncertainty[k] = auth.manifest[k]
-
-    rows = _load_jsonl(golden)
-    package_units = _load_jsonl(package)
 
     if args.mode == "injectable":
         if not args.scores_json:
@@ -511,6 +551,24 @@ def main(argv: list[str] | None = None) -> int:
             report["fallback_exercised"] = False
             report["fallback"] = {"status": "not_requested"}
 
+    if provenance is not None:
+        report["provenance"] = {
+            "query_set_sha256": runtime["query_set_sha256"],
+            "package_sha256": provenance["package_sha256"],
+            "unit_corpus_fingerprint": provenance["unit_corpus_fingerprint"],
+            "unit_count": provenance["unit_count"],
+            "package_id_set_fingerprint": provenance["id_set_fingerprint"],
+            "collections": provenance["collections"],
+            "approved_manifest_body_sha256": auth.manifest.get(
+                "ryan_approved_manifest_sha256"
+            ),
+            "run_manifest_file_sha256": (
+                _sha_file(args.run_manifest.expanduser())
+                if args.run_manifest
+                else None
+            ),
+            "build_result_sha256": build_result_sha256 or None,
+        }
     report["run_manifest_execution_mode"] = auth.execution_mode
     report["compare_mode"] = args.mode
     report["not_promotion_authority"] = True
