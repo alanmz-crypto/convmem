@@ -330,18 +330,18 @@ autonomy for routine convmem tasks only. Verification must demonstrate:
 WordPress requires its own later supervised practice-site probation with a
 verified DB backup before mutation. Convmem PASS never substitutes for it.
 
-## Stage 4 — deferred context compression
+## Stage 4 — context compression — CLOSED
 
-Do not implement compact `brief` or standing-context changes in this execution
-arc. First collect real provider telemetry from at least six comparable tasks.
-If input context dominates cost, create a separate architecture plan that reuses
-the existing `brief.py` gather/render boundary and preserves all safety rules.
+Do not implement compact `brief` or further standing-context changes under this
+parent arc. Stage 4 ran as a separate plan:
 
-**Status (2026-07-19):** Telemetry gate PASS (6 Crush / DeepSeek V4 Flash tasks,
-~99.7% input). Draft direction (awaiting HITL):
 [`ARCHITECTURE-stage4-context-compression.md`](ARCHITECTURE-stage4-context-compression.md)
 · [`EXECUTION-stage4-context-compression.md`](EXECUTION-stage4-context-compression.md).
-No compact brief or Crush config change until that HITL accept.
+
+**Status (2026-07-19, Ryan):** **CLOSED.** Crush builder digests demoted to
+on-demand (PR #46 / `bd037b8`). Post-demotion telemetry mean ~103.5k prompt
+(~8% vs ~112.4k pre); input still ~99.8%. Residual (~100k) is
+tools/history/protocol — chase only in a **new** arc with its own baseline.
 
 ## Completion criteria
 
