@@ -14,10 +14,10 @@ Authority:    Architecture ACCEPT (Kiro 2026-07-19, approach A locked).
 **Plan branch:** `plan/2026-07-19-stage4-context-compression`
 **Worktree:** `~/Projects/convmem-wt-stage4-context-compression`
 
-## Do not start Task 1 until
+## Do not start Task 2 until
 
-Ryan authorizes Task 1 (Crush filesystem + `global_context_paths` edit). Architecture
-direction is accepted; this file is the locked task shape.
+Task 1 is shipped on `feat/2026-07-19-crush-digest-demotion` (runtime Crush
+config updated 2026-07-19). Run post-demotion telemetry next.
 
 ## Accepted gates (from architecture draft)
 

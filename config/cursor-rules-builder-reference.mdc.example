@@ -18,7 +18,7 @@ architecture, retrieval, or debugging workflow.
 - F1 refine job queue, tombstones, ledger/Chroma replication
 - adding or modifying automated checks, fitness functions, or threshold gates
 
-## Tier A (deployed — Crush standing context)
+## Tier A (on-demand — Cursor pointer / Crush builder-reference/)
 
 - `docs/builder-reference/ousterhout-builder-digest.md`
 - `docs/builder-reference/manning-builder-digest.md`
