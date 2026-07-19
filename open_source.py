@@ -130,6 +130,49 @@ def resolve_open_target(meta: dict) -> OpenTarget:
             ),
         )
 
+    if tool == "copilot" or (
+        ".copilot" in p.parts and p.name == "events.jsonl"
+    ):
+        from adapters.copilot_session_jsonl import read_session_meta
+
+        copilot_meta = read_session_meta(path) if path else {}
+        sid = (
+            session_id
+            or copilot_meta.get("session_id")
+            or (p.parent.name if p.name == "events.jsonl" else "")
+        )
+        workspace = (
+            meta.get("workspace_directory")
+            or copilot_meta.get("workspace_directory")
+            or ""
+        )
+        title = copilot_meta.get("title") or ""
+        if sid and _which("copilot"):
+            cmd = ["copilot", "--resume", sid]
+            hint = f"copilot --resume {sid}"
+            if title:
+                hint += f"  (session: {title})"
+            if workspace:
+                hint += f"  cwd hint: {workspace}"
+            return OpenTarget(
+                label="Copilot CLI session",
+                command=cmd,
+                hint=hint,
+                cwd=workspace if workspace and os.path.isdir(workspace) else None,
+            )
+        parts = ["copilot --resume <session-id>"]
+        if sid:
+            parts = [f"copilot --resume {sid}"]
+        if title:
+            parts.append(f"  (session: {title})")
+        if workspace:
+            parts.append(f"  cwd hint: {workspace}")
+        return OpenTarget(
+            label="Copilot CLI transcript",
+            hint="".join(parts),
+            cwd=workspace if workspace and os.path.isdir(workspace) else None,
+        )
+
     if tool == "cursor" or "agent-transcripts" in p.parts or (
         p.name == "store.db" and "cursor" in p.parts
     ):

@@ -12,7 +12,7 @@ from the repo**, and what needs a **separate data backup**.
 |------|----------|----------|------------|
 | **1 — Corpus** | `~/.local/share/convmem/` | Restore from your **data backup** or full reindex (slow) | **Blocks** shell delete/move/truncate |
 | **2 — Runtime config** | `~/.config/convmem/` | Copy examples below; re-enter API key | **Blocks** shell delete/move/truncate |
-| **3 — Wiring + source** | `~/Projects/convmem`, `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, `~/.kiro/settings/permissions.yaml`, `~/.config/crush/crush.json`, Continue YAML | Restore project backup or git; copy MCP/permissions examples | **Not blocked** — edits encouraged |
+| **3 — Wiring + source** | `~/Projects/convmem`, `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, `~/.kiro/settings/permissions.yaml`, `~/.config/crush/crush.json`, `~/.copilot/mcp-config.json`, `~/.copilot/agents/`, Continue YAML | Restore project backup or git; copy MCP/permissions examples | **Not blocked** — edits encouraged |
 
 **Not in the Git repo:** Tier 1 (`chroma/`, `processed.json`, `knowledge_units.jsonl`,
 `decisions-approved.jsonl`, `attempts.jsonl` (optional), etc.). Include `~/.local/share/convmem/` in backups if you want
@@ -103,20 +103,25 @@ cp ~/Projects/convmem/config/continue-mcp.json.example ~/.continue/mcpServers/co
 # Add mcpServers block from config/continue-mcp-servers.yaml.example to ~/.continue/config.yaml
 # Tier-A agent models: merge config/continue-models-tier-a.example.yaml under models:
 
+# 5b. Copilot CLI MCP (if installed)
+mkdir -p ~/.copilot/agents
+cp ~/Projects/convmem/config/copilot-mcp-config.json.example ~/.copilot/mcp-config.json
+# Agent protocol also deploys ~/.copilot/agents/convmem.md
+
 # 6. Systemd (optional always-on)
 cp ~/Projects/convmem/systemd/convmem-watch.service.example ~/.config/systemd/user/convmem-watch.service
 cp ~/Projects/convmem/systemd/convmem-refine.service.example ~/.config/systemd/user/convmem-refine.service
 systemctl --user daemon-reload
 systemctl --user enable --now convmem-watch.service convmem-refine.service
 
-# 7. Deploy agent protocol surfaces (Cursor .mdc, Codex AGENTS.md, Kiro steering + MCP + permissions.yaml, Crush)
+# 7. Deploy agent protocol surfaces (Cursor .mdc, Codex AGENTS.md, Kiro steering + MCP + permissions.yaml, Crush, Copilot)
 bash ~/Projects/convmem/scripts/deploy-agent-protocol.sh
 # Kiro: enable MCP in Settings after deploy (see script manual steps)
 
 # 8. Verify
 convmem stats
 ~/Projects/convmem/scripts/verify-continue.sh
-# Restart Cursor / Continue / Kiro after MCP config changes
+# Restart Cursor / Continue / Kiro / Copilot after MCP config changes
 # After mcp_server.py updates: bash scripts/restart-convmem-mcp.sh (kills stale stdio subprocesses)
 ```
 
@@ -164,7 +169,7 @@ If Chroma itself is corrupt, restore from Restic (above) before reindexing.
 
 - Any file under `~/Projects/convmem/` (code, tests, docs)
 - `mcp_server.py`, `watch.py`, `brief.py`, etc.
-- `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, and Continue `mcpServers` (MCP wiring)
+- `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, `~/.copilot/mcp-config.json`, and Continue `mcpServers` (MCP wiring)
 - `~/.config/convmem/config.toml` (paths, models)
 
 ## What needs Ryan (hook blocks shell destruction)

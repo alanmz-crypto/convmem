@@ -20,7 +20,7 @@ This doc covers **two** distinct close types. Know which one you're in.
    ```bash
    convmem index --file <session-transcript-path>
    ```
-   Use the path for your surface (Kiro: `~/.kiro/sessions/…/messages.jsonl`, Crush: `.crush/crush.db`, Cursor: agent transcript `.jsonl`, Codex: rollout `.jsonl`).
+   Use the path for your surface (Kiro: `~/.kiro/sessions/…/messages.jsonl`, Crush: `.crush/crush.db`, Cursor: agent transcript `.jsonl`, Codex: rollout `.jsonl`, Copilot CLI: `~/.copilot/session-state/…/events.jsonl`).
 5. **If you wrote a `logs/*.md` file** (only if Ryan asked), also run Track B sync script.
 6. **Do NOT** output a `convmem record` block, create new markdown files, or propose decisions.
 
@@ -133,6 +133,7 @@ Do not hide the main topic in rationale only.
 | **Kiro** | `kiro-session` | `kiro-review` | design / protocol / watch direction |
 | **Cursor** | `cursor-session` | `ryan` | **`convmem repo`** if that was the session |
 | **Codex** | `codex-session` | `ryan` | change-feed / shell lane |
+| **Copilot CLI** | `copilot-session` | `ryan` | shell + MCP lane |
 | **DeepSeek** | `deepseek-session` | `ryan` | synthesis / OOM needles |
 | **Continue** | `continue-session` | `ryan` | MCP read / verify |
 | **Crush** | `crush-session` | `ryan` | runtime MCP / automation |

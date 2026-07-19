@@ -7,6 +7,7 @@
 #   config/cursor-rules-convmem.mdc.example  — Cursor global-always rule
 #   config/codex-agents-convmem.example.md   — Codex global AGENTS.md
 #   config/kiro-steering-convmem.example.md  — Kiro steering file
+#   config/copilot-agents-convmem.example.md — Copilot CLI user agent (~/.copilot/agents)
 #   docs/chatgpt-pack/custom-instructions.txt — ChatGPT paste-only pack
 #
 # Run: bash scripts/generate-agent-protocol.sh
@@ -241,6 +242,51 @@ FRONTMATTER
   extract_section WORKFLOW_ROUTING
 } >> config/kiro-steering-convmem.example.md
 echo "  -> config/kiro-steering-convmem.example.md"
+
+# --- Copilot CLI custom agent (~/.copilot/agents/convmem.md) ---
+cat > config/copilot-agents-convmem.example.md << 'FRONTMATTER'
+---
+name: convmem
+description: Session-start convmem protocol for GitHub Copilot CLI (shell + MCP).
+target: github-copilot
+---
+
+FRONTMATTER
+{
+  echo "# convmem — Local knowledge corpus"
+  echo ""
+  echo "You have **shell** (\`convmem\` CLI) and **MCP** (convmem tools via \`~/.copilot/mcp-config.json\`) on this machine."
+  echo ""
+  echo "**Before answering anything** (including directory listing, git, or docker):"
+  echo ""
+  extract_section TIER_A
+  echo ""
+  echo "## After Tier A — MCP tools (do not repeat brief)"
+  echo ""
+  extract_section MCP_AFTER_TIER_A
+  echo ""
+  echo "## Session close"
+  echo ""
+  extract_section SESSION_CLOSE
+  echo ""
+  echo "## Copilot CLI — handoff vs record"
+  echo ""
+  echo "- Handoff / **ingest your chat** → \`convmem index --file\` on **this session's** \`~/.copilot/session-state/<uuid>/events.jsonl\` (Track A). **No record block** unless Ryan asks."
+  echo "- Do **not** create new markdown logs unless Ryan requested a file."
+  echo "- \`convmem record\` **only** when Ryan says **record block**, **closing**, or **end session**."
+  echo "- Resume hint: \`copilot --resume <session-id>\`."
+  echo ""
+  extract_section TEAM_CHARTER
+  echo ""
+  echo "## Bounded autonomy"
+  echo ""
+  extract_section BOUNDED_AUTONOMY
+  echo ""
+  echo "## Workflow routing (when unsure)"
+  echo ""
+  extract_section WORKFLOW_ROUTING
+} >> config/copilot-agents-convmem.example.md
+echo "  -> config/copilot-agents-convmem.example.md"
 
 # --- ChatGPT paste-only pack ---
 {
