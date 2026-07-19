@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
             capture_dir=args.capture_dir,
             chroma_dir=args.chroma_dir,
         )
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         print(f"Refusing capture: {exc}", file=sys.stderr)
         return 2
 

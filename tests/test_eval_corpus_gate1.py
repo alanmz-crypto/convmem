@@ -1,4 +1,6 @@
 """Gate 1: capture/adjudication, provenance, methodology, adversarial guards."""
+# pylint: disable=duplicate-code
+
 
 from __future__ import annotations
 
@@ -330,6 +332,7 @@ class CompareCLISmokeTests(unittest.TestCase):
                 cwd=str(REPO),
                 capture_output=True,
                 text=True,
+                check=False,
             )
             self.assertEqual(proc.returncode, 0, proc.stderr)
             report = json.loads(out.read_text())
@@ -356,6 +359,7 @@ class CaptureCLISmokeTests(unittest.TestCase):
             cwd=str(REPO),
             capture_output=True,
             text=True,
+            check=False,
         )
         self.assertEqual(proc.returncode, 2)
 

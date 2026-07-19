@@ -83,10 +83,10 @@ class FakeEmbedServerState:
 
 def _make_handler(state: FakeEmbedServerState) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
-        def log_message(self, fmt: str, *args) -> None:  # noqa: A003
+        def log_message(self, format, *args):  # pylint: disable=redefined-builtin
             return
 
-        def do_POST(self) -> None:  # noqa: N802
+        def do_POST(self) -> None:  # pylint: disable=invalid-name
             length = int(self.headers.get("Content-Length") or 0)
             raw = self.rfile.read(length)
             try:

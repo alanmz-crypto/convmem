@@ -9,6 +9,9 @@ Subprocess mode fails closed: worker errors, identity mismatches, or a
 requested-but-unproven fallback abort the comparison with a nonzero exit.
 """
 
+# pylint: disable=duplicate-code  # shares small JSONL loader with eval-summaries
+
+
 from __future__ import annotations
 
 import argparse
@@ -98,7 +101,9 @@ def _check_fallback_config_matches_arm(fallback_config: Path, arm_config: Path) 
         )
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-many-locals,too-many-statements
+    argv: list[str] | None = None,
+) -> int:
     parser = argparse.ArgumentParser(description="Eval embed paired compare")
     parser.add_argument("--authorize-fixture", action="store_true")
     parser.add_argument("--run-manifest", type=Path, default=None)
@@ -245,7 +250,7 @@ def main(argv: list[str] | None = None) -> int:
             run_manifest_path=args.run_manifest,
             runtime=runtime,
         )
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         print(f"Refusing compare: {exc}", file=sys.stderr)
         return 2
 
@@ -376,6 +381,7 @@ def main(argv: list[str] | None = None) -> int:
             table = scores[arm]
 
             def _fn(query, *, top_k, eval_view):
+                _ = eval_view
                 hits = list(table.get(query) or [])
                 return hits[:top_k]
 

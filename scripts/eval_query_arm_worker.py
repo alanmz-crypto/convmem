@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             hits = _run_query(q, top_k, view)
             err = None
-        except Exception as exc:  # noqa: BLE001 — surface to parent
+        except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001 — surface to parent
             hits = []
             err = str(exc)
         elapsed_ms = (time.perf_counter() - t0) * 1000.0

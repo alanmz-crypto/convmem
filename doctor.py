@@ -1215,7 +1215,7 @@ def _check_embed_collection_identity(cfg: dict) -> DoctorCheck:
             f"WARN: cannot read collection metadata (no embed probe): {exc}",
             status="warn",
         )
-    except Exception as exc:
+    except (OSError, ValueError, RuntimeError) as exc:
         # Unreadable store / schema surprises: non-destructive warn (legacy / empty lab)
         return DoctorCheck(
             name,

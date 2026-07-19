@@ -1,4 +1,6 @@
 """Phase A / Gate 1 hermetic tests updated for Chroma-required capture + run-manifest auth."""
+# pylint: disable=duplicate-code
+
 
 from __future__ import annotations
 
@@ -122,6 +124,7 @@ class CaptureCLISmokeTests(unittest.TestCase):
             cwd=str(REPO),
             capture_output=True,
             text=True,
+            check=False,
         )
         self.assertEqual(proc.returncode, 2)
         self.assertIn("authorize-fixture", proc.stderr)
@@ -165,6 +168,7 @@ class CaptureCLISmokeTests(unittest.TestCase):
                 cwd=str(REPO),
                 capture_output=True,
                 text=True,
+                check=False,
             )
             self.assertEqual(proc.returncode, 1, proc.stderr)
             self.assertEqual(json.loads(proc.stdout)["status"], "UNRESOLVED")
@@ -288,6 +292,7 @@ class ShadowOrchestrationTests(unittest.TestCase):
                 cwd=str(REPO),
                 capture_output=True,
                 text=True,
+                check=False,
             )
             self.assertEqual(proc.returncode, 2)
             proc2 = subprocess.run(
@@ -309,6 +314,7 @@ class ShadowOrchestrationTests(unittest.TestCase):
                 cwd=str(REPO),
                 capture_output=True,
                 text=True,
+                check=False,
             )
             self.assertEqual(proc2.returncode, 0, proc2.stderr)
 

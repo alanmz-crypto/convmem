@@ -282,7 +282,7 @@ def _append_journal(path: Path, record: dict[str, Any]) -> None:
         os.fsync(f.fileno())
 
 
-def run_shadow_build(
+def run_shadow_build(  # pylint: disable=too-many-arguments,too-many-locals
     *,
     units: list[dict],
     chroma_dir: Path | str,

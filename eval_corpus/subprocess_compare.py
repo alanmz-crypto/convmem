@@ -297,7 +297,7 @@ def start_latency_worker(
     expected_identity: dict[str, Any] | None = None,
 ) -> WorkerHandle:
     t0 = time.perf_counter()
-    proc = subprocess.Popen(
+    proc = subprocess.Popen(  # pylint: disable=consider-using-with
         [sys.executable, str(WORKER), "--mode", "serve"],
         cwd=str(REPO),
         env=_env_with_config(config_path),

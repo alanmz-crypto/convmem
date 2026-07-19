@@ -11,6 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+# pylint: disable=too-many-lines,too-many-locals,duplicate-code
 REPO = Path(__file__).resolve().parent.parent
 
 
@@ -598,7 +599,7 @@ def _build_arm(
         embed_model="fake-embed",
         ollama_host=embed_host,
     )
-    assert violations == []
+    assert not violations
     return chroma, cfg
 
 
@@ -757,7 +758,7 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                     str(fb_cfg),
                 ]
                 proc = subprocess.run(
-                    argv, cwd=str(REPO), capture_output=True, text=True
+                    argv, cwd=str(REPO), capture_output=True, text=True, check=False
                 )
                 self.assertEqual(proc.returncode, 0, proc.stderr)
                 report = json.loads(out.read_text(encoding="utf-8"))
@@ -947,6 +948,7 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                     cwd=str(REPO),
                     capture_output=True,
                     text=True,
+                    check=False,
                 )
                 self.assertEqual(proc.returncode, 5, proc.stderr)
                 self.assertIn("fail closed", proc.stderr)
@@ -1038,6 +1040,7 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                     cwd=str(REPO),
                     capture_output=True,
                     text=True,
+                    check=False,
                 )
                 self.assertEqual(proc.returncode, 2, proc.stderr)
                 self.assertIn("embed host", proc.stderr)
@@ -1093,6 +1096,7 @@ class CollectionProvenanceGateTests(unittest.TestCase):
             cwd=str(REPO),
             capture_output=True,
             text=True,
+            check=False,
         )
 
     def _setup_valid_pair(self, root: Path, url: str) -> dict:
@@ -1429,18 +1433,18 @@ class RealManifestCompareTests(unittest.TestCase):
                     "baseline_build_result": str(root / "baseline" / "result.json"),
                     "challenger_build_result": str(root / "challenger" / "result.json"),
                 }
-                bound = dict(
-                    query_set_sha256=sha256_file(golden),
-                    corpus_package_sha256=sha256_file(package),
-                    enrichment_sha256=sha256_file(
+                bound = {
+                    "query_set_sha256": sha256_file(golden),
+                    "corpus_package_sha256": sha256_file(package),
+                    "enrichment_sha256": sha256_file(
                         root / "baseline" / "decisions-approved.jsonl"
                     ),
-                    model_tag="fake-embed",
-                    baseline_model_tag="fake-embed",
-                    challenger_model_tag="fake-embed",
-                    baseline_config_sha256=sha256_file(arms["baseline"][1]),
-                    challenger_config_sha256=sha256_file(arms["challenger"][1]),
-                )
+                    "model_tag": "fake-embed",
+                    "baseline_model_tag": "fake-embed",
+                    "challenger_model_tag": "fake-embed",
+                    "baseline_config_sha256": sha256_file(arms["baseline"][1]),
+                    "challenger_config_sha256": sha256_file(arms["challenger"][1]),
+                }
 
                 def write_manifest(name: str, **extra_fields) -> Path:
                     fields = {**bound, **extra_fields}
@@ -1471,6 +1475,7 @@ class RealManifestCompareTests(unittest.TestCase):
                     cwd=str(REPO),
                     capture_output=True,
                     text=True,
+                    check=False,
                 )
                 self.assertEqual(proc.returncode, 0, proc.stderr)
                 report = json.loads(out.read_text(encoding="utf-8"))
@@ -1552,7 +1557,7 @@ class RealManifestCompareTests(unittest.TestCase):
                     if "--mode" in replace and replace["--mode"] == "injectable":
                         argv += ["--scores-json", str(golden)]
                     proc = subprocess.run(
-                        argv, cwd=str(REPO), capture_output=True, text=True
+                        argv, cwd=str(REPO), capture_output=True, text=True, check=False
                     )
                     with self.subTest(expect=expect):
                         self.assertEqual(proc.returncode, 2, proc.stderr)
@@ -1580,6 +1585,7 @@ class RealManifestCompareTests(unittest.TestCase):
                     cwd=str(REPO),
                     capture_output=True,
                     text=True,
+                    check=False,
                 )
                 self.assertEqual(proc.returncode, 2, proc.stderr)
                 self.assertIn("frozen enrichment", proc.stderr)

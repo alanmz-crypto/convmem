@@ -25,7 +25,7 @@ def _sha_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-locals
     parser = argparse.ArgumentParser(description="Eval shadow embed build")
     parser.add_argument("--authorize-fixture", action="store_true")
     parser.add_argument("--run-manifest", type=Path, default=None)
@@ -112,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
             runtime=runtime,
             arm=args.arm,
         )
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         print(f"Refusing shadow build: {exc}", file=sys.stderr)
         return 2
 
@@ -146,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
                         "chroma_dir": chroma_dir,
                     },
                 )
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-exception-caught
                 print(f"Refusing model_execution: {exc}", file=sys.stderr)
                 return 4
             embed_fn = ollama_embed_fn(args.embed_host, model)

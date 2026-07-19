@@ -42,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
                 "embed_host": args.embed_host,
             },
         )
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         print(f"Refusing config_generation: {exc}", file=sys.stderr)
         return 2
 

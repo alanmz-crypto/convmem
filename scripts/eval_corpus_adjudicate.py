@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
                 "acceptance_out": acceptance_out,
             },
         )
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         print(f"Refusing adjudicate: {exc}", file=sys.stderr)
         return 2
 
@@ -67,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
             reviewer=args.reviewer,
             acceptance_path=acceptance_out,
         )
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         print(f"Adjudication failed: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(acc, indent=2, sort_keys=True))

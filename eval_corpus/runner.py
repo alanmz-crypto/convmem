@@ -25,7 +25,7 @@ QueryFn = Callable[..., list[dict]]
 
 
 @dataclass
-class RowEval:
+class RowEval:  # pylint: disable=too-many-instance-attributes
     query: str
     view: str
     top_k: int
@@ -39,7 +39,7 @@ class RowEval:
 
 
 @dataclass
-class ViewReport:
+class ViewReport:  # pylint: disable=too-many-instance-attributes
     view: str
     count: int
     p_at_1: float
@@ -265,7 +265,7 @@ def _primary_score(row_eval: RowEval, primary_metric: str) -> float:
     raise ValueError(f"unknown primary_metric {primary_metric!r}")
 
 
-def compare_paired_arms(
+def compare_paired_arms(  # pylint: disable=too-many-locals
     rows: list[dict],
     baseline_fn: QueryFn,
     challenger_fn: QueryFn,
@@ -279,7 +279,6 @@ def compare_paired_arms(
     Primary inference uses primary_view (must be embedding_influenced) + primary_metric.
     Other views/strata are diagnostic only.
     """
-    from eval_corpus.metrics import expand_acceptable_ids
     from eval_corpus.paired_stats import label_challenger, paired_outcomes
     from eval_corpus.recipe_strata import (
         index_package_units,

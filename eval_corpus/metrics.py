@@ -75,7 +75,7 @@ def recall_at_k(
 
     Rows may set relevant_complete=true to enable Recall@k.
     """
-    return None  # caller checks flag
+    _ = (ranked_hits, relevant, k)  # signature retained; caller checks completeness flag
 
 
 def recall_at_k_complete(

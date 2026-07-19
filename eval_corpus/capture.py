@@ -316,11 +316,8 @@ def run_capture(
         )
         atomic_write_json(capture_dir / "overlap_validation.json", overlap)
 
-        export_ids = {str(u["id"]) for u in units}
         chroma_ids = set(chroma_slice["ids"])
-        absent = sorted(export_ids - chroma_ids)
-        # Also include raw export ids that never made the package if needed —
-        # plan asks for export IDs absent from Chroma.
+        # Spot-check plan uses raw export IDs absent from Chroma.
         dedup = package["dedup"]
         raw_export_ids = [str(r.get("id") or "") for r in dedup.rows if r.get("id")]
         absent_from_chroma = sorted(set(raw_export_ids) - chroma_ids)

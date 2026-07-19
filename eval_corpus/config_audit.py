@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 # Keys that may differ between live and shadow configs (paths + embed model).
@@ -57,7 +56,10 @@ def query_time_data_dir_files() -> list[dict[str, str]]:
     return [
         {
             "path_relative": "decisions-approved.jsonl",
-            "reader": "propose_decision.approved_path / ledger_recent.approved_decision_hit / query._ledger_lookup_hits",
+            "reader": (
+                "propose_decision.approved_path / ledger_recent.approved_decision_hit / "
+                "query._ledger_lookup_hits"
+            ),
             "query_time": "yes",
             "disposition": "freeze_byte_identical_both_arms",
         },

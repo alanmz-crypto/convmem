@@ -1,4 +1,6 @@
 """Additional Phase A hermetic tests: validate, shadow lifecycle, config, metrics."""
+# pylint: disable=duplicate-code
+
 
 from __future__ import annotations
 
@@ -24,7 +26,6 @@ from eval_corpus.shadow_build import (
     plan_resume_adds,
     verify_collection_metadata_for_resume,
     write_build_manifest,
-    write_build_result,
 )
 from eval_corpus.validate import historical_spot_check_plan, validate_overlap
 
