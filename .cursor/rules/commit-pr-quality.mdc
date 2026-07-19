@@ -1,0 +1,36 @@
+---
+description: convmem commit message and PR summary quality standards
+alwaysApply: false
+globs: "**/*"
+---
+
+# Commit and PR quality standards
+
+Every commit and PR in this repo must be understandable to someone unfamiliar with the codebase. This is not about formatting — it's about reader comprehension.
+
+## Commit messages
+
+First line under 72 characters. Answer: what changed and why it matters — not a diff summary.
+
+- Use clear verbs: `add` (new capability), `update` (enhancement), `fix` (bug fix).
+- Avoid code identifiers, function names, or filenames unless essential for the reader.
+- Avoid "see previous commit" — each commit must be self-contained and readable on its own.
+- Body (if needed): reasoning, tradeoffs, or important context at 72-char wrap.
+- Before writing, ask: does this make sense to someone who hasn't opened the diff?
+
+Bad: `fix: nil pointer in session.go`
+Good: `fix: prevent session loading from crashing on missing metadata`
+
+Bad: `refactor: move PromptBuilder into internal/agent`
+Good: `refactor: make prompt assembly easier to maintain`
+
+## PR summaries
+
+Title: concise, user-facing description of what changed and why.
+Body (1-2 paragraphs): problem, approach, tradeoffs or risks.
+Reference related issues/decisions: `Closes #...`, `Refs dec_prop_...`.
+
+The PR body should summarize the overall change — not re-list individual commits.
+
+<!-- Canonical source: AGENTS.md. This .cursor/rules file is a Cursor-specific slice;
+the multi-surface standard lives in AGENTS.md. Keep in sync. -->
