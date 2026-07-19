@@ -104,6 +104,30 @@ class EvidenceRerankTests(unittest.TestCase):
         self.assertEqual(ranked[0]["evidence_status"], "unresolved")
         self.assertGreater(ranked[0]["rank_score"], ranked[1]["rank_score"])
 
+    def test_evidence_rerank_uses_cross_encoder_score_as_base(self):
+        store = FakeStore([])
+        results = [
+            {
+                "id": "semantic-high",
+                "score": 0.95,
+                "rerank_score_norm": 0.2,
+                "metadata": {},
+                "document": "a",
+            },
+            {
+                "id": "rerank-high",
+                "score": 0.60,
+                "rerank_score_norm": 0.9,
+                "metadata": {},
+                "document": "b",
+            },
+        ]
+
+        ranked = apply_evidence_rerank(results, store)
+
+        self.assertEqual(ranked[0]["id"], "rerank-high")
+        self.assertEqual(ranked[0]["rank_score"], 0.9)
+
     # -- recency_boost --------------------------------------------------------
 
     def test_recency_boost_recent(self):

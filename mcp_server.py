@@ -423,6 +423,10 @@ def _search_payload(results: list[dict]) -> str:
         meta = r.get("metadata", {})
         out.append({
             "score": r.get("score"),
+            "semantic_rank": r.get("semantic_rank"),
+            "rerank_score": r.get("rerank_score"),
+            "rerank_score_norm": r.get("rerank_score_norm"),
+            "rerank_rank": r.get("rerank_rank"),
             "rank_score": r.get("rank_score"),
             "recency_boost": r.get("recency_boost"),
             "ledger_lookup": r.get("ledger_lookup", False),
