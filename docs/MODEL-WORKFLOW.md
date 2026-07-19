@@ -86,7 +86,9 @@ Same wrapper for Codex rollout, Crush `.crush/crush.db`, etc. — always prod Ch
 
 ### B. Cross-project “big picture” digest (prod)
 
-**Read:** [`docs/CROSS-PROJECT-DIGEST-ATTEMPTS.md`](CROSS-PROJECT-DIGEST-ATTEMPTS.md)
+**Read:** [`docs/CROSS-PROJECT-DIGEST-ATTEMPTS.md`](CROSS-PROJECT-DIGEST-ATTEMPTS.md)  
+**Canonical plan:** [`docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`](inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md) § *Cross-project background synthesis* — gates, Phases 0–3, execution status  
+**Pilot history:** [`docs/inter-model/CROSS-PROJECT-DIGEST-PILOT.md`](inter-model/CROSS-PROJECT-DIGEST-PILOT.md) — manual pilot runs 1–8
 
 ```bash
 # Deterministic brief (no LLM) — weekly habit / smoke
