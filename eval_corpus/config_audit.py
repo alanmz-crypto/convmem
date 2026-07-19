@@ -72,7 +72,7 @@ def query_time_data_dir_files() -> list[dict[str, str]]:
         },
         {
             "path_relative": "chroma/chroma.sqlite3",
-            "reader": "chroma_readonly + PersistentClient under index.chroma_dir",
+            "reader": "chroma_readonly (SQLite mode=ro) + PersistentClient query under index.chroma_dir",
             "query_time": "yes",
             "disposition": "isolated_via_shadow_chroma_dir",
         },

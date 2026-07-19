@@ -1,6 +1,7 @@
-"""Eval corpus package — capture, reconstruct, fingerprint, validate (Phase A harness).
+"""Eval corpus package — capture, reconstruct, fingerprint, validate, runner (Phase A).
 
-R1 scope: library + hermetic tests only. No live capture, shadow build, or evaluation.
+R1 scope: library + CLI surfaces + hermetic tests. No live capture, real shadow
+builds, model ops, or evaluation against live/shadow stores.
 """
 
 from __future__ import annotations
