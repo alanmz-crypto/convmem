@@ -11,7 +11,6 @@ from unittest.mock import patch
 import pytest
 
 from conflict_events import (
-    append_event,
     governed_lock,
     load_events,
     new_event,
