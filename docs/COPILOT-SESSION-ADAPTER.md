@@ -47,9 +47,21 @@ from `~/.config/convmem/env.local` (or `env.systemd`) when missing from the proc
 
 ## Protocol
 
-User-level custom agent: `~/.copilot/agents/convmem.md` (from
-`config/copilot-agents-convmem.example.md` via `deploy-agent-protocol.sh`).
-Repo `AGENTS.md` also applies when cwd is a git checkout.
+**Always-on (required):** `~/.copilot/copilot-instructions.md` — loaded by plain
+`copilot` (same role as Codex `~/.codex/AGENTS.md`). Deployed from
+`config/copilot-instructions-convmem.example.md` via `deploy-agent-protocol.sh`.
+
+Repo `AGENTS.md` in convmem is a **pointer only** (no Tier A body). Without the
+always-on file, Copilot skips `doctor`/`brief`/`unresolved` and starts with
+`ls`/`git`/`README` — that was the soak failure mode.
+
+**Optional agent:** `~/.copilot/agents/convmem.md` via `copilot --agent convmem`
+(not required once always-on instructions are deployed).
+
+```bash
+bash scripts/deploy-agent-protocol.sh
+test -f ~/.copilot/copilot-instructions.md && rg -n 'convmem doctor' ~/.copilot/copilot-instructions.md
+```
 
 ## Track A (handoff)
 

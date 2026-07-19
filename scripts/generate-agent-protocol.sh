@@ -7,7 +7,8 @@
 #   config/cursor-rules-convmem.mdc.example  — Cursor global-always rule
 #   config/codex-agents-convmem.example.md   — Codex global AGENTS.md
 #   config/kiro-steering-convmem.example.md  — Kiro steering file
-#   config/copilot-agents-convmem.example.md — Copilot CLI user agent (~/.copilot/agents)
+#   config/copilot-agents-convmem.example.md — Copilot CLI optional --agent convmem
+#   config/copilot-instructions-convmem.example.md — always-on (~/.copilot/copilot-instructions.md)
 #   docs/chatgpt-pack/custom-instructions.txt — ChatGPT paste-only pack
 #
 # Run: bash scripts/generate-agent-protocol.sh
@@ -287,6 +288,53 @@ FRONTMATTER
   extract_section WORKFLOW_ROUTING
 } >> config/copilot-agents-convmem.example.md
 echo "  -> config/copilot-agents-convmem.example.md"
+
+# --- Copilot CLI always-on instructions (~/.copilot/copilot-instructions.md) ---
+# Plain `copilot` does NOT load ~/.copilot/agents/* unless --agent is passed.
+# Always-on path mirrors Codex global AGENTS.md so doctor/brief/unresolved runs
+# without requiring --agent convmem.
+{
+  echo "# convmem — Local knowledge corpus"
+  echo ""
+  echo "You have **shell** (\`convmem\` CLI) and **MCP** (convmem tools via \`~/.copilot/mcp-config.json\`) on this machine."
+  echo ""
+  echo "**HARD RULE — before answering anything** (including directory listing, git, README, or docker):"
+  echo ""
+  echo "1. Run \`convmem doctor\` alone first. Wait for exit 0."
+  echo "2. Then \`convmem brief --stdout-only\`."
+  echo "3. Then \`convmem unresolved\`."
+  echo "4. Only then use \`convmem \"search\"\` / \`convmem ask\` / MCP \`search_fast\` / \`ask\` for history questions."
+  echo ""
+  echo "Do **not** start with \`ls\`, \`git status\`, README, or folder survey before steps 1–3 complete."
+  echo ""
+  extract_section TIER_A
+  echo ""
+  echo "## After Tier A — MCP tools (do not repeat brief)"
+  echo ""
+  extract_section MCP_AFTER_TIER_A
+  echo ""
+  echo "## Session close"
+  echo ""
+  extract_section SESSION_CLOSE
+  echo ""
+  echo "## Copilot CLI — handoff vs record"
+  echo ""
+  echo "- Handoff / **ingest your chat** → \`convmem index --file\` on **this session's** \`~/.copilot/session-state/<uuid>/events.jsonl\` (Track A). **No record block** unless Ryan asks."
+  echo "- Do **not** create new markdown logs unless Ryan requested a file."
+  echo "- \`convmem record\` **only** when Ryan says **record block**, **closing**, or **end session**."
+  echo "- Resume: \`copilot --resume <session-id>\`. Optional specialist: \`copilot --agent convmem\`."
+  echo ""
+  extract_section TEAM_CHARTER
+  echo ""
+  echo "## Bounded autonomy"
+  echo ""
+  extract_section BOUNDED_AUTONOMY
+  echo ""
+  echo "## Workflow routing (when unsure)"
+  echo ""
+  extract_section WORKFLOW_ROUTING
+} > config/copilot-instructions-convmem.example.md
+echo "  -> config/copilot-instructions-convmem.example.md"
 
 # --- ChatGPT paste-only pack ---
 {

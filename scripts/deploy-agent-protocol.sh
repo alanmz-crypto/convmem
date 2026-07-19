@@ -347,10 +347,18 @@ fi
 
 # --- Deploy Copilot CLI agent + MCP ---
 if [ -n "$COPILOT_HOME" ]; then
-  mkdir -p "$COPILOT_HOME/agents"
+  mkdir -p "$COPILOT_HOME/agents" "$COPILOT_HOME/instructions"
+  if [ -f config/copilot-instructions-convmem.example.md ]; then
+    cp config/copilot-instructions-convmem.example.md "$COPILOT_HOME/copilot-instructions.md"
+    echo "  [deploy] $COPILOT_HOME/copilot-instructions.md (always-on)"
+    DEPLOY_REPORT+="  - Synced Copilot always-on instructions (copilot-instructions.md)\n"
+  else
+    echo "  [warn]   config/copilot-instructions-convmem.example.md missing — run generate-agent-protocol.sh"
+    SKIPPED+="  - Copilot always-on instructions (example missing)\n"
+  fi
   if [ -f config/copilot-agents-convmem.example.md ]; then
     cp config/copilot-agents-convmem.example.md "$COPILOT_HOME/agents/convmem.md"
-    echo "  [deploy] $COPILOT_HOME/agents/convmem.md"
+    echo "  [deploy] $COPILOT_HOME/agents/convmem.md (optional --agent convmem)"
     DEPLOY_REPORT+="  - Synced Copilot CLI custom agent (convmem.md)\n"
   else
     echo "  [warn]   config/copilot-agents-convmem.example.md missing — run generate-agent-protocol.sh"
@@ -385,6 +393,13 @@ else:
     env = block.setdefault("env", {})
     if env.get("CONVMEM_MCP_PROFILE") != "shell":
         env["CONVMEM_MCP_PROFILE"] = "shell"
+        changed = "updated"
+    # Never re-inject DEEPSEEK_API_KEY — mcp_server loads env.local
+    if "DEEPSEEK_API_KEY" in env and (
+        not env["DEEPSEEK_API_KEY"]
+        or "REPLACE" in str(env["DEEPSEEK_API_KEY"]).upper()
+    ):
+        del env["DEEPSEEK_API_KEY"]
         changed = "updated"
     if "tools" not in block:
         block["tools"] = ex_convmem.get("tools", ["*"])
@@ -636,9 +651,11 @@ echo "   hooks/convmem-allow.sh: ritual deny + auto-approve read-only convmem ba
 echo "   After deploy: bash scripts/restart-crush-if-stale.sh (hooks load at Crush process start)."
 echo ""
 echo "4. Copilot CLI (~/.copilot/):"
-echo "   mcp-config.json + agents/convmem.md deployed when ~/.copilot exists."
-echo "   Verify: copilot mcp list  # should show convmem"
+echo "   ALWAYS-ON: ~/.copilot/copilot-instructions.md (plain \`copilot\` loads this)."
+echo "   Optional: ~/.copilot/agents/convmem.md via \`copilot --agent convmem\`."
+echo "   MCP: mcp-config.json — verify with: copilot mcp list"
 echo "   Sessions: ~/.copilot/session-state/<uuid>/events.jsonl (see docs/COPILOT-SESSION-ADAPTER.md)."
+echo "   Soak: start a NEW session in a non-convmem dir — first tool must be \`convmem doctor\`."
 echo ""
 echo "5. ChatGPT webUI (optional — ignored if unused):"
 echo "   Pack at docs/chatgpt-pack/custom-instructions.txt — paste into Custom instructions if needed."
