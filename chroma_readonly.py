@@ -76,6 +76,59 @@ def collection_metadata_rows(chroma_dir: str | Path, collection_name: str) -> li
     return list(grouped.values())
 
 
+def collection_config_metadata(
+    chroma_dir: str | Path, collection_name: str
+) -> dict:
+    """Return collection-level metadata via SQLite mode=ro (no PersistentClient).
+
+    Reads ``collection_metadata`` (column ``str_value``). Missing collection → {}.
+    """
+    db = _db_path(chroma_dir)
+    conn = _connect_readonly(db)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT cm.key, cm.str_value, cm.int_value, cm.float_value, cm.bool_value
+            FROM collection_metadata cm
+            JOIN collections c ON c.id = cm.collection_id
+            WHERE c.name = ?
+            """,
+            (collection_name,),
+        )
+        out: dict = {}
+        for key, str_value, int_value, float_value, bool_value in cur.fetchall():
+            out[key] = _coerce_value(str_value, int_value, float_value, bool_value)
+        return out
+    finally:
+        conn.close()
+
+
+def collection_ids(chroma_dir: str | Path, collection_name: str) -> list[str]:
+    """Distinct embedding ids in the METADATA segment of a collection (mode=ro).
+
+    Content-level provenance check without loading row metadata.
+    """
+    db = _db_path(chroma_dir)
+    conn = _connect_readonly(db)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT DISTINCT e.embedding_id
+            FROM embeddings e
+            JOIN segments s ON e.segment_id = s.id
+            JOIN collections c ON s.collection = c.id
+            WHERE c.name = ? AND s.scope = 'METADATA'
+            """,
+            (collection_name,),
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    return [str(r[0]) for r in rows if r[0] is not None]
+
+
 def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
     """Count distinct embeddings in the metadata segment of a collection."""
     db = _db_path(chroma_dir)
