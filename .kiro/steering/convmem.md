@@ -3,6 +3,8 @@ inclusion: auto
 description: convmem project — memory bus tooling
 ---
 
+> **⚠️ HARD RULE — TL;DR REQUIRED:** End EVERY response with `**TL;DR:** …` (short/medium) or `## TL;DR` + bullets (long). No exceptions. A response missing its closing TL;DR is non-compliant.
+
 # convmem workspace
 
 This repo **is** convmem. See `AGENTS.md` at project root.
