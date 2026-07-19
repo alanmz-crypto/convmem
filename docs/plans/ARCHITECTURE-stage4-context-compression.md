@@ -3,25 +3,25 @@
 ```text
 Planning Status
 
-Phase:        Architecture Planning
-Characters:   Architect, Systems Thinker, Risk Reviewer
+Phase:        Closed
+Characters:   Architect, Systems Thinker, Risk Reviewer → Cursor → Ryan
 Functions:    Planner
-Lanes:        Cursor (Tier A draft); stronger model / Claude Cloud for HITL review
-Authority:    Architecture ACCEPT (Kiro); Task 1 awaits Ryan authorize
+Lanes:        Cursor shipped Task 1; Ryan closed arc 2026-07-19
+Authority:    Stage 4 CLOSED (Ryan) — residual deferred to a future separate arc
 Probe Version: v1
 ```
 
 | Field | Value |
 |---|---|
-| Status | **Accepted (Kiro 2026-07-19) with approach A locked** — Task 1 still needs Ryan authorize before Crush config/fs change |
+| Status | **CLOSED (2026-07-19)** — digest demotion shipped (PR #46) + measured; residual (~100k) out of scope |
 | Parent arc | [`ARCHITECTURE-token-efficient-bounded-autonomy.md`](ARCHITECTURE-token-efficient-bounded-autonomy.md) Stage 4 deferral |
-| Evidence | Crush + DeepSeek V4 Flash telemetry, 6 comparable routine tasks, 2026-07-19 |
-| Owner | Ryan owns direction approval, durable conclusions, and merge to `main` |
+| Evidence | Pre: 6 Crush tasks ~99.7% input. Post: 3 Crush tasks mean ~103.5k prompt (~8% drop vs ~112.4k) |
+| Owner | Ryan owns durable conclusions and merge to `main` |
 | Objective | Cut standing input-context cost without cutting safety, retrieval quality, or charter gates |
-| Architecture style | Reuse existing `brief.py` gather/render boundary; demote always-loaded surfaces that Cursor already loads on demand; no parallel brief |
-| Promotion gate | HITL accepts this direction → Execution Planning → measured before/after on Crush |
+| Outcome | Primary lever (Crush always-loaded digests → on-demand) met. Compact brief rejected. Residual = tools/history/protocol → new arc if chased later |
+| Promotion gate | Met and closed |
 
-**Execution (draft):** [`EXECUTION-stage4-context-compression.md`](EXECUTION-stage4-context-compression.md)
+**Execution:** [`EXECUTION-stage4-context-compression.md`](EXECUTION-stage4-context-compression.md)
 
 ## Decision (recommended path — pending HITL)
 
@@ -132,10 +132,10 @@ Any compact orientation path must:
 
 ## Exit criteria (this phase)
 
-- Direction artifact complete (this document).
-- HITL accepts, revises, or rejects the recommended path. **Done: ACCEPT (Kiro) + approach A.**
-- On accept → [`EXECUTION-stage4-context-compression.md`](EXECUTION-stage4-context-compression.md) Task 1 (Ryan authorize required).
-- On reject → stop; no runtime change.
+- Direction artifact complete — **done**.
+- HITL ACCEPT (Kiro) + approach A — **done**.
+- Task 1 shipped (PR #46 / `bd037b8`) — **done**.
+- Task 2 post-demotion telemetry — **done** (Ryan closed Stage 4 2026-07-19).
+- Task 3 not opened — residual is a **separate future arc**, not Stage 4 continuation.
 
-Cursor must stop here for runtime changes until Ryan authorizes Task 1.
-Await HITL (Task 1 authorize).
+Stage 4 CLOSED. No further runtime work under this arc.
