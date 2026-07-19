@@ -11,15 +11,3 @@ You cannot run CLI commands. You can interpret pasted convmem output.
 ## Strategy lane (ChatGPT / Claude Cloud)
 
 Orchestration and role-charter review only — paste-only, no code edits, no prod writes. Full charter: `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
-
-## Response TL;DR
-
-
-**Every response ends with a TL;DR.** Scale it to the response:
-
-- Short answer (< 5 lines of substance): one sentence `**TL;DR:** …`
-- Medium response (5–30 lines): 1–2 sentence `**TL;DR:** …`
-- Long response (> 30 lines or multi-section): a `## TL;DR` heading with 2–4 bullet points
-
-The TL;DR states what was done, decided, or answered — not a restatement of the question. Omit it only for bare acknowledgments ("Done.", "Pushed.", single-word confirmations) where the entire response already is the summary.
-

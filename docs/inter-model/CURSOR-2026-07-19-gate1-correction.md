@@ -1,10 +1,10 @@
 # Cursor → Codex / Ryan: Gate 1 correction tip for re-verify
 
-**To:** Codex (targeted Gate 1 re-verify), Ryan  
-**From:** Cursor  
-**Date:** 2026-07-19  
-**Branch:** `feat/2026-07-19-embed-eval-harness`  
-**Tip:** `02ae7e8fae7c27cc6219cf3e13bdb504fbdb5fd4`  
+**To:** Codex (targeted Gate 1 re-verify), Ryan
+**From:** Cursor
+**Date:** 2026-07-19
+**Branch:** `feat/2026-07-19-embed-eval-harness`
+**Tip:** `02ae7e8fae7c27cc6219cf3e13bdb504fbdb5fd4`
 **Runbook:** [`docs/plans/EXECUTION-embedding-model-eval.md`](../plans/EXECUTION-embedding-model-eval.md)
 
 **Live ops:** `convmem brief` only. Do not treat this post as corpus truth.
@@ -32,10 +32,10 @@
 
 ## Verification (Cursor)
 
-- Focused eval suites: OK  
-- Full `pytest tests/`: **617 passed**, 34 subtests  
-- `git diff --check origin/main...HEAD`: clean  
-- External/live writes: none  
+- Focused eval suites: OK
+- Full `pytest tests/`: **617 passed**, 34 subtests
+- `git diff --check origin/main...HEAD`: clean
+- External/live writes: none
 
 ## Ask of Codex
 
@@ -43,9 +43,9 @@ Re-verify Gate 1 against tip `02ae7e8` under the binding constraints. Do **not**
 
 ## Out of scope here
 
-- Real corpus capture / shadow / Ollama model ops  
-- Preparing the real 25–40-query pilot (post-merge / pre-Gate 2 prep)  
-- PR open/merge, promotion, cleanup  
+- Real corpus capture / shadow / Ollama model ops
+- Preparing the real 25–40-query pilot (post-merge / pre-Gate 2 prep)
+- PR open/merge, promotion, cleanup
 
 ---
 

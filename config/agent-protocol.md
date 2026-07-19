@@ -245,22 +245,6 @@ Done: result, verification, largest material trade-off/risk, branch/push; Track 
 
 ---
 
-## Response TL;DR
-
-<!-- RESPONSE_TLDR_START -->
-
-**Every response ends with a TL;DR.** Scale it to the response:
-
-- Short answer (< 5 lines of substance): one sentence `**TL;DR:** …`
-- Medium response (5–30 lines): 1–2 sentence `**TL;DR:** …`
-- Long response (> 30 lines or multi-section): a `## TL;DR` heading with 2–4 bullet points
-
-The TL;DR states what was done, decided, or answered — not a restatement of the question. Omit it only for bare acknowledgments ("Done.", "Pushed.", single-word confirmations) where the entire response already is the summary.
-
-<!-- RESPONSE_TLDR_END -->
-
----
-
 ## Plan jargon glossary
 
 When writing or substantially updating a plan document (`docs/plans/`, `docs/inter-model/`, `*.plan.md`), **append a `## Jargon TL;DR` table** at the very end defining every project-specific term, abbreviation, lane name, or phase code that a newcomer would not know. One sentence per term, link to source if it exists. Do not define universally-known terms. Full format: `.kiro/steering/plan-jargon-glossary.md`.
