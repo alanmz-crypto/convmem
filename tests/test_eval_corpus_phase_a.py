@@ -276,6 +276,33 @@ class DoctorEmbedIdentityTests(unittest.TestCase):
         self.assertIsInstance(check, DoctorCheck)
         self.assertEqual(check.effective_status(), "warn")
 
+    def test_schema_incompatible_sqlite_warns_not_raises(self):
+        """A chroma.sqlite3 without collection_metadata must WARN, not crash.
+
+        Regression guard: sqlite3.OperationalError ('no such table:
+        collection_metadata') must stay inside doctor's containment boundary.
+        """
+        import sqlite3
+
+        from doctor import DoctorCheck, _check_embed_collection_identity
+
+        with tempfile.TemporaryDirectory() as td:
+            chroma_dir = Path(td)
+            conn = sqlite3.connect(chroma_dir / "chroma.sqlite3")
+            try:
+                conn.execute("CREATE TABLE unrelated (x INTEGER)")
+                conn.commit()
+            finally:
+                conn.close()
+            cfg = {
+                "index": {"chroma_dir": str(chroma_dir)},
+                "models": {"embed_model": "nomic-embed-text"},
+            }
+            check = _check_embed_collection_identity(cfg)
+            self.assertIsInstance(check, DoctorCheck)
+            self.assertEqual(check.effective_status(), "warn")
+            self.assertIn("cannot read collection metadata", check.detail)
+
 
 class CaptureFixtureTests(unittest.TestCase):
     def test_capture_export_processed_hermetic(self):
