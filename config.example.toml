@@ -76,6 +76,13 @@ backfill_domain_calls_per_hour = 60
 redistill_calls_per_hour = 15
 semantic_dedupe_calls_per_hour = 20
 
+[ingest_dedup]
+# Exact canonical text duplicates are suppressed and audited. Semantic matches
+# are indexed normally and queued for review; they are never auto-suppressed.
+semantic_similarity = 0.92
+candidate_k = 10
+max_semantic_candidates_per_unit = 3
+
 [eval]
 # Pass thresholds for scripts/eval-*.py (see docs plan "Model quality eval harness").
 retrieval_p_at_1_min  = 0.5
