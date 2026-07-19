@@ -1194,6 +1194,51 @@ def _check_planning_guide_contract() -> DoctorCheck:
     return DoctorCheck("planning_guide_contract", True, f"contract {CONTRACT_VERSION}: {n} guide(s) ok")
 
 
+def _check_embed_collection_identity(cfg: dict) -> DoctorCheck:
+    """Read-only: configured embed model vs collection metadata (no embed API, no create)."""
+    name = "embed_collection_identity"
+    chroma_dir = Path(cfg["index"]["chroma_dir"]).expanduser()
+    want_model = str((cfg.get("models") or {}).get("embed_model") or "")
+    try:
+        from chroma_store import UNITS, open_chroma_for_verify
+
+        store = open_chroma_for_verify(str(chroma_dir))
+        try:
+            col = store._collection(UNITS)  # noqa: SLF001 — verify path; get_collection only
+            meta = dict(col.metadata or {})
+        finally:
+            store.close()
+    except Exception as exc:
+        # Missing collection / unreadable store: non-destructive warn (legacy / empty lab)
+        return DoctorCheck(
+            name,
+            True,
+            f"WARN: cannot read collection metadata (no embed probe): {exc}",
+            status="warn",
+        )
+
+    stored_model = str(meta.get("convmem:embed_model") or "")
+    stored_dim = meta.get("convmem:embed_dimensions")
+    if not stored_model:
+        return DoctorCheck(
+            name,
+            True,
+            "WARN: legacy collection metadata lacks convmem:embed_model "
+            f"(configured={want_model!r}; shadow stores must set metadata)",
+            status="warn",
+        )
+    if want_model and stored_model != want_model:
+        return DoctorCheck(
+            name,
+            False,
+            f"embed model mismatch: collection={stored_model!r} config={want_model!r}",
+        )
+    detail = f"collection embed_model={stored_model!r}"
+    if stored_dim is not None:
+        detail += f" dimensions={stored_dim!r}"
+    return DoctorCheck(name, True, detail)
+
+
 def run_doctor(
     *,
     v1: bool = False,
@@ -1212,6 +1257,7 @@ def run_doctor(
         _check_ollama(cfg),
         _check_chroma(cfg),
         _check_index_drift(cfg),
+        _check_embed_collection_identity(cfg),
         _check_restic(),
         _check_restic_external(),
         _check_restic_password_backup(),
