@@ -9,11 +9,43 @@ Read-only by default. Write tools (propose_decision) require human confirmation.
 
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 
 # Ensure convmem modules are importable
 sys.path.insert(0, str(Path(__file__).parent))
+
+
+def _load_convmem_env_files() -> None:
+    """setdefault DEEPSEEK_API_KEY from ~/.config/convmem/env.{local,systemd}.
+
+    MCP clients often omit the key from their JSON (prefer not storing secrets
+    in mcp-config). Shell CLI already sources env.local; stdio MCP does not.
+    """
+    if os.environ.get("DEEPSEEK_API_KEY", "").strip():
+        return
+    cfg_dir = Path("~/.config/convmem").expanduser()
+    for fname in ("env.local", "env.systemd"):
+        path = cfg_dir / fname
+        if not path.is_file():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#") or "=" not in stripped:
+                continue
+            if stripped.startswith("export "):
+                stripped = stripped[7:]
+            key, _, val = stripped.partition("=")
+            if key.strip() != "DEEPSEEK_API_KEY":
+                continue
+            val = val.strip().strip("\"'")
+            if val:
+                os.environ.setdefault("DEEPSEEK_API_KEY", val)
+                return
+
+
+_load_convmem_env_files()
 
 from mcp.server.fastmcp import FastMCP
 

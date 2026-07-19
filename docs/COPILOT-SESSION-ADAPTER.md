@@ -42,6 +42,9 @@ copilot mcp add convmem --env CONVMEM_MCP_PROFILE=shell -- \
 
 Template: [config/copilot-mcp-config.json.example](../config/copilot-mcp-config.json.example)
 
+Do **not** put `DEEPSEEK_API_KEY` in `mcp-config.json` — `mcp_server.py` loads it
+from `~/.config/convmem/env.local` (or `env.systemd`) when missing from the process env.
+
 ## Protocol
 
 User-level custom agent: `~/.copilot/agents/convmem.md` (from
