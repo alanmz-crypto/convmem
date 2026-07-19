@@ -243,8 +243,136 @@ def latency_report_to_dict(report: LatencyReport) -> dict[str, Any]:
         "p50_ms": round(report.p50_ms, 3),
         "p95_ms": round(report.p95_ms, 3),
         "max_ms": round(report.max_ms, 3),
+        "queries_per_sec": round(1000.0 / report.mean_ms, 6) if report.mean_ms > 0 else 0.0,
         "samples": [
             {"query": s.query, "view": s.view, "elapsed_ms": round(s.elapsed_ms, 3)}
             for s in report.samples
         ],
+    }
+
+
+def _primary_score(row_eval: RowEval, primary_metric: str) -> float:
+    if primary_metric == "hit_at_k":
+        return 1.0 if row_eval.hit_at_k else 0.0
+    if primary_metric == "p_at_1":
+        return 1.0 if row_eval.p_at_1 else 0.0
+    if primary_metric == "mrr":
+        return float(row_eval.mrr)
+    if primary_metric == "ndcg_at_k":
+        return float(row_eval.ndcg_at_k)
+    if primary_metric == "recall_at_k":
+        return float(row_eval.recall_at_k or 0.0)
+    raise ValueError(f"unknown primary_metric {primary_metric!r}")
+
+
+def compare_paired_arms(
+    rows: list[dict],
+    baseline_fn: QueryFn,
+    challenger_fn: QueryFn,
+    *,
+    package_units: list[dict],
+    uncertainty: dict[str, Any],
+    top_k: int | None = None,
+) -> dict[str, Any]:
+    """Paired baseline/challenger compare with recipe strata + uncertainty.
+
+    Primary inference uses primary_view (must be embedding_influenced) + primary_metric.
+    Other views/strata are diagnostic only.
+    """
+    from eval_corpus.metrics import expand_acceptable_ids
+    from eval_corpus.paired_stats import label_challenger, paired_outcomes
+    from eval_corpus.recipe_strata import (
+        index_package_units,
+        resolve_relevant_recipes,
+        validate_recipe_stratum,
+    )
+
+    primary_view = str(uncertainty.get("primary_view") or "embedding_influenced")
+    primary_metric = str(uncertainty.get("primary_metric") or "hit_at_k")
+    if primary_view != "embedding_influenced":
+        raise ValueError("primary_view must be embedding_influenced")
+
+    pkg_index = index_package_units(package_units)
+    stratum_rows: list[dict[str, Any]] = []
+    for row in rows:
+        relevant = expand_acceptable_ids(row)
+        resolved = resolve_relevant_recipes(relevant, pkg_index)
+        validation = validate_recipe_stratum(
+            str(row.get("recipe_stratum") or ""), resolved
+        )
+        stratum_rows.append(
+            {
+                "query": row["query"],
+                "recipe_stratum": validation["declared"],
+                "resolved_recipes": validation["resolved_recipes"],
+            }
+        )
+
+    base_view = evaluate_view(rows, baseline_fn, view=primary_view, top_k=top_k)
+    chal_view = evaluate_view(rows, challenger_fn, view=primary_view, top_k=top_k)
+    base_scores = [_primary_score(r, primary_metric) for r in base_view.rows]
+    chal_scores = [_primary_score(r, primary_metric) for r in chal_view.rows]
+    outcomes = paired_outcomes(
+        base_scores,
+        chal_scores,
+        queries=[r.query for r in base_view.rows],
+        tie_epsilon=float(uncertainty.get("tie_epsilon") or 0.0),
+    )
+    uncertainty_report = label_challenger(
+        outcomes=outcomes,
+        significance_alpha=float(uncertainty.get("significance_alpha") or 0.05),
+        confidence_level=float(uncertainty.get("confidence_level") or 0.95),
+        bootstrap_seed=int(uncertainty.get("bootstrap_seed") or 0),
+        bootstrap_resamples=int(uncertainty.get("bootstrap_resamples") or 1999),
+        minimum_non_tied_pairs=int(uncertainty.get("minimum_non_tied_pairs") or 20),
+    )
+
+    # Diagnostic: both views + per-stratum hit rates (explicit n; no confidence claim)
+    both_base = evaluate_both_views(rows, baseline_fn, top_k=top_k)
+    both_chal = evaluate_both_views(rows, challenger_fn, top_k=top_k)
+    by_stratum: dict[str, Any] = {}
+    for stratum in sorted({r["recipe_stratum"] for r in stratum_rows}):
+        idxs = [i for i, r in enumerate(stratum_rows) if r["recipe_stratum"] == stratum]
+        n = len(idxs)
+        b_hits = sum(1 for i in idxs if base_view.rows[i].hit_at_k)
+        c_hits = sum(1 for i in idxs if chal_view.rows[i].hit_at_k)
+        by_stratum[stratum] = {
+            "n": n,
+            "descriptive_only": True,
+            "baseline_hit_rate": b_hits / n if n else 0.0,
+            "challenger_hit_rate": c_hits / n if n else 0.0,
+            "delta_hit_rate": (c_hits - b_hits) / n if n else 0.0,
+            "note": "small strata are descriptive; do not imply statistical confidence",
+        }
+
+    return {
+        "primary_view": primary_view,
+        "primary_metric": primary_metric,
+        "primary_inferential_surface": True,
+        "anti_cherry_pick": (
+            "operational_pipeline and recipe strata are diagnostic only"
+        ),
+        "baseline": view_report_to_dict(base_view),
+        "challenger": view_report_to_dict(chal_view),
+        "diagnostic_views": {
+            "baseline": {k: view_report_to_dict(v) for k, v in both_base.items()},
+            "challenger": {k: view_report_to_dict(v) for k, v in both_chal.items()},
+        },
+        "recipe_strata": {
+            "per_query": stratum_rows,
+            "by_stratum": by_stratum,
+        },
+        "paired_outcomes": [
+            {
+                "query": o.query,
+                "baseline": o.baseline,
+                "challenger": o.challenger,
+                "delta": o.delta,
+                "label": o.label,
+            }
+            for o in outcomes
+        ],
+        "uncertainty": uncertainty_report,
+        "evidence_only": True,
+        "not_promotion_authority": True,
     }
