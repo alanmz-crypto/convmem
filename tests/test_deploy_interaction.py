@@ -1,23 +1,12 @@
 """Combined-effect test for the deploy-script interaction (register row: deploy-script-interaction).
 
-Exercises the real interaction between deploy-agent-protocol.sh and
-deploy-builder-reference.sh without repo side effects (Variant B):
+Exercises deploy-builder-reference.sh without touching the real crush.json:
 
-- deploy-agent-protocol.sh's crush stanza only prepends CONVMEM-RITUAL.md when
-  missing, then chains deploy-builder-reference.sh as the designated last
-  writer. Running the full protocol script here would regenerate repo
-  artifacts (generate-agent-protocol.sh), so instead the test seeds a sandbox
-  crush.json in the worst state the protocol stanza plus historical drift can
-  produce (digests first, ritual mid-list, CRUSH.md not last) and runs
-  deploy-builder-reference.sh against it.
-- Asserts the canonical final order (ritual first, CRUSH.md last, no
-  duplicates) and idempotence on a second run — the exact regression class
-  behind the 2026-07-07 merge-order incident (insert-at-front + presence-only
-  idempotence check).
-
-Path-matching fidelity: the re-sort in deploy-builder-reference.sh matches
-digest entries by absolute expanded path but the ritual/CRUSH.md markers as
-literal "~/..." strings. The seed mirrors that, matching real-config state.
+- Seeds a sandbox crush.json in a scrambled pre-Stage-4 state (digests listed
+  individually, ritual mid-list).
+- Asserts Stage 4 approach A final standing paths: ritual → rules/ → CRUSH.md,
+  digests absent from global_context_paths, digests present under
+  builder-reference/, pointer under rules/, and idempotence on a second run.
 """
 
 import json
@@ -32,7 +21,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEPLOY_SCRIPT = REPO_ROOT / "scripts" / "deploy-builder-reference.sh"
 
 RITUAL = "~/.config/crush/CONVMEM-RITUAL.md"
+RULES = "~/.config/crush/rules/"
 CRUSH_MD = "~/.config/crush/CRUSH.md"
+EXPECTED = [RITUAL, RULES, CRUSH_MD]
 DIGEST_NAMES = (
     "ousterhout",
     "manning",
@@ -47,17 +38,21 @@ DIGEST_NAMES = (
 @unittest.skipUnless(shutil.which("bash") and shutil.which("python3"), "needs bash + python3")
 class DeployInteractionTests(unittest.TestCase):
     def _seed_sandbox(self, home: Path) -> Path:
-        """Sandbox crush.json in scrambled order: digests first, ritual mid, CRUSH.md not last."""
+        """Sandbox crush.json in scrambled pre-demotion order."""
         crush_dir = home / ".config" / "crush"
-        crush_dir.mkdir(parents=True)
-        # Digest entries as absolute sandbox paths — how the deploy script writes them.
-        digest = lambda name: str(crush_dir / "rules" / f"builder-reference-{name}.md")  # noqa: E731
+        rules = crush_dir / "rules"
+        rules.mkdir(parents=True)
+        digest = lambda name: str(rules / f"builder-reference-{name}.md")  # noqa: E731
+        # Leave stale digest files under rules/ so deploy must migrate them.
+        for name in DIGEST_NAMES:
+            (rules / f"builder-reference-{name}.md").write_text(
+                f"# stub {name}\n", encoding="utf-8"
+            )
         scrambled = [
             digest("ddia"),
             digest("ousterhout"),
             CRUSH_MD,
             RITUAL,
-            "~/.config/crush/rules/convmem.md",  # non-digest context entry, must survive in middle
             digest("manning"),
         ]
         config = crush_dir / "crush.json"
@@ -69,7 +64,7 @@ class DeployInteractionTests(unittest.TestCase):
 
     def _run_deploy(self, home: Path) -> subprocess.CompletedProcess:
         env = dict(os.environ)
-        env["HOME"] = str(home)  # set, never unset — the scripts default to /home/lauer
+        env["HOME"] = str(home)
         return subprocess.run(
             ["bash", str(DEPLOY_SCRIPT)],
             cwd=REPO_ROOT,
@@ -90,21 +85,23 @@ class DeployInteractionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             home = Path(d)
             config = self._seed_sandbox(home)
+            crush_dir = home / ".config" / "crush"
 
             first = self._run_deploy(home)
             self.assertEqual(first.returncode, 0, first.stderr or first.stdout)
             paths = self._paths(config)
+            self.assertEqual(paths, EXPECTED, paths)
 
-            basenames = [Path(str(p)).name for p in paths]
-            self.assertEqual(basenames[0], "CONVMEM-RITUAL.md", paths)
-            self.assertEqual(basenames[-1], "CRUSH.md", paths)
-            self.assertEqual(len(paths), len(set(paths)), f"duplicate entries: {paths}")
-            self.assertIn("~/.config/crush/rules/convmem.md", paths)  # middle entries survive
-            for name in DIGEST_NAMES:  # all 7 digests present, between middle and CRUSH.md
-                self.assertIn(f"builder-reference-{name}.md", basenames)
-            digest_idx = [i for i, b in enumerate(basenames) if b.startswith("builder-reference-")]
-            self.assertEqual(digest_idx, list(range(digest_idx[0], digest_idx[0] + 7)))
-            self.assertLess(basenames.index("convmem.md"), digest_idx[0])
+            digest_dir = crush_dir / "builder-reference"
+            rules = crush_dir / "rules"
+            for name in DIGEST_NAMES:
+                self.assertTrue(
+                    (digest_dir / f"builder-reference-{name}.md").is_file(), name
+                )
+                self.assertFalse(
+                    (rules / f"builder-reference-{name}.md").exists(), name
+                )
+            self.assertTrue((rules / "builder-reference-pointer.md").is_file())
 
             second = self._run_deploy(home)
             self.assertEqual(second.returncode, 0, second.stderr or second.stdout)
@@ -118,14 +115,10 @@ class DeployInteractionTests(unittest.TestCase):
             )
 
     def _seed_sandbox_ritual_absent(self, home: Path) -> Path:
-        """Digests + CRUSH.md present; ritual marker missing (partial migration)."""
         crush_dir = home / ".config" / "crush"
         crush_dir.mkdir(parents=True)
-        digest = lambda name: str(crush_dir / "rules" / f"builder-reference-{name}.md")  # noqa: E731
         partial = [
-            digest("ousterhout"),
-            digest("manning"),
-            "~/.config/crush/rules/convmem.md",
+            str(crush_dir / "rules" / "builder-reference-ousterhout.md"),
             CRUSH_MD,
         ]
         config = crush_dir / "crush.json"
@@ -136,7 +129,6 @@ class DeployInteractionTests(unittest.TestCase):
         return config
 
     def test_restores_ritual_when_absent_from_paths(self):
-        """Codex finding: last-writer must prepend ritual when marker is missing."""
         real_config = Path.home() / ".config" / "crush" / "crush.json"
         real_mtime = real_config.stat().st_mtime_ns if real_config.is_file() else None
 
@@ -147,9 +139,7 @@ class DeployInteractionTests(unittest.TestCase):
             first = self._run_deploy(home)
             self.assertEqual(first.returncode, 0, first.stderr or first.stdout)
             paths = self._paths(config)
-            basenames = [Path(str(p)).name for p in paths]
-            self.assertEqual(basenames[0], "CONVMEM-RITUAL.md", paths)
-            self.assertEqual(basenames[-1], "CRUSH.md", paths)
+            self.assertEqual(paths, EXPECTED, paths)
             self.assertEqual(paths.count(RITUAL), 1)
 
             second = self._run_deploy(home)

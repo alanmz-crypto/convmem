@@ -114,23 +114,39 @@ else
 fi
 
 if [ -n "$CRUSH_CONFIG" ]; then
+  # Stage 4 approach A: digests are on-demand under builder-reference/, not standing
+  # context. rules/ keeps ritual/protocol/ksweep only; thin pointer lives in rules/.
   CRUSH_DIR="$(dirname "$CRUSH_CONFIG")"
   RULES_DIR="$CRUSH_DIR/rules"
-  mkdir -p "$RULES_DIR"
-  cp docs/builder-reference/ousterhout-builder-digest.md "$RULES_DIR/builder-reference-ousterhout.md"
-  cp docs/builder-reference/manning-builder-digest.md "$RULES_DIR/builder-reference-manning.md"
-  cp docs/builder-reference/zeller-builder-digest.md "$RULES_DIR/builder-reference-zeller.md"
-  cp docs/builder-reference/hard-parts-builder-digest.md "$RULES_DIR/builder-reference-hard-parts.md"
-  cp docs/builder-reference/ddia-builder-digest.md "$RULES_DIR/builder-reference-ddia.md"
-  cp docs/builder-reference/arch-patterns-python-builder-digest.md "$RULES_DIR/builder-reference-arch-patterns-python.md"
-  cp docs/builder-reference/evolutionary-architectures-builder-digest.md "$RULES_DIR/builder-reference-evolutionary-architectures.md"
-  echo "  [deploy] $RULES_DIR/builder-reference-ousterhout.md"
-  echo "  [deploy] $RULES_DIR/builder-reference-manning.md"
-  echo "  [deploy] $RULES_DIR/builder-reference-zeller.md"
-  echo "  [deploy] $RULES_DIR/builder-reference-hard-parts.md"
-  echo "  [deploy] $RULES_DIR/builder-reference-ddia.md"
-  echo "  [deploy] $RULES_DIR/builder-reference-arch-patterns-python.md"
-  echo "  [deploy] $RULES_DIR/builder-reference-evolutionary-architectures.md"
+  DIGEST_DIR="$CRUSH_DIR/builder-reference"
+  mkdir -p "$RULES_DIR" "$DIGEST_DIR"
+
+  digest_names=(ousterhout manning zeller hard-parts ddia arch-patterns-python evolutionary-architectures)
+  for name in "${digest_names[@]}"; do
+    src="docs/builder-reference/${name}-builder-digest.md"
+    # Prefer legacy rules/ filename if present (migration); else repo digest.
+    legacy="$RULES_DIR/builder-reference-${name}.md"
+    dst="$DIGEST_DIR/builder-reference-${name}.md"
+    if [ -f "$legacy" ]; then
+      mv -f "$legacy" "$dst"
+    else
+      cp "$src" "$dst"
+    fi
+    echo "  [deploy] $dst"
+  done
+
+  # Drop any leftover digest copies under rules/ (double-load prevention).
+  rm -f "$RULES_DIR"/builder-reference-ousterhout.md \
+    "$RULES_DIR"/builder-reference-manning.md \
+    "$RULES_DIR"/builder-reference-zeller.md \
+    "$RULES_DIR"/builder-reference-hard-parts.md \
+    "$RULES_DIR"/builder-reference-ddia.md \
+    "$RULES_DIR"/builder-reference-arch-patterns-python.md \
+    "$RULES_DIR"/builder-reference-evolutionary-architectures.md
+
+  cp config/crush-rules-builder-reference-pointer.example.md \
+    "$RULES_DIR/builder-reference-pointer.md"
+  echo "  [deploy] $RULES_DIR/builder-reference-pointer.md"
 
   python3 - <<'PY' "$CRUSH_CONFIG"
 import json
@@ -138,30 +154,19 @@ import sys
 from pathlib import Path
 
 config_path = Path(sys.argv[1])
-rules_dir = config_path.parent / "rules"
-digests = [
-    str((rules_dir / f"builder-reference-{name}.md").expanduser())
-    for name in ("ousterhout", "manning", "zeller", "hard-parts", "ddia", "arch-patterns-python", "evolutionary-architectures")
-]
-# Canonical global_context_paths order (single source of truth; this script is the
-# last writer in a full deploy): CONVMEM-RITUAL -> other context -> builder digests -> CRUSH.md.
-# The ritual MUST stay first so it loads before CRUSH.md ponytail; see docs/inter-model/CRUSH-VERIFY.md.
+# Canonical standing context (Stage 4 approach A): ritual -> rules/ -> CRUSH.md.
+# Digests are NOT listed; they live in ~/.config/crush/builder-reference/ on demand.
+# See docs/plans/EXECUTION-stage4-context-compression.md Task 1.
 ritual = "~/.config/crush/CONVMEM-RITUAL.md"
+rules_dir = "~/.config/crush/rules/"
 crush_md = "~/.config/crush/CRUSH.md"
+ordered = [ritual, rules_dir, crush_md]
 
 with open(config_path) as f:
     cfg = json.load(f)
 
 opts = cfg.setdefault("options", {})
 original = list(opts.get("global_context_paths") or [])
-
-digest_set = set(digests)
-# Ritual must always head the list (Codex 2026-07-07): presence-only skip left
-# partially migrated configs without CONVMEM-RITUAL.md after builder-reference deploy.
-head = [ritual]
-tail = [crush_md] if crush_md in original else []
-middle = [p for p in original if p not in digest_set and p != ritual and p != crush_md]
-ordered = head + middle + digests + tail
 
 if ordered != original:
     opts["global_context_paths"] = ordered
