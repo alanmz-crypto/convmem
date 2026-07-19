@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -13,6 +14,8 @@ from eval_corpus.reconstruct import normalized_shadow_metadata
 
 EmbedFn = Callable[[str], list[float]]
 
+UNITS_COLLECTION = "knowledge_units"
+
 
 @dataclass
 class BuildPaths:
@@ -20,6 +23,10 @@ class BuildPaths:
     manifest_path: Path
     result_path: Path
     journal_path: Path
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def write_build_manifest(path: Path | str, manifest: dict[str, Any]) -> str:
@@ -150,3 +157,146 @@ def assert_complete_id_set(package_ids: set[str], store_ids: set[str]) -> None:
 
 def package_units_by_id(units: list[dict]) -> dict[str, dict]:
     return {str(u["id"]): u for u in units}
+
+
+def _read_existing_rows(collection) -> dict[str, dict]:
+    res = collection.get(include=["documents", "metadatas"])
+    ids = res.get("ids") or []
+    docs = res.get("documents") or []
+    metas = res.get("metadatas") or []
+    out: dict[str, dict] = {}
+    for uid, doc, meta in zip(ids, docs, metas):
+        out[str(uid)] = {"document": doc or "", "metadata": dict(meta or {})}
+    return out
+
+
+def _append_journal(path: Path, record: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n"
+    # Append-only with fsync of the file after write (crash-safe enough for resume hints).
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(line)
+        f.flush()
+        import os
+
+        os.fsync(f.fileno())
+
+
+def run_shadow_build(
+    *,
+    units: list[dict],
+    chroma_dir: Path | str,
+    manifest: dict[str, Any],
+    embed_fn: EmbedFn,
+    batch_size: int = 8,
+    resume: bool = False,
+    collection_name: str = UNITS_COLLECTION,
+    manifest_path: Path | str | None = None,
+    result_path: Path | str | None = None,
+    journal_path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Embed-only shadow build with injectable ``embed_fn`` (no live model required).
+
+    Creates the collection once with full ``collection_metadata_from_manifest`` on
+    first build; resume verifies collection metadata + row-safe skip/add planning.
+    """
+    import chromadb
+
+    chroma_dir = Path(chroma_dir).expanduser()
+    chroma_dir.mkdir(parents=True, exist_ok=True)
+    paths = BuildPaths(
+        chroma_dir=chroma_dir,
+        manifest_path=Path(manifest_path or (chroma_dir.parent / "build-manifest.json")),
+        result_path=Path(result_path or (chroma_dir.parent / "build-result.json")),
+        journal_path=Path(journal_path or (chroma_dir.parent / "build-journal.jsonl")),
+    )
+
+    package = package_units_by_id(units)
+    if int(manifest.get("unit_count") or 0) != len(package):
+        raise ValueError(
+            f"manifest unit_count {manifest.get('unit_count')!r} != package {len(package)}"
+        )
+
+    manifest_sha = write_build_manifest(paths.manifest_path, manifest)
+    col_meta = collection_metadata_from_manifest(manifest, manifest_sha256=manifest_sha)
+
+    client = chromadb.PersistentClient(path=str(chroma_dir))
+    existing_names = {c.name for c in client.list_collections()}
+    if collection_name in existing_names:
+        col = client.get_collection(collection_name)
+        stored = dict(col.metadata or {})
+        errs = verify_collection_metadata_for_resume(
+            stored,
+            embed_model=str(manifest["embed_model"]),
+            unit_corpus_fingerprint=str(manifest["unit_corpus_fingerprint"]),
+            embed_dimensions=int(manifest["embed_dimensions"]),
+            build_manifest_sha256=manifest_sha,
+        )
+        if errs:
+            raise RuntimeError("collection metadata resume guard failed: " + "; ".join(errs))
+        if not resume:
+            raise RuntimeError(
+                f"collection {collection_name!r} already exists; pass resume=True to continue"
+            )
+    else:
+        # Chroma requires str/int/float/bool metadata values.
+        create_meta = {
+            k: (v if isinstance(v, (str, int, float, bool)) else str(v))
+            for k, v in col_meta.items()
+        }
+        col = client.get_or_create_collection(name=collection_name, metadata=create_meta)
+
+    existing_rows = _read_existing_rows(col)
+    skip, add, errors = plan_resume_adds(package, existing_rows)
+    if errors:
+        raise RuntimeError("row-safe resume rejected: " + "; ".join(errors))
+
+    dims = int(manifest["embed_dimensions"])
+    added = 0
+    for i in range(0, len(add), max(1, batch_size)):
+        batch_ids = add[i : i + max(1, batch_size)]
+        docs: list[str] = []
+        metas: list[dict] = []
+        embeddings: list[list[float]] = []
+        for uid in batch_ids:
+            unit = package[uid]
+            doc = str(unit["document"])
+            meta = normalized_shadow_metadata(unit)
+            emb = embed_fn(doc)
+            if len(emb) != dims:
+                raise ValueError(
+                    f"embed_fn returned dim {len(emb)} for id {uid}; expected {dims}"
+                )
+            docs.append(doc)
+            metas.append(meta)
+            embeddings.append(emb)
+        col.add(ids=batch_ids, documents=docs, metadatas=metas, embeddings=embeddings)
+        added += len(batch_ids)
+        _append_journal(
+            paths.journal_path,
+            {
+                "ts": _now(),
+                "event": "batch_add",
+                "ids": batch_ids,
+                "added_total": added,
+            },
+        )
+
+    final_ids = set(_read_existing_rows(col))
+    assert_complete_id_set(set(package), final_ids)
+
+    result = {
+        "status": "OK",
+        "build_manifest_sha256": manifest_sha,
+        "unit_corpus_fingerprint": str(manifest["unit_corpus_fingerprint"]),
+        "embed_model": str(manifest["embed_model"]),
+        "embed_dimensions": dims,
+        "unit_count": len(package),
+        "skipped_count": len(skip),
+        "added_count": added,
+        "collection_name": collection_name,
+        "chroma_dir": str(chroma_dir),
+        "finished_at": _now(),
+    }
+    write_build_result(paths.result_path, result)
+    return result
