@@ -123,6 +123,83 @@ else
   SKIPPED+="  - Codex (no config dir found)\n"
 fi
 
+# --- Deploy Copilot CLI instructions ---
+COPILOT_DIR=""
+for candidate in "$HOME/.copilot" "$HOME/.config/copilot"; do
+  if [ -d "$candidate" ]; then
+    COPILOT_DIR="$candidate"
+    break
+  fi
+done
+if [ -n "$COPILOT_DIR" ]; then
+  cp config/copilot-instructions.example.md "$COPILOT_DIR/copilot-instructions.md"
+  echo "  [deploy] $COPILOT_DIR/copilot-instructions.md"
+  DEPLOY_REPORT+="  - Synced Copilot CLI instructions\n"
+
+  # Ensure DEEPSEEK_API_KEY is in mcp-config.json env (never print the value)
+  COPILOT_MCP="$COPILOT_DIR/mcp-config.json"
+  if [ -f "$COPILOT_MCP" ]; then
+    merge_copilot_env=$(python3 - <<'PY' "$COPILOT_MCP"
+import json, os, sys
+from pathlib import Path
+
+dest = Path(sys.argv[1])
+with open(dest) as f:
+    cfg = json.load(f)
+
+servers = cfg.get("mcpServers", {})
+convmem = servers.get("convmem")
+if convmem is None:
+    print("no-convmem")
+    sys.exit(0)
+
+env = convmem.setdefault("env", {})
+changed = False
+
+# Add DEEPSEEK_API_KEY if not present
+dk = os.environ.get("DEEPSEEK_API_KEY", "")
+if "DEEPSEEK_API_KEY" not in env and dk:
+    env["DEEPSEEK_API_KEY"] = dk
+    changed = True
+
+# Ensure CONVMEM_MCP_PROFILE=shell
+if env.get("CONVMEM_MCP_PROFILE") != "shell":
+    env["CONVMEM_MCP_PROFILE"] = "shell"
+    changed = True
+
+if changed:
+    with open(dest, "w") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    print("updated")
+else:
+    print("skip")
+PY
+)
+    case "$merge_copilot_env" in
+      updated)
+        echo "  [deploy] $COPILOT_MCP (env: DEEPSEEK_API_KEY + CONVMEM_MCP_PROFILE=shell)"
+        DEPLOY_REPORT+="  - Copilot MCP env updated (DEEPSEEK_API_KEY + shell profile)\n"
+        ;;
+      skip)
+        echo "  [skip]   $COPILOT_MCP env already has required keys"
+        DEPLOY_REPORT+="  - Copilot MCP env already configured\n"
+        ;;
+      no-convmem)
+        echo "  [skip]   $COPILOT_MCP has no convmem server block"
+        DEPLOY_REPORT+="  - Copilot MCP skipped (no convmem block)\n"
+        ;;
+      *)
+        echo "  [warn]   Could not update Copilot MCP env"
+        SKIPPED+="  - Copilot MCP env (update failed)\n"
+        ;;
+    esac
+  fi
+else
+  echo "  [skip]   Copilot directory not found (probed: ~/.copilot, ~/.config/copilot)"
+  SKIPPED+="  - Copilot (no config dir found)\n"
+fi
+
 # --- Deploy Kiro steering file ---
 if [ -n "$KIRO_DIR" ]; then
   cp config/kiro-steering-convmem.example.md "$KIRO_DIR/convmem.md"
