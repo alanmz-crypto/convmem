@@ -1,11 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-19 (R2a auth-schema amendment drafted for Kiro)
+**Updated:** 2026-07-19 (R2a auth-schema hermetic implementation)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **R2a auth-schema amendment drafted (2026-07-19):** Gate 1 harness SHA `3b2790f50414f0445c35748e52f849c6276839f7`. Schema draft: [`CURSOR-2026-07-19-r2a-auth-schema-amendment.md`](CURSOR-2026-07-19-r2a-auth-schema-amendment.md) (phase-scoped `authorization_phase=r2a`, binder-only `_R2aEvalRootGrant`, sidecar re-verify; hermetic test matrix T1–T12). Constraints: [`CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md`](CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md). **Next:** Kiro schema sign-off; Cursor hermetic code PR (Codex audits). **Not authorized:** R2a execution / Gate 2 / external eval writes.
+- **R2a auth-schema implementation (2026-07-19):** Tracked hermetic implementation of phase-scoped `authorization_phase=r2a`, binder-only `_R2aEvalRootGrant`, sidecar re-verify at write; tests T1–T12 in `tests/test_eval_r2a_auth_schema.py`. Design: [`CURSOR-2026-07-19-r2a-auth-schema-amendment.md`](CURSOR-2026-07-19-r2a-auth-schema-amendment.md). **Next:** Codex audit + Kiro schema sign-off. **Not authorized:** R2a execution / real eval-root writes / Gate 2.
 
 
 

@@ -122,10 +122,91 @@ PATH_FIELD_NAMES = frozenset(
 
 APPROVAL_EXCLUDED_KEYS = frozenset({"ryan_approved_manifest_sha256"})
 
+# Immutable Gate 1 harness (PR #44 squash). R2a manifests must pin this SHA.
+GATE_1_HARNESS_SHA256 = "3b2790f50414f0445c35748e52f849c6276839f7"
+
+REQUIRED_R2A_FIELDS = (
+    "authorization_phase",
+    "execution_mode",
+    "status",
+    "operations",
+    "merged_harness_sha256",
+    "paths",
+    "service_policy",
+    "prohibited_actions",
+)
+
+R2A_ONLY_OPERATIONS = frozenset({"config_generation"})
+R2A_FORBIDDEN_OPERATIONS = frozenset(
+    {
+        "capture",
+        "adjudicate",
+        "baseline_build",
+        "challenger_build",
+        "compare",
+        "model_execution",
+        "model_exec",
+    }
+)
+
+_EVAL_ROOT_MARKER = "/.local/share/convmem/eval"
+_CONFIG_ROOT_MARKER = "/.config/convmem"
+
+_R2A_SENTINEL = object()
+
+
+class _R2aEvalRootGrant:
+    """Binder-only eval-root write grant. Not a caller-constructible dataclass."""
+
+    __slots__ = (
+        "_sentinel",
+        "out_dir",
+        "chroma_dir",
+        "embed_model",
+        "embed_host",
+        "merged_harness_sha256",
+        "manifest_path",
+        "body_sha256",
+        "phase",
+    )
+
+    def __init__(self, sentinel: object, **bound: Any) -> None:
+        if sentinel is not _R2A_SENTINEL:
+            raise PermissionError("R2a grant is binder-only")
+        self._sentinel = sentinel
+        self.out_dir = str(bound["out_dir"])
+        self.chroma_dir = str(bound["chroma_dir"])
+        self.embed_model = str(bound["embed_model"])
+        self.embed_host = str(bound["embed_host"])
+        self.merged_harness_sha256 = str(bound["merged_harness_sha256"])
+        self.manifest_path = Path(bound["manifest_path"])
+        self.body_sha256 = str(bound["body_sha256"])
+        self.phase = str(bound["phase"])
+
+
+def is_r2a_eval_root_grant(obj: Any) -> bool:
+    """True only for grants constructed by bind_r2a_config_generation."""
+    return (
+        isinstance(obj, _R2aEvalRootGrant)
+        and getattr(obj, "_sentinel", None) is _R2A_SENTINEL
+        and getattr(obj, "phase", None) == "r2a"
+    )
+
+
+def path_is_eval_root(path: Path | str) -> bool:
+    return _EVAL_ROOT_MARKER in str(Path(path).expanduser().resolve(strict=False))
+
+
+def path_is_live_config_root(path: Path | str) -> bool:
+    return _CONFIG_ROOT_MARKER in str(Path(path).expanduser().resolve(strict=False))
+
 
 @dataclass(frozen=True)
 class AuthContext:
-    """Validated authorization context for an operation."""
+    """Validated authorization context for an operation.
+
+    Public and caller-constructible — must never unlock eval-root writes.
+    """
 
     execution_mode: str
     require_corpus_acceptance: bool
@@ -161,6 +242,59 @@ def write_approval_sidecar(manifest_path: Path, digest: str | None = None) -> Pa
     return side
 
 
+def validate_r2a_manifest_schema(manifest: dict[str, Any]) -> list[str]:
+    """Phase-scoped R2a schema — distinct from REQUIRED_REAL_FIELDS."""
+    errors: list[str] = []
+    if str(manifest.get("authorization_phase") or "") != "r2a":
+        errors.append('authorization_phase must be "r2a"')
+    if str(manifest.get("execution_mode") or "") != "real":
+        errors.append('R2a execution_mode must be "real"')
+    if str(manifest.get("status") or "") != "approved":
+        errors.append("status must be approved")
+    for key in REQUIRED_R2A_FIELDS:
+        if key not in manifest:
+            errors.append(f"missing required R2a field {key}")
+    ops = manifest.get("operations")
+    if not isinstance(ops, list) or not ops:
+        errors.append("operations must be a nonempty list")
+    else:
+        op_set = {str(o) for o in ops}
+        if op_set != R2A_ONLY_OPERATIONS:
+            errors.append(
+                "R2a operations must be exactly ['config_generation'], "
+                f"got {ops!r}"
+            )
+        bad = sorted(op_set & R2A_FORBIDDEN_OPERATIONS)
+        if bad:
+            errors.append(f"R2a forbids operations {bad}")
+    harness = str(manifest.get("merged_harness_sha256") or "")
+    if harness != GATE_1_HARNESS_SHA256:
+        errors.append(
+            "merged_harness_sha256 must equal Gate 1 harness "
+            f"{GATE_1_HARNESS_SHA256}"
+        )
+    if not str(manifest.get("ryan_approved_manifest_sha256") or ""):
+        errors.append("R2a manifest requires ryan_approved_manifest_sha256")
+    paths = manifest.get("paths")
+    if not isinstance(paths, dict) or not paths:
+        errors.append("R2a manifest requires nonempty paths object")
+    else:
+        for key in ("live_config", "out_dir", "chroma_dir"):
+            if key not in paths:
+                errors.append(f"R2a paths missing {key}")
+        for k, v in paths.items():
+            s = str(v)
+            if _CONFIG_ROOT_MARKER in s and k != "live_config":
+                errors.append(f"R2a must not write under live config root ({k}={s})")
+    if manifest.get("embed_model") is None and manifest.get("model_tag") is None:
+        errors.append("R2a requires embed_model or model_tag")
+    if (manifest.get("paths") or {}).get("embed_host") is None and manifest.get(
+        "embed_host"
+    ) is None:
+        errors.append("R2a requires embed_host (top-level or paths.embed_host)")
+    return errors
+
+
 def validate_run_manifest_schema(manifest: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     mode = str(manifest.get("execution_mode") or "")
@@ -171,7 +305,10 @@ def validate_run_manifest_schema(manifest: dict[str, Any]) -> list[str]:
     ops = manifest.get("operations")
     if not isinstance(ops, list) or not ops:
         errors.append("operations must be a nonempty list")
-    if mode == "real":
+    phase = str(manifest.get("authorization_phase") or "")
+    if mode == "real" and phase == "r2a":
+        errors.extend(validate_r2a_manifest_schema(manifest))
+    elif mode == "real":
         for key in REQUIRED_REAL_FIELDS:
             if key not in manifest:
                 errors.append(f"missing required field {key}")
@@ -187,7 +324,7 @@ def validate_run_manifest_schema(manifest: dict[str, Any]) -> list[str]:
         if isinstance(paths, dict):
             for k, v in paths.items():
                 s = str(v)
-                if "/.local/share/convmem/eval" in s or "/.config/convmem" in s:
+                if _EVAL_ROOT_MARKER in s or _CONFIG_ROOT_MARKER in s:
                     errors.append(f"fixture manifest must not authorize external path {k}={s}")
     return errors
 
@@ -278,6 +415,10 @@ def _bind_paths_and_scalars(
     if authorize_fixture or execution_mode == "fixture":
         for key in path_keys:
             p = Path(str(runtime[key]))
+            if path_is_eval_root(p) or path_is_live_config_root(p):
+                raise PermissionError(
+                    f"{operation}: fixture forbids eval/live-config path {key}={p}"
+                )
             if not path_is_temp_contained(p):
                 raise PermissionError(
                     f"{operation}: fixture forbids non-temp path {key}={p}"
@@ -437,6 +578,11 @@ def bind_config_generation(
     if run_manifest_path is None:
         raise PermissionError("pass --authorize-fixture or --run-manifest")
     manifest = _load_and_validate_manifest(run_manifest_path)
+    if str(manifest.get("authorization_phase") or "") == "r2a":
+        raise PermissionError(
+            "R2a manifests require bind_r2a_config_generation "
+            "(plain bind_config_generation cannot grant eval-root writes)"
+        )
     assert_operation_allowed(manifest, "config_generation")
     mode = str(manifest.get("execution_mode"))
     _bind_paths_and_scalars(
@@ -453,6 +599,85 @@ def bind_config_generation(
         manifest=manifest,
         operation="config_generation",
     )
+
+
+def bind_r2a_config_generation(
+    *,
+    run_manifest_path: Path,
+    runtime: Mapping[str, Any],
+) -> _R2aEvalRootGrant:
+    """Authorize R2a config_generation and return a binder-only eval-root grant.
+
+    Fixture mode cannot produce a grant. Callers cannot forge the return type.
+    """
+    _require_exact_fields("config_generation", CONFIG_GENERATION_FIELDS, runtime)
+    path = Path(run_manifest_path)
+    manifest = _load_and_validate_manifest(path)
+    if str(manifest.get("authorization_phase") or "") != "r2a":
+        raise PermissionError('bind_r2a_config_generation requires authorization_phase="r2a"')
+    assert_operation_allowed(manifest, "config_generation")
+    _bind_paths_and_scalars(
+        operation="config_generation",
+        required=CONFIG_GENERATION_FIELDS,
+        runtime=runtime,
+        manifest=manifest,
+        execution_mode="real",
+        authorize_fixture=False,
+    )
+    out_dir = _norm_path(runtime["out_dir"])
+    chroma_dir = _norm_path(runtime["chroma_dir"])
+    if path_is_live_config_root(out_dir) or path_is_live_config_root(chroma_dir):
+        raise PermissionError("R2a forbids writing under ~/.config/convmem")
+    if not path_is_eval_root(out_dir) or not path_is_eval_root(chroma_dir):
+        raise PermissionError(
+            "R2a grant requires out_dir and chroma_dir under "
+            "~/.local/share/convmem/eval (or hermetic path containing that marker)"
+        )
+    body_sha = canonical_manifest_body_sha256(manifest)
+    return _R2aEvalRootGrant(
+        _R2A_SENTINEL,
+        out_dir=out_dir,
+        chroma_dir=chroma_dir,
+        embed_model=str(runtime["embed_model"]),
+        embed_host=str(runtime["embed_host"]),
+        merged_harness_sha256=str(manifest.get("merged_harness_sha256")),
+        manifest_path=path.resolve(strict=False),
+        body_sha256=body_sha,
+        phase="r2a",
+    )
+
+
+def verify_r2a_grant_for_write(
+    grant: Any,
+    *,
+    out_dir: Path | str,
+    chroma_dir: Path | str,
+    embed_model: str,
+    embed_host: str,
+) -> None:
+    """Re-check phase + original sidecar + exact bound paths before eval-root write."""
+    if not is_r2a_eval_root_grant(grant):
+        raise PermissionError("eval-root write requires a binder-issued R2a grant")
+    assert isinstance(grant, _R2aEvalRootGrant)
+    if grant.phase != "r2a":
+        raise PermissionError('R2a grant phase must be "r2a"')
+    if _norm_path(out_dir) != grant.out_dir:
+        raise PermissionError("runtime out_dir mismatch vs R2a grant")
+    if _norm_path(chroma_dir) != grant.chroma_dir:
+        raise PermissionError("runtime chroma_dir mismatch vs R2a grant")
+    if str(embed_model) != grant.embed_model:
+        raise PermissionError("runtime embed_model mismatch vs R2a grant")
+    if str(embed_host) != grant.embed_host:
+        raise PermissionError("runtime embed_host mismatch vs R2a grant")
+    manifest = load_run_manifest(grant.manifest_path)
+    if str(manifest.get("authorization_phase") or "") != "r2a":
+        raise PermissionError("approved manifest no longer has authorization_phase=r2a")
+    assert_manifest_file_matches_approval(grant.manifest_path, manifest)
+    body_sha = canonical_manifest_body_sha256(manifest)
+    if body_sha != grant.body_sha256:
+        raise PermissionError("R2a grant body SHA no longer matches approved manifest")
+    if str(manifest.get("merged_harness_sha256") or "") != grant.merged_harness_sha256:
+        raise PermissionError("R2a grant harness SHA mismatch vs approved manifest")
 
 
 def _bind_build(
@@ -717,6 +942,39 @@ def make_real_run_manifest_for_tests(
     return body
 
 
+def make_r2a_run_manifest_for_tests(
+    *,
+    paths: dict[str, Any],
+    **overrides: Any,
+) -> dict[str, Any]:
+    """Construct an R2a-phase real manifest body (sidecar written separately)."""
+    body: dict[str, Any] = {
+        "authorization_phase": "r2a",
+        "execution_mode": "real",
+        "status": "approved",
+        "operations": ["config_generation"],
+        "merged_harness_sha256": GATE_1_HARNESS_SHA256,
+        "paths": paths,
+        "service_policy": "no_service_changes",
+        "prohibited_actions": [
+            "capture",
+            "adjudicate",
+            "baseline_build",
+            "challenger_build",
+            "compare",
+            "model_execution",
+            "promote",
+            "cleanup_external",
+        ],
+        "embed_model": overrides.pop("embed_model", "fake-embed"),
+        "embed_host": paths.get("embed_host", overrides.pop("embed_host", "http://127.0.0.1:0")),
+    }
+    body.update(overrides)
+    digest = canonical_manifest_body_sha256(body)
+    body["ryan_approved_manifest_sha256"] = digest
+    return body
+
+
 __all__ = [
     "ADJUDICATE_FIELDS",
     "AuthContext",
@@ -726,7 +984,10 @@ __all__ = [
     "COMPARE_FIELDS",
     "CONFIG_GENERATION_FIELDS",
     "DEFAULT_UNCERTAINTY",
+    "GATE_1_HARNESS_SHA256",
     "MODEL_EXECUTION_FIELDS",
+    "REQUIRED_R2A_FIELDS",
+    "REQUIRED_REAL_FIELDS",
     "assert_build_authorized",
     "assert_capture_authorized",
     "assert_compare_authorized",
@@ -739,13 +1000,20 @@ __all__ = [
     "bind_compare",
     "bind_config_generation",
     "bind_model_execution",
+    "bind_r2a_config_generation",
     "canonical_manifest_body_sha256",
+    "is_r2a_eval_root_grant",
     "load_run_manifest",
     "make_fixture_run_manifest",
+    "make_r2a_run_manifest_for_tests",
     "make_real_run_manifest_for_tests",
     "manifest_sha256",
+    "path_is_eval_root",
+    "path_is_live_config_root",
     "path_is_temp_contained",
+    "validate_r2a_manifest_schema",
     "validate_run_manifest_schema",
+    "verify_r2a_grant_for_write",
     "write_approval_sidecar",
     "_path_is_tempish",
 ]
