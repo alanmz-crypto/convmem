@@ -20,6 +20,7 @@ from doctor import (
     _unverified_resting_state_probe,
     doctor_exit_code,
     run_doctor,
+    render_doctor_text,
     standing_register_status,
 )
 
@@ -82,6 +83,20 @@ class DoctorTests(unittest.TestCase):
             DoctorCheck("b", False, "bad"),
         ]
         self.assertEqual(doctor_exit_code(checks), 1)
+
+    def test_render_doctor_text_smoke(self):
+        checks = [
+            DoctorCheck("ollama", True, "running"),
+            DoctorCheck("chroma", False, "empty collection"),
+            DoctorCheck("config", True, "ok", status="warn"),
+        ]
+        text = render_doctor_text(checks)
+        lines = text.splitlines()
+        self.assertIn("[PASS] ollama: running", lines)
+        self.assertIn("[FAIL] chroma: empty collection", lines)
+        self.assertIn("[WARN] config: ok", lines)
+        self.assertIn("doctor: 1 check(s) failed", text)
+        self.assertIn("1 warning(s)", text)
 
 
 class StandingRegisterTests(unittest.TestCase):

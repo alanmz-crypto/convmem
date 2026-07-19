@@ -7,8 +7,10 @@
 | **This file** | Which repo, which script, which reference |
 | [`docs/PLANNING-PROTOCOL.md`](PLANNING-PROTOCOL.md) | Planning OS workflow — where am I in architecture / execution / revise? |
 | [`docs/planning/EXECUTION-CLOSURE-2026-07-08.md`](planning/EXECUTION-CLOSURE-2026-07-08.md) | Planning OS arc closure — frozen summary, findings, interim routes |
+| [`docs/plans/`](plans/) | Active ARCHITECTURE and EXECUTION plans (embedding eval, restore drill, etc.) |
 | [`config/agent-protocol.md`](../config/agent-protocol.md) | Session start/close (deployed to Cursor, MCP, Codex, Kiro) |
-| [`SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) | Cross-project digest phase status |
+| [`SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) | Cross-project digest phase status + background synthesis phase gates |
+| [`docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`](inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md) | Canonical cross-project synthesis plan (Phase 0–3 gates) |
 | [`docs/inter-model/SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md) | Record block format |
 | [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md) | HITL team roles — lost on who does what? |
 
@@ -87,6 +89,8 @@ Same wrapper for Codex rollout, Crush `.crush/crush.db`, etc. — always prod Ch
 ### B. Cross-project “big picture” digest (prod)
 
 **Read:** [`docs/CROSS-PROJECT-DIGEST-ATTEMPTS.md`](CROSS-PROJECT-DIGEST-ATTEMPTS.md)
+**Canonical plan:** [`docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`](inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md) § *Cross-project background synthesis* — gates, Phases 0–3, execution status
+**Pilot history:** [`docs/inter-model/CROSS-PROJECT-DIGEST-PILOT.md`](inter-model/CROSS-PROJECT-DIGEST-PILOT.md) — manual pilot runs 1–8
 
 ```bash
 # Deterministic brief (no LLM) — weekly habit / smoke
@@ -135,6 +139,8 @@ bash scripts/verify-lab-reference.sh
 |----------|------|
 | Lab gates, smoke, fail-open/closed | `convmem-lab/docs/lab-reference/` |
 | Prod architecture, ledger, retrieval | `convmem/docs/builder-reference/` |
+| Active execution / architecture plans | `convmem/docs/plans/` (EXECUTION-*.md, ARCHITECTURE-*.md) |
+| Background synthesis phase gates | `convmem/SYNTHESIS-STATUS.md` → `docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md` |
 | Willowy Hollow promote / prod write gates | `convmem/docs/site-reference/` |
 | Digest attempts schema | `convmem/docs/CROSS-PROJECT-DIGEST-ATTEMPTS.md` |
 | Synthesis phase / propose gate | `convmem/SYNTHESIS-STATUS.md` |
