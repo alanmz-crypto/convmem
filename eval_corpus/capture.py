@@ -30,7 +30,11 @@ from eval_corpus.io_atomic import (
     sha256_file,
 )
 from eval_corpus.reconstruct import build_canonical_unit
-from eval_corpus.validate import historical_spot_check_plan, validate_overlap
+from eval_corpus.validate import (
+    OverlapPolicy,
+    historical_spot_check_plan,
+    validate_overlap,
+)
 from purge_locks import export_flock_path
 
 UNITS_COLLECTION = "knowledge_units"
@@ -220,9 +224,12 @@ def run_capture(
     chroma_dir: Path,
     max_retries: int = 3,
     capture_id: str | None = None,
+    overlap_policy: OverlapPolicy = "canonical",
 ) -> dict[str, Any]:
-    """Canonical capture: Chroma required; post-Chroma recheck; validation wired.
+    """Capture: Chroma required; post-Chroma recheck; validation wired.
 
+    Default overlap_policy=canonical (Architecture Rev 1 40/30/30).
+    policy=fixture is for hermetic tests only — never exposed on the CLI.
     Status is CAPTURE_COMPLETE / FAILED / UNRESOLVED — never corpus-accepted.
     """
     export_src = Path(export_src)
@@ -302,7 +309,10 @@ def run_capture(
 
         units = package["units"]
         overlap = validate_overlap(
-            units, chroma_slice["documents"], capture_id=capture_id
+            units,
+            chroma_slice["documents"],
+            capture_id=capture_id,
+            policy=overlap_policy,
         )
         atomic_write_json(capture_dir / "overlap_validation.json", overlap)
 

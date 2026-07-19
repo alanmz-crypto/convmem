@@ -8,19 +8,26 @@
 | Gate | Meaning |
 |------|---------|
 | **Gate 1** | Approves the completed evaluator (tracked code, hermetic tests, fixtures). No live capture/builds/evals. |
-| **Gate 2** | Reviews the first real comparison’s evidence (approved run-manifest SHA, corpus acceptance, uncertainty report). Never automatic promotion. |
+| **Gate 2** | Reviews the first real comparison’s evidence (external approval sidecar SHA, corpus acceptance, uncertainty report). Never automatic promotion. |
 
 ## Gate 1 shipped capabilities
 
-- Canonical capture CLI (**Chroma always required**): post-Chroma export/processed recheck, overlap validation, immutable `historical_spot_check.json`
-- Separate adjudication CLI + `corpus_acceptance.json` binding SHAs of capture report, package, overlap, spot-check, and adjudications file (spot-check never edited)
-- Shadow builder: package SHA + fingerprint recompute, `convmem:package_sha256` + `document_recipe_version` in metadata, write-once manifest, collection vs comparison reuse split, `units_per_sec`
-- Run-manifest auth (`execution_mode=fixture|real`) replacing R4/R5 flags; fixture manifests cannot authorize external paths
-- Embed adapters: `fake`, `http-fake`, gated `ollama` (unimplemented for live Gate 1 runs)
-- Dual-view compare CLI with recipe strata, paired sign-test + seeded bootstrap uncertainty, `queries_per_sec` / `units_per_sec`
-- Primary inference: pre-registered metric in `embedding_influenced` only; ops-pipeline and recipe strata diagnostic
-- 25–40 categorized pilot with `recipe_stratum`; temp-only shadow config generator
+- Canonical capture CLI (**Chroma always required**): post-Chroma recheck; **canonical overlap policy** (40/30/30 — under-quota → `UNRESOLVED`); immutable `historical_spot_check.json`
+- Separate adjudication CLI + `corpus_acceptance.json` (spot-check never edited); real path is run-manifest-gated
+- Shadow builder: package SHA + fingerprint, write-once manifest, collection vs comparison reuse, `units_per_sec`
+- **Operation-specific run-manifest binders** (capture / adjudicate / config_generation / baseline_build / challenger_build / compare / model_execution): reject missing, extra, or mismatched fields; real mode requires external `<manifest>.approved.sha256` sidecar
+- Real shadow builds force corpus acceptance from auth context (CLI flag cannot disable)
+- Embed adapters: `fake`, `http-fake`, gated `ollama` behind `model_execution`
+- Compare modes:
+  - `injectable` — hermetic scoring via `--scores-json`; latency labeled `fabricated_clock`
+  - `subprocess` — real `query_units` via `CONVMEM_CONFIG` workers; one-shot for isolation; long-lived per-arm workers for warm latency (5 discarded warmups + 20 timed reps, counterbalanced); process startup reported separately
+- Fallback exercise: wrong query-vector dimension while preserving readable `chroma.sqlite3`; `fallback_exercised=true` only on fallback-only sentinel
+- Schema fixtures: `eval_schema_*` and `eval_methodology_schema_*` (category handling only — **not** a real corpus pilot)
 - Doctor embed identity via SQLite `mode=ro`
+
+## Real pilot (post Gate 1 merge / pre Gate 2)
+
+The actual 25–40-query pilot must use resolvable real corpus/ledger IDs, receive Claude label/coverage review, and have query/relevance hashes bound into the approved Gate 2 run-manifest. That is run preparation, not another Gate 1 authorization.
 
 ## Not authorized under Gate 1
 

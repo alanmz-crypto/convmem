@@ -94,7 +94,8 @@ class CaptureExtractTests(unittest.TestCase):
                 capture_dir=cap,
                 chroma_dir=chroma,
             )
-            self.assertEqual(result["capture_report"]["status"], "CAPTURE_COMPLETE")
+            # Canonical 40/30/30 quotas: sparse hermetic capture is UNRESOLVED.
+            self.assertEqual(result["capture_report"]["status"], "UNRESOLVED")
             ids = [
                 json.loads(line)["id"]
                 for line in (cap / "corpus_package.jsonl").read_text().splitlines()
@@ -165,8 +166,8 @@ class CaptureCLISmokeTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(proc.returncode, 0, proc.stderr)
-            self.assertEqual(json.loads(proc.stdout)["status"], "CAPTURE_COMPLETE")
+            self.assertEqual(proc.returncode, 1, proc.stderr)
+            self.assertEqual(json.loads(proc.stdout)["status"], "UNRESOLVED")
 
 
 class ShadowOrchestrationTests(unittest.TestCase):

@@ -177,6 +177,7 @@ class CaptureAdjudicationTests(unittest.TestCase):
                 processed_src=processed,
                 capture_dir=cap,
                 chroma_dir=chroma,
+                overlap_policy="fixture",  # hermetic only; CLI stays canonical
             )
             self.assertEqual(result["capture_report"]["status"], "CAPTURE_COMPLETE")
             self.assertFalse(result["capture_report"]["corpus_accepted"])
@@ -289,9 +290,9 @@ class ShadowProvenanceTests(unittest.TestCase):
 
 class CompareCLISmokeTests(unittest.TestCase):
     def test_injectable_compare_inconclusive_small_n(self):
-        golden = REPO / "tests/fixtures/eval_pilot_queries.jsonl"
-        package = REPO / "tests/fixtures/eval_pilot_package.jsonl"
-        rows = [json.loads(l) for l in golden.read_text().splitlines() if l.strip()][:5]
+        schema_q = REPO / "tests/fixtures/eval_schema_queries.jsonl"
+        schema_p = REPO / "tests/fixtures/eval_schema_package.jsonl"
+        rows = [json.loads(l) for l in schema_q.read_text().splitlines() if l.strip()][:5]
         scores = {"baseline": {}, "challenger": {}}
         for r in rows:
             q = r["query"]
@@ -307,6 +308,8 @@ class CompareCLISmokeTests(unittest.TestCase):
             root = Path(td)
             g = root / "g.jsonl"
             g.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+            pkg = root / "package.jsonl"
+            pkg.write_text(schema_p.read_text(encoding="utf-8"), encoding="utf-8")
             s = root / "scores.json"
             s.write_text(json.dumps(scores))
             out = root / "cmp.json"
@@ -318,7 +321,7 @@ class CompareCLISmokeTests(unittest.TestCase):
                     "--golden",
                     str(g),
                     "--package",
-                    str(package),
+                    str(pkg),
                     "--scores-json",
                     str(s),
                     "--out",
@@ -332,6 +335,7 @@ class CompareCLISmokeTests(unittest.TestCase):
             report = json.loads(out.read_text())
             self.assertEqual(report["uncertainty"]["verdict"], "INCONCLUSIVE")
             self.assertTrue(report["not_promotion_authority"])
+            self.assertEqual(report["throughput"]["latency_source"], "fabricated_clock")
 
 
 class CaptureCLISmokeTests(unittest.TestCase):

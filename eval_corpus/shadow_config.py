@@ -38,6 +38,7 @@ def generate_shadow_config(
     embed_model: str,
     processed_log: Path | None = None,
     units_export: Path | None = None,
+    ollama_host: str | None = None,
 ) -> tuple[Path, list[str]]:
     """Write shadow.toml under out_dir. Never touches ~/.config or ~/.local/share/convmem/eval."""
     out_dir = Path(out_dir)
@@ -60,6 +61,8 @@ def generate_shadow_config(
     if units_export is not None:
         shadow["index"]["units_export"] = str(units_export)
     shadow["models"]["embed_model"] = embed_model
+    if ollama_host is not None:
+        shadow["models"]["ollama_host"] = ollama_host
     shadow.setdefault("eval", {})
     shadow["eval"]["retrieval_view"] = "embedding_influenced"
 

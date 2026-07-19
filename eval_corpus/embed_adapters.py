@@ -7,7 +7,6 @@ import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Callable
-from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 EmbedFn = Callable[[str], list[float]]
@@ -55,43 +54,86 @@ def ollama_embed_fn(host: str, model: str) -> EmbedFn:
     return _embed
 
 
-class _FakeEmbedHandler(BaseHTTPRequestHandler):
-    dimensions: int = 8
+class FakeEmbedServerState:
+    """Shared mutable state for fake / canary embed HTTP servers."""
 
-    def log_message(self, fmt: str, *args) -> None:  # noqa: A003
-        return
+    def __init__(
+        self,
+        *,
+        dimensions: int,
+        wrong_dimensions: int | None = None,
+        force_wrong_dim: bool = False,
+    ) -> None:
+        self.dimensions = dimensions
+        self.wrong_dimensions = wrong_dimensions
+        self.force_wrong_dim = force_wrong_dim
+        self.request_count = 0
+        self.lock = threading.Lock()
+        self.prompts: list[str] = []
 
-    def do_POST(self) -> None:  # noqa: N802
-        length = int(self.headers.get("Content-Length") or 0)
-        raw = self.rfile.read(length)
-        try:
-            body = json.loads(raw.decode("utf-8"))
-        except json.JSONDecodeError:
-            self.send_response(400)
-            self.end_headers()
+    def record(self, prompt: str) -> None:
+        with self.lock:
+            self.request_count += 1
+            self.prompts.append(prompt)
+
+    def snapshot_count(self) -> int:
+        with self.lock:
+            return self.request_count
+
+
+def _make_handler(state: FakeEmbedServerState) -> type[BaseHTTPRequestHandler]:
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, fmt: str, *args) -> None:  # noqa: A003
             return
-        text = str(body.get("prompt") or "")
-        emb = fake_embed_fn(self.dimensions)(text)
-        payload = json.dumps({"embedding": emb}).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(payload)))
-        self.end_headers()
-        self.wfile.write(payload)
+
+        def do_POST(self) -> None:  # noqa: N802
+            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.rfile.read(length)
+            try:
+                body = json.loads(raw.decode("utf-8"))
+            except json.JSONDecodeError:
+                self.send_response(400)
+                self.end_headers()
+                return
+            text = str(body.get("prompt") or "")
+            state.record(text)
+            dims = state.dimensions
+            if state.force_wrong_dim and state.wrong_dimensions is not None:
+                dims = state.wrong_dimensions
+            emb = fake_embed_fn(dims)(text)
+            payload = json.dumps({"embedding": emb}).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+    return Handler
 
 
-def start_fake_embed_server(dimensions: int = 8) -> tuple[HTTPServer, str, threading.Thread]:
-    """Start localhost fake /api/embeddings server. Returns (server, base_url, thread)."""
-
-    class Handler(_FakeEmbedHandler):
-        pass
-
-    Handler.dimensions = dimensions
-    server = HTTPServer(("127.0.0.1", 0), Handler)
+def start_fake_embed_server(
+    dimensions: int = 8,
+    *,
+    wrong_dimensions: int | None = None,
+    force_wrong_dim: bool = False,
+) -> tuple[HTTPServer, str, threading.Thread, FakeEmbedServerState]:
+    """Start localhost fake /api/embeddings. Returns server, url, thread, state."""
+    state = FakeEmbedServerState(
+        dimensions=dimensions,
+        wrong_dimensions=wrong_dimensions,
+        force_wrong_dim=force_wrong_dim,
+    )
+    handler = _make_handler(state)
+    server = HTTPServer(("127.0.0.1", 0), handler)
     port = server.server_address[1]
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    return server, f"http://127.0.0.1:{port}", thread
+    return server, f"http://127.0.0.1:{port}", thread, state
+
+
+def start_canary_embed_server() -> tuple[HTTPServer, str, threading.Thread, FakeEmbedServerState]:
+    """Live-canary endpoint: records requests; isolation tests require count==0."""
+    return start_fake_embed_server(dimensions=8)
 
 
 def stop_fake_embed_server(server: HTTPServer) -> None:
