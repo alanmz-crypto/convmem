@@ -15,11 +15,19 @@ Orchestration and role-charter review only — paste-only, no code edits, no pro
 ## Response TL;DR
 
 
-**Every response ends with a TL;DR.** Scale it to the response:
+**MANDATORY: Every response MUST end with a TL;DR.** A response without a closing TL;DR is non-compliant — treat this like a missing `convmem doctor` call. No exceptions by model, lane, or task type.
 
-- Short answer (< 5 lines of substance): one sentence `**TL;DR:** …`
-- Medium response (5–30 lines): 1–2 sentence `**TL;DR:** …`
-- Long response (> 30 lines or multi-section): a `## TL;DR` heading with 2–4 bullet points
+**Format — scale to response length:**
 
-The TL;DR states what was done, decided, or answered — not a restatement of the question. Omit it only for bare acknowledgments ("Done.", "Pushed.", single-word confirmations) where the entire response already is the summary.
+| Response size | TL;DR format |
+|---------------|-------------|
+| Short (< 5 lines of substance) | One sentence: `**TL;DR:** …` |
+| Medium (5–30 lines) | 1–2 sentences: `**TL;DR:** …` |
+| Long (> 30 lines or multi-section) | `## TL;DR` heading with 2–4 bullet points |
+
+**Content:** State what was done, decided, or answered — not a restatement of the question. Keep it proportional to complexity.
+
+**Only exception:** bare single-line acknowledgments ("Done.", "Pushed.") where the entire response already is the summary.
+
+**If you are about to submit a response without a TL;DR at the end, stop and add one.**
 
