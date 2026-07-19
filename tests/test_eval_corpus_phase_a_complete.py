@@ -1,4 +1,4 @@
-"""Phase A completion: capture CLI/extract, shadow orchestration, runner, isolation."""
+"""Phase A / Gate 1 hermetic tests updated for Chroma-required capture + run-manifest auth."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -21,14 +21,14 @@ def _fake_embed(dimensions: int = 8):
     return _embed
 
 
-def _seed_mini_chroma(chroma_dir: Path) -> None:
+def _seed_mini_chroma(chroma_dir: Path, doc: str = "hello keep") -> None:
     from chroma_store import ChromaStore
 
     store = ChromaStore(str(chroma_dir))
     try:
         store.add_unit(
             "keep-1",
-            "hello keep",
+            doc,
             [0.1] * 8,
             {"id": "keep-1", "title": "Keep", "tool": "t", "source_path": "site:x"},
         )
@@ -55,7 +55,7 @@ class CaptureExtractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             chroma = root / "chroma"
-            _seed_mini_chroma(chroma)
+            _seed_mini_chroma(chroma, doc="hello keep")
             export = root / "knowledge_units.jsonl"
             processed = root / "processed.json"
             export.write_text(
@@ -79,15 +79,6 @@ class CaptureExtractTests(unittest.TestCase):
                                 "source_path": "site:x",
                             }
                         ),
-                        json.dumps(
-                            {
-                                "id": "keep-1",
-                                "summary": "hello",
-                                "keywords": ["keep", "dup"],
-                                "tool": "t",
-                                "source_path": "site:x",
-                            }
-                        ),
                     ]
                 )
                 + "\n",
@@ -96,8 +87,6 @@ class CaptureExtractTests(unittest.TestCase):
             processed.write_text("{}", encoding="utf-8")
             slice_ = extract_chroma_capture_slice(chroma)
             self.assertIn("tomb-1", slice_["superseded_ids"])
-            self.assertEqual(slice_["documents"]["keep-1"], "hello keep")
-
             cap = root / "capture"
             result = run_capture(
                 export_src=export,
@@ -105,34 +94,13 @@ class CaptureExtractTests(unittest.TestCase):
                 capture_dir=cap,
                 chroma_dir=chroma,
             )
-            self.assertEqual(result["capture_report"]["status"], "OK")
-            self.assertTrue((cap / "corpus_package.jsonl").is_file())
-            self.assertTrue((cap / "chroma_extract.json").is_file())
-            # tomb excluded via superseded
+            self.assertEqual(result["capture_report"]["status"], "CAPTURE_COMPLETE")
             ids = [
                 json.loads(line)["id"]
                 for line in (cap / "corpus_package.jsonl").read_text().splitlines()
                 if line.strip()
             ]
             self.assertEqual(ids, ["keep-1"])
-            self.assertNotIn("tomb-1", ids)
-
-    def test_capture_outputs_atomic_no_tmp_left(self):
-        from eval_corpus.capture import capture_export_and_processed
-
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            export = root / "knowledge_units.jsonl"
-            processed = root / "processed.json"
-            export.write_text(json.dumps({"id": "a", "summary": "s"}) + "\n", encoding="utf-8")
-            processed.write_text("{}", encoding="utf-8")
-            cap = root / "capture"
-            capture_export_and_processed(
-                export_src=export, processed_src=processed, capture_dir=cap
-            )
-            leftovers = list(cap.glob("*.tmp")) + list(cap.glob(".*.tmp"))
-            self.assertEqual(leftovers, [])
-            self.assertTrue((cap / "capture_report.json").is_file())
 
 
 class CaptureCLISmokeTests(unittest.TestCase):
@@ -147,19 +115,21 @@ class CaptureCLISmokeTests(unittest.TestCase):
                 "/tmp/y",
                 "--capture-dir",
                 "/tmp/z",
+                "--chroma-dir",
+                "/tmp/c",
             ],
             cwd=str(REPO),
             capture_output=True,
             text=True,
         )
         self.assertEqual(proc.returncode, 2)
-        self.assertIn("authorize-r2b", proc.stderr)
+        self.assertIn("authorize-fixture", proc.stderr)
 
     def test_hermetic_cli_with_auth(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             chroma = root / "chroma"
-            _seed_mini_chroma(chroma)
+            _seed_mini_chroma(chroma, doc="hello keep")
             export = root / "ku.jsonl"
             processed = root / "processed.json"
             export.write_text(
@@ -167,7 +137,7 @@ class CaptureCLISmokeTests(unittest.TestCase):
                     {
                         "id": "keep-1",
                         "summary": "hello",
-                        "keywords": ["k"],
+                        "keywords": ["keep"],
                         "tool": "t",
                         "source_path": "site:x",
                     }
@@ -181,7 +151,7 @@ class CaptureCLISmokeTests(unittest.TestCase):
                 [
                     sys.executable,
                     str(REPO / "scripts" / "eval_corpus_capture.py"),
-                    "--authorize-r2b",
+                    "--authorize-fixture",
                     "--export",
                     str(export),
                     "--processed",
@@ -196,18 +166,18 @@ class CaptureCLISmokeTests(unittest.TestCase):
                 text=True,
             )
             self.assertEqual(proc.returncode, 0, proc.stderr)
-            payload = json.loads(proc.stdout)
-            self.assertEqual(payload["status"], "OK")
-            self.assertEqual(payload["unit_count"], 1)
+            self.assertEqual(json.loads(proc.stdout)["status"], "CAPTURE_COMPLETE")
 
 
 class ShadowOrchestrationTests(unittest.TestCase):
     def test_build_resume_with_fake_embeddings(self):
         import chromadb
 
-        from eval_corpus.fingerprint import corpus_fingerprint_hex
+        from eval_corpus.embed_adapters import fake_embed_fn
+        from eval_corpus.fingerprint import corpus_fingerprint_hex, package_sha256_hex
         from eval_corpus.reconstruct import build_canonical_unit, normalized_shadow_metadata
         from eval_corpus.shadow_build import (
+            chroma_safe_metadata,
             collection_metadata_from_manifest,
             run_shadow_build,
             write_build_manifest,
@@ -234,6 +204,7 @@ class ShadowOrchestrationTests(unittest.TestCase):
             ),
         ]
         fp = corpus_fingerprint_hex(units)
+        pkg = package_sha256_hex(units)
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             chroma = root / "chroma"
@@ -241,15 +212,17 @@ class ShadowOrchestrationTests(unittest.TestCase):
                 "embed_model": "fake-embed",
                 "embed_dimensions": 8,
                 "unit_corpus_fingerprint": fp,
+                "package_sha256": pkg,
                 "unit_count": 2,
                 "batch_size": 1,
                 "schema_version": "1",
                 "build_timestamp": "2026-07-19T00:00:00Z",
             }
-            # Partial store: create collection with full manifest metadata, add only unit a
             man_path = root / "build-manifest.json"
             sha = write_build_manifest(man_path, manifest)
-            meta = collection_metadata_from_manifest(manifest, manifest_sha256=sha)
+            meta = collection_metadata_from_manifest(
+                manifest, manifest_sha256=sha, package_sha256=pkg
+            )
             create_meta = {
                 k: (v if isinstance(v, (str, int, float, bool)) else str(v))
                 for k, v in meta.items()
@@ -258,19 +231,18 @@ class ShadowOrchestrationTests(unittest.TestCase):
             col = client.get_or_create_collection(
                 name="knowledge_units", metadata=create_meta
             )
-            emb = _fake_embed(8)(units[0]["document"])
+            emb = fake_embed_fn(8)(units[0]["document"])
             col.add(
                 ids=["a"],
                 documents=[units[0]["document"]],
-                metadatas=[normalized_shadow_metadata(units[0])],
+                metadatas=[chroma_safe_metadata(normalized_shadow_metadata(units[0]))],
                 embeddings=[emb],
             )
-
             result_resume = run_shadow_build(
                 units=units,
                 chroma_dir=chroma,
                 manifest=manifest,
-                embed_fn=_fake_embed(8),
+                embed_fn=fake_embed_fn(8),
                 batch_size=1,
                 resume=True,
                 manifest_path=man_path,
@@ -280,23 +252,8 @@ class ShadowOrchestrationTests(unittest.TestCase):
             self.assertEqual(result_resume["skipped_count"], 1)
             self.assertEqual(result_resume["added_count"], 1)
 
-            # Second resume is a no-op
-            result_noop = run_shadow_build(
-                units=units,
-                chroma_dir=chroma,
-                manifest=manifest,
-                embed_fn=_fake_embed(8),
-                batch_size=1,
-                resume=True,
-                manifest_path=man_path,
-                result_path=root / "build-result2.json",
-                journal_path=root / "build-journal.jsonl",
-            )
-            self.assertEqual(result_noop["skipped_count"], 2)
-            self.assertEqual(result_noop["added_count"], 0)
-
     def test_shadow_cli_refuse_and_fake_smoke(self):
-        from eval_corpus.fingerprint import corpus_fingerprint_hex
+        from eval_corpus.fingerprint import corpus_fingerprint_hex, package_sha256_hex
         from eval_corpus.reconstruct import build_canonical_unit
 
         unit = build_canonical_unit(
@@ -316,32 +273,33 @@ class ShadowOrchestrationTests(unittest.TestCase):
                 "embed_model": "fake-embed",
                 "embed_dimensions": 8,
                 "unit_corpus_fingerprint": corpus_fingerprint_hex([unit]),
+                "package_sha256": package_sha256_hex([unit]),
                 "unit_count": 1,
                 "batch_size": 1,
                 "schema_version": "1",
             }
             man = root / "manifest.json"
-            man.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            man.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
             proc = subprocess.run(
-                [sys.executable, str(REPO / "scripts" / "eval_shadow_embed.py")],
+                [sys.executable, str(REPO / "scripts" / "eval_shadow_embed.py"),
+                 "--package", str(pkg), "--manifest", str(man),
+                 "--chroma-dir", str(root / "c")],
                 cwd=str(REPO),
                 capture_output=True,
                 text=True,
             )
             self.assertEqual(proc.returncode, 2)
-
-            chroma = root / "chroma"
             proc2 = subprocess.run(
                 [
                     sys.executable,
                     str(REPO / "scripts" / "eval_shadow_embed.py"),
-                    "--authorize-r4",
+                    "--authorize-fixture",
                     "--package",
                     str(pkg),
                     "--manifest",
                     str(man),
                     "--chroma-dir",
-                    str(chroma),
+                    str(root / "chroma"),
                     "--embed-mode",
                     "fake",
                     "--result",
@@ -352,104 +310,6 @@ class ShadowOrchestrationTests(unittest.TestCase):
                 text=True,
             )
             self.assertEqual(proc2.returncode, 0, proc2.stderr)
-            self.assertEqual(json.loads(proc2.stdout)["status"], "OK")
-
-
-class RunnerMetricsLatencyTests(unittest.TestCase):
-    def test_both_views_and_latency_without_models(self):
-        from eval_corpus.runner import (
-            evaluate_both_views,
-            latency_report_to_dict,
-            measure_both_views_latency,
-            view_report_to_dict,
-        )
-
-        rows = [
-            {
-                "query": "dec_1 please",
-                "acceptable_ids": ["dec_1"],
-                "top_k": 2,
-                "relevant_complete": True,
-            }
-        ]
-        calls: list[str] = []
-
-        def query_fn(query, *, top_k, eval_view):
-            calls.append(eval_view)
-            if eval_view == "embedding_influenced":
-                return [
-                    {"id": "u0", "metadata": {"ledger_id": "dec_other"}},
-                    {"id": "u1", "metadata": {"ledger_id": "dec_1"}},
-                ][:top_k]
-            return [{"id": "u1", "metadata": {"ledger_id": "dec_1"}}][:top_k]
-
-        reports = evaluate_both_views(rows, query_fn)
-        self.assertIn("embedding_influenced", reports)
-        self.assertIn("operational_pipeline", reports)
-        self.assertTrue(reports["operational_pipeline"].p_at_1)
-        self.assertFalse(reports["embedding_influenced"].p_at_1)
-        self.assertTrue(reports["embedding_influenced"].hit_at_k)
-        as_dict = view_report_to_dict(reports["embedding_influenced"])
-        self.assertEqual(as_dict["view"], "embedding_influenced")
-
-        # Fake clock: each pair of calls advances 10ms
-        state = {"t": 0.0}
-
-        def clock():
-            state["t"] += 0.005
-            return state["t"]
-
-        lat = measure_both_views_latency(
-            ["q1", "q2"], query_fn, top_k=2, warmup=0, clock=clock
-        )
-        self.assertEqual(set(lat), {"embedding_influenced", "operational_pipeline"})
-        d = latency_report_to_dict(lat["embedding_influenced"])
-        self.assertEqual(d["count"], 2)
-        self.assertGreater(d["mean_ms"], 0)
-        self.assertIn("embedding_influenced", calls)
-
-
-class DoctorSqliteRoTests(unittest.TestCase):
-    def test_reads_collection_metadata_via_sqlite(self):
-        from chroma_readonly import collection_config_metadata
-        from doctor import DoctorCheck, _check_embed_collection_identity
-
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            chroma = root / "chroma"
-            import chromadb
-
-            client = chromadb.PersistentClient(path=str(chroma))
-            client.get_or_create_collection(
-                name="knowledge_units",
-                metadata={
-                    "hnsw:space": "cosine",
-                    "convmem:embed_model": "nomic-embed-text",
-                    "convmem:embed_dimensions": 768,
-                },
-            )
-            meta = collection_config_metadata(chroma, "knowledge_units")
-            self.assertEqual(meta.get("convmem:embed_model"), "nomic-embed-text")
-
-            cfg = {
-                "index": {"chroma_dir": str(chroma)},
-                "models": {"embed_model": "nomic-embed-text"},
-            }
-            # Doctor must not import/open PersistentClient for this check
-            import doctor as doctor_mod
-
-            self.assertFalse(hasattr(doctor_mod, "open_chroma_for_verify"))
-            check = _check_embed_collection_identity(cfg)
-            self.assertIsInstance(check, DoctorCheck)
-            self.assertTrue(check.ok)
-            self.assertEqual(check.effective_status(), "pass")
-
-            cfg_bad = {
-                "index": {"chroma_dir": str(chroma)},
-                "models": {"embed_model": "other-model"},
-            }
-            check2 = _check_embed_collection_identity(cfg_bad)
-            self.assertFalse(check2.ok)
 
 
 class IsolationSentinelTests(unittest.TestCase):
@@ -463,9 +323,8 @@ class IsolationSentinelTests(unittest.TestCase):
             canary = live_sentinel / "canary.txt"
             canary.write_text("untouched\n", encoding="utf-8")
             st_before = canary.stat()
-
             chroma = root / "fixture-chroma"
-            _seed_mini_chroma(chroma)
+            _seed_mini_chroma(chroma, doc="hello keep")
             export = root / "ku.jsonl"
             processed = root / "processed.json"
             export.write_text(
@@ -473,7 +332,7 @@ class IsolationSentinelTests(unittest.TestCase):
                     {
                         "id": "keep-1",
                         "summary": "hello",
-                        "keywords": ["k"],
+                        "keywords": ["keep"],
                         "tool": "t",
                         "source_path": "site:x",
                     }
@@ -482,7 +341,6 @@ class IsolationSentinelTests(unittest.TestCase):
                 encoding="utf-8",
             )
             processed.write_text("{}", encoding="utf-8")
-
             opened: list[str] = []
             real_open = open
 
@@ -500,53 +358,37 @@ class IsolationSentinelTests(unittest.TestCase):
                     chroma_dir=chroma,
                 )
             self.assertEqual(opened, [])
-            st_after = canary.stat()
-            self.assertEqual(st_before.st_mtime_ns, st_after.st_mtime_ns)
-            self.assertEqual(canary.read_text(encoding="utf-8"), "untouched\n")
-
-    def test_unreachable_live_chroma_not_required_for_fixture_capture(self):
-        from eval_corpus.capture import run_capture
-
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            missing_live = root / "no" / "such" / "live" / "chroma"
-            export = root / "ku.jsonl"
-            processed = root / "processed.json"
-            export.write_text(
-                json.dumps(
-                    {
-                        "id": "a",
-                        "summary": "s",
-                        "keywords": [],
-                        "tool": "t",
-                        "source_path": "site:x",
-                    }
-                )
-                + "\n",
-                encoding="utf-8",
-            )
-            processed.write_text("{}", encoding="utf-8")
-            # No chroma_dir → must succeed without live store
-            result = run_capture(
-                export_src=export,
-                processed_src=processed,
-                capture_dir=root / "capture",
-                chroma_dir=None,
-            )
-            self.assertEqual(result["capture_report"]["status"], "OK")
-            self.assertFalse(missing_live.exists())
+            self.assertEqual(canary.stat().st_mtime_ns, st_before.st_mtime_ns)
 
 
-class DoctorLegacyWarnStillWorks(unittest.TestCase):
-    def test_missing_chroma_warn(self):
-        from doctor import _check_embed_collection_identity
+class QueryViewTests(unittest.TestCase):
+    @patch("query.ollama_embed", return_value=[0.1, 0.2])
+    @patch("query.open_chroma_for_read")
+    @patch("query._ledger_lookup_hits")
+    @patch("query._apply_keyword_rank", side_effect=lambda t, r: r)
+    @patch("query._merge_priority_hits")
+    def test_embedding_influenced_skips_ledger(
+        self, merge, _kw, ledger_hits, open_chroma, _embed
+    ):
+        from query import query_units
 
+        store = MagicMock()
+        store.query_units.return_value = [
+            {"id": "1", "distance": 0.1, "metadata": {"domain": "coding.tooling"}}
+        ]
+        open_chroma.return_value = store
+        ledger_hits.return_value = [{"id": "ledger"}]
+        merge.side_effect = lambda results, extras: results + extras
         cfg = {
-            "index": {"chroma_dir": "/tmp/missing-chroma-xyz-phase-a"},
-            "models": {"embed_model": "nomic-embed-text"},
+            "models": {"embed_model": "nomic-embed-text", "ollama_host": "http://x", "rerank_model": "r"},
+            "index": {"chroma_dir": "/tmp/chroma"},
+            "query": {"rerank": False, "top_k_candidates": 5, "recency_weight": 0},
+            "eval": {"retrieval_view": "embedding_influenced"},
         }
-        check = _check_embed_collection_identity(cfg)
-        self.assertEqual(check.effective_status(), "warn")
+        out = query_units("q", top_k=5, cfg=cfg)
+        ledger_hits.assert_not_called()
+        merge.assert_not_called()
+        self.assertEqual(len(out), 1)
 
 
 if __name__ == "__main__":

@@ -1,48 +1,39 @@
-# EXECUTION — Embedding-Model A/B Evaluation (operator runbook)
+# EXECUTION — Embedding-Model A/B Evaluation (two-gate operator runbook)
 
-**Status:** R1 Phase A harness complete on `feat/2026-07-19-embed-eval-harness`.  
-**Authority:** Architecture Rev 1 + Kiro sign-off + Execution Plan Rev 2 (+ R2a/R2b split).
+**Status:** Gate 1 evaluator harness on `feat/2026-07-19-embed-eval-harness`.  
+**Authority:** Architecture Rev 1 (binding) + Gate 1 / Gate 2 human gates.
 
-## What R1 / Phase A delivered (tracked code + hermetic tests)
+## Two-gate model
 
-Library/CLI surfaces exercised only with temp fixtures — **no live capture, shadow
-build, model ops, or evaluation against live/shadow stores** under R1:
+| Gate | Meaning |
+|------|---------|
+| **Gate 1** | Approves the completed evaluator (tracked code, hermetic tests, fixtures). No live capture/builds/evals. |
+| **Gate 2** | Reviews the first real comparison’s evidence (approved run-manifest SHA, corpus acceptance, uncertainty report). Never automatic promotion. |
 
-| Surface | Capability shipped in-repo |
-|---------|----------------------------|
-| `eval_corpus/` | classify, dedup, reconstruct, fingerprint, exclusions, validate, capture (atomic copy + one-txn SQLite extract + package), shadow_build (injectable embed_fn + temp Chroma lifecycle/resume), config_audit, metrics, runner (dual views + latency harness) |
-| `scripts/eval_corpus_capture.py` | Full capture CLI; refuses without `--authorize-r2b`; hermetic smoke uses temp paths |
-| `scripts/eval_shadow_embed.py` | Embed-only builder CLI; refuses without `--authorize-r4`/`--authorize-r5`; `--embed-mode=fake` for hermetic; refuses `ollama` under R1 default |
-| `scripts/eval_config_diff_allowlist.py` | Allowlist proof helper |
-| `query.py` | Optional eval-scoped `retrieval_view` / `eval_view` (production default unchanged) |
-| `doctor.py` | `embed_collection_identity` via **SQLite `mode=ro`** (`chroma_readonly.collection_config_metadata`) — no PersistentClient |
+## Gate 1 shipped capabilities
 
-## Not shipped / not authorized under R1
+- Canonical capture CLI (**Chroma always required**): post-Chroma export/processed recheck, overlap validation, immutable `historical_spot_check.json`
+- Separate adjudication CLI + `corpus_acceptance.json` binding SHAs of capture report, package, overlap, spot-check, and adjudications file (spot-check never edited)
+- Shadow builder: package SHA + fingerprint recompute, `convmem:package_sha256` + `document_recipe_version` in metadata, write-once manifest, collection vs comparison reuse split, `units_per_sec`
+- Run-manifest auth (`execution_mode=fixture|real`) replacing R4/R5 flags; fixture manifests cannot authorize external paths
+- Embed adapters: `fake`, `http-fake`, gated `ollama` (unimplemented for live Gate 1 runs)
+- Dual-view compare CLI with recipe strata, paired sign-test + seeded bootstrap uncertainty, `queries_per_sec` / `units_per_sec`
+- Primary inference: pre-registered metric in `embedding_influenced` only; ops-pipeline and recipe strata diagnostic
+- 25–40 categorized pilot with `recipe_stratum`; temp-only shadow config generator
+- Doctor embed identity via SQLite `mode=ro`
 
-- R2a external eval dirs + shadow config files
-- R2b live immutable capture against production export/processed/chroma
-- Real Ollama embedding / model pull / cold-load unload
-- R4/R5 live shadow builds, R7 evaluation, R6 service stop, R8 cleanup
-- Promotion, live-config migration, production dual writes
+## Not authorized under Gate 1
 
-## Authorization remaining
+Real corpus capture, external configs under `~/.config/convmem` or `~/.local/share/convmem/eval`, model pull/probe, real shadow builds/evaluations, service changes, promotion, cleanup.
 
-| Checkpoint | Meaning |
-|------------|---------|
-| **R2a** | Create isolated external dirs + shadow config files only |
-| **R2b** | Run immutable capture + construct corpus package against freeze paths |
-| **B-Accept** | Human acceptance before either shadow build |
-| **C0** | Freeze evaluation contract (Kiro+Ryan) before challenger eval |
-| **R3** | Probe both models (ask whether `ollama stop` unload is allowed) |
-| **R4** | Nomic shadow build |
-| **R5** | Challenger shadow build |
-| **R6** | Service stop (default: do not) |
-| **R7** | All evaluation including 8-query smoke |
-| **R8** | Destructive cleanup of experimental artifacts |
+## Uncertainty rule (manifest fields)
+
+`primary_metric`, `primary_view=embedding_influenced`, `tie_epsilon`, `significance_alpha`, `confidence_level`, `bootstrap_seed`, `bootstrap_resamples`, `minimum_non_tied_pairs`.
+
+Challenger **BETTER** only when mean paired delta > 0, CI excludes zero positively, sign-test p ≤ alpha, and effective non-tied n ≥ minimum; else **INCONCLUSIVE** or **WORSE**. Evidence only — not promotion authority.
 
 ## Notes
 
-- `pending_decisions.jsonl` is not in `query_units` closure — no freeze required (documented in `eval_corpus.config_audit`).
-- Crash-safe writes: `eval_corpus.io_atomic` (temp + fsync + rename) for capture/package/manifest/result.
-- Capture chroma extract is one readonly SQLite transaction (`mode=ro`), not PersistentClient.
-- Cold-load unload (`ollama stop`) is model-management, not R6 — request at R3/R7.
+- `pending_decisions.jsonl` is not in `query_units` closure.
+- Crash-safe writes via `eval_corpus.io_atomic`.
+- Historical review / unadjudicated spot-check blocks Gate 2 corpus acceptance.

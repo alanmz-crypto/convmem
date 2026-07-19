@@ -137,11 +137,15 @@ class ShadowLifecycleTests(unittest.TestCase):
                 "convmem:unit_corpus_fingerprint": "fp",
                 "convmem:embed_dimensions": 768,
                 "convmem:build_manifest_sha256": "m",
+                "convmem:package_sha256": "p",
+                "convmem:batch_size": 1,
             },
             embed_model="nomic-embed-text",
             unit_corpus_fingerprint="fp",
             embed_dimensions=768,
             build_manifest_sha256="m",
+            package_sha256="p",
+            batch_size=1,
         )
         self.assertEqual(errs, [])
         errs2 = verify_collection_metadata_for_resume(
@@ -150,11 +154,15 @@ class ShadowLifecycleTests(unittest.TestCase):
                 "convmem:unit_corpus_fingerprint": "fp",
                 "convmem:embed_dimensions": 768,
                 "convmem:build_manifest_sha256": "m",
+                "convmem:package_sha256": "p",
+                "convmem:batch_size": 1,
             },
             embed_model="nomic-embed-text",
             unit_corpus_fingerprint="fp",
             embed_dimensions=768,
             build_manifest_sha256="m",
+            package_sha256="p",
+            batch_size=1,
         )
         self.assertTrue(errs2)
 
