@@ -443,7 +443,7 @@ mutation on the practice environment. The task must verify a
 that verified prerequisite auto-stops the WordPress probation and leaves the
 convmem result unchanged.
 
-### Stage 4 — evidence-driven context compression
+### Stage 4 — evidence-driven context compression — CLOSED
 
 If real telemetry shows input context—not coordination turns—is the dominant
 cost, profile the canonical protocol, `brief`, and tool outputs. Any compact
@@ -451,6 +451,10 @@ orientation path must reuse the existing `brief.py` gather/render boundary and
 remain semantically equivalent. Do not add a parallel brief implementation or
 cut mandatory safety/domain rules. This stage requires its own architecture and
 verification plan.
+
+**Closed 2026-07-19:** see
+[`ARCHITECTURE-stage4-context-compression.md`](ARCHITECTURE-stage4-context-compression.md)
+(digest demotion shipped PR #46; residual deferred to a future arc).
 
 ## Rejected alternatives
 
