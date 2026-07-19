@@ -104,7 +104,10 @@ SHADOW_META_KEYS = (
 
 
 def normalized_shadow_metadata(unit: dict) -> dict[str, Any]:
-    """Normalize metadata for shadow rows and fingerprinting (omit absent optionals)."""
+    """Normalize metadata for shadow rows and fingerprinting (omit absent optionals).
+
+    Always persists ``document_recipe_version`` (Gate 1 recipe strata).
+    """
     out: dict[str, Any] = {}
     for key in SHADOW_META_KEYS:
         if key not in unit:
@@ -125,6 +128,10 @@ def normalized_shadow_metadata(unit: dict) -> dict[str, Any]:
             out[key] = val if not isinstance(val, (str, int, float, bool, list)) else val
             if isinstance(val, str):
                 out[key] = val
+    recipe = str(unit.get("document_recipe_version") or "").strip()
+    if not recipe:
+        recipe = select_recipe(unit)
+    out["document_recipe_version"] = recipe
     return out
 
 

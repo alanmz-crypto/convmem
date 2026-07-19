@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""CLI entry for embed-only shadow build (live/model runs require R4 or R5).
-
-Hermetic tests inject fake embeddings via the library. This CLI refuses without
-authorization and, even when authorized, requires an explicit --embed-mode.
-Default under R1 is library-only; real Ollama embedding is opt-in and out of R1.
-"""
+"""CLI for embed-only shadow build (approved run-manifest or fixture auth)."""
 
 from __future__ import annotations
 
@@ -25,76 +20,87 @@ def _load_units(package: Path) -> list[dict]:
     return rows
 
 
-def _fake_embed(dimensions: int):
-    def _embed(text: str) -> list[float]:
-        base = (sum(ord(c) for c in text) % 997) / 997.0
-        return [base] * dimensions
-
-    return _embed
-
-
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Eval shadow embed build (requires R4 or R5)")
-    parser.add_argument("--authorize-r4", action="store_true", help="Nomic shadow authorization")
-    parser.add_argument(
-        "--authorize-r5", action="store_true", help="Challenger shadow authorization"
-    )
-    parser.add_argument("--package", type=Path, help="corpus_package.jsonl")
-    parser.add_argument("--manifest", type=Path, help="build-manifest.json intent (JSON)")
-    parser.add_argument("--chroma-dir", type=Path, help="Shadow chroma root")
-    parser.add_argument("--result", type=Path, default=None, help="build-result.json path")
-    parser.add_argument("--journal", type=Path, default=None, help="build-journal.jsonl path")
-    parser.add_argument("--batch-size", type=int, default=8)
+    parser = argparse.ArgumentParser(description="Eval shadow embed build")
+    parser.add_argument("--authorize-fixture", action="store_true")
+    parser.add_argument("--run-manifest", type=Path, default=None)
+    parser.add_argument("--package", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--chroma-dir", type=Path, required=True)
+    parser.add_argument("--result", type=Path, default=None)
+    parser.add_argument("--journal", type=Path, default=None)
+    parser.add_argument("--capture-dir", type=Path, default=None)
+    parser.add_argument("--require-acceptance", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
         "--embed-mode",
-        choices=("fake", "ollama"),
+        choices=("fake", "http-fake", "ollama"),
         default="fake",
-        help="fake=deterministic injectable vectors (hermetic); ollama=real model (not R1)",
     )
+    parser.add_argument("--embed-host", default="http://127.0.0.1:11434")
     args = parser.parse_args(argv)
 
-    if not (args.authorize_r4 or args.authorize_r5):
-        print(
-            "Refusing shadow build: pass --authorize-r4 or --authorize-r5 after Ryan grant.",
-            file=sys.stderr,
-        )
-        return 2
-
-    if not args.package or not args.manifest or not args.chroma_dir:
-        print(
-            "Authorization flag present, but --package, --manifest, and --chroma-dir "
-            "are required to run the embed-only builder.",
-            file=sys.stderr,
-        )
-        return 3
-
-    if args.embed_mode == "ollama":
-        print(
-            "Refusing --embed-mode=ollama under default R1 completion path. "
-            "Use library/tests with fake embeddings, or a later R4/R5 session that "
-            "explicitly authorizes model operations.",
-            file=sys.stderr,
-        )
-        return 4
-
     sys.path.insert(0, str(REPO))
+    from eval_corpus.embed_adapters import (
+        fake_embed_fn,
+        http_embed_fn,
+        ollama_embed_fn,
+        start_fake_embed_server,
+        stop_fake_embed_server,
+    )
+    from eval_corpus.run_manifest import assert_build_authorized
     from eval_corpus.shadow_build import run_shadow_build
+
+    try:
+        assert_build_authorized(
+            authorize_fixture=args.authorize_fixture,
+            run_manifest_path=args.run_manifest,
+            chroma_dir=args.chroma_dir.expanduser(),
+            package_path=args.package.expanduser(),
+        )
+    except Exception as exc:
+        print(f"Refusing shadow build: {exc}", file=sys.stderr)
+        return 2
 
     units = _load_units(args.package.expanduser())
     manifest = json.loads(args.manifest.expanduser().read_text(encoding="utf-8"))
     dims = int(manifest["embed_dimensions"])
-    result = run_shadow_build(
-        units=units,
-        chroma_dir=args.chroma_dir.expanduser(),
-        manifest=manifest,
-        embed_fn=_fake_embed(dims),
-        batch_size=args.batch_size,
-        resume=args.resume,
-        manifest_path=args.manifest.expanduser(),
-        result_path=args.result.expanduser() if args.result else None,
-        journal_path=args.journal.expanduser() if args.journal else None,
-    )
+    model = str(manifest.get("embed_model") or "fake")
+
+    server = None
+    try:
+        if args.embed_mode == "fake":
+            embed_fn = fake_embed_fn(dims)
+        elif args.embed_mode == "http-fake":
+            server, base, _thr = start_fake_embed_server(dimensions=dims)
+            embed_fn = http_embed_fn(base, model=model, dimensions=dims)
+        else:
+            # Implemented but Gate 1 fixture path must not hit live Ollama.
+            if args.authorize_fixture:
+                print(
+                    "Refusing --embed-mode=ollama under --authorize-fixture "
+                    "(use fake/http-fake).",
+                    file=sys.stderr,
+                )
+                return 4
+            embed_fn = ollama_embed_fn(args.embed_host, model)
+
+        result = run_shadow_build(
+            units=units,
+            chroma_dir=args.chroma_dir.expanduser(),
+            manifest=manifest,
+            embed_fn=embed_fn,
+            resume=args.resume,
+            manifest_path=args.manifest.expanduser(),
+            result_path=args.result.expanduser() if args.result else None,
+            journal_path=args.journal.expanduser() if args.journal else None,
+            capture_dir=args.capture_dir.expanduser() if args.capture_dir else None,
+            require_corpus_acceptance=args.require_acceptance,
+        )
+    finally:
+        if server is not None:
+            stop_fake_embed_server(server)
+
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result.get("status") == "OK" else 1
 
