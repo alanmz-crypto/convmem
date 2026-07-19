@@ -67,6 +67,12 @@ extract_section() {
 } >> config/agent-protocol-mcp.txt
 {
   echo ""
+  echo "## Response TL;DR"
+  echo ""
+  extract_section RESPONSE_TLDR
+} >> config/agent-protocol-mcp.txt
+{
+  echo ""
   echo "## Verify shipped work (DeepSeek / MCP agents)"
   echo ""
   echo "Read \`docs/CODEX-DEEPSEEK-VERIFY.md\` — use \`search_fast\` + \`ask\` for sections marked DeepSeek; ask Ryan to paste shell output for Codex-only steps."
@@ -110,6 +116,10 @@ FRONTMATTER
   echo ""
   extract_section BOUNDED_AUTONOMY
   echo ""
+  echo "## Response TL;DR"
+  echo ""
+  extract_section RESPONSE_TLDR
+  echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
   extract_section WORKFLOW_ROUTING
@@ -144,6 +154,10 @@ echo "  -> config/cursor-rules-convmem.mdc.example"
   echo "## Bounded autonomy"
   echo ""
   extract_section BOUNDED_AUTONOMY
+  echo ""
+  echo "## Response TL;DR"
+  echo ""
+  extract_section RESPONSE_TLDR
   echo ""
   echo "## Codex — no improvised logs"
   echo ""
@@ -202,6 +216,10 @@ FRONTMATTER
   echo ""
   extract_section BOUNDED_AUTONOMY
   echo ""
+  echo "## Response TL;DR"
+  echo ""
+  extract_section RESPONSE_TLDR
+  echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
   extract_section WORKFLOW_ROUTING
@@ -219,6 +237,10 @@ echo "  -> config/kiro-steering-convmem.example.md"
   echo "## Strategy lane (ChatGPT / Claude Cloud)"
   echo ""
   echo "Orchestration and role-charter review only — paste-only, no code edits, no prod writes. Full charter: \`docs/inter-model/TEAM-CHARTER-2026-07-06.md\`"
+  echo ""
+  echo "## Response TL;DR"
+  echo ""
+  extract_section RESPONSE_TLDR
 } > docs/chatgpt-pack/custom-instructions.txt
 echo "  -> docs/chatgpt-pack/custom-instructions.txt"
 
@@ -272,6 +294,10 @@ echo "  -> docs/chatgpt-pack/README.md"
   echo "## Bounded autonomy"
   echo ""
   extract_section BOUNDED_AUTONOMY
+  echo ""
+  echo "## Response TL;DR"
+  echo ""
+  extract_section RESPONSE_TLDR
   echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
