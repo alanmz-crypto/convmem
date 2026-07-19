@@ -1,7 +1,8 @@
-"""Immutable capture helpers (library + CLI; live invocation requires R2b).
+"""Immutable capture helpers (library + CLI; live paths need approved run-manifest).
 
-R2a creates directories/configs; R2b runs capture against external freeze paths.
-This module is the implementation surface, exercised hermetically with temp fixtures.
+Capture artifacts under capture_dir are write-once completion products.
+Human corpus acceptance is a separate adjudication step that never mutates
+historical_spot_check.json.
 """
 
 from __future__ import annotations
@@ -9,6 +10,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -28,6 +30,7 @@ from eval_corpus.io_atomic import (
     sha256_file,
 )
 from eval_corpus.reconstruct import build_canonical_unit
+from eval_corpus.validate import historical_spot_check_plan, validate_overlap
 from purge_locks import export_flock_path
 
 UNITS_COLLECTION = "knowledge_units"
@@ -49,10 +52,7 @@ def extract_chroma_capture_slice(
     *,
     collection_name: str = UNITS_COLLECTION,
 ) -> dict[str, Any]:
-    """One readonly SQLite transaction: superseded ids + id→document map.
-
-    Uses ``mode=ro`` — never opens PersistentClient, never creates WAL/SHM.
-    """
+    """One readonly SQLite transaction: superseded ids + id→document map."""
     chroma_dir = Path(chroma_dir).expanduser()
     db = chroma_dir / "chroma.sqlite3"
     conn = _connect_readonly(db)
@@ -102,25 +102,6 @@ def extract_chroma_capture_slice(
     }
 
 
-def copy_under_export_lock(src: Path, dest: Path) -> str:
-    """Acquire export_flock on src, atomically copy bytes, return sha256 of dest."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with export_flock_path(src):
-        return atomic_copy_file(src, dest)
-
-
-def copy_under_processed_lock(src: Path, dest: Path) -> str:
-    """Acquire processed sidecar lock, atomically copy (or write {}), return sha256."""
-    from ingest import _processed_lock  # local import — same lock as mutate_processed
-
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with _processed_lock(str(src)):
-        if src.is_file():
-            return atomic_copy_file(src, dest)
-        atomic_write_json(dest, {})
-        return sha256_file(dest)
-
-
 def capture_export_and_processed(
     *,
     export_src: Path,
@@ -128,45 +109,30 @@ def capture_export_and_processed(
     capture_dir: Path,
     max_retries: int = 3,
 ) -> dict[str, Any]:
-    """Copy export+processed with locks; recheck identity; retry on drift.
-
-    Does not stop watch. Does not open live Chroma (SQLite extract is separate).
-    All capture artifacts are written atomically (temp + fsync + rename).
-    """
+    """Legacy helper: atomic export+processed copy only (no Chroma). Prefer run_capture."""
+    capture_dir = Path(capture_dir)
     capture_dir.mkdir(parents=True, exist_ok=True)
     last_err = ""
     for attempt in range(1, max_retries + 1):
-        t0 = time.perf_counter()
-        export_dest = capture_dir / "knowledge_units.jsonl"
-        processed_dest = capture_dir / "processed.json"
-        h_export = copy_under_export_lock(export_src, export_dest)
+        h_export = copy_under_export_lock(Path(export_src), capture_dir / "knowledge_units.jsonl")
         h_processed = (
-            copy_under_processed_lock(processed_src, processed_dest)
-            if processed_src.is_file()
+            copy_under_processed_lock(Path(processed_src), capture_dir / "processed.json")
+            if Path(processed_src).is_file()
             else ""
         )
-        # Post-copy recheck of sources
         if sha256_file(export_src) != h_export:
             last_err = "export changed across copy"
             continue
-        if processed_src.is_file() and sha256_file(processed_src) != h_processed:
+        if Path(processed_src).is_file() and sha256_file(processed_src) != h_processed:
             last_err = "processed changed across copy"
             continue
-        dedup = dedup_export_file(export_dest)
-        skew_ms = int((time.perf_counter() - t0) * 1000)
+        dedup = dedup_export_file(capture_dir / "knowledge_units.jsonl")
         report = {
             "capture_timestamp": _now(),
             "capture_schema_version": CAPTURE_SCHEMA_VERSION,
             "attempt": attempt,
-            "capture_skew_ms": skew_ms,
-            "input_export_path": str(export_src),
             "input_export_sha256": h_export,
             "input_processed_sha256": h_processed,
-            "input_export_lines": dedup.input_lines,
-            "input_export_unique_ids": dedup.unique_ids,
-            "dedup_method": "last_occurrence_by_id",
-            "after_dedup_count": dedup.after_dedup_count,
-            "duplicates_removed": dedup.duplicates_removed,
             "partial_line": dedup.partial_line,
             "malformed_line_numbers": dedup.malformed_line_numbers,
             "status": "FAIL" if dedup.partial_line or dedup.malformed_line_numbers else "OK",
@@ -174,6 +140,23 @@ def capture_export_and_processed(
         atomic_write_json(capture_dir / "capture_report.json", report)
         return report
     raise RuntimeError(f"capture failed after {max_retries} retries: {last_err}")
+
+
+def copy_under_export_lock(src: Path, dest: Path) -> str:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with export_flock_path(src):
+        return atomic_copy_file(src, dest)
+
+
+def copy_under_processed_lock(src: Path, dest: Path) -> str:
+    from ingest import _processed_lock
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with _processed_lock(str(src)):
+        if src.is_file():
+            return atomic_copy_file(src, dest)
+        atomic_write_json(dest, {})
+        return sha256_file(dest)
 
 
 def load_processed_json(path: Path) -> dict:
@@ -185,7 +168,7 @@ def load_processed_json(path: Path) -> dict:
 def build_corpus_package(
     *,
     capture_dir: Path,
-    chroma_slice: dict[str, Any] | None = None,
+    chroma_slice: dict[str, Any],
     package_name: str = "corpus_package.jsonl",
 ) -> dict[str, Any]:
     """Dedup → exclude → reconstruct → fingerprint; write package atomically."""
@@ -199,7 +182,7 @@ def build_corpus_package(
             f"(partial={dedup.partial_line} malformed={dedup.malformed_line_numbers})"
         )
     processed = load_processed_json(processed_path)
-    superseded = set((chroma_slice or {}).get("superseded_ids") or [])
+    superseded = set(chroma_slice.get("superseded_ids") or [])
     kept, excl_stats = apply_exclusions(
         dedup.rows, superseded_ids=superseded, processed=processed
     )
@@ -225,6 +208,7 @@ def build_corpus_package(
         "units": units,
         "manifest": manifest,
         "package_path": str(package_path),
+        "dedup": dedup,
     }
 
 
@@ -233,48 +217,152 @@ def run_capture(
     export_src: Path,
     processed_src: Path,
     capture_dir: Path,
-    chroma_dir: Path | None = None,
+    chroma_dir: Path,
     max_retries: int = 3,
+    capture_id: str | None = None,
 ) -> dict[str, Any]:
-    """Full capture: atomic export/processed copy, optional one-txn chroma extract, package."""
-    report = capture_export_and_processed(
-        export_src=Path(export_src),
-        processed_src=Path(processed_src),
-        capture_dir=Path(capture_dir),
-        max_retries=max_retries,
-    )
-    chroma_slice: dict[str, Any] | None = None
-    if chroma_dir is not None:
+    """Canonical capture: Chroma required; post-Chroma recheck; validation wired.
+
+    Status is CAPTURE_COMPLETE / FAILED / UNRESOLVED — never corpus-accepted.
+    """
+    export_src = Path(export_src)
+    processed_src = Path(processed_src)
+    capture_dir = Path(capture_dir)
+    chroma_dir = Path(chroma_dir)
+    if not (chroma_dir / "chroma.sqlite3").is_file():
+        raise FileNotFoundError(
+            f"chroma_dir required with chroma.sqlite3 present: {chroma_dir}"
+        )
+
+    capture_dir.mkdir(parents=True, exist_ok=True)
+    capture_id = capture_id or f"cap_{uuid.uuid4().hex[:12]}"
+    last_err = ""
+
+    for attempt in range(1, max_retries + 1):
+        t0 = time.perf_counter()
+        export_dest = capture_dir / "knowledge_units.jsonl"
+        processed_dest = capture_dir / "processed.json"
+
+        h_export = copy_under_export_lock(export_src, export_dest)
+        h_processed = (
+            copy_under_processed_lock(processed_src, processed_dest)
+            if processed_src.is_file()
+            else ""
+        )
+        if sha256_file(export_src) != h_export:
+            last_err = "export changed across copy"
+            continue
+        if processed_src.is_file() and sha256_file(processed_src) != h_processed:
+            last_err = "processed changed across copy"
+            continue
+
         chroma_slice = extract_chroma_capture_slice(chroma_dir)
+        # Post-Chroma recheck — entire capture retries on drift
+        if sha256_file(export_src) != h_export or sha256_file(export_dest) != h_export:
+            last_err = "export drifted after chroma extract"
+            continue
+        if processed_src.is_file():
+            if sha256_file(processed_src) != h_processed or sha256_file(processed_dest) != h_processed:
+                last_err = "processed drifted after chroma extract"
+                continue
+
         atomic_write_json(
-            Path(capture_dir) / "chroma_extract.json",
+            capture_dir / "chroma_extract.json",
             {
                 "collection_name": chroma_slice["collection_name"],
                 "count": chroma_slice["count"],
                 "superseded_ids": chroma_slice["superseded_ids"],
                 "ids": chroma_slice["ids"],
                 "chroma_sqlite_sha256": chroma_slice["chroma_sqlite_sha256"],
-                # documents omitted from disk extract summary (large); kept in-memory for package
             },
         )
-        # Persist documents map separately for overlap validation fixtures
-        atomic_write_json(
-            Path(capture_dir) / "chroma_documents.json",
-            chroma_slice["documents"],
+        atomic_write_json(capture_dir / "chroma_documents.json", chroma_slice["documents"])
+
+        try:
+            package = build_corpus_package(
+                capture_dir=capture_dir, chroma_slice=chroma_slice
+            )
+        except RuntimeError as exc:
+            last_err = str(exc)
+            report = {
+                "capture_id": capture_id,
+                "capture_timestamp": _now(),
+                "capture_schema_version": CAPTURE_SCHEMA_VERSION,
+                "attempt": attempt,
+                "status": "FAILED",
+                "error": last_err,
+            }
+            atomic_write_json(capture_dir / "capture_report.json", report)
+            return {
+                "capture_report": report,
+                "chroma_slice": chroma_slice,
+                "package_manifest": None,
+                "units": [],
+            }
+
+        units = package["units"]
+        overlap = validate_overlap(
+            units, chroma_slice["documents"], capture_id=capture_id
         )
-    package = build_corpus_package(
-        capture_dir=Path(capture_dir),
-        chroma_slice=chroma_slice,
-    )
-    report = dict(report)
-    report["unit_corpus_fingerprint"] = package["manifest"]["unit_corpus_fingerprint"]
-    report["package_sha256"] = package["manifest"]["package_sha256"]
-    report["unit_count"] = package["manifest"]["unit_count"]
-    report["chroma_extract"] = bool(chroma_slice)
-    atomic_write_json(Path(capture_dir) / "capture_report.json", report)
-    return {
-        "capture_report": report,
-        "chroma_slice": chroma_slice,
-        "package_manifest": package["manifest"],
-        "units": package["units"],
-    }
+        atomic_write_json(capture_dir / "overlap_validation.json", overlap)
+
+        export_ids = {str(u["id"]) for u in units}
+        chroma_ids = set(chroma_slice["ids"])
+        absent = sorted(export_ids - chroma_ids)
+        # Also include raw export ids that never made the package if needed —
+        # plan asks for export IDs absent from Chroma.
+        dedup = package["dedup"]
+        raw_export_ids = [str(r.get("id") or "") for r in dedup.rows if r.get("id")]
+        absent_from_chroma = sorted(set(raw_export_ids) - chroma_ids)
+        spot = historical_spot_check_plan(
+            absent_from_chroma, capture_id=capture_id, n=20
+        )
+        atomic_write_json(capture_dir / "historical_spot_check.json", spot)
+
+        overall = overlap.get("overall")
+        if overall == "FAILED":
+            status = "FAILED"
+        elif overall == "UNRESOLVED":
+            status = "UNRESOLVED"
+        elif package["dedup"].partial_line or package["dedup"].malformed_line_numbers:
+            status = "FAILED"
+        else:
+            status = "CAPTURE_COMPLETE"
+
+        skew_ms = int((time.perf_counter() - t0) * 1000)
+        report = {
+            "capture_id": capture_id,
+            "capture_timestamp": _now(),
+            "capture_schema_version": CAPTURE_SCHEMA_VERSION,
+            "attempt": attempt,
+            "capture_skew_ms": skew_ms,
+            "input_export_path": str(export_src),
+            "input_export_sha256": h_export,
+            "input_processed_sha256": h_processed,
+            "input_export_lines": package["dedup"].input_lines,
+            "input_export_unique_ids": package["dedup"].unique_ids,
+            "dedup_method": "last_occurrence_by_id",
+            "after_dedup_count": package["dedup"].after_dedup_count,
+            "duplicates_removed": package["dedup"].duplicates_removed,
+            "partial_line": package["dedup"].partial_line,
+            "malformed_line_numbers": package["dedup"].malformed_line_numbers,
+            "unit_corpus_fingerprint": package["manifest"]["unit_corpus_fingerprint"],
+            "package_sha256": package["manifest"]["package_sha256"],
+            "unit_count": package["manifest"]["unit_count"],
+            "chroma_extract": True,
+            "overlap_overall": overall,
+            "spot_check_sample_n": len(spot.get("sample_ids") or []),
+            "status": status,
+            "corpus_accepted": False,
+        }
+        atomic_write_json(capture_dir / "capture_report.json", report)
+        return {
+            "capture_report": report,
+            "chroma_slice": chroma_slice,
+            "package_manifest": package["manifest"],
+            "units": units,
+            "overlap": overlap,
+            "spot_check": spot,
+        }
+
+    raise RuntimeError(f"capture failed after {max_retries} retries: {last_err}")
