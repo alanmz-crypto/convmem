@@ -5,7 +5,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 
-from chroma_readonly import ReadonlyUnitStore, collection_metadata_rows
+from chroma_readonly import ReadonlyUnitStore, collection_count, collection_metadata_rows
 from unresolved import list_unresolved
 
 
@@ -44,6 +44,17 @@ class TestReadonlyUnitStore(unittest.TestCase):
         hit = store.get_unit("obs_test")
         self.assertIsNotNone(hit)
         self.assertEqual(hit["metadata"]["ledger_id"], "obs_test")
+
+    def test_collection_count_on_live_corpus(self):
+        import os
+        from config import load_config
+
+        chroma_dir = load_config()["index"]["chroma_dir"]
+        if not os.path.isdir(chroma_dir):
+            self.skipTest("no chroma dir")
+        n = collection_count(chroma_dir, "knowledge_units")
+        self.assertGreater(n, 0)
+        self.assertIsInstance(n, int)
 
 
 if __name__ == "__main__":
