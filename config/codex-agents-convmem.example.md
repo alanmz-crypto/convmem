@@ -132,6 +132,18 @@ External auth requires exact resource, operation, and final value (or named one-
 Done: result, verification, largest material trade-off/risk, branch/push; Track A at handoff.
 
 
+## Response TL;DR
+
+
+**Every response ends with a TL;DR.** Scale it to the response:
+
+- Short answer (< 5 lines of substance): one sentence `**TL;DR:** …`
+- Medium response (5–30 lines): 1–2 sentence `**TL;DR:** …`
+- Long response (> 30 lines or multi-section): a `## TL;DR` heading with 2–4 bullet points
+
+The TL;DR states what was done, decided, or answered — not a restatement of the question. Omit it only for bare acknowledgments ("Done.", "Pushed.", single-word confirmations) where the entire response already is the summary.
+
+
 ## Codex — no improvised logs
 
 - Do **not** create new `logs/*.md`, audit files, or handoff markdown unless Ryan explicitly asked for a file.
