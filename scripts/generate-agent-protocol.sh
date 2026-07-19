@@ -93,6 +93,8 @@ alwaysApply: true
 
 FRONTMATTER
 {
+  echo "> **⚠️ HARD RULE — TL;DR REQUIRED:** End EVERY response with \`**TL;DR:** …\` (short/medium) or \`## TL;DR\` + bullets (long). No exceptions. A response missing its closing TL;DR is non-compliant."
+  echo ""
   echo "# convmem — Local knowledge corpus protocol"
   echo ""
   echo "## If you have shell access (Tier A)"
