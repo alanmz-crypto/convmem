@@ -11,6 +11,7 @@ import json
 import sys
 import re
 from collections import Counter
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,6 +32,15 @@ _LEDGER_ID_RE = re.compile(
     r"\b(dec_prop_\d{8}_\d{6}_[0-9a-f]{4}|obs_[a-z0-9_-]+|ver_[a-z0-9_-]+)\b",
     re.IGNORECASE,
 )
+DEFAULT_RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
+
+
+@dataclass
+class QueryUnitTrace:
+    """Optional stage snapshots for callers that need retrieval diagnostics."""
+
+    candidates: list[dict] = field(default_factory=list)
+    reranked: list[dict] = field(default_factory=list)
 
 
 def _unit_domain(meta: dict) -> str | None:
@@ -314,6 +324,7 @@ def query_units(
     *,
     cfg: dict | None = None,
     eval_view: str | None = None,
+    retrieval_trace: QueryUnitTrace | None = None,
 ) -> list[dict]:
     if cfg is None:
         cfg = load_config()
@@ -328,7 +339,6 @@ def query_units(
         text, model=models["embed_model"], host=models["ollama_host"]
     )
 
-    use_rerank = bool(qcfg.get("rerank", False))
     candidate_k = max(top_k, int(qcfg.get("top_k_candidates", 20) or 20))
     n_fetch = candidate_k
     domain = normalize_domain(domain) if domain else None
@@ -371,6 +381,11 @@ def query_units(
         d = r.get("distance")
         if d is not None:
             r["score"] = round(1.0 - d, 4)
+    for rank, result in enumerate(results, 1):
+        result["semantic_rank"] = rank
+
+    if retrieval_trace is not None:
+        retrieval_trace.candidates = [dict(result) for result in results[:candidate_k]]
 
     rw = float(qcfg.get("recency_weight", 0.0) or 0.0)
     rhl = float(qcfg.get("recency_half_life_days", 30.0))
@@ -381,13 +396,15 @@ def query_units(
             results, recency_weight=rw, recency_half_life_days=rhl
         )
 
-    fetch_for_rerank = candidate_k if use_rerank else top_k
-    if use_rerank and results:
+    results = _apply_keyword_rank(text, results)
+    if results:
         from rerank import rerank as rerank_fn
 
-        results = rerank_fn(text, results[:fetch_for_rerank], models["rerank_model"], top_k)
+        model_name = str(models.get("rerank_model") or DEFAULT_RERANK_MODEL).strip()
+        results = rerank_fn(text, results[:candidate_k], model_name, top_k)
+    if retrieval_trace is not None:
+        retrieval_trace.reranked = [dict(result) for result in results]
 
-    results = _apply_keyword_rank(text, results)
     if not skip_ledger_priority:
         results = _merge_priority_hits(results, ledger_extras)
     return results[:top_k]
