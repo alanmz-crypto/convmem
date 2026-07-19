@@ -245,6 +245,12 @@ Done: result, verification, largest material trade-off/risk, branch/push; Track 
 
 ---
 
+## Plan jargon glossary
+
+When writing or substantially updating a plan document (`docs/plans/`, `docs/inter-model/`, `*.plan.md`), **append a `## Jargon TL;DR` table** at the very end defining every project-specific term, abbreviation, lane name, or phase code that a newcomer would not know. One sentence per term, link to source if it exists. Do not define universally-known terms. Full format: `.kiro/steering/plan-jargon-glossary.md`.
+
+---
+
 ## Tool lanes by model
 
 Compact charter above. Full table: `docs/AGENT-ROLES.md` and `docs/inter-model/TEAM-CHARTER-2026-07-06.md`.
