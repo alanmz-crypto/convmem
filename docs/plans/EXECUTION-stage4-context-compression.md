@@ -3,19 +3,21 @@
 ```text
 Planning Status
 
-Phase:        Execution Planning (draft under Architecture HITL hold)
+Phase:        Execution Planning
 Characters:   Cursor → Codex (optional audit) → Ryan
-Lanes:        Cursor drafts/implements after HITL; Ryan accepts
-Authority:    Blocked until ARCHITECTURE-stage4-context-compression.md HITL accept
+Lanes:        Cursor implements after Ryan authorizes Task 1; Ryan accepts
+Authority:    Architecture ACCEPT (Kiro 2026-07-19, approach A locked).
+              Task 1 Crush/config edits still need Ryan authorize.
 ```
 
-**Architecture SSoT (draft):** [`ARCHITECTURE-stage4-context-compression.md`](ARCHITECTURE-stage4-context-compression.md)
+**Architecture SSoT:** [`ARCHITECTURE-stage4-context-compression.md`](ARCHITECTURE-stage4-context-compression.md)
 **Plan branch:** `plan/2026-07-19-stage4-context-compression`
 **Worktree:** `~/Projects/convmem-wt-stage4-context-compression`
 
-## Do not start until
+## Do not start Task 1 until
 
-Ryan accepts (or revises) the architecture direction. This file is a **ready-to-shape** skeleton so HITL can see the intended tasks. It is not authorization to edit Crush config or protocol.
+Ryan authorizes Task 1 (Crush filesystem + `global_context_paths` edit). Architecture
+direction is accepted; this file is the locked task shape.
 
 ## Accepted gates (from architecture draft)
 
@@ -35,12 +37,34 @@ Ryan accepts (or revises) the architecture direction. This file is a **ready-to-
 - Record Crush `global_context_paths` and byte totals (already in architecture profile).
 - Record three baseline Crush session `prompt_tokens` on matched small tasks (or reuse T3/T5-style verified-clean if Ryan prefers no extra work).
 
-### Task 1 — Crush digest demotion
+### Task 1 — Crush digest demotion (approach A — locked)
 
-- Remove the seven `builder-reference-*.md` entries (and redundant `rules/` directory load if it double-counts) from Crush `global_context_paths`.
-- Add/ensure a thin Crush pointer rule mirroring Cursor `builder-reference.mdc`: read digests when architecture/retrieval/infra design is in scope.
-- Deploy via existing Crush config/deploy path — no hand-edited one-off forks.
-- Verification: Crush session starts without digests in standing context; architecture-tagged task still finds digests via pointer.
+Kiro required fix: `global_context_paths` currently **double-loads** digests — once via
+`~/.config/crush/rules/` (directory glob of all 10 files) and again via seven individual
+`builder-reference-*.md` entries. Removing only the seven entries leaves digests loaded
+through `rules/`. Approach **(A)** is mandatory:
+
+1. **Move** the seven files
+   `~/.config/crush/rules/builder-reference-*.md` →
+   `~/.config/crush/builder-reference/` (sibling directory; create if absent).
+2. **Set** `options.global_context_paths` to exactly:
+   ```json
+   [
+     "~/.config/crush/CONVMEM-RITUAL.md",
+     "~/.config/crush/rules/",
+     "~/.config/crush/CRUSH.md"
+   ]
+   ```
+   After the move, `rules/` retains only always-on non-digests:
+   `00-convmem-ritual.md`, `convmem.md`, `ksweep-routing.md`.
+3. **Add** a thin Crush pointer under `rules/` (or CRUSH.md) mirroring Cursor
+   `builder-reference.mdc`: when architecture / retrieval / infra design is in scope,
+   read digests from `~/.config/crush/builder-reference/` (and/or
+   `docs/builder-reference/` in-repo).
+4. Deploy via existing Crush config/deploy path — no one-off undocumented forks.
+5. **Verification:** (a) no `builder-reference-*.md` remains under `rules/`;
+   (b) standing Crush session does not include digest bodies;
+   (c) architecture-scoped task can still open digests via the pointer path.
 
 ### Task 2 — post-demotion telemetry
 
@@ -67,8 +91,9 @@ Ryan accepts (or revises) the architecture direction. This file is a **ready-to-
 
 ## Completion criteria
 
-- Architecture HITL accept + Task 1 shipped + Task 2 telemetry reported; **or**
-- Ryan stops after architecture reject / deliberate hold.
+- Architecture HITL accept (done) + Ryan Task 1 authorize + Task 1 shipped + Task 2
+  telemetry reported; **or**
+- Ryan stops / holds before Task 1.
 
-Cursor must stop here until architecture HITL.
-Await HITL.
+Cursor must stop here until Ryan authorizes Task 1.
+Await HITL (Task 1 authorize).
