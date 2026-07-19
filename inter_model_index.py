@@ -53,7 +53,6 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
     exclusion reads. Export path follows ``units_export`` or cfg.
     """
     src = Path(path)
-    n_units = 0
     units_batch: list[tuple] = []
 
     for msg in messages:
@@ -111,7 +110,6 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
             "workspace_directory": "",
         }
         units_batch.append((unit, doc, embedding, meta))
-        n_units += 1
 
     if not units_batch:
         return 0
@@ -149,13 +147,21 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
                 print(f"  [skip] excluded during inter-model write {Path(path).name}")
             return 0
         with ChromaStore(chroma_dir) as store:
-            for unit, doc, embedding, meta in units_batch:
+            from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
+
+            dedupe = evaluate_ingest_batch(store, cfg, units_batch)
+            for unit, doc, embedding, meta in dedupe.accepted:
                 store.add_unit(unit["id"], doc, embedding, meta)
                 export_path.parent.mkdir(parents=True, exist_ok=True)
                 with export_flock_path(export_path):
                     with open(export_path, "a", encoding="utf-8") as uf:
                         uf.write(json.dumps(unit) + "\n")
+            persist_ingest_dedupe(cfg, dedupe)
 
     if verbose:
-        print(f"  [inter-model] {src.name}: {n_units} section units")
-    return n_units
+        print(
+            f"  [inter-model] {src.name}: {len(dedupe.accepted)} section units "
+            f"({len(dedupe.exact_suppressions)} exact suppressed, "
+            f"{len(dedupe.semantic_candidates)} semantic candidates)"
+        )
+    return len(dedupe.accepted)

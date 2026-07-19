@@ -243,7 +243,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             def ingester():
                 self.assertTrue(start_commit.wait(5))
                 self.assertTrue(purge_done.wait(5))
-                ok, _, n = _commit_chunk_to_stores(
+                ok, _, n, _, _ = _commit_chunk_to_stores(
                     cfg=cfg,
                     idx=cfg["index"],
                     path_key=canon,
@@ -304,7 +304,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             src.write_text("n2\n", encoding="utf-8")
             canon = str(src.resolve())
             file_hash = sha256_file(canon)
-            ok, _, n = _commit_chunk_to_stores(
+            ok, _, n, _, _ = _commit_chunk_to_stores(
                 cfg=cfg,
                 idx=cfg["index"],
                 path_key=canon,
