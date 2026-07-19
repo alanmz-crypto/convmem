@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -124,6 +125,7 @@ class OperationBinderAdversarialTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             runtime = {
+                "compare_mode": "subprocess",
                 "golden": root / "g.jsonl",
                 "package": root / "p.jsonl",
                 "out": root / "o.json",
@@ -158,6 +160,75 @@ class OperationBinderAdversarialTests(unittest.TestCase):
                     runtime=runtime,
                 )
             self.assertIn("extra", str(ctx.exception))
+
+    def test_per_arm_build_model_tags(self):
+        """One real manifest can authorize distinct baseline/challenger models."""
+        from eval_corpus.run_manifest import (
+            bind_baseline_build,
+            bind_challenger_build,
+            make_real_run_manifest_for_tests,
+            write_approval_sidecar,
+        )
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            paths = {
+                "package": str(root / "pkg.jsonl"),
+                "manifest": str(root / "bm.json"),
+                "chroma_dir": str(root / "chroma"),
+                "result": str(root / "result.json"),
+                "journal": str(root / "journal.jsonl"),
+                "capture_dir": str(root / "cap"),
+            }
+            for p in paths.values():
+                Path(p).parent.mkdir(parents=True, exist_ok=True)
+            body = make_real_run_manifest_for_tests(
+                paths=paths,
+                operations=["baseline_build", "challenger_build"],
+                model_tag="nomic-embed-text",
+                baseline_model_tag="nomic-embed-text",
+                challenger_model_tag="challenger-embed-x",
+            )
+            man = root / "run.json"
+            man.write_text(json.dumps(body), encoding="utf-8")
+            write_approval_sidecar(man)
+
+            def runtime(tag: str) -> dict:
+                return {
+                    **paths,
+                    "model_tag": tag,
+                    "embed_host": "http://127.0.0.1:0",
+                    "corpus_package_sha256": "b" * 64,
+                    "unit_corpus_fingerprint": "c" * 64,
+                    "config_identity_sha256": "f" * 64,
+                    "enrichment_sha256": "e" * 64,
+                    "build_identity": "test-build",
+                }
+
+            ctx = bind_baseline_build(
+                authorize_fixture=False,
+                run_manifest_path=man,
+                runtime=runtime("nomic-embed-text"),
+            )
+            self.assertTrue(ctx.require_corpus_acceptance)
+            ctx = bind_challenger_build(
+                authorize_fixture=False,
+                run_manifest_path=man,
+                runtime=runtime("challenger-embed-x"),
+            )
+            self.assertTrue(ctx.require_corpus_acceptance)
+            with self.assertRaises(PermissionError):
+                bind_baseline_build(
+                    authorize_fixture=False,
+                    run_manifest_path=man,
+                    runtime=runtime("challenger-embed-x"),
+                )
+            with self.assertRaises(PermissionError):
+                bind_challenger_build(
+                    authorize_fixture=False,
+                    run_manifest_path=man,
+                    runtime=runtime("nomic-embed-text"),
+                )
 
     def test_model_exec_required_for_ollama(self):
         from eval_corpus.run_manifest import (
@@ -940,6 +1011,257 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                 )
                 self.assertEqual(proc.returncode, 2, proc.stderr)
                 self.assertIn("embed host", proc.stderr)
+                self.assertFalse(out.exists())
+            finally:
+                stop_fake_embed_server(srv)
+
+
+class RealManifestCompareTests(unittest.TestCase):
+    """Codex re-verify (c545a9e): real approved manifests must bind or prohibit
+    every evidence-affecting compare control. Temp-only; no live writes."""
+
+    def _compare_argv(self, *, manifest: Path, golden: Path, package: Path,
+                      out: Path, arms: dict, url: str, extra: list[str]) -> list[str]:
+        return [
+            sys.executable,
+            str(REPO / "scripts/eval_embed_compare.py"),
+            "--run-manifest",
+            str(manifest),
+            "--mode",
+            "subprocess",
+            "--golden",
+            str(golden),
+            "--package",
+            str(package),
+            "--out",
+            str(out),
+            "--baseline-chroma",
+            str(arms["baseline"][0]),
+            "--challenger-chroma",
+            str(arms["challenger"][0]),
+            "--baseline-config",
+            str(arms["baseline"][1]),
+            "--challenger-config",
+            str(arms["challenger"][1]),
+            "--embed-host",
+            url,
+            *extra,
+        ]
+
+    def test_real_manifest_binds_evidence_controls(self):
+        from eval_corpus.embed_adapters import (
+            start_fake_embed_server,
+            stop_fake_embed_server,
+        )
+        from eval_corpus.io_atomic import sha256_file
+        from eval_corpus.reconstruct import build_canonical_unit
+        from eval_corpus.run_manifest import (
+            make_real_run_manifest_for_tests,
+            write_approval_sidecar,
+        )
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            srv, url, _t, _s = start_fake_embed_server(dimensions=8)
+            try:
+                units = [
+                    build_canonical_unit(
+                        {
+                            "id": "ord_real_1",
+                            "summary": "real manifest widgets unit",
+                            "keywords": ["widgets"],
+                            "tool": "t",
+                            "source_path": "site:x",
+                        }
+                    )
+                ]
+                live_cfg = {
+                    "index": {"chroma_dir": str(root / "dead")},
+                    "models": {
+                        "embed_model": "x",
+                        "ollama_host": "http://127.0.0.1:1",
+                        "rerank_model": "x",
+                    },
+                    "query": {"rerank": False},
+                    "eval": {},
+                }
+                arms = {}
+                enrich_line = (
+                    json.dumps({"id": "dec_prop_REAL", "summary": "frozen"}) + "\n"
+                )
+                for arm in ("baseline", "challenger"):
+                    arms[arm] = _build_arm(
+                        arm_dir=root / arm,
+                        units=units,
+                        embed_host=url,
+                        live_cfg=live_cfg,
+                    )
+                    (root / arm / "decisions-approved.jsonl").write_text(
+                        enrich_line, encoding="utf-8"
+                    )
+                golden = root / "golden.jsonl"
+                golden.write_text(
+                    json.dumps(
+                        {
+                            "query": "real manifest widgets",
+                            "relevant": [{"id": "ord_real_1", "namespace": "unit_id"}],
+                            "recipe_stratum": "ordinary",
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                package = root / "package.jsonl"
+                package.write_text(json.dumps(units[0]) + "\n", encoding="utf-8")
+                out = root / "compare.json"
+
+                manifest_paths = {
+                    "golden": str(golden),
+                    "package": str(package),
+                    "out": str(out),
+                    "baseline_chroma": str(arms["baseline"][0]),
+                    "challenger_chroma": str(arms["challenger"][0]),
+                    "baseline_config": str(arms["baseline"][1]),
+                    "challenger_config": str(arms["challenger"][1]),
+                    "embed_host": url,
+                    "baseline_build_result": str(root / "baseline" / "result.json"),
+                    "challenger_build_result": str(root / "challenger" / "result.json"),
+                }
+                bound = dict(
+                    query_set_sha256=sha256_file(golden),
+                    corpus_package_sha256=sha256_file(package),
+                    enrichment_sha256=sha256_file(
+                        root / "baseline" / "decisions-approved.jsonl"
+                    ),
+                    model_tag="fake-embed",
+                    baseline_model_tag="fake-embed",
+                    challenger_model_tag="fake-embed",
+                    baseline_config_sha256=sha256_file(arms["baseline"][1]),
+                    challenger_config_sha256=sha256_file(arms["challenger"][1]),
+                )
+
+                def write_manifest(name: str, **extra_fields) -> Path:
+                    fields = {**bound, **extra_fields}
+                    body = make_real_run_manifest_for_tests(
+                        paths=manifest_paths,
+                        operations=["compare"],
+                        **fields,
+                    )
+                    man = root / name
+                    man.write_text(json.dumps(body), encoding="utf-8")
+                    write_approval_sidecar(man)
+                    return man
+
+                man_skip_ok = write_manifest("run_a.json", allow_skip_latency=True)
+                man_no_skip = write_manifest("run_b.json")
+
+                # Happy path: authorized skip; throughput from bound build results.
+                proc = subprocess.run(
+                    self._compare_argv(
+                        manifest=man_skip_ok,
+                        golden=golden,
+                        package=package,
+                        out=out,
+                        arms=arms,
+                        url=url,
+                        extra=["--skip-latency"],
+                    ),
+                    cwd=str(REPO),
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                report = json.loads(out.read_text(encoding="utf-8"))
+                self.assertEqual(report["run_manifest_execution_mode"], "real")
+                tp = report["throughput"]
+                self.assertEqual(
+                    tp["units_per_sec_source"], "manifest_bound_build_results"
+                )
+                for arm in ("baseline", "challenger"):
+                    build_result = json.loads(
+                        (root / arm / "result.json").read_text(encoding="utf-8")
+                    )
+                    self.assertEqual(
+                        tp[f"{arm}_units_per_sec"], build_result["units_per_sec"]
+                    )
+                out.unlink()
+
+                refusal_cases = [
+                    # Injectable mode with a real manifest: binder mismatch.
+                    (
+                        man_skip_ok,
+                        ["--skip-latency"],
+                        {"--mode": "injectable"},
+                        "mismatch",
+                    ),
+                    # CLI-supplied throughput numbers.
+                    (
+                        man_skip_ok,
+                        ["--skip-latency", "--baseline-units-per-sec", "5.0"],
+                        {},
+                        "units-per-sec",
+                    ),
+                    # Latency skip without manifest authorization.
+                    (man_no_skip, ["--skip-latency"], {}, "allow_skip_latency"),
+                    # Fallback without manifest binding.
+                    (
+                        man_skip_ok,
+                        [
+                            "--skip-latency",
+                            "--exercise-fallback",
+                            "--fallback-config",
+                            str(arms["baseline"][1]),
+                        ],
+                        {},
+                        "fallback",
+                    ),
+                ]
+                for man, extra, replace, expect in refusal_cases:
+                    argv = self._compare_argv(
+                        manifest=man,
+                        golden=golden,
+                        package=package,
+                        out=out,
+                        arms=arms,
+                        url=url,
+                        extra=extra,
+                    )
+                    for flag, value in replace.items():
+                        argv[argv.index(flag) + 1] = value
+                    if "--mode" in replace and replace["--mode"] == "injectable":
+                        argv += ["--scores-json", str(golden)]
+                    proc = subprocess.run(
+                        argv, cwd=str(REPO), capture_output=True, text=True
+                    )
+                    with self.subTest(expect=expect):
+                        self.assertEqual(proc.returncode, 2, proc.stderr)
+                        self.assertIn(expect, proc.stderr)
+                        self.assertFalse(out.exists())
+
+                # Real mode requires frozen enrichment files to exist.
+                for arm in ("baseline", "challenger"):
+                    (root / arm / "decisions-approved.jsonl").unlink()
+                man_no_enrich = write_manifest(
+                    "run_c.json",
+                    allow_skip_latency=True,
+                    enrichment_sha256=hashlib.sha256(b"").hexdigest(),
+                )
+                proc = subprocess.run(
+                    self._compare_argv(
+                        manifest=man_no_enrich,
+                        golden=golden,
+                        package=package,
+                        out=out,
+                        arms=arms,
+                        url=url,
+                        extra=["--skip-latency"],
+                    ),
+                    cwd=str(REPO),
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(proc.returncode, 2, proc.stderr)
+                self.assertIn("frozen enrichment", proc.stderr)
                 self.assertFalse(out.exists())
             finally:
                 stop_fake_embed_server(srv)

@@ -221,6 +221,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     runtime = {
+        "compare_mode": args.mode,
         "golden": golden,
         "package": package,
         "out": out,
@@ -247,6 +248,75 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:
         print(f"Refusing compare: {exc}", file=sys.stderr)
         return 2
+
+    # Real mode: every evidence-affecting control must be bound by the
+    # externally approved manifest — nothing is a free CLI choice.
+    baseline_ups = args.baseline_units_per_sec
+    challenger_ups = args.challenger_units_per_sec
+    if auth.execution_mode == "real":
+        try:
+            if args.scores_json is not None:
+                raise ValueError("real mode rejects --scores-json (injected scores)")
+            if args.skip_latency and auth.manifest.get("allow_skip_latency") is not True:
+                raise ValueError(
+                    "real mode requires latency measurement unless the manifest "
+                    "sets allow_skip_latency=true"
+                )
+            if baseline_ups is not None or challenger_ups is not None:
+                raise ValueError(
+                    "real mode rejects CLI units-per-sec; throughput is read "
+                    "from manifest-bound build results"
+                )
+            manifest_paths = auth.manifest.get("paths") or {}
+            ups: dict[str, float] = {}
+            for arm in ("baseline", "challenger"):
+                key = f"{arm}_build_result"
+                result_path = manifest_paths.get(key)
+                if not result_path:
+                    raise ValueError(f"real manifest paths must include {key}")
+                result_file = Path(str(result_path)).expanduser()
+                if not result_file.is_file():
+                    raise ValueError(f"{key} missing: {result_file}")
+                data = json.loads(result_file.read_text(encoding="utf-8"))
+                value = data.get("units_per_sec")
+                if not isinstance(value, (int, float)) or value <= 0:
+                    raise ValueError(
+                        f"{key} lacks a positive units_per_sec: {value!r}"
+                    )
+                ups[arm] = float(value)
+            baseline_ups = ups["baseline"]
+            challenger_ups = ups["challenger"]
+            for arm, ident in (("baseline", baseline_id), ("challenger", challenger_id)):
+                if not Path(ident["enrichment_path"]).is_file():
+                    raise ValueError(
+                        f"real mode requires frozen enrichment for {arm}: "
+                        f"{ident['enrichment_path']}"
+                    )
+            if args.exercise_fallback:
+                fb_manifest_path = manifest_paths.get("fallback_config")
+                fb_sha = str(auth.manifest.get("fallback_config_sha256") or "")
+                fb_host = str(auth.manifest.get("fallback_embed_host") or "")
+                if not (fb_manifest_path and fb_sha and fb_host):
+                    raise ValueError(
+                        "real mode fallback requires manifest paths.fallback_config "
+                        "+ fallback_config_sha256 + fallback_embed_host"
+                    )
+                if not args.fallback_config:
+                    raise ValueError("--exercise-fallback requires --fallback-config")
+                fb_cli = args.fallback_config.expanduser().resolve(strict=False)
+                if fb_cli != Path(str(fb_manifest_path)).expanduser().resolve(strict=False):
+                    raise ValueError("fallback config path mismatch vs manifest")
+                if _sha_file(fb_cli) != fb_sha:
+                    raise ValueError("fallback config SHA mismatch vs manifest")
+                fb_cfg_models = _parse_toml(fb_cli).get("models") or {}
+                if str(fb_cfg_models.get("ollama_host") or "") != fb_host:
+                    raise ValueError(
+                        "fallback config endpoint mismatch vs manifest "
+                        "fallback_embed_host"
+                    )
+        except ValueError as exc:
+            print(f"Refusing compare: {exc}", file=sys.stderr)
+            return 2
 
     uncertainty = {**DEFAULT_UNCERTAINTY}
     for k in DEFAULT_UNCERTAINTY:
@@ -293,8 +363,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         report["throughput"] = {
             "retrieval_queries_per_sec": round(1000.0 / lat.mean_ms, 6) if lat.mean_ms else 0.0,
-            "baseline_units_per_sec": args.baseline_units_per_sec,
-            "challenger_units_per_sec": args.challenger_units_per_sec,
+            "baseline_units_per_sec": baseline_ups,
+            "challenger_units_per_sec": challenger_ups,
             "latency_source": "fabricated_clock",
         }
         report["fallback_exercised"] = False
@@ -360,8 +430,13 @@ def main(argv: list[str] | None = None) -> int:
         }
         report["embed_host"] = args.embed_host
         report["throughput"] = {
-            "baseline_units_per_sec": args.baseline_units_per_sec,
-            "challenger_units_per_sec": args.challenger_units_per_sec,
+            "baseline_units_per_sec": baseline_ups,
+            "challenger_units_per_sec": challenger_ups,
+            "units_per_sec_source": (
+                "manifest_bound_build_results"
+                if auth.execution_mode == "real"
+                else "cli_argument"
+            ),
         }
         if not args.skip_latency:
             try:

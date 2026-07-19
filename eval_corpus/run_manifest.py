@@ -77,6 +77,7 @@ BASELINE_BUILD_FIELDS = frozenset(
 CHALLENGER_BUILD_FIELDS = frozenset(BASELINE_BUILD_FIELDS)
 COMPARE_FIELDS = frozenset(
     {
+        "compare_mode",
         "golden",
         "package",
         "out",
@@ -302,7 +303,16 @@ def _bind_paths_and_scalars(
         elif key == "embed_model":
             expected = manifest.get("embed_model") or manifest.get("model_tag")
         elif key == "model_tag":
-            expected = manifest.get("model_tag")
+            # Per-arm build tags: a single Gate 2 manifest can authorize a
+            # distinct baseline and challenger model.
+            if operation == "baseline_build":
+                expected = manifest.get("baseline_model_tag", manifest.get("model_tag"))
+            elif operation == "challenger_build":
+                expected = manifest.get(
+                    "challenger_model_tag", manifest.get("model_tag")
+                )
+            else:
+                expected = manifest.get("model_tag")
         else:
             # Per-arm identities (baseline_/challenger_ model tags, config
             # hashes) and shared hashes bind by their exact manifest key.
@@ -545,6 +555,11 @@ def bind_compare(
         execution_mode=mode,
         authorize_fixture=False,
     )
+    if mode == "real" and str(runtime.get("compare_mode")) != "subprocess":
+        raise PermissionError(
+            "compare: real mode requires compare_mode=subprocess "
+            "(injectable scoring is fixture-only)"
+        )
     return AuthContext(
         execution_mode=mode,
         require_corpus_acceptance=False,
@@ -692,6 +707,7 @@ def make_real_run_manifest_for_tests(
         "service_policy": "no_service_changes",
         "prohibited_actions": ["promote", "cleanup_external"],
         "build_identity": overrides.pop("build_identity", "test-build"),
+        "compare_mode": overrides.pop("compare_mode", "subprocess"),
         "embed_host": paths.get("embed_host", "http://127.0.0.1:0"),
         **DEFAULT_UNCERTAINTY,
     }

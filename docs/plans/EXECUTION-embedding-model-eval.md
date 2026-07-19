@@ -24,6 +24,8 @@
 - Subprocess mode **fails closed**: worker exit codes, error results, malformed output, and startup-identity mismatches abort the compare (exit 5) — never recorded as misses or 0.0 latency
 - **Per-arm identity binding**: `baseline_/challenger_model_tag` + `_config_sha256` from parsed arm configs; `--embed-host` verified against both configs and worker banners; enrichment (`decisions-approved.jsonl`) hashed and required byte-identical across arms
 - Fallback exercise wired into the compare CLI (`--exercise-fallback --fallback-config`): wrong query-vector dimension from a dedicated endpoint while preserving readable `chroma.sqlite3`; `fallback_exercised=true` only on fallback-only sentinel, else the run aborts (exit 4)
+- **Real-mode compare binds every evidence-affecting control**: manifest `compare_mode` must be `subprocess` (injectable is fixture-only); `--scores-json` rejected; latency required unless manifest sets `allow_skip_latency=true`; throughput read from manifest-bound `baseline_/challenger_build_result` files (CLI units-per-sec rejected); frozen `decisions-approved.jsonl` must exist in both arms; fallback allowed only when the manifest binds `paths.fallback_config` + `fallback_config_sha256` + `fallback_embed_host`
+- Build binders accept per-arm `baseline_model_tag` / `challenger_model_tag` so one Gate 2 manifest can authorize distinct baseline and challenger models
 - Schema fixtures: `eval_schema_*` and `eval_methodology_schema_*` (category handling only — **not** a real corpus pilot)
 - Doctor embed identity via SQLite `mode=ro`
 
