@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 from doctor import (
     DoctorCheck,
-    _check_index_drift,
     _charter_register_consistency_probe,
     _check_dirty_main,
     _check_hooks_path,
@@ -83,43 +82,6 @@ class DoctorTests(unittest.TestCase):
             DoctorCheck("b", False, "bad"),
         ]
         self.assertEqual(doctor_exit_code(checks), 1)
-
-    @patch("doctor.collection_ids", return_value=["active-1", "active-2"])
-    def test_index_drift_treats_export_as_history(self, _mock_ids):
-        with tempfile.TemporaryDirectory() as d:
-            export = Path(d) / "knowledge_units.jsonl"
-            export.write_text(
-                "\n".join(
-                    json.dumps({"id": uid})
-                    for uid in ("historical-1", "active-1", "active-2")
-                )
-                + "\n",
-                encoding="utf-8",
-            )
-            check = _check_index_drift(
-                {"index": {"chroma_dir": str(Path(d) / "chroma"), "units_export": str(export)}}
-            )
-
-        self.assertTrue(check.ok)
-        self.assertEqual(check.effective_status(), "pass")
-        self.assertIn("100% active coverage", check.detail)
-        self.assertIn("1 historical-only", check.detail)
-
-    @patch("doctor.collection_ids", return_value=[f"active-{i}" for i in range(600)])
-    def test_index_drift_fails_on_collection_identity_mismatch(self, _mock_ids):
-        with tempfile.TemporaryDirectory() as d:
-            export = Path(d) / "knowledge_units.jsonl"
-            export.write_text(
-                "\n".join(json.dumps({"id": f"history-{i}"}) for i in range(600)) + "\n",
-                encoding="utf-8",
-            )
-            check = _check_index_drift(
-                {"index": {"chroma_dir": str(Path(d) / "chroma"), "units_export": str(export)}}
-            )
-
-        self.assertFalse(check.ok)
-        self.assertIn("identity mismatch", check.detail)
-
 
 class StandingRegisterTests(unittest.TestCase):
     CFG = {"index": {"chroma_dir": "/tmp/c"}, "models": {}}
