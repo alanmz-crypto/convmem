@@ -1195,25 +1195,41 @@ def _check_planning_guide_contract() -> DoctorCheck:
 
 
 def _check_embed_collection_identity(cfg: dict) -> DoctorCheck:
-    """Read-only: configured embed model vs collection metadata (no embed API, no create)."""
+    """Read-only: configured embed model vs collection metadata (SQLite mode=ro).
+
+    Never opens PersistentClient / never calls embed APIs. Legacy missing
+    ``convmem:embed_model`` is WARN; shadow mismatches FAIL.
+    """
     name = "embed_collection_identity"
     chroma_dir = Path(cfg["index"]["chroma_dir"]).expanduser()
     want_model = str((cfg.get("models") or {}).get("embed_model") or "")
     try:
-        from chroma_store import UNITS, open_chroma_for_verify
+        from chroma_readonly import collection_config_metadata
+        from chroma_store import UNITS
 
-        store = open_chroma_for_verify(str(chroma_dir))
-        try:
-            col = store._collection(UNITS)  # noqa: SLF001 — verify path; get_collection only
-            meta = dict(col.metadata or {})
-        finally:
-            store.close()
-    except Exception as exc:
-        # Missing collection / unreadable store: non-destructive warn (legacy / empty lab)
+        meta = collection_config_metadata(chroma_dir, UNITS)
+    except FileNotFoundError as exc:
         return DoctorCheck(
             name,
             True,
             f"WARN: cannot read collection metadata (no embed probe): {exc}",
+            status="warn",
+        )
+    except Exception as exc:
+        # Unreadable store / schema surprises: non-destructive warn (legacy / empty lab)
+        return DoctorCheck(
+            name,
+            True,
+            f"WARN: cannot read collection metadata (no embed probe): {exc}",
+            status="warn",
+        )
+
+    if not meta:
+        return DoctorCheck(
+            name,
+            True,
+            "WARN: collection missing or has no collection_metadata "
+            f"(configured={want_model!r}; shadow stores must set metadata)",
             status="warn",
         )
 
