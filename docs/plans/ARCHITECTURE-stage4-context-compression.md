@@ -7,13 +7,13 @@ Phase:        Architecture Planning
 Characters:   Architect, Systems Thinker, Risk Reviewer
 Functions:    Planner
 Lanes:        Cursor (Tier A draft); stronger model / Claude Cloud for HITL review
-Authority:    Awaiting HITL — draft only; no protocol or runtime change
+Authority:    Architecture ACCEPT (Kiro); Task 1 awaits Ryan authorize
 Probe Version: v1
 ```
 
 | Field | Value |
 |---|---|
-| Status | **Draft — awaiting HITL** (Auto profile + direction; not architecture SSoT until reviewed) |
+| Status | **Accepted (Kiro 2026-07-19) with approach A locked** — Task 1 still needs Ryan authorize before Crush config/fs change |
 | Parent arc | [`ARCHITECTURE-token-efficient-bounded-autonomy.md`](ARCHITECTURE-token-efficient-bounded-autonomy.md) Stage 4 deferral |
 | Evidence | Crush + DeepSeek V4 Flash telemetry, 6 comparable routine tasks, 2026-07-19 |
 | Owner | Ryan owns direction approval, durable conclusions, and merge to `main` |
@@ -68,7 +68,16 @@ Rough token estimate = bytes / 4 (prose; not provider-exact).
 
 Crush `global_context_paths` currently lists ritual, the `rules/` directory, each digest file, and CRUSH.md — digests are therefore standing cost on **every** Crush turn, including routine reversible work that never needs Ousterhout/DDIA.
 
-Residual prompt after ~27k digest estimate still leaves ~60–120k tokens (tools, history, file reads, MCP dumps). Demoting digests is necessary but may not be sufficient; post-change telemetry decides the next cut.
+**Double-load (Kiro):** Digests appear both under `rules/` (directory glob) and as
+seven individual path entries. If Crush does not dedup, standing digest cost may be
+~54k tokens, not ~27k. Demotion must move digests **out of** `rules/` into
+`~/.config/crush/builder-reference/` (approach A) — removing only the individual
+entries is insufficient. Exact post-demotion `global_context_paths` is locked in
+[`EXECUTION-stage4-context-compression.md`](EXECUTION-stage4-context-compression.md) Task 1.
+
+Residual prompt after ~27k–54k digest estimate still leaves substantial tokens (tools,
+history, file reads, MCP dumps). Demoting digests is necessary but may not be
+sufficient; post-change telemetry decides the next cut.
 
 ## `brief.py` boundary (must reuse)
 
@@ -124,9 +133,9 @@ Any compact orientation path must:
 ## Exit criteria (this phase)
 
 - Direction artifact complete (this document).
-- HITL accepts, revises, or rejects the recommended path.
-- On accept → [`EXECUTION-stage4-context-compression.md`](EXECUTION-stage4-context-compression.md) task shaping.
+- HITL accepts, revises, or rejects the recommended path. **Done: ACCEPT (Kiro) + approach A.**
+- On accept → [`EXECUTION-stage4-context-compression.md`](EXECUTION-stage4-context-compression.md) Task 1 (Ryan authorize required).
 - On reject → stop; no runtime change.
 
-Cursor must stop here.
-Await HITL.
+Cursor must stop here for runtime changes until Ryan authorizes Task 1.
+Await HITL (Task 1 authorize).
