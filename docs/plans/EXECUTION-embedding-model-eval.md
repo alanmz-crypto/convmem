@@ -21,7 +21,9 @@
 - Compare modes:
   - `injectable` — hermetic scoring via `--scores-json`; latency labeled `fabricated_clock`
   - `subprocess` — real `query_units` via `CONVMEM_CONFIG` workers; one-shot for isolation; long-lived per-arm workers for warm latency (5 discarded warmups + 20 timed reps, counterbalanced); process startup reported separately
-- Fallback exercise: wrong query-vector dimension while preserving readable `chroma.sqlite3`; `fallback_exercised=true` only on fallback-only sentinel
+- Subprocess mode **fails closed**: worker exit codes, error results, malformed output, and startup-identity mismatches abort the compare (exit 5) — never recorded as misses or 0.0 latency
+- **Per-arm identity binding**: `baseline_/challenger_model_tag` + `_config_sha256` from parsed arm configs; `--embed-host` verified against both configs and worker banners; enrichment (`decisions-approved.jsonl`) hashed and required byte-identical across arms
+- Fallback exercise wired into the compare CLI (`--exercise-fallback --fallback-config`): wrong query-vector dimension from a dedicated endpoint while preserving readable `chroma.sqlite3`; `fallback_exercised=true` only on fallback-only sentinel, else the run aborts (exit 4)
 - Schema fixtures: `eval_schema_*` and `eval_methodology_schema_*` (category handling only — **not** a real corpus pilot)
 - Doctor embed identity via SQLite `mode=ro`
 

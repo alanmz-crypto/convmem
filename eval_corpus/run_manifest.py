@@ -84,10 +84,13 @@ COMPARE_FIELDS = frozenset(
         "challenger_chroma",
         "baseline_config",
         "challenger_config",
+        "baseline_model_tag",
+        "challenger_model_tag",
+        "baseline_config_sha256",
+        "challenger_config_sha256",
         "embed_host",
         "query_set_sha256",
         "corpus_package_sha256",
-        "config_identity_sha256",
         "enrichment_sha256",
     }
 )
@@ -301,6 +304,8 @@ def _bind_paths_and_scalars(
         elif key == "model_tag":
             expected = manifest.get("model_tag")
         else:
+            # Per-arm identities (baseline_/challenger_ model tags, config
+            # hashes) and shared hashes bind by their exact manifest key.
             expected = manifest.get(key)
         if expected is None:
             raise PermissionError(f"{operation}: manifest missing binding for {key}")
@@ -561,14 +566,20 @@ def bind_model_execution(
     if run_manifest_path is None:
         raise PermissionError("model_execution requires --run-manifest")
     manifest = _load_and_validate_manifest(run_manifest_path)
-    # Accept either model_execution or legacy model_exec operation name
+    # Accept legacy model_exec alias, but both names get identical
+    # allow/prohibit validation — the alias is never a prohibited-check bypass.
     ops = set(manifest.get("operations") or [])
-    if "model_execution" not in ops and "model_exec" not in ops:
+    prohibited = set(manifest.get("prohibited_actions") or [])
+    if {"model_execution", "model_exec"} & prohibited:
+        raise PermissionError("operation prohibited by run-manifest: model_execution")
+    if "model_execution" in ops:
+        assert_operation_allowed(manifest, "model_execution")
+    elif "model_exec" in ops:
+        assert_operation_allowed(manifest, "model_exec")
+    else:
         raise PermissionError(
             "model_execution requires model_execution (or model_exec) in operations"
         )
-    if "model_execution" in ops:
-        assert_operation_allowed(manifest, "model_execution")
     mode = str(manifest.get("execution_mode"))
     _bind_paths_and_scalars(
         operation="model_execution",

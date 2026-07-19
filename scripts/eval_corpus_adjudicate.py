@@ -65,16 +65,11 @@ def main(argv: list[str] | None = None) -> int:
             capture_dir=capture_dir,
             adjudications_path=adjudications,
             reviewer=args.reviewer,
+            acceptance_path=acceptance_out,
         )
     except Exception as exc:
         print(f"Adjudication failed: {exc}", file=sys.stderr)
         return 1
-    # emit_corpus_acceptance writes under capture_dir; ensure path matches binder
-    if Path(acc.get("path") or acceptance_out) and acceptance_out != capture_dir / "corpus_acceptance.json":
-        # If helper always writes to capture_dir/corpus_acceptance.json, copy when needed
-        src = capture_dir / "corpus_acceptance.json"
-        if src.is_file() and src.resolve() != acceptance_out.resolve():
-            acceptance_out.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
     print(json.dumps(acc, indent=2, sort_keys=True))
     return 0
 

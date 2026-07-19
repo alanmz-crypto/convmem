@@ -1,4 +1,9 @@
-"""Subprocess dual-arm compare helpers (isolation one-shot + warm latency)."""
+"""Subprocess dual-arm compare helpers (isolation one-shot + warm latency).
+
+Fail-closed policy: worker return codes, error results, malformed output,
+and startup identity mismatches raise WorkerFailure — they must never be
+recorded as plausible misses or 0.0 latency samples.
+"""
 
 from __future__ import annotations
 
@@ -20,7 +25,11 @@ FALLBACK_SENTINEL_ID = "fallback-sentinel-z9"
 
 WARMUPS = 5
 TIMED_REPS = 20
-VIEWS = ("embedding_influenced", "ops_pipeline")
+VIEWS = ("embedding_influenced", "operational_pipeline")
+
+
+class WorkerFailure(RuntimeError):
+    """A query worker failed; comparison must stop rather than fake a miss."""
 
 
 @dataclass
@@ -44,8 +53,38 @@ class LatencyReport:
 def _env_with_config(config_path: Path) -> dict[str, str]:
     env = dict(os.environ)
     env["CONVMEM_CONFIG"] = str(config_path.resolve())
-    # Prevent accidental live host bleed if config is incomplete
     return env
+
+
+def _same_path(a: Any, b: Any) -> bool:
+    try:
+        return Path(str(a)).resolve(strict=False) == Path(str(b)).resolve(strict=False)
+    except OSError:
+        return str(a) == str(b)
+
+
+def verify_startup_identity(
+    startup: dict[str, Any],
+    expected: dict[str, Any],
+    *,
+    context: str,
+) -> None:
+    """Raise WorkerFailure when the worker banner disagrees with authorized identity.
+
+    Path-like keys compare resolved; scalar keys compare as strings.
+    """
+    path_keys = {"config_path", "chroma_dir", "data_dir"}
+    for key, want in expected.items():
+        got = startup.get(key)
+        if key in path_keys:
+            ok = got is not None and _same_path(got, want)
+        else:
+            ok = str(got) == str(want)
+        if not ok:
+            raise WorkerFailure(
+                f"{context}: startup identity mismatch for {key}: "
+                f"worker={got!r} authorized={want!r}"
+            )
 
 
 def run_one_shot_query(
@@ -54,8 +93,13 @@ def run_one_shot_query(
     query: str,
     top_k: int = 5,
     eval_view: str = "embedding_influenced",
+    expected_identity: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Fresh subprocess; proves CONVMEM_CONFIG is loaded before imports."""
+    """Fresh subprocess; proves CONVMEM_CONFIG is loaded before imports.
+
+    Fail closed: nonzero return code, malformed banner/result, error result,
+    or identity mismatch raise WorkerFailure.
+    """
     t0 = time.perf_counter()
     proc = subprocess.run(
         [
@@ -77,9 +121,33 @@ def run_one_shot_query(
         check=False,
     )
     startup_ms = (time.perf_counter() - t0) * 1000.0
+    if proc.returncode != 0:
+        raise WorkerFailure(
+            f"one-shot worker exit {proc.returncode} for query {query!r}; "
+            f"stderr: {proc.stderr.strip()[:800]}"
+        )
     lines = [ln for ln in proc.stdout.splitlines() if ln.strip()]
-    startup = json.loads(lines[0]) if lines else {}
-    result = json.loads(lines[1]) if len(lines) > 1 else {"type": "error", "hits": []}
+    if len(lines) < 2:
+        raise WorkerFailure(
+            f"one-shot worker produced {len(lines)} output line(s); "
+            f"stderr: {proc.stderr.strip()[:800]}"
+        )
+    try:
+        startup = json.loads(lines[0])
+        result = json.loads(lines[1])
+    except json.JSONDecodeError as exc:
+        raise WorkerFailure(f"one-shot worker emitted malformed JSON: {exc}") from exc
+    if startup.get("type") != "startup":
+        raise WorkerFailure(f"one-shot worker missing startup banner: {lines[0][:200]}")
+    if result.get("type") != "result":
+        raise WorkerFailure(
+            f"one-shot worker returned non-result: {result.get('type')!r} "
+            f"error={result.get('error')!r}"
+        )
+    if result.get("error"):
+        raise WorkerFailure(f"one-shot worker query error: {result['error']}")
+    if expected_identity:
+        verify_startup_identity(startup, expected_identity, context="one-shot")
     return {
         "returncode": proc.returncode,
         "stderr": proc.stderr,
@@ -89,7 +157,12 @@ def run_one_shot_query(
     }
 
 
-def start_latency_worker(*, arm: str, config_path: Path) -> WorkerHandle:
+def start_latency_worker(
+    *,
+    arm: str,
+    config_path: Path,
+    expected_identity: dict[str, Any] | None = None,
+) -> WorkerHandle:
     t0 = time.perf_counter()
     proc = subprocess.Popen(
         [sys.executable, str(WORKER), "--mode", "serve"],
@@ -105,11 +178,31 @@ def start_latency_worker(*, arm: str, config_path: Path) -> WorkerHandle:
     startup_line = proc.stdout.readline()
     ready_line = proc.stdout.readline()
     startup_ms = (time.perf_counter() - t0) * 1000.0
-    startup = json.loads(startup_line) if startup_line.strip() else {}
-    ready = json.loads(ready_line) if ready_line.strip() else {}
-    if ready.get("type") != "ready":
+    try:
+        startup = json.loads(startup_line) if startup_line.strip() else {}
+        ready = json.loads(ready_line) if ready_line.strip() else {}
+    except json.JSONDecodeError as exc:
         proc.kill()
-        raise RuntimeError(f"latency worker for {arm} failed ready: {ready_line!r}")
+        raise WorkerFailure(f"latency worker {arm} malformed startup: {exc}") from exc
+    if startup.get("type") != "startup" or ready.get("type") != "ready":
+        stderr_tail = ""
+        if proc.stderr is not None:
+            try:
+                proc.kill()
+                stderr_tail = proc.stderr.read()[:800]
+            except OSError:
+                pass
+        raise WorkerFailure(
+            f"latency worker for {arm} failed ready: {ready_line!r}; {stderr_tail}"
+        )
+    if expected_identity:
+        try:
+            verify_startup_identity(
+                startup, expected_identity, context=f"latency:{arm}"
+            )
+        except WorkerFailure:
+            proc.kill()
+            raise
     return WorkerHandle(
         arm=arm,
         proc=proc,
@@ -121,33 +214,39 @@ def start_latency_worker(*, arm: str, config_path: Path) -> WorkerHandle:
 
 def worker_query(handle: WorkerHandle, query: str, *, top_k: int, eval_view: str) -> dict[str, Any]:
     assert handle.proc.stdin and handle.proc.stdout
+    if handle.proc.poll() is not None:
+        raise WorkerFailure(f"latency worker {handle.arm} died (exit {handle.proc.returncode})")
     handle.proc.stdin.write(
         json.dumps({"query": query, "top_k": top_k, "eval_view": eval_view}) + "\n"
     )
     handle.proc.stdin.flush()
     line = handle.proc.stdout.readline()
-    return json.loads(line) if line.strip() else {"type": "error", "hits": []}
+    if not line.strip():
+        raise WorkerFailure(f"latency worker {handle.arm} closed output mid-run")
+    try:
+        res = json.loads(line)
+    except json.JSONDecodeError as exc:
+        raise WorkerFailure(f"latency worker {handle.arm} malformed result: {exc}") from exc
+    if res.get("type") != "result" or res.get("error"):
+        raise WorkerFailure(
+            f"latency worker {handle.arm} query failed: "
+            f"type={res.get('type')!r} error={res.get('error')!r}"
+        )
+    return res
 
 
 def stop_latency_worker(handle: WorkerHandle) -> None:
-    if handle.proc.poll() is not None:
-        for stream in (handle.proc.stdin, handle.proc.stdout, handle.proc.stderr):
-            if stream is not None:
-                try:
-                    stream.close()
-                except OSError:
-                    pass
-        return
-    try:
-        if handle.proc.stdin:
-            handle.proc.stdin.write("QUIT\n")
-            handle.proc.stdin.flush()
-    except BrokenPipeError:
-        pass
-    try:
-        handle.proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        handle.proc.kill()
+    if handle.proc.poll() is None:
+        try:
+            if handle.proc.stdin:
+                handle.proc.stdin.write("QUIT\n")
+                handle.proc.stdin.flush()
+        except BrokenPipeError:
+            pass
+        try:
+            handle.proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            handle.proc.kill()
     for stream in (handle.proc.stdin, handle.proc.stdout, handle.proc.stderr):
         if stream is not None:
             try:
@@ -163,7 +262,10 @@ def measure_warm_latency(
     queries: list[str],
     top_k: int = 5,
 ) -> LatencyReport:
-    """5 discarded warmups + 20 timed reps; counterbalanced arm order; both views."""
+    """5 discarded warmups + 20 timed reps; counterbalanced arm order; both views.
+
+    Any worker error aborts measurement (WorkerFailure) — never records 0.0.
+    """
     report = LatencyReport(
         process_startup_ms={
             "baseline": baseline.startup_ms,
@@ -172,15 +274,12 @@ def measure_warm_latency(
     )
     if not queries:
         return report
-    # Use first query for warm latency protocol (stable microbench)
     q = queries[0]
     for view in VIEWS:
         report.retrieval_ms[view] = {"baseline": [], "challenger": []}
-        # Warmups (discarded)
         for _ in range(WARMUPS):
             worker_query(baseline, q, top_k=top_k, eval_view=view)
             worker_query(challenger, q, top_k=top_k, eval_view=view)
-        # Timed reps with counterbalanced order
         for i in range(TIMED_REPS):
             if i % 2 == 0:
                 order = ("baseline", "challenger")
@@ -189,7 +288,12 @@ def measure_warm_latency(
             for arm in order:
                 handle = baseline if arm == "baseline" else challenger
                 res = worker_query(handle, q, top_k=top_k, eval_view=view)
-                report.retrieval_ms[view][arm].append(float(res.get("elapsed_ms") or 0.0))
+                elapsed = res.get("elapsed_ms")
+                if not isinstance(elapsed, (int, float)) or elapsed <= 0:
+                    raise WorkerFailure(
+                        f"latency worker {arm} returned invalid elapsed_ms {elapsed!r}"
+                    )
+                report.retrieval_ms[view][arm].append(float(elapsed))
     return report
 
 
@@ -221,8 +325,14 @@ def latency_summary(report: LatencyReport) -> dict[str, Any]:
 
 def make_subprocess_query_fn(
     config_path: Path,
+    *,
+    expected_identity: dict[str, Any] | None = None,
 ) -> Callable[..., list[dict]]:
-    """QueryFn using one-shot workers (scoring path; not warm latency)."""
+    """QueryFn using one-shot workers (scoring path; not warm latency).
+
+    Fail closed: any worker failure raises WorkerFailure and must abort the
+    comparison; it is never converted into an empty hit list.
+    """
 
     def _fn(query: str, *, top_k: int, eval_view: str) -> list[dict]:
         payload = run_one_shot_query(
@@ -230,11 +340,24 @@ def make_subprocess_query_fn(
             query=query,
             top_k=top_k,
             eval_view=eval_view or "embedding_influenced",
+            expected_identity=expected_identity,
         )
-        hits = payload.get("result", {}).get("hits") or []
+        hits = payload["result"].get("hits") or []
         return list(hits)
 
     return _fn
+
+
+def _fallback_result(payload: dict[str, Any]) -> dict[str, Any]:
+    hits = payload["result"].get("hits") or []
+    ids = [str(h.get("id") or "") for h in hits]
+    exercised = FALLBACK_SENTINEL_ID in ids
+    return {
+        "fallback_exercised": exercised,
+        "fallback_sentinel_id": FALLBACK_SENTINEL_ID,
+        "hit_ids": ids,
+        "startup": payload.get("startup"),
+    }
 
 
 def exercise_dim_mismatch_fallback(
@@ -242,10 +365,10 @@ def exercise_dim_mismatch_fallback(
     config_path: Path,
     shadow_state_force_wrong: Callable[[bool], None],
 ) -> dict[str, Any]:
-    """Trigger vector failure via wrong-dim embeds; SQLite must remain readable.
+    """In-process variant: toggle a shared fake-server state to wrong dims.
 
-    Sets fallback_exercised true only when FALLBACK_SENTINEL_ID is returned and
-    vector path was forced into failure.
+    SQLite is never renamed or removed; only the vector query path fails.
+    fallback_exercised is true only when the fallback-only sentinel returns.
     """
     shadow_state_force_wrong(True)
     try:
@@ -257,12 +380,26 @@ def exercise_dim_mismatch_fallback(
         )
     finally:
         shadow_state_force_wrong(False)
-    hits = payload.get("result", {}).get("hits") or []
-    ids = [str(h.get("id") or "") for h in hits]
-    exercised = FALLBACK_SENTINEL_ID in ids
-    return {
-        "fallback_exercised": exercised,
-        "fallback_sentinel_id": FALLBACK_SENTINEL_ID,
-        "hit_ids": ids,
-        "startup": payload.get("startup"),
-    }
+    return _fallback_result(payload)
+
+
+def exercise_fallback_via_config(
+    *,
+    fallback_config_path: Path,
+    expected_identity: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """CLI variant: fallback config points at a dedicated wrong-dim embed endpoint.
+
+    The config must be identical to the arm config except models.ollama_host,
+    which targets an endpoint that always returns a wrong query-vector
+    dimension. Chroma SQLite stays untouched and readable, so the keyword
+    fallback path can serve the sentinel.
+    """
+    payload = run_one_shot_query(
+        config_path=fallback_config_path,
+        query=f"retrieve {FALLBACK_SENTINEL_TOKEN}",
+        top_k=5,
+        eval_view="embedding_influenced",
+        expected_identity=expected_identity,
+    )
+    return _fallback_result(payload)

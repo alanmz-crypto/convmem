@@ -131,10 +131,13 @@ class OperationBinderAdversarialTests(unittest.TestCase):
                 "challenger_chroma": root / "cc",
                 "baseline_config": root / "b.toml",
                 "challenger_config": root / "c.toml",
+                "baseline_model_tag": "fake-a",
+                "challenger_model_tag": "fake-b",
+                "baseline_config_sha256": "0" * 64,
+                "challenger_config_sha256": "0" * 64,
                 "embed_host": "http://127.0.0.1:1",
                 "query_set_sha256": "0" * 64,
                 "corpus_package_sha256": "0" * 64,
-                "config_identity_sha256": "0" * 64,
                 "enrichment_sha256": "0" * 64,
                 "extra": "nope",
             }
@@ -475,7 +478,7 @@ class WarmLatencyWorkerSmokeTests(unittest.TestCase):
                         20,
                     )
                     self.assertEqual(
-                        summary["retrieval_ms"]["ops_pipeline"]["challenger"]["n"],
+                        summary["retrieval_ms"]["operational_pipeline"]["challenger"]["n"],
                         20,
                     )
                 finally:
@@ -485,5 +488,463 @@ class WarmLatencyWorkerSmokeTests(unittest.TestCase):
                 stop_fake_embed_server(srv)
 
 
+def _build_arm(
+    *,
+    arm_dir: Path,
+    units: list[dict],
+    embed_host: str,
+    live_cfg: dict,
+) -> tuple[Path, Path]:
+    """Shadow-build one arm and generate its config; returns (chroma, config)."""
+    from eval_corpus.embed_adapters import fake_embed_fn
+    from eval_corpus.fingerprint import corpus_fingerprint_hex, package_sha256_hex
+    from eval_corpus.shadow_build import run_shadow_build
+    from eval_corpus.shadow_config import generate_shadow_config
+
+    arm_dir.mkdir(parents=True, exist_ok=True)
+    chroma = arm_dir / "chroma"
+    manifest = {
+        "embed_model": "fake-embed",
+        "embed_dimensions": 8,
+        "unit_corpus_fingerprint": corpus_fingerprint_hex(units),
+        "package_sha256": package_sha256_hex(units),
+        "unit_count": len(units),
+        "batch_size": 4,
+        "schema_version": "1",
+    }
+    run_shadow_build(
+        units=units,
+        chroma_dir=chroma,
+        manifest=manifest,
+        embed_fn=fake_embed_fn(8),
+        manifest_path=arm_dir / "manifest.json",
+        result_path=arm_dir / "result.json",
+    )
+    cfg, violations = generate_shadow_config(
+        live_cfg=live_cfg,
+        out_dir=arm_dir / "cfg",
+        chroma_dir=chroma,
+        embed_model="fake-embed",
+        ollama_host=embed_host,
+    )
+    assert violations == []
+    return chroma, cfg
+
+
+class EndToEndSubprocessCompareTests(unittest.TestCase):
+    """Codex re-verify finding 4: full loop through eval_embed_compare.py."""
+
+    def test_full_subprocess_compare_loop(self):
+        from eval_corpus.embed_adapters import (
+            start_canary_embed_server,
+            start_fake_embed_server,
+            stop_fake_embed_server,
+        )
+        from eval_corpus.reconstruct import build_canonical_unit
+        from eval_corpus.shadow_config import generate_shadow_config
+        from eval_corpus.subprocess_compare import (
+            FALLBACK_SENTINEL_ID,
+            FALLBACK_SENTINEL_TOKEN,
+        )
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            canary_srv, canary_url, _ct, canary_state = start_canary_embed_server()
+            shadow_srv, shadow_url, _st, shadow_state = start_fake_embed_server(
+                dimensions=8
+            )
+            # Dedicated always-wrong-dimension endpoint for the fallback proof.
+            wrong_srv, wrong_url, _wt, wrong_state = start_fake_embed_server(
+                dimensions=8
+            )
+            wrong_state.wrong_dimensions = 3
+            wrong_state.force_wrong_dim = True
+            try:
+                units = [
+                    build_canonical_unit(
+                        {
+                            "id": "ord_e2e_1",
+                            "summary": "end to end widgets alpha retrieval unit",
+                            "keywords": ["widgets", "alpha"],
+                            "tool": "t",
+                            "source_path": "site:e2e",
+                        }
+                    ),
+                    build_canonical_unit(
+                        {
+                            "id": "ord_e2e_2",
+                            "summary": "end to end gizmos beta retrieval unit",
+                            "keywords": ["gizmos", "beta"],
+                            "tool": "t",
+                            "source_path": "site:e2e",
+                        }
+                    ),
+                    build_canonical_unit(
+                        {
+                            "id": FALLBACK_SENTINEL_ID,
+                            "summary": f"keyword only {FALLBACK_SENTINEL_TOKEN}",
+                            "keywords": [FALLBACK_SENTINEL_TOKEN, "fallback"],
+                            "tool": "t",
+                            "source_path": "site:e2e",
+                        }
+                    ),
+                ]
+                live_cfg = {
+                    "index": {"chroma_dir": str(root / "LIVE_UNREACHABLE" / "chroma")},
+                    "models": {
+                        "embed_model": "nomic-embed-text",
+                        "ollama_host": canary_url,
+                        "rerank_model": "x",
+                    },
+                    "query": {"rerank": False},
+                    "eval": {"retrieval_view": "embedding_influenced"},
+                }
+                arms: dict[str, tuple[Path, Path]] = {}
+                enrich_line = (
+                    json.dumps(
+                        {
+                            "id": "dec_prop_FROZEN_E2E",
+                            "summary": "FROZEN_E2E_ENRICHMENT unique",
+                            "status": "approved",
+                        }
+                    )
+                    + "\n"
+                )
+                for arm in ("baseline", "challenger"):
+                    arm_dir = root / arm
+                    chroma, cfg = _build_arm(
+                        arm_dir=arm_dir,
+                        units=units,
+                        embed_host=shadow_url,
+                        live_cfg=live_cfg,
+                    )
+                    # Frozen enrichment, byte-identical across arms.
+                    (arm_dir / "decisions-approved.jsonl").write_text(
+                        enrich_line, encoding="utf-8"
+                    )
+                    arms[arm] = (chroma, cfg)
+
+                # Fallback config: baseline arm, wrong-dim endpoint only.
+                fb_cfg, fb_violations = generate_shadow_config(
+                    live_cfg=live_cfg,
+                    out_dir=root / "baseline" / "fallback_cfg",
+                    chroma_dir=arms["baseline"][0],
+                    embed_model="fake-embed",
+                    ollama_host=wrong_url,
+                )
+                self.assertEqual(fb_violations, [])
+
+                golden = root / "golden.jsonl"
+                golden_rows = [
+                    {
+                        "query": "widgets alpha retrieval",
+                        "relevant": [{"id": "ord_e2e_1", "namespace": "unit_id"}],
+                        "recipe_stratum": "ordinary",
+                    },
+                    {
+                        "query": "gizmos beta retrieval",
+                        "relevant": [{"id": "ord_e2e_2", "namespace": "unit_id"}],
+                        "recipe_stratum": "ordinary",
+                    },
+                ]
+                golden.write_text(
+                    "\n".join(json.dumps(r) for r in golden_rows) + "\n",
+                    encoding="utf-8",
+                )
+                package = root / "package.jsonl"
+                package.write_text(
+                    "\n".join(json.dumps(u) for u in units) + "\n", encoding="utf-8"
+                )
+                out = root / "compare.json"
+
+                before_canary = canary_state.snapshot_count()
+                before_shadow = shadow_state.snapshot_count()
+                argv = [
+                    sys.executable,
+                    str(REPO / "scripts/eval_embed_compare.py"),
+                    "--authorize-fixture",
+                    "--mode",
+                    "subprocess",
+                    "--golden",
+                    str(golden),
+                    "--package",
+                    str(package),
+                    "--out",
+                    str(out),
+                    "--baseline-chroma",
+                    str(arms["baseline"][0]),
+                    "--challenger-chroma",
+                    str(arms["challenger"][0]),
+                    "--baseline-config",
+                    str(arms["baseline"][1]),
+                    "--challenger-config",
+                    str(arms["challenger"][1]),
+                    "--embed-host",
+                    shadow_url,
+                    "--exercise-fallback",
+                    "--fallback-config",
+                    str(fb_cfg),
+                ]
+                proc = subprocess.run(
+                    argv, cwd=str(REPO), capture_output=True, text=True
+                )
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                report = json.loads(out.read_text(encoding="utf-8"))
+
+                # Both arms, both views scored.
+                for arm in ("baseline", "challenger"):
+                    for view in ("embedding_influenced", "operational_pipeline"):
+                        self.assertIn(view, report["diagnostic_views"][arm])
+                        self.assertEqual(
+                            report["diagnostic_views"][arm][view]["count"], 2
+                        )
+
+                # Shadow endpoint served traffic; live canary saw zero requests.
+                self.assertGreater(shadow_state.snapshot_count(), before_shadow)
+                self.assertEqual(canary_state.snapshot_count(), before_canary)
+
+                # Startup identities match authorized paths/hosts, per arm.
+                for arm in ("baseline", "challenger"):
+                    startup = report["arm_identity"][arm]["worker_startup"]
+                    self.assertEqual(startup["embed_host"], shadow_url)
+                    self.assertEqual(
+                        Path(startup["chroma_dir"]).resolve(),
+                        arms[arm][0].resolve(),
+                    )
+                    self.assertEqual(
+                        Path(startup["config_path"]).resolve(),
+                        arms[arm][1].resolve(),
+                    )
+                    self.assertEqual(
+                        report["arm_identity"][arm]["model_tag"], "fake-embed"
+                    )
+                self.assertNotEqual(
+                    report["arm_identity"]["baseline"]["config_sha256"],
+                    report["arm_identity"]["challenger"]["config_sha256"],
+                )
+
+                # Fallback sentinel returned and recorded.
+                self.assertTrue(report["fallback_exercised"])
+                self.assertEqual(
+                    report["fallback"]["sentinel_id"], FALLBACK_SENTINEL_ID
+                )
+                self.assertIn(FALLBACK_SENTINEL_ID, report["fallback"]["hit_ids"])
+
+                # Warm latency reported separately from process startup.
+                tp = report["throughput"]
+                self.assertEqual(tp["latency_source"], "warm_persistent_workers")
+                self.assertEqual(tp["warmups_discarded"], 5)
+                self.assertEqual(tp["timed_repetitions"], 20)
+                self.assertIn("process_startup_ms", tp)
+                for view in ("embedding_influenced", "operational_pipeline"):
+                    for arm in ("baseline", "challenger"):
+                        self.assertEqual(tp["retrieval_ms"][view][arm]["n"], 20)
+                        for sample in tp["retrieval_ms"][view][arm]["samples"]:
+                            self.assertGreater(sample, 0.0)
+            finally:
+                stop_fake_embed_server(shadow_srv)
+                stop_fake_embed_server(canary_srv)
+                stop_fake_embed_server(wrong_srv)
+
+    def test_worker_failure_stops_comparison(self):
+        """A broken arm must abort the compare, not fabricate misses."""
+        from eval_corpus.embed_adapters import (
+            start_fake_embed_server,
+            stop_fake_embed_server,
+        )
+        from eval_corpus.reconstruct import build_canonical_unit
+        from eval_corpus.shadow_config import generate_shadow_config
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            srv, url, _t, _s = start_fake_embed_server(dimensions=8)
+            try:
+                units = [
+                    build_canonical_unit(
+                        {
+                            "id": "ord_fail_1",
+                            "summary": "fail closed widgets unit",
+                            "keywords": ["widgets"],
+                            "tool": "t",
+                            "source_path": "site:x",
+                        }
+                    )
+                ]
+                live_cfg = {
+                    "index": {"chroma_dir": str(root / "dead")},
+                    "models": {
+                        "embed_model": "x",
+                        "ollama_host": "http://127.0.0.1:1",
+                        "rerank_model": "x",
+                    },
+                    "query": {"rerank": False},
+                    "eval": {},
+                }
+                b_chroma, b_cfg = _build_arm(
+                    arm_dir=root / "baseline",
+                    units=units,
+                    embed_host=url,
+                    live_cfg=live_cfg,
+                )
+                # Challenger's chroma_dir is a regular file: worker must crash.
+                broken_chroma = root / "challenger" / "chroma"
+                broken_chroma.parent.mkdir(parents=True)
+                broken_chroma.write_text("not a directory\n", encoding="utf-8")
+                c_cfg, _v = generate_shadow_config(
+                    live_cfg=live_cfg,
+                    out_dir=root / "challenger" / "cfg",
+                    chroma_dir=broken_chroma,
+                    embed_model="fake-embed",
+                    ollama_host=url,
+                )
+                for arm_dir in (root / "baseline", root / "challenger"):
+                    (arm_dir / "decisions-approved.jsonl").write_text(
+                        "", encoding="utf-8"
+                    )
+                golden = root / "golden.jsonl"
+                golden.write_text(
+                    json.dumps(
+                        {
+                            "query": "fail closed widgets",
+                            "relevant": [{"id": "ord_fail_1", "namespace": "unit_id"}],
+                            "recipe_stratum": "ordinary",
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                package = root / "package.jsonl"
+                package.write_text(
+                    json.dumps(units[0]) + "\n", encoding="utf-8"
+                )
+                out = root / "compare.json"
+                proc = subprocess.run(
+                    [
+                        sys.executable,
+                        str(REPO / "scripts/eval_embed_compare.py"),
+                        "--authorize-fixture",
+                        "--mode",
+                        "subprocess",
+                        "--skip-latency",
+                        "--golden",
+                        str(golden),
+                        "--package",
+                        str(package),
+                        "--out",
+                        str(out),
+                        "--baseline-chroma",
+                        str(b_chroma),
+                        "--challenger-chroma",
+                        str(broken_chroma),
+                        "--baseline-config",
+                        str(b_cfg),
+                        "--challenger-config",
+                        str(c_cfg),
+                        "--embed-host",
+                        url,
+                    ],
+                    cwd=str(REPO),
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(proc.returncode, 5, proc.stderr)
+                self.assertIn("fail closed", proc.stderr)
+                self.assertFalse(out.exists())
+            finally:
+                stop_fake_embed_server(srv)
+
+    def test_embed_host_mismatch_refused(self):
+        """--embed-host must match what the worker configs actually use."""
+        from eval_corpus.embed_adapters import (
+            start_fake_embed_server,
+            stop_fake_embed_server,
+        )
+        from eval_corpus.reconstruct import build_canonical_unit
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            srv, url, _t, _s = start_fake_embed_server(dimensions=8)
+            try:
+                units = [
+                    build_canonical_unit(
+                        {
+                            "id": "ord_h_1",
+                            "summary": "host mismatch unit",
+                            "keywords": ["host"],
+                            "tool": "t",
+                            "source_path": "site:x",
+                        }
+                    )
+                ]
+                live_cfg = {
+                    "index": {"chroma_dir": str(root / "dead")},
+                    "models": {
+                        "embed_model": "x",
+                        "ollama_host": "http://127.0.0.1:1",
+                        "rerank_model": "x",
+                    },
+                    "query": {"rerank": False},
+                    "eval": {},
+                }
+                arms = {}
+                for arm in ("baseline", "challenger"):
+                    arms[arm] = _build_arm(
+                        arm_dir=root / arm,
+                        units=units,
+                        embed_host=url,
+                        live_cfg=live_cfg,
+                    )
+                golden = root / "golden.jsonl"
+                golden.write_text(
+                    json.dumps(
+                        {
+                            "query": "host mismatch",
+                            "relevant": [{"id": "ord_h_1", "namespace": "unit_id"}],
+                            "recipe_stratum": "ordinary",
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                package = root / "package.jsonl"
+                package.write_text(json.dumps(units[0]) + "\n", encoding="utf-8")
+                out = root / "compare.json"
+                proc = subprocess.run(
+                    [
+                        sys.executable,
+                        str(REPO / "scripts/eval_embed_compare.py"),
+                        "--authorize-fixture",
+                        "--mode",
+                        "subprocess",
+                        "--skip-latency",
+                        "--golden",
+                        str(golden),
+                        "--package",
+                        str(package),
+                        "--out",
+                        str(out),
+                        "--baseline-chroma",
+                        str(arms["baseline"][0]),
+                        "--challenger-chroma",
+                        str(arms["challenger"][0]),
+                        "--baseline-config",
+                        str(arms["baseline"][1]),
+                        "--challenger-config",
+                        str(arms["challenger"][1]),
+                        "--embed-host",
+                        "http://127.0.0.1:65500",  # not what configs use
+                    ],
+                    cwd=str(REPO),
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(proc.returncode, 2, proc.stderr)
+                self.assertIn("embed host", proc.stderr)
+                self.assertFalse(out.exists())
+            finally:
+                stop_fake_embed_server(srv)
+
+
 if __name__ == "__main__":
     unittest.main()
+

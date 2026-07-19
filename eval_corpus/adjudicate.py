@@ -54,9 +54,11 @@ def emit_corpus_acceptance(
     capture_dir: Path,
     adjudications_path: Path,
     reviewer: str = "ryan",
+    acceptance_path: Path | None = None,
 ) -> dict[str, Any]:
     """Write corpus_acceptance.json binding SHAs of immutable capture artifacts.
 
+    Writes only to acceptance_path (default capture_dir/corpus_acceptance.json).
     Never modifies historical_spot_check.json or other capture products.
     """
     capture_dir = Path(capture_dir)
@@ -102,7 +104,7 @@ def emit_corpus_acceptance(
         "package_sha256": report.get("package_sha256"),
         "adjudications_path": adjudications_path.name,
     }
-    out = capture_dir / "corpus_acceptance.json"
+    out = Path(acceptance_path) if acceptance_path else capture_dir / "corpus_acceptance.json"
     atomic_write_json(out, acceptance)
     return acceptance
 
