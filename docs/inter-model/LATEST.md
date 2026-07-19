@@ -1,11 +1,12 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-19 (R2a plan refinement — Codex PASS + token constraints posted)
+**Updated:** 2026-07-19 (R2a auth-schema amendment drafted for Kiro)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Gate 1 merged; R2a plan Codex PASS (2026-07-19):** Immutable harness SHA `3b2790f50414f0445c35748e52f849c6276839f7` (PR #44 squash). Codex PASS on plan refinement; binding draft constraints posted: [`CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md`](CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md) (unforgeable binder-only token; `authorization_phase=="r2a"` + original sidecar verify). Prior: [`CURSOR-2026-07-19-r2a-plan-refinement.md`](CURSOR-2026-07-19-r2a-plan-refinement.md). **Next:** pin SHA in runbook + Cursor R2a auth-schema amendment draft for Kiro. **Not authorized:** R2a execution / Gate 2 / external eval writes.
+- **R2a auth-schema amendment drafted (2026-07-19):** Gate 1 harness SHA `3b2790f50414f0445c35748e52f849c6276839f7`. Schema draft: [`CURSOR-2026-07-19-r2a-auth-schema-amendment.md`](CURSOR-2026-07-19-r2a-auth-schema-amendment.md) (phase-scoped `authorization_phase=r2a`, binder-only `_R2aEvalRootGrant`, sidecar re-verify; hermetic test matrix T1–T12). Constraints: [`CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md`](CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md). **Next:** Kiro schema sign-off; Cursor hermetic code PR (Codex audits). **Not authorized:** R2a execution / Gate 2 / external eval writes.
+
 
 
 - **Response TL;DR (2026-07-19):** Canonical rule in `config/agent-protocol.md` (`RESPONSE_TLDR` slice) — every agent response ends with a scaled TL;DR. Regenerated into Cursor/Codex/Kiro/Crush/MCP/ChatGPT surfaces via `scripts/generate-agent-protocol.sh` (deploy with `scripts/deploy-agent-protocol.sh` when Ryan wants live surfaces updated).
