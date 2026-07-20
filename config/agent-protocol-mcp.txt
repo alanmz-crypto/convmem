@@ -151,15 +151,20 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 | Phase | Owner (lane) | Must not |
 |-------|--------------|----------|
 | Bug discovery | Crush | self-approve fixes; write `record`; merge to `main` |
-| Independent audit | Codex | new `logs/*.md` unless Ryan asks; merge to `main` |
+| Independent audit | Codex | new `logs/*.md` unless Ryan asks; merge to `main`; substantial implementation Cursor can execute |
 | Design / sign-off | Kiro | volunteer `record` at task end; merge to `main`; create `feat/`/`fix/` branches |
 | Implementation (convmem) | Cursor | client WP in same session; merge to `main` |
 | Implementation (client WP) | Cursor / Ryan | convmem ledger writes |
 | Memory ingest | Whoever closes session | Track A **and** B — never one alone |
 | Durable conclusions | Ryan only | per-finding records; agents never `--approve-last` |
 | Merge to `main` | Ryan only | agents never merge or force-push `main` |
+| Conflict adjudication | Sol-High (GPT-sol) | routine work; single-reviewer FAIL; drafting; re-audits; call without conflict summary |
 | Strategy review | ChatGPT / Claude Cloud | code edits; prod writes |
 | Synthesis | DeepSeek API (`ask`) | primary bug author |
+
+**Delegate by comparative advantage.** Large implementation → **Cursor** (hand off complete scope, constraints, surfaces, acceptance tests, stop conditions, evidence). Investigation / feasibility / safety audit / evidence verify / targeted recheck → **Codex**. Do not assign Cursor-shaped coding to Codex or Sol-High.
+
+**Sol-High hard gate.** Invoke Sol-High / GPT-sol **only** when Codex and Kiro (or R1) have genuinely conflicting verdicts on the same artifact. Calling agent must paste both verdicts and state the specific disagreement as a literal prompt prefix before the call. Never for: routine execution, single-reviewer FAIL, drafting, or re-audits. **Non-example:** PR #52 — single Codex FAIL, Kiro correctly deferring, no A-vs-B conflict → do not call Sol-High.
 
 **Phrasebook:** ingest your chat = Track A · index the log = Track B · ingest everything = both · record block = Ryan runs approve-last.
 

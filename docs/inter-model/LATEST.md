@@ -1,11 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-19 (R2a plan refinement — Codex PASS + token constraints posted)
+**Updated:** 2026-07-19 (HITL charter: comparative advantage + Sol-High gate — awaiting Codex/Ryan)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Gate 1 merged; R2a plan Codex PASS (2026-07-19):** Immutable harness SHA `3b2790f50414f0445c35748e52f849c6276839f7` (PR #44 squash). Codex PASS on plan refinement; binding draft constraints posted: [`CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md`](CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md) (unforgeable binder-only token; `authorization_phase=="r2a"` + original sidecar verify). Prior: [`CURSOR-2026-07-19-r2a-plan-refinement.md`](CURSOR-2026-07-19-r2a-plan-refinement.md). **Next:** pin SHA in runbook + Cursor R2a auth-schema amendment draft for Kiro. **Not authorized:** R2a execution / Gate 2 / external eval writes.
+- **HITL charter amendment (2026-07-19):** Comparative advantage (large impl → Cursor; audit → Codex) + Sol-High hard conflict gate (written summary required; PR #52 single-FAIL non-example). Canonical: [`TEAM-CHARTER-2026-07-06.md`](TEAM-CHARTER-2026-07-06.md); compact `TEAM_CHARTER` in `config/agent-protocol.md`; post: [`CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md`](CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md). Surfaces regenerated; **deploy blocked** until Codex audit + Ryan approval. Branch: `docs/2026-07-19-hitl-charter-delegation-sol-high-gate`.
+
+- **Gate 1 merged; R2a plan Codex PASS (2026-07-19):** Immutable harness SHA `3b2790f50414f0445c35748e52f849c6276839f7` (PR #44 squash). Codex PASS on plan refinement; binding draft constraints posted: [`CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md`](CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md) (unforgeable binder-only token; `authorization_phase=="r2a"` + original sidecar verify). Prior: [`CURSOR-2026-07-19-r2a-plan-refinement.md`](CURSOR-2026-07-19-r2a-plan-refinement.md). **Next:** pin SHA in runbook + Cursor R2a auth-schema amendment draft for Kiro. **Not authorized:** R2a execution / Gate 2 / external eval writes. R2a impl PR: [#52](https://github.com/alanmz-crypto/convmem/pull/52).
 
 
 - **Response TL;DR (2026-07-19):** Canonical rule in `config/agent-protocol.md` (`RESPONSE_TLDR` slice) — every agent response ends with a scaled TL;DR. Regenerated into Cursor/Codex/Kiro/Crush/MCP/ChatGPT surfaces via `scripts/generate-agent-protocol.sh` (deploy with `scripts/deploy-agent-protocol.sh` when Ryan wants live surfaces updated).

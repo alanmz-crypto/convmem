@@ -19,6 +19,8 @@ Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
 
 **DeepSeek vs Crush:** DeepSeek row = Tier B synthesis API behind `convmem ask` only — not a bug-hunter. Crush running DeepSeek V4 weights is still **Crush lane** (Tier A shell). Bug discovery owner = **Crush**, not DeepSeek. Full audit: [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md).
 
+**Comparative advantage + Sol-High gate:** Large implementation → Cursor; investigation/audit → Codex. Sol-High / GPT-sol is conflict adjudication only — require a written conflict summary (both verdicts + specific disagreement) before invoke. Always-loaded in `TEAM_CHARTER` (`config/agent-protocol.md`). See charter § Delegate by comparative advantage / Sol-High conflict gate.
+
 **Session close (all models):** follow [`config/agent-protocol.md`](../config/agent-protocol.md) and [`SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md).
 
 - **Handoff (default):** index session chat — `convmem index --file <session-path>` (Track A). **Handoff is not a record.**

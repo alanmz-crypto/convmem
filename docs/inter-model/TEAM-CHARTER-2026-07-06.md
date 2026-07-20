@@ -56,12 +56,13 @@ Lab smoke (`smoke-synthesis.sh`, PASS 2026-07-06): no prod Chroma corruption whe
 | Phase | Owner (lane, not model) | Must not do |
 |-------|-------------------------|-------------|
 | Bug discovery | **Crush** (shell + MCP read) | self-approve fixes; write `record` |
-| Independent audit | **Codex** (shell, no MCP) | new `logs/*.md` unless Ryan asks |
+| Independent audit | **Codex** (shell, no MCP) | new `logs/*.md` unless Ryan asks; substantial implementation Cursor can execute |
 | Design / sign-off | **Kiro** | volunteer `record` at task end — `--signer kiro-review` only on Ryan's cue |
 | Implementation (convmem infra) | **Cursor** | client WP stack in same session as convmem infra |
 | Implementation (client WP) | **Cursor / Ryan** | convmem ledger writes |
 | Shared memory ingest | **Whoever closes session** | Track A **and** B — never one alone |
 | Durable conclusions | **Ryan only** | agents never `--approve-last`; one umbrella record per sprint |
+| Conflict adjudication (token-scarce) | **Sol-High** (GPT-sol / Copilot Sol-High class) | routine execution; single-reviewer FAIL; drafting; re-audits; any call without a conflict summary |
 | Orchestration / strategy | **ChatGPT / Claude Cloud** | code edits; prod writes |
 | Synthesis retrieval | **DeepSeek API** (`convmem ask`) | primary bug author |
 
@@ -79,13 +80,41 @@ Lab smoke (`smoke-synthesis.sh`, PASS 2026-07-06): no prod Chroma corruption whe
 bash ~/Projects/convmem/scripts/sync-willowyhollow-handoff.sh
 ```
 
+### Delegate by comparative advantage
+
+Substantial implementation belongs to **Cursor**. Hand off with complete scope, constraints, affected surfaces, acceptance tests, stop conditions, and required evidence — do not leave Cursor to reverse-engineer intent from a thin note.
+
+**Codex** owns investigation, feasibility and safety auditing, evidence verification, and targeted rechecks — **not** implementation chunks Cursor can execute effectively. Do not burn Codex (or Sol-High) cycles on mindless coding work that is Cursor's comparative advantage.
+
+**TL;DR:** large implementation → Cursor; investigation/audit → Codex.
+
+### Sol-High conflict gate (hard precondition)
+
+**Sol-High may only be invoked when Codex and Kiro (or R1) have issued genuinely conflicting verdicts on the same artifact.** Soft convention ("used only for unresolved conflicts") is insufficient — this is a **hard gate**.
+
+Before any Sol-High / GPT-sol / Copilot Sol-High call, the calling agent **must** produce a written conflict summary as a literal prompt prefix (not a private judgment). Checklist — all boxes required:
+
+1. **Same artifact** named (PR, branch tip SHA, or file set under review).
+2. **Verdict A** pasted (who + PASS/FAIL/defer + key rationale).
+3. **Verdict B** pasted (who + PASS/FAIL/defer + key rationale).
+4. **Specific disagreement** stated in one sentence (what claim A and B cannot both be true).
+5. Confirm the call is **not** for: routine execution, a single-reviewer FAIL, drafting, or a re-audit of uncontested findings.
+
+If any checklist item is missing, **do not invoke Sol-High** — route to Cursor (implementation), Codex (audit/recheck), or Kiro (design sign-off) instead.
+
+**Non-example (PR #52 pattern — do not call Sol-High):** Codex alone issues FAIL; Kiro correctly defers or has not issued a conflicting verdict; there is no A-vs-B disagreement. That is a single-reviewer FAIL awaiting Cursor fix or Kiro sign-off — **not** a conflict. Invoking Sol-High here wastes scarce tokens.
+
+**Shared surface:** this gate lives in the always-loaded `TEAM_CHARTER` slice (`config/agent-protocol.md`) so Cursor, Kiro, and Codex all see the same rule.
+
 ---
 
 ## 5. Risks
 
-**Fourth reviewer before fixes?** No — Crush → Codex → Kiro is sufficient if Codex audits **every** finding slated for implementation, not a sample. Volume (82 findings) makes partial audit the real risk.
+**Fourth reviewer before fixes?** No — Crush → Codex → Kiro is sufficient if Codex audits **every** finding slated for implementation, not a sample. Volume (82 findings) makes partial audit the real risk. Sol-High is **not** a routine fourth reviewer — only a conflict adjudicator under the hard gate above.
 
 **Naming risk:** "DeepSeek" in operator language → future router keys off wrong tier. Fix vocabulary now (compact charter in always-loaded rules).
+
+**Token scarcity / mis-delegation:** Burning Sol-High or Codex on large Cursor-shaped implementation (or calling Sol-High on a single FAIL with no opposing verdict) wastes scarce high-cost capacity. Comparative-advantage handoff + Sol-High checklist are the mitigations.
 
 **Ledger noise:** Collapse per-finding Crush verification records before umbrella sprint record, or umbrella summarizes noisy ledger.
 
