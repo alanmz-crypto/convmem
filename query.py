@@ -37,7 +37,11 @@ DEFAULT_RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
 
 @dataclass
 class QueryUnitTrace:
-    """Optional stage snapshots for callers that need retrieval diagnostics."""
+    """Optional stage snapshots for retrieval diagnostics.
+
+    ``candidates`` is captured before keyword boost and before pre-rerank
+    annotation, so it intentionally does not include ``pre_rerank_rank``.
+    """
 
     candidates: list[dict] = field(default_factory=list)
     reranked: list[dict] = field(default_factory=list)
