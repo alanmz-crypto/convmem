@@ -1,8 +1,8 @@
 # EXECUTION — Embedding-Model A/B Evaluation (two-gate operator runbook)
 
-**Status:** Gate 1 harness **merged** at immutable SHA `3b2790f50414f0445c35748e52f849c6276839f7` (PR #44 squash). Hermetic R2a authorization implementation is in PR #52 (awaiting exact-tip GitHub Copilot audit-lane + Kiro PASS). Merge of #52 does **not** authorize R2a execution, eval-root writes, R2b+, or Gate 2.
+**Status:** Gate 1 harness **merged** at immutable SHA `3b2790f50414f0445c35748e52f849c6276839f7` (PR #44 squash). R2a hermetic auth on `main` via #52 (`6a2bd97…`). One-job R2a `config_generation` (nomic vs mxbai shadows) granted and executed 2026-07-20; Kiro PASS. **R2b+ / Gate 2 still not authorized.** Live R2a verify procedure: [`VERIFY-r2a-config-generation.md`](VERIFY-r2a-config-generation.md) — `restic_gate: PASS` is absolute (no hermetic waiver).
 **Authority:** Architecture Rev 1 (binding) + Gate 1 / Gate 2 human gates + R2a–R8 experimental checkpoints.
-**R2a schema amendment:** [`docs/inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md`](../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md) — hermetic impl tracked in #52; no external R2a writes authorized.
+**R2a schema amendment:** [`docs/inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md`](../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md) — shipped in #52.
 
 ## Two-gate model
 
@@ -15,8 +15,8 @@
 
 | Checkpoint | Meaning | Status |
 |------------|---------|--------|
-| **R2a schema** | Phase-scoped auth capability + unforgeable grant ([amendment](../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md)) | Hermetic implementation in PR #52 — exact-tip Copilot audit-lane + Kiro PASS pending |
-| **R2a execution** | Create isolated external dirs + shadow config files only | **Not authorized** |
+| **R2a schema** | Phase-scoped auth capability + unforgeable grant ([amendment](../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md)) | **Done** — #52 on `main` (`6a2bd97…`) |
+| **R2a execution** | Create isolated external dirs + shadow config files only | **One-job done** (2026-07-20 `r2a-nomic-vs-mxbai`); further runs need new Ryan grant + [`VERIFY-r2a-config-generation.md`](VERIFY-r2a-config-generation.md) |
 | **R2b** | Immutable capture + corpus package | Not authorized |
 | **B-Accept** | Human corpus acceptance | Not authorized |
 | **C0** | Freeze queries, labels, thresholds, manifest hashes | Not authorized |
