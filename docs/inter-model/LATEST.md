@@ -1,13 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-19 (R2a auth-schema Codex FAIL fix)
+**Updated:** 2026-07-20 (Post-#54 status hygiene — charter merged; backlog EXECUTION active)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **R2a auth-schema Codex FAIL fix (2026-07-19):** HMAC-authenticated immutable capability; write-time sidecar re-verify + re-derive all bindings from approved manifest; refuse caller `live_cfg` and load approved `live_config`. Post: [`CURSOR-2026-07-19-r2a-auth-schema-codex-fix.md`](CURSOR-2026-07-19-r2a-auth-schema-codex-fix.md). **Next:** Codex re-audit. Kiro deferred. **Not authorized:** R2a execution.
+- **HITL charter — Copilot lifecycle (#54, 2026-07-20):** **Merged and charter active** (`3ee9f28` on `main`). Same-SHA GitHub Copilot audit lane + Kiro PASSes recorded before merge. Canonical: [`TEAM-CHARTER-2026-07-06.md`](TEAM-CHARTER-2026-07-06.md); successor: [`CURSOR-2026-07-20-hitl-charter-copilot-lifecycle.md`](CURSOR-2026-07-20-hitl-charter-copilot-lifecycle.md); original handoff: [`CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md`](CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md). **Deploy qualification:** Cursor and Kiro live surfaces match tip examples; Copilot CLI / Codex `AGENTS.md` still has three trailing builder-digest lines (charter-safe drift — not a #54 blocker). Do not treat #54 as deploy-blocked or awaiting review.
 
-
+- **Post-#54 backlog EXECUTION (2026-07-20):** Binding operator plan: [`../plans/EXECUTION-2026-07-20-post-54-backlog-clear.md`](../plans/EXECUTION-2026-07-20-post-54-backlog-clear.md). Order: LATEST hygiene (this update) → Path B update/merge [#56](https://github.com/alanmz-crypto/convmem/pull/56) then [#57](https://github.com/alanmz-crypto/convmem/pull/57) → land R2a authorization implementation [#52](https://github.com/alanmz-crypto/convmem/pull/52) under exact-tip reviews → separate Phase D docs PR for Copilot CLI R2a `config_generation` handoff. **[#52](https://github.com/alanmz-crypto/convmem/pull/52):** Path B integrated onto post-#56/#57/#58 `main`; awaiting exact-tip GitHub Copilot audit lane + Kiro PASSes (authorization implementation — hermetic only). **Not authorized:** R2a live `config_generation`, R2b+, Gate 2, eval-root writes. Copilot CLI one-job R2a exception **pending** (does not establish an execution lane). Gate 1 harness SHA remains `3b2790f50414f0445c35748e52f849c6276839f7`. Docs-only [#51](https://github.com/alanmz-crypto/convmem/pull/51) closes as superseded after #52 lands.
 
 
 - **Response TL;DR (2026-07-19):** Canonical rule in `config/agent-protocol.md` (`RESPONSE_TLDR` slice) — every agent response ends with a scaled TL;DR. Regenerated into Cursor/Codex/Kiro/Crush/MCP/ChatGPT surfaces via `scripts/generate-agent-protocol.sh` (deploy with `scripts/deploy-agent-protocol.sh` when Ryan wants live surfaces updated).
