@@ -25,7 +25,7 @@ Authority:    Post-Execute HITL — do not trust prior chat claims alone
 **GATE** = Ryan process step (merge / new grant); not a mechanical agent PASS.
 
 **Flow (future grants — binding):** V0 → V1 → V2 → V3 → V4 (Kiro baseline) → **STOP unless PASS** → V5 → V6 → V7.  
-**Flow (this completed job — evidence):** Re-run V0 (doctor/restic), V1 (packets on disk), V4/V6 post-state + narrow diff + cross-arm, V7. For V2/V3/V5 pre-exec and argv capture: use **contemporaneous session evidence** only; do **not** re-execute without a **new** Ryan grant.
+**Flow (this completed job — evidence):** Re-run V0 (doctor/restic), V1 (packets on disk), then **V4c–V4e** (baseline shadow semantics/hashes only) + **V6** (whole-run inventory + challenger + cross-arm) + V7. **Do not re-run V4a/V4b** after both arms exist — those checks are live mid-sequence only (baseline-only run root); a faithful post-job re-verify would falsely FAIL V4a. For V2/V3/V5 pre-exec and argv capture: use **contemporaneous session evidence** only; do **not** re-execute without a **new** Ryan grant.
 
 ---
 
@@ -172,17 +172,19 @@ Record evidence pack:
 
 ## V4 — Baseline verification (Kiro)
 
-After baseline only (challenger must not have run yet on a future grant):
+**Live sequence only (future grants):** after baseline execution, challenger must not have run yet.
 
 | ID | Check | PASS |
 |----|-------|------|
-| V4a | Inventory under run root is only `baseline/` + `baseline/shadow.toml` | `find` |
-| V4b | No `baseline/chroma`; no temps; no symlinks | `find` |
+| V4a | Inventory under run root is only `baseline/` + `baseline/shadow.toml` | `find` — **live mid-sequence only** |
+| V4b | No `baseline/chroma`; no temps; no symlinks | `find` — **live mid-sequence only** |
 | V4c | Narrow `tomllib` diff vs live config (rule 6) | Independent parse |
 | V4d | `shadow.toml` SHA recorded in evidence | Hash |
 | V4e | Manifests/sidecars unchanged vs V1 | Re-hash |
 
-Kiro **PASS** required before V5. Kiro performs **no** cleanup or correction.
+Kiro **PASS** required before V5 on a future grant. Kiro performs **no** cleanup or correction.
+
+**Completed-job re-verify:** mark **V4a/V4b = SKIP** (challenger artifacts already present; whole-run proof is **V6b–V6c**). Still run **V4c–V4e** on `baseline/shadow.toml`.
 
 ---
 
