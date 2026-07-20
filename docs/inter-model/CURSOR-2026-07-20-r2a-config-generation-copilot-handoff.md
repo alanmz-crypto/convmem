@@ -15,7 +15,9 @@
 
 ## Exception status
 
-**Pending.** Cursor does **not** assert approval. Ryan grants the one-job exception **together with** the two arm packets (baseline + challenger). Until those packets exist with exact values, no live R2a `config_generation` is authorized.
+**Manifests on disk; grant still pending.** Ryan accepted the packet *proposal* only (2026-07-20). Cursor wrote manifests + sidecars under `~/.local/share/convmem/authorizations/r2a/…` (not eval root). No `config_generation` ran; eval root for this run_id does not exist. Live run waits for Ryan’s separate `ACCEPT AND GRANT` with the completed packets below.
+
+**Schema note:** `paths.embed_host` was added so the #52 binder path-binding succeeds (required with `CONFIG_GENERATION_FIELDS`).
 
 ## Executable scope (matches #52)
 
@@ -79,15 +81,90 @@ authorized_revision: 6a2bd97af32f331caf47bcde8564c25e88ccbf26
 - Note if the shell is unrestricted (procedural risk).
 - Independent post-run verify: **Kiro** (not Copilot CLI self-audit).
 
-## Template text for Ryan (exception + packets)
+## Completed packets (hashes filled — grant still pending)
 
-When ready to authorize (not yet):
+### Baseline
 
-```text
-ONE-JOB R2A EXCEPTION GRANTED for Copilot CLI operator.
-Arms: baseline + challenger packets attached / pasted below.
-authorized_revision: 6a2bd97af32f331caf47bcde8564c25e88ccbf26
-This does not authorize R2b+, Gate 2, or any other operation.
+```json
+{
+  "arm_id": "baseline",
+  "manifest_path": "/home/lauer/.local/share/convmem/authorizations/r2a/2026-07-20-r2a-nomic-vs-mxbai/baseline.json",
+  "manifest_file_sha256": "530a16efb721d4c55438428d2d4329ac9ae4457148f421dfb91e897ecfb6bedd",
+  "approved_manifest_body_sha256": "2bbb591ac9876319c7a59a050b9385528cda5c544afb21708ef67523b9f6078e",
+  "approval_sidecar_path": "/home/lauer/.local/share/convmem/authorizations/r2a/2026-07-20-r2a-nomic-vs-mxbai/baseline.json.approved.sha256",
+  "approval_sidecar_expected_contents": "2bbb591ac9876319c7a59a050b9385528cda5c544afb21708ef67523b9f6078e",
+  "allowed_directories": [
+    "/home/lauer/.local/share/convmem/eval/2026-07-20-r2a-nomic-vs-mxbai/baseline"
+  ],
+  "working_directory": "/home/lauer/Projects/convmem",
+  "exact_command_tuple": [
+    "python3",
+    "scripts/eval_shadow_config_gen.py",
+    "--run-manifest",
+    "/home/lauer/.local/share/convmem/authorizations/r2a/2026-07-20-r2a-nomic-vs-mxbai/baseline.json",
+    "--live-config",
+    "/home/lauer/.config/convmem/config.toml",
+    "--out-dir",
+    "/home/lauer/.local/share/convmem/eval/2026-07-20-r2a-nomic-vs-mxbai/baseline",
+    "--chroma-dir",
+    "/home/lauer/.local/share/convmem/eval/2026-07-20-r2a-nomic-vs-mxbai/baseline/chroma",
+    "--embed-model",
+    "nomic-embed-text",
+    "--embed-host",
+    "http://localhost:11434"
+  ],
+  "authorized_revision": "6a2bd97af32f331caf47bcde8564c25e88ccbf26"
+}
 ```
 
-Until Ryan posts that grant with both filled packets, exception remains **pending**.
+### Challenger
+
+```json
+{
+  "arm_id": "challenger",
+  "manifest_path": "/home/lauer/.local/share/convmem/authorizations/r2a/2026-07-20-r2a-nomic-vs-mxbai/challenger.json",
+  "manifest_file_sha256": "1379bb1207692025bc4912825877a5735f6e9b09a29b4dbb729c37149f51007a",
+  "approved_manifest_body_sha256": "563599d67513d864423c2f72c0947d18a6baacc7f034c6cf209b991e4734d1fa",
+  "approval_sidecar_path": "/home/lauer/.local/share/convmem/authorizations/r2a/2026-07-20-r2a-nomic-vs-mxbai/challenger.json.approved.sha256",
+  "approval_sidecar_expected_contents": "563599d67513d864423c2f72c0947d18a6baacc7f034c6cf209b991e4734d1fa",
+  "allowed_directories": [
+    "/home/lauer/.local/share/convmem/eval/2026-07-20-r2a-nomic-vs-mxbai/challenger"
+  ],
+  "working_directory": "/home/lauer/Projects/convmem",
+  "exact_command_tuple": [
+    "python3",
+    "scripts/eval_shadow_config_gen.py",
+    "--run-manifest",
+    "/home/lauer/.local/share/convmem/authorizations/r2a/2026-07-20-r2a-nomic-vs-mxbai/challenger.json",
+    "--live-config",
+    "/home/lauer/.config/convmem/config.toml",
+    "--out-dir",
+    "/home/lauer/.local/share/convmem/eval/2026-07-20-r2a-nomic-vs-mxbai/challenger",
+    "--chroma-dir",
+    "/home/lauer/.local/share/convmem/eval/2026-07-20-r2a-nomic-vs-mxbai/challenger/chroma",
+    "--embed-model",
+    "mxbai-embed-large:latest",
+    "--embed-host",
+    "http://localhost:11434"
+  ],
+  "authorized_revision": "6a2bd97af32f331caf47bcde8564c25e88ccbf26"
+}
+```
+
+Body digest = in-file `ryan_approved_manifest_sha256` = sidecar one-line digest (verified after write). Eval root for this `run_id` was **not** created.
+
+## Template text for Ryan (exception + packets)
+
+When ready to authorize (not yet) — use Ryan’s fuller grant text from chat, or:
+
+```text
+ACCEPT AND GRANT.
+
+ONE-JOB R2A EXCEPTION GRANTED for the Copilot CLI operator.
+Authorized revision: 6a2bd97af32f331caf47bcde8564c25e88ccbf26
+config_generation only via exact_command_tuple in each completed packet above.
+Create out_dir + shadow.toml only; bind chroma_dir path; do not create chroma_dir.
+No R2b+, Gate 2, promotion, cleanup, retry, or overwrite.
+```
+
+Until Ryan posts that grant citing these completed packets, exception remains **pending**.
