@@ -13,35 +13,26 @@ from __future__ import annotations
 
 import re
 import unittest
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SSOT = REPO_ROOT / "config" / "agent-protocol.md"
+from tests.protocol_slice_helpers import (
+    SSOT,
+    assert_absent_from_chatgpt_pack,
+    assert_exact_body_once_on_surfaces,
+    canonical_slice_body,
+)
+
 WORD_CEILING = 360
-
-EXECUTION_SURFACES = (
-    REPO_ROOT / "config" / "agent-protocol-mcp.txt",
-    REPO_ROOT / "config" / "cursor-rules-convmem.mdc.example",
-    REPO_ROOT / "config" / "codex-agents-convmem.example.md",
-    REPO_ROOT / "config" / "kiro-steering-convmem.example.md",
-    REPO_ROOT / "config" / "crush-rules-convmem.example.md",
-)
-CHATGPT_PACK = REPO_ROOT / "docs" / "chatgpt-pack" / "custom-instructions.txt"
-
-_MARKER_RE = re.compile(
-    r"<!-- TEAM_CHARTER_START -->\n?(.*?)\n?<!-- TEAM_CHARTER_END -->",
-    re.DOTALL,
-)
+_SECTION = "TEAM_CHARTER"
 
 # Five-field semantic anchors — these are the exact field names required in the
 # Sol-High conflict summary template. Generic label checks (e.g. "Verdict A")
 # are insufficient; the test asserts the semantically correct names.
 FIVE_FIELD_ANCHORS = (
-    "Artifact:",                            # field 1 — exact review target
-    "GitHub Copilot audit-lane verdict:",   # field 2 — Copilot audit lane PASS/FAIL
-    "Kiro verdict:",                        # field 3 — Kiro PASS/FAIL
-    "Material proposition in conflict:",    # field 4 — the specific factual claim
-    "Negative confirmation:",               # field 5 — not single-FAIL/deferral/etc.
+    "Artifact:",  # field 1 — exact review target
+    "GitHub Copilot audit-lane verdict:",  # field 2 — Copilot audit lane PASS/FAIL
+    "Kiro verdict:",  # field 3 — Kiro PASS/FAIL
+    "Material proposition in conflict:",  # field 4 — the specific factual claim
+    "Negative confirmation:",  # field 5 — not single-FAIL/deferral/etc.
 )
 
 # Phrases that must NOT appear in the compact body (lifecycle prose / mermaid /
@@ -62,20 +53,12 @@ BANNED_IN_COMPACT = (
 # PASS or FAIL. If the compact body contains a template line allowing defer,
 # the gate is broken.
 DEFER_VALID_VERDICT_PATTERN = re.compile(
-    r"PASS\|FAIL\|defer",   # old template form that allowed defer as verdict
+    r"PASS\|FAIL\|defer",  # old template form that allowed defer as verdict
 )
 
 
 def _canonical_body() -> str:
-    """Extract and normalise body the same way generate-agent-protocol.sh does."""
-    text = SSOT.read_text(encoding="utf-8")
-    match = _MARKER_RE.search(text)
-    if not match:
-        raise AssertionError(
-            "TEAM_CHARTER markers missing from config/agent-protocol.md"
-        )
-    raw = match.group(1)
-    return "\n".join(line.lstrip() for line in raw.splitlines()).strip()
+    return canonical_slice_body(_SECTION)
 
 
 class TeamCharterWordCeilingTests(unittest.TestCase):
@@ -108,31 +91,17 @@ class TeamCharterWordCeilingTests(unittest.TestCase):
 
 class TeamCharterSurfaceTests(unittest.TestCase):
     def test_exact_body_once_on_all_execution_surfaces(self):
-        body = _canonical_body()
-        for path in EXECUTION_SURFACES:
-            with self.subTest(surface=path.name):
-                text = path.read_text(encoding="utf-8")
-                count = text.count(body)
-                self.assertEqual(
-                    count,
-                    1,
-                    f"{path.name}: expected exact canonical TEAM_CHARTER body "
-                    f"exactly once, found {count}",
-                )
+        assert_exact_body_once_on_surfaces(
+            self,
+            _canonical_body(),
+            label="TEAM_CHARTER",
+        )
 
     def test_absent_from_chatgpt_strategy_pack(self):
-        body = _canonical_body()
-        text = CHATGPT_PACK.read_text(encoding="utf-8")
-        self.assertEqual(
-            text.count(body),
-            0,
-            "TEAM_CHARTER body must not appear in ChatGPT strategy pack",
-        )
-        # Belt-and-suspenders: key gate phrase must also be absent
-        self.assertNotIn(
-            "Sol-High hard gate",
-            text,
-            "Sol-High gate language must not appear in ChatGPT strategy pack",
+        assert_absent_from_chatgpt_pack(
+            self,
+            _canonical_body(),
+            forbidden_phrases=("Sol-High hard gate",),
         )
 
 
@@ -163,8 +132,6 @@ class TeamCharterSolHighGateTests(unittest.TestCase):
     def test_defer_explicitly_excluded(self):
         """The compact body must positively state that defer is not a valid verdict."""
         body = _canonical_body()
-        # Accept either the explicit statement form or the `not defer` form in
-        # the gate description.
         excluded = (
             "`defer` is never a valid opposing verdict" in body
             or "not defer" in body
@@ -208,7 +175,6 @@ class TeamCharterSolHighGateTests(unittest.TestCase):
             body,
             "Compact body must name 'Sol-High' explicitly",
         )
-        # The key separation statement
         self.assertIn(
             "separate",
             body,
