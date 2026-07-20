@@ -1,14 +1,31 @@
 # EXECUTION — Embedding-Model A/B Evaluation (two-gate operator runbook)
 
-**Status:** Gate 1 evaluator harness on `feat/2026-07-19-embed-eval-harness`.
-**Authority:** Architecture Rev 1 (binding) + Gate 1 / Gate 2 human gates.
+**Status:** Gate 1 harness **merged** at immutable SHA `3b2790f50414f0445c35748e52f849c6276839f7` (PR #44 squash). Hermetic R2a authorization implementation is in PR #52 (awaiting exact-tip GitHub Copilot audit-lane + Kiro PASS). Merge of #52 does **not** authorize R2a execution, eval-root writes, R2b+, or Gate 2.
+**Authority:** Architecture Rev 1 (binding) + Gate 1 / Gate 2 human gates + R2a–R8 experimental checkpoints.
+**R2a schema amendment:** [`docs/inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md`](../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md) — hermetic impl tracked in #52; no external R2a writes authorized.
 
 ## Two-gate model
 
 | Gate | Meaning |
 |------|---------|
-| **Gate 1** | Approves the completed evaluator (tracked code, hermetic tests, fixtures). No live capture/builds/evals. |
+| **Gate 1** | Approves the completed evaluator (tracked code, hermetic tests, fixtures). **Done** — pin `3b2790f`. No live capture/builds/evals under Gate 1. |
 | **Gate 2** | Reviews the first real comparison’s evidence (external approval sidecar SHA, corpus acceptance, uncertainty report). Never automatic promotion. |
+
+## Authorization remaining (experimental prep before Gate 2)
+
+| Checkpoint | Meaning | Status |
+|------------|---------|--------|
+| **R2a schema** | Phase-scoped auth capability + unforgeable grant ([amendment](../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md)) | Hermetic implementation in PR #52 — exact-tip Copilot audit-lane + Kiro PASS pending |
+| **R2a execution** | Create isolated external dirs + shadow config files only | **Not authorized** |
+| **R2b** | Immutable capture + corpus package | Not authorized |
+| **B-Accept** | Human corpus acceptance | Not authorized |
+| **C0** | Freeze queries, labels, thresholds, manifest hashes | Not authorized |
+| **R3** | Model pull/probe | Not authorized |
+| **R4 / R5** | Nomic / challenger shadow builds | Not authorized |
+| **R7** | Smoke, pilot, latency, paired evaluation | Not authorized |
+| **R8** | Destructive cleanup of experimental artifacts | Not authorized |
+
+Map: Gate 1 ≈ historical R1 (done). R2a–R7 = pre–Gate 2 prep. Gate 2 = evidence review after R7. Promotion = new architecture loop.
 
 ## Gate 1 shipped capabilities
 
