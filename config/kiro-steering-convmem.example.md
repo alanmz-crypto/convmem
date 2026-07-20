@@ -130,9 +130,7 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 - **Never volunteer** `convmem record` at task end — important work is already in chat ingest.
 - `convmem record` **only** when Ryan says **record block**, **closing**, or **end session**.
 
-## HITL team charter (lane routing — not model weights)
-
-**Lane routing by work type:**
+## HITL team charter
 
 | Work type | Default lane | Copilot audit lane |
 |-----------|-------------|--------------------|
@@ -144,13 +142,13 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 | Conflict adjudication (scarce) | **Sol-High** | Separate resource; hard gate only |
 | Ledger write / merge | **Ryan only** | Not involved |
 
-**GitHub Copilot audit lane — conditional use.**
-Invoke when: independent safety/isolation audit warranted; targeted post-impl verification needed.
-Do not invoke for: implementation Cursor can execute; routine work; re-auditing uncontested findings; drafting; substituting for a missing Cursor handoff packet.
-**Sol-High is a separate scarce resource** — not normal workflow, not the same as the Copilot audit lane.
+**Conditional Copilot use.** Use only for independent safety/isolation audits or targeted verification—not implementation, routine work, drafting, uncontested re-audits, or missing Cursor handoffs.
+**Sol-High is separate** from normal workflow and the Copilot audit lane.
+
+**Kiro is non-implementing and review-required.** It may write only explicitly requested architecture/plan/review documents; never code, tests, scripts, configuration, generated surfaces, or runtime state. Bounded autonomy does not expand this scope; implementation goes to Cursor.
 
 **Sol-High hard gate (Copilot audit lane + Kiro, same target + same revision).**
-Invoke only when **GitHub Copilot audit lane** and **Kiro** have each issued a written **PASS or FAIL** (not defer, not silence, not abstention) on the **same artifact and revision**, and the verdicts materially conflict. All five fields required as literal prompt prefix:
+Invoke only when **GitHub Copilot audit lane** and **Kiro** issue materially conflicting written **PASS or FAIL** verdicts on the **same artifact and revision**. Literal five-field prompt prefix:
 
 ```text
 SOL-HIGH CONFLICT SUMMARY (required — all fields must be present)
@@ -158,10 +156,10 @@ Artifact: <PR number / branch tip SHA / file set — exact>
 GitHub Copilot audit-lane verdict: <PASS|FAIL> — <one-line rationale>
 Kiro verdict: <PASS|FAIL> — <one-line rationale>
 Material proposition in conflict: <specific factual claim both verdicts cannot both be true>
-Negative confirmation: not single-FAIL / not deferral / not abstention / not silence / not missing / not different revision — confirmed
+Negative confirmation: not single-FAIL / deferral / abstention / silence / missing / incomplete / different revision — confirmed
 ```
 
-`defer` is never a valid opposing verdict. Missing any field, or either reviewer deferred/abstained/silent/different-revision → **do not call Sol-High**.
+`defer` is never a valid opposing verdict. Any missing field, deferral, abstention, silence, incomplete verdict, or different revision blocks Sol-High.
 
 **Non-example (PR #52):** Copilot audit FAIL; Kiro defers → single-reviewer FAIL, not a conflict. Do not call Sol-High.
 
@@ -170,7 +168,7 @@ Negative confirmation: not single-FAIL / not deferral / not abstention / not sil
 ## Bounded autonomy
 
 
-Default for Routine-reversible work only in convmem. `Mode: review required` disables it; `Mode: bounded autonomy` opts in where higher rules permit. WordPress stays review-required pending separate probation. Other repos, architecture, security, and external-configuration work never inherit it.
+Default for Routine-reversible work only in convmem. Kiro remains review-required. `Mode: review required` disables it; `Mode: bounded autonomy` opts in where higher rules permit. WordPress stays review-required pending separate probation. Other repos, architecture, security, and external-configuration work never inherit it.
 
 Precedence (high→low): system/tool guards → lane must-nots + protocol → DB/secrets/external safety → exact brief authorizations → autonomy defaults. Lower cannot override higher.
 

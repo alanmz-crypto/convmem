@@ -5,7 +5,7 @@ Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
 
 | Agent | Lane | Capability tier | May create branch | Prefixes | May merge main |
 |-------|------|-----------------|-------------------|----------|----------------|
-| **Kiro** | Design review, milestone sign-off; session start: `convmem brief` → `ask` → `LATEST.md`; **finish facts via `convmem record --approve-last --signer kiro-review`**, not markdown sign-off | Tier A (shell + MCP via `~/.kiro/settings/mcp.json` + steering) | Yes | **plan, docs only** | No — sign-off |
+| **Kiro** | Non-implementing, review-required design/sign-off lane. May edit an architecture, plan, or review document only when Ryan explicitly requests that documentation task; never implementation code, tests, scripts, configuration, generated surfaces, or runtime state. Uses `--signer kiro-review` only in a record block Ryan explicitly requests; never runs `--approve-last`. | Tier A (shell + MCP via `~/.kiro/settings/mcp.json` + steering) | Yes, for authorized docs | **plan, docs only** | No — sign-off |
 | **Cursor** | Implementer on local workstation; global `convmem.mdc` rule drives session start | Tier A (shell + MCP) | Yes | feat, fix, docs, wip | No |
 | **Sonnet** | MCP verification (static source + live Crush handshake) | Tier A via Cursor | — | — | No |
 | **ChatGPT** | Orchestration/strategy; paste-only access to corpus | Tier C (paste-only) | No | — | No |
@@ -19,7 +19,7 @@ Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
 
 **DeepSeek vs Crush:** DeepSeek row = Tier B synthesis API behind `convmem ask` only — not a bug-hunter. Crush running DeepSeek V4 weights is still **Crush lane** (Tier A shell). Bug discovery owner = **Crush**, not DeepSeek. Full audit: [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md).
 
-**Lane routing + Sol-High gate:** Large implementation → Cursor; investigation/audit/safety → GitHub Copilot audit lane (conditional). Sol-High is a separate scarce conflict adjudicator — requires written PASS or FAIL from both GitHub Copilot audit lane and Kiro on the same artifact and revision; `defer` is not a valid verdict; Auth-R1 adversarial diagnosis does not satisfy the gate. Always-loaded in `TEAM_CHARTER` (`config/agent-protocol.md`). Full lifecycle + Copilot invocation rules + auth sequence: [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md).
+**Lane routing + Sol-High gate:** Large implementation → Cursor; investigation/audit/safety → GitHub Copilot audit lane (conditional). Sol-High is a separate scarce adjudicator — it requires written PASS or FAIL from both the GitHub Copilot audit lane and Kiro on the same artifact and revision. `defer`, DeepSeek R1 model output, and the embedding worked example's Authorization R1 cannot satisfy the gate. Always-loaded in `TEAM_CHARTER` (`config/agent-protocol.md`). Full lifecycle: [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md).
 
 **Session close (all models):** follow [`config/agent-protocol.md`](../config/agent-protocol.md) and [`SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md).
 

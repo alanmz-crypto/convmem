@@ -3,7 +3,7 @@
 **To:** all Tier A/B agents + Ryan  
 **From:** Claude Cloud (review) · Cursor (integration)  
 **Date:** 2026-07-06  
-**Amended:** 2026-07-19 — Copilot lifecycle, conditional routing, Sol-High Copilot↔Kiro gate (corrected 2026-07-20)
+**Amended:** 2026-07-20 — conditional Copilot lifecycle and Sol-High adjudication gate
 **Status:** active  
 **Always-loaded subset:** `config/agent-protocol.md` → `TEAM_CHARTER` section (via `generate-agent-protocol.sh` + `deploy-agent-protocol.sh`)  
 **Source:** [HANDOFF-CLAUDE-CLOUD-2026-07-06-hitl-orchestration-lab.md](HANDOFF-CLAUDE-CLOUD-2026-07-06-hitl-orchestration-lab.md)
@@ -58,48 +58,67 @@ Lab smoke (`smoke-synthesis.sh`, PASS 2026-07-06): no prod Chroma corruption whe
 
 ### Governing lifecycle
 
-The following flow shows the standard review-and-implementation pipeline. **GitHub Copilot audit-lane nodes are conditional** — they apply "when warranted" or "when necessary", not on every task. Sol-High is a separate scarce adjudicator invoked only under a hard conflict gate (see §4 Sol-High gate).
+This is the complete lifecycle from problem framing through production decision. Specialist reviews are selected by comparative advantage; **GitHub Copilot audit-lane nodes are conditional**, not mandatory at every stage. Sol-High is outside the normal flow and may be used only under the hard conflict gate below.
 
 ```mermaid
 flowchart TD
-  A["Stage 0: Ryan — task intake + authorization scope"] --> B
-  B["Stage 1: Crush — discovery, search, findings (Tier A)"] --> C
-  C{"Copilot audit warranted?"}
-  C -- "yes" --> D["Stage 2: GitHub Copilot audit lane —<br/>code / safety / isolation review"]
-  C -- "no" --> E
-  D --> E["Stage 3: Kiro — design review + sign-off"]
-  E --> F{"Substantial implementation?"}
-  F -- "yes" --> G["Stage 4: Cursor — implementation<br/>(complete handoff packet)"]
-  F -- "no" --> H
-  G --> H{"Copilot verify warranted?"}
-  H -- "yes" --> I["Stage 5: GitHub Copilot audit lane —<br/>targeted post-impl verification"]
-  H -- "no" --> J
-  I --> J["Stage 6: Kiro — milestone sign-off"]
-  J --> K["Stage 7: Track A handoff (all surfaces)"]
-  K --> L["Stage 8: Ryan — merge to main +<br/>record approve-last"]
+  A["Ryan identifies opportunity or problem"] --> B["Crush gathers facts and frames a neutral problem brief"]
+  B --> C{"Code-grounded uncertainty?"}
+  C -- "yes" --> CA["GitHub Copilot audit lane investigates local code and state"]
+  C -- "no" --> D
+  CA --> D{"Which independent critiques are warranted?"}
+  D --> D1["DeepSeek R1 adversarial architecture critique"]
+  D --> D2["Claude methodology and evaluation critique"]
+  D --> D3["ChatGPT strategic review"]
+  D --> D4["Kiro preliminary design review"]
+  D1 --> E["ChatGPT synthesis"]
+  D2 --> E
+  D3 --> E
+  D4 --> E
+  E --> F["Kiro reconciles findings and issues governing architecture brief"]
+  F --> G{"Problem sufficiently specified?"}
+  G -- "no" --> B
+  G -- "yes" --> H["Cursor creates architecture plan"]
+  H --> I1["Kiro architecture review"]
+  H --> I2["GitHub Copilot safety, isolation, and code audit when warranted"]
+  H --> I3["Claude evaluation-methodology review when applicable"]
+  I1 --> J["ChatGPT review synthesis when needed"]
+  I2 --> J
+  I3 --> J
+  J --> K["Kiro consolidated amendments"]
+  K --> L["Cursor revises architecture"]
+  L --> M["Reviewer-specific targeted amendment checks"]
+  M --> N["Kiro final architecture sign-off"]
+  N --> O["Cursor creates execution plan"]
+  O --> P1["GitHub Copilot feasibility and safety review when warranted"]
+  O --> P2["Kiro scope and sequencing review"]
+  P1 --> Q["Cursor revises execution plan"]
+  P2 --> Q
+  Q --> R1["Reviewer-specific targeted rechecks"]
+  Q --> R2["Kiro execution-plan PASS"]
+  R1 --> S{"Ryan authorizes next phase?"}
+  R2 --> S
+  S -- "tracked implementation" --> T["Cursor builds on feature branch"]
+  T --> U["Tests, commits, and immediate pushes"]
+  U --> V["Independent implementation verification"]
+  V --> W{"Ryan accepts tracked implementation?"}
+  W -- "revise" --> T
+  W -- "accept" --> X["Merge or pin reviewed implementation commit"]
+  X --> Y["Separately authorized preparation, shadow builds, and evaluation"]
+  Y --> Z1["GitHub Copilot evidence-integrity verification when necessary"]
+  Y --> Z2["Claude methodology review"]
+  Y --> Z3["Kiro technical verdict"]
+  Z1 --> AA["ChatGPT final synthesis if needed"]
+  Z2 --> AA
+  Z3 --> AA
+  AA --> AB{"Ryan model decision"}
+  AB -- "reject or inconclusive" --> AC["Keep live system unchanged; separately authorize cleanup"]
+  AB -- "candidate wins" --> AD["Begin a new promotion architecture and authorization loop"]
 ```
 
-**Lane responsibilities in this flow:**
-- **Crush** — facts, framing, corpus search, surface findings; does not self-approve or write `record`
-- **GitHub Copilot audit lane** — code-grounded technical review; conditional; does not implement, does not infer live authorization
-- **Cursor** — architecture, planning, implementation; receives complete handoff packet from upstream lanes
-- **Kiro** — governing design review and final gate sign-off; uses `--signer kiro-review` only on Ryan's cue
-- **Claude / ChatGPT** — methodology review, synthesis when needed; no code edits or prod writes
-- **Ryan** — authorization gating, deploy decision, merge to `main`, final disposition; only lane that runs `--approve-last`
+**Lane boundaries:** Crush owns routine discovery and neutral framing. DeepSeek R1 challenges architecture; Claude reviews methodology; ChatGPT supplies strategy and synthesis; Kiro owns governing design review and sign-off; Cursor owns architecture, execution planning, and implementation. The GitHub Copilot audit lane is used only for code-grounded investigation, safety/isolation review, evidence integrity, and targeted rechecks. Ryan alone authorizes phases, deployment, promotion, cleanup, merges, and durable conclusions.
 
-**Sol-High is not in this flow.** It is a separate scarce token resource invoked only when the GitHub Copilot audit lane and Kiro have issued materially conflicting written verdicts on the same artifact and same revision. See §4 Sol-High gate.
-
-**Stage narrative (brief):**
-
-- **Stage 0** — Ryan defines task + authorization scope. Note: "R1" here refers to the first authorization phase code in the embedding-eval execution plan (see §4 worked example below) — distinct from DeepSeek R1 (the model), which is unrelated to task intake.
-- **Stage 1** — Crush (Tier A shell + MCP read) discovers, searches, surfaces findings.
-- **Stage 2** — GitHub Copilot audit lane (when warranted): independent code / safety / isolation audit. Does not implement; does not infer live authorization.
-- **Stage 3** — Kiro: design review and sign-off.
-- **Stage 4** — Cursor (when substantial implementation is needed): executes with complete handoff packet (scope, constraints, surfaces, acceptance tests, stop conditions, evidence).
-- **Stage 5** — GitHub Copilot audit lane (when necessary): targeted post-impl verification or recheck.
-- **Stage 6** — Kiro: milestone sign-off. Checks implementation matches design intent.
-- **Stage 7** — Whoever closes: Track A session index + Track B if a log was written. Handoff ≠ record.
-- **Stage 8** — Ryan only: merges to `main`, runs `record --approve-last`, tags milestones.
+**Kiro is non-implementing and review-required.** Kiro may issue verdicts and sign-offs and may edit an architecture, plan, or review document only when Ryan explicitly requests that documentation task. Kiro must not edit implementation code, tests, scripts, configuration, generated surfaces, or runtime state; implement findings; or infer write authority from bounded autonomy. Implementation corrections return to Cursor.
 
 ---
 
@@ -109,13 +128,13 @@ flowchart TD
 |-------|--------------|----------|
 | Bug discovery | **Crush** (shell + MCP read) | self-approve fixes; write `record`; merge to `main` |
 | Independent audit (when warranted) | **GitHub Copilot** | new `logs/*.md` unless Ryan asks; merge to `main`; substantial implementation Cursor can execute; infer live authorization from scope |
-| Design / sign-off | **Kiro** | volunteer `record` at task end; merge to `main`; create `feat/`/`fix/` branches |
+| Design / sign-off | **Kiro** | implementation edits; unrequested document edits; volunteer `record`; merge to `main`; create `feat/`/`fix/` branches |
 | Implementation (convmem) | **Cursor** | client WP in same session; merge to `main` |
 | Implementation (client WP) | **Cursor / Ryan** | convmem ledger writes |
 | Memory ingest | **Whoever closes session** | Track A **and** B — never one alone |
 | Durable conclusions | **Ryan only** | per-finding records; agents never `--approve-last` |
 | Merge to `main` | **Ryan only** | agents never merge or force-push `main` |
-| Conflict adjudication (token-scarce) | **Sol-High** (GPT-sol / Copilot Sol-High class) | routine execution; single-reviewer FAIL; drafting; re-audits; call without written conflict summary |
+| Conflict adjudication (token-scarce) | **Sol-High adjudicator** | routine execution; single-reviewer FAIL; drafting; re-audits; call without written conflict summary |
 | Orchestration / strategy | **ChatGPT / Claude Cloud** | code edits; prod writes |
 | Synthesis retrieval | **DeepSeek API** (`convmem ask`) | primary bug author |
 
@@ -153,25 +172,27 @@ Do not burn Copilot (or Sol-High) cycles on work that belongs to Cursor's compar
 
 ---
 
-### Authorization sequence — worked example (embedding-eval execution plan)
+### Authorization sequence — embedding-project worked example
 
-The authorization phase codes below are **specific to the embedding-model evaluation execution plan** ([`docs/plans/EXECUTION-embedding-model-eval.md`](../plans/EXECUTION-embedding-model-eval.md)). They are cited here as a worked example of how a multi-phase authorized task looks — they are **not** universal policy terms that apply to all convmem work.
+The phase codes below preserve Ryan's authorization sequence for the embedding-model evaluation project. They are a **worked example, not universal convmem policy**. The current operational runbook uses the later Gate 1/Gate 2 model and remains authoritative for its own constraints: [`docs/plans/EXECUTION-embedding-model-eval.md`](../plans/EXECUTION-embedding-model-eval.md).
 
-**Disambiguation:** "R1" in this context means the first authorization phase of this specific execution plan (task intake + adversarial diagnosis). It is entirely distinct from **DeepSeek R1** (the language model), which has no role in task authorization.
+**Disambiguation:** **Authorization R1** permits tracked implementation only. It is entirely distinct from **DeepSeek R1**, the adversarial-review model.
 
 | Code | Meaning in this plan |
 |------|----------------------|
-| **Auth-R1** | Task intake, adversarial diagnosis, initial scope |
-| **Auth-R2a** | Isolated config/dirs phase (hermetic; no live corpus writes) |
-| **Auth-R2b** | Extended isolation variant |
-| **B-Accept** | Acceptance gate for Auth-R2a/R2b output before live corpus contact |
-| **C0** | Checkpoint before live corpus writes begin |
-| **Auth-R3** | Controlled live phase with gated corpus writes |
-| **Auth-R4–R5** | Extended live phases |
-| **Auth-R7** | Pre-promotion verification |
-| **Auth-R8** | Cleanup; promotion requires a fresh Auth-R1 |
+| **Authorization R1** | Feature branch, tracked code, hermetic fixtures, tests, commits, and pushes only |
+| **Authorization R2a** | Create isolated configurations and directories |
+| **Authorization R2b** | Capture the immutable corpus package |
+| **B-Accept** | Human corpus review and acceptance |
+| **C0** | Freeze queries, labels, metrics, thresholds, and manifests before challenger results |
+| **Authorization R3** | Pull and probe both models |
+| **Authorization R4** | Build a fresh baseline/control shadow |
+| **Authorization R5** | Build the challenger shadow and verify matching corpus identity |
+| **Authorization R7** | Smoke, pilot, latency, and paired evaluation |
+| **Authorization R8** | Remove experimental artifacts after a separate cleanup authorization |
+| **Promotion** | A winning evaluation starts a new architecture, review, execution-plan, and authorization loop; it never authorizes live cutover |
 
-No agent may infer live authorization from outcome or task context — authorization must be explicit in the brief or Ryan's instruction. Auth-R1 adversarial diagnosis is **not** a Sol-High conflict-summary substitute (see §4 Sol-High gate).
+No agent may infer live authorization from outcome or task context. DeepSeek R1 output and Authorization R1 are **not** Sol-High conflict-summary substitutes.
 
 ---
 
@@ -210,7 +231,7 @@ Before any Sol-High / GPT-sol call, the calling agent **must** produce a written
 - Either reviewer deferred, abstained, was silent, or did not review the same revision
 - A verdict is incomplete or references a different artifact
 - The disagreement is about scope or framing, not a material factual conflict on the artifact
-- Auth-R1 adversarial diagnosis is the only opposing input — task intake is not a review verdict
+- Authorization R1 is the only opposing input — authorization is not a review verdict
 - DeepSeek R1 (the model) output is the only opposing input — model output is not a lane verdict
 
 **`defer` is never an opposing written verdict.** A reviewer who defers has not issued a verdict. Deferral by either lane means the gate is not met — route to the deferring lane for resolution first.
@@ -242,7 +263,7 @@ Negative confirmation: not single-FAIL / not deferral / not abstention / not sil
 
 **Token scarcity / mis-delegation:** Burning Sol-High or Copilot on large Cursor-shaped implementation (or calling Sol-High on a single FAIL with no opposing verdict) wastes scarce high-cost capacity. Comparative-advantage routing + Sol-High checklist are the mitigations.
 
-**Authorization inference:** Agents must not infer live authorization from task context or outcome. Authorization must be explicit (R-code in brief or Ryan's instruction). R1 adversarial diagnosis is not a Sol-High conflict-summary substitute.
+**Authorization inference:** Agents must not infer live authorization from task context or outcome. Authorization must be explicit in the brief or Ryan's instruction. Neither Authorization R1 nor DeepSeek R1 output is a Sol-High conflict-summary substitute.
 
 **Ledger noise:** Collapse per-finding Crush verification records before umbrella sprint record, or umbrella summarizes noisy ledger.
 
@@ -302,10 +323,10 @@ convmem record --approve-last
 |------|---------|
 | **Lane** | Agent surface + capability tier + must-not rules (not a job title) |
 | **GitHub Copilot audit lane** | Governing conditional technical-review lane (formerly "Codex" in pre-2026-07-19 posts); VS Code Copilot surface; not the same as Sol-High |
-| **Sol-High** | GPT-sol / Copilot Sol-High class; scarce conflict adjudicator only under hard gate; separate from the Copilot audit lane |
+| **Sol-High adjudicator** | Scarce conflict-resolution resource used only under the hard gate; separate from the GitHub Copilot audit lane |
 | **Crush lane** | Tier A shell agent for bug discovery; may run DeepSeek V4 weights but is still Crush |
 | **DeepSeek R1** | The DeepSeek R1 language model — entirely distinct from Authorization R1 below |
-| **Auth-R1 … Auth-R8** | Authorization phase codes for the embedding-eval execution plan only; see worked example §4 and [`EXECUTION-embedding-model-eval.md`](../plans/EXECUTION-embedding-model-eval.md) |
+| **Authorization R1 … R8** | Historical phase codes in the embedding-project worked example; the current runbook separately defines Gate 1 and Gate 2 |
 | **Track A** | Session chat index (`convmem index --file <transcript>`) |
 | **Track B** | Log artifact index (`logs/*.md` via sync scripts) |
 | **Tier A / B / C** | Capability tiers: shell+MCP / MCP-only / paste-only; defined in `config/agent-protocol.md` |

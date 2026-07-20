@@ -176,6 +176,25 @@ class TeamCharterSolHighGateTests(unittest.TestCase):
             "or 'not defer' in gate description)",
         )
 
+    def test_all_negative_conditions_explicitly_excluded(self):
+        """Every non-conflict condition must appear in the compact gate."""
+        body = _canonical_body().lower()
+        for condition in (
+            "single-fail",
+            "deferral",
+            "abstention",
+            "silence",
+            "missing",
+            "incomplete",
+            "different revision",
+        ):
+            with self.subTest(condition=condition):
+                self.assertIn(
+                    condition,
+                    body,
+                    f"Compact Sol-High gate must exclude {condition}",
+                )
+
     def test_copilot_and_sol_high_are_separate(self):
         """The compact body must distinguish the Copilot audit lane from Sol-High."""
         body = _canonical_body()

@@ -1,7 +1,7 @@
 # HITL charter — Copilot lifecycle addendum + corrective repairs
 
 **To:** GitHub Copilot audit lane (audit), Kiro (sign-off), Ryan (approve deploy)
-**From:** Kiro (corrective execution)
+**From:** Kiro (initial corrective execution) · GitHub Copilot (finish corrections)
 **Date:** 2026-07-20
 **Branch:** `docs/2026-07-19-hitl-charter-delegation-sol-high-gate`
 **PR:** [#54](https://github.com/alanmz-crypto/convmem/pull/54)
@@ -13,7 +13,7 @@
 
 ## Review target
 
-**Exact artifact:** branch `docs/2026-07-19-hitl-charter-delegation-sol-high-gate`, tip SHA produced by the corrective commit following `dc65fef`. Both the GitHub Copilot audit lane and Kiro must review this same tip SHA. Any further corrective commit invalidates prior verdicts unless the reviewer explicitly carries them forward after inspecting the delta.
+**Exact artifact:** the final pushed tip of branch `docs/2026-07-19-hitl-charter-delegation-sol-high-gate`, identified by literal commit SHA in the external review request. A tracked file cannot name its own commit SHA. Both the GitHub Copilot audit lane and Kiro must review that same immutable tip. Verdicts are returned externally and are not committed back into the reviewed artifact.
 
 ---
 
@@ -45,6 +45,14 @@ The `dc65fef` addendum (Kiro, 2026-07-20) introduced these issues that required 
 | `tests/test_team_charter_protocol.py` | New fitness test: five execution surfaces, ChatGPT pack omission, five-field semantic anchors, 360-word ceiling, `defer` not treated as valid opposing verdict |
 | Generated surfaces | Regenerated after corrective edits; idempotence verified (second run produces no diff) |
 
+## Finish corrections after `404bf6b`
+
+- Restored Ryan's full specialist-review, architecture, execution-plan, implementation, evaluation, and promotion topology instead of treating the compressed Stage 0–8 diagram as the governing lifecycle.
+- Corrected the embedding-project worked example: Authorization R1 is tracked implementation; R2a/R2b are isolation and immutable capture; C0 freezes evaluation inputs; R3/R4/R5/R7/R8 retain their supplied phase meanings. The Gate 1/Gate 2 runbook is linked only for the constraints it actually defines.
+- Made Kiro explicitly non-implementing and review-required in the full charter, compact protocol, bounded-autonomy rule, and role registry.
+- Removed remaining "Copilot Sol-High class" language and separated the GitHub Copilot audit lane from the Sol-High adjudicator by name.
+- Changed same-SHA closeout so verdicts are returned externally against the final immutable tip rather than committed into—and thereby changing—the reviewed artifact.
+
 **Not changed:** `deploy-agent-protocol.sh` not run. PR #54 title/body not edited (left as audit-history). PR #52 R2a implementation is independent — do not block or auto-resume it.
 
 ---
@@ -55,7 +63,8 @@ The `dc65fef` addendum (Kiro, 2026-07-20) introduced these issues that required 
 |-----|-------------|
 | `0d2cbf7` | Original: comparative advantage + Sol-High gate (Codex framing) |
 | `dc65fef` | Copilot addendum (issues listed above — superseded by this corrective commit) |
-| *(this commit)* | Precision repairs — see "What changed" table above |
+| `404bf6b` | Initial precision repairs by Kiro |
+| Finish correction | Restores Ryan's lifecycle topology, corrects authorization semantics, and makes Kiro's non-implementation boundary explicit |
 
 ---
 
@@ -63,8 +72,8 @@ The `dc65fef` addendum (Kiro, 2026-07-20) introduced these issues that required 
 
 | Who | Ask |
 |-----|-----|
-| **GitHub Copilot audit lane** | Audit the corrective tip SHA: (1) Mermaid valid? (2) Sol-High correctly separated from Copilot audit lane in both full charter and compact slice? (3) `defer` properly excluded as a valid verdict in all three locations? (4) Auth-R1 terminology clearly scoped to embedding-eval worked example only? (5) DeepSeek R1 / Auth-R1 disambiguation clear? (6) Five-field gate semantic labels match between compact slice and full charter? (7) Copilot and Codex rows properly separated in AGENT-ROLES.md? |
-| **Kiro** | Sign-off that corrective repairs match intent and compact slice ≤360 words passes fitness test |
+| **GitHub Copilot audit lane** | Audit the final immutable tip: lifecycle topology fidelity; authorization-example accuracy; separation of the Copilot audit lane and Sol-High adjudicator; complete five-field gate; generated-surface parity; tests and compact budget. |
+| **Kiro** | Read-only sign-off that the same tip preserves governing design intent, lane allocation, authorization boundaries, and the explicit Kiro non-implementation boundary. |
 | **Ryan** | After both verdicts on same tip SHA: approve `bash scripts/deploy-agent-protocol.sh` |
 
 ---
@@ -102,7 +111,7 @@ Verdicts are bound to the tip SHA at time of review. If any further corrective c
 |------|---------|
 | **GitHub Copilot audit lane** | Governing conditional technical-review lane; VS Code Copilot; separate from Sol-High |
 | **OpenAI Codex** | Separately installed product; not the governing audit lane; retains its own tooling paths |
-| **Sol-High** | GPT-sol / Copilot Sol-High class; separate scarce adjudicator; invoked only under hard gate |
-| **Auth-R1 … Auth-R8** | Phase codes specific to the embedding-eval execution plan — not universal policy terms |
-| **DeepSeek R1** | The language model — unrelated to Auth-R1 phase codes |
+| **Sol-High adjudicator** | Separate scarce conflict-resolution resource invoked only under the hard gate |
+| **Authorization R1 … R8** | Historical phase codes in the embedding-project worked example; not universal policy terms |
+| **DeepSeek R1** | The adversarial-review model; unrelated to Authorization R1 |
 | **Same-SHA review binding** | Both reviewers must assess the exact same branch tip; further commits stale prior verdicts unless explicitly carried forward |
