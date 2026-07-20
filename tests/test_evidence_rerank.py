@@ -1,4 +1,5 @@
 """Tests for evidence-aware retrieval ranking (Milestone E)."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 
@@ -127,6 +128,32 @@ class EvidenceRerankTests(unittest.TestCase):
 
         self.assertEqual(ranked[0]["id"], "rerank-high")
         self.assertEqual(ranked[0]["rank_score"], 0.9)
+
+    def test_evidence_rerank_uses_fused_retrieval_score_when_available(self):
+        store = FakeStore([])
+        results = [
+            {
+                "id": "fusion-high",
+                "score": 0.6,
+                "rerank_score_norm": 0.2,
+                "rank_fusion_score": 0.95,
+                "metadata": {},
+                "document": "a",
+            },
+            {
+                "id": "rerank-high",
+                "score": 0.7,
+                "rerank_score_norm": 0.9,
+                "rank_fusion_score": 0.8,
+                "metadata": {},
+                "document": "b",
+            },
+        ]
+
+        ranked = apply_evidence_rerank(results, store)
+
+        self.assertEqual(ranked[0]["id"], "fusion-high")
+        self.assertEqual(ranked[0]["rank_score"], 0.95)
 
     # -- recency_boost --------------------------------------------------------
 

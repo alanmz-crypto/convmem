@@ -5,10 +5,11 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
-import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+from vector_similarity import cosine_similarity
 
 
 def _now_iso() -> str:
@@ -22,17 +23,6 @@ def canonical_unit_text(document: str) -> str:
 
 def unit_content_hash(document: str) -> str:
     return hashlib.sha256(canonical_unit_text(document).encode("utf-8")).hexdigest()
-
-
-def _cosine(a: list[float], b: list[float]) -> float:
-    if not a or not b or len(a) != len(b):
-        return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(x * x for x in b))
-    if na == 0 or nb == 0:
-        return 0.0
-    return dot / (na * nb)
 
 
 @dataclass
@@ -108,7 +98,7 @@ def evaluate_ingest_batch(  # pylint: disable=too-many-locals
                 if accepted_meta.get("content_hash") == content_hash:
                     exact_match = accepted_unit["id"]
                     break
-                similarity = _cosine(embedding, accepted_embedding)
+                similarity = cosine_similarity(embedding, accepted_embedding)
                 if similarity >= threshold:
                     semantic.append(
                         (similarity, accepted_unit["id"], accepted_meta)
