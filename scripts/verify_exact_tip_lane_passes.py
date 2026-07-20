@@ -105,17 +105,17 @@ def is_edited(item: EvidenceItem) -> bool:
     return item.updated_at != item.created_at
 
 
-def gh_api_json(args: Sequence[str]) -> object:
-    """Run `gh api ...` and parse JSON. Raises on non-zero exit."""
+def gh_json(args: Sequence[str]) -> object:
+    """Run ``gh <args>`` and parse JSON. Raises on non-zero exit."""
     proc = subprocess.run(
-        ["gh", "api", *args],
+        ["gh", *args],
         check=False,
         capture_output=True,
         text=True,
     )
     if proc.returncode != 0:
         raise RuntimeError(
-            f"gh api failed ({proc.returncode}): {proc.stderr.strip() or proc.stdout}"
+            f"gh failed ({proc.returncode}): {proc.stderr.strip() or proc.stdout}"
         )
     return json.loads(proc.stdout)
 
@@ -124,8 +124,9 @@ def _paginate_rest(path: str, *, per_page: int = 100) -> list[dict]:
     page = 1
     out: list[dict] = []
     while True:
-        data = gh_api_json(
+        data = gh_json(
             [
+                "api",
                 "-H",
                 "Accept: application/vnd.github+json",
                 f"{path}?per_page={per_page}&page={page}",

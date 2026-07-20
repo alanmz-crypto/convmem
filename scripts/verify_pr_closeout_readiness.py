@@ -19,21 +19,22 @@ RELEASED/HELD token.
 from __future__ import annotations
 
 import argparse
-import json
 import re
-import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Callable, Sequence
 
 _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from verify_exact_tip_lane_passes import (  # noqa: E402
+# Imports after sys.path so sibling scripts resolve when run as a file.
+from verify_exact_tip_lane_passes import (  # pylint: disable=wrong-import-position
     EvidenceItem,
     HEX40,
     fetch_pr_evidence,
+    gh_json,
     verify_exact_tip_lane_passes,
     whole_token_sha_present,
 )
@@ -63,18 +64,34 @@ MUTEX_ACQUIRED_RE = re.compile(
 MUTEX_ANY_RE = re.compile(r"MAIN-MERGE-MUTEX")
 
 
-def gh_json(args: Sequence[str]) -> Any:
-    proc = subprocess.run(
-        ["gh", *args],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(
-            f"gh failed ({proc.returncode}): {proc.stderr.strip() or proc.stdout}"
-        )
-    return json.loads(proc.stdout)
+@dataclass
+class CloseoutHooks:
+    """Optional injectable I/O hooks for hermetic tests."""
+
+    fetch_evidence: Callable[[str, str, int], list[EvidenceItem]] | None = None
+    fetch_pr_view: Callable[[], dict] | None = None
+    count_threads: Callable[[], int] | None = None
+
+
+@dataclass
+class CloseoutFlags:
+    """Boolean closeout gates."""
+
+    require_mutex_acquired: bool = False
+    check_allowlist: bool = False
+
+
+@dataclass
+class CloseoutInputs:
+    """Injectable inputs for closeout readiness checks."""
+
+    owner: str
+    repo: str
+    pr: int
+    sha: str
+    base: str
+    flags: CloseoutFlags | None = None
+    hooks: CloseoutHooks | None = None
 
 
 def count_unresolved_threads(owner: str, repo: str, pr: int) -> int:
@@ -141,7 +158,6 @@ def assert_mutex_acquired(items: Sequence[EvidenceItem], *, pr: int) -> None:
         raise RuntimeError(
             f"latest mutex token is not ACQUIRED for PR #{pr}: {body!r}"
         )
-    # Explicit: RELEASED/HELD must not be the latest (already enforced by match).
     if re.search(r"\b(RELEASED|HELD)\b", body):
         raise RuntimeError(f"latest mutex token is RELEASED/HELD: {body!r}")
 
@@ -157,28 +173,21 @@ def check_body(body: str, *, sha: str, base: str) -> list[str]:
     return errs
 
 
-def verify_closeout_readiness(
-    *,
-    owner: str,
-    repo: str,
-    pr: int,
-    sha: str,
-    base: str,
-    require_mutex_acquired: bool = False,
-    check_allowlist: bool = False,
-    fetch_evidence: Callable[[str, str, int], list[EvidenceItem]] | None = None,
-    fetch_pr_view: Callable[[], dict] | None = None,
-    count_threads: Callable[[], int] | None = None,
-) -> tuple[bool, list[str]]:
+def verify_closeout_readiness(inp: CloseoutInputs) -> tuple[bool, list[str]]:
     """Return (ok, messages). Injectable fetchers for unit tests."""
     messages: list[str] = []
     errs: list[str] = []
+    sha = inp.sha
+    base = inp.base
 
     if not HEX40.match(sha):
         return False, [f"sha must be 40 hex chars, got {sha!r}"]
     if not HEX40.match(base):
         return False, [f"base must be 40 hex chars, got {base!r}"]
 
+    flags = inp.flags or CloseoutFlags()
+    hooks = inp.hooks or CloseoutHooks()
+    fetch_pr_view = hooks.fetch_pr_view
     if fetch_pr_view is None:
 
         def _view() -> dict:
@@ -186,9 +195,9 @@ def verify_closeout_readiness(
                 [
                     "pr",
                     "view",
-                    str(pr),
+                    str(inp.pr),
                     "--repo",
-                    f"{owner}/{repo}",
+                    f"{inp.owner}/{inp.repo}",
                     "--json",
                     "state,headRefOid,baseRefOid,mergeable,mergeStateStatus,body,files",
                 ]
@@ -214,13 +223,13 @@ def verify_closeout_readiness(
             f"baseRefOid={view.get('baseRefOid')!r} != reviewed base {base}"
         )
 
-    body = view.get("body") or ""
-    errs.extend(check_body(body, sha=sha, base=base))
+    errs.extend(check_body(view.get("body") or "", sha=sha, base=base))
 
+    count_threads = hooks.count_threads
     if count_threads is None:
 
         def _threads() -> int:
-            return count_unresolved_threads(owner, repo, pr)
+            return count_unresolved_threads(inp.owner, inp.repo, inp.pr)
 
         count_threads = _threads
 
@@ -230,7 +239,7 @@ def verify_closeout_readiness(
     else:
         messages.append("PASS unresolved threads: 0")
 
-    if check_allowlist:
+    if flags.check_allowlist:
         paths = {f.get("path") for f in (view.get("files") or []) if f.get("path")}
         if paths != PR52_CLOSEOUT_ALLOWLIST:
             only_remote = sorted(paths - PR52_CLOSEOUT_ALLOWLIST)
@@ -242,12 +251,12 @@ def verify_closeout_readiness(
         else:
             messages.append("PASS file allowlist (12 paths)")
 
-    fetch_fn = fetch_evidence or fetch_pr_evidence
-    items = fetch_fn(owner, repo, pr)
+    fetch_fn = hooks.fetch_evidence or fetch_pr_evidence
+    items = fetch_fn(inp.owner, inp.repo, inp.pr)
 
-    if require_mutex_acquired:
+    if flags.require_mutex_acquired:
         try:
-            assert_mutex_acquired(items, pr=pr)
+            assert_mutex_acquired(items, pr=inp.pr)
             messages.append("PASS mutex: ACQUIRED latest")
         except RuntimeError as exc:
             errs.append(str(exc))
@@ -282,19 +291,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    sha = args.sha.lower()
-    base = args.base.lower()
     ok, messages = verify_closeout_readiness(
-        owner=args.owner,
-        repo=args.repo,
-        pr=args.pr,
-        sha=sha,
-        base=base,
-        require_mutex_acquired=args.require_mutex_acquired,
-        check_allowlist=args.check_allowlist,
+        CloseoutInputs(
+            owner=args.owner,
+            repo=args.repo,
+            pr=args.pr,
+            sha=args.sha.lower(),
+            base=args.base.lower(),
+            flags=CloseoutFlags(
+                require_mutex_acquired=args.require_mutex_acquired,
+                check_allowlist=args.check_allowlist,
+            ),
+        )
     )
-    for line in messages:
-        print(line)
+    sys.stdout.write("\n".join(messages) + ("\n" if messages else ""))
     return 0 if ok else 1
 
 
