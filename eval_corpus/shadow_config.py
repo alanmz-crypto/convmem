@@ -102,6 +102,7 @@ def generate_shadow_config(
     if ollama_host is not None:
         shadow["models"]["ollama_host"] = ollama_host
     shadow.setdefault("eval", {})
+    shadow["eval"]["rerank_mode"] = "identity"
     shadow["eval"]["retrieval_view"] = "embedding_influenced"
 
     violations = config_diff_violations(live_cfg, shadow)

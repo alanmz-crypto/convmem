@@ -7,39 +7,22 @@ and ChatGPT strategy-pack omission.
 
 from __future__ import annotations
 
-import re
 import unittest
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SSOT = REPO_ROOT / "config" / "agent-protocol.md"
+from tests.protocol_slice_helpers import (
+    assert_absent_from_chatgpt_pack,
+    assert_exact_body_once_on_surfaces,
+    canonical_slice_body,
+)
+
 OPT_IN_PHRASE = "Mode: bounded autonomy"
 REVIEW_REQUIRED_PHRASE = "Mode: review required"
 WORD_CEILING = 130
-
-EXECUTION_SURFACES = (
-    REPO_ROOT / "config" / "agent-protocol-mcp.txt",
-    REPO_ROOT / "config" / "cursor-rules-convmem.mdc.example",
-    REPO_ROOT / "config" / "codex-agents-convmem.example.md",
-    REPO_ROOT / "config" / "kiro-steering-convmem.example.md",
-    REPO_ROOT / "config" / "crush-rules-convmem.example.md",
-)
-CHATGPT_PACK = REPO_ROOT / "docs" / "chatgpt-pack" / "custom-instructions.txt"
-
-_MARKER_RE = re.compile(
-    r"<!-- BOUNDED_AUTONOMY_START -->\n?(.*?)\n?<!-- BOUNDED_AUTONOMY_END -->",
-    re.DOTALL,
-)
+_SECTION = "BOUNDED_AUTONOMY"
 
 
 def _canonical_body() -> str:
-    """Extract body the same way generate-agent-protocol.sh does (strip leading ws)."""
-    text = SSOT.read_text(encoding="utf-8")
-    match = _MARKER_RE.search(text)
-    if not match:
-        raise AssertionError("BOUNDED_AUTONOMY markers missing from config/agent-protocol.md")
-    raw = match.group(1)
-    return "\n".join(line.lstrip() for line in raw.splitlines()).strip()
+    return canonical_slice_body(_SECTION)
 
 
 class BoundedAutonomyProtocolTests(unittest.TestCase):
@@ -79,33 +62,19 @@ class BoundedAutonomyProtocolTests(unittest.TestCase):
         )
 
     def test_exact_body_once_on_execution_surfaces(self):
-        body = _canonical_body()
-        self.assertTrue(body, "canonical BOUNDED_AUTONOMY body is empty")
-        for path in EXECUTION_SURFACES:
-            with self.subTest(surface=path.name):
-                text = path.read_text(encoding="utf-8")
-                self.assertEqual(
-                    text.count(body),
-                    1,
-                    f"{path.name}: expected exact canonical body once",
-                )
-                self.assertEqual(
-                    text.count(OPT_IN_PHRASE),
-                    1,
-                    f"{path.name}: expected opt-in phrase once",
-                )
-                self.assertEqual(
-                    text.count(REVIEW_REQUIRED_PHRASE),
-                    1,
-                    f"{path.name}: expected review-required phrase once",
-                )
+        assert_exact_body_once_on_surfaces(
+            self,
+            _canonical_body(),
+            label="BOUNDED_AUTONOMY",
+            extra_once_phrases=(OPT_IN_PHRASE, REVIEW_REQUIRED_PHRASE),
+        )
 
     def test_absent_from_chatgpt_strategy_pack(self):
-        body = _canonical_body()
-        text = CHATGPT_PACK.read_text(encoding="utf-8")
-        self.assertEqual(text.count(body), 0)
-        self.assertNotIn(OPT_IN_PHRASE, text)
-        self.assertNotIn(REVIEW_REQUIRED_PHRASE, text)
+        assert_absent_from_chatgpt_pack(
+            self,
+            _canonical_body(),
+            forbidden_phrases=(OPT_IN_PHRASE, REVIEW_REQUIRED_PHRASE),
+        )
 
 
 if __name__ == "__main__":

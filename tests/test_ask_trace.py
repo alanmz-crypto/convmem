@@ -85,9 +85,28 @@ def _recent_rec(
 
 class TestAskTrace(unittest.TestCase):
     def test_compact_row_no_document_body(self):
-        row = _compact_trace_row(_unit("a", 0.9, "Alpha"), origin="unit")
+        row = _compact_trace_row(
+            _unit(
+                "a",
+                0.9,
+                "Alpha",
+                semantic_rank=2,
+                rerank_score=3.5,
+                rerank_score_norm=0.97,
+                rerank_rank=1,
+                rank_fusion_score=0.049,
+                retrieval_rank=1,
+            ),
+            origin="unit",
+        )
         self.assertEqual(row["id"], "a")
         self.assertEqual(row["origin"], "unit")
+        self.assertEqual(row["semantic_rank"], 2)
+        self.assertEqual(row["rerank_score"], 3.5)
+        self.assertEqual(row["rerank_score_norm"], 0.97)
+        self.assertEqual(row["rerank_rank"], 1)
+        self.assertEqual(row["rank_fusion_score"], 0.049)
+        self.assertEqual(row["retrieval_rank"], 1)
         self.assertNotIn("document", row)
         self.assertNotIn("body", json.dumps(row))
 
@@ -206,6 +225,8 @@ class TestAskTrace(unittest.TestCase):
         stages = tr["stages"]
         for name in (
             "candidates",
+            "semantic_reranked",
+            "rank_fused",
             "evidence_reranked",
             "ledger_deduped",
             "recent_injected",
@@ -235,6 +256,8 @@ class TestAskTrace(unittest.TestCase):
         mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
         traced = ask("q", top_k=2, raw=True, trace=True)
         stages = traced["trace"]["stages"]
+        self.assertEqual(stages["semantic_reranked"]["reason"], "raw_mode")
+        self.assertEqual(stages["rank_fused"]["reason"], "raw_mode")
         self.assertEqual(stages["evidence_reranked"]["reason"], "raw_mode")
         self.assertEqual(stages["ledger_deduped"]["reason"], "raw_mode")
         self.assertEqual(stages["recent_injected"]["reason"], "raw_mode")
