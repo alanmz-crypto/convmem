@@ -18,6 +18,8 @@ class McpRerankScoreTests(unittest.TestCase):
                         "rerank_score": 2.4,
                         "rerank_score_norm": 0.916827,
                         "rerank_rank": 1,
+                        "rank_fusion_score": 0.049,
+                        "retrieval_rank": 1,
                         "rank_score": 0.9168,
                         "metadata": {"title": "Unit"},
                         "document": "body",
@@ -31,6 +33,8 @@ class McpRerankScoreTests(unittest.TestCase):
         self.assertEqual(payload[0]["rerank_score"], 2.4)
         self.assertEqual(payload[0]["rerank_score_norm"], 0.916827)
         self.assertEqual(payload[0]["rerank_rank"], 1)
+        self.assertEqual(payload[0]["rank_fusion_score"], 0.049)
+        self.assertEqual(payload[0]["retrieval_rank"], 1)
 
 
 if __name__ == "__main__":

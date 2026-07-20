@@ -34,7 +34,7 @@ class MandatoryRerankQueryTests(unittest.TestCase):
     @patch("rerank.rerank")
     @patch("query.open_chroma_for_read")
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
-    def test_query_units_reranks_even_when_legacy_flag_is_false(
+    def test_query_units_runs_reranker_even_when_legacy_flag_is_false(
         self, _embed, mock_open, mock_rerank
     ):
         store = MagicMock()
@@ -77,7 +77,8 @@ class MandatoryRerankQueryTests(unittest.TestCase):
 
         results = query_units("query", top_k=2, cfg=cfg, retrieval_trace=trace)
 
-        self.assertEqual([row["id"] for row in results], ["rerank-first", "semantic-first"])
+        self.assertEqual([row["id"] for row in results], ["semantic-first", "rerank-first"])
+        self.assertTrue(all("rank_fusion_score" in row for row in results))
         self.assertEqual(
             [row["id"] for row in trace.candidates],
             ["semantic-first", "rerank-first"],

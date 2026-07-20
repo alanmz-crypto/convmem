@@ -115,9 +115,12 @@ def apply_evidence_rerank(
     recency_weight: float = 0.0,
     recency_half_life_days: float = 30.0,
 ) -> list[dict]:
-    """Re-order retrieval hits by reranker score + evidence graph boosts + recency.
+    """Re-order retrieval hits by retrieval score + evidence graph boosts + recency.
 
-    rank_score = rerank_score_norm + evidence_boost + recency_boost
+    rank_score = rank_fusion_score + evidence_boost + recency_boost
+
+    Older callers without a fused score fall back to the CrossEncoder score,
+    then to the original semantic score.
     """
     if not results:
         return results
@@ -127,7 +130,9 @@ def apply_evidence_rerank(
 
     for i, r in enumerate(results):
         meta = r.get("metadata") or {}
-        base = r.get("rerank_score_norm")
+        base = r.get("rank_fusion_score")
+        if base is None:
+            base = r.get("rerank_score_norm")
         if base is None:
             base = r.get("score")
         if base is None:
