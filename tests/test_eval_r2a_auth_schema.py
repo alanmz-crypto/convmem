@@ -8,7 +8,6 @@ import unittest
 from pathlib import Path
 
 from eval_corpus.run_manifest import (
-    GATE_1_HARNESS_SHA256,
     AuthContext,
     bind_config_generation,
     bind_r2a_config_generation,
@@ -42,6 +41,37 @@ def _eval_like(root: Path, arm: str = "baseline") -> tuple[Path, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     chroma.mkdir(parents=True, exist_ok=True)
     return out_dir, chroma
+
+
+def _approved_r2a(root: Path, *, embed_model: str = "fake-embed", host: str = "http://127.0.0.1:9"):
+    out_dir, chroma = _eval_like(root)
+    live = root / "live.toml"
+    live.write_text(
+        "[index]\nchroma_dir = \"/tmp/x\"\n"
+        "processed_log = \"/tmp/APPROVED_LIVE_MARKER.json\"\n"
+        f"[models]\nembed_model = \"approved-live-model\"\nollama_host = \"{host}\"\n",
+        encoding="utf-8",
+    )
+    body = make_r2a_run_manifest_for_tests(
+        paths={
+            "live_config": str(live.resolve()),
+            "out_dir": str(out_dir.resolve()),
+            "chroma_dir": str(chroma.resolve()),
+            "embed_host": host,
+        },
+        embed_model=embed_model,
+    )
+    man = _write_json(root / "r2a.json", body)
+    write_approval_sidecar(man)
+    runtime = {
+        "live_config": live,
+        "out_dir": out_dir,
+        "chroma_dir": chroma,
+        "embed_model": embed_model,
+        "embed_host": host,
+    }
+    grant = bind_r2a_config_generation(run_manifest_path=man, runtime=runtime)
+    return grant, runtime, man, live, out_dir, chroma
 
 
 class R2aAuthSchemaTests(unittest.TestCase):
@@ -124,16 +154,31 @@ class R2aAuthSchemaTests(unittest.TestCase):
             out_dir, chroma = _eval_like(Path(td))
             with self.assertRaises(PermissionError):
                 generate_shadow_config(
-                    live_cfg=_live_cfg(),
+                    live_cfg=None,
                     out_dir=out_dir,
                     chroma_dir=chroma,
                     embed_model="fake-embed",
                     ollama_host="http://127.0.0.1:9",
                 )
 
-    def test_t7_forged_grant_and_authcontext_refused(self):
+    def test_t7_capability_immutable_and_unforgeable(self):
         with tempfile.TemporaryDirectory() as td:
-            out_dir, chroma = _eval_like(Path(td))
+            grant, runtime, _man, _live, out_dir, chroma = _approved_r2a(Path(td))
+            self.assertTrue(is_r2a_eval_root_grant(grant))
+            with self.assertRaises(AttributeError):
+                grant._manifest_path = Path("/tmp/forged")  # pylint: disable=protected-access
+            with self.assertRaises(TypeError):
+                type(grant)()  # public constructor refused
+            # Subclass / random object cannot authenticate
+            with self.assertRaises(PermissionError):
+                generate_shadow_config(
+                    live_cfg=None,
+                    out_dir=out_dir,
+                    chroma_dir=chroma,
+                    embed_model=runtime["embed_model"],
+                    ollama_host=runtime["embed_host"],
+                    r2a_grant=object(),
+                )
             fake_ctx = AuthContext(
                 execution_mode="real",
                 require_corpus_acceptance=False,
@@ -142,157 +187,74 @@ class R2aAuthSchemaTests(unittest.TestCase):
             )
             with self.assertRaises(PermissionError):
                 generate_shadow_config(
-                    live_cfg=_live_cfg(),
+                    live_cfg=None,
                     out_dir=out_dir,
                     chroma_dir=chroma,
-                    embed_model="fake-embed",
-                    ollama_host="http://127.0.0.1:9",
+                    embed_model=runtime["embed_model"],
+                    ollama_host=runtime["embed_host"],
                     r2a_grant=fake_ctx,
                 )
-            with self.assertRaises(PermissionError):
-                generate_shadow_config(
-                    live_cfg=_live_cfg(),
-                    out_dir=out_dir,
-                    chroma_dir=chroma,
-                    embed_model="fake-embed",
-                    ollama_host="http://127.0.0.1:9",
-                    r2a_grant=object(),
-                )
-            # Caller cannot construct a valid grant
-            from eval_corpus import run_manifest as rm
 
-            with self.assertRaises(PermissionError):
-                rm._R2aEvalRootGrant(  # pylint: disable=protected-access
-                    object(),
-                    out_dir=str(out_dir),
-                    chroma_dir=str(chroma),
-                    embed_model="fake-embed",
-                    embed_host="http://127.0.0.1:9",
-                    merged_harness_sha256=GATE_1_HARNESS_SHA256,
-                    manifest_path=Path(td) / "x.json",
-                    body_sha256="0" * 64,
-                    phase="r2a",
-                )
-
-    def test_t8_valid_grant_writes_shadow(self):
+    def test_t8_valid_capability_loads_approved_live_config(self):
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            out_dir, chroma = _eval_like(root)
-            live = root / "live.toml"
-            live.write_text(
-                "[index]\nchroma_dir = \"/tmp/x\"\n"
-                "[models]\nembed_model = \"nomic\"\nollama_host = \"http://127.0.0.1:9\"\n",
-                encoding="utf-8",
-            )
-            host = "http://127.0.0.1:9"
-            body = make_r2a_run_manifest_for_tests(
-                paths={
-                    "live_config": str(live.resolve()),
-                    "out_dir": str(out_dir.resolve()),
-                    "chroma_dir": str(chroma.resolve()),
-                    "embed_host": host,
-                },
-                embed_model="fake-embed",
-            )
-            man = _write_json(root / "r2a.json", body)
-            write_approval_sidecar(man)
-            runtime = {
-                "live_config": live,
-                "out_dir": out_dir,
-                "chroma_dir": chroma,
-                "embed_model": "fake-embed",
-                "embed_host": host,
-            }
-            grant = bind_r2a_config_generation(run_manifest_path=man, runtime=runtime)
-            self.assertTrue(is_r2a_eval_root_grant(grant))
+            grant, runtime, _man, live, out_dir, chroma = _approved_r2a(Path(td))
             path, violations = generate_shadow_config(
-                live_cfg=_live_cfg(),
+                live_cfg=None,
                 out_dir=out_dir,
                 chroma_dir=chroma,
-                embed_model="fake-embed",
-                ollama_host=host,
+                embed_model=runtime["embed_model"],
+                ollama_host=runtime["embed_host"],
                 r2a_grant=grant,
             )
             self.assertEqual(violations, [])
             self.assertTrue(path.is_file())
-            self.assertIn("fake-embed", path.read_text(encoding="utf-8"))
+            text = path.read_text(encoding="utf-8")
+            # Must come from approved live.toml, not a caller-supplied dict
+            self.assertIn("APPROVED_LIVE_MARKER", text)
+            self.assertIn(runtime["embed_model"], text)
+            self.assertTrue(live.is_file())
+
+    def test_t8b_caller_live_cfg_refused_under_r2a(self):
+        with tempfile.TemporaryDirectory() as td:
+            grant, runtime, _man, _live, out_dir, chroma = _approved_r2a(Path(td))
+            with self.assertRaises(PermissionError) as ctx:
+                generate_shadow_config(
+                    live_cfg=_live_cfg(),
+                    out_dir=out_dir,
+                    chroma_dir=chroma,
+                    embed_model=runtime["embed_model"],
+                    ollama_host=runtime["embed_host"],
+                    r2a_grant=grant,
+                )
+            self.assertIn("refuses caller live_cfg", str(ctx.exception))
 
     def test_t9_grant_path_mismatch_refused(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            out_dir, chroma = _eval_like(root, "baseline")
+            grant, runtime, _man, _live, _out, _chroma = _approved_r2a(root)
             other, other_c = _eval_like(root, "other")
-            live = root / "live.toml"
-            live.write_text("[models]\nembed_model = \"x\"\n", encoding="utf-8")
-            host = "http://127.0.0.1:9"
-            body = make_r2a_run_manifest_for_tests(
-                paths={
-                    "live_config": str(live.resolve()),
-                    "out_dir": str(out_dir.resolve()),
-                    "chroma_dir": str(chroma.resolve()),
-                    "embed_host": host,
-                },
-                embed_model="fake-embed",
-            )
-            man = _write_json(root / "r2a.json", body)
-            write_approval_sidecar(man)
-            grant = bind_r2a_config_generation(
-                run_manifest_path=man,
-                runtime={
-                    "live_config": live,
-                    "out_dir": out_dir,
-                    "chroma_dir": chroma,
-                    "embed_model": "fake-embed",
-                    "embed_host": host,
-                },
-            )
             with self.assertRaises(PermissionError):
                 generate_shadow_config(
-                    live_cfg=_live_cfg(),
+                    live_cfg=None,
                     out_dir=other,
                     chroma_dir=other_c,
-                    embed_model="fake-embed",
-                    ollama_host=host,
+                    embed_model=runtime["embed_model"],
+                    ollama_host=runtime["embed_host"],
                     r2a_grant=grant,
                 )
 
     def test_t10_corrupt_sidecar_after_bind_refused(self):
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            out_dir, chroma = _eval_like(root)
-            live = root / "live.toml"
-            live.write_text("[models]\nembed_model = \"x\"\n", encoding="utf-8")
-            host = "http://127.0.0.1:9"
-            body = make_r2a_run_manifest_for_tests(
-                paths={
-                    "live_config": str(live.resolve()),
-                    "out_dir": str(out_dir.resolve()),
-                    "chroma_dir": str(chroma.resolve()),
-                    "embed_host": host,
-                },
-                embed_model="fake-embed",
-            )
-            man = _write_json(root / "r2a.json", body)
-            write_approval_sidecar(man)
-            grant = bind_r2a_config_generation(
-                run_manifest_path=man,
-                runtime={
-                    "live_config": live,
-                    "out_dir": out_dir,
-                    "chroma_dir": chroma,
-                    "embed_model": "fake-embed",
-                    "embed_host": host,
-                },
-            )
+            grant, runtime, man, _live, out_dir, chroma = _approved_r2a(Path(td))
             side = man.with_suffix(man.suffix + ".approved.sha256")
             side.write_text("00" * 32 + "\n", encoding="utf-8")
             with self.assertRaises(PermissionError):
                 generate_shadow_config(
-                    live_cfg=_live_cfg(),
+                    live_cfg=None,
                     out_dir=out_dir,
                     chroma_dir=chroma,
-                    embed_model="fake-embed",
-                    ollama_host=host,
+                    embed_model=runtime["embed_model"],
+                    ollama_host=runtime["embed_host"],
                     r2a_grant=grant,
                 )
 
@@ -315,7 +277,7 @@ class R2aAuthSchemaTests(unittest.TestCase):
                 )
             with self.assertRaises(PermissionError):
                 generate_shadow_config(
-                    live_cfg=_live_cfg(),
+                    live_cfg=None,
                     out_dir=out_dir,
                     chroma_dir=chroma,
                     embed_model="fake-embed",
