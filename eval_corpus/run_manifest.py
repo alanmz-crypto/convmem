@@ -271,6 +271,8 @@ def materialize_r2a_capability(capability: Any) -> R2aBindings:
     manifest_path = _authenticate_r2a_capability(capability)
     manifest = load_run_manifest(manifest_path)
     assert_manifest_file_matches_approval(manifest_path, manifest)
+    # Re-check operation allow/prohibit after sidecar re-verify (write-time).
+    assert_operation_allowed(manifest, "config_generation")
     return derive_r2a_bindings_from_manifest(manifest, manifest_path=manifest_path)
 
 
@@ -331,13 +333,14 @@ def validate_r2a_manifest_schema(manifest: dict[str, Any]) -> list[str]:
     if not isinstance(ops, list) or not ops:
         errors.append("operations must be a nonempty list")
     else:
-        op_set = {str(o) for o in ops}
-        if op_set != R2A_ONLY_OPERATIONS:
+        ops_norm = [str(o) for o in ops]
+        # Exact list identity — set equality would allow duplicates.
+        if ops_norm != ["config_generation"]:
             errors.append(
                 "R2a operations must be exactly ['config_generation'], "
                 f"got {ops!r}"
             )
-        bad = sorted(op_set & R2A_FORBIDDEN_OPERATIONS)
+        bad = sorted(set(ops_norm) & R2A_FORBIDDEN_OPERATIONS)
         if bad:
             errors.append(f"R2a forbids operations {bad}")
     harness = str(manifest.get("merged_harness_sha256") or "")
