@@ -32,13 +32,20 @@ def _toml_escape(value: Any) -> str:
 
 def render_toml(cfg: dict[str, Any]) -> str:
     lines: list[str] = []
-    for section, body in cfg.items():
-        if not isinstance(body, dict):
-            continue
-        lines.append(f"[{section}]")
-        for k, v in body.items():
-            lines.append(f"{k} = {_toml_escape(v)}")
+
+    def render_table(path: tuple[str, ...], body: dict[str, Any]) -> None:
+        lines.append(f"[{'.'.join(path)}]")
+        for key, value in body.items():
+            if not isinstance(value, dict):
+                lines.append(f"{key} = {_toml_escape(value)}")
         lines.append("")
+        for key, value in body.items():
+            if isinstance(value, dict):
+                render_table((*path, key), value)
+
+    for section, body in cfg.items():
+        if isinstance(body, dict):
+            render_table((section,), body)
     return "\n".join(lines)
 
 

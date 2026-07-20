@@ -38,3 +38,18 @@ def test_render_toml_nested_list_of_ints():
     parsed = tomllib.loads(text)
     assert parsed["sec"]["nums"] == [1, 2, 3]
     assert parsed["sec"]["flag"] is True
+
+
+def test_render_toml_nested_tables_round_trip_via_tomllib():
+    cfg = {
+        "refine": {
+            "enabled": True,
+            "cost": {
+                "backfill_domain_calls_per_hour": 60,
+                "redistill_calls_per_hour": 15,
+            },
+        },
+    }
+    text = render_toml(cfg)
+    assert "[refine.cost]" in text
+    assert tomllib.loads(text) == cfg
