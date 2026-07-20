@@ -1,11 +1,12 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-19 (R2a auth-schema hermetic implementation)
+**Updated:** 2026-07-19 (R2a auth-schema Codex FAIL fix)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **R2a auth-schema implementation (2026-07-19):** Tracked hermetic implementation of phase-scoped `authorization_phase=r2a`, binder-only `_R2aEvalRootGrant`, sidecar re-verify at write; tests T1–T12 in `tests/test_eval_r2a_auth_schema.py`. Design: [`CURSOR-2026-07-19-r2a-auth-schema-amendment.md`](CURSOR-2026-07-19-r2a-auth-schema-amendment.md). **Next:** Codex audit + Kiro schema sign-off. **Not authorized:** R2a execution / real eval-root writes / Gate 2.
+- **R2a auth-schema Codex FAIL fix (2026-07-19):** HMAC-authenticated immutable capability; write-time sidecar re-verify + re-derive all bindings from approved manifest; refuse caller `live_cfg` and load approved `live_config`. Post: [`CURSOR-2026-07-19-r2a-auth-schema-codex-fix.md`](CURSOR-2026-07-19-r2a-auth-schema-codex-fix.md). **Next:** Codex re-audit. Kiro deferred. **Not authorized:** R2a execution.
+
 
 
 

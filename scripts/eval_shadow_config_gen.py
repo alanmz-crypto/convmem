@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
 
     live = load_config(live_config)
     path, violations = generate_shadow_config(
-        live_cfg=live,
+        live_cfg=None if r2a_grant is not None else live,
         out_dir=out_dir,
         chroma_dir=chroma_dir,
         embed_model=args.embed_model,
