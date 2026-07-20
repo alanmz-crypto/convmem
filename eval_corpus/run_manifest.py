@@ -362,11 +362,15 @@ def validate_r2a_manifest_schema(manifest: dict[str, Any]) -> list[str]:
             s = str(v)
             if _CONFIG_ROOT_MARKER in s and k != "live_config":
                 errors.append(f"R2a must not write under live config root ({k}={s})")
-    if manifest.get("embed_model") is None and manifest.get("model_tag") is None:
+    model = str(manifest.get("embed_model") or "").strip()
+    tag = str(manifest.get("model_tag") or "").strip()
+    if not model and not tag:
         errors.append("R2a requires embed_model or model_tag")
-    if (manifest.get("paths") or {}).get("embed_host") is None and manifest.get(
-        "embed_host"
-    ) is None:
+    paths_obj = paths if isinstance(paths, dict) else {}
+    host_raw = paths_obj.get("embed_host")
+    if host_raw is None:
+        host_raw = manifest.get("embed_host")
+    if host_raw is None or not str(host_raw).strip():
         errors.append("R2a requires embed_host (top-level or paths.embed_host)")
     return errors
 
