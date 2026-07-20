@@ -111,7 +111,8 @@ HITL Approval
 Execute Task
     ↓
 HITL Review
-    ↓
+    ├─ non-arc or exempt → Revise Planning → (repeat)
+    ↓ arc
 Verify Planning   ← required for every arc (see definition in VERIFY-PLANNING.md)
     ↓
 HITL GATE
