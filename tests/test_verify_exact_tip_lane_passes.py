@@ -1,5 +1,7 @@
 """Unit tests for exact-tip lane PASS and closeout readiness helpers."""
 
+# pylint: disable=duplicate-code,wrong-import-position
+
 from __future__ import annotations
 
 import importlib.util
@@ -11,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from verify_exact_tip_lane_passes import (  # noqa: E402
+from verify_exact_tip_lane_passes import (
     EvidenceItem,
     classify_lane,
     is_edited,
@@ -20,7 +22,10 @@ from verify_exact_tip_lane_passes import (  # noqa: E402
     verify_exact_tip_lane_passes,
     whole_token_sha_present,
 )
-from verify_pr_closeout_readiness import (  # noqa: E402
+from verify_pr_closeout_readiness import (
+    CloseoutFlags,
+    CloseoutHooks,
+    CloseoutInputs,
     PR52_CLOSEOUT_ALLOWLIST,
     check_body,
     verify_closeout_readiness,
@@ -191,30 +196,39 @@ class CloseoutReadinessTests(unittest.TestCase):
         self.assertTrue(any("Codex" in e for e in bad))
         self.assertTrue(any("head" in e for e in bad))
 
-    def test_readiness_ok(self):
-        ok, msgs = verify_closeout_readiness(
+    def _inputs(self, **kwargs) -> CloseoutInputs:
+        hooks_kwargs = {
+            "fetch_pr_view": self._clean_view,
+            "count_threads": lambda: 0,
+            "fetch_evidence": lambda *_a: self._pass_items(),
+        }
+        for key in ("fetch_pr_view", "count_threads", "fetch_evidence"):
+            if key in kwargs:
+                hooks_kwargs[key] = kwargs.pop(key)
+        flag_keys = ("require_mutex_acquired", "check_allowlist")
+        flags = CloseoutFlags(
+            **{k: kwargs.pop(k) for k in flag_keys if k in kwargs}
+        )
+        return CloseoutInputs(
             owner="alanmz-crypto",
             repo="convmem",
             pr=52,
             sha=SHA,
             base=BASE,
-            fetch_pr_view=self._clean_view,
-            count_threads=lambda: 0,
-            fetch_evidence=lambda *_a: self._pass_items(),
-            check_allowlist=True,
+            flags=flags,
+            hooks=CloseoutHooks(**hooks_kwargs),
+            **kwargs,
+        )
+
+    def test_readiness_ok(self):
+        ok, msgs = verify_closeout_readiness(
+            self._inputs(check_allowlist=True)
         )
         self.assertTrue(ok, msgs)
 
     def test_unresolved_threads_fail(self):
         ok, msgs = verify_closeout_readiness(
-            owner="alanmz-crypto",
-            repo="convmem",
-            pr=52,
-            sha=SHA,
-            base=BASE,
-            fetch_pr_view=self._clean_view,
-            count_threads=lambda: 2,
-            fetch_evidence=lambda *_a: self._pass_items(),
+            self._inputs(count_threads=lambda: 2)
         )
         self.assertFalse(ok)
         self.assertTrue(any("unresolved" in m for m in msgs))
@@ -224,14 +238,7 @@ class CloseoutReadinessTests(unittest.TestCase):
             body=f"- **Codex:** audit\n{SHA}\n{BASE}\n",
         )
         ok, msgs = verify_closeout_readiness(
-            owner="alanmz-crypto",
-            repo="convmem",
-            pr=52,
-            sha=SHA,
-            base=BASE,
-            fetch_pr_view=lambda: view,
-            count_threads=lambda: 0,
-            fetch_evidence=lambda *_a: self._pass_items(),
+            self._inputs(fetch_pr_view=lambda: view)
         )
         self.assertFalse(ok)
         self.assertTrue(any("Codex" in m for m in msgs))
@@ -239,14 +246,7 @@ class CloseoutReadinessTests(unittest.TestCase):
     def test_wrong_head_fail(self):
         view = self._clean_view(headRefOid=OTHER)
         ok, msgs = verify_closeout_readiness(
-            owner="alanmz-crypto",
-            repo="convmem",
-            pr=52,
-            sha=SHA,
-            base=BASE,
-            fetch_pr_view=lambda: view,
-            count_threads=lambda: 0,
-            fetch_evidence=lambda *_a: self._pass_items(),
+            self._inputs(fetch_pr_view=lambda: view)
         )
         self.assertFalse(ok)
         self.assertTrue(any("headRefOid" in m for m in msgs))
@@ -254,28 +254,14 @@ class CloseoutReadinessTests(unittest.TestCase):
     def test_non_clean_fail(self):
         view = self._clean_view(mergeStateStatus="DIRTY")
         ok, msgs = verify_closeout_readiness(
-            owner="alanmz-crypto",
-            repo="convmem",
-            pr=52,
-            sha=SHA,
-            base=BASE,
-            fetch_pr_view=lambda: view,
-            count_threads=lambda: 0,
-            fetch_evidence=lambda *_a: self._pass_items(),
+            self._inputs(fetch_pr_view=lambda: view)
         )
         self.assertFalse(ok)
         self.assertTrue(any("mergeStateStatus" in m for m in msgs))
 
     def test_lane_verifier_failure_propagates(self):
         ok, msgs = verify_closeout_readiness(
-            owner="alanmz-crypto",
-            repo="convmem",
-            pr=52,
-            sha=SHA,
-            base=BASE,
-            fetch_pr_view=self._clean_view,
-            count_threads=lambda: 0,
-            fetch_evidence=lambda *_a: [],
+            self._inputs(fetch_evidence=lambda *_a: [])
         )
         self.assertFalse(ok)
         self.assertTrue(any("lane PASS" in m for m in msgs))
@@ -289,15 +275,10 @@ class CloseoutReadinessTests(unittest.TestCase):
             )
         ]
         ok, msgs = verify_closeout_readiness(
-            owner="alanmz-crypto",
-            repo="convmem",
-            pr=52,
-            sha=SHA,
-            base=BASE,
-            require_mutex_acquired=True,
-            fetch_pr_view=self._clean_view,
-            count_threads=lambda: 0,
-            fetch_evidence=lambda *_a: items,
+            self._inputs(
+                require_mutex_acquired=True,
+                fetch_evidence=lambda *_a: items,
+            )
         )
         self.assertTrue(ok, msgs)
 
@@ -314,15 +295,10 @@ class CloseoutReadinessTests(unittest.TestCase):
             ),
         ]
         ok2, msgs2 = verify_closeout_readiness(
-            owner="alanmz-crypto",
-            repo="convmem",
-            pr=52,
-            sha=SHA,
-            base=BASE,
-            require_mutex_acquired=True,
-            fetch_pr_view=self._clean_view,
-            count_threads=lambda: 0,
-            fetch_evidence=lambda *_a: released,
+            self._inputs(
+                require_mutex_acquired=True,
+                fetch_evidence=lambda *_a: released,
+            )
         )
         self.assertFalse(ok2)
         self.assertTrue(any("mutex" in m.lower() for m in msgs2))
