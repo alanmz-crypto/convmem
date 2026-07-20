@@ -1,23 +1,21 @@
 #!/usr/bin/env python3
 """Verify exact-tip dual-lane PASS evidence on a pull request.
 
-Looks at PR reviews, review comments, and issue comments. For each lane
-(GitHub Copilot audit lane, Kiro), among items that mention the reviewed SHA
-as a whole hex token and carry a PASS or FAIL verdict, the chronologically
-latest item (timestamp, then numeric id) must be PASS.
-
-Canonical verdict grammar (Ryan-recorded via alanmz-crypto):
+Canonical verdict grammar only (Ryan-recorded via alanmz-crypto):
 
     Lane: GitHub Copilot audit lane
     Verdict: PASS
     Reviewed head: <full sha>
+    Reviewed base: <full base sha>
 
     Lane: Kiro
     Verdict: PASS
     Reviewed head: <full sha>
+    Reviewed base: <full base sha>
 
-Rejects edited comments (updated_at != created_at) and items that contain
-both PASS and FAIL verdict lines.
+Incidental lane/SHA/PASS prose does not qualify. Edited comments
+(updated_at != created_at) are rejected. PR reviews in PENDING or DISMISSED
+state do not qualify.
 """
 
 from __future__ import annotations
@@ -33,12 +31,28 @@ from typing import Callable, Iterable, Sequence
 ALLOWED_AUTHORS = frozenset({"alanmz-crypto"})
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 
-COPILOT_LANE_RE = re.compile(r"(?is)GitHub\s+Copilot\s+audit(?:[-\s]?lane)?")
-KIRO_LANE_RE = re.compile(r"(?is)\bKiro\b")
-VERDICT_PASS_LINE = re.compile(r"(?im)^\s*Verdict:\s*PASS\b")
-VERDICT_FAIL_LINE = re.compile(r"(?im)^\s*Verdict:\s*FAIL\b")
-PASS_TOKEN = re.compile(r"(?i)\bPASS\b")
-FAIL_TOKEN = re.compile(r"(?i)\bFAIL\b")
+LANE_LINE_COPILOT = re.compile(r"(?im)^\s*Lane:\s*GitHub Copilot audit lane\s*$")
+LANE_LINE_KIRO = re.compile(r"(?im)^\s*Lane:\s*Kiro\s*$")
+VERDICT_LINE = re.compile(r"(?im)^\s*Verdict:\s*(PASS|FAIL)\s*$")
+REVIEWED_HEAD_LINE = re.compile(
+    r"(?im)^\s*Reviewed head:\s*([0-9a-f]{40})\s*$"
+)
+REVIEWED_BASE_LINE = re.compile(
+    r"(?im)^\s*Reviewed base:\s*([0-9a-f]{40})\s*$"
+)
+
+# Reviews in these states must not count as lane evidence.
+REJECTED_REVIEW_STATES = frozenset({"PENDING", "DISMISSED"})
+
+
+@dataclass(frozen=True)
+class EvidenceMeta:
+    """Timestamps + optional PR-review state (keeps EvidenceItem lean)."""
+
+    created_at: str
+    updated_at: str
+    url: str = ""
+    review_state: str = ""
 
 
 @dataclass(frozen=True)
@@ -49,9 +63,23 @@ class EvidenceItem:
     item_id: int
     author: str
     body: str
-    created_at: str
-    updated_at: str
-    url: str
+    meta: EvidenceMeta
+
+    @property
+    def created_at(self) -> str:
+        return self.meta.created_at
+
+    @property
+    def updated_at(self) -> str:
+        return self.meta.updated_at
+
+    @property
+    def url(self) -> str:
+        return self.meta.url
+
+    @property
+    def review_state(self) -> str:
+        return self.meta.review_state
 
     @property
     def sort_key(self) -> tuple[str, int]:
@@ -66,9 +94,9 @@ def whole_token_sha_present(body: str, sha: str) -> bool:
 
 
 def classify_lane(body: str) -> str | None:
-    """Return lane name if body identifies exactly one supported lane."""
-    copilot = bool(COPILOT_LANE_RE.search(body))
-    kiro = bool(KIRO_LANE_RE.search(body))
+    """Return lane name only from exact ``Lane:`` lines (not incidental prose)."""
+    copilot = bool(LANE_LINE_COPILOT.search(body))
+    kiro = bool(LANE_LINE_KIRO.search(body))
     if copilot and not kiro:
         return "copilot"
     if kiro and not copilot:
@@ -77,25 +105,32 @@ def classify_lane(body: str) -> str | None:
 
 
 def verdict_of(body: str) -> str | None:
-    """Return PASS, FAIL, or None. Reject mixed PASS+FAIL verdict lines."""
-    has_pass_line = bool(VERDICT_PASS_LINE.search(body))
-    has_fail_line = bool(VERDICT_FAIL_LINE.search(body))
-    if has_pass_line and has_fail_line:
+    """Return PASS/FAIL only from exact ``Verdict:`` lines (no bare tokens)."""
+    matches = VERDICT_LINE.findall(body)
+    if not matches:
         return None
-    if has_pass_line:
-        return "PASS"
-    if has_fail_line:
-        return "FAIL"
-    # Fallback: bare PASS/FAIL tokens (still reject both present).
-    has_pass = bool(PASS_TOKEN.search(body))
-    has_fail = bool(FAIL_TOKEN.search(body))
-    if has_pass and has_fail:
+    norms = [m.upper() for m in matches]
+    if "PASS" in norms and "FAIL" in norms:
         return None
-    if has_pass:
+    if norms[-1] == "PASS":
         return "PASS"
-    if has_fail:
+    if norms[-1] == "FAIL":
         return "FAIL"
     return None
+
+
+def reviewed_head_of(body: str) -> str | None:
+    matches = REVIEWED_HEAD_LINE.findall(body)
+    if len(matches) != 1:
+        return None
+    return matches[0].lower()
+
+
+def reviewed_base_of(body: str) -> str | None:
+    matches = REVIEWED_BASE_LINE.findall(body)
+    if len(matches) != 1:
+        return None
+    return matches[0].lower()
 
 
 def is_edited(item: EvidenceItem) -> bool:
@@ -103,6 +138,16 @@ def is_edited(item: EvidenceItem) -> bool:
     if not item.updated_at or not item.created_at:
         return False
     return item.updated_at != item.created_at
+
+
+def review_state_ok(item: EvidenceItem) -> bool:
+    """Issue/review comments OK; PR reviews must not be PENDING/DISMISSED."""
+    if item.kind != "review":
+        return True
+    state = (item.review_state or "").upper()
+    if not state:
+        return False
+    return state not in REJECTED_REVIEW_STATES
 
 
 def gh_json(args: Sequence[str]) -> object:
@@ -158,9 +203,12 @@ def fetch_pr_evidence(owner: str, repo: str, pr: int) -> list[EvidenceItem]:
                 item_id=int(rev["id"]),
                 author=user,
                 body=body,
-                created_at=created,
-                updated_at=updated,
-                url=rev.get("html_url") or "",
+                meta=EvidenceMeta(
+                    created_at=created,
+                    updated_at=updated,
+                    url=rev.get("html_url") or "",
+                    review_state=str(rev.get("state") or ""),
+                ),
             )
         )
 
@@ -172,9 +220,11 @@ def fetch_pr_evidence(owner: str, repo: str, pr: int) -> list[EvidenceItem]:
                 item_id=int(cmt["id"]),
                 author=user,
                 body=cmt.get("body") or "",
-                created_at=cmt.get("created_at") or "",
-                updated_at=cmt.get("updated_at") or "",
-                url=cmt.get("html_url") or "",
+                meta=EvidenceMeta(
+                    created_at=cmt.get("created_at") or "",
+                    updated_at=cmt.get("updated_at") or "",
+                    url=cmt.get("html_url") or "",
+                ),
             )
         )
 
@@ -186,9 +236,11 @@ def fetch_pr_evidence(owner: str, repo: str, pr: int) -> list[EvidenceItem]:
                 item_id=int(cmt["id"]),
                 author=user,
                 body=cmt.get("body") or "",
-                created_at=cmt.get("created_at") or "",
-                updated_at=cmt.get("updated_at") or "",
-                url=cmt.get("html_url") or "",
+                meta=EvidenceMeta(
+                    created_at=cmt.get("created_at") or "",
+                    updated_at=cmt.get("updated_at") or "",
+                    url=cmt.get("html_url") or "",
+                ),
             )
         )
 
@@ -196,18 +248,22 @@ def fetch_pr_evidence(owner: str, repo: str, pr: int) -> list[EvidenceItem]:
 
 
 def lane_candidates(
-    items: Iterable[EvidenceItem], *, sha: str, lane: str
+    items: Iterable[EvidenceItem], *, sha: str, base: str, lane: str
 ) -> list[tuple[EvidenceItem, str]]:
-    """Return (item, verdict) for lane items mentioning sha with a clear verdict."""
+    """Return (item, verdict) for strict canonical lane items."""
     out: list[tuple[EvidenceItem, str]] = []
     for item in items:
         if item.author not in ALLOWED_AUTHORS:
             continue
         if is_edited(item):
             continue
+        if not review_state_ok(item):
+            continue
         if classify_lane(item.body) != lane:
             continue
-        if not whole_token_sha_present(item.body, sha):
+        if reviewed_head_of(item.body) != sha:
+            continue
+        if reviewed_base_of(item.body) != base:
             continue
         verdict = verdict_of(item.body)
         if verdict is None:
@@ -217,10 +273,10 @@ def lane_candidates(
 
 
 def latest_lane_verdict(
-    items: Sequence[EvidenceItem], *, sha: str, lane: str
+    items: Sequence[EvidenceItem], *, sha: str, base: str, lane: str
 ) -> tuple[EvidenceItem, str] | None:
     """Latest qualifying verdict for a lane, or None if none exist."""
-    cands = lane_candidates(items, sha=sha, lane=lane)
+    cands = lane_candidates(items, sha=sha, base=base, lane=lane)
     if not cands:
         return None
     cands.sort(key=lambda pair: pair[0].sort_key)
@@ -231,10 +287,13 @@ def verify_exact_tip_lane_passes(
     items: Sequence[EvidenceItem],
     *,
     sha: str,
+    base: str,
 ) -> tuple[bool, list[str]]:
     """Return (ok, messages). ok only when both lanes' latest verdict is PASS."""
     if not HEX40.match(sha):
         return False, [f"sha must be 40 lowercase hex chars, got {sha!r}"]
+    if not HEX40.match(base):
+        return False, [f"base must be 40 lowercase hex chars, got {base!r}"]
 
     messages: list[str] = []
     ok = True
@@ -242,10 +301,13 @@ def verify_exact_tip_lane_passes(
         ("copilot", "GitHub Copilot audit lane"),
         ("kiro", "Kiro"),
     ):
-        latest = latest_lane_verdict(items, sha=sha, lane=lane)
+        latest = latest_lane_verdict(items, sha=sha, base=base, lane=lane)
         if latest is None:
             ok = False
-            messages.append(f"FAIL {label}: no qualifying PASS/FAIL evidence for {sha}")
+            messages.append(
+                f"FAIL {label}: no qualifying PASS/FAIL evidence for "
+                f"head={sha} base={base}"
+            )
             continue
         item, verdict = latest
         loc = item.url or f"{item.kind}:{item.item_id}"
@@ -266,18 +328,23 @@ def main(argv: Sequence[str] | None = None, *, fetch: FetchFn | None = None) -> 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pr", type=int, required=True, help="Pull request number")
     parser.add_argument("--sha", required=True, help="Full 40-char reviewed head SHA")
+    parser.add_argument("--base", required=True, help="Full 40-char reviewed base SHA")
     parser.add_argument("--owner", default="alanmz-crypto")
     parser.add_argument("--repo", default="convmem")
     args = parser.parse_args(argv)
 
     sha = args.sha.lower()
+    base = args.base.lower()
     if not HEX40.match(sha):
         print(f"error: --sha must be 40 hex chars, got {args.sha!r}", file=sys.stderr)
+        return 2
+    if not HEX40.match(base):
+        print(f"error: --base must be 40 hex chars, got {args.base!r}", file=sys.stderr)
         return 2
 
     fetch_fn = fetch or fetch_pr_evidence
     items = fetch_fn(args.owner, args.repo, args.pr)
-    ok, messages = verify_exact_tip_lane_passes(items, sha=sha)
+    ok, messages = verify_exact_tip_lane_passes(items, sha=sha, base=base)
     for line in messages:
         print(line)
     return 0 if ok else 1

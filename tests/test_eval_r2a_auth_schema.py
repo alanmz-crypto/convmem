@@ -7,8 +7,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from eval_corpus import run_manifest as run_manifest_mod
 from eval_corpus.run_manifest import (
     AuthContext,
+    assert_operation_allowed,
     bind_config_generation,
     bind_r2a_config_generation,
     canonical_manifest_body_sha256,
@@ -318,7 +320,73 @@ class R2aAuthSchemaTests(unittest.TestCase):
                     ollama_host=runtime["embed_host"],
                     r2a_grant=grant,
                 )
-            self.assertIn("prohibited", str(ctx.exception).lower())
+            msg = str(ctx.exception).lower()
+            # Sealed approval digest blocks retarget; prohibit check is defense-in-depth.
+            self.assertTrue(
+                "prohibited" in msg or "digest" in msg or "retarget" in msg,
+                msg=msg,
+            )
+
+    def test_t10c_string_prohibited_actions_fail_closed(self):
+        """String prohibited_actions must not fail open via set(characters)."""
+        body = make_r2a_run_manifest_for_tests(
+            paths={
+                "live_config": "/tmp/l",
+                "out_dir": "/tmp/o",
+                "chroma_dir": "/tmp/c",
+            }
+        )
+        body["prohibited_actions"] = "config_generation"
+        body["ryan_approved_manifest_sha256"] = canonical_manifest_body_sha256(body)
+        errs = validate_run_manifest_schema(body)
+        self.assertTrue(any("prohibited_actions" in e for e in errs), msg=errs)
+        with self.assertRaises(PermissionError) as ctx:
+            assert_operation_allowed(body, "config_generation")
+        self.assertIn("must be a list", str(ctx.exception))
+
+    def test_t10d_direct_capability_issue_refused(self):
+        with tempfile.TemporaryDirectory() as td:
+            _grant, _runtime, man, _live, _out, _chroma = _approved_r2a(Path(td))
+            digest = canonical_manifest_body_sha256(
+                json.loads(man.read_text(encoding="utf-8"))
+            )
+            issue = getattr(run_manifest_mod, "_issue_r2a_capability")
+            with self.assertRaises(PermissionError) as ctx:
+                issue(man, digest)
+            self.assertIn("binder-issued", str(ctx.exception).lower())
+
+    def test_t10e_path_preserving_retarget_refused(self):
+        """Same path + new approved live_config must not reuse old grant."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            grant, runtime, man, live, out_dir, chroma = _approved_r2a(root)
+            # Replace approved live_config content and re-seal sidecar at same path.
+            live.write_text(
+                "[index]\nchroma_dir = \"/tmp/x\"\n"
+                "processed_log = \"/tmp/RETARGETED_LIVE.json\"\n"
+                "[models]\nembed_model = \"approved-live-model\"\n"
+                f"ollama_host = \"{runtime['embed_host']}\"\n",
+                encoding="utf-8",
+            )
+            body = json.loads(man.read_text(encoding="utf-8"))
+            body["ryan_approved_manifest_sha256"] = canonical_manifest_body_sha256(body)
+            man.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+            write_approval_sidecar(man)
+            # Body unchanged except digest field — force a real body change via model.
+            body["embed_model"] = "retargeted-embed"
+            body["ryan_approved_manifest_sha256"] = canonical_manifest_body_sha256(body)
+            man.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+            write_approval_sidecar(man)
+            with self.assertRaises(PermissionError) as ctx:
+                generate_shadow_config(
+                    live_cfg=None,
+                    out_dir=out_dir,
+                    chroma_dir=chroma,
+                    embed_model="retargeted-embed",
+                    ollama_host=runtime["embed_host"],
+                    r2a_grant=grant,
+                )
+            self.assertIn("digest", str(ctx.exception).lower())
 
     def test_t11_fixture_cannot_grant_or_write_eval_like(self):
         with tempfile.TemporaryDirectory() as td:

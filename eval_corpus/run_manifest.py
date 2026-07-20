@@ -170,13 +170,18 @@ class R2aBindings:
 
 
 def _build_r2a_capability_api() -> tuple[Any, Any, type]:
-    """Closure-held MAC key: capability is immutable and binder-authenticated."""
+    """Closure-held MAC key: capability is immutable and binder-authenticated.
+
+    ``issue`` is armed only while ``bind_r2a_config_generation`` runs. The MAC
+    seals ``manifest_path`` + approval digest so path-preserving retargets fail.
+    """
     mac_key = secrets.token_bytes(32)
+    issue_armed = False
 
     class _R2aCapability:
         """Opaque authenticated capability. Construct only via binder issue()."""
 
-        __slots__ = ("_manifest_path", "_mac", "_frozen")
+        __slots__ = ("_manifest_path", "_approval_digest", "_mac", "_frozen")
 
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise TypeError("R2aCapability is binder-issued only")
@@ -186,11 +191,24 @@ def _build_r2a_capability_api() -> tuple[Any, Any, type]:
                 raise AttributeError("R2aCapability is immutable")
             object.__setattr__(self, name, value)
 
-    def issue(manifest_path: Path) -> _R2aCapability:
+    def _mac_message(path: Path, approval_digest: str) -> bytes:
+        return f"{path}\0{approval_digest}".encode("utf-8")
+
+    def issue(manifest_path: Path, approval_digest: str) -> _R2aCapability:
+        nonlocal issue_armed
+        if not issue_armed:
+            raise PermissionError(
+                "R2a capabilities are binder-issued only "
+                "(call bind_r2a_config_generation)"
+            )
         path = Path(manifest_path).expanduser().resolve(strict=False)
-        mac = hmac.new(mac_key, str(path).encode("utf-8"), "sha256").digest()
+        digest = str(approval_digest).strip().lower()
+        if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+            raise PermissionError("R2a capability requires a 64-hex approval digest")
+        mac = hmac.new(mac_key, _mac_message(path, digest), "sha256").digest()
         obj = object.__new__(_R2aCapability)
         object.__setattr__(obj, "_manifest_path", path)
+        object.__setattr__(obj, "_approval_digest", digest)
         object.__setattr__(obj, "_mac", mac)
         object.__setattr__(obj, "_frozen", True)
         return obj
@@ -200,12 +218,33 @@ def _build_r2a_capability_api() -> tuple[Any, Any, type]:
         if type(obj) is not _R2aCapability:  # pylint: disable=unidiomatic-typecheck
             raise PermissionError("eval-root write requires a binder-issued R2a capability")
         path = object.__getattribute__(obj, "_manifest_path")
+        digest = object.__getattribute__(obj, "_approval_digest")
         mac = object.__getattribute__(obj, "_mac")
-        expected = hmac.new(mac_key, str(path).encode("utf-8"), "sha256").digest()
+        expected = hmac.new(mac_key, _mac_message(path, digest), "sha256").digest()
         if not hmac.compare_digest(mac, expected):
             raise PermissionError("forged or corrupted R2a capability")
+        # Path-preserving retarget: new approved body/sidecar must not reuse grant.
+        side = approval_sidecar_path(Path(path))
+        if not side.is_file():
+            raise PermissionError("R2a capability requires approval sidecar at authenticate")
+        live = side.read_text(encoding="utf-8").strip().split()[0].lower()
+        if not hmac.compare_digest(live, digest):
+            raise PermissionError(
+                "R2a capability sealed to a different approval digest "
+                "(manifest/sidecar retarget refused)"
+            )
         return Path(path)
 
+    def arm_issue() -> None:
+        nonlocal issue_armed
+        issue_armed = True
+
+    def disarm_issue() -> None:
+        nonlocal issue_armed
+        issue_armed = False
+
+    issue.arm = arm_issue  # type: ignore[attr-defined]
+    issue.disarm = disarm_issue  # type: ignore[attr-defined]
     return issue, authenticate, _R2aCapability
 
 
@@ -351,6 +390,13 @@ def validate_r2a_manifest_schema(manifest: dict[str, Any]) -> list[str]:
         )
     if not str(manifest.get("ryan_approved_manifest_sha256") or ""):
         errors.append("R2a manifest requires ryan_approved_manifest_sha256")
+    prohibited = manifest.get("prohibited_actions")
+    if not isinstance(prohibited, list):
+        errors.append("prohibited_actions must be a list")
+    else:
+        bad_items = [x for x in prohibited if not isinstance(x, str) or not str(x).strip()]
+        if bad_items:
+            errors.append("prohibited_actions entries must be nonempty strings")
     paths = manifest.get("paths")
     if not isinstance(paths, dict) or not paths:
         errors.append("R2a manifest requires nonempty paths object")
@@ -435,7 +481,13 @@ def assert_operation_allowed(manifest: dict[str, Any], operation: str) -> None:
     ops = manifest.get("operations")
     if not isinstance(ops, list) or not ops:
         raise PermissionError("run-manifest.operations must be a nonempty list")
-    prohibited = set(manifest.get("prohibited_actions") or [])
+    prohibited_raw = manifest.get("prohibited_actions", [])
+    if prohibited_raw is None:
+        prohibited_raw = []
+    # Strings are iterable: set("config_generation") becomes characters (fail-open).
+    if not isinstance(prohibited_raw, list):
+        raise PermissionError("run-manifest.prohibited_actions must be a list")
+    prohibited = {str(x) for x in prohibited_raw}
     if operation in prohibited:
         raise PermissionError(f"operation prohibited by run-manifest: {operation}")
     if operation not in ops:
@@ -717,7 +769,12 @@ def bind_r2a_config_generation(
         raise PermissionError("runtime embed_model mismatch vs approved manifest")
     if str(runtime["embed_host"]) != bindings.embed_host:
         raise PermissionError("runtime embed_host mismatch vs approved manifest")
-    return _issue_r2a_capability(bindings.manifest_path)
+    approval_digest = str(manifest.get("ryan_approved_manifest_sha256") or "").strip().lower()
+    _issue_r2a_capability.arm()  # type: ignore[attr-defined]
+    try:
+        return _issue_r2a_capability(bindings.manifest_path, approval_digest)
+    finally:
+        _issue_r2a_capability.disarm()  # type: ignore[attr-defined]
 
 
 def materialize_r2a_write_authorization(
