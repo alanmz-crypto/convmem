@@ -15,23 +15,37 @@ from eval_corpus.run_manifest import (
 
 
 def _toml_escape(value: Any) -> str:
+    """Render a TOML value. Lists become real arrays, not Python ``str(list)``."""
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, (int, float)):
         return str(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(_toml_escape(item) for item in value) + "]"
+    if value is None:
+        raise TypeError("TOML rendering does not support null")
+    if isinstance(value, dict):
+        raise TypeError("inline tables are not supported; use a section dict")
     s = str(value).replace("\\", "\\\\").replace('"', '\\"')
     return f'"{s}"'
 
 
 def render_toml(cfg: dict[str, Any]) -> str:
     lines: list[str] = []
-    for section, body in cfg.items():
-        if not isinstance(body, dict):
-            continue
-        lines.append(f"[{section}]")
-        for k, v in body.items():
-            lines.append(f"{k} = {_toml_escape(v)}")
+
+    def render_table(path: tuple[str, ...], body: dict[str, Any]) -> None:
+        lines.append(f"[{'.'.join(path)}]")
+        for key, value in body.items():
+            if not isinstance(value, dict):
+                lines.append(f"{key} = {_toml_escape(value)}")
         lines.append("")
+        for key, value in body.items():
+            if isinstance(value, dict):
+                render_table((*path, key), value)
+
+    for section, body in cfg.items():
+        if isinstance(body, dict):
+            render_table((section,), body)
     return "\n".join(lines)
 
 
