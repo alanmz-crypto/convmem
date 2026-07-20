@@ -201,37 +201,38 @@ Agents may search, ask, brief, and related freely.
 
 **Lane routing by work type:**
 
-| Work type | Default lane | Copilot involvement |
-|-----------|-------------|---------------------|
-| Large implementation | **Cursor** | Not involved — do not route implementation to Copilot |
-| Bug discovery / investigation | **Crush** | May escalate to Copilot audit when warranted |
-| Safety / isolation / code audit | **GitHub Copilot** | Primary; targeted scope only |
-| Evidence verify / targeted recheck | **GitHub Copilot** | Targeted; do not rerun uncontested findings |
+| Work type | Default lane | Copilot audit lane |
+|-----------|-------------|--------------------|
+| Large implementation | **Cursor** | Not involved |
+| Bug discovery / investigation | **Crush** | Escalate when warranted |
+| Safety / isolation / code audit | **GitHub Copilot audit lane** | Primary; targeted scope only |
+| Evidence verify / targeted recheck | **GitHub Copilot audit lane** | Targeted; no uncontested re-runs |
 | Design review / sign-off | **Kiro** | Not involved |
-| Conflict adjudication (token-scarce) | **Sol-High** | Hard gate only — see below |
+| Conflict adjudication (scarce) | **Sol-High** | Separate resource; hard gate only |
 | Ledger write / merge | **Ryan only** | Not involved |
 
-**Copilot conditional-use rule.**
-- Invoke when: independent safety/isolation audit warranted; targeted post-impl verification needed.
-- Do not invoke for: substantial implementation Cursor can execute; routine execution; re-auditing uncontested findings; drafting; as a substitute for a missing Cursor handoff packet.
+**GitHub Copilot audit lane — conditional use.**
+Invoke when: independent safety/isolation audit warranted; targeted post-impl verification needed.
+Do not invoke for: implementation Cursor can execute; routine work; re-auditing uncontested findings; drafting; substituting for a missing Cursor handoff packet.
+**Sol-High is a separate scarce resource** — not normal workflow, not the same as the Copilot audit lane.
 
-**Sol-High hard gate (Copilot ↔ Kiro, same target + revision).**
-Invoke Sol-High only when **GitHub Copilot** and **Kiro** have issued genuinely conflicting verdicts on the **same artifact and same revision**. All five fields required as a literal prompt prefix before the call:
+**Sol-High hard gate (Copilot audit lane + Kiro, same target + same revision).**
+Invoke only when **GitHub Copilot audit lane** and **Kiro** have each issued a written **PASS or FAIL** (not defer, not silence, not abstention) on the **same artifact and revision**, and the verdicts materially conflict. All five fields required as literal prompt prefix:
 
 ```text
-SOL-HIGH CONFLICT SUMMARY (required)
-Artifact: <PR / branch tip SHA / file set>
-Verdict A (Copilot): <PASS|FAIL|defer> — <one-line rationale>
-Verdict B (Kiro): <PASS|FAIL|defer> — <one-line rationale>
-Disagreement: <one sentence — the claim A and B cannot both be true>
-Disqualifying conditions: none apply — confirmed
+SOL-HIGH CONFLICT SUMMARY (required — all fields must be present)
+Artifact: <PR number / branch tip SHA / file set — exact>
+GitHub Copilot audit-lane verdict: <PASS|FAIL> — <one-line rationale>
+Kiro verdict: <PASS|FAIL> — <one-line rationale>
+Material proposition in conflict: <specific factual claim both verdicts cannot both be true>
+Negative confirmation: not single-FAIL / not deferral / not abstention / not silence / not missing / not different revision — confirmed
 ```
 
-Missing any field → **do not call Sol-High**. Disqualified if: only one reviewer has issued a verdict; second reviewer deferred/abstained/hasn't reviewed same revision; R1 adversarial diagnosis is the only opposing "verdict".
+`defer` is never a valid opposing verdict. Missing any field, or either reviewer deferred/abstained/silent/different-revision → **do not call Sol-High**.
 
-**Non-example (PR #52):** Copilot/Codex audit issues FAIL; Kiro correctly defers; no A-vs-B conflict on same revision → single-reviewer FAIL, not a conflict. Do not call Sol-High.
+**Non-example (PR #52):** Copilot audit FAIL; Kiro defers → single-reviewer FAIL, not a conflict. Do not call Sol-High.
 
-**Full lifecycle, role table, Copilot invocation rules, and R1–R8 authorization sequence:** `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
+**Full lifecycle, role table, Copilot invocation rules, and auth sequence:** `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
 <!-- TEAM_CHARTER_END -->
 
 ---
