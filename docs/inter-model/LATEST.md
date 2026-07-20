@@ -1,11 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-19 (R2a plan refinement — Codex PASS + token constraints posted)
+**Updated:** 2026-07-20 (HITL charter corrective finish — faithful lifecycle, accurate authorization example, explicit Kiro boundary — awaiting same-SHA Copilot audit + Kiro sign-off)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Gate 1 merged; R2a plan Codex PASS (2026-07-19):** Immutable harness SHA `3b2790f50414f0445c35748e52f849c6276839f7` (PR #44 squash). Codex PASS on plan refinement; binding draft constraints posted: [`CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md`](CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md) (unforgeable binder-only token; `authorization_phase=="r2a"` + original sidecar verify). Prior: [`CURSOR-2026-07-19-r2a-plan-refinement.md`](CURSOR-2026-07-19-r2a-plan-refinement.md). **Next:** pin SHA in runbook + Cursor R2a auth-schema amendment draft for Kiro. **Not authorized:** R2a execution / Gate 2 / external eval writes.
+- **HITL charter — Copilot lifecycle corrective finish (2026-07-20):** Ryan's full specialist-review, architecture, execution, evaluation, and promotion topology restored; embedding authorization codes corrected and retained only as a worked example; DeepSeek R1 and Authorization R1 disambiguated; Sol-High remains separate from the GitHub Copilot audit lane; Kiro is explicitly non-implementing and review-required; compact fitness protection retained. Canonical: [`TEAM-CHARTER-2026-07-06.md`](TEAM-CHARTER-2026-07-06.md); successor: [`CURSOR-2026-07-20-hitl-charter-copilot-lifecycle.md`](CURSOR-2026-07-20-hitl-charter-copilot-lifecycle.md); original handoff: [`CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md`](CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md). **Deploy blocked** pending same-tip GitHub Copilot audit, Kiro sign-off, and Ryan's decision. PR #52 remains independent. Branch: `docs/2026-07-19-hitl-charter-delegation-sol-high-gate`.
+
+- **Gate 1 merged; R2a plan Codex PASS (2026-07-19):** Immutable harness SHA `3b2790f50414f0445c35748e52f849c6276839f7` (PR #44 squash). Codex PASS on plan refinement; binding draft constraints posted: [`CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md`](CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md) (unforgeable binder-only token; `authorization_phase=="r2a"` + original sidecar verify). Prior: [`CURSOR-2026-07-19-r2a-plan-refinement.md`](CURSOR-2026-07-19-r2a-plan-refinement.md). **Next:** pin SHA in runbook + Cursor R2a auth-schema amendment draft for Kiro. **Not authorized:** R2a execution / Gate 2 / external eval writes. R2a impl PR: [#52](https://github.com/alanmz-crypto/convmem/pull/52).
 
 
 - **Response TL;DR (2026-07-19):** Canonical rule in `config/agent-protocol.md` (`RESPONSE_TLDR` slice) — every agent response ends with a scaled TL;DR. Regenerated into Cursor/Codex/Kiro/Crush/MCP/ChatGPT surfaces via `scripts/generate-agent-protocol.sh` (deploy with `scripts/deploy-agent-protocol.sh` when Ryan wants live surfaces updated).
