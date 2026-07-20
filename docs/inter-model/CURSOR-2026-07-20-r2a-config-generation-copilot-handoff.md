@@ -15,7 +15,7 @@
 
 ## Exception status
 
-**GRANTED and executed (2026-07-20).** Ryan: `ACCEPT AND GRANT`. Cursor ran both exact `exact_command_tuple`s. Post inventory (only): `baseline/shadow.toml`, `challenger/shadow.toml`. No `chroma/` dirs created. Next: Kiro independent verify of the two `shadow.toml` files.
+**GRANTED, executed, Kiro PASS (2026-07-20).** Ryan: `ACCEPT AND GRANT`. Cursor ran both exact tuples. Inventory: `baseline/shadow.toml` + `challenger/shadow.toml` only. Kiro independent audit PASS (scope, hashes, shadow content, arm separation). **PR #59 may merge when ready.**
 
 **Schema note:** `paths.embed_host` was added so the #52 binder path-binding succeeds (required with `CONFIG_GENERATION_FIELDS`).
 
