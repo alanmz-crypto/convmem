@@ -111,6 +111,15 @@ class R2aAuthSchemaTests(unittest.TestCase):
         errs = validate_run_manifest_schema(body)
         self.assertTrue(any("exactly" in e or "forbids" in e for e in errs))
 
+    def test_t3b_r2a_rejects_duplicate_operations(self):
+        body = make_r2a_run_manifest_for_tests(
+            paths={"live_config": "/tmp/l", "out_dir": "/tmp/o", "chroma_dir": "/tmp/c"}
+        )
+        body["operations"] = ["config_generation", "config_generation"]
+        body["ryan_approved_manifest_sha256"] = canonical_manifest_body_sha256(body)
+        errs = validate_run_manifest_schema(body)
+        self.assertTrue(any("exactly" in e for e in errs))
+
     def test_t4_r2a_wrong_harness_sha(self):
         body = make_r2a_run_manifest_for_tests(
             paths={"live_config": "/tmp/l", "out_dir": "/tmp/o", "chroma_dir": "/tmp/c"},
@@ -257,6 +266,26 @@ class R2aAuthSchemaTests(unittest.TestCase):
                     ollama_host=runtime["embed_host"],
                     r2a_grant=grant,
                 )
+
+    def test_t10b_write_time_prohibits_config_generation(self):
+        """Capability issued under allow must fail if re-approved with prohibit."""
+        with tempfile.TemporaryDirectory() as td:
+            grant, runtime, man, _live, out_dir, chroma = _approved_r2a(Path(td))
+            body = json.loads(man.read_text(encoding="utf-8"))
+            body["prohibited_actions"] = ["config_generation"]
+            body["ryan_approved_manifest_sha256"] = canonical_manifest_body_sha256(body)
+            man.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+            write_approval_sidecar(man)
+            with self.assertRaises(PermissionError) as ctx:
+                generate_shadow_config(
+                    live_cfg=None,
+                    out_dir=out_dir,
+                    chroma_dir=chroma,
+                    embed_model=runtime["embed_model"],
+                    ollama_host=runtime["embed_host"],
+                    r2a_grant=grant,
+                )
+            self.assertIn("prohibited", str(ctx.exception).lower())
 
     def test_t11_fixture_cannot_grant_or_write_eval_like(self):
         with tempfile.TemporaryDirectory() as td:
