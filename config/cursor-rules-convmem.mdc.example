@@ -124,35 +124,45 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 - Handoff / **ingest your chat** → `convmem index --file` this chat's `agent-transcripts/...jsonl` (Track A). **No record block** unless Ryan asks.
 - Do **not** create new markdown logs unless Ryan requested a file.
 
-## HITL team charter (lane names — not model weights)
+## HITL team charter
 
-**Name agents by lane, never by runtime model.** Crush may run DeepSeek V4 weights — that is still **Crush lane** (Tier A shell). The **DeepSeek row** is the Tier B synthesis API behind `convmem ask` only — not a bug-hunter.
+| Work type | Default lane | Copilot audit lane |
+|-----------|-------------|--------------------|
+| Large implementation | **Cursor** | Not involved |
+| Bug discovery / investigation | **Crush** | Escalate when warranted |
+| Safety / isolation / code audit | **GitHub Copilot audit lane** | Primary; targeted scope only |
+| Evidence verify / targeted recheck | **GitHub Copilot audit lane** | Targeted; no uncontested re-runs |
+| Design review / sign-off | **Kiro** | Not involved |
+| Conflict adjudication (scarce) | **Sol-High** | Separate resource; hard gate only |
+| Ledger write / merge | **Ryan only** | Not involved |
 
-| Phase | Owner (lane) | Must not |
-|-------|--------------|----------|
-| Bug discovery | Crush | self-approve fixes; write `record`; merge to `main` |
-| Independent audit | Codex | new `logs/*.md` unless Ryan asks; merge to `main` |
-| Design / sign-off | Kiro | volunteer `record` at task end; merge to `main`; create `feat/`/`fix/` branches |
-| Implementation (convmem) | Cursor | client WP in same session; merge to `main` |
-| Implementation (client WP) | Cursor / Ryan | convmem ledger writes |
-| Memory ingest | Whoever closes session | Track A **and** B — never one alone |
-| Durable conclusions | Ryan only | per-finding records; agents never `--approve-last` |
-| Merge to `main` | Ryan only | agents never merge or force-push `main` |
-| Strategy review | ChatGPT / Claude Cloud | code edits; prod writes |
-| Synthesis | DeepSeek API (`ask`) | primary bug author |
+**Conditional Copilot use.** Use only for independent safety/isolation audits or targeted verification—not implementation, routine work, drafting, uncontested re-audits, or missing Cursor handoffs.
+**Sol-High is separate** from normal workflow and the Copilot audit lane.
 
-**Phrasebook:** ingest your chat = Track A · index the log = Track B · ingest everything = both · record block = Ryan runs approve-last.
+**Kiro is non-implementing and review-required.** It may write only explicitly requested architecture/plan/review documents; never code, tests, scripts, configuration, generated surfaces, or runtime state. Bounded autonomy does not expand this scope; implementation goes to Cursor.
 
-**Handoff ≠ record.** Index session chat at handoff; `record --approve-last` only when Ryan says record block / closing.
+**Sol-High hard gate (Copilot audit lane + Kiro, same target + same revision).**
+Invoke only when **GitHub Copilot audit lane** and **Kiro** issue materially conflicting written **PASS or FAIL** verdicts on the **same artifact and revision**. Literal five-field prompt prefix:
 
-**Tier 1 = shared memory bus** (not orchestration). Orchestration reserved for Tier 3 notify. Sprint checks: `docs/inter-model/BUG-SPRINT-SUCCESS-2026-07-06.md`.
+```text
+SOL-HIGH CONFLICT SUMMARY (required — all fields must be present)
+Artifact: <PR number / branch tip SHA / file set — exact>
+GitHub Copilot audit-lane verdict: <PASS|FAIL> — <one-line rationale>
+Kiro verdict: <PASS|FAIL> — <one-line rationale>
+Material proposition in conflict: <specific factual claim both verdicts cannot both be true>
+Negative confirmation: not single-FAIL / deferral / abstention / silence / missing / incomplete / different revision — confirmed
+```
 
-Full charter + review rationale: `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
+`defer` is never a valid opposing verdict. Any missing field, deferral, abstention, silence, incomplete verdict, or different revision blocks Sol-High.
+
+**Non-example (PR #52):** Copilot audit FAIL; Kiro defers → single-reviewer FAIL, not a conflict. Do not call Sol-High.
+
+**Full lifecycle, role table, Copilot invocation rules, and auth sequence:** `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
 
 ## Bounded autonomy
 
 
-Default for Routine-reversible work only in convmem. `Mode: review required` disables it; `Mode: bounded autonomy` opts in where higher rules permit. WordPress stays review-required pending separate probation. Other repos, architecture, security, and external-configuration work never inherit it.
+Default for Routine-reversible work only in convmem. Kiro remains review-required. `Mode: review required` disables it; `Mode: bounded autonomy` opts in where higher rules permit. WordPress stays review-required pending separate probation. Other repos, architecture, security, and external-configuration work never inherit it.
 
 Precedence (high→low): system/tool guards → lane must-nots + protocol → DB/secrets/external safety → exact brief authorizations → autonomy defaults. Lower cannot override higher.
 
