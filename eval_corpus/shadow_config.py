@@ -15,10 +15,17 @@ from eval_corpus.run_manifest import (
 
 
 def _toml_escape(value: Any) -> str:
+    """Render a TOML value. Lists become real arrays, not Python ``str(list)``."""
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, (int, float)):
         return str(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(_toml_escape(item) for item in value) + "]"
+    if value is None:
+        raise TypeError("TOML rendering does not support null")
+    if isinstance(value, dict):
+        raise TypeError("inline tables are not supported; use a section dict")
     s = str(value).replace("\\", "\\\\").replace('"', '\\"')
     return f'"{s}"'
 
