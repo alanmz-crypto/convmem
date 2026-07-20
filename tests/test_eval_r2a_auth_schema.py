@@ -344,16 +344,43 @@ class R2aAuthSchemaTests(unittest.TestCase):
             assert_operation_allowed(body, "config_generation")
         self.assertIn("must be a list", str(ctx.exception))
 
-    def test_t10d_direct_capability_issue_refused(self):
-        with tempfile.TemporaryDirectory() as td:
-            _grant, _runtime, man, _live, _out, _chroma = _approved_r2a(Path(td))
-            digest = canonical_manifest_body_sha256(
-                json.loads(man.read_text(encoding="utf-8"))
+    def test_t10d_no_raw_issuer_or_arm_controls(self):
+        """Raw mint/arm/disarm must not be reachable at module or binder scope."""
+        for name in (
+            "_issue_r2a_capability",
+            "_mint",
+            "issue",
+            "arm_issue",
+            "disarm_issue",
+        ):
+            self.assertFalse(
+                hasattr(run_manifest_mod, name),
+                msg=f"module must not export {name}",
             )
-            issue = getattr(run_manifest_mod, "_issue_r2a_capability")
-            with self.assertRaises(PermissionError) as ctx:
-                issue(man, digest)
-            self.assertIn("binder-issued", str(ctx.exception).lower())
+        binder = run_manifest_mod.bind_r2a_config_generation
+        self.assertTrue(callable(binder))
+        self.assertFalse(hasattr(binder, "arm"))
+        self.assertFalse(hasattr(binder, "disarm"))
+        self.assertFalse(hasattr(binder, "issue"))
+        # No nested callable named issue/arm/disarm/mint in the binder closure.
+        for cell in binder.__closure__ or ():
+            cell_obj = cell.cell_contents
+            if not callable(cell_obj):
+                continue
+            name = getattr(cell_obj, "__name__", "")
+            self.assertNotIn(
+                name,
+                {
+                    "arm_issue",
+                    "disarm_issue",
+                    "issue",
+                    "_mint",
+                    "mint",
+                    "_bind_impl",
+                },
+            )
+            self.assertFalse(hasattr(cell_obj, "arm"))
+            self.assertFalse(hasattr(cell_obj, "disarm"))
 
     def test_t10e_path_preserving_retarget_refused(self):
         """Same path + new approved live_config must not reuse old grant."""

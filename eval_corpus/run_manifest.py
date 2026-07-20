@@ -169,17 +169,17 @@ class R2aBindings:
     manifest_path: Path
 
 
-def _build_r2a_capability_api() -> tuple[Any, Any, type]:
-    """Closure-held MAC key: capability is immutable and binder-authenticated.
+def _build_r2a_capability_api() -> tuple[Any, Any]:
+    """Closure-held MAC key + binder-only mint (no raw issuer export).
 
-    ``issue`` is armed only while ``bind_r2a_config_generation`` runs. The MAC
-    seals ``manifest_path`` + approval digest so path-preserving retargets fail.
+    Returns ``(bind_r2a_config_generation, authenticate)``. Mint lives only
+    inside the binder closure — no module-level ``issue`` / ``arm`` / ``disarm``.
+    MAC seals ``manifest_path`` + approval digest so path-preserving retargets fail.
     """
     mac_key = secrets.token_bytes(32)
-    issue_armed = False
 
     class _R2aCapability:
-        """Opaque authenticated capability. Construct only via binder issue()."""
+        """Opaque authenticated capability. Construct only via binder mint."""
 
         __slots__ = ("_manifest_path", "_approval_digest", "_mac", "_frozen")
 
@@ -193,25 +193,6 @@ def _build_r2a_capability_api() -> tuple[Any, Any, type]:
 
     def _mac_message(path: Path, approval_digest: str) -> bytes:
         return f"{path}\0{approval_digest}".encode("utf-8")
-
-    def issue(manifest_path: Path, approval_digest: str) -> _R2aCapability:
-        nonlocal issue_armed
-        if not issue_armed:
-            raise PermissionError(
-                "R2a capabilities are binder-issued only "
-                "(call bind_r2a_config_generation)"
-            )
-        path = Path(manifest_path).expanduser().resolve(strict=False)
-        digest = str(approval_digest).strip().lower()
-        if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
-            raise PermissionError("R2a capability requires a 64-hex approval digest")
-        mac = hmac.new(mac_key, _mac_message(path, digest), "sha256").digest()
-        obj = object.__new__(_R2aCapability)
-        object.__setattr__(obj, "_manifest_path", path)
-        object.__setattr__(obj, "_approval_digest", digest)
-        object.__setattr__(obj, "_mac", mac)
-        object.__setattr__(obj, "_frozen", True)
-        return obj
 
     def authenticate(obj: Any) -> Path:
         # Exact type — reject subclasses that could forge __dict__/slots layouts.
@@ -235,20 +216,63 @@ def _build_r2a_capability_api() -> tuple[Any, Any, type]:
             )
         return Path(path)
 
-    def arm_issue() -> None:
-        nonlocal issue_armed
-        issue_armed = True
+    def _bind_impl(
+        *,
+        run_manifest_path: Path,
+        runtime: Mapping[str, Any],
+    ) -> Any:
+        """Authorize R2a config_generation; return an immutable authenticated capability.
 
-    def disarm_issue() -> None:
-        nonlocal issue_armed
-        issue_armed = False
+        The capability seals manifest path + approval digest. Write-time code must
+        re-verify the sidecar and re-derive every binding from that manifest.
+        """
+        # Late-bound module helpers (defined below this builder at import time).
+        _require_exact_fields("config_generation", CONFIG_GENERATION_FIELDS, runtime)
+        path = Path(run_manifest_path)
+        manifest = _load_and_validate_manifest(path)
+        if str(manifest.get("authorization_phase") or "") != "r2a":
+            raise PermissionError(
+                'bind_r2a_config_generation requires authorization_phase="r2a"'
+            )
+        assert_operation_allowed(manifest, "config_generation")
+        _bind_paths_and_scalars(
+            operation="config_generation",
+            required=CONFIG_GENERATION_FIELDS,
+            runtime=runtime,
+            manifest=manifest,
+            execution_mode="real",
+            authorize_fixture=False,
+        )
+        bindings = derive_r2a_bindings_from_manifest(manifest, manifest_path=path)
+        if _norm_path(runtime["live_config"]) != str(bindings.live_config):
+            raise PermissionError("runtime live_config mismatch vs approved manifest")
+        if _norm_path(runtime["out_dir"]) != str(bindings.out_dir):
+            raise PermissionError("runtime out_dir mismatch vs approved manifest")
+        if _norm_path(runtime["chroma_dir"]) != str(bindings.chroma_dir):
+            raise PermissionError("runtime chroma_dir mismatch vs approved manifest")
+        if str(runtime["embed_model"]) != bindings.embed_model:
+            raise PermissionError("runtime embed_model mismatch vs approved manifest")
+        if str(runtime["embed_host"]) != bindings.embed_host:
+            raise PermissionError("runtime embed_host mismatch vs approved manifest")
+        approval_digest = str(
+            manifest.get("ryan_approved_manifest_sha256") or ""
+        ).strip().lower()
+        sealed_path = Path(bindings.manifest_path).expanduser().resolve(strict=False)
+        digest = approval_digest
+        if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+            raise PermissionError("R2a capability requires a 64-hex approval digest")
+        mac = hmac.new(mac_key, _mac_message(sealed_path, digest), "sha256").digest()
+        obj = object.__new__(_R2aCapability)
+        object.__setattr__(obj, "_manifest_path", sealed_path)
+        object.__setattr__(obj, "_approval_digest", digest)
+        object.__setattr__(obj, "_mac", mac)
+        object.__setattr__(obj, "_frozen", True)
+        return obj
 
-    issue.arm = arm_issue  # type: ignore[attr-defined]
-    issue.disarm = disarm_issue  # type: ignore[attr-defined]
-    return issue, authenticate, _R2aCapability
+    return _bind_impl, authenticate
 
 
-_issue_r2a_capability, _authenticate_r2a_capability, _ = _build_r2a_capability_api()
+bind_r2a_config_generation, _authenticate_r2a_capability = _build_r2a_capability_api()
 
 
 def is_r2a_eval_root_grant(obj: Any) -> bool:
@@ -731,50 +755,6 @@ def bind_config_generation(
         manifest=manifest,
         operation="config_generation",
     )
-
-
-def bind_r2a_config_generation(
-    *,
-    run_manifest_path: Path,
-    runtime: Mapping[str, Any],
-) -> Any:
-    """Authorize R2a config_generation; return an immutable authenticated capability.
-
-    The capability stores only an authenticated manifest path. Write-time code must
-    re-verify the sidecar and re-derive every binding from that manifest.
-    """
-    _require_exact_fields("config_generation", CONFIG_GENERATION_FIELDS, runtime)
-    path = Path(run_manifest_path)
-    manifest = _load_and_validate_manifest(path)
-    if str(manifest.get("authorization_phase") or "") != "r2a":
-        raise PermissionError('bind_r2a_config_generation requires authorization_phase="r2a"')
-    assert_operation_allowed(manifest, "config_generation")
-    _bind_paths_and_scalars(
-        operation="config_generation",
-        required=CONFIG_GENERATION_FIELDS,
-        runtime=runtime,
-        manifest=manifest,
-        execution_mode="real",
-        authorize_fixture=False,
-    )
-    bindings = derive_r2a_bindings_from_manifest(manifest, manifest_path=path)
-    # Runtime must match bindings re-derived from the approved manifest.
-    if _norm_path(runtime["live_config"]) != str(bindings.live_config):
-        raise PermissionError("runtime live_config mismatch vs approved manifest")
-    if _norm_path(runtime["out_dir"]) != str(bindings.out_dir):
-        raise PermissionError("runtime out_dir mismatch vs approved manifest")
-    if _norm_path(runtime["chroma_dir"]) != str(bindings.chroma_dir):
-        raise PermissionError("runtime chroma_dir mismatch vs approved manifest")
-    if str(runtime["embed_model"]) != bindings.embed_model:
-        raise PermissionError("runtime embed_model mismatch vs approved manifest")
-    if str(runtime["embed_host"]) != bindings.embed_host:
-        raise PermissionError("runtime embed_host mismatch vs approved manifest")
-    approval_digest = str(manifest.get("ryan_approved_manifest_sha256") or "").strip().lower()
-    _issue_r2a_capability.arm()  # type: ignore[attr-defined]
-    try:
-        return _issue_r2a_capability(bindings.manifest_path, approval_digest)
-    finally:
-        _issue_r2a_capability.disarm()  # type: ignore[attr-defined]
 
 
 def materialize_r2a_write_authorization(
