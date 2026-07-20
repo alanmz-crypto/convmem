@@ -11,15 +11,14 @@ Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
 | **ChatGPT** | Orchestration/strategy; paste-only access to corpus | Tier C (paste-only) | No | — | No |
 | **Crush** | Runtime agent with shell + MCP read tools | Tier A (shell + MCP; soak #8 showed MCP-only rules ignored) | Yes | fix, wip | No |
 | **DeepSeek** | Runtime synthesis only (`ask` / distill API) | Tier B (MCP-only) | No | — | No |
-
-| **Codex** | Shell + `AGENTS.md` (`~/.codex/AGENTS.md` global + repo root); change-feed design lane (deferred); no MCP | Tier A (shell, but no MCP) — use CLI `convmem` commands | Yes | fix, feat, docs | No |
+| **GitHub Copilot** | Conditional independent audit lane — code, safety, and isolation audits when warranted; targeted post-impl verification. Shell + `AGENTS.md` (`~/.codex/AGENTS.md` global + repo root); no MCP. Note: the OpenAI Codex *product* surface (session paths, `codex_rollout_jsonl`, `CODEX-DEEPSEEK-VERIFY.md`, `bash -lc` sandbox retry) remains a tooling alias — historical posts that say "Codex" are preserved as-is. | Tier A (shell, no MCP) — use CLI `convmem` commands | Yes | fix, feat, docs | No |
 | **Continue** | MCP read (`brief`, `search_fast`, `ask`); MCP `instructions=` carries expanded protocol | Tier A (shell + MCP) | Yes (via shell) | feat, fix, docs, wip | No |
 
 **Ryan** may create any prefix and is the only lane that merges to `main`. Branching rules: [`plans/branching-strategy.md`](plans/branching-strategy.md).
 
 **DeepSeek vs Crush:** DeepSeek row = Tier B synthesis API behind `convmem ask` only — not a bug-hunter. Crush running DeepSeek V4 weights is still **Crush lane** (Tier A shell). Bug discovery owner = **Crush**, not DeepSeek. Full audit: [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md).
 
-**Comparative advantage + Sol-High gate:** Large implementation → Cursor; investigation/audit → Codex. Sol-High / GPT-sol is conflict adjudication only — require a written conflict summary (both verdicts + specific disagreement) before invoke. Always-loaded in `TEAM_CHARTER` (`config/agent-protocol.md`). See charter § Delegate by comparative advantage / Sol-High conflict gate.
+**Lane routing + Sol-High gate:** Large implementation → Cursor; investigation/audit/safety → GitHub Copilot. Sol-High is conflict adjudication only — requires written conflict summary (Copilot verdict + Kiro verdict on same artifact + same revision + specific disagreement) before invoke; R1 adversarial diagnosis does not satisfy the gate. Always-loaded in `TEAM_CHARTER` (`config/agent-protocol.md`). Full lifecycle + Copilot invocation rules + auth sequence: [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md).
 
 **Session close (all models):** follow [`config/agent-protocol.md`](../config/agent-protocol.md) and [`SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md).
 

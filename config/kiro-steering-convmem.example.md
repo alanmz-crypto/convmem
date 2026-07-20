@@ -130,35 +130,41 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 - **Never volunteer** `convmem record` at task end — important work is already in chat ingest.
 - `convmem record` **only** when Ryan says **record block**, **closing**, or **end session**.
 
-## HITL team charter (lane names — not model weights)
+## HITL team charter (lane routing — not model weights)
 
-**Name agents by lane, never by runtime model.** Crush may run DeepSeek V4 weights — that is still **Crush lane** (Tier A shell). The **DeepSeek row** is the Tier B synthesis API behind `convmem ask` only — not a bug-hunter.
+**Lane routing by work type:**
 
-| Phase | Owner (lane) | Must not |
-|-------|--------------|----------|
-| Bug discovery | Crush | self-approve fixes; write `record`; merge to `main` |
-| Independent audit | Codex | new `logs/*.md` unless Ryan asks; merge to `main`; substantial implementation Cursor can execute |
-| Design / sign-off | Kiro | volunteer `record` at task end; merge to `main`; create `feat/`/`fix/` branches |
-| Implementation (convmem) | Cursor | client WP in same session; merge to `main` |
-| Implementation (client WP) | Cursor / Ryan | convmem ledger writes |
-| Memory ingest | Whoever closes session | Track A **and** B — never one alone |
-| Durable conclusions | Ryan only | per-finding records; agents never `--approve-last` |
-| Merge to `main` | Ryan only | agents never merge or force-push `main` |
-| Conflict adjudication | Sol-High (GPT-sol) | routine work; single-reviewer FAIL; drafting; re-audits; call without conflict summary |
-| Strategy review | ChatGPT / Claude Cloud | code edits; prod writes |
-| Synthesis | DeepSeek API (`ask`) | primary bug author |
+| Work type | Default lane | Copilot involvement |
+|-----------|-------------|---------------------|
+| Large implementation | **Cursor** | Not involved — do not route implementation to Copilot |
+| Bug discovery / investigation | **Crush** | May escalate to Copilot audit when warranted |
+| Safety / isolation / code audit | **GitHub Copilot** | Primary; targeted scope only |
+| Evidence verify / targeted recheck | **GitHub Copilot** | Targeted; do not rerun uncontested findings |
+| Design review / sign-off | **Kiro** | Not involved |
+| Conflict adjudication (token-scarce) | **Sol-High** | Hard gate only — see below |
+| Ledger write / merge | **Ryan only** | Not involved |
 
-**Delegate by comparative advantage.** Large implementation → **Cursor** (hand off complete scope, constraints, surfaces, acceptance tests, stop conditions, evidence). Investigation / feasibility / safety audit / evidence verify / targeted recheck → **Codex**. Do not assign Cursor-shaped coding to Codex or Sol-High.
+**Copilot conditional-use rule.**
+- Invoke when: independent safety/isolation audit warranted; targeted post-impl verification needed.
+- Do not invoke for: substantial implementation Cursor can execute; routine execution; re-auditing uncontested findings; drafting; as a substitute for a missing Cursor handoff packet.
 
-**Sol-High hard gate.** Invoke Sol-High / GPT-sol **only** when Codex and Kiro (or R1) have genuinely conflicting verdicts on the same artifact. Calling agent must paste both verdicts and state the specific disagreement as a literal prompt prefix before the call. Never for: routine execution, single-reviewer FAIL, drafting, or re-audits. **Non-example:** PR #52 — single Codex FAIL, Kiro correctly deferring, no A-vs-B conflict → do not call Sol-High.
+**Sol-High hard gate (Copilot ↔ Kiro, same target + revision).**
+Invoke Sol-High only when **GitHub Copilot** and **Kiro** have issued genuinely conflicting verdicts on the **same artifact and same revision**. All five fields required as a literal prompt prefix before the call:
 
-**Phrasebook:** ingest your chat = Track A · index the log = Track B · ingest everything = both · record block = Ryan runs approve-last.
+```text
+SOL-HIGH CONFLICT SUMMARY (required)
+Artifact: <PR / branch tip SHA / file set>
+Verdict A (Copilot): <PASS|FAIL|defer> — <one-line rationale>
+Verdict B (Kiro): <PASS|FAIL|defer> — <one-line rationale>
+Disagreement: <one sentence — the claim A and B cannot both be true>
+Disqualifying conditions: none apply — confirmed
+```
 
-**Handoff ≠ record.** Index session chat at handoff; `record --approve-last` only when Ryan says record block / closing.
+Missing any field → **do not call Sol-High**. Disqualified if: only one reviewer has issued a verdict; second reviewer deferred/abstained/hasn't reviewed same revision; R1 adversarial diagnosis is the only opposing "verdict".
 
-**Tier 1 = shared memory bus** (not orchestration). Orchestration reserved for Tier 3 notify. Sprint checks: `docs/inter-model/BUG-SPRINT-SUCCESS-2026-07-06.md`.
+**Non-example (PR #52):** Copilot/Codex audit issues FAIL; Kiro correctly defers; no A-vs-B conflict on same revision → single-reviewer FAIL, not a conflict. Do not call Sol-High.
 
-Full charter + review rationale: `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
+**Full lifecycle, role table, Copilot invocation rules, and R1–R8 authorization sequence:** `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
 
 ## Bounded autonomy
 

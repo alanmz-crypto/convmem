@@ -1,11 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-19 (HITL charter: comparative advantage + Sol-High gate — awaiting Codex/Ryan)
+**Updated:** 2026-07-20 (HITL charter: Copilot lifecycle addendum — conditional routing, Sol-High Copilot↔Kiro, compact slice — awaiting Copilot audit + Kiro sign-off + Ryan)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **HITL charter amendment (2026-07-19):** Comparative advantage (large impl → Cursor; audit → Codex) + Sol-High hard conflict gate (written summary required; PR #52 single-FAIL non-example). Canonical: [`TEAM-CHARTER-2026-07-06.md`](TEAM-CHARTER-2026-07-06.md); compact `TEAM_CHARTER` in `config/agent-protocol.md`; post: [`CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md`](CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md). Surfaces regenerated; **deploy blocked** until Codex audit + Ryan approval. Branch: `docs/2026-07-19-hitl-charter-delegation-sol-high-gate`.
+- **HITL charter amendment (2026-07-19, Copilot addendum):** Governing audit lane renamed to **GitHub Copilot**. Full lifecycle mermaid (nine stages, Copilot nodes conditional) + lane routing table + Copilot invocation allow/deny + R1–R8 auth sequence reference added to full charter. Compact `TEAM_CHARTER` in `config/agent-protocol.md` slimmed to routing + Copilot rule + Sol-High (Copilot↔Kiro, same target+revision, five-field summary) + pointer only. `docs/AGENT-ROLES.md` GitHub Copilot row added; Codex tooling-alias note preserved. Canonical: [`TEAM-CHARTER-2026-07-06.md`](TEAM-CHARTER-2026-07-06.md); post: [`CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md`](CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md). Surfaces regenerated; **deploy blocked** until Copilot audit + Kiro sign-off + Ryan approval. Branch: `docs/2026-07-19-hitl-charter-delegation-sol-high-gate`.
 
 - **Gate 1 merged; R2a plan Codex PASS (2026-07-19):** Immutable harness SHA `3b2790f50414f0445c35748e52f849c6276839f7` (PR #44 squash). Codex PASS on plan refinement; binding draft constraints posted: [`CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md`](CURSOR-2026-07-19-r2a-codex-pass-token-constraints.md) (unforgeable binder-only token; `authorization_phase=="r2a"` + original sidecar verify). Prior: [`CURSOR-2026-07-19-r2a-plan-refinement.md`](CURSOR-2026-07-19-r2a-plan-refinement.md). **Next:** pin SHA in runbook + Cursor R2a auth-schema amendment draft for Kiro. **Not authorized:** R2a execution / Gate 2 / external eval writes. R2a impl PR: [#52](https://github.com/alanmz-crypto/convmem/pull/52).
 

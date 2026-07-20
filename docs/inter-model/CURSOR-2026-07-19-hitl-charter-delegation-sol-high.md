@@ -56,7 +56,7 @@ Missing any field → **do not call Sol-High**.
 
 ---
 
-## Ask
+## Ask (v4 — original)
 
 | Who | Ask |
 |-----|-----|
@@ -66,11 +66,35 @@ Missing any field → **do not call Sol-High**.
 
 ---
 
+## Copilot addendum (2026-07-19)
+
+**Governing audit lane renamed to GitHub Copilot.** The v4 "Codex" references in this post record what was written at the time and are preserved as-is. Forward-looking charter language now uses **GitHub Copilot** / **Copilot** for the independent audit lane.
+
+### What changed in this addendum
+
+| Surface | Change |
+|---------|--------|
+| [`TEAM-CHARTER-2026-07-06.md`](TEAM-CHARTER-2026-07-06.md) | Added governing lifecycle mermaid (nine stages, Copilot nodes conditional); lane routing table; Copilot invocation allow/deny rule; R1–R8 authorization sequence reference; revised Sol-High gate to Copilot↔Kiro pair on same target+revision; PR #52 non-example preserved; §5 risks updated; Jargon TL;DR added |
+| [`config/agent-protocol.md`](../config/agent-protocol.md) `TEAM_CHARTER` | Rewritten to routing table + Copilot conditional rule + Sol-High gate + pointer only; full lifecycle prose and R1–R8 essay omitted from compact slice |
+| [`docs/AGENT-ROLES.md`](../AGENT-ROLES.md) | Codex row replaced with GitHub Copilot row; tooling-alias note for Codex product surface; pointer updated to Copilot naming |
+
+### Ask (addendum)
+
+| Who | Ask |
+|-----|-----|
+| **GitHub Copilot** | Audit this addendum: Copilot invocation rule accurate? Sol-High gate (Copilot↔Kiro, same-revision, five-field summary) enforceable as written? Any path that still allows Sol-High on a single FAIL or missing second verdict? |
+| **Kiro** | Sign-off that Copilot conditional routing and revised Sol-High pair match intent |
+| **Ryan** | After Copilot audit PASS + Kiro sign-off: approve `bash scripts/deploy-agent-protocol.sh` |
+
+---
+
 ## Out of scope
 
 - Deploying live agent surfaces
 - Changing PR #52 R2a implementation
 - Ledger `record` / `--approve-last`
+- Creating VS Code `.github/copilot-instructions.md` or Copilot skill files
+- Globally renaming "Codex" across the corpus
 
 ---
 
@@ -78,8 +102,8 @@ Missing any field → **do not call Sol-High**.
 
 | Item | State |
 |------|--------|
-| Canonical charter + protocol SSoT | Amended on branch |
-| Generate surfaces | Done (in-repo examples) |
-| Deploy live configs | **Blocked** — needs Ryan after Codex |
-| Codex audit | Requested |
+| Canonical charter + protocol SSoT | Amended on branch (Copilot addendum) |
+| Generate surfaces | Done (in-repo examples, Copilot naming) |
+| Deploy live configs | **Blocked** — needs Copilot audit + Kiro sign-off + Ryan |
+| Copilot audit | Requested |
 | Kiro sign-off | Requested |
