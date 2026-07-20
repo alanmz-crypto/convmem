@@ -392,7 +392,8 @@ class QueryViewTests(unittest.TestCase):
             "query": {"rerank": False, "top_k_candidates": 5, "recency_weight": 0},
             "eval": {"retrieval_view": "embedding_influenced"},
         }
-        out = query_units("q", top_k=5, cfg=cfg)
+        with patch("rerank.rerank", side_effect=lambda _q, rows, _m, k: rows[:k]):
+            out = query_units("q", top_k=5, cfg=cfg)
         ledger_hits.assert_not_called()
         merge.assert_not_called()
         self.assertEqual(len(out), 1)

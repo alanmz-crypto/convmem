@@ -11,6 +11,7 @@ import json
 import sys
 import re
 from collections import Counter
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,6 +32,16 @@ _LEDGER_ID_RE = re.compile(
     r"\b(dec_prop_\d{8}_\d{6}_[0-9a-f]{4}|obs_[a-z0-9_-]+|ver_[a-z0-9_-]+)\b",
     re.IGNORECASE,
 )
+DEFAULT_RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
+
+
+@dataclass
+class QueryUnitTrace:
+    """Optional stage snapshots for callers that need retrieval diagnostics."""
+
+    candidates: list[dict] = field(default_factory=list)
+    reranked: list[dict] = field(default_factory=list)
+    rank_fused: list[dict] = field(default_factory=list)
 
 
 def _unit_domain(meta: dict) -> str | None:
@@ -275,6 +286,49 @@ def _apply_keyword_rank(text: str, results: list[dict]) -> list[dict]:
     return [r for _, _, r in scored]
 
 
+def _fuse_retrieval_ranks(
+    results: list[dict],
+    *,
+    semantic_weight: float = 2.0,
+    rerank_weight: float = 1.0,
+    rrf_k: int = 60,
+) -> list[dict]:
+    """Fuse stable pre-rerank order with mandatory CrossEncoder order."""
+    max_fused = (semantic_weight + rerank_weight) / (rrf_k + 1)
+    scored: list[tuple[float, int, dict]] = []
+    for i, result in enumerate(results):
+        semantic_rank = int(result.get("pre_rerank_rank") or result.get("semantic_rank") or i + 1)
+        rerank_rank = int(result.get("rerank_rank") or i + 1)
+        fused = (
+            semantic_weight / (rrf_k + semantic_rank)
+            + rerank_weight / (rrf_k + rerank_rank)
+        )
+        row = dict(result)
+        normalized_fused = fused / max_fused if max_fused > 0 else 0.0
+        row["rank_fusion_score"] = round(normalized_fused, 8)
+        row["rank_score"] = row["rank_fusion_score"]
+        scored.append((fused, i, row))
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    out: list[dict] = []
+    for rank, (_, _, row) in enumerate(scored, 1):
+        row["retrieval_rank"] = rank
+        out.append(row)
+    return out
+
+
+def _identity_eval_rerank(results: list[dict], top_k: int) -> list[dict]:
+    """Emit the rerank contract without changing order in isolated eval arms."""
+    out: list[dict] = []
+    for rank, result in enumerate(results[:top_k], 1):
+        row = dict(result)
+        row["rerank_score"] = 0.0
+        row["rerank_score_norm"] = 0.5
+        row["rerank_rank"] = rank
+        row["rank_score"] = row["rerank_score_norm"]
+        out.append(row)
+    return out
+
+
 def _resolve_eval_retrieval_view(
     eval_view: str | None,
     cfg: dict,
@@ -314,6 +368,7 @@ def query_units(
     *,
     cfg: dict | None = None,
     eval_view: str | None = None,
+    retrieval_trace: QueryUnitTrace | None = None,
 ) -> list[dict]:
     if cfg is None:
         cfg = load_config()
@@ -321,14 +376,13 @@ def query_units(
     qcfg = cfg.get("query", {})
     chroma_path = chroma_dir or cfg["index"]["chroma_dir"]
     view = _resolve_eval_retrieval_view(eval_view, cfg)
-    # embedding_influenced: keyword/recency/rerank remain; ledger-priority path off
+    # embedding_influenced keeps ranking stages but disables ledger-priority.
     skip_ledger_priority = view == "embedding_influenced"
 
     embedding = ollama_embed(
         text, model=models["embed_model"], host=models["ollama_host"]
     )
 
-    use_rerank = bool(qcfg.get("rerank", False))
     candidate_k = max(top_k, int(qcfg.get("top_k_candidates", 20) or 20))
     n_fetch = candidate_k
     domain = normalize_domain(domain) if domain else None
@@ -371,6 +425,11 @@ def query_units(
         d = r.get("distance")
         if d is not None:
             r["score"] = round(1.0 - d, 4)
+    for rank, result in enumerate(results, 1):
+        result["semantic_rank"] = rank
+
+    if retrieval_trace is not None:
+        retrieval_trace.candidates = [dict(result) for result in results[:candidate_k]]
 
     rw = float(qcfg.get("recency_weight", 0.0) or 0.0)
     rhl = float(qcfg.get("recency_half_life_days", 30.0))
@@ -381,13 +440,31 @@ def query_units(
             results, recency_weight=rw, recency_half_life_days=rhl
         )
 
-    fetch_for_rerank = candidate_k if use_rerank else top_k
-    if use_rerank and results:
-        from rerank import rerank as rerank_fn
-
-        results = rerank_fn(text, results[:fetch_for_rerank], models["rerank_model"], top_k)
-
     results = _apply_keyword_rank(text, results)
+    for rank, result in enumerate(results, 1):
+        result["pre_rerank_rank"] = rank
+    if results:
+        if (
+            view is not None
+            and str((cfg.get("eval") or {}).get("rerank_mode") or "").strip()
+            == "identity"
+        ):
+            results = _identity_eval_rerank(results, candidate_k)
+        else:
+            from rerank import rerank as rerank_fn
+
+            model_name = str(models.get("rerank_model") or DEFAULT_RERANK_MODEL).strip()
+            results = rerank_fn(text, results[:candidate_k], model_name, candidate_k)
+    if retrieval_trace is not None:
+        retrieval_trace.reranked = [dict(result) for result in results]
+    results = _fuse_retrieval_ranks(
+        results,
+        semantic_weight=float(qcfg.get("semantic_rank_weight", 2.0)),
+        rerank_weight=float(qcfg.get("rerank_rank_weight", 1.0)),
+    )[:top_k]
+    if retrieval_trace is not None:
+        retrieval_trace.rank_fused = [dict(result) for result in results]
+
     if not skip_ledger_priority:
         results = _merge_priority_hits(results, ledger_extras)
     return results[:top_k]
