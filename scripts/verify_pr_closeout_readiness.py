@@ -31,10 +31,12 @@ if str(_SCRIPTS) not in sys.path:
 
 # Imports after sys.path so sibling scripts resolve when run as a file.
 from verify_exact_tip_lane_passes import (  # pylint: disable=wrong-import-position
+    ALLOWED_AUTHORS,
     EvidenceItem,
     HEX40,
     fetch_pr_evidence,
     gh_json,
+    is_edited,
     verify_exact_tip_lane_passes,
     whole_token_sha_present,
 )
@@ -142,14 +144,22 @@ def count_unresolved_threads(owner: str, repo: str, pr: int) -> int:
 
 
 def assert_mutex_acquired(items: Sequence[EvidenceItem], *, pr: int) -> None:
-    """Latest MAIN-MERGE-MUTEX comment must be ACQUIRED for this PR."""
+    """Latest MAIN-MERGE-MUTEX comment must be ACQUIRED for this PR.
+
+    Only unedited issue comments from ALLOWED_AUTHORS qualify (forge-resistant).
+    """
     mutex_items = [
         it
         for it in items
-        if it.kind == "issue_comment" and MUTEX_ANY_RE.search(it.body or "")
+        if it.kind == "issue_comment"
+        and it.author in ALLOWED_AUTHORS
+        and not is_edited(it)
+        and MUTEX_ANY_RE.search(it.body or "")
     ]
     if not mutex_items:
-        raise RuntimeError("no MAIN-MERGE-MUTEX comments found")
+        raise RuntimeError(
+            "no MAIN-MERGE-MUTEX comments from allowed unedited authors"
+        )
     mutex_items.sort(key=lambda it: it.sort_key)
     latest = mutex_items[-1]
     body = (latest.body or "").strip()
@@ -158,8 +168,6 @@ def assert_mutex_acquired(items: Sequence[EvidenceItem], *, pr: int) -> None:
         raise RuntimeError(
             f"latest mutex token is not ACQUIRED for PR #{pr}: {body!r}"
         )
-    if re.search(r"\b(RELEASED|HELD)\b", body):
-        raise RuntimeError(f"latest mutex token is RELEASED/HELD: {body!r}")
 
 
 def check_body(body: str, *, sha: str, base: str) -> list[str]:
@@ -261,7 +269,7 @@ def verify_closeout_readiness(inp: CloseoutInputs) -> tuple[bool, list[str]]:
         except RuntimeError as exc:
             errs.append(str(exc))
 
-    ok_lanes, lane_msgs = verify_exact_tip_lane_passes(items, sha=sha)
+    ok_lanes, lane_msgs = verify_exact_tip_lane_passes(items, sha=sha, base=base)
     messages.extend(lane_msgs)
     if not ok_lanes:
         errs.append("exact-tip lane PASS verifier failed")
