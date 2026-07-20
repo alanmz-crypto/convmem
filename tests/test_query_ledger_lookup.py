@@ -50,8 +50,12 @@ class QueryUnitsLedgerLookupTests(unittest.TestCase):
     @patch("query.open_chroma_for_read")
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
     @patch("query.load_config")
+    @patch(
+        "rerank.rerank",
+        side_effect=lambda _query, candidates, _model, top_k: candidates[:top_k],
+    )
     def test_protocol_anchor_query_returns_c311(
-        self, mock_cfg, _embed, mock_open, mock_lookup
+        self, _rerank, mock_cfg, _embed, mock_open, mock_lookup
     ):
         mock_cfg.return_value = {
             "models": {"embed_model": "nomic-embed-text", "ollama_host": "http://x"},
