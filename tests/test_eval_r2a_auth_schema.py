@@ -128,6 +128,39 @@ class R2aAuthSchemaTests(unittest.TestCase):
         errs = validate_run_manifest_schema(body)
         self.assertTrue(any("Gate 1" in e or "merged_harness" in e for e in errs))
 
+    def test_t4b_r2a_empty_embed_host_fails_schema(self):
+        """Empty/whitespace host must fail schema (not only later bind)."""
+        for host in ("", "   "):
+            with self.subTest(host=repr(host)):
+                body = make_r2a_run_manifest_for_tests(
+                    paths={
+                        "live_config": "/tmp/l",
+                        "out_dir": "/tmp/o",
+                        "chroma_dir": "/tmp/c",
+                        "embed_host": host,
+                    }
+                )
+                errs = validate_run_manifest_schema(body)
+                self.assertTrue(
+                    any("embed_host" in e for e in errs),
+                    msg=errs,
+                )
+        body_top = make_r2a_run_manifest_for_tests(
+            paths={
+                "live_config": "/tmp/l",
+                "out_dir": "/tmp/o",
+                "chroma_dir": "/tmp/c",
+            }
+        )
+        body_top.pop("embed_host", None)
+        body_top["paths"].pop("embed_host", None)
+        body_top["embed_host"] = ""
+        body_top["ryan_approved_manifest_sha256"] = canonical_manifest_body_sha256(
+            body_top
+        )
+        errs_top = validate_run_manifest_schema(body_top)
+        self.assertTrue(any("embed_host" in e for e in errs_top), msg=errs_top)
+
     def test_t5_r2a_missing_or_mismatched_sidecar(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
