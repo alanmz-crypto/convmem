@@ -75,13 +75,15 @@ authorized_revision: 6a2bd97af32f331caf47bcde8564c25e88ccbf26
 
 ## Procedural controls
 
-- Approved command path only (no generic/manual mkdir outside the authorized command).
-- Pre/post read-only inventory of `out_dir/` and `out_dir/shadow.toml` for both arms.
-- Diff inventories; stop on unexpected paths.
-- Note if the shell is unrestricted (procedural risk).
-- Independent post-run verify: **Kiro** (not Copilot CLI self-audit).
+Binding verify procedure: [`../plans/VERIFY-r2a-config-generation.md`](../plans/VERIFY-r2a-config-generation.md) (V0–V7).
 
-## Completed packets (hashes filled — grant still pending)
+- **`convmem doctor` → `restic_gate: PASS` is absolute** for live eval-root R2a. No hermetic/docs waiver.
+- Per-arm sequence: packet integrity → pre-state STOP (targets must not exist; no symlinks) → exact argv once → Kiro arm PASS → only then the sibling arm → cross-arm + whole-run-root inventory.
+- Command evidence required (cwd, argv vector, timestamps, exit, stdout/stderr, `shadow.toml` SHA). Exit `0` required; file existence alone ≠ success.
+- Kiro narrow `tomllib` diff (not generator allowlist). Kiro performs no cleanup/correction.
+- Future grants must follow VERIFY V0–V7; do not re-run this job without a **new** Ryan grant.
+
+## Completed packets (hashes filled; job granted and executed)
 
 ### Baseline
 
