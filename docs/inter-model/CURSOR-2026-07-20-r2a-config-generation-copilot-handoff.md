@@ -15,7 +15,7 @@
 
 ## Exception status
 
-**Manifests on disk; grant still pending.** Ryan accepted the packet *proposal* only (2026-07-20). Cursor wrote manifests + sidecars under `~/.local/share/convmem/authorizations/r2a/…` (not eval root). No `config_generation` ran; eval root for this run_id does not exist. Live run waits for Ryan’s separate `ACCEPT AND GRANT` with the completed packets below.
+**GRANTED and executed (2026-07-20).** Ryan: `ACCEPT AND GRANT`. Cursor ran both exact `exact_command_tuple`s. Post inventory (only): `baseline/shadow.toml`, `challenger/shadow.toml`. No `chroma/` dirs created. Next: Kiro independent verify of the two `shadow.toml` files.
 
 **Schema note:** `paths.embed_host` was added so the #52 binder path-binding succeeds (required with `CONFIG_GENERATION_FIELDS`).
 
