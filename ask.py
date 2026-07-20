@@ -290,6 +290,13 @@ def _compact_trace_row(result: dict, *, origin: str | None = None) -> dict:
     row = {
         "id": result.get("id"),
         "score": result.get("score"),
+        "semantic_rank": result.get("semantic_rank"),
+        "pre_rerank_rank": result.get("pre_rerank_rank"),
+        "rerank_score": result.get("rerank_score"),
+        "rerank_score_norm": result.get("rerank_score_norm"),
+        "rerank_rank": result.get("rerank_rank"),
+        "rank_fusion_score": result.get("rank_fusion_score"),
+        "retrieval_rank": result.get("retrieval_rank"),
         "rank_score": result.get("rank_score"),
         "evidence_boost": result.get("evidence_boost"),
         "recency_boost": result.get("recency_boost"),
@@ -802,6 +809,8 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
             stages["candidates"] = _trace_stage(
                 results, limit=limit, origins=["raw_summary"] * len(results)
             )
+            stages["semantic_reranked"] = _skipped_stage("raw_mode")
+            stages["rank_fused"] = _skipped_stage("raw_mode")
             stages["evidence_reranked"] = _skipped_stage("raw_mode")
             stages["ledger_deduped"] = _skipped_stage("raw_mode")
             stages["recent_injected"] = _skipped_stage("raw_mode")
@@ -810,12 +819,32 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
         origins = ["raw_summary"] * len(selection)
         context, citations, blocks = _format_selection(selection, unit_flags)
     else:
+        from query import QueryUnitTrace
+
+        query_trace = QueryUnitTrace() if trace else None
         units = query_units(
-            search_q, top_k=fetch_k, domain=domain, site=site, cfg=cfg
+            search_q,
+            top_k=fetch_k,
+            domain=domain,
+            site=site,
+            cfg=cfg,
+            retrieval_trace=query_trace,
         )
         if trace:
             stages["candidates"] = _trace_stage(
-                units, limit=limit, origins=["unit"] * len(units)
+                query_trace.candidates or units,
+                limit=limit,
+                origins=["unit"] * len(query_trace.candidates or units),
+            )
+            stages["semantic_reranked"] = _trace_stage(
+                query_trace.reranked or units,
+                limit=limit,
+                origins=["unit"] * len(query_trace.reranked or units),
+            )
+            stages["rank_fused"] = _trace_stage(
+                query_trace.rank_fused or units,
+                limit=limit,
+                origins=["unit"] * len(query_trace.rank_fused or units),
             )
         if evidence:
             units, ev_stages = _apply_evidence_and_recent(
