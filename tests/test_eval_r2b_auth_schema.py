@@ -18,6 +18,7 @@ from eval_corpus.run_manifest import (
 )
 from tests.r2b_hermetic import (
     bind_r2b_pass_snapshot,
+    capture_runtime,
     fresh_placeholder_snapshot,
     r2b_auth_dir,
     r2b_source_paths,
@@ -337,12 +338,7 @@ class R2bCapabilityTests(unittest.TestCase):
                 bind_capture(
                     authorize_fixture=False,
                     run_manifest_path=man,
-                    runtime={
-                        "export": paths["export"],
-                        "processed": paths["processed"],
-                        "capture_dir": paths["capture_dir"],
-                        "chroma_dir": paths["chroma_dir"],
-                    },
+                    runtime=capture_runtime(paths),
                 )
             self.assertIn("bind_r2b_capture", str(ctx.exception))
 
@@ -395,12 +391,7 @@ class R2bCapabilityTests(unittest.TestCase):
             with self.assertRaises(PermissionError) as ctx:
                 bind_r2b_capture(
                     run_manifest_path=man,
-                    runtime={
-                        "export": paths["export"],
-                        "processed": paths["processed"],
-                        "capture_dir": paths["capture_dir"],
-                        "chroma_dir": paths["chroma_dir"],
-                    },
+                    runtime=capture_runtime(paths),
                     restic_gate_fn=lambda: None,
                     snapshot_recompute_fn=lambda **_kw: snap,
                 )
@@ -420,12 +411,7 @@ class R2bCapabilityTests(unittest.TestCase):
             with self.assertRaises(PermissionError) as ctx:
                 bind_r2b_capture(
                     run_manifest_path=man,
-                    runtime={
-                        "export": paths["export"],
-                        "processed": paths["processed"],
-                        "capture_dir": paths["capture_dir"],
-                        "chroma_dir": paths["chroma_dir"],
-                    },
+                    runtime=capture_runtime(paths),
                     snapshot_recompute_fn=_wrong_snapshot,
                     restic_gate_fn=lambda: None,
                 )

@@ -148,6 +148,16 @@ def trusted_snapshot_for_paths(
     return snap
 
 
+def capture_runtime(paths: dict[str, str]) -> dict[str, str]:
+    """Exact CAPTURE_FIELDS runtime dict from hermetic path strings."""
+    return {
+        "export": paths["export"],
+        "processed": paths["processed"],
+        "capture_dir": paths["capture_dir"],
+        "chroma_dir": paths["chroma_dir"],
+    }
+
+
 def bind_r2b_pass_snapshot(
     *,
     manifest_path: Path,
@@ -161,12 +171,7 @@ def bind_r2b_pass_snapshot(
 
     return bind_r2b_capture(
         run_manifest_path=manifest_path,
-        runtime={
-            "export": paths["export"],
-            "processed": paths["processed"],
-            "capture_dir": paths["capture_dir"],
-            "chroma_dir": paths["chroma_dir"],
-        },
+        runtime=capture_runtime(paths),
         snapshot_recompute_fn=_pass_snapshot,
         restic_gate_fn=lambda: None,
     )
