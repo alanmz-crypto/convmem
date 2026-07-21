@@ -372,8 +372,8 @@ def build_corpus_package(
     }
 
 
-def _r2b_artifact_inventory(*, processed_state: str) -> list[str]:
-    """Sorted artifact inventory for R2b completion marker."""
+def r2b_artifact_inventory(*, processed_state: str) -> list[str]:
+    """Sorted artifact inventory for R2b completion marker (VERIFY / tests)."""
     base = [
         "capture_report.json",
         "chroma_documents.json",
@@ -387,6 +387,10 @@ def _r2b_artifact_inventory(*, processed_state: str) -> list[str]:
     if processed_state == "present":
         base.append("processed.json")
     return sorted(base)
+
+
+def _r2b_artifact_inventory(*, processed_state: str) -> list[str]:
+    return r2b_artifact_inventory(processed_state=processed_state)
 
 
 def _r2b_artifact_sha256(capture_dir: Path, *, processed_state: str) -> dict[str, str]:

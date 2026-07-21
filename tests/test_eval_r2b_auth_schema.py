@@ -16,57 +16,14 @@ from eval_corpus.run_manifest import (
     validate_run_manifest_schema,
     write_approval_sidecar,
 )
-
-
-def _write_json(path: Path, body: dict) -> Path:
-    path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
-    return path
-
-
-def _r2b_paths(root: Path, run_id: str = "test-r2b-run") -> dict[str, str]:
-    """Create hermetic paths containing eval-root and auth-root markers."""
-    eval_base = (
-        root / ".local" / "share" / "convmem" / "eval" / run_id / "capture"
-    )
-    auth_base = (
-        root
-        / ".local"
-        / "share"
-        / "convmem"
-        / "authorizations"
-        / "r2b"
-        / run_id
-    )
-    export = root / "source" / "knowledge_units.jsonl"
-    processed = root / "source" / "processed.json"
-    chroma_dir = root / "source" / "chroma"
-
-    for d in [eval_base.parent, auth_base, export.parent, chroma_dir]:
-        d.mkdir(parents=True, exist_ok=True)
-
-    export.write_text('{"id":"unit1"}\n', encoding="utf-8")
-    processed.write_text("{}", encoding="utf-8")
-
-    return {
-        "export": str(export),
-        "processed": str(processed),
-        "capture_dir": str(eval_base),
-        "chroma_dir": str(chroma_dir),
-    }
-
-
-def _fresh_snapshot() -> dict:
-    return {
-        "export_sha256": "a" * 64,
-        "processed_state": "present",
-        "processed_sha256": "b" * 64,
-        "chroma_collection_name": "knowledge_units",
-        "chroma_collection_id": "test-coll-uuid",
-        "chroma_extracted_unit_count": 5,
-        "chroma_sorted_id_hash": "c" * 64,
-        "chroma_capture_slice_sha256": "d" * 64,
-        "snapshot_timestamp": datetime.now(timezone.utc).isoformat(),
-    }
+from tests.r2b_hermetic import (
+    bind_r2b_pass_snapshot,
+    fresh_placeholder_snapshot,
+    r2b_auth_dir,
+    r2b_source_paths,
+    trusted_snapshot_for_paths,
+    write_json,
+)
 
 
 class R2bSchemaValidationTests(unittest.TestCase):
@@ -74,7 +31,7 @@ class R2bSchemaValidationTests(unittest.TestCase):
 
     def test_valid_r2b_schema(self):
         with tempfile.TemporaryDirectory() as td:
-            paths = _r2b_paths(Path(td))
+            paths = r2b_source_paths(Path(td))
             body = make_r2b_run_manifest_for_tests(paths=paths)
             errs = validate_r2b_manifest_schema(body)
             self.assertEqual(errs, [], msg=errs)
@@ -215,14 +172,14 @@ class R2bSourceSnapshotSchemaTests(unittest.TestCase):
         body = make_r2b_run_manifest_for_tests(
             paths={"export": "/e", "processed": "/p",
                    "capture_dir": "/c", "chroma_dir": "/d"},
-            source_snapshot=_fresh_snapshot(),
+            source_snapshot=fresh_placeholder_snapshot(),
         )
         errs = validate_r2b_manifest_schema(body)
         snap_errs = [e for e in errs if "source_snapshot" in e]
         self.assertEqual(snap_errs, [], msg=snap_errs)
 
     def test_bad_export_sha(self):
-        snap = _fresh_snapshot()
+        snap = fresh_placeholder_snapshot()
         snap["export_sha256"] = "short"
         body = make_r2b_run_manifest_for_tests(
             paths={"export": "/e", "processed": "/p",
@@ -233,7 +190,7 @@ class R2bSourceSnapshotSchemaTests(unittest.TestCase):
         self.assertTrue(any("export_sha256" in e for e in errs))
 
     def test_processed_sha_present_requires_hex(self):
-        snap = _fresh_snapshot()
+        snap = fresh_placeholder_snapshot()
         snap["processed_state"] = "present"
         snap["processed_sha256"] = None
         body = make_r2b_run_manifest_for_tests(
@@ -245,7 +202,7 @@ class R2bSourceSnapshotSchemaTests(unittest.TestCase):
         self.assertTrue(any("processed_sha256" in e for e in errs))
 
     def test_processed_sha_absent_must_be_null(self):
-        snap = _fresh_snapshot()
+        snap = fresh_placeholder_snapshot()
         snap["processed_state"] = "absent"
         snap["processed_sha256"] = "b" * 64
         body = make_r2b_run_manifest_for_tests(
@@ -257,7 +214,7 @@ class R2bSourceSnapshotSchemaTests(unittest.TestCase):
         self.assertTrue(any("processed_sha256" in e for e in errs))
 
     def test_empty_collection_name(self):
-        snap = _fresh_snapshot()
+        snap = fresh_placeholder_snapshot()
         snap["chroma_collection_name"] = ""
         body = make_r2b_run_manifest_for_tests(
             paths={"export": "/e", "processed": "/p",
@@ -268,7 +225,7 @@ class R2bSourceSnapshotSchemaTests(unittest.TestCase):
         self.assertTrue(any("chroma_collection_name" in e for e in errs))
 
     def test_null_collection_id(self):
-        snap = _fresh_snapshot()
+        snap = fresh_placeholder_snapshot()
         snap["chroma_collection_id"] = None
         body = make_r2b_run_manifest_for_tests(
             paths={"export": "/e", "processed": "/p",
@@ -279,7 +236,7 @@ class R2bSourceSnapshotSchemaTests(unittest.TestCase):
         self.assertTrue(any("chroma_collection_id" in e for e in errs))
 
     def test_negative_unit_count(self):
-        snap = _fresh_snapshot()
+        snap = fresh_placeholder_snapshot()
         snap["chroma_extracted_unit_count"] = -1
         body = make_r2b_run_manifest_for_tests(
             paths={"export": "/e", "processed": "/p",
@@ -290,7 +247,7 @@ class R2bSourceSnapshotSchemaTests(unittest.TestCase):
         self.assertTrue(any("chroma_extracted_unit_count" in e for e in errs))
 
     def test_bool_unit_count_rejected(self):
-        snap = _fresh_snapshot()
+        snap = fresh_placeholder_snapshot()
         snap["chroma_extracted_unit_count"] = True
         body = make_r2b_run_manifest_for_tests(
             paths={"export": "/e", "processed": "/p",
@@ -301,7 +258,7 @@ class R2bSourceSnapshotSchemaTests(unittest.TestCase):
         self.assertTrue(any("chroma_extracted_unit_count" in e for e in errs))
 
     def test_naive_timestamp_rejected(self):
-        snap = _fresh_snapshot()
+        snap = fresh_placeholder_snapshot()
         snap["snapshot_timestamp"] = "2026-07-20T12:00:00"
         body = make_r2b_run_manifest_for_tests(
             paths={"export": "/e", "processed": "/p",
@@ -361,70 +318,13 @@ class R2bCapabilityTests(unittest.TestCase):
 
     def _setup_r2b_env(self, root: Path, run_id: str = "test-r2b-run"):
         """Create an R2b environment with manifest, sidecar, and source files."""
-        import sqlite3
-
-        paths = _r2b_paths(root, run_id)
-        chroma_dir = Path(paths["chroma_dir"])
-        db = chroma_dir / "chroma.sqlite3"
-        conn = sqlite3.connect(str(db))
-        conn.execute("CREATE TABLE collections (id TEXT, name TEXT)")
-        conn.execute("CREATE TABLE segments (id TEXT, collection TEXT, scope TEXT)")
-        conn.execute(
-            "CREATE TABLE embeddings "
-            "(id INTEGER PRIMARY KEY, embedding_id TEXT, segment_id TEXT)"
-        )
-        conn.execute(
-            "CREATE TABLE embedding_metadata "
-            "(id INTEGER, key TEXT, string_value TEXT, bool_value INTEGER)"
-        )
-        conn.execute(
-            "INSERT INTO collections VALUES (?, ?)",
-            ("test-coll-uuid", "knowledge_units"),
-        )
-        conn.execute(
-            "INSERT INTO segments VALUES (?, ?, ?)",
-            ("seg1", "test-coll-uuid", "METADATA"),
-        )
-        conn.execute(
-            "INSERT INTO embeddings VALUES (?, ?, ?)", (1, "unit1", "seg1")
-        )
-        conn.execute(
-            "INSERT INTO embedding_metadata VALUES (?, ?, ?, ?)",
-            (1, "chroma:document", "doc text", None),
-        )
-        conn.commit()
-        conn.close()
-
-        from eval_corpus.capture import compute_chroma_capture_identity
-        from eval_corpus.io_atomic import sha256_file
-
-        identity = compute_chroma_capture_identity(chroma_dir)
-        snap = {
-            "export_sha256": sha256_file(paths["export"]),
-            "processed_state": "present",
-            "processed_sha256": sha256_file(paths["processed"]),
-            "chroma_collection_name": identity["collection_name"],
-            "chroma_collection_id": identity["collection_id"],
-            "chroma_extracted_unit_count": identity["extracted_unit_count"],
-            "chroma_sorted_id_hash": identity["sorted_id_hash"],
-            "chroma_capture_slice_sha256": identity["capture_slice_sha256"],
-            "snapshot_timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
+        paths = r2b_source_paths(root, run_id)
+        snap = trusted_snapshot_for_paths(paths)
+        snap["snapshot_timestamp"] = datetime.now(timezone.utc).isoformat()
         body = make_r2b_run_manifest_for_tests(
             paths=paths, run_id=run_id, source_snapshot=snap
         )
-
-        auth_dir = (
-            root
-            / ".local"
-            / "share"
-            / "convmem"
-            / "authorizations"
-            / "r2b"
-            / run_id
-        )
-        man = _write_json(auth_dir / "capture.json", body)
+        man = write_json(r2b_auth_dir(root, run_id) / "capture.json", body)
         write_approval_sidecar(man)
         return man, paths, body, snap
 
@@ -447,24 +347,11 @@ class R2bCapabilityTests(unittest.TestCase):
             self.assertIn("bind_r2b_capture", str(ctx.exception))
 
     def test_r2b_capability_immutable(self):
-        from eval_corpus.r2b_capture_auth import bind_r2b_capture
-
         with tempfile.TemporaryDirectory() as td:
             man, paths, _body, snap = self._setup_r2b_env(Path(td))
 
-            def _pass_snapshot(**_kw):
-                return snap
-
-            cap = bind_r2b_capture(
-                run_manifest_path=man,
-                runtime={
-                    "export": paths["export"],
-                    "processed": paths["processed"],
-                    "capture_dir": paths["capture_dir"],
-                    "chroma_dir": paths["chroma_dir"],
-                },
-                snapshot_recompute_fn=_pass_snapshot,
-                restic_gate_fn=lambda: None,
+            cap = bind_r2b_pass_snapshot(
+                manifest_path=man, paths=paths, snap=snap
             )
 
             with self.assertRaises(AttributeError):
@@ -545,24 +432,11 @@ class R2bCapabilityTests(unittest.TestCase):
             self.assertIn("mismatch", str(ctx.exception).lower())
 
     def test_r2b_corrupt_sidecar_refused(self):
-        from eval_corpus.r2b_capture_auth import bind_r2b_capture
-
         with tempfile.TemporaryDirectory() as td:
             man, paths, _body, snap = self._setup_r2b_env(Path(td))
 
-            def _pass_snapshot(**_kw):
-                return snap
-
-            cap = bind_r2b_capture(
-                run_manifest_path=man,
-                runtime={
-                    "export": paths["export"],
-                    "processed": paths["processed"],
-                    "capture_dir": paths["capture_dir"],
-                    "chroma_dir": paths["chroma_dir"],
-                },
-                snapshot_recompute_fn=_pass_snapshot,
-                restic_gate_fn=lambda: None,
+            cap = bind_r2b_pass_snapshot(
+                manifest_path=man, paths=paths, snap=snap
             )
 
             side = man.with_suffix(man.suffix + ".approved.sha256")
