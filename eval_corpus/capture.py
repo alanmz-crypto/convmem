@@ -98,14 +98,19 @@ def extract_chroma_capture_slice(
     finally:
         conn.close()
 
+    # Same UTF-8 byte ordering as compute_chroma_capture_identity.
     return {
         "collection_name": collection_name,
-        "ids": sorted(seen_ids),
+        "ids": sorted(seen_ids, key=_utf8_id_sort_key),
         "count": len(seen_ids),
-        "superseded_ids": sorted(superseded_ids),
+        "superseded_ids": sorted(superseded_ids, key=_utf8_id_sort_key),
         "documents": documents,
         "chroma_sqlite_sha256": sha256_file(db) if db.is_file() else "",
     }
+
+
+def _utf8_id_sort_key(eid: str) -> bytes:
+    return eid.encode("utf-8")
 
 
 def compute_chroma_capture_identity(
@@ -178,7 +183,7 @@ def compute_chroma_capture_identity(
         if "\r" in eid or "\n" in eid:
             raise ValueError(f"Chroma ID contains CR/LF: {eid!r}")
 
-    sorted_ids = sorted(records.keys(), key=lambda x: x.encode("utf-8"))
+    sorted_ids = sorted(records.keys(), key=_utf8_id_sort_key)
 
     id_hash_input = b"".join(
         eid.encode("utf-8") + b"\n" for eid in sorted_ids
@@ -409,6 +414,65 @@ def _r2b_artifact_sha256(capture_dir: Path, *, processed_state: str) -> dict[str
     return {name: sha256_file(capture_dir / name) for name in sorted(names)}
 
 
+def _require_r2b_caller_paths_match_bindings(
+    *,
+    export_src: Path,
+    processed_src: Path,
+    capture_dir: Path,
+    chroma_dir: Path,
+    bindings: Any,
+) -> None:
+    """Refuse caller paths that are not byte-equal to the approved bindings."""
+    pairs = (
+        ("export", export_src, bindings.export),
+        ("processed", processed_src, bindings.processed),
+        ("capture_dir", capture_dir, bindings.capture_dir),
+        ("chroma_dir", chroma_dir, bindings.chroma_dir),
+    )
+    for name, caller, approved in pairs:
+        if str(Path(caller)) != str(Path(approved)):
+            raise PermissionError(
+                f"R2b caller {name} is not bound to approved path: "
+                f"caller={caller!s}, approved={approved!s}"
+            )
+
+
+def _r2b_snapshot_mismatch(
+    approved: dict[str, Any],
+    *,
+    export_sha: str,
+    processed_state: str,
+    processed_sha: str | None,
+    chroma_identity: dict[str, Any],
+) -> str | None:
+    """Return an error string if captured state diverges from approved snapshot."""
+    if export_sha != approved.get("export_sha256"):
+        return "captured export_sha256 does not match approved source_snapshot"
+    if processed_state != approved.get("processed_state"):
+        return "captured processed_state does not match approved source_snapshot"
+    if processed_state == "present":
+        if processed_sha != approved.get("processed_sha256"):
+            return (
+                "captured processed_sha256 does not match approved source_snapshot"
+            )
+    elif processed_sha is not None:
+        return "processed_sha256 must be null when processed_state is absent"
+    checks = (
+        ("chroma_collection_name", chroma_identity.get("collection_name")),
+        ("chroma_collection_id", chroma_identity.get("collection_id")),
+        ("chroma_extracted_unit_count", chroma_identity.get("extracted_unit_count")),
+        ("chroma_sorted_id_hash", chroma_identity.get("sorted_id_hash")),
+        (
+            "chroma_capture_slice_sha256",
+            chroma_identity.get("capture_slice_sha256"),
+        ),
+    )
+    for key, actual in checks:
+        if actual != approved.get(key):
+            return f"captured {key} does not match approved source_snapshot"
+    return None
+
+
 def _run_r2b_capture(  # pylint: disable=too-many-locals
     *,
     export_src: Path,
@@ -420,6 +484,7 @@ def _run_r2b_capture(  # pylint: disable=too-many-locals
     """R2b capture path: single attempt, marker-last, capability-gated."""
     from eval_corpus.r2b_capture_auth import (
         canonical_source_snapshot_sha256,
+        compare_source_snapshots,
         materialize_r2b_write_authorization,
     )
 
@@ -427,6 +492,22 @@ def _run_r2b_capture(  # pylint: disable=too-many-locals
         r2b_capability,
         snapshot_recompute_fn=recompute_source_snapshot,
     )
+    _require_r2b_caller_paths_match_bindings(
+        export_src=export_src,
+        processed_src=processed_src,
+        capture_dir=capture_dir,
+        chroma_dir=chroma_dir,
+        bindings=bindings,
+    )
+
+    # Approved bindings are the only write authority — ignore caller paths after.
+    export_src = Path(bindings.export)
+    processed_src = Path(bindings.processed)
+    capture_dir = Path(bindings.capture_dir)
+    chroma_dir = Path(bindings.chroma_dir)
+    approved = bindings.source_snapshot
+    collection_name = str(approved["chroma_collection_name"])
+    processed_state = str(approved["processed_state"])
 
     run_id = bindings.run_id
     capture_id = run_id
@@ -440,17 +521,47 @@ def _run_r2b_capture(  # pylint: disable=too-many-locals
     processed_dest = capture_dir / "processed.json"
 
     h_export = copy_under_export_lock(export_src, export_dest)
-    processed_state = "present" if processed_src.is_file() else "absent"
-    h_processed = ""
+    h_processed: str | None = None
     if processed_state == "present":
+        if not processed_src.is_file():
+            return _failed_r2b_result(
+                capture_id,
+                "approved processed_state is present but processed source missing",
+                capture_dir=capture_dir,
+            )
         h_processed = copy_under_processed_lock(processed_src, processed_dest)
+    elif processed_src.is_file():
+        return _failed_r2b_result(
+            capture_id,
+            "approved processed_state is absent but processed source exists",
+            capture_dir=capture_dir,
+        )
 
     if sha256_file(export_src) != h_export:
-        return _failed_r2b_result(capture_id, "export changed across copy")
+        return _failed_r2b_result(
+            capture_id, "export changed across copy", capture_dir=capture_dir
+        )
     if processed_state == "present" and sha256_file(processed_src) != h_processed:
-        return _failed_r2b_result(capture_id, "processed changed across copy")
+        return _failed_r2b_result(
+            capture_id, "processed changed across copy", capture_dir=capture_dir
+        )
 
-    chroma_slice = extract_chroma_capture_slice(chroma_dir)
+    chroma_identity = compute_chroma_capture_identity(
+        chroma_dir, collection_name=collection_name
+    )
+    mismatch = _r2b_snapshot_mismatch(
+        approved,
+        export_sha=h_export,
+        processed_state=processed_state,
+        processed_sha=h_processed,
+        chroma_identity=chroma_identity,
+    )
+    if mismatch:
+        return _failed_r2b_result(capture_id, mismatch, capture_dir=capture_dir)
+
+    chroma_slice = extract_chroma_capture_slice(
+        chroma_dir, collection_name=collection_name
+    )
     atomic_write_json(
         capture_dir / "chroma_extract.json",
         {
@@ -466,15 +577,38 @@ def _run_r2b_capture(  # pylint: disable=too-many-locals
     )
 
     if sha256_file(export_src) != h_export or sha256_file(export_dest) != h_export:
-        return _failed_r2b_result(capture_id, "export drifted after chroma extract")
+        return _failed_r2b_result(
+            capture_id,
+            "export drifted after chroma extract",
+            capture_dir=capture_dir,
+        )
     if processed_state == "present":
         if (
             sha256_file(processed_src) != h_processed
             or sha256_file(processed_dest) != h_processed
         ):
             return _failed_r2b_result(
-                capture_id, "processed drifted after chroma extract"
+                capture_id,
+                "processed drifted after chroma extract",
+                capture_dir=capture_dir,
             )
+
+    post_identity = compute_chroma_capture_identity(
+        chroma_dir, collection_name=collection_name
+    )
+    mismatch = _r2b_snapshot_mismatch(
+        approved,
+        export_sha=h_export,
+        processed_state=processed_state,
+        processed_sha=h_processed,
+        chroma_identity=post_identity,
+    )
+    if mismatch:
+        return _failed_r2b_result(
+            capture_id,
+            f"post-extract {mismatch}",
+            capture_dir=capture_dir,
+        )
 
     try:
         package = build_corpus_package(
@@ -512,7 +646,10 @@ def _run_r2b_capture(  # pylint: disable=too-many-locals
     raw_export_ids = [
         str(r.get("id") or "") for r in dedup.rows if r.get("id")
     ]
-    absent_from_chroma = sorted(set(raw_export_ids) - set(chroma_slice["ids"]))
+    absent_from_chroma = sorted(
+        set(raw_export_ids) - set(chroma_slice["ids"]),
+        key=_utf8_id_sort_key,
+    )
     spot = historical_spot_check_plan(
         absent_from_chroma, capture_id=capture_id, n=spot_check_n
     )
@@ -535,7 +672,7 @@ def _run_r2b_capture(  # pylint: disable=too-many-locals
         "capture_skew_ms": skew_ms,
         "input_export_path": str(export_src),
         "input_export_sha256": h_export,
-        "input_processed_sha256": h_processed,
+        "input_processed_sha256": h_processed or "",
         "input_export_lines": dedup.input_lines,
         "input_export_unique_ids": dedup.unique_ids,
         "dedup_method": "last_occurrence_by_id",
@@ -589,6 +726,27 @@ def _run_r2b_capture(  # pylint: disable=too-many-locals
             "spot_check": spot,
         }
 
+    try:
+        live = recompute_source_snapshot(
+            export=export_src,
+            processed=processed_src,
+            chroma_dir=chroma_dir,
+            collection_name=collection_name,
+        )
+        compare_source_snapshots(approved, live)
+    except PermissionError as exc:
+        report["status"] = "FAILED"
+        report["error"] = f"pre_marker_source_drift: {exc}"
+        atomic_write_json(capture_dir / "capture_report.json", report)
+        return {
+            "capture_report": report,
+            "chroma_slice": chroma_slice,
+            "package_manifest": package["manifest"],
+            "units": units,
+            "overlap": overlap,
+            "spot_check": spot,
+        }
+
     marker = {
         "marker_version": 1,
         "status": "CAPTURE_ARTIFACTS_COMPLETE",
@@ -596,9 +754,7 @@ def _run_r2b_capture(  # pylint: disable=too-many-locals
         "run_id": run_id,
         "capture_id": capture_id,
         "authorization_body_sha256": bindings.authorization_body_sha256,
-        "source_snapshot_sha256": canonical_source_snapshot_sha256(
-            bindings.source_snapshot
-        ),
+        "source_snapshot_sha256": canonical_source_snapshot_sha256(approved),
         "processed_state": processed_state,
         "package_sha256": package["manifest"]["package_sha256"],
         "unit_corpus_fingerprint": package["manifest"]["unit_corpus_fingerprint"],
@@ -623,17 +779,29 @@ def _run_r2b_capture(  # pylint: disable=too-many-locals
     }
 
 
-def _failed_r2b_result(capture_id: str, error: str) -> dict[str, Any]:
-    """Construct a FAILED R2b result without writing a marker."""
+def _failed_r2b_result(
+    capture_id: str,
+    error: str,
+    *,
+    capture_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Construct a FAILED R2b result without writing a marker.
+
+    When ``capture_dir`` already exists, persist ``capture_report.json`` as
+    operator evidence (architecture: early FAILED reports are useful).
+    """
+    report = {
+        "capture_id": capture_id,
+        "capture_timestamp": _now(),
+        "capture_schema_version": CAPTURE_SCHEMA_VERSION,
+        "attempt": 1,
+        "status": "FAILED",
+        "error": error,
+    }
+    if capture_dir is not None and Path(capture_dir).is_dir():
+        atomic_write_json(Path(capture_dir) / "capture_report.json", report)
     return {
-        "capture_report": {
-            "capture_id": capture_id,
-            "capture_timestamp": _now(),
-            "capture_schema_version": CAPTURE_SCHEMA_VERSION,
-            "attempt": 1,
-            "status": "FAILED",
-            "error": error,
-        },
+        "capture_report": report,
         "chroma_slice": None,
         "package_manifest": None,
         "units": [],

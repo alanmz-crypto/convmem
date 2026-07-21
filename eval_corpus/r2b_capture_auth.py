@@ -105,7 +105,7 @@ def canonical_source_snapshot_sha256(snapshot: dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _compare_snapshots(
+def compare_source_snapshots(
     approved: dict[str, Any], recomputed: dict[str, Any]
 ) -> None:
     """Verify recomputed snapshot matches approved snapshot (except timestamp)."""
@@ -332,7 +332,7 @@ def _build_r2b_capability_api() -> tuple[Any, Any]:
             processed=Path(manifest_paths["processed"]),
             chroma_dir=Path(manifest_paths["chroma_dir"]),
         )
-        _compare_snapshots(source_snapshot, recomputed)
+        compare_source_snapshots(source_snapshot, recomputed)
 
         capture_dir = Path(manifest_paths["capture_dir"])
         if capture_dir.exists():
@@ -416,7 +416,7 @@ def materialize_r2b_write_authorization(
         processed=bindings.processed,
         chroma_dir=bindings.chroma_dir,
     )
-    _compare_snapshots(source_snapshot, recomputed)
+    compare_source_snapshots(source_snapshot, recomputed)
 
     if bindings.capture_dir.exists():
         raise PermissionError(
@@ -431,6 +431,7 @@ __all__ = [
     "SnapshotRecomputeFn",
     "bind_r2b_capture",
     "canonical_source_snapshot_sha256",
+    "compare_source_snapshots",
     "is_r2b_eval_root_grant",
     "materialize_r2b_capability",
     "materialize_r2b_write_authorization",

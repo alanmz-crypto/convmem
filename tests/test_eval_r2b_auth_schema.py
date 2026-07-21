@@ -225,9 +225,42 @@ class R2bSourceSnapshotSchemaTests(unittest.TestCase):
         errs = validate_r2b_manifest_schema(body)
         self.assertTrue(any("chroma_collection_name" in e for e in errs))
 
+    def test_whitespace_collection_name_rejected(self):
+        snap = fresh_placeholder_snapshot()
+        snap["chroma_collection_name"] = "   "
+        body = make_r2b_run_manifest_for_tests(
+            paths={"export": "/e", "processed": "/p",
+                   "capture_dir": "/c", "chroma_dir": "/d"},
+            source_snapshot=snap,
+        )
+        errs = validate_r2b_manifest_schema(body)
+        self.assertTrue(any("chroma_collection_name" in e for e in errs))
+
     def test_null_collection_id(self):
         snap = fresh_placeholder_snapshot()
         snap["chroma_collection_id"] = None
+        body = make_r2b_run_manifest_for_tests(
+            paths={"export": "/e", "processed": "/p",
+                   "capture_dir": "/c", "chroma_dir": "/d"},
+            source_snapshot=snap,
+        )
+        errs = validate_r2b_manifest_schema(body)
+        self.assertTrue(any("chroma_collection_id" in e for e in errs))
+
+    def test_whitespace_collection_id_rejected(self):
+        snap = fresh_placeholder_snapshot()
+        snap["chroma_collection_id"] = "\t"
+        body = make_r2b_run_manifest_for_tests(
+            paths={"export": "/e", "processed": "/p",
+                   "capture_dir": "/c", "chroma_dir": "/d"},
+            source_snapshot=snap,
+        )
+        errs = validate_r2b_manifest_schema(body)
+        self.assertTrue(any("chroma_collection_id" in e for e in errs))
+
+    def test_non_string_collection_id_rejected(self):
+        snap = fresh_placeholder_snapshot()
+        snap["chroma_collection_id"] = 12345
         body = make_r2b_run_manifest_for_tests(
             paths={"export": "/e", "processed": "/p",
                    "capture_dir": "/c", "chroma_dir": "/d"},

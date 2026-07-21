@@ -497,11 +497,13 @@ def _validate_source_snapshot(snapshot: dict[str, Any]) -> list[str]:
     elif ps == "absent" and p_sha is not None:
         errors.append("source_snapshot.processed_sha256 must be null when absent")
     ccn = snapshot.get("chroma_collection_name")
-    if not isinstance(ccn, str) or not ccn:
+    if not isinstance(ccn, str) or not ccn.strip():
         errors.append("source_snapshot.chroma_collection_name must be a nonempty string")
     cci = snapshot.get("chroma_collection_id")
-    if cci is None or (isinstance(cci, str) and not cci):
-        errors.append("source_snapshot.chroma_collection_id must be non-null and nonempty")
+    if not isinstance(cci, str) or not cci.strip():
+        errors.append(
+            "source_snapshot.chroma_collection_id must be a nonempty string"
+        )
     ceuc = snapshot.get("chroma_extracted_unit_count")
     if not isinstance(ceuc, int) or isinstance(ceuc, bool) or ceuc < 0:
         errors.append(

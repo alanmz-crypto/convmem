@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
+from eval_corpus import capture as capture_mod
 from eval_corpus.capture import (
     compute_chroma_capture_identity,
+    extract_chroma_capture_slice,
     r2b_artifact_inventory,
     run_capture,
 )
@@ -209,6 +213,62 @@ class R2bCaptureMarkerTests(unittest.TestCase):
                 )
             self.assertIn("capability", str(ctx.exception).lower())
 
+    def test_caller_paths_must_match_approved_bindings(self):
+        """Capability cannot authorize capture from unbound caller paths."""
+        with tempfile.TemporaryDirectory() as td:
+            cap, paths, _body, _snap, _man = setup_r2b_capture_env(Path(td))
+            alt_export = Path(td) / "alt_export.jsonl"
+            alt_export.write_text(
+                Path(paths["export"]).read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            with self.assertRaises(PermissionError) as ctx:
+                run_capture(
+                    export_src=alt_export,
+                    processed_src=Path(paths["processed"]),
+                    capture_dir=Path(paths["capture_dir"]),
+                    chroma_dir=Path(paths["chroma_dir"]),
+                    r2b_capability=cap,
+                )
+            self.assertIn("not bound", str(ctx.exception).lower())
+            self.assertFalse(Path(paths["capture_dir"]).exists())
+
+    def test_early_failure_writes_capture_report(self):
+        """Early R2b FAILED paths persist capture_report.json on disk."""
+        with tempfile.TemporaryDirectory() as td:
+            cap, paths, _body, _snap, _man = setup_r2b_capture_env(Path(td))
+            export = Path(paths["export"])
+            orig_copy = capture_mod.copy_under_export_lock
+
+            def _copy_then_mutate_source(src: Path, dest: Path) -> str:
+                digest = orig_copy(src, dest)
+                export.write_text(
+                    '{"id":"mutated-after-copy"}\n', encoding="utf-8"
+                )
+                return digest
+
+            with mock.patch.object(
+                capture_mod,
+                "copy_under_export_lock",
+                _copy_then_mutate_source,
+            ):
+                result = run_capture(
+                    export_src=export,
+                    processed_src=Path(paths["processed"]),
+                    capture_dir=Path(paths["capture_dir"]),
+                    chroma_dir=Path(paths["chroma_dir"]),
+                    r2b_capability=cap,
+                )
+            self.assertEqual(result["capture_report"]["status"], "FAILED")
+            report_path = Path(paths["capture_dir"]) / "capture_report.json"
+            self.assertTrue(report_path.is_file())
+            on_disk = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual(on_disk["status"], "FAILED")
+            self.assertIn("export", on_disk["error"].lower())
+            self.assertFalse(
+                (Path(paths["capture_dir"]) / "corpus_package_manifest.json").exists()
+            )
+
 
 class R2bChromaIdentityTests(unittest.TestCase):
     """Test compute_chroma_capture_identity canonicalization."""
@@ -292,6 +352,31 @@ class R2bChromaIdentityTests(unittest.TestCase):
             )
             with self.assertRaises(ValueError):
                 compute_chroma_capture_identity(chroma_dir)
+
+    def test_extract_ids_use_utf8_byte_order(self):
+        with tempfile.TemporaryDirectory() as td:
+            chroma_dir = Path(td)
+            create_chroma_fixture(
+                chroma_dir,
+                [
+                    {"id": "z-unit", "document": "z"},
+                    {"id": "a-unit", "document": "a"},
+                ],
+            )
+            identity = compute_chroma_capture_identity(chroma_dir)
+            chroma_slice = extract_chroma_capture_slice(chroma_dir)
+            expected = sorted(
+                ["z-unit", "a-unit"], key=lambda x: x.encode("utf-8")
+            )
+            self.assertEqual(chroma_slice["ids"], expected)
+            # Identity hashed input must match extract's ordered ids.
+            id_hash_input = b"".join(
+                eid.encode("utf-8") + b"\n" for eid in expected
+            )
+            self.assertEqual(
+                identity["sorted_id_hash"],
+                hashlib.sha256(id_hash_input).hexdigest(),
+            )
 
 
 if __name__ == "__main__":
