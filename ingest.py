@@ -520,8 +520,11 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
     force_file: str | None,
     supersede_on_reindex: bool,
     verbose: bool,
+    tool: str = "inter-model",
+    source_type: str = "inter_model_doc",
+    author_model: str = "inter-model-index",
 ) -> tuple[bool, int]:
-    """Index one inter-model doc. Returns (committed, n_units)."""
+    """Index one inter-model or kiro-steering doc. Returns (committed, n_units)."""
     from inter_model_index import index_inter_model_messages
 
     chroma_dir = idx["chroma_dir"]
@@ -557,6 +560,9 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
             cfg=cfg,
             verbose=verbose,
             units_export=units_export if units_export else None,
+            tool=tool,
+            source_type=source_type,
+            author_model=author_model,
         )
     except Exception as e:
         if verbose:
@@ -851,7 +857,19 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             print(f"  [skip] parse failed {path}: {e}")
         return "ignored", 0, 0, 0, 0
 
-    if fmt == "inter_model_doc":
+    if fmt == "inter_model_doc" or fmt == "kiro_steering":
+        if fmt == "kiro_steering":
+            index_tool, index_source, index_author = (
+                "kiro",
+                "kiro_steering",
+                "kiro-steering-index",
+            )
+        else:
+            index_tool, index_source, index_author = (
+                "inter-model",
+                "inter_model_doc",
+                "inter-model-index",
+            )
         committed, n_units = _index_inter_model_file(
             cfg=cfg,
             idx=idx,
@@ -864,6 +882,9 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             force_file=force_file,
             supersede_on_reindex=supersede_on_reindex,
             verbose=verbose,
+            tool=index_tool,
+            source_type=index_source,
+            author_model=index_author,
         )
         if not committed:
             if verbose and n_units == 0:

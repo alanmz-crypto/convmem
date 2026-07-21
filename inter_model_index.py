@@ -46,11 +46,17 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
     cfg: dict,
     verbose: bool = True,
     units_export: Path | None = None,
+    tool: str = _TOOL,
+    source_type: str = "inter_model_doc",
+    author_model: str = "inter-model-index",
 ) -> int:
     """Embed each section message as a knowledge unit. Returns units indexed.
 
     ``cfg`` supplies ``index.processed_log`` for source-lock identity and
     exclusion reads. Export path follows ``units_export`` or cfg.
+
+    Optional ``tool`` / ``source_type`` / ``author_model`` let Kiro steering
+    reuse this fast path with distinct metadata (P1.0a).
     """
     src = Path(path)
     units_batch: list[tuple] = []
@@ -87,9 +93,9 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
             "source_path": path_key,
             "confidence": 1.0,
             "timestamp": msg.get("timestamp"),
-            "tool": _TOOL,
+            "tool": tool,
             "domain": _DOMAIN,
-            "author_model": "inter-model-index",
+            "author_model": author_model,
             "verifier_model": None,
         }
         meta = {
@@ -99,12 +105,12 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
             "source_path": path_key,
             "confidence": 1.0,
             "timestamp": unit["timestamp"] or "",
-            "tool": _TOOL,
+            "tool": tool,
             "start_offset": section_index,
             "domain": _DOMAIN,
             "author_model": unit["author_model"],
             "verifier_model": "",
-            "source_type": "inter_model_doc",
+            "source_type": source_type,
             "conversation_id": "",
             "session_id": "",
             "workspace_directory": "",
@@ -158,9 +164,10 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
                         uf.write(json.dumps(unit) + "\n")
             persist_ingest_dedupe(cfg, dedupe)
 
+    label = "kiro-steering" if source_type == "kiro_steering" else "inter-model"
     if verbose:
         print(
-            f"  [inter-model] {src.name}: {len(dedupe.accepted)} section units "
+            f"  [{label}] {src.name}: {len(dedupe.accepted)} section units "
             f"({len(dedupe.exact_suppressions)} exact suppressed, "
             f"{len(dedupe.semantic_candidates)} semantic candidates)"
         )
