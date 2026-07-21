@@ -1,13 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-20 (R2a toml-fix regenerate + R2b planning)
+**Updated:** 2026-07-20 (R2b capture-authorization architecture)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
 - **VERIFY every arc (2026-07-20):** Binding Planning OS rule — after Execute, every **arc** needs `docs/plans/VERIFY-<slug>.md` before close. Phase guide: [`../planning/VERIFY-PLANNING.md`](../planning/VERIFY-PLANNING.md); copy starter: [`../plans/VERIFY-TEMPLATE.md`](../plans/VERIFY-TEMPLATE.md). Kernel: [`../PLANNING-PROTOCOL.md`](../PLANNING-PROTOCOL.md). Example: [`../plans/VERIFY-r2a-config-generation.md`](../plans/VERIFY-r2a-config-generation.md).
 
-- **R2a toml-fix + R2b plan (2026-07-20):** Regenerated shadows under run `2026-07-20-r2a-nomic-vs-mxbai-toml-fix` (real TOML arrays; inventory OK; narrow diff PASS with `~` expand). **R2b:** planning arc opened — [`../plans/EXECUTION-2026-07-20-r2b-capture.md`](../plans/EXECUTION-2026-07-20-r2b-capture.md) + VERIFY stub [`../plans/VERIFY-r2b-capture.md`](../plans/VERIFY-r2b-capture.md). **Live R2b capture not authorized.**
+- **R2b capture authorization (2026-07-20):** Option A is settled in the proposed [`../plans/ARCHITECTURE-r2b-capture-auth.md`](../plans/ARCHITECTURE-r2b-capture-auth.md): phase-scoped `authorization_phase: "r2b"`, content-bound trusted source snapshot, deterministic one-attempt capture, binder-only write capability, safe run/path containment, and an expanded last atomic completion marker. [`../plans/EXECUTION-2026-07-20-r2b-capture.md`](../plans/EXECUTION-2026-07-20-r2b-capture.md) and filled [`../plans/VERIFY-r2b-capture.md`](../plans/VERIFY-r2b-capture.md) carry the staged gates, V1g full prohibited list, and marker-authority V4c. The replacement docs PR **Supersedes #64**; do not merge #64. **No implementation or live R2b capture is authorized.**
 
 - **HITL charter — Copilot lifecycle (#54, 2026-07-20):** **Merged and charter active** (`3ee9f28` on `main`). Same-SHA GitHub Copilot audit lane + Kiro PASSes recorded before merge. Canonical: [`TEAM-CHARTER-2026-07-06.md`](TEAM-CHARTER-2026-07-06.md); successor: [`CURSOR-2026-07-20-hitl-charter-copilot-lifecycle.md`](CURSOR-2026-07-20-hitl-charter-copilot-lifecycle.md); original handoff: [`CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md`](CURSOR-2026-07-19-hitl-charter-delegation-sol-high.md). **Deploy qualification:** Cursor and Kiro live surfaces match tip examples; Copilot CLI / Codex `AGENTS.md` still has three trailing builder-digest lines (charter-safe drift — not a #54 blocker). Do not treat #54 as deploy-blocked or awaiting review.
 
