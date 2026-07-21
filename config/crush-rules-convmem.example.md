@@ -137,11 +137,13 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 | Design review / sign-off | **Kiro** | Not involved |
 | Conflict adjudication (scarce) | **Sol-High** | Separate resource; hard gate only |
 | Ledger write / merge | **Ryan only** | Not involved |
+| Bound brief → GitHub PR lifecycle | **PR Steward** (default Codex) | Not involved |
 
-**Conditional Copilot use.** Use only for independent safety/isolation audits or targeted verification—not implementation, routine work, drafting, uncontested re-audits, or missing Cursor handoffs.
-**Sol-High is separate** from normal workflow and the Copilot audit lane.
+**PR Steward** is a Delivery-role overlay (brief-bound; no merge/grant/ledger).
 
-**Kiro is non-implementing and review-required.** It may write only explicitly requested architecture/plan/review documents; never code, tests, scripts, configuration, generated surfaces, or runtime state. Bounded autonomy does not expand this scope; implementation goes to Cursor.
+**Conditional Copilot.** Independent safety/isolation audits or targeted verification only—not implementation, routine work, drafting, uncontested re-audits, or missing Cursor handoffs. **Sol-High** is a separate scarce resource, not the Copilot audit lane.
+
+**Kiro** is non-implementing/review-required: only requested architecture/plan/review docs; never code/tests/scripts/config/generated/runtime. Implementation → Cursor.
 
 **Sol-High hard gate (Copilot audit lane + Kiro, same target + same revision).**
 Invoke only when **GitHub Copilot audit lane** and **Kiro** issue materially conflicting written **PASS or FAIL** verdicts on the **same artifact and revision**. Literal five-field prompt prefix:
@@ -159,7 +161,7 @@ Negative confirmation: not single-FAIL / deferral / abstention / silence / missi
 
 **Non-example (PR #52):** Copilot audit FAIL; Kiro defers → single-reviewer FAIL, not a conflict. Do not call Sol-High.
 
-**Full lifecycle, role table, Copilot invocation rules, and auth sequence:** `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
+**Full charter:** `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
 
 ## Bounded autonomy
 
