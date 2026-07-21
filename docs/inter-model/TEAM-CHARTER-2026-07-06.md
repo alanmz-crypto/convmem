@@ -118,6 +118,8 @@ flowchart TD
 
 **Lane boundaries:** Crush owns routine discovery and neutral framing. DeepSeek R1 challenges architecture; Claude reviews methodology; ChatGPT supplies strategy and synthesis; Kiro owns governing design review and sign-off; Cursor owns architecture, execution planning, and implementation. The GitHub Copilot audit lane is used only for code-grounded investigation, safety/isolation review, evidence integrity, and targeted rechecks. Ryan alone authorizes phases, deployment, promotion, cleanup, merges, and durable conclusions.
 
+**DeepSeek V4-Pro audit substitute:** When Ryan explicitly authorizes it for a named PR tip+base, DeepSeek V4-Pro via the official API may fill the Copilot audit-lane slot for that revision only. The substitute must use the locked runner/protocol; it does not enlarge DeepSeek `ask` capabilities and does not replace Copilot as the default governing audit lane.
+
 **Kiro is non-implementing and review-required.** Kiro may issue verdicts and sign-offs and may edit an architecture, plan, or review document only when Ryan explicitly requests that documentation task. Kiro must not edit implementation code, tests, scripts, configuration, generated surfaces, or runtime state; implement findings; or infer write authority from bounded autonomy. Implementation corrections return to Cursor.
 
 ---
@@ -323,6 +325,7 @@ convmem record --approve-last
 |------|---------|
 | **Lane** | Agent surface + capability tier + must-not rules (not a job title) |
 | **GitHub Copilot audit lane** | Governing conditional technical-review lane (formerly "Codex" in pre-2026-07-19 posts); VS Code Copilot surface; not the same as Sol-High |
+| **DeepSeek V4-Pro audit substitute** | Ryan-authorized, tip-scoped official-API stand-in for Copilot audit only; must use `scripts/deepseek_audit_substitute.py` + [`ARCHITECTURE-deepseek-v4pro-audit-substitute.md`](../plans/ARCHITECTURE-deepseek-v4pro-audit-substitute.md); ≠ Crush; ≠ `convmem ask`; ≠ merge/grant/ledger |
 | **Sol-High adjudicator** | Scarce conflict-resolution resource used only under the hard gate; separate from the GitHub Copilot audit lane |
 | **Crush lane** | Tier A shell agent for bug discovery; may run DeepSeek V4 weights but is still Crush |
 | **DeepSeek R1** | The DeepSeek R1 language model — entirely distinct from Authorization R1 below |
