@@ -50,29 +50,28 @@ class OperationBinderAdversarialTests(unittest.TestCase):
 
     def test_real_self_hash_without_sidecar_refuse(self):
         from eval_corpus.run_manifest import (
-            bind_capture,
+            bind_adjudicate,
             make_real_run_manifest_for_tests,
         )
 
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             paths = {
-                "export": str(root / "e.jsonl"),
-                "processed": str(root / "p.json"),
                 "capture_dir": str(root / "cap"),
-                "chroma_dir": str(root / "chroma"),
+                "adjudications": str(root / "adj"),
+                "acceptance_out": str(root / "out"),
             }
             for p in paths.values():
                 Path(p).parent.mkdir(parents=True, exist_ok=True)
                 Path(p).write_text("x\n", encoding="utf-8")
             body = make_real_run_manifest_for_tests(
-                paths=paths, operations=["capture"]
+                paths=paths, operations=["adjudicate"]
             )
             man = root / "run.json"
             man.write_text(json.dumps(body), encoding="utf-8")
             # No sidecar
             with self.assertRaises(PermissionError) as ctx:
-                bind_capture(
+                bind_adjudicate(
                     authorize_fixture=False,
                     run_manifest_path=man,
                     runtime=paths,
