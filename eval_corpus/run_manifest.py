@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 import secrets
 import tempfile
 from dataclasses import dataclass
@@ -150,6 +151,35 @@ R2A_FORBIDDEN_OPERATIONS = frozenset(
         "model_execution",
         "model_exec",
     }
+)
+
+_SAFE_RUN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+
+R2B_REQUIRED_PROHIBITED = frozenset(
+    {
+        "config_generation",
+        "adjudicate",
+        "baseline_build",
+        "challenger_build",
+        "compare",
+        "model_exec",
+        "model_execution",
+        "promote",
+        "cleanup_external",
+    }
+)
+
+REQUIRED_R2B_FIELDS = (
+    "authorization_phase",
+    "execution_mode",
+    "status",
+    "operations",
+    "run_id",
+    "merged_harness_sha256",
+    "paths",
+    "service_policy",
+    "prohibited_actions",
+    "source_snapshot",
 )
 
 _EVAL_ROOT_MARKER = "/.local/share/convmem/eval"
@@ -445,6 +475,126 @@ def validate_r2a_manifest_schema(manifest: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _is_hex64(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(c in "0123456789abcdef" for c in value)
+    )
+
+
+def _validate_source_snapshot(snapshot: dict[str, Any]) -> list[str]:
+    """Validate source_snapshot sub-object within an R2b manifest."""
+    errors: list[str] = []
+    if not _is_hex64(snapshot.get("export_sha256")):
+        errors.append("source_snapshot.export_sha256 must be lowercase 64-hex")
+    ps = snapshot.get("processed_state")
+    if ps not in ("present", "absent"):
+        errors.append('source_snapshot.processed_state must be "present" or "absent"')
+    p_sha = snapshot.get("processed_sha256")
+    if ps == "present" and not _is_hex64(p_sha):
+        errors.append("source_snapshot.processed_sha256 must be 64-hex when present")
+    elif ps == "absent" and p_sha is not None:
+        errors.append("source_snapshot.processed_sha256 must be null when absent")
+    ccn = snapshot.get("chroma_collection_name")
+    if not isinstance(ccn, str) or not ccn:
+        errors.append("source_snapshot.chroma_collection_name must be a nonempty string")
+    cci = snapshot.get("chroma_collection_id")
+    if cci is None or (isinstance(cci, str) and not cci):
+        errors.append("source_snapshot.chroma_collection_id must be non-null and nonempty")
+    ceuc = snapshot.get("chroma_extracted_unit_count")
+    if not isinstance(ceuc, int) or isinstance(ceuc, bool) or ceuc < 0:
+        errors.append(
+            "source_snapshot.chroma_extracted_unit_count must be a nonnegative integer"
+        )
+    if not _is_hex64(snapshot.get("chroma_sorted_id_hash")):
+        errors.append("source_snapshot.chroma_sorted_id_hash must be lowercase 64-hex")
+    if not _is_hex64(snapshot.get("chroma_capture_slice_sha256")):
+        errors.append(
+            "source_snapshot.chroma_capture_slice_sha256 must be lowercase 64-hex"
+        )
+    ts = snapshot.get("snapshot_timestamp")
+    if not isinstance(ts, str) or not ts:
+        errors.append("source_snapshot.snapshot_timestamp must be a nonempty string")
+    else:
+        from datetime import datetime as _dt
+
+        try:
+            dt = _dt.fromisoformat(ts)
+            if dt.tzinfo is None:
+                errors.append("source_snapshot.snapshot_timestamp must be timezone-aware")
+        except ValueError:
+            errors.append("source_snapshot.snapshot_timestamp must be valid ISO-8601")
+    return errors
+
+
+def validate_r2b_manifest_schema(manifest: dict[str, Any]) -> list[str]:
+    """Phase-scoped R2b capture schema — distinct from REQUIRED_REAL_FIELDS and R2a."""
+    errors: list[str] = []
+    if str(manifest.get("authorization_phase") or "") != "r2b":
+        errors.append('authorization_phase must be "r2b"')
+    if str(manifest.get("execution_mode") or "") != "real":
+        errors.append('R2b execution_mode must be "real"')
+    if str(manifest.get("status") or "") != "approved":
+        errors.append("status must be approved")
+    for key in REQUIRED_R2B_FIELDS:
+        if key not in manifest:
+            errors.append(f"missing required R2b field {key}")
+    ops = manifest.get("operations")
+    if not isinstance(ops, list) or not ops:
+        errors.append("operations must be a nonempty list")
+    elif [str(o) for o in ops] != ["capture"]:
+        errors.append(
+            f'R2b operations must be exactly ["capture"], got {ops!r}'
+        )
+    harness = str(manifest.get("merged_harness_sha256") or "")
+    if harness != GATE_1_HARNESS_SHA256:
+        errors.append(
+            "merged_harness_sha256 must equal Gate 1 harness "
+            f"{GATE_1_HARNESS_SHA256}"
+        )
+    if not str(manifest.get("ryan_approved_manifest_sha256") or ""):
+        errors.append("R2b manifest requires ryan_approved_manifest_sha256")
+    if str(manifest.get("service_policy") or "") != "no_service_changes":
+        errors.append('service_policy must be "no_service_changes"')
+    prohibited = manifest.get("prohibited_actions")
+    if not isinstance(prohibited, list):
+        errors.append("prohibited_actions must be a list")
+    else:
+        bad_items = [
+            x for x in prohibited if not isinstance(x, str) or not str(x).strip()
+        ]
+        if bad_items:
+            errors.append("prohibited_actions entries must be nonempty strings")
+        prohibited_set = {str(x) for x in prohibited if isinstance(x, str)}
+        missing_prohib = sorted(R2B_REQUIRED_PROHIBITED - prohibited_set)
+        if missing_prohib:
+            errors.append(f"prohibited_actions missing required: {missing_prohib}")
+    run_id = manifest.get("run_id")
+    if not isinstance(run_id, str) or not run_id:
+        errors.append("run_id must be a nonempty string")
+    elif not _SAFE_RUN_ID_RE.match(run_id):
+        errors.append(f"run_id must match {_SAFE_RUN_ID_RE.pattern}")
+    paths = manifest.get("paths")
+    if not isinstance(paths, dict):
+        errors.append("R2b manifest requires paths object")
+    else:
+        required_path_keys = {"export", "processed", "capture_dir", "chroma_dir"}
+        actual_keys = set(paths.keys())
+        missing_keys = sorted(required_path_keys - actual_keys)
+        extra_keys = sorted(actual_keys - required_path_keys)
+        if missing_keys:
+            errors.append(f"R2b paths missing: {missing_keys}")
+        if extra_keys:
+            errors.append(f"R2b paths has extra keys: {extra_keys}")
+    snapshot = manifest.get("source_snapshot")
+    if not isinstance(snapshot, dict):
+        errors.append("source_snapshot must be an object")
+    else:
+        errors.extend(_validate_source_snapshot(snapshot))
+    return errors
+
+
 def validate_run_manifest_schema(manifest: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     mode = str(manifest.get("execution_mode") or "")
@@ -452,30 +602,51 @@ def validate_run_manifest_schema(manifest: dict[str, Any]) -> list[str]:
         errors.append(f"execution_mode must be fixture|real, got {mode!r}")
     if str(manifest.get("status") or "") != "approved":
         errors.append("status must be approved")
-    ops = manifest.get("operations")
-    if not isinstance(ops, list) or not ops:
-        errors.append("operations must be a nonempty list")
-    phase = str(manifest.get("authorization_phase") or "")
-    if mode == "real" and phase == "r2a":
-        errors.extend(validate_r2a_manifest_schema(manifest))
-    elif mode == "real":
-        for key in REQUIRED_REAL_FIELDS:
-            if key not in manifest:
-                errors.append(f"missing required field {key}")
-        if str(manifest.get("primary_view") or "") != "embedding_influenced":
-            errors.append("primary_view must be embedding_influenced")
-        if not str(manifest.get("ryan_approved_manifest_sha256") or ""):
-            errors.append("real manifest requires ryan_approved_manifest_sha256")
-        paths = manifest.get("paths")
-        if not isinstance(paths, dict) or not paths:
-            errors.append("real manifest requires nonempty paths object")
+    if mode == "real":
+        ops = manifest.get("operations")
+        if not isinstance(ops, list):
+            errors.append("operations must be a list")
+            return errors
+        if not ops:
+            errors.append("operations must be a nonempty list")
+            return errors
+        ops_norm = [str(o) for o in ops]
+        phase = str(manifest.get("authorization_phase") or "")
+        if "capture" in ops_norm:
+            if phase != "r2b":
+                errors.append('real capture requires authorization_phase="r2b"')
+            if ops_norm != ["capture"]:
+                errors.append("real capture must be the only operation")
+            errors.extend(validate_r2b_manifest_schema(manifest))
+        elif phase == "r2a":
+            errors.extend(validate_r2a_manifest_schema(manifest))
+        elif phase == "r2b":
+            errors.append(
+                "R2b authorization_phase without capture operation is invalid"
+            )
+        else:
+            for key in REQUIRED_REAL_FIELDS:
+                if key not in manifest:
+                    errors.append(f"missing required field {key}")
+            if str(manifest.get("primary_view") or "") != "embedding_influenced":
+                errors.append("primary_view must be embedding_influenced")
+            if not str(manifest.get("ryan_approved_manifest_sha256") or ""):
+                errors.append("real manifest requires ryan_approved_manifest_sha256")
+            paths = manifest.get("paths")
+            if not isinstance(paths, dict) or not paths:
+                errors.append("real manifest requires nonempty paths object")
     else:
+        ops = manifest.get("operations")
+        if not isinstance(ops, list) or not ops:
+            errors.append("operations must be a nonempty list")
         paths = manifest.get("paths") or {}
         if isinstance(paths, dict):
             for k, v in paths.items():
                 s = str(v)
                 if _EVAL_ROOT_MARKER in s or _CONFIG_ROOT_MARKER in s:
-                    errors.append(f"fixture manifest must not authorize external path {k}={s}")
+                    errors.append(
+                        f"fixture manifest must not authorize external path {k}={s}"
+                    )
     return errors
 
 
@@ -658,6 +829,11 @@ def bind_capture(
     if run_manifest_path is None:
         raise PermissionError("pass --authorize-fixture or --run-manifest")
     manifest = _load_and_validate_manifest(run_manifest_path)
+    if str(manifest.get("authorization_phase") or "") == "r2b":
+        raise PermissionError(
+            "R2b manifests require bind_r2b_capture "
+            "(plain bind_capture cannot authorize R2b eval-root writes)"
+        )
     assert_operation_allowed(manifest, "capture")
     mode = str(manifest.get("execution_mode"))
     _bind_paths_and_scalars(
@@ -1100,6 +1276,47 @@ def make_r2a_run_manifest_for_tests(
     return body
 
 
+def make_r2b_run_manifest_for_tests(
+    *,
+    paths: dict[str, Any],
+    run_id: str = "test-r2b-run",
+    source_snapshot: dict[str, Any] | None = None,
+    **overrides: Any,
+) -> dict[str, Any]:
+    """Construct an R2b-phase real manifest body (sidecar written separately)."""
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    if source_snapshot is None:
+        source_snapshot = {
+            "export_sha256": "a" * 64,
+            "processed_state": "present",
+            "processed_sha256": "b" * 64,
+            "chroma_collection_name": "knowledge_units",
+            "chroma_collection_id": "test-collection-id",
+            "chroma_extracted_unit_count": 10,
+            "chroma_sorted_id_hash": "c" * 64,
+            "chroma_capture_slice_sha256": "d" * 64,
+            "snapshot_timestamp": _dt.now(_tz.utc).isoformat(),
+        }
+    body: dict[str, Any] = {
+        "authorization_phase": "r2b",
+        "execution_mode": "real",
+        "status": "approved",
+        "operations": ["capture"],
+        "run_id": run_id,
+        "merged_harness_sha256": GATE_1_HARNESS_SHA256,
+        "paths": paths,
+        "service_policy": "no_service_changes",
+        "prohibited_actions": sorted(R2B_REQUIRED_PROHIBITED),
+        "source_snapshot": source_snapshot,
+    }
+    body.update(overrides)
+    digest = canonical_manifest_body_sha256(body)
+    body["ryan_approved_manifest_sha256"] = digest
+    return body
+
+
 __all__ = [
     "ADJUDICATE_FIELDS",
     "AuthContext",
@@ -1111,7 +1328,9 @@ __all__ = [
     "DEFAULT_UNCERTAINTY",
     "GATE_1_HARNESS_SHA256",
     "MODEL_EXECUTION_FIELDS",
+    "R2B_REQUIRED_PROHIBITED",
     "REQUIRED_R2A_FIELDS",
+    "REQUIRED_R2B_FIELDS",
     "REQUIRED_REAL_FIELDS",
     "R2aBindings",
     "assert_build_authorized",
@@ -1133,6 +1352,7 @@ __all__ = [
     "load_run_manifest",
     "make_fixture_run_manifest",
     "make_r2a_run_manifest_for_tests",
+    "make_r2b_run_manifest_for_tests",
     "make_real_run_manifest_for_tests",
     "manifest_sha256",
     "materialize_r2a_capability",
@@ -1141,6 +1361,7 @@ __all__ = [
     "path_is_live_config_root",
     "path_is_temp_contained",
     "validate_r2a_manifest_schema",
+    "validate_r2b_manifest_schema",
     "validate_run_manifest_schema",
     "verify_r2a_grant_for_write",
     "write_approval_sidecar",

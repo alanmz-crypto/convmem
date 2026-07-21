@@ -80,7 +80,7 @@ class R2aAuthSchemaTests(unittest.TestCase):
     def test_t1_global_real_fields_still_required(self):
         body = make_real_run_manifest_for_tests(
             paths={"export": "/tmp/e"},
-            operations=["capture"],
+            operations=["baseline_build"],
         )
         del body["corpus_package_sha256"]
         errs = validate_run_manifest_schema(body)
