@@ -1,8 +1,11 @@
 # Architecture — R2b capture authorization
 
-**Date:** 2026-07-20  
-**Decision:** Option A — phase-scoped `authorization_phase: "r2b"`  
-**Status:** Proposed architecture; implementation and live capture remain unauthorized  
+**Date:** 2026-07-20
+
+**Decision:** Option A — phase-scoped `authorization_phase: "r2b"`
+
+**Status:** Proposed architecture; implementation and live capture remain unauthorized
+
 **Supersedes:** [PR #64](https://github.com/alanmz-crypto/convmem/pull/64)
 
 ```
@@ -15,8 +18,10 @@ Lanes:        Codex (docs); Cursor (later implementation); Copilot + Kiro (later
 Authority:    Docs PR only — merge is not an R2b execution grant
 ```
 
-**Execution plan:** [`EXECUTION-2026-07-20-r2b-capture.md`](EXECUTION-2026-07-20-r2b-capture.md)  
-**Verify plan:** [`VERIFY-r2b-capture.md`](VERIFY-r2b-capture.md)  
+**Execution plan:** [`EXECUTION-2026-07-20-r2b-capture.md`](EXECUTION-2026-07-20-r2b-capture.md)
+
+**Verify plan:** [`VERIFY-r2b-capture.md`](VERIFY-r2b-capture.md)
+
 **Gate 1 harness pin:** `3b2790f50414f0445c35748e52f849c6276839f7`
 
 ---
