@@ -405,7 +405,7 @@ def _r2b_artifact_sha256(capture_dir: Path, *, processed_state: str) -> dict[str
     return {name: sha256_file(capture_dir / name) for name in sorted(names)}
 
 
-def _run_r2b_capture(
+def _run_r2b_capture(  # pylint: disable=too-many-locals
     *,
     export_src: Path,
     processed_src: Path,
@@ -419,7 +419,10 @@ def _run_r2b_capture(
         materialize_r2b_write_authorization,
     )
 
-    bindings = materialize_r2b_write_authorization(r2b_capability)
+    bindings = materialize_r2b_write_authorization(
+        r2b_capability,
+        snapshot_recompute_fn=recompute_source_snapshot,
+    )
 
     run_id = bindings.run_id
     capture_id = run_id

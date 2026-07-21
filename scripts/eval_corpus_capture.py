@@ -68,6 +68,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 2
 
+            from eval_corpus.capture import recompute_source_snapshot
             from eval_corpus.r2b_capture_auth import bind_r2b_capture
 
             try:
@@ -79,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
                         "capture_dir": args.capture_dir,
                         "chroma_dir": args.chroma_dir,
                     },
+                    snapshot_recompute_fn=recompute_source_snapshot,
                 )
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 print(f"Refusing R2b capture: {exc}", file=sys.stderr)

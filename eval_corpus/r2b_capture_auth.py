@@ -17,12 +17,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
-from eval_corpus.io_atomic import sha256_file
 from eval_corpus.run_manifest import (
     CAPTURE_FIELDS,
     _EVAL_ROOT_MARKER,
     _load_and_validate_manifest,
-    _norm_path,
     _require_exact_fields,
     approval_sidecar_path,
     assert_manifest_file_matches_approval,
@@ -48,23 +46,8 @@ def _default_restic_gate() -> None:
     ensure_chroma_snapshot_for_live_write()
 
 
-def _default_snapshot_recompute(
-    *,
-    export: Path,
-    processed: Path,
-    chroma_dir: Path,
-) -> dict[str, Any]:
-    from eval_corpus.capture import recompute_source_snapshot
-
-    return recompute_source_snapshot(
-        export=export,
-        processed=processed,
-        chroma_dir=chroma_dir,
-    )
-
-
 @dataclass(frozen=True)
-class R2bBindings:
+class R2bBindings:  # pylint: disable=too-many-instance-attributes
     """Bindings re-derived from an approved R2b manifest (never from grant fields)."""
 
     capture_dir: Path
@@ -200,20 +183,24 @@ def _check_no_symlinks(
     manifest_paths: dict[str, Any],
     runtime: Mapping[str, Any],
 ) -> None:
-    """Reject paths with symlink components."""
+    """Reject paths with symlink components (manifest and runtime)."""
     to_check = [Path(manifest_path).resolve(strict=False)]
     sidecar = approval_sidecar_path(Path(manifest_path))
     if sidecar.exists():
         to_check.append(sidecar.resolve(strict=False))
-    for key in ("export", "processed", "chroma_dir"):
-        p = Path(str(manifest_paths.get(key, "")))
-        if p.exists():
-            to_check.append(p)
-    capture_p = Path(str(manifest_paths.get("capture_dir", "")))
-    for parent in [capture_p] + list(capture_p.parents):
-        if parent.exists() and parent != Path(parent.anchor):
-            to_check.append(parent)
-            break
+    for key in ("export", "processed", "chroma_dir", "capture_dir"):
+        for raw in (manifest_paths.get(key), runtime.get(key)):
+            if raw is None:
+                continue
+            p = Path(str(raw))
+            if p.exists() or key == "capture_dir":
+                # capture_dir must not exist, but parents are checked below
+                if p.exists():
+                    to_check.append(p)
+                for parent in p.parents:
+                    if parent.exists() and parent != Path(parent.anchor):
+                        to_check.append(parent)
+                        break
 
     for p in to_check:
         if _has_symlink_component(p):
@@ -295,7 +282,7 @@ def _build_r2b_capability_api() -> tuple[Any, Any]:
         *,
         run_manifest_path: Path,
         runtime: Mapping[str, Any],
-        snapshot_recompute_fn: Any = _USE_LIVE_DEFAULT,
+        snapshot_recompute_fn: SnapshotRecomputeFn,
         restic_gate_fn: Any = _USE_LIVE_DEFAULT,
     ) -> Any:
         """Authorize R2b capture; return an immutable authenticated capability.
@@ -303,9 +290,9 @@ def _build_r2b_capability_api() -> tuple[Any, Any]:
         The capability seals manifest path + approval digest. Write-time code
         must re-verify the sidecar and re-derive every binding from that manifest.
 
-        Live defaults: restic gate + trusted source_snapshot recompute.
-        Hermetic tests may pass ``restic_gate_fn=lambda: None`` and/or an
-        explicit ``snapshot_recompute_fn``.
+        ``snapshot_recompute_fn`` is required (trusted recompute — typically
+        ``eval_corpus.capture.recompute_source_snapshot``). Hermetic tests may
+        pass ``restic_gate_fn=lambda: None``.
         """
         _require_exact_fields("capture", CAPTURE_FIELDS, runtime)
         path = Path(run_manifest_path)
@@ -340,18 +327,12 @@ def _build_r2b_capability_api() -> tuple[Any, Any]:
         source_snapshot = manifest["source_snapshot"]
         _validate_snapshot_freshness(source_snapshot)
 
-        recompute = (
-            _default_snapshot_recompute
-            if snapshot_recompute_fn is _USE_LIVE_DEFAULT
-            else snapshot_recompute_fn
+        recomputed = snapshot_recompute_fn(
+            export=Path(manifest_paths["export"]),
+            processed=Path(manifest_paths["processed"]),
+            chroma_dir=Path(manifest_paths["chroma_dir"]),
         )
-        if recompute is not None:
-            recomputed = recompute(
-                export=Path(manifest_paths["export"]),
-                processed=Path(manifest_paths["processed"]),
-                chroma_dir=Path(manifest_paths["chroma_dir"]),
-            )
-            _compare_snapshots(source_snapshot, recomputed)
+        _compare_snapshots(source_snapshot, recomputed)
 
         capture_dir = Path(manifest_paths["capture_dir"])
         if capture_dir.exists():
@@ -411,13 +392,13 @@ def materialize_r2b_capability(capability: Any) -> R2bBindings:
 def materialize_r2b_write_authorization(
     capability: Any,
     *,
-    snapshot_recompute_fn: Any = _USE_LIVE_DEFAULT,
+    snapshot_recompute_fn: SnapshotRecomputeFn,
 ) -> R2bBindings:
     """Authenticate + re-verify everything before the first eval-root write.
 
     Does not trust caller-mutated grant fields — every value is re-derived from
-    the approved manifest after sidecar verification. Live default recomputes
-    the trusted source snapshot; hermetic tests may inject a stub.
+    the approved manifest after sidecar verification. Callers must pass a trusted
+    ``snapshot_recompute_fn`` (typically ``recompute_source_snapshot``).
     """
     bindings = materialize_r2b_capability(capability)
     manifest = load_run_manifest(bindings.manifest_path)
@@ -430,18 +411,12 @@ def materialize_r2b_write_authorization(
         bindings.manifest_path, manifest_paths, manifest_paths
     )
 
-    recompute = (
-        _default_snapshot_recompute
-        if snapshot_recompute_fn is _USE_LIVE_DEFAULT
-        else snapshot_recompute_fn
+    recomputed = snapshot_recompute_fn(
+        export=bindings.export,
+        processed=bindings.processed,
+        chroma_dir=bindings.chroma_dir,
     )
-    if recompute is not None:
-        recomputed = recompute(
-            export=bindings.export,
-            processed=bindings.processed,
-            chroma_dir=bindings.chroma_dir,
-        )
-        _compare_snapshots(source_snapshot, recomputed)
+    _compare_snapshots(source_snapshot, recomputed)
 
     if bindings.capture_dir.exists():
         raise PermissionError(

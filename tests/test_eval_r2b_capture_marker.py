@@ -153,7 +153,7 @@ def _setup_r2b_capture_env(
     man = _write_json(auth_dir / "capture.json", body)
     write_approval_sidecar(man)
 
-    def _pass_snapshot(**kw):
+    def _pass_snapshot(**_kw):
         return snap
 
     cap = bind_r2b_capture(
@@ -176,8 +176,8 @@ class R2bCaptureMarkerTests(unittest.TestCase):
 
     def test_marker_written_and_present(self):
         with tempfile.TemporaryDirectory() as td:
-            cap, paths, body, snap, _man = _setup_r2b_capture_env(Path(td))
-            result = run_capture(
+            cap, paths, _body, _snap, _man = _setup_r2b_capture_env(Path(td))
+            run_capture(
                 export_src=Path(paths["export"]),
                 processed_src=Path(paths["processed"]),
                 capture_dir=Path(paths["capture_dir"]),
@@ -201,7 +201,7 @@ class R2bCaptureMarkerTests(unittest.TestCase):
     def test_marker_has_correct_authorization_digests(self):
         with tempfile.TemporaryDirectory() as td:
             cap, paths, body, snap, _man = _setup_r2b_capture_env(Path(td))
-            result = run_capture(
+            run_capture(
                 export_src=Path(paths["export"]),
                 processed_src=Path(paths["processed"]),
                 capture_dir=Path(paths["capture_dir"]),
@@ -225,7 +225,7 @@ class R2bCaptureMarkerTests(unittest.TestCase):
 
     def test_marker_artifact_inventory_correct(self):
         with tempfile.TemporaryDirectory() as td:
-            cap, paths, body, snap, _man = _setup_r2b_capture_env(Path(td))
+            cap, paths, _body, _snap, _man = _setup_r2b_capture_env(Path(td))
             run_capture(
                 export_src=Path(paths["export"]),
                 processed_src=Path(paths["processed"]),
@@ -257,7 +257,7 @@ class R2bCaptureMarkerTests(unittest.TestCase):
 
     def test_marker_artifact_sha256_correct(self):
         with tempfile.TemporaryDirectory() as td:
-            cap, paths, body, snap, _man = _setup_r2b_capture_env(Path(td))
+            cap, paths, _body, _snap, _man = _setup_r2b_capture_env(Path(td))
             run_capture(
                 export_src=Path(paths["export"]),
                 processed_src=Path(paths["processed"]),
@@ -284,7 +284,7 @@ class R2bCaptureMarkerTests(unittest.TestCase):
 
     def test_marker_absent_for_processed_absent(self):
         with tempfile.TemporaryDirectory() as td:
-            cap, paths, body, snap, _man = _setup_r2b_capture_env(
+            cap, paths, _body, _snap, _man = _setup_r2b_capture_env(
                 Path(td), include_processed=False
             )
             run_capture(
@@ -321,7 +321,7 @@ class R2bCaptureMarkerTests(unittest.TestCase):
                 chroma_dir, [{"id": "u1", "document": "doc"}]
             )
             capture_dir = root / "capture"
-            result = run_capture(
+            run_capture(
                 export_src=export,
                 processed_src=processed,
                 capture_dir=capture_dir,

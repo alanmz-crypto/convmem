@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import json
 import tempfile
-import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from eval_corpus.run_manifest import (
     AuthContext,
-    GATE_1_HARNESS_SHA256,
-    R2B_REQUIRED_PROHIBITED,
     canonical_manifest_body_sha256,
     make_r2b_run_manifest_for_tests,
     validate_r2b_manifest_schema,
@@ -435,7 +432,7 @@ class R2bCapabilityTests(unittest.TestCase):
         from eval_corpus.run_manifest import bind_capture
 
         with tempfile.TemporaryDirectory() as td:
-            man, paths, body, snap = self._setup_r2b_env(Path(td))
+            man, paths, _body, _snap = self._setup_r2b_env(Path(td))
             with self.assertRaises(PermissionError) as ctx:
                 bind_capture(
                     authorize_fixture=False,
@@ -453,9 +450,9 @@ class R2bCapabilityTests(unittest.TestCase):
         from eval_corpus.r2b_capture_auth import bind_r2b_capture
 
         with tempfile.TemporaryDirectory() as td:
-            man, paths, body, snap = self._setup_r2b_env(Path(td))
+            man, paths, _body, snap = self._setup_r2b_env(Path(td))
 
-            def _pass_snapshot(**kw):
+            def _pass_snapshot(**_kw):
                 return snap
 
             cap = bind_r2b_capture(
@@ -518,7 +515,7 @@ class R2bCapabilityTests(unittest.TestCase):
                         "chroma_dir": paths["chroma_dir"],
                     },
                     restic_gate_fn=lambda: None,
-                    snapshot_recompute_fn=lambda **kw: snap,
+                    snapshot_recompute_fn=lambda **_kw: snap,
                 )
             self.assertIn("old", str(ctx.exception).lower())
 
@@ -526,9 +523,9 @@ class R2bCapabilityTests(unittest.TestCase):
         from eval_corpus.r2b_capture_auth import bind_r2b_capture
 
         with tempfile.TemporaryDirectory() as td:
-            man, paths, body, snap = self._setup_r2b_env(Path(td))
+            man, paths, _body, snap = self._setup_r2b_env(Path(td))
 
-            def _wrong_snapshot(**kw):
+            def _wrong_snapshot(**_kw):
                 wrong = dict(snap)
                 wrong["export_sha256"] = "f" * 64
                 return wrong
@@ -551,9 +548,9 @@ class R2bCapabilityTests(unittest.TestCase):
         from eval_corpus.r2b_capture_auth import bind_r2b_capture
 
         with tempfile.TemporaryDirectory() as td:
-            man, paths, body, snap = self._setup_r2b_env(Path(td))
+            man, paths, _body, snap = self._setup_r2b_env(Path(td))
 
-            def _pass_snapshot(**kw):
+            def _pass_snapshot(**_kw):
                 return snap
 
             cap = bind_r2b_capture(
