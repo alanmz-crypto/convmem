@@ -5,9 +5,43 @@ from __future__ import annotations
 import unittest
 
 from ask import _dedupe_results_by_ledger_id, _filter_superseded_decisions
+from query_result_filters import dedupe_results_by_ledger_id, filter_superseded_decisions
 
 
 class AskDedupeTests(unittest.TestCase):
+    def test_query_and_ask_helpers_match(self):
+        """Ask wrappers must stay thin aliases of the shared query helpers."""
+        results = [
+            {
+                "id": "child",
+                "metadata": {
+                    "ledger_id": "dec_child",
+                    "ledger_kind": "decision",
+                    "relates_to": "dec_parent",
+                },
+            },
+            {
+                "id": "parent",
+                "metadata": {
+                    "ledger_id": "dec_parent",
+                    "ledger_kind": "decision",
+                    "relates_to": "obs_x",
+                },
+            },
+        ]
+        self.assertEqual(
+            [r["id"] for r in _filter_superseded_decisions(results)],
+            [r["id"] for r in filter_superseded_decisions(results)],
+        )
+        twins = [
+            {"id": "a", "metadata": {"ledger_id": "obs001"}},
+            {"id": "b", "metadata": {"ledger_id": "obs001"}},
+        ]
+        self.assertEqual(
+            [r["id"] for r in _dedupe_results_by_ledger_id(twins)],
+            [r["id"] for r in dedupe_results_by_ledger_id(twins)],
+        )
+
     def test_dedupe_twins_same_ledger_id(self):
         results = [
             {"id": "a", "rank_score": 0.76, "metadata": {"ledger_id": "obs001"}},

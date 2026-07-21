@@ -143,35 +143,16 @@ def _max_score(results: list[dict]) -> float | None:
 
 def _filter_superseded_decisions(results: list[dict]) -> list[dict]:
     """Drop parent decisions when a newer decision in results relates_to them."""
-    parent_ids: set[str] = set()
-    for r in results:
-        meta = r.get("metadata") or {}
-        if (meta.get("ledger_kind") or "").strip() != "decision":
-            continue
-        relates_to = (meta.get("relates_to") or "").strip()
-        if relates_to.startswith("dec_"):
-            parent_ids.add(relates_to)
-    if not parent_ids:
-        return results
-    return [
-        r
-        for r in results
-        if (r.get("metadata") or {}).get("ledger_id") not in parent_ids
-    ]
+    from query_result_filters import filter_superseded_decisions
+
+    return filter_superseded_decisions(results)
 
 
 def _dedupe_results_by_ledger_id(results: list[dict]) -> list[dict]:
     """Keep one hit per ledger_id (first wins — list should already be rank-sorted)."""
-    seen: set[str] = set()
-    out: list[dict] = []
-    for r in results:
-        lid = ((r.get("metadata") or {}).get("ledger_id") or "").strip()
-        if lid:
-            if lid in seen:
-                continue
-            seen.add(lid)
-        out.append(r)
-    return out
+    from query_result_filters import dedupe_results_by_ledger_id
+
+    return dedupe_results_by_ledger_id(results)
 
 
 def _prepend_recent_decisions(
