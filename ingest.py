@@ -22,7 +22,6 @@ from config import load_config
 from distill import distill, normalize_unit
 from llm import ollama_embed, summarize
 
-
 def sha256_file(path: str) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -520,13 +519,14 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
     force_file: str | None,
     supersede_on_reindex: bool,
     verbose: bool,
-    tool: str = "inter-model",
-    source_type: str = "inter_model_doc",
-    author_model: str = "inter-model-index",
+    fmt: str = "inter_model_doc",
 ) -> tuple[bool, int]:
     """Index one inter-model or kiro-steering doc. Returns (committed, n_units)."""
     from inter_model_index import index_inter_model_messages
 
+    tool, source_type, author_model = {
+        "kiro_steering": ("kiro", "kiro_steering", "kiro-steering-index"),
+    }.get(fmt, ("inter-model", "inter_model_doc", "inter-model-index"))
     chroma_dir = idx["chroma_dir"]
     if force_file:
         with ChromaStore(chroma_dir) as store:
@@ -857,19 +857,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             print(f"  [skip] parse failed {path}: {e}")
         return "ignored", 0, 0, 0, 0
 
-    if fmt == "inter_model_doc" or fmt == "kiro_steering":
-        if fmt == "kiro_steering":
-            index_tool, index_source, index_author = (
-                "kiro",
-                "kiro_steering",
-                "kiro-steering-index",
-            )
-        else:
-            index_tool, index_source, index_author = (
-                "inter-model",
-                "inter_model_doc",
-                "inter-model-index",
-            )
+    if fmt in ("inter_model_doc", "kiro_steering"):
         committed, n_units = _index_inter_model_file(
             cfg=cfg,
             idx=idx,
@@ -882,9 +870,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             force_file=force_file,
             supersede_on_reindex=supersede_on_reindex,
             verbose=verbose,
-            tool=index_tool,
-            source_type=index_source,
-            author_model=index_author,
+            fmt=fmt,
         )
         if not committed:
             if verbose and n_units == 0:

@@ -7,8 +7,9 @@ chat distillations (ksweep-deploy incident / P1.0a).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
+
+from adapters.md_meta import doc_title, file_date
 
 _BODY_LEAD_CHARS = 2000
 
@@ -25,27 +26,11 @@ def is_kiro_steering_doc(path: Path | str) -> bool:
     return False
 
 
-def _file_date(path: Path) -> str:
-    try:
-        mtime = path.stat().st_mtime
-        return datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%Y-%m-%d")
-    except OSError:
-        return ""
-
-
-def _doc_title(text: str, fallback: str) -> str:
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("# ") and not stripped.startswith("##"):
-            return stripped.lstrip("# ").strip()
-    return fallback
-
-
 def parse(filepath: str) -> list[dict]:
     """Parse one steering file into a single document message for direct index."""
     path = Path(filepath).expanduser().resolve()
     text = path.read_text(encoding="utf-8")
-    title = _doc_title(text, path.stem.replace("-", " "))
+    title = doc_title(text, path.stem.replace("-", " "))
     body = text.strip()
     if len(body) > _BODY_LEAD_CHARS:
         body = body[: _BODY_LEAD_CHARS - 1] + "…"
@@ -57,7 +42,7 @@ def parse(filepath: str) -> list[dict]:
         {
             "role": "document",
             "content": content,
-            "timestamp": _file_date(path) or None,
+            "timestamp": file_date(path) or None,
             "section_title": title,
             "section_index": 0,
             "source_type": "kiro_steering",
