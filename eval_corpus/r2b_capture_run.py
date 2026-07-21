@@ -15,19 +15,10 @@ from eval_corpus.r2b_capture_auth import (
     compare_source_snapshots,
     materialize_r2b_write_authorization,
 )
-from eval_corpus.validate import (
-    OverlapPolicy,
-    historical_spot_check_plan,
-    validate_overlap,
-)
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def _utf8_id_sort_key(eid: str) -> bytes:
-    return eid.encode("utf-8")
 
 
 def _require_caller_paths_match_bindings(
@@ -188,19 +179,7 @@ def _copy_verify_and_extract(  # pylint: disable=too-many-locals
     chroma_slice = capture_lib.extract_chroma_capture_slice(
         chroma_dir, collection_name=collection_name
     )
-    atomic_write_json(
-        capture_dir / "chroma_extract.json",
-        {
-            "collection_name": chroma_slice["collection_name"],
-            "count": chroma_slice["count"],
-            "superseded_ids": chroma_slice["superseded_ids"],
-            "ids": chroma_slice["ids"],
-            "chroma_sqlite_sha256": chroma_slice["chroma_sqlite_sha256"],
-        },
-    )
-    atomic_write_json(
-        capture_dir / "chroma_documents.json", chroma_slice["documents"]
-    )
+    capture_lib.write_chroma_slice_artifacts(capture_dir, chroma_slice)
 
     if sha256_file(export_src) != h_export or sha256_file(export_dest) != h_export:
         early_error = "export drifted after chroma extract"
@@ -292,8 +271,6 @@ def run_r2b_capture(  # pylint: disable=too-many-locals
 
     run_id = bindings.run_id
     capture_id = run_id
-    overlap_policy: OverlapPolicy = "canonical"
-    spot_check_n = 20
 
     capture_dir.mkdir(parents=True, exist_ok=False)
 
@@ -319,88 +296,29 @@ def run_r2b_capture(  # pylint: disable=too-many-locals
             write_legacy_manifest=False,
         )
     except RuntimeError as exc:
-        report = {
-            "capture_id": capture_id,
-            "capture_timestamp": _now(),
-            "capture_schema_version": CAPTURE_SCHEMA_VERSION,
-            "attempt": 1,
-            "status": "FAILED",
-            "error": str(exc),
-        }
-        atomic_write_json(capture_dir / "capture_report.json", report)
-        return {
-            "capture_report": report,
-            "chroma_slice": chroma_slice,
-            "package_manifest": None,
-            "units": [],
-        }
+        return capture_lib.package_build_failed_result(
+            capture_dir=capture_dir,
+            capture_id=capture_id,
+            attempt=1,
+            chroma_slice=chroma_slice,
+            error=str(exc),
+        )
 
-    units = package["units"]
-    overlap = validate_overlap(
-        units,
-        chroma_slice["documents"],
+    partial = capture_lib.complete_capture_validation(
+        capture_dir=capture_dir,
+        chroma_slice=chroma_slice,
+        package=package,
         capture_id=capture_id,
-        policy=overlap_policy,
+        attempt=1,
+        t0=t0,
+        export_src=export_src,
+        h_export=h_export,
+        h_processed=h_processed or "",
+        overlap_policy="canonical",
+        spot_check_n=20,
     )
-    atomic_write_json(capture_dir / "overlap_validation.json", overlap)
-
-    dedup = package["dedup"]
-    raw_export_ids = [
-        str(r.get("id") or "") for r in dedup.rows if r.get("id")
-    ]
-    absent_from_chroma = sorted(
-        set(raw_export_ids) - set(chroma_slice["ids"]),
-        key=_utf8_id_sort_key,
-    )
-    spot = historical_spot_check_plan(
-        absent_from_chroma, capture_id=capture_id, n=spot_check_n
-    )
-    atomic_write_json(capture_dir / "historical_spot_check.json", spot)
-
-    overall = overlap.get("overall")
-    if overall == "FAILED" or dedup.partial_line or dedup.malformed_line_numbers:
-        status = "FAILED"
-    elif overall == "UNRESOLVED":
-        status = "UNRESOLVED"
-    else:
-        status = "CAPTURE_COMPLETE"
-
-    skew_ms = int((time.perf_counter() - t0) * 1000)
-    report = {
-        "capture_id": capture_id,
-        "capture_timestamp": _now(),
-        "capture_schema_version": CAPTURE_SCHEMA_VERSION,
-        "attempt": 1,
-        "capture_skew_ms": skew_ms,
-        "input_export_path": str(export_src),
-        "input_export_sha256": h_export,
-        "input_processed_sha256": h_processed or "",
-        "input_export_lines": dedup.input_lines,
-        "input_export_unique_ids": dedup.unique_ids,
-        "dedup_method": "last_occurrence_by_id",
-        "after_dedup_count": dedup.after_dedup_count,
-        "duplicates_removed": dedup.duplicates_removed,
-        "partial_line": dedup.partial_line,
-        "malformed_line_numbers": dedup.malformed_line_numbers,
-        "unit_corpus_fingerprint": package["manifest"]["unit_corpus_fingerprint"],
-        "package_sha256": package["manifest"]["package_sha256"],
-        "unit_count": package["manifest"]["unit_count"],
-        "chroma_extract": True,
-        "overlap_overall": overall,
-        "spot_check_sample_n": len(spot.get("sample_ids") or []),
-        "status": status,
-        "corpus_accepted": False,
-    }
-    atomic_write_json(capture_dir / "capture_report.json", report)
-
-    partial = {
-        "capture_report": report,
-        "chroma_slice": chroma_slice,
-        "package_manifest": package["manifest"],
-        "units": units,
-        "overlap": overlap,
-        "spot_check": spot,
-    }
+    report = partial["capture_report"]
+    status = report["status"]
     if status == "FAILED":
         return partial
 
