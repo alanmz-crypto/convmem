@@ -161,9 +161,11 @@ flowchart TD
 
 ### PR Steward (Delivery role — v0.1)
 
-**Delivery role** means a temporary workflow overlay under Ryan HITL. It is **not** a Planning OS **Role** (engineering ownership in `role-charters.md`), **not** a new Lane, and **not** an expansion of the assigned actor's capability tier or must-nots. Assigning PR Steward is non-exclusive: it cannot reroute large implementation away from Cursor or enlarge OpenAI Codex capabilities. Codex is the default actor only when Ryan assigns the job; role name stays if another surface is assigned later.
+**Delivery role** means a lasting HITL workflow overlay under Ryan: a standing delivery job that is **not** a Planning OS **Role** (engineering ownership in `role-charters.md`), **not** a new Lane, and **not** an expansion of the assigned actor's capability tier or must-nots. Assigning PR Steward is non-exclusive: it cannot reroute large implementation away from Cursor or enlarge OpenAI Codex capabilities. Codex is the default actor only when Ryan assigns the job; role name stays if another surface is assigned later.
 
-**v0.1 (spontaneous).** Introduced after the R2b architecture PR delivery (single data point). Expect refinement of boundaries, prompts, and surface wiring. Do not treat this card as final forever.
+**PR Steward itself is lasting.** What is temporary is the current **training** period for Steward.
+
+**v0.1 (training).** Introduced after the R2b architecture PR delivery (single data point). Boundaries, prompts, and surface wiring are being trained now and will be refined; do not treat the v0.1 card text as frozen forever.
 
 #### Activation and brief
 
@@ -396,7 +398,7 @@ convmem record --approve-last
 | Term | Meaning |
 |------|---------|
 | **Lane** | Agent surface + capability tier + must-not rules (not a job title) |
-| **Delivery role** | Temporary workflow overlay under Ryan HITL (e.g. **PR Steward**); never changes Lane/capability/must-nots; ≠ engineering **Role** in `role-charters.md` |
+| **Delivery role** | Lasting HITL workflow overlay under Ryan (e.g. **PR Steward**); never changes Lane/capability/must-nots; ≠ engineering **Role** in `role-charters.md`; v0.1 training is temporary, the role is not |
 | **GitHub Copilot audit lane** | Governing conditional technical-review lane (formerly "Codex" in pre-2026-07-19 posts); VS Code Copilot surface; not the same as Sol-High |
 | **Sol-High adjudicator** | Scarce conflict-resolution resource used only under the hard gate; separate from the GitHub Copilot audit lane |
 | **Crush lane** | Tier A shell agent for bug discovery; may run DeepSeek V4 weights but is still Crush |
