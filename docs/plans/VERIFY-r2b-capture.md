@@ -177,7 +177,7 @@ applicable.
 | V2c | Full extracted count and bytewise-sorted newline ID hash equal approval, including superseded IDs | Recompute report |
 | V2d | Canonical `chroma_capture_slice_sha256` binds collection + ID + document bytes + superseded state and equals approval | Recompute report |
 | V2e | Recompute uses the same canonical helper as extraction; pinned canonicalization tests pass | Test names/output |
-| V2f | Timestamp remains timezone-aware, not future, and <=1 hour at binder/materialization | Timestamp calculation |
+| V2f | Timestamp remains timezone-aware, not future, and <=1 hour independently at binder and materialization | Separate binder/materialization timestamp calculations |
 | V2g | `capture_dir` does not exist; source paths and existing parents contain no symlink component | `lstat`/containment evidence |
 | V2h | Plain `bind_capture` refuses R2b; valid binder mints the opaque capability only after V2a–V2g | Binder evidence |
 
