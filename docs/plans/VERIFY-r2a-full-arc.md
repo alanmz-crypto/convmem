@@ -10,17 +10,17 @@ Lanes:        Cursor (mechanical); Kiro (sign-off); Ryan (GATE)
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Implementation tip:** `6a2bd97af32f331caf47bcde8564c25e88ccbf26` (#52)  
-**Docs tip:** `464fbf2a3afd871dee9b4c930aa6695620fe0b63` (#59)  
-**Gate 1 harness:** `3b2790f50414f0445c35748e52f849c6276839f7`  
-**PRs:** [#52](https://github.com/alanmz-crypto/convmem/pull/52), [#59](https://github.com/alanmz-crypto/convmem/pull/59)  
-**EXECUTION:** [`EXECUTION-embedding-model-eval.md`](EXECUTION-embedding-model-eval.md)  
-**Auth schema amendment:** [`../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md`](../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md)  
+**Implementation tip:** `6a2bd97af32f331caf47bcde8564c25e88ccbf26` (#52)
+**Docs tip:** `464fbf2a3afd871dee9b4c930aa6695620fe0b63` (#59)
+**Gate 1 harness:** `3b2790f50414f0445c35748e52f849c6276839f7`
+**PRs:** [#52](https://github.com/alanmz-crypto/convmem/pull/52), [#59](https://github.com/alanmz-crypto/convmem/pull/59)
+**EXECUTION:** [`EXECUTION-embedding-model-eval.md`](EXECUTION-embedding-model-eval.md)
+**Auth schema amendment:** [`../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md`](../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md)
 **Copilot handoff:** [`../inter-model/CURSOR-2026-07-20-r2a-config-generation-copilot-handoff.md`](../inter-model/CURSOR-2026-07-20-r2a-config-generation-copilot-handoff.md)
 
 **Goal:** Prove the R2a arc is complete and correct — hermetic auth schema implementation passes all contract tests, and the one-job config generation grant was executed exactly as authorized, producing two valid `shadow.toml` files with narrow diffs from live config.
 
-**Report format:** For each check, state **PASS / FAIL / SKIP** and one line of evidence.  
+**Report format:** For each check, state **PASS / FAIL / SKIP** and one line of evidence.
 **GATE** = Ryan process step; not a mechanical agent PASS.
 
 **Flow:** Complete **V0–V7** → declare **Mechanical PASS|FAIL** → independent sign-off → Ryan **merge/close GATE**.

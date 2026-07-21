@@ -10,11 +10,11 @@ Lanes:        Cursor (mechanical); Kiro (sign-off pending); Ryan (GATE)
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Runner:** Cursor cloud agent (hermetic)  
-**Branch:** `cursor/r2a-arc-verification-results-bc5f`  
-**Plans tip:** `e797d76e5c1b403fa5eff084772240045acb7254`  
-**Base for plans:** `docs/2026-07-21-r2a-arc-verify-plans`  
-**Timestamp:** `2026-07-21T19:00:05Z`  
+**Runner:** Cursor cloud agent (hermetic)
+**Branch:** `cursor/r2a-arc-verification-results-bc5f`
+**Plans tip:** `e797d76e5c1b403fa5eff084772240045acb7254`
+**Base for plans:** `docs/2026-07-21-r2a-arc-verify-plans`
+**Timestamp:** `2026-07-21T19:00:05Z`
 **Constraint:** No live R2a/R2b execution; no `convmem record` / `index` / corpus mutation; no merges.
 
 **Plans covered:**
@@ -127,14 +127,14 @@ CLI present: `scripts/eval_shadow_config_gen.py --help` → OK.
 
 ### Mechanical verdict (R2a full arc)
 
-**Mechanical: FAIL** on this host (V0 doctor/restic; missing live auth/eval artifacts for V3/V6; V6g live-config SHA mismatch).  
+**Mechanical: FAIL** on this host (V0 doctor/restic; missing live auth/eval artifacts for V3/V6; V6g live-config SHA mismatch).
 Hermetic auth schema matrix (**V1**) is **PASS**. Documentary V4/V5 argv + grant evidence **PASS** where cited. On-disk packet/inventory/diff checks **SKIP**. Sign-off **SKIP**.
 
 ---
 
 ## B. `VERIFY-verify-every-arc` — results
 
-**Subject tip (PR #62 head):** `4da68e8a2fe6fee011d29b40afc791aa76213a3f`  
+**Subject tip (PR #62 head):** `4da68e8a2fe6fee011d29b40afc791aa76213a3f`
 **Note:** That tip is **not** an ancestor of current HEAD (squash-merged as `be9792e…`, which **is** an ancestor of HEAD and of `origin/main`). File-set and content checks below use the subject tip range / current tree as noted.
 
 ### V0 — Preconditions
@@ -195,7 +195,7 @@ Hermetic auth schema matrix (**V1**) is **PASS**. Documentary V4/V5 argv + grant
 
 ### Mechanical verdict (verify-every-arc)
 
-**Mechanical: FAIL** (V0a doctor exit; V0c HEAD≠subject tip; V3b1 template missing Probe Version).  
+**Mechanical: FAIL** (V0a doctor exit; V0c HEAD≠subject tip; V3b1 template missing Probe Version).
 Contract headings/fields (**V2**), PR #62 file set (**V1**), and most wiring (**V3a/c/d/e**) **PASS**. Sign-off **SKIP**.
 
 ---
