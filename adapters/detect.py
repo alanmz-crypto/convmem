@@ -18,6 +18,7 @@ from adapters import (
     jsonl_chat,
     json_chat,
     kiro_session_jsonl,
+    kiro_steering,
     markdown_chat,
     sqlite_chat,
 )
@@ -36,6 +37,7 @@ TOOL_BY_FORMAT = {
     "sqlite_crush": "crush",
     "sqlite_cursor_store": "cursor",
     "inter_model_doc": "inter-model",
+    "kiro_steering": "kiro",
 }
 
 # Map detected format -> parse callable. None means "recognized but not yet
@@ -52,6 +54,7 @@ _PARSERS: dict[str, Optional[Callable[[str], list[dict]]]] = {
     "sqlite_crush": sqlite_chat.parse,
     "sqlite_cursor_store": sqlite_chat.parse,
     "inter_model_doc": inter_model_doc.parse,
+    "kiro_steering": kiro_steering.parse,
 }
 
 
@@ -63,6 +66,8 @@ def detect_format(path: Path | str) -> Optional[str]:
         return "aider_markdown"
     if inter_model_doc.is_inter_model_doc(path):
         return "inter_model_doc"
+    if kiro_steering.is_kiro_steering_doc(path):
+        return "kiro_steering"
     if path.suffix == ".md":
         return None
 
