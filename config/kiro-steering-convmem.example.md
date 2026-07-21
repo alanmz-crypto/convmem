@@ -183,6 +183,48 @@ External auth requires exact resource, operation, and final value (or named one-
 Done: result, verification, largest material trade-off/risk, branch/push; Track A at handoff.
 
 
+## Response TL;DR
+
+
+**MANDATORY: Every response MUST end with a TL;DR.** A response without a closing TL;DR is non-compliant — treat this like a missing `convmem doctor` call. No exceptions by model, lane, or task type.
+
+**Format — scale to response length:**
+
+| Response size | TL;DR format |
+|---------------|-------------|
+| Short (< 5 lines of substance) | One sentence: `**TL;DR:** …` |
+| Medium (5–30 lines) | 1–2 sentences: `**TL;DR:** …` |
+| Long (> 30 lines or multi-section) | `## TL;DR` heading with 2–4 bullet points |
+
+**Content:** State what was done, decided, or answered — not a restatement of the question. Keep it proportional to complexity.
+
+**Only exception:** bare single-line acknowledgments ("Done.", "Pushed.") where the entire response already is the summary.
+
+**If you are about to submit a response without a TL;DR at the end, stop and add one.**
+
+
+## Context brief (Who / What / When / Why / How)
+
+
+**MANDATORY when naming project artifacts.** Keep identifiers (PR numbers, SHAs, ledger ids, paths, thread ids) — they must stay copy-pasteable — but **never lead with bare ids alone**. For each substantive item you cite, give Ryan enough plain-language context that he can follow without opening the artifact.
+
+**Use Who / What / When / Why / How** (skip a field only when it is obvious from surrounding sentences):
+
+| Field | Answer |
+|-------|--------|
+| **Who** | Which lane/actor owns or produced it (Cursor, Kiro, Crush, Ryan, Copilot audit, Steward, …) |
+| **What** | What the thing *is* in product terms (not the filename) |
+| **When** | Freshness that matters (merged today, tip of open PR, stale vs main, posted before merge, …) |
+| **Why** | Why it exists / why we are looking at it now |
+| **How** | What it does or changes if acted on (merge lands X; rebase updates Y; approve grants Z) |
+
+**Also label the id once:** `#67` → “R2b capture-auth implementation PR (`#67`)” — then WWWWH as needed.
+
+**Scale:** One short clause for a passing mention; a compact five-line block (or a tight table) when the item is the topic of the turn. Do not dump WWWWH for every path in a `git status` list — only for decision-relevant items.
+
+**Anti-patterns:** walls of SHAs/ids; “see `obs_…`” with no title; “tip `abc…`” with no branch/PR role; checklists of PRs that only list numbers.
+
+
 ## Workflow routing (when unsure)
 
 
