@@ -12,7 +12,7 @@ Authority:    Awaiting HITL — **R2b live capture not authorized by this docume
 
 **Source:** Ryan direction 2026-07-20 (#2 toml-fix R2a regenerate, then #3 R2b plan)  
 **Parent runbook:** [`EXECUTION-embedding-model-eval.md`](EXECUTION-embedding-model-eval.md)  
-**Arc VERIFY companion:** [`VERIFY-r2b-capture.md`](VERIFY-r2b-capture.md) (stub)  
+**Arc VERIFY companion:** [`VERIFY-r2b-capture.md`](VERIFY-r2b-capture.md) (**filled** — T1; live capture still unauthorized)  
 **Prior R2a run (toml-fix):** `2026-07-20-r2a-nomic-vs-mxbai-toml-fix` under `~/.local/share/convmem/eval/` + authorizations (shadow lists as real TOML arrays)
 
 **Goal:** Shape the next pre–Gate 2 checkpoint — immutable capture + corpus package (R2b) — into bounded tasks with gates. No live capture until Ryan posts an exact grant.
@@ -23,7 +23,7 @@ Authority:    Awaiting HITL — **R2b live capture not authorized by this docume
 
 | ID | Deliverable | In scope | Depends on | Gates | Execution lane |
 |----|-------------|----------|------------|-------|----------------|
-| T1 | Fill [`VERIFY-r2b-capture.md`](VERIFY-r2b-capture.md) checks from capture CLI + binder (`CAPTURE_FIELDS`, sidecar, restic absolute) | Docs | — | Doctor planning contract | Cursor |
+| T1 | Fill [`VERIFY-r2b-capture.md`](VERIFY-r2b-capture.md) checks from capture CLI + binder (`CAPTURE_FIELDS`, sidecar, restic absolute) | Docs | — | Doctor planning contract | Cursor — **done** (open decision A/B remains for T2) |
 | T2 | Ryan HITL: approve R2b scope (corpus sources, capture_dir under eval run root, Chroma required, overlap policy 40/30/30) | Decision | T1 stub OK | Written grant | Ryan |
 | T3 | Author approved R2b run-manifest(s) + sidecars under `authorizations/` (not eval root); bind `export`, `processed`, `capture_dir`, `chroma_dir` | Auth files only | T2 | Packet integrity per VERIFY | Cursor after grant |
 | T4 | Live `capture` once under VERIFY pre-state STOP + command evidence; produce corpus package + `historical_spot_check.json` | Eval capture only | T3 | VERIFY mechanical + Kiro | Named operator after grant |
@@ -46,7 +46,7 @@ Authority:    Awaiting HITL — **R2b live capture not authorized by this docume
 ## Arc VERIFY companion
 
 - Path: `docs/plans/VERIFY-r2b-capture.md`
-- Status: stub
+- Status: filled (awaiting grant; option A phase-schema vs B placeholders)
 - Template: `docs/plans/VERIFY-TEMPLATE.md`
 
 ## Execute entry
