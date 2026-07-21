@@ -12,7 +12,7 @@ Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
 | **Crush** | Runtime agent with shell + MCP read tools | Tier A (shell + MCP; soak #8 showed MCP-only rules ignored) | Yes | fix, wip | No |
 | **DeepSeek** | Runtime synthesis only (`ask` / distill API) | Tier B (MCP-only) | No | — | No |
 | **GitHub Copilot audit lane** | Governing conditional technical-review lane; independent code/safety/isolation audit when warranted; targeted post-impl verification. GitHub Copilot in VS Code. No merge-to-main; no inferred deploy or live authorization. | Tier A (shell + MCP where available) | Yes | fix, feat, docs | No |
-| **OpenAI Codex** | Separately installed product if retained; **not** the governing audit lane owner. Default actor for the **PR Steward** Delivery role when Ryan assigns that job (overlay does not enlarge Codex capabilities). Keeps its own factual paths: `~/.codex/AGENTS.md` global + repo root; `codex_rollout_jsonl` adapter; `CODEX-DEEPSEEK-VERIFY.md`; `bash -lc` sandbox network retry; generated filename `codex-agents-convmem.example.md`. Historical posts that say "Codex" for the audit lane refer to the pre-2026-07-19 role and are preserved as-is. | Tier A (shell, no MCP) — use CLI `convmem` commands | Yes | fix, feat, docs | No |
+| **OpenAI Codex** | Separately installed product if retained; **not** the governing audit lane owner. Default actor for the **PR Steward** Delivery role when Ryan assigns that job (assignment does not enlarge Codex capabilities). Keeps its own factual paths: `~/.codex/AGENTS.md` global + repo root; `codex_rollout_jsonl` adapter; `CODEX-DEEPSEEK-VERIFY.md`; `bash -lc` sandbox network retry; generated filename `codex-agents-convmem.example.md`. Historical posts that say "Codex" for the audit lane refer to the pre-2026-07-19 role and are preserved as-is. | Tier A (shell, no MCP) — use CLI `convmem` commands | Yes | fix, feat, docs | No |
 | **Continue** | MCP read (`brief`, `search_fast`, `ask`); MCP `instructions=` carries expanded protocol | Tier A (shell + MCP) | Yes (via shell) | feat, fix, docs, wip | No |
 
 **Ryan** may create any prefix and is the only lane that merges to `main`. Branching rules: [`plans/branching-strategy.md`](plans/branching-strategy.md).
@@ -40,7 +40,7 @@ The Planning OS uses vocabulary distinct from this table:
 | **Lane** | This file | Agent surface + capability tier + must-not rules |
 | **Function** | Phase guides under [`planning/`](planning/) | Workflow job (Planner, Reviewer, Implementer) |
 | **Role** | [`role-charters.md`](role-charters.md) | Engineering-team ownership (seven cards) |
-| **Delivery role** | HITL charter ([`TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md)) | Temporary workflow overlay under Ryan HITL; never changes Lane/capability/must-nots |
+| **Delivery role** | HITL charter ([`TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md)) | Lasting HITL workflow overlay under Ryan; never changes Lane/capability/must-nots; training/v0.1 is temporary |
 
 Kernel: [`PLANNING-PROTOCOL.md`](PLANNING-PROTOCOL.md). Do not add Planner/Reviewer
 rows to the agent table above — those are **Functions**, not lanes.
@@ -49,7 +49,7 @@ rows to the agent table above — those are **Functions**, not lanes.
 
 ## Delivery roles (workflow overlays)
 
-A **Delivery role** is a temporary overlay for a Ryan-bound brief. It does **not** create a new agent product row, change the assignee's Lane, or enlarge capabilities.
+A **Delivery role** is a lasting HITL workflow overlay for Ryan-bound briefs (e.g. **PR Steward**). The role is standing; what is temporary is the current training/v0.1 period. It does **not** create a new agent product row, change the assignee's Lane, or enlarge capabilities.
 
 ### PR Steward (v0.1)
 
@@ -58,5 +58,5 @@ A **Delivery role** is a temporary overlay for a Ryan-bound brief. It does **not
 - **Must:** exact brief only; stop-and-flag on ambiguity; never commit on `main`; explicit refspec push; mutation allowlist only; mechanical/brief-contained findings only; Ryan keeps merge/grant/ledger.
 - **Must not:** merge/force-push; grant live/eval/capture/promotion; ledger write; expand scope; act as Copilot audit; impersonate Kiro or Cursor large implementation; reroute large implementation away from Cursor; material architecture/scope/security/product/authorization judgment.
 - **GitHub mutations:** open PR; update title/body; supersession/recommended-close links; push with explicit refspec; status comments. Close/reopen/retarget/supersede only when the brief names PR numbers. Unlisted actions (labels, reviewers, CI reruns, branch deletion, thread resolution, merge, etc.) require explicit Ryan authorization.
-- **Maturity:** v0.1 spontaneous after the R2b architecture PR delivery (single data point). Expect refinement.
+- **Maturity:** v0.1 training after the R2b architecture PR delivery (single data point). Steward is lasting; training/refinement is temporary.
 
