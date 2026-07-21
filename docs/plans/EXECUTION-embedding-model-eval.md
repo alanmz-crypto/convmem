@@ -16,8 +16,8 @@
 | Checkpoint | Meaning | Status |
 |------------|---------|--------|
 | **R2a schema** | Phase-scoped auth capability + unforgeable grant ([amendment](../inter-model/CURSOR-2026-07-19-r2a-auth-schema-amendment.md)) | **Done** — #52 on `main` (`6a2bd97…`) |
-| **R2a execution** | Create isolated external dirs + shadow config files only | **One-job done** (2026-07-20 `r2a-nomic-vs-mxbai`); further runs need new Ryan grant + [`VERIFY-r2a-config-generation.md`](VERIFY-r2a-config-generation.md) |
-| **R2b** | Immutable capture + corpus package | Not authorized |
+| **R2a execution** | Create isolated external dirs + shadow config files only | **Done** — `2026-07-20-r2a-nomic-vs-mxbai` + regenerate `…-toml-fix` (real TOML arrays; expanduser-normalized narrow diff PASS). Further runs need new Ryan grant + [`VERIFY-r2a-config-generation.md`](VERIFY-r2a-config-generation.md) |
+| **R2b** | Immutable capture + corpus package | **Planning only** — [`EXECUTION-2026-07-20-r2b-capture.md`](EXECUTION-2026-07-20-r2b-capture.md) + [`VERIFY-r2b-capture.md`](VERIFY-r2b-capture.md); live capture **not authorized** |
 | **B-Accept** | Human corpus acceptance | Not authorized |
 | **C0** | Freeze queries, labels, thresholds, manifest hashes | Not authorized |
 | **R3** | Model pull/probe | Not authorized |
