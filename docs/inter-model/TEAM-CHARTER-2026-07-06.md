@@ -150,7 +150,7 @@ flowchart TD
 | Safety / isolation audit | **GitHub Copilot** | Primary; targeted scope only |
 | Evidence verify / recheck | **GitHub Copilot** | Targeted; do not rerun uncontested findings |
 | Design review | **Kiro** | Not involved |
-| Bound brief → GitHub PR lifecycle (docs/architecture delivery) | **PR Steward** (default Codex) | Not involved — audit lane does not own PR writing |
+| Bound brief → GitHub PR lifecycle | **PR Steward** (default Codex) | Not involved — audit lane does not own PR writing |
 | Conflict adjudication | **Sol-High** | Only under hard gate (see below) |
 | Ledger write / approve | **Ryan** | Not involved |
 

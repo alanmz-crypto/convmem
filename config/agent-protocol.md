@@ -212,7 +212,7 @@ Agents may search, ask, brief, and related freely.
 
 **PR Steward** is a Delivery-role overlay (brief-bound; no merge/grant/ledger).
 
-**Conditional Copilot.** Safety/isolation audits or targeted verification only—not implementation, drafting, uncontested re-audits, or missing Cursor handoffs. **Sol-High** is a separate scarce resource, not the Copilot audit lane.
+**Conditional Copilot.** Independent safety/isolation audits or targeted verification only—not implementation, routine work, drafting, uncontested re-audits, or missing Cursor handoffs. **Sol-High** is a separate scarce resource, not the Copilot audit lane.
 
 **Kiro** is non-implementing/review-required: only requested architecture/plan/review docs; never code/tests/scripts/config/generated/runtime. Implementation → Cursor.
 
