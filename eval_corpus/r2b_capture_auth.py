@@ -35,7 +35,32 @@ from eval_corpus.run_manifest import (
 _AUTH_ROOT_MARKER = "/.local/share/convmem/authorizations/r2b"
 _MAX_SNAPSHOT_AGE_SECONDS = 3600
 
+# Sentinel: callers must not pass None to skip live gates — use an explicit no-op
+# only in hermetic tests (e.g. restic_gate_fn=lambda: None).
+_USE_LIVE_DEFAULT = object()
+
 SnapshotRecomputeFn = Callable[..., dict[str, Any]]
+
+
+def _default_restic_gate() -> None:
+    from restic_gate import ensure_chroma_snapshot_for_live_write
+
+    ensure_chroma_snapshot_for_live_write()
+
+
+def _default_snapshot_recompute(
+    *,
+    export: Path,
+    processed: Path,
+    chroma_dir: Path,
+) -> dict[str, Any]:
+    from eval_corpus.capture import recompute_source_snapshot
+
+    return recompute_source_snapshot(
+        export=export,
+        processed=processed,
+        chroma_dir=chroma_dir,
+    )
 
 
 @dataclass(frozen=True)
@@ -270,13 +295,17 @@ def _build_r2b_capability_api() -> tuple[Any, Any]:
         *,
         run_manifest_path: Path,
         runtime: Mapping[str, Any],
-        snapshot_recompute_fn: SnapshotRecomputeFn | None = None,
-        restic_gate_fn: Callable[[], None] | None = None,
+        snapshot_recompute_fn: Any = _USE_LIVE_DEFAULT,
+        restic_gate_fn: Any = _USE_LIVE_DEFAULT,
     ) -> Any:
         """Authorize R2b capture; return an immutable authenticated capability.
 
         The capability seals manifest path + approval digest. Write-time code
         must re-verify the sidecar and re-derive every binding from that manifest.
+
+        Live defaults: restic gate + trusted source_snapshot recompute.
+        Hermetic tests may pass ``restic_gate_fn=lambda: None`` and/or an
+        explicit ``snapshot_recompute_fn``.
         """
         _require_exact_fields("capture", CAPTURE_FIELDS, runtime)
         path = Path(run_manifest_path)
@@ -292,7 +321,9 @@ def _build_r2b_capability_api() -> tuple[Any, Any]:
         if errs:
             raise PermissionError("; ".join(errs))
 
-        if restic_gate_fn is not None:
+        if restic_gate_fn is _USE_LIVE_DEFAULT:
+            _default_restic_gate()
+        elif restic_gate_fn is not None:
             restic_gate_fn()
 
         run_id = manifest["run_id"]
@@ -309,8 +340,13 @@ def _build_r2b_capability_api() -> tuple[Any, Any]:
         source_snapshot = manifest["source_snapshot"]
         _validate_snapshot_freshness(source_snapshot)
 
-        if snapshot_recompute_fn is not None:
-            recomputed = snapshot_recompute_fn(
+        recompute = (
+            _default_snapshot_recompute
+            if snapshot_recompute_fn is _USE_LIVE_DEFAULT
+            else snapshot_recompute_fn
+        )
+        if recompute is not None:
+            recomputed = recompute(
                 export=Path(manifest_paths["export"]),
                 processed=Path(manifest_paths["processed"]),
                 chroma_dir=Path(manifest_paths["chroma_dir"]),
@@ -375,12 +411,13 @@ def materialize_r2b_capability(capability: Any) -> R2bBindings:
 def materialize_r2b_write_authorization(
     capability: Any,
     *,
-    snapshot_recompute_fn: SnapshotRecomputeFn | None = None,
+    snapshot_recompute_fn: Any = _USE_LIVE_DEFAULT,
 ) -> R2bBindings:
     """Authenticate + re-verify everything before the first eval-root write.
 
     Does not trust caller-mutated grant fields — every value is re-derived from
-    the approved manifest after sidecar verification.
+    the approved manifest after sidecar verification. Live default recomputes
+    the trusted source snapshot; hermetic tests may inject a stub.
     """
     bindings = materialize_r2b_capability(capability)
     manifest = load_run_manifest(bindings.manifest_path)
@@ -393,8 +430,13 @@ def materialize_r2b_write_authorization(
         bindings.manifest_path, manifest_paths, manifest_paths
     )
 
-    if snapshot_recompute_fn is not None:
-        recomputed = snapshot_recompute_fn(
+    recompute = (
+        _default_snapshot_recompute
+        if snapshot_recompute_fn is _USE_LIVE_DEFAULT
+        else snapshot_recompute_fn
+    )
+    if recompute is not None:
+        recomputed = recompute(
             export=bindings.export,
             processed=bindings.processed,
             chroma_dir=bindings.chroma_dir,

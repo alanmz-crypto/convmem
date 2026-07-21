@@ -467,6 +467,7 @@ class R2bCapabilityTests(unittest.TestCase):
                     "chroma_dir": paths["chroma_dir"],
                 },
                 snapshot_recompute_fn=_pass_snapshot,
+                restic_gate_fn=lambda: None,
             )
 
             with self.assertRaises(AttributeError):
@@ -516,6 +517,8 @@ class R2bCapabilityTests(unittest.TestCase):
                         "capture_dir": paths["capture_dir"],
                         "chroma_dir": paths["chroma_dir"],
                     },
+                    restic_gate_fn=lambda: None,
+                    snapshot_recompute_fn=lambda **kw: snap,
                 )
             self.assertIn("old", str(ctx.exception).lower())
 
@@ -540,6 +543,7 @@ class R2bCapabilityTests(unittest.TestCase):
                         "chroma_dir": paths["chroma_dir"],
                     },
                     snapshot_recompute_fn=_wrong_snapshot,
+                    restic_gate_fn=lambda: None,
                 )
             self.assertIn("mismatch", str(ctx.exception).lower())
 
@@ -561,6 +565,7 @@ class R2bCapabilityTests(unittest.TestCase):
                     "chroma_dir": paths["chroma_dir"],
                 },
                 snapshot_recompute_fn=_pass_snapshot,
+                restic_gate_fn=lambda: None,
             )
 
             side = man.with_suffix(man.suffix + ".approved.sha256")
@@ -571,7 +576,9 @@ class R2bCapabilityTests(unittest.TestCase):
             )
 
             with self.assertRaises(PermissionError):
-                materialize_r2b_write_authorization(cap)
+                materialize_r2b_write_authorization(
+                    cap, snapshot_recompute_fn=lambda **kw: snap
+                )
 
 
 if __name__ == "__main__":

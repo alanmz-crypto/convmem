@@ -165,6 +165,7 @@ def _setup_r2b_capture_env(
             "chroma_dir": paths["chroma_dir"],
         },
         snapshot_recompute_fn=_pass_snapshot,
+        restic_gate_fn=lambda: None,
     )
 
     return cap, paths, body, snap, man
