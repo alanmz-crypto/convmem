@@ -7,8 +7,9 @@ Each ## / ### section becomes one canonical message for the ingest fast path
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
 from pathlib import Path
+
+from adapters.md_meta import doc_title, file_date
 
 _SECTION_RE = re.compile(r"^(#{2,3})\s+(.+)$", re.MULTILINE)
 
@@ -35,36 +36,20 @@ def is_inter_model_doc(path: Path | str) -> bool:
     return False
 
 
-def _file_date(path: Path) -> str:
-    try:
-        mtime = path.stat().st_mtime
-        return datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%Y-%m-%d")
-    except OSError:
-        return ""
-
-
-def _doc_title(text: str) -> str:
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("# ") and not stripped.startswith("##"):
-            return stripped.lstrip("# ").strip()
-    return ""
-
-
 def _split_sections(text: str, path: Path) -> list[dict]:
     matches = list(_SECTION_RE.finditer(text))
     if not matches:
-        title = _doc_title(text) or path.stem.replace("-", " ")
+        title = doc_title(text) or path.stem.replace("-", " ")
         body = text.strip()
         return [{"title": title, "content": body}]
 
-    doc_title = _doc_title(text)
+    heading_doc_title = doc_title(text)
     sections: list[dict] = []
     for i, match in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         heading = match.group(2).strip()
         body = text[match.end() : end].strip()
-        prefix = f"[{doc_title}]\n\n" if doc_title else ""
+        prefix = f"[{heading_doc_title}]\n\n" if heading_doc_title else ""
         if body:
             content = f"{prefix}## {heading}\n\n{body}"
         else:
@@ -77,7 +62,7 @@ def parse(filepath: str) -> list[dict]:
     """Parse an inter-model markdown file into section messages."""
     path = Path(filepath).expanduser().resolve()
     text = path.read_text(encoding="utf-8")
-    ts = _file_date(path)
+    ts = file_date(path)
     sections = _split_sections(text, path)
 
     messages: list[dict] = []
