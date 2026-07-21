@@ -207,5 +207,41 @@ class TeamCharterNoBannedContentTests(unittest.TestCase):
                 )
 
 
+
+class TeamCharterPRStewardTests(unittest.TestCase):
+    """PR Steward Delivery-role overlay anchors in the compact slice."""
+
+    def test_pr_steward_positive_anchors(self):
+        body = _canonical_body()
+        for anchor in (
+            "PR Steward",
+            "Delivery-role overlay",
+            "brief-bound",
+            "no merge/grant/ledger",
+        ):
+            with self.subTest(anchor=anchor):
+                self.assertIn(
+                    anchor,
+                    body,
+                    f"Compact TEAM_CHARTER must contain PR Steward anchor {anchor!r}",
+                )
+
+    def test_pr_steward_banned_dumps_absent(self):
+        body = _canonical_body()
+        for banned in (
+            "HITL lane",
+            "exact content Ryan provides as the deliverable specification",
+            "marking threads resolved/outdated",
+            "Everything else requires explicit Ryan authorization",
+            "project-board edits",
+        ):
+            with self.subTest(banned=banned):
+                self.assertNotIn(
+                    banned,
+                    body,
+                    f"Compact TEAM_CHARTER must not contain banned dump {banned!r}",
+                )
+
+
 if __name__ == "__main__":
     unittest.main()
