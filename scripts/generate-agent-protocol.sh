@@ -70,6 +70,10 @@ extract_section() {
   echo "## Response TL;DR"
   echo ""
   extract_section RESPONSE_TLDR
+  echo ""
+  echo "## Context brief (Who / What / When / Why / How)"
+  echo ""
+  extract_section CONTEXT_BRIEF
 } >> config/agent-protocol-mcp.txt
 {
   echo ""
@@ -120,6 +124,10 @@ FRONTMATTER
   echo ""
   extract_section RESPONSE_TLDR
   echo ""
+  echo "## Context brief (Who / What / When / Why / How)"
+  echo ""
+  extract_section CONTEXT_BRIEF
+  echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
   extract_section WORKFLOW_ROUTING
@@ -158,6 +166,10 @@ echo "  -> config/cursor-rules-convmem.mdc.example"
   echo "## Response TL;DR"
   echo ""
   extract_section RESPONSE_TLDR
+  echo ""
+  echo "## Context brief (Who / What / When / Why / How)"
+  echo ""
+  extract_section CONTEXT_BRIEF
   echo ""
   echo "## Codex — no improvised logs"
   echo ""
@@ -219,6 +231,10 @@ FRONTMATTER
   echo "## Response TL;DR"
   echo ""
   extract_section RESPONSE_TLDR
+  echo ""
+  echo "## Context brief (Who / What / When / Why / How)"
+  echo ""
+  extract_section CONTEXT_BRIEF
   echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
@@ -294,6 +310,10 @@ echo "  -> docs/chatgpt-pack/README.md"
   echo "## Response TL;DR"
   echo ""
   extract_section RESPONSE_TLDR
+  echo ""
+  echo "## Context brief (Who / What / When / Why / How)"
+  echo ""
+  extract_section CONTEXT_BRIEF
   echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
