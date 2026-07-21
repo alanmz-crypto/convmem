@@ -120,7 +120,7 @@ allowlist.
 | `chroma_extracted_unit_count` | Nonnegative integer for the full extracted set, including superseded IDs |
 | `chroma_sorted_id_hash` | Canonical ID-set SHA-256 defined below |
 | `chroma_capture_slice_sha256` | Canonical collection + ID + document + superseded-state SHA-256 defined below |
-| `snapshot_timestamp` | Timezone-aware ISO-8601; not in the future; no older than one hour at ACCEPT and execution |
+| `snapshot_timestamp` | Timezone-aware ISO-8601; not in the future; no older than one hour at ACCEPT, binder execution, and materialization |
 
 `paths.processed` is always present even when `processed_state == "absent"`.
 In that state, the named source and captured `processed.json` must both remain
@@ -257,8 +257,9 @@ Caller-supplied runtime equality is not authorization. The trusted sequence is:
 3. Ryan ACCEPT occurs only while the timezone-aware timestamp is at most one
    hour old. A future or naive timestamp fails. Any source byte/identity change
    before ACCEPT requires recomputation and a new packet digest.
-4. `bind_r2b_capture` independently recomputes the actual snapshot and compares
-   it to the approved manifest before minting a capability.
+4. `bind_r2b_capture` independently rejects a future, naive, or more-than-one-
+   hour-old approved timestamp at bind time, then recomputes the actual snapshot
+   and compares it to the approved manifest before minting a capability.
 5. `materialize_r2b_write_authorization`, immediately before `capture_dir`
    creation, rechecks timestamp age, approval, bindings, source identity,
    containment, symlinks, and target absence.
@@ -347,8 +348,8 @@ materialize authorization
   -> corpus_package.jsonl
   -> overlap_validation.json
   -> historical_spot_check.json
-  -> final source-drift check
   -> required capture_report.json
+  -> final live source-drift check
   -> corpus_package_manifest.json (completion marker; last atomic write)
   -> no further artifact mutation
 ```
