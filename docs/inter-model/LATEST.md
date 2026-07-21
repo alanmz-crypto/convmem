@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-20 (R2b capture-authorization architecture)
+**Updated:** 2026-07-21 (PR Steward Delivery role v0.1)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
