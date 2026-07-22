@@ -133,6 +133,7 @@ Link only; no new subsystem.
 
 - [`TEAM-CHARTER-2026-07-06.md`](../inter-model/TEAM-CHARTER-2026-07-06.md) — implementer must-nots
 - [`MODEL-WORKFLOW.md`](../MODEL-WORKFLOW.md) — repo-specific routes (lab vs prod vs client)
+- [`CI-WAIT-WORKFLOW.md`](../CI-WAIT-WORKFLOW.md) — when CI is pending: what to do while automated review runs
 - [`SESSION-CLOSE-RECORD.md`](../inter-model/SESSION-CLOSE-RECORD.md) — record block format (Ryan runs approve-last)
 
 ### Outputs

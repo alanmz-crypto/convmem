@@ -13,6 +13,7 @@
 | [`docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`](inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md) | Canonical cross-project synthesis plan (Phase 0–3 gates) |
 | [`docs/inter-model/SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md) | Record block format |
 | [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md) | HITL team roles — lost on who does what? |
+| [`docs/CI-WAIT-WORKFLOW.md`](CI-WAIT-WORKFLOW.md) | What to do while CI / automated review runs |
 
 ---
 
