@@ -10,9 +10,11 @@ Lanes:        Codex (mechanical); Kiro or Ryan-named lane (sign-off); Ryan (GATE
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Status:** Stub; checks defined, mechanical results pending final subject tip.
+**Status:** Review-ready plan; mechanical results pending a pinned final subject
+tip.
 **Subject / tip:** `<final-branch-tip-pending>`
-**PR:** `<pending>`
+**PR:** BugBot gate rollout PR
+[`#91`](https://github.com/alanmz-crypto/convmem/pull/91)
 **EXECUTION:** `docs/plans/EXECUTION-2026-07-22-bugbot-pr-gate.md`
 **ARCHITECTURE:** `docs/plans/ARCHITECTURE-bugbot-pr-gate.md`
 **Goal:** Prove the seven-file policy rollout preserves Planning OS invariants,
@@ -22,6 +24,26 @@ separate from workflow triggers.
 For each check, record **PASS / FAIL / SKIP** plus one line of evidence.
 BugBot-specific rows may use **N/A (exempt)** only with the recorded exemption
 reason. An applicable SHA mismatch is always **FAIL**.
+
+## Run contract and STOP conditions
+
+The mechanical runner works from a clean checkout of PR `#91`'s exact head and
+pins that commit as the **subject tip SHA** for the whole run.
+
+1. Fetch `origin`, read `headRefOid` from PR `#91`, and confirm local `HEAD`
+   equals it before collecting evidence.
+2. Run V0–V5 without editing files, committing, pushing, commenting, or merging.
+3. Record one PASS / FAIL / SKIP / N/A result and one evidence line per row.
+4. If the PR head changes, all earlier evidence is stale: stop, discard the
+   aggregate verdict, pin the new subject tip, and rerun V0–V5.
+5. Hand the completed mechanical table to an independent reviewer for V6. Ryan
+   owns the final GATE.
+
+Stop and return **Mechanical FAIL** when a required check fails, the seven-path
+scope changes, the worktree is dirty, or an applicability/evidence claim cannot
+be proved. A queued required GitHub check is **PENDING**, not PASS. Use SKIP only
+for a genuinely unavailable non-required check with contemporaneous evidence;
+do not repair findings in the verifier lane.
 
 ## Scope lock
 
@@ -42,7 +64,10 @@ Authorized paths:
 ## V0 — Preconditions and External Review evidence
 
 ```bash
-git rev-parse HEAD
+git fetch origin
+subject_tip_sha=$(gh pr view 91 --json headRefOid --jq '.headRefOid')
+test "$(git rev-parse HEAD)" = "$subject_tip_sha"
+test -z "$(git status --porcelain)"
 git diff --name-only origin/main...HEAD
 pytest -q tests/test_planning_guide_contract.py
 convmem doctor
@@ -66,9 +91,15 @@ Execute evidence expected for this rollout:
 | V0b | Execute applicability and reason are present | PENDING |
 | V0c | Exemption is consistent with the final seven-file policy/context diff | PENDING |
 | V0d | Exactly the seven authorized paths differ from `origin/main` | PENDING |
-| V0e | Planning contract test and `convmem doctor` pass | PENDING |
+| V0e | Worktree is clean and PR head equals the pinned subject tip SHA | PENDING |
+| V0f | Planning contract test and `convmem doctor` pass | PENDING |
 
 ## V1 — Binding architecture
+
+```bash
+rg -n 'Subject tip SHA|BugBot-reviewed SHA|When unsure|independent and non-substituting|Finding lifecycle|Evidence schema|Outage or unreachable' \
+  docs/plans/ARCHITECTURE-bugbot-pr-gate.md
+```
 
 | ID | Check | Result |
 |----|-------|--------|
@@ -95,6 +126,13 @@ rg -n 'steps 4–6|steps 5–7' docs/planning/EXECUTE-TASK.md
 
 ## V3 — Verify OS confirmation
 
+```bash
+rg -n 'BugBot confirmation prerequisite|FAIL.*, not SKIP|N/A \(exempt\)' \
+  docs/planning/VERIFY-PLANNING.md docs/plans/VERIFY-TEMPLATE.md
+rg -n 'gate_applicability|subject_tip_sha|bugbot_reviewed_sha|result|finding_disposition|authority_reference' \
+  docs/plans/VERIFY-TEMPLATE.md
+```
+
 | ID | Check | Result |
 |----|-------|--------|
 | V3a | Verify copies Execute applicability and does not reclassify it | PENDING |
@@ -119,11 +157,29 @@ fi
 | V4c | It contains no applicability, invocation, waiver, or merge-readiness policy | PENDING |
 | V4d | Ryan reviews the bootstrap file's exact content before merge | PENDING |
 
-## V5 — Independent sign-off
+## V5 — Exact-tip PR evidence and CI
+
+```bash
+gh pr view 91 \
+  --json state,headRefOid,baseRefName,mergeable,body,statusCheckRollup
+gh api repos/alanmz-crypto/convmem/issues/91/comments \
+  --jq '.[].body'
+```
 
 | ID | Check | Result |
 |----|-------|--------|
-| V5a | Written PASS/FAIL names the final subject tip SHA and residual risks | PENDING |
+| V5a | PR `#91` is open against `main`, and `headRefOid` equals the pinned subject tip SHA | PENDING |
+| V5b | PR is not conflicting and every required check for the subject tip is completed successfully; queued/in-progress is PENDING and failure is FAIL | PENDING |
+| V5c | PR body records the seven-field exempt BugBot evidence row with the pinned subject tip SHA | PENDING |
+| V5d | No unauthorized BugBot trigger comment is present; any automatic bootstrap review is treated as informational | PENDING |
+
+## V6 — Independent sign-off
+
+| ID | Check | Result |
+|----|-------|--------|
+| V6a | Independent reviewer confirms the mechanical evidence without editing implementation artifacts | PENDING |
+| V6b | Written PASS/FAIL names the pinned subject tip SHA, PR `#91`, and residual risks | PENDING |
+| V6c | Ryan records the final GATE decision; verifier does not infer merge or arc-close authority | PENDING |
 
 The verifier performs no cleanup or correction. Findings return to the
 implementation lane; Ryan owns the final GATE.
@@ -138,6 +194,14 @@ V2: PENDING
 V3: PENDING
 V4: PENDING
 V5: PENDING
+V6: PENDING
 Mechanical: PENDING
 Sign-off: PENDING
+Ryan GATE: PENDING
 ```
+
+## Completion rule
+
+Mechanical PASS requires V0–V5 to pass, except the explicitly evidenced
+`N/A (exempt)` BugBot rows. Arc close additionally requires V6 independent
+sign-off and Ryan's GATE. Any new PR tip invalidates all three statuses.
