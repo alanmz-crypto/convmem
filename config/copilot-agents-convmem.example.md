@@ -134,35 +134,61 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 - `convmem record` **only** when Ryan says **record block**, **closing**, or **end session**.
 - Resume hint: `copilot --resume <session-id>`.
 
-## HITL team charter (lane names — not model weights)
+## Builder reference
 
-**Name agents by lane, never by runtime model.** Crush may run DeepSeek V4 weights — that is still **Crush lane** (Tier A shell). The **DeepSeek row** is the Tier B synthesis API behind `convmem ask` only — not a bug-hunter.
+Before convmem architecture edits, read the relevant digest in `docs/builder-reference/`.
 
-| Phase | Owner (lane) | Must not |
-|-------|--------------|----------|
-| Bug discovery | Crush | self-approve fixes; write `record`; merge to `main` |
-| Independent audit | Codex | new `logs/*.md` unless Ryan asks; merge to `main` |
-| Design / sign-off | Kiro | volunteer `record` at task end; merge to `main`; create `feat/`/`fix/` branches |
-| Implementation (convmem) | Cursor | client WP in same session; merge to `main` |
-| Implementation (client WP) | Cursor / Ryan | convmem ledger writes |
-| Memory ingest | Whoever closes session | Track A **and** B — never one alone |
-| Durable conclusions | Ryan only | per-finding records; agents never `--approve-last` |
-| Merge to `main` | Ryan only | agents never merge or force-push `main` |
-| Strategy review | ChatGPT / Claude Cloud | code edits; prod writes |
-| Synthesis | DeepSeek API (`ask`) | primary bug author |
+- `ousterhout-builder-digest.md` for module boundaries and protocol surfaces
+- `manning-builder-digest.md` for ranking, chunking, retrieval, and evaluation
+- `zeller-builder-digest.md` for reproduction, triage, and verification
+- `hard-parts-builder-digest.md` for trade-offs, data ownership, and split decisions
 
-**Phrasebook:** ingest your chat = Track A · index the log = Track B · ingest everything = both · record block = Ryan runs approve-last.
+## Read-only guard
 
-**Handoff ≠ record.** Index session chat at handoff; `record --approve-last` only when Ryan says record block / closing.
+Do not run `convmem add`, bulk `convmem index` (no `--file`), or `convmem verify` without user direction.
+Allowed: `convmem index --file <path> [--supersede]` for session tracking (Tier A).
 
-**Tier 1 = shared memory bus** (not orchestration). Orchestration reserved for Tier 3 notify. Sprint checks: `docs/inter-model/BUG-SPRINT-SUCCESS-2026-07-06.md`.
+## HITL team charter
 
-Full charter + review rationale: `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
+| Work type | Default lane | Copilot audit lane |
+|-----------|-------------|--------------------|
+| Large implementation | **Cursor** | Not involved |
+| Bug discovery / investigation | **Crush** | Escalate when warranted |
+| Safety / isolation / code audit | **GitHub Copilot audit lane** | Primary; targeted scope only |
+| Evidence verify / targeted recheck | **GitHub Copilot audit lane** | Targeted; no uncontested re-runs |
+| Design review / sign-off | **Kiro** | Not involved |
+| Conflict adjudication (scarce) | **Sol-High** | Separate resource; hard gate only |
+| Ledger write / merge | **Ryan only** | Not involved |
+| Bound brief → GitHub PR lifecycle | **PR Steward** (default Codex) | Not involved |
+
+**PR Steward** is a Delivery-role overlay (brief-bound; no merge/grant/ledger). If Ryan describes a bounded, well-defined task that fits the PR lifecycle, suggest assigning PR Steward — it activates only through explicit Ryan assignment and never self-assigns.
+
+**Conditional Copilot.** Independent safety/isolation audits or targeted verification only—not implementation, routine work, drafting, uncontested re-audits, or missing Cursor handoffs. **Sol-High** is a separate scarce resource, not the Copilot audit lane.
+
+**Kiro** is non-implementing/review-required: only requested architecture/plan/review docs; never code/tests/scripts/config/generated/runtime. Implementation → Cursor.
+
+**Sol-High hard gate (Copilot audit lane + Kiro, same target + same revision).**
+Invoke only when **GitHub Copilot audit lane** and **Kiro** issue materially conflicting written **PASS or FAIL** verdicts on the **same artifact and revision**. Literal five-field prompt prefix:
+
+```text
+SOL-HIGH CONFLICT SUMMARY (required — all fields must be present)
+Artifact: <PR number / branch tip SHA / file set — exact>
+GitHub Copilot audit-lane verdict: <PASS|FAIL> — <one-line rationale>
+Kiro verdict: <PASS|FAIL> — <one-line rationale>
+Material proposition in conflict: <specific factual claim both verdicts cannot both be true>
+Negative confirmation: not single-FAIL / deferral / abstention / silence / missing / incomplete / different revision — confirmed
+```
+
+`defer` is never a valid opposing verdict. Any missing field, deferral, abstention, silence, incomplete verdict, or different revision blocks Sol-High.
+
+**Non-example (PR #52):** Copilot audit FAIL; Kiro defers → single-reviewer FAIL, not a conflict. Do not call Sol-High.
+
+**Full charter:** `docs/inter-model/TEAM-CHARTER-2026-07-06.md`
 
 ## Bounded autonomy
 
 
-Default for Routine-reversible work only in convmem. `Mode: review required` disables it; `Mode: bounded autonomy` opts in where higher rules permit. WordPress stays review-required pending separate probation. Other repos, architecture, security, and external-configuration work never inherit it.
+Default for Routine-reversible work only in convmem. Kiro remains review-required. `Mode: review required` disables it; `Mode: bounded autonomy` opts in where higher rules permit. WordPress stays review-required pending separate probation. Other repos, architecture, security, and external-configuration work never inherit it.
 
 Precedence (high→low): system/tool guards → lane must-nots + protocol → DB/secrets/external safety → exact brief authorizations → autonomy defaults. Lower cannot override higher.
 
@@ -173,6 +199,48 @@ Reuse existing DB-backup, lane, and record safeguards by reference.
 External auth requires exact resource, operation, and final value (or named one-shot) in `Authorized external changes`; never infer from outcome.
 
 Done: result, verification, largest material trade-off/risk, branch/push; Track A at handoff.
+
+
+## Response TL;DR
+
+
+**MANDATORY: Every response MUST end with a TL;DR.** A response without a closing TL;DR is non-compliant — treat this like a missing `convmem doctor` call. No exceptions by model, lane, or task type.
+
+**Format — scale to response length:**
+
+| Response size | TL;DR format |
+|---------------|-------------|
+| Short (< 5 lines of substance) | One sentence: `**TL;DR:** …` |
+| Medium (5–30 lines) | 1–2 sentences: `**TL;DR:** …` |
+| Long (> 30 lines or multi-section) | `## TL;DR` heading with 2–4 bullet points |
+
+**Content:** State what was done, decided, or answered — not a restatement of the question. Keep it proportional to complexity.
+
+**Only exception:** bare single-line acknowledgments ("Done.", "Pushed.") where the entire response already is the summary.
+
+**If you are about to submit a response without a TL;DR at the end, stop and add one.**
+
+
+## Context brief (Who / What / When / Why / How)
+
+
+**MANDATORY when naming project artifacts.** Keep identifiers (PR numbers, SHAs, ledger ids, paths, thread ids) — they must stay copy-pasteable — but **never lead with bare ids alone**. For each substantive item you cite, give Ryan enough plain-language context that he can follow without opening the artifact.
+
+**Use Who / What / When / Why / How** (skip a field only when it is obvious from surrounding sentences):
+
+| Field | Answer |
+|-------|--------|
+| **Who** | Which lane/actor owns or produced it (Cursor, Kiro, Crush, Ryan, Copilot audit, Steward, …) |
+| **What** | What the thing *is* in product terms (not the filename) |
+| **When** | Freshness that matters (merged today, tip of open PR, stale vs main, posted before merge, …) |
+| **Why** | Why it exists / why we are looking at it now |
+| **How** | What it does or changes if acted on (merge lands X; rebase updates Y; approve grants Z) |
+
+**Also label the id once:** `#67` → “R2b capture-auth implementation PR (`#67`)” — then WWWWH as needed.
+
+**Scale:** One short clause for a passing mention; a compact five-line block (or a tight table) when the item is the topic of the turn. Do not dump WWWWH for every path in a `git status` list — only for decision-relevant items.
+
+**Anti-patterns:** walls of SHAs/ids; “see `obs_…`” with no title; “tip `abc…`” with no branch/PR role; checklists of PRs that only list numbers.
 
 
 ## Workflow routing (when unsure)

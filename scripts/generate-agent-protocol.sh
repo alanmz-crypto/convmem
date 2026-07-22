@@ -277,11 +277,33 @@ FRONTMATTER
   echo "- \`convmem record\` **only** when Ryan says **record block**, **closing**, or **end session**."
   echo "- Resume hint: \`copilot --resume <session-id>\`."
   echo ""
+  echo "## Builder reference"
+  echo ""
+  echo "Before convmem architecture edits, read the relevant digest in \`docs/builder-reference/\`."
+  echo ""
+  echo "- \`ousterhout-builder-digest.md\` for module boundaries and protocol surfaces"
+  echo "- \`manning-builder-digest.md\` for ranking, chunking, retrieval, and evaluation"
+  echo "- \`zeller-builder-digest.md\` for reproduction, triage, and verification"
+  echo "- \`hard-parts-builder-digest.md\` for trade-offs, data ownership, and split decisions"
+  echo ""
+  echo "## Read-only guard"
+  echo ""
+  echo "Do not run \`convmem add\`, bulk \`convmem index\` (no \`--file\`), or \`convmem verify\` without user direction."
+  echo "Allowed: \`convmem index --file <path> [--supersede]\` for session tracking (Tier A)."
+  echo ""
   extract_section TEAM_CHARTER
   echo ""
   echo "## Bounded autonomy"
   echo ""
   extract_section BOUNDED_AUTONOMY
+  echo ""
+  echo "## Response TL;DR"
+  echo ""
+  extract_section RESPONSE_TLDR
+  echo ""
+  echo "## Context brief (Who / What / When / Why / How)"
+  echo ""
+  extract_section CONTEXT_BRIEF
   echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
@@ -293,6 +315,8 @@ echo "  -> config/copilot-agents-convmem.example.md"
 # Plain `copilot` does NOT load ~/.copilot/agents/* unless --agent is passed.
 # Always-on path mirrors Codex global AGENTS.md so doctor/brief/unresolved runs
 # without requiring --agent convmem.
+# Filename A (Ryan GATE 2026-07-22): config/copilot-instructions-convmem.example.md
+# — not config/copilot-instructions.example.md (Kiro parallel tip folded here).
 {
   echo "# convmem — Local knowledge corpus"
   echo ""
@@ -324,15 +348,43 @@ echo "  -> config/copilot-agents-convmem.example.md"
   echo "- \`convmem record\` **only** when Ryan says **record block**, **closing**, or **end session**."
   echo "- Resume: \`copilot --resume <session-id>\`. Optional specialist: \`copilot --agent convmem\`."
   echo ""
+  echo "## Builder reference"
+  echo ""
+  echo "Before convmem architecture edits, read the relevant digest in \`docs/builder-reference/\`."
+  echo ""
+  echo "- \`ousterhout-builder-digest.md\` for module boundaries and protocol surfaces"
+  echo "- \`manning-builder-digest.md\` for ranking, chunking, retrieval, and evaluation"
+  echo "- \`zeller-builder-digest.md\` for reproduction, triage, and verification"
+  echo "- \`hard-parts-builder-digest.md\` for trade-offs, data ownership, and split decisions"
+  echo ""
+  echo "## Read-only guard"
+  echo ""
+  echo "Do not run \`convmem add\`, bulk \`convmem index\` (no \`--file\`), or \`convmem verify\` without user direction."
+  echo "Allowed: \`convmem index --file <path> [--supersede]\` for session tracking (Tier A)."
+  echo ""
   extract_section TEAM_CHARTER
   echo ""
   echo "## Bounded autonomy"
   echo ""
   extract_section BOUNDED_AUTONOMY
   echo ""
+  echo "## Response TL;DR"
+  echo ""
+  extract_section RESPONSE_TLDR
+  echo ""
+  echo "## Context brief (Who / What / When / Why / How)"
+  echo ""
+  extract_section CONTEXT_BRIEF
+  echo ""
   echo "## Workflow routing (when unsure)"
   echo ""
   extract_section WORKFLOW_ROUTING
+  echo ""
+  echo "Full cheat sheet: \`docs/MODEL-WORKFLOW.md\`"
+  echo ""
+  echo "## Verify shipped work (Codex / DeepSeek)"
+  echo ""
+  echo "Independent checklist: \`docs/CODEX-DEEPSEEK-VERIFY.md\` — pytest, smoke scripts, MCP spot-checks. Do not trust prior chat claims without running it."
 } > config/copilot-instructions-convmem.example.md
 echo "  -> config/copilot-instructions-convmem.example.md"
 
