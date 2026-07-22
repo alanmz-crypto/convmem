@@ -421,7 +421,7 @@ def _search_payload(results: list[dict]) -> str:
     out = []
     for r in results:
         meta = r.get("metadata", {})
-        out.append({
+        row = {
             "score": r.get("score"),
             "semantic_rank": r.get("semantic_rank"),
             "pre_rerank_rank": r.get("pre_rerank_rank"),
@@ -441,7 +441,10 @@ def _search_payload(results: list[dict]) -> str:
             "source_path": meta.get("source_path", ""),
             "ledger_id": meta.get("ledger_id", ""),
             "document": (r.get("document") or "")[:500],
-        })
+        }
+        if "source_trust_boost" in r:
+            row["source_trust_boost"] = r.get("source_trust_boost")
+        out.append(row)
     return json.dumps(out, indent=2)
 
 
