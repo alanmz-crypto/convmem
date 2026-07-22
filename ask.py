@@ -553,7 +553,7 @@ def _apply_evidence_and_recent(
         stages["evidence_reranked"] = _trace_stage(
             units, limit=limit, origins=["unit"] * len(units)
         )
-    from query_result_filters import dedupe_results_by_ledger_id
+    from evidence import dedupe_results_by_ledger_id
 
     units = dedupe_results_by_ledger_id(units)
     if trace:
@@ -642,7 +642,7 @@ def _select_units_or_hybrid(
         )
 
     # Longer pool for refill; results slice stays pre-diversity top_k.
-    from query_result_filters import filter_superseded_decisions
+    from evidence import filter_superseded_decisions
 
     pool = filter_superseded_decisions(units[:fetch_k])
     results = pool[:top_k]

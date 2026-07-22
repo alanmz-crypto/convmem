@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from query_result_filters import dedupe_results_by_ledger_id, filter_superseded_decisions
+from evidence import dedupe_results_by_ledger_id, filter_superseded_decisions
 
 
 class LedgerResultFilterTests(unittest.TestCase):

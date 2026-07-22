@@ -37,7 +37,7 @@ DEFAULT_RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
 
 def _apply_unit_result_postfilters(results: list[dict]) -> list[dict]:
     """Lazy-import search postfilters (keeps query.py top-level imports stable)."""
-    from query_result_filters import apply_search_postfilters
+    from evidence import apply_search_postfilters
 
     return apply_search_postfilters(results)
 
