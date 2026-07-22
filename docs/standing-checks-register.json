@@ -200,7 +200,7 @@
     {
       "id": "pr-steward-reminder",
       "check": "consider PR Steward for bounded PR lifecycle tasks",
-      "role": "Tech Lead",
+      "role": "Platform",
       "trigger": {
         "type": "manual",
         "max_age_days": 30
