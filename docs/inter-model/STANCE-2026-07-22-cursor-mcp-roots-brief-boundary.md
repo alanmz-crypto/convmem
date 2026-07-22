@@ -1,0 +1,30 @@
+# Stance: Cursor MCP Roots shell brief boundary (#87)
+
+- Agent/lane: cursor
+- Class: DONE
+- Branch / tip SHA / PR (if any): merged to `main` as `eb84472` — [PR #87](https://github.com/alanmz-crypto/convmem/pull/87); post-merge verify chat (this session); worktree was `fix/2026-07-22-mcp-roots-boundary`
+- Arc goal (1 sentence): Stop Cursor shell-profile agents from re-briefing via MCP when process cwd is `$HOME` but workspace Roots point at a project repo.
+- Status now (1–3 bullets; evidence, not vibes):
+  - Squash-merged #87 (`eb84472`); unit fitness PASS (`tests.test_mcp_roots_probe` + shell/after-tier-a, 20 tests).
+  - Live config restored: `~/.cursor/mcp.json` → `~/Projects/convmem/mcp_server.py`, `CONVMEM_MCP_PROFILE=shell`; MCP discovery shows after-Tier-A instructions (no `workspace_local` MUST-brief).
+  - Residual: agent `CallMcpTool` returns `Connection closed` after Cursor restart/toggle while `GetMcpTools` works and `mcp_server.py` stays alive — live Roots omit not confirmed from this agent; panel/UI call still needed.
+- Overlaps (other arcs/PRs/plans/ledger ids):
+  - **Stage 3 bounded-autonomy / PR #19** (Who: Cursor+Ryan; What: cwd-gated shell omit; When: 2026-07-13; Why: token-cut; How: process cwd) — `LATEST.md` still calls Cursor `$HOME` cwd an open caveat; #87 is the intended close.
+  - **MCP shell profile fitness** (Who: Codex/Cursor; What: `test_mcp_shell_profile`; When: ~2026-07-12; Why: mechanical no-repeat-brief; How: import-time omit + profile) — keep; do not revert cwd import omit without Roots restore path.
+  - Older **“MCP Roots deprecated / no compat layer”** Codex note (2026-07-13) — about standards-track Roots / nonconformant clients; #87 still uses session `list_roots` + bare-path→`file://` coercion for Cursor. Do not treat that note as “revert #87.”
+- Keep (must survive consolidation):
+  - Roots-first omit on first shell tool call (all tools including `search`/`related`); bare-path URI coercion; restore `brief`/`folder_state` when Roots say non-project after import cwd omit; no dual MCP servers / no global always-omit.
+  - Post-merge ops: MCP args on **prod** tree, not worktree; shell profile only for Cursor/Kiro/Crush (not Continue).
+  - Verify residual: agent↔MCP `Connection closed` vs healthy discovery — separate from #87 product claim.
+- Drop / defer (safe to stop or hand off):
+  - Further #87 code churn; temporary `roots_probe` (already removed).
+  - Re-opening lower-band semantic dedupe / PR Steward / P1.3 — unrelated.
+  - Full live Roots omit proof — defer until Ryan confirms panel `stats` or a new chat’s MCP tools work.
+- Conflicts / risks if combined carelessly:
+  - Updating `LATEST.md` Stage 3 caveat without citing #87 can re-open a closed Cursor gap.
+  - “Roots deprecated” retrieval can wrongly argue to strip `list_roots` coercion.
+  - Pointing MCP `args` at a deleted worktree after cleanup breaks Cursor.
+- Recommended consolidator target: Cursor (or whoever refreshes `LATEST.md`) — one-line: PR #19 Cursor `$HOME` caveat closed by #87/`eb84472`, residual is agent tool-call bridge only.
+- Ask of Ryan (0–2 bullets max; only decisions only Ryan can make):
+  - Confirm whether MCP panel `stats` works after restart (closes live verify) or authorize a separate bridge-debug arc.
+  - OK to delete worktree `fix-2026-07-22-2026-07-22-mcp-roots-boundary` once MCP stays on prod path.

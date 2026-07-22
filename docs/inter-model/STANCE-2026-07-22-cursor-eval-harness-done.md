@@ -1,0 +1,32 @@
+# Stance: Model-quality eval harness (detection only)
+
+- Agent/lane: Cursor (this session; arc originated 2026-07-07)
+- Class: DONE
+- Branch / tip SHA / PR (if any): shipped on `main` as `004626a` (harness) + `d4e44ca` (gitignore debug logs); stance branch `docs/2026-07-22-stance-eval-harness-done`; no open PR for this arc
+- Arc goal (1 sentence): Ship a local-first detector for Ollama/DeepSeek quality drift (retrieval + summaries + synthesis + doctor canary) with honest judge-independence and baseline provenance — not remediation.
+- Status now (1–3 bullets; evidence, not vibes):
+  - Harness present on current `main` ancestry: `eval_judge.py`, `eval_grading.py`, `eval_provenance.py`, `scripts/eval-{retrieval,summaries,synthesis}.py`, `scripts/eval-all.sh`, doctor `_check_summarization_canary`, `[eval]` config, golden fixtures/baselines, ROADMAP remediation deferral line.
+  - Ledger already records the ship decision: `dec_prop_20260705_011902_3adf` / follow-on `dec_prop_20260707_082050_98bb` (detection/classification only; remediation deferred).
+  - Debug cleanup closed: instrumentation reverted; `.cursor/debug-*.log` gitignored; stale duplicate plan removed; Ryan deferred thin-judge-context fix (H-H).
+- Overlaps (other arcs/PRs/plans/ledger ids):
+  - Gate 1 embedding eval harness — Who: Cursor/Codex eval lane; What: isolated embedding A/B (fingerprinted corpus / manifests); When: merged as `#44` / `3b2790f`; Why: fair embedding comparison, not generative quality; How: do not conflate with summaries/synthesis judge canary.
+  - ROADMAP “Model-quality remediation” open thread — Who: Ryan/planner; What: sprinkler options (retry / extractive fallback / flag-and-continue); When: noted at ship; Why: detector ≠ remediation was explicit scope; How: leave unopened unless Ryan authorizes a remediation arc.
+  - who-fixes-retrieval / P1.3 source-trust — Who: Cursor+Codex retrieval arcs; What: ranking/trust for `ksweep`-class misses; When: closed/landed 2026-07-22 per `LATEST.md`; Why: adjacent “quality” language only; How: do not reopen retrieval under this stance.
+- Keep (must survive consolidation):
+  - Judge returns `{score, reason, independent}`; non-independent scores are informational-only and never feed the regression gate.
+  - Baseline provenance (model digest / ollama version / quant / fixture hash) + distinct `NEEDS REBASELINE` vs genuine regression exits.
+  - Doctor summarization canary = structural validity + latency threshold (CPU-fallback proxy), not a second fixture harness.
+  - `eval-all.sh` shared local-model correlation signal when both summary + local-synthesis paths regress.
+  - Deferred finding **H-H**: synthesis `--judge` path historically fed citation titles/`ledger_id`s as judge “source,” not retrieved excerpt text — groundedness score can look artificially high/low while remaining non-gating; fix only if Ryan opens a small follow-up.
+- Drop / defer (safe to stop or hand off):
+  - Further debug instrumentation / hypothesis loops on this harness.
+  - Remediation implementation (retry temp/prompt, extractive fallback, supersede workflows).
+  - Re-opening Gate 1 embedding A/B design from this arc.
+  - Session `convmem record` block (Ryan did not say closing/record this turn).
+- Conflicts / risks if combined carelessly:
+  - Merging with Gate 1 embedding work could blur “eval harness” into one bucket and recreate dependency/VRAM pressure the judge-independence design deliberately avoided.
+  - Treating advisory judge scores (esp. non-independent) as CI gates would invert the shipped policy.
+- Recommended consolidator target: none (DONE; residue is deferral notes only)
+- Ask of Ryan (0–2 bullets max; only decisions only Ryan can make):
+  - Authorize a tiny H-H follow-up (feed real excerpts to synthesis judge) or leave deferred indefinitely?
+  - If remediation should start, which of the three ROADMAP options is in scope first?
