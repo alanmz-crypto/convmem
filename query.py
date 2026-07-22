@@ -42,6 +42,13 @@ def _apply_unit_result_postfilters(results: list[dict]) -> list[dict]:
     return apply_search_postfilters(results)
 
 
+def _apply_unit_source_trust(results: list[dict], qcfg: dict) -> list[dict]:
+    """Lazy-import source-trust ranking (keeps query.py import graph stable)."""
+    from evidence import apply_source_trust
+
+    return apply_source_trust(results, weight=float(qcfg.get("source_trust_weight", 1.0) or 0.0))
+
+
 @dataclass
 class QueryUnitTrace:
     """Optional stage snapshots for retrieval diagnostics.
@@ -53,6 +60,7 @@ class QueryUnitTrace:
     candidates: list[dict] = field(default_factory=list)
     reranked: list[dict] = field(default_factory=list)
     rank_fused: list[dict] = field(default_factory=list)
+    source_trust: list[dict] = field(default_factory=list)
 
 
 def _unit_domain(meta: dict) -> str | None:
@@ -320,11 +328,7 @@ def _fuse_retrieval_ranks(
         row["rank_score"] = row["rank_fusion_score"]
         scored.append((fused, i, row))
     scored.sort(key=lambda item: (-item[0], item[1]))
-    out: list[dict] = []
-    for rank, (_, _, row) in enumerate(scored, 1):
-        row["retrieval_rank"] = rank
-        out.append(row)
-    return out
+    return [row for _, _, row in scored]
 
 
 def _identity_eval_rerank(results: list[dict], top_k: int) -> list[dict]:
@@ -472,15 +476,24 @@ def query_units(
         results,
         semantic_weight=float(qcfg.get("semantic_rank_weight", 2.0)),
         rerank_weight=float(qcfg.get("rerank_rank_weight", 1.0)),
-    )[:top_k]
+    )
     if retrieval_trace is not None:
         retrieval_trace.rank_fused = [dict(result) for result in results]
+
+    if results:
+        results = _apply_unit_source_trust(results, qcfg)
+    if retrieval_trace is not None:
+        retrieval_trace.source_trust = [dict(result) for result in results]
+
+    results = results[:top_k]
 
     if not skip_ledger_priority:
         results = _merge_priority_hits(results, ledger_extras)
     # Ask-parity post-filters (cheap); helper keeps query_units locals ≤30.
-    results = _apply_unit_result_postfilters(results)
-    return results[:top_k]
+    results = _apply_unit_result_postfilters(results)[:top_k]
+    for rank, result in enumerate(results, 1):
+        result["retrieval_rank"] = rank
+    return results
 
 
 def query_raw(
