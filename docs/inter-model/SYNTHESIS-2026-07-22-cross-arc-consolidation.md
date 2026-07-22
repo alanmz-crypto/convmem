@@ -1,9 +1,10 @@
 # Cross-arc consolidation synthesis — 2026-07-22
 
 **Consolidator:** Cursor (designated this turn)  
-**Branch:** `docs/2026-07-22-2026-07-22-cross-arc-consolidation`  
-**Sources:** all `docs/inter-model/STANCE-2026-07-22-*.md` on stance branches (not rewritten); chat Class lines from agent transcripts; `docs/inter-model/LATEST.md` tip as of consolidation.  
-**Scope:** classify / park / assign only — no merges, no ledger `record`, no product implementation.
+**Branch:** `docs/2026-07-22-cross-arc-consolidation-synthesis`  
+**Sources:** all eight `docs/inter-model/STANCE-2026-07-22-*.md` (copied onto this branch for citation; bodies not rewritten) + chat Class lines from agent transcripts + `docs/inter-model/LATEST.md` as of consolidation.  
+**Scope:** classify / park / assign only — no merges, no ledger `record`, no product implementation.  
+**Consolidator pass:** 2026-07-22T21:05Z — roster re-verified (COMBINE 1 / DONE 9 / SOLO-CONTINUE 0); no new stances found.
 
 Stance files currently live on **unmerged docs branches** (one stance each). Cite them; do not treat absence from `main` as “stance missing.”
 
