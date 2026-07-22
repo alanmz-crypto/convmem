@@ -152,4 +152,3 @@ Commit coherent task units and push immediately after every commit. Open one
 docs/policy PR containing the exempt evidence row. Handoff must include branch,
 `git log origin/main..HEAD --oneline`, push status, verification, and the largest
 residual risk. Do not trigger BugBot, merge, write a log, or run `convmem record`.
-

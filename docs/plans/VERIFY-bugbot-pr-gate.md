@@ -10,11 +10,11 @@ Lanes:        Codex (mechanical); Kiro or Ryan-named lane (sign-off); Ryan (GATE
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Status:** Stub; checks defined, mechanical results pending final subject tip.  
-**Subject / tip:** `<final-branch-tip-pending>`  
-**PR:** `<pending>`  
-**EXECUTION:** `docs/plans/EXECUTION-2026-07-22-bugbot-pr-gate.md`  
-**ARCHITECTURE:** `docs/plans/ARCHITECTURE-bugbot-pr-gate.md`  
+**Status:** Stub; checks defined, mechanical results pending final subject tip.
+**Subject / tip:** `<final-branch-tip-pending>`
+**PR:** `<pending>`
+**EXECUTION:** `docs/plans/EXECUTION-2026-07-22-bugbot-pr-gate.md`
+**ARCHITECTURE:** `docs/plans/ARCHITECTURE-bugbot-pr-gate.md`
 **Goal:** Prove the seven-file policy rollout preserves Planning OS invariants,
 binds applicable BugBot evidence to the accepted tip, and keeps review context
 separate from workflow triggers.
