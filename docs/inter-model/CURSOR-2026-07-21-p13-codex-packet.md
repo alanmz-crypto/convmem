@@ -57,6 +57,7 @@ Think of the corpus as a **harbor city**. You do not need Cursor's live brain �
 | **Cargo hold** | This Cursor conversation distilled into units | Source: `…/agent-transcripts/4d0fbf93-e1cb-4f47-99d2-0871231f5dbd/…jsonl` · `convmem "source-trust ranking criticality ksweep-routing"` / `convmem "Ranking pipeline order trust stage after rank fusion"` |
 | **Ledger stamp** | Ryan's approval that the plan is real | `dec_prop_20260722_013340_dc60` |
 | **Dry dock** | Prerequisites already on main — do not rebuild | #75 `6feae58` steering ingest · #76 `b4af44f` search postfilters |
+| **Prior pier (closed)** | who-fixes-retrieval Rounds 1–4 — inherit or dismiss; not a new grant | [`CURSOR-2026-07-22-who-fixes-retrieval-closed-to-p13.md`](CURSOR-2026-07-22-who-fixes-retrieval-closed-to-p13.md) · `convmem "who-fixes-retrieval closed to P1.3 inherit dismiss"` · cargo `566966f0-…jsonl` |
 | **Fog bank (ignore)** | Crush `ksweep-routing` stopgap | Leave it; sunset is a follow-up after P1.3 is live |
 
 **Ritual entry to the city:**
