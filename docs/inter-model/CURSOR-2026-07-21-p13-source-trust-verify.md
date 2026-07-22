@@ -2,9 +2,10 @@
 
 **Canonical:** [`../plans/VERIFY-source-trust-ranking.md`](../plans/VERIFY-source-trust-ranking.md)
 
-**Mechanical verdict:** FAIL (V5 golden P@k regression). Stop: Await Ryan GATE.
+**Mechanical verdict (authoritative):** PASS with residual — freeze V5 PASS; live V5 FAIL = non-reproduced/environmental. No #78 code change. Stop: Await Ryan GATE.
 
-**Subject:** PR #78 tip `aecf5d3285992f887991400ca813c6a2066345c1`
+**Code subject:** PR #78 tip `aecf5d3285992f887991400ca813c6a2066345c1`
+**#77 pre-VERIFY scope authority:** `b4853eff…`
 
 ---
 
@@ -20,21 +21,33 @@ Lanes:        Cursor (mechanical); Kiro or Ryan-named lane (sign-off); Ryan (GAT
 Authority:    Post-Execute HITL — do not trust Codex chat claims alone
 ```
 
-**Subject / tip:** `aecf5d3285992f887991400ca813c6a2066345c1` on `feat/2026-07-21-source-trust-ranking`  
-**PR(s):** Implementation [#78](https://github.com/alanmz-crypto/convmem/pull/78); docs/EXECUTION [#77](https://github.com/alanmz-crypto/convmem/pull/77) tip `b4853eff826aecd3575e889b27607ddc8384f3a7`  
+**Subject / tip (code, immutable):** `aecf5d3285992f887991400ca813c6a2066345c1` on `feat/2026-07-21-source-trust-ranking` (PR [#78](https://github.com/alanmz-crypto/convmem/pull/78))  
 **Base (eval/lint):** `b4af44f64fdc05c955857423ac42c364ee931111`  
+**PR #77 pre-VERIFY scope authority:** `b4853eff826aecd3575e889b27607ddc8384f3a7` (EXECUTION/handoff tip before VERIFY landed)  
+**PR #77 evidence/VERIFY tip:** advances on each VERIFY push — report `git rev-parse HEAD` / `gh pr view 77` at handoff (was `5a8f1e9…` before this freeze amend)  
 **EXECUTION:** [`EXECUTION-2026-07-21-source-trust-ranking.md`](EXECUTION-2026-07-21-source-trust-ranking.md)  
 **Decision authority:** `dec_prop_20260722_013340_dc60` (relates `dec_prop_20260707_014137_02d1`)  
 **Goal:** Prove PR #78 implements the locked post-fusion source-trust policy without out-of-scope side effects.
 
 **Report format:** For each check, state **PASS / FAIL / SKIP** and one line of evidence.  
-**GATE** = Ryan process step; not a mechanical agent PASS.
+**GATE** = Ryan process step; not a mechanical agent PASS.  
+**Retarget:** fresh complete run + new evidence block against newly named SHA/snapshot — **never overwrite** the `aecf5d3` live-corpus block below.
 
-**Flow:** Complete **V0–V8** → Mechanical PASS|FAIL → independent sign-off → Ryan GATE.
+**Flow:** Complete **V0–V8** → Mechanical PASS|FAIL → independent sign-off → Ryan GATE.  
+**Index** VERIFY/session only **after** V0–V7 so ingest cannot contaminate retrieval smoke.
 
 **Checkout used for mechanical runs:** `/tmp/convmem-p13-source-trust-ranking` @ `aecf5d3…`  
 **Base checkout for V5:** `/tmp/convmem-p13-base-b4af44f` @ `b4af44f…`  
 **VERIFY author branch:** `docs/2026-07-21-p13-source-trust-handoff` (PR #77)
+
+### Required SKIP
+
+| Condition | Treatment |
+|-----------|-----------|
+| Prerequisite missing; cannot invent without mutation | **SKIP** + reason (or FAIL if Ryan marked mandatory) |
+| Local tool missing but GH check recorded | document both; do not invent PASS |
+| Independent sign-off not yet written | V8 **PENDING** / SKIP until Kiro responds |
+| Live-corpus flake superseded by freeze rerun | keep original FAIL block; freeze block is authoritative for gate |
 
 ---
 
@@ -144,7 +157,7 @@ sha256sum tests/fixtures/golden_queries_baseline.json  # both trees
 | ID | Check | PASS |
 |----|-------|------|
 | V5a | `/tmp` baseline from base only | **PASS** — wrote `/tmp/p13-main-baseline.json` from `b4af44f…` |
-| V5b | Tip vs `/tmp` baseline no new P@k regression | **FAIL** — exit 1; new miss: `Global convmem protocol soak close` (base rank=1 → tip none). Metrics tip P@1 62.5% / P@k 75.0% / MRR 0.6875 vs base P@1 75.0% / P@k 87.5% / MRR 0.7750 (`/tmp/p13-v5-tip2.txt`) |
+| V5b | Tip vs `/tmp` baseline no new P@k regression | **FAIL (live)** / **PASS (freeze)** — live: exit 1 soak-close miss (`/tmp/p13-v5-tip2.txt`). freeze: exit 0, no regression, soak-close rank=1 (`/tmp/p13-v5-freeze-tip.txt`). Authoritative = freeze. |
 | V5c | Committed golden baseline byte-unchanged | **PASS** — sha256 `177731d7583d359682f30baad5f6c09c3ae77271279ecf1f427cbd6281f49648` identical tip vs base |
 | V5d | Already-red rows re-measured | **PASS** — `Arch Linux health prompt matrix` FAIL on both base and tip (not a new regression) |
 
@@ -188,7 +201,9 @@ sha256sum tests/fixtures/golden_queries_baseline.json  # both trees
 
 ```text
 Lane: _______________
-Artifact: PR #78 tip aecf5d3285992f887991400ca813c6a2066345c1
+Code artifact: PR #78 tip aecf5d3285992f887991400ca813c6a2066345c1
+Evidence / VERIFY revision (PR #77 tip): _______________
+Chroma freeze (if used): /tmp/p13-chroma-freeze-20260722
 Verdict: PASS | FAIL
 Rationale (one line):
 Residuals:
@@ -197,10 +212,33 @@ Date (ISO-8601):
 
 ---
 
-## Evidence log
+## Exact commands (V4–V6) and `/tmp` evidence paths
+
+**V4 focused** (`/tmp/p13-v4-focused.txt`, `.exit`):
+
+```bash
+cd /tmp/convmem-p13-source-trust-ranking
+python -m pytest tests/test_evidence_rerank.py tests/test_rerank_contract.py \
+  tests/test_query_search_harden.py tests/test_ask_trace.py \
+  tests/test_mcp_rerank_scores.py -q --tb=no | tee /tmp/p13-v4-focused.txt
+echo EXIT:$? | tee /tmp/p13-v4-focused.exit
+```
+
+**V4 full:** `/tmp/p13-v4-full.txt` — 756 passed, 99 subtests, exit 0.  
+**V4 pylint:** `/tmp/p13-pylint-report.json`, `/tmp/p13-pylint-gate.txt` — gate PASS vs `b4af44f` with `--pylint-status 30`.
+
+**V5 live-corpus (historical):** `/tmp/p13-main-baseline.json`, `/tmp/p13-v5-tip2.txt` (exit 1).  
+**V5 freeze (authoritative):** see freeze evidence log below — paths `/tmp/p13-freeze-baseline.json`, `/tmp/p13-v5-freeze-base.txt|.exit`, `/tmp/p13-v5-freeze-tip.txt|.exit`, `/tmp/p13-v5-freeze-soak-trace.txt`, `/tmp/p13-mutation-before.txt`, `/tmp/p13-mutation-after.txt`.
+
+**V6 ksweep (live, pre-freeze):** documented in V6 table; log not re-teed this amend. Freeze soak traces cover the disputed query.
+
+---
+
+## Evidence log — live corpus (do not overwrite)
 
 ```text
 VERIFY-source-trust-ranking — tip aecf5d3285992f887991400ca813c6a2066345c1 — runner cursor — 2026-07-22T03:40:00Z
+Corpus: LIVE ~/.local/share/convmem/chroma (not frozen)
 V0: PASS (doctor/brief/unresolved; PR78 OPEN; tip+base pinned; GH pylint PASS)
 V1: PASS (tiers/omit/first-match; focused tests + smoke)
 V2: PASS (pipeline order; fuse scores-only; evidence base unchanged)
@@ -210,17 +248,38 @@ V5: FAIL (new P@k regression: Global convmem protocol soak close; tip P@k 75% vs
 V6: PASS (ksweep-deploy steering P@1 +0.15; chat omit; ranks contiguous)
 V7: PASS (isolation negatives)
 V8: PENDING independent sign-off
-Mechanical: FAIL
-Sign-off: pending (Kiro or Ryan-named lane, same SHA)
+Mechanical (this block): FAIL
+```
+
+---
+
+## Evidence log — freeze rerun 2026-07-22T03:55:00Z (append-only)
+
+```text
+VERIFY-source-trust-ranking — FREEZE RERUN — code tip aecf5d3285992f887991400ca813c6a2066345c1 — runner cursor — 2026-07-22T03:55:00Z
+Freeze: /tmp/p13-chroma-freeze-20260722 (cp -a from prod chroma; chmod a-w; provenance /tmp/p13-freeze-path.txt /tmp/p13-freeze-time.txt)
+Base code: b4af44f64fdc05c955857423ac42c364ee931111 @ /tmp/convmem-p13-base-b4af44f
+#77 scope authority (pre-VERIFY): b4853eff826aecd3575e889b27607ddc8384f3a7
+#77 tip at start of freeze amend: 5a8f1e94573ac025f6f9a3da942cc49fe2b489fa
+
+V5 freeze base: PASS write /tmp/p13-freeze-baseline.json — P@1 62.5% P@k 87.5% MRR 0.6875; soak-close PASS rank=1 -> dec_prop_20260629_005903_51b4; exit 0 (/tmp/p13-v5-freeze-base.txt|.exit)
+V5 freeze tip: PASS no regression — P@1 62.5% P@k 87.5% MRR 0.7292; soak-close PASS rank=1 -> dec_prop_20260629_005903_51b4; exit 0 (/tmp/p13-v5-freeze-tip.txt|.exit)
+V5 soak traces (3x tip+freeze): final rank1 always dec_prop_20260629_005903_51b4 (/tmp/p13-v5-freeze-soak-trace.txt)
+Mutation: config.toml mtime unchanged; freeze dir mode a-w; no index/forget/golden update by verifier. Live prod chroma mtime advanced 22:55:07→22:56:00 during window (external/watch likely) — freeze copy used for eval, not live dir.
+#78 worktree: clean at aecf5d3 (no code changes)
+
+Classification: original live V5 FAIL = non-reproduced / environmental (corpus not pinned). Freeze V5 = PASS.
+Mechanical (authoritative): PASS with residual (live V5 FAIL retained as historical; no #78 change)
+V8: PENDING — Kiro must pin code aecf5d3 AND this evidence/#77 tip after push
 Stop: Await Ryan GATE
 ```
 
 ---
 
-## Mechanical verdict
+## Mechanical verdict (authoritative after freeze)
 
-**FAIL** — V5 fixed-base golden comparison shows a new P@k regression at tip `aecf5d3…` versus `/tmp` baseline from `b4af44f…`. No implementation fix attempted by Cursor.
+**PASS with residual** — Frozen-corpus V5 (same `--chroma-dir` for `b4af44f` and `aecf5d3`) shows **no P@k regression**; soak-close hits `dec_prop_20260629_005903_51b4` at rank 1. The earlier live-corpus V5 FAIL is retained above as **non-reproduced / environmental**. **No PR #78 code or golden changes.**
 
-Ryan GATE owns whether to merge #78/#77, require a tip revision, or waive/retarget golden expectations.
+Ryan GATE owns merges of #78 / #77. Independent sign-off must name **code** `aecf5d3…` **and** the **evidence/VERIFY** tip on #77 after this amend lands.
 
 **Stop: Await Ryan GATE**
