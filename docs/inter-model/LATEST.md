@@ -1,9 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-22 (P1.3 merged #78/#77; who-fixes closed → inherit on main)
+**Updated:** 2026-07-22 (P1.3 live weight set; Crush ksweep-routing retired)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **P1.3 ops complete (2026-07-22):** Live `source_trust_weight = 1.0` in `~/.config/convmem/config.toml`. Crush `ksweep-routing` stopgap retired (rules → `rules-retired/`; deploy no longer redeploys it). Standing check `ksweep-sunset` closed. Smoke: steering still preferred for `ksweep-deploy`.
 
 - **P1.3 source-trust LANDED (2026-07-22):** Merged [#78](https://github.com/alanmz-crypto/convmem/pull/78) (`af31c6e`) + [#77](https://github.com/alanmz-crypto/convmem/pull/77) (`99f8717`). Cursor mechanical PASS with residual; Kiro PASS. Smoke: `ksweep-deploy` steering at rank 1. Follow-ups: optional live `source_trust_weight`; Crush `ksweep-routing` sunset after soak; close/supersede stale #36. VERIFY: [`../plans/VERIFY-source-trust-ranking.md`](../plans/VERIFY-source-trust-ranking.md).
 
