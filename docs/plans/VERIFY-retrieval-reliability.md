@@ -332,3 +332,22 @@ Steward checkout left untouched (docs/2026-07-22-2026-07-22-pr-steward-prompt)
 **V7 escalate path (per plan):** Cursor files evidence (this block) → Kiro confirms AC break on golden → Ryan decides revert vs targeted `fix/` (prefer fix golden retrieval; do **not** run `--update-baseline` without Ryan).
 
 **Note:** #85/#86 semantic-dedupe hygiene is a separate follow-on arc that paused ingest queue growth; it is not a rollback of #55 mandatory rerank / field exposure.
+
+---
+
+## Evidence log — Cursor V7a recovered 2026-07-22 (post #90)
+
+```
+VERIFY-retrieval-reliability — main tip 7a6b590 — runner Cursor — 2026-07-22T18:47Z
+V7a: PASS (recovered) — escalate from #88 closed by #90
+Prior V7 FAIL (golden regression) resolved without --update-baseline
+Steward checkout left untouched (docs/2026-07-22-2026-07-22-pr-steward-prompt)
+```
+
+| ID | Command | Expected | Actual | Verdict | Artifact |
+|----|---------|----------|--------|---------|----------|
+| V7a | `python scripts/eval-retrieval.py` on tip `7a6b590` | exit 0; `No regression vs baseline.` | exit **0**; P@1 87.5% P@k 100% MRR 0.9375; soak → `dec_prop_20260625_220647_47d9`; Arch → `dec_prop_20260629_174317_45d3` | **PASS** | `/tmp/v7-recovered-eval.log` |
+| V7 close | Arc status | V7 escalate resolved | Fixture `acceptable_ids` include relates_to leaf children (#90); baseline file unchanged | PASS | PR #90 `7a6b590` |
+
+**V7 escalate closed:** Golden gate green on `main` after #90. No further retrieval-reliability mechanical work required for this arc.
+
