@@ -11,6 +11,7 @@ import json
 import sys
 import re
 from collections import Counter
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,6 +32,35 @@ _LEDGER_ID_RE = re.compile(
     r"\b(dec_prop_\d{8}_\d{6}_[0-9a-f]{4}|obs_[a-z0-9_-]+|ver_[a-z0-9_-]+)\b",
     re.IGNORECASE,
 )
+DEFAULT_RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
+
+
+def _apply_unit_result_postfilters(results: list[dict]) -> list[dict]:
+    """Lazy-import search postfilters (keeps query.py top-level imports stable)."""
+    from evidence import apply_search_postfilters
+
+    return apply_search_postfilters(results)
+
+
+def _apply_unit_source_trust(results: list[dict], qcfg: dict) -> list[dict]:
+    """Lazy-import source-trust ranking (keeps query.py import graph stable)."""
+    from evidence import apply_source_trust
+
+    return apply_source_trust(results, weight=float(qcfg.get("source_trust_weight", 1.0) or 0.0))
+
+
+@dataclass
+class QueryUnitTrace:
+    """Optional stage snapshots for retrieval diagnostics.
+
+    ``candidates`` is captured before keyword boost and before pre-rerank
+    annotation, so it intentionally does not include ``pre_rerank_rank``.
+    """
+
+    candidates: list[dict] = field(default_factory=list)
+    reranked: list[dict] = field(default_factory=list)
+    rank_fused: list[dict] = field(default_factory=list)
+    source_trust: list[dict] = field(default_factory=list)
 
 
 def _unit_domain(meta: dict) -> str | None:
@@ -275,6 +305,75 @@ def _apply_keyword_rank(text: str, results: list[dict]) -> list[dict]:
     return [r for _, _, r in scored]
 
 
+def _fuse_retrieval_ranks(
+    results: list[dict],
+    *,
+    semantic_weight: float = 2.0,
+    rerank_weight: float = 1.0,
+    rrf_k: int = 60,
+) -> list[dict]:
+    """Fuse stable pre-rerank order with mandatory CrossEncoder order."""
+    max_fused = (semantic_weight + rerank_weight) / (rrf_k + 1)
+    scored: list[tuple[float, int, dict]] = []
+    for i, result in enumerate(results):
+        semantic_rank = int(result.get("pre_rerank_rank") or result.get("semantic_rank") or i + 1)
+        rerank_rank = int(result.get("rerank_rank") or i + 1)
+        fused = (
+            semantic_weight / (rrf_k + semantic_rank)
+            + rerank_weight / (rrf_k + rerank_rank)
+        )
+        row = dict(result)
+        normalized_fused = fused / max_fused if max_fused > 0 else 0.0
+        row["rank_fusion_score"] = round(normalized_fused, 8)
+        row["rank_score"] = row["rank_fusion_score"]
+        scored.append((fused, i, row))
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return [row for _, _, row in scored]
+
+
+def _identity_eval_rerank(results: list[dict], top_k: int) -> list[dict]:
+    """Emit the rerank contract without changing order in isolated eval arms."""
+    out: list[dict] = []
+    for rank, result in enumerate(results[:top_k], 1):
+        row = dict(result)
+        row["rerank_score"] = 0.0
+        row["rerank_score_norm"] = 0.5
+        row["rerank_rank"] = rank
+        row["rank_score"] = row["rerank_score_norm"]
+        out.append(row)
+    return out
+
+
+def _resolve_eval_retrieval_view(
+    eval_view: str | None,
+    cfg: dict,
+) -> str | None:
+    """Return evaluation view name or None for production default.
+
+    Evaluation-scoped only. Production callers leave eval_view unset and omit
+    cfg['eval']['retrieval_view'], preserving full ledger-priority behavior.
+    """
+    if eval_view is not None:
+        view = str(eval_view).strip() or None
+    else:
+        view = str((cfg.get("eval") or {}).get("retrieval_view") or "").strip() or None
+    if view is None:
+        return None
+    allowed = {
+        "embedding_influenced",
+        "operational_pipeline",
+        # synonyms accepted for clarity
+        "embedding-influenced",
+        "operational-pipeline",
+    }
+    if view not in allowed:
+        raise ValueError(
+            f"unknown eval retrieval_view {view!r}; "
+            "expected embedding_influenced or operational_pipeline"
+        )
+    return view.replace("-", "_")
+
+
 def query_units(
     text: str,
     top_k: int = 5,
@@ -283,18 +382,22 @@ def query_units(
     chroma_dir: str | None = None,
     *,
     cfg: dict | None = None,
+    eval_view: str | None = None,
+    retrieval_trace: QueryUnitTrace | None = None,
 ) -> list[dict]:
     if cfg is None:
         cfg = load_config()
     models = cfg["models"]
     qcfg = cfg.get("query", {})
     chroma_path = chroma_dir or cfg["index"]["chroma_dir"]
+    view = _resolve_eval_retrieval_view(eval_view, cfg)
+    # embedding_influenced keeps ranking stages but disables ledger-priority.
+    skip_ledger_priority = view == "embedding_influenced"
 
     embedding = ollama_embed(
         text, model=models["embed_model"], host=models["ollama_host"]
     )
 
-    use_rerank = bool(qcfg.get("rerank", False))
     candidate_k = max(top_k, int(qcfg.get("top_k_candidates", 20) or 20))
     n_fetch = candidate_k
     domain = normalize_domain(domain) if domain else None
@@ -310,7 +413,8 @@ def query_units(
         store = open_chroma_for_read(chroma_path)
         try:
             results = store.query_units(embedding, n_fetch)
-            ledger_extras = _ledger_lookup_hits(cfg, store, text)
+            if not skip_ledger_priority:
+                ledger_extras = _ledger_lookup_hits(cfg, store, text)
         finally:
             store.close()
         if site_norm:
@@ -330,11 +434,17 @@ def query_units(
             site=site,
             cfg=cfg,
         )
-        ledger_extras = _ledger_lookup_hits(cfg, None, text)
+        if not skip_ledger_priority:
+            ledger_extras = _ledger_lookup_hits(cfg, None, text)
     for r in results:
         d = r.get("distance")
         if d is not None:
             r["score"] = round(1.0 - d, 4)
+    for rank, result in enumerate(results, 1):
+        result["semantic_rank"] = rank
+
+    if retrieval_trace is not None:
+        retrieval_trace.candidates = [dict(result) for result in results[:candidate_k]]
 
     rw = float(qcfg.get("recency_weight", 0.0) or 0.0)
     rhl = float(qcfg.get("recency_half_life_days", 30.0))
@@ -345,15 +455,45 @@ def query_units(
             results, recency_weight=rw, recency_half_life_days=rhl
         )
 
-    fetch_for_rerank = candidate_k if use_rerank else top_k
-    if use_rerank and results:
-        from rerank import rerank as rerank_fn
-
-        results = rerank_fn(text, results[:fetch_for_rerank], models["rerank_model"], top_k)
-
     results = _apply_keyword_rank(text, results)
-    results = _merge_priority_hits(results, ledger_extras)
-    return results[:top_k]
+    for rank, result in enumerate(results, 1):
+        result["pre_rerank_rank"] = rank
+    if results:
+        if (
+            view is not None
+            and str((cfg.get("eval") or {}).get("rerank_mode") or "").strip()
+            == "identity"
+        ):
+            results = _identity_eval_rerank(results, candidate_k)
+        else:
+            from rerank import rerank as rerank_fn
+
+            model_name = str(models.get("rerank_model") or DEFAULT_RERANK_MODEL).strip()
+            results = rerank_fn(text, results[:candidate_k], model_name, candidate_k)
+    if retrieval_trace is not None:
+        retrieval_trace.reranked = [dict(result) for result in results]
+    results = _fuse_retrieval_ranks(
+        results,
+        semantic_weight=float(qcfg.get("semantic_rank_weight", 2.0)),
+        rerank_weight=float(qcfg.get("rerank_rank_weight", 1.0)),
+    )
+    if retrieval_trace is not None:
+        retrieval_trace.rank_fused = [dict(result) for result in results]
+
+    if results:
+        results = _apply_unit_source_trust(results, qcfg)
+    if retrieval_trace is not None:
+        retrieval_trace.source_trust = [dict(result) for result in results]
+
+    results = results[:top_k]
+
+    if not skip_ledger_priority:
+        results = _merge_priority_hits(results, ledger_extras)
+    # Ask-parity post-filters (cheap); helper keeps query_units locals ≤30.
+    results = _apply_unit_result_postfilters(results)[:top_k]
+    for rank, result in enumerate(results, 1):
+        result["retrieval_rank"] = rank
+    return results
 
 
 def query_raw(

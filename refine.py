@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import re
 import sys
@@ -16,6 +15,7 @@ from typing import Any, Callable
 from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
 from domains import DEFAULT_DOMAINS, normalize_domain
 from process_lock import acquire_lock, release_lock
+from vector_similarity import cosine_similarity
 
 JOB_NAMES = (
     "chroma_dedupe",
@@ -500,17 +500,6 @@ def job_ledger_link(
     return stats
 
 
-def _cosine(a: list[float], b: list[float]) -> float:
-    if not a or not b or len(a) != len(b):
-        return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(x * x for x in b))
-    if na == 0 or nb == 0:
-        return 0.0
-    return dot / (na * nb)
-
-
 def job_semantic_dedupe(
     store: ChromaStore,
     cfg: dict,
@@ -550,7 +539,7 @@ def job_semantic_dedupe(
             pair = tuple(sorted([uid_a, uid_b]))
             if pair in seen_pairs:
                 continue
-            sim = _cosine(emb_a, emb_b)
+            sim = cosine_similarity(emb_a, emb_b)
             if sim < threshold:
                 continue
             seen_pairs.add(pair)

@@ -132,7 +132,7 @@ else
   fi
 fi
 
-# --- Crush ---
+# --- Crush (Stage 4 approach A: digests on-demand, not standing) ---
 CRUSH_CONFIG=""
 for candidate in "$HOME/.config/crush/crush.json" "$HOME/.crush/crush.json"; do
   if [ -f "$candidate" ]; then
@@ -141,28 +141,32 @@ for candidate in "$HOME/.config/crush/crush.json" "$HOME/.crush/crush.json"; do
   fi
 done
 
-CRUSH_RULES_DIR=""
+CRUSH_DIR=""
 if [ -n "$CRUSH_CONFIG" ]; then
-  CRUSH_RULES_DIR="$(dirname "$CRUSH_CONFIG")/rules"
+  CRUSH_DIR="$(dirname "$CRUSH_CONFIG")"
 fi
+CRUSH_RULES_DIR="${CRUSH_DIR:+$CRUSH_DIR/rules}"
+CRUSH_DIGEST_DIR="${CRUSH_DIR:+$CRUSH_DIR/builder-reference}"
 
 crush_ok=1
 crush_names=(ousterhout manning zeller hard-parts ddia arch-patterns-python evolutionary-architectures)
-crush_paths=()
-if [ -n "$CRUSH_RULES_DIR" ]; then
+if [ -n "$CRUSH_DIGEST_DIR" ]; then
   for name in "${crush_names[@]}"; do
-    f="$CRUSH_RULES_DIR/builder-reference-${name}.md"
-    if [ ! -f "$f" ]; then
+    f="$CRUSH_DIGEST_DIR/builder-reference-${name}.md"
+    legacy="$CRUSH_RULES_DIR/builder-reference-${name}.md"
+    if [ -f "$legacy" ]; then
+      crush_ok=0
+      status_line "Crush $name" FAIL "still under rules/ (run deploy-builder-reference.sh)"
+    elif [ ! -f "$f" ]; then
       crush_ok=0
       status_line "Crush $name" FAIL "missing $f"
     else
-      crush_paths+=("$f")
       repo_digest="docs/builder-reference/${name}-builder-digest.md"
       if [ -f "$repo_digest" ]; then
         repo_hash="$(sha256_file "$repo_digest")"
         deploy_hash="$(sha256_file "$f")"
         if [ "$repo_hash" = "$deploy_hash" ]; then
-          status_line "Crush $name" PASS "sha256 match"
+          status_line "Crush $name" PASS "sha256 match (on-demand dir)"
         else
           status_line "Crush $name" WARN "stale deploy (re-run deploy-builder-reference.sh)"
           crush_ok=0
@@ -170,43 +174,49 @@ if [ -n "$CRUSH_RULES_DIR" ]; then
       fi
     fi
   done
+  pointer="$CRUSH_RULES_DIR/builder-reference-pointer.md"
+  if [ -f "$pointer" ]; then
+    status_line "Crush pointer" PASS "rules/builder-reference-pointer.md present"
+  else
+    crush_ok=0
+    status_line "Crush pointer" FAIL "missing $pointer"
+  fi
 else
   crush_ok=0
   status_line "Crush" FAIL "crush.json not found"
 fi
 
 if [ "$crush_ok" -eq 1 ] && [ -n "$CRUSH_CONFIG" ]; then
-  missing_paths="$(python3 - <<'PY' "$CRUSH_CONFIG"
+  path_check="$(python3 - <<'PY' "$CRUSH_CONFIG"
 import json
 import sys
 from pathlib import Path
 
 config_path = Path(sys.argv[1])
-rules_dir = config_path.parent / "rules"
-expected = [
-    str((rules_dir / f"builder-reference-{name}.md").expanduser())
-    for name in ("ousterhout", "manning", "zeller", "hard-parts", "ddia", "arch-patterns-python", "evolutionary-architectures")
-]
 with open(config_path) as f:
     cfg = json.load(f)
 paths = list((cfg.get("options") or {}).get("global_context_paths") or [])
-missing = [p for p in expected if p not in paths]
-ritual_first = bool(paths) and paths[0].endswith("CONVMEM-RITUAL.md")
-if missing:
-    print("MISSING:" + "|".join(missing))
-elif not ritual_first:
-    print("ORDER:" + (paths[0] if paths else "<empty>"))
+expected = [
+    "~/.config/crush/CONVMEM-RITUAL.md",
+    "~/.config/crush/rules/",
+    "~/.config/crush/CRUSH.md",
+]
+digest_leaks = [p for p in paths if "builder-reference-" in Path(str(p)).name]
+if digest_leaks:
+    print("LEAK:" + "|".join(digest_leaks))
+elif paths != expected:
+    print("ORDER:" + json.dumps(paths))
 else:
     print("OK")
 PY
 )"
-  if [ "$missing_paths" = "OK" ]; then
-    status_line "Crush json" PASS "global_context_paths lists all digests; CONVMEM-RITUAL first"
-  elif [ "${missing_paths#ORDER:}" != "$missing_paths" ]; then
-    status_line "Crush json" FAIL "global_context_paths order: CONVMEM-RITUAL not first (paths[0]=${missing_paths#ORDER:})"
+  if [ "$path_check" = "OK" ]; then
+    status_line "Crush json" PASS "standing paths = ritual + rules/ + CRUSH.md (no digests)"
+  elif [ "${path_check#LEAK:}" != "$path_check" ]; then
+    status_line "Crush json" FAIL "digest path still in global_context_paths"
     crush_ok=0
   else
-    status_line "Crush json" FAIL "global_context_paths missing digest paths"
+    status_line "Crush json" FAIL "global_context_paths != ritual/rules/CRUSH.md (got ${path_check#ORDER:})"
     crush_ok=0
   fi
 fi

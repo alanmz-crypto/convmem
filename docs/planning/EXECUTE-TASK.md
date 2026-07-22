@@ -30,9 +30,12 @@ Enter after **Execution Planning + HITL approval**, or when Ryan directs
 ad-hoc execution with an explicit scope waiver.
 
 This guide supports **normal implementation** and **approved active-failure/debug
-execution** (§Active failure branch). It is execution discipline, not Verify OS.
-It does not authorize greenfield bug discovery — that stays upstream (Crush /
-[`TEAM-CHARTER`](../inter-model/TEAM-CHARTER-2026-07-06.md)).
+execution** (§Active failure branch). It is execution discipline, not Verify OS
+([`VERIFY-PLANNING.md`](VERIFY-PLANNING.md)). For an **arc**, the handoff must
+name `docs/plans/VERIFY-<slug>.md` (create a stub from
+[`../plans/VERIFY-TEMPLATE.md`](../plans/VERIFY-TEMPLATE.md) if missing) before
+claiming merge-ready closeout. It does not authorize greenfield bug discovery —
+that stays upstream (Crush / [`TEAM-CHARTER`](../inter-model/TEAM-CHARTER-2026-07-06.md)).
 
 ---
 
@@ -124,11 +127,13 @@ Link only; no new subsystem.
 | Surface soaks (when cited) | [`VERIFICATION-MATRIX.md`](../inter-model/VERIFICATION-MATRIX.md) |
 | Post-execute plan cleanup | [`REVISE-PLANNING.md`](REVISE-PLANNING.md) |
 | Optional post-handoff audit | Codex — **only if Ryan requests**; not part of active execution |
+| Arc closeout (Verify OS) | [`VERIFY-PLANNING.md`](VERIFY-PLANNING.md) + `docs/plans/VERIFY-<slug>.md` |
 
 ### Awareness (read-only context)
 
 - [`TEAM-CHARTER-2026-07-06.md`](../inter-model/TEAM-CHARTER-2026-07-06.md) — implementer must-nots
 - [`MODEL-WORKFLOW.md`](../MODEL-WORKFLOW.md) — repo-specific routes (lab vs prod vs client)
+- [`CI-WAIT-WORKFLOW.md`](../CI-WAIT-WORKFLOW.md) — when CI is pending: what to do while automated review runs
 - [`SESSION-CLOSE-RECORD.md`](../inter-model/SESSION-CLOSE-RECORD.md) — record block format (Ryan runs approve-last)
 
 ### Outputs
@@ -155,6 +160,7 @@ This phase ends when:
 - [ ] Change is minimal and matches conventions
 - [ ] Verification gates run; evidence table complete (PASS/FAIL/DEFERRED)
 - [ ] Handoff nudge issued (Track A); handoff ≠ record stated
+- [ ] If this task closes an **arc**: VERIFY path named (stub or filled); next phase is [`VERIFY-PLANNING.md`](VERIFY-PLANNING.md) unless Ryan waives in writing
 - [ ] No self-transition to Revise / Architecture / merge
 - [ ] No `convmem record` unless Ryan asks
 

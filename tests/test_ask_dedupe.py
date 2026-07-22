@@ -1,20 +1,20 @@
-"""Tests for ask-layer deduplication."""
+"""Tests for shared ledger result post-filters (ask + search)."""
 
 from __future__ import annotations
 
 import unittest
 
-from ask import _dedupe_results_by_ledger_id, _filter_superseded_decisions
+from evidence import dedupe_results_by_ledger_id, filter_superseded_decisions
 
 
-class AskDedupeTests(unittest.TestCase):
+class LedgerResultFilterTests(unittest.TestCase):
     def test_dedupe_twins_same_ledger_id(self):
         results = [
             {"id": "a", "rank_score": 0.76, "metadata": {"ledger_id": "obs001"}},
             {"id": "b", "rank_score": 0.70, "metadata": {"ledger_id": "obs001"}},
             {"id": "c", "score": 0.55, "metadata": {"ledger_id": "obs002"}},
         ]
-        out = _dedupe_results_by_ledger_id(results)
+        out = dedupe_results_by_ledger_id(results)
         self.assertEqual([r["id"] for r in out], ["a", "c"])
 
     def test_legacy_units_without_ledger_id_kept(self):
@@ -22,7 +22,7 @@ class AskDedupeTests(unittest.TestCase):
             {"id": "x", "metadata": {"title": "chat chunk"}},
             {"id": "y", "metadata": {"title": "other chunk"}},
         ]
-        self.assertEqual(len(_dedupe_results_by_ledger_id(results)), 2)
+        self.assertEqual(len(dedupe_results_by_ledger_id(results)), 2)
 
     def test_filter_superseded_parent_decision(self):
         child = {
@@ -41,7 +41,7 @@ class AskDedupeTests(unittest.TestCase):
                 "relates_to": "obs_staging2_monitor_csp-missing",
             },
         }
-        out = _filter_superseded_decisions([child, parent])
+        out = filter_superseded_decisions([child, parent])
         self.assertEqual([r["id"] for r in out], ["child"])
 
     def test_filter_keeps_unrelated_decisions(self):
@@ -63,7 +63,7 @@ class AskDedupeTests(unittest.TestCase):
                 },
             },
         ]
-        self.assertEqual(len(_filter_superseded_decisions(results)), 2)
+        self.assertEqual(len(filter_superseded_decisions(results)), 2)
 
 
 if __name__ == "__main__":

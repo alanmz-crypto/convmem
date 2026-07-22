@@ -126,8 +126,10 @@ fi
 # --- Deploy Kiro steering file ---
 if [ -n "$KIRO_DIR" ]; then
   cp config/kiro-steering-convmem.example.md "$KIRO_DIR/convmem.md"
+  cp config/kiro-steering-commit-pr-quality.example.md "$KIRO_DIR/commit-pr-quality.md"
   echo "  [deploy] $KIRO_DIR/convmem.md"
-  DEPLOY_REPORT+="  - Synced Kiro steering file\n"
+  echo "  [deploy] $KIRO_DIR/commit-pr-quality.md"
+  DEPLOY_REPORT+="  - Synced Kiro steering file (convmem + commit-pr-quality)\n"
 else
   echo "  [skip]   Kiro steering directory not found (probed: ~/.kiro/steering, ~/.config/kiro/steering)"
   SKIPPED+="  - Kiro (no steering dir found)\n"
@@ -346,11 +348,19 @@ done
 if [ -n "$CRUSH_RULES" ]; then
   cp config/crush-rules-00-ritual.example.md "$CRUSH_RULES/00-convmem-ritual.md"
   cp config/crush-rules-convmem.example.md "$CRUSH_RULES/convmem.md"
-  cp config/crush-rules-ksweep-routing.example.md "$CRUSH_RULES/ksweep-routing.md"
+  # P1.3 source-trust landed (#78): do not redeploy ksweep-routing stopgap.
+  # If a stale ksweep-routing.md is present, retire it beside the rules dir.
+  if [ -f "$CRUSH_RULES/ksweep-routing.md" ]; then
+    mkdir -p "${CRUSH_RULES}-retired"
+    mv -f "$CRUSH_RULES/ksweep-routing.md" \
+      "${CRUSH_RULES}-retired/ksweep-routing.md.retired-$(date -u +%Y%m%d)"
+    echo "  [retire] moved stale ksweep-routing.md out of Crush rules"
+  fi
+  cp config/crush-rules-commit-pr-quality.example.md "$CRUSH_RULES/commit-pr-quality.md"
   echo "  [deploy] $CRUSH_RULES/00-convmem-ritual.md"
   echo "  [deploy] $CRUSH_RULES/convmem.md"
-  echo "  [deploy] $CRUSH_RULES/ksweep-routing.md"
-  DEPLOY_REPORT+="  - Deployed Crush convmem rules (00-ritual + Tier A + ksweep-routing)\n"
+  echo "  [deploy] $CRUSH_RULES/commit-pr-quality.md"
+  DEPLOY_REPORT+="  - Deployed Crush convmem rules (00-ritual + Tier A + commit-pr-quality; ksweep-routing retired post-P1.3)\n"
 else
   echo "  [skip]   Crush rules directory not found (probed: ~/.config/crush/rules, ~/.crush/rules)"
   SKIPPED+="  - Crush (no rules dir found)\n"

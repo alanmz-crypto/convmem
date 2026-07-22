@@ -44,9 +44,11 @@ allow_extra = []
 [query]
 top_k_candidates = 20
 top_k_results    = 5
-rerank           = true
+semantic_rank_weight = 2.0  # weighted RRF preserves broad semantic/lexical recall
+rerank_rank_weight   = 1.0  # CrossEncoder is mandatory but not the sole signal
 recency_weight   = 0.1  # time-decay boost for newer knowledge units (search + ask --evidence)
 recency_half_life_days = 30
+source_trust_weight = 1.0  # prefer steering, ledger, and inter-model sources after fusion
 
 [watch]
 debounce_seconds = 90
@@ -76,6 +78,13 @@ min_confidence_redistill = 0.6
 backfill_domain_calls_per_hour = 60
 redistill_calls_per_hour = 15
 semantic_dedupe_calls_per_hour = 20
+
+[ingest_dedup]
+# Exact canonical text duplicates are suppressed and audited. Semantic matches
+# are indexed normally and queued for review; they are never auto-suppressed.
+semantic_similarity = 0.92
+candidate_k = 10
+max_semantic_candidates_per_unit = 3
 
 [eval]
 # Pass thresholds for scripts/eval-*.py (see docs plan "Model quality eval harness").

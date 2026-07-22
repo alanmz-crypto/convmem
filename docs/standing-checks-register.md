@@ -60,9 +60,9 @@ due.
 
 ## Live triggers
 
-- `ksweep-sunset` (manual, 90d) — confirmed gap: the sunset clause lives only as
-  an HTML comment in `config/crush-rules-ksweep-routing.example.md`
-  (lines 24–27). Retire once P1 contradiction-aware ranking ships.
+- `ksweep-sunset` (**closed** 2026-07-22) — P1.3 source-trust (#78) landed;
+  live Crush `ksweep-routing.md` retired; deploy no longer copies the example.
+  Example file retained as a RETIRED stub only.
 - `eval-provenance-wiring` (probe) — scans `scripts/eval-*.py` for
   `model_context(` / `judge(`; `scripts/eval-retrieval.py` is exempt
   (deterministic retrieval metrics, no LLM output under test — verified:

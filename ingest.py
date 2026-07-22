@@ -22,7 +22,6 @@ from config import load_config
 from distill import distill, normalize_unit
 from llm import ollama_embed, summarize
 
-
 def sha256_file(path: str) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -461,8 +460,9 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
     metadata: dict,
     units_to_add: list,
     verbose: bool,
-) -> tuple[bool, int, int]:
-    """Source/export-locked batch write. Returns (ok, n_indexed_delta, n_units_delta)."""
+) -> tuple[bool, int, int, int, int]:
+    """Source/export-locked batch write with ingestion dedup statistics."""
+    from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
     from purge_locks import export_flock, source_flock
 
     with source_flock(cfg, path_key):
@@ -472,11 +472,12 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
         ):
             if verbose:
                 print(f"  [skip] excluded during batch-write {Path(path).name}")
-            return False, 0, 0
+            return False, 0, 0, 0, 0
         n_units = 0
         with ChromaStore(chroma_dir) as store:
             store.add_summary(doc_id, summary, summary_embedding, metadata)
-            for unit, doc, unit_embedding, unit_meta in units_to_add:
+            dedupe = evaluate_ingest_batch(store, cfg, units_to_add)
+            for unit, doc, unit_embedding, unit_meta in dedupe.accepted:
                 store.add_unit(unit["id"], doc, unit_embedding, unit_meta)
                 if units_export:
                     units_export.parent.mkdir(parents=True, exist_ok=True)
@@ -484,7 +485,25 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
                         with open(units_export, "a", encoding="utf-8") as uf:
                             uf.write(json.dumps(unit) + "\n")
                 n_units += 1
-        return True, 1, n_units
+        dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
+        if verbose:
+            for row in dedupe.exact_suppressions:
+                print(
+                    f"    [dedupe] exact {row['suppressed_id'][:8]} "
+                    f"= {row['matched_id'][:8]} (suppressed)"
+                )
+            for row in dedupe.semantic_candidates:
+                print(
+                    f"    [dedupe?] {row['similarity']:.3f} "
+                    f"{row['id_a'][:8]} ~ {row['id_b'][:8]} (queued)"
+                )
+        return (
+            True,
+            1,
+            n_units,
+            dedupe_stats["exact_suppressed"],
+            dedupe_stats["semantic_candidates_queued"],
+        )
 
 
 def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-locals
@@ -500,10 +519,14 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
     force_file: str | None,
     supersede_on_reindex: bool,
     verbose: bool,
+    fmt: str = "inter_model_doc",
 ) -> tuple[bool, int]:
-    """Index one inter-model doc. Returns (committed, n_units)."""
+    """Index one inter-model or kiro-steering doc. Returns (committed, n_units)."""
     from inter_model_index import index_inter_model_messages
 
+    tool, source_type, author_model = {
+        "kiro_steering": ("kiro", "kiro_steering", "kiro-steering-index"),
+    }.get(fmt, ("inter-model", "inter_model_doc", "inter-model-index"))
     chroma_dir = idx["chroma_dir"]
     if force_file:
         with ChromaStore(chroma_dir) as store:
@@ -537,6 +560,9 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
             cfg=cfg,
             verbose=verbose,
             units_export=units_export if units_export else None,
+            tool=tool,
+            source_type=source_type,
+            author_model=author_model,
         )
     except Exception as e:
         if verbose:
@@ -569,7 +595,7 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
     overlap: int,
     min_confidence: float,
     verbose: bool,
-) -> tuple[bool, int, int]:
+) -> tuple[bool, int, int, int, int]:
     """Summarize/distill/embed unlocked, then locked batch writes.
 
     Returns (completed_without_exclusion_abort, chunks_indexed, units_indexed).
@@ -580,6 +606,8 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
 
     n_indexed = 0
     n_units = 0
+    n_exact_suppressed = 0
+    n_semantic_queued = 0
     chunk_date = ""
     for ch in chunks:
         text = render_chunk(ch["messages"])
@@ -674,7 +702,7 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             **session_meta,
         }
         # Batch write only — parse/LLM/embed above hold no source/export locks (N17).
-        ok, d_idx, d_units = _commit_chunk_to_stores(
+        ok, d_idx, d_units, d_exact, d_semantic = _commit_chunk_to_stores(
             cfg=cfg,
             idx=idx,
             path_key=path_key,
@@ -690,10 +718,18 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             verbose=verbose,
         )
         if not ok:
-            return False, n_indexed, n_units
+            return (
+                False,
+                n_indexed,
+                n_units,
+                n_exact_suppressed,
+                n_semantic_queued,
+            )
         n_indexed += d_idx
         n_units += d_units
-    return True, n_indexed, n_units
+        n_exact_suppressed += d_exact
+        n_semantic_queued += d_semantic
+    return True, n_indexed, n_units, n_exact_suppressed, n_semantic_queued
 
 
 def _reindex_clear_existing(
@@ -756,8 +792,8 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     force_reindex: bool,
     supersede_on_reindex: bool,
     verbose: bool,
-) -> tuple[str, int, int]:
-    """Index one already-resolved source file. Returns (status, chunks, units).
+) -> tuple[str, int, int, int, int]:
+    """Return status, chunks, units, exact suppressions, semantic candidates.
 
     status:
       - ``ignored`` — unreadable or parse-failed (does not increment files_skipped)
@@ -769,7 +805,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     except OSError as e:
         if verbose:
             print(f"  [skip] cannot read {path}: {e}")
-        return "ignored", 0, 0
+        return "ignored", 0, 0, 0, 0
 
     path_key = str(Path(path).expanduser().resolve())
 
@@ -778,7 +814,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     ):
         if verbose:
             print(f"  [skip] excluded {Path(path).name}")
-        return "skipped", 0, 0
+        return "skipped", 0, 0, 0, 0
 
     if force_reindex and force_file:
         for key, entry in list(processed.items()):
@@ -798,7 +834,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
         if file_hash in processed:
             if verbose:
                 print(f"  [skip] unchanged {Path(path).name}")
-            return "skipped", 0, 0
+            return "skipped", 0, 0, 0, 0
 
     fmt = detect_format(path)
     tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
@@ -819,9 +855,9 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     except Exception as e:
         if verbose:
             print(f"  [skip] parse failed {path}: {e}")
-        return "ignored", 0, 0
+        return "ignored", 0, 0, 0, 0
 
-    if fmt == "inter_model_doc":
+    if fmt in ("inter_model_doc", "kiro_steering"):
         committed, n_units = _index_inter_model_file(
             cfg=cfg,
             idx=idx,
@@ -834,16 +870,17 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             force_file=force_file,
             supersede_on_reindex=supersede_on_reindex,
             verbose=verbose,
+            fmt=fmt,
         )
         if not committed:
             if verbose and n_units == 0:
                 print(f"  [skip] inter-model index failed or excluded {Path(path).name}")
             elif verbose:
                 print(f"  [skip] excluded during index {Path(path).name}")
-            return "skipped", 0, 0
-        return "processed", 0, n_units
+            return "skipped", 0, 0, 0, 0
+        return "processed", 0, n_units, 0, 0
 
-    completed, n_indexed, n_units = _process_file_chunks(
+    completed, n_indexed, n_units, n_exact, n_semantic = _process_file_chunks(
         cfg=cfg,
         idx=idx,
         path=path,
@@ -860,7 +897,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
         verbose=verbose,
     )
     if not completed:
-        return "skipped", n_indexed, n_units
+        return "skipped", n_indexed, n_units, n_exact, n_semantic
 
     committed = commit_processed_index_entry(
         idx["processed_log"],
@@ -872,8 +909,8 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     if not committed:
         if verbose:
             print(f"  [skip] excluded during index {Path(path).name}")
-        return "skipped", n_indexed, n_units
-    return "processed", n_indexed, n_units
+        return "skipped", n_indexed, n_units, n_exact, n_semantic
+    return "processed", n_indexed, n_units, n_exact, n_semantic
 
 
 def index(
@@ -904,6 +941,8 @@ def index(
         "files_skipped": 0,
         "chunks_indexed": 0,
         "units_indexed": 0,
+        "exact_duplicates_suppressed": 0,
+        "semantic_candidates_queued": 0,
     }
     seen_files = 0
 
@@ -916,7 +955,7 @@ def index(
         if limit_files is not None and seen_files >= limit_files:
             break
         seen_files += 1
-        status, n_chunks, n_units = _index_one_file(
+        status, n_chunks, n_units, n_exact, n_semantic = _index_one_file(
             cfg=cfg,
             idx=idx,
             path=path,
@@ -937,6 +976,8 @@ def index(
             stats["files_processed"] += 1
             stats["chunks_indexed"] += n_chunks
             stats["units_indexed"] += n_units
+            stats["exact_duplicates_suppressed"] += n_exact
+            stats["semantic_candidates_queued"] += n_semantic
         elif status == "skipped":
             stats["files_skipped"] += 1
         # status == "ignored": unreadable / parse-failed — prior behavior: no files_skipped

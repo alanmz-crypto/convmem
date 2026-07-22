@@ -13,7 +13,7 @@ from pathlib import Path
 import requests
 
 from brief import _mcp_registration, _systemd_state, _watch_main_pid, _watch_process_memory
-from chroma_readonly import collection_count, open_readonly_unit_store
+from chroma_readonly import collection_count, collection_ids, open_readonly_unit_store
 from config import CONFIG_PATH, load_config
 from planning_contract import CONTRACT_VERSION, iter_guide_paths, validate_planning_guides
 
@@ -117,14 +117,14 @@ def _check_chroma(cfg: dict) -> DoctorCheck:
     )
 
 
-def _jsonl_unit_stats(export: Path) -> tuple[int, int]:
-    """Return (line_count, unique_unit_id_count) for units_export JSONL."""
+def _jsonl_unit_stats(export: Path) -> tuple[int, set[str]]:
+    """Return (line_count, unique_unit_ids) for the historical units export."""
     import json
 
     lines = 0
     ids: set[str] = set()
     if not export.is_file():
-        return 0, 0
+        return 0, set()
     for line in export.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
@@ -137,21 +137,23 @@ def _jsonl_unit_stats(export: Path) -> tuple[int, int]:
         uid = (rec.get("id") or rec.get("ledger_id") or "").strip()
         if uid:
             ids.add(uid)
-    return lines, len(ids)
+    return lines, ids
 
 
 def _check_index_drift(cfg: dict) -> DoctorCheck:
-    """Compare Chroma knowledge_units count to units_export JSONL unique ids."""
+    """Check active Chroma identity overlap with the historical units export."""
     chroma_dir = Path(cfg["index"]["chroma_dir"]).expanduser()
     export = Path(cfg["index"].get("units_export", "")).expanduser()
-    chroma_count = collection_count(str(chroma_dir), "knowledge_units")
+    chroma_ids = set(collection_ids(str(chroma_dir), "knowledge_units"))
+    chroma_count = len(chroma_ids)
     if not export.is_file():
         return DoctorCheck(
             "index_drift",
             True,
             f"no units_export at {export} (Chroma={chroma_count})",
         )
-    line_count, unique_count = _jsonl_unit_stats(export)
+    line_count, export_ids = _jsonl_unit_stats(export)
+    unique_count = len(export_ids)
     if chroma_count < 1 and (line_count > 0 or unique_count > 0):
         return DoctorCheck(
             "index_drift",
@@ -164,18 +166,22 @@ def _check_index_drift(cfg: dict) -> DoctorCheck:
             True,
             f"empty units_export (Chroma={chroma_count})",
         )
-    ratio = chroma_count / unique_count
+    overlap = len(chroma_ids & export_ids)
+    historical_only = len(export_ids - chroma_ids)
+    active_only = len(chroma_ids - export_ids)
+    active_coverage = overlap / chroma_count
     detail = (
-        f"Chroma {chroma_count} vs JSONL {unique_count} unique ids "
-        f"({line_count} lines, {ratio:.0%} indexed)"
+        f"Chroma {chroma_count} active; JSONL {unique_count} historical ids "
+        f"({line_count} lines; {overlap} overlap, {active_coverage:.0%} active coverage; "
+        f"{historical_only} historical-only, {active_only} active-only)"
     )
-    if ratio < 0.15 and unique_count > 500:
+    if active_coverage < 0.15 and chroma_count > 500 and unique_count > 500:
         return DoctorCheck(
             "index_drift",
             False,
-            detail + " — run: rm ~/.local/share/convmem/processed.json && convmem index",
+            detail + " — active/export collection identity mismatch",
         )
-    if ratio < 0.3 and unique_count > 500:
+    if active_coverage < 0.7 and chroma_count > 500:
         return DoctorCheck("index_drift", True, f"WARN: {detail}")
     return DoctorCheck("index_drift", True, detail)
 
@@ -664,8 +670,10 @@ def _merge_order_probe(row: dict, root: Path) -> tuple[bool, str]:
 
     Asserts CONVMEM-RITUAL.md is first AND CRUSH.md (when present) is last —
     the two ends of the canonical order enforced by deploy-builder-reference.sh.
-    Note verify-builder-reference.sh only asserts ritual-first; this probe covers
-    both ends. Scope is Crush only (other surfaces have no merge order).
+    After Stage 4 approach A, standing paths are ritual → rules/ → CRUSH.md
+    (builder digests are on-demand under ~/.config/crush/builder-reference/).
+    Note verify-builder-reference.sh asserts the full three-path standing list;
+    this probe covers ritual-first / CRUSH-last only.
 
     Mirrors the order assertion in scripts/verify-builder-reference.sh, but runs
     on every doctor pass instead of only (non-fatally) at deploy end — closing
@@ -1194,6 +1202,69 @@ def _check_planning_guide_contract() -> DoctorCheck:
     return DoctorCheck("planning_guide_contract", True, f"contract {CONTRACT_VERSION}: {n} guide(s) ok")
 
 
+def _check_embed_collection_identity(cfg: dict) -> DoctorCheck:
+    """Read-only: configured embed model vs collection metadata (SQLite mode=ro).
+
+    Never opens PersistentClient / never calls embed APIs. Legacy missing
+    ``convmem:embed_model`` is WARN; shadow mismatches FAIL.
+    """
+    name = "embed_collection_identity"
+    chroma_dir = Path(cfg["index"]["chroma_dir"]).expanduser()
+    want_model = str((cfg.get("models") or {}).get("embed_model") or "")
+    try:
+        from chroma_readonly import collection_config_metadata
+        from chroma_store import UNITS
+
+        meta = collection_config_metadata(chroma_dir, UNITS)
+    except FileNotFoundError as exc:
+        return DoctorCheck(
+            name,
+            True,
+            f"WARN: cannot read collection metadata (no embed probe): {exc}",
+            status="warn",
+        )
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        # Intentional containment boundary: doctor must report malformed,
+        # legacy, or partially initialized stores (e.g. sqlite3.OperationalError
+        # on a schema-incompatible chroma.sqlite3) without crashing.
+        return DoctorCheck(
+            name,
+            True,
+            f"WARN: cannot read collection metadata (no embed probe): {exc}",
+            status="warn",
+        )
+
+    if not meta:
+        return DoctorCheck(
+            name,
+            True,
+            "WARN: collection missing or has no collection_metadata "
+            f"(configured={want_model!r}; shadow stores must set metadata)",
+            status="warn",
+        )
+
+    stored_model = str(meta.get("convmem:embed_model") or "")
+    stored_dim = meta.get("convmem:embed_dimensions")
+    if not stored_model:
+        return DoctorCheck(
+            name,
+            True,
+            "WARN: legacy collection metadata lacks convmem:embed_model "
+            f"(configured={want_model!r}; shadow stores must set metadata)",
+            status="warn",
+        )
+    if want_model and stored_model != want_model:
+        return DoctorCheck(
+            name,
+            False,
+            f"embed model mismatch: collection={stored_model!r} config={want_model!r}",
+        )
+    detail = f"collection embed_model={stored_model!r}"
+    if stored_dim is not None:
+        detail += f" dimensions={stored_dim!r}"
+    return DoctorCheck(name, True, detail)
+
+
 def run_doctor(
     *,
     v1: bool = False,
@@ -1212,6 +1283,7 @@ def run_doctor(
         _check_ollama(cfg),
         _check_chroma(cfg),
         _check_index_drift(cfg),
+        _check_embed_collection_identity(cfg),
         _check_restic(),
         _check_restic_external(),
         _check_restic_password_backup(),
