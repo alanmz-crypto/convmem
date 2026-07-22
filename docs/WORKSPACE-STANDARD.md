@@ -33,6 +33,8 @@ Manual `convmem index --file` only. Enforced in `watch.py` (`is_live_watch_db`) 
 
 **Watch OK (kiro-cli 2.x):** `~/.kiro/sessions/**/sess_*/messages.jsonl` — see [KIRO-SESSION-ADAPTER.md](KIRO-SESSION-ADAPTER.md).
 
+**Watch OK (Copilot CLI):** `~/.copilot/session-state/<uuid>/events.jsonl` — see [COPILOT-SESSION-ADAPTER.md](COPILOT-SESSION-ADAPTER.md). Do **not** watch `session-store.db` or per-session `session.db`.
+
 **Codex:** `~/.codex/history.jsonl` — user prompts only (`source_type=prompt_only`).
 
 ## Tool state ≠ source

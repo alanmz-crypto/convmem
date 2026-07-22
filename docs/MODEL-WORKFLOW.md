@@ -36,7 +36,7 @@ See [`builder-reference/notes/suggested-application-of-builder-material.md`](bui
 
 **Session tracking — two tracks (do not confuse):**
 
-- **A — Session chat** (`crush.db`, Kiro `messages.jsonl`, Codex `rollout-*.jsonl`, Cursor `agent-transcripts`): **required** at handoff — `convmem index --file <session-path>`
+- **A — Session chat** (`crush.db`, Kiro `messages.jsonl`, Codex `rollout-*.jsonl`, Cursor `agent-transcripts`, Copilot `events.jsonl`): **required** at handoff — `convmem index --file <session-path>`
 - **B — Log artifact** (`logs/*.md` → inter-model): only if a log was written; **does not replace A**
 
 Ryan: **"ingest your chat"** = A · **"index the log"** = B · **"ingest everything"** = A then B. Avoid **"index what you wrote"** (models skip chat).
@@ -70,6 +70,7 @@ Ryan: **"ingest your chat"** = A · **"index the log"** = B · **"ingest everyth
 ```bash
 bash ~/Projects/convmem/scripts/convmem-index-prod.sh ~/.kiro/sessions/.../messages.jsonl --force
 bash ~/Projects/convmem/scripts/convmem-index-prod.sh ~/.cursor/projects/.../agent-transcripts/.../....jsonl --force
+bash ~/Projects/convmem/scripts/convmem-index-prod.sh ~/.copilot/session-state/.../events.jsonl --force
 ```
 
 Same wrapper for Codex rollout, Crush `.crush/crush.db`, etc. — always prod Chroma, no lab/prod mix-up.

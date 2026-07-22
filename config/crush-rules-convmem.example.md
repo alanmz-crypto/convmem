@@ -48,6 +48,9 @@ convmem index --file ~/.cursor/projects/<project>/agent-transcripts/<uuid>/<uuid
 
 # Codex — full session (not history.jsonl prompts-only):
 convmem index --file ~/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-<timestamp>-<id>.jsonl
+
+# Copilot CLI — session events (not session-store.db / session.db):
+convmem index --file ~/.copilot/session-state/<uuid>/events.jsonl
 ```
 
 Indexing **only** a `logs/*.md` file does **not** ingest your chat. If you wrote a log, run **A and B**.

@@ -31,6 +31,7 @@ class DoctorTests(unittest.TestCase):
     @patch("doctor._check_restic_external")
     @patch("doctor._check_restic")
     @patch("doctor._check_verify_script")
+    @patch("doctor._check_copilot_mcp")
     @patch("doctor._check_continue_mcp")
     @patch("doctor._check_mcp_wiring")
     @patch("doctor._check_mcp_import")
@@ -39,7 +40,7 @@ class DoctorTests(unittest.TestCase):
     @patch("doctor._check_deepseek_key")
     @patch("doctor._check_config")
     @patch("doctor.load_config")
-    def test_run_doctor_all_pass(
+    def test_run_doctor_all_pass(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         mock_load,
         mock_cfg,
@@ -49,6 +50,7 @@ class DoctorTests(unittest.TestCase):
         mock_mcp,
         mock_wire,
         mock_cont,
+        mock_copilot,
         mock_verify,
         mock_restic,
         mock_restic_external,
@@ -69,6 +71,7 @@ class DoctorTests(unittest.TestCase):
             mock_mcp,
             mock_wire,
             mock_cont,
+            mock_copilot,
         ):
             mock.return_value = ok
         mock_verify.return_value = DoctorCheck("verify_continue", True, "skipped")

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "convmem": {
+      "type": "local",
+      "command": "/home/lauer/miniforge3/envs/convmem/bin/python",
+      "args": [
+        "/home/lauer/Projects/convmem/mcp_server.py"
+      ],
+      "env": {
+        "CONVMEM_MCP_PROFILE": "shell"
+      },
+      "tools": ["*"]
+    }
+  }
+}
