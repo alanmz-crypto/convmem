@@ -1,116 +1,130 @@
-# Cross-arc consolidation synthesis — 2026-07-22
+# Synthesis: Cross-arc consolidation (2026-07-22)
 
-**Consolidator:** Cursor (designated)  
-**Generated:** 2026-07-22  
-**Inputs:** eight `STANCE-2026-07-22-*.md` files collected from stance branches onto this consolidation branch (verbatim; not rewritten). Chat Class lines matched those stances. **No Crush / Kiro / Codex stance files found** on remote branches at consolidate time — treat non-Cursor lanes as **unreported** unless Ryan forwards Class lines later.  
-**Baseline handoff:** `docs/inter-model/LATEST.md` (Updated: PR Steward VERIFY `2`→`3` closed). Brief flagged STALE HANDOFF vs newer inter-model files.  
-**`main` tip at collect:** `7a0c344` (`#96`).
+```text
+Consolidator: Cursor (designated this turn)
+Sources:      docs/inter-model/STANCE-2026-07-22-*.md (8 files, Cursor lane)
+              docs/inter-model/LATEST.md (Active handoff)
+              Protocol: doctor PASS; brief; unresolved (11 — staging2 + old retrieval obs)
+Not found:    No crush/kiro/codex/other STANCE-2026-07-22-*.md on origin
+              No SOLO-CONTINUE class in filed stances
+```
 
----
+**Purpose:** One shared-bus picture of what to park, what to combine, and what Ryan
+must authorize — **not** new implementation, merges, or ledger records.
 
-## Roster
-
-| Agent/lane | Class | Arc (one line) | Stance path | Stance branch tip |
-|---|---|---|---|---|
-| Cursor | COMBINE | Copilot CLI session wiring still unmerged (adapter + always-on vs Kiro generate/deploy naming) | [`STANCE-2026-07-22-cursor-copilot-cli-wiring.md`](STANCE-2026-07-22-cursor-copilot-cli-wiring.md) | `4a56dfd` |
-| Cursor | DONE | BugBot PR-level external review gate landed | [`STANCE-2026-07-22-cursor-bugbot-pr-gate-done.md`](STANCE-2026-07-22-cursor-bugbot-pr-gate-done.md) | `8141316` |
-| Cursor | DONE | Model-quality eval harness (detection only) | [`STANCE-2026-07-22-cursor-eval-harness-done.md`](STANCE-2026-07-22-cursor-eval-harness-done.md) | `78c52c0` |
-| Cursor | DONE | Cursor MCP Roots shell brief boundary (`#87`) | [`STANCE-2026-07-22-cursor-mcp-roots-brief-boundary.md`](STANCE-2026-07-22-cursor-mcp-roots-brief-boundary.md) | `85d4213` |
-| Cursor | DONE | P1.3 soak + semantic-dedupe default GATE closed | [`STANCE-2026-07-22-cursor-p13-dedupe-closed.md`](STANCE-2026-07-22-cursor-p13-dedupe-closed.md) | `fa75e86` |
-| Cursor | DONE | R2b capture auth parked after T4 | [`STANCE-2026-07-22-cursor-r2b-capture-parked.md`](STANCE-2026-07-22-cursor-r2b-capture-parked.md) | `9b59f37` |
-| Cursor | DONE | Session arcs closed (dedupe default band + debate `#94` + Steward `#95`/`#96`) | [`STANCE-2026-07-22-cursor-session-arcs-done.md`](STANCE-2026-07-22-cursor-session-arcs-done.md) | `b6a6b36` |
-| Cursor | DONE | Stage 4 closed + residual tool-output draft (HITL not accepted) | [`STANCE-2026-07-22-cursor-stage4-residual-closed.md`](STANCE-2026-07-22-cursor-stage4-residual-closed.md) | `6f80df9` |
-| Crush / Kiro / Codex / other | *(unreported)* | — | none found | — |
-
-**Class counts (reported):** COMBINE **1** · DONE **7** · SOLO-CONTINUE **0**.
+**Stance fidelity:** Stances below are cited, not rewritten. Product claims prefer
+`LATEST.md` + merged PR tips when a stance header is older than GATE close.
 
 ---
 
-## COMBINE clusters
+## 1. Roster
 
-### Cluster A — Copilot CLI surface land (only open COMBINE)
-
-**Members:** [`STANCE-2026-07-22-cursor-copilot-cli-wiring.md`](STANCE-2026-07-22-cursor-copilot-cli-wiring.md) (+ cited overlap: Kiro tip `d0dbda6` on `docs/2026-07-19-response-tldr`, no separate Kiro stance file).
-
-**Merge thesis:** One land path for Copilot CLI as a Tier A surface — session adapter + watch/doctor + always-on instructions — after Ryan picks which example/deploy naming wins (`copilot-instructions-convmem.example.md` on feat tip `eb6f89d` vs `copilot-instructions.example.md` on Kiro `d0dbda6`), then rebase `feat/2026-07-19-copilot-cli-integration` onto current `main` and deploy once.
-
-**Do not merge carelessly with:** BugBot gate / Copilot *audit lane* lifecycle (`#54`), R2a substitute-audit docs (`#59`/`#71`), or “someone looked” Steward comments.
-
----
-
-### Cluster B — Shared-bus LATEST refresh (meta-COMBINE; no coding)
-
-**Members (DONE stances requesting consolidator LATEST touch):** BugBot `#91`, MCP Roots `#87`, R2b `#67` wording, session-arcs (`#94`/`#96`), brief STALE HANDOFF.
-
-**Merge thesis:** Single docs-only LATEST Active-handoff update so the bus matches `main` — not eight parallel LATEST PRs.
-
-**Proposed content (for Ryan authorize later; not applied in this synthesis turn):**
-- BugBot `#91` / `db3e5e0` landed (policy bootstrap; PR-native SHA gate).
-- MCP Roots `#87` / `eb84472` closes PR `#19` Cursor `$HOME` caveat (residual = agent↔MCP bridge, not product reopen).
-- Debate folder `#94` / Steward residual `#96` closed.
-- R2b: implementation on `main` (`#67` / `c0f06f5`); **live capture still unauthorized**; T4 draft stale for ACCEPT.
-- Prefer LATEST + `#86` over stale header on `CURSOR-2026-07-22-semantic-dedupe-hygiene.md`.
+| Lane / agent | Class | Arc (one line) | Stance path |
+|--------------|-------|----------------|-------------|
+| Cursor | DONE | BugBot PR-native external review gate shipped | [`STANCE-2026-07-22-cursor-bugbot-pr-gate-done.md`](STANCE-2026-07-22-cursor-bugbot-pr-gate-done.md) |
+| Cursor | **COMBINE** | Copilot CLI session ingest + always-on still unmerged | [`STANCE-2026-07-22-cursor-copilot-cli-wiring.md`](STANCE-2026-07-22-cursor-copilot-cli-wiring.md) |
+| Cursor | DONE | Model-quality eval harness (detection only) | [`STANCE-2026-07-22-cursor-eval-harness-done.md`](STANCE-2026-07-22-cursor-eval-harness-done.md) |
+| Cursor | DONE | MCP Roots shell brief boundary (#87) | [`STANCE-2026-07-22-cursor-mcp-roots-brief-boundary.md`](STANCE-2026-07-22-cursor-mcp-roots-brief-boundary.md) |
+| Cursor | DONE | P1.3 live soak + semantic-dedupe default GATE | [`STANCE-2026-07-22-cursor-p13-dedupe-closed.md`](STANCE-2026-07-22-cursor-p13-dedupe-closed.md) |
+| Cursor | DONE | R2b capture auth parked after T4 (impl on main; live capture unauthorized) | [`STANCE-2026-07-22-cursor-r2b-capture-parked.md`](STANCE-2026-07-22-cursor-r2b-capture-parked.md) |
+| Cursor | DONE | Session arcs: dedupe GATE + debate archive + Steward VERIFY 2→3 | [`STANCE-2026-07-22-cursor-session-arcs-done.md`](STANCE-2026-07-22-cursor-session-arcs-done.md) |
+| Cursor | DONE | Stage 4 closed; tool-output residual draft only | [`STANCE-2026-07-22-cursor-stage4-residual-closed.md`](STANCE-2026-07-22-cursor-stage4-residual-closed.md) |
+| Crush / Kiro / Codex / other | — | **No stance file filed this wave** | — |
 
 ---
 
-## DONE park list
+## 2. COMBINE clusters
 
-Stop these lanes. Residual only if Ryan reopens with an explicit GATE / HITL.
+### Cluster A — Copilot CLI Tier-A wiring (only active COMBINE)
 
-| Park | Evidence | Residual only if Ryan… |
-|---|---|---|
-| P1.3 soak + dedupe default band | LATEST GATE ACCEPTED; `#86`/`dba9795`; exact@≥0.999 pending=0 | GATEs next band (name threshold) or Phase D |
-| who-fixes debate archive | `#94`/`5a378b3`; `#34` superseded | — |
-| Steward VERIFY `2`→`3` | `#95`/`#96`/`7a0c344` | — |
-| BugBot PR gate policy | `#91`/`db3e5e0`; Kiro V6 carried by content identity | branch-protection / fallback reviewer / record block |
-| MCP Roots brief boundary | `#87`/`eb84472` | confirms panel `stats` / authorizes bridge-debug |
-| R2b Cursor code lane | `#67`/`c0f06f5`; T4 draft parked | fresh T4 → T5 ACCEPT AND GRANT (or abandon draft) |
-| Eval harness (detection) | on `main`; ledger `dec_prop_20260705_011902_3adf` / `…082050_98bb` | H-H judge excerpts or remediation option |
-| Stage 4 compression | `#46`/`#48` closed; residual draft unaccepted | authorizes tool-output residual HITL |
+**Merge thesis:** One land path for Copilot session ingest + watch + doctor +
+always-on instructions; fold Kiro generate/deploy naming into the feat tip;
+do **not** ship generate/deploy alone without the adapter.
 
----
+| Piece | Evidence |
+|-------|----------|
+| Feat tip (adapter + MCP env load) | `feat/2026-07-19-copilot-cli-integration` @ `eb6f89d` — **no PR** |
+| Parallel instruction pipeline | `docs/2026-07-19-response-tldr` @ `d0dbda6` (Kiro) — different example filename |
+| Already settled (do not re-litigate) | HITL Copilot lifecycle [#54](https://github.com/alanmz-crypto/convmem/pull/54); R2a/DeepSeek *substitute* role ≠ session plumbing |
+| Ryan pick needed | Which example name wins; authorize PR vs abandon adapter / keep local-only overlays |
 
-## SOLO-CONTINUE list
+Cite: `STANCE-2026-07-22-cursor-copilot-cli-wiring.md`.
 
-**None reported.** No stance Class=SOLO-CONTINUE. Non-Cursor agents did not file stances — do **not** invent solo work for them.
+### Cluster B — Shared-bus hygiene (DONE arcs that share a LATEST refresh)
 
-If a Crush/Kiro/Codex agent is still mid-task in chat without a stance, Ryan should demand a Class line or park that chat.
+**Merge thesis:** Not code merge — one **docs-only LATEST Active-handoff refresh**
+so brief stops flagging STALE and so closed gaps are not re-opened from stale
+bullets.
 
----
+| Closed item | Tip / PR | Stale risk if LATEST lags |
+|-------------|----------|---------------------------|
+| BugBot gate | [#91](https://github.com/alanmz-crypto/convmem/pull/91) `db3e5e0` | Missing from Active handoff |
+| Debate archive | [#94](https://github.com/alanmz-crypto/convmem/pull/94) `5a378b3` | Revive [#34](https://github.com/alanmz-crypto/convmem/pull/34) |
+| Steward VERIFY 2→3 | [#96](https://github.com/alanmz-crypto/convmem/pull/96) `7a0c344` | Already noted on LATEST tip line |
+| MCP Roots / #19 caveat | [#87](https://github.com/alanmz-crypto/convmem/pull/87) `eb84472` | Stage 3 still says Cursor `$HOME` open caveat |
+| R2b implementation | [#67](https://github.com/alanmz-crypto/convmem/pull/67) `c0f06f5` | LATEST still reads like “no implementation” |
+| P1.3 soak + dedupe GATE | [#86](https://github.com/alanmz-crypto/convmem/pull/86) `dba9795` | Already on LATEST; keep Phase D / lower bands unauthorized |
 
-## Conflicts / double-work to kill
-
-1. **Stale hygiene handoff header** — `CURSOR-2026-07-22-semantic-dedupe-hygiene.md` still reads pre-GATE; agents re-planning Phase A = thrash. **Truth:** LATEST + `#86`.
-2. **Dual Copilot instruction pipelines** — feat tip vs Kiro `d0dbda6` filenames/deploy targets can double-write `~/.copilot/copilot-instructions.md`. Kill solo “just land my tip.”
-3. **BugBot ≠ Copilot audit ≠ Steward** — folding “review happened” across these collapses scarce audit vs routine PR gate.
-4. **R2b LATEST wording** — “no implementation authorized” is false after `#67`; “no live capture” remains true. Do not ACCEPT from stale T4 snapshot (>1h).
-5. **MCP Roots vs “Roots deprecated” notes** — do not strip `#87` `list_roots` coercion from old Codex notes.
-6. **Eval harness vs Gate 1 embedding eval** — keep judge-independence / VRAM separation; do not unify into one “eval” bucket.
-7. **Stage 4 residual vs ranking/hygiene** — tool-dump token waste ≠ retrieval quality; do not reopen under P1.3/dedupe labels.
-8. **Parallel LATEST edits** — one refresh only (Cluster B).
-9. **Docs-only pylint R0401 flake** — rerun/update-branch; do not “fix” Python for markdown PRs (session-arcs Keep).
-10. **Stale open PRs** `#33`/`#32`/`#31`/`#6`/`#37` — cleanup day only; not today’s arc thrash.
+Cite: bugbot, session-arcs, mcp-roots, r2b, p13-dedupe stances.
 
 ---
 
-## Proposed next actions for Ryan only
+## 3. DONE park list (stop; residual only if Ryan reopens)
 
-Authorize / park / assign — **no merges, no record blocks, no implementation in this turn.**
-
-1. **Authorize or park — LATEST refresh (Cluster B):** one docs PR naming `#87`/`#91`/`#94`/`#96` + R2b implementation-vs-capture wording + prefer LATEST over stale hygiene handoff header.
-2. **Authorize or abandon — Copilot CLI land (Cluster A):** pick example name + whether to open PR from rebased `feat/2026-07-19-copilot-cli-integration` (or keep local-only overlays).
-3. **Park or GATE — dedupe lower bands / Phase D:** ~1055 pending; default is park unless you name a band.
-4. **Park or HITL — R2b T5:** fresh T4 recompute → ACCEPT AND GRANT, or quarantine draft `2026-07-21-r2b-capture-01`.
-5. **Optional parks (no urgency):** eval H-H; Stage 4 tool-output residual HITL; MCP panel `stats` confirm; BugBot soft-close record only if you say closing; stale-PR cleanup day.
-6. **Coverage gap:** request Crush/Kiro/Codex Class lines if those chats are still open — consolidation below is Cursor-only.
+| Arc | Stop because | Residual (Ryan-only reopen) |
+|-----|--------------|------------------------------|
+| P1.3 soak + dedupe default GATE | LATEST GATE ACCEPTED; soak CLOSED | Next similarity band; Phase D snapshot steering |
+| Session arcs (debate + Steward residual) | `#94`/`#95`/`#96` merged | Stale PR cleanup day (`#33`/`#32`/`#31`/`#6`/`#37`) if asked |
+| BugBot PR gate | `#91` merged `db3e5e0` | Org branch-protection BugBot settings; soft-close record if Ryan says closing |
+| MCP Roots brief boundary | `#87` merged `eb84472` | Panel/live `CallMcpTool` bridge debug; delete old worktree when MCP stays on prod |
+| R2b capture | Code on main; Cursor lane parked pre–B-Accept | Fresh T4 → T5 ACCEPT AND GRANT → T6–T8; or abandon draft `2026-07-21-r2b-capture-01` |
+| Eval harness (detection) | On main; ledger already records ship | H-H judge excerpt fix; remediation options (ROADMAP) |
+| Stage 4 + tool-output residual | Stage 4 CLOSED; residual is draft direction only | HITL for Crush tool-hygiene arc |
 
 ---
 
-## Coverage note
+## 4. SOLO-CONTINUE list
 
-| Expected ~10 agents | Reported durable stance |
-|---|---|
-| Cursor (multiple chats) | 8 stances (7 DONE, 1 COMBINE) |
-| Crush / Kiro / Codex / other | 0 stance files at consolidate time |
+**None** in filed `STANCE-2026-07-22-*.md`.
 
-Consolidation is **complete for reported Cursor residue**; incomplete for multi-lane bus until other lanes file or Ryan forwards Class lines.
+If a silent lane believes it is SOLO-CONTINUE: file a stance or stop — consolidator
+has no durable Class line to protect.
+
+---
+
+## 5. Conflicts / double-work to kill
+
+| Kill this | Why |
+|-----------|-----|
+| Blind `--approve-dedupe all` / lower-band drain | Default GATE closed; ~1055 pending **not authorized** |
+| Re-open P1.3 ranking / source_trust / Crush `ksweep-routing` | Soak PASS; stopgap retired |
+| Revive debate PR [#34](https://github.com/alanmz-crypto/convmem/pull/34) | Superseded by [#94](https://github.com/alanmz-crypto/convmem/pull/94) |
+| Treat R2b T4 draft as ACCEPTed / run live capture | Snapshot stale; needs ACCEPT AND GRANT |
+| Merge only Kiro Copilot generate/deploy without adapter | Leaves `main` blind to Copilot sessions |
+| Dual Copilot example filenames both “winning” | Overwrite risk on `~/.copilot/copilot-instructions.md` |
+| Fold BugBot into Copilot audit or Steward “someone looked” | Collapses scarce audit vs routine gate |
+| Fold Stage-4 residual into P1.3/dedupe | Ranking ≠ Crush tool-dump tokens |
+| Treat advisory eval judge scores as CI gates | Shipped policy: non-independent scores informational only |
+| Read pre-GATE hygiene handoff header as current | Prefer LATEST + `#86` tip |
+| Re-assert LATEST “R2b implementation unauthorized” | Implementation shipped (#67); **live capture** still unauthorized |
+| Re-open Stage 3 Cursor `$HOME` caveat without citing #87 | Product gap closed; residual is agent↔MCP bridge |
+
+---
+
+## 6. Proposed next actions for Ryan only
+
+Authorize / park / assign — **no merges by consolidator; no record blocks; no new code**.
+
+| # | Decision | Options |
+|---|----------|---------|
+| 1 | **LATEST refresh** | Authorize a docs-only PR updating Active handoff for `#91`, `#87`/#19 caveat, R2b impl-vs-capture wording, `#94` — or leave brief STALE until you do it |
+| 2 | **Copilot CLI land** | Authorize one PR from rebased `feat/2026-07-19-copilot-cli-integration` (fold Kiro naming) **vs** abandon adapter / keep local overlays; pick example filename |
+| 3 | **Dedupe backlog** | GATE next band (name threshold) **vs** leave ~1055 pending parked; Phase D separate |
+| 4 | **R2b resume** | Fresh T4 + T5 ACCEPT AND GRANT **vs** quarantine/abandon `2026-07-21-r2b-capture-01` |
+| 5 | **Park everything else** | BugBot, eval harness, Stage 4 residual, MCP Roots product — stop unless you open an explicit residual (bridge debug / H-H / tool-output HITL) |
+
+---
+
+## 7. Coverage caveat
+
+Only **Cursor** filed stances this wave (~8 agents claimed in Ryan prompt; Crush/Kiro/Codex silent on disk). Consolidation is complete for **filed** residue; silent lanes should not invent work from chat memory — file a stance or stand down.
