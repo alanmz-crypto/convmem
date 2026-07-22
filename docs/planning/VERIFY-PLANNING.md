@@ -70,6 +70,7 @@ Authority:    Post-execute HITL — do not trust chat claims alone
 |-------|-----|
 | Arc EXECUTION and/or ARCHITECTURE plan | Scope boundary |
 | Merged tip SHA(s) / PR numbers | Authority tip |
+| Execute External Review evidence row | Applicability decision; subject tip and reviewed SHA; result and finding dispositions when BugBot was required |
 | [`VERIFY-TEMPLATE.md`](../plans/VERIFY-TEMPLATE.md) or existing VERIFY stub | Structure |
 | Contemporaneous evidence (logs, inventories) when re-proof is impossible | Honest SKIP |
 
@@ -93,6 +94,26 @@ Authority:    Post-execute HITL — do not trust chat claims alone
 - Evidence log line (tip SHA, runner, timestamp)
 - Soft-close / arc close blocked until VERIFY exists and mechanical run is
   recorded — or Ryan writes an explicit waiver
+
+### BugBot confirmation prerequisite
+
+Execute owns BugBot applicability under
+[`EXECUTE-TASK.md`](EXECUTE-TASK.md#external-review-gate). Verify copies that
+decision and confirms its evidence; it does not reclassify the change.
+
+When Execute recorded `gate_applicability=required`, V0 must:
+
+- cite the **subject tip SHA** (the commit being accepted) and
+  **BugBot-reviewed SHA** (the commit BugBot evaluated);
+- cite visible PR-native BugBot evidence;
+- return **FAIL**, not SKIP, when the two SHAs differ; and
+- confirm every finding is `fixed` or `ryan_accepted`, or that the accepted tip
+  is clean, using the lifecycle in Execute.
+
+When Execute recorded `gate_applicability=exempt`, V0 may record
+`N/A (exempt)` only with the exemption reason and subject tip SHA. When BugBot
+was unreachable, V0 must cite Ryan's written, tip-specific acceptance; absence
+of that acceptance is FAIL.
 
 Domain hardness (Restic absolute, overwrite STOP, etc.) belongs in the arc
 VERIFY file, not this phase guide.
@@ -121,6 +142,7 @@ This phase ends when:
 - [ ] Arc named; VERIFY path named
 - [ ] Scope lock complete
 - [ ] Checks V0…Vn written to minimum bar
+- [ ] Execute External Review decision confirmed; applicable BugBot SHAs match and findings are disposed, or an exempt / Ryan-accepted N/A is evidenced
 - [ ] Mechanical run recorded (or honest SKIP with contemporaneous evidence cite)
 - [ ] Independent sign-off requested or recorded
 - [ ] No self-declared arc close without Ryan GATE or written waiver
