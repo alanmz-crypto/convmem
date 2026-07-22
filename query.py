@@ -22,7 +22,6 @@ from domains import domain_breadcrumb, domain_matches, is_known_domain, normaliz
 from llm import ollama_embed
 from meta_format import when_from_meta
 from open_source import resolve_open_target
-from query_result_filters import dedupe_results_by_ledger_id, filter_superseded_decisions
 from site_filter import filter_results_by_site, normalize_site
 
 # ---------------------------------------------------------------------------
@@ -474,6 +473,12 @@ def query_units(
         results = _merge_priority_hits(results, ledger_extras)
     # Ask-parity post-filters (cheap): drop superseded parent decisions and
     # collapse duplicate ledger_ids before the final top_k cut.
+    # Lazy import keeps top-level first-party list stable for C0411 baseline.
+    from query_result_filters import (
+        dedupe_results_by_ledger_id,
+        filter_superseded_decisions,
+    )
+
     results = filter_superseded_decisions(results)
     results = dedupe_results_by_ledger_id(results)
     return results[:top_k]

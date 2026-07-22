@@ -17,6 +17,10 @@ from ledger_recent import (
 from llm import generate_stream
 from meta_format import when_from_meta, when_label
 from query import query_raw, query_units
+from query_result_filters import (
+    dedupe_results_by_ledger_id as _dedupe_results_by_ledger_id,
+    filter_superseded_decisions as _filter_superseded_decisions,
+)
 
 ASK_PROMPT = """You answer questions using ONLY the retrieved excerpts from past AI coding sessions below.
 Be specific: mention tool names, file paths, commands, config keys, and error messages when present in the excerpts.
@@ -139,20 +143,6 @@ def _merge_results(
 def _max_score(results: list[dict]) -> float | None:
     scores = [r["score"] for r in results if r.get("score") is not None]
     return max(scores) if scores else None
-
-
-def _filter_superseded_decisions(results: list[dict]) -> list[dict]:
-    """Drop parent decisions when a newer decision in results relates_to them."""
-    from query_result_filters import filter_superseded_decisions
-
-    return filter_superseded_decisions(results)
-
-
-def _dedupe_results_by_ledger_id(results: list[dict]) -> list[dict]:
-    """Keep one hit per ledger_id (first wins — list should already be rank-sorted)."""
-    from query_result_filters import dedupe_results_by_ledger_id
-
-    return dedupe_results_by_ledger_id(results)
 
 
 def _prepend_recent_decisions(
