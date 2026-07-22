@@ -76,10 +76,12 @@ class McpRootsHelpers(unittest.TestCase):
         mcp_server._SHELL_ROOTS.boundary_applied = False
 
         # Simulate import-time omit
+        from mcp.server.fastmcp.exceptions import ToolError
+
         for name in ("brief", "folder_state"):
             try:
                 mcp_server.mcp.remove_tool(name)
-            except Exception:
+            except ToolError:
                 pass
 
         session = MagicMock()
