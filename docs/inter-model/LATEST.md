@@ -1,18 +1,20 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-22 (P1.3 live weight set; Crush ksweep-routing retired)
+**Updated:** 2026-07-22 (CI-wait PR #81 at Ryan GATE; cleared stale handoff pointer)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
+- **CI Wait Workflow — Ryan GATE (2026-07-22):** Draft [#81](https://github.com/alanmz-crypto/convmem/pull/81) (`plan/2026-07-22-ci-wait-workflow`). Optional playbook for productive work while CI/review runs; docs-only six-file scope. Cursor mechanical PASS (V0–V7); Kiro independent sign-off PASS at `0baab46d`. Branch then updated onto `main` → tip `1527f5a662e74e1151c65f221d599b2faabb2a3c` (merge commit; pylint re-running). VERIFY: [`../plans/VERIFY-ci-wait-workflow.md`](../plans/VERIFY-ci-wait-workflow.md). Architecture: [`../plans/ARCHITECTURE-ci-wait-workflow.md`](../plans/ARCHITECTURE-ci-wait-workflow.md). **Ryan GATE pending** — merge authority remains with Ryan.
+
 - **P1.3 ops complete (2026-07-22):** Live `source_trust_weight = 1.0` in `~/.config/convmem/config.toml`. Crush `ksweep-routing` stopgap retired (rules → `rules-retired/`; deploy no longer redeploys it). Standing check `ksweep-sunset` closed. Smoke: steering still preferred for `ksweep-deploy`.
 
-- **P1.3 source-trust LANDED (2026-07-22):** Merged [#78](https://github.com/alanmz-crypto/convmem/pull/78) (`af31c6e`) + [#77](https://github.com/alanmz-crypto/convmem/pull/77) (`99f8717`). Cursor mechanical PASS with residual; Kiro PASS. Smoke: `ksweep-deploy` steering at rank 1. Follow-ups: optional live `source_trust_weight`; Crush `ksweep-routing` sunset after soak; close/supersede stale #36. VERIFY: [`../plans/VERIFY-source-trust-ranking.md`](../plans/VERIFY-source-trust-ranking.md).
+- **P1.3 source-trust LANDED (2026-07-22):** Merged [#78](https://github.com/alanmz-crypto/convmem/pull/78) (`af31c6e`) + [#77](https://github.com/alanmz-crypto/convmem/pull/77) (`99f8717`). Cursor mechanical PASS with residual; Kiro PASS. Smoke: `ksweep-deploy` steering at rank 1. Follow-ups done via ops complete above; remaining: close/supersede stale #36 if still open. VERIFY: [`../plans/VERIFY-source-trust-ranking.md`](../plans/VERIFY-source-trust-ranking.md).
 
 - **who-fixes-retrieval CLOSED (2026-07-22):** Debate board Rounds 1–4 coordination closed; round code already on `main`. Inherit/dismiss + cargo: [`CURSOR-2026-07-22-who-fixes-retrieval-closed-to-p13.md`](CURSOR-2026-07-22-who-fixes-retrieval-closed-to-p13.md). VERIFY: [`../plans/VERIFY-who-fixes-retrieval.md`](../plans/VERIFY-who-fixes-retrieval.md). Keep shipped tools (ask trace, diversification, retrieve_for_ask, nested inter-model); park corpus jobs (`semantic_dedupe`, evidence inject) as valued separate briefs — not P1.3 blockers.
 
 
-- **P1.3 source-trust ranking (2026-07-21):** Design locked for Codex implementation. Prefer `kiro_steering` / ledger / inter-model over chat distillations after fusion (strong tiers; omit zero boosts; final `retrieval_rank` after trust+postfilters). Helpers stay in `evidence.py` (no new leaf module — #76 R0401 lesson). Eval: `/tmp` main baseline compare only — never `--update-baseline` on committed golden. **Do not sunset Crush `ksweep-routing` in the same PR.** Execution: [`../plans/EXECUTION-2026-07-21-source-trust-ranking.md`](../plans/EXECUTION-2026-07-21-source-trust-ranking.md) (corpus twin: [`CURSOR-2026-07-21-p13-source-trust-execution.md`](CURSOR-2026-07-21-p13-source-trust-execution.md)). Codex brief: [`CURSOR-2026-07-21-p13-source-trust-codex-handoff.md`](CURSOR-2026-07-21-p13-source-trust-codex-handoff.md). **Paste packet (harbor map + EXECUTION):** [`CURSOR-2026-07-21-p13-codex-packet.md`](CURSOR-2026-07-21-p13-codex-packet.md); harbor print alone: [`CURSOR-2026-07-21-p13-source-trust-harbor-handoff.md`](CURSOR-2026-07-21-p13-source-trust-harbor-handoff.md). Prerequisites on main: #75 steering ingest, #76 search postfilters. Branch: `convmem work start feat source-trust-ranking`. Ryan merges; live `source_trust_weight` is Ryan-owned.
+- **P1.3 source-trust ranking (2026-07-21, superseded):** Historical Codex execution brief — superseded by **P1.3 source-trust LANDED** + **P1.3 ops complete** above. Keep packets only as provenance: [`../plans/EXECUTION-2026-07-21-source-trust-ranking.md`](../plans/EXECUTION-2026-07-21-source-trust-ranking.md), [`CURSOR-2026-07-21-p13-codex-packet.md`](CURSOR-2026-07-21-p13-codex-packet.md).
 
 - **Context brief rule (2026-07-21):** Always-loaded companion to RESPONSE_TLDR — when citing PRs, SHAs, ledger ids, or paths, keep the id **and** give Who/What/When/Why/How so Ryan knows what the item is doing. Canonical slice `CONTEXT_BRIEF` in `config/agent-protocol.md`.
 
