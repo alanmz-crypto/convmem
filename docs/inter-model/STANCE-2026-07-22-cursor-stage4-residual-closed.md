@@ -1,0 +1,28 @@
+# Stance: Stage 4 closed + residual tool-output draft
+
+- Agent/lane: cursor
+- Class: DONE
+- Branch / tip SHA / PR (if any): Stage 4 shipped [#46](https://github.com/alanmz-crypto/convmem/pull/46) / closed [#48](https://github.com/alanmz-crypto/convmem/pull/48) on `main`; residual direction only in Cursor plan `residual_tool-output_arc_93fcf349` (not a repo ARCHITECTURE file yet); this stance on `docs/2026-07-22-stance-stage4-residual`
+- Arc goal (1 sentence): Cut Crush token waste — Stage 4 demoted always-loaded builder digests; residual ~100k left for a separate tool-output arc if Ryan authorizes.
+- Status now (1–3 bullets; evidence, not vibes):
+  - Stage 4 **CLOSED** on `main` (`ARCHITECTURE-stage4-context-compression.md` / `EXECUTION-stage4-context-compression.md`; parent EXECUTION Stage 4 section CLOSED).
+  - Post-demotion telemetry Post 1–3 mean ~103.5k prompt (~8% vs ~112.4k pre); standing context now ~6k tokens.
+  - Residual investigation (2026-07-21): tool results ~63–74% of Crush message chars; bash/view/grep dominate; cost compounds via re-billing; Crush has no bash/view size config — draft direction is thin Crush tool-hygiene rule + measure (HITL not accepted; no implement).
+- Overlaps (other arcs/PRs/plans/ledger ids):
+  - Token-efficient bounded autonomy parent ([`ARCHITECTURE-token-efficient-bounded-autonomy.md`](../plans/ARCHITECTURE-token-efficient-bounded-autonomy.md)) — Stages 1–3 live; Stage 4 closed separately.
+  - Ask A2 / MCP search clip ([`ask.py`](../../ask.py) 12k context; [`mcp_server.py`](../../mcp_server.py) `[:500]`) — reuse for residual Task 3 secondary only; do not reopen as Stage 4.
+  - Context brief / RESPONSE_TLDR (2026-07-21 LATEST) — standing protocol text; not residual tool dumps; do not conflate.
+- Keep (must survive consolidation):
+  - Stage 4 close evidence + Post 1–3 numbers in EXECUTION-stage4.
+  - Residual diagnosis: standing ≠ residual; residual = tool dumps + turn rebill; primary lever = Crush tool hygiene (not brief/digests/MCP-only).
+  - Baseline for any reopen: Post 1–3 ~98–107k Crush `prompt_tokens`.
+- Drop / defer (safe to stop or hand off):
+  - Re-implementing digest demotion or compact brief.
+  - Implementing residual Crush rule / MCP clips without Ryan HITL on the residual architecture.
+  - This Cursor session continuing solo coding.
+- Conflicts / risks if combined carelessly:
+  - Folding residual into P1.3 / semantic-dedupe / retrieval arcs would mix ranking quality with Crush host token dumps.
+  - Treating MCP search `[:500]` as “residual done” misses bash/view dominance.
+- Recommended consolidator target: none (DONE; residual reopen only via Ryan → Cursor after HITL)
+- Ask of Ryan (0–2 bullets max; only decisions only Ryan can make):
+  - Authorize residual tool-output arc HITL (Kiro review of draft direction) — or leave deferred indefinitely.
