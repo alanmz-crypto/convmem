@@ -7,6 +7,6 @@ rich==15.0.0
 requests==2.34.2
 watchdog==6.0.0
 sentence-transformers==5.6.0
-mcp==1.28.0
+mcp==1.28.1
 # torch is pulled by sentence-transformers (CPU build by default).
 # For CUDA reranking see README — install torch with CUDA *before* sentence-transformers.
