@@ -182,22 +182,24 @@ sha256sum tests/fixtures/golden_queries_baseline.json  # both trees
 
 | ID | Check | PASS |
 |----|-------|------|
-| V8a | Request same-SHA independent PASS/FAIL | **PENDING** — request Kiro (or Ryan-named lane) against tip `aecf5d3285992f887991400ca813c6a2066345c1` |
-| V8b | Independent verifier performs no cleanup | **n/a until sign-off** |
-| V8c | Cursor does not self-sign / merge / record / close arc | **PASS** — this artifact stops at Await Ryan GATE |
+| V8a | Same-SHA independent PASS/FAIL | **PASS** — Kiro 2026-07-21: PASS on code `aecf5d3…` + evidence tip `01d40cf…` (see slot below) |
+| V8b | Independent verifier performs no cleanup | **PASS** — Kiro: read-only; no code/baseline/corpus mutations |
+| V8c | Cursor does not self-sign / merge / record / close arc | **PASS** — Cursor recorded Kiro’s verdict only; Ryan GATE owns merges |
 
 ### Independent sign-off slot
 
 ```text
-Lane: _______________
+Lane: Kiro (design review / sign-off)
 Code artifact: PR #78 tip aecf5d3285992f887991400ca813c6a2066345c1
-Evidence / VERIFY revision (PR #77 tip): _______________
+Evidence / VERIFY revision (PR #77 tip): 01d40cf5e1a2c9b1022e26855ed7c04aa5d2b3ea
 Chroma freeze (if used): /tmp/p13-chroma-freeze-20260722
-Verdict: PASS | FAIL
-Rationale (one line):
-Residuals:
-Date (ISO-8601):
+Verdict: PASS
+Rationale: Diff matches approved post-fusion source-trust policy (tiers, fuse→trust→truncate→filters→final ranks, citation/trace bounds, evidence.py placement); freeze V5 authoritative; live V5 FAIL residual non-blocking.
+Residuals: Live-corpus V5 FAIL retained as historical non-reproduced/environmental; no #78 change.
+Date (ISO-8601): 2026-07-21
 ```
+
+Kiro confirmed V1–V4, V5 classification, V7, and V8b against the #78 diff and VERIFY plan. Ryan GATE owns merge of #78 and #77.
 
 ---
 
@@ -259,8 +261,21 @@ Mutation: config.toml mtime unchanged; freeze dir mode a-w; no index/forget/gold
 
 Classification: original live V5 FAIL = non-reproduced / environmental (corpus not pinned). Freeze V5 = PASS.
 Mechanical (authoritative): PASS with residual (live V5 FAIL retained as historical; no #78 change)
-V8: PENDING — Kiro must pin code aecf5d3 AND this evidence/#77 tip after push
-Stop: Await Ryan GATE
+V8: PASS — Kiro 2026-07-21 on code aecf5d3 + evidence tip 01d40cf (recorded this amend; #77 tip advances on push)
+Stop: Await Ryan GATE (merges only)
+```
+
+---
+
+## Evidence log — Kiro sign-off 2026-07-21 (append-only)
+
+```text
+Lane: Kiro
+Code: aecf5d3285992f887991400ca813c6a2066345c1 (PR #78)
+Evidence tip at sign-off: 01d40cf5e1a2c9b1022e26855ed7c04aa5d2b3ea (PR #77)
+Verdict: PASS
+Residual: live V5 FAIL non-reproduced/environmental — does not change verdict
+No cleanup by Kiro or Cursor
 ```
 
 ---
@@ -269,6 +284,8 @@ Stop: Await Ryan GATE
 
 **PASS with residual** — Frozen-corpus V5 (same `--chroma-dir` for `b4af44f` and `aecf5d3`) shows **no P@k regression**; soak-close hits `dec_prop_20260629_005903_51b4` at rank 1. The earlier live-corpus V5 FAIL is retained above as **non-reproduced / environmental**. **No PR #78 code or golden changes.**
 
-Ryan GATE owns merges of #78 / #77. Independent sign-off must name **code** `aecf5d3…` **and** the **evidence/VERIFY** tip on #77 after this amend lands.
+**Independent sign-off:** **PASS** (Kiro) on code `aecf5d3…` and evidence tip `01d40cf…`.
+
+Ryan GATE owns merges of #78 / #77.
 
 **Stop: Await Ryan GATE**

@@ -1,11 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-22 (P1.3 VERIFY freeze V5 PASS with residual — Await Ryan GATE)
+**Updated:** 2026-07-22 (P1.3 Kiro PASS — Await Ryan GATE merges)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **P1.3 VERIFY (2026-07-21/22):** Code tip `aecf5d3…` (PR #78) unchanged. Live-corpus V5 FAIL reclassified **non-reproduced/environmental** after frozen Chroma V5 (`/tmp/p13-chroma-freeze-20260722`) base=`b4af44f` tip=`aecf5d3` — **no P@k regression**; soak-close rank 1. Mechanical: **PASS with residual**. #77 pre-VERIFY scope authority `b4853eff…`; evidence tip advances on VERIFY pushes. Canonical: [`../plans/VERIFY-source-trust-ranking.md`](../plans/VERIFY-source-trust-ranking.md); twin: [`CURSOR-2026-07-21-p13-source-trust-verify.md`](CURSOR-2026-07-21-p13-source-trust-verify.md). Kiro: sign code `aecf5d3` **and** evidence/#77 tip. **Stop: Await Ryan GATE.**
+- **P1.3 VERIFY (2026-07-22):** Ready for Ryan GATE. Code PR #78 tip `aecf5d3…` — Cursor mechanical **PASS with residual** (freeze V5); **Kiro PASS** on code `aecf5d3…` + evidence tip `01d40cf…`. Live V5 FAIL kept as historical non-reproduced. Merge #78 (undraft) then #77. Canonical: [`../plans/VERIFY-source-trust-ranking.md`](../plans/VERIFY-source-trust-ranking.md). Optional later: live `source_trust_weight`; Crush `ksweep-routing` sunset.
 
 - **P1.3 source-trust ranking (2026-07-21):** Design locked for Codex implementation. Prefer `kiro_steering` / ledger / inter-model over chat distillations after fusion (strong tiers; omit zero boosts; final `retrieval_rank` after trust+postfilters). Helpers stay in `evidence.py` (no new leaf module — #76 R0401 lesson). Eval: `/tmp` main baseline compare only — never `--update-baseline` on committed golden. **Do not sunset Crush `ksweep-routing` in the same PR.** Execution: [`../plans/EXECUTION-2026-07-21-source-trust-ranking.md`](../plans/EXECUTION-2026-07-21-source-trust-ranking.md) (corpus twin: [`CURSOR-2026-07-21-p13-source-trust-execution.md`](CURSOR-2026-07-21-p13-source-trust-execution.md)). Codex brief: [`CURSOR-2026-07-21-p13-source-trust-codex-handoff.md`](CURSOR-2026-07-21-p13-source-trust-codex-handoff.md). **Paste packet (harbor map + EXECUTION):** [`CURSOR-2026-07-21-p13-codex-packet.md`](CURSOR-2026-07-21-p13-codex-packet.md); harbor print alone: [`CURSOR-2026-07-21-p13-source-trust-harbor-handoff.md`](CURSOR-2026-07-21-p13-source-trust-harbor-handoff.md). Prerequisites on main: #75 steering ingest, #76 search postfilters. Branch: `convmem work start feat source-trust-ranking`. Ryan merges; live `source_trust_weight` is Ryan-owned.
 
