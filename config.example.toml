@@ -4,6 +4,7 @@ paths = [
   "~/.kiro/sessions",
   "~/.codex/history.jsonl",
   "~/.codex/sessions",
+  "~/.copilot/session-state",
   "~/.config/cursor/chats",
   "~/.cursor/projects",
   "~/.continue/sessions",
@@ -15,6 +16,8 @@ inventory = "~/.local/share/convmem/inventory.jsonl"
 # kiro-cli 2.x transcripts: ~/.kiro/sessions/**/sess_*/messages.jsonl (see docs/KIRO-SESSION-ADAPTER.md).
 # Legacy kiro-cli sqlite: snapshot via scripts/index-kiro-cli-snapshot.sh — do not watch live DB.
 # Codex: ~/.codex/history.jsonl is user prompts only (source_type=prompt_only).
+# Copilot CLI: ~/.copilot/session-state/<uuid>/events.jsonl (see docs/COPILOT-SESSION-ADAPTER.md).
+#   Do not watch ~/.copilot/session-store.db or per-session session.db (live DBs).
 # Re-run `python inventory.py` after adding new Crush project dirs.
 
 [index]

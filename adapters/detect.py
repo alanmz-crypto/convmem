@@ -14,6 +14,7 @@ from typing import Callable, Optional
 from adapters import (
     codex_history_jsonl,
     codex_rollout_jsonl,
+    copilot_session_jsonl,
     inter_model_doc,
     jsonl_chat,
     json_chat,
@@ -30,6 +31,7 @@ TOOL_BY_FORMAT = {
     "jsonl_kiro_session": "kiro",
     "jsonl_codex_history": "codex",
     "jsonl_codex_rollout": "codex",
+    "jsonl_copilot_session": "copilot",
     "sqlite_openwebui": "openwebui",
     "sqlite_kiro": "kiro",
     "json_continue_sessions": "continue",
@@ -47,6 +49,7 @@ _PARSERS: dict[str, Optional[Callable[[str], list[dict]]]] = {
     "jsonl_kiro_session": kiro_session_jsonl.parse,
     "jsonl_codex_history": codex_history_jsonl.parse,
     "jsonl_codex_rollout": codex_rollout_jsonl.parse,
+    "jsonl_copilot_session": copilot_session_jsonl.parse,
     "sqlite_openwebui": sqlite_chat.parse,
     "sqlite_kiro": sqlite_chat.parse,
     "json_continue_sessions": json_chat.parse,
@@ -74,12 +77,14 @@ def detect_format(path: Path | str) -> Optional[str]:
     if path.suffix == ".jsonl":
         if "agent-transcripts" in path.parts:
             return "jsonl_cursor"
-        if kiro_session_jsonl.is_kiro_session_jsonl(path):
-            return "jsonl_kiro_session"
-        if codex_history_jsonl.is_codex_history_jsonl(path):
-            return "jsonl_codex_history"
-        if codex_rollout_jsonl.is_codex_rollout_jsonl(path):
-            return "jsonl_codex_rollout"
+        for fmt, checker in (
+            ("jsonl_kiro_session", kiro_session_jsonl.is_kiro_session_jsonl),
+            ("jsonl_copilot_session", copilot_session_jsonl.is_copilot_session_jsonl),
+            ("jsonl_codex_history", codex_history_jsonl.is_codex_history_jsonl),
+            ("jsonl_codex_rollout", codex_rollout_jsonl.is_codex_rollout_jsonl),
+        ):
+            if checker(path):
+                return fmt
         return None
 
     if path.suffix in (".sqlite3", ".db"):

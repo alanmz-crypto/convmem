@@ -116,6 +116,24 @@ class WatchPathTests(unittest.TestCase):
             path.touch()
             self.assertFalse(is_live_watch_db(path))
 
+    def test_is_live_watch_db_copilot_session_store(self):
+        self.assertTrue(
+            is_live_watch_db(str(Path.home() / ".copilot" / "session-store.db"))
+        )
+
+    def test_is_live_watch_db_copilot_session_db(self):
+        self.assertTrue(
+            is_live_watch_db(
+                str(
+                    Path.home()
+                    / ".copilot"
+                    / "session-state"
+                    / "abc-uuid"
+                    / "session.db"
+                )
+            )
+        )
+
     def test_is_watchable_skips_live_db(self):
         self.assertFalse(
             is_watchable("/home/lauer/.local/share/kiro-cli/data.sqlite3")
