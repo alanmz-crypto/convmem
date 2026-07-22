@@ -14,7 +14,9 @@ from pathlib import Path
 # Ensure convmem modules are importable
 sys.path.insert(0, str(Path(__file__).parent))
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
+from mcp import types as mcp_types
+from pydantic import ValidationError
 
 _INSTRUCTIONS = (
     "convmem — local knowledge corpus (1400+ units). "
@@ -133,6 +135,38 @@ def _cwd_is_project_root(cwd: Path) -> bool:
     if (cwd / "AGENTS.md").is_file() or (cwd / "STATUS.md").is_file():
         return True
     return False
+
+
+
+def _normalize_root_uri(raw: object) -> str:
+    """Coerce Cursor bare paths to file:// URIs; pass through existing URIs."""
+    s = str(raw or "").strip()
+    if not s:
+        return ""
+    if "://" in s:
+        return s
+    p = Path(s).expanduser()
+    try:
+        p = p.resolve()
+    except OSError:
+        pass
+    return p.as_uri()
+
+
+def _uris_from_list_roots_validation_error(exc: ValidationError) -> list[str]:
+    """Recover bare-path roots Cursor sends that fail MCP SDK URL validation."""
+    uris: list[str] = []
+    for err in exc.errors():
+        loc = err.get("loc") or ()
+        if not any(part == "uri" for part in loc):
+            continue
+        raw = err.get("input")
+        if raw is None:
+            continue
+        uri = _normalize_root_uri(raw)
+        if uri and uri not in uris:
+            uris.append(uri)
+    return uris
 
 
 def _shell_profile_omits_brief_endpoints() -> bool:
@@ -714,6 +748,63 @@ def stats() -> str:
         "by_tool": dict(by_tool.most_common(10)),
         "by_domain": dict(by_domain.most_common(15)),
     }, indent=2)
+
+
+
+@mcp.tool()
+async def roots_probe(ctx: Context) -> str:
+    """TEMP tracer (path 3): MCP Roots capability + root URIs only. Remove after probe."""
+    # Read-only — never include environment names/values or process cwd.
+    payload: dict = {
+        "probe": "roots_probe",
+        "roots_supported": False,
+        "list_changed": None,
+        "root_uris": [],
+        "root_count": 0,
+        "error": None,
+    }
+    try:
+        session = ctx.session
+        params = session.client_params
+        roots_cap = (
+            getattr(params.capabilities, "roots", None) if params is not None else None
+        )
+        payload["roots_supported"] = roots_cap is not None
+        if roots_cap is not None:
+            payload["list_changed"] = getattr(roots_cap, "listChanged", None)
+        if not session.check_client_capability(
+            mcp_types.ClientCapabilities(roots=mcp_types.RootsCapability())
+        ):
+            payload["error"] = "client_lacks_roots_capability"
+            return json.dumps(payload, indent=2)
+
+        try:
+            result = await session.list_roots()
+        except ValidationError as exc:
+            uris = _uris_from_list_roots_validation_error(exc)
+            payload["root_uris"] = uris
+            payload["root_count"] = len(uris)
+            if uris:
+                payload["error"] = None
+                payload["coerced_from_bare_path"] = True
+            else:
+                payload["error"] = f"ValidationError: {exc}"
+            return json.dumps(payload, indent=2)
+
+        uris: list[str] = []
+        for root in getattr(result, "roots", None) or []:
+            uri = getattr(root, "uri", None)
+            if uri is not None:
+                norm = _normalize_root_uri(uri)
+                if norm and norm not in uris:
+                    uris.append(norm)
+        payload["root_uris"] = uris
+        payload["root_count"] = len(uris)
+        if not uris:
+            payload["error"] = "roots_empty"
+    except Exception as exc:  # noqa: BLE001 — probe must always return JSON
+        payload["error"] = f"{type(exc).__name__}: {exc}"
+    return json.dumps(payload, indent=2)
 
 
 # Shell + project-repo: remove brief tools after registration (FastMCP public API).
