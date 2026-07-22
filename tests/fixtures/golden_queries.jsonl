@@ -1,5 +1,5 @@
-{"query": "Global convmem protocol soak close", "acceptable_ids": ["dec_prop_20260629_005903_51b4", "dec_prop_20260629_150527_46f0", "dec_prop_20260625_203408_f9b3"], "top_k": 5, "note": "coordination recency"}
-{"query": "Arch Linux health prompt matrix", "acceptable_ids": ["dec_prop_20260629_150516_6d70"], "top_k": 8, "note": "cross-surface deploy; rank 6 at 2026-07-05 (pattern units without ledger_id)"}
+{"query": "Global convmem protocol soak close", "acceptable_ids": ["dec_prop_20260629_005903_51b4", "dec_prop_20260629_150527_46f0", "dec_prop_20260625_203408_f9b3", "dec_prop_20260625_220647_47d9", "dec_prop_20260629_053445_e6b5"], "top_k": 5, "note": "coordination recency; include relates_to children (search drops superseded parents)"}
+{"query": "Arch Linux health prompt matrix", "acceptable_ids": ["dec_prop_20260629_150516_6d70", "dec_prop_20260629_174317_45d3", "dec_prop_20260701_202548_c580"], "top_k": 8, "note": "cross-surface deploy; include relates_to children (search drops superseded parents)"}
 {"query": "Continue alien workspace convmem fail", "acceptable_ids": ["dec_prop_20260625_223006_528c", "dec_prop_20260625_225404_11cf"], "top_k": 5, "note": "alien cwd"}
 {"query": "Crush Tier A shell slice deploy", "acceptable_ids": ["dec_prop_20260625_233830_b9af", "dec_prop_20260625_235954_85ea"], "top_k": 5, "note": "Crush-specific"}
 {"query": "v4 repo organization convmem", "acceptable_ids": ["dec_prop_20260701_000837_8ab4", "dec_prop_20260630_233939_df93"], "top_k": 5, "note": "recency org ship"}
