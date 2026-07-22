@@ -7,6 +7,7 @@ Register in your MCP client config pointing at this script.
 Read-only by default. Write tools (propose_decision) require human confirmation.
 """
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -14,7 +15,7 @@ from pathlib import Path
 # Ensure convmem modules are importable
 sys.path.insert(0, str(Path(__file__).parent))
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp import FastMCP
 from mcp import types as mcp_types
 from pydantic import ValidationError
 
@@ -77,6 +78,8 @@ else:
     _BASE_INSTRUCTIONS = _INSTRUCTIONS
 
 _mcp_brief_called = False
+_shell_roots_project: bool | None = None  # Roots-derived project workspace
+_shell_roots_boundary_applied = False
 
 
 def _brief_first_required_mode(cwd: Path) -> str | None:
@@ -91,6 +94,9 @@ def _brief_first_required_mode(cwd: Path) -> str | None:
 def _blocked_until_brief_json() -> str | None:
     """System runbook + workspace_local cwd: MCP reads require brief() first."""
     if _mcp_brief_called:
+        return None
+    # Shell + project Roots: CLI Tier A already briefed — do not gate MCP reads.
+    if _mcp_profile() == "shell" and _shell_roots_project is True:
         return None
     cwd_path, _ = _workspace_project_slug()
     mode = _brief_first_required_mode(Path(cwd_path))
@@ -169,14 +175,129 @@ def _uris_from_list_roots_validation_error(exc: ValidationError) -> list[str]:
     return uris
 
 
+def _path_from_root_uri(uri: str) -> Path | None:
+    """Map file:// (or bare) root URI to a filesystem path."""
+    from urllib.parse import unquote, urlparse
+
+    normalized = _normalize_root_uri(uri)
+    if not normalized:
+        return None
+    parsed = urlparse(normalized)
+    if parsed.scheme == "file":
+        return Path(unquote(parsed.path))
+    if normalized.startswith("/"):
+        return Path(normalized)
+    return None
+
+
+def _root_uris_indicate_project(uris: list[str]) -> bool:
+    """True when any MCP Root path looks like a project repo."""
+    for uri in uris:
+        path = _path_from_root_uri(uri)
+        if path is not None and _cwd_is_project_root(path):
+            return True
+    return False
+
+
 def _shell_profile_omits_brief_endpoints() -> bool:
-    """Shell profile + project-repo cwd: brief tools/resources must be absent."""
+    """Import-time omit: shell + project-looking process cwd (tests / local stdio).
+
+    Cursor often starts MCP with cwd=$HOME even for a project workspace; live
+    omit uses MCP Roots via ``_apply_shell_roots_brief_boundary_if_needed``.
+    """
     import os
 
     if _mcp_profile() != "shell":
         return False
+    if _shell_roots_project is True:
+        return True
+    if _shell_roots_project is False:
+        return False
     cwd = Path(os.getcwd()).resolve()
     return _cwd_is_project_root(cwd)
+
+
+async def _list_session_root_uris(session) -> list[str]:
+    """Return normalized root URIs; coerce Cursor bare paths on ValidationError."""
+    if not session.check_client_capability(
+        mcp_types.ClientCapabilities(roots=mcp_types.RootsCapability())
+    ):
+        return []
+    try:
+        result = await session.list_roots()
+    except ValidationError as exc:
+        return _uris_from_list_roots_validation_error(exc)
+    uris: list[str] = []
+    for root in getattr(result, "roots", None) or []:
+        uri = getattr(root, "uri", None)
+        if uri is None:
+            continue
+        norm = _normalize_root_uri(uri)
+        if norm and norm not in uris:
+            uris.append(norm)
+    return uris
+
+
+async def _apply_shell_roots_brief_boundary_if_needed(session=None) -> None:
+    """Shell profile: omit brief tools when Roots point at a project workspace."""
+    global _shell_roots_project, _shell_roots_boundary_applied
+    if _mcp_profile() != "shell" or _shell_roots_boundary_applied:
+        return
+    if session is None:
+        try:
+            session = mcp._mcp_server.request_context.session
+        except LookupError:
+            return
+        except Exception:
+            return
+    uris = await _list_session_root_uris(session)
+    _shell_roots_boundary_applied = True
+    if uris:
+        is_project = _root_uris_indicate_project(uris)
+    else:
+        # No roots → keep import-time cwd policy
+        import os
+
+        is_project = _cwd_is_project_root(Path(os.getcwd()).resolve())
+    _shell_roots_project = is_project
+    if not is_project:
+        return
+    for name in ("brief", "folder_state"):
+        try:
+            mcp.remove_tool(name)
+        except Exception:
+            pass
+    try:
+        await session.send_tool_list_changed()
+    except Exception:
+        pass
+
+
+def _apply_shell_roots_brief_boundary_sync() -> None:
+    """Sync entry for tool handlers (tests + FastMCP sync tools).
+
+    Capture session on this thread first — request_context is contextvars-local
+    and is not visible inside ThreadPoolExecutor workers.
+    """
+    if _mcp_profile() != "shell" or _shell_roots_boundary_applied:
+        return
+    try:
+        session = mcp._mcp_server.request_context.session
+    except LookupError:
+        return
+    except Exception:
+        return
+    coro = _apply_shell_roots_brief_boundary_if_needed(session)
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run(coro)
+        return
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(asyncio.run, coro).result(timeout=60)
+
 
 
 def _is_alien_workspace_cwd(cwd: Path) -> bool:
@@ -310,6 +431,12 @@ def _system_runbook_hint(cwd: Path) -> dict[str, str] | None:
 def _build_mcp_instructions(base: str) -> str:
     """Append cwd-specific mandatory brief-first block (Continue sets MCP process cwd)."""
     import os
+
+    # Shell clients (Cursor/Kiro/Crush): process cwd is often $HOME while Roots
+    # carry the real workspace. Keep compact after-Tier-A only — never append a
+    # cwd-based workspace_local "MUST call brief()" that fights CLI Tier A.
+    if _mcp_profile() == "shell":
+        return base
 
     cwd = Path(os.getcwd()).resolve()
     cwd_slug = cwd.name.lower()
@@ -502,6 +629,18 @@ def _search_fast_off_topic(query: str) -> bool:
 def brief(project: str = "", with_tests: bool = False) -> str:
     """MCP-only: call brief() first. Shell + project repo after CLI Tier A: do not repeat brief — use search_fast/ask/related/stats. System runbook (/boot, /etc, /var, systemd): brief() unscoped first. Workspace-local (~/Documents etc): brief() then search_fast(workspace_hint.suggested_search_fast). Read-only."""
     global _mcp_brief_called
+    _apply_shell_roots_brief_boundary_sync()
+    if _mcp_profile() == "shell" and _shell_roots_project is True:
+        return json.dumps(
+            {
+                "error": "brief_omitted_shell_project_roots",
+                "message": (
+                    "Shell profile + project MCP Roots: do not use MCP brief; "
+                    "CLI Tier A already ran. Use search_fast/ask/related/stats."
+                ),
+            },
+            indent=2,
+        )
     from brief import gather_brief_payload
 
     _mcp_brief_called = True
@@ -526,9 +665,8 @@ def _brief_resource_json(project: str = "") -> str:
     return json.dumps(payload, indent=2, default=str)
 
 
-# Shell + project-repo: omit brief resources (mechanical no-repeat-brief boundary).
-# Non-project shell modes and full/default profile keep them.
-if not _shell_profile_omits_brief_endpoints():
+# Brief resources: Continue/full only. Shell profile uses CLI Tier A + tools.
+if _mcp_profile() != "shell":
 
     @mcp.resource(
         "memories://brief",
@@ -570,6 +708,7 @@ if not _shell_profile_omits_brief_endpoints():
 @mcp.tool()
 def search_fast(query: str, top_k: int = 5, domain: str = "", site: str = "") -> str:
     """Fast corpus search. System runbook: call brief() first. Repo: include project slug in query."""
+    _apply_shell_roots_brief_boundary_sync()
     from query import query_units
 
     blocked = _blocked_until_brief_json()
@@ -624,6 +763,7 @@ def ask(
     Set trace=True for versioned retrieval stages (convmem.ask.trace.v1).
     Citations always include evidence_status and ledger_id when present.
     """
+    _apply_shell_roots_brief_boundary_sync()
     blocked = _blocked_until_brief_json()
     if blocked:
         return blocked
@@ -668,6 +808,7 @@ def ask(
 @mcp.tool()
 def unresolved(site: str = "", domain: str = "") -> str:
     """List open observations (read-only). Returns count + items JSON."""
+    _apply_shell_roots_brief_boundary_sync()
     blocked = _blocked_until_brief_json()
     if blocked:
         return blocked
@@ -731,6 +872,7 @@ def related(ledger_id: str) -> str:
 @mcp.tool()
 def stats() -> str:
     """Show corpus statistics: unit counts by source and domain."""
+    _apply_shell_roots_brief_boundary_sync()
     blocked = _blocked_until_brief_json()
     if blocked:
         return blocked
@@ -749,62 +891,6 @@ def stats() -> str:
         "by_domain": dict(by_domain.most_common(15)),
     }, indent=2)
 
-
-
-@mcp.tool()
-async def roots_probe(ctx: Context) -> str:
-    """TEMP tracer (path 3): MCP Roots capability + root URIs only. Remove after probe."""
-    # Read-only — never include environment names/values or process cwd.
-    payload: dict = {
-        "probe": "roots_probe",
-        "roots_supported": False,
-        "list_changed": None,
-        "root_uris": [],
-        "root_count": 0,
-        "error": None,
-    }
-    try:
-        session = ctx.session
-        params = session.client_params
-        roots_cap = (
-            getattr(params.capabilities, "roots", None) if params is not None else None
-        )
-        payload["roots_supported"] = roots_cap is not None
-        if roots_cap is not None:
-            payload["list_changed"] = getattr(roots_cap, "listChanged", None)
-        if not session.check_client_capability(
-            mcp_types.ClientCapabilities(roots=mcp_types.RootsCapability())
-        ):
-            payload["error"] = "client_lacks_roots_capability"
-            return json.dumps(payload, indent=2)
-
-        try:
-            result = await session.list_roots()
-        except ValidationError as exc:
-            uris = _uris_from_list_roots_validation_error(exc)
-            payload["root_uris"] = uris
-            payload["root_count"] = len(uris)
-            if uris:
-                payload["error"] = None
-                payload["coerced_from_bare_path"] = True
-            else:
-                payload["error"] = f"ValidationError: {exc}"
-            return json.dumps(payload, indent=2)
-
-        uris: list[str] = []
-        for root in getattr(result, "roots", None) or []:
-            uri = getattr(root, "uri", None)
-            if uri is not None:
-                norm = _normalize_root_uri(uri)
-                if norm and norm not in uris:
-                    uris.append(norm)
-        payload["root_uris"] = uris
-        payload["root_count"] = len(uris)
-        if not uris:
-            payload["error"] = "roots_empty"
-    except Exception as exc:  # noqa: BLE001 — probe must always return JSON
-        payload["error"] = f"{type(exc).__name__}: {exc}"
-    return json.dumps(payload, indent=2)
 
 
 # Shell + project-repo: remove brief tools after registration (FastMCP public API).
