@@ -1,0 +1,32 @@
+# Stance: BugBot PR-level external review gate
+
+- Agent/lane: Cursor
+- Class: DONE
+- Branch / tip SHA / PR (if any): Squash-merged [#91](https://github.com/alanmz-crypto/convmem/pull/91) as [`db3e5e0`](https://github.com/alanmz-crypto/convmem/commit/db3e5e0aeff29b6666441200e3cbb5db7b30559e) on `main`; feature branch deleted. Adjacent hygiene also closed [#96](https://github.com/alanmz-crypto/convmem/pull/96) (`7a0c344`, Steward VERIFY 2→3) — not this arc’s product.
+- Arc goal (1 sentence): Land BugBot as a PR-native External Review gate in Execute/Verify with tracked `.cursor/BUGBOT.md` review context and no local report/waiver store.
+- Status now (1–3 bullets; evidence, not vibes):
+  - Docs/policy on `main` via `#91` (`db3e5e0`): ARCHITECTURE/EXECUTION/EXECUTE-TASK/VERIFY-PLANNING/VERIFY-TEMPLATE/VERIFY-bugbot-pr-gate/`.cursor/BUGBOT.md`.
+  - Mechanical VERIFY + tip-rebinds completed; Kiro V6 PASS on tip `6be6c92` carried through merge-`main` via seven-file content identity; Ryan GATE + squash-merge done; remote/local branch + worktree removed; local `main` synced.
+  - Accidental duplicate IOE TIFFs removed from `docs/inter-model/`; keep one scan at `~/Documents/convmem-scans/IOE0928027522-1024167116040-part1.tif` (not git).
+- Overlaps (other arcs/PRs/plans/ledger ids):
+  - **CI Wait Workflow** ([#81](https://github.com/alanmz-crypto/convmem/pull/81) / `ARCHITECTURE-ci-wait-workflow.md`) — Who: Cursor+Kiro; What: optional playbook while CI/review runs; When: merged 2026-07-22; Why: adjacent “automated review wait” guidance; How: do not confuse with BugBot gate policy (Execute owns BugBot applicability).
+  - **PR Steward** ([#92](https://github.com/alanmz-crypto/convmem/pull/92) + VERIFY residual [#96](https://github.com/alanmz-crypto/convmem/pull/96)) — Who: Steward/Docs; What: Delivery-role prompt + standing reminder; When: landed/deployed then VERIFY 2→3 closed; Why: comment-authority for `bugbot run` may involve Steward; How: Steward does not replace BugBot gate or Copilot audit.
+  - **VERIFY every arc** (Planning OS, 2026-07-20) — Who: Planning; What: require `VERIFY-<slug>.md`; When: binding; Why: this arc’s VERIFY is the template instance; How: do not reopen Planning OS kernel for BugBot.
+- Keep (must survive consolidation):
+  - PR-native evidence only (no `.convmem/bugbot-reports` / waiver files).
+  - SHA terms: subject tip SHA vs BugBot-reviewed SHA; any tip SHA change → new BugBot (or valid exempt); Verify FAIL on applicable SHA mismatch.
+  - Copilot and BugBot independent/non-substituting; outage → stop + Ryan tip-acceptance (no agent exempt-and-log).
+  - `.cursor/BUGBOT.md` = review context only (no when-to-run); boundary edits need normal PR review.
+  - Tip-rebind after merge-`main`: prove seven authorized paths vs `main` + policy-file identity to last signed tip before narrow appendix.
+- Drop / defer (safe to stop or hand off):
+  - Further tip-rebind commits on `#91` (merged).
+  - Branch-protection / fail-on-unresolved BugBot org settings.
+  - Non-Cursor fallback reviewer product.
+  - Re-opening Steward `#96` / TIFF work.
+- Conflicts / risks if combined carelessly:
+  - Folding BugBot into Copilot audit or Steward “someone looked” collapses scarce audit vs routine gate.
+  - Updating `LATEST.md` without naming `#91`/`db3e5e0` leaves the shared bus stale (brief already flagged LATEST behind newer inter-model files).
+- Recommended consolidator target: Cursor (update `LATEST.md` Active handoff with BugBot `#91` land line) — or Ryan-named consolidator for multi-stance merge.
+- Ask of Ryan (0–2 bullets max; only decisions only Ryan can make):
+  - Whether consolidator should refresh `LATEST.md` this cycle to include BugBot `#91` (`db3e5e0`) alongside Steward/CI-wait entries.
+  - Whether a soft-close `convmem record` for the BugBot gate land is wanted (not emitted unless you say closing/record block).

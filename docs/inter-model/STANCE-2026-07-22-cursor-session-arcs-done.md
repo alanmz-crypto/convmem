@@ -1,0 +1,31 @@
+# Stance: Cursor session arcs closed (dedupe + debate + Steward residual)
+
+- Agent/lane: Cursor (this multi-arc session)
+- Class: DONE
+- Branch / tip SHA / PR (if any): stance on `docs/2026-07-22-stance-cursor-session-arcs-done`; product tips already on `main` — `#86`/`dba9795` (dedupe Phase A), `#94`/`5a378b3` (debate folder), `#95`/`dd59449` + `#96`/`7a0c344` (Steward VERIFY 2→3), `#91`/`db3e5e0` (BugBot gate, parallel lane)
+- Arc goal (1 sentence): Finish authorized Cursor mechanical work for queue hygiene default band, land closed who-fixes debate archive, and close the PR Steward VERIFY commit-count docs residual — then stop.
+- Status now (1–3 bullets; evidence, not vibes):
+  - Semantic dedupe hygiene **GATE ACCEPTED** per `LATEST.md`; Phase A on `main` (`dba9795`); exact-title @ ≥0.999 pending drained to 0; lower bands (~1055) and Phase D **not authorized**.
+  - Debate folder `#94` merged (`5a378b3`); `#34` closed as superseded — do not revive `#34`.
+  - Steward residual park `#95` + correction `#96` merged (`7a0c344`); V0b/EXECUTION say **3** commits; no further Docs residual on that tip.
+- Overlaps (other arcs/PRs/plans/ledger ids):
+  - Semantic dedupe hygiene — Who: Cursor+Kiro+Ryan; What: ingest pause + banded queue drain; When: GATE accepted 2026-07-22; Why: stop unbounded `dedupe_queue.jsonl` growth; How: do not reopen bands/Phase D without new GATE. Plans: `VERIFY-semantic-dedupe-hygiene.md` / handoff `CURSOR-2026-07-22-semantic-dedupe-hygiene.md` (**header still pre-GATE — prefer LATEST**).
+  - who-fixes-retrieval / P1.3 — Who: closed board → P1.3; What: debate archive + retrieval tools already shipped; When: `#94` land; Why: archive only; How: do not re-open round code under this stance.
+  - BugBot PR gate `#91` — Who: parallel policy lane; What: SHA-bound BugBot review context; When: merged `db3e5e0`; Why: adjacent “today’s main” only; How: VERIFY closeout belongs to that lane, not re-implementation here.
+- Keep (must survive consolidation):
+  - Default-band closure criteria: exact-title @ similarity ≥0.999 pending = 0; no blind `--approve-dedupe all`; undo under `refine_undo/semantic_dedupe/`.
+  - Phase C apply hazard: if canonical unit is tombstoned, retarget to a live root before `--approve-dedupe` (noop/tombstone mix is expected).
+  - Docs-only CI flake: pylint R0401 cyclic-import count jitter — update-from-main and/or rerun failed check; do not “fix” Python for markdown PRs.
+  - `#34` superseded by `#94`; Steward `2`→`3` residual closed by `#96`.
+- Drop / defer (safe to stop or hand off):
+  - Further Phase A coding or exact@0.999 drain work.
+  - Next similarity bands (0.98/0.95/0.92) and Phase D without Ryan GATE.
+  - Reopening `#34`, Steward VERIFY metadata, or BugBot policy implementation from this session.
+  - Stale open PRs `#33`/`#32`/`#31`/`#6`/`#37` — cleanup day only if Ryan asks.
+- Conflicts / risks if combined carelessly:
+  - Reading `CURSOR-2026-07-22-semantic-dedupe-hygiene.md` Status (“Plan packet ready — Ryan GATE before…”) as current will thrash a closed GATE; **LATEST + `#86` tip win**.
+  - Combining with ranking/P1.3 soak language can reopen source-trust under a hygiene label — out of scope.
+- Recommended consolidator target: Cursor (LATEST Active handoff refresh for `#91`/`#94`/`#96` if not already covered)
+- Ask of Ryan (0–2 bullets max; only decisions only Ryan can make):
+  - GATE next dedupe band (which threshold?) or leave ~1055 pending parked?
+  - Authorize a LATEST-only refresh PR, or leave brief’s STALE HANDOFF until consolidator?

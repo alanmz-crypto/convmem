@@ -1,0 +1,28 @@
+# Stance: P1.3 soak + semantic-dedupe default GATE closed
+
+- Agent/lane: cursor
+- Class: DONE
+- Branch / tip SHA / PR (if any): this chat authored brief [#85](https://github.com/alanmz-crypto/convmem/pull/85) (`d827d3d`); execution/VERIFY landed as [#86](https://github.com/alanmz-crypto/convmem/pull/86) tip `dba9795` (GATE ACCEPTED on LATEST). Soak had no separate PR.
+- Arc goal (1 sentence): Close ksweep-class ranking with live source-trust soak, then open and complete the default-band corpus hygiene follow-up without reopening ranking.
+- Status now (1–3 bullets; evidence, not vibes):
+  - P1.3 live soak CLOSED on LATEST (Day-0 A/B + Crush + Cursor behavioral PASS; Day+1 A/B PASS); weight=1.0; Crush `ksweep-routing` retired.
+  - Semantic-dedupe hygiene GATE ACCEPTED (`dba9795` / #86): Phase A pause + live job omit; Phase C exact-title @ ≥0.999 drained; no `--approve-dedupe all`.
+  - Remaining ~1055 lower-band pending + Phase D snapshot-steering = **not authorized** (explicit on LATEST).
+- Overlaps (other arcs/PRs/plans/ledger ids):
+  - P1.3 source-trust [#78](https://github.com/alanmz-crypto/convmem/pull/78)/[#77](https://github.com/alanmz-crypto/convmem/pull/77) — ranking already shipped; do not re-open.
+  - who-fixes closed-to-p13 handoff — cargo pointed here; default band now closed.
+  - Optional Phase D snapshot steering — only residual shared with soak notes; needs separate GATE.
+- Keep (must survive consolidation):
+  - Soak evidence paths: `/tmp/p13-soak-ksweep.txt`, `/tmp/p13-soak-hash.txt`, `/tmp/p13-soak-close.txt`, `/tmp/p13-soak-crush.txt`, `/tmp/p13-soak-*-d1.txt`; Crush session `7c62ce61-6a08-40ce-a125-b26d369b6151`.
+  - Gate boundaries: lower similarity bands and Phase D require new Ryan authorization — not implied by #86 GATE.
+  - Plans SSoT: `ARCHITECTURE|EXECUTION|VERIFY-semantic-dedupe-hygiene` + `CURSOR-2026-07-22-semantic-dedupe-hygiene.md`.
+- Drop / defer (safe to stop or hand off):
+  - Further Day+N soak rechecks for this lane.
+  - Re-briefing hygiene or re-implementing ingest pause.
+  - Blind drain of remaining pending queue.
+- Conflicts / risks if combined carelessly:
+  - Treating “hygiene GATE ACCEPTED” as license to approve 0.92–0.98 bands or Phase D.
+  - Re-enabling live `semantic_dedupe` job while backlog still ≫ `queue_max_depth`.
+- Recommended consolidator target: none
+- Ask of Ryan (0–2 bullets max; only decisions only Ryan can make):
+  - None this turn — reopen only with explicit GATE for next band or Phase D.

@@ -1,0 +1,28 @@
+# Stance: R2b capture auth parked after T4
+
+- Agent/lane: Cursor
+- Class: DONE
+- Branch / tip SHA / PR (if any): Implementation squash-merged as [#67](https://github.com/alanmz-crypto/convmem/pull/67) → `c0f06f5` on `main`. This stance branch: `docs/2026-07-22-2026-07-22-stance-r2b-capture-parked`.
+- Arc goal (1 sentence): Enforce phase-scoped R2b capture authorization (binder capability, trusted source snapshot, marker-last) then stop before B-Accept.
+- Status now (1–3 bullets; evidence, not vibes):
+  - T1–T2 done: architecture + code/tests on `main` (`c0f06f5` / #67); hermetic R2b suites shipped.
+  - T4 draft on disk under `~/.local/share/convmem/authorizations/r2b/2026-07-21-r2b-capture-01/` (`capture.json` + `t4_packet_meta.json`); **no** sidecar; **no** `eval/.../capture` dir.
+  - Snapshot in that draft is **stale for ACCEPT** (1h rule); T5–T8 remain Ryan-gated and unauthorized without fresh T4 + ACCEPT AND GRANT.
+- Overlaps (other arcs/PRs/plans/ledger ids):
+  - **R2a config-generation** ([#52](https://github.com/alanmz-crypto/convmem/pull/52)/[#59](https://github.com/alanmz-crypto/convmem/pull/59); `VERIFY-r2a-config-generation.md`; Gate 1 harness `3b2790f5…`) — Who/What: prior real-eval auth pattern. When: 2026-07-20. Why: same grant/restic/harness vocabulary. How: do not reopen R2a or change harness pin from this arc.
+  - **VERIFY every arc** (`VERIFY-verify-every-arc.md`; filled `VERIFY-r2b-capture.md`) — Who/What: post-Execute VERIFY obligation. When: 2026-07-20+. Why: T7 exists as plan but is **NOT RUN**. How: consolidators must not mark R2b VERIFY PASS from chat.
+  - **LATEST.md R2b bullet (stale)** — still says “No implementation or live R2b capture is authorized” while #67 landed; live capture remains unauthorized, but **implementation is no longer unauthorized**.
+- Keep (must survive consolidation):
+  - Park state: Cursor code lane closed; next is Ryan T5 (fresh snapshot if needed → sidecar → ACCEPT AND GRANT) → T6 one-shot → T7 VERIFY → T8 stop before B-Accept.
+  - Draft paths + body digest in `t4_packet_meta.json` (recompute before ACCEPT if >1h old).
+  - Settled Option A contracts in `ARCHITECTURE-r2b-capture-auth.md` / `EXECUTION-2026-07-20-r2b-capture.md` (do not revive #64).
+- Drop / defer (safe to stop or hand off):
+  - Further Cursor coding, Bugbot thrash, or “helpful” live capture without ACCEPT AND GRANT.
+  - B-Accept, Gate 2, promotion, cleanup, R2a re-runs.
+- Conflicts / risks if combined carelessly:
+  - Treating LATEST’s old “no implementation” line as current truth, or treating T4 draft as already ACCEPTed.
+  - Writing sidecar / running capture from a stale `source_snapshot` without recomputing digests.
+- Recommended consolidator target: Cursor (or Ryan directly for T5 HITL — no peer agent should invent a grant)
+- Ask of Ryan (0–2 bullets max; only decisions only Ryan can make):
+  - When resuming: authorize fresh T4 recompute then T5 ACCEPT (+ sidecar) and ACCEPT AND GRANT, or explicitly abandon/quarantine draft `2026-07-21-r2b-capture-01`.
+  - Update `LATEST.md` R2b bullet so “implementation unauthorized” is not re-asserted after #67.
