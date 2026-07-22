@@ -141,6 +141,31 @@ def evaluate_ingest_batch(  # pylint: disable=too-many-locals
     return result
 
 
+def dedupe_queue_file(cfg: dict) -> Path:
+    """Path to dedupe_queue.jsonl (same parent as chroma_dir)."""
+    return Path(cfg["index"]["chroma_dir"]).expanduser().parent / "dedupe_queue.jsonl"
+
+
+def dedupe_queue_line_count(path: Path) -> int:
+    """Count *all* JSONL lines (pending + resolved).
+
+    Matches ``job_semantic_dedupe`` pause semantics: depth is total file
+    lines, not pending-only. Keep ingest and refine on the same rule.
+    """
+    if not path.is_file():
+        return 0
+    with path.open(encoding="utf-8") as handle:
+        return sum(1 for _ in handle)
+
+
+def semantic_queue_at_max_depth(cfg: dict) -> tuple[bool, int, int]:
+    """Return ``(paused, line_count, max_depth)`` using total-line depth."""
+    refine = cfg.get("refine") or {}
+    max_depth = int(refine.get("queue_max_depth", 100))
+    count = dedupe_queue_line_count(dedupe_queue_file(cfg))
+    return count >= max_depth, count, max_depth
+
+
 def _append_jsonl(path: Path, rows: list[dict], *, unique_pairs: bool = False) -> int:
     if not rows:
         return 0
@@ -180,6 +205,16 @@ def persist_ingest_dedupe(cfg: dict, result: IngestDedupeResult) -> dict:
         data_dir / "ingest_duplicate_suppressions.jsonl",
         result.exact_suppressions,
     )
+    # Total-line depth (not pending-only) — same rule as job_semantic_dedupe.
+    paused, depth, max_depth = semantic_queue_at_max_depth(cfg)
+    if paused:
+        return {
+            "exact_suppressed": exact_written,
+            "semantic_candidates_queued": 0,
+            "semantic_queue_paused": True,
+            "semantic_queue_depth": depth,
+            "queue_max_depth": max_depth,
+        }
     semantic_written = _append_jsonl(
         data_dir / "dedupe_queue.jsonl",
         result.semantic_candidates,
@@ -188,4 +223,7 @@ def persist_ingest_dedupe(cfg: dict, result: IngestDedupeResult) -> dict:
     return {
         "exact_suppressed": exact_written,
         "semantic_candidates_queued": semantic_written,
+        "semantic_queue_paused": False,
+        "semantic_queue_depth": depth,
+        "queue_max_depth": max_depth,
     }

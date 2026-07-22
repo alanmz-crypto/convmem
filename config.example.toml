@@ -67,9 +67,14 @@ debounce_seconds = 90
 enabled = true
 batch_size = 10
 interval_seconds = 300
-jobs = ["chroma_dedupe", "ledger_link", "semantic_dedupe", "confidence_audit"]
+# semantic_dedupe is optional: omit from jobs while dedupe_queue backlog is at/above
+# queue_max_depth (restore F1 "job out while backlog" policy). Refine pauses the job
+# at depth; ingest also refuses new semantic appends at the same total-line depth.
+jobs = ["chroma_dedupe", "ledger_link", "confidence_audit"]
+# Include "semantic_dedupe" only when intentionally filling an empty/shallow queue.
 # backfill_domain — add back if a large untagged legacy intake appears
 untagged_priority = true
+# Total JSONL lines (pending + resolved). Example default 100; some live hosts use 200.
 queue_max_depth = 100
 dedupe_similarity = 0.92
 min_confidence_redistill = 0.6
