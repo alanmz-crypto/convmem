@@ -22,6 +22,7 @@ from propose_decision import (
     approve,
     propose,
     rebase_proposal,
+    recover_approval,
     reject,
     validate_governed_apply,
 )
@@ -199,3 +200,75 @@ def test_tombstoned_target_blocked_on_approve():
         ):
             with pytest.raises(ValueError, match="target_tombstoned"):
                 approve(cfg, rec["id"], signer="ryan")
+
+
+def test_same_author_repropose_is_pending_sibling_no_author_exception():
+    """Point 4 clarification: target-based sibling check has no same-author bypass."""
+    with tempfile.TemporaryDirectory() as td:
+        cfg = _cfg(td)
+        first = propose(
+            cfg,
+            relates_to="dec_a",
+            summary="Draft v1",
+            rationale="first draft",
+            author="cursor",
+            target_ledger_id="dec_shared",
+            proposal_id="dec_prop_self_v1",
+        )
+        with pytest.raises(ValueError, match="pending_sibling.*--rebase"):
+            propose(
+                cfg,
+                relates_to="dec_a",
+                summary="Draft v2",
+                rationale="same author refine",
+                author="cursor",  # same author
+                target_ledger_id="dec_shared",
+                proposal_id="dec_prop_self_v2",
+            )
+        # Intended refine path: rebase supersedes prior PENDING.
+        with patch(
+            "propose_decision.live_decision_state",
+            return_value=("", "basehash", False),
+        ):
+            draft = rebase_proposal(cfg, first["id"], author="cursor")
+        assert draft["rebases_proposal_id"] == first["id"]
+        states = reduce_events(load_events(cfg))
+        assert states[first["id"]]["lifecycle_state"] == "SUPERSEDED"
+        assert states[draft["id"]]["lifecycle_state"] == "PROPOSED"
+
+
+def test_recover_approval_started_idempotent_no_double_apply():
+    """Uncertain apply → APPROVAL_STARTED; --recover once applies; second recover is no-op."""
+    with tempfile.TemporaryDirectory() as td:
+        cfg = _cfg(td)
+        rec = propose(
+            cfg,
+            relates_to="dec_a",
+            summary="Stuck apply",
+            rationale="recover me",
+            author="cursor",
+        )
+        # Leave APPROVAL_STARTED + approved JSONL (no Chroma, no APPROVED).
+        approve(cfg, rec["id"], signer="ryan")
+        assert reduce_events(load_events(cfg))[rec["id"]]["lifecycle_state"] == "APPROVAL_STARTED"
+
+        with patch("propose_decision.ingest_approved_ledger") as mock_ingest, patch(
+            "propose_decision.live_decision_snapshot", return_value=("", "")
+        ):
+            mock_ingest.return_value = {"accepted": 1, "rejected": 0, "updated": 0, "skipped": 0}
+            action1 = recover_approval(cfg, rec["id"])
+            assert action1 == "retry_chroma"
+            assert mock_ingest.call_count == 1
+            assert reduce_events(load_events(cfg))[rec["id"]]["lifecycle_state"] == "APPROVED"
+
+            # Second recover: already APPROVED — must not re-ingest or append another APPROVED.
+            events_before = len(load_events(cfg))
+            action2 = recover_approval(cfg, rec["id"])
+            assert action2 == "approve"
+            assert mock_ingest.call_count == 1  # no double-apply
+            assert len(load_events(cfg)) == events_before
+            approved_events = [
+                e for e in load_events(cfg)
+                if e.get("event_type") == "APPROVED" and e.get("proposal_id") == rec["id"]
+            ]
+            assert len(approved_events) == 1

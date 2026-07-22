@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-12  
 **Branch:** `plan/2026-07-12-knowledge-unit-conflict-detection`  
-**Status:** Gates 1–10 accepted 2026-07-12 (Ryan: accept defaults). Execution constraints recorded below — not code-executed yet.  
+**Status:** Gates 1–10 accepted 2026-07-12; **executed and merged to main** 2026-07-12/13 (PRs #3–#5). End-of-arc VERIFY PASS at `d8496c2`. Claude external review package: `docs/plans/CLAUDE-REVIEW-conflict-detection-2026-07-12.md`.  
 **Reviews folded in:** Claude Cloud (×2) + final determinism pass (lifecycle vs conflicts, rebase, create-if-absent, single event log, recovery matrix, flock/fsync, single-host wording)
 
 ## Problem
@@ -99,6 +99,9 @@ Hash the **normalized semantic ledger record** (not a thin 5-field metadata slic
 - **One shared hash module**; revisit when ledger schema gains semantic fields
 - `proposal_id` apply-marker is **not** part of the semantic hash; it must still be emitted through `ledger_unit_metadata` so it survives normalization
 
+
+**Maintenance flag:** `base_content_hash` / `proposed_content_hash` are only meaningful under the `hash_schema_version` they were computed with. When `SEMANTIC_FIELDS` (or canonicalization rules) change, bump `HASH_SCHEMA_VERSION` in the **same** change and treat cross-version hash equality as undefined — do not silently compare vN hashes as if they were vN+1.
+
 ### 5. Approve critical section
 
 ```text
@@ -131,6 +134,8 @@ Release lock
 | `target_missing` | Fix id, or drop target (true new fact) |
 | `pending_sibling` / `pending_create_collision` | Reject one, then proceed |
 | `create_target_exists` | Retarget as update (with base hash) or choose new id |
+
+**Same-author refine (clarification 2026-07-12):** Sibling collision is **target-based only** — there is **no** same-author / same-session exception. A second `propose` against an unresolved `target_ledger_id` always yields `pending_sibling`, even when the author matches. Iterate by `convmem record --rebase <proposal_id>` (new id; old → `SUPERSEDED`) or reject then re-propose.
 
 No force-approve through conflicts this pass. Reject remains available.
 
