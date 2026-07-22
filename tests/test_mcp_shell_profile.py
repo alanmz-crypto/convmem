@@ -117,12 +117,24 @@ class McpShellProfileTests(unittest.TestCase):
         self.assertIn("ask", tool_set)
         self.assertTrue(inv["omit"])
 
+
+    def test_shell_alien_cwd_instructions_have_no_workspace_local(self):
+        """Cursor cwd=$HOME must not advertise brief-first under shell profile."""
+        with tempfile.TemporaryDirectory(prefix="convmem-shell-alien-") as tmp:
+            inv = _inventory("shell", tmp)
+        instr = inv.get("instructions") or inv["base_instructions"]
+        self.assertNotIn("workspace_local", instr)
+        self.assertNotIn("FIRST tool call MUST", instr)
+        self.assertNotIn("ACTIVE SESSION", instr)
+        self.assertIn("Do **not** repeat `brief()`", instr)
+
     def test_shell_non_project_brief_endpoints_present(self):
         with tempfile.TemporaryDirectory(prefix="convmem-shell-np-") as tmp:
             inv = _inventory("shell", tmp)
         tool_set = set(inv["tools"])
         self.assertTrue(BRIEF_TOOLS.issubset(tool_set), f"missing brief tools: {tool_set}")
-        self.assertTrue(_has_brief_resources(inv), f"missing brief resources: {inv}")
+        # Shell profile never advertises brief resources (CLI Tier A + tools only).
+        self.assertFalse(_has_brief_resources(inv), f"unexpected brief resources: {inv}")
         self.assertFalse(inv["omit"])
 
     def test_full_project_brief_endpoints_present(self):
