@@ -1,27 +1,20 @@
-# ksweep routing — read the steering file, do not grep
+# RETIRED — Crush ksweep-routing stopgap (do not deploy)
 
-`#ksweep-<name>` invokes a **Kiro steering file** (a markdown checklist), not a convmem
-command and not a script. When asked to run a ksweep, **read the steering file directly**
-at the path below and execute its checks in order. Do **not** `grep`/`glob` the home
-folder hunting for it.
+**Status:** Retired 2026-07-22 after P1.3 source-trust ranking merged
+([PR #78](https://github.com/alanmz-crypto/convmem/pull/78)).
 
-| Invocation | Read this file |
-|---|---|
-| `#ksweep-deploy` | `~/GitClones/willowyhollow-dev/.kiro/steering/ksweep-deploy.md` |
-| `#ksweep-practice` | `~/WordPress/willowyhollow-practice/.kiro/steering/ksweep-practice.md` |
-| `#ksweep-preview` | `~/WordPress/willowyhollow-practice/.kiro/steering/ksweep-preview.md` |
-| `#ksweep-all` | `~/WordPress/willowyhollow-practice/.kiro/steering/ksweep-all.md` |
-| `#ksweep-tldr` | `~/WordPress/willowyhollow-practice/.kiro/steering/ksweep-tldr.md` |
+`scripts/deploy-agent-protocol.sh` no longer copies this file into
+`~/.config/crush/rules/`. Ranking prefers `kiro_steering` / ledger /
+inter-model over stale chat distillations, so the static route is redundant.
 
-The full set lives in `~/WordPress/willowyhollow-practice/.kiro/steering/` (invocable from
-any workspace). If the current workspace has its own `.kiro/steering/ksweep-<name>.md`,
-prefer that copy for that surface.
+Historical content (for archaeology only) lived here as a path table for
+`#ksweep-*` → `.kiro/steering/*.md` and a warning that corpus “no standalone
+ksweep file” claims were outdated.
 
-**Stale-corpus warning:** older chat distillations in convmem claim *"no standalone ksweep
-file exists on disk."* That is **outdated** — the files above exist. Trust the paths here
-over that corpus hit.
+If Crush still has `ksweep-routing.md` under rules, move it aside (deploy
+script does this automatically) or:
 
-<!-- SUNSET: retire this rule once P1 contradiction-aware ranking ships (ledger/inter-model
-outranks older chat distillation on the same entity). At that point search_fast will return
-the correct steering path on its own and this static route is redundant. Tracking:
-docs/inter-model plan "How the ksweep-deploy incident reflects on convmem" (P0.4 -> P1.3). -->
+```bash
+mkdir -p ~/.config/crush/rules-retired
+mv ~/.config/crush/rules/ksweep-routing.md ~/.config/crush/rules-retired/
+```
