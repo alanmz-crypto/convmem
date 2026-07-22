@@ -1,0 +1,33 @@
+# Stance: Copilot CLI session wiring still unmerged
+
+- Agent/lane: cursor
+- Class: COMBINE
+- Branch / tip SHA / PR (if any): `feat/2026-07-19-copilot-cli-integration` @ `eb6f89d` (adapter + MCP env.local load + always-on instructions); **no PR**. Overlap branch `docs/2026-07-19-response-tldr` @ `d0dbda6` (Kiro generate/deploy Copilot surface only). Live overlays already at `~/.copilot/copilot-instructions.md` + `mcp-config.json` (local deploy, not `main`).
+- Arc goal (1 sentence): Wire GitHub Copilot CLI into convmem like other Tier A surfaces — session ingest, watch, MCP, and always-on protocol so plain `copilot` runs doctor→brief→unresolved.
+- Status now (1–3 bullets; evidence, not vibes):
+  - Product code **not on `main`**: `origin/main` has no `adapters/copilot_session_jsonl.py` / `docs/COPILOT-SESSION-ADAPTER.md`; `detect_format(events.jsonl)` → `None` on main checkout.
+  - Feat tip `eb6f89d` has adapter + detect/watch/doctor/open_source + generate/deploy always-on (`config/copilot-instructions-convmem.example.md`); local soak later sessions start with `convmem doctor`.
+  - Parallel Kiro commit `d0dbda6` also adds Copilot to generate/deploy (`config/copilot-instructions.example.md`) but is **not** on the feat tip and **not** on `main` — two unmerged instruction-pipeline shapes.
+- Overlaps (other arcs/PRs/plans/ledger ids):
+  - **PR #54** (`3ee9f28`) — HITL charter Copilot lifecycle / Sol-High governance (merged). Who/What/When/Why/How: Cursor docs PR clarifying when Copilot is an allowed lane and Sol-High rules; landed 2026-07-20; do not reopen lifecycle policy.
+  - **Kiro “Copilot into deploy pipeline”** — session `sess_ef6600c5…` / tip `d0dbda6` on `docs/2026-07-19-response-tldr`. Who/What: add Copilot surface to `generate-agent-protocol.sh` + `deploy-agent-protocol.sh` for TL;DR/always-on; Why: hand-maintained instructions drifted; How: Codex-shaped generate/deploy. Overlaps our always-on instruction work; filenames differ (`copilot-instructions.example.md` vs `copilot-instructions-convmem.example.md`).
+  - **PR #59 / #71** — R2a Copilot handoff docs and DeepSeek V4-Pro *substitute* audit (merged). Use Copilot as an execution/audit *role*, not the session-adapter plumbing; do not conflate with ingest wiring.
+- Keep (must survive consolidation):
+  - `adapters/copilot_session_jsonl.py` + detect/tool tag `copilot` + tests (`events.jsonl` under `~/.copilot/session-state/`).
+  - Watch live-DB skips (`session-store.db`, per-session `session.db`); sources path `~/.copilot/session-state` (not whole `~/.copilot`).
+  - Always-on path must be `~/.copilot/copilot-instructions.md` for **plain** `copilot` (custom agent alone failed soak — requires `--agent`).
+  - MCP: omit embedding `DEEPSEEK_API_KEY` in mcp-config; `mcp_server.py` loads `env.local` / `env.systemd`.
+  - Doctor check `mcp_copilot`; `open_source` → `copilot --resume <id>`; Track A author `copilot-session`.
+- Drop / defer (safe to stop or hand off):
+  - Solo re-implementation of generate/deploy if consolidator merges feat tip **or** rebases Kiro `d0dbda6` into one surface name.
+  - Bulk historical backfill of all Copilot sessions (Ryan-gated count).
+  - Re-litigating #54 lifecycle bans / Sol-High.
+  - Opening a PR without Ryan pick of which instruction-pipeline commit wins.
+- Conflicts / risks if combined carelessly:
+  - Dual example filenames / deploy targets can double-write or overwrite live `copilot-instructions.md` with divergent bodies.
+  - Merging only Kiro generate/deploy without the adapter leaves watch/index blind to Copilot chats on `main`.
+  - Re-injecting `DEEPSEEK_API_KEY=REPLACE_ME` into mcp-config breaks ask and undoes the omit fix.
+- Recommended consolidator target: Cursor (or Ryan PR Steward) — one PR from rebased `feat/2026-07-19-copilot-cli-integration` after folding Kiro generate/deploy naming, then `deploy-agent-protocol.sh`.
+- Ask of Ryan (0–2 bullets max; only decisions only Ryan can make):
+  - Authorize one land path: open/merge PR from `feat/2026-07-19-copilot-cli-integration` (after rebase onto current `main`), vs abandon adapter and keep local-only overlays?
+  - Prefer which always-on example name wins: `copilot-instructions-convmem.example.md` (feat) vs `copilot-instructions.example.md` (Kiro `d0dbda6`)?
