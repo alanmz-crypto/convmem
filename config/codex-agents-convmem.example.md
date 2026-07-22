@@ -104,7 +104,7 @@ Allowed: `convmem index --file <path> [--supersede]` for session tracking (Tier 
 | Ledger write / merge | **Ryan only** | Not involved |
 | Bound brief → GitHub PR lifecycle | **PR Steward** (default Codex) | Not involved |
 
-**PR Steward** is a Delivery-role overlay (brief-bound; no merge/grant/ledger).
+**PR Steward** is a Delivery-role overlay (brief-bound; no merge/grant/ledger). If Ryan describes a bounded, well-defined task that fits the PR lifecycle, suggest assigning PR Steward — it activates only through explicit Ryan assignment and never self-assigns.
 
 **Conditional Copilot.** Independent safety/isolation audits or targeted verification only—not implementation, routine work, drafting, uncontested re-audits, or missing Cursor handoffs. **Sol-High** is a separate scarce resource, not the Copilot audit lane.
 

@@ -196,6 +196,18 @@
       "status": "open",
       "last_verified": "2026-07-07",
       "notes": "Probe parses register_refs:[...] blocks from docs/role-charters.md; due if a charter ref has no matching register id (dangling) or an open register row is cited by no charter (orphan). Dogfoods Layer 2 against the drift that prompted it."
+    },
+    {
+      "id": "pr-steward-reminder",
+      "check": "consider PR Steward for bounded PR lifecycle tasks",
+      "role": "Platform",
+      "trigger": {
+        "type": "manual",
+        "max_age_days": 30
+      },
+      "status": "open",
+      "last_verified": "2026-07-22",
+      "notes": "Manual reminder: when describing a bounded, well-defined task that needs full PR lifecycle (branch, commits, push, PR open, CI monitoring, review-finding resolution), consider assigning PR Steward (default: Codex). Activation: explicit Ryan assignment with bounded brief. Full role: TEAM-CHARTER-2026-07-06.md § PR Steward."
     }
   ]
 }
