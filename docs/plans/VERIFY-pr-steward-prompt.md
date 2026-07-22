@@ -12,10 +12,8 @@ Authority:    Post-Execute HITL — do not trust chat claims alone
 
 **Subject / tip (immutable):** branch `docs/2026-07-22-2026-07-22-pr-steward-prompt`  
 **PR(s):** [#92](https://github.com/alanmz-crypto/convmem/pull/92) — MERGED (squash) as `0e2b396` on `main` (2026-07-22)  
-**EXECUTION:** Crush session 2026-07-22 — two-commit change adding prompt mechanisms for PR Steward  
+**EXECUTION:** Crush session 2026-07-22 — three-commit change adding prompt mechanisms for PR Steward  
 **Goal:** Prove the PR Steward prompt changes are correct, complete, and cause no regressions.
-
-**Deferred residual (Docs / Tech Writer — not blocking):** V0b and the EXECUTION blurb still say “2 commits” / “two-commit.” Pre-squash tip reality was **3** commits (product pair + this VERIFY doc). Correct metadata to `3` in a later tiny docs PR. Parked in [`../inter-model/LATEST.md`](../inter-model/LATEST.md) Active handoff (2026-07-22).
 
 **Report format:** For each check, state **PASS / FAIL / SKIP** and one line of evidence.  
 **GATE** = Ryan process step; not a mechanical agent PASS.
@@ -51,7 +49,7 @@ convmem doctor
 | ID | Check | PASS |
 |----|-------|------|
 | V0a | Branch exists and is fetchable | … |
-| V0b | Exactly 2 commits diverged from main | … |
+| V0b | Exactly 3 commits diverged from main | … |
 | V0c | `convmem doctor` exit 0 (1 non-fatal embed warning expected) | … |
 | V0d | `standing_register` shows `12 open checks, 0 due` (no orphan rows) | … |
 | V0e | No dirty tracked files | … |
