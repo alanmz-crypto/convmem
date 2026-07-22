@@ -6,13 +6,12 @@ Planning Status
 Phase:        Verify (bugbot-pr-gate)
 Characters:   Independent Reviewer
 Functions:    Reviewer
-Lanes:        Codex (mechanical); Kiro or Ryan-named lane (sign-off); Ryan (GATE)
+Lanes:        Crush (mechanical, Ryan-authorized for this tip); Kiro or Ryan-named lane (sign-off); Ryan (GATE)
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Status:** Review-ready plan; mechanical results pending a pinned final subject
-tip.
-**Subject / tip:** `<final-branch-tip-pending>`
+**Status:** Mechanical V0–V5 filled (V4d PENDING Ryan); V6 + Ryan GATE remain.
+**Subject / tip:** `2f5d60cf0bef7030e8517f32afa4b6ea99d73be1`
 **PR:** BugBot gate rollout PR
 [`#91`](https://github.com/alanmz-crypto/convmem/pull/91)
 **EXECUTION:** `docs/plans/EXECUTION-2026-07-22-bugbot-pr-gate.md`
@@ -79,7 +78,7 @@ Execute evidence expected for this rollout:
 |-------|-------|
 | `gate_applicability` | `exempt` |
 | `reason` | Policy/review-context-only rollout; no executable product behavior |
-| `subject_tip_sha` | `<final-branch-tip-pending>` |
+| `subject_tip_sha` | `2f5d60cf0bef7030e8517f32afa4b6ea99d73be1` |
 | `bugbot_reviewed_sha` | `n/a` |
 | `result` | `n/a` |
 | `finding_disposition` | `none` |
@@ -87,12 +86,12 @@ Execute evidence expected for this rollout:
 
 | ID | Check | Result |
 |----|-------|--------|
-| V0a | Subject tip SHA resolves to the commit being verified | PENDING |
-| V0b | Execute applicability and reason are present | PENDING |
-| V0c | Exemption is consistent with the final seven-file policy/context diff | PENDING |
-| V0d | Exactly the seven authorized paths differ from `origin/main` | PENDING |
-| V0e | Worktree is clean and PR head equals the pinned subject tip SHA | PENDING |
-| V0f | Planning contract test and `convmem doctor` pass | PENDING |
+| V0a | Subject tip SHA resolves to the commit being verified | PASS — `2f5d60cf0bef7030e8517f32afa4b6ea99d73be1` |
+| V0b | Execute applicability and reason are present | PASS — EXECUTION:94-95 records `exempt` + reason |
+| V0c | Exemption is consistent with the final seven-file policy/context diff | PASS — all 7 files are docs/policy/planning; no runtime code |
+| V0d | Exactly the seven authorized paths differ from `origin/main` | PASS — 7 paths match authorized list |
+| V0e | Worktree is clean and PR head equals the pinned subject tip SHA | PASS — HEAD=`2f5d60c`, 0 dirty files |
+| V0f | Planning contract test and `convmem doctor` pass | PASS — 8/8 tests, doctor all checks passed |
 
 ## V1 — Binding architecture
 
@@ -103,10 +102,10 @@ rg -n 'Subject tip SHA|BugBot-reviewed SHA|When unsure|independent and non-subst
 
 | ID | Check | Result |
 |----|-------|--------|
-| V1a | Architecture assigns applicability to Execute, confirmation to Verify, review context to BUGBOT, and durable evidence to GitHub | PENDING |
-| V1b | Universal SHA terms, any-tip-change rule, rename litmus, and unsure→required are explicit | PENDING |
-| V1c | Copilot independence, finding lifecycle, evidence schema, and outage→Ryan tip-acceptance are explicit | PENDING |
-| V1d | Local report/waiver storage, CI/hooks, protocol, charter, and branch protection remain non-goals | PENDING |
+| V1a | Architecture assigns applicability to Execute, confirmation to Verify, review context to BUGBOT, and durable evidence to GitHub | PASS — ARCH:6,20,28 (roles), ARCH:64-65 (PR-native evidence) |
+| V1b | Universal SHA terms, any-tip-change rule, rename litmus, and unsure→required are explicit | PASS — ARCH:34-35 (SHA terms), 46 (rename), 70 (unsure→required) |
+| V1c | Copilot independence, finding lifecycle, evidence schema, and outage→Ryan tip-acceptance are explicit | PASS — ARCH:46 (independence), 104 (outage), 110 (lifecycle), 121 (schema) |
+| V1d | Local report/waiver storage, CI/hooks, protocol, charter, and branch protection remain non-goals | PASS — ARCH:8,15 (no local report), 64 (charter exempt), 156 (CI/hooks/protocol non-goals) |
 
 ## V2 — Execute Task invariants
 
@@ -118,11 +117,11 @@ rg -n 'steps 4–6|steps 5–7' docs/planning/EXECUTE-TASK.md
 
 | ID | Check | Result |
 |----|-------|--------|
-| V2a | Main loop is exactly 0–7 and External Review is step 3 | PENDING |
-| V2b | D0–D6 labels remain unchanged and D6 points to main-loop steps 5–7 | PENDING |
-| V2c | Applicability, SHA equality, any-tip-change, lifecycle, outage, Copilot independence, and evidence schema are present | PENDING |
-| V2d | Awareness points to BUGBOT as review context, not policy ownership | PENDING |
-| V2e | Exit criteria require a valid External Review disposition | PENDING |
+| V2a | Main loop is exactly 0–7 and External Review is step 3 | PASS — EXECUTE-TASK.md:89-96; step 3 = External Review |
+| V2b | D0–D6 labels remain unchanged and D6 points to main-loop steps 5–7 | PASS — EXECUTE-TASK.md:195-201; D6 = steps 5–7 |
+| V2c | Applicability, SHA equality, any-tip-change, lifecycle, outage, Copilot independence, and evidence schema are present | PASS — EXECUTE-TASK.md:103,116,122,137,144-145,156,167,171,179 |
+| V2d | Awareness points to BUGBOT as review context, not policy ownership | PASS — EXECUTE-TASK.md:224 "BugBot review context only" |
+| V2e | Exit criteria require a valid External Review disposition | PASS — EXECUTE-TASK.md:249 requires applicability + SHA match + finding disposition or exemption |
 
 ## V3 — Verify OS confirmation
 
@@ -135,10 +134,10 @@ rg -n 'gate_applicability|subject_tip_sha|bugbot_reviewed_sha|result|finding_dis
 
 | ID | Check | Result |
 |----|-------|--------|
-| V3a | Verify copies Execute applicability and does not reclassify it | PENDING |
-| V3b | Applicable subject-tip / BugBot-reviewed SHA mismatch is FAIL, never SKIP | PENDING |
-| V3c | Required finding dispositions and outage acceptance are checked | PENDING |
-| V3d | Template mirrors all seven evidence fields and permits N/A only for a valid exemption | PENDING |
+| V3a | Verify copies Execute applicability and does not reclassify it | PASS — VERIFY-PLANNING.md:98 "BugBot confirmation prerequisite" redirects to Execute |
+| V3b | Applicable subject-tip / BugBot-reviewed SHA mismatch is FAIL, never SKIP | PASS — VERIFY-PLANNING.md:109 "FAIL, not SKIP" |
+| V3c | Required finding dispositions and outage acceptance are checked | PASS — VERIFY-TEMPLATE.md:52-53 covers dispositions + outage fields |
+| V3d | Template mirrors all seven evidence fields and permits N/A only for a valid exemption | PASS — VERIFY-TEMPLATE.md:19,48-54 (7 fields + N/A exemption clause) |
 
 ## V4 — `.cursor/BUGBOT.md` boundary
 
@@ -152,10 +151,10 @@ fi
 
 | ID | Check | Result |
 |----|-------|--------|
-| V4a | `.cursor/BUGBOT.md` is git-tracked | PENDING |
-| V4b | It contains tests, invariants, false-positive boundaries, and sensitive areas | PENDING |
-| V4c | It contains no applicability, invocation, waiver, or merge-readiness policy | PENDING |
-| V4d | Ryan reviews the bootstrap file's exact content before merge | PENDING |
+| V4a | `.cursor/BUGBOT.md` is git-tracked | PASS — `git ls-files --error-unmatch .cursor/BUGBOT.md` succeeds |
+| V4b | It contains tests, invariants, false-positive boundaries, and sensitive areas | PASS — 6 keyword matches (test/invariant/false positive/sensitive) |
+| V4c | It contains no applicability, invocation, waiver, or merge-readiness policy | PASS — no matches for banned trigger/policy terms (rg exit 1) |
+| V4d | Ryan reviews the bootstrap file's exact content before merge | PENDING — Ryan content review required |
 
 ## V5 — Exact-tip PR evidence and CI
 
@@ -168,10 +167,10 @@ gh api repos/alanmz-crypto/convmem/issues/91/comments \
 
 | ID | Check | Result |
 |----|-------|--------|
-| V5a | PR `#91` is open against `main`, and `headRefOid` equals the pinned subject tip SHA | PENDING |
-| V5b | PR is not conflicting and every required check for the subject tip is completed successfully; queued/in-progress is PENDING and failure is FAIL | PENDING |
-| V5c | PR body records the seven-field exempt BugBot evidence row with the pinned subject tip SHA | PENDING |
-| V5d | No unauthorized BugBot trigger comment is present; any automatic bootstrap review is treated as informational | PENDING |
+| V5a | PR `#91` is open against `main`, and `headRefOid` equals the pinned subject tip SHA | PASS — OPEN against main; headRefOid = `2f5d60c` |
+| V5b | PR is not conflicting and every required check for the subject tip is completed successfully; queued/in-progress is PENDING and failure is FAIL | PASS — MERGEABLE; pylint (3.12) completed SUCCESS |
+| V5c | PR body records the seven-field exempt BugBot evidence row with the pinned subject tip SHA | PASS — all 7 fields present; subject_tip_sha matches `2f5d60c` |
+| V5d | No unauthorized BugBot trigger comment is present; any automatic bootstrap review is treated as informational | PASS — 0 PR comments |
 
 ## V6 — Independent sign-off
 
@@ -187,15 +186,15 @@ implementation lane; Ryan owns the final GATE.
 ## Evidence log
 
 ```text
-VERIFY-bugbot-pr-gate — tip <pending> — runner <pending> — <pending ISO-8601>
-V0: PENDING
-V1: PENDING
-V2: PENDING
-V3: PENDING
-V4: PENDING
-V5: PENDING
+VERIFY-bugbot-pr-gate — tip 2f5d60cf0bef7030e8517f32afa4b6ea99d73be1 — runner Crush (DeepSeek V4 Pro, Ryan-authorized) — 2026-07-22T18:40:00Z
+V0: PASS
+V1: PASS
+V2: PASS
+V3: PASS
+V4: PASS (V4d PENDING Ryan)
+V5: PASS
 V6: PENDING
-Mechanical: PENDING
+Mechanical: PASS (V4d PENDING Ryan)
 Sign-off: PENDING
 Ryan GATE: PENDING
 ```
