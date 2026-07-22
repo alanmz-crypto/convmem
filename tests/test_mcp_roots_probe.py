@@ -47,6 +47,26 @@ class McpRootsHelpers(unittest.TestCase):
             mcp_server._root_uris_indicate_project(["file:///tmp/p13-crush-soak"])
         )
 
+    def test_all_shell_tools_invoke_roots_boundary(self):
+        """Bugbot: search/related must probe Roots on first call, not only gated tools."""
+        import inspect
+
+        for name in (
+            "brief",
+            "search_fast",
+            "search",
+            "ask",
+            "unresolved",
+            "related",
+            "stats",
+        ):
+            src = inspect.getsource(getattr(mcp_server, name))
+            self.assertIn(
+                "_apply_shell_roots_brief_boundary_sync()",
+                src,
+                msg=f"{name} must call Roots boundary sync",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

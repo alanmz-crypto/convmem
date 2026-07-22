@@ -757,6 +757,7 @@ def search_fast(query: str, top_k: int = 5, domain: str = "", site: str = "") ->
 @mcp.tool()
 def search(query: str, top_k: int = 5, domain: str = "", site: str = "") -> str:
     """Search the knowledge corpus for relevant units. Returns scored results."""
+    _apply_shell_roots_brief_boundary_sync()
     from query import query_units
 
     results = query_units(
@@ -846,6 +847,7 @@ def unresolved(site: str = "", domain: str = "") -> str:
 @mcp.tool()
 def related(ledger_id: str) -> str:
     """Traverse the evidence chain for an observation, decision, or verification."""
+    _apply_shell_roots_brief_boundary_sync()
     from chroma_store import ChromaStore
     from config import load_config
     from ledger import related_chain
