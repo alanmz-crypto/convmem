@@ -55,6 +55,7 @@ Deploy: `bash scripts/deploy-builder-reference.sh` · Verify: `bash scripts/veri
 |-----|------|
 | [`SYSTEMD-DEPLOY.md`](SYSTEMD-DEPLOY.md) | Always-on user systemd deploy |
 | [`AGENT-ROLES.md`](AGENT-ROLES.md) | Model routing |
+| [`CI-WAIT-WORKFLOW.md`](CI-WAIT-WORKFLOW.md) | What to do while CI / automated review runs |
 | [`inter-model/SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md) | `convmem record` handoff format |
 | [`inter-model/CONTINUE-VERIFY.md`](inter-model/CONTINUE-VERIFY.md) | Continue IDE verify lane |
 | [`inter-model/SOAK-REPORT-2026-06-25.md`](inter-model/SOAK-REPORT-2026-06-25.md) | Surface soak matrix |
