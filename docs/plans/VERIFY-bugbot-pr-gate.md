@@ -10,8 +10,8 @@ Lanes:        Crush (mechanical, Ryan-authorized for this tip); Kiro or Ryan-nam
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Status:** Mechanical V0–V5 filled + tip-rebind (V4d PENDING Ryan, V5b PENDING CI); V6 + Ryan GATE remain.
-**Subject / tip:** `637586a40003b767d0196ffbca67aeaec757e3ea`
+**Status:** Mechanical V0–V5 PASS; tip-rebind after merge-`main` to `511418b`; V6 Kiro PASS on prior tip `6be6c92` carries (seven-file content identical); V4d PENDING Ryan GATE; ready for Ryan GATE/merge.
+**Subject / tip:** `511418b8f208433692350c542f7043767368d883`
 **PR:** BugBot gate rollout PR
 [`#91`](https://github.com/alanmz-crypto/convmem/pull/91)
 **EXECUTION:** `docs/plans/EXECUTION-2026-07-22-bugbot-pr-gate.md`
@@ -78,7 +78,7 @@ Execute evidence expected for this rollout:
 |-------|-------|
 | `gate_applicability` | `exempt` |
 | `reason` | Policy/review-context-only rollout; no executable product behavior |
-| `subject_tip_sha` | `637586a40003b767d0196ffbca67aeaec757e3ea` |
+| `subject_tip_sha` | `511418b8f208433692350c542f7043767368d883` |
 | `bugbot_reviewed_sha` | `n/a` |
 | `result` | `n/a` |
 | `finding_disposition` | `none` |
@@ -86,11 +86,11 @@ Execute evidence expected for this rollout:
 
 | ID | Check | Result |
 |----|-------|--------|
-| V0a | Subject tip SHA resolves to the commit being verified | PASS — `637586a40003b767d0196ffbca67aeaec757e3ea` (tip-rebind) |
+| V0a | Subject tip SHA resolves to the commit being verified | PASS — `511418b8f208433692350c542f7043767368d883` (post-merge tip-rebind) |
 | V0b | Execute applicability and reason are present | PASS — EXECUTION:94-95 records `exempt` + reason |
 | V0c | Exemption is consistent with the final seven-file policy/context diff | PASS — all 7 files are docs/policy/planning; no runtime code |
-| V0d | Exactly the seven authorized paths differ from `origin/main` | PASS — 7 paths match authorized list |
-| V0e | Worktree is clean and PR head equals the pinned subject tip SHA | PASS — HEAD=`637586a`, PR headRefOid=`637586a`, 0 dirty files (tip-rebind) |
+| V0d | Exactly the seven authorized paths differ from `origin/main` | PASS — 7 paths match authorized list (`origin/main...511418b`) |
+| V0e | Worktree is clean and PR head equals the pinned subject tip SHA | PASS — HEAD=`511418b`, PR headRefOid=`511418b`, 0 dirty files |
 | V0f | Planning contract test and `convmem doctor` pass | PASS — 8/8 tests, doctor all checks passed |
 
 ## V1 — Binding architecture
@@ -154,7 +154,7 @@ fi
 | V4a | `.cursor/BUGBOT.md` is git-tracked | PASS — `git ls-files --error-unmatch .cursor/BUGBOT.md` succeeds |
 | V4b | It contains tests, invariants, false-positive boundaries, and sensitive areas | PASS — 6 keyword matches (test/invariant/false positive/sensitive) |
 | V4c | It contains no applicability, invocation, waiver, or merge-readiness policy | PASS — no matches for banned trigger/policy terms (rg exit 1) |
-| V4d | Ryan reviews the bootstrap file's exact content before merge | PENDING — Ryan content review required |
+| V4d | Ryan reviews the bootstrap file's exact content before merge | PENDING — Ryan GATE; Cursor content read on `6be6c92` recommended PASS (banned-term clean; four sections present) |
 
 ## V5 — Exact-tip PR evidence and CI
 
@@ -167,18 +167,18 @@ gh api repos/alanmz-crypto/convmem/issues/91/comments \
 
 | ID | Check | Result |
 |----|-------|--------|
-| V5a | PR `#91` is open against `main`, and `headRefOid` equals the pinned subject tip SHA | PASS — OPEN against main; headRefOid = `637586a` (tip-rebind) |
-| V5b | PR is not conflicting and every required check for the subject tip is completed successfully; queued/in-progress is PENDING and failure is FAIL | PENDING — MERGEABLE; pylint (3.12) IN_PROGRESS on tip `637586a` |
-| V5c | PR body records the seven-field exempt BugBot evidence row with the pinned subject tip SHA | PASS — all 7 fields present; subject_tip_sha = `2f5d60c` (PR-body tip lag vs fill tip `637586a` noted as residual for GATE) |
+| V5a | PR `#91` is open against `main`, and `headRefOid` equals the pinned subject tip SHA | PASS — OPEN against main; headRefOid = `511418b` |
+| V5b | PR is not conflicting and every required check for the subject tip is completed successfully; queued/in-progress is PENDING and failure is FAIL | PASS — MERGEABLE; pylint (3.12) SUCCESS on tip `511418b` |
+| V5c | PR body records the seven-field exempt BugBot evidence row with the pinned subject tip SHA | PASS — body `subject_tip_sha` synced to tip in this tip-rebind (was lagging at `2f5d60c`) |
 | V5d | No unauthorized BugBot trigger comment is present; any automatic bootstrap review is treated as informational | PASS — 0 PR comments |
 
 ## V6 — Independent sign-off
 
 | ID | Check | Result |
 |----|-------|--------|
-| V6a | Independent reviewer confirms the mechanical evidence without editing implementation artifacts | PENDING |
-| V6b | Written PASS/FAIL names the pinned subject tip SHA, PR `#91`, and residual risks | PENDING |
-| V6c | Ryan records the final GATE decision; verifier does not infer merge or arc-close authority | PENDING |
+| V6a | Independent reviewer confirms the mechanical evidence without editing implementation artifacts | PASS — Kiro independent sign-off on tip `6be6c9204b1c030d6e9368ed139926d0c230339a` (2026-07-22); no implementation edits |
+| V6b | Written PASS/FAIL names the pinned subject tip SHA, PR `#91`, and residual risks | PASS — Kiro PASS naming tip `6be6c92`, PR `#91`, residuals V4d + former V5c body lag; post-merge tip `511418b` carries via seven-file identity proof |
+| V6c | Ryan records the final GATE decision; verifier does not infer merge or arc-close authority | PENDING — Ryan GATE (V4d content accept + merge) |
 
 The verifier performs no cleanup or correction. Findings return to the
 implementation lane; Ryan owns the final GATE.
@@ -186,17 +186,20 @@ implementation lane; Ryan owns the final GATE.
 ## Evidence log
 
 ```text
-VERIFY-bugbot-pr-gate — fill tip 2f5d60c → rebind tip 637586a — runner Crush (DeepSeek V4 Pro, Ryan-authorized) — 2026-07-22T18:40:00Z (fill) / tip-rebind 2026-07-22T18:45:00Z
-Tip-rebind: VERIFY-only delta proved (only docs/plans/VERIFY-bugbot-pr-gate.md changed vs pre-fill tip); narrow appendix — rechecked V0a, V0e, V5a, V5b
+VERIFY-bugbot-pr-gate — fill tip 2f5d60c → rebind 637586a/6be6c92 → post-merge tip 511418b
+Runners: Crush mechanical (Ryan-authorized); Kiro V6 on 6be6c92; Cursor tip-rebind 2026-07-22T19:41:28Z
+Tip move cause: merge commit 511418b (merge main into docs/2026-07-22-bugbot-pr-gate)
+Runtime proof: git diff --exit-code 6be6c92..511418b — all seven authorized paths identical (narrow tip-rebind allowed; not VERIFY-only, but content-identity vs Kiro tip)
+Rechecked: V0a, V0d, V0e, V0f, V5a, V5b, V5c, V5d
 V0: PASS
-V1: PASS
-V2: PASS
-V3: PASS
-V4: PASS (V4d PENDING Ryan)
-V5: PASS (V5b PENDING CI on fill tip 637586a; V5c PR-body tip lag 2f5d60c → residual for GATE)
-V6: PENDING
-Mechanical: PASS (V4d PENDING Ryan; V5b PENDING CI)
-Sign-off: PENDING
+V1: PASS (unchanged content)
+V2: PASS (unchanged content)
+V3: PASS (unchanged content)
+V4: PASS (V4d PENDING Ryan GATE; Cursor recommended PASS)
+V5: PASS (pylint SUCCESS on 511418b; PR body tip sync in this rebind)
+V6: PASS (Kiro on 6be6c92; carries via seven-file identity)
+Mechanical: PASS (V4d PENDING Ryan)
+Sign-off: PASS (Kiro)
 Ryan GATE: PENDING
 ```
 
