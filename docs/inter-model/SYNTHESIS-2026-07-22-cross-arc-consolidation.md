@@ -6,9 +6,9 @@
 **Scope:** classify / park / assign only — no merges, no ledger `record`, no product implementation.  
 **Consolidator pass:** 2026-07-22T21:05Z — roster re-verified (COMBINE 1 / DONE 9 / SOLO-CONTINUE 0); no new stances found.
 
-Stance files currently live on **unmerged docs branches** (one stance each). Cite them; do not treat absence from `main` as “stance missing.”
+Stance files also exist on **per-agent docs branches** (provenance). This synthesis branch carries copies for one-stop citation. Absence from `main` is expected until Ryan authorizes a docs land.
 
-| Stance file | Holding branch (local/origin) |
+| Stance file | Originating stance branch |
 |---|---|
 | `STANCE-2026-07-22-cursor-mcp-roots-brief-boundary.md` | `docs/2026-07-22-2026-07-22-stance-mcp-roots-boundary` |
 | `STANCE-2026-07-22-cursor-r2b-capture-parked.md` | `docs/2026-07-22-2026-07-22-stance-r2b-capture-parked` |
