@@ -10,8 +10,8 @@ Lanes:        Crush (mechanical, Ryan-authorized for this tip); Kiro or Ryan-nam
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Status:** Mechanical V0–V5 filled (V4d PENDING Ryan); V6 + Ryan GATE remain.
-**Subject / tip:** `2f5d60cf0bef7030e8517f32afa4b6ea99d73be1`
+**Status:** Mechanical V0–V5 filled + tip-rebind (V4d PENDING Ryan, V5b PENDING CI); V6 + Ryan GATE remain.
+**Subject / tip:** `637586a40003b767d0196ffbca67aeaec757e3ea`
 **PR:** BugBot gate rollout PR
 [`#91`](https://github.com/alanmz-crypto/convmem/pull/91)
 **EXECUTION:** `docs/plans/EXECUTION-2026-07-22-bugbot-pr-gate.md`
@@ -78,7 +78,7 @@ Execute evidence expected for this rollout:
 |-------|-------|
 | `gate_applicability` | `exempt` |
 | `reason` | Policy/review-context-only rollout; no executable product behavior |
-| `subject_tip_sha` | `2f5d60cf0bef7030e8517f32afa4b6ea99d73be1` |
+| `subject_tip_sha` | `637586a40003b767d0196ffbca67aeaec757e3ea` |
 | `bugbot_reviewed_sha` | `n/a` |
 | `result` | `n/a` |
 | `finding_disposition` | `none` |
@@ -86,11 +86,11 @@ Execute evidence expected for this rollout:
 
 | ID | Check | Result |
 |----|-------|--------|
-| V0a | Subject tip SHA resolves to the commit being verified | PASS — `2f5d60cf0bef7030e8517f32afa4b6ea99d73be1` |
+| V0a | Subject tip SHA resolves to the commit being verified | PASS — `637586a40003b767d0196ffbca67aeaec757e3ea` (tip-rebind) |
 | V0b | Execute applicability and reason are present | PASS — EXECUTION:94-95 records `exempt` + reason |
 | V0c | Exemption is consistent with the final seven-file policy/context diff | PASS — all 7 files are docs/policy/planning; no runtime code |
 | V0d | Exactly the seven authorized paths differ from `origin/main` | PASS — 7 paths match authorized list |
-| V0e | Worktree is clean and PR head equals the pinned subject tip SHA | PASS — HEAD=`2f5d60c`, 0 dirty files |
+| V0e | Worktree is clean and PR head equals the pinned subject tip SHA | PASS — HEAD=`637586a`, PR headRefOid=`637586a`, 0 dirty files (tip-rebind) |
 | V0f | Planning contract test and `convmem doctor` pass | PASS — 8/8 tests, doctor all checks passed |
 
 ## V1 — Binding architecture
@@ -167,9 +167,9 @@ gh api repos/alanmz-crypto/convmem/issues/91/comments \
 
 | ID | Check | Result |
 |----|-------|--------|
-| V5a | PR `#91` is open against `main`, and `headRefOid` equals the pinned subject tip SHA | PASS — OPEN against main; headRefOid = `2f5d60c` |
-| V5b | PR is not conflicting and every required check for the subject tip is completed successfully; queued/in-progress is PENDING and failure is FAIL | PASS — MERGEABLE; pylint (3.12) completed SUCCESS |
-| V5c | PR body records the seven-field exempt BugBot evidence row with the pinned subject tip SHA | PASS — all 7 fields present; subject_tip_sha matches `2f5d60c` |
+| V5a | PR `#91` is open against `main`, and `headRefOid` equals the pinned subject tip SHA | PASS — OPEN against main; headRefOid = `637586a` (tip-rebind) |
+| V5b | PR is not conflicting and every required check for the subject tip is completed successfully; queued/in-progress is PENDING and failure is FAIL | PENDING — MERGEABLE; pylint (3.12) IN_PROGRESS on tip `637586a` |
+| V5c | PR body records the seven-field exempt BugBot evidence row with the pinned subject tip SHA | PASS — all 7 fields present; subject_tip_sha = `2f5d60c` (PR-body tip lag vs fill tip `637586a` noted as residual for GATE) |
 | V5d | No unauthorized BugBot trigger comment is present; any automatic bootstrap review is treated as informational | PASS — 0 PR comments |
 
 ## V6 — Independent sign-off
@@ -186,15 +186,16 @@ implementation lane; Ryan owns the final GATE.
 ## Evidence log
 
 ```text
-VERIFY-bugbot-pr-gate — tip 2f5d60cf0bef7030e8517f32afa4b6ea99d73be1 — runner Crush (DeepSeek V4 Pro, Ryan-authorized) — 2026-07-22T18:40:00Z
+VERIFY-bugbot-pr-gate — fill tip 2f5d60c → rebind tip 637586a — runner Crush (DeepSeek V4 Pro, Ryan-authorized) — 2026-07-22T18:40:00Z (fill) / tip-rebind 2026-07-22T18:45:00Z
+Tip-rebind: VERIFY-only delta proved (only docs/plans/VERIFY-bugbot-pr-gate.md changed vs pre-fill tip); narrow appendix — rechecked V0a, V0e, V5a, V5b
 V0: PASS
 V1: PASS
 V2: PASS
 V3: PASS
 V4: PASS (V4d PENDING Ryan)
-V5: PASS
+V5: PASS (V5b PENDING CI on fill tip 637586a; V5c PR-body tip lag 2f5d60c → residual for GATE)
 V6: PENDING
-Mechanical: PASS (V4d PENDING Ryan)
+Mechanical: PASS (V4d PENDING Ryan; V5b PENDING CI)
 Sign-off: PENDING
 Ryan GATE: PENDING
 ```
