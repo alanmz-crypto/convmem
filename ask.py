@@ -141,39 +141,6 @@ def _max_score(results: list[dict]) -> float | None:
     return max(scores) if scores else None
 
 
-def _filter_superseded_decisions(results: list[dict]) -> list[dict]:
-    """Drop parent decisions when a newer decision in results relates_to them."""
-    parent_ids: set[str] = set()
-    for r in results:
-        meta = r.get("metadata") or {}
-        if (meta.get("ledger_kind") or "").strip() != "decision":
-            continue
-        relates_to = (meta.get("relates_to") or "").strip()
-        if relates_to.startswith("dec_"):
-            parent_ids.add(relates_to)
-    if not parent_ids:
-        return results
-    return [
-        r
-        for r in results
-        if (r.get("metadata") or {}).get("ledger_id") not in parent_ids
-    ]
-
-
-def _dedupe_results_by_ledger_id(results: list[dict]) -> list[dict]:
-    """Keep one hit per ledger_id (first wins — list should already be rank-sorted)."""
-    seen: set[str] = set()
-    out: list[dict] = []
-    for r in results:
-        lid = ((r.get("metadata") or {}).get("ledger_id") or "").strip()
-        if lid:
-            if lid in seen:
-                continue
-            seen.add(lid)
-        out.append(r)
-    return out
-
-
 def _prepend_recent_decisions(
     semantic: list[dict],
     recent_records: list[dict],
@@ -586,7 +553,9 @@ def _apply_evidence_and_recent(
         stages["evidence_reranked"] = _trace_stage(
             units, limit=limit, origins=["unit"] * len(units)
         )
-    units = _dedupe_results_by_ledger_id(units)
+    from evidence import dedupe_results_by_ledger_id
+
+    units = dedupe_results_by_ledger_id(units)
     if trace:
         stages["ledger_deduped"] = _trace_stage(
             units, limit=limit, origins=["unit"] * len(units)
@@ -673,7 +642,9 @@ def _select_units_or_hybrid(
         )
 
     # Longer pool for refill; results slice stays pre-diversity top_k.
-    pool = _filter_superseded_decisions(units[:fetch_k])
+    from evidence import filter_superseded_decisions
+
+    pool = filter_superseded_decisions(units[:fetch_k])
     results = pool[:top_k]
     selection, dropped = _diversify_by_source(pool, limit=top_k)
     unit_flags = [True] * len(selection)
