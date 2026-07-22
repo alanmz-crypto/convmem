@@ -38,3 +38,8 @@ def dedupe_results_by_ledger_id(results: list[dict]) -> list[dict]:
             seen.add(lid)
         out.append(r)
     return out
+
+
+def apply_search_postfilters(results: list[dict]) -> list[dict]:
+    """Decision-supersede filter then ledger-id dedupe (search/ask parity)."""
+    return dedupe_results_by_ledger_id(filter_superseded_decisions(results))

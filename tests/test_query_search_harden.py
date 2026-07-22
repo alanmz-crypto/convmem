@@ -6,38 +6,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from query import query_units
-from query_result_filters import (
-    dedupe_results_by_ledger_id,
-    filter_superseded_decisions,
-)
-
-
-class SearchPathFilterHelpersTests(unittest.TestCase):
-    def test_filter_and_dedupe_helpers(self):
-        child = {
-            "id": "child",
-            "metadata": {
-                "ledger_id": "dec_child",
-                "ledger_kind": "decision",
-                "relates_to": "dec_parent",
-            },
-        }
-        parent = {
-            "id": "parent",
-            "metadata": {
-                "ledger_id": "dec_parent",
-                "ledger_kind": "decision",
-                "relates_to": "obs_x",
-            },
-        }
-        twin = {
-            "id": "twin",
-            "metadata": {"ledger_id": "dec_child", "ledger_kind": "decision"},
-        }
-        filtered = filter_superseded_decisions([child, parent, twin])
-        self.assertEqual([r["id"] for r in filtered], ["child", "twin"])
-        deduped = dedupe_results_by_ledger_id(filtered)
-        self.assertEqual([r["id"] for r in deduped], ["child"])
 
 
 class QueryUnitsSearchHardenTests(unittest.TestCase):
@@ -62,6 +30,7 @@ class QueryUnitsSearchHardenTests(unittest.TestCase):
             "query": {"rerank": False, "recency_weight": 0.0, "top_k_candidates": 20},
         }
         store = MagicMock()
+        # Distinct shapes from test_ask_dedupe fixtures (extra fields) to avoid R0801.
         store.query_units.return_value = [
             {
                 "id": "child",

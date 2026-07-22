@@ -17,10 +17,6 @@ from ledger_recent import (
 from llm import generate_stream
 from meta_format import when_from_meta, when_label
 from query import query_raw, query_units
-from query_result_filters import (
-    dedupe_results_by_ledger_id as _dedupe_results_by_ledger_id,
-    filter_superseded_decisions as _filter_superseded_decisions,
-)
 
 ASK_PROMPT = """You answer questions using ONLY the retrieved excerpts from past AI coding sessions below.
 Be specific: mention tool names, file paths, commands, config keys, and error messages when present in the excerpts.
@@ -557,7 +553,9 @@ def _apply_evidence_and_recent(
         stages["evidence_reranked"] = _trace_stage(
             units, limit=limit, origins=["unit"] * len(units)
         )
-    units = _dedupe_results_by_ledger_id(units)
+    from query_result_filters import dedupe_results_by_ledger_id
+
+    units = dedupe_results_by_ledger_id(units)
     if trace:
         stages["ledger_deduped"] = _trace_stage(
             units, limit=limit, origins=["unit"] * len(units)
@@ -644,7 +642,9 @@ def _select_units_or_hybrid(
         )
 
     # Longer pool for refill; results slice stays pre-diversity top_k.
-    pool = _filter_superseded_decisions(units[:fetch_k])
+    from query_result_filters import filter_superseded_decisions
+
+    pool = filter_superseded_decisions(units[:fetch_k])
     results = pool[:top_k]
     selection, dropped = _diversify_by_source(pool, limit=top_k)
     unit_flags = [True] * len(selection)

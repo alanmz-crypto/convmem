@@ -35,6 +35,13 @@ _LEDGER_ID_RE = re.compile(
 DEFAULT_RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
 
 
+def _apply_unit_result_postfilters(results: list[dict]) -> list[dict]:
+    """Lazy-import search postfilters (keeps query.py top-level imports stable)."""
+    from query_result_filters import apply_search_postfilters
+
+    return apply_search_postfilters(results)
+
+
 @dataclass
 class QueryUnitTrace:
     """Optional stage snapshots for retrieval diagnostics.
@@ -471,16 +478,8 @@ def query_units(
 
     if not skip_ledger_priority:
         results = _merge_priority_hits(results, ledger_extras)
-    # Ask-parity post-filters (cheap): drop superseded parent decisions and
-    # collapse duplicate ledger_ids before the final top_k cut.
-    # Lazy import keeps top-level first-party list stable for C0411 baseline.
-    from query_result_filters import (
-        dedupe_results_by_ledger_id,
-        filter_superseded_decisions,
-    )
-
-    results = filter_superseded_decisions(results)
-    results = dedupe_results_by_ledger_id(results)
+    # Ask-parity post-filters (cheap); helper keeps query_units locals ≤30.
+    results = _apply_unit_result_postfilters(results)
     return results[:top_k]
 
 

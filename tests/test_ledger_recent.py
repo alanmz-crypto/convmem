@@ -161,7 +161,9 @@ class AskRecentPrependTests(unittest.TestCase):
 class EvidenceStoreCloseTests(unittest.TestCase):
     @mock.patch("ask.query_units")
     @mock.patch("ask.recent_decisions_for_cfg", return_value=[])
-    @mock.patch("ask._dedupe_results_by_ledger_id", side_effect=lambda x: x)
+    @mock.patch(
+        "query_result_filters.dedupe_results_by_ledger_id", side_effect=lambda x: x
+    )
     @mock.patch("ask.load_config")
     def test_chroma_store_closed_on_success(self, mock_cfg, _dedupe, _recent, mock_q):
         from ask import ask as ask_fn
