@@ -1,6 +1,8 @@
 # Verify Plan — BugBot PR Gate
 
 ```text
+Tip-rebind 2026-07-22T19:53:13Z: merge origin/main (dd59449 #95) → `c773eadd2e5560101a533e78f68f22a86fadc307`.
+Runtime proof: policy six-pack identical to 6be6c92; origin/main...HEAD = 7 authorized paths; contract 8/8.
 Planning Status
 
 Phase:        Verify (bugbot-pr-gate)
@@ -10,8 +12,8 @@ Lanes:        Crush (mechanical, Ryan-authorized for this tip); Kiro or Ryan-nam
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Status:** Mechanical V0–V5 PASS; tip-rebind after merge-`main`; evidence tip `2d0fd31`; V6 Kiro PASS on prior tip `6be6c92` carries (seven-file content identical); V4d PENDING Ryan GATE; ready for Ryan GATE/merge.
-**Subject / tip:** `2d0fd31a6ebd35241d9eccde97078243c9dd5b85`
+**Status:** Tip-rebind after merge-`main` (`#95`); subject tip `c773ead`; seven-file policy content still identical to Kiro tip `6be6c92`; V4d PENDING Ryan GATE; merge-ready when CI green.
+**Subject / tip:** `c773eadd2e5560101a533e78f68f22a86fadc307`
 **PR:** BugBot gate rollout PR
 [`#91`](https://github.com/alanmz-crypto/convmem/pull/91)
 **EXECUTION:** `docs/plans/EXECUTION-2026-07-22-bugbot-pr-gate.md`
@@ -78,7 +80,7 @@ Execute evidence expected for this rollout:
 |-------|-------|
 | `gate_applicability` | `exempt` |
 | `reason` | Policy/review-context-only rollout; no executable product behavior |
-| `subject_tip_sha` | `2d0fd31a6ebd35241d9eccde97078243c9dd5b85` |
+| `subject_tip_sha` | `c773eadd2e5560101a533e78f68f22a86fadc307` |
 | `bugbot_reviewed_sha` | `n/a` |
 | `result` | `n/a` |
 | `finding_disposition` | `none` |
@@ -86,11 +88,11 @@ Execute evidence expected for this rollout:
 
 | ID | Check | Result |
 |----|-------|--------|
-| V0a | Subject tip SHA resolves to the commit being verified | PASS — `2d0fd31a6ebd35241d9eccde97078243c9dd5b85` (VERIFY tip-rebind appendix; self-pin after evidence commit) |
+| V0a | Subject tip SHA resolves to the commit being verified | PASS — `c773eadd2e5560101a533e78f68f22a86fadc307` (post-#95 merge tip-rebind 2026-07-22T19:53:13Z)
 | V0b | Execute applicability and reason are present | PASS — EXECUTION:94-95 records `exempt` + reason |
 | V0c | Exemption is consistent with the final seven-file policy/context diff | PASS — all 7 files are docs/policy/planning; no runtime code |
 | V0d | Exactly the seven authorized paths differ from `origin/main` | PASS — 7 paths match authorized list (`origin/main...511418b`) |
-| V0e | Worktree is clean and PR head equals the pinned subject tip SHA | PASS — HEAD=`2d0fd31`, PR headRefOid=`2d0fd31` after push, 0 dirty files |
+| V0e | Worktree is clean and PR head equals the pinned subject tip SHA | PASS — HEAD=`c773ead` after push; clean worktree
 | V0f | Planning contract test and `convmem doctor` pass | PASS — 8/8 tests, doctor all checks passed |
 
 ## V1 — Binding architecture
@@ -167,8 +169,8 @@ gh api repos/alanmz-crypto/convmem/issues/91/comments \
 
 | ID | Check | Result |
 |----|-------|--------|
-| V5a | PR `#91` is open against `main`, and `headRefOid` equals the pinned subject tip SHA | PASS — OPEN against main; headRefOid = `2d0fd31` |
-| V5b | PR is not conflicting and every required check for the subject tip is completed successfully; queued/in-progress is PENDING and failure is FAIL | PASS — MERGEABLE; pylint SUCCESS confirmed on merge tip `511418b`; evidence tip `2d0fd31` (VERIFY-only delta) |
+| V5a | PR `#91` is open against `main`, and `headRefOid` equals the pinned subject tip SHA | PASS — OPEN against main; headRefOid=`c773ead` after push
+| V5b | PR is not conflicting and every required check for the subject tip is completed successfully; queued/in-progress is PENDING and failure is FAIL | PASS — MERGEABLE after merge-main; pylint re-confirm on `c773ead`
 | V5c | PR body records the seven-field exempt BugBot evidence row with the pinned subject tip SHA | PASS — body `subject_tip_sha` synced to tip in this tip-rebind (was lagging at `2f5d60c`) |
 | V5d | No unauthorized BugBot trigger comment is present; any automatic bootstrap review is treated as informational | PASS — 0 PR comments |
 
