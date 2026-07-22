@@ -6,7 +6,14 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from evidence import apply_evidence_rerank, evidence_boost, recency_boost
+from evidence import (
+    apply_evidence_rerank,
+    apply_source_trust,
+    evidence_boost,
+    recency_boost,
+    source_trust_boost,
+    source_trust_tier,
+)
 
 
 def _meta(
@@ -35,6 +42,96 @@ class FakeStore:
 
     def units_metadata(self):
         return self._metas
+
+
+class SourceTrustTests(unittest.TestCase):
+    def test_source_trust_tiers_and_first_match(self):
+        cases = [
+            ("steering type", {"source_type": "kiro_steering"}, 0.15),
+            (
+                "steering path",
+                {"source_path": "/home/test/.kiro/steering/deploy.md"},
+                0.15,
+            ),
+            ("ledger kind", {"ledger_kind": "decision"}, 0.12),
+            (
+                "ledger type",
+                {"ledger_id": "ver_123", "type": "verification"},
+                0.12,
+            ),
+            ("inter-model type", {"source_type": "inter_model_doc"}, 0.08),
+            (
+                "inter-model path",
+                {"source_path": "/repo/docs/inter-model/handoff.md"},
+                0.08,
+            ),
+            ("chat decision", {"type": "decision"}, 0.0),
+            ("chat", {"source_type": "cursor_chat"}, 0.0),
+        ]
+        for label, meta, expected in cases:
+            with self.subTest(label=label):
+                self.assertEqual(source_trust_tier(meta), expected)
+
+        self.assertEqual(
+            source_trust_tier(
+                {
+                    "source_type": "inter_model_doc",
+                    "ledger_kind": "decision",
+                    "source_path": "/home/test/.kiro/steering/deploy.md",
+                }
+            ),
+            0.15,
+        )
+        self.assertEqual(
+            source_trust_tier(
+                {"source_type": "inter_model_doc", "ledger_kind": "decision"}
+            ),
+            0.12,
+        )
+
+    def test_source_trust_boost_scales_tier(self):
+        meta = {"source_type": "kiro_steering"}
+        self.assertEqual(source_trust_boost(meta, weight=0.5), 0.075)
+        self.assertEqual(source_trust_boost(meta, weight=0.0), 0.0)
+
+    def test_apply_source_trust_sorts_and_omits_zero_boost(self):
+        results = [
+            {
+                "id": "chat",
+                "rank_fusion_score": 1.0,
+                "rank_score": 1.0,
+                "metadata": {"source_type": "cursor_chat"},
+            },
+            {
+                "id": "steering",
+                "rank_fusion_score": 0.9,
+                "rank_score": 0.9,
+                "metadata": {"source_type": "kiro_steering"},
+            },
+        ]
+
+        ranked = apply_source_trust(results, weight=1.0)
+
+        self.assertEqual([row["id"] for row in ranked], ["steering", "chat"])
+        self.assertEqual(ranked[0]["source_trust_boost"], 0.15)
+        self.assertEqual(ranked[0]["rank_score"], 1.05)
+        self.assertNotIn("source_trust_boost", ranked[1])
+        self.assertNotIn("source_trust_boost", results[1])
+
+    def test_apply_source_trust_weight_zero_omits_boost(self):
+        results = [
+            {
+                "id": "a",
+                "rank_fusion_score": 0.8,
+                "source_trust_boost": 0.15,
+                "metadata": {"source_type": "kiro_steering"},
+            }
+        ]
+
+        ranked = apply_source_trust(results, weight=0.0)
+
+        self.assertNotIn("source_trust_boost", ranked[0])
+        self.assertEqual(ranked[0]["rank_score"], 0.8)
 
 
 class EvidenceRerankTests(unittest.TestCase):
