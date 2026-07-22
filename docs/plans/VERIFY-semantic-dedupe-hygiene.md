@@ -65,8 +65,8 @@ rg -n 'jobs|queue_max_depth' ~/.config/convmem/config.toml config.example.toml
 
 ```bash
 # unit test and/or dry observation
-rg -n 'queue_max_depth|pending.*depth|pause' ingest_dedupe.py refine.py tests/
-pytest tests/test_ingest_dedupe.py tests/test_refine.py -q --tb=no
+rg -n 'queue_max_depth|semantic_queue_at_max_depth|pause' ingest_dedupe.py refine.py tests/
+python -m unittest tests.test_ingest_dedupe tests.test_refine -q
 ```
 
 | ID | Check | PASS |
