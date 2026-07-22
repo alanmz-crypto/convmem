@@ -259,7 +259,7 @@ def _mcp_request_session():
 
 
 async def _apply_shell_roots_brief_boundary_if_needed(session=None) -> None:
-    """Shell profile: omit brief tools when Roots point at a project workspace."""
+    """Shell profile: omit or restore brief tools from MCP Roots (vs import cwd)."""
     from mcp.server.fastmcp.exceptions import ToolError
 
     if _mcp_profile() != "shell" or _SHELL_ROOTS.boundary_applied:
@@ -278,13 +278,28 @@ async def _apply_shell_roots_brief_boundary_if_needed(session=None) -> None:
 
         is_project = _cwd_is_project_root(Path(os.getcwd()).resolve())
     _SHELL_ROOTS.project = is_project
-    if not is_project:
+    changed = False
+    if is_project:
+        for name in ("brief", "folder_state"):
+            try:
+                mcp.remove_tool(name)
+                changed = True
+            except ToolError:
+                pass
+    else:
+        # Undo import-time cwd omit when Roots say non-project (alien workspace).
+        # pylint: disable-next=protected-access
+        existing = {t.name for t in mcp._tool_manager.list_tools()}
+        for name in ("brief", "folder_state"):
+            if name in existing:
+                continue
+            fn = globals().get(name)
+            if fn is None:
+                continue
+            mcp.add_tool(fn)
+            changed = True
+    if not changed:
         return
-    for name in ("brief", "folder_state"):
-        try:
-            mcp.remove_tool(name)
-        except ToolError:
-            pass
     try:
         await session.send_tool_list_changed()
     except (RuntimeError, ConnectionError, OSError):

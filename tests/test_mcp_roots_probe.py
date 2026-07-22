@@ -67,6 +67,44 @@ class McpRootsHelpers(unittest.TestCase):
                 msg=f"{name} must call Roots boundary sync",
             )
 
+    def test_non_project_roots_restore_brief_after_cwd_omit(self):
+        """Bugbot: import cwd omit must not permanently drop brief under alien Roots."""
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mcp_server._SHELL_ROOTS.project = None
+        mcp_server._SHELL_ROOTS.boundary_applied = False
+
+        # Simulate import-time omit
+        for name in ("brief", "folder_state"):
+            try:
+                mcp_server.mcp.remove_tool(name)
+            except Exception:
+                pass
+
+        session = MagicMock()
+        session.check_client_capability = MagicMock(return_value=True)
+        session.list_roots = AsyncMock(
+            return_value=MagicMock(
+                roots=[MagicMock(uri="file:///tmp/alien-workspace")]
+            )
+        )
+        session.send_tool_list_changed = AsyncMock()
+
+        with patch.object(mcp_server, "_mcp_profile", return_value="shell"):
+            asyncio.run(
+                mcp_server._apply_shell_roots_brief_boundary_if_needed(session)
+            )
+
+        # pylint: disable-next=protected-access
+        names = {t.name for t in mcp_server.mcp._tool_manager.list_tools()}
+        self.assertIn("brief", names)
+        self.assertIn("folder_state", names)
+        self.assertFalse(mcp_server._SHELL_ROOTS.project)
+        session.send_tool_list_changed.assert_awaited()
+
+        # Leave tools registered for sibling tests in this process.
+
 
 if __name__ == "__main__":
     unittest.main()
