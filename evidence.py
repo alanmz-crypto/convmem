@@ -1,9 +1,10 @@
-"""Evidence-aware retrieval boosts for ask/search (Milestone E).
+"""Evidence-aware and source-trust retrieval boosts for ask/search.
 
 Re-ranks semantic hits using the ledger graph: prefer unresolved observations,
 failed verifications; deprioritize resolved/passed items. Also applies recency
-time-decay (newer results rank slightly higher). Display dedupe and ingest
-upsert remain separate concerns.
+time-decay (newer results rank slightly higher). Source-trust policy separately
+prefers steering, ledger, and inter-model material after retrieval-rank fusion.
+Display dedupe and ingest upsert remain separate concerns.
 """
 
 from __future__ import annotations
@@ -20,6 +21,10 @@ _BOOST_FAILED_VERIFICATION = 0.12
 _PENALTY_RESOLVED = -0.10
 _PENALTY_PASSED_VERIFICATION = -0.08
 _BOOST_DECISION = 0.02
+
+_SOURCE_TRUST_STEERING = 0.15
+_SOURCE_TRUST_LEDGER = 0.12
+_SOURCE_TRUST_INTER_MODEL = 0.08
 
 
 def evidence_boost(
@@ -106,6 +111,72 @@ def recency_boost(
         return 0.0
 
     return weight * math.exp(-age_days / half_life_days)
+
+
+def source_trust_tier(meta: dict) -> float:
+    """Return the first matching source-trust tier for unit metadata."""
+    source_type = str(meta.get("source_type") or "").strip().lower()
+    source_path = str(meta.get("source_path") or "").replace("\\", "/").lower()
+
+    if source_type == "kiro_steering" or ".kiro/steering/" in source_path:
+        return _SOURCE_TRUST_STEERING
+
+    ledger_kinds = {"decision", "observation", "verification"}
+    ledger_kind = str(meta.get("ledger_kind") or "").strip().lower()
+    ledger_id = str(meta.get("ledger_id") or "").strip()
+    equivalent_kind = str(meta.get("kind") or meta.get("type") or "").strip().lower()
+    if ledger_kind in ledger_kinds or (ledger_id and equivalent_kind in ledger_kinds):
+        return _SOURCE_TRUST_LEDGER
+
+    if source_type == "inter_model_doc" or "docs/inter-model/" in source_path:
+        return _SOURCE_TRUST_INTER_MODEL
+
+    return 0.0
+
+
+def source_trust_boost(meta: dict, *, weight: float = 1.0) -> float:
+    """Return the configured additive trust boost for unit metadata."""
+    if weight <= 0:
+        return 0.0
+    return weight * source_trust_tier(meta)
+
+
+def apply_source_trust(
+    results: list[dict],
+    *,
+    weight: float = 1.0,
+) -> list[dict]:
+    """Re-order fused hits by source trust while preserving stable ties.
+
+    ``source_trust_boost`` is diagnostic metadata and is intentionally omitted
+    when the effective boost is zero.
+    """
+    if not results:
+        return results
+
+    scored: list[tuple[float, int, dict]] = []
+    for i, result in enumerate(results):
+        meta = result.get("metadata") or {}
+        base = result.get("rank_fusion_score")
+        if base is None:
+            base = result.get("rank_score")
+        if base is None:
+            base = result.get("rerank_score_norm")
+        if base is None:
+            base = result.get("score")
+        if base is None:
+            base = 0.0
+
+        boost = source_trust_boost(meta, weight=weight)
+        out = dict(result)
+        out.pop("source_trust_boost", None)
+        if boost > 0:
+            out["source_trust_boost"] = round(boost, 4)
+        out["rank_score"] = round(float(base) + boost, 8)
+        scored.append((out["rank_score"], i, out))
+
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return [result for _, _, result in scored]
 
 
 def apply_evidence_rerank(

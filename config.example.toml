@@ -48,6 +48,7 @@ semantic_rank_weight = 2.0  # weighted RRF preserves broad semantic/lexical reca
 rerank_rank_weight   = 1.0  # CrossEncoder is mandatory but not the sole signal
 recency_weight   = 0.1  # time-decay boost for newer knowledge units (search + ask --evidence)
 recency_half_life_days = 30
+source_trust_weight = 1.0  # prefer steering, ledger, and inter-model sources after fusion
 
 [watch]
 debounce_seconds = 90

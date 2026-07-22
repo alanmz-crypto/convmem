@@ -276,6 +276,8 @@ def _compact_trace_row(result: dict, *, origin: str | None = None) -> dict:
         "ledger_id": lid,
         "ledger_kind": meta.get("ledger_kind"),
     }
+    if "source_trust_boost" in result:
+        row["source_trust_boost"] = result.get("source_trust_boost")
     if origin is not None:
         row["origin"] = origin
     return row
@@ -782,6 +784,7 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
             )
             stages["semantic_reranked"] = _skipped_stage("raw_mode")
             stages["rank_fused"] = _skipped_stage("raw_mode")
+            stages["source_trust"] = _skipped_stage("raw_mode")
             stages["evidence_reranked"] = _skipped_stage("raw_mode")
             stages["ledger_deduped"] = _skipped_stage("raw_mode")
             stages["recent_injected"] = _skipped_stage("raw_mode")
@@ -816,6 +819,11 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
                 query_trace.rank_fused or units,
                 limit=limit,
                 origins=["unit"] * len(query_trace.rank_fused or units),
+            )
+            stages["source_trust"] = _trace_stage(
+                query_trace.source_trust or units,
+                limit=limit,
+                origins=["unit"] * len(query_trace.source_trust or units),
             )
         if evidence:
             units, ev_stages = _apply_evidence_and_recent(

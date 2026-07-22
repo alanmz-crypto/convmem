@@ -68,6 +68,10 @@ class QueryUnitsSearchHardenTests(unittest.TestCase):
         self.assertIn("child", ids)
         self.assertIn("chat", ids)
         self.assertNotIn("parent", ids)
+        self.assertEqual(
+            [row["retrieval_rank"] for row in out],
+            list(range(1, len(out) + 1)),
+        )
 
 
 if __name__ == "__main__":
