@@ -5,7 +5,8 @@
 **Date:** 2026-07-21  
 **Status:** Design locked — execute from `origin/main` after #75/#76  
 **Branch to start:** `convmem work start feat source-trust-ranking`  
-**Canonical plan:** [`../plans/EXECUTION-2026-07-21-source-trust-ranking.md`](../plans/EXECUTION-2026-07-21-source-trust-ranking.md)
+**Canonical plan:** [`../plans/EXECUTION-2026-07-21-source-trust-ranking.md`](../plans/EXECUTION-2026-07-21-source-trust-ranking.md)  
+**Corpus twin (searchable):** [`CURSOR-2026-07-21-p13-source-trust-execution.md`](CURSOR-2026-07-21-p13-source-trust-execution.md)
 
 **Live ops:** implement + open PR only. Ryan squash-merges. Do not change live `source_trust_weight` without Ryan. Do not sunset Crush routing in this PR.
 
