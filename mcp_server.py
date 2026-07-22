@@ -16,8 +16,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from mcp.server.fastmcp import FastMCP
-from mcp import types as mcp_types
-from pydantic import ValidationError
 
 _INSTRUCTIONS = (
     "convmem — local knowledge corpus (1400+ units). "
@@ -78,8 +76,16 @@ else:
     _BASE_INSTRUCTIONS = _INSTRUCTIONS
 
 _mcp_brief_called = False
-_shell_roots_project: bool | None = None  # Roots-derived project workspace
-_shell_roots_boundary_applied = False
+
+
+class _ShellRootsState:
+    """Mutable shell-profile Roots boundary state (avoids C0103 constants)."""
+
+    project: bool | None = None
+    boundary_applied: bool = False
+
+
+_SHELL_ROOTS = _ShellRootsState()
 
 
 def _brief_first_required_mode(cwd: Path) -> str | None:
@@ -96,7 +102,7 @@ def _blocked_until_brief_json() -> str | None:
     if _mcp_brief_called:
         return None
     # Shell + project Roots: CLI Tier A already briefed — do not gate MCP reads.
-    if _mcp_profile() == "shell" and _shell_roots_project is True:
+    if _mcp_profile() == "shell" and _SHELL_ROOTS.project is True:
         return None
     cwd_path, _ = _workspace_project_slug()
     mode = _brief_first_required_mode(Path(cwd_path))
@@ -159,7 +165,7 @@ def _normalize_root_uri(raw: object) -> str:
     return p.as_uri()
 
 
-def _uris_from_list_roots_validation_error(exc: ValidationError) -> list[str]:
+def _uris_from_list_roots_validation_error(exc: Exception) -> list[str]:
     """Recover bare-path roots Cursor sends that fail MCP SDK URL validation."""
     uris: list[str] = []
     for err in exc.errors():
@@ -209,9 +215,9 @@ def _shell_profile_omits_brief_endpoints() -> bool:
 
     if _mcp_profile() != "shell":
         return False
-    if _shell_roots_project is True:
+    if _SHELL_ROOTS.project is True:
         return True
-    if _shell_roots_project is False:
+    if _SHELL_ROOTS.project is False:
         return False
     cwd = Path(os.getcwd()).resolve()
     return _cwd_is_project_root(cwd)
@@ -219,6 +225,9 @@ def _shell_profile_omits_brief_endpoints() -> bool:
 
 async def _list_session_root_uris(session) -> list[str]:
     """Return normalized root URIs; coerce Cursor bare paths on ValidationError."""
+    from mcp import types as mcp_types
+    from pydantic import ValidationError
+
     if not session.check_client_capability(
         mcp_types.ClientCapabilities(roots=mcp_types.RootsCapability())
     ):
@@ -238,20 +247,29 @@ async def _list_session_root_uris(session) -> list[str]:
     return uris
 
 
+def _mcp_request_session():
+    """Return the active FastMCP server session, or None if unavailable."""
+    try:
+        # FastMCP only exposes the live session via protected request_context.
+        return mcp._mcp_server.request_context.session  # pylint: disable=protected-access
+    except LookupError:
+        return None
+    except AttributeError:
+        return None
+
+
 async def _apply_shell_roots_brief_boundary_if_needed(session=None) -> None:
     """Shell profile: omit brief tools when Roots point at a project workspace."""
-    global _shell_roots_project, _shell_roots_boundary_applied
-    if _mcp_profile() != "shell" or _shell_roots_boundary_applied:
+    from mcp.server.fastmcp.exceptions import ToolError
+
+    if _mcp_profile() != "shell" or _SHELL_ROOTS.boundary_applied:
         return
     if session is None:
-        try:
-            session = mcp._mcp_server.request_context.session
-        except LookupError:
-            return
-        except Exception:
+        session = _mcp_request_session()
+        if session is None:
             return
     uris = await _list_session_root_uris(session)
-    _shell_roots_boundary_applied = True
+    _SHELL_ROOTS.boundary_applied = True
     if uris:
         is_project = _root_uris_indicate_project(uris)
     else:
@@ -259,17 +277,17 @@ async def _apply_shell_roots_brief_boundary_if_needed(session=None) -> None:
         import os
 
         is_project = _cwd_is_project_root(Path(os.getcwd()).resolve())
-    _shell_roots_project = is_project
+    _SHELL_ROOTS.project = is_project
     if not is_project:
         return
     for name in ("brief", "folder_state"):
         try:
             mcp.remove_tool(name)
-        except Exception:
+        except ToolError:
             pass
     try:
         await session.send_tool_list_changed()
-    except Exception:
+    except (RuntimeError, ConnectionError, OSError):
         pass
 
 
@@ -279,13 +297,12 @@ def _apply_shell_roots_brief_boundary_sync() -> None:
     Capture session on this thread first — request_context is contextvars-local
     and is not visible inside ThreadPoolExecutor workers.
     """
-    if _mcp_profile() != "shell" or _shell_roots_boundary_applied:
+    import concurrent.futures
+
+    if _mcp_profile() != "shell" or _SHELL_ROOTS.boundary_applied:
         return
-    try:
-        session = mcp._mcp_server.request_context.session
-    except LookupError:
-        return
-    except Exception:
+    session = _mcp_request_session()
+    if session is None:
         return
     coro = _apply_shell_roots_brief_boundary_if_needed(session)
     try:
@@ -293,10 +310,10 @@ def _apply_shell_roots_brief_boundary_sync() -> None:
     except RuntimeError:
         asyncio.run(coro)
         return
-    import concurrent.futures
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(asyncio.run, coro).result(timeout=60)
+
 
 
 
@@ -630,7 +647,7 @@ def brief(project: str = "", with_tests: bool = False) -> str:
     """MCP-only: call brief() first. Shell + project repo after CLI Tier A: do not repeat brief — use search_fast/ask/related/stats. System runbook (/boot, /etc, /var, systemd): brief() unscoped first. Workspace-local (~/Documents etc): brief() then search_fast(workspace_hint.suggested_search_fast). Read-only."""
     global _mcp_brief_called
     _apply_shell_roots_brief_boundary_sync()
-    if _mcp_profile() == "shell" and _shell_roots_project is True:
+    if _mcp_profile() == "shell" and _SHELL_ROOTS.project is True:
         return json.dumps(
             {
                 "error": "brief_omitted_shell_project_roots",
@@ -900,8 +917,6 @@ if _shell_profile_omits_brief_endpoints():
 
 
 if __name__ == "__main__":
-    import asyncio
-
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(line_buffering=True)
     asyncio.run(mcp.run_stdio_async())

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import unittest
-from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 from mcp import types as mcp_types
@@ -12,6 +11,9 @@ import mcp_server
 
 
 class McpRootsHelpers(unittest.TestCase):
+    # Intentionally exercise module helpers under test.
+    # pylint: disable=protected-access
+
     def test_normalize_bare_path_to_file_uri(self):
         uri = mcp_server._normalize_root_uri("/home/lauer/Projects/convmem")
         self.assertTrue(uri.startswith("file://"))
@@ -22,6 +24,7 @@ class McpRootsHelpers(unittest.TestCase):
         self.assertEqual(mcp_server._normalize_root_uri(raw), raw)
 
     def test_recover_uris_from_cursor_bare_path_validation_error(self):
+        uris: list[str] = []
         try:
             TypeAdapter(mcp_types.ListRootsResult).validate_python(
                 {"roots": [{"uri": "/home/lauer/Projects/convmem"}]}
