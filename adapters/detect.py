@@ -77,14 +77,14 @@ def detect_format(path: Path | str) -> Optional[str]:
     if path.suffix == ".jsonl":
         if "agent-transcripts" in path.parts:
             return "jsonl_cursor"
-        if kiro_session_jsonl.is_kiro_session_jsonl(path):
-            return "jsonl_kiro_session"
-        if copilot_session_jsonl.is_copilot_session_jsonl(path):
-            return "jsonl_copilot_session"
-        if codex_history_jsonl.is_codex_history_jsonl(path):
-            return "jsonl_codex_history"
-        if codex_rollout_jsonl.is_codex_rollout_jsonl(path):
-            return "jsonl_codex_rollout"
+        for fmt, checker in (
+            ("jsonl_kiro_session", kiro_session_jsonl.is_kiro_session_jsonl),
+            ("jsonl_copilot_session", copilot_session_jsonl.is_copilot_session_jsonl),
+            ("jsonl_codex_history", codex_history_jsonl.is_codex_history_jsonl),
+            ("jsonl_codex_rollout", codex_rollout_jsonl.is_codex_rollout_jsonl),
+        ):
+            if checker(path):
+                return fmt
         return None
 
     if path.suffix in (".sqlite3", ".db"):

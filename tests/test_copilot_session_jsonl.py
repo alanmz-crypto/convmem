@@ -113,10 +113,7 @@ class TestCopilotSessionJsonl(unittest.TestCase):
         self.assertEqual(fmt, "jsonl_copilot_session")
         self.assertEqual(TOOL_BY_FORMAT[fmt], "copilot")
         parser = get_parser(path)
-        self.assertIsNotNone(parser)
-        messages = parser(str(path))
-        self.assertGreater(len(messages), 0)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert parser is not None
+        parsed = parser(str(path))
+        self.assertTrue(parsed, msg=f"empty parse for {path}")
+        self.assertIn(parsed[0].get("role"), ("user", "assistant"))

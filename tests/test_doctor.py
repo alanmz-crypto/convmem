@@ -40,7 +40,7 @@ class DoctorTests(unittest.TestCase):
     @patch("doctor._check_deepseek_key")
     @patch("doctor._check_config")
     @patch("doctor.load_config")
-    def test_run_doctor_all_pass(
+    def test_run_doctor_all_pass(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         mock_load,
         mock_cfg,

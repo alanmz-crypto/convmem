@@ -43,38 +43,16 @@ def _check_config() -> DoctorCheck:
 
 def _parse_env_file(path: Path) -> dict[str, str]:
     """Parse KEY=VALUE and export KEY=VALUE lines from a shell env file."""
-    env: dict[str, str] = {}
-    if not path.is_file():
-        return env
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if stripped.startswith("#") or "=" not in stripped:
-            continue
-        # Strip optional 'export ' prefix.
-        if stripped.startswith("export "):
-            stripped = stripped[7:]
-        key, _, val = stripped.partition("=")
-        key = key.strip()
-        val = val.strip().strip("\"'")
-        if key:
-            env[key] = val
-    return env
+    from config import parse_env_file
+
+    return parse_env_file(path)
 
 
 def _resolve_deepseek_key() -> str:
     """Look up DEEPSEEK_API_KEY from os.environ, env.local, and env.systemd."""
-    key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
-    if key:
-        return key
+    from config import resolve_deepseek_key
 
-    for fname in ("env.local", "env.systemd"):
-        path = Path("~/.config/convmem").expanduser() / fname
-        parsed = _parse_env_file(path)
-        key = parsed.get("DEEPSEEK_API_KEY", "").strip()
-        if key:
-            return key
-
-    return ""
+    return resolve_deepseek_key()
 
 
 def _check_deepseek_key() -> DoctorCheck:

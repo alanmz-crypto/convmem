@@ -25,24 +25,11 @@ def _load_convmem_env_files() -> None:
     """
     if os.environ.get("DEEPSEEK_API_KEY", "").strip():
         return
-    cfg_dir = Path("~/.config/convmem").expanduser()
-    for fname in ("env.local", "env.systemd"):
-        path = cfg_dir / fname
-        if not path.is_file():
-            continue
-        for line in path.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if stripped.startswith("#") or "=" not in stripped:
-                continue
-            if stripped.startswith("export "):
-                stripped = stripped[7:]
-            key, _, val = stripped.partition("=")
-            if key.strip() != "DEEPSEEK_API_KEY":
-                continue
-            val = val.strip().strip("\"'")
-            if val:
-                os.environ.setdefault("DEEPSEEK_API_KEY", val)
-                return
+    from config import resolve_deepseek_key
+
+    key = resolve_deepseek_key()
+    if key:
+        os.environ.setdefault("DEEPSEEK_API_KEY", key)
 
 
 _load_convmem_env_files()
@@ -86,7 +73,6 @@ _SHELL_AFTER_TIER_A = (
 
 def _mcp_profile() -> str:
     """MCP instruction/tool surface: 'shell' or 'full' (default)."""
-    import os
 
     raw = (os.environ.get("CONVMEM_MCP_PROFILE") or "").strip().lower()
     return "shell" if raw == "shell" else "full"
@@ -159,7 +145,6 @@ def _blocked_until_brief_json() -> str | None:
 
 
 def _workspace_project_slug() -> tuple[str, str]:
-    import os
 
     cwd = Path(os.getcwd()).resolve()
     return str(cwd), cwd.name.lower()
@@ -243,7 +228,6 @@ def _shell_profile_omits_brief_endpoints() -> bool:
     Cursor often starts MCP with cwd=$HOME even for a project workspace; live
     omit uses MCP Roots via ``_apply_shell_roots_brief_boundary_if_needed``.
     """
-    import os
 
     if _mcp_profile() != "shell":
         return False
@@ -306,7 +290,6 @@ async def _apply_shell_roots_brief_boundary_if_needed(session=None) -> None:
         is_project = _root_uris_indicate_project(uris)
     else:
         # No roots → keep import-time cwd policy
-        import os
 
         is_project = _cwd_is_project_root(Path(os.getcwd()).resolve())
     _SHELL_ROOTS.project = is_project
@@ -494,7 +477,6 @@ def _system_runbook_hint(cwd: Path) -> dict[str, str] | None:
 
 def _build_mcp_instructions(base: str) -> str:
     """Append cwd-specific mandatory brief-first block (Continue sets MCP process cwd)."""
-    import os
 
     # Shell clients (Cursor/Kiro/Crush): process cwd is often $HOME while Roots
     # carry the real workspace. Keep compact after-Tier-A only — never append a

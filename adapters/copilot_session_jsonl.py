@@ -11,8 +11,13 @@ Sibling files (not indexed by this adapter):
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
+
+from adapters.jsonl_io import (
+    iter_jsonl_dicts,
+    nonempty_stripped,
+    session_parse_context,
+)
 
 _MESSAGE_TYPES = frozenset({"user.message", "assistant.message"})
 
@@ -61,31 +66,21 @@ def read_session_meta(filepath: str) -> dict:
     # Prefer session.start for cwd when yaml missing/empty
     if not meta["workspace_directory"] or not meta["title"]:
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        record = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if not isinstance(record, dict):
-                        continue
-                    if record.get("type") != "session.start":
-                        continue
-                    data = record.get("data")
-                    if not isinstance(data, dict):
-                        break
-                    sid = data.get("sessionId")
-                    if isinstance(sid, str) and sid:
-                        meta["session_id"] = sid
-                    ctx = data.get("context")
-                    if isinstance(ctx, dict):
-                        cwd = ctx.get("cwd")
-                        if isinstance(cwd, str) and cwd and not meta["workspace_directory"]:
-                            meta["workspace_directory"] = cwd
+            for record in iter_jsonl_dicts(filepath):
+                if record.get("type") != "session.start":
+                    continue
+                data = record.get("data")
+                if not isinstance(data, dict):
                     break
+                sid = data.get("sessionId")
+                if isinstance(sid, str) and sid:
+                    meta["session_id"] = sid
+                ctx = data.get("context")
+                if isinstance(ctx, dict):
+                    cwd = ctx.get("cwd")
+                    if isinstance(cwd, str) and cwd and not meta["workspace_directory"]:
+                        meta["workspace_directory"] = cwd
+                break
         except OSError:
             pass
 
@@ -94,51 +89,35 @@ def read_session_meta(filepath: str) -> dict:
 
 def parse(filepath: str) -> list[dict]:
     """Parse a Copilot CLI events.jsonl into canonical messages."""
-    meta = read_session_meta(filepath)
-    session_id = meta.get("session_id") or Path(filepath).parent.name
-    workspace = meta.get("workspace_directory") or ""
+    session_id, workspace = session_parse_context(filepath, read_session_meta)
 
     messages: list[dict] = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if not isinstance(record, dict):
-                continue
+    for record in iter_jsonl_dicts(filepath):
+        etype = record.get("type")
+        if etype not in _MESSAGE_TYPES:
+            continue
 
-            etype = record.get("type")
-            if etype not in _MESSAGE_TYPES:
-                continue
+        data = record.get("data")
+        if not isinstance(data, dict):
+            continue
 
-            data = record.get("data")
-            if not isinstance(data, dict):
-                continue
+        content = nonempty_stripped(data.get("content"))
+        if content is None:
+            continue
 
-            content = data.get("content")
-            if not isinstance(content, str):
-                continue
-            content = content.strip()
-            if not content:
-                continue
+        role = "user" if etype == "user.message" else "assistant"
+        ts = record.get("timestamp")
+        timestamp = ts if isinstance(ts, str) else None
 
-            role = "user" if etype == "user.message" else "assistant"
-            ts = record.get("timestamp")
-            timestamp = ts if isinstance(ts, str) else None
-
-            messages.append(
-                {
-                    "role": role,
-                    "content": content,
-                    "timestamp": timestamp,
-                    "session_id": session_id,
-                    "workspace_directory": workspace,
-                    "source_type": "copilot_session",
-                }
-            )
+        messages.append(
+            {
+                "role": role,
+                "content": content,
+                "timestamp": timestamp,
+                "session_id": session_id,
+                "workspace_directory": workspace,
+                "source_type": "copilot_session",
+            }
+        )
 
     return messages
