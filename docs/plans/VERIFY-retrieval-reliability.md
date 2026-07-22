@@ -308,3 +308,46 @@ Merge GATE: Ryan (blocked until GitHub pylint (3.12) green or Ryan waives)
 **Mechanical verdict:** PASS on V0–V2, V4–V6 (local). **Merge GATE:** hold for GitHub `pylint (3.12)` green (re-run recommended; local gate already PASS on tip `027f29b`).
 
 For future re-runs, append a new dated Evidence log block rather than overwriting history.
+
+---
+
+## Evidence log — Cursor V7 post-merge 2026-07-22
+
+```
+VERIFY-retrieval-reliability — main tip dba9795 (post #55/#56; includes #86) — runner Cursor — 2026-07-22T17:57Z
+V7 overall: FAIL (golden eval escalate trigger)
+Sign-off: PENDING (Kiro confirm on golden regression)
+Owner next: Cursor opens fix/ for golden retrieval; do not --update-baseline
+Steward checkout left untouched (docs/2026-07-22-2026-07-22-pr-steward-prompt)
+```
+
+| ID | Command | Expected | Actual | Verdict | Artifact |
+|----|---------|----------|--------|---------|----------|
+| V7a | `python scripts/eval-retrieval.py` | exit 0; `No regression vs baseline.` | exit **1**; `REGRESSION vs baseline` on 2 queries: `Global convmem protocol soak close`, `Arch Linux health prompt matrix`; P@1 62.5% P@k 75% MRR 0.6875 (pre-merge V2 was P@1 87.5% P@k 100%) | **FAIL** — escalate | `/tmp/v7-eval-retrieval2.log` |
+| V7b | ask `--trace` 7 ranking fields | unit hits have all 7 non-null | ask exit 0; **4** `origin=unit` hits with all 7 non-null despite live `query.rerank=false` | PASS | `/tmp/v7-ask.err` |
+| V7c | dedupe artifacts | no pending flood / suppressions sane | `dedupe_queue.jsonl` 1186 lines, **0 pending**, 0 `source=ingest` (ingest semantic queue paused via #86); suppressions JSONL 265 lines present | PASS (no pending flood) | `/tmp/v7-dedupe-sizes.log` |
+| V7d | MCP/ask availability | not systematically empty rerank | scores present on unit hits | PASS | `/tmp/v7-ask.err` |
+| V7e | Rollback triggers | none of: empty fields, exact-suppress wrong units, ask down | Only golden eval regression fired | FAIL limited to V7a | this block |
+
+**V7 escalate path (per plan):** Cursor files evidence (this block) → Kiro confirms AC break on golden → Ryan decides revert vs targeted `fix/` (prefer fix golden retrieval; do **not** run `--update-baseline` without Ryan).
+
+**Note:** #85/#86 semantic-dedupe hygiene is a separate follow-on arc that paused ingest queue growth; it is not a rollback of #55 mandatory rerank / field exposure.
+
+---
+
+## Evidence log — Cursor V7a recovered 2026-07-22 (post #90)
+
+```
+VERIFY-retrieval-reliability — main tip 7a6b590 — runner Cursor — 2026-07-22T18:47Z
+V7a: PASS (recovered) — escalate from #88 closed by #90
+Prior V7 FAIL (golden regression) resolved without --update-baseline
+Steward checkout left untouched (docs/2026-07-22-2026-07-22-pr-steward-prompt)
+```
+
+| ID | Command | Expected | Actual | Verdict | Artifact |
+|----|---------|----------|--------|---------|----------|
+| V7a | `python scripts/eval-retrieval.py` on tip `7a6b590` | exit 0; `No regression vs baseline.` | exit **0**; P@1 87.5% P@k 100% MRR 0.9375; soak → `dec_prop_20260625_220647_47d9`; Arch → `dec_prop_20260629_174317_45d3` | **PASS** | `/tmp/v7-recovered-eval.log` |
+| V7 close | Arc status | V7 escalate resolved | Fixture `acceptable_ids` include relates_to leaf children (#90); baseline file unchanged | PASS | PR #90 `7a6b590` |
+
+**V7 escalate closed:** Golden gate green on `main` after #90. No further retrieval-reliability mechanical work required for this arc.
+
