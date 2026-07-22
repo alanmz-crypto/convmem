@@ -132,6 +132,36 @@ class IngestDedupeTests(unittest.TestCase):
         self.assertEqual(first["semantic_candidates_queued"], 1)
         self.assertEqual(second["semantic_candidates_queued"], 0)
 
+
+    def test_semantic_queue_pauses_at_max_depth_total_lines(self):
+        """Depth uses total JSONL lines (pending + non-pending), matching refine."""
+        queue = self.root / "dedupe_queue.jsonl"
+        # Two non-pending lines already at depth; max_depth=2 → pause.
+        queue.write_text(
+            json.dumps({"id_a": "a", "id_b": "b", "status": "approved_merge_a", "similarity": 1.0})
+            + "\n"
+            + json.dumps({"id_a": "c", "id_b": "d", "status": "rejected_keep_both", "similarity": 0.99})
+            + "\n",
+            encoding="utf-8",
+        )
+        self.cfg["refine"] = {"queue_max_depth": 2}
+        self.store.add_unit(
+            "existing",
+            "first wording",
+            [1.0, 0.0],
+            {"id": "existing", "title": "Existing", "source_path": "/tmp/existing"},
+        )
+        result = evaluate_ingest_batch(
+            self.store, self.cfg, [_row("new", "different wording", [0.99, 0.01])]
+        )
+        stats = persist_ingest_dedupe(self.cfg, result)
+        self.assertTrue(stats["semantic_queue_paused"])
+        self.assertEqual(stats["semantic_candidates_queued"], 0)
+        self.assertEqual(stats["semantic_queue_depth"], 2)
+        self.assertEqual(len(result.semantic_candidates), 1)
+        # Queue file unchanged (still two lines).
+        self.assertEqual(len(queue.read_text(encoding="utf-8").splitlines()), 2)
+
     def test_commit_suppresses_exact_and_keeps_semantic_candidate(self):
         processed = self.root / "processed.json"
         export = self.root / "knowledge_units.jsonl"

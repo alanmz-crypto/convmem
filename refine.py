@@ -16,6 +16,7 @@ from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
 from domains import DEFAULT_DOMAINS, normalize_domain
 from process_lock import acquire_lock, release_lock
 from vector_similarity import cosine_similarity
+from ingest_dedupe import semantic_queue_at_max_depth
 
 JOB_NAMES = (
     "chroma_dedupe",
@@ -510,15 +511,13 @@ def job_semantic_dedupe(
 ) -> dict:
     refine = cfg.get("refine") or {}
     threshold = float(refine.get("dedupe_similarity", 0.92))
-    max_depth = int(refine.get("queue_max_depth", 100))
-    queue_path = _refine_data_dir(cfg) / "dedupe_queue.jsonl"
-    existing = 0
-    if queue_path.is_file():
-        existing = sum(1 for _ in queue_path.open())
-    if existing >= max_depth:
+    # Total-line depth (not pending-only) — shared with persist_ingest_dedupe.
+    paused, existing, max_depth = semantic_queue_at_max_depth(cfg)
+    if paused:
         if verbose:
             print(f"  [pause] dedupe_queue depth {existing} >= {max_depth}", file=sys.stderr)
         return {"processed": 0, "queued": 0, "skipped": 0, "errors": 0, "llm_calls": 0}
+    queue_path = dedupe_queue_path(cfg)
 
     units = store.get_units_with_embeddings(include_superseded=False)
     rows: list[tuple[str, dict, list[float]]] = [

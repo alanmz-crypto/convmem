@@ -56,10 +56,15 @@ live jobs still list `semantic_dedupe`; `queue_max_depth = 200`.
 
 | Step | Owner | Action |
 |------|-------|--------|
-| A1 | Cursor | PR: ingest semantic append respects `[refine] queue_max_depth` (same pause semantics as `job_semantic_dedupe`). Prefer shared helper in `refine.py` or thin import from `ingest_dedupe` — **no new leaf module** if pylint R0401 risk. |
+| A1 | Cursor | PR: ingest semantic append respects `[refine] queue_max_depth` using **total JSONL line count** (pending + non-pending) — same pause semantics as `job_semantic_dedupe` (not pending-only). Shared helper in `ingest_dedupe.py`; `refine.job_semantic_dedupe` imports it — **no new leaf module**. |
 | A2 | Cursor | PR: `config.example.toml` comment that `semantic_dedupe` in jobs is optional and should be omitted while backlog ≥ depth; document ingest pause. |
 | A3 | Ryan | Live `~/.config/convmem/config.toml`: remove `semantic_dedupe` from `[refine] jobs` (restore F1 policy). Restart refine if needed. |
 | A4 | Cursor | Optional doctor hint or standing-check note when pending ≫ `queue_max_depth` — only if cheap; not required for A merge. |
+
+
+**Depth count (locked):** Both ingest pause and refine job pause use **total lines** in
+`dedupe_queue.jsonl`, not pending-only. A queue of 1000 pending + 157 resolved is depth
+1157 for the guard.
 
 **Do not** approve queue rows in Phase A.
 
