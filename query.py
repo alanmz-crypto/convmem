@@ -35,6 +35,13 @@ _LEDGER_ID_RE = re.compile(
 DEFAULT_RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
 
 
+def _apply_unit_result_postfilters(results: list[dict]) -> list[dict]:
+    """Lazy-import search postfilters (keeps query.py top-level imports stable)."""
+    from evidence import apply_search_postfilters
+
+    return apply_search_postfilters(results)
+
+
 @dataclass
 class QueryUnitTrace:
     """Optional stage snapshots for retrieval diagnostics.
@@ -471,6 +478,8 @@ def query_units(
 
     if not skip_ledger_priority:
         results = _merge_priority_hits(results, ledger_extras)
+    # Ask-parity post-filters (cheap); helper keeps query_units locals ≤30.
+    results = _apply_unit_result_postfilters(results)
     return results[:top_k]
 
 
