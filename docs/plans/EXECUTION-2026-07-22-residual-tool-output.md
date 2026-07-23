@@ -2,9 +2,9 @@
 
 | Field | Value |
 |---|---|
-| Status | **Ready for Execute grant** — architecture accepted on `main` ([#100](https://github.com/alanmz-crypto/convmem/pull/100)); do not start Tasks 0–3 until Ryan says go |
+| Status | **Execute in progress** (Ryan granted 2026-07-22) — Tasks 0–1 done (rule deployed); Task 2 pending Crush restart + ≥3 sessions |
 | Architecture | [ARCHITECTURE-residual-tool-output.md](ARCHITECTURE-residual-tool-output.md) |
-| VERIFY | Create `VERIFY-residual-tool-output.md` from template when Execute starts |
+| VERIFY | [VERIFY-residual-tool-output.md](VERIFY-residual-tool-output.md) — Task 0 PASS; Task 1 at tip; Task 2 PENDING |
 | Parent closed | Stage 4 — [EXECUTION-stage4-context-compression.md](EXECUTION-stage4-context-compression.md) stays CLOSED |
 
 ## Human consequence
