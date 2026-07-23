@@ -91,6 +91,8 @@ Authority:    Post-execute HITL — do not trust chat claims alone
 - **Human consequence block first** (consequence for Ryan → 5 Ws → TL;DR;
   honest limits if any) — see [`../plans/VERIFY-TEMPLATE.md`](../plans/VERIFY-TEMPLATE.md).
   This does **not** replace the tables below; both are required.
+- **Merge reading links** in that human block (ARCHITECTURE / EXECUTION /
+  VERIFY / LATEST Active handoff, plus any other docs the close depends on)
 - Scope lock table
 - Numbered checks with PASS/FAIL/SKIP + one-line evidence
 - Explicit lanes (mechanical / independent / Ryan GATE)

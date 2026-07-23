@@ -32,6 +32,8 @@ Title: concise, user-facing description of what changed and why.
 
 **Required body shape (consequence → 5 Ws → TL;DR):** lead with what changes for Ryan (or the next human), then Who/What/When/Why/How, then a short TL;DR. Keep identifiers copy-pasteable. Scale down for tiny PRs; do not omit the human layer on arc-close or Execute PRs.
 
+**Merge reading links:** when the PR closes an arc, lands Execute, or updates VERIFY/LATEST, include a short **Merge reading** list of markdown links to the docs Ryan should open — typically ARCHITECTURE / EXECUTION / VERIFY / LATEST Active handoff. Tiny drive-bys may omit; arc-close / Execute must not.
+
 **Also keep mapping detail when it exists:** Test plans, VERIFY check tables, SHAs, and scope locks stay — they help agents map the project. The human layer sits **above** that machinery; it does not replace it.
 
 After the human layer: problem/approach/tradeoffs as needed; related issues (`Closes #...`, `Refs dec_prop_...`). Summarize the overall change — not individual commits.

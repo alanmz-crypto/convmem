@@ -47,6 +47,17 @@ check rows.*
 
 **Honest limits / caveats (if any):** …
 
+### Merge reading
+
+*Links Ryan (or the next human) should open when reviewing this close — not a
+substitute for the check tables below.*
+
+- Architecture: `[ARCHITECTURE-….md](ARCHITECTURE-….md)`
+- Execution: `[EXECUTION-….md](EXECUTION-….md)`
+- This VERIFY: (self)
+- Active handoff: `[../inter-model/LATEST.md](../inter-model/LATEST.md)` (named bullet)
+- Other (PR, charter, prior VERIFY): …
+
 ---
 
 ## Scope lock

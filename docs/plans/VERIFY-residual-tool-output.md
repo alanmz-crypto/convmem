@@ -51,6 +51,14 @@ post-land, this class of work is no longer stuck in the residual ~100k band.
 
 **TL;DR:** Rule shipped; three soaks mean ~30.5k vs ~100k residual; Task 3 skipped; equal-weight caveat stands; Stage 4 stays closed.
 
+### Merge reading
+
+- [ARCHITECTURE-residual-tool-output.md](ARCHITECTURE-residual-tool-output.md)
+- [EXECUTION-2026-07-22-residual-tool-output.md](EXECUTION-2026-07-22-residual-tool-output.md)
+- This VERIFY (human block above + V3 soak table)
+- [LATEST Active handoff — Crush tool-output residual](../inter-model/LATEST.md)
+- Execute land: [#102](https://github.com/alanmz-crypto/convmem/pull/102) (`482637b`)
+
 ---
 
 ## Scope lock

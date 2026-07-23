@@ -35,6 +35,11 @@ for Ryan (or the next human), then Who/What/When/Why/How, then a short TL;DR.
 Keep identifiers copy-pasteable. Scale down for tiny PRs; do not omit the human
 layer on arc-close or Execute PRs.
 
+**Merge reading links:** on arc-close / Execute / VERIFY·LATEST PRs, add a short
+**Merge reading** list of markdown links to ARCHITECTURE / EXECUTION / VERIFY /
+LATEST (and any other docs Ryan should open). Tiny drive-bys may omit; arc-close
+must not.
+
 **Also keep mapping detail when it exists:** Test plans, VERIFY check tables,
 SHAs, and scope locks stay — they help agents map the project. The human layer
 sits **above** that machinery; it does not replace it.
