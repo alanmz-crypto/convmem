@@ -457,10 +457,12 @@ if [ -n "$CRUSH_RULES" ]; then
     echo "  [retire] moved stale ksweep-routing.md out of Crush rules"
   fi
   cp config/crush-rules-commit-pr-quality.example.md "$CRUSH_RULES/commit-pr-quality.md"
+  cp config/crush-rules-tool-output-hygiene.example.md "$CRUSH_RULES/tool-output-hygiene.md"
   echo "  [deploy] $CRUSH_RULES/00-convmem-ritual.md"
   echo "  [deploy] $CRUSH_RULES/convmem.md"
   echo "  [deploy] $CRUSH_RULES/commit-pr-quality.md"
-  DEPLOY_REPORT+="  - Deployed Crush convmem rules (00-ritual + Tier A + commit-pr-quality; ksweep-routing retired post-P1.3)\n"
+  echo "  [deploy] $CRUSH_RULES/tool-output-hygiene.md"
+  DEPLOY_REPORT+="  - Deployed Crush convmem rules (00-ritual + Tier A + commit-pr-quality + tool-output-hygiene; ksweep-routing retired post-P1.3)\n"
 else
   echo "  [skip]   Crush rules directory not found (probed: ~/.config/crush/rules, ~/.crush/rules)"
   SKIPPED+="  - Crush (no rules dir found)\n"

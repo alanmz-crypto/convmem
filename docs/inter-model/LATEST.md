@@ -1,11 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-22 (Crush tool-output residual architecture accepted #100)
+**Updated:** 2026-07-22 (Crush tool-output residual Execute Tasks 0–1)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Crush tool-output residual arc ACCEPTED (2026-07-22):** Squash-merged [#100](https://github.com/alanmz-crypto/convmem/pull/100) to `main` as [`59af015`](https://github.com/alanmz-crypto/convmem/commit/59af015). Direction: thin Crush tool-hygiene rule + measure against ~100k Post–Stage-4 baseline; MCP clips only if that fails. Plans: [`../plans/ARCHITECTURE-residual-tool-output.md`](../plans/ARCHITECTURE-residual-tool-output.md), [`../plans/EXECUTION-2026-07-22-residual-tool-output.md`](../plans/EXECUTION-2026-07-22-residual-tool-output.md). **Execute not started** — no Crush rule deploy until Ryan grants Tasks 0–2. Stage 4 stays CLOSED.
+- **Crush tool-output residual EXECUTE in progress (2026-07-22):** Architecture accepted via [#100](https://github.com/alanmz-crypto/convmem/pull/100) / status [#101](https://github.com/alanmz-crypto/convmem/pull/101). Who/What: Cursor shipping thin Crush `tool-output-hygiene` rule + deploy wiring so bash/view/grep dumps stop dominating the ~100k prompt bill. When: Execute branch `feat/2026-07-22-residual-tool-output-execute` (PR pending). Why: Stage 4 left standing ~6k but residual tool rebill remains. How: after merge/deploy, **restart Crush**, then ≥3 comparable sessions for Task 2 (`prompt_tokens` vs ~98–107k). VERIFY: [`../plans/VERIFY-residual-tool-output.md`](../plans/VERIFY-residual-tool-output.md). Stage 4 stays CLOSED.
 
 - **Copilot CLI Tier A surface LANDED + DEPLOYED (2026-07-22):** Squash-merged [#97](https://github.com/alanmz-crypto/convmem/pull/97) to `main` as [`8b0f53f`](https://github.com/alanmz-crypto/convmem/commit/8b0f53f). Who/What: Cursor land of GitHub Copilot **CLI** session adapter + watch/doctor/open_source + always-on instructions (filename A: `config/copilot-instructions-convmem.example.md`) + key-omitted MCP example; not GitHub.com Copilot billing/PR settings. When: merge + `deploy-agent-protocol.sh` same day (always-on + optional `--agent convmem` synced; `mcp_copilot` PASS). Why: end COMBINE residue from cross-arc consolidation so plain `copilot` is ingestible and ritual-capable on `main`. How: Track A via `~/.copilot/session-state/<uuid>/events.jsonl`; docs [`../COPILOT-SESSION-ADAPTER.md`](../COPILOT-SESSION-ADAPTER.md). Parallel Kiro generate/deploy tip folded under filename A — do not revive `copilot-instructions.example.md`. **Does not authorize** expanding the scarce GitHub Copilot audit lane or GitHub-hosted spend.
 
