@@ -10,7 +10,7 @@ Lanes:        Cursor (mechanical); Kiro (sign-off optional); Ryan (GATE)
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Subject / tip:** [PR #102](https://github.com/alanmz-crypto/convmem/pull/102) tip (update `subject_tip_sha` at BugBot time)
+**Subject / tip:** [PR #102](https://github.com/alanmz-crypto/convmem/pull/102) — BugBot SUCCESS on `edb96ba7fda16476da7e3b35f0467449c7ae7caf` (2026-07-23)
 **PR(s):** [#102](https://github.com/alanmz-crypto/convmem/pull/102)  
 **EXECUTION / ARCHITECTURE:** [EXECUTION-2026-07-22-residual-tool-output.md](EXECUTION-2026-07-22-residual-tool-output.md), [ARCHITECTURE-residual-tool-output.md](ARCHITECTURE-residual-tool-output.md)  
 **Goal:** Prove Task 0–1 landed; Task 2 measurement either recorded or explicitly pending Crush sessions after deploy/restart.
@@ -39,8 +39,8 @@ exemption and reason. An applicable SHA mismatch is always **FAIL**, never SKIP.
 |---|---|
 | `gate_applicability` | `required` (deploy script + runtime-affecting Crush rule path) |
 | `reason` | Changes `scripts/deploy-agent-protocol.sh` and always-loaded Crush rules behavior |
-| `subject_tip_sha` | (fill at BugBot — must equal PR tip) |
-| `bugbot_reviewed_sha` | (fill after BugBot run) |
+| `subject_tip_sha` | `edb96ba7fda16476da7e3b35f0467449c7ae7caf` (product tip at BugBot SUCCESS) |
+| `bugbot_reviewed_sha` | `edb96ba7fda16476da7e3b35f0467449c7ae7caf` (GitHub check Cursor Bugbot = SUCCESS) |
 | Steward | `offer` — bounded PR lifecycle; Ryan may self-drive Cursor |
 
 ---
@@ -51,7 +51,7 @@ exemption and reason. An applicable SHA mismatch is always **FAIL**, never SKIP.
 |---|---|---|
 | V0a | ARCHITECTURE accepted on main (#100 / #101) before Execute | PASS — `9f89cd0` on main |
 | V0b | Subject tip is this Execute branch / PR tip | PASS — branch `feat/2026-07-22-residual-tool-output-execute` / [#102](https://github.com/alanmz-crypto/convmem/pull/102) |
-| V0c | BugBot-reviewed SHA equals subject tip when required | (fill after BugBot) |
+| V0c | BugBot-reviewed SHA equals subject tip when required | PASS — both `edb96ba`; GitHub `Cursor Bugbot` SUCCESS |
 
 ---
 
@@ -92,8 +92,9 @@ exemption and reason. An applicable SHA mismatch is always **FAIL**, never SKIP.
 | Area | PASS/FAIL/PENDING |
 |---|---|
 | Task 0 | PASS |
-| Task 1 | (fill at tip) |
-| Task 2 | PENDING Crush sessions |
-| BugBot | (fill) |
+| Task 1 | PASS (rule + deploy wiring; live file present) |
+| Task 2 | PENDING Crush sessions after restart |
+| BugBot | PASS at `edb96ba` |
 
-**Ryan GATE:** after Task 2 numbers, or accept Task 1 land with Task 2 as follow-up soak.
+**Ryan GATE:** merge Task 1 land OK with Task 2 as follow-up soak, or wait for Task 2 numbers.  
+**Tip note:** any commit after `edb96ba` is VERIFY bookkeeping — re-run BugBot on new tip if you require SHA equality at merge time.
