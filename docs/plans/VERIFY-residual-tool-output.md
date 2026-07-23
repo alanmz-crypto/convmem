@@ -3,15 +3,15 @@
 ```
 Planning Status
 
-Phase:        Verify complete — Ryan GATE (docs review)
+Phase:        Closed — Ryan GATE accepted 2026-07-23
 Characters:   Independent Reviewer
 Functions:    Reviewer
-Lanes:        Cursor (mechanical); Ryan (GATE)
-Authority:    Post-Execute HITL — do not trust prior chat claims alone
+Lanes:        Cursor (mechanical); Ryan (GATE accepted)
+Authority:    Post-Execute HITL — Ryan accepted after #103 / #104 merge review
 ```
 
-**Subject / tip:** Execute land [#102](https://github.com/alanmz-crypto/convmem/pull/102) squash-merged to `main` as [`482637b`](https://github.com/alanmz-crypto/convmem/commit/482637b7bf3bfe82eba6007ad8fdf09eeae4ce43) (2026-07-23). This PR is Task 2 soak paperwork only.  
-**PR(s):** [#102](https://github.com/alanmz-crypto/convmem/pull/102) (Execute); this docs PR (Task 2 close)  
+**Subject / tip:** Execute land [#102](https://github.com/alanmz-crypto/convmem/pull/102) → `main` [`482637b`](https://github.com/alanmz-crypto/convmem/commit/482637b7bf3bfe82eba6007ad8fdf09eeae4ce43); VERIFY/close [#103](https://github.com/alanmz-crypto/convmem/pull/103) `e324d2f`; merge-reading [#104](https://github.com/alanmz-crypto/convmem/pull/104) `ca1178b`.  
+**PR(s):** [#102](https://github.com/alanmz-crypto/convmem/pull/102), [#103](https://github.com/alanmz-crypto/convmem/pull/103), [#104](https://github.com/alanmz-crypto/convmem/pull/104)  
 **EXECUTION / ARCHITECTURE:** [EXECUTION-2026-07-22-residual-tool-output.md](EXECUTION-2026-07-22-residual-tool-output.md), [ARCHITECTURE-residual-tool-output.md](ARCHITECTURE-residual-tool-output.md)  
 **Goal:** Record Task 0–2 results after Crush soak; Task 3 skipped.
 
@@ -43,7 +43,7 @@ post-land, this class of work is no longer stuck in the residual ~100k band.
 
 | | |
 |---|---|
-| **Who** | Cursor Execute + VERIFY; Crush/`deepseek-v4-flash` soak; Ryan GATE on this paperwork |
+| **Who** | Cursor Execute + VERIFY; Crush/`deepseek-v4-flash` soak; Ryan GATE accepted |
 | **What** | Close the Crush tool-output residual arc with measured soak numbers |
 | **When** | Rule landed [#102](https://github.com/alanmz-crypto/convmem/pull/102) 2026-07-23; soak same afternoon |
 | **Why** | Standing-context cuts were not enough — your Crush bill was still tool-history rebill |
@@ -58,6 +58,8 @@ post-land, this class of work is no longer stuck in the residual ~100k band.
 - This VERIFY (human block above + V3 soak table)
 - [LATEST Active handoff — Crush tool-output residual](../inter-model/LATEST.md)
 - Execute land: [#102](https://github.com/alanmz-crypto/convmem/pull/102) (`482637b`)
+- Soak / human close: [#103](https://github.com/alanmz-crypto/convmem/pull/103) (`e324d2f`)
+- Merge-reading guidance: [#104](https://github.com/alanmz-crypto/convmem/pull/104) (`ca1178b`)
 
 ---
 
@@ -150,4 +152,5 @@ Post-restart soak sessions in `~/Projects/convmem/.crush/crush.db` (model `deeps
 | BugBot (Execute #102) | PASS at `edb96ba` |
 | BugBot (this docs PR) | N/A (exempt) |
 
-**Ryan GATE:** review this paperwork after merge; Stage 4 stays CLOSED.
+**Ryan GATE:** **accepted** 2026-07-23 (after #103 / #104). Stage 4 stays CLOSED.  
+**Known residual:** Crush “waiting for a tool response” hangs (×3 during soak) — no arc opened.
