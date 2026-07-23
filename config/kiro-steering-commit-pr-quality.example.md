@@ -29,11 +29,19 @@ Good: `fix: prevent session loading from crashing on missing metadata`
 ## PR summaries
 
 Title: concise, user-facing description of what changed and why.
-Body (1-2 paragraphs): problem, approach, tradeoffs or risks.
-Reference related issues/decisions: `Closes #...`, `Refs dec_prop_...`.
 
-The PR body should summarize the overall change — not re-list individual
-commits.
+**Required body shape (consequence → 5 Ws → TL;DR):** lead with what changes
+for Ryan (or the next human), then Who/What/When/Why/How, then a short TL;DR.
+Keep identifiers copy-pasteable. Scale down for tiny PRs; do not omit the human
+layer on arc-close or Execute PRs.
+
+**Also keep mapping detail when it exists:** Test plans, VERIFY check tables,
+SHAs, and scope locks stay — they help agents map the project. The human layer
+sits **above** that machinery; it does not replace it.
+
+After the human layer: problem/approach/tradeoffs as needed; related issues
+(`Closes #...`, `Refs dec_prop_...`). Summarize the overall change — not
+individual commits.
 
 <!-- Canonical source: AGENTS.md. This Kiro deployed template is copied from
 config/kiro-steering-commit-pr-quality.example.md by deploy-agent-protocol.sh. -->
