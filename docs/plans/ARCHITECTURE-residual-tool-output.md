@@ -3,16 +3,16 @@
 ```text
 Planning Status
 
-Phase:        Closed pending Ryan GATE on Task 2 paperwork
+Phase:        Closed — Ryan GATE accepted 2026-07-23
 Characters:   Architect → Builder (Cursor) → Ryan GATE
 Functions:    Planner → Builder → Reviewer
-Lanes:        Cursor Execute + VERIFY; Ryan merges / reviews
-Authority:    Execute [#102](https://github.com/alanmz-crypto/convmem/pull/102) on main; soak recorded 2026-07-23
+Lanes:        Cursor Execute + VERIFY; Ryan GATE accepted
+Authority:    Execute [#102](https://github.com/alanmz-crypto/convmem/pull/102); VERIFY [#103](https://github.com/alanmz-crypto/convmem/pull/103); merge-reading [#104](https://github.com/alanmz-crypto/convmem/pull/104)
 ```
 
 | Field | Value |
 |---|---|
-| Status | **Closed (mechanical)** — accepted [#100](https://github.com/alanmz-crypto/convmem/pull/100)/[#101](https://github.com/alanmz-crypto/convmem/pull/101); Execute [#102](https://github.com/alanmz-crypto/convmem/pull/102) `482637b`; Task 2 soak mean ~30.5k vs ~100k band (equal-weight caveat in VERIFY) |
+| Status | **Closed — GATE accepted** — [#100](https://github.com/alanmz-crypto/convmem/pull/100)/[#101](https://github.com/alanmz-crypto/convmem/pull/101); Execute [#102](https://github.com/alanmz-crypto/convmem/pull/102) `482637b`; soak/VERIFY [#103](https://github.com/alanmz-crypto/convmem/pull/103); mean ~30.5k (equal-weight caveat in VERIFY) |
 | Parent | Stage 4 context compression **CLOSED** ([ARCHITECTURE-stage4-context-compression.md](ARCHITECTURE-stage4-context-compression.md)) — this is a **new** arc |
 | Owner | Ryan owns merge/grants; Cursor executes after grant |
 | Objective | Cut the ~100k prompt tokens Crush still burns after digests left always-on |
@@ -112,4 +112,4 @@ full re-reads.
 - [x] Ryan **accepted** direction (squash-merge [#100](https://github.com/alanmz-crypto/convmem/pull/100), 2026-07-22).
 - [x] Ryan **granted Execute** (2026-07-22); Tasks 0–1 landed [#102](https://github.com/alanmz-crypto/convmem/pull/102).
 - [x] Task 2 soak recorded (mean ~30.5k; equal-weight caveat in VERIFY); Task 3 SKIP.
-- Stage 4 docs stay CLOSED. Ryan GATE = review Task 2 paperwork after merge.
+- [x] Ryan GATE accepted 2026-07-23. Stage 4 docs stay CLOSED.

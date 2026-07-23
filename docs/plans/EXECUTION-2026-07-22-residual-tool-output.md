@@ -2,9 +2,9 @@
 
 | Field | Value |
 |---|---|
-| Status | **Execute complete** — Tasks 0–2 done; Task 3 SKIP; landed [#102](https://github.com/alanmz-crypto/convmem/pull/102) `482637b`; soak mean ~30.5k (see VERIFY) |
+| Status | **Closed — GATE accepted** — Tasks 0–2 done; Task 3 SKIP; [#102](https://github.com/alanmz-crypto/convmem/pull/102)/[#103](https://github.com/alanmz-crypto/convmem/pull/103)/[#104](https://github.com/alanmz-crypto/convmem/pull/104); soak mean ~30.5k |
 | Architecture | [ARCHITECTURE-residual-tool-output.md](ARCHITECTURE-residual-tool-output.md) |
-| VERIFY | [VERIFY-residual-tool-output.md](VERIFY-residual-tool-output.md) — Tasks 0–2 PASS (soak-class caveat); Task 3 SKIP |
+| VERIFY | [VERIFY-residual-tool-output.md](VERIFY-residual-tool-output.md) — GATE accepted; Tasks 0–2 PASS (soak-class caveat); Task 3 SKIP |
 | Parent closed | Stage 4 — [EXECUTION-stage4-context-compression.md](EXECUTION-stage4-context-compression.md) stays CLOSED |
 
 ## Human consequence
@@ -17,7 +17,7 @@ virtuous but does not change your bill.
 
 | | |
 |---|---|
-| **Who** | Cursor Execute; you ran three Crush soaks; Ryan GATE on docs |
+| **Who** | Cursor Execute; you ran three Crush soaks; Ryan GATE accepted |
 | **What** | Tasks 0–2 done; Task 3 (MCP clips) skipped |
 | **When** | Rule on `main` via [#102](https://github.com/alanmz-crypto/convmem/pull/102); soak afternoon of merge |
 | **Why** | Prove the rule changed the bill class, not just the git history |
