@@ -10,7 +10,7 @@ Lanes:        Cursor (mechanical); Kiro (sign-off optional); Ryan (GATE)
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Subject / tip:** [`e3e25a7`](https://github.com/alanmz-crypto/convmem/commit/e3e25a757a8fa70678ea89f7bc1463748c31706c) on `feat/2026-07-22-residual-tool-output-execute`  
+**Subject / tip:** [`e1034bf`](https://github.com/alanmz-crypto/convmem/commit/e1034bf57a8fa70678ea89f7bc1463748c31706c) on `feat/2026-07-22-residual-tool-output-execute`  
 **PR(s):** [#102](https://github.com/alanmz-crypto/convmem/pull/102)  
 **EXECUTION / ARCHITECTURE:** [EXECUTION-2026-07-22-residual-tool-output.md](EXECUTION-2026-07-22-residual-tool-output.md), [ARCHITECTURE-residual-tool-output.md](ARCHITECTURE-residual-tool-output.md)  
 **Goal:** Prove Task 0–1 landed; Task 2 measurement either recorded or explicitly pending Crush sessions after deploy/restart.
