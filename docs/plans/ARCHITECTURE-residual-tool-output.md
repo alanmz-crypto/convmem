@@ -28,7 +28,19 @@ If we do nothing: you keep paying that. If we cut the wrong layer: agents hide f
 logs or re-read whole files and erase the savings. This arc picks one primary lever
 and measures before claiming a win.
 
-## Decision (one path — pending accept)
+### Outcome (after Execute + soak)
+
+| | |
+|---|---|
+| **Who** | Cursor shipped; Crush soak measured; Ryan reviews close paperwork |
+| **What** | Thin `tool-output-hygiene` rule on Crush + Task 2 numbers |
+| **When** | [#102](https://github.com/alanmz-crypto/convmem/pull/102) on `main` 2026-07-23; soak same day |
+| **Why** | Stop paying ~100k residual after Stage 4 already fixed standing context |
+| **How** | Always-loaded rule (ranged reads; failure = exit + last N lines); mean soak ~30.5k |
+
+**TL;DR:** Residual path closed mechanically — cheaper Crush soaks observed; not equal-weight proof vs old mega-audits. Details: [VERIFY-residual-tool-output.md](VERIFY-residual-tool-output.md).
+
+## Decision (accepted; Execute landed)
 
 **Primary lever:** a thin always-loaded Crush rule (`tool-output-hygiene`) that caps how
 agents keep shell/file/search output in chat (line/byte budgets; prefer `head` /

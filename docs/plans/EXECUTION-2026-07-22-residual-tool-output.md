@@ -13,6 +13,20 @@ Each task below exists to lower Crush token spend without making agents blind to
 failures. Skipping measurement (Task 2) means we might ship a rule that feels
 virtuous but does not change your bill.
 
+### Close summary (2026-07-23)
+
+| | |
+|---|---|
+| **Who** | Cursor Execute; you ran three Crush soaks; Ryan GATE on docs |
+| **What** | Tasks 0–2 done; Task 3 (MCP clips) skipped |
+| **When** | Rule on `main` via [#102](https://github.com/alanmz-crypto/convmem/pull/102); soak afternoon of merge |
+| **Why** | Prove the rule changed the bill class, not just the git history |
+| **How** | Mean ~30.5k `prompt_tokens` on three `deepseek-v4-flash` digs vs ~98–107k band |
+
+**Consequence:** you can treat the residual-tool-output lever as shipped for routine Crush work; only reopen MCP clipping if future heavy sessions climb back above ~90k with fat MCP dumps.
+
+**TL;DR:** Measured close — ~30k soak mean, no Task 3; caveat = short sessions ≠ equal-weight ~100k audits.
+
 ## Preconditions
 
 1. Architecture direction **accepted** (Ryan; Kiro review recommended).

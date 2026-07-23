@@ -23,6 +23,36 @@ exemption and reason. An applicable SHA mismatch is always **FAIL**, never SKIP.
 
 ---
 
+## Human consequence (read this first)
+
+Crush was still billing you ~100k prompt tokens per heavy session after Stage 4
+made standing rules small. Most of that was tool dumps re-charged every later turn.
+We shipped a thin always-on Crush rule that keeps bash/view/grep output short
+(without hiding failures), then ran three real post-restart soaks.
+
+**Consequence for you:** routine Crush digs in this soak landed around **~30k**
+prompt tokens instead of the old **~100k** band — cheaper sessions if agents
+follow the rule. We did **not** open a second MCP-clipping project (Task 3),
+because the mean was already well under ~90k.
+
+**Honest limit:** the three soaks were short guided work, not 150-message audits.
+Do not treat “~70% cheaper” as proven on equal-weight Crush days. Treat it as:
+post-land, this class of work is no longer stuck in the residual ~100k band.
+
+### 5 Ws
+
+| | |
+|---|---|
+| **Who** | Cursor Execute + VERIFY; Crush/`deepseek-v4-flash` soak; Ryan GATE on this paperwork |
+| **What** | Close the Crush tool-output residual arc with measured soak numbers |
+| **When** | Rule landed [#102](https://github.com/alanmz-crypto/convmem/pull/102) 2026-07-23; soak same afternoon |
+| **Why** | Standing-context cuts were not enough — your Crush bill was still tool-history rebill |
+| **How** | Always-loaded `tool-output-hygiene` + three measured sessions; MCP clips skipped |
+
+**TL;DR:** Rule shipped; three soaks mean ~30.5k vs ~100k residual; Task 3 skipped; equal-weight caveat stands; Stage 4 stays closed.
+
+---
+
 ## Scope lock
 
 | In scope | Out of scope |
