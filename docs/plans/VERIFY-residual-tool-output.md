@@ -10,7 +10,7 @@ Lanes:        Cursor (mechanical); Kiro (sign-off optional); Ryan (GATE)
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Subject / tip:** [`e1034bf`](https://github.com/alanmz-crypto/convmem/commit/e1034bf57a8fa70678ea89f7bc1463748c31706c) on `feat/2026-07-22-residual-tool-output-execute`  
+**Subject / tip:** [PR #102](https://github.com/alanmz-crypto/convmem/pull/102) tip (update `subject_tip_sha` at BugBot time)
 **PR(s):** [#102](https://github.com/alanmz-crypto/convmem/pull/102)  
 **EXECUTION / ARCHITECTURE:** [EXECUTION-2026-07-22-residual-tool-output.md](EXECUTION-2026-07-22-residual-tool-output.md), [ARCHITECTURE-residual-tool-output.md](ARCHITECTURE-residual-tool-output.md)  
 **Goal:** Prove Task 0–1 landed; Task 2 measurement either recorded or explicitly pending Crush sessions after deploy/restart.
@@ -39,7 +39,7 @@ exemption and reason. An applicable SHA mismatch is always **FAIL**, never SKIP.
 |---|---|
 | `gate_applicability` | `required` (deploy script + runtime-affecting Crush rule path) |
 | `reason` | Changes `scripts/deploy-agent-protocol.sh` and always-loaded Crush rules behavior |
-| `subject_tip_sha` | ff62a55 |
+| `subject_tip_sha` | (fill at BugBot — must equal PR tip) |
 | `bugbot_reviewed_sha` | (fill after BugBot run) |
 | Steward | `offer` — bounded PR lifecycle; Ryan may self-drive Cursor |
 
@@ -50,7 +50,7 @@ exemption and reason. An applicable SHA mismatch is always **FAIL**, never SKIP.
 | ID | Check | Result |
 |---|---|---|
 | V0a | ARCHITECTURE accepted on main (#100 / #101) before Execute | PASS — `9f89cd0` on main |
-| V0b | Subject tip is this Execute branch / PR tip | PASS — tip `ff62a55` |
+| V0b | Subject tip is this Execute branch / PR tip | PASS — branch `feat/2026-07-22-residual-tool-output-execute` / [#102](https://github.com/alanmz-crypto/convmem/pull/102) |
 | V0c | BugBot-reviewed SHA equals subject tip when required | (fill after BugBot) |
 
 ---
