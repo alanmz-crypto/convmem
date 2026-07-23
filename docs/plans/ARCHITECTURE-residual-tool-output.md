@@ -3,16 +3,16 @@
 ```text
 Planning Status
 
-Phase:        Execute in progress (Tasks 0–1); Task 2 soak pending
+Phase:        Closed pending Ryan GATE on Task 2 paperwork
 Characters:   Architect → Builder (Cursor) → Ryan GATE
-Functions:    Planner → Builder
-Lanes:        Cursor executes on feat branch; Ryan merges
-Authority:    Ryan Execute grant 2026-07-22 — measure after Crush restart
+Functions:    Planner → Builder → Reviewer
+Lanes:        Cursor Execute + VERIFY; Ryan merges / reviews
+Authority:    Execute [#102](https://github.com/alanmz-crypto/convmem/pull/102) on main; soak recorded 2026-07-23
 ```
 
 | Field | Value |
 |---|---|
-| Status | **Execute in progress** — architecture accepted via [#100](https://github.com/alanmz-crypto/convmem/pull/100) / status [#101](https://github.com/alanmz-crypto/convmem/pull/101); Task 1 shipping on Execute branch |
+| Status | **Closed (mechanical)** — accepted [#100](https://github.com/alanmz-crypto/convmem/pull/100)/[#101](https://github.com/alanmz-crypto/convmem/pull/101); Execute [#102](https://github.com/alanmz-crypto/convmem/pull/102) `482637b`; Task 2 soak mean ~30.5k vs ~100k band (equal-weight caveat in VERIFY) |
 | Parent | Stage 4 context compression **CLOSED** ([ARCHITECTURE-stage4-context-compression.md](ARCHITECTURE-stage4-context-compression.md)) — this is a **new** arc |
 | Owner | Ryan owns merge/grants; Cursor executes after grant |
 | Objective | Cut the ~100k prompt tokens Crush still burns after digests left always-on |
@@ -98,5 +98,6 @@ full re-reads.
 ## Exit criteria
 
 - [x] Ryan **accepted** direction (squash-merge [#100](https://github.com/alanmz-crypto/convmem/pull/100), 2026-07-22).
-- [x] Ryan **granted Execute** (2026-07-22) — Tasks 0–1 in flight; Task 2 needs Crush restart + ≥3 sessions.
-- Stage 4 docs stay CLOSED.
+- [x] Ryan **granted Execute** (2026-07-22); Tasks 0–1 landed [#102](https://github.com/alanmz-crypto/convmem/pull/102).
+- [x] Task 2 soak recorded (mean ~30.5k; equal-weight caveat in VERIFY); Task 3 SKIP.
+- Stage 4 docs stay CLOSED. Ryan GATE = review Task 2 paperwork after merge.
