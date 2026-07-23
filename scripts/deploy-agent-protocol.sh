@@ -394,11 +394,9 @@ else:
     if env.get("CONVMEM_MCP_PROFILE") != "shell":
         env["CONVMEM_MCP_PROFILE"] = "shell"
         changed = "updated"
-    # Never re-inject DEEPSEEK_API_KEY — mcp_server loads env.local
-    if "DEEPSEEK_API_KEY" in env and (
-        not env["DEEPSEEK_API_KEY"]
-        or "REPLACE" in str(env["DEEPSEEK_API_KEY"]).upper()
-    ):
+    # Never keep DEEPSEEK_API_KEY in mcp-config — mcp_server loads env.local
+    # (strip even a present real key so deploy cannot leave secrets in this file)
+    if "DEEPSEEK_API_KEY" in env:
         del env["DEEPSEEK_API_KEY"]
         changed = "updated"
     if "tools" not in block:
