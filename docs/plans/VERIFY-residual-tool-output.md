@@ -39,7 +39,7 @@ exemption and reason. An applicable SHA mismatch is always **FAIL**, never SKIP.
 |---|---|
 | `gate_applicability` | `required` (deploy script + runtime-affecting Crush rule path) |
 | `reason` | Changes `scripts/deploy-agent-protocol.sh` and always-loaded Crush rules behavior |
-| `subject_tip_sha` | (fill at PR tip) |
+| `subject_tip_sha` | ff62a55 |
 | `bugbot_reviewed_sha` | (fill after BugBot run) |
 | Steward | `offer` — bounded PR lifecycle; Ryan may self-drive Cursor |
 
@@ -50,7 +50,7 @@ exemption and reason. An applicable SHA mismatch is always **FAIL**, never SKIP.
 | ID | Check | Result |
 |---|---|---|
 | V0a | ARCHITECTURE accepted on main (#100 / #101) before Execute | PASS — `9f89cd0` on main |
-| V0b | Subject tip is this Execute branch / PR tip | (fill) |
+| V0b | Subject tip is this Execute branch / PR tip | PASS — tip `ff62a55` |
 | V0c | BugBot-reviewed SHA equals subject tip when required | (fill after BugBot) |
 
 ---
