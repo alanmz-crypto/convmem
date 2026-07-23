@@ -2,9 +2,9 @@
 
 | Field | Value |
 |---|---|
-| Status | **Blocked on HITL** — do not start Tasks 0–3 until Ryan accepts [ARCHITECTURE-residual-tool-output.md](ARCHITECTURE-residual-tool-output.md) |
+| Status | **Ready for Execute grant** — architecture accepted on `main` ([#100](https://github.com/alanmz-crypto/convmem/pull/100)); do not start Tasks 0–3 until Ryan says go |
 | Architecture | [ARCHITECTURE-residual-tool-output.md](ARCHITECTURE-residual-tool-output.md) |
-| VERIFY | Create `VERIFY-residual-tool-output.md` from template only after Execute is authorized |
+| VERIFY | Create `VERIFY-residual-tool-output.md` from template when Execute starts |
 | Parent closed | Stage 4 — [EXECUTION-stage4-context-compression.md](EXECUTION-stage4-context-compression.md) stays CLOSED |
 
 ## Human consequence
