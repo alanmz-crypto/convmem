@@ -3,16 +3,16 @@
 ```text
 Planning Status
 
-Phase:        Architecture accepted — Execute not started
-Characters:   Architect, Systems Thinker, Risk Reviewer → Ryan accept
-Functions:    Planner → Builder (pending Execute grant)
-Lanes:        Cursor drafts; Ryan accepted via squash-merge #100
-Authority:    Direction accepted 2026-07-22 — Crush rule deploy still needs Execute Tasks 0–2
+Phase:        Execute in progress (Tasks 0–1); Task 2 soak pending
+Characters:   Architect → Builder (Cursor) → Ryan GATE
+Functions:    Planner → Builder
+Lanes:        Cursor executes on feat branch; Ryan merges
+Authority:    Ryan Execute grant 2026-07-22 — measure after Crush restart
 ```
 
 | Field | Value |
 |---|---|
-| Status | **Accepted** (Ryan, 2026-07-22) — tip on `main` via [#100](https://github.com/alanmz-crypto/convmem/pull/100) `59af015` |
+| Status | **Execute in progress** — architecture accepted via [#100](https://github.com/alanmz-crypto/convmem/pull/100) / status [#101](https://github.com/alanmz-crypto/convmem/pull/101); Task 1 shipping on Execute branch |
 | Parent | Stage 4 context compression **CLOSED** ([ARCHITECTURE-stage4-context-compression.md](ARCHITECTURE-stage4-context-compression.md)) — this is a **new** arc |
 | Owner | Ryan owns merge/grants; Cursor executes after grant |
 | Objective | Cut the ~100k prompt tokens Crush still burns after digests left always-on |
@@ -95,10 +95,8 @@ full re-reads.
 | Auto-summarize already on but weak | Task 0: verify state; do not disable it to “help” |
 | False savings claims | Require Post-style telemetry rows before PASS |
 
-## Exit criteria (this planning phase)
+## Exit criteria
 
 - [x] Ryan **accepted** direction (squash-merge [#100](https://github.com/alanmz-crypto/convmem/pull/100), 2026-07-22).
-- Next: authorize EXECUTION Tasks 0–2 (separate grant); Stage 4 docs stay CLOSED.
-- Reject path N/A after accept.
-
-**Cursor may start Execute only when Ryan grants it** — acceptance of the plan ≠ deploy the Crush rule.
+- [x] Ryan **granted Execute** (2026-07-22) — Tasks 0–1 in flight; Task 2 needs Crush restart + ≥3 sessions.
+- Stage 4 docs stay CLOSED.
