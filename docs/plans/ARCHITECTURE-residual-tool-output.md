@@ -3,16 +3,16 @@
 ```text
 Planning Status
 
-Phase:        Execute in progress (Tasks 0–1); Task 2 soak pending
+Phase:        Closed pending Ryan GATE on Task 2 paperwork
 Characters:   Architect → Builder (Cursor) → Ryan GATE
-Functions:    Planner → Builder
-Lanes:        Cursor executes on feat branch; Ryan merges
-Authority:    Ryan Execute grant 2026-07-22 — measure after Crush restart
+Functions:    Planner → Builder → Reviewer
+Lanes:        Cursor Execute + VERIFY; Ryan merges / reviews
+Authority:    Execute [#102](https://github.com/alanmz-crypto/convmem/pull/102) on main; soak recorded 2026-07-23
 ```
 
 | Field | Value |
 |---|---|
-| Status | **Execute in progress** — architecture accepted via [#100](https://github.com/alanmz-crypto/convmem/pull/100) / status [#101](https://github.com/alanmz-crypto/convmem/pull/101); Task 1 shipping on Execute branch |
+| Status | **Closed (mechanical)** — accepted [#100](https://github.com/alanmz-crypto/convmem/pull/100)/[#101](https://github.com/alanmz-crypto/convmem/pull/101); Execute [#102](https://github.com/alanmz-crypto/convmem/pull/102) `482637b`; Task 2 soak mean ~30.5k vs ~100k band (equal-weight caveat in VERIFY) |
 | Parent | Stage 4 context compression **CLOSED** ([ARCHITECTURE-stage4-context-compression.md](ARCHITECTURE-stage4-context-compression.md)) — this is a **new** arc |
 | Owner | Ryan owns merge/grants; Cursor executes after grant |
 | Objective | Cut the ~100k prompt tokens Crush still burns after digests left always-on |
@@ -28,7 +28,19 @@ If we do nothing: you keep paying that. If we cut the wrong layer: agents hide f
 logs or re-read whole files and erase the savings. This arc picks one primary lever
 and measures before claiming a win.
 
-## Decision (one path — pending accept)
+### Outcome (after Execute + soak)
+
+| | |
+|---|---|
+| **Who** | Cursor shipped; Crush soak measured; Ryan reviews close paperwork |
+| **What** | Thin `tool-output-hygiene` rule on Crush + Task 2 numbers |
+| **When** | [#102](https://github.com/alanmz-crypto/convmem/pull/102) on `main` 2026-07-23; soak same day |
+| **Why** | Stop paying ~100k residual after Stage 4 already fixed standing context |
+| **How** | Always-loaded rule (ranged reads; failure = exit + last N lines); mean soak ~30.5k |
+
+**TL;DR:** Residual path closed mechanically — cheaper Crush soaks observed; not equal-weight proof vs old mega-audits. Details: [VERIFY-residual-tool-output.md](VERIFY-residual-tool-output.md).
+
+## Decision (accepted; Execute landed)
 
 **Primary lever:** a thin always-loaded Crush rule (`tool-output-hygiene`) that caps how
 agents keep shell/file/search output in chat (line/byte budgets; prefer `head` /
@@ -98,5 +110,6 @@ full re-reads.
 ## Exit criteria
 
 - [x] Ryan **accepted** direction (squash-merge [#100](https://github.com/alanmz-crypto/convmem/pull/100), 2026-07-22).
-- [x] Ryan **granted Execute** (2026-07-22) — Tasks 0–1 in flight; Task 2 needs Crush restart + ≥3 sessions.
-- Stage 4 docs stay CLOSED.
+- [x] Ryan **granted Execute** (2026-07-22); Tasks 0–1 landed [#102](https://github.com/alanmz-crypto/convmem/pull/102).
+- [x] Task 2 soak recorded (mean ~30.5k; equal-weight caveat in VERIFY); Task 3 SKIP.
+- Stage 4 docs stay CLOSED. Ryan GATE = review Task 2 paperwork after merge.

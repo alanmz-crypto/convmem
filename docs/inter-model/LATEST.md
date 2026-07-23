@@ -1,11 +1,18 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-22 (Crush tool-output residual Execute Tasks 0–1)
+**Updated:** 2026-07-23 (Crush tool-output residual Task 2 soak closed)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Crush tool-output residual EXECUTE in progress (2026-07-22):** Architecture accepted via [#100](https://github.com/alanmz-crypto/convmem/pull/100) / status [#101](https://github.com/alanmz-crypto/convmem/pull/101). Who/What: Cursor shipping thin Crush `tool-output-hygiene` rule + deploy wiring so bash/view/grep dumps stop dominating the ~100k prompt bill. When: Execute branch `feat/2026-07-22-residual-tool-output-execute` (PR pending). Why: Stage 4 left standing ~6k but residual tool rebill remains. How: after merge/deploy, **restart Crush**, then ≥3 comparable sessions for Task 2 (`prompt_tokens` vs ~98–107k). VERIFY: [`../plans/VERIFY-residual-tool-output.md`](../plans/VERIFY-residual-tool-output.md). Stage 4 stays CLOSED.
+- **Crush tool-output residual CLOSED pending Ryan GATE (2026-07-23):**  
+  **Consequence:** Crush routine digs in the Task 2 soak sat ~**30k** prompt tokens instead of the old ~**100k** residual — cheaper if agents keep tool dumps thin; we did **not** start an MCP-clipping follow-on.  
+  **Who:** Cursor Execute + VERIFY; Crush/`deepseek-v4-flash` soak; Ryan reviews paperwork.  
+  **What:** Always-loaded `tool-output-hygiene` (ranged bash/view/grep; failures still show exit + last lines).  
+  **When:** [#102](https://github.com/alanmz-crypto/convmem/pull/102) → `main` [`482637b`](https://github.com/alanmz-crypto/convmem/commit/482637b7bf3bfe82eba6007ad8fdf09eeae4ce43); soak same day.  
+  **Why:** Stage 4 fixed standing ~6k; tool-history rebill was still the bill.  
+  **How:** Live rule `~/.config/crush/rules/tool-output-hygiene.md`; three soaks mean ~30.5k vs ~98–107k; Task 3 SKIP.  
+  **Caveat / TL;DR:** Short guided soaks — not equal-weight proof vs old mega-audits; Stage 4 stays CLOSED. Plans: [`../plans/ARCHITECTURE-residual-tool-output.md`](../plans/ARCHITECTURE-residual-tool-output.md), [`../plans/EXECUTION-2026-07-22-residual-tool-output.md`](../plans/EXECUTION-2026-07-22-residual-tool-output.md), [`../plans/VERIFY-residual-tool-output.md`](../plans/VERIFY-residual-tool-output.md).
 
 - **Copilot CLI Tier A surface LANDED + DEPLOYED (2026-07-22):** Squash-merged [#97](https://github.com/alanmz-crypto/convmem/pull/97) to `main` as [`8b0f53f`](https://github.com/alanmz-crypto/convmem/commit/8b0f53f). Who/What: Cursor land of GitHub Copilot **CLI** session adapter + watch/doctor/open_source + always-on instructions (filename A: `config/copilot-instructions-convmem.example.md`) + key-omitted MCP example; not GitHub.com Copilot billing/PR settings. When: merge + `deploy-agent-protocol.sh` same day (always-on + optional `--agent convmem` synced; `mcp_copilot` PASS). Why: end COMBINE residue from cross-arc consolidation so plain `copilot` is ingestible and ritual-capable on `main`. How: Track A via `~/.copilot/session-state/<uuid>/events.jsonl`; docs [`../COPILOT-SESSION-ADAPTER.md`](../COPILOT-SESSION-ADAPTER.md). Parallel Kiro generate/deploy tip folded under filename A — do not revive `copilot-instructions.example.md`. **Does not authorize** expanding the scarce GitHub Copilot audit lane or GitHub-hosted spend.
 

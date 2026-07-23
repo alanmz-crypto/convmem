@@ -2,9 +2,9 @@
 
 | Field | Value |
 |---|---|
-| Status | **Execute in progress** (Ryan granted 2026-07-22) — Tasks 0–1 done (rule deployed); Task 2 pending Crush restart + ≥3 sessions |
+| Status | **Execute complete** — Tasks 0–2 done; Task 3 SKIP; landed [#102](https://github.com/alanmz-crypto/convmem/pull/102) `482637b`; soak mean ~30.5k (see VERIFY) |
 | Architecture | [ARCHITECTURE-residual-tool-output.md](ARCHITECTURE-residual-tool-output.md) |
-| VERIFY | [VERIFY-residual-tool-output.md](VERIFY-residual-tool-output.md) — Task 0 PASS; Task 1 at tip; Task 2 PENDING |
+| VERIFY | [VERIFY-residual-tool-output.md](VERIFY-residual-tool-output.md) — Tasks 0–2 PASS (soak-class caveat); Task 3 SKIP |
 | Parent closed | Stage 4 — [EXECUTION-stage4-context-compression.md](EXECUTION-stage4-context-compression.md) stays CLOSED |
 
 ## Human consequence
@@ -12,6 +12,20 @@
 Each task below exists to lower Crush token spend without making agents blind to
 failures. Skipping measurement (Task 2) means we might ship a rule that feels
 virtuous but does not change your bill.
+
+### Close summary (2026-07-23)
+
+| | |
+|---|---|
+| **Who** | Cursor Execute; you ran three Crush soaks; Ryan GATE on docs |
+| **What** | Tasks 0–2 done; Task 3 (MCP clips) skipped |
+| **When** | Rule on `main` via [#102](https://github.com/alanmz-crypto/convmem/pull/102); soak afternoon of merge |
+| **Why** | Prove the rule changed the bill class, not just the git history |
+| **How** | Mean ~30.5k `prompt_tokens` on three `deepseek-v4-flash` digs vs ~98–107k band |
+
+**Consequence:** you can treat the residual-tool-output lever as shipped for routine Crush work; only reopen MCP clipping if future heavy sessions climb back above ~90k with fat MCP dumps.
+
+**TL;DR:** Measured close — ~30k soak mean, no Task 3; caveat = short sessions ≠ equal-weight ~100k audits.
 
 ## Preconditions
 
@@ -59,8 +73,9 @@ virtuous but does not change your bill.
 
 ### Close
 
-- Update architecture/execution status; leave Stage 4 untouched.
-- Optional: one Active-handoff line in `docs/inter-model/LATEST.md` after land.
+- [x] Architecture/execution/VERIFY status updated; Stage 4 untouched.
+- [x] Active-handoff line in `docs/inter-model/LATEST.md` (2026-07-23).
+- [x] Task 3 SKIP with evidence (mean ~30.5k).
 
 ## Explicitly out of scope
 

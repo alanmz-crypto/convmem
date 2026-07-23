@@ -25,6 +25,30 @@ exemption and reason. An applicable SHA mismatch is always **FAIL**, never SKIP.
 
 ---
 
+## Human consequence (read this first)
+
+*Required on filled VERIFY / arc close. Keep all V0–Vn tables below — they are
+the project map. This section is for Ryan (and the next human) without opening
+check rows.*
+
+**Consequence:** …what changes for Ryan if this arc is accepted / closed…
+
+### 5 Ws
+
+| | |
+|---|---|
+| **Who** | … |
+| **What** | … |
+| **When** | … |
+| **Why** | … |
+| **How** | … |
+
+**TL;DR:** …
+
+**Honest limits / caveats (if any):** …
+
+---
+
 ## Scope lock
 
 | In scope | Out of scope |
