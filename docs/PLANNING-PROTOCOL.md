@@ -133,6 +133,9 @@ Revise Planning (on FAIL) or arc close
 **Arc rule:** Every arc must have `docs/plans/VERIFY-<slug>.md` before close
 (copy [`plans/VERIFY-TEMPLATE.md`](plans/VERIFY-TEMPLATE.md)). Stub during
 Execution Planning is OK; fill and run after Execute. Ryan may waive in writing.
+Filled VERIFY (and arc-close / Execute PRs) must lead with **consequence → 5 Ws →
+TL;DR** for humans **and** keep the mechanical check tables — both layers are
+required (see VERIFY-PLANNING minimum bar and AGENTS.md PR summary guidance).
 
 ---
 

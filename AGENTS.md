@@ -34,12 +34,18 @@ Write commit messages that a new contributor can understand without reading the 
 
 Write a PR summary that explains the change without requiring the reader to open files or inspect the diff. Same as commit messages: this is guidance, not an enforced check.
 
+**Required body shape (consequence → 5 Ws → TL;DR):** lead with what changes for Ryan (or the next human), then Who/What/When/Why/How, then a short TL;DR. Keep identifiers (PR numbers, SHAs, paths) copy-pasteable. Scale down for tiny PRs (one consequence sentence + one-line 5 Ws or TL;DR is enough); do not omit the human layer on arc-close or Execute PRs.
+
+**Also keep mapping detail when it exists:** Test plans, VERIFY check tables, SHAs, and scope locks stay — they help agents and future you map the project. The human layer sits **above** that machinery; it does not replace it.
+
 **Guidelines:**
 - Title: concise, user-facing description of what changed and why.
-- Body (1-2 paragraphs max): problem being solved, approach taken, any notable tradeoffs or risks.
-- List related issues/decisions if applicable (use `Closes #...` or `Refs dec_prop_...`).
+- After the human layer: problem/approach/tradeoffs as needed; related issues (`Closes #...`, `Refs dec_prop_...`).
 - If this is a multi-commit PR, the body should summarize the overall change, not re-list individual commits.
 - Bad title: `Refactor session store initialization`
 - Good title: `Make session loading resilient to corrupt metadata files`
 
-**All surfaces (Cursor, Crush, Kiro, Codex) should follow this guidance.**
+**All surfaces (Cursor, Crush, Kiro, Codex) should follow this guidance.** Keep
+`.cursor/rules/commit-pr-quality.mdc`,
+`config/crush-rules-commit-pr-quality.example.md`, and
+`config/kiro-steering-commit-pr-quality.example.md` in sync with this section.
