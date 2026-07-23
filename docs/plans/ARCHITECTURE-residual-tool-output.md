@@ -3,18 +3,18 @@
 ```text
 Planning Status
 
-Phase:        Architecture Planning — awaiting HITL
-Characters:   Architect, Systems Thinker, Risk Reviewer
-Functions:    Planner
-Lanes:        Cursor drafts; Kiro review recommended; Ryan accepts
-Authority:    Draft direction only — no Crush rule deploy, no MCP clip changes
+Phase:        Architecture accepted — Execute not started
+Characters:   Architect, Systems Thinker, Risk Reviewer → Ryan accept
+Functions:    Planner → Builder (pending Execute grant)
+Lanes:        Cursor drafts; Ryan accepted via squash-merge #100
+Authority:    Direction accepted 2026-07-22 — Crush rule deploy still needs Execute Tasks 0–2
 ```
 
 | Field | Value |
 |---|---|
-| Status | **Awaiting HITL** (Ryan accept / revise / reject) |
+| Status | **Accepted** (Ryan, 2026-07-22) — tip on `main` via [#100](https://github.com/alanmz-crypto/convmem/pull/100) `59af015` |
 | Parent | Stage 4 context compression **CLOSED** ([ARCHITECTURE-stage4-context-compression.md](ARCHITECTURE-stage4-context-compression.md)) — this is a **new** arc |
-| Owner | Ryan owns accept + merge; Cursor drafts; Crush is the measurement surface |
+| Owner | Ryan owns merge/grants; Cursor executes after grant |
 | Objective | Cut the ~100k prompt tokens Crush still burns after digests left always-on |
 | Non-goals | Reopen Stage 4 digests; compact `brief`; mass protocol trim; GitHub Copilot spend settings |
 
@@ -97,8 +97,8 @@ full re-reads.
 
 ## Exit criteria (this planning phase)
 
-- Ryan (and optionally Kiro) **accept / revise / reject** this direction.
-- On **accept** → authorize EXECUTION tasks (separate grant); Stage 4 docs stay CLOSED.
-- On **reject** → stop; no Crush rule deploy.
+- [x] Ryan **accepted** direction (squash-merge [#100](https://github.com/alanmz-crypto/convmem/pull/100), 2026-07-22).
+- Next: authorize EXECUTION Tasks 0–2 (separate grant); Stage 4 docs stay CLOSED.
+- Reject path N/A after accept.
 
-**Cursor stops at HITL** — no implementing Crush rules or MCP clips from this draft alone.
+**Cursor may start Execute only when Ryan grants it** — acceptance of the plan ≠ deploy the Crush rule.
