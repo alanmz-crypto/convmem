@@ -8,7 +8,7 @@
 - **Crush freezes + Qwen/DeepSeek billing routing (2026-07-23) — VERIFY PASS; PR [#106](https://github.com/alanmz-crypto/convmem/pull/106) open:**  
   **Consequence:** Crush should stop multi-minute “waiting for tool” hangs (MCP disabled; shell `convmem` only); when Cursor tokens run dry, use Crush on **Qwen3.7-Max** then **DeepSeek V4 Pro/Flash**.  
   **Who:** Cursor implementer + live Crush/`qwen3.7-max` soak; Ryan merge.  
-  **What:** Branch `fix/2026-07-23-crush-qwen-stability` tip `0d14617` — MCP `disabled`, Qwen defaults, DeepSeek coverage seat, Continue DashScope Qwen, billing routing docs.  
+  **What:** Branch `fix/2026-07-23-crush-qwen-stability` tip `dc9fcc8` — MCP `disabled`, Qwen defaults, DeepSeek coverage seat, Continue DashScope Qwen, billing routing docs.  
   **When:** 2026-07-23 evening; V1/V2/V5 PASS; PR opened.  
   **Why:** Crush MCP client wedged on `search_fast` (server idle); IDE quotas exhaust mid-cycle while Alibaba/DeepSeek still have headroom.  
   **How:** PR [#106](https://github.com/alanmz-crypto/convmem/pull/106); checklist: [`CURSOR-2026-07-23-crush-qwen-stability-handoff.md`](CURSOR-2026-07-23-crush-qwen-stability-handoff.md). Paste openers: [`../CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md), [`../CRUSH-DEEPSEEK-BOOTSTRAP.md`](../CRUSH-DEEPSEEK-BOOTSTRAP.md).  
