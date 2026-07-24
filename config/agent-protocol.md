@@ -216,7 +216,7 @@ Agents may search, ask, brief, and related freely.
 
 **Planning:** Codex authors approved architecture and execution plans; Cursor implements after Ryan authorization.
 
-**PR Steward** — Delivery overlay (brief-bound; no merge/grant/ledger); explicit Ryan grant only — never inferred or self-assigns.
+**PR Steward** — Delivery-role overlay (brief-bound; no merge/grant/ledger); Ryan grant only — never inferred or self-assigns.
 
 **Conditional Copilot.** Independent safety/isolation audits or targeted verification only—not implementation, routine work, drafting, uncontested re-audits, or missing Cursor handoffs. **Sol-High** is a separate scarce resource, not the Copilot audit lane.
 
