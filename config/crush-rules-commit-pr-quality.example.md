@@ -41,9 +41,11 @@ must not.
 SHAs, and scope locks stay — they help agents map the project. The human layer
 sits **above** that machinery; it does not replace it.
 
+**Squash-merge default (Ryan, 2026-07-23):** Ryan **squash-merges every PR** unless an agent **explicitly** says not to. Agents must assume squash is fine. When commit history on `main` must be preserved (rare — e.g. signed bisect points, commit-by-commit provenance already under review), the PR body and handoff must include a clear **`Do not squash`** line with a one-sentence reason. Silence = squash OK.
+
 After the human layer: problem/approach/tradeoffs as needed; related issues
 (`Closes #...`, `Refs dec_prop_...`). Summarize the overall change — not
-individual commits.
+individual commits. Squash will collapse WIP history — write the PR title/body as the eventual `main` commit message.
 
 <!-- Canonical source: AGENTS.md. This Crush deployed template is copied from
 config/crush-rules-commit-pr-quality.example.md by deploy-agent-protocol.sh. -->
