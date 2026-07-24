@@ -245,13 +245,37 @@ Ryan clarified: **Codex does not need to file; there is no open Codex workspace.
 |---|---|---|
 | Research pack | ON_GITHUB | PR #114 merged |
 | Architecture Direction | ON_GITHUB | Draft PR #115 @ `c9a5c70` |
-| `docs/audit-ledger-first/` | LOCAL_ONLY on shared root — **delegated** | WS-main-cursor salvage PR (I did not author; will not commit) |
-| ChatGPT→Codex handoff md | LOCAL_ONLY on shared root — **delegated** | WS-main-cursor salvage PR |
-| Local `LATEST.md` M | LOCAL_ONLY — **delegated** | WS-main-cursor salvage PR |
-| Coord board `/tmp/convmem-coord-…` | ephemeral — discard OK | N/A |
-| This recon narrative | ON_BOARD only | optional Track A later; not required for takeover |
+| `docs/audit-ledger-first/` + README | ON_GITHUB | [#116](https://github.com/alanmz-crypto/convmem/pull/116) @ `05c5567` (corrections still debt) |
+| ChatGPT→Codex handoff md | ON_GITHUB | #116 (supersession banner) |
+| Recon takeover brief + local plans status | ON_GITHUB | #116 |
+| Coord board + Round 1–3 prompts | ON_GITHUB | #116 (`COORD-…BOARD.md`, `PROMPT-ROUND-*.md`) |
+| `LATEST.md` Active pointer (#115 HITL) | ON_GITHUB | #116 |
+| Shared-root dirty copies | LOCAL_DUPLICATE | discard after #116 is accepted/browsable — do not commit onto research-pack branch |
+| Coord `/tmp/convmem-coord-…` | ephemeral | snapshot also on #116 |
 
-**Commits/PRs I opened:** none (non-writer on shared root)  
-**Safe to close this chat:** **yes** — after WS-main-cursor lands salvage PR (or Ryan says discard local residue). Nothing unique to this chat must be on GitHub beyond #115 verification already recorded on the board.  
+**Commits/PRs I opened:** [#116](https://github.com/alanmz-crypto/convmem/pull/116) via isolated worktree `/tmp/convmem-shadow-ledger-phase0-salvage` (did **not** switch/commit on shared research-pack checkout). Ryan asked this chat to put all relevant work on GitHub including recon context — executed here rather than waiting on WS-main-cursor.  
+**Safe to close this chat:** **yes** — takeover data is on #116 + Architecture on #115.  
+**Primary takeover workspace:** any single Cursor chat reading #115 + #116 (prefer one on `/home/lauer/Projects/convmem` after discarding duplicate dirty files).  
+**TL;DR:** Salvage PR #116 @ `05c5567` parks audit/handoff/coord/takeover on GitHub; this chat can close; Architecture review remains #115.
+
+### Salvage receipt — WS-cursor-shadow-handoff
+
+| Artifact | Status | GitHub home |
+|---|---|---|
+| Research pack | ON_GITHUB | PR #114 merged |
+| Architecture Direction | ON_GITHUB | Draft PR #115 @ `c9a5c70` |
+| `docs/audit-ledger-first/` (8) | LOCAL_ONLY on shared root — **delegated** | WS-main-cursor salvage PR (I will not commit) |
+| `CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md` | LOCAL_ONLY — authored here — **delegated** | WS-main-cursor salvage PR; mark superseded-by-#115 in PR body |
+| Local `LATEST.md` M | LOCAL_ONLY — **delegated** | WS-main-cursor salvage PR → “#115 awaiting HITL” |
+| ChatGPT Codex work order (verbatim; never written to repo) | LOCAL_ONLY staged under `/tmp` — **delegated** | Include from `/tmp/convmem-coord-2026-07-24-workspaces/Round3-salvage-WS-cursor-shadow-handoff/CHATGPT-CODEX-WORK-ORDER-shadow-ledger-phase0.md` |
+| Inter-model takeover context (Codex 8 corrections, Claude scope, §10 backup gate, Qwen YELLOW) | LOCAL_ONLY staged under `/tmp` — **delegated** | Include `INTER-MODEL-CONTEXT-FOR-TAKEOVER.md` from same staging dir |
+| `~/.cursor/plans/shadow_ledger_phase_0_cadca832.plan.md` | LOCAL_ONLY (copied to staging) — optional commit | Same staging dir; packaging superseded by #115 |
+| `~/.cursor/plans/codex_phase_0_work_order_940805a0.plan.md` | LOCAL_ONLY (copied to staging) — optional commit | Note: Codex handoff file **never written**; do not re-execute packaging |
+| Coord board `/tmp/convmem-coord-…` | ephemeral | N/A |
+
+**Commits/PRs I opened:** none (non-writer on shared root; confirmed no `git add` / commit / branch switch)  
+**Staging for WS-main-cursor:** `/tmp/convmem-coord-2026-07-24-workspaces/Round3-salvage-WS-cursor-shadow-handoff/` (README + work order + context + two plan copies)  
+**Safe to close this chat:** **yes** — after WS-main-cursor lands salvage PR that includes (a) working-tree audit + ChatGPT handoff + LATEST reconcile and (b) the `/tmp` staging unique bits (or Ryan explicitly discards). Unique narrative not on disk elsewhere: full ChatGPT Codex work order + packaging-plan provenance.  
 **Primary takeover workspace:** WS-main-cursor  
-**TL;DR:** Recon has nothing unique to push; salvage of dirty shared-root files is delegated to WS-main-cursor per Round 3 prompt.
+**TL;DR:** Delegated salvage; staged unique chat-only artifacts under `/tmp/.../Round3-salvage-WS-cursor-shadow-handoff/` for WS-main-cursor to put on a dedicated docs PR (not research-pack, not #115 edits).
+

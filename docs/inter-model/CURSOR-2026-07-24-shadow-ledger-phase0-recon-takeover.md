@@ -23,10 +23,14 @@ Architecture [#115](https://github.com/alanmz-crypto/convmem/pull/115). Do
 
 ## Salvaged in this PR (was local-only)
 
+**Salvage PR:** [#116](https://github.com/alanmz-crypto/convmem/pull/116) @ `05c5567`  
+**Branch:** `docs/2026-07-24-shadow-ledger-phase0-salvage`
+
 | Artifact | Path |
 |---|---|
 | Qwen audit baseline (8 files) + status README | `docs/audit-ledger-first/` |
 | ChatGPT→Codex advice handoff | `docs/inter-model/CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md` |
+| Local plans status (paths only) | `docs/inter-model/CURSOR-2026-07-24-shadow-ledger-local-plans-status.md` |
 | Workspace coordination board snapshot | `docs/inter-model/COORD-2026-07-24-shadow-ledger-workspaces-BOARD.md` |
 | Coord Round 1–3 prompts | `docs/inter-model/PROMPT-ROUND-*.md` |
 | This takeover brief | this file |
