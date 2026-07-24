@@ -1,5 +1,8 @@
 # Crush + DeepSeek v4 — session bootstrap
 
+**Prefer Qwen for ConvMem:** use [`CRUSH-QWEN-BOOTSTRAP.md`](CRUSH-QWEN-BOOTSTRAP.md)
+(Qwen3.7-Max) unless you specifically need DeepSeek.
+
 **For Ryan:** Paste this as the **first message** in a new Crush session (DeepSeek v4 Pro provider).
 
 ---
