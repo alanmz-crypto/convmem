@@ -1,6 +1,6 @@
 # Crush + convmem verification
 
-**Updated:** 2026-06-25
+**Updated:** 2026-07-23
 
 ## Alien-workspace soak
 
@@ -14,12 +14,30 @@ Prompt (unprompted): *What's the current state of this project?*
 
 ## Model matrix (Crush)
 
-| Model | Alien soak | Notes |
-|-------|------------|-------|
-| **qwen3-coder:30b** (local) | Recommended | Best tool + rule following for protocol soak |
-| **DeepSeek V4 Flash** | Mixed | PASS when rules salient (#9, willowyhollow 2026-06-28); FAIL bash-only (#6, #8) |
-| **DeepSeek V4 Pro** | **PASS (hook + restart)** | Pre-restart FAIL: ComfyUI 21:35:33 `git`/`ls` first, `crush.log` `decision:none`. Post-restart PASS: 23:02:28 session `b8f40eaa` — first tool `convmem doctor && brief && unresolved`, debug log `ritual complete` build `v3-20260628` |
-| DeepSeek R1 | untested | |
+| Model | Role | Notes |
+|-------|------|-------|
+| **Qwen3.7-Max** (Alibaba Singapore) | **Default large / lead architect** | Best for ConvMem architecture, planning, cross-doc, long reasoning. Prefer this. |
+| **Qwen3.7-Plus** | Fallback large | When Max is busy or slower |
+| **Qwen3.6-Plus** | Daily drafting | Balanced |
+| **Qwen3.6-Flash** | Default small | Fast brainstorm / light turns |
+| **Kimi K2.7 Code** | Coding specialist | Intensive implementation; not default for governance |
+| **qwen3-coder:30b** (local Ollama) | Offline soak | Best local tool + rule following when cloud unavailable |
+| **DeepSeek V4 Flash** | Legacy | Mixed soak; prefer Qwen3.7-Max |
+| **DeepSeek V4 Pro** | Legacy | PASS with hook + restart historically; prefer Qwen3.7-Max |
+
+Bootstrap paste: [`docs/CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md).
+
+### Freeze / MCP hang checklist (2026-07-23)
+
+Symptoms: UI stuck on `mcp_convmem_*`; `crush.log` shows `MCP client failed to initialize` / `context canceled`.
+
+Likely causes:
+
+1. **Many Crush TTYs** — each spawns `mcp_server.py`; prune to one Crush.
+2. **Swap pressure** — full swap + heavy refine/Kiro MCP on GPU makes search feel frozen.
+3. **MCP timeout** — `~/.config/crush/crush.json` `mcp.convmem.timeout` should be ≥180s.
+
+Mitigation for the model: cancel hung MCP → use shell `convmem` / `convmem ask`.
 
 ## If DeepSeek V4 Pro skips convmem
 

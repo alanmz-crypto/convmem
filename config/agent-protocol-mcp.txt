@@ -72,7 +72,7 @@ bash ~/Projects/convmem/scripts/sync-willowyhollow-handoff.sh
 
 Avoid **"index what you wrote"** alone — models treat that as the markdown log, skip chat.
 
-**Crush:** you are **Crush lane** even when running DeepSeek V4 weights. Say **Crush found it** — not "DeepSeek found it."
+**Crush:** you are **Crush lane** even when running Qwen / DeepSeek / Kimi weights. Say **Crush found it** — not the provider name. Default Crush model for ConvMem: **Qwen3.7-Max** (architecture / planning / synthesis); **Kimi K2.7 Code** only for intensive code generation. If `mcp_convmem_*` hangs or returns `context canceled`, cancel and use shell `convmem "…"` / `convmem ask "…"`.
 
 1. **Search first** — `convmem "topic"` / `ask` before re-deriving from scratch.
 2. **`record`** — one closing **conclusion** only (not per-finding). Detail stays in chat ingest + indexed logs.
