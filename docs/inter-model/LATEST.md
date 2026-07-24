@@ -1,9 +1,16 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-23 (#106 landed; squash-merge default follow-up)
+**Updated:** 2026-07-24 (#109 Codex planning / Cursor execution landed + deployed)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Codex planning / Cursor execution LANDED + DEPLOYED (2026-07-24):** Squash-merged [#109](https://github.com/alanmz-crypto/convmem/pull/109) to `main` as [`982a502`](https://github.com/alanmz-crypto/convmem/commit/982a5028400cd9d5c45201e1cd127ea1d5b663ef).  
+  **Consequence:** Live overlays name **Codex** for architecture/execution planning and **Cursor** for implementation; Planning Guide Contract **v2** (actor-neutral HITL stop).  
+  **Who:** Codex Architecture + Execution/VERIFY; Kiro plan PASS @ `0096d56`; Cursor Execute; BugBot clean @ `a77dbc0`; Ryan merge + deploy.  
+  **What/When/Why/How:** Plans [`../plans/ARCHITECTURE-codex-planning-cursor-execution.md`](../plans/ARCHITECTURE-codex-planning-cursor-execution.md), [`../plans/EXECUTION-2026-07-24-codex-planning-cursor-execution.md`](../plans/EXECUTION-2026-07-24-codex-planning-cursor-execution.md), [`../plans/VERIFY-codex-planning-cursor-execution.md`](../plans/VERIFY-codex-planning-cursor-execution.md). Deploy: `scripts/deploy-agent-protocol.sh` from `origin/main`. Copilot targeted audit not invoked. PR Steward not granted.  
+  **TL;DR:** Lane split is on `main` and live; VERIFY GATE accepted.
+
 
 - **Crush freezes + Qwen/DeepSeek billing routing LANDED (2026-07-23):** Squash-merged [#106](https://github.com/alanmz-crypto/convmem/pull/106) to `main` as [`67b020f`](https://github.com/alanmz-crypto/convmem/commit/67b020fd7fd545cd583496f2bb6a1808bfc53f7b).  
   **Consequence:** Crush uses shell `convmem` (MCP disabled) to avoid tool hangs; Cursor-dry work goes to Crush **Qwen3.7-Max**, with **DeepSeek V4 Pro/Flash** as second cloud seat.  

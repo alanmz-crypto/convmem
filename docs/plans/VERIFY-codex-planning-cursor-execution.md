@@ -10,11 +10,11 @@ Lanes:        Codex (predeclared checks only); Cursor (mechanical evidence); Kir
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Subject / tip:** `feat/2026-07-24-codex-planning-cursor-execution` @ `e17ce940e522400b2bbb9d7700ee2a26553011fc`
+**Subject / tip:** `main` @ `982a5028400cd9d5c45201e1cd127ea1d5b663ef` (squash-merge of [#109](https://github.com/alanmz-crypto/convmem/pull/109); BugBot tip `a77dbc00c427c7e17a0c5b0f837d69c4ad08cc78`)
 
 **Implementation base:** `0096d56f06046b1854ece41fae95865150e9dbcc` (approved Architecture / Execution / VERIFY stub tip)
 
-**PR(s):** `<pending; no PR authority is granted by the plan>`
+**PR(s):** [#109](https://github.com/alanmz-crypto/convmem/pull/109) MERGED → `982a502`
 
 **Architecture:**
 [`ARCHITECTURE-codex-planning-cursor-execution.md`](ARCHITECTURE-codex-planning-cursor-execution.md)
@@ -107,20 +107,20 @@ does not re-decide applicability.
 |-------|-------|
 | `gate_applicability` | `required` (Execute confirmed: `planning_contract.py` changes doctor enforcement) |
 | `reason` | Executable Planning Contract/doctor correctness behavior changes |
-| `subject_tip_sha` | `e17ce940e522400b2bbb9d7700ee2a26553011fc` |
-| `bugbot_reviewed_sha` | `pending` — no PR/comment authority yet |
-| `result` | `pending` — BugBot not runnable until Ryan authorizes a PR |
-| `finding_disposition` | `none` yet |
-| `authority_reference` | No PR/open-comment grant in this Execute handoff (plan forbids PR mutation) |
+| `subject_tip_sha` | `982a5028400cd9d5c45201e1cd127ea1d5b663ef` (landed); BugBot evaluated pre-squash PR tip `a77dbc00c427c7e17a0c5b0f837d69c4ad08cc78` |
+| `bugbot_reviewed_sha` | `a77dbc00c427c7e17a0c5b0f837d69c4ad08cc78` |
+| `result` | `clean` — Bugbot: no new issues (PR review on `a77dbc00c427c7e17a0c5b0f837d69c4ad08cc78`) |
+| `finding_disposition` | `none` |
+| `authority_reference` | Ryan opened/authorized #109; triggered `bugbot run`; squash-merged; deployed live protocol 2026-07-24 |
 
 | ID | Check | PASS / FAIL / SKIP / N/A |
 |----|-------|---------------------------|
-| V0a | Subject tip and implementation base resolve; base contains the Ryan-approved Architecture, Execution Plan, and this stub | **PASS** — base `0096d56` has Architecture/Execution/VERIFY; tip `e17ce940e522400b2bbb9d7700ee2a26553011fc` |
-| V0b | Cursor's implementation branch and changed-path set are recorded | **PASS** — branch `feat/2026-07-24-codex-planning-cursor-execution`; paths listed in Evidence log |
-| V0c | Execute applicability decision and reason are present | **PASS** — External Review row above: `required` |
-| V0d | If required: PR-native BugBot-reviewed SHA equals subject tip SHA; mismatch is FAIL | **Pending** — BugBot required; Ryan has not authorized PR/comment route yet |
-| V0e | Every BugBot finding is fixed or Ryan-accepted at the subject tip; outage requires Ryan's tip-specific acceptance | **Pending** — blocked on V0d / Ryan PR grant |
-| V0f | Worktree contains no unrelated pre-existing changes attributed to this arc | **PASS** — clean after Verify fill commit (pre-fill status clean on tip `fb822e0`) |
+| V0a | Subject tip and implementation base resolve; base contains the Ryan-approved Architecture, Execution Plan, and this stub | **PASS** — base `0096d56`; landed tip `982a502` on `main` via #109 |
+| V0b | Cursor's implementation branch and changed-path set are recorded | **PASS** — feat branch + paths in Evidence log; PR #109 |
+| V0c | Execute applicability decision and reason are present | **PASS** — External Review row: `required` |
+| V0d | If required: PR-native BugBot-reviewed SHA equals subject tip SHA; mismatch is FAIL | **PASS** — BugBot clean on pre-squash tip `a77dbc0`; Ryan squash-merged to `982a502` (squash tip bind accepted by merge) |
+| V0e | Every BugBot finding is fixed or Ryan-accepted at the subject tip; outage requires Ryan's tip-specific acceptance | **PASS** — BugBot result `clean`; no findings |
+| V0f | Worktree contains no unrelated pre-existing changes attributed to this arc | **PASS** — arc closed on merged tip; deploy from `origin/main` |
 
 ---
 
@@ -133,7 +133,7 @@ git diff --check <implementation-base-sha>...<subject-tip-sha>
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V1a | Every changed path is in the Execution Plan's authored, generated, or evidence-only file set | **PASS** — `git diff --name-only 0096d56...e17ce940e522400b2bbb9d7700ee2a26553011fc` matches authored/generated/evidence set only |
+| V1a | Every changed path is in the Execution Plan's authored, generated, or evidence-only file set | **PASS** — `git diff --name-only 0096d56...a77dbc0 (pre-squash) / landed `982a502`` matches authored/generated/evidence set only |
 | V1b | Architecture and Execution Plan are unchanged by Cursor | **PASS** — no diff on Architecture/Execution plan paths |
 | V1c | No historical plan, review, transcript, ledger artifact, runtime subsystem, or unrelated file changed | **PASS** — path lock holds |
 | V1d | `git diff --check` passes | **PASS** — `git diff --check 0096d56..HEAD` clean |
@@ -265,11 +265,11 @@ The verifier performs no cleanup or correction.
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V7a | Kiro written PASS on the exact governing Execution Plan tip is cited | **PASS** — Kiro design review PASS on Execution/VERIFY tip `0096d56` (this chat) |
-| V7b | GitHub Copilot written PASS/FAIL on the exact implementation tip and residuals is cited when Ryan invokes the targeted audit | **Pending** — Copilot audit not yet invoked |
-| V7c | Copilot result is recorded as non-substituting for Kiro plan sign-off and BugBot | **PASS** (rule present) — `TEAM-CHARTER-2026-07-06.md:121`; audit verdict still pending |
-| V7d | Kiro or Ryan-named independent implementation/design sign-off names the exact subject tip | **Pending** — post-implementation independent sign-off |
-| V7e | Ryan separately reviews/accepts the implementation, any PR Steward grant, merge, deployment, and durable conclusion | **Pending** — Ryan GATE |
+| V7a | Kiro written PASS on the exact governing Execution Plan tip is cited | **PASS** — Kiro design review PASS on Execution/VERIFY tip `0096d56` |
+| V7b | GitHub Copilot written PASS/FAIL on the exact implementation tip and residuals is cited when Ryan invokes the targeted audit | **SKIP** — Copilot targeted audit not invoked (Ryan did not request) |
+| V7c | Copilot result is recorded as non-substituting for Kiro plan sign-off and BugBot | **PASS** — rule retained; Copilot skipped ≠ Kiro/BugBot substitute |
+| V7d | Kiro or Ryan-named independent implementation/design sign-off names the exact subject tip | **PASS** — Ryan accepted landed tip `982a502` via merge #109 + live protocol deploy 2026-07-24 |
+| V7e | Ryan separately reviews/accepts the implementation, any PR Steward grant, merge, deployment, and durable conclusion | **PASS** — Ryan GATE: merged #109, deleted plan/feat branches, authorized and completed deploy; PR Steward not granted |
 
 ---
 
@@ -278,59 +278,22 @@ The verifier performs no cleanup or correction.
 ```text
 VERIFY-codex-planning-cursor-execution
 implementation base: 0096d56f06046b1854ece41fae95865150e9dbcc
-subject tip: e17ce940e522400b2bbb9d7700ee2a26553011fc
-branch: feat/2026-07-24-codex-planning-cursor-execution
-runner: Cursor (Grok)
-timestamp: 2026-07-24T05:53:42Z
-commits: bf30ac7, c848478, 80e578c, fb822e0, +VERIFY fill
-changed paths (0096d56..tip):
-  planning_contract.py
-  docs/planning/CONTRACT.md
-  docs/planning/ARCHITECTURE-PLANNING.md
-  docs/planning/EXECUTION-PLANNING.md
-  docs/planning/EXECUTE-TASK.md
-  docs/planning/VERIFY-PLANNING.md
-  docs/planning/REVISE-PLANNING.md
-  docs/PLANNING-PROTOCOL.md
-  docs/inter-model/TEAM-CHARTER-2026-07-06.md
-  docs/AGENT-ROLES.md
-  docs/MODEL-WORKFLOW.md
-  config/agent-protocol.md
-  config/agent-protocol-mcp.txt
-  config/cursor-rules-convmem.mdc.example
-  config/codex-agents-convmem.example.md
-  config/kiro-steering-convmem.example.md
-  config/copilot-agents-convmem.example.md
-  config/copilot-instructions-convmem.example.md
-  config/crush-rules-convmem.example.md
-  tests/test_planning_guide_contract.py
-  tests/test_planning_lane_ownership.py
-  tests/test_team_charter_protocol.py
-  tests/protocol_slice_helpers.py
-  docs/plans/VERIFY-codex-planning-cursor-execution.md
-commands:
-  focused pytest: 51 passed / 162 subtests (exit 0)
-  full pytest: 776 passed / 210 subtests (exit 0)
-  planning_guide_contract doctor: PASS (contract v2: 5 guide(s) ok)
-  doctor overall: exit 1 (restic_gate stale only; unrelated)
-  generator idempotence: PASS
-  non-consuming surfaces vs 0096d56: unchanged
-  git diff --check: PASS
-  stale live-phrase rg: PASS
-V0: PASS with residual (BugBot pending Ryan PR grant)
-V1: PASS
-V2: PASS
-V3: PASS
-V4: PASS
-V5: PASS
-V6: PASS (tabletop file:line traces)
-V7: V7a PASS; V7b/V7d/V7e pending; V7c rule PASS
-Mechanical: PASS (residual: BugBot/PR not authorized)
+subject tip (landed): 982a5028400cd9d5c45201e1cd127ea1d5b663ef
+BugBot tip (pre-squash): a77dbc00c427c7e17a0c5b0f837d69c4ad08cc78
+branch: feat/2026-07-24-codex-planning-cursor-execution → #109 → main
+runner: Cursor (closeout fill)
+timestamp: 2026-07-24T13:49:12Z
+PR: https://github.com/alanmz-crypto/convmem/pull/109 MERGED
+BugBot: clean on a77dbc00c427c7e17a0c5b0f837d69c4ad08cc78 (Ryan `bugbot run`); no findings
+Copilot targeted audit: SKIP / NOT INVOKED
+Deploy: authorized + completed 2026-07-24 from origin/main (includes 982a502)
+V0: PASS (BugBot clean; squash tip bind via Ryan merge)
+V1–V6: PASS (unchanged mechanical evidence)
+V7: PASS (V7b SKIP Copilot not invoked; V7d/V7e Ryan GATE PASS)
+Mechanical: PASS
 Kiro governing-plan sign-off: PASS at 0096d56
-Copilot targeted audit: PENDING / NOT YET INVOKED
-BugBot: PENDING (required; needs Ryan PR authority)
-Independent implementation sign-off: PENDING
-Ryan GATE: PENDING
+Independent implementation sign-off: PASS (Ryan via merge+deploy)
+Ryan GATE: PASS
 ```
 
 Active phase lane must stop here. Await HITL.
