@@ -29,15 +29,19 @@ Bootstrap paste: [`docs/CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md).
 
 ### Freeze / MCP hang checklist (2026-07-23)
 
-Symptoms: UI stuck on `mcp_convmem_*`; `crush.log` shows `MCP client failed to initialize` / `context canceled`.
+Symptoms: UI stuck on “waiting for tool” 10–15+ min; last log line often
+`PreToolUse` `mcp_convmem_search_fast` with no tool result; MCP child ~60 MB
+RSS idle on stdin (`anon_pipe_read`) — Crush never completes `tools/call`.
 
-Likely causes:
+**Mitigation (applied):** `mcp.convmem.disabled = true` in
+`~/.config/crush/crush.json`. Crush uses shell `convmem` only. Hook
+`search_first` message steers to bash, not MCP.
 
-1. **Many Crush TTYs** — each spawns `mcp_server.py`; prune to one Crush.
-2. **Swap pressure** — full swap + heavy refine/Kiro MCP on GPU makes search feel frozen.
-3. **MCP timeout** — `~/.config/crush/crush.json` `mcp.convmem.timeout` should be ≥180s.
+Also:
 
-Mitigation for the model: cancel hung MCP → use shell `convmem` / `convmem ask`.
+1. **Many Crush TTYs** — prune with `scripts/prune-stale-crush.sh`.
+2. **Swap pressure** — full swap + Kiro MCP on GPU (~2.8 GB) worsens hangs.
+3. Re-enable MCP only after a timed Crush soak proves `search_fast` returns.
 
 ## If DeepSeek V4 Pro skips convmem
 
