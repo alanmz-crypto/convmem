@@ -160,7 +160,7 @@ rg -n 'Billing-cycle model routing|mcp.convmem.disabled|shell only' \
 
 ## PR
 
-- **[#106](https://github.com/alanmz-crypto/convmem/pull/106)** — `fix/2026-07-23-crush-qwen-stability` → `main` (tip `dc9fcc8`)
+- **[#106](https://github.com/alanmz-crypto/convmem/pull/106)** — **MERGED** (squash) to `main` as [`67b020f`](https://github.com/alanmz-crypto/convmem/commit/67b020fd7fd545cd583496f2bb6a1808bfc53f7b) (2026-07-23)
 
 ## Suggested next actions for Ryan
 
