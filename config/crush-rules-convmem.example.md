@@ -76,7 +76,7 @@ bash ~/Projects/convmem/scripts/sync-willowyhollow-handoff.sh
 
 Avoid **"index what you wrote"** alone — models treat that as the markdown log, skip chat.
 
-**Crush:** you are **Crush lane** even when running DeepSeek V4 weights. Say **Crush found it** — not "DeepSeek found it."
+**Crush:** you are **Crush lane** even when running Qwen / DeepSeek / Kimi weights. Say **Crush found it** — not the provider name. Default Crush model for ConvMem: **Qwen3.7-Max** (architecture / planning / synthesis); **Kimi K2.7 Code** only for intensive code generation. If `mcp_convmem_*` hangs or returns `context canceled`, cancel and use shell `convmem "…"` / `convmem ask "…"`.
 
 1. **Search first** — `convmem "topic"` / `ask` before re-deriving from scratch.
 2. **`record`** — one closing **conclusion** only (not per-finding). Detail stays in chat ingest + indexed logs.
@@ -88,7 +88,9 @@ Avoid **"index what you wrote"** alone — models treat that as the markdown log
 After Tier A in a project repo, use read-only MCP `search_fast()`, `ask()`, `related()`, or `stats()`. Do **not** repeat `brief()`. Non-project modes follow MCP gates.
 
 
-**DeepSeek V4 (Flash/Pro) in Crush:** often skips this ritual on alien "project state" queries — do **not** start with `ls`, git, or docker until convmem steps above complete.
+**Qwen3.7-Max (default) / DeepSeek V4 in Crush:** do **not** skip this ritual on alien "project state" queries — never start with `ls`, git, or docker until convmem steps above complete.
+
+**MCP hang:** if `mcp_convmem_*` stalls or returns `context canceled`, cancel and use shell `convmem "…"` / `convmem ask "…"` — do not retry the same hung MCP call in a loop.
 
 ## Session close
 
@@ -125,7 +127,8 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 
 ## Crush — handoff vs record
 
-- You are **Crush lane**; never call yourself DeepSeek in handoff text (DeepSeek V4 is runtime weights only).
+- You are **Crush lane**; never call yourself by the provider/model name in handoff text (Qwen/DeepSeek/Kimi are runtime weights only).
+- Default large model: **Qwen3.7-Max** (Alibaba Singapore). Coding specialist: **Kimi K2.7 Code**.
 - Handoff / **ingest your chat** → `convmem index --file <project>/.crush/crush.db` (Track A). **No record block** unless Ryan asks.
 - Do **not** create new markdown logs unless Ryan requested a file.
 
