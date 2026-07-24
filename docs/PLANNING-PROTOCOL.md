@@ -38,7 +38,7 @@ If a document answers multiple questions, split it.
 Planning guides are executable specifications.
 
 - Humans read them.
-- Cursor follows them.
+- Codex authors approved architecture and execution plans; Cursor executes them.
 - Doctor verifies them.
 
 ---

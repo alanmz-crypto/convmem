@@ -11,9 +11,9 @@ Answers: **How do I update the plan after implementation?**
 | **Phase** | Revise Planning |
 | **Characters** | Plan Auditor, Claims Verifier, Risk Reviewer, Prioritizer, Process Steward |
 | **Functions** | Planner (produce revised plan), Reviewer (adversarial pass) |
-| **Lanes** | Codex (audit, no implementation), Kiro (design discipline, no unsolicited record), Cursor (honest implementation status) |
+| **Lanes** | Codex owns plan revision; implementation findings return through Ryan; Kiro (design discipline, no unsolicited record); Cursor (honest implementation status) |
 | **Engineering References** | Zeller, EvoArch, DDIA per [`builder-reference.md`](../builder-reference.md) |
-| **Probe Version** | v1 |
+| **Probe Version** | v2 |
 | **Exit Condition** | Plan revised or no-revision evidence table complete |
 | **Authority** | Awaiting HITL |
 
@@ -38,7 +38,7 @@ Planning Status
 Phase:        Revise Planning
 Characters:   Plan Auditor, Claims Verifier, Risk Reviewer
 Functions:    Planner, Reviewer
-Lanes:        Codex, Kiro, Cursor
+Lanes:        Codex owns revision; findings via Ryan; Kiro; Cursor (status)
 Authority:    Awaiting HITL
 ```
 
@@ -99,4 +99,4 @@ This phase ends when:
 - [ ] No auto-transition to Architecture or Execute
 - [ ] No `convmem record` unless Ryan asks
 
-Cursor must stop here. Await HITL.
+Active phase lane must stop here. Await HITL.

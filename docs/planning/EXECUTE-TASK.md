@@ -11,9 +11,9 @@ Answers: **How do I implement an approved task — including an approved active-
 | **Phase** | Execute Task |
 | **Characters** | Implementer, Test-First Reviewer, Debug Investigator (active failure branch only) |
 | **Functions** | Implementer |
-| **Lanes** | Cursor (Tier A active); Codex only if Ryan requests independent audit after handoff |
+| **Lanes** | Cursor (Tier A implementation); Codex is upstream planner, not default post-handoff auditor; PR Steward requires separate Ryan grant |
 | **Engineering References** | [`builder-reference.md`](../builder-reference.md) when touching infra |
-| **Probe Version** | v1 |
+| **Probe Version** | v2 |
 | **Exit Condition** | Scoped change verified; evidence table complete; handoff nudge issued |
 | **Authority** | HITL-approved task or Ryan-directed waiver |
 
@@ -213,7 +213,7 @@ Link only; no new subsystem.
 | Client site promote | [`site-reference/NOTES.md`](../site-reference/NOTES.md) |
 | Surface soaks (when cited) | [`VERIFICATION-MATRIX.md`](../inter-model/VERIFICATION-MATRIX.md) |
 | Post-execute plan cleanup | [`REVISE-PLANNING.md`](REVISE-PLANNING.md) |
-| Optional post-handoff audit | Codex — **only if Ryan requests**; not part of active execution |
+| Optional post-handoff audit | Ryan-requested only; Codex is upstream planner, not default post-handoff auditor |
 | Arc closeout (Verify OS) | [`VERIFY-PLANNING.md`](VERIFY-PLANNING.md) + `docs/plans/VERIFY-<slug>.md` |
 
 ### Awareness (read-only context)
@@ -253,4 +253,4 @@ This phase ends when:
 - [ ] No self-transition to Revise / Architecture / merge
 - [ ] No `convmem record` unless Ryan asks
 
-Cursor must stop here. Await HITL.
+Active phase lane must stop here. Await HITL.

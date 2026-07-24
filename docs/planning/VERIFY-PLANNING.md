@@ -16,9 +16,9 @@ independent sign-off and Ryan GATE.
 | **Phase** | Verify Planning |
 | **Characters** | Independent Reviewer, Test-First Reviewer |
 | **Functions** | Reviewer |
-| **Lanes** | Cursor (mechanical evidence); Kiro or Ryan-named independent lane (sign-off); Ryan (GATE) |
+| **Lanes** | Codex predeclares VERIFY checks/stub during planning; Cursor supplies mechanical evidence; Kiro or Ryan-named independent lane signs; GitHub Copilot audit lane targeted when warranted; Ryan gates |
 | **Engineering References** | Arc EXECUTION / ARCHITECTURE plans; [`../plans/VERIFY-TEMPLATE.md`](../plans/VERIFY-TEMPLATE.md) |
-| **Probe Version** | v1 |
+| **Probe Version** | v2 |
 | **Exit Condition** | VERIFY artifact complete; mechanical run recorded; HITL sign-off / GATE pending |
 | **Authority** | Post-execute HITL — do not trust prior chat claims alone |
 
@@ -53,7 +53,7 @@ Planning Status
 Phase:        Verify Planning
 Characters:   Independent Reviewer, Test-First Reviewer
 Functions:    Reviewer
-Lanes:        Cursor (mechanical); Kiro or named independent lane (sign-off); Ryan (GATE)
+Lanes:        Codex predeclares; Cursor (mechanical); Kiro or named independent (sign-off); Copilot when warranted; Ryan (GATE)
 Authority:    Post-execute HITL — do not trust chat claims alone
 ```
 
@@ -153,4 +153,4 @@ This phase ends when:
 - [ ] No self-declared arc close without Ryan GATE or written waiver
 - [ ] No `convmem record` unless Ryan asks
 
-Cursor must stop here. Await HITL.
+Active phase lane must stop here. Await HITL.
