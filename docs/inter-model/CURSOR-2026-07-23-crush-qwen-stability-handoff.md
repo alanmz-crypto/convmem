@@ -2,9 +2,22 @@
 
 **Who:** Cursor (implementer) — verification open for Ryan / Crush soak / optional Copilot audit.  
 **What:** Stabilize Crush+ConvMem freezes; default Crush to Qwen3.7-Max; disable wedged Crush MCP; route scarce Cursor tokens to Crush Qwen + DeepSeek V4.  
-**When:** 2026-07-23 evening; branch tip `6563e53` on `fix/2026-07-23-crush-qwen-stability` (pushed).  
+**When:** 2026-07-23 evening; branch tip follows commits below (pushed).  
 **Why:** Crush UI hung 10–15+ min on “waiting for tool”; Cursor/other IDE quotas run dry mid-cycle while Alibaba Qwen and DeepSeek still have headroom.  
 **How:** Runtime Crush/Continue config + protocol/docs/hook changes; MCP left disabled until a timed soak proves tools/call returns.
+
+## VERIFY results (2026-07-23 ~22:05)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| **V1** Crush shell path (no multi-min hang) | **PASS** | Live Crush session 22:01–22:02 on `qwen3.7-max`: bash `convmem`/asserts completed; no `mcp_convmem_*` tool calls; agent reported automated checks pass |
+| **V2** MCP disabled + Qwen defaults | **PASS** | `mcp.convmem.disabled=true`, timeout=180, large=`alibaba-singapore/qwen3.7-max`, recent includes DeepSeek V4 Pro/Flash |
+| **V3** DeepSeek Crush seat | **PASS (config)** / soak optional | Model in Crush recent list; bootstrap updated; full Pro ritual soak left as optional post-merge |
+| **V4** Continue DashScope | **PASS (config)** | `~/.continue/config.yaml` has `qwen3.7-max` @ `dashscope-intl` |
+| **V5** Docs consistency | **PASS** | Billing-cycle + shell-only strings present in MODEL-WORKFLOW / bootstraps / CRUSH-VERIFY |
+| CLI search latency | **PASS** | `convmem "crush qwen bootstrap"` ~6s |
+
+`crush run` non-interactive yolo flags are unavailable on Crush v0.86 (`Unknown flag: --yolo` on `run`); V1 evidence is from the interactive Crush session in `crush.db`.
 
 **Chat transcript (Track A):**  
 `~/.cursor/projects/home-lauer-Projects-convmem/agent-transcripts/fc444fa8-9cf5-4cdd-933b-48909ae06d0e/fc444fa8-9cf5-4cdd-933b-48909ae06d0e.jsonl`
