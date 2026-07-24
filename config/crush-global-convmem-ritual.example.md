@@ -30,11 +30,11 @@ If you can only use one: **Qwen3.7-Max**. Second seat: **DeepSeek V4 Pro**.
 
 ## Crush + ConvMem tools (2026-07-23)
 
-**Use shell `convmem`, not MCP.** Crush’s MCP client has hung 10–15+ minutes on
-`mcp_convmem_search_fast` while the stdio server sat idle — so `mcp.convmem` is
-**disabled** in `~/.config/crush/crush.json` until that client path is fixed.
+**Prefer shell `convmem`.** A shell-profile Roots deadlock made Crush MCP hang on
+`tools/call` (fixed in `mcp_server.py`); runtime may still have
+`mcp.convmem.disabled=true` until Ryan re-enables after probe PASS.
 
-1. After ritual: `convmem "query"` / `convmem ask "…"`.
+1. After ritual: `convmem "query"` / `convmem ask "…"` (or MCP if enabled).
 2. If UI says “waiting for tool” >30s: cancel (Esc) and retry via bash.
 3. Only **one** Crush TTY; prune with `bash ~/Projects/convmem/scripts/prune-stale-crush.sh`.
 

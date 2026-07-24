@@ -9,7 +9,8 @@
   **Consequence:** Crush uses shell `convmem` (MCP disabled) to avoid tool hangs; Cursor-dry work goes to Crush **Qwen3.7-Max**, with **DeepSeek V4 Pro/Flash** as second cloud seat.  
   **Who:** Cursor + Crush soak; Ryan squash-merged.  
   **What/When/Why/How:** Handoff [`CURSOR-2026-07-23-crush-qwen-stability-handoff.md`](CURSOR-2026-07-23-crush-qwen-stability-handoff.md); paste [`../CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md) / [`../CRUSH-DEEPSEEK-BOOTSTRAP.md`](../CRUSH-DEEPSEEK-BOOTSTRAP.md); routing in [`../MODEL-WORKFLOW.md`](../MODEL-WORKFLOW.md).  
-  **Follow-up ([#107](https://github.com/alanmz-crypto/convmem/pull/107)):** squash-merge default note (missed the #106 tip) + post-land soaks: Crush DeepSeek shell **PASS**; Crush MCP `tools/call` probe **FAIL** (50 s watchdog after PreToolUse allow) — keep `mcp.convmem.disabled=true`. Probe script: `scripts/probe-crush-mcp-tools-call.sh`.
+  **Follow-up ([#107](https://github.com/alanmz-crypto/convmem/pull/107) MERGED):** squash-merge default note + soaks.  
+  **Crush MCP hang root cause FIXED (open PR on `fix/2026-07-23-crush-mcp-tools-call`):** shell-profile sync tools deadlocked `tools/call` ↔ `roots/list` via nested `asyncio.run`; cwd fallback + explicit hook `allow`. Probe **PASS** ~15 s — MCP still left `disabled=true` until Ryan re-enables after merge.
 
 
 - **Crush tool-output residual GATE ACCEPTED (2026-07-23):**  

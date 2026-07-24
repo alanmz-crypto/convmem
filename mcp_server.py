@@ -274,24 +274,10 @@ def _mcp_request_session():
         return None
 
 
-async def _apply_shell_roots_brief_boundary_if_needed(session=None) -> None:
-    """Shell profile: omit or restore brief tools from MCP Roots (vs import cwd)."""
+def _set_shell_roots_brief_tools(is_project: bool) -> bool:
+    """Omit or restore brief/folder_state for shell profile. Returns True if changed."""
     from mcp.server.fastmcp.exceptions import ToolError
 
-    if _mcp_profile() != "shell" or _SHELL_ROOTS.boundary_applied:
-        return
-    if session is None:
-        session = _mcp_request_session()
-        if session is None:
-            return
-    uris = await _list_session_root_uris(session)
-    _SHELL_ROOTS.boundary_applied = True
-    if uris:
-        is_project = _root_uris_indicate_project(uris)
-    else:
-        # No roots → keep import-time cwd policy
-
-        is_project = _cwd_is_project_root(Path(os.getcwd()).resolve())
     _SHELL_ROOTS.project = is_project
     changed = False
     if is_project:
@@ -313,6 +299,34 @@ async def _apply_shell_roots_brief_boundary_if_needed(session=None) -> None:
                 continue
             mcp.add_tool(fn)
             changed = True
+    return changed
+
+
+def _finalize_shell_roots_from_cwd() -> None:
+    """Apply brief boundary from process cwd only (no client roots/list)."""
+    if _SHELL_ROOTS.boundary_applied:
+        return
+    is_project = _cwd_is_project_root(Path(os.getcwd()).resolve())
+    _SHELL_ROOTS.boundary_applied = True
+    _set_shell_roots_brief_tools(is_project)
+
+
+async def _apply_shell_roots_brief_boundary_if_needed(session=None) -> None:
+    """Shell profile: omit or restore brief tools from MCP Roots (vs import cwd)."""
+    if _mcp_profile() != "shell" or _SHELL_ROOTS.boundary_applied:
+        return
+    if session is None:
+        session = _mcp_request_session()
+        if session is None:
+            return
+    uris = await _list_session_root_uris(session)
+    _SHELL_ROOTS.boundary_applied = True
+    if uris:
+        is_project = _root_uris_indicate_project(uris)
+    else:
+        # No roots → keep import-time cwd policy
+        is_project = _cwd_is_project_root(Path(os.getcwd()).resolve())
+    changed = _set_shell_roots_brief_tools(is_project)
     if not changed:
         return
     try:
@@ -324,28 +338,26 @@ async def _apply_shell_roots_brief_boundary_if_needed(session=None) -> None:
 def _apply_shell_roots_brief_boundary_sync() -> None:
     """Sync entry for tool handlers (tests + FastMCP sync tools).
 
-    Capture session on this thread first — request_context is contextvars-local
-    and is not visible inside ThreadPoolExecutor workers.
-    """
-    import concurrent.futures
+    Capture session on this thread first — request_context is contextvars-local.
 
+    When already on the live MCP event loop (Crush/Cursor stdio tool calls),
+    never call ``list_roots()`` via a nested ``asyncio.run`` in a worker thread:
+    that deadlocks the session (client waits for tools/call; worker waits for
+    roots/list on the same stdio connection). Use cwd policy instead.
+    """
     if _mcp_profile() != "shell" or _SHELL_ROOTS.boundary_applied:
         return
     session = _mcp_request_session()
-    if session is None:
-        return
-    coro = _apply_shell_roots_brief_boundary_if_needed(session)
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        asyncio.run(coro)
+        if session is None:
+            return
+        asyncio.run(_apply_shell_roots_brief_boundary_if_needed(session))
         return
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        pool.submit(asyncio.run, coro).result(timeout=60)
-
-
-
+    # Live stdio request: deadlock-safe cwd fallback (no client roots/list).
+    _finalize_shell_roots_from_cwd()
 
 def _is_alien_workspace_cwd(cwd: Path) -> bool:
     """True when cwd is neither a repo project root nor a system runbook path."""
