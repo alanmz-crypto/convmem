@@ -158,12 +158,17 @@ rg -n 'Billing-cycle model routing|mcp.convmem.disabled|shell only' \
 
 ---
 
+## PR
+
+- **[#106](https://github.com/alanmz-crypto/convmem/pull/106)** — `fix/2026-07-23-crush-qwen-stability` → `main` (tip `0d14617` at open; amend if more commits land)
+
 ## Suggested next actions for Ryan
 
-1. Run V1–V3 soak above (10 minutes).
-2. If PASS: open PR from `fix/2026-07-23-crush-qwen-stability` (or assign PR Steward).
+1. Review / merge [#106](https://github.com/alanmz-crypto/convmem/pull/106) (VERIFY PASS recorded above).
+2. After merge: `bash scripts/deploy-agent-protocol.sh` if overlays look stale.
 3. Habit: Cursor dry → Crush Qwen3.7-Max → rotate DeepSeek V4 Pro/Flash.
 4. Only re-enable Crush MCP after a green timed soak; leave `disabled: true` until then.
+5. Optional: Crush DeepSeek V4 Pro paste soak post-merge.
 
 ---
 
