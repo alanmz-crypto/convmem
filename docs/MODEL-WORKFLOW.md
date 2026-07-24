@@ -82,26 +82,28 @@ Same wrapper for Codex rollout, Crush `.crush/crush.db`, etc. — always prod Ch
 ## Billing-cycle model routing (scarce Cursor tokens)
 
 Cursor / most hosted IDE models often exhaust mid-cycle. **Do not stall ConvMem
-work waiting for a refresh** — move the same work to Crush (and Continue) on
-cloud quotas that still have headroom.
+work waiting for a refresh** — use **OpenAI Codex** for default planning;
+move discovery to Crush; implement in **Cursor** with Ryan-selected models
+(e.g. Grok) while tokens remain.
 
 | Priority | Surface | Model | Use for |
 |----------|---------|-------|---------|
-| 1 | **Crush** | **Qwen3.7-Max** (Alibaba Singapore) | Architecture, planning, cross-doc, long reasoning — default lead |
-| 1b | Crush | Qwen3.7-Plus / Qwen3.6-Plus | When Max is busy or for lighter drafting |
+| P0 | **OpenAI Codex** | Codex product default | Architecture and execution planning (Kiro review; Ryan approves) |
+| 1 | **Cursor** | Ryan-selected (e.g. Grok) | Large implementation while tokens remain |
+| 1b | **Crush** | **Qwen3.7-Max** (Alibaba Singapore) | Discovery, neutral framing, cross-doc synthesis — not default planning owner |
+| 1c | Crush | Qwen3.7-Plus / Qwen3.6-Plus | When Max is busy or for lighter drafting |
 | 2 | **Crush** | **DeepSeek V4 Pro** (or V4 Flash) | Same Crush lane when Qwen is busy **or** to burn DeepSeek quota while Cursor is dry — still say “Crush found it” |
 | 3 | Continue | Qwen3.7-Max (DashScope) + DeepSeek V4 | IDE chat when Crush TTY not open |
 | — | ConvMem `ask` / distill | **DeepSeek V4 Flash** (API) | Pipeline synthesis — already on DeepSeek; keep using it |
 | — | ConvMem summarize | local Ollama (today `llama3.1:8b`) | Index-time summaries — not interactive agent work |
-| — | Cursor | subscription models | Large implementation while tokens remain; hand off to Crush when dry |
 
 Paste-ready Crush openers:
 
 - Qwen: [`docs/CRUSH-QWEN-BOOTSTRAP.md`](CRUSH-QWEN-BOOTSTRAP.md)
 - DeepSeek V4: [`docs/CRUSH-DEEPSEEK-BOOTSTRAP.md`](CRUSH-DEEPSEEK-BOOTSTRAP.md)
 
-**Rule of thumb:** Cursor dry → open Crush on Qwen3.7-Max first; rotate to DeepSeek
-V4 Pro/Flash in Crush so both cloud budgets keep covering ConvMem ground.
+**Rule of thumb:** Planning → Codex; implementation → Cursor; Cursor dry → Crush
+for discovery/synthesis; rotate DeepSeek V4 in Crush to cover ground.
 
 ---
 

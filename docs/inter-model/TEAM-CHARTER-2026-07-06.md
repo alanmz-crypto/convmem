@@ -78,7 +78,7 @@ flowchart TD
   E --> F["Kiro reconciles findings and issues governing architecture brief"]
   F --> G{"Problem sufficiently specified?"}
   G -- "no" --> B
-  G -- "yes" --> H["Cursor creates architecture plan"]
+  G -- "yes" --> H["Codex creates architecture plan"]
   H --> I1["Kiro architecture review"]
   H --> I2["GitHub Copilot safety, isolation, and code audit when warranted"]
   H --> I3["Claude evaluation-methodology review when applicable"]
@@ -86,19 +86,19 @@ flowchart TD
   I2 --> J
   I3 --> J
   J --> K["Kiro consolidated amendments"]
-  K --> L["Cursor revises architecture"]
+  K --> L["Codex revises architecture"]
   L --> M["Reviewer-specific targeted amendment checks"]
   M --> N["Kiro final architecture sign-off"]
-  N --> O["Cursor creates execution plan"]
+  N --> O["Codex creates execution plan"]
   O --> P1["GitHub Copilot feasibility and safety review when warranted"]
   O --> P2["Kiro scope and sequencing review"]
-  P1 --> Q["Cursor revises execution plan"]
+  P1 --> Q["Codex revises execution plan"]
   P2 --> Q
   Q --> R1["Reviewer-specific targeted rechecks"]
   Q --> R2["Kiro execution-plan PASS"]
   R1 --> S{"Ryan authorizes next phase?"}
   R2 --> S
-  S -- "tracked implementation" --> T["Cursor builds on feature branch"]
+  S -- "tracked implementation" --> T["Cursor builds after Ryan authorization"]
   T --> U["Tests, commits, and immediate pushes"]
   U --> V["Independent implementation verification"]
   V --> W{"Ryan accepts tracked implementation?"}
@@ -116,7 +116,11 @@ flowchart TD
   AB -- "candidate wins" --> AD["Begin a new promotion architecture and authorization loop"]
 ```
 
-**Lane boundaries:** Crush owns routine discovery and neutral framing. DeepSeek R1 challenges architecture; Claude reviews methodology; ChatGPT supplies strategy and synthesis; Kiro owns governing design review and sign-off; Cursor owns architecture, execution planning, and implementation. The GitHub Copilot audit lane is used only for code-grounded investigation, safety/isolation review, evidence integrity, and targeted rechecks. Ryan alone authorizes phases, deployment, promotion, cleanup, merges, and durable conclusions.
+**Lane boundaries:** Crush owns routine discovery and neutral framing. OpenAI Codex authors architecture and execution plans and revises them when Ryan routes findings; Cursor implements tracked changes only after Ryan authorizes the phase. DeepSeek R1 challenges architecture; Claude reviews methodology; ChatGPT supplies strategy and synthesis; Kiro owns governing design review and sign-off. The GitHub Copilot audit lane is used only for code-grounded investigation, safety/isolation review, evidence integrity, and targeted rechecks. Ryan alone authorizes phases, deployment, promotion, cleanup, merges, and durable conclusions.
+
+**Planning and review boundaries:** Kiro rejection of an Execution Plan goes to Ryan before Codex may revise or resubmit. A GitHub Copilot audit PASS on implementation does not substitute for Kiro design sign-off on the governing plan. PR Steward activation is a separate Ryan grant and is never inferred from planning or implementation handoff. During the three-arc observation period for Codex-default planning, Crush proposes defect classification (`planning escape`, `implementation defect`, `review discovery`, `lane violation`); Ryan confirms; the artifact author does not classify its own defects definitively.
+
+No arrow grants the receiving lane permission to merge, deploy, write the ledger, or self-advance the phase.
 
 **DeepSeek V4-Pro audit substitute:** When Ryan explicitly authorizes it for a named PR tip+base, DeepSeek V4-Pro via the official API may fill the Copilot audit-lane slot for that revision only. The substitute must use the locked runner/protocol; it does not enlarge DeepSeek `ask` capabilities and does not replace Copilot as the default governing audit lane.
 
@@ -128,6 +132,7 @@ flowchart TD
 
 | Phase | Owner (lane) | Must not |
 |-------|--------------|----------|
+| Architecture / execution planning | **OpenAI Codex** | implement tracked changes; merge to `main`; self-advance phase |
 | Bug discovery | **Crush** (shell + MCP read) | self-approve fixes; write `record`; merge to `main` |
 | Independent audit (when warranted) | **GitHub Copilot** | new `logs/*.md` unless Ryan asks; merge to `main`; substantial implementation Cursor can execute; infer live authorization from scope |
 | Design / sign-off | **Kiro** | implementation edits; unrequested document edits; volunteer `record`; merge to `main`; create `feat/`/`fix/` branches |
@@ -147,6 +152,7 @@ flowchart TD
 
 | Work type | Default lane | Copilot involvement |
 |-----------|-------------|---------------------|
+| Architecture / execution planning | **OpenAI Codex** | Not involved — planning docs only |
 | Large implementation | **Cursor** | Not involved — do not route implementation to Copilot |
 | Investigation / feasibility | **Crush** | May escalate to Copilot audit when warranted |
 | Safety / isolation audit | **GitHub Copilot** | Primary; targeted scope only |

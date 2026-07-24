@@ -204,6 +204,7 @@ Agents may search, ask, brief, and related freely.
 
 | Work type | Default lane | Copilot audit lane |
 |-----------|-------------|--------------------|
+| Architecture / execution planning | **OpenAI Codex** | Not involved |
 | Large implementation | **Cursor** | Not involved |
 | Bug discovery / investigation | **Crush** | Escalate when warranted |
 | Safety / isolation / code audit | **GitHub Copilot audit lane** | Primary; targeted scope only |
@@ -213,7 +214,9 @@ Agents may search, ask, brief, and related freely.
 | Ledger write / merge | **Ryan only** | Not involved |
 | Bound brief → GitHub PR lifecycle | **PR Steward** (default Codex) | Not involved |
 
-**PR Steward** is a Delivery-role overlay (brief-bound; no merge/grant/ledger). If Ryan describes a bounded, well-defined task that fits the PR lifecycle, suggest assigning PR Steward — it activates only through explicit Ryan assignment and never self-assigns.
+**Planning:** Codex authors approved architecture and execution plans; Cursor implements after Ryan authorization.
+
+**PR Steward** — Delivery overlay (brief-bound; no merge/grant/ledger); explicit Ryan grant only — never inferred or self-assigns.
 
 **Conditional Copilot.** Independent safety/isolation audits or targeted verification only—not implementation, routine work, drafting, uncontested re-audits, or missing Cursor handoffs. **Sol-High** is a separate scarce resource, not the Copilot audit lane.
 
