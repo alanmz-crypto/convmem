@@ -13,9 +13,9 @@ Problem/request -> Architecture Direction artifact -> HITL -> [`EXECUTION-PLANNI
 | **Phase** | Architecture Planning |
 | **Characters** | Architect, Systems Thinker, Risk Reviewer |
 | **Functions** | Planner |
-| **Lanes** | Cursor (Tier A); Codex read-only if Ryan requests direction audit |
+| **Lanes** | OpenAI Codex authors Architecture Direction; Kiro reviews design; Ryan approves (HITL) |
 | **Engineering References** | [`builder-reference.md`](../builder-reference.md) when design touches infra patterns |
-| **Probe Version** | v1 |
+| **Probe Version** | v2 |
 | **Exit Condition** | Architecture Direction artifact complete; HITL approval pending |
 | **Authority** | Awaiting HITL |
 
@@ -51,7 +51,7 @@ Planning Status
 Phase:        Architecture Planning
 Characters:   Architect, Systems Thinker, Risk Reviewer
 Functions:    Planner
-Lanes:        Cursor (Tier A); Codex read-only if Ryan requests direction audit
+Lanes:        Codex authors; Kiro reviews; Ryan approves (HITL)
 Authority:    Awaiting HITL
 ```
 
@@ -137,8 +137,8 @@ for history, prior decisions, and builder-reference grounding.
 - Next phase: EXECUTION-PLANNING.md after HITL approves this direction.
 ```
 
-Codex direction audit is read-only and Ryan-requested only. Crush and DeepSeek
-are not architecture lanes.
+Codex authors the direction; Ryan-requested read-only audit does not replace
+authorship. Crush and DeepSeek are not architecture lanes.
 
 ### Routing table
 
@@ -187,4 +187,4 @@ This phase ends when:
 - [ ] No self-transition to Execution Planning, Execute, or implementation
 - [ ] No `convmem record` unless Ryan asks
 
-Cursor must stop here. Await HITL.
+Active phase lane must stop here. Await HITL.

@@ -13,9 +13,9 @@ Approved direction -> bounded execution plan -> HITL -> [`EXECUTE-TASK.md`](EXEC
 | **Phase** | Execution Planning |
 | **Characters** | Task Decomposer, Dependency Mapper, Scope Guardian |
 | **Functions** | Planner |
-| **Lanes** | Cursor (Tier A); Codex read-only if Ryan requests plan audit |
+| **Lanes** | OpenAI Codex authors execution plan; Kiro reviews (rejection routes to Ryan before Codex revises); Cursor downstream implementation |
 | **Engineering References** | [`builder-reference.md`](../builder-reference.md) when infra scope is unclear |
-| **Probe Version** | v1 |
+| **Probe Version** | v2 |
 | **Exit Condition** | Bounded execution plan artifact complete; HITL approval pending |
 | **Authority** | Awaiting HITL |
 
@@ -52,7 +52,7 @@ Planning Status
 Phase:        Execution Planning
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Functions:    Planner
-Lanes:        Cursor
+Lanes:        Codex authors; Kiro reviews; Cursor downstream implementation
 Authority:    Awaiting HITL
 ```
 
@@ -127,8 +127,9 @@ for history, architecture, or prior-decision grounding.
 - First task: T1 after HITL approves this plan.
 ```
 
-Execution lane defaults to Cursor unless Ryan explicitly says otherwise. Codex
-audit is post-handoff only. Crush and DeepSeek are not execution lanes.
+Task execution defaults to Cursor after Ryan approves this plan. Kiro
+Execution Plan rejection goes to Ryan before Codex may revise. Crush and
+DeepSeek are not planning lanes.
 
 ### Awareness (read-only context)
 
@@ -169,4 +170,4 @@ This phase ends when:
 - [ ] No self-transition to Execute or Architecture
 - [ ] No `convmem record` unless Ryan asks
 
-Cursor must stop here. Await HITL.
+Active phase lane must stop here. Await HITL.

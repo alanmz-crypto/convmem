@@ -1,4 +1,4 @@
-"""Tests for Planning Guide Contract v1 enforcement."""
+"""Tests for Planning Guide Contract v2 enforcement."""
 
 from __future__ import annotations
 
@@ -10,19 +10,25 @@ from doctor import _check_planning_guide_contract
 from planning_contract import (
     CONTRACT_VERSION,
     HITL_STOP_MARKERS,
+    PROBE_VERSION,
     REQUIRED_HEADINGS,
     REQUIRED_METADATA,
+    probe_version_row,
     validate_planning_guides,
 )
 
 
 def _valid_guide() -> str:
-    meta_rows = "\n".join(f"| **{f}** | x |" for f in REQUIRED_METADATA)
+    meta_rows = "\n".join(
+        f"| **{f}** | {PROBE_VERSION if f == 'Probe Version' else 'x'} |"
+        for f in REQUIRED_METADATA
+    )
     headings = "\n\n".join(f"{h}\n\nbody" for h in REQUIRED_HEADINGS)
+    stop = "\n\n".join(HITL_STOP_MARKERS)
     return (
         f"{headings}\n\n"
         f"## Phase Initialization\n\n| Field | Value |\n|---|---|\n{meta_rows}\n\n"
-        f"Cursor must stop here.\n\nAwait HITL.\n"
+        f"{stop}\n"
     )
 
 
@@ -55,6 +61,19 @@ class TestPlanningGuideContract(unittest.TestCase):
             problems = validate_planning_guides(root)
             self.assertTrue(any("HITL marker" in p for p in problems))
 
+    def test_missing_actor_neutral_stop_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            guides = root / "docs" / "planning"
+            guides.mkdir(parents=True)
+            text = _valid_guide().replace(
+                HITL_STOP_MARKERS[0],
+                "Cursor must stop here.",
+            )
+            (guides / "BAD.md").write_text(text, encoding="utf-8")
+            problems = validate_planning_guides(root)
+            self.assertTrue(any("HITL marker" in p for p in problems))
+
     def test_missing_metadata_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -65,7 +84,7 @@ class TestPlanningGuideContract(unittest.TestCase):
             problems = validate_planning_guides(root)
             self.assertTrue(any("Functions" in p for p in problems))
 
-    def test_missing_probe_version_fails(self):
+    def test_missing_probe_version_field_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             guides = root / "docs" / "planning"
@@ -74,6 +93,16 @@ class TestPlanningGuideContract(unittest.TestCase):
             (guides / "BAD.md").write_text(text, encoding="utf-8")
             problems = validate_planning_guides(root)
             self.assertTrue(any("Probe Version" in p for p in problems))
+
+    def test_stale_probe_v1_value_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            guides = root / "docs" / "planning"
+            guides.mkdir(parents=True)
+            text = _valid_guide().replace(probe_version_row(), "| **Probe Version** | v1 |")
+            (guides / "BAD.md").write_text(text, encoding="utf-8")
+            problems = validate_planning_guides(root)
+            self.assertTrue(any("Probe Version value" in p for p in problems))
 
     def test_doctor_check_passes_on_repo_guides(self):
         c = _check_planning_guide_contract()

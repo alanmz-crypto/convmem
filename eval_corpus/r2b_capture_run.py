@@ -8,13 +8,19 @@ from pathlib import Path
 from typing import Any
 
 from eval_corpus import CAPTURE_SCHEMA_VERSION
-from eval_corpus import capture as capture_lib
 from eval_corpus.io_atomic import atomic_write_json, sha256_file
 from eval_corpus.r2b_capture_auth import (
     canonical_source_snapshot_sha256,
     compare_source_snapshots,
     materialize_r2b_write_authorization,
 )
+
+
+def _capture_lib() -> Any:
+    """Lazy import — avoids R0401 with capture.py's deferred r2b delegate."""
+    import importlib
+
+    return importlib.import_module("eval_corpus.capture")
 
 
 def _now() -> str:
@@ -135,7 +141,7 @@ def _copy_verify_and_extract(  # pylint: disable=too-many-locals
     processed_dest = capture_dir / "processed.json"
 
     # Attribute access so hermetic tests can patch capture.copy_under_export_lock.
-    h_export = capture_lib.copy_under_export_lock(export_src, export_dest)
+    h_export = _capture_lib().copy_under_export_lock(export_src, export_dest)
     h_processed: str | None = None
     early_error: str | None = None
     if processed_state == "present":
@@ -144,7 +150,7 @@ def _copy_verify_and_extract(  # pylint: disable=too-many-locals
                 "approved processed_state is present but processed source missing"
             )
         else:
-            h_processed = capture_lib.copy_under_processed_lock(
+            h_processed = _capture_lib().copy_under_processed_lock(
                 processed_src, processed_dest
             )
     elif processed_src.is_file():
@@ -162,7 +168,7 @@ def _copy_verify_and_extract(  # pylint: disable=too-many-locals
         early_error = "processed changed across copy"
 
     if early_error is None:
-        chroma_identity = capture_lib.compute_chroma_capture_identity(
+        chroma_identity = _capture_lib().compute_chroma_capture_identity(
             chroma_dir, collection_name=collection_name
         )
         early_error = _snapshot_mismatch(
@@ -176,10 +182,10 @@ def _copy_verify_and_extract(  # pylint: disable=too-many-locals
     if early_error is not None:
         return _failed_result(capture_id, early_error, capture_dir=capture_dir)
 
-    chroma_slice = capture_lib.extract_chroma_capture_slice(
+    chroma_slice = _capture_lib().extract_chroma_capture_slice(
         chroma_dir, collection_name=collection_name
     )
-    capture_lib.write_chroma_slice_artifacts(capture_dir, chroma_slice)
+    _capture_lib().write_chroma_slice_artifacts(capture_dir, chroma_slice)
 
     if sha256_file(export_src) != h_export or sha256_file(export_dest) != h_export:
         early_error = "export drifted after chroma extract"
@@ -189,7 +195,7 @@ def _copy_verify_and_extract(  # pylint: disable=too-many-locals
     ):
         early_error = "processed drifted after chroma extract"
     else:
-        post_identity = capture_lib.compute_chroma_capture_identity(
+        post_identity = _capture_lib().compute_chroma_capture_identity(
             chroma_dir, collection_name=collection_name
         )
         mismatch = _snapshot_mismatch(
@@ -228,7 +234,7 @@ def _post_package_drift_error(
     if processed_state == "present" and sha256_file(processed_src) != h_processed:
         return "post_capture_source_drift: processed"
     try:
-        live = capture_lib.recompute_source_snapshot(
+        live = _capture_lib().recompute_source_snapshot(
             export=export_src,
             processed=processed_src,
             chroma_dir=chroma_dir,
@@ -251,7 +257,7 @@ def run_r2b_capture(  # pylint: disable=too-many-locals
     """R2b capture path: single attempt, marker-last, capability-gated."""
     bindings = materialize_r2b_write_authorization(
         r2b_capability,
-        snapshot_recompute_fn=capture_lib.recompute_source_snapshot,
+        snapshot_recompute_fn=_capture_lib().recompute_source_snapshot,
     )
     _require_caller_paths_match_bindings(
         export_src=export_src,
@@ -290,13 +296,13 @@ def run_r2b_capture(  # pylint: disable=too-many-locals
     chroma_slice = prepared["chroma_slice"]
 
     try:
-        package = capture_lib.build_corpus_package(
+        package = _capture_lib().build_corpus_package(
             capture_dir=capture_dir,
             chroma_slice=chroma_slice,
             write_legacy_manifest=False,
         )
     except RuntimeError as exc:
-        return capture_lib.package_build_failed_result(
+        return _capture_lib().package_build_failed_result(
             capture_dir=capture_dir,
             capture_id=capture_id,
             attempt=1,
@@ -304,7 +310,7 @@ def run_r2b_capture(  # pylint: disable=too-many-locals
             error=str(exc),
         )
 
-    partial = capture_lib.complete_capture_validation(
+    partial = _capture_lib().complete_capture_validation(
         capture_dir=capture_dir,
         chroma_slice=chroma_slice,
         package=package,
@@ -347,7 +353,7 @@ def run_r2b_capture(  # pylint: disable=too-many-locals
         "package_sha256": package["manifest"]["package_sha256"],
         "unit_corpus_fingerprint": package["manifest"]["unit_corpus_fingerprint"],
         "unit_count": package["manifest"]["unit_count"],
-        "artifact_inventory": capture_lib.r2b_artifact_inventory(
+        "artifact_inventory": _capture_lib().r2b_artifact_inventory(
             processed_state=processed_state
         ),
         "artifact_sha256": _artifact_sha256(

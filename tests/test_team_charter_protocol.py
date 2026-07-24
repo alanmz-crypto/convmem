@@ -211,6 +211,18 @@ class TeamCharterNoBannedContentTests(unittest.TestCase):
 class TeamCharterPRStewardTests(unittest.TestCase):
     """PR Steward Delivery-role overlay anchors in the compact slice."""
 
+    def test_codex_planning_and_cursor_implementation_anchors(self):
+        body = _canonical_body()
+        self.assertIn(
+            "Codex authors approved architecture and execution plans",
+            body,
+        )
+        self.assertIn("Cursor implements after Ryan authorization", body)
+        self.assertIn("Architecture / execution planning", body)
+        self.assertIn("**OpenAI Codex**", body)
+        self.assertIn("Large implementation", body)
+        self.assertIn("**Cursor**", body)
+
     def test_pr_steward_positive_anchors(self):
         body = _canonical_body()
         for anchor in (
