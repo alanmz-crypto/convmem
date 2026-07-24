@@ -40,10 +40,12 @@ Write a PR summary that explains the change without requiring the reader to open
 
 **Also keep mapping detail when it exists:** Test plans, VERIFY check tables, SHAs, and scope locks stay — they help agents and future you map the project. The human layer sits **above** that machinery; it does not replace it.
 
+**Squash-merge default (Ryan, 2026-07-23):** Ryan **squash-merges every PR** unless an agent **explicitly** says not to. Agents must assume squash is fine. When commit history on `main` must be preserved (rare — e.g. signed bisect points, commit-by-commit provenance already under review), the PR body and handoff must include a clear **`Do not squash`** line with a one-sentence reason. Silence = squash OK.
+
 **Guidelines:**
 - Title: concise, user-facing description of what changed and why.
 - After the human layer: problem/approach/tradeoffs as needed; related issues (`Closes #...`, `Refs dec_prop_...`).
-- If this is a multi-commit PR, the body should summarize the overall change, not re-list individual commits.
+- If this is a multi-commit PR, the body should summarize the overall change, not re-list individual commits. Squash will collapse WIP history — write the PR title/body as the eventual `main` commit message.
 - Bad title: `Refactor session store initialization`
 - Good title: `Make session loading resilient to corrupt metadata files`
 
