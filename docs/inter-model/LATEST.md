@@ -17,7 +17,7 @@
   **Who:** Cursor + Crush soak; Ryan squash-merged.  
   **What/When/Why/How:** Handoff [`CURSOR-2026-07-23-crush-qwen-stability-handoff.md`](CURSOR-2026-07-23-crush-qwen-stability-handoff.md); paste [`../CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md) / [`../CRUSH-DEEPSEEK-BOOTSTRAP.md`](../CRUSH-DEEPSEEK-BOOTSTRAP.md); routing in [`../MODEL-WORKFLOW.md`](../MODEL-WORKFLOW.md).  
   **Follow-up ([#107](https://github.com/alanmz-crypto/convmem/pull/107) MERGED):** squash-merge default note + soaks.  
-  **Crush MCP hang root cause FIXED (open PR on `fix/2026-07-23-crush-mcp-tools-call`):** shell-profile sync tools deadlocked `tools/call` ↔ `roots/list` via nested `asyncio.run`; cwd fallback + explicit hook `allow`. Probe **PASS** ~15 s — MCP still left `disabled=true` until Ryan re-enables after merge.
+  **Crush MCP hang FIXED + RE-ENABLED (2026-07-24):** Squash-merged [#108](https://github.com/alanmz-crypto/convmem/pull/108) as [`1d80a26`](https://github.com/alanmz-crypto/convmem/commit/1d80a26). Shell-profile sync tools had deadlocked `tools/call` ↔ `roots/list`; cwd fallback + explicit hook `allow`. Post-merge probe **PASS** ~13 s; live `mcp.convmem.disabled=false`. **Restart Crush** so hooks/MCP load.
 
 
 - **Crush tool-output residual GATE ACCEPTED (2026-07-23):**  
