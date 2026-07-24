@@ -28,14 +28,17 @@ ConvMem work through the month.
 
 If you can only use one: **Qwen3.7-Max**. Second seat: **DeepSeek V4 Pro**.
 
-## Crush + ConvMem tools (2026-07-23)
+## Crush + ConvMem tools (2026-07-24)
 
-**Prefer shell `convmem`.** A shell-profile Roots deadlock made Crush MCP hang on
-`tools/call` (fixed in `mcp_server.py`); runtime may still have
-`mcp.convmem.disabled=true` until Ryan re-enables after probe PASS.
+**Prefer shell `convmem` for reads.** Keep tools under Crush’s ~60s bash budget.
 
 1. After ritual: `convmem "query"` / `convmem ask "…"` (or MCP if enabled).
-2. If UI says “waiting for tool” >30s: cancel (Esc) and retry via bash.
-3. Only **one** Crush TTY; prune with `bash ~/Projects/convmem/scripts/prune-stale-crush.sh`.
+2. **Do not** run `convmem index` / `add` / `verify` inside Crush bash — those exceed
+   ~60s, freeze the UI on “waiting for tool”, and leave a child running. Track A
+   handoff: run the index command in an **external** shell, or rely on watch
+   auto-index. The PreToolUse hook denies in-Crush index/add/verify.
+3. If UI says “waiting for tool” >30s: cancel (Esc), prune extra TTYs
+   (`bash ~/Projects/convmem/scripts/prune-stale-crush.sh`), retry with one Crush.
+4. Only **one** Crush TTY at a time.
 
 Full protocol: `~/.config/crush/rules/convmem.md`
