@@ -39,9 +39,13 @@ Neutral; neither application points to the other or to Neutral's source checkout
 ## Target definition
 
 Neutral Core v0 is the smallest **standalone mechanism library** for which the
-same behavior has been demonstrated in ConvMem Engineering and Office Team. A
-single useful helper is not a sufficient reason to create a repository: the
-qualified mechanisms must form a coherent, independently testable runtime slice.
+same observable contract has been demonstrated in ConvMem Engineering and Office
+Team. The two applications need not begin with identical implementations. When
+the responsibility matches but behavior differs, an approved bounded convergence
+pass may implement the proposed contract locally in each application before any
+code is shared. A single useful helper is not a sufficient reason to create a
+repository: the qualified mechanisms must form a coherent, independently
+testable runtime slice.
 
 The likely slice is listed below as a target, not as a finding that every item is
 ready now.
@@ -77,6 +81,19 @@ function names or a framework:
 | Relationships | Common provenance link representation and traversal | Which links are permitted or required by a workflow |
 | Retrieval | Small backend-neutral query/result contract, if demonstrated | Models, weights, source trust, orchestration, presentation |
 | Runtime setup | Explicit values passed by the caller | Config file, secrets, CLI identity, roles, deployment |
+
+There are two valid qualification routes:
+
+1. **Direct qualification:** both applications already satisfy the same
+   observable contract.
+2. **Bounded convergence proof:** comparison shows the same responsibility but a
+   different implementation; each application implements the smallest proposed
+   contract locally, then the same portable contract tests pass against both.
+
+Convergence is not extraction. It shares tests and observable requirements while
+the implementations remain application-local. A ConvMem convergence change is
+eligible only when the exact behavior also benefits ConvMem Engineering without
+Office Team.
 
 Neutral must not discover a repository root, inspect an application's working
 directory, read application environment variables by name, or choose user-level
@@ -119,6 +136,7 @@ The following stay outside Neutral v0 even if both applications happen to use
 similar words:
 
 - project identity, configuration files, data and secrets roots;
+- the human `PROJECT-PROFILE.md` and machine `config.toml` owned by each project;
 - domain record payloads, roles, signer identities, approval policy and workflow;
 - model selection, prompts, ranking weights and source-trust policy;
 - CLI, MCP, watch, background services and agent coordination;
@@ -131,6 +149,13 @@ similar words:
 Neutral itself must pass tests from a clean environment with both application
 repositories inaccessible. Each application must separately pass with the other
 application absent and with only its pinned Neutral artifact available.
+
+Enforcement is staged without weakening the target. **Independence v0** is
+mandatory for the first office workflow: isolated interpreter/environment,
+temporary HOME/XDG roots, no ConvMem install/import/command/data/checkout
+dependency, Office-owned paths, restart and replay. **Independence v1** completes
+the arc after convergence/migration with OS-level access denial, comprehensive
+subprocess interception and filesystem auditing where portable.
 
 For every runtime:
 
@@ -150,6 +175,8 @@ A mechanism qualifies only when all answers are yes:
 - Does it have the same responsibility and observable behavior in both apps?
 - Were domain assumptions removed rather than renamed or hidden in configuration?
 - Can its contract tests move with the mechanism unchanged?
+- If implementations initially differed, did an approved local convergence pass
+  make both satisfy that same contract without sharing code?
 - Can it run with both application repositories absent?
 - Does sharing it remove meaningful duplication without importing policy?
 - Can each app pin, deploy, back up and upgrade independently?
@@ -168,12 +195,14 @@ engine.
 
 ## Chosen direction
 
-Build one independently deployable office workflow selected for business value,
-compare its local mechanisms with ConvMem Engineering, and extract only the
-coherent subset that clears every gate above. Do not create Neutral Core before
-that comparison.
+Build one independently deployable office workflow selected for bounded business
+value, compare its local mechanisms with ConvMem Engineering, perform only
+approved application-local convergence needed to prove a genuinely common
+contract, and extract only the coherent subset that clears every gate above. Do
+not create Neutral Core before the comparison and parity proof.
 
-**TL;DR:** Neutral v0 is a small standalone mechanism library discovered from two
-working applications; all identity, policy, workflow, operations and deployment
-remain application-owned, and no Neutral repository is justified until a coherent
-slice passes the cross-domain and operational-independence gates.
+**TL;DR:** Neutral v0 is a small standalone mechanism library proven by two
+working applications, directly or through bounded local convergence; all
+identity, policy, workflow, operations and deployment remain application-owned,
+and no Neutral repository is justified until a coherent slice passes the shared
+contract and operational-independence gates.
