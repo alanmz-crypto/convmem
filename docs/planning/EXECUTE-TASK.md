@@ -88,7 +88,7 @@ Optional when relevant: `convmem doctor`, `convmem brief`, `convmem "query"`
 |------|------|---------|
 | **0** | **Intake** | Restate task in one sentence; list in-scope / out-of-scope; confirm HITL approval or Ryan waiver |
 | **1** | **Inspect branch & files** | `git status`, branch vs `main`, read touched files + callers; for bugs: reproduce or confirm symptom before editing |
-| **2** | **Scoped change** | Minimal diff; match repo conventions; no drive-by refactors; respect charter must-nots (no ledger writes, no client WP mixed with convmem infra) |
+| **2** | **Scoped change** | Minimal diff; match repo conventions; no drive-by refactors; respect charter must-nots (no ledger writes, no client WP mixed with convmem infra). If a material scope, architecture, authorization, security, or public-contract mismatch with the approved plan appears, stop and return it to Ryan/Codex — do not silently replan or broaden scope. |
 | **3** | **External Review** | Decide BugBot applicability; for required changes, obtain PR-native evidence for the subject tip and dispose every finding (§External Review gate) |
 | **4** | **Verify** | Run task-appropriate gates (see table below); adopt **Test-First Reviewer** — would an adversarial pass accept this? |
 | **5** | **Collect evidence** | PASS/FAIL/DEFERRED table with exit codes, command output one-liners, `file:line` for claims; include the External Review evidence row |
