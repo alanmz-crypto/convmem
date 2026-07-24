@@ -5,14 +5,14 @@
 
 ## Active handoff
 
-- **Crush freezes + Qwen/DeepSeek billing routing (2026-07-23) — VERIFY OPEN:**  
+- **Crush freezes + Qwen/DeepSeek billing routing (2026-07-23) — VERIFY PASS (mechanical + live Crush); PR next:**  
   **Consequence:** Crush should stop multi-minute “waiting for tool” hangs (MCP disabled; shell `convmem` only); when Cursor tokens run dry, use Crush on **Qwen3.7-Max** then **DeepSeek V4 Pro/Flash**.  
-  **Who:** Cursor implementer; Ryan / Crush soak VERIFY.  
-  **What:** Branch `fix/2026-07-23-crush-qwen-stability` tip `6563e53` — MCP `disabled`, Qwen defaults, DeepSeek coverage seat, Continue DashScope Qwen, billing routing docs.  
-  **When:** 2026-07-23 evening; pushed, PR not opened.  
+  **Who:** Cursor implementer + live Crush/`qwen3.7-max` soak; Ryan merge.  
+  **What:** Branch `fix/2026-07-23-crush-qwen-stability` — MCP `disabled`, Qwen defaults, DeepSeek coverage seat, Continue DashScope Qwen, billing routing docs.  
+  **When:** 2026-07-23 evening; V1/V2/V5 PASS; DeepSeek seat config PASS (optional full Pro ritual post-merge).  
   **Why:** Crush MCP client wedged on `search_fast` (server idle); IDE quotas exhaust mid-cycle while Alibaba/DeepSeek still have headroom.  
-  **How:** Full verify checklist: [`CURSOR-2026-07-23-crush-qwen-stability-handoff.md`](CURSOR-2026-07-23-crush-qwen-stability-handoff.md). Paste openers: [`../CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md), [`../CRUSH-DEEPSEEK-BOOTSTRAP.md`](../CRUSH-DEEPSEEK-BOOTSTRAP.md).  
-  **Caveat / TL;DR:** Crush MCP re-enable and `llm.py` Alibaba for `ask` are **not** in this branch.
+  **How:** Checklist + results: [`CURSOR-2026-07-23-crush-qwen-stability-handoff.md`](CURSOR-2026-07-23-crush-qwen-stability-handoff.md). Paste openers: [`../CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md), [`../CRUSH-DEEPSEEK-BOOTSTRAP.md`](../CRUSH-DEEPSEEK-BOOTSTRAP.md).  
+  **Caveat / TL;DR:** Crush MCP re-enable and `llm.py` Alibaba for `ask` are **not** in this branch; Ryan owns merge.
 
 - **Crush tool-output residual GATE ACCEPTED (2026-07-23):**  
   **Consequence:** Crush routine digs in the Task 2 soak sat ~**30k** prompt tokens instead of the old ~**100k** residual — cheaper if agents keep tool dumps thin; we did **not** start an MCP-clipping follow-on. Ryan accepted the close paperwork after [#103](https://github.com/alanmz-crypto/convmem/pull/103) / [#104](https://github.com/alanmz-crypto/convmem/pull/104).  
