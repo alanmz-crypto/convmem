@@ -1,6 +1,6 @@
 # Crush + convmem verification
 
-**Updated:** 2026-06-25
+**Updated:** 2026-07-23
 
 ## Alien-workspace soak
 
@@ -14,12 +14,34 @@ Prompt (unprompted): *What's the current state of this project?*
 
 ## Model matrix (Crush)
 
-| Model | Alien soak | Notes |
-|-------|------------|-------|
-| **qwen3-coder:30b** (local) | Recommended | Best tool + rule following for protocol soak |
-| **DeepSeek V4 Flash** | Mixed | PASS when rules salient (#9, willowyhollow 2026-06-28); FAIL bash-only (#6, #8) |
-| **DeepSeek V4 Pro** | **PASS (hook + restart)** | Pre-restart FAIL: ComfyUI 21:35:33 `git`/`ls` first, `crush.log` `decision:none`. Post-restart PASS: 23:02:28 session `b8f40eaa` — first tool `convmem doctor && brief && unresolved`, debug log `ritual complete` build `v3-20260628` |
-| DeepSeek R1 | untested | |
+| Model | Role | Notes |
+|-------|------|-------|
+| **Qwen3.7-Max** (Alibaba Singapore) | **Default large / lead architect** | Best for ConvMem architecture, planning, cross-doc, long reasoning. Prefer this. |
+| **Qwen3.7-Plus** | Fallback large | When Max is busy or slower |
+| **Qwen3.6-Plus** | Daily drafting | Balanced |
+| **Qwen3.6-Flash** | Default small | Fast brainstorm / light turns |
+| **DeepSeek V4 Pro** | **Second cloud budget** | Use when Cursor is dry or Qwen busy — burn DeepSeek quota; still Crush lane |
+| **DeepSeek V4 Flash** | Cheap/fast Crush seat | Same coverage role as Pro; historically mixed soak |
+| **Kimi K2.7 Code** | Coding specialist | Intensive implementation; not default for governance |
+| **qwen3-coder:30b** (local Ollama) | Offline soak | Best local tool + rule following when cloud unavailable |
+
+Bootstrap paste: [`docs/CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md).
+
+### Freeze / MCP hang checklist (2026-07-23)
+
+Symptoms: UI stuck on “waiting for tool” 10–15+ min; last log line often
+`PreToolUse` `mcp_convmem_search_fast` with no tool result; MCP child ~60 MB
+RSS idle on stdin (`anon_pipe_read`) — Crush never completes `tools/call`.
+
+**Mitigation (applied):** `mcp.convmem.disabled = true` in
+`~/.config/crush/crush.json`. Crush uses shell `convmem` only. Hook
+`search_first` message steers to bash, not MCP.
+
+Also:
+
+1. **Many Crush TTYs** — prune with `scripts/prune-stale-crush.sh`.
+2. **Swap pressure** — full swap + Kiro MCP on GPU (~2.8 GB) worsens hangs.
+3. Re-enable MCP only after a timed Crush soak proves `search_fast` returns.
 
 ## If DeepSeek V4 Pro skips convmem
 
