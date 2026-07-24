@@ -4,10 +4,10 @@
 # Reproduces the hang class: PreToolUse allow → no tool_result (Crush client
 # never completes tools/call while mcp_server sits on stdin).
 #
-# Always restores:
-#   - mcp.convmem.disabled=true, timeout=180
-#   - hooks/convmem-allow.sh from backup
-# Does NOT leave MCP enabled even on PASS — Ryan re-enables after review.
+# Always restores from backups taken at start:
+#   - crush.json (including prior mcp.convmem.disabled / timeout)
+#   - hooks/convmem-allow.sh
+# Does not force MCP off after PASS (preserves live enabled state).
 #
 # Usage:
 #   bash scripts/probe-crush-mcp-tools-call.sh
@@ -38,15 +38,16 @@ cp -a "$HOOK" "$HOOK_BAK"
 
 restore() {
   cp -a "$HOOK_BAK" "$HOOK" 2>/dev/null || true
-  python3 - <<'PY'
+  cp -a "$CFG_BAK" "$CFG" 2>/dev/null || true
+  python3 - <<PY
 import json
 from pathlib import Path
-p = Path.home() / ".config/crush/crush.json"
-cfg = json.loads(p.read_text())
-cfg.setdefault("mcp", {}).setdefault("convmem", {})["disabled"] = True
-cfg["mcp"]["convmem"]["timeout"] = 180
-p.write_text(json.dumps(cfg, indent=2) + "\n")
-print("restored: mcp.convmem.disabled=true timeout=180 + hook backup")
+cfg = json.loads(Path("$CFG").read_text())
+m = cfg.get("mcp", {}).get("convmem", {})
+print(
+    "restored: hook + crush.json "
+    f"(mcp.convmem.disabled={m.get('disabled')!r} timeout={m.get('timeout')!r})"
+)
 PY
 }
 trap restore EXIT
@@ -131,8 +132,8 @@ echo "elapsed=${elapsed}s allow=${allow:-0} deny=${deny:-0} ok=${ok:-0} wd=${wd:
 rg -n 'mcp_convmem|PreToolUse|WATCHDOG|MCP_CALL_OK|blocked|decision=' "$OUT" | head -30 || true
 
 if ((killed == 0)) && [[ "${allow:-0}" -ge 1 ]] && [[ "${db_ok:-0}" -ge 1 ]] && [[ "${deny:-0}" -eq 0 ]]; then
-  echo "PASS: Crush tools/call returned under ${DEADLINE}s (MCP still left disabled by policy)"
+  echo "PASS: Crush tools/call returned under ${DEADLINE}s (prior mcp.disabled restored)"
   exit 0
 fi
-echo "FAIL: Crush MCP tools/call did not complete cleanly (keep mcp.convmem.disabled=true)"
+echo "FAIL: Crush MCP tools/call did not complete cleanly (prior mcp.disabled restored)"
 exit 1
