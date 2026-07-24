@@ -10,7 +10,7 @@ Lanes:        Codex (predeclared checks only); Cursor (mechanical evidence); Kir
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Subject / tip:** `feat/2026-07-24-codex-planning-cursor-execution` @ `72c696d6b6f4d621297b9ff4e8b5bd0e1613f826`
+**Subject / tip:** `feat/2026-07-24-codex-planning-cursor-execution` @ `e17ce940e522400b2bbb9d7700ee2a26553011fc`
 
 **Implementation base:** `0096d56f06046b1854ece41fae95865150e9dbcc` (approved Architecture / Execution / VERIFY stub tip)
 
@@ -107,7 +107,7 @@ does not re-decide applicability.
 |-------|-------|
 | `gate_applicability` | `required` (Execute confirmed: `planning_contract.py` changes doctor enforcement) |
 | `reason` | Executable Planning Contract/doctor correctness behavior changes |
-| `subject_tip_sha` | `72c696d6b6f4d621297b9ff4e8b5bd0e1613f826` |
+| `subject_tip_sha` | `e17ce940e522400b2bbb9d7700ee2a26553011fc` |
 | `bugbot_reviewed_sha` | `pending` — no PR/comment authority yet |
 | `result` | `pending` — BugBot not runnable until Ryan authorizes a PR |
 | `finding_disposition` | `none` yet |
@@ -115,7 +115,7 @@ does not re-decide applicability.
 
 | ID | Check | PASS / FAIL / SKIP / N/A |
 |----|-------|---------------------------|
-| V0a | Subject tip and implementation base resolve; base contains the Ryan-approved Architecture, Execution Plan, and this stub | **PASS** — base `0096d56` has Architecture/Execution/VERIFY; tip `72c696d6b6f4d621297b9ff4e8b5bd0e1613f826` |
+| V0a | Subject tip and implementation base resolve; base contains the Ryan-approved Architecture, Execution Plan, and this stub | **PASS** — base `0096d56` has Architecture/Execution/VERIFY; tip `e17ce940e522400b2bbb9d7700ee2a26553011fc` |
 | V0b | Cursor's implementation branch and changed-path set are recorded | **PASS** — branch `feat/2026-07-24-codex-planning-cursor-execution`; paths listed in Evidence log |
 | V0c | Execute applicability decision and reason are present | **PASS** — External Review row above: `required` |
 | V0d | If required: PR-native BugBot-reviewed SHA equals subject tip SHA; mismatch is FAIL | **Pending** — BugBot required; Ryan has not authorized PR/comment route yet |
@@ -133,7 +133,7 @@ git diff --check <implementation-base-sha>...<subject-tip-sha>
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V1a | Every changed path is in the Execution Plan's authored, generated, or evidence-only file set | **PASS** — `git diff --name-only 0096d56...72c696d6b6f4d621297b9ff4e8b5bd0e1613f826` matches authored/generated/evidence set only |
+| V1a | Every changed path is in the Execution Plan's authored, generated, or evidence-only file set | **PASS** — `git diff --name-only 0096d56...e17ce940e522400b2bbb9d7700ee2a26553011fc` matches authored/generated/evidence set only |
 | V1b | Architecture and Execution Plan are unchanged by Cursor | **PASS** — no diff on Architecture/Execution plan paths |
 | V1c | No historical plan, review, transcript, ledger artifact, runtime subsystem, or unrelated file changed | **PASS** — path lock holds |
 | V1d | `git diff --check` passes | **PASS** — `git diff --check 0096d56..HEAD` clean |
@@ -278,7 +278,7 @@ The verifier performs no cleanup or correction.
 ```text
 VERIFY-codex-planning-cursor-execution
 implementation base: 0096d56f06046b1854ece41fae95865150e9dbcc
-subject tip: 72c696d6b6f4d621297b9ff4e8b5bd0e1613f826
+subject tip: e17ce940e522400b2bbb9d7700ee2a26553011fc
 branch: feat/2026-07-24-codex-planning-cursor-execution
 runner: Cursor (Grok)
 timestamp: 2026-07-24T05:53:42Z
