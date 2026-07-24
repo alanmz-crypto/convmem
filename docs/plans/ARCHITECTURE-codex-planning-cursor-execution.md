@@ -242,6 +242,10 @@ eligible implementation arcs, the handoff should classify material rework as:
 - **lane violation:** planning, implementation, review, or authority crossed
   the assigned boundary.
 
+Arc classification is proposed by Crush (neutral framing lane) and confirmed
+by Ryan; the author of the artifact under evaluation does not produce the
+definitive classification of its own defects.
+
 After three arcs, Ryan reviews the evidence. Changes to the default require a
 new explicit architecture decision; no automatic rollback or silent exception
 is authorized. A one-off lane waiver must name the artifact, actor, scope, and
@@ -297,6 +301,8 @@ Review routing for the approved Execution Plan:
 
 - **Kiro:** confirm separation of planning, implementation, review, and Ryan
   authority; reject accidental new roles or self-signoff.
+- **Kiro rejection routing:** A Kiro rejection of the Execution Plan goes to
+  Ryan before Codex may revise and resubmit.
 - **GitHub Copilot audit lane:** after Cursor implementation, check source-to-
   generated parity, stale live references, contract/doctor enforcement, and
   any authorization widening. This is a targeted governance/safety audit, not
