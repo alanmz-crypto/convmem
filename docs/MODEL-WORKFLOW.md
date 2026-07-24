@@ -14,6 +14,24 @@
 | [`docs/inter-model/SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md) | Record block format |
 | [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md) | HITL team roles — lost on who does what? |
 | [`docs/CI-WAIT-WORKFLOW.md`](CI-WAIT-WORKFLOW.md) | What to do while CI / automated review runs |
+| Cursor rule `dense-consult-deepseek-kiro` | When to auto-run / skip / ask before dual consult |
+
+---
+
+## Dense consult — DeepSeek V4-Pro API + Kiro (token-per-pound)
+
+Ryan’s preferred second-opinion pattern for **load-bearing owner forks** (not routine Execute).
+
+| Advisor | How | Role |
+|---|---|---|
+| **DeepSeek V4-Pro** | DeepSeek **API** (`deepseek-v4-pro`) — Continue-class; **not** Ollama `deepseek-r1` for dense briefs | Dense reasoning on an evidence pack |
+| **Kiro** | `kiro-cli chat --no-interactive` (review posture) | Independent design-review opinion; non-implementing |
+
+**Runner:** [`scripts/dense-consult-deepseek-kiro.sh`](../scripts/dense-consult-deepseek-kiro.sh) `brief.txt` `[outdir]`
+
+**Cursor policy (auto / skip / ask):** always-applied rule `~/.cursor/rules/dense-consult-deepseek-kiro.mdc` — auto-run on blocking forks / model disagreement / pre-Copilot-or-HITL; auto-skip on routine Execute and already-locked decisions; ask Ryan when borderline.
+
+Advisors **recommend**; Ryan **locks**. Do not treat a consult as merge/Execute/live-ops authorization.
 
 ---
 
