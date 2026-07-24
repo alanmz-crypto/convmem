@@ -107,6 +107,33 @@ class McpRootsHelpers(unittest.TestCase):
 
         # Leave tools registered for sibling tests in this process.
 
+    def test_sync_boundary_on_running_loop_uses_cwd_not_nested_asyncio(self):
+        """Crush hang class: sync tools must not nested-await list_roots."""
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mcp_server._SHELL_ROOTS.project = None
+        mcp_server._SHELL_ROOTS.boundary_applied = False
+
+        session = MagicMock()
+        session.check_client_capability = MagicMock(return_value=True)
+        session.list_roots = AsyncMock(
+            side_effect=AssertionError("list_roots must not run on live loop sync path")
+        )
+
+        async def _on_loop():
+            with patch.object(mcp_server, "_mcp_profile", return_value="shell"), patch.object(
+                mcp_server, "_mcp_request_session", return_value=session
+            ), patch.object(
+                mcp_server, "_cwd_is_project_root", return_value=True
+            ):
+                mcp_server._apply_shell_roots_brief_boundary_sync()
+            self.assertTrue(mcp_server._SHELL_ROOTS.boundary_applied)
+            self.assertTrue(mcp_server._SHELL_ROOTS.project)
+            session.list_roots.assert_not_called()
+
+        asyncio.run(_on_loop())
+
 
 if __name__ == "__main__":
     unittest.main()
