@@ -522,9 +522,10 @@ def complete_capture_validation(  # pylint: disable=too-many-arguments,too-many-
 
 def _delegate_r2b_capture(**kwargs: Any) -> dict[str, Any]:
     """Lazy import so capture.py stays under the module size gate."""
-    from eval_corpus.r2b_capture_run import run_r2b_capture
+    import importlib
 
-    return run_r2b_capture(**kwargs)
+    mod = importlib.import_module("eval_corpus.r2b_capture_run")
+    return mod.run_r2b_capture(**kwargs)
 
 
 def run_capture(  # pylint: disable=too-many-locals

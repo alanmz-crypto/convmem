@@ -18,6 +18,8 @@ EXECUTION_SURFACES = (
     REPO_ROOT / "config" / "cursor-rules-convmem.mdc.example",
     REPO_ROOT / "config" / "codex-agents-convmem.example.md",
     REPO_ROOT / "config" / "kiro-steering-convmem.example.md",
+    REPO_ROOT / "config" / "copilot-agents-convmem.example.md",
+    REPO_ROOT / "config" / "copilot-instructions-convmem.example.md",
     REPO_ROOT / "config" / "crush-rules-convmem.example.md",
 )
 CHATGPT_PACK = REPO_ROOT / "docs" / "chatgpt-pack" / "custom-instructions.txt"
