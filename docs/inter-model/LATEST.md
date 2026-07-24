@@ -1,9 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (#109 Codex planning / Cursor execution landed + deployed)
+**Updated:** 2026-07-24 (research pack backup+Neutral for cloud models)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Research pack for cloud Claude/ChatGPT (2026-07-24):** Branch [`docs/2026-07-24-research-pack-backup-neutral`](https://github.com/alanmz-crypto/convmem/tree/docs/2026-07-24-research-pack-backup-neutral/docs/inter-model/research-pack-2026-07-24-backup-neutral). Who/What: Cursor frozen attachments + handoffs so max models can research (1) complete-data backup close decisions and (2) Neutral/Office Gate-0 + ledger-first appetite. When: pack PR. Why: those two tracks are the remaining forward blockers; Codex↔Cursor lane (#109/#112) stays closed. How: open [README](research-pack-2026-07-24-backup-neutral/README.md); paste `CLAUDE-HANDOFF.md` / `CHATGPT-HANDOFF.md`; browse `attachments/`. **Does not authorize** Office coding, Neutral extraction, or live Restic rollout.
 
 - **Codex planning / Cursor execution LANDED + DEPLOYED (2026-07-24):** Squash-merged [#109](https://github.com/alanmz-crypto/convmem/pull/109) to `main` as [`982a502`](https://github.com/alanmz-crypto/convmem/commit/982a5028400cd9d5c45201e1cd127ea1d5b663ef).  
   **Consequence:** Live overlays name **Codex** for architecture/execution planning and **Cursor** for implementation; Planning Guide Contract **v2** (actor-neutral HITL stop).  
