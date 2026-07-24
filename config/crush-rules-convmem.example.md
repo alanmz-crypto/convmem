@@ -36,6 +36,8 @@ Watch auto-indexes session files after debounce (~90s). Agents still **nudge bot
 
 **A — Index your session chat (required at handoff):**
 
+**Crush bash budget:** do **not** run Track A `convmem index` inside Crush (hard ~60s tool timeout freezes the UI). Print the command for an external shell, or rely on watch auto-index (~90s debounce). Doctor/brief/ask stay in-Crush.
+
 ```bash
 # Crush (willowyhollow-practice):
 convmem index --file ~/WordPress/willowyhollow-practice/.crush/crush.db

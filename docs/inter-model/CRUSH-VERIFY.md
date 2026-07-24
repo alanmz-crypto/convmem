@@ -27,23 +27,25 @@ Prompt (unprompted): *What's the current state of this project?*
 
 Bootstrap paste: [`docs/CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md).
 
-### Freeze / MCP hang checklist (2026-07-23)
+### Freeze / MCP hang checklist (2026-07-23; bash class 2026-07-24)
 
-Symptoms: UI stuck on “waiting for tool” 10–15+ min; last log line often
-`PreToolUse` `mcp_convmem_search_fast` with no tool result; MCP child ~60 MB
-RSS idle on stdin (`anon_pipe_read`) — Crush never completes `tools/call`.
+**Two hang classes:**
 
-**Mitigation (applied):** `mcp.convmem.disabled = true` in
-`~/.config/crush/crush.json`. Crush uses shell `convmem` only. Hook
-`search_first` message steers to bash, not MCP.
+| Class | Symptom in `crush.log` | Fix |
+|-------|------------------------|-----|
+| MCP `tools/call` | `PreToolUse` `mcp_convmem_*` then no result; MCP child ~60 MB on `anon_pipe_read` | Nested `roots/list` deadlock fixed in #108; keep MCP only if soak stays green |
+| Bash ~60s timeout | `PreToolUse` `bash` → exactly ~60s → next `ModelProvider` | Do not run `convmem index`/`add`/`verify` in Crush; hook denies them (2026-07-24) |
+
+**MCP mitigation (optional):** `mcp.convmem.disabled = true` in
+`~/.config/crush/crush.json` forces shell `convmem` only.
 
 Also:
 
 1. **Many Crush TTYs** — prune with `scripts/prune-stale-crush.sh`.
-2. **Swap pressure** — full swap + Kiro MCP on GPU (~2.8 GB) worsens hangs.
+2. **Swap pressure** — full swap worsens hangs (leave zram at 8 GiB unless Ryan changes it).
 3. Re-enable MCP only after a timed Crush soak proves `search_fast` / `stats` returns.
-4. Repeatable probe: `bash scripts/probe-crush-mcp-tools-call.sh` (always restores
-   `disabled=true`; do not treat a green run as auto-enable).
+4. Repeatable probe: `bash scripts/probe-crush-mcp-tools-call.sh` (restores prior
+   `crush.json`; do not treat a green run as auto-enable).
 
 ### Post-#106 optional soaks (2026-07-23 ~22:20 local)
 

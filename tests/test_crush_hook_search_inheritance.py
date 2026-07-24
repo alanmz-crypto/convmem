@@ -62,5 +62,49 @@ class CrushHookSearchInheritanceTests(unittest.TestCase):
             self.assertNotIn("corpus has the answers", out.stderr)
 
 
+    def _run_bash(self, *, cache: Path, session: str, command: str) -> subprocess.CompletedProcess:
+        env = dict(os.environ)
+        env["XDG_CACHE_HOME"] = str(cache)
+        env["CRUSH_SESSION_ID"] = session
+        env["CRUSH_TOOL_NAME"] = "bash"
+        env["CRUSH_TOOL_INPUT_COMMAND"] = command
+        return subprocess.run(
+            ["bash", str(HOOK)],
+            cwd=REPO_ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+
+    def test_denies_index_even_after_ritual(self):
+        with tempfile.TemporaryDirectory() as d:
+            cache = Path(d)
+            ritual_dir = cache / "convmem-crush-ritual"
+            ritual_dir.mkdir(parents=True)
+            sess = "sess-index"
+            for suffix in ("doctor", "brief", "unresolved", "search_seen"):
+                (ritual_dir / f"progress-{sess}.{suffix}").touch()
+            out = self._run_bash(
+                cache=cache,
+                session=sess,
+                command="convmem index --file /tmp/crush.db",
+            )
+            self.assertEqual(out.returncode, 2, out.stdout + out.stderr)
+            self.assertIn('"decision":"deny"', out.stdout)
+            self.assertIn("index/add/verify", out.stdout)
+
+    def test_allows_doctor_bash(self):
+        with tempfile.TemporaryDirectory() as d:
+            cache = Path(d)
+            out = self._run_bash(
+                cache=cache,
+                session="sess-doctor",
+                command="convmem doctor",
+            )
+            self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+            self.assertIn('"decision":"allow"', out.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -14,6 +14,9 @@ ritual_msg="convmem ritual required before repo survey. Run: convmem doctor && c
 # Prefer shell: Crush MCP stdio has hung indefinitely on tools/call (server idle
 # on stdin) — do not steer the model into mcp_convmem_* until that path is solid.
 search_first_msg="The convmem corpus has the answers. Use bash: convmem \"query\" or convmem ask \"…\" before grep/glob/ls/view. Do not wait on mcp_convmem_*."
+# Crush bash tools hard-timeout around 60s. index/add/verify routinely exceed
+# that, leave the UI on waiting for tool, and keep the child running.
+long_ingest_msg="Do not run convmem index/add/verify inside Crush bash (tool budget ~60s; freezes UI). Track A: run that command in an external shell, or rely on watch auto-index. Continue with doctor/brief/unresolved/search/ask only."
 
 # Fallback: parse stdin JSON for bash when env not set
 if [ "$tool" = "bash" ] && [ -z "$cmd" ] && [ ! -t 0 ]; then
@@ -58,6 +61,13 @@ _deny() {
   exit 2
 }
 
+_deny_long_ingest_bash() {
+  [ "$tool" = "bash" ] && [ -n "$cmd" ] || return 0
+  if echo "$cmd" | grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*convmem[[:space:]]+(index|add|verify)([[:space:]]|$)'; then
+    _deny "$long_ingest_msg"
+  fi
+}
+
 _survey_tool() {
   case "$tool" in
     ls|view|glob|grep|read|agent) return 0 ;;
@@ -82,6 +92,8 @@ _allow_readonly_convmem_bash() {
   fi
   return 1
 }
+
+_deny_long_ingest_bash
 
 if [ "$tool" = "bash" ] && [ -n "$cmd" ]; then
   if _allow_readonly_convmem_bash; then
