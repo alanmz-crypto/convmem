@@ -150,11 +150,12 @@ rg -n 'Billing-cycle model routing|mcp.convmem.disabled|shell only' \
 
 | Gap | Notes |
 |-----|--------|
-| Crush MCP re-enable | **Not done** — needs timed soak proving `tools/call` returns |
+| Crush MCP re-enable | **FAIL (2026-07-23 ~22:22)** — hook-allow + MCP enabled; PreToolUse allow on `mcp_convmem_stats`; 50 s watchdog; no `tool_result`. Keep `disabled=true`. Probe: `scripts/probe-crush-mcp-tools-call.sh` |
+| Shell / cloud soaks | **PASS** — Crush DeepSeek V4 Flash bash ritual ~8 s; DashScope Qwen3.7-Max ~4.4 s; DeepSeek API OK (`reasoning_content` may be empty `content`) |
 | `llm.py` Alibaba provider for `ask`/summarize | **Not done** — `ask`/distill stay on DeepSeek V4 Flash API; summarize still local `llama3.1:8b` |
 | Cursor hosting Qwen | **Impossible** on Cursor subscription — hand off to Crush when dry |
 | Swap / Kiro GPU pressure | Noted; not “fixed” — close idle Kiro if freezes return |
-| Open PR | Branch pushed; PR not opened unless Ryan asks |
+| Squash-merge default follow-up | Open [#107](https://github.com/alanmz-crypto/convmem/pull/107) (squash OK) — note + this soak close-out |
 
 ---
 
@@ -164,11 +165,10 @@ rg -n 'Billing-cycle model routing|mcp.convmem.disabled|shell only' \
 
 ## Suggested next actions for Ryan
 
-1. Review / merge [#106](https://github.com/alanmz-crypto/convmem/pull/106) (VERIFY PASS recorded above).
-2. After merge: `bash scripts/deploy-agent-protocol.sh` if overlays look stale.
-3. Habit: Cursor dry → Crush Qwen3.7-Max → rotate DeepSeek V4 Pro/Flash.
-4. Only re-enable Crush MCP after a green timed soak; leave `disabled: true` until then.
-5. Optional: Crush DeepSeek V4 Pro paste soak post-merge.
+1. Squash-merge [#107](https://github.com/alanmz-crypto/convmem/pull/107) (squash-merge default note + soak close-out). **Squash OK.**
+2. Habit: Cursor dry → Crush Qwen3.7-Max → rotate DeepSeek V4 Pro/Flash (shell `convmem` only).
+3. Leave Crush MCP **disabled** until `scripts/probe-crush-mcp-tools-call.sh` exits 0 **and** you choose to re-enable.
+4. Optional later: Alibaba/OpenAI-compat path in `llm.py` for `ask`/summarize.
 
 ---
 

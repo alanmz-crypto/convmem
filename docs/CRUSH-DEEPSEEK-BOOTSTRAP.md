@@ -51,3 +51,10 @@ cp ~/Projects/convmem/docs/DEEPSEEK-SESSION-CONTEXT.md \
 
 Crush ConvMem MCP is **disabled** until tools/call no longer hangs. Use shell
 `convmem` only. See [`inter-model/CRUSH-VERIFY.md`](inter-model/CRUSH-VERIFY.md).
+Re-probe: `bash scripts/probe-crush-mcp-tools-call.sh` (always restores disabled).
+
+## Note on raw API smokes
+
+DeepSeek V4 chat completions may return empty `message.content` with the answer
+in `reasoning_content`. Crush tool turns still work; do not treat empty `content`
+alone as a failed API key when HTTP 200 and reasoning text are present.

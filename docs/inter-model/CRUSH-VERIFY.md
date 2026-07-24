@@ -41,7 +41,21 @@ Also:
 
 1. **Many Crush TTYs** — prune with `scripts/prune-stale-crush.sh`.
 2. **Swap pressure** — full swap + Kiro MCP on GPU (~2.8 GB) worsens hangs.
-3. Re-enable MCP only after a timed Crush soak proves `search_fast` returns.
+3. Re-enable MCP only after a timed Crush soak proves `search_fast` / `stats` returns.
+4. Repeatable probe: `bash scripts/probe-crush-mcp-tools-call.sh` (always restores
+   `disabled=true`; do not treat a green run as auto-enable).
+
+### Post-#106 optional soaks (2026-07-23 ~22:20 local)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| DashScope `qwen3.7-max` API smoke | **PASS** | ~4.4 s → `DASHSCOPE_OK` |
+| DeepSeek V4 Flash/Pro API smoke | **PASS*** | HTTP OK; `content` often empty — answer in `reasoning_content` |
+| Crush `deepseek-v4-flash` shell ritual | **PASS** | `crush run` → bash `convmem doctor` → `SOAK_OK` ~8 s |
+| Crush MCP `tools/call` (hook-allow + enabled) | **FAIL** | PreToolUse **allow** on `mcp_convmem_stats`, then **50 s watchdog** — no `tool_result` in `crush.db` |
+| False-positive trap | noted | Ritual-incomplete deny → model prints `MCP_PROBE_OK` without a real call — require DB `tool_result` not blocked |
+
+**Keep `mcp.convmem.disabled=true`.** Crush permissions now also allow `bash` + `view` (runtime).
 
 ## If DeepSeek V4 Pro skips convmem
 
