@@ -69,6 +69,10 @@ Re-probe: `bash scripts/probe-crush-mcp-tools-call.sh`. Post-#108 merge (2026-07
 live `mcp.convmem.disabled=false` after probe PASS ~13 s — **restart Crush** to load
 hooks/MCP.
 
+**Automated:** `pytest tests/test_mcp_crush_stdio_sequence.py` — Crush-shaped NDJSON
+handshake + `stats` tools/call under shell profile (hang-class regression).
+Unit: `tests/test_mcp_roots_probe.py` (`test_sync_boundary_on_running_loop…`).
+
 ## If DeepSeek V4 Pro skips convmem
 
 1. Deploy: `bash ~/Projects/convmem/scripts/deploy-agent-protocol.sh`
