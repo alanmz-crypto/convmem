@@ -1,18 +1,16 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-23 (Crush Qwen stability + billing-cycle routing handoff)
+**Updated:** 2026-07-23 (#106 landed; squash-merge default follow-up)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Crush freezes + Qwen/DeepSeek billing routing (2026-07-23) — VERIFY PASS; PR [#106](https://github.com/alanmz-crypto/convmem/pull/106) open:**  
-  **Consequence:** Crush should stop multi-minute “waiting for tool” hangs (MCP disabled; shell `convmem` only); when Cursor tokens run dry, use Crush on **Qwen3.7-Max** then **DeepSeek V4 Pro/Flash**.  
-  **Who:** Cursor implementer + live Crush/`qwen3.7-max` soak; Ryan merge.  
-  **What:** Branch `fix/2026-07-23-crush-qwen-stability` tip `dc9fcc8` — MCP `disabled`, Qwen defaults, DeepSeek coverage seat, Continue DashScope Qwen, billing routing docs.  
-  **When:** 2026-07-23 evening; V1/V2/V5 PASS; PR opened.  
-  **Why:** Crush MCP client wedged on `search_fast` (server idle); IDE quotas exhaust mid-cycle while Alibaba/DeepSeek still have headroom.  
-  **How:** PR [#106](https://github.com/alanmz-crypto/convmem/pull/106); checklist: [`CURSOR-2026-07-23-crush-qwen-stability-handoff.md`](CURSOR-2026-07-23-crush-qwen-stability-handoff.md). Paste openers: [`../CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md), [`../CRUSH-DEEPSEEK-BOOTSTRAP.md`](../CRUSH-DEEPSEEK-BOOTSTRAP.md).  
-  **Caveat / TL;DR:** Crush MCP re-enable and `llm.py` Alibaba for `ask` are **not** in this PR; Ryan owns merge.
+- **Crush freezes + Qwen/DeepSeek billing routing LANDED (2026-07-23):** Squash-merged [#106](https://github.com/alanmz-crypto/convmem/pull/106) to `main` as [`67b020f`](https://github.com/alanmz-crypto/convmem/commit/67b020fd7fd545cd583496f2bb6a1808bfc53f7b).  
+  **Consequence:** Crush uses shell `convmem` (MCP disabled) to avoid tool hangs; Cursor-dry work goes to Crush **Qwen3.7-Max**, with **DeepSeek V4 Pro/Flash** as second cloud seat.  
+  **Who:** Cursor + Crush soak; Ryan squash-merged.  
+  **What/When/Why/How:** Handoff [`CURSOR-2026-07-23-crush-qwen-stability-handoff.md`](CURSOR-2026-07-23-crush-qwen-stability-handoff.md); paste [`../CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md) / [`../CRUSH-DEEPSEEK-BOOTSTRAP.md`](../CRUSH-DEEPSEEK-BOOTSTRAP.md); routing in [`../MODEL-WORKFLOW.md`](../MODEL-WORKFLOW.md).  
+  **Follow-up ([#107](https://github.com/alanmz-crypto/convmem/pull/107)):** squash-merge default note (missed the #106 tip) + post-land soaks: Crush DeepSeek shell **PASS**; Crush MCP `tools/call` probe **FAIL** (50 s watchdog after PreToolUse allow) — keep `mcp.convmem.disabled=true`. Probe script: `scripts/probe-crush-mcp-tools-call.sh`.
+
 
 - **Crush tool-output residual GATE ACCEPTED (2026-07-23):**  
   **Consequence:** Crush routine digs in the Task 2 soak sat ~**30k** prompt tokens instead of the old ~**100k** residual — cheaper if agents keep tool dumps thin; we did **not** start an MCP-clipping follow-on. Ryan accepted the close paperwork after [#103](https://github.com/alanmz-crypto/convmem/pull/103) / [#104](https://github.com/alanmz-crypto/convmem/pull/104).  
