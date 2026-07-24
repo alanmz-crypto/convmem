@@ -29,8 +29,8 @@ Under `attachments/`:
 |---|---|
 | `CODEX-2026-07-23-complete-data-backup-copilot-audit.md` | Backup audit contract; SHA `492e6e7` |
 | `restic-ensure-chroma-snapshot.sh` | Gate / tag / path behavior |
-| `observe.py` | Observation authority / write order |
-| `propose_decision.py` | Decision durability / recovery |
+| `observe.py.txt` | Observation authority / write order (frozen copy) |
+| `propose_decision.py.txt` | Decision durability / recovery (frozen copy) |
 | `PHASED-PATH.md`, `NEUTRAL-TARGET.md`, `NEUTRAL-CORE-CANDIDATES.md` | Neutral direction |
 | `EXTRACTION-PROBE.md`, `IMPLEMENTATION-HANDOFF-1.md` | Gate 0 / Office handoff |
 | `SOURCES.txt` | Freeze provenance |

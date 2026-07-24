@@ -36,8 +36,8 @@ See [attachments/SOURCES.txt](attachments/SOURCES.txt) for freeze tips.
 | [NEUTRAL-CORE-CANDIDATES.md](attachments/NEUTRAL-CORE-CANDIDATES.md) | Candidate / independence notes |
 | [EXTRACTION-PROBE.md](attachments/EXTRACTION-PROBE.md) | Office probe / Gate 0 |
 | [IMPLEMENTATION-HANDOFF-1.md](attachments/IMPLEMENTATION-HANDOFF-1.md) | Office implementation handoff (unauthorized until Gate 0) |
-| [observe.py](attachments/observe.py) | Observation write path (Chroma-first today) |
-| [propose_decision.py](attachments/propose_decision.py) | Decision JSONL / approval path |
+| [observe.py.txt](attachments/observe.py.txt) | Observation write path (Chroma-first today; `.py.txt` so CI pylint does not scan frozen copies) |
+| [propose_decision.py.txt](attachments/propose_decision.py.txt) | Decision JSONL / approval path (same) |
 | [restic-ensure-chroma-snapshot.sh](attachments/restic-ensure-chroma-snapshot.sh) | Local Restic ensure / gate script |
 
 ## GitHub browse (after push)
@@ -50,7 +50,7 @@ Pack root on this branch:
 
 Raw attachment example:
 
-`https://raw.githubusercontent.com/alanmz-crypto/convmem/docs/2026-07-24-research-pack-backup-neutral/docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/observe.py`
+`https://raw.githubusercontent.com/alanmz-crypto/convmem/docs/2026-07-24-research-pack-backup-neutral/docs/inter-model/research-pack-2026-07-24-backup-neutral/attachments/observe.py.txt`
 
 ## Also on origin (source tips)
 

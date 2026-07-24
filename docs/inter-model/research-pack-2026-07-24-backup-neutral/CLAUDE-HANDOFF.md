@@ -30,7 +30,7 @@ Open under `attachments/` (same directory tree on GitHub):
 - Neutral plans: `PHASED-PATH.md`, `NEUTRAL-TARGET.md`,
   `NEUTRAL-CORE-CANDIDATES.md`, `EXTRACTION-PROBE.md`,
   `IMPLEMENTATION-HANDOFF-1.md`
-- `observe.py`, `propose_decision.py`, `restic-ensure-chroma-snapshot.sh`
+- `observe.py.txt`, `propose_decision.py.txt`, `restic-ensure-chroma-snapshot.sh`
 - `SOURCES.txt` (freeze tips)
 
 ## TRACK 1 — Complete-data backup

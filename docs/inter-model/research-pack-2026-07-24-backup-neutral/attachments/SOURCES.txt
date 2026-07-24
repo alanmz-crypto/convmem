@@ -7,7 +7,7 @@ CODEX-2026-07-23-complete-data-backup-copilot-audit.md
 Neutral plans (EXTRACTION-PROBE, IMPLEMENTATION-HANDOFF-1, NEUTRAL-*, PHASED-PATH)
   from origin/plan/2026-07-23-neutral-core-path @ 74b68aa
 
-observe.py, propose_decision.py, restic-ensure-chroma-snapshot.sh
+observe.py.txt, propose_decision.py.txt (frozen copies; .py.txt avoids pylint), restic-ensure-chroma-snapshot.sh
   from origin/main @ 5aea323
 
 Pack branch: docs/2026-07-24-research-pack-backup-neutral
