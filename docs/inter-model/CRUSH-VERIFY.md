@@ -20,10 +20,10 @@ Prompt (unprompted): *What's the current state of this project?*
 | **Qwen3.7-Plus** | Fallback large | When Max is busy or slower |
 | **Qwen3.6-Plus** | Daily drafting | Balanced |
 | **Qwen3.6-Flash** | Default small | Fast brainstorm / light turns |
+| **DeepSeek V4 Pro** | **Second cloud budget** | Use when Cursor is dry or Qwen busy — burn DeepSeek quota; still Crush lane |
+| **DeepSeek V4 Flash** | Cheap/fast Crush seat | Same coverage role as Pro; historically mixed soak |
 | **Kimi K2.7 Code** | Coding specialist | Intensive implementation; not default for governance |
 | **qwen3-coder:30b** (local Ollama) | Offline soak | Best local tool + rule following when cloud unavailable |
-| **DeepSeek V4 Flash** | Legacy | Mixed soak; prefer Qwen3.7-Max |
-| **DeepSeek V4 Pro** | Legacy | PASS with hook + restart historically; prefer Qwen3.7-Max |
 
 Bootstrap paste: [`docs/CRUSH-QWEN-BOOTSTRAP.md`](../CRUSH-QWEN-BOOTSTRAP.md).
 
