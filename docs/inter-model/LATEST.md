@@ -1,9 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (research pack backup+Neutral for cloud models)
+**Updated:** 2026-07-24 (workspace-coord salvage: audit + handoff + decision memos → GitHub)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Shadow Ledger Phase 0 Architecture authored — awaiting HITL (2026-07-24):** Who/What: Codex draft Architecture in PR [#115](https://github.com/alanmz-crypto/convmem/pull/115) (`ARCHITECTURE-shadow-ledger-phase0.md`, tip `c9a5c70`). When: after Qwen audit + ChatGPT work order; Architecture on GitHub. Why: Phase 0 direction locked for review. How: Ryan HITL on #115; **Cursor Execute prohibited**; no shadow hooks/runtime. Salvage of local audit/handoff: this branch / PR (workspace-coord salvage). Related: [`CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md) (superseded for Architecture authorship), [`../audit-ledger-first/README.md`](../audit-ledger-first/README.md).
+
+- **Workspace-coord salvage to GitHub (2026-07-24):** Who/What: WS-main-cursor lands previously LOCAL_ONLY audit dir, ChatGPT handoff, Track-1/2 decision memos, coord board snapshot. When: Round 3 after ONE_PRIMARY → WS-main-cursor. Why: close sibling chats without losing takeover data. How: dedicated docs branch (not research-pack, not #115 edits). See [`CURSOR-2026-07-24-backup-neutral-decision-memos.md`](CURSOR-2026-07-24-backup-neutral-decision-memos.md), [`COORD-2026-07-24-shadow-ledger-workspaces-BOARD.md`](COORD-2026-07-24-shadow-ledger-workspaces-BOARD.md).
 
 - **Research pack for cloud Claude/ChatGPT (2026-07-24):** Branch [`docs/2026-07-24-research-pack-backup-neutral`](https://github.com/alanmz-crypto/convmem/tree/docs/2026-07-24-research-pack-backup-neutral/docs/inter-model/research-pack-2026-07-24-backup-neutral). Who/What: Cursor frozen attachments + handoffs so max models can research (1) complete-data backup close decisions and (2) Neutral/Office Gate-0 + ledger-first appetite. When: pack PR. Why: those two tracks are the remaining forward blockers; Codex↔Cursor lane (#109/#112) stays closed. How: open [README](research-pack-2026-07-24-backup-neutral/README.md); paste `CLAUDE-HANDOFF.md` / `CHATGPT-HANDOFF.md`; browse `attachments/`. **Does not authorize** Office coding, Neutral extraction, or live Restic rollout.
 
