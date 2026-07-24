@@ -116,15 +116,19 @@ if [ "$tool" = "bash" ] && [ -n "$cmd" ]; then
   fi
 fi
 
-# MCP search/ask: allow if present, but prefer shell (Crush MCP client can hang).
-# Only mark search_seen for MCP after allow — shell path records search above.
+# MCP search/ask: allow if present, but prefer shell when MCP is disabled.
+# Crush requires an explicit {"decision":"allow"} JSON — bare exit 0 is silence
+# and falls through to a permission prompt that never resolves in crush run /
+# wedged TUI (looks like tools/call hang). Emit allow explicitly.
 case "$tool" in
   mcp_convmem_search_fast|mcp_convmem_search|mcp_convmem_ask)
     _record_search
+    echo '{"decision":"allow"}'
     exit 0
     ;;
   mcp_convmem_*)
     # Non-search MCP after ritual: allow (stats/related) but do not count as search.
+    echo '{"decision":"allow"}'
     exit 0
     ;;
 esac

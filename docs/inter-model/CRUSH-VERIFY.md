@@ -52,10 +52,21 @@ Also:
 | DashScope `qwen3.7-max` API smoke | **PASS** | ~4.4 s → `DASHSCOPE_OK` |
 | DeepSeek V4 Flash/Pro API smoke | **PASS*** | HTTP OK; `content` often empty — answer in `reasoning_content` |
 | Crush `deepseek-v4-flash` shell ritual | **PASS** | `crush run` → bash `convmem doctor` → `SOAK_OK` ~8 s |
-| Crush MCP `tools/call` (hook-allow + enabled) | **FAIL** | PreToolUse **allow** on `mcp_convmem_stats`, then **50 s watchdog** — no `tool_result` in `crush.db` |
-| False-positive trap | noted | Ritual-incomplete deny → model prints `MCP_PROBE_OK` without a real call — require DB `tool_result` not blocked |
+| Crush MCP `tools/call` (before fix) | **FAIL** | PreToolUse allow; Crush sent `tools/call` stats; server logged `CallToolRequest` then never replied |
 
-**Keep `mcp.convmem.disabled=true`.** Crush permissions now also allow `bash` + `view` (runtime).
+### Root cause (2026-07-23 ~23:30) — fixed on `fix/2026-07-23-crush-mcp-tools-call`
+
+Shell-profile sync tools called `_apply_shell_roots_brief_boundary_sync()`, which
+ran `list_roots()` via `ThreadPoolExecutor` + nested `asyncio.run` while the
+stdio event loop was blocked in `tools/call`. Crush waited for the tool result;
+the worker waited for `roots/list` on the same connection → deadlock (~60 s).
+
+**Fix:** on a live event loop, apply cwd brief-boundary only (no nested
+`list_roots`). Hook now emits explicit `{"decision":"allow"}` for `mcp_convmem_*`
+(bare `exit 0` was silence → permission UI hang).
+
+Re-probe: `bash scripts/probe-crush-mcp-tools-call.sh` then consider re-enabling
+`mcp.convmem.disabled` only after PASS.
 
 ## If DeepSeek V4 Pro skips convmem
 
