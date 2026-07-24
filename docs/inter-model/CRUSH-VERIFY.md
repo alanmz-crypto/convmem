@@ -65,8 +65,9 @@ the worker waited for `roots/list` on the same connection → deadlock (~60 s)
 `list_roots`). Hook now emits explicit `{"decision":"allow"}` for `mcp_convmem_*`
 (bare `exit 0` was silence → permission UI hang).
 
-Re-probe: `bash scripts/probe-crush-mcp-tools-call.sh` then consider re-enabling
-`mcp.convmem.disabled` only after PASS.
+Re-probe: `bash scripts/probe-crush-mcp-tools-call.sh`. Post-#108 merge (2026-07-24):
+live `mcp.convmem.disabled=false` after probe PASS ~13 s — **restart Crush** to load
+hooks/MCP.
 
 ## If DeepSeek V4 Pro skips convmem
 
