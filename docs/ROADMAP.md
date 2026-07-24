@@ -25,7 +25,7 @@ Daily ritual: `doctor` → `unresolved` → `ask` / `record --approve-last`.
 
 ---
 
-## Pre-live-write gate (Restic)
+## Pre-live-write data-backup gate (Restic)
 
 Before any live Chroma upsert or write-path merge, Restic runs **fail-closed** (snapshot if stale; block on failure):
 
@@ -41,16 +41,20 @@ Equivalent external wrapper (runs the same gate, then `convmem`):
 ~/Projects/convmem/scripts/convmem-live-write.sh add --file … --upsert
 ```
 
-Tests may set `CONVMEM_SKIP_RESTIC_GATE=1`. The wrapper calls `scripts/restic-ensure-chroma-snapshot.sh` first. **Fail-closed:** any Restic error (binary missing, bad repo, password missing, backup failure) **blocks** the live write — no warn-and-continue.
+Tests may set `CONVMEM_SKIP_RESTIC_GATE=1`. The wrapper calls the compatibility-named `scripts/restic-ensure-chroma-snapshot.sh` first. **Fail-closed:** any Restic error (binary missing, bad repo, password missing, backup failure) **blocks** the live write — no warn-and-continue.
 
 **Scope boundary (adopted, not accidental):** the gate protects *overwrite / durable-merge* writes — `record --approve-last` and `add --upsert` (replace-by-id, where a bad merge is unrecoverable). `convmem index` and plain `convmem add` (no `--upsert`) are **intentionally ungated**: they are append-only and reindexable (corpus recovery = "restore or reindex"), so a snapshot is not a precondition. Gating every Chroma mutation ("gate everything") was considered and **declined** — this is the standing invariant, not a gap. `CONVMEM_SKIP_RESTIC_GATE=1` is the one deliberate escape hatch (tests / lab). Enforcement is inline in the bare CLI (`restic_gate.ensure_chroma_snapshot_for_live_write()` at both call sites) — a behavioral regression test (`tests/test_write_gate_effect.py`) asserts a forced gate failure blocks each path and leaves the corpus unchanged, so the wiring cannot silently regress.
 
-**Stale threshold (pinned):** latest snapshot tagged `convmem-chroma` must have a snapshot time on the **same local calendar day** as now (≥ local midnight today). Not last git commit, not last approved write.
+**Backup coverage:** the gate snapshots the complete configured ConvMem data root, not only `chroma/`. This includes the canonical ledgers, queues, source imports, authorizations, replay exports, and Chroma projection. It excludes only Git worktrees and disposable restore-drill run directories. New snapshots are tagged `convmem-data-v1`; they also carry `convmem-chroma` for compatibility with older Chroma tooling.
+
+**Stale threshold (pinned):** latest snapshot tagged `convmem-data-v1` must name the configured data root in its snapshot paths and have a snapshot time on the **same local calendar day** as now (≥ local midnight today). A current Chroma-only snapshot does not satisfy the broader gate. Not last git commit, not last approved write.
+
+**Recovery objective:** this proves one complete restore point from the current local day; it does not snapshot after every append. The Restic repository and password must remain outside the protected data root, and the gate rejects unsafe co-location.
 
 | Condition | Action |
 |-----------|--------|
 | **Current** | Wrapper proceeds to `convmem` |
-| **Stale** | Wrapper runs `restic backup` of `chroma/`, then proceeds |
+| **Stale, missing, or wrong path** | Wrapper runs `restic backup` of the complete data root, then proceeds |
 | **Any Restic failure** | **Block** — exit 1, no live write |
 
 Setup: `bash ~/Projects/convmem/scripts/setup-restic-chroma.sh` (once). Manual secret: `~/.config/convmem/restic.password` — see `config/restic.env.example`.

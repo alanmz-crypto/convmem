@@ -78,7 +78,7 @@ def _load_restic_env() -> dict[str, str]:
     return env
 
 
-def list_tagged_snapshots(env: dict[str, str], tag: str = "convmem-chroma") -> list[dict]:
+def list_tagged_snapshots(env: dict[str, str], tag: str = "convmem-data-v1") -> list[dict]:
     proc = subprocess.run(
         ["restic", "snapshots", "--tag", tag, "--json"],
         capture_output=True,
@@ -103,7 +103,7 @@ def resolve_snapshot(snaps: list[dict], snapshot_id: str) -> dict:
     if not matches:
         raise DrillError(
             "snapshot_missing",
-            f"no convmem-chroma snapshot matches id {snapshot_id!r}",
+            f"no convmem-data-v1 snapshot matches id {snapshot_id!r}",
         )
     if len(matches) > 1 and not any(str(s.get("id", "")).lower() == sid for s in matches):
         # Ambiguous short prefix

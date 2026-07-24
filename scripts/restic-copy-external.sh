@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copy the latest convmem-chroma snapshot from the local Restic repo to the
+# Copy the latest complete ConvMem data snapshot from the local Restic repo to the
 # external (offsite) repo on the removable USB drive.
 #
 # Non-fatal by design: this is the OFFSITE leg, decoupled from the live-write
@@ -16,7 +16,7 @@
 set -euo pipefail
 
 ENV_FILE="${CONVMEM_RESTIC_ENV:-$HOME/.config/convmem/restic.env}"
-TAG="convmem-chroma"
+TAG="convmem-data-v1"
 
 log() { echo "restic-copy-external: $*"; }
 skip() { log "$*"; exit 0; }

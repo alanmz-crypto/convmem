@@ -10,7 +10,7 @@
 #   scripts/backup-restic-password.sh [DEST]
 #   DEST defaults to $RESTIC_PASSWORD_BACKUP_FILE from restic.env.
 #
-# Safety: refuses to write the key INTO any restic repo dir or the chroma dir
+# Safety: refuses to write the key INTO any restic repo or ConvMem data root
 # (never co-locate the key with the encrypted data it unlocks / that it snapshots).
 set -euo pipefail
 
@@ -35,8 +35,14 @@ SRC_ABS="$(readlink -f "$SRC")"
 [[ "$(readlink -f "$DEST" 2>/dev/null || echo "$DEST")" != "$SRC_ABS" ]] \
   || { echo "backup-restic-password: destination equals the primary password file" >&2; exit 1; }
 
-# Never place the key inside a repo dir or the chroma dir.
-for guard in "${RESTIC_REPOSITORY:-}" "${RESTIC_EXTERNAL_REPOSITORY:-}" "${CONVMEM_CHROMA_DIR:-}"; do
+# Never place the key inside a repo or the data root being backed up. Derive the
+# root from the legacy Chroma setting when an older restic.env has no explicit
+# CONVMEM_DATA_ROOT yet.
+DATA_ROOT_GUARD="${CONVMEM_DATA_ROOT:-}"
+if [[ -z "$DATA_ROOT_GUARD" && -n "${CONVMEM_CHROMA_DIR:-}" ]]; then
+  DATA_ROOT_GUARD="$(dirname "$CONVMEM_CHROMA_DIR")"
+fi
+for guard in "${RESTIC_REPOSITORY:-}" "${RESTIC_EXTERNAL_REPOSITORY:-}" "$DATA_ROOT_GUARD"; do
   [[ -n "$guard" ]] || continue
   guard_abs="$(readlink -f "$guard" 2>/dev/null || echo "$guard")"
   case "$(readlink -f "$(dirname "$DEST")" 2>/dev/null || dirname "$DEST")" in

@@ -234,7 +234,7 @@ def _check_copilot_mcp() -> DoctorCheck:
 
 
 def _check_restic() -> DoctorCheck:
-    """Restic live-write gate: toolchain + snapshot covers today (fail-closed policy)."""
+    """Restic live-write gate: complete data snapshot covers today."""
     script = Path(__file__).resolve().parent / "scripts" / "restic-ensure-chroma-snapshot.sh"
     if not script.is_file():
         return DoctorCheck("restic_gate", False, f"missing {script}")
@@ -265,7 +265,7 @@ def _check_restic() -> DoctorCheck:
         return DoctorCheck(
             "restic_gate",
             True,
-            "snapshot covers today (tag=convmem-chroma; threshold=local calendar day)",
+            "data-root snapshot covers today (tag=convmem-data-v1; threshold=local calendar day)",
         )
     tail = (proc.stdout or proc.stderr or "").strip().splitlines()[-2:]
     return DoctorCheck(
@@ -312,7 +312,7 @@ def _check_restic_external() -> DoctorCheck:
     probe_env["RESTIC_PASSWORD_FILE"] = str(Path(pass_file).expanduser())
     try:
         proc = subprocess.run(
-            ["restic", "-r", repo, "snapshots", "--tag", "convmem-chroma", "--json"],
+            ["restic", "-r", repo, "snapshots", "--tag", "convmem-data-v1", "--json"],
             capture_output=True,
             text=True,
             env=probe_env,
@@ -335,7 +335,7 @@ def _check_restic_external() -> DoctorCheck:
         return DoctorCheck(
             name,
             True,
-            "offsite repo has no convmem-chroma snapshots — run scripts/restic-copy-external.sh",
+            "offsite repo has no convmem-data-v1 snapshots — run scripts/restic-copy-external.sh",
             status="warn",
         )
 

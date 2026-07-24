@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Fail-closed Restic gate for live Chroma writes.
+# Fail-closed Restic gate for ConvMem production-data snapshots.
 #
 # Stale threshold (pinned, matches docs/ROADMAP.md):
-#   Latest snapshot tagged convmem-chroma must be from the **current local calendar day**
-#   (time >= local midnight today). Not "last commit", not "last approved write".
+#   Latest snapshot tagged convmem-data-v1 must cover the configured data root and
+#   be from the **current local calendar day** (time >= local midnight today).
+#   Not "last commit", not "last approved write".
 #
 # Flags:
 #   --check-only       Toolchain + repo reachable; does not backup; ignores staleness.
@@ -13,9 +14,9 @@
 # Exit codes: 0 ok | 1 fail-closed (blocks live writes)
 set -euo pipefail
 
-CONVMEM_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${CONVMEM_RESTIC_ENV:-$HOME/.config/convmem/restic.env}"
-TAG="convmem-chroma"
+TAG="convmem-data-v1"
+LEGACY_TAG="convmem-chroma"
 
 CHECK_ONLY=false
 REQUIRE_CURRENT=false
@@ -56,7 +57,38 @@ source "$ENV_FILE"
 [[ -f "$RESTIC_PASSWORD_FILE" ]] || fail "RESTIC_PASSWORD_FILE not found: $RESTIC_PASSWORD_FILE"
 
 CHROMA_DIR="${CONVMEM_CHROMA_DIR:-$HOME/.local/share/convmem/chroma}"
+DATA_ROOT="${CONVMEM_DATA_ROOT:-$(dirname "$CHROMA_DIR")}"
+[[ -d "$DATA_ROOT" ]] || fail "data root missing: $DATA_ROOT"
 [[ -d "$CHROMA_DIR" ]] || fail "chroma dir missing: $CHROMA_DIR"
+
+DATA_ROOT="$(readlink -f "$DATA_ROOT")"
+CHROMA_DIR="$(readlink -f "$CHROMA_DIR")"
+[[ "$CHROMA_DIR" != "$DATA_ROOT" ]] \
+  || fail "data root cannot be the Chroma directory; configure its parent"
+case "$CHROMA_DIR/" in
+  "$DATA_ROOT/"*) ;;
+  *) fail "chroma dir must be inside data root: chroma=$CHROMA_DIR data_root=$DATA_ROOT" ;;
+esac
+
+PASSWORD_FILE_ABS="$(readlink -f "$RESTIC_PASSWORD_FILE")"
+case "$PASSWORD_FILE_ABS" in
+  "$DATA_ROOT"|"$DATA_ROOT"/*)
+    fail "RESTIC_PASSWORD_FILE must be outside the backed-up data root"
+    ;;
+esac
+
+case "$RESTIC_REPOSITORY" in
+  /*)
+    REPOSITORY_ABS="$(readlink -m "$RESTIC_REPOSITORY")"
+    case "$REPOSITORY_ABS" in
+      "$DATA_ROOT"|"$DATA_ROOT"/*)
+        fail "RESTIC_REPOSITORY must be outside the backed-up data root"
+        ;;
+    esac
+    ;;
+  *:*) ;; # Remote/backend repository URL.
+  *) fail "local RESTIC_REPOSITORY must be an absolute path" ;;
+esac
 
 CACHE_ROOT="${RESTIC_CACHE_DIR:-${CONVMEM_RESTIC_CACHE_DIR:-${TMPDIR:-/tmp}/convmem-restic-cache}}"
 mkdir -p "$CACHE_ROOT"
@@ -65,8 +97,8 @@ export RESTIC_CACHE_DIR="$CACHE_ROOT"
 export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE
 
 snapshot_freshness() {
-  # Prints: current | stale | none | error
-  CONVMEM_RESTIC_TAG="$TAG" python3 - "$CHROMA_DIR" <<'PY'
+  # Prints: current | stale | none | wrong-path | error
+  CONVMEM_RESTIC_TAG="$TAG" python3 - "$DATA_ROOT" <<'PY'
 import json
 import os
 import subprocess
@@ -74,6 +106,7 @@ import sys
 from datetime import datetime
 
 tag = os.environ["CONVMEM_RESTIC_TAG"]
+data_root = os.path.realpath(sys.argv[1])
 proc = subprocess.run(
     ["restic", "snapshots", "--tag", tag, "--json"],
     capture_output=True,
@@ -87,7 +120,15 @@ snaps = json.loads(proc.stdout or "[]")
 if not snaps:
     print("none")
     sys.exit(0)
-latest = max(snaps, key=lambda s: s["time"])
+covered = [
+    snap
+    for snap in snaps
+    if any(os.path.realpath(path) == data_root for path in snap.get("paths") or [])
+]
+if not covered:
+    print("wrong-path")
+    sys.exit(0)
+latest = max(covered, key=lambda s: s["time"])
 ts = datetime.fromisoformat(latest["time"].replace("Z", "+00:00"))
 local_day = ts.astimezone().date()
 today = datetime.now().astimezone().date()
@@ -121,12 +162,12 @@ freshness="$(snapshot_freshness)" || {
 }
 
 if $CHECK_ONLY; then
-  echo "restic-gate: toolchain OK (freshness=$freshness, repo=$RESTIC_REPOSITORY)"
+  echo "restic-gate: toolchain OK (freshness=$freshness, data_root=$DATA_ROOT, repo=$RESTIC_REPOSITORY)"
   exit 0
 fi
 
 if [[ "$freshness" == "current" ]]; then
-  echo "restic-gate: current — snapshot covers today (tag=$TAG)"
+  echo "restic-gate: current — data-root snapshot covers today (tag=$TAG)"
   exit 0
 fi
 
@@ -135,16 +176,21 @@ if $REQUIRE_CURRENT; then
 fi
 
 if $DRY_RUN; then
-  echo "restic-gate: dry-run — would backup $CHROMA_DIR (freshness=$freshness)"
+  echo "restic-gate: dry-run — would backup $DATA_ROOT (freshness=$freshness)"
   exit 0
 fi
 
 day_tag="convmem-$(date +%Y-%m-%d)"
-echo "restic-gate: snapshot-if-stale — backing up $CHROMA_DIR (was $freshness)"
-restic backup "$CHROMA_DIR" --tag "$TAG" --tag "$day_tag" || fail "restic backup failed"
+echo "restic-gate: snapshot-if-stale — backing up $DATA_ROOT (was $freshness)"
+restic backup "$DATA_ROOT" \
+  --exclude "$DATA_ROOT/worktrees" \
+  --exclude "$DATA_ROOT/restore-drill/runs" \
+  --tag "$TAG" \
+  --tag "$LEGACY_TAG" \
+  --tag "$day_tag" || fail "restic backup failed"
 
 freshness="$(snapshot_freshness)" || fail "post-backup freshness check failed"
 [[ "$freshness" == "current" ]] || fail "snapshot still not current after backup"
 
-echo "restic-gate: snapshot OK (tag=$TAG tag=$day_tag)"
+echo "restic-gate: snapshot OK (tag=$TAG compatibility_tag=$LEGACY_TAG tag=$day_tag)"
 exit 0

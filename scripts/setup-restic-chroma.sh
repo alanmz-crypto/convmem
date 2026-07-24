@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time Restic setup for convmem chroma backups.
+# One-time Restic setup for complete ConvMem data-root backups.
 # Creates restic.env + password file if missing, inits repo, runs first snapshot.
 set -euo pipefail
 
@@ -14,6 +14,8 @@ if [[ ! -f "$ENV_DST" ]]; then
   sed \
     -e "s|^RESTIC_REPOSITORY=.*|RESTIC_REPOSITORY=$REPO_DIR|" \
     -e "s|^RESTIC_PASSWORD_FILE=.*|RESTIC_PASSWORD_FILE=$PASS_FILE|" \
+    -e "s|^CONVMEM_DATA_ROOT=.*|CONVMEM_DATA_ROOT=$HOME/.local/share/convmem|" \
+    -e "s|^CONVMEM_CHROMA_DIR=.*|CONVMEM_CHROMA_DIR=$HOME/.local/share/convmem/chroma|" \
     "$CONVMEM_ROOT/config/restic.env.example" > "$ENV_DST"
   chmod 600 "$ENV_DST"
   echo "Created $ENV_DST"

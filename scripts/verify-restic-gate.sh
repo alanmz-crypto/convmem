@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Manual + CI verification for Restic live-write gate (happy path + fail-closed negative).
+# Manual + CI verification for the complete-data Restic gate.
 set -euo pipefail
 
 CONVMEM_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -9,7 +9,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 FAKE_CONVMEM="$TMP/bin/convmem"
-mkdir -p "$TMP/bin" "$TMP/chroma" "$TMP/repo"
+mkdir -p "$TMP/bin" "$TMP/data/chroma" "$TMP/repo"
 cat > "$FAKE_CONVMEM" <<'EOF'
 #!/usr/bin/env bash
 echo "FAKE_CONVMEM_CALLED $*"
@@ -25,7 +25,8 @@ ENV_FILE="$TMP/restic.env"
 cat > "$ENV_FILE" <<EOF
 RESTIC_REPOSITORY=$TMP/repo
 RESTIC_PASSWORD_FILE=$PASS_FILE
-CONVMEM_CHROMA_DIR=$TMP/chroma
+CONVMEM_DATA_ROOT=$TMP/data
+CONVMEM_CHROMA_DIR=$TMP/data/chroma
 EOF
 
 export CONVMEM_RESTIC_ENV="$ENV_FILE"
@@ -33,9 +34,13 @@ export PATH="$TMP/bin:$PATH"
 
 echo "== 4a happy path: init + ensure + require-current =="
 restic -r "$TMP/repo" --password-file "$PASS_FILE" init
-echo "seed" > "$TMP/chroma/seed.txt"
+echo "seed" > "$TMP/data/chroma/seed.txt"
+echo '{"id":"decision-1"}' > "$TMP/data/decisions-approved.jsonl"
 "$GATE" || { echo "FAIL: ensure after init"; exit 1; }
 "$GATE" --require-current || { echo "FAIL: require-current after backup"; exit 1; }
+restic -r "$TMP/repo" --password-file "$PASS_FILE" snapshots \
+  --tag convmem-data-v1 --json | grep -q "$TMP/data" \
+  || { echo "FAIL: complete-data snapshot path missing"; exit 1; }
 "$WRAPPER" record --list | grep -q FAKE_CONVMEM_CALLED || { echo "FAIL: wrapper did not reach convmem"; exit 1; }
 echo "PASS 4a"
 
@@ -44,7 +49,8 @@ BAD_ENV="$TMP/restic.bad.env"
 cat > "$BAD_ENV" <<EOF
 RESTIC_REPOSITORY=$TMP/repo
 RESTIC_PASSWORD_FILE=$TMP/missing-password-file
-CONVMEM_CHROMA_DIR=$TMP/chroma
+CONVMEM_DATA_ROOT=$TMP/data
+CONVMEM_CHROMA_DIR=$TMP/data/chroma
 EOF
 export CONVMEM_RESTIC_ENV="$BAD_ENV"
 if "$WRAPPER" record --list 2>/dev/null; then

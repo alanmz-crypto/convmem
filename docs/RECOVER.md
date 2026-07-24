@@ -15,18 +15,32 @@ from the repo**, and what needs a **separate data backup**.
 | **3 — Wiring + source** | `~/Projects/convmem`, `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, `~/.kiro/settings/permissions.yaml`, `~/.config/crush/crush.json`, `~/.copilot/mcp-config.json`, `~/.copilot/agents/`, Continue YAML | Restore project backup or git; copy MCP/permissions examples | **Not blocked** — edits encouraged |
 
 **Not in the Git repo:** Tier 1 (`chroma/`, `processed.json`, `knowledge_units.jsonl`,
-`decisions-approved.jsonl`, `attempts.jsonl` (optional), etc.). Include `~/.local/share/convmem/` in backups if you want
-fast recovery without reindexing.
+`decisions-approved.jsonl`, `attempts.jsonl` (optional), etc.). The repo-managed
+Restic gate below now backs up this complete root for fast recovery without
+reindexing.
 
 ---
 
-## Restic snapshot gate (live Chroma writes)
+## Restic snapshot gate (complete Tier-1 data)
 
 **Policy:** fail-closed. If Restic cannot verify or create a current snapshot, **do not**
 run live `record --approve-last` or `add --upsert` on the production corpus.
 
-**Stale threshold (pinned):** latest snapshot tagged `convmem-chroma` must be from the
-**current local calendar day** (snapshot time ≥ local midnight today).
+**Coverage:** the snapshot target is the complete configured ConvMem data root. It
+contains Chroma plus the canonical decision ledger, queues, source imports,
+authorizations, replay exports, and other project-owned state. Git worktrees and
+disposable restore-drill run directories are excluded. The compatibility-named
+gate script still exists, but a Chroma-only snapshot no longer passes it.
+
+**Stale threshold (pinned):** latest snapshot tagged `convmem-data-v1` must cover
+the configured data root and be from the **current local calendar day** (snapshot
+time ≥ local midnight today). Complete snapshots also retain the legacy
+`convmem-chroma` tag for older Chroma-oriented tools.
+
+This is a daily recovery-point objective, not a snapshot after every append. A
+successful gate proves that a complete restore point exists from the current
+local day. The Restic repository and password must both remain outside the data
+root; the gate rejects unsafe co-location.
 
 ### One-time setup
 
@@ -57,19 +71,20 @@ Optional wrapper (same gate, then `convmem`):
 ### Verify gate
 
 ```bash
-restic snapshots --tag convmem-chroma          # list chroma backups
+restic snapshots --tag convmem-data-v1         # list complete data backups
 bash ~/Projects/convmem/scripts/restic-ensure-chroma-snapshot.sh --check-only
 bash ~/Projects/convmem/scripts/verify-restic-gate.sh   # happy + fail-closed negative
 convmem doctor                                   # includes restic_gate check
 ```
 
-### Restore chroma from Restic
+### Restore the ConvMem data root from Restic
 
 ```bash
 source ~/.config/convmem/restic.env
 export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE
-restic restore latest --tag convmem-chroma --target /tmp/convmem-chroma-restore
-# Inspect, then stop watch/refine and replace ~/.local/share/convmem/chroma/ deliberately
+restic restore latest --tag convmem-data-v1 --target /tmp/convmem-data-restore
+# Inspect the restored tree. Stop watch/refine before deliberately replacing any
+# part of ~/.local/share/convmem/. Do not restore disposable worktrees from here.
 ```
 
 ---
@@ -129,10 +144,10 @@ convmem stats
 
 ## Corpus lost (Tier 1)
 
-If `~/.local/share/convmem/chroma/` is gone:
+If any of `~/.local/share/convmem/` is gone:
 
 1. Complete **Fast path** above.
-2. Restore `~/.local/share/convmem/` from a **data backup** if you have one, **or**
+2. Restore the latest `convmem-data-v1` Restic snapshot using the command above, **or**
 3. Rebuild corpus (hours, GPU/LLM cost):
 
 ```bash
@@ -143,8 +158,8 @@ convmem refine --once      # optional cleanup pass
 convmem stats
 ```
 
-Approved decisions in `decisions-approved.jsonl` can be re-ingested with
-`convmem add` if you still have that file from backup.
+If only the derived Chroma projection is lost, approved decisions in the
+restored `decisions-approved.jsonl` can be re-ingested with `convmem add`.
 
 ### Index drift (doctor `index_drift` check)
 

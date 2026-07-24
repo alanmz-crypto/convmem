@@ -32,12 +32,12 @@ class TestBuildArgv(unittest.TestCase):
         argv = mod.build_check_argv()
         self.assertEqual(
             argv,
-            ["restic", "check", "--tag", "convmem-chroma", "--read-data-subset", "5%"],
+            ["restic", "check", "--tag", "convmem-data-v1", "--read-data-subset", "5%"],
         )
 
     def test_full_read_data(self) -> None:
         argv = mod.build_check_argv(full_read_data=True, subset=None)
-        self.assertEqual(argv, ["restic", "check", "--tag", "convmem-chroma", "--read-data"])
+        self.assertEqual(argv, ["restic", "check", "--tag", "convmem-data-v1", "--read-data"])
 
 
 class TestClassify(unittest.TestCase):

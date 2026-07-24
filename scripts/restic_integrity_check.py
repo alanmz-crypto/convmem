@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-TAG = "convmem-chroma"
+TAG = "convmem-data-v1"
 DEFAULT_PARENT = Path.home() / ".local/share/convmem" / "integrity-check"
 DEFAULT_SUBSET = "5%"
 

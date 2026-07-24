@@ -1,4 +1,4 @@
-"""Fail-closed Restic snapshot gate before live Chroma writes."""
+"""Fail-closed Restic data-root snapshot gate before guarded live writes."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ _GATE_SCRIPT = Path(__file__).resolve().parent / "scripts" / "restic-ensure-chro
 
 
 def ensure_chroma_snapshot_for_live_write() -> None:
-    """Snapshot if stale; exit 1 on any Restic failure (blocks the write)."""
+    """Snapshot ConvMem-owned data if stale; exit 1 on failure."""
     if os.environ.get("CONVMEM_SKIP_RESTIC_GATE") == "1":
         return
     if not _GATE_SCRIPT.is_file():
