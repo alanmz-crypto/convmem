@@ -10,13 +10,18 @@ Lanes:        Codex (predeclared checks only); Cursor (mechanical evidence); Kir
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Subject / tip:** `<implementation branch and exact tip SHA>`  
-**Implementation base:** `<exact SHA containing approved planning artifacts>`  
-**PR(s):** `<pending; no PR authority is granted by the plan>`  
+**Subject / tip:** `<implementation branch and exact tip SHA>`
+
+**Implementation base:** `<exact SHA containing approved planning artifacts>`
+
+**PR(s):** `<pending; no PR authority is granted by the plan>`
+
 **Architecture:**
-[`ARCHITECTURE-codex-planning-cursor-execution.md`](ARCHITECTURE-codex-planning-cursor-execution.md)  
+[`ARCHITECTURE-codex-planning-cursor-execution.md`](ARCHITECTURE-codex-planning-cursor-execution.md)
+
 **Execution:**
-[`EXECUTION-2026-07-24-codex-planning-cursor-execution.md`](EXECUTION-2026-07-24-codex-planning-cursor-execution.md)  
+[`EXECUTION-2026-07-24-codex-planning-cursor-execution.md`](EXECUTION-2026-07-24-codex-planning-cursor-execution.md)
+
 **Goal:** Prove the governance arc establishes Codex planning, Cursor
 implementation, independent review, actor-neutral HITL stops, and exact
 generated-surface parity without deployment or authority expansion.
