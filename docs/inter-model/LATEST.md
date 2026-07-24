@@ -1,9 +1,16 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-23 (#106 landed; squash-merge default follow-up)
+**Updated:** 2026-07-23 (complete-data backup audit handoff; #106 landed)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Complete ConvMem data backup fix AWAITING COPILOT AUDIT (2026-07-23):**
+  **Consequence:** The proposed Restic gate now covers canonical ledgers and operational sidecars with Chroma, but it must not merge or roll out on Codex's self-verification alone.
+  **Who:** Codex implementation; GitHub Copilot audit lane owns independent safety/isolation `PASS` or `FAIL`; Ryan owns merge and all live local/offsite backup operations.
+  **What/When/Why/How:** Exact implementation commit `492e6e7eacef6cfd64dfc5bb00b25296b5e29288` on `fix/2026-07-23-complete-data-backup`; adds versioned complete-root coverage because Chroma-only snapshots omitted decisions and ledgers.
+  **Audit focus:** inventory all durable paths; prove migration negative controls; challenge concurrent snapshot consistency, the claimed daily recovery-point trigger, offsite false greens, and password placement. No live Restic or USB writes.
+  **Handoff:** [`CODEX-2026-07-23-complete-data-backup-copilot-audit.md`](CODEX-2026-07-23-complete-data-backup-copilot-audit.md).
 
 - **Crush freezes + Qwen/DeepSeek billing routing LANDED (2026-07-23):** Squash-merged [#106](https://github.com/alanmz-crypto/convmem/pull/106) to `main` as [`67b020f`](https://github.com/alanmz-crypto/convmem/commit/67b020fd7fd545cd583496f2bb6a1808bfc53f7b).  
   **Consequence:** Crush uses shell `convmem` (MCP disabled) to avoid tool hangs; Cursor-dry work goes to Crush **Qwen3.7-Max**, with **DeepSeek V4 Pro/Flash** as second cloud seat.  
