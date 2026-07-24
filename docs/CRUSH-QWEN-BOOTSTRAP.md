@@ -50,8 +50,9 @@ Runtime defaults live in `~/.local/share/crush/crush.json` (`large` /
 Billing-cycle cheat sheet: [`docs/MODEL-WORKFLOW.md`](MODEL-WORKFLOW.md) §
 *Billing-cycle model routing*.
 
-**Crush MCP:** `mcp.convmem.disabled = true` until a timed soak proves
-`search_fast` returns (see [`inter-model/CRUSH-VERIFY.md`](inter-model/CRUSH-VERIFY.md)).
+**Crush MCP:** keep `mcp.convmem.disabled = true` (2026-07-23 timed probe
+**FAIL** — shell only). Re-check: `bash scripts/probe-crush-mcp-tools-call.sh`
+(see [`inter-model/CRUSH-VERIFY.md`](inter-model/CRUSH-VERIFY.md)).
 
 ## Related
 
