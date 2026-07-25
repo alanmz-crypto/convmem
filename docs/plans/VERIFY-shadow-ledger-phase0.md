@@ -13,7 +13,7 @@ Authority:    Post-Execute HITL — do not trust prior chat claims alone
 **Stub status:** Execute in progress on PR #122. Mechanical focused tests exist;
 full V0–V8 row fill awaits final Execute tip + independent sign-off.
 
-**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` — T3/V4 durability in flight (pin after commit)
+**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` — @ 5b54967 — T3/V4 durability PASS (hermetic)
 
 **PR(s):** [#122](https://github.com/alanmz-crypto/convmem/pull/122)
 
