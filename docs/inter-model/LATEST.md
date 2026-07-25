@@ -1,11 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-25 (mechanical VERIFY V0–V7 filled on #122 — V8 next)
+**Updated:** 2026-07-25 (DeepSeek close-out handoff for #122 V8)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger mechanical VERIFY V0–V7 FILLED (2026-07-25):** Who/What: Cursor filled [`VERIFY-shadow-ledger-phase0.md`](../plans/VERIFY-shadow-ledger-phase0.md) on [#122](https://github.com/alanmz-crypto/convmem/pull/122) — V0–V7 **PASS** (V0d/V0e SKIP→V8); full `pytest -q` **837 passed**. When: now. Why: clear activation bar prerequisites. How: **next = V8 independent sign-off** naming tip SHA, then Ryan GATE / merge; **activation still forbidden.** Residuals: restic_gate stale; embed_model WARN.
+- **Shadow Ledger → DeepSeek V4-Pro close-out (2026-07-25):** Who/What: Cursor packaged [`CURSOR-2026-07-25-shadow-ledger-phase0-deepseek-closeout-handoff.md`](CURSOR-2026-07-25-shadow-ledger-phase0-deepseek-closeout-handoff.md) for DeepSeek API `deepseek-v4-pro` to finish VERIFY **V8** + merge notes on [#122](https://github.com/alanmz-crypto/convmem/pull/122). When: now. Why: mechanical V0–V7 done; independent sign-off remains. How: paste work order from that file; **activation forbidden.** Tips: evidence `ca69034`, branch `77ed95c`.
+
+- **Shadow Ledger mechanical VERIFY V0–V7 FILLED (2026-07-25):** Who/What: Cursor filled [`VERIFY-shadow-ledger-phase0.md`](../plans/VERIFY-shadow-ledger-phase0.md) on [#122](https://github.com/alanmz-crypto/convmem/pull/122) — V0–V7 **PASS** (V0d/V0e SKIP→V8); full `pytest -q` **837 passed**. When: earlier today. Why: clear activation bar prerequisites. How: DeepSeek V8 handoff above; **activation still forbidden.** Residuals: restic_gate stale; embed_model WARN.
 
 - **Shadow Ledger T5 inventory CLI EXECUTED (2026-07-24):** Who/What: `convmem shadow-inventory` on [#122](https://github.com/alanmz-crypto/convmem/pull/122); V6 PASS. When: earlier. Why: Execute core. How: VERIFY mechanical filled (see above).
 
