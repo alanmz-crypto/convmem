@@ -1,35 +1,35 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-25 (DeepSeek close-out handoff for #122 V8)
+**Updated:** 2026-07-25 (Shadow Ledger Phase 0 Execute MERGED — soft close; activation still off)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger → DeepSeek V4-Pro close-out (2026-07-25):** Who/What: Cursor packaged [`CURSOR-2026-07-25-shadow-ledger-phase0-deepseek-closeout-handoff.md`](CURSOR-2026-07-25-shadow-ledger-phase0-deepseek-closeout-handoff.md) for DeepSeek API `deepseek-v4-pro` to finish VERIFY **V8** + merge notes on [#122](https://github.com/alanmz-crypto/convmem/pull/122). When: now. Why: mechanical V0–V7 done; independent sign-off remains. How: paste work order from that file; **activation forbidden.** Tips: evidence `ca69034`, branch `77ed95c`.
+- **Shadow Ledger Phase 0 Execute MERGED — soft close (2026-07-25):** Who/What: Ryan squash-merged [#122](https://github.com/alanmz-crypto/convmem/pull/122) to `main` as [`4535107`](https://github.com/alanmz-crypto/convmem/commit/4535107143279c87e8b34c1eab7e4dee88bffc68) (*Implement Shadow Ledger Phase 0 (disabled by default)*). Cursor soft-closing the Execute chat for DeepSeek / Kiro / Codex. When: now. Why: code + VERIFY mechanical + V8 sign-off + pylint green are on `main`; live enable is a **different** grant. How: read Merge reading below; **do not** edit `~/.config/convmem/config.toml` or write a production activation manifest without Ryan’s explicit activation grant.
 
-- **Shadow Ledger mechanical VERIFY V0–V7 FILLED (2026-07-25):** Who/What: Cursor filled [`VERIFY-shadow-ledger-phase0.md`](../plans/VERIFY-shadow-ledger-phase0.md) on [#122](https://github.com/alanmz-crypto/convmem/pull/122) — V0–V7 **PASS** (V0d/V0e SKIP→V8); full `pytest -q` **837 passed**. When: earlier today. Why: clear activation bar prerequisites. How: DeepSeek V8 handoff above; **activation still forbidden.** Residuals: restic_gate stale; embed_model WARN.
+  **Merge reading:** [`ARCHITECTURE-shadow-ledger-phase0.md`](../plans/ARCHITECTURE-shadow-ledger-phase0.md) · [`EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md) · [`VERIFY-shadow-ledger-phase0.md`](../plans/VERIFY-shadow-ledger-phase0.md) · [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](../plans/SHADOW-WRITER-COVERAGE-INVENTORY.md) · [`PHASE0-SHADOW-CONTRACT.md`](../plans/PHASE0-SHADOW-CONTRACT.md)
 
-- **Shadow Ledger T5 inventory CLI EXECUTED (2026-07-24):** Who/What: `convmem shadow-inventory` on [#122](https://github.com/alanmz-crypto/convmem/pull/122); V6 PASS. When: earlier. Why: Execute core. How: VERIFY mechanical filled (see above).
+  **What landed (product terms):** Disabled-by-default shadow delta capture: write-store factory injects sink only when eligible; durability/health; disposable temp-Chroma replay; `convmem shadow-inventory` readiness CLI; doctor `shadow_ledger: disabled` check.
 
-- **Shadow Ledger T3/V4 durability EXECUTED (2026-07-24):** Who/What: V4a–V4k **PASS** on [#122](https://github.com/alanmz-crypto/convmem/pull/122). When: earlier tonight. Why: readiness gate. How: T5 followed (see above).
+  **VERIFY posture at merge:** V0–V7 mechanical PASS; V8 PASS (DeepSeek V4-Pro + Kiro cross-check). Ryan GATE for Execute = merge. **Ryan GATE for activation = still PENDING.**
 
-- **Shadow Ledger T4 projector EXECUTED (2026-07-24):** Who/What: Ryan locked T4 after DeepSeek+Kiro; `run_disposable_replay` on [#122](https://github.com/alanmz-crypto/convmem/pull/122). VERIFY V5a–V5k **PASS**. When: earlier tonight. Why: isolation gate. How: T3/V4 followed (see above).
+  **Lessons for next lane (do not re-learn the hard way):**
+  1. **Factory coverage first** — tip `5c0ddb8` proved 0 prod `open_chroma_for_write` callers / 14 bypasses; V3 could not PASS until writers migrated.
+  2. **Task order** — after T2, prefer T4 projector then T3/V4 durability before T5 readiness (plan + dense consult); T5 alone cannot honestly PASS isolation.
+  3. **Activation ≠ merge** — dense consult DeepSeek+Kiro: **NOT-YET** until V8 + merge + separate grant + runbook; merge alone never enables the sink.
+  4. **Pylint regression gate** — CI compares to `origin/main` baseline; do not only sprinkle disables. The sticky #122 fail was a real bug: factory migration dropped `from chroma_store import ChromaStore` while nine `store: ChromaStore` annotations remained (`refine.py`) → +9 E0602. Fix = restore import; then clean remaining new-file fingerprints. Local proof: `python -m pylint $(git ls-files '*.py') --output-format=json > /tmp/pylint-report.json` then `python scripts/pylint_regression_gate.py ci --report /tmp/pylint-report.json --pylint-status $? --branch-baseline ci/pylint-baseline.json --base-ref origin/main`.
+  5. **Live residuals (non-blocking for disabled Phase 0):** `embed_collection_identity` WARN (legacy missing `convmem:embed_model`); restic freshness can FAIL independently of shadow.
 
-- **Shadow Ledger V3 factory migration (2026-07-24):** Who/What: Cursor on [#122](https://github.com/alanmz-crypto/convmem/pull/122) routed production writers through `open_chroma_for_write` / `chroma_write_session`; VERIFY V3b/V3d/V3e **PASS** (code-path). Inventory: [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](../plans/SHADOW-WRITER-COVERAGE-INVENTORY.md) — **0** bypasses. When: earlier today. Why: close coverage gap from `5c0ddb8`. How: T4 landed (see above). Production activation still off.
+  **Suggested next (Ryan-gated, pick one):**
+  - **DeepSeek / Kiro:** activation readiness re-consult or review a draft runbook — still no live enable.
+  - **Codex:** only if Ryan wants a new Architecture/Execution slice (activation ops plan, embed metadata, or Track 1 backup #120) — do not reopen Phase 0 Execute.
+  - **Cursor:** idle on Shadow until activation grant or a new Execute brief.
 
-- **Shadow Ledger V3 coverage gap PROVED then closed (2026-07-24):** Prior FAIL at tip `5c0ddb8` (0 factory callers; 14 bypasses) — superseding bullet above after migration.
+- **Track 1 backup — Hybrid consistency bar LOCKED (2026-07-24):** Who/What: Ryan locked Hybrid after DeepSeek V4-Pro + Kiro dense consult; Copilot must audit exact SHA `492e6e7` with A-checklist + Five-part report card. When: still open track. Why: full-root backup merge blocked on safety bar. How: paste [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md). **Separate from Shadow.**
 
-- **Shadow Ledger Phase 0 Execute AUTHORIZED + T1 started (Ryan 2026-07-24):** Who/What: Ryan Execution HITL; Cursor on `feat/2026-07-24-shadow-ledger-phase0` implementing [`EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md) T1 (contract, disabled config, activation baseline). When: now. Why: prove disabled-by-default delta capture. How: T2–T5 next; **production activation still forbidden.** Runtime stamp @ 2026-07-25T04:03:19Z / main was `0d08310` pre-branch.
+- **Shadow Ledger Phase 0 Architecture HITL LOCKED (2026-07-24):** Who/What: Ryan approved Direction on the Architecture path (now superseded for Execute by merged #122). When: Architecture closed. Why: Option B boundary. How: Execute complete on `main` @ `4535107`; activation still separate.
 
-- **Shadow Ledger Execution Planning AUTHORIZED (Ryan 2026-07-24):** Who/What: Codex may author [`EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md) from approved Architecture on [#115](https://github.com/alanmz-crypto/convmem/pull/115); handoff [`CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md). When: after Gate 1b PASS + #121 on `main`. Why: Planning OS task decomposition. How: Ryan pastes work order to Codex; plan still needs Execution HITL; **Cursor Execute / hooks / activation still forbidden.** Track 1 [#120](https://github.com/alanmz-crypto/convmem/pull/120) unchanged.
-
-- **Shadow Ledger Gate 1b PASS (Ryan 2026-07-24):** Audit corrections accepted (#121 `0d08310`). Precondition cleared; Execution Planning authorship now authorized (see bullet above).
-
-- **Track 1 backup — Hybrid consistency bar LOCKED (2026-07-24):** Who/What: Ryan locked Hybrid after DeepSeek V4-Pro + Kiro dense consult; Copilot must audit exact SHA `492e6e7` with A-checklist + Five-part report card. When: now. Why: full-root backup merge blocked on safety bar. How: paste [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md) (+ base contract linked therein) into GitHub Copilot audit lane. **Does not authorize** live Restic, merge of backup branch, Neutral, or Shadow Execute (#115 still HITL-only).
-
-- **Shadow Ledger Phase 0 Architecture HITL LOCKED (2026-07-24):** Who/What: Ryan approved [#115](https://github.com/alanmz-crypto/convmem/pull/115) Direction (DeepSeek APPROVE + Kiro APPROVE_WITH_REVISIONS applied; ChatGPT Codex work order + Approve-with-revisions packaging assessment versioned in [`CURSOR-2026-07-24-shadow-ledger-phase0-codex-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-codex-handoff.md)). When: Architecture closed; Gate 1b now PASS. Why: Phase 0 boundary locked (Option B). How: next is separate Ryan grant for Codex Execution Planning. **Execute still forbidden.**
-
-
+- **Shadow Ledger Gate 1b PASS (Ryan 2026-07-24):** Audit corrections accepted (#121 `0d08310`). Historical precondition for Execution Planning; Execute itself is now merged (#122 / `4535107`).
 
 - **Workspace-coord salvage to GitHub (2026-07-24):** Who/What: WS-main-cursor lands previously LOCAL_ONLY audit dir, ChatGPT handoff, Track-1/2 decision memos, coord board snapshot. When: Round 3 after ONE_PRIMARY → WS-main-cursor. Why: close sibling chats without losing takeover data. How: dedicated docs branch (not research-pack, not #115 edits). See [`CURSOR-2026-07-24-backup-neutral-decision-memos.md`](CURSOR-2026-07-24-backup-neutral-decision-memos.md), [`COORD-2026-07-24-shadow-ledger-workspaces-BOARD.md`](COORD-2026-07-24-shadow-ledger-workspaces-BOARD.md).
 
