@@ -36,6 +36,20 @@ full V0–V8 row fill awaits final Execute tip + independent sign-off.
 post-activation `knowledge_units` deltas, preserves Chroma authority, fails
 safely, and never writes to a production replay target.
 
+## Finding — factory-bypass coverage gap (proved 2026-07-24)
+
+**Verdict for V3b / V3d at this tip: FAIL.**
+
+**Proved (code-path + hermetic):**
+- Production call sites of `open_chroma_for_write`: **0** (definition only in `chroma_write_store.py`).
+- Sites classified `must_use_factory` that still construct `ChromaStore(...)` directly: **14** (see [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](SHADOW-WRITER-COVERAGE-INVENTORY.md); e.g. `convmem.py:1371`, `convmem.py:377`, `convmem.py:474`, `ingest.py:477`, `ingest.py:532`, …).
+- Hermetic control: direct `ChromaStore(dir)` with injection-eligible temp cfg ⇒ `mutation_sink is None` and **no** ledger lines after `add_unit` (`tests/test_shadow_writer_coverage_scan.py`).
+- Positive control: same eligible cfg via `open_chroma_for_write` ⇒ sink attaches and one event is written.
+
+**Not proved (do not fog):** a live production ingest/observe with `enabled=true` missing a shadow line — live activation is forbidden for this verification slice. Proof class is **not** ops-observed miss.
+
+**Implication:** Execute writer-coverage is incomplete until callers migrate to the factory (or are explicitly allowlisted). Mechanism (sink-when-injected) works; injection boundary is unused by production writers.
+
 **Report format:** For every row, record **PASS / FAIL / SKIP** plus one line of
 tip-specific evidence. An applicable SHA mismatch is **FAIL**, never SKIP.
 
@@ -156,22 +170,23 @@ git diff <approved-execute-base>..HEAD -- \
 ## V3 — Envelope, mutation sink, and complete writer coverage
 
 ```bash
-<focused envelope/writer/coverage test command from Execute>
-rg -n "chromadb\\.PersistentClient|ChromaStore\\(" --glob '*.py' .
+pytest -q tests/test_shadow_writer_coverage_scan.py tests/test_shadow_ledger_phase0_t2.py
+# inventory: docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json
+rg -n 'open_chroma_for_write\(|ChromaStore\(' --glob '*.py' -g '!tests/**' .
 ```
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V3a | Observer defaults to `None`; `ChromaStore` does not load global activation config | PENDING |
-| V3b | One authoritative production write-store factory is the only sink injection boundary | PENDING |
-| V3c | All five unit-mutating methods emit or explicitly exclude confirmed per-entity events | PENDING |
-| V3d | Production mutating callers route through the factory; allowlisted direct clients are isolated | PENDING |
-| V3e | Static scan, mutator enumeration test, and caller integration tests all exist; grep is not the sole proof | PENDING |
-| V3f | Failed Chroma mutation emits no event; successful mutation creates the event context before Chroma and appends after success | PENDING |
-| V3g | Bulk source operations emit one event per confirmed entity, including partial completion | PENDING |
-| V3h | Summary mutations emit no unit event | PENDING |
-| V3i | Envelope version, closed vocabulary, tombstones, hashes, and no-raw-vector rule match Architecture | PENDING |
-| V3j | Sink failure never changes a successful Chroma return result | PENDING |
+| V3a | Observer defaults to `None`; `ChromaStore` does not load global activation config | **PASS** — `mutation_sink=None` default; no `load_config` in `chroma_store.py` |
+| V3b | One authoritative production write-store factory is the only sink injection boundary | **FAIL** — factory exists but **0** production call sites; injection unused by writers |
+| V3c | All five unit-mutating methods emit or explicitly exclude confirmed per-entity events | **PASS** — method-level (`test_unit_mutating_methods_emit_or_exclude` + T2 emit tests) |
+| V3d | Production mutating callers route through the factory; allowlisted direct clients are isolated | **FAIL** — **14** `must_use_factory` bypass sites in inventory; scan test locks the list |
+| V3e | Static scan, mutator enumeration test, and caller integration tests all exist; grep is not the sole proof | **FAIL** — inventory + scan + hermetic bypass present; production-path integration through factory **absent** |
+| V3f | Failed Chroma mutation emits no event; successful mutation creates the event context before Chroma and appends after success | **PASS** (hermetic) — event_id before upsert; BoomSink / success path in T2 |
+| V3g | Bulk source operations emit one event per confirmed entity, including partial completion | **PASS** (hermetic) — supersede/delete per-entity emit in T2 |
+| V3h | Summary mutations emit no unit event | **PASS** — `test_summaries_not_shadowed` |
+| V3i | Envelope version, closed vocabulary, tombstones, hashes, and no-raw-vector rule match Architecture | **PASS** (partial hermetic) — schema v1 ops + hashes in sink |
+| V3j | Sink failure never changes a successful Chroma return result | **PASS** — `test_sink_failure_preserves_chroma_success` |
 
 ## V4 — Durability, concurrency, corruption, and failure visibility
 
@@ -276,7 +291,7 @@ VERIFY-shadow-ledger-phase0 — tip <sha> — runner <lane> — <ISO-8601>
 V0 Preconditions: PENDING
 V1 Diff/authority: PENDING
 V2 Activation/config: PENDING
-V3 Writer coverage: PENDING
+V3 Writer coverage: FAIL (V3b/V3d/V3e) — factory bypass proved
 V4 Durability/corruption: PENDING
 V5 Replay/equality: PENDING
 V6 Inventory/readiness: PENDING

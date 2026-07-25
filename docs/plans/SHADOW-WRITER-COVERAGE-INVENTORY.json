@@ -1,0 +1,216 @@
+{
+  "purpose": "VERIFY V3 writer coverage inventory \u2014 factory bypass proof",
+  "proof_class": "code_path_static_and_hermetic",
+  "not_proved": "live production miss with enabled=true (activation forbidden)",
+  "open_chroma_for_write_production_call_sites": [],
+  "must_use_factory_bypass_sites": [
+    "convmem.py:1371",
+    "convmem.py:377",
+    "convmem.py:474",
+    "ingest.py:477",
+    "ingest.py:532",
+    "ingest.py:745",
+    "inter_model_index.py:155",
+    "observe.py:231",
+    "propose_decision.py:168",
+    "propose_decision.py:526",
+    "propose_decision.py:553",
+    "refine.py:271",
+    "refine.py:715",
+    "source_purge.py:317"
+  ],
+  "must_use_factory_count": 14,
+  "allowlisted_direct_sites": [
+    "ask.py:550",
+    "chroma_store.py:64",
+    "chroma_store.py:89",
+    "chroma_write_store.py:47",
+    "convmem.py:134",
+    "convmem.py:616",
+    "mcp_server.py:897",
+    "mcp_server.py:944"
+  ],
+  "sites": [
+    {
+      "file": "ask.py",
+      "line": 550,
+      "snippet": "with ChromaStore(cfg[\"index\"][\"chroma_dir\"]) as store:",
+      "class": "read_only",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "chroma_store.py",
+      "line": 64,
+      "snippet": "store = ChromaStore(chroma_dir)",
+      "class": "read_factory_helper",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "chroma_store.py",
+      "line": 89,
+      "snippet": "store = ChromaStore(chroma_dir, create_collections=False)",
+      "class": "read_factory_helper",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "chroma_write_store.py",
+      "line": 47,
+      "snippet": "store = ChromaStore(",
+      "class": "factory_internal",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "convmem.py",
+      "line": 134,
+      "snippet": "store = ChromaStore(load_config()[\"index\"][\"chroma_dir\"])",
+      "class": "read_only",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false,
+      "function": "search"
+    },
+    {
+      "file": "convmem.py",
+      "line": 377,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false,
+      "function": "add"
+    },
+    {
+      "file": "convmem.py",
+      "line": 474,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false,
+      "function": "verify_command"
+    },
+    {
+      "file": "convmem.py",
+      "line": 616,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "read_only",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false,
+      "function": "monitor_command"
+    },
+    {
+      "file": "convmem.py",
+      "line": 1371,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false,
+      "function": "forget_command"
+    },
+    {
+      "file": "ingest.py",
+      "line": 477,
+      "snippet": "with ChromaStore(chroma_dir) as store:",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "ingest.py",
+      "line": 532,
+      "snippet": "with ChromaStore(chroma_dir) as store:",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "ingest.py",
+      "line": 745,
+      "snippet": "with ChromaStore(chroma_dir) as store:",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "inter_model_index.py",
+      "line": 155,
+      "snippet": "with ChromaStore(chroma_dir) as store:",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "mcp_server.py",
+      "line": 897,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "read_only",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "mcp_server.py",
+      "line": 944,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "read_only",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "observe.py",
+      "line": 231,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "propose_decision.py",
+      "line": 168,
+      "snippet": "store = ChromaStore(chroma_dir)",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "propose_decision.py",
+      "line": 526,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "propose_decision.py",
+      "line": 553,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "refine.py",
+      "line": 271,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "refine.py",
+      "line": 715,
+      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "source_purge.py",
+      "line": 317,
+      "snippet": "store = ChromaStore(chroma_dir)",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": false
+    }
+  ]
+}
