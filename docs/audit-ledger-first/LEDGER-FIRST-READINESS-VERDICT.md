@@ -14,6 +14,9 @@
 - Separate **Phase 0 delta gates** (shadow capture coverage, disposable replay,
   durability tests) from **cutover gates** (canonical schema freeze, bootstrap,
   restore-order flip). YELLOW readiness for shadow research ≠ cutover authorization.
+- Replace the Phase 0 bullet that claimed **“No production behavior change”** —
+  shadow instrumentation under an activation flag is a real but bounded change
+  (aligned with `TRANSITION-OPTIONS.md`).
 
 ## Verdict: YELLOW — Suitable with prerequisites
 
@@ -63,7 +66,9 @@ The architecture is sound. The ledger-first model (canonical append-only ledger 
 - Add shadow ledger writer alongside existing Chroma writes.
 - Add shadow-vs-Chroma comparison tool.
 - Fix P0 #1 (fsync) and P0 #2 (append-only) on the shadow path.
-- **No production behavior change.**
+- Additive shadow path alongside existing Chroma writes; mutation-sink
+  instrumentation at the activation flag is a real but bounded behavior change.
+  Chroma remains authoritative; shadow is non-authoritative.
 
 ### Phase 1: Prerequisites
 - Fix P0 #3 (investigate 192 Chroma-only records).
