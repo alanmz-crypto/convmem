@@ -49,17 +49,17 @@ decisions.
 
 ### Versioned baseline
 
-This draft branch starts from `origin/main` at `8725813`, the merged cloud
-research-pack baseline. The active shared checkout was deliberately left on
-Ryan's backup/Neutral research branch
-`docs/2026-07-24-research-pack-backup-neutral` at `64d714b`.
+This draft branch is rebased onto `origin/main` at `20a4e0b` (includes research
+pack #114, audit salvage #117, dense-consult helper #118, and Hybrid Copilot
+brief #119). The Architecture file remains the only intentional change on this
+PR; Execute remains unauthorized.
 
-### Untracked audit baseline
+### Audit baseline (now on `main`)
 
-Cursor's shared working tree at `64d714b` contains an untracked
-`docs/audit-ledger-first/` directory. It is not part of that commit, is absent
-from this isolated Architecture worktree, and is not included in this branch.
-Codex inspected the locally present files as unversioned design input:
+The eight-file Qwen/Cursor audit pack lives on `main` under
+`docs/audit-ledger-first/` via squash-merge [#117](https://github.com/alanmz-crypto/convmem/pull/117),
+with Architecture-required correction banners applied at salvage. Codex
+originally inspected those files as unversioned design input before #117:
 
 1. `docs/audit-ledger-first/BACKUP-RESTORE-IMPLICATIONS.md`
 2. `docs/audit-ledger-first/CANONICAL-OBSERVATION-PROPOSAL.md`
@@ -70,8 +70,9 @@ Codex inspected the locally present files as unversioned design input:
 7. `docs/audit-ledger-first/REPLAY-AND-PROJECTION-CONTRACT.md`
 8. `docs/audit-ledger-first/TRANSITION-OPTIONS.md`
 
-Those files may not be reconstructed from this summary. Versioning or
-correcting them requires a separate Ryan authorization and a docs-only change.
+Further correction or promotion of that baseline beyond what #117 landed still
+requires separate Ryan authorization. This Architecture PR does not modify
+those files.
 
 ### Live authority facts
 
@@ -563,18 +564,20 @@ must correct at least:
 | `EXISTING-DATA-MIGRATION-ASSESSMENT.md` | Runtime-stamp inventory; keep human classification and ID mapping as later gates. |
 | `CANONICAL-OBSERVATION-PROPOSAL.md` | Label the schema provisional/end-state; do not substitute it for the Phase 0 event envelope. |
 
-This Architecture branch does not include or modify those untracked files.
+This Architecture PR does not modify the `docs/audit-ledger-first/` pack on
+`main` (#117). Reviewers should read that pack alongside this Direction.
 
 ## HITL gates and downstream handoff
 
-1. **Now — Architecture:** Ryan reviews this draft; Kiro design review may be
-   requested. No runtime work is authorized.
+1. **Now — Architecture:** Ryan reviews this draft; Kiro and DeepSeek V4-Pro
+   design review may be requested. No runtime work is authorized.
 2. **After Architecture approval — Execution Planning:** Codex may create
    `docs/plans/EXECUTION-shadow-ledger-phase0.md`, mapping this direction into
    bounded tasks and exact verification commands. That document still requires
    Ryan HITL.
-3. **Separate docs authorization:** Ryan may authorize correction/versioning of
-   the eight local audit files and any Phase 0 contract artifact.
+3. **Separate docs authorization:** Further changes to the eight audit files
+   (beyond #117 salvage corrections) or any Phase 0 contract artifact still
+   need Ryan authorization.
 4. **Separate Execute authorization:** Cursor may implement only the approved
    Execution plan. Production activation remains disabled.
 5. **Separate activation authorization:** Ryan approves the exact root, config
