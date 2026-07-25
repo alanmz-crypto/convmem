@@ -1,9 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (Track 1 Hybrid consistency bar locked → Copilot brief)
+**Updated:** 2026-07-24 (Gate 1b docs fix: readiness behavior-change bullet)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Shadow Ledger Gate 1b fix landed (pending Ryan PASS confirm):** Who/What: docs-only edit to `LEDGER-FIRST-READINESS-VERDICT.md` replacing residual “No production behavior change” Phase 0 bullet (DeepSeek+Kiro round-2 lock B). When: branch `docs/2026-07-24-gate1b-readiness-behavior-change`. Why: close authorization leak before Codex Execution Planning. How: Ryan confirms **Gate 1b PASS**, then may authorize Codex for `EXECUTION-shadow-ledger-phase0.md`. Execute still forbidden.
 
 - **Track 1 backup — Hybrid consistency bar LOCKED (2026-07-24):** Who/What: Ryan locked Hybrid after DeepSeek V4-Pro + Kiro dense consult; Copilot must audit exact SHA `492e6e7` with A-checklist + Five-part report card. When: now. Why: full-root backup merge blocked on safety bar. How: paste [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md) (+ base contract linked therein) into GitHub Copilot audit lane. **Does not authorize** live Restic, merge of backup branch, Neutral, or Shadow Execute (#115 still HITL-only).
 
