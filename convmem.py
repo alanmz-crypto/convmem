@@ -52,7 +52,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
-    "unresolved", "tldr", "work",
+    "unresolved", "tldr", "work", "shadow-inventory",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -1276,6 +1276,58 @@ def unresolved_command(
         from next_steps import after_unresolved
 
         after_unresolved(site=site, count=len(items))
+
+
+@app.command("shadow-inventory")
+def shadow_inventory_command(
+    json_out: bool = typer.Option(
+        False, "--json", help="Emit redacted machine-readable inventory JSON"
+    ),
+    report: Path | None = typer.Option(
+        None,
+        "--report",
+        help="Write full machine-readable readiness report JSON to this path",
+        path_type=Path,
+    ),
+    sample: int = typer.Option(
+        200,
+        "--sample",
+        help="Max candidate rows to classify (deterministic local metadata only)",
+    ),
+):
+    """Phase 0 read-only shadow inventory and readiness summary.
+
+    Does not enable shadowing, mutate Chroma, or claim activation/cutover.
+    """
+    import json
+
+    from config import load_config
+    from shadow_inventory import (
+        collect_phase0_inventory,
+        redacted_stdout_view,
+        write_report,
+    )
+
+    cfg = load_config()
+    report_obj = collect_phase0_inventory(
+        cfg, include_candidate_sample=sample
+    )
+    if report is not None:
+        write_report(report, report_obj)
+    if json_out:
+        typer.echo(json.dumps(redacted_stdout_view(report_obj), indent=2, sort_keys=True))
+    else:
+        inv = report_obj["inventory"]
+        shadow = report_obj["shadow"]
+        typer.echo(report_obj["human_summary"])
+        typer.echo(
+            f"units={inv['active_unit_count']} chroma_only={inv['chroma_only_count']} "
+            f"shadow_entities={shadow['shadow_entity_count']} "
+            f"health={shadow['health_status']} enabled={shadow['enabled']}"
+        )
+        typer.echo(f"commit={inv['code_commit']} rule_v={inv['comparison_rule_version']}")
+        if report is not None:
+            typer.echo(f"report={report}")
 
 
 @app.command("exclude")

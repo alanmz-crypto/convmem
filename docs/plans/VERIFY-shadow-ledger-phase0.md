@@ -13,15 +13,15 @@ Authority:    Post-Execute HITL — do not trust prior chat claims alone
 **Stub status:** Execute in progress on PR #122. Mechanical focused tests exist;
 full V0–V8 row fill awaits final Execute tip + independent sign-off.
 
-**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` @ `5b54967` — T3/V4 durability PASS (hermetic); branch tip may include docs pin
+**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` — T5 inventory CLI in flight (pin after commit)
 
 **PR(s):** [#122](https://github.com/alanmz-crypto/convmem/pull/122)
 
 **Execute progress (Cursor mechanical):**
-- T1–T5 modules landed (contract, sink, durability, replay projector, inventory helpers).
+- T1–T5 modules landed (contract, sink, durability, replay projector, inventory CLI).
 - Writer coverage: factory routing bypass list **0** (V3 PASS).
-- T3: lock budget, binary append+fsync, uncertain-ack idempotent retry, degraded latency, health statuses, doctor `shadow_ledger` check.
-- T4: disposable projector (V5 PASS hermetic).
+- T3/V4 durability PASS; T4/V5 projector PASS.
+- T5: `convmem shadow-inventory` read-only collector + readiness report (`PASS — delta capture` / `PARTIAL` / `FAIL`).
 - Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py tests/test_shadow_writer_coverage_scan.py`.
 - **Production activation still unauthorized.**
 
@@ -58,7 +58,9 @@ sign-off → Ryan GATE. The verifier performs no cleanup or correction.
 
 ## Human consequence (fill after Execute)
 
-**Consequence:** `<what Ryan gains or must still avoid if this arc is accepted>`
+**Consequence:** Ryan can run a read-only Phase 0 inventory/readiness report
+without enabling shadowing or mutating Chroma; Execute on #122 now has
+mechanical V3–V6 evidence. Activation remains a separate grant.
 
 ### 5 Ws
 
@@ -66,11 +68,13 @@ sign-off → Ryan GATE. The verifier performs no cleanup or correction.
 |---|---|
 | **Who** | Cursor implements; independent reviewer verifies; Ryan accepts or rejects |
 | **What** | Disabled-by-default, non-authoritative shadow delta capture and disposable replay |
-| **When** | `<final Execute tip and verification time>` |
+| **When** | Execute tip on `feat/2026-07-24-shadow-ledger-phase0` (see Subject tip) |
 | **Why** | Prove capture/replay mechanics before any activation, migration, or cutover decision |
 | **How** | Mutation-boundary coverage, durable append, isolated replay, comparison, and readiness evidence |
 
-**TL;DR:** `<filled result and largest residual>`
+**TL;DR:** Phase 0 Execute machinery is in place (factory, durability, projector,
+inventory CLI); live activation is still forbidden; largest residual is
+independent VERIFY sign-off + activation grant.
 
 **Honest limits / caveats:** Phase 0 cannot prove historic-corpus rebuild,
 production activation safety over time, canonical-schema fitness, backup
@@ -231,20 +235,22 @@ pytest -q tests/test_shadow_ledger_phase0_t4.py
 ## V6 — Inventory and readiness semantics
 
 ```bash
-<focused inventory/readiness test command from Execute>
-<read-only inventory command against the approved isolated or production-read target>
+pytest -q tests/test_shadow_ledger_phase0_t5.py
+convmem shadow-inventory
+convmem shadow-inventory --json
+# optional: convmem shadow-inventory --report /tmp/shadow-phase0-readiness.json
 ```
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V6a | Inventory records UTC time, code revision, resolved inputs, hashes, root identity, live counts, and rule version | PENDING |
-| V6b | Repeated run over identical inputs is deterministic | PENDING |
-| V6c | Counts are runtime-derived; audit snapshot values are absent from implementation constants | PENDING |
-| V6d | Default output exposes counts/stable IDs/categories, not documents, metadata payloads, secrets, or embeddings | PENDING |
-| V6e | Candidate classes are deterministic/local and ambiguous rows remain human-gated | PENDING |
-| V6f | Inventory performs no rewrite, ingest, delete, authority transfer, or LLM/API call | PENDING |
-| V6g | Machine-readable and human reports agree on PASS/PARTIAL/FAIL | PENDING |
-| V6h | PASS is labeled `delta capture` and makes no historic rebuild, backup, migration, cutover, or activation claim | PENDING |
+| V6a | Inventory records UTC time, code revision, resolved inputs, hashes, root identity, live counts, and rule version | **PASS** — `collect_phase0_inventory` stamp fields + file hashes |
+| V6b | Repeated run over identical inputs is deterministic | **PASS** — fixed `utc`/`code_commit` ⇒ identical report |
+| V6c | Counts are runtime-derived; audit snapshot values are absent from implementation constants | **PASS** — module/source + stamp tests reject `192`/`3448` |
+| V6d | Default output exposes counts/stable IDs/categories, not documents, metadata payloads, secrets, or embeddings | **PASS** — `redacted_stdout_view`; CLI `--json` uses it |
+| V6e | Candidate classes are deterministic/local and ambiguous rows remain human-gated | **PASS** — `classify_unit_metadata` / `ambiguous` class |
+| V6f | Inventory performs no rewrite, ingest, delete, authority transfer, or LLM/API call | **PASS** — `chroma_readonly` only; no `llm`/`requests` imports |
+| V6g | Machine-readable and human reports agree on PASS/PARTIAL/FAIL | **PASS** — `human_summary` mirrors `readiness.status` |
+| V6h | PASS is labeled `delta capture` and makes no historic rebuild, backup, migration, cutover, or activation claim | **PASS** — status `PASS — delta capture`; `claims.not_claimed` list |
 
 ## V7 — Focused/full regression and non-mutation evidence
 

@@ -32,7 +32,7 @@ activation against the live corpus is forbidden for this verification slice.
 | `convmem.py:377` | `open_chroma_for_write` |
 | `convmem.py:474` | `open_chroma_for_write` |
 | `convmem.py:616` | `open_chroma_for_write` |
-| `convmem.py:1372` | `open_chroma_for_write` |
+| `convmem.py:1424` | `open_chroma_for_write` |
 | `observe.py:231` | `open_chroma_for_write` |
 | `propose_decision.py:529` | `open_chroma_for_write` |
 | `propose_decision.py:556` | `open_chroma_for_write` |

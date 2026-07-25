@@ -6,7 +6,7 @@
     "convmem.py:377",
     "convmem.py:474",
     "convmem.py:616",
-    "convmem.py:1372",
+    "convmem.py:1424",
     "observe.py:231",
     "propose_decision.py:529",
     "propose_decision.py:556",
@@ -103,7 +103,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 1372,
+      "line": 1424,
       "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
       "class": "mutates_units",
       "required_routing": "must_use_factory",

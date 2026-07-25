@@ -1,11 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (T3/V4 durability EXECUTED on #122; T5 next residual)
+**Updated:** 2026-07-24 (T5 inventory CLI EXECUTED on #122 — Phase 0 Execute core complete)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger T3/V4 durability EXECUTED (2026-07-24):** Who/What: Cursor chose V4 before T5 (plan order; prior dense consult); landed lock timeout, binary append/fsync, uncertain-ack idempotent retry, degraded latency, health vocabulary, doctor `shadow_ledger` check on [#122](https://github.com/alanmz-crypto/convmem/pull/122). VERIFY V4a–V4k **PASS** (hermetic). When: now. Why: T5 readiness needs durability evidence. How: next residual is T5 inventory CLI; **activation still forbidden.**
+- **Shadow Ledger T5 inventory CLI EXECUTED (2026-07-24):** Who/What: Cursor on [#122](https://github.com/alanmz-crypto/convmem/pull/122) shipped `convmem shadow-inventory` (read-only chroma_readonly collector, candidate classes, readiness `PASS — delta capture`/`PARTIAL`/`FAIL`). VERIFY V6a–V6h **PASS**. When: now. Why: close Phase 0 Execute deliverables. How: independent VERIFY sign-off next; **production activation still forbidden.**
+
+- **Shadow Ledger T3/V4 durability EXECUTED (2026-07-24):** Who/What: V4a–V4k **PASS** on [#122](https://github.com/alanmz-crypto/convmem/pull/122). When: earlier tonight. Why: readiness gate. How: T5 followed (see above).
 
 - **Shadow Ledger T4 projector EXECUTED (2026-07-24):** Who/What: Ryan locked T4 after DeepSeek+Kiro; `run_disposable_replay` on [#122](https://github.com/alanmz-crypto/convmem/pull/122). VERIFY V5a–V5k **PASS**. When: earlier tonight. Why: isolation gate. How: T3/V4 followed (see above).
 
