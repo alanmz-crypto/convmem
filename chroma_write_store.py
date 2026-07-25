@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Authoritative production write-store factory for Phase 0 shadow injection.
 
 ChromaStore does not load config. Only this factory may decide sink injection

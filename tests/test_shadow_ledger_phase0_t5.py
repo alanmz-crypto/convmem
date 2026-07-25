@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """T5: inventory collector, readiness, redaction, non-mutation."""
 
 from __future__ import annotations
@@ -8,8 +9,9 @@ from pathlib import Path
 
 import pytest
 
-chromadb = pytest.importorskip("chromadb")
+pytest.importorskip("chromadb")
 
+# pylint: disable=wrong-import-position
 from chroma_store import ChromaStore
 from shadow_inventory import (
     NOT_CLAIMED,
@@ -22,6 +24,7 @@ from shadow_inventory import (
     redacted_stdout_view,
     write_report,
 )
+# pylint: enable=wrong-import-position
 
 
 def test_inventory_stamp_no_hardcoded_audit_constants() -> None:
@@ -196,4 +199,4 @@ def test_inventory_module_has_no_llm_imports() -> None:
 def test_human_and_machine_status_agree() -> None:
     for status in ("PASS — delta capture", "PARTIAL", "FAIL"):
         summary = human_summary(status, reasons=["r"])
-        assert status.split("—")[0].strip() in summary or status in summary
+        assert status.split("—", maxsplit=1)[0].strip() in summary or status in summary

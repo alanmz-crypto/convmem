@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from chroma_store import invalidate_superseded_cache, is_superseded
+from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
 from chroma_write_store import open_chroma_for_write
 from domains import DEFAULT_DOMAINS, normalize_domain
 from process_lock import acquire_lock, release_lock

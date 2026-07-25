@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Disposable Phase 0 shadow replay into a marked temporary Chroma root."""
 
 from __future__ import annotations
@@ -45,7 +46,7 @@ class CorruptShadowError(ValueError):
 
 
 @dataclass
-class ReplayResult:
+class ReplayResult:  # pylint: disable=too-many-instance-attributes
     mode: ReplayMode
     replay_root: Path
     projected_count: int
@@ -256,7 +257,8 @@ def project_event(
     deleted = bool(post.get("deleted"))
     if deleted:
         if store.get_unit(entity) is not None:
-            store._collection(UNITS).delete(ids=[entity])
+            collection = getattr(store, "_collection")(UNITS)  # pylint: disable=protected-access
+            collection.delete(ids=[entity])
         return
     document = post.get("document")
     if document is None:
@@ -361,7 +363,7 @@ def _load_production_units(
         store.close()
 
 
-def run_disposable_replay(
+def run_disposable_replay(  # pylint: disable=too-many-arguments
     *,
     ledger_path: Path,
     replay_root: Path,

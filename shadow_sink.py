@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """UnitMutationSink: observe confirmed knowledge_units mutations into shadow JSONL."""
 
 from __future__ import annotations
@@ -45,7 +46,7 @@ FSYNC_DEGRADED_LATENCY_MS = 500.0
 class UnitMutationSink(Protocol):
     def prepare_event_id(self) -> str: ...
 
-    def observe(
+    def observe(  # pylint: disable=too-many-arguments
         self,
         *,
         event_id: str,
@@ -61,7 +62,7 @@ class UnitMutationSink(Protocol):
 
 
 @dataclass
-class ShadowHealth:
+class ShadowHealth:  # pylint: disable=too-many-instance-attributes
     last_success_at: str | None = None
     last_failure_at: str | None = None
     last_failure_class: str | None = None
@@ -121,7 +122,7 @@ def ledger_has_corruption(ledger_path: Path) -> bool:
             continue
         try:
             obj = json.loads(line.decode("utf-8"))
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             return True
         if not isinstance(obj, dict):
             return True
@@ -131,7 +132,7 @@ def ledger_has_corruption(ledger_path: Path) -> bool:
 class JsonlUnitMutationSink:
     """Append-only shadow sink for knowledge_units only (never summaries)."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         *,
         ledger_path: Path,
@@ -151,7 +152,7 @@ class JsonlUnitMutationSink:
     def prepare_event_id(self) -> str:
         return str(uuid.uuid4())
 
-    def observe(
+    def observe(  # pylint: disable=too-many-arguments
         self,
         *,
         event_id: str,
@@ -204,7 +205,7 @@ class JsonlUnitMutationSink:
         }
         try:
             self._append_event(event)
-        except Exception as exc:  # never roll back Chroma
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             klass = type(exc).__name__
             msg = str(exc)
             if "truncated tail" in msg:
@@ -311,7 +312,7 @@ class JsonlUnitMutationSink:
                 continue
             try:
                 obj = json.loads(line)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 raise ValueError("shadow ledger invalid middle record") from None
             if isinstance(obj, dict) and str(obj.get("event_id") or "") == event_id:
                 return obj
@@ -356,7 +357,7 @@ class JsonlUnitMutationSink:
                 seq = obj.get("sequence")
                 if isinstance(seq, int) and seq > last_seq:
                     last_seq = seq
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 raise ValueError("shadow ledger invalid middle record") from None
         return last_seq + 1
 
@@ -392,7 +393,7 @@ class JsonlUnitMutationSink:
         )
         try:
             self._persist_health()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
     def _persist_health(self) -> None:

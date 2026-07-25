@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """T4: disposable replay projector, isolation, stub mode, comparison."""
 
 from __future__ import annotations
@@ -8,8 +9,9 @@ from unittest.mock import patch
 
 import pytest
 
-chromadb = pytest.importorskip("chromadb")
+pytest.importorskip("chromadb")
 
+# pylint: disable=wrong-import-position
 from chroma_store import ChromaStore
 from shadow_ledger import projection_state_hash, sha256_canonical
 from shadow_replay import (
@@ -25,6 +27,7 @@ from shadow_replay import (
     run_disposable_replay,
     stub_embedding,
 )
+# pylint: enable=wrong-import-position
 
 
 def _event(
@@ -130,7 +133,7 @@ def test_stub_embedding_deterministic() -> None:
     assert len(a) == 8
 
 
-def test_reduce_duplicates_and_compare(tmp_path: Path) -> None:
+def test_reduce_duplicates_and_compare() -> None:
     events = [
         _event("e1", "u1", "a", sequence=1),
         _event("e1", "u1", "a", sequence=2),
@@ -164,7 +167,7 @@ def test_document_drift_fails_projection_equality() -> None:
     )
     cats = {f["category"] for f in findings}
     assert "projection mismatch" in cats
-    state_eq, proj_eq = equality_flags(findings)
+    _, proj_eq = equality_flags(findings)
     assert proj_eq is False
 
 

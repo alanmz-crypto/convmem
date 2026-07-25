@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Read-only Phase 0 inventory and readiness report (non-mutating)."""
 
 from __future__ import annotations
@@ -45,7 +46,7 @@ def current_code_commit() -> str:
             text=True,
         )
         return out.strip()
-    except Exception:
+    except (OSError, subprocess.CalledProcessError, FileNotFoundError):
         return "unknown"
 
 
@@ -77,7 +78,7 @@ def build_inventory_stamp(
     }
 
 
-def classify_legacy_decision_candidate(
+def classify_legacy_decision_candidate(  # pylint: disable=unused-argument
     *,
     title: str,
     summary: str,
@@ -163,7 +164,7 @@ def _load_health(path: Path) -> dict[str, Any]:
         return {}
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         return {}
 
 
@@ -180,7 +181,7 @@ def human_summary(status: str, *, reasons: list[str]) -> str:
     return f"PARTIAL: {reason}"
 
 
-def collect_phase0_inventory(
+def collect_phase0_inventory(  # pylint: disable=too-many-locals
     cfg: Mapping[str, Any],
     *,
     code_commit: str | None = None,

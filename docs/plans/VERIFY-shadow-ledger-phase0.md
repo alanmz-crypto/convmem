@@ -13,7 +13,7 @@ Authority:    Post-Execute HITL — do not trust prior chat claims alone
 **Stub status:** Mechanical VERIFY V0–V7 filled by Cursor (2026-07-25). V8
 independent sign-off + Ryan GATE still required before activation.
 
-**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` @ `ca69034` — mechanical VERIFY V0–V7 PASS; V8 pending
+**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` @ `8cf7bc4` — mechanical VERIFY V0–V7 PASS; V8 PASS (DeepSeek V4-Pro)
 
 **PR(s):** [#122](https://github.com/alanmz-crypto/convmem/pull/122)
 
@@ -22,8 +22,8 @@ independent sign-off + Ryan GATE still required before activation.
 - Writer coverage: factory routing bypass list **0** (V3 PASS).
 - T3/V4 durability PASS; T4/V5 projector PASS; T5/V6 inventory PASS.
 - Mechanical VERIFY V0–V2/V7 filled 2026-07-25T07:28:06Z (runner: Cursor).
-- Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py tests/test_shadow_writer_coverage_scan.py` → **59+** passed.
-- Full suite: `pytest -q` → **837 passed** (after inter-model mock fix for factory migration).
+- Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py tests/test_shadow_writer_coverage_scan.py` → **61** passed.
+- Full suite: `pytest -q` → **839 passed** (after inter-model mock fix for factory migration).
 - Live: `shadow_ledger` doctor **PASS disabled**; inventory **PARTIAL** (not activated).
 - **Production activation still unauthorized.**
 
@@ -123,10 +123,10 @@ Copy this block from Execute; do not infer applicability during Verify.
 |-------|-------|
 | `gate_applicability` | `required` |
 | `reason` | Production mutation boundary, durability, and replay isolation changed |
-| `subject_tip_sha` | `ca6903411214f1a7a971686f34080e509315c688` |
-| `reviewed_sha` | _(empty — awaits V8 independent review)_ |
-| `result` | `unreachable` until V8 |
-| `finding_disposition` | `none` yet |
+| `subject_tip_sha` | `8cf7bc47e5927d9b8d7e9accc4983dcd49aac94b` |
+| `reviewed_sha` | `8cf7bc47e5927d9b8d7e9accc4983dcd49aac94b` (DeepSeek V4-Pro independent V8 review; zero code delta from mechanical-evidence tip `ca69034`) |
+| `result` | `PASS` |
+| `finding_disposition` | `none` — no V8 findings require code change |
 | `authority_reference` | PR #122; Architecture HITL + Execution HITL cited in V0b |
 
 | ID | Check | PASS / FAIL / SKIP |
@@ -134,8 +134,8 @@ Copy this block from Execute; do not infer applicability during Verify.
 | V0a | Subject tip resolves to the exact commit being verified | **PASS** — tip `0070b27` = `git rev-parse HEAD` at mechanical fill; VERIFY-fill commit will re-pin |
 | V0b | Architecture and Execution Plan approvals are cited; Execute authority is explicit | **PASS** — Arch HITL locked (`e326aa6` / #115 path); Execution plan `5104022` + Ryan Execute grant; PR #122 Consequence states activation still separate |
 | V0c | The pre-edit runtime stamp re-measured counts instead of using audit snapshot constants | **PASS** — PR #122 Runtime stamp @ `2026-07-25T04:03:19Z` / corpus **11092** units (live re-measure, not audit constants) |
-| V0d | Final external review evidence names the same subject tip | **SKIP** — awaits V8 independent review of final tip |
-| V0e | Every external finding is fixed or Ryan-accepted | **SKIP** — no V8 findings yet |
+| V0d | Final external review evidence names the same subject tip | **PASS** — reviewed tip `8cf7bc4` matches final branch tip; zero code delta from mechanical evidence tip `ca69034` |
+| V0e | Every external finding is fixed or Ryan-accepted | **PASS** — no V8 findings require code change |
 | V0f | Worktree is clean except for explicitly documented evidence updates | **PASS** (post-commit of this VERIFY fill + whitespace/test fixes only) |
 
 ## V1 — Diff and authority boundary
@@ -286,10 +286,10 @@ commit, and must specifically examine:
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V8a | Targeted external technical review matches final subject tip and findings are disposed | PENDING |
-| V8b | Independent reviewer writes PASS or FAIL naming the final tip SHA and residual risks | PENDING |
-| V8c | Independent review does not implement fixes or silently broaden scope | PENDING |
-| V8d | Ryan records the final HITL GATE outcome | PENDING |
+| V8a | Targeted external technical review matches final subject tip and findings are disposed | **PASS** — reviewed tip `8cf7bc4`; zero code delta from mechanical-evidence tip `ca69034` (docs-only handoff/whitespace); no findings require code change |
+| V8b | Independent reviewer writes PASS or FAIL naming the final tip SHA and residual risks | **PASS** — DeepSeek V4-Pro @ tip `8cf7bc4`; see residual risks below |
+| V8c | Independent review does not implement fixes or silently broaden scope | **PASS** — VERIFY doc updates only; no code edited; activation still forbidden. **Kiro confirmed independently:** reran full 839-test suite, 64 focused shadow tests, all seven V8 claims — PASS. |
+| V8d | Ryan records the final HITL GATE outcome | **PENDING** — Ryan must GATE / squash-merge #122 |
 
 ## Evidence log (fill after Execute)
 
@@ -303,9 +303,9 @@ V4 Durability/corruption: PASS
 V5 Replay/equality: PASS
 V6 Inventory/readiness: PASS
 V7 Regression/non-mutation: PASS
-V8 Independent sign-off: PENDING
+V8 Independent sign-off: PASS — DeepSeek V4-Pro @ 8cf7bc4 + Kiro cross-check (2026-07-25)
 Mechanical: PASS
-Sign-off: PENDING
+Sign-off: PASS
 Ryan GATE: PENDING
 Residuals: restic_gate stale (ops); embed_collection_identity WARN; activation forbidden
 ```
@@ -314,4 +314,4 @@ Residuals: restic_gate stale (ops); embed_collection_identity WARN; activation f
 
 Mechanical VERIFY does **not** authorize production activation, migration,
 cutover, backup wiring, restore-order change, or a change in Chroma authority.
-Next: V8 independent PASS/FAIL on the VERIFY-fill tip, then Ryan GATE / merge.
+V8 independent sign-off complete. Next: Ryan GATE / squash-merge #122.

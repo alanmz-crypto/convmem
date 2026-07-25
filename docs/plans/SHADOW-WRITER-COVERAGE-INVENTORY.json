@@ -26,11 +26,11 @@
     "ask.py:550",
     "chroma_store.py:64",
     "chroma_store.py:89",
-    "chroma_write_store.py:48",
     "convmem.py:134",
     "mcp_server.py:897",
     "mcp_server.py:944",
-    "shadow_replay.py:176"
+    "chroma_write_store.py:49",
+    "shadow_replay.py:177"
   ],
   "sites": [
     {

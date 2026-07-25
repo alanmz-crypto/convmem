@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """T1 gates: shadow config, activation manifest, no-sink defaults."""
 
 from __future__ import annotations
@@ -181,7 +182,7 @@ def test_config_example_shadow_ledger_disabled() -> None:
     assert section.get("enabled") is False
 
 
-def test_load_config_expands_shadow_paths(tmp_path: Path, monkeypatch) -> None:
+def test_load_config_expands_shadow_paths(tmp_path: Path, monkeypatch) -> None:  # pylint: disable=unused-argument
     from config import load_config
 
     cfg_path = tmp_path / "config.toml"
@@ -252,11 +253,11 @@ def test_purpose_test_forces_no_sink(tmp_path: Path) -> None:
 
 
 def test_open_chroma_for_write_no_sink_when_disabled(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch  # pylint: disable=unused-argument
 ) -> None:
     chroma = tmp_path / "chroma"
     # Avoid needing a real chromadb if import fails in minimal envs — skip.
-    chromadb = pytest.importorskip("chromadb")
+    pytest.importorskip("chromadb")
     cfg = {
         "index": {"chroma_dir": str(chroma)},
         "shadow_ledger": {"enabled": False},
@@ -275,4 +276,8 @@ def test_phase0_contract_doc_exists() -> None:
     text = path.read_text(encoding="utf-8")
     assert "Tier-1" in text
     assert "post-activation delta" in text
-    assert "canonical observation-schema" in text.lower() or "not** a canonical" in text.lower() or "not a canonical" in text.lower()
+    assert (
+        "canonical observation-schema" in text.lower()
+        or "not** a canonical" in text.lower()
+        or "not a canonical" in text.lower()
+    )

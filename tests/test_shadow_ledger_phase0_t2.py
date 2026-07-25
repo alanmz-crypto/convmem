@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """T2: UnitMutationSink coverage on knowledge_units mutators."""
 
 from __future__ import annotations
@@ -7,8 +8,9 @@ from pathlib import Path
 
 import pytest
 
-chromadb = pytest.importorskip("chromadb")
+pytest.importorskip("chromadb")
 
+# pylint: disable=wrong-import-position
 from chroma_store import ChromaStore
 from chroma_write_store import open_chroma_for_write
 from shadow_ledger import (
@@ -16,7 +18,8 @@ from shadow_ledger import (
     finalize_manifest,
     new_incomplete_manifest,
 )
-from shadow_sink import JsonlUnitMutationSink, classify_metadata_operation
+from shadow_sink import classify_metadata_operation
+# pylint: enable=wrong-import-position
 
 
 def _emb(n: int = 8) -> list[float]:
@@ -64,7 +67,7 @@ def _read_events(path: Path) -> list[dict]:
 def test_unit_mutating_methods_emit_or_exclude() -> None:
     """Enumerate mutators: unit methods must have shadow hooks; summaries must not."""
     import inspect
-    from chroma_store import ChromaStore as CS
+    CS = ChromaStore
 
     unit_mutators = {
         "add_unit",
@@ -173,4 +176,4 @@ def test_summaries_not_shadowed(tmp_path: Path) -> None:
         store.add_summary("s1", "sum", _emb(), {"source_path": "/s"})
     finally:
         store.close()
-    assert _read_events(Path(cfg["shadow_ledger"]["ledger_path"])) == []
+    assert not _read_events(Path(cfg["shadow_ledger"]["ledger_path"]))

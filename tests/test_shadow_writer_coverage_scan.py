@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """VERIFY V3 coverage proof: factory routing + hermetic bypass control.
 
 Proof class: code-path / hermetic. Does NOT enable production shadowing or
@@ -85,7 +86,7 @@ def test_hermetic_direct_ctor_bypasses_sink_even_when_cfg_eligible(
     tmp_path: Path,
 ) -> None:
     """Control: ChromaStore(dir) => no sink, no ledger (why factory is mandatory)."""
-    chromadb = pytest.importorskip("chromadb")
+    pytest.importorskip("chromadb")
     from chroma_store import ChromaStore
     from shadow_ledger import (
         atomic_write_json_private,
