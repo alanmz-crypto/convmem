@@ -124,7 +124,7 @@ Copy this block from Execute; do not infer applicability during Verify.
 |-------|-------|
 | `gate_applicability` | `required` |
 | `reason` | Production mutation boundary, durability, and replay isolation changed |
-| `subject_tip_sha` | `0070b27a7188a82fca32b030e0a58fb3956ed228` (mechanical base; VERIFY-fill tip supersedes after commit) |
+| `subject_tip_sha` | `0070b27a7188a82fca32b030e0a58fb3956ed228` |
 | `reviewed_sha` | _(empty — awaits V8 independent review)_ |
 | `result` | `unreachable` until V8 |
 | `finding_disposition` | `none` yet |
@@ -295,7 +295,7 @@ commit, and must specifically examine:
 ## Evidence log (fill after Execute)
 
 ```text
-VERIFY-shadow-ledger-phase0 — tip 0070b27 (+ VERIFY-fill tip) — runner Cursor — 2026-07-25T07:28:06Z
+VERIFY-shadow-ledger-phase0 — tip ca69034 — runner Cursor — 2026-07-25T07:28:06Z
 V0 Preconditions: PASS (V0d/V0e SKIP → V8)
 V1 Diff/authority: PASS
 V2 Activation/config: PASS
