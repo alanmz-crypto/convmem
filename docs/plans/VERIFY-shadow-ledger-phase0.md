@@ -13,8 +13,7 @@ Authority:    Post-Execute HITL — do not trust prior chat claims alone
 **Stub status:** Mechanical VERIFY V0–V7 filled by Cursor (2026-07-25). V8
 independent sign-off + Ryan GATE still required before activation.
 
-**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` @ `0070b27` — mechanical
-VERIFY base (T1–T5 Execute); this VERIFY-fill commit pins after evidence below
+**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` @ `ca69034` — mechanical VERIFY V0–V7 PASS; V8 pending
 
 **PR(s):** [#122](https://github.com/alanmz-crypto/convmem/pull/122)
 
@@ -124,7 +123,7 @@ Copy this block from Execute; do not infer applicability during Verify.
 |-------|-------|
 | `gate_applicability` | `required` |
 | `reason` | Production mutation boundary, durability, and replay isolation changed |
-| `subject_tip_sha` | `0070b27a7188a82fca32b030e0a58fb3956ed228` |
+| `subject_tip_sha` | `ca6903411214f1a7a971686f34080e509315c688` |
 | `reviewed_sha` | _(empty — awaits V8 independent review)_ |
 | `result` | `unreachable` until V8 |
 | `finding_disposition` | `none` yet |

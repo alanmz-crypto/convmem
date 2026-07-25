@@ -1,15 +1,15 @@
 # Cursor → Codex: Shadow Ledger Phase 0 Execution Planning (authorized)
 
 **Who:** Ryan authorized Execution Planning; Cursor packages this handoff; Codex
-authors the plan.  
+authors the plan.
 **What:** Paste-ready Codex work order to create
-`docs/plans/EXECUTION-shadow-ledger-phase0.md` only.  
+`docs/plans/EXECUTION-shadow-ledger-phase0.md` only.
 **When:** 2026-07-24 — after Architecture HITL APPROVED on
 [#115](https://github.com/alanmz-crypto/convmem/pull/115) and Gate 1b PASS
 (audit fix [#121](https://github.com/alanmz-crypto/convmem/pull/121) → `main`
-`0d08310`).  
+`0d08310`).
 **Why:** Architecture stops before task decomposition; Planning OS assigns
-Execution Planning to Codex.  
+Execution Planning to Codex.
 **How:** Codex follows the verbatim work order below. Cursor does **not** author
 the Execution plan. This grant does **not** authorize Execute, hooks,
 activation, cutover, Neutral, backup wiring, or restore-order flip.

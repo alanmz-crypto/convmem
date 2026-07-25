@@ -1,12 +1,12 @@
 # Cursor → Codex: Shadow Ledger Phase 0 Architecture work order (verbatim)
 
-**Who:** ChatGPT authored this work order; Cursor packages it for provenance.  
-**What:** Exact Codex Architecture Planning brief for Shadow Ledger Phase 0.  
+**Who:** ChatGPT authored this work order; Cursor packages it for provenance.
+**What:** Exact Codex Architecture Planning brief for Shadow Ledger Phase 0.
 **When:** Work order used to author [#115](https://github.com/alanmz-crypto/convmem/pull/115);
 salvaged to Git 2026-07-24 after Architecture HITL lock (tip carried
-`ARCHITECTURE-shadow-ledger-phase0.md`).  
+`ARCHITECTURE-shadow-ledger-phase0.md`).
 **Why:** The packaging step was superseded when #115 appeared; the verbatim
-text lived only in chat until this file.  
+text lived only in chat until this file.
 **How:** Treat Section “Exact ChatGPT/Codex work order” as immutable intake.
 Architecture Direction is already **HITL approved** on #115 — do **not**
 re-open Architecture authorship from this file. Next planning step remains
