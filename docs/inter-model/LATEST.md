@@ -1,9 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (workspace-coord salvage: audit + handoff + decision memos → GitHub)
+**Updated:** 2026-07-24 (Track 1 Hybrid consistency bar locked → Copilot brief)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Track 1 backup — Hybrid consistency bar LOCKED (2026-07-24):** Who/What: Ryan locked Hybrid after DeepSeek V4-Pro + Kiro dense consult; Copilot must audit exact SHA `492e6e7` with A-checklist + Five-part report card. When: now. Why: full-root backup merge blocked on safety bar. How: paste [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md) (+ base contract linked therein) into GitHub Copilot audit lane. **Does not authorize** live Restic, merge of backup branch, Neutral, or Shadow Execute (#115 still HITL-only).
 
 - **Shadow Ledger Phase 0 Architecture authored — awaiting HITL (2026-07-24):** Who/What: Codex draft Architecture in PR [#115](https://github.com/alanmz-crypto/convmem/pull/115) (`ARCHITECTURE-shadow-ledger-phase0.md`, tip `c9a5c70`). When: after Qwen audit + ChatGPT work order; Architecture on GitHub. Why: Phase 0 direction locked for review. How: Ryan HITL on #115; **Cursor Execute prohibited**; no shadow hooks/runtime. Salvage of local audit/handoff: this branch / PR (workspace-coord salvage). Related: [`CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md) (superseded for Architecture authorship), [`../audit-ledger-first/README.md`](../audit-ledger-first/README.md).
 
