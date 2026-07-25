@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """Ingest pipeline.
 
 For each source file:
@@ -17,7 +18,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from adapters.detect import detect_format, get_parser, TOOL_BY_FORMAT
-from chroma_store import ChromaStore
+from chroma_write_store import chroma_write_session
 from config import load_config
 from distill import distill, normalize_unit
 from llm import ollama_embed, summarize
@@ -474,7 +475,7 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
                 print(f"  [skip] excluded during batch-write {Path(path).name}")
             return False, 0, 0, 0, 0
         n_units = 0
-        with ChromaStore(chroma_dir) as store:
+        with chroma_write_session(cfg, chroma_dir) as store:
             store.add_summary(doc_id, summary, summary_embedding, metadata)
             dedupe = evaluate_ingest_batch(store, cfg, units_to_add)
             for unit, doc, unit_embedding, unit_meta in dedupe.accepted:
@@ -529,7 +530,7 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
     }.get(fmt, ("inter-model", "inter_model_doc", "inter-model-index"))
     chroma_dir = idx["chroma_dir"]
     if force_file:
-        with ChromaStore(chroma_dir) as store:
+        with chroma_write_session(cfg, chroma_dir) as store:
             tombstone_tag = f"{path_key}#{file_hash[:12]}"
             if supersede_on_reindex:
                 _echo_neutralize_preview(
@@ -734,6 +735,7 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
 
 def _reindex_clear_existing(
     *,
+    cfg: dict,
     chroma_dir: str,
     path: str,
     path_key: str,
@@ -742,7 +744,7 @@ def _reindex_clear_existing(
     verbose: bool,
 ) -> None:
     """Clear or supersede derived rows before force re-index of one file."""
-    with ChromaStore(chroma_dir) as store:
+    with chroma_write_session(cfg, chroma_dir) as store:
         n_units_del = 0
         n_sum_del = 0
         tombstone_tag = f"{path_key}#{file_hash[:12]}"
@@ -842,6 +844,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
 
     if force_file:
         _reindex_clear_existing(
+            cfg=cfg,
             chroma_dir=chroma_dir,
             path=path,
             path_key=path_key,

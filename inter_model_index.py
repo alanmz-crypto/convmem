@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 
-from chroma_store import ChromaStore
+from chroma_write_store import chroma_write_session
 from distill import make_unit_id
 from llm import ollama_embed
 
@@ -152,7 +152,7 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
             if verbose:
                 print(f"  [skip] excluded during inter-model write {Path(path).name}")
             return 0
-        with ChromaStore(chroma_dir) as store:
+        with chroma_write_session(cfg, chroma_dir) as store:
             from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
 
             dedupe = evaluate_ingest_batch(store, cfg, units_batch)

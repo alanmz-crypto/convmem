@@ -52,7 +52,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
-    "unresolved", "tldr", "work",
+    "unresolved", "tldr", "work", "shadow-inventory",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -361,7 +361,7 @@ def add(
     """
     _guard_write()
     from config import load_config
-    from chroma_store import ChromaStore
+    from chroma_write_store import open_chroma_for_write
     from observe import ingest_observation, ingest_observation_file
     from query import render_error
     from pathlib import Path
@@ -374,7 +374,7 @@ def add(
 
         ensure_chroma_snapshot_for_live_write()
 
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
 
@@ -465,13 +465,13 @@ def verify_command(
     from pathlib import Path
 
     from config import load_config
-    from chroma_store import ChromaStore
+    from chroma_write_store import open_chroma_for_write
     from query import render_error
     from verify import verify_unit
 
     cfg = load_config()
     models = cfg["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
 
@@ -608,12 +608,12 @@ def monitor_command(
     from pathlib import Path
 
     from config import load_config
-    from chroma_store import ChromaStore
+    from chroma_write_store import open_chroma_for_write
     from monitor import run_monitor
 
     cfg = load_config()
     models = cfg["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
 
@@ -1278,6 +1278,56 @@ def unresolved_command(
         after_unresolved(site=site, count=len(items))
 
 
+@app.command("shadow-inventory")
+def shadow_inventory_command(
+    json_out: bool = typer.Option(
+        False, "--json", help="Emit redacted machine-readable inventory JSON"
+    ),
+    report: Path | None = typer.Option(
+        None,
+        "--report",
+        help="Write full machine-readable readiness report JSON to this path",
+        path_type=Path,
+    ),
+    sample: int = typer.Option(
+        200,
+        "--sample",
+        help="Max candidate rows to classify (deterministic local metadata only)",
+    ),
+):
+    """Phase 0 read-only shadow inventory and readiness summary.
+
+    Does not enable shadowing, mutate Chroma, or claim activation/cutover.
+    """
+    from config import load_config
+    from shadow_inventory import (
+        collect_phase0_inventory,
+        redacted_stdout_view,
+        write_report,
+    )
+
+    cfg = load_config()
+    report_obj = collect_phase0_inventory(
+        cfg, include_candidate_sample=sample
+    )
+    if report is not None:
+        write_report(report, report_obj)
+    if json_out:
+        typer.echo(json.dumps(redacted_stdout_view(report_obj), indent=2, sort_keys=True))
+    else:
+        inv = report_obj["inventory"]
+        shadow = report_obj["shadow"]
+        typer.echo(report_obj["human_summary"])
+        typer.echo(
+            f"units={inv['active_unit_count']} chroma_only={inv['chroma_only_count']} "
+            f"shadow_entities={shadow['shadow_entity_count']} "
+            f"health={shadow['health_status']} enabled={shadow['enabled']}"
+        )
+        typer.echo(f"commit={inv['code_commit']} rule_v={inv['comparison_rule_version']}")
+        if report is not None:
+            typer.echo(f"report={report}")
+
+
 @app.command("exclude")
 def exclude_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     path: str = typer.Argument(None, help="File path to exclude from indexing"),
@@ -1358,7 +1408,8 @@ def forget_command(
     """
     from datetime import datetime, timezone
 
-    from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
+    from chroma_store import invalidate_superseded_cache, is_superseded
+    from chroma_write_store import open_chroma_for_write
     from config import load_config
     from query import render_error
 
@@ -1368,7 +1419,7 @@ def forget_command(
 
     _guard_write()
     cfg = load_config()
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     unit = store.get_unit(unit_id)
     if unit is None:
         render_error(f"No unit found with id {unit_id}.")
