@@ -28,11 +28,19 @@ Ryan grant. Cursor Execute still forbidden.
 
 ## Working-tree audit-document status (historical)
 
-When Codex first ran this work order, `docs/audit-ledger-first/` was often
-untracked / missing from the Codex worktree. That blocker is **resolved for
-location**: the eight-file pack is on `main` via #117 with Architecture-required
-correction banners. Further factual corrections still need Ryan Gate 1b
-confirmation before Execution Planning is authorized.
+ChatGPT packaging revision #1 required this exact meaning (not “on branch /
+tip”). At packaging time HEAD was `64d714b`:
+
+> Cursor’s current working tree contains an untracked `docs/audit-ledger-first/`
+> directory with eight files. These files are not part of HEAD `64d714b` and may
+> not be visible in Codex’s worktree. Codex may inspect them only if they are
+> actually present. Otherwise, it must record the missing audit baseline as a
+> blocker and must not reconstruct it from summaries.
+
+**Superseding fact (after packaging):** the eight-file pack is on `main` via
+[#117](https://github.com/alanmz-crypto/convmem/pull/117) with
+Architecture-required correction banners. Location blocker cleared; further
+factual corrections still need Ryan **Gate 1b** before Execution Planning.
 
 ## Exact ChatGPT/Codex work order — verbatim
 
@@ -306,7 +314,162 @@ End with:
 `Active phase lane must stop here. Await HITL.`
 ````
 
-## Cursor stop condition
+## Cursor stop condition (expanded)
 
-Packaging complete. No Architecture rewrite, no Execution Planning, no Python,
-no hooks, no backup/restore changes from this file alone.
+Packaging of this provenance file is complete. From this document alone, do
+**not**:
+
+* re-author or revise Architecture Direction beyond Ryan-authorized HITL edits
+* enter Execution Planning or create `EXECUTION-` / `VERIFY-` plans
+* modify Python runtime code, add the shadow writer, or hook Chroma
+* change production read paths, freeze schema, or change governed-decision authority
+* run production migration or rewrite `knowledge_units.jsonl`
+* alter backup / restore / Restic live-write gate behavior
+* stage or commit an untracked audit baseline without Ryan authorization
+  (audit baseline landing was separately authorized via #117)
+* begin Neutral / Office / cutover work
+
+**Still forbidden without a new Ryan grant:** Cursor Execute of Phase 0.
+
+## ChatGPT packaging assessment — Approve with revisions (verbatim)
+
+ChatGPT’s follow-up on Cursor’s packaging synthesis (before #115 existed).
+Local plan `~/.cursor/plans/codex_phase_0_work_order_940805a0.plan.md`
+incorporated these revisions. Full text preserved here so the assessment is
+not chat-only.
+
+### Timeline note (read before applying literally)
+
+| Assessment requirement | Status as of this tip |
+|---|---|
+| Cursor packages; Codex authors Architecture; Ryan reviews; no implementation | **Met** — Architecture authored + HITL approved on #115; Execute still off |
+| Dedicated docs branch; not backup/Neutral research-pack | **Met** — branch `docs/2026-07-24-shadow-ledger-phase0-architecture` |
+| Exact untracked-audit wording | **Historical** — required at packaging; audit now on `main` via #117 |
+| No stage/commit unless Ryan authorizes | **Superseded for this file** — Ryan authorized landing work-order provenance on #115; audit landing was #117 |
+| LATEST: “requested, not yet authored or approved” | **Superseded** — Architecture HITL **APPROVED** 2026-07-24 |
+| Embed work order verbatim; exact paths; no opaque “eight corrections” | **Met** in this file |
+| Expanded hard stops | **Met** in “Cursor stop condition (expanded)” |
+
+### Verbatim assessment
+
+````markdown
+## Assessment: **Approve with revisions**
+
+Cursor captured the central intent correctly: **Cursor packages the work order, Codex authors Architecture only, Ryan reviews it, and no implementation begins.** The lane separation, Option B preference, eleven required decisions, writer-coverage requirement, and hard stop are all faithful to the Codex work order.
+
+The synthesis is roughly **85–90% ready**, but I would correct three important points before Cursor executes it.
+
+### 1. Fix the audit-document provenance wording
+
+This sentence is technically inaccurate:
+
+> Present untracked on current branch … tip `64d714b`
+
+Untracked files are present in a **working tree**, not “on” a branch or commit. They are not reachable from `64d714b`, and another Codex worktree will probably not see them.
+
+Use:
+
+> Cursor’s current working tree contains an untracked `docs/audit-ledger-first/` directory with eight files. These files are not part of HEAD `64d714b` and may not be visible in Codex’s worktree. Codex may inspect them only if they are actually present. Otherwise, it must record the missing audit baseline as a blocker and must not reconstruct it from summaries.
+
+That distinction matters because the original handoff requires the audit documents to be landed deliberately as a baseline, not treated as though they were already versioned.
+
+### 2. Do not default to the backup/Neutral research branch
+
+Cursor currently says:
+
+> Default: stay on current branch…
+
+That is the weakest part of the synthesis. The current branch name includes `backup-neutral`, while both the original handoff and the Codex work order explicitly exclude Neutral work. The original branching instruction also recommends starting fresh rather than mixing unrelated work.
+
+A safer rule is:
+
+> Default: create a dedicated documentation branch such as `docs/shadow-ledger-phase0-codex-handoff`, or leave the packaging edits uncommitted for Ryan. Do not add these files to the backup/Neutral research-pack branch unless Ryan explicitly chooses that branch.
+
+This avoids contaminating two planning streams and prevents the eventual PR history from suggesting that Shadow Ledger architecture was part of the Neutral research pack.
+
+### 3. Clarify whether “land” means write, stage, or commit
+
+The plan uses phrases such as:
+
+> Land ChatGPT’s Codex Work Order
+> Cursor lands Codex handoff
+
+But it never states whether Cursor is authorized to commit.
+
+That ambiguity should be removed. Ryan’s stop points specifically reserve approval around committing the audit baseline and proceeding into later phases.
+
+Use:
+
+> Cursor may create the handoff file and update `LATEST.md` in the working tree. Do not stage, commit, push, or include `docs/audit-ledger-first/` unless Ryan explicitly authorizes that repository mutation.
+
+The audit files especially should **not** be left “for Architecture to decide how to commit.” Architecture should describe provenance and dependencies; **Ryan controls authorization to land them**.
+
+## Smaller improvements
+
+### Remove opaque references
+
+This phrase should be deleted or replaced with exact links:
+
+> Codex’s earlier eight corrections
+
+Nothing in the synthesis identifies those corrections. An architecture agent should not be expected to infer hidden inter-model history. Either provide the exact document path and commit or omit the reference.
+
+Likewise, replace:
+
+> ChatGPT handoff, Cursor revised plan path
+
+with exact paths. Every prior-context reference should be resolvable from the repository or embedded directly in the handoff.
+
+### Preserve the work order verbatim
+
+The handoff file should contain the full Codex work order **unchanged**, beneath a short provenance header. Cursor should not summarize or lightly rewrite the eleven decisions because that risks creating a second, subtly different specification.
+
+Recommended structure:
+
+```text
+1. Provenance and authority
+2. Working-tree audit-document status
+3. Exact ChatGPT/Codex work order — verbatim
+4. Cursor stop condition
+```
+
+### Strengthen `LATEST.md`
+
+The pointer should not merely say “Codex Architecture next.” It should record the approval state:
+
+> Active handoff: Shadow Ledger Phase 0 — Codex Architecture Planning requested, not yet authored or approved. Cursor implementation prohibited pending Ryan HITL.
+
+### Expand the Cursor hard stops
+
+The current hard stops are good but incomplete. Add:
+
+* No production read-path changes
+* No schema freeze
+* No governed-decision authority changes
+* No production migration or JSONL rewrite
+* No staging or committing the untracked audit baseline
+* No execution or verification plan yet
+
+These are explicit exclusions in the original Phase 0 contract.
+
+### `isProject: false`
+
+This is not dangerous, but a four-step repository handoff with branch and artifact state arguably qualifies as a small project. Leave it false only if Cursor uses `isProject` to distinguish implementation projects from short documentation operations.
+
+## Recommended corrected sequence
+
+```text
+1. Create a dedicated docs handoff branch, or remain uncommitted.
+2. Write the Codex handoff with exact provenance.
+3. State that audit files are untracked working-tree files, not part of HEAD.
+4. Embed the full Codex work order verbatim.
+5. Update LATEST.md with “requested, not approved.”
+6. Open the handoff for Ryan.
+7. Stop without staging, committing, Architecture authorship, or runtime work.
+8. Ryan sends the handoff to Codex.
+9. Codex produces ARCHITECTURE-shadow-ledger-phase0.md only.
+10. Ryan performs HITL review.
+```
+
+**Bottom line:** Cursor understood the intended role separation very well. Correct the untracked-file provenance, remove the default use of the backup/Neutral branch, and explicitly prohibit commits unless Ryan authorizes them. After those edits, the synthesis is safe to execute.
+````
