@@ -1,9 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (Shadow Ledger Execution Plan Kiro-B revisions + Claude review handoff)
+**Updated:** 2026-07-24 (Claude APPROVE Execution Plan @ 806da74 — awaiting Ryan Execute grant)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Shadow Ledger Execution Plan — Claude APPROVE (2026-07-24):** Who/What: Claude Cloud APPROVE (90) of revised plan tip `806da74` on [#115](https://github.com/alanmz-crypto/convmem/pull/115) after Kiro lock B. When: now. Why: second opinion before Execute. How: Ryan may grant **Execution HITL** (“Approve Execute”); Cursor then starts T1. Two Claude notes fold into VERIFY evidence (N lock-timeout WARN; `mutation_sink=None` neutrality). **Production activation still forbidden.**
 
 - **Shadow Ledger Execution Planning AUTHORIZED (Ryan 2026-07-24):** Who/What: Codex may author [`EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md) from approved Architecture on [#115](https://github.com/alanmz-crypto/convmem/pull/115); handoff [`CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md). When: after Gate 1b PASS + #121 on `main`. Why: Planning OS task decomposition. How: Ryan pastes work order to Codex; plan still needs Execution HITL; **Cursor Execute / hooks / activation still forbidden.** Track 1 [#120](https://github.com/alanmz-crypto/convmem/pull/120) unchanged.
 

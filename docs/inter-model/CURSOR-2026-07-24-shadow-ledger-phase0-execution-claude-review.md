@@ -98,3 +98,23 @@ Architecture is APPROVED; Gate 1b PASS; Kiro revision lock B is applied.
 Advise APPROVE / APPROVE_WITH_REVISIONS / REJECT for Cursor Execute
 (disabled-by-default only). No production activation. No code.
 ```
+
+---
+
+## Claude verdict (received 2026-07-24)
+
+**Verdict: APPROVE** — Confidence **90/100**. Blocking issues: none.
+
+Claude confirmed Kiro lock-B fixes present, Architecture fitness functions mapped
+to T1–T5, VERIFY stub genuine, scope fences intact, production activation still
+a separate Ryan grant.
+
+**Non-blocking (absorb in Execute / filled VERIFY — no plan edit):**
+1. Record chosen N for consecutive lock-timeout doctor WARN + rationale in VERIFY.
+2. Explicitly evidence `mutation_sink=None` path is behavior- and latency-neutral
+   vs shadow-enabled tests (not only that shadow tests pass).
+
+**Ryan status:** Claude advises Approve Execute. **Cursor Execute remains
+unauthorized until Ryan explicitly grants Execution HITL** (e.g. “Approve
+Execute” / “Lock it”). Production activation stays a later separate grant.
+
