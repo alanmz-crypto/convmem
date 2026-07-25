@@ -1,11 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (V3 factory-bypass coverage gap PROVED — FAIL)
+**Updated:** 2026-07-24 (V3 factory routing migrated — V3b/V3d/V3e PASS code-path)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger V3 coverage gap PROVED (2026-07-24):** Who/What: VERIFY V3b/V3d/V3e **FAIL** on [#122](https://github.com/alanmz-crypto/convmem/pull/122) — 0 prod `open_chroma_for_write` callers; 14 `must_use_factory` bypass sites; hermetic direct-ctor control shows no ledger lines. Inventory: [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](../plans/SHADOW-WRITER-COVERAGE-INVENTORY.md). When: now. Why: writer coverage incomplete. How: migrate callers before claiming V3 PASS. **Not proved:** live miss with activation (forbidden). Production activation still off.
+- **Shadow Ledger V3 factory migration (2026-07-24):** Who/What: Cursor on [#122](https://github.com/alanmz-crypto/convmem/pull/122) routed production writers through `open_chroma_for_write` / `chroma_write_session`; VERIFY V3b/V3d/V3e **PASS** (code-path). Inventory: [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](../plans/SHADOW-WRITER-COVERAGE-INVENTORY.md) — **0** bypasses, **14** factory-routed sites. When: now. Why: close the proved coverage gap from `5c0ddb8`. How: next residuals are T4 projector / live T5 / activation (separate grants). **Not proved:** live ops with `enabled=true`. Production activation still off.
+
+- **Shadow Ledger V3 coverage gap PROVED then closed (2026-07-24):** Prior FAIL at tip `5c0ddb8` (0 factory callers; 14 bypasses) — superseding bullet above after migration.
 
 - **Shadow Ledger Phase 0 Execute AUTHORIZED + T1 started (Ryan 2026-07-24):** Who/What: Ryan Execution HITL; Cursor on `feat/2026-07-24-shadow-ledger-phase0` implementing [`EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md) T1 (contract, disabled config, activation baseline). When: now. Why: prove disabled-by-default delta capture. How: T2–T5 next; **production activation still forbidden.** Runtime stamp @ 2026-07-25T04:03:19Z / main was `0d08310` pre-branch.
 

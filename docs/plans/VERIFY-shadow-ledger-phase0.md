@@ -13,13 +13,14 @@ Authority:    Post-Execute HITL — do not trust prior chat claims alone
 **Stub status:** Execute in progress on PR #122. Mechanical focused tests exist;
 full V0–V8 row fill awaits final Execute tip + independent sign-off.
 
-**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` — V3 factory-bypass scored at `5c0ddb8` (inventory + scan tests); branch may move
+**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` — V3 factory routing migration in flight (branch tip moves; re-pin after commit)
 
 **PR(s):** [#122](https://github.com/alanmz-crypto/convmem/pull/122)
 
 **Execute progress (Cursor mechanical):**
 - T1–T5 modules landed (contract, sink, durability tests, replay helpers, inventory helpers).
-- Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py` → **27 passed** (pre-close tip).
+- Writer coverage: production mutators migrated to `open_chroma_for_write` / `chroma_write_session`; bypass list **0**.
+- Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py tests/test_shadow_writer_coverage_scan.py` (run at tip).
 - Lock-timeout doctor WARN threshold **N = 3** (`LOCK_TIMEOUT_WARN_THRESHOLD_N` in `shadow_sink.py`).
 - `mutation_sink=None` neutrality covered by `test_no_sink_when_disabled_is_neutral`.
 - **Production activation still unauthorized.**
@@ -36,19 +37,18 @@ full V0–V8 row fill awaits final Execute tip + independent sign-off.
 post-activation `knowledge_units` deltas, preserves Chroma authority, fails
 safely, and never writes to a production replay target.
 
-## Finding — factory-bypass coverage gap (proved 2026-07-24)
+## Finding — factory routing migration (2026-07-24)
 
-**Verdict for V3b / V3d at this tip: FAIL.**
+**Verdict for V3b / V3d at this tip: PASS (code-path).** Prior FAIL at `5c0ddb8` is closed by migrating production writers.
 
 **Proved (code-path + hermetic):**
-- Production call sites of `open_chroma_for_write`: **0** (definition only in `chroma_write_store.py`).
-- Sites classified `must_use_factory` that still construct `ChromaStore(...)` directly: **14** (see [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](SHADOW-WRITER-COVERAGE-INVENTORY.md); e.g. `convmem.py:1371`, `convmem.py:377`, `convmem.py:474`, `ingest.py:477`, `ingest.py:532`, …).
-- Hermetic control: direct `ChromaStore(dir)` with injection-eligible temp cfg ⇒ `mutation_sink is None` and **no** ledger lines after `add_unit` (`tests/test_shadow_writer_coverage_scan.py`).
-- Positive control: same eligible cfg via `open_chroma_for_write` ⇒ sink attaches and one event is written.
+- Production call sites of `open_chroma_for_write`: **10**; plus **4** `chroma_write_session` sites that wrap the factory (see [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](SHADOW-WRITER-COVERAGE-INVENTORY.md)).
+- Sites classified `must_use_factory` that still construct `ChromaStore(...)` directly: **0**.
+- Remaining direct ctors are allowlisted read-only / helper / factory-internal.
+- Hermetic control retained: direct `ChromaStore(dir)` with eligible cfg ⇒ no sink / no ledger (documents why factory remains mandatory).
+- Positive control: factory with eligible cfg ⇒ sink attaches and one event is written.
 
-**Not proved (do not fog):** a live production ingest/observe with `enabled=true` missing a shadow line — live activation is forbidden for this verification slice. Proof class is **not** ops-observed miss.
-
-**Implication:** Execute writer-coverage is incomplete until callers migrate to the factory (or are explicitly allowlisted). Mechanism (sink-when-injected) works; injection boundary is unused by production writers.
+**Not proved (do not fog):** a live production ingest/observe with `enabled=true` writing (or missing) a shadow line — live activation is forbidden for this verification slice.
 
 **Report format:** For every row, record **PASS / FAIL / SKIP** plus one line of
 tip-specific evidence. An applicable SHA mismatch is **FAIL**, never SKIP.
@@ -178,10 +178,10 @@ rg -n 'open_chroma_for_write\(|ChromaStore\(' --glob '*.py' -g '!tests/**' .
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
 | V3a | Observer defaults to `None`; `ChromaStore` does not load global activation config | **PASS** — `mutation_sink=None` default; no `load_config` in `chroma_store.py` |
-| V3b | One authoritative production write-store factory is the only sink injection boundary | **FAIL** — factory exists but **0** production call sites; injection unused by writers |
+| V3b | One authoritative production write-store factory is the only sink injection boundary | **PASS** — **10** `open_chroma_for_write` + **4** `chroma_write_session` prod sites; sink only attached in factory |
 | V3c | All five unit-mutating methods emit or explicitly exclude confirmed per-entity events | **PASS** — method-level (`test_unit_mutating_methods_emit_or_exclude` + T2 emit tests) |
-| V3d | Production mutating callers route through the factory; allowlisted direct clients are isolated | **FAIL** — **14** `must_use_factory` bypass sites in inventory; scan test locks the list |
-| V3e | Static scan, mutator enumeration test, and caller integration tests all exist; grep is not the sole proof | **FAIL** — inventory + scan + hermetic bypass present; production-path integration through factory **absent** |
+| V3d | Production mutating callers route through the factory; allowlisted direct clients are isolated | **PASS** — **0** bypass sites; allowlisted direct ctors = read/helper/internal only |
+| V3e | Static scan, mutator enumeration test, and caller integration tests all exist; grep is not the sole proof | **PASS** — inventory + scan lock routing; hermetic bypass control + factory positive control |
 | V3f | Failed Chroma mutation emits no event; successful mutation creates the event context before Chroma and appends after success | **PASS** (hermetic) — event_id before upsert; BoomSink / success path in T2 |
 | V3g | Bulk source operations emit one event per confirmed entity, including partial completion | **PASS** (hermetic) — supersede/delete per-entity emit in T2 |
 | V3h | Summary mutations emit no unit event | **PASS** — `test_summaries_not_shadowed` |

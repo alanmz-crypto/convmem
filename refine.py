@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
+from chroma_store import invalidate_superseded_cache, is_superseded
+from chroma_write_store import open_chroma_for_write
 from domains import DEFAULT_DOMAINS, normalize_domain
 from process_lock import acquire_lock, release_lock
 from vector_similarity import cosine_similarity
@@ -268,7 +269,7 @@ def apply_approved_dedupe(
             raise ValueError(f"dedupe_queue line {line} out of range (1–{len(rows)})")
         indices = [line - 1]
 
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     totals = {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
     try:
         for idx in indices:
@@ -712,7 +713,7 @@ def run_job(
         raise ValueError(f"Unknown job {job!r}. Choose from: {', '.join(JOB_NAMES)}")
 
     cfg = load_config()
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     limiter = CostLimiter(_cost_caps(cfg))
 
     kwargs: dict[str, Any] = {"limit": limit, "verbose": verbose}

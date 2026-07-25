@@ -361,7 +361,7 @@ def add(
     """
     _guard_write()
     from config import load_config
-    from chroma_store import ChromaStore
+    from chroma_write_store import open_chroma_for_write
     from observe import ingest_observation, ingest_observation_file
     from query import render_error
     from pathlib import Path
@@ -374,7 +374,7 @@ def add(
 
         ensure_chroma_snapshot_for_live_write()
 
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
 
@@ -465,13 +465,13 @@ def verify_command(
     from pathlib import Path
 
     from config import load_config
-    from chroma_store import ChromaStore
+    from chroma_write_store import open_chroma_for_write
     from query import render_error
     from verify import verify_unit
 
     cfg = load_config()
     models = cfg["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
 
@@ -608,12 +608,12 @@ def monitor_command(
     from pathlib import Path
 
     from config import load_config
-    from chroma_store import ChromaStore
+    from chroma_write_store import open_chroma_for_write
     from monitor import run_monitor
 
     cfg = load_config()
     models = cfg["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
 
@@ -1358,7 +1358,8 @@ def forget_command(
     """
     from datetime import datetime, timezone
 
-    from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
+    from chroma_store import invalidate_superseded_cache, is_superseded
+    from chroma_write_store import open_chroma_for_write
     from config import load_config
     from query import render_error
 
@@ -1368,7 +1369,7 @@ def forget_command(
 
     _guard_write()
     cfg = load_config()
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     unit = store.get_unit(unit_id)
     if unit is None:
         render_error(f"No unit found with id {unit_id}.")

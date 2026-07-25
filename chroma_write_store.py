@@ -6,8 +6,9 @@ after shadow_ledger.decide_sink_injection and construct JsonlUnitMutationSink.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Literal, Mapping
+from typing import Any, Iterator, Literal, Mapping
 
 from chroma_store import ChromaStore
 from shadow_ledger import SinkInjectionDecision, decide_sink_injection, resolve_shadow_settings
@@ -50,3 +51,26 @@ def open_chroma_for_write(
         mutation_sink=sink,
     )
     return store, decision
+
+
+@contextmanager
+def chroma_write_session(
+    cfg: Mapping[str, Any] | None,
+    chroma_dir: str | Path,
+    *,
+    purpose: WritePurpose = "production",
+    create_collections: bool = True,
+    mutation_sink: Any | None = None,
+) -> Iterator[ChromaStore]:
+    """Context-managed production write store (closes on exit)."""
+    store, _decision = open_chroma_for_write(
+        cfg,
+        chroma_dir,
+        purpose=purpose,
+        create_collections=create_collections,
+        mutation_sink=mutation_sink,
+    )
+    try:
+        yield store
+    finally:
+        store.close()

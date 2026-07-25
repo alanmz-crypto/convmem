@@ -1,39 +1,48 @@
-# Shadow writer coverage inventory (factory bypass proof)
+# Shadow writer coverage inventory (factory routing)
 
 | Field | Value |
 |---|---|
 | Proof class | code-path static + hermetic (not live activation) |
-| `open_chroma_for_write` prod call sites | **0** |
-| Sites that must use factory but bypass | **14** |
+| `open_chroma_for_write` prod call sites | **10** |
+| `chroma_write_session` prod call sites | **4** (wraps factory) |
+| Sites that must use factory but bypass | **0** |
 
 ## Finding
 
-Production mutating (or conservatively classified write) call sites construct
-`ChromaStore(...)` directly. Sink injection only happens inside
-`open_chroma_for_write`, which has **zero** production callers. Therefore
-VERIFY **V3b** and **V3d** are **FAIL** at this tip.
+Production mutating writers now open Chroma through `open_chroma_for_write`
+(or `chroma_write_session`, which calls the factory). Remaining direct
+`ChromaStore(...)` sites are allowlisted read-only / helper / factory-internal
+constructors. VERIFY **V3b** and **V3d** are **PASS** at this tip for code-path
+coverage.
 
-**Not proved:** that a live ingest with `enabled=true` missed a shadow line —
+Hermetic control still proves that a *hypothetical* direct ctor with eligible
+cfg attaches no sink — that is why the factory boundary remains mandatory.
+
+**Not proved:** that a live ingest with `enabled=true` wrote a shadow line —
 activation against the live corpus is forbidden for this verification slice.
 
 ## must_use_factory bypass list
 
-| Site | Class |
+*(empty — migration complete)*
+
+## Production factory routing
+
+| Site | Via |
 |---|---|
-| `convmem.py:377` | mutates_units |
-| `convmem.py:474` | mutates_units |
-| `convmem.py:1371` | mutates_units |
-| `ingest.py:477` | mutates_units |
-| `ingest.py:532` | mutates_units |
-| `ingest.py:745` | mutates_units |
-| `inter_model_index.py:155` | mutates_units |
-| `observe.py:231` | mutates_units |
-| `propose_decision.py:168` | mutates_units |
-| `propose_decision.py:526` | mutates_units |
-| `propose_decision.py:553` | mutates_units |
-| `refine.py:271` | mutates_units |
-| `refine.py:715` | mutates_units |
-| `source_purge.py:317` | mutates_units |
+| `convmem.py:377` | `open_chroma_for_write` |
+| `convmem.py:474` | `open_chroma_for_write` |
+| `convmem.py:616` | `open_chroma_for_write` |
+| `convmem.py:1372` | `open_chroma_for_write` |
+| `observe.py:231` | `open_chroma_for_write` |
+| `propose_decision.py:529` | `open_chroma_for_write` |
+| `propose_decision.py:556` | `open_chroma_for_write` |
+| `refine.py:272` | `open_chroma_for_write` |
+| `refine.py:716` | `open_chroma_for_write` |
+| `source_purge.py:317` | `open_chroma_for_write` |
+| `ingest.py:477` | `chroma_write_session` |
+| `ingest.py:532` | `chroma_write_session` |
+| `ingest.py:746` | `chroma_write_session` |
+| `inter_model_index.py:155` | `chroma_write_session` |
 
 ## allowlisted_direct (not a V3d failure)
 
@@ -42,8 +51,13 @@ activation against the live corpus is forbidden for this verification slice.
 | `ask.py:550` | read_only |
 | `chroma_store.py:64` | read_factory_helper |
 | `chroma_store.py:89` | read_factory_helper |
-| `chroma_write_store.py:47` | factory_internal |
+| `chroma_write_store.py:48` | factory_internal |
 | `convmem.py:134` | read_only |
-| `convmem.py:616` | read_only |
 | `mcp_server.py:897` | read_only |
 | `mcp_server.py:944` | read_only |
+
+## Reclassified read
+
+| Site | Routing |
+|---|---|
+| `propose_decision.py:168` | `open_chroma_for_read` |

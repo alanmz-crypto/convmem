@@ -1,32 +1,33 @@
 {
-  "purpose": "VERIFY V3 writer coverage inventory \u2014 factory bypass proof",
+  "purpose": "VERIFY V3 writer coverage inventory — factory routing after migration",
   "proof_class": "code_path_static_and_hermetic",
   "not_proved": "live production miss with enabled=true (activation forbidden)",
-  "open_chroma_for_write_production_call_sites": [],
-  "must_use_factory_bypass_sites": [
-    "convmem.py:1371",
+  "open_chroma_for_write_production_call_sites": [
     "convmem.py:377",
     "convmem.py:474",
-    "ingest.py:477",
-    "ingest.py:532",
-    "ingest.py:745",
-    "inter_model_index.py:155",
+    "convmem.py:616",
+    "convmem.py:1372",
     "observe.py:231",
-    "propose_decision.py:168",
-    "propose_decision.py:526",
-    "propose_decision.py:553",
-    "refine.py:271",
-    "refine.py:715",
+    "propose_decision.py:529",
+    "propose_decision.py:556",
+    "refine.py:272",
+    "refine.py:716",
     "source_purge.py:317"
   ],
-  "must_use_factory_count": 14,
+  "chroma_write_session_production_call_sites": [
+    "ingest.py:477",
+    "ingest.py:532",
+    "ingest.py:746",
+    "inter_model_index.py:155"
+  ],
+  "must_use_factory_bypass_sites": [],
+  "must_use_factory_count": 0,
   "allowlisted_direct_sites": [
     "ask.py:550",
     "chroma_store.py:64",
     "chroma_store.py:89",
-    "chroma_write_store.py:47",
+    "chroma_write_store.py:48",
     "convmem.py:134",
-    "convmem.py:616",
     "mcp_server.py:897",
     "mcp_server.py:944"
   ],
@@ -57,7 +58,7 @@
     },
     {
       "file": "chroma_write_store.py",
-      "line": 47,
+      "line": 48,
       "snippet": "store = ChromaStore(",
       "class": "factory_internal",
       "required_routing": "allowlisted_direct",
@@ -75,70 +76,74 @@
     {
       "file": "convmem.py",
       "line": 377,
-      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false,
-      "function": "add"
+      "uses_open_chroma_for_write": true,
+      "function": "observe"
     },
     {
       "file": "convmem.py",
       "line": 474,
-      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false,
-      "function": "verify_command"
+      "uses_open_chroma_for_write": true,
+      "function": "verify"
     },
     {
       "file": "convmem.py",
       "line": 616,
-      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
-      "class": "read_only",
-      "required_routing": "allowlisted_direct",
-      "uses_open_chroma_for_write": false,
-      "function": "monitor_command"
+      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
+      "class": "mutates_units",
+      "required_routing": "must_use_factory",
+      "uses_open_chroma_for_write": true,
+      "function": "monitor"
     },
     {
       "file": "convmem.py",
-      "line": 1371,
-      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "line": 1372,
+      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false,
-      "function": "forget_command"
+      "uses_open_chroma_for_write": true,
+      "function": "supersede"
     },
     {
       "file": "ingest.py",
       "line": 477,
-      "snippet": "with ChromaStore(chroma_dir) as store:",
+      "snippet": "with chroma_write_session(cfg, chroma_dir) as store:",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false
+      "uses_open_chroma_for_write": true,
+      "via": "chroma_write_session"
     },
     {
       "file": "ingest.py",
       "line": 532,
-      "snippet": "with ChromaStore(chroma_dir) as store:",
+      "snippet": "with chroma_write_session(cfg, chroma_dir) as store:",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false
+      "uses_open_chroma_for_write": true,
+      "via": "chroma_write_session"
     },
     {
       "file": "ingest.py",
-      "line": 745,
-      "snippet": "with ChromaStore(chroma_dir) as store:",
+      "line": 746,
+      "snippet": "with chroma_write_session(cfg, chroma_dir) as store:",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false
+      "uses_open_chroma_for_write": true,
+      "via": "chroma_write_session"
     },
     {
       "file": "inter_model_index.py",
       "line": 155,
-      "snippet": "with ChromaStore(chroma_dir) as store:",
+      "snippet": "with chroma_write_session(cfg, chroma_dir) as store:",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false
+      "uses_open_chroma_for_write": true,
+      "via": "chroma_write_session"
     },
     {
       "file": "mcp_server.py",
@@ -159,58 +164,58 @@
     {
       "file": "observe.py",
       "line": 231,
-      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false
+      "uses_open_chroma_for_write": true
     },
     {
       "file": "propose_decision.py",
       "line": 168,
-      "snippet": "store = ChromaStore(chroma_dir)",
-      "class": "mutates_units",
-      "required_routing": "must_use_factory",
+      "snippet": "store = open_chroma_for_read(chroma_dir)",
+      "class": "read_only",
+      "required_routing": "open_chroma_for_read",
       "uses_open_chroma_for_write": false
     },
     {
       "file": "propose_decision.py",
-      "line": 526,
-      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "line": 529,
+      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false
+      "uses_open_chroma_for_write": true
     },
     {
       "file": "propose_decision.py",
-      "line": 553,
-      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "line": 556,
+      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false
+      "uses_open_chroma_for_write": true
     },
     {
       "file": "refine.py",
-      "line": 271,
-      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "line": 272,
+      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false
+      "uses_open_chroma_for_write": true
     },
     {
       "file": "refine.py",
-      "line": 715,
-      "snippet": "store = ChromaStore(cfg[\"index\"][\"chroma_dir\"])",
+      "line": 716,
+      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false
+      "uses_open_chroma_for_write": true
     },
     {
       "file": "source_purge.py",
       "line": 317,
-      "snippet": "store = ChromaStore(chroma_dir)",
+      "snippet": "store, _decision = open_chroma_for_write(cfg, chroma_dir)",
       "class": "mutates_units",
       "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": false
+      "uses_open_chroma_for_write": true
     }
   ]
 }

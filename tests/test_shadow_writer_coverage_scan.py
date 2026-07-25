@@ -1,4 +1,4 @@
-"""VERIFY V3 coverage proof: factory bypass is real (hermetic + static).
+"""VERIFY V3 coverage proof: factory routing + hermetic bypass control.
 
 Proof class: code-path / hermetic. Does NOT enable production shadowing or
 edit live config. Does NOT claim a live ops miss was observed.
@@ -20,22 +20,30 @@ def _inventory() -> dict:
     return json.loads(INVENTORY.read_text(encoding="utf-8"))
 
 
-def test_inventory_documents_zero_factory_call_sites() -> None:
+def test_inventory_documents_factory_routing() -> None:
     data = _inventory()
-    assert data["open_chroma_for_write_production_call_sites"] == []
-    assert data["must_use_factory_count"] >= 1
+    assert data["must_use_factory_count"] == 0
+    assert data["must_use_factory_bypass_sites"] == []
+    assert len(data["open_chroma_for_write_production_call_sites"]) >= 1
+    assert len(data.get("chroma_write_session_production_call_sites", [])) >= 1
     assert data["proof_class"].startswith("code_path")
 
 
-def test_static_scan_matches_known_bypass_list() -> None:
-    """Fail-until-migrated: scanned bypass set must equal inventory list."""
+def test_static_scan_matches_inventory_routing() -> None:
+    """Scanned factory/session sites and empty bypass list must match inventory."""
     data = _inventory()
-    expected = set(data["must_use_factory_bypass_sites"])
-    scanned: set[str] = set()
+    expected_factory = set(data["open_chroma_for_write_production_call_sites"])
+    expected_session = set(data.get("chroma_write_session_production_call_sites", []))
+    expected_bypass = set(data["must_use_factory_bypass_sites"])
+    expected_allow = set(data["allowlisted_direct_sites"])
+
     ctor = re.compile(r"ChromaStore\s*\(")
     factory = re.compile(r"open_chroma_for_write\s*\(")
+    session = re.compile(r"chroma_write_session\s*\(")
 
-    prod_factory_calls: list[str] = []
+    scanned_factory: set[str] = set()
+    scanned_session: set[str] = set()
+    scanned_ctor: set[str] = set()
     for path in sorted(ROOT.rglob("*.py")):
         rel = str(path.relative_to(ROOT))
         if rel.startswith("tests/") or "docs/" in rel:
@@ -43,31 +51,40 @@ def test_static_scan_matches_known_bypass_list() -> None:
         text = path.read_text(encoding="utf-8", errors="replace")
         for i, line in enumerate(text.splitlines(), 1):
             if factory.search(line) and "def open_chroma_for_write" not in line:
-                prod_factory_calls.append(f"{rel}:{i}")
+                if rel != "chroma_write_store.py":
+                    scanned_factory.add(f"{rel}:{i}")
+            if session.search(line) and "def chroma_write_session" not in line:
+                scanned_session.add(f"{rel}:{i}")
             if not ctor.search(line):
                 continue
             if line.strip().startswith("class ChromaStore"):
                 continue
-            site = f"{rel}:{i}"
-            # Only assert sites the inventory marked must_use_factory
-            if site in expected:
-                scanned.add(site)
+            scanned_ctor.add(f"{rel}:{i}")
 
-    assert prod_factory_calls == [], (
-        f"unexpected production open_chroma_for_write calls: {prod_factory_calls}"
+    assert scanned_factory == expected_factory, (
+        "factory inventory drift — "
+        f"missing={expected_factory - scanned_factory} "
+        f"extra={scanned_factory - expected_factory}"
     )
-    assert scanned == expected, (
-        "bypass inventory drift — update SHADOW-WRITER-COVERAGE-INVENTORY.json "
-        f"missing={expected - scanned} extra={scanned - expected}"
+    assert scanned_session == expected_session, (
+        "session inventory drift — "
+        f"missing={expected_session - scanned_session} "
+        f"extra={scanned_session - expected_session}"
     )
-    # The gap itself: expected bypasses remain non-empty ⇒ V3d FAIL
-    assert len(expected) > 0
+    # Every remaining direct ctor must be allowlisted; none are bypasses.
+    assert scanned_ctor == expected_allow, (
+        "allowlisted direct ctor drift — "
+        f"missing={expected_allow - scanned_ctor} "
+        f"extra={scanned_ctor - expected_allow}"
+    )
+    assert expected_bypass == set()
+    assert scanned_ctor.isdisjoint(expected_bypass)
 
 
 def test_hermetic_direct_ctor_bypasses_sink_even_when_cfg_eligible(
     tmp_path: Path,
 ) -> None:
-    """Mirror observe/ingest pattern: ChromaStore(dir) => no sink, no ledger."""
+    """Control: ChromaStore(dir) => no sink, no ledger (why factory is mandatory)."""
     chromadb = pytest.importorskip("chromadb")
     from chroma_store import ChromaStore
     from shadow_ledger import (
@@ -106,7 +123,7 @@ def test_hermetic_direct_ctor_bypasses_sink_even_when_cfg_eligible(
         },
     }
     del _cfg  # unused; documents the eligible shape intentionally
-    store = ChromaStore(str(chroma))  # production bypass pattern
+    store = ChromaStore(str(chroma))  # anti-pattern control
     try:
         assert store.mutation_sink is None
         store.add_unit(
@@ -122,7 +139,7 @@ def test_hermetic_direct_ctor_bypasses_sink_even_when_cfg_eligible(
 
 
 def test_positive_control_factory_attaches_sink(tmp_path: Path) -> None:
-    """Sink works when factory injects — gap is wiring, not a dead sink."""
+    """Sink works when factory injects — wiring path is live."""
     pytest.importorskip("chromadb")
     from chroma_write_store import open_chroma_for_write
     from shadow_ledger import (
@@ -176,12 +193,12 @@ def test_positive_control_factory_attaches_sink(tmp_path: Path) -> None:
     assert json.loads(lines[0])["stable_entity_id"] == "u1"
 
 
-def test_v3b_v3d_must_fail_while_bypasses_exist() -> None:
-    """Document VERIFY expectation: non-empty bypass ⇒ V3b/V3d FAIL."""
+def test_v3b_v3d_pass_when_bypasses_cleared() -> None:
+    """Document VERIFY expectation: empty bypass ⇒ V3b/V3d PASS (code-path)."""
     data = _inventory()
-    assert data["must_use_factory_count"] > 0
-    assert data["open_chroma_for_write_production_call_sites"] == []
-    # Mechanical encoding of the FAIL verdict for this tip.
-    v3b = "FAIL"
-    v3d = "FAIL"
-    assert (v3b, v3d) == ("FAIL", "FAIL")
+    assert data["must_use_factory_count"] == 0
+    assert data["must_use_factory_bypass_sites"] == []
+    assert len(data["open_chroma_for_write_production_call_sites"]) > 0
+    v3b = "PASS"
+    v3d = "PASS"
+    assert (v3b, v3d) == ("PASS", "PASS")
