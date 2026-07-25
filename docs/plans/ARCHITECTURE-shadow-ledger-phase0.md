@@ -8,7 +8,7 @@
 > and Execute require separate Ryan HITL.
 
 **Source:** Ryan request on 2026-07-24, incorporating the Qwen ledger-first
-audit, Claude's shadow-only review, ChatGPT's Codex work order, Codex's YELLOW
+audit, Claude's shadow-only review, ChatGPT's Codex work order ([`CURSOR-2026-07-24-shadow-ledger-phase0-codex-handoff.md`](../inter-model/CURSOR-2026-07-24-shadow-ledger-phase0-codex-handoff.md)), Codex's YELLOW
 review, Cursor's revised local draft, and dense-consult reviews (DeepSeek
 V4-Pro + Kiro) on tip `0ea1682`.
 
