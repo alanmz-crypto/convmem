@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fcntl
+import json
 import logging
 import os
 import time
@@ -37,6 +38,8 @@ ALLOWED_OPERATIONS = frozenset(
 # Doctor WARN only after N consecutive lock timeouts (Claude note / Kiro should-fix).
 LOCK_TIMEOUT_WARN_THRESHOLD_N = 3
 LOCK_ACQUIRE_TIMEOUT_MS = 250
+# Measured append latency above this is degraded (no signal interruption).
+FSYNC_DEGRADED_LATENCY_MS = 500.0
 
 
 class UnitMutationSink(Protocol):
@@ -67,6 +70,62 @@ class ShadowHealth:
     last_event_id: str | None = None
     last_sequence: int | None = None
     last_append_latency_ms: float | None = None
+    append_degraded: bool = False
+    idempotent_retries: int = 0
+    status: str = "healthy"
+
+
+def assess_shadow_status(
+    *,
+    enabled: bool,
+    health: Mapping[str, Any] | None = None,
+    ledger_corrupt: bool = False,
+    baseline_mismatch: bool = False,
+) -> str:
+    """Return disabled|healthy|degraded|corrupt|baseline_mismatch."""
+    if not enabled:
+        return "disabled"
+    if baseline_mismatch:
+        return "baseline_mismatch"
+    if ledger_corrupt:
+        return "corrupt"
+    h = dict(health or {})
+    if h.get("last_failure_class") in {"truncated_tail", "invalid_middle", "ValueError"}:
+        if int(h.get("consecutive_failures") or 0) >= 1:
+            # Prefer explicit corrupt when failure class indicates ledger damage
+            if h.get("last_failure_class") in {"truncated_tail", "invalid_middle"}:
+                return "corrupt"
+    if ledger_corrupt:
+        return "corrupt"
+    if (
+        h.get("append_degraded")
+        or int(h.get("consecutive_lock_timeouts") or 0) >= 1
+        or int(h.get("consecutive_failures") or 0) >= 1
+        or h.get("last_failure_class") == "lock_timeout"
+        or h.get("last_failure_class") == "uncertain_ack"
+    ):
+        return "degraded"
+    return "healthy"
+
+
+def ledger_has_corruption(ledger_path: Path) -> bool:
+    """True if truncated tail or invalid middle record is present."""
+    path = Path(ledger_path)
+    if not path.is_file():
+        return False
+    raw = path.read_bytes()
+    if raw and not raw.endswith(b"\n"):
+        return True
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        try:
+            obj = json.loads(line.decode("utf-8"))
+        except Exception:
+            return True
+        if not isinstance(obj, dict):
+            return True
+    return False
 
 
 class JsonlUnitMutationSink:
@@ -79,11 +138,13 @@ class JsonlUnitMutationSink:
         health_path: Path,
         lock_timeout_ms: int = LOCK_ACQUIRE_TIMEOUT_MS,
         lock_timeout_warn_n: int = LOCK_TIMEOUT_WARN_THRESHOLD_N,
+        degraded_latency_ms: float = FSYNC_DEGRADED_LATENCY_MS,
     ) -> None:
         self.ledger_path = Path(ledger_path)
         self.health_path = Path(health_path)
         self.lock_timeout_ms = lock_timeout_ms
         self.lock_timeout_warn_n = lock_timeout_warn_n
+        self.degraded_latency_ms = degraded_latency_ms
         self._health = ShadowHealth()
         self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -137,14 +198,20 @@ class JsonlUnitMutationSink:
                 metadata=meta,
             ),
             "embed_model": embed_model or "unknown",
-            "embed_dims": embed_dims,
             "authority": "shadow",
             "writer_route": writer_route or "",
+            "embed_dims": embed_dims,
         }
         try:
             self._append_event(event)
         except Exception as exc:  # never roll back Chroma
-            self._record_failure(type(exc).__name__, event_id=event_id)
+            klass = type(exc).__name__
+            msg = str(exc)
+            if "truncated tail" in msg:
+                klass = "truncated_tail"
+            elif "invalid middle" in msg:
+                klass = "invalid_middle"
+            self._record_failure(klass, event_id=event_id)
             log.error(
                 "shadow append failed event_id=%s entity=%s: %s",
                 event_id,
@@ -156,48 +223,99 @@ class JsonlUnitMutationSink:
         self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
         created = not self.ledger_path.exists()
         start = time.monotonic()
-        with open(self.ledger_path, "a+", encoding="utf-8") as handle:
+        uncertain = False
+        idempotent = False
+        with open(self.ledger_path, "a+b") as handle:
             if not self._acquire_lock(handle, event.get("event_id")):
                 return
             try:
-                handle.seek(0)
-                # Validate tail is newline-clean enough for append (T3 expands).
-                handle.seek(0, os.SEEK_END)
-                if handle.tell() > 0:
-                    handle.seek(handle.tell() - 1)
-                    if handle.read(1) != "\n":
-                        raise ValueError("shadow ledger truncated tail")
-                sequence = self._next_sequence(handle)
-                event["sequence"] = sequence
-                line = (
-                    __import__("json").dumps(
-                        event, ensure_ascii=False, sort_keys=True
-                    )
-                    + "\n"
-                )
-                handle.seek(0, os.SEEK_END)
-                handle.write(line)
-                handle.flush()
-                os.fsync(handle.fileno())
-                if created:
-                    ensure_private_file_mode(self.ledger_path)
-                    dir_fd = os.open(str(self.ledger_path.parent), os.O_RDONLY)
+                # Tail check before any full-file scan so truncation is not
+                # misreported as an invalid middle record.
+                self._validate_tail(handle)
+                existing = self._find_event(handle, str(event.get("event_id") or ""))
+                if existing is not None:
+                    idempotent = True
+                    event["sequence"] = existing.get("sequence")
+                else:
+                    sequence = self._next_sequence(handle)
+                    event["sequence"] = sequence
+                    line = json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n"
+                    data = line.encode("utf-8")
+                    handle.seek(0, os.SEEK_END)
+                    handle.write(data)  # one encoded-byte write
+                    handle.flush()
                     try:
-                        os.fsync(dir_fd)
-                    finally:
-                        os.close(dir_fd)
+                        os.fsync(handle.fileno())
+                    except OSError:
+                        uncertain = True
+                    if created and not uncertain:
+                        ensure_private_file_mode(self.ledger_path)
+                        dir_fd = os.open(str(self.ledger_path.parent), os.O_RDONLY)
+                        try:
+                            os.fsync(dir_fd)
+                        finally:
+                            os.close(dir_fd)
             finally:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
         latency_ms = (time.monotonic() - start) * 1000.0
+        if uncertain:
+            self._health.last_append_latency_ms = latency_ms
+            self._record_failure("uncertain_ack", event_id=event.get("event_id"))
+            log.warning(
+                "shadow append uncertain_ack event_id=%s (fsync failed; retry may reuse id)",
+                event.get("event_id"),
+            )
+            return
+
         self._health.last_success_at = datetime.now(timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         )
         self._health.consecutive_failures = 0
         self._health.consecutive_lock_timeouts = 0
+        self._health.last_failure_class = None
         self._health.last_event_id = event.get("event_id")
         self._health.last_sequence = event.get("sequence")
         self._health.last_append_latency_ms = latency_ms
+        self._health.append_degraded = latency_ms > self.degraded_latency_ms
+        if idempotent:
+            self._health.idempotent_retries += 1
+        if self._health.append_degraded:
+            log.warning(
+                "shadow append latency degraded event_id=%s latency_ms=%.1f threshold=%.1f",
+                event.get("event_id"),
+                latency_ms,
+                self.degraded_latency_ms,
+            )
+        self._health.status = assess_shadow_status(
+            enabled=True,
+            health=self._health_payload(),
+            ledger_corrupt=False,
+        )
         self._persist_health()
+
+    def _validate_tail(self, handle: Any) -> None:
+        handle.seek(0, os.SEEK_END)
+        if handle.tell() > 0:
+            handle.seek(handle.tell() - 1)
+            if handle.read(1) != b"\n":
+                raise ValueError("shadow ledger truncated tail")
+
+    def _find_event(self, handle: Any, event_id: str) -> dict[str, Any] | None:
+        if not event_id:
+            return None
+        handle.seek(0)
+        for raw in handle:
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                raise ValueError("shadow ledger invalid middle record") from None
+            if isinstance(obj, dict) and str(obj.get("event_id") or "") == event_id:
+                return obj
+        return None
 
     def _acquire_lock(self, handle: Any, event_id: str | None) -> bool:
         deadline = time.monotonic() + (self.lock_timeout_ms / 1000.0)
@@ -229,12 +347,12 @@ class JsonlUnitMutationSink:
     def _next_sequence(self, handle: Any) -> int:
         handle.seek(0)
         last_seq = 0
-        for line in handle:
-            line = line.strip()
+        for raw in handle:
+            line = raw.decode("utf-8", errors="replace").strip()
             if not line:
                 continue
             try:
-                obj = __import__("json").loads(line)
+                obj = json.loads(line)
                 seq = obj.get("sequence")
                 if isinstance(seq, int) and seq > last_seq:
                     last_seq = seq
@@ -242,20 +360,8 @@ class JsonlUnitMutationSink:
                 raise ValueError("shadow ledger invalid middle record") from None
         return last_seq + 1
 
-    def _record_failure(self, klass: str, *, event_id: str | None) -> None:
-        self._health.last_failure_at = datetime.now(timezone.utc).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
-        self._health.last_failure_class = klass
-        self._health.consecutive_failures += 1
-        self._health.last_event_id = event_id
-        try:
-            self._persist_health()
-        except Exception:
-            pass
-
-    def _persist_health(self) -> None:
-        payload = {
+    def _health_payload(self) -> dict[str, Any]:
+        return {
             "last_success_at": self._health.last_success_at,
             "last_failure_at": self._health.last_failure_at,
             "last_failure_class": self._health.last_failure_class,
@@ -265,8 +371,32 @@ class JsonlUnitMutationSink:
             "last_event_id": self._health.last_event_id,
             "last_sequence": self._health.last_sequence,
             "last_append_latency_ms": self._health.last_append_latency_ms,
+            "append_degraded": self._health.append_degraded,
+            "idempotent_retries": self._health.idempotent_retries,
+            "status": self._health.status,
+            "degraded_latency_threshold_ms": self.degraded_latency_ms,
         }
-        atomic_write_json_private(self.health_path, payload)
+
+    def _record_failure(self, klass: str, *, event_id: str | None) -> None:
+        self._health.last_failure_at = datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        self._health.last_failure_class = klass
+        self._health.consecutive_failures += 1
+        self._health.last_event_id = event_id
+        corrupt = klass in {"truncated_tail", "invalid_middle"}
+        self._health.status = assess_shadow_status(
+            enabled=True,
+            health=self._health_payload(),
+            ledger_corrupt=corrupt,
+        )
+        try:
+            self._persist_health()
+        except Exception:
+            pass
+
+    def _persist_health(self) -> None:
+        atomic_write_json_private(self.health_path, self._health_payload())
 
 
 def classify_metadata_operation(

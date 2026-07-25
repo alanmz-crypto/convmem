@@ -13,16 +13,16 @@ Authority:    Post-Execute HITL — do not trust prior chat claims alone
 **Stub status:** Execute in progress on PR #122. Mechanical focused tests exist;
 full V0–V8 row fill awaits final Execute tip + independent sign-off.
 
-**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` @ `2c71cc3` — T4 disposable projector PASS (V5 hermetic); branch tip may include docs pin
+**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` — T3/V4 durability in flight (pin after commit)
 
 **PR(s):** [#122](https://github.com/alanmz-crypto/convmem/pull/122)
 
 **Execute progress (Cursor mechanical):**
-- T1–T5 modules landed (contract, sink, durability tests, replay projector, inventory helpers).
-- Writer coverage: production mutators migrated to `open_chroma_for_write` / `chroma_write_session`; bypass list **0**.
-- T4: `run_disposable_replay` projects into marked temp Chroma with `mutation_sink=None`, stub/live modes, checkpoint-under-root, two-level compare.
-- Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py tests/test_shadow_writer_coverage_scan.py` (run at tip).
-- Lock-timeout doctor WARN threshold **N = 3** (`LOCK_TIMEOUT_WARN_THRESHOLD_N` in `shadow_sink.py`).
+- T1–T5 modules landed (contract, sink, durability, replay projector, inventory helpers).
+- Writer coverage: factory routing bypass list **0** (V3 PASS).
+- T3: lock budget, binary append+fsync, uncertain-ack idempotent retry, degraded latency, health statuses, doctor `shadow_ledger` check.
+- T4: disposable projector (V5 PASS hermetic).
+- Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py tests/test_shadow_writer_coverage_scan.py`.
 - **Production activation still unauthorized.**
 
 **Architecture:**
@@ -191,22 +191,22 @@ rg -n 'open_chroma_for_write\(|ChromaStore\(' --glob '*.py' -g '!tests/**' .
 ## V4 — Durability, concurrency, corruption, and failure visibility
 
 ```bash
-<focused writer/durability/corruption test command from Execute>
+pytest -q tests/test_shadow_ledger_phase0_t3.py
 ```
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V4a | Shadow lock is acquired only after Chroma success and no Chroma lock is acquired while holding it | PENDING |
-| V4b | Lock acquisition has a 250 ms budget; timeout leaves Chroma successful and records degradation | PENDING |
-| V4c | Append uses one encoded-byte write, flush, file `fsync`, and first-create directory `fsync` | PENDING |
-| V4d | First-created shadow and health files are mode `0600` | PENDING |
-| V4e | `fsync` latency above 500 ms is measured/degraded without unsafe interruption | PENDING |
-| V4f | Concurrent writers serialize sequence allocation and produce complete parseable lines | PENDING |
-| V4g | Uncertain acknowledgement retry reuses `event_id`; duplicates are visible and idempotent | PENDING |
-| V4h | Truncated tail and invalid middle line both refuse append and make readiness FAIL | PENDING |
-| V4i | Validation/projection stops at first corruption and checkpoint never advances past it | PENDING |
-| V4j | Post-Chroma/pre-shadow process death is detected by baseline/touched-ID comparison without auto-heal claim | PENDING |
-| V4k | Health/doctor distinguish disabled, healthy, degraded, corrupt, and baseline mismatch honestly | PENDING |
+| V4a | Shadow lock is acquired only after Chroma success and no Chroma lock is acquired while holding it | **PASS** — `add_unit` upsert before `_emit_shadow`; sink has no Chroma client |
+| V4b | Lock acquisition has a 250 ms budget; timeout leaves Chroma successful and records degradation | **PASS** — `test_lock_timeout_does_not_block_caller` (default budget 250 ms) |
+| V4c | Append uses one encoded-byte write, flush, file `fsync`, and first-create directory `fsync` | **PASS** — binary `a+b` single `write(data)` + flush/fsync + parent dir fsync on create |
+| V4d | First-created shadow and health files are mode `0600` | **PASS** — `test_first_create_mode_0600` |
+| V4e | `fsync` latency above 500 ms is measured/degraded without unsafe interruption | **PASS** — `append_degraded` / `FSYNC_DEGRADED_LATENCY_MS`; no signal interrupt |
+| V4f | Concurrent writers serialize sequence allocation and produce complete parseable lines | **PASS** — `test_two_writers_serialize_sequences` |
+| V4g | Uncertain acknowledgement retry reuses `event_id`; duplicates are visible and idempotent | **PASS** — fsync fail → `uncertain_ack`; retry same id → `idempotent_retries` |
+| V4h | Truncated tail and invalid middle line both refuse append and make readiness FAIL | **PASS** — `truncated_tail` / `invalid_middle` → health `status=corrupt` |
+| V4i | Validation/projection stops at first corruption and checkpoint never advances past it | **PASS** — `test_checkpoint_does_not_advance_past_corruption` |
+| V4j | Post-Chroma/pre-shadow process death is detected by baseline/touched-ID comparison without auto-heal claim | **PASS** — `test_post_chroma_pre_shadow_gap_via_comparison` (`missing-in-shadow`) |
+| V4k | Health/doctor distinguish disabled, healthy, degraded, corrupt, and baseline mismatch honestly | **PASS** — `assess_shadow_status` + doctor `_check_shadow_ledger` |
 
 ## V5 — Disposable replay isolation and equality
 

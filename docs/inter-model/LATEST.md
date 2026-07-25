@@ -1,11 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (T4 disposable replay projector EXECUTED on #122)
+**Updated:** 2026-07-24 (T3/V4 durability EXECUTED on #122; T5 next residual)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger T4 projector EXECUTED (2026-07-24):** Who/What: Ryan locked T4 after DeepSeek+Kiro dense consult; Cursor implemented `run_disposable_replay` on [#122](https://github.com/alanmz-crypto/convmem/pull/122) — marked temp root, `mutation_sink=None`, stub/live modes, checkpoint, two-level compare. VERIFY V5a–V5k **PASS** (hermetic). When: now. Why: unblock readiness isolation gate. How: next residuals T5 inventory CLI and/or V4 durability; **activation still forbidden.**
+- **Shadow Ledger T3/V4 durability EXECUTED (2026-07-24):** Who/What: Cursor chose V4 before T5 (plan order; prior dense consult); landed lock timeout, binary append/fsync, uncertain-ack idempotent retry, degraded latency, health vocabulary, doctor `shadow_ledger` check on [#122](https://github.com/alanmz-crypto/convmem/pull/122). VERIFY V4a–V4k **PASS** (hermetic). When: now. Why: T5 readiness needs durability evidence. How: next residual is T5 inventory CLI; **activation still forbidden.**
+
+- **Shadow Ledger T4 projector EXECUTED (2026-07-24):** Who/What: Ryan locked T4 after DeepSeek+Kiro; `run_disposable_replay` on [#122](https://github.com/alanmz-crypto/convmem/pull/122). VERIFY V5a–V5k **PASS**. When: earlier tonight. Why: isolation gate. How: T3/V4 followed (see above).
 
 - **Shadow Ledger V3 factory migration (2026-07-24):** Who/What: Cursor on [#122](https://github.com/alanmz-crypto/convmem/pull/122) routed production writers through `open_chroma_for_write` / `chroma_write_session`; VERIFY V3b/V3d/V3e **PASS** (code-path). Inventory: [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](../plans/SHADOW-WRITER-COVERAGE-INVENTORY.md) — **0** bypasses. When: earlier today. Why: close coverage gap from `5c0ddb8`. How: T4 landed (see above). Production activation still off.
 
