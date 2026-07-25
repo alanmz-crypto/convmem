@@ -84,9 +84,11 @@ class InterModelDocAdapterTests(unittest.TestCase):
 
 class InterModelIndexTests(unittest.TestCase):
     @mock.patch("inter_model_index.ollama_embed", return_value=[0.1, 0.2])
-    @mock.patch("inter_model_index.ChromaStore")
-    def test_index_inter_model_messages(self, mock_store_cls, _embed):
-        store = mock_store_cls.return_value.__enter__.return_value
+    @mock.patch("inter_model_index.chroma_write_session")
+    def test_index_inter_model_messages(self, mock_session, _embed):
+        store = mock.MagicMock()
+        mock_session.return_value.__enter__.return_value = store
+        mock_session.return_value.__exit__.return_value = False
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "docs" / "inter-model" / "CROSS-PROJECT-DIGEST-PILOT.md"
             path.parent.mkdir(parents=True)

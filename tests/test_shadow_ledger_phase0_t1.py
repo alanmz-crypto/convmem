@@ -216,6 +216,41 @@ def test_runtime_stamp_has_no_hardcoded_audit_counts() -> None:
     assert stamp["active_unit_count"] == 7
 
 
+def test_atomic_write_fsyncs_file_and_parent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """V2g: baseline write uses file fsync + parent-directory fsync."""
+    calls: list[str] = []
+    real_fsync = os.fsync
+
+    def spy(fd: int) -> None:
+        calls.append("fsync")
+        return real_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", spy)
+    path = tmp_path / "act.json"
+    atomic_write_json_private(path, {"ok": True, "status": "complete"})
+    assert path.is_file()
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    assert len(calls) >= 2  # file + parent dir
+
+
+def test_purpose_test_forces_no_sink(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    cfg = {
+        "index": {"chroma_dir": str(chroma)},
+        "shadow_ledger": {"enabled": True},
+    }
+    store, decision = open_chroma_for_write(cfg, chroma, purpose="test")
+    try:
+        assert decision.inject is False
+        assert store.mutation_sink is None
+    finally:
+        store.close()
+
+
 def test_open_chroma_for_write_no_sink_when_disabled(
     tmp_path: Path, monkeypatch
 ) -> None:

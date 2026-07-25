@@ -1,11 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (T5 inventory CLI EXECUTED on #122 — Phase 0 Execute core complete)
+**Updated:** 2026-07-25 (mechanical VERIFY V0–V7 filled on #122 — V8 next)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger T5 inventory CLI EXECUTED (2026-07-24):** Who/What: Cursor on [#122](https://github.com/alanmz-crypto/convmem/pull/122) shipped `convmem shadow-inventory` (read-only chroma_readonly collector, candidate classes, readiness `PASS — delta capture`/`PARTIAL`/`FAIL`). VERIFY V6a–V6h **PASS**. When: now. Why: close Phase 0 Execute deliverables. How: independent VERIFY sign-off next; **production activation still forbidden.**
+- **Shadow Ledger mechanical VERIFY V0–V7 FILLED (2026-07-25):** Who/What: Cursor filled [`VERIFY-shadow-ledger-phase0.md`](../plans/VERIFY-shadow-ledger-phase0.md) on [#122](https://github.com/alanmz-crypto/convmem/pull/122) — V0–V7 **PASS** (V0d/V0e SKIP→V8); full `pytest -q` **837 passed**. When: now. Why: clear activation bar prerequisites. How: **next = V8 independent sign-off** naming tip SHA, then Ryan GATE / merge; **activation still forbidden.** Residuals: restic_gate stale; embed_model WARN.
+
+- **Shadow Ledger T5 inventory CLI EXECUTED (2026-07-24):** Who/What: `convmem shadow-inventory` on [#122](https://github.com/alanmz-crypto/convmem/pull/122); V6 PASS. When: earlier. Why: Execute core. How: VERIFY mechanical filled (see above).
 
 - **Shadow Ledger T3/V4 durability EXECUTED (2026-07-24):** Who/What: V4a–V4k **PASS** on [#122](https://github.com/alanmz-crypto/convmem/pull/122). When: earlier tonight. Why: readiness gate. How: T5 followed (see above).
 

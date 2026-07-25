@@ -10,19 +10,22 @@ Lanes:        Cursor (mechanical); Kiro/Ryan-named lane (sign-off); Ryan (GATE)
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Stub status:** Execute in progress on PR #122. Mechanical focused tests exist;
-full V0–V8 row fill awaits final Execute tip + independent sign-off.
+**Stub status:** Mechanical VERIFY V0–V7 filled by Cursor (2026-07-25). V8
+independent sign-off + Ryan GATE still required before activation.
 
-**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` @ `d0a4860` — T5 inventory CLI PASS (V6 hermetic); branch tip may include docs pin
+**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` @ `0070b27` — mechanical
+VERIFY base (T1–T5 Execute); this VERIFY-fill commit pins after evidence below
 
 **PR(s):** [#122](https://github.com/alanmz-crypto/convmem/pull/122)
 
 **Execute progress (Cursor mechanical):**
 - T1–T5 modules landed (contract, sink, durability, replay projector, inventory CLI).
 - Writer coverage: factory routing bypass list **0** (V3 PASS).
-- T3/V4 durability PASS; T4/V5 projector PASS.
-- T5: `convmem shadow-inventory` read-only collector + readiness report (`PASS — delta capture` / `PARTIAL` / `FAIL`).
-- Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py tests/test_shadow_writer_coverage_scan.py`.
+- T3/V4 durability PASS; T4/V5 projector PASS; T5/V6 inventory PASS.
+- Mechanical VERIFY V0–V2/V7 filled 2026-07-25T07:28:06Z (runner: Cursor).
+- Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py tests/test_shadow_writer_coverage_scan.py` → **59+** passed.
+- Full suite: `pytest -q` → **837 passed** (after inter-model mock fix for factory migration).
+- Live: `shadow_ledger` doctor **PASS disabled**; inventory **PARTIAL** (not activated).
 - **Production activation still unauthorized.**
 
 **Architecture:**
@@ -121,55 +124,55 @@ Copy this block from Execute; do not infer applicability during Verify.
 |-------|-------|
 | `gate_applicability` | `required` |
 | `reason` | Production mutation boundary, durability, and replay isolation changed |
-| `subject_tip_sha` | `<sha>` |
-| `reviewed_sha` | `<sha>` |
-| `result` | `clean` \| `findings` \| `unreachable` |
-| `finding_disposition` | Per finding: `fixed` \| `ryan_accepted` \| `none` |
-| `authority_reference` | `<PR-native evidence / Ryan acceptance>` |
+| `subject_tip_sha` | `0070b27a7188a82fca32b030e0a58fb3956ed228` (mechanical base; VERIFY-fill tip supersedes after commit) |
+| `reviewed_sha` | _(empty — awaits V8 independent review)_ |
+| `result` | `unreachable` until V8 |
+| `finding_disposition` | `none` yet |
+| `authority_reference` | PR #122; Architecture HITL + Execution HITL cited in V0b |
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V0a | Subject tip resolves to the exact commit being verified | PENDING |
-| V0b | Architecture and Execution Plan approvals are cited; Execute authority is explicit | PENDING |
-| V0c | The pre-edit runtime stamp re-measured counts instead of using audit snapshot constants | PENDING |
-| V0d | Final external review evidence names the same subject tip | PENDING |
-| V0e | Every external finding is fixed or Ryan-accepted | PENDING |
-| V0f | Worktree is clean except for explicitly documented evidence updates | PENDING |
+| V0a | Subject tip resolves to the exact commit being verified | **PASS** — tip `0070b27` = `git rev-parse HEAD` at mechanical fill; VERIFY-fill commit will re-pin |
+| V0b | Architecture and Execution Plan approvals are cited; Execute authority is explicit | **PASS** — Arch HITL locked (`e326aa6` / #115 path); Execution plan `5104022` + Ryan Execute grant; PR #122 Consequence states activation still separate |
+| V0c | The pre-edit runtime stamp re-measured counts instead of using audit snapshot constants | **PASS** — PR #122 Runtime stamp @ `2026-07-25T04:03:19Z` / corpus **11092** units (live re-measure, not audit constants) |
+| V0d | Final external review evidence names the same subject tip | **SKIP** — awaits V8 independent review of final tip |
+| V0e | Every external finding is fixed or Ryan-accepted | **SKIP** — no V8 findings yet |
+| V0f | Worktree is clean except for explicitly documented evidence updates | **PASS** (post-commit of this VERIFY fill + whitespace/test fixes only) |
 
 ## V1 — Diff and authority boundary
 
 ```bash
-git diff --name-status <approved-execute-base>..HEAD
-git diff --check <approved-execute-base>..HEAD
-git diff <approved-execute-base>..HEAD -- \
+git diff --name-status origin/main...HEAD
+git diff --check origin/main...HEAD
+git diff origin/main...HEAD -- \
   docs/audit-ledger-first \
   docs/plans/ARCHITECTURE-shadow-ledger-phase0.md
 ```
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V1a | Every changed path maps to T1–T5, tests, or approved VERIFY evidence | PENDING |
-| V1b | Architecture and audit-baseline bodies are unchanged | PENDING |
-| V1c | No live config, production data root, Restic/restore, Neutral/Office, ranking, or authority file changed | PENDING |
-| V1d | No git hook or always-on production hook was added | PENDING |
-| V1e | `git diff --check` passes | PENDING |
+| V1a | Every changed path maps to T1–T5, tests, or approved VERIFY evidence | **PASS** — code/tests under shadow_* / chroma_write_store / writers; plans VERIFY/EXECUTION/PHASE0/inventory; inter-model handoffs; doctor; config.example — all Phase 0 scoped |
+| V1b | Architecture and audit-baseline bodies are unchanged | **PASS** — `docs/audit-ledger-first` untouched; Architecture decision body unchanged after HITL; only planning-status/handoff banner updated in authorize-Execution commit (`c13042c`) |
+| V1c | No live config, production data root, Restic/restore, Neutral/Office, ranking, or authority file changed | **PASS** — no `~/.config/convmem/config.toml` in git; live TOML has no `[shadow_ledger]` section (absent ≡ disabled); no Restic/Neutral/ranking paths in diff |
+| V1d | No git hook or always-on production hook was added | **PASS** — `git diff --name-status origin/main...HEAD -- scripts/git-hooks` empty |
+| V1e | `git diff --check` passes | **PASS** — trailing whitespace in PHASE0 contract + Claude review handoff stripped in this VERIFY fill |
 
 ## V2 — Disabled configuration and activation baseline
 
 ```bash
-<focused activation/config/baseline test command from Execute>
+pytest -q tests/test_shadow_ledger_phase0_t1.py
 ```
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V2a | Missing `[shadow_ledger]` and `enabled = false` both inject no sink | PENDING |
-| V2b | Example configuration is disabled and no live config was edited | PENDING |
-| V2c | `enabled = true` without a complete matching manifest refuses injection visibly | PENDING |
-| V2d | Canonical root comparison rejects mismatches and aliases | PENDING |
-| V2e | Read, verify, evaluation, restore-drill, and replay stores always receive no sink | PENDING |
-| V2f | Baseline fields match Architecture and are runtime-derived, not hardcoded | PENDING |
-| V2g | Baseline temp-write, file `fsync`, atomic rename, and parent-directory `fsync` are tested | PENDING |
-| V2h | Configured and observed embedding identities remain separate; unknown is not inferred | PENDING |
+| V2a | Missing `[shadow_ledger]` and `enabled = false` both inject no sink | **PASS** — `test_absent_table_equals_enabled_false` |
+| V2b | Example configuration is disabled and no live config was edited | **PASS** — `test_config_example_shadow_ledger_disabled`; live config mtime pre-Execute; no `[shadow_ledger]` section present |
+| V2c | `enabled = true` without a complete matching manifest refuses injection visibly | **PASS** — `test_enabled_true_without_manifest_refuses` + `test_incomplete_manifest_cannot_enable` |
+| V2d | Canonical root comparison rejects mismatches and aliases | **PASS** — `test_complete_manifest_root_mismatch_refuses` |
+| V2e | Read, verify, evaluation, restore-drill, and replay stores always receive no sink | **PASS** — `open_chroma_for_read`/`verify` default sink None; `purpose="test"` forces None; replay `open_replay_store` forces None |
+| V2f | Baseline fields match Architecture and are runtime-derived, not hardcoded | **PASS** — `new_incomplete_manifest`/`finalize_manifest` + `test_runtime_stamp_has_no_hardcoded_audit_counts` |
+| V2g | Baseline temp-write, file `fsync`, atomic rename, and parent-directory `fsync` are tested | **PASS** — `test_atomic_write_fsyncs_file_and_parent` + mode `0600` |
+| V2h | Configured and observed embedding identities remain separate; unknown is not inferred | **PASS** — finalize keeps `observed_embed_model="unknown"` separate from configured model in T1 complete-manifest tests |
 
 ## V3 — Envelope, mutation sink, and complete writer coverage
 
@@ -255,21 +258,20 @@ convmem shadow-inventory --json
 ## V7 — Focused/full regression and non-mutation evidence
 
 ```bash
-<all focused shadow-ledger test commands from Execute>
-<full repository test command from Execute>
-convmem doctor
-convmem doctor --v1
-git diff --check <approved-execute-base>..HEAD
+pytest -q tests/test_shadow_ledger_phase0_t*.py tests/test_shadow_writer_coverage_scan.py
+pytest -q
+convmem doctor   # expect shadow_ledger PASS disabled; restic may be unrelated FAIL
+git diff --check origin/main...HEAD
 ```
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V7a | All focused Shadow Ledger Phase 0 tests pass | PENDING |
-| V7b | Full existing regression suite passes or every pre-existing failure is proved against the base | PENDING |
-| V7c | Doctor reports disabled production state honestly and no false readiness PASS | PENDING |
-| V7d | Test roots and artifacts are temporary/marked and cleaned without touching production | PENDING |
-| V7e | No network/provider call occurs in hermetic stub tests | PENDING |
-| V7f | Repository diff and runtime checks show no live Chroma, live config, JSONL authority, decision-log, Restic, or restore mutation | PENDING |
+| V7a | All focused Shadow Ledger Phase 0 tests pass | **PASS** — focused shadow suite green (59+; T1 now 12) |
+| V7b | Full existing regression suite passes or every pre-existing failure is proved against the base | **PASS** — `pytest -q` → **837 passed** after fixing `test_inter_model_doc` mock for `chroma_write_session` |
+| V7c | Doctor reports disabled production state honestly and no false readiness PASS | **PASS** — `[PASS] shadow_ledger: disabled`; inventory `PARTIAL` (not activated). Note: live `restic_gate` FAIL (stale snapshot) is unrelated ops residual — not a shadow false PASS |
+| V7d | Test roots and artifacts are temporary/marked and cleaned without touching production | **PASS** — pytest `tmp_path`; replay marker `.convmem_shadow_replay_ok` under temp roots only |
+| V7e | No network/provider call occurs in hermetic stub tests | **PASS** — stub replay / inventory AST forbid `llm`/`requests`; live embed tests raise without network fallback |
+| V7f | Repository diff and runtime checks show no live Chroma, live config, JSONL authority, decision-log, Restic, or restore mutation | **PASS** — git paths exclude live roots; live `config.toml` has no enabled shadow section; `convmem shadow-inventory` read-only |
 
 ## V8 — Independent safety/sign-off gate
 
@@ -293,23 +295,24 @@ commit, and must specifically examine:
 ## Evidence log (fill after Execute)
 
 ```text
-VERIFY-shadow-ledger-phase0 — tip <sha> — runner <lane> — <ISO-8601>
-V0 Preconditions: PENDING
-V1 Diff/authority: PENDING
-V2 Activation/config: PENDING
-V3 Writer coverage: FAIL (V3b/V3d/V3e) — factory bypass proved
-V4 Durability/corruption: PENDING
-V5 Replay/equality: PENDING
-V6 Inventory/readiness: PENDING
-V7 Regression/non-mutation: PENDING
+VERIFY-shadow-ledger-phase0 — tip 0070b27 (+ VERIFY-fill tip) — runner Cursor — 2026-07-25T07:28:06Z
+V0 Preconditions: PASS (V0d/V0e SKIP → V8)
+V1 Diff/authority: PASS
+V2 Activation/config: PASS
+V3 Writer coverage: PASS
+V4 Durability/corruption: PASS
+V5 Replay/equality: PASS
+V6 Inventory/readiness: PASS
+V7 Regression/non-mutation: PASS
 V8 Independent sign-off: PENDING
-Mechanical: PENDING
+Mechanical: PASS
 Sign-off: PENDING
 Ryan GATE: PENDING
+Residuals: restic_gate stale (ops); embed_collection_identity WARN; activation forbidden
 ```
 
 ## Stub stop
 
-This artifact predeclares verification only. It does not authorize Execute,
-production activation, migration, cutover, backup wiring, restore-order change,
-or a change in Chroma authority.
+Mechanical VERIFY does **not** authorize production activation, migration,
+cutover, backup wiring, restore-order change, or a change in Chroma authority.
+Next: V8 independent PASS/FAIL on the VERIFY-fill tip, then Ryan GATE / merge.

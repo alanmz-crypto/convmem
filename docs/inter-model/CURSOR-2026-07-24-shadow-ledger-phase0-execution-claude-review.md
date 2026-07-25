@@ -1,12 +1,12 @@
 # Cursor → Claude: review Shadow Ledger Phase 0 Execution Plan
 
 **Who:** Cursor packages after Ryan lock **B** (Kiro revisions applied); Claude
-Cloud reviews (strategy / adversarial — no code, no prod writes).  
+Cloud reviews (strategy / adversarial — no code, no prod writes).
 **What:** Advise Ryan whether to **approve** the revised Execution Plan for
-Cursor Execute (disabled-by-default Phase 0 only).  
+Cursor Execute (disabled-by-default Phase 0 only).
 **When:** After Architecture HITL + Gate 1b PASS + Codex plan + DeepSeek/Kiro
-Execution review. Tip is the commit that lands this handoff + revised plan.  
-**Why:** Second opinion before Execute spend.  
+Execution review. Tip is the commit that lands this handoff + revised plan.
+**Why:** Second opinion before Execute spend.
 **How:** Read the linked plan; answer the questions below. Do **not** rewrite
 Architecture, authorize production activation, or start Neutral/backup Track 1.
 
@@ -24,16 +24,16 @@ Architecture, authorize production activation, or start Neutral/backup Track 1.
 
 ## Primary artifact (read this)
 
-**Execution Plan (revised):**  
+**Execution Plan (revised):**
 [`docs/plans/EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md)
 
-**Companion VERIFY stub (do not fill):**  
+**Companion VERIFY stub (do not fill):**
 [`docs/plans/VERIFY-shadow-ledger-phase0.md`](../plans/VERIFY-shadow-ledger-phase0.md)
 
-**Approved Architecture (context only):**  
+**Approved Architecture (context only):**
 [`docs/plans/ARCHITECTURE-shadow-ledger-phase0.md`](../plans/ARCHITECTURE-shadow-ledger-phase0.md)
 
-**PR:** https://github.com/alanmz-crypto/convmem/pull/115  
+**PR:** https://github.com/alanmz-crypto/convmem/pull/115
 **Branch:** `docs/2026-07-24-shadow-ledger-phase0-architecture`
 
 ## What Kiro required (now in the plan)
@@ -117,4 +117,3 @@ a separate Ryan grant.
 **Ryan status:** Claude advises Approve Execute. **Cursor Execute remains
 unauthorized until Ryan explicitly grants Execution HITL** (e.g. “Approve
 Execute” / “Lock it”). Production activation stays a later separate grant.
-

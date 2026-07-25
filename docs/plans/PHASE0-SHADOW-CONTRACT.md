@@ -1,11 +1,11 @@
 # Phase 0 Shadow Ledger Contract
 
 **Who:** Cursor Execute of approved
-[`EXECUTION-shadow-ledger-phase0.md`](EXECUTION-shadow-ledger-phase0.md).  
-**What:** Human-readable mirror of locked Architecture decisions for Phase 0.  
-**When:** Created during Execute (T1).  
+[`EXECUTION-shadow-ledger-phase0.md`](EXECUTION-shadow-ledger-phase0.md).
+**What:** Human-readable mirror of locked Architecture decisions for Phase 0.
+**When:** Created during Execute (T1).
 **Why:** Freeze the provisional envelope, activation rules, and non-authority
-language before wiring sinks.  
+language before wiring sinks.
 **How:** Implementers and VERIFY use this alongside Architecture; this document
 is **not** a canonical observation-schema proposal and does **not** authorize
 production activation.
