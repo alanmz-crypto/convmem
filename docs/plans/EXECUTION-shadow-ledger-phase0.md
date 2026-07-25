@@ -7,8 +7,13 @@ Phase:        Execution Planning
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Functions:    Planner
 Lanes:        Codex authors; Kiro reviews; Cursor downstream implementation
-Authority:    Awaiting Ryan HITL on this Execution Plan; Execute is unauthorized
+Authority:    Awaiting Ryan re-HITL after Kiro revision pass (lock B); Execute unauthorized
 ```
+
+**Revision note (2026-07-24):** DeepSeek V4-Pro APPROVE; Kiro
+`APPROVE_WITH_REVISIONS`. Ryan locked **B**. Blocking stop-condition + four
+should-fix clarifications applied below. Tip under Claude review is the
+commit that lands this revision.
 
 **Source:** Ryan-authorized Cursor → Codex work order
 [`CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md`](../inter-model/CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md),
@@ -232,7 +237,10 @@ blocked on both T3 and T4.
 Grep is supplementary evidence, not the proof. Execute must provide all three:
 
 1. A static direct-client scan with an explicit allowlist for the storage
-   adapter, tests, evaluation projection, and restore-drill isolation.
+   adapter, tests, evaluation projection, and restore-drill isolation. The
+   allowlist may be extended during T2 only for callers that demonstrably cannot
+   reach the production Chroma root; any new caller that could reach it is a
+   stop condition (return to Ryan/Codex — do not self-authorize).
 2. A test that enumerates the unit-mutating `ChromaStore` methods and fails when
    a method lacks an event assertion or explicit collection exclusion.
 3. Integration tests exercising the production mutating call paths and proving
@@ -250,8 +258,11 @@ or a store constructed for read, verify, evaluation, restore drill, or replay.
    Chroma operation → acquire shadow `flock` → validate tail → allocate sequence
    → issue one encoded-byte append → flush/`fsync` file → first-create parent
    directory `fsync` → release lock.
-2. Bound only lock acquisition to 250 ms. On timeout, warn, update health best
-   effort, and return without retrying or changing the Chroma result.
+2. Bound only lock acquisition to 250 ms. On timeout: emit a Python
+   log/stderr warning; record the miss on the health sidecar best-effort; return
+   without retrying or changing the Chroma result. Doctor WARN fires only after
+   N consecutive lock timeouts (N documented in implementation; not on first
+   occurrence).
 3. Measure `fsync` latency and mark append latency over 500 ms degraded. Do not
    use signal interruption to claim a hard I/O bound.
 4. Maintain an atomic best-effort health sidecar with last success/failure,
@@ -300,7 +311,9 @@ or a store constructed for read, verify, evaluation, restore drill, or replay.
    - `live`: opt-in re-embedding with the configured local model in the
      disposable root only. It is supplemental evidence, never required for
      state equality, never uses an external provider, and cannot turn unknown
-     historic model provenance into PASS.
+     historic model provenance into PASS. Live mode must fail explicitly if the
+     configured local model is unreachable; it may not silently fall back to
+     stub behavior.
 6. Report state equality and projection equality independently. Raw vectors are
    excluded. Exact document drift fails projection equality; known-vs-unknown
    model identity is `UNVERIFIABLE`.
@@ -373,9 +386,10 @@ convmem doctor
 convmem brief --stdout-only
 ```
 
-The command output belongs in the PR/VERIFY evidence, not a new repo log. It
-re-measures corpus state and prevents audit snapshot counts from becoming live
-constants.
+Paste the full runtime-stamp output block verbatim into the Execute PR
+description before the first code edit (also retain in VERIFY evidence). Do not
+create a new repo log file for it. It re-measures corpus state and prevents
+audit snapshot counts from becoming live constants.
 
 ### Focused automated evidence
 
@@ -433,6 +447,10 @@ Cursor must stop and return to Ryan/Codex instead of silently replanning if:
 
 - complete writer coverage requires a new authority boundary or an Architecture
   option change;
+- the `UnitMutationSink` collection discriminator cannot be enforced without an
+  API surface change to `ChromaStore` that would require reopening Architecture
+  Option B (including any widening that would observe `conversation_summaries`
+  or other non-`knowledge_units` collections);
 - the exact config/activation contract cannot be implemented without enabling
   production behavior;
 - a direct production writer bypass cannot be routed through the approved
