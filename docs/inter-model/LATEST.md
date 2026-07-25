@@ -1,11 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (Shadow Ledger Gate 1b PASS)
+**Updated:** 2026-07-24 (Shadow Ledger Execution Planning authorized for Codex)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger Gate 1b PASS (Ryan 2026-07-24):** Who/What: audit-pack corrections accepted after #121 readiness behavior-change fix on `main` (`0d08310`) and DeepSeek+Kiro round-2 lock B. When: now. Why: clears the precondition for Execution Planning. How: Ryan may authorize Codex to author `docs/plans/EXECUTION-shadow-ledger-phase0.md` under **separate HITL**. Architecture remains [#115](https://github.com/alanmz-crypto/convmem/pull/115). **Cursor Execute / hooks / activation / cutover / Neutral still forbidden.**
+- **Shadow Ledger Execution Planning AUTHORIZED (Ryan 2026-07-24):** Who/What: Codex may author [`EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md) from approved Architecture on [#115](https://github.com/alanmz-crypto/convmem/pull/115); handoff [`CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md). When: after Gate 1b PASS + #121 on `main`. Why: Planning OS task decomposition. How: Ryan pastes work order to Codex; plan still needs Execution HITL; **Cursor Execute / hooks / activation still forbidden.** Track 1 [#120](https://github.com/alanmz-crypto/convmem/pull/120) unchanged.
+
+- **Shadow Ledger Gate 1b PASS (Ryan 2026-07-24):** Audit corrections accepted (#121 `0d08310`). Precondition cleared; Execution Planning authorship now authorized (see bullet above).
 
 - **Track 1 backup — Hybrid consistency bar LOCKED (2026-07-24):** Who/What: Ryan locked Hybrid after DeepSeek V4-Pro + Kiro dense consult; Copilot must audit exact SHA `492e6e7` with A-checklist + Five-part report card. When: now. Why: full-root backup merge blocked on safety bar. How: paste [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md) (+ base contract linked therein) into GitHub Copilot audit lane. **Does not authorize** live Restic, merge of backup branch, Neutral, or Shadow Execute (#115 still HITL-only).
 

@@ -26,8 +26,8 @@ current Tier-1 authority or claiming that the existing corpus is rebuildable.
 | Characters | Architect, Systems Thinker, Risk Reviewer |
 | Functions | Planner |
 | Lanes | Codex authors; Kiro reviews; Ryan approves (HITL) |
-| Status | Architecture HITL approved 2026-07-24; Gate 1b PASS 2026-07-24; implementation unauthorized |
-| Next phase | `EXECUTION-shadow-ledger-phase0.md` after separate Ryan Execution Planning grant (Gate 1b PASS) |
+| Status | Architecture HITL approved; Gate 1b PASS; Execution Planning authorship authorized 2026-07-24; Execute unauthorized |
+| Next phase | Codex authors `EXECUTION-shadow-ledger-phase0.md` now (Ryan grant 2026-07-24); then Execution HITL before Execute |
 | Later verification | `VERIFY-shadow-ledger-phase0.md`, created after Execute under the Planning OS |
 
 Neither downstream document is created by this Architecture phase.
@@ -584,10 +584,10 @@ This Architecture PR does not modify the `docs/audit-ledger-first/` pack on
    (`0d08310` on `main`). This clears the audit-baseline precondition for
    Execution Planning. It does **not** authorize Execution Planning, Execute,
    hooks, activation, cutover, or Neutral — those need separate Ryan grants.
-2. **After Architecture approval + Gate 1b — Execution Planning:** Codex may
-   create `docs/plans/EXECUTION-shadow-ledger-phase0.md`, mapping this
-   direction into bounded tasks and exact verification commands. That document
-   still requires Ryan HITL.
+2. **Execution Planning — AUTHORIZED (Ryan 2026-07-24):** Codex may create
+   `docs/plans/EXECUTION-shadow-ledger-phase0.md` per
+   [`CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md`](../inter-model/CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md).
+   The Execution plan document still requires Ryan HITL before any Execute.
 3. **Separate docs authorization:** Further changes to the eight audit files
    (beyond Gate 1b) or any Phase 0 contract artifact still need Ryan
    authorization.
@@ -603,6 +603,6 @@ This Architecture intentionally stops before task decomposition. It chooses
 the system direction, locks the eleven required decisions, names evidence
 gates, and leaves implementation authority with Ryan.
 
-**Architecture HITL closed. Gate 1b PASS.** Next step is Codex Execution
-Planning under a **separate** Ryan grant (`EXECUTION-shadow-ledger-phase0.md`).
-Execute remains forbidden.
+**Architecture HITL closed. Gate 1b PASS. Execution Planning authorship
+authorized.** Codex must emit `EXECUTION-shadow-ledger-phase0.md` and stop for
+HITL. Execute remains forbidden.
