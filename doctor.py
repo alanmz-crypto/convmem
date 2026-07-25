@@ -1294,7 +1294,7 @@ def _check_shadow_ledger(cfg: dict) -> DoctorCheck:
     if settings.health_path.is_file():
         try:
             health = json.loads(settings.health_path.read_text(encoding="utf-8"))
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             return DoctorCheck(
                 "shadow_ledger",
                 True,

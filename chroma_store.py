@@ -144,7 +144,7 @@ class ChromaStore:
                 deleted=deleted,
                 writer_route=writer_route,
             )
-        except Exception as exc:  # never affect Chroma success
+        except Exception as exc:  # pylint: disable=broad-exception-caught  # never affect Chroma success
             _log.error("mutation_sink.observe failed: %s", exc)
 
     def close(self) -> None:

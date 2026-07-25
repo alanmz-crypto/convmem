@@ -9,8 +9,6 @@ import os
 import threading
 import time
 from pathlib import Path
-from unittest.mock import patch
-
 import pytest
 
 from shadow_replay import compare_touched
@@ -40,7 +38,7 @@ def test_two_writers_serialize_sequences(tmp_path: Path) -> None:
                     metadata={"source_path": "/t"},
                     deleted=False,
                 )
-        except BaseException as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             errors.append(exc)
 
     threads = [
@@ -254,7 +252,7 @@ def test_emit_order_after_chroma_no_chroma_lock_while_shadow() -> None:
     upsert_at = src.index("upsert")
     emit_at = src.index("_emit_shadow")
     assert upsert_at < emit_at
-    sink_src = inspect.getsource(JsonlUnitMutationSink._append_event)
+    sink_src = inspect.getsource(JsonlUnitMutationSink._append_event)  # pylint: disable=protected-access
     assert "chromadb" not in sink_src
     assert "PersistentClient" not in sink_src
 

@@ -1299,8 +1299,6 @@ def shadow_inventory_command(
 
     Does not enable shadowing, mutate Chroma, or claim activation/cutover.
     """
-    import json
-
     from config import load_config
     from shadow_inventory import (
         collect_phase0_inventory,

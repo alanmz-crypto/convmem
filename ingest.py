@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """Ingest pipeline.
 
 For each source file:

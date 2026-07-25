@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """Phase 0 shadow ledger: config resolution and activation baseline (no Chroma import).
 
 Sink injection and append I/O land in later Execute tasks. This module must not
