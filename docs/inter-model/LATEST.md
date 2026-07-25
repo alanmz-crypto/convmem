@@ -1,15 +1,17 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (Gate 1b docs fix: readiness behavior-change bullet)
+**Updated:** 2026-07-24 (Shadow Ledger Gate 1b PASS)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger Gate 1b fix landed (pending Ryan PASS confirm):** Who/What: docs-only edit to `LEDGER-FIRST-READINESS-VERDICT.md` replacing residual “No production behavior change” Phase 0 bullet (DeepSeek+Kiro round-2 lock B). When: branch `docs/2026-07-24-gate1b-readiness-behavior-change`. Why: close authorization leak before Codex Execution Planning. How: Ryan confirms **Gate 1b PASS**, then may authorize Codex for `EXECUTION-shadow-ledger-phase0.md`. Execute still forbidden.
+- **Shadow Ledger Gate 1b PASS (Ryan 2026-07-24):** Who/What: audit-pack corrections accepted after #121 readiness behavior-change fix on `main` (`0d08310`) and DeepSeek+Kiro round-2 lock B. When: now. Why: clears the precondition for Execution Planning. How: Ryan may authorize Codex to author `docs/plans/EXECUTION-shadow-ledger-phase0.md` under **separate HITL**. Architecture remains [#115](https://github.com/alanmz-crypto/convmem/pull/115). **Cursor Execute / hooks / activation / cutover / Neutral still forbidden.**
 
 - **Track 1 backup — Hybrid consistency bar LOCKED (2026-07-24):** Who/What: Ryan locked Hybrid after DeepSeek V4-Pro + Kiro dense consult; Copilot must audit exact SHA `492e6e7` with A-checklist + Five-part report card. When: now. Why: full-root backup merge blocked on safety bar. How: paste [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md) (+ base contract linked therein) into GitHub Copilot audit lane. **Does not authorize** live Restic, merge of backup branch, Neutral, or Shadow Execute (#115 still HITL-only).
 
-- **Shadow Ledger Phase 0 Architecture authored — awaiting HITL (2026-07-24):** Who/What: Codex draft Architecture in PR [#115](https://github.com/alanmz-crypto/convmem/pull/115) (`ARCHITECTURE-shadow-ledger-phase0.md`, tip `c9a5c70`). When: after Qwen audit + ChatGPT work order; Architecture on GitHub. Why: Phase 0 direction locked for review. How: Ryan HITL on #115; **Cursor Execute prohibited**; no shadow hooks/runtime. Salvage of local audit/handoff: this branch / PR (workspace-coord salvage). Related: [`CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md) (superseded for Architecture authorship), [`../audit-ledger-first/README.md`](../audit-ledger-first/README.md).
+- **Shadow Ledger Phase 0 Architecture HITL LOCKED (2026-07-24):** Who/What: Ryan approved [#115](https://github.com/alanmz-crypto/convmem/pull/115) Direction (DeepSeek APPROVE + Kiro APPROVE_WITH_REVISIONS applied; ChatGPT Codex work order + Approve-with-revisions packaging assessment versioned in [`CURSOR-2026-07-24-shadow-ledger-phase0-codex-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-codex-handoff.md)). When: Architecture closed; Gate 1b now PASS. Why: Phase 0 boundary locked (Option B). How: next is separate Ryan grant for Codex Execution Planning. **Execute still forbidden.**
+
+
 
 - **Workspace-coord salvage to GitHub (2026-07-24):** Who/What: WS-main-cursor lands previously LOCAL_ONLY audit dir, ChatGPT handoff, Track-1/2 decision memos, coord board snapshot. When: Round 3 after ONE_PRIMARY → WS-main-cursor. Why: close sibling chats without losing takeover data. How: dedicated docs branch (not research-pack, not #115 edits). See [`CURSOR-2026-07-24-backup-neutral-decision-memos.md`](CURSOR-2026-07-24-backup-neutral-decision-memos.md), [`COORD-2026-07-24-shadow-ledger-workspaces-BOARD.md`](COORD-2026-07-24-shadow-ledger-workspaces-BOARD.md).
 

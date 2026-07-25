@@ -1,14 +1,18 @@
 # Architecture Direction — Shadow Ledger Phase 0
 
-> **DRAFT — Awaiting Ryan HITL.** This document chooses an architecture only.
-> It does not authorize implementation, production hooks, audit-baseline
-> versioning, migration, backup wiring, or a change in data authority.
+> **APPROVED Architecture HITL (Ryan, 2026-07-24).** Direction locked after
+> DeepSeek V4-Pro APPROVE and Kiro APPROVE_WITH_REVISIONS; Kiro's two text
+> gates are applied below. This document still does **not** authorize
+> implementation, production hooks, migration, backup wiring, restore-order
+> flip, Neutral extraction, or a change in data authority. Execution Planning
+> and Execute require separate Ryan HITL.
 
 **Source:** Ryan request on 2026-07-24, incorporating the Qwen ledger-first
 audit, Claude's shadow-only review, ChatGPT's Codex work order, Codex's YELLOW
-review, and Cursor's revised local draft.
+review, Cursor's revised local draft, and dense-consult reviews (DeepSeek
+V4-Pro + Kiro) on tip `0ea1682`.
 
-**Authority:** Awaiting Ryan HITL as of 2026-07-24.
+**Authority:** Ryan Architecture HITL locked 2026-07-24 (this revision).
 
 **Problem:** Validate whether post-activation `knowledge_units` mutations can be
 captured durably and replayed deterministically without changing Chroma's
@@ -22,8 +26,8 @@ current Tier-1 authority or claiming that the existing corpus is rebuildable.
 | Characters | Architect, Systems Thinker, Risk Reviewer |
 | Functions | Planner |
 | Lanes | Codex authors; Kiro reviews; Ryan approves (HITL) |
-| Status | Draft; direction selected; implementation unauthorized |
-| Next phase | `EXECUTION-shadow-ledger-phase0.md`, only after Ryan approves this Architecture |
+| Status | Architecture HITL approved 2026-07-24; Gate 1b PASS 2026-07-24; implementation unauthorized |
+| Next phase | `EXECUTION-shadow-ledger-phase0.md` after separate Ryan Execution Planning grant (Gate 1b PASS) |
 | Later verification | `VERIFY-shadow-ledger-phase0.md`, created after Execute under the Planning OS |
 
 Neither downstream document is created by this Architecture phase.
@@ -343,7 +347,10 @@ The fixed order is:
 7. release the shadow lock and report latency/status.
 
 No code may acquire a Chroma lock while holding the shadow lock. The 250 ms
-budget applies to lock acquisition. `fsync` itself has no safe hard wall-clock
+budget applies to lock acquisition. When the 250 ms acquisition budget expires,
+the sink records the miss to the health sidecar, emits a structured warning,
+and returns without retrying. The Chroma result is unaffected. The caller is
+never blocked beyond the budget. `fsync` itself has no safe hard wall-clock
 bound; the implementation must measure it and mark append latency above
 **500 ms** as degraded. It must not use unsafe signal interruption to pretend
 that kernel I/O is bounded.
@@ -569,15 +576,21 @@ This Architecture PR does not modify the `docs/audit-ledger-first/` pack on
 
 ## HITL gates and downstream handoff
 
-1. **Now — Architecture:** Ryan reviews this draft; Kiro and DeepSeek V4-Pro
-   design review may be requested. No runtime work is authorized.
-2. **After Architecture approval — Execution Planning:** Codex may create
-   `docs/plans/EXECUTION-shadow-ledger-phase0.md`, mapping this direction into
-   bounded tasks and exact verification commands. That document still requires
-   Ryan HITL.
+1. **Architecture (this document):** Ryan Architecture HITL locked 2026-07-24
+   after DeepSeek V4-Pro + Kiro review. No runtime work is authorized by this
+   gate alone.
+1b. **Audit corrections (Gate 1b) — PASS (Ryan 2026-07-24):** Corrections
+   accepted after dense consult (DeepSeek+Kiro) and docs fix [#121](https://github.com/alanmz-crypto/convmem/pull/121)
+   (`0d08310` on `main`). This clears the audit-baseline precondition for
+   Execution Planning. It does **not** authorize Execution Planning, Execute,
+   hooks, activation, cutover, or Neutral — those need separate Ryan grants.
+2. **After Architecture approval + Gate 1b — Execution Planning:** Codex may
+   create `docs/plans/EXECUTION-shadow-ledger-phase0.md`, mapping this
+   direction into bounded tasks and exact verification commands. That document
+   still requires Ryan HITL.
 3. **Separate docs authorization:** Further changes to the eight audit files
-   (beyond #117 salvage corrections) or any Phase 0 contract artifact still
-   need Ryan authorization.
+   (beyond Gate 1b) or any Phase 0 contract artifact still need Ryan
+   authorization.
 4. **Separate Execute authorization:** Cursor may implement only the approved
    Execution plan. Production activation remains disabled.
 5. **Separate activation authorization:** Ryan approves the exact root, config
@@ -586,8 +599,10 @@ This Architecture PR does not modify the `docs/audit-ledger-first/` pack on
    treatment of every orphan/legacy decision, restore-order flip, and any
    Neutral work require new Architecture and HITL.
 
-This draft intentionally stops before task decomposition. It chooses the
-system direction, locks the eleven required decisions, names evidence gates,
-and leaves implementation authority with Ryan.
+This Architecture intentionally stops before task decomposition. It chooses
+the system direction, locks the eleven required decisions, names evidence
+gates, and leaves implementation authority with Ryan.
 
-Active phase lane must stop here. Await HITL.
+**Architecture HITL closed. Gate 1b PASS.** Next step is Codex Execution
+Planning under a **separate** Ryan grant (`EXECUTION-shadow-ledger-phase0.md`).
+Execute remains forbidden.
