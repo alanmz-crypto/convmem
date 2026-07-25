@@ -25,7 +25,7 @@ Related already on GitHub:
 
 | Fork | Cursor memo | ChatGPT memo | Status |
 |---|---|---|---|
-| Track 1 consistency bar | **(A)** crash-consistent Restic + documented reconcile/reindex; write-gate wiring unverified ⇒ quiescence premature | Copilot **FAIL** unless five-part Universal Tier-1 proof (census, participation, safe boundary, adversarial concurrency, isolated restore) | **UNDECIDED** |
+| Track 1 consistency bar | **(A)** crash-consistent Restic + documented reconcile/reindex; write-gate wiring unverified ⇒ quiescence premature | Copilot **FAIL** unless five-part Universal Tier-1 proof (census, participation, safe boundary, adversarial concurrency, isolated restore) | **LOCKED Hybrid (Ryan 2026-07-24)** — Copilot scores A + reports Five-part; see [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md) |
 | Track 1 trigger | Hybrid: write-gated + daily ensure timer | Hybrid **contingent on** proven consistency protocol | Agree hybrid intent; disagree when timer counts toward RPO |
 | Track 1 offsite | Fix tag-blind false-green; accept tag-presence as freshness bar (defer full remote restore) | Destination-proven, cost-tiered (lineage every copy; periodic isolated restore) | Agree false-green is real; depth of bar undecided |
 | Track 2 appetite | Priority call; ship bucket A; use friction + retrieval postmortem; Not-yet OK with portable contracts | Record **Yes — Scope C** direction only → Phase 0 research (not migration); Gate 0 structure≠instantiation; active-policy index theater for Office v0 | Soft fork; compatible if Yes≠cutover auth |
@@ -107,8 +107,8 @@ reconcile≈replay cheaper — notice later, do not gate Track 1.
 
 ## Suggested next actions (not authorized by this doc)
 
-1. Ryan locks Track 1 consistency bar (A vs five-part vs hybrid audit report).
-2. Copilot audits `492e6e7` against that bar + existing audit contract.
+1. ~~Ryan locks Track 1 consistency bar~~ → **Hybrid locked** 2026-07-24.
+2. Copilot audits `492e6e7` against Hybrid brief + base audit contract.
 3. Ryan records Track 2 appetite (Yes-Scope-C direction / Not-yet / No).
 4. Keep Shadow Ledger [#115](https://github.com/alanmz-crypto/convmem/pull/115)
    HITL on its own lane — do not fold Neutral Office work into it.
