@@ -1,11 +1,13 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (V3 factory routing migrated — V3b/V3d/V3e PASS code-path)
+**Updated:** 2026-07-24 (T4 disposable replay projector EXECUTED on #122)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger V3 factory migration (2026-07-24):** Who/What: Cursor on [#122](https://github.com/alanmz-crypto/convmem/pull/122) routed production writers through `open_chroma_for_write` / `chroma_write_session`; VERIFY V3b/V3d/V3e **PASS** (code-path). Inventory: [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](../plans/SHADOW-WRITER-COVERAGE-INVENTORY.md) — **0** bypasses, **14** factory-routed sites. When: now. Why: close the proved coverage gap from `5c0ddb8`. How: next residuals are T4 projector / live T5 / activation (separate grants). **Not proved:** live ops with `enabled=true`. Production activation still off.
+- **Shadow Ledger T4 projector EXECUTED (2026-07-24):** Who/What: Ryan locked T4 after DeepSeek+Kiro dense consult; Cursor implemented `run_disposable_replay` on [#122](https://github.com/alanmz-crypto/convmem/pull/122) — marked temp root, `mutation_sink=None`, stub/live modes, checkpoint, two-level compare. VERIFY V5a–V5k **PASS** (hermetic). When: now. Why: unblock readiness isolation gate. How: next residuals T5 inventory CLI and/or V4 durability; **activation still forbidden.**
+
+- **Shadow Ledger V3 factory migration (2026-07-24):** Who/What: Cursor on [#122](https://github.com/alanmz-crypto/convmem/pull/122) routed production writers through `open_chroma_for_write` / `chroma_write_session`; VERIFY V3b/V3d/V3e **PASS** (code-path). Inventory: [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](../plans/SHADOW-WRITER-COVERAGE-INVENTORY.md) — **0** bypasses. When: earlier today. Why: close coverage gap from `5c0ddb8`. How: T4 landed (see above). Production activation still off.
 
 - **Shadow Ledger V3 coverage gap PROVED then closed (2026-07-24):** Prior FAIL at tip `5c0ddb8` (0 factory callers; 14 bypasses) — superseding bullet above after migration.
 

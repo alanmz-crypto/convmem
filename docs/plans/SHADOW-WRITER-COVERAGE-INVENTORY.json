@@ -29,7 +29,8 @@
     "chroma_write_store.py:48",
     "convmem.py:134",
     "mcp_server.py:897",
-    "mcp_server.py:944"
+    "mcp_server.py:944",
+    "shadow_replay.py:176"
   ],
   "sites": [
     {
@@ -160,6 +161,15 @@
       "class": "read_only",
       "required_routing": "allowlisted_direct",
       "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "shadow_replay.py",
+      "line": 176,
+      "snippet": "return ChromaStore(str(replay_root), mutation_sink=None)",
+      "class": "replay_internal",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false,
+      "note": "Disposable projector forces mutation_sink=None (no injection)"
     },
     {
       "file": "observe.py",

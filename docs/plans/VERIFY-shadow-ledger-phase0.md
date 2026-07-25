@@ -13,16 +13,16 @@ Authority:    Post-Execute HITL — do not trust prior chat claims alone
 **Stub status:** Execute in progress on PR #122. Mechanical focused tests exist;
 full V0–V8 row fill awaits final Execute tip + independent sign-off.
 
-**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` @ `f7b1451` — V3 factory routing PASS (code-path); branch may still move for residual Execute
+**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` — T4 disposable projector landed (tip moves; pin after commit)
 
 **PR(s):** [#122](https://github.com/alanmz-crypto/convmem/pull/122)
 
 **Execute progress (Cursor mechanical):**
-- T1–T5 modules landed (contract, sink, durability tests, replay helpers, inventory helpers).
+- T1–T5 modules landed (contract, sink, durability tests, replay projector, inventory helpers).
 - Writer coverage: production mutators migrated to `open_chroma_for_write` / `chroma_write_session`; bypass list **0**.
+- T4: `run_disposable_replay` projects into marked temp Chroma with `mutation_sink=None`, stub/live modes, checkpoint-under-root, two-level compare.
 - Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py tests/test_shadow_writer_coverage_scan.py` (run at tip).
 - Lock-timeout doctor WARN threshold **N = 3** (`LOCK_TIMEOUT_WARN_THRESHOLD_N` in `shadow_sink.py`).
-- `mutation_sink=None` neutrality covered by `test_no_sink_when_disabled_is_neutral`.
 - **Production activation still unauthorized.**
 
 **Architecture:**
@@ -211,22 +211,22 @@ rg -n 'open_chroma_for_write\(|ChromaStore\(' --glob '*.py' -g '!tests/**' .
 ## V5 — Disposable replay isolation and equality
 
 ```bash
-<focused replay/comparator test command from Execute>
+pytest -q tests/test_shadow_ledger_phase0_t4.py
 ```
 
 | ID | Check | PASS / FAIL / SKIP |
 |----|-------|--------------------|
-| V5a | Projector accepts only a newly created marked temporary root | PENDING |
-| V5b | Production root, parent, symlink/canonical alias, and nonempty unmarked target fail before writable open | PENDING |
-| V5c | Projector forces `mutation_sink=None` and cannot recurse into the shadow writer | PENDING |
-| V5d | Checkpoint lives under the disposable root and advances only after successful projection | PENDING |
-| V5e | Replay reduces valid events in order to final touched-ID state | PENDING |
-| V5f | Duplicate event IDs apply once and are counted; distinct IDs retain sequence history | PENDING |
-| V5g | Stub mode is deterministic, offline, and uses recorded dimensions | PENDING |
-| V5h | Live mode is explicit/local/disposable and cannot upgrade unknown provenance to PASS | PENDING |
-| V5i | State and projection equality are reported separately; raw vectors are excluded | PENDING |
-| V5j | Exact document drift fails projection equality and unknown identity is `UNVERIFIABLE` | PENDING |
-| V5k | Report includes all Architecture comparison categories and scopes claims to post-activation touched IDs | PENDING |
+| V5a | Projector accepts only a newly created marked temporary root | **PASS** — `prepare_replay_root` writes `.convmem_shadow_replay_ok` |
+| V5b | Production root, parent, symlink/canonical alias, and nonempty unmarked target fail before writable open | **PASS** — `test_refuse_*` (prod/parent/symlink/unmarked) |
+| V5c | Projector forces `mutation_sink=None` and cannot recurse into the shadow writer | **PASS** — `open_replay_store` + `test_no_shadow_recursion_even_when_cfg_eligible` |
+| V5d | Checkpoint lives under the disposable root and advances only after successful projection | **PASS** — checkpoint under root; corruption stops without advancing past bad line |
+| V5e | Replay reduces valid events in order to final touched-ID state | **PASS** — `reduce_final_states` + ordered `project_event` in `run_disposable_replay` |
+| V5f | Duplicate event IDs apply once and are counted; distinct IDs retain sequence history | **PASS** — duplicate counted; second distinct id projects |
+| V5g | Stub mode is deterministic, offline, and uses recorded dimensions | **PASS** — `stub_embedding` + stub replay test (no network) |
+| V5h | Live mode is explicit/local/disposable and cannot upgrade unknown provenance to PASS | **PASS** — missing host/model and unreachable raise `LiveEmbedError` (no stub fallback); UNVERIFIABLE blocks projection PASS |
+| V5i | State and projection equality are reported separately; raw vectors are excluded | **PASS** — `equality_flags` / `ReplayResult.state_equal` vs `projection_equal` |
+| V5j | Exact document drift fails projection equality and unknown identity is `UNVERIFIABLE` | **PASS** — `test_document_drift_*` + `test_unverifiable_*` |
+| V5k | Report includes all Architecture comparison categories and scopes claims to post-activation touched IDs | **PASS** — `ARCHITECTURE_CATEGORIES` + `touched_ids` scoped compare |
 
 ## V6 — Inventory and readiness semantics
 

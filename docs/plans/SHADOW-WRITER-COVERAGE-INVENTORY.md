@@ -55,6 +55,7 @@ activation against the live corpus is forbidden for this verification slice.
 | `convmem.py:134` | read_only |
 | `mcp_server.py:897` | read_only |
 | `mcp_server.py:944` | read_only |
+| `shadow_replay.py:176` | replay_internal (`mutation_sink=None`) |
 
 ## Reclassified read
 
