@@ -1,11 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (Claude APPROVE Execution Plan @ 806da74 — awaiting Ryan Execute grant)
+**Updated:** 2026-07-24 (Shadow Ledger Phase 0 Execute started — T1 landed)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger Execution Plan — Claude APPROVE (2026-07-24):** Who/What: Claude Cloud APPROVE (90) of revised plan tip `806da74` on [#115](https://github.com/alanmz-crypto/convmem/pull/115) after Kiro lock B. When: now. Why: second opinion before Execute. How: Ryan may grant **Execution HITL** (“Approve Execute”); Cursor then starts T1. Two Claude notes fold into VERIFY evidence (N lock-timeout WARN; `mutation_sink=None` neutrality). **Production activation still forbidden.**
+- **Shadow Ledger Phase 0 Execute AUTHORIZED + T1 started (Ryan 2026-07-24):** Who/What: Ryan Execution HITL; Cursor on `feat/2026-07-24-shadow-ledger-phase0` implementing [`EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md) T1 (contract, disabled config, activation baseline). When: now. Why: prove disabled-by-default delta capture. How: T2–T5 next; **production activation still forbidden.** Runtime stamp @ 2026-07-25T04:03:19Z / main was `0d08310` pre-branch.
 
 - **Shadow Ledger Execution Planning AUTHORIZED (Ryan 2026-07-24):** Who/What: Codex may author [`EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md) from approved Architecture on [#115](https://github.com/alanmz-crypto/convmem/pull/115); handoff [`CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md). When: after Gate 1b PASS + #121 on `main`. Why: Planning OS task decomposition. How: Ryan pastes work order to Codex; plan still needs Execution HITL; **Cursor Execute / hooks / activation still forbidden.** Track 1 [#120](https://github.com/alanmz-crypto/convmem/pull/120) unchanged.
 

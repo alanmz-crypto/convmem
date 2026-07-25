@@ -9,7 +9,16 @@ CONFIG_PATH = Path(
 ).expanduser()
 
 # Keys whose string values are filesystem paths and should be expanduser()'d.
-_PATH_KEYS = {"chroma_dir", "processed_log", "units_export", "inventory"}
+_PATH_KEYS = {
+    "chroma_dir",
+    "processed_log",
+    "units_export",
+    "inventory",
+    # Phase 0 shadow ledger (optional [shadow_ledger] table)
+    "ledger_path",
+    "activation_manifest_path",
+    "health_path",
+}
 
 
 def _expand(value):
