@@ -13,7 +13,7 @@ Authority:    Post-Execute HITL — do not trust prior chat claims alone
 **Stub status:** Execute in progress on PR #122. Mechanical focused tests exist;
 full V0–V8 row fill awaits final Execute tip + independent sign-off.
 
-**Subject / tip:**  @  ()
+**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` @ `0d2a656` (`0d2a6568546bff93e86470e41d803e23fdc12ce0`)
 
 **PR(s):** [#122](https://github.com/alanmz-crypto/convmem/pull/122)
 
