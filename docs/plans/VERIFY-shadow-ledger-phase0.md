@@ -10,12 +10,19 @@ Lanes:        Cursor (mechanical); Kiro/Ryan-named lane (sign-off); Ryan (GATE)
 Authority:    Post-Execute HITL — do not trust prior chat claims alone
 ```
 
-**Stub status:** Created during Execution Planning on 2026-07-25. Do not fill
-or run until Ryan approves the Execution Plan and Cursor completes Execute.
+**Stub status:** Execute in progress on PR #122. Mechanical focused tests exist;
+full V0–V8 row fill awaits final Execute tip + independent sign-off.
 
-**Subject / tip:** `<final Execute branch and tip SHA>`
+**Subject / tip:** `feat/2026-07-24-shadow-ledger-phase0` (update at Execute close)
 
-**PR(s):** `<Execute PR>`
+**PR(s):** [#122](https://github.com/alanmz-crypto/convmem/pull/122)
+
+**Execute progress (Cursor mechanical):**
+- T1–T5 modules landed (contract, sink, durability tests, replay helpers, inventory helpers).
+- Focused suite: `pytest -q tests/test_shadow_ledger_phase0_t*.py` → **27 passed** (pre-close tip).
+- Lock-timeout doctor WARN threshold **N = 3** (`LOCK_TIMEOUT_WARN_THRESHOLD_N` in `shadow_sink.py`).
+- `mutation_sink=None` neutrality covered by `test_no_sink_when_disabled_is_neutral`.
+- **Production activation still unauthorized.**
 
 **Architecture:**
 
