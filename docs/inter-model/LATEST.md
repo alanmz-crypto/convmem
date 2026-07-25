@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (Shadow Ledger Execution Planning authorized for Codex)
+**Updated:** 2026-07-24 (Shadow Ledger Execution Plan awaiting HITL @ 5104022)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
