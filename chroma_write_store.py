@@ -1,8 +1,7 @@
 """Authoritative production write-store factory for Phase 0 shadow injection.
 
 ChromaStore does not load config. Only this factory may decide sink injection
-after shadow_ledger.decide_sink_injection. T1 exposes the decision gate; T2
-attaches the sink object when inject=True.
+after shadow_ledger.decide_sink_injection and construct JsonlUnitMutationSink.
 """
 
 from __future__ import annotations
@@ -11,7 +10,8 @@ from pathlib import Path
 from typing import Any, Literal, Mapping
 
 from chroma_store import ChromaStore
-from shadow_ledger import SinkInjectionDecision, decide_sink_injection
+from shadow_ledger import SinkInjectionDecision, decide_sink_injection, resolve_shadow_settings
+from shadow_sink import JsonlUnitMutationSink
 
 WritePurpose = Literal["production", "test"]
 
@@ -24,34 +24,29 @@ def open_chroma_for_write(
     create_collections: bool = True,
     mutation_sink: Any | None = None,
 ) -> tuple[ChromaStore, SinkInjectionDecision]:
-    """Open a write-capable ChromaStore; sink only when decision.inject and provided.
+    """Open a write-capable ChromaStore; attach sink only when contract allows.
 
     Read / verify / evaluation / restore-drill / disposable replay must not call
-    this for production injection — they keep mutation_sink=None on their own
-    constructors (T2).
+    this for production injection — they keep mutation_sink=None.
     """
     decision = decide_sink_injection(cfg, chroma_dir=chroma_dir)
+    sink: Any | None = None
     if purpose != "production":
         decision = SinkInjectionDecision(
             False, f"purpose={purpose} forces mutation_sink=None"
         )
-        sink = None
-    elif not decision.inject:
-        sink = None
-    else:
-        # Eligible: attach caller-provided sink (T2 constructs it). T1 tests
-        # leave mutation_sink=None so no live shadowing occurs.
-        sink = mutation_sink
+    elif mutation_sink is not None:
+        sink = mutation_sink if decision.inject else None
+    elif decision.inject:
+        settings = resolve_shadow_settings(cfg)
+        sink = JsonlUnitMutationSink(
+            ledger_path=settings.ledger_path,
+            health_path=settings.health_path,
+        )
 
-    try:
-        store = ChromaStore(
-            str(chroma_dir),
-            create_collections=create_collections,
-            mutation_sink=sink,
-        )
-    except TypeError:
-        store = ChromaStore(
-            str(chroma_dir),
-            create_collections=create_collections,
-        )
+    store = ChromaStore(
+        str(chroma_dir),
+        create_collections=create_collections,
+        mutation_sink=sink,
+    )
     return store, decision

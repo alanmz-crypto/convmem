@@ -7,13 +7,17 @@ is created lazily in Step 5.
 
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
+from typing import Any
 
 import chromadb
 
 SUMMARIES = "conversation_summaries"
 UNITS = "knowledge_units"
+
+_log = logging.getLogger("convmem.chroma_store")
 
 # Cache for superseded count — avoids O(n) metadata scan on every stats/search call.
 # Superseded status changes only during refine dedupe or forget, not in normal reads.
@@ -94,13 +98,54 @@ def is_superseded(meta: dict) -> bool:
 
 
 class ChromaStore:
-    def __init__(self, chroma_dir: str, *, create_collections: bool = True):
+    def __init__(
+        self,
+        chroma_dir: str,
+        *,
+        create_collections: bool = True,
+        mutation_sink: Any | None = None,
+    ):
         self.chroma_dir = str(Path(chroma_dir).expanduser())
         # SegmentAPI + hnswlib compat shim can count() but fails upsert on
         # existing persistent HNSW ("Index seems to be corrupted or unsupported").
         self.client_mode = "PersistentClient"
         self.create_collections = create_collections
+        # Optional Phase 0 observer — knowledge_units only; never loads config.
+        self.mutation_sink = mutation_sink
         self.client = chromadb.PersistentClient(path=self.chroma_dir)
+
+    def _prepare_shadow_event_id(self) -> str | None:
+        sink = self.mutation_sink
+        if sink is None:
+            return None
+        return sink.prepare_event_id()
+
+    def _emit_shadow(
+        self,
+        *,
+        event_id: str | None,
+        operation: str,
+        stable_entity_id: str,
+        document: str | None,
+        metadata: dict | None,
+        deleted: bool,
+        writer_route: str,
+    ) -> None:
+        sink = self.mutation_sink
+        if sink is None or not event_id:
+            return
+        try:
+            sink.observe(
+                event_id=event_id,
+                operation=operation,
+                stable_entity_id=stable_entity_id,
+                document=document,
+                metadata=metadata,
+                deleted=deleted,
+                writer_route=writer_route,
+            )
+        except Exception as exc:  # never affect Chroma success
+            _log.error("mutation_sink.observe failed: %s", exc)
 
     def close(self) -> None:
         """Release the PersistentClient so readers can open the corpus."""
@@ -180,11 +225,22 @@ class ChromaStore:
                 raise ValueError(
                     "governed decision replace requires proposal_id from approval protocol"
                 )
+        event_id = self._prepare_shadow_event_id()
+        operation = "replace" if existing is not None else "create"
         self._collection(UNITS).upsert(
             ids=[unit_id],
             documents=[document],
             embeddings=[embedding],
             metadatas=[meta],
+        )
+        self._emit_shadow(
+            event_id=event_id,
+            operation=operation,
+            stable_entity_id=unit_id,
+            document=document,
+            metadata=meta,
+            deleted=False,
+            writer_route="ChromaStore.add_unit",
         )
 
     def query_units(
@@ -289,9 +345,25 @@ class ChromaStore:
 
     def update_unit_metadata(self, unit_id: str, metadata: dict) -> None:
         """Replace metadata for an existing unit."""
+        from shadow_sink import classify_metadata_operation
+
+        before = self.get_unit(unit_id)
+        before_meta = (before or {}).get("metadata") if before else None
         meta = dict(metadata)
         meta["id"] = unit_id
+        event_id = self._prepare_shadow_event_id()
+        operation = classify_metadata_operation(before_meta, meta)
         self._collection(UNITS).update(ids=[unit_id], metadatas=[meta])
+        doc = (before or {}).get("document") if before else None
+        self._emit_shadow(
+            event_id=event_id,
+            operation=operation,
+            stable_entity_id=unit_id,
+            document=doc if isinstance(doc, str) else None,
+            metadata=meta,
+            deleted=False,
+            writer_route="ChromaStore.update_unit_metadata",
+        )
 
     def update_unit(
         self,
@@ -301,11 +373,22 @@ class ChromaStore:
         metadata: dict,
     ) -> None:
         """Replace document, embedding, and metadata for an existing unit."""
+        meta = dict(metadata or {})
+        event_id = self._prepare_shadow_event_id()
         self._collection(UNITS).update(
             ids=[unit_id],
             documents=[document],
             embeddings=[embedding],
-            metadatas=[metadata],
+            metadatas=[meta],
+        )
+        self._emit_shadow(
+            event_id=event_id,
+            operation="replace",
+            stable_entity_id=unit_id,
+            document=document,
+            metadata=meta,
+            deleted=False,
+            writer_route="ChromaStore.update_unit",
         )
 
     def count_for_source_path(self, collection_name: str, source_path: str) -> int:
@@ -317,10 +400,34 @@ class ChromaStore:
     def delete_units_for_source(self, source_path: str) -> int:
         """Remove all knowledge units indexed from ``source_path``."""
         col = self._collection(UNITS)
-        res = col.get(where={"source_path": source_path}, include=[])
+        res = col.get(
+            where={"source_path": source_path},
+            include=["metadatas", "documents"],
+        )
         ids = res.get("ids") or []
+        metas = res.get("metadatas") or []
+        docs = res.get("documents") or []
+        prepared = [
+            (
+                unit_id,
+                self._prepare_shadow_event_id(),
+                dict(metas[i] if i < len(metas) else {}) or {},
+                docs[i] if i < len(docs) else None,
+            )
+            for i, unit_id in enumerate(ids)
+        ]
         if ids:
             col.delete(ids=ids)
+        for unit_id, event_id, meta, doc in prepared:
+            self._emit_shadow(
+                event_id=event_id,
+                operation="delete",
+                stable_entity_id=unit_id,
+                document=doc if isinstance(doc, str) else None,
+                metadata=meta,
+                deleted=True,
+                writer_route="ChromaStore.delete_units_for_source",
+            )
         return len(ids)
 
     def preview_supersede_for_source(self, source_path: str) -> list[dict]:
@@ -368,12 +475,22 @@ class ChromaStore:
             row = dict(meta or {})
             if is_superseded(row):
                 continue
+            event_id = self._prepare_shadow_event_id()
             row["superseded"] = True
             row["superseded_by"] = superseded_by
             row["updated_at"] = now
             row["id"] = unit_id
             col.update(ids=[unit_id], metadatas=[row])
             n += 1
+            self._emit_shadow(
+                event_id=event_id,
+                operation="supersede",
+                stable_entity_id=unit_id,
+                document=None,
+                metadata=row,
+                deleted=False,
+                writer_route="ChromaStore.supersede_units_for_source",
+            )
         if n:
             invalidate_superseded_cache(self.chroma_dir)
         return n
