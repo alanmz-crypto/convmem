@@ -157,7 +157,7 @@ def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
     if not ledger_id:
         return "", "", False
     try:
-        from chroma_store import ChromaStore, is_superseded
+        from chroma_store import is_superseded, open_chroma_for_read
         from ledger import find_unit_by_ledger_id
     except Exception:
         return "", "", False
@@ -165,8 +165,11 @@ def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
     if not chroma_dir:
         return "", "", False
     try:
-        store = ChromaStore(chroma_dir)
-        unit = find_unit_by_ledger_id(store, ledger_id)
+        store = open_chroma_for_read(chroma_dir)
+        try:
+            unit = find_unit_by_ledger_id(store, ledger_id)
+        finally:
+            store.close()
     except Exception:
         return "", "", False
     if unit is None:
@@ -515,7 +518,7 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
     """Upsert decisions-approved.jsonl into Chroma."""
     from pathlib import Path
 
-    from chroma_store import ChromaStore
+    from chroma_write_store import open_chroma_for_write
     from observe import ingest_observation_file
 
     models = cfg.get("models")
@@ -523,7 +526,7 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
         from config import load_config
 
         models = load_config()["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
     return ingest_observation_file(
@@ -541,7 +544,7 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
     """Index one approved decision (fast path for record --approve-last)."""
     from pathlib import Path
 
-    from chroma_store import ChromaStore
+    from chroma_write_store import open_chroma_for_write
     from ledger import invalidate_ledger_index_cache
     from observe import ingest_observation
 
@@ -550,7 +553,7 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
         from config import load_config
 
         models = load_config()["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
     protocol_ledger = {**ledger, "_governed_protocol": True}

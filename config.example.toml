@@ -103,3 +103,13 @@ synthesis_pass_min    = 0.8
 # max wall-clock for one llama3.1:8b summarize before flagging (proxy for a
 # silent GPU->CPU fallback / contention). Pin to normal GPU-path timing.
 canary_latency_ms_max = 15000
+
+# Phase 0 shadow ledger — disabled by default. Absent table ≡ enabled=false.
+# enabled=true only permits an activation attempt; sink injection requires a
+# complete matching activation manifest (separate Ryan activation grant).
+# Do not enable in live ~/.config/convmem/config.toml without that grant.
+[shadow_ledger]
+enabled = false
+ledger_path = "~/.local/share/convmem/shadow_ledger.jsonl"
+activation_manifest_path = "~/.local/share/convmem/shadow_activation.json"
+health_path = "~/.local/share/convmem/shadow_health.json"

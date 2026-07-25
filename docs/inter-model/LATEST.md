@@ -1,15 +1,35 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-24 (Gate 1b docs fix: readiness behavior-change bullet)
+**Updated:** 2026-07-25 (DeepSeek close-out handoff for #122 V8)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Shadow Ledger Gate 1b fix landed (pending Ryan PASS confirm):** Who/What: docs-only edit to `LEDGER-FIRST-READINESS-VERDICT.md` replacing residual “No production behavior change” Phase 0 bullet (DeepSeek+Kiro round-2 lock B). When: branch `docs/2026-07-24-gate1b-readiness-behavior-change`. Why: close authorization leak before Codex Execution Planning. How: Ryan confirms **Gate 1b PASS**, then may authorize Codex for `EXECUTION-shadow-ledger-phase0.md`. Execute still forbidden.
+- **Shadow Ledger → DeepSeek V4-Pro close-out (2026-07-25):** Who/What: Cursor packaged [`CURSOR-2026-07-25-shadow-ledger-phase0-deepseek-closeout-handoff.md`](CURSOR-2026-07-25-shadow-ledger-phase0-deepseek-closeout-handoff.md) for DeepSeek API `deepseek-v4-pro` to finish VERIFY **V8** + merge notes on [#122](https://github.com/alanmz-crypto/convmem/pull/122). When: now. Why: mechanical V0–V7 done; independent sign-off remains. How: paste work order from that file; **activation forbidden.** Tips: evidence `ca69034`, branch `77ed95c`.
+
+- **Shadow Ledger mechanical VERIFY V0–V7 FILLED (2026-07-25):** Who/What: Cursor filled [`VERIFY-shadow-ledger-phase0.md`](../plans/VERIFY-shadow-ledger-phase0.md) on [#122](https://github.com/alanmz-crypto/convmem/pull/122) — V0–V7 **PASS** (V0d/V0e SKIP→V8); full `pytest -q` **837 passed**. When: earlier today. Why: clear activation bar prerequisites. How: DeepSeek V8 handoff above; **activation still forbidden.** Residuals: restic_gate stale; embed_model WARN.
+
+- **Shadow Ledger T5 inventory CLI EXECUTED (2026-07-24):** Who/What: `convmem shadow-inventory` on [#122](https://github.com/alanmz-crypto/convmem/pull/122); V6 PASS. When: earlier. Why: Execute core. How: VERIFY mechanical filled (see above).
+
+- **Shadow Ledger T3/V4 durability EXECUTED (2026-07-24):** Who/What: V4a–V4k **PASS** on [#122](https://github.com/alanmz-crypto/convmem/pull/122). When: earlier tonight. Why: readiness gate. How: T5 followed (see above).
+
+- **Shadow Ledger T4 projector EXECUTED (2026-07-24):** Who/What: Ryan locked T4 after DeepSeek+Kiro; `run_disposable_replay` on [#122](https://github.com/alanmz-crypto/convmem/pull/122). VERIFY V5a–V5k **PASS**. When: earlier tonight. Why: isolation gate. How: T3/V4 followed (see above).
+
+- **Shadow Ledger V3 factory migration (2026-07-24):** Who/What: Cursor on [#122](https://github.com/alanmz-crypto/convmem/pull/122) routed production writers through `open_chroma_for_write` / `chroma_write_session`; VERIFY V3b/V3d/V3e **PASS** (code-path). Inventory: [`SHADOW-WRITER-COVERAGE-INVENTORY.md`](../plans/SHADOW-WRITER-COVERAGE-INVENTORY.md) — **0** bypasses. When: earlier today. Why: close coverage gap from `5c0ddb8`. How: T4 landed (see above). Production activation still off.
+
+- **Shadow Ledger V3 coverage gap PROVED then closed (2026-07-24):** Prior FAIL at tip `5c0ddb8` (0 factory callers; 14 bypasses) — superseding bullet above after migration.
+
+- **Shadow Ledger Phase 0 Execute AUTHORIZED + T1 started (Ryan 2026-07-24):** Who/What: Ryan Execution HITL; Cursor on `feat/2026-07-24-shadow-ledger-phase0` implementing [`EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md) T1 (contract, disabled config, activation baseline). When: now. Why: prove disabled-by-default delta capture. How: T2–T5 next; **production activation still forbidden.** Runtime stamp @ 2026-07-25T04:03:19Z / main was `0d08310` pre-branch.
+
+- **Shadow Ledger Execution Planning AUTHORIZED (Ryan 2026-07-24):** Who/What: Codex may author [`EXECUTION-shadow-ledger-phase0.md`](../plans/EXECUTION-shadow-ledger-phase0.md) from approved Architecture on [#115](https://github.com/alanmz-crypto/convmem/pull/115); handoff [`CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-codex-execution-handoff.md). When: after Gate 1b PASS + #121 on `main`. Why: Planning OS task decomposition. How: Ryan pastes work order to Codex; plan still needs Execution HITL; **Cursor Execute / hooks / activation still forbidden.** Track 1 [#120](https://github.com/alanmz-crypto/convmem/pull/120) unchanged.
+
+- **Shadow Ledger Gate 1b PASS (Ryan 2026-07-24):** Audit corrections accepted (#121 `0d08310`). Precondition cleared; Execution Planning authorship now authorized (see bullet above).
 
 - **Track 1 backup — Hybrid consistency bar LOCKED (2026-07-24):** Who/What: Ryan locked Hybrid after DeepSeek V4-Pro + Kiro dense consult; Copilot must audit exact SHA `492e6e7` with A-checklist + Five-part report card. When: now. Why: full-root backup merge blocked on safety bar. How: paste [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md) (+ base contract linked therein) into GitHub Copilot audit lane. **Does not authorize** live Restic, merge of backup branch, Neutral, or Shadow Execute (#115 still HITL-only).
 
-- **Shadow Ledger Phase 0 Architecture authored — awaiting HITL (2026-07-24):** Who/What: Codex draft Architecture in PR [#115](https://github.com/alanmz-crypto/convmem/pull/115) (`ARCHITECTURE-shadow-ledger-phase0.md`, tip `c9a5c70`). When: after Qwen audit + ChatGPT work order; Architecture on GitHub. Why: Phase 0 direction locked for review. How: Ryan HITL on #115; **Cursor Execute prohibited**; no shadow hooks/runtime. Salvage of local audit/handoff: this branch / PR (workspace-coord salvage). Related: [`CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md) (superseded for Architecture authorship), [`../audit-ledger-first/README.md`](../audit-ledger-first/README.md).
+- **Shadow Ledger Phase 0 Architecture HITL LOCKED (2026-07-24):** Who/What: Ryan approved [#115](https://github.com/alanmz-crypto/convmem/pull/115) Direction (DeepSeek APPROVE + Kiro APPROVE_WITH_REVISIONS applied; ChatGPT Codex work order + Approve-with-revisions packaging assessment versioned in [`CURSOR-2026-07-24-shadow-ledger-phase0-codex-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-codex-handoff.md)). When: Architecture closed; Gate 1b now PASS. Why: Phase 0 boundary locked (Option B). How: next is separate Ryan grant for Codex Execution Planning. **Execute still forbidden.**
+
+
 
 - **Workspace-coord salvage to GitHub (2026-07-24):** Who/What: WS-main-cursor lands previously LOCAL_ONLY audit dir, ChatGPT handoff, Track-1/2 decision memos, coord board snapshot. When: Round 3 after ONE_PRIMARY → WS-main-cursor. Why: close sibling chats without losing takeover data. How: dedicated docs branch (not research-pack, not #115 edits). See [`CURSOR-2026-07-24-backup-neutral-decision-memos.md`](CURSOR-2026-07-24-backup-neutral-decision-memos.md), [`COORD-2026-07-24-shadow-ledger-workspaces-BOARD.md`](COORD-2026-07-24-shadow-ledger-workspaces-BOARD.md).
 

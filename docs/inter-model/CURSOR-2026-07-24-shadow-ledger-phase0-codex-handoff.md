@@ -1,0 +1,475 @@
+# Cursor → Codex: Shadow Ledger Phase 0 Architecture work order (verbatim)
+
+**Who:** ChatGPT authored this work order; Cursor packages it for provenance.
+**What:** Exact Codex Architecture Planning brief for Shadow Ledger Phase 0.
+**When:** Work order used to author [#115](https://github.com/alanmz-crypto/convmem/pull/115);
+salvaged to Git 2026-07-24 after Architecture HITL lock (tip carried
+`ARCHITECTURE-shadow-ledger-phase0.md`).
+**Why:** The packaging step was superseded when #115 appeared; the verbatim
+text lived only in chat until this file.
+**How:** Treat Section “Exact ChatGPT/Codex work order” as immutable intake.
+Architecture Direction is already **HITL approved** on #115 — do **not**
+re-open Architecture authorship from this file. Next planning step remains
+Gate 1b, then Codex `EXECUTION-shadow-ledger-phase0.md` under a **separate**
+Ryan grant. Cursor Execute still forbidden.
+
+## Provenance and authority
+
+| Item | Value |
+|---|---|
+| Work-order author | ChatGPT Cloud (strategy) |
+| Planning lane | OpenAI Codex |
+| Implementation lane | Cursor — **not authorized** by this document |
+| Architecture artifact | [`docs/plans/ARCHITECTURE-shadow-ledger-phase0.md`](../plans/ARCHITECTURE-shadow-ledger-phase0.md) |
+| Architecture HITL | **APPROVED** Ryan 2026-07-24 (Kiro Gate 1b + lock-timeout revisions applied) |
+| Related intake | [`CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md`](CURSOR-2026-07-24-shadow-ledger-phase0-chatgpt-handoff.md) |
+| Implementation Handoff (local draft input) | `~/.cursor/plans/shadow_ledger_phase_0_cadca832.plan.md` |
+| Audit baseline | `docs/audit-ledger-first/` on `main` via [#117](https://github.com/alanmz-crypto/convmem/pull/117) |
+
+## Working-tree audit-document status (historical)
+
+ChatGPT packaging revision #1 required this exact meaning (not “on branch /
+tip”). At packaging time HEAD was `64d714b`:
+
+> Cursor’s current working tree contains an untracked `docs/audit-ledger-first/`
+> directory with eight files. These files are not part of HEAD `64d714b` and may
+> not be visible in Codex’s worktree. Codex may inspect them only if they are
+> actually present. Otherwise, it must record the missing audit baseline as a
+> blocker and must not reconstruct it from summaries.
+
+**Superseding fact (after packaging):** the eight-file pack is on `main` via
+[#117](https://github.com/alanmz-crypto/convmem/pull/117) with
+Architecture-required correction banners. Location blocker cleared; further
+factual corrections still need Ryan **Gate 1b** before Execution Planning.
+
+## Exact ChatGPT/Codex work order — verbatim
+
+The following block is the work order as supplied by Ryan (2026-07-24). Do not
+summarize or rewrite the eleven decisions when citing this intake.
+
+````markdown
+# Codex Work Order — Plan Shadow Ledger Phase 0
+You are the **planning lane**, not the implementation lane.
+Follow the repository Planning OS exactly:
+1. Read:
+   * `AGENTS.md`
+   * `docs/PLANNING-PROTOCOL.md`
+   * `docs/planning/ARCHITECTURE-PLANNING.md`
+   * `docs/reasoning-modes.md`
+   * `docs/MODEL-WORKFLOW.md`
+   * `docs/builder-reference.md`
+   * the supplied `Shadow Ledger Phase 0 Implementation Handoff`
+2. Inspect the actual repository and establish:
+   * current branch
+   * current tip SHA
+   * worktree status
+   * whether `docs/audit-ledger-first/` exists on another branch, worktree, or supplied source
+   * every production mutation route for the `knowledge_units` Chroma collection
+3. Begin in **Architecture Planning**. Do not enter Execution Planning and do not modify runtime code.
+## Source authority
+Treat these points as already decided and do not reopen them:
+* Chroma remains Tier-1 truth during Phase 0.
+* The new ledger is shadow/candidate evidence only.
+* No production read-path change.
+* No restore-order change.
+* No production migration or live Chroma rewrite.
+* No canonical-schema freeze.
+* No Neutral Core or Office Team work.
+* No unification of observation and governed-decision authority.
+* Shadow append failure must be visible but must not roll back or block a successful Chroma write.
+* Disposable replay must never target production Chroma.
+* Ryan approval is required before write-path hooks land and again before any later cutover work.
+## Architecture question
+Choose one architecture for recording every successful production mutation of Chroma knowledge units into a durable, append-only, non-authoritative shadow ledger without causing recursive writes, changing Chroma authority, or silently omitting mutation routes.
+## Required system boundary
+### In scope
+* Append-only shadow event writer.
+* Serialized append, flush, and fsync.
+* Tail validation and corruption classification.
+* Complete production mutation coverage.
+* Creation, full update, metadata update, supersede, restore, and hard-delete events.
+* Structured failure visibility and audit-gap reporting.
+* Disposable replay into a temporary Chroma root.
+* Final-state comparison against production.
+* Chroma-only inventory.
+* Candidate-only legacy-decision classification.
+* Phase-0 readiness report.
+* Documentation of the unchanged backup and restore doctrine.
+### Out of scope
+* Production reads from shadow.
+* Production rebuild from shadow.
+* Live migration.
+* Rewriting `knowledge_units.jsonl`.
+* Changing Restic restore selection or recovery authority.
+* Final canonical schema declaration.
+* Decisions-ledger authority changes.
+* Neutral or Office Team implementation.
+* Automatic repair or classification of historical production records.
+## Repository findings that the architecture must address
+The originally named mutation routes are not the entire writer inventory. Inspect and account for at least:
+* `observe.ingest_observation`
+* `observe.repair_empty_ledger_documents`
+* `verify.verify_unit`
+* `ingest._commit_chunk_to_stores`
+* forced reindex supersede and delete paths
+* `inter_model_index.index_inter_model_messages`
+* governed-decision ingestion in `propose_decision.py`
+* `refine.py` metadata and tombstone jobs
+* `convmem forget`, including undo/restore
+* `source_purge.py`
+* write-capable MCP routes
+* every caller of:
+  * `ChromaStore.add_unit`
+  * `ChromaStore.update_unit`
+  * `ChromaStore.update_unit_metadata`
+  * `ChromaStore.supersede_units_for_source`
+  * `ChromaStore.delete_units_for_source`
+Do not treat a grep list alone as proof of coverage. Establish whether any code mutates the Chroma collection directly.
+## Architecture options to compare
+Compare no more than these three approaches:
+### Option A — Scattered domain hooks
+Each business operation explicitly appends its shadow event after its Chroma mutation.
+Assess drift risk, repeated record construction, and missed future writers.
+### Option B — ChromaStore mutation sink
+Add an optional mutation observer/sink to `ChromaStore`. It is disabled by default. A production write-store factory installs the shadow sink when Phase 0 is enabled. Direct read stores, tests, restore verification, and disposable replay do not install the sink.
+Assess whether this captures all mutation semantics, including bulk supersede and hard deletion.
+### Option C — Higher-level write service
+Place all unit mutations behind a new service and migrate existing callers to it.
+Assess migration size, bypass risk, and whether it is too large for Phase 0.
+Unless repository evidence contradicts it, prefer **Option B** because it centralizes coverage while remaining opt-in and avoids recursive shadowing during replay.
+## Decisions the Architecture Direction must make
+Do not leave these as later implementation choices.
+### 1. Activation and dependency boundary
+Specify:
+* exact configuration shape
+* behavior when the configuration section is absent
+* how production writers receive the sink
+* how tests explicitly enable it
+* how temporary replay explicitly disables it
+* whether the shadow path defaults to the configured Chroma data root’s parent
+Recommended default:
+* feature absent or disabled means no shadow writes
+* Ryan enables it explicitly for Phase 0
+* once enabled, every production knowledge-unit mutation is observed
+### 2. Mutation envelope
+Define a provisional Phase-0 envelope containing at least:
+* `shadow_schema_version`
+* `event_id`
+* deterministic `mutation_fingerprint`
+* `event_type`
+* `recorded_at`
+* `chroma_id`
+* `ledger_id`, when present
+* resulting document, when the unit still exists
+* resulting replay-relevant metadata
+* pre-delete identity/state for a hard delete
+* `state_hash`
+* embedding-model tag
+* operation provenance or writer route
+* explicit `candidate` or `shadow` authority marker
+The schema must remain labeled provisional and non-canonical.
+### 3. Event vocabulary
+Cover final-state semantics for at least:
+* `unit_created`
+* `unit_replaced`
+* `unit_metadata_updated`
+* `unit_superseded`
+* `unit_restored`
+* `unit_deleted`
+Do not force governed-decision lifecycle events into this vocabulary. The shadow records the resulting Chroma projection mutation; it does not replace `decisions-approved.jsonl` or proposal lifecycle logs.
+### 4. Hash boundary
+Do not rely exclusively on `ledger_content_hash()`.
+Define a separate deterministic projection-state hash over:
+* stable unit identity
+* document
+* replay-relevant metadata
+Exclude:
+* raw embedding vectors
+* Chroma-generated/backend-only fields
+* transient process information
+State whether timestamps are included and why. Ensure metadata-only changes can produce a different state hash.
+### 5. Duplicate and uncertain-ack behavior
+Specify:
+* unique event identity
+* deterministic mutation fingerprint
+* replay behavior for repeated event IDs
+* replay behavior for different event IDs that produce the same final state
+* reporting of exact duplicate lines
+* reporting of conflicting events with the same mutation identity
+The replay must be idempotent. Duplicate final-state application may be a no-op, but conflicting duplicates must fail visibly.
+### 6. Append and lock protocol
+Specify the exact order:
+1. Chroma mutation succeeds.
+2. Build the resulting shadow event.
+3. Acquire the shadow lock.
+4. Validate the append boundary.
+5. append exactly one complete UTF-8 JSON line
+6. flush
+7. fsync the file
+8. release the lock
+Define the global lock-order relationship with existing governed, source, and export locks. The shadow writer must never acquire a source, export, or governed lock while holding its own lock.
+### 7. Corruption handling
+Define behavior for:
+* empty file
+* clean newline-terminated file
+* truncated final record
+* invalid middle record
+* valid duplicate record
+* non-object JSON record
+Recommended direction:
+* truncated final bytes may be copied to a quarantine artifact and the file safely truncated to the previous complete newline while holding the lock
+* invalid middle content fails closed for replay and append
+* corruption is never silently skipped
+* recovery actions affect only shadow artifacts, never Chroma
+### 8. Failure visibility
+A post-Chroma shadow failure cannot be rolled back.
+Specify:
+* structured logger/error event
+* best-effort failure journal that contains identifiers but not sensitive payloads
+* a counter or reportable gap condition
+* how later reconciliation marks the run unready
+* behavior when both the shadow file and failure journal are unwritable
+The caller’s successful Chroma mutation must still return successfully.
+### 9. Disposable replay
+Specify:
+* mandatory temporary output root
+* path checks preventing equality with, parenthood of, or child relationship to production Chroma
+* no shadow sink on the temporary store
+* checkpoint scoped only to the temporary replay root
+* deterministic event reduction
+* content comparison categories:
+  * missing in shadow
+  * missing in Chroma
+  * state-hash mismatch
+  * duplicate event
+  * conflicting mutation
+  * extra final state
+Define two embedding modes:
+* deterministic stub embeddings for hermetic automated tests
+* configured model re-embedding for live disposable validation
+Raw embeddings are not part of equality.
+### 10. Inventory and classification boundary
+The inventory tools must calculate current counts rather than hardcode 192 or 3,448.
+Define:
+* active Chroma IDs absent from `knowledge_units.jsonl`
+* safe category hints
+* machine-readable report output
+* no document or secret payload printed by default
+* legacy candidate classes:
+  * matched governed decision
+  * likely observation
+  * ambiguous
+* no automatic rewrite, ingestion, deletion, or authority transfer
+### 11. Backup doctrine
+Document only:
+* Chroma remains the restore truth.
+* Existing Chroma backup and restore behavior remains unchanged.
+* The shadow file may receive a separate lightweight backup for validation continuity.
+* No restore script may select or project from shadow in Phase 0.
+Do not modify the Restic live-write gate or restore drill to make shadow authoritative.
+## Required Architecture Direction output
+Create:
+`docs/plans/ARCHITECTURE-shadow-ledger-phase0.md`
+It must follow the repository Architecture Planning artifact format and contain:
+* Planning Status
+* source and authority
+* system boundary
+* current writer inventory
+* constraints and invariants
+* the three options
+* one chosen direction
+* rejected alternatives
+* lock-order decision
+* activation decision
+* event and hash boundaries
+* replay and corruption policy
+* risks and reversibility
+* missing-input/blocker section
+* downstream handoff
+The missing `docs/audit-ledger-first/` documents must be handled explicitly:
+* locate and cite their actual branch/source, or
+* record them as a blocker to the documentation-landing task
+Do not reconstruct unseen audit documents from the handoff.
+## Expected downstream artifacts after HITL approval
+Name, but do not create or execute yet:
+* `docs/plans/EXECUTION-shadow-ledger-phase0.md`
+* `docs/plans/VERIFY-shadow-ledger-phase0.md`
+The later Execution Plan should be bounded to five deliverables:
+1. Baseline documents and Phase-0 configuration contract.
+2. Shadow writer, mutation sink, and complete writer coverage.
+3. Durability, corruption, concurrency, and failure tests.
+4. Disposable replay and final-state comparison.
+5. Inventory tools and Phase-0 readiness report.
+## Stop condition
+Emit the Architecture Direction only.
+Do not:
+* modify Python runtime code
+* add the shadow writer
+* hook Chroma
+* create migration tools
+* alter backup or restore behavior
+* write a ledger decision
+* self-transition to Execution Planning
+End with:
+`Active phase lane must stop here. Await HITL.`
+````
+
+## Cursor stop condition (expanded)
+
+Packaging of this provenance file is complete. From this document alone, do
+**not**:
+
+* re-author or revise Architecture Direction beyond Ryan-authorized HITL edits
+* enter Execution Planning or create `EXECUTION-` / `VERIFY-` plans
+* modify Python runtime code, add the shadow writer, or hook Chroma
+* change production read paths, freeze schema, or change governed-decision authority
+* run production migration or rewrite `knowledge_units.jsonl`
+* alter backup / restore / Restic live-write gate behavior
+* stage or commit an untracked audit baseline without Ryan authorization
+  (audit baseline landing was separately authorized via #117)
+* begin Neutral / Office / cutover work
+
+**Still forbidden without a new Ryan grant:** Cursor Execute of Phase 0.
+
+## ChatGPT packaging assessment — Approve with revisions (verbatim)
+
+ChatGPT’s follow-up on Cursor’s packaging synthesis (before #115 existed).
+Local plan `~/.cursor/plans/codex_phase_0_work_order_940805a0.plan.md`
+incorporated these revisions. Full text preserved here so the assessment is
+not chat-only.
+
+### Timeline note (read before applying literally)
+
+| Assessment requirement | Status as of this tip |
+|---|---|
+| Cursor packages; Codex authors Architecture; Ryan reviews; no implementation | **Met** — Architecture authored + HITL approved on #115; Execute still off |
+| Dedicated docs branch; not backup/Neutral research-pack | **Met** — branch `docs/2026-07-24-shadow-ledger-phase0-architecture` |
+| Exact untracked-audit wording | **Historical** — required at packaging; audit now on `main` via #117 |
+| No stage/commit unless Ryan authorizes | **Superseded for this file** — Ryan authorized landing work-order provenance on #115; audit landing was #117 |
+| LATEST: “requested, not yet authored or approved” | **Superseded** — Architecture HITL **APPROVED** 2026-07-24 |
+| Embed work order verbatim; exact paths; no opaque “eight corrections” | **Met** in this file |
+| Expanded hard stops | **Met** in “Cursor stop condition (expanded)” |
+
+### Verbatim assessment
+
+````markdown
+## Assessment: **Approve with revisions**
+
+Cursor captured the central intent correctly: **Cursor packages the work order, Codex authors Architecture only, Ryan reviews it, and no implementation begins.** The lane separation, Option B preference, eleven required decisions, writer-coverage requirement, and hard stop are all faithful to the Codex work order.
+
+The synthesis is roughly **85–90% ready**, but I would correct three important points before Cursor executes it.
+
+### 1. Fix the audit-document provenance wording
+
+This sentence is technically inaccurate:
+
+> Present untracked on current branch … tip `64d714b`
+
+Untracked files are present in a **working tree**, not “on” a branch or commit. They are not reachable from `64d714b`, and another Codex worktree will probably not see them.
+
+Use:
+
+> Cursor’s current working tree contains an untracked `docs/audit-ledger-first/` directory with eight files. These files are not part of HEAD `64d714b` and may not be visible in Codex’s worktree. Codex may inspect them only if they are actually present. Otherwise, it must record the missing audit baseline as a blocker and must not reconstruct it from summaries.
+
+That distinction matters because the original handoff requires the audit documents to be landed deliberately as a baseline, not treated as though they were already versioned.
+
+### 2. Do not default to the backup/Neutral research branch
+
+Cursor currently says:
+
+> Default: stay on current branch…
+
+That is the weakest part of the synthesis. The current branch name includes `backup-neutral`, while both the original handoff and the Codex work order explicitly exclude Neutral work. The original branching instruction also recommends starting fresh rather than mixing unrelated work.
+
+A safer rule is:
+
+> Default: create a dedicated documentation branch such as `docs/shadow-ledger-phase0-codex-handoff`, or leave the packaging edits uncommitted for Ryan. Do not add these files to the backup/Neutral research-pack branch unless Ryan explicitly chooses that branch.
+
+This avoids contaminating two planning streams and prevents the eventual PR history from suggesting that Shadow Ledger architecture was part of the Neutral research pack.
+
+### 3. Clarify whether “land” means write, stage, or commit
+
+The plan uses phrases such as:
+
+> Land ChatGPT’s Codex Work Order
+> Cursor lands Codex handoff
+
+But it never states whether Cursor is authorized to commit.
+
+That ambiguity should be removed. Ryan’s stop points specifically reserve approval around committing the audit baseline and proceeding into later phases.
+
+Use:
+
+> Cursor may create the handoff file and update `LATEST.md` in the working tree. Do not stage, commit, push, or include `docs/audit-ledger-first/` unless Ryan explicitly authorizes that repository mutation.
+
+The audit files especially should **not** be left “for Architecture to decide how to commit.” Architecture should describe provenance and dependencies; **Ryan controls authorization to land them**.
+
+## Smaller improvements
+
+### Remove opaque references
+
+This phrase should be deleted or replaced with exact links:
+
+> Codex’s earlier eight corrections
+
+Nothing in the synthesis identifies those corrections. An architecture agent should not be expected to infer hidden inter-model history. Either provide the exact document path and commit or omit the reference.
+
+Likewise, replace:
+
+> ChatGPT handoff, Cursor revised plan path
+
+with exact paths. Every prior-context reference should be resolvable from the repository or embedded directly in the handoff.
+
+### Preserve the work order verbatim
+
+The handoff file should contain the full Codex work order **unchanged**, beneath a short provenance header. Cursor should not summarize or lightly rewrite the eleven decisions because that risks creating a second, subtly different specification.
+
+Recommended structure:
+
+```text
+1. Provenance and authority
+2. Working-tree audit-document status
+3. Exact ChatGPT/Codex work order — verbatim
+4. Cursor stop condition
+```
+
+### Strengthen `LATEST.md`
+
+The pointer should not merely say “Codex Architecture next.” It should record the approval state:
+
+> Active handoff: Shadow Ledger Phase 0 — Codex Architecture Planning requested, not yet authored or approved. Cursor implementation prohibited pending Ryan HITL.
+
+### Expand the Cursor hard stops
+
+The current hard stops are good but incomplete. Add:
+
+* No production read-path changes
+* No schema freeze
+* No governed-decision authority changes
+* No production migration or JSONL rewrite
+* No staging or committing the untracked audit baseline
+* No execution or verification plan yet
+
+These are explicit exclusions in the original Phase 0 contract.
+
+### `isProject: false`
+
+This is not dangerous, but a four-step repository handoff with branch and artifact state arguably qualifies as a small project. Leave it false only if Cursor uses `isProject` to distinguish implementation projects from short documentation operations.
+
+## Recommended corrected sequence
+
+```text
+1. Create a dedicated docs handoff branch, or remain uncommitted.
+2. Write the Codex handoff with exact provenance.
+3. State that audit files are untracked working-tree files, not part of HEAD.
+4. Embed the full Codex work order verbatim.
+5. Update LATEST.md with “requested, not approved.”
+6. Open the handoff for Ryan.
+7. Stop without staging, committing, Architecture authorship, or runtime work.
+8. Ryan sends the handoff to Codex.
+9. Codex produces ARCHITECTURE-shadow-ledger-phase0.md only.
+10. Ryan performs HITL review.
+```
+
+**Bottom line:** Cursor understood the intended role separation very well. Correct the untracked-file provenance, remove the default use of the backup/Neutral branch, and explicitly prohibit commits unless Ryan authorizes them. After those edits, the synthesis is safe to execute.
+````
