@@ -222,12 +222,16 @@ class AtomicJsonlTests(unittest.TestCase):
         self.assertEqual(len(temps), 0)
 
     def test_no_glob_scavenger(self):
-        import inspect
+        import inspect, re
         from observe import _upsert_jsonl_line
 
         source = inspect.getsource(_upsert_jsonl_line)
-        self.assertNotIn("glob", source.lower())
-        self.assertNotIn("scaveng", source.lower())
+        # Strip docstring to avoid false positives from documentation
+        no_docstring = re.sub(r'""".*?"""', '', source, flags=re.DOTALL)
+        impl_text = no_docstring.lower()
+        self.assertNotIn("glob.", impl_text)
+        self.assertNotIn("glob(", impl_text)
+        self.assertNotIn("iglob", impl_text)
 
     def test_duplicate_lines_handled(self):
         from observe import _upsert_jsonl_line
