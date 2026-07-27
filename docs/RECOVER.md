@@ -63,7 +63,69 @@ bash ~/Projects/convmem/scripts/verify-restic-gate.sh   # happy + fail-closed ne
 convmem doctor                                   # includes restic_gate check
 ```
 
-### Restore chroma from Restic
+### Complete-data restore from Restic
+
+The authoritative restore procedure uses explicit snapshot IDs resolved by
+`restic_snapshot.py` and validates the restored state through the complete-data
+preflight before any live replacement.
+
+**Resolve the current complete-data snapshot:**
+
+```bash
+python3 ~/Projects/convmem/restic_snapshot.py resolve   --repository "$(source ~/.config/convmem/restic.env && echo $RESTIC_REPOSITORY)"   --password-file ~/.config/convmem/restic.password   --expected-data-root ~/.local/share/convmem   --require-current-local-day
+```
+
+**Run the preflight (validates in isolation, never touches live data):**
+
+```bash
+python3 ~/Projects/convmem/scripts/complete_data_restore_preflight.py
+```
+
+This resolves the current complete-data snapshot, restores it with `--verify`
+into an isolated temporary directory, classifies every durable state path
+against the restore matrix, and writes a durable report.
+
+**Preflight classifications:**
+
+| Exit | Meaning | Next step |
+|------|---------|-----------|
+| `0` | `VALID` — all canonical state intact | Ryan authorizes live replacement |
+| `30` | `VALID_WITH_REPAIRABLE_DERIVED_DRIFT` | Repair from named source (see report), rerun preflight |
+| `31` | `BLOCKED` — canonical/control corruption | Investigate; **do not replace production** |
+| `32` | Isolation or internal failure | Retry; check Restic and permissions |
+
+**Repair sources for common derived drift:**
+
+| Drift item | Repair from |
+|------------|-------------|
+| `knowledge_units.jsonl` | Regenerate from Chroma with `convmem index` |
+| `processed.json` | Rescan sources with `convmem inventory` |
+| `pending_decisions.jsonl` | Rebuild from pending event log |
+| Queue files | Chroma only where deterministic |
+
+**Live replacement procedure (Ryan only):**
+
+1. Stop convmem processes (watch, refine, timer units).
+2. Preserve the pre-cutover root: `cp -a ~/.local/share/convmem ~/.local/share/convmem.pre-rollback`
+3. Run the preflight and confirm `VALID` (exit 0).
+4. Replace authoritative state first (Chroma, `decisions-approved.jsonl`,
+   `pending_decision_events.jsonl`).
+5. Regenerate derived state only from named sources.
+6. Run `convmem doctor` and re-run preflight on the replaced root.
+7. On failure: restore `~/.local/share/convmem.pre-rollback` and restart processes.
+
+**Never restore with `--tag` or `latest` for production recovery.** Always
+use an explicit snapshot ID validated through the resolver.
+
+### Verify complete-data integrity
+
+```bash
+python3 ~/Projects/convmem/scripts/restic_integrity_check.py
+# Manual deep check:
+python3 ~/Projects/convmem/scripts/restic_integrity_check.py --full-read-data
+```
+
+### Legacy Chroma-only restore
 
 ```bash
 source ~/.config/convmem/restic.env
@@ -71,6 +133,8 @@ export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE
 restic restore latest --tag convmem-chroma --target /tmp/convmem-chroma-restore
 # Inspect, then stop watch/refine and replace ~/.local/share/convmem/chroma/ deliberately
 ```
+**Warning:** this legacy method does not validate path correctness or
+complete-data coverage. Prefer the complete-data restore procedure above.
 
 ---
 
