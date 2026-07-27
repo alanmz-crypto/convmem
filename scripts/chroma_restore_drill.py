@@ -79,6 +79,37 @@ def _load_restic_env() -> dict[str, str]:
 
 
 def list_tagged_snapshots(env: dict[str, str], tag: str = "convmem-chroma") -> list[dict]:
+    """List tagged snapshots via the resolver for path validation.
+
+    Uses convmem-data-v1 for path-bound resolution, falling back to
+    chroma tag for legacy compatibility.
+    """
+    data_root = env.get("CONVMEM_DATA_ROOT", "").strip()
+    if not data_root:
+        chroma = env.get("CONVMEM_CHROMA_DIR", "").strip()
+        if chroma:
+            data_root = str(Path(chroma).expanduser().resolve().parent)
+    if data_root:
+        try:
+            from restic_snapshot import ResolverError, resolve_snapshot
+            ref = resolve_snapshot(
+                repository=env.get("RESTIC_REPOSITORY", ""),
+                expected_data_root=Path(data_root),
+                required_tag="convmem-data-v1",
+            )
+            # Return only the validated snapshot as a list
+            return [{
+                "id": ref.id,
+                "short_id": ref.id[:8],
+                "tree": ref.tree,
+                "time": ref.time.isoformat(),
+                "paths": list(ref.paths),
+                "tags": sorted(ref.tags),
+                "original": ref.original or "",
+            }]
+        except Exception:
+            pass
+    # Legacy fallback
     proc = subprocess.run(
         ["restic", "snapshots", "--tag", tag, "--json"],
         capture_output=True,

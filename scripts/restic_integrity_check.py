@@ -21,6 +21,7 @@ from typing import Any, Callable
 TAG = "convmem-chroma"
 DEFAULT_PARENT = Path.home() / ".local/share/convmem" / "integrity-check"
 DEFAULT_SUBSET = "5%"
+REPO = Path(__file__).resolve().parent.parent
 
 
 class CheckError(Exception):
@@ -67,11 +68,12 @@ def load_restic_env(env_file: Path | None = None) -> dict[str, str]:
 
 def build_check_argv(
     *,
-    tag: str = TAG,
+    snapshot_id: str,
     subset: str | None = DEFAULT_SUBSET,
     full_read_data: bool = False,
 ) -> list[str]:
-    argv = ["restic", "check", "--tag", tag]
+    """Build restic check argv with an explicit snapshot ID, never --tag."""
+    argv = ["restic", "check", snapshot_id]
     if full_read_data:
         argv.append("--read-data")
     elif subset:
@@ -257,14 +259,38 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         repo = env["RESTIC_REPOSITORY"]
+        data_root = env.get("CONVMEM_DATA_ROOT", "").strip()
+        if not data_root:
+            chroma = env.get("CONVMEM_CHROMA_DIR", "").strip()
+            if chroma:
+                data_root = str(Path(chroma).expanduser().resolve().parent)
+        if not data_root:
+            raise CheckError("config", "CONVMEM_DATA_ROOT and CONVMEM_CHROMA_DIR unset")
+
+        # Resolve the current complete-data snapshot ID
+        sys.path.insert(0, str(REPO))
+        from restic_snapshot import ResolverError, resolve_snapshot
+        try:
+            snap_ref = resolve_snapshot(
+                repository=repo,
+                expected_data_root=Path(data_root),
+                required_tag="convmem-data-v1",
+                require_current_local_day=True,
+            )
+        except ResolverError as exc:
+            raise CheckError("resolve", f"cannot resolve snapshot: {exc}", exit_code=exc.exit_code)
+        snapshot_id = snap_ref.id
+        report.step("resolve_snapshot", "PASS", f"id={snapshot_id[:12]} path={data_root}")
+
         check_argv = build_check_argv(
-            tag=args.tag,
+            snapshot_id=snapshot_id,
             subset=None if args.full_read_data else args.read_data_subset,
             full_read_data=args.full_read_data,
         )
         report.set_meta(
             repository=repo,
             tag=args.tag,
+            snapshot_id=snapshot_id,
             argv=check_argv,
             subset=None if args.full_read_data else args.read_data_subset,
             full_read_data=args.full_read_data,

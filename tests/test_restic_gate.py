@@ -113,26 +113,28 @@ class ResticGateTests(unittest.TestCase):
         self.assertIn("FAKE_CONVMEM_CALLED", proc.stdout)
 
     def test_gate_module_exits_on_script_failure(self):
-        with patch("restic_gate.subprocess.run") as mock_run:
-            mock_run.return_value = subprocess.CompletedProcess(
-                args=[], returncode=1, stdout="", stderr="restic-gate: ERROR: bad repo"
-            )
-            with self.assertRaises(SystemExit) as ctx:
-                import restic_gate
+        with patch("restic_gate._resolve_and_return_id", return_value=""):
+            with patch("restic_gate.subprocess.run") as mock_run:
+                mock_run.return_value = subprocess.CompletedProcess(
+                    args=[], returncode=1, stdout="", stderr="restic-gate: ERROR: bad repo"
+                )
+                with self.assertRaises(SystemExit) as ctx:
+                    import restic_gate
 
-                restic_gate.ensure_chroma_snapshot_for_live_write()
-            self.assertEqual(ctx.exception.code, 1)
+                    restic_gate.ensure_chroma_snapshot_for_live_write()
+                self.assertEqual(ctx.exception.code, 1)
 
     def test_gate_module_skipped_with_env(self):
         with patch("restic_gate.subprocess.run") as mock_run:
-            import restic_gate
+            with patch("restic_gate._resolve_and_return_id", return_value=""):
+                import restic_gate
 
-            os.environ["CONVMEM_SKIP_RESTIC_GATE"] = "1"
-            try:
-                restic_gate.ensure_chroma_snapshot_for_live_write()
-            finally:
-                os.environ.pop("CONVMEM_SKIP_RESTIC_GATE", None)
-            mock_run.assert_not_called()
+                os.environ["CONVMEM_SKIP_RESTIC_GATE"] = "1"
+                try:
+                    restic_gate.ensure_chroma_snapshot_for_live_write()
+                finally:
+                    os.environ.pop("CONVMEM_SKIP_RESTIC_GATE", None)
+                mock_run.assert_not_called()
 
     def test_verify_restic_gate_script(self):
         proc = self._run(str(VERIFY))
