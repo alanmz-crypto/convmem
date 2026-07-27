@@ -22,14 +22,38 @@ def _upsert_jsonl_line(
     ledger_id: str,
     unit: dict,
 ) -> None:
-    """Replace the line in units_export matching ledger_id, or append if not found."""
+    """Crash-atomic replacement of the line matching ledger_id, or append.
+
+    Holds the existing export flock across the entire operation.
+    Creates a sibling temp, flushes+fsyncs, then os.replace + parent fsync.
+    On caught pre-replace failure, removes only this invocation's temp file.
+    No glob cleanup or scavenger.
+    """
+    import os as _os
+    import tempfile as _tempfile
+
     from purge_locks import export_flock_path
 
     with export_flock_path(units_export):
         if not units_export.exists():
             units_export.parent.mkdir(parents=True, exist_ok=True)
-            with open(units_export, "a", encoding="utf-8") as f:
-                f.write(json.dumps(unit) + "\n")
+            new_line = json.dumps(unit) + "\n"
+            tmp = units_export.parent / (
+                f".{units_export.name}.convmem-upsert.{_os.getpid()}.tmp"
+            )
+            try:
+                with open(tmp, "w", encoding="utf-8") as f:
+                    f.write(new_line)
+                    f.flush()
+                    _os.fsync(f.fileno())
+                _os.replace(tmp, units_export)
+                _os.fsync(_os.open(units_export.parent, _os.O_RDONLY))
+            except Exception:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise
             return
 
         lines: list[str] = []
@@ -38,7 +62,7 @@ def _upsert_jsonl_line(
             for raw_line in f:
                 line = raw_line.strip()
                 if not line:
-                    lines.append(raw_line)  # preserve blank lines
+                    lines.append(raw_line)
                     continue
                 try:
                     rec = json.loads(line)
@@ -54,10 +78,24 @@ def _upsert_jsonl_line(
         if not found:
             lines.append(json.dumps(unit) + "\n")
 
-        with open(units_export, "w", encoding="utf-8") as f:
-            f.writelines(lines)
-
-
+        tmp = units_export.parent / (
+            f".{units_export.name}.convmem-upsert.{_os.getpid()}.tmp"
+        )
+        try:
+            mode = units_export.stat().st_mode
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.writelines(lines)
+                f.flush()
+                _os.fsync(f.fileno())
+            _os.chmod(tmp, mode)
+            _os.replace(tmp, units_export)
+            _os.fsync(_os.open(units_export.parent, _os.O_RDONLY))
+        except Exception:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
 def normalize_observation(raw: dict, *, min_confidence: float = 0.0) -> dict | None:
     """Validate a ledger JSONL record (observation, decision, or verification)."""
     return normalize_ledger_record(raw, min_confidence=min_confidence)
