@@ -4,7 +4,7 @@
 
 ```text
 VERIFY-complete-data-backup-correction-v2
-subject: <fill at tip after T5 commit — run git rev-parse HEAD>
+subject: bee1ca34a92891b41f9e778c2cbd4df49ec62bfd
 base: 1ad99585060d62b2dfc22b50cdbbefdd20b0b8b7
 failed_crush_tip: b6284ad9ac42e0bb554cd2d44d512b01bad748f2 (Codex FAIL — immutable)
 runner: Cursor (mechanical T5)
