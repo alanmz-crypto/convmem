@@ -132,3 +132,133 @@ class UpsertTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AtomicJsonlTests(unittest.TestCase):
+    """Crash-atomic JSONL replacement tests per T4 specification."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _make_unit(self, lid: str, title: str) -> dict:
+        return {
+            "id": f"id_{lid}",
+            "ledger_id": lid,
+            "ledger_kind": "observation",
+            "domain": "testing",
+            "title": title,
+            "summary": f"Summary for {lid}",
+            "rationale": "",
+            "relates_to": "",
+            "author_model": "test",
+            "confidence": 1.0,
+        }
+
+    def test_new_file_created_atomically(self):
+        from observe import _upsert_jsonl_line
+
+        export = self.root / "export.jsonl"
+        unit = self._make_unit("obs_test_001", "Test")
+        _upsert_jsonl_line(export, "obs_test_001", unit)
+
+        self.assertTrue(export.is_file())
+        lines = export.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(lines), 1)
+
+    def test_existing_line_replaced_atomically(self):
+        from observe import _upsert_jsonl_line
+
+        export = self.root / "export.jsonl"
+        unit1 = self._make_unit("obs_test_001", "Title 1")
+        unit2 = self._make_unit("obs_test_001", "Title 2")
+
+        _upsert_jsonl_line(export, "obs_test_001", unit1)
+        _upsert_jsonl_line(export, "obs_test_001", unit2)
+
+        content = export.read_text(encoding="utf-8")
+        self.assertIn("Title 2", content)
+        self.assertNotIn("Title 1", content)
+
+    def test_append_when_not_found(self):
+        from observe import _upsert_jsonl_line
+
+        export = self.root / "export.jsonl"
+        unit1 = self._make_unit("obs_test_001", "First")
+        unit2 = self._make_unit("obs_test_002", "Second")
+
+        _upsert_jsonl_line(export, "obs_test_001", unit1)
+        _upsert_jsonl_line(export, "obs_test_002", unit2)
+
+        lines = [l for l in export.read_text(encoding="utf-8").splitlines() if l.strip()]
+        self.assertEqual(len(lines), 2)
+
+    def test_malformed_lines_preserved(self):
+        from observe import _upsert_jsonl_line
+
+        export = self.root / "export.jsonl"
+        # Write both lines together (write_text truncates)
+        line1 = "not json" + chr(10)
+        line2 = json.dumps(self._make_unit("obs_test_001", "First")) + chr(10)
+        export.write_text(line1 + line2, encoding="utf-8")
+
+        unit2 = self._make_unit("obs_test_002", "Second")
+        _upsert_jsonl_line(export, "obs_test_002", unit2)
+
+        content = export.read_text(encoding="utf-8")
+        self.assertIn("not json", content)
+
+    def test_no_temp_file_left_after_success(self):
+        from observe import _upsert_jsonl_line
+
+        export = self.root / "export.jsonl"
+        unit = self._make_unit("obs_test_001", "Test")
+        _upsert_jsonl_line(export, "obs_test_001", unit)
+
+        temps = list(self.root.glob("*.tmp"))
+        self.assertEqual(len(temps), 0)
+
+    def test_no_glob_scavenger(self):
+        import inspect
+        from observe import _upsert_jsonl_line
+
+        source = inspect.getsource(_upsert_jsonl_line)
+        self.assertNotIn("glob", source.lower())
+        self.assertNotIn("scaveng", source.lower())
+
+    def test_duplicate_lines_handled(self):
+        from observe import _upsert_jsonl_line
+
+        export = self.root / "export.jsonl"
+        unit = self._make_unit("obs_test_001", "Test")
+
+        _upsert_jsonl_line(export, "obs_test_001", unit)
+        _upsert_jsonl_line(export, "obs_test_001", unit)
+
+        lines = [l for l in export.read_text(encoding="utf-8").splitlines() if l.strip()]
+        self.assertEqual(len(lines), 1)
+
+    def test_blank_lines_preserved(self):
+        from observe import _upsert_jsonl_line
+
+        export = self.root / "export.jsonl"
+        unit1 = self._make_unit("obs_test_001", "First")
+        _upsert_jsonl_line(export, "obs_test_001", unit1)
+        export.write_text(
+            export.read_text(encoding="utf-8") + chr(10),
+            encoding="utf-8",
+        )
+
+        unit2 = self._make_unit("obs_test_002", "Second")
+        _upsert_jsonl_line(export, "obs_test_002", unit2)
+
+        lines = export.read_text(encoding="utf-8").splitlines()
+        data_lines = [l for l in lines if l.strip()]
+        self.assertEqual(len(data_lines), 2)
+
+
+if __name__ == "__main__":
+    unittest.main()
