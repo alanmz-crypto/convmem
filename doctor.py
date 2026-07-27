@@ -234,7 +234,7 @@ def _check_copilot_mcp() -> DoctorCheck:
 
 
 def _check_restic() -> DoctorCheck:
-    """Restic live-write gate: toolchain + snapshot covers today (fail-closed policy)."""
+    """Restic live-write gate: path-bound complete-data snapshot (fail-closed)."""
     script = Path(__file__).resolve().parent / "scripts" / "restic-ensure-chroma-snapshot.sh"
     if not script.is_file():
         return DoctorCheck("restic_gate", False, f"missing {script}")
@@ -252,36 +252,76 @@ def _check_restic() -> DoctorCheck:
             f"missing {env_file} — run scripts/setup-restic-chroma.sh",
         )
     try:
-        proc = subprocess.run(
-            [str(script), "--require-current"],
-            capture_output=True,
-            text=True,
-            timeout=300,
-            env=os.environ,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return DoctorCheck("restic_gate", False, str(exc))
-    if proc.returncode == 0:
+        env = _parse_env_file(env_file)
+        data_root = env.get("CONVMEM_DATA_ROOT", "").strip()
+        if not data_root:
+            chroma = env.get("CONVMEM_CHROMA_DIR", "").strip()
+            if chroma:
+                data_root = str(Path(chroma).expanduser().resolve().parent)
+        if not data_root:
+            return DoctorCheck("restic_gate", False, "CONVMEM_DATA_ROOT and CONVMEM_CHROMA_DIR unset")
+        repo = env.get("RESTIC_REPOSITORY", "").strip()
+        if not repo:
+            return DoctorCheck("restic_gate", False, "RESTIC_REPOSITORY unset")
+        from restic_snapshot import ResolverError, resolve_snapshot
+        try:
+            ref = resolve_snapshot(
+                repository=repo,
+                expected_data_root=Path(data_root),
+                required_tag="convmem-data-v1",
+                require_current_local_day=True,
+            )
+            return DoctorCheck(
+                "restic_gate",
+                True,
+                f"complete-data snapshot covers today (id={ref.id[:12]}; tag=convmem-data-v1)",
+            )
+        except ResolverError as exc:
+            if exc.exit_code == 25:
+                return DoctorCheck(
+                    "restic_gate",
+                    False,
+                    "complete-data snapshot STALE — run scripts/restic-ensure-chroma-snapshot.sh",
+                )
+            elif exc.exit_code in (23, 24):
+                return DoctorCheck(
+                    "restic_gate",
+                    False,
+                    f"no valid complete-data snapshot ({exc})",
+                )
+            else:
+                return DoctorCheck("restic_gate", False, f"resolver error ({exc.exit_code}): {exc}")
+    except Exception:
+        # Fall back to shell script
+        try:
+            proc = subprocess.run(
+                [str(script), "--require-current"],
+                capture_output=True,
+                text=True,
+                timeout=300,
+                env=os.environ,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return DoctorCheck("restic_gate", False, str(exc))
+        if proc.returncode == 0:
+            return DoctorCheck(
+                "restic_gate",
+                True,
+                "snapshot covers today (tag=convmem-chroma; threshold=local calendar day)",
+            )
+        tail = (proc.stdout or proc.stderr or "").strip().splitlines()[-2:]
         return DoctorCheck(
             "restic_gate",
-            True,
-            "snapshot covers today (tag=convmem-chroma; threshold=local calendar day)",
+            False,
+            "Restic gate not ready — " + " ".join(tail),
         )
-    tail = (proc.stdout or proc.stderr or "").strip().splitlines()[-2:]
-    return DoctorCheck(
-        "restic_gate",
-        False,
-        "Restic gate not ready — " + " ".join(tail),
-    )
 
 
 def _check_restic_external() -> DoctorCheck:
-    """Offsite Restic repo freshness (RESTIC_EXTERNAL_REPOSITORY).
+    """Offsite Restic repo freshness with lineage validation.
 
-    Non-fatal by design: this is the removable-drive copy, decoupled from the
-    live-write gate. Never returns fail — pass when the offsite copy covers
-    today, warn when it is stale/empty (drive mounted), skip when disabled or
-    the drive is unplugged.
+    Uses the resolver to verify the local source, then checks destination
+    lineage (D.original == S). Non-fatal: never returns fail.
     """
     name = "restic_external"
     env_file = Path("~/.config/convmem/restic.env").expanduser()
@@ -308,6 +348,52 @@ def _check_restic_external() -> DoctorCheck:
             name, True, f"offsite repo not mounted/reachable: {repo} (USB unplugged?)", status="skip"
         )
 
+    # Try resolver-based lineage validation first
+    data_root = env.get("CONVMEM_DATA_ROOT", "").strip()
+    if not data_root:
+        chroma = env.get("CONVMEM_CHROMA_DIR", "").strip()
+        if chroma:
+            data_root = str(Path(chroma).expanduser().resolve().parent)
+    local_repo = env.get("RESTIC_REPOSITORY", "").strip()
+    if data_root and local_repo:
+        try:
+            from restic_snapshot import ResolverError, resolve_copy_destination, resolve_snapshot
+            probe_env = dict(os.environ)
+            probe_env["RESTIC_PASSWORD_FILE"] = str(Path(pass_file).expanduser())
+            source = resolve_snapshot(
+                repository=local_repo,
+                expected_data_root=Path(data_root),
+                required_tag="convmem-data-v1",
+                require_current_local_day=True,
+            )
+            dest = resolve_copy_destination(
+                destination_repository=repo,
+                source=source,
+                env=probe_env,
+            )
+            return DoctorCheck(
+                name,
+                True,
+                f"offsite copy covers today (source={source.id[:12]} dest={dest.id[:12]} "
+                f"lineage=D.original==S)",
+            )
+        except ResolverError as exc:
+            if exc.exit_code == 25:
+                return DoctorCheck(
+                    name, True,
+                    "local source stale — offsite cannot be current until local gate recovers",
+                    status="warn",
+                )
+            elif exc.exit_code == 27:
+                return DoctorCheck(
+                    name, True,
+                    "offsite lineage mismatch — run scripts/restic-copy-external.sh",
+                    status="warn",
+                )
+        except Exception:
+            pass
+
+    # Legacy: tag+recency check
     probe_env = dict(os.environ)
     probe_env["RESTIC_PASSWORD_FILE"] = str(Path(pass_file).expanduser())
     try:

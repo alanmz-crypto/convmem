@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Fail-closed Restic gate for live Chroma writes.
 #
+# Uses the authoritative restic_snapshot.py resolver for path-bound
+# freshness checks. Tags snapshots with both convmem-chroma (compat)
+# and convmem-data-v1 (complete-data protection).
+#
 # Stale threshold (pinned, matches docs/ROADMAP.md):
-#   Latest snapshot tagged convmem-chroma must be from the **current local calendar day**
-#   (time >= local midnight today). Not "last commit", not "last approved write".
+#   Latest snapshot tagged convmem-data-v1 must be from the **current local
+#   calendar day** (time >= local midnight today).
 #
 # Flags:
 #   --check-only       Toolchain + repo reachable; does not backup; ignores staleness.
@@ -16,6 +20,9 @@ set -euo pipefail
 CONVMEM_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${CONVMEM_RESTIC_ENV:-$HOME/.config/convmem/restic.env}"
 TAG="convmem-chroma"
+DATA_TAG="convmem-data-v1"
+
+RESOLVER="$CONVMEM_ROOT/restic_snapshot.py"
 
 CHECK_ONLY=false
 REQUIRE_CURRENT=false
@@ -27,7 +34,7 @@ while [[ $# -gt 0 ]]; do
     --require-current) REQUIRE_CURRENT=true; shift ;;
     --dry-run) DRY_RUN=true; shift ;;
     -h|--help)
-      sed -n '2,14p' "$0"
+      sed -n '2,18p' "$0"
       exit 0
       ;;
     *)
@@ -58,6 +65,13 @@ source "$ENV_FILE"
 CHROMA_DIR="${CONVMEM_CHROMA_DIR:-$HOME/.local/share/convmem/chroma}"
 [[ -d "$CHROMA_DIR" ]] || fail "chroma dir missing: $CHROMA_DIR"
 
+DATA_ROOT="${CONVMEM_DATA_ROOT:-}"
+if [[ -z "$DATA_ROOT" ]]; then
+  DATA_ROOT="$(dirname "$CHROMA_DIR")"
+  echo "restic-gate: CONVMEM_DATA_ROOT unset; derived from CHROMA_DIR as $DATA_ROOT" >&2
+fi
+[[ -d "$DATA_ROOT" ]] || fail "data root missing: $DATA_ROOT"
+
 CACHE_ROOT="${RESTIC_CACHE_DIR:-${CONVMEM_RESTIC_CACHE_DIR:-${TMPDIR:-/tmp}/convmem-restic-cache}}"
 mkdir -p "$CACHE_ROOT"
 export RESTIC_CACHE_DIR="$CACHE_ROOT"
@@ -65,7 +79,35 @@ export RESTIC_CACHE_DIR="$CACHE_ROOT"
 export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE
 
 snapshot_freshness() {
-  # Prints: current | stale | none | error
+  # Uses the resolver CLI for authoritative path-bound freshness.
+  # Prints: current:<id> | stale | none | error:<msg>
+  if [[ -x "$RESOLVER" ]] || command -v python3 >/dev/null 2>&1; then
+    local result
+    result="$(python3 "$RESOLVER" resolve       --repository "$RESTIC_REPOSITORY"       --password-file "$RESTIC_PASSWORD_FILE"       --expected-data-root "$DATA_ROOT"       --require-current-local-day 2>&1)" && {
+      local snap_id
+      snap_id="$(echo "$result" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])' 2>/dev/null)" || true
+      if [[ -n "${snap_id:-}" ]]; then
+        echo "current:$snap_id"
+        return 0
+      fi
+      echo "current"
+      return 0
+    } || {
+      local code=$?
+      if [[ $code -eq 25 ]]; then
+        echo "stale"
+        return 0
+      elif [[ $code -eq 23 ]] || [[ $code -eq 24 ]]; then
+        echo "none"
+        return 0
+      else
+        echo "error:$result"
+        return 4
+      fi
+    }
+  fi
+
+  # Fallback: inline freshness check (old behavior)
   CONVMEM_RESTIC_TAG="$TAG" python3 - "$CHROMA_DIR" <<'PY'
 import json
 import os
@@ -125,8 +167,8 @@ if $CHECK_ONLY; then
   exit 0
 fi
 
-if [[ "$freshness" == "current" ]]; then
-  echo "restic-gate: current — snapshot covers today (tag=$TAG)"
+if [[ "$freshness" == current* ]]; then
+  echo "restic-gate: current — snapshot covers today (tag=$DATA_TAG)"
   exit 0
 fi
 
@@ -135,16 +177,16 @@ if $REQUIRE_CURRENT; then
 fi
 
 if $DRY_RUN; then
-  echo "restic-gate: dry-run — would backup $CHROMA_DIR (freshness=$freshness)"
+  echo "restic-gate: dry-run — would backup $DATA_ROOT (freshness=$freshness)"
   exit 0
 fi
 
 day_tag="convmem-$(date +%Y-%m-%d)"
-echo "restic-gate: snapshot-if-stale — backing up $CHROMA_DIR (was $freshness)"
-restic backup "$CHROMA_DIR" --tag "$TAG" --tag "$day_tag" || fail "restic backup failed"
+echo "restic-gate: snapshot-if-stale — backing up $DATA_ROOT (was $freshness)"
+restic backup "$DATA_ROOT" --tag "$DATA_TAG" --tag "$TAG" --tag "$day_tag" || fail "restic backup failed"
 
 freshness="$(snapshot_freshness)" || fail "post-backup freshness check failed"
-[[ "$freshness" == "current" ]] || fail "snapshot still not current after backup"
+[[ "$freshness" == current* ]] || fail "snapshot still not current after backup"
 
-echo "restic-gate: snapshot OK (tag=$TAG tag=$day_tag)"
+echo "restic-gate: snapshot OK (tags=$DATA_TAG $TAG $day_tag)"
 exit 0

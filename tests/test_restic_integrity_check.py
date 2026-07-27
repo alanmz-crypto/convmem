@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -29,15 +30,17 @@ mod = _load_mod()
 
 class TestBuildArgv(unittest.TestCase):
     def test_default_subset(self) -> None:
-        argv = mod.build_check_argv()
+        snap_id = "abc123def456" * 4
+        argv = mod.build_check_argv(snapshot_id=snap_id)
         self.assertEqual(
             argv,
-            ["restic", "check", "--tag", "convmem-chroma", "--read-data-subset", "5%"],
+            ["restic", "check", snap_id, "--read-data-subset", "5%"],
         )
 
     def test_full_read_data(self) -> None:
-        argv = mod.build_check_argv(full_read_data=True, subset=None)
-        self.assertEqual(argv, ["restic", "check", "--tag", "convmem-chroma", "--read-data"])
+        snap_id = "abc123def456" * 4
+        argv = mod.build_check_argv(snapshot_id=snap_id, full_read_data=True, subset=None)
+        self.assertEqual(argv, ["restic", "check", snap_id, "--read-data"])
 
 
 class TestClassify(unittest.TestCase):
@@ -77,23 +80,33 @@ class TestMainMocked(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             parent = Path(td)
             env_file = parent / "restic.env"
+            pass_file = parent / "fake-pass"
+            pass_file.write_text("x\n", encoding="utf-8")
             env_file.write_text(
-                "RESTIC_REPOSITORY=/tmp/fake-repo\nRESTIC_PASSWORD_FILE=/tmp/fake-pass\n",
-                encoding="utf-8",
-            )
-            (parent / "fake-pass").write_text("x\n", encoding="utf-8")
-            # point password file to existing path
-            env_file.write_text(
-                f"RESTIC_REPOSITORY=/tmp/fake-repo\nRESTIC_PASSWORD_FILE={parent / 'fake-pass'}\n",
+                f"RESTIC_REPOSITORY=/tmp/fake-repo\n"
+                f"RESTIC_PASSWORD_FILE={pass_file}\n"
+                f"CONVMEM_DATA_ROOT=/tmp/fake-root\n",
                 encoding="utf-8",
             )
             ok = subprocess.CompletedProcess(
                 ["restic", "check"], 0, "ok\n", ""
             )
-            with mock.patch.object(mod, "run_restic_check", return_value=ok):
-                code = mod.main(
-                    ["--parent", str(parent), "--env-file", str(env_file)]
-                )
+            from restic_snapshot import SnapshotRef
+
+            fake_ref = SnapshotRef(
+                repository="/tmp/fake-repo",
+                id="abc123def456" * 4,
+                original=None,
+                tree="treehash" * 8,
+                time=datetime(2026, 7, 27, tzinfo=timezone.utc),
+                paths=("/tmp/fake-root",),
+                tags=frozenset(["convmem-data-v1"]),
+            )
+            with mock.patch("restic_snapshot.resolve_snapshot", return_value=fake_ref):
+                with mock.patch.object(mod, "run_restic_check", return_value=ok):
+                    code = mod.main(
+                        ["--parent", str(parent), "--env-file", str(env_file)]
+                    )
             self.assertEqual(code, 0)
             reports = list((parent / "reports").glob("integrity-*.json"))
             self.assertEqual(len(reports), 1)
@@ -109,22 +122,36 @@ class TestMainMocked(unittest.TestCase):
             pass_file.write_text("x\n", encoding="utf-8")
             env_file = parent / "restic.env"
             env_file.write_text(
-                f"RESTIC_REPOSITORY=/tmp/real-looking\nRESTIC_PASSWORD_FILE={pass_file}\n",
+                f"RESTIC_REPOSITORY=/tmp/real-looking\n"
+                f"RESTIC_PASSWORD_FILE={pass_file}\n"
+                f"CONVMEM_DATA_ROOT=/tmp/real-root\n",
                 encoding="utf-8",
             )
             bad = subprocess.CompletedProcess(
                 ["restic", "check"], 10, "", "repository does not exist"
             )
-            with mock.patch.object(mod, "run_restic_check", return_value=bad):
-                code = mod.main(
-                    [
-                        "--parent",
-                        str(parent),
-                        "--env-file",
-                        str(env_file),
-                        "--intentional-missing-repo",
-                    ]
-                )
+            from restic_snapshot import SnapshotRef
+
+            fake_ref = SnapshotRef(
+                repository="/tmp/real-looking",
+                id="abc123def456" * 4,
+                original=None,
+                tree="treehash" * 8,
+                time=datetime(2026, 7, 27, tzinfo=timezone.utc),
+                paths=("/tmp/real-root",),
+                tags=frozenset(["convmem-data-v1"]),
+            )
+            with mock.patch("restic_snapshot.resolve_snapshot", return_value=fake_ref):
+                with mock.patch.object(mod, "run_restic_check", return_value=bad):
+                    code = mod.main(
+                        [
+                            "--parent",
+                            str(parent),
+                            "--env-file",
+                            str(env_file),
+                            "--intentional-missing-repo",
+                        ]
+                    )
             self.assertEqual(code, 10)
             reports = list((parent / "reports").glob("integrity-*.json"))
             self.assertEqual(len(reports), 1)
