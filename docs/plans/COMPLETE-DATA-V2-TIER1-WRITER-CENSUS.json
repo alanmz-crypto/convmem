@@ -1,0 +1,432 @@
+{
+  "purpose": "Hybrid Five-part dim 1 \u2014 Tier-1 writer census for complete-data-v2 (Track 1 Hybrid A)",
+  "subject_arc": "complete-data-backup-correction-v2",
+  "proof_class": "static_inventory_plus_capture_evidence_classification",
+  "hybrid_claim": {
+    "1_tier1_writer_census": "PASS",
+    "2_universal_snapshot_participation": "NOT CLAIMED",
+    "3_snapshot_safe_persistence_boundary": "NOT CLAIMED",
+    "4_adversarial_concurrency_tests": "NOT CLAIMED",
+    "5_isolated_restore_invariants": "PASS"
+  },
+  "not_proved": [
+    "Universal writer gating / every mutator acquires snapshot protocol",
+    "Global quiescence or freeze/thaw across concurrent writers",
+    "Adversarial pause-at-dangerous-point proofs"
+  ],
+  "state_path_census": [
+    {
+      "path": "chroma",
+      "authority": "tier1_authoritative",
+      "presence": "required",
+      "classification": "durable"
+    },
+    {
+      "path": "decisions-approved.jsonl",
+      "authority": "canonical_decisions",
+      "presence": "required",
+      "classification": "durable"
+    },
+    {
+      "path": "pending_decision_events.jsonl",
+      "authority": "canonical_control",
+      "presence": "optional",
+      "classification": "durable"
+    },
+    {
+      "path": "pending_decisions.jsonl",
+      "authority": "compatibility_projection",
+      "presence": "optional",
+      "classification": "derived"
+    },
+    {
+      "path": "knowledge_units.jsonl",
+      "authority": "derived_export",
+      "presence": "derived",
+      "classification": "derived"
+    },
+    {
+      "path": "processed.json",
+      "authority": "mixed_incremental_sidecar",
+      "presence": "optional",
+      "classification": "derived"
+    },
+    {
+      "path": "dedupe_queue.jsonl",
+      "authority": "conditional_operational_control",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "link_queue.jsonl",
+      "authority": "conditional_operational_control",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "ingest_duplicate_suppressions.jsonl",
+      "authority": "conditional_operational_control",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "inventory.jsonl",
+      "authority": "source_inventory_cache",
+      "presence": "optional",
+      "classification": "derived"
+    },
+    {
+      "path": "imports",
+      "authority": "import_artifacts",
+      "presence": "optional",
+      "classification": "durable"
+    },
+    {
+      "path": "authorizations",
+      "authority": "conditional_authorization_control",
+      "presence": "optional",
+      "classification": "durable"
+    },
+    {
+      "path": "shadow_ledger.jsonl",
+      "authority": "non_authoritative_phase0",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "shadow_activation.json",
+      "authority": "non_authoritative_phase0",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "shadow_activation_manifest.json",
+      "authority": "non_authoritative_phase0",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "shadow_health.json",
+      "authority": "non_authoritative_phase0",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "hash_schema_deploy.json",
+      "authority": "canonical_when_referenced",
+      "presence": "optional",
+      "classification": "durable"
+    },
+    {
+      "path": "hash_schema_migration_report.json",
+      "authority": "canonical_when_referenced",
+      "presence": "optional",
+      "classification": "durable"
+    },
+    {
+      "path": "attempts.jsonl",
+      "authority": "operational_evidence",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "index_failures.jsonl",
+      "authority": "operational_evidence",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "synthesis_failures.jsonl",
+      "authority": "operational_evidence",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "refine_undo",
+      "authority": "operational_evidence",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "refine_stats.json",
+      "authority": "operational_evidence",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "brief.md",
+      "authority": "operational_evidence",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "digests",
+      "authority": "operational_evidence",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "logs",
+      "authority": "operational_evidence",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "eval",
+      "authority": "operational_evidence",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "integrity-check",
+      "authority": "operational_evidence",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "locks",
+      "authority": "ephemeral",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "governed-ledger.lock",
+      "authority": "ephemeral",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    },
+    {
+      "path": "worktrees",
+      "authority": "forbidden_scratch",
+      "presence": "forbidden_in_snapshot",
+      "classification": "forbidden_scratch"
+    },
+    {
+      "path": "restore-drill",
+      "authority": "forbidden_scratch",
+      "presence": "forbidden_in_snapshot",
+      "classification": "forbidden_scratch"
+    },
+    {
+      "path": ".convmem-backup-evidence.json",
+      "authority": "capture_evidence_non_authority",
+      "presence": "optional",
+      "classification": "operational_or_ephemeral"
+    }
+  ],
+  "durable_mutators": [
+    {
+      "id": "cli_add_upsert",
+      "surface": "CLI",
+      "entry": "convmem.py add --upsert",
+      "gate": "ensure_chroma_snapshot_for_live_write",
+      "gated": true,
+      "sites": [
+        "convmem.py:375"
+      ],
+      "writes": [
+        "chroma",
+        "knowledge_units.jsonl",
+        "processed.json"
+      ],
+      "kind": "durable_overwrite_merge",
+      "notes": "Overwrite/durable-merge path; restic gate fail-closed before write"
+    },
+    {
+      "id": "cli_record_approve_last",
+      "surface": "CLI",
+      "entry": "convmem.py record --approve-last",
+      "gate": "ensure_chroma_snapshot_for_live_write",
+      "gated": true,
+      "sites": [
+        "convmem.py:1040"
+      ],
+      "writes": [
+        "chroma",
+        "decisions-approved.jsonl"
+      ],
+      "kind": "durable_overwrite_merge",
+      "notes": "Approve-last merges into Chroma; gate required"
+    },
+    {
+      "id": "cli_index_and_plain_add",
+      "surface": "CLI",
+      "entry": "convmem.py index / add (no --upsert)",
+      "gate": null,
+      "gated": false,
+      "sites": [
+        "convmem.py:474",
+        "convmem.py:616",
+        "ingest.py via chroma_write_session"
+      ],
+      "writes": [
+        "chroma",
+        "knowledge_units.jsonl",
+        "processed.json",
+        "inventory.jsonl"
+      ],
+      "kind": "durable_append_reindexable",
+      "notes": "Intentionally ungated (append-only / reindexable). Not Universal participation."
+    },
+    {
+      "id": "daemon_watch",
+      "surface": "daemon/timer",
+      "entry": "watch.py \u2192 index --file",
+      "gate": null,
+      "gated": false,
+      "unit_examples": [
+        "systemd/convmem-watch.service.example"
+      ],
+      "writes": [
+        "chroma",
+        "processed.json",
+        "knowledge_units.jsonl"
+      ],
+      "kind": "durable_append_reindexable",
+      "notes": "Always-on indexer; ungated by design (reindexable)"
+    },
+    {
+      "id": "daemon_refine",
+      "surface": "daemon",
+      "entry": "refine.py jobs",
+      "gate": null,
+      "gated": false,
+      "sites": [
+        "refine.py:272",
+        "refine.py:716"
+      ],
+      "unit_examples": [
+        "systemd/convmem-refine.service.example"
+      ],
+      "writes": [
+        "chroma metadata",
+        "dedupe_queue.jsonl",
+        "link_queue.jsonl",
+        "refine_stats.json",
+        "refine_undo"
+      ],
+      "kind": "durable_and_operational",
+      "notes": "Mutates Chroma metadata and operational queues without restic gate"
+    },
+    {
+      "id": "cli_observe",
+      "surface": "CLI",
+      "entry": "observe / unresolved ingest paths",
+      "gate": null,
+      "gated": false,
+      "sites": [
+        "observe.py:233"
+      ],
+      "writes": [
+        "chroma"
+      ],
+      "kind": "durable_append_reindexable"
+    },
+    {
+      "id": "cli_propose_decision",
+      "surface": "CLI",
+      "entry": "propose_decision approve/index paths",
+      "gate": null,
+      "gated": false,
+      "sites": [
+        "propose_decision.py:529",
+        "propose_decision.py:556"
+      ],
+      "writes": [
+        "chroma",
+        "decisions-approved.jsonl",
+        "pending_decisions.jsonl"
+      ],
+      "kind": "durable_control"
+    },
+    {
+      "id": "cli_source_purge",
+      "surface": "CLI",
+      "entry": "source_purge",
+      "gate": null,
+      "gated": false,
+      "sites": [
+        "source_purge.py:317"
+      ],
+      "writes": [
+        "chroma",
+        "knowledge_units.jsonl"
+      ],
+      "kind": "durable_destructive",
+      "notes": "Deletes/rewrites durable state; outside restic gate scope"
+    }
+  ],
+  "derived_mutators": [
+    {
+      "id": "knowledge_units_export",
+      "surface": "CLI/daemon",
+      "entry": "ingest / export rewrite of knowledge_units.jsonl",
+      "authority": "derived_export",
+      "repair_source": "Chroma",
+      "kind": "derived"
+    },
+    {
+      "id": "pending_projection",
+      "surface": "CLI",
+      "entry": "pending_decisions.jsonl projection",
+      "authority": "compatibility_projection",
+      "repair_source": "Pending event log",
+      "kind": "derived"
+    },
+    {
+      "id": "processed_sidecar",
+      "surface": "CLI/daemon",
+      "entry": "processed.json incremental markers",
+      "authority": "mixed_incremental_sidecar",
+      "repair_source": "Source rescan",
+      "kind": "derived"
+    },
+    {
+      "id": "inventory_cache",
+      "surface": "CLI",
+      "entry": "inventory.jsonl",
+      "authority": "source_inventory_cache",
+      "repair_source": "Source rescan/reimport",
+      "kind": "derived"
+    },
+    {
+      "id": "capture_evidence_sidecar",
+      "surface": "backup_workflows",
+      "entry": "capture_backup_evidence \u2192 .convmem-backup-evidence.json",
+      "authority": "capture_evidence_non_authority",
+      "repair_source": null,
+      "kind": "derived_evidence_only",
+      "notes": "Evidence only; never authority or repair source"
+    }
+  ],
+  "backup_timers": [
+    {
+      "unit": "convmem-restic-local.timer",
+      "calendar": "*-*-* 00:15:00",
+      "persistent": true,
+      "role": "create/verify current-day complete-data-v2 snapshot",
+      "live_install": "FORBIDDEN until Ryan post-merge grant"
+    },
+    {
+      "unit": "convmem-restic-external.timer",
+      "calendar": "*-*-* 01/2:00:00",
+      "persistent": true,
+      "role": "offsite copy with D.original==S lineage",
+      "after": "convmem-restic-local.service (non-authoritative ordering only)",
+      "live_install": "FORBIDDEN until Ryan post-merge grant"
+    }
+  ],
+  "gated_write_sites_exact": [
+    {
+      "file": "convmem.py",
+      "line_hint": 375,
+      "path": "add --upsert"
+    },
+    {
+      "file": "convmem.py",
+      "line_hint": 1040,
+      "path": "record --approve-last"
+    }
+  ],
+  "capture_evidence_hook": "complete_data_restore.writer_census_for_root + build_backup_evidence.writer_census"
+}

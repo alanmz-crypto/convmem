@@ -31,6 +31,7 @@ from complete_data_restore import (  # noqa: E402
     capture_backup_evidence,
     closed_state_spec_paths,
     inventory_restored_state,
+    writer_census_for_root,
 )
 
 
@@ -557,6 +558,37 @@ class TestCaptureWiringImport(unittest.TestCase):
         src = Path(bw.__file__).read_text(encoding="utf-8")
         self.assertIn("capture_backup_evidence", src)
         self.assertIn("COMPLETE_DATA_V2", src)
+
+
+
+class TestTier1WriterCensusArtifact(unittest.TestCase):
+    """T5: Hybrid dim-1 census inventory is present and classifies durable/derived."""
+
+    def test_inventory_file_and_hybrid_claims(self):
+        inv_path = REPO / "docs/plans/COMPLETE-DATA-V2-TIER1-WRITER-CENSUS.json"
+        self.assertTrue(inv_path.is_file(), "missing Tier-1 writer census inventory")
+        data = json.loads(inv_path.read_text(encoding="utf-8"))
+        claims = data["hybrid_claim"]
+        self.assertEqual(claims["1_tier1_writer_census"], "PASS")
+        self.assertEqual(claims["5_isolated_restore_invariants"], "PASS")
+        for dim in (
+            "2_universal_snapshot_participation",
+            "3_snapshot_safe_persistence_boundary",
+            "4_adversarial_concurrency_tests",
+        ):
+            self.assertEqual(claims[dim], "NOT CLAIMED")
+        self.assertGreaterEqual(len(data["durable_mutators"]), 1)
+        self.assertGreaterEqual(len(data["derived_mutators"]), 1)
+        paths = {row["path"] for row in data["state_path_census"]}
+        self.assertIn("chroma", paths)
+        self.assertIn("knowledge_units.jsonl", paths)
+        # Capture-time classifier agrees on durable vs derived families.
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _minimal_valid_root(root)
+            census = writer_census_for_root(root)
+            self.assertEqual(census["chroma"], "tier1_authoritative")
+            self.assertEqual(census["knowledge_units.jsonl"], "derived_export")
 
 
 if __name__ == "__main__":

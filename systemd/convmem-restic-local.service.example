@@ -1,0 +1,24 @@
+# User systemd service — invoked by convmem-restic-local.timer
+#
+# Creates or verifies the current-day complete-data-v2 snapshot
+# (tag convmem-data-v2) of CONVMEM_DATA_ROOT via backup_workflows.
+# Fail-closed: exits non-zero on any Restic/resolver error.
+#
+# Do NOT install/enable until Ryan grants the post-merge timer live step.
+#
+#   cp systemd/convmem-restic-local.{service,timer}.example ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now convmem-restic-local.timer
+#   journalctl --user -u convmem-restic-local -f
+
+[Unit]
+Description=convmem current-day complete-data-v2 Restic snapshot
+
+[Service]
+Type=oneshot
+Environment=HOME=%h
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/Projects/convmem/scripts/restic-ensure-chroma-snapshot.sh
+
+[Install]
+WantedBy=default.target

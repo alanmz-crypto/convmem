@@ -1,7 +1,13 @@
 # User systemd service — invoked by convmem-restic-external.timer
 #
-# Copies the latest convmem-chroma snapshot from the local Restic repo to the
-# external (offsite) USB repo. Non-fatal: skips cleanly when the drive is absent.
+# Copies the current complete-data-v2 snapshot from the local Restic repo to the
+# external (offsite) USB repo using an explicit snapshot ID resolved by
+# backup_workflows / restic_snapshot (never --latest). Verifies destination
+# lineage (D.original == S).
+# Non-fatal skip when the drive is absent (unconfigured/unmounted); configured
+# failures preserve resolver/restic nonzero codes.
+#
+# Do NOT install/enable until Ryan grants the post-merge timer live step.
 #
 #   cp systemd/convmem-restic-external.{service,timer}.example ~/.config/systemd/user/
 #   systemctl --user daemon-reload
@@ -9,7 +15,12 @@
 #   journalctl --user -u convmem-restic-external -f
 
 [Unit]
-Description=convmem offsite Restic copy (local -> external USB)
+Description=convmem offsite Restic copy with lineage verification
+# After= orders queued jobs; it does not pull in the local service or prove
+# its success. A stale local source exits 25, copies nothing, and is
+# systemd-visible in the failed state and journal. Non-authoritative ordering
+# only — never a protection claim.
+After=convmem-restic-local.service
 
 [Service]
 Type=oneshot
