@@ -20,6 +20,7 @@ sys.path.insert(0, str(REPO))
 
 from backup_workflows import run_integrity_check  # noqa: E402
 from restic_snapshot import BackupContext, ResolverError  # noqa: E402
+from atomic_files import atomic_write_json  # noqa: E402
 
 DEFAULT_PARENT = Path.home() / ".local/share/convmem" / "integrity-check"
 DEFAULT_SUBSET = "5%"
@@ -114,7 +115,7 @@ class Report:
     def _write(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"meta": self.meta, "steps": self.steps}
-        self.path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        atomic_write_json(self.path, payload, indent=2, sort_keys=False)
         md = self.path.with_suffix(".md")
         lines = [
             "# Restic integrity check report",
