@@ -872,6 +872,189 @@ def resolve_copy_destination(
     return dest
 
 
+
+# ---------------------------------------------------------------------------
+# Mutating / checking actions (all Restic I/O stays here)
+# ---------------------------------------------------------------------------
+def ensure_repository_initialized(ctx: BackupContext) -> bool:
+    """Return True if ``restic init`` ran; False if repo already existed."""
+    check_restic_available(ctx.restic_bin)
+    probe = _run_restic(
+        ctx,
+        ["cat", "config"],
+        domain_error_code=EXIT_ACTION_FAILURE,
+        check=False,
+    )
+    if probe.returncode == 0:
+        return False
+    _run_restic(
+        ctx,
+        ["init"],
+        domain_error_code=EXIT_ACTION_FAILURE,
+        check=True,
+    )
+    return True
+
+
+def backup_data_root(
+    ctx: BackupContext,
+    *,
+    extra_tags: Sequence[str] | None = None,
+) -> tuple[SnapshotRef, tuple[str, ...]]:
+    """Backup ``ctx.data_root`` with the profile default tag. Returns (ref, argv)."""
+    check_restic_available(ctx.restic_bin)
+    tag = ctx.default_tag()
+    day_tag = f"convmem-{datetime.now().astimezone().date().isoformat()}"
+    tags = [tag, day_tag, *(extra_tags or ())]
+    argv = ["backup", str(ctx.data_root.resolve()), "--json"]
+    for t in tags:
+        argv.extend(["--tag", t])
+    full_cmd_preview = (
+        str(ctx.restic_bin),
+        "-r",
+        ctx.local_repository.locator,
+        *argv,
+    )
+    if any(a == "--latest" or str(a).startswith("--latest=") for a in full_cmd_preview):
+        raise ResolverError("argv must never contain --latest", EXIT_INVALID_CONFIG)
+    proc = _run_restic(
+        ctx,
+        argv,
+        domain_error_code=EXIT_ACTION_FAILURE,
+        check=True,
+    )
+    snap_id: str | None = None
+    for line in (proc.stdout or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if msg.get("message_type") == "summary":
+            snap_id = str(msg.get("snapshot_id") or "")
+            break
+    if not snap_id or not _FULL_SNAPSHOT_ID_RE.match(snap_id):
+        raise ResolverError(
+            "backup summary missing full snapshot id",
+            EXIT_SNAPSHOT_JSON_FAILURE,
+        )
+    ref = resolve_snapshot(ctx, requested_id=snap_id)
+    return ref, full_cmd_preview
+
+
+def copy_snapshot_to_external(
+    ctx: BackupContext,
+    source_id: str,
+) -> tuple[str, ...]:
+    """Copy an explicit full snapshot id to the external repo. Returns argv used."""
+    if ctx.external_repository is None:
+        raise ResolverError(
+            "external repository is not configured", EXIT_COPY_LINEAGE_FAILURE
+        )
+    sid = source_id.strip()
+    if not _FULL_SNAPSHOT_ID_RE.match(sid):
+        raise ResolverError(
+            f"copy source id must be full 64-char hex (got {sid!r})",
+            EXIT_INVALID_ID,
+        )
+    check_restic_available(ctx.restic_bin)
+    argv = [
+        "copy",
+        sid,
+        "--from-repo",
+        ctx.local_repository.locator,
+        "--from-password-file",
+        str(ctx.password_file),
+    ]
+    full_cmd = (
+        str(ctx.restic_bin),
+        "-r",
+        ctx.external_repository.locator,
+        *argv,
+    )
+    if any(a == "--latest" or str(a).startswith("--latest=") for a in full_cmd):
+        raise ResolverError("argv must never contain --latest", EXIT_INVALID_CONFIG)
+    _run_restic(
+        ctx,
+        argv,
+        repository=ctx.external_repository,
+        domain_error_code=EXIT_COPY_LINEAGE_FAILURE,
+        check=True,
+    )
+    return full_cmd
+
+
+def check_snapshot(
+    ctx: BackupContext,
+    snapshot_id: str,
+    *,
+    full_read_data: bool = False,
+    read_data_subset: str | None = "5%",
+    repository: RepositoryRef | None = None,
+    timeout: float | None = None,
+) -> tuple[subprocess.CompletedProcess[str], tuple[str, ...]]:
+    """Run ``restic check <full-id>`` — never tag/path reselection."""
+    sid = snapshot_id.strip()
+    if not _FULL_SNAPSHOT_ID_RE.match(sid):
+        raise ResolverError(
+            f"check snapshot id must be full 64-char hex (got {sid!r})",
+            EXIT_INVALID_ID,
+        )
+    check_restic_available(ctx.restic_bin)
+    argv: list[str] = ["check", sid]
+    if full_read_data:
+        argv.append("--read-data")
+    elif read_data_subset:
+        argv.extend(["--read-data-subset", read_data_subset])
+    repo = repository or ctx.local_repository
+    full_cmd = (str(ctx.restic_bin), "-r", repo.locator, *argv)
+    if any(a == "--latest" or str(a).startswith("--latest=") for a in full_cmd):
+        raise ResolverError("argv must never contain --latest", EXIT_INVALID_CONFIG)
+    proc = _run_restic(
+        ctx,
+        argv,
+        repository=repo,
+        timeout=timeout,
+        domain_error_code=EXIT_ACTION_FAILURE,
+        check=False,
+    )
+    return proc, full_cmd
+
+
+def restore_snapshot(
+    ctx: BackupContext,
+    snapshot_id: str,
+    target_dir: str | Path,
+    *,
+    repository: RepositoryRef | None = None,
+) -> tuple[str, ...]:
+    """Restore an explicit full snapshot id into ``target_dir``. Returns argv."""
+    sid = snapshot_id.strip()
+    if not _FULL_SNAPSHOT_ID_RE.match(sid):
+        raise ResolverError(
+            f"restore snapshot id must be full 64-char hex (got {sid!r})",
+            EXIT_INVALID_ID,
+        )
+    target = Path(target_dir).expanduser().resolve()
+    target.mkdir(parents=True, exist_ok=True)
+    check_restic_available(ctx.restic_bin)
+    argv = ["restore", sid, "--target", str(target)]
+    repo = repository or ctx.local_repository
+    full_cmd = (str(ctx.restic_bin), "-r", repo.locator, *argv)
+    if any(a == "--latest" or str(a).startswith("--latest=") for a in full_cmd):
+        raise ResolverError("argv must never contain --latest", EXIT_INVALID_CONFIG)
+    _run_restic(
+        ctx,
+        argv,
+        repository=repo,
+        domain_error_code=EXIT_ACTION_FAILURE,
+        check=True,
+    )
+    return full_cmd
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
