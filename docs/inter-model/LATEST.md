@@ -1,9 +1,19 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-25 (Shadow Ledger Phase 0 Execute MERGED — soft close; activation still off)
+**Updated:** 2026-07-27 (Complete-data backup correction v2 plan package — awaiting Architecture + Execution HITL)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Complete-data backup correction v2 — plan package (2026-07-27):** Who/What: Codex authored the corrective Architecture; Cursor landed Architecture + Execution + VERIFY on branch [`plan/2026-07-27-complete-data-backup-correction-v2`](https://github.com/alanmz-crypto/convmem/tree/plan/2026-07-27-complete-data-backup-correction-v2) from `origin/main` @ `1ad9958`. When: now — **Architecture and Execution HITL PENDING**. Why: Crush tip [`b6284ad`](https://github.com/alanmz-crypto/convmem/commit/b6284ad9ac42e0bb554cd2d44d512b01bad748f2) on `fix/2026-07-27-complete-data-backup-audit-closure` is **Codex FAIL** and must remain immutable; do not layer fixes onto it. How: read Merge reading; Ryan locks Architecture + Execution before any T1 implementation worktree.
+
+  **Merge reading:** [`ARCHITECTURE-complete-data-backup-correction-v2.md`](../plans/ARCHITECTURE-complete-data-backup-correction-v2.md) · [`EXECUTION-complete-data-backup-correction-v2.md`](../plans/EXECUTION-complete-data-backup-correction-v2.md) · [`VERIFY-complete-data-backup-correction-v2.md`](../plans/VERIFY-complete-data-backup-correction-v2.md) · Hybrid bar [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md)
+
+  **What this packages (product terms):** One validated `BackupContext`; explicit `complete-data-v2` activation profile (`WARN_LEGACY_ONLY` until live grants); fallback-free `backup_workflows.py`; reusable atomic publication; capture evidence + closed restore matrix.
+
+  **Immutable FAIL evidence:** `b6284ad9ac42e0bb554cd2d44d512b01bad748f2` (Codex FAIL). Earlier PR #120 `492e6e7…` remains Ryan `A-FAIL / FAIL`.
+
+  **Suggested next:** Ryan Architecture + Execution HITL. After lock, Cursor starts a **fresh** implementation worktree (T1–T5) — never edit the Crush FAIL branch.
 
 - **Shadow Ledger Phase 0 Execute MERGED — soft close (2026-07-25):** Who/What: Ryan squash-merged [#122](https://github.com/alanmz-crypto/convmem/pull/122) to `main` as [`4535107`](https://github.com/alanmz-crypto/convmem/commit/4535107143279c87e8b34c1eab7e4dee88bffc68) (*Implement Shadow Ledger Phase 0 (disabled by default)*). Cursor soft-closing the Execute chat for DeepSeek / Kiro / Codex. When: now. Why: code + VERIFY mechanical + V8 sign-off + pylint green are on `main`; live enable is a **different** grant. How: read Merge reading below; **do not** edit `~/.config/convmem/config.toml` or write a production activation manifest without Ryan’s explicit activation grant.
 
