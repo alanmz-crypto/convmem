@@ -63,6 +63,49 @@ bash ~/Projects/convmem/scripts/verify-restic-gate.sh   # happy + fail-closed ne
 convmem doctor                                   # includes restic_gate check
 ```
 
+### Complete-data restore classifications (v2)
+
+When validating a **complete-data-v2** snapshot (tag `convmem-data-v2`), restore
+preflight classifies every durable path through a closed matrix. Validators
+**never repair**. Outcome precedence:
+
+`BLOCKED > REPAIRABLE > ADVISORY > VALID`
+
+| Classification | Meaning | Live replacement? |
+|---|---|---|
+| **VALID** | Structurally sound for the path's authority class | Eligible only after Ryan live-replacement grant |
+| **ADVISORY** | Residue / evidence / inactive Shadow — review, not a hard stop | Still requires Ryan live-replacement grant |
+| **REPAIRABLE** | Derived drift with a **named repair source** (e.g. Chroma → export, Pending event log → projection, Source rescan → processed/inventory) | **Not** replacement-ready until repaired or accepted |
+| **BLOCKED** / `BLOCKED_UNCLASSIFIED_STATE` / `BLOCKED_SNAPSHOT_SCOPE_LEAK` | Canonical/control corruption, unknown top-level state, or scratch (`worktrees/**`, `restore-drill/**`) leaked into the snapshot | Do **not** replace live data |
+
+Capture file `.convmem-backup-evidence.json` is **evidence only** — not authority
+and never a repair source. Mid-capture skew becomes a visible classification.
+
+**Named repair sources (examples):**
+
+- Derived `knowledge_units.jsonl` ↔ Chroma (only when the compare is deterministic)
+- Pending projection ↔ Pending event log (lifecycle reducer)
+- `processed.json` / `inventory.jsonl` ↔ Source rescan / reimport
+
+### Authoritative-first replacement + rollback (Ryan grant only)
+
+Live replacement of `~/.local/share/convmem/` is **out of band** from code merge.
+It requires a **separate Ryan live-replacement authorization** (distinct from
+configuring `complete-data-v2`, taking the first live v2 snapshot, or enabling
+timers).
+
+Authoritative-first order when Ryan authorizes replacement:
+
+1. Stop writers (watch/refine) deliberately.
+2. Keep a rollback copy of the current live root (or confirm a prior good snapshot).
+3. Replace from a preflight result that is not `BLOCKED` / not merely repairable
+   unless Ryan explicitly accepts repairable derived drift.
+4. Verify with `convmem doctor` and restore-preflight reports (JSON authoritative;
+   Markdown derived).
+5. On failure, roll back to the retained live copy before restarting writers.
+
+Do **not** treat capture evidence as the thing to restore from.
+
 ### Restore chroma from Restic
 
 ```bash

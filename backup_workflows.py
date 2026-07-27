@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Sequence
 
+from complete_data_restore import capture_backup_evidence
 from restic_snapshot import (
     EXIT_ACTION_FAILURE,
     EXIT_INVALID_CONFIG,
@@ -219,6 +220,17 @@ def ensure_current_snapshot(
                 )
 
             # Snapshot-if-stale: backup then re-resolve. No legacy fallback.
+            # Pre-snapshot capture evidence for complete-data-v2 only.
+            evidence_meta = {}
+            if ctx.profile is BackupProfile.COMPLETE_DATA_V2:
+                evidence = capture_backup_evidence(ctx.data_root)
+                evidence_meta = {
+                    "evidence_captured": True,
+                    "evidence_schema_version": evidence.get(
+                        "evidence_schema_version"
+                    ),
+                    "evidence_captured_at": evidence.get("captured_at"),
+                }
             ref, argv = backup_data_root(ctx)
             try:
                 current = resolve_snapshot(
@@ -235,6 +247,8 @@ def ensure_current_snapshot(
                     source=ref,
                     argv=argv,
                 )
+            details = {"freshness": "current", "backed_up": True}
+            details.update(evidence_meta)
             return WorkflowOutcome(
                 status=STATUS_PASS,
                 message=(
@@ -242,7 +256,7 @@ def ensure_current_snapshot(
                 ),
                 source=current,
                 argv=argv,
-                details={"freshness": "current", "backed_up": True},
+                details=details,
             )
     except ResolverError as exc:
         return _fail_from_resolver(exc)

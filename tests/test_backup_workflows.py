@@ -223,9 +223,17 @@ class TestBackupWorkflowsSWChallenge(unittest.TestCase):
                 "--target",
                 str(target),
                 "--json",
+                "--report-dir",
+                str(self.fx.parent / "preflight-reports"),
             ]
         )
-        self.assertEqual(code, 0)
+        # Hermetic seed-only data roots are not replacement-ready; preflight must
+        # still restore S and write a durable report (exit may be BLOCKED/30).
+        self.assertNotEqual(code, EXIT_WRONG_PATH)
+        self.assertIn(code, (0, 30, 31))
+        report = next((self.fx.parent / "preflight-reports").glob("restore-*.json"))
+        payload = json.loads(report.read_text(encoding="utf-8"))
+        self.assertEqual(payload["meta"]["snapshot"]["id"], self.s_id)
 
         target_w = self.fx.fw.check(self.fx.parent / "preflight-w", label="pf_w")
         target_w.mkdir()
