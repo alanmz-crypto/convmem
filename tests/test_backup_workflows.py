@@ -7,6 +7,10 @@ PASS/SKIP via legacy fallback.
 Hermetic: one temp parent + path firewall. No live config reads.
 """
 
+# Imports follow a path-isolation bootstrap; repeated workflow assertions are
+# deliberate consumer-by-consumer safety proofs.
+# pylint: disable=wrong-import-position,duplicate-code
+
 from __future__ import annotations
 
 import importlib.util
@@ -14,7 +18,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -46,18 +49,15 @@ from restic_snapshot import (  # noqa: E402
     resolve_snapshot,
 )
 
-# Reuse hermetic helpers from T1 suite.
-import importlib.util as _ilu
-
 _t1_path = Path(__file__).resolve().parent / "test_restic_snapshot.py"
-_t1_spec = _ilu.spec_from_file_location("test_restic_snapshot", _t1_path)
+_t1_spec = importlib.util.spec_from_file_location("test_restic_snapshot", _t1_path)
 assert _t1_spec and _t1_spec.loader
-_t1 = _ilu.module_from_spec(_t1_spec)
+_t1 = importlib.util.module_from_spec(_t1_spec)
 sys.modules["test_restic_snapshot"] = _t1
 _t1_spec.loader.exec_module(_t1)
 HermeticFixture = _t1.HermeticFixture
-_restic_available = _t1._restic_available
-_restic_bin = _t1._restic_bin
+_restic_available = _t1._restic_available  # pylint: disable=protected-access
+_restic_bin = _t1._restic_bin  # pylint: disable=protected-access
 
 
 def _load_script(name: str, path: Path):
@@ -139,7 +139,10 @@ class TestBackupWorkflowsSWChallenge(unittest.TestCase):
         def wrapped(cmd, *args, **kwargs):
             if cmd and "restic" in str(cmd[0]):
                 recorded.append(list(cmd))
-            return real_run(cmd, *args, **kwargs)
+            kwargs.setdefault("check", False)
+            return real_run(  # pylint: disable=subprocess-run-check
+                cmd, *args, **kwargs
+            )
 
         with mock.patch("restic_snapshot.subprocess.run", side_effect=wrapped):
             outcome = copy_current_snapshot_offsite(self.ctx)
@@ -174,7 +177,10 @@ class TestBackupWorkflowsSWChallenge(unittest.TestCase):
         def wrapped(cmd, *args, **kwargs):
             if cmd and "restic" in str(cmd[0]):
                 recorded.append(list(cmd))
-            return real_run(cmd, *args, **kwargs)
+            kwargs.setdefault("check", False)
+            return real_run(  # pylint: disable=subprocess-run-check
+                cmd, *args, **kwargs
+            )
 
         with mock.patch("restic_snapshot.subprocess.run", side_effect=wrapped):
             outcome = run_integrity_check(self.ctx)
@@ -332,7 +338,10 @@ class TestBackupWorkflowsSWChallenge(unittest.TestCase):
         def wrapped(cmd, *args, **kwargs):
             if cmd and "restic" in str(cmd[0]):
                 recorded.append(list(cmd))
-            return real_run(cmd, *args, **kwargs)
+            kwargs.setdefault("check", False)
+            return real_run(  # pylint: disable=subprocess-run-check
+                cmd, *args, **kwargs
+            )
 
         with mock.patch("restic_snapshot.subprocess.run", side_effect=wrapped):
             ensure_current_snapshot(self.ctx)
@@ -349,7 +358,6 @@ class TestBackupWorkflowsSWChallenge(unittest.TestCase):
             self.assertFalse(any(str(a).startswith("--latest=") for a in argv))
 
     def test_no_live_config_reads(self):
-        live = Path.home() / ".config" / "convmem" / "restic.env"
         # Env for this test points only at hermetic file
         self.assertTrue(str(self.fx.env_file).startswith(str(self.fx.parent)))
         opened = []

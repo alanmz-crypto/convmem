@@ -6,6 +6,9 @@ every Restic subprocess call, snapshot resolution, and copy lineage.
 Architecture: docs/plans/ARCHITECTURE-complete-data-backup-correction-v2.md
 """
 
+# This module is the single authoritative Restic policy boundary.
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import json
@@ -143,6 +146,8 @@ class SnapshotRef:
 
 
 @dataclass(frozen=True)
+# The explicit immutable context prevents ambient configuration fallbacks.
+# pylint: disable=too-many-instance-attributes
 class BackupContext:
     """Immutable backup configuration — no trust-caller bypass."""
 
@@ -493,7 +498,7 @@ def _parse_restic_time(raw: str) -> datetime:
         raise ResolverError("snapshot missing time field", EXIT_SNAPSHOT_JSON_FAILURE)
     try:
         dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-    except ValueError:
+    except ValueError as exc:
         m = re.match(
             r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d+)?([+-]\d{2}:\d{2}|Z)?",
             raw,
@@ -501,7 +506,7 @@ def _parse_restic_time(raw: str) -> datetime:
         if not m:
             raise ResolverError(
                 f"unparseable snapshot time: {raw!r}", EXIT_SNAPSHOT_JSON_FAILURE
-            )
+            ) from exc
         frac = (m.group(2) or "")[:7]
         tz = m.group(3) or "+00:00"
         if tz == "Z":

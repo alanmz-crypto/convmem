@@ -256,7 +256,7 @@ def _check_restic() -> DoctorCheck:
             False,
             f"resolver error ({exc.exit_code}): {exc}",
         )
-    except Exception as exc:  # noqa: BLE001 — doctor must never crash
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
         return DoctorCheck("restic_gate", False, str(exc))
     ok, detail, status = outcome_to_doctor_fields(outcome)
     return DoctorCheck("restic_gate", ok, detail, status=status)
@@ -293,7 +293,7 @@ def _check_restic_external() -> DoctorCheck:
             f"offsite config/resolver error ({exc.exit_code}): {exc}",
             status="warn",
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
         return DoctorCheck(name, True, f"offsite probe failed: {exc}", status="warn")
     ok, detail, status = outcome_to_doctor_fields(outcome)
     return DoctorCheck(name, ok, detail, status=status)

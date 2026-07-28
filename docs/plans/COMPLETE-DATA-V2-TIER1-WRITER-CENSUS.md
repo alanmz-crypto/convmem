@@ -1,9 +1,9 @@
 # Tier-1 writer census — complete-data backup correction v2
 
-**Who:** Cursor (Execute Stage T5)  
-**What:** Inventory classifying durable vs derived mutators under the ConvMem data root for Hybrid Five-part dimension 1.  
-**When:** Implementation tip of `fix/2026-07-27-complete-data-backup-correction-v2` (filled at VERIFY subject SHA).  
-**Why:** Hybrid bar A requires a Tier-1 writer census `PASS` without claiming Universal snapshot participation.  
+**Who:** Cursor (Execute Stage T5)
+**What:** Inventory classifying durable vs derived mutators under the ConvMem data root for Hybrid Five-part dimension 1.
+**When:** Implementation tip of `fix/2026-07-27-complete-data-backup-correction-v2` (filled at VERIFY subject SHA).
+**Why:** Hybrid bar A requires a Tier-1 writer census `PASS` without claiming Universal snapshot participation.
 **How:** Machine-readable inventory at [`COMPLETE-DATA-V2-TIER1-WRITER-CENSUS.json`](COMPLETE-DATA-V2-TIER1-WRITER-CENSUS.json); capture-time classification via `writer_census_for_root()` embedded in `.convmem-backup-evidence.json`.
 
 ## Hybrid scoreboard (this artifact)

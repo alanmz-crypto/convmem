@@ -1,5 +1,9 @@
 """V5 atomic publication fault injection + FD-leak proof (complete-data backup v2 T3)."""
 
+# Fault-injection fixtures deliberately retain resources across setUp/tearDown
+# and mirror os.fdopen's signature.
+# pylint: disable=consider-using-with,keyword-arg-before-vararg,duplicate-code
+
 from __future__ import annotations
 
 import os

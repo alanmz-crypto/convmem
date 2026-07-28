@@ -16,13 +16,15 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from backup_workflows import restore_validated_snapshot  # noqa: E402
-from complete_data_restore import (  # noqa: E402
+from backup_workflows import (  # noqa: E402  # pylint: disable=wrong-import-position
+    restore_validated_snapshot,
+)
+from complete_data_restore import (  # noqa: E402  # pylint: disable=wrong-import-position
     RestoreReport,
     locate_restored_data_root,
     run_preflight_validation,
 )
-from restic_snapshot import (  # noqa: E402
+from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-position
     BackupContext,
     ResolverError,
     check_restic_available,

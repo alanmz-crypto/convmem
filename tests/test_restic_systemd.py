@@ -5,6 +5,10 @@ parent (path firewall). Never installs, enables, starts, stops, or reloads
 live user-systemd units.
 """
 
+# The fixture owns its temp directory across setUp/tearDown; unit checks repeat
+# intentionally across local and offsite examples.
+# pylint: disable=consider-using-with,duplicate-code,wrong-import-position
+
 from __future__ import annotations
 
 import shutil
@@ -16,10 +20,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 
 # Import path firewall from the T1 restic fixture module.
-import sys
-
-sys.path.insert(0, str(REPO / "tests"))
-from test_restic_snapshot import PathFirewall, PathFirewallError  # noqa: E402
+from tests.test_restic_snapshot import PathFirewall, PathFirewallError
 
 
 UNIT_SOURCES = {

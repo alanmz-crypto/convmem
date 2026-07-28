@@ -5,6 +5,10 @@ Validators classify only; they never repair. Capture evidence is not authority
 and is never a repair source.
 """
 
+# The closed restore matrix intentionally lives in one auditable policy module.
+# Validator/capture boundaries classify arbitrary corruption instead of leaking it.
+# pylint: disable=too-many-lines,broad-exception-caught
+
 from __future__ import annotations
 
 import hashlib
@@ -322,7 +326,7 @@ def build_backup_evidence(data_root: Path | str) -> dict[str, Any]:
                 if lid:
                     approved_ids.append(lid)
                     approved_linkage[lid] = _proposal_linkage(row)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             approved_ids = []
             approved_linkage = {}
 
@@ -332,7 +336,7 @@ def build_backup_evidence(data_root: Path | str) -> dict[str, Any]:
         try:
             events = _read_jsonl(events_path)
             pending_fp = pending_lifecycle_fingerprint(events)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pending_fp = ""
 
     chroma_info: dict[str, Any] = {}
@@ -353,6 +357,7 @@ def build_backup_evidence(data_root: Path | str) -> dict[str, Any]:
                 },
             }
         except Exception as exc:  # noqa: BLE001 — capture is best-effort
+            # pylint: disable=broad-exception-caught
             chroma_info = {"capture_error": str(exc)}
 
     export_info: dict[str, Any] = {}
@@ -366,6 +371,7 @@ def build_backup_evidence(data_root: Path | str) -> dict[str, Any]:
                 "byte_sha256": exp["byte_sha256"],
             }
         except Exception as exc:  # noqa: BLE001
+            # pylint: disable=broad-exception-caught
             export_info = {"capture_error": str(exc)}
 
     top_level = sorted(p.name for p in root.iterdir()) if root.is_dir() else []
@@ -428,6 +434,7 @@ def _validate_chroma(ctx: RestoreContext) -> Classification:
     try:
         snap = chroma_logical_snapshot(chroma_dir)
     except Exception as exc:  # noqa: BLE001 — classify, do not repair
+        # pylint: disable=broad-exception-caught
         return Classification(
             path=spec.path,
             authority=spec.authority,
@@ -518,8 +525,8 @@ def _validate_approved(ctx: RestoreContext) -> Classification:
                 detail=f"duplicate ledger_id: {lid}",
             )
         seen.add(lid)
-        for field in _APPROVED_REQUIRED:
-            if field == "kind":
+        for required_field in _APPROVED_REQUIRED:
+            if required_field == "kind":
                 if not (
                     row.get("kind")
                     or row.get("ledger_kind")
@@ -531,12 +538,12 @@ def _validate_approved(ctx: RestoreContext) -> Classification:
                         outcome=OUTCOME_BLOCKED,
                         detail=f"{lid} missing kind",
                     )
-            elif field not in row or row.get(field) in (None, ""):
+            elif required_field not in row or row.get(required_field) in (None, ""):
                 return Classification(
                     path=spec.path,
                     authority=spec.authority,
                     outcome=OUTCOME_BLOCKED,
-                    detail=f"{lid} missing {field}",
+                    detail=f"{lid} missing {required_field}",
                 )
         link = _proposal_linkage(row)
         if lid.startswith("dec_") and not link:
@@ -594,6 +601,7 @@ def _validate_pending_events(ctx: RestoreContext) -> Classification:
         # Force reducer to run for corruption detection.
         reduce_events(events)
     except Exception as exc:  # noqa: BLE001
+        # pylint: disable=broad-exception-caught
         return Classification(
             path=spec.path,
             authority=spec.authority,
@@ -646,6 +654,7 @@ def _validate_pending_projection(ctx: RestoreContext) -> Classification:
         states = reduce_events(events) if events else {}
         active = unresolved(states)
     except Exception as exc:  # noqa: BLE001
+        # pylint: disable=broad-exception-caught
         return Classification(
             path=spec.path,
             authority=spec.authority,
@@ -745,6 +754,7 @@ def _validate_derived_export(ctx: RestoreContext) -> Classification:
                 "evidence_is_authority": False,
             }
         except Exception as exc:  # noqa: BLE001
+            # pylint: disable=broad-exception-caught
             # Cannot deterministically name Chroma as repair source.
             outcome = OUTCOME_BLOCKED
             detail = f"export present but Chroma unreadable for compare: {exc}"
@@ -806,7 +816,7 @@ def _validate_processed(ctx: RestoreContext) -> Classification:
         )
 
     ambiguous = 0
-    for key, entry in data.items():
+    for entry in data.values():
         if not isinstance(entry, dict):
             ambiguous += 1
             continue
@@ -1276,7 +1286,7 @@ def _validate_evidence_sidecar(ctx: RestoreContext) -> Classification:
 # ---------------------------------------------------------------------------
 # Closed StateSpec table
 # ---------------------------------------------------------------------------
-def _noop_missing_valid(ctx: RestoreContext) -> Classification:
+def _noop_missing_valid(_ctx: RestoreContext) -> Classification:
     return Classification("?", "?", OUTCOME_VALID, "unused")
 
 
@@ -1723,6 +1733,7 @@ def inventory_restored_state(
                 result.overall = OUTCOME_VALID
         return result
     except Exception as exc:  # noqa: BLE001
+        # pylint: disable=broad-exception-caught
         result.classifications.append(
             Classification(
                 str(root),

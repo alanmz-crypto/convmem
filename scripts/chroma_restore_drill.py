@@ -25,14 +25,20 @@ from typing import Any, Callable
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from chroma_store import (  # noqa: E402
+from chroma_store import (  # noqa: E402  # pylint: disable=wrong-import-position
     SUMMARIES,
     UNITS,
     open_chroma_for_verify,
 )
-from backup_workflows import restore_validated_snapshot  # noqa: E402
-from restic_snapshot import BackupContext, ResolverError, resolve_snapshot  # noqa: E402
-from atomic_files import atomic_write_json  # noqa: E402
+from backup_workflows import (  # noqa: E402  # pylint: disable=wrong-import-position
+    restore_validated_snapshot,
+)
+from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-position
+    BackupContext,
+    ResolverError,
+    resolve_snapshot,
+)
+from atomic_files import atomic_write_json  # noqa: E402  # pylint: disable=wrong-import-position
 
 DEFAULT_PARENT = Path.home() / ".local/share/convmem" / "restore-drill"
 DEFAULT_FIXTURE = REPO / "tests" / "fixtures" / "chroma_restore_drill.json"

@@ -1,5 +1,8 @@
 """Tests for external Restic live-write gate (workflow + thin shell wrapper)."""
 
+# The fixture owns multiple explicit path roles and cleans its temp root in tearDown.
+# pylint: disable=too-many-instance-attributes,consider-using-with,duplicate-code
+
 from __future__ import annotations
 
 import os
@@ -73,6 +76,7 @@ class ResticGateTests(unittest.TestCase):
             env=env or self.env,
             capture_output=True,
             text=True,
+            check=False,
         )
 
     def test_ensure_snapshot_happy_path(self):

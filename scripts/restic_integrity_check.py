@@ -8,7 +8,6 @@ Does not touch live Chroma. Selection/check go through restic_snapshot via workf
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from datetime import datetime, timezone
@@ -18,9 +17,14 @@ from typing import Any
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from backup_workflows import run_integrity_check  # noqa: E402
-from restic_snapshot import BackupContext, ResolverError  # noqa: E402
-from atomic_files import atomic_write_json  # noqa: E402
+from backup_workflows import (  # noqa: E402  # pylint: disable=wrong-import-position
+    run_integrity_check,
+)
+from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-position
+    BackupContext,
+    ResolverError,
+)
+from atomic_files import atomic_write_json  # noqa: E402  # pylint: disable=wrong-import-position
 
 DEFAULT_PARENT = Path.home() / ".local/share/convmem" / "integrity-check"
 DEFAULT_SUBSET = "5%"

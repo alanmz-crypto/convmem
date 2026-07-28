@@ -11,6 +11,10 @@ Proofs:
     → validate evidence → retain reports
 """
 
+# Imports follow a path-isolation bootstrap; repeated S/W assertions are
+# intentional independent consumer proofs.
+# pylint: disable=wrong-import-position,duplicate-code
+
 from __future__ import annotations
 
 import json
@@ -18,16 +22,14 @@ import os
 import sqlite3
 import subprocess
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(REPO_ROOT / "tests"))
 
-from test_restic_snapshot import (  # noqa: E402
+from tests.test_restic_snapshot import (  # noqa: E402
     HermeticFixture,
     PathFirewallError,
     _assert_not_live_reads,
@@ -175,7 +177,10 @@ class TestResticOffsiteHermetic(unittest.TestCase):
         def wrapped(cmd, *args, **kwargs):
             if cmd and "restic" in str(cmd[0]):
                 recorded.append(list(cmd))
-            return real_run(cmd, *args, **kwargs)
+            kwargs.setdefault("check", False)
+            return real_run(  # pylint: disable=subprocess-run-check
+                cmd, *args, **kwargs
+            )
 
         with mock.patch("restic_snapshot.subprocess.run", side_effect=wrapped):
             outcome = copy_current_snapshot_offsite(self.ctx)

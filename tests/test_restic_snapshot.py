@@ -7,11 +7,15 @@ if a mutable path escapes that parent.
 Tests must NOT read live ~/.config/convmem or live data roots.
 """
 
+# Imports follow a path-isolation bootstrap. The hermetic fixture deliberately
+# owns many explicit path roles for firewall coverage.
+# pylint: disable=wrong-import-position,too-many-instance-attributes
+# pylint: disable=consider-using-with,duplicate-code
+
 from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -102,13 +106,12 @@ def _restic_available() -> bool:
     try:
         check_restic_available(_restic_bin())
         return True
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         return False
 
 
 def _assert_not_live_reads() -> None:
     """Sanity: tests never open the live restic.env as input."""
-    live = Path.home() / ".config" / "convmem" / "restic.env"
     # We do not open it; this assertion documents the contract.
     assert "CONVMEM_RESTIC_ENV" not in os.environ or not str(
         Path(os.environ["CONVMEM_RESTIC_ENV"]).expanduser()
@@ -563,7 +566,10 @@ class TestResolverDecisiveFixture(unittest.TestCase):
         def wrapped(cmd, *args, **kwargs):
             if cmd and "restic" in str(cmd[0]):
                 recorded.append(list(cmd))
-            return real_run(cmd, *args, **kwargs)
+            kwargs.setdefault("check", False)
+            return real_run(  # pylint: disable=subprocess-run-check
+                cmd, *args, **kwargs
+            )
 
         with mock.patch("restic_snapshot.subprocess.run", side_effect=wrapped):
             ref = resolve_snapshot(self.ctx)
@@ -674,6 +680,7 @@ class TestCopyLineage(unittest.TestCase):
             capture_output=True,
             text=True,
             env=envc,
+            check=False,
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         source = SnapshotRef.from_snapshot_json(
@@ -717,6 +724,7 @@ class TestCLI(unittest.TestCase):
             capture_output=True,
             text=True,
             env=self.fx.base_env,
+            check=False,
         )
         self.assertEqual(proc.returncode, EXIT_OK, proc.stderr)
         data = json.loads(proc.stdout.strip())
@@ -735,6 +743,7 @@ class TestCLI(unittest.TestCase):
             capture_output=True,
             text=True,
             env=self.fx.base_env,
+            check=False,
         )
         self.assertEqual(proc.returncode, EXIT_OK, proc.stderr)
         data = json.loads(proc.stdout)
@@ -753,6 +762,7 @@ class TestCLI(unittest.TestCase):
             capture_output=True,
             text=True,
             env=self.fx.base_env,
+            check=False,
         )
         self.assertEqual(proc.returncode, EXIT_OK, proc.stderr)
         data = json.loads(proc.stdout)

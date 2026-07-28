@@ -1,5 +1,8 @@
 """Hermetic tests for complete_data_restore.py — one case per matrix row + gates."""
 
+# TemporaryDirectory lifetimes are owned by unittest setUp/tearDown.
+# pylint: disable=consider-using-with,wrong-import-position,duplicate-code
+
 from __future__ import annotations
 
 import json
@@ -7,8 +10,6 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
-
 import sys
 
 REPO = Path(__file__).resolve().parents[1]
