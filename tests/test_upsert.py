@@ -130,5 +130,39 @@ class UpsertTests(unittest.TestCase):
         self.assertEqual(mock_embed.call_count, 1)
 
 
+    @patch("llm.ollama_embed", side_effect=_fake_embed)
+    def test_upsert_export_uses_atomic_publication(self, _mock):
+        export = Path(self.tmp.name) / "units.jsonl"
+        ingest_observation(
+            _RECORD,
+            store=self.store,
+            embed_model="test",
+            ollama_host="local",
+            units_export=export,
+        )
+        self.assertTrue(export.is_file())
+        first = export.read_text(encoding="utf-8")
+        self.assertIn("Missing CSP header", first)
+
+        updated = {**_RECORD, "summary": "Missing CSP and COOP headers"}
+        ingest_observation(
+            updated,
+            store=self.store,
+            embed_model="test",
+            ollama_host="local",
+            upsert=True,
+            units_export=export,
+        )
+        body = export.read_text(encoding="utf-8")
+        lines = [ln for ln in body.splitlines() if ln.strip()]
+        self.assertEqual(len(lines), 1)
+        self.assertIn("COOP", body)
+        # No unpublished sibling temps left behind after successful publish.
+        leftovers = list(export.parent.glob(f".{export.name}.*.tmp"))
+        self.assertEqual(leftovers, [])
+
+
+
+
 if __name__ == "__main__":
     unittest.main()

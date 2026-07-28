@@ -32,16 +32,16 @@ activation against the live corpus is forbidden for this verification slice.
 | `convmem.py:377` | `open_chroma_for_write` |
 | `convmem.py:474` | `open_chroma_for_write` |
 | `convmem.py:616` | `open_chroma_for_write` |
-| `convmem.py:1424` | `open_chroma_for_write` |
-| `observe.py:231` | `open_chroma_for_write` |
+| `convmem.py:1422` | `open_chroma_for_write` |
+| `observe.py:233` | `open_chroma_for_write` |
 | `propose_decision.py:529` | `open_chroma_for_write` |
 | `propose_decision.py:556` | `open_chroma_for_write` |
 | `refine.py:272` | `open_chroma_for_write` |
 | `refine.py:716` | `open_chroma_for_write` |
 | `source_purge.py:317` | `open_chroma_for_write` |
-| `ingest.py:477` | `chroma_write_session` |
-| `ingest.py:532` | `chroma_write_session` |
-| `ingest.py:746` | `chroma_write_session` |
+| `ingest.py:478` | `chroma_write_session` |
+| `ingest.py:533` | `chroma_write_session` |
+| `ingest.py:747` | `chroma_write_session` |
 | `inter_model_index.py:155` | `chroma_write_session` |
 
 ## allowlisted_direct (not a V3d failure)

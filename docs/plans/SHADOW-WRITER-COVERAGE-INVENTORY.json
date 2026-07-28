@@ -6,8 +6,8 @@
     "convmem.py:377",
     "convmem.py:474",
     "convmem.py:616",
-    "convmem.py:1424",
-    "observe.py:231",
+    "convmem.py:1422",
+    "observe.py:233",
     "propose_decision.py:529",
     "propose_decision.py:556",
     "refine.py:272",
@@ -15,9 +15,9 @@
     "source_purge.py:317"
   ],
   "chroma_write_session_production_call_sites": [
-    "ingest.py:477",
-    "ingest.py:532",
-    "ingest.py:746",
+    "ingest.py:478",
+    "ingest.py:533",
+    "ingest.py:747",
     "inter_model_index.py:155"
   ],
   "must_use_factory_bypass_sites": [],

@@ -109,6 +109,73 @@ Backfill is **complete** (0 untagged). Default `config.example.toml` runs `confi
 
 ---
 
+## Restic complete-data backup timers (examples only)
+
+Two **independent** user timer units manage complete-data-v2 Restic snapshots
+and offsite copies. Example files live in `systemd/`; copy to
+`~/.config/systemd/user/` only after Ryan grants the post-merge timer live step.
+Merging this code does **not** install, enable, start, or reload any unit.
+
+### Local daily snapshot (`convmem-restic-local`)
+
+Creates or verifies a current-day `convmem-data-v2` snapshot of
+`CONVMEM_DATA_ROOT` (profile `complete-data-v2`).
+
+```bash
+cp systemd/convmem-restic-local.{service,timer}.example ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now convmem-restic-local.timer
+systemctl --user list-timers convmem-restic-local.timer
+```
+
+**Schedule:** daily at **00:15** local, up to 5 min jitter (`RandomizedDelaySec=300`).
+`Persistent=true` catches up one missed run after host resume.
+
+### External offsite copy (`convmem-restic-external`)
+
+Copies the current complete-data-v2 snapshot to the external USB repository
+using an **explicit** snapshot ID with lineage verification (`D.original == S`).
+Never uses `--latest`.
+
+```bash
+cp systemd/convmem-restic-external.{service,timer}.example ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now convmem-restic-external.timer
+```
+
+**Schedule:** every 2 hours starting at **01:00** (`*-*-* 01/2:00:00` → 01:00,
+03:00, 05:00, …). `Persistent=true` as above.
+
+The external **service** declares `After=convmem-restic-local.service` for
+queuing convenience only. That `After=` is **non-authoritative**: it does not
+pull in the local service, does not prove local success, and is never a
+protection claim. A stale local source exits `25`, copies nothing, and is
+visible via `systemctl --user status` / journal.
+
+### Monitoring (after live grant only)
+
+```bash
+systemctl --user list-timers convmem-restic-*
+systemctl --user status convmem-restic-local.service
+systemctl --user status convmem-restic-external.service
+journalctl --user -u convmem-restic-local -f
+journalctl --user -u convmem-restic-external -f
+```
+
+### Pre-requisites
+
+- `restic >= 0.19.0` on PATH
+- `~/.config/convmem/restic.env` with `CONVMEM_BACKUP_PROFILE=complete-data-v2`,
+  mandatory `CONVMEM_DATA_ROOT`, `RESTIC_REPOSITORY`,
+  `RESTIC_EXTERNAL_REPOSITORY`, `RESTIC_PASSWORD_FILE`
+- Profile remains `legacy-chroma` / unset until Ryan grants profile activation;
+  doctor must emit `WARN_LEGACY_ONLY` until all four post-merge grants finish
+
+Never rely on timer ordering for backup safety. Authoritative protection comes
+from path-bound snapshot resolution and explicit IDs — see
+`docs/RECOVER.md` and the Architecture/VERIFY companions for this arc.
+
+
 ## Linger (services survive logout/reboot)
 
 ```bash
