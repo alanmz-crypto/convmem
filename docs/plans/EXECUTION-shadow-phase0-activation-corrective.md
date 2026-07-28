@@ -24,6 +24,24 @@ activation, live configuration changes, Chroma mutations, Shadow artifact
 creation, ledger or manifest changes, health-sidecar changes, backup changes,
 or production-setting changes.
 
+### Review disposition — DeepSeek and Kiro, 2026-07-28
+
+DeepSeek and Kiro reviewed plan commit
+bfceb65b6a07a4d2183085d1bac0c22f23b97055. Both returned PASS conditioned on
+one shared timeout blocker and assignment of the same three HIGH findings.
+There is no material reviewer conflict and no Sol-High gate.
+
+| Review finding | Resolution in this revision |
+|---|---|
+| BLOCKER: unbounded human confirmation while exclusive gate is held | Removed live human waiting. Ryan supplies a one-shot authorization token before activation starts; absence, expiry, or mismatch aborts before gate acquisition. Under the gate the tool only revalidates the token locally and never polls or waits for a person/network. |
+| HIGH: pre-C3 writer process can bypass the gate | C3 now defines a writer protocol/version attestation; C5 stops known services and performs a concrete process/open-FD census. Any pre-gate or unattested writer PID is a named abort. |
+| HIGH: callers can pass stale config across lease acquisition | C3 now has a 14-site caller audit. Production sessions accept no caller config, acquire the shared lease first, load live config internally, and yield that snapshot. |
+| HIGH: dead exclusive-holder recovery absent | The failure table/runbook now classify a dead holder with disabled config as prepared_not_committed and require an explicit activation-ID/inode-scoped recovery abort under a newly acquired exclusive gate. |
+| MEDIUM: cold writer open remains O(N) | C6 now measures ledger-size and real invocation-frequency effects against O_p99_ms; activation cannot proceed if the approved budget fails. |
+| MEDIUM: config rename assumptions incomplete | C5 now requires a same-parent, same-device, supported local filesystem with atomic rename semantics; network/unsupported filesystems abort and have no copy/truncate fallback. |
+| MEDIUM: health persistence omitted from current timer | C2 now explicitly moves the complete-path stop after health persistence and fault-tests health-only fsync degradation. |
+| LOW: best-effort chmod swallows errors | C2 removes/deprecates ensure_private_file_mode from secure paths and forbids swallowed permission failures. |
+
 ## 1. Verified current state
 
 ### Subject and non-mutation evidence
@@ -105,12 +123,12 @@ This is a local orchestrated saga, not a service split or Chroma redesign.
 | Root cause | Phase 0 deliberately deferred activation and supplied no writer-wide transaction boundary. |
 | Invariant | No writer can mutate Chroma between baseline capture and the point where all later writers reload committed config and attach a validated sink. |
 | Modules | New shadow_activation.py; chroma_write_store.py; thin convmem.py commands; config.py; all production factory call sites; activation tests. |
-| Design | Suspend known services, acquire exclusive writer gate, capture two identical deterministic snapshots, stage/validate artifacts, recheck config preimage, atomically replace config as commit point, release gate, resume writers, observe first real event. |
+| Design | Validate a pre-issued one-shot Ryan authorization token before any gate; suspend and revision-audit known services/processes; acquire exclusive writer gate; capture two identical deterministic snapshots; stage/validate artifacts; locally revalidate the token and config preimage without human/network wait; atomically replace config as commit point; release gate, resume writers, observe first real event. |
 | Failure/rollback | Precommit leaves config disabled and removes only transaction-owned staging. Postcommit reacquires the gate and atomically disables Shadow; Chroma is never undone. |
-| Unit tests | Transition table, invalid transitions, semantic config diff, stale preimage refusal, recovery classification, commit ordering. |
-| Integration tests | Multiprocess writer blocks behind activation, reloads enabled config after release, and emits first event. |
-| Fault injection | Kill after every state/rename/fsync; config fsync failure; writer-gate timeout; interrupt immediately before/after config replace. |
-| Operational verification | Prove services inactive, acquire exclusive gate, match two snapshots, review strict report, retain hashed transaction evidence. |
+| Unit tests | Transition table, invalid transitions, token absence/expiry/reuse/mismatch, semantic config diff, stale preimage refusal, dead-holder recovery classification, commit ordering. |
+| Integration tests | Multiprocess writer blocks behind activation, reloads enabled config after release, and emits first event; pre-gate binary/process attestation aborts activation. |
+| Fault injection | Kill after every state/rename/fsync; config fsync failure; writer-gate timeout; dead exclusive holder; interrupt immediately before/after config replace. |
+| Operational verification | Prove token validity, services inactive, no pre-gate process/open FD, acquire exclusive gate, match two snapshots, review strict report, retain hashed transaction evidence. |
 | Acceptance gate | No uncaptured interleaving; every crash recovers as disabled/uncommitted or committed/strictly valid; stale config cannot write after commit. |
 
 ### Finding 2 — factory validation incomplete
@@ -165,7 +183,7 @@ This is a local orchestrated saga, not a service split or Chroma redesign.
 | Root cause | Two full scans per append; complete timing excludes health persistence; no same-filesystem canary. |
 | Invariant | Steady append cost is independent of ledger length except event bytes, telemetry covers all synchronous work, and activation waits for approved budgets and canary PASS. |
 | Modules | shadow_sink.py; new shadow_canary.py; thin convmem.py CLI; health schema; performance tests. |
-| Design | Stop append-time duplicate suppression; replay already applies first valid duplicate. Read last header/event for next sequence. Time lock through health fsync/rename/parent handling and return. |
+| Design | Stop append-time duplicate suppression; replay already applies first valid duplicate. Read last header/event for next sequence. Separate ledger-only and health-persist durations, move the complete-path stop after _persist_health(), and make health-only fsync slowness set degradation. The externally wrapped canary measurement is authoritative for the exact total, including any status publication needed to persist the completed metric. |
 | Failure/rollback | Canary failure leaves disabled. Live threshold breach atomically disables Shadow under writer gate. |
 | Unit tests | Tail/header sequence, repeated-ID lines, timer boundaries, bounded bytes read, health included. |
 | Integration tests | Representative sizes/volumes/concurrency in private scratch on intended ledger filesystem, never live paths. |
@@ -204,11 +222,11 @@ Shadow phases, and backup-policy changes.
 | File | Planned responsibility |
 |---|---|
 | shadow_validation.py (new) | Typed modes/results/refusals and all manifest, ledger, collection, path, revision, baseline, commit validation. |
-| shadow_activation.py (new) | Journal, transitions, baseline, staged install, config commit/rollback, recovery, first-event verification. |
+| shadow_activation.py (new) | One-shot authorization-token validation/consumption, journal, transitions, process-revision proof, baseline, staged install, config commit/rollback, recovery, first-event verification. |
 | shadow_canary.py (new) | Workload/canary runner, redacted evidence, budget evaluation. |
 | shadow_ledger.py | Strict manifest/header schema, baseline digest, private descriptor-relative file helpers. |
-| shadow_sink.py | Secure open, bounded-tail append, duplicate-line behavior, complete timing, activation identity in health. |
-| chroma_write_store.py | Shared writer lease, live config load after lease, shared validator, separate test-only override. |
+| shadow_sink.py | Secure open, bounded-tail append, duplicate-line behavior, ledger/health/complete timing, activation identity in health; no best-effort permission helper. |
+| chroma_write_store.py | Shared writer lease, writer-protocol attestation, live config load after lease, shared validator, separate test-only override. |
 | chroma_readonly.py | Collection UUID/identity and deterministic baseline snapshot with active/total classification. |
 | config.py | Explicit config-path/preimage helpers; no automatic activation. |
 | doctor.py | Render shared validation and enabled-invalid FAIL. |
@@ -239,8 +257,8 @@ backup timers, or production settings.
 
 | State | Durable evidence and exit |
 |---|---|
-| disabled | Config absent/false. Exit only with Ryan authorization, approved budgets, passing prerequisites. |
-| preparing | Private journal: activation ID, SHA, config preimage, intended paths, committed=false. Validate disabled config and create 0700 staging. |
+| disabled | Config absent/false. Exit only with a valid pre-issued one-shot Ryan authorization token, approved budgets, and passing prerequisites. |
+| preparing | Private journal: activation ID, authorization-token hash/nonce, SHA, config preimage, intended paths, committed=false. Validate token and disabled config before requesting the exclusive gate; create 0700 staging. |
 | quiesced | Exclusive gate plus journal owner PID/start. Recheck services/processes/config. Exclusive acquisition proves no compliant session is open or can start. |
 | baseline_captured | Sorted entries, active/total, collection UUID, aggregate digest; two identical reads under the same gate. |
 | artifacts_validated | Header-only staged ledger, complete manifest, candidate config, artifact hashes, strict PASS. |
@@ -250,27 +268,90 @@ backup timers, or production settings.
 
 ### Ordering and no-gap proof
 
-1. Create journal/staging.
-2. Suspend known writer services; acquire exclusive writer gate.
-3. Capture two matching baselines.
-4. Create staged ledger first among activation payload artifacts, at 0600, with
+1. Before taking the writer gate, validate a mode-0600 one-shot authorization
+   token supplied by Ryan. It binds operation=shadow_activate, activation ID,
+   nonce, expiry, code revision, config path, canonical artifact paths, fixed
+   target config keys, and the named one-shot derivation of baseline/manifest
+   hashes. Missing, expired, reused, or mismatched tokens abort without blocking
+   writers.
+2. Create journal/staging and record the token hash/nonce without secret content.
+3. Suspend known writer services; run the legacy-process proof below; acquire
+   the exclusive writer gate.
+4. Capture two matching baselines.
+5. Create staged ledger first among activation payload artifacts, at 0600, with
    non-payload header only.
-5. Write/fsync manifest binding baseline, collection, ledger, SHA, sequence.
-6. Generate/parse candidate config and prove only approved Shadow keys differ.
-7. Strictly validate.
-8. Install ledger then manifest while config stays disabled.
-9. Recheck config preimage.
-10. Atomically replace/fsync config. This is commit.
-11. Release gate; new writers load config only after taking their shared lease.
-12. Resume services; verify first real event.
+6. Write/fsync manifest binding baseline, collection, ledger, SHA, sequence.
+7. Generate/parse candidate config and prove only approved Shadow keys differ.
+8. Strictly validate; locally revalidate the token and config preimage. No
+   human prompt, network request, polling, or unbounded wait is permitted while
+   the exclusive gate is held.
+9. Install ledger then manifest while config stays disabled.
+10. Recheck the config preimage, then durably consume the one-shot nonce in the
+    private authorization store before config commit. Nonce consumption and
+    config replacement are deliberately not described as one cross-file atomic
+    operation. A crash after consumption but before config commit leaves config
+    disabled, classifies the activation as prepared_not_committed, and requires
+    exact-artifact cleanup plus a newly issued token before retry.
+11. Atomically replace/fsync config. This is commit.
+12. Release gate; new writers load config only after taking their shared lease.
+13. Resume services; verify first real event.
 
 Multiple renames are not called one transaction. The gate plus config-last makes
 precommit artifacts inert.
 
-All production write sessions take a shared lock before authoritative config
-load and hold it through store close. Passing cached production config becomes
-prohibited. Static writer census plus service revision checks defend against a
-legacy bypass; any legacy writer is an abort condition.
+All production write sessions use
+production_chroma_write_session(config_path=CONFIG_PATH), which accepts no
+caller-supplied config or Chroma root. It takes a shared lock, then loads live
+config and yields both store and authoritative live_cfg; the lease remains held
+through store close. Callers may use earlier config for pre-write calculations,
+but sink eligibility, canonical root, and every mutation-session config field
+come only from live_cfg. Static tests forbid production calls that pass cfg into
+open_chroma_for_write or chroma_write_session.
+
+### C3 cached-config caller audit
+
+| File / function | Current site | Required C3 change |
+|---|---|---|
+| convmem.py add | open_chroma_for_write near 377 | Enter production session with no cfg; use yielded live_cfg for model/export/root values used by the mutation. |
+| convmem.py verify_command | near 474 | Same; no config loaded before lease may decide sink/root. |
+| convmem.py monitor_command | near 616 | Same for non-dry-run writer path; dry-run remains sink-free. |
+| convmem.py forget_command | near 1422 | Same; lease encloses read-before-tombstone and mutation. |
+| ingest.py _commit_chunk_to_stores | chroma_write_session near 478 | Replace cfg/chroma_dir arguments; use yielded live_cfg inside write block. |
+| ingest.py _index_inter_model_file | near 533 | Same. |
+| ingest.py _reindex_clear_existing | near 747 | Same; lease covers clear and replacement sequence. |
+| inter_model_index.py index_inter_model_messages | near 155 | Same; precomputed embeddings may remain outside, but write decisions use live_cfg. |
+| observe.py repair_empty_ledger_documents | open near 233 | Same; remove fallback load_config from outside the lease. |
+| propose_decision.py ingest_approved_file | near 529 | Same; yielded live_cfg supplies models/export/root. |
+| propose_decision.py ingest_approved_ledger | near 556 | Same. |
+| refine.py apply_approved_dedupe | near 272 | Same; queue read may precede lease, mutation uses live_cfg. |
+| refine.py run_job | near 716 | Same; cost/config used by mutation comes from yielded snapshot. |
+| source_purge.py execute_purge | near 317 | Same; keep source lock order explicit and prove no shadow/source lock inversion. |
+
+The refreshed writer inventory is the acceptance source of truth; line numbers
+are orientation only and must be regenerated at the C3 subject SHA.
+
+### Legacy-process revision proof
+
+C3 defines WRITER_GATE_PROTOCOL_VERSION and a private per-process attestation
+containing PID, /proc PID start time, code revision, installed source/executable
+identity, entrypoint, and protocol version whenever a production writer service
+starts or a write lease is acquired. The generated writer census also records
+known systemd units and command-line signatures.
+
+Before quiescence, C5 must:
+
+1. stop every census-listed long-lived writer service/timer;
+2. scan /proc for matching writer entrypoints and for any PID with an open file
+   descriptor beneath the canonical Chroma root;
+3. compare each discovered PID/start-time pair with a post-C3 attestation and
+   installed code revision;
+4. refuse with legacy_writer_process if any PID is unattested, pre-C3, has an
+   unexpected executable/source identity, or cannot be classified;
+5. require the census to be freshly generated at the implementation SHA.
+
+After commit, services start only from the verified post-C3 image. The exclusive
+flock remains the no-write proof for compliant writers; the process census
+closes the deployment window for code that predates the flock protocol.
 
 ### Failure transitions
 
@@ -279,6 +360,7 @@ legacy bypass; any legacy writer is an abort condition.
 | preparing/quiesced | aborted_precommit → disabled; remove exact staging, release gate, resume. |
 | baseline captured | Abort and invalidate baseline; never reuse after resume. |
 | artifacts installed before config | prepared_not_committed → disabled; explicit identity/inode-scoped abort only. |
+| exclusive-holder process dies before commit | Kernel releases flock. If config is disabled and the journal PID/start-time is no longer live, classify prepared_not_committed. A new activation must first acquire the exclusive gate and run recover-abort for the exact activation ID, token nonce, paths, and inodes; remove only those artifacts, touch no config, then return to disabled. |
 | crash during config replace | Disabled config means uncommitted; enabled matching config/manifest/header means committed; enabled mismatch means factory refusal and emergency disable. |
 | committed before first event | rollback_pending → disabled_after_rollback under exclusive gate. |
 | first event/verification failure | Same rollback; retain ledger and exact gap. |
@@ -302,6 +384,12 @@ stable ordered, redacted, and carry code/artifact/blocking/detail.
 - Prepare recomputes the quiesced live baseline and staged paths.
 - Writer validates committed static bindings, collection identity, revision,
   full ledger syntax/sequence, and path metadata once per write session.
+- That full scan is intentionally O(N) and is not assumed cheap. C6 measures it
+  at header-only, N, 2N, and H_events and combines O_p99_ms with the refreshed
+  census of short-lived writer-session opens per day. If the approved budget
+  fails, activation remains blocked and Ryan must choose a separately reviewed
+  design; implementation may not silently downgrade to header/tail validation
+  or an unverified cache.
 - Doctor/inventory only render the core result.
 - Verify adds first-event and canary gates.
 
@@ -330,9 +418,11 @@ stable ordered, redacted, and carry code/artifact/blocking/detail.
 | prepared_not_committed | Prepared artifacts exist without matching committed config. |
 
 Also keep specific codes for config_changed, config_corrupt,
-config_activation_mismatch, health_missing, health_corrupt,
-writer_quiesce_timeout, collection_unavailable, ledger_exists_unbound,
-artifact_type_invalid, directory_not_private, first_event_missing,
+config_activation_mismatch, authorization_missing, authorization_expired,
+authorization_mismatch, authorization_reused, health_missing, health_corrupt,
+writer_quiesce_timeout, legacy_writer_process, collection_unavailable,
+ledger_exists_unbound, artifact_type_invalid, directory_not_private,
+config_filesystem_unsupported, config_cross_device, first_event_missing,
 first_event_mismatch, performance_budget_missing, and
 performance_budget_exceeded.
 
@@ -363,6 +453,13 @@ internal integrity, not equality to naturally evolved current Chroma.
 
 No payload is available to creation; header has only versions, activation ID,
 random ledger identity, UTC, and starting sequence.
+
+Config temp and destination must be in the same validated parent and have the
+same st_dev. C5 resolves the containing mount from /proc/self/mountinfo and
+requires a supported local filesystem whose same-directory rename has POSIX
+atomic replacement semantics. NFS/NFS4, CIFS/SMB, 9p, and any unclassified or
+non-atomic mount are refusal conditions. There is no copy/truncate fallback.
+Tests inject mount classifications and cross-device rename failure.
 
 Fresh preparation requires absent final ledger. Zero-byte files are not adopted.
 An existing ledger is accepted only for exact crash recovery when journal,
@@ -412,8 +509,9 @@ Measure cold factory validation separately from steady append.
 | Dimension | Required cases |
 |---|---|
 | Event size | 1 KiB control; redacted live-derived P50/P95 encoded sizes; maximum supported size, all synthetic. |
-| Ledger volume | Header-only; N=current total knowledge_units; 2N; Ryan-approved observation horizon. |
+| Ledger volume | Header-only; N=current total knowledge_units; 2N; Ryan-approved observation horizon. Cold-open full validation is measured at every volume. |
 | Concurrency | One writer; refreshed production-census peak; one case above peak. |
+| Cold-open frequency | Refreshed census counts short-lived production writer-session opens per command/day and reports cumulative daily validation time at each volume. |
 | Runs | Three fresh independent runs per cell after warm-up. |
 | Warm-up | At least 100 untimed appends or one second, whichever produces more. |
 | Samples | At least 1,000 timed per steady cell unless Ryan approves a justified lower count. |
@@ -457,7 +555,7 @@ days. Use synthetic lengths, not production payloads.
 | Area | Unit/integration | Faults | Gate |
 |---|---|---|---|
 | Lifecycle | Transition table; multiprocess prepare/commit/event/verify | Kill after each state/fsync/rename | Deterministic recovery; no gap |
-| Writer gate | Shared/exclusive; stale config; lease close | Timeout/dead process | Exclusive is quiescence proof |
+| Writer gate | Shared/exclusive; 14-site stale-config scan; post-C3 process attestation; lease close | Timeout, legacy binary, dead activation holder, PID reuse | Exclusive plus revision proof is quiescence proof |
 | Manifest/collection | Full refusal matrix; snapshot round trip | Truncate/swap/mutate/replace | Exact codes |
 | Ledger privacy | Open/fstat/mode/owner; header then event | Umask, short write, fsync, chmod, symlink race | No payload nonprivate |
 | Integrity/duplicates | Header/tail/sequence; concurrent append; repeat IDs | Invalid header/middle/tail, inode swap | Surfaces agree; no scan |
@@ -484,29 +582,41 @@ Shipped work also follows docs/CODEX-DEEPSEEK-VERIFY.md.
 ### Prerequisites and backup
 
 1. Confirm exact corrective revision and all slice evidence.
-2. Confirm disabled, no prepared transaction, zero writer bypasses, current code
-   deployed to every writer.
-3. Confirm Ryan's exact activation authorization, paths/final config, budgets,
-   first-event window, rollback thresholds.
-4. Resolve Kiro plan/design review and targeted security review.
-5. Run doctor; verify fresh local complete-data-v2 and matching offsite lineage.
+2. If doctor reports prepared_not_committed, do not start a new preparation.
+   Acquire the exclusive gate and run the exact recover-abort procedure only
+   after proving the recorded PID/start time is dead, config is disabled, and
+   activation ID/token nonce/path/inode identities match.
+3. Confirm disabled, no prepared transaction, zero writer bypasses, current code
+   deployed to every writer, a fresh C3 census, and zero pre-C3/unattested PIDs.
+4. Before gate acquisition, validate Ryan's mode-0600, unexpired, unused
+   one-shot activation token for exact operation, activation ID, code revision,
+   config/artifact paths, fixed target values, allowed derived hashes, budgets,
+   first-event window, and rollback thresholds. No interactive authorization
+   occurs during activation.
+5. Confirm config temp/destination use one supported local mount, parent, and
+   device with atomic same-directory rename; abort on network/unclassified
+   filesystems or EXDEV.
+6. Resolve Kiro plan/design review and targeted security review.
+7. Run doctor; verify fresh local complete-data-v2 and matching offsite lineage.
    Record snapshot IDs/times. Do not change backup policy.
-6. Abort on any backup failure.
+8. Abort on any backup failure.
 
 ### Suspend, prepare, review, commit
 
-1. Stop/suspend refreshed writer services/timers and verify inactive/no legacy
-   process.
+1. Stop/suspend refreshed writer services/timers; perform the /proc,
+   open-descriptor, attestation, and code-revision proof; refuse uncertainty.
 2. Create private journal; acquire exclusive gate; recheck disabled config,
-   preimage, paths, owner/modes, collection UUID, SHA, backup.
+   preimage, paths, owner/modes, collection UUID, SHA, backup, and token locally.
 3. Capture matching baselines; create ledger/header, manifest, candidate config.
 4. Strict prepare validation must have zero blocking codes.
-5. Review counts/digest, UUID, SHA, identity, paths, permissions, semantic diff,
-   and canary.
-6. Obtain already-scoped Ryan confirmation inside the same guarded invocation.
-   Decline/absence aborts.
-7. Install ledger, manifest; revalidate; recheck config preimage; atomically
+5. Verify the generated candidate against the token's exact fixed values and
+   authorized derivation rule. Missing, expired, mismatched, or already-consumed
+   token aborts: remove exact staging, release gate, resume services.
+6. Install ledger, manifest; revalidate; recheck config/token preimage; atomically
    install/fsync enabled config.
+
+There is no human prompt, network approval call, sleep, or polling loop between
+steps 2 and 6. Ryan's review and one-shot authorization happen before step 1.
 
 ### Resume and verify
 
@@ -567,7 +677,12 @@ All slices require separate Cursor authorization and merge only while disabled.
   Chroma behavior.
 - Prerequisite: C1/header/duplicate contract.
 - Tests: umask/first-byte, existing file, fsync/short write, tail sequence,
-  duplicates/concurrency/corruption.
+  duplicates/concurrency/corruption; health-only slow fsync must raise degraded
+  complete-path status.
+- Required implementation detail: move complete latency calculation after
+  _persist_health(); expose ledger, health-persist, and externally wrapped total
+  separately. Remove/deprecate ensure_private_file_mode from every secure path;
+  static tests reject swallowed chmod/chown errors.
 - Rollback: revert; disabled has no production sink.
 - Evidence: 0644 repro impossible; bounded-byte instrumentation; full tests.
 - Merge disabled: **Yes, required.**
@@ -580,8 +695,9 @@ All slices require separate Cursor authorization and merge only while disabled.
 - Prohibited: activation command, live state, doctor/inventory, replay changes,
   unrelated refactors.
 - Prerequisite: C1 and refreshed census.
-- Tests: multiprocess locks, lifetime lease, post-gate reload, exception close,
-  zero bypass.
+- Tests: multiprocess locks, lifetime lease, all 14 caller migrations,
+  post-gate reload, no production cfg argument, process-revision attestation,
+  /proc/open-FD legacy refusal, exception close, zero bypass.
 - Rollback: revert coherently; never mixed guarded/unguarded.
 - Evidence: zero bypass, every route blocks, full suite.
 - Merge disabled: **Yes, required.**
@@ -603,9 +719,11 @@ All slices require separate Cursor authorization and merge only while disabled.
   activation tests and approved docs.
 - Prohibited: live state, automatic service control without separate approval,
   Chroma semantics, backup settings, later phases.
-- Prerequisite: C1-C4; approve config diff, census, state machine, event policy.
-- Tests: transitions, config-last, no-gap, crash matrix, cleanup, rollback,
-  stale config, first event.
+- Prerequisite: C1-C4; approve one-shot authorization-token schema, config diff,
+  census/process proof, state machine, supported-filesystem policy, event policy.
+- Tests: transitions, token absence/expiry/reuse/mismatch, config-last,
+  supported/unsupported mounts and EXDEV, no-gap, dead-holder/PID-reuse crash
+  matrix, recover-abort cleanup, rollback, stale config, first event.
 - Rollback: code revert; only temporary test roots.
 - Evidence: hermetic exact-SHA report, no live touch, full suite.
 - Merge disabled: **Yes, required.** Command defaults to refusal without exact
@@ -619,7 +737,8 @@ All slices require separate Cursor authorization and merge only while disabled.
   async/group optimization, production Chroma mutation.
 - Prerequisite: C1-C5 and all Ryan budget values.
 - Tests: workload, full timer, evaluator, provenance/redaction, live refusal,
-  slow fsync/lock.
+  slow fsync/lock, cold validation at all ledger volumes, and production
+  short-lived open-frequency/cumulative-cost reporting.
 - Rollback: revert; disabled.
 - Evidence: three clean same-filesystem scratch runs/cell, hashes, budgets,
   Codex replay.
@@ -633,7 +752,7 @@ operational grant after merge/review.
 | Gate | Owner/evidence | Blocks |
 |---|---|---|
 | Plan | Ryan reviews this exact revision and open decisions | Any Cursor slice |
-| Design | Kiro written PASS/FAIL on state machine/validator/rollback/scope | Execute |
+| Design | Kiro's conditional PASS covered plan bfceb65; Ryan accepts this revision's mapped corrections or requests a targeted Kiro recheck on its exact SHA | Execute |
 | Security/isolation | Targeted Copilot audit of secure open/TOCTOU/gate/config at exact implementation SHA | Relevant merges as Ryan directs |
 | Implementation | Cursor receives bound brief with allowed/prohibited/prerequisite SHA | Only named slice |
 | Independent replay | Codex runs verification guide, tests/probes/diff/nonmutation | Merge/next slice |
@@ -648,10 +767,9 @@ on the same artifact/revision under the charter.
 
 1. **Performance budgets — Ryan before C6 implementation:** A_p99_ms, A_max_ms,
    D_p99_factor, O_p99_ms, R_p99_ms, R_factor, R_window, H_events.
-2. **Private parent policy — Ryan/Kiro:** recommended current-user ownership and
-   no group/other permissions for dedicated staging; decide whether existing
-   shared data-root parent must be 0700 or may contain a private 0700 Shadow
-   subdirectory.
+2. **Private parent policy — Ryan:** Kiro recommends a dedicated current-user
+   0700 Shadow subdirectory under the convmem data root but outside the Chroma
+   root, rather than changing permissions on the shared data-root parent.
 3. **First-event window — Ryan:** set maximum commit-to-event time and timeout
    action; recommendation is rollback.
 4. **Synthetic event — Ryan only if natural traffic is absent:** exact writer
@@ -661,10 +779,19 @@ on the same artifact/revision under the charter.
 6. **Config editing mechanism — implementation review:** recommendation is
    byte-preserving replacement of only the existing shadow_ledger table,
    TOML parse plus semantic-diff proof, preimage hash, atomic replace, directory
-   fsync. A general TOML dependency requires separate justification.
+   fsync on a supported same-parent/same-device local filesystem. A general TOML
+   dependency or copy/truncate fallback requires separate justification.
+7. **One-shot authorization token — Ryan before C5:** approve token format,
+   canonical request hashing, nonce storage/atomic consumption, expiry, exact
+   fixed config values, and the named derivation rule for baseline/manifest
+   hashes. Interactive confirmation while the exclusive gate is held is
+   prohibited.
 
-These choices block activation. Items 1-3 also block authorization of the slice
-that encodes them. They do not reopen Chroma authority, vocabulary, backup
-doctrine, or later phases.
+These choices block activation. C1 may proceed only after Ryan accepts this
+revised plan and the private-parent policy. C2 and C4 then depend only on C1.
+C3 additionally requires decisions 5 and the specified process/call-site proof.
+C5 requires decisions 2, 3, 5, 6, and 7. C6 requires decision 1 and retained
+canary evidence. No unresolved choice authorizes live activation. These choices
+do not reopen Chroma authority, vocabulary, backup doctrine, or later phases.
 
 **PLAN READY FOR IMPLEMENTATION REVIEW**
