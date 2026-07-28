@@ -1,0 +1,29 @@
+# User systemd timer — daily complete-data-v2 Restic snapshot at 00:15 local
+#
+# Persistent=true catches up one missed run after the host resumes.
+# RandomizedDelaySec=300 adds up to 5 min jitter to avoid exact-alignment
+# with other timers or external backup windows.
+#
+# The local service creates/verifies the current-day convmem-data-v2
+# snapshot; the external timer (convmem-restic-external.timer) runs
+# every 2 hours starting at 01:00 and independently resolves its own
+# current local source. After= on the external service is convenience
+# only — it never proves local success.
+#
+# Do NOT install/enable until Ryan grants the post-merge timer live step.
+#
+#   cp systemd/convmem-restic-local.{service,timer}.example ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now convmem-restic-local.timer
+#   systemctl --user list-timers convmem-restic-local.timer
+
+[Unit]
+Description=Daily convmem complete-data-v2 Restic snapshot
+
+[Timer]
+OnCalendar=*-*-* 00:15:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

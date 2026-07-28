@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from atomic_files import atomic_write_text
 from ledger import build_ledger_index, ledger_unit_document, ledger_unit_metadata, normalize_ledger_record
 
 
@@ -26,10 +27,9 @@ def _upsert_jsonl_line(
     from purge_locks import export_flock_path
 
     with export_flock_path(units_export):
+        units_export.parent.mkdir(parents=True, exist_ok=True)
         if not units_export.exists():
-            units_export.parent.mkdir(parents=True, exist_ok=True)
-            with open(units_export, "a", encoding="utf-8") as f:
-                f.write(json.dumps(unit) + "\n")
+            atomic_write_text(units_export, json.dumps(unit) + "\n")
             return
 
         lines: list[str] = []
@@ -54,8 +54,7 @@ def _upsert_jsonl_line(
         if not found:
             lines.append(json.dumps(unit) + "\n")
 
-        with open(units_export, "w", encoding="utf-8") as f:
-            f.writelines(lines)
+        atomic_write_text(units_export, "".join(lines))
 
 
 def normalize_observation(raw: dict, *, min_confidence: float = 0.0) -> dict | None:
@@ -133,8 +132,11 @@ def ingest_observation(
 
         units_export.parent.mkdir(parents=True, exist_ok=True)
         with export_flock_path(units_export):
-            with open(units_export, "a", encoding="utf-8") as uf:
-                uf.write(json.dumps(unit) + "\n")
+            line = json.dumps(unit) + "\n"
+            if units_export.exists():
+                atomic_write_text(units_export, units_export.read_text(encoding="utf-8") + line)
+            else:
+                atomic_write_text(units_export, line)
 
     return unit
 

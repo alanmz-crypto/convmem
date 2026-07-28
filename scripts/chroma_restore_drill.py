@@ -25,11 +25,20 @@ from typing import Any, Callable
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from chroma_store import (  # noqa: E402
+from chroma_store import (  # noqa: E402  # pylint: disable=wrong-import-position
     SUMMARIES,
     UNITS,
     open_chroma_for_verify,
 )
+from backup_workflows import (  # noqa: E402  # pylint: disable=wrong-import-position
+    restore_validated_snapshot,
+)
+from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-position
+    BackupContext,
+    ResolverError,
+    resolve_snapshot,
+)
+from atomic_files import atomic_write_json  # noqa: E402  # pylint: disable=wrong-import-position
 
 DEFAULT_PARENT = Path.home() / ".local/share/convmem" / "restore-drill"
 DEFAULT_FIXTURE = REPO / "tests" / "fixtures" / "chroma_restore_drill.json"
@@ -50,68 +59,26 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _load_restic_env() -> dict[str, str]:
+def _load_backup_context() -> BackupContext:
     env_file = Path(
         os.environ.get("CONVMEM_RESTIC_ENV", Path.home() / ".config/convmem/restic.env")
     )
-    if not env_file.is_file():
-        raise DrillError("restic_env", f"missing restic env: {env_file}")
-    env = os.environ.copy()
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, val = line.partition("=")
-        key = key.strip()
-        val = val.strip().strip("'").strip('"')
-        if key:
-            env[key] = val
-    if not env.get("RESTIC_REPOSITORY"):
-        raise DrillError("restic_env", "RESTIC_REPOSITORY unset")
-    if not env.get("RESTIC_PASSWORD_FILE"):
-        raise DrillError("restic_env", "RESTIC_PASSWORD_FILE unset")
-    cache = env.get("RESTIC_CACHE_DIR") or env.get("CONVMEM_RESTIC_CACHE_DIR")
-    if not cache:
-        cache = str(Path(os.environ.get("TMPDIR", "/tmp")) / "convmem-restic-cache")
-    Path(cache).mkdir(parents=True, exist_ok=True)
-    env["RESTIC_CACHE_DIR"] = cache
-    return env
+    try:
+        return BackupContext.from_env_file(env_file)
+    except ResolverError as exc:
+        raise DrillError("restic_env", str(exc)) from exc
 
 
-def list_tagged_snapshots(env: dict[str, str], tag: str = "convmem-chroma") -> list[dict]:
-    proc = subprocess.run(
-        ["restic", "snapshots", "--tag", tag, "--json"],
-        capture_output=True,
-        text=True,
-        env=env,
-        check=False,
-    )
-    if proc.returncode != 0:
-        raise DrillError("restic_list", proc.stderr.strip() or "restic snapshots failed")
-    snaps = json.loads(proc.stdout or "[]")
-    return sorted(snaps, key=lambda s: s.get("time") or "")
-
-
-def resolve_snapshot(snaps: list[dict], snapshot_id: str) -> dict:
-    sid = snapshot_id.strip().lower()
-    matches = [
-        s
-        for s in snaps
-        if str(s.get("id", "")).lower().startswith(sid)
-        or str(s.get("short_id", "")).lower() == sid
-    ]
-    if not matches:
-        raise DrillError(
-            "snapshot_missing",
-            f"no convmem-chroma snapshot matches id {snapshot_id!r}",
-        )
-    if len(matches) > 1 and not any(str(s.get("id", "")).lower() == sid for s in matches):
-        # Ambiguous short prefix
-        ids = [s.get("short_id") for s in matches]
-        raise DrillError("snapshot_ambiguous", f"ambiguous snapshot id {snapshot_id!r}: {ids}")
-    if any(str(s.get("id", "")).lower() == sid for s in matches):
-        return next(s for s in matches if str(s.get("id", "")).lower() == sid)
-    return matches[0]
+def snap_ref_as_dict(ref) -> dict:
+    return {
+        "id": ref.id,
+        "short_id": ref.id[:8],
+        "time": ref.time.isoformat(),
+        "paths": list(ref.paths),
+        "tags": sorted(ref.tags),
+        "original": ref.original,
+        "tree": ref.tree,
+    }
 
 
 def parse_snapshot_time(snap: dict) -> datetime:
@@ -280,7 +247,7 @@ class Report:
     def _write(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"meta": self.meta, "steps": self.steps}
-        self.path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        atomic_write_json(self.path, payload, indent=2, sort_keys=False)
         md = self.path.with_suffix(".md")
         lines = [
             f"# Chroma restore drill report",
@@ -318,18 +285,15 @@ def timed(fn: Callable[[], Any]) -> tuple[Any, float]:
     return out, time.monotonic() - t0
 
 
-def restic_restore(env: dict[str, str], snapshot_id: str, target: Path) -> None:
-    proc = subprocess.run(
-        ["restic", "restore", snapshot_id, "--target", str(target)],
-        capture_output=True,
-        text=True,
-        env=env,
-        check=False,
+def restic_restore(ctx: BackupContext, snapshot_id: str, target: Path) -> None:
+    """Restore via workflow — validates path against data_root first."""
+    outcome = restore_validated_snapshot(
+        ctx, snapshot_id=snapshot_id, target_dir=target
     )
-    if proc.returncode != 0:
+    if outcome.status != "PASS":
         raise DrillError(
             "restic_restore",
-            (proc.stderr or proc.stdout or "restic restore failed").strip(),
+            outcome.message,
         )
 
 
@@ -461,7 +425,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--snapshot",
         default="",
-        help="Explicit snapshot id or short id (required unless --intentional-missing-snapshot)",
+        help="Full 64-char snapshot id (required unless --intentional-missing-snapshot)",
     )
     parser.add_argument(
         "--intentional-missing-snapshot",
@@ -502,24 +466,26 @@ def main(argv: list[str] | None = None) -> int:
         if not snapshot_id:
             raise DrillError("usage", "pass --snapshot ID or --intentional-missing-snapshot")
 
-        env = _load_restic_env()
-        snaps, dt = timed(lambda: list_tagged_snapshots(env))
-        report.step("list_snapshots", "PASS", f"{len(snaps)} tagged", duration_s=dt)
+        ctx = _load_backup_context()
+        report.step("load_context", "PASS", f"profile={ctx.profile.value} tag={ctx.default_tag()}")
 
         try:
-            snap, dt = timed(lambda: resolve_snapshot(snaps, snapshot_id))
-        except DrillError as exc:
-            report.step("select_snapshot", "FAIL", exc.message)
-            if args.intentional_missing_snapshot and exc.code == "snapshot_missing":
-                # Architecture: intentional failure exits nonzero and still reports.
+            def _select():
+                return resolve_snapshot(ctx, requested_id=snapshot_id)
+
+            ref, dt = timed(_select)
+            snap = snap_ref_as_dict(ref)
+        except ResolverError as exc:
+            report.step("select_snapshot", "FAIL", str(exc))
+            if args.intentional_missing_snapshot:
                 report.finalize(
                     "FAIL",
                     "intentional missing-snapshot: selection failed as expected",
                 )
-                print(f"FAIL intentional-missing-snapshot (expected): {exc.message}")
+                print(f"FAIL intentional-missing-snapshot (expected): {exc}")
                 print(f"report={report_path}")
                 return 1
-            raise
+            raise DrillError("snapshot_missing", str(exc)) from exc
 
         report.set_meta(
             snapshot_id=snap.get("id"),
@@ -541,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
         report.set_meta(run_dir=str(run_dir))
         report.step("run_dir", "PASS", str(run_dir))
 
-        _, dt = timed(lambda: restic_restore(env, str(snap["id"]), run_dir))
+        _, dt = timed(lambda: restic_restore(ctx, str(snap["id"]), run_dir))
         report.step("restic_restore", "PASS", "exit 0", duration_s=dt)
 
         chroma_root, dt = timed(lambda: discover_chroma_root(run_dir))

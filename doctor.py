@@ -234,17 +234,13 @@ def _check_copilot_mcp() -> DoctorCheck:
 
 
 def _check_restic() -> DoctorCheck:
-    """Restic live-write gate: toolchain + snapshot covers today (fail-closed policy)."""
-    script = Path(__file__).resolve().parent / "scripts" / "restic-ensure-chroma-snapshot.sh"
-    if not script.is_file():
-        return DoctorCheck("restic_gate", False, f"missing {script}")
-    if shutil.which("restic") is None:
-        return DoctorCheck(
-            "restic_gate",
-            False,
-            "restic not on PATH (pacman -S restic or conda-forge; see config/restic.env.example)",
-        )
-    env_file = Path("~/.config/convmem/restic.env").expanduser()
+    """Local restic health via backup_workflows.check_local_health."""
+    from backup_workflows import check_local_health, outcome_to_doctor_fields
+    from restic_snapshot import BackupContext, ResolverError
+
+    env_file = Path(
+        os.environ.get("CONVMEM_RESTIC_ENV", "~/.config/convmem/restic.env")
+    ).expanduser()
     if not env_file.is_file():
         return DoctorCheck(
             "restic_gate",
@@ -252,106 +248,55 @@ def _check_restic() -> DoctorCheck:
             f"missing {env_file} — run scripts/setup-restic-chroma.sh",
         )
     try:
-        proc = subprocess.run(
-            [str(script), "--require-current"],
-            capture_output=True,
-            text=True,
-            timeout=300,
-            env=os.environ,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return DoctorCheck("restic_gate", False, str(exc))
-    if proc.returncode == 0:
+        ctx = BackupContext.from_env_file(env_file)
+        outcome = check_local_health(ctx)
+    except ResolverError as exc:
         return DoctorCheck(
             "restic_gate",
-            True,
-            "snapshot covers today (tag=convmem-chroma; threshold=local calendar day)",
+            False,
+            f"resolver error ({exc.exit_code}): {exc}",
         )
-    tail = (proc.stdout or proc.stderr or "").strip().splitlines()[-2:]
-    return DoctorCheck(
-        "restic_gate",
-        False,
-        "Restic gate not ready — " + " ".join(tail),
-    )
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+        return DoctorCheck("restic_gate", False, str(exc))
+    ok, detail, status = outcome_to_doctor_fields(outcome)
+    return DoctorCheck("restic_gate", ok, detail, status=status)
 
 
 def _check_restic_external() -> DoctorCheck:
-    """Offsite Restic repo freshness (RESTIC_EXTERNAL_REPOSITORY).
+    """Offsite Restic lineage health via backup_workflows.check_offsite_health.
 
-    Non-fatal by design: this is the removable-drive copy, decoupled from the
-    live-write gate. Never returns fail — pass when the offsite copy covers
-    today, warn when it is stale/empty (drive mounted), skip when disabled or
-    the drive is unplugged.
+    Unconfigured external → SKIP_DISABLED. Legacy profile → WARN_LEGACY_ONLY.
+    Configured resolver/copy failures → WARN (never PASS via legacy fallback).
     """
     name = "restic_external"
-    env_file = Path("~/.config/convmem/restic.env").expanduser()
-    env = _parse_env_file(env_file)
-    repo = env.get("RESTIC_EXTERNAL_REPOSITORY", "").strip()
-    if not repo:
+    from backup_workflows import check_offsite_health, outcome_to_doctor_fields
+    from restic_snapshot import BackupContext, ResolverError
+
+    env_file = Path(
+        os.environ.get("CONVMEM_RESTIC_ENV", "~/.config/convmem/restic.env")
+    ).expanduser()
+    if not env_file.is_file():
         return DoctorCheck(
             name,
             True,
-            "no RESTIC_EXTERNAL_REPOSITORY configured (offsite copy disabled)",
+            f"missing {env_file} — offsite copy not configured",
             status="skip",
         )
-    if shutil.which("restic") is None:
-        return DoctorCheck(name, True, "restic not on PATH", status="skip")
-
-    pass_file = env.get("RESTIC_PASSWORD_FILE", "").strip()
-    if not pass_file or not Path(pass_file).expanduser().is_file():
-        return DoctorCheck(
-            name, True, f"RESTIC_PASSWORD_FILE missing ({pass_file or 'unset'})", status="skip"
-        )
-
-    if not (Path(repo).expanduser() / "config").is_file():
-        return DoctorCheck(
-            name, True, f"offsite repo not mounted/reachable: {repo} (USB unplugged?)", status="skip"
-        )
-
-    probe_env = dict(os.environ)
-    probe_env["RESTIC_PASSWORD_FILE"] = str(Path(pass_file).expanduser())
     try:
-        proc = subprocess.run(
-            ["restic", "-r", repo, "snapshots", "--tag", "convmem-chroma", "--json"],
-            capture_output=True,
-            text=True,
-            env=probe_env,
-            timeout=30,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return DoctorCheck(name, True, f"offsite repo probe failed: {exc}", status="skip")
-    if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout or "").strip().splitlines()[-1:]
-        return DoctorCheck(
-            name, True, "offsite repo unreadable — " + " ".join(detail), status="skip"
-        )
-
-    try:
-        snaps = json.loads(proc.stdout or "[]")
-    except json.JSONDecodeError:
-        return DoctorCheck(name, True, "offsite snapshots JSON unparsable", status="skip")
-
-    if not snaps:
+        ctx = BackupContext.from_env_file(env_file)
+        outcome = check_offsite_health(ctx)
+    except ResolverError as exc:
+        # Configured env invalid — warn, do not false-green via tag-latest.
         return DoctorCheck(
             name,
             True,
-            "offsite repo has no convmem-chroma snapshots — run scripts/restic-copy-external.sh",
+            f"offsite config/resolver error ({exc.exit_code}): {exc}",
             status="warn",
         )
-
-    latest = max(snaps, key=lambda s: s["time"])
-    ts = datetime.fromisoformat(latest["time"].replace("Z", "+00:00"))
-    local_day = ts.astimezone().date()
-    today = datetime.now().astimezone().date()
-    if local_day >= today:
-        return DoctorCheck(name, True, f"offsite copy covers today (last={local_day})")
-    return DoctorCheck(
-        name,
-        True,
-        f"offsite copy STALE (last={local_day}) — check convmem-restic-external.timer "
-        "or run scripts/restic-copy-external.sh",
-        status="warn",
-    )
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+        return DoctorCheck(name, True, f"offsite probe failed: {exc}", status="warn")
+    ok, detail, status = outcome_to_doctor_fields(outcome)
+    return DoctorCheck(name, ok, detail, status=status)
 
 
 def _check_restic_password_backup() -> DoctorCheck:
