@@ -104,6 +104,7 @@ class ChromaStore:
         *,
         create_collections: bool = True,
         mutation_sink: Any | None = None,
+        on_close: Any | None = None,
     ):
         self.chroma_dir = str(Path(chroma_dir).expanduser())
         # SegmentAPI + hnswlib compat shim can count() but fails upsert on
@@ -112,6 +113,7 @@ class ChromaStore:
         self.create_collections = create_collections
         # Optional Phase 0 observer — knowledge_units only; never loads config.
         self.mutation_sink = mutation_sink
+        self._on_close = on_close
         self.client = chromadb.PersistentClient(path=self.chroma_dir)
 
     def _prepare_shadow_event_id(self) -> str | None:
@@ -155,6 +157,13 @@ class ChromaStore:
             try:
                 client.close()
             except Exception:
+                pass
+        callback = getattr(self, "_on_close", None)
+        self._on_close = None
+        if callable(callback):
+            try:
+                callback()  # pylint: disable=not-callable
+            except Exception:  # pylint: disable=broad-exception-caught
                 pass
 
     def __enter__(self) -> "ChromaStore":

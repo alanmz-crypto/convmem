@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 
-from chroma_write_store import chroma_write_session
+from chroma_write_store import production_chroma_write_session
 from distill import make_unit_id
 from llm import ollama_embed
 
@@ -35,7 +35,7 @@ def _keywords_from(path: Path, title: str) -> list[str]:
     return out[:8]
 
 
-def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-arguments
+def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
     path: str,
     messages: list[dict],
     *,
@@ -152,7 +152,9 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
             if verbose:
                 print(f"  [skip] excluded during inter-model write {Path(path).name}")
             return 0
-        with chroma_write_session(cfg, chroma_dir) as store:
+        with production_chroma_write_session(entrypoint="inter_model_index") as _pw:
+            store = _pw.store
+            cfg = _pw.live_cfg
             from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
 
             dedupe = evaluate_ingest_batch(store, cfg, units_batch)

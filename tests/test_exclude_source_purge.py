@@ -1,4 +1,5 @@
 """Acceptance contract tests for exclude --purge (N1–N21 + audit hardening)."""
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -32,7 +33,25 @@ from source_purge import (
     preview_purge,
     undo_exclude_source,
 )
-from tests.purge_test_util import patch_export_flock, patch_source_flock, purge_cfg as _cfg
+
+
+def _execute_purge(cfg, *args, **kwargs):
+    with patch_live_config(cfg):
+        return execute_purge(cfg, *args, **kwargs)
+
+
+def _commit(**kwargs):
+    cfg = kwargs["cfg"]
+    with patch_live_config(cfg):
+        return _commit_chunk_to_stores(**kwargs)
+
+# pylint: disable=wrong-import-position
+from tests.purge_test_util import (
+    patch_export_flock,
+    patch_live_config,
+    patch_source_flock,
+    purge_cfg as _cfg,
+)
 
 
 def _seed(root: Path, src: Path, *, n_units: int = 2, n_sum: int = 1) -> str:
@@ -104,7 +123,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             cfg = _cfg(root)
             src = root / "n8.jsonl"
             canon = _seed(root, src)
-            res = execute_purge(cfg, canon, reason="n8")
+            res = _execute_purge(cfg, canon, reason="n8")
             self.assertEqual(res.exit_code, 0, res.message)
             self.assertEqual(_chroma_jsonl_counts(cfg, canon), (0, 0, 0))
 
@@ -125,7 +144,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             store.close()
             with open(cfg["index"]["units_export"], "a", encoding="utf-8") as fh:
                 fh.write(json.dumps({"id": "ub", "source_path": bcanon}) + "\n")
-            res = execute_purge(cfg, str(a.resolve()), reason="n4")
+            res = _execute_purge(cfg, str(a.resolve()), reason="n4")
             self.assertEqual(res.exit_code, 0, res.message)
             self.assertEqual(_chroma_jsonl_counts(cfg, bcanon)[0], 1)
 
@@ -162,7 +181,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                     if Path.home() != fake_home
                     else False
                 )
-                res = execute_purge(cfg, str(rel), reason="n13")
+                res = _execute_purge(cfg, str(rel), reason="n13")
                 self.assertEqual(res.exit_code, 0, res.message)
                 store = ChromaStore(str(root / "chroma"))
                 ids = {m["id"] for m in store.units_metadata(include_superseded=True)}
@@ -190,7 +209,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                         barrier.set()
                         time.sleep(0.2)
 
-                    res = execute_purge(
+                    res = _execute_purge(
                         cfg,
                         canon_a,
                         reason="n3",
@@ -243,7 +262,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             def ingester():
                 self.assertTrue(start_commit.wait(5))
                 self.assertTrue(purge_done.wait(5))
-                ok, _, n, _, _ = _commit_chunk_to_stores(
+                ok, _, n, _, _ = _commit(
                     cfg=cfg,
                     idx=cfg["index"],
                     path_key=canon,
@@ -270,7 +289,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
 
             def purger():
                 start_commit.set()
-                res = execute_purge(cfg, canon, reason="n1")
+                res = _execute_purge(cfg, canon, reason="n1")
                 result["purge"] = res.exit_code
                 purge_done.set()
 
@@ -304,7 +323,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             src.write_text("n2\n", encoding="utf-8")
             canon = str(src.resolve())
             file_hash = sha256_file(canon)
-            ok, _, n, _, _ = _commit_chunk_to_stores(
+            ok, _, n, _, _ = _commit(
                 cfg=cfg,
                 idx=cfg["index"],
                 path_key=canon,
@@ -329,7 +348,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             self.assertTrue(ok)
             self.assertEqual(n, 1)
             self.assertEqual(_chroma_jsonl_counts(cfg, canon)[0], 1)
-            res = execute_purge(cfg, canon, reason="n2")
+            res = _execute_purge(cfg, canon, reason="n2")
             self.assertEqual(res.exit_code, 0, res.message)
             self.assertEqual(_chroma_jsonl_counts(cfg, canon), (0, 0, 0))
 
@@ -344,10 +363,10 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                 raise RuntimeError("crash-after-units")
 
             with self.assertRaises(RuntimeError):
-                execute_purge(
+                _execute_purge(
                     cfg, canon, reason="n5", _hooks={"after_units": boom}
                 )
-            res = execute_purge(cfg, canon, reason="n5-retry")
+            res = _execute_purge(cfg, canon, reason="n5-retry")
             self.assertEqual(res.exit_code, 0, res.message)
             self.assertEqual(_chroma_jsonl_counts(cfg, canon), (0, 0, 0))
 
@@ -373,7 +392,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             export = Path(cfg["index"]["units_export"])
             original = export.read_text(encoding="utf-8") + "{not-json\n"
             export.write_text(original, encoding="utf-8")
-            res = execute_purge(cfg, canon, reason="n10")
+            res = _execute_purge(cfg, canon, reason="n10")
             self.assertEqual(res.exit_code, 1)
             self.assertEqual(export.read_text(encoding="utf-8"), original)
 
@@ -419,7 +438,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             cfg = _cfg(root)
             src = root / "n12.jsonl"
             canon = _seed(root, src)
-            self.assertEqual(execute_purge(cfg, canon, reason="n12").exit_code, 0)
+            self.assertEqual(_execute_purge(cfg, canon, reason="n12").exit_code, 0)
             self.assertTrue(undo_exclude_source(cfg, canon))
             proc = load_processed(cfg["index"]["processed_log"])
             self.assertEqual(_active_markers(proc, canon), [])
@@ -446,7 +465,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                 with patch_source_flock() as ev:
                     state["ev"] = ev
                     patch_ready.set()
-                    res = execute_purge(
+                    res = _execute_purge(
                         cfg,
                         canon,
                         reason="undo-race",
@@ -495,7 +514,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
 
             def run():
                 try:
-                    results.append(execute_purge(cfg, canon, reason="n14"))
+                    results.append(_execute_purge(cfg, canon, reason="n14"))
                 except Exception as exc:  # pylint: disable=broad-exception-caught
                     errors.append(exc)
 
@@ -547,43 +566,49 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             def hold():
                 release_ingest.wait(10)
 
-            def ingest_thread():
-                with patch_source_flock(after_acquire={"ingest": hold}) as ev:
-                    state["ev"] = ev
-                    patch_ready.set()
-                    with mock.patch(
-                        "inter_model_index.ollama_embed", return_value=[0.1, 0.2]
-                    ):
-                        state["n"] = index_inter_model_messages(
-                            str(doc),
-                            messages,
-                            path_key=path_key,
-                            chroma_dir=str(chroma),
-                            embed_model="nomic-embed-text",
-                            ollama_host="http://localhost:11434",
-                            cfg=cfg,
-                            verbose=False,
-                            units_export=export,
-                        )
+            # One process-level live-config patch: concurrent mock.patch on
+            # config.load_config across threads is not safe (unwind races).
+            with patch_live_config(cfg):
+                def ingest_thread():
+                    with patch_source_flock(after_acquire={"ingest": hold}) as ev:
+                        state["ev"] = ev
+                        patch_ready.set()
+                        with mock.patch(
+                            "inter_model_index.ollama_embed",
+                            return_value=[0.1, 0.2],
+                        ):
+                            state["n"] = index_inter_model_messages(
+                                str(doc),
+                                messages,
+                                path_key=path_key,
+                                chroma_dir=str(chroma),
+                                embed_model="nomic-embed-text",
+                                ollama_host="http://localhost:11434",
+                                cfg=cfg,
+                                verbose=False,
+                                units_export=export,
+                            )
 
-            def purge_thread():
-                state["purge"] = execute_purge(cfg, path_key, reason="n15")
+                def purge_thread():
+                    state["purge"] = execute_purge(cfg, path_key, reason="n15")
 
-            t_ing = threading.Thread(target=ingest_thread, name="ingest")
-            t_ing.start()
-            self.assertTrue(patch_ready.wait(5))
-            self.assertTrue(state["ev"]["acq_ingest"].wait(5))
-            t_purge = threading.Thread(target=purge_thread, name="purge")
-            t_purge.start()
-            self.assertTrue(state["ev"]["wait_purge"].wait(5))
-            self.assertFalse(state["ev"]["acq_purge"].is_set())
-            release_ingest.set()
-            t_ing.join(10)
-            t_purge.join(10)
-            self.assertEqual(state.get("n"), 1)
-            self.assertTrue(state["ev"]["acq_purge"].is_set())
-            self.assertEqual(state["purge"].exit_code, 0, state["purge"].message)
-            self.assertEqual(_chroma_jsonl_counts(cfg, path_key), (0, 0, 0))
+                t_ing = threading.Thread(target=ingest_thread, name="ingest")
+                t_ing.start()
+                self.assertTrue(patch_ready.wait(5))
+                self.assertTrue(state["ev"]["acq_ingest"].wait(5))
+                t_purge = threading.Thread(target=purge_thread, name="purge")
+                t_purge.start()
+                self.assertTrue(state["ev"]["wait_purge"].wait(5))
+                self.assertFalse(state["ev"]["acq_purge"].is_set())
+                release_ingest.set()
+                t_ing.join(10)
+                t_purge.join(10)
+                self.assertEqual(state.get("n"), 1)
+                self.assertTrue(state["ev"]["acq_purge"].is_set())
+                self.assertEqual(
+                    state["purge"].exit_code, 0, state["purge"].message
+                )
+                self.assertEqual(_chroma_jsonl_counts(cfg, path_key), (0, 0, 0))
 
 
     def test_n16_missing_file_exclusion(self):
@@ -603,7 +628,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                 json.dumps({"id": "g1", "source_path": path}) + "\n",
                 encoding="utf-8",
             )
-            res = execute_purge(cfg, path, reason="n16")
+            res = _execute_purge(cfg, path, reason="n16")
             self.assertEqual(res.exit_code, 0, res.message)
             self.assertTrue(res.exclusion_key.startswith("purged:"))
             proc = load_processed(cfg["index"]["processed_log"])
@@ -628,7 +653,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             )
             src.unlink()
             (root / "knowledge_units.jsonl").write_text("", encoding="utf-8")
-            res = execute_purge(cfg, path, reason="clear-old")
+            res = _execute_purge(cfg, path, reason="clear-old")
             self.assertEqual(res.exit_code, 0, res.message)
             proc = load_processed(cfg["index"]["processed_log"])
             active = _active_markers(proc, path)
@@ -649,7 +674,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                 encoding="utf-8"
             )
             before_counts = _chroma_jsonl_counts(cfg, canon)
-            res = execute_purge(cfg, "ledger:obs_123", reason="ledger")
+            res = _execute_purge(cfg, "ledger:obs_123", reason="ledger")
             self.assertEqual(res.exit_code, 1)
             self.assertEqual(res.candidates, [])
             self.assertEqual(
@@ -724,6 +749,8 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             }
             (root / "inventory.json").write_text("[]", encoding="utf-8")
             with mock.patch("ingest.load_config", return_value=full_cfg), mock.patch(
+                "config.load_config", return_value=full_cfg
+            ), mock.patch(
                 "ingest.summarize", side_effect=summarize_probe
             ), mock.patch("ingest.distill", side_effect=distill_probe), mock.patch(
                 "ingest.ollama_embed", side_effect=embed_probe
@@ -761,7 +788,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                         raise RuntimeError(f"crash-{stage_name}")
 
                     with self.assertRaises(RuntimeError):
-                        execute_purge(
+                        _execute_purge(
                             cfg, str(src.resolve()), reason=stage, _hooks={stage: boom}
                         )
                     proc = load_processed(cfg["index"]["processed_log"])
@@ -770,7 +797,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                         for e in proc.values()
                     )
                     self.assertEqual(excluded, expect_excl, stage)
-                    res = execute_purge(cfg, str(src.resolve()), reason=f"{stage}-retry")
+                    res = _execute_purge(cfg, str(src.resolve()), reason=f"{stage}-retry")
                     self.assertEqual(res.exit_code, 0, f"{stage}: {res.message}")
 
         # F8 residual
@@ -779,7 +806,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             cfg = _cfg(root)
             src = root / "f8.jsonl"
             _seed(root, src)
-            res = execute_purge(
+            res = _execute_purge(
                 cfg, str(src.resolve()), reason="f8", _hooks={"inject_residual": True}
             )
             self.assertEqual(res.exit_code, 1)
@@ -791,7 +818,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             cfg = _cfg(root)
             src = root / "f9.jsonl"
             _seed(root, src)
-            res = execute_purge(
+            res = _execute_purge(
                 cfg,
                 str(src.resolve()),
                 reason="f9",
@@ -814,7 +841,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             export.write_text(
                 export.read_text(encoding="utf-8") + "NOT_JSON\n", encoding="utf-8"
             )
-            res = execute_purge(cfg, canon, reason="f10")
+            res = _execute_purge(cfg, canon, reason="f10")
             self.assertEqual(res.exit_code, 1)
 
     def test_n19_superseded_cache_exact_count(self):
@@ -858,7 +885,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
             self.assertEqual(before, 2)  # live + keep
             store.close()
             (root / "knowledge_units.jsonl").write_text("", encoding="utf-8")
-            self.assertEqual(execute_purge(cfg, canon, reason="n19").exit_code, 0)
+            self.assertEqual(_execute_purge(cfg, canon, reason="n19").exit_code, 0)
             store = ChromaStore(str(root / "chroma"))
             ids = {m["id"] for m in store.units_metadata(include_superseded=True)}
             self.assertNotIn("live", ids)
@@ -890,7 +917,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                 with patch_export_flock(extra_modules=[sys.modules[__name__]]) as ev:
                     state["ev"] = ev
                     patch_ready.set()
-                    res = execute_purge(
+                    res = _execute_purge(
                         cfg,
                         canon,
                         reason="n20",
@@ -971,7 +998,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
 
             with mock.patch(
                 "inter_model_index.ollama_embed", return_value=[0.1, 0.2]
-            ):
+            ), patch_live_config(cfg):
                 n = index_inter_model_messages(
                     str(doc),
                     parse(str(doc)),
@@ -984,7 +1011,7 @@ class ExcludeSourcePurgeContractTests(unittest.TestCase):  # pylint: disable=too
                     units_export=Path(cfg["index"]["units_export"]),
                 )
             self.assertEqual(n, 1)
-            self.assertEqual(execute_purge(cfg, path_key, reason="n7").exit_code, 0)
+            self.assertEqual(_execute_purge(cfg, path_key, reason="n7").exit_code, 0)
             self.assertEqual(_chroma_jsonl_counts(cfg, path_key), (0, 0, 0))
 
 

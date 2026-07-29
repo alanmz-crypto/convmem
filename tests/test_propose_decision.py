@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from tests.purge_test_util import patch_live_config
+
 from ledger import normalize_ledger_record
 from propose_decision import (
     PROPOSAL_KIND,
@@ -27,7 +29,12 @@ class ProposeDecisionTests(unittest.TestCase):
         self.cfg = {
             "index": {
                 "chroma_dir": str(Path(self.td.name) / "chroma"),
-            }
+            },
+            "models": {
+                "embed_model": "nomic-embed-text",
+                "ollama_host": "http://localhost:11434",
+            },
+            "shadow_ledger": {"enabled": False},
         }
 
     def tearDown(self):
@@ -115,7 +122,8 @@ class ProposeDecisionTests(unittest.TestCase):
             "rationale": "One record only",
             "author_model": "ryan",
         }
-        stats = ingest_approved_ledger(self.cfg, ledger)
+        with patch_live_config(self.cfg):
+            stats = ingest_approved_ledger(self.cfg, ledger)
         self.assertEqual(stats["accepted"], 1)
         mock_ingest.assert_called_once()
 

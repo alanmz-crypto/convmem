@@ -7,6 +7,7 @@ from pathlib import Path
 
 from chroma_store import ChromaStore
 from ingest import _commit_chunk_to_stores
+from tests.purge_test_util import patch_live_config
 from ingest_dedupe import (
     canonical_unit_text,
     evaluate_ingest_batch,
@@ -180,21 +181,22 @@ class IngestDedupeTests(unittest.TestCase):
             _row("semantic", "different text", [0.99, 0.01]),
         ]
 
-        ok, chunks, units, exact, semantic = _commit_chunk_to_stores(
-            cfg=cfg,
-            idx=cfg["index"],
-            path_key="/tmp/source.jsonl",
-            path="/tmp/source.jsonl",
-            file_hash="hash",
-            chroma_dir=str(self.chroma),
-            units_export=export,
-            doc_id="summary",
-            summary="summary",
-            summary_embedding=[1.0, 0.0],
-            metadata={"source_path": "/tmp/source.jsonl"},
-            units_to_add=batch,
-            verbose=False,
-        )
+        with patch_live_config(cfg):
+            ok, chunks, units, exact, semantic = _commit_chunk_to_stores(
+                cfg=cfg,
+                idx=cfg["index"],
+                path_key="/tmp/source.jsonl",
+                path="/tmp/source.jsonl",
+                file_hash="hash",
+                chroma_dir=str(self.chroma),
+                units_export=export,
+                doc_id="summary",
+                summary="summary",
+                summary_embedding=[1.0, 0.0],
+                metadata={"source_path": "/tmp/source.jsonl"},
+                units_to_add=batch,
+                verbose=False,
+            )
 
         self.assertTrue(ok)
         self.assertEqual(chunks, 1)
