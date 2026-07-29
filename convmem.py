@@ -1348,7 +1348,7 @@ def shadow_inventory_command(
         typer.echo(report_obj["human_summary"])
         typer.echo(
             f"units={inv['active_unit_count']} chroma_only={inv['chroma_only_count']} "
-            f"shadow_entities={shadow['shadow_entity_count']} "
+            f"shadow_touched={shadow['shadow_touched_entity_count']} "
             f"health={shadow['health_status']} enabled={shadow['enabled']}"
         )
         typer.echo(f"commit={inv['code_commit']} rule_v={inv['comparison_rule_version']}")
