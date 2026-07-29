@@ -181,3 +181,48 @@ explicit Shadow gap. Synthetic traffic requires separate authorization.
 `--recover-prepared` mode removes only journal-recorded artifacts whose current
 device/inode identities still match. Both commands remain non-authority until
 the separate C6 canary, review, and Ryan live-activation grant are complete.
+
+## C6 scratch performance canary
+
+C6 remains merge-disabled and is a measurement/evidence gate, not an
+activation command. `shadow-canary` refuses unless the operator supplies a
+new, private scratch directory, the intended ledger path, the production Chroma
+root for overlap refusal only, a current read-only unit count, redacted
+synthetic event lengths plus their evidence SHA-256, and refreshed
+writer-census concurrency/open-frequency inputs plus their census SHA-256. It
+never opens the production Chroma root for write, changes live configuration,
+creates live Shadow artifacts, or activates Shadow.
+
+The scratch directory must be new, `0700`, disjoint from both the intended
+ledger and Chroma paths, and on the same mount ID, filesystem, and mount options
+as the intended ledger parent. Each cell uses a disposable scratch Chroma root
+and private Shadow ledger/health/config/manifest only. The cold-open measurement
+uses the same strict writer validation API as production; steady append timing
+uses the real sink after a scratch Chroma mutation. All documents are synthetic
+length-controlled `x` data; no production payload is read or retained.
+
+Ryan-approved C6 limits are:
+
+```text
+A_p99_ms=100          A_max_ms=500
+D_p99_factor=2.0      O_p99_ms=500
+R_p99_ms=300           R_factor=3.0
+R_window=60 seconds with at least 100 complete samples
+H_events=50,000
+```
+
+Every matrix cell requires three fresh runs, at least 100 untimed appends or
+one second of warm-up (whichever produces more), and at least 1,000 timed
+samples. The matrix covers 1 KiB/P50/P95/maximum synthetic event lengths,
+header-only/N/2N/50,000-event ledgers, and one/census-peak/above-peak writers.
+The report retains private raw timings and emits only redacted metrics:
+lock wait, ledger append path, health persistence, complete append, throughput,
+errors, cold-open percentile, and cumulative daily cold-open cost.
+
+Any canary error, path/mount refusal, strict-validation failure, or breach of
+the absolute/degradation/cold-open budget is a C6 FAIL and leaves Shadow
+disabled. A later live performance rollback may occur only when a rolling
+60-second window contains at least 100 complete append samples and its p99
+exceeds 300 ms or its degradation exceeds 3.0x. Lower-volume windows are
+telemetry-only; corruption, privacy, lost-event, and validation failures remain
+immediate rollback conditions under the separately authorized activation flow.

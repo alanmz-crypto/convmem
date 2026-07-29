@@ -32,6 +32,9 @@
     "convmem.py:626",
     "mcp_server.py:897",
     "mcp_server.py:944",
+    "shadow_canary.py:514",
+    "shadow_canary.py:621",
+    "shadow_canary.py:635",
     "shadow_replay.py:177"
   ],
   "sites": [
@@ -108,6 +111,33 @@
       "required_routing": "allowlisted_direct",
       "uses_open_chroma_for_write": false,
       "note": "Disposable projector forces mutation_sink=None (no injection)"
+    },
+    {
+      "file": "shadow_canary.py",
+      "line": 514,
+      "snippet": "store = ChromaStore(str(chroma))",
+      "class": "canary_scratch_cold_validation",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false,
+      "note": "C6 creates only a disposable scratch Chroma root; production root is overlap-refusal only"
+    },
+    {
+      "file": "shadow_canary.py",
+      "line": 621,
+      "snippet": "warm_store = ChromaStore(str(chroma), mutation_sink=warm_sink)",
+      "class": "canary_scratch_warmup",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false,
+      "note": "C6 synthetic warm-up under new private scratch root only"
+    },
+    {
+      "file": "shadow_canary.py",
+      "line": 635,
+      "snippet": "store = ChromaStore(str(chroma), mutation_sink=sink)",
+      "class": "canary_scratch_workload",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false,
+      "note": "C6 synthetic timed workload under new private scratch root only"
     },
     {
       "file": "propose_decision.py",
@@ -255,5 +285,5 @@
   "not_proved": [
     "Live production ingest with shadow_ledger.enabled=true writing a ledger line (activation forbidden in this slice)"
   ],
-  "c3_note": "Production writers use production_chroma_write_session or open_production_write_store (shared lease then live config). open_chroma_for_write remains for hermetic/tests and factory internals."
+  "c3_note": "Production writers use production_chroma_write_session or open_production_write_store (shared lease then live config). open_chroma_for_write remains for hermetic/tests and factory internals. C6 direct constructors are mechanically confined to new private scratch roots and never receive a production Chroma path."
 }

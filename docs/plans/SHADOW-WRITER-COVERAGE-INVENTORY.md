@@ -13,7 +13,8 @@
 Production mutating writers open Chroma through `production_chroma_write_session`
 or `open_production_write_store` (shared writer lease, then live config load).
 Remaining direct `ChromaStore(...)` sites are allowlisted read-only / dry-run /
-helper / factory-internal / replay constructors. VERIFY **V3b** and **V3d** remain
+helper / factory-internal / replay constructors, plus C6's mechanically isolated
+private scratch-only canary constructors. VERIFY **V3b** and **V3d** remain
 **PASS** at this tip for code-path coverage under the C3 boundary.
 
 Hermetic control still proves that a *hypothetical* direct ctor with eligible
@@ -57,6 +58,9 @@ activation against the live corpus is forbidden for this verification slice.
 | `convmem.py:626` | `dry_run_no_sink` |
 | `mcp_server.py:897` | `read_only` |
 | `mcp_server.py:944` | `read_only` |
+| `shadow_canary.py:514` | `canary_scratch_cold_validation` |
+| `shadow_canary.py:621` | `canary_scratch_warmup` |
+| `shadow_canary.py:635` | `canary_scratch_workload` |
 | `shadow_replay.py:177` | `replay_internal` |
 
 ## Reclassified read
