@@ -205,3 +205,26 @@ class ReadonlyUnitStore:
 
 def open_readonly_unit_store(chroma_dir: str | Path) -> ReadonlyUnitStore:
     return ReadonlyUnitStore(chroma_dir)
+
+
+def collection_uuid(chroma_dir: str | Path, collection_name: str) -> str | None:
+    """Return the immutable Chroma collection UUID (collections.id) via mode=ro.
+
+    Missing collection or DB → None. Never creates files or opens PersistentClient.
+    """
+    db = _db_path(chroma_dir)
+    if not db.is_file():
+        return None
+    conn = _connect_readonly(db)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id FROM collections WHERE name = ? LIMIT 1",
+            (collection_name,),
+        )
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if not row or row[0] is None:
+        return None
+    return str(row[0])

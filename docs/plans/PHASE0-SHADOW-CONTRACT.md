@@ -66,3 +66,43 @@ not historic corpus rebuild, migration readiness, or authority transfer.
 No production read-path change; no Neutral/Office; no Restic/restore doctrine
 change; no `conversation_summaries` shadowing; no quarantine-and-continue on
 corruption (fail-closed).
+
+
+## Strict validation API (C1)
+
+Single shared entry point (implemented in `shadow_validation.py`):
+
+```text
+validate_shadow_activation(config_path, chroma_dir, mode)
+  -> ShadowValidationResult(
+       state, inject_eligible, activation_id, refusals, facts)
+```
+
+Modes: `writer`, `prepare`, `doctor`, `inventory`, `verify`. Mode selects
+additional checks; it never changes the meaning of a refusal code. Refusals are
+deterministic, deduplicated, stably ordered, redacted, and carry
+`code` / `artifact` / `blocking` / `detail`.
+
+Malformed manifests, corrupt ledgers, invalid counts/hashes/sequences, unsafe
+paths, and permission failures never return `inject_eligible=true`. Production
+writer wiring to this API is a later slice; C1 validates the contract directly.
+
+### Path and permission policy (Ryan-resolved)
+
+- Shadow artifacts live in a dedicated Shadow directory under the convmem data
+  root.
+- That directory is a sibling of, and outside, the Chroma root.
+- Shadow directory ownership: effective production user; exact mode `0700`.
+- The shared data-root parent is **not** required to be `0700`.
+- Ledger, manifest, and health files: exact mode `0600`, regular files, link
+  count one.
+- Symlinked leaf or ancestor components are refused.
+- Artifact paths and device/inode identities must be pairwise distinct.
+- No Shadow artifact may be inside the Chroma root.
+- C1 validation does not create or modify live directories or artifacts.
+
+### Ledger identity header
+
+Committed ledgers begin with a non-payload `ledger_header` JSONL record binding
+`activation_id`, `ledger_identity`, schema version, UTC, and `starting_sequence`.
+Events after the header must be contiguous starting at `starting_sequence + 1`.
