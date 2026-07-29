@@ -142,17 +142,24 @@ def test_hermetic_direct_ctor_bypasses_sink_even_when_cfg_eligible(
 def test_positive_control_factory_attaches_sink(tmp_path: Path) -> None:
     """Sink works when factory injects — wiring path is live."""
     pytest.importorskip("chromadb")
+    import os
     from chroma_write_store import open_chroma_for_write
     from shadow_ledger import (
+        SHADOW_DIR_MODE,
         atomic_write_json_private,
+        create_shadow_ledger_header,
         finalize_manifest,
         new_incomplete_manifest,
     )
 
     chroma = tmp_path / "chroma"
     chroma.mkdir()
-    ledger = tmp_path / "ledger.jsonl"
-    manifest_path = tmp_path / "act.json"
+    shadow = tmp_path / "shadow"
+    shadow.mkdir()
+    os.chmod(shadow, SHADOW_DIR_MODE)
+    ledger = shadow / "ledger.jsonl"
+    manifest_path = shadow / "act.json"
+    health = shadow / "health.json"
     base = new_incomplete_manifest(
         code_commit="test",
         chroma_root=chroma,
@@ -168,13 +175,19 @@ def test_positive_control_factory_attaches_sink(tmp_path: Path) -> None:
         shadow_ledger_identity="id",
     )
     atomic_write_json_private(manifest_path, complete)
+    create_shadow_ledger_header(
+        ledger,
+        activation_id=str(complete.get("baseline_id") or "act"),
+        ledger_identity="id",
+        starting_sequence=0,
+    )
     cfg = {
         "index": {"chroma_dir": str(chroma)},
         "shadow_ledger": {
             "enabled": True,
             "ledger_path": str(ledger),
             "activation_manifest_path": str(manifest_path),
-            "health_path": str(tmp_path / "health.json"),
+            "health_path": str(health),
         },
     }
     store, decision = open_chroma_for_write(cfg, chroma)
@@ -189,9 +202,16 @@ def test_positive_control_factory_attaches_sink(tmp_path: Path) -> None:
         )
     finally:
         store.close()
-    lines = [l for l in ledger.read_text().splitlines() if l.strip()]
-    assert len(lines) == 1
-    assert json.loads(lines[0])["stable_entity_id"] == "u1"
+    events = [
+        json.loads(l)
+        for l in ledger.read_text().splitlines()
+        if l.strip() and '"record_type"' not in l
+    ]
+    # header + one event; filter header via record_type absent on events
+    all_lines = [json.loads(l) for l in ledger.read_text().splitlines() if l.strip()]
+    events = [o for o in all_lines if o.get("record_type") != "ledger_header"]
+    assert len(events) == 1
+    assert events[0]["stable_entity_id"] == "u1"
 
 
 def test_v3b_v3d_pass_when_bypasses_cleared() -> None:

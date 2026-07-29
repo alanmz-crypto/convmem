@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 import pytest
 
+from shadow_ledger import SHADOW_DIR_MODE, create_shadow_ledger_header
 from shadow_replay import compare_touched
 from shadow_sink import (
     FSYNC_DEGRADED_LATENCY_MS,
@@ -20,9 +21,35 @@ from shadow_sink import (
 )
 
 
+def _private_paths(tmp_path: Path) -> tuple[Path, Path]:
+    shadow = tmp_path / "shadow"
+    shadow.mkdir(parents=True, exist_ok=True)
+    os.chmod(shadow, SHADOW_DIR_MODE)
+    ledger = shadow / "ledger.jsonl"
+    health = shadow / "health.json"
+    create_shadow_ledger_header(
+        ledger,
+        activation_id="act-t3",
+        ledger_identity="ledger-t3",
+        starting_sequence=0,
+    )
+    return ledger, health
+
+
+def _event_lines(ledger: Path) -> list[dict]:
+    out = []
+    for line in ledger.read_text().splitlines():
+        if not line.strip():
+            continue
+        obj = json.loads(line)
+        if obj.get("record_type") == "ledger_header":
+            continue
+        out.append(obj)
+    return out
+
+
 def test_two_writers_serialize_sequences(tmp_path: Path) -> None:
-    ledger = tmp_path / "ledger.jsonl"
-    health = tmp_path / "health.json"
+    ledger, health = _private_paths(tmp_path)
     errors: list[BaseException] = []
 
     def worker(prefix: str) -> None:
@@ -50,16 +77,16 @@ def test_two_writers_serialize_sequences(tmp_path: Path) -> None:
     for t in threads:
         t.join()
     assert not errors
-    lines = [json.loads(l) for l in ledger.read_text().splitlines() if l.strip()]
+    lines = _event_lines(ledger)
     assert len(lines) == 10
     seqs = [e["sequence"] for e in lines]
     assert seqs == sorted(seqs)
+    assert seqs == list(range(1, 11))
     assert len(set(seqs)) == 10
 
 
 def test_truncated_tail_refuses_append(tmp_path: Path) -> None:
-    ledger = tmp_path / "ledger.jsonl"
-    health = tmp_path / "health.json"
+    ledger, health = _private_paths(tmp_path)
     sink = JsonlUnitMutationSink(ledger_path=ledger, health_path=health)
     sink.observe(
         event_id=sink.prepare_event_id(),
@@ -86,18 +113,22 @@ def test_truncated_tail_refuses_append(tmp_path: Path) -> None:
     assert health_obj.get("status") == "corrupt"
 
 
-def test_invalid_middle_refuses_append(tmp_path: Path) -> None:
-    ledger = tmp_path / "ledger.jsonl"
-    health = tmp_path / "health.json"
-    good = {
-        "event_id": "e1",
-        "sequence": 1,
-        "stable_entity_id": "u1",
-        "operation": "create",
-    }
-    ledger.write_text(json.dumps(good) + "\nNOT-JSON\n", encoding="utf-8")
-    assert ledger_has_corruption(ledger)
+def test_invalid_tail_refuses_append(tmp_path: Path) -> None:
+    """Bounded-tail append refuses an invalid final record (no O(N) middle scan)."""
+    ledger, health = _private_paths(tmp_path)
+    # Append a valid event then an invalid final line.
     sink = JsonlUnitMutationSink(ledger_path=ledger, health_path=health)
+    sink.observe(
+        event_id="e1",
+        operation="create",
+        stable_entity_id="u1",
+        document="ok",
+        metadata={},
+        deleted=False,
+    )
+    with open(ledger, "ab") as handle:
+        handle.write(b"NOT-JSON\n")
+    assert ledger_has_corruption(ledger)
     sink.observe(
         event_id=sink.prepare_event_id(),
         operation="create",
@@ -107,15 +138,13 @@ def test_invalid_middle_refuses_append(tmp_path: Path) -> None:
         deleted=False,
     )
     health_obj = json.loads(health.read_text())
-    assert health_obj.get("last_failure_class") == "invalid_middle"
+    assert health_obj.get("last_failure_class") in {"invalid_tail", "invalid_middle"}
     assert health_obj.get("status") == "corrupt"
-    # No new valid line appended after corruption
     assert "u2" not in ledger.read_text()
 
 
 def test_lock_timeout_does_not_block_caller(tmp_path: Path) -> None:
-    ledger = tmp_path / "ledger.jsonl"
-    health = tmp_path / "health.json"
+    ledger, health = _private_paths(tmp_path)
     sink = JsonlUnitMutationSink(
         ledger_path=ledger,
         health_path=health,
@@ -126,8 +155,7 @@ def test_lock_timeout_does_not_block_caller(tmp_path: Path) -> None:
     release = threading.Event()
 
     def holder() -> None:
-        ledger.parent.mkdir(parents=True, exist_ok=True)
-        with open(ledger, "a+b") as handle:
+        with open(ledger, "rb+") as handle:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
             held.set()
             release.wait(2.0)
@@ -155,17 +183,17 @@ def test_lock_timeout_does_not_block_caller(tmp_path: Path) -> None:
     assert assess_shadow_status(enabled=True, health=health_obj) == "degraded"
 
 
-def test_fsync_failure_uncertain_ack_retry_reuses_event_id(
+def test_fsync_failure_uncertain_ack_retry_appends_duplicate_id(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    ledger = tmp_path / "ledger.jsonl"
-    health = tmp_path / "health.json"
+    ledger, health = _private_paths(tmp_path)
     sink = JsonlUnitMutationSink(ledger_path=ledger, health_path=health)
     calls = {"n": 0}
     real_fsync = os.fsync
 
     def boom(fd: int) -> None:
         calls["n"] += 1
+        # Fail only the first ledger event fsync (not parent/health).
         if calls["n"] == 1:
             raise OSError("fsync failed")
         return real_fsync(fd)
@@ -182,7 +210,7 @@ def test_fsync_failure_uncertain_ack_retry_reuses_event_id(
     )
     health_obj = json.loads(health.read_text())
     assert health_obj.get("last_failure_class") == "uncertain_ack"
-    # Line may already be on disk; retry with same event_id is idempotent.
+    # Retry with same event_id appends another complete event / next sequence.
     sink.observe(
         event_id=eid,
         operation="create",
@@ -191,15 +219,16 @@ def test_fsync_failure_uncertain_ack_retry_reuses_event_id(
         metadata={},
         deleted=False,
     )
-    lines = [json.loads(l) for l in ledger.read_text().splitlines() if l.strip()]
-    assert sum(1 for e in lines if e.get("event_id") == eid) == 1
-    health2 = json.loads(health.read_text())
-    assert health2.get("idempotent_retries", 0) >= 1
+    lines = _event_lines(ledger)
+    matching = [e for e in lines if e.get("event_id") == eid]
+    assert len(matching) == 2
+    assert matching[0]["sequence"] != matching[1]["sequence"]
+    assert matching[1]["sequence"] == matching[0]["sequence"] + 1
 
 
 def test_first_create_mode_0600(tmp_path: Path) -> None:
-    ledger = tmp_path / "ledger.jsonl"
-    health = tmp_path / "health.json"
+    ledger, health = _private_paths(tmp_path)
+    assert (ledger.stat().st_mode & 0o777) == 0o600
     sink = JsonlUnitMutationSink(ledger_path=ledger, health_path=health)
     sink.observe(
         event_id=sink.prepare_event_id(),
@@ -214,18 +243,15 @@ def test_first_create_mode_0600(tmp_path: Path) -> None:
 
 
 def test_append_latency_marked_degraded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ledger = tmp_path / "ledger.jsonl"
-    health = tmp_path / "health.json"
+    ledger, health = _private_paths(tmp_path)
     sink = JsonlUnitMutationSink(
         ledger_path=ledger,
         health_path=health,
         degraded_latency_ms=FSYNC_DEGRADED_LATENCY_MS,
     )
-    # Force measured latency above threshold without sleeping 500ms.
     clock = {"t": 1000.0}
 
     def mono() -> float:
-        # Advance past threshold on the post-append read.
         clock["t"] += 0.6
         return clock["t"]
 
@@ -265,7 +291,6 @@ def test_post_chroma_pre_shadow_gap_via_comparison() -> None:
         touched_ids={"u1"},
     )
     assert any(f["category"] == "missing-in-shadow" for f in findings)
-    # Phase 0 docs: detector is comparison only — no heal API imported here.
 
 
 def test_assess_shadow_status_vocabulary() -> None:

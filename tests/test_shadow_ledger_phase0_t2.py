@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,9 @@ pytest.importorskip("chromadb")
 from chroma_store import ChromaStore
 from chroma_write_store import open_chroma_for_write
 from shadow_ledger import (
+    SHADOW_DIR_MODE,
     atomic_write_json_private,
+    create_shadow_ledger_header,
     finalize_manifest,
     new_incomplete_manifest,
 )
@@ -27,7 +30,12 @@ def _emb(n: int = 8) -> list[float]:
 
 
 def _complete_cfg(tmp_path: Path, chroma: Path) -> dict:
-    manifest_path = tmp_path / "act.json"
+    shadow = tmp_path / "shadow"
+    shadow.mkdir(parents=True, exist_ok=True)
+    os.chmod(shadow, SHADOW_DIR_MODE)
+    manifest_path = shadow / "act.json"
+    ledger_path = shadow / "ledger.jsonl"
+    health_path = shadow / "health.json"
     base = new_incomplete_manifest(
         code_commit="test",
         chroma_root=chroma,
@@ -43,13 +51,19 @@ def _complete_cfg(tmp_path: Path, chroma: Path) -> dict:
         shadow_ledger_identity="test-ledger",
     )
     atomic_write_json_private(manifest_path, complete)
+    create_shadow_ledger_header(
+        ledger_path,
+        activation_id=str(complete.get("baseline_id") or "test-act"),
+        ledger_identity="test-ledger",
+        starting_sequence=0,
+    )
     return {
         "index": {"chroma_dir": str(chroma)},
         "shadow_ledger": {
             "enabled": True,
-            "ledger_path": str(tmp_path / "ledger.jsonl"),
+            "ledger_path": str(ledger_path),
             "activation_manifest_path": str(manifest_path),
-            "health_path": str(tmp_path / "health.json"),
+            "health_path": str(health_path),
         },
     }
 
@@ -59,8 +73,12 @@ def _read_events(path: Path) -> list[dict]:
         return []
     out = []
     for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            out.append(json.loads(line))
+        if not line.strip():
+            continue
+        obj = json.loads(line)
+        if obj.get("record_type") == "ledger_header":
+            continue
+        out.append(obj)
     return out
 
 

@@ -1,4 +1,4 @@
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,too-many-instance-attributes,too-many-locals
 """UnitMutationSink: observe confirmed knowledge_units mutations into shadow JSONL."""
 
 from __future__ import annotations
@@ -15,12 +15,18 @@ from pathlib import Path
 from typing import Any, Mapping, Protocol
 
 from shadow_ledger import (
+    _hooks,
     COLLECTION_KNOWLEDGE_UNITS,
     SHADOW_SCHEMA_VERSION,
-    atomic_write_json_private,
-    ensure_private_file_mode,
+    SecureIOHooks,
+    SecureLedgerError,
+    SecureLedgerRefused,
+    atomic_write_json_private_secure,
+    open_existing_shadow_ledger_fd,
+    read_ledger_header_and_tail,
     projection_state_hash,
     sha256_canonical,
+    write_all_fd,
 )
 
 log = logging.getLogger("convmem.shadow_sink")
@@ -40,6 +46,7 @@ ALLOWED_OPERATIONS = frozenset(
 LOCK_TIMEOUT_WARN_THRESHOLD_N = 3
 LOCK_ACQUIRE_TIMEOUT_MS = 250
 # Measured append latency above this is degraded (no signal interruption).
+# Degradation marker only — not an approved activation SLO.
 FSYNC_DEGRADED_LATENCY_MS = 500.0
 
 
@@ -62,7 +69,18 @@ class UnitMutationSink(Protocol):
 
 
 @dataclass
-class ShadowHealth:  # pylint: disable=too-many-instance-attributes
+class AppendTiming:
+    """Testable complete-path timing breakdown (milliseconds)."""
+
+    lock_wait_ms: float = 0.0
+    ledger_append_ms: float = 0.0
+    health_persist_ms: float = 0.0
+    complete_append_ms: float = 0.0
+    bytes_read_for_sequence: int = 0
+
+
+@dataclass
+class ShadowHealth:
     last_success_at: str | None = None
     last_failure_at: str | None = None
     last_failure_class: str | None = None
@@ -74,6 +92,12 @@ class ShadowHealth:  # pylint: disable=too-many-instance-attributes
     append_degraded: bool = False
     idempotent_retries: int = 0
     status: str = "healthy"
+    lock_wait_ms: float | None = None
+    ledger_append_ms: float | None = None
+    health_persist_ms: float | None = None
+    complete_append_ms: float | None = None
+    bytes_read_for_sequence: int | None = None
+    health_persist_failed: bool = False
 
 
 def assess_shadow_status(
@@ -91,26 +115,36 @@ def assess_shadow_status(
     if ledger_corrupt:
         return "corrupt"
     h = dict(health or {})
-    if h.get("last_failure_class") in {"truncated_tail", "invalid_middle", "ValueError"}:
+    klass = h.get("last_failure_class")
+    if klass in {
+        "truncated_tail",
+        "invalid_middle",
+        "invalid_tail",
+        "invalid_header",
+        "ValueError",
+    }:
         if int(h.get("consecutive_failures") or 0) >= 1:
-            # Prefer explicit corrupt when failure class indicates ledger damage
-            if h.get("last_failure_class") in {"truncated_tail", "invalid_middle"}:
+            if klass in {
+                "truncated_tail",
+                "invalid_middle",
+                "invalid_tail",
+                "invalid_header",
+            }:
                 return "corrupt"
-    if ledger_corrupt:
-        return "corrupt"
-    if (
+    if (  # pylint: disable=too-many-boolean-expressions
         h.get("append_degraded")
         or int(h.get("consecutive_lock_timeouts") or 0) >= 1
         or int(h.get("consecutive_failures") or 0) >= 1
-        or h.get("last_failure_class") == "lock_timeout"
-        or h.get("last_failure_class") == "uncertain_ack"
+        or klass == "lock_timeout"
+        or klass == "uncertain_ack"
+        or h.get("health_persist_failed")
     ):
         return "degraded"
     return "healthy"
 
 
 def ledger_has_corruption(ledger_path: Path) -> bool:
-    """True if truncated tail or invalid middle record is present."""
+    """True if truncated tail or invalid JSONL record is present (diagnostic)."""
     path = Path(ledger_path)
     if not path.is_file():
         return False
@@ -130,7 +164,11 @@ def ledger_has_corruption(ledger_path: Path) -> bool:
 
 
 class JsonlUnitMutationSink:
-    """Append-only shadow sink for knowledge_units only (never summaries)."""
+    """Append-only shadow sink for knowledge_units only (never summaries).
+
+    Does not create a missing ledger. Fixtures/C5 must create a header-bearing
+    private ledger before observe() can succeed.
+    """
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
@@ -140,14 +178,17 @@ class JsonlUnitMutationSink:
         lock_timeout_ms: int = LOCK_ACQUIRE_TIMEOUT_MS,
         lock_timeout_warn_n: int = LOCK_TIMEOUT_WARN_THRESHOLD_N,
         degraded_latency_ms: float = FSYNC_DEGRADED_LATENCY_MS,
+        io_hooks: SecureIOHooks | None = None,
     ) -> None:
         self.ledger_path = Path(ledger_path)
         self.health_path = Path(health_path)
         self.lock_timeout_ms = lock_timeout_ms
         self.lock_timeout_warn_n = lock_timeout_warn_n
         self.degraded_latency_ms = degraded_latency_ms
+        self._hooks = io_hooks
         self._health = ShadowHealth()
-        self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
+        self.last_timing = AppendTiming()
+        # Do not mkdir/create ledger as a side effect of construction.
 
     def prepare_event_id(self) -> str:
         return str(uuid.uuid4())
@@ -206,12 +247,7 @@ class JsonlUnitMutationSink:
         try:
             self._append_event(event)
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            klass = type(exc).__name__
-            msg = str(exc)
-            if "truncated tail" in msg:
-                klass = "truncated_tail"
-            elif "invalid middle" in msg:
-                klass = "invalid_middle"
+            klass = self._classify_failure(exc)
             self._record_failure(klass, event_id=event_id)
             log.error(
                 "shadow append failed event_id=%s entity=%s: %s",
@@ -220,55 +256,102 @@ class JsonlUnitMutationSink:
                 exc,
             )
 
-    def _append_event(self, event: dict[str, Any]) -> None:
-        self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
-        created = not self.ledger_path.exists()
-        start = time.monotonic()
-        uncertain = False
-        idempotent = False
-        with open(self.ledger_path, "a+b") as handle:
-            if not self._acquire_lock(handle, event.get("event_id")):
-                return
-            try:
-                # Tail check before any full-file scan so truncation is not
-                # misreported as an invalid middle record.
-                self._validate_tail(handle)
-                existing = self._find_event(handle, str(event.get("event_id") or ""))
-                if existing is not None:
-                    idempotent = True
-                    event["sequence"] = existing.get("sequence")
-                else:
-                    sequence = self._next_sequence(handle)
-                    event["sequence"] = sequence
-                    line = json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n"
-                    data = line.encode("utf-8")
-                    handle.seek(0, os.SEEK_END)
-                    handle.write(data)  # one encoded-byte write
-                    handle.flush()
-                    try:
-                        os.fsync(handle.fileno())
-                    except OSError:
-                        uncertain = True
-                    if created and not uncertain:
-                        ensure_private_file_mode(self.ledger_path)
-                        dir_fd = os.open(str(self.ledger_path.parent), os.O_RDONLY)
-                        try:
-                            os.fsync(dir_fd)
-                        finally:
-                            os.close(dir_fd)
-            finally:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    @staticmethod
+    def _classify_failure(exc: BaseException) -> str:
+        msg = str(exc).lower()
+        if isinstance(exc, SecureLedgerRefused):
+            if "header" in msg:
+                return "invalid_header"
+            return "secure_refused"
+        if "truncated tail" in msg:
+            return "truncated_tail"
+        if "invalid tail" in msg or "invalid final" in msg:
+            return "invalid_tail"
+        if "invalid middle" in msg:
+            return "invalid_middle"
+        return type(exc).__name__
 
-        latency_ms = (time.monotonic() - start) * 1000.0
+    def _append_event(self, event: dict[str, Any]) -> None:
+        """Complete path: lock → header/tail → append/fsync → unlock → health."""
+        complete_start = time.monotonic()
+        timing = AppendTiming()
+        uncertain = False
+        fd = -1
+        dir_fd = -1
+        pre_lock_st = None
+
+        lock_start = time.monotonic()
+        try:
+            fd, dir_fd, pre_lock_st = open_existing_shadow_ledger_fd(
+                self.ledger_path, hooks=self._hooks
+            )
+        except SecureLedgerError:
+            timing.complete_append_ms = (time.monotonic() - complete_start) * 1000.0
+            self.last_timing = timing
+            raise
+
+        try:
+            if not self._acquire_lock_fd(fd, event.get("event_id")):
+                timing.lock_wait_ms = (time.monotonic() - lock_start) * 1000.0
+                timing.complete_append_ms = (time.monotonic() - complete_start) * 1000.0
+                self.last_timing = timing
+                return
+            timing.lock_wait_ms = (time.monotonic() - lock_start) * 1000.0
+
+            ledger_start = time.monotonic()
+            try:
+                # Identity recheck after lock.
+                hooks = _hooks(self._hooks)
+                st = hooks.fstat(fd)
+                if (st.st_dev, st.st_ino) != (pre_lock_st.st_dev, pre_lock_st.st_ino):
+                    raise SecureLedgerRefused("ledger identity changed under lock")
+
+                head_tail = read_ledger_header_and_tail(fd, hooks=self._hooks)
+                timing.bytes_read_for_sequence = head_tail.bytes_read
+                event["sequence"] = head_tail.next_sequence
+
+                line = json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n"
+                data = line.encode("utf-8")
+                hooks.lseek(fd, 0, os.SEEK_END)
+                try:
+                    write_all_fd(fd, data, hooks=self._hooks)
+                except OSError as exc:
+                    # Partial write: do not truncate or pad; refuse later via tail.
+                    raise OSError(exc.errno, f"short event write: {exc}") from exc
+                # Flush is implicit for raw fd writes; fsync for durability.
+                try:
+                    hooks.fsync(fd)
+                except OSError:
+                    uncertain = True
+            finally:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+                timing.ledger_append_ms = (time.monotonic() - ledger_start) * 1000.0
+        finally:
+            if fd >= 0:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            if dir_fd >= 0:
+                try:
+                    os.close(dir_fd)
+                except OSError:
+                    pass
+
         if uncertain:
-            self._health.last_append_latency_ms = latency_ms
+            timing.complete_append_ms = (time.monotonic() - complete_start) * 1000.0
+            self.last_timing = timing
+            self._health.last_append_latency_ms = timing.complete_append_ms
+            self._apply_timing(timing)
             self._record_failure("uncertain_ack", event_id=event.get("event_id"))
             log.warning(
-                "shadow append uncertain_ack event_id=%s (fsync failed; retry may reuse id)",
+                "shadow append uncertain_ack event_id=%s "
+                "(fsync failed; retry may reuse id with new sequence)",
                 event.get("event_id"),
             )
             return
 
+        # Success path health update (before persistence; timing includes persist).
         self._health.last_success_at = datetime.now(timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         )
@@ -277,15 +360,39 @@ class JsonlUnitMutationSink:
         self._health.last_failure_class = None
         self._health.last_event_id = event.get("event_id")
         self._health.last_sequence = event.get("sequence")
-        self._health.last_append_latency_ms = latency_ms
-        self._health.append_degraded = latency_ms > self.degraded_latency_ms
-        if idempotent:
-            self._health.idempotent_retries += 1
+        self._health.health_persist_failed = False
+        self._apply_timing(timing)
+        # Degraded marker may still flip after health timing is included.
+        self._health.status = "healthy"
+
+        health_start = time.monotonic()
+        health_error: Exception | None = None
+        try:
+            # Tentative complete latency before persist for degraded check inputs.
+            tentative = (time.monotonic() - complete_start) * 1000.0
+            self._health.last_append_latency_ms = tentative
+            self._persist_health()
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            health_error = exc
+            self._health.health_persist_failed = True
+            log.warning(
+                "shadow health persistence failed event_id=%s: %s",
+                event.get("event_id"),
+                exc,
+            )
+        timing.health_persist_ms = (time.monotonic() - health_start) * 1000.0
+        timing.complete_append_ms = (time.monotonic() - complete_start) * 1000.0
+        self.last_timing = timing
+        self._apply_timing(timing)
+        self._health.last_append_latency_ms = timing.complete_append_ms
+        self._health.append_degraded = (
+            timing.complete_append_ms > self.degraded_latency_ms
+        )
         if self._health.append_degraded:
             log.warning(
                 "shadow append latency degraded event_id=%s latency_ms=%.1f threshold=%.1f",
                 event.get("event_id"),
-                latency_ms,
+                timing.complete_append_ms,
                 self.degraded_latency_ms,
             )
         self._health.status = assess_shadow_status(
@@ -293,36 +400,30 @@ class JsonlUnitMutationSink:
             health=self._health_payload(),
             ledger_corrupt=False,
         )
-        self._persist_health()
-
-    def _validate_tail(self, handle: Any) -> None:
-        handle.seek(0, os.SEEK_END)
-        if handle.tell() > 0:
-            handle.seek(handle.tell() - 1)
-            if handle.read(1) != b"\n":
-                raise ValueError("shadow ledger truncated tail")
-
-    def _find_event(self, handle: Any, event_id: str) -> dict[str, Any] | None:
-        if not event_id:
-            return None
-        handle.seek(0)
-        for raw in handle:
-            line = raw.decode("utf-8", errors="replace").strip()
-            if not line:
-                continue
+        # One bounded corrective publication of final status/timing — not a loop.
+        if health_error is None:
             try:
-                obj = json.loads(line)
-            except Exception:  # pylint: disable=broad-exception-caught
-                raise ValueError("shadow ledger invalid middle record") from None
-            if isinstance(obj, dict) and str(obj.get("event_id") or "") == event_id:
-                return obj
-        return None
+                self._persist_health()
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self._health.health_persist_failed = True
+                log.warning(
+                    "shadow health final publication failed event_id=%s: %s",
+                    event.get("event_id"),
+                    exc,
+                )
 
-    def _acquire_lock(self, handle: Any, event_id: str | None) -> bool:
+    def _apply_timing(self, timing: AppendTiming) -> None:
+        self._health.lock_wait_ms = timing.lock_wait_ms
+        self._health.ledger_append_ms = timing.ledger_append_ms
+        self._health.health_persist_ms = timing.health_persist_ms
+        self._health.complete_append_ms = timing.complete_append_ms
+        self._health.bytes_read_for_sequence = timing.bytes_read_for_sequence
+
+    def _acquire_lock_fd(self, fd: int, event_id: str | None) -> bool:
         deadline = time.monotonic() + (self.lock_timeout_ms / 1000.0)
         while True:
             try:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 return True
             except BlockingIOError:
                 if time.monotonic() >= deadline:
@@ -345,22 +446,6 @@ class JsonlUnitMutationSink:
                     return False
                 time.sleep(0.005)
 
-    def _next_sequence(self, handle: Any) -> int:
-        handle.seek(0)
-        last_seq = 0
-        for raw in handle:
-            line = raw.decode("utf-8", errors="replace").strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-                seq = obj.get("sequence")
-                if isinstance(seq, int) and seq > last_seq:
-                    last_seq = seq
-            except Exception:  # pylint: disable=broad-exception-caught
-                raise ValueError("shadow ledger invalid middle record") from None
-        return last_seq + 1
-
     def _health_payload(self) -> dict[str, Any]:
         return {
             "last_success_at": self._health.last_success_at,
@@ -376,6 +461,12 @@ class JsonlUnitMutationSink:
             "idempotent_retries": self._health.idempotent_retries,
             "status": self._health.status,
             "degraded_latency_threshold_ms": self.degraded_latency_ms,
+            "lock_wait_ms": self._health.lock_wait_ms,
+            "ledger_append_ms": self._health.ledger_append_ms,
+            "health_persist_ms": self._health.health_persist_ms,
+            "complete_append_ms": self._health.complete_append_ms,
+            "bytes_read_for_sequence": self._health.bytes_read_for_sequence,
+            "health_persist_failed": self._health.health_persist_failed,
         }
 
     def _record_failure(self, klass: str, *, event_id: str | None) -> None:
@@ -385,7 +476,12 @@ class JsonlUnitMutationSink:
         self._health.last_failure_class = klass
         self._health.consecutive_failures += 1
         self._health.last_event_id = event_id
-        corrupt = klass in {"truncated_tail", "invalid_middle"}
+        corrupt = klass in {
+            "truncated_tail",
+            "invalid_middle",
+            "invalid_tail",
+            "invalid_header",
+        }
         self._health.status = assess_shadow_status(
             enabled=True,
             health=self._health_payload(),
@@ -394,10 +490,16 @@ class JsonlUnitMutationSink:
         try:
             self._persist_health()
         except Exception:  # pylint: disable=broad-exception-caught
-            pass
+            self._health.health_persist_failed = True
+            log.warning(
+                "shadow health persistence failed while recording failure class=%s",
+                klass,
+            )
 
     def _persist_health(self) -> None:
-        atomic_write_json_private(self.health_path, self._health_payload())
+        atomic_write_json_private_secure(
+            self.health_path, self._health_payload(), hooks=self._hooks
+        )
 
 
 def classify_metadata_operation(

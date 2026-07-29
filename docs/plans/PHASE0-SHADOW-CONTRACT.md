@@ -106,3 +106,19 @@ writer wiring to this API is a later slice; C1 validates the contract directly.
 Committed ledgers begin with a non-payload `ledger_header` JSONL record binding
 `activation_id`, `ledger_identity`, schema version, UTC, and `starting_sequence`.
 Events after the header must be contiguous starting at `starting_sequence + 1`.
+
+## Secure ledger I/O (C2)
+
+Header-only ledger creation (`create_shadow_ledger_header`) opens the private
+`0700` Shadow parent with `O_DIRECTORY|O_NOFOLLOW`, creates the leaf with
+`O_CREAT|O_EXCL|O_NOFOLLOW` mode `0600`, `fchmod`/`fstat`-verifies the
+descriptor **before** any bytes, writes the C1 `ledger_header` record, then
+fsyncs the file and parent. No mutation payload is written at create time.
+
+`JsonlUnitMutationSink` does not create a missing ledger. Append opens an
+existing private ledger, validates the header, allocates the next sequence from
+a bounded header/tail read (no whole-ledger scan), appends one complete event
+line, and measures the complete path through health-sidecar persistence.
+Duplicate event IDs may appear as distinct contiguous sequences; replay keeps
+the first valid occurrence. The 500 ms marker remains a degradation signal, not
+an activation SLO.
