@@ -131,7 +131,7 @@ def assess_shadow_status(
                 "invalid_header",
             }:
                 return "corrupt"
-    if (
+    if (  # pylint: disable=too-many-boolean-expressions
         h.get("append_degraded")
         or int(h.get("consecutive_lock_timeouts") or 0) >= 1
         or int(h.get("consecutive_failures") or 0) >= 1
@@ -285,7 +285,7 @@ class JsonlUnitMutationSink:
             fd, dir_fd, pre_lock_st = open_existing_shadow_ledger_fd(
                 self.ledger_path, hooks=self._hooks
             )
-        except SecureLedgerError as exc:
+        except SecureLedgerError:
             timing.complete_append_ms = (time.monotonic() - complete_start) * 1000.0
             self.last_timing = timing
             raise

@@ -327,7 +327,7 @@ class SecureLedgerRefused(SecureLedgerError):
 
 
 @dataclass
-class SecureIOHooks:
+class SecureIOHooks:  # pylint: disable=too-many-instance-attributes
     """Injectable OS seams for hermetic fault injection (tests only)."""
 
     open: Callable[..., int] = os.open
@@ -690,7 +690,6 @@ def read_ledger_header_and_tail(
             break
     if header_raw is None:
         raise SecureLedgerRefused("ledger headerless/incomplete")
-        raise SecureLedgerRefused("ledger headerless/incomplete")
 
     try:
         header = parse_complete_jsonl_line(
@@ -740,7 +739,6 @@ def read_ledger_header_and_tail(
             break
         window = min(window * 2, size - header_len)
     if last_line is None:
-        raise SecureLedgerRefused("ledger final record unreadable")
         raise SecureLedgerRefused("ledger final record unreadable")
 
     try:

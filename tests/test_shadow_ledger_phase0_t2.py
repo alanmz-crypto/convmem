@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -21,7 +22,6 @@ from shadow_ledger import (
     new_incomplete_manifest,
 )
 from shadow_sink import classify_metadata_operation
-import os
 # pylint: enable=wrong-import-position
 
 

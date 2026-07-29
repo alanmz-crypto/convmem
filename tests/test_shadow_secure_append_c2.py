@@ -1,5 +1,8 @@
 # pylint: disable=too-many-lines
 """C2: secure header create, bounded-tail append, complete-path timing."""
+# pylint: disable=duplicate-code
+# Test fixtures, helpers, and assertion patterns are structurally similar to
+# sibling Shadow test modules by design — they reproduce the same test harness.
 
 from __future__ import annotations
 
@@ -240,7 +243,7 @@ def test_first_fsync_failure_no_0644_payload(tmp_path: Path, monkeypatch: pytest
     """Umask 022 + first fsync failure cannot leave payload at 0644."""
     old = os.umask(0o022)
     try:
-        shadow, ledger, health, _ = _header_ledger(tmp_path)
+        _shadow, ledger, health, _ = _header_ledger(tmp_path)
         assert (ledger.stat().st_mode & 0o777) == 0o600
         sink = JsonlUnitMutationSink(ledger_path=ledger, health_path=health)
         calls = {"n": 0}
@@ -274,7 +277,7 @@ def test_first_fsync_failure_no_0644_payload(tmp_path: Path, monkeypatch: pytest
 
 
 def test_short_event_write_leaves_refusing_tail(tmp_path: Path) -> None:
-    shadow, ledger, health, _ = _header_ledger(tmp_path)
+    _shadow, ledger, health, _ = _header_ledger(tmp_path)
     sink = JsonlUnitMutationSink(ledger_path=ledger, health_path=health)
     real_write = os.write
     state = {"once": False}
@@ -324,7 +327,7 @@ def test_short_event_write_leaves_refusing_tail(tmp_path: Path) -> None:
 
 
 def test_header_only_sequence_and_bounded_bytes(tmp_path: Path) -> None:
-    shadow, ledger, health, _ = _header_ledger(tmp_path)
+    _shadow, ledger, health, _ = _header_ledger(tmp_path)
     sink = JsonlUnitMutationSink(ledger_path=ledger, health_path=health)
     sink.observe(
         event_id="e1",
@@ -368,7 +371,7 @@ def test_header_only_sequence_and_bounded_bytes(tmp_path: Path) -> None:
 
 
 def test_duplicate_event_id_distinct_sequences_and_replay(tmp_path: Path) -> None:
-    shadow, ledger, health, _ = _header_ledger(tmp_path)
+    _shadow, ledger, health, _ = _header_ledger(tmp_path)
     sink = JsonlUnitMutationSink(ledger_path=ledger, health_path=health)
     for _ in range(2):
         sink.observe(
@@ -398,7 +401,7 @@ def test_duplicate_event_id_distinct_sequences_and_replay(tmp_path: Path) -> Non
 
 
 def test_complete_timing_includes_health(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    shadow, ledger, health, _ = _header_ledger(tmp_path)
+    _shadow, ledger, health, _ = _header_ledger(tmp_path)
     sink = JsonlUnitMutationSink(
         ledger_path=ledger,
         health_path=health,
@@ -432,7 +435,7 @@ def test_complete_timing_includes_health(tmp_path: Path, monkeypatch: pytest.Mon
 
 
 def test_hardlink_nlink_refused(tmp_path: Path) -> None:
-    shadow, ledger, health, _ = _header_ledger(tmp_path)
+    shadow, ledger, _health, _ = _header_ledger(tmp_path)
     alt = shadow / "alt.jsonl"
     os.link(ledger, alt)
     with pytest.raises(SecureLedgerRefused):
