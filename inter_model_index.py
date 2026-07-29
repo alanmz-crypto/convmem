@@ -35,7 +35,7 @@ def _keywords_from(path: Path, title: str) -> list[str]:
     return out[:8]
 
 
-def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-arguments
+def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-arguments,unused-argument
     path: str,
     messages: list[dict],
     *,

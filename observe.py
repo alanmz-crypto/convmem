@@ -223,7 +223,6 @@ def repair_empty_ledger_documents(
 ) -> dict:
     """Re-embed ledger units whose Chroma document is empty (decision/verification)."""
     from chroma_write_store import open_production_write_store
-    from config import load_config
     from ledger import invalidate_ledger_index_cache
     from ledger_recent import load_approved_decision_by_id
 

@@ -63,7 +63,7 @@ def test_static_scan_zero_legacy_production_factory_calls() -> None:
                 and "production_chroma_write_session" not in line
             ):
                 hits.append(f"{rel}:{i}:old_session")
-    assert hits == [], f"legacy production write opens remain: {hits}"
+    assert not hits, f"legacy production write opens remain: {hits}"
 
 
 def test_fourteen_production_writer_sites_migrated() -> None:

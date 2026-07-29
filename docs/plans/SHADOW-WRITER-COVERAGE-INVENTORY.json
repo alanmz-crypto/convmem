@@ -14,12 +14,12 @@
     "inter_model_index.py:155"
   ],
   "open_production_write_store_call_sites": [
-    "observe.py:230",
+    "observe.py:229",
     "propose_decision.py:529",
     "propose_decision.py:562",
     "refine.py:272",
     "refine.py:718",
-    "source_purge.py:317"
+    "source_purge.py:316"
   ],
   "must_use_factory_bypass_sites": [],
   "must_use_factory_count": 0,

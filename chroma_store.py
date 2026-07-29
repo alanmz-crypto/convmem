@@ -162,8 +162,8 @@ class ChromaStore:
         self._on_close = None
         if callable(callback):
             try:
-                callback()
-            except Exception:
+                callback()  # pylint: disable=not-callable
+            except Exception:  # pylint: disable=broad-exception-caught
                 pass
 
     def __enter__(self) -> "ChromaStore":

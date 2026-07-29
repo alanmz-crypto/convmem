@@ -302,7 +302,6 @@ def execute_purge(
         )
     canonical = candidates[0]
     export = Path(cfg["index"]["units_export"]).expanduser()
-    chroma_dir = str(Path(cfg["index"]["chroma_dir"]).expanduser())
 
     def _hook(name: str) -> None:
         fn = hooks.get(name)
@@ -317,7 +316,6 @@ def execute_purge(
         _pw = open_production_write_store(entrypoint="source_purge.execute")
         store = _pw.store
         cfg = _pw.live_cfg
-        chroma_dir = str(cfg["index"]["chroma_dir"])
         try:
             units_deleted = 0
             summaries_deleted = 0

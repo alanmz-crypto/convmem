@@ -1,5 +1,8 @@
 """Shared helpers for exclude --purge unit tests."""
 
+# pylint: disable=invalid-name,global-statement
+# Module-level refcount state for thread/nest-safe live-config monkeypatching.
+
 from __future__ import annotations
 
 import threading

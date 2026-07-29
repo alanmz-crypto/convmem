@@ -446,7 +446,7 @@ def _echo_neutralize_preview(
 
 
 
-def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-locals
+def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-locals,unused-argument
     *,
     cfg: dict,
     idx: dict,
@@ -737,7 +737,7 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
     return True, n_indexed, n_units, n_exact_suppressed, n_semantic_queued
 
 
-def _reindex_clear_existing(
+def _reindex_clear_existing(  # pylint: disable=unused-argument
     *,
     cfg: dict,
     chroma_dir: str,

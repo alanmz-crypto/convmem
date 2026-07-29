@@ -1,4 +1,5 @@
 """Acceptance contract tests for exclude --purge (N1–N21 + audit hardening)."""
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -44,6 +45,7 @@ def _commit(**kwargs):
     with patch_live_config(cfg):
         return _commit_chunk_to_stores(**kwargs)
 
+# pylint: disable=wrong-import-position
 from tests.purge_test_util import (
     patch_export_flock,
     patch_live_config,
