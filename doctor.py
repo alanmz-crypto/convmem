@@ -1220,44 +1220,29 @@ def _check_embed_collection_identity(cfg: dict) -> DoctorCheck:
 
 
 def _check_shadow_ledger(cfg: dict) -> DoctorCheck:
-    """Phase 0 shadow health: disabled|healthy|degraded|corrupt|baseline_mismatch."""
-    from shadow_ledger import decide_sink_injection, resolve_shadow_settings
-    from shadow_sink import assess_shadow_status, ledger_has_corruption
+    """Render the shared strict Shadow result; never infer eligibility locally."""
+    from shadow_inventory import collect_shadow_truth
+    from shadow_validation import ValidationMode
 
-    section = cfg.get("shadow_ledger")
-    if not isinstance(section, dict) or not section.get("enabled"):
-        return DoctorCheck(
-            "shadow_ledger",
-            True,
-            "disabled (no sink injection; Phase 0 default)",
-        )
-    settings = resolve_shadow_settings(cfg)
-    decision = decide_sink_injection(cfg, chroma_dir=cfg.get("index", {}).get("chroma_dir"))
-    baseline_mismatch = (not decision.inject) and "root" in (decision.reason or "").lower()
-    corrupt = ledger_has_corruption(settings.ledger_path)
-    health: dict = {}
-    if settings.health_path.is_file():
-        try:
-            health = json.loads(settings.health_path.read_text(encoding="utf-8"))
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            return DoctorCheck(
-                "shadow_ledger",
-                True,
-                f"WARN: health sidecar unreadable: {exc}",
-                status="warn",
-            )
-    status = assess_shadow_status(
-        enabled=True,
-        health=health,
-        ledger_corrupt=corrupt,
-        baseline_mismatch=baseline_mismatch,
+    index = cfg.get("index") if isinstance(cfg.get("index"), dict) else {}
+    chroma_dir = index.get("chroma_dir") or "."
+    truth = collect_shadow_truth(
+        cfg, chroma_dir=chroma_dir, mode=ValidationMode.DOCTOR
     )
-    detail = f"status={status}"
-    if health.get("last_failure_class"):
-        detail += f" last_failure={health.get('last_failure_class')}"
-    if status == "corrupt":
+    validation = truth["validation"]
+    codes = list(truth["codes"])
+    detail = f"state={validation.state}"
+    if codes:
+        detail += f" codes={','.join(codes)}"
+    if validation.state == "disabled" and not validation.refusals:
+        return DoctorCheck(
+            "shadow_ledger", True, "disabled (no sink injection; Phase 0 default)"
+        )
+    if validation.state == "prepared":
+        return DoctorCheck("shadow_ledger", True, f"WARN: {detail}", status="warn")
+    if any(refusal.blocking for refusal in validation.refusals):
         return DoctorCheck("shadow_ledger", False, detail)
-    if status in {"degraded", "baseline_mismatch"}:
+    if truth["health_codes"] or truth["health_status"] == "degraded":
         return DoctorCheck("shadow_ledger", True, f"WARN: {detail}", status="warn")
     return DoctorCheck("shadow_ledger", True, detail)
 

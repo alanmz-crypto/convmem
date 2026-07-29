@@ -151,6 +151,39 @@ def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
     return int(row[0]) if row and row[0] is not None else 0
 
 
+def collection_inventory_snapshot(
+    chroma_dir: str | Path, collection_name: str
+) -> dict[str, object]:
+    """Return current active/historical counts from the readonly metadata view.
+
+    This deliberately mirrors the product meaning of an active unit without
+    importing a writable Chroma client: a current row is historical when its
+    metadata marks it superseded or deleted.  IDs lacking either marker remain
+    active.  The returned IDs are the complete current collection ID set, not
+    merely the rows used for candidate classification.
+    """
+    ids = sorted(set(collection_ids(chroma_dir, collection_name)))
+    metadata = {
+        str(row.get("id")): row
+        for row in collection_metadata_rows(chroma_dir, collection_name)
+        if row.get("id") is not None
+    }
+    historical_ids = {
+        entity_id
+        for entity_id in ids
+        if bool(metadata.get(entity_id, {}).get("superseded"))
+        or bool(metadata.get(entity_id, {}).get("deleted"))
+    }
+    total = len(ids)
+    historical = len(historical_ids)
+    return {
+        "ids": ids,
+        "active_unit_count": total - historical,
+        "historical_unit_count": historical,
+        "total_unit_count": total,
+    }
+
+
 class ReadonlyUnitStore:
     """ChromaStore-compatible read facade using sqlite only (no PersistentClient writes).
 
