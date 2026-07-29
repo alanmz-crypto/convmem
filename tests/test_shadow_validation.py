@@ -8,7 +8,7 @@ import os
 import stat
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 
@@ -89,7 +89,7 @@ def _write_ledger(path: Path, header: dict[str, Any], events: list[dict[str, Any
     _write_private(path, "".join(lines))
 
 
-def _valid_bundle(
+def _valid_bundle(  # pylint: disable=too-many-arguments
     layout: Layout,
     *,
     activation_id: str = "act-1",
@@ -165,14 +165,14 @@ def test_disabled_absent_artifacts_safe(tmp_path: Path) -> None:
     result = _validate(cfg, layout.chroma)
     assert result.state == "disabled"
     assert result.inject_eligible is False
-    assert result.refusals == ()
+    assert not result.refusals
 
 
 def test_valid_fixture_inject_eligible(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     cfg, _manifest = _valid_bundle(layout)
     result = _validate(cfg, layout.chroma, mode="writer")
-    assert result.codes() == ()
+    assert not result.codes()
     assert result.inject_eligible is True
     assert result.activation_id == "act-1"
     assert result.state == "committed"
@@ -397,7 +397,7 @@ def test_wrong_collection_uuid(tmp_path: Path) -> None:
 
 def test_wrong_activation_and_ledger_identity(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
-    cfg, manifest = _valid_bundle(layout)
+    cfg, _manifest = _valid_bundle(layout)
     cfg["shadow_ledger"]["activation_id"] = "other-act"
     result = _validate(cfg, layout.chroma)
     assert "config_activation_mismatch" in result.codes()
@@ -572,7 +572,7 @@ def test_shadow_sibling_under_broad_data_root(tmp_path: Path) -> None:
     cfg, _m = _valid_bundle(layout)
     result = _validate(cfg, layout.chroma)
     assert result.inject_eligible is True
-    assert result.codes() == ()
+    assert not result.codes()
 
 
 def test_prepared_not_committed(tmp_path: Path) -> None:

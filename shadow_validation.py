@@ -15,7 +15,7 @@ import tomllib
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping
 
 from chroma_readonly import collection_uuid as readonly_collection_uuid
 from shadow_ledger import (
@@ -272,7 +272,7 @@ def _path_has_symlink_component(
 
 
 def _validate_symlink_free(path: Path, artifact: str, bag: _RefusalBag, *, lstat: StatFunc) -> None:
-    hit, component = _path_has_symlink_component(path, lstat=lstat)
+    hit, _component = _path_has_symlink_component(path, lstat=lstat)
     if hit:
         bag.add(
             "symlink_refused",
@@ -390,9 +390,9 @@ def _validate_shadow_directory(
 
     # Sibling / outside Chroma policy.
     try:
-        chroma_st = lstat(chroma_dir)
+        _chroma_st = lstat(chroma_dir)
     except OSError:
-        chroma_st = None
+        _chroma_st = None
     if shadow_dir == chroma_dir:
         bag.add("path_inside_chroma", ARTIFACT_SHADOW_DIR, "shadow dir equals chroma root")
     else:
@@ -650,7 +650,7 @@ def _validate_manifest_fields(
             )
         active_class = 0
         historical_class = 0
-        for eid, payload in entity_baselines.items():
+        for _eid, payload in entity_baselines.items():
             if not isinstance(payload, dict):
                 bag.add(
                     "manifest_corrupt",
@@ -957,7 +957,7 @@ def _prepare_live_baseline_check(
         )
 
 
-def validate_shadow_activation(
+def validate_shadow_activation(  # pylint: disable=too-many-arguments
     config_path: str | Path | None,
     chroma_dir: str | Path,
     mode: str | ValidationMode,
@@ -1238,7 +1238,7 @@ def validate_shadow_activation(
     )
 
 
-def build_valid_manifest_fixture(
+def build_valid_manifest_fixture(  # pylint: disable=too-many-arguments
     *,
     activation_id: str,
     code_commit: str,

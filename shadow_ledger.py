@@ -22,8 +22,6 @@ MANIFEST_VERSION = 1
 HASH_RULES_VERSION = 1
 COLLECTION_KNOWLEDGE_UNITS = "knowledge_units"
 
-COLLECTION_KNOWLEDGE_UNITS = "knowledge_units"
-
 # Strict activation contract (C1). Ledger identity header is validated here;
 # secure create/append lands in later slices.
 LEDGER_HEADER_RECORD_TYPE = "ledger_header"
