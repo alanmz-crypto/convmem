@@ -1,0 +1,20 @@
+{
+  "generated_at_utc": "2026-07-29T05:47:32Z",
+  "code_revision": "bb49bd811f98350f6e6248821c8b9772e8ddbc35",
+  "protocol_version": 1,
+  "systemd_units": [
+    "convmem-watch.service",
+    "convmem-refine.service",
+    "convmem-monitor.timer"
+  ],
+  "cmdline_signatures": [
+    "convmem watch",
+    "convmem refine",
+    "python.*watch.py",
+    "python.*refine.py"
+  ],
+  "chroma_dir": "/home/lauer/.local/share/convmem/chroma",
+  "open_fd_writer_pids": [],
+  "implementation_subject": "bb49bd811f98350f6e6248821c8b9772e8ddbc35",
+  "note": "code_revision is the C3 writer-gate implementation subject; trailing census-only commits may advance tip without changing writers."
+}

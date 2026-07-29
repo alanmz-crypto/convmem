@@ -18,7 +18,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from adapters.detect import detect_format, get_parser, TOOL_BY_FORMAT
-from chroma_write_store import chroma_write_session
+from chroma_write_store import production_chroma_write_session
 from config import load_config
 from distill import distill, normalize_unit
 from llm import ollama_embed, summarize
@@ -446,7 +446,7 @@ def _echo_neutralize_preview(
 
 
 
-def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-locals
+def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-locals,unused-argument
     *,
     cfg: dict,
     idx: dict,
@@ -475,7 +475,9 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
                 print(f"  [skip] excluded during batch-write {Path(path).name}")
             return False, 0, 0, 0, 0
         n_units = 0
-        with chroma_write_session(cfg, chroma_dir) as store:
+        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+            store = _pw.store
+            cfg = _pw.live_cfg
             store.add_summary(doc_id, summary, summary_embedding, metadata)
             dedupe = evaluate_ingest_batch(store, cfg, units_to_add)
             for unit, doc, unit_embedding, unit_meta in dedupe.accepted:
@@ -530,7 +532,9 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
     }.get(fmt, ("inter-model", "inter_model_doc", "inter-model-index"))
     chroma_dir = idx["chroma_dir"]
     if force_file:
-        with chroma_write_session(cfg, chroma_dir) as store:
+        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+            store = _pw.store
+            cfg = _pw.live_cfg
             tombstone_tag = f"{path_key}#{file_hash[:12]}"
             if supersede_on_reindex:
                 _echo_neutralize_preview(
@@ -733,7 +737,7 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
     return True, n_indexed, n_units, n_exact_suppressed, n_semantic_queued
 
 
-def _reindex_clear_existing(
+def _reindex_clear_existing(  # pylint: disable=unused-argument
     *,
     cfg: dict,
     chroma_dir: str,
@@ -744,7 +748,9 @@ def _reindex_clear_existing(
     verbose: bool,
 ) -> None:
     """Clear or supersede derived rows before force re-index of one file."""
-    with chroma_write_session(cfg, chroma_dir) as store:
+    with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+        store = _pw.store
+        cfg = _pw.live_cfg
         n_units_del = 0
         n_sum_del = 0
         tombstone_tag = f"{path_key}#{file_hash[:12]}"

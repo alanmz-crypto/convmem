@@ -1,5 +1,5 @@
 # pylint: disable=duplicate-code
-"""VERIFY V3 coverage proof: factory routing + hermetic bypass control.
+"""VERIFY V3 coverage proof: C3 gated sessions + hermetic bypass control.
 
 Proof class: code-path / hermetic. Does NOT enable production shadowing or
 edit live config. Does NOT claim a live ops miss was observed.
@@ -21,29 +21,37 @@ def _inventory() -> dict:
     return json.loads(INVENTORY.read_text(encoding="utf-8"))
 
 
-def test_inventory_documents_factory_routing() -> None:
+def test_inventory_documents_gated_routing() -> None:
     data = _inventory()
     assert data["must_use_factory_count"] == 0
     assert data["must_use_factory_bypass_sites"] == []
-    assert len(data["open_chroma_for_write_production_call_sites"]) >= 1
-    assert len(data.get("chroma_write_session_production_call_sites", [])) >= 1
+    assert data["open_chroma_for_write_production_call_sites"] == []
+    assert data["chroma_write_session_production_call_sites"] == []
+    assert len(data["production_chroma_write_session_call_sites"]) >= 1
+    assert len(data["open_production_write_store_call_sites"]) >= 1
     assert data["proof_class"].startswith("code_path")
 
 
 def test_static_scan_matches_inventory_routing() -> None:
-    """Scanned factory/session sites and empty bypass list must match inventory."""
+    """Scanned gated sites and empty bypass list must match inventory."""
     data = _inventory()
-    expected_factory = set(data["open_chroma_for_write_production_call_sites"])
-    expected_session = set(data.get("chroma_write_session_production_call_sites", []))
+    expected_session = set(data["production_chroma_write_session_call_sites"])
+    expected_open = set(data["open_production_write_store_call_sites"])
+    expected_legacy_factory = set(data["open_chroma_for_write_production_call_sites"])
+    expected_legacy_session = set(data["chroma_write_session_production_call_sites"])
     expected_bypass = set(data["must_use_factory_bypass_sites"])
     expected_allow = set(data["allowlisted_direct_sites"])
 
     ctor = re.compile(r"ChromaStore\s*\(")
-    factory = re.compile(r"open_chroma_for_write\s*\(")
-    session = re.compile(r"chroma_write_session\s*\(")
+    factory = re.compile(r"\bopen_chroma_for_write\s*\(")
+    old_session = re.compile(r"(?<![a-zA-Z_])chroma_write_session\s*\(")
+    prod_session = re.compile(r"production_chroma_write_session\s*\(")
+    prod_open = re.compile(r"open_production_write_store\s*\(")
 
-    scanned_factory: set[str] = set()
+    scanned_legacy_factory: set[str] = set()
+    scanned_legacy_session: set[str] = set()
     scanned_session: set[str] = set()
+    scanned_open: set[str] = set()
     scanned_ctor: set[str] = set()
     for path in sorted(ROOT.rglob("*.py")):
         rel = str(path.relative_to(ROOT))
@@ -53,26 +61,43 @@ def test_static_scan_matches_inventory_routing() -> None:
         for i, line in enumerate(text.splitlines(), 1):
             if factory.search(line) and "def open_chroma_for_write" not in line:
                 if rel != "chroma_write_store.py":
-                    scanned_factory.add(f"{rel}:{i}")
-            if session.search(line) and "def chroma_write_session" not in line:
+                    scanned_legacy_factory.add(f"{rel}:{i}")
+            if (
+                old_session.search(line)
+                and "def chroma_write_session" not in line
+                and "production_chroma_write_session" not in line
+            ):
+                scanned_legacy_session.add(f"{rel}:{i}")
+            if prod_session.search(line) and "def production_chroma_write_session" not in line:
                 scanned_session.add(f"{rel}:{i}")
+            if prod_open.search(line) and "def open_production_write_store" not in line:
+                scanned_open.add(f"{rel}:{i}")
             if not ctor.search(line):
                 continue
             if line.strip().startswith("class ChromaStore"):
                 continue
             scanned_ctor.add(f"{rel}:{i}")
 
-    assert scanned_factory == expected_factory, (
-        "factory inventory drift — "
-        f"missing={expected_factory - scanned_factory} "
-        f"extra={scanned_factory - expected_factory}"
+    assert scanned_legacy_factory == expected_legacy_factory, (
+        "legacy factory inventory drift — "
+        f"missing={expected_legacy_factory - scanned_legacy_factory} "
+        f"extra={scanned_legacy_factory - expected_legacy_factory}"
+    )
+    assert scanned_legacy_session == expected_legacy_session, (
+        "legacy session inventory drift — "
+        f"missing={expected_legacy_session - scanned_legacy_session} "
+        f"extra={scanned_legacy_session - expected_legacy_session}"
     )
     assert scanned_session == expected_session, (
-        "session inventory drift — "
+        "production session inventory drift — "
         f"missing={expected_session - scanned_session} "
         f"extra={scanned_session - expected_session}"
     )
-    # Every remaining direct ctor must be allowlisted; none are bypasses.
+    assert scanned_open == expected_open, (
+        "production open inventory drift — "
+        f"missing={expected_open - scanned_open} "
+        f"extra={scanned_open - expected_open}"
+    )
     assert scanned_ctor == expected_allow, (
         "allowlisted direct ctor drift — "
         f"missing={expected_allow - scanned_ctor} "
@@ -113,7 +138,6 @@ def test_hermetic_direct_ctor_bypasses_sink_even_when_cfg_eligible(
         shadow_ledger_identity="id",
     )
     atomic_write_json_private(manifest_path, complete)
-    # Eligible cfg (would inject via factory) — but caller uses direct ctor.
     _cfg = {
         "index": {"chroma_dir": str(chroma)},
         "shadow_ledger": {
@@ -190,7 +214,7 @@ def test_positive_control_factory_attaches_sink(tmp_path: Path) -> None:
             "health_path": str(health),
         },
     }
-    store, decision = open_chroma_for_write(cfg, chroma)
+    store, decision = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
     try:
         assert decision.inject is True
         assert store.mutation_sink is not None
@@ -202,12 +226,6 @@ def test_positive_control_factory_attaches_sink(tmp_path: Path) -> None:
         )
     finally:
         store.close()
-    events = [
-        json.loads(l)
-        for l in ledger.read_text().splitlines()
-        if l.strip() and '"record_type"' not in l
-    ]
-    # header + one event; filter header via record_type absent on events
     all_lines = [json.loads(l) for l in ledger.read_text().splitlines() if l.strip()]
     events = [o for o in all_lines if o.get("record_type") != "ledger_header"]
     assert len(events) == 1
@@ -218,8 +236,3 @@ def test_v3b_v3d_pass_when_bypasses_cleared() -> None:
     """Document VERIFY expectation: empty bypass ⇒ V3b/V3d PASS (code-path)."""
     data = _inventory()
     assert data["must_use_factory_count"] == 0
-    assert data["must_use_factory_bypass_sites"] == []
-    assert len(data["open_chroma_for_write_production_call_sites"]) > 0
-    v3b = "PASS"
-    v3d = "PASS"
-    assert (v3b, v3d) == ("PASS", "PASS")

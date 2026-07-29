@@ -1,24 +1,25 @@
 {
-  "purpose": "VERIFY V3 writer coverage inventory — factory routing after migration",
-  "proof_class": "code_path_static_and_hermetic",
-  "not_proved": "live production miss with enabled=true (activation forbidden)",
-  "open_chroma_for_write_production_call_sites": [
-    "convmem.py:377",
-    "convmem.py:474",
-    "convmem.py:616",
-    "convmem.py:1422",
-    "observe.py:233",
-    "propose_decision.py:529",
-    "propose_decision.py:556",
-    "refine.py:272",
-    "refine.py:716",
-    "source_purge.py:317"
-  ],
-  "chroma_write_session_production_call_sites": [
+  "purpose": "VERIFY V3 writer coverage \u2014 C3 production routes lease+live-config; zero bypass",
+  "proof_class": "code_path static + hermetic (C3 writer gate)",
+  "open_chroma_for_write_production_call_sites": [],
+  "chroma_write_session_production_call_sites": [],
+  "production_chroma_write_session_call_sites": [
+    "convmem.py:1449",
+    "convmem.py:373",
+    "convmem.py:477",
+    "convmem.py:642",
     "ingest.py:478",
-    "ingest.py:533",
-    "ingest.py:747",
+    "ingest.py:535",
+    "ingest.py:751",
     "inter_model_index.py:155"
+  ],
+  "open_production_write_store_call_sites": [
+    "observe.py:229",
+    "propose_decision.py:529",
+    "propose_decision.py:562",
+    "refine.py:272",
+    "refine.py:718",
+    "source_purge.py:316"
   ],
   "must_use_factory_bypass_sites": [],
   "must_use_factory_count": 0,
@@ -26,10 +27,11 @@
     "ask.py:550",
     "chroma_store.py:64",
     "chroma_store.py:89",
+    "chroma_write_store.py:409",
     "convmem.py:134",
+    "convmem.py:626",
     "mcp_server.py:897",
     "mcp_server.py:944",
-    "chroma_write_store.py:49",
     "shadow_replay.py:177"
   ],
   "sites": [
@@ -59,7 +61,7 @@
     },
     {
       "file": "chroma_write_store.py",
-      "line": 48,
+      "line": 409,
       "snippet": "store = ChromaStore(",
       "class": "factory_internal",
       "required_routing": "allowlisted_direct",
@@ -71,80 +73,16 @@
       "snippet": "store = ChromaStore(load_config()[\"index\"][\"chroma_dir\"])",
       "class": "read_only",
       "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false
+    },
+    {
+      "file": "convmem.py",
+      "line": 626,
+      "snippet": "store = ChromaStore(str(cfg[\"index\"][\"chroma_dir\"]), mutation_sink=None)",
+      "class": "dry_run_no_sink",
+      "required_routing": "allowlisted_direct",
       "uses_open_chroma_for_write": false,
-      "function": "search"
-    },
-    {
-      "file": "convmem.py",
-      "line": 377,
-      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
-      "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true,
-      "function": "observe"
-    },
-    {
-      "file": "convmem.py",
-      "line": 474,
-      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
-      "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true,
-      "function": "verify"
-    },
-    {
-      "file": "convmem.py",
-      "line": 616,
-      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
-      "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true,
-      "function": "monitor"
-    },
-    {
-      "file": "convmem.py",
-      "line": 1424,
-      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
-      "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true,
-      "function": "supersede"
-    },
-    {
-      "file": "ingest.py",
-      "line": 477,
-      "snippet": "with chroma_write_session(cfg, chroma_dir) as store:",
-      "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true,
-      "via": "chroma_write_session"
-    },
-    {
-      "file": "ingest.py",
-      "line": 532,
-      "snippet": "with chroma_write_session(cfg, chroma_dir) as store:",
-      "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true,
-      "via": "chroma_write_session"
-    },
-    {
-      "file": "ingest.py",
-      "line": 746,
-      "snippet": "with chroma_write_session(cfg, chroma_dir) as store:",
-      "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true,
-      "via": "chroma_write_session"
-    },
-    {
-      "file": "inter_model_index.py",
-      "line": 155,
-      "snippet": "with chroma_write_session(cfg, chroma_dir) as store:",
-      "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true,
-      "via": "chroma_write_session"
+      "note": "Monitor dry-run path; mutation_sink=None (no injection)"
     },
     {
       "file": "mcp_server.py",
@@ -164,7 +102,7 @@
     },
     {
       "file": "shadow_replay.py",
-      "line": 176,
+      "line": 177,
       "snippet": "return ChromaStore(str(replay_root), mutation_sink=None)",
       "class": "replay_internal",
       "required_routing": "allowlisted_direct",
@@ -172,12 +110,12 @@
       "note": "Disposable projector forces mutation_sink=None (no injection)"
     },
     {
-      "file": "observe.py",
-      "line": 231,
-      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
-      "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true
+      "file": "propose_decision.py",
+      "line": 160,
+      "snippet": "from chroma_store import is_superseded, open_chroma_for_read",
+      "class": "read_only",
+      "required_routing": "open_chroma_for_read",
+      "uses_open_chroma_for_write": false
     },
     {
       "file": "propose_decision.py",
@@ -188,44 +126,134 @@
       "uses_open_chroma_for_write": false
     },
     {
-      "file": "propose_decision.py",
-      "line": 529,
-      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
+      "file": "convmem.py",
+      "line": 1449,
+      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.forget\") as session:",
       "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "convmem.py",
+      "line": 373,
+      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.add\") as session:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "convmem.py",
+      "line": 477,
+      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.verify\") as session:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "convmem.py",
+      "line": 642,
+      "snippet": "with production_chroma_write_session(entrypoint=\"convmem.monitor\") as session:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "ingest.py",
+      "line": 478,
+      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "ingest.py",
+      "line": 535,
+      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "ingest.py",
+      "line": 751,
+      "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "inter_model_index.py",
+      "line": 155,
+      "snippet": "with production_chroma_write_session(entrypoint=\"inter_model_index\") as _pw:",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true
+    },
+    {
+      "file": "observe.py",
+      "line": 230,
+      "snippet": "_pw = open_production_write_store(",
+      "class": "mutates_units",
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
     },
     {
       "file": "propose_decision.py",
-      "line": 556,
-      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
+      "line": 529,
+      "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
       "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
+    },
+    {
+      "file": "propose_decision.py",
+      "line": 562,
+      "snippet": "_pw = open_production_write_store(entrypoint=\"propose_decision.write\")",
+      "class": "mutates_units",
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
     },
     {
       "file": "refine.py",
       "line": 272,
-      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
+      "snippet": "_pw = open_production_write_store(entrypoint=\"refine.write\")",
       "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
     },
     {
       "file": "refine.py",
-      "line": 716,
-      "snippet": "store, _decision = open_chroma_for_write(cfg, cfg[\"index\"][\"chroma_dir\"])",
+      "line": 718,
+      "snippet": "_pw = open_production_write_store(entrypoint=\"refine.write\")",
       "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
     },
     {
       "file": "source_purge.py",
       "line": 317,
-      "snippet": "store, _decision = open_chroma_for_write(cfg, chroma_dir)",
+      "snippet": "_pw = open_production_write_store(entrypoint=\"source_purge.execute\")",
       "class": "mutates_units",
-      "required_routing": "must_use_factory",
-      "uses_open_chroma_for_write": true
+      "required_routing": "open_production_write_store",
+      "uses_open_chroma_for_write": false,
+      "uses_production_open": true
     }
-  ]
+  ],
+  "not_proved": [
+    "Live production ingest with shadow_ledger.enabled=true writing a ledger line (activation forbidden in this slice)"
+  ],
+  "c3_note": "Production writers use production_chroma_write_session or open_production_write_store (shared lease then live config). open_chroma_for_write remains for hermetic/tests and factory internals."
 }
