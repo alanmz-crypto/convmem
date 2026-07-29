@@ -1,6 +1,6 @@
 {
-  "generated_at_utc": "2026-07-29T05:47:32Z",
-  "code_revision": "bb49bd811f98350f6e6248821c8b9772e8ddbc35",
+  "generated_at_utc": "2026-07-29T21:29:36Z",
+  "code_revision": "3e91c9f8522dbab2a18d383b296d9d882107e8c0",
   "protocol_version": 1,
   "systemd_units": [
     "convmem-watch.service",
@@ -15,6 +15,7 @@
   ],
   "chroma_dir": "/home/lauer/.local/share/convmem/chroma",
   "open_fd_writer_pids": [],
-  "implementation_subject": "bb49bd811f98350f6e6248821c8b9772e8ddbc35",
-  "note": "code_revision is the C3 writer-gate implementation subject; trailing census-only commits may advance tip without changing writers."
+  "implementation_subject": "3e91c9f8522dbab2a18d383b296d9d882107e8c0",
+  "scan_scope": "static_implementation_binding",
+  "note": "Static C5 implementation binding only; no live process, service, open-FD, or Chroma scan was performed. Live activation requires a separately regenerated census at the deployed main SHA."
 }
