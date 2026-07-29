@@ -1,11 +1,11 @@
-# Latest cross-model handoff (single pointer — update at session end)
+V# Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-27 (Complete-data backup correction v2 plan package — awaiting Architecture + Execution HITL)
+**Updated:** 2026-07-28 (Complete-data backup correction v2 — merge + four live grants complete)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
 
-- **Complete-data backup correction v2 — Execute T1–T5 tip (2026-07-27):** Who/What: Cursor implementation on [`fix/2026-07-27-complete-data-backup-correction-v2`](https://github.com/alanmz-crypto/convmem/tree/fix/2026-07-27-complete-data-backup-correction-v2) (BackupContext, workflows, atomic publish, restore matrix, hermetic offsite/systemd proof, Tier-1 writer census). When: Stage T5 complete at branch tip — **awaiting Kiro conformance + Codex independent replay + Copilot Hybrid audit** before Ryan merge. Why: Crush tip [`b6284ad`](https://github.com/alanmz-crypto/convmem/commit/b6284ad9ac42e0bb554cd2d44d512b01bad748f2) stays **immutable Codex FAIL**; never rehabilitate it. How: mechanical suite + census at tip SHA; live profile/snapshot/offsite/timer grants remain post-merge and Ryan-only. Squash OK.
+- **Complete-data backup correction v2 — ROLLOUT COMPLETE (2026-07-28):** Who/What: PR #125 squash-merged to `main` as [`83b8c11`](https://github.com/alanmz-crypto/convmem/commit/83b8c11683c1295579c4fad9c8316f9f8fc3d10f); Crush (DeepSeek V4 Pro) executed four post-merge live grants on `archlinux` with Ryan approval. When: all grants complete 2026-07-28. Why: legacy-chroma profile never proved complete-data protection; v2 corrects this with explicit profile, fallback-free workflows, and hermetic proof. How: grant 1 (profile + data root in restic.env), grant 2 (first v2 snapshot), grant 3 (offsite copy + lineage), grant 4 (v2 local + external timers). Legacy `convmem-restic-ensure.timer` disabled; old external timer contained before v2 snapshot.
 
   **Merge reading:** [`ARCHITECTURE-complete-data-backup-correction-v2.md`](../plans/ARCHITECTURE-complete-data-backup-correction-v2.md) · [`EXECUTION-complete-data-backup-correction-v2.md`](../plans/EXECUTION-complete-data-backup-correction-v2.md) · [`VERIFY-complete-data-backup-correction-v2.md`](../plans/VERIFY-complete-data-backup-correction-v2.md) · census [`COMPLETE-DATA-V2-TIER1-WRITER-CENSUS.md`](../plans/COMPLETE-DATA-V2-TIER1-WRITER-CENSUS.md) · Hybrid bar [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md)
 
@@ -13,7 +13,7 @@
 
   **Immutable FAIL evidence:** `b6284ad9ac42e0bb554cd2d44d512b01bad748f2` (Codex FAIL). Earlier PR #120 `492e6e7…` remains Ryan `A-FAIL / FAIL`.
 
-  **Suggested next:** Ryan Architecture + Execution HITL. After lock, Cursor starts a **fresh** implementation worktree (T1–T5) — never edit the Crush FAIL branch.
+  **Suggested next:** None — rollout complete. Standing checks (`recency-boost-retune`, `escalation-threshold-retune`) are DUE and independent of backup.
 
 - **Shadow Ledger Phase 0 Execute MERGED — soft close (2026-07-25):** Who/What: Ryan squash-merged [#122](https://github.com/alanmz-crypto/convmem/pull/122) to `main` as [`4535107`](https://github.com/alanmz-crypto/convmem/commit/4535107143279c87e8b34c1eab7e4dee88bffc68) (*Implement Shadow Ledger Phase 0 (disabled by default)*). Cursor soft-closing the Execute chat for DeepSeek / Kiro / Codex. When: now. Why: code + VERIFY mechanical + V8 sign-off + pylint green are on `main`; live enable is a **different** grant. How: read Merge reading below; **do not** edit `~/.config/convmem/config.toml` or write a production activation manifest without Ryan’s explicit activation grant.
 
