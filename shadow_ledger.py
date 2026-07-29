@@ -22,6 +22,18 @@ MANIFEST_VERSION = 1
 HASH_RULES_VERSION = 1
 COLLECTION_KNOWLEDGE_UNITS = "knowledge_units"
 
+COLLECTION_KNOWLEDGE_UNITS = "knowledge_units"
+
+# Strict activation contract (C1). Ledger identity header is validated here;
+# secure create/append lands in later slices.
+LEDGER_HEADER_RECORD_TYPE = "ledger_header"
+SUPPORTED_MANIFEST_VERSION = MANIFEST_VERSION
+SUPPORTED_SHADOW_SCHEMA_VERSION = SHADOW_SCHEMA_VERSION
+SUPPORTED_HASH_RULES_VERSION = HASH_RULES_VERSION
+ENTITY_CLASSIFICATIONS = frozenset({"active", "historical"})
+ARTIFACT_FILE_MODE = 0o600
+SHADOW_DIR_MODE = 0o700
+
 DEFAULT_LEDGER_PATH = "~/.local/share/convmem/shadow_ledger.jsonl"
 DEFAULT_MANIFEST_PATH = "~/.local/share/convmem/shadow_activation.json"
 DEFAULT_HEALTH_PATH = "~/.local/share/convmem/shadow_health.json"
@@ -233,6 +245,71 @@ def manifest_is_complete(manifest: Mapping[str, Any] | None) -> bool:
     )
     return all(manifest.get(key) is not None for key in required)
 
+
+
+
+def lexical_abspath(value: str | Path) -> Path:
+    """Absolute path without resolving symlinks (expanduser + abspath + normpath)."""
+    expanded = os.path.expanduser(str(value))
+    return Path(os.path.normpath(os.path.abspath(expanded)))
+
+
+def compute_aggregate_baseline_digest(
+    entity_baselines: Mapping[str, Mapping[str, Any]],
+) -> str:
+    """SHA-256 over canonical JSON of sorted entity baseline entries."""
+    ordered = {
+        eid: dict(entity_baselines[eid])
+        for eid in sorted(entity_baselines)
+    }
+    return sha256_canonical(ordered)
+
+
+def manifest_body_for_canonical_hash(manifest: Mapping[str, Any]) -> dict[str, Any]:
+    """Manifest fields included in manifest_canonical_hash (excludes the hash)."""
+    body = {k: manifest[k] for k in sorted(manifest) if k != "manifest_canonical_hash"}
+    return body
+
+
+def compute_manifest_canonical_hash(manifest: Mapping[str, Any]) -> str:
+    return sha256_canonical(manifest_body_for_canonical_hash(manifest))
+
+
+def ledger_header_payload(
+    *,
+    activation_id: str,
+    ledger_identity: str,
+    starting_sequence: int,
+    created_at_utc: str | None = None,
+    shadow_schema_version: int = SHADOW_SCHEMA_VERSION,
+) -> dict[str, Any]:
+    """Identity-only ledger header (no mutation payload)."""
+    return {
+        "record_type": LEDGER_HEADER_RECORD_TYPE,
+        "shadow_schema_version": int(shadow_schema_version),
+        "activation_id": str(activation_id),
+        "ledger_identity": str(ledger_identity),
+        "created_at_utc": created_at_utc
+        or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "starting_sequence": int(starting_sequence),
+    }
+
+
+def compute_ledger_header_hash(header: Mapping[str, Any]) -> str:
+    return sha256_canonical(dict(header))
+
+
+def parse_complete_jsonl_line(line: str) -> dict[str, Any]:
+    """Parse one complete JSONL record; reject truncated or non-object lines."""
+    if not line.endswith("\n"):
+        raise ValueError("incomplete jsonl line")
+    raw = line[:-1]
+    if not raw:
+        raise ValueError("empty jsonl line")
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError("jsonl record must be an object")
+    return data
 
 @dataclass(frozen=True)
 class SinkInjectionDecision:
