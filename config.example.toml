@@ -110,6 +110,6 @@ canary_latency_ms_max = 15000
 # Do not enable in live ~/.config/convmem/config.toml without that grant.
 [shadow_ledger]
 enabled = false
-ledger_path = "~/.local/share/convmem/shadow_ledger.jsonl"
-activation_manifest_path = "~/.local/share/convmem/shadow_activation.json"
-health_path = "~/.local/share/convmem/shadow_health.json"
+ledger_path = "~/.local/share/convmem/shadow/ledger.jsonl"
+activation_manifest_path = "~/.local/share/convmem/shadow/activation.json"
+health_path = "~/.local/share/convmem/shadow/health.json"

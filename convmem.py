@@ -52,7 +52,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
-    "unresolved", "tldr", "work", "shadow-inventory",
+    "unresolved", "tldr", "work", "shadow-inventory", "shadow-activate", "shadow-rollback",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -1494,6 +1494,122 @@ def forget_command(
         typer.echo(
             f"Tombstoned {unit_id} — excluded from search results (reversible with --undo)."
         )
+
+
+@app.command("shadow-activate")
+def shadow_activate_command(  # pylint: disable=too-many-positional-arguments
+    token: Path | None = typer.Option(
+        None, "--authorization-token", help="Ryan-issued exact 0600 one-shot token"
+    ),
+    config_path: Path = typer.Option(
+        Path("~/.config/convmem/config.toml").expanduser(), "--config"
+    ),
+    census_path: Path = typer.Option(
+        Path("docs/plans/SHADOW-WRITER-CENSUS.json"), "--census"
+    ),
+    nonce_store_path: Path = typer.Option(
+        Path("~/.local/share/convmem/shadow/authorization-nonces.jsonl").expanduser(),
+        "--nonce-store",
+    ),
+    writer_lock_path: Path = typer.Option(
+        Path("~/.local/share/convmem/locks/chroma_writer_gate.lock").expanduser(),
+        "--writer-lock",
+    ),
+    attest_dir: Path = typer.Option(
+        Path("~/.local/share/convmem/writer_attestations").expanduser(),
+        "--attest-dir",
+    ),
+):
+    """Run C5 activation; never controls services or mutates Chroma."""
+    if token is None:
+        typer.echo(
+            json.dumps(
+                {
+                    "state": "disabled",
+                    "committed": False,
+                    "refusal_code": "authorization_missing",
+                },
+                sort_keys=True,
+            )
+        )
+        raise typer.Exit(2)
+    from shadow_activation import ActivationRefused, activate_shadow
+
+    try:
+        outcome = activate_shadow(
+            token_path=token,
+            config_path=config_path,
+            census_path=census_path,
+            nonce_store_path=nonce_store_path,
+            writer_lock_path=writer_lock_path,
+            attest_dir=attest_dir,
+        )
+    except ActivationRefused as exc:
+        typer.echo(
+            json.dumps(
+                {
+                    "state": exc.state or "disabled",
+                    "committed": False,
+                    "refusal_code": exc.code,
+                    "detail": exc.detail,
+                },
+                sort_keys=True,
+            )
+        )
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps(outcome.__dict__, sort_keys=True))
+    if outcome.refusal_code:
+        raise typer.Exit(2)
+
+
+@app.command("shadow-rollback")
+def shadow_rollback_command(
+    activation_id: str = typer.Option(..., "--activation-id"),
+    config_path: Path = typer.Option(
+        Path("~/.config/convmem/config.toml").expanduser(), "--config"
+    ),
+    writer_lock_path: Path = typer.Option(
+        Path("~/.local/share/convmem/locks/chroma_writer_gate.lock").expanduser(),
+        "--writer-lock",
+    ),
+    journal_path: Path | None = typer.Option(None, "--journal"),
+    recover_prepared: bool = typer.Option(False, "--recover-prepared"),
+):
+    """Disable Shadow or recover one exact disabled precommit transaction."""
+    from shadow_activation import (
+        ActivationRefused,
+        recover_prepared_activation,
+        rollback_activation,
+    )
+
+    try:
+        if recover_prepared:
+            if journal_path is None:
+                raise ActivationRefused(
+                    "prepared_not_committed", "--recover-prepared requires --journal"
+                )
+            outcome = recover_prepared_activation(
+                journal_path=journal_path,
+                config_path=config_path,
+                activation_id=activation_id,
+                writer_lock_path=writer_lock_path,
+            )
+        else:
+            outcome = rollback_activation(
+                config_path=config_path,
+                activation_id=activation_id,
+                writer_lock_path=writer_lock_path,
+                journal_path=journal_path,
+            )
+    except ActivationRefused as exc:
+        typer.echo(
+            json.dumps(
+                {"committed": False, "refusal_code": exc.code, "detail": exc.detail},
+                sort_keys=True,
+            )
+        )
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps(outcome.__dict__, sort_keys=True))
 
 
 def main():

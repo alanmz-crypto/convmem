@@ -122,3 +122,62 @@ line, and measures the complete path through health-sidecar persistence.
 Duplicate event IDs may appear as distinct contiguous sequences; replay keeps
 the first valid occurrence. The 500 ms marker remains a degradation signal, not
 an activation SLO.
+
+## Activation transaction (C5)
+
+C5 implements the merge-disabled activation and rollback mechanism. It does
+not authorize a live activation, control services, mutate Chroma, or satisfy
+the later C6 performance gate.
+
+The durable state order is:
+
+```text
+disabled -> preparing -> quiesced -> baseline_captured
+-> artifacts_validated -> committed -> first_event_observed -> verified
+```
+
+State skips are refused. Before the config commit, failures remain disabled;
+after the config commit, failures compensate by disabling Shadow only. Chroma
+writes are never reversed. A crash after nonce consumption but before config
+commit is `prepared_not_committed` and requires activation-ID/path/inode-scoped
+recovery under the exclusive writer gate.
+
+### One-shot authorization
+
+`shadow-activate` refuses without an exact current-user `0600` JSON token. The
+token schema binds the operation, activation ID, nonce, issue/expiry timestamps,
+code revision, config and artifact paths, writer census and gate paths, fixed
+target config, the 300-second first-event window, the 30-second quiesce timeout,
+the approved local filesystems, and named baseline/manifest derivations. Its
+`request_hash` is SHA-256 over canonical JSON excluding `request_hash` itself.
+
+The token is validated before gate acquisition and revalidated byte-for-byte
+under the gate. Its lifetime cannot exceed 3600 seconds. The nonce is consumed
+through a locked, append-only, current-user `0600` JSONL store and fsynced before
+the config commit. No human or network wait occurs while the gate is held.
+
+### Quiescence and commit
+
+The implementation verifies a census generated for the exact runtime revision,
+requires every listed service to already be inactive/failed, scans matching
+`/proc` command lines and open Chroma file descriptors, and requires exact C3
+PID/start-time/revision/protocol/executable attestation. It never stops or
+starts services itself.
+
+Two canonical baseline snapshots must match while the exclusive C3 gate is
+held. The ledger and manifest are installed without replacing existing files.
+The existing `[shadow_ledger]` TOML table is then replaced byte-preservingly;
+all other parsed config must remain semantically identical. The temp and config
+must be same-device on ext4, xfs, btrfs, or tmpfs. `os.replace`, file fsync, and
+parent-directory fsync are required; network, unknown, and cross-device mounts
+have no fallback. This config replacement is the sole commit point.
+
+After release, the first real event must be sequence 1, hash-valid, and equal
+to the successful Chroma post-state. Absence or mismatch within 300 seconds
+causes an atomic disable while retaining ledger, manifest, journal, and the
+explicit Shadow gap. Synthetic traffic requires separate authorization.
+
+`shadow-rollback` only disables the exact activation ID. Its
+`--recover-prepared` mode removes only journal-recorded artifacts whose current
+device/inode identities still match. Both commands remain non-authority until
+the separate C6 canary, review, and Ryan live-activation grant are complete.
