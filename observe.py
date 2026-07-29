@@ -222,15 +222,17 @@ def repair_empty_ledger_documents(
     verbose: bool = True,
 ) -> dict:
     """Re-embed ledger units whose Chroma document is empty (decision/verification)."""
-    from chroma_write_store import open_chroma_for_write
+    from chroma_write_store import open_production_write_store
     from config import load_config
     from ledger import invalidate_ledger_index_cache
     from ledger_recent import load_approved_decision_by_id
 
-    if not cfg:
-        cfg = load_config()
+    _pw = open_production_write_store(
+        entrypoint="observe.repair_empty_ledger_documents"
+    )
+    store = _pw.store
+    cfg = _pw.live_cfg
     models = cfg["models"]
-    store, _decision = open_chroma_for_write(cfg, cfg["index"]["chroma_dir"])
     by_ledger_id, _ = build_ledger_index(store)
     stats = {"scanned": 0, "empty": 0, "repaired": 0, "skipped": 0, "missing_source": 0}
 

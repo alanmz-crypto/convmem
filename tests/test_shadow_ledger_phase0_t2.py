@@ -109,7 +109,7 @@ def test_unit_mutating_methods_emit_or_exclude() -> None:
 def test_add_update_delete_and_supersede_emit(tmp_path: Path) -> None:
     chroma = tmp_path / "chroma"
     cfg = _complete_cfg(tmp_path, chroma)
-    store, decision = open_chroma_for_write(cfg, chroma)
+    store, decision = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
     assert decision.inject is True
     assert store.mutation_sink is not None
     try:
@@ -163,7 +163,7 @@ def test_no_sink_when_disabled_is_neutral(tmp_path: Path) -> None:
         "index": {"chroma_dir": str(chroma)},
         "shadow_ledger": {"enabled": False},
     }
-    store, decision = open_chroma_for_write(cfg, chroma)
+    store, decision = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
     assert decision.inject is False
     assert store.mutation_sink is None
     try:
@@ -189,7 +189,7 @@ def test_classify_metadata_operations() -> None:
 def test_summaries_not_shadowed(tmp_path: Path) -> None:
     chroma = tmp_path / "chroma"
     cfg = _complete_cfg(tmp_path, chroma)
-    store, _ = open_chroma_for_write(cfg, chroma)
+    store, _ = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
     try:
         store.add_summary("s1", "sum", _emb(), {"source_path": "/s"})
     finally:

@@ -98,3 +98,39 @@ def patch_export_flock(*, after_acquire=None, extra_modules=None):
     finally:
         for p in reversed(stack_patches):
             p.stop()
+
+
+_live_config_lock = threading.RLock()
+_live_config_depth = 0
+_live_config_active: dict | None = None
+_live_config_patcher = None
+
+
+@contextmanager
+def patch_live_config(cfg: dict):
+    """Thread/nest-safe stand-in for live config after the writer lease.
+
+    Concurrent ``mock.patch`` on ``config.load_config`` is unsafe: one thread
+    stopping its patch can restore the real loader while another still needs
+    the hermetic cfg. Use a process-wide refcount instead.
+    """
+    global _live_config_depth, _live_config_active, _live_config_patcher
+    with _live_config_lock:
+        _live_config_active = cfg
+        _live_config_depth += 1
+        if _live_config_depth == 1:
+            _live_config_patcher = mock.patch(
+                "config.load_config",
+                side_effect=lambda *_a, **_k: _live_config_active,
+            )
+            _live_config_patcher.start()
+    try:
+        yield
+    finally:
+        with _live_config_lock:
+            _live_config_depth -= 1
+            if _live_config_depth == 0:
+                assert _live_config_patcher is not None
+                _live_config_patcher.stop()
+                _live_config_patcher = None
+                _live_config_active = None

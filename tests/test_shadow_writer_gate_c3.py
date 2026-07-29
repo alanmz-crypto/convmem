@@ -1,0 +1,345 @@
+# pylint: disable=duplicate-code,too-many-locals
+"""C3 writer gate: shared/exclusive lease, attestation, fresh-config boundary."""
+
+from __future__ import annotations
+
+import inspect
+import json
+import multiprocessing as mp
+import os
+import re
+import time
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _write_minimal_config(path: Path, chroma_dir: Path) -> None:
+    path.write_text(
+        "[index]\n"
+        f'chroma_dir = "{chroma_dir}"\n'
+        'collection = "knowledge_units"\n'
+        "[models]\n"
+        'embed_model = "nomic-embed-text"\n'
+        'ollama_host = "http://127.0.0.1:11434"\n'
+        "[shadow_ledger]\n"
+        "enabled = false\n",
+        encoding="utf-8",
+    )
+
+
+def test_production_apis_accept_no_caller_cfg() -> None:
+    from chroma_write_store import (
+        open_production_write_store,
+        production_chroma_write_session,
+    )
+
+    for fn in (production_chroma_write_session, open_production_write_store):
+        params = inspect.signature(fn).parameters
+        assert "cfg" not in params
+        assert "chroma_dir" not in params
+        assert "config_path" in params
+
+
+def test_static_scan_zero_legacy_production_factory_calls() -> None:
+    factory = re.compile(r"\bopen_chroma_for_write\s*\(")
+    old_session = re.compile(r"(?<![a-zA-Z_])chroma_write_session\s*\(")
+    hits: list[str] = []
+    for path in sorted(ROOT.rglob("*.py")):
+        rel = str(path.relative_to(ROOT))
+        if rel.startswith("tests/") or "docs/" in rel:
+            continue
+        if rel == "chroma_write_store.py":
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for i, line in enumerate(text.splitlines(), 1):
+            if factory.search(line) and "def open_chroma_for_write" not in line:
+                hits.append(f"{rel}:{i}:factory")
+            if (
+                old_session.search(line)
+                and "def chroma_write_session" not in line
+                and "production_chroma_write_session" not in line
+            ):
+                hits.append(f"{rel}:{i}:old_session")
+    assert hits == [], f"legacy production write opens remain: {hits}"
+
+
+def test_fourteen_production_writer_sites_migrated() -> None:
+    inv = json.loads(
+        (ROOT / "docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    total = len(inv["production_chroma_write_session_call_sites"]) + len(
+        inv["open_production_write_store_call_sites"]
+    )
+    assert total == 14
+    assert inv["must_use_factory_count"] == 0
+
+
+def test_shared_lease_writes_and_clears_attestation(tmp_path: Path) -> None:
+    from chroma_write_store import (
+        WRITER_GATE_PROTOCOL_VERSION,
+        load_attestation,
+        shared_writer_lease,
+    )
+
+    lock = tmp_path / "gate.lock"
+    attest = tmp_path / "attest"
+    with shared_writer_lease(
+        lock_path=lock, attest_dir=attest, entrypoint="test.shared"
+    ) as att:
+        assert att.protocol_version == WRITER_GATE_PROTOCOL_VERSION
+        loaded = load_attestation(att.pid, attest_dir=attest)
+        assert loaded is not None
+        assert loaded["entrypoint"] == "test.shared"
+        assert (attest / f"{att.pid}.json").is_file()
+        mode = (attest / f"{att.pid}.json").stat().st_mode & 0o777
+        assert mode == 0o600
+    assert load_attestation(os.getpid(), attest_dir=attest) is None
+
+
+def _child_hold_exclusive(lock_path: str, ready_path: str, release_path: str) -> None:
+    import fcntl
+
+    path = Path(lock_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(path), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
+    fcntl.flock(fd, fcntl.LOCK_EX)
+    Path(ready_path).write_text("ready", encoding="utf-8")
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        if Path(release_path).exists():
+            break
+        time.sleep(0.01)
+    fcntl.flock(fd, fcntl.LOCK_UN)
+    os.close(fd)
+
+
+def test_shared_lease_blocks_behind_exclusive(tmp_path: Path) -> None:
+    from chroma_write_store import shared_writer_lease
+
+    lock = tmp_path / "gate.lock"
+    ready = tmp_path / "ready"
+    release = tmp_path / "release"
+    proc = mp.Process(
+        target=_child_hold_exclusive,
+        args=(str(lock), str(ready), str(release)),
+    )
+    proc.start()
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline and not ready.exists():
+        time.sleep(0.01)
+    assert ready.exists(), "child exclusive holder never signaled ready"
+    with pytest.raises(TimeoutError, match="writer_quiesce_timeout"):
+        with shared_writer_lease(
+            lock_path=lock,
+            attest_dir=tmp_path / "attest",
+            timeout_ms=200,
+        ):
+            pass
+    release.write_text("go", encoding="utf-8")
+    proc.join(timeout=5)
+    assert proc.exitcode == 0
+
+
+def test_exclusive_blocks_while_shared_held(tmp_path: Path) -> None:
+    from chroma_write_store import exclusive_writer_lease, shared_writer_lease
+
+    lock = tmp_path / "gate.lock"
+    with shared_writer_lease(
+        lock_path=lock, attest_dir=tmp_path / "attest", timeout_ms=1000
+    ):
+        with pytest.raises(TimeoutError, match="writer_quiesce_timeout"):
+            with exclusive_writer_lease(lock_path=lock, timeout_ms=200):
+                pass
+
+
+def test_classify_legacy_writer_pids(tmp_path: Path) -> None:
+    from chroma_write_store import (
+        WRITER_GATE_PROTOCOL_VERSION,
+        WriterAttestation,
+        classify_legacy_writer_pids,
+        write_attestation,
+    )
+
+    attest = tmp_path / "attest"
+    # unattested
+    refusals = classify_legacy_writer_pids(
+        [os.getpid() + 10_000],
+        attest_dir=attest,
+        expected_revision="abc",
+    )
+    assert refusals and refusals[0]["code"] == "legacy_writer_process"
+    assert "unattested" in refusals[0]["detail"]
+
+    # protocol mismatch
+    write_attestation(
+        WriterAttestation(
+            pid=424242,
+            start_time="1",
+            code_revision="abc",
+            executable="/bin/true",
+            entrypoint="x",
+            protocol_version=WRITER_GATE_PROTOCOL_VERSION + 1,
+            recorded_at_utc="2026-01-01T00:00:00Z",
+        ),
+        attest_dir=attest,
+    )
+    refusals = classify_legacy_writer_pids(
+        [424242], attest_dir=attest, expected_revision="abc"
+    )
+    assert any(r["detail"] == "protocol version mismatch" for r in refusals)
+
+    # revision mismatch
+    write_attestation(
+        WriterAttestation(
+            pid=424243,
+            start_time="1",
+            code_revision="oldrev",
+            executable="/bin/true",
+            entrypoint="x",
+            protocol_version=WRITER_GATE_PROTOCOL_VERSION,
+            recorded_at_utc="2026-01-01T00:00:00Z",
+        ),
+        attest_dir=attest,
+    )
+    refusals = classify_legacy_writer_pids(
+        [424243], attest_dir=attest, expected_revision="newrev"
+    )
+    assert any(r["detail"] == "code revision mismatch" for r in refusals)
+
+
+
+def test_production_session_loads_config_after_lease(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    import config as config_mod
+    from unittest import mock
+
+    from chroma_write_store import production_chroma_write_session
+
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    cfg_path = tmp_path / "config.toml"
+    _write_minimal_config(cfg_path, chroma)
+    lock = tmp_path / "gate.lock"
+    attest = tmp_path / "attest"
+    order: list[str] = []
+
+    def tracked_load(path=None):  # type: ignore[no-untyped-def]
+        pid = os.getpid()
+        assert (attest / f"{pid}.json").is_file(), "config loaded before lease/attest"
+        order.append("load_config")
+        import tomllib
+
+        target = Path(path or cfg_path)
+        data = tomllib.loads(target.read_text(encoding="utf-8"))
+        data["index"]["chroma_dir"] = str(
+            Path(data["index"]["chroma_dir"]).expanduser()
+        )
+        return data
+
+    with mock.patch.object(config_mod, "load_config", side_effect=tracked_load):
+        with production_chroma_write_session(
+            cfg_path,
+            lock_path=lock,
+            attest_dir=attest,
+            entrypoint="test.reload",
+        ) as session:
+            order.append("in_session")
+            assert session.live_cfg["index"]["chroma_dir"] == str(chroma)
+            assert session.decision.inject is False
+            assert session.store.mutation_sink is None
+    assert order == ["load_config", "in_session"]
+    assert not (attest / f"{os.getpid()}.json").exists()
+
+
+def test_open_production_store_releases_lease_on_close(
+    tmp_path: Path,
+) -> None:
+    pytest.importorskip("chromadb")
+    from chroma_write_store import (
+        exclusive_writer_lease,
+        open_production_write_store,
+    )
+
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    cfg_path = tmp_path / "config.toml"
+    _write_minimal_config(cfg_path, chroma)
+    lock = tmp_path / "gate.lock"
+    attest = tmp_path / "attest"
+    session = open_production_write_store(
+        cfg_path,
+        lock_path=lock,
+        attest_dir=attest,
+        entrypoint="test.open",
+    )
+    assert (attest / f"{os.getpid()}.json").is_file()
+    # exclusive must block while shared held
+    with pytest.raises(TimeoutError):
+        with exclusive_writer_lease(lock_path=lock, timeout_ms=150):
+            pass
+    session.store.close()
+    assert not (attest / f"{os.getpid()}.json").exists()
+    # after close, exclusive succeeds
+    with exclusive_writer_lease(lock_path=lock, timeout_ms=1000):
+        pass
+
+
+def test_production_session_exception_still_releases_lease(
+    tmp_path: Path,
+) -> None:
+    pytest.importorskip("chromadb")
+    from chroma_write_store import (
+        exclusive_writer_lease,
+        production_chroma_write_session,
+    )
+
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    cfg_path = tmp_path / "config.toml"
+    _write_minimal_config(cfg_path, chroma)
+    lock = tmp_path / "gate.lock"
+    attest = tmp_path / "attest"
+    with pytest.raises(RuntimeError, match="boom"):
+        with production_chroma_write_session(
+            cfg_path,
+            lock_path=lock,
+            attest_dir=attest,
+        ) as session:
+            assert session.store is not None
+            raise RuntimeError("boom")
+    assert not (attest / f"{os.getpid()}.json").exists()
+    with exclusive_writer_lease(lock_path=lock, timeout_ms=1000):
+        pass
+
+
+def test_census_document_present_and_shaped() -> None:
+    census_path = ROOT / "docs/plans/SHADOW-WRITER-CENSUS.json"
+    assert census_path.is_file()
+    census = json.loads(census_path.read_text(encoding="utf-8"))
+    assert census["protocol_version"] == 1
+    assert "code_revision" in census
+    assert "systemd_units" in census
+    assert "cmdline_signatures" in census
+    assert "open_fd_writer_pids" in census
+
+
+def test_store_close_invokes_on_close(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    from chroma_store import ChromaStore
+
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    called = {"n": 0}
+
+    def _cb() -> None:
+        called["n"] += 1
+
+    store = ChromaStore(str(chroma), on_close=_cb)
+    store.close()
+    store.close()  # idempotent
+    assert called["n"] == 1

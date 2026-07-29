@@ -287,7 +287,7 @@ def execute_purge(
     ``_hooks`` is for failure injection in tests (optional callables keyed by
     F1–F10 stage names that raise to simulate crash).
     """
-    from chroma_write_store import open_chroma_for_write
+    from chroma_write_store import open_production_write_store
 
     hooks = _hooks or {}
     candidates = build_path_candidates(target)
@@ -314,7 +314,10 @@ def execute_purge(
         exclusion_key = mark_purge_exclusion(cfg, canonical, reason)
         _hook("after_exclusion")  # F2
 
-        store, _decision = open_chroma_for_write(cfg, chroma_dir)
+        _pw = open_production_write_store(entrypoint="source_purge.execute")
+        store = _pw.store
+        cfg = _pw.live_cfg
+        chroma_dir = str(cfg["index"]["chroma_dir"])
         try:
             units_deleted = 0
             summaries_deleted = 0
