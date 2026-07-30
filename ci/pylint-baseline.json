@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "fingerprint": "c7fdafe25da0794c877e3f38ac3f8e0641f90a5d70435217a438420624dfe9c4",
+  "fingerprint": "f8054a044d52201dcd56a963233f462f1a094e73184971ac2f6839e731cbad68",
   "findings": [
     {
       "module": "adapters.__init__",
@@ -449,7 +449,7 @@
       "column": 0,
       "path": "convmem.py",
       "symbol": "too-many-lines",
-      "message": "Too many lines in module (1632/1000)",
+      "message": "Too many lines in module (1698/1000)",
       "message-id": "C0302",
       "type": "convention"
     },
@@ -4640,72 +4640,6 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "cyclic-import",
-      "message": "Cyclic import (conflict_events -> hash_schema_gate)",
-      "message-id": "R0401",
-      "type": "refactor"
-    },
-    {
-      "module": "work_git",
-      "obj": "",
-      "line": 1,
-      "column": 0,
-      "path": "work_git.py",
-      "symbol": "cyclic-import",
-      "message": "Cyclic import (conflict_events -> propose_decision -> hash_schema_gate)",
-      "message-id": "R0401",
-      "type": "refactor"
-    },
-    {
-      "module": "work_git",
-      "obj": "",
-      "line": 1,
-      "column": 0,
-      "path": "work_git.py",
-      "symbol": "cyclic-import",
-      "message": "Cyclic import (brief -> query -> ledger_recent -> propose_decision)",
-      "message-id": "R0401",
-      "type": "refactor"
-    },
-    {
-      "module": "work_git",
-      "obj": "",
-      "line": 1,
-      "column": 0,
-      "path": "work_git.py",
-      "symbol": "cyclic-import",
-      "message": "Cyclic import (brief -> doctor -> observe -> ledger_recent -> propose_decision)",
-      "message-id": "R0401",
-      "type": "refactor"
-    },
-    {
-      "module": "work_git",
-      "obj": "",
-      "line": 1,
-      "column": 0,
-      "path": "work_git.py",
-      "symbol": "cyclic-import",
-      "message": "Cyclic import (ask -> query -> ledger_recent -> propose_decision -> brief -> doctor -> mcp_server)",
-      "message-id": "R0401",
-      "type": "refactor"
-    },
-    {
-      "module": "work_git",
-      "obj": "",
-      "line": 1,
-      "column": 0,
-      "path": "work_git.py",
-      "symbol": "cyclic-import",
-      "message": "Cyclic import (brief -> doctor -> mcp_server)",
-      "message-id": "R0401",
-      "type": "refactor"
-    },
-    {
-      "module": "work_git",
-      "obj": "",
-      "line": 1,
-      "column": 0,
-      "path": "work_git.py",
-      "symbol": "cyclic-import",
       "message": "Cyclic import (brief -> query -> ingest)",
       "message-id": "R0401",
       "type": "refactor"
@@ -4717,7 +4651,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "cyclic-import",
-      "message": "Cyclic import (backup_workflows -> complete_data_restore -> conflict_events -> propose_decision -> brief -> doctor)",
+      "message": "Cyclic import (brief -> ingest)",
       "message-id": "R0401",
       "type": "refactor"
     },
@@ -4739,6 +4673,28 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "cyclic-import",
+      "message": "Cyclic import (brief -> doctor -> observe -> ledger_recent -> propose_decision)",
+      "message-id": "R0401",
+      "type": "refactor"
+    },
+    {
+      "module": "work_git",
+      "obj": "",
+      "line": 1,
+      "column": 0,
+      "path": "work_git.py",
+      "symbol": "cyclic-import",
+      "message": "Cyclic import (conflict_events -> hash_schema_gate)",
+      "message-id": "R0401",
+      "type": "refactor"
+    },
+    {
+      "module": "work_git",
+      "obj": "",
+      "line": 1,
+      "column": 0,
+      "path": "work_git.py",
+      "symbol": "cyclic-import",
       "message": "Cyclic import (conflict_events -> propose_decision)",
       "message-id": "R0401",
       "type": "refactor"
@@ -4750,7 +4706,40 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "cyclic-import",
-      "message": "Cyclic import (brief -> doctor)",
+      "message": "Cyclic import (ask -> query -> ingest -> brief -> doctor -> mcp_server)",
+      "message-id": "R0401",
+      "type": "refactor"
+    },
+    {
+      "module": "work_git",
+      "obj": "",
+      "line": 1,
+      "column": 0,
+      "path": "work_git.py",
+      "symbol": "cyclic-import",
+      "message": "Cyclic import (backup_workflows -> complete_data_restore -> conflict_events -> propose_decision -> brief -> doctor)",
+      "message-id": "R0401",
+      "type": "refactor"
+    },
+    {
+      "module": "work_git",
+      "obj": "",
+      "line": 1,
+      "column": 0,
+      "path": "work_git.py",
+      "symbol": "cyclic-import",
+      "message": "Cyclic import (brief -> query -> ledger_recent -> propose_decision)",
+      "message-id": "R0401",
+      "type": "refactor"
+    },
+    {
+      "module": "work_git",
+      "obj": "",
+      "line": 1,
+      "column": 0,
+      "path": "work_git.py",
+      "symbol": "cyclic-import",
+      "message": "Cyclic import (brief -> doctor -> mcp_server -> query -> ingest)",
       "message-id": "R0401",
       "type": "refactor"
     },
@@ -4860,7 +4849,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==ledger:[312:322]\n==ledger:[378:389]\n    by_ledger_id: dict[str, dict] = {}\n    by_relates_to: dict[str, list[dict]] = {}\n    for meta in store.units_metadata():\n        lid = (meta.get(\"ledger_id\") or \"\").strip()\n        if not lid:\n            continue\n        by_ledger_id[lid] = meta\n        parent = (meta.get(\"relates_to\") or \"\").strip()\n        if parent:\n            by_relates_to.setdefault(parent, []).append(meta)\n",
+      "message": "Similar lines in 2 files\n==ledger:[312:322]\n==ledger:[378:389]\n    by_ledger_id: dict[str, dict] = {}\n    by_relates_to: dict[str, list[dict]] = {}\n    for meta in store.units_metadata():\n        lid = (meta.get(\"ledger_id\") or \"\").strip()\n        if not lid:\n            continue\n        by_ledger_id[lid] = meta\n        parent = (meta.get(\"relates_to\") or \"\").strip()\n        if parent:\n            by_relates_to.setdefault(parent, []).append(meta)",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -4882,7 +4871,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==cross_project_digest:[41:54]\n==ledger_recent:[16:34]\n    ts = (ts or \"\").strip()\n    if not ts:\n        return None\n    for fmt in (\"%Y-%m-%dT%H:%M:%SZ\", \"%Y-%m-%dT%H:%M:%S\"):\n        try:\n            return datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)\n        except ValueError:\n            continue\n    return None\n\n\ndef is_coordination_unresolved(obs: dict, *, site: str = \"\") -> bool:\n    \"\"\"Default lane: tooling/coordination obs without client site.\"\"\"",
+      "message": "Similar lines in 2 files\n==cross_project_digest:[41:54]\n==ledger_recent:[16:34]\n    ts = (ts or \"\").strip()\n    if not ts:\n        return None\n    for fmt in (\"%Y-%m-%dT%H:%M:%SZ\", \"%Y-%m-%dT%H:%M:%S\"):\n        try:\n            return datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)\n        except ValueError:\n            continue\n    return None\n\n\ndef load_recent_decisions(\n    approved_path_arg: Path,\n    *,\n    days: int = 7,\n    limit: int = 15,\n) -> list[dict]:\n    \"\"\"Return recent approved decision records, newest first.\"\"\"",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -4948,7 +4937,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==tests.test_ledger_related:[16:32]\n==tests.test_monitor:[22:37]\nclass FakeStore:\n    def __init__(self, metas: list[dict]):\n        self._metas = [dict(m) for m in metas]\n        self._units = {\n            m[\"id\"]: {\"id\": m[\"id\"], \"metadata\": m, \"document\": m.get(\"title\", \"\")}\n            for m in self._metas\n        }\n\n    def units_metadata(self, **kwargs):\n        return self._metas\n\n    def get_unit(self, uid: str):\n        return self._units.get(uid)\n\n    def add_unit(self, unit_id, document, embedding, metadata):",
+      "message": "Similar lines in 2 files\n==tests.test_ledger_related:[16:32]\n==tests.test_monitor:[22:37]\nclass FakeStore:\n    def __init__(self, metas: list[dict]):\n        self._metas = [dict(m) for m in metas]\n        self._units = {\n            m[\"id\"]: {\"id\": m[\"id\"], \"metadata\": m, \"document\": m.get(\"title\", \"\")}\n            for m in self._metas\n        }\n\n    def units_metadata(self):\n        return self._metas\n\n    def get_unit(self, uid: str):\n        return self._units.get(uid)\n\n\ndef _chain_fixture() -> FakeStore:",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -4959,7 +4948,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==brief:[355:362]\n==cross_project_digest:[73:80]\n        line = line.strip()\n        if not line:\n            continue\n        try:\n            rows.append(json.loads(line))\n        except json.JSONDecodeError:\n            continue",
+      "message": "Similar lines in 2 files\n==brief:[355:362]\n==cross_project_digest:[73:80]\n                line = line.strip()\n                if not line:\n                    continue\n                try:\n                    rows.append(json.loads(line))\n                except json.JSONDecodeError:\n                    continue",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -4981,7 +4970,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==chroma_restore_drill:[217:233]\n==complete_data_restore:[1818:1827]\n        self._write()\n\n    def step(\n        self,\n        name: str,\n        status: str,\n        detail: str = \"\",\n        duration_s: float | None = None,\n        **extra: Any,\n    ) -> None:\n        entry: dict[str, Any] = {\n            \"name\": name,\n            \"status\": status,\n            \"detail\": detail,\n            \"at\": _utc_now(),\n        }",
+      "message": "Similar lines in 2 files\n==chroma_restore_drill:[217:233]\n==complete_data_restore:[1818:1827]\n        self._write()\n\n    def step(self, name: str, status: str, detail: str = \"\", **extra: Any) -> None:\n        entry: dict[str, Any] = {\n            \"name\": name,\n            \"status\": status,\n            \"detail\": detail,\n            \"at\": _utc_now(),\n        }",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -4992,7 +4981,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==ingest:[192:209]\n==watch:[75:86]\n    for entry in processed.values():\n        if not isinstance(entry, dict) or not entry.get(\"excluded\"):\n            continue\n        ep = entry.get(\"path\")\n        if ep and _processed_path_str(ep) == path_key:\n            return True\n    return False\n\n\ndef _purge_stale_same_path(\n    processed: dict,\n    path_key: str,\n    keep_hash: str,\n    *,\n    preserve_exclusions: bool = True,\n) -> int:\n    \"\"\"Remove other same-path keys. Exclusions survive when preserve_exclusions=True.\"\"\"",
+      "message": "Similar lines in 2 files\n==ingest:[192:209]\n==watch:[75:86]\n    for entry in processed.values():\n        if not isinstance(entry, dict) or not entry.get(\"excluded\"):\n            continue\n        ep = entry.get(\"path\")\n        if ep and _processed_path_str(ep) == path_key:\n            return True\n    return False\n\n\ndef is_excluded_from_index(path: Path | str) -> bool:\n    \"\"\"Alias for path-based exclusion check (watch hot path avoids hashing).\"\"\"",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5003,7 +4992,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==eval-summaries:[23:36]\n==eval-synthesis:[24:45]\n    rows: list[dict] = []\n    for line in path.read_text(encoding=\"utf-8\").splitlines():\n        line = line.strip()\n        if line:\n            rows.append(json.loads(line))\n    return rows\n\n\ndef _synth_model(cfg: dict) -> str:\n    \"\"\"The model that actually produced the answer (for judge independence).\n\n    Mirrors ask.py / llm.generate_stream: deepseek distill model when a key is\n    present, else the local fallback. Delegates the swap to\n    ``llm._resolve_fallback_model`` so the provider-fallback decision (and its\n    warn-once / CONVMEM_FAIL_ON_FALLBACK behavior) lives in one place.\n    \"\"\"\n    import os\n\n    import llm\n\n    models = cfg[\"models\"]",
+      "message": "Similar lines in 2 files\n==eval-summaries:[23:36]\n==eval-synthesis:[24:45]\n    rows: list[dict] = []\n    for line in path.read_text(encoding=\"utf-8\").splitlines():\n        line = line.strip()\n        if line:\n            rows.append(json.loads(line))\n    return rows\n\n\ndef eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:\n    from eval_grading import grade_summary, keyword_recall\n    from llm import summarize\n\n    models = cfg[\"models\"]",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5036,7 +5025,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==tests.test_exclude_source_purge:[740:747]\n==tests.test_index_limit_skip_stats:[37:44]\n                \"models\": {\n                    \"summarize_model\": \"dummy\",\n                    \"distill_model\": \"dummy\",\n                    \"embed_model\": \"dummy\",\n                    \"ollama_host\": \"http://localhost:11434\",\n                },\n                \"distill\": {\"min_confidence\": 0.1},",
+      "message": "Similar lines in 2 files\n==tests.test_exclude_source_purge:[740:747]\n==tests.test_index_limit_skip_stats:[37:44]\n            \"models\": {\n                \"summarize_model\": \"dummy\",\n                \"distill_model\": \"dummy\",\n                \"embed_model\": \"dummy\",\n                \"ollama_host\": \"http://localhost:11434\",\n            },\n            \"distill\": {\"min_confidence\": 0.1},",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5069,7 +5058,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==adapters.detect:[131:137]\n==inventory:[94:100]\n        path.relative_to(sessions_dir)\n    except ValueError:\n        return None\n    try:\n        with open(path) as f:\n            data = json.load(f)",
+      "message": "Similar lines in 2 files\n==adapters.detect:[131:137]\n==inventory:[94:100]\n        path.relative_to(sessions_dir)  # raises ValueError if not under sessions\n    except ValueError:\n        return None\n    try:\n        with open(path) as f:\n            data = json.load(f)",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5102,7 +5091,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==adapters.jsonl_chat:[31:40]\n==adapters.sqlite_chat:[299:307]\n            continue\n        if not isinstance(record, dict):\n            continue\n\n        role = record.get(\"role\")\n        if role not in (\"user\", \"assistant\"):\n            continue\n",
+      "message": "Similar lines in 2 files\n==adapters.jsonl_chat:[31:40]\n==adapters.sqlite_chat:[299:307]\n                continue\n\n            if not isinstance(record, dict):\n                continue\n\n            role = record.get(\"role\")\n            if role not in (\"user\", \"assistant\"):\n                continue\n",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5124,7 +5113,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==convmem:[252:258]\n==query:[797:803]\n        \"source_path\": c.get(\"source_path\"),\n        \"tool\": c.get(\"tool\"),\n        \"start_offset\": c.get(\"start_offset\"),\n        \"conversation_id\": c.get(\"conversation_id\"),\n        \"session_id\": c.get(\"session_id\"),\n    }",
+      "message": "Similar lines in 2 files\n==convmem:[252:258]\n==query:[797:803]\n                    \"source_path\": c.get(\"source_path\"),\n                    \"tool\": c.get(\"tool\"),\n                    \"start_offset\": c.get(\"start_offset\"),\n                    \"conversation_id\": c.get(\"conversation_id\"),\n                    \"session_id\": c.get(\"session_id\"),\n                }",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5212,7 +5201,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==process_lock:[24:33]\n==watch:[265:274]\n                f\"Lock: {lock_path}\",\n                file=sys.stderr,\n            )\n            sys.exit(1)\n        lock_path.unlink(missing_ok=True)\n    lock_path.write_text(str(os.getpid()), encoding=\"utf-8\")\n\n\ndef load_watch_settings(cfg: dict) -> tuple[float, list[str], Path]:",
+      "message": "Similar lines in 2 files\n==process_lock:[24:33]\n==watch:[265:274]\n                    f\"Lock: {lock_path}\",\n                    file=sys.stderr,\n                )\n                sys.exit(1)\n        lock_path.unlink(missing_ok=True)\n    lock_path.write_text(str(os.getpid()), encoding=\"utf-8\")\n\n\ndef release_lock(lock_path: Path) -> None:",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5399,7 +5388,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==ingest:[681:686]\n==ledger:[262:267]\n        \"id\": unit[\"id\"],\n        \"type\": unit[\"type\"],\n        \"title\": unit[\"title\"],\n        \"source_path\": unit[\"source_path\"],\n        \"confidence\": unit[\"confidence\"],",
+      "message": "Similar lines in 2 files\n==ingest:[681:686]\n==ledger:[262:267]\n                \"id\": unit[\"id\"],\n                \"type\": unit[\"type\"],\n                \"title\": unit[\"title\"],\n                \"source_path\": unit[\"source_path\"],\n                \"confidence\": unit[\"confidence\"],",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5432,7 +5421,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==monitor:[501:506]\n==observe:[91:96]\n                unit = ingest_observation(\n                    record,\n                    store=store,\n                    embed_model=embed_model,\n                    ollama_host=ollama_host,",
+      "message": "Similar lines in 2 files\n==monitor:[501:506]\n==observe:[91:96]\n            unit = ingest_observation(\n                record,\n                store=store,\n                embed_model=embed_model,\n                ollama_host=ollama_host,",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5454,7 +5443,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==chroma_restore_drill:[274:282]\n==restic_integrity_check:[136:144]\n        for s in self.steps:\n            detail = (s.get(\"detail\") or \"\").replace(\"|\", \"\\\\|\")\n            lines.append(f\"| {s['name']} | {s['status']} | {detail} |\")\n        lines.append(\"\")\n        md.write_text(\"\\n\".join(lines) + \"\\n\", encoding=\"utf-8\")\n\n\ndef ensure_reports_dir(parent: Path) -> Path:",
+      "message": "Similar lines in 2 files\n==chroma_restore_drill:[274:282]\n==restic_integrity_check:[136:144]\n        for s in self.steps:\n            detail = (s.get(\"detail\") or \"\").replace(\"|\", \"\\\\|\")\n            lines.append(f\"| {s['name']} | {s['status']} | {detail} |\")\n        lines.append(\"\")\n        md.write_text(\"\\n\".join(lines) + \"\\n\", encoding=\"utf-8\")\n\n\ndef timed(fn: Callable[[], Any]) -> tuple[Any, float]:",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5476,7 +5465,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==eval-summaries:[148:153]\n==tests.test_eval_synthesis:[78:83]\n        report.get(\"judge_independent\")\n        and baseline.get(\"judge_independent\")\n        and report.get(\"judge_mean\") is not None\n        and baseline.get(\"judge_mean\") is not None\n        and report[\"judge_mean\"] < baseline[\"judge_mean\"]",
+      "message": "Similar lines in 2 files\n==eval-summaries:[148:153]\n==tests.test_eval_synthesis:[78:83]\n            report.get(\"judge_independent\")\n            and baseline.get(\"judge_independent\")\n            and report.get(\"judge_mean\") is not None\n            and baseline.get(\"judge_mean\") is not None\n            and report[\"judge_mean\"] < baseline[\"judge_mean\"]",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5509,7 +5498,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==tests.test_exclude_source_purge:[1005:1010]\n==tests.test_inter_model_doc:[114:119]\n                    chroma_dir=cfg[\"index\"][\"chroma_dir\"],\n                    embed_model=\"nomic-embed-text\",\n                    ollama_host=\"http://localhost:11434\",\n                    cfg=cfg,\n                    verbose=False,",
+      "message": "Similar lines in 2 files\n==tests.test_exclude_source_purge:[1005:1010]\n==tests.test_inter_model_doc:[114:119]\n                chroma_dir=cfg[\"index\"][\"chroma_dir\"],\n                embed_model=\"nomic-embed-text\",\n                ollama_host=\"http://localhost:11434\",\n                cfg=cfg,\n                verbose=False,",
       "message-id": "R0801",
       "type": "refactor"
     },
@@ -5531,7 +5520,7 @@
       "column": 0,
       "path": "work_git.py",
       "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==tests.test_watch:[168:177]\n==tests.test_watch_skip:[74:83]\n            mock_index.assert_not_called()\n\n    def test_flush_path_reindexes_when_hash_changed(self):\n        with tempfile.TemporaryDirectory() as td:\n            path = Path(td) / \"agent-transcripts\" / \"x.jsonl\"\n            path.parent.mkdir()\n            path.write_text(\n                '{\"role\":\"user\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"test\"}]}}\\n'\n            )",
+      "message": "Similar lines in 2 files\n==tests.test_watch:[168:177]\n==tests.test_watch_skip:[74:83]\n            mock_index.assert_not_called()\n\n    def test_flush_path_subprocess(self):\n        with tempfile.TemporaryDirectory() as td:\n            path = Path(td) / \"agent-transcripts\" / \"x.jsonl\"\n            path.parent.mkdir()\n            path.write_text(\n                '{\"role\":\"user\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"test\"}]}}\\n'\n            )",
       "message-id": "R0801",
       "type": "refactor"
     },
