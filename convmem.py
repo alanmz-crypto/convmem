@@ -1613,7 +1613,7 @@ def shadow_rollback_command(
 
 
 @app.command("shadow-canary")
-def shadow_canary_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def shadow_canary_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments,unused-argument
     scratch_dir: Path | None = typer.Option(
         None, "--scratch-dir", help="New private scratch directory; must not exist"
     ),
