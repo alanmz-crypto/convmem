@@ -68,6 +68,21 @@ substitute for the check tables below.*
 
 ---
 
+## Verification design
+
+Required when the arc changes a gate, lock, race-sensitive ordering,
+correctness invariant, or eval/judge scoring path. Otherwise state `N/A` with
+a concrete reason.
+
+| Field | Answer |
+|-------|--------|
+| Independent oracle | What proves the claim outside the code under test |
+| Failure-injection method | How the failure window or condition is forced open |
+| Negative control | Which deliberately broken variant must fail, and how it is produced |
+| Dual-path coverage | Every production entry point covered by the proof |
+
+---
+
 ## V0 — Preconditions
 
 ```bash

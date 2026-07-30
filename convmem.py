@@ -923,7 +923,9 @@ def propose_decision_command(
         None, "--alternatives-rejected", help="Rejected alternative (repeatable)"
     ),
     constraint: list[str] | None = typer.Option(
-        None, "--constraint", help="Hard constraint (repeatable)"
+        None,
+        "--constraint",
+        help="Hard constraint (repeatable); exact 'none-identified' sentinel allowed",
     ),
     constraints: list[str] | None = typer.Option(
         None, "--constraints", help="Hard constraint (repeatable)"

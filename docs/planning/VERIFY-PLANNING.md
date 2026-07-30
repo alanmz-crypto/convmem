@@ -80,7 +80,7 @@ Authority:    Post-execute HITL — do not trust chat claims alone
 |------|------|---------|
 | **0** | **Name the artifact** | `docs/plans/VERIFY-<slug>.md` (create from template if missing) |
 | **1** | **Scope lock** | In-scope / out-of-scope; forbid scope creep into next arc |
-| **2** | **Write checks** | Numbered V0…Vn; each PASS/FAIL/SKIP + one-line evidence rule |
+| **2** | **Write checks** | Fill Verification design first; then numbered V0…Vn, each PASS/FAIL/SKIP + one-line evidence rule |
 | **3** | **Assign lanes** | Mechanical filler vs independent sign-off vs Ryan GATE |
 | **4** | **Mechanical run** | Cursor (or named runner) fills evidence; no chat-only PASS |
 | **5** | **Independent sign-off** | Kiro (default) or Ryan-named lane; no cleanup/correction by verifier |
@@ -94,6 +94,9 @@ Authority:    Post-execute HITL — do not trust chat claims alone
 - **Merge reading links** in that human block (ARCHITECTURE / EXECUTION /
   VERIFY / LATEST Active handoff, plus any other docs the close depends on)
 - Scope lock table
+- **Verification design stated** — independent oracle, failure injection,
+  negative control, and dual-path coverage named, or `N/A` with a concrete
+  reason
 - Numbered checks with PASS/FAIL/SKIP + one-line evidence
 - Explicit lanes (mechanical / independent / Ryan GATE)
 - Evidence log line (tip SHA, runner, timestamp)
@@ -123,6 +126,22 @@ of that acceptance is FAIL.
 Domain hardness (Restic absolute, overwrite STOP, etc.) belongs in the arc
 VERIFY file, not this phase guide.
 
+### Eval/judge confirmation prerequisite
+
+Applies when the arc changes an eval, judge prompt/model, scoring rule, or
+threshold. Claude's methodology sign-off is copied here, not re-derived.
+
+V0 must additionally:
+
+- cite a runtime negative-control result from the changed pipeline;
+- cite an A/A-style run of identical input through that pipeline twice;
+- require identical deterministic gate and classification outcomes;
+- retain numeric judge-score variance as Twyman's-Law-suspect evidence rather
+  than inventing a universal tolerance;
+- confirm judge independence; and
+- confirm `eval-provenance-wiring` and
+  `eval-negative-control-coverage` are not due.
+
 ### Awareness (read-only)
 
 - [`PLANNING-PROTOCOL.md`](../PLANNING-PROTOCOL.md)
@@ -146,6 +165,8 @@ This phase ends when:
 - [ ] Four invariant questions answered (from [`PLANNING-PROTOCOL.md`](../PLANNING-PROTOCOL.md#four-question-invariant))
 - [ ] Arc named; VERIFY path named
 - [ ] Scope lock complete
+- [ ] Verification design stated (oracle / injection / negative control /
+      dual-path coverage), or `N/A` with a concrete reason
 - [ ] Checks V0…Vn written to minimum bar
 - [ ] Execute External Review decision confirmed; applicable BugBot SHAs match and findings are disposed, or an exempt / Ryan-accepted N/A is evidenced
 - [ ] Mechanical run recorded (or honest SKIP with contemporaneous evidence cite)

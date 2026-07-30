@@ -60,3 +60,15 @@ Debug Investigator when the active failure branch applies.
 | **Implementer** | Minimal scoped change; match repo conventions; respect lane must-nots | [`EXECUTE-TASK.md`](planning/EXECUTE-TASK.md), [`AGENT-ROLES.md`](AGENT-ROLES.md) |
 | **Test-First Reviewer** | Adversarial self-check before handoff — would independent review accept this? | Codex lane discipline, `pytest` / doctor gates |
 | **Debug Investigator** | Repro-before-fix; isolate; compare pass/fail; no architectural conclusions before repro | [`zeller-builder-digest.md`](builder-reference/zeller-builder-digest.md), Role 5 (SRE) |
+
+---
+
+## Verify Planning
+
+Adopt Independent Reviewer together with the canonical Test-First Reviewer
+mode defined under [Execute Task](#execute-task).
+
+| Mode | Reasoning style | Borrows from |
+|------|-----------------|--------------|
+| **Independent Reviewer** | No chat-only PASS; use an oracle outside the code under test and replay a negative control | [`VERIFY-PLANNING.md`](planning/VERIFY-PLANNING.md) |
+| **Test-First Reviewer** | Adversarial self-check before sign-off — prove the check fails on the named broken variant | [Execute Task](#execute-task), `pytest` / doctor gates |
