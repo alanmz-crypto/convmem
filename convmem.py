@@ -52,7 +52,9 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
-    "unresolved", "tldr", "work", "shadow-inventory", "shadow-activate", "shadow-rollback", "shadow-canary",
+    "unresolved", "tldr", "work", "shadow-inventory", "shadow-activate",
+    "shadow-rollback", "shadow-canary", "writer-census-start",
+    "writer-census-status", "writer-census-report",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -1637,23 +1639,15 @@ def shadow_canary_command(  # pylint: disable=too-many-arguments,too-many-positi
     maximum_event_bytes: int | None = typer.Option(
         None, "--maximum-event-bytes", help="Synthetic maximum supported event length"
     ),
-    peak_writers: int | None = typer.Option(
-        None, "--peak-writers", help="Fresh writer-census concurrency peak"
-    ),
-    short_lived_opens_per_day: int | None = typer.Option(
-        None,
-        "--short-lived-opens-per-day",
-        help="Fresh writer census short-lived session opens/day",
-    ),
     event_size_evidence_sha256: str | None = typer.Option(
         None,
         "--event-size-evidence-sha256",
         help="SHA-256 of redacted event-size derivation evidence",
     ),
-    writer_census_sha256: str | None = typer.Option(
+    writer_census_report: Path | None = typer.Option(
         None,
-        "--writer-census-sha256",
-        help="SHA-256 of the refreshed writer-census evidence",
+        "--writer-census-report",
+        help="Final private C7 report; metrics and hash are derived, never supplied",
     ),
 ):
     """Run C6 only in a new same-mount scratch directory; never activates Shadow."""
@@ -1678,6 +1672,67 @@ def shadow_canary_command(  # pylint: disable=too-many-arguments,too-many-positi
     typer.echo(json.dumps(redacted_report(report), sort_keys=True))
     if report.verdict != "PASS":
         raise typer.Exit(2)
+
+
+@app.command("writer-census-start")
+def writer_census_start_command(
+    chroma_root: Path = typer.Option(
+        ..., "--chroma-root", help="Production Chroma root identity only"
+    ),
+    writer_gate_path: Path = typer.Option(
+        Path("~/.local/share/convmem/locks/chroma_writer_gate.lock"), "--writer-gate-path"
+    ),
+    census_dir: Path = typer.Option(
+        Path("~/.local/share/convmem/writer-census"), "--census-dir"
+    ),
+):
+    """Arm a payload-free C7 census for the next seven complete UTC days."""
+    from chroma_write_store import exclusive_writer_lease
+    from writer_census import WriterCensusRefused, start_writer_census
+
+    try:
+        # The bounded exclusive acquisition proves no compliant session was
+        # already open at census creation; no service is controlled here.
+        with exclusive_writer_lease(lock_path=writer_gate_path, timeout_ms=30_000):
+            header = start_writer_census(
+                chroma_root=chroma_root,
+                writer_gate_path=writer_gate_path,
+                census_dir=census_dir,
+            )
+    except (WriterCensusRefused, TimeoutError) as exc:
+        code = getattr(exc, "code", "writer_quiesce_timeout")
+        typer.echo(json.dumps({"verdict": "REFUSED", "refusal_code": code}, sort_keys=True))
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps({"verdict": "ARMED", **header}, sort_keys=True))
+
+
+@app.command("writer-census-status")
+def writer_census_status_command(
+    census_dir: Path = typer.Option(Path("~/.local/share/convmem/writer-census"), "--census-dir"),
+):
+    """Read the C7 journal status; this command never changes live state."""
+    from writer_census import WriterCensusRefused, census_status
+
+    try:
+        typer.echo(json.dumps(census_status(census_dir=census_dir), sort_keys=True))
+    except WriterCensusRefused as exc:
+        typer.echo(json.dumps({"verdict": "REFUSED", "refusal_code": exc.code}, sort_keys=True))
+        raise typer.Exit(2) from exc
+
+
+@app.command("writer-census-report")
+def writer_census_report_command(
+    census_dir: Path = typer.Option(Path("~/.local/share/convmem/writer-census"), "--census-dir"),
+):
+    """Validate and finalize a completed C7 census for C6 binding."""
+    from writer_census import WriterCensusRefused, build_writer_census_report
+
+    try:
+        report = build_writer_census_report(census_dir=census_dir)
+    except WriterCensusRefused as exc:
+        typer.echo(json.dumps({"verdict": "REFUSED", "refusal_code": exc.code}, sort_keys=True))
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps({"verdict": "PASS", **report}, sort_keys=True))
 
 
 def main():

@@ -31,10 +31,10 @@ activation against the live corpus is forbidden for this verification slice.
 
 | Site | Via |
 |---|---|
-| `convmem.py:1451` | `production_chroma_write_session` |
-| `convmem.py:373` | `production_chroma_write_session` |
-| `convmem.py:477` | `production_chroma_write_session` |
-| `convmem.py:642` | `production_chroma_write_session` |
+| `convmem.py:1453` | `production_chroma_write_session` |
+| `convmem.py:375` | `production_chroma_write_session` |
+| `convmem.py:479` | `production_chroma_write_session` |
+| `convmem.py:644` | `production_chroma_write_session` |
 | `ingest.py:478` | `production_chroma_write_session` |
 | `ingest.py:535` | `production_chroma_write_session` |
 | `ingest.py:751` | `production_chroma_write_session` |
@@ -53,14 +53,14 @@ activation against the live corpus is forbidden for this verification slice.
 | `ask.py:550` | `read_only` |
 | `chroma_store.py:64` | `read_factory_helper` |
 | `chroma_store.py:89` | `read_factory_helper` |
-| `chroma_write_store.py:409` | `factory_internal` |
-| `convmem.py:134` | `read_only` |
-| `convmem.py:626` | `dry_run_no_sink` |
+| `chroma_write_store.py:437` | `factory_internal` |
+| `convmem.py:136` | `read_only` |
+| `convmem.py:628` | `dry_run_no_sink` |
 | `mcp_server.py:897` | `read_only` |
 | `mcp_server.py:944` | `read_only` |
-| `shadow_canary.py:521` | `canary_scratch_cold_validation` |
-| `shadow_canary.py:628` | `canary_scratch_warmup` |
-| `shadow_canary.py:642` | `canary_scratch_workload` |
+| `shadow_canary.py:528` | `canary_scratch_cold_validation` |
+| `shadow_canary.py:635` | `canary_scratch_warmup` |
+| `shadow_canary.py:649` | `canary_scratch_workload` |
 | `shadow_replay.py:177` | `replay_internal` |
 
 ## Reclassified read

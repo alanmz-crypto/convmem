@@ -4,10 +4,10 @@
   "open_chroma_for_write_production_call_sites": [],
   "chroma_write_session_production_call_sites": [],
   "production_chroma_write_session_call_sites": [
-    "convmem.py:1451",
-    "convmem.py:373",
-    "convmem.py:477",
-    "convmem.py:642",
+    "convmem.py:1453",
+    "convmem.py:375",
+    "convmem.py:479",
+    "convmem.py:644",
     "ingest.py:478",
     "ingest.py:535",
     "ingest.py:751",
@@ -16,7 +16,7 @@
   "open_production_write_store_call_sites": [
     "observe.py:229",
     "propose_decision.py:549",
-    "propose_decision.py:582",
+    "propose_decision.py:581",
     "refine.py:272",
     "refine.py:718",
     "source_purge.py:316"
@@ -27,14 +27,14 @@
     "ask.py:550",
     "chroma_store.py:64",
     "chroma_store.py:89",
-    "chroma_write_store.py:409",
-    "convmem.py:134",
-    "convmem.py:626",
+    "chroma_write_store.py:437",
+    "convmem.py:136",
+    "convmem.py:628",
     "mcp_server.py:897",
     "mcp_server.py:944",
-    "shadow_canary.py:521",
-    "shadow_canary.py:628",
-    "shadow_canary.py:642",
+    "shadow_canary.py:528",
+    "shadow_canary.py:635",
+    "shadow_canary.py:649",
     "shadow_replay.py:177"
   ],
   "sites": [
@@ -64,7 +64,7 @@
     },
     {
       "file": "chroma_write_store.py",
-      "line": 409,
+      "line": 437,
       "snippet": "store = ChromaStore(",
       "class": "factory_internal",
       "required_routing": "allowlisted_direct",
@@ -72,7 +72,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 134,
+      "line": 136,
       "snippet": "store = ChromaStore(load_config()[\"index\"][\"chroma_dir\"])",
       "class": "read_only",
       "required_routing": "allowlisted_direct",
@@ -80,7 +80,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 626,
+      "line": 628,
       "snippet": "store = ChromaStore(str(cfg[\"index\"][\"chroma_dir\"]), mutation_sink=None)",
       "class": "dry_run_no_sink",
       "required_routing": "allowlisted_direct",
@@ -114,7 +114,7 @@
     },
     {
       "file": "shadow_canary.py",
-      "line": 521,
+      "line": 528,
       "snippet": "store = ChromaStore(str(chroma))",
       "class": "canary_scratch_cold_validation",
       "required_routing": "allowlisted_direct",
@@ -123,7 +123,7 @@
     },
     {
       "file": "shadow_canary.py",
-      "line": 628,
+      "line": 635,
       "snippet": "warm_store = ChromaStore(str(chroma), mutation_sink=warm_sink)",
       "class": "canary_scratch_warmup",
       "required_routing": "allowlisted_direct",
@@ -132,7 +132,7 @@
     },
     {
       "file": "shadow_canary.py",
-      "line": 642,
+      "line": 649,
       "snippet": "store = ChromaStore(str(chroma), mutation_sink=sink)",
       "class": "canary_scratch_workload",
       "required_routing": "allowlisted_direct",
@@ -157,7 +157,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 1449,
+      "line": 1453,
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.forget\") as session:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -166,7 +166,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 373,
+      "line": 375,
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.add\") as session:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -175,7 +175,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 477,
+      "line": 479,
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.verify\") as session:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -184,7 +184,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 642,
+      "line": 644,
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.monitor\") as session:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
