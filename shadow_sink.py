@@ -469,6 +469,10 @@ class JsonlUnitMutationSink:
             "health_persist_failed": self._health.health_persist_failed,
         }
 
+    def telemetry(self) -> dict[str, Any]:
+        """Return the current payload-free append telemetry for C6 evidence."""
+        return dict(self._health_payload())
+
     def _record_failure(self, klass: str, *, event_id: str | None) -> None:
         self._health.last_failure_at = datetime.now(timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"

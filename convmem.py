@@ -52,7 +52,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
-    "unresolved", "tldr", "work", "shadow-inventory", "shadow-activate", "shadow-rollback",
+    "unresolved", "tldr", "work", "shadow-inventory", "shadow-activate", "shadow-rollback", "shadow-canary",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -1610,6 +1610,72 @@ def shadow_rollback_command(
         )
         raise typer.Exit(2) from exc
     typer.echo(json.dumps(outcome.__dict__, sort_keys=True))
+
+
+@app.command("shadow-canary")
+def shadow_canary_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments,unused-argument
+    scratch_dir: Path | None = typer.Option(
+        None, "--scratch-dir", help="New private scratch directory; must not exist"
+    ),
+    intended_ledger_path: Path | None = typer.Option(
+        None, "--intended-ledger-path", help="Read-only mount reference; never opened"
+    ),
+    chroma_root: Path | None = typer.Option(
+        None, "--chroma-root", help="Production Chroma root used only for overlap refusal"
+    ),
+    unit_count: int | None = typer.Option(
+        None, "--unit-count", help="Fresh read-only current knowledge_units count"
+    ),
+    p50_event_bytes: int | None = typer.Option(
+        None, "--p50-event-bytes", help="Redacted synthetic P50 encoded-event length"
+    ),
+    p95_event_bytes: int | None = typer.Option(
+        None, "--p95-event-bytes", help="Redacted synthetic P95 encoded-event length"
+    ),
+    maximum_event_bytes: int | None = typer.Option(
+        None, "--maximum-event-bytes", help="Synthetic maximum supported event length"
+    ),
+    peak_writers: int | None = typer.Option(
+        None, "--peak-writers", help="Fresh writer-census concurrency peak"
+    ),
+    short_lived_opens_per_day: int | None = typer.Option(
+        None,
+        "--short-lived-opens-per-day",
+        help="Fresh writer census short-lived session opens/day",
+    ),
+    event_size_evidence_sha256: str | None = typer.Option(
+        None,
+        "--event-size-evidence-sha256",
+        help="SHA-256 of redacted event-size derivation evidence",
+    ),
+    writer_census_sha256: str | None = typer.Option(
+        None,
+        "--writer-census-sha256",
+        help="SHA-256 of the refreshed writer-census evidence",
+    ),
+):
+    """Run C6 only in a new same-mount scratch directory; never activates Shadow."""
+    from shadow_canary import (
+        CanaryRefused,
+        inputs_from_cli_values,
+        redacted_report,
+        run_shadow_canary,
+    )
+
+    try:
+        inputs = inputs_from_cli_values(locals())
+        report = run_shadow_canary(inputs)
+    except CanaryRefused as exc:
+        typer.echo(
+            json.dumps(
+                {"verdict": "REFUSED", "refusal_code": exc.code, "detail": exc.detail},
+                sort_keys=True,
+            )
+        )
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps(redacted_report(report), sort_keys=True))
+    if report.verdict != "PASS":
+        raise typer.Exit(2)
 
 
 def main():
