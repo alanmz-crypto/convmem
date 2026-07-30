@@ -32,9 +32,9 @@
     "convmem.py:626",
     "mcp_server.py:897",
     "mcp_server.py:944",
-    "shadow_canary.py:514",
-    "shadow_canary.py:621",
-    "shadow_canary.py:635",
+    "shadow_canary.py:521",
+    "shadow_canary.py:628",
+    "shadow_canary.py:642",
     "shadow_replay.py:177"
   ],
   "sites": [
@@ -114,7 +114,7 @@
     },
     {
       "file": "shadow_canary.py",
-      "line": 514,
+      "line": 521,
       "snippet": "store = ChromaStore(str(chroma))",
       "class": "canary_scratch_cold_validation",
       "required_routing": "allowlisted_direct",
@@ -123,7 +123,7 @@
     },
     {
       "file": "shadow_canary.py",
-      "line": 621,
+      "line": 628,
       "snippet": "warm_store = ChromaStore(str(chroma), mutation_sink=warm_sink)",
       "class": "canary_scratch_warmup",
       "required_routing": "allowlisted_direct",
@@ -132,7 +132,7 @@
     },
     {
       "file": "shadow_canary.py",
-      "line": 635,
+      "line": 642,
       "snippet": "store = ChromaStore(str(chroma), mutation_sink=sink)",
       "class": "canary_scratch_workload",
       "required_routing": "allowlisted_direct",

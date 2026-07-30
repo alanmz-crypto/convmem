@@ -226,3 +226,9 @@ disabled. A later live performance rollback may occur only when a rolling
 exceeds 300 ms or its degradation exceeds 3.0x. Lower-volume windows are
 telemetry-only; corruption, privacy, lost-event, and validation failures remain
 immediate rollback conditions under the separately authorized activation flow.
+The C6 batch canary does not implement a live monitor or collect append
+timestamps. Its `live_rollback_required()` helper therefore expects the future
+activation monitor to supply samples already selected from the approved rolling
+60-second window; the helper enforces the 100-sample qualification and the
+numeric thresholds only. This limitation is intentional and does not authorize
+automatic live rollback in C6.

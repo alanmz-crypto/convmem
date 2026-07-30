@@ -58,9 +58,9 @@ activation against the live corpus is forbidden for this verification slice.
 | `convmem.py:626` | `dry_run_no_sink` |
 | `mcp_server.py:897` | `read_only` |
 | `mcp_server.py:944` | `read_only` |
-| `shadow_canary.py:514` | `canary_scratch_cold_validation` |
-| `shadow_canary.py:621` | `canary_scratch_warmup` |
-| `shadow_canary.py:635` | `canary_scratch_workload` |
+| `shadow_canary.py:521` | `canary_scratch_cold_validation` |
+| `shadow_canary.py:628` | `canary_scratch_warmup` |
+| `shadow_canary.py:642` | `canary_scratch_workload` |
 | `shadow_replay.py:177` | `replay_internal` |
 
 ## Reclassified read

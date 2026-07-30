@@ -421,7 +421,14 @@ def live_rollback_required(
     disabled_p99_ms: float,
     budgets: CanaryBudgets = APPROVED_BUDGETS,
 ) -> bool:
-    """Evaluate the approved live window; low volume is telemetry-only."""
+    """Evaluate samples already selected by a future live monitor.
+
+    C6 is a batch canary and does not collect append timestamps.  The future
+    activation monitor owns construction of the approved rolling 60-second
+    window before calling this predicate.  This helper enforces only the
+    minimum-100-sample qualification and the approved p99/factor thresholds;
+    lower-volume input is telemetry-only.
+    """
     values = list(samples)
     if len(values) < budgets.rollback_min_samples:
         return False

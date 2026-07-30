@@ -147,6 +147,7 @@ def test_budget_evaluation_records_absolute_relative_and_cold_limits() -> None:
 
 
 def test_live_rollback_requires_qualified_window() -> None:
+    assert "future live monitor" in (live_rollback_required.__doc__ or "")
     assert live_rollback_required([_sample(999.0) for _ in range(99)], disabled_p99_ms=10) is False
     assert live_rollback_required([_sample(301.0) for _ in range(100)], disabled_p99_ms=100) is True
     assert live_rollback_required([_sample(200.0) for _ in range(100)], disabled_p99_ms=100) is False
