@@ -67,6 +67,9 @@ files:
 - `census-status.json`
 
 Ryan alone may arm C7 after the deployment proof and a separate authorization:
+Use the canonical Chroma path printed in Section 1 as `--chroma-root`; the
+path below is only the current default.
+
 
 ```bash
 python convmem.py writer-census-start \
@@ -182,4 +185,3 @@ C7 OPERATIONAL RUNBOOK READY
 
 The C7 operational path is mechanically grounded in merged code. C6 remains
 held on the separate event-size-evidence policy decision.
-
