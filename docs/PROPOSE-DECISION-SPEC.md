@@ -41,7 +41,10 @@ convmem propose_decision \
   --id dec_prop_custom  # optional
 ```
 
-Required: `--relates-to`, `--summary`, `--rationale`, `--author`.
+Required: `--relates-to`, `--summary`, `--rationale`, `--author`, and at
+least one `--constraint`. Use the exact sentinel
+`--constraint none-identified` only when no constraint is identified.
+Rejected alternatives remain optional.
 
 ### List
 

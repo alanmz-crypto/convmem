@@ -116,6 +116,12 @@ def main() -> int:
 
     summarize_model = cfg["models"].get("summarize_model", "llama3.1:8b")
     report["provenance"] = model_context(cfg, summarize_model, args.golden)
+    if args.judge:
+        from eval_methodology import run_judge_negative_control
+
+        report["negative_control"] = run_judge_negative_control(
+            "summary", under_test_model=summarize_model, cfg=cfg
+        )
 
     print(f"Golden summaries: {report['count']}")
     print(f"Structural pass rate: {report['structural_pass_rate']:.2%}")
@@ -124,6 +130,9 @@ def main() -> int:
         indep = report.get("judge_independent")
         tag = "INDEPENDENT" if indep else "NON-INDEPENDENT (informational only)"
         print(f"Judge mean: {report.get('judge_mean')} [{tag}] model={report.get('judge_model')}")
+        control = report["negative_control"]
+        mark = "PASS" if control["passed"] else "FAIL"
+        print(f"Judge negative control: {mark} score={control['score']} expected={control['threshold']}")
     for r in results:
         mark = "PASS" if r["structural_pass"] else "FAIL"
         extra = "" if r["structural_pass"] else (
@@ -131,6 +140,10 @@ def main() -> int:
             f"missing={r['missing_mentions']})"
         )
         print(f"  [{mark}] {r['id']} recall={r['keyword_recall']:.0%}{extra}")
+
+    if args.judge and not report["negative_control"]["passed"]:
+        print("\nJudge evidence unusable: negative control failed", file=sys.stderr)
+        return 1
 
     if args.update_baseline:
         args.baseline.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

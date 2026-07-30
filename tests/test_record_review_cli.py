@@ -54,6 +54,41 @@ class RecordReviewCliTests(unittest.TestCase):
         defaults.update(kwargs)
         return propose(self.cfg, **defaults)
 
+    def test_record_cli_requires_constraint(self):
+        result = self._invoke([
+            "record",
+            "--relates-to",
+            "dec_parent",
+            "--summary",
+            "Missing constraint",
+            "--rationale",
+            "Exercise CLI enforcement",
+            "--author",
+            "cursor",
+        ])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("--constraint is required", result.output)
+        self.assertEqual(list_proposals(self.cfg), [])
+
+    def test_record_cli_accepts_exact_no_constraint_sentinel(self):
+        result = self._invoke([
+            "record",
+            "--relates-to",
+            "dec_parent",
+            "--summary",
+            "No constraint found",
+            "--rationale",
+            "Explicitly examined",
+            "--author",
+            "cursor",
+            "--constraint",
+            "none-identified",
+        ])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(
+            list_proposals(self.cfg)[0]["constraints"], ["none-identified"]
+        )
+
     def test_list_renders_full_card(self):
         rec = self._seed(site="staging.example", target_ledger_id="dec_target")
         result = self._invoke(["record", "--list"])

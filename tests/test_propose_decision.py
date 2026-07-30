@@ -1,4 +1,5 @@
 """Tests for propose_decision queue CLI."""
+# pylint: disable=too-many-public-methods
 
 from __future__ import annotations
 
@@ -47,6 +48,7 @@ class ProposeDecisionTests(unittest.TestCase):
             summary="Test decision",
             rationale="Because testing",
             author="cursor-implementer",
+            constraints=["none-identified"],
         )
         self.assertEqual(rec["kind"], PROPOSAL_KIND)
         self.assertEqual(rec["status"], "PENDING")
@@ -56,6 +58,46 @@ class ProposeDecisionTests(unittest.TestCase):
         self.assertEqual(len(lines), 1)
         self.assertEqual(json.loads(lines[0])["id"], rec["id"])
 
+    def test_propose_requires_constraint_in_core_api(self):
+        with self.assertRaisesRegex(ValueError, "--constraint is required"):
+            propose(
+                self.cfg,
+                relates_to="dec_parent",
+                summary="Missing constraint",
+                rationale="Exercise core enforcement",
+                author="cursor",
+            )
+
+    def test_exact_none_identified_sentinel_is_allowed(self):
+        rec = propose(
+            self.cfg,
+            relates_to="dec_parent",
+            summary="No constraint found",
+            rationale="Explicitly examined",
+            author="cursor",
+            constraints=["none-identified"],
+        )
+        self.assertEqual(rec["constraints"], ["none-identified"])
+
+    def test_sentinel_spelling_and_mixed_constraints_refuse(self):
+        for constraints in (
+            ["None-Identified"],
+            ["none identified"],
+            ["none_identified"],
+            ["none-identified", "must remain local"],
+            [""],
+        ):
+            with self.subTest(constraints=constraints):
+                with self.assertRaises(ValueError):
+                    propose(
+                        self.cfg,
+                        relates_to="dec_parent",
+                        summary="Invalid constraint form",
+                        rationale="Keep sentinel unambiguous",
+                        author="cursor",
+                        constraints=constraints,
+                    )
+
     def test_list_pending_only_by_default(self):
         propose(
             self.cfg,
@@ -63,6 +105,7 @@ class ProposeDecisionTests(unittest.TestCase):
             summary="One",
             rationale="R1",
             author="cursor",
+            constraints=["none-identified"],
         )
         pending = list_proposals(self.cfg)
         self.assertEqual(len(pending), 1)
@@ -96,7 +139,10 @@ class ProposeDecisionTests(unittest.TestCase):
 
     def test_recovery_uses_proposal_id_not_reused_ledger_id(self):
         from propose_decision import approved_for_proposal, recovery_action
-        rec = propose(self.cfg, relates_to="dec_a", summary="One", rationale="R", author="cursor")
+        rec = propose(
+            self.cfg, relates_to="dec_a", summary="One", rationale="R",
+            author="cursor", constraints=["none-identified"]
+        )
         _, ledger = approve(self.cfg, rec["id"], signer="ryan", ledger_id="dec_shared")
         self.assertEqual(approved_for_proposal(self.cfg, rec["id"]), ledger)
         self.assertEqual(recovery_action(self.cfg, rec["id"], base_hash="b", proposed_hash="p"), "retry_chroma")
@@ -134,6 +180,7 @@ class ProposeDecisionTests(unittest.TestCase):
             summary="No",
             rationale="R",
             author="cursor",
+            constraints=["none-identified"],
         )
         with self.assertRaises(ValueError):
             reject(self.cfg, rec["id"], signer="ryan", reason="")
@@ -147,6 +194,7 @@ class ProposeDecisionTests(unittest.TestCase):
             summary="S",
             rationale="R",
             author="cursor",
+            constraints=["none-identified"],
         )
         with self.assertRaises(ValueError):
             approve(self.cfg, rec["id"], signer="cursor-implementer")
@@ -164,8 +212,8 @@ class ProposeDecisionTests(unittest.TestCase):
                 "One sentence summary",
                 "Because reasons",
                 "kiro-session",
-                "coding.tooling",
                 "",
+                "none-identified",
                 "",
             ]
         )
@@ -177,6 +225,7 @@ class ProposeDecisionTests(unittest.TestCase):
         self.assertEqual(fields["relates_to"], "dec_parent")
         self.assertEqual(fields["summary"], "One sentence summary")
         self.assertEqual(fields["author"], "kiro-session")
+        self.assertEqual(fields["constraints"], ["none-identified"])
 
     def test_interactive_lock_exclusive(self):
         from propose_decision import InteractiveLockError, interactive_session_lock
@@ -187,7 +236,7 @@ class ProposeDecisionTests(unittest.TestCase):
                     pass
 
     def test_confirm_interactive_submit_false_cancels(self):
-        from unittest.mock import patch
+        from unittest.mock import patch  # pylint: disable=reimported
 
         from propose_decision import confirm_interactive_submit
 
@@ -220,6 +269,7 @@ class ProposeDecisionTests(unittest.TestCase):
             summary="First",
             rationale="R1",
             author="cursor",
+            constraints=["none-identified"],
         )
         r2 = propose(
             self.cfg,
@@ -227,6 +277,7 @@ class ProposeDecisionTests(unittest.TestCase):
             summary="Second",
             rationale="R2",
             author="cursor",
+            constraints=["none-identified"],
         )
         latest = latest_pending(self.cfg)
         self.assertIsNotNone(latest)
@@ -302,6 +353,7 @@ class ProposeDecisionTests(unittest.TestCase):
             summary="Pending then not",
             rationale="R",
             author="cursor",
+            constraints=["none-identified"],
         )
         got = pending_proposal_for_review(self.cfg, rec["id"])
         self.assertEqual(got["id"], rec["id"])
@@ -317,6 +369,7 @@ class ProposeDecisionTests(unittest.TestCase):
             summary="Reject me",
             rationale="R",
             author="cursor",
+            constraints=["none-identified"],
         )
         reject(self.cfg, rejected["id"], signer="ryan", reason="duplicate")
         with self.assertRaises(ValueError) as rejected_err:

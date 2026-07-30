@@ -34,6 +34,7 @@ class HashSchemaOnProposed(unittest.TestCase):
             summary="Schema check",
             rationale="Must persist v1",
             author="cursor",
+            constraints=["none-identified"],
         )
         events = load_events(self.cfg)
         proposed = [e for e in events if e.get("event_type") == "PROPOSED"][-1]
@@ -59,6 +60,7 @@ class NestedLockApproveAndIngest(unittest.TestCase):
             summary="No deadlock",
             rationale="Single flock",
             author="cursor",
+            constraints=["none-identified"],
         )
         proposal, ledger, stats = approve_and_ingest(self.cfg, rec["id"], signer="ryan")
         self.assertEqual(proposal["status"], "APPROVED")
@@ -83,6 +85,7 @@ class RecoveryMatrix(unittest.TestCase):
             summary="N12",
             rationale="proposal keyed",
             author="cursor",
+            constraints=["none-identified"],
         )
         _, ledger = approve(self.cfg, rec["id"], signer="ryan", ledger_id="dec_shared")
         self.assertEqual(ledger["proposal_id"], rec["id"])
@@ -97,6 +100,7 @@ class RecoveryMatrix(unittest.TestCase):
             summary="Retry chroma",
             rationale="approved jsonl first",
             author="cursor",
+            constraints=["none-identified"],
         )
         # Interrupt after APPROVAL_STARTED + approved JSONL (no Chroma, no APPROVED).
         approve(self.cfg, rec["id"], signer="ryan")
@@ -117,6 +121,7 @@ class RecoveryMatrix(unittest.TestCase):
             summary="Marker done",
             rationale="chroma already applied",
             author="cursor",
+            constraints=["none-identified"],
         )
         approve(self.cfg, rec["id"], signer="ryan")
         proposed = reduce_events(load_events(self.cfg))[rec["id"]]["proposal"][
@@ -142,6 +147,7 @@ class RecoveryMatrix(unittest.TestCase):
             summary="Uncertain",
             rationale="leave started",
             author="cursor",
+            constraints=["none-identified"],
         )
         with self.assertRaises(RuntimeError):
             approve_and_ingest(self.cfg, rec["id"], signer="ryan")

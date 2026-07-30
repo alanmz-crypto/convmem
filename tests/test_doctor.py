@@ -214,6 +214,38 @@ class StandingRegisterTests(unittest.TestCase):
             c = _check_standing_register(self.CFG, register_path=path, root=tmp)
         self.assertEqual(c.effective_status(), "pass")
 
+    def test_negative_control_probe_requires_runtime_helper(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            scripts = tmp / "scripts"
+            scripts.mkdir()
+            (scripts / "eval-bad.py").write_text(
+                "from eval_judge import judge\njudge('summary', s, o, under_test_model=m, cfg=c)\n",
+                encoding="utf-8",
+            )
+            (scripts / "eval-good.py").write_text(
+                "from eval_methodology import run_judge_negative_control\n"
+                "run_judge_negative_control('summary', under_test_model=m, cfg=c)\n",
+                encoding="utf-8",
+            )
+            path = self._write(
+                tmp,
+                [
+                    {
+                        "id": "eval-negative-control-coverage",
+                        "status": "open",
+                        "trigger": {
+                            "type": "probe",
+                            "probe": "eval_negative_control_coverage",
+                        },
+                    }
+                ],
+            )
+            c = _check_standing_register(self.CFG, register_path=path, root=tmp)
+        self.assertEqual(c.effective_status(), "warn")
+        self.assertIn("eval-bad.py", c.detail)
+        self.assertNotIn("eval-good.py", c.detail)
+
     def test_malformed_register_skips(self):
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)

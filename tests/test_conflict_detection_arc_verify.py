@@ -79,6 +79,7 @@ def test_rebase_yields_new_id_and_superseded_link():
             summary="Stale one",
             rationale="needs rebase",
             author="cursor",
+            constraints=["none-identified"],
             target_ledger_id="dec_shared",
         )
         # Force a known base so rebase can refresh it.
@@ -111,6 +112,7 @@ def test_reject_sibling_then_other_proceeds():
             summary="A",
             rationale="first",
             author="cursor",
+            constraints=["none-identified"],
             target_ledger_id="dec_shared",
             proposal_id="dec_prop_sib_a",
         )
@@ -121,6 +123,7 @@ def test_reject_sibling_then_other_proceeds():
                 summary="B",
                 rationale="second",
                 author="cursor",
+                constraints=["none-identified"],
                 target_ledger_id="dec_shared",
                 proposal_id="dec_prop_sib_b",
             )
@@ -134,6 +137,7 @@ def test_reject_sibling_then_other_proceeds():
             summary="B",
             rationale="now alone",
             author="cursor",
+            constraints=["none-identified"],
             target_ledger_id="dec_shared",
             proposal_id="dec_prop_sib_b",
         )
@@ -191,6 +195,7 @@ def test_tombstoned_target_blocked_on_approve():
             summary="Onto tombstone",
             rationale="should fail",
             author="cursor",
+            constraints=["none-identified"],
             target_ledger_id="dec_dead",
         )
         with patch(

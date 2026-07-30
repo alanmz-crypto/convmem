@@ -31,7 +31,7 @@ activation against the live corpus is forbidden for this verification slice.
 
 | Site | Via |
 |---|---|
-| `convmem.py:1449` | `production_chroma_write_session` |
+| `convmem.py:1451` | `production_chroma_write_session` |
 | `convmem.py:373` | `production_chroma_write_session` |
 | `convmem.py:477` | `production_chroma_write_session` |
 | `convmem.py:642` | `production_chroma_write_session` |
@@ -40,8 +40,8 @@ activation against the live corpus is forbidden for this verification slice.
 | `ingest.py:751` | `production_chroma_write_session` |
 | `inter_model_index.py:155` | `production_chroma_write_session` |
 | `observe.py:230` | `open_production_write_store` |
-| `propose_decision.py:529` | `open_production_write_store` |
-| `propose_decision.py:562` | `open_production_write_store` |
+| `propose_decision.py:549` | `open_production_write_store` |
+| `propose_decision.py:582` | `open_production_write_store` |
 | `refine.py:272` | `open_production_write_store` |
 | `refine.py:718` | `open_production_write_store` |
 | `source_purge.py:317` | `open_production_write_store` |

@@ -1,4 +1,5 @@
 """Pending decision queue — propose, list, approve, reject (no Chroma writes)."""
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 PROPOSAL_KIND = "decision_proposal"
+NO_CONSTRAINT_SENTINEL = "none-identified"
 VALID_SIGNERS = frozenset({"ryan", "kiro-review"})
 INTERACTIVE_LOCK_NAME = "propose_interactive.lock"
 
@@ -181,7 +183,7 @@ def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
     if live_hash:
         return marker, live_hash, tombstoned
     try:
-        import json as _json
+        _json = json
         from ledger_content_hash import ledger_content_hash
 
         def _list(key: str) -> list:
@@ -388,6 +390,24 @@ def proposal_to_ledger(
     }
 
 
+def _normalize_constraints(constraints: list[str] | None) -> list[str]:
+    values = [str(value).strip() for value in (constraints or [])]
+    if not values or any(not value for value in values):
+        raise ValueError(
+            "--constraint is required; use the exact sentinel "
+            f"{NO_CONSTRAINT_SENTINEL!r} when none are identified"
+        )
+    for value in values:
+        normalized_sentinel = value.casefold().replace("_", "-").replace(" ", "-")
+        if normalized_sentinel == NO_CONSTRAINT_SENTINEL and value != NO_CONSTRAINT_SENTINEL:
+            raise ValueError(
+                f"no-constraint sentinel must be exactly {NO_CONSTRAINT_SENTINEL!r}"
+            )
+    if NO_CONSTRAINT_SENTINEL in values and len(values) != 1:
+        raise ValueError(f"{NO_CONSTRAINT_SENTINEL!r} cannot accompany other constraints")
+    return values
+
+
 def propose(
     cfg: dict,
     *,
@@ -416,6 +436,7 @@ def propose(
         raise ValueError("--rationale is required")
     if not author:
         raise ValueError("--author is required")
+    normalized_constraints = _normalize_constraints(constraints)
 
     pid = (proposal_id or generate_proposal_id()).strip()
     target = (target_ledger_id or "").strip() or None
@@ -427,7 +448,7 @@ def propose(
         "summary": summary,
         "rationale": rationale,
         "alternatives_rejected": list(alternatives or []),
-        "constraints": list(constraints or []),
+        "constraints": normalized_constraints,
         "domain": domain.strip() or "coding.tooling",
         "site": site.strip(),
         "confidence": confidence,
@@ -479,7 +500,7 @@ def propose(
             "proposed_by": author,
             "relates_to": relates_to,
             "alternatives_rejected": list(alternatives or []),
-            "constraints": list(constraints or []),
+            "constraints": normalized_constraints,
             "domain": record["domain"],
             "site": record["site"],
             "confidence": confidence,
@@ -516,7 +537,6 @@ def latest_pending(cfg: dict) -> dict | None:
 
 def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
     """Upsert decisions-approved.jsonl into Chroma."""
-    from pathlib import Path
 
     from chroma_write_store import open_production_write_store
     from observe import ingest_observation_file
@@ -548,7 +568,6 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
 
 def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) -> dict:
     """Index one approved decision (fast path for record --approve-last)."""
-    from pathlib import Path
 
     from chroma_write_store import open_production_write_store
     from ledger import invalidate_ledger_index_cache
@@ -786,7 +805,7 @@ def rebase_proposal(
             "summary": old["summary"],
             "rationale": old.get("rationale") or "",
             "alternatives_rejected": list(old.get("alternatives_rejected") or []),
-            "constraints": list(old.get("constraints") or []),
+            "constraints": _normalize_constraints(old.get("constraints")),
             "domain": old.get("domain") or "coding.tooling",
             "site": old.get("site") or "",
             "confidence": float(old.get("confidence", 0.8)),
@@ -938,9 +957,18 @@ def collect_interactive_fields(
     dom = domain.strip() or prompt("domain", default="coding.tooling").strip()
     st = site.strip() if site else prompt("site (optional, press Enter to skip)", default="").strip()
     cons = list(constraints or [])
+    if not cons:
+        first = prompt(
+            "constraint (required; use 'none-identified' when none)", default=""
+        ).strip()
+        if not first:
+            raise ValueError(
+                "--constraint is required; use 'none-identified' when none are identified"
+            )
+        cons.append(first)
     while True:
         extra = prompt(
-            "constraint (optional, press Enter when done)", default=""
+            "additional constraint (optional, press Enter when done)", default=""
         ).strip()
         if not extra:
             break
@@ -952,7 +980,7 @@ def collect_interactive_fields(
         "author": au,
         "domain": dom or "coding.tooling",
         "site": st,
-        "constraints": cons,
+        "constraints": _normalize_constraints(cons),
     }
 
 

@@ -129,6 +129,28 @@ def _read(path: Path) -> str:
 
 
 class PlanningLaneOwnershipTests(unittest.TestCase):
+    def test_every_phase_character_has_reasoning_mode_definition(self):
+        modes = _read(REPO_ROOT / "docs/reasoning-modes.md")
+        guides = (REPO_ROOT / "docs/planning").glob("*-PLANNING.md")
+        for guide in guides:
+            text = _read(guide)
+            match = re.search(r"\|\s*\*\*Characters\*\*\s*\|\s*([^|]+)\|", text)
+            if not match:
+                continue
+            for character in (item.strip() for item in match.group(1).split(",")):
+                with self.subTest(guide=guide.name, character=character):
+                    self.assertIn(f"**{character}**", modes)
+
+    def test_verify_template_requires_verification_design(self):
+        template = _read(REPO_ROOT / "docs/plans/VERIFY-TEMPLATE.md")
+        for field in (
+            "Independent oracle",
+            "Failure-injection method",
+            "Negative control",
+            "Dual-path coverage",
+        ):
+            self.assertIn(field, template)
+
     def test_positive_anchors_present(self):
         for phrase, path, label in POSITIVE_ANCHORS:
             with self.subTest(label=label, path=path.name):

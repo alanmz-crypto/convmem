@@ -78,11 +78,15 @@ register_refs: [ksweep-sunset, deploy-script-interaction, merge-order-position, 
 ```yaml
 owns: eval harness, judge independence, baseline provenance
 read_when: "adding a new eval, interpreting a regression, changing the judge model"
-register_refs: [eval-provenance-wiring]
+register_refs: [eval-provenance-wiring, eval-negative-control-coverage]
 ```
 - Mechanized: judge independence (`eval_judge.py`), baseline provenance + regression/rebaseline split (`eval_provenance.py`).
-- Charter-only: none — this role is the most code-covered.
-- Register: `eval-provenance-wiring` — the one confirmed residual gap (new evals aren't checked for correct wiring).
+- Charter-only: statistical skepticism — apply Twyman's Law to any reported
+  eval/judge delta. Before accepting a delta, require an A/A-style run through
+  the same pipeline and confirm deterministic gate/classification parity.
+- Register: `eval-provenance-wiring` (provenance/judge-independence wiring) and
+  `eval-negative-control-coverage` (shared known-bad control executes on every
+  non-exempt LLM-judge eval).
 
 ## 5. SRE / Reliability Engineer
 
