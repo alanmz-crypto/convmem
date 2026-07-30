@@ -36,6 +36,8 @@ Write a PR summary that explains the change without requiring the reader to open
 
 **Required body shape (consequence → 5 Ws → TL;DR):** lead with what changes for Ryan (or the next human), then Who/What/When/Why/How, then a short TL;DR. Keep identifiers (PR numbers, SHAs, paths) copy-pasteable. Scale down for tiny PRs (one consequence sentence + one-line 5 Ws or TL;DR is enough); do not omit the human layer on arc-close or Execute PRs.
 
+**Proactive PR handoff:** When a branch is committed, pushed, and ready for a pull request, proactively include a copy-paste-ready PR title and Markdown description in the completion or handoff—even if Ryan did not separately ask for one. Apply the body shape and Merge reading rules below. Supplying the description does not authorize creating the PR; open it only after Ryan explicitly asks.
+
 **Merge reading links:** when the PR closes an arc, lands Execute, or updates VERIFY/LATEST, include a short **Merge reading** list of markdown links to the docs Ryan should open after (or instead of) skimming the diff — typically `ARCHITECTURE-*`, `EXECUTION-*`, `VERIFY-*`, and the relevant `docs/inter-model/LATEST.md` Active handoff bullet. Prefer repo-relative paths that work on GitHub. Tiny drive-by PRs may omit this; arc-close / Execute must not.
 
 **Also keep mapping detail when it exists:** Test plans, VERIFY check tables, SHAs, and scope locks stay — they help agents and future you map the project. The human layer sits **above** that machinery; it does not replace it.
