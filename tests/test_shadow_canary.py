@@ -26,6 +26,7 @@ from shadow_canary import (
     seed_synthetic_ledger,
     validate_scratch_target,
 )
+from writer_census import build_writer_census_report, start_writer_census
 from shadow_authorization import ensure_private_directory
 from shadow_ledger import create_shadow_ledger_header, open_existing_shadow_ledger_fd, read_ledger_header_and_tail
 
@@ -79,6 +80,37 @@ def test_approved_budgets_match_ryan_decision() -> None:
 def test_cli_input_adapter_refuses_incomplete_matrix() -> None:
     with pytest.raises(CanaryRefused, match="canary_input_missing"):
         inputs_from_cli_values({"scratch_dir": Path("/tmp/new")})
+
+
+def test_c6_derives_writer_metrics_from_final_census_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from datetime import datetime, timezone
+    from chroma_write_store import DEFAULT_WRITER_LOCK
+
+    monkeypatch.setattr("chroma_write_store.current_code_revision", lambda: "c6-revision")
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    census_dir = tmp_path / "census"
+    now = datetime(2030, 1, 1, tzinfo=timezone.utc)
+    start_writer_census(
+        census_dir=census_dir, chroma_root=chroma,
+        writer_gate_path=DEFAULT_WRITER_LOCK.expanduser(), now=now,
+    )
+    report = build_writer_census_report(
+        census_dir=census_dir, now=datetime(2030, 1, 9, tzinfo=timezone.utc)
+    )
+    assert report["max_concurrent_writer_sessions"] == 0
+    values = {
+        "scratch_dir": tmp_path / "scratch", "intended_ledger_path": tmp_path / "shadow" / "ledger.jsonl",
+        "chroma_root": chroma, "unit_count": 1, "p50_event_bytes": 2, "p95_event_bytes": 3,
+        "maximum_event_bytes": 4, "event_size_evidence_sha256": "a" * 64,
+        "writer_census_report": census_dir / "census-report.json",
+    }
+    inputs = inputs_from_cli_values(values)
+    assert inputs.peak_writers == 0
+    assert inputs.short_lived_opens_per_day == 0
+    assert len(inputs.writer_census_sha256) == 64
 
 
 def test_scratch_must_be_new_same_mount_private_directory(tmp_path: Path) -> None:

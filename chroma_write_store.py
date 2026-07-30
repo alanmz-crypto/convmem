@@ -1,4 +1,4 @@
-# pylint: disable=duplicate-code,too-many-locals,too-many-arguments
+# pylint: disable=cyclic-import,duplicate-code,too-many-locals,too-many-arguments
 """Authoritative production write-store factory and C3 writer gate.
 
 Production sessions take a shared writer lease, then load live config. Sink
@@ -267,8 +267,15 @@ def shared_writer_lease(
     attest_dir: Path | None = None,
     entrypoint: str = "production_chroma_write_session",
     timeout_ms: int = 30_000,
+    census_dir: Path | None = None,
 ) -> Iterator[WriterAttestation]:
-    """Acquire shared flock, write attestation, hold until context exit."""
+    """Acquire shared flock, emit C7 census events, and hold until context exit.
+
+    The close event is deliberately persisted at the start of ``finally``:
+    it must become durable while the shared flock is still held, including for
+    ``open_production_write_store`` where ``store.close()`` releases this
+    context manager through its callback.
+    """
     path = (lock_path or DEFAULT_WRITER_LOCK).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(path), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
@@ -286,9 +293,30 @@ def shared_writer_lease(
             time.sleep(0.01)
     attestation = build_writer_attestation(entrypoint=entrypoint)
     write_attestation(attestation, attest_dir=attest_dir)
+    # C7's separate journal lock is taken only after this writer gate.  A
+    # durable open failure refuses before the caller can mutate Chroma.
+    from writer_census import record_writer_open
+
+    try:
+        census_session = record_writer_open(
+            census_dir=census_dir, entrypoint=entrypoint, writer_gate_path=path
+        )
+    except Exception:
+        clear_attestation(attestation.pid, attest_dir=attest_dir)
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+        raise
     try:
         yield attestation
     finally:
+        # Preserve a successful Chroma mutation if telemetry close fails; the
+        # unmatched durable open makes the eventual census report fail closed.
+        from writer_census import WriterCensusRefused, record_writer_close
+
+        try:
+            record_writer_close(census_session)
+        except WriterCensusRefused:
+            pass
         clear_attestation(attestation.pid, attest_dir=attest_dir)
         try:
             fcntl.flock(fd, fcntl.LOCK_UN)
@@ -449,6 +477,7 @@ def production_chroma_write_session(
     create_collections: bool = True,
     lock_path: Path | None = None,
     attest_dir: Path | None = None,
+    census_dir: Path | None = None,
     entrypoint: str = "production_chroma_write_session",
 ) -> Iterator[ProductionWriteSession]:
     """Shared lease → load live config → open store; yield store+live_cfg.
@@ -460,6 +489,7 @@ def production_chroma_write_session(
     with shared_writer_lease(
         lock_path=lock_path,
         attest_dir=attest_dir,
+        census_dir=census_dir,
         entrypoint=entrypoint,
     ):
         live_cfg = config_mod.load_config(path)
@@ -488,6 +518,7 @@ def open_production_write_store(
     create_collections: bool = True,
     lock_path: Path | None = None,
     attest_dir: Path | None = None,
+    census_dir: Path | None = None,
     entrypoint: str = "production_chroma_write_session",
 ) -> ProductionWriteSession:
     """Open a leased production write session; caller must close store.
@@ -500,6 +531,7 @@ def open_production_write_store(
     lease_cm = shared_writer_lease(
         lock_path=lock_path,
         attest_dir=attest_dir,
+        census_dir=census_dir,
         entrypoint=entrypoint,
     )
     lease_cm.__enter__()

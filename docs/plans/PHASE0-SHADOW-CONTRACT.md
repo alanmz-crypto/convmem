@@ -189,9 +189,32 @@ activation command. `shadow-canary` refuses unless the operator supplies a
 new, private scratch directory, the intended ledger path, the production Chroma
 root for overlap refusal only, a current read-only unit count, redacted
 synthetic event lengths plus their evidence SHA-256, and refreshed
-writer-census concurrency/open-frequency inputs plus their census SHA-256. It
+the final private C7 `writer-census-report` only. C6 derives and validates the
+concurrency/open-frequency inputs and report SHA-256 itself; manual equivalent
+flags are refused. It
 never opens the production Chroma root for write, changes live configuration,
 creates live Shadow artifacts, or activates Shadow.
+
+## C7 payload-free writer census
+
+C7 is operational telemetry, not a Shadow artifact. `writer-census-start`
+briefly takes the existing C3 exclusive writer gate, then creates a new private
+`writer-census/` directory with a `0700` parent and `0600` header/journal. The
+header binds the next seven complete UTC days to the runtime revision, C3 gate
+protocol, canonical Chroma-root identity, and writer-gate identity. It records
+only sequence, opaque session nonce, UTC/monotonic times, route label, and
+revision/protocol—never Chroma documents, metadata, embeddings, configuration,
+or process identifiers.
+
+The C3 shared lease writes an open record after acquiring its flock and writes
+the matching close record before clearing its attestation or releasing that
+flock. An open durability failure refuses the writer before Chroma is exposed;
+a close failure never reverses a successful Chroma write and instead leaves an
+unmatched event that makes the final report refuse. Opens before the first UTC
+boundary establish armed state but do not count. Opens inside the window count;
+their close may occur after the end, and the report refuses until that tail is
+closed. `writer-census-report` validates the immutable journal and is the sole
+mechanical C6 census input. Shadow remains disabled throughout.
 
 The scratch directory must be new, `0700`, disjoint from both the intended
 ledger and Chroma paths, and on the same mount ID, filesystem, and mount options
