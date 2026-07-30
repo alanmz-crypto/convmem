@@ -1,4 +1,5 @@
 """Pending decision queue — propose, list, approve, reject (no Chroma writes)."""
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -182,7 +183,7 @@ def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
     if live_hash:
         return marker, live_hash, tombstoned
     try:
-        import json as _json
+        _json = json
         from ledger_content_hash import ledger_content_hash
 
         def _list(key: str) -> list:
@@ -536,7 +537,6 @@ def latest_pending(cfg: dict) -> dict | None:
 
 def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
     """Upsert decisions-approved.jsonl into Chroma."""
-    from pathlib import Path
 
     from chroma_write_store import open_production_write_store
     from observe import ingest_observation_file
@@ -568,7 +568,6 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
 
 def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) -> dict:
     """Index one approved decision (fast path for record --approve-last)."""
-    from pathlib import Path
 
     from chroma_write_store import open_production_write_store
     from ledger import invalidate_ledger_index_cache

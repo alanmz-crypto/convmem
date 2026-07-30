@@ -1,4 +1,5 @@
 """Tests for propose_decision queue CLI."""
+# pylint: disable=too-many-public-methods
 
 from __future__ import annotations
 
@@ -235,7 +236,7 @@ class ProposeDecisionTests(unittest.TestCase):
                     pass
 
     def test_confirm_interactive_submit_false_cancels(self):
-        from unittest.mock import patch
+        from unittest.mock import patch  # pylint: disable=reimported
 
         from propose_decision import confirm_interactive_submit
 

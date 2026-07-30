@@ -811,7 +811,7 @@ def _exposure_window_probe(row: dict, cfg: dict) -> tuple[bool, str]:
     return False, f"clean-scan recorded after last P0 close ({closed_count} closed)"
 
 
-def _standing_row_due(
+def _standing_row_due(  # pylint: disable=too-many-return-statements
     row: dict, cfg: dict, root: Path, all_rows: list
 ) -> tuple[bool, str]:
     """Evaluate one register row's trigger against live state. Returns (due, detail)."""
