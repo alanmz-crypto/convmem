@@ -25,7 +25,8 @@ from typing import Any, Iterable, Mapping
 
 from chroma_readonly import collection_uuid
 from chroma_store import ChromaStore
-from chroma_write_store import current_code_revision
+from chroma_write_store import DEFAULT_WRITER_LOCK, current_code_revision
+from writer_census import WriterCensusRefused, load_writer_census_report
 from shadow_authorization import open_directory_nofollow
 from shadow_ledger import (
     ARTIFACT_FILE_MODE,
@@ -77,10 +78,8 @@ CLI_INPUT_FIELDS = (
     "p50_event_bytes",
     "p95_event_bytes",
     "maximum_event_bytes",
-    "peak_writers",
-    "short_lived_opens_per_day",
     "event_size_evidence_sha256",
-    "writer_census_sha256",
+    "writer_census_report",
 )
 
 
@@ -131,6 +130,14 @@ def inputs_from_cli_values(values: Mapping[str, Any]) -> CanaryInputs:
             "canary_input_missing",
             "all scratch, census, and redacted matrix inputs are required",
         )
+    try:
+        census, census_sha256 = load_writer_census_report(
+            Path(values["writer_census_report"]),
+            chroma_root=Path(values["chroma_root"]),
+            writer_gate_path=DEFAULT_WRITER_LOCK.expanduser(),
+        )
+    except WriterCensusRefused as exc:
+        raise CanaryRefused(exc.code, exc.detail) from exc
     return CanaryInputs(
         scratch_dir=Path(values["scratch_dir"]),
         intended_ledger_path=Path(values["intended_ledger_path"]),
@@ -139,10 +146,10 @@ def inputs_from_cli_values(values: Mapping[str, Any]) -> CanaryInputs:
         p50_event_bytes=int(values["p50_event_bytes"]),
         p95_event_bytes=int(values["p95_event_bytes"]),
         maximum_event_bytes=int(values["maximum_event_bytes"]),
-        peak_writers=int(values["peak_writers"]),
-        short_lived_opens_per_day=int(values["short_lived_opens_per_day"]),
+        peak_writers=int(census["max_concurrent_writer_sessions"]),
+        short_lived_opens_per_day=int(census["conservative_short_lived_opens_per_day"]),
         event_size_evidence_sha256=str(values["event_size_evidence_sha256"]),
-        writer_census_sha256=str(values["writer_census_sha256"]),
+        writer_census_sha256=census_sha256,
     )
 
 
