@@ -4,7 +4,7 @@
   "open_chroma_for_write_production_call_sites": [],
   "chroma_write_session_production_call_sites": [],
   "production_chroma_write_session_call_sites": [
-    "convmem.py:1449",
+    "convmem.py:1451",
     "convmem.py:373",
     "convmem.py:477",
     "convmem.py:642",
@@ -15,8 +15,8 @@
   ],
   "open_production_write_store_call_sites": [
     "observe.py:229",
-    "propose_decision.py:529",
-    "propose_decision.py:562",
+    "propose_decision.py:549",
+    "propose_decision.py:582",
     "refine.py:272",
     "refine.py:718",
     "source_purge.py:316"

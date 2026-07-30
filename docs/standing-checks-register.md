@@ -5,14 +5,15 @@ Generalizes the pattern already in `doctor.py`'s `_check_synthesis_gate` /
 return a status. `DoctorCheck`'s four-value status (pass/fail/skip/warn) gives a
 register check room to "nag" (warn) without hard-failing.
 
-**End state (2026-07-07, design complete):** the two-layer engineering-team
-design closed out at 16 rows — **12 open** rows, all with live triggers
-(2 manual, 5 probes, 3 cadence, 2 corpus_size); **2 charter-standing** rows
+**Current state (2026-07-29):** the two-layer engineering-team design has 18
+rows — **13 open** rows, all with live triggers
+(2 manual, 6 probes, 3 cadence, 2 corpus_size); **2 charter-standing** rows
 (`cross-doc-consistency-handwritten`, `deferred-decision-closure`, both Tech
 Writer / Role 6) — charter-owned review habits kept in the register for
 traceability but excluded from the open backlog and never doctor-due; and
-**2 mechanized-and-closed** rows (`deploy-script-interaction`,
-`neutralize-provenance-confirm`). Every machine-evaluable row was promoted; the
+**3 mechanized-and-closed** rows (`ksweep-sunset`,
+`deploy-script-interaction`, `neutralize-provenance-confirm`). Every
+machine-evaluable row was promoted; the
 two that resist a doctor-evaluable condition were relabeled `trigger: charter` /
 `status: standing` (an honest naming of their by-design-manual nature, not a new
 mechanism — see "Standing (charter-owned) rows" below). The exposure-window
@@ -68,6 +69,10 @@ due.
   (deterministic retrieval metrics, no LLM output under test — verified:
   `eval-summaries.py` and `eval-synthesis.py` are wired, `eval-retrieval.py` is
   not, by design).
+- `eval-negative-control-coverage` (probe) — scans the same non-exempt LLM
+  evals for the shared runtime known-bad control. The eval itself fails judge
+  evidence when the control scores 3 or higher, returns no score, or errors;
+  doctor verifies wiring without invoking a model.
 - `charter-register-consistency` (probe) — parses `register_refs:[...]` blocks
   from `docs/role-charters.md` and flags dangling refs (charter cites a
   nonexistent register id) or orphan rows (an open register row no charter
@@ -176,7 +181,8 @@ They stay in the register (not dropped) so the Layer 1 charter ↔ Layer 2
 register link is traceable and audited: the `charter-register-consistency` probe
 requires **standing** rows to remain cited from `role-charters.md`, so a dropped
 citation is still caught. But `status: standing` keeps them **out of the open
-backlog count** (`doctor` reports "12 open, 0 due (2 charter-standing)") and
+backlog count** (`doctor` reports 13 open rows separately from the 2
+charter-standing rows) and
 `_standing_row_due` never marks a `charter` row due. This resolves the earlier
 ambiguous `trigger: none` state — an honest relabel, not a reversal of the
 "stands as manual" verdict.

@@ -130,6 +130,7 @@ class WriteGateEffectTests(unittest.TestCase):
             summary="write-gate wiring test",
             rationale="verify record --approve-last gates before the Chroma index write",
             author="ryan",
+            constraints=["none-identified"],
         )
         result, gate_call = self._run_gate_failing(
             ["record", "--approve-last"],

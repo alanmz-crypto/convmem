@@ -432,6 +432,7 @@ def run_digest(
             summary=summary,
             rationale=rationale,
             author="cross-project-digest",
+            constraints=["none-identified"],
             domain="coordination.cross_project",
             confidence=float(ask_result.get("confidence") or 0.65),
             source="cross_project_digest",

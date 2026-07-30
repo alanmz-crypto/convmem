@@ -32,6 +32,24 @@
       "notes": "Discipline is per-eval, not enforced at add-time. Probe scans scripts/eval-*.py for model_context(/judge( calls; exempt list carries reasons."
     },
     {
+      "id": "eval-negative-control-coverage",
+      "check": "every LLM-judge eval executes the shared known-bad negative control",
+      "role": "QA/Eval",
+      "trigger": {
+        "type": "probe",
+        "probe": "eval_negative_control_coverage",
+        "exempt": [
+          {
+            "path": "scripts/eval-retrieval.py",
+            "reason": "deterministic retrieval metrics; no LLM judge path"
+          }
+        ]
+      },
+      "status": "open",
+      "last_verified": "2026-07-29",
+      "notes": "Probe checks every non-exempt eval is wired to run_judge_negative_control(). Runtime helper effect tests and eval exit behavior prove the known-bad control actually executes and blocks unusable judge evidence; doctor does not invoke a model."
+    },
+    {
       "id": "exposure-window-tracking",
       "check": "corpus confirmed clean after P0 close",
       "role": "SRE",

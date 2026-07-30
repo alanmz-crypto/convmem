@@ -576,6 +576,31 @@ def _eval_provenance_probe(row: dict, root: Path) -> tuple[bool, str]:
     return False, "all eval scripts wired (or exempt)"
 
 
+def _eval_negative_control_probe(row: dict, root: Path) -> tuple[bool, str]:
+    """Probe: every non-exempt eval calls the runtime negative-control helper."""
+    trig = row.get("trigger") or {}
+    exempt = {
+        (entry.get("path") or "").strip()
+        for entry in trig.get("exempt") or []
+        if (entry.get("path") or "").strip()
+    }
+    exempt |= {Path(path).name for path in exempt}
+    unwired: list[str] = []
+    for py in sorted((root / "scripts").glob("eval-*.py")):
+        rel = f"scripts/{py.name}"
+        if rel in exempt or py.name in exempt:
+            continue
+        try:
+            text = py.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        if "run_judge_negative_control(" not in text:
+            unwired.append(py.name)
+    if unwired:
+        return True, "eval scripts missing runtime negative control: " + ", ".join(unwired)
+    return False, "all eval scripts run a negative control (or are exempt)"
+
+
 def _charter_register_consistency_probe(all_rows: list, root: Path) -> tuple[bool, str]:
     """Probe: charter register_refs and register ids stay in sync (dogfoods Layer 2).
 
@@ -830,6 +855,8 @@ def _standing_row_due(
         probe = trig.get("probe") or row.get("id")
         if probe in ("eval_provenance_wiring", "eval-provenance-wiring"):
             return _eval_provenance_probe(row, root)
+        if probe in ("eval_negative_control_coverage", "eval-negative-control-coverage"):
+            return _eval_negative_control_probe(row, root)
         if probe in ("charter_register_consistency", "charter-register-consistency"):
             return _charter_register_consistency_probe(all_rows, root)
         if probe in ("merge_order_position", "merge-order-position"):
