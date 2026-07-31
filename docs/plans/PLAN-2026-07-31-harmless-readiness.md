@@ -34,6 +34,9 @@ decision `dec_prop_20260705_182232_2d24` in
 evaluated with no retrieval regression. This historical record supports the
 plans, while escalation still lacks an attempt denominator; neither result
 authorizes resetting a standing-check row.
+The absolute paths in this paragraph are retrospective, read-only citations
+from plan authorship only; they are not future implementation inputs or
+authorized access targets.
 - The standing-register warning is advisory; doctor remains exit-zero.
 
 The two due rows are intentionally clustered corpus-size proxies. The source
@@ -182,7 +185,7 @@ authorization; row 7 is unconditional.
 | 3 | Event-size schema/hash and declared dimensions | Exact ten-field evidence contract; SHA-256 recomputed over canonical JSON with `sha256` omitted; private payload-free companion manifest binds declared dimensions, seed, serializer revision, and workload justification to the review packet. | Independent reviewer, not the generator author. | Extra/missing field, hash mismatch, canonicalization deviation, or unreviewed dimensions/seed/justification. |
 | 4 | Freshness/binding | Fresh `measured_at_utc`; schema and encoder revisions bound to the intended deployed revision. | Independent reviewer. | Stale timestamp or revision mismatch. |
 | 5 | Isolation/privacy | Negative tests and invocation evidence prove no live Shadow, production Chroma payload read, network, service control, config mutation, or ledger write. | Independent safety reviewer. | Any missing/failing negative control or prohibited access. |
-| 6 | Fresh environment inputs | Fresh read-only unit count and a new private scratch directory on the intended-ledger mount. | Independent reviewer records timestamp and mount/path checks. | Missing/stale count or reused/unsafe scratch directory. |
+| 6 | Fresh environment inputs | Fresh read-only unit count and a new ephemeral private scratch directory on an isolated non-production filesystem, outside the intended-ledger mount and all live data roots. | Independent reviewer records timestamp and mount/path checks. | Missing/stale count or reused/unsafe scratch directory. |
 | 7 | Separate authorization | Ryan names the C6 operation and cites the C7 and event-size artifact SHA-256 values after rows 1–6 pass. | Ryan only; no lane may infer or substitute. | No explicit named authorization, regardless of prior PASSes. |
 
 ## Bounded future implementation slice
