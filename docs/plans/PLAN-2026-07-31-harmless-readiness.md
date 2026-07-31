@@ -200,7 +200,9 @@ frozen.
 
 1. Preserve the deployed checkout at the frozen revision and re-run only
    read-only `doctor`, `brief`, `unresolved`, and targeted corpus searches.
-2. When the freeze ends and Ryan authorizes implementation, run the recency
+2. When the freeze ends and Ryan authorizes implementation, use the
+   [execution-ready recency protocol](PLAN-2026-07-31-RECENCY-BOOST-RETUNE-EVALUATION.md)
+   and run the recency
    golden-query evaluation first; do not tune recency and chunking together.
 3. Treat escalation-threshold work as a measurement/denominator design
    problem before changing numbers.
