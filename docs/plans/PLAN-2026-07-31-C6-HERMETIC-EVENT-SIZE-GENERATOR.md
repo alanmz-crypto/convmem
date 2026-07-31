@@ -2,6 +2,7 @@
 
 **Draft source:** Kiro design-review lane, preserved by Codex for review.
 **Status:** Plan-only; C6 remains HOLD and merge-disabled.
+**Branch PR title:** docs: freeze-safe analysis plans for C6 hold, standing checks, and retrieval gaps
 
 This document defines the smallest future design that could close the fresh
 event-size evidence gap. It authorizes no implementation, C6 run, Shadow

@@ -2,6 +2,7 @@
 
 **Status:** plan-only, review-required. This document authorizes no code,
 configuration, corpus, ledger, service, or deployed-checkout change.
+**Branch PR title:** docs: freeze-safe analysis plans for C6 hold, standing checks, and retrieval gaps
 
 **Review source:** Kiro design-review lane, reviewing the read-only failure from
 `convmem "background synthesis pointer Phase 1 shipped Phase 2 deferred"`.

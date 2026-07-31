@@ -1,4 +1,4 @@
-V# Latest cross-model handoff (single pointer — update at session end)
+# Latest cross-model handoff (single pointer — update at session end)
 
 **Updated:** 2026-07-31 (Frozen deployment readiness and C7/C6 hold)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.

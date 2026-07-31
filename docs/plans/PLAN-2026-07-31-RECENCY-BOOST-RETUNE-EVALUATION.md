@@ -3,6 +3,7 @@
 **Status:** design draft only. This protocol authorizes no config, register,
 census, Shadow, Chroma, service, ledger, or deployment change. Execution is
 deferred until after the deployed checkout freeze and requires Ryan's approval.
+**Branch PR title:** docs: freeze-safe analysis plans for C6 hold, standing checks, and retrieval gaps
 
 **Draft source:** Kiro design-review lane, used as a fallback after two empty
 DeepSeek responses. The deployed checkout remains at
