@@ -11,6 +11,14 @@ explicit authorization; implementation belongs to Cursor after approval.
 
 ## Evidence boundary
 
+### Read-only evidence recheck — 2026-07-31
+
+Targeted corpus search recovered prior analysis that corpus growth can serve as
+a weak proxy for gate-event volume when failure logs omit total attempts. The
+search also recovered the current Kiro/DeepSeek standing-trigger explanation.
+Neither source supplies a complete attempt denominator, so the measurement
+design and HOLD verdict remain unchanged.
+
 The `escalation-threshold-retune` row is due because its corpus-size trigger is
 `baseline: 5708` with `multiple: 2.0`, while the read-only snapshot reports
 12,427 active units. Doctor reports this as an advisory warning and remains
