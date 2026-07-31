@@ -13,9 +13,10 @@ The deployed checkout remains frozen at
 
 The query path reached `sentence_transformers.CrossEncoder.predict()` with a
 pair containing `None`. The likely path is a Chroma result whose `document`
-field is missing or `None`; `query.py` passes the result to `rerank.py` without
-normalizing it. The fallback-row and ledger-lookup paths already use a title or
-empty-string fallback and are less likely causes.
+field is missing or `None`; the primary semantic-search path in `query.py`
+passes the Chroma result to `rerank.py` without normalizing it. The
+fallback-row and ledger-lookup paths already use a title or empty-string
+fallback and are less likely causes.
 
 This is a diagnostic hypothesis, not proof about any specific ledger unit. Do
 not inspect production payloads to confirm it while the freeze holds.
@@ -30,7 +31,10 @@ root.
    descriptive `ValueError` naming the candidate, rather than exposing an
    opaque sentence-transformers exception.
 2. `rerank()` accepts an empty-string document with mocked scores and preserves
-   result count and ordering behavior for valid inputs.
+   result count and ordering behavior for valid inputs. This is a compatibility
+   check for the existing fallback, not a claim that empty content has useful
+   relevance semantics; a future implementation may flag it separately without
+   silently dropping the candidate.
 3. `query_units()` receives a synthetic Chroma row with `document=None` and
    verifies the query-layer boundary normalizes it before reranking.
 4. `rerank()` rejects a `None` query with a descriptive input error.
