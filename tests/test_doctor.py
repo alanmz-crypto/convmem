@@ -4,7 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from doctor import (
     DoctorCheck,
@@ -76,7 +76,26 @@ class DoctorTests(unittest.TestCase):
             mock.return_value = ok
         mock_verify.return_value = DoctorCheck("verify_continue", True, "skipped")
 
-        checks = run_doctor(run_verify=False)
+        # Keep this aggregate fixture independent of the live machine and of
+        # the production corpus. New core checks must be explicitly represented
+        # here so a missing mock fails loudly during test maintenance rather
+        # than turning this test into an accidental integration test.
+        with patch.multiple(
+            "doctor",
+            _check_write_lane=Mock(return_value=ok),
+            _check_hooks_path=Mock(return_value=ok),
+            _check_wip_on_main=Mock(return_value=ok),
+            _check_dirty_main=Mock(return_value=ok),
+            _check_unpushed_commits=Mock(return_value=ok),
+            _check_embed_collection_identity=Mock(return_value=ok),
+            _check_shadow_ledger=Mock(return_value=ok),
+            _check_synthesis_gate=Mock(return_value=ok),
+            _check_index_gate=Mock(return_value=ok),
+            _check_standing_register=Mock(return_value=ok),
+            _check_planning_guide_contract=Mock(return_value=ok),
+            _check_empty_ledger_documents=Mock(return_value=ok),
+        ):
+            checks = run_doctor(run_verify=False)
         self.assertTrue(all(c.ok for c in checks))
         self.assertEqual(doctor_exit_code(checks), 0)
 
