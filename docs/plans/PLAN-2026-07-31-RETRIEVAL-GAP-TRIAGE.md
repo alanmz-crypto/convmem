@@ -105,6 +105,24 @@ The evidence table is a draft review artifact. A future `convmem add` requires
 Ryan's explicit post-freeze authorization and may not be inferred from a
 complete table row.
 
+### Priority 1 result: current phase and CLI syntax recheck
+
+The exact-title search returned
+`docs/inter-model/PLAN-2026-06-29-searchable-cli-chats-HANDOFF.md`. Its Phase 3
+section names the work as **Continue + Crush (verify only)** and calls for
+`convmem stats` plus Continue/Crush spot-check searches. The source is dated
+2026-06-29, so it establishes the canonical phase handoff but is not proof
+that no later phase superseded it by 2026-07-31.
+
+The frozen source revision and a read-only `convmem add --help` invocation agree
+on the single-record command shape: `--title`, `--summary`, `--author`, and at
+least three repeatable `--keyword` values; `--type` accepts observation,
+solution, decision, explanation, or pattern. No `add` command was run.
+
+| Observation(s) | Query/evidence | Result | Disposition |
+|---|---|---|---|
+| `obs_67af0873f738`, `obs_a379f07d0878` | `convmem "current testing phase CLI syntax retrieval gap coding.tooling"`; `convmem "current testing phase not surfaced by search"`; handoff path above; frozen `convmem.py`; `convmem add --help` | Phase identity and CLI flag shape are independently recoverable, but phase freshness remains limited to the 2026-06-29 handoff. | `partial`; retain as a navigation finding, do not close or write a ledger update during the freeze. |
+
 ### Priority 2 result: background synthesis pointer
 
 The exact-title search found the canonical
