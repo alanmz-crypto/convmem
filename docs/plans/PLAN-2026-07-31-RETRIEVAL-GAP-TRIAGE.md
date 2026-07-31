@@ -103,6 +103,30 @@ The evidence table is a draft review artifact. A future `convmem add` requires
 Ryan's explicit post-freeze authorization and may not be inferred from a
 complete table row.
 
+### Priority 2 result: background synthesis pointer
+
+The exact-title search found the canonical
+`docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`, compiled 2026-06-29.
+Its reconciled status states:
+
+- Phase 0 manual digest: closed at Run 6; Run 8 completed the first approved
+  `--propose` trial.
+- Phase 1 `cross-project-digest.sh`: shipped; the weekly timer is read-only,
+  while timer-driven `--propose` remains Ryan-gated.
+- Phase 2 autonomous linker: deferred; the agent-habit/value gate and manual
+  `link_queue.jsonl` review remain open.
+- `obs_806985bc5697` remains the searchable pointer for those deferred linker
+  gates; no new summary is needed.
+
+This is complete for source identity and phase-gate status, but it does not
+close the ledger observation. The companion query
+`background synthesis pointer Phase 1 shipped Phase 2 deferred` failed inside
+the read-only reranker with `ValueError: Unsupported input type: NoneType`.
+That is a retrieval-path diagnostic, not evidence that the canonical source is
+missing. Do not change reranker configuration or fix code in this frozen
+checkout; a future isolated test may investigate how a `None` document reaches
+the reranker.
+
 ## Stop conditions and escalation
 
 Stop the search and mark the observation `partial` or `conflicting` when:
