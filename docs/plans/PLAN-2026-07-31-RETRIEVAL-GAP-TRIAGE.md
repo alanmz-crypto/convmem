@@ -69,7 +69,9 @@ both identified, with their freshness and repository path. A general search
 hit without the guide contents or site scope is partial.
 
 The six staging2 CSP, HSTS, and Referrer-Policy observations remain external
-monitor work. They are not retrieval-gap closure targets in this worktree.
+monitor work. They are not retrieval-gap closure targets in this worktree. A
+separate [staging2 header verification checklist](PLAN-2026-07-31-STAGING2-HEADER-VERIFICATION.md)
+is plan-only and does not authorize external changes.
 
 ## Evidence table
 
