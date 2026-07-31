@@ -23,6 +23,16 @@ retrieval evaluation had no regression. The broader parent roadmap decision
 This historical record supports implementation history but does not replace
 the held-out post-freeze retune evaluation or authorize a new weight.
 
+**Retrospective plan-authorship snapshot (read-only, 2026-07-31 08:42 UTC):**
+A read-only `convmem doctor` run recorded 12,452 active knowledge units at
+plan-authorship time. The trigger condition `12,452 > 5714 × 2.0 = 11,428`
+was met at that reading. This figure is historical plan-authorship evidence
+only; it does not constitute a tuning result, does not reset the standing-check
+register row, and does not authorize any config, register, census, Shadow,
+Chroma, service, ledger, or deployment action. Execution remains deferred
+until after the 2026-08-07 00:00 UTC freeze and requires Ryan's explicit
+approval.
+
 Capture one read-only corpus snapshot before scoring:
 
 - active unit and summary counts;
