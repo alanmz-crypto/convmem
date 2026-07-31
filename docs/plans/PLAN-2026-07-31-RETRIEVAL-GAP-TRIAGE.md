@@ -149,7 +149,7 @@ This is complete for source identity and phase-gate status, but it does not
 close the ledger observation. The companion query
 `background synthesis pointer Phase 1 shipped Phase 2 deferred` failed inside
 the read-only reranker with `ValueError: Unsupported input type: NoneType`.
-That is a retrieval-path diagnostic, not evidence that the canonical source is
+That is likely a retrieval-path diagnostic, not evidence that the canonical source is
 missing. Do not change reranker configuration or fix code in this frozen
 checkout; the [isolated reranker diagnostic plan](PLAN-2026-07-31-RERANKER-NONETYPE-DIAGNOSTIC.md)
 defines the future test-only investigation.
