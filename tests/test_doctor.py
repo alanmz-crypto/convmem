@@ -96,6 +96,11 @@ class DoctorTests(unittest.TestCase):
             _check_empty_ledger_documents=Mock(return_value=ok),
         ):
             checks = run_doctor(run_verify=False)
+        self.assertEqual(
+            len(checks),
+            25,
+            "new core doctor check needs an explicit fixture mock",
+        )
         self.assertTrue(all(c.ok for c in checks))
         self.assertEqual(doctor_exit_code(checks), 0)
 
