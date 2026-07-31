@@ -189,6 +189,9 @@ complete current-state answer. Keep these findings in this plan/chat; do not
 run `convmem add` or create observations while the deployed checkout is
 frozen.
 
+The bounded search order is documented in the
+[retrieval-gap triage protocol](PLAN-2026-07-31-RETRIEVAL-GAP-TRIAGE.md).
+
 | Open observation | Next bounded search/investigation | Current evidence | Status |
 |---|---|---|---|
 | `obs_67af0873f738` — current testing phase and CLI syntax | Search the Phase 3 Continue/Crush handoff and the canonical `add` syntax; verify the retrieved command includes required author/keyword fields. | Search surfaced the Phase 3 handoff and the known `--author`, repeated `--keyword` requirement, but not a single consolidated brief. | Searched-partial |
