@@ -1,9 +1,22 @@
 V# Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-28 (Complete-data backup correction v2 — merge + four live grants complete)
+**Updated:** 2026-07-31 (Frozen deployment readiness and C7/C6 hold)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Frozen deployment readiness and C7/C6 hold (2026-07-31):** Who/What: Codex
+  isolated docs branch, incorporating the July 30 Kiro C7 operational-runbook
+  review and DeepSeek C6 event-size-evidence design. When: during the deployed
+  checkout freeze through 2026-08-07 00:00 UTC. Why: keep the next safe work
+  explicit while the deployed revision remains fixed at
+  `76126e07a97187f68d925dd8b431d2d03967084f`. How: C7 remains unarmed, Shadow
+  remains disabled, and C6 remains held until fresh payload-free event-size
+  evidence and independent C7-report review exist. The due recency and
+  escalation standing checks remain analysis-only; no census, service, config,
+  ledger, or register operation is authorized by this handoff.
+
+  **Read first:** [`KIRO-2026-07-30-C7-OPERATIONAL-RUNBOOK-CORRECTIVE-HANDOFF.md`](KIRO-2026-07-30-C7-OPERATIONAL-RUNBOOK-CORRECTIVE-HANDOFF.md) · [`DEEPSEEK-2026-07-30-C6-PAYLOAD-FREE-EVENT-SIZE-EVIDENCE-HANDOFF.md`](DEEPSEEK-2026-07-30-C6-PAYLOAD-FREE-EVENT-SIZE-EVIDENCE-HANDOFF.md) · [`../plans/PLAN-2026-07-31-harmless-readiness.md`](../plans/PLAN-2026-07-31-harmless-readiness.md)
 
 - **Complete-data backup correction v2 — ROLLOUT COMPLETE (2026-07-28):** Who/What: PR #125 squash-merged to `main` as [`83b8c11`](https://github.com/alanmz-crypto/convmem/commit/83b8c11683c1295579c4fad9c8316f9f8fc3d10f); Crush (DeepSeek V4 Pro) executed four post-merge live grants on `archlinux` with Ryan approval. When: all grants complete 2026-07-28. Why: legacy-chroma profile never proved complete-data protection; v2 corrects this with explicit profile, fallback-free workflows, and hermetic proof. How: grant 1 (profile + data root in restic.env), grant 2 (first v2 snapshot), grant 3 (offsite copy + lineage), grant 4 (v2 local + external timers). Legacy `convmem-restic-ensure.timer` disabled; old external timer contained before v2 snapshot.
 
