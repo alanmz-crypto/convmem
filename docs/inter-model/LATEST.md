@@ -1,4 +1,4 @@
-V# Latest cross-model handoff (single pointer — update at session end)
+# Latest cross-model handoff (single pointer — update at session end)
 
 **Updated:** 2026-07-28 (Complete-data backup correction v2 — merge + four live grants complete)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
