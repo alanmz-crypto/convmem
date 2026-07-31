@@ -4,6 +4,11 @@
 **Reviewed implementation:** merged `main` `869aec7431b600ed7602a7a64ff98502340be066` (C7 writer-census)  
 **Status:** Runbook only. It does not authorize C7 arm, C6, or Shadow activation.
 
+The reviewed implementation SHA is historical provenance, not the deployment
+freeze target. The production-host `git rev-parse HEAD` result from Section 1
+is authoritative for this observation window and must remain unchanged through
+report creation.
+
 ## Purpose and boundary
 
 C7 collects seven complete UTC days of payload-free writer-session evidence.
@@ -68,12 +73,16 @@ files:
 
 Ryan alone may arm C7 after the deployment proof and a separate authorization:
 Use the canonical Chroma path printed in Section 1 as `--chroma-root`; the
-path below is only the current default.
+the census path below is the current default passed explicitly as
+`--census-dir`. If Ryan selects a different approved census directory, replace
+that exact value consistently in the start, status, report, and Section 4
+capture commands before arm; do not change it during the observation window.
 
 
 ```bash
 python convmem.py writer-census-start \
-  --chroma-root ~/.local/share/convmem/chroma
+  --chroma-root ~/.local/share/convmem/chroma \
+  --census-dir ~/.local/share/convmem/writer-census
 ```
 
 Expected result is JSON with `"verdict":"ARMED"`, the exact revision,
@@ -100,7 +109,8 @@ For the entire observation interval:
 The only permitted observation command is read-only:
 
 ```bash
-python convmem.py writer-census-status
+python convmem.py writer-census-status \
+  --census-dir ~/.local/share/convmem/writer-census
 ```
 
 It returns the immutable header, event count, and current UTC time. The status
@@ -118,7 +128,8 @@ After `window_end_utc`, first run the read-only status command. If the census
 has unmatched pre-end opens, wait and try later. Then Ryan may run:
 
 ```bash
-python convmem.py writer-census-report
+python convmem.py writer-census-report \
+  --census-dir ~/.local/share/convmem/writer-census
 ```
 
 The command validates contiguous sequence numbers, event pairing, the runtime
