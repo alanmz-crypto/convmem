@@ -24,10 +24,13 @@ The 2026-07-31 read-only `convmem doctor` run reported:
 
 A later read-only doctor run reports 12,452 active knowledge units and 1,779
 summaries. Both trigger conditions therefore remain due (`5714 * 2.0 = 11,428`
-and `5708 * 2.0 = 11,416`). Targeted corpus searches recovered prior
-Kiro/DeepSeek-authored evidence that recency boosting was previously evaluated
-and accepted, while escalation still lacks an attempt denominator. This is
-supporting evidence for the plans, not authorization to reset either row.
+and `5708 * 2.0 = 11,416`). Targeted corpus search located Ryan's approved
+decision `dec_prop_20260705_182232_2d24` in
+`/home/lauer/.local/share/convmem/decisions-approved.jsonl` (line 286 at the
+2026-07-31 recheck, timestamp `2026-07-05T18:22:32Z`): recency boosting was
+evaluated with no retrieval regression. This historical record supports the
+plans, while escalation still lacks an attempt denominator; neither result
+authorizes resetting a standing-check row.
 - The standing-register warning is advisory; doctor remains exit-zero.
 
 The two due rows are intentionally clustered corpus-size proxies. The source
