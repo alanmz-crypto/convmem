@@ -4,6 +4,9 @@
 bulk indexing, verification, ledger mutation, census access, Shadow operation,
 configuration change, or service action.
 
+**Branch PR title:** `docs: freeze-safe analysis plans for C6 hold, standing
+checks, and retrieval gaps`
+
 **Evidence basis:** the read-only 2026-07-30 `convmem unresolved` result lists
 11 open observations: five coding/WordPress retrieval gaps and six staging2
 header-monitor observations. Kiro was unavailable because its monthly request
@@ -90,7 +93,7 @@ Keep each result in chat or this worktree document only:
 Do not include payload-bearing corpus excerpts, stable user identifiers, or
 unnecessary session transcript text in a shareable note.
 
-### First bounded pass: Phase 3 and CLI syntax
+### First bounded pass: Phase 3 and CLI syntax (diagnostic cross-check)
 
 This read-only pass is recorded here so the next investigator does not repeat
 it:
@@ -104,6 +107,10 @@ it:
 The evidence table is a draft review artifact. A future `convmem add` requires
 Ryan's explicit post-freeze authorization and may not be inferred from a
 complete table row.
+
+The compact table above is a diagnostic cross-check, not the structured
+evidence table below; it is retained to show the original three-source
+comparison without duplicating the full schema.
 
 ### Priority 1 result: current phase and CLI syntax recheck
 
@@ -119,9 +126,9 @@ on the single-record command shape: `--title`, `--summary`, `--author`, and at
 least three repeatable `--keyword` values; `--type` accepts observation,
 solution, decision, explanation, or pattern. No `add` command was run.
 
-| Observation(s) | Query/evidence | Result | Disposition |
-|---|---|---|---|
-| `obs_67af0873f738`, `obs_a379f07d0878` | `convmem "current testing phase CLI syntax retrieval gap coding.tooling"`; `convmem "current testing phase not surfaced by search"`; handoff path above; frozen `convmem.py`; `convmem add --help` | Phase identity and CLI flag shape are independently recoverable, but phase freshness remains limited to the 2026-06-29 handoff. | `partial`; retain as a navigation finding, do not close or write a ledger update during the freeze. |
+| Observation(s) | Query family | Authoritative source | Answer | Completeness | Freshness risk | Next action |
+|---|---|---|---|---|---|---|
+| `obs_67af0873f738`, `obs_a379f07d0878` | `convmem "current testing phase CLI syntax retrieval gap coding.tooling"`; `convmem "current testing phase not surfaced by search"` | `docs/inter-model/PLAN-2026-06-29-searchable-cli-chats-HANDOFF.md` dated 2026-06-29; frozen `convmem.py`; read-only `convmem add --help` | Phase identity and CLI flag shape are independently recoverable, but phase freshness remains limited to the 2026-06-29 handoff. | `partial` | A later handoff may supersede the 2026-06-29 phase label. | Recheck the newest handoff after the freeze; do not close or write a ledger update. |
 
 ### Priority 2 result: background synthesis pointer
 
@@ -147,6 +154,10 @@ missing. Do not change reranker configuration or fix code in this frozen
 checkout; the [isolated reranker diagnostic plan](PLAN-2026-07-31-RERANKER-NONETYPE-DIAGNOSTIC.md)
 defines the future test-only investigation.
 
+| Observation(s) | Query family | Authoritative source | Answer | Completeness | Freshness risk | Next action |
+|---|---|---|---|---|---|---|
+| `obs_806985bc5697` | `convmem "BUILT-PLANS-2026-06-24-to-2026-06-29 Phase 0 Phase 1 Phase 2 gates"`; `convmem "background synthesis pointer Phase 1 shipped Phase 2 deferred"` | `docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`, compiled 2026-06-29 | Canonical source and phase-gate status are complete; the pointer observation remains open and no new summary is needed. | `complete` | Later synthesis status may supersede phase status; the companion query also exposed a reranker diagnostic. | Stop; preserve the pointer and do not create a ledger or implementation update. |
+
 ### Priority 3 result: Willowy Hollow guide and header precedent
 
 Read-only file discovery in
@@ -166,6 +177,10 @@ snippet's historical “monitor dry-run pass” conflicts in time/scope with the
 current unresolved staging2 monitor observations. Do not infer that the
 headers are deployed, copy the snippet into live configuration, or close
 `obs_885c236b34fd` or `obs_e1520bf6e193` from these files alone.
+
+| Observation(s) | Query family | Authoritative source | Answer | Completeness | Freshness risk | Next action |
+|---|---|---|---|---|---|---|
+| `obs_885c236b34fd`, `obs_e1520bf6e193` | Read-only file discovery for the named guide and staging2 header precedent in `/home/lauer/WordPress/willowyhollow-practice` | Guide not found; historical `scripts/staging2-security-headers.htaccess.snippet` dated 2026-07-08 plus S2 plan/log paths | Historical precedent was found, but it is not current live verification and the named guide remains not found. | `partial` | The 2026-07-08 snippet conflicts in time/scope with current unresolved monitor observations. | Seek separately authorized current evidence after the freeze; do not copy headers or close observations. |
 
 ## Stop conditions and escalation
 
