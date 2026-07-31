@@ -46,9 +46,10 @@ current proxy until attempt logging exists and is independently verified.
 This is a design proposal only. It must be implemented separately, tested, and
 reviewed before the register is retargeted.
 
-Use two new append-only files alongside the existing failure logs:
+A future implementation would use two new append-only files alongside the
+existing failure logs:
 `synthesis_attempts.jsonl` and `index_attempts.jsonl`. Each terminal gate
-outcome emits exactly this payload and no other fields:
+outcome would emit exactly this payload and no other fields:
 
 ```json
 {
@@ -60,8 +61,8 @@ outcome emits exactly this payload and no other fields:
 ```
 
 `gate` is `synthesis_gate` or `index_gate`; `outcome` is `success`, `failed`,
-or `partial`. The writer must append one line after the gate reaches a terminal
-outcome and must not include query text, embeddings, unit content, stable IDs,
+or `partial`. A future writer would append one line after the gate reaches a
+terminal outcome and would not include query text, embeddings, unit content, stable IDs,
 user/session identifiers, payload metadata, network addresses, or
 environment-specific paths.
 
