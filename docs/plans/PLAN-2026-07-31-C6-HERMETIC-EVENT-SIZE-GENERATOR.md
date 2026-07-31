@@ -101,6 +101,17 @@ production paths. If the companion manifest or its binding is absent, the
 result remains HOLD. This is a design contract only; implementation is not
 authorized by this draft.
 
+The companion and the reviewer-only evidence packet must exist only in an
+ephemeral private scratch directory on an isolated non-production filesystem.
+Neither may be written under the deployed checkout, any live data root,
+intended-ledger mount, census or Shadow path, or repository tree. For this
+design, the evidence review packet is the reviewer-only bundle containing the
+ten-field artifact, the canonical companion-manifest hash, and the companion
+manifest itself; it must carry no production path or scratch-directory path.
+The packet's absence, path-boundary failure, or hash mismatch keeps C6 at
+HOLD. This remains future design guidance, not authorization to create either
+artifact.
+
 ## Required negative controls
 
 Before review, tests must fail closed if the generator:
