@@ -19,6 +19,15 @@ The 2026-07-31 read-only `convmem doctor` run reported:
 - `synthesis_gate`: 2 failures in the last seven days, below its `>=3/week`
   investigation threshold.
 - `index_gate`: 0 failures in the last seven days.
+
+### Freshness recheck — 2026-07-31 08:42 UTC
+
+A later read-only doctor run reports 12,452 active knowledge units and 1,779
+summaries. Both trigger conditions therefore remain due (`5714 * 2.0 = 11,428`
+and `5708 * 2.0 = 11,416`). Targeted corpus searches recovered prior
+Kiro/DeepSeek-authored evidence that recency boosting was previously evaluated
+and accepted, while escalation still lacks an attempt denominator. This is
+supporting evidence for the plans, not authorization to reset either row.
 - The standing-register warning is advisory; doctor remains exit-zero.
 
 The two due rows are intentionally clustered corpus-size proxies. The source

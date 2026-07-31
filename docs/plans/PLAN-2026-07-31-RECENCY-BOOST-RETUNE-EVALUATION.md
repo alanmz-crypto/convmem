@@ -10,6 +10,14 @@ DeepSeek responses. The deployed checkout remains at
 
 ## Evaluation boundary
 
+### Read-only evidence recheck — 2026-07-31
+
+Corpus search recovered the accepted decision
+`dec_prop_20260629_212545_8aae`, which records that Manning P1a wired
+`recency_boost` through `query_units` and reported no regression in the
+retrieval evaluation. This supports the implementation history but does not
+replace the held-out post-freeze retune evaluation or authorize a new weight.
+
 Capture one read-only corpus snapshot before scoring:
 
 - active unit and summary counts;
