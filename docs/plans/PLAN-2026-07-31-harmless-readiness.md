@@ -154,23 +154,19 @@ Chroma roots, Shadow activation, network access, and live-ledger writes.
 
 ### Independent-review checklist
 
-Before Ryan may request C6, an independent reviewer must verify all of the
-following against the exact artifact hashes:
+Before Ryan may request C6, an independent reviewer must verify every row
+below against the exact artifact hashes. A passing row never implies C6
+authorization; row 7 is unconditional.
 
-- C7 report SHA-256, mode/owner, seven-day UTC interval, exact deployed
-  revision, writer-gate protocol, Chroma-root identity, and gate identity.
-- C7 report has no payload-bearing fields and its concurrency/open metrics are
-  plausible for the observed interval.
-- Event-size evidence has the exact redacted field set, canonicalization
-  method, schema/encoder revisions, sample count, fresh timestamp, and
-  SHA-256.
-- Event-size generation used no live Shadow ledger, production Chroma
-  payload/document/metadata read, network, service control, or configuration
-  mutation.
-- A fresh read-only unit count was captured.
-- A new private scratch directory exists on the intended-ledger mount.
-- Ryan issued a separate, named C6 authorization after all preceding checks;
-  no C7 report or evidence PASS is treated as implicit authorization.
+| # | Check | Required evidence | Reviewer role | Stop condition |
+|---|---|---|---|---|
+| 1 | C7 identity | Report SHA-256, mode/owner, seven-day UTC interval, deployed revision, writer-gate protocol, Chroma-root identity, and gate identity. | Independent reviewer, not the census producer. | Any missing field or hash mismatch. |
+| 2 | C7 privacy/plausibility | No payload-bearing fields or stable identifiers; concurrency and opens/day are plausible for the interval. | Independent evidence reviewer. | Payload/ID leakage or implausible aggregate metrics. |
+| 3 | Event-size schema/hash | Exact ten-field evidence contract; SHA-256 recomputed over canonical JSON with `sha256` omitted. | Independent reviewer, not the generator author. | Extra/missing field, hash mismatch, or canonicalization deviation. |
+| 4 | Freshness/binding | Fresh `measured_at_utc`; schema and encoder revisions bound to the intended deployed revision. | Independent reviewer. | Stale timestamp or revision mismatch. |
+| 5 | Isolation/privacy | Negative tests and invocation evidence prove no live Shadow, production Chroma payload read, network, service control, config mutation, or ledger write. | Independent safety reviewer. | Any missing/failing negative control or prohibited access. |
+| 6 | Fresh environment inputs | Fresh read-only unit count and a new private scratch directory on the intended-ledger mount. | Independent reviewer records timestamp and mount/path checks. | Missing/stale count or reused/unsafe scratch directory. |
+| 7 | Separate authorization | Ryan names the C6 operation and cites the C7 and event-size artifact SHA-256 values after rows 1–6 pass. | Ryan only; no lane may infer or substitute. | No explicit named authorization, regardless of prior PASSes. |
 
 ## Bounded future implementation slice
 
