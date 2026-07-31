@@ -88,11 +88,27 @@ Keep each result in chat or this worktree document only:
 Do not include payload-bearing corpus excerpts, stable user identifiers, or
 unnecessary session transcript text in a shareable note.
 
+### First bounded pass: Phase 3 and CLI syntax
+
+This read-only pass is recorded here so the next investigator does not repeat
+it:
+
+| Observation(s) | Evidence | Result | Disposition |
+|---|---|---|---|
+| `obs_67af0873f738`, `obs_a379f07d0878` | `docs/inter-model/PLAN-2026-06-29-searchable-cli-chats-HANDOFF.md`, dated 2026-06-29, names Phase 3 as Continue + Crush, verify-only. | Phase 3 identity is supported, but the finding is not a complete current-state brief. | `partial`; recheck against the newest handoff before closure. |
+| Same pair | Frozen-checkout `convmem.py` declares `--author` and repeatable `--keyword` with a minimum of three keywords. | Canonical single-record flag shape is supported by source, but no ledger write was attempted. | `partial`; keep the exact source revision and do not run `add`. |
+| Same pair | Search result `obs_d348798e5fdd` and `BUILT-PLANS-2026-06-24-to-2026-06-29.md` say only `--type observation` was accepted, while frozen `convmem.py` help declares additional types. | Type behavior is conflicting or stale and remains unverified. | `conflicting`; resolve from read-only source/tests or Ryan after the freeze. |
+
+The evidence table is a draft review artifact. A future `convmem add` requires
+Ryan's explicit post-freeze authorization and may not be inferred from a
+complete table row.
+
 ## Stop conditions and escalation
 
 Stop the search and mark the observation `partial` or `conflicting` when:
 
 - two sources disagree on the current phase or command syntax;
+- a `convmem ask` result disagrees with the corresponding search result;
 - the newest source is stale relative to a later handoff;
 - two query families fail to locate an authoritative source;
 - closure would require `convmem add`, bulk indexing, verification, live
