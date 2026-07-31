@@ -129,6 +129,26 @@ missing. Do not change reranker configuration or fix code in this frozen
 checkout; the [isolated reranker diagnostic plan](PLAN-2026-07-31-RERANKER-NONETYPE-DIAGNOSTIC.md)
 defines the future test-only investigation.
 
+### Priority 3 result: Willowy Hollow guide and header precedent
+
+Read-only file discovery in
+`/home/lauer/WordPress/willowyhollow-practice` did **not** find the named
+`docs/WILLOWYHOLLOW-WEBDEV-GUIDE.md`. It did find:
+
+- `scripts/staging2-security-headers.htaccess.snippet`, dated 2026-07-08,
+  identifying `dec_prop_20260623_153615_a66c` and specifying exact CSP, HSTS,
+  and Referrer-Policy header values;
+- `docs/plans/s2_hotfix_reconcile.md`, marked accepted 2026-07-11, with a
+  broader S2 remediation history and explicit external-change HOLDs; and
+- `logs/2026-06-30-pull-staging2-fix.md`, documenting a prior empty-dump
+  failure and its script fix.
+
+This supports partial precedent retrieval, not current live verification. The
+snippet's historical “monitor dry-run pass” conflicts in time/scope with the
+current unresolved staging2 monitor observations. Do not infer that the
+headers are deployed, copy the snippet into live configuration, or close
+`obs_885c236b34fd` or `obs_e1520bf6e193` from these files alone.
+
 ## Stop conditions and escalation
 
 Stop the search and mark the observation `partial` or `conflicting` when:
