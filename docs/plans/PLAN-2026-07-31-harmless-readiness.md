@@ -30,6 +30,10 @@ implementation change the register.
 
 ## Standing check A — recency weight / half-life
 
+**Owner / timeline:** Design and evidence review delegated to Kiro / DeepSeek
+assistance. Ryan approval required before any runtime config or register
+change. Execution deferred until after the 2026-08-07 freeze.
+
 ### Decision question
 
 Does the current `query.recency_weight` and half-life still improve retrieval
@@ -67,6 +71,10 @@ Manning builder guidance therefore requires a fixed evaluation set and warns
 against tuning recency and chunking together.
 
 ## Standing check B — escalation thresholds
+
+**Owner / timeline:** Design and evidence review delegated to Kiro / DeepSeek
+assistance. Ryan approval required before any runtime config or register
+change. Execution deferred until after the 2026-08-07 freeze.
 
 ### Decision question
 
@@ -183,14 +191,14 @@ complete current-state answer. Keep these findings in this plan/chat; do not
 run `convmem add` or create observations while the deployed checkout is
 frozen.
 
-| Open observation | Next bounded search/investigation | Current evidence |
-|---|---|---|
-| `obs_67af0873f738` — current testing phase and CLI syntax | Search the Phase 3 Continue/Crush handoff and the canonical `add` syntax; verify the retrieved command includes required author/keyword fields. | Search surfaced the Phase 3 handoff and the known `--author`, repeated `--keyword` requirement, but not a single consolidated brief. |
-| `obs_a379f07d0878` — current testing phase not surfaced | Compare `LATEST.md`, the built-plans archive, and the newest inter-model handoff as a navigation test. | Search surfaced Phase 3 verify-only material; the brief also warned that `LATEST.md` is stale relative to newer handoffs. |
-| `obs_806985bc5697` — background synthesis pointer/gates | Preserve the canonical pointer to `BUILT-PLANS-2026-06-24-to-2026-06-29.md` and its Phase 0/1/2 gates; do not duplicate the plan. | Search confirmed Phase 1 shipped and Phase 2 remains gate-bound/deferred. |
-| `obs_885c236b34fd` — Willowy Hollow precedent | Use site-scoped retrieval in the separate WordPress repo when authorized; do not alter that repo here. | General search surfaced Method A deployment precedent, but not the complete current guide. |
-| `obs_e1520bf6e193` — Willowy Hollow webdev guide | Retrieve `docs/WILLOWYHOLLOW-WEBDEV-GUIDE.md` by exact path and compare it with the site-specific session loop. | Search identified the guide and its intended contents; no file was changed. |
-| Six staging2 header observations | Keep as external/site work, separate from this plan; only read-only monitor evidence is in scope here. | Current brief still reports missing CSP and Referrer-Policy; HSTS status also remains an open failed observation. |
+| Open observation | Next bounded search/investigation | Current evidence | Status |
+|---|---|---|---|
+| `obs_67af0873f738` — current testing phase and CLI syntax | Search the Phase 3 Continue/Crush handoff and the canonical `add` syntax; verify the retrieved command includes required author/keyword fields. | Search surfaced the Phase 3 handoff and the known `--author`, repeated `--keyword` requirement, but not a single consolidated brief. | Searched-partial |
+| `obs_a379f07d0878` — current testing phase not surfaced | Compare `LATEST.md`, the built-plans archive, and the newest inter-model handoff as a navigation test. | Search surfaced Phase 3 verify-only material; the brief also warned that `LATEST.md` is stale relative to newer handoffs. | Searched-partial |
+| `obs_806985bc5697` — background synthesis pointer/gates | Preserve the canonical pointer to `BUILT-PLANS-2026-06-24-to-2026-06-29.md` and its Phase 0/1/2 gates; do not duplicate the plan. | Search confirmed Phase 1 shipped and Phase 2 remains gate-bound/deferred. | Searched-partial |
+| `obs_885c236b34fd` — Willowy Hollow precedent | Use site-scoped retrieval in the separate WordPress repo when authorized; do not alter that repo here. | General search surfaced Method A deployment precedent, but not the complete current guide. | Searched-partial |
+| `obs_e1520bf6e193` — Willowy Hollow webdev guide | Retrieve `docs/WILLOWYHOLLOW-WEBDEV-GUIDE.md` by exact path and compare it with the site-specific session loop. | Search identified the guide and its intended contents; no file was changed. | Searched-partial |
+| Six staging2 header observations | Keep as external/site work, separate from this plan; only read-only monitor evidence is in scope here. | Current brief still reports missing CSP and Referrer-Policy; HSTS status also remains an open failed observation. | Pending/external |
 
 ## Safe next actions
 
