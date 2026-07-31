@@ -124,8 +124,8 @@ close the ledger observation. The companion query
 the read-only reranker with `ValueError: Unsupported input type: NoneType`.
 That is a retrieval-path diagnostic, not evidence that the canonical source is
 missing. Do not change reranker configuration or fix code in this frozen
-checkout; a future isolated test may investigate how a `None` document reaches
-the reranker.
+checkout; the [isolated reranker diagnostic plan](PLAN-2026-07-31-RERANKER-NONETYPE-DIAGNOSTIC.md)
+defines the future test-only investigation.
 
 ## Stop conditions and escalation
 
