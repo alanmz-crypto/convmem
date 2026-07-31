@@ -26,8 +26,8 @@ A later read-only doctor run reports 12,452 active knowledge units and 1,779
 summaries. Both trigger conditions therefore remain due (`5714 * 2.0 = 11,428`
 and `5708 * 2.0 = 11,416`). Targeted corpus search located Ryan's approved
 decision `dec_prop_20260705_182232_2d24` in
-`/home/lauer/.local/share/convmem/decisions-approved.jsonl` (line 286 at the
-2026-07-31 recheck, timestamp `2026-07-05T18:22:32Z`): recency boosting was
+`/home/lauer/.local/share/convmem/decisions-approved.jsonl` (rechecked
+2026-07-31; timestamp `2026-07-05T18:22:32Z`): recency boosting was
 evaluated with no retrieval regression. This historical record supports the
 plans, while escalation still lacks an attempt denominator; neither result
 authorizes resetting a standing-check row.
