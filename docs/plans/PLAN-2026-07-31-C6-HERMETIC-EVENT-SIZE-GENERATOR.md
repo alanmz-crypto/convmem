@@ -91,9 +91,14 @@ Canonicalization is UTF-8 `json.dumps` with sorted keys, compact separators,
 activation ID, or session nonce is allowed in the artifact.
 
 The declared dimensions, seed, and serializer revision must be reviewable
-inputs to the run. Whether they belong in a separate companion record or in a
-future expanded schema is an open design question; adding them to this exact
-artifact is not authorized by this draft.
+inputs to the run. Resolve this without expanding the ten-field C6 artifact:
+the future run must produce a private, payload-free companion input manifest
+containing those inputs, canonicalize and hash that manifest separately, and
+bind its hash to the evidence review packet. The companion is not a live
+ledger artifact and must never contain payloads, stable identifiers, or
+production paths. If the companion manifest or its binding is absent, the
+result remains HOLD. This is a design contract only; implementation is not
+authorized by this draft.
 
 ## Required negative controls
 
@@ -123,7 +128,8 @@ not turn a declared distribution into empirical production evidence.
 ## Review, rollback, and authorization gates
 
 Independent review must verify the exact source revision, negative controls,
-field allowlist, canonical hash, declared bounds, deterministic replay, and
+field allowlist, canonical artifact hash, companion-manifest hash and binding,
+declared bounds plus their workload justification, deterministic replay, and
 representativeness limits. Any failure means no artifact may feed C6. A
 passing generator design or implementation does not authorize merge, C6, or
 Shadow activation. Rollback is simply to discard the unapproved generator and
