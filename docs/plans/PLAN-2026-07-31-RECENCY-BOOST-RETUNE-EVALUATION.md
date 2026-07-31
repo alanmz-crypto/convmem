@@ -12,11 +12,15 @@ DeepSeek responses. The deployed checkout remains at
 
 ### Read-only evidence recheck — 2026-07-31
 
-Corpus search recovered the accepted decision
-`dec_prop_20260629_212545_8aae`, which records that Manning P1a wired
-`recency_boost` through `query_units` and reported no regression in the
-retrieval evaluation. This supports the implementation history but does not
-replace the held-out post-freeze retune evaluation or authorize a new weight.
+Corpus search recovered Ryan's approved decision
+`dec_prop_20260705_182232_2d24` in
+`/home/lauer/.local/share/convmem/decisions-approved.jsonl` (line 286 at the
+2026-07-31 recheck, timestamp `2026-07-05T18:22:32Z`). Its rationale records
+that Manning P1a wired `recency_boost` through `query_units` and that the
+retrieval evaluation had no regression. The broader parent roadmap decision
+`dec_prop_20260629_212545_8aae` is not the specific no-regression evidence.
+This historical record supports implementation history but does not replace
+the held-out post-freeze retune evaluation or authorize a new weight.
 
 Capture one read-only corpus snapshot before scoring:
 
