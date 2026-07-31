@@ -9,6 +9,9 @@ held at `76126e07a97187f68d925dd8b431d2d03967084f` through 2026-08-07
 00:00 UTC. This plan is authored in the isolated worktree branch
 `docs/2026-07-30-c7-c6-standing-check-readiness`.
 
+**Branch PR title:** `docs: freeze-safe analysis plans for C6 hold, standing
+checks, and retrieval gaps`
+
 ## Current evidence snapshot
 
 The 2026-07-31 read-only `convmem doctor` run reported:

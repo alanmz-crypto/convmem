@@ -2,6 +2,9 @@
 
 **Status:** plan-only, review-required, explicit HOLD on external changes.
 
+**Branch PR title:** `docs: freeze-safe analysis plans for C6 hold, standing
+checks, and retrieval gaps`
+
 **Evidence limitation:** Kiro could not read the WordPress repository in its
 review session because filesystem access was denied. The checklist below is a
 first-principles safety draft, not site-specific verification. Confirm every
@@ -60,7 +63,7 @@ These are review criteria, not authorized final values:
 
 | Header | Verification criteria | Hard caution |
 |---|---|---|
-| CSP | Enforced `Content-Security-Policy` response header, not only `Report-Only` or a meta tag; policy must be compatible with the actual staging app and reviewed for unsafe broad sources. | Do not invent a policy or add a reporting endpoint without knowing its recipient. |
+| CSP | Enforced `Content-Security-Policy` response header, not only `Report-Only` or a meta tag; policy must be compatible with the actual staging app and reviewed for unsafe broad sources such as `unsafe-inline` and `unsafe-eval`. | Do not invent a policy or add a reporting endpoint without knowing its recipient. |
 | HSTS | Present on HTTPS responses; monitor must probe HTTPS; confirm an appropriate `max-age`. | Never add `preload` or submit staging2 to a preload list without explicit authorization. |
 | Referrer-Policy | Present on intended HTML responses; confirm the chosen privacy behavior and absence of conflicting duplicates. | Changing from permissive to restrictive behavior may affect analytics and is an external behavioral change. |
 
