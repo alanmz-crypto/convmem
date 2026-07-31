@@ -14,8 +14,8 @@ DeepSeek responses. The deployed checkout remains at
 
 Corpus search recovered Ryan's approved decision
 `dec_prop_20260705_182232_2d24` in
-`/home/lauer/.local/share/convmem/decisions-approved.jsonl` (line 286 at the
-2026-07-31 recheck, timestamp `2026-07-05T18:22:32Z`). Its rationale records
+`/home/lauer/.local/share/convmem/decisions-approved.jsonl` (rechecked
+2026-07-31; timestamp `2026-07-05T18:22:32Z`). Its rationale records
 that Manning P1a wired `recency_boost` through `query_units` and that the
 retrieval evaluation had no regression. The broader parent roadmap decision
 `dec_prop_20260629_212545_8aae` is not the specific no-regression evidence.
