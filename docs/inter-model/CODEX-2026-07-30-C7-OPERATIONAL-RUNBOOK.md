@@ -9,6 +9,11 @@ freeze target. The production-host `git rev-parse HEAD` result from Section 1
 is authoritative for this observation window and must remain unchanged through
 report creation.
 
+For this planning window, the deployed checkout is frozen at
+`76126e07a97187f68d925dd8b431d2d03967084f` through 2026-08-07 00:00 UTC. This
+runbook does not override that freeze or authorize C7 arm, C6, or Shadow
+activation.
+
 ## Purpose and boundary
 
 C7 collects seven complete UTC days of payload-free writer-session evidence.
