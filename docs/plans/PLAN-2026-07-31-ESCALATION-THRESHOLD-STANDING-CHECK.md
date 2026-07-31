@@ -29,7 +29,7 @@ The current seven-day snapshot reports:
 | Gate | Recorded failures | Attempts | Honest interpretation |
 |---|---:|---:|---|
 | `synthesis_gate` | 2 | Unknown | Below the `>=3/week` investigation trip-wire; rate unknown. |
-| `index_gate` | 0 | Unknown | No recorded failures; rate and log completeness unknown. |
+| `index_gate` | 0 | Unknown | No recorded failures; any failure triggers investigation; rate and log completeness unknown. |
 
 The failure logs establish recorded failure counts only. They cannot establish
 failure rates, threshold sensitivity, operational volume, or complete failure

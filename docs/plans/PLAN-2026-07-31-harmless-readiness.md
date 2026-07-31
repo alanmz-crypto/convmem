@@ -17,8 +17,10 @@ checks, and retrieval gaps`
 The 2026-07-31 read-only `convmem doctor` run reported:
 
 - 12,427 active `knowledge_units` and 1,774 summaries.
-- `recency-boost-retune`: due at `5714 * 2.0 = 11,428` units.
-- `escalation-threshold-retune`: due at `5708 * 2.0 = 11,416` units.
+- `recency-boost-retune`: due when the live count exceeds `5714 * 2.0 =
+  11,428` units.
+- `escalation-threshold-retune`: due when the live count exceeds
+  `5708 * 2.0 = 11,416` units.
 - `synthesis_gate`: 2 failures in the last seven days, below its `>=3/week`
   investigation threshold.
 - `index_gate`: 0 failures in the last seven days.
@@ -26,8 +28,9 @@ The 2026-07-31 read-only `convmem doctor` run reported:
 ### Freshness recheck — 2026-07-31 08:42 UTC
 
 A later read-only doctor run reports 12,452 active knowledge units and 1,779
-summaries. Both trigger conditions therefore remain due (`5714 * 2.0 = 11,428`
-and `5708 * 2.0 = 11,416`). Targeted corpus search located Ryan's approved
+summaries. This freshness recheck uses that later reading; both trigger
+conditions remain due because the live count exceeds `5714 * 2.0 = 11,428`
+and `5708 * 2.0 = 11,416`. Targeted corpus search located Ryan's approved
 decision `dec_prop_20260705_182232_2d24` in
 `/home/lauer/.local/share/convmem/decisions-approved.jsonl` (rechecked
 2026-07-31; timestamp `2026-07-05T18:22:32Z`): recency boosting was
