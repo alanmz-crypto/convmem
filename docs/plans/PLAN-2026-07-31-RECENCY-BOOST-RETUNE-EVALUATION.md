@@ -49,7 +49,9 @@ is 15 queries:
 Queries must come from existing tests or a separately authored review set.
 Annotate relevance with the current query text and candidate-independent
 review, then seal the query IDs, relevance labels, and source provenance
-before scoring. Do not add queries after seeing results.
+before scoring. Relevance labels must be authored or independently verified by
+a reviewer who has not seen the candidate weights. Do not add queries after
+seeing results.
 
 ## Required displacement pairs
 
