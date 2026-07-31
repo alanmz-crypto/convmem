@@ -76,6 +76,8 @@ against tuning recency and chunking together.
 assistance. Ryan approval required before any runtime config or register
 change. Execution deferred until after the 2026-08-07 freeze.
 
+Protocol draft: [escalation-threshold measurement design](PLAN-2026-07-31-ESCALATION-THRESHOLD-STANDING-CHECK.md).
+
 ### Decision question
 
 Are the `>=3/week` synthesis and index failure thresholds still a useful
