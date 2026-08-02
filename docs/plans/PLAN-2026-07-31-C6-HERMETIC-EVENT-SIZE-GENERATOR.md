@@ -129,7 +129,11 @@ containing those inputs, canonicalize and hash that manifest separately using
 the same canonical-JSON rules (sorted keys, compact separators, UTF-8,
 `ensure_ascii=False`, `allow_nan=False`) and SHA-256 algorithm as the ten-field
 artifact, and
-bind its hash to the evidence review packet. The companion is not a live
+bind its hash to the evidence review packet. The packet must include a
+`companion_manifest_sha256` field containing exactly 64 lowercase hex
+characters, computed by the same canonical-JSON rules as the artifact hash;
+reviewers must independently recompute it from the companion manifest to
+confirm the binding. The companion is not a live
 ledger artifact and must never contain payloads, stable identifiers, or
 production paths. If the companion manifest or its binding is absent, the
 result remains HOLD. This is a design contract only; implementation is not
