@@ -249,6 +249,10 @@ reviewer who did not author or operate the generator run), negative controls,
 field allowlist, canonical artifact hash, companion-manifest hash and binding,
 declared bounds plus their workload justification, deterministic replay, and
 representativeness limits. Any failure means no artifact may feed C6. A
+`reviewer_verdict` field value of `FAIL` is itself a HOLD condition independent
+of field presence; the absence of the field and a `FAIL` value are treated
+identically.
+
 passing generator design or implementation does not authorize merge, C6, or
 Shadow activation. Rollback is simply to discard the unapproved generator and
 artifact; no live state may need repair.
