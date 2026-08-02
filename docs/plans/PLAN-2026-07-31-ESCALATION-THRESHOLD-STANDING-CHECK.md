@@ -87,8 +87,10 @@ attempt files, failure-log immutability, and exact schema-version handling.
 Until a denominator exists, use these as review practices only; they do not
 authorize a retune or register reset.
 
-1. **Q1 — Absolute count:** inspect the rolling seven-day window. Investigate
-   at `synthesis_gate >=3` or any `index_gate` failure. A qualitative pass is
+1. **Q1 — Absolute count:** inspect the rolling seven-day window (defined as
+   the 168-hour period ending at 00:00 UTC on the review date, inclusive of
+   the start hour and exclusive of the end hour). Investigate at
+   `synthesis_gate >=3` or any `index_gate` failure. A qualitative pass is
    synthesis 0–2 and index 0, explicitly labeled weak count-only evidence.
 2. **Q2 — Threshold plausibility:** document whether ingest pattern, trigger
    frequency, or operator impact materially differs from the calibration period.
