@@ -155,6 +155,26 @@ a HOLD condition. These are packet fields, not additions to the ten-field
 artifact. This remains future design guidance, not authorization to create
 either artifact.
 
+## Companion manifest schema
+
+The companion manifest must contain exactly these required fields:
+
+- `schema_revision`, `encoder_revision`: non-empty strings;
+- `source_revision`: the exact 40-character lowercase hexadecimal git SHA of
+  the reviewed generator source;
+- `rng_seed`: a non-negative integer;
+- `sample_count`: a positive integer;
+- `declared_dimensions`: a non-empty object whose bounds are concrete numeric
+  values or enumerated members and contain no payloads or stable identifiers;
+- `workload_justifications`: a non-empty object keyed by declared structural
+  bound, with each value containing non-empty data-source-or-reasoning,
+  conservative-direction, and safety-rationale strings; and
+- `measured_at_utc`: a non-empty ISO-8601 UTC string.
+
+Unknown fields are prohibited and force C6 at HOLD. A missing required field,
+empty value, type violation, non-concrete bound, or privacy-boundary violation
+also forces C6 at HOLD.
+
 ## Freshness and expiry
 
 Evidence is valid only for the exact `schema_revision` and
