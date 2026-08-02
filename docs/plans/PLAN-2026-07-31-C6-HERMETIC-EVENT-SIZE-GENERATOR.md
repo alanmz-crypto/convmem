@@ -268,7 +268,10 @@ artifact; no live state may need repair. A `reviewer_verdict` of `FAIL`
 requires the review packet to include a `disposition` field confirming the
 scratch artifact and companion manifest were deleted from the ephemeral
 directory; absence of this field after a `FAIL` verdict is itself a HOLD
-condition.
+condition. `disposition` must be a string whose only allowed value is
+`artifacts-deleted-from-ephemeral`; any other value, an empty string, or a
+non-string type forces C6 at HOLD. When `reviewer_verdict` is `PASS`, the
+`disposition` field must be absent.
 
 ## Verdict
 
