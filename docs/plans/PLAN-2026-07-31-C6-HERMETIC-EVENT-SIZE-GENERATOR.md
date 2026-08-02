@@ -168,7 +168,10 @@ The companion manifest must contain exactly these required fields:
   values or enumerated members and contain no payloads or stable identifiers;
 - `workload_justifications`: a non-empty object keyed by declared structural
   bound, with each value containing non-empty data-source-or-reasoning,
-  conservative-direction, and safety-rationale strings; and
+  conservative-direction, and safety-rationale strings. It must contain one
+  entry for each boundary-input row named in the table: `sample_count`,
+  `document_length_bound`, `metadata_shape`, `operation_route_length`, and
+  `fixed_width_placeholders`; absence of any named row is a HOLD condition; and
 - `measured_at_utc`: a non-empty ISO-8601 UTC string; it must be an explicit,
   reviewer-supplied input fixed before the run begins, not read from ambient
   wall-clock state at runtime, and must be identical across replay runs for
