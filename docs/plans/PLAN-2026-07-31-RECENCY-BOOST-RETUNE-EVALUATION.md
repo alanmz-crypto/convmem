@@ -107,6 +107,7 @@ include these fields:
   "schema": "recency-retune-eval-v1",
   "run_id": "",
   "measured_at_utc": "",
+  "scoring_reference_utc": "",
   "collection_count": 0,
   "summary_count": 0,
   "deployed_revision": "",
@@ -128,6 +129,11 @@ include these fields:
   "evaluator": ""
 }
 ```
+
+Record `scoring_reference_utc` and use that identical fixed timestamp as the
+recency clock for every baseline and candidate run in the same comparison
+matrix. `measured_at_utc` records capture time; it must not substitute for the
+shared scoring reference.
 
 Do not put query text, unit content, or payload-bearing metadata in a
 shareable report. Query IDs and aggregate metrics are sufficient for review;
