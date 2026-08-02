@@ -159,7 +159,9 @@ ten-field artifact. Packet-only fields (`companion_manifest_sha256`,
 `source_revision`, `reviewer_verdict`, `reviewer_independence`, and
 `disposition`) are never present in the JSON object from which the artifact
 `sha256` is computed; their hash scope is the review-packet binding, not the
-artifact canonical form. This remains future design guidance, not authorization
+artifact canonical form. Unknown fields in the review-packet envelope beyond
+the five named packet-only fields and the ten-field artifact are prohibited and
+force C6 at HOLD. This remains future design guidance, not authorization
 to create either artifact.
 
 ## Companion manifest schema
