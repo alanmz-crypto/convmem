@@ -171,7 +171,12 @@ The companion manifest must contain exactly these required fields:
   conservative-direction, and safety-rationale strings. It must contain one
   entry for each boundary-input row named in the table: `sample_count`,
   `document_length_bound`, `metadata_shape`, `operation_route_length`, and
-  `fixed_width_placeholders`; absence of any named row is a HOLD condition; and
+  `fixed_width_placeholders`; absence of any named row is a HOLD condition;
+- `boundary_exclusion_cases`: a non-empty list naming at least zero/negative
+  `sample_count`, invalid UTC timestamp, out-of-bound dimension, unknown field,
+  non-finite/null/fractional numeric value, payload or stable-identifier value,
+  and prohibited path, each with an expected HOLD result; absence or incomplete
+  enumeration of any named case is a HOLD condition; and
 - `measured_at_utc`: a non-empty ISO-8601 UTC string; it must be an explicit,
   reviewer-supplied input fixed before the run begins, not read from ambient
   wall-clock state at runtime, and must be identical across replay runs for
