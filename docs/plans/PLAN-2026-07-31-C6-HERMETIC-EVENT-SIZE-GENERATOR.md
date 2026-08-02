@@ -186,8 +186,9 @@ The companion manifest must contain exactly these required fields:
 - `boundary_exclusion_cases`: a non-empty list naming at least zero/negative
   `sample_count`, invalid UTC timestamp, out-of-bound dimension, unknown field,
   non-finite/null/fractional numeric value, payload or stable-identifier value,
-  prohibited path, and missing required field, each with an expected HOLD
-  result; absence or incomplete
+  prohibited path (including any scratch-directory absolute or relative path
+  leaked into the artifact or companion manifest fields), and missing required
+  field, each with an expected HOLD result; absence or incomplete
   enumeration of any named case is a HOLD condition; and
 - `measured_at_utc`: a non-empty ISO-8601 UTC string; it must be an explicit,
   reviewer-supplied input fixed before the run begins, not read from ambient
