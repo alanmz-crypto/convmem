@@ -165,6 +165,11 @@ for key in ("code_revision", "writer_gate_protocol", "chroma_root_identity", "wr
 '
 ```
 
+Immediately after this capture and before submitting evidence for independent
+review, run `git rev-parse HEAD` from the deployed checkout and confirm that it
+matches the revision recorded in `census-header.json`. A mismatch keeps the
+report on HOLD; do not repair or reinterpret the report.
+
 The independent reviewer must name the exact report SHA-256 and confirm: file
 mode/owner, no payload-bearing fields, revision/protocol/root/gate bindings,
 seven-day interval, and plausible aggregate writer metrics. This report is
