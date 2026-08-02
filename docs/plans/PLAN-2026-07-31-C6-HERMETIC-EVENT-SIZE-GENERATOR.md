@@ -224,7 +224,8 @@ Before review, tests must fail closed if the generator:
 
 A non-deterministic result means a `sha256` differing across two independent
 runs with identical declared inputs, seed, `schema_revision`,
-`encoder_revision`, and `source_revision`. Any such replay disagreement is a
+`encoder_revision`, `source_revision`, and `measured_at_utc`. Any such replay
+disagreement is a
 HOLD condition and must be explicitly documented in the `reviewer_verdict`
 field before C6 evidence can be accepted.
 
