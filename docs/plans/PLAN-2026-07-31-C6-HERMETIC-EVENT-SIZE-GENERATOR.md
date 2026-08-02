@@ -165,6 +165,10 @@ metadata bound can understate P95/max; a worst-case structural bound can
 overstate typical sizes. The independent reviewer must accept the declared
 limits as a conservative basis, or the design remains HOLD. Sample count does
 not turn a declared distribution into empirical production evidence.
+The companion input manifest must include a written workload justification for
+each declared structural bound, explaining why the bound conservatively covers
+the real workload distribution; its absence is a HOLD condition independent of
+hash verification.
 
 ## Review, rollback, and authorization gates
 
