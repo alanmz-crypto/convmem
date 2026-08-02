@@ -37,6 +37,10 @@ written. Priority cases are:
 4. retrieval/reranker diagnostics remain synthetic or mocked; and
 5. planning documents cannot be mistaken for execution authorization.
 
+The test plan must include a named enumeration of all doctor checks so that
+adding a new check without a corresponding mock entry fails the test suite
+explicitly rather than silently exercising local environment state.
+
 ## Authorization gate
 
 No implementation or test run proceeds until Ryan authorizes the scope and
