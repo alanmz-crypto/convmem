@@ -118,7 +118,10 @@ activation ID, or session nonce is allowed in the artifact.
 The declared dimensions, seed, and serializer revision must be reviewable
 inputs to the run. Resolve this without expanding the ten-field C6 artifact:
 the future run must produce a private, payload-free companion input manifest
-containing those inputs, canonicalize and hash that manifest separately, and
+containing those inputs, canonicalize and hash that manifest separately using
+the same canonical-JSON rules (sorted keys, compact separators, UTF-8,
+`ensure_ascii=False`, `allow_nan=False`) and SHA-256 algorithm as the ten-field
+artifact, and
 bind its hash to the evidence review packet. The companion is not a live
 ledger artifact and must never contain payloads, stable identifiers, or
 production paths. If the companion manifest or its binding is absent, the
