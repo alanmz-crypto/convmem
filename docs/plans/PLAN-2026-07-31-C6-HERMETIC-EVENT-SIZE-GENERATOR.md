@@ -155,8 +155,12 @@ a HOLD condition. The packet must also include a `reviewer_independence` field
 containing a non-empty string attesting that the reviewer neither authored nor
 operated the generator run, without stable identifiers; absence or an empty
 value forces C6 at HOLD. These are packet fields, not additions to the
-ten-field artifact. This remains future design guidance, not authorization to
-create either artifact.
+ten-field artifact. Packet-only fields (`companion_manifest_sha256`,
+`source_revision`, `reviewer_verdict`, `reviewer_independence`, and
+`disposition`) are never present in the JSON object from which the artifact
+`sha256` is computed; their hash scope is the review-packet binding, not the
+artifact canonical form. This remains future design guidance, not authorization
+to create either artifact.
 
 ## Companion manifest schema
 
