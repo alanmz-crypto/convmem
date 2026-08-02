@@ -126,7 +126,9 @@ The declared dimensions, seed, and serializer revision must be reviewable
 inputs to the run. Resolve this without expanding the ten-field C6 artifact:
 the future run must produce a private, payload-free companion input manifest
 containing those inputs, canonicalize and hash that manifest separately using
-the same canonical-JSON rules (sorted keys, compact separators, UTF-8,
+the complete companion-manifest object with no field removal (the companion
+manifest contains no self-referential hash field), using the same canonical-JSON
+rules (sorted keys, compact separators, UTF-8,
 `ensure_ascii=False`, `allow_nan=False`) and SHA-256 algorithm as the ten-field
 artifact, and
 bind its hash to the evidence review packet. The packet must include a
