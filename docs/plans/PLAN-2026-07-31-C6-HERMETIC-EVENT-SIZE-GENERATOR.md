@@ -115,6 +115,13 @@ Canonicalization is UTF-8 `json.dumps` with sorted keys, compact separators,
 `sha256`. No additional field, payload, stable identifier, production path,
 activation ID, or session nonce is allowed in the artifact.
 
+Field constraints: `p50_bytes`, `p95_bytes`, `max_bytes`, and `sample_count`
+must be non-negative integers (non-finite, null, or fractional values force
+C6 at HOLD); `measured_at_utc` must be a non-empty ISO-8601 UTC string;
+`sha256` must be exactly 64 lowercase hex characters; `schema`, `provenance`,
+`schema_revision`, and `encoder_revision` must be non-empty strings. Any extra
+field, missing required field, or type violation forces C6 at HOLD.
+
 The declared dimensions, seed, and serializer revision must be reviewable
 inputs to the run. Resolve this without expanding the ten-field C6 artifact:
 the future run must produce a private, payload-free companion input manifest
