@@ -188,7 +188,10 @@ not turn a declared distribution into empirical production evidence.
 The companion input manifest must include a written workload justification for
 each declared structural bound, explaining why the bound conservatively covers
 the real workload distribution; its absence is a HOLD condition independent of
-hash verification.
+hash verification. A workload justification is adequate only if it states the
+data source or reasoning, the conservative direction (over- or under-estimate),
+and why that direction is safe; a justification that omits any of these three
+elements is treated as absent and holds C6 at HOLD.
 
 ## Review, rollback, and authorization gates
 
