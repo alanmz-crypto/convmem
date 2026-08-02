@@ -36,7 +36,7 @@ Confirmed against: `doctor.py`, `eval_provenance.py`, `eval_judge.py`,
 
 | Sub-job | Class | Notes |
 |---|---|---|
-| Fact expiration policy ownership | (b) | Genuinely a judgment call ("what triggers invalidation") — charter card documents the policy once someone sets it; not mechanizable itself. |
+| Fact expiration policy ownership | (b) | Genuinely a judgment call ("what triggers invalidation") — Ryan owns the deferred decision; the charter card documents the policy once Ryan explicitly defines it, and this note authorizes neither a register row nor implementation. |
 | Adapter parity auditing | (c) — **live trigger (2026-07-07)** | Register row `adapter-parity-scan` now carries a 60-day cadence trigger: nags when 60d pass without a parity scan across all 5 surfaces. The "after any single-surface incident closes" half stays manual (no incident feed for doctor to read). |
 | Per-unit provenance tracing before neutralize | (a) — **mechanized (2026-07-07)** | `preview_supersede_for_source` (`chroma_store.py`, read-only) + an unconditional `[neutralize]` echo in `ingest.py` before both supersede call sites: source file, active-unit count, timestamp range, and tombstone tag print before any tombstoning; the path/path_key variants merge into one echo per logical file. Register row `neutralize-provenance-confirm` closed. Residual: reading the echo is human judgment (charter). |
 

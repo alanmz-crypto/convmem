@@ -59,7 +59,9 @@ read_when: "adding an adapter, deciding whether a fact is stale, before any bulk
 register_refs: [adapter-parity-scan, neutralize-provenance-confirm]
 ```
 - Mechanized: `supersede_units_for_source` tombstones by `source_path` and keeps history (no hard delete), and since 2026-07-07 every supersede run prints an unconditional `[neutralize]` provenance echo first (`preview_supersede_for_source` + `ingest.py`): source file, active-unit count, timestamp range, tombstone tag. Reading the echo before letting a run proceed is the remaining human step.
-- Charter-only: fact expiration policy — someone has to own the actual invalidation trigger definition.
+- Charter-only: fact expiration policy — Ryan owns the deferred decision; the
+  actual invalidation trigger remains undefined until Ryan explicitly defines
+  it, and this note authorizes neither a register row nor implementation.
 - Register: `adapter-parity-scan` (live cadence trigger, 60d, 2026-07-07), `neutralize-provenance-confirm` (closed 2026-07-07 — mechanized as the unconditional pre-supersede provenance echo).
 
 ## 3. Platform / Backend Engineer
