@@ -137,8 +137,12 @@ ten-field artifact, the canonical companion-manifest hash, and the companion
 manifest itself; it must carry no production path, scratch-directory path,
 session nonce, activation ID, or stable identifier.
 The packet's absence, path-boundary failure, or hash mismatch keeps C6 at
-HOLD. This remains future design guidance, not authorization to create either
-artifact.
+HOLD. The packet must also include a `source_revision` field recording the
+exact git SHA of the generator source reviewed and a `reviewer_verdict` field
+recording the independent reviewer's PASS or FAIL; absence of either field is
+a HOLD condition. These are packet fields, not additions to the ten-field
+artifact. This remains future design guidance, not authorization to create
+either artifact.
 
 ## Freshness and expiry
 
