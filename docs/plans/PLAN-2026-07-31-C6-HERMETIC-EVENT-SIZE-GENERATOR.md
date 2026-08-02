@@ -140,6 +140,16 @@ The packet's absence, path-boundary failure, or hash mismatch keeps C6 at
 HOLD. This remains future design guidance, not authorization to create either
 artifact.
 
+## Freshness and expiry
+
+Evidence is valid only for the exact `schema_revision` and
+`encoder_revision` declared in the artifact. Any change to either revision,
+any discrepancy between the companion-manifest hash and the bound hash, or
+any inability to independently reproduce the artifact's SHA-256 immediately
+invalidates prior evidence and requires a new generator run and independent
+review. Stale or unverifiable evidence holds C6 at HOLD and must not be
+silently reused.
+
 ## Required negative controls
 
 Before review, tests must fail closed if the generator:
