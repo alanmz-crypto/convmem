@@ -200,6 +200,12 @@ Before review, tests must fail closed if the generator:
   artifact with more than the ten allowlisted fields; or
 - produces a non-deterministic result for identical declared inputs and seed.
 
+A non-deterministic result means a `sha256` differing across two independent
+runs with identical declared inputs, seed, `schema_revision`,
+`encoder_revision`, and `source_revision`. Any such replay disagreement is a
+HOLD condition and must be explicitly documented in the `reviewer_verdict`
+field before C6 evidence can be accepted.
+
 Before the run begins, the isolated scratch directory must be confirmed not
 to reside under any live data root, census path, Shadow path, ledger root, or
 repository tree. This path-boundary check is a mandatory, independently
