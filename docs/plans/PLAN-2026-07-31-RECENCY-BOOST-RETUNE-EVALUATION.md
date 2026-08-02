@@ -143,8 +143,10 @@ Accept a candidate only when all of these hold:
 3. Operational NDCG@5 improves over baseline.
 4. D1–D5 have zero unexplained blocking inversions.
 5. Regressions are below 20% and every regression has a disposition.
-6. The rationale is written before any separately authorized config change.
-7. Ryan explicitly approves the candidate and the subsequent operation.
+6. Relevance labels are authored or independently verified by a reviewer who
+   has not seen candidate weights before labeling.
+7. The rationale is written before any separately authorized config change.
+8. Ryan explicitly approves the candidate and the subsequent operation.
 
 After an authorized implementation, repeat the fixed evaluation and record a
 new `collection_count` baseline. Never reset the standing check by changing
