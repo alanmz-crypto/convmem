@@ -149,7 +149,9 @@ Before review, tests must fail closed if the generator:
   writer-census runtime paths;
 - makes a network/DNS/socket call or controls a service;
 - emits payload keys, stable IDs, production paths, activation IDs, or nonces;
-- writes outside a declared private scratch directory or writes JSONL; or
+- writes outside a declared private scratch directory;
+- emits JSONL or any output file with a `.jsonl` extension, or produces an
+  artifact with more than the ten allowlisted fields; or
 - produces a non-deterministic result for identical declared inputs and seed.
 
 Tests must also recompute the canonical hash independently and verify
