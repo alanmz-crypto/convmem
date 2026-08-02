@@ -180,7 +180,7 @@ headers are deployed, copy the snippet into live configuration, or close
 
 | Observation(s) | Query family | Authoritative source | Answer | Completeness | Freshness risk | Next action |
 |---|---|---|---|---|---|---|
-| `obs_885c236b34fd`, `obs_e1520bf6e193` | Read-only file discovery for the named guide and staging2 header precedent in `/home/lauer/WordPress/willowyhollow-practice` | Guide not found; historical `scripts/staging2-security-headers.htaccess.snippet` dated 2026-07-08 plus S2 plan/log paths | Historical precedent was found, but it is not current live verification and the named guide remains not found. | `partial` | The 2026-07-08 snippet conflicts in time/scope with current unresolved monitor observations. | Seek separately authorized current evidence after the freeze; do not copy headers or close observations. |
+| `obs_885c236b34fd`, `obs_e1520bf6e193` | Read-only file discovery for the named guide and staging2 header precedent in `/home/lauer/WordPress/willowyhollow-practice` | Guide not found; historical `scripts/staging2-security-headers.htaccess.snippet` dated 2026-07-08 plus S2 plan/log paths | Historical precedent was found, but it is not current live verification and the named guide remains not found. | `partial` | The 2026-07-08 snippet conflicts in time/scope with current unresolved monitor observations. | Seek separately authorized current evidence after the freeze; do not copy headers or close observations. A retrieval gap does not authorize access to or changes in the WordPress environment. |
 
 ## Stop conditions and escalation
 
