@@ -267,7 +267,8 @@ reviewer who did not author or operate the generator run), negative controls,
 field allowlist, canonical artifact hash, companion-manifest hash and binding,
 cross-object equality of `schema_revision`, `encoder_revision`,
 `measured_at_utc`, and `sample_count` between the ten-field artifact and the
-companion manifest (any mismatch is a HOLD condition),
+companion manifest, and equality of `source_revision` between the packet and
+the companion manifest (any mismatch is a HOLD condition),
 declared bounds plus their workload justification, deterministic replay, and
 representativeness limits. Deterministic replay means at least two independent
 runs with identical declared inputs, seed, `schema_revision`,
