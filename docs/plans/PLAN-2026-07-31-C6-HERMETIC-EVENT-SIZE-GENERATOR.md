@@ -173,7 +173,8 @@ hash verification.
 
 ## Review, rollback, and authorization gates
 
-Independent review must verify the exact source revision, negative controls,
+Independent review must verify the exact source revision (performed by a
+reviewer who did not author or operate the generator run), negative controls,
 field allowlist, canonical artifact hash, companion-manifest hash and binding,
 declared bounds plus their workload justification, deterministic replay, and
 representativeness limits. Any failure means no artifact may feed C6. A
