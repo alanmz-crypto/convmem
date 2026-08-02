@@ -41,6 +41,12 @@ For each header independently, record:
 4. Last deployment, plugin, proxy, or cache change before the first failure.
 5. Whether a prior approved decision specifies the intended final value.
 
+If no timestamped passing monitor result dated after the last known failure can
+be located within one bounded review pass, stop, record root-cause class C
+(never confirmed passing), and escalate to Ryan before any further evidence
+search or remediation step. Do not substitute historical snippets,
+practice-file contents, or inferred values for a fresh live result.
+
 Do not infer a live header from a practice file. Do not issue an external
 request, alter a monitor, or inspect a database as part of this plan.
 
