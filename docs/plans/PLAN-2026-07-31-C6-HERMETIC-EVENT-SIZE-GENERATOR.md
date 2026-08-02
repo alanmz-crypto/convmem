@@ -15,6 +15,9 @@ synthetic generator whose inputs are declared structural dimensions, not
 production payloads. The resulting artifact may contain only the ten fields
 in the readiness plan’s evidence contract. C7 remains a separate input for
 writer concurrency and opens/day; neither gate implies the other.
+A valid C7 census report does not satisfy or substitute for the C6 event-size
+evidence contract; the two evidence artifacts are structurally distinct, and
+neither authorizes the other gate.
 
 The generator must run from an isolated scratch context after the deployed
 freeze, with no network, live configuration, production Chroma read, census
