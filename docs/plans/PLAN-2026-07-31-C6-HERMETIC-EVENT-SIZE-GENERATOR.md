@@ -258,7 +258,11 @@ identically.
 
 passing generator design or implementation does not authorize merge, C6, or
 Shadow activation. Rollback is simply to discard the unapproved generator and
-artifact; no live state may need repair.
+artifact; no live state may need repair. A `reviewer_verdict` of `FAIL`
+requires the review packet to include a `disposition` field confirming the
+scratch artifact and companion manifest were deleted from the ephemeral
+directory; absence of this field after a `FAIL` verdict is itself a HOLD
+condition.
 
 ## Verdict
 
