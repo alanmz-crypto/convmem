@@ -261,7 +261,9 @@ of field presence; the absence of the field and a `FAIL` value are treated
 identically.
 
 passing generator design or implementation does not authorize merge, C6, or
-Shadow activation. Rollback is simply to discard the unapproved generator and
+Shadow activation. A `reviewer_verdict` of `PASS` confirms technical
+correctness only; it does not constitute or imply Ryan's merge authorization.
+Rollback is simply to discard the unapproved generator and
 artifact; no live state may need repair. A `reviewer_verdict` of `FAIL`
 requires the review packet to include a `disposition` field confirming the
 scratch artifact and companion manifest were deleted from the ephemeral
