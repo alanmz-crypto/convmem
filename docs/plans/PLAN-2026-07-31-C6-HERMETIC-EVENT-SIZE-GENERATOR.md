@@ -134,7 +134,8 @@ Neither may be written under the deployed checkout, any live data root,
 intended-ledger mount, census or Shadow path, or repository tree. For this
 design, the evidence review packet is the reviewer-only bundle containing the
 ten-field artifact, the canonical companion-manifest hash, and the companion
-manifest itself; it must carry no production path or scratch-directory path.
+manifest itself; it must carry no production path, scratch-directory path,
+session nonce, activation ID, or stable identifier.
 The packet's absence, path-boundary failure, or hash mismatch keeps C6 at
 HOLD. This remains future design guidance, not authorization to create either
 artifact.
