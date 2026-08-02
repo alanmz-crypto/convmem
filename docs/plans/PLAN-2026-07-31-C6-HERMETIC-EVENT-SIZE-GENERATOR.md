@@ -37,6 +37,27 @@ No bound may be inferred by reading production Chroma documents, metadata,
 stable IDs, configuration, census artifacts, or a live ledger. Synthetic
 placeholders must never be copied from production identifiers.
 
+### Boundary inputs required before a future run
+
+The companion input manifest must instantiate these boundary anchors with
+concrete numeric values or enumerated members before any future generator run.
+They are review fixtures, not authorization to create an artifact:
+
+| Dimension | Minimum | Near maximum | Maximum |
+| --- | --- | --- | --- |
+| `sample_count` | `1` | `N_max - 1` | `N_max` |
+| document length bound | `0` bytes | `L_max - 1` bytes | `L_max` bytes |
+| metadata shape | `{}` | one shape below the declared bound | declared maximum shape |
+| operation/route length | shortest declared member | one below declared maximum where length-bounded | longest declared member |
+| fixed-width placeholders | minimum legal width | one below declared width maximum | declared width maximum |
+
+The manifest must also include the selected nominal case and any malformed or
+excluded case needed to prove fail-closed validation (for example, zero or
+negative `sample_count`, an invalid timestamp, and an out-of-bound dimension).
+The reviewer must confirm that every symbolic bound (`N_max`, `L_max`, and
+other declared maxima) is replaced by a concrete value in the manifest and
+that the resulting cases remain payload-free.
+
 ## Proposed interface and pseudocode
 
 The future module should expose a pure function, with all inputs explicit:
