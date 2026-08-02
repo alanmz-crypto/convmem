@@ -158,12 +158,15 @@ a HOLD condition. The packet must also include a `reviewer_independence` field
 containing a non-empty string attesting that the reviewer neither authored nor
 operated the generator run, without stable identifiers; absence or an empty
 value forces C6 at HOLD. These are packet fields, not additions to the
-ten-field artifact. Packet-only fields (`companion_manifest_sha256`,
-`source_revision`, `reviewer_verdict`, `reviewer_independence`, and
+ten-field artifact. The packet must also include a `replay_attestation` field
+containing a non-empty string recording that at least two independent replays
+produced byte-identical `sha256`; absence or an empty value forces C6 at HOLD.
+Packet-only fields (`companion_manifest_sha256`, `source_revision`,
+`reviewer_verdict`, `reviewer_independence`, `replay_attestation`, and
 `disposition`) are never present in the JSON object from which the artifact
 `sha256` is computed; their hash scope is the review-packet binding, not the
 artifact canonical form. Unknown fields in the review-packet envelope beyond
-the five named packet-only fields and the ten-field artifact are prohibited and
+the six named packet-only fields and the ten-field artifact are prohibited and
 force C6 at HOLD. This remains future design guidance, not authorization
 to create either artifact.
 
