@@ -183,6 +183,9 @@ The companion manifest must contain exactly these required fields:
   entry for each boundary-input row named in the table: `sample_count`,
   `document_length_bound`, `metadata_shape`, `operation_route_length`, and
   `fixed_width_placeholders`; absence of any named row is a HOLD condition;
+  each justification entry should name the concrete bound value it covers
+  (matching the corresponding `declared_dimensions` key) so reviewers can
+  validate the pairing without cross-referencing a second object;
 - `boundary_exclusion_cases`: a non-empty list naming at least zero/negative
   `sample_count`, invalid UTC timestamp, out-of-bound dimension, unknown field,
   non-finite/null/fractional numeric value, payload or stable-identifier value,
