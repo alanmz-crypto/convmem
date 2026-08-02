@@ -274,7 +274,9 @@ directory; absence of this field after a `FAIL` verdict is itself a HOLD
 condition. `disposition` must be a string whose only allowed value is
 `artifacts-deleted-from-ephemeral`; any other value, an empty string, or a
 non-string type forces C6 at HOLD. When `reviewer_verdict` is `PASS`, the
-`disposition` field must be absent.
+`disposition` field must be absent. Presence of `disposition` when
+`reviewer_verdict` is `PASS`, or a `reviewer_verdict` value that is missing,
+empty, non-string, or not exactly `PASS` or `FAIL`, forces C6 at HOLD.
 
 ## Verdict
 
