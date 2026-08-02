@@ -165,6 +165,11 @@ Before review, tests must fail closed if the generator:
   artifact with more than the ten allowlisted fields; or
 - produces a non-deterministic result for identical declared inputs and seed.
 
+Before the run begins, the isolated scratch directory must be confirmed not
+to reside under any live data root, census path, Shadow path, ledger root, or
+repository tree. This path-boundary check is a mandatory, independently
+verifiable gate in the review packet; its absence is a HOLD condition.
+
 Tests must also recompute the canonical hash independently and verify
 `p50_bytes <= p95_bytes <= max_bytes` with positive integer values.
 
