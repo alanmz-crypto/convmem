@@ -259,7 +259,11 @@ Independent review must verify the exact source revision (performed by a
 reviewer who did not author or operate the generator run), negative controls,
 field allowlist, canonical artifact hash, companion-manifest hash and binding,
 declared bounds plus their workload justification, deterministic replay, and
-representativeness limits. Any failure means no artifact may feed C6. A
+representativeness limits. Deterministic replay means at least two independent
+runs with identical declared inputs, seed, `schema_revision`,
+`encoder_revision`, `source_revision`, and `measured_at_utc` producing
+byte-identical `sha256`; fewer than two runs is a HOLD condition. Any failure
+means no artifact may feed C6. A
 `reviewer_verdict` field value of `FAIL` is itself a HOLD condition independent
 of field presence; the absence of the field and a `FAIL` value are treated
 identically.
