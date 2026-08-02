@@ -27,6 +27,10 @@ All tests must use synthetic candidates and a mocked CrossEncoder. They must
 not load live Chroma, model weights, ledger data, or paths under the live data
 root.
 
+Synthetic candidate lists must use a fixed, documented ordering (for example,
+insertion order), and mocked scores must be assigned in a fixed sequence so
+diagnostic output is deterministic across runs and platforms.
+
 1. `rerank()` receives a candidate with `document=None` and raises a
    descriptive `ValueError` naming the candidate, rather than exposing an
    opaque sentence-transformers exception.
