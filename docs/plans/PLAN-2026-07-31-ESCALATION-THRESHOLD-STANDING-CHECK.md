@@ -136,7 +136,7 @@ Before any threshold or baseline change, an independent reviewer must verify:
 | 2 | Attempt files contain exactly the approved fields, if present. | Extra, missing, or payload-bearing field. |
 | 3 | Negative tests pass on the exact implementation revision. | Any failure or missing test output. |
 | 4 | The rate window is representative and UTC boundaries match. | Unexplained migration, outage, or boundary mismatch. |
-| 5 | Q1–Q3 or the rate review note records counts and completeness. | Missing, undated, or mismatched review note. |
+| 5 | Q1–Q3 and the rate review note records the UTC window, both counts, and the completeness finding. | Missing, undated, UTC-boundary-absent, count-incomplete, or mismatched review note. |
 | 6 | Register diff changes only the authorized baseline/verification fields. | `last_verified`-only edit or unrelated row changes. |
 | 7 | Ryan names the threshold and register operation after rows 1–6 pass. | No explicit authorization, regardless of prior PASSes. |
 
