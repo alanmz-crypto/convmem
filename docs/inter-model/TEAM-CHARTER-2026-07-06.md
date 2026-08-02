@@ -132,6 +132,7 @@ No arrow grants the receiving lane permission to merge, deploy, write the ledger
 
 | Phase | Owner (lane) | Must not |
 |-------|--------------|----------|
+| Authorization, deployment, runtime/config, external systems, merges, and durable conclusions | **Ryan only** | agents must not infer authorization, deploy, change live configuration, authorize external changes, merge, or approve ledger entries |
 | Architecture / execution planning | **OpenAI Codex** | implement tracked changes; merge to `main`; self-advance phase |
 | Bug discovery | **Crush** (shell + MCP read) | self-approve fixes; write `record`; merge to `main` |
 | Independent audit (when warranted) | **GitHub Copilot** | new `logs/*.md` unless Ryan asks; merge to `main`; substantial implementation Cursor can execute; infer live authorization from scope |
