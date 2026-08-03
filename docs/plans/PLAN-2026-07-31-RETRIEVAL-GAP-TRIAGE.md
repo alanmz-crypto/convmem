@@ -100,7 +100,7 @@ it:
 
 | Observation(s) | Evidence | Result | Disposition |
 |---|---|---|---|
-| `obs_67af0873f738`, `obs_a379f07d0878` | `docs/inter-model/PLAN-2026-06-29-searchable-cli-chats-HANDOFF.md`, dated 2026-06-29, names Phase 3 as Continue + Crush, verify-only. | Phase 3 identity is supported, but the finding is not a complete current-state brief. | `partial`; recheck against the newest handoff before closure. |
+| `obs_67af0873f738`, `obs_a379f07d0878` | `docs/inter-model/PLAN-2026-06-29-searchable-cli-chats-HANDOFF.md`, dated 2026-06-29, names Phase 3 as Continue + Crush, verify-only, then records its verify as complete on 2026-07-12. | This is historical completion evidence, not a current-testing-phase answer. | `partial`; require a current canonical source and a later hermetic retrieval evaluation before closure. |
 | Same pair | Frozen-checkout `convmem.py` declares `--author` and repeatable `--keyword` with a minimum of three keywords. | Canonical single-record flag shape is supported by source, but no ledger write was attempted. | `partial`; keep the exact source revision and do not run `add`. |
 | Same pair | Search result `obs_d348798e5fdd` and `BUILT-PLANS-2026-06-24-to-2026-06-29.md` say only `--type observation` was accepted, while frozen `convmem.py` help declares additional types. | Type behavior is conflicting or stale and remains unverified. | `conflicting`; resolve from read-only source/tests or Ryan after the freeze. |
 
@@ -117,9 +117,9 @@ comparison without duplicating the full schema.
 The exact-title search returned
 `docs/inter-model/PLAN-2026-06-29-searchable-cli-chats-HANDOFF.md`. Its Phase 3
 section names the work as **Continue + Crush (verify only)** and calls for
-`convmem stats` plus Continue/Crush spot-check searches. The source is dated
-2026-06-29, so it establishes the canonical phase handoff but is not proof
-that no later phase superseded it by 2026-07-31.
+`convmem stats` plus Continue/Crush spot-check searches. The same document later
+records the Phase 3 verify complete on 2026-07-12. It is therefore historical
+completion evidence, not proof of a current testing phase.
 
 The frozen source revision and a read-only `convmem add --help` invocation agree
 on the single-record command shape: `--title`, `--summary`, `--author`, and at
@@ -128,7 +128,7 @@ solution, decision, explanation, or pattern. No `add` command was run.
 
 | Observation(s) | Query family | Authoritative source | Answer | Completeness | Freshness risk | Next action |
 |---|---|---|---|---|---|---|
-| `obs_67af0873f738`, `obs_a379f07d0878` | `convmem "current testing phase CLI syntax retrieval gap coding.tooling"`; `convmem "current testing phase not surfaced by search"` | `docs/inter-model/PLAN-2026-06-29-searchable-cli-chats-HANDOFF.md` dated 2026-06-29; frozen `convmem.py`; read-only `convmem add --help` | Phase identity and CLI flag shape are independently recoverable, but phase freshness remains limited to the 2026-06-29 handoff. | `partial` | A later handoff may supersede the 2026-06-29 phase label. | Recheck the newest handoff after the freeze; do not close or write a ledger update. |
+| `obs_67af0873f738`, `obs_a379f07d0878` | `convmem "current testing phase CLI syntax retrieval gap coding.tooling"`; `convmem "current testing phase not surfaced by search"` | Historical Phase 3 handoff (verify complete 2026-07-12); frozen `convmem.py`; read-only `convmem add --help` | CLI flag shape is recoverable, but no canonical current-testing-phase source is yet named. | `partial` | A historical phase label may be retrieved as if current. | Pointer reconciliation must first name a checkable current source; then run a hermetic retrieval comparison. Do not close or write a ledger update. |
 
 ### Priority 2 result: background synthesis pointer
 
@@ -142,8 +142,9 @@ Its reconciled status states:
   while timer-driven `--propose` remains Ryan-gated.
 - Phase 2 autonomous linker: deferred; the agent-habit/value gate and manual
   `link_queue.jsonl` review remain open.
-- `obs_806985bc5697` remains the searchable pointer for those deferred linker
-  gates; no new summary is needed.
+- `SYNTHESIS-STATUS.md` records that inter-model prose indexing superseded
+  `obs_806985bc5697` as a *searchability* workaround; the remaining Phase 2
+  agent-habit/value gate is product state, not a retrieval miss.
 
 This is complete for source identity and phase-gate status, but it does not
 close the ledger observation. The companion query
@@ -156,7 +157,18 @@ defines the future test-only investigation.
 
 | Observation(s) | Query family | Authoritative source | Answer | Completeness | Freshness risk | Next action |
 |---|---|---|---|---|---|---|
-| `obs_806985bc5697` | `convmem "BUILT-PLANS-2026-06-24-to-2026-06-29 Phase 0 Phase 1 Phase 2 gates"`; `convmem "background synthesis pointer Phase 1 shipped Phase 2 deferred"` | `docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`, compiled 2026-06-29 | Canonical source and phase-gate status are complete; the pointer observation remains open and no new summary is needed. | `complete` | Later synthesis status may supersede phase status; the companion query also exposed a reranker diagnostic. | Stop; preserve the pointer and do not create a ledger or implementation update. |
+| `obs_806985bc5697` | `convmem "BUILT-PLANS-2026-06-24-to-2026-06-29 Phase 0 Phase 1 Phase 2 gates"`; `convmem "background synthesis pointer Phase 1 shipped Phase 2 deferred"` | `SYNTHESIS-STATUS.md`; `docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`, compiled 2026-06-29 | The searchability miss is superseded by inter-model prose indexing; Phase 2 remains a standing/deferred product gate. | `complete` for source identity and disposition | Later synthesis status may supersede phase status; the companion query also exposed a reranker diagnostic. | Keep the Phase 2 gate in the pointer's Standing section; do not create a ledger or implementation update. |
+
+### Kiro split review
+
+Kiro independently reviewed this disposition on 2026-08-02 and returned
+**PASS**: Current-State Pointer Reconciliation is the prerequisite routing
+remedy, but it cannot prove that `search` or `ask` retrieves the current phase
+and CLI syntax. `obs_67af0873f738` and `obs_a379f07d0878` therefore require a
+separate, later hermetic retrieval-evaluation/implementation lane. The
+background-synthesis searchability facet of `obs_806985bc5697` is superseded;
+only its standing/deferred Phase 2 product gate remains. This review makes no
+ledger-state change.
 
 ### Priority 3 result: Willowy Hollow guide and header precedent
 
