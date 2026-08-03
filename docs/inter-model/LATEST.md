@@ -1,9 +1,17 @@
 V# Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-28 (Complete-data backup correction v2 — merge + four live grants complete)
+**Updated:** 2026-08-03 (Summarizer switch + GitHub hygiene snapshot + unresolved triage map)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Unresolved queue triage (2026-08-03, read-only):** Who/What: Codex + DeepSeek Flash small-step triage of all 11 unresolved observations into actionable-now vs deferred. When: current freeze pass. Why: preserve forward motion without policy/DB/system mutations. How: see [`CODEX-2026-08-03-unresolved-triage-readonly.md`](CODEX-2026-08-03-unresolved-triage-readonly.md) for stale-warning verdict and one-action-per-item queue map (Now 7 / Deferred 4).
+
+- **Summarizer switch decision (2026-08-02):** Who/What: Crush decision packet comparing `qwen3.5:latest` vs `llama3.1:8b` for summary quality. When: freeze window; read-only safe anytime. Why: 30-row real-pair bakeoff favors qwen3.5 on structural pass, judge mean, and failure rate, but the config edit itself stays Ryan-gated. How: use the packet as the current read-only decision input; do not treat it as authorization to edit `~/.config/convmem/config.toml`.
+
+  **Closeout:** [`VERIFY-2026-08-03-summarizer-switch-decision.md`](VERIFY-2026-08-03-summarizer-switch-decision.md)
+
+- **GitHub hygiene state — read-only evidence update (2026-08-03):** Who/What: Codex freeze-safe status note on GitHub enforcement and CI/security hygiene, now including a policy-delta table. When: current freeze pass. Why: clarify ambiguity between classic branch-protection API (`404`) and active ruleset enforcement (`Protect Main`), while tracking remaining gaps (code scanning disabled, workflow hardening candidates, Dependabot scope confirmation, PR approvals currently `0`, repository-role bypass configured). How: see [`CODEX-2026-08-03-github-hygiene-readonly-state.md`](CODEX-2026-08-03-github-hygiene-readonly-state.md).
 
 - **Complete-data backup correction v2 — ROLLOUT COMPLETE (2026-07-28):** Who/What: PR #125 squash-merged to `main` as [`83b8c11`](https://github.com/alanmz-crypto/convmem/commit/83b8c11683c1295579c4fad9c8316f9f8fc3d10f); Crush (DeepSeek V4 Pro) executed four post-merge live grants on `archlinux` with Ryan approval. When: all grants complete 2026-07-28. Why: legacy-chroma profile never proved complete-data protection; v2 corrects this with explicit profile, fallback-free workflows, and hermetic proof. How: grant 1 (profile + data root in restic.env), grant 2 (first v2 snapshot), grant 3 (offsite copy + lineage), grant 4 (v2 local + external timers). Legacy `convmem-restic-ensure.timer` disabled; old external timer contained before v2 snapshot.
 
@@ -37,7 +45,7 @@ V# Latest cross-model handoff (single pointer — update at session end)
 
 - **Track 1 backup — Hybrid consistency bar LOCKED (2026-07-24):** Who/What: Ryan locked Hybrid after DeepSeek V4-Pro + Kiro dense consult; Copilot must audit exact SHA `492e6e7` with A-checklist + Five-part report card. When: still open track. Why: full-root backup merge blocked on safety bar. How: paste [`COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md`](COPILOT-2026-07-24-complete-data-backup-hybrid-bar.md). **Separate from Shadow.**
 
-- **Shadow Ledger Phase 0 Architecture HITL LOCKED (2026-07-24):** Who/What: Ryan approved Direction on the Architecture path (now superseded for Execute by merged #122). When: Architecture closed. Why: Option B boundary. How: Execute complete on `main` @ `4535107`; activation still separate.
+- **Shadow Ledger Phase 0 Architecture HITL LOCKED (2026-07-24):** Who/What: Ryan approved Direction on the Architecture path (now superseded for Execute by merged #122). When: Architecture closed. Why: Option B boundary. How: Execute complete on `main` @ `4535107`; activation remains Ryan-gated (separate grant required, not yet authorized). Boundary review: [`CURSOR-2026-07-24-shadow-ledger-phase0-execution-claude-review.md`](CURSOR-2026-07-24-shadow-ledger-phase0-execution-claude-review.md); VERIFY stub: [`../plans/VERIFY-shadow-ledger-phase0.md`](../plans/VERIFY-shadow-ledger-phase0.md).
 
 - **Shadow Ledger Gate 1b PASS (Ryan 2026-07-24):** Audit corrections accepted (#121 `0d08310`). Historical precondition for Execution Planning; Execute itself is now merged (#122 / `4535107`).
 
