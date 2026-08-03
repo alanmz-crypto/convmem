@@ -35,3 +35,14 @@ Naming: use `reference/`, never `archive/` (ingest path filter).
 4. When shipped, move that round’s planning into `reference/round-N-…/` (copy + redirect stubs).
 
 **No further rounds on this board.** New retrieval work uses P1.3 (or a new named arc), not this folder’s `planning/`.
+
+## Continuity gap: PR #32 deferral rationale (2026-08-03)
+
+The technical correction trail is present, but the rationale for deferring
+purge-drift PR #32 is not captured in an authoritative, ingestible artifact.
+This is a continuity gap, not a new retrieval round. **Ryan owns the decision
+whether that rationale should be captured.** If Ryan authorizes capture, the
+assigned drafting lane must use source evidence and label any still-unknown
+facts; no lane may reconstruct or imply the missing rationale from the
+correction trail. Until that decision and source material exist, the gap stays
+open and the board remains closed.
