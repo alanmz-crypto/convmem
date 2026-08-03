@@ -8,7 +8,7 @@
 #
 # Environment:
 #   DEEPSEEK_API_KEY       — required (or sourced from ~/.config/convmem/env.local)
-#   DEEPSEEK_MODEL         — model to use (default: deepseek-reasoner)
+#   DEEPSEEK_MODEL         — model to use (default: deepseek-v4-pro)
 #   DEEPSEEK_BASE_URL      — API base (default: https://api.deepseek.com)
 #   DEEPSEEK_SYSTEM_PROMPT — override system message
 #   DEEPSEEK_MAX_TOKENS    — max response tokens (default: 8192)
@@ -19,11 +19,11 @@
 
 set -euo pipefail
 
-MODEL="${DEEPSEEK_MODEL:-deepseek-reasoner}"
+MODEL="${DEEPSEEK_MODEL:-deepseek-v4-pro}"
 BASE_URL="${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
 MAX_TOKENS="${DEEPSEEK_MAX_TOKENS:-8192}"
 TEMPERATURE="${DEEPSEEK_TEMPERATURE:-0.2}"
-SYSTEM_PROMPT="${DEEPSEEK_SYSTEM_PROMPT:-You are DeepSeek R1 (adversarial architecture critique). Challenge assumptions, identify risks, and propose alternatives. Be specific and cite concrete failure modes.}"
+SYSTEM_PROMPT="${DEEPSEEK_SYSTEM_PROMPT:-You are DeepSeek V4 Pro (adversarial architecture critique). Challenge assumptions, identify risks, and propose alternatives. Be specific and cite concrete failure modes.}"
 
 # --- Resolve API key ---
 if [[ -z "${DEEPSEEK_API_KEY:-}" && -f "${HOME}/.config/convmem/env.local" ]]; then
@@ -47,7 +47,7 @@ else
   echo "usage: delegate-deepseek.sh <prompt-string | /path/to/file | ->" >&2
   echo "" >&2
   echo "Environment variables:" >&2
-  echo "  DEEPSEEK_MODEL          (default: deepseek-reasoner)" >&2
+  echo "  DEEPSEEK_MODEL          (default: deepseek-v4-pro)" >&2
   echo "  DEEPSEEK_SYSTEM_PROMPT  (override system message)" >&2
   echo "  DEEPSEEK_MAX_TOKENS     (default: 8192)" >&2
   echo "  DEEPSEEK_TEMPERATURE    (default: 0.2)" >&2
@@ -78,8 +78,8 @@ payload = {
     "stream": False,
 }
 
-# Reasoning models support thinking knobs
-if "reasoner" in model or "r1" in model.lower():
+# V4 Pro and reasoning models support thinking knobs
+if "v4-pro" in model or "reasoner" in model or "r1" in model.lower():
     payload["thinking"] = {"type": "enabled"}
     payload["reasoning_effort"] = "high"
 
