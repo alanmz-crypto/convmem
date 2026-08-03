@@ -1,7 +1,7 @@
 # Plan — Current-State Pointer Reconciliation
 
-**Status:** Kiro PASS (2026-08-02) — docs-only plan; awaits Ryan decisions
-where marked.
+**Status:** Kiro PASS (2026-08-02); Ryan accepted the contract decisions on
+2026-08-02. The paired post-freeze implementation remains separately gated.
 
 **Purpose:** Replace conflicting current-state discovery rules with one compact, deterministic routing contract. This plan authorizes neither a deployed-checkout change nor code, corpus, ledger, service, or archival mutation.
 
@@ -19,6 +19,27 @@ File mtime is useful diagnostic evidence, but it cannot establish authority or c
 ## Outcome
 
 Define a small manifest contract for docs/inter-model/LATEST.md that routes a new agent to the authoritative current artifact for every live lane. It must make genuinely open work visible, keep historical detail in linked artifacts, and remain compatible with a later generated view over ledger-backed evidence without requiring that generator now.
+
+## Accepted Ryan decisions (2026-08-02)
+
+Ryan confirmed the following contract choices:
+
+1. `LATEST.md` will become a compact three-section manifest: **Active now**,
+   **Waiting / gated**, and **Standing / deferred**. It has one row per live
+   lane rather than a literal three-item list.
+2. A row carries a canonical link, Next actor, a falsifiable Now/Next statement,
+   and an observable evidence-backed recheck or removal condition. No pointer
+   ID namespace or mutable ownership taxonomy is added.
+3. The reconciled pointer will be the canonical current-testing-phase source.
+   `convmem --help` and its frozen source implementation are the canonical CLI
+   syntax source; historical handoffs are not.
+4. The reconciliation must land only as a paired post-freeze change with the
+   `brief.py` mtime-authority removal and tests. Until then neither `LATEST.md`
+   nor archive placement changes.
+
+The exact current-testing-phase assertion must be selected from evidence at the
+time of the paired cutover. It must not be pre-filled from the historical
+Continue/Crush Phase 3 handoff, whose verification completed on 2026-07-12.
 
 ## Scope and boundary
 
@@ -160,10 +181,11 @@ Stop and obtain review rather than improvising if:
 
 ### Ryan
 
-1. Replace the literal three-bullet aspiration with one compact row per live lane, or retain a hard cap and explicitly choose what must be omitted?
-2. Confirm that postmortems and lessons remain in linked plan/VERIFY artifacts, not in the pointer.
-3. Resolve any disputed current, waiting, or deferred lane during migration.
-4. Authorize any later archival movement or implementation that changes shared routing/agent surfaces.
+The contract questions above are decided. The remaining Ryan decisions are:
+
+1. Resolve any disputed current, waiting, or deferred lane at cutover.
+2. Authorize the later paired implementation that changes shared routing and
+   `brief.py`; no archival movement is included in that authorization.
 
 ## Independent-review checklist
 
@@ -178,6 +200,30 @@ Stop and obtain review rather than improvising if:
 | Future proofing | Later brief.py enforcement is explicit and coupled, not implied. |
 | Retrieval | Fixed fixture queries and mtime negative controls are defined before evaluation. |
 
+## Post-freeze cutover sequence
+
+1. Re-read the candidate classification and current source artifacts after the
+   freeze; select a checkable current-testing-phase statement then, rather than
+   reusing historical phase language.
+2. Obtain Ryan's explicit implementation authorization and create a separate
+   implementation worktree/branch. The paired change is limited to
+   `docs/inter-model/LATEST.md`, the routing statements named above, `brief.py`,
+   and focused tests unless an approved review expands it.
+3. Make `brief.py` use the manifest for current-state routing. It may retain
+   file mtime only as explicitly labelled non-authoritative diagnostics; it must
+   not tell agents to read a newer file or treat a newer file as current.
+4. Replace the long pointer with the reviewed manifest in the same change.
+   Move no source files and do not archive history in this cutover.
+5. Set the CLI row or linked canonical source to `convmem --help`; validate the
+   exact current-testing-phase row against the current source evidence.
+6. Add focused structure/link/mtime-perturbation tests and run the frozen
+   retrieval fixture comparison without corpus, ranking, or configuration
+   changes.
+7. Require Kiro review of the exact diff and Ryan approval before merge. A
+   wrong or unsupported current-phase assertion, a missing canonical link, or
+   any continued mtime-authority output is a stop condition.
+
 ## Next action
 
-Kiro passed this draft with the evidence clarifications incorporated above. The next safe work is a read-only classification of the current LATEST.md rows and the cross-document routing statements. No pointer cleanup, archive movement, or code change is authorized by this plan.
+The safe planning work is now complete. Hold the actual pointer, archive, and
+`brief.py` edits until after the freeze and Ryan's paired-implementation grant.
