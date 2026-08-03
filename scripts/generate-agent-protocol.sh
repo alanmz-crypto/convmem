@@ -83,6 +83,12 @@ extract_section() {
   echo ""
   echo "Read \`docs/CODEX-DEEPSEEK-VERIFY.md\` — use \`search_fast\` + \`ask\` for sections marked DeepSeek; ask Ryan to paste shell output for Codex-only steps."
 } >> config/agent-protocol-mcp.txt
+{
+  echo ""
+  echo "## Kiro delegation (headless design review)"
+  echo ""
+  extract_section KIRO_DELEGATION
+} >> config/agent-protocol-mcp.txt
 echo "  -> config/agent-protocol-mcp.txt"
 
 # --- Compact shell-profile MCP instructions (MCP_AFTER_TIER_A only; ≤40 words) ---
@@ -308,6 +314,10 @@ FRONTMATTER
   echo "## Workflow routing (when unsure)"
   echo ""
   extract_section WORKFLOW_ROUTING
+  echo ""
+  echo "## Kiro delegation (headless design review)"
+  echo ""
+  extract_section KIRO_DELEGATION
 } >> config/copilot-agents-convmem.example.md
 echo "  -> config/copilot-agents-convmem.example.md"
 
@@ -385,6 +395,10 @@ echo "  -> config/copilot-agents-convmem.example.md"
   echo "## Verify shipped work (Codex / DeepSeek)"
   echo ""
   echo "Independent checklist: \`docs/CODEX-DEEPSEEK-VERIFY.md\` — pytest, smoke scripts, MCP spot-checks. Do not trust prior chat claims without running it."
+  echo ""
+  echo "## Kiro delegation (headless design review)"
+  echo ""
+  extract_section KIRO_DELEGATION
 } > config/copilot-instructions-convmem.example.md
 echo "  -> config/copilot-instructions-convmem.example.md"
 
@@ -467,6 +481,10 @@ echo "  -> docs/chatgpt-pack/README.md"
   echo "## Workflow routing (when unsure)"
   echo ""
   extract_section WORKFLOW_ROUTING
+  echo ""
+  echo "## Kiro delegation (headless design review)"
+  echo ""
+  extract_section KIRO_DELEGATION
 } > config/crush-rules-convmem.example.md
 echo "  -> config/crush-rules-convmem.example.md"
 

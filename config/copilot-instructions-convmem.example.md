@@ -270,3 +270,39 @@ Full cheat sheet: `docs/MODEL-WORKFLOW.md`
 ## Verify shipped work (Codex / DeepSeek)
 
 Independent checklist: `docs/CODEX-DEEPSEEK-VERIFY.md` — pytest, smoke scripts, MCP spot-checks. Do not trust prior chat claims without running it.
+
+## Kiro delegation (headless design review)
+
+
+**When you need Kiro design review / sign-off** and cannot hand off asynchronously, invoke `kiro-cli` headlessly:
+
+```bash
+kiro-cli chat --no-interactive --effort high \
+--trust-tools=fs_read,execute_bash,read_file,list_directory,grep,file_search \
+--model auto \
+"Your review prompt here"
+```
+
+**When to delegate:**
+- Architecture/plan review before Execute (charter: Kiro owns design sign-off)
+- Dense owner-decision consult (see `scripts/dense-consult-deepseek-kiro.sh` for the two-model pattern)
+- VERIFY sign-off on non-trivial scope changes
+
+**Constraints:**
+- Kiro is **non-implementing** — do not ask it to write code, tests, scripts, or config. Ask for a verdict (PASS/FAIL/DEFER) or design recommendation only.
+- Strip ANSI from output: `sed 's/\x1b\[[0-9;]*[A-Za-z]//g'`
+- Capture output to a file for downstream use: `> /tmp/kiro-review.md 2>/tmp/kiro-review.stderr`
+- If `kiro-cli` is not available (`command -v kiro-cli` fails), fall back to leaving a handoff note in `docs/inter-model/` for Ryan to route manually.
+
+**Prompt template (design review):**
+
+```text
+You are Kiro (design review / sign-off). Non-implementing: no edits, commits, or PRs.
+Review the following [architecture plan / execution plan / PR scope] and issue a verdict:
+PASS, FAIL (with specific objections), or DEFER (with what you need to decide).
+---
+<paste or reference the artifact content>
+```
+
+**Do not use for:** routine bug fixes, implementation tasks, or anything Cursor/Crush handles. Only design-level review per the HITL charter.
+
