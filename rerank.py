@@ -14,15 +14,31 @@ from sentence_transformers import CrossEncoder  # pylint: disable=import-error
 _model = None
 
 
+def _rerank_device() -> str:
+    """Determine CrossEncoder device from env or default to CPU.
+
+    GPU VRAM is reserved for Ollama LLM inference (summarizer/distill).
+    The reranker is small enough to run on CPU without meaningful latency
+    penalty, and keeping it off CUDA avoids ~2.5 GB VRAM pressure per process.
+
+    Override: CONVMEM_RERANK_DEVICE=cuda (or cpu, mps).
+    """
+    return os.environ.get("CONVMEM_RERANK_DEVICE", "cpu").strip().lower()
+
+
 def get_model(model_name: str) -> CrossEncoder:
     global _model
     if _model is None:
+        device = _rerank_device()
         with redirect_stderr(StringIO()):
             try:
-                _model = CrossEncoder(model_name, device="cuda")
+                _model = CrossEncoder(model_name, device=device)
             except (RuntimeError, Exception) as e:
-                print(f"[rerank] CUDA failed ({e}), falling back to CPU", file=sys.stderr)
-                _model = CrossEncoder(model_name, device="cpu")
+                if device != "cpu":
+                    print(f"[rerank] {device} failed ({e}), falling back to CPU", file=sys.stderr)
+                    _model = CrossEncoder(model_name, device="cpu")
+                else:
+                    raise
     return _model
 
 
