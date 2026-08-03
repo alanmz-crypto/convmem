@@ -89,6 +89,12 @@ extract_section() {
   echo ""
   extract_section KIRO_DELEGATION
 } >> config/agent-protocol-mcp.txt
+{
+  echo ""
+  echo "## DeepSeek delegation (adversarial architecture critique)"
+  echo ""
+  extract_section DEEPSEEK_DELEGATION
+} >> config/agent-protocol-mcp.txt
 echo "  -> config/agent-protocol-mcp.txt"
 
 # --- Compact shell-profile MCP instructions (MCP_AFTER_TIER_A only; ≤40 words) ---
@@ -194,6 +200,14 @@ echo "  -> config/cursor-rules-convmem.mdc.example"
   echo "## Verify shipped work (Codex / DeepSeek)"
   echo ""
   echo "Independent checklist: \`docs/CODEX-DEEPSEEK-VERIFY.md\` — pytest, smoke scripts, MCP spot-checks. Do not trust prior chat claims without running it."
+  echo ""
+  echo "## Kiro delegation (headless design review)"
+  echo ""
+  extract_section KIRO_DELEGATION
+  echo ""
+  echo "## DeepSeek delegation (adversarial architecture critique)"
+  echo ""
+  extract_section DEEPSEEK_DELEGATION
 } > config/codex-agents-convmem.example.md
 echo "  -> config/codex-agents-convmem.example.md"
 
@@ -318,6 +332,10 @@ FRONTMATTER
   echo "## Kiro delegation (headless design review)"
   echo ""
   extract_section KIRO_DELEGATION
+  echo ""
+  echo "## DeepSeek delegation (adversarial architecture critique)"
+  echo ""
+  extract_section DEEPSEEK_DELEGATION
 } >> config/copilot-agents-convmem.example.md
 echo "  -> config/copilot-agents-convmem.example.md"
 
@@ -399,6 +417,10 @@ echo "  -> config/copilot-agents-convmem.example.md"
   echo "## Kiro delegation (headless design review)"
   echo ""
   extract_section KIRO_DELEGATION
+  echo ""
+  echo "## DeepSeek delegation (adversarial architecture critique)"
+  echo ""
+  extract_section DEEPSEEK_DELEGATION
 } > config/copilot-instructions-convmem.example.md
 echo "  -> config/copilot-instructions-convmem.example.md"
 
@@ -485,6 +507,10 @@ echo "  -> docs/chatgpt-pack/README.md"
   echo "## Kiro delegation (headless design review)"
   echo ""
   extract_section KIRO_DELEGATION
+  echo ""
+  echo "## DeepSeek delegation (adversarial architecture critique)"
+  echo ""
+  extract_section DEEPSEEK_DELEGATION
 } > config/crush-rules-convmem.example.md
 echo "  -> config/crush-rules-convmem.example.md"
 
