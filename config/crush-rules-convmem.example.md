@@ -287,7 +287,7 @@ PASS, FAIL (with specific objections), or DEFER (with what you need to decide).
 ## DeepSeek delegation (adversarial architecture critique)
 
 
-**When you need DeepSeek R1 / V4 Pro adversarial critique** (architecture challenges, risk analysis, alternative proposals), invoke the delegation helper:
+**When you need DeepSeek V4 adversarial critique** (architecture challenges, risk analysis, alternative proposals), invoke the delegation helper:
 
 ```bash
 bash ~/Projects/convmem/scripts/delegate-deepseek.sh "Your prompt here"
@@ -303,9 +303,9 @@ curl -s https://api.deepseek.com/v1/chat/completions \
 -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
 -H "Content-Type: application/json" \
 -d '{
-"model": "deepseek-reasoner",
+"model": "deepseek-v4-pro",
 "messages": [
-{"role": "system", "content": "You are DeepSeek R1 (adversarial architecture critique). Challenge assumptions, identify risks, propose alternatives."},
+{"role": "system", "content": "You are DeepSeek V4 Pro (adversarial architecture critique). Challenge assumptions, identify risks, propose alternatives."},
 {"role": "user", "content": "YOUR PROMPT HERE"}
 ],
 "temperature": 0.2,
@@ -315,14 +315,14 @@ curl -s https://api.deepseek.com/v1/chat/completions \
 ```
 
 **When to delegate:**
-- Architecture critique before locking a plan (charter: DeepSeek R1 challenges architecture)
+- Architecture critique before locking a plan (charter: DeepSeek challenges architecture)
 - Risk analysis on proposed scope changes
 - Dense owner-decision consult (pair with Kiro — see `scripts/dense-consult-deepseek-kiro.sh`)
 - Second opinion on complex technical tradeoffs
 
-**Available models** (set via `DENSE_CONSULT_DEEPSEEK_MODEL` env or pass to helper):
-- `deepseek-reasoner` — R1 reasoning model (default for critique; has `reasoning_content`)
-- `deepseek-chat` — V3 fast chat (cheaper, no chain-of-thought)
+**Available models** (set via `DEEPSEEK_MODEL` env):
+- `deepseek-v4-pro` — V4 Pro deep reasoning (default; has `reasoning_content`)
+- `deepseek-v4-flash` — V4 Flash fast inference (cheaper, still reasons)
 
 **Constraints:**
 - API key lives in `~/.config/convmem/env.local` — **never** hardcode or echo it.
@@ -334,7 +334,7 @@ curl -s https://api.deepseek.com/v1/chat/completions \
 **Prompt template (architecture critique):**
 
 ```text
-You are DeepSeek R1 (adversarial architecture critique). Your job is to challenge assumptions, find risks, and propose alternatives. Be specific and cite concrete failure modes.
+You are DeepSeek V4 Pro (adversarial architecture critique). Your job is to challenge assumptions, find risks, and propose alternatives. Be specific and cite concrete failure modes.
 Review the following [architecture plan / design proposal / tradeoff analysis]:
 ---
 <paste or reference the artifact content>
