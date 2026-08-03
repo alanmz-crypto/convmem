@@ -83,12 +83,29 @@ _allow_readonly_convmem_bash() {
   return 1
 }
 
+_allow_delegation_bash() {
+  # Auto-approve Kiro CLI and DeepSeek delegation commands
+  [ -n "$cmd" ] || return 1
+  if echo "$cmd" | grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*(DEEPSEEK_MODEL=[^[:space:]]+[[:space:]]+)?bash[[:space:]]+.*/delegate-deepseek\.sh'; then
+    echo '{"decision":"allow"}'
+    return 0
+  fi
+  if echo "$cmd" | grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*kiro-cli[[:space:]]+chat'; then
+    echo '{"decision":"allow"}'
+    return 0
+  fi
+  return 1
+}
+
 if [ "$tool" = "bash" ] && [ -n "$cmd" ]; then
   if _allow_readonly_convmem_bash; then
     _record_progress
     if echo "$cmd" | grep -qE 'convmem[[:space:]]+search|convmem[[:space:]]+ask'; then
       _record_search
     fi
+    exit 0
+  fi
+  if _allow_delegation_bash; then
     exit 0
   fi
 fi
@@ -112,6 +129,9 @@ fi
 
 if [ "$tool" = "bash" ] && [ -n "$cmd" ]; then
   if _allow_readonly_convmem_bash; then
+    exit 0
+  fi
+  if _allow_delegation_bash; then
     exit 0
   fi
 fi
