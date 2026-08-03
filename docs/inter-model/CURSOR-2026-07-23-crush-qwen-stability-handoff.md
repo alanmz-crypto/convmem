@@ -152,7 +152,7 @@ rg -n 'Billing-cycle model routing|mcp.convmem.disabled|shell only' \
 |-----|--------|
 | Crush MCP re-enable | **FAIL (2026-07-23 ~22:22)** — hook-allow + MCP enabled; PreToolUse allow on `mcp_convmem_stats`; 50 s watchdog; no `tool_result`. Keep `disabled=true`. Probe: `scripts/probe-crush-mcp-tools-call.sh` |
 | Shell / cloud soaks | **PASS** — Crush DeepSeek V4 Flash bash ritual ~8 s; DashScope Qwen3.7-Max ~4.4 s; DeepSeek API OK (`reasoning_content` may be empty `content`) |
-| `llm.py` Alibaba provider for `ask`/summarize | **Not done** — `ask`/distill stay on DeepSeek V4 Flash API; summarize still local `llama3.1:8b` |
+| `llm.py` Alibaba provider for `ask`/summarize | **Not done** — `ask`/distill stay on DeepSeek V4 Flash API; summarize still local `llama3.1:8b` pending Ryan approval of the 2026-08-02 `qwen3.5:latest` switch decision packet |
 | Cursor hosting Qwen | **Impossible** on Cursor subscription — hand off to Crush when dry |
 | Swap / Kiro GPU pressure | Noted; not “fixed” — close idle Kiro if freezes return |
 | Squash-merge default follow-up | Open [#107](https://github.com/alanmz-crypto/convmem/pull/107) (squash OK) — note + this soak close-out |
@@ -168,7 +168,7 @@ rg -n 'Billing-cycle model routing|mcp.convmem.disabled|shell only' \
 1. Squash-merge [#107](https://github.com/alanmz-crypto/convmem/pull/107) (squash-merge default note + soak close-out). **Squash OK.**
 2. Habit: Cursor dry → Crush Qwen3.7-Max → rotate DeepSeek V4 Pro/Flash (shell `convmem` only).
 3. Leave Crush MCP **disabled** until `scripts/probe-crush-mcp-tools-call.sh` exits 0 **and** you choose to re-enable.
-4. Optional later: Alibaba/OpenAI-compat path in `llm.py` for `ask`/summarize.
+4. Optional later: decide whether to apply the 2026-08-02 `qwen3.5:latest` summarize switch after freeze lift; until then keep this as a read-only decision packet, not a config change.
 
 ---
 
