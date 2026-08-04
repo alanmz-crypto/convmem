@@ -5,10 +5,11 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from eval_corpus.adjudicate import verify_corpus_acceptance_hashes
 from eval_corpus.fingerprint import corpus_fingerprint_hex, package_sha256_hex
@@ -296,8 +297,19 @@ def run_shadow_build(  # pylint: disable=too-many-arguments,too-many-locals
     journal_path: Path | str | None = None,
     capture_dir: Path | str | None = None,
     require_corpus_acceptance: bool = False,
+    execution_mode: str = "fixture",
 ) -> dict[str, Any]:
     """Embed-only shadow build with injectable ``embed_fn``."""
+    if execution_mode not in {"fixture", "real"}:
+        raise ValueError(f"unknown execution_mode: {execution_mode!r}")
+    if execution_mode == "real":
+        if resume:
+            raise RuntimeError("real shadow build forbids resume")
+        if str(manifest.get("embed_mode") or "") != "ollama":
+            raise RuntimeError("real shadow build requires manifest embed_mode=ollama")
+        if Path(chroma_dir).expanduser().exists() or Path(chroma_dir).expanduser().is_symlink():
+            raise RuntimeError(f"real shadow build requires absent chroma_dir: {chroma_dir}")
+
     import chromadb
 
     if require_corpus_acceptance:
@@ -401,6 +413,7 @@ def run_shadow_build(  # pylint: disable=too-many-arguments,too-many-locals
         "unit_corpus_fingerprint": str(manifest["unit_corpus_fingerprint"]),
         "package_sha256": package_sha,
         "embed_model": str(manifest["embed_model"]),
+        "embed_mode": str(manifest.get("embed_mode") or "fixture"),
         "embed_dimensions": dims,
         "batch_size": recorded_batch,
         "unit_count": len(package),

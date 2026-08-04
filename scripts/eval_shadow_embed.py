@@ -32,6 +32,12 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
     parser.add_argument("--package", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--chroma-dir", type=Path, required=True)
+    parser.add_argument(
+        "--attempt-root",
+        type=Path,
+        default=None,
+        help="Required real-build root; fixture mode defaults to the Chroma parent.",
+    )
     parser.add_argument("--result", type=Path, default=None)
     parser.add_argument("--journal", type=Path, default=None)
     parser.add_argument("--capture-dir", type=Path, default=None)
@@ -75,6 +81,7 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
     package = args.package.expanduser()
     manifest_path = args.manifest.expanduser()
     chroma_dir = args.chroma_dir.expanduser()
+    attempt_root = (args.attempt_root or chroma_dir.parent).expanduser()
     parent = package.parent
     result = (args.result or (parent / "result.json")).expanduser()
     journal = (args.journal or (parent / "journal.jsonl")).expanduser()
@@ -92,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
         "result": result,
         "journal": journal,
         "capture_dir": capture_dir,
+        "attempt_root": attempt_root,
         "model_tag": model,
         "embed_host": args.embed_host,
         "corpus_package_sha256": package_sha256_hex(units)
@@ -103,6 +111,8 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
         "config_identity_sha256": args.config_identity_sha256,
         "enrichment_sha256": args.enrichment_sha256,
         "build_identity": args.build_identity,
+        "embed_mode": args.embed_mode,
+        "resume": args.resume,
     }
 
     try:
@@ -120,6 +130,26 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
     require_acceptance = bool(auth.require_corpus_acceptance) or bool(
         args.require_acceptance and auth.execution_mode == "fixture"
     )
+
+    if auth.execution_mode == "real":
+        if args.embed_mode != "ollama":
+            print("Refusing real build: embed_mode must be ollama", file=sys.stderr)
+            return 3
+        if args.resume:
+            print("Refusing real build: --resume is forbidden", file=sys.stderr)
+            return 3
+        if args.attempt_root is None:
+            print("Refusing real build: --attempt-root is required", file=sys.stderr)
+            return 3
+        if chroma_dir.exists() or chroma_dir.is_symlink():
+            print("Refusing real build: Chroma output must be absent", file=sys.stderr)
+            return 3
+        if str(build_manifest.get("embed_mode") or "") != "ollama":
+            print(
+                "Refusing real build: build manifest must bind embed_mode=ollama",
+                file=sys.stderr,
+            )
+            return 3
 
     server = None
     try:
@@ -164,6 +194,7 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
                 args.capture_dir.expanduser() if args.capture_dir else None
             ),
             require_corpus_acceptance=require_acceptance,
+            execution_mode=auth.execution_mode,
         )
     finally:
         if server is not None:

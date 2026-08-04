@@ -179,6 +179,7 @@ class OperationBinderAdversarialTests(unittest.TestCase):
                 "result": str(root / "result.json"),
                 "journal": str(root / "journal.jsonl"),
                 "capture_dir": str(root / "cap"),
+                "attempt_root": str(root),
             }
             for p in paths.values():
                 Path(p).parent.mkdir(parents=True, exist_ok=True)
@@ -203,6 +204,8 @@ class OperationBinderAdversarialTests(unittest.TestCase):
                     "config_identity_sha256": "f" * 64,
                     "enrichment_sha256": "e" * 64,
                     "build_identity": "test-build",
+                    "embed_mode": "ollama",
+                    "resume": False,
                 }
 
             ctx = bind_baseline_build(

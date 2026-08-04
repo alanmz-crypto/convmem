@@ -63,6 +63,7 @@ CONFIG_GENERATION_FIELDS = frozenset(
 )
 BASELINE_BUILD_FIELDS = frozenset(
     {
+        "attempt_root",
         "package",
         "manifest",
         "chroma_dir",
@@ -76,6 +77,8 @@ BASELINE_BUILD_FIELDS = frozenset(
         "config_identity_sha256",
         "enrichment_sha256",
         "build_identity",
+        "embed_mode",
+        "resume",
     }
 )
 CHALLENGER_BUILD_FIELDS = frozenset(BASELINE_BUILD_FIELDS)
@@ -106,6 +109,7 @@ PATH_FIELD_NAMES = frozenset(
         "export",
         "processed",
         "capture_dir",
+        "attempt_root",
         "chroma_dir",
         "adjudications",
         "acceptance_out",
@@ -783,6 +787,8 @@ def _bind_paths_and_scalars(
                 )
             else:
                 expected = manifest.get("model_tag")
+        elif key in {"embed_mode", "resume"}:
+            expected = manifest.get(key)
         else:
             # Per-arm identities (baseline_/challenger_ model tags, config
             # hashes) and shared hashes bind by their exact manifest key.
@@ -1015,6 +1021,11 @@ def _bind_build(
         execution_mode=mode,
         authorize_fixture=False,
     )
+    if mode == "real":
+        if str(runtime.get("embed_mode")) != "ollama":
+            raise PermissionError("real build requires embed_mode=ollama")
+        if bool(runtime.get("resume")):
+            raise PermissionError("real build requires resume=false")
     # Real builds always require corpus acceptance from auth context.
     require_acc = mode == "real"
     return AuthContext(
@@ -1219,6 +1230,9 @@ def make_real_run_manifest_for_tests(
     **overrides: Any,
 ) -> dict[str, Any]:
     """Helper to construct a real-mode manifest body (sidecar written separately)."""
+    paths = dict(paths)
+    if "chroma_dir" in paths:
+        paths.setdefault("attempt_root", str(Path(str(paths["chroma_dir"])).parent))
     body = {
         "execution_mode": "real",
         "status": "approved",
@@ -1237,6 +1251,8 @@ def make_real_run_manifest_for_tests(
         "build_identity": overrides.pop("build_identity", "test-build"),
         "compare_mode": overrides.pop("compare_mode", "subprocess"),
         "embed_host": paths.get("embed_host", "http://127.0.0.1:0"),
+        "embed_mode": overrides.pop("embed_mode", "ollama"),
+        "resume": overrides.pop("resume", False),
         **DEFAULT_UNCERTAINTY,
     }
     body.update(overrides)
