@@ -37,6 +37,7 @@ class DoctorTests(unittest.TestCase):
     @patch("doctor._check_mcp_import")
     @patch("doctor._check_chroma")
     @patch("doctor._check_ollama")
+    @patch("doctor._check_tokenrouter_key")
     @patch("doctor._check_deepseek_key")
     @patch("doctor._check_config")
     @patch("doctor.load_config")
@@ -44,6 +45,7 @@ class DoctorTests(unittest.TestCase):
         self,
         mock_load,
         mock_cfg,
+        mock_tr_key,
         mock_key,
         mock_ollama,
         mock_chroma,
@@ -62,6 +64,7 @@ class DoctorTests(unittest.TestCase):
         for mock in (
             mock_cfg,
             mock_key,
+            mock_tr_key,
             mock_ollama,
             mock_chroma,
             mock_drift,

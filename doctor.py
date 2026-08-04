@@ -66,6 +66,24 @@ def _check_deepseek_key() -> DoctorCheck:
     )
 
 
+def _resolve_tokenrouter_key() -> str:
+    """Look up TOKENROUTER_API_KEY from os.environ, env.local.d, env.local, env.systemd."""
+    from config import resolve_tokenrouter_key
+
+    return resolve_tokenrouter_key()
+
+
+def _check_tokenrouter_key() -> DoctorCheck:
+    key = _resolve_tokenrouter_key()
+    if key:
+        return DoctorCheck("tokenrouter_key", True, "TOKENROUTER_API_KEY set")
+    return DoctorCheck(
+        "tokenrouter_key",
+        False,
+        "TOKENROUTER_API_KEY not set (os.environ or ~/.config/convmem/env.local.d/tokenrouter.env or env.local or env.systemd)",
+    )
+
+
 def _check_ollama(cfg: dict) -> DoctorCheck:
     host = (cfg.get("models") or {}).get("ollama_host", "http://localhost:11434").rstrip("/")
     try:
@@ -1289,6 +1307,7 @@ def run_doctor(
         _check_dirty_main(),
         _check_unpushed_commits(),
         _check_deepseek_key(),
+        _check_tokenrouter_key(),
         _check_ollama(cfg),
         _check_chroma(cfg),
         _check_index_drift(cfg),

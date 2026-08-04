@@ -18,6 +18,8 @@ rules:
       - "kiro-cli chat*"
       - "bash */delegate-deepseek.sh*"
       - "DEEPSEEK_MODEL=* bash */delegate-deepseek.sh*"
+      - "bash */delegate-kimi.sh*"
+      - "KIMI_MODEL=* bash */delegate-kimi.sh*"
       - "head *"
       - "tail *"
       - "echo *"

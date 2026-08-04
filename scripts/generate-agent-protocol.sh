@@ -94,6 +94,10 @@ extract_section() {
   echo "## DeepSeek delegation (adversarial architecture critique)"
   echo ""
   extract_section DEEPSEEK_DELEGATION
+  echo ""
+  echo "## Kimi delegation (intensive code generation)"
+  echo ""
+  extract_section KIMI_DELEGATION
 } >> config/agent-protocol-mcp.txt
 echo "  -> config/agent-protocol-mcp.txt"
 
@@ -208,6 +212,10 @@ echo "  -> config/cursor-rules-convmem.mdc.example"
   echo "## DeepSeek delegation (adversarial architecture critique)"
   echo ""
   extract_section DEEPSEEK_DELEGATION
+  echo ""
+  echo "## Kimi delegation (intensive code generation)"
+  echo ""
+  extract_section KIMI_DELEGATION
 } > config/codex-agents-convmem.example.md
 echo "  -> config/codex-agents-convmem.example.md"
 
@@ -336,6 +344,10 @@ FRONTMATTER
   echo "## DeepSeek delegation (adversarial architecture critique)"
   echo ""
   extract_section DEEPSEEK_DELEGATION
+  echo ""
+  echo "## Kimi delegation (intensive code generation)"
+  echo ""
+  extract_section KIMI_DELEGATION
 } >> config/copilot-agents-convmem.example.md
 echo "  -> config/copilot-agents-convmem.example.md"
 
@@ -421,6 +433,10 @@ echo "  -> config/copilot-agents-convmem.example.md"
   echo "## DeepSeek delegation (adversarial architecture critique)"
   echo ""
   extract_section DEEPSEEK_DELEGATION
+  echo ""
+  echo "## Kimi delegation (intensive code generation)"
+  echo ""
+  extract_section KIMI_DELEGATION
 } > config/copilot-instructions-convmem.example.md
 echo "  -> config/copilot-instructions-convmem.example.md"
 
@@ -511,6 +527,10 @@ echo "  -> docs/chatgpt-pack/README.md"
   echo "## DeepSeek delegation (adversarial architecture critique)"
   echo ""
   extract_section DEEPSEEK_DELEGATION
+  echo ""
+  echo "## Kimi delegation (intensive code generation)"
+  echo ""
+  extract_section KIMI_DELEGATION
 } > config/crush-rules-convmem.example.md
 echo "  -> config/crush-rules-convmem.example.md"
 

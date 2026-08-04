@@ -316,3 +316,60 @@ Review the following [architecture plan / design proposal / tradeoff analysis]:
 
 **Do not use for:** routine implementation, bug fixes, or tasks owned by Cursor/Crush. Only adversarial critique and risk analysis per the HITL charter.
 
+
+## Kimi delegation (intensive code generation)
+
+
+**When you need Kimi K3 for intensive code generation or implementation critique**, delegate headlessly via the TokenRouter OpenAI-compatible API:
+
+```bash
+bash ~/Projects/convmem/scripts/delegate-kimi.sh "Your prompt here"
+```
+
+Or call the API directly with `curl` / `python3`:
+
+```bash
+# Key: ~/.config/convmem/env.local.d/tokenrouter.env (or env.local); never hardcode it
+source ~/.config/convmem/env.local.d/tokenrouter.env
+
+curl -s https://api.tokenrouter.com/v1/chat/completions \
+-H "Authorization: Bearer $TOKENROUTER_API_KEY" \
+-H "Content-Type: application/json" \
+-d '{
+"model": "moonshotai/kimi-k3-free",
+"messages": [
+{"role": "system", "content": "You are Kimi K3 (intensive code generation / implementation specialist)."},
+{"role": "user", "content": "YOUR PROMPT HERE"}
+],
+"temperature": 0.2,
+"max_tokens": 8192,
+"stream": false
+}' | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['choices'][0]['message'].get('content','') or d['choices'][0]['message'].get('reasoning_content',''))"
+```
+
+**When to delegate:**
+- Intensive code generation (charter Crush default: Kimi is the coding specialist)
+- Implementation-focused critique where DeepSeek architecture critique is too high-level
+- Git-heavy implementation plans
+- Second opinion on generated code before handing to Cursor
+
+**Available models** (set via `KIMI_MODEL` env):
+- `moonshotai/kimi-k3-free` — K3 Free (default; returns both `content` and `reasoning_content`)
+
+**Constraints:**
+- API key lives in `~/.config/convmem/env.local.d/tokenrouter.env` (or `~/.config/convmem/env.local`) as `TOKENROUTER_API_KEY` — **never** hardcode or echo it.
+- Kimi is an **advisory lane** — its output does not authorize merges, deploys, or ledger writes. Ryan decides.
+- Capture output: `> /tmp/kimi-response.md`
+- If the API is unreachable or key is missing, fall back to leaving a handoff note in `docs/inter-model/` for Ryan.
+- Token budget: keep prompts under 4K tokens; use file references over pasting entire files.
+
+**Prompt template (code generation critique):**
+
+```text
+You are Kimi K3 (intensive code generation specialist). Review the following [code / implementation plan] and produce concrete, compilable feedback or a minimal working implementation. Cite concrete failure modes and edge cases.
+---
+<paste or reference the artifact content>
+```
+
+**Do not use for:** routine Q&A, docs-only edits, or tasks Cursor/Crush handle directly. Delegation is for heavyweight generation or a second implementer opinion per the HITL charter.
+

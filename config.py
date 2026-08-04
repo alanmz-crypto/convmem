@@ -376,6 +376,20 @@ def resolve_deepseek_key() -> str:
     return ""
 
 
+def resolve_tokenrouter_key() -> str:
+    """TOKENROUTER_API_KEY from os.environ, env.local.d/tokenrouter.env, env.local, env.systemd."""
+    key = os.environ.get("TOKENROUTER_API_KEY", "").strip()
+    if key:
+        return key
+    cfg_dir = Path("~/.config/convmem").expanduser()
+    for fname in ("env.local.d/tokenrouter.env", "env.local", "env.systemd"):
+        parsed = parse_env_file(cfg_dir / fname)
+        key = parsed.get("TOKENROUTER_API_KEY", "").strip()
+        if key:
+            return key
+    return ""
+
+
 def load_config(path: Path | str = CONFIG_PATH) -> dict:
     """Read the TOML config and expand user paths in known fields."""
     path = Path(path).expanduser()
