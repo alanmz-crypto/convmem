@@ -8,17 +8,18 @@ Reranking: Step 6 (query_units only).
 from __future__ import annotations
 
 import json
-import sys
 import re
+import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from chroma_store import ChromaStore, is_superseded, open_chroma_for_read
 from chroma_readonly import collection_metadata_rows
+from chroma_store import is_superseded, open_chroma_for_read
 from config import load_config
 from domains import domain_breadcrumb, domain_matches, is_known_domain, normalize_domain
+from eval_corpus.vector_fingerprint import validate_vector, vector_fingerprint_v1
 from llm import ollama_embed
 from meta_format import when_from_meta
 from open_source import resolve_open_target
@@ -61,6 +62,13 @@ class QueryUnitTrace:
     reranked: list[dict] = field(default_factory=list)
     rank_fused: list[dict] = field(default_factory=list)
     source_trust: list[dict] = field(default_factory=list)
+    retrieval_mode: str = ""
+    vector_query_attempted: bool = False
+    fallback_used: bool = False
+    query_vector_fingerprint: str = ""
+    query_vector_dimension: int = 0
+    query_vector_finite: bool = False
+    query_vector_norm: float = 0.0
 
 
 def _unit_domain(meta: dict) -> str | None:
@@ -397,6 +405,12 @@ def query_units(
     embedding = ollama_embed(
         text, model=models["embed_model"], host=models["ollama_host"]
     )
+    vector_info = validate_vector(embedding)
+    if retrieval_trace is not None:
+        retrieval_trace.query_vector_fingerprint = vector_fingerprint_v1(embedding)
+        retrieval_trace.query_vector_dimension = int(vector_info["dimension"])
+        retrieval_trace.query_vector_finite = bool(vector_info["finite"])
+        retrieval_trace.query_vector_norm = float(vector_info["norm"])
 
     candidate_k = max(top_k, int(qcfg.get("top_k_candidates", 20) or 20))
     n_fetch = candidate_k
@@ -410,6 +424,8 @@ def query_units(
 
     ledger_extras: list[dict] = []
     try:
+        if retrieval_trace is not None:
+            retrieval_trace.vector_query_attempted = True
         store = open_chroma_for_read(chroma_path)
         try:
             results = store.query_units(embedding, n_fetch)
@@ -425,7 +441,20 @@ def query_units(
                 if (ud := _unit_domain(r.get("metadata", {}))) is not None
                 and domain_matches(ud, domain)
             ]
-    except Exception:
+        if retrieval_trace is not None:
+            retrieval_trace.retrieval_mode = "vector"
+            retrieval_trace.fallback_used = False
+    except Exception as exc:
+        if str(qcfg.get("fallback_policy") or "allow") == "forbid":
+            if retrieval_trace is not None:
+                retrieval_trace.retrieval_mode = "failed"
+                retrieval_trace.fallback_used = False
+            raise RuntimeError(
+                "vector retrieval failed and fallback_policy=forbid"
+            ) from exc
+        if retrieval_trace is not None:
+            retrieval_trace.retrieval_mode = "fallback"
+            retrieval_trace.fallback_used = True
         results = _fallback_query_rows(
             "knowledge_units",
             text,

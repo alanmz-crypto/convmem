@@ -62,6 +62,11 @@ def _arm_identity(arm: str, config_path: Path, chroma_dir: Path, embed_host: str
     cfg = _parse_toml(config_path)
     models = cfg.get("models") or {}
     index = cfg.get("index") or {}
+    query_cfg = cfg.get("query") or {}
+    if str(query_cfg.get("fallback_policy") or "") != "forbid":
+        raise ValueError(
+            f"{arm} config must bind query.fallback_policy=forbid for scoring"
+        )
     cfg_host = str(models.get("ollama_host") or "")
     if cfg_host != embed_host:
         raise ValueError(
@@ -85,7 +90,7 @@ def _arm_identity(arm: str, config_path: Path, chroma_dir: Path, embed_host: str
 
 
 def _check_fallback_config_matches_arm(fallback_config: Path, arm_config: Path) -> None:
-    """Fallback config must equal the arm config except models.ollama_host."""
+    """Fallback config may only change endpoint and explicitly allow fallback."""
     fb = _parse_toml(fallback_config)
     arm = _parse_toml(arm_config)
     fb_models = dict(fb.get("models") or {})
@@ -94,10 +99,26 @@ def _check_fallback_config_matches_arm(fallback_config: Path, arm_config: Path) 
     arm_models.pop("ollama_host", None)
     fb_rest = {k: v for k, v in fb.items() if k != "models"}
     arm_rest = {k: v for k, v in arm.items() if k != "models"}
+    fb_query = dict(fb_rest.get("query") or {})
+    arm_query = dict(arm_rest.get("query") or {})
+    if fb_query.get("fallback_policy") != "allow":
+        raise ValueError("fallback config must explicitly set query.fallback_policy=allow")
+    if arm_query.get("fallback_policy") != "forbid":
+        raise ValueError("scoring arm config must set query.fallback_policy=forbid")
+    fb_query.pop("fallback_policy", None)
+    arm_query.pop("fallback_policy", None)
+    if fb_query:
+        fb_rest["query"] = fb_query
+    else:
+        fb_rest.pop("query", None)
+    if arm_query:
+        arm_rest["query"] = arm_query
+    else:
+        arm_rest.pop("query", None)
     if fb_models != arm_models or fb_rest != arm_rest:
         raise ValueError(
             "fallback config must differ from baseline config only in "
-            "models.ollama_host"
+            "models.ollama_host and query.fallback_policy"
         )
 
 
@@ -443,11 +464,13 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
                 config_path=baseline_config,
                 query=probe_query,
                 expected_identity=baseline_expected,
+                require_vector_only=True,
             )
             challenger_probe = run_one_shot_query(
                 config_path=challenger_config,
                 query=probe_query,
                 expected_identity=challenger_expected,
+                require_vector_only=True,
             )
 
             baseline_fn = make_subprocess_query_fn(

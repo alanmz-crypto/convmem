@@ -58,6 +58,7 @@ def generate_shadow_config(
     processed_log: Path | None = None,
     units_export: Path | None = None,
     ollama_host: str | None = None,
+    fallback_policy: str = "forbid",
     r2a_grant: Any | None = None,
 ) -> tuple[Path, list[str]]:
     """Write shadow.toml under out_dir.
@@ -118,6 +119,10 @@ def generate_shadow_config(
     shadow.setdefault("eval", {})
     shadow["eval"]["rerank_mode"] = "identity"
     shadow["eval"]["retrieval_view"] = "embedding_influenced"
+    if fallback_policy not in {"forbid", "allow"}:
+        raise ValueError("fallback_policy must be forbid or allow")
+    shadow.setdefault("query", {})
+    shadow["query"]["fallback_policy"] = fallback_policy
 
     violations = config_diff_violations(live_cfg, shadow)
     path = out_dir / "shadow.toml"

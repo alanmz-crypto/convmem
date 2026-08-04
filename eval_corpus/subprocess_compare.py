@@ -14,9 +14,10 @@ import statistics
 import subprocess
 import sys
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any
 
 REPO = Path(__file__).resolve().parent.parent
 WORKER = REPO / "scripts" / "eval_query_arm_worker.py"
@@ -67,7 +68,6 @@ def verify_arm_collection_provenance(
     Raises ValueError naming the failing key. Never opens a PersistentClient.
     """
     from chroma_readonly import collection_config_metadata, collection_ids
-
     from eval_corpus.fingerprint import corpus_fingerprint_hex, package_sha256_hex
 
     package_id_list = [str(u.get("id") or "") for u in package_units]
@@ -220,6 +220,30 @@ def verify_startup_identity(
             )
 
 
+def verify_vector_only_result(result: Mapping[str, Any], *, context: str) -> None:
+    """Reject worker output that is not a complete vector retrieval record."""
+    if result.get("retrieval_mode") != "vector":
+        raise WorkerFailure(
+            f"{context}: retrieval_mode must be vector, got {result.get('retrieval_mode')!r}"
+        )
+    if result.get("vector_query_attempted") is not True:
+        raise WorkerFailure(f"{context}: vector_query_attempted must be true")
+    if result.get("fallback_used") is not False:
+        raise WorkerFailure(f"{context}: fallback_used must be false")
+    fingerprint = str(result.get("query_vector_fingerprint") or "")
+    if len(fingerprint) != 64:
+        raise WorkerFailure(f"{context}: query vector fingerprint is missing or malformed")
+    if result.get("query_vector_finite") is not True:
+        raise WorkerFailure(f"{context}: query vector is not finite")
+    try:
+        dimension = int(result.get("query_vector_dimension"))
+        norm = float(result.get("query_vector_norm"))
+    except (TypeError, ValueError) as exc:
+        raise WorkerFailure(f"{context}: query vector diagnostics are malformed") from exc
+    if dimension <= 0 or norm <= 0:
+        raise WorkerFailure(f"{context}: query vector dimension/norm is invalid")
+
+
 def run_one_shot_query(
     *,
     config_path: Path,
@@ -227,6 +251,7 @@ def run_one_shot_query(
     top_k: int = 5,
     eval_view: str = "embedding_influenced",
     expected_identity: dict[str, Any] | None = None,
+    require_vector_only: bool = False,
 ) -> dict[str, Any]:
     """Fresh subprocess; proves CONVMEM_CONFIG is loaded before imports.
 
@@ -279,6 +304,8 @@ def run_one_shot_query(
         )
     if result.get("error"):
         raise WorkerFailure(f"one-shot worker query error: {result['error']}")
+    if require_vector_only:
+        verify_vector_only_result(result, context="one-shot")
     if expected_identity:
         verify_startup_identity(startup, expected_identity, context="one-shot")
     return {
@@ -365,6 +392,7 @@ def worker_query(handle: WorkerHandle, query: str, *, top_k: int, eval_view: str
             f"latency worker {handle.arm} query failed: "
             f"type={res.get('type')!r} error={res.get('error')!r}"
         )
+    verify_vector_only_result(res, context=f"latency:{handle.arm}")
     return res
 
 
@@ -474,6 +502,7 @@ def make_subprocess_query_fn(
             top_k=top_k,
             eval_view=eval_view or "embedding_influenced",
             expected_identity=expected_identity,
+            require_vector_only=True,
         )
         hits = payload["result"].get("hits") or []
         return list(hits)

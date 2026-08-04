@@ -35,11 +35,14 @@ def _startup_banner(cfg: dict) -> dict:
     }
 
 
-def _run_query(query: str, top_k: int, eval_view: str) -> list[dict]:
+def _run_query(query: str, top_k: int, eval_view: str) -> tuple[list[dict], dict]:
     # Import only after CONVMEM_CONFIG is present so config.py picks it up.
-    from query import query_units
+    from query import QueryUnitTrace, query_units
 
-    hits = query_units(query, top_k=top_k, eval_view=eval_view)
+    trace = QueryUnitTrace()
+    hits = query_units(
+        query, top_k=top_k, eval_view=eval_view, retrieval_trace=trace
+    )
     # Normalize for JSON
     out = []
     for h in hits:
@@ -52,7 +55,15 @@ def _run_query(query: str, top_k: int, eval_view: str) -> list[dict]:
                 "score": h.get("score"),
             }
         )
-    return out
+    return out, {
+        "retrieval_mode": trace.retrieval_mode,
+        "vector_query_attempted": trace.vector_query_attempted,
+        "fallback_used": trace.fallback_used,
+        "query_vector_fingerprint": trace.query_vector_fingerprint,
+        "query_vector_dimension": trace.query_vector_dimension,
+        "query_vector_finite": trace.query_vector_finite,
+        "query_vector_norm": trace.query_vector_norm,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -91,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"type": "error", "error": "query required"}), flush=True)
             return 3
         t0 = time.perf_counter()
-        hits = _run_query(args.query, args.top_k, args.eval_view)
+        hits, evidence = _run_query(args.query, args.top_k, args.eval_view)
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         print(
             json.dumps(
@@ -100,6 +111,7 @@ def main(argv: list[str] | None = None) -> int:
                     "hits": hits,
                     "elapsed_ms": elapsed_ms,
                     "eval_view": args.eval_view,
+                    **evidence,
                 },
                 sort_keys=True,
             ),
@@ -125,10 +137,15 @@ def main(argv: list[str] | None = None) -> int:
         view = str(req.get("eval_view") or args.eval_view)
         t0 = time.perf_counter()
         try:
-            hits = _run_query(q, top_k, view)
+            hits, evidence = _run_query(q, top_k, view)
             err = None
         except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001 — surface to parent
             hits = []
+            evidence = {
+                "retrieval_mode": "failed",
+                "vector_query_attempted": False,
+                "fallback_used": False,
+            }
             err = str(exc)
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         print(
@@ -139,6 +156,7 @@ def main(argv: list[str] | None = None) -> int:
                     "elapsed_ms": elapsed_ms,
                     "eval_view": view,
                     "error": err,
+                    **evidence,
                 },
                 sort_keys=True,
             ),
