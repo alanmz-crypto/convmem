@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Callable
 from urllib.request import Request, urlopen
 
 EmbedFn = Callable[[str], list[float]]
@@ -20,6 +20,7 @@ def fake_embed_fn(dimensions: int) -> EmbedFn:
             vals.append((digest[i % len(digest)] / 255.0) * 0.5 + (i * 0.0001))
         return vals
 
+    _embed.__eval_adapter__ = "fake"  # type: ignore[attr-defined]
     return _embed
 
 
@@ -40,6 +41,7 @@ def http_embed_fn(host: str, model: str, dimensions: int) -> EmbedFn:
             )
         return [float(x) for x in emb]
 
+    _embed.__eval_adapter__ = "http-fake"  # type: ignore[attr-defined]
     return _embed
 
 
@@ -51,6 +53,7 @@ def ollama_embed_fn(host: str, model: str) -> EmbedFn:
 
         return list(ollama_embed(text, model=model, host=host))
 
+    _embed.__eval_adapter__ = "ollama"  # type: ignore[attr-defined]
     return _embed
 
 

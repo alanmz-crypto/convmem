@@ -195,6 +195,7 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
             ),
             require_corpus_acceptance=require_acceptance,
             execution_mode=auth.execution_mode,
+            embed_mode=args.embed_mode,
         )
     finally:
         if server is not None:
