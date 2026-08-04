@@ -1,0 +1,14 @@
+ M docs/inter-model/CODEX-2026-08-03-github-hygiene-readonly-state.md
+ M docs/inter-model/CODEX-2026-08-03-unresolved-triage-readonly.md
+ M docs/inter-model/LATEST.md
+ M docs/plans/EXECUTION-shadow-phase0-activation-corrective.md
+?? .vscode/settings.json
+?? complete-data-restore-reports/restore-0493666b6c6b.json
+?? complete-data-restore-reports/restore-0493666b6c6b.md
+?? complete-data-restore-reports/restore-3d7968435dab.json
+?? complete-data-restore-reports/restore-3d7968435dab.md
+?? docs/inter-model/C5-ACTIVATION-HANDOFF-2026-07-29.md
+?? docs/inter-model/CODEX-2026-08-02-summarizer-switch-decision.md
+?? docs/inter-model/CRUSH-2026-08-02-summarizer-bakeoff-chroma-assessment.md
+?? docs/inter-model/PYLINT-BRIEF-FOR-QWEN-2026-07-25.md
+?? docs/inter-model/STATUS.md

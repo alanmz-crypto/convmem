@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "receipt_type": "embedding_eval_gate1_prepatch_state",
+  "receipt_id": "prepatch-2026-08-04T185912Z",
+  "captured_at_utc": "2026-08-04T18:59:12Z",
+  "purpose": "Baseline captured before corrective source changes and before durable authorization-evidence materialization.",
+  "approved_plan": {
+    "repo_path": "docs/plans/EXECUTION-embedding-model-eval-gate1-corrective.md",
+    "size_bytes": 26867,
+    "sha256": "39849369957cb77e9513c5affa82706ae13042cf48e8ca781b6534c7087a0aa0",
+    "plan_commit_git_oid": "2159ec4dd9b78b5b18dfa04f6d8e435979b4b129"
+  },
+  "implementation_worktree": {
+    "path": "/home/lauer/.local/share/convmem/worktrees/fix-2026-08-04-embedding-eval-gate1-hardening",
+    "branch": "fix/2026-08-04-embedding-eval-gate1-hardening",
+    "git_oid": "2159ec4dd9b78b5b18dfa04f6d8e435979b4b129",
+    "porcelain_v1_untracked_all_count": 0,
+    "porcelain_v1_untracked_all_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ignored_inventory_count": 1,
+    "ignored_inventory_sha256": "df884fd425cf8a6b433466589eccd63c4e4017336684b2415f1ba4cae265d190"
+  },
+  "shared_worktree": {
+    "path": "/home/lauer/Projects/convmem",
+    "branch": "feat/2026-08-04-kimi-delegation",
+    "git_oid": "da805fe31c85259f830386bb95e3a7cddff0bd93",
+    "porcelain_v1_untracked_all_count": 14,
+    "porcelain_v1_untracked_all_path": "docs/plans/evidence/embedding-eval-gate1-hardening/prepatch/shared-worktree-status.porcelain",
+    "porcelain_v1_untracked_all_sha256": "86691f3ab4cfb47c904fc1194e2232ae81fc32272884fbc110766e5740760cbd",
+    "ignored_inventory_count": 38,
+    "ignored_inventory_path": "docs/plans/evidence/embedding-eval-gate1-hardening/prepatch/shared-worktree-ignored.porcelain",
+    "ignored_inventory_sha256": "7406fa90eb9394d0bb3ce08ad3171e4c8c6267abce049d8ccf882ee9236688f2",
+    "preservation_requirement": "Pre-existing shared-worktree changes are unrelated and must remain untouched."
+  },
+  "known_unrelated_state": {
+    "doctor_failure": "ledger_documents: census_revision_mismatch: runtime revision differs from census",
+    "session_indexing_failure": "WriterCensusRefused: census_revision_mismatch: runtime revision differs from census",
+    "disposition": "Acknowledged as pre-existing; not repaired or mutated in this implementation lane."
+  }
+}
+

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "receipt_type": "embedding_eval_gate1_kiro_review_binding",
+  "receipt_id": "kiro-review-binding-2026-08-04T185912Z",
+  "review": {
+    "reviewer": "Kiro design-review lane",
+    "verdict": "PASS",
+    "durable_path": "docs/plans/evidence/embedding-eval-gate1-hardening/prepatch/kiro-incorporation-review-2159ec4.md",
+    "source_temp_path": "/tmp/kiro-embedding-eval-plan-review-2159ec4-clean.md",
+    "size_bytes": 11121,
+    "sha256": "2ab2f98e1b25cd133d117abe88dff443c6902f0909ff8a9fcf102a6007c313ad",
+    "byte_identity_verified_against_source_temp_copy": true
+  },
+  "approved_plan": {
+    "repo_path": "docs/plans/EXECUTION-embedding-model-eval-gate1-corrective.md",
+    "size_bytes": 26867,
+    "sha256": "39849369957cb77e9513c5affa82706ae13042cf48e8ca781b6534c7087a0aa0",
+    "plan_commit_git_oid": "2159ec4dd9b78b5b18dfa04f6d8e435979b4b129"
+  },
+  "implementation_branch": {
+    "name": "fix/2026-08-04-embedding-eval-gate1-hardening",
+    "prepatch_git_oid": "2159ec4dd9b78b5b18dfa04f6d8e435979b4b129"
+  },
+  "prepatch_state_receipt": {
+    "path": "docs/plans/evidence/embedding-eval-gate1-hardening/prepatch/prepatch-state-receipt.json",
+    "sha256": "2a1efc45260c530fb7ab30a0e80ec62dd5ebf5dfde89a1d1e569571b57389804"
+  },
+  "fail_closed_rule": "Before the first corrective source-code modification, verification must reject a missing, altered, or identity-mismatched Kiro review, plan, branch, or prepatch receipt."
+}
+
