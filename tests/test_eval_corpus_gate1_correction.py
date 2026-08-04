@@ -408,6 +408,7 @@ class SubprocessIsolationAndFallbackTests(unittest.TestCase):
                     chroma_dir=chroma,
                     embed_model="fake-embed",
                     ollama_host=shadow_url,
+                    fallback_policy="allow",
                 )
                 self.assertEqual(violations, [])
                 before_canary = canary_state.snapshot_count()
@@ -419,6 +420,9 @@ class SubprocessIsolationAndFallbackTests(unittest.TestCase):
                     eval_view="embedding_influenced",
                 )
                 self.assertEqual(payload["returncode"], 0, payload.get("stderr"))
+                self.assertEqual(payload["result"]["retrieval_mode"], "vector")
+                self.assertTrue(payload["result"]["vector_query_attempted"])
+                self.assertFalse(payload["result"]["fallback_used"])
                 startup = payload["startup"]
                 self.assertEqual(startup["embed_host"], shadow_url)
                 self.assertEqual(
@@ -705,6 +709,7 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                     chroma_dir=arms["baseline"][0],
                     embed_model="fake-embed",
                     ollama_host=wrong_url,
+                    fallback_policy="allow",
                 )
                 self.assertEqual(fb_violations, [])
 
