@@ -15,6 +15,10 @@ from eval_corpus.adjudicate import verify_corpus_acceptance_hashes
 from eval_corpus.fingerprint import corpus_fingerprint_hex, package_sha256_hex
 from eval_corpus.io_atomic import atomic_write_json, sha256_file
 from eval_corpus.reconstruct import normalized_shadow_metadata
+from eval_corpus.vector_fingerprint import (
+    matrix_fingerprint_v1,
+    validate_vector,
+)
 
 EmbedFn = Callable[[str], list[float]]
 
@@ -298,6 +302,7 @@ def run_shadow_build(  # pylint: disable=too-many-arguments,too-many-locals
     capture_dir: Path | str | None = None,
     require_corpus_acceptance: bool = False,
     execution_mode: str = "fixture",
+    embed_mode: str | None = None,
 ) -> dict[str, Any]:
     """Embed-only shadow build with injectable ``embed_fn``."""
     if execution_mode not in {"fixture", "real"}:
@@ -309,6 +314,10 @@ def run_shadow_build(  # pylint: disable=too-many-arguments,too-many-locals
             raise RuntimeError("real shadow build requires manifest embed_mode=ollama")
         if Path(chroma_dir).expanduser().exists() or Path(chroma_dir).expanduser().is_symlink():
             raise RuntimeError(f"real shadow build requires absent chroma_dir: {chroma_dir}")
+        if embed_mode != "ollama":
+            raise RuntimeError("real shadow build requires an Ollama adapter")
+        if getattr(embed_fn, "__eval_adapter__", None) != "ollama":
+            raise RuntimeError("real shadow build rejects injected embedding callables")
 
     import chromadb
 
@@ -387,11 +396,7 @@ def run_shadow_build(  # pylint: disable=too-many-arguments,too-many-locals
             unit = package[uid]
             doc = str(unit["document"])
             meta = chroma_safe_metadata(normalized_shadow_metadata(unit))
-            emb = embed_fn(doc)
-            if len(emb) != dims:
-                raise ValueError(
-                    f"embed_fn returned dim {len(emb)} for id {uid}; expected {dims}"
-                )
+            emb = validate_vector(embed_fn(doc), expected_dimension=dims)["values"]
             docs.append(doc)
             metas.append(meta)
             embeddings.append(emb)
@@ -405,6 +410,16 @@ def run_shadow_build(  # pylint: disable=too-many-arguments,too-many-locals
     final_ids = set(_read_existing_rows(col))
     assert_complete_id_set(set(package), final_ids)
 
+    stored_matrix = col.get(include=["embeddings"])
+    stored_ids = [str(uid) for uid in (stored_matrix.get("ids") or [])]
+    stored_vectors_raw = stored_matrix.get("embeddings")
+    stored_vectors = [] if stored_vectors_raw is None else list(stored_vectors_raw)
+    if len(stored_ids) != len(package) or len(stored_vectors) != len(package):
+        raise RuntimeError("stored vector readback is incomplete")
+    readback_matrix_fingerprint = matrix_fingerprint_v1(
+        zip(stored_ids, stored_vectors)
+    )
+
     elapsed = max(time.perf_counter() - t0, 1e-9)
     units_per_sec = len(package) / elapsed
     result = {
@@ -414,6 +429,8 @@ def run_shadow_build(  # pylint: disable=too-many-arguments,too-many-locals
         "package_sha256": package_sha,
         "embed_model": str(manifest["embed_model"]),
         "embed_mode": str(manifest.get("embed_mode") or "fixture"),
+        "embedding_matrix_fingerprint": readback_matrix_fingerprint,
+        "embedding_matrix_fingerprint_scope": "stored_float32_readback",
         "embed_dimensions": dims,
         "batch_size": recorded_batch,
         "unit_count": len(package),
