@@ -179,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 print(f"Refusing model_execution: {exc}", file=sys.stderr)
                 return 4
-            embed_fn = ollama_embed_fn(args.embed_host, model)
+            embed_fn = ollama_embed_fn(args.embed_host, model, dimensions=dims)
 
         result_doc = run_shadow_build(
             units=units,

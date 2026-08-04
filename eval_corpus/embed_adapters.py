@@ -45,13 +45,20 @@ def http_embed_fn(host: str, model: str, dimensions: int) -> EmbedFn:
     return _embed
 
 
-def ollama_embed_fn(host: str, model: str) -> EmbedFn:
+def ollama_embed_fn(host: str, model: str, dimensions: int = 8) -> EmbedFn:
     """Production Ollama adapter — Gate 1 tests must not invoke a live host."""
 
-    def _embed(text: str) -> list[float]:
-        from llm import ollama_embed
+    from eval_corpus.ollama_identity import OllamaEmbedClient
 
-        return list(ollama_embed(text, model=model, host=host))
+    client = OllamaEmbedClient(host)
+
+    def _embed(text: str) -> list[float]:
+        vector, _diagnostics = client.embed(
+            text,
+            model_tag=model,
+            dimensions=dimensions,
+        )
+        return vector
 
     _embed.__eval_adapter__ = "ollama"  # type: ignore[attr-defined]
     return _embed
