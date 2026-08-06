@@ -69,6 +69,7 @@ class QueryUnitTrace:
     query_vector_dimension: int = 0
     query_vector_finite: bool = False
     query_vector_norm: float = 0.0
+    embedding_request_diagnostics: dict = field(default_factory=dict)
 
 
 def _unit_domain(meta: dict) -> str | None:
@@ -402,15 +403,33 @@ def query_units(
     # embedding_influenced keeps ranking stages but disables ledger-priority.
     skip_ledger_priority = view == "embedding_influenced"
 
-    embedding = ollama_embed(
-        text, model=models["embed_model"], host=models["ollama_host"]
-    )
+    eval_cfg = cfg.get("eval") or {}
+    request_contract = str(eval_cfg.get("embedding_request_contract") or "legacy_embeddings")
+    if request_contract == "ollama.embed.v1":
+        from eval_corpus.ollama_identity import OllamaEmbedClient
+
+        dimensions = int(eval_cfg.get("embedding_dimensions") or 0)
+        client = OllamaEmbedClient(str(models["ollama_host"]))
+        embedding, request_diagnostics = client.embed(
+            text,
+            model_tag=str(models["embed_model"]),
+            dimensions=dimensions,
+            truncate=False,
+            keep_alive=str(eval_cfg.get("embedding_keep_alive") or "10m"),
+            options=dict(eval_cfg.get("embedding_options") or {}),
+        )
+    else:
+        embedding = ollama_embed(
+            text, model=models["embed_model"], host=models["ollama_host"]
+        )
+        request_diagnostics = {"request_schema_version": "legacy_embeddings"}
     vector_info = validate_vector(embedding)
     if retrieval_trace is not None:
         retrieval_trace.query_vector_fingerprint = vector_fingerprint_v1(embedding)
         retrieval_trace.query_vector_dimension = int(vector_info["dimension"])
         retrieval_trace.query_vector_finite = bool(vector_info["finite"])
         retrieval_trace.query_vector_norm = float(vector_info["norm"])
+        retrieval_trace.embedding_request_diagnostics = dict(request_diagnostics)
 
     candidate_k = max(top_k, int(qcfg.get("top_k_candidates", 20) or 20))
     n_fetch = candidate_k

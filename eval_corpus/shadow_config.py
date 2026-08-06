@@ -59,6 +59,8 @@ def generate_shadow_config(
     units_export: Path | None = None,
     ollama_host: str | None = None,
     fallback_policy: str = "forbid",
+    embedding_request_contract: str = "legacy_embeddings",
+    embedding_dimensions: int | None = None,
     r2a_grant: Any | None = None,
 ) -> tuple[Path, list[str]]:
     """Write shadow.toml under out_dir.
@@ -123,6 +125,13 @@ def generate_shadow_config(
         raise ValueError("fallback_policy must be forbid or allow")
     shadow.setdefault("query", {})
     shadow["query"]["fallback_policy"] = fallback_policy
+    if embedding_request_contract not in {"legacy_embeddings", "ollama.embed.v1"}:
+        raise ValueError("unsupported embedding_request_contract")
+    shadow["eval"]["embedding_request_contract"] = embedding_request_contract
+    if embedding_dimensions is not None:
+        if int(embedding_dimensions) <= 0:
+            raise ValueError("embedding_dimensions must be positive")
+        shadow["eval"]["embedding_dimensions"] = int(embedding_dimensions)
 
     violations = config_diff_violations(live_cfg, shadow)
     path = out_dir / "shadow.toml"
