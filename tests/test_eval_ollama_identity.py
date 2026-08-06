@@ -14,14 +14,20 @@ from eval_corpus.ollama_identity import (
 
 
 class _Response:
-    def __init__(self, payload: dict[str, Any]):
+    def __init__(self, payload: dict[str, Any], *, status_code: int = 200):
         self.payload = payload
+        self.status_code = status_code
 
     def raise_for_status(self):
         return None
 
     def json(self):
         return self.payload
+
+
+class _InvalidJsonResponse(_Response):
+    def json(self):
+        raise ValueError("invalid json")
 
 
 class _Session:
@@ -101,3 +107,74 @@ def test_missing_digest_is_rejected(monkeypatch):
     client = OllamaEmbedClient("http://127.0.0.1:11434")
     with pytest.raises(OllamaIdentityError, match="no local digest"):
         client.resolve_model("test:latest")
+
+
+def test_wrong_response_dimension_is_rejected(monkeypatch):
+    session = _Session()
+    monkeypatch.setattr("requests.Session", lambda: session)
+    original = session.request
+
+    def wrong_dimension(method, url, **kwargs):
+        response = original(method, url, **kwargs)
+        if url.endswith("/api/embed"):
+            return _Response({"embeddings": [[1.0, 0.0, 0.0]]})
+        return response
+
+    session.request = wrong_dimension
+    client = OllamaEmbedClient("http://127.0.0.1:11434")
+    with pytest.raises(OllamaIdentityError, match="dimension"):
+        client.embed("query", model_tag="test:latest", dimensions=2)
+    assert all(not url.endswith("/api/embeddings") for _, url, _ in session.calls)
+
+
+@pytest.mark.parametrize(
+    "embeddings, message",
+    [
+        ([[[1.0, 0.0]]], "non-numeric"),
+        ([[]], "dimension"),
+        ([["not-a-number"]], "non-numeric"),
+    ],
+)
+def test_malformed_embedding_values_are_identity_failures(monkeypatch, embeddings, message):
+    session = _Session()
+    monkeypatch.setattr("requests.Session", lambda: session)
+    original = session.request
+
+    def malformed(method, url, **kwargs):
+        response = original(method, url, **kwargs)
+        if url.endswith("/api/embed"):
+            return _Response({"embeddings": embeddings})
+        return response
+
+    session.request = malformed
+    client = OllamaEmbedClient("http://127.0.0.1:11434")
+    with pytest.raises(OllamaIdentityError, match=message) as error:
+        client.embed("query", model_tag="test:latest", dimensions=1)
+    assert "model='test:latest'" in str(error.value)
+    assert "endpoint=/api/embed" in str(error.value)
+    assert "expected_dimension=1" in str(error.value)
+
+
+def test_invalid_json_is_an_identity_failure_with_endpoint_context(monkeypatch):
+    session = _Session()
+    monkeypatch.setattr("requests.Session", lambda: session)
+    original = session.request
+
+    def invalid_json(method, url, **kwargs):
+        response = original(method, url, **kwargs)
+        if url.endswith("/api/embed"):
+            return _InvalidJsonResponse({}, status_code=200)
+        return response
+
+    session.request = invalid_json
+    client = OllamaEmbedClient("http://127.0.0.1:11434")
+    with pytest.raises(OllamaIdentityError, match="valid JSON") as error:
+        client.embed("query", model_tag="test:latest", dimensions=2)
+    assert "model='test:latest'" in str(error.value)
+    assert "endpoint=/api/embed" in str(error.value)
+    assert "expected_dimension=2" in str(error.value)
+
+
+def test_legacy_endpoint_is_rejected_without_fallback():
+    with pytest.raises(OllamaIdentityError, match="only the approved /api/embed"):
+        OllamaEmbedClient("http://127.0.0.1:11434", endpoint_path="/api/embeddings")

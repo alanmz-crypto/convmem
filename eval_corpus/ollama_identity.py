@@ -14,7 +14,11 @@ from urllib.parse import urlparse
 
 import requests
 
-from eval_corpus.vector_fingerprint import validate_vector, vector_fingerprint_v1
+from eval_corpus.vector_fingerprint import (
+    VectorIntegrityError,
+    validate_vector,
+    vector_fingerprint_v1,
+)
 
 
 class OllamaIdentityError(RuntimeError):
@@ -58,16 +62,34 @@ class OllamaEmbedClient:
         self.session.trust_env = False
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Mapping[str, Any]:
-        response = self.session.request(
-            method,
-            f"{self.host}{path}",
-            timeout=self.timeout_seconds,
-            **kwargs,
-        )
-        response.raise_for_status()
-        payload = response.json()
+        url = f"{self.host}{path}"
+        try:
+            response = self.session.request(
+                method,
+                url,
+                timeout=self.timeout_seconds,
+                **kwargs,
+            )
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            status = getattr(locals().get("response"), "status_code", "unknown")
+            raise OllamaIdentityError(
+                f"Ollama request failed method={method} endpoint={path} "
+                f"status={status}: {exc}"
+            ) from exc
+        try:
+            payload = response.json()
+        except (TypeError, ValueError) as exc:
+            status = getattr(response, "status_code", "unknown")
+            raise OllamaIdentityError(
+                f"Ollama response was not valid JSON method={method} "
+                f"endpoint={path} status={status}"
+            ) from exc
         if not isinstance(payload, Mapping):
-            raise OllamaIdentityError(f"Ollama {path} response must be an object")
+            status = getattr(response, "status_code", "unknown")
+            raise OllamaIdentityError(
+                f"Ollama response must be an object endpoint={path} status={status}"
+            )
         return payload
 
     def list_models(self) -> list[dict[str, Any]]:
@@ -128,14 +150,35 @@ class OllamaEmbedClient:
             "keep_alive": str(keep_alive),
             "options": dict(options or {}),
         }
-        payload = self._request("POST", DEFAULT_ENDPOINT_PATH, json=request_body)
+        try:
+            payload = self._request("POST", DEFAULT_ENDPOINT_PATH, json=request_body)
+        except OllamaIdentityError as exc:
+            raise OllamaIdentityError(
+                f"Ollama embed failed model={model_tag!r} "
+                f"endpoint={DEFAULT_ENDPOINT_PATH} expected_dimension={dimensions}: {exc}"
+            ) from exc
         embeddings = payload.get("embeddings")
         if not isinstance(embeddings, list) or len(embeddings) != 1:
-            raise OllamaIdentityError("Ollama /api/embed must return one embedding")
+            raise OllamaIdentityError(
+                f"Ollama embed response invalid model={model_tag!r} "
+                f"endpoint={DEFAULT_ENDPOINT_PATH} expected_dimension={dimensions}: "
+                "must return one embedding"
+            )
         vector = embeddings[0]
         if not isinstance(vector, Sequence) or isinstance(vector, (str, bytes)):
-            raise OllamaIdentityError("Ollama embedding must be a numeric sequence")
-        diagnostics = validate_vector(vector, expected_dimension=int(dimensions))
+            raise OllamaIdentityError(
+                f"Ollama embed response invalid model={model_tag!r} "
+                f"endpoint={DEFAULT_ENDPOINT_PATH} expected_dimension={dimensions}: "
+                "embedding must be a numeric sequence"
+            )
+        try:
+            diagnostics = validate_vector(vector, expected_dimension=int(dimensions))
+            fingerprint = vector_fingerprint_v1(vector)
+        except VectorIntegrityError as exc:
+            raise OllamaIdentityError(
+                f"Ollama embed response invalid model={model_tag!r} "
+                f"endpoint={DEFAULT_ENDPOINT_PATH} expected_dimension={dimensions}: {exc}"
+            ) from exc
         return list(diagnostics["values"]), {
             "request_schema_version": REQUEST_SCHEMA_VERSION,
             "endpoint_path": DEFAULT_ENDPOINT_PATH,
@@ -143,7 +186,7 @@ class OllamaEmbedClient:
             "dimension": diagnostics["dimension"],
             "finite": diagnostics["finite"],
             "norm": diagnostics["norm"],
-            "vector_fingerprint": vector_fingerprint_v1(vector),
+            "vector_fingerprint": fingerprint,
             "load_duration": payload.get("load_duration"),
             "total_duration": payload.get("total_duration"),
             "prompt_eval_count": payload.get("prompt_eval_count"),
