@@ -39,3 +39,6 @@ def test_query_units_uses_ollama_embed_v1_contract():
     client.embed.assert_called_once()
     assert client.embed.call_args.kwargs["dimensions"] == 2
     assert trace.embedding_request_diagnostics["endpoint_path"] == "/api/embed"
+    assert trace.embedding_request_diagnostics["effective_contract"] == "ollama.embed.v1"
+    assert trace.embedding_request_diagnostics["effective_dimensions"] == 2
+    assert trace.embedding_request_diagnostics["fallback_policy"] == "forbid"

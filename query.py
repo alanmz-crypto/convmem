@@ -423,6 +423,12 @@ def query_units(
             text, model=models["embed_model"], host=models["ollama_host"]
         )
         request_diagnostics = {"request_schema_version": "legacy_embeddings"}
+    request_diagnostics = {
+        **request_diagnostics,
+        "effective_contract": request_contract,
+        "effective_dimensions": len(embedding),
+        "fallback_policy": str(qcfg.get("fallback_policy") or "allow"),
+    }
     vector_info = validate_vector(embedding)
     if retrieval_trace is not None:
         retrieval_trace.query_vector_fingerprint = vector_fingerprint_v1(embedding)

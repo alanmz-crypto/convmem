@@ -42,7 +42,12 @@ def validate_vector(
     require_nonzero_norm: bool = True,
 ) -> dict[str, Any]:
     """Validate and describe the actual float32 vector representation."""
-    values = [canonical_float32(float(value)) for value in vector]
+    values: list[float] = []
+    for value in vector:
+        try:
+            values.append(canonical_float32(float(value)))
+        except (TypeError, ValueError) as exc:
+            raise VectorIntegrityError(f"vector contains non-numeric value: {value!r}") from exc
     if expected_dimension is not None and len(values) != int(expected_dimension):
         raise VectorIntegrityError(
             f"vector dimension {len(values)} != expected {expected_dimension}"
