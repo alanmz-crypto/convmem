@@ -16,6 +16,8 @@ SHADOW_CONFIG_ALLOWLIST = frozenset(
         ("eval", "rerank_mode"),
         ("eval", "retrieval_view"),
         ("query", "fallback_policy"),
+        ("eval", "embedding_request_contract"),
+        ("eval", "embedding_dimensions"),
     }
 )
 
