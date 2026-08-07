@@ -309,4 +309,40 @@ def clone_chroma_root(
     }
 
 
-__all__ = ["CLONE_SCHEMA_VERSION", "ChromaCloneError", "clone_chroma_root"]
+def materialize_authorized_chroma_clone(
+    source: Path | str,
+    destination: Path | str,
+    *,
+    approved_source_root: Path | str,
+    approved_destination_parent: Path | str,
+    authorize_fixture: bool,
+    run_manifest_path: Path | None,
+    runtime: dict[str, Any],
+) -> dict[str, Any]:
+    """Consume the query-clone authorization and materialize its exact root."""
+    from eval_corpus.run_manifest import bind_query_clone
+
+    bind_query_clone(
+        authorize_fixture=authorize_fixture,
+        run_manifest_path=run_manifest_path,
+        runtime=runtime,
+    )
+    receipt = clone_chroma_root(
+        source,
+        destination,
+        approved_source_root=approved_source_root,
+        approved_destination_parent=approved_destination_parent,
+    )
+    if receipt["source_content_fingerprint"] != runtime["source_content_fingerprint"]:
+        raise ChromaCloneError(
+            "authoritative Chroma content fingerprint does not match the approved manifest"
+        )
+    return receipt
+
+
+__all__ = [
+    "CLONE_SCHEMA_VERSION",
+    "ChromaCloneError",
+    "clone_chroma_root",
+    "materialize_authorized_chroma_clone",
+]

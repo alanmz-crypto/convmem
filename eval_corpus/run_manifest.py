@@ -96,6 +96,9 @@ BASELINE_BUILD_FIELDS = frozenset(
     }
 )
 CHALLENGER_BUILD_FIELDS = frozenset(BASELINE_BUILD_FIELDS)
+QUERY_CLONE_FIELDS = frozenset(
+    {"source_chroma", "clone_root", "clone_parent", "source_content_fingerprint"}
+)
 COMPARE_FIELDS = frozenset(
     {
         "compare_mode",
@@ -141,6 +144,9 @@ PATH_FIELD_NAMES = frozenset(
         "challenger_chroma",
         "baseline_config",
         "challenger_config",
+        "source_chroma",
+        "clone_root",
+        "clone_parent",
     }
 )
 
@@ -168,6 +174,7 @@ R2A_FORBIDDEN_OPERATIONS = frozenset(
         "baseline_build",
         "challenger_build",
         "compare",
+        "query_clone",
         "model_execution",
         "model_exec",
     }
@@ -182,6 +189,7 @@ R2B_REQUIRED_PROHIBITED = frozenset(
         "baseline_build",
         "challenger_build",
         "compare",
+        "query_clone",
         "model_exec",
         "model_execution",
         "promote",
@@ -1145,6 +1153,52 @@ def bind_challenger_build(
     )
 
 
+def bind_query_clone(
+    *,
+    authorize_fixture: bool,
+    run_manifest_path: Path | None,
+    runtime: Mapping[str, Any],
+) -> AuthContext:
+    """Bind one fresh authoritative-to-disposable Chroma clone attempt."""
+    _require_exact_fields("query_clone", QUERY_CLONE_FIELDS, runtime)
+    if authorize_fixture:
+        _bind_paths_and_scalars(
+            operation="query_clone",
+            required=QUERY_CLONE_FIELDS,
+            runtime=runtime,
+            manifest={},
+            execution_mode="fixture",
+            authorize_fixture=True,
+        )
+        return _fixture_context("query_clone")
+    if run_manifest_path is None:
+        raise PermissionError("pass --authorize-fixture or --run-manifest")
+    manifest = _load_and_validate_manifest(run_manifest_path)
+    assert_operation_allowed(manifest, "query_clone")
+    mode = str(manifest.get("execution_mode"))
+    _bind_paths_and_scalars(
+        operation="query_clone",
+        required=QUERY_CLONE_FIELDS,
+        runtime=runtime,
+        manifest=manifest,
+        execution_mode=mode,
+        authorize_fixture=False,
+    )
+    fingerprint = str(runtime.get("source_content_fingerprint") or "")
+    if not _is_hex64(fingerprint):
+        raise PermissionError("query_clone requires a lowercase 64-hex source fingerprint")
+    if _norm_path(runtime["source_chroma"]) == _norm_path(runtime["clone_root"]):
+        raise PermissionError("query_clone source and destination must differ")
+    if _norm_path(runtime["clone_root"]) == _norm_path(runtime["clone_parent"]):
+        raise PermissionError("query_clone destination must be an absent child root")
+    return AuthContext(
+        execution_mode=mode,
+        require_corpus_acceptance=False,
+        manifest=manifest,
+        operation="query_clone",
+    )
+
+
 def bind_compare(
     *,
     authorize_fixture: bool,
@@ -1451,6 +1505,7 @@ __all__ = [
     "DEFAULT_UNCERTAINTY",
     "GATE_1_HARNESS_SHA256",
     "MODEL_EXECUTION_FIELDS",
+    "QUERY_CLONE_FIELDS",
     "R2B_REQUIRED_PROHIBITED",
     "REQUIRED_R2A_FIELDS",
     "REQUIRED_R2B_FIELDS",
@@ -1468,6 +1523,7 @@ __all__ = [
     "bind_compare",
     "bind_config_generation",
     "bind_model_execution",
+    "bind_query_clone",
     "bind_r2a_config_generation",
     "canonical_manifest_body_sha256",
     "derive_r2a_bindings_from_manifest",
