@@ -29,6 +29,14 @@ class _IdentityClient:
             "quantization": "Q8_0",
         }
 
+    def resolve_loaded_model(self, _tag: str, _digest: str, *, required: bool = False):
+        _ = required
+        return {
+            "model_tag": "test:latest",
+            "model_digest": "sha256:" + ("a" * 64),
+            "size_vram": 123,
+        }
+
 
 def test_worker_requires_resolved_digest_match(monkeypatch):
     module = _worker_module()
@@ -41,7 +49,9 @@ def test_worker_requires_resolved_digest_match(monkeypatch):
         },
         "eval": {"embedding_request_contract": "ollama.embed.v1"},
     }
-    assert module._verify_current_model(cfg)["model_digest"] == "sha256:" + ("a" * 64)
+    identity = module._verify_current_model(cfg)
+    assert identity["model_digest"] == "sha256:" + ("a" * 64)
+    assert identity["residency_status"] == "resident"
 
 
 def test_worker_rejects_digest_mismatch(monkeypatch):

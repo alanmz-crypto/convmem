@@ -99,6 +99,57 @@ class OllamaEmbedClient:
             raise OllamaIdentityError("Ollama /api/tags response lacks models list")
         return [dict(model) for model in models if isinstance(model, Mapping)]
 
+    def list_running_models(self) -> list[dict[str, Any]]:
+        """Return the server's currently loaded model records from ``/api/ps``."""
+        payload = self._request("GET", "/api/ps")
+        models = payload.get("models")
+        if not isinstance(models, list):
+            raise OllamaIdentityError("Ollama /api/ps response lacks models list")
+        return [dict(model) for model in models if isinstance(model, Mapping)]
+
+    def resolve_loaded_model(
+        self,
+        model_tag: str,
+        model_digest: str,
+        *,
+        required: bool = False,
+    ) -> dict[str, Any] | None:
+        """Resolve the exact loaded model, or return ``None`` when not resident."""
+        tag = str(model_tag).strip()
+        digest = str(model_digest).strip()
+        matches = []
+        for record in self.list_running_models():
+            loaded_tag = str(record.get("name") or record.get("model") or "").strip()
+            if loaded_tag == tag:
+                matches.append(record)
+        if len(matches) > 1:
+            raise OllamaIdentityError(
+                f"Ollama loaded model tag must resolve at most once: {tag!r} "
+                f"count={len(matches)}"
+            )
+        if not matches:
+            if required:
+                raise OllamaIdentityError(
+                    f"Ollama model is not resident: tag={tag!r} digest={digest!r}"
+                )
+            return None
+        loaded = matches[0]
+        loaded_digest = str(loaded.get("digest") or "").strip()
+        if not loaded_digest:
+            raise OllamaIdentityError(f"Ollama loaded model {tag!r} has no digest")
+        if loaded_digest != digest:
+            raise OllamaIdentityError(
+                f"Ollama loaded model digest mismatch: tag={tag!r} "
+                f"loaded={loaded_digest!r} expected={digest!r}"
+            )
+        return {
+            "model_tag": tag,
+            "model_digest": loaded_digest,
+            "size": loaded.get("size"),
+            "size_vram": loaded.get("size_vram"),
+            "expires_at": loaded.get("expires_at"),
+        }
+
     def resolve_model(self, model_tag: str) -> dict[str, Any]:
         """Resolve exact tag, digest, variant and quantization from Ollama APIs."""
         tag = str(model_tag).strip()
