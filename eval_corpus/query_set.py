@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import re
 import unicodedata
@@ -25,6 +26,41 @@ APPROVED_DOMAINS = (
 
 class QuerySetValidationError(ValueError):
     """The query set or its package references are not evaluation-safe."""
+
+
+def parse_query_set_jsonl_bytes(data: bytes) -> list[dict[str, Any]]:
+    """Parse JSONL from the exact bytes already read by an authorized caller.
+
+    Accepting bytes rather than a path prevents a second path open or an
+    implicit reserialization between hashing and parsing.
+    """
+    if not data:
+        raise QuerySetValidationError("query set bytes must be nonempty")
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise QuerySetValidationError("query set must be UTF-8 JSONL") from exc
+
+    rows: list[dict[str, Any]] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if not line.strip():
+            raise QuerySetValidationError(
+                f"query set contains a blank line at {line_number}"
+            )
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise QuerySetValidationError(
+                f"query set line {line_number} is not valid JSON"
+            ) from exc
+        if not isinstance(value, Mapping):
+            raise QuerySetValidationError(
+                f"query set line {line_number} must be a JSON object"
+            )
+        rows.append(dict(value))
+    if not rows:
+        raise QuerySetValidationError("query set must contain at least one JSON row")
+    return rows
 
 
 def normalize_query_text(value: str) -> str:
@@ -238,5 +274,6 @@ __all__ = [
     "QuerySetValidationError",
     "normalize_query_text",
     "normalized_query_sha256",
+    "parse_query_set_jsonl_bytes",
     "validate_canonical_real_query_set",
 ]

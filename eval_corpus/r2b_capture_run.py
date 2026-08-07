@@ -348,6 +348,7 @@ def run_r2b_capture(  # pylint: disable=too-many-locals
         "run_id": run_id,
         "capture_id": capture_id,
         "authorization_body_sha256": bindings.authorization_body_sha256,
+        "query_set_sha256": bindings.query_set_sha256,
         "source_snapshot_sha256": canonical_source_snapshot_sha256(approved),
         "processed_state": processed_state,
         "package_sha256": package["manifest"]["package_sha256"],

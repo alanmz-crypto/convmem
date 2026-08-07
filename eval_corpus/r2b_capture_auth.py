@@ -11,7 +11,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import secrets
+import stat
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -54,6 +56,8 @@ class R2bBindings:  # pylint: disable=too-many-instance-attributes
     export: Path
     processed: Path
     chroma_dir: Path
+    query_set: Path
+    query_set_sha256: str
     run_id: str
     merged_harness_sha256: str
     manifest_path: Path
@@ -137,7 +141,7 @@ def _validate_r2b_paths(
     manifest_path: Path,
 ) -> None:
     """Lexical path equality + resolved containment for R2b."""
-    for key in ("export", "processed", "capture_dir", "chroma_dir"):
+    for key in ("export", "processed", "capture_dir", "chroma_dir", "query_set"):
         val = str(manifest_paths.get(key, ""))
         if not val.startswith("/"):
             raise PermissionError(f"R2b paths.{key} must be absolute")
@@ -188,7 +192,7 @@ def _check_no_symlinks(
     sidecar = approval_sidecar_path(Path(manifest_path))
     if sidecar.exists():
         to_check.append(sidecar.resolve(strict=False))
-    for key in ("export", "processed", "chroma_dir", "capture_dir"):
+    for key in ("export", "processed", "chroma_dir", "capture_dir", "query_set"):
         for raw in (manifest_paths.get(key), runtime.get(key)):
             if raw is None:
                 continue
@@ -209,6 +213,110 @@ def _check_no_symlinks(
             )
 
 
+def _open_query_set_no_follow(path: Path) -> int:
+    """Open an absolute query path by walking every component no-follow."""
+    if not path.is_absolute():
+        raise PermissionError("R2b query_set path must be absolute")
+    if any(part in {"", ".", ".."} for part in path.parts):
+        raise PermissionError("R2b query_set path must be canonical")
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    current_fd = os.open(path.anchor, flags)
+    try:
+        components = list(path.parts[1:])
+        if not components:
+            raise PermissionError("R2b query_set path must name a file")
+        for component in components[:-1]:
+            next_fd = os.open(
+                component,
+                flags,
+                dir_fd=current_fd,
+            )
+            os.close(current_fd)
+            current_fd = next_fd
+        file_fd = os.open(
+            components[-1],
+            os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
+            dir_fd=current_fd,
+        )
+        os.close(current_fd)
+        return file_fd
+    except Exception:
+        os.close(current_fd)
+        raise
+
+
+def read_immutable_query_set(path: Path | str) -> dict[str, Any]:
+    """Read/hash one stable query-file snapshot without reopening its path."""
+    query_path = Path(path)
+    if not query_path.is_absolute():
+        raise PermissionError("R2b query_set path must be absolute")
+    if "~" in str(query_path) or "/./" in str(query_path) or "/../" in str(query_path) or "//" in str(query_path):
+        raise PermissionError("R2b query_set path must be canonical")
+
+    file_fd: int | None = None
+    try:
+        file_fd = _open_query_set_no_follow(query_path)
+        before = os.fstat(file_fd)
+        if not stat.S_ISREG(before.st_mode):
+            raise PermissionError("R2b query_set must be a regular file")
+        if before.st_nlink != 1:
+            raise PermissionError(
+                f"R2b query_set must have link_count=1, got {before.st_nlink}"
+            )
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(file_fd, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        data = b"".join(chunks)
+        after = os.fstat(file_fd)
+        stable_fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+        if any(getattr(before, field) != getattr(after, field) for field in stable_fields):
+            raise PermissionError("R2b query_set changed while being read")
+        path_info = query_path.lstat()
+        if stat.S_ISLNK(path_info.st_mode) or not stat.S_ISREG(path_info.st_mode):
+            raise PermissionError("R2b query_set path is no longer a regular file")
+        if path_info.st_nlink != 1:
+            raise PermissionError("R2b query_set path became hard-linked")
+        if any(
+            getattr(path_info, field) != getattr(before, field)
+            for field in ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+        ):
+            raise PermissionError("R2b query_set path identity changed while being read")
+        return {
+            "path": str(query_path),
+            "bytes": data,
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "device": before.st_dev,
+            "inode": before.st_ino,
+            "size": before.st_size,
+            "link_count": before.st_nlink,
+        }
+    except OSError as exc:
+        raise PermissionError(f"cannot read R2b query_set safely: {query_path}: {exc}") from exc
+    finally:
+        if file_fd is not None:
+            os.close(file_fd)
+
+
+def _verify_query_set_binding(manifest_paths: Mapping[str, Any], expected_sha256: str) -> None:
+    """Require the live query path to match the exact approved manifest SHA."""
+    snapshot = read_immutable_query_set(Path(str(manifest_paths["query_set"])))
+    if snapshot["sha256"] != expected_sha256:
+        raise PermissionError(
+            "R2b query_set_sha256 does not match the bytes at the approved query_set path"
+        )
+    try:
+        from eval_corpus.query_set import parse_query_set_jsonl_bytes
+
+        parse_query_set_jsonl_bytes(snapshot["bytes"])
+    except ValueError as exc:
+        raise PermissionError(
+            "R2b query_set bytes are not valid UTF-8 JSONL"
+        ) from exc
+
+
 def _derive_r2b_bindings(
     manifest: dict[str, Any], *, manifest_path: Path
 ) -> R2bBindings:
@@ -220,6 +328,8 @@ def _derive_r2b_bindings(
         export=Path(paths["export"]),
         processed=Path(paths["processed"]),
         chroma_dir=Path(paths["chroma_dir"]),
+        query_set=Path(paths["query_set"]),
+        query_set_sha256=str(manifest["query_set_sha256"]),
         run_id=manifest["run_id"],
         merged_harness_sha256=str(manifest["merged_harness_sha256"]),
         manifest_path=Path(manifest_path).resolve(strict=False),
@@ -324,6 +434,10 @@ def _build_r2b_capability_api() -> tuple[Any, Any]:
         )
         _check_no_symlinks(path, manifest_paths, runtime)
 
+        _verify_query_set_binding(
+            manifest_paths, str(manifest["query_set_sha256"])
+        )
+
         source_snapshot = manifest["source_snapshot"]
         _validate_snapshot_freshness(source_snapshot)
 
@@ -386,6 +500,9 @@ def materialize_r2b_capability(capability: Any) -> R2bBindings:
     errs = validate_r2b_manifest_schema(manifest)
     if errs:
         raise PermissionError("; ".join(errs))
+    _verify_query_set_binding(
+        manifest["paths"], str(manifest["query_set_sha256"])
+    )
     return _derive_r2b_bindings(manifest, manifest_path=manifest_path)
 
 
@@ -410,6 +527,7 @@ def materialize_r2b_write_authorization(
     _check_no_symlinks(
         bindings.manifest_path, manifest_paths, manifest_paths
     )
+    _verify_query_set_binding(manifest_paths, bindings.query_set_sha256)
 
     recomputed = snapshot_recompute_fn(
         export=bindings.export,
@@ -435,4 +553,5 @@ __all__ = [
     "is_r2b_eval_root_grant",
     "materialize_r2b_capability",
     "materialize_r2b_write_authorization",
+    "read_immutable_query_set",
 ]

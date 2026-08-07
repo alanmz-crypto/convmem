@@ -76,6 +76,10 @@ class R2bCaptureMarkerTests(unittest.TestCase):
                 marker["source_snapshot_sha256"],
                 canonical_source_snapshot_sha256(snap),
             )
+            self.assertEqual(
+                marker["query_set_sha256"],
+                body["query_set_sha256"],
+            )
 
     def test_marker_artifact_inventory_correct(self):
         with tempfile.TemporaryDirectory() as td:
