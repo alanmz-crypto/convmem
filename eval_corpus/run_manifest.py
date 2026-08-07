@@ -142,6 +142,16 @@ MODEL_PROBE_FIELDS = frozenset(
         "transform_sha256",
     }
 )
+MODEL_PULL_FIELDS = frozenset(
+    {
+        "model_tag",
+        "model_digest",
+        "embed_host",
+        "ollama_bin",
+        "model_store_path",
+        "pull_out",
+    }
+)
 
 PATH_FIELD_NAMES = frozenset(
     {
@@ -171,6 +181,9 @@ PATH_FIELD_NAMES = frozenset(
         "archive_path",
         "receipt_path",
         "probe_out",
+        "ollama_bin",
+        "model_store_path",
+        "pull_out",
     }
 )
 
@@ -200,6 +213,7 @@ R2A_FORBIDDEN_OPERATIONS = frozenset(
         "compare",
         "query_clone",
         "model_probe",
+        "model_pull",
         "model_execution",
         "model_exec",
     }
@@ -216,6 +230,7 @@ R2B_REQUIRED_PROHIBITED = frozenset(
         "compare",
         "query_clone",
         "model_probe",
+        "model_pull",
         "model_exec",
         "model_execution",
         "promote",
@@ -1634,6 +1649,39 @@ def bind_model_probe(
     )
 
 
+def bind_model_pull(
+    *,
+    authorize_fixture: bool,
+    run_manifest_path: Path | None,
+    runtime: Mapping[str, Any],
+) -> AuthContext:
+    """Bind the separately authorized model-store mutation."""
+    _require_exact_fields("model_pull", MODEL_PULL_FIELDS, runtime)
+    if authorize_fixture:
+        raise PermissionError("model_pull is never permitted in fixture mode")
+    if run_manifest_path is None:
+        raise PermissionError("model_pull requires --run-manifest")
+    manifest = _load_and_validate_manifest(run_manifest_path)
+    assert_operation_allowed(manifest, "model_pull")
+    mode = str(manifest.get("execution_mode") or "")
+    if mode != "real":
+        raise PermissionError("model_pull requires execution_mode=real")
+    _bind_paths_and_scalars(
+        operation="model_pull",
+        required=MODEL_PULL_FIELDS,
+        runtime=runtime,
+        manifest=manifest,
+        execution_mode=mode,
+        authorize_fixture=False,
+    )
+    return AuthContext(
+        execution_mode=mode,
+        require_corpus_acceptance=False,
+        manifest=manifest,
+        operation="model_pull",
+    )
+
+
 # --- Compatibility wrappers (delegate to operation binders) -----------------
 
 
@@ -1854,6 +1902,7 @@ __all__ = [
     "GATE_1_HARNESS_SHA256",
     "MODEL_EXECUTION_FIELDS",
     "MODEL_PROBE_FIELDS",
+    "MODEL_PULL_FIELDS",
     "QUERY_CLONE_FIELDS",
     "EVIDENCE_RELEASE_FIELDS",
     "EVIDENCE_RELEASE_OPERATIONS",
@@ -1875,6 +1924,7 @@ __all__ = [
     "bind_config_generation",
     "bind_model_execution",
     "bind_model_probe",
+    "bind_model_pull",
     "bind_query_clone",
     "bind_evidence_release",
     "consume_operation_grant",
