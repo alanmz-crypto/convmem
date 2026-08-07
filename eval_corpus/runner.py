@@ -379,11 +379,18 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
     )
     base_scores = [_primary_score(r, primary_metric) for r in base_view.rows]
     chal_scores = [_primary_score(r, primary_metric) for r in chal_view.rows]
+    domains = [str(row.get("domain") or "__fixture__") for row in rows]
+    source_groups = [
+        str(row.get("source_group_id") or f"__row_{index}")
+        for index, row in enumerate(rows)
+    ]
     outcomes = paired_outcomes(
         base_scores,
         chal_scores,
         queries=[r.query for r in base_view.rows],
         tie_epsilon=float(uncertainty.get("tie_epsilon") or 0.0),
+        domains=domains,
+        source_groups=source_groups,
     )
     uncertainty_report = label_challenger(
         outcomes=outcomes,
@@ -392,6 +399,17 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
         bootstrap_seed=int(uncertainty.get("bootstrap_seed") or 0),
         bootstrap_resamples=int(uncertainty.get("bootstrap_resamples") or 1999),
         minimum_non_tied_pairs=int(uncertainty.get("minimum_non_tied_pairs") or 20),
+        permutation_seed=int(uncertainty.get("permutation_seed") or 20260805),
+        permutation_draws=int(
+            uncertainty.get("permutation_draws")
+            or uncertainty.get("bootstrap_resamples")
+            or 1999
+        ),
+        minimum_non_tied_groups=(
+            int(uncertainty["minimum_non_tied_groups"])
+            if "minimum_non_tied_groups" in uncertainty
+            else None
+        ),
     )
 
     # Diagnostic: both views + per-stratum hit rates (explicit n; no confidence claim)
