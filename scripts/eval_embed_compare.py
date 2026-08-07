@@ -338,7 +338,9 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
         print(f"Refusing compare: immutable input read failed: {exc}", file=sys.stderr)
         return 2
     query_validation = None
+    accepted_package = None
     if auth.execution_mode == "real" and auth.manifest.get("test_only") is not True:
+        from eval_corpus.adjudicate import verify_accepted_package
         from eval_corpus.query_set import (
             QuerySetValidationError,
             validate_canonical_real_query_set,
@@ -352,6 +354,12 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
             )
             return 2
         try:
+            accepted_package = verify_accepted_package(package)
+            if accepted_package.get("status") != "CORPUS_ACCEPTED":
+                raise QuerySetValidationError(
+                    "package is not the unchanged accepted R2b corpus package: "
+                    + "; ".join(accepted_package.get("errors") or [])
+                )
             query_validation = validate_canonical_real_query_set(rows, package_units)
         except QuerySetValidationError as exc:
             print(
@@ -673,6 +681,8 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
         }
         if query_validation is not None:
             report["query_validation"] = query_validation
+        if accepted_package is not None:
+            report["accepted_package"] = accepted_package
         report["embed_host"] = args.embed_host
         report["throughput"] = {
             "baseline_units_per_sec": baseline_ups,
