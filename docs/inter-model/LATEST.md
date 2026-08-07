@@ -1,9 +1,17 @@
 V# Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-07-28 (Complete-data backup correction v2 — merge + four live grants complete)
+**Updated:** 2026-08-06 (Summarizer switch cleanup — baseline + soak + docs reconciled)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Summarizer model switch to qwen3.5 — CLEANUP COMPLETE (2026-08-06):** Who/What: Crush finished the half-applied summarizer switch from llama3.1:8b to qwen3.5:latest. When: config edit applied 2026-08-03 (during C7 freeze, no recorded grant); baseline re-run + soak + LATEST reconciliation on 2026-08-06 after freeze lift. Why: live config was already on qwen3.5 but baseline was stale (llama-era 3-row fixture), VERIFY doc was lost from disk, and no ledger record existed. How: re-ran `eval-summaries.py --update-baseline` (structural 100%, keyword recall 86.67% on 3-row set); soak-tested with real Crush session ingest (192 units, 25 chunks -- 3 distill warnings but summaries healthy); removed expired C7 writer-census to unblock writes.
+
+  **Merge reading:** [`CODEX-2026-08-02-summarizer-switch-decision.md`](CODEX-2026-08-02-summarizer-switch-decision.md) · [`CRUSH-2026-08-02-summarizer-bakeoff-chroma-assessment.md`](CRUSH-2026-08-02-summarizer-bakeoff-chroma-assessment.md)
+
+  **What this packages:** Live config `summarize_model = "qwen3.5:latest"` now has matching baseline fixture, verified soak, and consistent LATEST.md. VERIFY-2026-08-03-summarizer-switch-decision.md lost from disk (indexed in Chroma only); not reconstructed -- search corpus retains the evidence.
+
+  **Ledger record:** pending -- see session close.
 
 - **Complete-data backup correction v2 — ROLLOUT COMPLETE (2026-07-28):** Who/What: PR #125 squash-merged to `main` as [`83b8c11`](https://github.com/alanmz-crypto/convmem/commit/83b8c11683c1295579c4fad9c8316f9f8fc3d10f); Crush (DeepSeek V4 Pro) executed four post-merge live grants on `archlinux` with Ryan approval. When: all grants complete 2026-07-28. Why: legacy-chroma profile never proved complete-data protection; v2 corrects this with explicit profile, fallback-free workflows, and hermetic proof. How: grant 1 (profile + data root in restic.env), grant 2 (first v2 snapshot), grant 3 (offsite copy + lineage), grant 4 (v2 local + external timers). Legacy `convmem-restic-ensure.timer` disabled; old external timer contained before v2 snapshot.
 
