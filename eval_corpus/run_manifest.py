@@ -130,6 +130,18 @@ COMPARE_FIELDS = frozenset(
 MODEL_EXECUTION_FIELDS = frozenset(
     {"model_tag", "model_digest", "embed_dimensions", "embed_host", "chroma_dir"}
 )
+MODEL_PROBE_FIELDS = frozenset(
+    {
+        "model_tag",
+        "model_digest",
+        "embed_dimensions",
+        "embed_host",
+        "probe_out",
+        "probe_text_sha256",
+        "transform_id",
+        "transform_sha256",
+    }
+)
 
 PATH_FIELD_NAMES = frozenset(
     {
@@ -158,6 +170,7 @@ PATH_FIELD_NAMES = frozenset(
         "evidence_root",
         "archive_path",
         "receipt_path",
+        "probe_out",
     }
 )
 
@@ -186,6 +199,7 @@ R2A_FORBIDDEN_OPERATIONS = frozenset(
         "challenger_build",
         "compare",
         "query_clone",
+        "model_probe",
         "model_execution",
         "model_exec",
     }
@@ -201,6 +215,7 @@ R2B_REQUIRED_PROHIBITED = frozenset(
         "challenger_build",
         "compare",
         "query_clone",
+        "model_probe",
         "model_exec",
         "model_execution",
         "promote",
@@ -1580,6 +1595,45 @@ def bind_model_execution(
     )
 
 
+def bind_model_probe(
+    *,
+    authorize_fixture: bool,
+    run_manifest_path: Path | None,
+    runtime: Mapping[str, Any],
+) -> AuthContext:
+    """Bind one manifest-approved read/probe operation."""
+    _require_exact_fields("model_probe", MODEL_PROBE_FIELDS, runtime)
+    if authorize_fixture:
+        _bind_paths_and_scalars(
+            operation="model_probe",
+            required=MODEL_PROBE_FIELDS,
+            runtime=runtime,
+            manifest={},
+            execution_mode="fixture",
+            authorize_fixture=True,
+        )
+        return _fixture_context("model_probe")
+    if run_manifest_path is None:
+        raise PermissionError("model_probe requires --run-manifest")
+    manifest = _load_and_validate_manifest(run_manifest_path)
+    assert_operation_allowed(manifest, "model_probe")
+    mode = str(manifest.get("execution_mode") or "")
+    _bind_paths_and_scalars(
+        operation="model_probe",
+        required=MODEL_PROBE_FIELDS,
+        runtime=runtime,
+        manifest=manifest,
+        execution_mode=mode,
+        authorize_fixture=False,
+    )
+    return AuthContext(
+        execution_mode=mode,
+        require_corpus_acceptance=False,
+        manifest=manifest,
+        operation="model_probe",
+    )
+
+
 # --- Compatibility wrappers (delegate to operation binders) -----------------
 
 
@@ -1799,6 +1853,7 @@ __all__ = [
     "DEFAULT_UNCERTAINTY",
     "GATE_1_HARNESS_SHA256",
     "MODEL_EXECUTION_FIELDS",
+    "MODEL_PROBE_FIELDS",
     "QUERY_CLONE_FIELDS",
     "EVIDENCE_RELEASE_FIELDS",
     "EVIDENCE_RELEASE_OPERATIONS",
@@ -1819,6 +1874,7 @@ __all__ = [
     "bind_compare",
     "bind_config_generation",
     "bind_model_execution",
+    "bind_model_probe",
     "bind_query_clone",
     "bind_evidence_release",
     "consume_operation_grant",
