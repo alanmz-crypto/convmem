@@ -1,8 +1,8 @@
 """Latency percentile outputs use raw samples and the frozen rank rule."""
 
 from eval_corpus.runner import LatencyReport, LatencySample, latency_report_to_dict
+from eval_corpus.subprocess_compare import LATENCY_ORDER_SCHEDULE, latency_summary
 from eval_corpus.subprocess_compare import LatencyReport as WorkerLatencyReport
-from eval_corpus.subprocess_compare import latency_summary
 
 
 def test_runner_latency_report_uses_nearest_rank_and_raw_samples():
@@ -42,8 +42,18 @@ def test_worker_latency_summary_retains_raw_samples_and_percentiles():
         process_startup_ms={"baseline": 2.5, "challenger": 3.5},
     )
     output = latency_summary(report)
+    assert output["order_schedule"] == "four_cycle_latin_v1"
     baseline = output["retrieval_ms"]["embedding_influenced"]["baseline"]
     assert baseline["percentile_algorithm"] == "nearest_rank_v1"
     assert baseline["p50"] == samples[9]
     assert baseline["p95"] == samples[18]
     assert baseline["samples"][0] == samples[0]
+
+
+def test_latency_order_schedule_counterbalances_arm_and_view_firstness():
+    observed = [item for cycle in LATENCY_ORDER_SCHEDULE for item in cycle]
+    assert len(observed) == 16
+    assert observed.count(("embedding_influenced", "baseline")) == 4
+    assert observed.count(("embedding_influenced", "challenger")) == 4
+    assert observed.count(("operational_pipeline", "baseline")) == 4
+    assert observed.count(("operational_pipeline", "challenger")) == 4
