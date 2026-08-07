@@ -51,3 +51,33 @@ def test_exact_vector_returns_store_candidates_before_downstream_ranking(monkeyp
     assert [hit["id"] for hit in trace.candidates] == ["vector-first", "vector-second"]
     assert trace.retrieval_mode == "vector"
     assert trace.enrichment_reader["used_by_view"] is False
+
+
+def test_subprocess_exact_vector_reuses_production_payload(monkeypatch, tmp_path):
+    from eval_corpus import subprocess_compare
+
+    calls = []
+
+    def fake_run_one_shot_query(**kwargs):
+        calls.append(kwargs["eval_view"])
+        return {
+            "result": {
+                "eval_view": kwargs["eval_view"],
+                "hits": [{"id": "post-rank"}],
+                "vector_candidates": [
+                    {"id": "vector-first"},
+                    {"id": "vector-second"},
+                ],
+                "query_vector_fingerprint": "a" * 64,
+            },
+            "stdout": "raw-worker-output",
+            "stderr": "",
+        }
+
+    monkeypatch.setattr(subprocess_compare, "run_one_shot_query", fake_run_one_shot_query)
+    query_fn = subprocess_compare.make_subprocess_query_fn(tmp_path / "config.toml")
+    assert query_fn("question", top_k=5, eval_view="embedding_influenced")[0]["id"] == "post-rank"
+    exact = query_fn("question", top_k=5, eval_view="exact_vector")
+    assert [hit["id"] for hit in exact] == ["vector-first", "vector-second"]
+    assert calls == ["embedding_influenced"]
+    assert query_fn.last_payload["result"]["same_captured_query_vector"] is True

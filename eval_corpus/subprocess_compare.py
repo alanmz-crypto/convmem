@@ -729,7 +729,45 @@ def make_subprocess_query_fn(
     comparison; it is never converted into an empty hit list.
     """
 
+    vector_payloads: dict[tuple[str, int], dict[str, Any]] = {}
+
+    def _exact_payload(base_payload: dict[str, Any], *, top_k: int) -> dict[str, Any]:
+        base_result = base_payload.get("result") or {}
+        candidates = base_result.get("vector_candidates")
+        if not isinstance(candidates, list):
+            raise WorkerFailure("exact_vector requires captured vector_candidates")
+        if len({str(item.get("id") or "") for item in candidates if isinstance(item, Mapping)}) != len(candidates):
+            raise WorkerFailure("exact_vector captured duplicate or malformed vector candidates")
+        exact_result = dict(base_result)
+        exact_result["eval_view"] = "exact_vector"
+        exact_result["hits"] = [dict(item) for item in candidates[:top_k]]
+        exact_result["derived_from_view"] = "embedding_influenced"
+        exact_result["same_captured_query_vector"] = True
+        exact_result["enrichment_reader"] = {
+            "schema_version": "approved_decisions_reader_v1",
+            "used_by_view": False,
+            "reason": "exact_vector_view_excludes_downstream_pipeline",
+        }
+        return {**base_payload, "result": exact_result}
+
     def _fn(query: str, *, top_k: int, eval_view: str) -> list[dict]:
+        cache_key = (query, top_k)
+        if eval_view == "exact_vector":
+            base_payload = vector_payloads.get(cache_key)
+            if base_payload is None:
+                base_payload = run_one_shot_query(
+                    config_path=config_path,
+                    query=query,
+                    top_k=top_k,
+                    eval_view="embedding_influenced",
+                    expected_identity=expected_identity,
+                    require_vector_only=True,
+                    require_enrichment_provenance=require_enrichment_provenance,
+                )
+                vector_payloads[cache_key] = base_payload
+            payload = _exact_payload(base_payload, top_k=top_k)
+            _fn.last_payload = payload
+            return list(payload["result"].get("hits") or [])
         payload = run_one_shot_query(
             config_path=config_path,
             query=query,
@@ -739,6 +777,8 @@ def make_subprocess_query_fn(
             require_vector_only=True,
             require_enrichment_provenance=require_enrichment_provenance,
         )
+        if eval_view == "embedding_influenced":
+            vector_payloads[cache_key] = payload
         _fn.last_payload = payload
         hits = payload["result"].get("hits") or []
         return list(hits)

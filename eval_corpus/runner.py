@@ -296,6 +296,44 @@ def _primary_score(row_eval: RowEval, primary_metric: str) -> float:
     raise ValueError(f"unknown primary_metric {primary_metric!r}")
 
 
+def _validate_captured_quality_hits(
+    hits: list[dict],
+    *,
+    expected_ids: set[str],
+    top_k: int,
+    context: str,
+) -> None:
+    """Reject semantic worker errors before any metric is computed."""
+    if len(hits) > top_k:
+        raise ValueError(f"{context}: returned {len(hits)} hits above top_k={top_k}")
+    ids: list[str] = []
+    for index, hit in enumerate(hits):
+        if not isinstance(hit, dict):
+            raise TypeError(f"{context}: hit {index} is not an object")
+        hit_id = str(hit.get("id") or "")
+        if not hit_id:
+            raise ValueError(f"{context}: hit {index} has no id")
+        ids.append(hit_id)
+        if hit_id not in expected_ids:
+            raise ValueError(f"{context}: unknown hit id {hit_id!r}")
+        for hit_field in ("distance", "score"):
+            value = hit.get(hit_field)
+            if value is None:
+                continue
+            try:
+                number = float(value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"{context}: {hit_field} is not numeric") from exc
+            if not math.isfinite(number):
+                raise ValueError(f"{context}: {hit_field} is not finite")
+    if len(ids) != len(set(ids)):
+        raise ValueError(f"{context}: duplicate hit ids")
+    if len(expected_ids) >= top_k and len(hits) != top_k:
+        raise ValueError(
+            f"{context}: incomplete hit list {len(hits)} < top_k={top_k}"
+        )
+
+
 def compare_paired_arms(  # pylint: disable=too-many-locals
     rows: list[dict],
     baseline_fn: QueryFn,
@@ -304,6 +342,7 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
     package_units: list[dict],
     uncertainty: dict[str, Any],
     top_k: int | None = None,
+    strict_quality_validation: bool = False,
 ) -> dict[str, Any]:
     """Paired baseline/challenger compare with recipe strata + uncertainty.
 
@@ -323,6 +362,8 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
         raise ValueError("primary_view must be embedding_influenced")
 
     pkg_index = index_package_units(package_units)
+    expected_ids = {str(unit.get("id") or "") for unit in package_units}
+    expected_ids.discard("")
     stratum_rows: list[dict[str, Any]] = []
     for row in rows:
         relevant = expand_acceptable_ids(row)
@@ -353,6 +394,13 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
                 hits = list(
                     query_fn(str(row["query"]), top_k=k, eval_view=view)
                 )
+                if strict_quality_validation:
+                    _validate_captured_quality_hits(
+                        hits,
+                        expected_ids=expected_ids,
+                        top_k=k,
+                        context=f"{arm}:{view}:{row.get('query_id') or index}",
+                    )
                 captured_hits[arm][view].append(hits)
                 raw_quality_results.append(
                     {
@@ -372,6 +420,26 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
                 payload = getattr(query_fn, "last_payload", None)
                 if isinstance(payload, dict):
                     raw_quality_results[-1]["worker_payload"] = payload
+                    worker_result = payload.get("result") or {}
+                    for field in (
+                        "retrieval_mode",
+                        "vector_query_attempted",
+                        "fallback_used",
+                        "query_vector_fingerprint",
+                        "query_vector_dimension",
+                        "query_vector_finite",
+                        "query_vector_norm",
+                        "derived_from_view",
+                        "same_captured_query_vector",
+                    ):
+                        if field in worker_result:
+                            raw_quality_results[-1][field] = worker_result[field]
+                    raw_quality_results[-1]["worker_stdout_sha256"] = hashlib.sha256(
+                        str(payload.get("stdout") or "").encode("utf-8")
+                    ).hexdigest()
+                    raw_quality_results[-1]["worker_stderr_sha256"] = hashlib.sha256(
+                        str(payload.get("stderr") or "").encode("utf-8")
+                    ).hexdigest()
 
     base_view = _evaluate_view_from_hits(
         rows, captured_hits["baseline"][primary_view], view=primary_view, top_k=top_k

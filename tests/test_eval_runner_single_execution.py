@@ -20,6 +20,11 @@ def test_compare_executes_each_query_arm_view_once_and_retains_raw_hits():
             "id": "target",
             "ledger_id": "ledger-target",
             "document_recipe_version": "ordinary_summary_keywords@v1",
+        },
+        {
+            "id": "other",
+            "ledger_id": "ledger-other",
+            "document_recipe_version": "ordinary_summary_keywords@v1",
         }
     ]
     calls = {"baseline": [], "challenger": []}
