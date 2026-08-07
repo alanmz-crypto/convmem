@@ -6,6 +6,7 @@ Live/shadow evaluation remains gated to R7 outside this module.
 
 from __future__ import annotations
 
+import hashlib
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -126,6 +127,34 @@ def evaluate_both_views(
     return {
         view: evaluate_view(rows, query_fn, view=view, top_k=top_k) for view in views
     }
+
+
+def _evaluate_view_from_hits(
+    rows: list[dict],
+    hits_by_row: list[list[dict]],
+    *,
+    view: str,
+    top_k: int | None = None,
+) -> ViewReport:
+    """Build one view report from already captured hits without querying again."""
+    if len(rows) != len(hits_by_row):
+        raise ValueError("captured hit rows do not match query rows")
+    results: list[RowEval] = []
+    for row, hits in zip(rows, hits_by_row):
+        k = int(top_k or row.get("top_k") or 5)
+        results.append(evaluate_row(row, hits, view=view, top_k=k))
+    n = len(results) or 1
+    recall_vals = [r.recall_at_k for r in results if r.recall_at_k is not None]
+    return ViewReport(
+        view=view,
+        count=len(results),
+        p_at_1=sum(1 for r in results if r.p_at_1) / n,
+        hit_at_k=sum(1 for r in results if r.hit_at_k) / n,
+        mrr=sum(r.mrr for r in results) / n,
+        recall_at_k=(sum(recall_vals) / len(recall_vals)) if recall_vals else None,
+        ndcg_at_k=sum(r.ndcg_at_k for r in results) / n,
+        rows=results,
+    )
 
 
 def view_report_to_dict(report: ViewReport) -> dict[str, Any]:
@@ -307,8 +336,47 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
             }
         )
 
-    base_view = evaluate_view(rows, baseline_fn, view=primary_view, top_k=top_k)
-    chal_view = evaluate_view(rows, challenger_fn, view=primary_view, top_k=top_k)
+    captured_hits: dict[str, dict[str, list[list[dict]]]] = {
+        "baseline": {view: [] for view in RETRIEVAL_VIEWS},
+        "challenger": {view: [] for view in RETRIEVAL_VIEWS},
+    }
+    raw_quality_results: list[dict[str, Any]] = []
+    for view in RETRIEVAL_VIEWS:
+        for index, row in enumerate(rows):
+            k = int(top_k or row.get("top_k") or 5)
+            for arm, query_fn in (
+                ("baseline", baseline_fn),
+                ("challenger", challenger_fn),
+            ):
+                hits = list(
+                    query_fn(str(row["query"]), top_k=k, eval_view=view)
+                )
+                captured_hits[arm][view].append(hits)
+                raw_quality_results.append(
+                    {
+                        "row_index": index,
+                        "query_id": row.get("query_id"),
+                        "domain": row.get("domain"),
+                        "query": str(row["query"]),
+                        "query_text_sha256": hashlib.sha256(
+                            str(row["query"]).encode("utf-8")
+                        ).hexdigest(),
+                        "arm": arm,
+                        "view": view,
+                        "top_k": k,
+                        "hits": hits[:k],
+                    }
+                )
+                payload = getattr(query_fn, "last_payload", None)
+                if isinstance(payload, dict):
+                    raw_quality_results[-1]["worker_payload"] = payload
+
+    base_view = _evaluate_view_from_hits(
+        rows, captured_hits["baseline"][primary_view], view=primary_view, top_k=top_k
+    )
+    chal_view = _evaluate_view_from_hits(
+        rows, captured_hits["challenger"][primary_view], view=primary_view, top_k=top_k
+    )
     base_scores = [_primary_score(r, primary_metric) for r in base_view.rows]
     chal_scores = [_primary_score(r, primary_metric) for r in chal_view.rows]
     outcomes = paired_outcomes(
@@ -327,8 +395,18 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
     )
 
     # Diagnostic: both views + per-stratum hit rates (explicit n; no confidence claim)
-    both_base = evaluate_both_views(rows, baseline_fn, top_k=top_k)
-    both_chal = evaluate_both_views(rows, challenger_fn, top_k=top_k)
+    both_base = {
+        view: _evaluate_view_from_hits(
+            rows, captured_hits["baseline"][view], view=view, top_k=top_k
+        )
+        for view in RETRIEVAL_VIEWS
+    }
+    both_chal = {
+        view: _evaluate_view_from_hits(
+            rows, captured_hits["challenger"][view], view=view, top_k=top_k
+        )
+        for view in RETRIEVAL_VIEWS
+    }
     by_stratum: dict[str, Any] = {}
     for stratum in sorted({r["recipe_stratum"] for r in stratum_rows}):
         idxs = [i for i, r in enumerate(stratum_rows) if r["recipe_stratum"] == stratum]
@@ -372,6 +450,7 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
             for o in outcomes
         ],
         "uncertainty": uncertainty_report,
+        "raw_quality_results": raw_quality_results,
         "evidence_only": True,
         "not_promotion_authority": True,
     }
