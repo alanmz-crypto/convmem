@@ -45,6 +45,9 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
     parser = argparse.ArgumentParser(description="Eval shadow embed build")
     parser.add_argument("--authorize-fixture", action="store_true")
     parser.add_argument("--run-manifest", type=Path, default=None)
+    parser.add_argument("--grant", type=Path, default=None, help="Single-use operation grant")
+    parser.add_argument("--grant-id", default=None, help="Grant identity bound to this build")
+    parser.add_argument("--attempt-id", default=None, help="One-shot build attempt identity")
     parser.add_argument("--package", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument(
@@ -112,6 +115,7 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
     from eval_corpus.run_manifest import (
         assert_build_authorized,
         bind_model_execution,
+        consume_bound_operation_grant,
     )
     from eval_corpus.shadow_build import run_shadow_build
 
@@ -254,6 +258,19 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
         )
     except Exception as exc:  # pylint: disable=broad-exception-caught
         print(f"Refusing shadow build: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        consume_bound_operation_grant(
+            auth,
+            grant_path=args.grant,
+            grant_id=args.grant_id,
+            attempt_id=args.attempt_id,
+            manifest_path=args.run_manifest,
+            runtime=runtime,
+        )
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        print(f"Refusing shadow build: single-use grant failed: {exc}", file=sys.stderr)
         return 2
 
     # Acceptance forced from auth context for real mode — CLI flag cannot disable.

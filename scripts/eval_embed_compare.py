@@ -159,6 +159,9 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
     parser = argparse.ArgumentParser(description="Eval embed paired compare")
     parser.add_argument("--authorize-fixture", action="store_true")
     parser.add_argument("--run-manifest", type=Path, default=None)
+    parser.add_argument("--grant", type=Path, default=None, help="Single-use operation grant")
+    parser.add_argument("--grant-id", default=None, help="Grant identity bound to this compare")
+    parser.add_argument("--attempt-id", default=None, help="One-shot compare attempt identity")
     parser.add_argument("--golden", type=Path, required=True)
     parser.add_argument("--package", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True, help="comparison manifest JSON")
@@ -218,6 +221,7 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
     from eval_corpus.run_manifest import (
         DEFAULT_UNCERTAINTY,
         bind_compare,
+        consume_bound_operation_grant,
         path_is_temp_contained,
     )
     from eval_corpus.runner import compare_paired_arms, measure_view_latency
@@ -393,6 +397,19 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
 
     # Real mode: every evidence-affecting control must be bound by the
     # externally approved manifest — nothing is a free CLI choice.
+    try:
+        consume_bound_operation_grant(
+            auth,
+            grant_path=args.grant,
+            grant_id=args.grant_id,
+            attempt_id=args.attempt_id,
+            manifest_path=args.run_manifest,
+            runtime=runtime,
+        )
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        print(f"Refusing compare: single-use grant failed: {exc}", file=sys.stderr)
+        return 2
+
     baseline_ups = args.baseline_units_per_sec
     challenger_ups = args.challenger_units_per_sec
     build_result_sha256: dict[str, str] = {}
