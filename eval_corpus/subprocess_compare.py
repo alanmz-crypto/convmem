@@ -29,6 +29,32 @@ FALLBACK_SENTINEL_ID = "fallback-sentinel-z9"
 WARMUPS = 5
 TIMED_REPS = 20
 VIEWS = ("embedding_influenced", "operational_pipeline")
+LATENCY_ORDER_SCHEDULE = (
+    (
+        ("embedding_influenced", "baseline"),
+        ("embedding_influenced", "challenger"),
+        ("operational_pipeline", "baseline"),
+        ("operational_pipeline", "challenger"),
+    ),
+    (
+        ("embedding_influenced", "challenger"),
+        ("embedding_influenced", "baseline"),
+        ("operational_pipeline", "challenger"),
+        ("operational_pipeline", "baseline"),
+    ),
+    (
+        ("operational_pipeline", "baseline"),
+        ("operational_pipeline", "challenger"),
+        ("embedding_influenced", "baseline"),
+        ("embedding_influenced", "challenger"),
+    ),
+    (
+        ("operational_pipeline", "challenger"),
+        ("operational_pipeline", "baseline"),
+        ("embedding_influenced", "challenger"),
+        ("embedding_influenced", "baseline"),
+    ),
+)
 
 
 class WorkerFailure(RuntimeError):
@@ -199,6 +225,7 @@ class LatencyReport:
     warmups: int = WARMUPS
     timed_reps: int = TIMED_REPS
     counterbalanced: bool = True
+    order_schedule: str = "four_cycle_latin_v1"
 
 
 def _env_with_config(config_path: Path) -> dict[str, str]:
@@ -586,23 +613,24 @@ def measure_warm_latency(
     q = queries[0]
     for view in VIEWS:
         report.retrieval_ms[view] = {"baseline": [], "challenger": []}
-        for _ in range(WARMUPS):
-            worker_query(baseline, q, top_k=top_k, eval_view=view)
-            worker_query(challenger, q, top_k=top_k, eval_view=view)
-        for i in range(TIMED_REPS):
-            if i % 2 == 0:
-                order = ("baseline", "challenger")
-            else:
-                order = ("challenger", "baseline")
-            for arm in order:
-                handle = baseline if arm == "baseline" else challenger
-                res = worker_query(handle, q, top_k=top_k, eval_view=view)
-                elapsed = res.get("elapsed_ms")
-                if not isinstance(elapsed, (int, float)) or elapsed <= 0:
-                    raise WorkerFailure(
-                        f"latency worker {arm} returned invalid elapsed_ms {elapsed!r}"
-                    )
-                report.retrieval_ms[view][arm].append(float(elapsed))
+
+    for warmup_index in range(WARMUPS):
+        schedule = LATENCY_ORDER_SCHEDULE[warmup_index % len(LATENCY_ORDER_SCHEDULE)]
+        for view, arm in schedule:
+            handle = baseline if arm == "baseline" else challenger
+            worker_query(handle, q, top_k=top_k, eval_view=view)
+
+    for repetition in range(TIMED_REPS):
+        schedule = LATENCY_ORDER_SCHEDULE[repetition % len(LATENCY_ORDER_SCHEDULE)]
+        for view, arm in schedule:
+            handle = baseline if arm == "baseline" else challenger
+            res = worker_query(handle, q, top_k=top_k, eval_view=view)
+            elapsed = res.get("elapsed_ms")
+            if not isinstance(elapsed, (int, float)) or elapsed <= 0:
+                raise WorkerFailure(
+                    f"latency worker {arm} returned invalid elapsed_ms {elapsed!r}"
+                )
+            report.retrieval_ms[view][arm].append(float(elapsed))
     return report
 
 
@@ -612,6 +640,7 @@ def latency_summary(report: LatencyReport) -> dict[str, Any]:
         "warmups_discarded": report.warmups,
         "timed_repetitions": report.timed_reps,
         "counterbalanced_arm_order": report.counterbalanced,
+        "order_schedule": report.order_schedule,
         "process_startup_ms": report.process_startup_ms,
         "retrieval_ms": {},
         "retrieval_queries_per_sec": {},
