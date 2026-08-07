@@ -2,6 +2,7 @@
 
 # pylint: disable=too-many-lines
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -726,6 +727,22 @@ def _synthesize_answer(
     return answer, warning, synthesis_failed, synthesis_interrupted
 
 
+def _build_eval_trace(*, question: str, context: str, model: str) -> dict:
+    """Build the opt-in judge payload from the exact synthesis inputs.
+
+    Unlike the public retrieval trace, this payload intentionally includes the
+    delivered excerpts so an evaluation judge grades the same evidence that the
+    synthesizer received.  The digest binds the payload to the exact UTF-8
+    context string, including any context-limit truncation.
+    """
+    return {
+        "question": question,
+        "context": context,
+        "context_sha256": hashlib.sha256(context.encode("utf-8")).hexdigest(),
+        "model": model,
+    }
+
+
 @dataclass(frozen=True)
 class RetrievalBundle:  # pylint: disable=too-many-instance-attributes
     """Pre-synthesis retrieval outputs for ask() and future retrieval-eval.
@@ -936,6 +953,7 @@ def ask(
     site: str | None = None,
     evidence: bool = False,
     trace: bool = False,
+    return_eval_trace: bool = False,
 ) -> dict:
     """Retrieve relevant memories and generate a cited answer.
 
@@ -946,6 +964,8 @@ def ask(
         site: Optional site hostname (e.g. staging2.willowyhollow.com).
         evidence: Re-rank units by ledger graph (unresolved > failed > resolved).
         trace: When True, include versioned retrieval trace (convmem.ask.trace.v1).
+        return_eval_trace: When True, include the exact question and delivered
+            synthesis context for an evaluation judge.
 
     Returns:
         {"answer": str, "citations": list[dict], "results": list[dict],
@@ -974,6 +994,12 @@ def ask(
         }
         if bundle.trace is not None:
             empty["trace"] = bundle.trace
+        if return_eval_trace:
+            empty["eval_trace"] = _build_eval_trace(
+                question=question,
+                context=bundle.context,
+                model=cfg["models"].get("distill_model", "deepseek-v4-flash"),
+            )
         return empty
 
     models = cfg["models"]
@@ -1001,6 +1027,12 @@ def ask(
         out["synthesis_interrupted"] = True
     if bundle.trace is not None:
         out["trace"] = bundle.trace
+    if return_eval_trace:
+        out["eval_trace"] = _build_eval_trace(
+            question=question,
+            context=bundle.context,
+            model=models.get("distill_model", "deepseek-v4-flash"),
+        )
     return out
 
 

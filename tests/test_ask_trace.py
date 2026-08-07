@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import unittest
 from unittest import mock
@@ -205,6 +206,49 @@ class TestAskTrace(unittest.TestCase):
         mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
         plain = ask("q", top_k=2)
         self.assertNotIn("trace", plain)
+
+    @patch("ask.query_units")
+    @patch("ask.load_config")
+    @patch("ask.generate_stream")
+    def test_eval_trace_is_opt_in_and_hashes_delivered_context(
+        self, mock_stream, mock_cfg, mock_units
+    ):
+        mock_units.return_value = [_unit("a", 0.95), _unit("b", 0.9)]
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
+
+        out = ask("judge this question", top_k=2, return_eval_trace=True)
+
+        self.assertNotIn("trace", out)
+        eval_trace = out["eval_trace"]
+        self.assertEqual(eval_trace["question"], "judge this question")
+        self.assertEqual(eval_trace["model"], "deepseek-v4-flash")
+        self.assertTrue(eval_trace["context"])
+        self.assertEqual(
+            eval_trace["context_sha256"],
+            hashlib.sha256(eval_trace["context"].encode("utf-8")).hexdigest(),
+        )
+        self.assertIn("body-a", eval_trace["context"])
+
+    @patch("ask.query_units")
+    @patch("ask.load_config")
+    @patch("ask.generate_stream")
+    def test_eval_trace_uses_post_limit_context(
+        self, mock_stream, mock_cfg, mock_units
+    ):
+        mock_units.return_value = [_unit("a", 0.95), _unit("b", 0.9)]
+        mock_cfg.return_value = _cfg()
+        mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
+
+        with patch("ask._MAX_CONTEXT_CHARS", 40):
+            out = ask("q", top_k=2, return_eval_trace=True)
+
+        context = out["eval_trace"]["context"]
+        self.assertIn("[… context truncated …]", context)
+        self.assertEqual(
+            out["eval_trace"]["context_sha256"],
+            hashlib.sha256(context.encode("utf-8")).hexdigest(),
+        )
 
     @patch("ask.query_units")
     @patch("ask.load_config")

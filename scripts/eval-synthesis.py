@@ -56,7 +56,12 @@ def eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:
     # evidence=False mirrors the CLI `ask` default and gives better topical
     # recall for a synthesis-quality eval (evidence rerank force-prepends recent
     # decisions, which buries topic-specific targets).
-    out = ask(row["question"], top_k=6, evidence=False)
+    out = ask(
+        row["question"],
+        top_k=6,
+        evidence=False,
+        return_eval_trace=use_judge,
+    )
     answer = out["answer"]
     n_cites = len(out.get("citations") or [])
     grade = grade_answer(
@@ -77,15 +82,16 @@ def eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:
     if use_judge and not row.get("should_abstain"):
         from eval_judge import judge
 
-        context = row["question"] + "\n\n" + "\n\n".join(
-            (c.get("title") or "") + " " + (str(c.get("ledger_id") or ""))
-            for c in (out.get("citations") or [])
+        eval_trace = out.get("eval_trace") or {}
+        context = (
+            f"Question: {eval_trace.get('question', row['question'])}\n\n"
+            f"Retrieved excerpts:\n{eval_trace.get('context', '')}"
         )
         jr = judge(
             "synthesis",
             context,
             answer,
-            under_test_model=_synth_model(cfg),
+            under_test_model=(eval_trace.get("model") or _synth_model(cfg)),
             cfg=cfg,
         )
         result["judge"] = jr.to_dict()
