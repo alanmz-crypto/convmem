@@ -262,6 +262,52 @@ def verify_vector_only_result(result: Mapping[str, Any], *, context: str) -> Non
         raise WorkerFailure(f"{context}: query vector dimension/norm is invalid")
 
 
+def verify_ranked_hit_payload(
+    result: Mapping[str, Any],
+    *,
+    top_k: int,
+    context: str,
+    expected_ids: set[str] | None = None,
+) -> None:
+    """Reject semantically malformed ranked hits before metric computation."""
+    hits = result.get("hits")
+    if not isinstance(hits, list):
+        raise WorkerFailure(f"{context}: hits must be a list")
+    if len(hits) > top_k:
+        raise WorkerFailure(
+            f"{context}: worker returned {len(hits)} hits above requested top_k={top_k}"
+        )
+    seen: set[str] = set()
+    for index, hit in enumerate(hits):
+        if not isinstance(hit, Mapping):
+            raise WorkerFailure(f"{context}: hit[{index}] must be an object")
+        metadata = hit.get("metadata") or {}
+        if not isinstance(metadata, Mapping):
+            raise WorkerFailure(f"{context}: hit[{index}].metadata must be an object")
+        hit_id = str(hit.get("id") or metadata.get("id") or "").strip()
+        if not hit_id:
+            raise WorkerFailure(f"{context}: hit[{index}] has no unit id")
+        if hit_id in seen:
+            raise WorkerFailure(f"{context}: duplicate hit id {hit_id!r}")
+        if expected_ids is not None and hit_id not in expected_ids:
+            raise WorkerFailure(f"{context}: unknown hit id {hit_id!r}")
+        seen.add(hit_id)
+        for metric_field in ("distance", "score"):
+            value = hit.get(metric_field)
+            if value is None:
+                continue
+            try:
+                finite = math.isfinite(float(value))
+            except (TypeError, ValueError) as exc:
+                raise WorkerFailure(
+                    f"{context}: hit[{index}].{metric_field} is not numeric"
+                ) from exc
+            if not finite:
+                raise WorkerFailure(
+                    f"{context}: hit[{index}].{metric_field} is not finite"
+                )
+
+
 def verify_enrichment_reader_result(
     result: Mapping[str, Any],
     *,
@@ -376,6 +422,7 @@ def run_one_shot_query(
         raise WorkerFailure(f"one-shot worker query error: {result['error']}")
     if require_vector_only:
         verify_vector_only_result(result, context="one-shot")
+        verify_ranked_hit_payload(result, top_k=top_k, context="one-shot")
     if require_enrichment_provenance:
         verify_enrichment_reader_result(
             result,
@@ -482,6 +529,11 @@ def worker_query(handle: WorkerHandle, query: str, *, top_k: int, eval_view: str
             f"type={res.get('type')!r} error={res.get('error')!r}"
         )
     verify_vector_only_result(res, context=f"latency:{handle.arm}")
+    verify_ranked_hit_payload(
+        res,
+        top_k=top_k,
+        context=f"latency:{handle.arm}",
+    )
     if handle.require_enrichment_provenance:
         verify_enrichment_reader_result(
             res,

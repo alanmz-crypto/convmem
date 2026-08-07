@@ -7,6 +7,7 @@ import pytest
 from eval_corpus.subprocess_compare import (
     WorkerFailure,
     verify_enrichment_reader_result,
+    verify_ranked_hit_payload,
     verify_vector_only_result,
 )
 
@@ -25,6 +26,48 @@ def _valid() -> dict:
 
 def test_valid_vector_result_is_accepted():
     verify_vector_only_result(_valid(), context="test")
+
+
+def test_ranked_hit_payload_rejects_duplicate_ids():
+    result = {
+        "hits": [
+            {"id": "unit-1", "metadata": {}, "distance": 0.1},
+            {"id": "unit-1", "metadata": {}, "distance": 0.2},
+        ]
+    }
+    with pytest.raises(WorkerFailure, match="duplicate"):
+        verify_ranked_hit_payload(result, top_k=5, context="test")
+
+
+@pytest.mark.parametrize(
+    ("result", "message"),
+    [
+        ({}, "hits must be a list"),
+        ({"hits": [{"id": "unit-1"}] * 3}, "above requested"),
+        ({"hits": ["unit-1"]}, "must be an object"),
+        ({"hits": [{"metadata": {}}]}, "no unit id"),
+        ({"hits": [{"id": "unit-1", "distance": "bad"}]}, "not numeric"),
+    ],
+)
+def test_ranked_hit_payload_rejects_malformed_shape(result, message):
+    with pytest.raises(WorkerFailure, match=message):
+        verify_ranked_hit_payload(result, top_k=2, context="test")
+
+
+def test_ranked_hit_payload_rejects_nonfinite_scores_and_unknown_ids():
+    with pytest.raises(WorkerFailure, match="not finite"):
+        verify_ranked_hit_payload(
+            {"hits": [{"id": "unit-1", "score": float("nan")}]},
+            top_k=5,
+            context="test",
+        )
+    with pytest.raises(WorkerFailure, match="unknown"):
+        verify_ranked_hit_payload(
+            {"hits": [{"id": "unit-2"}]},
+            top_k=5,
+            expected_ids={"unit-1"},
+            context="test",
+        )
 
 
 def test_enrichment_provenance_is_checked_for_operational_view():
