@@ -64,6 +64,21 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
     args = parser.parse_args(argv)
 
     sys.path.insert(0, str(REPO))
+    if args.run_manifest is not None:
+        try:
+            from eval_corpus.source_identity import (
+                SourceIdentityError,
+                verify_manifest_path_source_identity,
+            )
+
+            verify_manifest_path_source_identity(args.run_manifest, repo_root=REPO)
+        except (OSError, ValueError, SourceIdentityError) as exc:
+            print(
+                f"Refusing shadow build: source identity verification failed: {exc}",
+                file=sys.stderr,
+            )
+            return 2
+
     from eval_corpus.embed_adapters import (
         fake_embed_fn,
         http_embed_fn,

@@ -49,6 +49,21 @@ def main(argv: list[str] | None = None) -> int:
 
     sys.path.insert(0, str(REPO))
 
+    if args.run_manifest is not None:
+        try:
+            from eval_corpus.source_identity import (
+                SourceIdentityError,
+                verify_manifest_path_source_identity,
+            )
+
+            verify_manifest_path_source_identity(args.run_manifest, repo_root=REPO)
+        except (OSError, ValueError, SourceIdentityError) as exc:
+            print(
+                f"Refusing capture: source identity verification failed: {exc}",
+                file=sys.stderr,
+            )
+            return 2
+
     r2b_capability = None
 
     if args.run_manifest is not None:

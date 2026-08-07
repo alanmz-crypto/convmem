@@ -12,6 +12,7 @@ from eval_corpus.source_identity import (
     SourceIdentityError,
     canonical_identity_sha256,
     collect_source_identity,
+    verify_manifest_path_source_identity,
     verify_source_identity,
 )
 
@@ -56,16 +57,47 @@ def test_exact_import_or_lock_identity_mismatch_is_rejected(tmp_path):
     approved = collect_source_identity(repo, critical_modules=("json",))
     observed = json.loads(json.dumps(approved))
     observed["dependency_lock_sha256"] = "0" * 64
+    observed["identity_sha256"] = canonical_identity_sha256(observed)
     with pytest.raises(SourceIdentityError, match="dependency_lock_sha256"):
         verify_source_identity(approved, observed)
     observed = json.loads(json.dumps(approved))
     observed["critical_modules"][0]["sha256"] = "f" * 64
+    observed["identity_sha256"] = canonical_identity_sha256(observed)
     with pytest.raises(SourceIdentityError, match="critical_modules"):
         verify_source_identity(approved, observed)
 
 
 def test_untracked_inventory_is_observed_not_hidden(tmp_path):
     repo = _fixture_repo(tmp_path)
-    (repo / "query.py").write_text("shadow\n", encoding="utf-8")
+    (repo / "notes.txt").write_text("untracked\n", encoding="utf-8")
     identity = collect_source_identity(repo, critical_modules=("json",))
-    assert identity["untracked_inventory"] == ["query.py"]
+    assert identity["untracked_inventory"] == ["notes.txt"]
+
+
+def test_import_shadowing_file_is_rejected(tmp_path):
+    repo = _fixture_repo(tmp_path)
+    (repo / "query.py").write_text("shadow\n", encoding="utf-8")
+    with pytest.raises(SourceIdentityError, match="import-shadowing"):
+        collect_source_identity(repo, critical_modules=("json",))
+
+
+def test_symlinked_identity_input_is_rejected(tmp_path):
+    target = tmp_path / "requirements.txt"
+    target.write_text("example==1\n", encoding="utf-8")
+    link = tmp_path / "requirements-link.txt"
+    link.symlink_to(target)
+    with pytest.raises(SourceIdentityError, match="symlinked"):
+        from eval_corpus.source_identity import sha256_file
+
+        sha256_file(link)
+
+
+def test_manifest_path_preflight_is_fixture_noop_and_real_fail_closed(tmp_path):
+    fixture = tmp_path / "fixture.json"
+    fixture.write_text('{"execution_mode": "fixture"}\n', encoding="utf-8")
+    assert verify_manifest_path_source_identity(fixture, repo_root=tmp_path) is None
+
+    real = tmp_path / "real.json"
+    real.write_text('{"execution_mode": "real"}\n', encoding="utf-8")
+    with pytest.raises(SourceIdentityError, match="source_identity"):
+        verify_manifest_path_source_identity(real, repo_root=tmp_path)

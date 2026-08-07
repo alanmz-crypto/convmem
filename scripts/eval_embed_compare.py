@@ -168,6 +168,21 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
     args = parser.parse_args(argv)
 
     sys.path.insert(0, str(REPO))
+    if args.run_manifest is not None:
+        try:
+            from eval_corpus.source_identity import (
+                SourceIdentityError,
+                verify_manifest_path_source_identity,
+            )
+
+            verify_manifest_path_source_identity(args.run_manifest, repo_root=REPO)
+        except (OSError, ValueError, SourceIdentityError) as exc:
+            print(
+                f"Refusing compare: source identity verification failed: {exc}",
+                file=sys.stderr,
+            )
+            return 2
+
     from eval_corpus.io_atomic import atomic_write_json
     from eval_corpus.run_manifest import (
         DEFAULT_UNCERTAINTY,
