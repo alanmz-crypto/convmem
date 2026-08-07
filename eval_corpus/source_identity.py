@@ -299,7 +299,10 @@ def verify_manifest_path_source_identity(
     """Verify a real manifest before importing the phase's application code."""
     path = Path(manifest_path).expanduser().resolve(strict=True)
     body = json.loads(path.read_text(encoding="utf-8"))
-    if str(body.get("execution_mode") or "") != "real":
+    if (
+        str(body.get("execution_mode") or "") != "real"
+        or body.get("test_only") is True
+    ):
         return None
     return verify_manifest_source_identity(body, repo_root=repo_root)
 
