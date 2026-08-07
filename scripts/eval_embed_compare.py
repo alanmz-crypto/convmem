@@ -292,6 +292,28 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
 
     rows = _load_jsonl(golden)
     package_units = _load_jsonl(package)
+    query_validation = None
+    if auth.execution_mode == "real" and auth.manifest.get("test_only") is not True:
+        from eval_corpus.query_set import (
+            QuerySetValidationError,
+            validate_canonical_real_query_set,
+        )
+
+        if auth.manifest.get("query_schema_version") != "canonical_real_v1":
+            print(
+                "Refusing compare: real mode requires "
+                "query_schema_version=canonical_real_v1",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            query_validation = validate_canonical_real_query_set(rows, package_units)
+        except QuerySetValidationError as exc:
+            print(
+                f"Refusing compare: canonical query validation failed: {exc}",
+                file=sys.stderr,
+            )
+            return 2
 
     # Collection provenance gate: both shadow stores must have been built
     # from the approved package (stored metadata AND actual contents).
@@ -512,6 +534,8 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
                 "worker_startup": challenger_probe["startup"],
             },
         }
+        if query_validation is not None:
+            report["query_validation"] = query_validation
         report["embed_host"] = args.embed_host
         report["throughput"] = {
             "baseline_units_per_sec": baseline_ups,

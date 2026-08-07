@@ -43,6 +43,7 @@ REQUIRED_REAL_FIELDS = (
     "service_policy",
     "prohibited_actions",
     "source_identity",
+    "query_schema_version",
 )
 
 DEFAULT_UNCERTAINTY = {
@@ -646,6 +647,19 @@ def validate_run_manifest_schema(manifest: dict[str, Any]) -> list[str]:
                 errors.append("source_identity must be an object")
             elif source_identity.get("schema_version") != "source_identity_v1":
                 errors.append("source_identity schema_version is unsupported")
+            test_only = manifest.get("test_only", False)
+            if not isinstance(test_only, bool):
+                errors.append("test_only must be boolean when present")
+            elif test_only:
+                if manifest.get("query_schema_version") not in {
+                    "test_fixture_legacy_v1",
+                    "canonical_real_v1",
+                }:
+                    errors.append("test-only query_schema_version is unsupported")
+            elif manifest.get("query_schema_version") != "canonical_real_v1":
+                errors.append(
+                    "real mode requires query_schema_version=canonical_real_v1"
+                )
             if str(manifest.get("primary_view") or "") != "embedding_influenced":
                 errors.append("primary_view must be embedding_influenced")
             if not str(manifest.get("ryan_approved_manifest_sha256") or ""):
@@ -1270,6 +1284,10 @@ def make_real_run_manifest_for_tests(
             "source_identity",
             {"schema_version": "source_identity_v1", "test_fixture": True},
         ),
+        "query_schema_version": overrides.pop(
+            "query_schema_version", "test_fixture_legacy_v1"
+        ),
+        "test_only": overrides.pop("test_only", True),
         **DEFAULT_UNCERTAINTY,
     }
     body.update(overrides)
