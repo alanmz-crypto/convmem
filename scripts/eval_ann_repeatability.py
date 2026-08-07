@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
 
     sys.path.insert(0, str(REPO))
     from eval_corpus.ann_stability import assess_ann_repeatability
-    from eval_corpus.io_atomic import atomic_write_json
+    from eval_corpus.secure_fs import write_absent_json
 
     reports = [path.expanduser() for path in args.realization_report]
     if len(reports) != 3:
@@ -65,8 +65,6 @@ def main(argv: list[str] | None = None) -> int:
             top_k=args.top_k,
         )
         out = args.out.expanduser()
-        if out.exists() or out.is_symlink():
-            raise PermissionError(f"ANN assessment output must be absent: {out}")
         if args.run_manifest is not None and not args.authorize_fixture:
             from eval_corpus.run_manifest import (
                 consume_operation_grant,
@@ -98,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
             ],
             "assessment": assessment,
         }
-        atomic_write_json(out, output)
+        write_absent_json(out, output, approved_root=out.parent)
     except Exception as exc:  # pylint: disable=broad-exception-caught
         print(f"ANN repeatability failed closed: {exc}", file=sys.stderr)
         return 2

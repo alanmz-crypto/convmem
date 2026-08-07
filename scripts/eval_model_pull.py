@@ -29,8 +29,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         from eval_corpus.model_acquisition import run_authorized_model_pull
         from eval_corpus.ollama_identity import OllamaEmbedClient
-        from eval_corpus.run_manifest import bind_model_pull, consume_bound_operation_grant
-        from eval_corpus.io_atomic import atomic_write_json
+        from eval_corpus.run_manifest import (
+            bind_model_pull,
+            consume_bound_operation_grant,
+        )
+        from eval_corpus.secure_fs import write_absent_json
 
         runtime = {
             "model_tag": args.model_tag,
@@ -54,8 +57,6 @@ def main(argv: list[str] | None = None) -> int:
             runtime=runtime,
         )
         out = args.out.expanduser()
-        if out.exists() or out.is_symlink():
-            raise PermissionError(f"model pull output must be absent: {out}")
         client = OllamaEmbedClient(args.embed_host)
         report = run_authorized_model_pull(
             ollama_binary=args.ollama_bin,
@@ -66,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
             identity_client=client,
             authorized=True,
         )
-        atomic_write_json(out, report)
+        write_absent_json(out, report, approved_root=out.parent)
     except Exception as exc:  # pylint: disable=broad-exception-caught
         print(f"Model pull failed closed: {exc}", file=sys.stderr)
         return 2
