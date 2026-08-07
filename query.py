@@ -8,6 +8,7 @@ Reranking: Step 6 (query_units only).
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from collections import Counter
@@ -397,6 +398,17 @@ def _resolve_eval_retrieval_view(
     return view.replace("-", "_")
 
 
+def _exact_vector_sort_key(result: dict) -> tuple[float, bytes]:
+    distance = result.get("distance")
+    try:
+        numeric_distance = float(distance)
+    except (TypeError, ValueError):
+        numeric_distance = math.inf
+    if not math.isfinite(numeric_distance):
+        numeric_distance = math.inf
+    return numeric_distance, str(result.get("id") or "").encode("utf-8")
+
+
 def query_units(
     text: str,
     top_k: int = 5,
@@ -540,7 +552,7 @@ def query_units(
         retrieval_trace.candidates = [dict(result) for result in results[:candidate_k]]
 
     if view == "exact_vector":
-        results = results[:top_k]
+        results = sorted(results, key=_exact_vector_sort_key)[:top_k]
         for rank, result in enumerate(results, 1):
             result["retrieval_rank"] = rank
         return results

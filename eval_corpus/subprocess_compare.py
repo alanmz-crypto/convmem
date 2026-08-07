@@ -738,9 +738,21 @@ def make_subprocess_query_fn(
             raise WorkerFailure("exact_vector requires captured vector_candidates")
         if len({str(item.get("id") or "") for item in candidates if isinstance(item, Mapping)}) != len(candidates):
             raise WorkerFailure("exact_vector captured duplicate or malformed vector candidates")
+        def exact_sort_key(item: Any) -> tuple[float, bytes]:
+            if not isinstance(item, Mapping):
+                return math.inf, b""
+            try:
+                distance = float(item.get("distance"))
+            except (TypeError, ValueError):
+                distance = math.inf
+            if not math.isfinite(distance):
+                distance = math.inf
+            return distance, str(item.get("id") or "").encode("utf-8")
+
+        ordered_candidates = sorted(candidates, key=exact_sort_key)
         exact_result = dict(base_result)
         exact_result["eval_view"] = "exact_vector"
-        exact_result["hits"] = [dict(item) for item in candidates[:top_k]]
+        exact_result["hits"] = [dict(item) for item in ordered_candidates[:top_k]]
         exact_result["derived_from_view"] = "embedding_influenced"
         exact_result["same_captured_query_vector"] = True
         exact_result["enrichment_reader"] = {
@@ -748,6 +760,7 @@ def make_subprocess_query_fn(
             "used_by_view": False,
             "reason": "exact_vector_view_excludes_downstream_pipeline",
         }
+        exact_result["vector_candidates"] = [dict(item) for item in ordered_candidates]
         return {**base_payload, "result": exact_result}
 
     def _fn(query: str, *, top_k: int, eval_view: str) -> list[dict]:
