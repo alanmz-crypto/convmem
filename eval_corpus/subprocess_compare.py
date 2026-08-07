@@ -172,6 +172,8 @@ class WorkerHandle:
     config_path: Path
     startup: dict[str, Any]
     startup_ms: float
+    expected_identity: dict[str, Any] | None = None
+    require_enrichment_provenance: bool = False
 
 
 @dataclass
@@ -244,6 +246,57 @@ def verify_vector_only_result(result: Mapping[str, Any], *, context: str) -> Non
         raise WorkerFailure(f"{context}: query vector dimension/norm is invalid")
 
 
+def verify_enrichment_reader_result(
+    result: Mapping[str, Any],
+    *,
+    expected_identity: Mapping[str, Any] | None,
+    require_reader: bool,
+    context: str,
+) -> None:
+    """Require provenance from the exact approved-decision bytes used by a view."""
+    reader = result.get("enrichment_reader")
+    if not isinstance(reader, Mapping):
+        raise WorkerFailure(f"{context}: enrichment_reader provenance is missing")
+    used = reader.get("used_by_view")
+    if not require_reader:
+        if used is not False:
+            raise WorkerFailure(
+                f"{context}: enrichment_reader must report used_by_view=false"
+            )
+        return
+    if used is not True:
+        raise WorkerFailure(
+            f"{context}: enrichment_reader must report used_by_view=true"
+        )
+    if reader.get("schema_version") != "approved_decisions_reader_v1":
+        raise WorkerFailure(f"{context}: enrichment reader schema is invalid")
+    if reader.get("encoding") != "utf-8":
+        raise WorkerFailure(f"{context}: enrichment encoding is not utf-8")
+    path = str(reader.get("path") or "")
+    expected_path = str((expected_identity or {}).get("enrichment_path") or "")
+    if not path or not _same_path(path, expected_path):
+        raise WorkerFailure(
+            f"{context}: enrichment path mismatch worker={path!r} "
+            f"authorized={expected_path!r}"
+        )
+    actual_sha = str(reader.get("sha256") or "")
+    expected_sha = str((expected_identity or {}).get("enrichment_sha256") or "")
+    if len(actual_sha) != 64 or actual_sha != expected_sha:
+        raise WorkerFailure(
+            f"{context}: enrichment SHA mismatch worker={actual_sha!r} "
+            f"authorized={expected_sha!r}"
+        )
+    semantic = str(reader.get("semantic_fingerprint") or "")
+    if len(semantic) != 64:
+        raise WorkerFailure(f"{context}: enrichment semantic fingerprint is malformed")
+    try:
+        row_count = int(reader.get("row_count"))
+    except (TypeError, ValueError) as exc:
+        raise WorkerFailure(f"{context}: enrichment row_count is malformed") from exc
+    if row_count < 0:
+        raise WorkerFailure(f"{context}: enrichment row_count is negative")
+
+
 def run_one_shot_query(
     *,
     config_path: Path,
@@ -252,6 +305,7 @@ def run_one_shot_query(
     eval_view: str = "embedding_influenced",
     expected_identity: dict[str, Any] | None = None,
     require_vector_only: bool = False,
+    require_enrichment_provenance: bool = False,
 ) -> dict[str, Any]:
     """Fresh subprocess; proves CONVMEM_CONFIG is loaded before imports.
 
@@ -306,8 +360,20 @@ def run_one_shot_query(
         raise WorkerFailure(f"one-shot worker query error: {result['error']}")
     if require_vector_only:
         verify_vector_only_result(result, context="one-shot")
+    if require_enrichment_provenance:
+        verify_enrichment_reader_result(
+            result,
+            expected_identity=expected_identity,
+            require_reader=result.get("eval_view") == "operational_pipeline",
+            context="one-shot",
+        )
     if expected_identity:
-        verify_startup_identity(startup, expected_identity, context="one-shot")
+        startup_identity = {
+            key: value
+            for key, value in expected_identity.items()
+            if key not in {"enrichment_path", "enrichment_sha256"}
+        }
+        verify_startup_identity(startup, startup_identity, context="one-shot")
     return {
         "returncode": proc.returncode,
         "stderr": proc.stderr,
@@ -322,6 +388,7 @@ def start_latency_worker(
     arm: str,
     config_path: Path,
     expected_identity: dict[str, Any] | None = None,
+    require_enrichment_provenance: bool = False,
 ) -> WorkerHandle:
     t0 = time.perf_counter()
     proc = subprocess.Popen(  # pylint: disable=consider-using-with
@@ -357,9 +424,12 @@ def start_latency_worker(
         )
     if expected_identity:
         try:
-            verify_startup_identity(
-                startup, expected_identity, context=f"latency:{arm}"
-            )
+            startup_identity = {
+                key: value
+                for key, value in expected_identity.items()
+                if key not in {"enrichment_path", "enrichment_sha256"}
+            }
+            verify_startup_identity(startup, startup_identity, context=f"latency:{arm}")
         except WorkerFailure:
             proc.kill()
             raise
@@ -369,6 +439,8 @@ def start_latency_worker(
         config_path=config_path,
         startup=startup,
         startup_ms=startup_ms,
+        expected_identity=expected_identity,
+        require_enrichment_provenance=require_enrichment_provenance,
     )
 
 
@@ -393,6 +465,13 @@ def worker_query(handle: WorkerHandle, query: str, *, top_k: int, eval_view: str
             f"type={res.get('type')!r} error={res.get('error')!r}"
         )
     verify_vector_only_result(res, context=f"latency:{handle.arm}")
+    if handle.require_enrichment_provenance:
+        verify_enrichment_reader_result(
+            res,
+            expected_identity=handle.expected_identity,
+            require_reader=res.get("eval_view") == "operational_pipeline",
+            context=f"latency:{handle.arm}",
+        )
     return res
 
 
@@ -488,6 +567,7 @@ def make_subprocess_query_fn(
     config_path: Path,
     *,
     expected_identity: dict[str, Any] | None = None,
+    require_enrichment_provenance: bool = False,
 ) -> Callable[..., list[dict]]:
     """QueryFn using one-shot workers (scoring path; not warm latency).
 
@@ -503,6 +583,7 @@ def make_subprocess_query_fn(
             eval_view=eval_view or "embedding_influenced",
             expected_identity=expected_identity,
             require_vector_only=True,
+            require_enrichment_provenance=require_enrichment_provenance,
         )
         hits = payload["result"].get("hits") or []
         return list(hits)

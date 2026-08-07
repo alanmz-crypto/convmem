@@ -64,6 +64,7 @@ def _run_query(query: str, top_k: int, eval_view: str) -> tuple[list[dict], dict
         "query_vector_finite": trace.query_vector_finite,
         "query_vector_norm": trace.query_vector_norm,
         "embedding_request_diagnostics": trace.embedding_request_diagnostics,
+        "enrichment_reader": trace.enrichment_reader,
     }
 
 

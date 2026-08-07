@@ -6,10 +6,34 @@ import unittest
 from unittest import mock
 
 from ask import _prepend_recent_decisions
-from ledger_recent import decision_record_to_unit, load_recent_decisions
+from ledger_recent import (
+    approved_decision_hit,
+    approved_reader_snapshot,
+    decision_record_to_unit,
+    load_recent_decisions,
+)
 
 
 class LedgerRecentTests(unittest.TestCase):
+    def test_approved_reader_provenance_describes_the_same_byte_snapshot(self):
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "decisions-approved.jsonl"
+            path.write_bytes(
+                b'{"id":"dec_prop_exact","summary":"exact"}\r\n'
+                b'{"id":"dec_prop_other","summary":"other"}\n'
+            )
+            cfg = {"index": {"chroma_dir": str(Path(tmp) / "chroma")}}
+            snapshot = approved_reader_snapshot(cfg)
+            rows, provenance = snapshot
+            self.assertEqual(len(rows), 2)
+            self.assertEqual(provenance["encoding"], "utf-8")
+            self.assertEqual(provenance["row_count"], 2)
+            hit = approved_decision_hit(cfg, "dec_prop_exact", snapshot=snapshot)
+            self.assertEqual(hit["metadata"]["ledger_id"], "dec_prop_exact")
+
     def test_load_recent_decisions_filters_by_age(self):
         import tempfile
         from pathlib import Path

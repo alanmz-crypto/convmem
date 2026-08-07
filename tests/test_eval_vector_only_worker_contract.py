@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from eval_corpus.subprocess_compare import WorkerFailure, verify_vector_only_result
+from eval_corpus.subprocess_compare import (
+    WorkerFailure,
+    verify_enrichment_reader_result,
+    verify_vector_only_result,
+)
 
 
 def _valid() -> dict:
@@ -21,6 +25,45 @@ def _valid() -> dict:
 
 def test_valid_vector_result_is_accepted():
     verify_vector_only_result(_valid(), context="test")
+
+
+def test_enrichment_provenance_is_checked_for_operational_view():
+    result = {
+        **_valid(),
+        "eval_view": "operational_pipeline",
+        "enrichment_reader": {
+            "schema_version": "approved_decisions_reader_v1",
+            "encoding": "utf-8",
+            "path": "/tmp/arm/decisions-approved.jsonl",
+            "sha256": "b" * 64,
+            "row_count": 2,
+            "semantic_fingerprint": "c" * 64,
+            "used_by_view": True,
+        },
+    }
+    verify_enrichment_reader_result(
+        result,
+        expected_identity={
+            "enrichment_path": "/tmp/arm/decisions-approved.jsonl",
+            "enrichment_sha256": "b" * 64,
+        },
+        require_reader=True,
+        context="test",
+    )
+
+
+def test_missing_enrichment_provenance_is_rejected():
+    result = {**_valid(), "eval_view": "operational_pipeline"}
+    with pytest.raises(WorkerFailure, match="missing"):
+        verify_enrichment_reader_result(
+            result,
+            expected_identity={
+                "enrichment_path": "/tmp/arm/decisions-approved.jsonl",
+                "enrichment_sha256": "b" * 64,
+            },
+            require_reader=True,
+            context="test",
+        )
 
 
 @pytest.mark.parametrize(

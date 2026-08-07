@@ -493,6 +493,21 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
 
         baseline_expected = expected_identity(baseline_config, baseline_chroma)
         challenger_expected = expected_identity(challenger_config, challenger_chroma)
+        baseline_expected.update(
+            {
+                "enrichment_path": baseline_id["enrichment_path"],
+                "enrichment_sha256": baseline_id["enrichment_sha256"],
+            }
+        )
+        challenger_expected.update(
+            {
+                "enrichment_path": challenger_id["enrichment_path"],
+                "enrichment_sha256": challenger_id["enrichment_sha256"],
+            }
+        )
+        require_enrichment_provenance = (
+            auth.execution_mode == "real" and auth.manifest.get("test_only") is not True
+        )
 
         try:
             # Identity probe: one one-shot per arm; banner recorded in report.
@@ -502,19 +517,25 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
                 query=probe_query,
                 expected_identity=baseline_expected,
                 require_vector_only=True,
+                require_enrichment_provenance=require_enrichment_provenance,
             )
             challenger_probe = run_one_shot_query(
                 config_path=challenger_config,
                 query=probe_query,
                 expected_identity=challenger_expected,
                 require_vector_only=True,
+                require_enrichment_provenance=require_enrichment_provenance,
             )
 
             baseline_fn = make_subprocess_query_fn(
-                baseline_config, expected_identity=baseline_expected
+                baseline_config,
+                expected_identity=baseline_expected,
+                require_enrichment_provenance=require_enrichment_provenance,
             )
             challenger_fn = make_subprocess_query_fn(
-                challenger_config, expected_identity=challenger_expected
+                challenger_config,
+                expected_identity=challenger_expected,
+                require_enrichment_provenance=require_enrichment_provenance,
             )
             report = compare_paired_arms(
                 rows,
@@ -552,11 +573,13 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
                     arm="baseline",
                     config_path=baseline_config,
                     expected_identity=baseline_expected,
+                    require_enrichment_provenance=require_enrichment_provenance,
                 )
                 c_worker = start_latency_worker(
                     arm="challenger",
                     config_path=challenger_config,
                     expected_identity=challenger_expected,
+                    require_enrichment_provenance=require_enrichment_provenance,
                 )
             except WorkerFailure as exc:
                 print(f"Compare aborted (fail closed): {exc}", file=sys.stderr)
