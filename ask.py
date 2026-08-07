@@ -4,6 +4,7 @@
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -743,6 +744,14 @@ def _build_eval_trace(*, question: str, context: str, model: str) -> dict:
     }
 
 
+def _synthesis_model_name(models: dict) -> str:
+    """Return the model name that provider-aware synthesis will actually use."""
+    configured = models.get("distill_model", "deepseek-v4-flash")
+    if "deepseek-v4" in configured and not os.environ.get("DEEPSEEK_API_KEY"):
+        return os.environ.get("CONVMEM_FALLBACK_MODEL", "llama3.1:8b")
+    return configured
+
+
 @dataclass(frozen=True)
 class RetrievalBundle:  # pylint: disable=too-many-instance-attributes
     """Pre-synthesis retrieval outputs for ask() and future retrieval-eval.
@@ -998,7 +1007,7 @@ def ask(
             empty["eval_trace"] = _build_eval_trace(
                 question=question,
                 context=bundle.context,
-                model=cfg["models"].get("distill_model", "deepseek-v4-flash"),
+                model=_synthesis_model_name(cfg["models"]),
             )
         return empty
 
@@ -1031,7 +1040,7 @@ def ask(
         out["eval_trace"] = _build_eval_trace(
             question=question,
             context=bundle.context,
-            model=models.get("distill_model", "deepseek-v4-flash"),
+            model=_synthesis_model_name(models),
         )
     return out
 

@@ -215,6 +215,7 @@ class TestAskTrace(unittest.TestCase):
     ):
         mock_units.return_value = [_unit("a", 0.95), _unit("b", 0.9)]
         mock_cfg.return_value = _cfg()
+        mock_cfg.return_value["models"]["distill_model"] = "test-model"
         mock_stream.side_effect = lambda *_a, **_k: iter(["ok"])
 
         out = ask("judge this question", top_k=2, return_eval_trace=True)
@@ -222,7 +223,7 @@ class TestAskTrace(unittest.TestCase):
         self.assertNotIn("trace", out)
         eval_trace = out["eval_trace"]
         self.assertEqual(eval_trace["question"], "judge this question")
-        self.assertEqual(eval_trace["model"], "deepseek-v4-flash")
+        self.assertEqual(eval_trace["model"], "test-model")
         self.assertTrue(eval_trace["context"])
         self.assertEqual(
             eval_trace["context_sha256"],
