@@ -37,7 +37,7 @@ def ollama_embed(text: str, model: str, host: str) -> list[float]:
     resp = requests.post(
         f"{host.rstrip('/')}/api/embeddings",
         json={"model": model, "prompt": text},
-        timeout=120,
+        timeout=300,
     )
     resp.raise_for_status()
     data = resp.json()
