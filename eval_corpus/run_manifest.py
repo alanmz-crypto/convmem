@@ -56,9 +56,12 @@ DEFAULT_UNCERTAINTY = {
     "tie_epsilon": 0.0,
     "significance_alpha": 0.05,
     "confidence_level": 0.95,
-    "bootstrap_seed": 20260719,
-    "bootstrap_resamples": 1999,
+    "bootstrap_seed": 20260804,
+    "bootstrap_resamples": 100000,
+    "permutation_seed": 20260805,
+    "permutation_draws": 100000,
     "minimum_non_tied_pairs": 20,
+    "minimum_non_tied_groups": 20,
 }
 
 # Operation → exact required runtime field names (no extras, no omissions).
