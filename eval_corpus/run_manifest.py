@@ -195,6 +195,7 @@ REQUIRED_R2B_FIELDS = (
     "prohibited_actions",
     "source_snapshot",
     "source_identity",
+    "query_set_sha256",
 )
 
 _EVAL_ROOT_MARKER = "/.local/share/convmem/eval"
@@ -597,11 +598,20 @@ def validate_r2b_manifest_schema(manifest: dict[str, Any]) -> list[str]:
         errors.append("run_id must be a nonempty string")
     elif not _SAFE_RUN_ID_RE.match(run_id):
         errors.append(f"run_id must match {_SAFE_RUN_ID_RE.pattern}")
+    query_sha = manifest.get("query_set_sha256")
+    if not _is_hex64(query_sha):
+        errors.append("query_set_sha256 must be lowercase 64-hex")
     paths = manifest.get("paths")
     if not isinstance(paths, dict):
         errors.append("R2b manifest requires paths object")
     else:
-        required_path_keys = {"export", "processed", "capture_dir", "chroma_dir"}
+        required_path_keys = {
+            "export",
+            "processed",
+            "capture_dir",
+            "chroma_dir",
+            "query_set",
+        }
         actual_keys = set(paths.keys())
         missing_keys = sorted(required_path_keys - actual_keys)
         extra_keys = sorted(actual_keys - required_path_keys)
@@ -609,6 +619,18 @@ def validate_r2b_manifest_schema(manifest: dict[str, Any]) -> list[str]:
             errors.append(f"R2b paths missing: {missing_keys}")
         if extra_keys:
             errors.append(f"R2b paths has extra keys: {extra_keys}")
+        query_path = paths.get("query_set")
+        if not isinstance(query_path, str) or not query_path.startswith("/"):
+            errors.append("R2b paths.query_set must be an absolute path")
+        elif (
+            "~" in query_path
+            or "/./" in query_path
+            or "/../" in query_path
+            or "//" in query_path
+        ):
+            errors.append(
+                "R2b paths.query_set must be canonical (no ~, ., .., //)"
+            )
     snapshot = manifest.get("source_snapshot")
     if not isinstance(snapshot, dict):
         errors.append("source_snapshot must be an object")
@@ -1383,6 +1405,12 @@ def make_r2b_run_manifest_for_tests(
             "chroma_capture_slice_sha256": "d" * 64,
             "snapshot_timestamp": _dt.now(_tz.utc).isoformat(),
         }
+    test_paths = dict(paths)
+    test_paths.setdefault("query_set", "/tmp/convmem-test-query-set.jsonl")
+    query_sha = overrides.pop("query_set_sha256", None)
+    if query_sha is None:
+        query_path = Path(test_paths["query_set"])
+        query_sha = sha256_file(query_path) if query_path.is_file() else "d" * 64
     body: dict[str, Any] = {
         "authorization_phase": "r2b",
         "execution_mode": "real",
@@ -1390,7 +1418,7 @@ def make_r2b_run_manifest_for_tests(
         "operations": ["capture"],
         "run_id": run_id,
         "merged_harness_sha256": GATE_1_HARNESS_SHA256,
-        "paths": paths,
+        "paths": test_paths,
         "service_policy": "no_service_changes",
         "prohibited_actions": sorted(R2B_REQUIRED_PROHIBITED),
         "source_snapshot": source_snapshot,
@@ -1398,6 +1426,7 @@ def make_r2b_run_manifest_for_tests(
             "source_identity",
             {"schema_version": "source_identity_v1", "test_fixture": True},
         ),
+        "query_set_sha256": query_sha,
     }
     body.update(overrides)
     digest = canonical_manifest_body_sha256(body)

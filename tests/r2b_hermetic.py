@@ -96,12 +96,14 @@ def r2b_source_paths(
     export = root / "source" / "knowledge_units.jsonl"
     processed = root / "source" / "processed.json"
     chroma_dir = root / "source" / "chroma"
+    query_set = root / "source" / "queries.jsonl"
 
     for d in [eval_base.parent, auth_base, export.parent, chroma_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
     export.write_text('{"id":"unit1"}\n', encoding="utf-8")
     processed.write_text("{}", encoding="utf-8")
+    query_set.write_text('{"query_id":"fixture"}\n', encoding="utf-8")
     create_chroma_fixture(
         chroma_dir, [{"id": "unit1", "document": "doc text 1"}]
     )
@@ -111,6 +113,7 @@ def r2b_source_paths(
         "processed": str(processed),
         "capture_dir": str(eval_base),
         "chroma_dir": str(chroma_dir),
+        "query_set": str(query_set),
     }
 
 
@@ -210,13 +213,16 @@ def setup_r2b_capture_env(
         processed_path.write_text("{}", encoding="utf-8")
 
     chroma_dir = source_dir / "chroma"
+    query_set_path = source_dir / "queries.jsonl"
     create_chroma_fixture(chroma_dir, chroma_records)
+    query_set_path.write_text('{"query_id":"fixture"}\n', encoding="utf-8")
 
     paths = {
         "export": str(export_path),
         "processed": str(processed_path),
         "capture_dir": str(eval_base),
         "chroma_dir": str(chroma_dir),
+        "query_set": str(query_set_path),
     }
     snap = trusted_snapshot_for_paths(paths, include_processed=include_processed)
     # Keep timestamp fresh even if recompute ran slightly earlier.
