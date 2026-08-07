@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from tests.purge_test_util import patch_live_config
+
 from chroma_store import ChromaStore
 from ledger import ledger_unit_document, normalize_ledger_record
 from observe import ingest_observation, repair_empty_ledger_documents
@@ -93,7 +95,8 @@ class EmptyDocumentRepairTests(unittest.TestCase):
                 "models": {"embed_model": "test", "ollama_host": "local"},
                 "index": {"chroma_dir": tmp.name},
             }
-            stats = repair_empty_ledger_documents(cfg, verbose=False)
+            with patch_live_config(cfg):
+                stats = repair_empty_ledger_documents(cfg, verbose=False)
             self.assertEqual(stats["empty"], 1)
             self.assertEqual(stats["repaired"], 1)
 

@@ -20,6 +20,7 @@ from doctor import (
     _unverified_resting_state_probe,
     doctor_exit_code,
     run_doctor,
+    render_doctor_text,
     standing_register_status,
 )
 
@@ -30,6 +31,7 @@ class DoctorTests(unittest.TestCase):
     @patch("doctor._check_restic_external")
     @patch("doctor._check_restic")
     @patch("doctor._check_verify_script")
+    @patch("doctor._check_copilot_mcp")
     @patch("doctor._check_continue_mcp")
     @patch("doctor._check_mcp_wiring")
     @patch("doctor._check_mcp_import")
@@ -38,7 +40,7 @@ class DoctorTests(unittest.TestCase):
     @patch("doctor._check_deepseek_key")
     @patch("doctor._check_config")
     @patch("doctor.load_config")
-    def test_run_doctor_all_pass(
+    def test_run_doctor_all_pass(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         mock_load,
         mock_cfg,
@@ -48,6 +50,7 @@ class DoctorTests(unittest.TestCase):
         mock_mcp,
         mock_wire,
         mock_cont,
+        mock_copilot,
         mock_verify,
         mock_restic,
         mock_restic_external,
@@ -68,6 +71,7 @@ class DoctorTests(unittest.TestCase):
             mock_mcp,
             mock_wire,
             mock_cont,
+            mock_copilot,
         ):
             mock.return_value = ok
         mock_verify.return_value = DoctorCheck("verify_continue", True, "skipped")
@@ -82,6 +86,20 @@ class DoctorTests(unittest.TestCase):
             DoctorCheck("b", False, "bad"),
         ]
         self.assertEqual(doctor_exit_code(checks), 1)
+
+    def test_render_doctor_text_smoke(self):
+        checks = [
+            DoctorCheck("ollama", True, "running"),
+            DoctorCheck("chroma", False, "empty collection"),
+            DoctorCheck("config", True, "ok", status="warn"),
+        ]
+        text = render_doctor_text(checks)
+        lines = text.splitlines()
+        self.assertIn("[PASS] ollama: running", lines)
+        self.assertIn("[FAIL] chroma: empty collection", lines)
+        self.assertIn("[WARN] config: ok", lines)
+        self.assertIn("doctor: 1 check(s) failed", text)
+        self.assertIn("1 warning(s)", text)
 
 
 class StandingRegisterTests(unittest.TestCase):
@@ -195,6 +213,38 @@ class StandingRegisterTests(unittest.TestCase):
             )
             c = _check_standing_register(self.CFG, register_path=path, root=tmp)
         self.assertEqual(c.effective_status(), "pass")
+
+    def test_negative_control_probe_requires_runtime_helper(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            scripts = tmp / "scripts"
+            scripts.mkdir()
+            (scripts / "eval-bad.py").write_text(
+                "from eval_judge import judge\njudge('summary', s, o, under_test_model=m, cfg=c)\n",
+                encoding="utf-8",
+            )
+            (scripts / "eval-good.py").write_text(
+                "from eval_methodology import run_judge_negative_control\n"
+                "run_judge_negative_control('summary', under_test_model=m, cfg=c)\n",
+                encoding="utf-8",
+            )
+            path = self._write(
+                tmp,
+                [
+                    {
+                        "id": "eval-negative-control-coverage",
+                        "status": "open",
+                        "trigger": {
+                            "type": "probe",
+                            "probe": "eval_negative_control_coverage",
+                        },
+                    }
+                ],
+            )
+            c = _check_standing_register(self.CFG, register_path=path, root=tmp)
+        self.assertEqual(c.effective_status(), "warn")
+        self.assertIn("eval-bad.py", c.detail)
+        self.assertNotIn("eval-good.py", c.detail)
 
     def test_malformed_register_skips(self):
         with tempfile.TemporaryDirectory() as d:

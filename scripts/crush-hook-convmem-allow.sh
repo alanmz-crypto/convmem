@@ -11,7 +11,9 @@ base_session="${session%%\$\$*}"
 progress_base="$cache_dir/progress-$session"
 base_progress="$cache_dir/progress-$base_session"
 ritual_msg="convmem ritual required before repo survey. Run: convmem doctor && convmem brief --stdout-only && convmem unresolved"
-search_first_msg="The convmem corpus has the answers. Use mcp_convmem_search_fast(query) or convmem search before grep/glob/ls/view."
+# Prefer shell: Crush MCP stdio has hung indefinitely on tools/call (server idle
+# on stdin) — do not steer the model into mcp_convmem_* until that path is solid.
+search_first_msg="The convmem corpus has the answers. Use bash: convmem \"query\" or convmem ask \"…\" before grep/glob/ls/view. Do not wait on mcp_convmem_*."
 
 # Fallback: parse stdin JSON for bash when env not set
 if [ "$tool" = "bash" ] && [ -z "$cmd" ] && [ ! -t 0 ]; then
@@ -114,10 +116,19 @@ if [ "$tool" = "bash" ] && [ -n "$cmd" ]; then
   fi
 fi
 
-# Auto-allow + record search when MCP search/ask is called
+# MCP search/ask: allow if present, but prefer shell when MCP is disabled.
+# Crush requires an explicit {"decision":"allow"} JSON — bare exit 0 is silence
+# and falls through to a permission prompt that never resolves in crush run /
+# wedged TUI (looks like tools/call hang). Emit allow explicitly.
 case "$tool" in
   mcp_convmem_search_fast|mcp_convmem_search|mcp_convmem_ask)
     _record_search
+    echo '{"decision":"allow"}'
+    exit 0
+    ;;
+  mcp_convmem_*)
+    # Non-search MCP after ritual: allow (stats/related) but do not count as search.
+    echo '{"decision":"allow"}'
     exit 0
     ;;
 esac

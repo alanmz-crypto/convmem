@@ -9,14 +9,13 @@ reference-only check would pass even if the call were wrapped in a swallowed
 exception or a dead branch.
 
 The write-lane guard is patched to a no-op so the *only* possible blocker is the
-Restic gate; the test asserts the gate actually ran (its subprocess was invoked)
-and that no unit was written.
+Restic gate; the test asserts the gate workflow actually ran
+(``restic_gate.ensure_current_snapshot`` was invoked) and that no unit was written.
 """
 
 from __future__ import annotations
 
 import os
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,6 +24,7 @@ from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
 
 import convmem
+from backup_workflows import STATUS_FAIL, WorkflowOutcome
 from chroma_store import ChromaStore
 
 
@@ -79,15 +79,21 @@ class WriteGateEffectTests(unittest.TestCase):
             store.close()
 
     def _run_gate_failing(self, args, input_text: str | None = None):
-        """Invoke the CLI with the Restic gate forced to return non-zero."""
+        """Invoke the CLI with the Restic gate workflow forced to FAIL."""
         gate_call = MagicMock(
-            return_value=subprocess.CompletedProcess(
-                args=[], returncode=1, stdout="", stderr="restic gate forced-fail"
+            return_value=WorkflowOutcome(
+                status=STATUS_FAIL,
+                message="restic gate forced-fail",
+                exit_code=1,
             )
         )
         with patch("config.load_config", return_value=self.cfg), patch(
             "runtime_guard.require_write_consent", return_value=None
-        ), patch("restic_gate.subprocess.run", gate_call), patch(
+        ), patch(
+            "restic_gate.BackupContext.from_env_file", return_value=MagicMock()
+        ), patch(
+            "restic_gate.ensure_current_snapshot", gate_call
+        ), patch(
             "llm.ollama_embed", side_effect=_fake_embed
         ):
             result = self.runner.invoke(convmem.app, args, input=input_text)
@@ -103,9 +109,17 @@ class WriteGateEffectTests(unittest.TestCase):
         result, gate_call = self._run_gate_failing(
             ["add", "--file", str(obs), "--upsert"]
         )
-        self.assertNotEqual(result.exit_code, 0, "add --upsert should abort on gate failure")
-        self.assertGreaterEqual(gate_call.call_count, 1, "the Restic gate must run on this path")
-        self.assertEqual(self._count(), self.baseline, "no unit may be written when the gate fails")
+        self.assertNotEqual(
+            result.exit_code, 0, "add --upsert should abort on gate failure"
+        )
+        self.assertGreaterEqual(
+            gate_call.call_count, 1, "the Restic gate must run on this path"
+        )
+        self.assertEqual(
+            self._count(),
+            self.baseline,
+            "no unit may be written when the gate fails",
+        )
 
     def test_record_approve_last_blocked_leaves_corpus_unchanged(self):
         from propose_decision import propose
@@ -116,14 +130,25 @@ class WriteGateEffectTests(unittest.TestCase):
             summary="write-gate wiring test",
             rationale="verify record --approve-last gates before the Chroma index write",
             author="ryan",
+            constraints=["none-identified"],
         )
         result, gate_call = self._run_gate_failing(
             ["record", "--approve-last"],
             input_text="y\n",
         )
-        self.assertNotEqual(result.exit_code, 0, "record --approve-last should abort on gate failure")
-        self.assertGreaterEqual(gate_call.call_count, 1, "the Restic gate must run on this path")
-        self.assertEqual(self._count(), self.baseline, "the approved decision must not reach Chroma when the gate fails")
+        self.assertNotEqual(
+            result.exit_code,
+            0,
+            "record --approve-last should abort on gate failure",
+        )
+        self.assertGreaterEqual(
+            gate_call.call_count, 1, "the Restic gate must run on this path"
+        )
+        self.assertEqual(
+            self._count(),
+            self.baseline,
+            "the approved decision must not reach Chroma when the gate fails",
+        )
 
 
 if __name__ == "__main__":

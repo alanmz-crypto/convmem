@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import re
 import sys
@@ -14,8 +13,11 @@ from pathlib import Path
 from typing import Any, Callable
 
 from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
+from chroma_write_store import open_production_write_store
 from domains import DEFAULT_DOMAINS, normalize_domain
 from process_lock import acquire_lock, release_lock
+from vector_similarity import cosine_similarity
+from ingest_dedupe import semantic_queue_at_max_depth
 
 JOB_NAMES = (
     "chroma_dedupe",
@@ -267,7 +269,9 @@ def apply_approved_dedupe(
             raise ValueError(f"dedupe_queue line {line} out of range (1–{len(rows)})")
         indices = [line - 1]
 
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    _pw = open_production_write_store(entrypoint="refine.write")
+    store = _pw.store
+    cfg = _pw.live_cfg
     totals = {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
     try:
         for idx in indices:
@@ -500,17 +504,6 @@ def job_ledger_link(
     return stats
 
 
-def _cosine(a: list[float], b: list[float]) -> float:
-    if not a or not b or len(a) != len(b):
-        return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(x * x for x in b))
-    if na == 0 or nb == 0:
-        return 0.0
-    return dot / (na * nb)
-
-
 def job_semantic_dedupe(
     store: ChromaStore,
     cfg: dict,
@@ -521,15 +514,13 @@ def job_semantic_dedupe(
 ) -> dict:
     refine = cfg.get("refine") or {}
     threshold = float(refine.get("dedupe_similarity", 0.92))
-    max_depth = int(refine.get("queue_max_depth", 100))
-    queue_path = _refine_data_dir(cfg) / "dedupe_queue.jsonl"
-    existing = 0
-    if queue_path.is_file():
-        existing = sum(1 for _ in queue_path.open())
-    if existing >= max_depth:
+    # Total-line depth (not pending-only) — shared with persist_ingest_dedupe.
+    paused, existing, max_depth = semantic_queue_at_max_depth(cfg)
+    if paused:
         if verbose:
             print(f"  [pause] dedupe_queue depth {existing} >= {max_depth}", file=sys.stderr)
         return {"processed": 0, "queued": 0, "skipped": 0, "errors": 0, "llm_calls": 0}
+    queue_path = dedupe_queue_path(cfg)
 
     units = store.get_units_with_embeddings(include_superseded=False)
     rows: list[tuple[str, dict, list[float]]] = [
@@ -550,7 +541,7 @@ def job_semantic_dedupe(
             pair = tuple(sorted([uid_a, uid_b]))
             if pair in seen_pairs:
                 continue
-            sim = _cosine(emb_a, emb_b)
+            sim = cosine_similarity(emb_a, emb_b)
             if sim < threshold:
                 continue
             seen_pairs.add(pair)
@@ -724,7 +715,9 @@ def run_job(
         raise ValueError(f"Unknown job {job!r}. Choose from: {', '.join(JOB_NAMES)}")
 
     cfg = load_config()
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    _pw = open_production_write_store(entrypoint="refine.write")
+    store = _pw.store
+    cfg = _pw.live_cfg
     limiter = CostLimiter(_cost_caps(cfg))
 
     kwargs: dict[str, Any] = {"limit": limit, "verbose": verbose}

@@ -158,25 +158,40 @@ import sys
 from pathlib import Path
 
 config_path = Path(sys.argv[1])
-rules_dir = config_path.parent / "rules"
-expected = [
-    rules_dir / f"builder-reference-{n}.md"
-    for n in ("ousterhout", "manning", "zeller", "hard-parts", "ddia", "arch-patterns-python", "evolutionary-architectures")
-]
+crush_dir = config_path.parent
+digest_dir = crush_dir / "builder-reference"
+rules_dir = crush_dir / "rules"
+names = ("ousterhout", "manning", "zeller", "hard-parts", "ddia", "arch-patterns-python", "evolutionary-architectures")
 with open(config_path) as f:
     cfg = json.load(f)
 paths = list((cfg.get("options") or {}).get("global_context_paths") or [])
+expected = [
+    "~/.config/crush/CONVMEM-RITUAL.md",
+    "~/.config/crush/rules/",
+    "~/.config/crush/CRUSH.md",
+]
+if paths != expected:
+    print(f"FAIL  global_context_paths want ritual/rules/CRUSH.md got {paths}")
+else:
+    print("PASS  standing context = ritual + rules/ + CRUSH.md")
 
-for p in expected:
-    sp = str(p.expanduser())
-    if sp not in paths:
-        print(f"FAIL  global_context_paths missing {sp}")
+for n in names:
+    p = digest_dir / f"builder-reference-{n}.md"
+    legacy = rules_dir / f"builder-reference-{n}.md"
+    if legacy.is_file():
+        print(f"FAIL  digest still in rules/: {legacy.name}")
     elif not p.is_file():
-        print(f"FAIL  path listed but file missing {sp}")
+        print(f"FAIL  missing on-demand digest {p}")
     elif not p.read_text(encoding="utf-8").lstrip().startswith("#"):
         print(f"WARN  {p.name} does not start with markdown heading")
     else:
-        print(f"PASS  {p.name} loaded ({p.stat().st_size} bytes)")
+        print(f"PASS  {p.name} on-demand ({p.stat().st_size} bytes)")
+
+pointer = rules_dir / "builder-reference-pointer.md"
+if pointer.is_file():
+    print(f"PASS  builder-reference-pointer.md present")
+else:
+    print(f"FAIL  missing {pointer}")
 
 mcp = (cfg.get("mcp") or {}).get("convmem") or {}
 timeout = mcp.get("timeout")

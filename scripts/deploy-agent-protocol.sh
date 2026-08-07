@@ -57,6 +57,16 @@ elif [ -d "$HOME/.config/kiro" ]; then
   KIRO_SETTINGS="$HOME/.config/kiro/settings"
 fi
 
+# Copilot CLI home (MCP + custom agents)
+COPILOT_HOME=""
+if [ -n "${COPILOT_HOME_OVERRIDE:-}" ] && [ -d "$COPILOT_HOME_OVERRIDE" ]; then
+  COPILOT_HOME="$COPILOT_HOME_OVERRIDE"
+elif [ -d "$HOME/.copilot" ]; then
+  COPILOT_HOME="$HOME/.copilot"
+elif command -v copilot >/dev/null 2>&1; then
+  COPILOT_HOME="$HOME/.copilot"
+fi
+
 echo "=== Deployment ==="
 
 MERGE_SHELL_PROFILE="$(pwd)/scripts/merge_mcp_shell_profile.py"
@@ -126,8 +136,10 @@ fi
 # --- Deploy Kiro steering file ---
 if [ -n "$KIRO_DIR" ]; then
   cp config/kiro-steering-convmem.example.md "$KIRO_DIR/convmem.md"
+  cp config/kiro-steering-commit-pr-quality.example.md "$KIRO_DIR/commit-pr-quality.md"
   echo "  [deploy] $KIRO_DIR/convmem.md"
-  DEPLOY_REPORT+="  - Synced Kiro steering file\n"
+  echo "  [deploy] $KIRO_DIR/commit-pr-quality.md"
+  DEPLOY_REPORT+="  - Synced Kiro steering file (convmem + commit-pr-quality)\n"
 else
   echo "  [skip]   Kiro steering directory not found (probed: ~/.kiro/steering, ~/.config/kiro/steering)"
   SKIPPED+="  - Kiro (no steering dir found)\n"
@@ -333,6 +345,94 @@ else
   SKIPPED+="  - Kiro MCP (no settings dir)\n"
 fi
 
+# --- Deploy Copilot CLI agent + MCP ---
+if [ -n "$COPILOT_HOME" ]; then
+  mkdir -p "$COPILOT_HOME/agents" "$COPILOT_HOME/instructions"
+  if [ -f config/copilot-instructions-convmem.example.md ]; then
+    cp config/copilot-instructions-convmem.example.md "$COPILOT_HOME/copilot-instructions.md"
+    echo "  [deploy] $COPILOT_HOME/copilot-instructions.md (always-on)"
+    DEPLOY_REPORT+="  - Synced Copilot always-on instructions (copilot-instructions.md)\n"
+  else
+    echo "  [warn]   config/copilot-instructions-convmem.example.md missing — run generate-agent-protocol.sh"
+    SKIPPED+="  - Copilot always-on instructions (example missing)\n"
+  fi
+  if [ -f config/copilot-agents-convmem.example.md ]; then
+    cp config/copilot-agents-convmem.example.md "$COPILOT_HOME/agents/convmem.md"
+    echo "  [deploy] $COPILOT_HOME/agents/convmem.md (optional --agent convmem)"
+    DEPLOY_REPORT+="  - Synced Copilot CLI custom agent (convmem.md)\n"
+  else
+    echo "  [warn]   config/copilot-agents-convmem.example.md missing — run generate-agent-protocol.sh"
+    SKIPPED+="  - Copilot agent (example missing)\n"
+  fi
+
+  COPILOT_MCP="$COPILOT_HOME/mcp-config.json"
+  if [ ! -f "$COPILOT_MCP" ]; then
+    cp config/copilot-mcp-config.json.example "$COPILOT_MCP"
+    echo "  [deploy] $COPILOT_MCP (new)"
+    DEPLOY_REPORT+="  - Deployed Copilot MCP config (new mcp-config.json)\n"
+  else
+    merge_result=$(python3 - <<'PY' "$COPILOT_MCP" "$(pwd)/config/copilot-mcp-config.json.example"
+import json, sys
+dest, src = sys.argv[1], sys.argv[2]
+with open(dest) as f:
+    cfg = json.load(f)
+with open(src) as f:
+    ex = json.load(f)
+servers = cfg.setdefault("mcpServers", {})
+ex_convmem = ex["mcpServers"]["convmem"]
+if "convmem" not in servers:
+    servers["convmem"] = ex_convmem
+    changed = "merged"
+else:
+    # Ensure type=local and shell profile without wiping unrelated keys
+    block = servers["convmem"]
+    changed = "skip"
+    if block.get("type") not in ("local", "stdio"):
+        block["type"] = ex_convmem.get("type", "local")
+        changed = "updated"
+    env = block.setdefault("env", {})
+    if env.get("CONVMEM_MCP_PROFILE") != "shell":
+        env["CONVMEM_MCP_PROFILE"] = "shell"
+        changed = "updated"
+    # Never keep DEEPSEEK_API_KEY in mcp-config — mcp_server loads env.local
+    # (strip even a present real key so deploy cannot leave secrets in this file)
+    if "DEEPSEEK_API_KEY" in env:
+        del env["DEEPSEEK_API_KEY"]
+        changed = "updated"
+    if "tools" not in block:
+        block["tools"] = ex_convmem.get("tools", ["*"])
+        changed = "updated"
+if changed != "skip":
+    with open(dest, "w") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+print(changed)
+PY
+)
+    case "$merge_result" in
+      merged)
+        echo "  [deploy] $COPILOT_MCP (merged convmem block)"
+        DEPLOY_REPORT+="  - Merged convmem into existing Copilot mcp-config.json\n"
+        ;;
+      updated)
+        echo "  [deploy] $COPILOT_MCP (updated convmem shell profile)"
+        DEPLOY_REPORT+="  - Updated Copilot convmem MCP profile\n"
+        ;;
+      skip)
+        echo "  [skip]   $COPILOT_MCP already has convmem"
+        DEPLOY_REPORT+="  - Copilot mcp-config.json already has convmem\n"
+        ;;
+      *)
+        echo "  [warn]   Could not merge Copilot mcp-config.json — copy config/copilot-mcp-config.json.example manually"
+        SKIPPED+="  - Copilot MCP (merge failed)\n"
+        ;;
+    esac
+  fi
+else
+  echo "  [skip]   Copilot CLI home not found (probed: ~/.copilot; install copilot to enable)"
+  SKIPPED+="  - Copilot CLI (no ~/.copilot and no copilot binary)\n"
+fi
+
 # --- Crush rules dir ---
 CRUSH_RULES=""
 for candidate in "$HOME/.config/crush/rules" "$HOME/.crush/rules"; do
@@ -346,11 +446,21 @@ done
 if [ -n "$CRUSH_RULES" ]; then
   cp config/crush-rules-00-ritual.example.md "$CRUSH_RULES/00-convmem-ritual.md"
   cp config/crush-rules-convmem.example.md "$CRUSH_RULES/convmem.md"
-  cp config/crush-rules-ksweep-routing.example.md "$CRUSH_RULES/ksweep-routing.md"
+  # P1.3 source-trust landed (#78): do not redeploy ksweep-routing stopgap.
+  # If a stale ksweep-routing.md is present, retire it beside the rules dir.
+  if [ -f "$CRUSH_RULES/ksweep-routing.md" ]; then
+    mkdir -p "${CRUSH_RULES}-retired"
+    mv -f "$CRUSH_RULES/ksweep-routing.md" \
+      "${CRUSH_RULES}-retired/ksweep-routing.md.retired-$(date -u +%Y%m%d)"
+    echo "  [retire] moved stale ksweep-routing.md out of Crush rules"
+  fi
+  cp config/crush-rules-commit-pr-quality.example.md "$CRUSH_RULES/commit-pr-quality.md"
+  cp config/crush-rules-tool-output-hygiene.example.md "$CRUSH_RULES/tool-output-hygiene.md"
   echo "  [deploy] $CRUSH_RULES/00-convmem-ritual.md"
   echo "  [deploy] $CRUSH_RULES/convmem.md"
-  echo "  [deploy] $CRUSH_RULES/ksweep-routing.md"
-  DEPLOY_REPORT+="  - Deployed Crush convmem rules (00-ritual + Tier A + ksweep-routing)\n"
+  echo "  [deploy] $CRUSH_RULES/commit-pr-quality.md"
+  echo "  [deploy] $CRUSH_RULES/tool-output-hygiene.md"
+  DEPLOY_REPORT+="  - Deployed Crush convmem rules (00-ritual + Tier A + commit-pr-quality + tool-output-hygiene; ksweep-routing retired post-P1.3)\n"
 else
   echo "  [skip]   Crush rules directory not found (probed: ~/.config/crush/rules, ~/.crush/rules)"
   SKIPPED+="  - Crush (no rules dir found)\n"
@@ -540,7 +650,14 @@ echo "   permissions.allowed_tools: mcp_convmem_* read tools."
 echo "   hooks/convmem-allow.sh: ritual deny + auto-approve read-only convmem bash."
 echo "   After deploy: bash scripts/restart-crush-if-stale.sh (hooks load at Crush process start)."
 echo ""
-echo "4. ChatGPT webUI (optional — ignored if unused):"
+echo "4. Copilot CLI (~/.copilot/):"
+echo "   ALWAYS-ON: ~/.copilot/copilot-instructions.md (plain \`copilot\` loads this)."
+echo "   Optional: ~/.copilot/agents/convmem.md via \`copilot --agent convmem\`."
+echo "   MCP: mcp-config.json — verify with: copilot mcp list"
+echo "   Sessions: ~/.copilot/session-state/<uuid>/events.jsonl (see docs/COPILOT-SESSION-ADAPTER.md)."
+echo "   Soak: start a NEW session in a non-convmem dir — first tool must be \`convmem doctor\`."
+echo ""
+echo "5. ChatGPT webUI (optional — ignored if unused):"
 echo "   Pack at docs/chatgpt-pack/custom-instructions.txt — paste into Custom instructions if needed."
 echo ""
 echo "=== Deploy report ==="

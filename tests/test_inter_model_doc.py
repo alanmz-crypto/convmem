@@ -32,6 +32,39 @@ class InterModelDocAdapterTests(unittest.TestCase):
             random_md.write_text("# Notes\n", encoding="utf-8")
             self.assertFalse(is_inter_model_doc(random_md))
 
+
+    def test_nested_and_excluded_inter_model_paths(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            nested = root / "docs" / "inter-model" / "debate-test" / "README.md"
+            nested.parent.mkdir(parents=True)
+            nested.write_text("# Debate\n", encoding="utf-8")
+            self.assertTrue(is_inter_model_doc(nested))
+            self.assertEqual(detect_format(nested), "inter_model_doc")
+            self.assertIsNotNone(get_parser(nested))
+
+            deep = root / "docs" / "inter-model" / "a" / "b" / "c" / "notes.md"
+            deep.parent.mkdir(parents=True)
+            deep.write_text("# Deep\n", encoding="utf-8")
+            self.assertTrue(is_inter_model_doc(deep))
+
+            kiro_snap = (
+                root / ".kiro" / "sessions" / "s" / "snapshots" / "h"
+                / "docs" / "inter-model" / "debate" / "f.md"
+            )
+            kiro_snap.parent.mkdir(parents=True)
+            kiro_snap.write_text("# KIRO\n", encoding="utf-8")
+            self.assertFalse(is_inter_model_doc(kiro_snap))
+
+            wrong_parent = root / "other" / "inter-model" / "file.md"
+            wrong_parent.parent.mkdir(parents=True)
+            wrong_parent.write_text("# Other\n", encoding="utf-8")
+            self.assertFalse(is_inter_model_doc(wrong_parent))
+
+            non_md = root / "docs" / "inter-model" / "debate-test" / "notes.txt"
+            non_md.write_text("txt\n", encoding="utf-8")
+            self.assertFalse(is_inter_model_doc(non_md))
+
     def test_parse_sections(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "docs" / "inter-model" / "HANDOFF-test.md"
@@ -51,9 +84,13 @@ class InterModelDocAdapterTests(unittest.TestCase):
 
 class InterModelIndexTests(unittest.TestCase):
     @mock.patch("inter_model_index.ollama_embed", return_value=[0.1, 0.2])
-    @mock.patch("inter_model_index.ChromaStore")
-    def test_index_inter_model_messages(self, mock_store_cls, _embed):
-        store = mock_store_cls.return_value.__enter__.return_value
+    @mock.patch("inter_model_index.production_chroma_write_session")
+    def test_index_inter_model_messages(self, mock_session, _embed):
+        store = mock.MagicMock()
+        session = mock.MagicMock()
+        session.store = store
+        mock_session.return_value.__enter__.return_value = session
+        mock_session.return_value.__exit__.return_value = False
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "docs" / "inter-model" / "CROSS-PROJECT-DIGEST-PILOT.md"
             path.parent.mkdir(parents=True)
@@ -69,6 +106,7 @@ class InterModelIndexTests(unittest.TestCase):
                     "chroma_dir": str(Path(td) / "chroma"),
                 }
             }
+            session.live_cfg = cfg
             Path(cfg["index"]["processed_log"]).write_text("{}", encoding="utf-8")
             n = index_inter_model_messages(
                 str(path),

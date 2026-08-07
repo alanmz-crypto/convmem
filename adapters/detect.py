@@ -14,10 +14,12 @@ from typing import Callable, Optional
 from adapters import (
     codex_history_jsonl,
     codex_rollout_jsonl,
+    copilot_session_jsonl,
     inter_model_doc,
     jsonl_chat,
     json_chat,
     kiro_session_jsonl,
+    kiro_steering,
     markdown_chat,
     sqlite_chat,
 )
@@ -29,6 +31,7 @@ TOOL_BY_FORMAT = {
     "jsonl_kiro_session": "kiro",
     "jsonl_codex_history": "codex",
     "jsonl_codex_rollout": "codex",
+    "jsonl_copilot_session": "copilot",
     "sqlite_openwebui": "openwebui",
     "sqlite_kiro": "kiro",
     "json_continue_sessions": "continue",
@@ -36,6 +39,7 @@ TOOL_BY_FORMAT = {
     "sqlite_crush": "crush",
     "sqlite_cursor_store": "cursor",
     "inter_model_doc": "inter-model",
+    "kiro_steering": "kiro",
 }
 
 # Map detected format -> parse callable. None means "recognized but not yet
@@ -45,6 +49,7 @@ _PARSERS: dict[str, Optional[Callable[[str], list[dict]]]] = {
     "jsonl_kiro_session": kiro_session_jsonl.parse,
     "jsonl_codex_history": codex_history_jsonl.parse,
     "jsonl_codex_rollout": codex_rollout_jsonl.parse,
+    "jsonl_copilot_session": copilot_session_jsonl.parse,
     "sqlite_openwebui": sqlite_chat.parse,
     "sqlite_kiro": sqlite_chat.parse,
     "json_continue_sessions": json_chat.parse,
@@ -52,6 +57,7 @@ _PARSERS: dict[str, Optional[Callable[[str], list[dict]]]] = {
     "sqlite_crush": sqlite_chat.parse,
     "sqlite_cursor_store": sqlite_chat.parse,
     "inter_model_doc": inter_model_doc.parse,
+    "kiro_steering": kiro_steering.parse,
 }
 
 
@@ -63,18 +69,22 @@ def detect_format(path: Path | str) -> Optional[str]:
         return "aider_markdown"
     if inter_model_doc.is_inter_model_doc(path):
         return "inter_model_doc"
+    if kiro_steering.is_kiro_steering_doc(path):
+        return "kiro_steering"
     if path.suffix == ".md":
         return None
 
     if path.suffix == ".jsonl":
         if "agent-transcripts" in path.parts:
             return "jsonl_cursor"
-        if kiro_session_jsonl.is_kiro_session_jsonl(path):
-            return "jsonl_kiro_session"
-        if codex_history_jsonl.is_codex_history_jsonl(path):
-            return "jsonl_codex_history"
-        if codex_rollout_jsonl.is_codex_rollout_jsonl(path):
-            return "jsonl_codex_rollout"
+        for fmt, checker in (
+            ("jsonl_kiro_session", kiro_session_jsonl.is_kiro_session_jsonl),
+            ("jsonl_copilot_session", copilot_session_jsonl.is_copilot_session_jsonl),
+            ("jsonl_codex_history", codex_history_jsonl.is_codex_history_jsonl),
+            ("jsonl_codex_rollout", codex_rollout_jsonl.is_codex_rollout_jsonl),
+        ):
+            if checker(path):
+                return fmt
         return None
 
     if path.suffix in (".sqlite3", ".db"):

@@ -12,6 +12,12 @@ Thin prompt sidecars at ~/.kiro/sessions/cli/*.history are not indexed.
 import json
 from pathlib import Path
 
+from adapters.jsonl_io import (
+    iter_jsonl_dicts,
+    nonempty_stripped,
+    session_parse_context,
+)
+
 _SKIP_PAYLOAD_TYPES = frozenset(
     {
         "turn_start",
@@ -72,51 +78,35 @@ def read_session_meta(filepath: str) -> dict:
 
 def parse(filepath: str) -> list[dict]:
     """Parse a kiro-cli messages.jsonl into canonical messages."""
-    meta = read_session_meta(filepath)
-    session_id = meta.get("session_id") or Path(filepath).parent.name
-    workspace = meta.get("workspace_directory") or ""
+    session_id, workspace = session_parse_context(filepath, read_session_meta)
 
     messages: list[dict] = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if not isinstance(record, dict):
-                continue
+    for record in iter_jsonl_dicts(filepath):
+        payload = record.get("payload")
+        if not isinstance(payload, dict):
+            continue
 
-            payload = record.get("payload")
-            if not isinstance(payload, dict):
-                continue
+        ptype = payload.get("type")
+        if ptype in _SKIP_PAYLOAD_TYPES:
+            continue
+        if ptype not in ("user", "assistant"):
+            continue
 
-            ptype = payload.get("type")
-            if ptype in _SKIP_PAYLOAD_TYPES:
-                continue
-            if ptype not in ("user", "assistant"):
-                continue
+        content = nonempty_stripped(payload.get("content"))
+        if content is None:
+            continue
 
-            content = payload.get("content")
-            if not isinstance(content, str):
-                continue
-            content = content.strip()
-            if not content:
-                continue
+        timestamp = record.get("timestamp")
+        ts = timestamp if isinstance(timestamp, str) else None
 
-            timestamp = record.get("timestamp")
-            ts = timestamp if isinstance(timestamp, str) else None
-
-            messages.append(
-                {
-                    "role": ptype,
-                    "content": content,
-                    "timestamp": ts,
-                    "session_id": session_id,
-                    "workspace_directory": workspace,
-                }
-            )
+        messages.append(
+            {
+                "role": ptype,
+                "content": content,
+                "timestamp": ts,
+                "session_id": session_id,
+                "workspace_directory": workspace,
+            }
+        )
 
     return messages

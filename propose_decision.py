@@ -1,4 +1,5 @@
 """Pending decision queue — propose, list, approve, reject (no Chroma writes)."""
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 PROPOSAL_KIND = "decision_proposal"
+NO_CONSTRAINT_SENTINEL = "none-identified"
 VALID_SIGNERS = frozenset({"ryan", "kiro-review"})
 INTERACTIVE_LOCK_NAME = "propose_interactive.lock"
 
@@ -157,7 +159,7 @@ def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
     if not ledger_id:
         return "", "", False
     try:
-        from chroma_store import ChromaStore, is_superseded
+        from chroma_store import is_superseded, open_chroma_for_read
         from ledger import find_unit_by_ledger_id
     except Exception:
         return "", "", False
@@ -165,8 +167,11 @@ def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
     if not chroma_dir:
         return "", "", False
     try:
-        store = ChromaStore(chroma_dir)
-        unit = find_unit_by_ledger_id(store, ledger_id)
+        store = open_chroma_for_read(chroma_dir)
+        try:
+            unit = find_unit_by_ledger_id(store, ledger_id)
+        finally:
+            store.close()
     except Exception:
         return "", "", False
     if unit is None:
@@ -178,7 +183,7 @@ def live_decision_state(cfg: dict, ledger_id: str) -> tuple[str, str, bool]:
     if live_hash:
         return marker, live_hash, tombstoned
     try:
-        import json as _json
+        _json = json
         from ledger_content_hash import ledger_content_hash
 
         def _list(key: str) -> list:
@@ -385,6 +390,24 @@ def proposal_to_ledger(
     }
 
 
+def _normalize_constraints(constraints: list[str] | None) -> list[str]:
+    values = [str(value).strip() for value in (constraints or [])]
+    if not values or any(not value for value in values):
+        raise ValueError(
+            "--constraint is required; use the exact sentinel "
+            f"{NO_CONSTRAINT_SENTINEL!r} when none are identified"
+        )
+    for value in values:
+        normalized_sentinel = value.casefold().replace("_", "-").replace(" ", "-")
+        if normalized_sentinel == NO_CONSTRAINT_SENTINEL and value != NO_CONSTRAINT_SENTINEL:
+            raise ValueError(
+                f"no-constraint sentinel must be exactly {NO_CONSTRAINT_SENTINEL!r}"
+            )
+    if NO_CONSTRAINT_SENTINEL in values and len(values) != 1:
+        raise ValueError(f"{NO_CONSTRAINT_SENTINEL!r} cannot accompany other constraints")
+    return values
+
+
 def propose(
     cfg: dict,
     *,
@@ -413,6 +436,7 @@ def propose(
         raise ValueError("--rationale is required")
     if not author:
         raise ValueError("--author is required")
+    normalized_constraints = _normalize_constraints(constraints)
 
     pid = (proposal_id or generate_proposal_id()).strip()
     target = (target_ledger_id or "").strip() or None
@@ -424,7 +448,7 @@ def propose(
         "summary": summary,
         "rationale": rationale,
         "alternatives_rejected": list(alternatives or []),
-        "constraints": list(constraints or []),
+        "constraints": normalized_constraints,
         "domain": domain.strip() or "coding.tooling",
         "site": site.strip(),
         "confidence": confidence,
@@ -476,7 +500,7 @@ def propose(
             "proposed_by": author,
             "relates_to": relates_to,
             "alternatives_rejected": list(alternatives or []),
-            "constraints": list(constraints or []),
+            "constraints": normalized_constraints,
             "domain": record["domain"],
             "site": record["site"],
             "confidence": confidence,
@@ -513,9 +537,8 @@ def latest_pending(cfg: dict) -> dict | None:
 
 def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
     """Upsert decisions-approved.jsonl into Chroma."""
-    from pathlib import Path
 
-    from chroma_store import ChromaStore
+    from chroma_write_store import open_production_write_store
     from observe import ingest_observation_file
 
     models = cfg.get("models")
@@ -523,25 +546,30 @@ def ingest_approved_file(cfg: dict, *, verbose: bool = False) -> dict:
         from config import load_config
 
         models = load_config()["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    _pw = open_production_write_store(entrypoint="propose_decision.write")
+    store = _pw.store
+    cfg = _pw.live_cfg
+    models = cfg["models"]
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
-    return ingest_observation_file(
-        str(approved_path(cfg)),
-        store=store,
-        embed_model=models["embed_model"],
-        ollama_host=models["ollama_host"],
-        upsert=True,
-        verbose=verbose,
-        units_export=units_export_path,
-    )
+    try:
+        return ingest_observation_file(
+            str(approved_path(cfg)),
+            store=store,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            upsert=True,
+            verbose=verbose,
+            units_export=units_export_path,
+        )
+    finally:
+        store.close()
 
 
 def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) -> dict:
     """Index one approved decision (fast path for record --approve-last)."""
-    from pathlib import Path
 
-    from chroma_store import ChromaStore
+    from chroma_write_store import open_production_write_store
     from ledger import invalidate_ledger_index_cache
     from observe import ingest_observation
 
@@ -550,29 +578,35 @@ def ingest_approved_ledger(cfg: dict, ledger: dict, *, verbose: bool = False) ->
         from config import load_config
 
         models = load_config()["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
+    _pw = open_production_write_store(entrypoint="propose_decision.write")
+    store = _pw.store
+    cfg = _pw.live_cfg
+    models = cfg["models"]
     units_export = cfg["index"].get("units_export")
     units_export_path = Path(units_export).expanduser() if units_export else None
     protocol_ledger = {**ledger, "_governed_protocol": True}
-    unit = ingest_observation(
-        protocol_ledger,
-        store=store,
-        embed_model=models["embed_model"],
-        ollama_host=models["ollama_host"],
-        upsert=True,
-        units_export=units_export_path,
-    )
-    stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
-    if unit is None:
-        stats["rejected"] = 1
-    elif unit.pop("_upserted", False):
-        stats["updated"] = 1
-    elif unit.pop("_skipped", False):
-        stats["skipped"] = 1
-    else:
-        stats["accepted"] = 1
-    invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
-    return stats
+    try:
+        unit = ingest_observation(
+            protocol_ledger,
+            store=store,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            upsert=True,
+            units_export=units_export_path,
+        )
+        stats = {"accepted": 0, "rejected": 0, "updated": 0, "skipped": 0}
+        if unit is None:
+            stats["rejected"] = 1
+        elif unit.pop("_upserted", False):
+            stats["updated"] = 1
+        elif unit.pop("_skipped", False):
+            stats["skipped"] = 1
+        else:
+            stats["accepted"] = 1
+        invalidate_ledger_index_cache(cfg["index"]["chroma_dir"])
+        return stats
+    finally:
+        store.close()
 
 
 def _approve_unlocked(
@@ -771,7 +805,7 @@ def rebase_proposal(
             "summary": old["summary"],
             "rationale": old.get("rationale") or "",
             "alternatives_rejected": list(old.get("alternatives_rejected") or []),
-            "constraints": list(old.get("constraints") or []),
+            "constraints": _normalize_constraints(old.get("constraints")),
             "domain": old.get("domain") or "coding.tooling",
             "site": old.get("site") or "",
             "confidence": float(old.get("confidence", 0.8)),
@@ -923,9 +957,18 @@ def collect_interactive_fields(
     dom = domain.strip() or prompt("domain", default="coding.tooling").strip()
     st = site.strip() if site else prompt("site (optional, press Enter to skip)", default="").strip()
     cons = list(constraints or [])
+    if not cons:
+        first = prompt(
+            "constraint (required; use 'none-identified' when none)", default=""
+        ).strip()
+        if not first:
+            raise ValueError(
+                "--constraint is required; use 'none-identified' when none are identified"
+            )
+        cons.append(first)
     while True:
         extra = prompt(
-            "constraint (optional, press Enter when done)", default=""
+            "additional constraint (optional, press Enter when done)", default=""
         ).strip()
         if not extra:
             break
@@ -937,7 +980,7 @@ def collect_interactive_fields(
         "author": au,
         "domain": dom or "coding.tooling",
         "site": st,
-        "constraints": cons,
+        "constraints": _normalize_constraints(cons),
     }
 
 

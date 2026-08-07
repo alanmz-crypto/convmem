@@ -52,7 +52,9 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
-    "unresolved", "tldr", "work",
+    "unresolved", "tldr", "work", "shadow-inventory", "shadow-activate",
+    "shadow-rollback", "shadow-canary", "writer-census-start",
+    "writer-census-status", "writer-census-report",
 }
 # Primary search is misleading until distillation backfill catches up to summaries.
 _MIN_UNITS_FOR_PRIMARY = 50
@@ -181,10 +183,11 @@ def open_hit(
 
 
 @app.command("ask")
-def ask_command(
+def ask_command(  # pylint: disable=too-many-arguments
     question: str | None = typer.Argument(
         None, help="Question (omit with -i for interactive mode)"
     ),
+    *,
     interactive: bool = typer.Option(
         False, "-i", "--interactive", help="Multi-turn session with follow-ups"
     ),
@@ -201,6 +204,11 @@ def ask_command(
         "--evidence",
         help="Prefer unresolved observations and failed verifications (ledger graph)",
     ),
+    show_trace: bool = typer.Option(
+        False,
+        "--trace",
+        help="Print retrieval trace JSON (convmem.ask.trace.v1) on stderr",
+    ),
     open_at: int | None = typer.Option(
         None, "--open", min=1, help="After answering, open source citation #"
     ),
@@ -216,8 +224,19 @@ def ask_command(
         render_error("Provide a question, or use -i for interactive mode.")
         raise typer.Exit(1)
 
-    out = ask(question, top_k=top, raw=raw, domain=domain, site=site, evidence=evidence)
+    out = ask(
+        question,
+        top_k=top,
+        raw=raw,
+        domain=domain,
+        site=site,
+        evidence=evidence,
+        trace=show_trace,
+    )
     render_ask_output(out)
+    if show_trace and out.get("trace") is not None:
+        # Plain stderr JSON (no Rich markup/highlight) for machine parse.
+        print(json.dumps(out["trace"], indent=2, default=str), file=sys.stderr)
     from next_steps import after_ask
 
     after_ask(
@@ -343,79 +362,85 @@ def add(
     single record via flags, or --file a JSONL batch (one record per line).
     """
     _guard_write()
-    from config import load_config
-    from chroma_store import ChromaStore
+    from chroma_write_store import production_chroma_write_session
     from observe import ingest_observation, ingest_observation_file
     from query import render_error
     from pathlib import Path
-
-    cfg = load_config()
-    models = cfg["models"]
 
     if upsert:
         from restic_gate import ensure_chroma_snapshot_for_live_write
 
         ensure_chroma_snapshot_for_live_write()
 
-    store = ChromaStore(cfg["index"]["chroma_dir"])
-    units_export = cfg["index"].get("units_export")
-    units_export_path = Path(units_export).expanduser() if units_export else None
+    with production_chroma_write_session(entrypoint="convmem.add") as session:
+        store = session.store
+        cfg = session.live_cfg
+        models = cfg["models"]
+        units_export = cfg["index"].get("units_export")
+        units_export_path = Path(units_export).expanduser() if units_export else None
 
-    if file:
-        result = ingest_observation_file(
-            file,
+        if file:
+            result = ingest_observation_file(
+                file,
+                store=store,
+                embed_model=models["embed_model"],
+                ollama_host=models["ollama_host"],
+                units_export=units_export_path,
+                upsert=upsert,
+            )
+            parts = [
+                f"accepted={result['accepted']}",
+                f"rejected={result['rejected']}",
+            ]
+            if upsert:
+                parts.append(f"updated={result['updated']}")
+            typer.echo(f"\nDone. {' '.join(parts)}")
+            return
+
+        if not title or not summary or not author:
+            render_error(
+                "Provide --title, --summary, and --author (or use --file for batch ingest)."
+            )
+            raise typer.Exit(1)
+        if len(keyword) < 3:
+            render_error("Need at least 3 --keyword values.")
+            raise typer.Exit(1)
+        if severity is not None:
+            from ledger import _SEVERITIES
+
+            severity = severity.strip().lower()
+            if severity not in _SEVERITIES:
+                render_error(
+                    "--severity must be one of: " + ", ".join(sorted(_SEVERITIES)) + "."
+                )
+                raise typer.Exit(1)
+
+        record = {
+            "title": title,
+            "summary": summary,
+            "keywords": keyword,
+            "type": unit_type,
+            "domain": domain,
+            "author_model": author,
+            "confidence": confidence,
+            "tool": tool,
+            "source_path": source_path,
+            "severity": severity,
+        }
+        unit = ingest_observation(
+            record,
             store=store,
             embed_model=models["embed_model"],
             ollama_host=models["ollama_host"],
             units_export=units_export_path,
-            upsert=upsert,
         )
-        parts = [
-            f"accepted={result['accepted']}",
-            f"rejected={result['rejected']}",
-        ]
-        if upsert:
-            parts.append(f"updated={result['updated']}")
-        typer.echo(f"\nDone. {' '.join(parts)}")
-        return
-
-    if not title or not summary or not author:
-        render_error("Provide --title, --summary, and --author (or use --file for batch ingest).")
-        raise typer.Exit(1)
-    if len(keyword) < 3:
-        render_error("Need at least 3 --keyword values.")
-        raise typer.Exit(1)
-    if severity is not None:
-        from ledger import _SEVERITIES
-
-        severity = severity.strip().lower()
-        if severity not in _SEVERITIES:
-            render_error("--severity must be one of: " + ", ".join(sorted(_SEVERITIES)) + ".")
+        if unit is None:
+            render_error("Record rejected — check required fields.")
             raise typer.Exit(1)
-
-    record = {
-        "title": title,
-        "summary": summary,
-        "keywords": keyword,
-        "type": unit_type,
-        "domain": domain,
-        "author_model": author,
-        "confidence": confidence,
-        "tool": tool,
-        "source_path": source_path,
-        "severity": severity,
-    }
-    unit = ingest_observation(
-        record,
-        store=store,
-        embed_model=models["embed_model"],
-        ollama_host=models["ollama_host"],
-        units_export=units_export_path,
-    )
-    if unit is None:
-        render_error("Record rejected — check required fields.")
-        raise typer.Exit(1)
-    typer.echo(f"Added [{unit['domain']}] {unit['title']}  (ledger: {unit.get('ledger_id', unit['id'])})")
+        typer.echo(
+            f"Added [{unit['domain']}] {unit['title']}  "
+            f"(ledger: {unit.get('ledger_id', unit['id'])})"
+        )
 
 
 @app.command("verify")
@@ -447,29 +472,29 @@ def verify_command(
     import json
     from pathlib import Path
 
-    from config import load_config
-    from chroma_store import ChromaStore
+    from chroma_write_store import production_chroma_write_session
     from query import render_error
     from verify import verify_unit
 
-    cfg = load_config()
-    models = cfg["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
-    units_export = cfg["index"].get("units_export")
-    units_export_path = Path(units_export).expanduser() if units_export else None
+    with production_chroma_write_session(entrypoint="convmem.verify") as session:
+        store = session.store
+        cfg = session.live_cfg
+        models = cfg["models"]
+        units_export = cfg["index"].get("units_export")
+        units_export_path = Path(units_export).expanduser() if units_export else None
 
-    meta = verify_unit(
-        store,
-        unit_id,
-        verifier_model=model,
-        confidence=confidence,
-        notes=notes,
-        result=result,
-        record_ledger=not no_record,
-        embed_model=models["embed_model"],
-        ollama_host=models["ollama_host"],
-        units_export=units_export_path,
-    )
+        meta = verify_unit(
+            store,
+            unit_id,
+            verifier_model=model,
+            confidence=confidence,
+            notes=notes,
+            result=result,
+            record_ledger=not no_record,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            units_export=units_export_path,
+        )
     if meta is None:
         render_error(f"No unit found with id {unit_id}.")
         raise typer.Exit(1)
@@ -591,24 +616,46 @@ def monitor_command(
     from pathlib import Path
 
     from config import load_config
+    from chroma_write_store import production_chroma_write_session
     from chroma_store import ChromaStore
     from monitor import run_monitor
 
-    cfg = load_config()
-    models = cfg["models"]
-    store = ChromaStore(cfg["index"]["chroma_dir"])
-    units_export = cfg["index"].get("units_export")
-    units_export_path = Path(units_export).expanduser() if units_export else None
+    if dry_run:
+        cfg = load_config()
+        models = cfg["models"]
+        units_export = cfg["index"].get("units_export")
+        units_export_path = Path(units_export).expanduser() if units_export else None
+        store = ChromaStore(str(cfg["index"]["chroma_dir"]), mutation_sink=None)
+        try:
+            stats = run_monitor(
+                store,
+                site=site,
+                embed_model=models["embed_model"],
+                ollama_host=models["ollama_host"],
+                units_export=units_export_path,
+                dry_run=True,
+                verbose=True,
+            )
+        finally:
+            store.close()
+        typer.echo(json.dumps(stats, indent=2))
+        return
 
-    stats = run_monitor(
-        store,
-        site=site,
-        embed_model=models["embed_model"],
-        ollama_host=models["ollama_host"],
-        units_export=units_export_path,
-        dry_run=dry_run,
-        verbose=True,
-    )
+    with production_chroma_write_session(entrypoint="convmem.monitor") as session:
+        store = session.store
+        cfg = session.live_cfg
+        models = cfg["models"]
+        units_export = cfg["index"].get("units_export")
+        units_export_path = Path(units_export).expanduser() if units_export else None
+        stats = run_monitor(
+            store,
+            site=site,
+            embed_model=models["embed_model"],
+            ollama_host=models["ollama_host"],
+            units_export=units_export_path,
+            dry_run=False,
+            verbose=True,
+        )
     typer.echo(json.dumps(stats, indent=2))
     from brief import refresh_brief_after_change
 
@@ -878,7 +925,9 @@ def propose_decision_command(
         None, "--alternatives-rejected", help="Rejected alternative (repeatable)"
     ),
     constraint: list[str] | None = typer.Option(
-        None, "--constraint", help="Hard constraint (repeatable)"
+        None,
+        "--constraint",
+        help="Hard constraint (repeatable); exact 'none-identified' sentinel allowed",
     ),
     constraints: list[str] | None = typer.Option(
         None, "--constraints", help="Hard constraint (repeatable)"
@@ -1261,6 +1310,56 @@ def unresolved_command(
         after_unresolved(site=site, count=len(items))
 
 
+@app.command("shadow-inventory")
+def shadow_inventory_command(
+    json_out: bool = typer.Option(
+        False, "--json", help="Emit redacted machine-readable inventory JSON"
+    ),
+    report: Path | None = typer.Option(
+        None,
+        "--report",
+        help="Write full machine-readable readiness report JSON to this path",
+        path_type=Path,
+    ),
+    sample: int = typer.Option(
+        200,
+        "--sample",
+        help="Max candidate rows to classify (deterministic local metadata only)",
+    ),
+):
+    """Phase 0 read-only shadow inventory and readiness summary.
+
+    Does not enable shadowing, mutate Chroma, or claim activation/cutover.
+    """
+    from config import load_config
+    from shadow_inventory import (
+        collect_phase0_inventory,
+        redacted_stdout_view,
+        write_report,
+    )
+
+    cfg = load_config()
+    report_obj = collect_phase0_inventory(
+        cfg, include_candidate_sample=sample
+    )
+    if report is not None:
+        write_report(report, report_obj)
+    if json_out:
+        typer.echo(json.dumps(redacted_stdout_view(report_obj), indent=2, sort_keys=True))
+    else:
+        inv = report_obj["inventory"]
+        shadow = report_obj["shadow"]
+        typer.echo(report_obj["human_summary"])
+        typer.echo(
+            f"units={inv['active_unit_count']} chroma_only={inv['chroma_only_count']} "
+            f"shadow_touched={shadow['shadow_touched_entity_count']} "
+            f"health={shadow['health_status']} enabled={shadow['enabled']}"
+        )
+        typer.echo(f"commit={inv['code_commit']} rule_v={inv['comparison_rule_version']}")
+        if report is not None:
+            typer.echo(f"report={report}")
+
+
 @app.command("exclude")
 def exclude_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     path: str = typer.Argument(None, help="File path to exclude from indexing"),
@@ -1341,8 +1440,7 @@ def forget_command(
     """
     from datetime import datetime, timezone
 
-    from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
-    from config import load_config
+    from chroma_store import invalidate_superseded_cache, is_superseded
     from query import render_error
 
     if not unit_id:
@@ -1350,52 +1448,291 @@ def forget_command(
         raise typer.Exit(1)
 
     _guard_write()
-    cfg = load_config()
-    store = ChromaStore(cfg["index"]["chroma_dir"])
-    unit = store.get_unit(unit_id)
-    if unit is None:
-        render_error(f"No unit found with id {unit_id}.")
-        raise typer.Exit(1)
+    from chroma_write_store import production_chroma_write_session
 
-    meta = dict(unit["metadata"] or {})
-    doc = unit["document"] or ""
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with production_chroma_write_session(entrypoint="convmem.forget") as session:
+        store = session.store
+        unit = store.get_unit(unit_id)
+        if unit is None:
+            render_error(f"No unit found with id {unit_id}.")
+            raise typer.Exit(1)
 
-    typer.echo(f"unit:       {unit_id}")
-    typer.echo(f"source:     {meta.get('source_path')}")
-    typer.echo(f"type/title: {meta.get('type')} / {meta.get('title')}")
-    typer.echo(f"superseded: {meta.get('superseded')}")
-    typer.echo(f"document:   {doc[:280]}")
+        meta = dict(unit["metadata"] or {})
+        doc = unit["document"] or ""
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    if undo:
-        if not is_superseded(meta):
-            typer.echo("Unit is not superseded — nothing to undo.")
+        typer.echo(f"unit:       {unit_id}")
+        typer.echo(f"source:     {meta.get('source_path')}")
+        typer.echo(f"type/title: {meta.get('type')} / {meta.get('title')}")
+        typer.echo(f"superseded: {meta.get('superseded')}")
+        typer.echo(f"document:   {doc[:280]}")
+
+        if undo:
+            if not is_superseded(meta):
+                typer.echo("Unit is not superseded — nothing to undo.")
+                return
+            # Chroma update() merges metadata keys rather than replacing the dict,
+            # so popping keys leaves the stored superseded=True intact. Overwrite
+            # with a not-superseded value instead (is_superseded checks `is True`).
+            meta["superseded"] = False
+            meta["superseded_by"] = ""
+            meta["updated_at"] = now
+            store.update_unit_metadata(unit_id, meta)
+            invalidate_superseded_cache(store.chroma_dir)
+            typer.echo("Restored: unit is active again (superseded cleared).")
             return
-        # Chroma update() merges metadata keys rather than replacing the dict,
-        # so popping keys leaves the stored superseded=True intact. Overwrite
-        # with a not-superseded value instead (is_superseded checks `is True`).
-        meta["superseded"] = False
-        meta["superseded_by"] = ""
+
+        if is_superseded(meta):
+            typer.echo("Already superseded — nothing to do.")
+            return
+
+        if not yes and not typer.confirm("Tombstone this unit (exclude from search)?"):
+            typer.echo("Aborted.")
+            raise typer.Exit(1)
+
+        meta["superseded"] = True
+        meta["superseded_by"] = f"forget-cli:{reason or 'manual'}"
         meta["updated_at"] = now
         store.update_unit_metadata(unit_id, meta)
         invalidate_superseded_cache(store.chroma_dir)
-        typer.echo("Restored: unit is active again (superseded cleared).")
-        return
+        typer.echo(
+            f"Tombstoned {unit_id} — excluded from search results (reversible with --undo)."
+        )
 
-    if is_superseded(meta):
-        typer.echo("Already superseded — nothing to do.")
-        return
 
-    if not yes and not typer.confirm("Tombstone this unit (exclude from search)?"):
-        typer.echo("Aborted.")
-        raise typer.Exit(1)
+@app.command("shadow-activate")
+def shadow_activate_command(  # pylint: disable=too-many-positional-arguments
+    token: Path | None = typer.Option(
+        None, "--authorization-token", help="Ryan-issued exact 0600 one-shot token"
+    ),
+    config_path: Path = typer.Option(
+        Path("~/.config/convmem/config.toml").expanduser(), "--config"
+    ),
+    census_path: Path = typer.Option(
+        Path("docs/plans/SHADOW-WRITER-CENSUS.json"), "--census"
+    ),
+    nonce_store_path: Path = typer.Option(
+        Path("~/.local/share/convmem/shadow/authorization-nonces.jsonl").expanduser(),
+        "--nonce-store",
+    ),
+    writer_lock_path: Path = typer.Option(
+        Path("~/.local/share/convmem/locks/chroma_writer_gate.lock").expanduser(),
+        "--writer-lock",
+    ),
+    attest_dir: Path = typer.Option(
+        Path("~/.local/share/convmem/writer_attestations").expanduser(),
+        "--attest-dir",
+    ),
+):
+    """Run C5 activation; never controls services or mutates Chroma."""
+    if token is None:
+        typer.echo(
+            json.dumps(
+                {
+                    "state": "disabled",
+                    "committed": False,
+                    "refusal_code": "authorization_missing",
+                },
+                sort_keys=True,
+            )
+        )
+        raise typer.Exit(2)
+    from shadow_activation import ActivationRefused, activate_shadow
 
-    meta["superseded"] = True
-    meta["superseded_by"] = f"forget-cli:{reason or 'manual'}"
-    meta["updated_at"] = now
-    store.update_unit_metadata(unit_id, meta)
-    invalidate_superseded_cache(store.chroma_dir)
-    typer.echo(f"Tombstoned {unit_id} — excluded from search results (reversible with --undo).")
+    try:
+        outcome = activate_shadow(
+            token_path=token,
+            config_path=config_path,
+            census_path=census_path,
+            nonce_store_path=nonce_store_path,
+            writer_lock_path=writer_lock_path,
+            attest_dir=attest_dir,
+        )
+    except ActivationRefused as exc:
+        typer.echo(
+            json.dumps(
+                {
+                    "state": exc.state or "disabled",
+                    "committed": False,
+                    "refusal_code": exc.code,
+                    "detail": exc.detail,
+                },
+                sort_keys=True,
+            )
+        )
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps(outcome.__dict__, sort_keys=True))
+    if outcome.refusal_code:
+        raise typer.Exit(2)
+
+
+@app.command("shadow-rollback")
+def shadow_rollback_command(
+    activation_id: str = typer.Option(..., "--activation-id"),
+    config_path: Path = typer.Option(
+        Path("~/.config/convmem/config.toml").expanduser(), "--config"
+    ),
+    writer_lock_path: Path = typer.Option(
+        Path("~/.local/share/convmem/locks/chroma_writer_gate.lock").expanduser(),
+        "--writer-lock",
+    ),
+    journal_path: Path | None = typer.Option(None, "--journal"),
+    recover_prepared: bool = typer.Option(False, "--recover-prepared"),
+):
+    """Disable Shadow or recover one exact disabled precommit transaction."""
+    from shadow_activation import (
+        ActivationRefused,
+        recover_prepared_activation,
+        rollback_activation,
+    )
+
+    try:
+        if recover_prepared:
+            if journal_path is None:
+                raise ActivationRefused(
+                    "prepared_not_committed", "--recover-prepared requires --journal"
+                )
+            outcome = recover_prepared_activation(
+                journal_path=journal_path,
+                config_path=config_path,
+                activation_id=activation_id,
+                writer_lock_path=writer_lock_path,
+            )
+        else:
+            outcome = rollback_activation(
+                config_path=config_path,
+                activation_id=activation_id,
+                writer_lock_path=writer_lock_path,
+                journal_path=journal_path,
+            )
+    except ActivationRefused as exc:
+        typer.echo(
+            json.dumps(
+                {"committed": False, "refusal_code": exc.code, "detail": exc.detail},
+                sort_keys=True,
+            )
+        )
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps(outcome.__dict__, sort_keys=True))
+
+
+@app.command("shadow-canary")
+def shadow_canary_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments,unused-argument
+    scratch_dir: Path | None = typer.Option(
+        None, "--scratch-dir", help="New private scratch directory; must not exist"
+    ),
+    intended_ledger_path: Path | None = typer.Option(
+        None, "--intended-ledger-path", help="Read-only mount reference; never opened"
+    ),
+    chroma_root: Path | None = typer.Option(
+        None, "--chroma-root", help="Production Chroma root used only for overlap refusal"
+    ),
+    unit_count: int | None = typer.Option(
+        None, "--unit-count", help="Fresh read-only current knowledge_units count"
+    ),
+    p50_event_bytes: int | None = typer.Option(
+        None, "--p50-event-bytes", help="Redacted synthetic P50 encoded-event length"
+    ),
+    p95_event_bytes: int | None = typer.Option(
+        None, "--p95-event-bytes", help="Redacted synthetic P95 encoded-event length"
+    ),
+    maximum_event_bytes: int | None = typer.Option(
+        None, "--maximum-event-bytes", help="Synthetic maximum supported event length"
+    ),
+    event_size_evidence_sha256: str | None = typer.Option(
+        None,
+        "--event-size-evidence-sha256",
+        help="SHA-256 of redacted event-size derivation evidence",
+    ),
+    writer_census_report: Path | None = typer.Option(
+        None,
+        "--writer-census-report",
+        help="Final private C7 report; metrics and hash are derived, never supplied",
+    ),
+):
+    """Run C6 only in a new same-mount scratch directory; never activates Shadow."""
+    from shadow_canary import (
+        CanaryRefused,
+        inputs_from_cli_values,
+        redacted_report,
+        run_shadow_canary,
+    )
+
+    try:
+        inputs = inputs_from_cli_values(locals())
+        report = run_shadow_canary(inputs)
+    except CanaryRefused as exc:
+        typer.echo(
+            json.dumps(
+                {"verdict": "REFUSED", "refusal_code": exc.code, "detail": exc.detail},
+                sort_keys=True,
+            )
+        )
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps(redacted_report(report), sort_keys=True))
+    if report.verdict != "PASS":
+        raise typer.Exit(2)
+
+
+@app.command("writer-census-start")
+def writer_census_start_command(
+    chroma_root: Path = typer.Option(
+        ..., "--chroma-root", help="Production Chroma root identity only"
+    ),
+    writer_gate_path: Path = typer.Option(
+        Path("~/.local/share/convmem/locks/chroma_writer_gate.lock"), "--writer-gate-path"
+    ),
+    census_dir: Path = typer.Option(
+        Path("~/.local/share/convmem/writer-census"), "--census-dir"
+    ),
+):
+    """Arm a payload-free C7 census for the next seven complete UTC days."""
+    from chroma_write_store import exclusive_writer_lease
+    from writer_census import WriterCensusRefused, start_writer_census
+
+    try:
+        # The bounded exclusive acquisition proves no compliant session was
+        # already open at census creation; no service is controlled here.
+        with exclusive_writer_lease(lock_path=writer_gate_path, timeout_ms=30_000):
+            header = start_writer_census(
+                chroma_root=chroma_root,
+                writer_gate_path=writer_gate_path,
+                census_dir=census_dir,
+            )
+    except (WriterCensusRefused, TimeoutError) as exc:
+        code = getattr(exc, "code", "writer_quiesce_timeout")
+        typer.echo(json.dumps({"verdict": "REFUSED", "refusal_code": code}, sort_keys=True))
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps({"verdict": "ARMED", **header}, sort_keys=True))
+
+
+@app.command("writer-census-status")
+def writer_census_status_command(
+    census_dir: Path = typer.Option(Path("~/.local/share/convmem/writer-census"), "--census-dir"),
+):
+    """Read the C7 journal status; this command never changes live state."""
+    from writer_census import WriterCensusRefused, census_status
+
+    try:
+        typer.echo(json.dumps(census_status(census_dir=census_dir), sort_keys=True))
+    except WriterCensusRefused as exc:
+        typer.echo(json.dumps({"verdict": "REFUSED", "refusal_code": exc.code}, sort_keys=True))
+        raise typer.Exit(2) from exc
+
+
+@app.command("writer-census-report")
+def writer_census_report_command(
+    census_dir: Path = typer.Option(Path("~/.local/share/convmem/writer-census"), "--census-dir"),
+):
+    """Validate and finalize a completed C7 census for C6 binding."""
+    from writer_census import WriterCensusRefused, build_writer_census_report
+
+    try:
+        report = build_writer_census_report(census_dir=census_dir)
+    except WriterCensusRefused as exc:
+        typer.echo(json.dumps({"verdict": "REFUSED", "refusal_code": exc.code}, sort_keys=True))
+        raise typer.Exit(2) from exc
+    typer.echo(json.dumps({"verdict": "PASS", **report}, sort_keys=True))
 
 
 def main():

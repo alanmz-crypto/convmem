@@ -7,10 +7,31 @@
 | **This file** | Which repo, which script, which reference |
 | [`docs/PLANNING-PROTOCOL.md`](PLANNING-PROTOCOL.md) | Planning OS workflow — where am I in architecture / execution / revise? |
 | [`docs/planning/EXECUTION-CLOSURE-2026-07-08.md`](planning/EXECUTION-CLOSURE-2026-07-08.md) | Planning OS arc closure — frozen summary, findings, interim routes |
+| [`docs/plans/`](plans/) | Active ARCHITECTURE and EXECUTION plans (embedding eval, restore drill, etc.) |
 | [`config/agent-protocol.md`](../config/agent-protocol.md) | Session start/close (deployed to Cursor, MCP, Codex, Kiro) |
-| [`SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) | Cross-project digest phase status |
+| [`SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) | Cross-project digest phase status + background synthesis phase gates |
+| [`docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`](inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md) | Canonical cross-project synthesis plan (Phase 0–3 gates) |
 | [`docs/inter-model/SESSION-CLOSE-RECORD.md`](inter-model/SESSION-CLOSE-RECORD.md) | Record block format |
 | [`docs/inter-model/TEAM-CHARTER-2026-07-06.md`](inter-model/TEAM-CHARTER-2026-07-06.md) | HITL team roles — lost on who does what? |
+| [`docs/CI-WAIT-WORKFLOW.md`](CI-WAIT-WORKFLOW.md) | What to do while CI / automated review runs |
+| Cursor rule `dense-consult-deepseek-kiro` | When to auto-run / skip / ask before dual consult |
+
+---
+
+## Dense consult — DeepSeek V4-Pro API + Kiro (token-per-pound)
+
+Ryan’s preferred second-opinion pattern for **load-bearing owner forks** (not routine Execute).
+
+| Advisor | How | Role |
+|---|---|---|
+| **DeepSeek V4-Pro** | DeepSeek **API** (`deepseek-v4-pro`) — Continue-class; **not** Ollama `deepseek-r1` for dense briefs | Dense reasoning on an evidence pack |
+| **Kiro** | `kiro-cli chat --no-interactive` (review posture) | Independent design-review opinion; non-implementing |
+
+**Runner:** [`scripts/dense-consult-deepseek-kiro.sh`](../scripts/dense-consult-deepseek-kiro.sh) `brief.txt` `[outdir]`
+
+**Cursor policy (auto / skip / ask):** always-applied rule `~/.cursor/rules/dense-consult-deepseek-kiro.mdc` — auto-run on blocking forks / model disagreement / pre-Copilot-or-HITL; auto-skip on routine Execute and already-locked decisions; ask Ryan when borderline.
+
+Advisors **recommend**; Ryan **locks**. Do not treat a consult as merge/Execute/live-ops authorization.
 
 ---
 
@@ -33,7 +54,7 @@ See [`builder-reference/notes/suggested-application-of-builder-material.md`](bui
 
 **Session tracking — two tracks (do not confuse):**
 
-- **A — Session chat** (`crush.db`, Kiro `messages.jsonl`, Codex `rollout-*.jsonl`, Cursor `agent-transcripts`): **required** at handoff — `convmem index --file <session-path>`
+- **A — Session chat** (`crush.db`, Kiro `messages.jsonl`, Codex `rollout-*.jsonl`, Cursor `agent-transcripts`, Copilot `events.jsonl`): **required** at handoff — `convmem index --file <session-path>`
 - **B — Log artifact** (`logs/*.md` → inter-model): only if a log was written; **does not replace A**
 
 Ryan: **"ingest your chat"** = A · **"index the log"** = B · **"ingest everything"** = A then B. Avoid **"index what you wrote"** (models skip chat).
@@ -67,11 +88,40 @@ Ryan: **"ingest your chat"** = A · **"index the log"** = B · **"ingest everyth
 ```bash
 bash ~/Projects/convmem/scripts/convmem-index-prod.sh ~/.kiro/sessions/.../messages.jsonl --force
 bash ~/Projects/convmem/scripts/convmem-index-prod.sh ~/.cursor/projects/.../agent-transcripts/.../....jsonl --force
+bash ~/Projects/convmem/scripts/convmem-index-prod.sh ~/.copilot/session-state/.../events.jsonl --force
 ```
 
 Same wrapper for Codex rollout, Crush `.crush/crush.db`, etc. — always prod Chroma, no lab/prod mix-up.
 
 **Check before writes:** `convmem doctor` includes `write_lane` — shows `lane=`, `workspace=`, `write_guard=OK|BLOCKED`.
+
+---
+
+## Billing-cycle model routing (scarce Cursor tokens)
+
+Cursor / most hosted IDE models often exhaust mid-cycle. **Do not stall ConvMem
+work waiting for a refresh** — use **OpenAI Codex** for default planning;
+move discovery to Crush; implement in **Cursor** with Ryan-selected models
+(e.g. Grok) while tokens remain.
+
+| Priority | Surface | Model | Use for |
+|----------|---------|-------|---------|
+| P0 | **OpenAI Codex** | Codex product default | Architecture and execution planning (Kiro review; Ryan approves) |
+| 1 | **Cursor** | Ryan-selected (e.g. Grok) | Large implementation while tokens remain |
+| 1b | **Crush** | **Qwen3.7-Max** (Alibaba Singapore) | Discovery, neutral framing, cross-doc synthesis — not default planning owner |
+| 1c | Crush | Qwen3.7-Plus / Qwen3.6-Plus | When Max is busy or for lighter drafting |
+| 2 | **Crush** | **DeepSeek V4 Pro** (or V4 Flash) | Same Crush lane when Qwen is busy **or** to burn DeepSeek quota while Cursor is dry — still say “Crush found it” |
+| 3 | Continue | Qwen3.7-Max (DashScope) + DeepSeek V4 | IDE chat when Crush TTY not open |
+| — | ConvMem `ask` / distill | **DeepSeek V4 Flash** (API) | Pipeline synthesis — already on DeepSeek; keep using it |
+| — | ConvMem summarize | local Ollama (today `llama3.1:8b`) | Index-time summaries — not interactive agent work |
+
+Paste-ready Crush openers:
+
+- Qwen: [`docs/CRUSH-QWEN-BOOTSTRAP.md`](CRUSH-QWEN-BOOTSTRAP.md)
+- DeepSeek V4: [`docs/CRUSH-DEEPSEEK-BOOTSTRAP.md`](CRUSH-DEEPSEEK-BOOTSTRAP.md)
+
+**Rule of thumb:** Planning → Codex; implementation → Cursor; Cursor dry → Crush
+for discovery/synthesis; rotate DeepSeek V4 in Crush to cover ground.
 
 ---
 
@@ -87,6 +137,8 @@ Same wrapper for Codex rollout, Crush `.crush/crush.db`, etc. — always prod Ch
 ### B. Cross-project “big picture” digest (prod)
 
 **Read:** [`docs/CROSS-PROJECT-DIGEST-ATTEMPTS.md`](CROSS-PROJECT-DIGEST-ATTEMPTS.md)
+**Canonical plan:** [`docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`](inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md) § *Cross-project background synthesis* — gates, Phases 0–3, execution status
+**Pilot history:** [`docs/inter-model/CROSS-PROJECT-DIGEST-PILOT.md`](inter-model/CROSS-PROJECT-DIGEST-PILOT.md) — manual pilot runs 1–8
 
 ```bash
 # Deterministic brief (no LLM) — weekly habit / smoke
@@ -135,6 +187,8 @@ bash scripts/verify-lab-reference.sh
 |----------|------|
 | Lab gates, smoke, fail-open/closed | `convmem-lab/docs/lab-reference/` |
 | Prod architecture, ledger, retrieval | `convmem/docs/builder-reference/` |
+| Active execution / architecture plans | `convmem/docs/plans/` (EXECUTION-*.md, ARCHITECTURE-*.md) |
+| Background synthesis phase gates | `convmem/SYNTHESIS-STATUS.md` → `docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md` |
 | Willowy Hollow promote / prod write gates | `convmem/docs/site-reference/` |
 | Digest attempts schema | `convmem/docs/CROSS-PROJECT-DIGEST-ATTEMPTS.md` |
 | Synthesis phase / propose gate | `convmem/SYNTHESIS-STATUS.md` |

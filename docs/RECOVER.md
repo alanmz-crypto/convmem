@@ -12,7 +12,7 @@ from the repo**, and what needs a **separate data backup**.
 |------|----------|----------|------------|
 | **1 — Corpus** | `~/.local/share/convmem/` | Restore from your **data backup** or full reindex (slow) | **Blocks** shell delete/move/truncate |
 | **2 — Runtime config** | `~/.config/convmem/` | Copy examples below; re-enter API key | **Blocks** shell delete/move/truncate |
-| **3 — Wiring + source** | `~/Projects/convmem`, `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, `~/.kiro/settings/permissions.yaml`, `~/.config/crush/crush.json`, Continue YAML | Restore project backup or git; copy MCP/permissions examples | **Not blocked** — edits encouraged |
+| **3 — Wiring + source** | `~/Projects/convmem`, `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, `~/.kiro/settings/permissions.yaml`, `~/.config/crush/crush.json`, `~/.copilot/mcp-config.json`, `~/.copilot/agents/`, Continue YAML | Restore project backup or git; copy MCP/permissions examples | **Not blocked** — edits encouraged |
 
 **Not in the Git repo:** Tier 1 (`chroma/`, `processed.json`, `knowledge_units.jsonl`,
 `decisions-approved.jsonl`, `attempts.jsonl` (optional), etc.). Include `~/.local/share/convmem/` in backups if you want
@@ -63,6 +63,49 @@ bash ~/Projects/convmem/scripts/verify-restic-gate.sh   # happy + fail-closed ne
 convmem doctor                                   # includes restic_gate check
 ```
 
+### Complete-data restore classifications (v2)
+
+When validating a **complete-data-v2** snapshot (tag `convmem-data-v2`), restore
+preflight classifies every durable path through a closed matrix. Validators
+**never repair**. Outcome precedence:
+
+`BLOCKED > REPAIRABLE > ADVISORY > VALID`
+
+| Classification | Meaning | Live replacement? |
+|---|---|---|
+| **VALID** | Structurally sound for the path's authority class | Eligible only after Ryan live-replacement grant |
+| **ADVISORY** | Residue / evidence / inactive Shadow — review, not a hard stop | Still requires Ryan live-replacement grant |
+| **REPAIRABLE** | Derived drift with a **named repair source** (e.g. Chroma → export, Pending event log → projection, Source rescan → processed/inventory) | **Not** replacement-ready until repaired or accepted |
+| **BLOCKED** / `BLOCKED_UNCLASSIFIED_STATE` / `BLOCKED_SNAPSHOT_SCOPE_LEAK` | Canonical/control corruption, unknown top-level state, or scratch (`worktrees/**`, `restore-drill/**`) leaked into the snapshot | Do **not** replace live data |
+
+Capture file `.convmem-backup-evidence.json` is **evidence only** — not authority
+and never a repair source. Mid-capture skew becomes a visible classification.
+
+**Named repair sources (examples):**
+
+- Derived `knowledge_units.jsonl` ↔ Chroma (only when the compare is deterministic)
+- Pending projection ↔ Pending event log (lifecycle reducer)
+- `processed.json` / `inventory.jsonl` ↔ Source rescan / reimport
+
+### Authoritative-first replacement + rollback (Ryan grant only)
+
+Live replacement of `~/.local/share/convmem/` is **out of band** from code merge.
+It requires a **separate Ryan live-replacement authorization** (distinct from
+configuring `complete-data-v2`, taking the first live v2 snapshot, or enabling
+timers).
+
+Authoritative-first order when Ryan authorizes replacement:
+
+1. Stop writers (watch/refine) deliberately.
+2. Keep a rollback copy of the current live root (or confirm a prior good snapshot).
+3. Replace from a preflight result that is not `BLOCKED` / not merely repairable
+   unless Ryan explicitly accepts repairable derived drift.
+4. Verify with `convmem doctor` and restore-preflight reports (JSON authoritative;
+   Markdown derived).
+5. On failure, roll back to the retained live copy before restarting writers.
+
+Do **not** treat capture evidence as the thing to restore from.
+
 ### Restore chroma from Restic
 
 ```bash
@@ -103,20 +146,25 @@ cp ~/Projects/convmem/config/continue-mcp.json.example ~/.continue/mcpServers/co
 # Add mcpServers block from config/continue-mcp-servers.yaml.example to ~/.continue/config.yaml
 # Tier-A agent models: merge config/continue-models-tier-a.example.yaml under models:
 
+# 5b. Copilot CLI MCP (if installed)
+mkdir -p ~/.copilot/agents
+cp ~/Projects/convmem/config/copilot-mcp-config.json.example ~/.copilot/mcp-config.json
+# Agent protocol also deploys ~/.copilot/agents/convmem.md
+
 # 6. Systemd (optional always-on)
 cp ~/Projects/convmem/systemd/convmem-watch.service.example ~/.config/systemd/user/convmem-watch.service
 cp ~/Projects/convmem/systemd/convmem-refine.service.example ~/.config/systemd/user/convmem-refine.service
 systemctl --user daemon-reload
 systemctl --user enable --now convmem-watch.service convmem-refine.service
 
-# 7. Deploy agent protocol surfaces (Cursor .mdc, Codex AGENTS.md, Kiro steering + MCP + permissions.yaml, Crush)
+# 7. Deploy agent protocol surfaces (Cursor .mdc, Codex AGENTS.md, Kiro steering + MCP + permissions.yaml, Crush, Copilot)
 bash ~/Projects/convmem/scripts/deploy-agent-protocol.sh
 # Kiro: enable MCP in Settings after deploy (see script manual steps)
 
 # 8. Verify
 convmem stats
 ~/Projects/convmem/scripts/verify-continue.sh
-# Restart Cursor / Continue / Kiro after MCP config changes
+# Restart Cursor / Continue / Kiro / Copilot after MCP config changes
 # After mcp_server.py updates: bash scripts/restart-convmem-mcp.sh (kills stale stdio subprocesses)
 ```
 
@@ -164,7 +212,7 @@ If Chroma itself is corrupt, restore from Restic (above) before reindexing.
 
 - Any file under `~/Projects/convmem/` (code, tests, docs)
 - `mcp_server.py`, `watch.py`, `brief.py`, etc.
-- `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, and Continue `mcpServers` (MCP wiring)
+- `~/.cursor/mcp.json`, `~/.kiro/settings/mcp.json`, `~/.copilot/mcp-config.json`, and Continue `mcpServers` (MCP wiring)
 - `~/.config/convmem/config.toml` (paths, models)
 
 ## What needs Ryan (hook blocks shell destruction)

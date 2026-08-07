@@ -1,0 +1,30 @@
+---
+description: Require a jargon glossary at the end of plan documents
+alwaysApply: true
+globs: "docs/**/*.md"
+---
+
+# Plan jargon glossary requirement
+
+When producing or substantially updating a plan document (`docs/plans/`, `docs/inter-model/`, or any `*.plan.md` file), **append a `## Jargon TL;DR` section at the end** that defines every project-specific term, abbreviation, or coded phrase introduced or relied upon in the document.
+
+## Format
+
+```markdown
+## Jargon TL;DR
+
+| Term | Meaning |
+|------|---------|
+| F2a | Feature phase 2a — dedupe + ledger_id index for ask |
+| Track A | Indexing the session chat transcript into convmem |
+| Track B | Indexing a `logs/*.md` artifact into convmem |
+```
+
+## Rules
+
+1. Include any term a new team member or a model seeing the project for the first time would not understand from context alone.
+2. Cover lane names (Crush, Codex, Kiro, Cursor), phase codes (P0, P1a, F2a), shorthand (HITL, MCP, RSS in the watch-memory sense), taxonomy slugs (`feat/`, `wip/`, `docs/`), and any acronym or compound noun coined within the project.
+3. Do NOT define universally-known terms (git, PR, CLI, API, JSON, etc.).
+4. Keep definitions to one sentence max. Link to the canonical source if one exists.
+5. If the document is a minor update (< 5 new terms, glossary already present), update the existing glossary rather than appending a duplicate.
+6. The glossary goes at the very end of the document, after any `── Next steps ──` footer.

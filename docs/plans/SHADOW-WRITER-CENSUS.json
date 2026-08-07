@@ -1,0 +1,21 @@
+{
+  "generated_at_utc": "2026-07-29T21:29:36Z",
+  "code_revision": "3e91c9f8522dbab2a18d383b296d9d882107e8c0",
+  "protocol_version": 1,
+  "systemd_units": [
+    "convmem-watch.service",
+    "convmem-refine.service",
+    "convmem-monitor.timer"
+  ],
+  "cmdline_signatures": [
+    "convmem watch",
+    "convmem refine",
+    "python.*watch.py",
+    "python.*refine.py"
+  ],
+  "chroma_dir": "/home/lauer/.local/share/convmem/chroma",
+  "open_fd_writer_pids": [],
+  "implementation_subject": "3e91c9f8522dbab2a18d383b296d9d882107e8c0",
+  "scan_scope": "static_implementation_binding",
+  "note": "Static C5 implementation binding only; no live process, service, open-FD, or Chroma scan was performed. Live activation requires a separately regenerated census at the deployed main SHA."
+}

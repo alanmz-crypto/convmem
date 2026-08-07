@@ -13,9 +13,9 @@ Approved direction -> bounded execution plan -> HITL -> [`EXECUTE-TASK.md`](EXEC
 | **Phase** | Execution Planning |
 | **Characters** | Task Decomposer, Dependency Mapper, Scope Guardian |
 | **Functions** | Planner |
-| **Lanes** | Cursor (Tier A); Codex read-only if Ryan requests plan audit |
+| **Lanes** | OpenAI Codex authors execution plan; Kiro reviews (rejection routes to Ryan before Codex revises); Cursor downstream implementation |
 | **Engineering References** | [`builder-reference.md`](../builder-reference.md) when infra scope is unclear |
-| **Probe Version** | v1 |
+| **Probe Version** | v2 |
 | **Exit Condition** | Bounded execution plan artifact complete; HITL approval pending |
 | **Authority** | Awaiting HITL |
 
@@ -33,8 +33,12 @@ output, an approved bug scope, or a Ryan-named scope.
 
 This phase is task-shaping only. It is not implementation
 ([`EXECUTE-TASK.md`](EXECUTE-TASK.md)), not plan revision
-([`REVISE-PLANNING.md`](REVISE-PLANNING.md)), not Verify OS, and not
-greenfield bug discovery.
+([`REVISE-PLANNING.md`](REVISE-PLANNING.md)), not Verify OS
+([`VERIFY-PLANNING.md`](VERIFY-PLANNING.md)), and not greenfield bug discovery.
+For an **arc**, the execution plan artifact must name the companion
+`docs/plans/VERIFY-<slug>.md` (stub from
+[`../plans/VERIFY-TEMPLATE.md`](../plans/VERIFY-TEMPLATE.md) is OK until
+post-execute fill).
 
 ---
 
@@ -48,7 +52,7 @@ Planning Status
 Phase:        Execution Planning
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Functions:    Planner
-Lanes:        Cursor
+Lanes:        Codex authors; Kiro reviews; Cursor downstream implementation
 Authority:    Awaiting HITL
 ```
 
@@ -85,8 +89,9 @@ for history, architecture, or prior-decision grounding.
 | **2** | **Decompose** | Produce one to five tasks; one deliverable each; no option forks (**Task Decomposer**) |
 | **3** | **Dependencies** | Order tasks; identify blockers; mark parallel-safe vs serial work (**Dependency Mapper**) |
 | **4** | **Gates and evidence** | Name per-task verification and evidence; link [`EXECUTE-TASK.md`](EXECUTE-TASK.md#verification-routes-interim--not-verify-os) where applicable |
-| **5** | **Stop points** | State where HITL approval is required before Execute |
-| **6** | **Plan artifact** | Emit the template below; do not implement |
+| **5** | **Arc VERIFY companion** | If this plan is an **arc**, name `docs/plans/VERIFY-<slug>.md` (create stub from template if needed) |
+| **6** | **Stop points** | State where HITL approval is required before Execute |
+| **7** | **Plan artifact** | Emit the template below; do not implement |
 
 ### Execution Plan Artifact Template
 
@@ -111,13 +116,20 @@ for history, architecture, or prior-decision grounding.
 
 - ...
 
+### Arc VERIFY companion (required for arcs)
+
+- Path: `docs/plans/VERIFY-<slug>.md`
+- Status: stub | filled
+- Template: `docs/plans/VERIFY-TEMPLATE.md`
+
 ### Execute entry
 
 - First task: T1 after HITL approves this plan.
 ```
 
-Execution lane defaults to Cursor unless Ryan explicitly says otherwise. Codex
-audit is post-handoff only. Crush and DeepSeek are not execution lanes.
+Task execution defaults to Cursor after Ryan approves this plan. Kiro
+Execution Plan rejection goes to Ryan before Codex may revise. Crush and
+DeepSeek are not planning lanes.
 
 ### Awareness (read-only context)
 
@@ -126,6 +138,7 @@ audit is post-handoff only. Crush and DeepSeek are not execution lanes.
 - [`TEAM-CHARTER`](../inter-model/TEAM-CHARTER-2026-07-06.md) - lane ownership and must-nots
 - [`MODEL-WORKFLOW.md`](../MODEL-WORKFLOW.md) - repo-specific routes
 - [`EXECUTE-TASK.md`](EXECUTE-TASK.md) - downstream implementation phase
+- [`VERIFY-PLANNING.md`](VERIFY-PLANNING.md) - post-execute arc Verify OS
 - [`REVISE-PLANNING.md`](REVISE-PLANNING.md) - stale-plan cleanup phase
 
 ### Outputs
@@ -152,8 +165,9 @@ This phase ends when:
 - [ ] One to five bounded tasks; no option forks
 - [ ] Dependencies, blockers, and parallel-safe work named
 - [ ] Gates and evidence requirements named per task
+- [ ] If arc: companion VERIFY path named (stub OK)
 - [ ] Execution plan artifact emitted
 - [ ] No self-transition to Execute or Architecture
 - [ ] No `convmem record` unless Ryan asks
 
-Cursor must stop here. Await HITL.
+Active phase lane must stop here. Await HITL.

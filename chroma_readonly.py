@@ -76,6 +76,59 @@ def collection_metadata_rows(chroma_dir: str | Path, collection_name: str) -> li
     return list(grouped.values())
 
 
+def collection_config_metadata(
+    chroma_dir: str | Path, collection_name: str
+) -> dict:
+    """Return collection-level metadata via SQLite mode=ro (no PersistentClient).
+
+    Reads ``collection_metadata`` (column ``str_value``). Missing collection → {}.
+    """
+    db = _db_path(chroma_dir)
+    conn = _connect_readonly(db)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT cm.key, cm.str_value, cm.int_value, cm.float_value, cm.bool_value
+            FROM collection_metadata cm
+            JOIN collections c ON c.id = cm.collection_id
+            WHERE c.name = ?
+            """,
+            (collection_name,),
+        )
+        out: dict = {}
+        for key, str_value, int_value, float_value, bool_value in cur.fetchall():
+            out[key] = _coerce_value(str_value, int_value, float_value, bool_value)
+        return out
+    finally:
+        conn.close()
+
+
+def collection_ids(chroma_dir: str | Path, collection_name: str) -> list[str]:
+    """Distinct embedding ids in the METADATA segment of a collection (mode=ro).
+
+    Content-level provenance check without loading row metadata.
+    """
+    db = _db_path(chroma_dir)
+    conn = _connect_readonly(db)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT DISTINCT e.embedding_id
+            FROM embeddings e
+            JOIN segments s ON e.segment_id = s.id
+            JOIN collections c ON s.collection = c.id
+            WHERE c.name = ? AND s.scope = 'METADATA'
+            """,
+            (collection_name,),
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    return [str(r[0]) for r in rows if r[0] is not None]
+
+
 def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
     """Count distinct embeddings in the metadata segment of a collection."""
     db = _db_path(chroma_dir)
@@ -96,6 +149,39 @@ def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
     finally:
         conn.close()
     return int(row[0]) if row and row[0] is not None else 0
+
+
+def collection_inventory_snapshot(
+    chroma_dir: str | Path, collection_name: str
+) -> dict[str, object]:
+    """Return current active/historical counts from the readonly metadata view.
+
+    This deliberately mirrors the product meaning of an active unit without
+    importing a writable Chroma client: a current row is historical when its
+    metadata marks it superseded or deleted.  IDs lacking either marker remain
+    active.  The returned IDs are the complete current collection ID set, not
+    merely the rows used for candidate classification.
+    """
+    ids = sorted(set(collection_ids(chroma_dir, collection_name)))
+    metadata = {
+        str(row.get("id")): row
+        for row in collection_metadata_rows(chroma_dir, collection_name)
+        if row.get("id") is not None
+    }
+    historical_ids = {
+        entity_id
+        for entity_id in ids
+        if bool(metadata.get(entity_id, {}).get("superseded"))
+        or bool(metadata.get(entity_id, {}).get("deleted"))
+    }
+    total = len(ids)
+    historical = len(historical_ids)
+    return {
+        "ids": ids,
+        "active_unit_count": total - historical,
+        "historical_unit_count": historical,
+        "total_unit_count": total,
+    }
 
 
 class ReadonlyUnitStore:
@@ -152,3 +238,26 @@ class ReadonlyUnitStore:
 
 def open_readonly_unit_store(chroma_dir: str | Path) -> ReadonlyUnitStore:
     return ReadonlyUnitStore(chroma_dir)
+
+
+def collection_uuid(chroma_dir: str | Path, collection_name: str) -> str | None:
+    """Return the immutable Chroma collection UUID (collections.id) via mode=ro.
+
+    Missing collection or DB → None. Never creates files or opens PersistentClient.
+    """
+    db = _db_path(chroma_dir)
+    if not db.is_file():
+        return None
+    conn = _connect_readonly(db)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id FROM collections WHERE name = ? LIMIT 1",
+            (collection_name,),
+        )
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if not row or row[0] is None:
+        return None
+    return str(row[0])

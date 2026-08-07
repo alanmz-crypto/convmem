@@ -1,0 +1,56 @@
+{
+  // ──────────────────────────────────────────────────────────────────────
+  // Copilot token-guard: prevent CodeOSS / VS Code Copilot from indexing
+  // large generated, binary, or runtime-data directories that add noise
+  // and burn tokens without improving code assistance.
+  // ──────────────────────────────────────────────────────────────────────
+
+  "chat.sessionSync.enabled": false,
+
+  // search.exclude: hides from text/grep search and Copilot semantic index
+  // but leaves files visible in Explorer.
+  "search.exclude": {
+    // Python runtime
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/.mypy_cache/**": true,
+    "**/.ruff_cache/**": true,
+
+    // Node (kilo watcher)
+    "**/.kilo/node_modules/**": true,
+
+    // Git internals
+    "**/.git/**": true,
+
+    // Crush live DB (binary SQLite — not useful to Copilot)
+    "**/.crush/**": true,
+
+    // Build/dist artifacts
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/coverage/**": true,
+
+    // Handoff tarballs (binary archives)
+    "handoff-*.tar.gz": true,
+    "**/handoff-tar/**": true,
+
+    // Staging extracts (local-only source slices)
+    "**/staging/**": true,
+
+    // Restore reports (generated JSON/MD dumps)
+    "**/complete-data-restore-reports/**": true
+  },
+
+  // files.exclude: stronger — also hides from Explorer and semantic index.
+  // Only add things that are truly never useful to browse.
+  "files.exclude": {
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/.mypy_cache/**": true,
+    "**/.ruff_cache/**": true,
+    "**/.kilo/node_modules/**": true,
+    "**/.git/**": true
+  }
+}

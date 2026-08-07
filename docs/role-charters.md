@@ -67,22 +67,26 @@ register_refs: [adapter-parity-scan, neutralize-provenance-confirm]
 ```yaml
 owns: CLI, deploy pipeline, config, global_context_paths merge order
 read_when: "touching deploy scripts, changing merge order, adding a stopgap rule with an expiry condition"
-register_refs: [ksweep-sunset, deploy-script-interaction, merge-order-position]
+register_refs: [ksweep-sunset, deploy-script-interaction, merge-order-position, pr-steward-reminder]
 ```
 - Mechanized: `merge-order-position` — `verify-builder-reference.sh` asserts ritual-first at deploy, `deploy-builder-reference.sh` is the designated last writer (ritual-first / CRUSH-last), and the `merge-order-position` doctor probe nags between deploys (2026-07-07). Probe scope: Crush `global_context_paths` only (ritual-first + CRUSH-last); other surfaces have no merge order to check.
 - Charter-only: none pure; everything here converts to a register row once it has a concrete trigger.
-- Register: `ksweep-sunset` (confirmed gap), `deploy-script-interaction` (closed 2026-07-07 — mechanized as `tests/test_deploy_interaction.py`, combined-effect order + idempotence in a sandbox `$HOME`), `merge-order-position` (live probe).
+- Register: `ksweep-sunset` (confirmed gap), `deploy-script-interaction` (closed 2026-07-07 — mechanized as `tests/test_deploy_interaction.py`, combined-effect order + idempotence in a sandbox `$HOME`), `merge-order-position` (live probe), `pr-steward-reminder` (manual 30-day prompt to consider PR Steward for bounded PR lifecycle tasks).
 
 ## 4. QA / Eval Engineer
 
 ```yaml
 owns: eval harness, judge independence, baseline provenance
 read_when: "adding a new eval, interpreting a regression, changing the judge model"
-register_refs: [eval-provenance-wiring]
+register_refs: [eval-provenance-wiring, eval-negative-control-coverage]
 ```
 - Mechanized: judge independence (`eval_judge.py`), baseline provenance + regression/rebaseline split (`eval_provenance.py`).
-- Charter-only: none — this role is the most code-covered.
-- Register: `eval-provenance-wiring` — the one confirmed residual gap (new evals aren't checked for correct wiring).
+- Charter-only: statistical skepticism — apply Twyman's Law to any reported
+  eval/judge delta. Before accepting a delta, require an A/A-style run through
+  the same pipeline and confirm deterministic gate/classification parity.
+- Register: `eval-provenance-wiring` (provenance/judge-independence wiring) and
+  `eval-negative-control-coverage` (shared known-bad control executes on every
+  non-exempt LLM-judge eval).
 
 ## 5. SRE / Reliability Engineer
 

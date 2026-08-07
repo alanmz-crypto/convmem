@@ -19,8 +19,10 @@ from process_lock import release_lock
 _LIVE_WATCH_SKIP_SUFFIXES = (
     "kiro-cli/data.sqlite3",
     "convmem/imports/webui.db",
+    ".copilot/session-store.db",
 )
 _CURSOR_CHAT_STORE_ROOT = Path("~/.config/cursor/chats").expanduser()
+_COPILOT_SESSION_STATE_ROOT = Path("~/.copilot/session-state").expanduser()
 
 
 def is_live_watch_db(path: Path | str) -> bool:
@@ -31,9 +33,15 @@ def is_live_watch_db(path: Path | str) -> bool:
         return True
     try:
         p.relative_to(_CURSOR_CHAT_STORE_ROOT)
+        return p.name == "store.db"
+    except ValueError:
+        pass
+    try:
+        p.relative_to(_COPILOT_SESSION_STATE_ROOT)
+        # Per-session SQLite + WAL siblings while Copilot CLI is running
+        return p.name == "session.db" or p.name.startswith("session.db-")
     except ValueError:
         return False
-    return p.name == "store.db"
 
 
 # Module-level cache for the hot inotify path — avoid re-loading config

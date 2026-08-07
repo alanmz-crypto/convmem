@@ -1,10 +1,9 @@
-"""Hermetic tests for restic integrity preflight helpers."""
+"""Hermetic tests for restic integrity preflight helpers (workflow-backed)."""
 
 from __future__ import annotations
 
 import importlib.util
 import json
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -29,33 +28,34 @@ mod = _load_mod()
 
 class TestBuildArgv(unittest.TestCase):
     def test_default_subset(self) -> None:
-        argv = mod.build_check_argv()
+        sid = "a" * 64
+        argv = mod.build_check_argv(snapshot_id=sid)
         self.assertEqual(
             argv,
-            ["restic", "check", "--tag", "convmem-chroma", "--read-data-subset", "5%"],
+            ["restic", "check", sid, "--read-data-subset", "5%"],
         )
+        self.assertNotIn("--tag", argv)
+        self.assertNotIn("--latest", argv)
 
     def test_full_read_data(self) -> None:
-        argv = mod.build_check_argv(full_read_data=True, subset=None)
-        self.assertEqual(argv, ["restic", "check", "--tag", "convmem-chroma", "--read-data"])
+        sid = "b" * 64
+        argv = mod.build_check_argv(snapshot_id=sid, full_read_data=True, subset=None)
+        self.assertEqual(argv, ["restic", "check", sid, "--read-data"])
 
 
 class TestClassify(unittest.TestCase):
     def test_ok(self) -> None:
-        proc = subprocess.CompletedProcess(["restic"], 0, "", "")
-        mod.classify_check_result(proc)
+        mod.classify_check_result(0)
 
     def test_lock_exit_11(self) -> None:
-        proc = subprocess.CompletedProcess(["restic"], 11, "", "already locked")
         with self.assertRaises(mod.CheckError) as ctx:
-            mod.classify_check_result(proc)
+            mod.classify_check_result(11, "already locked")
         self.assertEqual(ctx.exception.code, "restic_lock")
         self.assertEqual(ctx.exception.exit_code, 11)
 
     def test_missing_repo_exit_10(self) -> None:
-        proc = subprocess.CompletedProcess(["restic"], 10, "", "does not exist")
         with self.assertRaises(mod.CheckError) as ctx:
-            mod.classify_check_result(proc)
+            mod.classify_check_result(10, "does not exist")
         self.assertEqual(ctx.exception.code, "restic_missing_repo")
 
 
@@ -74,64 +74,109 @@ class TestReport(unittest.TestCase):
 
 class TestMainMocked(unittest.TestCase):
     def test_happy_path_mocked(self) -> None:
+        from backup_workflows import WorkflowOutcome
+        from restic_snapshot import SnapshotRef
+        from datetime import datetime, timezone
+
         with tempfile.TemporaryDirectory() as td:
             parent = Path(td)
+            data_root = parent / "data"
+            data_root.mkdir()
+            chroma = data_root / "chroma"
+            chroma.mkdir()
+            pass_file = parent / "pass"
+            pass_file.write_text("x\n", encoding="utf-8")
+            repo = parent / "repo"
+            repo.mkdir()
             env_file = parent / "restic.env"
             env_file.write_text(
-                "RESTIC_REPOSITORY=/tmp/fake-repo\nRESTIC_PASSWORD_FILE=/tmp/fake-pass\n",
+                "CONVMEM_BACKUP_PROFILE=complete-data-v2\n"
+                f"CONVMEM_DATA_ROOT={data_root}\n"
+                f"RESTIC_REPOSITORY={repo}\n"
+                f"RESTIC_PASSWORD_FILE={pass_file}\n"
+                f"CONVMEM_CHROMA_DIR={chroma}\n"
+                f"RESTIC_CACHE_DIR={parent / 'cache'}\n",
                 encoding="utf-8",
             )
-            (parent / "fake-pass").write_text("x\n", encoding="utf-8")
-            # point password file to existing path
-            env_file.write_text(
-                f"RESTIC_REPOSITORY=/tmp/fake-repo\nRESTIC_PASSWORD_FILE={parent / 'fake-pass'}\n",
-                encoding="utf-8",
+            (parent / "cache").mkdir()
+            sid = "c" * 64
+            source = SnapshotRef(
+                repository=str(repo),
+                id=sid,
+                original=None,
+                tree="t" * 64,
+                time=datetime.now(timezone.utc),
+                paths=(str(data_root.resolve()),),
+                tags=frozenset({"convmem-data-v2"}),
             )
-            ok = subprocess.CompletedProcess(
-                ["restic", "check"], 0, "ok\n", ""
+            outcome = WorkflowOutcome(
+                status="PASS",
+                message="ok",
+                source=source,
+                argv=("restic", "-r", str(repo), "check", sid, "--read-data-subset", "5%"),
+                details={"restic_exit_code": 0},
             )
-            with mock.patch.object(mod, "run_restic_check", return_value=ok):
-                code = mod.main(
-                    ["--parent", str(parent), "--env-file", str(env_file)]
-                )
+            with mock.patch.object(mod, "run_integrity_check", return_value=outcome):
+                with mock.patch.object(mod, "BackupContext") as mock_ctx_cls:
+                    mock_ctx = mock.Mock()
+                    mock_ctx.local_repository.locator = str(repo)
+                    mock_ctx.default_tag.return_value = "convmem-data-v2"
+                    mock_ctx_cls.from_env_file.return_value = mock_ctx
+                    code = mod.main(
+                        ["--parent", str(parent), "--env-file", str(env_file)]
+                    )
             self.assertEqual(code, 0)
             reports = list((parent / "reports").glob("integrity-*.json"))
             self.assertEqual(len(reports), 1)
             meta = json.loads(reports[0].read_text(encoding="utf-8"))["meta"]
             self.assertEqual(meta["status"], "PASS")
+            self.assertIn(sid, meta["argv"])
             self.assertIn("--read-data-subset", meta["argv"])
-            self.assertIn("5%", meta["argv"])
 
-    def test_intentional_missing_repo_mocked(self) -> None:
+    def test_resolver_failure_mocked(self) -> None:
+        from backup_workflows import WorkflowOutcome
+
         with tempfile.TemporaryDirectory() as td:
             parent = Path(td)
+            data_root = parent / "data"
+            data_root.mkdir()
+            chroma = data_root / "chroma"
+            chroma.mkdir()
             pass_file = parent / "pass"
             pass_file.write_text("x\n", encoding="utf-8")
+            repo = parent / "repo"
+            repo.mkdir()
             env_file = parent / "restic.env"
             env_file.write_text(
-                f"RESTIC_REPOSITORY=/tmp/real-looking\nRESTIC_PASSWORD_FILE={pass_file}\n",
+                "CONVMEM_BACKUP_PROFILE=complete-data-v2\n"
+                f"CONVMEM_DATA_ROOT={data_root}\n"
+                f"RESTIC_REPOSITORY={repo}\n"
+                f"RESTIC_PASSWORD_FILE={pass_file}\n"
+                f"CONVMEM_CHROMA_DIR={chroma}\n"
+                f"RESTIC_CACHE_DIR={parent / 'cache'}\n",
                 encoding="utf-8",
             )
-            bad = subprocess.CompletedProcess(
-                ["restic", "check"], 10, "", "repository does not exist"
+            (parent / "cache").mkdir()
+            outcome = WorkflowOutcome(
+                status="FAIL",
+                message="no snapshots",
+                exit_code=23,
+                details={},
             )
-            with mock.patch.object(mod, "run_restic_check", return_value=bad):
-                code = mod.main(
-                    [
-                        "--parent",
-                        str(parent),
-                        "--env-file",
-                        str(env_file),
-                        "--intentional-missing-repo",
-                    ]
-                )
-            self.assertEqual(code, 10)
+            with mock.patch.object(mod, "run_integrity_check", return_value=outcome):
+                with mock.patch.object(mod, "BackupContext") as mock_ctx_cls:
+                    mock_ctx = mock.Mock()
+                    mock_ctx.local_repository.locator = str(repo)
+                    mock_ctx.default_tag.return_value = "convmem-data-v2"
+                    mock_ctx_cls.from_env_file.return_value = mock_ctx
+                    code = mod.main(
+                        ["--parent", str(parent), "--env-file", str(env_file)]
+                    )
+            self.assertEqual(code, 23)
             reports = list((parent / "reports").glob("integrity-*.json"))
             self.assertEqual(len(reports), 1)
             data = json.loads(reports[0].read_text(encoding="utf-8"))
             self.assertEqual(data["meta"]["status"], "FAIL")
-            codes = [s.get("code") for s in data["steps"] if s["name"] == "restic_check"]
-            self.assertEqual(codes, ["restic_missing_repo"])
 
 
 if __name__ == "__main__":

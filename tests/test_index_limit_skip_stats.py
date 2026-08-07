@@ -47,6 +47,8 @@ class IndexLimitSkipStatsTests(unittest.TestCase):
 
     def _run_index(self, cfg: dict, **kwargs):
         with mock.patch("ingest.load_config", return_value=cfg), mock.patch(
+            "config.load_config", return_value=cfg
+        ), mock.patch(
             "ingest.summarize", return_value="summary"
         ), mock.patch(
             "ingest.distill",

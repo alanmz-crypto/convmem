@@ -136,7 +136,14 @@ def main() -> int:
     rows = load_golden(args.golden)
     results = [eval_row(r, cfg, use_judge=args.judge) for r in rows]
     report = summarize_report(results, use_judge=args.judge)
-    report["provenance"] = model_context(cfg, _synth_model(cfg), args.golden)
+    synth_model = _synth_model(cfg)
+    report["provenance"] = model_context(cfg, synth_model, args.golden)
+    if args.judge:
+        from eval_methodology import run_judge_negative_control
+
+        report["negative_control"] = run_judge_negative_control(
+            "synthesis", under_test_model=synth_model, cfg=cfg
+        )
 
     print(f"Golden answers: {report['count']}")
     print(f"Pass rate: {report['pass_rate']:.2%}")
@@ -145,9 +152,16 @@ def main() -> int:
         indep = report.get("judge_independent")
         tag = "INDEPENDENT" if indep else "NON-INDEPENDENT (informational only)"
         print(f"Judge mean: {report.get('judge_mean')} [{tag}] model={report.get('judge_model')}")
+        control = report["negative_control"]
+        mark = "PASS" if control["passed"] else "FAIL"
+        print(f"Judge negative control: {mark} score={control['score']} expected={control['threshold']}")
     for r in results:
         mark = "PASS" if r["pass"] else "FAIL"
         print(f"  [{mark}] {r['id']} ({r['mode']}) cites={r['n_citations']} {r['detail']}")
+
+    if args.judge and not report["negative_control"]["passed"]:
+        print("\nJudge evidence unusable: negative control failed", file=sys.stderr)
+        return 1
 
     if args.update_baseline:
         args.baseline.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

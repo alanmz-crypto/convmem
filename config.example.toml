@@ -4,6 +4,7 @@ paths = [
   "~/.kiro/sessions",
   "~/.codex/history.jsonl",
   "~/.codex/sessions",
+  "~/.copilot/session-state",
   "~/.config/cursor/chats",
   "~/.cursor/projects",
   "~/.continue/sessions",
@@ -15,6 +16,8 @@ inventory = "~/.local/share/convmem/inventory.jsonl"
 # kiro-cli 2.x transcripts: ~/.kiro/sessions/**/sess_*/messages.jsonl (see docs/KIRO-SESSION-ADAPTER.md).
 # Legacy kiro-cli sqlite: snapshot via scripts/index-kiro-cli-snapshot.sh — do not watch live DB.
 # Codex: ~/.codex/history.jsonl is user prompts only (source_type=prompt_only).
+# Copilot CLI: ~/.copilot/session-state/<uuid>/events.jsonl (see docs/COPILOT-SESSION-ADAPTER.md).
+#   Do not watch ~/.copilot/session-store.db or per-session session.db (live DBs).
 # Re-run `python inventory.py` after adding new Crush project dirs.
 
 [index]
@@ -44,9 +47,11 @@ allow_extra = []
 [query]
 top_k_candidates = 20
 top_k_results    = 5
-rerank           = true
+semantic_rank_weight = 2.0  # weighted RRF preserves broad semantic/lexical recall
+rerank_rank_weight   = 1.0  # CrossEncoder is mandatory but not the sole signal
 recency_weight   = 0.1  # time-decay boost for newer knowledge units (search + ask --evidence)
 recency_half_life_days = 30
+source_trust_weight = 1.0  # prefer steering, ledger, and inter-model sources after fusion
 
 [watch]
 debounce_seconds = 90
@@ -65,9 +70,14 @@ debounce_seconds = 90
 enabled = true
 batch_size = 10
 interval_seconds = 300
-jobs = ["chroma_dedupe", "ledger_link", "semantic_dedupe", "confidence_audit"]
+# semantic_dedupe is optional: omit from jobs while dedupe_queue backlog is at/above
+# queue_max_depth (restore F1 "job out while backlog" policy). Refine pauses the job
+# at depth; ingest also refuses new semantic appends at the same total-line depth.
+jobs = ["chroma_dedupe", "ledger_link", "confidence_audit"]
+# Include "semantic_dedupe" only when intentionally filling an empty/shallow queue.
 # backfill_domain — add back if a large untagged legacy intake appears
 untagged_priority = true
+# Total JSONL lines (pending + resolved). Example default 100; some live hosts use 200.
 queue_max_depth = 100
 dedupe_similarity = 0.92
 min_confidence_redistill = 0.6
@@ -76,6 +86,13 @@ min_confidence_redistill = 0.6
 backfill_domain_calls_per_hour = 60
 redistill_calls_per_hour = 15
 semantic_dedupe_calls_per_hour = 20
+
+[ingest_dedup]
+# Exact canonical text duplicates are suppressed and audited. Semantic matches
+# are indexed normally and queued for review; they are never auto-suppressed.
+semantic_similarity = 0.92
+candidate_k = 10
+max_semantic_candidates_per_unit = 3
 
 [eval]
 # Pass thresholds for scripts/eval-*.py (see docs plan "Model quality eval harness").
@@ -86,3 +103,13 @@ synthesis_pass_min    = 0.8
 # max wall-clock for one llama3.1:8b summarize before flagging (proxy for a
 # silent GPU->CPU fallback / contention). Pin to normal GPU-path timing.
 canary_latency_ms_max = 15000
+
+# Phase 0 shadow ledger — disabled by default. Absent table ≡ enabled=false.
+# enabled=true only permits an activation attempt; sink injection requires a
+# complete matching activation manifest (separate Ryan activation grant).
+# Do not enable in live ~/.config/convmem/config.toml without that grant.
+[shadow_ledger]
+enabled = false
+ledger_path = "~/.local/share/convmem/shadow/ledger.jsonl"
+activation_manifest_path = "~/.local/share/convmem/shadow/activation.json"
+health_path = "~/.local/share/convmem/shadow/health.json"

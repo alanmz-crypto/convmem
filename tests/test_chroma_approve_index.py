@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from tests.purge_test_util import patch_live_config
+
 from chroma_store import ChromaStore
 from propose_decision import ingest_approved_ledger
 
@@ -26,6 +28,7 @@ class ChromaApproveIndexTests(unittest.TestCase):
                 "embed_model": "nomic-embed-text",
                 "ollama_host": "http://localhost:11434",
             },
+            "shadow_ledger": {"enabled": False},
         }
         store = ChromaStore(self.chroma_dir)
         for i in range(3):
@@ -60,7 +63,8 @@ class ChromaApproveIndexTests(unittest.TestCase):
             "domain": "coding.tooling",
             "confidence": 0.8,
         }
-        stats = ingest_approved_ledger(self.cfg, ledger)
+        with patch_live_config(self.cfg):
+            stats = ingest_approved_ledger(self.cfg, ledger)
         self.assertEqual(stats["accepted"], 1)
         store = ChromaStore(self.chroma_dir)
         try:

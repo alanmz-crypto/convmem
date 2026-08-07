@@ -13,7 +13,7 @@ from pathlib import Path
 import requests
 
 from brief import _mcp_registration, _systemd_state, _watch_main_pid, _watch_process_memory
-from chroma_readonly import collection_count, open_readonly_unit_store
+from chroma_readonly import collection_count, collection_ids, open_readonly_unit_store
 from config import CONFIG_PATH, load_config
 from planning_contract import CONTRACT_VERSION, iter_guide_paths, validate_planning_guides
 
@@ -43,38 +43,16 @@ def _check_config() -> DoctorCheck:
 
 def _parse_env_file(path: Path) -> dict[str, str]:
     """Parse KEY=VALUE and export KEY=VALUE lines from a shell env file."""
-    env: dict[str, str] = {}
-    if not path.is_file():
-        return env
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if stripped.startswith("#") or "=" not in stripped:
-            continue
-        # Strip optional 'export ' prefix.
-        if stripped.startswith("export "):
-            stripped = stripped[7:]
-        key, _, val = stripped.partition("=")
-        key = key.strip()
-        val = val.strip().strip("\"'")
-        if key:
-            env[key] = val
-    return env
+    from config import parse_env_file
+
+    return parse_env_file(path)
 
 
 def _resolve_deepseek_key() -> str:
     """Look up DEEPSEEK_API_KEY from os.environ, env.local, and env.systemd."""
-    key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
-    if key:
-        return key
+    from config import resolve_deepseek_key
 
-    for fname in ("env.local", "env.systemd"):
-        path = Path("~/.config/convmem").expanduser() / fname
-        parsed = _parse_env_file(path)
-        key = parsed.get("DEEPSEEK_API_KEY", "").strip()
-        if key:
-            return key
-
-    return ""
+    return resolve_deepseek_key()
 
 
 def _check_deepseek_key() -> DoctorCheck:
@@ -117,14 +95,14 @@ def _check_chroma(cfg: dict) -> DoctorCheck:
     )
 
 
-def _jsonl_unit_stats(export: Path) -> tuple[int, int]:
-    """Return (line_count, unique_unit_id_count) for units_export JSONL."""
+def _jsonl_unit_stats(export: Path) -> tuple[int, set[str]]:
+    """Return (line_count, unique_unit_ids) for the historical units export."""
     import json
 
     lines = 0
     ids: set[str] = set()
     if not export.is_file():
-        return 0, 0
+        return 0, set()
     for line in export.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
@@ -137,21 +115,23 @@ def _jsonl_unit_stats(export: Path) -> tuple[int, int]:
         uid = (rec.get("id") or rec.get("ledger_id") or "").strip()
         if uid:
             ids.add(uid)
-    return lines, len(ids)
+    return lines, ids
 
 
 def _check_index_drift(cfg: dict) -> DoctorCheck:
-    """Compare Chroma knowledge_units count to units_export JSONL unique ids."""
+    """Check active Chroma identity overlap with the historical units export."""
     chroma_dir = Path(cfg["index"]["chroma_dir"]).expanduser()
     export = Path(cfg["index"].get("units_export", "")).expanduser()
-    chroma_count = collection_count(str(chroma_dir), "knowledge_units")
+    chroma_ids = set(collection_ids(str(chroma_dir), "knowledge_units"))
+    chroma_count = len(chroma_ids)
     if not export.is_file():
         return DoctorCheck(
             "index_drift",
             True,
             f"no units_export at {export} (Chroma={chroma_count})",
         )
-    line_count, unique_count = _jsonl_unit_stats(export)
+    line_count, export_ids = _jsonl_unit_stats(export)
+    unique_count = len(export_ids)
     if chroma_count < 1 and (line_count > 0 or unique_count > 0):
         return DoctorCheck(
             "index_drift",
@@ -164,18 +144,22 @@ def _check_index_drift(cfg: dict) -> DoctorCheck:
             True,
             f"empty units_export (Chroma={chroma_count})",
         )
-    ratio = chroma_count / unique_count
+    overlap = len(chroma_ids & export_ids)
+    historical_only = len(export_ids - chroma_ids)
+    active_only = len(chroma_ids - export_ids)
+    active_coverage = overlap / chroma_count
     detail = (
-        f"Chroma {chroma_count} vs JSONL {unique_count} unique ids "
-        f"({line_count} lines, {ratio:.0%} indexed)"
+        f"Chroma {chroma_count} active; JSONL {unique_count} historical ids "
+        f"({line_count} lines; {overlap} overlap, {active_coverage:.0%} active coverage; "
+        f"{historical_only} historical-only, {active_only} active-only)"
     )
-    if ratio < 0.15 and unique_count > 500:
+    if active_coverage < 0.15 and chroma_count > 500 and unique_count > 500:
         return DoctorCheck(
             "index_drift",
             False,
-            detail + " — run: rm ~/.local/share/convmem/processed.json && convmem index",
+            detail + " — active/export collection identity mismatch",
         )
-    if ratio < 0.3 and unique_count > 500:
+    if active_coverage < 0.7 and chroma_count > 500:
         return DoctorCheck("index_drift", True, f"WARN: {detail}")
     return DoctorCheck("index_drift", True, detail)
 
@@ -218,18 +202,45 @@ def _check_continue_mcp() -> DoctorCheck:
     return DoctorCheck("mcp_continue", True, "Continue MCP wiring present")
 
 
-def _check_restic() -> DoctorCheck:
-    """Restic live-write gate: toolchain + snapshot covers today (fail-closed policy)."""
-    script = Path(__file__).resolve().parent / "scripts" / "restic-ensure-chroma-snapshot.sh"
-    if not script.is_file():
-        return DoctorCheck("restic_gate", False, f"missing {script}")
-    if shutil.which("restic") is None:
+def _check_copilot_mcp() -> DoctorCheck:
+    """Optional: only fail when Copilot CLI is installed but MCP is unwired."""
+    copilot_home = Path("~/.copilot").expanduser()
+    mcp_path = copilot_home / "mcp-config.json"
+    has_binary = shutil.which("copilot") is not None
+    if not has_binary and not copilot_home.is_dir():
+        return DoctorCheck("mcp_copilot", True, "Copilot CLI not installed (skipped)")
+    if not mcp_path.is_file():
         return DoctorCheck(
-            "restic_gate",
+            "mcp_copilot",
             False,
-            "restic not on PATH (pacman -S restic or conda-forge; see config/restic.env.example)",
+            "missing ~/.copilot/mcp-config.json (see config/copilot-mcp-config.json.example)",
         )
-    env_file = Path("~/.config/convmem/restic.env").expanduser()
+    try:
+        data = json.loads(mcp_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return DoctorCheck("mcp_copilot", False, f"mcp-config.json unreadable: {exc}")
+    servers = data.get("mcpServers") if isinstance(data, dict) else None
+    if not isinstance(servers, dict) or "convmem" not in servers:
+        return DoctorCheck("mcp_copilot", False, "mcp-config.json missing convmem server")
+    block = servers["convmem"]
+    if not isinstance(block, dict):
+        return DoctorCheck("mcp_copilot", False, "convmem MCP block invalid")
+    args = block.get("args") or []
+    joined = " ".join(str(a) for a in args) if isinstance(args, list) else str(args)
+    cmd = str(block.get("command") or "")
+    if "mcp_server.py" not in joined and "mcp_server.py" not in cmd:
+        return DoctorCheck("mcp_copilot", False, "convmem MCP block missing mcp_server.py")
+    return DoctorCheck("mcp_copilot", True, "~/.copilot/mcp-config.json has convmem")
+
+
+def _check_restic() -> DoctorCheck:
+    """Local restic health via backup_workflows.check_local_health."""
+    from backup_workflows import check_local_health, outcome_to_doctor_fields
+    from restic_snapshot import BackupContext, ResolverError
+
+    env_file = Path(
+        os.environ.get("CONVMEM_RESTIC_ENV", "~/.config/convmem/restic.env")
+    ).expanduser()
     if not env_file.is_file():
         return DoctorCheck(
             "restic_gate",
@@ -237,106 +248,55 @@ def _check_restic() -> DoctorCheck:
             f"missing {env_file} — run scripts/setup-restic-chroma.sh",
         )
     try:
-        proc = subprocess.run(
-            [str(script), "--require-current"],
-            capture_output=True,
-            text=True,
-            timeout=300,
-            env=os.environ,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return DoctorCheck("restic_gate", False, str(exc))
-    if proc.returncode == 0:
+        ctx = BackupContext.from_env_file(env_file)
+        outcome = check_local_health(ctx)
+    except ResolverError as exc:
         return DoctorCheck(
             "restic_gate",
-            True,
-            "snapshot covers today (tag=convmem-chroma; threshold=local calendar day)",
+            False,
+            f"resolver error ({exc.exit_code}): {exc}",
         )
-    tail = (proc.stdout or proc.stderr or "").strip().splitlines()[-2:]
-    return DoctorCheck(
-        "restic_gate",
-        False,
-        "Restic gate not ready — " + " ".join(tail),
-    )
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+        return DoctorCheck("restic_gate", False, str(exc))
+    ok, detail, status = outcome_to_doctor_fields(outcome)
+    return DoctorCheck("restic_gate", ok, detail, status=status)
 
 
 def _check_restic_external() -> DoctorCheck:
-    """Offsite Restic repo freshness (RESTIC_EXTERNAL_REPOSITORY).
+    """Offsite Restic lineage health via backup_workflows.check_offsite_health.
 
-    Non-fatal by design: this is the removable-drive copy, decoupled from the
-    live-write gate. Never returns fail — pass when the offsite copy covers
-    today, warn when it is stale/empty (drive mounted), skip when disabled or
-    the drive is unplugged.
+    Unconfigured external → SKIP_DISABLED. Legacy profile → WARN_LEGACY_ONLY.
+    Configured resolver/copy failures → WARN (never PASS via legacy fallback).
     """
     name = "restic_external"
-    env_file = Path("~/.config/convmem/restic.env").expanduser()
-    env = _parse_env_file(env_file)
-    repo = env.get("RESTIC_EXTERNAL_REPOSITORY", "").strip()
-    if not repo:
+    from backup_workflows import check_offsite_health, outcome_to_doctor_fields
+    from restic_snapshot import BackupContext, ResolverError
+
+    env_file = Path(
+        os.environ.get("CONVMEM_RESTIC_ENV", "~/.config/convmem/restic.env")
+    ).expanduser()
+    if not env_file.is_file():
         return DoctorCheck(
             name,
             True,
-            "no RESTIC_EXTERNAL_REPOSITORY configured (offsite copy disabled)",
+            f"missing {env_file} — offsite copy not configured",
             status="skip",
         )
-    if shutil.which("restic") is None:
-        return DoctorCheck(name, True, "restic not on PATH", status="skip")
-
-    pass_file = env.get("RESTIC_PASSWORD_FILE", "").strip()
-    if not pass_file or not Path(pass_file).expanduser().is_file():
-        return DoctorCheck(
-            name, True, f"RESTIC_PASSWORD_FILE missing ({pass_file or 'unset'})", status="skip"
-        )
-
-    if not (Path(repo).expanduser() / "config").is_file():
-        return DoctorCheck(
-            name, True, f"offsite repo not mounted/reachable: {repo} (USB unplugged?)", status="skip"
-        )
-
-    probe_env = dict(os.environ)
-    probe_env["RESTIC_PASSWORD_FILE"] = str(Path(pass_file).expanduser())
     try:
-        proc = subprocess.run(
-            ["restic", "-r", repo, "snapshots", "--tag", "convmem-chroma", "--json"],
-            capture_output=True,
-            text=True,
-            env=probe_env,
-            timeout=30,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return DoctorCheck(name, True, f"offsite repo probe failed: {exc}", status="skip")
-    if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout or "").strip().splitlines()[-1:]
-        return DoctorCheck(
-            name, True, "offsite repo unreadable — " + " ".join(detail), status="skip"
-        )
-
-    try:
-        snaps = json.loads(proc.stdout or "[]")
-    except json.JSONDecodeError:
-        return DoctorCheck(name, True, "offsite snapshots JSON unparsable", status="skip")
-
-    if not snaps:
+        ctx = BackupContext.from_env_file(env_file)
+        outcome = check_offsite_health(ctx)
+    except ResolverError as exc:
+        # Configured env invalid — warn, do not false-green via tag-latest.
         return DoctorCheck(
             name,
             True,
-            "offsite repo has no convmem-chroma snapshots — run scripts/restic-copy-external.sh",
+            f"offsite config/resolver error ({exc.exit_code}): {exc}",
             status="warn",
         )
-
-    latest = max(snaps, key=lambda s: s["time"])
-    ts = datetime.fromisoformat(latest["time"].replace("Z", "+00:00"))
-    local_day = ts.astimezone().date()
-    today = datetime.now().astimezone().date()
-    if local_day >= today:
-        return DoctorCheck(name, True, f"offsite copy covers today (last={local_day})")
-    return DoctorCheck(
-        name,
-        True,
-        f"offsite copy STALE (last={local_day}) — check convmem-restic-external.timer "
-        "or run scripts/restic-copy-external.sh",
-        status="warn",
-    )
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+        return DoctorCheck(name, True, f"offsite probe failed: {exc}", status="warn")
+    ok, detail, status = outcome_to_doctor_fields(outcome)
+    return DoctorCheck(name, ok, detail, status=status)
 
 
 def _check_restic_password_backup() -> DoctorCheck:
@@ -616,6 +576,31 @@ def _eval_provenance_probe(row: dict, root: Path) -> tuple[bool, str]:
     return False, "all eval scripts wired (or exempt)"
 
 
+def _eval_negative_control_probe(row: dict, root: Path) -> tuple[bool, str]:
+    """Probe: every non-exempt eval calls the runtime negative-control helper."""
+    trig = row.get("trigger") or {}
+    exempt = {
+        (entry.get("path") or "").strip()
+        for entry in trig.get("exempt") or []
+        if (entry.get("path") or "").strip()
+    }
+    exempt |= {Path(path).name for path in exempt}
+    unwired: list[str] = []
+    for py in sorted((root / "scripts").glob("eval-*.py")):
+        rel = f"scripts/{py.name}"
+        if rel in exempt or py.name in exempt:
+            continue
+        try:
+            text = py.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        if "run_judge_negative_control(" not in text:
+            unwired.append(py.name)
+    if unwired:
+        return True, "eval scripts missing runtime negative control: " + ", ".join(unwired)
+    return False, "all eval scripts run a negative control (or are exempt)"
+
+
 def _charter_register_consistency_probe(all_rows: list, root: Path) -> tuple[bool, str]:
     """Probe: charter register_refs and register ids stay in sync (dogfoods Layer 2).
 
@@ -664,8 +649,10 @@ def _merge_order_probe(row: dict, root: Path) -> tuple[bool, str]:
 
     Asserts CONVMEM-RITUAL.md is first AND CRUSH.md (when present) is last —
     the two ends of the canonical order enforced by deploy-builder-reference.sh.
-    Note verify-builder-reference.sh only asserts ritual-first; this probe covers
-    both ends. Scope is Crush only (other surfaces have no merge order).
+    After Stage 4 approach A, standing paths are ritual → rules/ → CRUSH.md
+    (builder digests are on-demand under ~/.config/crush/builder-reference/).
+    Note verify-builder-reference.sh asserts the full three-path standing list;
+    this probe covers ritual-first / CRUSH-last only.
 
     Mirrors the order assertion in scripts/verify-builder-reference.sh, but runs
     on every doctor pass instead of only (non-fatally) at deploy end — closing
@@ -824,7 +811,7 @@ def _exposure_window_probe(row: dict, cfg: dict) -> tuple[bool, str]:
     return False, f"clean-scan recorded after last P0 close ({closed_count} closed)"
 
 
-def _standing_row_due(
+def _standing_row_due(  # pylint: disable=too-many-return-statements
     row: dict, cfg: dict, root: Path, all_rows: list
 ) -> tuple[bool, str]:
     """Evaluate one register row's trigger against live state. Returns (due, detail)."""
@@ -868,6 +855,8 @@ def _standing_row_due(
         probe = trig.get("probe") or row.get("id")
         if probe in ("eval_provenance_wiring", "eval-provenance-wiring"):
             return _eval_provenance_probe(row, root)
+        if probe in ("eval_negative_control_coverage", "eval-negative-control-coverage"):
+            return _eval_negative_control_probe(row, root)
         if probe in ("charter_register_consistency", "charter-register-consistency"):
             return _charter_register_consistency_probe(all_rows, root)
         if probe in ("merge_order_position", "merge-order-position"):
@@ -1194,6 +1183,97 @@ def _check_planning_guide_contract() -> DoctorCheck:
     return DoctorCheck("planning_guide_contract", True, f"contract {CONTRACT_VERSION}: {n} guide(s) ok")
 
 
+def _check_embed_collection_identity(cfg: dict) -> DoctorCheck:
+    """Read-only: configured embed model vs collection metadata (SQLite mode=ro).
+
+    Never opens PersistentClient / never calls embed APIs. Legacy missing
+    ``convmem:embed_model`` is WARN; shadow mismatches FAIL.
+    """
+    name = "embed_collection_identity"
+    chroma_dir = Path(cfg["index"]["chroma_dir"]).expanduser()
+    want_model = str((cfg.get("models") or {}).get("embed_model") or "")
+    try:
+        from chroma_readonly import collection_config_metadata
+        from chroma_store import UNITS
+
+        meta = collection_config_metadata(chroma_dir, UNITS)
+    except FileNotFoundError as exc:
+        return DoctorCheck(
+            name,
+            True,
+            f"WARN: cannot read collection metadata (no embed probe): {exc}",
+            status="warn",
+        )
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        # Intentional containment boundary: doctor must report malformed,
+        # legacy, or partially initialized stores (e.g. sqlite3.OperationalError
+        # on a schema-incompatible chroma.sqlite3) without crashing.
+        return DoctorCheck(
+            name,
+            True,
+            f"WARN: cannot read collection metadata (no embed probe): {exc}",
+            status="warn",
+        )
+
+    if not meta:
+        return DoctorCheck(
+            name,
+            True,
+            "WARN: collection missing or has no collection_metadata "
+            f"(configured={want_model!r}; shadow stores must set metadata)",
+            status="warn",
+        )
+
+    stored_model = str(meta.get("convmem:embed_model") or "")
+    stored_dim = meta.get("convmem:embed_dimensions")
+    if not stored_model:
+        return DoctorCheck(
+            name,
+            True,
+            "WARN: legacy collection metadata lacks convmem:embed_model "
+            f"(configured={want_model!r}; shadow stores must set metadata)",
+            status="warn",
+        )
+    if want_model and stored_model != want_model:
+        return DoctorCheck(
+            name,
+            False,
+            f"embed model mismatch: collection={stored_model!r} config={want_model!r}",
+        )
+    detail = f"collection embed_model={stored_model!r}"
+    if stored_dim is not None:
+        detail += f" dimensions={stored_dim!r}"
+    return DoctorCheck(name, True, detail)
+
+
+def _check_shadow_ledger(cfg: dict) -> DoctorCheck:
+    """Render the shared strict Shadow result; never infer eligibility locally."""
+    from shadow_inventory import collect_shadow_truth
+    from shadow_validation import ValidationMode
+
+    index = cfg.get("index") if isinstance(cfg.get("index"), dict) else {}
+    chroma_dir = index.get("chroma_dir") or "."
+    truth = collect_shadow_truth(
+        cfg, chroma_dir=chroma_dir, mode=ValidationMode.DOCTOR
+    )
+    validation = truth["validation"]
+    codes = list(truth["codes"])
+    detail = f"state={validation.state}"
+    if codes:
+        detail += f" codes={','.join(codes)}"
+    if validation.state == "disabled" and not validation.refusals:
+        return DoctorCheck(
+            "shadow_ledger", True, "disabled (no sink injection; Phase 0 default)"
+        )
+    if validation.state == "prepared":
+        return DoctorCheck("shadow_ledger", True, f"WARN: {detail}", status="warn")
+    if any(refusal.blocking for refusal in validation.refusals):
+        return DoctorCheck("shadow_ledger", False, detail)
+    if truth["health_codes"] or truth["health_status"] == "degraded":
+        return DoctorCheck("shadow_ledger", True, f"WARN: {detail}", status="warn")
+    return DoctorCheck("shadow_ledger", True, detail)
+
+
 def run_doctor(
     *,
     v1: bool = False,
@@ -1212,6 +1292,8 @@ def run_doctor(
         _check_ollama(cfg),
         _check_chroma(cfg),
         _check_index_drift(cfg),
+        _check_embed_collection_identity(cfg),
+        _check_shadow_ledger(cfg),
         _check_restic(),
         _check_restic_external(),
         _check_restic_password_backup(),
@@ -1223,6 +1305,7 @@ def run_doctor(
         _check_mcp_import(),
         _check_mcp_wiring(),
         _check_continue_mcp(),
+        _check_copilot_mcp(),
         _check_verify_script(run=run_verify),
     ]
     if v1:

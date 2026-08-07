@@ -26,6 +26,7 @@ If a document answers multiple questions, split it.
 | `PLANNING-PROTOCOL.md` | Where am I? |
 | `reasoning-modes.md` | How should I think? |
 | `planning/<PHASE>.md` | What function do I perform next? |
+| `plans/VERIFY-<slug>.md` | How do we prove this arc was done correctly? |
 | `AGENT-ROLES.md` | Which agent lane and capability tier? |
 | `role-charters.md` | What does each engineering role own? |
 | `builder-reference.md` | How should I build? |
@@ -37,7 +38,7 @@ If a document answers multiple questions, split it.
 Planning guides are executable specifications.
 
 - Humans read them.
-- Cursor follows them.
+- Codex authors approved architecture and execution plans; Cursor executes them.
 - Doctor verifies them.
 
 ---
@@ -110,8 +111,13 @@ HITL Approval
 Execute Task
     ↓
 HITL Review
+    ├─ non-arc or exempt → Revise Planning → (repeat)
+    ↓ arc
+Verify Planning   ← required for every arc (see definition in VERIFY-PLANNING.md)
     ↓
-Revise Planning
+HITL GATE
+    ↓
+Revise Planning (on FAIL) or arc close
     ↓
 (repeat)
 ```
@@ -121,7 +127,15 @@ Revise Planning
 | Architecture Planning | `planning/ARCHITECTURE-PLANNING.md` |
 | Execution Planning | `planning/EXECUTION-PLANNING.md` |
 | Execute Task | `planning/EXECUTE-TASK.md` |
+| Verify Planning | `planning/VERIFY-PLANNING.md` |
 | Revise Planning | `planning/REVISE-PLANNING.md` |
+
+**Arc rule:** Every arc must have `docs/plans/VERIFY-<slug>.md` before close
+(copy [`plans/VERIFY-TEMPLATE.md`](plans/VERIFY-TEMPLATE.md)). Stub during
+Execution Planning is OK; fill and run after Execute. Ryan may waive in writing.
+Filled VERIFY (and arc-close / Execute PRs) must lead with **consequence → 5 Ws →
+TL;DR** for humans **and** keep the mechanical check tables — both layers are
+required (see VERIFY-PLANNING minimum bar and AGENTS.md PR summary guidance).
 
 ---
 
