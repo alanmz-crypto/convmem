@@ -16,12 +16,35 @@ import json
 from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
+import time
+from datetime import datetime, timezone
 
 from adapters.detect import detect_format, get_parser, TOOL_BY_FORMAT
 from chroma_write_store import production_chroma_write_session
 from config import load_config
 from distill import distill, normalize_unit
 from llm import ollama_embed, summarize
+
+_SYNTHESIS_FAIL_LOG = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
+
+
+def _log_chunk_failure(chunk_id: int, stage: str, session_file: str, error: Exception) -> None:
+    """Append one JSONL line per chunk failure. Non-blocking — never raises."""  # pylint: disable=duplicate-code
+    try:
+        _SYNTHESIS_FAIL_LOG.parent.mkdir(parents=True, exist_ok=True)
+        entry = {
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "error_type": type(error).__name__,
+            "error": str(error)[:200],
+            "chunk_id": chunk_id,
+            "stage": stage,
+            "session_file": session_file,
+        }
+        with _SYNTHESIS_FAIL_LOG.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass  # Telemetry must never break ingest
+
 
 def sha256_file(path: str) -> str:
     h = hashlib.sha256()
@@ -619,37 +642,49 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
         if not text.strip():
             continue
         chunk_date = _chunk_date(ch["messages"]) or chunk_date
-        try:
-            summary = summarize(
-                text,
-                model=models["summarize_model"],
-                ollama_host=models["ollama_host"],
-                deepseek_base_url=models.get(
-                    "deepseek_base_url", "https://api.deepseek.com"
-                ),
-            )
-            summary_embedding = ollama_embed(
-                summary,
-                model=models["embed_model"],
-                host=models["ollama_host"],
-            )
-        except Exception as e:
-            if verbose:
-                print(f"    [warn] chunk {ch['start_offset']} summarize failed: {e}")
+        for attempt in range(3):
+            try:
+                summary = summarize(
+                    text,
+                    model=models["summarize_model"],
+                    ollama_host=models["ollama_host"],
+                    deepseek_base_url=models.get(
+                        "deepseek_base_url", "https://api.deepseek.com"
+                    ),
+                )
+                summary_embedding = ollama_embed(
+                    summary,
+                    model=models["embed_model"],
+                    host=models["ollama_host"],
+                )
+                break
+            except Exception as e:
+                if verbose:
+                    print(f"    [warn] chunk {ch['start_offset']} summarize failed: {e}")
+                _log_chunk_failure(ch['start_offset'], "summarize", path, e)
+                if attempt < 2:
+                    time.sleep(5 if attempt == 0 else 30)
+        else:
             continue
 
-        try:
-            raw_units = distill(
-                text,
-                model=models["distill_model"],
-                ollama_host=models["ollama_host"],
-                deepseek_base_url=models.get(
-                    "deepseek_base_url", "https://api.deepseek.com"
-                ),
-            )
-        except Exception as e:
-            if verbose:
-                print(f"    [warn] chunk {ch['start_offset']} distill failed: {e}")
+        for attempt in range(3):
+            try:
+                raw_units = distill(
+                    text,
+                    model=models["distill_model"],
+                    ollama_host=models["ollama_host"],
+                    deepseek_base_url=models.get(
+                        "deepseek_base_url", "https://api.deepseek.com"
+                    ),
+                )
+                break
+            except Exception as e:
+                if verbose:
+                    print(f"    [warn] chunk {ch['start_offset']} distill failed: {e}")
+                _log_chunk_failure(ch['start_offset'], "distill", path, e)
+                if attempt < 2:
+                    time.sleep(5 if attempt == 0 else 30)
+        else:
             raw_units = []
 
         session_meta = _chunk_session_meta(ch["messages"], path)

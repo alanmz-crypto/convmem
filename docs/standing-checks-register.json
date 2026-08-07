@@ -102,12 +102,12 @@
       "role": "Retrieval",
       "trigger": {
         "type": "corpus_size",
-        "baseline": 5714,
+        "baseline": 16115,
         "multiple": 2.0
       },
       "status": "open",
-      "last_verified": "2026-07-07",
-      "notes": "Corpus-size trigger (promoted from trigger:none 2026-07-07): 0.1 weight / 30-day half-life set once, never scheduled for revisit. Nags when knowledge_units count exceeds baseline * multiple. Baseline 5714 recorded 2026-07-07 at promotion via collection_count(chroma_dir, 'knowledge_units') \u2014 the exact call the trigger uses \u2014 NOT at the original tune date (count at tune time unknown; first nag is therefore conservative). Remediation when due: re-run recency eval, re-tune weight/half-life, re-record baseline from collection_count at that time. Bumping last_verified does NOT reset this trigger \u2014 only re-recording the baseline does."
+      "last_verified": "2026-08-06",
+      "notes": "Corpus-size trigger (promoted from trigger:none 2026-07-07): 0.1 weight / 30-day half-life set once, never scheduled for revisit. Nags when knowledge_units count exceeds baseline * multiple. Baseline re-recorded 2026-08-06 at 16115 units (2.82x prior baseline). Analysis: P@1 87.5%, MRR 0.9375, no regression vs baseline on 8-query golden set. Weight=0.1 / half-life=30d still appropriate at current corpus size. Next nag at ~32230 units."
     },
     {
       "id": "latency-budget",
@@ -127,12 +127,12 @@
       "role": "SRE",
       "trigger": {
         "type": "corpus_size",
-        "baseline": 5708,
+        "baseline": 16115,
         "multiple": 2.0
       },
       "status": "open",
-      "last_verified": "2026-07-07",
-      "notes": "Corpus-size trigger (promoted from trigger:none 2026-07-07): thresholds are static (>=3/week for synthesis_gate and index_gate) and were calibrated at current activity. Corpus growth is a PROXY for event volume \u2014 the gate logs record failures only (no attempt denominator), so true volume is unmeasurable today; retarget this trigger if attempt logging ever ships. Baseline 5708 recorded 2026-07-07 via collection_count. Intentional clustering: recency-boost-retune holds a near-identical baseline, so both fire together at corpus doubling \u2014 coherent, both are 're-tune what was calibrated at the old size' jobs. Remediation when due: review >=3/week on both gates against current activity, adjust, re-record baseline. Bumping last_verified does NOT reset this trigger \u2014 only the baseline does."
+      "last_verified": "2026-08-06",
+      "notes": "Corpus-size trigger (promoted from trigger:none 2026-07-07): thresholds are static (>=3/week for synthesis_gate and index_gate) and were calibrated at current activity. Corpus growth is a PROXY for event volume \u2014 the gate logs record failures only (no attempt denominator), so true volume is unmeasurable today; retarget this trigger if attempt logging ever ships. Baseline re-recorded 2026-08-06 at 16115 units (2.82x prior baseline). Analysis: index_gate 0 failures ever; synthesis_gate 6 total (2 in last 7d: timeout + DeepSeek 503). Both well under >=3/week threshold. No adjustment needed. Next nag at ~32230 units."
     },
     {
       "id": "cross-doc-consistency-handwritten",
