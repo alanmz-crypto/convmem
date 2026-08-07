@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import statistics
 import subprocess
@@ -570,13 +571,25 @@ def latency_summary(report: LatencyReport) -> dict[str, Any]:
             mean = statistics.fmean(samples) if samples else 0.0
             out["retrieval_ms"][view][arm] = {
                 "mean": round(mean, 4),
+                "p50": _nearest_rank_percentile(samples, 50),
+                "p95": _nearest_rank_percentile(samples, 95),
+                "percentile_algorithm": "nearest_rank_v1",
                 "n": len(samples),
-                "samples": [round(x, 4) for x in samples],
+                "samples": [float(x) for x in samples],
             }
             out["retrieval_queries_per_sec"][view][arm] = (
                 round(1000.0 / mean, 6) if mean > 0 else 0.0
             )
     return out
+
+
+def _nearest_rank_percentile(values: list[float], percentile: float) -> float:
+    """Return an unrounded nearest-rank percentile from raw samples."""
+    if not values:
+        return 0.0
+    ordered = sorted(float(value) for value in values)
+    rank = max(1, math.ceil((percentile / 100.0) * len(ordered)))
+    return ordered[min(rank, len(ordered)) - 1]
 
 
 def make_subprocess_query_fn(

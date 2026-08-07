@@ -7,6 +7,7 @@ Live/shadow evaluation remains gated to R7 outside this module.
 from __future__ import annotations
 
 import hashlib
+import math
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -204,10 +205,8 @@ class LatencyReport:
 def _percentile(sorted_vals: list[float], p: float) -> float:
     if not sorted_vals:
         return 0.0
-    if len(sorted_vals) == 1:
-        return sorted_vals[0]
-    idx = min(len(sorted_vals) - 1, max(0, int(round((p / 100.0) * (len(sorted_vals) - 1)))))
-    return sorted_vals[idx]
+    rank = max(1, math.ceil((p / 100.0) * len(sorted_vals)))
+    return sorted_vals[min(rank, len(sorted_vals)) - 1]
 
 
 def measure_view_latency(
@@ -268,13 +267,14 @@ def latency_report_to_dict(report: LatencyReport) -> dict[str, Any]:
     return {
         "view": report.view,
         "count": report.count,
-        "mean_ms": round(report.mean_ms, 3),
-        "p50_ms": round(report.p50_ms, 3),
-        "p95_ms": round(report.p95_ms, 3),
-        "max_ms": round(report.max_ms, 3),
+        "mean_ms": report.mean_ms,
+        "p50_ms": report.p50_ms,
+        "p95_ms": report.p95_ms,
+        "percentile_algorithm": "nearest_rank_v1",
+        "max_ms": report.max_ms,
         "queries_per_sec": round(1000.0 / report.mean_ms, 6) if report.mean_ms > 0 else 0.0,
         "samples": [
-            {"query": s.query, "view": s.view, "elapsed_ms": round(s.elapsed_ms, 3)}
+            {"query": s.query, "view": s.view, "elapsed_ms": s.elapsed_ms}
             for s in report.samples
         ],
     }
