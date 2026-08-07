@@ -19,6 +19,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+
 import tomllib
 
 REPO = Path(__file__).resolve().parent.parent
@@ -71,6 +72,7 @@ def _arm_identity(arm: str, config_path: Path, chroma_dir: Path, embed_host: str
     models = cfg.get("models") or {}
     index = cfg.get("index") or {}
     query_cfg = cfg.get("query") or {}
+    eval_cfg = cfg.get("eval") or {}
     if str(query_cfg.get("fallback_policy") or "") != "forbid":
         raise ValueError(
             f"{arm} config must bind query.fallback_policy=forbid for scoring"
@@ -86,6 +88,7 @@ def _arm_identity(arm: str, config_path: Path, chroma_dir: Path, embed_host: str
             f"{arm} config chroma_dir {cfg_chroma} != authorized {chroma_dir}"
         )
     configured_enrichment = index.get("approved_decisions_path")
+    configured_digest = str(models.get("embed_model_digest") or "")
     enrichment_path = Path(
         str(configured_enrichment)
         if configured_enrichment
@@ -93,6 +96,9 @@ def _arm_identity(arm: str, config_path: Path, chroma_dir: Path, embed_host: str
     ).expanduser()
     return {
         "model_tag": str(models.get("embed_model") or "unspecified"),
+        "model_digest": configured_digest,
+        "embed_dimensions": int(eval_cfg.get("embedding_dimensions") or 0),
+        "request_contract": str(eval_cfg.get("embedding_request_contract") or ""),
         "config_sha256": _sha_file(config_path),
         "chroma_dir": str(chroma_dir.resolve(strict=False)),
         "embed_host": cfg_host,
@@ -342,6 +348,10 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
                     "baseline": (baseline_chroma, baseline_id["model_tag"]),
                     "challenger": (challenger_chroma, challenger_id["model_tag"]),
                 },
+                model_identities={
+                    "baseline": baseline_id,
+                    "challenger": challenger_id,
+                },
             )
         except (ValueError, FileNotFoundError) as exc:
             print(f"Refusing compare: {exc}", file=sys.stderr)
@@ -358,6 +368,35 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
                 ("baseline", baseline_id),
                 ("challenger", challenger_id),
             ):
+                if not ident["model_digest"]:
+                    raise ValueError(f"real mode requires approved model digest for {arm}")
+                manifest_digest = str(
+                    auth.manifest.get(f"{arm}_model_digest")
+                    or auth.manifest.get("model_digest")
+                    or ""
+                )
+                if ident["model_digest"] != manifest_digest:
+                    raise ValueError(
+                        f"{arm} model digest mismatch vs approved manifest"
+                    )
+                manifest_dimensions = int(
+                    auth.manifest.get(f"{arm}_embed_dimensions")
+                    or auth.manifest.get("embed_dimensions")
+                    or 0
+                )
+                if ident["embed_dimensions"] <= 0:
+                    raise ValueError(f"real mode requires positive dimensions for {arm}")
+                if ident["embed_dimensions"] != manifest_dimensions:
+                    raise ValueError(
+                        f"{arm} embedding dimensions mismatch vs approved manifest"
+                    )
+                if (
+                    ident["request_contract"] != "ollama.embed.v1"
+                    and auth.manifest.get("test_only") is not True
+                ):
+                    raise ValueError(
+                        f"real mode requires ollama.embed.v1 request contract for {arm}"
+                    )
                 if not ident["enrichment_path_configured"]:
                     raise ValueError(
                         "real mode requires explicit "
@@ -424,6 +463,8 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
                 arm_ident = baseline_id if arm == "baseline" else challenger_id
                 build_checks = {
                     "embed_model": arm_ident["model_tag"],
+                    "embed_model_digest": arm_ident["model_digest"],
+                    "embed_dimensions": arm_ident["embed_dimensions"],
                     "package_sha256": provenance["package_sha256"],
                     "unit_corpus_fingerprint": provenance["unit_corpus_fingerprint"],
                     "unit_count": provenance["unit_count"],
@@ -532,10 +573,14 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
         )
 
         def expected_identity(config: Path, chroma: Path) -> dict:
+            ident = baseline_id if config == baseline_config else challenger_id
             return {
                 "config_path": str(config.resolve(strict=False)),
                 "chroma_dir": str(chroma.resolve(strict=False)),
                 "embed_host": args.embed_host,
+                "embed_model": ident["model_tag"],
+                "embed_model_digest": ident["model_digest"],
+                "embed_dimensions": ident["embed_dimensions"],
             }
 
         baseline_expected = expected_identity(baseline_config, baseline_chroma)
@@ -552,9 +597,7 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
                 "enrichment_sha256": challenger_id["enrichment_sha256"],
             }
         )
-        require_enrichment_provenance = (
-            auth.execution_mode == "real" and auth.manifest.get("test_only") is not True
-        )
+        require_enrichment_provenance = auth.execution_mode == "real"
 
         try:
             # Identity probe: one one-shot per arm; banner recorded in report.

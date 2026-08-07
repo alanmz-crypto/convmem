@@ -13,6 +13,7 @@ SHADOW_CONFIG_ALLOWLIST = frozenset(
         ("index", "approved_decisions_path"),
         ("sources", "inventory"),
         ("models", "embed_model"),
+        ("models", "embed_model_digest"),
         ("models", "ollama_host"),
         ("eval", "rerank_mode"),
         ("eval", "retrieval_view"),

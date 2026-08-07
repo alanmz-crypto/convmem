@@ -56,6 +56,7 @@ def verify_arm_collection_provenance(
     arms: Mapping[str, tuple[Path, str]],
     *,
     collection_name: str = EVAL_COLLECTION_NAME,
+    model_identities: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Read-only gate: both shadow collections must match the approved package.
 
@@ -105,9 +106,23 @@ def verify_arm_collection_provenance(
             "convmem:package_sha256": expected["package_sha256"],
             "convmem:unit_corpus_fingerprint": expected["unit_corpus_fingerprint"],
         }
+        approved_identity = (model_identities or {}).get(arm) or {}
+        approved_digest = str(approved_identity.get("model_digest") or "")
+        if approved_digest:
+            identity_checks["convmem:embed_model_digest"] = approved_digest
+        approved_dimensions = int(approved_identity.get("embed_dimensions") or 0)
+        if approved_dimensions > 0:
+            identity_checks["convmem:embed_dimensions"] = approved_dimensions
         for key, want in identity_checks.items():
             got = str(stored.get(key) or "")
-            if got != want:
+            if key == "convmem:embed_dimensions":
+                try:
+                    matches = int(got) == int(want)
+                except (TypeError, ValueError):
+                    matches = False
+            else:
+                matches = got == str(want)
+            if not matches:
                 raise ValueError(
                     f"provenance: {arm} {key} mismatch: stored {got!r} "
                     f"expected {want!r}"

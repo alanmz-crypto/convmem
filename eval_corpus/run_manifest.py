@@ -44,6 +44,10 @@ REQUIRED_REAL_FIELDS = (
     "prohibited_actions",
     "source_identity",
     "query_schema_version",
+    "baseline_model_digest",
+    "challenger_model_digest",
+    "baseline_embed_dimensions",
+    "challenger_embed_dimensions",
 )
 
 DEFAULT_UNCERTAINTY = {
@@ -73,6 +77,8 @@ BASELINE_BUILD_FIELDS = frozenset(
         "journal",
         "capture_dir",
         "model_tag",
+        "model_digest",
+        "embed_dimensions",
         "embed_host",
         "corpus_package_sha256",
         "unit_corpus_fingerprint",
@@ -104,7 +110,9 @@ COMPARE_FIELDS = frozenset(
         "enrichment_sha256",
     }
 )
-MODEL_EXECUTION_FIELDS = frozenset({"model_tag", "embed_host", "chroma_dir"})
+MODEL_EXECUTION_FIELDS = frozenset(
+    {"model_tag", "model_digest", "embed_dimensions", "embed_host", "chroma_dir"}
+)
 
 PATH_FIELD_NAMES = frozenset(
     {
@@ -656,6 +664,17 @@ def validate_run_manifest_schema(manifest: dict[str, Any]) -> list[str]:
                     "canonical_real_v1",
                 }:
                     errors.append("test-only query_schema_version is unsupported")
+                if not (
+                    isinstance(source_identity, dict)
+                    and source_identity.get("test_fixture") is True
+                ):
+                    errors.append(
+                        "test-only real manifests require source_identity.test_fixture=true"
+                    )
+            elif isinstance(source_identity, dict) and source_identity.get("test_fixture") is True:
+                errors.append(
+                    "production real manifests must not set source_identity.test_fixture=true"
+                )
             elif manifest.get("query_schema_version") != "canonical_real_v1":
                 errors.append(
                     "real mode requires query_schema_version=canonical_real_v1"
@@ -813,6 +832,14 @@ def _bind_paths_and_scalars(
                 )
             else:
                 expected = manifest.get("model_tag")
+        elif key in {"model_digest", "embed_dimensions"}:
+            if operation == "baseline_build":
+                prefix = "baseline_"
+            elif operation == "challenger_build":
+                prefix = "challenger_"
+            else:
+                prefix = ""
+            expected = manifest.get(f"{prefix}{key}") or manifest.get(key)
         elif key in {"embed_mode", "resume"}:
             expected = manifest.get(key)
         else:
@@ -1284,6 +1311,10 @@ def make_real_run_manifest_for_tests(
             "source_identity",
             {"schema_version": "source_identity_v1", "test_fixture": True},
         ),
+        "baseline_model_digest": overrides.pop("baseline_model_digest", ""),
+        "challenger_model_digest": overrides.pop("challenger_model_digest", ""),
+        "baseline_embed_dimensions": overrides.pop("baseline_embed_dimensions", 0),
+        "challenger_embed_dimensions": overrides.pop("challenger_embed_dimensions", 0),
         "query_schema_version": overrides.pop(
             "query_schema_version", "test_fixture_legacy_v1"
         ),

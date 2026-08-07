@@ -19,11 +19,31 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 
 
+def _verify_current_model(cfg: dict) -> dict[str, object]:
+    """Resolve the model on the exact configured host and require its digest."""
+    models = cfg.get("models") or {}
+    eval_cfg = cfg.get("eval") or {}
+    if str(eval_cfg.get("embedding_request_contract") or "") != "ollama.embed.v1":
+        return {}
+    from eval_corpus.ollama_identity import OllamaEmbedClient
+
+    client = OllamaEmbedClient(str(models.get("ollama_host") or ""))
+    identity = client.resolve_model(str(models.get("embed_model") or ""))
+    expected = str(models.get("embed_model_digest") or "")
+    if not expected or str(identity.get("model_digest") or "") != expected:
+        raise RuntimeError("configured Ollama model digest does not match the approved digest")
+    return identity
+
+
 def _startup_banner(cfg: dict) -> dict:
     chroma = str(Path(cfg["index"]["chroma_dir"]).expanduser().resolve())
     # data_dir: parent of chroma or explicit if present
     data_dir = str(Path(chroma).parent.resolve())
     models = cfg.get("models") or {}
+    resolved_identity: dict[str, object] = {}
+    eval_cfg = cfg.get("eval") or {}
+    if str(eval_cfg.get("embedding_request_contract") or "") == "ollama.embed.v1":
+        resolved_identity = _verify_current_model(cfg)
     return {
         "type": "startup",
         "config_path": os.environ.get("CONVMEM_CONFIG", ""),
@@ -31,6 +51,14 @@ def _startup_banner(cfg: dict) -> dict:
         "data_dir": data_dir,
         "embed_host": str(models.get("ollama_host") or ""),
         "embed_model": str(models.get("embed_model") or ""),
+        "embed_model_digest": str(
+            resolved_identity.get("model_digest")
+            or models.get("embed_model_digest")
+            or ""
+        ),
+        "embed_model_variant": str(resolved_identity.get("variant") or ""),
+        "embed_model_quantization": str(resolved_identity.get("quantization") or ""),
+        "embed_dimensions": int(eval_cfg.get("embedding_dimensions") or 0),
         "pid": os.getpid(),
     }
 
@@ -103,9 +131,11 @@ def main(argv: list[str] | None = None) -> int:
         if not args.query:
             print(json.dumps({"type": "error", "error": "query required"}), flush=True)
             return 3
+        _verify_current_model(cfg)
         t0 = time.perf_counter()
         hits, evidence = _run_query(args.query, args.top_k, args.eval_view)
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        _verify_current_model(cfg)
         print(
             json.dumps(
                 {
@@ -137,11 +167,15 @@ def main(argv: list[str] | None = None) -> int:
         q = str(req.get("query") or "")
         top_k = int(req.get("top_k") or args.top_k)
         view = str(req.get("eval_view") or args.eval_view)
-        t0 = time.perf_counter()
         try:
+            _verify_current_model(cfg)
+            t0 = time.perf_counter()
             hits, evidence = _run_query(q, top_k, view)
+            elapsed_ms = (time.perf_counter() - t0) * 1000.0
+            _verify_current_model(cfg)
             err = None
         except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001 — surface to parent
+            elapsed_ms = 0.0
             hits = []
             evidence = {
                 "retrieval_mode": "failed",
@@ -149,7 +183,6 @@ def main(argv: list[str] | None = None) -> int:
                 "fallback_used": False,
             }
             err = str(exc)
-        elapsed_ms = (time.perf_counter() - t0) * 1000.0
         print(
             json.dumps(
                 {

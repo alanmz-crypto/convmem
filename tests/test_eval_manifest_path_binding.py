@@ -7,6 +7,11 @@ from pathlib import Path
 
 import pytest
 
+from eval_corpus.run_manifest import (
+    make_real_run_manifest_for_tests,
+    validate_run_manifest_schema,
+)
+
 
 def _load_script(name: str):
     path = Path(__file__).parents[1] / "scripts" / name
@@ -43,3 +48,14 @@ def test_compare_manifest_path_binding_requires_exact_key(tmp_path):
         module._manifest_path(  # pylint: disable=protected-access
             {"paths": {}}, "baseline_config", label="baseline config"
         )
+
+
+def test_production_real_manifest_rejects_fixture_marker():
+    manifest = make_real_run_manifest_for_tests(
+        paths={"chroma_dir": "/tmp/chroma"},
+        operations=["compare"],
+        test_only=False,
+        source_identity={"schema_version": "source_identity_v1", "test_fixture": True},
+    )
+    errors = validate_run_manifest_schema(manifest)
+    assert any("must not set source_identity.test_fixture" in error for error in errors)

@@ -7,8 +7,9 @@ import argparse
 import hashlib
 import json
 import sys
-import tomllib
 from pathlib import Path
+
+import tomllib
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -206,6 +207,18 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
             return 2
         config_identity_sha256 = hashlib.sha256(config_bytes).hexdigest()
         enrichment_sha256 = _sha_file(enrichment_path)
+        config_model_digest = str(models_cfg.get("embed_model_digest") or "")
+        expected_model_digest = str(build_manifest.get("embed_model_digest") or "")
+        if not expected_model_digest:
+            print("Refusing real build: build manifest must bind embed_model_digest", file=sys.stderr)
+            return 2
+        if config_model_digest != expected_model_digest:
+            print(
+                "Refusing real build: config embed_model_digest differs from "
+                "the build manifest",
+                file=sys.stderr,
+            )
+            return 2
 
     runtime = {
         "package": package,
@@ -216,6 +229,8 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
         "capture_dir": capture_dir,
         "attempt_root": attempt_root,
         "model_tag": model,
+        "model_digest": str(build_manifest.get("embed_model_digest") or ""),
+        "embed_dimensions": dims,
         "embed_host": embed_host,
         "corpus_package_sha256": package_sha256_hex(units)
         if units
@@ -287,6 +302,8 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
                     run_manifest_path=args.run_manifest,
                     runtime={
                         "model_tag": model,
+                        "model_digest": str(build_manifest.get("embed_model_digest") or ""),
+                        "embed_dimensions": dims,
                         "embed_host": embed_host,
                         "chroma_dir": chroma_dir,
                     },
@@ -295,6 +312,15 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
                 print(f"Refusing model_execution: {exc}", file=sys.stderr)
                 return 4
             embed_fn = ollama_embed_fn(embed_host, model, dimensions=dims)
+            actual_identity = getattr(embed_fn, "__eval_model_identity__", {})
+            expected_digest = str(build_manifest.get("embed_model_digest") or "")
+            if str(actual_identity.get("model_digest") or "") != expected_digest:
+                print(
+                    "Refusing real build: resolved Ollama model digest differs from "
+                    "the approved manifest",
+                    file=sys.stderr,
+                )
+                return 4
 
         result_doc = run_shadow_build(
             units=units,
@@ -315,6 +341,16 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
     finally:
         if server is not None:
             stop_fake_embed_server(server)
+
+    if auth.execution_mode == "real":
+        expected_digest = str(build_manifest.get("embed_model_digest") or "")
+        if str(result_doc.get("embed_model_digest") or "") != expected_digest:
+            print(
+                "Refusing real build: completed build result digest does not "
+                "match the approved digest",
+                file=sys.stderr,
+            )
+            return 4
 
     print(json.dumps(result_doc, indent=2, sort_keys=True))
     return 0 if result_doc.get("status") == "OK" else 1
