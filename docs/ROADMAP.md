@@ -7,7 +7,7 @@ ledger: dec_prop_20260623_215943_5abe
 
 North-star: local evidence bus on **this workstation** (Arch Linux, Ollama local). Watch/refine/monitor run as user systemd units here — no separate corpus host. **Operate-and-document** — not foundation-build.
 
-Test count at publish: run `convmem brief --with-tests` (currently **307**).
+Test count is not pinned in this roadmap (it drifts with every merge). Canonical: `convmem brief --with-tests`, or `python -m unittest discover -s tests -q`.
 
 ---
 
