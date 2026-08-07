@@ -127,7 +127,7 @@ Chroma's HNSW vector index returns orphan hits (IDs with no corresponding row in
 
 T1a and T4–T5 (P0-B) may run in parallel with each other and are not blocked by the T-gate. T2/T3 are blocked on the T-gate.
 
-**Critique:** [`docs/inter-model/DEEPSEEK-FLASH-2026-08-07-chroma-orphan-plan-critique.md`](../inter-model/DEEPSEEK-FLASH-2026-08-07-chroma-orphan-plan-critique.md) — **APPROVE WITH CHANGES**
+**Critique:** [`docs/inter-model/DEEPSEEK-FLASH-2026-08-07-chroma-orphan-plan-critique.md`](../inter-model/DEEPSEEK-FLASH-2026-08-07-chroma-orphan-plan-critique.md) — **APPROVE WITH CHANGES** (risks #1–#2 already covered in P0-B methodology below; cross-check critique doc before treating line-items as new work)
 
 ---
 
