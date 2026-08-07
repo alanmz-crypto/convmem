@@ -11,8 +11,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Iterator
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "delegate-deepseek.sh"
 
@@ -22,13 +20,15 @@ def _mock_deepseek(response: dict) -> Iterator[str]:
     """Serve one deterministic OpenAI-compatible response locally."""
 
     class Handler(BaseHTTPRequestHandler):
-        def do_POST(self) -> None:  # noqa: N802 - HTTP handler API name
+        def do_POST(self) -> None:  # pylint: disable=invalid-name
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(response).encode("utf-8"))
 
-        def log_message(self, format: str, *args: object) -> None:
+        def log_message(  # pylint: disable=redefined-builtin,unused-argument
+            self, format: str, *args: object
+        ) -> None:
             return
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
