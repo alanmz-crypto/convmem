@@ -8,6 +8,11 @@ from pathlib import Path
 from typing import Any
 
 from eval_corpus.io_atomic import atomic_write_json, sha256_file
+from eval_corpus.secure_fs import (
+    FilesystemAuthorizationError,
+    assert_contained_no_symlink,
+    assert_regular_evidence_tree,
+)
 
 
 def _now() -> str:
@@ -136,3 +141,56 @@ def verify_corpus_acceptance_hashes(capture_dir: Path) -> list[str]:
         if got != want:
             errors.append(f"{key} hash mismatch: got {got} expected {want}")
     return errors
+
+
+def verify_accepted_package(package_path: Path) -> dict[str, Any]:
+    """Prove that ``package_path`` is the accepted capture package.
+
+    The comparison lane must not accept an arbitrary JSONL file whose bytes
+    happen to match a manifest field.  The package must be the canonical
+    ``corpus_package.jsonl`` inside its capture directory, the capture tree
+    must be link-free, and every acceptance-bound artifact must still match.
+    """
+    package_path = Path(package_path)
+    capture_dir = package_path.parent
+    errors: list[str] = []
+    try:
+        package_abs = assert_contained_no_symlink(package_path, capture_dir)
+        expected = (capture_dir / "corpus_package.jsonl").absolute()
+        if package_abs != expected:
+            errors.append("package must be capture_dir/corpus_package.jsonl")
+        assert_regular_evidence_tree(capture_dir)
+    except (FilesystemAuthorizationError, OSError) as exc:
+        errors.append(f"capture package filesystem validation failed: {exc}")
+
+    errors.extend(verify_corpus_acceptance_hashes(capture_dir))
+    acceptance_path = capture_dir / "corpus_acceptance.json"
+    if not acceptance_path.is_file():
+        return {"status": "INVALID", "capture_dir": str(capture_dir), "errors": errors}
+
+    try:
+        acceptance = load_json(acceptance_path)
+        actual_package_sha256 = sha256_file(package_path)
+    except (OSError, ValueError, TypeError) as exc:
+        errors.append(f"cannot read acceptance/package identity: {exc}")
+        return {"status": "INVALID", "capture_dir": str(capture_dir), "errors": errors}
+
+    bound = acceptance.get("bound_sha256") or {}
+    if bound.get("corpus_package") != actual_package_sha256:
+        errors.append("acceptance bound package SHA does not match package bytes")
+    if acceptance.get("package_sha256") != actual_package_sha256:
+        errors.append("acceptance package_sha256 does not match package bytes")
+    if errors:
+        return {
+            "status": "INVALID",
+            "capture_dir": str(capture_dir),
+            "package_sha256": actual_package_sha256,
+            "errors": errors,
+        }
+    return {
+        "status": "CORPUS_ACCEPTED",
+        "capture_dir": str(capture_dir),
+        "package_sha256": actual_package_sha256,
+        "unit_corpus_fingerprint": acceptance.get("unit_corpus_fingerprint"),
+        "acceptance_sha256": sha256_file(acceptance_path),
+    }
