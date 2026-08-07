@@ -216,6 +216,7 @@ class WorkerHandle:
     startup_ms: float
     expected_identity: dict[str, Any] | None = None
     require_enrichment_provenance: bool = False
+    require_warm_residency: bool = False
 
 
 @dataclass
@@ -226,6 +227,8 @@ class LatencyReport:
     timed_reps: int = TIMED_REPS
     counterbalanced: bool = True
     order_schedule: str = "four_cycle_latin_v1"
+    warm_residency_required: bool = False
+    warm_residency_verified: bool = False
 
 
 def _env_with_config(config_path: Path) -> dict[str, str]:
@@ -532,10 +535,20 @@ def start_latency_worker(
         startup_ms=startup_ms,
         expected_identity=expected_identity,
         require_enrichment_provenance=require_enrichment_provenance,
+        require_warm_residency=bool(
+            expected_identity and expected_identity.get("embed_model_digest")
+        ),
     )
 
 
-def worker_query(handle: WorkerHandle, query: str, *, top_k: int, eval_view: str) -> dict[str, Any]:
+def worker_query(
+    handle: WorkerHandle,
+    query: str,
+    *,
+    top_k: int,
+    eval_view: str,
+    enforce_warm_residency: bool = False,
+) -> dict[str, Any]:
     assert handle.proc.stdin and handle.proc.stdout
     if handle.proc.poll() is not None:
         raise WorkerFailure(f"latency worker {handle.arm} died (exit {handle.proc.returncode})")
@@ -561,6 +574,25 @@ def worker_query(handle: WorkerHandle, query: str, *, top_k: int, eval_view: str
         top_k=top_k,
         context=f"latency:{handle.arm}",
     )
+    if enforce_warm_residency and handle.require_warm_residency:
+        if res.get("warm_residency_verified") is not True:
+            raise WorkerFailure(
+                f"latency:{handle.arm}: model residency was not verified"
+            )
+        diagnostics = res.get("embedding_request_diagnostics")
+        if not isinstance(diagnostics, Mapping):
+            raise WorkerFailure(
+                f"latency:{handle.arm}: embedding timing diagnostics are missing"
+            )
+        load_duration = diagnostics.get("load_duration")
+        if not isinstance(load_duration, (int, float)) or not math.isfinite(float(load_duration)):
+            raise WorkerFailure(
+                f"latency:{handle.arm}: model load duration is missing or malformed"
+            )
+        if float(load_duration) > 0.0:
+            raise WorkerFailure(
+                f"latency:{handle.arm}: timed request loaded or reloaded the model"
+            )
     if handle.require_enrichment_provenance:
         verify_enrichment_reader_result(
             res,
@@ -608,6 +640,9 @@ def measure_warm_latency(
             "challenger": challenger.startup_ms,
         }
     )
+    report.warm_residency_required = bool(
+        baseline.require_warm_residency or challenger.require_warm_residency
+    )
     if not queries:
         return report
     q = queries[0]
@@ -624,13 +659,20 @@ def measure_warm_latency(
         schedule = LATENCY_ORDER_SCHEDULE[repetition % len(LATENCY_ORDER_SCHEDULE)]
         for view, arm in schedule:
             handle = baseline if arm == "baseline" else challenger
-            res = worker_query(handle, q, top_k=top_k, eval_view=view)
+            res = worker_query(
+                handle,
+                q,
+                top_k=top_k,
+                eval_view=view,
+                enforce_warm_residency=True,
+            )
             elapsed = res.get("elapsed_ms")
             if not isinstance(elapsed, (int, float)) or elapsed <= 0:
                 raise WorkerFailure(
                     f"latency worker {arm} returned invalid elapsed_ms {elapsed!r}"
                 )
             report.retrieval_ms[view][arm].append(float(elapsed))
+    report.warm_residency_verified = report.warm_residency_required
     return report
 
 
@@ -641,6 +683,8 @@ def latency_summary(report: LatencyReport) -> dict[str, Any]:
         "timed_repetitions": report.timed_reps,
         "counterbalanced_arm_order": report.counterbalanced,
         "order_schedule": report.order_schedule,
+        "warm_residency_required": report.warm_residency_required,
+        "warm_residency_verified": report.warm_residency_verified,
         "process_startup_ms": report.process_startup_ms,
         "retrieval_ms": {},
         "retrieval_queries_per_sec": {},

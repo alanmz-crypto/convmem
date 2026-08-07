@@ -32,7 +32,30 @@ def _verify_current_model(cfg: dict) -> dict[str, object]:
     expected = str(models.get("embed_model_digest") or "")
     if not expected or str(identity.get("model_digest") or "") != expected:
         raise RuntimeError("configured Ollama model digest does not match the approved digest")
+    loaded = client.resolve_loaded_model(
+        str(models.get("embed_model") or ""),
+        expected,
+    )
+    identity["loaded_model"] = loaded
+    identity["residency_status"] = "resident" if loaded is not None else "not_resident"
     return identity
+
+
+def _residency_evidence(before: dict[str, object], after: dict[str, object]) -> dict[str, object]:
+    before_loaded = before.get("loaded_model")
+    after_loaded = after.get("loaded_model")
+    expected = str(before.get("model_digest") or "")
+    before_digest = str((before_loaded or {}).get("model_digest") or "")
+    after_digest = str((after_loaded or {}).get("model_digest") or "")
+    return {
+        "residency_before": before.get("residency_status"),
+        "residency_after": after.get("residency_status"),
+        "loaded_model_before": before_loaded,
+        "loaded_model_after": after_loaded,
+        "warm_residency_verified": bool(
+            expected and before_digest == expected and after_digest == expected
+        ),
+    }
 
 
 def _startup_banner(cfg: dict) -> dict:
@@ -59,6 +82,8 @@ def _startup_banner(cfg: dict) -> dict:
         "embed_model_variant": str(resolved_identity.get("variant") or ""),
         "embed_model_quantization": str(resolved_identity.get("quantization") or ""),
         "embed_dimensions": int(eval_cfg.get("embedding_dimensions") or 0),
+        "residency_status": str(resolved_identity.get("residency_status") or "unknown"),
+        "loaded_model": resolved_identity.get("loaded_model"),
         "pid": os.getpid(),
     }
 
@@ -131,11 +156,11 @@ def main(argv: list[str] | None = None) -> int:
         if not args.query:
             print(json.dumps({"type": "error", "error": "query required"}), flush=True)
             return 3
-        _verify_current_model(cfg)
+        model_before = _verify_current_model(cfg)
         t0 = time.perf_counter()
         hits, evidence = _run_query(args.query, args.top_k, args.eval_view)
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
-        _verify_current_model(cfg)
+        model_after = _verify_current_model(cfg)
         print(
             json.dumps(
                 {
@@ -143,6 +168,7 @@ def main(argv: list[str] | None = None) -> int:
                     "hits": hits,
                     "elapsed_ms": elapsed_ms,
                     "eval_view": args.eval_view,
+                    **_residency_evidence(model_before, model_after),
                     **evidence,
                 },
                 sort_keys=True,
@@ -168,11 +194,11 @@ def main(argv: list[str] | None = None) -> int:
         top_k = int(req.get("top_k") or args.top_k)
         view = str(req.get("eval_view") or args.eval_view)
         try:
-            _verify_current_model(cfg)
+            model_before = _verify_current_model(cfg)
             t0 = time.perf_counter()
             hits, evidence = _run_query(q, top_k, view)
             elapsed_ms = (time.perf_counter() - t0) * 1000.0
-            _verify_current_model(cfg)
+            model_after = _verify_current_model(cfg)
             err = None
         except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001 — surface to parent
             elapsed_ms = 0.0
@@ -191,6 +217,7 @@ def main(argv: list[str] | None = None) -> int:
                     "elapsed_ms": elapsed_ms,
                     "eval_view": view,
                     "error": err,
+                    **(_residency_evidence(model_before, model_after) if err is None else {}),
                     **evidence,
                 },
                 sort_keys=True,

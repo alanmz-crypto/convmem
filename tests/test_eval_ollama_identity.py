@@ -49,6 +49,18 @@ class _Session:
                     }
                 }
             )
+        if url.endswith("/api/ps"):
+            return _Response(
+                {
+                    "models": [
+                        {
+                            "name": "test:latest",
+                            "digest": "sha256:test",
+                            "size_vram": 123,
+                        }
+                    ]
+                }
+            )
         if url.endswith("/api/embed"):
             return _Response(
                 {
@@ -69,6 +81,9 @@ def test_loopback_and_proxy_controls(monkeypatch):
     identity = client.resolve_model("test:latest")
     assert identity["model_digest"] == "sha256:test"
     assert identity["quantization"] == "Q8_0"
+    loaded = client.resolve_loaded_model("test:latest", "sha256:test", required=True)
+    assert loaded["model_digest"] == "sha256:test"
+    assert loaded["size_vram"] == 123
     vector, diagnostics = client.embed(
         "query",
         model_tag="test:latest",
