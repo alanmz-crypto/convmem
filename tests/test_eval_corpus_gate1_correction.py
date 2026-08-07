@@ -780,6 +780,12 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                 )
                 self.assertEqual(proc.returncode, 0, proc.stderr)
                 report = json.loads(out.read_text(encoding="utf-8"))
+                self.assertEqual(report["phase_status"], "VALID")
+                self.assertEqual(report["technical_status"], "VALID")
+                self.assertEqual(
+                    report["evidence_verdict"],
+                    report["uncertainty"]["verdict"],
+                )
 
                 # Both arms, both views scored.
                 for arm in ("baseline", "challenger"):
