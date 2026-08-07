@@ -15,6 +15,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--live-config", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--chroma-dir", type=Path, required=True)
+    parser.add_argument(
+        "--enrichment-path",
+        type=Path,
+        default=None,
+        help="Explicit decisions-approved.jsonl path for the shadow config",
+    )
     parser.add_argument("--embed-model", required=True)
     parser.add_argument("--embed-host", default="http://127.0.0.1:11434")
     parser.add_argument("--authorize-fixture", action="store_true")
@@ -82,10 +88,32 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     live = load_config(live_config)
+    if args.run_manifest is not None and not args.authorize_fixture:
+        preview = load_run_manifest(args.run_manifest)
+        if str(preview.get("execution_mode") or "") == "real":
+            expected = (preview.get("paths") or {}).get("enrichment_path")
+            if not expected or args.enrichment_path is None:
+                print(
+                    "Refusing config_generation: real mode requires manifest-bound "
+                    "enrichment_path",
+                    file=sys.stderr,
+                )
+                return 2
+            if args.enrichment_path.expanduser().resolve(strict=False) != Path(
+                str(expected)
+            ).expanduser().resolve(strict=False):
+                print(
+                    "Refusing config_generation: enrichment_path mismatch",
+                    file=sys.stderr,
+                )
+                return 2
     path, violations = generate_shadow_config(
         live_cfg=None if r2a_grant is not None else live,
         out_dir=out_dir,
         chroma_dir=chroma_dir,
+        enrichment_path=args.enrichment_path.expanduser()
+        if args.enrichment_path
+        else None,
         embed_model=args.embed_model,
         ollama_host=args.embed_host,
         r2a_grant=r2a_grant,

@@ -18,8 +18,8 @@ import argparse
 import hashlib
 import json
 import sys
-import tomllib
 from pathlib import Path
+import tomllib
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -44,6 +44,14 @@ def _sha_optional_file(path: Path) -> str:
     if path.is_file():
         return _sha_file(path)
     return hashlib.sha256(b"").hexdigest()
+
+
+def _manifest_path(manifest: dict, key: str, *, label: str) -> Path:
+    """Resolve one required path binding from a real comparison manifest."""
+    raw = (manifest.get("paths") or {}).get(key)
+    if not isinstance(raw, str) or not raw:
+        raise ValueError(f"real comparison manifest paths must include {key} for {label}")
+    return Path(raw).expanduser().resolve(strict=False)
 
 
 def _parse_toml(path: Path) -> dict:
@@ -77,15 +85,20 @@ def _arm_identity(arm: str, config_path: Path, chroma_dir: Path, embed_host: str
         raise ValueError(
             f"{arm} config chroma_dir {cfg_chroma} != authorized {chroma_dir}"
         )
+    configured_enrichment = index.get("approved_decisions_path")
+    enrichment_path = Path(
+        str(configured_enrichment)
+        if configured_enrichment
+        else str(chroma_dir.parent / "decisions-approved.jsonl")
+    ).expanduser()
     return {
         "model_tag": str(models.get("embed_model") or "unspecified"),
         "config_sha256": _sha_file(config_path),
         "chroma_dir": str(chroma_dir.resolve(strict=False)),
         "embed_host": cfg_host,
-        "enrichment_path": str(chroma_dir.parent / "decisions-approved.jsonl"),
-        "enrichment_sha256": _sha_optional_file(
-            chroma_dir.parent / "decisions-approved.jsonl"
-        ),
+        "enrichment_path": str(enrichment_path.resolve(strict=False)),
+        "enrichment_path_configured": bool(configured_enrichment),
+        "enrichment_sha256": _sha_optional_file(enrichment_path),
     }
 
 
@@ -341,6 +354,40 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
     build_result_sha256: dict[str, str] = {}
     if auth.execution_mode == "real":
         try:
+            for arm, ident in (
+                ("baseline", baseline_id),
+                ("challenger", challenger_id),
+            ):
+                if not ident["enrichment_path_configured"]:
+                    raise ValueError(
+                        "real mode requires explicit "
+                        f"index.approved_decisions_path for {arm}"
+                    )
+            for arm, ident in (
+                ("baseline", baseline_id),
+                ("challenger", challenger_id),
+            ):
+                config_key = f"{arm}_config"
+                expected_config = _manifest_path(
+                    auth.manifest, config_key, label=f"{arm} config"
+                )
+                actual_config = (
+                    baseline_config if arm == "baseline" else challenger_config
+                ).resolve(strict=False)
+                if actual_config != expected_config:
+                    raise ValueError(
+                        f"{arm} config path mismatch vs manifest.paths.{config_key}"
+                    )
+                path_key = f"{arm}_enrichment_path"
+                if path_key not in (auth.manifest.get("paths") or {}):
+                    path_key = "enrichment_path"
+                expected_enrichment = _manifest_path(
+                    auth.manifest, path_key, label=f"{arm} enrichment"
+                )
+                if Path(ident["enrichment_path"]).resolve(strict=False) != expected_enrichment:
+                    raise ValueError(
+                        f"{arm} enrichment path mismatch vs manifest.paths.{path_key}"
+                    )
             if args.scores_json is not None:
                 raise ValueError("real mode rejects --scores-json (injected scores)")
             if args.skip_latency and auth.manifest.get("allow_skip_latency") is not True:

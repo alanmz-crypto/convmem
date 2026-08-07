@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import sys
+import tomllib
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -25,12 +26,32 @@ def _sha_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _manifest_bound_path(
+    manifest: dict,
+    *,
+    key: str,
+    label: str,
+) -> Path:
+    """Return one exact manifest path, rejecting absent or malformed bindings."""
+    paths = manifest.get("paths") or {}
+    raw = paths.get(key)
+    if not isinstance(raw, str) or not raw:
+        raise ValueError(f"real build manifest paths must include {key} for {label}")
+    return Path(raw).expanduser().resolve(strict=False)
+
+
 def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-locals
     parser = argparse.ArgumentParser(description="Eval shadow embed build")
     parser.add_argument("--authorize-fixture", action="store_true")
     parser.add_argument("--run-manifest", type=Path, default=None)
     parser.add_argument("--package", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="C0b authoritative TOML; required for real mode",
+    )
     parser.add_argument("--chroma-dir", type=Path, required=True)
     parser.add_argument(
         "--attempt-root",
@@ -52,15 +73,15 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
         choices=("fake", "http-fake", "ollama"),
         default="fake",
     )
-    parser.add_argument("--embed-host", default="http://127.0.0.1:11434")
+    parser.add_argument("--embed-host", default=None)
     parser.add_argument(
         "--arm",
         choices=("baseline", "challenger"),
         default="baseline",
     )
     parser.add_argument("--build-identity", default="fixture-build")
-    parser.add_argument("--config-identity-sha256", default="0" * 64)
-    parser.add_argument("--enrichment-sha256", default="0" * 64)
+    parser.add_argument("--config-identity-sha256", default=None)
+    parser.add_argument("--enrichment-sha256", default=None)
     args = parser.parse_args(argv)
 
     sys.path.insert(0, str(REPO))
@@ -106,6 +127,85 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
     build_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     dims = int(build_manifest["embed_dimensions"])
     model = str(build_manifest.get("embed_model") or "fake")
+    embed_host = args.embed_host or "http://127.0.0.1:11434"
+    config_identity_sha256 = args.config_identity_sha256 or "0" * 64
+    enrichment_sha256 = args.enrichment_sha256 or "0" * 64
+
+    preview_manifest = None
+    if args.run_manifest is not None:
+        preview_manifest = json.loads(
+            args.run_manifest.expanduser().read_text(encoding="utf-8")
+        )
+    if preview_manifest and str(preview_manifest.get("execution_mode") or "") == "real":
+        if args.config is None:
+            print("Refusing real build: --config is required", file=sys.stderr)
+            return 2
+        if args.embed_host is not None or args.config_identity_sha256 is not None:
+            print(
+                "Refusing real build: model host/config identity must come from --config",
+                file=sys.stderr,
+            )
+            return 2
+        config_path = args.config.expanduser().resolve(strict=True)
+        config_bytes = config_path.read_bytes()
+        try:
+            effective_cfg = tomllib.loads(config_bytes.decode("utf-8"))
+        except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+            print(f"Refusing real build: invalid authoritative config: {exc}", file=sys.stderr)
+            return 2
+        expected_config = _manifest_bound_path(
+            preview_manifest,
+            key=f"{args.arm}_config",
+            label=f"{args.arm} config",
+        )
+        if config_path != expected_config:
+            print(
+                "Refusing real build: --config differs from the manifest-bound "
+                f"{args.arm}_config path",
+                file=sys.stderr,
+            )
+            return 2
+        models_cfg = effective_cfg.get("models") or {}
+        index_cfg = effective_cfg.get("index") or {}
+        eval_cfg = effective_cfg.get("eval") or {}
+        model = str(models_cfg.get("embed_model") or "")
+        embed_host = str(models_cfg.get("ollama_host") or "")
+        configured_chroma = Path(str(index_cfg.get("chroma_dir") or "")).expanduser()
+        if not model or not embed_host:
+            print("Refusing real build: authoritative config lacks model/host", file=sys.stderr)
+            return 2
+        if configured_chroma.resolve(strict=False) != chroma_dir.resolve(strict=False):
+            print("Refusing real build: Chroma path differs from authoritative config", file=sys.stderr)
+            return 2
+        if int(eval_cfg.get("embedding_dimensions") or 0) != dims:
+            print("Refusing real build: dimension differs from authoritative config", file=sys.stderr)
+            return 2
+        if str((effective_cfg.get("query") or {}).get("fallback_policy") or "") != "forbid":
+            print("Refusing real build: authoritative config must forbid fallback", file=sys.stderr)
+            return 2
+        if str(eval_cfg.get("embedding_request_contract") or "") != "ollama.embed.v1":
+            print("Refusing real build: authoritative config must bind ollama.embed.v1", file=sys.stderr)
+            return 2
+        enrichment_path = Path(str(index_cfg.get("approved_decisions_path") or "")).expanduser()
+        if not enrichment_path.is_file():
+            print("Refusing real build: authoritative enrichment path is missing", file=sys.stderr)
+            return 2
+        expected_enrichment = _manifest_bound_path(
+            preview_manifest,
+            key=f"{args.arm}_enrichment_path"
+            if f"{args.arm}_enrichment_path" in (preview_manifest.get("paths") or {})
+            else "enrichment_path",
+            label=f"{args.arm} enrichment",
+        )
+        if enrichment_path.resolve(strict=False) != expected_enrichment:
+            print(
+                "Refusing real build: authoritative enrichment path differs from "
+                "the manifest-bound path",
+                file=sys.stderr,
+            )
+            return 2
+        config_identity_sha256 = hashlib.sha256(config_bytes).hexdigest()
+        enrichment_sha256 = _sha_file(enrichment_path)
 
     runtime = {
         "package": package,
@@ -116,15 +216,15 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
         "capture_dir": capture_dir,
         "attempt_root": attempt_root,
         "model_tag": model,
-        "embed_host": args.embed_host,
+        "embed_host": embed_host,
         "corpus_package_sha256": package_sha256_hex(units)
         if units
         else (_sha_file(package) if package.is_file() else "0" * 64),
         "unit_corpus_fingerprint": corpus_fingerprint_hex(units)
         if units
         else "0" * 64,
-        "config_identity_sha256": args.config_identity_sha256,
-        "enrichment_sha256": args.enrichment_sha256,
+        "config_identity_sha256": config_identity_sha256,
+        "enrichment_sha256": enrichment_sha256,
         "build_identity": args.build_identity,
         "embed_mode": args.embed_mode,
         "resume": args.resume,
@@ -187,14 +287,14 @@ def main(argv: list[str] | None = None) -> int:  # pylint: disable=too-many-loca
                     run_manifest_path=args.run_manifest,
                     runtime={
                         "model_tag": model,
-                        "embed_host": args.embed_host,
+                        "embed_host": embed_host,
                         "chroma_dir": chroma_dir,
                     },
                 )
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 print(f"Refusing model_execution: {exc}", file=sys.stderr)
                 return 4
-            embed_fn = ollama_embed_fn(args.embed_host, model, dimensions=dims)
+            embed_fn = ollama_embed_fn(embed_host, model, dimensions=dims)
 
         result_doc = run_shadow_build(
             units=units,
