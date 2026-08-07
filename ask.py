@@ -952,7 +952,7 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
     )
 
 
-def ask(
+def ask(  # pylint: disable=too-many-arguments
     question: str,
     *,
     top_k: int = 5,
