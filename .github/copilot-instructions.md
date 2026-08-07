@@ -21,7 +21,7 @@ This is a Python CLI and MCP server for a local knowledge corpus.
 ## Conventions
 
 - Python 3.11+, no type stubs required (runtime-typed)
-- Use `ruff` for linting (config in `pyproject.toml` / `.pylintrc`)
+- Follow the repository's Pylint regression gate for Python changes.
 - Tests run with `pytest`
 - Branch before editing: never commit directly to `main`
 
