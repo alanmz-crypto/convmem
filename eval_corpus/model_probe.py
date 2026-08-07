@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -31,7 +32,7 @@ def run_model_probe(
         raise OllamaIdentityError("probe requires model tag and expected digest")
     if dimensions <= 0:
         raise OllamaIdentityError("probe requires a positive dimension")
-    if not transform_id or len(transform_sha256) != 64:
+    if not transform_id or not re.fullmatch(r"[0-9a-f]{64}", transform_sha256):
         raise OllamaIdentityError("probe requires a transform identity")
 
     before_inventory = client.list_models()
