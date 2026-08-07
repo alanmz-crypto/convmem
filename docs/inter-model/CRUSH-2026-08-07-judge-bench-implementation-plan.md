@@ -3,7 +3,7 @@
 **Based on:** Claude's review of `CRUSH-2026-08-07-judge-bench-analysis.md`
 **Plan author:** Crush
 **Date:** 2026-08-07
-**Status:** ready for Claude implementation
+**Status:** ready for Claude implementation (v2 — incorporates Claude's 3 must-fix conditions)
 
 ---
 
@@ -25,7 +25,11 @@ JudgeBench measures pairwise preference accuracy (pick correct from a contrastiv
 
 **Why first:** `llama3.1:8b` at 40.9% on JudgeBench is near-random. A structurally "independent" judge that's bad at the task will pass the independence check and still produce noise. Fix this before anything else.
 
-**What:** Change the fallback in `resolve_judge_model()` from `llama3.1:8b` to `qwen2.5-coder:14b`. We already benchmarked this model on Aug 4 specifically for QA judgment quality — it fits 12GB VRAM and produced professional results. This is an evidence-backed swap, not speculation.
+**What:** Change the fallback in `resolve_judge_model()` from `llama3.1:8b` to `qwen2.5-coder:14b` (9GB, fits RTX 3060 12GB).
+
+**Evidence caveat:** The Aug 4 Crush session benchmarked `qwen2.5-coder:14b` on "QA judgment tests" and reported professional results — but it's unclear whether those tests measured *code* QA (matching the model's coder specialization) or *prose faithfulness* QA (the summarization/synthesis grading `eval_judge.py` actually does). A coder-specialized model may judge natural-language faithfulness differently than code correctness. Treat this as a *reasonable candidate* rather than a *validated swap* until confirmed.
+
+**Calibration gate (must-pass before trusting fallback scores):** After the swap, run the judge against 5-10 known synthesis eval rows (mix of good and bad answers) and spot-check that scores directionally align with expectations. If they're nonsensical, fall back to `ornith:9b` as next candidate.
 
 **File:** `eval_judge.py:84-96`
 
@@ -37,17 +41,25 @@ return str(models.get("summarize_model", "llama3.1:8b")), False
 return str(models.get("judge_fallback_model", "qwen2.5-coder:14b")), False
 ```
 
-**Also:** Treat fallback-model scores as low-confidence/informational by default — not just when non-independent. A weak judge is weak in general, not specifically weak-relative-to-strong-model-output. Add a `low_confidence: bool` field to `JudgeResult` that is `True` when `deepseek_active=False`.
+**Also:** Treat fallback-model scores as low-confidence/informational by default — not just when non-independent. A weak judge is weak in general, not specifically weak-relative-to-strong-model-output. `low_confidence` is derivable from `deepseek_active`; use a property on `JudgeResult` rather than a stored field that can drift:
 
-### 2. Upgrade judge prompt to "reason before scoring" — `eval_judge.py`
+```python
+@property
+def low_confidence(self) -> bool:
+    return not self._deepseek_active
+```
 
-**Why:** Arena-Hard's pairwise structure doesn't map cleanly to 1-5 grading, but the underlying trick — force the judge to generate/reason before committing to a score — is a known anti-laziness technique that transfers independently. The Arena-Hard name should not be cited as the expected payoff mechanism; it's a different mechanism producing an unknown gain.
+### 2. Upgrade judge prompt + add confidence field (single pass) — `eval_judge.py`
 
-**What:** Add a "generate a reference summary of the source, then score the candidate against it" step to `_JUDGE_PROMPT`. Keep the existing SCORE/REASON two-line output format.
+**Why:** Claude's review says merge tasks 2 and 3 into one prompt-template edit — less parser churn, one negative-control re-check instead of two. The underlying trick (force reasoning before scoring) transfers from Arena-Hard even though the pairwise structure doesn't.
 
-**File:** `eval_judge.py:27-56`
+**What:** Single pass over `_JUDGE_PROMPT` and `_parse_score()` to add:
+- "Reason before scoring" step (generate reference summary of source → compare → score)
+- Optional `CONFIDENCE: low|med|high` line (defensive parser — weaker models less reliable at format-following)
 
-New prompt structure:
+**File:** `eval_judge.py:27-56` and `eval_judge.py:99-110`
+
+New `_JUDGE_PROMPT`:
 ```
 {rubric}
 
@@ -59,49 +71,76 @@ Respond with EXACTLY these lines:
 REFERENCE: <your 1-2 sentence summary of the source>
 SCORE: <integer 1-5>
 REASON: <one sentence>
+CONFIDENCE: low|med|high
 ```
 
-### 3. Add confidence field — `eval_judge.py`
+**Defensive `_parse_score()` rules (must-fix #3):**
+- `REFERENCE:` line: optional — if missing, reason fallback uses first sentence of output
+- `SCORE:` line: required — if missing, score is `None`
+- `REASON:` line: required — if missing, fall back to last line of output
+- `CONFIDENCE:` line: **strictly optional** — if missing, parser returns `None` for confidence; the override logic in `judge()` later sets it to `"low"` for fallback models. Must not silently misparse REASON as CONFIDENCE.
 
-**Why:** JudgeBench's own ceiling (~80% even for best reasoning models) confirms this is hard. A judge that can flag "low confidence" on ambiguous cases is more useful than one that forces a number every time. Cheap addition given the advisory-only posture already in place.
+Parser should handle:
+- Missing CONFIDENCE line (most likely from weak models)
+- Extra lines before/after the expected format
+- Lines in wrong order (regex-based extraction, not position-based)
 
-**What:** Extend the output format with an optional `CONFIDENCE: low|med|high` line. Add `confidence: str | None` to `JudgeResult`. When `deepseek_active=False` (local fallback), auto-set `confidence="low"` and `low_confidence=True`.
+### 3. Add `confidence` field to `JudgeResult` — `eval_judge.py:59-74`
 
-**File:** `eval_judge.py`
+```python
+@dataclass
+class JudgeResult:
+    score: int | None
+    reason: str
+    independent: bool
+    judge_model: str
+    under_test_model: str
+    confidence: str | None  # "low" | "med" | "high" | None (unparsed)
+    _deepseek_active: bool  # private, feeds low_confidence property
 
-Changes:
-- `_JUDGE_PROMPT`: add `CONFIDENCE: low/med/high` line after REASON
-- `_parse_score()`: parse confidence field
-- `JudgeResult`: add `confidence: str | None` field
-- `judge()`: when not using DeepSeek, override confidence to "low"
+    @property
+    def low_confidence(self) -> bool:
+        """True when using local fallback model (non-DeepSeek)."""
+        return not self._deepseek_active
+
+    def to_dict(self) -> dict:
+        return {
+            "score": self.score,
+            "reason": self.reason,
+            "independent": self.independent,
+            "judge_model": self.judge_model,
+            "under_test_model": self.under_test_model,
+            "confidence": self.confidence,
+            "low_confidence": self.low_confidence,
+        }
+```
+
+In `judge()`: when not using DeepSeek, override `confidence` to `"low"` if it wasn't already parsed.
 
 ### 4. Soften the gain estimates in the analysis doc
 
-**Why:** The "+25-30 combined" number is a straight sum of two independently-measured ablations applied to a different task shape. No guarantee they're additive, and this is being applied to absolute grading not pairwise preference.
+**File:** `docs/inter-model/CRUSH-2026-08-07-judge-bench-analysis.md`
 
-**What:** Edit `CRUSH-2026-08-07-judge-bench-analysis.md` to:
 - Add the pairwise-vs-absolute caveat at the top of the Gap Analysis section
 - Replace "+25-30 combined" with a note that gains are directionally expected but uncalibrated for our task
-- Update the Q2 recommendation to reference `qwen2.5-coder:14b` (benchmarked) instead of `ornith:9b`/`qwen3.6:35b` (speculative)
-
-**File:** `docs/inter-model/CRUSH-2026-08-07-judge-bench-analysis.md`
+- Update the Q2 recommendation to reference `qwen2.5-coder:14b` (benchmarked, with the evidence caveat) instead of `ornith:9b`/`qwen3.6:35b` (speculative)
 
 ### 5. Update tests
 
-**What:** After changes 1-3, update:
-- `tests/test_eval_methodology.py` — `FakeJudgeResult` needs `confidence` and `low_confidence` fields
-- `tests/test_doctor.py:223-228` — the inline judge call snippet may need updating
+- `tests/test_eval_methodology.py` — `FakeJudgeResult` needs `confidence`, `low_confidence`, `_deepseek_active`
+- `tests/test_doctor.py:223-228` — the inline judge call snippet may need updating for new prompt format
 - `tests/test_ask_trace.py` — check if eval_trace expectations need `confidence`
 
 ---
 
 ## What NOT to do (Claude's cautions)
 
-- **Don't add pairwise comparison.** Our task is absolute grading, not A-vs-B. The paper's position-swap methodology doesn't apply.
+- **Don't add pairwise comparison.** Our task is absolute grading, not A-vs-B.
 - **Don't cite Arena-Hard's +12pt figure** as the expected gain for our prompt change — different mechanism, different task.
-- **Don't treat "+25-30 combined" as a target.** It's directionally suggestive, not calibrated.
-- **Don't over-index on self-judging bias for the fallback model.** The problem with `llama3.1:8b` isn't that it's self-judging — it's that it's a bad judge at 40.9% accuracy on any task. Independence is a separate, real concern, but general judge weakness matters more here.
-- **Don't add multi-agent/panel judging.** ChatEval got 34% on JudgeBench — worse than single-agent. Not worth the complexity.
+- **Don't treat "+25-30 combined" as a target.** Directionally suggestive, not calibrated.
+- **Don't over-index on self-judging bias for the fallback model.** The problem with `llama3.1:8b` isn't self-judging — it's general weakness.
+- **Don't add multi-agent/panel judging.** ChatEval got 34% on JudgeBench — worse than single-agent.
+- **Don't store `low_confidence` as an independent field** — it's derivable from `_deepseek_active`; use a property to prevent drift.
 
 ---
 
@@ -109,22 +148,50 @@ Changes:
 
 | File | Change | Priority |
 |------|--------|----------|
-| `eval_judge.py:84-96` | Swap fallback to `qwen2.5-coder:14b`; add `low_confidence` | 1 |
-| `eval_judge.py:27-56` | Upgrade prompt to "reason before scoring" + REFERENCE line | 2 |
-| `eval_judge.py:59-74` | Add `confidence` and `low_confidence` to `JudgeResult` | 3 |
-| `eval_judge.py:99-110` | Parse `CONFIDENCE:` in `_parse_score()` | 3 |
-| `eval_judge.py:113-166` | Override confidence to "low" when not using DeepSeek | 3 |
-| `docs/inter-model/CRUSH-2026-08-07-judge-bench-analysis.md` | Soften gain estimates; add pairwise/absolute caveat; fix Q2 rec | 4 |
+| `eval_judge.py:84-96` | Swap fallback to `qwen2.5-coder:14b`; pass `_deepseek_active` to JudgeResult | 1 |
+| `eval_judge.py:27-56` | Single-pass prompt upgrade: reason-before-scoring + REFERENCE + CONFIDENCE lines | 2 |
+| `eval_judge.py:59-74` | Add `confidence`, `_deepseek_active`, `low_confidence` property to `JudgeResult` | 2 |
+| `eval_judge.py:99-110` | Defensive `_parse_score()` — CONFIDENCE strictly optional, regex-based extraction | 2 |
+| `eval_judge.py:113-166` | `judge()`: override confidence to `"low"` when `deepseek_active=False` | 2 |
+| `docs/inter-model/CRUSH-2026-08-07-judge-bench-analysis.md` | Soften gain estimates; add pairwise/absolute caveat; fix Q2 rec with evidence caveat | 4 |
 | `tests/test_eval_methodology.py` | Update `FakeJudgeResult` with new fields | 5 |
 | `tests/test_doctor.py:223-228` | Update inline judge snippet if needed | 5 |
 
 ---
 
-## Verification
+## Verification (must-fix #2: negative-control re-check is the regression risk)
 
-After implementation, run:
+After implementation, run in this order:
+
 ```bash
 cd /home/lauer/Projects/convmem
+
+# 1. Unit tests (plumbing)
 python -m pytest tests/test_eval_methodology.py tests/test_doctor.py -x -q
-python scripts/eval-synthesis.py --judge  # spot-check judge still works
+
+# 2. CRITICAL: negative controls must still fail closed under new prompt
+#    Run both with DeepSeek (API) and local fallback to confirm known-false
+#    synthesis still scores < 3 in both paths.
+python -c "
+from config import load_config
+from eval_methodology import run_judge_negative_control
+cfg = load_config()
+models = cfg.get('models', {})
+
+# DeepSeek path
+rc = run_judge_negative_control('synthesis', under_test_model=models.get('summarize_model','llama3.1:8b'), cfg=cfg)
+print(f'DeepSeek negative control: passed={rc[\"passed\"]} score={rc[\"score\"]} model={rc[\"judge_model\"]}')
+
+# Local fallback path (unset DEEPSEEK_API_KEY temporarily if needed)
+import os
+key = os.environ.pop('DEEPSEEK_API_KEY', None)
+rc2 = run_judge_negative_control('synthesis', under_test_model='qwen2.5-coder:14b', cfg=cfg)
+if key: os.environ['DEEPSEEK_API_KEY'] = key
+print(f'Local fallback negative control: passed={rc2[\"passed\"]} score={rc2[\"score\"]} model={rc2[\"judge_model\"]}')
+"
+
+# 3. Spot-check calibration (must-pass gate from task 1)
+python scripts/eval-synthesis.py --judge 2>&1 | head -40
 ```
+
+**Gate:** Negative controls must pass for both paths. If the new prompt breaks negative-control detection (score ≥ 3 on known-false), revert and iterate on the prompt format.
