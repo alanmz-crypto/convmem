@@ -15,9 +15,11 @@ PROTOCOL_FALLBACK_LEDGER_ID = "dec_prop_20260623_161428_c311"
 APPROVED_READER_SCHEMA_VERSION = "approved_decisions_reader_v1"
 
 
-def _read_approved_snapshot(path: Path) -> tuple[list[dict], dict[str, str | int]]:
+def approved_bytes_snapshot(
+    raw: bytes,
+    path: Path,
+) -> tuple[list[dict], dict[str, str | int]]:
     """Read, hash, parse, and fingerprint one exact approved-file byte snapshot."""
-    raw = path.read_bytes()
     text = raw.decode("utf-8")
     rows: list[dict] = []
     canonical_rows: list[str] = []
@@ -44,6 +46,10 @@ def _read_approved_snapshot(path: Path) -> tuple[list[dict], dict[str, str | int
         "row_count": len(rows),
         "semantic_fingerprint": semantic,
     }
+
+
+def _read_approved_snapshot(path: Path) -> tuple[list[dict], dict[str, str | int]]:
+    return approved_bytes_snapshot(path.read_bytes(), path)
 
 
 def approved_reader_snapshot(cfg: dict) -> tuple[list[dict], dict[str, str | int]]:

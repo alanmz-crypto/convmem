@@ -33,6 +33,9 @@ def queue_path(cfg: dict) -> Path:
 
 
 def approved_path(cfg: dict) -> Path:
+    configured = (cfg.get("index") or {}).get("approved_decisions_path")
+    if configured:
+        return Path(str(configured)).expanduser()
     return data_dir(cfg) / "decisions-approved.jsonl"
 
 

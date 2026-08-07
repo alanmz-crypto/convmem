@@ -1403,11 +1403,20 @@ class RealManifestCompareTests(unittest.TestCase):
                     json.dumps({"id": "dec_prop_REAL", "summary": "frozen"}) + "\n"
                 )
                 for arm in ("baseline", "challenger"):
+                    arm_live_cfg = {
+                        **live_cfg,
+                        "index": {
+                            **live_cfg["index"],
+                            "approved_decisions_path": str(
+                                root / arm / "decisions-approved.jsonl"
+                            ),
+                        },
+                    }
                     arms[arm] = _build_arm(
                         arm_dir=root / arm,
                         units=units,
                         embed_host=url,
-                        live_cfg=live_cfg,
+                        live_cfg=arm_live_cfg,
                     )
                     (root / arm / "decisions-approved.jsonl").write_text(
                         enrich_line, encoding="utf-8"
@@ -1436,6 +1445,12 @@ class RealManifestCompareTests(unittest.TestCase):
                     "challenger_chroma": str(arms["challenger"][0]),
                     "baseline_config": str(arms["baseline"][1]),
                     "challenger_config": str(arms["challenger"][1]),
+                    "baseline_enrichment_path": str(
+                        root / "baseline" / "decisions-approved.jsonl"
+                    ),
+                    "challenger_enrichment_path": str(
+                        root / "challenger" / "decisions-approved.jsonl"
+                    ),
                     "embed_host": url,
                     "baseline_build_result": str(root / "baseline" / "result.json"),
                     "challenger_build_result": str(root / "challenger" / "result.json"),

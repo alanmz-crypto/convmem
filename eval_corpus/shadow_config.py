@@ -57,6 +57,7 @@ def generate_shadow_config(
     embed_model: str,
     processed_log: Path | None = None,
     units_export: Path | None = None,
+    enrichment_path: Path | None = None,
     ollama_host: str | None = None,
     fallback_policy: str = "forbid",
     embedding_request_contract: str = "legacy_embeddings",
@@ -115,6 +116,8 @@ def generate_shadow_config(
         shadow["index"]["processed_log"] = str(processed_log)
     if units_export is not None:
         shadow["index"]["units_export"] = str(units_export)
+    if enrichment_path is not None:
+        shadow["index"]["approved_decisions_path"] = str(enrichment_path)
     shadow["models"]["embed_model"] = embed_model
     if ollama_host is not None:
         shadow["models"]["ollama_host"] = ollama_host

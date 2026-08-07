@@ -205,8 +205,38 @@ def copy_immutable_input(
         os.fsync(output_fd)
         os.close(output_fd)
         output_fd = None
-        os.replace(temp_name, dest.name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+        # A plain rename would replace a destination created after the initial
+        # lstat. Linking the temp inode into the absent leaf is atomic and
+        # fails with EEXIST instead of overwriting a racing file; removing the
+        # temp name leaves the destination with one link.
+        os.link(
+            temp_name,
+            dest.name,
+            src_dir_fd=parent_fd,
+            dst_dir_fd=parent_fd,
+            follow_symlinks=False,
+        )
+        os.unlink(temp_name, dir_fd=parent_fd)
         os.fsync(parent_fd)
+        source_after = os.fstat(source_fd)
+        if (
+            source_after.st_dev != source_info.st_dev
+            or source_after.st_ino != source_info.st_ino
+            or source_after.st_size != source_info.st_size
+            or source_after.st_mtime_ns != source_info.st_mtime_ns
+            or source_after.st_ctime_ns != source_info.st_ctime_ns
+        ):
+            raise FilesystemAuthorizationError(
+                "source changed while immutable input was being copied"
+            )
+        source_path_info = _require_regular_single_link(src)
+        if (
+            source_path_info.st_dev != source_info.st_dev
+            or source_path_info.st_ino != source_info.st_ino
+        ):
+            raise FilesystemAuthorizationError(
+                "source path identity changed while immutable input was being copied"
+            )
     except Exception:
         if output_fd is not None:
             os.close(output_fd)
