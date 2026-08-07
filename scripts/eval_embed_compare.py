@@ -34,6 +34,18 @@ def _load_jsonl(path: Path) -> list[dict]:
     return rows
 
 
+def _load_jsonl_bytes(path: Path, *, label: str) -> tuple[list[dict], str]:
+    """Parse one exact JSONL byte snapshot and return its SHA-256."""
+    from eval_corpus.query_set import parse_query_set_jsonl_bytes
+
+    raw = path.read_bytes()
+    try:
+        rows = parse_query_set_jsonl_bytes(raw)
+    except ValueError as exc:
+        raise ValueError(f"{label} is not valid UTF-8 JSONL: {exc}") from exc
+    return rows, hashlib.sha256(raw).hexdigest()
+
+
 def _sha_file(path: Path) -> str:
     h = hashlib.sha256()
     h.update(path.read_bytes())
@@ -280,6 +292,8 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
         print(f"Refusing compare: {exc}", file=sys.stderr)
         return 2
 
+    initial_golden_sha256 = _sha_optional_file(golden)
+    initial_package_sha256 = _sha_optional_file(package)
     runtime = {
         "compare_mode": args.mode,
         "golden": golden,
@@ -294,8 +308,8 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
         "baseline_config_sha256": baseline_id["config_sha256"],
         "challenger_config_sha256": challenger_id["config_sha256"],
         "embed_host": args.embed_host,
-        "query_set_sha256": _sha_optional_file(golden),
-        "corpus_package_sha256": _sha_optional_file(package),
+        "query_set_sha256": initial_golden_sha256,
+        "corpus_package_sha256": initial_package_sha256,
         "enrichment_sha256": enrichment_sha256,
     }
 
@@ -309,8 +323,20 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
         print(f"Refusing compare: {exc}", file=sys.stderr)
         return 2
 
-    rows = _load_jsonl(golden)
-    package_units = _load_jsonl(package)
+    try:
+        if args.mode == "subprocess":
+            rows, query_set_sha256 = _load_jsonl_bytes(golden, label="query set")
+            package_units, package_sha256 = _load_jsonl_bytes(package, label="corpus package")
+            if query_set_sha256 != initial_golden_sha256:
+                raise ValueError("query set changed after authorization preflight")
+            if package_sha256 != initial_package_sha256:
+                raise ValueError("corpus package changed after authorization preflight")
+        else:
+            rows = _load_jsonl(golden)
+            package_units = _load_jsonl(package)
+    except (OSError, ValueError) as exc:
+        print(f"Refusing compare: immutable input read failed: {exc}", file=sys.stderr)
+        return 2
     query_validation = None
     if auth.execution_mode == "real" and auth.manifest.get("test_only") is not True:
         from eval_corpus.query_set import (
