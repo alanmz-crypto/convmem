@@ -9,8 +9,9 @@ from __future__ import annotations
 import hashlib
 import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from eval_corpus.metrics import (
     expand_acceptable_ids,
@@ -22,6 +23,7 @@ from eval_corpus.metrics import (
 )
 
 RETRIEVAL_VIEWS = ("embedding_influenced", "operational_pipeline")
+QUALITY_VIEWS = RETRIEVAL_VIEWS + ("exact_vector",)
 
 QueryFn = Callable[..., list[dict]]
 
@@ -97,8 +99,8 @@ def evaluate_view(
 
     ``query_fn`` signature: ``(query, *, top_k, eval_view) -> list[hit]``.
     """
-    if view not in RETRIEVAL_VIEWS:
-        raise ValueError(f"unknown view {view!r}; expected one of {RETRIEVAL_VIEWS}")
+    if view not in QUALITY_VIEWS:
+        raise ValueError(f"unknown view {view!r}; expected one of {QUALITY_VIEWS}")
     results: list[RowEval] = []
     for row in rows:
         k = int(top_k or row.get("top_k") or 5)
@@ -337,11 +339,11 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
         )
 
     captured_hits: dict[str, dict[str, list[list[dict]]]] = {
-        "baseline": {view: [] for view in RETRIEVAL_VIEWS},
-        "challenger": {view: [] for view in RETRIEVAL_VIEWS},
+        "baseline": {view: [] for view in QUALITY_VIEWS},
+        "challenger": {view: [] for view in QUALITY_VIEWS},
     }
     raw_quality_results: list[dict[str, Any]] = []
-    for view in RETRIEVAL_VIEWS:
+    for view in QUALITY_VIEWS:
         for index, row in enumerate(rows):
             k = int(top_k or row.get("top_k") or 5)
             for arm, query_fn in (
@@ -417,13 +419,13 @@ def compare_paired_arms(  # pylint: disable=too-many-locals
         view: _evaluate_view_from_hits(
             rows, captured_hits["baseline"][view], view=view, top_k=top_k
         )
-        for view in RETRIEVAL_VIEWS
+        for view in QUALITY_VIEWS
     }
     both_chal = {
         view: _evaluate_view_from_hits(
             rows, captured_hits["challenger"][view], view=view, top_k=top_k
         )
-        for view in RETRIEVAL_VIEWS
+        for view in QUALITY_VIEWS
     }
     by_stratum: dict[str, Any] = {}
     for stratum in sorted({r["recipe_stratum"] for r in stratum_rows}):

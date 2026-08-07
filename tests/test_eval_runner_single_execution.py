@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from eval_corpus.runner import RETRIEVAL_VIEWS, compare_paired_arms
+from eval_corpus.runner import QUALITY_VIEWS, compare_paired_arms
 
 
 def test_compare_executes_each_query_arm_view_once_and_retains_raw_hits():
@@ -50,11 +50,11 @@ def test_compare_executes_each_query_arm_view_once_and_retains_raw_hits():
         },
     )
 
-    assert len(calls["baseline"]) == len(RETRIEVAL_VIEWS)
-    assert len(calls["challenger"]) == len(RETRIEVAL_VIEWS)
-    assert {call[2] for call in calls["baseline"]} == set(RETRIEVAL_VIEWS)
-    assert {call[2] for call in calls["challenger"]} == set(RETRIEVAL_VIEWS)
-    assert len(report["raw_quality_results"]) == 2 * len(RETRIEVAL_VIEWS)
+    assert len(calls["baseline"]) == len(QUALITY_VIEWS)
+    assert len(calls["challenger"]) == len(QUALITY_VIEWS)
+    assert {call[2] for call in calls["baseline"]} == set(QUALITY_VIEWS)
+    assert {call[2] for call in calls["challenger"]} == set(QUALITY_VIEWS)
+    assert len(report["raw_quality_results"]) == 2 * len(QUALITY_VIEWS)
     assert all(item["query_id"] == "q-1" for item in report["raw_quality_results"])
     assert report["baseline"]["hit_at_k"] == 0.0
     assert report["challenger"]["hit_at_k"] == 1.0

@@ -133,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--eval-view",
         default="embedding_influenced",
-        choices=("embedding_influenced", "operational_pipeline"),
+        choices=("embedding_influenced", "operational_pipeline", "exact_vector"),
     )
     args = parser.parse_args(argv)
 

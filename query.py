@@ -384,6 +384,7 @@ def _resolve_eval_retrieval_view(
     allowed = {
         "embedding_influenced",
         "operational_pipeline",
+        "exact_vector",
         # synonyms accepted for clarity
         "embedding-influenced",
         "operational-pipeline",
@@ -391,7 +392,7 @@ def _resolve_eval_retrieval_view(
     if view not in allowed:
         raise ValueError(
             f"unknown eval retrieval_view {view!r}; "
-            "expected embedding_influenced or operational_pipeline"
+            "expected embedding_influenced, operational_pipeline, or exact_vector"
         )
     return view.replace("-", "_")
 
@@ -413,8 +414,9 @@ def query_units(
     qcfg = cfg.get("query", {})
     chroma_path = chroma_dir or cfg["index"]["chroma_dir"]
     view = _resolve_eval_retrieval_view(eval_view, cfg)
-    # embedding_influenced keeps ranking stages but disables ledger-priority.
-    skip_ledger_priority = view == "embedding_influenced"
+    # embedding_influenced and exact_vector exclude ledger-priority. The latter
+    # returns the raw vector candidate ranking before downstream rankers.
+    skip_ledger_priority = view in {"embedding_influenced", "exact_vector"}
 
     eval_cfg = cfg.get("eval") or {}
     request_contract = str(eval_cfg.get("embedding_request_contract") or "legacy_embeddings")
@@ -536,6 +538,12 @@ def query_units(
 
     if retrieval_trace is not None:
         retrieval_trace.candidates = [dict(result) for result in results[:candidate_k]]
+
+    if view == "exact_vector":
+        results = results[:top_k]
+        for rank, result in enumerate(results, 1):
+            result["retrieval_rank"] = rank
+        return results
 
     rw = float(qcfg.get("recency_weight", 0.0) or 0.0)
     rhl = float(qcfg.get("recency_half_life_days", 30.0))
