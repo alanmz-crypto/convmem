@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,6 +12,54 @@ from propose_decision import approved_path
 RECENT_DECISIONS_DAYS = 7
 RECENT_DECISIONS_LIMIT = 8
 PROTOCOL_FALLBACK_LEDGER_ID = "dec_prop_20260623_161428_c311"
+APPROVED_READER_SCHEMA_VERSION = "approved_decisions_reader_v1"
+
+
+def _read_approved_snapshot(path: Path) -> tuple[list[dict], dict[str, str | int]]:
+    """Read, hash, parse, and fingerprint one exact approved-file byte snapshot."""
+    raw = path.read_bytes()
+    text = raw.decode("utf-8")
+    rows: list[dict] = []
+    canonical_rows: list[str] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(record, dict):
+            continue
+        rows.append(record)
+        canonical_rows.append(
+            json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        )
+    semantic = hashlib.sha256("\n".join(canonical_rows).encode("utf-8")).hexdigest()
+    return rows, {
+        "schema_version": APPROVED_READER_SCHEMA_VERSION,
+        "path": str(path.resolve(strict=True)),
+        "encoding": "utf-8",
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "row_count": len(rows),
+        "semantic_fingerprint": semantic,
+    }
+
+
+def approved_reader_snapshot(cfg: dict) -> tuple[list[dict], dict[str, str | int]]:
+    """Return the exact bytes used by the approved-decision reader."""
+    path = approved_path(cfg)
+    if not path.is_file():
+        return [], {
+            "schema_version": APPROVED_READER_SCHEMA_VERSION,
+            "path": str(path.resolve(strict=False)),
+            "encoding": "utf-8",
+            "sha256": hashlib.sha256(b"").hexdigest(),
+            "row_count": 0,
+            "semantic_fingerprint": hashlib.sha256(b"").hexdigest(),
+            "missing": True,
+        }
+    return _read_approved_snapshot(path)
 
 
 def parse_ts(ts: str) -> datetime | None:
@@ -100,30 +149,35 @@ def is_protocol_anchor_query(query: str) -> bool:
     return "protocol" in q and "root" in q and "relat" in q
 
 
-def load_approved_decision_by_id(cfg: dict, ledger_id: str) -> dict | None:
+def load_approved_decision_by_id(
+    cfg: dict,
+    ledger_id: str,
+    *,
+    snapshot: tuple[list[dict], dict[str, str | int]] | None = None,
+) -> dict | None:
     """Load one approved decision row by ledger id (for anchor / keyword enrichment)."""
     needle = ledger_id.strip()
     if not needle:
         return None
-    path = approved_path(cfg)
-    if not path.is_file():
-        return None
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            rec = json.loads(line)
-        except json.JSONDecodeError:
-            continue
+    rows, _provenance = snapshot or approved_reader_snapshot(cfg)
+    for rec in rows:
         rid = (rec.get("id") or rec.get("ledger_id") or "").strip()
         if rid == needle:
             return rec
     return None
 
 
-def approved_decision_hit(cfg: dict, ledger_id: str, *, score: float = 0.98) -> dict | None:
-    rec = load_approved_decision_by_id(cfg, ledger_id)
+def approved_decision_hit(
+    cfg: dict,
+    ledger_id: str,
+    *,
+    score: float = 0.98,
+    snapshot: tuple[list[dict], dict[str, str | int]] | None = None,
+) -> dict | None:
+    if snapshot is None:
+        snapshot = approved_reader_snapshot(cfg)
+    rows, _provenance = snapshot
+    rec = load_approved_decision_by_id(cfg, ledger_id, snapshot=(rows, _provenance))
     if not rec:
         return None
     hit = decision_record_to_unit(rec)

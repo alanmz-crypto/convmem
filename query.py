@@ -70,6 +70,7 @@ class QueryUnitTrace:
     query_vector_finite: bool = False
     query_vector_norm: float = 0.0
     embedding_request_diagnostics: dict = field(default_factory=dict)
+    enrichment_reader: dict = field(default_factory=dict)
 
 
 def _unit_domain(meta: dict) -> str | None:
@@ -234,7 +235,13 @@ def _merge_priority_hits(primary: list[dict], extras: list[dict]) -> list[dict]:
     return merged
 
 
-def _ledger_lookup_hits(cfg: dict, store, query: str) -> list[dict]:
+def _ledger_lookup_hits(
+    cfg: dict,
+    store,
+    query: str,
+    *,
+    enrichment_snapshot=None,
+) -> list[dict]:
     """Exact ledger id lookup + protocol fallback anchor from approved JSONL."""
     from ledger import find_unit_by_ledger_id
     from ledger_recent import (
@@ -262,7 +269,7 @@ def _ledger_lookup_hits(cfg: dict, store, query: str) -> list[dict]:
             meta = unit.get("metadata") or {}
             doc = (unit.get("document") or "").strip()
             if not doc:
-                enriched = approved_decision_hit(cfg, lid)
+                enriched = approved_decision_hit(cfg, lid, snapshot=enrichment_snapshot)
                 if enriched:
                     _add(enriched)
                     continue
@@ -277,10 +284,16 @@ def _ledger_lookup_hits(cfg: dict, store, query: str) -> list[dict]:
                 }
             )
         else:
-            _add(approved_decision_hit(cfg, lid))
+            _add(approved_decision_hit(cfg, lid, snapshot=enrichment_snapshot))
 
     if is_protocol_anchor_query(query):
-        _add(approved_decision_hit(cfg, PROTOCOL_FALLBACK_LEDGER_ID))
+        _add(
+            approved_decision_hit(
+                cfg,
+                PROTOCOL_FALLBACK_LEDGER_ID,
+                snapshot=enrichment_snapshot,
+            )
+        )
 
     return hits
 
@@ -448,6 +461,20 @@ def query_units(
         n_fetch = candidate_k * 3
 
     ledger_extras: list[dict] = []
+    enrichment_snapshot = None
+    if not skip_ledger_priority:
+        from ledger_recent import approved_reader_snapshot
+
+        enrichment_snapshot = approved_reader_snapshot(cfg)
+        if retrieval_trace is not None:
+            retrieval_trace.enrichment_reader = dict(enrichment_snapshot[1])
+            retrieval_trace.enrichment_reader["used_by_view"] = True
+    elif retrieval_trace is not None:
+        retrieval_trace.enrichment_reader = {
+            "schema_version": "approved_decisions_reader_v1",
+            "used_by_view": False,
+            "reason": "embedding_influenced_view_excludes_ledger_priority",
+        }
     try:
         if retrieval_trace is not None:
             retrieval_trace.vector_query_attempted = True
@@ -455,7 +482,12 @@ def query_units(
         try:
             results = store.query_units(embedding, n_fetch)
             if not skip_ledger_priority:
-                ledger_extras = _ledger_lookup_hits(cfg, store, text)
+                ledger_extras = _ledger_lookup_hits(
+                    cfg,
+                    store,
+                    text,
+                    enrichment_snapshot=enrichment_snapshot,
+                )
         finally:
             store.close()
         if site_norm:
@@ -489,7 +521,12 @@ def query_units(
             cfg=cfg,
         )
         if not skip_ledger_priority:
-            ledger_extras = _ledger_lookup_hits(cfg, None, text)
+            ledger_extras = _ledger_lookup_hits(
+                cfg,
+                None,
+                text,
+                enrichment_snapshot=enrichment_snapshot,
+            )
     for r in results:
         d = r.get("distance")
         if d is not None:
