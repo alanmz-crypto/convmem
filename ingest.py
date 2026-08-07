@@ -29,7 +29,7 @@ _SYNTHESIS_FAIL_LOG = Path("~/.local/share/convmem/synthesis_failures.jsonl").ex
 
 
 def _log_chunk_failure(chunk_id: int, stage: str, session_file: str, error: Exception) -> None:
-    """Append one JSONL line per chunk failure. Non-blocking — never raises."""
+    """Append one JSONL line per chunk failure. Non-blocking — never raises."""  # pylint: disable=duplicate-code
     try:
         _SYNTHESIS_FAIL_LOG.parent.mkdir(parents=True, exist_ok=True)
         entry = {
@@ -42,7 +42,7 @@ def _log_chunk_failure(chunk_id: int, stage: str, session_file: str, error: Exce
         }
         with _SYNTHESIS_FAIL_LOG.open("a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass  # Telemetry must never break ingest
 
 
