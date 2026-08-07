@@ -750,6 +750,18 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
             ),
             "build_result_sha256": build_result_sha256 or None,
         }
+    warm_latency_complete = not (
+        args.mode == "subprocess" and args.skip_latency
+    )
+    report["phase_status"] = "VALID" if warm_latency_complete else "INCOMPLETE"
+    report["technical_status"] = (
+        "VALID" if warm_latency_complete else "INCOMPLETE"
+    )
+    report["evidence_verdict"] = (
+        report.get("uncertainty", {}).get("verdict")
+        if warm_latency_complete
+        else "NOT_ISSUED"
+    )
     report["run_manifest_execution_mode"] = auth.execution_mode
     report["compare_mode"] = args.mode
     report["not_promotion_authority"] = True
@@ -758,7 +770,7 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
         json.dumps(
             {
                 "out": str(out),
-                "verdict": report.get("uncertainty", {}).get("verdict"),
+                "verdict": report.get("evidence_verdict", "NOT_ISSUED"),
                 "mode": args.mode,
                 "fallback_exercised": report["fallback_exercised"],
             },
