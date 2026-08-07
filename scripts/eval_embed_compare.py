@@ -667,8 +667,9 @@ def main(  # pylint: disable=too-many-return-statements,too-many-branches,too-ma
                 challenger_fn,
                 package_units=package_units,
                 uncertainty=uncertainty,
+                strict_quality_validation=args.mode == "subprocess",
             )
-        except WorkerFailure as exc:
+        except (WorkerFailure, ValueError) as exc:
             print(f"Compare aborted (fail closed): {exc}", file=sys.stderr)
             return 5
 

@@ -112,6 +112,7 @@ def _run_query(query: str, top_k: int, eval_view: str) -> tuple[list[dict], dict
         "retrieval_mode": trace.retrieval_mode,
         "vector_query_attempted": trace.vector_query_attempted,
         "fallback_used": trace.fallback_used,
+        "vector_candidates": [dict(candidate) for candidate in trace.candidates],
         "query_vector_fingerprint": trace.query_vector_fingerprint,
         "query_vector_dimension": trace.query_vector_dimension,
         "query_vector_finite": trace.query_vector_finite,
