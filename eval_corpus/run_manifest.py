@@ -13,7 +13,7 @@ import json
 import re
 import secrets
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -99,6 +99,12 @@ CHALLENGER_BUILD_FIELDS = frozenset(BASELINE_BUILD_FIELDS)
 QUERY_CLONE_FIELDS = frozenset(
     {"source_chroma", "clone_root", "clone_parent", "source_content_fingerprint"}
 )
+EVIDENCE_RELEASE_FIELDS = frozenset(
+    {"evidence_root", "archive_path", "receipt_path"}
+)
+EVIDENCE_RELEASE_OPERATIONS = frozenset(
+    {"evidence_assembly", "archive_creation", "release_receipt"}
+)
 COMPARE_FIELDS = frozenset(
     {
         "compare_mode",
@@ -147,6 +153,9 @@ PATH_FIELD_NAMES = frozenset(
         "source_chroma",
         "clone_root",
         "clone_parent",
+        "evidence_root",
+        "archive_path",
+        "receipt_path",
     }
 )
 
@@ -399,6 +408,14 @@ def materialize_r2a_capability(capability: Any) -> R2aBindings:
     return derive_r2a_bindings_from_manifest(manifest, manifest_path=manifest_path)
 
 
+@dataclass
+class _EvidenceReleaseCapability:
+    """Private one-use capability issued only by the release binder."""
+
+    bound_paths: dict[str, str]
+    consumed: bool = False
+
+
 @dataclass(frozen=True)
 class AuthContext:
     """Validated authorization context for an operation.
@@ -410,6 +427,9 @@ class AuthContext:
     require_corpus_acceptance: bool
     manifest: dict[str, Any]
     operation: str
+    _release_capability: _EvidenceReleaseCapability | None = field(
+        default=None, repr=False, compare=False
+    )
 
 
 def load_run_manifest(path: Path | str) -> dict[str, Any]:
@@ -897,12 +917,21 @@ def _load_and_validate_manifest(run_manifest_path: Path) -> dict[str, Any]:
     return manifest
 
 
-def _fixture_context(operation: str) -> AuthContext:
+def _fixture_context(
+    operation: str,
+    *,
+    bound_paths: dict[str, str] | None = None,
+) -> AuthContext:
     return AuthContext(
         execution_mode="fixture",
         require_corpus_acceptance=False,
         manifest={"execution_mode": "fixture", "status": "approved", **DEFAULT_UNCERTAINTY},
         operation=operation,
+        _release_capability=(
+            _EvidenceReleaseCapability(bound_paths=bound_paths)
+            if bound_paths is not None
+            else None
+        ),
     )
 
 
@@ -1197,6 +1226,90 @@ def bind_query_clone(
         manifest=manifest,
         operation="query_clone",
     )
+
+
+def bind_evidence_release(
+    *,
+    operation: str,
+    authorize_fixture: bool,
+    run_manifest_path: Path | None,
+    runtime: Mapping[str, Any],
+) -> AuthContext:
+    """Bind one marker/archive/release operation to exact output paths."""
+    if operation not in EVIDENCE_RELEASE_OPERATIONS:
+        raise PermissionError(f"unsupported evidence-release operation: {operation}")
+    _require_exact_fields(operation, EVIDENCE_RELEASE_FIELDS, runtime)
+    if authorize_fixture:
+        _bind_paths_and_scalars(
+            operation=operation,
+            required=EVIDENCE_RELEASE_FIELDS,
+            runtime=runtime,
+            manifest={},
+            execution_mode="fixture",
+            authorize_fixture=True,
+        )
+        return _fixture_context(
+            operation,
+            bound_paths={key: _norm_path(runtime[key]) for key in EVIDENCE_RELEASE_FIELDS},
+        )
+    if run_manifest_path is None:
+        raise PermissionError("evidence-release operations require --run-manifest")
+    manifest = _load_and_validate_manifest(run_manifest_path)
+    assert_operation_allowed(manifest, operation)
+    source_identity = manifest.get("source_identity")
+    if not isinstance(source_identity, Mapping):
+        raise PermissionError("evidence-release manifest requires source_identity")
+    source_root = source_identity.get("repository_root")
+    if not isinstance(source_root, str) or not source_root:
+        raise PermissionError("evidence-release manifest requires repository_root")
+    try:
+        from eval_corpus.source_identity import verify_manifest_source_identity
+
+        verify_manifest_source_identity(manifest, repo_root=source_root)
+    except Exception as exc:
+        raise PermissionError(f"evidence-release source identity verification failed: {exc}") from exc
+    mode = str(manifest.get("execution_mode") or "")
+    _bind_paths_and_scalars(
+        operation=operation,
+        required=EVIDENCE_RELEASE_FIELDS,
+        runtime=runtime,
+        manifest=manifest,
+        execution_mode=mode,
+        authorize_fixture=False,
+    )
+    return AuthContext(
+        execution_mode=mode,
+        require_corpus_acceptance=False,
+        manifest=manifest,
+        operation=operation,
+        _release_capability=_EvidenceReleaseCapability(
+            bound_paths={key: _norm_path(runtime[key]) for key in EVIDENCE_RELEASE_FIELDS}
+        ),
+    )
+
+
+def consume_evidence_release_auth(
+    auth: AuthContext,
+    operation: str,
+    actual_paths: Mapping[str, Any],
+) -> dict[str, str]:
+    """Consume a release capability after checking its exact output paths."""
+    if not isinstance(auth, AuthContext) or auth.operation != operation:
+        raise PermissionError(f"release operation requires bound {operation} authorization")
+    capability = auth._release_capability
+    if capability is None or not isinstance(capability, _EvidenceReleaseCapability):
+        raise PermissionError("release authorization was not issued by bind_evidence_release")
+    if capability.consumed:
+        raise PermissionError("release authorization has already been consumed")
+    if not actual_paths:
+        raise PermissionError("release operation requires bound output paths")
+    for key, value in actual_paths.items():
+        if key not in capability.bound_paths:
+            raise PermissionError(f"release path is not bound: {key}")
+        if _norm_path(value) != capability.bound_paths[key]:
+            raise PermissionError(f"release path mismatch: {key}")
+    capability.consumed = True
+    return dict(capability.bound_paths)
 
 
 def bind_compare(
@@ -1506,6 +1619,8 @@ __all__ = [
     "GATE_1_HARNESS_SHA256",
     "MODEL_EXECUTION_FIELDS",
     "QUERY_CLONE_FIELDS",
+    "EVIDENCE_RELEASE_FIELDS",
+    "EVIDENCE_RELEASE_OPERATIONS",
     "R2B_REQUIRED_PROHIBITED",
     "REQUIRED_R2A_FIELDS",
     "REQUIRED_R2B_FIELDS",
@@ -1524,6 +1639,8 @@ __all__ = [
     "bind_config_generation",
     "bind_model_execution",
     "bind_query_clone",
+    "bind_evidence_release",
+    "consume_evidence_release_auth",
     "bind_r2a_config_generation",
     "canonical_manifest_body_sha256",
     "derive_r2a_bindings_from_manifest",

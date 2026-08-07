@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from eval_corpus.io_atomic import sha256_file
+from eval_corpus.run_manifest import consume_evidence_release_auth
 from eval_corpus.secure_fs import (
     FilesystemAuthorizationError,
     assert_regular_evidence_tree,
@@ -286,12 +287,77 @@ def write_release_receipt(
     return {"receipt": receipt, "receipt_sha256": hashlib.sha256(raw).hexdigest()}
 
 
+def _require_release_auth(auth: Any, operation: str) -> None:
+    if getattr(auth, "operation", None) != operation:
+        raise PermissionError(f"release operation requires bound {operation} authorization")
+
+
+def write_authorized_gate2_marker(
+    evidence_root: Path | str,
+    fields: dict[str, Any],
+    *,
+    auth: Any,
+) -> dict[str, Any]:
+    """Authorized wrapper for marker construction."""
+    consume_evidence_release_auth(
+        auth, "evidence_assembly", {"evidence_root": evidence_root}
+    )
+    return write_gate2_marker(evidence_root, fields)
+
+
+def create_authorized_archive(
+    evidence_root: Path | str,
+    archive_path: Path | str,
+    *,
+    auth: Any,
+) -> dict[str, Any]:
+    """Authorized wrapper for deterministic archive creation."""
+    consume_evidence_release_auth(
+        auth,
+        "archive_creation",
+        {"evidence_root": evidence_root, "archive_path": archive_path},
+    )
+    return create_deterministic_archive(evidence_root, archive_path)
+
+
+def write_authorized_release_receipt(
+    receipt_path: Path | str,
+    *,
+    auth: Any,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """Authorized wrapper for external receipt creation."""
+    if not isinstance(kwargs.get("archive"), dict):
+        raise PermissionError("release receipt requires an archive result object")
+    archive = kwargs["archive"]
+    archive_path = archive.get("archive_path")
+    bound = consume_evidence_release_auth(
+        auth,
+        "release_receipt",
+        {"archive_path": archive_path, "receipt_path": receipt_path},
+    )
+    archive_file = Path(str(archive_path)).expanduser().absolute()
+    if not archive_file.is_file() or archive_file.is_symlink():
+        raise FilesystemAuthorizationError("release receipt archive must be a regular file")
+    if sha256_file(archive_file) != str(archive.get("archive_sha256") or ""):
+        raise FilesystemAuthorizationError("release receipt archive hash does not match file")
+    marker_file = Path(bound["evidence_root"]) / EVIDENCE_MARKER_NAME
+    if not marker_file.is_file() or marker_file.is_symlink():
+        raise FilesystemAuthorizationError("release receipt requires the Gate 2 marker")
+    if sha256_file(marker_file) != str(kwargs.get("marker_sha256") or ""):
+        raise FilesystemAuthorizationError("release receipt marker hash does not match file")
+    return write_release_receipt(receipt_path, **kwargs)
+
+
 __all__ = [
     "ARCHIVE_RECIPE_ID",
     "EVIDENCE_MARKER_NAME",
     "INVENTORY_SCHEMA",
+    "create_authorized_archive",
     "create_deterministic_archive",
     "inventory_evidence_directory",
+    "write_authorized_gate2_marker",
+    "write_authorized_release_receipt",
     "write_gate2_marker",
     "write_release_receipt",
 ]
