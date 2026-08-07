@@ -391,6 +391,7 @@ def run_one_shot_query(
         verify_startup_identity(startup, startup_identity, context="one-shot")
     return {
         "returncode": proc.returncode,
+        "stdout": proc.stdout,
         "stderr": proc.stderr,
         "startup": startup,
         "result": result,
@@ -600,6 +601,7 @@ def make_subprocess_query_fn(
             require_vector_only=True,
             require_enrichment_provenance=require_enrichment_provenance,
         )
+        _fn.last_payload = payload
         hits = payload["result"].get("hits") or []
         return list(hits)
 
