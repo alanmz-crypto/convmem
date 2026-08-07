@@ -32,6 +32,7 @@ DEFAULT_CRITICAL_MODULES = (
     "eval_corpus.subprocess_compare",
     "query",
 )
+_IMPORT_SHADOW_SUFFIXES = {".py", ".pyc", ".so", ".pyd", ".pth"}
 
 
 def sha256_file(path: Path | str) -> str:
@@ -41,9 +42,12 @@ def sha256_file(path: Path | str) -> str:
     stricter single-link invariant belongs to mutable attempt inputs and final
     evidence artifacts, not the immutable interpreter/dependency receipt.
     """
-    target = Path(path).expanduser().resolve(strict=True)
-    if not target.is_file() or target.is_symlink():
-        raise SourceIdentityError(f"regular non-symlinked file required: {target}")
+    raw = Path(path).expanduser()
+    if raw.is_symlink():
+        raise SourceIdentityError(f"symlinked file is not an approved identity input: {raw}")
+    target = raw.resolve(strict=True)
+    if not target.is_file():
+        raise SourceIdentityError(f"regular file required: {target}")
     digest = hashlib.sha256()
     with target.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -103,6 +107,23 @@ def _inventory_sha256(items: Iterable[str]) -> str:
             "utf-8", errors="surrogateescape"
         )
     ).hexdigest()
+
+
+def _shadowing_inventory(items: Iterable[str]) -> list[str]:
+    """Find untracked/ignored files that could alter Python imports.
+
+    Generated ``__pycache__`` files are recorded but are not themselves an
+    import-root shadow.  Source files, path configuration files, and native
+    modules outside those generated directories remain fail-closed hazards.
+    """
+    unsafe: list[str] = []
+    for item in items:
+        path = Path(item)
+        if "__pycache__" in path.parts:
+            continue
+        if path.name in {"sitecustomize.py", "usercustomize.py"} or path.suffix.lower() in _IMPORT_SHADOW_SUFFIXES:
+            unsafe.append(item)
+    return sorted(unsafe)
 
 
 def _tracked_tree_sha256(repo_root: Path) -> str:
@@ -172,6 +193,11 @@ def collect_source_identity(
     tracked, untracked, ignored = _tracked_status(root)
     if require_clean_tracked and tracked:
         raise SourceIdentityError(f"tracked worktree is dirty: {tracked[:5]}")
+    shadowing = _shadowing_inventory([*untracked, *ignored])
+    if shadowing:
+        raise SourceIdentityError(
+            f"untracked or ignored import-shadowing files present: {shadowing[:5]}"
+        )
     python_path = Path(sys.executable).resolve(strict=True)
     identity: dict[str, Any] = {
         "schema_version": SOURCE_IDENTITY_VERSION,
@@ -183,6 +209,7 @@ def collect_source_identity(
         "untracked_inventory_sha256": _inventory_sha256(untracked),
         "ignored_inventory": ignored,
         "ignored_inventory_sha256": _inventory_sha256(ignored),
+        "import_shadowing_inventory": shadowing,
         "submodule_status": _submodule_state(root),
         "dependency_lock_path": str(lock),
         "dependency_lock_sha256": sha256_file(lock),
@@ -215,6 +242,10 @@ _APPROVAL_KEYS = (
     "user_site_enabled",
     "critical_modules",
     "dependency_inventory_sha256",
+    "untracked_inventory_sha256",
+    "ignored_inventory_sha256",
+    "import_shadowing_inventory",
+    "submodule_status",
 )
 
 
@@ -227,6 +258,9 @@ def verify_source_identity(
         raise SourceIdentityError("approved source identity schema is unsupported")
     if observed.get("schema_version") != SOURCE_IDENTITY_VERSION:
         raise SourceIdentityError("observed source identity schema is unsupported")
+    for label, identity in (("approved", approved), ("observed", observed)):
+        if identity.get("identity_sha256") != canonical_identity_sha256(identity):
+            raise SourceIdentityError(f"{label} source identity self-hash mismatch")
     if not bool(observed.get("clean_tracked_worktree")):
         raise SourceIdentityError("executing worktree has tracked changes")
     for key in _APPROVAL_KEYS:
@@ -257,6 +291,19 @@ def verify_manifest_source_identity(
     return observed
 
 
+def verify_manifest_path_source_identity(
+    manifest_path: Path | str,
+    *,
+    repo_root: Path | str,
+) -> dict[str, Any] | None:
+    """Verify a real manifest before importing the phase's application code."""
+    path = Path(manifest_path).expanduser().resolve(strict=True)
+    body = json.loads(path.read_text(encoding="utf-8"))
+    if str(body.get("execution_mode") or "") != "real":
+        return None
+    return verify_manifest_source_identity(body, repo_root=repo_root)
+
+
 __all__ = [
     "DEFAULT_CRITICAL_MODULES",
     "SOURCE_IDENTITY_VERSION",
@@ -264,6 +311,7 @@ __all__ = [
     "canonical_identity_sha256",
     "collect_source_identity",
     "sha256_file",
+    "verify_manifest_path_source_identity",
     "verify_manifest_source_identity",
     "verify_source_identity",
 ]

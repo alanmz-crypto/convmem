@@ -35,6 +35,21 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     sys.path.insert(0, str(REPO))
+    if args.run_manifest is not None:
+        try:
+            from eval_corpus.source_identity import (
+                SourceIdentityError,
+                verify_manifest_path_source_identity,
+            )
+
+            verify_manifest_path_source_identity(args.run_manifest, repo_root=REPO)
+        except (OSError, ValueError, SourceIdentityError) as exc:
+            print(
+                f"Refusing adjudicate: source identity verification failed: {exc}",
+                file=sys.stderr,
+            )
+            return 2
+
     from eval_corpus.adjudicate import emit_corpus_acceptance
     from eval_corpus.run_manifest import bind_adjudicate
 

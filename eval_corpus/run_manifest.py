@@ -42,6 +42,7 @@ REQUIRED_REAL_FIELDS = (
     "resource_ceiling",
     "service_policy",
     "prohibited_actions",
+    "source_identity",
 )
 
 DEFAULT_UNCERTAINTY = {
@@ -184,6 +185,7 @@ REQUIRED_R2B_FIELDS = (
     "service_policy",
     "prohibited_actions",
     "source_snapshot",
+    "source_identity",
 )
 
 _EVAL_ROOT_MARKER = "/.local/share/convmem/eval"
@@ -546,6 +548,11 @@ def validate_r2b_manifest_schema(manifest: dict[str, Any]) -> list[str]:
     for key in REQUIRED_R2B_FIELDS:
         if key not in manifest:
             errors.append(f"missing required R2b field {key}")
+    source_identity = manifest.get("source_identity")
+    if not isinstance(source_identity, dict):
+        errors.append("source_identity must be an object")
+    elif source_identity.get("schema_version") != "source_identity_v1":
+        errors.append("source_identity schema_version is unsupported")
     ops = manifest.get("operations")
     if not isinstance(ops, list) or not ops:
         errors.append("operations must be a nonempty list")
@@ -634,6 +641,11 @@ def validate_run_manifest_schema(manifest: dict[str, Any]) -> list[str]:
             for key in REQUIRED_REAL_FIELDS:
                 if key not in manifest:
                     errors.append(f"missing required field {key}")
+            source_identity = manifest.get("source_identity")
+            if not isinstance(source_identity, dict):
+                errors.append("source_identity must be an object")
+            elif source_identity.get("schema_version") != "source_identity_v1":
+                errors.append("source_identity schema_version is unsupported")
             if str(manifest.get("primary_view") or "") != "embedding_influenced":
                 errors.append("primary_view must be embedding_influenced")
             if not str(manifest.get("ryan_approved_manifest_sha256") or ""):
@@ -1216,6 +1228,7 @@ def make_fixture_run_manifest(**overrides: Any) -> dict[str, Any]:
             "compare",
         ],
         "prohibited_actions": ["promote", "service_stop", "cleanup_external", "model_execution"],
+        "source_identity": {"schema_version": "source_identity_v1", "test_fixture": True},
         "paths": {},
         **DEFAULT_UNCERTAINTY,
     }
@@ -1253,6 +1266,10 @@ def make_real_run_manifest_for_tests(
         "embed_host": paths.get("embed_host", "http://127.0.0.1:0"),
         "embed_mode": overrides.pop("embed_mode", "ollama"),
         "resume": overrides.pop("resume", False),
+        "source_identity": overrides.pop(
+            "source_identity",
+            {"schema_version": "source_identity_v1", "test_fixture": True},
+        ),
         **DEFAULT_UNCERTAINTY,
     }
     body.update(overrides)
@@ -1328,6 +1345,10 @@ def make_r2b_run_manifest_for_tests(
         "service_policy": "no_service_changes",
         "prohibited_actions": sorted(R2B_REQUIRED_PROHIBITED),
         "source_snapshot": source_snapshot,
+        "source_identity": overrides.pop(
+            "source_identity",
+            {"schema_version": "source_identity_v1", "test_fixture": True},
+        ),
     }
     body.update(overrides)
     digest = canonical_manifest_body_sha256(body)
