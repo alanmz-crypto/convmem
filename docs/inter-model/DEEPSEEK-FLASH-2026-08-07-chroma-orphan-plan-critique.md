@@ -20,7 +20,7 @@
 
 2. **Query-union sampling undercounts orphans.** Bounded probes with modest `n_results` miss orphans outside top-k (already observed: 4 orphans on `cal_good_transition` outside top-20). k-NN may never surface distant orphans. Inventory needs at least one probe with `n_results ≥ collection.count() + slack`, plus **symmetric diff** (HNSW/query IDs − METADATA, and METADATA − HNSW).
 
-3. **`document is None` guard may be too broad.** Legitimate embedding-only rows (metadata present, document absent) would be dropped. Evidence shows current orphans have **both** `document=None` and `metadata=None`, but guard should be `documents[i] is None and metadatas[i] is None` (or equivalent orphan predicate). `query_summaries()` also uses `_flatten()` — verify summary collection semantics before applying the same skip rule blindly.
+3. **`document is None` guard may be too broad.** Flash flagged verifying `query_summaries()` before applying a shared skip rule. **Plan revision (2026-08-07):** predicate reverted to evidence-backed `document is None`; T1a read-only scan found 0 null-document rows in `conversation_summaries` (2,351 rows). AND-narrowing not adopted without evidence.
 
 ---
 
@@ -28,7 +28,7 @@
 
 - **Explicit P0-B capture path:** raw `open_chroma_for_verify` → `collection.query()` only; never `query_units()` / post-`_flatten()` paths for inventory.
 - **Ordering note:** P0-B inventory pass may run in parallel with P0-A **implementation**, but P0-B **data collection** must not depend on post-guard code — document this.
-- **Tighten guard predicate:** skip only when both document and metadata are `None` (orphan signature), not `document is None` alone.
+- **Verify guard predicate via T1a** before T2: check `query_summaries()` for `document=None`/`metadata=present` rows; default to `document is None` if none found (T1a completed — none found).
 - **Inventory methodology:** add large-`n_results` enumeration probe(s); compute bidirectional diff; include `row_found: bool` per ID (already planned — keep).
 - **Define S/M/L thresholds** in plan (currently referenced but not numerically defined). Flash suggests combining absolute count, fraction of corpus, and query-surface (how many probes hit orphans).
 
