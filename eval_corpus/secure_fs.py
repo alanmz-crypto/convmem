@@ -10,6 +10,7 @@ the run-manifest binder.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import stat
 import uuid
@@ -257,6 +258,71 @@ def copy_immutable_input(
     }
 
 
+def write_absent_json(
+    path: Path | str,
+    obj: Any,
+    *,
+    approved_root: Path | str,
+) -> dict[str, Any]:
+    """Publish one JSON file without replacing an existing leaf.
+
+    The final name is created with ``link`` only after the complete payload is
+    fsynced.  A racing file or symlink therefore makes publication fail closed
+    instead of being replaced or followed.
+    """
+    target = assert_contained_no_symlink(path, approved_root)
+    parent = target.parent
+    _require_directory(parent)
+    payload = json.dumps(
+        obj,
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+        allow_nan=False,
+    ).encode("utf-8") + b"\n"
+    parent_fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    temp_name = f".{target.name}.{uuid.uuid4().hex}.tmp"
+    temp_fd: int | None = None
+    try:
+        temp_fd = os.open(
+            temp_name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=parent_fd,
+        )
+        offset = 0
+        while offset < len(payload):
+            written = os.write(temp_fd, payload[offset:])
+            if written <= 0:
+                raise FilesystemAuthorizationError(f"short JSON write: {target}")
+            offset += written
+        os.fsync(temp_fd)
+        os.close(temp_fd)
+        temp_fd = None
+        os.link(
+            temp_name,
+            target.name,
+            src_dir_fd=parent_fd,
+            dst_dir_fd=parent_fd,
+            follow_symlinks=False,
+        )
+        os.unlink(temp_name, dir_fd=parent_fd)
+        os.fsync(parent_fd)
+        return receipt_for_path(target, require_regular=True)
+    except FileExistsError as exc:
+        raise FilesystemAuthorizationError(
+            f"JSON output must remain absent until publication: {target}"
+        ) from exc
+    finally:
+        if temp_fd is not None:
+            os.close(temp_fd)
+        try:
+            os.unlink(temp_name, dir_fd=parent_fd)
+        except OSError:
+            pass
+        os.close(parent_fd)
+
+
 def assert_regular_evidence_tree(root: Path | str) -> None:
     """Evidence directories may contain directories and singly linked regular files only."""
     base = _absolute(root)
@@ -281,4 +347,5 @@ __all__ = [
     "copy_immutable_input",
     "create_absent_attempt_root",
     "receipt_for_path",
+    "write_absent_json",
 ]
