@@ -10,8 +10,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import re
 import secrets
+import stat
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -434,6 +436,185 @@ class AuthContext:
 
 def load_run_manifest(path: Path | str) -> dict[str, Any]:
     return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def _read_manifest_bytes_once(path: Path | str) -> tuple[dict[str, Any], bytes]:
+    """Read and parse one stable, singly linked manifest file snapshot."""
+    target = Path(path).expanduser().absolute()
+    current = Path(target.anchor or "/")
+    for component in target.parts[1:]:
+        current /= component
+        info = current.lstat()
+        if stat.S_ISLNK(info.st_mode):
+            raise PermissionError(f"manifest path contains a symlink: {current}")
+    info = target.lstat()
+    if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+        raise PermissionError("manifest must be a singly linked regular file")
+    fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        before = os.fstat(fd)
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(fd, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        after = os.fstat(fd)
+    finally:
+        os.close(fd)
+    identity_fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+    if any(getattr(before, field) != getattr(after, field) for field in identity_fields):
+        raise PermissionError("manifest changed while being read")
+    raw = b"".join(chunks)
+    try:
+        body = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise PermissionError("manifest is not stable UTF-8 JSON") from exc
+    if not isinstance(body, dict):
+        raise PermissionError("manifest body must be a JSON object")
+    return body, raw
+
+
+def _canonical_approved_paths(value: Mapping[str, Any]) -> dict[str, str]:
+    if not isinstance(value, Mapping) or not value:
+        raise PermissionError("grant approved_paths must be a nonempty object")
+    result: dict[str, str] = {}
+    for key, path in value.items():
+        if not isinstance(key, str) or not key:
+            raise PermissionError("grant approved_paths keys must be nonempty strings")
+        if not isinstance(path, str) or not path:
+            raise PermissionError("grant approved_paths values must be paths")
+        result[key] = _norm_path(path)
+    return dict(sorted(result.items()))
+
+
+def consume_operation_grant(
+    grant_path: Path | str,
+    *,
+    operation: str,
+    manifest_path: Path | str,
+    grant_id: str,
+    approved_paths: Mapping[str, Any],
+    approved_git_oid: str,
+    attempt_id: str,
+    run_id: str,
+    manifest: Mapping[str, Any] | None = None,
+    now: Any = None,
+) -> dict[str, Any]:
+    """Consume one operation grant bound to one stable manifest and attempt."""
+    if not isinstance(operation, str) or not _SAFE_RUN_ID_RE.fullmatch(operation):
+        raise PermissionError("grant operation has unsafe identity")
+    if not isinstance(grant_id, str) or not _SAFE_RUN_ID_RE.fullmatch(grant_id):
+        raise PermissionError("grant grant_id has unsafe identity")
+    if not isinstance(attempt_id, str) or not _SAFE_RUN_ID_RE.fullmatch(attempt_id):
+        raise PermissionError("grant attempt_id has unsafe identity")
+    if not isinstance(run_id, str) or not _SAFE_RUN_ID_RE.fullmatch(run_id):
+        raise PermissionError("grant run_id has unsafe identity")
+    if not isinstance(approved_git_oid, str) or not re.fullmatch(
+        r"[0-9a-f]{40}", approved_git_oid
+    ):
+        raise PermissionError("grant approved_git_oid must be lowercase 40-hex")
+
+    body, _raw = _read_manifest_bytes_once(manifest_path)
+    errors = validate_run_manifest_schema(body)
+    if errors:
+        raise PermissionError("; ".join(errors))
+    assert_manifest_file_matches_approval(Path(manifest_path), body)
+    assert_operation_allowed(body, operation)
+    body_digest = canonical_manifest_body_sha256(body)
+    if manifest is not None and canonical_manifest_body_sha256(manifest) != body_digest:
+        raise PermissionError("supplied manifest differs from the on-disk manifest")
+
+    approved_paths_canonical = _canonical_approved_paths(approved_paths)
+    manifest_paths = body.get("paths")
+    if isinstance(manifest_paths, Mapping):
+        for key, value in approved_paths_canonical.items():
+            if key in manifest_paths and _norm_path(manifest_paths[key]) != value:
+                raise PermissionError(f"grant approved path mismatch: {key}")
+    source_identity = body.get("source_identity")
+    if body.get("execution_mode") == "real" and body.get("test_only") is not True:
+        if not isinstance(source_identity, Mapping):
+            raise PermissionError("real grant manifest requires source_identity")
+        source_root = source_identity.get("repository_root")
+        if not isinstance(source_root, str) or not source_root:
+            raise PermissionError("real grant manifest requires repository_root")
+        try:
+            from eval_corpus.source_identity import verify_manifest_source_identity
+
+            verify_manifest_source_identity(body, repo_root=source_root)
+        except Exception as exc:
+            raise PermissionError(f"grant source identity verification failed: {exc}") from exc
+    if isinstance(source_identity, Mapping):
+        manifest_oid = source_identity.get("approved_source_git_oid")
+        if manifest_oid is not None and str(manifest_oid) != approved_git_oid:
+            raise PermissionError("grant approved Git object mismatches manifest")
+    manifest_run_id = body.get("run_id")
+    if manifest_run_id is not None and str(manifest_run_id) != run_id:
+        raise PermissionError("grant run_id mismatches manifest")
+    manifest_attempt_id = body.get("attempt_id")
+    if manifest_attempt_id is not None and str(manifest_attempt_id) != attempt_id:
+        raise PermissionError("grant attempt_id mismatches manifest")
+
+    from eval_corpus.single_use_grant import consume_single_use_grant
+
+    return consume_single_use_grant(
+        grant_path,
+        {
+            "grant_id": grant_id,
+            "attempt_id": attempt_id,
+            "run_id": run_id,
+            "operation": operation,
+            "manifest_body_sha256": body_digest,
+            "approved_paths": approved_paths_canonical,
+            "approved_git_oid": approved_git_oid,
+        },
+        now=now,
+    )
+
+
+def consume_bound_operation_grant(
+    auth: AuthContext,
+    *,
+    grant_path: Path | str | None,
+    grant_id: str | None,
+    attempt_id: str | None,
+    manifest_path: Path | str,
+    runtime: Mapping[str, Any],
+    now: Any = None,
+) -> dict[str, Any] | None:
+    """Require and consume a human grant for a real bound operation."""
+    if auth.execution_mode != "real" or auth.manifest.get("test_only") is True:
+        return None
+    if grant_path is None or grant_id is None or attempt_id is None:
+        raise PermissionError(
+            f"real {auth.operation} requires --grant, --grant-id, and --attempt-id"
+        )
+    source_identity = auth.manifest.get("source_identity")
+    approved_git_oid = (
+        source_identity.get("approved_source_git_oid")
+        if isinstance(source_identity, Mapping)
+        else None
+    )
+    run_id = auth.manifest.get("run_id")
+    if not isinstance(approved_git_oid, str) or not isinstance(run_id, str):
+        raise PermissionError(
+            f"real {auth.operation} manifest must bind source Git object and run_id"
+        )
+    approved_paths = {
+        key: runtime[key] for key in PATH_FIELD_NAMES if key in runtime
+    }
+    return consume_operation_grant(
+        grant_path,
+        operation=auth.operation,
+        manifest_path=manifest_path,
+        grant_id=grant_id,
+        approved_paths=approved_paths,
+        approved_git_oid=approved_git_oid,
+        attempt_id=attempt_id,
+        run_id=run_id,
+        manifest=auth.manifest,
+        now=now,
+    )
 
 
 def manifest_sha256(path: Path | str) -> str:
@@ -1640,6 +1821,8 @@ __all__ = [
     "bind_model_execution",
     "bind_query_clone",
     "bind_evidence_release",
+    "consume_operation_grant",
+    "consume_bound_operation_grant",
     "consume_evidence_release_auth",
     "bind_r2a_config_generation",
     "canonical_manifest_body_sha256",

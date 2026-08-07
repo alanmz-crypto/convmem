@@ -32,6 +32,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reviewer", default="ryan")
     parser.add_argument("--authorize-fixture", action="store_true")
     parser.add_argument("--run-manifest", type=Path, default=None)
+    parser.add_argument("--grant", type=Path, default=None, help="Single-use operation grant")
+    parser.add_argument("--grant-id", default=None, help="Grant identity bound to this attempt")
+    parser.add_argument("--attempt-id", default=None, help="One-shot adjudication attempt identity")
     args = parser.parse_args(argv)
 
     sys.path.insert(0, str(REPO))
@@ -51,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     from eval_corpus.adjudicate import emit_corpus_acceptance
-    from eval_corpus.run_manifest import bind_adjudicate
+    from eval_corpus.run_manifest import bind_adjudicate, consume_bound_operation_grant
 
     capture_dir = args.capture_dir.expanduser()
     adjudications = args.adjudications.expanduser()
@@ -62,9 +65,21 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
-        bind_adjudicate(
+        auth = bind_adjudicate(
             authorize_fixture=args.authorize_fixture,
             run_manifest_path=args.run_manifest,
+            runtime={
+                "capture_dir": capture_dir,
+                "adjudications": adjudications,
+                "acceptance_out": acceptance_out,
+            },
+        )
+        consume_bound_operation_grant(
+            auth,
+            grant_path=args.grant,
+            grant_id=args.grant_id,
+            attempt_id=args.attempt_id,
+            manifest_path=args.run_manifest,
             runtime={
                 "capture_dir": capture_dir,
                 "adjudications": adjudications,

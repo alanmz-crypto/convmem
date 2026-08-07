@@ -25,6 +25,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--embed-host", default="http://127.0.0.1:11434")
     parser.add_argument("--authorize-fixture", action="store_true")
     parser.add_argument("--run-manifest", type=Path, default=None)
+    parser.add_argument("--grant", type=Path, default=None, help="Single-use operation grant")
+    parser.add_argument("--grant-id", default=None, help="Grant identity bound to this attempt")
+    parser.add_argument("--attempt-id", default=None, help="One-shot config attempt identity")
     args = parser.parse_args(argv)
 
     sys.path.insert(0, str(REPO))
@@ -47,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     from eval_corpus.run_manifest import (
         bind_config_generation,
         bind_r2a_config_generation,
+        consume_bound_operation_grant,
         load_run_manifest,
     )
     from eval_corpus.shadow_config import generate_shadow_config
@@ -63,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
     }
 
     r2a_grant = None
+    auth = None
     try:
         if args.run_manifest is not None and not args.authorize_fixture:
             preview = load_run_manifest(args.run_manifest)
@@ -72,15 +77,24 @@ def main(argv: list[str] | None = None) -> int:
                     runtime=runtime,
                 )
             else:
-                bind_config_generation(
+                auth = bind_config_generation(
                     authorize_fixture=False,
                     run_manifest_path=args.run_manifest,
                     runtime=runtime,
                 )
         else:
-            bind_config_generation(
+            auth = bind_config_generation(
                 authorize_fixture=args.authorize_fixture,
                 run_manifest_path=args.run_manifest,
+                runtime=runtime,
+            )
+        if auth is not None:
+            consume_bound_operation_grant(
+                auth,
+                grant_path=args.grant,
+                grant_id=args.grant_id,
+                attempt_id=args.attempt_id,
+                manifest_path=args.run_manifest,
                 runtime=runtime,
             )
     except Exception as exc:  # pylint: disable=broad-exception-caught

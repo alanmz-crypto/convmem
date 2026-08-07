@@ -35,6 +35,9 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Approved run-manifest (required for execution_mode=real)",
     )
+    parser.add_argument("--grant", type=Path, default=None, help="Single-use operation grant")
+    parser.add_argument("--grant-id", default=None, help="Grant identity bound to this attempt")
+    parser.add_argument("--attempt-id", default=None, help="One-shot capture attempt identity")
     parser.add_argument("--export", type=Path, required=True)
     parser.add_argument("--processed", type=Path, required=True)
     parser.add_argument("--capture-dir", type=Path, required=True)
@@ -118,6 +121,36 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     from eval_corpus.capture import run_capture
+
+    if (
+        args.run_manifest is not None
+        and not args.authorize_fixture
+        and str(manifest.get("execution_mode") or "") == "real"
+        and manifest.get("test_only") is not True
+    ):
+        from eval_corpus.run_manifest import consume_operation_grant
+
+        try:
+            source_identity = manifest.get("source_identity") or {}
+            consume_operation_grant(
+                args.grant,
+                operation="capture",
+                manifest_path=args.run_manifest,
+                grant_id=args.grant_id,
+                approved_paths={
+                    "export": args.export,
+                    "processed": args.processed,
+                    "capture_dir": args.capture_dir,
+                    "chroma_dir": args.chroma_dir,
+                },
+                approved_git_oid=source_identity.get("approved_source_git_oid"),
+                attempt_id=args.attempt_id,
+                run_id=manifest.get("run_id"),
+                manifest=manifest,
+            )
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            print(f"Refusing capture: single-use grant failed: {exc}", file=sys.stderr)
+            return 2
 
     max_retries = 1 if r2b_capability is not None else args.max_retries
     result = run_capture(
