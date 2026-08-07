@@ -29,7 +29,7 @@ JudgeBench measures pairwise preference accuracy (pick correct from a contrastiv
 
 **Evidence caveat:** The Aug 4 Crush session benchmarked `qwen2.5-coder:14b` on "QA judgment tests" and reported professional results — but it's unclear whether those tests measured *code* QA (matching the model's coder specialization) or *prose faithfulness* QA (the summarization/synthesis grading `eval_judge.py` actually does). A coder-specialized model may judge natural-language faithfulness differently than code correctness. Treat this as a *reasonable candidate* rather than a *validated swap* until confirmed.
 
-**Calibration gate (must-pass before trusting fallback scores):** After the swap, run the judge against 5-10 known synthesis eval rows (mix of good and bad answers) and spot-check that scores directionally align with expectations. If they're nonsensical, fall back to `ornith:9b` as next candidate.
+**Calibration gate (must-pass before trusting fallback scores):** After the swap, run the judge against 5-10 known synthesis eval rows (mix of good and bad answers) and spot-check that scores directionally align with expectations. Fixture source: the eval-synthesis harness reads from its default row set (controlled by `CONVMEM_EVAL_SYNTHESIS_ROWS` env var or the built-in fixture path). If no fixture exists yet, assemble 5-10 rows manually before running this gate. If scores are nonsensical, fall back to `ornith:9b` as next candidate.
 
 **File:** `eval_judge.py:84-96`
 
@@ -171,27 +171,43 @@ python -m pytest tests/test_eval_methodology.py tests/test_doctor.py -x -q
 
 # 2. CRITICAL: negative controls must still fail closed under new prompt
 #    Run both with DeepSeek (API) and local fallback to confirm known-false
-#    synthesis still scores < 3 in both paths.
+#    synthesis still scores < 3 in both paths. under_test_model stays constant
+#    (the model that *would* produce the output being judged); only the judge
+#    model changes between calls. Setting it to the fallback model name would
+#    create a self-judging pair (judge_model == under_test_model), which
+#    convmem's independence check correctly flags as informational-only —
+#    defeating the gate.
 python -c "
 from config import load_config
 from eval_methodology import run_judge_negative_control
+import os
+
 cfg = load_config()
 models = cfg.get('models', {})
+under_test = models.get('summarize_model', 'llama3.1:8b')
 
 # DeepSeek path
-rc = run_judge_negative_control('synthesis', under_test_model=models.get('summarize_model','llama3.1:8b'), cfg=cfg)
+rc = run_judge_negative_control('synthesis', under_test_model=under_test, cfg=cfg)
 print(f'DeepSeek negative control: passed={rc[\"passed\"]} score={rc[\"score\"]} model={rc[\"judge_model\"]}')
 
-# Local fallback path (unset DEEPSEEK_API_KEY temporarily if needed)
-import os
+# Local fallback path (unset DEEPSEEK_API_KEY temporarily)
 key = os.environ.pop('DEEPSEEK_API_KEY', None)
-rc2 = run_judge_negative_control('synthesis', under_test_model='qwen2.5-coder:14b', cfg=cfg)
+rc2 = run_judge_negative_control('synthesis', under_test_model=under_test, cfg=cfg)
 if key: os.environ['DEEPSEEK_API_KEY'] = key
 print(f'Local fallback negative control: passed={rc2[\"passed\"]} score={rc2[\"score\"]} model={rc2[\"judge_model\"]}')
+
+# Confirm the two runs actually used different judge models
+assert rc['judge_model'] != rc2['judge_model'], \
+    f'Both runs used same judge model ({rc[\"judge_model\"]}) — env key may not have been set'
+print('OK: different judge models confirmed')
 "
 
 # 3. Spot-check calibration (must-pass gate from task 1)
+#    Fixture: use existing eval-synthesis rows (the harness reads from
+#    CONVMEM_EVAL_SYNTHESIS_ROWS or its default fixture path). If no fixture
+#    exists yet, assemble 5-10 known synthesis rows (mix of good/bad answers)
+#    before running this gate.
 python scripts/eval-synthesis.py --judge 2>&1 | head -40
 ```
 
-**Gate:** Negative controls must pass for both paths. If the new prompt breaks negative-control detection (score ≥ 3 on known-false), revert and iterate on the prompt format.
+**Gate:** Negative controls must pass for both paths AND the two runs must use different judge models. If the new prompt breaks negative-control detection (score ≥ 3 on known-false), revert and iterate on the prompt format.
