@@ -86,6 +86,21 @@ def test_loopback_and_proxy_controls(monkeypatch):
     assert session.calls[-1][2]["timeout"] == 120.0
 
 
+def test_ollama_adapter_exposes_resolved_model_identity(monkeypatch):
+    session = _Session()
+    monkeypatch.setattr("requests.Session", lambda: session)
+    from eval_corpus.embed_adapters import ollama_embed_fn
+
+    embed_fn = ollama_embed_fn(
+        "http://127.0.0.1:11434", "test:latest", dimensions=2
+    )
+
+    identity = embed_fn.__eval_model_identity__
+    assert identity["model_tag"] == "test:latest"
+    assert identity["model_digest"] == "sha256:test"
+    assert identity["quantization"] == "Q8_0"
+
+
 @pytest.mark.parametrize("host", ["https://127.0.0.1:11434", "http://example.test:11434"])
 def test_nonapproved_ollama_hosts_are_rejected(host):
     with pytest.raises(OllamaIdentityError, match="loopback|plain HTTP"):

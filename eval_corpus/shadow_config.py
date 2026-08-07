@@ -59,6 +59,7 @@ def generate_shadow_config(
     units_export: Path | None = None,
     enrichment_path: Path | None = None,
     ollama_host: str | None = None,
+    embed_model_digest: str | None = None,
     fallback_policy: str = "forbid",
     embedding_request_contract: str = "legacy_embeddings",
     embedding_dimensions: int | None = None,
@@ -119,6 +120,11 @@ def generate_shadow_config(
     if enrichment_path is not None:
         shadow["index"]["approved_decisions_path"] = str(enrichment_path)
     shadow["models"]["embed_model"] = embed_model
+    if embed_model_digest is not None:
+        digest = str(embed_model_digest).strip()
+        if not digest:
+            raise ValueError("embed_model_digest must be nonempty when supplied")
+        shadow["models"]["embed_model_digest"] = digest
     if ollama_host is not None:
         shadow["models"]["ollama_host"] = ollama_host
     shadow.setdefault("eval", {})

@@ -51,6 +51,7 @@ def ollama_embed_fn(host: str, model: str, dimensions: int = 8) -> EmbedFn:
     from eval_corpus.ollama_identity import OllamaEmbedClient
 
     client = OllamaEmbedClient(host)
+    model_identity = client.resolve_model(model)
 
     def _embed(text: str) -> list[float]:
         vector, _diagnostics = client.embed(
@@ -61,6 +62,7 @@ def ollama_embed_fn(host: str, model: str, dimensions: int = 8) -> EmbedFn:
         return vector
 
     _embed.__eval_adapter__ = "ollama"  # type: ignore[attr-defined]
+    _embed.__eval_model_identity__ = model_identity  # type: ignore[attr-defined]
     return _embed
 
 

@@ -189,6 +189,10 @@ class OperationBinderAdversarialTests(unittest.TestCase):
                 model_tag="nomic-embed-text",
                 baseline_model_tag="nomic-embed-text",
                 challenger_model_tag="challenger-embed-x",
+                baseline_model_digest="sha256:" + ("a" * 64),
+                challenger_model_digest="sha256:" + ("b" * 64),
+                baseline_embed_dimensions=768,
+                challenger_embed_dimensions=768,
             )
             man = root / "run.json"
             man.write_text(json.dumps(body), encoding="utf-8")
@@ -198,6 +202,10 @@ class OperationBinderAdversarialTests(unittest.TestCase):
                 return {
                     **paths,
                     "model_tag": tag,
+                    "model_digest": (
+                        "sha256:" + ("a" if tag == "nomic-embed-text" else "b") * 64
+                    ),
+                    "embed_dimensions": 768,
                     "embed_host": "http://127.0.0.1:0",
                     "corpus_package_sha256": "b" * 64,
                     "unit_corpus_fingerprint": "c" * 64,
@@ -589,6 +597,9 @@ def _build_arm(
         "unit_count": len(units),
         "batch_size": 4,
         "schema_version": "1",
+        "embed_model_digest": str(
+            (live_cfg.get("models") or {}).get("embed_model_digest") or ""
+        ),
     }
     run_shadow_build(
         units=units,
@@ -877,11 +888,12 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                     "index": {"chroma_dir": str(root / "dead")},
                     "models": {
                         "embed_model": "x",
+                        "embed_model_digest": "sha256:" + ("a" * 64),
                         "ollama_host": "http://127.0.0.1:1",
                         "rerank_model": "x",
                     },
                     "query": {"rerank": False},
-                    "eval": {},
+                    "eval": {"embedding_dimensions": 8},
                 }
                 b_chroma, b_cfg = _build_arm(
                     arm_dir=root / "baseline",
@@ -990,11 +1002,12 @@ class EndToEndSubprocessCompareTests(unittest.TestCase):
                     "index": {"chroma_dir": str(root / "dead")},
                     "models": {
                         "embed_model": "x",
+                        "embed_model_digest": "sha256:" + ("a" * 64),
                         "ollama_host": "http://127.0.0.1:1",
                         "rerank_model": "x",
                     },
                     "query": {"rerank": False},
-                    "eval": {},
+                    "eval": {"embedding_dimensions": 8},
                 }
                 arms = {}
                 for arm in ("baseline", "challenger"):
@@ -1392,11 +1405,12 @@ class RealManifestCompareTests(unittest.TestCase):
                     "index": {"chroma_dir": str(root / "dead")},
                     "models": {
                         "embed_model": "x",
+                        "embed_model_digest": "sha256:" + ("a" * 64),
                         "ollama_host": "http://127.0.0.1:1",
                         "rerank_model": "x",
                     },
                     "query": {"rerank": False},
-                    "eval": {},
+                    "eval": {"embedding_dimensions": 8},
                 }
                 arms = {}
                 enrich_line = (
@@ -1464,6 +1478,10 @@ class RealManifestCompareTests(unittest.TestCase):
                     "model_tag": "fake-embed",
                     "baseline_model_tag": "fake-embed",
                     "challenger_model_tag": "fake-embed",
+                    "baseline_model_digest": "sha256:" + ("a" * 64),
+                    "challenger_model_digest": "sha256:" + ("a" * 64),
+                    "baseline_embed_dimensions": 8,
+                    "challenger_embed_dimensions": 8,
                     "baseline_config_sha256": sha256_file(arms["baseline"][1]),
                     "challenger_config_sha256": sha256_file(arms["challenger"][1]),
                 }

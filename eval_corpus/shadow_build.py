@@ -428,6 +428,7 @@ def run_shadow_build(  # pylint: disable=too-many-arguments,too-many-locals
         "unit_corpus_fingerprint": str(manifest["unit_corpus_fingerprint"]),
         "package_sha256": package_sha,
         "embed_model": str(manifest["embed_model"]),
+        "embed_model_digest": str(manifest.get("embed_model_digest") or ""),
         "embed_mode": str(manifest.get("embed_mode") or "fixture"),
         "embedding_matrix_fingerprint": readback_matrix_fingerprint,
         "embedding_matrix_fingerprint_scope": "stored_float32_readback",
