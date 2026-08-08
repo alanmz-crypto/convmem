@@ -7,6 +7,11 @@ Deployed via `scripts/deploy-agent-protocol.sh`.
 
 **Do not duplicate session-start steps here** — they live in the global rule (Cursor `.mdc`, MCP `instructions=`, Codex global).
 
+**Codex Luna tier at launch — read this before delegating to Codex.** The `codex` CLI exposes a
+single model id (`gpt-5.6-luna`); the tier is the reasoning effort, set explicitly — the default
+config silently fixes it to `low`. Low/med/high (`-c 'model_reasoning_effort="low|medium|high"'`)
+map to delegate-down tiers 4 / 5–6 / 9. Full invocation map: `~/.codex/CODE-X-delegate-down.md`.
+
 **Repo-specific only:** `.codex/config.toml.example` for sandbox network override in this repo. Copy to `.codex/config.toml` to allow `convmem ask` in Codex.
 
 **Lost?** Read [`docs/MODEL-WORKFLOW.md`](docs/MODEL-WORKFLOW.md) — which repo, which script, which reference (prod digest, lab fork, record blocks).
