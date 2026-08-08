@@ -1,0 +1,20 @@
+{
+  "bucket": "synthesis-v1",
+  "case_count": 0,
+  "case_rows": [],
+  "corpus": "convmem-e2e",
+  "description": "E2E synthesis T5 disposition fixture scaffold (structure only; disposition placeholders, no gold values until Ryan lock).",
+  "disposition_placeholders": [
+    "retrieval_failure",
+    "generation_failure",
+    "judge_invalid",
+    "complete"
+  ],
+  "hashes": {
+    "cases.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gold.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "manifest_version": "convmem-e2e-synthesis-v1",
+  "rubric_dir": "rubrics/",
+  "schema": "E2ECaseResult"
+}

@@ -1,0 +1,30 @@
+{
+  "identity_registry_version": "identity-registry-v1",
+  "description": "Curated identity alias registry for JudgeBench offline calibration. Realizes known aliases to canonical identities; NO independence classification here (that is Tier 5+).",
+  "identities": {
+    "deepseek-v4-flash": {
+      "canonical_id": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "family": "deepseek",
+      "aliases": ["deepseek-v4-flash", "deepseek flash"]
+    },
+    "deepseek-v4-pro": {
+      "canonical_id": "deepseek-v4-pro",
+      "provider": "deepseek",
+      "family": "deepseek",
+      "aliases": ["deepseek-v4-pro", "deepseek pro"]
+    },
+    "llama3.1:8b": {
+      "canonical_id": "llama3.1:8b",
+      "provider": "ollama",
+      "family": "llama",
+      "aliases": ["llama3.1:8b"]
+    },
+    "qwen3-coder": {
+      "canonical_id": "qwen3-coder",
+      "provider": "ollama",
+      "family": "qwen",
+      "aliases": ["qwen3-coder:30b", "qwen3-coder:latest", "qwen3-coder-next"]
+    }
+  }
+}
