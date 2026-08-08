@@ -20,25 +20,13 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from chroma_store import (  # noqa: E402  # pylint: disable=wrong-import-position
-    SUMMARIES,
-    UNITS,
-    open_chroma_for_verify,
-)
-from backup_workflows import (  # noqa: E402  # pylint: disable=wrong-import-position
-    restore_validated_snapshot,
-)
-from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-position
-    BackupContext,
-    ResolverError,
-    resolve_snapshot,
-)
-from atomic_files import atomic_write_json  # noqa: E402  # pylint: disable=wrong-import-position
+if TYPE_CHECKING:
+    from backup_workflows import BackupContext
 
 DEFAULT_PARENT = Path.home() / ".local/share/convmem" / "restore-drill"
 DEFAULT_FIXTURE = REPO / "tests" / "fixtures" / "chroma_restore_drill.json"
@@ -60,6 +48,8 @@ def _utc_now() -> str:
 
 
 def _load_backup_context() -> BackupContext:
+    from backup_workflows import BackupContext, ResolverError
+
     env_file = Path(
         os.environ.get("CONVMEM_RESTIC_ENV", Path.home() / ".config/convmem/restic.env")
     )
@@ -245,6 +235,8 @@ class Report:
         self._write()
 
     def _write(self) -> None:
+        from atomic_files import atomic_write_json
+
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"meta": self.meta, "steps": self.steps}
         atomic_write_json(self.path, payload, indent=2, sort_keys=False)
@@ -287,6 +279,8 @@ def timed(fn: Callable[[], Any]) -> tuple[Any, float]:
 
 def restic_restore(ctx: BackupContext, snapshot_id: str, target: Path) -> None:
     """Restore via workflow — validates path against data_root first."""
+    from backup_workflows import restore_validated_snapshot
+
     outcome = restore_validated_snapshot(
         ctx, snapshot_id=snapshot_id, target_dir=target
     )
@@ -298,6 +292,8 @@ def restic_restore(ctx: BackupContext, snapshot_id: str, target: Path) -> None:
 
 
 def run_mandatory_verify(chroma_root: Path, fixture: dict, report: Report) -> None:
+    from chroma_store import SUMMARIES, UNITS, open_chroma_for_verify
+
     store = open_chroma_for_verify(str(chroma_root))
     try:
         # Missing collection must fail cleanly
@@ -470,6 +466,8 @@ def main(argv: list[str] | None = None) -> int:
         report.step("load_context", "PASS", f"profile={ctx.profile.value} tag={ctx.default_tag()}")
 
         try:
+            from restic_snapshot import ResolverError, resolve_snapshot
+
             def _select():
                 return resolve_snapshot(ctx, requested_id=snapshot_id)
 
