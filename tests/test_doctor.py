@@ -76,7 +76,15 @@ class DoctorTests(unittest.TestCase):
             mock.return_value = ok
         mock_verify.return_value = DoctorCheck("verify_continue", True, "skipped")
 
-        checks = run_doctor(run_verify=False)
+        # These live gates read real telemetry/files (synthesis_failures.jsonl,
+        # index history) and are not part of the decorator mock set above. Mock
+        # them so `all(c.ok)` is hermetic and does not depend on the machine's
+        # rolling 7-day telemetry window (which can legitimately be non-zero).
+        with (
+            patch("doctor._check_synthesis_gate", return_value=ok),
+            patch("doctor._check_index_gate", return_value=ok),
+        ):
+            checks = run_doctor(run_verify=False)
         self.assertTrue(all(c.ok for c in checks))
         self.assertEqual(doctor_exit_code(checks), 0)
 
