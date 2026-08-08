@@ -771,5 +771,61 @@ class TestNormalizeMessage(unittest.TestCase):
             ),
         )
 
+class R0401PairSetTests(unittest.TestCase):
+    """Scan-order/version-immunity for R0401 via the allowed-cycle-pair set."""
+
+    def test_known_cycle_passes_regardless_of_anchor_or_count(self):
+        baseline = count_fingerprints([])
+        reports = [
+            _msg(
+                "adapters/__init__.py",
+                "cyclic-import",
+                "R0401",
+                "Cyclic import (brief -> doctor -> mcp_server)",
+            ),
+            _msg(
+                "scripts/chroma_restore_drill.py",
+                "cyclic-import",
+                "R0401",
+                "Cyclic import (mcp_server -> brief -> doctor)",
+            ),
+            _msg(
+                "work_git.py",
+                "cyclic-import",
+                "R0401",
+                "Cyclic import (doctor -> brief)",
+            ),
+        ]
+        ok, lines = compare_reports(
+            baseline,
+            count_fingerprints(reports),
+            current_messages=reports,
+        )
+        self.assertTrue(ok, lines)
+
+    def test_novel_cycle_pair_fails_even_when_known_cycles_are_present(self):
+        reports = [
+            _msg(
+                "work_git.py",
+                "cyclic-import",
+                "R0401",
+                "Cyclic import (brief -> doctor -> mcp_server)",
+            ),
+            _msg(
+                "new_cycle.py",
+                "cyclic-import",
+                "R0401",
+                "Cyclic import (brief -> new_cycle -> doctor)",
+            ),
+        ]
+        ok, lines = compare_reports(
+            count_fingerprints([]),
+            count_fingerprints(reports),
+            current_messages=reports,
+        )
+        self.assertFalse(ok)
+        self.assertTrue(any("new_cycle" in line for line in lines))
+
+
 if __name__ == "__main__":
     unittest.main()
