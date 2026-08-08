@@ -1,0 +1,40 @@
+{
+  "id": "synthesis-grounded-v1",
+  "version": 1,
+  "task": "synthesis",
+  "rules": {
+    "forbids": [
+      {
+        "support": ["not_applicable"],
+        "coverage": ["material_omission"],
+        "contradiction": ["none"],
+        "verdict": ["pass"]
+      },
+      {
+        "support": ["not_applicable"],
+        "coverage": ["minor_omission"],
+        "contradiction": ["none"],
+        "verdict": ["pass"]
+      },
+      {
+        "support": ["full"],
+        "coverage": ["material_omission"],
+        "contradiction": ["none"],
+        "verdict": ["pass"]
+      },
+      {
+        "support": ["partial"],
+        "coverage": ["material_omission"],
+        "contradiction": ["none"],
+        "verdict": ["pass"]
+      }
+    ],
+    "justified_abstention": {
+      "support": ["not_applicable"],
+      "coverage": ["complete"],
+      "contradiction": ["none"],
+      "verdict": ["pass"]
+    },
+    "unjustified_abstention_verdict": "fail"
+  }
+}
