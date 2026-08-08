@@ -81,6 +81,75 @@ def normalize_message(message: str, *, symbol: str = "", msg_id: str = "") -> st
 _AGGREGATE_MSG_IDS = frozenset({"R0801", "R0401"})
 _AGGREGATE_SYMBOLS = frozenset({"duplicate-code", "cyclic-import"})
 
+# Known, tolerated cyclic-import pairs in this repo. pylint reports the same
+# pre-existing cycles anchored on different files depending on scan order and
+# Python version, so a raw aggregate R0401 count is non-deterministic (a
+# docs-only change can move it). Instead of comparing counts, compare the
+# unordered set of cycle-member pairs: any pair here is tolerated regardless of
+# how many times / where pylint reports it; a NOVEL pair is a real new cycle and
+# fails. Scan-order- and version-immune.
+_ALLOWED_CYCLIC_PAIRS = frozenset(
+    {
+        ("ask", "ledger_recent"),
+        ("ask", "mcp_server"),
+        ("ask", "query"),
+        ("backup_workflows", "complete_data_restore"),
+        ("backup_workflows", "doctor"),
+        ("brief", "doctor"),
+        ("brief", "ingest"),
+        ("brief", "mcp_server"),
+        ("brief", "propose_decision"),
+        ("brief", "query"),
+        ("complete_data_restore", "conflict_events"),
+        ("conflict_events", "hash_schema_gate"),
+        ("conflict_events", "propose_decision"),
+        ("hash_schema_gate", "propose_decision"),
+        ("doctor", "mcp_server"),
+        ("doctor", "observe"),
+        ("ingest", "query"),
+        ("ledger_recent", "observe"),
+        ("ledger_recent", "propose_decision"),
+        ("ledger_recent", "query"),
+        ("mcp_server", "query"),
+        ("observe", "propose_decision"),
+    }
+)
+
+
+def cyclic_pairs_from_message(message: str) -> frozenset[tuple[str, str]]:
+    """Extract unordered cycle-member pairs from an R0401 message.
+
+    ``Cyclic import (brief -> doctor -> mcp_server)`` -> {(brief, doctor),
+    (doctor, mcp_server)}. Returns an empty set for non-R0401/malformed text.
+    """
+    if "cyclic import" not in message.lower():
+        return frozenset()
+    start = message.find("(")
+    end = message.rfind(")")
+    if start < 0 or end < 0:
+        return frozenset()
+    body = message[start + 1 : end]
+    members = [part.strip() for part in body.split("->") if part.strip()]
+    pairs: set[tuple[str, str]] = set()
+    for i in range(len(members) - 1):
+        a, b = members[i], members[i + 1]
+        pairs.add(tuple(sorted((a, b))))
+    return frozenset(pairs)
+
+
+def novel_cyclic_pairs(current_messages: Iterable[dict[str, Any]]) -> frozenset[tuple[str, str]]:
+    """Return cycle pairs in live R0401 messages NOT in the allowed set."""
+    novel: set[tuple[str, str]] = set()
+    for msg in current_messages:
+        symbol = str(msg.get("symbol") or "")
+        msg_id = str(msg.get("message-id") or msg.get("message_id") or "")
+        if msg_id != "R0401" and symbol != "cyclic-import":
+            continue
+        for pair in cyclic_pairs_from_message(str(msg.get("message") or "")):
+            if pair not in _ALLOWED_CYCLIC_PAIRS:
+                novel.add(pair)
+    return frozenset(novel)
+
 # GitHub push "before" on branch creation (also reject shorter all-zero OIDs).
 _NULL_OID = frozenset({"0" * 40, "0" * 64})
 
@@ -179,11 +248,17 @@ def counter_to_baseline(counts: Counter[Fingerprint]) -> dict[str, Any]:
 
 
 def find_regressions(
-    baseline: Counter[Fingerprint], current: Counter[Fingerprint]
+    baseline: Counter[Fingerprint],
+    current: Counter[Fingerprint],
+    *,
+    skip_r0401: bool = False,
 ) -> list[tuple[Fingerprint, int, int]]:
     """Return (fingerprint, baseline_count, current_count) for each regression."""
     regressions: list[tuple[Fingerprint, int, int]] = []
     for fp, cur in sorted(current.items(), key=lambda kv: (kv[0][0], kv[0][2], kv[0][3])):
+        if skip_r0401 and fp[2] == "R0401":
+            # R0401 is governed by the allowed-cycle-pair check, not the count.
+            continue
         base = baseline.get(fp, 0)
         if cur > base:
             regressions.append((fp, base, cur))
@@ -199,22 +274,42 @@ def format_regression(fp: Fingerprint, base: int, cur: int) -> str:
 
 
 def compare_reports(
-    baseline_counts: Counter[Fingerprint], current_counts: Counter[Fingerprint]
+    baseline_counts: Counter[Fingerprint],
+    current_counts: Counter[Fingerprint],
+    current_messages: Iterable[dict[str, Any]] | None = None,
 ) -> tuple[bool, list[str]]:
-    """Return (ok, lines). ok True when no count increases."""
-    regs = find_regressions(baseline_counts, current_counts)
-    if not regs:
+    """Return (ok, lines). ok True when no regressions and no novel R0401 pair.
+
+    When ``current_messages`` is provided, R0401/cyclic-import is governed by the
+    allowed-cycle-pair set (immune to count/anchor drift), not by the aggregate
+    count: any novel cycle pair fails; known pairs pass regardless of how many
+    times pylint reports them. When it is None (legacy callers), R0401 keeps the
+    aggregate-count behavior.
+    """
+    novel: frozenset[tuple[str, str]] = frozenset()
+    use_pair_check = current_messages is not None
+    if use_pair_check:
+        novel = novel_cyclic_pairs(current_messages)
+    regs = find_regressions(
+        baseline_counts, current_counts, skip_r0401=use_pair_check
+    )
+    if not regs and not novel:
         return True, [
             f"Pylint regression gate PASS "
             f"({sum(current_counts.values())} findings, "
             f"{len(current_counts)} fingerprints; no new/increased vs baseline)"
         ]
-    lines = [
-        f"Pylint regression gate FAIL: {len(regs)} new/increased fingerprint(s)"
-    ]
+    lines = ["Pylint regression gate FAIL: 1 or more findings"]
     shown = regs[:40]
     for fp, base, cur in shown:
         lines.append(format_regression(fp, base, cur))
+    if novel:
+        shown_pairs = ", ".join(sorted(f"{a} <-> {b}" for a, b in novel))
+        lines.append(f"novel cyclic-import pair(s) not in allowed set: {shown_pairs}")
+        lines.append(
+            "add only genuinely-new cycles to _ALLOWED_CYCLIC_PAIRS after review; "
+            "a count/anchor change in known cycles is tolerated."
+        )
     if len(regs) > len(shown):
         lines.append(f"... and {len(regs) - len(shown)} more")
     return False, lines
@@ -446,8 +541,9 @@ def main(argv: list[str] | None = None) -> int:
         baseline_raw = json.loads(args.baseline.read_text(encoding="utf-8"))
         report_raw = json.loads(args.report.read_text(encoding="utf-8"))
         baseline = baseline_to_counter(baseline_raw)
-        current = count_fingerprints(load_report_messages(report_raw))
-        ok, lines = compare_reports(baseline, current)
+        current_msgs = load_report_messages(report_raw)
+        current = count_fingerprints(current_msgs)
+        ok, lines = compare_reports(baseline, current, current_messages=current_msgs)
         for line in lines:
             print(line)
         return 0 if ok else 1
@@ -506,10 +602,11 @@ def main(argv: list[str] | None = None) -> int:
                     return 1
 
         report_raw = json.loads(args.report.read_text(encoding="utf-8"))
-        current = count_fingerprints(load_report_messages(report_raw))
+        current_msgs = load_report_messages(report_raw)
+        current = count_fingerprints(current_msgs)
         # Always compare the live report to the *reference* baseline (base SHA
         # when present), never to a branch-raised baseline.
-        ok, lines = compare_reports(reference, current)
+        ok, lines = compare_reports(reference, current, current_messages=current_msgs)
         for line in lines:
             print(line)
         return 0 if ok else 1
