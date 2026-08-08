@@ -661,9 +661,10 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             except Exception as e:
                 if verbose:
                     print(f"    [warn] chunk {ch['start_offset']} summarize failed: {e}")
-                _log_chunk_failure(ch['start_offset'], "summarize", path, e)
+                if attempt == 2:
+                    _log_chunk_failure(ch['start_offset'], "summarize", path, e)
                 if attempt < 2:
-                    time.sleep(5 if attempt == 0 else 30)
+                    time.sleep(5 if attempt == 0 else 10)
         else:
             continue
 
@@ -681,11 +682,13 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             except Exception as e:
                 if verbose:
                     print(f"    [warn] chunk {ch['start_offset']} distill failed: {e}")
-                _log_chunk_failure(ch['start_offset'], "distill", path, e)
+                if attempt == 2:
+                    _log_chunk_failure(ch['start_offset'], "distill", path, e)
                 if attempt < 2:
-                    time.sleep(5 if attempt == 0 else 30)
+                    time.sleep(5 if attempt == 0 else 10)
         else:
             raw_units = []
+        distill_status = "degraded" if not raw_units else "done"
 
         session_meta = _chunk_session_meta(ch["messages"], path)
         units_to_add: list[tuple] = []
@@ -739,6 +742,7 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             "message_count": len(ch["messages"]),
             "start_offset": ch["start_offset"],
             "end_offset": ch["end_offset"],
+            "distill_status": distill_status,
             **session_meta,
         }
         # Batch write only — parse/LLM/embed above hold no source/export locks (N17).
