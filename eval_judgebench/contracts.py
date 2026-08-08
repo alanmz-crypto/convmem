@@ -15,7 +15,7 @@ LLM calls, no classification.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
@@ -120,7 +120,6 @@ class SemanticJudgmentV1:
                 f"SemanticJudgmentV1: expected object, got {type(data).__name__}"
             )
         _require_no_unknown_props(data, cls._FIELDS, "SemanticJudgmentV1")
-        presence = {k: (k in data) for k in cls._FIELDS}
         try:
             support = _enum_from_value(Support, data["support"], "support")
             coverage = _enum_from_value(Coverage, data["coverage"], "coverage")
@@ -168,7 +167,9 @@ class SemanticJudgmentV1:
 
 
 @dataclass
-class JudgeInvocationV1:
+class JudgeInvocationV1:  # pylint: disable=too-many-instance-attributes
+    # 12 data fields are dictated by the JudgeInvocationV1 spec (execution,
+    # identity, independence, telemetry).
     status: InvocationStatus
     judge_identity: str
     under_test_identity: str

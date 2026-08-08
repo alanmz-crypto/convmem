@@ -25,6 +25,7 @@ from typing import Any, Iterable
 from eval_judgebench.contracts import (
     InvocationStatus,
     SemanticJudgmentV1,
+    StructuralContractError,
     Verdict,
 )
 
@@ -66,7 +67,7 @@ def validate_judgment_dict(raw: dict[str, Any]) -> JudgmentValidation:
     """
     try:
         judgment = SemanticJudgmentV1.from_dict(raw)
-    except Exception as exc:  # StructuralContractError and subclasses
+    except StructuralContractError as exc:
         return JudgmentValidation(valid=False, violations=[str(exc)])
     return validate_judgment(judgment)
 

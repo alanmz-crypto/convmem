@@ -59,7 +59,6 @@ def scan_forbidden_imports() -> list[tuple[str, str]]:
                     hits.append((str(py), f"from {module} import ..."))
                 for alias in node.names:
                     if alias.name in FORBIDDEN:
-                        shown = module or f"{alias.name}"
                         hits.append((str(py), f"from {module} import {alias.name}"))
     return hits
 

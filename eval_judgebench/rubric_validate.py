@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from eval_judgebench.contract_validate import validate_judgment
 from eval_judgebench.contracts import (
@@ -75,7 +74,7 @@ def validate_against_rubric(
     forbids: list[dict[str, list[str]]] = rules.get("forbids") or []
     for pattern in forbids:
         if _pattern_matches(pattern, combo):
-            fields = {k: v for k, v in pattern.items()}
+            fields = dict(pattern.items())
             return RubricValidation(
                 valid=False,
                 violations=[
