@@ -64,26 +64,60 @@ def _ollama_generate(prompt: str, model: str, host: str, *, timeout: float = 300
 
 
 def _deepseek_generate(
-    prompt: str, model: str, base_url: str, *, timeout: float = 300
+    prompt: str,
+    model: str,
+    base_url: str,
+    *,
+    timeout: float = 300,
+    max_attempts: int = 2,
+    retry_backoff: float = 1.0,
 ) -> str:
+    """Non-streaming DeepSeek completion with a bounded transient retry.
+
+    Mirrors the streaming retry (_deepseek_generate_stream): the API can drop
+    a chunked non-streaming response (urllib3/requests ChunkedEncodingError,
+    5xx, timeouts) before the body completes. Retry transient transport and
+    5xx errors up to ``max_attempts - 1`` extra times with a short backoff;
+    4xx auth errors are never retried.
+    """
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
         raise RuntimeError(
             "summarize_model requests DeepSeek but DEEPSEEK_API_KEY is not set."
         )
-    resp = requests.post(
-        f"{base_url.rstrip('/')}/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}"},
-        json={
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.2,
-            "stream": False,
-        },
-        timeout=timeout,
-    )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"].strip()
+    effective = max(1, int(max_attempts))
+    for attempt in range(1, effective + 1):
+        try:
+            resp = requests.post(
+                f"{base_url.rstrip('/')}/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.2,
+                    "stream": False,
+                },
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"].strip()
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            if attempt >= effective:
+                raise
+            sys.stderr.write(
+                f"[llm] DeepSeek generate attempt {attempt} failed before a "
+                f"complete response; retrying (attempt {attempt + 1}/{effective})\n"
+            )
+            time.sleep(retry_backoff * attempt)
+        except requests.exceptions.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            if attempt >= effective or status is None or status < 500:
+                raise
+            sys.stderr.write(
+                f"[llm] DeepSeek generate attempt {attempt} HTTP {status}; "
+                f"retrying (attempt {attempt + 1}/{effective})\n"
+            )
+            time.sleep(retry_backoff * attempt)
 
 
 def _check_stream_stop(stop: threading.Event | None, timeout: float | None) -> None:
