@@ -20,6 +20,7 @@
 | `eval_model_identity.py` before run; `eval_provenance.py` comparison signature | Judge model selection (Ryan stop after calibration) |
 | JudgeBench runner + `eval_corpus/fixtures/judgebench/semantic-v1/` scaffold | Full corpus `convmem index` |
 | Legacy `eval_judge.py` explicit legacy path | v1 provenance bleed into legacy |
+| Judge injection hardening: structural untrusted-data framing + known-answer smoke test (already shipped on legacy `eval_judge.py`; full hardening per `ARCHITECTURE-judgebench.md` "Judge injection hardening" is deferred) | Full adversarial coverage (perplexity, JudgeDeceiver taxonomy) — reopened with J2 |
 | E2E `convmem-e2e/synthesis-v1/` fixture scaffold (structure only) | T5 gold authoring; Chroma Tier-L reconcile |
 
 Chroma orphan P0-A is a **separate arc** dependency for the E2E track only.
