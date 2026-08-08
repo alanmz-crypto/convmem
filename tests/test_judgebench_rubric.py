@@ -12,6 +12,9 @@ Golden judgments are the ones specified for synthesis in
 ARCHITECTURE-judgebench.md (S5/S6 reference rubric data).
 """
 
+# pylint: disable=wrong-import-position
+# Import must follow the repository-root sys.path bootstrap below so this test
+# runs both under pytest and as a direct script (matching existing test style).
 from __future__ import annotations
 
 import json
@@ -22,16 +25,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from eval_judgebench.contracts import (  # noqa: E402
+from eval_judgebench.contracts import (
     InvocationStatus,
     SemanticJudgmentV1,
 )
-from eval_judgebench.rubric import (  # noqa: E402
+from eval_judgebench.rubric import (
     RubricFormatError,
     RubricNotFoundError,
     load_rubric,
 )
-from eval_judgebench.rubric_validate import (  # noqa: E402
+from eval_judgebench.rubric_validate import (
     validate_against_rubric,
 )
 
