@@ -1,5 +1,7 @@
 """Tests for ChromaStore._flatten orphan-document guard (P0-A)."""
 
+# pylint: disable=protected-access
+
 from __future__ import annotations
 
 import unittest

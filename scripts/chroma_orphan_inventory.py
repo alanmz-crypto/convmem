@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=cyclic-import
 """Read-only HNSW-vs-METADATA orphan inventory (P0-B).
 
 Writes evidence JSON under /tmp only. Never mutates Chroma or corpus.
@@ -16,10 +17,18 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from chroma_readonly import _connect_readonly, _coerce_value, _db_path, collection_ids
-from chroma_store import UNITS, open_chroma_for_verify
-from config import load_config
-from llm import ollama_embed
+from chroma_readonly import (  # noqa: E402  # pylint: disable=wrong-import-position
+    _connect_readonly,
+    _coerce_value,
+    _db_path,
+    collection_ids,
+)
+from chroma_store import (  # noqa: E402  # pylint: disable=wrong-import-position
+    UNITS,
+    open_chroma_for_verify,
+)
+from config import load_config  # noqa: E402  # pylint: disable=wrong-import-position
+from llm import ollama_embed  # noqa: E402  # pylint: disable=wrong-import-position
 
 CALIBRATION = Path("/tmp/CODEX-2026-08-07-judge-bench-calibration.jsonl")
 CEILING = 500
@@ -37,12 +46,11 @@ DIVERSE_PROBES = [
 def _load_calibration_questions() -> list[dict]:
     if not CALIBRATION.is_file():
         return []
-    rows = []
-    for line in CALIBRATION.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line:
-            rows.append(json.loads(line))
-    return rows
+    return [
+        json.loads(line)
+        for line in CALIBRATION.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
 
 
 def _raw_query(chroma_dir: str, question: str, n_results: int, cfg: dict) -> dict:
@@ -52,7 +60,7 @@ def _raw_query(chroma_dir: str, question: str, n_results: int, cfg: dict) -> dic
     )
     store = open_chroma_for_verify(chroma_dir)
     try:
-        col = store._collection(UNITS)
+        col = store._collection(UNITS)  # pylint: disable=protected-access
         total = col.count()
         n = min(max(n_results, 1), max(total, 1))
         raw = col.query(query_embeddings=[embedding], n_results=n)
@@ -60,7 +68,6 @@ def _raw_query(chroma_dir: str, question: str, n_results: int, cfg: dict) -> dic
         store.close()
     ids = raw.get("ids", [[]])[0]
     docs = raw.get("documents", [[]])[0]
-    metas = raw.get("metadatas", [[]])[0]
     none_indices = [i for i, d in enumerate(docs) if d is None]
     none_ids = [ids[i] for i in none_indices]
     return {
@@ -202,7 +209,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
     report = run_inventory(output=args.output)
-    print(json.dumps({k: report[k] for k in report if k != "probes"}, indent=2))
+    print(json.dumps({k: v for k, v in report.items() if k != "probes"}, indent=2))
     print(f"\nWrote {report['output_path']}")
     return 0
 
