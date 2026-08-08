@@ -1,5 +1,6 @@
 [MASTER]
 ignore=.git,__pycache__,.venv,venv
+init-hook=import os, sys; sys.path[:0] = [os.path.abspath('.'), os.path.abspath('scripts')]
 
 [FORMAT]
 max-line-length=120
