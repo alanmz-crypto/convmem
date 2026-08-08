@@ -1,0 +1,14 @@
+{
+  "bucket": "semantic-v1",
+  "case_count": 0,
+  "case_rows": [],
+  "corpus": "judgebench",
+  "description": "JudgeBench offline frozen-evidence semantic calibration corpus (structure placeholder; no cases until Ryan gold lock).",
+  "hashes": {
+    "cases.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gold.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "manifest_version": "judgebench-semantic-v1",
+  "rubric_dir": "rubrics/",
+  "schema": "SemanticJudgmentV1"
+}
