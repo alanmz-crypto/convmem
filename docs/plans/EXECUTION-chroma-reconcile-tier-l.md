@@ -170,3 +170,55 @@ Separate from bulk orphan set. Investigate `debug-nopatch` and two hash IDs befo
 
 - **Ryan:** merge P0 PR #141 (DONE); then separate **"go rebuild"** for T7-5
 - **Cursor:** R3 exact commands after T7-2 codebase verification
+
+---
+
+## T7-2 deliverable — rebuild CLI verification (Cursor, 2026-08-08)
+
+**Status:** COMPLETE. **G3 / T7-4 may proceed** after G2b only — not before this section existed.
+
+### Finding: no export-replay CLI (path A does not exist)
+
+Codebase search confirms convmem has **no** `delete collection` + reindex-from-`knowledge_units.jsonl` command. There is no `delete_collection` call anywhere in the repo. `ingest.index()` upserts from source inventory via `processed.json`; it does **not** wipe HNSW orphans or reset a collection.
+
+`knowledge_units.jsonl` is an append-only export used for drift checks (`doctor` `index_drift`) and repair classification — **not** a replay source into Chroma today. See `docs/audit-ledger-first/LEDGER-FAILURE-MATRIX.md` (full replay from ledger is future-state).
+
+### Chosen path for tier L: **path B — full Chroma reset + source rescan**
+
+| Step | Actor | Command / action |
+|------|-------|------------------|
+| R1 | Cursor | Re-run inventory + `convmem doctor` (baseline counts) |
+| G4 verify | Cursor | `systemctl --user is-active convmem-watch.service convmem-refine.service convmem-monitor.timer` — all must be **inactive** before delete; stop with `systemctl --user stop convmem-watch.service convmem-refine.service convmem-monitor.timer` |
+| G2 / G2b | Ryan | `bash scripts/restic-ensure-chroma-snapshot.sh` + confirm snapshot id |
+| R2 | Ryan/Cursor | Restic `convmem-chroma` snapshot current (mandatory) |
+| R3 pre | **Ryan** | Delete live Chroma store: `rm -rf ~/.local/share/convmem/chroma` (**hook-blocked for agents** — Ryan terminal only) |
+| R3 | Ryan/Cursor | `rm ~/.local/share/convmem/processed.json` (**hook-blocked for agents**) |
+| R3 | Cursor | `convmem inventory` then `convmem index` (full source rescan per `docs/RECOVER.md` § Index drift) |
+| R4 | Cursor | `convmem doctor` (index_drift), inventory script, `pytest tests/test_chroma_flatten.py -q`, calibration run (informational gate per R4 caveat) |
+| R4 | Cursor | Restart daemons: `systemctl --user start convmem-watch.service convmem-refine.service convmem-monitor.timer` |
+
+**Why not processed.json wipe alone:** incremental `convmem index` without deleting Chroma leaves orphan HNSW vectors in place (646 `document=None` hits are HNSW−METADATA drift, not missing ingest). Collection delete is not exposed; **whole `chroma/` directory removal** is the supported nuclear option per RECOVER.md ("If Chroma itself is corrupt, restore from Restic … before reindexing" — equivalent to empty + reindex).
+
+**Alternative if Restic has pre-drift snapshot:** `scripts/chroma_restore_drill.py` pattern — restore tagged snapshot to run dir is drill-only; for production use Restic restore of `convmem-chroma` tag to live path (Ryan-gated, follow RECOVER.md live-replacement rules).
+
+### G4 verification (concrete)
+
+```bash
+# Must print inactive/inactive/inactive before R3 delete
+systemctl --user is-active convmem-watch.service convmem-refine.service convmem-monitor.timer
+pgrep -af "convmem (watch|refine|monitor)" || true
+```
+
+`convmem doctor --v1` includes `convmem-watch`, `convmem-refine`, `convmem-monitor.timer` systemd checks — use as secondary signal, not sole gate.
+
+### R4 judge dependency (item 6)
+
+`eval-synthesis.py --judge` on **merged `main`** post-#141 — not the excluded `fix-2026-08-07-judge-bench-judge-upgrades` worktree. Golden set: `/tmp/CODEX-2026-08-07-judge-bench-calibration.jsonl` (5 fixtures). Pass = completes without rerank crash; not production judge quality.
+
+### Blocks lifted
+
+| Gate | After T7-2 |
+|------|------------|
+| T7-4 (go rebuild) | Unblocked pending **G2b** + **G4 verified** |
+| T7-5 (R1–R4) | Unblocked after T7-4 |
+
