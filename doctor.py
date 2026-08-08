@@ -390,7 +390,12 @@ def _check_verify_script(*, run: bool) -> DoctorCheck:
 
 
 def _check_synthesis_gate() -> DoctorCheck:
-    """P1c gate: count synthesis failures in the last 7 days."""
+    """P1c gate: count synthesis failures in the last 7 days.
+
+    Splits ingest distill/summarize degradation (WARN — no data loss, chunk
+    committed with summary only) from ask-pipeline failures (FAIL — investigate)
+    by the ``stage`` field in synthesis_failures.jsonl.
+    """
     import json as _json
     from datetime import datetime as _dt, timezone as _tz, timedelta as _td
 
@@ -402,7 +407,8 @@ def _check_synthesis_gate() -> DoctorCheck:
             "0 failures in 7d (gate: >=3/week investigate ask pipeline; P1c Phase 1 shipped)",
         )
     cutoff = _dt.now(_tz.utc) - _td(days=7)
-    count = 0
+    ingest_degraded = 0
+    ask_failures = 0
     for line in log_path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
@@ -410,20 +416,25 @@ def _check_synthesis_gate() -> DoctorCheck:
         try:
             entry = _json.loads(line)
             ts = _dt.strptime(entry["ts"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=_tz.utc)
-            if ts >= cutoff:
-                count += 1
+            if ts < cutoff:
+                continue
+            if entry.get("stage") in ("distill", "summarize"):
+                ingest_degraded += 1
+            else:
+                ask_failures += 1
         except (KeyError, ValueError, _json.JSONDecodeError):
             continue
-    if count >= 3:
+    if ask_failures >= 3:
         return DoctorCheck(
             "synthesis_gate",
             False,
-            f"{count} failures in 7d — synthesis gate TRIGGERED (>=3; investigate ask pipeline)",
+            f"{ask_failures} ask failures in 7d — synthesis gate TRIGGERED (>=3; investigate ask pipeline)",
         )
     return DoctorCheck(
         "synthesis_gate",
         True,
-        f"{count} failures in 7d (gate: >=3/week investigate; partial synthesis on timeout shipped)",
+        f"{ask_failures} ask failures, {ingest_degraded} ingest-degraded in 7d"
+        f" (ingest-degraded = provider drops, no data loss)",
     )
 
 
