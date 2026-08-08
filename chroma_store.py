@@ -521,11 +521,17 @@ class ChromaStore:
         metas = res.get("metadatas", [[]])[0]
         dists = res.get("distances", [[]])[0]
         for i in range(len(ids)):
+            doc = docs[i] if i < len(docs) else ""
+            if doc is None:
+                continue
+            meta = metas[i] if i < len(metas) else {}
+            if meta is None:
+                meta = {}
             out.append(
                 {
                     "id": ids[i],
-                    "document": docs[i] if i < len(docs) else "",
-                    "metadata": metas[i] if i < len(metas) else {},
+                    "document": doc,
+                    "metadata": meta,
                     "distance": dists[i] if i < len(dists) else None,
                 }
             )
