@@ -58,3 +58,17 @@ Re-probe: `bash scripts/probe-crush-mcp-tools-call.sh` (always restores disabled
 DeepSeek V4 chat completions may return empty `message.content` with the answer
 in `reasoning_content`. Crush tool turns still work; do not treat empty `content`
 alone as a failed API key when HTTP 200 and reasoning text are present.
+
+## Note on JudgeBench Flash work
+
+When Ryan assigns **JudgeBench execution prep**, use the tier-tagged slice brief:
+
+- Execution: [`docs/plans/EXECUTION-judgebench-flash-slices.md`](plans/EXECUTION-judgebench-flash-slices.md)
+
+DeepSeek V4 Flash (Tier 1) owns **prep slices S1–S9 only**, with an OFF-LIMITS
+table and escalation ladder to Tier 5+. Slice completion is **not** production
+calibration — it does not authorize running, selecting, or calibrating judges.
+Follow the slice-execution checklist (announce tier+slice, `convmem doctor`,
+`git branch --show-current` not `main`, slice-scoped `pytest`, explicit-refspec
+commit+push, handoff). Full context:
+[`docs/plans/ARCHITECTURE-judgebench.md`](plans/ARCHITECTURE-judgebench.md).
