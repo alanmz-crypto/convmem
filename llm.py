@@ -63,6 +63,66 @@ def _ollama_generate(prompt: str, model: str, host: str, *, timeout: float = 300
     return resp.json().get("response", "").strip()
 
 
+def _post_deepseek(
+    prompt: str,
+    model: str,
+    base_url: str,
+    api_key: str,
+    *,
+    stream: bool,
+    timeout: float,
+) -> requests.Response:
+    """POST a DeepSeek chat completion; raise on non-2xx. Shared by stream/generate."""
+    body: dict = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.2,
+        "stream": stream,
+    }
+    resp = requests.post(
+        f"{base_url.rstrip('/')}/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json=body,
+        timeout=timeout,
+        **({"stream": True} if stream else {}),
+    )
+    resp.raise_for_status()
+    return resp
+
+
+def _deepseek_retry_decision(
+    exc: BaseException,
+    *,
+    attempt: int,
+    effective: int,
+    retry_backoff: float,
+    label: str,
+    yielded_any: bool = False,
+) -> None:
+    """Backoff/sleep for a transient error or raise when retry is exhausted/forbidden.
+
+    Retries ConnectionError/Timeout (plus 5xx). Streaming additionally refuses to
+    retry once any token was yielded (yielded_any). 4xx is never retried.
+    """
+    events: tuple[type[BaseException], ...] = (
+        requests.exceptions.ConnectionError,
+        requests.exceptions.Timeout,
+    )
+    if isinstance(exc, requests.exceptions.HTTPError):
+        status = exc.response.status_code if exc.response is not None else None  # type: ignore[union-attr]
+        if status is None or status < 500:
+            raise exc
+    elif not isinstance(exc, events):
+        raise exc
+    if yielded_any or attempt >= effective:
+        raise exc
+    sys.stderr.write(
+        f"[llm] DeepSeek {label} attempt {attempt} failed before a complete "
+        f"response; retrying (attempt {attempt + 1}/{effective})\n"
+    )
+    time.sleep(retry_backoff * attempt)
+
+
 def _deepseek_generate(
     prompt: str,
     model: str,
@@ -72,14 +132,7 @@ def _deepseek_generate(
     max_attempts: int = 2,
     retry_backoff: float = 1.0,
 ) -> str:
-    """Non-streaming DeepSeek completion with a bounded transient retry.
-
-    Mirrors the streaming retry (_deepseek_generate_stream): the API can drop
-    a chunked non-streaming response (urllib3/requests ChunkedEncodingError,
-    5xx, timeouts) before the body completes. Retry transient transport and
-    5xx errors up to ``max_attempts - 1`` extra times with a short backoff;
-    4xx auth errors are never retried.
-    """
+    """Non-streaming DeepSeek completion with a bounded transient retry."""
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -88,36 +141,23 @@ def _deepseek_generate(
     effective = max(1, int(max_attempts))
     for attempt in range(1, effective + 1):
         try:
-            resp = requests.post(
-                f"{base_url.rstrip('/')}/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.2,
-                    "stream": False,
-                },
-                timeout=timeout,
+            resp = _post_deepseek(
+                prompt, model, base_url, api_key, stream=False, timeout=timeout
             )
-            resp.raise_for_status()
             return resp.json()["choices"][0]["message"]["content"].strip()
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            if attempt >= effective:
-                raise
-            sys.stderr.write(
-                f"[llm] DeepSeek generate attempt {attempt} failed before a "
-                f"complete response; retrying (attempt {attempt + 1}/{effective})\n"
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.HTTPError,
+        ) as exc:
+            _deepseek_retry_decision(
+                exc,
+                attempt=attempt,
+                effective=effective,
+                retry_backoff=retry_backoff,
+                label="generate",
             )
-            time.sleep(retry_backoff * attempt)
-        except requests.exceptions.HTTPError as exc:
-            status = exc.response.status_code if exc.response is not None else None
-            if attempt >= effective or status is None or status < 500:
-                raise
-            sys.stderr.write(
-                f"[llm] DeepSeek generate attempt {attempt} HTTP {status}; "
-                f"retrying (attempt {attempt + 1}/{effective})\n"
-            )
-            time.sleep(retry_backoff * attempt)
+    raise RuntimeError("unreachable: retry loop must return or raise")
 
 
 def _check_stream_stop(stop: threading.Event | None, timeout: float | None) -> None:
@@ -192,19 +232,14 @@ def _deepseek_generate_stream(
     for attempt in range(1, effective + 1):
         yielded_any = False
         try:
-            resp = requests.post(
-                f"{base_url.rstrip('/')}/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.2,
-                    "stream": True,
-                },
-                timeout=connection_timeout,
+            resp = _post_deepseek(
+                prompt,
+                model,
+                base_url,
+                api_key,
                 stream=True,
+                timeout=connection_timeout or 0,
             )
-            resp.raise_for_status()
             for line in resp.iter_lines(decode_unicode=True):
                 _check_stream_stop(stop, timeout)
                 if not line or not line.startswith("data: "):
@@ -225,23 +260,19 @@ def _deepseek_generate_stream(
                     yielded_any = True
                     yield content
             return
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            if yielded_any or attempt >= effective:
-                raise
-            sys.stderr.write(
-                f"[llm] DeepSeek stream attempt {attempt} dropped before any "
-                f"tokens; retrying (attempt {attempt + 1}/{effective})\n"
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.HTTPError,
+        ) as exc:
+            _deepseek_retry_decision(
+                exc,
+                attempt=attempt,
+                effective=effective,
+                retry_backoff=retry_backoff,
+                label="stream",
+                yielded_any=yielded_any,
             )
-            time.sleep(retry_backoff * attempt)
-        except requests.exceptions.HTTPError as exc:
-            status = exc.response.status_code if exc.response is not None else None
-            if yielded_any or attempt >= effective or status is None or status < 500:
-                raise
-            sys.stderr.write(
-                f"[llm] DeepSeek stream attempt {attempt} HTTP {status}; "
-                f"retrying (attempt {attempt + 1}/{effective})\n"
-            )
-            time.sleep(retry_backoff * attempt)
 
 
 class ModelFallbackError(RuntimeError):
