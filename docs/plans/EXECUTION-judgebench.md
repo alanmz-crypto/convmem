@@ -36,14 +36,18 @@ T1–T5 may proceed after Execution HITL. T6 scaffold is structure-only until Ry
 
 ## Tasks
 
-| ID | Deliverable | Depends on | Gates | Lane |
-| --- | --- | --- | --- | --- |
-| T1 | Shared contracts: `SemanticJudgmentV1`, `JudgeInvocationV1`, MechanicalGrade hooks, rubric validator framework | — | pytest contract/validator tests; no unknown JSON properties | Cursor |
-| T2 | `eval_model_identity.py` + versioned registry stub | T1 | `cross_family` enforcement; `unknown` fail-closed; no substring guessing | Cursor |
-| T3 | `eval_provenance.py` comparison-signature expansion | T2 | signature changes → `needs_rebaseline`; identity policy version bound | Cursor |
-| T4 | JudgeBench offline runner + `semantic-v1/` corpus scaffold (manifest, rubric refs, empty cases) | T3 | runner dry-run; zero Chroma imports in semantic path | Cursor |
-| T5 | Legacy `eval_judge.py` shim (`--legacy` or explicit legacy result type) | T4 | legacy output unchanged; cannot emit v1 provenance | Cursor |
-| T6 | E2E `synthesis-v1/` fixture scaffold for T5 disposition (structure only) | T5 | manifest parses; no gold values until Ryan lock | Cursor |
+| ID | Deliverable | Depends on | Start tier | Flash slices | Escalation owner | Gates |
+| --- | --- | --- | --- | --- | --- | --- |
+| T1 | Shared contracts: `SemanticJudgmentV1`, `JudgeInvocationV1`, MechanicalGrade hooks, rubric validator framework | — | 1–4 | S3–S6, S9 | Luna high+ if rubric semantics contested | pytest contract/validator tests; no unknown JSON properties |
+| T2 | `eval_model_identity.py` + versioned registry stub | T1 | 5 | S7 loader only | V4 Pro / Luna max for classify | `cross_family` enforcement; `unknown` fail-closed; no substring guessing |
+| T3 | `eval_provenance.py` comparison-signature expansion | T2 | 5 | — | Tier 5–8 | signature changes → `needs_rebaseline`; identity policy version bound |
+| T4 | JudgeBench offline runner + `semantic-v1/` corpus scaffold (manifest, rubric refs, empty cases) | T3 | 5–7 | S1, S8 | Tier 5–7 for runner orchestration | runner dry-run; zero Chroma imports in semantic path |
+| T5 | Legacy `eval_judge.py` shim (`--legacy` or explicit legacy result type) | T4 | 6–8 | — | Tier 6–8 | legacy output unchanged; cannot emit v1 provenance |
+| T6 | E2E `synthesis-v1/` fixture scaffold for T5 disposition (structure only) | T5 | 1 | S2 | Gold population → Ryan stop | manifest parses; no gold values until Ryan lock |
+
+**Flash executor brief:**
+[`EXECUTION-judgebench-flash-slices.md`](EXECUTION-judgebench-flash-slices.md) —
+Crush + DeepSeek V4 Flash runs S1–S9 only; stops at escalation wall.
 
 ## Stop points
 
