@@ -13,19 +13,41 @@ For each source file:
 import fcntl
 import hashlib
 import json
+import time
 from collections.abc import Callable
 from contextlib import contextmanager
-from pathlib import Path
-import time
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 
-from adapters.detect import detect_format, get_parser, TOOL_BY_FORMAT
+from adapters.detect import TOOL_BY_FORMAT, detect_format, get_parser
 from chroma_write_store import production_chroma_write_session
 from config import load_config
 from distill import distill, normalize_unit
 from llm import ollama_embed, summarize
 
 _SYNTHESIS_FAIL_LOG = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
+
+
+@dataclass
+class _ReindexSnapshot:
+    """Rows eligible for pruning after one successful file generation."""
+
+    unit_ids: dict[str, set[str]] = field(default_factory=dict)
+    summary_ids: dict[str, set[str]] = field(default_factory=dict)
+
+
+@dataclass
+class _ChunkBuildResult:
+    """File-level build outcome and deterministic replacement manifest."""
+
+    completed: bool = True
+    chunks: int = 0
+    units: int = 0
+    exact_suppressed: int = 0
+    semantic_queued: int = 0
+    summary_ids: set[str] = field(default_factory=set)
+    unit_ids: set[str] = field(default_factory=set)
 
 
 def _log_chunk_failure(chunk_id: int, stage: str, session_file: str, error: Exception) -> None:
@@ -484,6 +506,7 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
     metadata: dict,
     units_to_add: list,
     verbose: bool,
+    written_unit_ids: set[str] | None = None,
 ) -> tuple[bool, int, int, int, int]:
     """Source/export-locked batch write with ingestion dedup statistics."""
     from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
@@ -511,6 +534,8 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
                         with open(units_export, "a", encoding="utf-8") as uf:
                             uf.write(json.dumps(unit) + "\n")
                 n_units += 1
+            if written_unit_ids is not None:
+                written_unit_ids.update(row[0]["id"] for row in dedupe.accepted)
         dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
         if verbose:
             for row in dedupe.exact_suppressions:
@@ -538,45 +563,20 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
     idx: dict,
     path: str,
     path_key: str,
-    file_hash: str,
     messages: list,
     models: dict,
     units_export: Path | None,
-    force_file: str | None,
-    supersede_on_reindex: bool,
     verbose: bool,
     fmt: str = "inter_model_doc",
-) -> tuple[bool, int]:
-    """Index one inter-model or kiro-steering doc. Returns (committed, n_units)."""
+) -> tuple[bool, int, set[str]]:
+    """Build one inter-model or Kiro steering file without pruning old rows."""
     from inter_model_index import index_inter_model_messages
 
     tool, source_type, author_model = {
         "kiro_steering": ("kiro", "kiro_steering", "kiro-steering-index"),
     }.get(fmt, ("inter-model", "inter_model_doc", "inter-model-index"))
     chroma_dir = idx["chroma_dir"]
-    if force_file:
-        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
-            store = _pw.store
-            cfg = _pw.live_cfg
-            tombstone_tag = f"{path_key}#{file_hash[:12]}"
-            if supersede_on_reindex:
-                _echo_neutralize_preview(
-                    store.preview_supersede_for_source(path_key),
-                    Path(path).name,
-                    tombstone_tag,
-                    verbose,
-                )
-                n_del = store.supersede_units_for_source(
-                    path_key, superseded_by=tombstone_tag
-                )
-                if verbose and n_del:
-                    print(
-                        f"  [reindex] superseded {n_del} units for {Path(path).name}",
-                    )
-            else:
-                n_del = store.delete_units_for_source(path_key)
-                if verbose and n_del:
-                    print(f"  [reindex] cleared {n_del} units for {Path(path).name}")
+    unit_ids: set[str] = set()
     try:
         n_units = index_inter_model_messages(
             path,
@@ -591,20 +591,13 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
             tool=tool,
             source_type=source_type,
             author_model=author_model,
+            unit_ids_out=unit_ids,
         )
     except Exception as e:
         if verbose:
             print(f"  [skip] inter-model index failed {path}: {e}")
-        return False, 0
-
-    committed = commit_processed_index_entry(
-        idx["processed_log"],
-        file_hash=file_hash,
-        path_key=path_key,
-        chunks=0,
-        units=n_units,
-    )
-    return committed, n_units
+        return False, 0, set()
+    return True, n_units, unit_ids
 
 
 def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
@@ -623,19 +616,13 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
     overlap: int,
     min_confidence: float,
     verbose: bool,
-) -> tuple[bool, int, int, int, int]:
-    """Summarize/distill/embed unlocked, then locked batch writes.
-
-    Returns (completed_without_exclusion_abort, chunks_indexed, units_indexed).
-    """
+) -> _ChunkBuildResult:
+    """Build a file unlocked and return its complete replacement manifest."""
     chunks = chunk_messages(messages, chunk_size, overlap)
     if verbose:
         print(f"  [index] {Path(path).name}  ({len(messages)} msgs, {len(chunks)} chunks)")
 
-    n_indexed = 0
-    n_units = 0
-    n_exact_suppressed = 0
-    n_semantic_queued = 0
+    result = _ChunkBuildResult()
     chunk_date = ""
     for ch in chunks:
         text = render_chunk(ch["messages"])
@@ -666,8 +653,10 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
                 if attempt < 2:
                     time.sleep(5 if attempt == 0 else 10)
         else:
+            result.completed = False
             continue
 
+        distill_failed = False
         for attempt in range(3):
             try:
                 raw_units = distill(
@@ -688,7 +677,11 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
                     time.sleep(5 if attempt == 0 else 10)
         else:
             raw_units = []
-        distill_status = "degraded" if not raw_units else "done"
+            distill_failed = True
+            result.completed = False
+        distill_status = (
+            "degraded" if distill_failed else "empty" if not raw_units else "done"
+        )
 
         session_meta = _chunk_session_meta(ch["messages"], path)
         units_to_add: list[tuple] = []
@@ -715,6 +708,8 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             except Exception as e:
                 if verbose:
                     print(f"    [warn] unit embed failed: {e}")
+                _log_chunk_failure(ch['start_offset'], "embed", path, e)
+                result.completed = False
                 continue
             unit_meta = {
                 "id": unit["id"],
@@ -746,79 +741,131 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             **session_meta,
         }
         # Batch write only — parse/LLM/embed above hold no source/export locks (N17).
-        ok, d_idx, d_units, d_exact, d_semantic = _commit_chunk_to_stores(
-            cfg=cfg,
-            idx=idx,
-            path_key=path_key,
-            path=path,
-            file_hash=file_hash,
-            chroma_dir=chroma_dir,
-            units_export=units_export if units_export else None,
-            doc_id=doc_id,
-            summary=summary,
-            summary_embedding=summary_embedding,
-            metadata=metadata,
-            units_to_add=units_to_add,
-            verbose=verbose,
-        )
-        if not ok:
-            return (
-                False,
-                n_indexed,
-                n_units,
-                n_exact_suppressed,
-                n_semantic_queued,
+        chunk_unit_ids: set[str] = set()
+        try:
+            ok, d_idx, d_units, d_exact, d_semantic = _commit_chunk_to_stores(
+                cfg=cfg,
+                idx=idx,
+                path_key=path_key,
+                path=path,
+                file_hash=file_hash,
+                chroma_dir=chroma_dir,
+                units_export=units_export if units_export else None,
+                doc_id=doc_id,
+                summary=summary,
+                summary_embedding=summary_embedding,
+                metadata=metadata,
+                units_to_add=units_to_add,
+                verbose=verbose,
+                written_unit_ids=chunk_unit_ids,
             )
-        n_indexed += d_idx
-        n_units += d_units
-        n_exact_suppressed += d_exact
-        n_semantic_queued += d_semantic
-    return True, n_indexed, n_units, n_exact_suppressed, n_semantic_queued
+        except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+            if verbose:
+                print(f"    [warn] chunk {ch['start_offset']} write failed: {exc}")
+            _log_chunk_failure(ch['start_offset'], "write", path, exc)
+            result.completed = False
+            continue
+        if not ok:
+            result.completed = False
+            return result
+        result.summary_ids.add(doc_id)
+        result.unit_ids.update(chunk_unit_ids)
+        result.chunks += d_idx
+        result.units += d_units
+        result.exact_suppressed += d_exact
+        result.semantic_queued += d_semantic
+    return result
 
 
-def _reindex_clear_existing(  # pylint: disable=unused-argument
+def _snapshot_reindex_rows(
+    *,
+    path: str,
+    path_key: str,
+) -> _ReindexSnapshot:
+    """Snapshot only the rows a completed replacement may later prune."""
+    snapshot = _ReindexSnapshot()
+    with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+        store = _pw.store
+        for source_path in dict.fromkeys([path, path_key]):
+            snapshot.unit_ids[source_path] = store.ids_for_source(
+                "knowledge_units", source_path
+            )
+            snapshot.summary_ids[source_path] = store.ids_for_source(
+                "conversation_summaries", source_path
+            )
+    return snapshot
+
+
+def _prune_completed_reindex(  # pylint: disable=too-many-arguments
     *,
     cfg: dict,
-    chroma_dir: str,
+    idx: dict,
     path: str,
     path_key: str,
     file_hash: str,
+    snapshot: _ReindexSnapshot,
+    keep_unit_ids: set[str],
+    keep_summary_ids: set[str],
     supersede_on_reindex: bool,
     verbose: bool,
-) -> None:
-    """Clear or supersede derived rows before force re-index of one file."""
-    with production_chroma_write_session(entrypoint="ingest.write") as _pw:
-        store = _pw.store
-        cfg = _pw.live_cfg
-        n_units_del = 0
-        n_sum_del = 0
-        tombstone_tag = f"{path_key}#{file_hash[:12]}"
-        if supersede_on_reindex:
-            # One echo per logical file: merge previews across the
-            # path/path_key variants, deduped by unit id.
-            merged: dict[str, dict] = {}
-            for sp in dict.fromkeys([path, path_key]):
-                for unit in store.preview_supersede_for_source(sp):
-                    merged.setdefault(unit["id"], unit)
-            _echo_neutralize_preview(
-                list(merged.values()), Path(path).name, tombstone_tag, verbose
-            )
-        for sp in dict.fromkeys([path, path_key]):
+) -> bool:
+    """Prune the snapshotted generation only after a complete replacement."""
+    from purge_locks import source_flock
+
+    with source_flock(cfg, path_key):
+        if sha256_file(path) != file_hash:
+            if verbose:
+                print(f"  [skip] changed during index {Path(path).name}")
+            return False
+        processed = load_processed(idx["processed_log"])
+        if _path_is_excluded(processed, path_key):
+            if verbose:
+                print(f"  [skip] excluded before reindex prune {Path(path).name}")
+            return False
+        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+            store = _pw.store
+            n_units = 0
+            n_summaries = 0
+            tombstone_tag = f"{path_key}#{file_hash[:12]}"
             if supersede_on_reindex:
-                n_units_del += store.supersede_units_for_source(
-                    sp, superseded_by=tombstone_tag
+                merged: dict[str, dict] = {}
+                for source_path, candidate_ids in snapshot.unit_ids.items():
+                    for unit in store.preview_supersede_for_source(
+                        source_path,
+                        keep_ids=keep_unit_ids,
+                        candidate_ids=candidate_ids,
+                    ):
+                        merged.setdefault(unit["id"], unit)
+                _echo_neutralize_preview(
+                    list(merged.values()), Path(path).name, tombstone_tag, verbose
                 )
-                # Summaries have no tombstone metadata yet — still hard-delete.
-                n_sum_del += store.delete_summaries_for_source(sp)
-            else:
-                n_units_del += store.delete_units_for_source(sp)
-                n_sum_del += store.delete_summaries_for_source(sp)
-        if verbose and (n_units_del or n_sum_del):
-            verb = "superseded" if supersede_on_reindex else "cleared"
-            print(
-                f"  [reindex] {verb} {n_units_del} units, "
-                f"{n_sum_del} summaries for {Path(path).name}",
-            )
+            for source_path, candidate_ids in snapshot.unit_ids.items():
+                if supersede_on_reindex:
+                    n_units += store.supersede_units_for_source(
+                        source_path,
+                        superseded_by=tombstone_tag,
+                        keep_ids=keep_unit_ids,
+                        candidate_ids=candidate_ids,
+                    )
+                else:
+                    n_units += store.delete_units_for_source(
+                        source_path,
+                        keep_ids=keep_unit_ids,
+                        candidate_ids=candidate_ids,
+                    )
+            for source_path, candidate_ids in snapshot.summary_ids.items():
+                n_summaries += store.delete_summaries_for_source(
+                    source_path,
+                    keep_ids=keep_summary_ids,
+                    candidate_ids=candidate_ids,
+                )
+            if verbose and (n_units or n_summaries):
+                verb = "superseded" if supersede_on_reindex else "pruned"
+                print(
+                    f"  [reindex] {verb} {n_units} stale units, "
+                    f"{n_summaries} stale summaries for {Path(path).name}"
+                )
+    return True
 
 
 
@@ -863,20 +910,6 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             print(f"  [skip] excluded {Path(path).name}")
         return "skipped", 0, 0, 0, 0
 
-    if force_reindex and force_file:
-        for key, entry in list(processed.items()):
-            if (
-                isinstance(entry, dict)
-                and entry.get("path") == path_key
-                and not entry.get("excluded")
-            ):
-                del processed[key]
-
-    if force_file and not force_reindex:
-        stale = _stored_hash_for_path(path_key, processed)
-        if stale and stale != file_hash:
-            del processed[stale]
-
     if not force_reindex:
         if file_hash in processed:
             if verbose:
@@ -887,16 +920,11 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
     chroma_dir = idx["chroma_dir"]
 
-    if force_file:
-        _reindex_clear_existing(
-            cfg=cfg,
-            chroma_dir=chroma_dir,
-            path=path,
-            path_key=path_key,
-            file_hash=file_hash,
-            supersede_on_reindex=supersede_on_reindex,
-            verbose=verbose,
-        )
+    snapshot = (
+        _snapshot_reindex_rows(path=path, path_key=path_key)
+        if force_file
+        else None
+    )
 
     try:
         messages = parser(path)
@@ -906,29 +934,51 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
         return "ignored", 0, 0, 0, 0
 
     if fmt in ("inter_model_doc", "kiro_steering"):
-        committed, n_units = _index_inter_model_file(
+        completed, n_units, unit_ids = _index_inter_model_file(
+            cfg=cfg,
+            idx=idx,
+            path=path,
+            path_key=path_key,
+            messages=messages,
+            models=models,
+            units_export=units_export,
+            verbose=verbose,
+            fmt=fmt,
+        )
+        if not completed:
+            if verbose and n_units == 0:
+                print(
+                    "  [skip] inter-model index failed or excluded "
+                    f"{Path(path).name}"
+                )
+            return "skipped", 0, 0, 0, 0
+        if snapshot is not None and not _prune_completed_reindex(
             cfg=cfg,
             idx=idx,
             path=path,
             path_key=path_key,
             file_hash=file_hash,
-            messages=messages,
-            models=models,
-            units_export=units_export,
-            force_file=force_file,
+            snapshot=snapshot,
+            keep_unit_ids=unit_ids,
+            keep_summary_ids=set(),
             supersede_on_reindex=supersede_on_reindex,
             verbose=verbose,
-            fmt=fmt,
+        ):
+            return "skipped", 0, n_units, 0, 0
+        committed = commit_processed_index_entry(
+            idx["processed_log"],
+            file_hash=file_hash,
+            path_key=path_key,
+            chunks=0,
+            units=n_units,
         )
         if not committed:
-            if verbose and n_units == 0:
-                print(f"  [skip] inter-model index failed or excluded {Path(path).name}")
-            elif verbose:
+            if verbose:
                 print(f"  [skip] excluded during index {Path(path).name}")
-            return "skipped", 0, 0, 0, 0
+            return "skipped", 0, n_units, 0, 0
         return "processed", 0, n_units, 0, 0
 
-    completed, n_indexed, n_units, n_exact, n_semantic = _process_file_chunks(
+    result = _process_file_chunks(
         cfg=cfg,
         idx=idx,
         path=path,
@@ -944,21 +994,59 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
         min_confidence=min_confidence,
         verbose=verbose,
     )
-    if not completed:
-        return "skipped", n_indexed, n_units, n_exact, n_semantic
+    if not result.completed:
+        return (
+            "skipped",
+            result.chunks,
+            result.units,
+            result.exact_suppressed,
+            result.semantic_queued,
+        )
+
+    if snapshot is not None and not _prune_completed_reindex(
+        cfg=cfg,
+        idx=idx,
+        path=path,
+        path_key=path_key,
+        file_hash=file_hash,
+        snapshot=snapshot,
+        keep_unit_ids=result.unit_ids,
+        keep_summary_ids=result.summary_ids,
+        supersede_on_reindex=supersede_on_reindex,
+        verbose=verbose,
+    ):
+        return (
+            "skipped",
+            result.chunks,
+            result.units,
+            result.exact_suppressed,
+            result.semantic_queued,
+        )
 
     committed = commit_processed_index_entry(
         idx["processed_log"],
         file_hash=file_hash,
         path_key=path_key,
-        chunks=n_indexed,
-        units=n_units,
+        chunks=result.chunks,
+        units=result.units,
     )
     if not committed:
         if verbose:
             print(f"  [skip] excluded during index {Path(path).name}")
-        return "skipped", n_indexed, n_units, n_exact, n_semantic
-    return "processed", n_indexed, n_units, n_exact, n_semantic
+        return (
+            "skipped",
+            result.chunks,
+            result.units,
+            result.exact_suppressed,
+            result.semantic_queued,
+        )
+    return (
+        "processed",
+        result.chunks,
+        result.units,
+        result.exact_suppressed,
+        result.semantic_queued,
+    )
 
 
 def index(
