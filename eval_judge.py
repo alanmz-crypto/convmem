@@ -43,9 +43,16 @@ _JUDGE_RUBRIC = {
 }
 
 _JUDGE_PROMPT = """{rubric}
-Respond with EXACTLY two lines and nothing else:
+
+Step 1: Summarize what the source says in 1-2 sentences.
+Step 2: Compare the model output to the source. Does the output faithfully reflect the source?
+Step 3: Score 1-5.
+
+Respond with EXACTLY these lines:
+REFERENCE: <your 1-2 sentence summary of the source>
 SCORE: <integer 1-5>
 REASON: <one sentence>
+CONFIDENCE: low|med|high
 
 --- INPUT UNDER TEST ---
 {source_label}:
@@ -63,6 +70,17 @@ class JudgeResult:
     independent: bool
     judge_model: str
     under_test_model: str
+    confidence: str | None = None  # "low" | "med" | "high" | None (unparsed)
+    _deepseek_active: bool = False  # private, feeds low_confidence property
+
+    @property
+    def low_confidence(self) -> bool:
+        """True when using local fallback model (non-DeepSeek).
+
+        Derivative of _deepseek_active — not an independent stored field
+        to prevent the two from drifting out of sync.
+        """
+        return not self._deepseek_active
 
     def to_dict(self) -> dict:
         return {
@@ -71,6 +89,8 @@ class JudgeResult:
             "independent": self.independent,
             "judge_model": self.judge_model,
             "under_test_model": self.under_test_model,
+            "confidence": self.confidence,
+            "low_confidence": self.low_confidence,
         }
 
 
@@ -93,12 +113,20 @@ def resolve_judge_model(cfg: dict) -> tuple[str, bool]:
         # Make the key visible to llm.generate for this process.
         os.environ.setdefault("DEEPSEEK_API_KEY", key)
         return str(models.get("distill_model", "deepseek-v4-flash")), True
-    return str(models.get("summarize_model", "llama3.1:8b")), False
+    return str(models.get("judge_fallback_model", "qwen2.5-coder:14b")), False
 
 
-def _parse_score(text: str) -> tuple[int | None, str]:
+def _parse_score(text: str) -> tuple[int | None, str, str | None]:
+    """Parse SCORE, REASON, and optional CONFIDENCE from judge output.
+
+    CONFIDENCE is strictly optional — weaker models may drop it. The parser
+    uses regex-based extraction (not position-based) so line order doesn't
+    matter. Must not silently misparse REASON as CONFIDENCE.
+    """
     score: int | None = None
     reason = ""
+    confidence: str | None = None
+
     m = re.search(r"SCORE:\s*([1-5])", text, re.IGNORECASE)
     if m:
         score = int(m.group(1))
@@ -107,7 +135,12 @@ def _parse_score(text: str) -> tuple[int | None, str]:
         reason = r.group(1).strip()
     if not reason:
         reason = text.strip().splitlines()[-1][:200] if text.strip() else "no reason"
-    return score, reason
+
+    c = re.search(r"CONFIDENCE:\s*(low|med|high)", text, re.IGNORECASE)
+    if c:
+        confidence = c.group(1).lower()
+
+    return score, reason, confidence
 
 
 def judge(
@@ -135,7 +168,7 @@ def judge(
         raise ValueError(f"unknown judge kind: {kind!r}")
 
     models = cfg.get("models") or {}
-    judge_model, _deepseek = resolve_judge_model(cfg)
+    judge_model, deepseek_active = resolve_judge_model(cfg)
     independent = judge_model.strip() != (under_test_model or "").strip()
 
     source_label = "SOURCE EXCERPT" if kind == "summary" else "QUESTION + RETRIEVED EXCERPTS"
@@ -153,9 +186,11 @@ def judge(
             deepseek_base_url=models.get("deepseek_base_url", "https://api.deepseek.com"),
             timeout=120,
         )
-        score, reason = _parse_score(raw)
+        score, reason, parsed_confidence = _parse_score(raw)
+        if parsed_confidence is None and not deepseek_active:
+            parsed_confidence = "low"
     except Exception as exc:  # judge is advisory — never break the eval
-        score, reason = None, f"judge error: {type(exc).__name__}: {exc}"
+        score, reason, parsed_confidence = None, f"judge error: {type(exc).__name__}: {exc}", None
 
     return JudgeResult(
         score=score,
@@ -163,6 +198,8 @@ def judge(
         independent=independent,
         judge_model=judge_model,
         under_test_model=(under_test_model or "").strip(),
+        confidence=parsed_confidence,
+        _deepseek_active=deepseek_active,
     )
 
 

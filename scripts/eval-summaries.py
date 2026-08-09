@@ -85,6 +85,7 @@ def summarize_report(results: list[dict], *, use_judge: bool) -> dict:
                 independent=r["judge"]["independent"],
                 judge_model=r["judge"]["judge_model"],
                 under_test_model=r["judge"]["under_test_model"],
+                confidence=r["judge"].get("confidence"),
             )
             for r in results
             if "judge" in r
