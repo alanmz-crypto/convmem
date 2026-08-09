@@ -1,5 +1,7 @@
 # Flash Follow-Up — Write Arc Briefs for Stalled Arcs
 
+> **Status: COMPLETE (2026-08-09)** — Slices 1–2 landed #157; Active STATUS list updated #159/#161. Do not re-run unless Ryan opens a new stalled arc.
+
 **Who/What:** Kiro handing off mechanical arc-brief authoring to Crush/DeepSeek V4 Flash.
 **When:** After PR #156 merges (adds the arc brief pattern + `STATUS-judgebench.md` as template).
 **Why:** Two other arcs are stalled at ~90% — code on `main` but not live. Arc briefs will make the gap visible to any model that touches them next.
