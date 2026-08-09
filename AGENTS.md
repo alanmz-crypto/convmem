@@ -40,6 +40,8 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 
 **Active STATUS files:**
 - [`docs/plans/STATUS-judgebench.md`](docs/plans/STATUS-judgebench.md) — JudgeBench semantic calibration v1
+- [`docs/plans/STATUS-r2b-capture-auth.md`](docs/plans/STATUS-r2b-capture-auth.md) — R2b capture authorization
+- [`docs/plans/STATUS-shadow-ledger-phase0.md`](docs/plans/STATUS-shadow-ledger-phase0.md) — Shadow Ledger Phase 0 delta capture
 
 ---
 
