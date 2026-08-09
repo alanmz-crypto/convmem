@@ -5,6 +5,8 @@ is fail-closed: ``unknown`` cannot be promoted to ``cross_family`` by user
 declaration. Serving-provider diversity alone never proves ``cross_family``.
 """
 
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 from dataclasses import dataclass

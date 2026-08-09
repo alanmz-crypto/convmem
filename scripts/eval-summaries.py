@@ -114,11 +114,17 @@ def main() -> int:
 
     sys.path.insert(0, str(REPO))
     from config import load_config
-    from eval_provenance import EXIT_OK, classify, model_context
+    from eval_methodology import (
+        enforce_legacy_judge_gate,
+        exit_if_judge_negative_control_failed,
+        finalize_eval_against_baseline,
+        print_judge_summary,
+    )
+    from eval_provenance import model_context
 
-    if args.judge and not args.legacy:
-        print("error: --judge requires --legacy (legacy 1-5 path only)", file=sys.stderr)
-        return 2
+    legacy_exit = enforce_legacy_judge_gate(args.judge, args.legacy)
+    if legacy_exit is not None:
+        return legacy_exit
 
     cfg = load_config()
     rows = load_golden(args.golden)
@@ -138,12 +144,7 @@ def main() -> int:
     print(f"Structural pass rate: {report['structural_pass_rate']:.2%}")
     print(f"Keyword recall: {report['keyword_recall']:.2%}")
     if args.judge:
-        indep = report.get("judge_independent")
-        tag = "INDEPENDENT" if indep else "NON-INDEPENDENT (informational only)"
-        print(f"Judge mean: {report.get('judge_mean')} [{tag}] model={report.get('judge_model')}")
-        control = report["negative_control"]
-        mark = "PASS" if control["passed"] else "FAIL"
-        print(f"Judge negative control: {mark} score={control['score']} expected={control['threshold']}")
+        print_judge_summary(report)
     for r in results:
         mark = "PASS" if r["structural_pass"] else "FAIL"
         extra = "" if r["structural_pass"] else (
@@ -152,39 +153,16 @@ def main() -> int:
         )
         print(f"  [{mark}] {r['id']} recall={r['keyword_recall']:.0%}{extra}")
 
-    if args.judge and not report["negative_control"]["passed"]:
-        print("\nJudge evidence unusable: negative control failed", file=sys.stderr)
-        return 1
+    nc_exit = exit_if_judge_negative_control_failed(args.judge, report)
+    if nc_exit is not None:
+        return nc_exit
 
-    if args.update_baseline:
-        args.baseline.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-        print(f"\nWrote baseline {args.baseline}")
-        return EXIT_OK
-
-    if not args.baseline.is_file():
-        print(f"\nNo baseline at {args.baseline} — run with --update-baseline", file=sys.stderr)
-        return 1
-
-    baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
-    # Regression = structural pass rate dropped below baseline (deterministic gate).
-    # Judge mean is compared ONLY when independent — otherwise informational.
-    regressed = report["structural_pass_rate"] < baseline.get("structural_pass_rate", 0)
-    if (
-        report.get("judge_independent")
-        and baseline.get("judge_independent")
-        and report.get("judge_mean") is not None
-        and baseline.get("judge_mean") is not None
-        and report["judge_mean"] < baseline["judge_mean"]
-    ):
-        regressed = True
-
-    code, msg = classify(
-        regressed=regressed,
-        current_ctx=report["provenance"],
-        baseline_ctx=baseline.get("provenance", {}),
+    return finalize_eval_against_baseline(
+        baseline_path=args.baseline,
+        update_baseline=args.update_baseline,
+        report=report,
+        metric_key="structural_pass_rate",
     )
-    print(f"\n{msg}")
-    return code
 
 
 if __name__ == "__main__":

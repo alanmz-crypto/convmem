@@ -5,6 +5,8 @@ compare with locked gold. Chroma is prohibited in this import graph. Provider
 failures surface as provider_error/not_run, never as semantic FAIL.
 """
 
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import json
@@ -154,7 +156,6 @@ def run_case(
     case: dict[str, Any],
     *,
     gold: dict[str, Any] | None,
-    rubric_dir: Path,
     judge_identity: str,
     under_test_identity: str,
     independence: IndependenceClass,
@@ -175,7 +176,8 @@ def run_case(
     else:
         try:
             invocation = semantic_judge(case)
-        except Exception as exc:  # provider failure must not become semantic FAIL
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            # Provider failure must not become semantic FAIL (architecture invariant 5).
             invocation = JudgeInvocationV1(
                 status=InvocationStatus.PROVIDER_ERROR,
                 judge_identity=judge_identity,
@@ -192,7 +194,7 @@ def run_case(
     )
 
 
-def run_judgebench(
+def run_judgebench(  # pylint: disable=too-many-arguments
     corpus_dir: Path | str,
     *,
     cfg: dict,
@@ -220,7 +222,6 @@ def run_judgebench(
         assert_canonical_preflight(independence)
 
     manifest, cases, gold_by_id = load_corpus(root)
-    rubric_dir = root / str(manifest.get("rubric_dir") or "rubrics")
     pinned_judge = judge_model.strip()
 
     results: list[CaseResult] = []
@@ -230,7 +231,6 @@ def run_judgebench(
             run_case(
                 case,
                 gold=gold_by_id.get(case_id),
-                rubric_dir=rubric_dir,
                 judge_identity=judge_ident.normalized_name,
                 under_test_identity=under_ident.normalized_name,
                 independence=independence,

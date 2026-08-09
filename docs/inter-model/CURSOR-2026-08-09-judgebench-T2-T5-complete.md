@@ -15,20 +15,26 @@ identity/provenance/runner/legacy work was OFF-LIMITS below Tier 5.
 |------|----------|--------|
 | T2 | [`eval_model_identity.py`](../eval_model_identity.py) — fail-closed classify | — |
 | T3 | [`eval_provenance.py`](../eval_provenance.py) comparison signature | CHK-004 |
-| T4 | [`eval_judgebench/runner.py`](../eval_judgebench/runner.py) + [`scripts/eval-judgebench.py`](../scripts/eval-judgebench.py) | CHK-007 partial, CHK-008 |
+| T4 | [`eval_judgebench/runner.py`](../eval_judgebench/runner.py) — offline runner + gold hash guard | CHK-007 partial, CHK-008 |
 | T5 | [`eval_judge.py`](../eval_judge.py) `legacy=True` gate; scripts require `--legacy` with `--judge` | CHK-005, CHK-006 |
 
-**Tests:** `tests/test_eval_model_identity.py`, `test_eval_provenance_signature.py`,
-`test_judgebench_runner.py`, `test_eval_judge_legacy.py`, `test_eval_judgebench_script.py`
-+ existing 29 JudgeBench tests — all green.
+**Tests:** `tests/test_judgebench_contracts.py` (S3/S4 contracts + T2–T5 escalation)
++ existing JudgeBench suite — all green.
 
-**Dry-run:**
+**Dry-run (no live judge):**
 
 ```bash
-~/miniforge3/envs/convmem/bin/python scripts/eval-judgebench.py \
-  --judge-model deepseek-v4-pro \
-  --under-test-model llama3.1:8b \
-  --no-invoke
+python -c "
+from eval_judgebench.runner import run_judgebench
+from pathlib import Path
+run_judgebench(
+    Path('eval_corpus/fixtures/judgebench/semantic-v1'),
+    cfg={'models': {'ollama_host': 'http://localhost:11434'}},
+    judge_model='deepseek-v4-pro',
+    under_test_model='llama3.1:8b',
+    semantic_judge=None,
+)
+"
 ```
 
 ---

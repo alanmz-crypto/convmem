@@ -148,7 +148,7 @@ def comparison_signature_digest(sig: dict[str, Any]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def build_comparison_signature(
+def build_comparison_signature(  # pylint: disable=too-many-arguments
     *,
     evaluation_surface: str,
     case_hash: str = "",
