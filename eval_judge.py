@@ -70,7 +70,7 @@ class JudgeResult:
     independent: bool
     judge_model: str
     under_test_model: str
-    confidence: str | None  # "low" | "med" | "high" | None (unparsed)
+    confidence: str | None = None  # "low" | "med" | "high" | None (unparsed)
     _deepseek_active: bool = False  # private, feeds low_confidence property
 
     @property
