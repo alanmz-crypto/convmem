@@ -111,3 +111,42 @@ Per the brief OFF-LIMITS table:
   `eval_judge.py` diff and draft PR title/body once J1 is green on that branch.
 - Optional: Cursor decides `--update-baseline` to fold the Ollama 0.32.3 context
   into the calibration baseline.
+
+---
+
+## Close-out (added 2026-08-09 by Flash close-out executor)
+
+**Who/What:** Crush lane (Tier 1) running close-out slices C1–C5 from [paste_1.txt close-out plan](../../paste_1.txt). No gates were re-run — R4 evidence above stands.
+
+| Slice | Action | Result |
+|-------|--------|--------|
+| C1 | Resume wip branch + rebase onto `origin/main` | Clean rebase; 4 commits ahead |
+| C2 | Fix V5 command in [EXECUTION-post-rebuild-verify-flash-slices.md](../plans/EXECUTION-post-rebuild-verify-flash-slices.md) | **Already correct on branch** — commit `a89c933` had `--legacy` already applied; no new edit needed |
+| C3 | Add R4 cross-link + GREEN note to [EXECUTION-chroma-reconcile-tier-l.md](../plans/EXECUTION-chroma-reconcile-tier-l.md) | Done — line 106 |
+| C4 | Write [STATUS-chroma-reconcile-tier-l.md](../plans/STATUS-chroma-reconcile-tier-l.md) from the JudgeBench template | Done — new file, 10 sections |
+| C5 | This close-out section + AGENTS.md / `config/agent-protocol.md` Active STATUS entries | Done |
+
+**Branch:** `wip/2026-08-08-2026-08-08-post-rebuild-verify`
+**Commits ahead of `origin/main`:** see `git log origin/main..HEAD --oneline` in the PR body below.
+**Push status:** pushed to `origin/wip/2026-08-08-2026-08-08-post-rebuild-verify` after each commit.
+
+### PR offer to Ryan (do not auto-create)
+
+**Title:** `docs: land post-rebuild verify handoff and Chroma reconcile STATUS`
+
+**Body (squash-merge):**
+
+> Ryan gets GREEN R4 evidence on `main`, the corrected V5 `--legacy` command in the Flash brief, and a STATUS arc brief so the next model orients without re-reading the T7 thread.
+>
+> **What:** closes out the Chroma Reconcile Tier L arc (T7 R4, post-rebuild verify).
+> **Who:** Crush lane (Tier 1 close-out), under plan delegated in `paste_1.txt`.
+> **When:** 2026-08-09.
+> **Why:** the wip branch held the GREEN handoff unmerged; the parent arc lacked a STATUS file so the next model had no single-doc orientation.
+> **How:** adds `STATUS-chroma-reconcile-tier-l.md` (JudgeBench template), appends R4 GREEN cross-link to the parent plan, lists the new STATUS in `AGENTS.md` + `config/agent-protocol.md`. No code, no gates re-run.
+>
+> **Merge reading:**
+> - [`docs/plans/STATUS-chroma-reconcile-tier-l.md`](../plans/STATUS-chroma-reconcile-tier-l.md)
+> - [`docs/inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md`](FLASH-2026-08-08-post-rebuild-verify-handoff.md) (this file)
+> - [`docs/plans/EXECUTION-chroma-reconcile-tier-l.md`](../plans/EXECUTION-chroma-reconcile-tier-l.md) (R4 section)
+>
+> **TL;DR:** lands the GREEN verify evidence + arc STATUS on `main` so the Chroma Reconcile Tier L arc can be marked closed.
