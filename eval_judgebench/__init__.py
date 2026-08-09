@@ -1,12 +1,9 @@
-"""JudgeBench offline semantic calibration package (structure and prep).
+"""JudgeBench offline semantic calibration package.
 
-Tier 1 (DeepSeek V4 Flash, Crush lane) owns slices S1-S9 only - contracts,
-structural validators, rubric loader, registry loader, and import guards.
-OFF-LIMITS surfaces live elsewhere: identity classification, provenance
-comparison-signature, runner orchestration, legacy shim, gold/case authoring.
-
-See docs/plans/EXECUTION-judgebench-flash-slices.md for the slice brief and
-escalation wall.
+Contracts, validators, rubric loader, identity registry loader, import guards,
+model identity classification (eval_model_identity), provenance comparison
+signature (eval_provenance), and offline runner orchestration live here or in
+adjacent eval_* modules. Gold/case authoring remains a Ryan gate (G3).
 """
 
 from __future__ import annotations

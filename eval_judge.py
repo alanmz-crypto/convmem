@@ -25,6 +25,15 @@ from dataclasses import dataclass
 
 from llm import generate
 
+_LEGACY_REQUIRED_MSG = (
+    "Legacy 1-5 judge path requires legacy=True or --legacy on eval scripts. "
+    "This path cannot emit SemanticJudgmentV1 provenance or update v1 baselines."
+)
+
+
+class LegacyJudgeRequiredError(RuntimeError):
+    """Raised when the legacy judge path is invoked without explicit opt-in."""
+
 _JUDGE_RUBRIC = {
     "summary": (
         "You are grading a SUMMARY of an AI coding conversation against the source excerpt.\n"
@@ -150,6 +159,7 @@ def judge(
     *,
     under_test_model: str,
     cfg: dict,
+    legacy: bool = False,
 ) -> JudgeResult:
     """Grade ``output`` against ``source`` on a 1-5 rubric.
 
@@ -160,10 +170,13 @@ def judge(
         under_test_model: the model that produced ``output`` — used to decide
             independence. Judge is independent iff its model differs.
         cfg: loaded convmem config.
+        legacy: must be True to run the legacy 1-5 score path.
 
     Returns a JudgeResult. ``independent=False`` scores are informational only
     and must never feed regression-gate decisions.
     """
+    if not legacy:
+        raise LegacyJudgeRequiredError(_LEGACY_REQUIRED_MSG)
     if kind not in _JUDGE_RUBRIC:
         raise ValueError(f"unknown judge kind: {kind!r}")
 

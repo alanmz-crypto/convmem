@@ -49,7 +49,7 @@ def _synth_model(cfg: dict) -> str:
     return distill
 
 
-def eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:
+def eval_row(row: dict, cfg: dict, *, use_judge: bool, legacy: bool) -> dict:
     from ask import ask
     from eval_grading import grade_answer
 
@@ -93,6 +93,7 @@ def eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:
             answer,
             under_test_model=(eval_trace.get("model") or _synth_model(cfg)),
             cfg=cfg,
+            legacy=legacy,
         )
         result["judge"] = jr.to_dict()
     return result
@@ -133,15 +134,24 @@ def main() -> int:
     parser.add_argument("--baseline", type=Path, default=BASELINE)
     parser.add_argument("--update-baseline", action="store_true")
     parser.add_argument("--judge", action="store_true", help="Add advisory LLM-judge score")
+    parser.add_argument(
+        "--legacy",
+        action="store_true",
+        help="Explicitly opt into the legacy 1-5 judge path (required with --judge)",
+    )
     args = parser.parse_args()
 
     sys.path.insert(0, str(REPO))
     from config import load_config
     from eval_provenance import EXIT_OK, classify, model_context
 
+    if args.judge and not args.legacy:
+        print("error: --judge requires --legacy (legacy 1-5 path only)", file=sys.stderr)
+        return 2
+
     cfg = load_config()
     rows = load_golden(args.golden)
-    results = [eval_row(r, cfg, use_judge=args.judge) for r in rows]
+    results = [eval_row(r, cfg, use_judge=args.judge, legacy=args.legacy) for r in rows]
     report = summarize_report(results, use_judge=args.judge)
     synth_model = _synth_model(cfg)
     report["provenance"] = model_context(cfg, synth_model, args.golden)
@@ -149,7 +159,7 @@ def main() -> int:
         from eval_methodology import run_judge_negative_control
 
         report["negative_control"] = run_judge_negative_control(
-            "synthesis", under_test_model=synth_model, cfg=cfg
+            "synthesis", under_test_model=synth_model, cfg=cfg, legacy=True
         )
 
     print(f"Golden answers: {report['count']}")

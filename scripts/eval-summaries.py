@@ -29,7 +29,7 @@ def load_golden(path: Path) -> list[dict]:
     return rows
 
 
-def eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:
+def eval_row(row: dict, cfg: dict, *, use_judge: bool, legacy: bool) -> dict:
     from eval_grading import grade_summary, keyword_recall
     from llm import summarize
 
@@ -62,6 +62,7 @@ def eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:
             summary,
             under_test_model=summarize_model,
             cfg=cfg,
+            legacy=legacy,
         )
         out["judge"] = jr.to_dict()
     return out
@@ -101,6 +102,11 @@ def main() -> int:
     parser.add_argument("--update-baseline", action="store_true")
     parser.add_argument("--judge", action="store_true", help="Add advisory LLM-judge score")
     parser.add_argument(
+        "--legacy",
+        action="store_true",
+        help="Explicitly opt into the legacy 1-5 judge path (required with --judge)",
+    )
+    parser.add_argument(
         "--structural-min", type=float, default=None,
         help="Override [eval].summary_structural_min pass threshold",
     )
@@ -110,9 +116,13 @@ def main() -> int:
     from config import load_config
     from eval_provenance import EXIT_OK, classify, model_context
 
+    if args.judge and not args.legacy:
+        print("error: --judge requires --legacy (legacy 1-5 path only)", file=sys.stderr)
+        return 2
+
     cfg = load_config()
     rows = load_golden(args.golden)
-    results = [eval_row(r, cfg, use_judge=args.judge) for r in rows]
+    results = [eval_row(r, cfg, use_judge=args.judge, legacy=args.legacy) for r in rows]
     report = summarize_report(results, use_judge=args.judge)
 
     summarize_model = cfg["models"].get("summarize_model", "llama3.1:8b")
@@ -121,7 +131,7 @@ def main() -> int:
         from eval_methodology import run_judge_negative_control
 
         report["negative_control"] = run_judge_negative_control(
-            "summary", under_test_model=summarize_model, cfg=cfg
+            "summary", under_test_model=summarize_model, cfg=cfg, legacy=True
         )
 
     print(f"Golden summaries: {report['count']}")

@@ -27,6 +27,7 @@ def run_judge_negative_control(
     under_test_model: str,
     cfg: dict,
     judge_fn: Callable[..., Any] | None = None,
+    legacy: bool = True,
 ) -> dict:
     """Run one known-false output through the actual judge path.
 
@@ -47,6 +48,7 @@ def run_judge_negative_control(
         control["output"],
         under_test_model=under_test_model,
         cfg=cfg,
+        legacy=legacy,
     )
     score = result.score
     passed = score is not None and score < NEGATIVE_CONTROL_MAX_EXCLUSIVE

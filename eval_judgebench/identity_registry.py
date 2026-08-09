@@ -1,14 +1,8 @@
-"""Identity registry loader + alias normalization (JudgeBench prep slice S7).
+"""Identity registry loader + alias normalization (JudgeBench slice S7).
 
 Loads and normalizes a curated versioned identity registry (JSON). It resolves
 known aliases to their canonical identity *only* - it never performs model
-identity classification.
-
-OFF-LIMITS: independence classification (``self`` / ``same_family`` /
-``cross_family`` / ``unknown``) is Tier 5+ work and does not belong here.
-``classify_independence`` is therefore a hard stub that raises
-``NotImplementedError``, so no cross_family claim can be produced by this
-module. See docs/plans/EXECUTION-judgebench-flash-slices.md.
+identity classification. Use ``eval_model_identity`` for independence class.
 """
 
 from __future__ import annotations
@@ -97,16 +91,3 @@ class IdentityRegistry:
 def load_identity_registry(path: Path | str) -> IdentityRegistry:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     return IdentityRegistry.from_dict(data)
-
-
-def classify_independence(*args: Any, **kwargs: Any) -> Any:
-    """Tier 5+ stub: independence classification is OFF-LIMITS for Flash.
-
-    Returns nothing and always raises, so this module can never emit a
-    ``cross_family`` (or any) independence class. Deferred to Tier 5+ identity
-    classification work.
-    """
-    raise NotImplementedError(
-        "independence classification is Tier 5+ and OFF-LIMITS for Flash; "
-        "S7 only loads/normalizes the identity registry"
-    )
