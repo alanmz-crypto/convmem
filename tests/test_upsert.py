@@ -161,6 +161,32 @@ class UpsertTests(unittest.TestCase):
         leftovers = list(export.parent.glob(f".{export.name}.*.tmp"))
         self.assertEqual(leftovers, [])
 
+    @patch("llm.ollama_embed", side_effect=_fake_embed)
+    def test_upsert_reprojects_missing_ledger_without_duplicate_export(self, _mock):
+        export = Path(self.tmp.name) / "units.jsonl"
+        historical = {
+            "id": "missing-chroma-uuid",
+            "ledger_id": _RECORD["id"],
+            "ledger_kind": "observation",
+            "summary": _RECORD["summary"],
+        }
+        export.write_text(json.dumps(historical) + "\n", encoding="utf-8")
+
+        unit = ingest_observation(
+            _RECORD,
+            store=self.store,
+            embed_model="test",
+            ollama_host="local",
+            upsert=True,
+            units_export=export,
+        )
+
+        assert unit is not None
+        lines = [json.loads(line) for line in export.read_text().splitlines() if line]
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines[0]["ledger_id"], _RECORD["id"])
+        self.assertEqual(self.store.count_units(), 1)
+
 
 
 

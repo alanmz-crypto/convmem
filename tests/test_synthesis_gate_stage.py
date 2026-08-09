@@ -3,7 +3,7 @@
 The gate (doctor._check_synthesis_gate) splits synthesis_failures.jsonl
 entries in the 7-day window into three categories:
   - stage in {distill, summarize} -> ingest_degraded (provider drops on
-    background jobs, no data loss, WARN-only)
+    background jobs; projection completeness requires reconciliation)
   - stage == "ask"                -> ask_failures (real ask-path failures,
     FAIL at >=3)
   - missing/unknown stage         -> ignored (legacy telemetry from before
@@ -64,6 +64,8 @@ class SynthesisGateStageTests(unittest.TestCase):
         check = _check_synthesis_gate()
         self.assertTrue(check.ok)
         self.assertIn("3 ingest-degraded", check.detail)
+        self.assertIn("projection completeness unproven", check.detail)
+        self.assertNotIn("no data loss", check.detail)
 
     def test_ask_stage_triggers_fail_at_threshold(self):
         self._write(

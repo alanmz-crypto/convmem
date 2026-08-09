@@ -127,7 +127,12 @@ def ingest_observation(
 
     store.add_unit(unit["id"], doc, embedding, meta)
 
-    if units_export:
+    if units_export and upsert and lid:
+        # Chroma may have lost a projection while the authoritative export
+        # still retains the ledger row. Reproject without duplicating that
+        # authority line; the ledger id, not the Chroma UUID, is durable.
+        _upsert_jsonl_line(units_export, lid, unit)
+    elif units_export:
         from purge_locks import export_flock_path
 
         units_export.parent.mkdir(parents=True, exist_ok=True)

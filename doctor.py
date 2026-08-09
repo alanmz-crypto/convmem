@@ -392,10 +392,9 @@ def _check_verify_script(*, run: bool) -> DoctorCheck:
 def _check_synthesis_gate() -> DoctorCheck:
     """P1c gate: count synthesis failures in the last 7 days.
 
-    Splits telemetry into three categories (no data loss in any; chunk is
-    committed with at least its summary):
+    Splits telemetry into three categories:
       - ``stage`` in ``distill``/``summarize`` -> ingest-degraded (provider drops
-        on background jobs, WARN-only).
+        on background jobs; projection completeness requires reconciliation).
       - ``stage == "ask"`` -> real ask-pipeline failure (FAIL at >=3).
       - missing/unknown ``stage`` -> stale telemetry from before tagging,
         ignored (not counted as ask, to avoid false-alarms on legacy entries).
@@ -441,7 +440,7 @@ def _check_synthesis_gate() -> DoctorCheck:
         "synthesis_gate",
         True,
         f"{ask_failures} ask failures, {ingest_degraded} ingest-degraded in 7d"
-        f" (ingest-degraded = provider drops, no data loss)",
+        f" (provider drops; projection completeness unproven until reconciled)",
     )
 
 
