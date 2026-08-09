@@ -1,9 +1,25 @@
 V# Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-07 (GPU contention fix: summarize → cloud, embed timeout, chunk retry, MAX_LOADED_MODELS=2; PR #140)
+**Updated:** 2026-08-09 (Chroma R4 GREEN #161, JudgeBench T2–T5 #155, STATUS arc-brief pattern #160)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Active handoff
+
+- **Chroma reconcile Tier L — R4 GREEN, arc closed (2026-08-09):** Who/What: Crush index rebuild + DeepSeek Flash V1–V6 post-rebuild verify; Cursor landscape sync. When: rebuild completed 2026-08-08; R4 GREEN 2026-08-09; docs on `main` via [#161](https://github.com/alanmz-crypto/convmem/pull/161). Why: 646 HNSW orphans blocked calibration and contaminated retrieval. How: full re-index, orphan inventory **0**, calibration 100% with `eval-synthesis.py --judge --legacy`, and `convmem doctor` PASS with two non-fatal warnings (legacy embed metadata and external-restic freshness).
+
+  **Merge reading:** [`docs/plans/STATUS-chroma-reconcile-tier-l.md`](../plans/STATUS-chroma-reconcile-tier-l.md) · [`FLASH-2026-08-08-post-rebuild-verify-handoff.md`](FLASH-2026-08-08-post-rebuild-verify-handoff.md) · [`CRUSH-2026-08-08-index-complete-judgebench-unblock.md`](CRUSH-2026-08-08-index-complete-judgebench-unblock.md) · [`EXECUTION-chroma-reconcile-tier-l.md`](../plans/EXECUTION-chroma-reconcile-tier-l.md)
+
+  **What this packages:** Corpus is trustworthy for retrieval-dependent eval again. Arc closed except optional R5 anomaly disposition and Ryan-gated ops (watch/refine).
+
+  **Suggested next:** JudgeBench G3 (Ryan gold) — see STATUS-judgebench.
+
+- **JudgeBench semantic calibration v1 — code on `main`, G3 blocked (2026-08-09):** Who/What: S1–S9 (#144) + T2–T5 (#155) merged; VERIFY CHK-001..006 and CHK-008 PASSED. When: #155 merged 2026-08-09. Why: offline judge calibration before live quality claims. How: read arc brief; populate `cases.jsonl`/`gold.jsonl` only after Ryan G3 lock.
+
+  **Merge reading:** [`docs/plans/STATUS-judgebench.md`](../plans/STATUS-judgebench.md) · [`VERIFY-judgebench.md`](../plans/VERIFY-judgebench.md) · [`ARCHITECTURE-judgebench.md`](../plans/ARCHITECTURE-judgebench.md)
+
+  **Suggested next:** Ryan authors ~30–50 semantic cases (G3); standing checks `eval-provenance-wiring` / `eval-negative-control-coverage` when assigned.
+
+- **STATUS arc-brief pattern — on `main` (#160–#161):** Four active STATUS files listed in [`AGENTS.md`](../AGENTS.md). New arcs require `STATUS-<slug>.md` at plan start.
 
 - **Summarizer GPU contention fix — COMPLETE (2026-08-07):** Who/What: Crush (investigation) + Claude cloud (advisory) + Kiro (design review) fixed four issues from the qwen3.5 summarizer saturating the RTX 3060 at 95% GPU util, causing ollama embed calls to blow 120 s timeouts and silently drop ingested chunks. When: 2026-08-06 evening, committed to `fix/2026-08-06-summarizer-switch-baseline-and-docs`; PR #140 filed. Why: every chunk's summarize→embed→distill pipeline queued behind a single `-np 1` 6.6 GB model; `ingest.py:638` caught exceptions and `continue`d with zero visibility. How: `summarize_model = "deepseek-v4-flash"` (cloud, key present), `ollama_embed` timeout 120→300 s, `OLLAMA_MAX_LOADED_MODELS=2` (was 1), chunk failure logging to `synthesis_failures.jsonl` + 3-attempt retry with 5s/30s backoff in `ingest.py`. Verified: zero watch journal timeouts after fix, both models resident in `ollama ps`, all doctor PASS.
 
