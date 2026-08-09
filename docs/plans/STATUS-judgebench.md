@@ -131,8 +131,9 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | G3 | Gold corpus + split lock | **NOT STARTED** | Ryan authors cases |
 | G4 | Judge model selection | **NOT STARTED** | Requires G3 calibration data |
 | Calibration | First real run | **NOT STARTED** | Requires G3 + G4 |
+| T7 retrieval corpus | Post-rebuild golden eval (`tests/test_eval_golden.py`) | **REPAIRED 10/10** | Was 2/10 after R3 rebuild skipped the approved-ledger channel; backfilled 356 approved decisions + CSP obs/ver into Chroma (corpus-only fix, no repo change) |
 
-**Summary: Code is ~90% done on `main`. The gap is Ryan populating gold (G3) and judge selection (G4).**
+**Summary: Code is ~90% done on `main`. The gap is Ryan populating gold (G3) and judge selection (G4). The retrieval corpus under the golden eval is healthy again (10/10), so T7 verify is unblocked.**
 
 ---
 
@@ -228,3 +229,4 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 |------|-----|--------|
 | 2026-08-09 | Kiro | Initial arc brief; T2–T5 on branch, PR not filed, G3/G4 awaiting Ryan |
 | 2026-08-09 | Crush (DeepSeek) | Reconcile: T2–T5 merged to `main` via PR #155; completion state and remaining steps updated; noted T2–T5 test modules not carried to `main`/`tests/` in #155 |
+| 2026-08-09 | Crush | Golden eval repaired 2/10 → 10/10 (Chroma backfill of approved ledger + CSP obs pair); T7 post-rebuild verify unblocked |
