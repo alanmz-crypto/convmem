@@ -101,7 +101,7 @@ def _run_one(
     supersede: bool = False,
     chunk_size: int = 60,
     fmt: str = "cursor_jsonl",
-):
+):  # pylint: disable=too-many-arguments
     parser = parser or (lambda _path: messages if messages is not None else _messages())
     distill_result = [_unit()] if distill_result is None else distill_result
     embed = (
@@ -141,7 +141,7 @@ def _run_one(
         "inter_model_index.production_chroma_write_session",
         side_effect=hermetic_write_session,
     ):
-        result = ingest._index_one_file(
+        result = ingest._index_one_file(  # pylint: disable=protected-access
             cfg=cfg,
             idx=cfg["index"],
             path=str(src),
