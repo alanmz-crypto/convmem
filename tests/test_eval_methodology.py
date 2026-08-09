@@ -103,6 +103,7 @@ def test_failed_control_blocks_baseline_update(
     monkeypatch.setattr(sys, "argv", [
         script_name,
         "--judge",
+        "--legacy",
         "--update-baseline",
         "--baseline",
         str(baseline),

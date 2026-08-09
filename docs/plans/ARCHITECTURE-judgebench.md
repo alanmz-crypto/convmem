@@ -1,15 +1,18 @@
 # Architecture Direction — JudgeBench
 
-> **Lock-ready (2026-08-08).** Kiro PASS on Codex draft; ChatGPT PASS after two
+> **LOCKED (2026-08-09, Ryan HITL).** Kiro PASS on Codex draft; ChatGPT PASS after two
 > wording clarifications (T5 disposition framing; J0/J1 abstention boundary).
-> DeepSeek transport-truncated review was advisory only. This document does
-> **not** authorize implementation, corpus gold mutation, judge selection, or
-> baseline promotion. Execution Planning and Execute require separate Ryan HITL.
+> DeepSeek transport-truncated review was advisory only. Architecture approved
+> as lock-ready on 2026-08-09. This document does **not** authorize
+> implementation, corpus gold mutation, judge selection, or baseline promotion.
+> Execution Planning and Execute require separate Ryan HITL (see
+> `EXECUTION-judgebench.md`, gate G2).
 
 **Source:** Codex architecture draft; Cursor/Grok finalization; PoLL and GovTech
 MoM literature alignment; ChatGPT architecture review.
 
-**Authority:** Awaiting Ryan Architecture HITL lock.
+**Authority:** **LOCKED — Ryan Architecture HITL, 2026-08-09.** Next gate is
+Execution HITL (`EXECUTION-judgebench.md`), not implementation.
 
 **Problem:** Calibrate ConvMem's semantic judge (J1) against frozen evidence
 independently of retrieval and generation, while keeping E2E evaluation as a
