@@ -1,14 +1,65 @@
 {
   "bucket": "semantic-v1",
-  "case_count": 0,
-  "case_rows": [],
+  "case_count": 30,
+  "case_rows": [
+    "syn-cal-supported-01",
+    "syn-cal-unsupported-timing-02",
+    "syn-cal-valid-cite-unsupported-03",
+    "syn-cal-material-omission-04",
+    "syn-cal-caveat-omission-05",
+    "syn-cal-contradiction-06",
+    "syn-cal-justified-abstain-07",
+    "syn-cal-unjustified-abstain-08",
+    "syn-cal-material-omission-09",
+    "syn-cal-j0-fail-j1-pass-10",
+    "syn-hold-supported-11",
+    "syn-hold-minor-omission-12",
+    "syn-hold-material-omission-13",
+    "syn-hold-justified-abstain-14",
+    "syn-hold-j0-fail-j1-fail-15",
+    "sum-cal-supported-01",
+    "sum-cal-material-omission-02",
+    "sum-cal-caveat-omission-03",
+    "sum-cal-contradiction-04",
+    "sum-cal-minor-omission-05",
+    "sum-cal-unsupported-authority-06",
+    "sum-cal-valid-cite-unsupported-07",
+    "sum-cal-j0-fail-j1-fail-08",
+    "sum-cal-supported-09",
+    "sum-cal-minor-omission-10",
+    "sum-hold-caveat-omission-11",
+    "sum-hold-material-omission-12",
+    "sum-hold-contradiction-13",
+    "sum-hold-unsupported-magnitude-14",
+    "sum-hold-j0-fail-j1-pass-15"
+  ],
   "corpus": "judgebench",
-  "description": "JudgeBench offline frozen-evidence semantic calibration corpus (structure placeholder; no cases until Ryan gold lock).",
+  "description": "Proposed JudgeBench offline frozen-evidence semantic calibration corpus; Ryan review and lock required before canonical execution.",
+  "critical_policy": {
+    "definition": "A gold fail where judge pass would hide a serious false-current-state, unsafe authorization or abstention, mandatory-response omission, or meaning-changing contradiction.",
+    "not_all_failures_are_critical": true
+  },
+  "gold_lock": {
+    "owner": "Ryan",
+    "status": "proposed"
+  },
   "hashes": {
-    "cases.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "gold.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "cases.jsonl": "835ac16d0ab494eae4ba3b31d6089bb073a3d06941626d5b1770d76ba2a0763c",
+    "gold.jsonl": "a7feb7392ce0f6bfefb048ea36f28db8defaca29fae65b8cb2a947e7d8713fa8"
   },
   "manifest_version": "judgebench-semantic-v1",
   "rubric_dir": "rubrics/",
-  "schema": "SemanticJudgmentV1"
+  "rubrics": [
+    "synthesis-grounded-v1",
+    "summary-grounded-v1"
+  ],
+  "schema": "JudgeBenchCorpusV1",
+  "split_policy": {
+    "calibration_count": 20,
+    "holdout_count": 10,
+    "minimum_holdout": 10,
+    "strategy": "stratified-2-to-1",
+    "stratification_definition": "Shared failure-mode and J0/J1 strata with independently authored evidence, instructions, and candidates; holdout is not an unseen-category extrapolation test.",
+    "locked_before_judge_selection": true
+  }
 }

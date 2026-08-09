@@ -16,6 +16,7 @@ No Chroma and no live model calls.
 # runs both under pytest and as a direct script (matching existing test style).
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import tempfile
@@ -40,6 +41,7 @@ from eval_judgebench.contracts import (
     Support,
     Verdict,
 )
+from eval_judgebench.corpus_validate import CorpusValidationError
 from eval_judgebench.runner import run_judgebench
 from eval_model_identity import (
     CanonicalPreflightError,
@@ -246,28 +248,80 @@ def _identity(
     )
 
 
-def _write_single_case_corpus(root: Path, *, case_id: str, verdict: str = "pass") -> None:
+def _write_single_case_corpus(
+    root: Path,
+    *,
+    case_id: str,
+    verdict: str = "pass",
+    human_curated: bool = True,
+) -> None:
     rubric_dir = root / "rubrics"
     rubric_dir.mkdir()
     rubric_src = CORPUS / "rubrics" / "synthesis-grounded-v1.json"
     (rubric_dir / "synthesis-grounded-v1.json").write_text(
         rubric_src.read_text(encoding="utf-8"), encoding="utf-8"
     )
-    manifest = json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))
-    manifest["case_count"] = 1
-    (root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     case = {
         "case_id": case_id,
+        "task_kind": "synthesis",
         "rubric_id": "synthesis-grounded-v1",
-        "candidate_mode": "model_generated",
+        "instruction": "Answer only from the evidence.",
+        "evidence": [{"id": 1, "text": "The launch is Friday."}],
+        "candidate": "The launch is Friday [1].",
+        "candidate_mode": "answer",
+        "candidate_origin": (
+            {"kind": "human_curated", "author": "test", "version": "v1"}
+            if human_curated
+            else {
+                "kind": "model_generated",
+                "model": "llama3.1:8b",
+                "provider": "ollama",
+                "version": "test",
+            }
+        ),
+        "tags": ["supported"],
+        "split": "calibration",
     }
-    (root / "cases.jsonl").write_text(json.dumps(case) + "\n", encoding="utf-8")
+    cases_text = json.dumps(case, sort_keys=True) + "\n"
+    (root / "cases.jsonl").write_text(cases_text, encoding="utf-8")
     gold = {
         "case_id": case_id,
-        "verdict": verdict,
-        "expected_candidate_mode": "model_generated",
+        "j0": {
+            "expected_pass": True,
+            "expected_candidate_mode": "answer",
+            "required_tokens": ["[1]"],
+        },
+        "j1": {
+            "support": "full",
+            "coverage": "complete",
+            "contradiction": "none",
+            "verdict": verdict,
+            **({"reason": "test expected non-pass"} if verdict != "pass" else {}),
+        },
+        "rationale": "Frozen test fixture.",
+        "lock": {"status": "locked", "owner": "Ryan", "locked_at": "2026-08-09"},
     }
-    (root / "gold.jsonl").write_text(json.dumps(gold) + "\n", encoding="utf-8")
+    gold_text = json.dumps(gold, sort_keys=True) + "\n"
+    (root / "gold.jsonl").write_text(gold_text, encoding="utf-8")
+    manifest = json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))
+    manifest.update(
+        {
+            "case_count": 1,
+            "case_rows": [case_id],
+            "split_policy": {
+                "strategy": "stratified",
+                "calibration_count": 1,
+                "holdout_count": 0,
+                "minimum_holdout": 0,
+            },
+            "gold_lock": {"status": "locked", "owner": "Ryan"},
+            "hashes": {
+                "cases.jsonl": hashlib.sha256(cases_text.encode()).hexdigest(),
+                "gold.jsonl": hashlib.sha256(gold_text.encode()).hexdigest(),
+            },
+        }
+    )
+    (root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
 
 class ResolveIdentityTests(unittest.TestCase):
@@ -329,6 +383,9 @@ class CanonicalPreflightTests(unittest.TestCase):
         with self.assertRaises(CanonicalPreflightError):
             assert_canonical_preflight(IndependenceClass.UNKNOWN)
 
+    def test_human_curated_not_applicable_allowed(self):
+        assert_canonical_preflight(IndependenceClass.NOT_APPLICABLE)
+
 
 class ComparisonSignatureTests(unittest.TestCase):
     def _base_sig(self, **overrides):
@@ -383,7 +440,20 @@ class ComparisonSignatureTests(unittest.TestCase):
 class RunnerDryRunTests(unittest.TestCase):
     @patch("eval_judgebench.runner.ollama_version", return_value="0.5.0")
     @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
-    def test_empty_corpus_dry_run(self, _mock_digest, _mock_ver):
+    def test_proposed_corpus_refused_for_canonical(self, _mock_digest, _mock_ver):
+        with self.assertRaisesRegex(CorpusValidationError, "Ryan lock"):
+            run_judgebench(
+                CORPUS,
+                cfg=_CFG,
+                judge_model="deepseek-v4-pro",
+                under_test_model="llama3.1:8b",
+                registry_path=REGISTRY,
+                semantic_judge=None,
+            )
+
+    @patch("eval_judgebench.runner.ollama_version", return_value="0.5.0")
+    @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
+    def test_proposed_corpus_informational_dry_run(self, _mock_digest, _mock_ver):
         result = run_judgebench(
             CORPUS,
             cfg=_CFG,
@@ -391,21 +461,56 @@ class RunnerDryRunTests(unittest.TestCase):
             under_test_model="llama3.1:8b",
             registry_path=REGISTRY,
             semantic_judge=None,
+            canonical=False,
         )
-        self.assertEqual(result.cases, [])
+        self.assertEqual(len(result.cases), 30)
+        self.assertTrue(
+            all(case.invocation.status == InvocationStatus.NOT_RUN for case in result.cases)
+        )
         self.assertEqual(result.independence_class, IndependenceClass.CROSS_FAMILY)
         self.assertEqual(result.gold_hash_before, result.gold_hash_after)
+        self.assertIn(
+            "rubric:synthesis-grounded-v1",
+            result.comparison_signature["contract_hashes"],
+        )
+        self.assertIn(
+            "rubric:summary-grounded-v1",
+            result.comparison_signature["contract_hashes"],
+        )
+
+    @patch("eval_judgebench.runner.ollama_version", return_value="0.5.0")
+    @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
+    def test_model_generated_origin_cannot_be_overridden_by_config(
+        self, _mock_digest, _mock_ver
+    ):
+        cfg = {**_CFG, "under_test_human_curated": True}
+        result = run_judgebench(
+            CORPUS,
+            cfg=cfg,
+            judge_model="deepseek-v4-pro",
+            under_test_model="llama3.1:8b",
+            registry_path=REGISTRY,
+            canonical=False,
+        )
+        self.assertEqual(result.independence_class, IndependenceClass.CROSS_FAMILY)
 
     @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
     def test_same_family_preflight_refused_for_canonical(self, _mock):
-        with self.assertRaises(CanonicalPreflightError):
-            run_judgebench(
-                CORPUS,
-                cfg=_CFG,
-                judge_model="deepseek-v4-pro",
-                under_test_model="deepseek-v4-flash",
-                registry_path=REGISTRY,
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_single_case_corpus(
+                root,
+                case_id="same-family",
+                human_curated=False,
             )
+            with self.assertRaises(CanonicalPreflightError):
+                run_judgebench(
+                    root,
+                    cfg=_CFG,
+                    judge_model="deepseek-v4-pro",
+                    under_test_model="deepseek-v4-flash",
+                    registry_path=REGISTRY,
+                )
 
     @patch("eval_judgebench.runner.ollama_version", return_value="0.5.0")
     @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
@@ -438,6 +543,10 @@ class RunnerDryRunTests(unittest.TestCase):
                 semantic_judge=_judge,
             )
             self.assertTrue(result.cases[0].agrees_with_gold)
+            self.assertEqual(
+                result.independence_class,
+                IndependenceClass.NOT_APPLICABLE,
+            )
 
 
 class LegacyJudgeGateTests(unittest.TestCase):

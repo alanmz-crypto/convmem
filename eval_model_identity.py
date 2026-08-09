@@ -100,11 +100,19 @@ def classify_independence(
 
 
 def assert_canonical_preflight(independence: IndependenceClass) -> None:
-    """Refuse canonical calibration when independence is not cross_family."""
-    if independence != IndependenceClass.CROSS_FAMILY:
+    """Refuse canonical calibration without independence or curated provenance.
+
+    ``not_applicable`` is valid only when the candidate is explicitly marked
+    human-curated.  It is not an independence claim and cannot be used for a
+    model-generated candidate.
+    """
+    if independence not in {
+        IndependenceClass.CROSS_FAMILY,
+        IndependenceClass.NOT_APPLICABLE,
+    }:
         raise CanonicalPreflightError(
             f"canonical run refused: independence class {independence.value!r} "
-            "(requires cross_family)"
+            "(requires cross_family or human-curated not_applicable)"
         )
 
 

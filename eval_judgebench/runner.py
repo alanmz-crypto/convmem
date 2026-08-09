@@ -10,9 +10,11 @@ failures surface as provider_error/not_run, never as semantic FAIL.
 from __future__ import annotations
 
 import json
+import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from eval_judgebench.contract_validate import validate_judgment_dict
 from eval_judgebench.contracts import (
@@ -22,6 +24,7 @@ from eval_judgebench.contracts import (
     SelectionRole,
     SemanticJudgmentV1,
 )
+from eval_judgebench.corpus_validate import assert_corpus_valid
 from eval_judgebench.rubric_validate import validate_judgment_against_rubric_file
 from eval_model_identity import (
     assert_canonical_preflight,
@@ -117,12 +120,25 @@ def grade_mechanical(case: dict[str, Any], gold: dict[str, Any] | None) -> Mecha
     if gold is None:
         violations.append(f"no gold row for case {case_id!r}")
     else:
-        expected_mode = gold.get("expected_candidate_mode")
+        j0 = gold.get("j0") or {}
+        expected_mode = j0.get("expected_candidate_mode")
         actual_mode = case.get("candidate_mode")
         if expected_mode is not None and actual_mode != expected_mode:
             violations.append(
                 f"candidate_mode {actual_mode!r} != expected {expected_mode!r}"
             )
+        candidate = str(case.get("candidate") or "")
+        for token in j0.get("required_tokens") or []:
+            if token not in candidate:
+                violations.append(f"candidate missing required token {token!r}")
+        evidence_ids = {
+            item.get("id")
+            for item in case.get("evidence") or []
+            if isinstance(item, dict)
+        }
+        for raw_id in re.findall(r"\[(\d+)\]", candidate):
+            if int(raw_id) not in evidence_ids:
+                violations.append(f"citation [{raw_id}] outside evidence range")
     return MechanicalGrade(passed=not violations, violations=violations)
 
 
@@ -131,10 +147,37 @@ def _compare_verdict(invocation: JudgeInvocationV1 | None, gold: dict[str, Any] 
         return None
     if invocation.status != InvocationStatus.OK or invocation.semantic_judgment is None:
         return None
-    expected = gold.get("verdict")
+    expected = (gold.get("j1") or {}).get("verdict")
     if expected is None:
         return None
     return invocation.semantic_judgment.verdict.value == expected
+
+
+def _contract_hashes(root: Path, cases: list[dict[str, Any]]) -> dict[str, str]:
+    """Bind the executable schema and every referenced rubric to a run."""
+    package_dir = Path(__file__).resolve().parent
+    hashes = {
+        "semantic_contract": fixture_hash(package_dir / "contracts.py"),
+        "contract_validator": fixture_hash(package_dir / "contract_validate.py"),
+        "corpus_schema": fixture_hash(package_dir / "corpus_validate.py"),
+        "rubric_validator": fixture_hash(package_dir / "rubric_validate.py"),
+    }
+    rubric_ids = sorted(
+        {str(case.get("rubric_id") or "") for case in cases if case.get("rubric_id")}
+    )
+    for rubric_id in rubric_ids:
+        hashes[f"rubric:{rubric_id}"] = fixture_hash(
+            root / "rubrics" / f"{rubric_id}.json"
+        )
+    return hashes
+
+
+def _all_candidates_human_curated(cases: list[dict[str, Any]]) -> bool:
+    """Derive curated provenance from frozen cases, never caller configuration."""
+    return bool(cases) and all(
+        (case.get("candidate_origin") or {}).get("kind") == "human_curated"
+        for case in cases
+    )
 
 
 def _validate_judgment_output(
@@ -189,7 +232,7 @@ def run_case(
         case_id=case_id,
         mechanical=mechanical,
         invocation=invocation,
-        gold_verdict=(gold or {}).get("verdict"),
+        gold_verdict=((gold or {}).get("j1") or {}).get("verdict"),
         agrees_with_gold=_compare_verdict(invocation, gold),
     )
 
@@ -210,18 +253,19 @@ def run_judgebench(  # pylint: disable=too-many-arguments
     root = Path(corpus_dir)
     gold_path = root / "gold.jsonl"
     gold_hash_before = fixture_hash(gold_path)
+    assert_corpus_valid(root, require_locked=canonical)
+    manifest, cases, gold_by_id = load_corpus(root)
+
     registry = load_registry(registry_path)
     judge_ident = resolve_identity(judge_model, registry, cfg)
     under_ident = resolve_identity(under_test_model, registry, cfg)
     independence = classify_independence(
         judge_ident,
         under_ident,
-        under_test_human_curated=bool(cfg.get("under_test_human_curated")),
+        under_test_human_curated=_all_candidates_human_curated(cases),
     )
     if canonical:
         assert_canonical_preflight(independence)
-
-    manifest, cases, gold_by_id = load_corpus(root)
     pinned_judge = judge_model.strip()
 
     results: list[CaseResult] = []
@@ -244,6 +288,7 @@ def run_judgebench(  # pylint: disable=too-many-arguments
         case_hash=fixture_hash(root / "cases.jsonl"),
         fixture_hash_value=fixture_hash(root / "manifest.json"),
         gold_hash=gold_hash_after,
+        contract_hashes=_contract_hashes(root, cases),
         identity_policy_version=registry.version,
         resolved_identities={
             "judge": judge_ident.to_record_dict(),

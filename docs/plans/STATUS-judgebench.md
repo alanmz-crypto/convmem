@@ -106,13 +106,21 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 > `test_judgebench_runner.py`, `test_eval_judge_legacy.py`) are not tracked under `main`'s
 > `tests/` at this revision — verify whether they were carried by #155 or need re-adding.
 
+### Proposed pre-lock state on `feat/2026-08-09-2026-08-09-judgebench-g3-corpus`
+
+| Surface | Current proposed state |
+|---|---|
+| `cases.jsonl` / `gold.jsonl` | 30 matched cases; 20 calibration / 10 holdout; 15 synthesis / 15 summary; every lock remains `proposed` |
+| Rubrics | Summary rubric added; both task rubrics define support, coverage, contradiction, and verdict boundaries |
+| Corpus enforcement | Strict schema, hash, split, J0-outcome, origin, and Ryan-lock validation; canonical execution refuses proposed gold |
+| Provenance | All 30 candidates remain truthfully `model_generated`; caller config cannot override frozen origin |
+| Review state | GLM primary review, Grok adversarial review, and Opus conflict adjudication incorporated; awaiting Ryan's final diff review and lock |
+
 ### Does NOT Exist Yet
 
 | What | Why not | Who can create it |
 |------|---------|-------------------|
-| ~30–50 real semantic cases in `cases.jsonl` | Awaits G3 (Ryan authors gold) | Ryan only |
-| Gold verdicts in `gold.jsonl` | Awaits G3 | Ryan only |
-| Calibration/holdout split | Awaits G3 | Ryan only |
+| Authoritative locked cases/gold/split | Proposed rows exist only on the G3 branch; Ryan has not locked them | Ryan only |
 | First calibration run results | Requires G3 gold + G4 judge selection | Cursor/Crush after Ryan |
 | Judge model selection | Requires calibration data | Ryan only (G4) |
 | Live `ask.py` integration | Deferred — not v1 scope | Nobody yet (separate arc) |
@@ -128,12 +136,12 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | S1–S9 | Flash prep (contracts, rubrics, scaffold, tests) | **DONE on `main`** | — |
 | T2–T5 | Identity, provenance, runner, legacy shim | **DONE on `main`** (merged #155) | — |
 | PR merge | T2–T5 code on `main` | **DONE** | #155 merged |
-| G3 | Gold corpus + split lock | **NOT STARTED** | Ryan authors cases |
+| G3 | Gold corpus + split lock | **PRE-LOCK REVIEW** | Ryan reviews the validated 30-case proposal and either locks or requests revision |
 | G4 | Judge model selection | **NOT STARTED** | Requires G3 calibration data |
 | Calibration | First real run | **NOT STARTED** | Requires G3 + G4 |
 | T7 retrieval corpus | Post-rebuild golden eval (`tests/test_eval_golden.py`) | **REPAIRED 10/10** | Was 2/10 after R3 rebuild skipped the approved-ledger channel; backfilled 356 approved decisions + CSP obs/ver into Chroma (corpus-only fix, no repo change) |
 
-**Summary: Code is ~90% done on `main`. The gap is Ryan populating gold (G3) and judge selection (G4). The retrieval corpus under the golden eval is healthy again (10/10), so T7 verify is unblocked.**
+**Summary: G3 now has a validated proposed 30-case corpus on its feature branch, but no authoritative lock. The immediate gap is Ryan's final gold/split decision; calibration and judge selection remain blocked.**
 
 ---
 
@@ -143,7 +151,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 
 **If Ryan sent you here to review:** Read `main`'s implementation. Key questions: Does identity classification enforce `cross_family`-only for canonical runs? Does comparison-signature detect all the fields listed in the architecture? Is the runner truly Chroma-free? (Note: the T2–T5 test modules are not under `main`/`tests/` at this revision — verify coverage if asked.)
 
-**If Ryan sent you here for G3 (gold authoring):** You're assisting Ryan in writing semantic cases. The format is in `manifest.json` and the rubric in `rubrics/synthesis-grounded-v1.json`. Cases need frozen evidence, a candidate response, and Ryan's gold verdict. ~30–50 cases, category-balanced across the coverage list in the architecture.
+**If Ryan sent you here for G3:** Review the exact proposed diff and validation evidence. Do not alter `lock.status`, select a judge, or run calibration unless Ryan explicitly locks the gold/split. Any requested gold change must regenerate hashes and return to Ryan.
 
 **If you don't know why you're here:** Ask Ryan. The most likely next action is G3 gold authoring or a VERIFY/standing-check review.
 
@@ -151,8 +159,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 
 ## 6. What Remains Before "Live" (sequential)
 
-- [ ] Ryan authors ~30–50 semantic cases with gold verdicts (G3)
-- [ ] Ryan locks calibration/holdout split (G3)
+- [ ] Ryan reviews and locks the proposed 30-case gold corpus and 20/10 split (G3)
 - [ ] First calibration run against locked gold (confusion matrix report)
 - [ ] Ryan selects judge model based on calibration (G4)
 - [ ] Standing checks `eval-provenance-wiring` and `eval-negative-control-coverage` resolved
@@ -164,7 +171,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 
 | Stop | Gate owner | What it blocks |
 |------|-----------|----------------|
-| G3 — gold/split lock | Ryan | Writing real semantic cases; populating `cases.jsonl`/`gold.jsonl` |
+| G3 — gold/split lock | Ryan | Authoritative lock and canonical use; agents may revise proposed rows only under Ryan's explicit pre-lock authorization |
 | G4 — judge selection | Ryan | Choosing which model judges; running calibration |
 | Chroma in semantic path | Architecture invariant 2 | Never — any Chroma import in `eval_judgebench/` fails the AST test |
 | Live `ask.py` integration | Invariant 1 / separate arc | Not v1 scope |
@@ -227,6 +234,7 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 
 | Date | Who | Change |
 |------|-----|--------|
+| 2026-08-09 | Codex Sol | G3 pre-lock proposal validated at 30 cases with adversarial review incorporated; Ryan lock still pending |
 | 2026-08-09 | Kiro | Initial arc brief; T2–T5 on branch, PR not filed, G3/G4 awaiting Ryan |
 | 2026-08-09 | Crush (DeepSeek) | Reconcile: T2–T5 merged to `main` via PR #155; completion state and remaining steps updated; noted T2–T5 test modules not carried to `main`/`tests/` in #155 |
 | 2026-08-09 | Crush | Golden eval repaired 2/10 → 10/10 (Chroma backfill of approved ledger + CSP obs pair); T7 post-rebuild verify unblocked |
