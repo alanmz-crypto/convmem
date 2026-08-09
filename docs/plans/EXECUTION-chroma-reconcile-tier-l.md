@@ -103,6 +103,8 @@ python scripts/chroma_orphan_inventory.py --output /tmp/post-rebuild-inventory.j
 | Calibration | `eval-synthesis.py --judge --golden /tmp/CODEX-2026-08-07-judge-bench-calibration.jsonl` — 100% |
 | Doctor | No new index_drift failures |
 
+R4 verification is executed as Flash slices V1–V6. See [EXECUTION-post-rebuild-verify-flash-slices.md](EXECUTION-post-rebuild-verify-flash-slices.md) (DeepSeek V4 Flash / Crush lane) for verbatim commands, `/tmp` evidence capture, and the GREEN / YELLOW / RED verdict rules. **R4 GREEN 2026-08-09** — evidence and handoff in [FLASH-2026-08-08-post-rebuild-verify-handoff.md](../inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md).
+
 ### Phase R5 — METADATA-without-vector anomalies (3 IDs)
 
 Separate from bulk orphan set. Investigate `debug-nopatch` and two hash IDs before or after rebuild — may be test artifacts or stale METADATA without vectors. Do not block R3 if they are known debug rows; document disposition.
