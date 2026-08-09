@@ -12,9 +12,14 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval_judgebench.contracts import (
+    Contradiction,
+    Coverage,
     IndependenceClass,
     InvocationStatus,
     JudgeInvocationV1,
+    SemanticJudgmentV1,
+    Support,
+    Verdict,
 )
 from eval_judgebench.runner import CorpusLoadError, load_corpus, run_judgebench
 from eval_model_identity import CanonicalPreflightError
@@ -139,6 +144,60 @@ class RunnerWithCaseTests(unittest.TestCase):
             )
             self.assertEqual(len(result.cases), 1)
             self.assertEqual(result.cases[0].case_id, "c1")
+
+    @patch("eval_judgebench.runner.ollama_version", return_value="0.5.0")
+    @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
+    def test_conformance_verdict_matches_gold(self, _mock_digest, _mock_ver):
+        """CHK-007 mechanical hook: pinned mock judge disposition matches locked gold."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            rubric_dir = root / "rubrics"
+            rubric_dir.mkdir()
+            rubric_src = CORPUS / "rubrics" / "synthesis-grounded-v1.json"
+            (rubric_dir / "synthesis-grounded-v1.json").write_text(
+                rubric_src.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            manifest = json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))
+            manifest["case_count"] = 1
+            (root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+            case = {
+                "case_id": "conf-1",
+                "rubric_id": "synthesis-grounded-v1",
+                "candidate_mode": "model_generated",
+            }
+            (root / "cases.jsonl").write_text(json.dumps(case) + "\n", encoding="utf-8")
+            gold = {
+                "case_id": "conf-1",
+                "verdict": "pass",
+                "expected_candidate_mode": "model_generated",
+            }
+            (root / "gold.jsonl").write_text(json.dumps(gold) + "\n", encoding="utf-8")
+            judgment = SemanticJudgmentV1(
+                support=Support.FULL,
+                coverage=Coverage.COMPLETE,
+                contradiction=Contradiction.NONE,
+                verdict=Verdict.PASS,
+            )
+
+            def _judge(_case):
+                return JudgeInvocationV1(
+                    status=InvocationStatus.OK,
+                    judge_identity="deepseek-v4-pro",
+                    under_test_identity="llama3.1:8b",
+                    independence_class=IndependenceClass.CROSS_FAMILY,
+                    semantic_judgment=judgment,
+                )
+
+            result = run_judgebench(
+                root,
+                cfg=CFG,
+                judge_model="deepseek-v4-pro",
+                under_test_model="llama3.1:8b",
+                registry_path=REGISTRY,
+                semantic_judge=_judge,
+            )
+            self.assertTrue(result.cases[0].agrees_with_gold)
+            self.assertEqual(result.cases[0].invocation.status, InvocationStatus.OK)
 
 
 if __name__ == "__main__":
