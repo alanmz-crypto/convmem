@@ -108,6 +108,8 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-shadow-ledger-phase0.md` — Shadow Ledger Phase 0 delta capture
 - `docs/plans/STATUS-chroma-reconcile-tier-l.md` — Chroma Reconcile Tier L (post-rebuild verify)
 
+**Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
+
 <!-- TIER_A_END -->
 
 ---

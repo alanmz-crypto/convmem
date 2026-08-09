@@ -11,7 +11,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 
 **JudgeBench replaces this** with offline semantic calibration: a frozen-evidence test harness where the judge's verdicts are compared against Ryan-locked gold labels. When complete, Ryan can:
 
-1. Run `eval-judgebench` against a locked corpus
+1. Run `run_judgebench()` from `eval_judgebench.runner` against a locked corpus (dry-run: `semantic_judge=None`)
 2. Get a confusion matrix (judge-agrees-with-gold vs. doesn't)
 3. Use that to select/validate a judge model
 4. Know — provably — whether a change improved or degraded answer quality
@@ -100,15 +100,11 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | `eval_judgebench/calibration.py` | Validates the locked package, builds provider-bound requests internally, and transports only calibration IDs | Branch-only Phase A implementation; DeepSeek/Llama requests built and validated offline; arbitrary semantic callbacks rejected; exact 20-transport-invocation maximum per candidate run, with no retries or fallbacks |
 | `eval_judgebench/provider_requests.py` | Builds and validates pinned DeepSeek/Llama request shapes and parses provider responses | Branch-only Phase A implementation; strict provider-specific response envelopes; no provider/model calls have run |
 | `eval_corpus/fixtures/judgebench/identity-registry-v2.json` | Frozen-producer identity resolution for canonical calibration | Branch-only Phase A provenance input; not on `main` |
-| `eval_judge.py` (T5, merged #155) | `--legacy` gate; legacy path isolated from v1 provenance | Complete (on main) |
-| `tests/test_judgebench_contracts.py` | Contract validation tests | 29 tests, green |
+| `eval_judge.py` (T5, merged #155; prompt upgrade #153) | `--legacy` gate; reason-before-scoring; `confidence` field; legacy path isolated from v1 provenance | Complete (on main) |
+| `tests/test_judgebench_contracts.py` | Contracts + T2 identity + T3 provenance + T4 runner + T5 legacy isolation | Green — 29 tests (see `VERIFY-judgebench.md` CHK-004..008) |
 | `tests/test_judgebench_rubric.py` | Rubric load/validate tests | Green |
 | `tests/test_judgebench_no_chroma.py` | AST import scan — proves no Chroma in eval_judgebench/ | Green |
-
-> T2–T5 source (identity, provenance, runner, legacy shim) merged to `main` via PR #155.
-> Their test modules (`test_eval_model_identity.py`, `test_eval_provenance_signature.py`,
-> `test_judgebench_runner.py`, `test_eval_judge_legacy.py`) are not tracked under `main`'s
-> `tests/` at this revision — verify whether they were carried by #155 or need re-adding.
+| `tests/test_eval_methodology.py` | Shared eval methodology gates (`--legacy` with `--judge`, negative control) | Green |
 
 ### G3 state on `main` and Phase A state on this feature branch
 
@@ -144,9 +140,10 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | Phase A | Identity/calibration-prep, deterministic metrics, and provider-bound request/envelope validation | **IMPLEMENTED on branch** | Pending PR/merge; no network/model/calibration calls have run |
 | Calibration | Calibration-split experiments | **NOT STARTED** | Phase A review/PR/merge, then Ryan authorization for the separate 3-candidate × 20-case = 60-call experiment; each candidate run is capped at 20 transport invocations over calibration IDs only |
 | G4 | Judge model selection | **NOT STARTED** | Requires calibration-split results |
+| Upstream Chroma reconcile | R4 post-rebuild verify | **DONE — GREEN** | [`STATUS-chroma-reconcile-tier-l.md`](STATUS-chroma-reconcile-tier-l.md); [`FLASH-2026-08-08-post-rebuild-verify-handoff.md`](../inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md) |
 | T7 retrieval corpus | Post-rebuild golden eval (`tests/test_eval_golden.py`) | **REPAIRED 10/10** | Was 2/10 after R3 rebuild skipped the approved-ledger channel; backfilled 356 approved decisions + CSP obs/ver into Chroma (corpus-only fix, no repo change) |
 
-**Summary: G3 is merged on `main` at `5f1a3ef`. Phase A identity/calibration-prep, deterministic metrics, and provider-bound request/envelope validation are implemented on `feat/2026-08-09-judgebench-calibration-prep` after `0605670`, with no network/model/calibration calls run. The next boundary is Ryan authorization after PR/merge for the separate 3-candidate × 20-case = 60-call experiment; each candidate run remains capped at 20 transport invocations over calibration IDs only, with no retries or fallbacks. G4 judge selection remains Ryan-owned.**
+**Summary: G3 is merged on `main` at `5f1a3ef`. Phase A identity/calibration-prep, deterministic metrics, and provider-bound request/envelope validation are implemented on `feat/2026-08-09-judgebench-calibration-prep` after `0605670`, with no network/model/calibration calls run. The next boundary is Ryan authorization after PR/merge for the separate 3-candidate × 20-case = 60-call experiment; each candidate run remains capped at 20 transport invocations over calibration IDs only, with no retries or fallbacks. G4 judge selection remains Ryan-owned. Upstream Chroma R4 is GREEN (#161).**
 
 ---
 
@@ -154,7 +151,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 
 **If Ryan sent you here to implement:** Review and deliver the Phase A metrics/prep branch after the focused offline checks pass. Do not run calibration calls; the separate 3-candidate × 20-case = 60-call experiment requires Ryan authorization after PR/merge.
 
-**If Ryan sent you here to review:** Read `main`'s implementation. Key questions: Does identity classification enforce `cross_family`-only for canonical runs? Does comparison-signature detect all the fields listed in the architecture? Is the runner truly Chroma-free? (Note: the T2–T5 test modules are not under `main`/`tests/` at this revision — verify coverage if asked.)
+**If Ryan sent you here to review:** Read `main`'s implementation and [`VERIFY-judgebench.md`](VERIFY-judgebench.md). Key questions: Does identity classification enforce `cross_family`-only for canonical runs? Does comparison-signature detect all the fields listed in the architecture? Is the runner truly Chroma-free? T2–T5 mechanical checks live in [`tests/test_judgebench_contracts.py`](../../tests/test_judgebench_contracts.py).
 
 **If Ryan sent you here for G3:** G3 is locked. Do not alter its cases, gold judgments, split, or lock metadata; any future corpus change requires Ryan and a new immutable corpus version.
 
@@ -194,7 +191,7 @@ ConvMem evaluation landscape:
 ├── JudgeBench (THIS ARC) — calibrate the semantic judge offline
 ├── E2E synthesis eval — test retrieval→generation→judging together
 ├── Summary eval — summary-specific quality (shares J1 contract)
-├── Chroma Tier-L — orphan/retrieval quality (SEPARATE arc, not us)
+├── Chroma reconcile — R4 GREEN ([`STATUS-chroma-reconcile-tier-l.md`](STATUS-chroma-reconcile-tier-l.md); upstream, closed)
 └── Live ask.py judging — uses whatever judge passes calibration (FUTURE)
 ```
 
@@ -210,7 +207,9 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 | Execution plan (task breakdown) | `docs/plans/EXECUTION-judgebench.md` | You need task dependencies or scope lock |
 | Flash slice brief (S1–S9 detail) | `docs/plans/EXECUTION-judgebench-flash-slices.md` | You're implementing prep slices |
 | VERIFY checklist | `docs/plans/VERIFY-judgebench.md` | You're reviewing or closing checks |
-| T2–T5 handoff (Cursor) | `docs/inter-model/CURSOR-2026-08-09-judgebench-T2-T5-handoff.md` | You're picking up T2–T5 work |
+| T2–T5 handoff (Cursor) | `docs/inter-model/CURSOR-2026-08-09-judgebench-T2-T5-handoff.md` | Historical — T2–T5 merged #155 |
+| Chroma reconcile STATUS | `docs/plans/STATUS-chroma-reconcile-tier-l.md` | You need upstream retrieval/corpus health context |
+| R4 verify handoff | `docs/inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md` | You need post-rebuild corpus evidence |
 
 ---
 
@@ -240,4 +239,8 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 
 | Date | Who | Change |
 |------|-----|--------|
+| 2026-08-09 | Kiro | Initial arc brief; T2–T5 on branch, PR not filed, G3/G4 awaiting Ryan |
+| 2026-08-09 | Crush (DeepSeek) | Reconcile: T2–T5 merged to `main` via PR #155; completion state and remaining steps updated; noted T2–T5 test modules not carried to `main`/`tests/` in #155 |
+| 2026-08-09 | Crush | Golden eval repaired 2/10 → 10/10 (Chroma backfill of approved ledger + CSP obs pair); T7 post-rebuild verify unblocked |
+| 2026-08-09 | Cursor | Landscape sync: T2–T5 tests in contracts file; Chroma R4 GREEN cross-links; runner API in section 1 |
 | 2026-08-09 | Codex Luna Medium | Current state reconciled: G3 is merged and locked on `main` at `5f1a3ef`; Phase A remains branch-only with v2 provenance resolution, provider-bound requests/envelopes, and no network/model/calibration calls; review/PR/merge, the separate 3-candidate × 20-case = 60-call authorization, and G4 remain ahead |

@@ -8,6 +8,8 @@
 | [`docs/PLANNING-PROTOCOL.md`](PLANNING-PROTOCOL.md) | Planning OS workflow — where am I in architecture / execution / revise? |
 | [`docs/planning/EXECUTION-CLOSURE-2026-07-08.md`](planning/EXECUTION-CLOSURE-2026-07-08.md) | Planning OS arc closure — frozen summary, findings, interim routes |
 | [`docs/plans/`](plans/) | Active ARCHITECTURE and EXECUTION plans (embedding eval, restore drill, etc.) |
+| [`docs/plans/STATUS-<slug>.md`](plans/) | **Arc briefs (project goal awareness)** — read when working an active arc; list in [`AGENTS.md`](../AGENTS.md) |
+| [`docs/inter-model/STATUS.md`](inter-model/STATUS.md) | **Cross-arc snapshot** — active vs closed arcs and next authorized actions |
 | [`config/agent-protocol.md`](../config/agent-protocol.md) | Session start/close (deployed to Cursor, MCP, Codex, Kiro) |
 | [`SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) | Cross-project digest phase status + background synthesis phase gates |
 | [`docs/inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`](inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md) | Canonical cross-project synthesis plan (Phase 0–3 gates) |
