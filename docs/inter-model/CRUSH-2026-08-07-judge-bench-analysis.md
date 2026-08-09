@@ -93,11 +93,13 @@ Fine-tuned judges (PandaLM, Prometheus2, JudgeLM, AutoJ) mostly performed **belo
 
 ## Gap analysis: convmem vs. JudgeBench SOTA
 
+**Important caveat:** JudgeBench measures **pairwise preference accuracy** (pick correct from a contrastive pair). Our judge does **absolute single-item 1-5 grading** (grade one output against a rubric). These are related but distinct skills — calibrated absolute judgment is harder than forced-choice discrimination. The paper's specific point-gain numbers are *directionally* right (reasoning models and better prompts help both tasks) but the magnitudes are **unvalidated for our task shape**. Treat as directional, not calibrated.
+
 | Gap | Severity | Our current | JudgeBench best practice | Expected gain |
 |-----|----------|-------------|--------------------------|---------------|
 | **Prompt sophistication** | High | Vanilla (one-pass 1-5 rubric) | Arena-Hard: generate reference answer → then evaluate | +10-12 pts |
 | **Judge model strength** | High | `deepseek-v4-flash` / `llama3.1:8b` (40.9%) | DeepSeek-R1 (73.1%) or o3-mini (80.9%) | +15-30 pts |
-| **Local fallback** | High | `llama3.1:8b` — near-random on hard tasks | `ornith:9b` or `qwen3.6:35b` (available locally, not benchmarked) | Unknown but certainly > random |
+| **Local fallback** | High | `llama3.1:8b` — near-random on hard tasks | `qwen2.5-coder:14b` (benchmarked Aug 4 for QA judgment; **DONE in PR #153**) | Directional — calibrated on prose-faithfulness task, not JudgeBench |
 | **Calibration benchmark** | Medium | None — judge scores trusted without calibration | JudgeBench sampling: validate judge against known-hard pairs periodically | Confidence in scores |
 | **Pairwise position-swap** | Low | N/A (single-item grading) | Double-evaluate with swapped order; aggregate | Bias elimination |
 | **Multi-agent / panel** | Low | Single judge | ChatEval debate or ensemble (mixed results — ChatEval got 34%) | Uncertain |
@@ -113,13 +115,15 @@ Fine-tuned judges (PandaLM, Prometheus2, JudgeLM, AutoJ) mostly performed **belo
 
 ## Recommendations (ordered by impact/cost ratio)
 
-### 1. Upgrade judge prompt to Arena-Hard style (zero cost, +10-12 pts)
+### 1. Upgrade judge prompt to reason-before-scoring (**DONE in PR #153**)
 
-Add a reference-answer generation step before scoring:
+Add a reference-summary generation step before scoring. This is the anti-laziness technique that transfers from Arena-Hard even though the pairwise structure doesn't map to absolute grading:
 
 ```
-1. First, answer the question yourself based on the source material.
-2. Then compare the model's output to your reference answer.
+1. First, summarize the source in 1-2 sentences.
+2. Then compare the model's output to the source.
+3. Score 1-5 on groundedness + relevance.
+```
 3. Score 1-5 on groundedness + relevance.
 ```
 
@@ -138,7 +142,7 @@ Tradeoff: R1 is slower and more expensive than V4 Flash. Consider:
 
 ### 3. Replace local fallback model (zero cost)
 
-`llama3.1:8b` (40.9% on JudgeBench) → `ornith:9b` or `qwen3.6:35b`. Neither is benchmarked in the paper, but both are almost certainly stronger. The `qwen2.5-coder:14b` we already benchmarked for QA judgment is another candidate — it was selected specifically for judgment quality.
+`llama3.1:8b` (40.9% on JudgeBench) → `qwen2.5-coder:14b` (**landed in PR #153**). Benchmarked Aug 4 for QA judgment; fits 12GB VRAM; calibration gate passed on the prose-faithfulness task (good synthesis 5/5, contradictory 1/5).
 
 Change `CONVMEM_FALLBACK_MODEL` default or the `resolve_judge_model` fallback in `eval_judge.py:84-96`.
 
@@ -166,7 +170,7 @@ If we ever evaluate "is response A better than response B" (e.g., for model sele
 
 ## Open questions for Claude
 
-1. Does Arena-Hard prompt style (reference answer → judge) translate well to 1-5 single-item grading, or is it primarily designed for pairwise A>B comparison?
+1. Does Arena-Hard prompt style (reference answer → judge) translate well to 1-5 single-item grading, or is it primarily designed for pairwise A>B comparison? **Partially answered — reason-before-scoring transferred; pairwise structure did not (PR #153).**
 2. Is there a better local model than `ornith:9b` for judging on 12GB VRAM? The paper benchmarks `llama3.1:8b` at 40.9% but doesn't cover newer small models.
 3. Should we add a "confidence" or "abstain" option when the judge is uncertain? JudgeBench's tie/abstain handling could inform this.
 4. Does the paper's finding that "judge accuracy ≈ solver accuracy" mean we should never trust a local judge to evaluate synthesis from a stronger cloud model (e.g., DeepSeek-R1 synthesis judged by llama3.1:8b)?
