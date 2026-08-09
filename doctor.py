@@ -392,9 +392,13 @@ def _check_verify_script(*, run: bool) -> DoctorCheck:
 def _check_synthesis_gate() -> DoctorCheck:
     """P1c gate: count synthesis failures in the last 7 days.
 
-    Splits ingest distill/summarize degradation (WARN — no data loss, chunk
-    committed with summary only) from ask-pipeline failures (FAIL — investigate)
-    by the ``stage`` field in synthesis_failures.jsonl.
+    Splits telemetry into three categories (no data loss in any; chunk is
+    committed with at least its summary):
+      - ``stage`` in ``distill``/``summarize`` -> ingest-degraded (provider drops
+        on background jobs, WARN-only).
+      - ``stage == "ask"`` -> real ask-pipeline failure (FAIL at >=3).
+      - missing/unknown ``stage`` -> stale telemetry from before tagging,
+        ignored (not counted as ask, to avoid false-alarms on legacy entries).
     """
     import json as _json
     from datetime import datetime as _dt, timezone as _tz, timedelta as _td
@@ -420,8 +424,11 @@ def _check_synthesis_gate() -> DoctorCheck:
                 continue
             if entry.get("stage") in ("distill", "summarize"):
                 ingest_degraded += 1
-            else:
+            elif entry.get("stage") == "ask":
                 ask_failures += 1
+            # Entries with missing/unknown stage are ignored — they are
+            # stale telemetry from before stage tagging was added, not real
+            # ask-path failures. Treating them as ask would false-alarm.
         except (KeyError, ValueError, _json.JSONDecodeError):
             continue
     if ask_failures >= 3:
