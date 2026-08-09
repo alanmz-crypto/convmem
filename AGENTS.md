@@ -20,6 +20,29 @@ map to delegate-down tiers 4 / 5–6 / 9. Full invocation map: `~/.codex/CODE-X-
 
 ---
 
+## Project goal awareness (STATUS files)
+
+Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that gives models a complete mental landscape of the project they're working in. It answers:
+
+1. **What is this project for?** — the product-level goal, why it matters.
+2. **How does the system work?** — diagram of how pieces connect, data flow, key invariants.
+3. **What exists on disk right now?** — file map with state (complete / stub / empty / missing).
+4. **What's your role?** — what you're here to do based on why Ryan sent you.
+5. **What's missing before it's live?** — sequential checklist from here to production.
+
+**Mandatory read:** If you are working on an arc that has a STATUS file, read it before starting work. Your first response must state Goal / My role / System state / Next action (see `config/agent-protocol.md` for the exact format).
+
+**Design intent:** A model should arrive and within one document have a strong enough mental image of the arc's design that it knows what exists, what's missing, and its exact role — stronger than its knowledge of the convmem project as a whole. The STATUS file is that document.
+
+**Update rule:** After any milestone changes state (PR merged, gate passed, blocker discovered), update the STATUS file in the same commit or a follow-up. Stale STATUS is worse than no STATUS.
+
+**Departure protocol:** The STATUS file must stay a *current-state snapshot*, not a log. Overwrite sections to reflect reality now (delete completed items, move "branch" → "`main`", rewrite "Your Role" for the next model). Session narrative belongs in Track A, not here. One line in the Update Log. Test: could a fresh model read only this file and orient itself?
+
+**Active STATUS files:**
+- [`docs/plans/STATUS-judgebench.md`](docs/plans/STATUS-judgebench.md) — JudgeBench semantic calibration v1
+
+---
+
 ## Commit message guidance
 
 Write commit messages that a new contributor can understand without reading the diff or knowing internal code names. Treat this as a guideline, not an automated gate — there is no hook or CI check enforcing it.
