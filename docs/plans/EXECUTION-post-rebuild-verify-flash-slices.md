@@ -73,7 +73,7 @@ Flash says exactly: *"This task requires Cursor because: [reason]. I cannot comp
 | `~/.local/share/convmem/chroma`, `processed.json` delete/truncate | Tier-1 corpus; hook-blocked | **Ryan only** |
 | `fix/2026-08-07-judge-bench-judge-upgrades` worktree | Explicit do-not-touch boundary | — |
 | Versioning `/tmp/CODEX-2026-08-07-judge-bench-calibration.jsonl` into repo | Ryan gate / rebaseline decision | Ryan + Cursor |
-| JudgeBench T3–T5 implementation (`eval_provenance`, runner, legacy shim) — authoring, fixing, reimplementing | V5 reuses the existing `eval-synthesis.py --judge` harness, which imports these read-only; Flash must not edit their source | Cursor owns source edits |
+| JudgeBench T2–T5 modules (`eval_provenance`, runner, legacy shim) — **on `main` (#155)**; do not re-author | V5 imports read-only; Flash must not edit source | Cursor if bug |
 | `eval_judge.py` / judge prompt edits on upgrades branch | Already authored; not Flash rewrite | Cursor if tests fail |
 | `convmem index` full corpus, `convmem refine` bulk | Destructive / Ryan-gated ops | Ryan |
 | Restart `convmem-watch` / `monitor.timer` | Live ops; only with explicit Ryan line in session | Ryan authorizes first |

@@ -6,11 +6,13 @@
 
 1. `brief.md` — corpus stats, services, P0, MCP
 2. [`MODEL-WORKFLOW.md`](MODEL-WORKFLOW.md) — **agent cheat sheet** (prod vs lab, digest, smoke)
-3. `docs/inter-model/` — newest cross-model messages first
-3. `docs/WORKSPACE-STANDARD.md` — dev machine project boundaries
-4. `docs/inter-model/KIRO-CURSOR-BEST-PRACTICES-2026-06-22.md` — memory/search conclusions
-5. `docs/CHROMA-ACCESS-PATTERN.md` — readonly vs writer paths
-6. `docs/AGENT-ROLES.md` — static routing
+3. **Active arc?** — `docs/plans/STATUS-<slug>.md` (see [`AGENTS.md`](../AGENTS.md) Active STATUS list)
+4. **Cross-arc snapshot** — [`docs/inter-model/STATUS.md`](inter-model/STATUS.md) (what is active/closed across arcs)
+5. `docs/inter-model/` — newest cross-model messages first
+6. `docs/WORKSPACE-STANDARD.md` — dev machine project boundaries
+7. `docs/inter-model/KIRO-CURSOR-BEST-PRACTICES-2026-06-22.md` — memory/search conclusions
+8. `docs/CHROMA-ACCESS-PATTERN.md` — readonly vs writer paths
+9. `docs/AGENT-ROLES.md` — static routing
 
 ## Archived
 

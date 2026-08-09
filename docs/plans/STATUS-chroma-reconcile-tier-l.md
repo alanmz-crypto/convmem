@@ -65,14 +65,9 @@ ConvMem's retrieval layer is a two-part store: a Chroma HNSW vector index plus a
 | `tests/test_chroma_flatten.py` | Guard unit tests (4 tests) | Green |
 | `scripts/chroma_orphan_inventory.py` | Read-only inventory tool; emits tier recommendation | Complete |
 | `scripts/eval-synthesis.py` | Calibration harness; requires `--legacy` with `--judge` (lines 137–141) | Complete |
-
-### On this wip branch (`wip/2026-08-08-2026-08-08-post-rebuild-verify`)
-
-| File | What it does | State |
-|------|-------------|-------|
-| `docs/plans/EXECUTION-post-rebuild-verify-flash-slices.md` | Flash V1–V6 slice brief with verbatim commands | Complete (V5 fixed with `--legacy`) |
-| `docs/inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md` | R4 GREEN evidence handoff | Complete |
-| `docs/plans/STATUS-chroma-reconcile-tier-l.md` | **This file** | New |
+| `docs/plans/EXECUTION-post-rebuild-verify-flash-slices.md` | Flash V1–V6 slice brief with verbatim commands | On `main` (#161); V5 includes `--legacy` |
+| `docs/inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md` | R4 GREEN evidence handoff + close-out | On `main` (#161) |
+| `docs/plans/STATUS-chroma-reconcile-tier-l.md` | **This file** — arc landscape | On `main` (#161) |
 
 ### Planning docs on `main`
 
@@ -104,16 +99,14 @@ ConvMem's retrieval layer is a two-part store: a Chroma HNSW vector index plus a
 | G3 | Ryan "go rebuild" | **DONE** | 2026-08-07 |
 | R3 | Full re-index | **DONE** | `CRUSH-2026-08-08-index-complete-judgebench-unblock.md` |
 | R4 | Post-rebuild verify | **DONE — GREEN** | `FLASH-2026-08-08-post-rebuild-verify-handoff.md` |
-| Docs | Wip docs branch merged to `main` | **NOT DONE** — Ryan squash-merges PR | PR text in Flash handoff |
+| Docs | Handoff + STATUS + brief on `main` | **DONE** | #161 |
 | R5 | 3 METADATA-without-vector anomalies (`debug-nopatch` + 2 hashes) | **Optional disposition** | Documented in parent plan |
 
-**Summary: Arc is code- and verification-complete. Only docs/merge/ops remain.**
+**Summary: Arc is closed for code and verification. Optional R5 disposition and Ryan-gated ops remain.**
 
 ---
 
 ## 5. Your Role (read this to know what you're here to do)
-
-**If Ryan sent you here to merge:** The wip branch contains the Flash handoff, the corrected V5 command in the slice brief, and this STATUS file. Squash-merge per default. Merge reading list is in the Flash handoff.
 
 **If Ryan sent you here to disposition R5:** The 3 METADATA-without-vector anomalies are documented in `EXECUTION-chroma-reconcile-tier-l.md` Phase R5. They may be test artifacts or stale rows; decide whether to drop, keep, or move to a debug collection. This is not a blocker.
 
@@ -121,13 +114,12 @@ ConvMem's retrieval layer is a two-part store: a Chroma HNSW vector index plus a
 
 **If Ryan sent you here because retrieval looks wrong:** That would be a new arc. This arc's verify was GREEN; new contamination would need a fresh inventory and diagnosis.
 
-**If you don't know why you're here:** Ask Ryan. Most likely next step: merge the docs PR and close the arc.
+**If you don't know why you're here:** Ask Ryan. This arc is closed unless retrieval regresses or you are handling optional R5 / ops items below.
 
 ---
 
 ## 6. What Remains Before "Live" (sequential)
 
-- [ ] Ryan squash-merges the wip docs PR (handoff + STATUS + brief fix + parent-plan cross-link)
 - [ ] Optional: R5 anomaly disposition (decision only, no code)
 - [ ] Optional, deferred: rebaseline `/tmp/CODEX-2026-08-07-judge-bench-calibration.jsonl` after Ollama 0.30.11 → 0.32.3 (Cursor proposes, Ryan locks; tracked as JudgeBench concern, not this arc)
 - [ ] Ops: `convmem-watch` monitor restart and `convmem refine` bulk run — Ryan-gated
@@ -203,4 +195,5 @@ This arc is *downstream of* the ledger and *upstream of* JudgeBench calibration.
 
 | Date | Who | Change |
 |------|-----|--------|
-| 2026-08-09 | Crush (DeepSeek Flash close-out) | Initial arc brief; R4 already GREEN; only docs merge remains |
+| 2026-08-09 | Crush (DeepSeek Flash close-out) | Initial arc brief; R4 GREEN |
+| 2026-08-09 | Cursor | Landscape sync: docs on `main` (#161); arc closed except optional R5/ops |
