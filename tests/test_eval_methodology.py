@@ -18,6 +18,12 @@ class FakeJudgeResult:
     reason: str = "test"
     independent: bool = True
     judge_model: str = "judge"
+    confidence: str | None = None
+    _deepseek_active: bool = True
+
+    @property
+    def low_confidence(self) -> bool:
+        return not self._deepseek_active
 
 
 @pytest.mark.parametrize("kind", ["summary", "synthesis"])
