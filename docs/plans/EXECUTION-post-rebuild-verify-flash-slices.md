@@ -72,7 +72,7 @@ Flash says exactly: *"This task requires Cursor because: [reason]. I cannot comp
 | `~/.local/share/convmem/chroma`, `processed.json` delete/truncate | Tier-1 corpus; hook-blocked | **Ryan only** |
 | `fix/2026-08-07-judge-bench-judge-upgrades` worktree | Explicit do-not-touch boundary | — |
 | Versioning `/tmp/CODEX-2026-08-07-judge-bench-calibration.jsonl` into repo | Ryan gate / rebaseline decision | Ryan + Cursor |
-| JudgeBench T3–T5 implementation (`eval_provenance`, runner, legacy shim) | Tier 5–8 per existing wall | Cursor |
+| JudgeBench T3–T5 implementation (`eval_provenance`, runner, legacy shim) — authoring, fixing, reimplementing | V5 reuses the existing `eval-synthesis.py --judge` harness, which imports these read-only; Flash must not edit their source | Cursor owns source edits |
 | `eval_judge.py` / judge prompt edits on upgrades branch | Already authored; not Flash rewrite | Cursor if tests fail |
 | `convmem index` full corpus, `convmem refine` bulk | Destructive / Ryan-gated ops | Ryan |
 | Restart `convmem-watch` / `monitor.timer` | Live ops; only with explicit Ryan line in session | Ryan authorizes first |
@@ -87,7 +87,7 @@ Flash says exactly: *"This task requires Cursor because: [reason]. I cannot comp
 | Slice  | Maps to T7 | Start tier | Action | Done-when (objective gate) | Escalate if |
 |--------|-----------|------------|--------|---------------------------|-------------|
 | **V1** | T7 R4 preflight | 1 | `convmem doctor`; `convmem brief --stdout-only`; `convmem unresolved`; `git branch --show-current` (must not be `main`) | doctor exit 0; branch noted in handoff | doctor fails → stop, report |
-| **V2** | T7 R1/R4 inventory | 1 | `python scripts/chroma_orphan_inventory.py` → `/tmp/chroma-orphan-inventory-<UTCts>.json` | JSON exists; record `orphans_hnsw_minus_metadata_count`, reconcile tier, calibration probe `none_ids` | tier **L** (>50 orphans) → **WALL** |
+| **V2** | T7 R1/R4 inventory | 1 | `python scripts/chroma_orphan_inventory.py` → `/tmp/chroma-orphan-inventory-<UTCts>.json` | JSON exists; record `orphans_hnsw_minus_metadata_count`, `reconcile_tier_recommendation`, calibration probe `none_ids` | tier **L** (>500 orphans) → **WALL** |
 | **V3** | T7 R4 unit tests | 1 | `pytest tests/test_chroma_flatten.py -q` | exit 0 | fails after 2 fix attempts → Tier 4 Luna |
 | **V4** | T7 R4 doctor drift | 1 | `convmem doctor` (capture index_drift / unit count); optional `convmem stats` | counts logged (~18.4k units expected); no new critical failures | unexpected drift → WALL |
 | **V5** | T7 R4 calibration | 1–2 | `python scripts/eval-synthesis.py --judge --golden /tmp/CODEX-2026-08-07-judge-bench-calibration.jsonl` | tee `/tmp/post-rebuild-calibration-<UTCts>.log` | **Completes without crash**; capture pass rate + per-row results (do **not** require 100% — Ollama 0.32.3 may differ); crash → WALL |
