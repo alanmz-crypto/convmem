@@ -189,7 +189,7 @@ class ChromaStore:
         embedding: list[float],
         metadata: dict,
     ) -> None:
-        self._collection(SUMMARIES).add(
+        self._collection(SUMMARIES).upsert(
             ids=[doc_id],
             documents=[document],
             embeddings=[embedding],
@@ -242,6 +242,8 @@ class ChromaStore:
             embeddings=[embedding],
             metadatas=[meta],
         )
+        if existing is not None and is_superseded(existing_meta):
+            invalidate_superseded_cache(self.chroma_dir)
         self._emit_shadow(
             event_id=event_id,
             operation=operation,
@@ -406,8 +408,20 @@ class ChromaStore:
         res = col.get(where={"source_path": source_path}, include=[])
         return len(res.get("ids") or [])
 
-    def delete_units_for_source(self, source_path: str) -> int:
-        """Remove all knowledge units indexed from ``source_path``."""
+    def ids_for_source(self, collection_name: str, source_path: str) -> set[str]:
+        """Return row ids carrying an exact ``source_path`` value."""
+        col = self._collection(collection_name)
+        res = col.get(where={"source_path": source_path}, include=[])
+        return set(res.get("ids") or [])
+
+    def delete_units_for_source(
+        self,
+        source_path: str,
+        *,
+        keep_ids: set[str] | None = None,
+        candidate_ids: set[str] | None = None,
+    ) -> int:
+        """Remove selected knowledge units indexed from ``source_path``."""
         col = self._collection(UNITS)
         res = col.get(
             where={"source_path": source_path},
@@ -416,6 +430,12 @@ class ChromaStore:
         ids = res.get("ids") or []
         metas = res.get("metadatas") or []
         docs = res.get("documents") or []
+        selected = {
+            unit_id
+            for unit_id in ids
+            if (keep_ids is None or unit_id not in keep_ids)
+            and (candidate_ids is None or unit_id in candidate_ids)
+        }
         prepared = [
             (
                 unit_id,
@@ -424,9 +444,11 @@ class ChromaStore:
                 docs[i] if i < len(docs) else None,
             )
             for i, unit_id in enumerate(ids)
+            if unit_id in selected
         ]
-        if ids:
-            col.delete(ids=ids)
+        if selected:
+            col.delete(ids=list(selected))
+            invalidate_superseded_cache(self.chroma_dir)
         for unit_id, event_id, meta, doc in prepared:
             self._emit_shadow(
                 event_id=event_id,
@@ -437,9 +459,15 @@ class ChromaStore:
                 deleted=True,
                 writer_route="ChromaStore.delete_units_for_source",
             )
-        return len(ids)
+        return len(selected)
 
-    def preview_supersede_for_source(self, source_path: str) -> list[dict]:
+    def preview_supersede_for_source(
+        self,
+        source_path: str,
+        *,
+        keep_ids: set[str] | None = None,
+        candidate_ids: set[str] | None = None,
+    ) -> list[dict]:
         """Read-only provenance preview of what supersede_units_for_source would tombstone.
 
         Returns the active (not-yet-superseded) units for ``source_path`` with
@@ -453,7 +481,11 @@ class ChromaStore:
         preview: list[dict] = []
         for unit_id, meta in zip(ids, metas):
             row = dict(meta or {})
-            if is_superseded(row):
+            if (
+                is_superseded(row)
+                or (keep_ids is not None and unit_id in keep_ids)
+                or (candidate_ids is not None and unit_id not in candidate_ids)
+            ):
                 continue
             preview.append(
                 {
@@ -470,6 +502,8 @@ class ChromaStore:
         source_path: str,
         *,
         superseded_by: str,
+        keep_ids: set[str] | None = None,
+        candidate_ids: set[str] | None = None,
     ) -> int:
         """Tombstone active units for ``source_path`` (refine-style; keeps history)."""
         col = self._collection(UNITS)
@@ -482,7 +516,11 @@ class ChromaStore:
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         for unit_id, meta in zip(ids, metas):
             row = dict(meta or {})
-            if is_superseded(row):
+            if (
+                is_superseded(row)
+                or (keep_ids is not None and unit_id in keep_ids)
+                or (candidate_ids is not None and unit_id not in candidate_ids)
+            ):
                 continue
             event_id = self._prepare_shadow_event_id()
             row["superseded"] = True
@@ -504,14 +542,26 @@ class ChromaStore:
             invalidate_superseded_cache(self.chroma_dir)
         return n
 
-    def delete_summaries_for_source(self, source_path: str) -> int:
-        """Remove all conversation summaries indexed from ``source_path``."""
+    def delete_summaries_for_source(
+        self,
+        source_path: str,
+        *,
+        keep_ids: set[str] | None = None,
+        candidate_ids: set[str] | None = None,
+    ) -> int:
+        """Remove selected conversation summaries indexed from ``source_path``."""
         col = self._collection(SUMMARIES)
         res = col.get(where={"source_path": source_path}, include=[])
         ids = res.get("ids") or []
-        if ids:
-            col.delete(ids=ids)
-        return len(ids)
+        selected = {
+            doc_id
+            for doc_id in ids
+            if (keep_ids is None or doc_id not in keep_ids)
+            and (candidate_ids is None or doc_id in candidate_ids)
+        }
+        if selected:
+            col.delete(ids=list(selected))
+        return len(selected)
 
     @staticmethod
     def _flatten(res: dict) -> list[dict]:
