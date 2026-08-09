@@ -87,7 +87,7 @@ Avoid **"index what you wrote"** alone — models treat that as the markdown log
 
 STATUS files are **arc briefs** — they give you a mental landscape of the design: how pieces connect, what's built, what's a stub, what doesn't exist yet, your exact role, and what "done" looks like for the whole arc (not just your slice). A model that finishes its slice but loses sight of the arc-level finish line is failing.
 
-**When to create STATUS:** When authoring a new arc (ARCHITECTURE + EXECUTION plan), create a matching `docs/plans/STATUS-<slug>.md` using `STATUS-judgebench.md` as the template (10-section structure). In the same commit or PR, add the new file to the **Active STATUS files** list below and in `AGENTS.md`. If surfaces are regenerated in the same branch, the list propagates automatically; otherwise note the list update is needed.
+**When to create STATUS:** When authoring a new arc (ARCHITECTURE + EXECUTION plan), create a matching `docs/plans/STATUS-<slug>.md` using `STATUS-judgebench.md` as the template (10-section structure). The slug is kebab-case and must match the arc's ARCHITECTURE filename suffix (e.g. `ARCHITECTURE-shadow-ledger-phase0.md` → `STATUS-shadow-ledger-phase0.md`). In the same commit or PR, add the new file to the **Active STATUS files** list below and in `AGENTS.md`. If surfaces are regenerated in the same branch, the list propagates automatically; otherwise note the list update is needed.
 
 **When to update STATUS:** After any milestone changes state (PR merged, gate passed, new blocker discovered), update the STATUS file in the same commit or as a follow-up. Stale STATUS is worse than no STATUS.
 
