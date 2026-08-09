@@ -37,7 +37,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | JudgeBench semantic calibration v1 | T2–T5 on `main`; Chroma R4 GREEN | Ryan authors/locks G3 gold + split; then calibration run and G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
-| Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. |
+| Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
 
 ## Closed arcs — reference STATUS only
 
@@ -70,6 +70,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Latest session handoff](LATEST.md)
 - [JudgeBench STATUS](../plans/STATUS-judgebench.md)
 - [Chroma Reconcile STATUS](../plans/STATUS-chroma-reconcile-tier-l.md) (closed)
+- [Complete-data backup STATUS](../plans/STATUS-complete-data-backup-correction-v2.md)
 - [R2b capture STATUS](../plans/STATUS-r2b-capture-auth.md)
 - [Shadow Ledger STATUS](../plans/STATUS-shadow-ledger-phase0.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
