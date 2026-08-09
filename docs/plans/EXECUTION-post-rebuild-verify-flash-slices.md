@@ -19,7 +19,8 @@
 
 - **Parent arc:** [EXECUTION-chroma-reconcile-tier-l.md](EXECUTION-chroma-reconcile-tier-l.md) (T7, Phase R4)
 - **Index evidence:** ~18,426 units (`convmem doctor` chroma count); index complete per [CRUSH-2026-08-08-index-complete-judgebench-unblock.md](../inter-model/CRUSH-2026-08-08-index-complete-judgebench-unblock.md)
-- **JudgeBench:** S1–S9 landed on `main` (#144). T3/T4/T5 execute is **behind the escalation wall** — not Flash.
+- **JudgeBench:** S1–S9 landed on `main` (#144). T2–T5 execute (identity, provenance, runner, legacy shim) is on `main` via PR #155.
+- **R4 post-rebuild verify:** V1–V6 executed GREEN — evidence in [FLASH-2026-08-08-post-rebuild-verify-handoff.md](../inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md).
 - **Judge upgrades branch:** `fix/2026-08-08-2026-08-09-judge-bench-upgrades` — Flash may **verify** (pytest only); not author/merge.
 - **Do not touch this plan's branch during Flash execution** unless a new slice explicitly says so.
 
@@ -90,7 +91,7 @@ Flash says exactly: *"This task requires Cursor because: [reason]. I cannot comp
 | **V2** | T7 R1/R4 inventory | 1 | `python scripts/chroma_orphan_inventory.py` → `/tmp/chroma-orphan-inventory-<UTCts>.json` | JSON exists; record `orphans_hnsw_minus_metadata_count`, `reconcile_tier_recommendation`, calibration probe `none_ids` | tier **L** (>500 orphans) → **WALL** |
 | **V3** | T7 R4 unit tests | 1 | `pytest tests/test_chroma_flatten.py -q` | exit 0 | fails after 2 fix attempts → Tier 4 Luna |
 | **V4** | T7 R4 doctor drift | 1 | `convmem doctor` (capture index_drift / unit count); optional `convmem stats` | counts logged (~18.4k units expected); no new critical failures | unexpected drift → WALL |
-| **V5** | T7 R4 calibration | 1–2 | `python scripts/eval-synthesis.py --judge --golden /tmp/CODEX-2026-08-07-judge-bench-calibration.jsonl` | tee `/tmp/post-rebuild-calibration-<UTCts>.log` | **Completes without crash**; capture pass rate + per-row results (do **not** require 100% — Ollama 0.32.3 may differ); crash → WALL |
+| **V5** | T7 R4 calibration | 1–2 | `python scripts/eval-synthesis.py --judge --legacy --golden /tmp/CODEX-2026-08-07-judge-bench-calibration.jsonl` | tee `/tmp/post-rebuild-calibration-<UTCts>.log` | **Completes without crash**; capture pass rate + per-row results (do **not** require 100% — Ollama 0.32.3 may differ); crash → WALL |
 | **V6** | T7-6 handoff | 1 | Write [docs/inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md](../inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md): tables linking `/tmp` artifacts, pass/fail per R4 row, explicit **GREEN / YELLOW / RED** verdict | File committed + pushed; Track A index Crush session | ambiguous verdict → WALL |
 | **J1** | Judge upgrades verify (optional) | 1 | On `fix/2026-08-08-2026-08-09-judge-bench-upgrades`: `pytest tests/test_eval_methodology.py -q` (+ `tests/test_eval_judge.py` if present) | pytest green; SHA + output in handoff | test failure → WALL (Cursor owns fix) |
 
@@ -135,7 +136,7 @@ From [EXECUTION-chroma-reconcile-tier-l.md](EXECUTION-chroma-reconcile-tier-l.md
 
 ### Verdict rules
 
-- **GREEN:** all checks GREEN → Cursor proceeds JudgeBench T3–T5 on `main`; judge upgrades PR review/merge path.
+- **GREEN:** all checks GREEN → corpus healthy; JudgeBench is blocked on G3 (Ryan gold lock) — see [STATUS-judgebench.md](STATUS-judgebench.md). Judge upgrades PR review/merge path.
 - **YELLOW:** some checks YELLOW → Cursor owns rebaseline decision + optional fixture versioning; Flash work is complete.
 - **RED:** any check RED or crash → Cursor debugging arc before any JudgeBench execute.
 
@@ -143,7 +144,7 @@ From [EXECUTION-chroma-reconcile-tier-l.md](EXECUTION-chroma-reconcile-tier-l.md
 
 ## What Flash success unlocks
 
-- **GREEN:** Cursor proceeds JudgeBench T3–T5 on `main`; judge upgrades PR review/merge path
+- **GREEN:** corpus healthy; JudgeBench is blocked on G3 (Ryan gold lock) — see [STATUS-judgebench.md](STATUS-judgebench.md). Judge upgrades PR review/merge path.
 - **YELLOW:** Cursor owns rebaseline decision + optional fixture versioning; Flash work is complete
 - **RED:** Cursor debugging arc before any JudgeBench execute
 
