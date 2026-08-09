@@ -8,10 +8,10 @@
     "convmem.py:375",
     "convmem.py:479",
     "convmem.py:644",
-    "ingest.py:478",
-    "ingest.py:535",
-    "ingest.py:751",
-    "inter_model_index.py:155"
+    "ingest.py:524",
+    "ingest.py:787",
+    "ingest.py:825",
+    "inter_model_index.py:162"
   ],
   "open_production_write_store_call_sites": [
     "observe.py:229",
@@ -24,7 +24,7 @@
   "must_use_factory_bypass_sites": [],
   "must_use_factory_count": 0,
   "allowlisted_direct_sites": [
-    "ask.py:550",
+    "ask.py:552",
     "chroma_store.py:64",
     "chroma_store.py:89",
     "chroma_write_store.py:437",
@@ -40,7 +40,7 @@
   "sites": [
     {
       "file": "ask.py",
-      "line": 550,
+      "line": 552,
       "snippet": "with ChromaStore(cfg[\"index\"][\"chroma_dir\"]) as store:",
       "class": "read_only",
       "required_routing": "allowlisted_direct",
@@ -193,7 +193,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 478,
+      "line": 524,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -202,16 +202,16 @@
     },
     {
       "file": "ingest.py",
-      "line": 535,
+      "line": 787,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
-      "class": "mutates_units",
+      "class": "reads_reindex_snapshot_under_writer_gate",
       "required_routing": "production_chroma_write_session",
       "uses_open_chroma_for_write": false,
       "uses_production_session": true
     },
     {
       "file": "ingest.py",
-      "line": 751,
+      "line": 825,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -220,7 +220,7 @@
     },
     {
       "file": "inter_model_index.py",
-      "line": 155,
+      "line": 162,
       "snippet": "with production_chroma_write_session(entrypoint=\"inter_model_index\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",

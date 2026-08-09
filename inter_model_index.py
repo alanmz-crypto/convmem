@@ -15,6 +15,10 @@ _DOMAIN = "coding.tooling"
 _MAX_EMBED_CHARS = 8000
 
 
+class InterModelIndexError(RuntimeError):
+    """A direct-section index could not complete safely."""
+
+
 def _keywords_from(path: Path, title: str) -> list[str]:
     stem_parts = re.split(r"[-_]", path.stem)
     title_parts = re.findall(r"[a-zA-Z0-9]+", title.lower())
@@ -49,6 +53,7 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
     tool: str = _TOOL,
     source_type: str = "inter_model_doc",
     author_model: str = "inter-model-index",
+    unit_ids_out: set[str] | None = None,
 ) -> int:
     """Embed each section message as a knowledge unit. Returns units indexed.
 
@@ -81,7 +86,9 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
         except Exception as e:
             if verbose:
                 print(f"    [warn] section {section_index} embed failed: {e}")
-            continue
+            raise InterModelIndexError(
+                f"section {section_index} embedding failed"
+            ) from e
 
         unit_id = make_unit_id(path_key, section_index, title, 0)
         unit = {
@@ -151,7 +158,7 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
         if _path_excluded(processed, path_key):
             if verbose:
                 print(f"  [skip] excluded during inter-model write {Path(path).name}")
-            return 0
+            raise InterModelIndexError("source excluded during inter-model write")
         with production_chroma_write_session(entrypoint="inter_model_index") as _pw:
             store = _pw.store
             cfg = _pw.live_cfg
@@ -164,6 +171,8 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
                 with export_flock_path(export_path):
                     with open(export_path, "a", encoding="utf-8") as uf:
                         uf.write(json.dumps(unit) + "\n")
+            if unit_ids_out is not None:
+                unit_ids_out.update(row[0]["id"] for row in dedupe.accepted)
             persist_ingest_dedupe(cfg, dedupe)
 
     label = "kiro-steering" if source_type == "kiro_steering" else "inter-model"

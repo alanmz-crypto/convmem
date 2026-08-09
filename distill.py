@@ -42,8 +42,13 @@ _MAX_CHUNK_CHARS = 8000
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 
 
+class DistillParseError(ValueError):
+    """The provider response could not be recovered as a JSON array."""
+
+
 def safe_json_parse(text: str) -> list:
-    """Parse a JSON array from LLM output; strip fences, retry once, else []."""
+    """Parse a JSON array, preserving valid ``[]`` and rejecting bad output."""
+    last_error: Exception | None = None
     for attempt in range(2):
         cleaned = text.strip()
         cleaned = _FENCE_RE.sub("", cleaned).strip()
@@ -51,8 +56,11 @@ def safe_json_parse(text: str) -> list:
             data = json.loads(cleaned)
             if isinstance(data, list):
                 return data
-            return []
-        except json.JSONDecodeError:
+            raise DistillParseError(
+                f"distill response must be a JSON array, got {type(data).__name__}"
+            )
+        except json.JSONDecodeError as exc:
+            last_error = exc
             if attempt == 0:
                 # Retry on substring between first [ and last ]
                 start = cleaned.find("[")
@@ -60,8 +68,10 @@ def safe_json_parse(text: str) -> list:
                 if start != -1 and end != -1 and end > start:
                     text = cleaned[start : end + 1]
                     continue
-            return []
-    return []
+            break
+    raise DistillParseError(
+        "distill response is not valid JSON array output"
+    ) from last_error
 
 
 def distill(
