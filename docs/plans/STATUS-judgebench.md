@@ -128,9 +128,9 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | G4 | Judge model selection | **NOT STARTED** | Requires G3 calibration data |
 | Calibration | First real run | **NOT STARTED** | Requires G3 + G4 |
 | Upstream Chroma reconcile | R4 post-rebuild verify | **DONE — GREEN** | [`STATUS-chroma-reconcile-tier-l.md`](STATUS-chroma-reconcile-tier-l.md); [`FLASH-2026-08-08-post-rebuild-verify-handoff.md`](../inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md) |
-| Retrieval golden eval | `tests/test_eval_golden.py` (live Chroma retrieval, not JudgeBench offline path) | **Healthy** | Corpus backfill after rebuild; run `pytest tests/test_eval_golden.py` to confirm |
+| Retrieval golden eval | `tests/test_eval_golden.py` (live Chroma retrieval, not JudgeBench offline path) | **REPAIRED 10/10** | Was 2/10 after R3 rebuild skipped the approved-ledger channel; backfilled 356 approved decisions + CSP obs/ver into Chroma (corpus-only fix, no repo change) |
 
-**Summary: Code is ~90% done on `main`. The gap is Ryan populating gold (G3) and judge selection (G4). Upstream Chroma R4 is GREEN (#161).**
+**Summary: Code is ~90% done on `main`. The gap is Ryan populating gold (G3) and judge selection (G4). Upstream Chroma R4 is GREEN (#161); the retrieval corpus under the golden eval is healthy again (10/10), so T7 verify is unblocked.**
 
 ---
 
