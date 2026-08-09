@@ -1,4 +1,4 @@
-V# Latest cross-model handoff (single pointer — update at session end)
+# Latest cross-model handoff (single pointer — update at session end)
 
 **Updated:** 2026-08-09 (Chroma R4 GREEN #161, JudgeBench T2–T5 #155, STATUS arc-brief pattern #160)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
@@ -19,7 +19,11 @@ V# Latest cross-model handoff (single pointer — update at session end)
 
   **Suggested next:** Ryan authors ~30–50 semantic cases (G3); standing checks `eval-provenance-wiring` / `eval-negative-control-coverage` when assigned.
 
-- **STATUS arc-brief pattern — on `main` (#160–#161):** Four active STATUS files listed in [`AGENTS.md`](../AGENTS.md). New arcs require `STATUS-<slug>.md` at plan start.
+- **STATUS arc-brief pattern — on `main` (#160–#161):** Four arc briefs + cross-arc rollup [`docs/inter-model/STATUS.md`](STATUS.md). New arcs require `STATUS-<slug>.md` at plan start.
+
+- **Shadow Ledger Phase 0 — activation-ready path (2026-08-09):** Who/What: Phase 0 + corrective C1–C7 **code on `main`** (#122, #126, #131, #134); shadow **still disabled**. When: Execute + VERIFY done; ops evidence not started. Why: merge ≠ activate. How: read [`STATUS-shadow-ledger-phase0.md`](../plans/STATUS-shadow-ledger-phase0.md) section 6 — C6 event-size evidence → C7 7-day census → C6 canary PASS → fresh writer census → runbook → Ryan grant → `shadow-activate`. Prior C7 census removed 2026-08-06.
+
+  **Merge reading:** [`STATUS-shadow-ledger-phase0.md`](../plans/STATUS-shadow-ledger-phase0.md) · [`EXECUTION-shadow-phase0-activation-corrective.md`](../plans/EXECUTION-shadow-phase0-activation-corrective.md) · [`CODEX-2026-07-30-C7-OPERATIONAL-RUNBOOK.md`](CODEX-2026-07-30-C7-OPERATIONAL-RUNBOOK.md)
 
 - **Summarizer GPU contention fix — COMPLETE (2026-08-07):** Who/What: Crush (investigation) + Claude cloud (advisory) + Kiro (design review) fixed four issues from the qwen3.5 summarizer saturating the RTX 3060 at 95% GPU util, causing ollama embed calls to blow 120 s timeouts and silently drop ingested chunks. When: 2026-08-06 evening, committed to `fix/2026-08-06-summarizer-switch-baseline-and-docs`; PR #140 filed. Why: every chunk's summarize→embed→distill pipeline queued behind a single `-np 1` 6.6 GB model; `ingest.py:638` caught exceptions and `continue`d with zero visibility. How: `summarize_model = "deepseek-v4-flash"` (cloud, key present), `ollama_embed` timeout 120→300 s, `OLLAMA_MAX_LOADED_MODELS=2` (was 1), chunk failure logging to `synthesis_failures.jsonl` + 3-attempt retry with 5s/30s backoff in `ingest.py`. Verified: zero watch journal timeouts after fix, both models resident in `ollama ps`, all doctor PASS.
 

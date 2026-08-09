@@ -15,62 +15,64 @@ projection of the ledger/export, and production mutations remain explicitly gate
 
 ## Current system state
 
-- `convmem doctor` passes. The live brief reports 18,721 knowledge units and 2,383
-  summaries; rerun `convmem brief --stdout-only` for current counts rather than
-  treating these numbers as permanent.
-- The Chroma Reconcile Tier L arc is **closed GREEN**: the post-rebuild inventory
-  found zero HNSW-without-METADATA orphans, the flatten guard tests passed, the
-  legacy calibration path passed 5/5, and doctor passed. See
-  [`STATUS-chroma-reconcile-tier-l.md`](../plans/STATUS-chroma-reconcile-tier-l.md)
-  and the [Flash R4 handoff](FLASH-2026-08-08-post-rebuild-verify-handoff.md).
-- The current calibration command is explicit about the legacy path:
-  `python scripts/eval-synthesis.py --judge --legacy --golden <fixture>`.
-  The 100% legacy result is informational and does not replace JudgeBench gold
-  calibration.
-- Two non-fatal doctor warnings remain: legacy `embed_collection_identity`
-  metadata and the external restic snapshot/freshness condition. They do not
-  authorize corpus mutation or Shadow activation.
-- `convmem unresolved` currently reports two open staging2 CSP observations.
-  They are operational observations, not evidence that the Chroma rebuild failed.
+- `convmem doctor` passes. Rerun `convmem brief --stdout-only` for current unit/summary
+  counts — do not treat snapshot numbers as permanent.
+- **Chroma Reconcile Tier L is closed GREEN** — 0 HNSW-without-METADATA orphans post-rebuild;
+  legacy calibration path passed 5/5. See
+  [`STATUS-chroma-reconcile-tier-l.md`](../plans/STATUS-chroma-reconcile-tier-l.md).
+- **JudgeBench T2–T5 code is on `main` (#155)**; G3 gold corpus and G4 judge selection are
+  Ryan-gated. Upstream Chroma R4 GREEN unblocks calibration work.
+- **Shadow Ledger Phase 0 code + corrective C1–C7 are on `main`** (#122, #126, #131, #134);
+  shadow remains **disabled**. Activation requires **activation-ready evidence** then a
+  separate Ryan grant — see [`STATUS-shadow-ledger-phase0.md`](../plans/STATUS-shadow-ledger-phase0.md).
+- **R2b capture** code is on `main`; live capture is unauthorized; quarantined draft packet
+  must not be reused.
+- Two non-fatal doctor warnings often present: legacy `embed_collection_identity` metadata
+  and external restic freshness. They do not authorize corpus mutation or Shadow activation.
 
-## Active arcs and next action
+## Active arcs — work remaining
 
 | Arc | State | Next authorized action |
 |---|---|---|
-| JudgeBench semantic calibration v1 | T2–T5 implementation is on `main`; Chroma R4 GREEN unblocks downstream calibration. G3 gold cases/split and G4 judge selection are not started. | Ryan authors/locks the gold corpus and split; then run calibration and choose the judge. Keep the `--legacy` path separate from v1 provenance. |
-| Chroma Reconcile Tier L | Code, rebuild, R4 verification, and documentation are complete on `main` (#161). | Optional R5 disposition and Ryan-gated watch/refine operations only; do not re-run gates without a regression request. |
-| R2b capture authorization | Implementation is on `main`; live capture remains unauthorized. The old draft packet is quarantined. | Ryan must issue a fresh ACCEPT AND GRANT packet before any capture. |
-| Shadow Ledger Phase 0 | Merged and mechanically/independently verified, but disabled by default. | Activation remains a separate Ryan grant; do not edit live config or create an activation manifest. |
-| Track 1 complete-data backup | v2 rollout completed; the Hybrid consistency-bar audit remains a separate open track. | Continue only under its exact audit/merge gates; it is not a prerequisite for JudgeBench. |
+| JudgeBench semantic calibration v1 | T2–T5 on `main`; Chroma R4 GREEN | Ryan authors/locks G3 gold + split; then calibration run and G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
+| Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
+| R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
+| Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. |
+
+## Closed arcs — reference STATUS only
+
+| Arc | State | Notes |
+|---|---|---|
+| Chroma Reconcile Tier L | **Closed GREEN** (#161) | Optional R5 anomaly disposition; Ryan-gated watch/refine ops only. Do not re-run R4 without regression request. |
 
 ## Recently completed, not active blockers
 
-- The qwen3.5 automated-ingest GPU contention fix is complete: automated
-  summarization uses `deepseek-v4-flash`, embedding timeout is 300 seconds,
-  `OLLAMA_MAX_LOADED_MODELS=2`, and ingest chunk failures are logged/retried.
-- The former ask-trace/synthesis-calibration work is covered by the current
-  evaluation and JudgeBench surfaces; do not create a second competing fixture
-  without a new brief.
+- STATUS arc-brief pattern on `main` (#160–#161): four arc briefs + cross-arc rollup (this file).
+- Summarizer GPU contention fix: automated ingest uses `deepseek-v4-flash`; embed timeout 300s;
+  `OLLAMA_MAX_LOADED_MODELS=2`; chunk failures logged/retried.
+- Prior C7 writer census was **removed 2026-08-06** after freeze lift — Shadow activation
+  needs a **fresh** census arm; do not assume the old run still exists.
 
 ## Hard boundaries
 
 - JudgeBench G3/G4, live `ask.py` judging, R2b live capture, Shadow activation,
-  bulk indexing/refinement, and production configuration changes require the
-  named owner/grant in their arc brief.
-- A retrieved-evidence miss and an incomplete synthesized answer are different
-  failure classes. Preserve that distinction when adding calibration rows.
-- Do not use stale July artifacts as current calibration evidence. Prefer the
-  current arc STATUS brief and dated handoff, then verify live state with the
-  session-start commands.
+  bulk indexing/refinement, and production configuration changes require the named
+  owner/grant in their arc brief.
+- **Merge ≠ activate** for Shadow. **C7 arm ≠ activate.** **C6 canary PASS ≠ activate.**
+- A retrieved-evidence miss and an incomplete synthesized answer are different failure
+  classes. Preserve that distinction when adding calibration rows.
+- Prefer arc STATUS briefs + dated handoffs over stale July chat artifacts; verify live
+  state with session-start commands.
 
 ## Canonical pointers
 
+- [Cross-arc rollup](STATUS.md) (this file)
+- [Latest session handoff](LATEST.md)
 - [JudgeBench STATUS](../plans/STATUS-judgebench.md)
-- [Chroma Reconcile STATUS](../plans/STATUS-chroma-reconcile-tier-l.md)
+- [Chroma Reconcile STATUS](../plans/STATUS-chroma-reconcile-tier-l.md) (closed)
 - [R2b capture STATUS](../plans/STATUS-r2b-capture-auth.md)
 - [Shadow Ledger STATUS](../plans/STATUS-shadow-ledger-phase0.md)
-- [Latest cross-model handoff](LATEST.md)
+- [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Chroma is GREEN and JudgeBench is the next substantive arc, but Ryan
-still owns gold/split and judge-selection gates; R2b capture and Shadow activation
-remain explicitly unauthorized.
+**TL;DR:** Chroma is GREEN; JudgeBench waits on Ryan G3/G4; Shadow waits on
+activation-ready evidence (C7/C6) then Ryan grant; R2b waits on a fresh authorization packet.
