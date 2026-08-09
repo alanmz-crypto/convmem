@@ -379,7 +379,7 @@ def summarize(
     prompt = SUMMARIZE_PROMPT.format(messages=chunk_text)
 
     if "deepseek-v4" in model and os.environ.get("DEEPSEEK_API_KEY"):
-        return _deepseek_generate(prompt, model, deepseek_base_url, timeout=15)
+        return _deepseek_generate(prompt, model, deepseek_base_url, timeout=60)
     if "deepseek-v4" in model:
         model = _resolve_fallback_model(model)
     return _ollama_generate(prompt, model, ollama_host)

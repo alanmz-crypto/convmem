@@ -77,7 +77,7 @@ def distill(
     # Pass the configured model straight through; llm.generate owns the
     # provider fallback (warn-once / CONVMEM_FAIL_ON_FALLBACK) so the
     # distillation path can no longer swap silently.
-    raw = generate(prompt, model, ollama_host, deepseek_base_url, timeout=15)
+    raw = generate(prompt, model, ollama_host, deepseek_base_url, timeout=60)
     return safe_json_parse(raw)
 
 
