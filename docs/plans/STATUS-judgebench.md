@@ -11,7 +11,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 
 **JudgeBench replaces this** with offline semantic calibration: a frozen-evidence test harness where the judge's verdicts are compared against Ryan-locked gold labels. When complete, Ryan can:
 
-1. Run `eval-judgebench` against a locked corpus
+1. Run `run_judgebench()` from `eval_judgebench.runner` against a locked corpus (dry-run: `semantic_judge=None`)
 2. Get a confusion matrix (judge-agrees-with-gold vs. doesn't)
 3. Use that to select/validate a judge model
 4. Know — provably — whether a change improved or degraded answer quality
@@ -96,15 +96,11 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | `eval_model_identity.py` (T2, merged #155) | `classify_independence(judge, under_test)` → `self/same_family/cross_family/unknown/not_applicable` | Complete (on main) |
 | `eval_provenance.py` (T3, merged #155) | Comparison signature computation; `needs_rebaseline` detection | Complete (on main) |
 | `eval_judgebench/runner.py` (T4, merged #155) | Loads cases → J0 → J1 → compare to gold; dry-run with empty corpus | Complete (on main) |
-| `eval_judge.py` (T5, merged #155) | `--legacy` gate; legacy path isolated from v1 provenance | Complete (on main) |
-| `tests/test_judgebench_contracts.py` | Contract validation tests | 29 tests, green |
+| `eval_judge.py` (T5, merged #155; prompt upgrade #153) | `--legacy` gate; reason-before-scoring; `confidence` field; legacy path isolated from v1 provenance | Complete (on main) |
+| `tests/test_judgebench_contracts.py` | Contracts + T2 identity + T3 provenance + T4 runner + T5 legacy isolation | Green — 33 tests (see `VERIFY-judgebench.md` CHK-004..008) |
 | `tests/test_judgebench_rubric.py` | Rubric load/validate tests | Green |
 | `tests/test_judgebench_no_chroma.py` | AST import scan — proves no Chroma in eval_judgebench/ | Green |
-
-> T2–T5 source (identity, provenance, runner, legacy shim) merged to `main` via PR #155.
-> Their test modules (`test_eval_model_identity.py`, `test_eval_provenance_signature.py`,
-> `test_judgebench_runner.py`, `test_eval_judge_legacy.py`) are not tracked under `main`'s
-> `tests/` at this revision — verify whether they were carried by #155 or need re-adding.
+| `tests/test_eval_methodology.py` | Shared eval methodology gates (`--legacy` with `--judge`, negative control) | Green |
 
 ### Does NOT Exist Yet
 
@@ -131,9 +127,10 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | G3 | Gold corpus + split lock | **NOT STARTED** | Ryan authors cases |
 | G4 | Judge model selection | **NOT STARTED** | Requires G3 calibration data |
 | Calibration | First real run | **NOT STARTED** | Requires G3 + G4 |
-| T7 retrieval corpus | Post-rebuild golden eval (`tests/test_eval_golden.py`) | **REPAIRED 10/10** | Was 2/10 after R3 rebuild skipped the approved-ledger channel; backfilled 356 approved decisions + CSP obs/ver into Chroma (corpus-only fix, no repo change) |
+| Upstream Chroma reconcile | R4 post-rebuild verify | **DONE — GREEN** | [`STATUS-chroma-reconcile-tier-l.md`](STATUS-chroma-reconcile-tier-l.md); [`FLASH-2026-08-08-post-rebuild-verify-handoff.md`](../inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md) |
+| Retrieval golden eval | `tests/test_eval_golden.py` (live Chroma retrieval, not JudgeBench offline path) | **Healthy** | Corpus backfill after rebuild; run `pytest tests/test_eval_golden.py` to confirm |
 
-**Summary: Code is ~90% done on `main`. The gap is Ryan populating gold (G3) and judge selection (G4). The retrieval corpus under the golden eval is healthy again (10/10), so T7 verify is unblocked.**
+**Summary: Code is ~90% done on `main`. The gap is Ryan populating gold (G3) and judge selection (G4). Upstream Chroma R4 is GREEN (#161).**
 
 ---
 
@@ -141,7 +138,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 
 **If Ryan sent you here to implement:** The T2–T5 code is already merged to `main` (#155). Unless Ryan asks for revision or a new slice, your job is probably to **fix something specific** Ryan identified or assist with **G3 gold authoring**.
 
-**If Ryan sent you here to review:** Read `main`'s implementation. Key questions: Does identity classification enforce `cross_family`-only for canonical runs? Does comparison-signature detect all the fields listed in the architecture? Is the runner truly Chroma-free? (Note: the T2–T5 test modules are not under `main`/`tests/` at this revision — verify coverage if asked.)
+**If Ryan sent you here to review:** Read `main`'s implementation and [`VERIFY-judgebench.md`](VERIFY-judgebench.md). Key questions: Does identity classification enforce `cross_family`-only for canonical runs? Does comparison-signature detect all the fields listed in the architecture? Is the runner truly Chroma-free? T2–T5 mechanical checks live in [`tests/test_judgebench_contracts.py`](../../tests/test_judgebench_contracts.py).
 
 **If Ryan sent you here for G3 (gold authoring):** You're assisting Ryan in writing semantic cases. The format is in `manifest.json` and the rubric in `rubrics/synthesis-grounded-v1.json`. Cases need frozen evidence, a candidate response, and Ryan's gold verdict. ~30–50 cases, category-balanced across the coverage list in the architecture.
 
@@ -181,7 +178,7 @@ ConvMem evaluation landscape:
 ├── JudgeBench (THIS ARC) — calibrate the semantic judge offline
 ├── E2E synthesis eval — test retrieval→generation→judging together
 ├── Summary eval — summary-specific quality (shares J1 contract)
-├── Chroma Tier-L — orphan/retrieval quality (SEPARATE arc, not us)
+├── Chroma reconcile — R4 GREEN ([`STATUS-chroma-reconcile-tier-l.md`](STATUS-chroma-reconcile-tier-l.md); upstream, closed)
 └── Live ask.py judging — uses whatever judge passes calibration (FUTURE)
 ```
 
@@ -197,7 +194,9 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 | Execution plan (task breakdown) | `docs/plans/EXECUTION-judgebench.md` | You need task dependencies or scope lock |
 | Flash slice brief (S1–S9 detail) | `docs/plans/EXECUTION-judgebench-flash-slices.md` | You're implementing prep slices |
 | VERIFY checklist | `docs/plans/VERIFY-judgebench.md` | You're reviewing or closing checks |
-| T2–T5 handoff (Cursor) | `docs/inter-model/CURSOR-2026-08-09-judgebench-T2-T5-handoff.md` | You're picking up T2–T5 work |
+| T2–T5 handoff (Cursor) | `docs/inter-model/CURSOR-2026-08-09-judgebench-T2-T5-handoff.md` | Historical — T2–T5 merged #155 |
+| Chroma reconcile STATUS | `docs/plans/STATUS-chroma-reconcile-tier-l.md` | You need upstream retrieval/corpus health context |
+| R4 verify handoff | `docs/inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md` | You need post-rebuild corpus evidence |
 
 ---
 
@@ -230,3 +229,4 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 | 2026-08-09 | Kiro | Initial arc brief; T2–T5 on branch, PR not filed, G3/G4 awaiting Ryan |
 | 2026-08-09 | Crush (DeepSeek) | Reconcile: T2–T5 merged to `main` via PR #155; completion state and remaining steps updated; noted T2–T5 test modules not carried to `main`/`tests/` in #155 |
 | 2026-08-09 | Crush | Golden eval repaired 2/10 → 10/10 (Chroma backfill of approved ledger + CSP obs pair); T7 post-rebuild verify unblocked |
+| 2026-08-09 | Cursor | Landscape sync: T2–T5 tests in contracts file; Chroma R4 GREEN cross-links; runner API in section 1 |
