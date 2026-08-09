@@ -101,6 +101,24 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | `tests/test_judgebench_rubric.py` | Rubric load/validate tests | Green |
 | `tests/test_judgebench_no_chroma.py` | AST import scan — proves no Chroma in eval_judgebench/ | Green |
 
+### Latest verification evidence
+
+Post-rebuild verification is GREEN: the Chroma inventory found zero orphans and
+zero `None` probe ids, flatten tests passed, and doctor showed 100% active index
+coverage with no new critical failures. The five-row calibration smoke passes
+with the current harness command:
+
+```text
+python scripts/eval-synthesis.py --judge --legacy --golden \
+  /tmp/CODEX-2026-08-07-judge-bench-calibration.jsonl
+```
+
+It reports 5/5 rows passing and a passing negative control (score 1, expected
+below 3). This verifies the legacy judge path after the rebuild; it is not the
+first canonical JudgeBench calibration run because the real v1 cases and gold
+labels remain absent. The unqualified `--judge --golden` invocation exits 2
+because this harness requires the explicit `--legacy` flag.
+
 > T2–T5 source (identity, provenance, runner, legacy shim) merged to `main` via PR #155.
 > Their test modules (`test_eval_model_identity.py`, `test_eval_provenance_signature.py`,
 > `test_judgebench_runner.py`, `test_eval_judge_legacy.py`) are not tracked under `main`'s
@@ -132,8 +150,10 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | G4 | Judge model selection | **NOT STARTED** | Requires G3 calibration data |
 | Calibration | First real run | **NOT STARTED** | Requires G3 + G4 |
 | T7 retrieval corpus | Post-rebuild golden eval (`tests/test_eval_golden.py`) | **REPAIRED 10/10** | Was 2/10 after R3 rebuild skipped the approved-ledger channel; backfilled 356 approved decisions + CSP obs/ver into Chroma (corpus-only fix, no repo change) |
+| R4 post-rebuild verification | Orphan inventory, flatten tests, calibration smoke, and doctor drift | **DONE / GREEN** | Evidence: `docs/inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md` |
+| JudgeBench standing checks | Provenance wiring and negative-control coverage | **DUE** | Must be resolved before treating the canonical evaluation path as fully operational |
 
-**Summary: Code is ~90% done on `main`. The gap is Ryan populating gold (G3) and judge selection (G4). The retrieval corpus under the golden eval is healthy again (10/10), so T7 verify is unblocked.**
+**Summary: Code is ~90% done on `main`. The gap is Ryan populating gold (G3) and judge selection (G4). The retrieval corpus is healthy again (10/10), and post-rebuild verification is GREEN. The legacy calibration smoke is runnable with `--legacy`, but it does not replace G3/G4 or prove the canonical v1 calibration path.**
 
 ---
 
@@ -141,7 +161,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 
 **If Ryan sent you here to implement:** The T2–T5 code is already merged to `main` (#155). Unless Ryan asks for revision or a new slice, your job is probably to **fix something specific** Ryan identified or assist with **G3 gold authoring**.
 
-**If Ryan sent you here to review:** Read `main`'s implementation. Key questions: Does identity classification enforce `cross_family`-only for canonical runs? Does comparison-signature detect all the fields listed in the architecture? Is the runner truly Chroma-free? (Note: the T2–T5 test modules are not under `main`/`tests/` at this revision — verify coverage if asked.)
+**If Ryan sent you here to review:** Read `main`'s implementation and verify the missing standing checks. Key questions: Does identity classification enforce `cross_family`-only for canonical runs? Does comparison-signature detect all the fields listed in the architecture? Is the runner truly Chroma-free? Are provenance wiring and negative-control coverage explicit and green? (Note: the T2–T5 test modules are not under `main`/`tests/` at this revision — verify coverage if asked.)
 
 **If Ryan sent you here for G3 (gold authoring):** You're assisting Ryan in writing semantic cases. The format is in `manifest.json` and the rubric in `rubrics/synthesis-grounded-v1.json`. Cases need frozen evidence, a candidate response, and Ryan's gold verdict. ~30–50 cases, category-balanced across the coverage list in the architecture.
 
@@ -156,6 +176,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 - [ ] First calibration run against locked gold (confusion matrix report)
 - [ ] Ryan selects judge model based on calibration (G4)
 - [ ] Standing checks `eval-provenance-wiring` and `eval-negative-control-coverage` resolved
+- [ ] Replace the legacy calibration smoke with a canonical v1 run after G3/G4; retain the `--legacy` command only as a compatibility check
 - [ ] (Future, separate arc) Live integration into `ask.py`
 
 ---
@@ -198,6 +219,7 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 | Flash slice brief (S1–S9 detail) | `docs/plans/EXECUTION-judgebench-flash-slices.md` | You're implementing prep slices |
 | VERIFY checklist | `docs/plans/VERIFY-judgebench.md` | You're reviewing or closing checks |
 | T2–T5 handoff (Cursor) | `docs/inter-model/CURSOR-2026-08-09-judgebench-T2-T5-handoff.md` | You're picking up T2–T5 work |
+| Latest R4 verification | `docs/inter-model/FLASH-2026-08-08-post-rebuild-verify-handoff.md` | You need the latest rebuild, calibration-smoke, or doctor evidence |
 
 ---
 
@@ -230,3 +252,4 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 | 2026-08-09 | Kiro | Initial arc brief; T2–T5 on branch, PR not filed, G3/G4 awaiting Ryan |
 | 2026-08-09 | Crush (DeepSeek) | Reconcile: T2–T5 merged to `main` via PR #155; completion state and remaining steps updated; noted T2–T5 test modules not carried to `main`/`tests/` in #155 |
 | 2026-08-09 | Crush | Golden eval repaired 2/10 → 10/10 (Chroma backfill of approved ledger + CSP obs pair); T7 post-rebuild verify unblocked |
+| 2026-08-09 | Codex Luna High | Added GREEN R4 verification, explicit `--legacy` calibration-smoke caveat, and the remaining standing-check dependency |
