@@ -34,6 +34,8 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 
 **Design intent:** A model should arrive and within one document have a strong enough mental image of the arc's design that it knows what exists, what's missing, and its exact role — stronger than its knowledge of the convmem project as a whole. The STATUS file is that document.
 
+**Creation rule:** When starting a new arc (ARCHITECTURE + EXECUTION plan), create `docs/plans/STATUS-<slug>.md` using the JudgeBench template (10-section structure). Add the new entry to the **Active STATUS files** list below and in `config/agent-protocol.md`. A new arc without a STATUS file is incomplete.
+
 **Update rule:** After any milestone changes state (PR merged, gate passed, blocker discovered), update the STATUS file in the same commit or a follow-up. Stale STATUS is worse than no STATUS.
 
 **Departure protocol:** The STATUS file must stay a *current-state snapshot*, not a log. Overwrite sections to reflect reality now (delete completed items, move "branch" → "`main`", rewrite "Your Role" for the next model). Session narrative belongs in Track A, not here. One line in the Update Log. Test: could a fresh model read only this file and orient itself?
