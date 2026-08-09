@@ -14,7 +14,7 @@
     "inter_model_index.py:162"
   ],
   "open_production_write_store_call_sites": [
-    "observe.py:229",
+    "observe.py:234",
     "propose_decision.py:549",
     "propose_decision.py:581",
     "refine.py:272",
