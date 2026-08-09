@@ -87,6 +87,25 @@ Avoid **"index what you wrote"** alone — models treat that as the markdown log
 1. **Search first** — `convmem "topic"` / `ask` before re-deriving from scratch.
 2. **`record`** — one closing **conclusion** only (not per-finding). Detail stays in chat ingest + indexed logs.
 
+**Project goal awareness (STATUS files).** If you are working on an active arc that has a `docs/plans/STATUS-<slug>.md`, **read it before starting work**. Your first substantive response must state:
+
+> "**Goal:** [product goal]. **My role:** [what I'm here to do]. **The system currently:** [what exists and what's missing]. **Next action:** [the specific thing that advances the arc toward done]."
+
+STATUS files are **arc briefs** — they give you a mental landscape of the design: how pieces connect, what's built, what's a stub, what doesn't exist yet, your exact role, and what "done" looks like for the whole arc (not just your slice). A model that finishes its slice but loses sight of the arc-level finish line is failing.
+
+**When to update STATUS:** After any milestone changes state (PR merged, gate passed, new blocker discovered), update the STATUS file in the same commit or as a follow-up. Stale STATUS is worse than no STATUS.
+
+**How to update (departure protocol):** The STATUS file must remain a *current-state snapshot* — never a log, diary, or changelog. When updating:
+- **Overwrite sections 3–6** to reflect reality now (move "on branch" → "on `main`", delete completed checklist items, rewrite "Your Role" for the *next* model).
+- **Do not append session narrative.** Your work details belong in Track A (session ingest), not here.
+- **One line in the Update Log** — date, name, milestone-level change.
+- **The test:** Could a fresh model read *only* this file and orient itself? If your update makes that harder, undo it.
+
+**Active STATUS files:**
+- `docs/plans/STATUS-judgebench.md` — JudgeBench semantic calibration v1
+- `docs/plans/STATUS-r2b-capture-auth.md` — R2b capture authorization
+- `docs/plans/STATUS-shadow-ledger-phase0.md` — Shadow Ledger Phase 0 delta capture
+
 
 ## After Tier A — MCP tools (do not repeat brief)
 

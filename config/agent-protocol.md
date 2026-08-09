@@ -100,7 +100,10 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - **One line in the Update Log** — date, name, milestone-level change.
 - **The test:** Could a fresh model read *only* this file and orient itself? If your update makes that harder, undo it.
 
-**Active STATUS files:** `docs/plans/STATUS-judgebench.md`
+**Active STATUS files:**
+- `docs/plans/STATUS-judgebench.md` — JudgeBench semantic calibration v1
+- `docs/plans/STATUS-r2b-capture-auth.md` — R2b capture authorization
+- `docs/plans/STATUS-shadow-ledger-phase0.md` — Shadow Ledger Phase 0 delta capture
 
 <!-- TIER_A_END -->
 
