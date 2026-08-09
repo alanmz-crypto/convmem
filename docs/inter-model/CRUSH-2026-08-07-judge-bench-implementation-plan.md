@@ -3,7 +3,7 @@
 **Based on:** Claude's review of `CRUSH-2026-08-07-judge-bench-analysis.md`
 **Plan author:** Crush
 **Date:** 2026-08-07
-**Status:** ready for Claude implementation (v2 — incorporates Claude's 3 must-fix conditions)
+**Status:** ✅ **COMPLETED — implemented and merged as PR #153 (`bfb5b7e`, 2026-08-09)**. All 5 tasks landed. Calibration gate passed (local judge scored good synthesis 5/5, contradictory 1/5). Pylint regression gate PASS. 89 targeted tests pass.
 
 ---
 

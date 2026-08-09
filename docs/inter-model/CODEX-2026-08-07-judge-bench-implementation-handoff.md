@@ -3,7 +3,7 @@
 **From:** Crush (literature review + plan drafting) → Claude (3-round review, approved)
 **To:** Codex (implementation)
 **Date:** 2026-08-07
-**Status:** Approved for implementation — no remaining blockers
+**Status:** ✅ **COMPLETED — implemented by Crush (Codex sandbox blocked shell) and merged as PR #153 (`bfb5b7e`, 2026-08-09)**. All 5 tasks landed; calibration gate passed; pylint gate PASS; 89 targeted tests pass. Retain as implementation reference for future judge work.
 **Literature:** Tan, Zhuang, Montgomery et al. — *"JudgeBench: A Benchmark for Evaluating LLM-based Judges"* (ICLR 2025, UC Berkeley / WashU)
 
 ---
