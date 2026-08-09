@@ -4,12 +4,13 @@
 
 | Field | Value |
 | --- | --- |
-| Plan state | **Proposed for Ryan HITL; no Execute authority** |
-| Architecture authority | Lock-ready @ 2026-08-08 (`ARCHITECTURE-judgebench.md`) |
+| Plan state | **EXECUTION APPROVED (G2) — Ryan HITL, 2026-08-09**; T1–T5 authorized, T6 scaffold structure-only |
+| Architecture authority | **LOCKED** 2026-08-09 (`ARCHITECTURE-judgebench.md`) |
 | Execution plan author of record | Codex |
 | Delegate input | DeepSeek V4 Flash draft — for Ryan/Codex review, not authoritative |
 | Lane | Cursor for implementation; Codex owns plan text; Ryan owns HITL |
-| Next gate | Ryan Architecture lock → Execution HITL → corpus gold/split lock |
+| G2 review | Kiro PASS / MEDIUM complexity 2026-08-09 (no mandatory Cursor gate; Cursor optional as second opinion) |
+| Next gate | **G3 — Ryan corpus gold/split lock** (before semantic case content / E2E gold) → G4 judge selection |
 
 ## Scope lock
 

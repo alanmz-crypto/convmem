@@ -49,7 +49,7 @@ def _synth_model(cfg: dict) -> str:
     return distill
 
 
-def eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:
+def eval_row(row: dict, cfg: dict, *, use_judge: bool, legacy: bool) -> dict:
     from ask import ask
     from eval_grading import grade_answer
 
@@ -93,6 +93,7 @@ def eval_row(row: dict, cfg: dict, *, use_judge: bool) -> dict:
             answer,
             under_test_model=(eval_trace.get("model") or _synth_model(cfg)),
             cfg=cfg,
+            legacy=legacy,
         )
         result["judge"] = jr.to_dict()
     return result
@@ -133,15 +134,30 @@ def main() -> int:
     parser.add_argument("--baseline", type=Path, default=BASELINE)
     parser.add_argument("--update-baseline", action="store_true")
     parser.add_argument("--judge", action="store_true", help="Add advisory LLM-judge score")
+    parser.add_argument(
+        "--legacy",
+        action="store_true",
+        help="Explicitly opt into the legacy 1-5 judge path (required with --judge)",
+    )
     args = parser.parse_args()
 
     sys.path.insert(0, str(REPO))
     from config import load_config
-    from eval_provenance import EXIT_OK, classify, model_context
+    from eval_methodology import (
+        enforce_legacy_judge_gate,
+        exit_if_judge_negative_control_failed,
+        finalize_eval_against_baseline,
+        print_judge_summary,
+    )
+    from eval_provenance import model_context
+
+    legacy_exit = enforce_legacy_judge_gate(args.judge, args.legacy)
+    if legacy_exit is not None:
+        return legacy_exit
 
     cfg = load_config()
     rows = load_golden(args.golden)
-    results = [eval_row(r, cfg, use_judge=args.judge) for r in rows]
+    results = [eval_row(r, cfg, use_judge=args.judge, legacy=args.legacy) for r in rows]
     report = summarize_report(results, use_judge=args.judge)
     synth_model = _synth_model(cfg)
     report["provenance"] = model_context(cfg, synth_model, args.golden)
@@ -149,54 +165,28 @@ def main() -> int:
         from eval_methodology import run_judge_negative_control
 
         report["negative_control"] = run_judge_negative_control(
-            "synthesis", under_test_model=synth_model, cfg=cfg
+            "synthesis", under_test_model=synth_model, cfg=cfg, legacy=True
         )
 
     print(f"Golden answers: {report['count']}")
     print(f"Pass rate: {report['pass_rate']:.2%}")
     print(f"Abstain control correct: {report['abstain_correct']}")
     if args.judge:
-        indep = report.get("judge_independent")
-        tag = "INDEPENDENT" if indep else "NON-INDEPENDENT (informational only)"
-        print(f"Judge mean: {report.get('judge_mean')} [{tag}] model={report.get('judge_model')}")
-        control = report["negative_control"]
-        mark = "PASS" if control["passed"] else "FAIL"
-        print(f"Judge negative control: {mark} score={control['score']} expected={control['threshold']}")
+        print_judge_summary(report)
     for r in results:
         mark = "PASS" if r["pass"] else "FAIL"
         print(f"  [{mark}] {r['id']} ({r['mode']}) cites={r['n_citations']} {r['detail']}")
 
-    if args.judge and not report["negative_control"]["passed"]:
-        print("\nJudge evidence unusable: negative control failed", file=sys.stderr)
-        return 1
+    nc_exit = exit_if_judge_negative_control_failed(args.judge, report)
+    if nc_exit is not None:
+        return nc_exit
 
-    if args.update_baseline:
-        args.baseline.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-        print(f"\nWrote baseline {args.baseline}")
-        return EXIT_OK
-
-    if not args.baseline.is_file():
-        print(f"\nNo baseline at {args.baseline} — run with --update-baseline", file=sys.stderr)
-        return 1
-
-    baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
-    regressed = report["pass_rate"] < baseline.get("pass_rate", 0)
-    if (
-        report.get("judge_independent")
-        and baseline.get("judge_independent")
-        and report.get("judge_mean") is not None
-        and baseline.get("judge_mean") is not None
-        and report["judge_mean"] < baseline["judge_mean"]
-    ):
-        regressed = True
-
-    code, msg = classify(
-        regressed=regressed,
-        current_ctx=report["provenance"],
-        baseline_ctx=baseline.get("provenance", {}),
+    return finalize_eval_against_baseline(
+        baseline_path=args.baseline,
+        update_baseline=args.update_baseline,
+        report=report,
+        metric_key="pass_rate",
     )
-    print(f"\n{msg}")
-    return code
 
 
 if __name__ == "__main__":
