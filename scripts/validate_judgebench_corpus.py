@@ -1,5 +1,8 @@
 """Validate or review a JudgeBench corpus package without invoking a judge."""
 
+# The repository root must be added before importing the local package.
+# pylint: disable=wrong-import-position
+
 from __future__ import annotations
 
 import argparse

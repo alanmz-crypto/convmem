@@ -11,7 +11,8 @@ Covers the golden cases for:
 No Chroma and no live model calls.
 """
 
-# pylint: disable=wrong-import-position
+# Shared one-case package setup intentionally mirrors the corpus-validator fixture.
+# pylint: disable=duplicate-code,wrong-import-position
 # Import must follow the repository-root sys.path bootstrap below so this test
 # runs both under pytest and as a direct script (matching existing test style).
 from __future__ import annotations

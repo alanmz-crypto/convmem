@@ -290,7 +290,7 @@ def _mechanical_outcome(case: dict[str, Any], gold: dict[str, Any]) -> bool:
     return not violations and not missing_tokens and not wrong_mode
 
 
-def validate_corpus(
+def validate_corpus(  # pylint: disable=too-many-branches,too-many-locals
     corpus_dir: Path | str,
     *,
     require_locked: bool = False,

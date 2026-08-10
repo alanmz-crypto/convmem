@@ -352,7 +352,7 @@ def run_case(
     )
 
 
-def run_judgebench(  # pylint: disable=too-many-arguments
+def run_judgebench(  # pylint: disable=too-many-arguments,too-many-locals
     corpus_dir: Path | str,
     *,
     cfg: dict,
