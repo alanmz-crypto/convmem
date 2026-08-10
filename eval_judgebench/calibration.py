@@ -18,15 +18,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from eval_judgebench.case_boundary import (
-    CalibrationBoundaryError,
-    HoldoutAccessError,  # noqa: F401 - compatibility re-export
-    safe_case,
-    serialize_prompt_case,  # noqa: F401 - compatibility re-export
-)
+from eval_judgebench import case_boundary as _case_boundary
 from eval_judgebench.corpus_validate import assert_corpus_valid
 from eval_judgebench.provider_requests import ProviderTransport
 from eval_judgebench.runner_types import CallbackCase
+
+CalibrationBoundaryError = _case_boundary.CalibrationBoundaryError
+HoldoutAccessError = _case_boundary.HoldoutAccessError
+safe_case = _case_boundary.safe_case
+serialize_prompt_case = _case_boundary.serialize_prompt_case
 
 MAX_CALIBRATION_CALLS = 20
 # Compatibility name for the standalone projection helper below. Canonical
