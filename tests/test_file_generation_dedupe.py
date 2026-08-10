@@ -233,7 +233,7 @@ def test_inactive_duplicate_does_not_influence_dedupe_but_stable_row_does(
             [stable_candidate],
             generation_identity_fields=True,
         )
-        assert suppressed.accepted == []
+        assert not suppressed.accepted
         assert suppressed.exact_suppressions[0]["matched_id"] == "stable-decision"
 
 
@@ -275,4 +275,4 @@ def test_semantic_threshold_and_candidate_k_are_not_changed() -> None:
         NeighborStore(0.081), cfg, batch, generation_identity_fields=True
     )
     assert len(above.semantic_candidates) == 1
-    assert below.semantic_candidates == []
+    assert not below.semantic_candidates

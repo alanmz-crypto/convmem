@@ -15,6 +15,8 @@ HISTORICAL_UNIT_COUNT = 1_300
 HISTORICAL_SUMMARY_COUNT = 130
 
 
+# This factory mirrors all persisted staged-row identity fields.
+# pylint: disable=too-many-positional-arguments
 def _row(
     collection: str,
     physical_id: str,
@@ -37,13 +39,17 @@ def _row(
     )
 
 
-def _stage_backend_batched(store, rows: list[StagedRow], batch_size: int = 5_000) -> None:
+# This helper mirrors the explicit staged-row schema used by the scale fixture.
+# pylint: disable=too-many-positional-arguments
+def _stage_backend_batched(
+    store, rows: list[StagedRow], batch_size: int = 5_000
+) -> None:
     """Load a large committed fixture without quadratic staging qualification."""
     grouped: dict[str, list[StagedRow]] = {}
     for row in rows:
         grouped.setdefault(row.collection_name, []).append(row)
     for collection_name, collection_rows in grouped.items():
-        collection = store.raw_store._collection(collection_name)
+        collection = store.raw_store._collection(collection_name)  # pylint: disable=protected-access
         for start in range(0, len(collection_rows), batch_size):
             batch = collection_rows[start : start + batch_size]
             collection.upsert(
@@ -65,7 +71,9 @@ def _stage_backend_batched(store, rows: list[StagedRow], batch_size: int = 5_000
             )
 
 
-def test_committed_generation_reads_scale_past_sqlite_expression_depth(tmp_path):
+def test_committed_generation_reads_scale_past_sqlite_expression_depth(  # pylint: disable=too-many-locals
+    tmp_path,
+):
     """Large active owner sets remain exact and keep inactive history out of reads."""
     active = {
         f"owner-{owner:04d}": f"generation-{owner:04d}"

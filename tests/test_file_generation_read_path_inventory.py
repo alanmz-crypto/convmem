@@ -84,6 +84,8 @@ EXPECTED = {
 }
 
 
+# AST hooks retain Python's visitor API spelling.
+# pylint: disable=invalid-name
 class _BoundaryVisitor(ast.NodeVisitor):
     def __init__(
         self,

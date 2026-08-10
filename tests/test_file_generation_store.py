@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import ledger
 from chroma_store import SUMMARIES, UNITS
 from file_generation_contract import (
     build_generation_manifest,
@@ -20,11 +21,6 @@ from file_generation_store import (
     GenerationBackpressureError,
     GenerationValidationError,
     StagedRow,
-)
-from ledger import (
-    build_ledger_index,
-    find_unit_by_ledger_id,
-    invalidate_ledger_index_cache,
 )
 
 
@@ -53,6 +49,8 @@ def file_row(
     )
 
 
+# unittest owns the temporary resource lifecycle across setUp/tearDown.
+# pylint: disable=consider-using-with
 class FileGenerationStoreTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -172,13 +170,18 @@ class FileGenerationStoreTests(unittest.TestCase):
             ]
         )
         self.active["owner-a"] = "N"
-        invalidate_ledger_index_cache(self.store.chroma_dir)
-        by_ledger, _ = build_ledger_index(self.store)
+        ledger.invalidate_ledger_index_cache(  # pylint: disable=no-member
+            self.store.chroma_dir
+        )
+        by_ledger, _ = ledger.build_ledger_index(self.store)
         self.assertEqual(by_ledger["obs_file_derived"]["id"], "fg1_ledger_physical")
-        resolved = find_unit_by_ledger_id(self.store, "obs_file_derived")
-        assert resolved is not None
-        self.assertEqual(resolved["id"], "fg1_ledger_physical")
-        self.assertEqual(resolved["metadata"]["logical_id"], "logical-ledger-row")
+        resolved = ledger.find_unit_by_ledger_id(self.store, "obs_file_derived")
+        assert isinstance(resolved, dict)
+        resolved_row = dict(resolved)
+        self.assertEqual(resolved_row["id"], "fg1_ledger_physical")
+        self.assertEqual(
+            dict(resolved_row["metadata"])["logical_id"], "logical-ledger-row"
+        )
 
     def test_file_and_stable_identity_validation(self) -> None:
         with self.assertRaisesRegex(ValueError, "fg1_"):

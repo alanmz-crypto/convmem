@@ -102,7 +102,7 @@ def test_valid_empty_extraction_builds_intentional_empty_generation():
         parse=lambda _raw: [{"start_offset": 0, "end_offset": 0}],
         extract_chunk=lambda _chunk: ("no facts", []),
     )
-    assert candidate.unit_rows == []
+    assert not candidate.unit_rows
     assert candidate.summary_rows[0].metadata["distill_status"] == "empty"
 
 
@@ -144,7 +144,7 @@ def test_same_logical_id_replacement_is_self_excluded_by_logical_identity():
         committed_store=FakeCommittedStore([existing]),
     )
     assert len(rebuilt.unit_rows) == 1
-    assert rebuilt.exact_suppressions == []
+    assert not rebuilt.exact_suppressions
 
 
 def test_same_chunk_and_earlier_chunk_duplicates_preserve_processing_order():
@@ -187,7 +187,7 @@ def test_self_source_cross_logical_suppression_is_named_as_projection_loss():
         parse=lambda _raw: [{"start_offset": 0, "end_offset": 0}],
         committed_store=FakeCommittedStore([existing]),
     )
-    assert lossy.unit_rows == []
+    assert not lossy.unit_rows
     assert lossy.self_source_cross_logical_suppression_count == 1
     assert lossy.known_projection_loss_risks == [
         "self_source_cross_logical_exact_suppression"

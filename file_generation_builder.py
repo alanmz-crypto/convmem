@@ -52,7 +52,7 @@ class CandidateRow:
 
 
 @dataclass
-class CandidateGeneration:
+class CandidateGeneration:  # pylint: disable=too-many-instance-attributes
     canonical_source_path: str
     ownership_key: str
     owner_digest: str
@@ -184,7 +184,7 @@ def _pre_dedupe_rows(
     return units, summaries
 
 
-def build_candidate_generation(
+def build_candidate_generation(  # pylint: disable=too-many-arguments,too-many-locals
     *,
     source_path: str,
     source_bytes: bytes,

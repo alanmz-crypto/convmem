@@ -35,6 +35,8 @@ class GenerationValidationError(RuntimeError):
     """A staged generation does not exactly match its immutable manifest."""
 
 
+# StagedRow is an explicit immutable schema, not mutable object state.
+# pylint: disable=too-many-instance-attributes
 @dataclass(frozen=True)
 class StagedRow:
     """One hermetic Chroma row with explicit logical/physical identity."""
@@ -69,6 +71,7 @@ def _and_where(*clauses: dict[str, Any] | None) -> dict[str, Any] | None:
     return {"$and": present}
 
 
+# pylint: disable=too-many-instance-attributes,too-many-public-methods
 class FileGenerationStore:
     """Temporary-Chroma generation staging and mediated read facade.
 
@@ -130,7 +133,7 @@ class FileGenerationStore:
                 )
             self._assert_owner_budget(owner, next(iter(proposed)))
         for collection_name, batch in grouped.items():
-            col = self._store._collection(collection_name)  # hermetic adapter
+            col = self._store._collection(collection_name)  # pylint: disable=protected-access
             ids: list[str] = []
             documents: list[str] = []
             embeddings: list[list[float]] = []
@@ -164,7 +167,7 @@ class FileGenerationStore:
         previous = self._previous_generations().get(owner_digest)
         known: set[str] = set()
         for collection_name in (UNITS, SUMMARIES):
-            col = self._store._collection(collection_name)
+            col = self._store._collection(collection_name)  # pylint: disable=protected-access
             result = col.get(
                 where={
                     "$and": [
@@ -188,12 +191,14 @@ class FileGenerationStore:
 
     def collection_identity(self, collection_name: str) -> dict[str, Any]:
         """Return the Chroma identity fields enforced by generation manifests."""
-        col = self._store._collection(collection_name)
+        col = self._store._collection(collection_name)  # pylint: disable=protected-access
         return {
             "collection_uuid": str(col.id),
             "configuration": dict(col.configuration_json),
         }
 
+    # The immutable-manifest schema deliberately exposes every validated field.
+    # pylint: disable=too-many-locals
     def build_manifest_collection_spec(
         self,
         collection_name: str,
@@ -214,7 +219,7 @@ class FileGenerationStore:
         rather than caller-side float64 lists, binds the manifest to the bytes
         that restart qualification will actually recover.
         """
-        col = self._store._collection(collection_name)
+        col = self._store._collection(collection_name)  # pylint: disable=protected-access
         result = col.get(
             where={
                 "$and": [
@@ -294,7 +299,7 @@ class FileGenerationStore:
         collection_results: dict[str, Any] = {}
         for collection_name, raw_spec in dict(manifest["collections"]).items():
             spec = dict(raw_spec)
-            col = self._store._collection(collection_name)
+            col = self._store._collection(collection_name)  # pylint: disable=protected-access
             actual_uuid = str(col.id)
             actual_configuration = dict(col.configuration_json)
             if actual_uuid != spec["collection_uuid"]:
@@ -505,7 +510,7 @@ class FileGenerationStore:
         include = ["metadatas", "documents"]
         if include_embeddings:
             include.append("embeddings")
-        col = self._store._collection(collection_name)
+        col = self._store._collection(collection_name)  # pylint: disable=protected-access
         results = []
         for clause_group in self._active_where_clauses(owner_digest=owner_digest):
             active_where = clause_group[0] if len(clause_group) == 1 else {"$or": clause_group}
@@ -808,7 +813,9 @@ class FileGenerationStore:
 
     def all_physical_ids(self, collection_name: str) -> set[str]:
         """Diagnostic physical inventory, including inactive residue."""
-        result = self._store._collection(collection_name).get(include=[])
+        result = self._store._collection(collection_name).get(  # pylint: disable=protected-access
+            include=[]
+        )
         return set(result.get("ids") or [])
 
     def readonly_sqlite_rows(

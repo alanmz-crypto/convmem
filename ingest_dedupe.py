@@ -65,7 +65,7 @@ def _logical_id(row: dict, metadata: dict) -> str:
     )
 
 
-def evaluate_ingest_batch(  # pylint: disable=too-many-locals
+def evaluate_ingest_batch(  # pylint: disable=too-many-locals,too-many-nested-blocks
     store,
     cfg: dict,
     units_batch: list[tuple],

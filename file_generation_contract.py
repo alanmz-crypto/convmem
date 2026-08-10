@@ -119,7 +119,7 @@ def candidate_bundle_hash(
     )
 
 
-def make_generation_id(
+def make_generation_id(  # pylint: disable=redefined-outer-name
     *,
     owner_digest: str,
     source_hash: str,
@@ -140,7 +140,9 @@ def generation_id(**kwargs: str) -> str:
     return make_generation_id(**kwargs)
 
 
-def make_physical_id(collection_name: str, generation_id: str, logical_id: str) -> str:
+def make_physical_id(  # pylint: disable=redefined-outer-name
+    collection_name: str, generation_id: str, logical_id: str
+) -> str:
     if not collection_name or not generation_id or not logical_id:
         raise GenerationContractError("physical identity fields must be non-empty")
     digest = hashlib.sha256(
@@ -151,11 +153,13 @@ def make_physical_id(collection_name: str, generation_id: str, logical_id: str) 
     return f"{PHYSICAL_ID_PREFIX}{digest}"
 
 
-def physical_id(collection_name: str, generation_id: str, logical_id: str) -> str:
+def physical_id(  # pylint: disable=redefined-outer-name
+    collection_name: str, generation_id: str, logical_id: str
+) -> str:
     return make_physical_id(collection_name, generation_id, logical_id)
 
 
-def build_logical_to_physical_map(
+def build_logical_to_physical_map(  # pylint: disable=redefined-outer-name
     collection_name: str, generation_id: str, logical_ids: Iterable[str]
 ) -> dict[str, str]:
     result: dict[str, str] = {}
@@ -170,7 +174,7 @@ def build_logical_to_physical_map(
     return result
 
 
-def logical_to_physical_map(
+def logical_to_physical_map(  # pylint: disable=redefined-outer-name
     collection_name: str, generation_id: str, logical_ids: Iterable[str]
 ) -> dict[str, str]:
     return build_logical_to_physical_map(collection_name, generation_id, logical_ids)
@@ -194,7 +198,7 @@ def validate_payload_hash(payload: Mapping[str, Any], field: str) -> None:
         raise GenerationContractError(f"{field} mismatch: {actual} != {expected}")
 
 
-def build_generation_manifest(
+def build_generation_manifest(  # pylint: disable=too-many-arguments,redefined-outer-name
     *,
     owner_key: str,
     generation_id: str,
@@ -282,7 +286,7 @@ _ROW_IDENTITY_FIELDS = {
 }
 
 
-def _validate_manifest_collections(
+def _validate_manifest_collections(  # pylint: disable=redefined-outer-name
     collections: Mapping[str, Any], *, generation_id: str
 ) -> None:
     """Validate the enforced identity half of a manifest.

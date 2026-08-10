@@ -15,6 +15,8 @@ from file_generation_store import (
 from tests.test_file_generation_store import file_row
 
 
+# unittest owns the temporary resource lifecycle across setUp/tearDown.
+# pylint: disable=consider-using-with
 class GenerationReadPathTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
