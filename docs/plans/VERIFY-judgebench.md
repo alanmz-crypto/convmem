@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Verify state | **PARTIAL** — CHK-001..006 and CHK-008 PASSED; CHK-007 PARTIAL (runner ready, conformance fixtures await G3 gold lock) |
+| Verify state | **PARTIAL** — CHK-001..006 and CHK-008..010 PASSED; CHK-007 PARTIAL until Ryan locks G3 and a selected judge runs the corpus |
 | Plan reference | `docs/plans/EXECUTION-judgebench.md` (Execute HITL APPROVED `dec_prop_20260808_150112_f49e`; S1–S9 landed) |
 | Consequence hold | Human consequence assessment deferred until Execute events occur; updates require Ryan review |
 
@@ -31,7 +31,9 @@ Placeholder: If verification is skipped or failed checks are waived, the offline
 | CHK-004 | Provenance comparison signature detects evidence ID or judge pin changes | Altered-output diff test against frozen evidence; assert mismatch | **PASSED** — `tests/test_judgebench_contracts.py` |
 | CHK-005 | Legacy `eval_judge.py` 1–5 path runs only under explicit `--legacy` flag and produces byte-compatible legacy schema | Golden output comparison for legacy run | **PASSED** — `tests/test_judgebench_contracts.py` (`legacy=True` gate + schema keys) |
 | CHK-006 | No `SemanticJudgmentV1` provenance bleeds into legacy path output | Schema diff of legacy output; assert zero v1 fields present | **PASSED** — `tests/test_judgebench_contracts.py` |
-| CHK-007 | Conformance scenario: each defined conformance fixture returns the exact expected disposition under the pinned judge | Fixture-by-fixture disposition comparison | **PARTIAL** — synthetic conformance in `tests/test_judgebench_contracts.py`; corpus-backed conformance awaits G3 gold lock |
+| CHK-007 | Conformance scenario: each defined conformance fixture returns the exact expected disposition under the pinned judge | Fixture-by-fixture disposition comparison | **PARTIAL** — synthetic conformance in `tests/test_judgebench_contracts.py`; corpus-backed conformance awaits an eligible judge and separately authorized calibration experiment |
 | CHK-008 | Corpus gold is unmodified after runner execution; runner is read-only vs gold | Hash-gold before/after; assert equal | **PASSED** — `tests/test_judgebench_contracts.py` gold hash before/after |
+| CHK-009 | Locked corpus is structurally complete and canonical validation requires Ryan lock | Validate rows, hashes, rubric refs, split counts, J0 outcomes, origins, and uniform lock state with `--require-locked` | **PASSED** — 30 cases, 20/10 split, both tasks 15/15, all 30 rows locked by Ryan at `2026-08-10T00:50:50Z`; canonical corpus validation accepts the lock |
+| CHK-010 | Canonical independence is derived from every frozen model-generated candidate origin, never substituted by caller identity/config | Supply a cross-family caller for a same-family frozen origin; assert canonical refusal. Cover multiple origins, unresolved origin, and forged human-curated config | **PASSED (pre-lock)** — focused contract regressions prove caller substitution refusal, all-origin enforcement, `unknown` fail-closed, and config-forgery resistance |
 
-CHK-001/002/003 are met by the merged S1–S9 slice implementation (#144). CHK-004..006 and CHK-008 met by T2–T5 (Cursor). CHK-007 stays PARTIAL until Ryan G3 gold population.
+CHK-001/002/003 are met by the merged S1–S9 slice implementation (#144). CHK-004..006 and CHK-008 met by T2–T5 (Cursor). CHK-009/010 are met by the locked G3 branch. CHK-007 stays PARTIAL until identity resolution and calibration are separately authorized; Ryan's G4 selection follows the calibration evidence.

@@ -1,7 +1,7 @@
 {
-  "id": "synthesis-grounded-v1",
+  "id": "summary-grounded-v1",
   "version": 1,
-  "task": "synthesis",
+  "task": "summary",
   "rules": {
     "field_semantics": {
       "support": "Grounding of every asserted claim against frozen evidence, independent of whether all requested facets are covered.",
@@ -9,23 +9,11 @@
       "contradiction": "A meaning-changing conflict between the candidate and frozen evidence."
     },
     "verdict_policy": {
-      "pass": "All material claims are supported, requested facets are adequately covered, and no contradiction is present; justified abstention may pass where configured.",
+      "pass": "All material claims are supported, requested facets are adequately covered, and no contradiction is present.",
       "borderline": "The core answer is supported with only a genuinely non-material omission or addition that does not alter timing, authority, magnitude, scope, causality, safety, or current state.",
-      "fail": "Any contradiction, material omission, unjustified abstention, or unsupported claim that alters timing, authority, magnitude, scope, causality, safety, or current state."
+      "fail": "Any contradiction, material omission, or unsupported claim that alters timing, authority, magnitude, scope, causality, safety, or current state."
     },
     "forbids": [
-      {
-        "support": ["not_applicable"],
-        "coverage": ["material_omission"],
-        "contradiction": ["none"],
-        "verdict": ["pass"]
-      },
-      {
-        "support": ["not_applicable"],
-        "coverage": ["minor_omission"],
-        "contradiction": ["none"],
-        "verdict": ["pass"]
-      },
       {
         "support": ["full"],
         "coverage": ["material_omission"],
@@ -37,14 +25,12 @@
         "coverage": ["material_omission"],
         "contradiction": ["none"],
         "verdict": ["pass"]
+      },
+      {
+        "support": ["none"],
+        "contradiction": ["none"],
+        "verdict": ["pass"]
       }
-    ],
-    "justified_abstention": {
-      "support": ["not_applicable"],
-      "coverage": ["complete"],
-      "contradiction": ["none"],
-      "verdict": ["pass"]
-    },
-    "unjustified_abstention_verdict": "fail"
+    ]
   }
 }
