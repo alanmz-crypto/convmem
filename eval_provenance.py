@@ -164,9 +164,13 @@ def build_comparison_signature(  # pylint: disable=too-many-arguments
     model_serving_version: str = "",
     metric_policy_version: str = "",
     e2e_retrieval_fingerprint: str | None = None,
+    prompt_hashes: dict[str, str] | None = None,
+    prompt_family: str = "",
+    rubric_hashes: dict[str, str] | None = None,
+    full_corpus_hashes: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Build the canonical comparison signature for baseline compatibility."""
-    return {
+    signature = {
         "evaluation_surface": evaluation_surface,
         "case_hash": case_hash,
         "fixture_hash": fixture_hash_value,
@@ -181,7 +185,15 @@ def build_comparison_signature(  # pylint: disable=too-many-arguments
         "model_serving_version": model_serving_version,
         "metric_policy_version": metric_policy_version,
         "e2e_retrieval_fingerprint": e2e_retrieval_fingerprint or "",
+        "prompt_family": prompt_family,
     }
+    if prompt_hashes is not None:
+        signature["prompt_hashes"] = prompt_hashes
+    if rubric_hashes is not None:
+        signature["rubric_hashes"] = rubric_hashes
+    if full_corpus_hashes is not None:
+        signature["full_corpus_hashes"] = full_corpus_hashes
+    return signature
 
 
 def comparison_signature_changed(current: dict, baseline: dict) -> tuple[bool, list[str]]:
