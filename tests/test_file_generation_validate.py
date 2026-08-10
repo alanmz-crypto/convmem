@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+import pytest
+
 from chroma_store import SUMMARIES, UNITS
 from file_generation_builder import build_candidate_generation
 from file_generation_contract import build_generation_manifest
@@ -141,3 +143,54 @@ def test_cold_process_validation_precedes_pointer_and_export_view_round_trips(
         == f"id:{logical}"
     )
     assert promoted["metadata"]["id"] == candidate.unit_rows[0].physical_id
+
+
+def test_cold_validation_fails_after_corruption_in_fresh_process(
+    tmp_path: Path,
+) -> None:
+    """A closed/reopened validator must reject persisted immutable row corruption."""
+    source = tmp_path / "source.jsonl"
+    source.write_text("source-v1", encoding="utf-8")
+    chroma = tmp_path / "chroma"
+    generations = tmp_path / "generations"
+    candidate = _candidate(source)
+
+    with FileGenerationStore(chroma, active_generations=dict) as store:
+        store.stage_rows(_staged(candidate))
+        collections = {
+            name: store.build_manifest_collection_spec(
+                name,
+                owner_digest=candidate.owner_digest,
+                generation_id=candidate.generation_id,
+                embedding_model="test-embed-v1",
+                embedding_dimension=2,
+            )
+            for name in (UNITS, SUMMARIES)
+        }
+
+    manifest = build_generation_manifest(
+        owner_key=candidate.ownership_key,
+        generation_id=candidate.generation_id,
+        canonical_source=candidate.canonical_source_path,
+        source_hash=candidate.source_hash,
+        candidate_bundle_hash=candidate.candidate_bundle_hash,
+        fingerprints={"pipeline": candidate.pipeline_fingerprint},
+        collections=collections,
+        suppression_outcomes=candidate.exact_suppressions,
+        known_projection_loss_risks=candidate.known_projection_loss_risks,
+    )
+    reference = publish_manifest(generations, manifest)
+
+    # Corrupt an enforced immutable field after the manifest is durable, then
+    # close this writer before the validator spawns a new interpreter.
+    physical_id = candidate.unit_rows[0].physical_id
+    with FileGenerationStore(chroma, active_generations=dict) as store:
+        collection = store.raw_store._collection(UNITS)  # pylint: disable=protected-access
+        collection.update(
+            ids=[physical_id],
+            documents=["corrupted fact"],
+            embeddings=[list(candidate.unit_rows[0].embedding)],
+        )
+
+    with pytest.raises(RuntimeError, match="document hash mismatch"):
+        run_cold_validation(chroma, reference.path)

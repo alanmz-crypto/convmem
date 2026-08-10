@@ -139,6 +139,6 @@ os._exit(42)
     assert after["queue_max_seq_id"] >= tail["queue_max_seq_id"]
     print(
         json.dumps(
-            {"replay_tail_before": tail, "replay_tail_after": after}, sort_keys=True
+            {"after": after, "before": before, "tail": tail}, sort_keys=True
         )
     )
