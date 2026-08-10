@@ -47,6 +47,7 @@ RUBRIC_DIR = (
     / "rubrics"
 )
 RUBRIC_ID = "synthesis-grounded-v1"
+SUMMARY_RUBRIC_ID = "summary-grounded-v1"
 
 
 def _judgment(supp, cov, contra, verdict, reason=None):
@@ -67,6 +68,25 @@ class RubricLoaderTests(unittest.TestCase):
         self.assertEqual(r.id, RUBRIC_ID)
         self.assertEqual(r.task, "synthesis")
         self.assertTrue(r.rules)
+
+    def test_load_summary_rubric(self):
+        rubric = load_rubric(RUBRIC_DIR, SUMMARY_RUBRIC_ID)
+        self.assertEqual(rubric.task, "summary")
+
+    def test_reference_rubrics_lock_field_and_verdict_semantics(self):
+        for rubric_id in (RUBRIC_ID, SUMMARY_RUBRIC_ID):
+            with self.subTest(rubric_id=rubric_id):
+                rules = load_rubric(RUBRIC_DIR, rubric_id).rules
+                self.assertEqual(
+                    set(rules["field_semantics"]),
+                    {"support", "coverage", "contradiction"},
+                )
+                self.assertEqual(
+                    set(rules["verdict_policy"]),
+                    {"pass", "borderline", "fail"},
+                )
+                self.assertIn("independent", rules["field_semantics"]["coverage"])
+                self.assertIn("timing", rules["verdict_policy"]["fail"])
 
     def test_unknown_id_raises(self):
         with self.assertRaises(RubricNotFoundError):
@@ -148,6 +168,30 @@ class RubricValidationTests(unittest.TestCase):
             self.rubric,
         )
         self.assertFalse(res.valid)
+
+
+class SummaryRubricValidationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.rubric = load_rubric(RUBRIC_DIR, SUMMARY_RUBRIC_ID)
+
+    def test_complete_supported_summary_passes(self):
+        result = validate_against_rubric(
+            _judgment("full", "complete", "none", "pass"), self.rubric
+        )
+        self.assertTrue(result.valid)
+
+    def test_material_omission_cannot_pass(self):
+        result = validate_against_rubric(
+            _judgment("full", "material_omission", "none", "pass"), self.rubric
+        )
+        self.assertFalse(result.valid)
+
+    def test_unsupported_summary_cannot_pass(self):
+        result = validate_against_rubric(
+            _judgment("none", "complete", "none", "pass"), self.rubric
+        )
+        self.assertFalse(result.valid)
 
 
 if __name__ == "__main__":
