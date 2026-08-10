@@ -7,13 +7,24 @@ model.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any
+from typing import Any, Protocol
 
 
 class ProviderPreflightError(ValueError):
     """A pinned provider request is missing a required invariant."""
+
+
+class ProviderResponseError(ValueError):
+    """A provider response cannot be reduced to one JSON object."""
+
+
+class ProviderTransport(Protocol):
+    """Injected provider-adapter boundary used by canonical calibration."""
+
+    def __call__(self, request: Mapping[str, Any]) -> Any: ...
 
 
 DEEPSEEK_MAX_TOKENS = 4096
@@ -85,6 +96,15 @@ def validate_deepseek_request(request: Mapping[str, Any]) -> bool:
         raise ProviderPreflightError("DeepSeek max_tokens drifted")
     if request.get("stream") is not False or request.get("attempts") != 1:
         raise ProviderPreflightError("DeepSeek must be non-streaming with one attempt")
+    messages = request.get("messages")
+    if (
+        not isinstance(messages, list)
+        or len(messages) != 1
+        or not isinstance(messages[0], Mapping)
+        or messages[0].get("role") != "user"
+        or not isinstance(messages[0].get("content"), str)
+    ):
+        raise ProviderPreflightError("DeepSeek messages must contain one user prompt")
     if "temperature" in request:
         raise ProviderPreflightError(
             "DeepSeek temperature is unsupported and must not be sent"
@@ -151,6 +171,8 @@ def validate_llama_request(
         raise ProviderPreflightError("Llama must be non-streaming with one attempt")
     if request.get("runtime_digest") != runtime_digest:
         raise ProviderPreflightError("Llama runtime digest drifted")
+    if not isinstance(request.get("prompt"), str):
+        raise ProviderPreflightError("Llama prompt must be a string")
     if request.get("options") != LLAMA_DECODING:
         raise ProviderPreflightError("Llama decoding settings drifted")
     if not isinstance(request.get("format"), dict):
@@ -170,3 +192,49 @@ def validate_provider_request(
     if normalized in {"ollama", "llama"}:
         return validate_llama_request(request, **kwargs)
     raise ProviderPreflightError(f"unsupported provider family: {provider!r}")
+
+
+def _json_object(value: Any) -> dict[str, Any]:
+    if isinstance(value, Mapping):
+        return dict(value)
+    if not isinstance(value, str):
+        raise ProviderResponseError(
+            "provider response content must be an object or JSON"
+        )
+    try:
+        decoded = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ProviderResponseError(
+            "provider response content is not valid JSON"
+        ) from exc
+    if not isinstance(decoded, dict):
+        raise ProviderResponseError("provider response JSON must be an object")
+    return decoded
+
+
+def parse_provider_response(provider: str, response: Any) -> dict[str, Any]:
+    """Extract one semantic JSON object from an exact provider envelope."""
+    if not isinstance(provider, str):
+        raise ProviderResponseError(f"unsupported provider family: {provider!r}")
+    normalized = provider.strip().lower()
+    if normalized not in {"deepseek", "llama", "ollama"}:
+        raise ProviderResponseError(f"unsupported provider family: {provider!r}")
+    if not isinstance(response, Mapping):
+        raise ProviderResponseError("provider response must be an object")
+    if normalized == "deepseek":
+        if "response" in response:
+            raise ProviderResponseError("DeepSeek response uses the Llama envelope")
+        choices = response.get("choices")
+        if (
+            not isinstance(choices, list)
+            or len(choices) != 1
+            or not isinstance(choices[0], Mapping)
+            or not isinstance(choices[0].get("message"), Mapping)
+        ):
+            raise ProviderResponseError("DeepSeek response choices are malformed")
+        return _json_object(choices[0]["message"].get("content"))
+    if "choices" in response:
+        raise ProviderResponseError("Llama response uses the DeepSeek envelope")
+    if "response" not in response:
+        raise ProviderResponseError("Llama response envelope is missing response")
+    return _json_object(response.get("response"))

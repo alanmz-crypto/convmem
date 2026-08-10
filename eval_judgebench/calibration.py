@@ -1,9 +1,9 @@
 """Calibration-only JudgeBench boundary.
 
-This module is the narrow gate between the locked corpus and any callback.
+This module is the narrow gate between the locked corpus and a provider adapter.
 It validates the complete package first, checks caller-supplied full hashes,
 and then exposes only manifest-selected calibration rows.  Holdout rows are
-never callback inputs, even when a caller supplies a permissive callback.
+never transport inputs.
 """
 
 from __future__ import annotations
@@ -16,9 +16,13 @@ from pathlib import Path
 from typing import Any
 
 from eval_judgebench.corpus_validate import assert_corpus_valid
+from eval_judgebench.provider_requests import ProviderTransport
 from eval_judgebench.runner_types import CallbackCase
 
-MAX_CALIBRATION_CALLBACKS = 20
+MAX_CALIBRATION_CALLS = 20
+# Compatibility name for the standalone projection helper below. Canonical
+# run_calibration uses the transport-oriented limit above.
+MAX_CALIBRATION_CALLBACKS = MAX_CALIBRATION_CALLS
 _SAFE_CASE_FIELDS = {
     "case_id",
     "task_kind",
@@ -31,7 +35,7 @@ _SAFE_CASE_FIELDS = {
 
 
 class CalibrationBoundaryError(ValueError):
-    """Raised before callbacks when calibration preflight is not exact."""
+    """Raised before transport when calibration preflight is not exact."""
 
 
 class ExpectedCorpusHashesError(CalibrationBoundaryError):
@@ -158,18 +162,18 @@ def _load_manifest(root: Path) -> dict[str, Any]:
 def _require_calibration(row: Mapping[str, Any]) -> None:
     if row.get("split") == "calibration":
         return
-    # Callback-safe projections intentionally omit split and all corpus-only
+    # Adapter-safe projections intentionally omit split and all corpus-only
     # metadata.  They may be re-serialized for provider prompts/reports.
-    if "split" not in row and not (set(row) - _SAFE_CASE_FIELDS):
+    if "split" not in row and not set(row) - _SAFE_CASE_FIELDS:
         return
     if row.get("split") != "calibration":
         raise HoldoutAccessError(
-            "only calibration rows may reach a serializer or callback"
+            "only calibration rows may reach a serializer or transport"
         )
 
 
 def safe_case(row: Mapping[str, Any]) -> dict[str, Any]:
-    """Project a validated calibration row to the callback-safe case shape."""
+    """Project a validated calibration row to the adapter-safe case shape."""
     _require_calibration(row)
     return {
         "case_id": row["case_id"],
@@ -244,7 +248,7 @@ def load_calibration_package(
     """Validate the full locked corpus, then select manifest calibration rows."""
     root = Path(corpus_dir)
     # Importing the existing loader here is safe: it is only used after the
-    # complete locked-corpus validator has run and before any callback exists.
+    # complete locked-corpus validator has run and before any transport exists.
     from eval_judgebench.runner import load_corpus  # local cycle break
 
     assert_corpus_valid(root, require_locked=True)
@@ -254,10 +258,7 @@ def load_calibration_package(
         raise CalibrationBoundaryError("manifest.case_count must be an integer")
     split_policy = manifest.get("split_policy") or {}
     declared_count = split_policy.get("calibration_count")
-    if (
-        not isinstance(declared_count, int)
-        or declared_count > MAX_CALIBRATION_CALLBACKS
-    ):
+    if not isinstance(declared_count, int) or declared_count > MAX_CALIBRATION_CALLS:
         raise CalibrationBoundaryError(
             "manifest calibration count must be an integer no greater than 20"
         )
@@ -270,8 +271,8 @@ def load_calibration_package(
         raise CalibrationBoundaryError(
             "manifest calibration count does not match selected calibration rows"
         )
-    if len(calibration) > MAX_CALIBRATION_CALLBACKS:
-        raise CalibrationBoundaryError("calibration callback limit exceeded")
+    if len(calibration) > MAX_CALIBRATION_CALLS:
+        raise CalibrationBoundaryError("calibration transport limit exceeded")
     calibration_ids = {str(row["case_id"]) for row in calibration}
     # Keep the package's gold view calibration-only.  This is deliberately
     # done after complete corpus validation, so a report cannot accidentally
@@ -396,6 +397,11 @@ def _validate_provider_configuration(
     if normalized in {"llama", "ollama"}:
         from eval_judgebench.provider_requests import LLAMA_MODEL
 
+        if judge_model.strip() != LLAMA_MODEL:
+            raise CalibrationBoundaryError(
+                "Llama judge model must be exactly llama3.1:8b"
+            )
+
         runtime_digest = str(
             settings.get("runtime_digest") or request.get("runtime_digest") or ""
         )
@@ -411,6 +417,116 @@ def _validate_provider_configuration(
     raise CalibrationBoundaryError(f"unsupported provider family: {provider!r}")
 
 
+def _build_exact_provider_request(
+    *,
+    family: str,
+    prompt: str,
+    judge_model: str,
+    decoding: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build and revalidate the one request permitted for this case."""
+    from eval_judgebench.prompt_wrappers import semantic_output_schema
+    from eval_judgebench.provider_requests import (
+        build_deepseek_request,
+        build_llama_request,
+        validate_llama_request,
+    )
+
+    if family == "deepseek":
+        return build_deepseek_request(prompt, model=judge_model.strip())
+    schema = semantic_output_schema()
+    request = build_llama_request(
+        prompt,
+        runtime_digest=str(decoding["runtime_digest"]),
+        json_schema=schema,
+    )
+    validate_llama_request(
+        request,
+        runtime_digest=str(decoding["runtime_digest"]),
+        expected_schema=schema,
+    )
+    return request
+
+
+def _provider_invocation(
+    *,
+    family: str,
+    request: Mapping[str, Any],
+    transport: ProviderTransport,
+    rubric_id: str,
+    rubric_dir: Path,
+    judge_identity: str,
+    under_test_identity: str,
+    independence: Any,
+) -> Any:
+    """Invoke one adapter request and classify transport/output failures."""
+    from eval_judgebench.contracts import InvocationStatus, JudgeInvocationV1
+    from eval_judgebench.provider_requests import (
+        ProviderResponseError,
+        parse_provider_response,
+    )
+    from eval_judgebench.runner import _validate_judgment_output
+
+    try:
+        response = transport(request)
+    except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001
+        return JudgeInvocationV1(
+            status=InvocationStatus.PROVIDER_ERROR,
+            judge_identity=judge_identity,
+            under_test_identity=under_test_identity,
+            independence_class=independence,
+            failure_code=f"{type(exc).__name__}: {exc}",
+        )
+    try:
+        raw = parse_provider_response(family, response)
+        judgment, status, failure = _validate_judgment_output(
+            raw, rubric_id, rubric_dir
+        )
+    except (ProviderResponseError, TypeError, ValueError) as exc:
+        return JudgeInvocationV1(
+            status=InvocationStatus.INVALID_OUTPUT,
+            judge_identity=judge_identity,
+            under_test_identity=under_test_identity,
+            independence_class=independence,
+            failure_code=f"{type(exc).__name__}: {exc}",
+        )
+    return JudgeInvocationV1(
+        status=status,
+        judge_identity=judge_identity,
+        under_test_identity=under_test_identity,
+        independence_class=independence,
+        failure_code=failure,
+        semantic_judgment=judgment,
+    )
+
+
+def _calibration_case_result(
+    *,
+    case: dict[str, Any],
+    gold: dict[str, Any] | None,
+    invocation: Any,
+) -> Any:
+    from eval_judgebench.contracts import InvocationStatus
+    from eval_judgebench.runner import CaseResult, grade_mechanical
+
+    mechanical = grade_mechanical(case, gold)
+    expected = ((gold or {}).get("j1") or {}).get("verdict")
+    agrees = None
+    if (
+        expected is not None
+        and invocation.status == InvocationStatus.OK
+        and invocation.semantic_judgment is not None
+    ):
+        agrees = invocation.semantic_judgment.verdict.value == expected
+    return CaseResult(
+        case_id=str(case.get("case_id") or case.get("id") or ""),
+        mechanical=mechanical,
+        invocation=invocation,
+        gold_verdict=expected,
+        agrees_with_gold=agrees,
+    )
+
+
 def run_calibration(  # pylint: disable=too-many-arguments,too-many-locals
     corpus_dir: Path | str,
     *,
@@ -418,6 +534,7 @@ def run_calibration(  # pylint: disable=too-many-arguments,too-many-locals
     judge_model: str,
     under_test_model: str,
     registry_path: Path | str,
+    transport: ProviderTransport | None = None,
     callback: Callable[[dict[str, Any]], Any] | None = None,
     semantic_judge: Callable[[dict[str, Any]], Any] | None = None,
     canonical: bool = True,
@@ -443,7 +560,6 @@ def run_calibration(  # pylint: disable=too-many-arguments,too-many-locals
         _case_candidate_binding,
         _contract_hashes,
         _origin_key,
-        run_case,
     )
     from eval_model_identity import load_registry, resolve_identity
     from eval_provenance import (
@@ -452,13 +568,15 @@ def run_calibration(  # pylint: disable=too-many-arguments,too-many-locals
         comparison_signature_digest,
     )
 
-    if callback is not None and semantic_judge is not None:
-        raise CalibrationBoundaryError("provide only one calibration callback")
-    if callback is None and semantic_judge is None:
+    if callback is not None or semantic_judge is not None:
         raise CalibrationBoundaryError(
-            "calibration execution requires an explicit callback"
+            "canonical calibration accepts an injected provider transport, "
+            "not an arbitrary semantic callback"
         )
-    callback = callback or semantic_judge
+    if transport is None:
+        raise CalibrationBoundaryError(
+            "calibration execution requires an injected provider transport"
+        )
     judgebench_cfg = cfg.get("judgebench") or {}
     configured_full_hashes = expected_full_hashes or judgebench_cfg.get(
         "expected_full_hashes"
@@ -490,12 +608,22 @@ def run_calibration(  # pylint: disable=too-many-arguments,too-many-locals
     )
 
     provider_name, decoding = _validate_provider_configuration(
-        provider=provider or judgebench_cfg.get("provider"),
-        request=provider_request or judgebench_cfg.get("provider_request"),
-        settings=provider_settings or judgebench_cfg.get("provider_settings"),
+        provider=(provider if provider is not None else judgebench_cfg.get("provider")),
+        request=(
+            provider_request
+            if provider_request is not None
+            else judgebench_cfg.get("provider_request")
+        ),
+        settings=(
+            provider_settings
+            if provider_settings is not None
+            else judgebench_cfg.get("provider_settings")
+        ),
         judge_model=judge_model,
     )
-    family = (prompt_family or provider_name).strip().lower()
+    family = (
+        (prompt_family if prompt_family is not None else provider_name).strip().lower()
+    )
     if family != provider_name:
         raise CalibrationBoundaryError(
             "prompt family must equal the validated provider family"
@@ -559,27 +687,50 @@ def run_calibration(  # pylint: disable=too-many-arguments,too-many-locals
         expected_comparison_signature
     ):
         raise CalibrationBoundaryError(
-            "comparison signature drifted; aborting before calibration callbacks"
+            "comparison signature drifted; aborting before calibration transport"
         )
 
     results = []
     for case in package.cases:
         case_id = str(case.get("case_id") or case.get("id") or "")
         candidate_identity, independence = _case_candidate_binding(case, binding)
+        safe = safe_case(case)
+        from eval_judgebench.prompt_wrappers import build_semantic_prompt, prompt_hash
+        from eval_judgebench.rubric import load_rubric
+
+        rubric = load_rubric(package.root / "rubrics", str(safe["rubric_id"]))
+        prompt = build_semantic_prompt(safe, rubric, family=family)
+        if prompt_hash(safe, rubric, family=family) != prompt_hashes[case_id]:
+            raise ExpectedPromptHashesError(
+                "calibration prompt changed after preflight"
+            )
+        request = _build_exact_provider_request(
+            family=family,
+            prompt=prompt,
+            judge_model=judge_model,
+            decoding=decoding,
+        )
+        invocation = _provider_invocation(
+            family=family,
+            request=request,
+            transport=transport,
+            rubric_id=str(safe["rubric_id"]),
+            rubric_dir=package.root / "rubrics",
+            judge_identity=judge_identity.normalized_name,
+            under_test_identity=candidate_identity,
+            independence=independence,
+        )
         results.append(
-            run_case(
-                safe_case(case),
+            _calibration_case_result(
+                case=safe,
                 gold=package.gold_by_id.get(case_id),
-                judge_identity=judge_identity.normalized_name,
-                under_test_identity=candidate_identity,
-                independence=independence,
-                semantic_judge=callback,
+                invocation=invocation,
             )
         )
 
     gold_hash_after = full_sha256(Path(package.root) / "gold.jsonl")
     if gold_hash_after != package.full_hashes["gold.jsonl"]:
-        raise CalibrationBoundaryError("gold hash changed during calibration callbacks")
+        raise CalibrationBoundaryError("gold hash changed during calibration transport")
     from eval_judgebench.runner import RunResult
 
     frozen_model_label = (

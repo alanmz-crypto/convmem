@@ -101,6 +101,11 @@ def prompt_wrapper_hash(family: str) -> str:
     )
 
 
+def semantic_output_schema() -> dict[str, Any]:
+    """Return the exact provider-neutral output schema for local adapters."""
+    return json.loads(json.dumps(_OUTPUT_SCHEMA))
+
+
 def prompt_hash(
     case: Mapping[str, Any], rubric: Rubric | Mapping[str, Any], *, family: str
 ) -> str:

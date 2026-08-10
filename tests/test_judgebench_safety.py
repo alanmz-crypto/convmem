@@ -37,13 +37,16 @@ from eval_judgebench.prompt_wrappers import (
     build_semantic_prompt,
     prompt_hash,
     prompt_wrapper_hash,
+    semantic_output_schema,
 )
 from eval_judgebench.provider_requests import (
     ProviderPreflightError,
+    ProviderResponseError,
     build_deepseek_request,
     build_llama_request,
     deepseek_decoding_signature,
     llama_decoding_signature,
+    parse_provider_response,
     validate_deepseek_request,
     validate_llama_request,
 )
@@ -59,6 +62,15 @@ from eval_provenance import build_comparison_signature
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_V2 = ROOT / "eval_corpus/fixtures/judgebench/identity-registry-v2.json"
+
+
+def _valid_semantic_output() -> dict[str, str]:
+    return {
+        "support": "full",
+        "coverage": "complete",
+        "contradiction": "none",
+        "verdict": "pass",
+    }
 
 
 def _write_synthetic_package(
@@ -157,7 +169,14 @@ def _write_synthetic_package(
     }
 
 
-def _expected_signature(root: Path, hashes: dict[str, str]) -> dict:
+def _expected_signature(
+    root: Path,
+    hashes: dict[str, str],
+    *,
+    judge_model: str = "deepseek-v4-pro",
+    family: str = "deepseek",
+    decoding: dict | None = None,
+) -> dict:
     rubric_hashes = {"synthesis-grounded-v1": hashes["synthesis-grounded-v1"]}
     package = load_calibration_package(
         root,
@@ -167,13 +186,13 @@ def _expected_signature(root: Path, hashes: dict[str, str]) -> dict:
         expected_rubric_hashes=rubric_hashes,
     )
     registry = load_registry(REGISTRY_V2)
-    judge = resolve_identity("deepseek-v4-pro", registry, {}, offline=True)
+    judge = resolve_identity(judge_model, registry, {}, offline=True)
     contract_hashes = _contract_hashes(root, list(package.cases))
-    wrapper_hash = prompt_wrapper_hash("deepseek")
+    wrapper_hash = prompt_wrapper_hash(family)
     contract_hashes["prompt_wrapper"] = wrapper_hash
     rubric = load_rubric(root / "rubrics", "synthesis-grounded-v1")
     prompt_hashes = {
-        case["case_id"]: prompt_hash(case, rubric, family="deepseek")
+        case["case_id"]: prompt_hash(case, rubric, family=family)
         for case in package.calibration_cases
     }
     return build_comparison_signature(
@@ -185,7 +204,7 @@ def _expected_signature(root: Path, hashes: dict[str, str]) -> dict:
         identity_policy_version=registry.version,
         resolved_identities={"judge": judge.to_record_dict()},
         judge_pin={
-            "model": "deepseek-v4-pro",
+            "model": judge_model,
             "lineage": judge.base_lineage,
             "digest": judge.revision_digest,
             "quant": judge.quantization,
@@ -193,11 +212,11 @@ def _expected_signature(root: Path, hashes: dict[str, str]) -> dict:
         },
         under_test_provenance={"source": "frozen_candidate_origin", "origins": []},
         independence_class=IndependenceClass.NOT_APPLICABLE.value,
-        decoding_params=deepseek_decoding_signature(),
+        decoding_params=decoding or deepseek_decoding_signature(),
         model_serving_version="",
         metric_policy_version="judgebench-v1",
         prompt_hashes=prompt_hashes,
-        prompt_family="deepseek",
+        prompt_family=family,
         rubric_hashes=rubric_hashes,
         full_corpus_hashes=package.full_hashes,
     )
@@ -219,7 +238,7 @@ def test_registry_v2_preserves_alias_provenance_and_cross_family_matrix():
     assert set(result.values()) == {IndependenceClass.CROSS_FAMILY}
 
 
-def test_calibration_boundary_hashes_and_callbacks_exclude_holdout(tmp_path: Path):
+def test_calibration_boundary_hashes_and_transport_exclude_holdout(tmp_path: Path):
     hashes = _write_synthetic_package(tmp_path)
     package = load_calibration_package(
         tmp_path,
@@ -235,17 +254,26 @@ def test_calibration_boundary_hashes_and_callbacks_exclude_holdout(tmp_path: Pat
     }
     seen: list[dict] = []
 
-    def callback(case: dict):
-        seen.append(case)
-        rubric = load_rubric(tmp_path / "rubrics", case["rubric_id"])
-        prompts.append(build_semantic_prompt(case, rubric, family="deepseek"))
-        reports.append(serialize_report_case(case, status="ok"))
-        return JudgeInvocationV1(
-            status=InvocationStatus.NOT_RUN,
-            judge_identity="deepseek-v4-pro",
-            under_test_identity="human_curated",
-            independence_class=IndependenceClass.NOT_APPLICABLE,
-        )
+    def transport(request: dict):
+        seen.append(request)
+        prompts.append(request["messages"][0]["content"])
+        reports.append({"status": "ok"})
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "support": "full",
+                                "coverage": "complete",
+                                "contradiction": "none",
+                                "verdict": "pass",
+                            }
+                        )
+                    }
+                }
+            ]
+        }
 
     prompts: list[str] = []
     reports: list[dict] = []
@@ -255,7 +283,7 @@ def test_calibration_boundary_hashes_and_callbacks_exclude_holdout(tmp_path: Pat
         judge_model="deepseek-v4-pro",
         under_test_model="human_curated",
         registry_path=REGISTRY_V2,
-        callback=callback,
+        transport=transport,
         expected_full_hashes=hashes,
         expected_rubric_hashes={
             "synthesis-grounded-v1": hashes["synthesis-grounded-v1"]
@@ -270,7 +298,7 @@ def test_calibration_boundary_hashes_and_callbacks_exclude_holdout(tmp_path: Pat
     assert len(seen) == 20
     assert len(prompts) == len(reports) == 20
     assert "CALIBRATION_SENTINEL" in json.dumps(seen)
-    assert all(case["case_id"].startswith("synthetic-calibration-") for case in seen)
+    assert all("synthetic-calibration-" in prompt for prompt in prompts)
     assert "synthetic-holdout-" not in json.dumps(seen + reports + prompts)
     assert "HOLDOUT_SENTINEL" not in json.dumps(seen + reports + prompts)
     assert all("HOLDOUT_SENTINEL" not in repr(case) for case in result.cases)
@@ -279,12 +307,15 @@ def test_calibration_boundary_hashes_and_callbacks_exclude_holdout(tmp_path: Pat
     assert "prompt_wrapper" in result.comparison_signature["contract_hashes"]
     assert len(result.comparison_signature["prompt_hashes"]) == 20
     assert set(result.comparison_signature["prompt_hashes"]) == {
-        case["case_id"] for case in seen
+        f"synthetic-calibration-{index:02d}" for index in range(1, 21)
     }
+    assert all(request["model"] == "deepseek-v4-pro" for request in seen)
+    assert all(request["attempts"] == 1 for request in seen)
+    assert all(request["stream"] is False for request in seen)
     assert "judge_recommendation" not in result.provenance
 
 
-def test_missing_or_drifted_hashes_abort_before_callback(tmp_path: Path):
+def test_missing_or_drifted_hashes_abort_before_transport(tmp_path: Path):
     hashes = _write_synthetic_package(tmp_path)
     with pytest.raises(ExpectedCorpusHashesError):
         run_calibration(
@@ -293,8 +324,201 @@ def test_missing_or_drifted_hashes_abort_before_callback(tmp_path: Path):
             judge_model="deepseek-v4-pro",
             under_test_model="human_curated",
             registry_path=REGISTRY_V2,
-            callback=lambda _: pytest.fail("callback must not run"),
+            transport=lambda _: pytest.fail("transport must not run"),
             expected_full_hashes={"cases.jsonl": hashes["cases.jsonl"]},
+        )
+
+
+def test_arbitrary_semantic_callback_substitution_is_rejected(tmp_path: Path):
+    hashes = _write_synthetic_package(tmp_path)
+    kwargs = _valid_calibration_kwargs(tmp_path, hashes, lambda _: None)
+    kwargs["callback"] = lambda _: JudgeInvocationV1(
+        status=InvocationStatus.OK,
+        judge_identity="wrong",
+        under_test_identity="wrong",
+    )
+    with pytest.raises(
+        CalibrationBoundaryError, match="not an arbitrary semantic callback"
+    ):
+        run_calibration(tmp_path, **kwargs)
+
+
+def test_transport_errors_and_invalid_outputs_have_no_retry_or_semantic_fail(
+    tmp_path: Path,
+):
+    hashes = _write_synthetic_package(tmp_path)
+    calls = 0
+
+    def transport(_: dict):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("synthetic provider outage")
+        if calls == 2:
+            return []
+        if calls == 3:
+            return {"choices": [{"message": {"content": "not-json"}}]}
+        if calls == 4:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    **_valid_semantic_output(),
+                                    "verdict": "not-a-verdict",
+                                }
+                            )
+                        }
+                    }
+                ]
+            }
+        return {
+            "choices": [{"message": {"content": json.dumps(_valid_semantic_output())}}]
+        }
+
+    result = run_calibration(
+        tmp_path,
+        **_valid_calibration_kwargs(tmp_path, hashes, transport),
+    )
+    assert calls == 20
+    statuses = [case.invocation.status for case in result.cases]
+    assert statuses[0] == InvocationStatus.PROVIDER_ERROR
+    assert statuses[1:4] == [
+        InvocationStatus.INVALID_OUTPUT,
+        InvocationStatus.INVALID_OUTPUT,
+        InvocationStatus.INVALID_OUTPUT,
+    ]
+    assert all(
+        case.invocation.status != InvocationStatus.OK for case in result.cases[:4]
+    )
+    assert all(case.agrees_with_gold is None for case in result.cases[:4])
+
+
+@pytest.mark.parametrize(
+    ("provider", "response"),
+    [
+        ("deepseek", _valid_semantic_output()),
+        ("llama", _valid_semantic_output()),
+        ("deepseek", {"response": json.dumps(_valid_semantic_output())}),
+        (
+            "llama",
+            {
+                "choices": [
+                    {"message": {"content": json.dumps(_valid_semantic_output())}}
+                ]
+            },
+        ),
+        (
+            "deepseek",
+            {
+                "choices": [
+                    {"message": {"content": json.dumps(_valid_semantic_output())}}
+                ],
+                "response": json.dumps(_valid_semantic_output()),
+            },
+        ),
+        (
+            "llama",
+            {
+                "choices": [
+                    {"message": {"content": json.dumps(_valid_semantic_output())}}
+                ],
+                "response": json.dumps(_valid_semantic_output()),
+            },
+        ),
+        ("unsupported", {"response": json.dumps(_valid_semantic_output())}),
+    ],
+)
+def test_provider_response_requires_exact_supported_envelope(
+    provider: str,
+    response: dict,
+):
+    with pytest.raises(ProviderResponseError):
+        parse_provider_response(provider, response)
+
+
+@pytest.mark.parametrize(
+    ("judge_model", "family"),
+    [
+        ("deepseek-v4-pro", "deepseek"),
+        ("deepseek-v4-flash", "deepseek"),
+        ("llama3.1:8b", "llama"),
+    ],
+)
+def test_all_provider_paths_build_internal_exact_requests(
+    tmp_path: Path, judge_model: str, family: str
+):
+    hashes = _write_synthetic_package(tmp_path)
+    if family == "deepseek":
+        settings = deepseek_decoding_signature()
+        provider_request = build_deepseek_request(
+            "caller prompt is ignored", model=judge_model
+        )
+    else:
+        settings = llama_decoding_signature("sha256:synthetic-runtime")
+        provider_request = build_llama_request(
+            "caller prompt is ignored",
+            runtime_digest="sha256:synthetic-runtime",
+            json_schema={"type": "object"},
+        )
+    requests: list[dict] = []
+
+    def transport(request: dict):
+        requests.append(request)
+        if family == "deepseek":
+            content = json.dumps(_valid_semantic_output())
+            return {"choices": [{"message": {"content": content}}]}
+        return {"response": json.dumps(_valid_semantic_output())}
+
+    result = run_calibration(
+        tmp_path,
+        cfg={"models": {}},
+        judge_model=judge_model,
+        under_test_model="human_curated",
+        registry_path=REGISTRY_V2,
+        transport=transport,
+        expected_full_hashes=hashes,
+        expected_rubric_hashes={
+            "synthesis-grounded-v1": hashes["synthesis-grounded-v1"]
+        },
+        expected_prompt_wrapper_hash=prompt_wrapper_hash(family),
+        expected_comparison_signature=_expected_signature(
+            tmp_path,
+            hashes,
+            judge_model=judge_model,
+            family=family,
+            decoding=settings,
+        ),
+        provider=family,
+        provider_request=provider_request,
+        provider_settings=settings,
+    )
+    assert len(requests) == 20
+    assert all(request["attempts"] == 1 for request in requests)
+    assert all(request["stream"] is False for request in requests)
+    prompt_digests = {
+        hashlib.sha256(
+            (
+                request["messages"][0]["content"]
+                if family == "deepseek"
+                else request["prompt"]
+            ).encode()
+        ).hexdigest()
+        for request in requests
+    }
+    assert prompt_digests == set(result.comparison_signature["prompt_hashes"].values())
+    if family == "deepseek":
+        assert all(request["model"] == judge_model for request in requests)
+        assert all(request["reasoning_effort"] == "high" for request in requests)
+    else:
+        assert all(request["model"] == "llama3.1:8b" for request in requests)
+        assert all(
+            request["runtime_digest"] == "sha256:synthetic-runtime"
+            for request in requests
+        )
+        assert all(
+            request["format"] == semantic_output_schema() for request in requests
         )
 
 
@@ -387,13 +611,13 @@ def test_provider_builders_pin_settings_and_reject_drift():
         )
 
 
-def _valid_calibration_kwargs(root: Path, hashes: dict[str, str], callback):
+def _valid_calibration_kwargs(root: Path, hashes: dict[str, str], transport):
     return {
         "cfg": {"models": {}},
         "judge_model": "deepseek-v4-pro",
         "under_test_model": "human_curated",
         "registry_path": REGISTRY_V2,
-        "callback": callback,
+        "transport": transport,
         "expected_full_hashes": hashes,
         "expected_rubric_hashes": {
             "synthesis-grounded-v1": hashes["synthesis-grounded-v1"]
@@ -421,7 +645,7 @@ def _valid_calibration_kwargs(root: Path, hashes: dict[str, str], callback):
         ("provider_conflict", CanonicalPreflightError),
     ],
 )
-def test_drift_and_identity_failures_happen_before_any_callback(
+def test_drift_and_identity_failures_happen_before_any_transport(
     tmp_path: Path, change: str, expected_error: type[Exception]
 ):
     candidate_origin = None
@@ -442,11 +666,11 @@ def test_drift_and_identity_failures_happen_before_any_callback(
     hashes = _write_synthetic_package(tmp_path, candidate_origin=candidate_origin)
     calls = 0
 
-    def callback(_: dict) -> None:
+    def transport(_: dict) -> None:
         nonlocal calls
         calls += 1
 
-    kwargs = _valid_calibration_kwargs(tmp_path, hashes, callback)
+    kwargs = _valid_calibration_kwargs(tmp_path, hashes, transport)
     if change == "rubric":
         kwargs["expected_rubric_hashes"] = {"synthesis-grounded-v1": "0" * 64}
     elif change == "wrapper":
@@ -488,9 +712,11 @@ def test_prompt_family_must_match_validated_provider(tmp_path: Path):
         run_calibration(tmp_path, **kwargs)
 
 
-def test_calibration_execution_requires_callback(tmp_path: Path):
+def test_calibration_execution_requires_transport(tmp_path: Path):
     hashes = _write_synthetic_package(tmp_path)
     kwargs = _valid_calibration_kwargs(tmp_path, hashes, None)
-    kwargs.pop("callback")
-    with pytest.raises(CalibrationBoundaryError, match="requires an explicit callback"):
+    kwargs.pop("transport")
+    with pytest.raises(
+        CalibrationBoundaryError, match="requires an injected provider transport"
+    ):
         run_calibration(tmp_path, **kwargs)
