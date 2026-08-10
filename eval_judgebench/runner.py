@@ -232,17 +232,20 @@ def _bind_candidate_provenance(
     registry: Any,
     cfg: dict,
     canonical: bool,
+    offline: bool = False,
 ) -> CandidateProvenanceBinding:
     """Bind independence to frozen origins and reject caller substitution."""
     origins = _frozen_model_origins(cases)
     identities = {
-        _origin_key(origin): resolve_identity(origin["model"], registry, cfg)
+        _origin_key(origin): resolve_identity(
+            origin["model"], registry, cfg, offline=offline
+        )
         for origin in origins
     }
 
     caller_name = caller_under_test_model.strip()
     if origins and caller_name:
-        caller_identity = resolve_identity(caller_name, registry, cfg)
+        caller_identity = resolve_identity(caller_name, registry, cfg, offline=offline)
         frozen_lineages = {identity.base_lineage for identity in identities.values()}
         if caller_identity.base_lineage not in frozen_lineages:
             frozen_models = ", ".join(origin["model"] for origin in origins)
