@@ -1,7 +1,13 @@
 V# Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-07 (GPU contention fix: summarize → cloud, embed timeout, chunk retry, MAX_LOADED_MODELS=2; PR #140)
+**Updated:** 2026-08-10 (docs housekeeping: landed 7 stale inter-model/plans docs; reconcile arc closed via #161 on 2026-08-09; projection-completeness gate landed via #168/#169 on 2026-08-09 — reconciliation run still Ryan-gated)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
+
+## Recently merged / settled (2026-08-08 → 2026-08-10)
+
+- **Chroma reconcile Tier L — arc CLOSED (2026-08-09):** PR #161 squash-merged `475fe43`; R4 post-rebuild verify GREEN (0 orphans / tier S, unit + calibration + doctor pass). Corpus is a clean foundation again. State + evidence: [`STATUS-chroma-reconcile-tier-l.md`](../plans/STATUS-chroma-reconcile-tier-l.md) · [`FLASH-2026-08-08-post-rebuild-verify-handoff.md`](FLASH-2026-08-08-post-rebuild-verify-handoff.md).
+- **Projection-completeness gate — landed, reconciliation unrun (2026-08-09):** #168 preserves projections on one-file reindex failure (no silent coverage loss on Track A ingest); #169 adds a truthful completeness gate to `doctor`/`observe`. `doctor` still reports "projection completeness unproven until reconciled" — the parity run (`scripts/projection_parity_report.py`) is Ryan-gated, not yet executed.
+- **7 stale handoffs/plans landed (2026-08-10):** C5 activation (07-29), CODEX summarizer-switch decision (08-02), CRUSH summarizer bakeoff (08-02), CRUSH GPU-fix (08-07), CRUSH index-complete (08-08), PYLINT brief (07-25), Flash slice template — all previously untracked, now in git. Two CG1 docs dated 2026-08-10 left untracked as in-flight.
 
 ## Active handoff
 
