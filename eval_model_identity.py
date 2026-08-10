@@ -24,7 +24,7 @@ class CanonicalPreflightError(ValueError):
 
 
 @dataclass
-class ModelIdentityV1:
+class ModelIdentityV1:  # pylint: disable=too-many-instance-attributes
     configured_name: str
     normalized_name: str
     serving_provider: str

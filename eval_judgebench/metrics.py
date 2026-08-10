@@ -111,6 +111,8 @@ def _macro_f1(matrix: Mapping[str, Mapping[str, int]]) -> dict[str, Any]:
     }
 
 
+# The report is one deterministic pass over coupled metric accumulators.
+# pylint: disable=too-many-locals
 def build_calibration_report(
     package: CalibrationPackage, run: RunResult
 ) -> dict[str, Any]:
@@ -240,6 +242,9 @@ def build_calibration_report(
             "buckets": confidence,
         },
     }
+
+
+# pylint: enable=too-many-locals
 
 
 def serialize_calibration_report(report: Mapping[str, Any]) -> str:

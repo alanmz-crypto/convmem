@@ -6,6 +6,9 @@ and then exposes only manifest-selected calibration rows.  Holdout rows are
 never transport inputs.
 """
 
+# Provider/schema assembly intentionally mirrors locked contract structures.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import hashlib
@@ -15,6 +18,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from eval_judgebench.case_boundary import (
+    CalibrationBoundaryError,
+    HoldoutAccessError,  # noqa: F401 - compatibility re-export
+    safe_case,
+    serialize_prompt_case,  # noqa: F401 - compatibility re-export
+)
 from eval_judgebench.corpus_validate import assert_corpus_valid
 from eval_judgebench.provider_requests import ProviderTransport
 from eval_judgebench.runner_types import CallbackCase
@@ -23,19 +32,6 @@ MAX_CALIBRATION_CALLS = 20
 # Compatibility name for the standalone projection helper below. Canonical
 # run_calibration uses the transport-oriented limit above.
 MAX_CALIBRATION_CALLBACKS = MAX_CALIBRATION_CALLS
-_SAFE_CASE_FIELDS = {
-    "case_id",
-    "task_kind",
-    "rubric_id",
-    "instruction",
-    "evidence",
-    "candidate",
-    "candidate_mode",
-}
-
-
-class CalibrationBoundaryError(ValueError):
-    """Raised before transport when calibration preflight is not exact."""
 
 
 class ExpectedCorpusHashesError(CalibrationBoundaryError):
@@ -52,10 +48,6 @@ class ExpectedPromptWrapperHashError(CalibrationBoundaryError):
 
 class ExpectedPromptHashesError(CalibrationBoundaryError):
     """The expected complete per-case prompt-hash map is missing or drifted."""
-
-
-class HoldoutAccessError(CalibrationBoundaryError):
-    """A prompt/report serializer was asked to process a holdout row."""
 
 
 def full_sha256(path: Path | str) -> str:
@@ -157,40 +149,6 @@ def _load_manifest(root: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise CalibrationBoundaryError("calibration manifest must be an object")
     return value
-
-
-def _require_calibration(row: Mapping[str, Any]) -> None:
-    if row.get("split") == "calibration":
-        return
-    # Adapter-safe projections intentionally omit split and all corpus-only
-    # metadata.  They may be re-serialized for provider prompts/reports.
-    if "split" not in row and not set(row) - _SAFE_CASE_FIELDS:
-        return
-    if row.get("split") != "calibration":
-        raise HoldoutAccessError(
-            "only calibration rows may reach a serializer or transport"
-        )
-
-
-def safe_case(row: Mapping[str, Any]) -> dict[str, Any]:
-    """Project a validated calibration row to the adapter-safe case shape."""
-    _require_calibration(row)
-    return {
-        "case_id": row["case_id"],
-        "task_kind": row["task_kind"],
-        "rubric_id": row["rubric_id"],
-        "instruction": row["instruction"],
-        "evidence": [
-            {"id": item["id"], "text": item["text"]} for item in row["evidence"]
-        ],
-        "candidate": row["candidate"],
-        "candidate_mode": row["candidate_mode"],
-    }
-
-
-def serialize_prompt_case(row: Mapping[str, Any]) -> dict[str, Any]:
-    """Return the only case fields permitted in a prompt input envelope."""
-    return safe_case(row)
 
 
 def serialize_report_case(

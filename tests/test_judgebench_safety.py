@@ -4,6 +4,9 @@ The corpus in these tests is synthetic and contains explicit calibration and
 holdout sentinels.  No locked JudgeBench JSONL is read or executed here.
 """
 
+# Independent locked-contract fixtures intentionally repeat schema-shaped data.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import hashlib
@@ -553,10 +556,10 @@ def test_all_provider_paths_build_internal_exact_requests(
             runtime_digest="sha256:synthetic-runtime",
             json_schema={"type": "object"},
         )
-    requests: list[dict] = []
+    provider_requests_seen: list[dict] = []
 
     def transport(request: dict):
-        requests.append(request)
+        provider_requests_seen.append(request)
         if family == "deepseek":
             content = json.dumps(_valid_semantic_output())
             return {"choices": [{"message": {"content": content}}]}
@@ -585,9 +588,9 @@ def test_all_provider_paths_build_internal_exact_requests(
         provider_request=provider_request,
         provider_settings=settings,
     )
-    assert len(requests) == 20
-    assert all(request["attempts"] == 1 for request in requests)
-    assert all(request["stream"] is False for request in requests)
+    assert len(provider_requests_seen) == 20
+    assert all(request["attempts"] == 1 for request in provider_requests_seen)
+    assert all(request["stream"] is False for request in provider_requests_seen)
     prompt_digests = {
         hashlib.sha256(
             (
@@ -596,20 +599,27 @@ def test_all_provider_paths_build_internal_exact_requests(
                 else request["prompt"]
             ).encode()
         ).hexdigest()
-        for request in requests
+        for request in provider_requests_seen
     }
     assert prompt_digests == set(result.comparison_signature["prompt_hashes"].values())
     if family == "deepseek":
-        assert all(request["model"] == judge_model for request in requests)
-        assert all(request["reasoning_effort"] == "high" for request in requests)
-    else:
-        assert all(request["model"] == "llama3.1:8b" for request in requests)
         assert all(
-            request["runtime_digest"] == "sha256:synthetic-runtime"
-            for request in requests
+            request["model"] == judge_model for request in provider_requests_seen
         )
         assert all(
-            request["format"] == semantic_output_schema() for request in requests
+            request["reasoning_effort"] == "high" for request in provider_requests_seen
+        )
+    else:
+        assert all(
+            request["model"] == "llama3.1:8b" for request in provider_requests_seen
+        )
+        assert all(
+            request["runtime_digest"] == "sha256:synthetic-runtime"
+            for request in provider_requests_seen
+        )
+        assert all(
+            request["format"] == semantic_output_schema()
+            for request in provider_requests_seen
         )
 
 

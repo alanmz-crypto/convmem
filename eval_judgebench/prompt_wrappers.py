@@ -12,7 +12,7 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
-from eval_judgebench.calibration import serialize_prompt_case
+from eval_judgebench.case_boundary import serialize_prompt_case
 from eval_judgebench.rubric import Rubric
 
 PROMPT_WRAPPER_VERSION = "semantic-judge-wrapper-v1"

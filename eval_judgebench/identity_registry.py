@@ -13,7 +13,7 @@ class IdentityRegistryVersionError(ValueError):
 
 
 @dataclass
-class IdentityRecord:
+class IdentityRecord:  # pylint: disable=too-many-instance-attributes
     canonical_id: str
     provider: str
     family: str | None
