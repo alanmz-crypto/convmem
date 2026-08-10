@@ -41,7 +41,6 @@ from eval_judgebench.contracts import (
     Support,
     Verdict,
 )
-from eval_judgebench.corpus_validate import CorpusValidationError
 from eval_judgebench.runner import _bind_candidate_provenance, run_judgebench
 from eval_model_identity import (
     CanonicalPreflightError,
@@ -442,20 +441,22 @@ class ComparisonSignatureTests(unittest.TestCase):
 class RunnerDryRunTests(unittest.TestCase):
     @patch("eval_judgebench.runner.ollama_version", return_value="0.5.0")
     @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
-    def test_proposed_corpus_refused_for_canonical(self, _mock_digest, _mock_ver):
-        with self.assertRaisesRegex(CorpusValidationError, "Ryan lock"):
+    def test_locked_corpus_fails_closed_on_unresolved_origin(
+        self, _mock_digest, _mock_ver
+    ):
+        with self.assertRaisesRegex(CanonicalPreflightError, "unknown"):
             run_judgebench(
                 CORPUS,
                 cfg=_CFG,
                 judge_model="deepseek-v4-pro",
-                under_test_model="llama3.1:8b",
+                under_test_model="gpt-5-codex-sol",
                 registry_path=REGISTRY,
                 semantic_judge=None,
             )
 
     @patch("eval_judgebench.runner.ollama_version", return_value="0.5.0")
     @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
-    def test_proposed_corpus_informational_dry_run(self, _mock_digest, _mock_ver):
+    def test_locked_corpus_informational_dry_run(self, _mock_digest, _mock_ver):
         result = run_judgebench(
             CORPUS,
             cfg=_CFG,

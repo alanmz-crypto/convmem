@@ -109,14 +109,12 @@ def test_proposed_package_is_valid_for_review_but_not_canonical(tmp_path: Path) 
         assert_corpus_valid(tmp_path, require_locked=True)
 
 
-def test_proposed_g3_fixture_is_valid_but_not_canonical() -> None:
-    result = assert_corpus_valid(CORPUS_ROOT, require_locked=False)
+def test_locked_g3_fixture_is_valid_for_canonical_use() -> None:
+    result = assert_corpus_valid(CORPUS_ROOT, require_locked=True)
     assert result.case_count == 30
     assert result.calibration_count == 20
     assert result.holdout_count == 10
-    assert result.lock_status == "proposed"
-    with pytest.raises(CorpusValidationError, match="Ryan lock"):
-        assert_corpus_valid(CORPUS_ROOT, require_locked=True)
+    assert result.lock_status == "locked"
 
 
 def test_hash_change_is_rejected(tmp_path: Path) -> None:

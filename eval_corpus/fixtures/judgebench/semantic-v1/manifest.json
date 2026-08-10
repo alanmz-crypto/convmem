@@ -34,18 +34,19 @@
     "sum-hold-j0-fail-j1-pass-15"
   ],
   "corpus": "judgebench",
-  "description": "Proposed JudgeBench offline frozen-evidence semantic calibration corpus; Ryan review and lock required before canonical execution.",
+  "description": "Ryan-locked JudgeBench offline frozen-evidence semantic calibration corpus.",
   "critical_policy": {
     "definition": "A gold fail where judge pass would hide a serious false-current-state, unsafe authorization or abstention, mandatory-response omission, or meaning-changing contradiction.",
     "not_all_failures_are_critical": true
   },
   "gold_lock": {
+    "locked_at": "2026-08-10T00:50:50Z",
     "owner": "Ryan",
-    "status": "proposed"
+    "status": "locked"
   },
   "hashes": {
     "cases.jsonl": "835ac16d0ab494eae4ba3b31d6089bb073a3d06941626d5b1770d76ba2a0763c",
-    "gold.jsonl": "a7feb7392ce0f6bfefb048ea36f28db8defaca29fae65b8cb2a947e7d8713fa8"
+    "gold.jsonl": "ad4bf387b5a32aa14b922c04e3302a9808d8a50825f2adfd33d4b75c08ed3270"
   },
   "manifest_version": "judgebench-semantic-v1",
   "rubric_dir": "rubrics/",
