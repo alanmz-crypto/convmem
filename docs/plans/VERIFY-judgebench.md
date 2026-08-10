@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Verify state | **PARTIAL** — CHK-001..006, CHK-008, and CHK-009 PASSED; CHK-007 PARTIAL until Ryan locks G3 and a selected judge runs the corpus |
+| Verify state | **PARTIAL** — CHK-001..006 and CHK-008..010 PASSED; CHK-007 PARTIAL until Ryan locks G3 and a selected judge runs the corpus |
 | Plan reference | `docs/plans/EXECUTION-judgebench.md` (Execute HITL APPROVED `dec_prop_20260808_150112_f49e`; S1–S9 landed) |
 | Consequence hold | Human consequence assessment deferred until Execute events occur; updates require Ryan review |
 
@@ -34,5 +34,6 @@ Placeholder: If verification is skipped or failed checks are waived, the offline
 | CHK-007 | Conformance scenario: each defined conformance fixture returns the exact expected disposition under the pinned judge | Fixture-by-fixture disposition comparison | **PARTIAL** — synthetic conformance in `tests/test_judgebench_contracts.py`; corpus-backed conformance awaits G3 gold lock |
 | CHK-008 | Corpus gold is unmodified after runner execution; runner is read-only vs gold | Hash-gold before/after; assert equal | **PASSED** — `tests/test_judgebench_contracts.py` gold hash before/after |
 | CHK-009 | Proposed corpus is structurally complete but cannot run canonically before Ryan lock | Validate rows, hashes, rubric refs, split counts, J0 outcomes, origins, and lock state; require canonical refusal while proposed | **PASSED (pre-lock)** — 30 cases, 20/10 split, both tasks 15/15, all 30 locks `proposed`; strict validator passes review mode and canonical mode refuses |
+| CHK-010 | Canonical independence is derived from every frozen model-generated candidate origin, never substituted by caller identity/config | Supply a cross-family caller for a same-family frozen origin; assert canonical refusal. Cover multiple origins, unresolved origin, and forged human-curated config | **PASSED (pre-lock)** — focused contract regressions prove caller substitution refusal, all-origin enforcement, `unknown` fail-closed, and config-forgery resistance |
 
-CHK-001/002/003 are met by the merged S1–S9 slice implementation (#144). CHK-004..006 and CHK-008 met by T2–T5 (Cursor). CHK-009 is met by the proposed G3 branch. CHK-007 stays PARTIAL until Ryan locks G3 and separately authorizes calibration after G4.
+CHK-001/002/003 are met by the merged S1–S9 slice implementation (#144). CHK-004..006 and CHK-008 met by T2–T5 (Cursor). CHK-009/010 are met by the proposed G3 branch. CHK-007 stays PARTIAL until Ryan locks G3 and separately authorizes calibration after G4.

@@ -113,14 +113,15 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | `cases.jsonl` / `gold.jsonl` | 30 matched cases; 20 calibration / 10 holdout; 15 synthesis / 15 summary; every lock remains `proposed` |
 | Rubrics | Summary rubric added; both task rubrics define support, coverage, contradiction, and verdict boundaries |
 | Corpus enforcement | Strict schema, hash, split, J0-outcome, origin, and Ryan-lock validation; canonical execution refuses proposed gold |
-| Provenance | All 30 candidates remain truthfully `model_generated`; caller config cannot override frozen origin |
-| Review state | GLM primary review, Grok adversarial review, and Opus conflict adjudication incorporated; awaiting Ryan's final diff review and lock |
+| Provenance | Canonical independence binds every distinct model-generated `candidate_origin`; caller identity/config cannot substitute for frozen provenance |
+| Review state | Gold/split judgments are accepted; bounded frozen-origin enforcement correction complete; awaiting Ryan's lock |
 
 ### Does NOT Exist Yet
 
 | What | Why not | Who can create it |
 |------|---------|-------------------|
 | Authoritative locked cases/gold/split | Proposed rows exist only on the G3 branch; Ryan has not locked them | Ryan only |
+| Registered identity for `gpt-5-codex-sol` | The proposed candidates' frozen producer is unresolved, so canonical calibration fails closed until a later authorized registry decision | Ryan-owned identity decision (G4 or separate gate) |
 | First calibration run results | Requires G3 gold + G4 judge selection | Cursor/Crush after Ryan |
 | Judge model selection | Requires calibration data | Ryan only (G4) |
 | Live `ask.py` integration | Deferred — not v1 scope | Nobody yet (separate arc) |
@@ -136,12 +137,12 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | S1–S9 | Flash prep (contracts, rubrics, scaffold, tests) | **DONE on `main`** | — |
 | T2–T5 | Identity, provenance, runner, legacy shim | **DONE on `main`** (merged #155) | — |
 | PR merge | T2–T5 code on `main` | **DONE** | #155 merged |
-| G3 | Gold corpus + split lock | **PRE-LOCK REVIEW** | Ryan reviews the validated 30-case proposal and either locks or requests revision |
+| G3 | Gold corpus + split lock | **READY FOR RYAN LOCK** | Gold/split proposal and frozen-origin enforcement are validated; Ryan alone may lock |
 | G4 | Judge model selection | **NOT STARTED** | Requires G3 calibration data |
 | Calibration | First real run | **NOT STARTED** | Requires G3 + G4 |
 | T7 retrieval corpus | Post-rebuild golden eval (`tests/test_eval_golden.py`) | **REPAIRED 10/10** | Was 2/10 after R3 rebuild skipped the approved-ledger channel; backfilled 356 approved decisions + CSP obs/ver into Chroma (corpus-only fix, no repo change) |
 
-**Summary: G3 now has a validated proposed 30-case corpus on its feature branch, but no authoritative lock. The immediate gap is Ryan's final gold/split decision; calibration and judge selection remain blocked.**
+**Summary: G3 has a validated proposed 30-case corpus and frozen-origin independence enforcement on its feature branch, but no authoritative lock. `gpt-5-codex-sol` remains unregistered, so later canonical calibration also requires a separately authorized identity decision.**
 
 ---
 
@@ -234,7 +235,7 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 
 | Date | Who | Change |
 |------|-----|--------|
-| 2026-08-09 | Codex Sol | G3 pre-lock proposal validated at 30 cases with adversarial review incorporated; Ryan lock still pending |
+| 2026-08-09 | Codex Sol | G3 proposal and frozen-origin independence enforcement validated; Ryan lock still pending |
 | 2026-08-09 | Kiro | Initial arc brief; T2–T5 on branch, PR not filed, G3/G4 awaiting Ryan |
 | 2026-08-09 | Crush (DeepSeek) | Reconcile: T2–T5 merged to `main` via PR #155; completion state and remaining steps updated; noted T2–T5 test modules not carried to `main`/`tests/` in #155 |
 | 2026-08-09 | Crush | Golden eval repaired 2/10 → 10/10 (Chroma backfill of approved ledger + CSP obs pair); T7 post-rebuild verify unblocked |

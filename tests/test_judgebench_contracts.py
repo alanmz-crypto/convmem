@@ -42,7 +42,7 @@ from eval_judgebench.contracts import (
     Verdict,
 )
 from eval_judgebench.corpus_validate import CorpusValidationError
-from eval_judgebench.runner import run_judgebench
+from eval_judgebench.runner import _bind_candidate_provenance, run_judgebench
 from eval_model_identity import (
     CanonicalPreflightError,
     ModelIdentityV1,
@@ -254,6 +254,8 @@ def _write_single_case_corpus(
     case_id: str,
     verdict: str = "pass",
     human_curated: bool = True,
+    origin_model: str = "llama3.1:8b",
+    origin_provider: str = "ollama",
 ) -> None:
     rubric_dir = root / "rubrics"
     rubric_dir.mkdir()
@@ -274,8 +276,8 @@ def _write_single_case_corpus(
             if human_curated
             else {
                 "kind": "model_generated",
-                "model": "llama3.1:8b",
-                "provider": "ollama",
+                "model": origin_model,
+                "provider": origin_provider,
                 "version": "test",
             }
         ),
@@ -458,7 +460,7 @@ class RunnerDryRunTests(unittest.TestCase):
             CORPUS,
             cfg=_CFG,
             judge_model="deepseek-v4-pro",
-            under_test_model="llama3.1:8b",
+            under_test_model="gpt-5-codex-sol",
             registry_path=REGISTRY,
             semantic_judge=None,
             canonical=False,
@@ -467,7 +469,20 @@ class RunnerDryRunTests(unittest.TestCase):
         self.assertTrue(
             all(case.invocation.status == InvocationStatus.NOT_RUN for case in result.cases)
         )
-        self.assertEqual(result.independence_class, IndependenceClass.CROSS_FAMILY)
+        self.assertEqual(result.independence_class, IndependenceClass.UNKNOWN)
+        self.assertEqual(
+            result.comparison_signature["under_test_provenance"],
+            {
+                "source": "frozen_candidate_origin",
+                "origins": [
+                    {
+                        "model": "gpt-5-codex-sol",
+                        "provider": "openai",
+                        "version": "sol-high-2026-08-09",
+                    }
+                ],
+            },
+        )
         self.assertEqual(result.gold_hash_before, result.gold_hash_after)
         self.assertIn(
             "rubric:synthesis-grounded-v1",
@@ -488,11 +503,86 @@ class RunnerDryRunTests(unittest.TestCase):
             CORPUS,
             cfg=cfg,
             judge_model="deepseek-v4-pro",
-            under_test_model="llama3.1:8b",
+            under_test_model="gpt-5-codex-sol",
             registry_path=REGISTRY,
             canonical=False,
         )
-        self.assertEqual(result.independence_class, IndependenceClass.CROSS_FAMILY)
+        self.assertEqual(result.independence_class, IndependenceClass.UNKNOWN)
+
+    @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
+    def test_caller_identity_cannot_substitute_for_frozen_origin(self, _mock):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_single_case_corpus(
+                root,
+                case_id="frozen-origin",
+                human_curated=False,
+                origin_model="deepseek-v4-flash",
+                origin_provider="deepseek",
+            )
+            with self.assertRaisesRegex(
+                CanonicalPreflightError,
+                "contradicts frozen candidate origin",
+            ):
+                run_judgebench(
+                    root,
+                    cfg=_CFG,
+                    judge_model="deepseek-v4-pro",
+                    under_test_model="llama3.1:8b",
+                    registry_path=REGISTRY,
+                )
+
+    @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
+    def test_every_distinct_frozen_origin_must_be_independent(self, _mock):
+        registry = load_registry(REGISTRY)
+        judge = resolve_identity("deepseek-v4-pro", registry, _CFG)
+        cases = [
+            {
+                "candidate_origin": {
+                    "kind": "model_generated",
+                    "model": "llama3.1:8b",
+                    "provider": "ollama",
+                    "version": "test",
+                }
+            },
+            {
+                "candidate_origin": {
+                    "kind": "model_generated",
+                    "model": "deepseek-v4-flash",
+                    "provider": "deepseek",
+                    "version": "test",
+                }
+            },
+        ]
+        with self.assertRaisesRegex(CanonicalPreflightError, "same_family"):
+            _bind_candidate_provenance(
+                cases=cases,
+                judge_identity=judge,
+                caller_under_test_model="",
+                registry=registry,
+                cfg=_CFG,
+                canonical=True,
+            )
+
+    @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
+    def test_unresolved_frozen_origin_fails_closed_for_canonical(self, _mock):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_single_case_corpus(
+                root,
+                case_id="unresolved-origin",
+                human_curated=False,
+                origin_model="gpt-5-codex-sol",
+                origin_provider="openai",
+            )
+            with self.assertRaisesRegex(CanonicalPreflightError, "unknown"):
+                run_judgebench(
+                    root,
+                    cfg=_CFG,
+                    judge_model="deepseek-v4-pro",
+                    under_test_model="gpt-5-codex-sol",
+                    registry_path=REGISTRY,
+                )
 
     @patch("eval_model_identity.model_digest_and_quant", return_value=("remote", ""))
     def test_same_family_preflight_refused_for_canonical(self, _mock):
@@ -502,6 +592,8 @@ class RunnerDryRunTests(unittest.TestCase):
                 root,
                 case_id="same-family",
                 human_curated=False,
+                origin_model="deepseek-v4-flash",
+                origin_provider="deepseek",
             )
             with self.assertRaises(CanonicalPreflightError):
                 run_judgebench(
