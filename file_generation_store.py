@@ -6,12 +6,14 @@ visible only when the injected active-generation resolver selects their owner
 and generation.  Stable/governed fixtures use ``generation_scope == "stable"``
 and retain their existing physical ids.
 
-The active predicate is passed to Chroma itself for every query/get operation.
-Inactive rows therefore cannot consume vector top-k slots before filtering.
+The active predicate is passed to Chroma itself for every get operation.
+Generation-aware vector reads then rerank the exact active rows in-process, so
+inactive rows cannot consume vector top-k slots before filtering.
 """
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -52,6 +54,10 @@ class GenerationBackpressureError(RuntimeError):
     """Staging is refused until CG-2 explicitly disposes abandoned state."""
 
     state = "DEGRADED-SAFE"
+
+
+class GenerationReadError(RuntimeError):
+    """An active generation row cannot be safely ranked for a vector read."""
 
 
 def _and_where(*clauses: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -506,36 +512,89 @@ class FileGenerationStore:
             results.append(
                 col.get(where=_and_where(active_where, where), include=include)
             )
-        ids = [item for result in results for item in (result.get("ids") or [])]
-        documents = [item for result in results for item in (result.get("documents") or [])]
-        metadatas = [item for result in results for item in (result.get("metadatas") or [])]
-        embeddings = None
-        if include_embeddings:
-            embeddings = []
-            for result in results:
-                values = result.get("embeddings")
-                if values is not None:
-                    embeddings.extend(values)
         out: list[dict[str, Any]] = []
-        for index, physical_id in enumerate(ids):
-            meta = dict(metadatas[index] if index < len(metadatas) else {})
-            meta["id"] = physical_id
-            row: dict[str, Any] = {
-                "id": physical_id,
-                "physical_id": physical_id,
-                "logical_id": meta.get("logical_id"),
-                "document": documents[index] if index < len(documents) else "",
-                "metadata": meta,
-            }
-            if include_embeddings:
-                embedding = None
-                if embeddings is not None and index < len(embeddings):
-                    embedding = embeddings[index]
-                    if embedding is not None and hasattr(embedding, "tolist"):
-                        embedding = embedding.tolist()
-                row["embedding"] = embedding
-            out.append(row)
+        for result in results:
+            ids = result.get("ids") or []
+            documents = result.get("documents") or []
+            metadatas = result.get("metadatas") or []
+            embeddings = result.get("embeddings") if include_embeddings else None
+            for index, physical_id in enumerate(ids):
+                meta = dict(metadatas[index] if index < len(metadatas) else {})
+                meta["id"] = physical_id
+                row: dict[str, Any] = {
+                    "id": physical_id,
+                    "physical_id": physical_id,
+                    "logical_id": meta.get("logical_id"),
+                    "document": documents[index] if index < len(documents) else "",
+                    "metadata": meta,
+                }
+                if include_embeddings:
+                    embedding = None
+                    if embeddings is not None and index < len(embeddings):
+                        embedding = embeddings[index]
+                        if embedding is not None and hasattr(embedding, "tolist"):
+                            embedding = embedding.tolist()
+                    row["embedding"] = embedding
+                out.append(row)
         return out
+
+    @staticmethod
+    def _validated_embedding(
+        value: Any, *, label: str, expected_dimension: int | None = None
+    ) -> list[float]:
+        """Convert one embedding to finite floats or fail closed."""
+        if value is None or isinstance(value, (str, bytes)):
+            raise GenerationReadError(f"missing embedding for active row {label}")
+        if hasattr(value, "tolist"):
+            value = value.tolist()
+        try:
+            components = list(value)
+        except (TypeError, ValueError) as exc:
+            raise GenerationReadError(
+                f"malformed embedding for active row {label}"
+            ) from exc
+        if not components:
+            raise GenerationReadError(f"empty embedding for active row {label}")
+        converted: list[float] = []
+        for component in components:
+            if isinstance(component, bool):
+                raise GenerationReadError(
+                    f"malformed embedding for active row {label}"
+                )
+            try:
+                number = float(component)
+            except (TypeError, ValueError) as exc:
+                raise GenerationReadError(
+                    f"malformed embedding for active row {label}"
+                ) from exc
+            if not math.isfinite(number):
+                raise GenerationReadError(
+                    f"non-finite embedding for active row {label}"
+                )
+            converted.append(number)
+        if expected_dimension is not None and len(converted) != expected_dimension:
+            raise GenerationReadError(
+                f"embedding dimension mismatch for active row {label}: "
+                f"expected {expected_dimension}, got {len(converted)}"
+            )
+        return converted
+
+    @staticmethod
+    def _cosine_distance(query: list[float], row: list[float], *, label: str) -> float:
+        query_norm = math.sqrt(math.fsum(value * value for value in query))
+        row_norm = math.sqrt(math.fsum(value * value for value in row))
+        if not math.isfinite(query_norm) or query_norm == 0.0:
+            raise GenerationReadError("query embedding has no usable cosine norm")
+        if not math.isfinite(row_norm) or row_norm == 0.0:
+            raise GenerationReadError(f"zero-norm embedding for active row {label}")
+        similarity = math.fsum(
+            query_value * row_value
+            for query_value, row_value in zip(query, row, strict=True)
+        ) / (query_norm * row_norm)
+        distance = 1.0 - similarity
+        if not math.isfinite(distance):
+            raise GenerationReadError(f"unusable cosine distance for active row {label}")
+        return distance
 
     def _query(
         self,
@@ -548,25 +607,35 @@ class FileGenerationStore:
     ) -> list[dict[str, Any]]:
         if top_k <= 0:
             return []
-        col = self._store._collection(collection_name)
-        where_groups = self._active_where_clauses(owner_digest=owner_digest)
-        active_count = 0
-        for group in where_groups:
-            active_where = group[0] if len(group) == 1 else {"$or": group}
-            active_count += len(col.get(where=active_where, include=[]).get("ids") or [])
-        if active_count == 0:
+        query_vector = self._validated_embedding(embedding, label="query")
+        active_rows = self._get_rows(
+            collection_name,
+            include_embeddings=True,
+            owner_digest=owner_digest,
+        )
+        if not active_rows:
             return []
+
         fetch = top_k if include_superseded else max(top_k * 3, top_k)
-        rows = []
-        for group in where_groups:
-            active_where = group[0] if len(group) == 1 else {"$or": group}
-            result = col.query(
-                query_embeddings=[embedding],
-                n_results=min(fetch, active_count),
-                where=active_where,
+        rows: list[dict[str, Any]] = []
+        for row in active_rows:
+            row_embedding = self._validated_embedding(
+                row.get("embedding"),
+                label=str(row["id"]),
+                expected_dimension=len(query_vector),
             )
-            rows.extend(self._store._flatten(result))
-        rows.sort(key=lambda row: float(row.get("distance", float("inf"))))
+            rows.append(
+                {
+                    "id": row["id"],
+                    "document": row["document"],
+                    "metadata": row["metadata"],
+                    "distance": self._cosine_distance(
+                        query_vector, row_embedding, label=str(row["id"])
+                    ),
+                }
+            )
+        rows.sort(key=lambda row: (float(row["distance"]), str(row["id"])))
+        rows = rows[: min(fetch, len(rows))]
         if not include_superseded:
             rows = [row for row in rows if not is_superseded(row.get("metadata") or {})]
         return rows[:top_k]
@@ -647,13 +716,6 @@ class FileGenerationStore:
         *,
         include_embedding: bool = False,
     ) -> dict[str, Any] | None:
-        include = ["metadatas", "documents"]
-        if include_embedding:
-            include.append("embeddings")
-        col = self._store._collection(UNITS)
-        result = col.get(ids=[physical_id], where=self._active_where(), include=include)
-        if not (result.get("ids") or []):
-            return None
         rows = self._get_rows(
             UNITS,
             where={"physical_id": physical_id},

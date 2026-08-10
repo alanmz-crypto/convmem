@@ -3,9 +3,15 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from chroma_store import SUMMARIES, UNITS
-from file_generation_store import STABLE_SCOPE, FileGenerationStore, StagedRow
+from file_generation_store import (
+    STABLE_SCOPE,
+    FileGenerationStore,
+    GenerationReadError,
+    StagedRow,
+)
 from tests.test_file_generation_store import file_row
 
 
@@ -145,6 +151,50 @@ class GenerationReadPathTests(unittest.TestCase):
             self.store.preview_purge_for_source("/tmp/a.jsonl", owner_digest="owner-a"),
             ["fg1_active_a", "fg1_superseded_a"],
         )
+
+    def test_exact_rerank_matches_active_cosine_ground_truth_and_keeps_stable_rows(
+        self,
+    ) -> None:
+        query = [0.6, 0.8]
+        expected = {
+            "dec_stable": 1.0 - 0.66 / (0.58**0.5),
+            "fg1_active_b": 0.2,
+            "fg1_active_a": 1.0 - 0.64 / (0.68**0.5),
+        }
+        rows = self.store.query_units(query, 3)
+        self.assertEqual([row["id"] for row in rows], list(expected))
+        for row in rows:
+            # Chroma persists embeddings as float32 before the exact rerank.
+            self.assertAlmostEqual(row["distance"], expected[row["id"]], places=6)
+            self.assertEqual(
+                set(row), {"id", "document", "metadata", "distance"}
+            )
+
+        owner_rows = self.store.query_units(
+            query, 5, owner_digest="owner-a", include_superseded=True
+        )
+        self.assertEqual(
+            [row["id"] for row in owner_rows],
+            ["fg1_active_a", "fg1_superseded_a"],
+        )
+
+    def test_active_embedding_failures_are_not_silently_skipped(self) -> None:
+        with self.assertRaises(GenerationReadError):
+            self.store.query_units([1.0, 0.0, 0.0], 1)
+
+        with patch.object(
+            self.store,
+            "_get_rows",
+            return_value=[
+                {
+                    "id": "fg1_missing_embedding",
+                    "document": "broken",
+                    "metadata": {},
+                    "embedding": None,
+                }
+            ],
+        ), self.assertRaises(GenerationReadError):
+            self.store.query_units([1.0, 0.0], 1)
 
     def test_superseded_filter_runs_after_in_query_generation_filter(self) -> None:
         # Active superseded row is closer than the active ordinary row.  Ten

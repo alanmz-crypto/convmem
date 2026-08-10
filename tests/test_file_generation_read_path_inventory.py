@@ -52,7 +52,6 @@ EXPECTED = {
         "excluded-administrative",
     ),
     ("file_generation_store.py", "__init__", "ChromaStore"): (1, "generation-mediated"),
-    ("file_generation_store.py", "_query", "raw.query"): (1, "generation-mediated"),
     (
         "file_generation_validate.py",
         "chroma_sequence_positions",
