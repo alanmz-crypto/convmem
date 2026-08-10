@@ -96,10 +96,11 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | `eval_model_identity.py` (T2, merged #155) | `classify_independence(judge, under_test)` → `self/same_family/cross_family/unknown/not_applicable` | Complete (on main) |
 | `eval_provenance.py` (T3, merged #155) | Comparison signature computation; `needs_rebaseline` detection | Complete (on main) |
 | `eval_judgebench/runner.py` (T4, merged #155) | Loads locked cases → J0 → J1 → compare to gold; supports dry-run | Complete (on main; G3 populated) |
-| `eval_judgebench/metrics.py` | Deterministic calibration-only confusion, agreement, status, and exploratory confidence report | Branch-only Phase A implementation; exact calibration result-ID boundary |
-| `eval_judgebench/calibration.py` | Validates the locked package, builds provider-bound requests internally, and transports only calibration IDs | Branch-only Phase A implementation; DeepSeek/Llama requests built and validated offline; arbitrary semantic callbacks rejected; exact 20-transport-invocation maximum per candidate run, with no retries or fallbacks |
-| `eval_judgebench/provider_requests.py` | Builds and validates pinned DeepSeek/Llama request shapes and parses provider responses | Branch-only Phase A implementation; strict provider-specific response envelopes; no provider/model calls have run |
-| `eval_corpus/fixtures/judgebench/identity-registry-v2.json` | Frozen-producer identity resolution for canonical calibration | Branch-only Phase A provenance input; not on `main` |
+| `eval_judgebench/metrics.py` | Deterministic calibration-only confusion, agreement, status, and exploratory confidence report | Complete on `main` at Phase A merge; exact calibration result-ID boundary |
+| `eval_judgebench/calibration.py` | Validates the locked package, builds provider-bound requests internally, and transports only calibration IDs | Complete on `main` at Phase A merge; exact 20-transport-invocation maximum per candidate run, no retries or fallbacks |
+| `eval_judgebench/provider_requests.py` | Builds and validates pinned DeepSeek/Llama request shapes and parses provider responses | Complete on `main` at Phase A merge; strict provider-specific response envelopes and telemetry boundary |
+| `eval_judgebench/live_driver.py` | Zero-call-ready DeepSeek/Llama HTTP transports, strict Llama metadata pinning, evidence-based remote budget, and in-memory evidence | Implemented on this package branch; no provider/model calls have run; Sol read-only metadata pins are digest `46e0c10c039e019119339687c3c1757cc81b9da49709a3b3924863ba87ca666e`, Ollama `0.32.3`, quantization `Q4_K_M` |
+| `eval_corpus/fixtures/judgebench/identity-registry-v2.json` | Frozen-producer identity resolution for canonical calibration | Complete on `main` at Phase A merge |
 | `eval_judge.py` (T5, merged #155) | `--legacy` gate; legacy path isolated from v1 provenance | Complete (on main) |
 | `tests/test_judgebench_contracts.py` | Contract validation tests | 29 tests, green |
 | `tests/test_judgebench_rubric.py` | Rubric load/validate tests | Green |
@@ -110,22 +111,22 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 > `test_judgebench_runner.py`, `test_eval_judge_legacy.py`) are not tracked under `main`'s
 > `tests/` at this revision — verify whether they were carried by #155 or need re-adding.
 
-### G3 state on `main` and Phase A state on this feature branch
+### G3 and Phase A state on `main`; live-driver state on this feature branch
 
 | Surface | Current locked state |
 |---|---|
 | `cases.jsonl` / `gold.jsonl` | On `main` at G3 merge `5f1a3ef`: 30 matched cases; 20 calibration / 10 holdout; 15 synthesis / 15 summary |
 | Rubrics | Summary rubric added; both task rubrics define support, coverage, contradiction, and verdict boundaries |
 | Corpus enforcement | Strict schema, hash, split, J0-outcome, origin, and Ryan-lock validation; canonical corpus validation accepts the lock |
-| Provenance | G3 lock is on `main`; this branch's Phase A preflight implements frozen-producer identity resolution via `identity-registry-v2` only |
-| Review state | **G3 merged and locked on `main`**; Phase A remains branch-only pending review, PR, and merge authorization |
+| Provenance | G3 lock and Phase A frozen-producer identity resolution are on `main` at `0be0a05` |
+| Review state | **Phase A is merged on `main` at `0be0a05`**; the zero-call live-driver package is implemented on `feat/2026-08-10-judgebench-live-driver`, pending review/merge |
 
 ### Branch-only and not yet authorized
 
 | What | Why not | Who can create it |
 |------|---------|-------------------|
-| Phase A delivery on `main` | Identity/calibration-prep and deterministic metrics exist only on `feat/2026-08-09-judgebench-calibration-prep` | Ryan review, PR, and merge authorization |
-| First calibration run results | No network/model/calibration calls have run; the branch-only transport boundary permits at most 20 transport invocations per candidate run over calibration IDs only, with no retries or fallbacks | Ryan authorization for the separate 3-candidate × 20-case = 60-call experiment; Cursor/Crush after Ryan |
+| Zero-call live-driver package delivery on `main` | Provider-specific HTTP transports, Llama digest/runtime pinning, cost gate, and telemetry exist only on this feature branch | Ryan review, PR, and merge authorization |
+| First calibration run results | No network/model/calibration calls have run; the driver permits at most 20 transport invocations per candidate over calibration IDs only, with no retries or fallbacks | Ryan authorization for the separate 3-candidate × 20-case = 60-call experiment; Cursor/Crush after Ryan |
 | Judge model selection | Requires calibration-split results | Ryan only (G4) |
 | Live `ask.py` integration | Deferred — not v1 scope | Nobody yet (separate arc) |
 
@@ -141,18 +142,19 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | T2–T5 | Identity, provenance, runner, legacy shim | **DONE on `main`** (merged #155) | — |
 | PR merge | T2–T5 code on `main` | **DONE** | #155 merged |
 | G3 | Gold corpus + split lock | **MERGED on `main` at `5f1a3ef`** | — |
-| Phase A | Identity/calibration-prep, deterministic metrics, and provider-bound request/envelope validation | **IMPLEMENTED on branch** | Pending PR/merge; no network/model/calibration calls have run |
-| Calibration | Calibration-split experiments | **NOT STARTED** | Phase A review/PR/merge, then Ryan authorization for the separate 3-candidate × 20-case = 60-call experiment; each candidate run is capped at 20 transport invocations over calibration IDs only |
+| Phase A | Identity/calibration-prep, deterministic metrics, and provider-bound request/envelope validation | **MERGED on `main` at `0be0a05`** | — |
+| Zero-call live driver | DeepSeek Pro/Flash and pinned Llama transports with offline mocks, metadata pinning, and cost gate | **IMPLEMENTED on this branch** | Pending review/merge; no network/model/calibration calls have run |
+| Calibration | Calibration-split experiments | **NOT STARTED** | Driver review/merge, then Ryan authorization for the separate 3-candidate × 20-case = 60-call experiment; each candidate run is capped at 20 transport invocations over calibration IDs only |
 | G4 | Judge model selection | **NOT STARTED** | Requires calibration-split results |
 | T7 retrieval corpus | Post-rebuild golden eval (`tests/test_eval_golden.py`) | **REPAIRED 10/10** | Was 2/10 after R3 rebuild skipped the approved-ledger channel; backfilled 356 approved decisions + CSP obs/ver into Chroma (corpus-only fix, no repo change) |
 
-**Summary: G3 is merged on `main` at `5f1a3ef`. Phase A identity/calibration-prep, deterministic metrics, and provider-bound request/envelope validation are implemented on `feat/2026-08-09-judgebench-calibration-prep` after `0605670`, with no network/model/calibration calls run. The next boundary is Ryan authorization after PR/merge for the separate 3-candidate × 20-case = 60-call experiment; each candidate run remains capped at 20 transport invocations over calibration IDs only, with no retries or fallbacks. G4 judge selection remains Ryan-owned.**
+**Summary: G3 is merged on `main` at `5f1a3ef`, and Phase A identity/calibration-prep, deterministic metrics, and provider-bound request/envelope validation are merged on `main` at `0be0a05`. The zero-call live-driver package is implemented on `feat/2026-08-10-judgebench-live-driver`; its mocked tests cover the three pinned candidates, but no network/model/calibration calls have run. The next boundary is driver review/merge, then Ryan authorization for the separate 3-candidate × 20-case = 60-call experiment; each candidate remains capped at 20 calibration transports with no retries or fallbacks. G4 judge selection remains Ryan-owned.**
 
 ---
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**If Ryan sent you here to implement:** Review and deliver the Phase A metrics/prep branch after the focused offline checks pass. Do not run calibration calls; the separate 3-candidate × 20-case = 60-call experiment requires Ryan authorization after PR/merge.
+**If Ryan sent you here to implement:** Review and deliver the zero-call live-driver package on this branch. Keep all verification mocked/offline; do not run calibration calls. The separate 3-candidate × 20-case = 60-call experiment requires Ryan authorization after driver review/merge.
 
 **If Ryan sent you here to review:** Read `main`'s implementation. Key questions: Does identity classification enforce `cross_family`-only for canonical runs? Does comparison-signature detect all the fields listed in the architecture? Is the runner truly Chroma-free? (Note: the T2–T5 test modules are not under `main`/`tests/` at this revision — verify coverage if asked.)
 
@@ -164,7 +166,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 
 ## 6. What Remains Before "Live" (sequential)
 
-- [ ] Ryan reviews and authorizes PR delivery and merge of the Phase A prep/metrics branch
+- [ ] Ryan reviews and authorizes PR delivery and merge of the zero-call live-driver package
 - [ ] Ryan authorizes the separate 3-candidate × 20-case = 60-call calibration-split experiment (at most 20 transport invocations per candidate run over calibration IDs only; no retries or fallbacks)
 - [ ] First authorized calibration run against locked gold (confusion matrix report)
 - [ ] Ryan selects a judge from calibration evidence (G4)
@@ -240,4 +242,4 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 
 | Date | Who | Change |
 |------|-----|--------|
-| 2026-08-09 | Codex Luna Medium | Current state reconciled: G3 is merged and locked on `main` at `5f1a3ef`; Phase A remains branch-only with v2 provenance resolution, provider-bound requests/envelopes, and no network/model/calibration calls; review/PR/merge, the separate 3-candidate × 20-case = 60-call authorization, and G4 remain ahead |
+| 2026-08-10 | Codex Luna High | Phase A is merged on `main` at `0be0a05`; zero-call DeepSeek/Llama driver and mocked evidence are implemented on this branch, with real calibration and G4 still gated |

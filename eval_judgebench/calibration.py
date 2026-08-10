@@ -406,6 +406,40 @@ def _build_exact_provider_request(
     return request
 
 
+def build_calibration_provider_requests(
+    package: CalibrationPackage,
+    *,
+    family: str,
+    judge_model: str,
+    decoding: Mapping[str, Any],
+) -> tuple[dict[str, Any], ...]:
+    """Build the exact internal request set for every locked calibration row.
+
+    The returned envelopes retain Phase A controls for validation and the
+    comparison signature.  A live adapter must derive its provider wire
+    envelope separately before POSTing.
+    """
+    from eval_judgebench.prompt_wrappers import build_semantic_prompt
+    from eval_judgebench.rubric import load_rubric
+
+    requests: list[dict[str, Any]] = []
+    for row in package.cases:
+        safe = safe_case(row)
+        rubric = load_rubric(package.root / "rubrics", str(safe["rubric_id"]))
+        prompt = build_semantic_prompt(safe, rubric, family=family)
+        requests.append(
+            _build_exact_provider_request(
+                family=family,
+                prompt=prompt,
+                judge_model=judge_model,
+                decoding=decoding,
+            )
+        )
+    if len(requests) != len(package.cases):
+        raise CalibrationBoundaryError("calibration request count drifted")
+    return tuple(requests)
+
+
 def _provider_invocation(
     *,
     family: str,
@@ -423,10 +457,20 @@ def _provider_invocation(
         ProviderResponseError,
         parse_provider_response,
     )
-    from eval_judgebench.runner import _validate_judgment_output
+    from eval_judgebench.runner import _transport_metadata, _validate_judgment_output
 
     try:
         response = transport(request)
+        envelope, metadata = _transport_metadata(response)
+        expected_model = str(request.get("model") or "")
+        if metadata.get("provider") not in {None, family} or metadata.get(
+            "envelope_provider"
+        ) not in {None, family}:
+            raise ProviderResponseError("provider response provider drifted")
+        if metadata.get("model") not in {None, expected_model} or metadata.get(
+            "envelope_model"
+        ) not in {None, expected_model}:
+            raise ProviderResponseError("provider response model drifted")
     except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001
         return JudgeInvocationV1(
             status=InvocationStatus.PROVIDER_ERROR,
@@ -436,7 +480,7 @@ def _provider_invocation(
             failure_code=f"{type(exc).__name__}: {exc}",
         )
     try:
-        raw = parse_provider_response(family, response)
+        raw = parse_provider_response(family, envelope)
         judgment, status, failure = _validate_judgment_output(
             raw, rubric_id, rubric_dir
         )
@@ -446,6 +490,11 @@ def _provider_invocation(
             judge_identity=judge_identity,
             under_test_identity=under_test_identity,
             independence_class=independence,
+            latency_ms=metadata.get("latency_ms"),
+            response_hash=metadata.get("response_hash"),
+            tokens_in=metadata.get("tokens_in"),
+            tokens_out=metadata.get("tokens_out"),
+            cost=metadata.get("cost"),
             failure_code=f"{type(exc).__name__}: {exc}",
         )
     return JudgeInvocationV1(
@@ -453,6 +502,11 @@ def _provider_invocation(
         judge_identity=judge_identity,
         under_test_identity=under_test_identity,
         independence_class=independence,
+        latency_ms=metadata.get("latency_ms"),
+        response_hash=metadata.get("response_hash"),
+        tokens_in=metadata.get("tokens_in"),
+        tokens_out=metadata.get("tokens_out"),
+        cost=metadata.get("cost"),
         failure_code=failure,
         semantic_judgment=judgment,
     )
@@ -650,25 +704,24 @@ def run_calibration(  # pylint: disable=too-many-arguments,too-many-locals
         )
 
     results = []
-    for case in package.cases:
+    exact_requests = build_calibration_provider_requests(
+        package,
+        family=family,
+        judge_model=judge_model,
+        decoding=decoding,
+    )
+    for case, request in zip(package.cases, exact_requests):
         case_id = str(case.get("case_id") or case.get("id") or "")
         candidate_identity, independence = _case_candidate_binding(case, binding)
         safe = safe_case(case)
-        from eval_judgebench.prompt_wrappers import build_semantic_prompt, prompt_hash
+        from eval_judgebench.prompt_wrappers import prompt_hash
         from eval_judgebench.rubric import load_rubric
 
         rubric = load_rubric(package.root / "rubrics", str(safe["rubric_id"]))
-        prompt = build_semantic_prompt(safe, rubric, family=family)
         if prompt_hash(safe, rubric, family=family) != prompt_hashes[case_id]:
             raise ExpectedPromptHashesError(
                 "calibration prompt changed after preflight"
             )
-        request = _build_exact_provider_request(
-            family=family,
-            prompt=prompt,
-            judge_model=judge_model,
-            decoding=decoding,
-        )
         invocation = _provider_invocation(
             family=family,
             request=request,
