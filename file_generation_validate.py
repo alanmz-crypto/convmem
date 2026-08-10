@@ -8,6 +8,7 @@ expected set before pointer promotion.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sqlite3
 import subprocess
@@ -82,6 +83,7 @@ def run_cold_validation(
     chroma_dir: str | Path,
     manifest_path: str | Path,
     *,
+    expected_manifest_sha256: str | None = None,
     timeout_seconds: float = 120.0,
 ) -> dict[str, Any]:
     """Run the exact validator in a new interpreter process."""
@@ -94,6 +96,11 @@ def run_cold_validation(
             str(chroma_dir),
             "--manifest",
             str(manifest_path),
+            *(
+                ["--expected-manifest-sha256", expected_manifest_sha256]
+                if expected_manifest_sha256 is not None
+                else []
+            ),
         ],
         check=False,
         capture_output=True,
@@ -107,6 +114,11 @@ def run_cold_validation(
     result = json.loads(proc.stdout)
     if not result.get("valid"):
         raise RuntimeError(f"cold generation validation refused: {result}")
+    if (
+        expected_manifest_sha256 is not None
+        and result.get("manifest_sha256") != expected_manifest_sha256
+    ):
+        raise RuntimeError("cold generation validation manifest hash mismatch")
     return result
 
 
@@ -114,9 +126,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--chroma-dir", required=True)
     parser.add_argument("--manifest", required=True)
+    parser.add_argument("--expected-manifest-sha256")
     args = parser.parse_args(argv)
-    manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
-    print(json.dumps(cold_validate(args.chroma_dir, manifest), sort_keys=True))
+    manifest_bytes = Path(args.manifest).read_bytes()
+    manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
+    if (
+        args.expected_manifest_sha256 is not None
+        and manifest_sha256 != args.expected_manifest_sha256
+    ):
+        raise RuntimeError("cold generation validation manifest hash mismatch")
+    manifest = json.loads(manifest_bytes)
+    result = cold_validate(args.chroma_dir, manifest)
+    result["manifest_sha256"] = manifest_sha256
+    print(json.dumps(result, sort_keys=True))
     return 0
 
 

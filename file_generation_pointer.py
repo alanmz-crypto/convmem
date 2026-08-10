@@ -9,10 +9,12 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 from atomic_files import atomic_write_json
@@ -53,14 +55,61 @@ class ManifestReference:
     file_sha256: str
 
 
-@dataclass(frozen=True)
+_QUALIFIED_POINTER_SEAL = object()
+
+
+@dataclass(frozen=True, init=False)
 class QualifiedActivePointer:
     """Process-local proof that exact validation and durable publish succeeded."""
 
     path: Path
-    pointer: dict[str, Any]
-    manifest: dict[str, Any]
+    pointer: Mapping[str, Any]
+    manifest: Mapping[str, Any]
     recovered: bool = False
+    _seal: object | None = field(repr=False, compare=False, default=None)
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Reject normal construction outside the authority-minting path."""
+        del args, kwargs
+        raise TypeError(
+            "QualifiedActivePointer is sealed; use publish or recovery authority"
+        )
+
+
+def _make_qualified_active_pointer(
+    *,
+    path: Path,
+    pointer: Mapping[str, Any],
+    manifest: Mapping[str, Any],
+    recovered: bool,
+) -> QualifiedActivePointer:
+    """Mint a serving token only after the local authority sequence succeeds."""
+    frozen_pointer = _freeze_authority_value(deepcopy(dict(pointer)))
+    frozen_manifest = _freeze_authority_value(deepcopy(dict(manifest)))
+    if not isinstance(frozen_pointer, Mapping) or not isinstance(frozen_manifest, Mapping):
+        raise GenerationQualificationError("qualified authority payload is not a mapping")
+    token = object.__new__(QualifiedActivePointer)
+    object.__setattr__(token, "path", path)
+    object.__setattr__(token, "pointer", frozen_pointer)
+    object.__setattr__(token, "manifest", frozen_manifest)
+    object.__setattr__(token, "recovered", recovered)
+    object.__setattr__(token, "_seal", _QUALIFIED_POINTER_SEAL)
+    return token
+
+
+def _freeze_authority_value(value: Any) -> Any:
+    """Recursively detach and freeze authority payloads held by serving tokens."""
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {key: _freeze_authority_value(nested) for key, nested in value.items()}
+        )
+    if isinstance(value, list):
+        return tuple(_freeze_authority_value(item) for item in value)
+    if isinstance(value, tuple):
+        return tuple(_freeze_authority_value(item) for item in value)
+    if isinstance(value, set):
+        return frozenset(_freeze_authority_value(item) for item in value)
+    return value
 
 
 @dataclass(frozen=True)
@@ -72,7 +121,18 @@ class GenerationHealth:
     may_serve: bool
 
 
+def _require_sealed_authority(qualified: QualifiedActivePointer) -> None:
+    if (
+        type(qualified) is not QualifiedActivePointer
+        or getattr(qualified, "_seal", None) is not _QUALIFIED_POINTER_SEAL
+    ):
+        raise GenerationQualificationError(
+            "serving state requires a module-sealed qualified active pointer"
+        )
+
+
 def healthy_state(qualified: QualifiedActivePointer) -> GenerationHealth:
+    _require_sealed_authority(qualified)
     return GenerationHealth(
         GenerationHealthState.HEALTHY,
         str(qualified.pointer["owner_key"]),
@@ -85,6 +145,7 @@ def healthy_state(qualified: QualifiedActivePointer) -> GenerationHealth:
 def degraded_safe_state(
     previous: QualifiedActivePointer, reason: str
 ) -> GenerationHealth:
+    _require_sealed_authority(previous)
     return GenerationHealth(
         GenerationHealthState.DEGRADED_SAFE,
         str(previous.pointer["owner_key"]),
@@ -224,11 +285,55 @@ def _require_true(result: Any, message: str) -> None:
         raise GenerationQualificationError(message)
 
 
+def _run_fresh_process_qualification(
+    chroma_dir: str | Path, manifest_reference: ManifestReference
+) -> None:
+    """Require the module-owned cold validator for exact manifest bytes.
+
+    This is deliberately private so pointer mechanics tests can replace the
+    expensive process boundary.  Public authority-minting APIs never accept a
+    caller-supplied substitute: durable promotion and recovery must both
+    validate the exact, hash-bound manifest in a fresh interpreter.
+    """
+
+    # Keep the import local: file_generation_validate imports the store, while
+    # this module owns only pointer authority and must not create an import
+    # cycle at module initialization.
+    from file_generation_validate import run_cold_validation
+
+    try:
+        result = run_cold_validation(
+            chroma_dir,
+            manifest_reference.path,
+            expected_manifest_sha256=manifest_reference.file_sha256,
+        )
+    except Exception as exc:
+        raise GenerationQualificationError(
+            "fresh-process exact generation qualification failed"
+        ) from exc
+    if result.get("valid") is not True:
+        raise GenerationQualificationError(
+            "fresh-process exact generation qualification refused"
+        )
+    if result.get("owner_digest") != manifest_reference.manifest["owner_digest"]:
+        raise GenerationQualificationError(
+            "fresh-process qualification owner mismatch"
+        )
+    if result.get("generation_id") != manifest_reference.manifest["generation_id"]:
+        raise GenerationQualificationError(
+            "fresh-process qualification generation mismatch"
+        )
+    if result.get("manifest_sha256") != manifest_reference.file_sha256:
+        raise GenerationQualificationError(
+            "fresh-process qualification manifest hash mismatch"
+        )
+
+
 def _qualify_pointer(
     generation_root: str | Path,
     pointer: Mapping[str, Any],
     *,
-    exact_generation_validator: Callable[[Mapping[str, Any]], Any],
+    chroma_dir: str | Path,
     candidate_revalidator: Callable[[Mapping[str, Any]], Any] | None,
 ) -> ManifestReference:
     ref = load_manifest_reference(
@@ -243,15 +348,15 @@ def _qualify_pointer(
         raise GenerationQualificationError("pointer/manifest generation mismatch")
     if manifest["source_hash"] != pointer["source_hash"]:
         raise GenerationQualificationError("pointer/manifest source mismatch")
-    _require_true(
-        exact_generation_validator(manifest),
-        "manifest expected Chroma set did not validate exactly",
-    )
     if candidate_revalidator is not None:
         _require_true(
             candidate_revalidator(manifest),
             "source/config/model/exclusion revalidation failed",
         )
+    # Caller/source/config drift is rechecked before the final process-boundary
+    # exact Chroma qualification.  A revalidator cannot mutate immutable rows
+    # after the last qualification and still mint serving authority.
+    _run_fresh_process_qualification(chroma_dir, ref)
     return ref
 
 
@@ -263,10 +368,10 @@ def publish_active_pointer(
     generation_root: str | Path,
     manifest_reference: ManifestReference,
     *,
+    chroma_dir: str | Path,
     cfg: Mapping[str, Any],
     expected_previous_generation_id: str | None,
     backend_fingerprint: str,
-    exact_generation_validator: Callable[[Mapping[str, Any]], Any],
     candidate_revalidator: Callable[[Mapping[str, Any]], Any] | None = None,
     published_at: str | None = None,
 ) -> QualifiedActivePointer:
@@ -311,11 +416,11 @@ def publish_active_pointer(
         _qualify_pointer(
             generation_root,
             pointer,
-            exact_generation_validator=exact_generation_validator,
+            chroma_dir=chroma_dir,
             candidate_revalidator=candidate_revalidator,
         )
         atomic_write_json(path, pointer)
-        return QualifiedActivePointer(
+        return _make_qualified_active_pointer(
             path=path,
             pointer=pointer,
             manifest=fresh_ref.manifest,
@@ -327,8 +432,8 @@ def recover_active_pointer(
     generation_root: str | Path,
     owner_key: str,
     *,
+    chroma_dir: str | Path,
     cfg: Mapping[str, Any],
-    exact_generation_validator: Callable[[Mapping[str, Any]], Any],
     recovery_revalidator: Callable[[Mapping[str, Any]], Any] | None = None,
 ) -> QualifiedActivePointer:
     """Validate visible complete authority and durably republish exact bytes.
@@ -348,13 +453,13 @@ def recover_active_pointer(
         ref = _qualify_pointer(
             generation_root,
             pointer,
-            exact_generation_validator=exact_generation_validator,
+            chroma_dir=chroma_dir,
             candidate_revalidator=recovery_revalidator,
         )
         # Publishing the exact payload is the durability qualification.  A
         # second PostPublicationDurabilityError remains FAIL and propagates.
         atomic_write_json(path, pointer)
-        return QualifiedActivePointer(
+        return _make_qualified_active_pointer(
             path=path,
             pointer=dict(pointer),
             manifest=ref.manifest,

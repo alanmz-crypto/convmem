@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import inspect
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
@@ -18,6 +19,8 @@ from file_generation_contract import (
     owner_digest,
     ownership_key,
 )
+
+_REAL_FRESH_PROCESS_QUALIFICATION = pointers._run_fresh_process_qualification
 
 
 def _cfg(tmp_path: Path) -> dict:
@@ -69,6 +72,13 @@ def _manifest(source: Path, label: str) -> dict:
     )
 
 
+@pytest.fixture(autouse=True)
+def _pointer_mechanics_fresh_process_seam():
+    """Keep pointer mechanics hermetic; integration tests use the real runner."""
+    with patch.object(pointers, "_run_fresh_process_qualification") as runner:
+        yield runner
+
+
 def _publish(
     root: Path,
     source: Path,
@@ -80,10 +90,10 @@ def _publish(
     return pointers.publish_active_pointer(
         root,
         reference,
+        chroma_dir=root / "chroma",
         cfg=_cfg(root),
         expected_previous_generation_id=previous,
         backend_fingerprint="rust-a",
-        exact_generation_validator=lambda manifest: True,
         candidate_revalidator=lambda manifest: True,
         published_at=f"2026-08-10T00:00:0{label}Z",
     )
@@ -123,30 +133,39 @@ def test_promote_and_stale_candidate_guard(tmp_path: Path) -> None:
         pointers.publish_active_pointer(
             root,
             stale_ref,
+            chroma_dir=root / "chroma",
             cfg=_cfg(root),
             expected_previous_generation_id=None,
             backend_fingerprint="rust-a",
-            exact_generation_validator=lambda manifest: True,
         )
     still_n = pointers.read_unqualified_pointer(root, n.manifest["owner_digest"])
     assert still_n["active_generation_id"] == n.manifest["generation_id"]
 
 
-def test_exact_set_or_candidate_drift_refuses_promotion(tmp_path: Path) -> None:
+def test_fresh_qualification_or_candidate_drift_refuses_promotion(tmp_path: Path) -> None:
     source = tmp_path / "source"
     source.write_text("x", encoding="utf-8")
     root = tmp_path / "generations"
     reference = pointers.publish_manifest(root, _manifest(source, "1"))
 
-    for exact, drift in ((False, True), (True, False)):
-        with pytest.raises(pointers.GenerationQualificationError):
+    for cold_failure, drift in ((True, True), (False, False)):
+        cold_runner = (
+            patch.object(
+                pointers,
+                "_run_fresh_process_qualification",
+                side_effect=pointers.GenerationQualificationError("expected Chroma set"),
+            )
+            if cold_failure
+            else patch.object(pointers, "_run_fresh_process_qualification")
+        )
+        with pytest.raises(pointers.GenerationQualificationError), cold_runner:
             pointers.publish_active_pointer(
                 root,
                 reference,
+                chroma_dir=root / "chroma",
                 cfg=_cfg(root),
                 expected_previous_generation_id=None,
                 backend_fingerprint="rust-a",
-                exact_generation_validator=lambda manifest, value=exact: value,
                 candidate_revalidator=lambda manifest, value=drift: value,
             )
         assert (
@@ -175,10 +194,10 @@ def test_prepublication_failure_leaves_n_serving(tmp_path: Path) -> None:
         pointers.publish_active_pointer(
             root,
             candidate,
+            chroma_dir=root / "chroma",
             cfg=_cfg(root),
             expected_previous_generation_id=n.manifest["generation_id"],
             backend_fingerprint="rust-a",
-            exact_generation_validator=lambda manifest: True,
         )
     current = pointers.read_unqualified_pointer(root, n.manifest["owner_digest"])
     assert current["active_generation_id"] == n.manifest["generation_id"]
@@ -206,10 +225,10 @@ def test_postpublication_failure_requires_exact_durable_republish(
         pointers.publish_active_pointer(
             root,
             candidate,
+            chroma_dir=root / "chroma",
             cfg=_cfg(root),
             expected_previous_generation_id=n.manifest["generation_id"],
             backend_fingerprint="rust-a",
-            exact_generation_validator=lambda manifest: True,
         )
 
     # The visible bytes are deliberately unqualified; the read API returns only
@@ -228,8 +247,8 @@ def test_postpublication_failure_requires_exact_durable_republish(
     recovered = pointers.recover_active_pointer(
         root,
         candidate.manifest["owner_key"],
+        chroma_dir=root / "chroma",
         cfg=_cfg(root),
-        exact_generation_validator=lambda manifest: True,
         recovery_revalidator=lambda manifest: True,
     )
     assert recovered.recovered is True
@@ -255,12 +274,19 @@ def test_recovery_does_not_guess_when_manifest_or_rows_fail(tmp_path: Path) -> N
     root = tmp_path / "generations"
     qualified = _publish(root, source, "1", previous=None)
 
-    with pytest.raises(pointers.GenerationQualificationError, match="expected Chroma"):
+    with (
+        patch.object(
+            pointers,
+            "_run_fresh_process_qualification",
+            side_effect=pointers.GenerationQualificationError("expected Chroma set"),
+        ),
+        pytest.raises(pointers.GenerationQualificationError, match="expected Chroma"),
+    ):
         pointers.recover_active_pointer(
             root,
             qualified.manifest["owner_key"],
+            chroma_dir=root / "chroma",
             cfg=_cfg(root),
-            exact_generation_validator=lambda manifest: False,
         )
 
     manifest_file = root / "manifests" / qualified.pointer["manifest_filename"]
@@ -269,9 +295,149 @@ def test_recovery_does_not_guess_when_manifest_or_rows_fail(tmp_path: Path) -> N
         pointers.recover_active_pointer(
             root,
             qualified.manifest["owner_key"],
+            chroma_dir=root / "chroma",
+            cfg=_cfg(root),
+        )
+
+
+def test_public_authority_apis_have_no_fake_validator_seam(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    reference = pointers.publish_manifest(root, _manifest(source, "1"))
+
+    assert "exact_generation_validator" not in inspect.signature(
+        pointers.publish_active_pointer
+    ).parameters
+    assert "exact_generation_validator" not in inspect.signature(
+        pointers.recover_active_pointer
+    ).parameters
+
+    with pytest.raises(TypeError, match="exact_generation_validator"):
+        pointers.publish_active_pointer(
+            root,
+            reference,
+            chroma_dir=root / "chroma",
+            cfg=_cfg(root),
+            expected_previous_generation_id=None,
+            backend_fingerprint="rust-a",
+            exact_generation_validator=lambda manifest: True,
+        )
+    with pytest.raises(TypeError, match="exact_generation_validator"):
+        pointers.recover_active_pointer(
+            root,
+            reference.manifest["owner_key"],
+            chroma_dir=root / "chroma",
             cfg=_cfg(root),
             exact_generation_validator=lambda manifest: True,
         )
+
+
+def test_direct_or_forged_token_cannot_claim_healthy_serving(tmp_path: Path) -> None:
+    nonexistent = tmp_path / "does-not-exist.json"
+    with pytest.raises(TypeError, match="sealed"):
+        pointers.QualifiedActivePointer(
+            nonexistent,
+            {"owner_key": "source:/missing", "active_generation_id": "fake"},
+            {},
+        )
+    with pytest.raises(TypeError, match="sealed"):
+        pointers.QualifiedActivePointer(
+            nonexistent,
+            {"owner_key": "source:/missing", "active_generation_id": "fake"},
+            {},
+            _seal=pointers._QUALIFIED_POINTER_SEAL,
+        )
+
+    forged = object.__new__(pointers.QualifiedActivePointer)
+    object.__setattr__(forged, "path", nonexistent)
+    object.__setattr__(
+        forged,
+        "pointer",
+        {"owner_key": "source:/missing", "active_generation_id": "fake"},
+    )
+    object.__setattr__(forged, "manifest", {})
+    object.__setattr__(forged, "recovered", False)
+    object.__setattr__(forged, "_seal", object())
+    with pytest.raises(pointers.GenerationQualificationError, match="module-sealed"):
+        pointers.healthy_state(forged)
+    with pytest.raises(pointers.GenerationQualificationError, match="module-sealed"):
+        pointers.degraded_safe_state(forged, "forged token")
+
+    class TokenSubclass(pointers.QualifiedActivePointer):
+        pass
+
+    subclass = object.__new__(TokenSubclass)
+    object.__setattr__(subclass, "path", nonexistent)
+    object.__setattr__(
+        subclass,
+        "pointer",
+        {"owner_key": "source:/missing", "active_generation_id": "fake"},
+    )
+    object.__setattr__(subclass, "manifest", {})
+    object.__setattr__(subclass, "recovered", False)
+    object.__setattr__(subclass, "_seal", pointers._QUALIFIED_POINTER_SEAL)
+    with pytest.raises(pointers.GenerationQualificationError, match="module-sealed"):
+        pointers.healthy_state(subclass)
+    with pytest.raises(pointers.GenerationQualificationError, match="module-sealed"):
+        pointers.degraded_safe_state(subclass, "subclass token")
+
+
+def test_sealed_token_detaches_and_freezes_authority_payloads(tmp_path: Path) -> None:
+    pointer = {
+        "owner_key": "source:/original",
+        "active_generation_id": "generation-original",
+        "nested": {"value": "original"},
+    }
+    manifest = {"nested": {"value": "original"}}
+    token = pointers._make_qualified_active_pointer(
+        path=tmp_path / "pointer.json",
+        pointer=pointer,
+        manifest=manifest,
+        recovered=False,
+    )
+
+    pointer["owner_key"] = "source:/rewritten"
+    pointer["nested"]["value"] = "rewritten"
+    manifest["nested"]["value"] = "rewritten"
+    assert token.pointer["owner_key"] == "source:/original"
+    assert token.pointer["nested"]["value"] == "original"
+    assert token.manifest["nested"]["value"] == "original"
+    with pytest.raises(TypeError):
+        token.pointer["owner_key"] = "source:/forged"
+    with pytest.raises(TypeError):
+        token.manifest["nested"]["value"] = "forged"
+    assert pointers.healthy_state(token).may_serve is True
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("owner_digest", "wrong-owner", "owner mismatch"),
+        ("generation_id", "wrong-generation", "generation mismatch"),
+        ("manifest_sha256", "wrong-hash", "manifest hash mismatch"),
+    ],
+)
+def test_private_fresh_qualification_binds_child_result_to_manifest(
+    tmp_path: Path, field: str, value: str, message: str
+) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    reference = pointers.publish_manifest(root, _manifest(source, "1"))
+    result = {
+        "valid": True,
+        "owner_digest": reference.manifest["owner_digest"],
+        "generation_id": reference.manifest["generation_id"],
+        "manifest_sha256": reference.file_sha256,
+    }
+    result[field] = value
+
+    with (
+        patch("file_generation_validate.run_cold_validation", return_value=result),
+        pytest.raises(pointers.GenerationQualificationError, match=message),
+    ):
+        _REAL_FRESH_PROCESS_QUALIFICATION(root / "chroma", reference)
 
 
 def test_unrelated_owner_promotions_do_not_clobber(tmp_path: Path) -> None:
