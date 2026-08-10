@@ -11,7 +11,9 @@ import json
 from pathlib import Path
 
 import pytest
+import requests
 
+import eval_model_identity
 from eval_judgebench.calibration import (
     CalibrationBoundaryError,
     CalibrationPackage,
@@ -51,7 +53,11 @@ from eval_judgebench.provider_requests import (
     validate_llama_request,
 )
 from eval_judgebench.rubric import load_rubric
-from eval_judgebench.runner import _contract_hashes
+from eval_judgebench.runner import (
+    _bind_candidate_provenance,
+    _contract_hashes,
+    _origin_key,
+)
 from eval_model_identity import (
     CanonicalPreflightError,
     load_registry,
@@ -176,6 +182,8 @@ def _expected_signature(
     judge_model: str = "deepseek-v4-pro",
     family: str = "deepseek",
     decoding: dict | None = None,
+    candidate_origin: dict | None = None,
+    under_test_model: str = "human_curated",
 ) -> dict:
     rubric_hashes = {"synthesis-grounded-v1": hashes["synthesis-grounded-v1"]}
     package = load_calibration_package(
@@ -187,6 +195,17 @@ def _expected_signature(
     )
     registry = load_registry(REGISTRY_V2)
     judge = resolve_identity(judge_model, registry, {}, offline=True)
+    binding = None
+    if candidate_origin is not None:
+        binding = _bind_candidate_provenance(
+            cases=list(package.cases),
+            judge_identity=judge,
+            caller_under_test_model=under_test_model,
+            registry=registry,
+            cfg={},
+            canonical=True,
+            offline=True,
+        )
     contract_hashes = _contract_hashes(root, list(package.cases))
     wrapper_hash = prompt_wrapper_hash(family)
     contract_hashes["prompt_wrapper"] = wrapper_hash
@@ -195,6 +214,20 @@ def _expected_signature(
         case["case_id"]: prompt_hash(case, rubric, family=family)
         for case in package.calibration_cases
     }
+    resolved_identities = {"judge": judge.to_record_dict()}
+    origins = []
+    independence = IndependenceClass.NOT_APPLICABLE.value
+    if binding is not None:
+        origins = binding.origins
+        independence = binding.aggregate.value
+        for index, origin in enumerate(binding.origins):
+            identity = binding.identities[_origin_key(origin)]
+            resolved_identities[f"candidate_origin:{index}"] = {
+                **identity.to_record_dict(),
+                "frozen_model": origin["model"],
+                "frozen_provider": origin["provider"],
+                "frozen_version": origin["version"],
+            }
     return build_comparison_signature(
         evaluation_surface=package.manifest["manifest_version"],
         case_hash=package.full_hashes["cases.jsonl"],
@@ -202,7 +235,7 @@ def _expected_signature(
         gold_hash=package.full_hashes["gold.jsonl"],
         contract_hashes=contract_hashes,
         identity_policy_version=registry.version,
-        resolved_identities={"judge": judge.to_record_dict()},
+        resolved_identities=resolved_identities,
         judge_pin={
             "model": judge_model,
             "lineage": judge.base_lineage,
@@ -210,8 +243,11 @@ def _expected_signature(
             "quant": judge.quantization,
             "role": SelectionRole.PRIMARY.value,
         },
-        under_test_provenance={"source": "frozen_candidate_origin", "origins": []},
-        independence_class=IndependenceClass.NOT_APPLICABLE.value,
+        under_test_provenance={
+            "source": "frozen_candidate_origin",
+            "origins": origins,
+        },
+        independence_class=independence,
         decoding_params=decoding or deepseek_decoding_signature(),
         model_serving_version="",
         metric_policy_version="judgebench-v1",
@@ -220,6 +256,61 @@ def _expected_signature(
         rubric_hashes=rubric_hashes,
         full_corpus_hashes=package.full_hashes,
     )
+
+
+def test_canonical_calibration_resolves_frozen_origin_offline_before_20_transports(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    origin = {
+        "kind": "model_generated",
+        "model": "gpt-5-codex-sol",
+        "provider": "openai",
+        "version": "test",
+    }
+    hashes = _write_synthetic_package(tmp_path, candidate_origin=origin)
+    transport_calls = 0
+
+    def fail_network(*args, **kwargs):
+        raise AssertionError("identity resolution must remain offline")
+
+    monkeypatch.setattr(requests, "get", fail_network)
+    monkeypatch.setattr(eval_model_identity, "model_digest_and_quant", fail_network)
+
+    def transport(request: dict):
+        nonlocal transport_calls
+        transport_calls += 1
+        assert request["model"] == "deepseek-v4-pro"
+        return {
+            "choices": [{"message": {"content": json.dumps(_valid_semantic_output())}}]
+        }
+
+    result = run_calibration(
+        tmp_path,
+        cfg={"models": {}},
+        judge_model="deepseek-v4-pro",
+        under_test_model="gpt-5-codex-sol",
+        registry_path=REGISTRY_V2,
+        transport=transport,
+        expected_full_hashes=hashes,
+        expected_rubric_hashes={
+            "synthesis-grounded-v1": hashes["synthesis-grounded-v1"]
+        },
+        expected_prompt_wrapper_hash=prompt_wrapper_hash("deepseek"),
+        expected_comparison_signature=_expected_signature(
+            tmp_path,
+            hashes,
+            candidate_origin=origin,
+            under_test_model="gpt-5-codex-sol",
+        ),
+        provider="deepseek",
+        provider_request=build_deepseek_request("safe prompt", model="deepseek-v4-pro"),
+        provider_settings=deepseek_decoding_signature(),
+    )
+
+    assert transport_calls == 20
+    assert len(result.cases) == 20
+    assert all(case.invocation.status == InvocationStatus.OK for case in result.cases)
+    assert result.independence_class == IndependenceClass.CROSS_FAMILY
 
 
 def test_registry_v2_preserves_alias_provenance_and_cross_family_matrix():

@@ -605,6 +605,7 @@ def run_calibration(  # pylint: disable=too-many-arguments,too-many-locals
         registry=registry,
         cfg=cfg,
         canonical=True,
+        offline=True,
     )
 
     provider_name, decoding = _validate_provider_configuration(
