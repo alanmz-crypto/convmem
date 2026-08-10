@@ -204,6 +204,12 @@ def build_calibration_report(
         item["error_rate"] = _rate(item["errors"], item["count"])
 
     unscored = len(calibration_cases) - scored
+    incomplete_statuses = {
+        status: count
+        for status, count in status_counts.items()
+        if status != InvocationStatus.OK.value and count
+    }
+    run_state = "complete" if not incomplete_statuses else "incomplete"
     status_rates = {
         status: _rate(count, len(calibration_cases))
         for status, count in status_counts.items()
@@ -220,6 +226,11 @@ def build_calibration_report(
             "calibration_cases": len(calibration_cases),
             "scored_cases": scored,
             "unscored_cases": unscored,
+        },
+        "run_state": {
+            "status": run_state,
+            "complete": run_state == "complete",
+            "incomplete_statuses": incomplete_statuses,
         },
         "invocation": {"counts": status_counts, "rates": status_rates},
         "verdict": {

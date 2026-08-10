@@ -10,6 +10,7 @@ failures surface as provider_error/not_run, never as semantic FAIL.
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -65,7 +66,7 @@ class CaseResult:
 
 
 @dataclass
-class RunResult:
+class RunResult:  # pylint: disable=too-many-instance-attributes
     cases: list[CaseResult]
     independence_class: IndependenceClass
     comparison_signature: dict[str, Any]
@@ -73,6 +74,7 @@ class RunResult:
     gold_hash_before: str
     gold_hash_after: str
     pinned_judge_model: str
+    transport_evidence: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -311,6 +313,47 @@ def _validate_judgment_output(
     if not rubric_result.valid:
         return None, InvocationStatus.INVALID_OUTPUT, "; ".join(rubric_result.violations)
     return judgment, InvocationStatus.OK, None
+
+
+def _transport_metadata(response: Any) -> tuple[Any, dict[str, Any]]:
+    """Unwrap a provider result and normalize bounded invocation telemetry."""
+    from eval_judgebench.provider_requests import ProviderTransportResult
+
+    metadata: dict[str, Any] = {}
+    envelope = response
+    if isinstance(response, ProviderTransportResult):
+        envelope = response.envelope
+        metadata.update(
+            {
+                "provider": response.provider,
+                "model": response.model,
+                "latency_ms": response.latency_ms,
+                "usage": response.usage,
+                "cost": response.cost,
+                "runtime_version": response.runtime_version,
+            }
+        )
+    if isinstance(envelope, dict):
+        response_model = envelope.get("model")
+        if response_model is not None:
+            metadata["envelope_model"] = response_model
+        response_provider = envelope.get("provider")
+        if response_provider is not None:
+            metadata["envelope_provider"] = response_provider
+    try:
+        canonical = json.dumps(
+            envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("provider response is not deterministically serializable") from exc
+    metadata["response_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    usage = metadata.get("usage")
+    if isinstance(usage, dict):
+        metadata["tokens_in"] = usage.get("prompt_tokens", usage.get("input_tokens"))
+        metadata["tokens_out"] = usage.get(
+            "completion_tokens", usage.get("output_tokens")
+        )
+    return envelope, metadata
 
 
 def run_case(

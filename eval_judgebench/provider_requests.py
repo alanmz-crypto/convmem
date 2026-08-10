@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 
@@ -27,6 +28,25 @@ class ProviderTransport(Protocol):
     def __call__(self, request: Mapping[str, Any]) -> Any: ...
 
 
+@dataclass(frozen=True)
+class ProviderTransportResult:
+    """One provider envelope plus transport-only telemetry.
+
+    The envelope remains provider-shaped so the existing strict parser owns
+    semantic extraction.  Metadata is deliberately separate from the prompt
+    and semantic judgment, which keeps provider failures operationally distinct
+    from semantic ``fail``.
+    """
+
+    envelope: Mapping[str, Any]
+    provider: str
+    model: str
+    latency_ms: float | None = None
+    usage: Mapping[str, Any] | None = None
+    cost: float | None = None
+    runtime_version: str | None = None
+
+
 DEEPSEEK_MAX_TOKENS = 4096
 DEEPSEEK_MODELS = {"deepseek-v4-pro", "deepseek-v4-flash"}
 LLAMA_MODEL = "llama3.1:8b"
@@ -37,6 +57,19 @@ LLAMA_DECODING = {
     "num_ctx": 8192,
     "num_predict": 1024,
 }
+
+DEEPSEEK_WIRE_FIELDS = frozenset(
+    {
+        "model",
+        "messages",
+        "thinking",
+        "reasoning_effort",
+        "response_format",
+        "max_tokens",
+        "stream",
+    }
+)
+LLAMA_WIRE_FIELDS = frozenset({"model", "prompt", "stream", "format", "options"})
 
 
 def deepseek_decoding_signature() -> dict[str, Any]:
@@ -112,6 +145,24 @@ def validate_deepseek_request(request: Mapping[str, Any]) -> bool:
     return True
 
 
+def validate_deepseek_wire_request(request: Mapping[str, Any]) -> bool:
+    """Validate the exact DeepSeek wire envelope, without internal controls."""
+    if set(request) != DEEPSEEK_WIRE_FIELDS:
+        raise ProviderPreflightError("DeepSeek wire request fields drifted")
+    control_request = dict(request)
+    control_request["attempts"] = 1
+    validate_deepseek_request(control_request)
+    return True
+
+
+def build_deepseek_wire_request(request: Mapping[str, Any]) -> dict[str, Any]:
+    """Strip Phase A controls before sending a request to DeepSeek."""
+    validate_deepseek_request(request)
+    wire = {key: deepcopy(request[key]) for key in DEEPSEEK_WIRE_FIELDS}
+    validate_deepseek_wire_request(wire)
+    return wire
+
+
 def llama_decoding_signature(runtime_digest: str) -> dict[str, Any]:
     if not runtime_digest:
         raise ProviderPreflightError("Llama runtime digest is required")
@@ -180,6 +231,34 @@ def validate_llama_request(
     if expected_schema is not None and request.get("format") != dict(expected_schema):
         raise ProviderPreflightError("Llama JSON schema drifted")
     return True
+
+
+def validate_llama_wire_request(request: Mapping[str, Any]) -> bool:
+    """Validate the exact Ollama wire envelope, without internal controls."""
+    if set(request) != LLAMA_WIRE_FIELDS:
+        raise ProviderPreflightError("Ollama wire request fields drifted")
+    if request.get("model") != LLAMA_MODEL:
+        raise ProviderPreflightError("Ollama wire model must be exactly llama3.1:8b")
+    if request.get("stream") is not False:
+        raise ProviderPreflightError("Ollama wire request must be non-streaming")
+    if not isinstance(request.get("prompt"), str):
+        raise ProviderPreflightError("Ollama wire prompt must be a string")
+    if request.get("options") != LLAMA_DECODING:
+        raise ProviderPreflightError("Ollama wire decoding settings drifted")
+    if not isinstance(request.get("format"), dict):
+        raise ProviderPreflightError("Ollama wire response mode must be a JSON schema")
+    return True
+
+
+def build_llama_wire_request(request: Mapping[str, Any]) -> dict[str, Any]:
+    """Strip Phase A controls before sending a request to Ollama."""
+    validate_llama_request(
+        request,
+        runtime_digest=str(request.get("runtime_digest") or ""),
+    )
+    wire = {key: deepcopy(request[key]) for key in LLAMA_WIRE_FIELDS}
+    validate_llama_wire_request(wire)
+    return wire
 
 
 def validate_provider_request(
