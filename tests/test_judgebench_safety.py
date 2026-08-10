@@ -221,6 +221,18 @@ def test_registry_v2_preserves_alias_provenance_and_cross_family_matrix():
 
 def test_calibration_boundary_hashes_and_callbacks_exclude_holdout(tmp_path: Path):
     hashes = _write_synthetic_package(tmp_path)
+    package = load_calibration_package(
+        tmp_path,
+        expected_full_hashes={
+            key: hashes[key] for key in ("cases.jsonl", "gold.jsonl")
+        },
+        expected_rubric_hashes={
+            "synthesis-grounded-v1": hashes["synthesis-grounded-v1"]
+        },
+    )
+    assert set(package.gold_by_id) == {
+        f"synthetic-calibration-{index:02d}" for index in range(1, 21)
+    }
     seen: list[dict] = []
 
     def callback(case: dict):

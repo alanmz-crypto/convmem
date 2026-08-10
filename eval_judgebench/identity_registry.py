@@ -93,7 +93,9 @@ class IdentityRegistry:
                 raise IdentityRegistryVersionError(
                     f"identity '{record_id}' must be an object"
                 )
-            canonical = _alias_key(item.get("canonical_id") or record_id, "canonical_id")
+            canonical = _alias_key(
+                item.get("canonical_id") or record_id, "canonical_id"
+            )
             if canonical in canonical_ids:
                 raise IdentityRegistryVersionError(
                     f"duplicate canonical identity '{canonical}'"
@@ -206,7 +208,11 @@ class IdentityRegistry:
         if canonical is None:
             return None
         return next(
-            (record for record in self.records.values() if record.canonical_id == canonical),
+            (
+                record
+                for record in self.records.values()
+                if record.canonical_id == canonical
+            ),
             None,
         )
 

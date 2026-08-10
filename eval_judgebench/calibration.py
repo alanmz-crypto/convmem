@@ -261,7 +261,7 @@ def load_calibration_package(
         raise CalibrationBoundaryError(
             "manifest calibration count must be an integer no greater than 20"
         )
-    _, all_cases, gold_by_id = load_corpus(root)
+    _, all_cases, all_gold_by_id = load_corpus(root)
     rubric_hashes = verify_expected_rubric_hashes(
         root, all_cases, expected_rubric_hashes
     )
@@ -272,6 +272,13 @@ def load_calibration_package(
         )
     if len(calibration) > MAX_CALIBRATION_CALLBACKS:
         raise CalibrationBoundaryError("calibration callback limit exceeded")
+    calibration_ids = {str(row["case_id"]) for row in calibration}
+    # Keep the package's gold view calibration-only.  This is deliberately
+    # done after complete corpus validation, so a report cannot accidentally
+    # traverse holdout gold or use a partial/unvalidated package.
+    gold_by_id = {
+        case_id: all_gold_by_id[case_id] for case_id in sorted(calibration_ids)
+    }
     return CalibrationPackage(
         root=root,
         manifest=manifest,
