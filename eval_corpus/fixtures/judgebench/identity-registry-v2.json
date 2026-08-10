@@ -1,0 +1,73 @@
+{
+  "identity_registry_version": "identity-registry-v2",
+  "description": "Curated JudgeBench identity registry with explicit alias provenance.",
+  "identities": {
+    "gpt-5.6-sol": {
+      "canonical_id": "gpt-5.6-sol",
+      "provider": "openai",
+      "family": "gpt-5.6",
+      "aliases": ["gpt-5.6-sol", "gpt-5.6"],
+      "alias_provenance": {
+        "gpt-5.6-sol": {"kind": "public", "owner": "openai", "public": true},
+        "gpt-5.6": {"kind": "public", "owner": "openai", "public": true}
+      },
+      "provenance_aliases": {
+        "gpt-5-codex-sol": {
+          "kind": "historical_local",
+          "owner": "convmem",
+          "public": false
+        }
+      },
+      "revision_digest": null,
+      "quantization": null,
+      "backend": null,
+      "stronger_weight_claim": null
+    },
+    "deepseek-v4-flash": {
+      "canonical_id": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "family": "deepseek",
+      "aliases": ["deepseek-v4-flash", "deepseek flash"],
+      "revision_digest": null,
+      "quantization": null,
+      "backend": null,
+      "stronger_weight_claim": null
+    },
+    "deepseek-v4-pro": {
+      "canonical_id": "deepseek-v4-pro",
+      "provider": "deepseek",
+      "family": "deepseek",
+      "aliases": ["deepseek-v4-pro", "deepseek pro"],
+      "revision_digest": null,
+      "quantization": null,
+      "backend": null,
+      "stronger_weight_claim": null
+    },
+    "llama3.1:8b": {
+      "canonical_id": "llama3.1:8b",
+      "provider": "ollama",
+      "family": "llama",
+      "aliases": ["llama3.1:8b"],
+      "revision_digest": null,
+      "quantization": null,
+      "backend": null,
+      "stronger_weight_claim": null
+    },
+    "qwen3-coder": {
+      "canonical_id": "qwen3-coder",
+      "provider": "ollama",
+      "family": "qwen",
+      "aliases": ["qwen3-coder:30b", "qwen3-coder:latest", "qwen3-coder-next"],
+      "revision_digest": null,
+      "quantization": null,
+      "backend": null,
+      "stronger_weight_claim": null
+    }
+  },
+  "run_labels": {
+    "sol-high-2026-08-09": {
+      "kind": "run_label",
+      "identity": "gpt-5.6-sol"
+    }
+  }
+}
