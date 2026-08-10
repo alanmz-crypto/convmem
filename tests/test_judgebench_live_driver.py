@@ -114,10 +114,16 @@ class _FakeHttp:  # pylint: disable=too-many-instance-attributes
         )
 
 
-def _deepseek_kwargs(root: Path, hashes: dict[str, str], client: _FakeHttp) -> dict:
+def _deepseek_kwargs(
+    root: Path,
+    hashes: dict[str, str],
+    client: _FakeHttp,
+    *,
+    candidate_model: str = "deepseek-v4-pro",
+) -> dict:
     return {
         "cfg": {"models": {}},
-        "candidate_model": "deepseek-v4-pro",
+        "candidate_model": candidate_model,
         "under_test_model": "human_curated",
         "registry_path": str(REGISTRY_V2),
         "expected_full_hashes": hashes,
@@ -125,7 +131,9 @@ def _deepseek_kwargs(root: Path, hashes: dict[str, str], client: _FakeHttp) -> d
             "synthesis-grounded-v1": hashes["synthesis-grounded-v1"]
         },
         "expected_prompt_wrapper_hash": prompt_wrapper_hash("deepseek"),
-        "expected_comparison_signature": _expected_signature(root, hashes),
+        "expected_comparison_signature": _expected_signature(
+            root, hashes, judge_model=candidate_model
+        ),
         "http_client": client,
         "deepseek_api_key": "test-only-not-a-real-key",
         "remote_cost_ceiling_usd": Decimal("0.20"),
@@ -139,16 +147,26 @@ def _deepseek_kwargs(root: Path, hashes: dict[str, str], client: _FakeHttp) -> d
     }
 
 
+@pytest.mark.parametrize("candidate_model", ("deepseek-v4-pro", "deepseek-v4-flash"))
 def test_remote_entry_attempts_exactly_20_and_records_only_calibration(
-    tmp_path: Path,
+    tmp_path: Path, candidate_model: str
 ):
     hashes = _write_synthetic_package(tmp_path)
     client = _FakeHttp("deepseek")
-    result = run_live_calibration(tmp_path, **_deepseek_kwargs(tmp_path, hashes, client))
+    result = run_live_calibration(
+        tmp_path,
+        **_deepseek_kwargs(
+            tmp_path, hashes, client, candidate_model=candidate_model
+        ),
+    )
 
     assert len(client.post_calls) == 20
     assert len(result.transport_evidence) == 20
-    serialized = json.dumps(result.report) + json.dumps(result.transport_evidence)
+    serialized = (
+        json.dumps(result.report)
+        + json.dumps(result.transport_evidence)
+        + json.dumps([call[1]["json"] for call in client.post_calls])
+    )
     assert "synthetic-holdout" not in serialized
     assert "HOLDOUT_SENTINEL" not in serialized
     assert result.report["transport"]["attempted_calls"] == 20
@@ -159,6 +177,9 @@ def test_remote_entry_attempts_exactly_20_and_records_only_calibration(
             "response_format", "max_tokens", "stream",
         }
         for call in client.post_calls
+    )
+    assert all(
+        call[1]["json"]["model"] == candidate_model for call in client.post_calls
     )
     assert all(call[1]["json"]["stream"] is False for call in client.post_calls)
     assert all(case.invocation.status == InvocationStatus.OK for case in result.run.cases)
