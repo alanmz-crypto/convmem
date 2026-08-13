@@ -5,6 +5,14 @@
 **For:** ChatGPT (independent reviewer)
 **Relates to:** `HANDOFF-CG1-DEPENDABILITY-2026-08-10.md` (read that first)
 
+> **Status update (2026-08-13):** The G4a material GAP described in this packet
+> is **closed**. The fix was implemented and independently reviewed PASS at SHA
+> `2ed229244ea1d7cdf9a83630ad56d5a194426826`. See
+> [`CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md`](CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md)
+> for the new stabilization SHA, the correction details, and the independent
+> review evidence. This packet's frozen-SHA table below reflects the *prior*
+> state; the closure packet supersedes it for the reviewed bytes.
+
 ---
 
 ## Status update since the original handoff
