@@ -10,8 +10,10 @@ from file_generation_builder import build_candidate_generation
 from file_generation_contract import build_generation_manifest
 from file_generation_pointer import (
     GenerationQualificationError,
+    ManifestReference,
     publish_active_pointer,
     publish_manifest,
+    read_unqualified_pointer,
     recover_active_pointer,
 )
 from file_generation_store import FileGenerationStore, StagedRow
@@ -161,6 +163,46 @@ def test_revalidator_mutation_cannot_cross_final_cold_qualification(
             cfg={"index": {"processed_log": str(tmp_path / "processed-recover.json")}},
             recovery_revalidator=corrupt_before_recovery,
         )
+
+
+def test_cross_wired_manifest_reference_cannot_select_another_owner(
+    tmp_path: Path,
+) -> None:
+    _, chroma_a, _, candidate_a, reference_a = _prepare_staged_generation(
+        tmp_path, "owner-a"
+    )
+    _, chroma_b, generations_b, candidate_b, reference_b = (
+        _prepare_staged_generation(tmp_path, "owner-b")
+    )
+
+    # Both independent candidates are genuinely fresh-process valid.  The
+    # cross-wire must still fail before choosing A's lock or pointer path.
+    assert run_cold_validation(
+        chroma_a,
+        reference_a.path,
+        expected_manifest_sha256=reference_a.file_sha256,
+    )["valid"] is True
+    assert run_cold_validation(
+        chroma_b,
+        reference_b.path,
+        expected_manifest_sha256=reference_b.file_sha256,
+    )["valid"] is True
+    cross_wired = ManifestReference(
+        path=reference_b.path,
+        manifest=reference_a.manifest,
+        file_sha256=reference_b.file_sha256,
+    )
+    with pytest.raises(GenerationQualificationError, match="filename does not match"):
+        publish_active_pointer(
+            generations_b,
+            cross_wired,
+            chroma_dir=chroma_b,
+            cfg={"index": {"processed_log": str(tmp_path / "processed-cross.json")}},
+            expected_previous_generation_id=None,
+            backend_fingerprint="rust-bindings/test",
+        )
+    assert read_unqualified_pointer(generations_b, candidate_a.owner_digest) is None
+    assert read_unqualified_pointer(generations_b, candidate_b.owner_digest) is None
 
 
 def test_cold_process_validation_precedes_pointer_and_export_view_round_trips(

@@ -131,6 +131,39 @@ class GenerationReadPathTests(unittest.TestCase):
             {"fg1_active_a", "fg1_superseded_a", "fg1_active_b", "dec_stable"},
         )
 
+    def test_reused_active_generation_id_cannot_cross_owner_boundary(self) -> None:
+        self.store.stage_rows(
+            [
+                file_row(
+                    "fg1_wrong_owner_reused_generation",
+                    "L-WRONG-OWNER",
+                    "N",
+                    owner="owner-b",
+                    source_path="/tmp/b.jsonl",
+                    document="wrong owner nearest",
+                    embedding=[1.0, 0.0],
+                )
+            ]
+        )
+
+        # The bounded backend predicate intentionally admits active generation
+        # IDs at scale.  The defensive facade check must bind that ID to its
+        # owner before ranking, exact lookup, metadata scans, or counts.
+        self.assertEqual(
+            [row["id"] for row in self.store.query_units([1.0, 0.0], 1)],
+            ["fg1_active_a"],
+        )
+        self.assertIsNone(self.store.get_unit_by_logical_id("L-WRONG-OWNER"))
+        self.assertNotIn(
+            "fg1_wrong_owner_reused_generation",
+            {
+                row["id"]
+                for row in self.store.units_metadata(include_superseded=True)
+            },
+        )
+        self.assertEqual(self.store.count_units(include_superseded=False), 3)
+        self.assertEqual(self.store.count_units(include_superseded=True), 4)
+
     def test_source_specific_and_mutation_previews_use_active_owner_generation(
         self,
     ) -> None:

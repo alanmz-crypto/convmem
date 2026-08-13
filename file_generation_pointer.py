@@ -265,6 +265,36 @@ def load_manifest_reference(
     return ManifestReference(path=path, manifest=manifest, file_sha256=actual)
 
 
+def _reload_verified_caller_reference(
+    generation_root: str | Path, manifest_reference: ManifestReference
+) -> ManifestReference:
+    """Bind caller-held manifest identity to its canonical persisted bytes."""
+    validate_generation_manifest(manifest_reference.manifest)
+    expected_path = manifest_path(
+        generation_root,
+        str(manifest_reference.manifest["owner_digest"]),
+        str(manifest_reference.manifest["generation_id"]),
+    )
+    if manifest_reference.path.name != expected_path.name:
+        raise GenerationQualificationError(
+            "manifest reference filename does not match caller-held owner/generation"
+        )
+    if manifest_reference.path.resolve() != expected_path.resolve():
+        raise GenerationQualificationError(
+            "manifest reference path does not match canonical generation path"
+        )
+    fresh_ref = load_manifest_reference(
+        generation_root,
+        manifest_filename=expected_path.name,
+        expected_sha256=manifest_reference.file_sha256,
+    )
+    if dict(manifest_reference.manifest) != fresh_ref.manifest:
+        raise GenerationQualificationError(
+            "caller-held manifest does not match persisted hash-bound manifest"
+        )
+    return fresh_ref
+
+
 def read_unqualified_pointer(
     generation_root: str | Path, owner_digest_value: str
 ) -> dict[str, Any] | None:
@@ -382,13 +412,23 @@ def publish_active_pointer(
     recovery.
     """
 
-    manifest = manifest_reference.manifest
-    validate_generation_manifest(manifest)
+    # Establish the exact persisted owner/generation before choosing the lock
+    # or pointer path.  A caller cannot cross-wire B's path/hash to A's manifest
+    # and cause B to validate while publishing under A's authority.
+    verified_ref = _reload_verified_caller_reference(
+        generation_root, manifest_reference
+    )
+    manifest = verified_ref.manifest
     canonical_source = canonical_source_path(manifest["canonical_source_path"])
     path = pointer_path(generation_root, str(manifest["owner_digest"]))
     with source_flock(dict(cfg), canonical_source):
+        # Recheck the caller/persisted binding under the owner lock before any
+        # stale check, validation, or publication action.
+        fresh_ref = _reload_verified_caller_reference(
+            generation_root, manifest_reference
+        )
         current = read_unqualified_pointer(
-            generation_root, str(manifest["owner_digest"])
+            generation_root, str(fresh_ref.manifest["owner_digest"])
         )
         current_generation = (
             None if current is None else str(current["active_generation_id"])
@@ -398,13 +438,6 @@ def publish_active_pointer(
                 "active generation changed while candidate was queued: "
                 f"expected {expected_previous_generation_id!r}, got {current_generation!r}"
             )
-        # Re-hash the exact immutable manifest here so a stale caller-held
-        # reference cannot promote bytes that changed after publication.
-        fresh_ref = load_manifest_reference(
-            generation_root,
-            manifest_filename=manifest_reference.path.name,
-            expected_sha256=manifest_reference.file_sha256,
-        )
         pointer = build_active_pointer(
             manifest=fresh_ref.manifest,
             manifest_filename=fresh_ref.path.name,

@@ -434,8 +434,12 @@ class FileGenerationStore:
         else:
             raise ValueError(f"unsupported generation scope: {row.generation_scope}")
 
-    def _active_where(self, *, owner_digest: str | None = None) -> dict[str, Any]:
-        active = dict(self._active_generations())
+    def _active_where(
+        self,
+        active: Mapping[str, str],
+        *,
+        owner_digest: str | None = None,
+    ) -> dict[str, Any]:
         if owner_digest is not None:
             generation_id = active.get(owner_digest)
             if generation_id is None:
@@ -471,18 +475,21 @@ class FileGenerationStore:
         return {"$or": clauses}
 
     def _active_where_clauses(
-        self, *, owner_digest: str | None = None
+        self,
+        active: Mapping[str, str],
+        *,
+        owner_digest: str | None = None,
     ) -> list[list[dict[str, Any]]]:
         """Return bounded predicates so large owner sets avoid SQLite expression limits."""
         if owner_digest is not None:
-            return [[self._active_where(owner_digest=owner_digest)]]
-        active_ids = sorted(set(self._active_generations().values()))
+            return [[self._active_where(active, owner_digest=owner_digest)]]
+        active_ids = sorted(set(active.values()))
         if not active_ids:
             return [[{"generation_scope": STABLE_SCOPE}]]
-        # Generation IDs are globally unique because their derivation includes
-        # owner_digest. Filtering by the active ID set avoids a deep owner×gen
-        # OR tree (SQLite rejects it around 1,000 expressions) while preserving
-        # the per-owner pointer semantics.
+        # Well-formed generation IDs include owner_digest, so the active ID set
+        # is a useful bounded backend prefilter that avoids a deep owner×gen OR
+        # tree (SQLite rejects it around 1,000 expressions). It is not authority:
+        # _get_rows defensively checks the exact owner→generation pair.
         return [
             [
                 {
@@ -511,8 +518,14 @@ class FileGenerationStore:
         if include_embeddings:
             include.append("embeddings")
         col = self._store._collection(collection_name)  # pylint: disable=protected-access
+        # One immutable read snapshot drives both the broad in-Chroma filter
+        # and the defensive owner+generation check below.  Calling the resolver
+        # twice could mix two pointer states in one read.
+        active = dict(self._active_generations())
         results = []
-        for clause_group in self._active_where_clauses(owner_digest=owner_digest):
+        for clause_group in self._active_where_clauses(
+            active, owner_digest=owner_digest
+        ):
             active_where = clause_group[0] if len(clause_group) == 1 else {"$or": clause_group}
             results.append(
                 col.get(where=_and_where(active_where, where), include=include)
@@ -525,6 +538,21 @@ class FileGenerationStore:
             embeddings = result.get("embeddings") if include_embeddings else None
             for index, physical_id in enumerate(ids):
                 meta = dict(metadatas[index] if index < len(metadatas) else {})
+                scope = meta.get("generation_scope")
+                if scope == FILE_SCOPE:
+                    row_owner = str(meta.get("owner_digest") or "")
+                    row_generation = str(meta.get("generation_id") or "")
+                    if active.get(row_owner) != row_generation:
+                        continue
+                    if owner_digest is not None and row_owner != owner_digest:
+                        continue
+                elif scope == STABLE_SCOPE:
+                    if owner_digest is not None:
+                        continue
+                else:
+                    # Generation-mediated reads fail closed on unclassified
+                    # rows even if a broad backend predicate returned them.
+                    continue
                 meta["id"] = physical_id
                 row: dict[str, Any] = {
                     "id": physical_id,
