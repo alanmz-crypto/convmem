@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 import requests
@@ -22,7 +21,7 @@ WATCH_RSS_PASS_KB = 512 * 1024  # 512 MB
 ARC_STALENESS_THRESHOLD_DAYS = 14
 _STATUS_GLOB = "docs/plans/STATUS-*.md"
 _INCOMPLETE_MARKERS = ("not started", "not done", "blocked", "hold", "not ready")
-_UPDATE_LOG_DATE_RE = re.compile(r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|", re.MULTILINE)
+_UPDATE_LOG_DATE_PATTERN = r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|"
 
 
 @dataclass
@@ -1010,9 +1009,13 @@ def _check_standing_register(
 
 
 def _check_arc_staleness(
-    *, root: Path | None = None, today: date | None = None
+    *, root: Path | None = None, today=None
 ) -> DoctorCheck:
     """Advisory nag for STATUS-tracked arcs that have stopped progressing."""
+    import re
+    from datetime import date
+
+    update_log_date_re = re.compile(_UPDATE_LOG_DATE_PATTERN, re.MULTILINE)
     base = root or Path(__file__).resolve().parent
     status_files = sorted(base.glob(_STATUS_GLOB))
     if not status_files:
@@ -1045,7 +1048,7 @@ def _check_arc_staleness(
                 continue
             dates = [
                 date.fromisoformat(value)
-                for value in _UPDATE_LOG_DATE_RE.findall(update_log.group(0))
+                for value in update_log_date_re.findall(update_log.group(0))
             ]
             last_updated = max(dates) if dates else date.min
         except (OSError, ValueError):
