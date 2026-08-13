@@ -83,6 +83,7 @@ class DoctorTests(unittest.TestCase):
         with (
             patch("doctor._check_synthesis_gate", return_value=ok),
             patch("doctor._check_index_gate", return_value=ok),
+            patch("doctor._check_arc_staleness", return_value=ok),
         ):
             checks = run_doctor(run_verify=False)
         self.assertTrue(all(c.ok for c in checks))
