@@ -67,7 +67,7 @@ register_refs: [adapter-parity-scan, neutralize-provenance-confirm]
 ```yaml
 owns: CLI, deploy pipeline, config, global_context_paths merge order
 read_when: "touching deploy scripts, changing merge order, adding a stopgap rule with an expiry condition"
-register_refs: [ksweep-sunset, deploy-script-interaction, merge-order-position, pr-steward-reminder]
+register_refs: [ksweep-sunset, deploy-script-interaction, merge-order-position, pr-steward-reminder, arc-staleness]
 ```
 - Mechanized: `merge-order-position` — `verify-builder-reference.sh` asserts ritual-first at deploy, `deploy-builder-reference.sh` is the designated last writer (ritual-first / CRUSH-last), and the `merge-order-position` doctor probe nags between deploys (2026-07-07). Probe scope: Crush `global_context_paths` only (ritual-first + CRUSH-last); other surfaces have no merge order to check.
 - Charter-only: none pure; everything here converts to a register row once it has a concrete trigger.

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import requests
@@ -18,6 +19,10 @@ from config import CONFIG_PATH, load_config
 from planning_contract import CONTRACT_VERSION, iter_guide_paths, validate_planning_guides
 
 WATCH_RSS_PASS_KB = 512 * 1024  # 512 MB
+ARC_STALENESS_THRESHOLD_DAYS = 14
+_STATUS_GLOB = "docs/plans/STATUS-*.md"
+_INCOMPLETE_MARKERS = ("not started", "not done", "blocked", "hold", "not ready")
+_UPDATE_LOG_DATE_RE = re.compile(r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|", re.MULTILINE)
 
 
 @dataclass
@@ -1004,6 +1009,67 @@ def _check_standing_register(
     )
 
 
+def _check_arc_staleness(
+    *, root: Path | None = None, today: date | None = None
+) -> DoctorCheck:
+    """Advisory nag for STATUS-tracked arcs that have stopped progressing."""
+    base = root or Path(__file__).resolve().parent
+    status_files = sorted(base.glob(_STATUS_GLOB))
+    if not status_files:
+        return DoctorCheck("arc_staleness", True, "no STATUS files in docs/plans/", status="skip")
+
+    current = today or date.today()
+    stale: list[str] = []
+    for path in status_files:
+        try:
+            text = path.read_text(encoding="utf-8")
+            completion = re.search(
+                r"^##\s+4\.\s+Completion State\s*$.*?(?=^##\s|\Z)",
+                text,
+                re.MULTILINE | re.DOTALL,
+            )
+            update_log = re.search(
+                r"^##\s+Update Log\s*$.*?(?=^##\s|\Z)",
+                text,
+                re.MULTILINE | re.DOTALL,
+            )
+            if completion is None or update_log is None:
+                continue
+            incomplete_rows = [
+                line
+                for line in completion.group(0).splitlines()
+                if line.lstrip().startswith("|")
+                and any(marker in line.lower() for marker in _INCOMPLETE_MARKERS)
+            ]
+            if not incomplete_rows:
+                continue
+            dates = [
+                date.fromisoformat(value)
+                for value in _UPDATE_LOG_DATE_RE.findall(update_log.group(0))
+            ]
+            last_updated = max(dates) if dates else date.min
+        except (OSError, ValueError):
+            continue
+
+        days_stale = (current - last_updated).days
+        if days_stale > ARC_STALENESS_THRESHOLD_DAYS:
+            label = last_updated.isoformat() if last_updated != date.min else "unknown"
+            slug = path.stem.removeprefix("STATUS-")
+            stale.append(f"{slug} (last: {label}, {len(incomplete_rows)} incomplete)")
+
+    if not stale:
+        return DoctorCheck(
+            "arc_staleness", True, f"{len(status_files)} arcs tracked, 0 stale"
+        )
+    return DoctorCheck(
+        "arc_staleness",
+        True,
+        f"{len(stale)} arc(s) stale (>{ARC_STALENESS_THRESHOLD_DAYS}d): "
+        + "; ".join(stale),
+        status="warn",
+    )
+
+
 def _check_watch_memory() -> DoctorCheck:
     mem = _watch_process_memory()
     if mem is None:
@@ -1317,6 +1383,7 @@ def run_doctor(
         _check_synthesis_gate(),
         _check_index_gate(),
         _check_standing_register(cfg),
+        _check_arc_staleness(),
         _check_planning_guide_contract(),
         _check_empty_ledger_documents(cfg),
         _check_mcp_import(),

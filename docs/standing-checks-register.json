@@ -216,6 +216,18 @@
       "notes": "Probe parses register_refs:[...] blocks from docs/role-charters.md; due if a charter ref has no matching register id (dangling) or an open register row is cited by no charter (orphan). Dogfoods Layer 2 against the drift that prompted it."
     },
     {
+      "id": "arc-staleness",
+      "check": "STATUS-tracked arcs with incomplete milestones progressing within 14 days",
+      "role": "Platform",
+      "trigger": {
+        "type": "probe",
+        "probe": "arc_staleness"
+      },
+      "status": "open",
+      "last_verified": "2026-08-13",
+      "notes": "Advisory doctor probe reads STATUS-*.md completion markers and Update Log dates. It catches authorized work that has been handed off but never picked up; it never blocks doctor."
+    },
+    {
       "id": "pr-steward-reminder",
       "check": "consider PR Steward for bounded PR lifecycle tasks",
       "role": "Platform",
