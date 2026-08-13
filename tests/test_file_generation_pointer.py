@@ -20,7 +20,9 @@ from file_generation_contract import (
     ownership_key,
 )
 
-_REAL_FRESH_PROCESS_QUALIFICATION = pointers._run_fresh_process_qualification
+real_fresh_process_qualification = (
+    pointers._run_fresh_process_qualification  # pylint: disable=protected-access
+)
 
 
 def _cfg(tmp_path: Path) -> dict:
@@ -314,7 +316,7 @@ def test_public_authority_apis_have_no_fake_validator_seam(tmp_path: Path) -> No
     ).parameters
 
     with pytest.raises(TypeError, match="exact_generation_validator"):
-        pointers.publish_active_pointer(
+        pointers.publish_active_pointer(  # pylint: disable=unexpected-keyword-arg
             root,
             reference,
             chroma_dir=root / "chroma",
@@ -324,7 +326,7 @@ def test_public_authority_apis_have_no_fake_validator_seam(tmp_path: Path) -> No
             exact_generation_validator=lambda manifest: True,
         )
     with pytest.raises(TypeError, match="exact_generation_validator"):
-        pointers.recover_active_pointer(
+        pointers.recover_active_pointer(  # pylint: disable=unexpected-keyword-arg
             root,
             reference.manifest["owner_key"],
             chroma_dir=root / "chroma",
@@ -346,7 +348,7 @@ def test_direct_or_forged_token_cannot_claim_healthy_serving(tmp_path: Path) -> 
             nonexistent,
             {"owner_key": "source:/missing", "active_generation_id": "fake"},
             {},
-            _seal=pointers._QUALIFIED_POINTER_SEAL,
+            _seal=pointers._QUALIFIED_POINTER_SEAL,  # pylint: disable=protected-access
         )
 
     forged = object.__new__(pointers.QualifiedActivePointer)
@@ -376,7 +378,11 @@ def test_direct_or_forged_token_cannot_claim_healthy_serving(tmp_path: Path) -> 
     )
     object.__setattr__(subclass, "manifest", {})
     object.__setattr__(subclass, "recovered", False)
-    object.__setattr__(subclass, "_seal", pointers._QUALIFIED_POINTER_SEAL)
+    object.__setattr__(
+        subclass,
+        "_seal",
+        pointers._QUALIFIED_POINTER_SEAL,  # pylint: disable=protected-access
+    )
     with pytest.raises(pointers.GenerationQualificationError, match="module-sealed"):
         pointers.healthy_state(subclass)
     with pytest.raises(pointers.GenerationQualificationError, match="module-sealed"):
@@ -390,7 +396,7 @@ def test_sealed_token_detaches_and_freezes_authority_payloads(tmp_path: Path) ->
         "nested": {"value": "original"},
     }
     manifest = {"nested": {"value": "original"}}
-    token = pointers._make_qualified_active_pointer(
+    token = pointers._make_qualified_active_pointer(  # pylint: disable=protected-access
         path=tmp_path / "pointer.json",
         pointer=pointer,
         manifest=manifest,
@@ -437,7 +443,7 @@ def test_private_fresh_qualification_binds_child_result_to_manifest(
         patch("file_generation_validate.run_cold_validation", return_value=result),
         pytest.raises(pointers.GenerationQualificationError, match=message),
     ):
-        _REAL_FRESH_PROCESS_QUALIFICATION(root / "chroma", reference)
+        real_fresh_process_qualification(root / "chroma", reference)
 
 
 def test_unrelated_owner_promotions_do_not_clobber(tmp_path: Path) -> None:

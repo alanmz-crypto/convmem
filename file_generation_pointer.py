@@ -122,8 +122,11 @@ class GenerationHealth:
 
 
 def _require_sealed_authority(qualified: QualifiedActivePointer) -> None:
+    # Exact-type check is deliberate: isinstance would let a subclass carry a
+    # forged seal through the authority boundary. pylint's unidiomatic-typecheck
+    # fits the general case but not this subclass-proofing guard.
     if (
-        type(qualified) is not QualifiedActivePointer
+        type(qualified) is not QualifiedActivePointer  # pylint: disable=unidiomatic-typecheck
         or getattr(qualified, "_seal", None) is not _QUALIFIED_POINTER_SEAL
     ):
         raise GenerationQualificationError(
