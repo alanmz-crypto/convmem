@@ -109,6 +109,44 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
 
+## Handoff and resume contract
+
+
+**Chat is evidence; handoff docs are the contract.** Do not rely on conversation search to resume work. Use **LATEST → handoff doc → STATUS → git** (local discovery); cloud execution needs pushed branches + handoff on `origin`.
+
+### Picking up work (session start, after Tier A)
+
+When cwd is `~/Projects/convmem` or Ryan says **resume** / **what's in flight** / **continue**:
+
+1. Read top entries in `docs/inter-model/LATEST.md` — look for `AUTHORIZED`, `not yet implemented`, `BLOCKED_ON_RYAN`, `local-only`, `unpushed`.
+2. Glob recent `docs/inter-model/*-handoff.md` (same week first).
+3. If an arc applies: read matching `docs/plans/STATUS-<slug>.md` (Section 4 incomplete + Section 10 Update Log).
+4. `git fetch origin && git branch -a` — check unpushed local commits (invisible to cloud).
+5. `convmem doctor` — heed `arc_staleness` warns when present (advisory).
+6. Point Ryan at the handoff path; state **resume state** from the packet (`NOT_STARTED` | `IN_PROGRESS` | `BLOCKED_ON_RYAN` | `READY_FOR_PR`).
+
+**Do not** start implementation from chat memory alone when a handoff doc exists.
+
+### Leaving work (authorized or mid-flight)
+
+When Ryan **authorizes** implementation for another lane, or you **pause** authorized work before done:
+
+1. Write `docs/inter-model/<LANE>-YYYY-MM-DD-<slug>-handoff.md` using `docs/inter-model/HANDOFF-TEMPLATE.md` (copy structure; fill every section).
+2. Add one bullet to **top** of `docs/inter-model/LATEST.md` under "Recently merged / settled": `AUTHORIZED (not yet implemented)` or current resume state + link.
+3. Update arc `STATUS-*.md` Update Log (one line) if the arc has a STATUS file.
+4. Push branch immediately; note SHA and flag `local-only` if not pushed.
+5. Track A: nudge `convmem index --file` on this session transcript.
+
+**Required handoff sections:** What to build · Integration point (file + line) · Spec/algorithm · Output contract · What NOT to build · Test expectations · Acceptance criteria · Branch convention · Resume state · Ryan GATE (if any).
+
+### When handoff markdown is allowed
+
+| Allowed | Not allowed |
+|---------|-------------|
+| Ryan-authorized cross-lane implementation brief | Ad-hoc `logs/*.md` audit summaries |
+| Pausing authorized Execute with resume packet | Chat-only "I'll remember" with no LATEST line |
+| Kiro/Codex design → Cursor Execute (charter) | Scope expansion beyond authorization |
+
 
 ## After Tier A — MCP tools (do not repeat brief)
 
@@ -121,7 +159,7 @@ After Tier A in a project repo, use read-only MCP `search_fast()`, `ask()`, `rel
 
 **Output `convmem record` only when Ryan literally says:** `record block`, `closing`, `end session`, or `record this`.
 
-**Do not create markdown files** (`logs/*.md`, audit summaries, handoff docs) unless Ryan explicitly asked for a file or told you to append to an existing agreed log (e.g. findings log). To preserve work without a new file → **Track A** session index.
+**Do not create markdown files** (`logs/*.md`, audit summaries) unless Ryan explicitly asked for a file or told you to append to an existing agreed log (e.g. findings log). **Exception:** Ryan-authorized implementation handoffs in `docs/inter-model/*-handoff.md` per **Handoff and resume contract** — use `HANDOFF-TEMPLATE.md`, update `LATEST.md`, push branch. To preserve work without a durable handoff → **Track A** session index only (weak substitute).
 
 **Do not record session-start orientation alone** (`doctor` / `brief` / `unresolved` with no substantive work). That ritual is read-only context — not ledger-worthy unless Ryan says **closing**, **record block**, or you finished a decision/fix worth preserving.
 
@@ -150,7 +188,7 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 ## Handoff vs record
 
 - Handoff / **ingest your chat** → `convmem index --file` this chat's `agent-transcripts/...jsonl` (Track A). **No record block** unless Ryan asks.
-- Do **not** create new markdown logs unless Ryan requested a file.
+- Authorized implementation handoffs → `docs/inter-model/*-handoff.md` + `LATEST.md` bullet (see Handoff and resume contract). Ad-hoc `logs/*.md` only when Ryan asked.
 
 ## HITL team charter
 
@@ -262,6 +300,8 @@ Done: result, verification, largest material trade-off/risk, branch/push; Track 
 | `~/Projects/convmem` + architecture | `docs/builder-reference/README.md` | matching digest, then code |
 | `~/Projects/convmem-lab` | `docs/lab-reference/NOTES.md` | `scripts/convmem-lab.sh doctor`; `lab/scripts/compile-synthesis-brief.sh`; `lab/scripts/smoke-synthesis.sh` |
 | Session close / record | `docs/inter-model/SESSION-CLOSE-RECORD.md` | **Only if Ryan asks** — output `convmem record` block; else Track A index only |
+| Resume / in-flight work | `docs/inter-model/LATEST.md` → `*-handoff.md` → `STATUS-*.md` | After Tier A: LATEST top → handoff doc → git branches; not chat search |
+| Authorize Execute for another lane | `docs/inter-model/HANDOFF-TEMPLATE.md` | Handoff doc + LATEST bullet + STATUS Update Log + push branch |
 
 **Split:** `lab-reference/` = lab gates & synthesis smoke (lab repo). `builder-reference/` = prod architecture. Never mix prod/lab data paths. Lab: no MCP registration. `--propose` on prod digest: Ryan-gated.
 
