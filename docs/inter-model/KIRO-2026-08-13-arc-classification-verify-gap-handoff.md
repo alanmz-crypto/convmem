@@ -1,9 +1,9 @@
-# Implementation Handoff: Close the arc-classification gap in Verify Planning
+# Handoff: Models must announce forward (next stage, next lane, show the work)
 
-**Date:** 2026-08-13  
+**Date:** 2026-08-13 (revised same day)  
 **Author:** Kiro (design review)  
-**For:** Codex (architecture planning)  
-**Authorization:** Ryan, 2026-08-13 (verbal: "please check and give a handoff to codex to plan to fix the problem")
+**For:** New Kiro session (open-PR triage + agent stage-awareness map)  
+**Authorization:** Ryan, 2026-08-13 (verbal: models should say what stage is next, who does it, and the easiest way to see the work)
 
 ---
 
@@ -13,109 +13,88 @@
 |-------|--------|
 | **State** | `NOT_STARTED` |
 | **Branch** | `docs/2026-08-13-arc-classification-verify-gap` |
-| **Tip SHA** | (this commit) |
 | **Push status** | pushed to origin |
 | **PR** | not opened |
-| **Ryan GATE** | Codex must produce ARCHITECTURE plan; Ryan approves before Execute |
-| **Track A ingest** | Kiro session — indexed at handoff |
+| **Ryan GATE** | New Kiro session absorbs this into broader PR triage + stage-awareness design |
 
 ---
 
-## What to build
+## The problem
 
-A mechanical gate that forces explicit arc-or-not classification at task intake, so that multi-session work cannot silently bypass the Verify Planning phase.
+Models finish work, push it to GitHub, and stop with "await HITL." Ryan doesn't know the work is unverified until he manually traces every open PR's state. Meanwhile another model *should* be picking it up for the next phase — but nobody told it to.
 
-**Why this exists:** The worktree cleanup (Pass 1-3+) received three rounds of plan review but zero post-implementation verification. Investigation reveals the `VERIFY-PLANNING.md` system is intact and well-designed — but it only fires for declared arcs. The worktree cleanup was never classified as an arc, so it fell through to the `non-arc or exempt` branch and skipped Verify entirely. This is a classification gap, not a verification system gap.
+**Root cause:** Models announce upward (to Ryan) instead of forward (to the next lane). There's no norm that says "when you finish, name who's next and show them your work in the easiest way possible."
 
-**The structural problem:** `PLANNING-PROTOCOL.md` workflow diagram has:
+**How this was discovered:** The worktree cleanup had three rounds of plan review but zero post-implementation verification. The VERIFY system exists and works — but it only fires when another model is told to run it. Nobody was told.
+
+---
+
+## The fix (behavioral norm)
+
+Every model, when finishing its current phase, must end with a **forward announcement**:
 
 ```
-Execute Task → HITL Review → (arc?) → Verify Planning
-                             ↓ non-arc
-                      Revise Planning
+I finished: [phase — e.g. "implementation", "plan", "verification"]
+Next step:  [what needs to happen — e.g. "verify this", "review the plan", "merge"]
+Next lane:  [who — e.g. "Kiro", "Cursor", "Ryan"]
+See my work: [the single easiest way to evaluate what I did]
 ```
 
-The "is this an arc?" decision is informal and implicit. Nothing forces it to be asked. Multi-session work with irreversibility risk, evidence dependencies, and hard stop conditions (like worktree cleanup) slips through without anyone noticing VERIFY doesn't apply.
+### "See my work" must be the lowest-effort path
+
+Not a branch name and SHA. The one thing the next model (or Ryan) opens to understand what happened:
+
+| Situation | Good | Bad |
+|---|---|---|
+| Implementation done | PR diff URL: `github.com/.../pull/175/files` | "branch feat/2026-08-13-foo at abc123" |
+| Plan ready | One file: `docs/plans/ARCHITECTURE-foo.md` | "see the last 3 commits on the branch" |
+| Bug fix | `git diff origin/main -- src/broken.py` | "check the worktree" |
+| Verification done | VERIFY doc with PASS/FAIL table | "I ran the tests, they passed" |
 
 ---
 
-## Integration point
+## What this replaces
 
-`docs/planning/EXECUTE-TASK.md` — Step 0 (Intake), and/or a new section in `PLANNING-PROTOCOL.md` workflow.
+This handoff originally proposed a protocol rewrite (arc-classification gate, doctor checks, intake fields). That was overengineered. The actual gap is two missing behaviors:
 
-The classification could also live as a `convmem doctor` check (advisory) that warns when a branch has >N commits or >N days without a VERIFY stub.
+1. Models don't announce forward — they stop and point up at Ryan.
+2. When they do reference their work, they don't include the easiest viewing path.
+
+The existing VERIFY system, EXECUTE-TASK phase, and planning protocol are all fine. They just don't fire because no one chains them forward.
 
 ---
 
-## Specification
+## Relationship to the new Kiro session
 
-### The gap (precise)
+Ryan is starting a new Kiro session to:
+1. Triage all open PRs — which ones are stuck between stages
+2. Map which agent needs to finish what
+3. Give agents a stage-awareness capability
 
-1. `VERIFY-PLANNING.md` requires entry "after Execute Task + HITL review for an **arc**."
-2. Arc is defined as: "work tracked by an `ARCHITECTURE-*` and/or `EXECUTION-*` plan, or a multi-PR milestone Ryan names an arc."
-3. The worktree cleanup has no ARCHITECTURE/EXECUTION plan and Ryan never explicitly named it an arc.
-4. Therefore VERIFY never triggers — by design, not by error.
-5. But the work clearly *should* have post-implementation verification (irreversible actions, evidence dependencies, multi-session scope).
-
-### What Codex should design (not prescriptive — Codex owns architecture)
-
-Possible approaches (Codex picks one or invents something better):
-
-**Option A — Explicit intake classification:**  
-Add a required field to Execute Task Step 0 (Intake): `arc_classification: arc | non-arc | deferred`. If `arc`, a VERIFY stub must exist before step 7 (handoff). If `deferred`, the classification must be revisited after N commits or N sessions.
-
-**Option B — Heuristic doctor check:**  
-A `convmem doctor` advisory that warns: "Branch X has >3 commits across >2 sessions with no VERIFY stub — classify as arc or record exemption." This is weaker (advisory, not blocking) but zero-friction.
-
-**Option C — Scope-escalation trigger:**  
-Define objective criteria (multi-session, irreversible operations, evidence dependencies, >5 commits, explicit stop conditions) that auto-escalate to arc status. When any two criteria are met, the protocol requires a VERIFY stub or an explicit Ryan waiver.
-
-### Output / contract
-
-- A change to the planning protocol docs that closes the classification gap
-- Mechanical enforcement (doctor check, intake field, or both)
-- The worktree cleanup specifically: either retroactively classified as arc (gets a VERIFY stub) or explicitly exempted by Ryan with documented reason
+This handoff is **input** to that session:
+- The forward-announcement norm is the ongoing behavioral fix
+- The new session produces the one-time catch-up routing table
+- Together they mean: stuck work gets unstuck now, and future work doesn't get stuck
 
 ---
 
 ## What NOT to build
 
-- Do not rewrite VERIFY-PLANNING.md — it works correctly for declared arcs
-- Do not add VERIFY requirements to truly trivial work (single-commit typos, drive-by docs)
-- Do not build automation that creates VERIFY stubs without human intent
-- Do not change the arc definition itself — extend the *classification mechanism*
-- Do not implement code — this is a protocol/docs change (Codex plans, Ryan approves)
-
----
-
-## Test expectations
-
-1. **Worktree cleanup retroactive:** After the fix, someone should be able to look at the worktree cleanup and know whether it needs VERIFY or has an exemption. Currently neither is true.
-2. **Future multi-session work:** Next time a task spans >2 sessions, the classification question must be visibly asked (in intake, in doctor output, or in the handoff).
-3. **No false positives on trivial work:** A single-commit doc fix should not trigger arc-classification bureaucracy.
+- No PLANNING-PROTOCOL.md rewrite
+- No doctor check for arc classification
+- No new file format or template beyond the four-line block
+- No automation that routes between agents — just clear announcements
+- No change to the VERIFY system itself (it works when someone invokes it)
 
 ---
 
 ## Acceptance criteria
 
-- [ ] The "is this an arc?" decision is explicit and recorded (not implicit/skipped)
-- [ ] Multi-session work with irreversibility risk cannot silently bypass VERIFY
-- [ ] Trivial single-commit work is not burdened
-- [ ] The worktree cleanup is retroactively classified (arc or exempted)
-- [ ] Doctor or protocol mechanically surfaces the gap (advisory or blocking)
-- [ ] No regression in existing VERIFY workflow for already-declared arcs
-
----
-
-## Branch convention
-
-```
-docs/2026-08-13-arc-classification-verify-gap   (this handoff)
-→ Codex: plan/YYYY-MM-DD-arc-classification-gate  (architecture)
-→ Cursor: feat/YYYY-MM-DD-arc-classification-gate (implementation, if code)
-```
-
-Push immediately after each commit. Open PR when acceptance criteria pass. Ryan squash-merges unless PR says **Do not squash**.
+- [ ] Models end every phase with forward announcement (next step + next lane + easiest view)
+- [ ] "See my work" is always one link/command/path — not a scavenger hunt
+- [ ] Open PRs currently stuck between stages get unstuck by the catch-up triage
+- [ ] Ryan is not the default router for every agent-to-agent transition
+- [ ] Trivial work scales down naturally (one sentence is fine for small things)
 
 ---
 
@@ -123,29 +102,12 @@ Push immediately after each commit. Open PR when acceptance criteria pass. Ryan 
 
 | What | Path |
 |------|------|
-| Planning Protocol (workflow diagram) | `docs/PLANNING-PROTOCOL.md` |
-| Verify Planning (the gate that should fire) | `docs/planning/VERIFY-PLANNING.md` |
-| Execute Task (intake step 0) | `docs/planning/EXECUTE-TASK.md` |
-| VERIFY template | `docs/plans/VERIFY-TEMPLATE.md` |
-| Doctor checks (potential enforcement point) | `convmem_doctor.py` |
-| Planning Guide Contract | `docs/planning/CONTRACT.md` |
-| Example: worktree cleanup (the case that slipped through) | This session's review thread |
+| Team Charter (lane assignments) | `docs/inter-model/TEAM-CHARTER-2026-07-06.md` |
+| LATEST.md (stuck-work evidence) | `docs/inter-model/LATEST.md` |
+| Planning Protocol (workflow, unchanged) | `docs/PLANNING-PROTOCOL.md` |
+| Verify Planning (fires when invoked) | `docs/planning/VERIFY-PLANNING.md` |
+| Execute Task (where forward-announce fits) | `docs/planning/EXECUTE-TASK.md` |
 
----
-
-## Leaving / picking up checklist
-
-**Author (leaving):**
-
-- [x] This file committed (or on pushed branch)
-- [ ] `LATEST.md` bullet at top with link and resume state
-- [ ] `STATUS-*.md` Update Log line — N/A (no STATUS file for this; too small for its own arc)
-- [ ] Branch pushed
-
-**Implementer (picking up):**
-
-- [ ] Read this file before first edit
-- [ ] `convmem work resume <branch>` or start from branch convention
-- [ ] Codex: produce ARCHITECTURE plan; Ryan approves before Execute
-
-<!-- Canonical source: Kiro review session 2026-08-13. Ryan identified the gap ("we've been verifying plans but not the final work"). -->
+<!-- Original diagnosis: worktree cleanup had 3 plan reviews, 0 verification.
+     Root cause simplified: models don't announce forward. Fix: say what's next,
+     who does it, and show the easiest path to see the work. -->
