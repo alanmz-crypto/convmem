@@ -252,7 +252,6 @@ Crush may perform the following **without Ryan prompting** — no ask, no wait. 
 
 **Extending this list:** Propose a new named action to Kiro. One-line approval adds it here. Do not extrapolate from existing entries.
 
-
 ## Response TL;DR
 
 
