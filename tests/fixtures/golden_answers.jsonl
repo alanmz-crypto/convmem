@@ -1,3 +1,4 @@
 {"id": "ans_backup_cycle", "question": "What does backup-all.sh do in the willowyhollow backup cycle hardening?", "must_include": ["backup"], "must_cite": true, "should_abstain": false, "acceptable_ids": []}
 {"id": "ans_ksweep", "question": "What are ksweep steering files used for?", "must_include": ["ksweep"], "must_cite": true, "should_abstain": false, "acceptable_ids": []}
+{"id": "ans_ingest_retry_failure_logging", "question": "How are ingest chunk failures handled after the qwen3.5 GPU contention fix?", "must_include": ["synthesis_failures.jsonl", "3-attempt", "5s", "30s"], "must_cite": true, "should_abstain": false, "acceptable_ids": []}
 {"id": "ans_negative_control", "question": "What is the airspeed velocity of an unladen swallow according to convmem?", "must_include": [], "must_cite": false, "should_abstain": true, "acceptable_ids": []}

@@ -163,6 +163,8 @@ class TestAskTrace(unittest.TestCase):
         self.assertEqual(prompts[0].count("[1] ("), 1)
         self.assertEqual(prompts[0].count("[2] ("), 1)
         self.assertEqual(prompts[0].count("[3] ("), 1)
+        self.assertIn("enumerate every distinct operational fact", prompts[0])
+        self.assertIn("retry counts", prompts[0])
         self.assertNotIn("source_trust_boost", plain["citations"][0])
 
         plain_keys = set(plain) - {"trace"}
