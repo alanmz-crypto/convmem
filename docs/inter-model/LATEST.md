@@ -1,9 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-13 (CG-1 G4b independent review PASS; G4a GAP closed at stabilization SHA `2ed2292…`; landscape sync #166; CG-1 handoffs + export tooling; JudgeBench #171/#170; projection gates #168/#169)
+**Updated:** 2026-08-13 (Arc-staleness doctor check authorized; CG-1 G4b independent review PASS; G4a GAP closed at stabilization SHA `2ed2292…`; landscape sync #166; CG-1 handoffs + export tooling; JudgeBench #171/#170; projection gates #168/#169)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
-## Recently merged / settled (2026-08-08 through 2026-08-10)
+## Recently merged / settled (2026-08-08 through 2026-08-13)
+
+- **Arc-staleness doctor check — AUTHORIZED (2026-08-13, not yet implemented):** Ryan authorized a new advisory `arc_staleness` check in `convmem doctor` that warns when STATUS-tracked arcs have incomplete milestones but no Update Log progress in >14 days. Catches the "authorized but forgotten" pattern (P1.3 source-trust was 22 days stale with no execution). Implementation handoff ready for Cursor/Codex. [`KIRO-2026-08-13-arc-staleness-check-handoff.md`](KIRO-2026-08-13-arc-staleness-check-handoff.md)
 
 - **JudgeBench fail-closed calibration runs (#171, 2026-08-09):** Architecture-locked offline calibration with G3 corpus. [`ARCHITECTURE-judgebench.md`](../plans/ARCHITECTURE-judgebench.md) · [`STATUS-judgebench.md`](../plans/STATUS-judgebench.md)
 - **JudgeBench G3 calibration corpus (#170, 2026-08-09):** Locked corpus for semantic calibration. [`EXECUTION-judgebench-flash-slices.md`](../plans/EXECUTION-judgebench-flash-slices.md)

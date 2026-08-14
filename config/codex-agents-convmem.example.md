@@ -235,6 +235,8 @@ Done: result, verification, largest material trade-off/risk, branch/push; Track 
 | `~/Projects/convmem` + architecture | `docs/builder-reference/README.md` | matching digest, then code |
 | `~/Projects/convmem-lab` | `docs/lab-reference/NOTES.md` | `scripts/convmem-lab.sh doctor`; `lab/scripts/compile-synthesis-brief.sh`; `lab/scripts/smoke-synthesis.sh` |
 | Session close / record | `docs/inter-model/SESSION-CLOSE-RECORD.md` | **Only if Ryan asks** — output `convmem record` block; else Track A index only |
+| Resume / in-flight work | `docs/inter-model/LATEST.md` → `*-handoff.md` → `STATUS-*.md` | After Tier A: LATEST top → handoff doc → git branches; not chat search |
+| Authorize Execute for another lane | `docs/inter-model/HANDOFF-TEMPLATE.md` | Handoff doc + LATEST bullet + STATUS Update Log + push branch |
 
 **Split:** `lab-reference/` = lab gates & synthesis smoke (lab repo). `builder-reference/` = prod architecture. Never mix prod/lab data paths. Lab: no MCP registration. `--propose` on prod digest: Ryan-gated.
 

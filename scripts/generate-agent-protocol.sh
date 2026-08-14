@@ -105,6 +105,10 @@ FRONTMATTER
   echo ""
   extract_section TIER_A
   echo ""
+  echo "## Handoff and resume contract"
+  echo ""
+  extract_section HANDOFF_RESUME_CONTRACT
+  echo ""
   echo "## After Tier A — MCP tools (do not repeat brief)"
   echo ""
   extract_section MCP_AFTER_TIER_A
@@ -114,7 +118,7 @@ FRONTMATTER
   echo "## Handoff vs record"
   echo ""
   echo "- Handoff / **ingest your chat** → \`convmem index --file\` this chat's \`agent-transcripts/...jsonl\` (Track A). **No record block** unless Ryan asks."
-  echo "- Do **not** create new markdown logs unless Ryan requested a file."
+  echo "- Authorized implementation handoffs → \`docs/inter-model/*-handoff.md\` + \`LATEST.md\` bullet (see Handoff and resume contract). Ad-hoc \`logs/*.md\` only when Ryan asked."
   echo ""
   extract_section TEAM_CHARTER
   echo ""
@@ -217,6 +221,10 @@ FRONTMATTER
   echo "## Session close"
   echo ""
   extract_section SESSION_CLOSE
+  echo ""
+  echo "## Handoff and resume contract (Kiro authors; Cursor/Codex execute)"
+  echo ""
+  extract_section HANDOFF_RESUME_CONTRACT
   echo ""
   echo "## Kiro — handoff vs record (critical)"
   echo ""
