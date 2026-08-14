@@ -238,6 +238,8 @@ Agents may search, ask, brief, and related freely.
 
 **Planning:** Codex authors approved architecture and execution plans; Cursor implements after Ryan authorization.
 
+**Codex is planning-only by default.** Codex authors architecture and execution plans; it must not write implementation code, tests, scripts, or configuration beyond what the planning documents themselves contain. Implementation → Cursor after Ryan authorization. **Exception:** when Ryan or another agent explicitly directs Codex to implement a specific task (e.g. via a bounded brief or direct instruction), Codex may execute that work within the stated scope.
+
 **PR Steward** — Delivery-role overlay (brief-bound; no merge/grant/ledger); Ryan grant only — never inferred or self-assigns.
 
 **Conditional Copilot.** Independent safety/isolation audits or targeted verification only—not implementation, routine work, drafting, uncontested re-audits, or missing Cursor handoffs. **Sol-High** is a separate scarce resource, not the Copilot audit lane.
