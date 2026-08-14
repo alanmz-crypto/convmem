@@ -1,0 +1,34 @@
+---
+description: When finishing a phase (implementation, plan, verification, review, commit, push, PR), end with a forward announcement naming the next step, next lane, and easiest path to see the work.
+alwaysApply: true
+globs: "**/*"
+---
+
+# Forward announcement (required at phase completion)
+
+When finishing a phase (implementation, plan, verification, review), you MUST end with:
+
+```
+I finished: [phase name]
+Next step:  [what needs to happen next]
+Next lane:  [who does it — e.g. Kiro, Cursor, Ryan]
+See my work: [single easiest path to evaluate — PR URL, file path, or diff command]
+```
+
+**"See my work" must be the lowest-effort viewing path** — a PR diff URL, a single file to read, or a targeted `git diff` command. Not a branch name and SHA that requires spelunking.
+
+**Examples:**
+
+| Situation | Good "See my work" | Bad |
+|---|---|---|
+| Implementation done | `https://github.com/.../pull/175/files` | "branch feat/2026-08-13-foo at tip abc123" |
+| Plan ready for review | `docs/plans/ARCHITECTURE-foo.md` (one file) | "see the last 3 commits" |
+| Bug fix pushed | `git diff origin/main..feat/fix-bar -- src/broken.py` | "check the worktree" |
+| Verification complete | The VERIFY doc with PASS/FAIL table | "I ran the tests" |
+
+Trivial work (one-line fix, single ack) scales down to one sentence naturally — but the three fields (finished/next/lane) must always be present.
+
+<!-- Canonical source: config/agent-protocol.md TIER_A section.
+     Workspace-level rule for salience — the same norm also lives in
+     ~/.cursor/rules/convmem.mdc but this focused file ensures Cursor
+     attends to it at phase boundaries. -->
