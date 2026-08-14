@@ -216,6 +216,24 @@ class BriefTests(unittest.TestCase):
             self.assertTrue(stale["stale"])
             self.assertEqual(stale["newest_file"], "NEWER.md")
 
+    def test_handoff_staleness_ignores_template(self):
+        from brief import _handoff_staleness
+        import os
+        import time
+
+        with tempfile.TemporaryDirectory() as td:
+            inbox = Path(td)
+            latest = inbox / "LATEST.md"
+            latest.write_text("# LATEST\n", encoding="utf-8")
+            tmpl = inbox / "HANDOFF-TEMPLATE.md"
+            tmpl.write_text("# template\n", encoding="utf-8")
+            os.utime(latest, (time.time() - 10, time.time() - 10))
+            os.utime(tmpl, (time.time(), time.time()))
+            stale = _handoff_staleness(inbox)
+            self.assertIsNotNone(stale)
+            assert stale is not None
+            self.assertFalse(stale["stale"])
+
     def test_render_stale_handoff_warning(self):
         data = {
             "generated_at": "2026-06-23T10:00:00Z",

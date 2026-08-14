@@ -61,6 +61,8 @@ See [`builder-reference/notes/suggested-application-of-builder-material.md`](bui
 
 Ryan: **"ingest your chat"** = A · **"index the log"** = B · **"ingest everything"** = A then B. Avoid **"index what you wrote"** (models skip chat).
 
+**Resume / in-flight work (do not use chat search as primary):** After Tier A → `docs/inter-model/LATEST.md` (top bullets) → matching `*-handoff.md` → `STATUS-*.md` → `git branch -a` / unpushed commits. Template: [`inter-model/HANDOFF-TEMPLATE.md`](inter-model/HANDOFF-TEMPLATE.md). Canonical rules: `config/agent-protocol.md` § Handoff and resume contract.
+
 **Do not** `convmem record` for session-start alone. Record only when Ryan closes or substantive work finished (one conclusion, not per-finding).
 
 ---

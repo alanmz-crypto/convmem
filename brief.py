@@ -17,7 +17,7 @@ from query import _coverage_counts
 DEFAULT_BRIEF_PATH = Path("~/.local/share/convmem/brief.md").expanduser()
 CRUSH_VERIFIED_FLAG = Path("~/.local/share/convmem/mcp_crush_verified").expanduser()
 KIRO_DB = Path("~/.local/share/kiro-cli/data.sqlite3").expanduser()
-_INTER_MODEL_SKIP = frozenset({"README.md", "LATEST.md"})
+_INTER_MODEL_SKIP = frozenset({"README.md", "LATEST.md", "HANDOFF-TEMPLATE.md"})
 _CURSOR_PROJECT_PREFIX = "home-lauer-"
 _REPO_ROOT_NAMES = ("GitClones", "Projects", "WordPress")
 _UPDATED_LINE = re.compile(

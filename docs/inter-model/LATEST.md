@@ -1,9 +1,12 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-10 (CG-1 dependability handoffs + cross-model export tooling; landscape sync #166; Chroma R4 GREEN #161; JudgeBench calibration #171/#170; projection gates #168/#169)
+**Updated:** 2026-08-13 (Arc-staleness doctor check authorized; CG-1 G4b independent review PASS; G4a GAP closed at stabilization SHA `2ed2292…`; landscape sync #166; CG-1 handoffs + export tooling; JudgeBench #171/#170; projection gates #168/#169)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
-## Recently merged / settled (2026-08-08 through 2026-08-10)
+## Recently merged / settled (2026-08-08 through 2026-08-13)
+
+- **Arc-staleness doctor check — AUTHORIZED (2026-08-13, not yet implemented):** Ryan authorized a new advisory `arc_staleness` check in `convmem doctor` that warns when STATUS-tracked arcs have incomplete milestones but no Update Log progress in >14 days. Catches the "authorized but forgotten" pattern (P1.3 source-trust was 22 days stale with no execution). Implementation handoff ready for Cursor/Codex. [`KIRO-2026-08-13-arc-staleness-check-handoff.md`](KIRO-2026-08-13-arc-staleness-check-handoff.md)
+- **LATEST stale-handoff autonomy — APPROVED (2026-08-14, Kiro):** Crush may autonomously update+commit+push `LATEST.md` on feature branches when the brief flags it stale (pointer housekeeping for already-authorized work only; non-`main`; no merge/force-push). `HANDOFF-TEMPLATE.md` moved into `_INTER_MODEL_SKIP` so it no longer trips the stale-handoff P0. [`KIRO-2026-08-14-latest-stale-handoff-autonomy.md`](KIRO-2026-08-14-latest-stale-handoff-autonomy.md)
 
 - **JudgeBench fail-closed calibration runs (#171, 2026-08-09):** Architecture-locked offline calibration with G3 corpus. [`ARCHITECTURE-judgebench.md`](../plans/ARCHITECTURE-judgebench.md) · [`STATUS-judgebench.md`](../plans/STATUS-judgebench.md)
 - **JudgeBench G3 calibration corpus (#170, 2026-08-09):** Locked corpus for semantic calibration. [`EXECUTION-judgebench-flash-slices.md`](../plans/EXECUTION-judgebench-flash-slices.md)
@@ -11,6 +14,7 @@
 - **Preserve projections until reindex succeeds (#168, 2026-08-09):** Predecessor to CG-1; prevents destructive one-file reindex but does not yet prove atomic generation replacement.
 - **DeepSeek timeout fix (#167, 2026-08-08):** Raise reasoning model timeout from 15s to 60s.
 - **CG-1 dependability handoff (2026-08-10, unmerged):** Full architecture/implementation handoff for independent review. [`HANDOFF-CG1-DEPENDABILITY-2026-08-10.md`](HANDOFF-CG1-DEPENDABILITY-2026-08-10.md) · [`CURSOR-2026-08-10-cg1-literature-verification-handoff.md`](CURSOR-2026-08-10-cg1-literature-verification-handoff.md)
+- **CG-1 G4b independent review — PASS (2026-08-13, reviewed, unmerged):** The G4a material GAP (cold-validation binding to promotion) is structurally closed and independently reviewed PASS at stabilization SHA `2ed229244ea1d7cdf9a83630ad56d5a194426826`. Crush verified from the exact bytes: full suite 1,284 + 230 subtests (0 fail), focused CG-1 58 pass, dedupe 7 pass; removed the `exact_generation_validator` seam, sealed the serving token, added unconditional fresh-process cold validation, and owner/manifest cross-wire binding. PR #172 head is still `7a35dbf…` (the stabilization commit is local-only and unpushed). **Pending:** Ryan GATE + push/merge. [`CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md`](CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md) · [PR #172](https://github.com/alanmz-crypto/convmem/pull/172)
 - **Cross-model export tooling (2026-08-10, unmerged):** `scripts/export-chatgpt-snapshot.sh` and `scripts/export-claude-bundle.sh` for giving ChatGPT/Claude full project context without changing push conventions.
 
 ## Active handoff

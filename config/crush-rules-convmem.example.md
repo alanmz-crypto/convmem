@@ -124,7 +124,7 @@ After Tier A in a project repo, use read-only MCP `search_fast()`, `ask()`, `rel
 
 **Output `convmem record` only when Ryan literally says:** `record block`, `closing`, `end session`, or `record this`.
 
-**Do not create markdown files** (`logs/*.md`, audit summaries, handoff docs) unless Ryan explicitly asked for a file or told you to append to an existing agreed log (e.g. findings log). To preserve work without a new file → **Track A** session index.
+**Do not create markdown files** (`logs/*.md`, audit summaries) unless Ryan explicitly asked for a file or told you to append to an existing agreed log (e.g. findings log). **Exception:** Ryan-authorized implementation handoffs in `docs/inter-model/*-handoff.md` per **Handoff and resume contract** — use `HANDOFF-TEMPLATE.md`, update `LATEST.md`, push branch. To preserve work without a durable handoff → **Track A** session index only (weak substitute).
 
 **Do not record session-start orientation alone** (`doctor` / `brief` / `unresolved` with no substantive work). That ritual is read-only context — not ledger-worthy unless Ryan says **closing**, **record block**, or you finished a decision/fix worth preserving.
 
@@ -213,6 +213,35 @@ External auth requires exact resource, operation, and final value (or named one-
 Done: result, verification, largest material trade-off/risk, branch/push; Track A at handoff.
 
 
+## Standing autonomous actions (Kiro-approved 2026-08-14)
+
+Crush may perform the following **without Ryan prompting** — no ask, no wait. All five envelope conditions must hold:
+
+1. **Reversible** — a single `git revert` or branch reset undoes it.
+2. **Non-`main`** — feature branches only; never merge, never force-push.
+3. **No new authorization** — the surfaced/maintained work is already authorized elsewhere.
+4. **No external effect** — no API calls, service restarts, config changes, or deployments.
+5. **Observable** — shows up in `git log` on the branch.
+
+**Named actions (approved):**
+
+| Action | Trigger | Scope |
+|--------|---------|-------|
+| Update `LATEST.md` | Watchdog/brief flags STALE HANDOFF or Active P0 | Add bullet, link authorized handoff, roll date — content-only pointer work |
+| Fix false-positive alarms | A known-scaffolding file trips a heuristic (e.g. `HANDOFF-TEMPLATE.md` in staleness check) | One-line skip-set addition + test; literal filename only, no globs |
+| Typo/formatting fix in own output | Noticed in same session, same branch | Doc Crush authored in same branch; never others' docs |
+
+**Not covered (still needs Ryan or Kiro):**
+
+- Authoring new handoff content for work not yet authorized
+- Any change to runtime behavior (code logic, thresholds, config)
+- Anything on `main`
+- New external commitments (PR creation, ledger record, deployment)
+- Touching docs authored by another lane on a different branch
+
+**Extending this list:** Propose a new named action to Kiro. One-line approval adds it here. Do not extrapolate from existing entries.
+
+
 ## Response TL;DR
 
 
@@ -267,6 +296,8 @@ Done: result, verification, largest material trade-off/risk, branch/push; Track 
 | `~/Projects/convmem` + architecture | `docs/builder-reference/README.md` | matching digest, then code |
 | `~/Projects/convmem-lab` | `docs/lab-reference/NOTES.md` | `scripts/convmem-lab.sh doctor`; `lab/scripts/compile-synthesis-brief.sh`; `lab/scripts/smoke-synthesis.sh` |
 | Session close / record | `docs/inter-model/SESSION-CLOSE-RECORD.md` | **Only if Ryan asks** — output `convmem record` block; else Track A index only |
+| Resume / in-flight work | `docs/inter-model/LATEST.md` → `*-handoff.md` → `STATUS-*.md` | After Tier A: LATEST top → handoff doc → git branches; not chat search |
+| Authorize Execute for another lane | `docs/inter-model/HANDOFF-TEMPLATE.md` | Handoff doc + LATEST bullet + STATUS Update Log + push branch |
 
 **Split:** `lab-reference/` = lab gates & synthesis smoke (lab repo). `builder-reference/` = prod architecture. Never mix prod/lab data paths. Lab: no MCP registration. `--propose` on prod digest: Ryan-gated.
 
