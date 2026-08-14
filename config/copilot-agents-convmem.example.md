@@ -17,7 +17,18 @@ calling anything else.
 3. **`convmem unresolved`** — check open observations. Add `--site <hostname>` for client-specific issues (e.g. `--site staging2.willowyhollow.com`). For multiple sites, prefer **separate** `convmem unresolved --site …` calls (or one call without `--site`). Avoid `echo` separators unless comparing output side-by-side.
 4. **Before answering history/architecture questions:** use `convmem "search query"` or `convmem ask "question"` to ground responses in the ledger.
 
-**Branching (convmem prod — Always-Available GitHub Fallback):** After doctor/brief/unresolved, when cwd is `~/Projects/convmem`, run `git branch --show-current`. **Do not edit tracked files on `main`** (no single-file typo exception). Before the first tracked-file edit: `convmem work start <feat|fix|docs|plan|wip> <slug>` (or resume with `convmem work resume <branch>`). Taxonomy `feat|fix|docs|plan|wip/YYYY-MM-DD-slug` — validate before switch. Push with an **explicit** refspec (`git push -u origin "$branch:refs/heads/$branch"`); never `git push -u origin HEAD`. **Push immediately after every commit** — the remote branch is the fallback. Graduate `wip/` with `git branch -m` before review — never merge `wip/` directly. Pre-commit/pre-push reject work on `main`; local `CONVMEM_SKIP_MAIN_HOOK` is hook-skip/audit only (not GitHub authz; never in agent instructions). Agents never merge, force-push, or push `main` — Ryan owns merges (PR required when GitHub protection allows). **Single active writer:** use `--worktree` if contested; do not switch a shared checkout under another agent. Handoff: branch name + `git log origin/main..HEAD --oneline` + push status. Full rules: `docs/plans/ARCHITECTURE-always-github-fallback.md`.
+**Branching (convmem prod — Always-Available GitHub Fallback):** After doctor/brief/unresolved, when cwd is `~/Projects/convmem`, run `git branch --show-current`. **Do not edit tracked files on `main`** (no single-file typo exception). Before the first tracked-file edit: `convmem work start <feat|fix|docs|plan|wip> <slug>` (or resume with `convmem work resume <branch>`). Taxonomy `feat|fix|docs|plan|wip/YYYY-MM-DD-slug` — validate before switch. Push with an **explicit** refspec (`git push -u origin "$branch:refs/heads/$branch"`); never `git push -u origin HEAD`. **Push immediately after every commit** — the remote branch is the fallback. Graduate `wip/` with `git branch -m` before review — never merge `wip/` directly. Pre-commit/pre-push reject work on `main`; local `CONVMEM_SKIP_MAIN_HOOK` is hook-skip/audit only (not GitHub authz; never in agent instructions). Agents never merge, force-push, or push `main` — Ryan owns merges (PR required when GitHub protection allows). **Single active writer:** use `--worktree` if contested; do not switch a shared checkout under another agent. Handoff: branch name + `git log origin/main..HEAD --oneline` + push status.
+
+**Forward announcement (required at phase completion).** When finishing a phase (implementation, plan, verification, review), end with:
+
+I finished: [phase name]
+Next step:  [what needs to happen next]
+Next lane:  [who does it — e.g. Kiro, Cursor, Ryan]
+See my work: [single easiest path to evaluate — PR URL, file path, or diff command]
+
+"See my work" must be the lowest-effort viewing path — a PR diff URL, a single file to read, or a targeted `git diff` command. Not a branch name and SHA that requires spelunking. Trivial work (one-line fix, single ack) scales down to one sentence naturally.
+
+Full rules: `docs/plans/ARCHITECTURE-always-github-fallback.md`.
 
 **Push immediately after commit.** Do not wait for Ryan to say "push." The remote branch IS the backup — unpushed work is unrecoverable. Use explicit `"$branch:refs/heads/$branch"` on first push. Commit often, push every commit.
 
@@ -289,3 +300,4 @@ Done: result, verification, largest material trade-off/risk, branch/push; Track 
 **Split:** `lab-reference/` = lab gates & synthesis smoke (lab repo). `builder-reference/` = prod architecture. Never mix prod/lab data paths. Lab: no MCP registration. `--propose` on prod digest: Ryan-gated.
 
 **Codex / DeepSeek:** verify shipped work via `docs/CODEX-DEEPSEEK-VERIFY.md` (independent checklist — do not trust chat claims alone).
+
