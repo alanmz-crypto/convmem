@@ -97,6 +97,7 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-judgebench.md` — JudgeBench semantic calibration v1
 - `docs/plans/STATUS-r2b-capture-auth.md` — R2b capture authorization
 - `docs/plans/STATUS-shadow-ledger-phase0.md` — Shadow Ledger Phase 0 delta capture
+- `docs/plans/STATUS-chroma-reconcile-tier-l.md` — Chroma Reconcile Tier L (post-rebuild verify)
 
 
 ## MCP after Tier A
@@ -183,6 +184,8 @@ Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add 
 | Bound brief → GitHub PR lifecycle | **PR Steward** (default Codex) | Not involved |
 
 **Planning:** Codex authors approved architecture and execution plans; Cursor implements after Ryan authorization.
+
+**Codex is planning-only by default.** Codex authors architecture and execution plans; it must not write implementation code, tests, scripts, or configuration beyond what the planning documents themselves contain. Implementation → Cursor after Ryan authorization. **Exception:** when Ryan or another agent explicitly directs Codex to implement a specific task (e.g. via a bounded brief or direct instruction), Codex may execute that work within the stated scope.
 
 **PR Steward** — Delivery-role overlay (brief-bound; no merge/grant/ledger); Ryan grant only — never inferred or self-assigns.
 
