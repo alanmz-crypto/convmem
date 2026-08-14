@@ -22,6 +22,7 @@ from query import query_raw, query_units
 
 ASK_PROMPT = """You answer questions using ONLY the retrieved excerpts from past AI coding sessions below.
 Be specific: mention tool names, file paths, commands, config keys, and error messages when present in the excerpts.
+When a question asks for causes, procedures, or multiple details, enumerate every distinct operational fact supported by the excerpts, including exact model names, config keys, numeric limits, retry counts, and backoff intervals; preserve the source spelling and formatting of those identifiers and values, and do not compress away a supported detail.
 If the excerpts do not contain enough information to answer, say so clearly — do not invent details or guess from general knowledge.
 Cite sources inline as [1], [2], etc. matching the excerpt numbers below.
 Each excerpt header includes a date when known — use it when the user asks about "today", "recently", or timing.
@@ -38,6 +39,7 @@ Answer:"""
 
 FOLLOWUP_ASK_PROMPT = """You answer questions using ONLY the retrieved excerpts from past AI coding sessions below.
 Be specific: mention tool names, file paths, commands, config keys, and error messages when present in the excerpts.
+When a question asks for causes, procedures, or multiple details, enumerate every distinct operational fact supported by the excerpts, including exact model names, config keys, numeric limits, retry counts, and backoff intervals; preserve the source spelling and formatting of those identifiers and values, and do not compress away a supported detail.
 If the excerpts do not contain enough information to answer, say so clearly — do not invent details or guess from general knowledge.
 Cite sources inline as [1], [2], etc. matching the excerpt numbers below.
 Each excerpt header includes a date when known — use it when the user asks about "today", "recently", or timing.
