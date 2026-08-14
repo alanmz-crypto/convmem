@@ -56,3 +56,6 @@ scripts/__init__.py
 chatgpt-snapshot-*.md
 chatgpt-onboard-*.md
 claude-bundle-*.md
+
+# Complete-data restore preflight reports (written to cwd; keep local, not commit)
+complete-data-restore-reports/
