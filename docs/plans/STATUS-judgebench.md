@@ -101,10 +101,13 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 | `eval_judgebench/provider_requests.py` | Builds and validates pinned DeepSeek/Llama request shapes and parses provider responses | Branch-only Phase A implementation; strict provider-specific response envelopes; no provider/model calls have run |
 | `eval_corpus/fixtures/judgebench/identity-registry-v2.json` | Frozen-producer identity resolution for canonical calibration | Branch-only Phase A provenance input; not on `main` |
 | `eval_judge.py` (T5, merged #155; prompt upgrade #153) | `--legacy` gate; reason-before-scoring; `confidence` field; legacy path isolated from v1 provenance | Complete (on main) |
-| `tests/test_judgebench_contracts.py` | Contracts + T2 identity + T3 provenance + T4 runner + T5 legacy isolation | Green — 29 tests (see `VERIFY-judgebench.md` CHK-004..008) |
+| `tests/test_judgebench_contracts.py` | Contract + T2–T5 (identity, provenance, runner, legacy) tests consolidated | Green — see `VERIFY-judgebench.md` CHK-004..008 |
 | `tests/test_judgebench_rubric.py` | Rubric load/validate tests | Green |
 | `tests/test_judgebench_no_chroma.py` | AST import scan — proves no Chroma in eval_judgebench/ | Green |
 | `tests/test_eval_methodology.py` | Shared eval methodology gates (`--legacy` with `--judge`, negative control) | Green |
+
+> T2–T5 source (identity, provenance, runner, legacy shim) merged to `main` via PR #155.
+> Their tests were consolidated into `tests/test_judgebench_contracts.py` (33 tests).
 
 ### G3 state on `main` and Phase A state on this feature branch
 
@@ -151,7 +154,7 @@ ConvMem answers questions by retrieving evidence and generating responses. Today
 
 **If Ryan sent you here to implement:** Review and deliver the Phase A metrics/prep branch after the focused offline checks pass. Do not run calibration calls; the separate 3-candidate × 20-case = 60-call experiment requires Ryan authorization after PR/merge.
 
-**If Ryan sent you here to review:** Read `main`'s implementation and [`VERIFY-judgebench.md`](VERIFY-judgebench.md). Key questions: Does identity classification enforce `cross_family`-only for canonical runs? Does comparison-signature detect all the fields listed in the architecture? Is the runner truly Chroma-free? T2–T5 mechanical checks live in [`tests/test_judgebench_contracts.py`](../../tests/test_judgebench_contracts.py).
+**If Ryan sent you here to review:** Read `main`'s implementation and [`VERIFY-judgebench.md`](VERIFY-judgebench.md). Key questions: Does identity classification enforce `cross_family`-only for canonical runs? Does comparison-signature detect all the fields listed in the architecture? Is the runner truly Chroma-free? T2–T5 tests are consolidated in [`tests/test_judgebench_contracts.py`](../../tests/test_judgebench_contracts.py).
 
 **If Ryan sent you here for G3:** G3 is locked. Do not alter its cases, gold judgments, split, or lock metadata; any future corpus change requires Ryan and a new immutable corpus version.
 
@@ -241,6 +244,7 @@ JudgeBench is upstream of everything: until the judge is calibrated, all other q
 |------|-----|--------|
 | 2026-08-09 | Kiro | Initial arc brief; T2–T5 on branch, PR not filed, G3/G4 awaiting Ryan |
 | 2026-08-09 | Crush (DeepSeek) | Reconcile: T2–T5 merged to `main` via PR #155; completion state and remaining steps updated; noted T2–T5 test modules not carried to `main`/`tests/` in #155 |
+| 2026-08-09 | Crush (DeepSeek) | Corrected test coverage note; T2–T5 tests live in test_judgebench_contracts.py (33 tests) |
 | 2026-08-09 | Crush | Golden eval repaired 2/10 → 10/10 (Chroma backfill of approved ledger + CSP obs pair); T7 post-rebuild verify unblocked |
 | 2026-08-09 | Cursor | Landscape sync: T2–T5 tests in contracts file; Chroma R4 GREEN cross-links; runner API in section 1 |
 | 2026-08-09 | Codex Luna Medium | Current state reconciled: G3 is merged and locked on `main` at `5f1a3ef`; Phase A remains branch-only with v2 provenance resolution, provider-bound requests/envelopes, and no network/model/calibration calls; review/PR/merge, the separate 3-candidate × 20-case = 60-call authorization, and G4 remain ahead |
