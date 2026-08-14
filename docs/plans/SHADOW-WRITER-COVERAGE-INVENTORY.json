@@ -30,6 +30,7 @@
     "chroma_write_store.py:437",
     "convmem.py:136",
     "convmem.py:628",
+    "file_generation_store.py:95",
     "mcp_server.py:897",
     "mcp_server.py:944",
     "shadow_canary.py:528",
@@ -86,6 +87,15 @@
       "required_routing": "allowlisted_direct",
       "uses_open_chroma_for_write": false,
       "note": "Monitor dry-run path; mutation_sink=None (no injection)"
+    },
+    {
+      "file": "file_generation_store.py",
+      "line": 95,
+      "snippet": "self._store = ChromaStore(self.chroma_dir, mutation_sink=None)",
+      "class": "cg1_hermetic_generation_store",
+      "required_routing": "allowlisted_direct",
+      "uses_open_chroma_for_write": false,
+      "note": "CG-1 opt-in hermetic temporary generation store; mutation_sink=None; no production activation or authoritative Shadow events"
     },
     {
       "file": "mcp_server.py",

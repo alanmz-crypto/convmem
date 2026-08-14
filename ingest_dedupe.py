@@ -39,8 +39,9 @@ def _semantic_record(
     similarity: float,
     existing_meta: dict,
     new_meta: dict,
+    include_logical_ids: bool = False,
 ) -> dict:
-    return {
+    row = {
         "id_a": existing_id,
         "id_b": new_id,
         "similarity": round(similarity, 4),
@@ -51,10 +52,25 @@ def _semantic_record(
         "status": "pending",
         "source": "ingest",
     }
+    if include_logical_ids:
+        row["logical_id_a"] = str(existing_meta.get("logical_id") or existing_id)
+        row["logical_id_b"] = str(new_meta.get("logical_id") or new_id)
+    return row
 
 
-def evaluate_ingest_batch(  # pylint: disable=too-many-locals
-    store, cfg: dict, units_batch: list[tuple]
+def _logical_id(row: dict, metadata: dict) -> str:
+    """Return the identity-comparison id without changing legacy callers."""
+    return str(
+        metadata.get("logical_id") or row.get("logical_id") or row.get("id") or ""
+    )
+
+
+def evaluate_ingest_batch(  # pylint: disable=too-many-locals,too-many-nested-blocks
+    store,
+    cfg: dict,
+    units_batch: list[tuple],
+    *,
+    generation_identity_fields: bool = False,
 ) -> IngestDedupeResult:
     """Filter exact duplicates and collect review-only semantic candidates."""
     dedupe_cfg = cfg.get("ingest_dedup") or {}
@@ -78,11 +94,18 @@ def evaluate_ingest_batch(  # pylint: disable=too-many-locals
 
         for candidate in existing:
             candidate_id = str(candidate.get("id") or "")
-            if not candidate_id or candidate_id == unit["id"]:
-                continue
             candidate_meta = candidate.get("metadata") or {}
+            same_identity = candidate_id == unit["id"]
+            if generation_identity_fields:
+                same_identity = _logical_id(candidate, candidate_meta) == _logical_id(
+                    unit, metadata
+                )
+            if not candidate_id or same_identity:
+                continue
             same_hash = candidate_meta.get("content_hash") == content_hash
-            same_text = canonical_unit_text(candidate.get("document") or "") == canonical
+            same_text = (
+                canonical_unit_text(candidate.get("document") or "") == canonical
+            )
             if same_hash or same_text:
                 exact_match = candidate_id
                 break
@@ -94,26 +117,43 @@ def evaluate_ingest_batch(  # pylint: disable=too-many-locals
                 semantic.append((similarity, candidate_id, candidate_meta))
 
         if exact_match is None:
-            for accepted_unit, _accepted_doc, accepted_embedding, accepted_meta in accepted_rows:
+            for (
+                accepted_unit,
+                _accepted_doc,
+                accepted_embedding,
+                accepted_meta,
+            ) in accepted_rows:
                 if accepted_meta.get("content_hash") == content_hash:
                     exact_match = accepted_unit["id"]
                     break
                 similarity = cosine_similarity(embedding, accepted_embedding)
                 if similarity >= threshold:
-                    semantic.append(
-                        (similarity, accepted_unit["id"], accepted_meta)
-                    )
+                    semantic.append((similarity, accepted_unit["id"], accepted_meta))
 
         if exact_match is not None:
-            result.exact_suppressions.append(
-                {
-                    "suppressed_id": unit["id"],
-                    "matched_id": exact_match,
-                    "content_hash": content_hash,
-                    "source_path": metadata.get("source_path") or "",
-                    "suppressed_at": _now_iso(),
-                }
-            )
+            suppression = {
+                "suppressed_id": unit["id"],
+                "matched_id": exact_match,
+                "content_hash": content_hash,
+                "source_path": metadata.get("source_path") or "",
+                "suppressed_at": _now_iso(),
+            }
+            if generation_identity_fields:
+                suppression["suppressed_logical_id"] = _logical_id(unit, metadata)
+                matched_logical = exact_match
+                for candidate in existing:
+                    if str(candidate.get("id") or "") == exact_match:
+                        matched_logical = _logical_id(
+                            candidate, candidate.get("metadata") or {}
+                        )
+                        break
+                else:
+                    for accepted_unit, _doc, _emb, accepted_meta in accepted_rows:
+                        if str(accepted_unit.get("id") or "") == exact_match:
+                            matched_logical = _logical_id(accepted_unit, accepted_meta)
+                            break
+                suppression["matched_logical_id"] = matched_logical
+            result.exact_suppressions.append(suppression)
             continue
 
         accepted = (unit, document, embedding, metadata)
@@ -133,6 +173,7 @@ def evaluate_ingest_batch(  # pylint: disable=too-many-locals
                     similarity=similarity,
                     existing_meta=candidate_meta,
                     new_meta=metadata,
+                    include_logical_ids=generation_identity_fields,
                 )
             )
             if len(seen_ids) >= max_semantic:
@@ -180,7 +221,9 @@ def _append_jsonl(path: Path, rows: list[dict], *, unique_pairs: bool = False) -
                     row = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                pair = tuple(sorted((str(row.get("id_a") or ""), str(row.get("id_b") or ""))))
+                pair = tuple(
+                    sorted((str(row.get("id_a") or ""), str(row.get("id_b") or "")))
+                )
                 if all(pair):
                     existing_pairs.add(pair)
         written = 0
