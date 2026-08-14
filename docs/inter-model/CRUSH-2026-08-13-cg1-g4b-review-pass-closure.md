@@ -6,6 +6,11 @@
 **Relates to:** `HANDOFF-CG1-DEPENDABILITY-2026-08-10.md` → `CHATGPT-2026-08-10-cg1-closure-gate-g4a.md`
 **Reviewed bytes:** stabilization SHA `2ed229244ea1d7cdf9a83630ad56d5a194426826`
 
+> **Status (2026-08-14): MERGED.** The CG-1 code (PR #172) and this closure
+> docs package (PR #174) were both merged to `main`. The stabilization SHA
+> `2ed2292…` is upstream. Closure equation satisfied; only CG-2 activation
+> (separate grant) remains open.
+
 ---
 
 ## Summary
@@ -44,10 +49,11 @@ bookkeeping re-pointed to `2ed2292…`.
 | Authoritative worktree | `/home/lauer/.local/share/convmem/worktrees/feat-2026-08-10-cg1-recovery` (clean, at tip) |
 | Baseline (main) | `0be0a05b9984ba2b23b2f1dc1728904951560d96` |
 | Reviewed delta | `7a35dbf0f5d081164ef2856ef4951f6b259878e8..2ed229244ea1d7cdf9a83630ad56d5a194426826` |
-| Push state | **Local only. PR #172 head remains `7a35dbf…`; the stabilization `2ed2292…` is not yet pushed.** |
+| Push state | **MERGED. PR #172 was merged to `main` on 2026-08-14; the stabilization `2ed2292…` is now upstream on `main`.** |
 
 **Important:** `/tmp/convmem-cg1-delivery` (from the G4a packet) is superseded.
-The authoritative bytes are in the worktree above, at exactly `2ed2292…`.
+The authoritative bytes matched the reviewed SHA `2ed2292…`, which is now on
+`main` via PR #172.
 
 ## The G4a GAP — closed
 
@@ -139,26 +145,25 @@ copy) and it passes. Sol's original run used a `/tmp` worktree.
 ```
 tested bytes       = 2ed2292…  (1284 + 230 suite, 0 failures)
 reviewed bytes     = 2ed2292…  (Crush G4b independent review: PASS)
-accepted bytes     = PENDING   (Ryan GATE)
-pushed bytes       = 7a35dbf…  (PR #172 head — still excludes stabilization)
+accepted bytes     = 2ed2292…  (Ryan GATE: ACCEPTED 2026-08-14)
+pushed bytes       = 2ed2292…  (PR #172 merged to main 2026-08-14)
 ```
 
-The acceptance condition `tested = reviewed = accepted = pushed` is **not yet
-satisfied** because `accepted` and `pushed` remain pending. The remaining steps
-are Ryan's acceptance, then pushing `2ed2292…` to PR #172.
+The acceptance condition `tested = reviewed = accepted = pushed` is **satisfied**
+as of 2026-08-14. PR #172 (code) and #174 (this closure docs package) were both
+merged to `main`; the stabilization SHA `2ed2292…` is upstream.
 
 ## What is NOT done / not authorized
 
 - Live activation of the mechanism. CG-2 activation blockers are pre-recorded in
   the PR #172 body (doctor `index_drift` to logical export ids, `projection_parity`
   logical_id, semantic-review queue growth, legacy path aliases, direct read
-  bypasses). Those gate *activation*, not this merge.
-- Merge of PR #172. Nowhere in this packet is authorization to merge or activate.
-- No production corpus or Chroma mutation.
+  bypasses). Those gate *activation*, not the merge (now landed).
+- No production corpus or Chroma mutation was done by CG-1.
 
-## Next actions
+## Next actions (post-merge, as of 2026-08-14)
 
-1. **Ryan:** accept the review / GATE.
-2. **Push `2ed2292…`** to PR #172 so reviewed = pushed (Ryan or authorized lane).
-3. **Merge** PR #172 (squash-safe per PR body) — Ryan.
-4. Later, CG-2 (activation) — separate grant.
+1. Accept the review / GATE for the closure packet — **DONE** (Ryan, 2026-08-14).
+2. Push `2ed2292…` to PR #172 so reviewed = pushed — **DONE** (merged 2026-08-14).
+3. Merge PR #172 (squash-safe per PR body) — **DONE** (merged 2026-08-14).
+4. Later, CG-2 (activation) — separate grant; still open and not authorized.
