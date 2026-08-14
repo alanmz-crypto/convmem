@@ -43,8 +43,8 @@ bookkeeping re-pointed to `2ed2292…`.
 | Worktree / path | HEAD | SHA on remote | Content-equivalent to `origin/main` | Restore reports salvaged | Closure doc corrected |
 |-----------------|------|---------------|---------------------------------------|--------------------------|------------------------|
 | `~/.local/share/convmem/worktrees/feat-2026-08-10-cg1-recovery` | — | — | — | — | **N/A — path removed in worktree Pass 1 (2026-08-13); do not recreate unless a new doc contract requires it** |
-| `/tmp/convmem-cg1-lint` | `2ed2292…` | **yes** (reachable on `origin/feat/2026-08-10-2026-08-10-cg1-committed-generation-substrate`; remote tip `8d10cf8…`) | **yes** (`MERGED_CONTENT_EQUIVALENT` — CG-1 substrate absorbed via squash merge `e2f8b0f` on `origin/main`; full-tree two-tree at `2ed2292` is non-empty only because `main` gained post-CG-1 commits) | **no** — `restore-f090683bc4f4.{json,md}` still local; salvage to `~/Projects/convmem/complete-data-restore-reports/` before removal | **this update** |
-| `/tmp/convmem-cg1-verify` | `2ed2292…` | **yes** (same as above) | **yes** (same classification) | **no** — `restore-54ecff7733c3.{json,md}` still local; salvage before removal | **this update** |
+| `/tmp/convmem-cg1-lint` | `2ed2292…` (removed 2026-08-13) | **yes** | **yes** (`MERGED_CONTENT_EQUIVALENT`) | **yes** — `restore-f090683bc4f4.{json,md}` → `~/Projects/convmem/complete-data-restore-reports/` | **yes** |
+| `/tmp/convmem-cg1-verify` | `2ed2292…` (removed 2026-08-13) | **yes** | **yes** (same) | **yes** — `restore-54ecff7733c3.{json,md}` → same dir | **yes** |
 
 **Tracked modifications on `/tmp/convmem-cg1-lint` (classify before removal):**
 
@@ -61,12 +61,12 @@ bookkeeping re-pointed to `2ed2292…`.
 |-------|-------|
 | Stabilization SHA | `2ed229244ea1d7cdf9a83630ad56d5a194426826` |
 | Branch | `feat/2026-08-10-2026-08-10-cg1-committed-generation-substrate` |
-| Authoritative worktree | **`/tmp/convmem-cg1-lint` and `/tmp/convmem-cg1-verify`** @ `2ed2292…` (protected until reconciliation salvage complete). Former path `~/.local/share/convmem/worktrees/feat-2026-08-10-cg1-recovery` **does not exist** — removed in worktree Pass 1. |
+| Authoritative worktree | **None local** — `/tmp/convmem-cg1-*` worktrees **removed** after salvage (2026-08-13). Reviewed bytes remain at SHA `2ed2292…` on `origin/feat/2026-08-10-2026-08-10-cg1-committed-generation-substrate`. Restore reports in `~/Projects/convmem/complete-data-restore-reports/`. |
 | Baseline at review | `0be0a05b9984ba2b23b2f1dc1728904951560d96` |
 | Reviewed delta | `7a35dbf0f5d081164ef2856ef4951f6b259878e8..2ed229244ea1d7cdf9a83630ad56d5a194426826` |
 | Merge state | **PR #172 MERGED** → `origin/main` @ `e2f8b0f…` |
 
-**Important:** `/tmp/convmem-cg1-delivery` and `feat-2026-08-10-cg1-recovery` are superseded. Local evidence at `2ed2292…` lives only under the two `/tmp` worktrees until salvaged and released.
+**Important:** `/tmp/convmem-cg1-delivery`, `feat-2026-08-10-cg1-recovery`, and `/tmp/convmem-cg1-*` are superseded/removed. Do not recreate unless a new doc contract requires it.
 
 ## The G4a GAP — closed
 
@@ -170,43 +170,47 @@ a separate grant.
 
 - Live activation of the mechanism (CG-2). Activation blockers remain in the
   PR #172 body.
-- Removal of `/tmp/convmem-cg1-*` until restore reports are salvaged and Ryan
-  authorizes that cleanup batch.
 - No production corpus or Chroma mutation.
 
 ## Next actions
 
 1. **Ryan:** accept the review / GATE (if not already granted).
-2. **Salvage** both `/tmp` `complete-data-restore-reports/` dirs to the active
-   checkout (or agreed archive path).
-3. **Worktree Pass 3+:** Ryan authorizes each ≤5-worktree batch separately.
-4. Later, CG-2 (activation) — separate grant.
+2. Later, CG-2 (activation) — separate grant.
 
 ---
 
-## Appendix — Worktree cleanup Pass 3 gate (Cursor, 2026-08-13)
+## Appendix — Worktree cleanup **COMPLETE** (Cursor, 2026-08-13)
 
-**Inventory:** 27 worktrees after Pass 1–2 (60 removed). **Kiro verdict:** PASS.
-**Execution:** Ryan-gated per batch; no removals in this commit.
+**Kiro verdict:** PASS on reconciliation table (`c34f2f2`). **Ryan authorized**
+salvage + Batch 3; subsequent batches executed through plan completion.
 
-### Protected (do not remove)
+| Metric | Value |
+|--------|-------|
+| Start | 92 worktrees |
+| End | **7** (1 active checkout + 5 substantive + 1 decision-required) |
+| Removed | 85 worktrees across Pass 1–2 and Batches 3–9 |
+| `git branch -D` | **never used** (416 branches unchanged) |
+| `--force` | **never used** |
 
-- Active checkout `~/Projects/convmem` (`docs/2026-08-13-codex-planning-only-guard`)
-- `/tmp/convmem-cg1-lint`, `/tmp/convmem-cg1-verify` (until salvage + Ryan batch)
-- `fix/2026-08-07-judge-bench-judge-upgrades` (8 dirty paths; DECISION_REQUIRED)
-- All substantive no-PR branches and local-only unique-commit worktrees
+### Remaining worktrees (intentional)
 
-### Proposed Batch 3 (≤5 — **not authorized**)
+| Path | Branch | Status |
+|------|--------|--------|
+| `~/Projects/convmem` | active feature branch | writer checkout |
+| `…/docs-2026-07-30-c7-c6-standing-check-readiness` | +89 commits | substantive / open PR candidate |
+| `…/feat-2026-08-10-judgebench-live-driver` | +2 commits | substantive |
+| `…/fix-2026-07-24-crush-bash-index-freeze` | +1 commit | substantive |
+| `…/fix-2026-08-04-embedding-eval-gate1-hardening` | +43 commits | substantive |
+| `…/fix-2026-08-07-judge-bench-judge-upgrades` | 8 dirty files | **DECISION_REQUIRED** — do not remove |
+| `…/plan-2026-08-07-chroma-reconcile-revise` | +2 commits | substantive |
 
-| # | Worktree | Rationale | Blocker / note |
-|---|----------|-----------|----------------|
-| 1 | `~/Projects/convmem-wt-debate-insight` | Duplicate of `docs/2026-07-15-debate-insight-folder` @ `c29b449`; remote-backed copy kept | Local branch `wip/2026-07-15-codex-top-two-proxy` has **no remote** — worktree remove only; do not `branch -D` without discard auth |
-| 2 | `~/Projects/convmem-worktrees/pr52-r2a-closeout` | Detached @ `e585a09`; ancestor of merged `origin/feat/2026-07-19-r2a-auth-schema` (PR #52) | **Strict two-tree vs `main` is non-empty** (stale tip) — confirm Ryan accepts archive under `MERGED_CONTENT_EQUIVALENT` policy before including |
+### Salvage archive (untracked in active checkout)
 
-**Salvage disposition (CG-1 `/tmp`):** Copy `restore-f090683bc4f4.*` and
-`restore-54ecff7733c3.*` into `~/Projects/convmem/complete-data-restore-reports/`
-(or agreed path) **before** any `/tmp` worktree removal. Reports are generated
-restore-drill artifacts, not cited in handoff docs.
+- `complete-data-restore-reports/` — restore-drill outputs including CG-1 pairs
+- `docs/inter-model/debate-2026-07-15-who-fixes-retrieval/CODEX-top-two-problems-and-plans.md`
+- `/tmp/convmem-salvage-plan-activation-corrective/EXECUTION-shadow-phase0-activation-corrective.patch`
 
-**Post-batch verification (each batch):** `git worktree list`, `git branch -a`,
-`convmem doctor`; stop on count mismatch or unexpected `--force`.
+### Out of scope (not part of cleanup plan)
+
+- Local branch `wip/2026-07-15-codex-top-two-proxy` (no worktree; no remote) — push or explicit discard
+- `fix/2026-08-07-judge-bench-judge-upgrades` dirty WIP — commit/PR or discard
