@@ -1,7 +1,17 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-09 (DeepSeek V4 Flash timeout fix, Chroma R4 GREEN #161, JudgeBench T2–T5 #155, STATUS arc-brief pattern #160)
+**Updated:** 2026-08-10 (CG-1 dependability handoffs + cross-model export tooling; landscape sync #166; Chroma R4 GREEN #161; JudgeBench calibration #171/#170; projection gates #168/#169)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
+
+## Recently merged / settled (2026-08-08 through 2026-08-10)
+
+- **JudgeBench fail-closed calibration runs (#171, 2026-08-09):** Architecture-locked offline calibration with G3 corpus. [`ARCHITECTURE-judgebench.md`](../plans/ARCHITECTURE-judgebench.md) · [`STATUS-judgebench.md`](../plans/STATUS-judgebench.md)
+- **JudgeBench G3 calibration corpus (#170, 2026-08-09):** Locked corpus for semantic calibration. [`EXECUTION-judgebench-flash-slices.md`](../plans/EXECUTION-judgebench-flash-slices.md)
+- **Projection completeness gate (#169, 2026-08-09):** Truthful accounting — stops treating successful-looking Chroma state as proof that every expected projection exists.
+- **Preserve projections until reindex succeeds (#168, 2026-08-09):** Predecessor to CG-1; prevents destructive one-file reindex but does not yet prove atomic generation replacement.
+- **DeepSeek timeout fix (#167, 2026-08-08):** Raise reasoning model timeout from 15s to 60s.
+- **CG-1 dependability handoff (2026-08-10, unmerged):** Full architecture/implementation handoff for independent review. [`HANDOFF-CG1-DEPENDABILITY-2026-08-10.md`](HANDOFF-CG1-DEPENDABILITY-2026-08-10.md) · [`CURSOR-2026-08-10-cg1-literature-verification-handoff.md`](CURSOR-2026-08-10-cg1-literature-verification-handoff.md)
+- **Cross-model export tooling (2026-08-10, unmerged):** `scripts/export-chatgpt-snapshot.sh` and `scripts/export-claude-bundle.sh` for giving ChatGPT/Claude full project context without changing push conventions.
 
 ## Active handoff
 

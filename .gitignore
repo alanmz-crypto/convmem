@@ -51,3 +51,8 @@ staging/builder-reference/
 /sys
 # Agent worktree probe — must not package scripts/ for Pylint module names
 scripts/__init__.py
+
+# ChatGPT snapshot exports (ephemeral, per-session)
+chatgpt-snapshot-*.md
+chatgpt-onboard-*.md
+claude-bundle-*.md
