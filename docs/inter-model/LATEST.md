@@ -3,6 +3,10 @@ V# Latest cross-model handoff (single pointer — update at session end)
 **Updated:** 2026-08-07 (GPU contention fix: summarize → cloud, embed timeout, chunk retry, MAX_LOADED_MODELS=2; PR #140)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
+## Recently merged / settled (2026-08-13)
+
+- **Arc-classification verify gap — AUTHORIZED (2026-08-13, not yet implemented):** Ryan identified that multi-session work (e.g. worktree cleanup Pass 1-3+) bypasses Verify Planning because arc classification is implicit — nothing forces the question. The VERIFY system works for declared arcs but the classification step has no mechanical gate. Codex to produce ARCHITECTURE plan for a fix. [`KIRO-2026-08-13-arc-classification-verify-gap-handoff.md`](KIRO-2026-08-13-arc-classification-verify-gap-handoff.md)
+
 ## Active handoff
 
 - **Summarizer GPU contention fix — COMPLETE (2026-08-07):** Who/What: Crush (investigation) + Claude cloud (advisory) + Kiro (design review) fixed four issues from the qwen3.5 summarizer saturating the RTX 3060 at 95% GPU util, causing ollama embed calls to blow 120 s timeouts and silently drop ingested chunks. When: 2026-08-06 evening, committed to `fix/2026-08-06-summarizer-switch-baseline-and-docs`; PR #140 filed. Why: every chunk's summarize→embed→distill pipeline queued behind a single `-np 1` 6.6 GB model; `ingest.py:638` caught exceptions and `continue`d with zero visibility. How: `summarize_model = "deepseek-v4-flash"` (cloud, key present), `ollama_embed` timeout 120→300 s, `OLLAMA_MAX_LOADED_MODELS=2` (was 1), chunk failure logging to `synthesis_failures.jsonl` + 3-attempt retry with 5s/30s backoff in `ingest.py`. Verified: zero watch journal timeouts after fix, both models resident in `ollama ps`, all doctor PASS.
