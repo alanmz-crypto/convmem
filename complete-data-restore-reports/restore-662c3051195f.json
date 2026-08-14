@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "classifications": [],
+    "evidence_comparisons": [],
+    "exit_code": 24,
+    "final_detail": "snapshot paths ['/tmp/convmem-restic-t1-ok5l64lb/wrong-root'] do not match data root [/tmp/convmem-restic-t1-ok5l64lb/data-root]",
+    "finished_at": "2026-07-29T00:10:54Z",
+    "kind": "complete_data_restore_preflight",
+    "restic_version": null,
+    "snapshot": {},
+    "started_at": "2026-07-29T00:10:53Z",
+    "status": "FAIL"
+  },
+  "steps": [
+    {
+      "at": "2026-07-29T00:10:53Z",
+      "detail": "id=662c3051195fcafdc02ba46ef9f9d2ae9c0298c494f8831e217e3ae94a955172",
+      "name": "resolve_and_restore",
+      "status": "RUNNING"
+    },
+    {
+      "at": "2026-07-29T00:10:54Z",
+      "detail": "snapshot paths ['/tmp/convmem-restic-t1-ok5l64lb/wrong-root'] do not match data root [/tmp/convmem-restic-t1-ok5l64lb/data-root]",
+      "exit_code": 24,
+      "name": "resolve_and_restore",
+      "status": "FAIL"
+    }
+  ]
+}

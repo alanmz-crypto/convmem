@@ -1,0 +1,631 @@
+{
+  "meta": {
+    "classifications": [
+      {
+        "authority": "tier1_authoritative",
+        "code": "",
+        "detail": "Chroma validation failed: chroma.sqlite3 missing",
+        "evidence_comparison": null,
+        "outcome": "BLOCKED",
+        "path": "chroma",
+        "repair_source": ""
+      },
+      {
+        "authority": "canonical_decisions",
+        "code": "",
+        "detail": "missing",
+        "evidence_comparison": null,
+        "outcome": "BLOCKED",
+        "path": "decisions-approved.jsonl",
+        "repair_source": ""
+      },
+      {
+        "authority": "canonical_control",
+        "code": "",
+        "detail": "file missing (empty lifecycle)",
+        "evidence_comparison": null,
+        "outcome": "ADVISORY",
+        "path": "pending_decision_events.jsonl",
+        "repair_source": ""
+      },
+      {
+        "authority": "compatibility_projection",
+        "code": "",
+        "detail": "absent (normal when no projection)",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "pending_decisions.jsonl",
+        "repair_source": ""
+      },
+      {
+        "authority": "derived_export",
+        "code": "",
+        "detail": "missing — regeneratable from Chroma",
+        "evidence_comparison": null,
+        "outcome": "REPAIRABLE",
+        "path": "knowledge_units.jsonl",
+        "repair_source": "Chroma"
+      },
+      {
+        "authority": "mixed_incremental_sidecar",
+        "code": "",
+        "detail": "missing — rebuild via source rescan",
+        "evidence_comparison": null,
+        "outcome": "REPAIRABLE",
+        "path": "processed.json",
+        "repair_source": "Source rescan"
+      },
+      {
+        "authority": "conditional_operational_control",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "dedupe_queue.jsonl",
+        "repair_source": ""
+      },
+      {
+        "authority": "conditional_operational_control",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "link_queue.jsonl",
+        "repair_source": ""
+      },
+      {
+        "authority": "conditional_operational_control",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "ingest_duplicate_suppressions.jsonl",
+        "repair_source": ""
+      },
+      {
+        "authority": "source_inventory_cache",
+        "code": "",
+        "detail": "missing",
+        "evidence_comparison": null,
+        "outcome": "REPAIRABLE",
+        "path": "inventory.jsonl",
+        "repair_source": "Source rescan/reimport"
+      },
+      {
+        "authority": "import_artifacts",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "imports",
+        "repair_source": ""
+      },
+      {
+        "authority": "conditional_authorization_control",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "authorizations",
+        "repair_source": ""
+      },
+      {
+        "authority": "non_authoritative_phase0",
+        "code": "",
+        "detail": "absent/disabled (normal Phase 0 default)",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "shadow/",
+        "repair_source": ""
+      },
+      {
+        "authority": "non_authoritative_phase0",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "shadow_activation.json",
+        "repair_source": ""
+      },
+      {
+        "authority": "non_authoritative_phase0",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "shadow_activation_manifest.json",
+        "repair_source": ""
+      },
+      {
+        "authority": "non_authoritative_phase0",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "shadow_health.json",
+        "repair_source": ""
+      },
+      {
+        "authority": "canonical_when_referenced",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "hash_schema_deploy.json",
+        "repair_source": ""
+      },
+      {
+        "authority": "canonical_when_referenced",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "hash_schema_migration_report.json",
+        "repair_source": ""
+      },
+      {
+        "authority": "operational_evidence",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "attempts.jsonl",
+        "repair_source": ""
+      },
+      {
+        "authority": "operational_evidence",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "index_failures.jsonl",
+        "repair_source": ""
+      },
+      {
+        "authority": "operational_evidence",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "synthesis_failures.jsonl",
+        "repair_source": ""
+      },
+      {
+        "authority": "operational_evidence",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "refine_undo",
+        "repair_source": ""
+      },
+      {
+        "authority": "operational_evidence",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "refine_stats.json",
+        "repair_source": ""
+      },
+      {
+        "authority": "operational_evidence",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "brief.md",
+        "repair_source": ""
+      },
+      {
+        "authority": "operational_evidence",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "digests",
+        "repair_source": ""
+      },
+      {
+        "authority": "operational_evidence",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "logs",
+        "repair_source": ""
+      },
+      {
+        "authority": "operational_evidence",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "eval",
+        "repair_source": ""
+      },
+      {
+        "authority": "operational_evidence",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "integrity-check",
+        "repair_source": ""
+      },
+      {
+        "authority": "ephemeral",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "locks",
+        "repair_source": ""
+      },
+      {
+        "authority": "ephemeral",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "governed-ledger.lock",
+        "repair_source": ""
+      },
+      {
+        "authority": "forbidden_scratch",
+        "code": "",
+        "detail": "absent (required)",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "worktrees/",
+        "repair_source": ""
+      },
+      {
+        "authority": "forbidden_scratch",
+        "code": "",
+        "detail": "absent (required)",
+        "evidence_comparison": null,
+        "outcome": "VALID",
+        "path": "restore-drill/",
+        "repair_source": ""
+      },
+      {
+        "authority": "capture_evidence_non_authority",
+        "code": "",
+        "detail": "absent",
+        "evidence_comparison": null,
+        "outcome": "ADVISORY",
+        "path": ".convmem-backup-evidence.json",
+        "repair_source": ""
+      },
+      {
+        "authority": "unknown",
+        "code": "BLOCKED_UNCLASSIFIED_STATE",
+        "detail": "not in restore matrix — must be reviewed before replacement",
+        "evidence_comparison": null,
+        "outcome": "BLOCKED",
+        "path": "seed.txt",
+        "repair_source": ""
+      }
+    ],
+    "data_root": "/tmp/convmem-restic-t1-rnl5m3lh/data-root",
+    "evidence_comparisons": [],
+    "exit_code": 31,
+    "final_detail": "classifications=34",
+    "finished_at": "2026-07-27T21:48:44Z",
+    "inventory_exit_code": 31,
+    "inventory_overall": "BLOCKED",
+    "kind": "complete_data_restore_preflight",
+    "restic_version": "restic 0.19.0 compiled with go1.26.4 on linux/amd64",
+    "restored_root": "/tmp/convmem-restic-t1-rnl5m3lh/preflight-s/tmp/convmem-restic-t1-rnl5m3lh/data-root",
+    "snapshot": {
+      "id": "6b7906fd7fc683bf88ebd11b65deb34950a6903d281e10cd0b8ee30d455b6b64",
+      "original": null,
+      "paths": [
+        "/tmp/convmem-restic-t1-rnl5m3lh/data-root"
+      ],
+      "repository": "/tmp/convmem-restic-t1-rnl5m3lh/local-repo",
+      "tags": [
+        "convmem-chroma",
+        "convmem-data-v2"
+      ],
+      "time": "2026-07-27T16:48:39.846535-05:00",
+      "tree": "282ebaed5f4c2bd0838be68b4cfd8505de61c52ecc71ab80492f2890bab24582"
+    },
+    "started_at": "2026-07-27T21:48:42Z",
+    "status": "BLOCKED",
+    "target_dir": "/tmp/convmem-restic-t1-rnl5m3lh/preflight-s"
+  },
+  "steps": [
+    {
+      "at": "2026-07-27T21:48:42Z",
+      "detail": "id=6b7906fd7fc683bf88ebd11b65deb34950a6903d281e10cd0b8ee30d455b6b64",
+      "name": "resolve_and_restore",
+      "status": "RUNNING"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "detail": "restored snapshot 6b7906fd7fc683bf88ebd11b65deb34950a6903d281e10cd0b8ee30d455b6b64 → /tmp/convmem-restic-t1-rnl5m3lh/preflight-s",
+      "name": "resolve_and_restore",
+      "status": "PASS"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "detail": "/tmp/convmem-restic-t1-rnl5m3lh/preflight-s/tmp/convmem-restic-t1-rnl5m3lh/data-root",
+      "name": "locate_restored_root",
+      "status": "PASS"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "Chroma validation failed: chroma.sqlite3 missing",
+      "name": "classify:chroma",
+      "repair_source": "",
+      "status": "BLOCKED"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "missing",
+      "name": "classify:decisions-approved.jsonl",
+      "repair_source": "",
+      "status": "BLOCKED"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "file missing (empty lifecycle)",
+      "name": "classify:pending_decision_events.jsonl",
+      "repair_source": "",
+      "status": "ADVISORY"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent (normal when no projection)",
+      "name": "classify:pending_decisions.jsonl",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "missing — regeneratable from Chroma",
+      "name": "classify:knowledge_units.jsonl",
+      "repair_source": "Chroma",
+      "status": "REPAIRABLE"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "missing — rebuild via source rescan",
+      "name": "classify:processed.json",
+      "repair_source": "Source rescan",
+      "status": "REPAIRABLE"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:dedupe_queue.jsonl",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:link_queue.jsonl",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:ingest_duplicate_suppressions.jsonl",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "missing",
+      "name": "classify:inventory.jsonl",
+      "repair_source": "Source rescan/reimport",
+      "status": "REPAIRABLE"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:imports",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:authorizations",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent/disabled (normal Phase 0 default)",
+      "name": "classify:shadow/",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:shadow_activation.json",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:shadow_activation_manifest.json",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:shadow_health.json",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:hash_schema_deploy.json",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:hash_schema_migration_report.json",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:attempts.jsonl",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:index_failures.jsonl",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:synthesis_failures.jsonl",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:refine_undo",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:refine_stats.json",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:brief.md",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:digests",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:logs",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:eval",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:integrity-check",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:locks",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:governed-ledger.lock",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent (required)",
+      "name": "classify:worktrees/",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent (required)",
+      "name": "classify:restore-drill/",
+      "repair_source": "",
+      "status": "VALID"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "",
+      "detail": "absent",
+      "name": "classify:.convmem-backup-evidence.json",
+      "repair_source": "",
+      "status": "ADVISORY"
+    },
+    {
+      "at": "2026-07-27T21:48:44Z",
+      "code": "BLOCKED_UNCLASSIFIED_STATE",
+      "detail": "not in restore matrix — must be reviewed before replacement",
+      "name": "classify:seed.txt",
+      "repair_source": "",
+      "status": "BLOCKED"
+    }
+  ]
+}
