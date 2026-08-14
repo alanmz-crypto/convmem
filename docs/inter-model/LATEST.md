@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-14 (Forward-announcement norm + stuck-branch cleanup merged #176–#178; arc-staleness doctor on `main`; CG-1 G4b PASS; landscape sync)
+**Updated:** 2026-08-14 (CG-1 code #172 + handoff #173 + closure docs #174 MERGED to `main`; forward-announcement + stuck-branch cleanup #176–#178; arc-staleness doctor on `main`; landscape sync)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Recently merged / settled (2026-08-08 through 2026-08-14)
@@ -15,8 +15,8 @@
 - **Projection completeness gate (#169, 2026-08-09):** Truthful accounting — stops treating successful-looking Chroma state as proof that every expected projection exists.
 - **Preserve projections until reindex succeeds (#168, 2026-08-09):** Predecessor to CG-1; prevents destructive one-file reindex but does not yet prove atomic generation replacement.
 - **DeepSeek timeout fix (#167, 2026-08-08):** Raise reasoning model timeout from 15s to 60s.
-- **CG-1 dependability handoff (2026-08-10, unmerged):** Full architecture/implementation handoff for independent review. [`HANDOFF-CG1-DEPENDABILITY-2026-08-10.md`](HANDOFF-CG1-DEPENDABILITY-2026-08-10.md) · [`CURSOR-2026-08-10-cg1-literature-verification-handoff.md`](CURSOR-2026-08-10-cg1-literature-verification-handoff.md)
-- **CG-1 G4b independent review — PASS (2026-08-13, reviewed, unmerged):** The G4a material GAP (cold-validation binding to promotion) is structurally closed and independently reviewed PASS at stabilization SHA `2ed229244ea1d7cdf9a83630ad56d5a194426826`. Crush verified from the exact bytes: full suite 1,284 + 230 subtests (0 fail), focused CG-1 58 pass, dedupe 7 pass; removed the `exact_generation_validator` seam, sealed the serving token, added unconditional fresh-process cold validation, and owner/manifest cross-wire binding. PR #172 head is still `7a35dbf…` (the stabilization commit is local-only and unpushed). **Pending:** Ryan GATE + push/merge. [`CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md`](CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md) · [PR #172](https://github.com/alanmz-crypto/convmem/pull/172)
+- **CG-1 dependability handoff (2026-08-10, MERGED):** Full architecture/implementation handoff that underpinned the CG-1 review. [`HANDOFF-CG1-DEPENDABILITY-2026-08-10.md`](HANDOFF-CG1-DEPENDABILITY-2026-08-10.md) · [`CURSOR-2026-08-10-cg1-literature-verification-handoff.md`](CURSOR-2026-08-10-cg1-literature-verification-handoff.md)
+- **CG-1 G4b independent review — PASS → MERGED (2026-08-14):** The G4a material GAP (cold-validation binding to promotion) is structurally closed and independently reviewed PASS at stabilization SHA `2ed229244ea1d7cdf9a83630ad56d5a194426826`. Crush verified the exact bytes; then Codex fixed the pylint gate (`7f7c226`) and **PR #172 merged to `main` 2026-08-14** along with the handoff docs (#173) and this closure package (#174). Verified: full suite 1,284 + 230 subtests (0 fail), focused CG-1 58 pass, dedupe 7 pass. Closure equation `tested = reviewed = accepted = pushed` is satisfied; only CG-2 activation (separate grant) remains open. [`CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md`](CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md)
 - **Cross-model export tooling (2026-08-10, unmerged):** `scripts/export-chatgpt-snapshot.sh` and `scripts/export-claude-bundle.sh` for giving ChatGPT/Claude full project context without changing push conventions.
 
 ## Active handoff
