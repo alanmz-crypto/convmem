@@ -1,9 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-13 (Arc-staleness doctor check authorized; CG-1 G4b independent review PASS; G4a GAP closed at stabilization SHA `2ed2292…`; landscape sync #166; CG-1 handoffs + export tooling; JudgeBench #171/#170; projection gates #168/#169)
+**Updated:** 2026-08-14 (Forward-announcement norm + stuck-branch cleanup merged #176–#178; arc-staleness doctor on `main`; CG-1 G4b PASS; landscape sync)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
-## Recently merged / settled (2026-08-08 through 2026-08-13)
+## Recently merged / settled (2026-08-08 through 2026-08-14)
+
+- **Forward-announcement norm + stuck-branch cleanup — COMPLETE (2026-08-14):** Who/What: Kiro triage handoff → Cursor implemented and Ryan merged three PRs. When: #176–#178 squash-merged 2026-08-14. Why: completing models did not announce next lane or review path, leaving unique commits stranded on feature branches. How: Tier A **Forward announcement** norm in `config/agent-protocol.md` (phase name, next step, next lane, lowest-effort “see my work”); rebased and merged judge injection hardening ([#177](https://github.com/alanmz-crypto/convmem/pull/177)) and synthesis operational-detail prompt ([#178](https://github.com/alanmz-crypto/convmem/pull/178)); `fix/2026-08-06-ask-eval-trace` was already on `main` (rebase dropped commits as upstream). **Parked (not authorized):** intake-classification infrastructure on `plan/2026-08-14-arc-classification-verify-gate` (local stash) — behavioral norm is the chosen fix unless Ryan re-opens.
 
 - **Arc-staleness doctor check — AUTHORIZED (2026-08-13, not yet implemented):** Ryan authorized a new advisory `arc_staleness` check in `convmem doctor` that warns when STATUS-tracked arcs have incomplete milestones but no Update Log progress in >14 days. Catches the "authorized but forgotten" pattern (P1.3 source-trust was 22 days stale with no execution). Implementation handoff ready for Cursor/Codex. [`KIRO-2026-08-13-arc-staleness-check-handoff.md`](KIRO-2026-08-13-arc-staleness-check-handoff.md)
 - **LATEST stale-handoff autonomy — APPROVED (2026-08-14, Kiro):** Crush may autonomously update+commit+push `LATEST.md` on feature branches when the brief flags it stale (pointer housekeeping for already-authorized work only; non-`main`; no merge/force-push). `HANDOFF-TEMPLATE.md` moved into `_INTER_MODEL_SKIP` so it no longer trips the stale-handoff P0. [`KIRO-2026-08-14-latest-stale-handoff-autonomy.md`](KIRO-2026-08-14-latest-stale-handoff-autonomy.md)
