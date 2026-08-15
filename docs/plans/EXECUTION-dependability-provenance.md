@@ -63,6 +63,12 @@ mistaken for discarded scope, but this document authorizes none of it.
 | T4 | Security/lifecycle and egress evidence | Separate plan and grant; no cloud-policy or runtime change |
 | T5 | Endurance/resource/maintenance envelope | Separate plan and grant; no operational change |
 
+T1 Trust Baseline and T2 existing-proof inventory/gap analysis must be
+completed and accepted before any T3/provenance implementation grant. Stage
+1A/1B is the T3 child architecture/execution slice, so it cannot receive that
+grant until T1's architecture output and T2's evidence/gap output are complete;
+T4 and T5 remain in the parent sequence after T3.
+
 T3's acknowledgement rule is precise: only the named authoritative durable
 write boundary may return an acknowledged-success result; provider completion,
 projection visibility, index upsert, client receipt, and retrieval are not

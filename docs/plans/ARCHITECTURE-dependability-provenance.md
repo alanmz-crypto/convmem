@@ -67,6 +67,12 @@ Existing standing checks and accepted evidence are reused where they cover the
 claim; a new ceremony, gate, or review is justified only by a distinct failure
 window, owner, or oracle.
 
+T1 Trust Baseline completion and T2 existing-proof inventory/gap analysis are
+mandatory completed predecessors to any T3/provenance implementation grant.
+Stage 1A/1B is a T3 child slice and cannot receive an implementation grant
+until T1's architecture output and T2's evidence/gap output are complete and
+accepted; T4 and T5 remain parent-sequence work after T3.
+
 ### Acknowledgement and migration semantics
 
 For the T1 claim about acknowledged data, an acknowledgement is a success from
