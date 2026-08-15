@@ -13,7 +13,7 @@ Authority:    Post-Execute HITL — mechanical evidence from isolated rehearsal
 **Status:** Mechanical Execute evidence filled on `feat/2026-08-15-cg2-production-activation`.
 Does **not** authorize production soak, owner cutover, or GC.
 
-**Subject / tip:** `f8419e3` (T5 complete — CG-2 Execute T1–T5 on branch)
+**Subject / tip:** `2a20209` (T5 complete — CG-2 Execute T1–T5 on branch)
 
 **Architecture baseline:** `e680ce837653698a5be8b78ba02db2f880c40c63`
 
@@ -78,7 +78,7 @@ human sign-off and Ryan soak grant remain pending.
 
 | Field | Value |
 |---|---|
-| `subject_tip_sha` | `f8419e3` |
+| `subject_tip_sha` | `2a20209` |
 | `architecture_sha` | `e680ce837653698a5be8b78ba02db2f880c40c63` |
 | `execution_plan_sha` | `6a808f1543f2c93270d9f0ed1ae88cad27f6556b` |
 | `gate_applicability` | `pending_pr_open` — BugBot when PR opened |
@@ -183,7 +183,7 @@ Fifteen architecture properties mapped to pytest modules (12 core + fallback pai
 VERIFY-cg2-production-activation — Execute mechanical fill
 Architecture baseline: e680ce837653698a5be8b78ba02db2f880c40c63
 Execution grant plan: 6a808f1543f2c93270d9f0ed1ae88cad27f6556b
-Subject tip (branch): feat/2026-08-15-cg2-production-activation @ f8419e3
+Subject tip (branch): feat/2026-08-15-cg2-production-activation @ 2a20209
 Mechanical run: pytest isolated CG-2 bundle + full suite (see PR)
 Independent sign-off: pending PR
 Ryan GATE (soak): pending
