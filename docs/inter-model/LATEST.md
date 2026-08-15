@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-14 (CG-1 code #172 + handoff #173 + closure docs #174 MERGED to `main`; forward-announcement + stuck-branch cleanup #176–#178; arc-staleness doctor on `main`; landscape sync)
+**Updated:** 2026-08-14 (CG-2 production-activation architecture draft opened after CG-1 merge; no implementation or activation authority)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Recently merged / settled (2026-08-08 through 2026-08-14)
@@ -20,6 +20,12 @@
 - **Cross-model export tooling (2026-08-10, unmerged):** `scripts/export-chatgpt-snapshot.sh` and `scripts/export-claude-bundle.sh` for giving ChatGPT/Claude full project context without changing push conventions.
 
 ## Active handoff
+
+- **CG-2 production activation — ARCHITECTURE DRAFT / REVIEW REQUIRED (2026-08-14):** Who/What: OpenAI Codex reconciled the merged CG-1 substrate and ChatGPT literature memo into a canonical architecture draft plus STATUS brief. When: branch `plan/2026-08-14-cg2-production-activation`, based on `origin/main` after CG-1 closure merge #182. Why: CG-1 prevents hybrid generations but remains unwired; CG-2 must make production reads and reindexing use that authority safely. How: global serving repository first with all owners legacy; generation-aware logical accounting and source-hash promotion guard; then a separately granted one-owner canary; reclamation last. **Not authorized:** execution planning, implementation, production gateway soak, owner cutover, or GC.
+
+  **Review reading:** [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md) · [`STATUS-cg2-production-activation.md`](../plans/STATUS-cg2-production-activation.md) · [`CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md`](CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md)
+
+  **Suggested next:** Kiro design review + Crush evidence/failure review + Cursor feasibility review on one exact revision; then Ryan Architecture HITL.
 
 - **Chroma reconcile Tier L — R4 GREEN, arc closed (2026-08-09):** Who/What: Crush index rebuild + DeepSeek Flash V1–V6 post-rebuild verify; Cursor landscape sync. When: rebuild completed 2026-08-08; R4 GREEN 2026-08-09; docs on `main` via [#161](https://github.com/alanmz-crypto/convmem/pull/161). Why: 646 HNSW orphans blocked calibration and contaminated retrieval. How: full re-index, orphan inventory **0**, calibration 100% with `eval-synthesis.py --judge --legacy`, and `convmem doctor` PASS with two non-fatal warnings (legacy embed metadata and external-restic freshness).
 
