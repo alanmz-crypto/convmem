@@ -81,6 +81,7 @@ serving authority/repository.
 | Stage 0 architecture package | **Conditional PASS; final correction pending review** | Kiro verifies repository-root paths, producer authority semantics, and a clean committed tree; targeted Copilot audit disposition; Ryan lock. |
 | Stage 1A policy/representation substrate | Not authorized | Separate Ryan Execute grant; core policy, envelope, bindings, and representation continuity pass. |
 | Stage 1B assertion/exact-dedupe continuity | Not authorized | Independent assertions survive cross-tier equivalence and retrieval. |
+| P1/P2/P3 execution slices | Not authorized | Three separate Ryan grants, branches/worktrees, PRs, and review gates; no singular Stage 1 grant. |
 | Stage 2 semantic dedupe | Deferred | Separate design and grant. |
 | Stage 3 consumer visibility | Deferred beyond Stage 1 minimum | Consumer contract and enforcement boundary reviewed. |
 | CG-1/CG-2 assurance integration | Parallel/later | Separate Execute brief after canonical Stage 1 representation is locked. |

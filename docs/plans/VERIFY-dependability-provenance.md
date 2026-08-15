@@ -56,6 +56,17 @@ artifacts are recorded for the implementation revision.
 | V0d | Implementation VERIFY records exact implementation SHA and baseline. | PENDING |
 | V0e | Every existing-code path named by the plan resolves from repository root; planned new paths are explicitly labeled planned. | PENDING |
 | V0f | T1–T5 remain represented, with T3 owning provenance/compatibility and no T4/T5 runtime or cloud-policy action implied. | PENDING |
+| V0g | P1, P2, and P3 each have a distinct Ryan grant, implementation branch/worktree, PR, and gate; no single grant covers multiple slices. | PENDING |
+
+## V0A — Separate execution-slice authorization
+
+| Slice | Required authorization record | Required branch/PR separation | Result |
+|---|---|---|---|
+| P1 policy/identity | Ryan Execute grant naming P1 scope | `feat/2026-08-15-provenance-policy` and its own PR | PENDING |
+| P2 bindings/continuity | Ryan Execute grant naming P2 scope | `feat/2026-08-15-provenance-bindings` and its own PR | PENDING |
+| P3 assertion/dedupe/retrieval | Ryan Execute grant naming P3 scope | `feat/2026-08-15-provenance-assertion-continuity` and its own PR | PENDING |
+
+These are reserved targets only; this planning branch creates none of them.
 
 ## V1 — Root authority and policy ownership
 
@@ -86,6 +97,8 @@ I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 | V2e | Partial/unknown ancestry makes output untrusted. | PENDING |
 | V2f | Repeated transformations are monotone and never rise. | PENDING |
 | V2g | Deterministic but lossy operations do not preserve trust without an explicit tested contract. | PENDING |
+| V2h | Recursive recomputation verifies every parent/ancestor, policy, recipe, and required binding before using integrity. | PENDING |
+| V2i | Missing ancestor, cycle, parent/commitment mismatch, or unavailable historical policy/recipe yields `untrusted`. | PENDING |
 
 ## V3 — Exact transformation-boundary binding
 
@@ -122,6 +135,10 @@ I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 | V5d | Equivalence creates no aggregate trusted assertion. | PENDING |
 | V5e | Semantic cross-provenance tombstone requires human adjudication and retains both audit assertions. | PENDING |
 | V5f | Storage optimization cannot destroy provenance identity. | PENDING |
+| V5g | Assertion IDs are monitor-minted and immutable. | Caller attempts to mint, rewrite, recycle, or reuse an ID without its valid commitment. | PENDING |
+| V5h | Export → reconstruction → re-import preserves a valid ID/commitment pair. | Round-trip comparison of ID, envelope, and commitment. | PENDING |
+| V5i | Same content without a valid existing ID/commitment pair becomes a new independent assertion. | Ingest identical content twice from different roots. | PENDING |
+| V5j | Parent IDs and commitments match resolved parents. | Alter/remove parent commitment or bind the wrong parent ID. | PENDING |
 
 ## V6 — Parallel/later assurance: CG-1 immutable continuity and cold validation
 
@@ -158,6 +175,7 @@ delay the Stage 1 vocabulary/policy substrate.
 | V8e | Untrusted retrieval → conversation → recapture → distill | never rises above untrusted | PENDING |
 | V8f | Prompt/content says `origin=trusted` | no metadata effect | PENDING |
 | V8g | Provider omission/value/fallback fault | explicit incomplete/degraded result; no elevation | PENDING |
+| V8h | Child envelope/commitment remains valid-looking while an ancestor is removed | recursive verification returns untrusted; child is not treated as a new root | PENDING |
 
 ## V9 — Regression, documentation, and no-live-mutation proof
 
