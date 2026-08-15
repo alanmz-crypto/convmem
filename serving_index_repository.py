@@ -144,16 +144,41 @@ class ServingIndexRepository:
 
     def count_units(self, *, include_superseded: bool = False) -> int:
         register_serving_read_site("serving_index_repository.py", "count_units", "ChromaStore")
+        store = self._active_store()
+        if isinstance(store, FileGenerationStore):
+            return store.count_units(include_superseded=include_superseded)
         return self._require_legacy_store().count_units(
             include_superseded=include_superseded
         )
 
+    def physical_count_units(self) -> int:
+        """All persisted unit rows, including inactive generations and tombstones."""
+
+        return self._require_legacy_store()._collection(UNITS).count()  # pylint: disable=protected-access
+
+    def serving_count_units(self) -> int:
+        """Rows authorized under the frozen authority vector."""
+
+        return self.count_units(include_superseded=False)
+
     def count_summaries(self) -> int:
         register_serving_read_site("serving_index_repository.py", "count_summaries", "ChromaStore")
+        store = self._active_store()
+        if isinstance(store, FileGenerationStore):
+            return store.count_summaries()
         return self._require_legacy_store().count_summaries()
+
+    def physical_count_summaries(self) -> int:
+        return self._require_legacy_store()._collection(SUMMARIES).count()  # pylint: disable=protected-access
+
+    def serving_count_summaries(self) -> int:
+        return self.count_summaries()
 
     def units_metadata(self, *, include_superseded: bool = False) -> list[dict]:
         register_serving_read_site("serving_index_repository.py", "units_metadata", "ChromaStore")
+        store = self._active_store()
+        if isinstance(store, FileGenerationStore):
+            return store.units_metadata(include_superseded=include_superseded)
         return self._require_legacy_store().units_metadata(
             include_superseded=include_superseded
         )

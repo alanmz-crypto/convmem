@@ -943,13 +943,21 @@ def stats() -> str:
     cfg = load_config()
     with open_serving_index_repository(cfg) as repo:
         metas = repo.units_metadata()
+        serving_units = repo.serving_count_units()
+        physical_units = repo.physical_count_units()
     by_tool = Counter(m.get("tool", "?") for m in metas)
     by_domain = Counter(m.get("domain") or "untagged" for m in metas)
-    return json.dumps({
-        "total_units": len(metas),
-        "by_tool": dict(by_tool.most_common(10)),
-        "by_domain": dict(by_domain.most_common(15)),
-    }, indent=2)
+    return json.dumps(
+        {
+            "view": "serving",
+            "serving_units": serving_units,
+            "physical_units": physical_units,
+            "total_units": serving_units,
+            "by_tool": dict(by_tool.most_common(10)),
+            "by_domain": dict(by_domain.most_common(15)),
+        },
+        indent=2,
+    )
 
 
 

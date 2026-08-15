@@ -902,10 +902,14 @@ def render_stats(cfg: dict | None = None) -> None:
         cfg = load_config()
 
     from adapters.detect import TOOL_BY_FORMAT, detect_format
+    from serving_index_repository import open_serving_index_repository
 
     chroma_dir = cfg["index"]["chroma_dir"]
     summary_metas = collection_metadata_rows(chroma_dir, "conversation_summaries")
-    unit_metas = collection_metadata_rows(chroma_dir, "knowledge_units")
+    with open_serving_index_repository(cfg) as repo:
+        unit_metas = repo.units_metadata()
+        serving_units = repo.serving_count_units()
+        physical_units = repo.physical_count_units()
     chunks_by_tool = Counter(m.get("tool", "?") for m in summary_metas)
     units_by_tool = Counter(m.get("tool", "?") for m in unit_metas)
 
@@ -952,8 +956,16 @@ def render_stats(cfg: dict | None = None) -> None:
         )
 
     console.print(
-        Panel.fit(table, title="Index Statistics", border_style="blue", padding=(1, 2))
+        Panel.fit(table, title="Index Statistics (serving view)", border_style="blue", padding=(1, 2))
     )
+    if physical_units != serving_units:
+        console.print(
+            Text(
+                f"Physical store holds {physical_units} unit rows; "
+                f"{serving_units} are in the serving view.",
+                style="dim",
+            )
+        )
 
     units_by_domain = Counter(m.get("domain") or "untagged" for m in unit_metas)
     if units_by_domain:
