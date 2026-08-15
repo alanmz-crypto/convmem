@@ -91,6 +91,11 @@ if [ "$tool" = "bash" ] && [ -n "$cmd" ]; then
     fi
     exit 0
   fi
+  # Hard deny: convmem index/add/verify are long-running and will freeze Crush
+  # at the ~60s bash timeout. Route these to external shell or watch/auto-index.
+  if echo "$cmd" | grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*convmem[[:space:]]+(index|add|verify)([[:space:]]|$)'; then
+    _deny "convmem index/add/verify denied inside Crush (freeze risk). Use external shell or watch auto-index."
+  fi
 fi
 
 if ! _ritual_complete; then
@@ -113,6 +118,10 @@ fi
 if [ "$tool" = "bash" ] && [ -n "$cmd" ]; then
   if _allow_readonly_convmem_bash; then
     exit 0
+  fi
+  # Second gate: deny index/add/verify even after ritual is complete
+  if echo "$cmd" | grep -qE '(^|[;&|]|&&|\|\|)[[:space:]]*convmem[[:space:]]+(index|add|verify)([[:space:]]|$)'; then
+    _deny "convmem index/add/verify denied inside Crush (freeze risk). Use external shell or watch auto-index."
   fi
 fi
 
