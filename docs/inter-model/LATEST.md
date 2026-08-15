@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-14 (CG-1 code #172 + handoff #173 + closure docs #174 MERGED to `main`; forward-announcement + stuck-branch cleanup #176–#178; arc-staleness doctor on `main`; landscape sync)
+**Updated:** 2026-08-15 (export tooling #173 + CG-1 closure #182 + arc-staleness LATEST fix #183 on `main`; [#184](https://github.com/alanmz-crypto/convmem/pull/184) open for Crush index deny + refine memory)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Recently merged / settled (2026-08-08 through 2026-08-14)
@@ -17,9 +17,11 @@
 - **DeepSeek timeout fix (#167, 2026-08-08):** Raise reasoning model timeout from 15s to 60s.
 - **CG-1 dependability handoff (2026-08-10, MERGED):** Full architecture/implementation handoff that underpinned the CG-1 review. [`HANDOFF-CG1-DEPENDABILITY-2026-08-10.md`](HANDOFF-CG1-DEPENDABILITY-2026-08-10.md) · [`CURSOR-2026-08-10-cg1-literature-verification-handoff.md`](CURSOR-2026-08-10-cg1-literature-verification-handoff.md)
 - **CG-1 G4b independent review — PASS → MERGED (2026-08-14):** The G4a material GAP (cold-validation binding to promotion) is structurally closed and independently reviewed PASS at stabilization SHA `2ed229244ea1d7cdf9a83630ad56d5a194426826`. Crush verified the exact bytes; then Codex fixed the pylint gate (`7f7c226`) and **PR #172 merged to `main` 2026-08-14** along with the handoff docs (#173) and this closure package (#174). Verified: full suite 1,284 + 230 subtests (0 fail), focused CG-1 58 pass, dedupe 7 pass. Closure equation `tested = reviewed = accepted = pushed` is satisfied; only CG-2 activation (separate grant) remains open. [`CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md`](CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md)
-- **Cross-model export tooling (2026-08-10, unmerged):** `scripts/export-chatgpt-snapshot.sh` and `scripts/export-claude-bundle.sh` for giving ChatGPT/Claude full project context without changing push conventions.
+- **Cross-model export tooling — MERGED (2026-08-14, [#173](https://github.com/alanmz-crypto/convmem/pull/173)):** Who/What: `scripts/export-chatgpt-snapshot.sh` and `scripts/export-claude-bundle.sh` for giving ChatGPT/Claude full project context without changing push conventions. When: squash-merged 2026-08-14 with CG-1 dependability handoff docs. Why: cloud models need repo-grounded bundles without altering push/ref conventions. How: run scripts from repo root; outputs are local artifacts only.
 
 ## Active handoff
+
+- **Crush index freeze + refine memory — OPEN PR ([#184](https://github.com/alanmz-crypto/convmem/pull/184), 2026-08-15):** Who/What: hard-deny `convmem index/add/verify` inside Crush hook (exit 2, not fall-through) plus `refine.py` heap release between daemon cycles. When: branch `fix/2026-08-14-index-hang-deny-hook`; PR opened 2026-08-15; pylint gate pending at filing. Why: long-running index inside Crush hits ~60s bash timeout and freezes the session; refine daemon accumulated ~9.4G over 32h without returning heap. How: merge #184; restart Crush so hook reloads (`scripts/restart-crush-if-stale.sh` or quit/restart).
 
 - **Chroma reconcile Tier L — R4 GREEN, arc closed (2026-08-09):** Who/What: Crush index rebuild + DeepSeek Flash V1–V6 post-rebuild verify; Cursor landscape sync. When: rebuild completed 2026-08-08; R4 GREEN 2026-08-09; docs on `main` via [#161](https://github.com/alanmz-crypto/convmem/pull/161). Why: 646 HNSW orphans blocked calibration and contaminated retrieval. How: full re-index, orphan inventory **0**, calibration 100% with `eval-synthesis.py --judge --legacy`, and `convmem doctor` PASS with two non-fatal warnings (legacy embed metadata and external-restic freshness).
 
@@ -43,9 +45,9 @@
 
 - **DeepSeek V4 Flash timeout fix — COMPLETE (2026-08-09):** Who/What: Kiro diagnosed and fixed continuous `ReadTimeout` failures in watch service distill/summarize path. When: 2026-08-09, committed to `fix/2026-08-09-deepseek-v4-flash-timeout`. Why: V4 Flash is a reasoning model that spends 10-20s on internal chain-of-thought before producing output; the 15s timeout (set when the summarizer switched to DeepSeek cloud) was too tight. How: raised timeout from 15s → 60s in both `distill.py` and `llm.py` `summarize()` path. Verified: 19 tests pass, live distill succeeds in 5.7s, watch restarted with 0 failures.
 
-  **Branch:** [`fix/2026-08-09-deepseek-v4-flash-timeout`](https://github.com/alanmz-crypto/convmem/tree/fix/2026-08-09-deepseek-v4-flash-timeout) — awaiting merge.
+  **Merged:** [#167](https://github.com/alanmz-crypto/convmem/pull/167) to `main` (2026-08-09).
 
-  **What this packages:** Watch/ingest pipeline no longer fails on every DeepSeek call. Ingest-degraded count should drop to near-zero once merged.
+  **What this packages:** Watch/ingest pipeline no longer fails on every DeepSeek call; ingest-degraded count dropped after merge.
 
 - **Summarizer GPU contention fix — COMPLETE (2026-08-07):** Who/What: Crush (investigation) + Claude cloud (advisory) + Kiro (design review) fixed four issues from the qwen3.5 summarizer saturating the RTX 3060 at 95% GPU util, causing ollama embed calls to blow 120 s timeouts and silently drop ingested chunks. When: 2026-08-06 evening, committed to `fix/2026-08-06-summarizer-switch-baseline-and-docs`; PR #140 filed. Why: every chunk's summarize→embed→distill pipeline queued behind a single `-np 1` 6.6 GB model; `ingest.py:638` caught exceptions and `continue`d with zero visibility. How: `summarize_model = "deepseek-v4-flash"` (cloud, key present), `ollama_embed` timeout 120→300 s, `OLLAMA_MAX_LOADED_MODELS=2` (was 1), chunk failure logging to `synthesis_failures.jsonl` + 3-attempt retry with 5s/30s backoff in `ingest.py`. Verified: zero watch journal timeouts after fix, both models resident in `ollama ps`, all doctor PASS.
 
