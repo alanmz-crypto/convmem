@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-14 (CG-2 architecture/model lock candidate ready; Kiro/Crush/Cursor delta confirmation next; no implementation or activation authority)
+**Updated:** 2026-08-15 (CG-2 triple delta PASS at `e680ce8`; Ryan Architecture HITL is the only remaining pre-planning gate)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Recently merged / settled (2026-08-08 through 2026-08-14)
@@ -21,11 +21,11 @@
 
 ## Active handoff
 
-- **CG-2 production activation — LOCK CANDIDATE READY / DELTA CONFIRMATION PENDING (2026-08-14):** Who/What: OpenAI Codex resolved N1–N3 after Kiro PASS, Cursor PASS WITH RISKS, and Crush PASS WITH RISKS at architecture `1222b1e`, then authored the bounded authority model on `plan/2026-08-14-cg2-production-activation`. When: after Kiro's resolve-and-model handoff `9c1d4c5`. Why: Ryan Architecture HITL requires concrete fallback isolation, watchdog-independent reconciliation, finite authority retry, and mechanical authority-state evidence. How: typed repository failure domains prevent raw fallback; periodic reconciliation proves lost-event convergence; retry exhaustion returns `AUTHORITY_UNSTABLE`; three TLA+ v1.7.4 configurations exhaustively checked all 12 properties with 123,281 generated / 38,134 distinct states and zero errors. **Not authorized:** execution planning, implementation, production gateway soak, owner cutover, or GC.
+- **CG-2 production activation — DELTA CONFIRMATION COMPLETE / HITL PENDING (2026-08-15):** Who/What: OpenAI Codex resolved N1–N3 and authored the bounded authority model at `e680ce837653698a5be8b78ba02db2f880c40c63`; Kiro, Crush, and Cursor returned exact-SHA **PASS** delta confirmations preserving path-derived ownership and explicit rename migration. When: lock candidate `e680ce8` on `plan/2026-08-14-cg2-production-activation`. Why: Ryan Architecture HITL is the only gate before execution planning. How: typed fallback guard, watchdog-independent reconciliation, bounded `AUTHORITY_UNSTABLE` retries, and 12-property TLA+ evidence (123,281 generated / 38,134 distinct states, zero errors). **Not authorized:** execution planning, implementation, production gateway soak, owner cutover, or GC until HITL lock.
 
-  **Review reading:** [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md) · [`formal model evidence`](../plans/formal/cg2/README.md) · [`STATUS-cg2-production-activation.md`](../plans/STATUS-cg2-production-activation.md)
+  **Review reading:** [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md) · [`formal model evidence`](../plans/formal/cg2/README.md) · [`STATUS-cg2-production-activation.md`](../plans/STATUS-cg2-production-activation.md) · [`CURSOR-2026-08-15-cg2-delta-confirmation.md`](CURSOR-2026-08-15-cg2-delta-confirmation.md)
 
-  **Suggested next:** Kiro/Crush/Cursor quick-confirm one exact architecture/model SHA; then Ryan Architecture HITL.
+  **Suggested next:** Ryan Architecture HITL lock on `e680ce8`; then Codex authors execution + VERIFY plans.
 
 - **Chroma reconcile Tier L — R4 GREEN, arc closed (2026-08-09):** Who/What: Crush index rebuild + DeepSeek Flash V1–V6 post-rebuild verify; Cursor landscape sync. When: rebuild completed 2026-08-08; R4 GREEN 2026-08-09; docs on `main` via [#161](https://github.com/alanmz-crypto/convmem/pull/161). Why: 646 HNSW orphans blocked calibration and contaminated retrieval. How: full re-index, orphan inventory **0**, calibration 100% with `eval-synthesis.py --judge --legacy`, and `convmem doctor` PASS with two non-fatal warnings (legacy embed metadata and external-restic freshness).
 
