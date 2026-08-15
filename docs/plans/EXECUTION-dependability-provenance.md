@@ -83,6 +83,9 @@ Create one deep module that owns:
 - root mapping from monitor-controlled ingress evidence;
 - `untrusted < agent < trusted` meet;
 - transformer caps and ancestry-completeness rules;
+- closed-enum validation for `producer_class` (`user | trusted_tool | agent |
+  external | unknown`) and `producer_assurance` (`verified | claimed | unknown`),
+  with no caller-controlled `verified` value or direct authority grant;
 - effective-integrity recomputation and cache-mismatch degradation;
 - legacy/malformed/unknown-policy fallback to untrusted.
 
@@ -92,7 +95,8 @@ negative tests are P1 gates.
 
 Likely surfaces after re-trace:
 
-- new internal provenance policy/serialization module under `src/convmem/`;
+- new repository-root provenance policy/serialization module (`provenance.py`,
+  subject to implementation re-trace and naming review);
 - focused policy and canonicalization tests under `tests/`.
 
 ### P2 / Stage 1A — Transformation-boundary binding and durable continuity
@@ -114,11 +118,11 @@ for malformed fields, old rows, unknown policy versions, and old consumers.
 
 Likely surfaces after re-trace:
 
-- `src/convmem/ingest.py`
-- `src/convmem/distill.py`
-- `src/convmem/llm.py`
-- relevant adapters under `src/convmem/adapters/`
-- `src/convmem/inter_model_index.py`
+- `ingest.py`
+- `distill.py`
+- `llm.py`
+- relevant adapters under `adapters/`
+- `inter_model_index.py`
 - `eval_corpus/reconstruct.py`
 - export/reingest tests and fixtures
 
@@ -142,10 +146,10 @@ and `source_trust_boost` outside the integrity calculation.
 
 Likely surfaces after re-trace:
 
-- `src/convmem/ingest_dedupe.py`
-- `src/convmem/refine.py`
+- `ingest_dedupe.py`
+- `refine.py`
 - assertion/equivalence persistence and lifecycle tests
-- `src/convmem/query.py`, `src/convmem/evidence.py`, and response-schema tests
+- `query.py`, `evidence.py`, and response-schema tests
 
 ### A1 / parallel-later — CG-1 and CG-2 continuity
 
@@ -164,11 +168,11 @@ CG-2 does not recompute provenance or aggregate trust.
 
 Likely surfaces after re-trace:
 
-- `src/convmem/file_generation_contract.py`
-- `src/convmem/file_generation_builder.py`
-- `src/convmem/file_generation_store.py`
-- `src/convmem/serving_authority.py`
-- `src/convmem/serving_index_repository.py`
+- `file_generation_contract.py`
+- `file_generation_builder.py`
+- `file_generation_store.py`
+- `serving_authority.py`
+- `serving_index_repository.py`
 
 ### P4 — Stage 1 verification packet and compatibility closure
 

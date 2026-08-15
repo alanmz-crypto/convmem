@@ -55,16 +55,16 @@ risks:
 
 | Boundary | Current behavior | Dependability fault |
 |---|---|---|
-| Normal ingest | `render_chunk()` budgets and truncates each message before sending one rendered string to summarization/distillation (`src/convmem/ingest.py`). | A source-file or full-message hash does not bind the bytes the model actually saw. Mixed contributors collapse into one artifact-level `source_type`. |
-| Distillation | `distill()` truncates again and sends a fixed prompt plus model/provider parameters; `normalize_unit()` omits provenance (`src/convmem/distill.py`, `src/convmem/llm.py`). | An LLM-created representation can look like a fresh neutral unit; provider fallback or recipe drift is not committed. |
-| Direct inter-model ingest | `source_type` and `author_model` are ordinary caller arguments; `source_type` reaches Chroma metadata but not the exported unit (`src/convmem/inter_model_index.py`). | Claimed origin can be mistaken for verified origin, and reconstruction loses even the claim. |
-| Exact dedupe | Content equality suppresses the incoming unit (`src/convmem/ingest_dedupe.py`). | An independent assertion and its provenance can disappear. A low-trust copy can affect a trusted assertion's lifecycle. |
-| Semantic dedupe | Canonical choice is confidence/newness/id; approval tombstones one unit (`src/convmem/refine.py`). | Cross-provenance collapse has no trust rule and destroys assertion evidence. |
+| Normal ingest | `render_chunk()` budgets and truncates each message before sending one rendered string to summarization/distillation (`ingest.py`). | A source-file or full-message hash does not bind the bytes the model actually saw. Mixed contributors collapse into one artifact-level `source_type`. |
+| Distillation | `distill()` truncates again and sends a fixed prompt plus model/provider parameters; `normalize_unit()` omits provenance (`distill.py`, `llm.py`). | An LLM-created representation can look like a fresh neutral unit; provider fallback or recipe drift is not committed. |
+| Direct inter-model ingest | `source_type` and `author_model` are ordinary caller arguments; `source_type` reaches Chroma metadata but not the exported unit (`inter_model_index.py`). | Claimed origin can be mistaken for verified origin, and reconstruction loses even the claim. |
+| Exact dedupe | Content equality suppresses the incoming unit (`ingest_dedupe.py`). | An independent assertion and its provenance can disappear. A low-trust copy can affect a trusted assertion's lifecycle. |
+| Semantic dedupe | Canonical choice is confidence/newness/id; approval tombstones one unit (`refine.py`). | Cross-provenance collapse has no trust rule and destroys assertion evidence. |
 | Reconstruction | Canonical metadata allowlist omits `source_type` and provenance (`eval_corpus/reconstruct.py`). | Export/rebuild cannot reproduce provenance semantics. |
-| Retrieval | Existing `source_trust_tier()` ranks by type/path and ledger status (`src/convmem/evidence.py`, `src/convmem/query.py`). | A ranking preference can be misread as authenticated provenance. |
+| Retrieval | Existing `source_trust_tier()` ranks by type/path and ledger status (`evidence.py`, `query.py`). | A ranking preference can be misread as authenticated provenance. |
 | R2b and writer attestation | R2b binds an authorized capture package; writer attestation records process facts. | Package/process integrity does not authenticate the semantic origin of content. |
-| CG-1 | Candidate bundles and manifests are content-addressed; cold validation checks selected immutable keys (`src/convmem/file_generation_*.py`). | A missing provenance key can pass if the validator only compares keys that are present. Durability can preserve poison perfectly. |
-| CG-2 | A request-frozen authority vector selects the serving owner/generation (`src/convmem/serving_authority.py`, `src/convmem/serving_index_repository.py`). | Serving authority says which generation may answer, not whether an assertion's provenance is strong. |
+| CG-1 | Candidate bundles and manifests are content-addressed; cold validation checks selected immutable keys (`file_generation_contract.py`, `file_generation_builder.py`, `file_generation_store.py`). | A missing provenance key can pass if the validator only compares keys that are present. Durability can preserve poison perfectly. |
+| CG-2 | A request-frozen authority vector selects the serving owner/generation (`serving_authority.py`, `serving_index_repository.py`). | Serving authority says which generation may answer, not whether an assertion's provenance is strong. |
 
 The current adapter role (`user`/`assistant`), `source_type`, filesystem path, and
 `author_model` are classification claims. No inspected ingestion boundary
@@ -254,6 +254,50 @@ ancestry_completeness: complete | partial | unknown
 provenance_policy_version
 effective_integrity  # derived/cache only; never authoritative input
 ```
+
+### 6.1 Allowed producer values and authority semantics
+
+`producer_class` is a closed enum:
+
+```text
+user | trusted_tool | agent | external | unknown
+```
+
+It identifies who or what directly created the current representation, not who
+originally supplied every fact in it. `user` means a representation directly
+authored through a user channel; `trusted_tool` means a conventionally engineered
+producer selected by policy; `agent` means an LLM/agent-created representation;
+`external` means a third-party or otherwise untrusted producer; and `unknown`
+means the producer cannot be classified from bound evidence.
+
+`producer_assurance` is also a closed enum:
+
+```text
+verified | claimed | unknown
+```
+
+`verified` means an authenticated producer/channel boundary supplied the class;
+it never means the content is true. `claimed` means the caller or artifact names
+the producer without authentication. `unknown` means no usable producer evidence
+exists. No current caller may set its own assurance to `verified`; unknown enum
+values, caller-supplied verification, and absent producer evidence fail validation
+or conservatively become `unknown`/`untrusted` under the versioned policy. The
+initial production inventory therefore emits no `verified` producer assurance;
+that value is reserved for synthetic tests and a future authenticated boundary.
+
+Neither field grants authority by itself. Root integrity still comes only from
+root-origin evidence. Derived integrity still equals the meet of all completely
+bound inputs and the authorized transformer/producer cap. In particular:
+
+- `producer_class=agent` cannot mint an `agent` root; an agent cap applies only
+  when trusted ConvMem code records an authorized derivation with non-empty,
+  completely bound inputs;
+- `producer_class=trusted_tool` does not preserve trusted integrity unless the
+  exact transformer/recipe has a tested preservation contract;
+- `producer_assurance=verified` authenticates identity/channel only and cannot
+  override an untrusted input, lossy/generative cap, incomplete ancestry, or
+  failed commitment;
+- `claimed` and `unknown` producer evidence never elevate effective integrity.
 
 `effective_integrity` is a derived/cache value computed by one policy function.
 It is never authoritative caller metadata. Consumers recompute it and degrade to
@@ -513,3 +557,12 @@ earlier SHA.
 | Execution order | Stage 0, Stage 1A/1B, then parallel/later CG-1/CG-2 and broad dependability tracks. |
 | Mandatory continuity | R8 and assurance claim C8; only supplementary display diagnostics are advisory. |
 | Planning safety/status publication | Sections 11–14 and STATUS: no runtime/live operations; cross-arc rollup waits for acceptance. |
+
+## 16. Conditional-PASS correction map
+
+| Required correction | Resolution |
+|---|---|
+| Repository paths | Existing modules are named at their actual repository-root paths; the only new filename, `provenance.py`, is explicitly labeled planned in EXECUTION. |
+| Observed unstaged expansion | Deliberately discarded: it reintroduced broad T1–T5 scope ahead of the locked Stage 0/Stage 1 provenance order, duplicated contracts, anonymized charter lanes, and republished an unaccepted arc. |
+| Producer values/authority | Section 6.1 defines closed enums, verification meaning, initial absence of verified producers, and the rule that producer metadata grants no authority by itself. |
+| Clean review target | Reviewer records and inspects only the final committed SHA; working-tree edits are not review evidence. |

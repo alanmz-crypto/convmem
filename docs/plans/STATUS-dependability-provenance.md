@@ -3,8 +3,8 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** Revised after Kiro FAIL on superseded commit `e50a1b1`; clean-tree
-rereview required; no implementation authorized.
+**State:** Kiro PASS WITH REQUIRED CHANGES on `a855650`; final path and producer-
+authority corrections drafted for clean-tree rereview; no implementation authorized.
 
 ## 1. What this project is for
 
@@ -75,7 +75,7 @@ serving authority/repository.
 
 | Milestone | State | Exit condition |
 |---|---|---|
-| Stage 0 architecture package | **Revised after FAIL** | Kiro rereviews the final clean committed tree and returns PASS; targeted Copilot audit disposition; Ryan lock. |
+| Stage 0 architecture package | **Conditional PASS; final correction pending review** | Kiro verifies repository-root paths, producer authority semantics, and a clean committed tree; targeted Copilot audit disposition; Ryan lock. |
 | Stage 1A policy/representation substrate | Not authorized | Separate Ryan Execute grant; core policy, envelope, bindings, and representation continuity pass. |
 | Stage 1B assertion/exact-dedupe continuity | Not authorized | Independent assertions survive cross-tier equivalence and retrieval. |
 | Stage 2 semantic dedupe | Deferred | Separate design and grant. |
@@ -88,9 +88,9 @@ serving authority/repository.
 
 ## 5. Your role now
 
-**Next lane: Kiro design rereview.** The earlier FAIL applies to superseded commit
-`e50a1b1`. Review the planning branch at the new exact HEAD recorded in the
-external handoff, and first confirm the worktree/index are clean.
+**Next lane: Kiro final design rereview.** The conditional PASS applies to
+`a855650`. Review the new exact HEAD recorded in the external handoff, and first
+confirm the worktree/index are clean.
 Challenge the integrity rules, transformation completeness definition, commitment
 continuity, assertion-preserving dedupe, CG-1/CG-2 separation, implementation
 boundaries, and whether the defeater register is complete. Return a written
@@ -103,7 +103,7 @@ begin until Ryan separately grants Execute.
 
 ## 6. What remains before this is live
 
-1. Kiro rereviews the exact clean planning tip and maps the eight prior blockers.
+1. Kiro verifies the required path/producer corrections at the exact clean tip.
 2. Copilot audits safety/isolation and provenance continuity at the same tip.
 3. Codex revises planning findings if Ryan requests changes.
 4. Ryan locks Stage 0 and separately authorizes or rejects Stage 1 execution.
@@ -160,8 +160,8 @@ Do not append session narrative.
 
 | Date | Lane | Milestone change |
 |---|---|---|
-| 2026-08-15 | Codex Sol-High | Revised Stage 0 after Kiro's `e50a1b1` FAIL; rereview required and no implementation authorized. |
+| 2026-08-15 | Codex Sol-High | Applied Kiro's conditional-PASS path and producer-authority corrections; clean-SHA rereview required. |
 
-**TL;DR:** The provenance architecture was revised after Kiro's superseded-tip
-FAIL but remains unapproved. Kiro rereviews the new clean committed tip next; no
-runtime or live-data work is authorized.
+**TL;DR:** Kiro conditionally passed `a855650`; the final path and producer-
+authority corrections await clean-SHA rereview, with no runtime or live-data
+work authorized.
