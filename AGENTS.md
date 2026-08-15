@@ -46,6 +46,7 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 - [`docs/plans/STATUS-shadow-ledger-phase0.md`](docs/plans/STATUS-shadow-ledger-phase0.md) — Shadow Ledger Phase 0 delta capture
 - [`docs/plans/STATUS-chroma-reconcile-tier-l.md`](docs/plans/STATUS-chroma-reconcile-tier-l.md) — Chroma Reconcile Tier L (**closed GREEN**; reference only)
 - [`docs/plans/STATUS-complete-data-backup-correction-v2.md`](docs/plans/STATUS-complete-data-backup-correction-v2.md) — Complete-data backup correction v2
+- [`docs/plans/STATUS-cg2-production-activation.md`](docs/plans/STATUS-cg2-production-activation.md) — CG-2 committed-generation production activation
 
 **Cross-arc rollup:** [`docs/inter-model/STATUS.md`](docs/inter-model/STATUS.md) — active vs closed arcs and next authorized actions (not a per-arc brief).
 

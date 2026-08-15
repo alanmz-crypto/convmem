@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-09
+**Snapshot:** 2026-08-14
 
 ## Project goal
 
@@ -27,6 +27,9 @@ projection of the ledger/export, and production mutations remain explicitly gate
   separate Ryan grant — see [`STATUS-shadow-ledger-phase0.md`](../plans/STATUS-shadow-ledger-phase0.md).
 - **R2b capture** code is on `main`; live capture is unauthorized; quarantined draft packet
   must not be reused.
+- **CG-1 committed-generation dependability is merged and accepted** (#172–#174), but
+  remains hermetic. CG-2 production activation is in Architecture Planning only; no
+  production owner uses generation authority yet.
 - Two non-fatal doctor warnings often present: legacy `embed_collection_identity` metadata
   and external restic freshness. They do not authorize corpus mutation or Shadow activation.
 
@@ -38,6 +41,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
+| CG-2 production activation | CG-1 merged; CG-2 architecture draft on `plan/2026-08-14-cg2-production-activation`; production remains legacy | Kiro/Crush exact-revision architecture review + Cursor feasibility review, then Ryan Architecture HITL. No execution planning, implementation, gateway soak, or owner activation yet. See [`STATUS-cg2-production-activation.md`](../plans/STATUS-cg2-production-activation.md). |
 
 ## Closed arcs — reference STATUS only
 
@@ -73,7 +77,8 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Complete-data backup STATUS](../plans/STATUS-complete-data-backup-correction-v2.md)
 - [R2b capture STATUS](../plans/STATUS-r2b-capture-auth.md)
 - [Shadow Ledger STATUS](../plans/STATUS-shadow-ledger-phase0.md)
+- [CG-2 production activation STATUS](../plans/STATUS-cg2-production-activation.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Chroma is GREEN; JudgeBench waits on Ryan G3/G4; Shadow waits on
-activation-ready evidence (C7/C6) then Ryan grant; R2b waits on a fresh authorization packet.
+**TL;DR:** CG-1 is merged but still hermetic; CG-2 is architecture-review only.
+Chroma is GREEN; JudgeBench, Shadow, and R2b retain their separate named gates.
