@@ -38,6 +38,10 @@ class StaleGenerationError(GenerationPublicationError):
     """The candidate was built against a generation that is no longer active."""
 
 
+class StaleSourceError(GenerationPublicationError):
+    """The canonical source bytes no longer match the candidate manifest."""
+
+
 class GenerationQualificationError(GenerationPublicationError):
     """The manifest or its exact Chroma generation failed qualification."""
 
@@ -440,6 +444,15 @@ def publish_active_pointer(
             raise StaleGenerationError(
                 "active generation changed while candidate was queued: "
                 f"expected {expected_previous_generation_id!r}, got {current_generation!r}"
+            )
+        from source_observation import observe_source_hash
+
+        observed_hash = observe_source_hash(canonical_source)
+        if observed_hash != fresh_ref.manifest["source_hash"]:
+            raise StaleSourceError(
+                "canonical source bytes changed since candidate build: "
+                f"manifest={fresh_ref.manifest['source_hash']!r} "
+                f"current={observed_hash!r}"
             )
         pointer = build_active_pointer(
             manifest=fresh_ref.manifest,
