@@ -14,7 +14,7 @@ external evidence step without reopening the shipped CI implementation.
 |---|---|
 | **State** | `DOCS_READY__NEGATIVE_CONTROL_PENDING` |
 | **Branch** | `plan/2026-08-15-ci-behavioral-merge-gate-closeout` |
-| **Tip** | `91bb4a5702310c3d304139167c8484a54abee140` |
+| **Tip** | `2cb5b4c16efe7da08e6718bddf0c1419d287ed6a` |
 | **Push status** | Pushed to `origin` with the explicit branch ref |
 | **PR** | Not opened |
 | **Unrelated worktree item** | Untracked `pylint-report.json`; preserve it |
@@ -49,8 +49,10 @@ The closeout package is a docs-and-inventory change only:
    `19156572`, and the pending negative control.
 4. [`docs/inter-model/LATEST.md`](LATEST.md) now points to this handoff.
 
-Commit `91bb4a5` contains these four tracked changes. The preceding commit
-`50fc766` contains Kiro's original planning handoff.
+Commit `91bb4a5` contains the architecture, VERIFY, manifest, and initial
+`LATEST.md` package. Commit `2cb5b4c` adds this agent-ready handoff and the final
+`LATEST.md` pointer. The preceding commit `50fc766` contains Kiro's original
+planning handoff.
 
 ## Evidence already checked
 
@@ -75,12 +77,18 @@ change authorization. When authorized, use a disposable branch from current
 2. Commit and push the disposable branch with an explicit refspec.
 3. Open a PR targeting `main` and record its URL, head SHA, and Actions run URL.
 4. Confirm `pytest (3.12)` is red for that exact tip.
-5. Confirm ordinary merge is blocked by the required failing status.
-6. Close the PR without merging, delete the disposable branch, and preserve the
+5. Confirm the ordinary, non-bypass merge path is unsatisfied or blocked by the
+   required failing status; record that status evidence.
+6. If GitHub shows Ryan's repository-role bypass option, record it as the
+   expected break-glass capability and do not exercise it.
+7. Close the PR without merging, delete the disposable branch, and preserve the
    run/status evidence.
 
-The arc closes only when both the red pytest result and blocked merge are
-recorded in [`VERIFY-ci-behavioral-merge-gate.md`](../plans/VERIFY-ci-behavioral-merge-gate.md).
+The experiment passes only when the same disposable PR tip shows a red required
+pytest check and an unsatisfied ordinary merge path. The existence of a
+privileged bypass is expected and is not evidence that the gate failed; do not
+exercise the bypass merely to test it. Record both results in
+[`VERIFY-ci-behavioral-merge-gate.md`](../plans/VERIFY-ci-behavioral-merge-gate.md).
 Then update the `LATEST.md` bullet from `BLOCKED_ON_RYAN` to the observed result,
 commit, and push. Do not change the workflow or ruleset during that experiment.
 

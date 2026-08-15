@@ -86,14 +86,18 @@ Ryan's one-shot procedure:
    test, commit it, and push it explicitly.
 3. Open a PR targeting `main`; record the PR URL, head SHA, and Actions run URL.
 4. Confirm `pytest (3.12)` is red and capture the failed job link.
-5. Confirm the PR's ordinary merge control reports blocked by the required
-   failing status; record that status evidence.
-6. Close the PR without merging, delete the disposable branch, and remove the
+5. Confirm the PR's ordinary, non-bypass merge path is unsatisfied or blocked by
+   the required failing status; record that status evidence.
+6. If GitHub presents the repository-role bypass option, record it as the
+   expected break-glass capability. Do not exercise it merely to test the gate.
+7. Close the PR without merging, delete the disposable branch, and remove the
    deliberate failure from any local copy.
 
-The experiment passes only when both the failed pytest result and the blocked
-ordinary merge are visible for the same disposable PR tip. A passing workflow
-on #187 is not a negative-control result.
+The experiment passes only when the same disposable PR tip shows both a failed
+required pytest result and an unsatisfied ordinary merge path. The existence of
+the privileged bypass is expected and does not invalidate the gate; exercising
+that bypass would not be part of this experiment. A passing workflow on #187 is
+not a negative-control result.
 
 ## V4 — Independent sign-off
 
