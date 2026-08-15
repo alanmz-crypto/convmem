@@ -1,124 +1,180 @@
-# Verify Plan — Dependability and Provenance Trust Arc
+# VERIFY — Dependability and Provenance Integrity
 
 ```text
-Planning Status
-Phase:        Verify (planning package; no Execute evidence yet)
-Characters:   Independent Reviewer
-Functions:    Review scope, claim matrix, evidence map, and later Execute proof
-Lanes:        Codex planning; Kiro sign-off; Ryan GATE
-Authority:    Planning artifact only — not implementation PASS
+Status:       PLANNING STUB — ALL IMPLEMENTATION EVIDENCE PENDING
+Subject:      Future Stage 1 implementation at the reviewer-recorded SHA
+Architecture: ARCHITECTURE-dependability-provenance.md
+Execution:    EXECUTION-dependability-provenance.md
+Authority:    This file is not an Execute grant or implementation PASS
 ```
 
-**Subject / tip:** planning branch tip; record exact SHA at review time
+## Human consequence and five Ws
 
-**ARCHITECTURE / EXECUTION:**
-[`ARCHITECTURE-dependability-provenance.md`](ARCHITECTURE-dependability-provenance.md) /
-[`EXECUTION-dependability-provenance.md`](EXECUTION-dependability-provenance.md)
+No provenance implementation has passed. These rows predeclare the evidence a
+future implementation must produce so a model cannot redefine success after
+seeing results.
 
-**Goal:** Prove that eventual implementation closes classified trust-claim gaps
-without duplicating CG-1/CG-2 or crossing separate operational boundaries.
-
-## Human consequence
-
-This planning VERIFY does not authorize implementation or production action. A
-future filled VERIFY must show which baseline claims are proven, partial, or
-intentionally advisory before Ryan can accept closure.
-
-| | |
+| Field | Answer |
 |---|---|
-| **Who** | Codex authors; Kiro independently reviews; Ryan locks and gates. |
-| **What** | Claim-to-evidence and gap-driven execution framework. |
-| **When** | Before any dependability/provenance Execute grant. |
-| **Why** | Existing mechanisms are strong but their combined envelope is not one explicit contract. |
-| **How** | Severity-ranked claims, existing-proof inventory, degraded states, exact-revision evidence. |
+| Who | Cursor implements only after Ryan grants Execute; Kiro reviews design; Copilot audits safety/isolation; Ryan decides merge. |
+| What | A bounded proof that provenance integrity is conservative and continuous across the transformations ConvMem controls. |
+| When | After Stage 0 architecture lock, against one exact implementation SHA. |
+| Why | Current ingest, dedupe, export/reconstruction, and generation boundaries can lose or misstate provenance. |
+| How | Property tests, round-trip fixtures, negative controls, cold tamper tests, lifecycle traces, and independent review. |
 
-**TL;DR:** Planning is ready for architecture review; no Execute evidence is
-claimed.
+**Planning result:** PENDING. No row below is PASS until exact command output and
+artifacts are recorded for the implementation revision.
 
 ## Scope lock
 
 | In scope | Out of scope |
 |---|---|
-| Claims, severity, egress/local-only, proof inventory, and gap matrix | Runtime implementation under this planning branch |
-| Mapping CG-1/CG-2, backup, restore, doctor, and provider evidence | CG-2 soak, owner activation, GC, Shadow activation, live capture |
-| Compatibility, security, fault, and operational phase boundaries | Live migration, corpus mutation, cloud-policy changes |
+| Policy/envelope, input binding, ingest propagation, dedupe preservation, CG-1/CG-2 continuity, retrieval visibility | Live migration, Chroma/corpus mutation, Shadow/R2b operations, CG-2 activation |
+| Root/derivation/property tests and malformed/legacy behavior | Cryptographic identity, automatic elevation, factual truth, downstream action gate |
+| Existing-ranking isolation | Ranking or temporal-policy changes |
 
-## Verification design for eventual Execute
+## Verification design
 
-| Field | Planned answer |
+| Element | Required oracle |
 |---|---|
-| Independent oracle | Authoritative ledger/source/manifest state plus deterministic fixtures and restore/replay comparisons |
-| Failure-injection method | Process kill, corruption/truncation, storage fault, provider fault, source drift, and network-deny fixtures admitted by T2 |
-| Negative control | Bypassed authority, stale/corrupt pointer, unauthorized egress transport, or missing migration version must fail |
-| Dual-path coverage | Production mutators, serving authority, backup/restore, and cloud-capable operations |
+| Integrity calculation | Independent table/exhaustive oracle over `untrusted < agent < trusted` and transformer caps |
+| Input completeness | Byte hashes over raw records, exact consumed views, complete provider payload, selection parameters, and fixed recipe |
+| Commitment continuity | Canonical fixture digest compared at every durable/serving boundary |
+| Dedupe lifecycle | Assertion IDs and provenance commitments before/after exact and semantic candidate handling |
+| CG-1 | Manifest inspection plus cold omission/tamper negative controls |
+| CG-2 | Serving result compared with request-frozen selected manifest row; no recomputation |
+| Retrieval | Per-result assertion/provenance contract; no aggregate integrity |
+| Isolation | Diff/file inventory and no-live-mutation evidence |
 
-## V0 — Planning preconditions
-
-| ID | Check | Result |
-|---|---|---|
-| V0a | Branch is based on current `origin/main` and separate from CG-2 | PASS when reviewed |
-| V0b | Architecture, execution, status, and VERIFY files exist | PASS when reviewed |
-| V0c | CI is explicitly outside the Trust Arc | PASS in planning package |
-| V0d | T1 includes egress inventory, local-only, and severity | PASS in planning package |
-| V0e | T2 requires proof inventory before new tests | PASS in planning package |
-| V0f | No implementation or operational grant is implied | PASS in scope locks |
-
-## V1 — Trust Baseline review
+## V0 — Review and revision binding
 
 | ID | Check | Result |
 |---|---|---|
-| V1a | Every claim has authority, failure, evidence, degraded state, consequence, gate, and owner | Pending architecture review |
-| V1b | Critical claims have deterministic measurements | Pending architecture review |
-| V1c | Thresholds state the bad outcome they prevent | Pending architecture review |
-| V1d | Local-only means no corpus-bearing network request is possible | Pending design/implementation |
+| V0a | Kiro records `git rev-parse HEAD` and PASS/FAIL with blocking findings. | PENDING |
+| V0b | Copilot targeted audit reviews the same SHA. | PENDING |
+| V0c | Ryan records architecture lock and separate Execute grant. | PENDING |
+| V0d | Implementation VERIFY records exact implementation SHA and baseline. | PENDING |
 
-## V2 — Existing-proof inventory
+## V1 — Root authority and policy ownership
 
-| ID | Check | Result |
+| ID | Required check | Negative control | Result |
+|---|---|---|---|
+| V1a | One policy function owns root and derivation integrity. | Search proves no adapter/caller duplicate calculator. | PENDING |
+| V1b | Initial production verified-channel inventory is empty. | Transcript role/path/process/source type cannot verify origin. | PENDING |
+| V1c | Empty inputs cannot mint `agent` or `trusted`. | Construct every empty/missing-input form. | PENDING |
+| V1d | Caller claims cannot self-upgrade. | Claim `user`, `trusted_tool`, `verified`, and `trusted` in text/metadata. | PENDING |
+| V1e | Legacy/malformed/unknown-policy records become untrusted. | Remove each required envelope field and use future policy version. | PENDING |
+
+## V2 — Transformer-aware monotonicity
+
+Normative property for every supported derivation:
+
+```text
+I(output) <= meet(I(all completely bound dynamic inputs), transformer_cap)
+```
+
+| ID | Required check | Result |
 |---|---|---|
-| V2a | CG-1 durability/cold-validation evidence is mapped | Pending T2 |
-| V2b | CG-2 authority/reconciliation/rollback/mixed-mode evidence is mapped | Pending T2 |
-| V2c | Backup/restore/doctor/provider evidence is mapped | Pending T2 |
-| V2d | Each claim is sufficient, partial, or absent | Pending T2 |
-| V2e | New tests are admitted only for partial/absent claims | Pending T2 |
+| V2a | Exhaustive/property tests cover every input lattice value and transformer class. | PENDING |
+| V2b | Tested lossless packaging can preserve, but never exceed, least input integrity. | PENDING |
+| V2c | Every LLM summarize/distill/rewrite output is capped at `agent`. | PENDING |
+| V2d | Any untrusted contributor makes output untrusted. | PENDING |
+| V2e | Partial/unknown ancestry makes output untrusted. | PENDING |
+| V2f | Repeated transformations are monotone and never rise. | PENDING |
+| V2g | Deterministic but lossy operations do not preserve trust without an explicit tested contract. | PENDING |
 
-## V3 — Compatibility and provenance
+## V3 — Exact transformation-boundary binding
 
-| ID | Check | Result |
+| ID | Required check | Negative control | Result |
+|---|---|---|---|
+| V3a | Binding includes stable source locator and full raw-record hash. | Same content at different records remains distinguishable. | PENDING |
+| V3b | Binding includes each exact rendered/truncated consumed view. | Change one consumed byte; commitment changes. | PENDING |
+| V3c | Binding includes message order, selection, chunk, and truncation parameters. | Reorder or change budget; commitment changes. | PENDING |
+| V3d | Binding includes complete provider payload and fixed recipe/config hash. | Change prompt/tool/retrieval input; payload hash changes. | PENDING |
+| V3e | Requested/resolved provider/model, fallback, temperature, and transformer version are bound. | Trigger fallback; identity/commitment reflects resolved path. | PENDING |
+| V3f | Secrets are excluded without excluding semantics-bearing request bytes. | Fixture scans serialized envelope for test credential and required payload bytes. | PENDING |
+| V3g | `complete` means supported-boundary inputs, not universal model causality. | Documentation and schema avoid impossible claim. | PENDING |
+
+## V4 — Representation continuity
+
+| ID | Required check | Negative control | Result |
+|---|---|---|---|
+| V4a | Canonicalization is versioned and deterministic across process restarts. | Field order/Unicode/null variants have specified behavior. | PENDING |
+| V4b | Unit → Chroma → export → reconstruction preserves envelope/commitment exactly. | Remove/alter flat or canonical field; degrade/fail as specified. | PENDING |
+| V4c | Flat metadata cannot override canonical envelope. | Give scalar cache a more favorable tier than recomputation. | PENDING |
+| V4d | Effective-integrity cache mismatch degrades to untrusted. | Tamper only the cache. | PENDING |
+| V4e | Old consumers cannot silently drop provenance and return trusted. | Run old/missing-field fixture. | PENDING |
+
+## V5 — Dedupe and assertion identity
+
+| ID | Required check | Result |
 |---|---|---|
-| V3a | Durable formats and owners are enumerated | Pending T3 |
-| V3b | Migration, future rejection, backup, rollback, and old fixtures are specified | Pending T3 |
-| V3c | Embedding identity and unknown behavior are explicit | Pending T3 |
+| V5a | Identical cross-provenance content remains independently auditable. | PENDING |
+| V5b | Low-integrity duplicate cannot lower/erase a trusted assertion. | PENDING |
+| V5c | High-integrity duplicate cannot elevate/erase an untrusted assertion. | PENDING |
+| V5d | Equivalence creates no aggregate trusted assertion. | PENDING |
+| V5e | Semantic cross-provenance tombstone requires human adjudication and retains both audit assertions. | PENDING |
+| V5f | Storage optimization cannot destroy provenance identity. | PENDING |
 
-## V4 — Security boundary
+## V6 — CG-1 immutable continuity and cold validation
 
-| ID | Check | Result |
+| ID | Required check | Negative control | Result |
+|---|---|---|---|
+| V6a | New-schema candidate/manifest identity includes required provenance commitment. | Compare otherwise-identical candidates with different commitments. | PENDING |
+| V6b | Cold validation requires the commitment; it does not compare only present keys. | Omit the field from a new-schema row; cold open fails. | PENDING |
+| V6c | Altered envelope/commitment or unknown schema fails closed. | Tamper each independently. | PENDING |
+| V6d | Legacy generation is explicitly untrusted, not inferred upward. | Open legacy fixture under compatibility path. | PENDING |
+| V6e | CG-1 durability PASS is never surfaced as provenance/truth PASS. | Contract/docs assertion test. | PENDING |
+
+## V7 — CG-2 serving and retrieval isolation
+
+| ID | Required check | Negative control | Result |
+|---|---|---|---|
+| V7a | CG-2 serves the same assertion/commitment selected by its request-frozen authority vector. | Mutate follower copy; compare against selected manifest. | PENDING |
+| V7b | CG-2 does not recompute, aggregate, elevate, or discard provenance. | Search and fixture comparison. | PENDING |
+| V7c | Retrieval returns provenance per assertion. | Mixed-integrity result set has no aggregate trusted label. | PENDING |
+| V7d | Existing ranking/source-trust scores do not feed effective integrity. | Hold evidence fixed and vary ranking/path metadata. | PENDING |
+| V7e | Temporal/supersession status does not feed integrity. | Vary timestamps/superseded state with same provenance. | PENDING |
+
+## V8 — Laundering and lifecycle faults
+
+| ID | Fault case | Expected result | Result |
+|---|---|---|---|
+| V8a | Untrusted external chunk → LLM summary | untrusted | PENDING |
+| V8b | Trusted code/tool echoes untrusted input | untrusted | PENDING |
+| V8c | Same root summarized by two models | one root lineage; no independent corroboration/elevation | PENDING |
+| V8d | Derivation omits one parent | untrusted/incomplete | PENDING |
+| V8e | Untrusted retrieval → conversation → recapture → distill | never rises above untrusted | PENDING |
+| V8f | Prompt/content says `origin=trusted` | no metadata effect | PENDING |
+| V8g | Provider omission/value/fallback fault | explicit incomplete/degraded result; no elevation | PENDING |
+
+## V9 — Regression, documentation, and no-live-mutation proof
+
+| ID | Required evidence | Result |
 |---|---|---|
-| V4a | Corpus-bearing egress operations and payload classes are inventoried | Pending T1/T4 |
-| V4b | Retrieved content cannot acquire instruction authority | Pending T4 |
-| V4c | Write → Store → Retrieve → Execute → Share → Forget tests are scoped | Pending T4 |
-| V4d | Activation/cloud grants remain separate | Pending T4 |
+| V9a | Focused provenance tests and full pytest pass at exact SHA. | PENDING |
+| V9b | Formatting/static checks and `git diff --check` pass. | PENDING |
+| V9c | Changed-file inventory contains only authorized implementation/docs/tests. | PENDING |
+| V9d | Existing retrieval ranking behavior is unchanged. | PENDING |
+| V9e | No live corpus/Chroma mutation, Shadow activation, R2b capture, or CG-2 operational action occurred. | PENDING |
+| V9f | Runnable documentation distinguishes reference commands from commands requiring Ryan grant. | PENDING |
 
-## V5 — Operational envelope
+## V10 — Independent sign-off
 
-| ID | Check | Result |
+| ID | Required evidence | Result |
 |---|---|---|
-| V5a | RSS, latency, backlog, restore, and provider measurements have one owner | Pending T5 |
-| V5b | 24/72-hour soak scope and stop conditions are defined | Pending T5 |
-| V5c | Maintenance/security checks do not duplicate gates | Pending T5 |
-
-## V6 — Independent sign-off and Ryan GATE
-
-| ID | Check | Result |
-|---|---|---|
-| V6a | Independent review names exact planning/implementation tip | Pending |
-| V6b | Residual risks include consequence, owner, and disposition | Pending |
-| V6c | Ryan locks architecture or returns the package | Pending Ryan GATE |
+| V10a | Kiro implementation design verdict names exact SHA. | PENDING |
+| V10b | Copilot safety/isolation verdict names the same SHA. | PENDING |
+| V10c | Material conflicting PASS/FAIL, if any, follows the team-charter Sol-High gate. | PENDING |
+| V10d | Residual risks name consequence, owner, and disposition. | PENDING |
+| V10e | Ryan decides merge; migration/activation remains a separate grant. | PENDING |
 
 ## Evidence log
 
 ```text
-VERIFY-dependability-provenance — planning package on
-plan/2026-08-15-dependability-provenance — 2026-08-15
-Planning result: ready for architecture review; no Execute evidence claimed
+2026-08-15 — Planning stub created. No implementation evidence, PASS verdict,
+migration authority, activation authority, or downstream enforcement claimed.
 ```
+
+**TL;DR:** This is a predeclared verification contract, not evidence of a
+working implementation. Every implementation row remains pending.
