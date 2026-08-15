@@ -75,6 +75,8 @@ Key invariants:
 | `tests/test_file_generation_*.py` | Complete on `main` | CG-1 proof and frozen read-boundary inventory |
 | `docs/plans/ARCHITECTURE-cg2-production-activation.md` | **Locked at `e680ce837653698a5be8b78ba02db2f880c40c63` on `plan/2026-08-14-cg2-production-activation`** | Ryan-approved production authority, migration, health, and rollout design |
 | `docs/inter-model/CURSOR-2026-08-15-cg2-delta-confirmation.md` | **Complete on branch** | Kiro/Crush/Cursor exact-SHA PASS rollup |
+| `docs/inter-model/CURSOR-2026-08-14-cg2-feasibility-review.md` | **Complete on branch** | `1222b1e` feasibility review (historical; superseded by delta confirmation) |
+| `docs/inter-model/CRUSH-2026-08-14-cg2-evidence-review.md` | **Complete on branch** | `1222b1e` evidence review (historical; superseded by delta confirmation) |
 | `docs/plans/EXECUTION-cg2-production-activation.md` | **Reviewed PASS by Kiro at `6a808f1`** | Ryan Execute granted to Cursor for the bounded five-task package |
 | `docs/plans/VERIFY-cg2-production-activation.md` | **Planning stub on this plan branch** | Cursor fills from mechanical Execute evidence before arc close |
 | Production serving repository | Missing | Existing query surfaces still use legacy `ChromaStore` paths |
@@ -213,6 +215,7 @@ Keep this file as current-state orientation, not a diary:
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-08-15 | Cursor | Landed `1222b1e` feasibility and evidence reviews on plan branch with supersession banners to delta confirmation |
 | 2026-08-15 | Ryan | Granted Execute to Cursor for the exact five-task CG-2 package at `6a808f1`; production soak, owner activation, and GC remain separate grants |
 | 2026-08-15 | Kiro | Reviewed the execution and VERIFY planning package PASS at `6a808f1`; four implementation-lane observations are non-blocking |
 | 2026-08-15 | OpenAI Codex | Drafted the five-task CG-2 execution plan and VERIFY planning stub from the Ryan-locked architecture; Kiro plan review is next |

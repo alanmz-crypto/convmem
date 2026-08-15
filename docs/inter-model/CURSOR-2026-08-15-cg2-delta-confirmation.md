@@ -40,6 +40,8 @@ old owner, while no newly resolved authority vector admits both owners.
 
 ## Review reading
 
+- [Cursor feasibility review @ `1222b1e`](CURSOR-2026-08-14-cg2-feasibility-review.md) (historical; PASS WITH RISKS)
+- [Crush evidence review @ `1222b1e`](CRUSH-2026-08-14-cg2-evidence-review.md) (historical; PASS WITH RISKS)
 - [Architecture delta](https://github.com/alanmz-crypto/convmem/compare/1222b1ede2d6cc5da582388768f06d60b36c5e50...e680ce837653698a5be8b78ba02db2f880c40c63)
 - [Canonical architecture](https://github.com/alanmz-crypto/convmem/blob/e680ce837653698a5be8b78ba02db2f880c40c63/docs/plans/ARCHITECTURE-cg2-production-activation.md)
 - [Formal model evidence](https://github.com/alanmz-crypto/convmem/blob/e680ce837653698a5be8b78ba02db2f880c40c63/docs/plans/formal/cg2/README.md)
