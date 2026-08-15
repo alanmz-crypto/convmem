@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-08-15
 **Arc:** CG-2 production activation of committed generations
-**State:** Lock candidate `e680ce8` with triple delta PASS; Ryan Architecture HITL pending; no execution planning, implementation, or activation authority
+**State:** Architecture locked by Ryan at `e680ce837653698a5be8b78ba02db2f880c40c63`; execution planning is next; no implementation or activation authority
 
 ## 1. Purpose and product goal
 
@@ -73,10 +73,10 @@ Key invariants:
 | `file_generation_validate.py` | Complete on `main`, hermetic | Fresh-process cold validation |
 | `ingest_dedupe.py` logical-ID support | Complete on `main` | CG-1 logical dedupe support |
 | `tests/test_file_generation_*.py` | Complete on `main` | CG-1 proof and frozen read-boundary inventory |
-| `docs/plans/ARCHITECTURE-cg2-production-activation.md` | **Lock candidate at `e680ce8` on `plan/2026-08-14-cg2-production-activation`** | Triple delta PASS; awaiting Ryan Architecture HITL |
+| `docs/plans/ARCHITECTURE-cg2-production-activation.md` | **Locked at `e680ce837653698a5be8b78ba02db2f880c40c63` on `plan/2026-08-14-cg2-production-activation`** | Ryan-approved production authority, migration, health, and rollout design |
 | `docs/inter-model/CURSOR-2026-08-15-cg2-delta-confirmation.md` | **Complete on branch** | Kiro/Crush/Cursor exact-SHA PASS rollup |
-| CG-2 execution plan | Missing by design | Written only after architecture lock |
-| CG-2 VERIFY plan/results | Missing by design | Authored during execution planning; no results exist |
+| CG-2 execution plan | Missing — next Codex deliverable | Must be authored before any implementation grant |
+| CG-2 VERIFY plan/results | Missing — next planning deliverable | Verification plan is authored with execution planning; no results exist |
 | Production serving repository | Missing | Existing query surfaces still use legacy `ChromaStore` paths |
 | Legacy fence/owner authority artifacts | Missing | No owner is cut over |
 | Generation-aware doctor/parity | Missing | Current checks compare raw IDs |
@@ -101,8 +101,8 @@ evidence.
 | Crush evidence/failure review at `1222b1e` | **PASS WITH RISKS → PASS** | N1–N3 disposition and exact-SHA delta confirmation complete |
 | N1–N3 architecture addenda | **RESOLVED** | Preserved path-derived identity and explicit rename migration |
 | Bounded formal authority model | **DONE — 3/3 TLC PASS** | 123,281 generated / 38,134 distinct states; zero errors |
-| Ryan Architecture HITL | **NOT DONE** | Triple delta PASS recorded; Ryan lock on `e680ce8` |
-| Execution and VERIFY plans | **NOT STARTED** | Architecture lock |
+| Ryan Architecture HITL | **DONE — 2026-08-15** | Locked `e680ce837653698a5be8b78ba02db2f880c40c63` as the execution baseline |
+| Execution and VERIFY plans | **NEXT / NOT STARTED** | Codex authors them before any Execute grant |
 | Implementation | **NOT AUTHORIZED** | Execution plan review + Ryan Execute grant |
 | Legacy-only serving-gateway soak | **NOT AUTHORIZED** | Implementation and verification evidence + exact production operation grant |
 | First owner canary | **NOT AUTHORIZED** | All activation gates + separate named-owner grant |
@@ -112,23 +112,25 @@ evidence.
 
 ## 5. Your role
 
-**If Ryan sent you now:** Architecture HITL is the only remaining pre-planning
-gate. Delta confirmation is complete — see
-`docs/inter-model/CURSOR-2026-08-15-cg2-delta-confirmation.md`. Do not implement.
+**Current Codex role:** Author the CG-2 execution and VERIFY plans from the
+Ryan-locked architecture at `e680ce8`. Preserve the separate grants for plan
+approval, implementation, gateway soak, owner activation, and GC.
 
-**If Ryan sent you as Codex:** Pre-lock drafting and formal model are complete.
-Author execution + VERIFY plans only after Ryan locks `e680ce8`.
+**Implementation lane:** Not yet authorized. Cursor implements only after a
+reviewed execution plan and Ryan Execute grant.
 
-**If Ryan sent you to implement:** Stop. Implementation is not authorized.
+**Production state:** CG-1 is merged but hermetic; all production owners still
+use legacy semantics. The architecture lock does not make CG-2 live.
 
-**If Ryan asks whether CG-2 is live:** It is not. CG-1 is merged but hermetic;
-all production owners still use legacy semantics.
+**If a concrete architectural defect is discovered:** Stop plan authoring and
+raise a targeted change request against the locked SHA. Do not silently revise
+the architecture while drafting execution work.
 
 ## 6. What remains before live activation
 
-1. Ryan Architecture HITL lock on `e680ce8`.
-2. Codex authors execution and VERIFY plans only after that lock.
-3. Plan review and separate Ryan Execute grant.
+1. Codex authors the execution and VERIFY plans from the locked architecture.
+2. Kiro/Crush/Cursor review the execution/verification package as assigned.
+3. Ryan grants Execute for the approved implementation scope.
 4. Cursor implements global serving boundary with all owners legacy.
 5. Independent code/safety verification, copied-corpus rehearsal,
    implementation-to-model transition mapping, and pinned-Chroma operational evidence.
@@ -143,7 +145,7 @@ all production owners still use legacy semantics.
 
 | Stop | Owner | Blocks |
 |---|---|---|
-| Architecture lock | Ryan after triple delta PASS | Execution planning and implementation |
+| Architecture lock | **DONE — Ryan, 2026-08-15** | Execution planning is unlocked; implementation remains separately gated |
 | Execute grant | Ryan | Code/runtime/config changes |
 | Production gateway-soak grant | Ryan, exact operation | Any live read-path switch |
 | Named-owner activation grant | Ryan, exact SHA/owner/state | First or later owner promotion |
@@ -212,6 +214,7 @@ Keep this file as current-state orientation, not a diary:
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-08-15 | Ryan | Locked the CG-2 architecture at `e680ce837653698a5be8b78ba02db2f880c40c63` after Kiro, Crush, and Cursor exact-SHA PASS confirmations; execution planning is next |
 | 2026-08-15 | Cursor | Recorded triple exact-SHA delta PASS at `e680ce8`; Ryan Architecture HITL is next |
 | 2026-08-14 | OpenAI Codex | Completed and mechanically checked the 12-property bounded authority model in three exhaustive configurations; lock-candidate delta review is next |
 | 2026-08-14 | OpenAI Codex | Recorded all three review verdicts and resolved N1–N3 as bounded architecture mechanisms; formal model is the remaining pre-lock artifact |
