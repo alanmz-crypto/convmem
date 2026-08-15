@@ -4,6 +4,7 @@ Primary: knowledge_units (Step 5+).
 Fallback: conversation_summaries via --raw (Step 4).
 Reranking: Step 6 (query_units only).
 """
+# pylint: disable=too-many-lines,too-many-locals
 
 from __future__ import annotations
 
@@ -15,13 +16,13 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from chroma_store import ChromaStore, is_superseded, open_chroma_for_read
+from chroma_store import ChromaStore
 from chroma_readonly import collection_metadata_rows
 from config import load_config
 from domains import domain_breadcrumb, domain_matches, is_known_domain, normalize_domain
 from llm import ollama_embed
 from meta_format import when_from_meta
-from open_source import resolve_open_target
+from open_source import citation_open_meta, resolve_open_target
 from site_filter import filter_results_by_site, normalize_site
 
 # ---------------------------------------------------------------------------
@@ -161,43 +162,11 @@ def _fallback_query_rows(
     site: str | None = None,
     cfg: dict | None = None,
 ) -> list[dict]:
-    if cfg is None:
-        cfg = load_config()
-    chroma_dir = cfg["index"]["chroma_dir"]
-    domain_norm = normalize_domain(domain) if domain else None
-    site_norm = normalize_site(site) if site else None
+    from metadata_keyword_fallback import run_keyword_fallback
 
-    rows = collection_metadata_rows(chroma_dir, collection_name)
-    results: list[dict] = []
-    for meta in rows:
-        if collection_name == "knowledge_units" and is_superseded(meta):
-            continue
-        if site_norm and not filter_results_by_site([{"metadata": meta}], site_norm):
-            continue
-        if domain_norm:
-            unit_domain = _unit_domain(meta)
-            if unit_domain is None or not domain_matches(unit_domain, domain_norm):
-                continue
-        score = _keyword_score(text, meta)
-        if score <= 0:
-            continue
-        results.append(
-            {
-                "id": meta.get("id", ""),
-                "metadata": meta,
-                "document": meta.get("document") or meta.get("title") or "",
-                "score": round(min(score / 6.0, 0.99), 4),
-            }
-        )
-
-    results.sort(
-        key=lambda r: (
-            r.get("score", 0.0),
-            len(str(r.get("metadata", {}).get("title", ""))),
-        ),
-        reverse=True,
+    return run_keyword_fallback(
+        collection_name, text, top_k, domain=domain, site=site, cfg=cfg,
     )
-    return results[:top_k]
 
 
 def _extract_ledger_ids(text: str) -> list[str]:
@@ -387,9 +356,12 @@ def query_units(
 ) -> list[dict]:
     if cfg is None:
         cfg = load_config()
+    if chroma_dir:
+        cfg = dict(cfg)
+        cfg["index"] = dict(cfg["index"])
+        cfg["index"]["chroma_dir"] = chroma_dir
     models = cfg["models"]
     qcfg = cfg.get("query", {})
-    chroma_path = chroma_dir or cfg["index"]["chroma_dir"]
     view = _resolve_eval_retrieval_view(eval_view, cfg)
     # embedding_influenced keeps ranking stages but disables ledger-priority.
     skip_ledger_priority = view == "embedding_influenced"
@@ -409,14 +381,16 @@ def query_units(
         n_fetch = candidate_k * 3
 
     ledger_extras: list[dict] = []
+    from serving_authority import ServingBackendTransient
+    from serving_index_repository import open_serving_index_repository
+
     try:
-        store = open_chroma_for_read(chroma_path)
-        try:
-            results = store.query_units(embedding, n_fetch)
+        with open_serving_index_repository(
+            cfg, mediated_fallback=_fallback_query_rows
+        ) as repo:
+            results = repo.query_units(embedding, n_fetch)
             if not skip_ledger_priority:
-                ledger_extras = _ledger_lookup_hits(cfg, store, text)
-        finally:
-            store.close()
+                ledger_extras = _ledger_lookup_hits(cfg, repo.legacy_store(), text)
         if site_norm:
             results = filter_results_by_site(results, site_norm)
         if domain:
@@ -425,15 +399,17 @@ def query_units(
                 if (ud := _unit_domain(r.get("metadata", {}))) is not None
                 and domain_matches(ud, domain)
             ]
-    except Exception:
-        results = _fallback_query_rows(
-            "knowledge_units",
-            text,
-            n_fetch,
-            domain=domain,
-            site=site,
-            cfg=cfg,
-        )
+    except ServingBackendTransient:
+        with open_serving_index_repository(
+            cfg, mediated_fallback=_fallback_query_rows
+        ) as repo:
+            results = repo.mediated_keyword_fallback(
+                "knowledge_units",
+                text,
+                n_fetch,
+                domain=domain,
+                site=site,
+            ).rows
         if not skip_ledger_priority:
             ledger_extras = _ledger_lookup_hits(cfg, None, text)
     for r in results:
@@ -512,22 +488,26 @@ def query_raw(
     )
     site_norm = normalize_site(site) if site else None
     n_fetch = top_k * 3 if site_norm else top_k
+    from serving_authority import ServingBackendTransient
+    from serving_index_repository import open_serving_index_repository
+
     try:
-        store = open_chroma_for_read(cfg["index"]["chroma_dir"])
-        try:
-            results = store.query_summaries(embedding, n_fetch)
-        finally:
-            store.close()
+        with open_serving_index_repository(
+            cfg, mediated_fallback=_fallback_query_rows
+        ) as repo:
+            results = repo.query_summaries(embedding, n_fetch)
         if site_norm:
             results = filter_results_by_site(results, site_norm)
-    except Exception:
-        results = _fallback_query_rows(
-            "conversation_summaries",
-            text,
-            n_fetch,
-            site=site,
-            cfg=cfg,
-        )
+    except ServingBackendTransient:
+        with open_serving_index_repository(
+            cfg, mediated_fallback=_fallback_query_rows
+        ) as repo:
+            results = repo.mediated_keyword_fallback(
+                "conversation_summaries",
+                text,
+                n_fetch,
+                site=site,
+            ).rows
     for r in results:
         d = r.get("distance")
         if d is not None:
@@ -539,6 +519,8 @@ def query_raw(
 # Rich display (Step 7) — formatting only, no retrieval logic
 # ---------------------------------------------------------------------------
 
+# Rich imports intentionally after retrieval logic (Step 7 section).
+# pylint: disable=wrong-import-order
 from rich import box
 from rich.console import Console, Group
 from rich.panel import Panel
@@ -794,13 +776,7 @@ def _citation_block(c: dict) -> Group:
     lid = c.get("ledger_id") or c.get("id")
     if lid:
         parts.append(Text(f"ledger: {lid}", style="dim"))
-    open_meta = {
-        "source_path": c.get("source_path"),
-        "tool": c.get("tool"),
-        "start_offset": c.get("start_offset"),
-        "conversation_id": c.get("conversation_id"),
-        "session_id": c.get("session_id"),
-    }
+    open_meta = citation_open_meta(c)
     parts.append(_open_text(open_meta))
     return Group(*parts)
 
@@ -890,10 +866,14 @@ def render_stats(cfg: dict | None = None) -> None:
         cfg = load_config()
 
     from adapters.detect import TOOL_BY_FORMAT, detect_format
+    from serving_index_repository import open_serving_index_repository
 
     chroma_dir = cfg["index"]["chroma_dir"]
     summary_metas = collection_metadata_rows(chroma_dir, "conversation_summaries")
-    unit_metas = collection_metadata_rows(chroma_dir, "knowledge_units")
+    with open_serving_index_repository(cfg) as repo:
+        unit_metas = repo.units_metadata()
+        serving_units = repo.serving_count_units()
+        physical_units = repo.physical_count_units()
     chunks_by_tool = Counter(m.get("tool", "?") for m in summary_metas)
     units_by_tool = Counter(m.get("tool", "?") for m in unit_metas)
 
@@ -940,8 +920,16 @@ def render_stats(cfg: dict | None = None) -> None:
         )
 
     console.print(
-        Panel.fit(table, title="Index Statistics", border_style="blue", padding=(1, 2))
+        Panel.fit(table, title="Index Statistics (serving view)", border_style="blue", padding=(1, 2))
     )
+    if physical_units != serving_units:
+        console.print(
+            Text(
+                f"Physical store holds {physical_units} unit rows; "
+                f"{serving_units} are in the serving view.",
+                style="dim",
+            )
+        )
 
     units_by_domain = Counter(m.get("domain") or "untagged" for m in unit_metas)
     if units_by_domain:

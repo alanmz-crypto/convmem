@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from query import QueryUnitTrace, query_units
 from rerank import rerank
+from tests.serving_repo_mock import patch_query_serving
 
 
 class RerankScoreTests(unittest.TestCase):
@@ -32,10 +33,9 @@ class RerankScoreTests(unittest.TestCase):
 
 class MandatoryRerankQueryTests(unittest.TestCase):
     @patch("rerank.rerank")
-    @patch("query.open_chroma_for_read")
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
     def test_query_units_runs_reranker_even_when_legacy_flag_is_false(
-        self, _embed, mock_open, mock_rerank
+        self, _embed, mock_rerank
     ):
         store = MagicMock()
         store.query_units.return_value = [
@@ -52,7 +52,6 @@ class MandatoryRerankQueryTests(unittest.TestCase):
                 "metadata": {},
             },
         ]
-        mock_open.return_value = store
 
         def _rerank(_query, candidates, _model, _top_k):
             out = [dict(candidates[1]), dict(candidates[0])]
@@ -75,7 +74,8 @@ class MandatoryRerankQueryTests(unittest.TestCase):
             "query": {"rerank": False, "top_k_candidates": 20},
         }
 
-        results = query_units("query", top_k=2, cfg=cfg, retrieval_trace=trace)
+        with patch_query_serving(store):
+            results = query_units("query", top_k=2, cfg=cfg, retrieval_trace=trace)
 
         self.assertEqual([row["id"] for row in results], ["semantic-first", "rerank-first"])
         self.assertTrue(all("rank_fusion_score" in row for row in results))
@@ -102,10 +102,9 @@ class MandatoryRerankQueryTests(unittest.TestCase):
         mock_rerank.assert_called_once()
 
     @patch("rerank.rerank")
-    @patch("query.open_chroma_for_read")
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
     def test_source_trust_runs_after_fusion_and_before_truncation(
-        self, _embed, mock_open, mock_rerank
+        self, _embed, mock_rerank
     ):
         store = MagicMock()
         store.query_units.return_value = [
@@ -122,7 +121,6 @@ class MandatoryRerankQueryTests(unittest.TestCase):
                 "metadata": {"source_type": "kiro_steering"},
             },
         ]
-        mock_open.return_value = store
 
         def _rerank(_query, candidates, _model, _top_k):
             out = [dict(candidate) for candidate in candidates]
@@ -148,7 +146,8 @@ class MandatoryRerankQueryTests(unittest.TestCase):
             },
         }
 
-        results = query_units("query", top_k=1, cfg=cfg, retrieval_trace=trace)
+        with patch_query_serving(store):
+            results = query_units("query", top_k=1, cfg=cfg, retrieval_trace=trace)
 
         self.assertEqual([row["id"] for row in trace.rank_fused], ["chat", "steering"])
         self.assertEqual([row["id"] for row in trace.source_trust], ["steering", "chat"])

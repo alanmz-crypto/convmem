@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import os
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
@@ -287,6 +289,16 @@ def resolve_open_target(meta: dict) -> OpenTarget:
         )
 
     return OpenTarget(label="unknown source", hint=path or "no source path")
+
+
+def citation_open_meta(citation: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "source_path": citation.get("source_path"),
+        "tool": citation.get("tool"),
+        "start_offset": citation.get("start_offset"),
+        "conversation_id": citation.get("conversation_id"),
+        "session_id": citation.get("session_id"),
+    }
 
 
 def _which(cmd: str) -> str | None:

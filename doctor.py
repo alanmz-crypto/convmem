@@ -1269,6 +1269,55 @@ def _check_planning_guide_contract() -> DoctorCheck:
     return DoctorCheck("planning_guide_contract", True, f"contract {CONTRACT_VERSION}: {n} guide(s) ok")
 
 
+def _check_source_reconciliation_freshness(cfg: dict) -> DoctorCheck:
+    from logical_accounting import build_reconciliation_diagnostics
+
+    diag = build_reconciliation_diagnostics(cfg)
+    name = "source_reconciliation"
+    pending = int(diag["pending_owner_count"])
+    dirty = int(diag["dirty_scope_count"])
+    stale = diag["staleness_seconds"]
+    if pending == 0 and dirty == 0 and diag["fresh"]:
+        return DoctorCheck(name, True, "fresh")
+    detail = f"pending={pending} dirty_scopes={dirty}"
+    if stale is not None:
+        detail += f" staleness={int(stale)}s"
+    if not diag["fresh"] or dirty:
+        return DoctorCheck(name, True, f"WARN: {detail}", status="warn")
+    return DoctorCheck(name, True, detail)
+
+
+def _check_logical_projection(cfg: dict) -> DoctorCheck:
+    from logical_accounting import build_corpus_view_stats
+
+    name = "logical_projection"
+    try:
+        report = build_corpus_view_stats(cfg)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        return DoctorCheck(name, False, f"logical accounting failed: {exc}")
+
+    view = report["view"]
+    physical = report["physical_inventory"]
+    authority = report["authority"]
+    dup = int(physical["duplicate_logical_count"])
+    retained = int(physical["counts_by_class"].get("retained_inactive", 0))
+    detail = (
+        f"serving_units={view['serving_units']} physical_units={view['physical_units']}; "
+        f"retained_inactive={retained}; owners={len(authority['owners'])}"
+    )
+    if report["authority_failures"]:
+        return DoctorCheck(
+            name,
+            False,
+            detail + "; authority: " + "; ".join(report["authority_failures"][:2]),
+        )
+    if dup:
+        return DoctorCheck(name, False, detail + f"; duplicate_logical={dup}")
+    if not report["logical_projection_gate_pass"]:
+        return DoctorCheck(name, False, detail + "; active projection mismatch")
+    return DoctorCheck(name, True, detail)
+
+
 def _check_embed_collection_identity(cfg: dict) -> DoctorCheck:
     """Read-only: configured embed model vs collection metadata (SQLite mode=ro).
 
@@ -1378,6 +1427,8 @@ def run_doctor(
         _check_ollama(cfg),
         _check_chroma(cfg),
         _check_index_drift(cfg),
+        _check_logical_projection(cfg),
+        _check_source_reconciliation_freshness(cfg),
         _check_embed_collection_identity(cfg),
         _check_shadow_ledger(cfg),
         _check_restic(),

@@ -15,10 +15,6 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # (path, function, operation) -> (expected occurrences, classification)
 EXPECTED = {
-    ("ask.py", "_apply_evidence_and_recent", "ChromaStore"): (
-        1,
-        "cg2-production-bypass",
-    ),
     ("chroma_readonly.py", "_connect_readonly", "sqlite3.connect[chroma]"): (
         1,
         "core-storage",
@@ -41,7 +37,6 @@ EXPECTED = {
         1,
         "excluded-administrative",
     ),
-    ("convmem.py", "search", "ChromaStore"): (1, "cg2-production-bypass"),
     ("convmem.py", "monitor_command", "ChromaStore"): (1, "excluded-administrative"),
     ("eval_corpus/capture.py", "_connect_readonly", "sqlite3.connect[chroma]"): (
         1,
@@ -53,12 +48,30 @@ EXPECTED = {
     ),
     ("file_generation_store.py", "__init__", "ChromaStore"): (1, "generation-mediated"),
     (
+        "mixed_mode_control.py",
+        "build_authority_clean_control",
+        "ChromaStore",
+    ): (1, "generation-mediated"),
+    (
+        "mixed_mode_proof.py",
+        "run_mixed_mode_proof",
+        "ChromaStore",
+    ): (1, "generation-mediated"),
+    (
+        "mixed_mode_retrieval.py",
+        "query_units_mixed_ann",
+        "raw.query",
+    ): (1, "generation-mediated"),
+    (
+        "cg2_rehearsal.py",
+        "run_legacy_gateway_rehearsal",
+        "ChromaStore",
+    ): (1, "generation-mediated"),
+    (
         "file_generation_validate.py",
         "chroma_sequence_positions",
         "sqlite3.connect[chroma]",
     ): (1, "generation-mediated"),
-    ("mcp_server.py", "related", "ChromaStore"): (1, "cg2-production-bypass"),
-    ("mcp_server.py", "stats", "ChromaStore"): (1, "cg2-production-bypass"),
     ("scripts/chroma_orphan_inventory.py", "_raw_query", "raw.query"): (
         1,
         "excluded-administrative",
@@ -163,7 +176,6 @@ def test_all_direct_chroma_read_boundaries_are_explicitly_classified() -> None:
     assert discovered == expected_counts
     assert {classification for _, classification in EXPECTED.values()} == {
         "generation-mediated",
-        "cg2-production-bypass",
         "excluded-administrative",
         "stable-governed-infrastructure",
         "core-storage",

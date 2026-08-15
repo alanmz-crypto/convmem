@@ -45,7 +45,7 @@ from pathlib import Path
 import typer
 
 from chroma_readonly import collection_count
-from open_source import run_open
+from open_source import citation_open_meta, run_open
 
 app = typer.Typer(add_completion=False, help="Search your past AI conversations.")
 
@@ -130,11 +130,11 @@ def search(
         render_search_results(results, units=False)
     else:
         if not _primary_search_ready():
-            from chroma_store import ChromaStore
             from config import load_config
+            from serving_index_repository import open_serving_index_repository
 
-            store = ChromaStore(load_config()["index"]["chroma_dir"])
-            n, summary_n = store.count_units(), store.count_summaries()
+            with open_serving_index_repository(load_config()) as repo:
+                n, summary_n = repo.count_units(), repo.count_summaries()
             render_warning(
                 f"Only {n} knowledge unit(s) vs {summary_n} summaries — "
                 "primary search is thin. Use --raw until backfill completes, or:\n"
@@ -250,15 +250,7 @@ def ask_command(  # pylint: disable=too-many-arguments
         idx = open_at - 1
         if 0 <= idx < len(out["citations"]):
             c = out["citations"][idx]
-            run_open(
-                {
-                    "source_path": c.get("source_path"),
-                    "tool": c.get("tool"),
-                    "start_offset": c.get("start_offset"),
-                    "conversation_id": c.get("conversation_id"),
-                    "session_id": c.get("session_id"),
-                }
-            )
+            run_open(citation_open_meta(c))
         else:
             render_error(f"No citation #{open_at}.")
 
