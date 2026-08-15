@@ -241,23 +241,37 @@ Stage 1. Even after adjudication, audit evidence for both assertions remains.
 ### R7 — Assertion identity is independent from content
 
 Every assertion has an immutable, opaque `assertion_id` minted by the central
-ConvMem monitor. Callers, adapters, LLMs, dedupe code, exports, and consumers may
-carry or reference an ID but may not mint, rewrite, or recycle one. A new root or
-derived representation receives a new monitor-minted ID.
+ConvMem monitor. The initial schema uses a content-independent random 128-bit
+identifier in canonical lowercase UUID text. The monitor generates and
+atomically reserves it in the authoritative assertion store before publication;
+it retries a collision rather than reusing an existing identity. The ID is not
+derived from content, path, offset, producer, timestamp, or an LLM response.
+Callers, adapters, LLMs, dedupe code, exports, and consumers may carry or
+reference an ID but may not mint, rewrite, or recycle one. A new root or derived
+representation receives a new monitor-minted ID.
 
 The identity contract is:
 
 - `assertion_id` is part of the authoritative envelope and therefore the
   `provenance_commitment` input;
-- export → reconstruction → re-import preserves the same ID only when the
-  envelope and commitment verify, including recursive parent verification;
+- export → reconstruction → re-import preserves the same ID only as an
+  idempotent replay when the canonical envelope matches the commitment exactly,
+  recursive parent verification succeeds, and any existing row under that ID
+  has the same canonical envelope/commitment;
+- a valid idempotent replay creates no new assertion, origin, corroborator, or
+  authority evidence;
 - identical content alone never establishes identity;
 - identical content without a valid existing ID/commitment pair is a new,
   independent assertion with its own ID and provenance;
 - a supplied existing ID with a missing, malformed, or mismatching commitment is
-  rejected or degraded to `untrusted`, never silently adopted;
+  rejected for identity-preserving import and may not overwrite, alias, or
+  mutate the existing assertion. If policy permits retaining its content as
+  evidence, the monitor mints a new assertion ID and records the attempted
+  replay/mismatch as untrusted provenance; it never adopts the supplied ID;
 - every non-root `input_binding` has a `parent_assertion_id` and the parent's
-  expected commitment; the pair must match the resolved parent envelope.
+  expected commitment. That pair is an immutable edge to one exact parent
+  assertion and may not be rebound to equivalent content; it must match the
+  resolved parent envelope.
 
 Equivalence and content hashes may support search and dedupe, but they are not
 identity. This prevents same-content injection from downgrading, elevating, or
@@ -465,7 +479,7 @@ The top claim is deliberately bounded:
 | C2. Derivations are monotone. | One policy sets integrity equal to the meet of every bound input and transformer cap; incomplete ancestry is untrusted. | Exhaustive lattice tests, metamorphic laundering tests, policy-version fixtures. |
 | C3. Provenance is continuous. | One canonical envelope/commitment crosses unit, Chroma, export, reconstruction, CG-1, CG-2, and retrieval. | Round-trip fixtures, cold tamper/omission tests, old-consumer compatibility tests. |
 | C4. Equivalence cannot erase authority evidence. | Assertions and equivalence relations have separate identity; cross-provenance collapse is gated. | Exact/semantic dedupe negative controls and lifecycle traces. |
-| C4a. Assertion identity is stable. | Only the monitor mints IDs; a valid ID/commitment pair survives replay, while same content without that pair creates a new assertion. | Minting, replay/reconstruction, same-content independence, and mismatch tests. |
+| C4a. Assertion identity is stable. | Only the monitor mints and atomically reserves IDs; a valid ID/commitment pair is idempotent replay with no new corroboration, while same content without that pair creates a new assertion. | Minting/collision, replay/reconstruction, same-content independence, and mismatch tests. |
 | C4b. Recursive recomputation is fail-closed. | Every parent, ancestor, policy, recipe, binding, and cycle is verified before integrity is computed. | Missing-ancestor, cycle, parent-mismatch, and unavailable-history negative controls. |
 | C5. Retrieval does not invent aggregate trust. | Integrity remains per assertion; synthesis is a new agent derivation. | Retrieval/MCP contract tests and assembly parent-completeness tests. |
 | C6. Existing authority controls stay orthogonal. | CG-1 durability, CG-2 serving, R2b capture integrity, and ranking each keep their current owner and claim. | Boundary review against their architecture/VERIFY artifacts. |
@@ -509,6 +523,7 @@ These defeaters remain open until the corresponding evidence passes:
 | D24 | Same content is mistaken for assertion identity, allowing an injected copy to replace or inherit provenance. |
 | D25 | A child envelope/commitment looks valid while a parent, historical policy, recipe, or binding is unavailable. |
 | D26 | Recursive verification follows a cycle or accepts divergent envelopes under one assertion ID. |
+| D27 | A valid replay of one assertion is counted as a new origin, corroborator, or authority signal. |
 
 ## 10. Literature evidence and limitations
 

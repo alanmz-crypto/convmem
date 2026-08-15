@@ -135,10 +135,12 @@ I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 | V5d | Equivalence creates no aggregate trusted assertion. | PENDING |
 | V5e | Semantic cross-provenance tombstone requires human adjudication and retains both audit assertions. | PENDING |
 | V5f | Storage optimization cannot destroy provenance identity. | PENDING |
-| V5g | Assertion IDs are monitor-minted and immutable. | Caller attempts to mint, rewrite, recycle, or reuse an ID without its valid commitment. | PENDING |
-| V5h | Export → reconstruction → re-import preserves a valid ID/commitment pair. | Round-trip comparison of ID, envelope, and commitment. | PENDING |
+| V5g | Assertion IDs are content-independent random 128-bit values, monitor-minted, atomically reserved, collision-checked, and immutable. | Caller attempts to mint, rewrite, recycle, or force a colliding ID. | PENDING |
+| V5h | Export → reconstruction → re-import preserves a valid ID/commitment pair as idempotent replay only. | Round-trip comparison of ID, canonical envelope, and commitment; replay adds no assertion or corroborator. | PENDING |
 | V5i | Same content without a valid existing ID/commitment pair becomes a new independent assertion. | Ingest identical content twice from different roots. | PENDING |
 | V5j | Parent IDs and commitments match resolved parents. | Alter/remove parent commitment or bind the wrong parent ID. | PENDING |
+| V5k | Invalid identity replay cannot retain, overwrite, alias, or mutate the supplied existing ID. | Supply an existing ID with missing/malformed/mismatching commitment or divergent envelope; identity-preserving import fails. If content is retained, it receives a fresh monitor ID and untrusted provenance. | PENDING |
+| V5l | A parent edge is immutable identity plus expected commitment, not content equivalence. | Replace a parent with same-content assertion under another ID; recursive verification returns untrusted. | PENDING |
 
 ## V6 — Parallel/later assurance: CG-1 immutable continuity and cold validation
 
