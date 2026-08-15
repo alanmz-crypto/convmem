@@ -238,13 +238,55 @@ aggregate trusted assertion.
 Cross-provenance tombstoning requires explicit human adjudication and is outside
 Stage 1. Even after adjudication, audit evidence for both assertions remains.
 
-### R7 — Legacy is conservative
+### R7 — Assertion identity is independent from content
+
+Every assertion has an immutable, opaque `assertion_id` minted by the central
+ConvMem monitor. Callers, adapters, LLMs, dedupe code, exports, and consumers may
+carry or reference an ID but may not mint, rewrite, or recycle one. A new root or
+derived representation receives a new monitor-minted ID.
+
+The identity contract is:
+
+- `assertion_id` is part of the authoritative envelope and therefore the
+  `provenance_commitment` input;
+- export → reconstruction → re-import preserves the same ID only when the
+  envelope and commitment verify, including recursive parent verification;
+- identical content alone never establishes identity;
+- identical content without a valid existing ID/commitment pair is a new,
+  independent assertion with its own ID and provenance;
+- a supplied existing ID with a missing, malformed, or mismatching commitment is
+  rejected or degraded to `untrusted`, never silently adopted;
+- every non-root `input_binding` has a `parent_assertion_id` and the parent's
+  expected commitment; the pair must match the resolved parent envelope.
+
+Equivalence and content hashes may support search and dedupe, but they are not
+identity. This prevents same-content injection from downgrading, elevating, or
+silently replacing an established assertion.
+
+### R8 — Recursive verification fails closed
+
+Effective integrity is recomputed only after recursively verifying the complete
+assertion graph. Verification resolves the assertion envelope, commitment,
+historical `provenance_policy_version`, transformer identity/version/recipe,
+every required input binding, and every parent envelope/commitment. It tracks a
+visited-ID set and rejects cycles.
+
+If any parent, ancestor, historical policy or recipe, required binding, or
+identity/commitment pair cannot be resolved and verified, the result is
+`untrusted`; no favorable child fields or cached tier may be used as a fallback.
+The same result applies to a cycle, duplicate ID with divergent envelope, or a
+child whose parent commitment does not match the resolved parent. A child with a
+valid-looking envelope and commitment but a missing ancestor is therefore not
+valid. Recursive failure is observable as a bounded validation/degraded state,
+not silently treated as a new root.
+
+### R9 — Legacy is conservative
 
 Missing provenance maps to `unknown`/`untrusted` for security decisions. No
 backfill may infer upward from path, prose, role, `author_model`, `source_type`,
 confidence, timestamp, current ranking boost, or survival in a durable generation.
 
-### R8 — Continuity is mandatory; display is supplementary
+### R10 — Continuity is mandatory; display is supplementary
 
 Canonical representation, propagation, export, reconstruction, and commitment
 continuity are mandatory integrity claims. Failure or omission degrades the
@@ -259,6 +301,7 @@ The authoritative envelope is conceptually:
 ```text
 schema_version
 binding_version
+assertion_id
 root_bindings[]:
   source_identity
   record_locator
@@ -333,7 +376,8 @@ bound inputs and the authorized transformer/producer cap. In particular:
   failed commitment;
 - `claimed` and `unknown` producer evidence never elevate effective integrity.
 
-`effective_integrity` is a derived/cache value computed by one policy function.
+`effective_integrity` is a derived/cache value computed by one policy function
+only after R8 recursive verification succeeds.
 It is never authoritative caller metadata. Consumers recompute it and degrade to
 `untrusted` on cache mismatch, unknown policy, malformed envelope, or commitment
 failure.
@@ -421,6 +465,8 @@ The top claim is deliberately bounded:
 | C2. Derivations are monotone. | One policy sets integrity equal to the meet of every bound input and transformer cap; incomplete ancestry is untrusted. | Exhaustive lattice tests, metamorphic laundering tests, policy-version fixtures. |
 | C3. Provenance is continuous. | One canonical envelope/commitment crosses unit, Chroma, export, reconstruction, CG-1, CG-2, and retrieval. | Round-trip fixtures, cold tamper/omission tests, old-consumer compatibility tests. |
 | C4. Equivalence cannot erase authority evidence. | Assertions and equivalence relations have separate identity; cross-provenance collapse is gated. | Exact/semantic dedupe negative controls and lifecycle traces. |
+| C4a. Assertion identity is stable. | Only the monitor mints IDs; a valid ID/commitment pair survives replay, while same content without that pair creates a new assertion. | Minting, replay/reconstruction, same-content independence, and mismatch tests. |
+| C4b. Recursive recomputation is fail-closed. | Every parent, ancestor, policy, recipe, binding, and cycle is verified before integrity is computed. | Missing-ancestor, cycle, parent-mismatch, and unavailable-history negative controls. |
 | C5. Retrieval does not invent aggregate trust. | Integrity remains per assertion; synthesis is a new agent derivation. | Retrieval/MCP contract tests and assembly parent-completeness tests. |
 | C6. Existing authority controls stay orthogonal. | CG-1 durability, CG-2 serving, R2b capture integrity, and ranking each keep their current owner and claim. | Boundary review against their architecture/VERIFY artifacts. |
 | C7. Limits are visible. | Unknown legacy and unauthenticated channels stay untrusted; no factual/action claim is made. | User-visible contract tests, docs review, targeted safety audit. |
@@ -460,6 +506,9 @@ These defeaters remain open until the corresponding evidence passes:
 | D21 | Old export/MCP consumers silently drop unfamiliar provenance fields. |
 | D22 | R2b or Shadow PASS is cited as proof that origin classification was correct. |
 | D23 | A perfectly durable generation preserves poisoned content and is called trustworthy. |
+| D24 | Same content is mistaken for assertion identity, allowing an injected copy to replace or inherit provenance. |
+| D25 | A child envelope/commitment looks valid while a parent, historical policy, recipe, or binding is unavailable. |
+| D26 | Recursive verification follows a cycle or accepts divergent envelopes under one assertion ID. |
 
 ## 10. Literature evidence and limitations
 
@@ -564,7 +613,7 @@ faults, stale state, and multi-agent handoff faults.
 
 ## 14. Review gates
 
-1. **Kiro design review:** same branch tip, explicit PASS/FAIL against R1–R8,
+1. **Kiro design review:** same branch tip, explicit PASS/FAIL against R1–R10,
    Stage 0 decisions, CG-1/CG-2 boundaries, and defeaters.
 2. **Targeted Copilot audit:** same branch tip, safety/isolation and continuity
    review; no implementation and no broad re-audit.
@@ -589,7 +638,8 @@ earlier SHA.
 | Cross-tier dedupe | R6 and Stages 1B/2: independent assertions, no silent suppression/tombstone, human semantic adjudication. |
 | Orthogonal dimensions/actions | Sections 2 and 7 plus required assurance wording. |
 | Execution order | Stage 0, Stage 1A/1B, then parallel/later CG-1/CG-2 and broad dependability tracks. |
-| Mandatory continuity | R8 and assurance claim C8; only supplementary display diagnostics are advisory. |
+| Recursive verification | R8 and assurance claim C4b; missing parents/policy/recipes/cycles are untrusted. |
+| Mandatory continuity | R10 and assurance claim C8; only supplementary display diagnostics are advisory. |
 | Planning safety/status publication | Sections 11–14 and STATUS: no runtime/live operations; cross-arc rollup waits for acceptance. |
 
 ## 16. Conditional-PASS correction map

@@ -82,7 +82,9 @@ Before implementation begins:
 2. Copilot performs the targeted safety/isolation and continuity audit at that
    same SHA.
 3. Ryan resolves findings and records an architecture lock.
-4. Ryan issues a separate Execute grant naming the implementation branch/scope.
+4. Ryan issues a distinct Execute grant for exactly one of P1, P2, or P3; the
+   grant names its branch, worktree, and PR. One grant never covers multiple
+   slices.
 5. Cursor rebases from the then-current `origin/main` and re-traces any changed
    ingest, dedupe, CG-1, CG-2, export, or retrieval boundary.
 
@@ -99,6 +101,23 @@ Parallel/later after the representation is locked:
   B. egress/recovery/operational assurance
 ```
 
+### Separate Ryan execution units
+
+P1, P2, and P3 are serially related but independently authorized delivery units.
+Each uses its own branch/worktree and PR; P2 starts only after P1 is merged or
+Ryan explicitly authorizes a reviewed rebase, and P3 follows the same rule for
+P2. The names below are reserved planning targets, not branches created by this
+planning package:
+
+| Slice | Scope | Ryan grant | Implementation branch | PR | Gate |
+|---|---|---|---|---|---|
+| P1 | Policy, envelope, monitor-minted assertion identity, recursive verification | Separate P1 Execute grant | `feat/2026-08-15-provenance-policy` | Separate P1 PR | Policy/property VERIFY plus Kiro/Copilot review |
+| P2 | Current-ingest bindings and unit/Chroma/export/reconstruction continuity | Separate P2 Execute grant | `feat/2026-08-15-provenance-bindings` | Separate P2 PR | Binding/round-trip VERIFY plus review |
+| P3 | Assertion-preserving exact dedupe, retrieval visibility, and same-content independence | Separate P3 Execute grant | `feat/2026-08-15-provenance-assertion-continuity` | Separate P3 PR | Identity/dedupe/retrieval VERIFY plus review |
+
+No implementation branch, PR, grant, merge, migration, or live operation is
+created or authorized by this planning branch.
+
 ### P1 / Stage 1A — Canonical policy and representation
 
 Create one deep module that owns:
@@ -113,6 +132,12 @@ Create one deep module that owns:
   with no caller-controlled `verified` value or direct authority grant;
 - effective-integrity recomputation and cache-mismatch degradation;
 - legacy/malformed/unknown-policy fallback to untrusted.
+
+P1 must mint immutable `assertion_id` values centrally, preserve valid
+ID/commitment pairs on replay, create a new ID for same-content independent
+assertions, and recursively verify parents, historical policy/recipes, bindings,
+cycles, and commitments before computing integrity. A missing ancestor or
+parent mismatch is untrusted.
 
 No adapter, caller, Chroma field, source path, role, confidence, or ranking code
 may independently compute integrity. The empty-input and caller-self-upgrade
