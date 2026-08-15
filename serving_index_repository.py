@@ -21,7 +21,7 @@ from chroma_store import (
     SUMMARIES,
     UNITS,
     ChromaStore,
-    is_chroma_contention_error,
+    is_chroma_vector_query_fallback_error,
     is_superseded,
     open_chroma_for_read,
 )
@@ -124,7 +124,7 @@ class ServingIndexRepository:
                 return store.query_units(embedding, n_results, **kwargs)
             return store.query_units(embedding, n_results, **kwargs)
         except Exception as exc:
-            if is_chroma_contention_error(exc):
+            if is_chroma_vector_query_fallback_error(exc):
                 raise ServingBackendTransient(str(exc)) from exc
             raise
 
@@ -138,7 +138,7 @@ class ServingIndexRepository:
                 return store.query_summaries(embedding, n_results, **kwargs)
             return store.query_summaries(embedding, n_results, **kwargs)
         except Exception as exc:
-            if is_chroma_contention_error(exc):
+            if is_chroma_vector_query_fallback_error(exc):
                 raise ServingBackendTransient(str(exc)) from exc
             raise
 
