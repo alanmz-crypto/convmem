@@ -133,11 +133,15 @@ Create one deep module that owns:
 - effective-integrity recomputation and cache-mismatch degradation;
 - legacy/malformed/unknown-policy fallback to untrusted.
 
-P1 must mint immutable `assertion_id` values centrally, preserve valid
-ID/commitment pairs on replay, create a new ID for same-content independent
-assertions, and recursively verify parents, historical policy/recipes, bindings,
-cycles, and commitments before computing integrity. A missing ancestor or
-parent mismatch is untrusted.
+P1 must mint content-independent random 128-bit `assertion_id` values centrally,
+atomically reserve them before publication, preserve valid ID/commitment pairs
+only as idempotent replay, and create a new ID for same-content independent
+assertions. Replay under an existing ID requires the same canonical envelope and
+commitment and creates no corroboration or authority evidence. An invalid or
+mismatching pair fails identity-preserving import; retaining the content requires
+a new monitor-minted untrusted assertion. P1 recursively verifies parents,
+historical policy/recipes, bindings, cycles, and commitments before computing
+integrity. A missing ancestor or parent mismatch is untrusted.
 
 No adapter, caller, Chroma field, source path, role, confidence, or ranking code
 may independently compute integrity. The empty-input and caller-self-upgrade

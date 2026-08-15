@@ -3,10 +3,10 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** Kiro PASS WITH REQUIRED CHANGES on the prior reviewed tip; the current
-planning tip retains T1–T5 and carries the final path, producer-authority,
-acknowledgement, and migration corrections for clean-tip rereview; no
-implementation authorized.
+**State:** Sol-High final review PASS after tightening assertion-ID minting,
+idempotent replay, and invalid-replay failure semantics. Exact-revision Kiro and
+Copilot dispositions plus Ryan's architecture lock remain. No implementation is
+authorized.
 
 ## 1. What this project is for
 
@@ -78,7 +78,7 @@ serving authority/repository.
 | Milestone | State | Exit condition |
 |---|---|---|
 | Trust Arc T1–T5 planning sequence | Retained; T3 strengthened for provenance | Later work remains separately planned, reviewed, and granted; no runtime/activation/cloud-policy change follows from this package. |
-| Stage 0 architecture package | **Conditional PASS; final correction pending review** | Kiro verifies repository-root paths, producer authority semantics, and a clean committed tree; targeted Copilot audit disposition; Ryan lock. |
+| Stage 0 architecture package | **Sol-High PASS after final identity correction; lock pending** | Same-SHA Kiro/Copilot dispositions and Ryan architecture lock. |
 | Stage 1A policy/representation substrate | Not authorized | Separate Ryan Execute grant; core policy, envelope, bindings, and representation continuity pass. |
 | Stage 1B assertion/exact-dedupe continuity | Not authorized | Independent assertions survive cross-tier equivalence and retrieval. |
 | P1/P2/P3 execution slices | Not authorized | Three separate Ryan grants, branches/worktrees, PRs, and review gates; no singular Stage 1 grant. |
@@ -92,32 +92,24 @@ serving authority/repository.
 
 ## 5. Your role now
 
-**Next lane: Kiro final design rereview.** Review the current exact HEAD recorded
-in the external handoff, and first confirm the worktree/index are clean. Verify
-the retained T1–T5 sequence, the strengthened T3 provenance contract, producer
-authority semantics, acknowledgement/migration boundaries, and the clean tree.
-Challenge the integrity rules, transformation completeness definition, commitment
-continuity, assertion-preserving dedupe, CG-1/CG-2 separation, implementation
-boundaries, and whether the defeater register is complete. Return a written
-PASS/FAIL with blocking versus non-blocking findings. Do not implement runtime
-code or mutate live data.
-
-After Kiro, the Copilot audit lane performs only the targeted safety/isolation
-and continuity review. Ryan adjudicates and locks architecture. Cursor does not
-begin until Ryan separately grants Execute.
+**Next lane: Kiro and Copilot exact-revision rechecks, then Ryan architecture
+lock.** Confirm the final committed SHA and clean worktree, then verify the final
+assertion-ID admission/replay contract alongside the retained T1–T5 sequence,
+producer authority, recursive verification, commitment continuity,
+assertion-preserving dedupe, and CG-1/CG-2 separation. Ryan adjudicates and locks
+architecture. Cursor does not begin until Ryan separately grants one of P1, P2,
+or P3 Execute.
 
 ## 6. What remains before this is live
 
-1. Kiro verifies the retained T1–T5 map and final path/producer corrections at
-   the exact clean tip.
-2. Copilot audits safety/isolation and provenance continuity at the same tip.
-3. Codex revises planning findings if Ryan requests changes.
-4. Ryan locks Stage 0 and separately authorizes or rejects Stage 1 execution.
-5. Cursor re-traces current `main`, implements the bounded Stage 1 slice, and
+1. Kiro and Copilot record exact-revision dispositions for the final identity
+   correction.
+2. Ryan locks Stage 0 and separately authorizes or rejects each P1/P2/P3 slice.
+3. Cursor re-traces current `main`, implements the bounded granted slice, and
    produces the VERIFY packet without live migration.
-6. Kiro reviews implementation design/result; Copilot performs targeted final
+4. Kiro reviews implementation design/result; Copilot performs targeted final
    audit; Ryan decides merge.
-7. A later plan decides whether/how legacy data migrates. Merge alone never
+5. A later plan decides whether/how legacy data migrates. Merge alone never
    authorizes migration, CG-2 activation, Shadow activation, or R2b capture.
 
 ## 7. Hard stops and residual limitations
@@ -166,8 +158,9 @@ Do not append session narrative.
 
 | Date | Lane | Milestone change |
 |---|---|---|
+| 2026-08-15 | Codex Sol-High | Tightened monitor-minted identity, idempotent replay, and invalid-ID/commitment failure semantics for final lock review. |
 | 2026-08-15 | Codex Sol-High | Retained T1–T5 and strengthened T3 provenance, acknowledgement, and migration boundaries; clean-SHA rereview required. |
 
-**TL;DR:** T1–T5 remain preserved, with T3 provenance and acknowledgement/
-migration semantics strengthened; the current clean planning tip still awaits
-review, with no runtime or live-data work authorized.
+**TL;DR:** Sol-High passes the strengthened T3 provenance architecture; same-SHA
+Kiro/Copilot dispositions and Ryan's lock remain, with no implementation or
+live-data work authorized.
