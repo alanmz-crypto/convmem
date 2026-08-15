@@ -1,173 +1,462 @@
-# Architecture Direction — Dependability and Provenance Trust Arc
+# Architecture — Dependability and Provenance Integrity
 
 ```text
-Planning Status
-Phase:        Architecture Planning
-Characters:   Contract Designer, Assurance-Case Designer, Scope Guardian
-Functions:    Codex authors; Kiro reviews; Ryan locks architecture
-Authority:    Planning only — implementation and operational grants remain separate
-Baseline:     origin/main @ 2f427fcfb8818dd665310bae7e8cd5ffa066bdcc
+Planning status: REVIEW REQUIRED — NOT AUTHORIZED FOR IMPLEMENTATION
+Arc owner:       Ryan
+Planning lane:   Codex Sol-High (explicit exception for this package)
+Review lanes:    Kiro design review; targeted Copilot safety/isolation audit
+Baseline:        origin/main @ 2f427fcfb8818dd665310bae7e8cd5ffa066bdcc
 ```
 
-## Goal
+## 1. Decision and product consequence
 
-Define what trustworthy ConvMem means, bind each claim to observable evidence,
-inventory the proofs already supplied by CG-1/CG-2 and existing recovery work,
-and close only the gaps that remain. Later fault, compatibility, security, and
-endurance work must have an oracle defined before implementation begins.
+ConvMem will treat provenance as evidence that travels with each independent
+assertion, not as a caller-supplied trust label. For every representation it
+creates, ConvMem will conservatively compute an integrity **upper bound** from
+all inputs actually presented to the transformation and from the authorized
+transformer's semantic cap. The system will preserve that evidence through
+ingest, Chroma, export, reconstruction, CG-1 generations, CG-2 serving, and
+retrieval.
 
-## Human consequence
+This closes a concrete laundering path: today an external or mixed-origin
+message can be summarized into a `knowledge_unit` whose durable form no longer
+records the input origin. It does **not** prove the statement true, authenticate
+current agent identities, stop downstream agents from acting, or establish the
+end-to-end non-malleable authority claimed by TMA-NM under stronger assumptions.
 
-If Ryan locks this architecture, the next lane may prepare a bounded execution
-plan and evidence inventory. This document does **not** authorize production
-activation, a CG-2 soak, owner cutover, GC, bulk mutation, cloud-policy changes,
-or a deliberate failing-PR experiment.
+## 2. Scope and assurance boundary
 
-## Trust model
+This arc owns:
 
-ConvMem is a local-first memory system whose ledger and durable source material
-must remain authoritative over derived projections and model interpretations.
-LLM output, retrieved text, summaries, and external provider responses are
-untrusted data until deterministic provenance, authority, and lifecycle rules
-bind them to a permitted operation.
+- root-origin evidence and its assurance state;
+- complete transformation-boundary input binding;
+- conservative derivation integrity;
+- independent assertion identity across exact and semantic equivalence;
+- canonical provenance representation and commitment continuity;
+- per-assertion provenance visibility at retrieval and serving boundaries;
+- tests and evidence for those properties.
 
-The arc begins at T1. CI merge protection is prerequisite infrastructure, not a
-Trust Arc milestone. Pytest/Pylint/CodeQL enforcement is tracked separately.
+It coordinates with, but does not absorb:
 
-## Trust Baseline claim schema
+- **temporal validity** — whether a fact was valid at a requested time;
+- **retrieval priority** — relevance, recency, and the existing
+  `source_trust_boost` ranking heuristic;
+- **serving authority** — which CG-2 owner/generation may answer a request;
+- **factual truth** — whether the assertion is correct;
+- **downstream action authority** — whether Codex, Cursor, git, or another tool
+  may act on retrieved material.
 
-Every claim is recorded with:
+Those dimensions may be correlated, but none implies another.
 
-| Field | Purpose |
-|---|---|
-| Claim | Plain-language property ConvMem promises |
-| Lifecycle | Write / Store / Retrieve / Execute / Share / Forget |
-| Authority | Ledger, generation pointer, backup, config, or other source |
-| Failure mode | Concrete way the claim can be violated |
-| Evidence | Test, invariant, measurement, or independent oracle |
-| Expected degraded state | What remains true after failure |
-| Consequence | Catastrophic / Critical / Degraded / Advisory |
-| Gate | Fail-closed, warn/degrade, or informational |
-| Owner | Lane or human who decides disposition |
-| Scope | Production, isolated rehearsal, restore drill, or docs only |
+## 3. Repository-grounded problem statement
 
-Severity prevents every check from becoming a P0. Catastrophic and critical
-claims may require fail-closed gates; degraded and advisory claims may warn when
-the contract explicitly permits continued operation.
+The following are current behaviors on the baseline revision, not hypothetical
+risks:
 
-## Initial baseline claims
-
-These are candidate claims for architecture review, not ratified thresholds.
-
-| Candidate claim | Consequence | Initial evidence direction |
+| Boundary | Current behavior | Dependability fault |
 |---|---|---|
-| No silently acknowledged-data loss | Catastrophic | Durable write/backup contract plus crash and restore evidence |
-| Ledger/source remains authoritative over projections | Critical | Projection accounting, replay, and source-vs-serving checks |
-| Wrong authority generation is never served as current | Critical | CG-2 authority and pointer proofs; negative controls |
-| Corrupt immutable state cannot silently become service state | Critical | Cold-start rejection and recovery tests |
-| `local_only = true` permits no corpus-bearing network request | Critical | Egress inventory, network-deny test, provider-call audit |
-| Backup freshness remains within approved RPO | Critical | Snapshot gate and restore drill |
-| Restore returns a usable service within approved RTO | Critical | Complete-data restore and queryability proof |
-| Latency/backlog exceed targets only as declared degradation | Degraded | Measured budgets and visible health state |
-| Optional provenance diagnostic unavailable | Advisory | Warn-only output with owner and follow-up |
+| Normal ingest | `render_chunk()` budgets and truncates each message before sending one rendered string to summarization/distillation (`src/convmem/ingest.py`). | A source-file or full-message hash does not bind the bytes the model actually saw. Mixed contributors collapse into one artifact-level `source_type`. |
+| Distillation | `distill()` truncates again and sends a fixed prompt plus model/provider parameters; `normalize_unit()` omits provenance (`src/convmem/distill.py`, `src/convmem/llm.py`). | An LLM-created representation can look like a fresh neutral unit; provider fallback or recipe drift is not committed. |
+| Direct inter-model ingest | `source_type` and `author_model` are ordinary caller arguments; `source_type` reaches Chroma metadata but not the exported unit (`src/convmem/inter_model_index.py`). | Claimed origin can be mistaken for verified origin, and reconstruction loses even the claim. |
+| Exact dedupe | Content equality suppresses the incoming unit (`src/convmem/ingest_dedupe.py`). | An independent assertion and its provenance can disappear. A low-trust copy can affect a trusted assertion's lifecycle. |
+| Semantic dedupe | Canonical choice is confidence/newness/id; approval tombstones one unit (`src/convmem/refine.py`). | Cross-provenance collapse has no trust rule and destroys assertion evidence. |
+| Reconstruction | Canonical metadata allowlist omits `source_type` and provenance (`eval_corpus/reconstruct.py`). | Export/rebuild cannot reproduce provenance semantics. |
+| Retrieval | Existing `source_trust_tier()` ranks by type/path and ledger status (`src/convmem/evidence.py`, `src/convmem/query.py`). | A ranking preference can be misread as authenticated provenance. |
+| R2b and writer attestation | R2b binds an authorized capture package; writer attestation records process facts. | Package/process integrity does not authenticate the semantic origin of content. |
+| CG-1 | Candidate bundles and manifests are content-addressed; cold validation checks selected immutable keys (`src/convmem/file_generation_*.py`). | A missing provenance key can pass if the validator only compares keys that are present. Durability can preserve poison perfectly. |
+| CG-2 | A request-frozen authority vector selects the serving owner/generation (`src/convmem/serving_authority.py`, `src/convmem/serving_index_repository.py`). | Serving authority says which generation may answer, not whether an assertion's provenance is strong. |
 
-RPO/RTO/SLO numbers must be derived from the failure they prevent and Ryan's
-tolerance, not copied from literature or chosen as round numbers.
+The current adapter role (`user`/`assistant`), `source_type`, filesystem path, and
+`author_model` are classification claims. No inspected ingestion boundary
+authenticates the human or model principal that produced the record.
 
-## Egress and local-only invariant
+## 4. Vocabulary and integrity lattice
 
-The baseline must inventory every operation capable of transmitting corpus
-content, including synthesis, distillation, evaluation, telemetry, error
-reporting, and future adapters. Each operation names provider, payload class,
-authorization mode, and redaction behavior.
+### 4.1 Separate questions
 
-The invariant is stronger than “the config normally points local”:
+| Term | Question answered |
+|---|---|
+| Root origin | Who or what supplied a root information item? |
+| Origin assurance | Was that origin established by an authenticated channel, merely claimed, or unknown? |
+| Producer | What created the current representation? |
+| Transformer | What semantic operation and implementation created it? |
+| Input binding | Which exact dynamic bytes were presented at that supported boundary? |
+| Ancestry completeness | Were all such dynamic inputs bound and was the fixed recipe identified? |
+| Effective integrity | What conservative upper bound may security policy place on this representation? |
+| Provenance commitment | What canonical digest binds the authoritative provenance envelope? |
 
-> When `local_only = true`, no corpus-bearing network request is possible.
+`verified` means the channel/origin was verified. It never means the information
+is factually true.
 
-The first implementation slice may use a deterministic transport boundary and a
-deny-by-default network test. PII scanning, poisoning defenses, and full
-lifecycle remediation remain later T4 work.
+### 4.2 Lattice
 
-## Evidence-first failure matrix
+```text
+untrusted < agent < trusted
+```
 
-T2 begins by inventorying existing proofs, not by creating another test suite.
-For each T1 claim, classify current evidence as **sufficient**, **partial**, or
-**absent**. The inventory must include CG-1 durability/cold-validation evidence,
-CG-2 authority/source freshness/reconciliation/logical accounting/mixed-mode/
-rollback evidence, backup and restore drills, doctor/projection/synthesis/index
-gates, and provider timeout/fallback safeguards.
+The ordering is authority for security decisions, not confidence or relevance.
+There is no empty-input identity that mints authority.
 
-Only partial/absent claims receive new fault tests. Candidate shapes are kill
-during promotion, corruption/truncation, disk-full/read-only/short-write,
-Chroma loss or underfill, source drift/lost notification, backup/config failure,
-and model timeout/truncation/malformed output. Each row states the expected
-post-failure state and recovery boundary.
+### 4.3 Initial verified-channel inventory
 
-## Compatibility and provenance boundary
+**No current production channel is verified.** Until an authenticated origin
+boundary is separately designed and evidenced, use this inventory:
 
-The following are durable interfaces: ledger records, knowledge-unit JSONL,
-Chroma metadata, generation pointers, configuration, evaluation records, MCP
-responses, and backups. T3 defines versioning, N-1 → N migration, future-version
-rejection, backup-before-migrate, atomic migration, rollback, old-state fixtures,
-and embedding identity.
+| Ingress evidence | Assurance | Root integrity for security decisions |
+|---|---|---|
+| Transcript `role=user` or `role=assistant` | claimed/unknown | untrusted |
+| Codex/Cursor/Kiro/Copilot session artifact | claimed | untrusted |
+| Inter-model `author_model` or `source_type` | claimed | untrusted |
+| Filesystem path or filename convention | classification only | untrusted |
+| Legacy record without the envelope | unknown | untrusted |
 
-This track coordinates with CG-2 but does not reopen its authority design or
-authorize activation/GC. The recurring legacy embedding-identity warning is a
-candidate compatibility item, not permission for live corpus mutation.
+Synthetic tests may create verified roots. Production code may not infer
+verification from content, role, process identity, source path, or caller input.
 
-## Security lifecycle boundary
+## 5. Normative integrity rules
 
-T4 turns the baseline into controls across Write → Store → Retrieve → Execute →
-Share → Forget: provenance-bound authority, poisoning/repair tests, named-cloud
-payload classes, secret/PII handling, provider failure behavior, and Shadow
-activation evidence mapped to the same claims. The old quarantined capture packet
-and all live capture/Shadow activation grants remain hard stops.
+### R1 — Root integrity is not derivation integrity
 
-## Operational envelope
+A root receives integrity only from monitor-controlled ingress policy applied to
+authenticated channel evidence. Empty inputs, text that says `origin=trusted`,
+caller claims, and an executing process's self-description never mint `agent` or
+`trusted` authority.
 
-T5 follows correctness and security contracts. It measures 24/72-hour watch and
-refine behavior, RSS, latency, backlog, restore time, maintenance signals, and
-dependency/security checks. Reproducible packaging and transitive locking may
-proceed alongside T5 but must not delay T1. Formal releases remain later unless
-external distribution becomes immediate.
+### R2 — Conservative derivation bound
 
-## Architectural decisions and non-goals
+For every derived unit:
 
-1. CI merge protection is outside this arc.
-2. T1 blends reliability contract, threat model, egress inventory, local-only,
-   and severity classification.
-3. T2 is proof-gap analysis against existing CG-1/CG-2 evidence.
-4. T3 owns durable-format compatibility and provenance, not CG-2 activation.
-5. T4 owns poisoning and broader cloud/security controls; T1 owns the minimal
-   egress/local-only invariant.
-6. Retrieval freshness/ranking remains separate unless a direct integrity or
-   authority failure is demonstrated.
-7. `doctor PASS` is one health signal, not the complete trust verdict.
-8. Every measurable property has one authoritative owner and threshold.
-9. Literature supplies hypotheses and test shapes; reported numbers are not
-   ConvMem evidence until primary-source verified and locally calibrated.
+```text
+I(output) <= meet(
+    I(all completely bound dynamic inputs),
+    cap(authorized transformer/producer)
+)
+```
 
-## Planned phases
+If ancestry is `partial` or `unknown`, the output is `untrusted`. An empty input
+set cannot produce `agent` or `trusted`. `agent` is a monitor-computed result of
+an authorized agent transformation, never a caller-selectable root label.
 
-| Phase | Deliverable | Depends on | Gate |
-|---|---|---|---|
-| Prerequisite | CI checks required by GitHub ruleset | Existing CI | Ryan/platform settings |
-| T1 | Trust Baseline and assurance matrix | Current main evidence | Architecture lock |
-| T2 | Existing-proof inventory and gap matrix | T1 | Evidence design review |
-| T3 | Compatibility/provenance contract | T1/T2 | Ryan Execute grant |
-| T4 | Egress, poisoning, and lifecycle controls | T1/T2/T3 | Security review/grants |
-| T5 | Endurance, resource, maintenance envelope | T1–T4 | VERIFY and Ryan gate |
+Examples:
 
-## Reading and source boundary
+| Inputs and operation | Maximum output integrity |
+|---|---|
+| Verified trusted root through tested lossless packaging | trusted |
+| Verified trusted root through LLM summarization | agent |
+| Trusted + trusted through LLM distillation | agent |
+| Trusted + agent through LLM distillation | agent |
+| Any contributing untrusted input | untrusted |
+| Any omitted or unknown contributor | untrusted |
 
-Planning inputs are preserved in the 2026-08-14 literature handoff/addendum and
-the Desktop synthesis. ConvMem evidence sources are:
+### R3 — The transformer participates
 
-- `docs/inter-model/HANDOFF-CG1-DEPENDABILITY-2026-08-10.md`
-- `docs/plans/VERIFY-cg2-production-activation.md`
-- `docs/plans/PHASE0-SHADOW-CONTRACT.md`
-- `docs/plans/STATUS-shadow-ledger-phase0.md`
-- `docs/builder-reference/zeller-builder-digest.md`
-- `docs/builder-reference/hard-parts-builder-digest.md`
-- `docs/builder-reference/evolutionary-architectures-builder-digest.md`
+Deterministic code is not automatically trust-preserving. A transformer has a
+versioned cap and may preserve input integrity only when it has a narrow,
+tested preservation contract. Initially:
+
+| Transformer class | Initial cap |
+|---|---|
+| Tested byte/content-preserving packaging | trusted |
+| LLM summarize/distill/rewrite/classify | agent |
+| Opaque tool with fully bound inputs | policy cap, never above least input |
+| Selection/extraction without a preservation contract | agent or untrusted, per policy |
+| Missing recipe, fallback identity, or contributor | untrusted |
+
+### R4 — Completeness is boundary completeness
+
+`ancestry_completeness=complete` means:
+
+> Every dynamic byte actually presented at the supported transformation boundary
+> is bound, and the fixed recipe responsible for the output is identified.
+
+It does not claim universal causal knowledge of model weights, training data, or
+all human influences. Model/provider identity belongs to transformer identity;
+the fixed prompt and configuration belong to the recipe.
+
+### R5 — Bind the actual provider request
+
+Every supported generative derivation binds:
+
+- adapter-stable source identity and record locator (native event/message ID
+  preferred; otherwise adapter-versioned ordinal/offset);
+- hash of the full raw source record;
+- hash of each exact rendered/truncated view consumed;
+- selection, chunking, ordering, and truncation parameters;
+- canonical hash of the **complete provider payload**, including system/fixed
+  prompt and every dynamic text/tool/retrieval input sent;
+- provider, requested and resolved model, temperature and relevant generation
+  parameters, fallback decision, transformer implementation/version;
+- fixed recipe/configuration hash and binding schema version;
+- response hash and output locator.
+
+Secrets and transport credentials are excluded. Their exclusion must not omit
+any corpus-bearing or semantics-bearing request bytes.
+
+### R6 — Independent assertions survive equivalence
+
+Derivation takes the least-trusted contributing input. Equivalence does not.
+Exact or semantic duplicates remain independent assertions with independent
+provenance. A relation may say they are equivalent; it may not manufacture one
+aggregate trusted assertion.
+
+Cross-provenance tombstoning requires explicit human adjudication and is outside
+Stage 1. Even after adjudication, audit evidence for both assertions remains.
+
+### R7 — Legacy is conservative
+
+Missing provenance maps to `unknown`/`untrusted` for security decisions. No
+backfill may infer upward from path, prose, role, `author_model`, `source_type`,
+confidence, timestamp, current ranking boost, or survival in a durable generation.
+
+## 6. Canonical provenance envelope and commitment
+
+The authoritative envelope is conceptually:
+
+```text
+schema_version
+root_bindings[]:
+  source_identity
+  record_locator
+  raw_record_sha256
+  input_view_sha256
+  origin_class
+  origin_assurance
+input_bindings[]:
+  parent_assertion_id
+  parent_provenance_commitment
+  exact_input_view_sha256
+producer_class
+producer_assurance
+derivation_kind
+transformer_class
+transformer_identity
+transformer_version
+selection_parameters
+provider_payload_sha256
+recipe_config_sha256
+ancestry_completeness: complete | partial | unknown
+provenance_policy_version
+```
+
+`effective_integrity` is a derived/cache value computed by one policy function.
+It is never authoritative caller metadata. Consumers recompute it and degrade to
+`untrusted` on cache mismatch, unknown policy, malformed envelope, or commitment
+failure.
+
+`provenance_commitment` is SHA-256 over versioned canonical JSON of the
+authoritative envelope, excluding the commitment itself and derived/cache fields.
+Canonical field order, Unicode/number encoding, list order, and null/omission
+semantics are part of the schema version. Hash equality proves byte-level
+commitment continuity, not truth.
+
+The commitment and envelope must survive without semantic loss across:
+
+```text
+adapter/source records
+  → rendered provider payload
+  → normalized knowledge unit
+  → Chroma flat metadata
+  → JSONL export
+  → canonical reconstruction
+  → CG-1 candidate and immutable manifest
+  → CG-1 cold validation
+  → CG-2 serving row
+  → retrieval result / MCP consumer
+```
+
+Chroma's scalar metadata limitation may require a canonical serialized envelope
+plus scalar diagnostic fields. The serialized envelope is authoritative; scalar
+copies cannot override it. Oversized or malformed metadata fails closed for
+trusted use and remains retrievable only as explicitly untrusted evidence.
+
+## 7. CG-1, CG-2, retrieval, and temporal integration
+
+### CG-1 immutable generations
+
+CG-1 must include the provenance commitment in candidate identity and immutable
+manifest rows. Cold validation must require the field for new-schema rows and
+fail on omission, alteration, unknown schema, or envelope/commitment mismatch.
+Comparing only keys that happen to exist is insufficient. Generation durability
+and provenance integrity remain separate assurance claims.
+
+### CG-2 serving authority
+
+CG-2 continues to choose a request-frozen serving owner/generation. It must carry
+the committed assertion unchanged and must not recompute, aggregate, elevate, or
+discard provenance. A valid pointer/fence/manifest qualifies serving authority;
+it does not qualify assertion integrity.
+
+### Retrieval and assembly
+
+Every retrieval item exposes its own assertion ID, envelope/commitment,
+recomputed integrity, and assurance limitations. Existing relevance, recency,
+and source-priority scoring remain unchanged in Stage 1 and must not contribute
+to integrity.
+
+If a later answer assembler creates a new synthesis, it is a new agent-capped
+derivation bound to the exact selected assertions and prompt/provider payload.
+The answer may not inherit the maximum integrity among results or present one
+aggregate “trusted sources” label.
+
+### Temporal validity
+
+Temporal policy is a separate arc/slice. Its initial buckets are:
+
+1. explicit total-order version metadata — deterministic current-value policy;
+2. valid-time and transaction-time metadata — bitemporal policy;
+3. historical/as-of query — preserve period-specific assertions;
+4. structured conflict without a total order — surface conflict;
+5. no reliable version metadata — do not force a deterministic winner.
+
+Embedding similarity, recency boost, provenance integrity, or serving authority
+cannot substitute for temporal evidence.
+
+## 8. Assurance case
+
+The top claim is deliberately bounded:
+
+> ConvMem conservatively preserves and propagates provenance integrity through
+> the memory transformations, immutable generations, serving paths, and
+> retrieval representations it controls, conditional on correctly classified
+> ingress evidence and complete supported-boundary input binding.
+
+| Claim | Argument | Required evidence family |
+|---|---|---|
+| C1. Roots cannot self-upgrade. | Only monitor policy maps authenticated channel evidence; current production inventory has no verified channel. | Code inspection, negative/property tests, ingress inventory review. |
+| C2. Derivations are monotone. | One policy computes the meet of every bound input and transformer cap; incomplete ancestry is untrusted. | Exhaustive lattice tests, metamorphic laundering tests, policy-version fixtures. |
+| C3. Provenance is continuous. | One canonical envelope/commitment crosses unit, Chroma, export, reconstruction, CG-1, CG-2, and retrieval. | Round-trip fixtures, cold tamper/omission tests, old-consumer compatibility tests. |
+| C4. Equivalence cannot erase authority evidence. | Assertions and equivalence relations have separate identity; cross-provenance collapse is gated. | Exact/semantic dedupe negative controls and lifecycle traces. |
+| C5. Retrieval does not invent aggregate trust. | Integrity remains per assertion; synthesis is a new agent derivation. | Retrieval/MCP contract tests and assembly parent-completeness tests. |
+| C6. Existing authority controls stay orthogonal. | CG-1 durability, CG-2 serving, R2b capture integrity, and ranking each keep their current owner and claim. | Boundary review against their architecture/VERIFY artifacts. |
+| C7. Limits are visible. | Unknown legacy and unauthenticated channels stay untrusted; no factual/action claim is made. | User-visible contract tests, docs review, targeted safety audit. |
+
+CSIRO's structured safety-case taxonomy guides claim/argument/evidence families.
+CoDefeater motivates adversarial defeater discovery, but all generated defeaters
+require human adjudication. Formal or machine-checked results from another system
+are evidence hypotheses, not proof of ConvMem.
+
+## 9. Defeater register
+
+These defeaters remain open until the corresponding evidence passes:
+
+| ID | Defeater |
+|---|---|
+| D1 | Existing `source_trust_boost` is retrieval priority, not provenance integrity. |
+| D2 | A low-trust duplicate can downgrade or erase an independently trusted assertion. |
+| D3 | `verified` can be misread as factually true. |
+| D4 | Caller-controlled labels can self-upgrade. |
+| D5 | Legacy provenance is guessed upward from filenames, roles, or prose. |
+| D6 | A policy change makes stored derived tiers stale or unrecomputable. |
+| D7 | A derivation binds only its trustworthy parent and omits another contributor. |
+| D8 | Retrieval → conversation capture → redistillation launders an untrusted item into agent-authored memory. |
+| D9 | Process attestation is mistaken for principal authentication. |
+| D10 | Boundary completeness is overstated as universal causal completeness. |
+| D11 | A trusted implementation is assumed to be a trust-preserving semantic transformer. |
+| D12 | CG-1 cold validation accepts an omitted commitment because it compares only present keys. |
+| D13 | Flat Chroma fields and the canonical envelope disagree; a consumer reads the favorable copy. |
+| D14 | Provider fallback changes model/prompt limits without changing the committed recipe. |
+| D15 | Content that looks like provenance metadata influences labels. |
+| D16 | Assertion preservation enables storage-amplification denial of service; quotas may relate/suppress bytes but cannot erase provenance identity. |
+| D17 | Retrieval or answer assembly omits selected parents and elevates the synthesis. |
+| D18 | A matching hash is presented as proof of factual truth. |
+| D19 | Transcript role is treated as authenticated user identity. |
+| D20 | Pre-generation exact suppression removes an assertion before CG-1 can manifest it. |
+| D21 | Old export/MCP consumers silently drop unfamiliar provenance fields. |
+| D22 | R2b or Shadow PASS is cited as proof that origin classification was correct. |
+| D23 | A perfectly durable generation preserves poisoned content and is called trustworthy. |
+
+## 10. Literature evidence and limitations
+
+The local packet is under
+`/home/lauer/Documents/Computing/convmem_dependability-*`; the original Codex
+handoff and addendum remain under `/home/lauer/Downloads`. Primary texts were
+used where present.
+
+| Source | Use here | Limitation |
+|---|---|---|
+| Bloomfield & Rushby, *Assurance of AI Systems From a Dependability Perspective* | Minimize reliance on generative components; defense in depth. | General/cyber-physical framing; not a ConvMem proof. |
+| Lee et al., *A Structured Approach to Safety Case Construction for AI Systems* | Claim, argument, and evidence taxonomy. | Taxonomy does not establish claim truth or solve continuous case maintenance. |
+| CoDefeater | Systematic defeater prompts. | LLMs miss implicit/domain assumptions; human adjudication is mandatory. |
+| TMA-NM, arXiv:2606.24322 | Origin-bound authority, monotone derivation, laundering cases. | Formal guarantee assumes true origin from authenticated channels and an action monitor; ConvMem has neither today. Answer bias is out of scope. |
+| MemOps, arXiv:2607.12893 | Operation-level remember/update/forget/reflect test structure. | Benchmark/judge results are not local evidence. |
+| MemSecBench | Write–Execute–Forget poisoning test shapes. | External configurations and mixed judging; reported rates are motivation, not acceptance thresholds. |
+| Reliable Post-Retrieval Assembly | Separate extraction from deterministic conflict policy when explicit versions exist. | Narrow explicit-version win; real timestamp comparison was small and not a demonstrated win. |
+| FRESCO / Temporal Misgrounding / MemStrata | Temporal staleness, deterministic temporal rubrics, bitemporal hypotheses. | Structured temporal metadata is a precondition; none solves free-text conflicts automatically. |
+| AgentChaos / MAS-FIRE | API and handoff fault-injection taxonomies. | Later evaluation tools, not first-slice proofs. |
+| Benchmark Aging | Gold/reference temporal drift. | Requires local benchmark revalidation policy. |
+
+## 11. Stages and implementation boundaries
+
+### Stage 0 — architecture lock (this package)
+
+Freeze vocabulary, verified-channel inventory, binding contract, transformer
+caps, commitment canonicalization, assertion/equivalence semantics, assurance
+claims, defeaters, and non-goals. Kiro review and Ryan lock are required.
+
+### Stage 1 — provenance substrate
+
+Implement one policy module and canonical envelope; bind normal and direct ingest;
+propagate through normalization, Chroma, export, reconstruction, CG-1 immutable
+manifests/cold validation, CG-2 serving, and retrieval; handle legacy
+conservatively; prevent cross-provenance exact suppression. No live migration.
+
+### Stage 2 — provenance-aware semantic dedupe
+
+Represent equivalence separately and require explicit adjudication before any
+cross-provenance tombstone. Preserve both audit assertions.
+
+### Stage 3 — retrieval and consumer visibility
+
+Expose per-assertion evidence and derived review hints. Keep ranking independent.
+Define consumer contract without claiming downstream enforcement.
+
+### Stage 4 — temporal and assembly policy
+
+Add only after reliable metadata and separate acceptance criteria exist. Bind
+synthesis parents and deterministic temporal rubrics where applicable.
+
+### Stage 5 — lifecycle and injected-fault evaluation
+
+Add laundering, recapture, malformed provenance, provider crash/omission/value
+faults, stale state, and multi-agent handoff faults.
+
+## 12. Explicit non-goals
+
+- cryptographic per-agent identity, mTLS/OAuth, or signed agent messages;
+- automatic trust elevation or Sybil-resistant corroboration;
+- TMA-NM action classes, verdict chain, or single-use action tokens;
+- downstream Cursor/Codex/tool/git enforcement;
+- factual-truth scoring or automatic poisoning detection;
+- automatic suppression of all untrusted retrieval;
+- temporal-conflict implementation in Stage 1;
+- ranking changes or renaming `source_trust_boost` in Stage 1;
+- live corpus migration, Chroma mutation, Shadow activation, or R2b capture;
+- CG-2 authority redesign, activation, owner cutover, or GC;
+- formal verification of the full ConvMem system.
+
+## 13. Required assurance wording
+
+> ConvMem conservatively preserves and propagates provenance integrity through
+> the memory transformations it controls. These guarantees are conditional on
+> the correctness of provenance assigned at the ingestion boundary and complete
+> binding of supported transformation inputs. They do not establish factual
+> truth or authenticate currently unauthenticated agent identities.
+
+> ConvMem exposes provenance and review requirements to consumers, but it does
+> not mediate downstream tool, code, git, or external actions. Until authenticated
+> origin binding and an enforced action boundary exist, ConvMem does not claim
+> TMA-NM end-to-end non-malleable authority or downstream action enforcement.
+
+## 14. Review gates
+
+1. **Kiro design review:** same branch tip, explicit PASS/FAIL against R1–R7,
+   Stage 0 decisions, CG-1/CG-2 boundaries, and defeaters.
+2. **Targeted Copilot audit:** same branch tip, safety/isolation and continuity
+   review; no implementation and no broad re-audit.
+3. **Ryan architecture lock:** adjudicates findings and authorizes any execution
+   plan. A merge alone does not authorize implementation or operations.
+4. **Cursor implementation:** only after a separate Ryan Execute grant.
+
+Sol-High conflict adjudication returns to the team charter after this explicitly
+authorized planning exception: it is invoked only for materially conflicting
+Kiro and Copilot PASS/FAIL verdicts on the same artifact and revision.

@@ -1,128 +1,249 @@
-# Execution Plan — Dependability and Provenance Trust Arc
+# Execution Plan — Dependability and Provenance Integrity
 
 ```text
-Planning Status
-Phase:        Execution Planning
-Characters:   Task Decomposer, Evidence Mapper, Scope Guardian
-Lanes:        Codex authors; Kiro reviews; Cursor implements after Ryan grant
-Authority:    No Execute authorization in this document
-Baseline:     origin/main @ 2f427fcfb8818dd665310bae7e8cd5ffa066bdcc
+Status:       DRAFT — NOT AUTHORIZED FOR IMPLEMENTATION
+Depends on:  Kiro review, targeted Copilot audit, Ryan architecture lock
+Owner:       Cursor after a separate Ryan Execute grant
+Baseline:    origin/main @ 2f427fcfb8818dd665310bae7e8cd5ffa066bdcc
 ```
 
-## Goal and sequencing
+## Human consequence
 
-Turn the Trust Baseline into a bounded evidence package without duplicating
-CG-1/CG-2. Each phase produces the oracle needed by the next.
-
-```text
-CI prerequisite → T1 Trust Baseline → T2 proof inventory/gaps
-                 → T3 compatibility/provenance → T4 security boundary
-                 → T5 endurance and enforcement
-```
+This plan decomposes the first implementation slice so reviewers can test its
+feasibility. It does not authorize code changes, migrations, live Chroma/corpus
+mutation, CG-2 activation, Shadow activation, R2b capture, or external changes.
+Stage 1 must be additive and conservative: existing records remain queryable but
+are untrusted for security decisions until they carry valid provenance.
 
 ## Scope lock
 
-### In scope
+### In scope for Stage 1
 
-- Claim matrix covering durability, authority, provenance, egress, recovery, and
-  declared degraded states.
-- Inventory of CG-1/CG-2, backup, restore, doctor, and provider proofs.
-- Gap-driven failure matrix with expected post-failure states.
-- Schema/version/migration policy and old-state fixture requirements.
-- Minimal hard local-only boundary and authoritative egress inventory.
-- Later poisoning/lifecycle, endurance, resource, and maintenance evidence.
-- Filled VERIFY evidence and independent review before closure.
+- one canonical provenance envelope, commitment algorithm, and policy function;
+- root-ingress evidence with no production channel initially verified;
+- exact normal-ingest and direct inter-model transformation bindings;
+- transformer-aware monotone integrity propagation;
+- unit/Chroma/export/reconstruction parity;
+- CG-1 immutable-manifest and cold-validation continuity;
+- unchanged CG-2 serving with provenance pass-through;
+- per-assertion retrieval visibility;
+- legacy-as-unknown behavior;
+- exact-dedupe protection for independent cross-provenance assertions;
+- property, round-trip, negative, and laundering tests.
 
-### Out of scope
+### Explicitly out of scope
 
-- CI workflow or GitHub ruleset implementation; prerequisite infrastructure is
-  tracked separately.
-- CG-2 soak, owner activation, generation cutover, or GC.
-- Shadow activation, live capture, live configuration, or bulk mutation.
-- Retrieval ranking/recency tuning absent a direct integrity failure.
-- New governance surfaces when existing standing checks can carry the risk.
-- Cloud policy changes beyond a separately named exact operation.
+- production data migration or backfill;
+- semantic-dedupe adjudication implementation (Stage 2);
+- ranking, recency, or temporal-conflict changes;
+- authenticated identity, automatic elevation, or downstream action gates;
+- Shadow/R2b/CG-2 operational work;
+- renaming existing `source_trust` code;
+- factual correctness or poisoning classifiers.
 
-## Ordered tasks
+## Preconditions
 
-| ID | Deliverable | Depends on | Owner lane | Gate |
-|---|---|---|---|---|
-| T0 | Confirm CI prerequisite status and required-check evidence | Existing #187 | Ryan/platform | External settings |
-| T1 | Trust Baseline claim matrix and assurance structure | — | Codex | Ryan architecture lock |
-| T2 | Existing-proof inventory and classified gaps | T1 | Codex/Crush | Evidence-map review |
-| T3 | Compatibility/provenance contract and fixtures | T1/T2 | Codex | Ryan Execute grant |
-| T4 | Security boundary and lifecycle controls | T1/T2/T3 | Codex/Cursor | Security review/grants |
-| T5 | Operational envelope, soak, and maintenance plan | T1–T4 | Cursor | VERIFY/Ryan gate |
+Before implementation begins:
 
-T1 and T2 are planning deliverables before implementation. T3–T5 may become
-separate implementation slices after the architecture and evidence map are
-accepted; they are not authorized by this document.
+1. Kiro reviews the architecture and this decomposition at one exact SHA.
+2. Copilot performs the targeted safety/isolation and continuity audit at that
+   same SHA.
+3. Ryan resolves findings and records an architecture lock.
+4. Ryan issues a separate Execute grant naming the implementation branch/scope.
+5. Cursor rebases from the then-current `origin/main` and re-traces any changed
+   ingest, dedupe, CG-1, CG-2, export, or retrieval boundary.
 
-## T1 — Trust Baseline v1
+## Ordered work packages
 
-Produce one row per claim with `claim`, `lifecycle`, `authority`, `failure_mode`,
-`evidence`, `expected_degraded_state`, `consequence`, `gate`, `owner`, `scope`,
-and `measurement/threshold`.
+### P1 — Canonical policy and representation
 
-Required initial claims include acknowledged-data durability, ledger authority,
-generation authority, corrupt-state refusal, backup RPO, restore RTO, projection
-completeness, provenance preservation, egress inventory, and local-only network
-denial. No threshold is accepted without a stated bad outcome.
+Create one deep module that owns:
 
-## T2 — Evidence inventory and gap analysis
+- schema/versioned envelope types and validation;
+- canonical JSON and `provenance_commitment` calculation;
+- root mapping from monitor-controlled ingress evidence;
+- `untrusted < agent < trusted` meet;
+- transformer caps and ancestry-completeness rules;
+- effective-integrity recomputation and cache-mismatch degradation;
+- legacy/malformed/unknown-policy fallback to untrusted.
 
-For every T1 claim:
+No adapter, caller, Chroma field, source path, role, confidence, or ranking code
+may independently compute integrity. The empty-input and caller-self-upgrade
+negative tests are P1 gates.
 
-1. cite the existing implementation or test;
-2. name the independent oracle;
-3. record exact scope and revision;
-4. classify sufficient, partial, or absent;
-5. identify the smallest missing proof.
+Likely surfaces after re-trace:
 
-Inspect CG-2 VERIFY rows explicitly rather than reimplementing their coverage.
-Admit a new fault test only when the inventory shows a partial or absent claim.
-Candidate gaps include process kill, immutable corruption, short writes/full or
-read-only storage, Chroma failure/underfill, source drift, backup/config failure,
-and provider timeout or malformed output.
+- new internal provenance policy/serialization module under `src/convmem/`;
+- focused policy and canonicalization tests under `tests/`.
 
-## T3 — Compatibility and provenance
+### P2 — Transformation-boundary binding and durable continuity
 
-Define the durable-format contract before writing migration code: version fields,
-supported window, N-1 → N migration, future-version rejection, dry-run,
-backup-before-migrate, atomic replacement, rollback, old-backup fixtures,
-embedding identity, and ownership for pointer/manifest/MCP/evaluation/backup
-schemas. No live migration or corpus rewrite is authorized here.
+For normal ingest, bind adapter-stable source records, raw-record hashes, each
+exact rendered/truncated view, ordering/chunk/selection parameters, and the full
+provider payload. Bind both ingest rendering and the additional distillation
+truncation. Record requested/resolved provider/model, fallback, generation
+parameters, fixed recipe/config hash, response hash, producer, and transformer.
 
-## T4 — Security boundary
+For direct inter-model indexing, treat `source_type` and `author_model` as
+claimed classification only. Direct packaging may preserve only a tested
+content-preservation contract; a caller cannot mark itself verified or trusted.
 
-Implement only after T1 names the egress surface and T2 identifies existing
-controls. Cover local-only transport denial, named-cloud payload classes,
-provenance-bound instruction/data separation, Write → Store → Retrieve → Execute
-→ Share → Forget poisoning/repair, provider loss, malformed output, and secret
-handling. The local-only invariant is T1; its broader adversarial suite is T4.
+Propagate the canonical envelope and commitment through normalized units,
+Chroma scalar-safe metadata, export, and canonical reconstruction. Add fixtures
+for malformed fields, old rows, unknown policy versions, and old consumers.
 
-## T5 — Operational envelope
+Likely surfaces after re-trace:
 
-After correctness/security gates are defined, measure 24/72-hour behavior and
-resource limits: RSS, latency, backlog age, restore time, provider-degradation
-rate, projection lag, and maintenance freshness. Each metric has one owner and
-action threshold. Packaging/locking may proceed alongside T5; release artifacts
-are later unless public distribution becomes immediate.
+- `src/convmem/ingest.py`
+- `src/convmem/distill.py`
+- `src/convmem/llm.py`
+- relevant adapters under `src/convmem/adapters/`
+- `src/convmem/inter_model_index.py`
+- `eval_corpus/reconstruct.py`
+- export/reingest tests and fixtures
 
-## Review and stop conditions
+### P3 — Assertion-preserving exact dedupe
 
-Each implementation slice reports focused tests, proof mapping, negative
-controls, fault/compatibility evidence where applicable, full regression, exact
-revision, and residual risks with consequence and owner. No model self-assessment
-is sufficient as the only evidence for a critical claim.
+Separate assertion identity from content/equivalence identity. Exact duplicates
+with independent or different provenance cannot cause the incoming assertion's
+provenance to disappear and cannot elevate or downgrade the existing assertion.
+Storage optimization may relate assertions or share immutable content bytes,
+but retrieval/audit must be able to recover each provenance assertion.
 
-Stop if a test duplicates CG evidence without a new failure window, a threshold
-lacks a bad outcome or single owner, a warning is treated as a critical pass,
-live state would be mutated without exact authorization, or literature numbers
-are used without primary-source verification and local calibration.
+Do not implement automatic semantic cross-provenance collapse. Existing semantic
+approval must fail closed or require explicit human adjudication when provenance
+differs. A later Stage 2 design decides durable equivalence/tombstone semantics.
 
-## Handoff
+Likely surfaces after re-trace:
 
-After Ryan locks architecture, Codex may refine this plan into implementation
-briefs. Cursor owns implementation, Kiro required design review, and Ryan owns
-architecture lock, external settings, named operational grants, and merge.
+- `src/convmem/ingest_dedupe.py`
+- `src/convmem/refine.py`
+- assertion/equivalence persistence and lifecycle tests
+
+### P4 — CG-1, CG-2, and retrieval continuity
+
+Make the provenance commitment a required immutable attribute for new-schema
+CG-1 candidates and manifest rows. Include it in candidate/bundle identity as
+specified by the locked architecture. Cold validation must reject omission,
+mutation, unknown schema, or envelope/commitment mismatch rather than comparing
+only keys that are present.
+
+Carry the assertion and commitment unchanged through CG-2 serving. The
+request-frozen authority vector remains the sole serving-authority mechanism;
+CG-2 does not recompute provenance or aggregate trust.
+
+Expose per-assertion provenance/effective integrity at retrieval/MCP boundaries.
+Keep relevance, recency, and `source_trust_boost` behavior bit-for-bit unchanged
+unless a compatibility shim is strictly necessary. Any derived synthesis is out
+of this slice unless it binds all selected parents and is capped at agent.
+
+Likely surfaces after re-trace:
+
+- `src/convmem/file_generation_contract.py`
+- `src/convmem/file_generation_builder.py`
+- `src/convmem/file_generation_store.py`
+- `src/convmem/serving_authority.py`
+- `src/convmem/serving_index_repository.py`
+- `src/convmem/query.py`, `src/convmem/evidence.py`, and response schemas
+
+### P5 — Verification packet and compatibility closure
+
+Run the locked tests in `VERIFY-dependability-provenance.md`. Produce evidence
+for the exact implementation tip, including focused and full regression runs,
+diff checks, no-live-mutation proof, serialized fixtures, and negative controls.
+
+Kiro reviews the implementation design/result. Copilot performs the targeted
+safety/isolation audit because this changes security-relevant data continuity.
+Ryan alone decides merge and any later migration/activation grant.
+
+## Required Stage 1 properties
+
+### Root authority
+
+1. Empty input cannot produce `agent` or `trusted`.
+2. Text or caller fields claiming `verified`, `trusted`, `trusted_tool`, or
+   `user` cannot self-upgrade.
+3. No current production adapter produces a verified root.
+4. Legacy/malformed/unknown-policy records are untrusted for security decisions.
+
+### Transformation monotonicity
+
+For all three lattice values and supported transformer classes:
+
+```text
+I(output) <= meet(I(all bound inputs), transformer_cap)
+```
+
+Required cases include trusted→lossless packaging, trusted→LLM, agent→LLM,
+trusted+agent, trusted+untrusted, unknown input, missing parent, provider fallback,
+repeat summarization, and content that embeds fake provenance fields.
+
+### Exact binding
+
+1. Changing any rendered/truncated byte changes its view or payload commitment.
+2. Changing message order, selection, chunk budget, prompt, model, provider,
+   temperature, fallback resolution, or recipe version changes the proper hash.
+3. Overlapping chunks bind the same source record locator but distinct consumed
+   views when their projections differ.
+4. Unseen truncated raw text is not falsely represented as model input.
+
+### Continuity
+
+1. Unit → Chroma → export → reconstruction is semantically lossless.
+2. Flat diagnostics cannot override the canonical envelope.
+3. CG-1 cold validation rejects missing or altered commitments.
+4. CG-2 returns the same assertion/commitment selected by serving authority.
+5. Retrieval preserves each assertion's provenance independently.
+
+### Dedupe
+
+1. Cross-provenance exact duplicates remain independently auditable.
+2. A low-integrity duplicate cannot downgrade a trusted assertion.
+3. A high-integrity duplicate cannot elevate an untrusted assertion.
+4. Semantic cross-provenance tombstoning cannot occur without explicit human
+   adjudication and retained audit evidence.
+
+## Fault-focused test cases
+
+- self-summarization laundering: untrusted input → LLM summary → untrusted;
+- trusted-tool echo: trusted code touching untrusted data → untrusted;
+- manufactured corroboration: two summaries of one root remain one origin;
+- partial-parent laundering: omitted contributor → untrusted;
+- recapture loop: untrusted retrieval → chat → ingest → distill never rises;
+- provider fallback drift: resolved recipe identity changes and remains bounded;
+- commitment split brain: canonical envelope wins and inconsistency degrades;
+- omission attack: missing new-schema commitment fails CG-1 cold validation;
+- duplicate downgrade/elevation attempts preserve independent assertions;
+- old consumer/reconstructor cannot silently label dropped provenance trusted.
+
+## Stop conditions
+
+Stop and return to architecture review if:
+
+- complete provider payload cannot be deterministically canonicalized without
+  retaining secrets;
+- a supported derivation cannot bind all dynamic inputs;
+- CG-1 identity changes require an in-place live migration;
+- CG-2 would need to recompute integrity rather than pass through evidence;
+- exact-dedupe preservation requires a public schema or retention decision not
+  settled by the architecture;
+- an existing consumer cannot carry the commitment without silent data loss;
+- implementation would alter ranking, temporal behavior, live data, activation,
+  or downstream action policy.
+
+## Review and delivery path
+
+```text
+Codex planning package
+  → Kiro architecture/design verdict (required)
+  → Copilot targeted safety/isolation verdict
+  → Ryan architecture lock + separate Execute grant
+  → Cursor implementation
+  → focused VERIFY + full regression
+  → Kiro implementation design review
+  → Copilot targeted final audit
+  → Ryan merge decision
+```
+
+The reviewers must record `git rev-parse HEAD`; no committed document attempts to
+contain its own review-tip SHA. Different revisions are not conflicting verdicts.

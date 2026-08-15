@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-09
+**Snapshot:** 2026-08-15
 
 ## Project goal
 
@@ -34,6 +34,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 
 | Arc | State | Next authorized action |
 |---|---|---|
+| Dependability and provenance integrity | Stage 0 planning package drafted; no implementation authorized | Kiro reviews the exact planning tip, then targeted Copilot safety/isolation audit; Ryan locks architecture before any separate Execute grant. |
 | JudgeBench semantic calibration v1 | T2–T5 on `main`; Chroma R4 GREEN | Ryan authors/locks G3 gold + split; then calibration run and G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
@@ -68,6 +69,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 
 - [Cross-arc rollup](STATUS.md) (this file)
 - [Latest session handoff](LATEST.md)
+- [Dependability and provenance STATUS](../plans/STATUS-dependability-provenance.md)
 - [JudgeBench STATUS](../plans/STATUS-judgebench.md)
 - [Chroma Reconcile STATUS](../plans/STATUS-chroma-reconcile-tier-l.md) (closed)
 - [Complete-data backup STATUS](../plans/STATUS-complete-data-backup-correction-v2.md)
@@ -75,5 +77,5 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Shadow Ledger STATUS](../plans/STATUS-shadow-ledger-phase0.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Chroma is GREEN; JudgeBench waits on Ryan G3/G4; Shadow waits on
-activation-ready evidence (C7/C6) then Ryan grant; R2b waits on a fresh authorization packet.
+**TL;DR:** The provenance arc awaits Kiro/Copilot planning review and Ryan lock;
+Chroma is GREEN; JudgeBench, Shadow, and R2b retain their separate named gates.
