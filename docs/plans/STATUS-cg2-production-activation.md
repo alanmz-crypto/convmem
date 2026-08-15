@@ -20,6 +20,7 @@ drilled, and activation/GC remain separately gated.
 ```text
 source file
    │
+   ├─ watcher hint + bounded source reconciliation
    ├─ secure open + source hash
    ▼
 CG-1 build → stage → cold validate
@@ -50,10 +51,15 @@ Key invariants:
 - pointer authority remains per owner;
 - compatibility is explicit and never error fallback;
 - a monotonic fence prevents legacy resurrection after first cutover;
-- one request freezes its authority mapping;
+- one request freezes its authority mapping after per-owner evidence
+  read/derive/revalidate succeeds;
+- pre-fence readers may finish, but post-fence owner resolution cannot select legacy;
 - rename is explicit owner migration because CG-1 identity is path-derived;
 - logical identity governs parity; physical IDs are diagnostic;
 - source freshness and active-generation freshness are separate promotion checks;
+- filesystem notifications schedule work; startup/overflow/periodic
+  reconciliation proves eventual source convergence;
+- future online GC requires pin-before-dereference or pin/revalidate/retry;
 - no automatic GC in the first activation slice.
 
 ## 3. What exists on disk now
@@ -74,7 +80,9 @@ Key invariants:
 | Legacy fence/owner authority artifacts | Missing | No owner is cut over |
 | Generation-aware doctor/parity | Missing | Current checks compare raw IDs |
 | Source-observation promotion guard | Missing | CG-1 stale-generation guard exists; current-source guard does not |
-| Formal authority model | Missing | Required before first canary |
+| Source reconciliation | Missing | Current watchdog path has no startup/overflow/periodic manifest reconciliation contract |
+| Authority-resolution/pin linearization | Missing | Proposed in architecture; no production reader or online GC exists |
+| Formal authority model | Missing | Required before Ryan Architecture HITL lock |
 | Activation manifest/grant | Forbidden/not present | No production activation authorized |
 
 Current production state remains legacy. `convmem doctor` is operationally
@@ -86,7 +94,7 @@ evidence.
 | Milestone | Status | Blocking on |
 |---|---|---|
 | CG-1 substrate merged and accepted | **DONE** | — |
-| ChatGPT research/advisory memo | **DONE** | Codex repository reconciliation completed |
+| ChatGPT research/advisory review | **PASS WITH DISPOSITIONS RECEIVED** | Four required dispositions incorporated on branch; does not replace designated lane reviews |
 | Canonical CG-2 architecture draft | **ON BRANCH / REVIEW NEEDED** | Kiro, Crush, Cursor feasibility review |
 | Ryan Architecture HITL | **NOT DONE** | Reviewer dispositions on one exact revision |
 | Execution and VERIFY plans | **NOT STARTED** | Architecture lock |
@@ -101,9 +109,10 @@ evidence.
 
 **If Ryan sent you to review architecture:** Read the architecture draft and
 CG-1 closure at the exact branch SHA. Focus on owner identity/rename, mixed-mode
-top-k correctness, fence/pointer crash states, source-observation binding,
-direct-read coverage, and reclamation separation. Return a written PASS or FAIL
-against that revision; do not implement.
+authority safety/cardinality/quality, torn authority-evidence retry, pre-fence
+reader semantics, lost-event source reconciliation, source-observation binding,
+direct-read coverage, and pin/reclamation separation. Return a written PASS or
+FAIL against that revision; do not implement.
 
 **If Ryan sent you to revise architecture:** Change only planning/status
 artifacts on the plan branch, reconcile every material reviewer finding, and
@@ -126,8 +135,8 @@ all production owners still use legacy semantics.
 6. Codex authors execution and VERIFY plans.
 7. Plan review and separate Ryan Execute grant.
 8. Cursor implements global serving boundary with all owners legacy.
-9. Independent code/safety verification, copied-corpus rehearsal, formal model,
-   and pinned-Chroma operational evidence.
+9. Independent code/safety verification, copied-corpus rehearsal,
+   implementation-to-model transition mapping, and pinned-Chroma operational evidence.
 10. Separate grant for production legacy-only gateway soak.
 11. Soak PASS and exact activation packet for one eligible owner.
 12. Separate Ryan named-owner canary grant.
@@ -145,6 +154,8 @@ all production owners still use legacy semantics.
 | Named-owner activation grant | Ryan, exact SHA/owner/state | First or later owner promotion |
 | Zero serving bypasses | Architecture fitness gate | Any generational owner serving |
 | Source/active stale checks | Promotion contract | Pointer publication |
+| Source reconciliation freshness | Watch/reconciliation contract | Canary selection and legacy retirement |
+| Authority-resolution linearization | Serving repository contract | Any mixed legacy/generation serving |
 | Logical parity + provenance | Activation evidence | Canary selection |
 | Chroma backlog/recovery/storage budgets | Operational evidence | Canary and batch expansion |
 | GC sub-gate | Ryan after independent evidence | Automatic physical deletion |
@@ -205,4 +216,5 @@ Keep this file as current-state orientation, not a diary:
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-08-14 | OpenAI Codex | Incorporated advisory correctness dispositions for lost events, read/pin linearization, mixed-mode ANN acceptance, and request-scoped rename semantics |
 | 2026-08-14 | OpenAI Codex | Created the CG-2 arc brief with architecture draft in review state; implementation and activation remain unauthorized |
