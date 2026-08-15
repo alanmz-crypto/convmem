@@ -14,7 +14,7 @@ external evidence step without reopening the shipped CI implementation.
 |---|---|
 | **State** | `DOCS_READY__NEGATIVE_CONTROL_PENDING` |
 | **Branch** | `plan/2026-08-15-ci-behavioral-merge-gate-closeout` |
-| **Tip** | `2cb5b4c16efe7da08e6718bddf0c1419d287ed6a` |
+| **Review target** | Current head of `plan/2026-08-15-ci-behavioral-merge-gate-closeout`; reviewer must record the exact SHA from `git rev-parse HEAD` |
 | **Push status** | Pushed to `origin` with the explicit branch ref |
 | **PR** | Not opened |
 | **Unrelated worktree item** | Untracked `pylint-report.json`; preserve it |
@@ -94,6 +94,8 @@ commit, and push. Do not change the workflow or ruleset during that experiment.
 
 ## Review instructions for the next agent
 
+- Record the exact revision reviewed with `git rev-parse HEAD`; do not infer
+  the reviewed SHA from this handoff.
 - Review the architecture decision against the actual workflow and ruleset;
   especially retain the distinction between passing CodeQL and required CodeQL.
 - Check that the manifest remains advisory and contains only existing paths.
