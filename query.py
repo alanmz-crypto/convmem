@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from chroma_store import ChromaStore, is_superseded, open_chroma_for_read
+from chroma_store import ChromaStore, is_chroma_contention_error, is_superseded
 from chroma_readonly import collection_metadata_rows
 from config import load_config
 from domains import domain_breadcrumb, domain_matches, is_known_domain, normalize_domain
@@ -387,6 +387,10 @@ def query_units(
 ) -> list[dict]:
     if cfg is None:
         cfg = load_config()
+    if chroma_dir:
+        cfg = dict(cfg)
+        cfg["index"] = dict(cfg["index"])
+        cfg["index"]["chroma_dir"] = chroma_dir
     models = cfg["models"]
     qcfg = cfg.get("query", {})
     chroma_path = chroma_dir or cfg["index"]["chroma_dir"]
@@ -409,14 +413,16 @@ def query_units(
         n_fetch = candidate_k * 3
 
     ledger_extras: list[dict] = []
+    from serving_authority import ServingBackendTransient
+    from serving_index_repository import open_serving_index_repository
+
     try:
-        store = open_chroma_for_read(chroma_path)
-        try:
-            results = store.query_units(embedding, n_fetch)
+        with open_serving_index_repository(
+            cfg, mediated_fallback=_fallback_query_rows
+        ) as repo:
+            results = repo.query_units(embedding, n_fetch)
             if not skip_ledger_priority:
-                ledger_extras = _ledger_lookup_hits(cfg, store, text)
-        finally:
-            store.close()
+                ledger_extras = _ledger_lookup_hits(cfg, repo.legacy_store(), text)
         if site_norm:
             results = filter_results_by_site(results, site_norm)
         if domain:
@@ -425,15 +431,17 @@ def query_units(
                 if (ud := _unit_domain(r.get("metadata", {}))) is not None
                 and domain_matches(ud, domain)
             ]
-    except Exception:
-        results = _fallback_query_rows(
-            "knowledge_units",
-            text,
-            n_fetch,
-            domain=domain,
-            site=site,
-            cfg=cfg,
-        )
+    except ServingBackendTransient:
+        with open_serving_index_repository(
+            cfg, mediated_fallback=_fallback_query_rows
+        ) as repo:
+            results = repo.mediated_keyword_fallback(
+                "knowledge_units",
+                text,
+                n_fetch,
+                domain=domain,
+                site=site,
+            ).rows
         if not skip_ledger_priority:
             ledger_extras = _ledger_lookup_hits(cfg, None, text)
     for r in results:
@@ -512,22 +520,26 @@ def query_raw(
     )
     site_norm = normalize_site(site) if site else None
     n_fetch = top_k * 3 if site_norm else top_k
+    from serving_authority import ServingBackendTransient
+    from serving_index_repository import open_serving_index_repository
+
     try:
-        store = open_chroma_for_read(cfg["index"]["chroma_dir"])
-        try:
-            results = store.query_summaries(embedding, n_fetch)
-        finally:
-            store.close()
+        with open_serving_index_repository(
+            cfg, mediated_fallback=_fallback_query_rows
+        ) as repo:
+            results = repo.query_summaries(embedding, n_fetch)
         if site_norm:
             results = filter_results_by_site(results, site_norm)
-    except Exception:
-        results = _fallback_query_rows(
-            "conversation_summaries",
-            text,
-            n_fetch,
-            site=site,
-            cfg=cfg,
-        )
+    except ServingBackendTransient:
+        with open_serving_index_repository(
+            cfg, mediated_fallback=_fallback_query_rows
+        ) as repo:
+            results = repo.mediated_keyword_fallback(
+                "conversation_summaries",
+                text,
+                n_fetch,
+                site=site,
+            ).rows
     for r in results:
         d = r.get("distance")
         if d is not None:

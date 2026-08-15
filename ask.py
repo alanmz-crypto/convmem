@@ -544,16 +544,16 @@ def _apply_evidence_and_recent(
     limit: int,
 ) -> tuple[list[dict], dict]:
     """Evidence rerank, ledger dedupe, recent prepend; optional stage snapshots."""
-    from chroma_store import ChromaStore
     from evidence import apply_evidence_rerank
+    from serving_index_repository import open_serving_index_repository
 
     stages: dict = {}
     qcfg = cfg.get("query", {})
     rw = float(qcfg.get("recency_weight", 0.0))
     rhl = float(qcfg.get("recency_half_life_days", 30.0))
-    with ChromaStore(cfg["index"]["chroma_dir"]) as store:
+    with open_serving_index_repository(cfg) as repo:
         units = apply_evidence_rerank(
-            units, store, recency_weight=rw, recency_half_life_days=rhl
+            units, repo.legacy_store(), recency_weight=rw, recency_half_life_days=rhl
         )
     if trace:
         stages["evidence_reranked"] = _trace_stage(

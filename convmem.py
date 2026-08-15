@@ -130,11 +130,11 @@ def search(
         render_search_results(results, units=False)
     else:
         if not _primary_search_ready():
-            from chroma_store import ChromaStore
             from config import load_config
+            from serving_index_repository import open_serving_index_repository
 
-            store = ChromaStore(load_config()["index"]["chroma_dir"])
-            n, summary_n = store.count_units(), store.count_summaries()
+            with open_serving_index_repository(load_config()) as repo:
+                n, summary_n = repo.count_units(), repo.count_summaries()
             render_warning(
                 f"Only {n} knowledge unit(s) vs {summary_n} summaries — "
                 "primary search is thin. Use --raw until backfill completes, or:\n"

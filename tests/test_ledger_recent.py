@@ -7,6 +7,7 @@ from unittest import mock
 
 from ask import _prepend_recent_decisions
 from ledger_recent import decision_record_to_unit, load_recent_decisions
+from tests.serving_repo_mock import patch_ask_serving
 
 
 class LedgerRecentTests(unittest.TestCase):
@@ -180,12 +181,11 @@ class EvidenceStoreCloseTests(unittest.TestCase):
             },
             "query": {},
         }
-        with mock.patch("chroma_store.ChromaStore", return_value=store), mock.patch(
-            "evidence.apply_evidence_rerank", side_effect=lambda u, s, **k: u
-        ), mock.patch("ask.generate_stream", return_value=iter(["ok"])):
+        with mock.patch("evidence.apply_evidence_rerank", side_effect=lambda u, s, **k: u), mock.patch(
+            "ask.generate_stream", return_value=iter(["ok"])
+        ), patch_ask_serving(store):
             ask_fn("test question", evidence=True, top_k=5)
-        store.__enter__.assert_called_once()
-        store.__exit__.assert_called_once()
+        store.close.assert_called_once()
 
     @mock.patch("ask.query_units")
     @mock.patch("ask.load_config")
@@ -208,12 +208,10 @@ class EvidenceStoreCloseTests(unittest.TestCase):
         def boom(*_a, **_k):
             raise RuntimeError("rerank failed")
 
-        with mock.patch("chroma_store.ChromaStore", return_value=store), mock.patch(
-            "evidence.apply_evidence_rerank", side_effect=boom
-        ):
+        with mock.patch("evidence.apply_evidence_rerank", side_effect=boom), patch_ask_serving(store):
             with self.assertRaises(RuntimeError):
                 ask_fn("test question", evidence=True, top_k=5)
-        store.__exit__.assert_called_once()
+        store.close.assert_called_once()
 
 
 if __name__ == "__main__":

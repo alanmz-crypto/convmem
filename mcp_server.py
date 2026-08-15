@@ -889,13 +889,13 @@ def unresolved(site: str = "", domain: str = "") -> str:
 def related(ledger_id: str) -> str:
     """Traverse the evidence chain for an observation, decision, or verification."""
     _apply_shell_roots_brief_boundary_sync()
-    from chroma_store import ChromaStore
     from config import load_config
     from ledger import related_chain
+    from serving_index_repository import open_serving_index_repository
 
     cfg = load_config()
-    store = ChromaStore(cfg["index"]["chroma_dir"])
-    chain = related_chain(store, ledger_id)
+    with open_serving_index_repository(cfg) as repo:
+        chain = related_chain(repo.legacy_store(), ledger_id)
     if chain is None:
         return json.dumps({"error": f"Ledger id not found: {ledger_id}"})
 
@@ -937,12 +937,12 @@ def stats() -> str:
     if blocked:
         return blocked
     from collections import Counter
-    from chroma_store import ChromaStore
     from config import load_config
+    from serving_index_repository import open_serving_index_repository
 
     cfg = load_config()
-    store = ChromaStore(cfg["index"]["chroma_dir"])
-    metas = store.units_metadata()
+    with open_serving_index_repository(cfg) as repo:
+        metas = repo.units_metadata()
     by_tool = Counter(m.get("tool", "?") for m in metas)
     by_domain = Counter(m.get("domain") or "untagged" for m in metas)
     return json.dumps({

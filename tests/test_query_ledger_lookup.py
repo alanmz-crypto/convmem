@@ -15,6 +15,7 @@ from query import (
     _merge_priority_hits,
     query_units,
 )
+from tests.serving_repo_mock import patch_query_serving
 
 
 class LedgerLookupHelpersTests(unittest.TestCase):
@@ -47,7 +48,6 @@ class LedgerLookupHelpersTests(unittest.TestCase):
 
 class QueryUnitsLedgerLookupTests(unittest.TestCase):
     @patch("query._ledger_lookup_hits")
-    @patch("query.open_chroma_for_read")
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
     @patch("query.load_config")
     @patch(
@@ -55,7 +55,7 @@ class QueryUnitsLedgerLookupTests(unittest.TestCase):
         side_effect=lambda _query, candidates, _model, top_k: candidates[:top_k],
     )
     def test_protocol_anchor_query_returns_c311(
-        self, _rerank, mock_cfg, _embed, mock_open, mock_lookup
+        self, _rerank, mock_cfg, _embed, mock_lookup
     ):
         mock_cfg.return_value = {
             "models": {"embed_model": "nomic-embed-text", "ollama_host": "http://x"},
@@ -71,7 +71,6 @@ class QueryUnitsLedgerLookupTests(unittest.TestCase):
                 "document": "chat chunk",
             }
         ]
-        mock_open.return_value = store
         mock_lookup.return_value = [
             {
                 "id": "anchor",
@@ -82,7 +81,8 @@ class QueryUnitsLedgerLookupTests(unittest.TestCase):
             }
         ]
 
-        results = query_units("convmem record relates-to fallback root", top_k=5)
+        with patch_query_serving(store):
+            results = query_units("convmem record relates-to fallback root", top_k=5)
 
         self.assertEqual(
             results[0]["metadata"]["ledger_id"],
@@ -91,11 +91,10 @@ class QueryUnitsLedgerLookupTests(unittest.TestCase):
         self.assertTrue(results[0].get("ledger_lookup"))
 
     @patch("ledger.find_unit_by_ledger_id")
-    @patch("query.open_chroma_for_read")
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
     @patch("query.load_config")
     def test_explicit_ledger_id_in_query(
-        self, mock_cfg, _embed, mock_open, mock_find
+        self, mock_cfg, _embed, mock_find
     ):
         mock_cfg.return_value = {
             "models": {"embed_model": "nomic-embed-text", "ollama_host": "http://x"},
@@ -104,14 +103,14 @@ class QueryUnitsLedgerLookupTests(unittest.TestCase):
         }
         store = MagicMock()
         store.query_units.return_value = []
-        mock_open.return_value = store
         mock_find.return_value = {
             "id": "u1",
             "document": "coordination protocol steps",
             "metadata": {"ledger_id": PROTOCOL_FALLBACK_LEDGER_ID, "title": "proto"},
         }
 
-        results = query_units(f"details for {PROTOCOL_FALLBACK_LEDGER_ID}", top_k=3)
+        with patch_query_serving(store):
+            results = query_units(f"details for {PROTOCOL_FALLBACK_LEDGER_ID}", top_k=3)
 
         self.assertEqual(results[0]["metadata"]["ledger_id"], PROTOCOL_FALLBACK_LEDGER_ID)
 
