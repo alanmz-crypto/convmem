@@ -82,7 +82,7 @@ authenticates the human or model principal that produced the record.
 | Transformer | What semantic operation and implementation created it? |
 | Input binding | Which exact dynamic bytes were presented at that supported boundary? |
 | Ancestry completeness | Were all such dynamic inputs bound and was the fixed recipe identified? |
-| Effective integrity | What conservative upper bound may security policy place on this representation? |
+| Effective integrity | What exact conservative result does the versioned policy compute for this representation? |
 | Provenance commitment | What canonical digest binds the authoritative provenance envelope? |
 
 `verified` means the channel/origin was verified. It never means the information
@@ -122,24 +122,26 @@ authenticated channel evidence. Empty inputs, text that says `origin=trusted`,
 caller claims, and an executing process's self-description never mint `agent` or
 `trusted` authority.
 
-### R2 — Conservative derivation bound
+### R2 — Effective-integrity computation
 
 For every derived unit:
 
 ```text
-I(output) <= meet(
+I(output) = meet(
     I(all completely bound dynamic inputs),
     cap(authorized transformer/producer)
 )
 ```
 
-If ancestry is `partial` or `unknown`, the output is `untrusted`. An empty input
-set cannot produce `agent` or `trusted`. `agent` is a monitor-computed result of
-an authorized agent transformation, never a caller-selectable root label.
+This equality defines the effective-integrity policy result; it is not merely a
+ceiling that another component may reinterpret upward. If ancestry is `partial`
+or `unknown`, the policy result is `untrusted`. An empty input set cannot produce
+`agent` or `trusted`. `agent` is a monitor-computed result of an authorized agent
+transformation, never a caller-selectable root label.
 
 Examples:
 
-| Inputs and operation | Maximum output integrity |
+| Inputs and operation | Effective-integrity result |
 |---|---|
 | Verified trusted root through tested lossless packaging | trusted |
 | Verified trusted root through LLM summarization | agent |
@@ -208,12 +210,21 @@ Missing provenance maps to `unknown`/`untrusted` for security decisions. No
 backfill may infer upward from path, prose, role, `author_model`, `source_type`,
 confidence, timestamp, current ranking boost, or survival in a durable generation.
 
+### R8 — Continuity is mandatory; display is supplementary
+
+Canonical representation, propagation, export, reconstruction, and commitment
+continuity are mandatory integrity claims. Failure or omission degrades the
+assertion to `untrusted` or rejects it at a boundary whose contract is fail-closed.
+Only supplementary human-readable display diagnostics may be advisory. A missing
+display badge can never make missing envelope/commitment continuity acceptable.
+
 ## 6. Canonical provenance envelope and commitment
 
 The authoritative envelope is conceptually:
 
 ```text
 schema_version
+binding_version
 root_bindings[]:
   source_identity
   record_locator
@@ -221,6 +232,10 @@ root_bindings[]:
   input_view_sha256
   origin_class
   origin_assurance
+  origin_evidence:
+    channel_class
+    channel_locator
+    channel_evidence_sha256
 input_bindings[]:
   parent_assertion_id
   parent_provenance_commitment
@@ -231,11 +246,13 @@ derivation_kind
 transformer_class
 transformer_identity
 transformer_version
+transformer_recipe_id
 selection_parameters
 provider_payload_sha256
 recipe_config_sha256
 ancestry_completeness: complete | partial | unknown
 provenance_policy_version
+effective_integrity  # derived/cache only; never authoritative input
 ```
 
 `effective_integrity` is a derived/cache value computed by one policy function.
@@ -323,12 +340,13 @@ The top claim is deliberately bounded:
 | Claim | Argument | Required evidence family |
 |---|---|---|
 | C1. Roots cannot self-upgrade. | Only monitor policy maps authenticated channel evidence; current production inventory has no verified channel. | Code inspection, negative/property tests, ingress inventory review. |
-| C2. Derivations are monotone. | One policy computes the meet of every bound input and transformer cap; incomplete ancestry is untrusted. | Exhaustive lattice tests, metamorphic laundering tests, policy-version fixtures. |
+| C2. Derivations are monotone. | One policy sets integrity equal to the meet of every bound input and transformer cap; incomplete ancestry is untrusted. | Exhaustive lattice tests, metamorphic laundering tests, policy-version fixtures. |
 | C3. Provenance is continuous. | One canonical envelope/commitment crosses unit, Chroma, export, reconstruction, CG-1, CG-2, and retrieval. | Round-trip fixtures, cold tamper/omission tests, old-consumer compatibility tests. |
 | C4. Equivalence cannot erase authority evidence. | Assertions and equivalence relations have separate identity; cross-provenance collapse is gated. | Exact/semantic dedupe negative controls and lifecycle traces. |
 | C5. Retrieval does not invent aggregate trust. | Integrity remains per assertion; synthesis is a new agent derivation. | Retrieval/MCP contract tests and assembly parent-completeness tests. |
 | C6. Existing authority controls stay orthogonal. | CG-1 durability, CG-2 serving, R2b capture integrity, and ranking each keep their current owner and claim. | Boundary review against their architecture/VERIFY artifacts. |
 | C7. Limits are visible. | Unknown legacy and unauthenticated channels stay untrusted; no factual/action claim is made. | User-visible contract tests, docs review, targeted safety audit. |
+| C8. Integrity continuity is mandatory. | Envelope/commitment continuity is fail-closed or degrades to untrusted; only supplementary display diagnostics are advisory. | Required-field omission tests, round trips, consumer compatibility tests. |
 
 CSIRO's structured safety-case taxonomy guides claim/argument/evidence families.
 CoDefeater motivates adversarial defeater discovery, but all generated defeaters
@@ -393,12 +411,17 @@ Freeze vocabulary, verified-channel inventory, binding contract, transformer
 caps, commitment canonicalization, assertion/equivalence semantics, assurance
 claims, defeaters, and non-goals. Kiro review and Ryan lock are required.
 
-### Stage 1 — provenance substrate
+### Stage 1A — provenance policy and representation substrate
 
 Implement one policy module and canonical envelope; bind normal and direct ingest;
-propagate through normalization, Chroma, export, reconstruction, CG-1 immutable
-manifests/cold validation, CG-2 serving, and retrieval; handle legacy
-conservatively; prevent cross-provenance exact suppression. No live migration.
+propagate through normalization, Chroma, export, and reconstruction; handle legacy
+conservatively. No live migration.
+
+### Stage 1B — assertion continuity and exact dedupe
+
+Preserve independent provenance assertions through exact equivalence and
+retrieval. Prevent cross-tier suppression, elevation, and downgrade. This is part
+of the primary provenance substrate, not an optional diagnostic feature.
 
 ### Stage 2 — provenance-aware semantic dedupe
 
@@ -409,6 +432,20 @@ cross-provenance tombstone. Preserve both audit assertions.
 
 Expose per-assertion evidence and derived review hints. Keep ranking independent.
 Define consumer contract without claiming downstream enforcement.
+
+### Parallel/later assurance track A — CG-1 and CG-2 continuity
+
+After Stage 1 establishes the canonical representation, require and cold-validate
+the commitment in CG-1 and pass it unchanged through CG-2. This track may proceed
+in parallel under its own Execute brief, but it does not reopen CG-1 durability or
+CG-2 serving-authority architecture and is not allowed to delay definition of the
+core provenance substrate.
+
+### Parallel/later assurance track B — broad dependability operations
+
+Egress, backup/restore, recovery, endurance, SLOs, and general operational fault
+campaigns remain separate assurance work. They may consume provenance evidence
+later; they are not Stage 0 vocabulary or Stage 1 substrate deliverables.
 
 ### Stage 4 — temporal and assembly policy
 
@@ -449,7 +486,7 @@ faults, stale state, and multi-agent handoff faults.
 
 ## 14. Review gates
 
-1. **Kiro design review:** same branch tip, explicit PASS/FAIL against R1–R7,
+1. **Kiro design review:** same branch tip, explicit PASS/FAIL against R1–R8,
    Stage 0 decisions, CG-1/CG-2 boundaries, and defeaters.
 2. **Targeted Copilot audit:** same branch tip, safety/isolation and continuity
    review; no implementation and no broad re-audit.
@@ -460,3 +497,19 @@ faults, stale state, and multi-agent handoff faults.
 Sol-High conflict adjudication returns to the team charter after this explicitly
 authorized planning exception: it is invoked only for materially conflicting
 Kiro and Copilot PASS/FAIL verdicts on the same artifact and revision.
+
+## 15. Kiro blocker-resolution map
+
+The reviewer must inspect the final committed tree, not working-tree edits or an
+earlier SHA.
+
+| Kiro blocker | Normative resolution |
+|---|---|
+| Effective-integrity rule | Sections 4–5: exact equality, lattice, generative cap, incomplete ancestry, tested preservation contracts. |
+| Concrete envelope | Section 6: producer, root evidence, inputs, transformation recipe/identity, completeness, policy version, cache-only integrity. |
+| Current-ingest binding | R4–R5 and Section 6: stable locator, raw/view/payload hashes, selection parameters, binding/recipe versions. |
+| Cross-tier dedupe | R6 and Stages 1B/2: independent assertions, no silent suppression/tombstone, human semantic adjudication. |
+| Orthogonal dimensions/actions | Sections 2 and 7 plus required assurance wording. |
+| Execution order | Stage 0, Stage 1A/1B, then parallel/later CG-1/CG-2 and broad dependability tracks. |
+| Mandatory continuity | R8 and assurance claim C8; only supplementary display diagnostics are advisory. |
+| Planning safety/status publication | Sections 11–14 and STATUS: no runtime/live operations; cross-arc rollup waits for acceptance. |

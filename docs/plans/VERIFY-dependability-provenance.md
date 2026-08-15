@@ -70,7 +70,7 @@ artifacts are recorded for the implementation revision.
 Normative property for every supported derivation:
 
 ```text
-I(output) <= meet(I(all completely bound dynamic inputs), transformer_cap)
+I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 ```
 
 | ID | Required check | Result |
@@ -104,6 +104,7 @@ I(output) <= meet(I(all completely bound dynamic inputs), transformer_cap)
 | V4c | Flat metadata cannot override canonical envelope. | Give scalar cache a more favorable tier than recomputation. | PENDING |
 | V4d | Effective-integrity cache mismatch degrades to untrusted. | Tamper only the cache. | PENDING |
 | V4e | Old consumers cannot silently drop provenance and return trusted. | Run old/missing-field fixture. | PENDING |
+| V4f | Representation, propagation, export, and reconstruction continuity are mandatory. | Remove a required field; fail/degrade to untrusted rather than advisory PASS. | PENDING |
 
 ## V5 — Dedupe and assertion identity
 
@@ -116,7 +117,11 @@ I(output) <= meet(I(all completely bound dynamic inputs), transformer_cap)
 | V5e | Semantic cross-provenance tombstone requires human adjudication and retains both audit assertions. | PENDING |
 | V5f | Storage optimization cannot destroy provenance identity. | PENDING |
 
-## V6 — CG-1 immutable continuity and cold validation
+## V6 — Parallel/later assurance: CG-1 immutable continuity and cold validation
+
+V6 is required before end-to-end arc closure, but it follows the locked Stage 1
+representation under a separate Execute brief. It is not allowed to redefine or
+delay the Stage 1 vocabulary/policy substrate.
 
 | ID | Required check | Negative control | Result |
 |---|---|---|---|
@@ -126,15 +131,15 @@ I(output) <= meet(I(all completely bound dynamic inputs), transformer_cap)
 | V6d | Legacy generation is explicitly untrusted, not inferred upward. | Open legacy fixture under compatibility path. | PENDING |
 | V6e | CG-1 durability PASS is never surfaced as provenance/truth PASS. | Contract/docs assertion test. | PENDING |
 
-## V7 — CG-2 serving and retrieval isolation
+## V7 — Stage 1 retrieval isolation and parallel/later CG-2 serving
 
 | ID | Required check | Negative control | Result |
 |---|---|---|---|
-| V7a | CG-2 serves the same assertion/commitment selected by its request-frozen authority vector. | Mutate follower copy; compare against selected manifest. | PENDING |
-| V7b | CG-2 does not recompute, aggregate, elevate, or discard provenance. | Search and fixture comparison. | PENDING |
-| V7c | Retrieval returns provenance per assertion. | Mixed-integrity result set has no aggregate trusted label. | PENDING |
-| V7d | Existing ranking/source-trust scores do not feed effective integrity. | Hold evidence fixed and vary ranking/path metadata. | PENDING |
-| V7e | Temporal/supersession status does not feed integrity. | Vary timestamps/superseded state with same provenance. | PENDING |
+| V7a | Stage 1 retrieval returns provenance per assertion. | Mixed-integrity result set has no aggregate trusted label. | PENDING |
+| V7b | Existing ranking/source-trust scores do not feed effective integrity. | Hold evidence fixed and vary ranking/path metadata. | PENDING |
+| V7c | Temporal/supersession status does not feed integrity. | Vary timestamps/superseded state with same provenance. | PENDING |
+| V7d | Later CG-2 serves the same assertion/commitment selected by its request-frozen authority vector. | Mutate follower copy; compare against selected manifest. | PENDING |
+| V7e | Later CG-2 does not recompute, aggregate, elevate, or discard provenance. | Search and fixture comparison. | PENDING |
 
 ## V8 — Laundering and lifecycle faults
 
@@ -158,6 +163,12 @@ I(output) <= meet(I(all completely bound dynamic inputs), transformer_cap)
 | V9d | Existing retrieval ranking behavior is unchanged. | PENDING |
 | V9e | No live corpus/Chroma mutation, Shadow activation, R2b capture, or CG-2 operational action occurred. | PENDING |
 | V9f | Runnable documentation distinguishes reference commands from commands requiring Ryan grant. | PENDING |
+
+## V9A — Parallel/later broad assurance tracks
+
+Egress, backup/restore, recovery, endurance, SLO, and general operational fault
+campaigns require separate plans and grants. They are neither Stage 1 substrate
+checks nor substitutes for mandatory provenance representation continuity.
 
 ## V10 — Independent sign-off
 

@@ -3,8 +3,8 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** Architecture package drafted; review required; no implementation
-authorized.
+**State:** Revised after Kiro FAIL on superseded commit `e50a1b1`; clean-tree
+rereview required; no implementation authorized.
 
 ## 1. What this project is for
 
@@ -29,7 +29,7 @@ supported transformation boundary
   │ complete provider payload + fixed recipe + producer/transformer cap
   ▼
 canonical provenance envelope
-  │ I(output) <= meet(all inputs, transformer cap)
+  │ I(output) = meet(all completely bound inputs, transformer cap)
   │ provenance_commitment = hash(canonical authoritative envelope)
   ▼
 knowledge unit ─→ Chroma ─→ export ─→ reconstruction
@@ -75,17 +75,22 @@ serving authority/repository.
 
 | Milestone | State | Exit condition |
 |---|---|---|
-| Stage 0 architecture package | **Draft** | Kiro PASS, targeted Copilot audit disposition, Ryan lock. |
-| Stage 1 provenance substrate | Not authorized | Separate Ryan Execute grant; all Stage 1 VERIFY rows pass. |
+| Stage 0 architecture package | **Revised after FAIL** | Kiro rereviews the final clean committed tree and returns PASS; targeted Copilot audit disposition; Ryan lock. |
+| Stage 1A policy/representation substrate | Not authorized | Separate Ryan Execute grant; core policy, envelope, bindings, and representation continuity pass. |
+| Stage 1B assertion/exact-dedupe continuity | Not authorized | Independent assertions survive cross-tier equivalence and retrieval. |
 | Stage 2 semantic dedupe | Deferred | Separate design and grant. |
 | Stage 3 consumer visibility | Deferred beyond Stage 1 minimum | Consumer contract and enforcement boundary reviewed. |
+| CG-1/CG-2 assurance integration | Parallel/later | Separate Execute brief after canonical Stage 1 representation is locked. |
+| Egress/recovery/operational assurance | Parallel/later | Separate dependability tracks and acceptance criteria. |
 | Stage 4 temporal/assembly | Deferred | Reliable metadata and separate acceptance criteria. |
 | Stage 5 injected-fault campaign | Deferred | Stage 1 substrate exists and local oracles are stable. |
 | Live migration/activation | Out of scope | Separate architecture and exact operational grant. |
 
 ## 5. Your role now
 
-**Next lane: Kiro design review.** Review the planning branch at one exact HEAD.
+**Next lane: Kiro design rereview.** The earlier FAIL applies to superseded commit
+`e50a1b1`. Review the planning branch at the new exact HEAD recorded in the
+external handoff, and first confirm the worktree/index are clean.
 Challenge the integrity rules, transformation completeness definition, commitment
 continuity, assertion-preserving dedupe, CG-1/CG-2 separation, implementation
 boundaries, and whether the defeater register is complete. Return a written
@@ -98,7 +103,7 @@ begin until Ryan separately grants Execute.
 
 ## 6. What remains before this is live
 
-1. Kiro reviews the exact planning tip.
+1. Kiro rereviews the exact clean planning tip and maps the eight prior blockers.
 2. Copilot audits safety/isolation and provenance continuity at the same tip.
 3. Codex revises planning findings if Ryan requests changes.
 4. Ryan locks Stage 0 and separately authorizes or rejects Stage 1 execution.
@@ -155,8 +160,8 @@ Do not append session narrative.
 
 | Date | Lane | Milestone change |
 |---|---|---|
-| 2026-08-15 | Codex Sol-High | Drafted the Stage 0 provenance architecture package for independent review; no implementation authorized. |
+| 2026-08-15 | Codex Sol-High | Revised Stage 0 after Kiro's `e50a1b1` FAIL; rereview required and no implementation authorized. |
 
-**TL;DR:** The provenance architecture is drafted but not approved. Kiro reviews
-the exact branch tip next; no production channel is verified and no runtime or
-live-data work is authorized.
+**TL;DR:** The provenance architecture was revised after Kiro's superseded-tip
+FAIL but remains unapproved. Kiro rereviews the new clean committed tip next; no
+runtime or live-data work is authorized.
