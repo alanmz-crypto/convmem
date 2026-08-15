@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-08-14
 **Arc:** CG-2 production activation of committed generations
-**State:** Architecture draft on planning branch; no implementation or activation authority
+**State:** Reviews complete; N1–N3 architecture addenda resolved on planning branch; formal model in progress; no implementation or activation authority
 
 ## 1. Purpose and product goal
 
@@ -82,7 +82,7 @@ Key invariants:
 | Source-observation promotion guard | Missing | CG-1 stale-generation guard exists; current-source guard does not |
 | Source reconciliation | Missing | Current watchdog path has no startup/overflow/periodic manifest reconciliation contract |
 | Authority-resolution/pin linearization | Missing | Proposed in architecture; no production reader or online GC exists |
-| Formal authority model | Missing | Required before Ryan Architecture HITL lock |
+| Formal authority model | Missing / Codex lane active | Required before reviewer delta confirmation and Ryan Architecture HITL lock |
 | Activation manifest/grant | Forbidden/not present | No production activation authorized |
 
 Current production state remains legacy. `convmem doctor` is operationally
@@ -95,8 +95,11 @@ evidence.
 |---|---|---|
 | CG-1 substrate merged and accepted | **DONE** | — |
 | ChatGPT research/advisory review | **PASS WITH DISPOSITIONS RECEIVED** | Four required dispositions incorporated on branch; does not replace designated lane reviews |
-| Canonical CG-2 architecture draft | **ON BRANCH / REVIEW NEEDED** | Kiro, Crush, Cursor feasibility review |
-| Ryan Architecture HITL | **NOT DONE** | Reviewer dispositions on one exact revision |
+| Kiro design review at `1222b1e` | **PASS** | Delta confirmation after model revision |
+| Cursor feasibility review at `1222b1e` | **PASS WITH RISKS** | N1–N3 disposition + delta confirmation |
+| Crush evidence/failure review at `1222b1e` | **PASS WITH RISKS** | N1–N3 disposition + delta confirmation |
+| N1–N3 architecture addenda | **RESOLVED ON BRANCH** | Formal model and same-revision reviewer confirmation |
+| Ryan Architecture HITL | **NOT DONE** | Formal model + Kiro/Crush/Cursor delta confirmation on one exact revision |
 | Execution and VERIFY plans | **NOT STARTED** | Architecture lock |
 | Implementation | **NOT AUTHORIZED** | Execution plan review + Ryan Execute grant |
 | Legacy-only serving-gateway soak | **NOT AUTHORIZED** | Implementation and verification evidence + exact production operation grant |
@@ -107,12 +110,14 @@ evidence.
 
 ## 5. Your role
 
-**If Ryan sent you to review architecture:** Read the architecture draft and
-CG-1 closure at the exact branch SHA. Focus on owner identity/rename, mixed-mode
-authority safety/cardinality/quality, torn authority-evidence retry, pre-fence
-reader semantics, lost-event source reconciliation, source-observation binding,
-direct-read coverage, and pin/reclamation separation. Return a written PASS or
-FAIL against that revision; do not implement.
+**If Ryan sent you as Codex now:** Finish the bounded formal authority model
+against the N1–N3-resolved architecture. Check all 12 required properties,
+update this current-state brief and `LATEST.md`, and push one exact lock-candidate
+revision. Do not write an execution plan or implementation.
+
+**If Ryan sent you for delta confirmation:** Review only the N1–N3 addenda and
+formal model against the new exact SHA. Confirm or reject whether they preserve
+your existing verdict; do not implement.
 
 **If Ryan sent you to revise architecture:** Change only planning/status
 artifacts on the plan branch, reconcile every material reviewer finding, and
@@ -126,23 +131,21 @@ all production owners still use legacy semantics.
 
 ## 6. What remains before live activation
 
-1. Kiro design review of the exact architecture draft revision.
-2. Crush repository/evidence and failure-mode review of the same revision.
-3. Cursor implementation-feasibility review without code changes.
-4. Codex resolves material findings, produces the bounded formal authority
-   model against the settled state machine, and re-points reviews if bytes change.
-5. Reviewers confirm the architecture/model revision; Ryan Architecture HITL lock.
-6. Codex authors execution and VERIFY plans.
-7. Plan review and separate Ryan Execute grant.
-8. Cursor implements global serving boundary with all owners legacy.
-9. Independent code/safety verification, copied-corpus rehearsal,
+1. Codex authors and mechanically checks the bounded formal authority model
+   against the N1–N3-resolved architecture.
+2. Kiro, Crush, and Cursor quick-confirm the same architecture/model revision.
+3. Ryan Architecture HITL lock.
+4. Codex authors execution and VERIFY plans only after that separate lock.
+5. Plan review and separate Ryan Execute grant.
+6. Cursor implements global serving boundary with all owners legacy.
+7. Independent code/safety verification, copied-corpus rehearsal,
    implementation-to-model transition mapping, and pinned-Chroma operational evidence.
-10. Separate grant for production legacy-only gateway soak.
-11. Soak PASS and exact activation packet for one eligible owner.
-12. Separate Ryan named-owner canary grant.
-13. Canary, rollback, restart, parity, backlog, and performance evidence PASS.
-14. Bounded owner rollout grants.
-15. Separate GC sub-gate, then eventual legacy retirement.
+8. Separate grant for production legacy-only gateway soak.
+9. Soak PASS and exact activation packet for one eligible owner.
+10. Separate Ryan named-owner canary grant.
+11. Canary, rollback, restart, parity, backlog, and performance evidence PASS.
+12. Bounded owner rollout grants.
+13. Separate GC sub-gate, then eventual legacy retirement.
 
 ## 7. Hard stops
 
@@ -216,5 +219,6 @@ Keep this file as current-state orientation, not a diary:
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-08-14 | OpenAI Codex | Recorded all three review verdicts and resolved N1–N3 as bounded architecture mechanisms; formal model is the remaining pre-lock artifact |
 | 2026-08-14 | OpenAI Codex | Incorporated advisory correctness dispositions for lost events, read/pin linearization, mixed-mode ANN acceptance, and request-scoped rename semantics |
 | 2026-08-14 | OpenAI Codex | Created the CG-2 arc brief with architecture draft in review state; implementation and activation remain unauthorized |
