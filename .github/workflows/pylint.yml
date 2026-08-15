@@ -1,5 +1,8 @@
 name: Pylint
 
+# pylint job: unchanged from main — still gates via Pylint / pylint (regression gate).
+# pytest job: additive hermetic suite; safe to merge before ruleset adds Pylint / pytest.
+
 on:
   push:
     branches: [main]
@@ -103,6 +106,4 @@ jobs:
       - name: Run pytest
         env:
           CONVMEM_CONFIG: /tmp/convmem-ci/config.toml
-        run: |
-          # Golden eval needs live Ollama + corpus — out of scope for CI (see PR).
-          python -m pytest -q --ignore=tests/test_eval_golden.py
+        run: python -m pytest -q
