@@ -1,9 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-15 (export tooling #173 + CG-1 closure #182 + arc-staleness LATEST fix #183 on `main`; [#184](https://github.com/alanmz-crypto/convmem/pull/184) open for Crush index deny + refine memory)
+**Updated:** 2026-08-15 (export tooling #173 + CG-1 closure #182 + arc-staleness #183 + Crush hook/refine #184 on `main`; LATEST pointer sync)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
-## Recently merged / settled (2026-08-08 through 2026-08-14)
+## Recently merged / settled (2026-08-08 through 2026-08-15)
+
+- **Crush index freeze + refine memory — MERGED + DEPLOYED (2026-08-15, [#184](https://github.com/alanmz-crypto/convmem/pull/184)):** Who/What: hard-deny `convmem index/add/verify` inside Crush hook (exit 2) plus `refine.py` `gc.collect()` + `malloc_trim(0)` between daemon cycles. When: squash-merged to `main` as `e82cbd0`; Kiro PASS @ `2179b08`; live hook deployed via `deploy-agent-protocol.sh`. Why: long-running index inside Crush hit ~60s bash timeout; refine daemon grew ~9.4G over 32h. How: no further action — hook live after Crush restart.
 
 - **Forward-announcement norm + stuck-branch cleanup — COMPLETE (2026-08-14):** Who/What: Kiro triage handoff → Cursor implemented and Ryan merged three PRs. When: #176–#178 squash-merged 2026-08-14. Why: completing models did not announce next lane or review path, leaving unique commits stranded on feature branches. How: Tier A **Forward announcement** norm in `config/agent-protocol.md` (phase name, next step, next lane, lowest-effort “see my work”); rebased and merged judge injection hardening ([#177](https://github.com/alanmz-crypto/convmem/pull/177)) and synthesis operational-detail prompt ([#178](https://github.com/alanmz-crypto/convmem/pull/178)); `fix/2026-08-06-ask-eval-trace` was already on `main` (rebase dropped commits as upstream). **Parked (not authorized):** intake-classification infrastructure on `plan/2026-08-14-arc-classification-verify-gate` (local stash) — behavioral norm is the chosen fix unless Ryan re-opens.
 
@@ -20,8 +22,6 @@
 - **Cross-model export tooling — MERGED (2026-08-14, [#173](https://github.com/alanmz-crypto/convmem/pull/173)):** Who/What: `scripts/export-chatgpt-snapshot.sh` and `scripts/export-claude-bundle.sh` for giving ChatGPT/Claude full project context without changing push conventions. When: squash-merged 2026-08-14 with CG-1 dependability handoff docs. Why: cloud models need repo-grounded bundles without altering push/ref conventions. How: run scripts from repo root; outputs are local artifacts only.
 
 ## Active handoff
-
-- **Crush index freeze + refine memory — OPEN PR ([#184](https://github.com/alanmz-crypto/convmem/pull/184), 2026-08-15):** Who/What: hard-deny `convmem index/add/verify` inside Crush hook (exit 2, not fall-through) plus `refine.py` heap release between daemon cycles. When: branch `fix/2026-08-14-index-hang-deny-hook`; PR opened 2026-08-15; pylint gate pending at filing. Why: long-running index inside Crush hits ~60s bash timeout and freezes the session; refine daemon accumulated ~9.4G over 32h without returning heap. How: merge #184; restart Crush so hook reloads (`scripts/restart-crush-if-stale.sh` or quit/restart).
 
 - **Chroma reconcile Tier L — R4 GREEN, arc closed (2026-08-09):** Who/What: Crush index rebuild + DeepSeek Flash V1–V6 post-rebuild verify; Cursor landscape sync. When: rebuild completed 2026-08-08; R4 GREEN 2026-08-09; docs on `main` via [#161](https://github.com/alanmz-crypto/convmem/pull/161). Why: 646 HNSW orphans blocked calibration and contaminated retrieval. How: full re-index, orphan inventory **0**, calibration 100% with `eval-synthesis.py --judge --legacy`, and `convmem doctor` PASS with two non-fatal warnings (legacy embed metadata and external-restic freshness).
 
