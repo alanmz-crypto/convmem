@@ -5,9 +5,10 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from ask import TRACE_SCHEMA, retrieve_for_ask
+from tests.serving_repo_mock import patch_query_serving_transient_fallback
 
 
 def _cfg() -> dict:
@@ -161,44 +162,44 @@ class TestQueryCfgThreading(unittest.TestCase):
             "query": {},
         }
 
-    @patch("query.collection_metadata_rows", return_value=[])
-    @patch("query.open_chroma_for_read", side_effect=RuntimeError("force fallback"))
     @patch("query.ollama_embed", return_value=[0.1, 0.2, 0.3])
     @patch("query.load_config")
     def test_query_units_cfg_skips_load_config(
-        self, mock_qcfg, _embed, _open, _rows
+        self, mock_qcfg, _embed
     ):
         from query import query_units
 
         cfg = self._full_cfg()
-        query_units("hello", top_k=1, cfg=cfg)
+        store = MagicMock()
+        with patch_query_serving_transient_fallback(store, []):
+            query_units("hello", top_k=1, cfg=cfg)
         mock_qcfg.assert_not_called()
 
-    @patch("query.collection_metadata_rows", return_value=[])
-    @patch("query.open_chroma_for_read", side_effect=RuntimeError("force fallback"))
     @patch("query.ollama_embed", return_value=[0.1, 0.2, 0.3])
     @patch("query.load_config")
     def test_query_raw_cfg_skips_load_config(
-        self, mock_qcfg, _embed, _open, _rows
+        self, mock_qcfg, _embed
     ):
         from query import query_raw
 
         cfg = self._full_cfg()
-        query_raw("hello", top_k=1, cfg=cfg)
+        store = MagicMock()
+        with patch_query_serving_transient_fallback(store, []):
+            query_raw("hello", top_k=1, cfg=cfg)
         mock_qcfg.assert_not_called()
 
-    @patch("query.collection_metadata_rows", return_value=[])
-    @patch("query.open_chroma_for_read", side_effect=RuntimeError("force fallback"))
     @patch("query.ollama_embed", return_value=[0.1, 0.2, 0.3])
     @patch("query.load_config")
     @patch("ask.load_config")
     @patch("ask.generate_stream")
     def test_retrieve_for_ask_threads_cfg_no_query_reload(
-        self, mock_stream, mock_ask_cfg, mock_qcfg, _embed, _open, _rows
+        self, mock_stream, mock_ask_cfg, mock_qcfg, _embed
     ):
         cfg = self._full_cfg()
-        retrieve_for_ask("q", top_k=1, cfg=cfg, raw=False)
-        retrieve_for_ask("q", top_k=1, cfg=cfg, raw=True)
+        store = MagicMock()
+        with patch_query_serving_transient_fallback(store, []):
+            retrieve_for_ask("q", top_k=1, cfg=cfg, raw=False)
+            retrieve_for_ask("q", top_k=1, cfg=cfg, raw=True)
         mock_qcfg.assert_not_called()
         mock_ask_cfg.assert_not_called()
         mock_stream.assert_not_called()

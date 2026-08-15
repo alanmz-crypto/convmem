@@ -7,10 +7,10 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from query import query_units
+from tests.serving_repo_mock import patch_query_serving
 
 
 class QueryRecencyTests(unittest.TestCase):
-    @patch("query.open_chroma_for_read")
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
     @patch("query.load_config")
     @patch(
@@ -18,7 +18,7 @@ class QueryRecencyTests(unittest.TestCase):
         side_effect=lambda _query, candidates, _model, top_k: candidates[:top_k],
     )
     def test_query_units_applies_recency_when_configured(
-        self, _rerank, mock_cfg, _embed, mock_open
+        self, _rerank, mock_cfg, _embed
     ):
         recent_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         old_ts = (datetime.now(timezone.utc) - timedelta(days=365)).strftime(
@@ -34,9 +34,8 @@ class QueryRecencyTests(unittest.TestCase):
             {"id": "old", "distance": 0.15, "metadata": {"timestamp": old_ts}, "document": "old"},
             {"id": "new", "distance": 0.15, "metadata": {"timestamp": recent_ts}, "document": "new"},
         ]
-        mock_open.return_value = store
-
-        results = query_units("test query", top_k=2)
+        with patch_query_serving(store):
+            results = query_units("test query", top_k=2)
 
         self.assertEqual(results[0]["id"], "new")
         self.assertGreater(results[0]["recency_boost"], 0)

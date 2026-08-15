@@ -112,6 +112,14 @@ _ALLOWED_CYCLIC_PAIRS = frozenset(
         ("ledger_recent", "query"),
         ("mcp_server", "query"),
         ("observe", "propose_decision"),
+        ("ask", "serving_index_repository"),
+        ("doctor", "logical_accounting"),
+        ("ingest", "source_reconciler"),
+        ("logical_accounting", "source_reconciler"),
+        ("mcp_server", "serving_index_repository"),
+        ("query", "serving_index_repository"),
+        ("metadata_keyword_fallback", "query"),
+        ("metadata_keyword_fallback", "serving_index_repository"),
     }
 )
 

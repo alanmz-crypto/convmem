@@ -19,6 +19,7 @@ from file_generation_contract import (
     owner_digest,
     ownership_key,
 )
+from source_observation import observe_source_hash
 
 real_fresh_process_qualification = (
     pointers._run_fresh_process_qualification  # pylint: disable=protected-access
@@ -32,12 +33,13 @@ def _cfg(tmp_path: Path) -> dict:
 def _manifest(source: Path, label: str) -> dict:
     canonical = canonical_source_path(source)
     key = ownership_key(canonical)
+    source_hash = observe_source_hash(canonical)
     bundle = candidate_bundle_hash(
         [{"logical_id": f"logical-{label}", "document": f"fact-{label}"}], []
     )
     generation = make_generation_id(
         owner_digest=owner_digest(key),
-        source_hash=f"source-{label}",
+        source_hash=source_hash,
         pipeline_fingerprint="pipeline",
         candidate_bundle_hash=bundle,
     )
@@ -46,7 +48,7 @@ def _manifest(source: Path, label: str) -> dict:
         owner_key=key,
         generation_id=generation,
         canonical_source=canonical,
-        source_hash=f"source-{label}",
+        source_hash=source_hash,
         candidate_bundle_hash=bundle,
         fingerprints={"pipeline": "pipeline"},
         collections={

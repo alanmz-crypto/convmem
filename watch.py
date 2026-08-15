@@ -320,6 +320,13 @@ def run_watch(
     if use_lock:
         acquire_lock(lock_path)
 
+    from source_reconciler import run_startup_reconciliation
+
+    try:
+        run_startup_reconciliation(cfg)
+    except (OSError, RuntimeError) as exc:
+        print(f"[watch] source reconciliation sweep failed: {exc}", file=sys.stderr)
+
     scheduler = DebounceScheduler(debounce_seconds=debounce)
 
     # Batching: the inotify handler thread only records raw paths (no detection).

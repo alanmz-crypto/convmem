@@ -12,6 +12,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from tests.serving_repo_mock import patch_query_serving
+
 REPO = Path(__file__).resolve().parent.parent
 
 
@@ -370,12 +372,11 @@ class IsolationSentinelTests(unittest.TestCase):
 
 class QueryViewTests(unittest.TestCase):
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
-    @patch("query.open_chroma_for_read")
     @patch("query._ledger_lookup_hits")
     @patch("query._apply_keyword_rank", side_effect=lambda t, r: r)
     @patch("query._merge_priority_hits")
     def test_embedding_influenced_skips_ledger(
-        self, merge, _kw, ledger_hits, open_chroma, _embed
+        self, merge, _kw, ledger_hits, _embed
     ):
         from query import query_units
 
@@ -383,7 +384,6 @@ class QueryViewTests(unittest.TestCase):
         store.query_units.return_value = [
             {"id": "1", "distance": 0.1, "metadata": {"domain": "coding.tooling"}}
         ]
-        open_chroma.return_value = store
         ledger_hits.return_value = [{"id": "ledger"}]
         merge.side_effect = lambda results, extras: results + extras
         cfg = {
@@ -393,7 +393,8 @@ class QueryViewTests(unittest.TestCase):
             "eval": {"retrieval_view": "embedding_influenced"},
         }
         with patch("rerank.rerank", side_effect=lambda _q, rows, _m, k: rows[:k]):
-            out = query_units("q", top_k=5, cfg=cfg)
+            with patch_query_serving(store):
+                out = query_units("q", top_k=5, cfg=cfg)
         ledger_hits.assert_not_called()
         merge.assert_not_called()
         self.assertEqual(len(out), 1)

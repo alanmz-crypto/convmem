@@ -10,6 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from tests.serving_repo_mock import patch_query_serving
 from eval_corpus.config_audit import config_diff_violations, query_time_data_dir_files
 from eval_corpus.metrics import (
     expand_acceptable_ids,
@@ -208,12 +209,11 @@ class MetricsTests(unittest.TestCase):
 
 class QueryViewTests(unittest.TestCase):
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
-    @patch("query.open_chroma_for_read")
     @patch("query._ledger_lookup_hits")
     @patch("query._apply_keyword_rank", side_effect=lambda t, r: r)
     @patch("query._merge_priority_hits")
     def test_embedding_influenced_skips_ledger(
-        self, merge, _kw, ledger_hits, open_chroma, _embed
+        self, merge, _kw, ledger_hits, _embed
     ):
         from query import query_units
 
@@ -221,7 +221,6 @@ class QueryViewTests(unittest.TestCase):
         store.query_units.return_value = [
             {"id": "1", "distance": 0.1, "metadata": {"domain": "coding.tooling"}}
         ]
-        open_chroma.return_value = store
         ledger_hits.return_value = [{"id": "ledger"}]
         merge.side_effect = lambda results, extras: results + extras
 
@@ -232,18 +231,18 @@ class QueryViewTests(unittest.TestCase):
             "eval": {"retrieval_view": "embedding_influenced"},
         }
         with patch("rerank.rerank", side_effect=lambda _q, rows, _m, k: rows[:k]):
-            out = query_units("q", top_k=5, cfg=cfg)
+            with patch_query_serving(store):
+                out = query_units("q", top_k=5, cfg=cfg)
         ledger_hits.assert_not_called()
         merge.assert_not_called()
         self.assertEqual(len(out), 1)
 
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
-    @patch("query.open_chroma_for_read")
     @patch("query._ledger_lookup_hits")
     @patch("query._apply_keyword_rank", side_effect=lambda t, r: r)
     @patch("query._merge_priority_hits")
     def test_production_default_calls_ledger(
-        self, merge, _kw, ledger_hits, open_chroma, _embed
+        self, merge, _kw, ledger_hits, _embed
     ):
         from query import query_units
 
@@ -251,7 +250,6 @@ class QueryViewTests(unittest.TestCase):
         store.query_units.return_value = [
             {"id": "1", "distance": 0.1, "metadata": {}}
         ]
-        open_chroma.return_value = store
         ledger_hits.return_value = []
         merge.side_effect = lambda results, extras: results
 
@@ -261,7 +259,8 @@ class QueryViewTests(unittest.TestCase):
             "query": {"rerank": False, "top_k_candidates": 5, "recency_weight": 0},
         }
         with patch("rerank.rerank", side_effect=lambda _q, rows, _m, k: rows[:k]):
-            query_units("q", top_k=5, cfg=cfg)
+            with patch_query_serving(store):
+                query_units("q", top_k=5, cfg=cfg)
         ledger_hits.assert_called()
         merge.assert_called()
 

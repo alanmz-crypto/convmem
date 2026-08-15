@@ -6,11 +6,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from query import query_units
+from tests.serving_repo_mock import patch_query_serving
 
 
 class QueryUnitsSearchHardenTests(unittest.TestCase):
     @patch("query._ledger_lookup_hits", return_value=[])
-    @patch("query.open_chroma_for_read")
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
     @patch("query.load_config")
     @patch(
@@ -18,7 +18,7 @@ class QueryUnitsSearchHardenTests(unittest.TestCase):
         side_effect=lambda _query, candidates, _model, top_k: candidates[:top_k],
     )
     def test_query_units_drops_superseded_parent_decision(
-        self, _rerank, mock_cfg, _embed, mock_open, _lookup
+        self, _rerank, mock_cfg, _embed, _lookup
     ):
         mock_cfg.return_value = {
             "models": {
@@ -61,9 +61,8 @@ class QueryUnitsSearchHardenTests(unittest.TestCase):
                 "document": "chat",
             },
         ]
-        mock_open.return_value = store
-
-        out = query_units("decision about parent", top_k=5)
+        with patch_query_serving(store):
+            out = query_units("decision about parent", top_k=5)
         ids = [r["id"] for r in out]
         self.assertIn("child", ids)
         self.assertIn("chat", ids)

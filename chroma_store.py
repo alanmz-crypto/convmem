@@ -55,6 +55,16 @@ def is_chroma_contention_error(exc: BaseException) -> bool:
     )
 
 
+def is_chroma_vector_query_fallback_error(exc: BaseException) -> bool:
+    """True when vector query cannot run but readonly keyword fallback may."""
+    if is_chroma_contention_error(exc):
+        return True
+    msg = str(exc).lower()
+    return "embedding with dimension" in msg or (
+        "dimension" in msg and "embedding" in msg
+    )
+
+
 def open_chroma_for_read(chroma_dir: str, *, retries: int = 5) -> "ChromaStore":
     """Open Chroma for vector queries; retry briefly on writer contention."""
     last: Exception | None = None
