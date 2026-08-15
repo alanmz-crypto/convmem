@@ -43,10 +43,44 @@ It coordinates with, but does not absorb:
   `source_trust_boost` ranking heuristic;
 - **serving authority** — which CG-2 owner/generation may answer a request;
 - **factual truth** — whether the assertion is correct;
-- **downstream action authority** — whether Codex, Cursor, git, or another tool
-  may act on retrieved material.
+- **downstream action authority** — whether an agent, tool, git operation, or
+  other consumer may act on retrieved material.
 
 Those dimensions may be correlated, but none implies another.
+
+### Retained T1–T5 Trust Arc sequence
+
+The wider Trust Arc remains a five-part planning sequence. This package
+strengthens T3 provenance; it does not delete the surrounding dependability
+work or authorize any of it:
+
+| Track | Planning responsibility | Boundary |
+|---|---|---|
+| T1 | Trust baseline, claim ownership, severity, and declared degraded states | Architecture evidence only; no runtime gate change |
+| T2 | Inventory existing CG-1/CG-2, backup, restore, projection, and provider evidence; classify gaps | Add a new check only for a distinct failure window or owner |
+| T3 | Durable-format compatibility and provenance contract, including acknowledgement and migration semantics | No live migration, corpus rewrite, or activation |
+| T4 | Security/lifecycle and egress planning, including poisoning and provider-failure evidence | No cloud-policy or runtime change in this edit |
+| T5 | Endurance, resource, maintenance, and operational-envelope planning | Measurements and grants remain later work |
+
+The sequence is a planning map, not five simultaneous implementation streams.
+Existing standing checks and accepted evidence are reused where they cover the
+claim; a new ceremony, gate, or review is justified only by a distinct failure
+window, owner, or oracle.
+
+### Acknowledgement and migration semantics
+
+For the T1 claim about acknowledged data, an acknowledgement is a success from
+the named authoritative durable-write boundary. A provider response, projection
+visibility, index upsert, client receipt, or retrieval result is not by itself a
+durable acknowledgement. If the authoritative boundary cannot prove the write,
+the result is failure or unknown rather than an acknowledged success.
+
+T3 defines a migration contract, not a migration operation: a schema mismatch
+does not grant permission to rewrite data. The contract must name the supported
+N-1 window, reject unknown future versions, provide a read-only/dry-run path,
+require a current backup before any authorized write, and use atomic replacement
+with rollback and old-state fixtures. Legacy data remains readable only under
+the conservative untrusted policy until Ryan grants a separate migration.
 
 ## 3. Repository-grounded problem statement
 
@@ -105,7 +139,7 @@ boundary is separately designed and evidenced, use this inventory:
 | Ingress evidence | Assurance | Root integrity for security decisions |
 |---|---|---|
 | Transcript `role=user` or `role=assistant` | claimed/unknown | untrusted |
-| Codex/Cursor/Kiro/Copilot session artifact | claimed | untrusted |
+| Agent/inter-model session artifact | claimed | untrusted |
 | Inter-model `author_model` or `source_type` | claimed | untrusted |
 | Filesystem path or filename convention | classification only | untrusted |
 | Legacy record without the envelope | unknown | untrusted |
@@ -506,7 +540,7 @@ faults, stale state, and multi-agent handoff faults.
 - cryptographic per-agent identity, mTLS/OAuth, or signed agent messages;
 - automatic trust elevation or Sybil-resistant corroboration;
 - TMA-NM action classes, verdict chain, or single-use action tokens;
-- downstream Cursor/Codex/tool/git enforcement;
+- downstream agent/tool/git enforcement;
 - factual-truth scoring or automatic poisoning detection;
 - automatic suppression of all untrusted retrieval;
 - temporal-conflict implementation in Stage 1;
@@ -563,6 +597,7 @@ earlier SHA.
 | Required correction | Resolution |
 |---|---|
 | Repository paths | Existing modules are named at their actual repository-root paths; the only new filename, `provenance.py`, is explicitly labeled planned in EXECUTION. |
-| Observed unstaged expansion | Deliberately discarded: it reintroduced broad T1–T5 scope ahead of the locked Stage 0/Stage 1 provenance order, duplicated contracts, anonymized charter lanes, and republished an unaccepted arc. |
+| T1–T5 continuity | Retained as a planning sequence; T3 is strengthened with provenance, acknowledgement, and migration semantics while T4/T5 remain planning-only. |
 | Producer values/authority | Section 6.1 defines closed enums, verification meaning, initial absence of verified producers, and the rule that producer metadata grants no authority by itself. |
+| Anti-ceremony | Existing standing checks and review artifacts are reused; new controls require a distinct failure window, owner, or oracle. |
 | Clean review target | Reviewer records and inspects only the final committed SHA; working-tree edits are not review evidence. |
