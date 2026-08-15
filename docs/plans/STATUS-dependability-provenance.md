@@ -77,10 +77,10 @@ serving authority/repository.
 
 | Milestone | State | Exit condition |
 |---|---|---|
-| Trust Arc T1–T5 planning sequence | Retained; T3 strengthened for provenance | Later work remains separately planned, reviewed, and granted; no runtime/activation/cloud-policy change follows from this package. |
+| Trust Arc T1–T5 planning sequence | Retained; T1/T2 are mandatory completed predecessors to any T3 grant; Stage 1A/1B is the T3 child slice | T1 architecture output and T2 evidence/gap output must be complete and accepted before T3 implementation; T4/T5 follow T3 in the parent sequence; no runtime/activation/cloud-policy change follows from this package. |
 | Stage 0 architecture package | **Sol-High PASS after final identity correction; lock pending** | Same-SHA Kiro/Copilot dispositions and Ryan architecture lock. |
-| Stage 1A policy/representation substrate | Not authorized | Separate Ryan Execute grant; core policy, envelope, bindings, and representation continuity pass. |
-| Stage 1B assertion/exact-dedupe continuity | Not authorized | Independent assertions survive cross-tier equivalence and retrieval. |
+| Stage 1A policy/representation substrate (T3 child slice) | Not authorized | T1/T2 architecture and evidence outputs complete and accepted, then separate Ryan Execute grant; core policy, envelope, bindings, and representation continuity pass. |
+| Stage 1B assertion/exact-dedupe continuity (T3 child slice) | Not authorized | T1/T2 architecture and evidence outputs complete and accepted, then separate Ryan Execute grant; independent assertions survive cross-tier equivalence and retrieval. |
 | P1/P2/P3 execution slices | Not authorized | Three separate Ryan grants, branches/worktrees, PRs, and review gates; no singular Stage 1 grant. |
 | Stage 2 semantic dedupe | Deferred | Separate design and grant. |
 | Stage 3 consumer visibility | Deferred beyond Stage 1 minimum | Consumer contract and enforcement boundary reviewed. |
