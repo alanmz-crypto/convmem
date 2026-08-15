@@ -1,8 +1,8 @@
 # STATUS — CG-2 production activation
 
-**Last updated:** 2026-08-14
+**Last updated:** 2026-08-15
 **Arc:** CG-2 production activation of committed generations
-**State:** Architecture/model lock candidate ready; reviewer delta confirmation pending; no implementation or activation authority
+**State:** Lock candidate `e680ce8` with triple delta PASS; Ryan Architecture HITL pending; no execution planning, implementation, or activation authority
 
 ## 1. Purpose and product goal
 
@@ -73,7 +73,8 @@ Key invariants:
 | `file_generation_validate.py` | Complete on `main`, hermetic | Fresh-process cold validation |
 | `ingest_dedupe.py` logical-ID support | Complete on `main` | CG-1 logical dedupe support |
 | `tests/test_file_generation_*.py` | Complete on `main` | CG-1 proof and frozen read-boundary inventory |
-| `docs/plans/ARCHITECTURE-cg2-production-activation.md` | **Draft on `plan/2026-08-14-cg2-production-activation`** | Proposed production authority, migration, health, and rollout design |
+| `docs/plans/ARCHITECTURE-cg2-production-activation.md` | **Lock candidate at `e680ce8` on `plan/2026-08-14-cg2-production-activation`** | Triple delta PASS; awaiting Ryan Architecture HITL |
+| `docs/inter-model/CURSOR-2026-08-15-cg2-delta-confirmation.md` | **Complete on branch** | Kiro/Crush/Cursor exact-SHA PASS rollup |
 | CG-2 execution plan | Missing by design | Written only after architecture lock |
 | CG-2 VERIFY plan/results | Missing by design | Authored during execution planning; no results exist |
 | Production serving repository | Missing | Existing query surfaces still use legacy `ChromaStore` paths |
@@ -95,12 +96,12 @@ evidence.
 |---|---|---|
 | CG-1 substrate merged and accepted | **DONE** | — |
 | ChatGPT research/advisory review | **PASS WITH DISPOSITIONS RECEIVED** | Four required dispositions incorporated on branch; does not replace designated lane reviews |
-| Kiro design review at `1222b1e` | **PASS** | Delta confirmation after model revision |
-| Cursor feasibility review at `1222b1e` | **PASS WITH RISKS** | N1–N3 disposition + delta confirmation |
-| Crush evidence/failure review at `1222b1e` | **PASS WITH RISKS** | N1–N3 disposition + delta confirmation |
-| N1–N3 architecture addenda | **RESOLVED ON BRANCH** | Same-revision reviewer confirmation |
-| Bounded formal authority model | **DONE ON BRANCH — 3/3 TLC PASS** | Same-revision reviewer confirmation |
-| Ryan Architecture HITL | **NOT DONE** | Formal model + Kiro/Crush/Cursor delta confirmation on one exact revision |
+| Kiro design review at `1222b1e` | **PASS** | Delta confirmation recorded at the locked revision |
+| Cursor feasibility review at `1222b1e` | **PASS WITH RISKS → PASS** | N1–N3 disposition and exact-SHA delta confirmation complete |
+| Crush evidence/failure review at `1222b1e` | **PASS WITH RISKS → PASS** | N1–N3 disposition and exact-SHA delta confirmation complete |
+| N1–N3 architecture addenda | **RESOLVED** | Preserved path-derived identity and explicit rename migration |
+| Bounded formal authority model | **DONE — 3/3 TLC PASS** | 123,281 generated / 38,134 distinct states; zero errors |
+| Ryan Architecture HITL | **NOT DONE** | Triple delta PASS recorded; Ryan lock on `e680ce8` |
 | Execution and VERIFY plans | **NOT STARTED** | Architecture lock |
 | Implementation | **NOT AUTHORIZED** | Execution plan review + Ryan Execute grant |
 | Legacy-only serving-gateway soak | **NOT AUTHORIZED** | Implementation and verification evidence + exact production operation grant |
@@ -111,19 +112,12 @@ evidence.
 
 ## 5. Your role
 
-**If Ryan sent you now:** Review only the N1–N3 addenda and bounded formal model
-at the exact lock-candidate SHA. Confirm or reject whether they preserve your
-existing verdict. Kiro checks design consistency, Crush checks failure/evidence
-coverage, and Cursor checks feasibility/refinement risk. Do not implement.
+**If Ryan sent you now:** Architecture HITL is the only remaining pre-planning
+gate. Delta confirmation is complete — see
+`docs/inter-model/CURSOR-2026-08-15-cg2-delta-confirmation.md`. Do not implement.
 
-**If Ryan sent you as Codex:** The pre-lock drafting lane is complete. Revise
-only if a delta reviewer finds a concrete defect; do not write an execution
-plan until Ryan locks the architecture.
-
-**If Ryan sent you to revise architecture:** Change only planning/status
-artifacts on the plan branch, reconcile every material reviewer finding, and
-produce a new review SHA. Do not write an execution plan until the architecture
-is locked.
+**If Ryan sent you as Codex:** Pre-lock drafting and formal model are complete.
+Author execution + VERIFY plans only after Ryan locks `e680ce8`.
 
 **If Ryan sent you to implement:** Stop. Implementation is not authorized.
 
@@ -132,25 +126,24 @@ all production owners still use legacy semantics.
 
 ## 6. What remains before live activation
 
-1. Kiro, Crush, and Cursor quick-confirm the exact architecture/model revision.
-2. Ryan Architecture HITL lock.
-3. Codex authors execution and VERIFY plans only after that separate lock.
-4. Plan review and separate Ryan Execute grant.
-5. Cursor implements global serving boundary with all owners legacy.
-6. Independent code/safety verification, copied-corpus rehearsal,
+1. Ryan Architecture HITL lock on `e680ce8`.
+2. Codex authors execution and VERIFY plans only after that lock.
+3. Plan review and separate Ryan Execute grant.
+4. Cursor implements global serving boundary with all owners legacy.
+5. Independent code/safety verification, copied-corpus rehearsal,
    implementation-to-model transition mapping, and pinned-Chroma operational evidence.
-7. Separate grant for production legacy-only gateway soak.
-8. Soak PASS and exact activation packet for one eligible owner.
-9. Separate Ryan named-owner canary grant.
-10. Canary, rollback, restart, parity, backlog, and performance evidence PASS.
-11. Bounded owner rollout grants.
-12. Separate GC sub-gate, then eventual legacy retirement.
+6. Separate grant for production legacy-only gateway soak.
+7. Soak PASS and exact activation packet for one eligible owner.
+8. Separate Ryan named-owner canary grant.
+9. Canary, rollback, restart, parity, backlog, and performance evidence PASS.
+10. Bounded owner rollout grants.
+11. Separate GC sub-gate, then eventual legacy retirement.
 
 ## 7. Hard stops
 
 | Stop | Owner | Blocks |
 |---|---|---|
-| Architecture lock | Ryan after same-revision reviews/model | Execution planning and implementation |
+| Architecture lock | Ryan after triple delta PASS | Execution planning and implementation |
 | Execute grant | Ryan | Code/runtime/config changes |
 | Production gateway-soak grant | Ryan, exact operation | Any live read-path switch |
 | Named-owner activation grant | Ryan, exact SHA/owner/state | First or later owner promotion |
@@ -219,6 +212,7 @@ Keep this file as current-state orientation, not a diary:
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-08-15 | Cursor | Recorded triple exact-SHA delta PASS at `e680ce8`; Ryan Architecture HITL is next |
 | 2026-08-14 | OpenAI Codex | Completed and mechanically checked the 12-property bounded authority model in three exhaustive configurations; lock-candidate delta review is next |
 | 2026-08-14 | OpenAI Codex | Recorded all three review verdicts and resolved N1–N3 as bounded architecture mechanisms; formal model is the remaining pre-lock artifact |
 | 2026-08-14 | OpenAI Codex | Incorporated advisory correctness dispositions for lost events, read/pin linearization, mixed-mode ANN acceptance, and request-scoped rename semantics |
