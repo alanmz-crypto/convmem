@@ -324,7 +324,7 @@ def run_watch(
 
     try:
         run_startup_reconciliation(cfg)
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         print(f"[watch] source reconciliation sweep failed: {exc}", file=sys.stderr)
 
     scheduler = DebounceScheduler(debounce_seconds=debounce)

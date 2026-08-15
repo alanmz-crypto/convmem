@@ -13,16 +13,13 @@ import logging
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Self
 
-from chroma_readonly import collection_metadata_rows
 from chroma_store import (
     SUMMARIES,
     UNITS,
     ChromaStore,
     is_chroma_vector_query_fallback_error,
-    is_superseded,
     open_chroma_for_read,
 )
 from config import load_config
@@ -199,54 +196,13 @@ class ServingIndexRepository:
             "mediated_keyword_fallback",
             "sqlite3.connect[chroma]",
         )
-        if self._mediated_fallback is not None:
-            rows = self._mediated_fallback(
-                collection_name,
-                text,
-                top_k,
-                domain=domain,
-                site=site,
-                cfg=self._cfg,
-            )
-            return MediatedFallbackResult(rows=rows, collection_name=collection_name)
+        from metadata_keyword_fallback import run_keyword_fallback
 
-        from domains import domain_matches, normalize_domain
-        from query import _keyword_score, _unit_domain
-        from site_filter import filter_results_by_site, normalize_site
-
-        chroma_dir = self.chroma_dir
-        domain_norm = normalize_domain(domain) if domain else None
-        site_norm = normalize_site(site) if site else None
-        rows = collection_metadata_rows(chroma_dir, collection_name)
-        results: list[dict] = []
-        for meta in rows:
-            if collection_name == UNITS and is_superseded(meta):
-                continue
-            if site_norm and not filter_results_by_site([{"metadata": meta}], site_norm):
-                continue
-            if domain_norm:
-                unit_domain = _unit_domain(meta)
-                if unit_domain is None or not domain_matches(unit_domain, domain_norm):
-                    continue
-            score = _keyword_score(text, meta)
-            if score <= 0:
-                continue
-            results.append(
-                {
-                    "id": meta.get("id", ""),
-                    "metadata": meta,
-                    "document": meta.get("document") or meta.get("title") or "",
-                    "score": round(min(score / 6.0, 0.99), 4),
-                }
-            )
-        results.sort(
-            key=lambda r: (
-                r.get("score", 0.0),
-                len(str(r.get("metadata", {}).get("title", ""))),
-            ),
-            reverse=True,
+        rows = run_keyword_fallback(
+            collection_name, text, top_k, domain=domain, site=site, cfg=self._cfg,
+            mediated=self._mediated_fallback,
         )
-        return MediatedFallbackResult(rows=results[:top_k], collection_name=collection_name)
+        return MediatedFallbackResult(rows=rows, collection_name=collection_name)
 
 
 def _open_backing_store(vector: FrozenAuthorityVector) -> ChromaStore | FileGenerationStore:

@@ -6,8 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from chroma_store import UNITS
-from file_generation_store import STABLE_SCOPE, FileGenerationStore, StagedRow
+from file_generation_store import FileGenerationStore
 from mixed_mode_proof import (
     PHYSICAL_DELETION_DISABLED,
     characterize_chroma_storage,
@@ -19,6 +18,11 @@ from mixed_mode_retrieval import (
     query_units_mixed_ann,
 )
 from serving_authority import FrozenAuthorityVector, OwnerAuthorityMode, OwnerAuthorityState
+from tests.generation_read_fixtures import (
+    inactive_neighbor_rows,
+    stage_dec_stable_row,
+    stage_owner_a_active_alpha,
+)
 from tests.test_file_generation_store import file_row
 
 
@@ -42,6 +46,8 @@ def _frozen_vector(chroma_dir: Path, active: dict[str, str], previous: dict[str,
     )
 
 
+# unittest owns the temporary resource lifecycle across setUp/tearDown.
+# pylint: disable=consider-using-with
 class MixedModeProofTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -55,26 +61,8 @@ class MixedModeProofTests(unittest.TestCase):
             active_generations=lambda: dict(self.active),
             previous_generations=lambda: dict(self.previous),
         )
-        self.store.stage_rows(
-            [
-                file_row(
-                    "fg1_active_a",
-                    "LA",
-                    "N",
-                    document="active alpha",
-                    embedding=[0.8, 0.2],
-                ),
-                StagedRow(
-                    UNITS,
-                    "dec_stable",
-                    "dec_stable",
-                    "stable governed",
-                    [0.7, 0.3],
-                    {"ledger_id": "dec_stable"},
-                    STABLE_SCOPE,
-                ),
-            ]
-        )
+        stage_owner_a_active_alpha(self.store)
+        stage_dec_stable_row(self.store)
         self.store.stage_rows(
             [
                 file_row(
@@ -86,17 +74,7 @@ class MixedModeProofTests(unittest.TestCase):
                 ),
             ]
         )
-        inactive = [
-            file_row(
-                f"fg1_inactive_{index}",
-                f"LI{index}",
-                "N+1",
-                document=f"inactive forbidden {index}",
-                embedding=[1.0, 0.001 * index],
-            )
-            for index in range(8)
-        ]
-        self.store.stage_rows(inactive)
+        self.store.stage_rows(inactive_neighbor_rows(8))
 
     def tearDown(self) -> None:
         self.store.close()
@@ -142,12 +120,11 @@ class MixedModeProofTests(unittest.TestCase):
             budget=MixedModeCandidateBudget(max_candidates=64),
         )
         self.store.close()
-        reopened = FileGenerationStore(
+        with FileGenerationStore(
             self.chroma,
             active_generations=lambda: dict(self.active),
             previous_generations=lambda: dict(self.previous),
-        )
-        try:
+        ) as _reopened:
             after = run_mixed_mode_proof(
                 self.chroma,
                 self.root / "control-b",
@@ -156,8 +133,6 @@ class MixedModeProofTests(unittest.TestCase):
                 vector=vector,
                 budget=MixedModeCandidateBudget(max_candidates=64),
             )
-        finally:
-            reopened.close()
         self.assertEqual(
             before["retention"]["retained_inactive_count"],
             after["retention"]["retained_inactive_count"],

@@ -17,15 +17,13 @@ def _serving_repo_from_store(store: MagicMock) -> MagicMock:
     repo.count_units = store.count_units
     repo.count_summaries = store.count_summaries
     repo.units_metadata = store.units_metadata
-    repo.close = MagicMock(side_effect=lambda: store.close())
+    repo.close = MagicMock(side_effect=store.close)
 
     def mediated_keyword_fallback(
         collection_name: str,
         text: str,
         top_k: int,
-        *,
-        domain: str | None = None,
-        site: str | None = None,
+        **_kwargs: object,
     ) -> MediatedFallbackResult:
         rows = store.query_units(text, top_k) if collection_name == "knowledge_units" else []
         return MediatedFallbackResult(rows=rows, collection_name=collection_name)
@@ -44,9 +42,12 @@ def serving_repo_context(store: MagicMock):
 
 
 def patch_open_serving_index_repository(store: MagicMock):
+    def _open(*_args, **_kwargs):
+        return serving_repo_context(store)
+
     return patch(
         "serving_index_repository.open_serving_index_repository",
-        lambda *args, **kwargs: serving_repo_context(store),
+        _open,
     )
 
 
@@ -63,16 +64,14 @@ def patch_query_serving_transient_fallback(store: MagicMock, fallback_rows: list
         collection_name: str,
         _text: str,
         _top_k: int,
-        *,
-        domain: str | None = None,
-        site: str | None = None,
+        **_kwargs: object,
     ) -> MediatedFallbackResult:
         return MediatedFallbackResult(rows=fallback_rows, collection_name=collection_name)
 
     repo.mediated_keyword_fallback = mediated_keyword_fallback
 
     @contextmanager
-    def _cm(*args, **kwargs):
+    def _cm(*_args, **_kwargs):
         yield repo
 
     return patch(

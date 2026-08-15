@@ -21,24 +21,11 @@ from serving_index_repository import (
 )
 
 
+from tests.serving_test_helpers import assert_serving_open_raises, serving_test_cfg
+
+
 def _cfg(tmp_path: Path, chroma: Path) -> dict:
-    return {
-        "models": {
-            "embed_model": "nomic-embed-text",
-            "ollama_host": "http://localhost:11434",
-            "rerank_model": "rerank",
-        },
-        "query": {
-            "rerank": False,
-            "recency_weight": 0.0,
-            "top_k_candidates": 5,
-        },
-        "index": {
-            "chroma_dir": str(chroma),
-            "generation_root": str(tmp_path / "file_generations"),
-            "processed_log": str(tmp_path / "processed.json"),
-        },
-    }
+    return serving_test_cfg(tmp_path, chroma)
 
 
 def test_legacy_gateway_matches_direct_chroma_query_units(tmp_path: Path) -> None:
@@ -136,7 +123,7 @@ def test_transient_backend_uses_mediated_fallback_only(tmp_path: Path) -> None:
             results = query_units("hello", top_k=1, cfg=cfg)
 
     assert results[0]["id"] == "kw-1"
-    repo.mediated_keyword_fallback.assert_called_once()
+    repo.mediated_keyword_fallback.assert_called_once()  # pylint: disable=no-member
     mock_open.assert_called()
 
 
@@ -145,13 +132,12 @@ def test_serving_authority_error_is_not_transient(tmp_path: Path) -> None:
     chroma.mkdir()
     cfg = _cfg(tmp_path, chroma)
 
-    with pytest.raises(ServingAuthorityError):
-        with patch(
-            "serving_index_repository.resolve_frozen_authority_vector",
-            side_effect=ServingAuthorityError("quarantined"),
-        ):
-            with open_serving_index_repository(cfg):
-                pass
+    assert_serving_open_raises(
+        cfg,
+        ServingAuthorityError,
+        patch_target="serving_index_repository.resolve_frozen_authority_vector",
+        patch_side_effect=ServingAuthorityError("quarantined"),
+    )
 
 
 def test_runtime_boundary_inventory_records_reads(tmp_path: Path) -> None:

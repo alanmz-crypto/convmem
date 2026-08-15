@@ -9,7 +9,6 @@ serving callers consume a request-frozen vector from
 from __future__ import annotations
 
 import hashlib
-import json
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -31,6 +30,7 @@ from file_generation_pointer import (
     provision_generation_layout,
     read_unqualified_pointer,
     recover_active_pointer,
+    _read_json,
 )
 
 FENCE_SCHEMA = "convmem/legacy-owner-fence-v1"
@@ -141,16 +141,6 @@ def _file_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _read_json(path: Path) -> dict[str, Any]:
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise GenerationQualificationError(f"cannot read {path}: {exc}") from exc
-    if not isinstance(value, dict):
-        raise GenerationQualificationError(f"{path} is not a JSON object")
-    return value
-
-
 def validate_legacy_fence(fence: Mapping[str, Any]) -> None:
     if fence.get("schema") != FENCE_SCHEMA:
         raise GenerationContractError("unsupported legacy fence schema")
@@ -215,7 +205,6 @@ def _derive_owner_state(
     cfg: Mapping[str, Any],
 ) -> OwnerAuthorityState:
     fence_file = fence_path(generation_root, owner_digest_value)
-    pointer_file = pointer_path(generation_root, owner_digest_value)
     retired_file = retirement_path(generation_root, owner_digest_value)
 
     if retired_file.exists():
@@ -338,8 +327,6 @@ def resolve_frozen_authority_vector(
                 )
                 for digest in owner_digests
             }
-        except ServingAuthorityError:
-            raise
         except (GenerationQualificationError, GenerationContractError) as exc:
             raise ServingAuthorityError(str(exc)) from exc
 
@@ -350,7 +337,6 @@ def resolve_frozen_authority_vector(
         if before == after:
             final_snapshots = after
             break
-        last_snapshots = after
     else:
         raise AuthorityUnstableError(
             "authority evidence churn exceeded max_attempts without linearization"

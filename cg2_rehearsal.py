@@ -15,7 +15,7 @@ import chromadb
 
 from cg2_property_map import build_property_map_report
 from chroma_store import ChromaStore, open_chroma_for_read
-from mixed_mode_proof import PHYSICAL_DELETION_DISABLED, characterize_chroma_storage
+from mixed_mode_proof import PHYSICAL_DELETION_DISABLED
 from mixed_mode_retrieval import PINNED_CHROMA_VERSION
 from serving_authority import AuthorityResolutionRetryBudget
 from serving_index_repository import open_serving_index_repository

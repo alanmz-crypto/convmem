@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -123,7 +123,7 @@ def eligible_watch_source_paths(cfg: Mapping[str, Any]) -> list[str]:
     for raw in paths:
         try:
             resolved = canonical_source_path(raw)
-        except Exception:
+        except OSError:
             continue
         if resolved in seen:
             continue

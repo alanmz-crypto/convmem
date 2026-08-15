@@ -7,7 +7,6 @@ online GC, and internal queue surgery remain disabled in this slice.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -19,8 +18,6 @@ from mixed_mode_control import build_authority_clean_control
 from mixed_mode_retrieval import (
     MixedModeCandidateBudget,
     assert_pinned_chroma_version,
-    dedupe_namespaced_logical_rows,
-    filter_authorized_rows,
     query_units_mixed_ann,
     verify_authority_safety,
 )
@@ -51,7 +48,7 @@ def measure_authorized_cardinality(
 ) -> dict[str, Any]:
     mixed_count = len(mixed_rows)
     control_count = len(control_rows)
-    underfill = control_count >= requested_k and mixed_count < requested_k
+    underfill = mixed_count < requested_k <= control_count
     mismatch = control_count != mixed_count
     return {
         "requested_k": requested_k,

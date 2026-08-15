@@ -81,7 +81,7 @@ def _row_is_authorized(
     if is_superseded(meta):
         return False
     scope = str(meta.get("generation_scope") or "")
-    if scope == STABLE_SCOPE or scope == "":
+    if scope in (STABLE_SCOPE, ""):
         return True
     if scope != FILE_SCOPE:
         return False

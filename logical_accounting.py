@@ -49,12 +49,12 @@ class PhysicalRowClass(str, Enum):
 
 @dataclass(frozen=True)
 class NamespacedLogicalKey:
-  owner_digest: str
-  collection_kind: str
-  logical_id: str
+    owner_digest: str
+    collection_kind: str
+    logical_id: str
 
-  def encode(self) -> str:
-    return f"{self.owner_digest}|{self.collection_kind}|{self.logical_id}"
+    def encode(self) -> str:
+        return f"{self.owner_digest}|{self.collection_kind}|{self.logical_id}"
 
 
 def logical_id_from_metadata(meta: Mapping[str, Any]) -> str:
@@ -160,7 +160,7 @@ def classify_physical_row(
     if collection_kind == UNITS and is_superseded(meta):
         return PhysicalRowClass.SUPERSEDED
     scope = str(meta.get("generation_scope") or "")
-    if scope == STABLE_SCOPE or scope == "":
+    if scope in (STABLE_SCOPE, ""):
         return PhysicalRowClass.SERVING_STABLE
     if scope != FILE_SCOPE:
         return PhysicalRowClass.UNCLASSIFIED
@@ -189,9 +189,11 @@ def classify_physical_row(
 def build_physical_inventory_report(
     chroma_dir: str,
     *,
-    active_generations: Mapping[str, str] = {},
-    previous_generations: Mapping[str, str] = {},
+    active_generations: Mapping[str, str] | None = None,
+    previous_generations: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
+    active_generations = dict(active_generations or {})
+    previous_generations = dict(previous_generations or {})
     known_by_owner = discover_file_generations_by_owner(chroma_dir, UNITS)
     counts: dict[str, int] = defaultdict(int)
     units_counts: dict[str, int] = defaultdict(int)

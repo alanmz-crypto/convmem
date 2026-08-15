@@ -6,11 +6,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from chroma_store import SUMMARIES, UNITS
-from file_generation_store import (
-    STABLE_SCOPE,
-    FileGenerationStore,
-    GenerationReadError,
-    StagedRow,
+from file_generation_store import FileGenerationStore, GenerationReadError
+from tests.generation_read_fixtures import (
+    inactive_neighbor_rows,
+    stage_dec_stable_row,
 )
 from tests.test_file_generation_store import file_row
 
@@ -61,30 +60,12 @@ class GenerationReadPathTests(unittest.TestCase):
                     document="active summary alpha",
                     embedding=[0.8, 0.2],
                 ),
-                StagedRow(
-                    UNITS,
-                    "dec_stable",
-                    "dec_stable",
-                    "stable governed",
-                    [0.7, 0.3],
-                    {"ledger_id": "dec_stable", "source_path": "/ledger"},
-                    STABLE_SCOPE,
-                ),
             ]
         )
+        stage_dec_stable_row(self.store, source_path="/ledger")
         # These inactive rows are closer than every active ordinary row.  If
         # filtering happened after vector retrieval they would consume top-K.
-        inactive = [
-            file_row(
-                f"fg1_inactive_{index}",
-                f"LI{index}",
-                "N+1",
-                document=f"inactive forbidden {index}",
-                embedding=[1.0, 0.001 * index],
-                title="Forbidden",
-            )
-            for index in range(10)
-        ]
+        inactive = inactive_neighbor_rows(10, title="Forbidden")
         inactive.append(
             file_row(
                 "fg1_summary_np1",

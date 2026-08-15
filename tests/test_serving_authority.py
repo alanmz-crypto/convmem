@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,22 +18,15 @@ from serving_authority import (
     ServingAuthorityError,
     build_legacy_fence,
     discover_owner_digests,
-    fence_path,
     generation_root_for_cfg,
     publish_legacy_fence,
     resolve_frozen_authority_vector,
 )
-from serving_index_repository import open_serving_index_repository
+from tests.serving_test_helpers import assert_serving_open_raises, serving_test_cfg
 
 
 def _cfg(tmp_path: Path, chroma: Path) -> dict:
-    return {
-        "index": {
-            "chroma_dir": str(chroma),
-            "generation_root": str(tmp_path / "file_generations"),
-            "processed_log": str(tmp_path / "processed.json"),
-        }
-    }
+    return serving_test_cfg(tmp_path, chroma)
 
 
 def test_legacy_global_when_no_generation_artifacts(tmp_path: Path) -> None:
@@ -54,9 +46,7 @@ def test_fenced_owner_blocks_serving_open(tmp_path: Path) -> None:
     owner_key = "source:/tmp/example.jsonl"
     publish_legacy_fence(root, owner_key, "2026-08-15T00:00:00Z")
     assert len(discover_owner_digests(root)) == 1
-    with pytest.raises(OwnerUnavailableError):
-        with open_serving_index_repository(cfg):
-            pass
+    assert_serving_open_raises(cfg, OwnerUnavailableError)
 
 
 def test_pointer_without_fence_is_quarantined(tmp_path: Path) -> None:
@@ -86,9 +76,7 @@ def test_pointer_without_fence_is_quarantined(tmp_path: Path) -> None:
     active = root / "active"
     active.mkdir(parents=True, exist_ok=True)
     atomic_write_json(active / f"{digest}.json", pointer)
-    with pytest.raises(ServingAuthorityError):
-        with open_serving_index_repository(cfg):
-            pass
+    assert_serving_open_raises(cfg, ServingAuthorityError)
 
 
 def test_retry_budget_exhaustion_raises_authority_unstable(tmp_path: Path) -> None:

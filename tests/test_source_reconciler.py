@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from ingest import load_processed, save_processed, sha256_file
+from ingest import save_processed, sha256_file
 from source_reconciler import (
     ReconciliationAdmissionError,
     ReconciliationBudget,
