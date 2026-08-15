@@ -7,7 +7,14 @@ from file_generation_store import STABLE_SCOPE, FileGenerationStore, StagedRow
 from tests.test_file_generation_store import file_row
 
 
-def stage_owner_a_active_alpha(store: FileGenerationStore) -> None:
+def stage_owner_a_active_alpha(
+    store: FileGenerationStore,
+    *,
+    title: str | None = None,
+) -> None:
+    kwargs = {}
+    if title is not None:
+        kwargs["title"] = title
     store.stage_rows(
         [
             file_row(
@@ -16,6 +23,7 @@ def stage_owner_a_active_alpha(store: FileGenerationStore) -> None:
                 "N",
                 document="active alpha",
                 embedding=[0.8, 0.2],
+                **kwargs,
             ),
         ]
     )

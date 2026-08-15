@@ -10,6 +10,7 @@ from file_generation_store import FileGenerationStore, GenerationReadError
 from tests.generation_read_fixtures import (
     inactive_neighbor_rows,
     stage_dec_stable_row,
+    stage_owner_a_active_alpha,
 )
 from tests.test_file_generation_store import file_row
 
@@ -24,16 +25,9 @@ class GenerationReadPathTests(unittest.TestCase):
             Path(self.tmp.name) / "chroma",
             active_generations=lambda: dict(self.active),
         )
+        stage_owner_a_active_alpha(self.store, title="Active A")
         self.store.stage_rows(
             [
-                file_row(
-                    "fg1_active_a",
-                    "LA",
-                    "N",
-                    document="active alpha",
-                    embedding=[0.8, 0.2],
-                    title="Active A",
-                ),
                 file_row(
                     "fg1_superseded_a",
                     "LS",
