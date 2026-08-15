@@ -84,11 +84,14 @@ These are observed implementation facts, not literature analogies:
 | Parity | `projection_parity.entity_key` prefers `ledger_id`, then `row["id"]` | File-derived generation rows need namespaced logical identity |
 | Collection metadata | Live doctor reports legacy embedding identity missing | First generational canary must prove embedding provenance rather than infer it |
 
-The ChatGPT memo referred to a specific open Chroma 1.5.9 issue. That exact
-issue could not be independently located during synthesis, so it is **not** an
-architecture fact. Chroma's WAL, brute-force buffer, HNSW sync threshold, and
-replay model are documented; pinned-version behavior remains an empirical CG-2
-gate (§13).
+The ChatGPT memo's Chroma report is upstream issue
+[`#7463`](https://github.com/chroma-core/chroma/issues/7463), opened against
+`chromadb==1.5.9` and `PersistentClient`. The reporter explicitly classifies it
+as an operational replay-cost/missing-flush-primitive report, not data loss:
+sub-threshold writes recovered in the reporter's hard-kill test through WAL
+replay while HNSW persistence lagged. The report is motivating evidence from a
+different environment, not a ConvMem guarantee or activation premise. Pinned-
+version behavior on ConvMem's Linux filesystem remains an empirical gate (§13).
 
 ## 4. Architecture options and decision
 
@@ -186,6 +189,35 @@ backend fingerprint and is invalidated when those bytes change.
 The active and immediately previous generations remain physically available
 long enough for a request that resolved the old vector to finish.
 
+#### Authority-resolution linearization
+
+Fence, pointer, manifest, and retirement evidence are separate durable objects.
+The resolver must not compose a serving decision from a torn observation of
+those objects. Per owner it therefore follows a seqlock-like protocol without
+introducing another authority:
+
+1. capture the exact identities/hashes (including explicit absence) of the
+   relevant fence, pointer, manifest, and retirement evidence;
+2. derive and, where required, qualify the tentative owner state;
+3. reread the relevant evidence identities before admitting the state;
+4. discard the tentative state and retry if any evidence changed;
+5. publish the state into the immutable request vector only after a successful
+   unchanged verification.
+
+The successful final verification is that owner's read linearization point.
+No serving-row dereference occurs before it. This is a read/copy/verify/retry
+pattern, not a kernel seqlock claim and not a new durable sequence authority.
+
+The precise fence property is:
+
+> An owner-authority resolution that linearizes after durable fence publication
+> cannot resolve that owner as `LEGACY`.
+
+A request whose owner state linearized before the fence may finish with its
+frozen legacy view while retained rows remain protected. Different owners in
+one request can linearize at different instants; CG-2 still makes no corpus-wide
+snapshot claim.
+
 ### 5.2 Mixed-mode vector retrieval
 
 Once the first owner is generational, a raw top-k query over the collection is
@@ -215,6 +247,22 @@ expansion preserve the required eligible result. If no sufficient condition is
 available on Chroma 1.5.9, incremental mixed-mode activation is blocked and the
 architecture must revisit a physically separated live view or global migration.
 
+The spike and eventual VERIFY plan keep three properties separate:
+
+1. **Authority safety:** every returned row belongs to the request-frozen
+   authority vector; this is absolute and fail-closed.
+2. **Authorized cardinality:** when an authority-clean reference view returns
+   `k` authorized rows under the same query settings, inactive/history rows in
+   the mixed physical collection cannot cause silent underfill.
+3. **Retrieval quality:** ranking/recall divergence is measured independently
+   because Chroma HNSW is already approximate.
+
+The primary control oracle is a temporary Chroma 1.5.9 collection containing
+only rows admitted by the frozen vector, with the same embeddings, metric, and
+HNSW settings as the mixed collection. This isolates filtering damage from the
+backend's ordinary ANN approximation. Exact cosine remains a secondary recall
+diagnostic; it does not turn CG-2 into an exact-kNN project.
+
 Before implementation is approved, a representative-scale spike must determine
 whether Chroma 1.5.9 can push the active-generation filter efficiently. If not,
 the execution plan must choose between bounded adaptive widening, explicit
@@ -229,7 +277,7 @@ CG-2 separates failures that current broad exception handling can conflate:
 | Chroma reader-open transient while all owners are legacy | Existing observable read-only fallback may remain if it preserves the same authority set |
 | Ranking/reranker failure | Existing documented ranking fallback may remain |
 | Pointer, manifest, qualification, fence, or authority-map failure | Fail closed; no legacy fallback |
-| Mixed-mode query cannot prove top-k within budget | Observable degraded/error result; no raw fallback |
+| Mixed-mode query cannot satisfy authority safety/cardinality within budget | Observable degraded/error result; no raw fallback |
 | Quarantined owner | Exclude only if the API contract permits partial multi-owner results and names the exclusion; otherwise fail the request |
 
 ## 6. Owner and cutover state machines
@@ -330,7 +378,39 @@ candidate built from S0 → source becomes S1 → active pointer unchanged
 
 CG-1 catches stale active generations; CG-2 must also catch stale source bytes.
 The architecture does not claim to prevent a source edit immediately after the
-final check; that edit is a new event and converges through the next generation.
+final check; that edit is a new desired source state. Convergence does not rely
+on delivery of one filesystem notification.
+
+### 7.1 Notifications schedule work; reconciliation proves convergence
+
+Filesystem notifications are scheduling hints, not source-of-truth change
+records. Linux inotify queues can overflow, events can be coalesced, and rename
+pairs are not an atomic or necessarily consecutive observation. The current
+watcher therefore cannot be the sole mechanism that discovers source drift.
+
+CG-2 adds a bounded source reconciler that securely compares the current source
+inventory/observation with the active manifest for generational owners and the
+recorded processed source observation for legacy owners. A mismatch, missing
+source, new eligible source, or unresolved rename enqueues the latest desired
+owner state through the same bounded admission path. Reconciliation is
+mandatory:
+
+- at watcher startup and restart;
+- after `IN_Q_OVERFLOW` or equivalent backend uncertainty;
+- after a watch root is rebuilt, moved, mounted over, or reattached;
+- periodically at a measured, ratified cadence;
+- before an owner is declared clean for canary or legacy retirement.
+
+If the watch library cannot expose a trustworthy overflow signal, observer
+failure/restart marks the watched scope reconciliation-required. Overflow or
+uncertainty remains observable until the affected scope completes a successful
+reconciliation; restarting the observer alone does not clear it. The execution
+plan must bound scan cadence, work admission, and source hashing cost without
+using unbounded bulk indexing.
+
+Deletes and canonical renames are discovered by inventory difference and enter
+the explicit retirement/migration policy in §8; they are never inferred solely
+from pairing two watcher events.
 
 ## 8. Path identity, aliases, and rename
 
@@ -352,7 +432,10 @@ not silently replace that identity contract.
   new fence but before old-owner retirement leaves the old owner serving; a
   crash after retirement but before new-pointer publication yields temporary
   unavailability; recovery after publication admits only the new owner. No
-  interval admits both owners.
+  **newly resolved** request-authority vector admits both owners.
+- A request frozen before old-owner retirement may finish against retained old-
+  owner rows while a later request resolves the new owner. Physical/read-side
+  overlap is intentional multiversion behavior, not duplicate serving authority.
 - Rename migration is excluded from the first canary. Alias ambiguity blocks
   canary selection.
 
@@ -438,11 +521,17 @@ Each gate has one owner and one stated bad outcome:
 | Export parity | `projection_parity` | Physical churn is mistaken for semantic change |
 | Direct-read boundary | static inventory test | A serving surface bypasses authority |
 | Alias/path integrity | alias/path gate | One locator maps ambiguously or escapes policy |
+| Source convergence | reconciliation freshness gate | A lost watcher event leaves active source state stale indefinitely |
 | Chroma backlog/recovery | operational probe | Generation churn makes restart or disk growth unbounded |
 | Performance | representative benchmark | Correctness path becomes operationally unusable |
 
 Doctor may compose these checks, but duplicate scripts may not invent different
 thresholds for the same property.
+
+Operational output records authority-resolution retries, reconciliation-
+required scopes, overflow/observer-failure counts, last successful reconcile
+time and duration, source mismatches enqueued/quarantined, mixed-mode safety
+rejections, authorized underfill, and control-view retrieval divergence.
 
 ## 10. Backpressure, retention, and reclamation
 
@@ -492,6 +581,22 @@ protected, candidate-protected, operator-held, recovery-held, or visible to a
 live request pin. Chroma row deletion, WAL effects, and physical compaction are
 separate measured operations.
 
+Online GC must also close the resolve-then-pin race. Before dereferencing any
+generation or retirement-protected legacy rows, a reader must either establish
+its pin atomically with authority resolution or:
+
+1. resolve a tentative authority target;
+2. establish a pin for that exact target;
+3. revalidate the authority evidence;
+4. release and retry if the evidence changed;
+5. dereference rows only after successful revalidation.
+
+GC cannot reclaim a target between tentative resolution and a validated pin.
+The formal model must cover this interleaving before online deletion is
+admitted. Linux pidfds are a candidate future process-instance primitive that
+avoids ordinary PID-reuse races, but they do not replace durable lease expiry,
+reboot reconciliation, or the pin protocol.
+
 No execution plan may add direct SQL/WAL deletion as generation GC.
 
 ## 11. Failure behavior
@@ -504,11 +609,14 @@ No execution plan may add direct SQL/WAL deletion as generation GC.
 | Crash after pointer bytes, before caller observes success | Exact recovery/qualification decides; no fallback |
 | Active generation changes during build | Existing CG-1 stale-generation check refuses promotion |
 | Source bytes change during build | Mandatory source-hash check refuses promotion |
+| Watch event is lost, coalesced, or overflows | Mark scope reconciliation-required; compare source inventory/manifests and enqueue latest drift before clearing |
+| Authority evidence changes during resolution | Discard tentative mapping and retry before row dereference |
 | Chroma transaction failure | No pointer publication |
 | Pointer/manifest mismatch | Quarantine/fail closed; never elect another generation |
 | Raw direct-read bypass discovered | Activation gate fails; affected surface is authority-unsafe |
 | Mixed query exceeds proof/performance budget | Observable refusal/degradation; rollout pauses |
 | Source alias ambiguity or hardlink collision | Owner is ineligible for cutover |
+| Reader races authority change before pin | Pin then revalidate or retry; no row dereference and no GC eligibility until pin is valid |
 | GC crash | Active pointer unaffected; deletion resumes or is inspected from explicit state |
 | Machine crash/power loss | Preserve CG-1 durability claim; restart qualification fails closed if rows do not match pointer |
 | Filesystem corruption | Quarantine and restore from backup evidence; no completeness heuristic |
@@ -545,6 +653,7 @@ does not authorize implementation.
 
 - Add monotonic fence and owner authority resolution.
 - Add mandatory production source-hash revalidation.
+- Add startup/overflow/periodic source reconciliation and its freshness gate.
 - Make drift/parity logical and generation-aware.
 - Add bounded admission/backlog/storage diagnostics.
 - Keep automatic GC disabled.
@@ -552,9 +661,11 @@ does not authorize implementation.
 ### A4 — offline and copied-corpus verification
 
 - Unit, integration, concurrency, path-race, crash, and accounting matrices.
-- Representative-scale mixed-mode query spike.
+- Representative-scale mixed-mode query spike against an authority-clean Chroma
+  control view, with safety/cardinality/quality reported separately.
 - Pinned Chroma 1.5.9 backlog, replay, delete, and storage-amplification probes.
-- Bounded formal state model (§13).
+- Re-run the architecture-locked formal model and map implementation tests to
+  its transitions/invariants (§13).
 
 ### A5 — production legacy-only gateway soak
 
@@ -592,33 +703,47 @@ The activation packet must bind all evidence to one tested/reviewed SHA:
 4. The read-boundary inventory works from normal, `/tmp`, and hidden-parent
    worktree paths; the CG-1 hidden-parent discovery weakness is fixed.
 5. Legacy-only gateway soak meets ratified correctness and latency budgets.
-6. Mixed-mode top-k proof passes adversarial cases where the nearest physical
-   rows are inactive or fenced.
+6. Mixed-mode verification separately proves absolute authority safety,
+   authorized cardinality against an authority-clean Chroma 1.5.9 control view,
+   and ratified retrieval-quality divergence. Adversarial cases place inactive
+   or fenced rows nearest to the query; exact cosine is diagnostic only.
 7. Logical completeness, purity, duplicate, wrong-owner, wrong-generation, and
    parity fixtures all receive distinct truthful diagnoses.
 8. Candidate source changes before promotion are refused.
-9. Pointer/fence/source-path crash injection passes every transition.
-10. Alias ambiguity and hardlink collision block owner eligibility.
-11. Embedding model/dimension provenance is known for the canary generation.
-12. Recent ingest-degraded evidence affecting the owner is reconciled.
-13. Pinned Chroma 1.5.9 tests bound WAL/backlog, vector persistence lag,
+9. Startup, watcher restart, forced event loss/overflow, rename-pair disruption,
+   and periodic reconciliation all converge current source observations to
+   queued desired state; stale reconciliation health blocks canary readiness.
+10. Concurrent fence/pointer/retirement changes force authority-resolution
+    retry, and tests distinguish pre-fence frozen readers from post-fence
+    resolutions.
+11. Pointer/fence/source-path crash injection passes every transition.
+12. Alias ambiguity and hardlink collision block owner eligibility.
+13. Embedding model/dimension provenance is known for the canary generation.
+14. Recent ingest-degraded evidence affecting the owner is reconciled.
+15. Pinned Chroma 1.5.9 tests bound WAL/backlog, vector persistence lag,
     cold-reopen replay, repeated generation churn, delete behavior, and physical
     storage amplification.
-14. Rollback to the exact previous generation is drilled through fresh
+16. Rollback to the exact previous generation is drilled through fresh
     qualification.
-15. Numeric p50/p95/p99 read, build, qualification, promotion-lock, recovery,
+17. Numeric p50/p95/p99 read, build, qualification, promotion-lock, recovery,
     queue, and storage budgets are measured and ratified. No percentage in this
     architecture is a substitute for baseline evidence.
-16. A TLA+/PlusCal model or equivalently reviewable exhaustive transition model
+18. A TLA+/PlusCal model or equivalently reviewable exhaustive transition model
     checks at least these safety properties:
     - only a qualified pointer target serves a generational owner;
     - at most one generation serves per owner;
-    - legacy cannot serve after the fence;
+    - an owner resolution linearized after the fence cannot resolve legacy;
+    - a pre-fence frozen reader may finish while retained legacy rows are protected;
     - active/source stale checks prevent promotion;
+    - under a stated fair-reconciler assumption, lost notification state cannot
+      remain the only record of source drift: reconciliation queues or
+      quarantines an observed source/manifest mismatch;
     - recovery never changes pointer choice by completeness;
     - GC never selects an active/protected/pinned generation;
+    - no target is reclaimed between tentative resolution and a validated pin;
+    - rename migration never admits old and new owners to one newly resolved vector;
     - one request never changes its frozen owner generation mid-request.
-17. Ryan issues a separate one-shot production activation grant naming exact
+19. Ryan issues a separate one-shot production activation grant naming exact
     resource, operation, owner, and final value/state.
 
 ## 14. Scope fences and rejected mechanisms
@@ -647,6 +772,8 @@ The references support principles, not product guarantees:
 
 - Berenson et al., [A Critique of ANSI SQL Isolation Levels](https://www.microsoft.com/en-us/research/publication/a-critique-of-ansi-sql-isolation-levels/) — multiversion snapshots are useful, but Snapshot Isolation is a specific database contract ConvMem does not claim.
 - Linux kernel documentation, [What is RCU?](https://docs.kernel.org/RCU/whatisRCU.html) — publication/removal and reclamation are separate phases.
+- Linux man-pages, [inotify(7)](https://man7.org/linux/man-pages/man7/inotify.7.html) — queues can overflow and lose events; robust consumers reconcile/rebuild rather than treating notifications as a complete change ledger.
+- Linux kernel documentation, [sequence counters and sequential locks](https://docs.kernel.org/locking/seqlock.html) — read/copy/revalidate/retry motivates torn-evidence detection; ConvMem does not adopt kernel seqlocks as durable authority.
 - Trevor Brown, [Reclaiming Memory for Lock-Free Data Structures](https://www.cs.toronto.edu/~tabrown/debra/fullpaper.pdf) — classic EBR can stop reclaiming when a participant sleeps or crashes.
 - Git, [update-ref](https://git-scm.com/docs/git-update-ref) — conditional ref updates validate the expected old value before publication.
 - OSTree, [Anatomy of an OSTree repository](https://ostreedev.github.io/ostree/repo/) — immutable content-addressed objects plus small mutable refs.
@@ -654,7 +781,9 @@ The references support principles, not product guarantees:
 - SQLite, [PRAGMA synchronous](https://www.sqlite.org/pragma.html#pragma_synchronous) and [Atomic Commit](https://www.sqlite.org/atomiccommit.html) — durability depends on journal mode, synchronization, filesystem assumptions, and directory persistence.
 - Rollins et al., [Online, Asynchronous Schema Change in F1](https://www.vldb.org/pvldb/vol6/p1045-rae.pdf) — mixed-version transitions require explicit compatible states; ConvMem adapts the discipline, not F1's distributed machinery.
 - TLA+ Foundation, [TLA+ tools](https://github.com/tlaplus/tlaplus) and Lamport's [TLA+ tools overview](https://lamport.org/tla/tools.html) — executable state models can check bounded safety/liveness properties.
-- Chroma documentation, [collection HNSW configuration](https://docs.trychroma.com/docs/collections/configure) and the source repository's pinned [1.5.9 release](https://github.com/chroma-core/chroma/releases/tag/1.5.9) — implementation-specific backlog/replay claims still require local evidence.
+- Patel et al., [ACORN](https://arxiv.org/abs/2403.04871) — filtered HNSW has predicate-dependent recall/performance behavior, supporting separate authority-safety, cardinality, and retrieval-quality gates.
+- Chroma documentation, [collection HNSW configuration](https://docs.trychroma.com/docs/collections/configure), the source repository's pinned [1.5.9 release](https://github.com/chroma-core/chroma/releases/tag/1.5.9), and upstream operational report [`#7463`](https://github.com/chroma-core/chroma/issues/7463) — the report motivates replay-cost probes but implementation-specific behavior still requires local evidence.
+- Python documentation, [`os.pidfd_open`](https://docs.python.org/3/library/os.html#os.pidfd_open) — pidfds are a future Linux process-instance primitive to investigate for leases, not a complete durable reclamation design.
 
 ## 16. Reviewer questions and exit condition
 
@@ -662,8 +791,9 @@ Reviewers should answer explicitly:
 
 1. Does explicit old-owner → new-owner migration correctly preserve CG-1's
    path-derived identity, or is reopening that contract justified?
-2. Can the mixed-mode query algorithm prove semantic top-k under Chroma 1.5.9
-   without an unacceptable full-corpus scan?
+2. Can the mixed-mode query path prove authority safety and authorized
+   cardinality against the authority-clean Chroma control while measuring ANN
+   quality separately and staying within ratified cost?
 3. Is the monotonic fence + pointer sequence the smallest correct first-cutover
    state machine?
 4. Is source-hash revalidation structurally unavoidable on every production
@@ -672,7 +802,12 @@ Reviewers should answer explicitly:
    paths remain outside the proposed serving repository classification?
 6. Are activation and reclamation separated strongly enough?
 7. Which symlink/mount policy should be locked for the actual Linux deployment?
+8. Does source reconciliation close startup, restart, overflow, rename, and
+   periodic lost-event cases without creating unbounded indexing work?
+9. Do authority-resolution and future pin linearization permit pre-cutover
+   readers to finish while preventing post-fence legacy resolution and
+   resolve-before-pin reclamation?
 
-Architecture exits only when Kiro/Crush/Cursor reviews target the same revision
-and Ryan locks that revision. The next artifact is an execution plan; no
-production activation follows directly from this document.
+Architecture exits only when Kiro/Crush/Cursor reviews target the same
+architecture/model revision and Ryan locks that revision. The next artifact is
+an execution plan; no production activation follows directly from this document.
