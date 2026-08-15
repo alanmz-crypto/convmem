@@ -49,6 +49,31 @@ are untrusted for security decisions until they carry valid provenance.
 - Overall arc closure eventually requires the CG-1/CG-2 continuity evidence, but
   those integrations do not precede or redefine the Stage 1 substrate.
 
+## Retained T1–T5 planning sequence
+
+The implementation packages below are the bounded provenance slice within the
+existing Trust Arc sequence. T1–T5 remain visible so later work cannot be
+mistaken for discarded scope, but this document authorizes none of it.
+
+| Track | Decomposition | Current disposition |
+|---|---|---|
+| T1 | Trust baseline, claim matrix, severity, and degraded-state contract | Planning only; no runtime gate change |
+| T2 | Existing-proof inventory and smallest missing oracles | Planning only; reuse standing evidence where sufficient |
+| T3 | Compatibility/provenance contract and fixtures | This package's strengthened Stage 1A/1B focus |
+| T4 | Security/lifecycle and egress evidence | Separate plan and grant; no cloud-policy or runtime change |
+| T5 | Endurance/resource/maintenance envelope | Separate plan and grant; no operational change |
+
+T3's acknowledgement rule is precise: only the named authoritative durable
+write boundary may return an acknowledged-success result; provider completion,
+projection visibility, index upsert, client receipt, and retrieval are not
+durable acknowledgement on their own. T3 migration semantics are equally
+bounded: define the supported N-1 window, reject future versions, support
+dry-run, require backup-before-write, and specify atomic replacement/rollback;
+none authorizes a live migration or backfill.
+
+Use existing standing checks and review artifacts when they already cover a
+claim. Add a new check only for a distinct failure window, owner, or oracle.
+
 ## Preconditions
 
 Before implementation begins:

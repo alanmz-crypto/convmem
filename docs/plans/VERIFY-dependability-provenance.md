@@ -55,6 +55,7 @@ artifacts are recorded for the implementation revision.
 | V0c | Ryan records architecture lock and separate Execute grant. | PENDING |
 | V0d | Implementation VERIFY records exact implementation SHA and baseline. | PENDING |
 | V0e | Every existing-code path named by the plan resolves from repository root; planned new paths are explicitly labeled planned. | PENDING |
+| V0f | T1–T5 remain represented, with T3 owning provenance/compatibility and no T4/T5 runtime or cloud-policy action implied. | PENDING |
 
 ## V1 — Root authority and policy ownership
 
@@ -97,6 +98,8 @@ I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 | V3e | Requested/resolved provider/model, fallback, temperature, and transformer version are bound. | Trigger fallback; identity/commitment reflects resolved path. | PENDING |
 | V3f | Secrets are excluded without excluding semantics-bearing request bytes. | Fixture scans serialized envelope for test credential and required payload bytes. | PENDING |
 | V3g | `complete` means supported-boundary inputs, not universal model causality. | Documentation and schema avoid impossible claim. | PENDING |
+| V3h | Acknowledged success is emitted only by the named authoritative durable-write boundary. | Provider completion, projection visibility, index upsert, client receipt, or retrieval alone cannot satisfy the acknowledgement claim. | PENDING |
+| V3i | Migration semantics are explicit and permission-neutral. | N-1/dry-run/backup-before-write/atomic rollback are specified; future versions reject; no live migration is run in this arc. | PENDING |
 
 ## V4 — Representation continuity
 
@@ -166,6 +169,7 @@ delay the Stage 1 vocabulary/policy substrate.
 | V9d | Existing retrieval ranking behavior is unchanged. | PENDING |
 | V9e | No live corpus/Chroma mutation, Shadow activation, R2b capture, or CG-2 operational action occurred. | PENDING |
 | V9f | Runnable documentation distinguishes reference commands from commands requiring Ryan grant. | PENDING |
+| V9g | New checks are justified by a distinct failure window, owner, or oracle. | Existing standing checks are reused; no duplicate governance ceremony is introduced. | PENDING |
 
 ## V9A — Parallel/later broad assurance tracks
 
