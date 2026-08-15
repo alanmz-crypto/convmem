@@ -63,6 +63,11 @@ EXPECTED = {
         "raw.query",
     ): (1, "generation-mediated"),
     (
+        "cg2_rehearsal.py",
+        "run_legacy_gateway_rehearsal",
+        "ChromaStore",
+    ): (1, "generation-mediated"),
+    (
         "file_generation_validate.py",
         "chroma_sequence_positions",
         "sqlite3.connect[chroma]",

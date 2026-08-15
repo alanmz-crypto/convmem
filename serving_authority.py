@@ -12,7 +12,7 @@ import hashlib
 import json
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from types import MappingProxyType
@@ -89,6 +89,10 @@ class AuthorityResolutionRetryBudget:
     max_elapsed: float = 2.0
 
 
+def _empty_owner_generation_map() -> Mapping[str, str]:
+    return MappingProxyType({})
+
+
 @dataclass(frozen=True)
 class FrozenAuthorityVector:
     """Immutable owner→authority mapping frozen for one serving operation."""
@@ -99,7 +103,9 @@ class FrozenAuthorityVector:
     evidence_snapshots: Mapping[str, AuthorityEvidenceSnapshot]
     generation_root: str
     chroma_dir: str
-    previous_by_owner: Mapping[str, str] = MappingProxyType({})
+    previous_by_owner: Mapping[str, str] = field(
+        default_factory=_empty_owner_generation_map
+    )
 
     def active_generations(self) -> dict[str, str]:
         return {

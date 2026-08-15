@@ -32,6 +32,7 @@
     "file_generation_store.py:95",
     "mixed_mode_control.py:44",
     "mixed_mode_proof.py:143",
+    "cg2_rehearsal.py:84",
     "shadow_canary.py:528",
     "shadow_canary.py:635",
     "shadow_canary.py:649",
