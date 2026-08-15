@@ -10,6 +10,7 @@ Pass bar: ≥ 8/10 before adding MCP tools (P2).
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -84,6 +85,10 @@ def grade_stdout(output: str, expected: str) -> tuple[bool, str]:
     return False, f"'{expected[:60]}' not found in output"
 
 
+@unittest.skipIf(
+    os.environ.get("GITHUB_ACTIONS") == "true",
+    "live Ollama + corpus required; skipped in hermetic GitHub Actions CI",
+)
 class GoldenEvalTests(unittest.TestCase):
     def test_golden_questions(self):
         questions = load_questions()

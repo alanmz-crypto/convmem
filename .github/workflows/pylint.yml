@@ -1,9 +1,16 @@
 name: Pylint
 
+# pylint job: unchanged from main — still gates via Pylint / pylint (regression gate).
+# pytest job: additive hermetic suite; safe to merge before ruleset adds Pylint / pytest.
+
 on:
   push:
     branches: [main]
   pull_request:
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   pylint:
@@ -71,3 +78,36 @@ jobs:
           name: pylint-report
           path: pylint-report.json
           if-no-files-found: ignore
+
+  pytest:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Prepare hermetic CI config
+        run: |
+          mkdir -p /tmp/convmem-ci
+          sed 's|~/.local/share/convmem|/tmp/convmem-ci/nodata|g' config.example.toml \
+            > /tmp/convmem-ci/config.toml
+          chmod +x scripts/restic-ensure-chroma-snapshot.sh scripts/restic-copy-external.sh
+
+      - name: Run pytest
+        env:
+          CONVMEM_CONFIG: /tmp/convmem-ci/config.toml
+        run: python -m pytest -q

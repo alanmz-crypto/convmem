@@ -17,14 +17,14 @@
     "observe.py:234",
     "propose_decision.py:549",
     "propose_decision.py:581",
-    "refine.py:272",
-    "refine.py:718",
+    "refine.py:274",
+    "refine.py:720",
     "source_purge.py:316"
   ],
   "must_use_factory_bypass_sites": [],
   "must_use_factory_count": 0,
   "allowlisted_direct_sites": [
-    "ask.py:552",
+    "ask.py:554",
     "chroma_store.py:64",
     "chroma_store.py:89",
     "chroma_write_store.py:437",
@@ -41,7 +41,7 @@
   "sites": [
     {
       "file": "ask.py",
-      "line": 552,
+      "line": 554,
       "snippet": "with ChromaStore(cfg[\"index\"][\"chroma_dir\"]) as store:",
       "class": "read_only",
       "required_routing": "allowlisted_direct",
@@ -266,7 +266,7 @@
     },
     {
       "file": "refine.py",
-      "line": 272,
+      "line": 274,
       "snippet": "_pw = open_production_write_store(entrypoint=\"refine.write\")",
       "class": "mutates_units",
       "required_routing": "open_production_write_store",
@@ -275,7 +275,7 @@
     },
     {
       "file": "refine.py",
-      "line": 718,
+      "line": 720,
       "snippet": "_pw = open_production_write_store(entrypoint=\"refine.write\")",
       "class": "mutates_units",
       "required_routing": "open_production_write_store",

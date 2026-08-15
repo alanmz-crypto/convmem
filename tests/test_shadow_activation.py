@@ -592,18 +592,25 @@ def test_recovery_refuses_replaced_artifact_inode(tmp_path: Path) -> None:
     fixture = _fixture(tmp_path)
 
     def checkpoint(name: str) -> None:
-        if name == "nonce_consumed":
+        if name == "manifest_installed":
             raise InjectedCrash()
 
     with pytest.raises(InjectedCrash):
         _activate(fixture, _hooks(checkpoint=checkpoint))
     journal = json.loads(fixture["journal"].read_text(encoding="utf-8"))
-    journal["owner_pid"] = 99999999
-    journal["owner_start_time"] = "dead"
+    journal["owner_pid"] = 0
+    journal["owner_start_time"] = "not-alive"
     _write_private(fixture["journal"], json.dumps(journal, indent=2) + "\n")
+    ledger_record = (journal.get("artifacts") or {}).get("ledger")
+    assert isinstance(ledger_record, dict), "journal missing ledger artifact record"
+    assert ledger_record.get("dev") is not None and ledger_record.get("ino") is not None
     fixture["ledger"].unlink()
     _write_private(fixture["ledger"], "replacement\n")
     replacement_inode = fixture["ledger"].stat().st_ino
+    assert (ledger_record.get("dev"), ledger_record.get("ino")) != (
+        fixture["ledger"].stat().st_dev,
+        replacement_inode,
+    )
     with pytest.raises(ActivationRefused) as refused:
         recover_prepared_activation(
             journal_path=fixture["journal"],

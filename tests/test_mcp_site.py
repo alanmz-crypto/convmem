@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import mcp_server
+
+REPO = Path(__file__).resolve().parents[1]
+COMFY_PATH = str(Path.home() / "Projects" / "ComfyUIimprov")
+DOCS_PATH = str(Path.home() / "Documents")
 
 
 class McpSiteTests(unittest.TestCase):
@@ -38,7 +43,7 @@ class McpSiteTests(unittest.TestCase):
 
     @patch("brief.gather_brief_payload", return_value={"generated_at": "t", "projects": []})
     def test_brief_corrects_convmem_slug_from_cwd(self, mock_payload):
-        with patch.object(mcp_server, "_workspace_project_slug", return_value=("/home/lauer/Projects/ComfyUIimprov", "comfyuiimprov")):
+        with patch.object(mcp_server, "_workspace_project_slug", return_value=(COMFY_PATH, "comfyuiimprov")):
             out = mcp_server.brief(project="convmem")
         mock_payload.assert_called_once_with(with_tests=False, project="comfyuiimprov")
         payload = __import__("json").loads(out)
@@ -75,7 +80,7 @@ class McpSiteTests(unittest.TestCase):
         with patch.object(
             mcp_server,
             "_workspace_project_slug",
-            return_value=("/home/lauer/Projects/ComfyUIimprov", "comfyuiimprov"),
+            return_value=(COMFY_PATH, "comfyuiimprov"),
         ):
             mcp_server.brief(project="")
         mock_payload.assert_called_once_with(with_tests=False, project="comfyuiimprov")
@@ -85,8 +90,8 @@ class McpSiteTests(unittest.TestCase):
         return_value={
             "generated_at": "t",
             "projects": [
-                {"slug": "convmem", "repo_path": "/home/lauer/Projects/convmem"},
-                {"slug": "documents", "repo_path": "/home/lauer/Documents"},
+                {"slug": "convmem", "repo_path": str(REPO)},
+                {"slug": "documents", "repo_path": DOCS_PATH},
             ],
             "recent_decisions": [{"id": "dec_prop_x"}],
         },
@@ -95,7 +100,7 @@ class McpSiteTests(unittest.TestCase):
         with patch.object(
             mcp_server,
             "_workspace_project_slug",
-            return_value=("/home/lauer/Documents", "documents"),
+            return_value=(DOCS_PATH, "documents"),
         ):
             out = mcp_server.brief(project="")
         mock_payload.assert_called_once_with(with_tests=False, project="")
@@ -114,7 +119,7 @@ class McpSiteTests(unittest.TestCase):
         "brief.gather_brief_payload",
         return_value={
             "generated_at": "t",
-            "projects": [{"slug": "convmem", "repo_path": "/home/lauer/Projects/convmem"}],
+            "projects": [{"slug": "convmem", "repo_path": str(REPO)}],
             "recent_decisions": [{"id": "dec_prop_x"}],
         },
     )
@@ -122,7 +127,7 @@ class McpSiteTests(unittest.TestCase):
         with patch.object(
             mcp_server,
             "_workspace_project_slug",
-            return_value=("/home/lauer/Documents", "documents"),
+            return_value=(DOCS_PATH, "documents"),
         ):
             out = mcp_server.brief(project="")
         payload = __import__("json").loads(out)
@@ -136,7 +141,7 @@ class McpSiteTests(unittest.TestCase):
         with patch.object(
             mcp_server,
             "_workspace_project_slug",
-            return_value=("/home/lauer/Documents", "documents"),
+            return_value=(DOCS_PATH, "documents"),
         ):
             out = mcp_server.search_fast("documents crush catalog")
         mock_query.assert_not_called()
