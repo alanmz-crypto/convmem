@@ -54,6 +54,7 @@ artifacts are recorded for the implementation revision.
 | V0b | Copilot targeted audit reviews the same SHA. | PENDING |
 | V0c | Ryan records architecture lock and separate Execute grant. | PENDING |
 | V0d | Implementation VERIFY records exact implementation SHA and baseline. | PENDING |
+| V0e | Every existing-code path named by the plan resolves from repository root; planned new paths are explicitly labeled planned. | PENDING |
 
 ## V1 — Root authority and policy ownership
 
@@ -64,6 +65,8 @@ artifacts are recorded for the implementation revision.
 | V1c | Empty inputs cannot mint `agent` or `trusted`. | Construct every empty/missing-input form. | PENDING |
 | V1d | Caller claims cannot self-upgrade. | Claim `user`, `trusted_tool`, `verified`, and `trusted` in text/metadata. | PENDING |
 | V1e | Legacy/malformed/unknown-policy records become untrusted. | Remove each required envelope field and use future policy version. | PENDING |
+| V1f | Producer fields accept only the closed enums and grant no direct authority. | Try unknown classes/assurances and caller-supplied `verified`; validation fails or result is unknown/untrusted. | PENDING |
+| V1g | Verified producer identity is not factual truth or a preservation contract. | Use verified-producer fixture with untrusted input and lossy transform; result remains untrusted. | PENDING |
 
 ## V2 — Transformer-aware monotonicity
 
