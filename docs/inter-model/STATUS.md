@@ -41,7 +41,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
-| CG-2 production activation | Architecture locked by Ryan at `e680ce837653698a5be8b78ba02db2f880c40c63`; Kiro, Crush, and Cursor exact-SHA delta confirmations PASS; production remains legacy | Codex authors execution and VERIFY plans. No implementation, gateway soak, owner activation, or GC yet. See [`STATUS-cg2-production-activation.md`](../plans/STATUS-cg2-production-activation.md). |
+| CG-2 production activation | Architecture locked at `e680ce837653698a5be8b78ba02db2f880c40c63`; execution + VERIFY plans drafted on `plan/2026-08-14-cg2-production-activation`; production remains legacy | Kiro reviews the planning package, then Ryan decides the separate Execute grant. No implementation, gateway soak, owner activation, or GC yet. See [`STATUS-cg2-production-activation.md`](../plans/STATUS-cg2-production-activation.md). |
 
 ## Closed arcs — reference STATUS only
 
