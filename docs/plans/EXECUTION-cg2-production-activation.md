@@ -7,7 +7,7 @@ Phase:        Execution Planning
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Functions:    Planner
 Lanes:        Codex authors; Kiro reviews; Cursor downstream implementation
-Authority:    Awaiting HITL approval of this execution plan
+Authority:    Ryan Execute granted 2026-08-15 for this exact package
 ```
 
 **Source:** Ryan Architecture HITL lock recorded in `47768d1`, against the
@@ -18,13 +18,14 @@ ConvMem production reads, prepare bounded per-owner generation migration, and
 prove the first legacy-only and canary steps without activating a production
 owner in this plan.
 
-**Plan status:** Planning artifact only. No implementation, configuration,
+**Plan status:** Kiro PASS at `6a808f1`; Ryan Execute granted for T1–T5.
+Implementation is authorized on a fresh Cursor branch. No configuration,
 production gateway soak, owner cutover, physical deletion, or GC is authorized
 by this document.
 
 ## Human consequence
 
-If Ryan approves this execution plan, Cursor receives five bounded tasks for
+Ryan approved this execution plan and granted Cursor five bounded tasks for
 implementation and rehearsal. The first runtime milestone keeps every owner in
 explicit legacy compatibility while proving that all production reads pass
 through one authority layer. A later, separately granted canary may activate
@@ -207,7 +208,7 @@ requires a later named-owner grant. GC requires a separate sub-gate.
 
 | Stop point | Required decision | Owner |
 |---|---|---|
-| Before implementation | Execution-plan review PASS | Kiro/design lane; Ryan HITL |
+| Before implementation | Execution-plan review PASS and Execute grant | **DONE — Kiro PASS; Ryan grant at `6a808f1`** |
 | Before any code/runtime change | Execute grant for exact plan and branch | Ryan |
 | Before legacy-only production gateway soak | Exact operation grant | Ryan |
 | Before first generational owner | Named owner, SHA, rollback point, and activation grant | Ryan |
@@ -218,8 +219,8 @@ implies production authority. No gateway soak implies owner activation.
 
 ## Execute entry
 
-- **First task:** T1 after this plan receives designated review and Ryan
-  approves the Execute scope.
+- **First task:** T1 under the Cursor handoff after branch intake and baseline
+  verification.
 - **Implementation branch:** fresh Cursor branch from the accepted main/CG-1
   baseline; do not place runtime code on this planning branch.
 - **Required companion:** keep `VERIFY-cg2-production-activation.md` updated as
