@@ -204,9 +204,26 @@ introducing another authority:
 5. publish the state into the immutable request vector only after a successful
    unchanged verification.
 
+Each attempt reads the pointer again **last**, after manifest qualification and
+the fence/retirement reread, because pointer publication is the final serving-
+authority step. Rename-linked old/new owners receive one final exclusion-group
+check before the vector freezes; if lineage evidence changed or both owners
+would be admitted, the request retries or refuses rather than freezing a torn
+rename view. This group check uses the same fence/pointer/retirement evidence,
+not a second durable authority.
+
 The successful final verification is that owner's read linearization point.
 No serving-row dereference occurs before it. This is a read/copy/verify/retry
 pattern, not a kernel seqlock claim and not a new durable sequence authority.
+
+Resolution is bounded by a named `authority_resolution_retry_budget` containing
+both `max_attempts` and `max_elapsed`. The execution plan must measure and ratify
+both values before the legacy-only gateway soak; the earlier exhausted limit
+wins. Exhaustion returns an observable request-scoped `AUTHORITY_UNSTABLE`
+refusal, emits retry/churn metrics, and admits no rows, cache entry, or fallback.
+It does **not** durably quarantine an owner whose individual artifacts remain
+valid. Malformed or contradictory stable evidence still resolves to
+`QUARANTINED` under the existing authority table.
 
 The precise fence property is:
 
@@ -279,6 +296,34 @@ CG-2 separates failures that current broad exception handling can conflate:
 | Pointer, manifest, qualification, fence, or authority-map failure | Fail closed; no legacy fallback |
 | Mixed-mode query cannot satisfy authority safety/cardinality within budget | Observable degraded/error result; no raw fallback |
 | Quarantined owner | Exclude only if the API contract permits partial multi-owner results and names the exclusion; otherwise fail the request |
+
+#### Structural fallback guard
+
+The serving repository owns fallback classification and exposes typed failure
+domains to its adapters:
+
+- `ServingAuthorityError`: fence, pointer, manifest, qualification, quarantine,
+  retry-exhaustion, or authority-filter proof failure — always fail closed;
+- `ServingBackendIntegrityError`: corruption or contradictory persisted backend
+  state — always fail closed;
+- `ServingBackendTransient`: an explicitly recognized Chroma open/contention
+  condition — the only class eligible for fallback.
+
+These names are architectural categories; the execution plan may refine their
+concrete class names. They must not share a catch-all base that adapters treat
+as fallback-eligible. CLI/MCP/answer adapters do not catch `Exception` and then
+choose a storage path. A repository-internal transient fallback may use readonly
+metadata only when it receives the same frozen authority vector and proves the
+same authority-safety and authorized-cardinality contract. Otherwise it refuses.
+
+`_fallback_query_rows`, `collection_metadata_rows`, `open_chroma_for_read`,
+`open_readonly_unit_store`, keyword fallback, CLI related, MCP unresolved, and
+serving count/digest callers are therefore either mediated by this repository
+or explicitly classified non-serving. Eliminating the four frozen
+`cg2-production-bypass` constructors is necessary but not sufficient. The
+boundary fitness test must fail if discovery is empty and must classify every
+serving-adjacent Chroma/SQLite read, including calls hidden beneath core-storage
+helpers.
 
 ## 6. Owner and cutover state machines
 
@@ -396,17 +441,27 @@ owner state through the same bounded admission path. Reconciliation is
 mandatory:
 
 - at watcher startup and restart;
-- after `IN_Q_OVERFLOW` or equivalent backend uncertainty;
+- after any surfaced `IN_Q_OVERFLOW` or equivalent backend uncertainty;
 - after a watch root is rebuilt, moved, mounted over, or reattached;
 - periodically at a measured, ratified cadence;
 - before an owner is declared clean for canary or legacy retirement.
 
-If the watch library cannot expose a trustworthy overflow signal, observer
-failure/restart marks the watched scope reconciliation-required. Overflow or
-uncertainty remains observable until the affected scope completes a successful
-reconciliation; restarting the observer alone does not clear it. The execution
-plan must bound scan cadence, work admission, and source hashing cost without
-using unbounded bulk indexing.
+The baseline convergence strategy does **not** depend on watchdog exposing
+`IN_Q_OVERFLOW`: an independent periodic reconciler must visit every eligible
+owner within a ratified finite `max_reconciliation_staleness`. Startup and
+observer restart request an immediate sweep; the periodic schedule still runs
+when the observer appears healthy. A surfaced raw overflow signal may mark a
+scope dirty and accelerate its sweep, but no raw inotify side channel is
+required for the first activation slice and no missing signal can suppress the
+periodic proof.
+
+Reconciliation-required state remains observable until the affected scope
+completes a successful sweep; restarting the observer alone does not clear it.
+The forced-loss gate suppresses or overflows notifications, mutates a source,
+and proves that the independent sweep discovers and queues/quarantines the
+mismatch before `max_reconciliation_staleness`. It does not assert that
+watchdog reports an overflow event. The execution plan must bound scan cadence,
+work admission, and source hashing cost without using unbounded bulk indexing.
 
 Deletes and canonical renames are discovered by inventory difference and enter
 the explicit retirement/migration policy in §8; they are never inferred solely
@@ -611,6 +666,8 @@ No execution plan may add direct SQL/WAL deletion as generation GC.
 | Source bytes change during build | Mandatory source-hash check refuses promotion |
 | Watch event is lost, coalesced, or overflows | Mark scope reconciliation-required; compare source inventory/manifests and enqueue latest drift before clearing |
 | Authority evidence changes during resolution | Discard tentative mapping and retry before row dereference |
+| Authority resolution exhausts retry budget | Return observable `AUTHORITY_UNSTABLE`; no durable quarantine, cache entry, rows, or fallback |
+| Authority/integrity exception reaches serving adapter | Typed repository boundary propagates fail-closed error; adapter cannot choose raw fallback |
 | Chroma transaction failure | No pointer publication |
 | Pointer/manifest mismatch | Quarantine/fail closed; never elect another generation |
 | Raw direct-read bypass discovered | Activation gate fails; affected surface is authority-unsafe |
@@ -698,8 +755,9 @@ The activation packet must bind all evidence to one tested/reviewed SHA:
 
 1. Full repository and focused CG-2 suites pass with no unexplained failures.
 2. Independent architecture and implementation reviews PASS the same revision.
-3. All four current production bypass classifications are eliminated; no new
-   serving bypass exists.
+3. All four current production bypass classifications are eliminated, every
+   serving-adjacent Chroma/SQLite helper and fallback is mediated or explicitly
+   non-serving, and the inventory fails loudly on empty discovery.
 4. The read-boundary inventory works from normal, `/tmp`, and hidden-parent
    worktree paths; the CG-1 hidden-parent discovery weakness is fixed.
 5. Legacy-only gateway soak meets ratified correctness and latency budgets.
@@ -711,12 +769,18 @@ The activation packet must bind all evidence to one tested/reviewed SHA:
    parity fixtures all receive distinct truthful diagnoses.
 8. Candidate source changes before promotion are refused.
 9. Startup, watcher restart, forced event loss/overflow, rename-pair disruption,
-   and periodic reconciliation all converge current source observations to
-   queued desired state; stale reconciliation health blocks canary readiness.
+   and the watchdog-independent periodic sweep all converge current source
+   observations to queued/quarantined desired state within ratified
+   `max_reconciliation_staleness`; stale reconciliation health blocks canary.
 10. Concurrent fence/pointer/retirement changes force authority-resolution
-    retry, and tests distinguish pre-fence frozen readers from post-fence
-    resolutions.
-11. Pointer/fence/source-path crash injection passes every transition.
+    retry; pointer is rechecked last; both retry limits terminate in observable
+    `AUTHORITY_UNSTABLE`; tests distinguish pre-fence frozen readers from post-
+    fence resolutions and reject torn rename-linked vectors.
+11. Pointer/fence/source-path crash injection passes every transition. A real
+    child-process kill during `publish_active_pointer()` is followed by fresh
+    recovery proving that the exact durable authority is honored and both the
+    active and immediate-previous generation rows remain physically intact and
+    exact-generation readable.
 12. Alias ambiguity and hardlink collision block owner eligibility.
 13. Embedding model/dimension provenance is known for the canary generation.
 14. Recent ingest-degraded evidence affecting the owner is reconciled.
@@ -741,8 +805,11 @@ The activation packet must bind all evidence to one tested/reviewed SHA:
     - recovery never changes pointer choice by completeness;
     - GC never selects an active/protected/pinned generation;
     - no target is reclaimed between tentative resolution and a validated pin;
-    - rename migration never admits old and new owners to one newly resolved vector;
-    - one request never changes its frozen owner generation mid-request.
+    - rename migration never admits old and new owners to one newly resolved
+      vector;
+    - one request never changes its frozen owner generation mid-request;
+    - authority resolution terminates within the finite attempt bound and
+      produces terminal `AUTHORITY_UNSTABLE` refusal on exhaustion.
 19. Ryan issues a separate one-shot production activation grant naming exact
     resource, operation, owner, and final value/state.
 
