@@ -26,12 +26,16 @@ class CrushHookSearchInheritanceTests(unittest.TestCase):
         cache: Path,
         session: str,
         tool: str = "ls",
+        command: str | None = None,
     ) -> subprocess.CompletedProcess:
         env = dict(os.environ)
         env["XDG_CACHE_HOME"] = str(cache)
         env["CRUSH_SESSION_ID"] = session
         env["CRUSH_TOOL_NAME"] = tool
-        env.pop("CRUSH_TOOL_INPUT_COMMAND", None)
+        if command is None:
+            env.pop("CRUSH_TOOL_INPUT_COMMAND", None)
+        else:
+            env["CRUSH_TOOL_INPUT_COMMAND"] = command
         return subprocess.run(
             ["bash", str(HOOK)],
             cwd=REPO_ROOT,
@@ -60,6 +64,44 @@ class CrushHookSearchInheritanceTests(unittest.TestCase):
                 f"stdout={out.stdout!r}\nstderr={out.stderr!r}",
             )
             self.assertNotIn("corpus has the answers", out.stderr)
+
+    def _touch_ritual(self, ritual_dir: Path, session: str) -> None:
+        for suffix in ("doctor", "brief", "unresolved"):
+            (ritual_dir / f"progress-{session}.{suffix}").touch()
+
+    def test_index_denied_after_ritual_complete(self):
+        with tempfile.TemporaryDirectory() as d:
+            cache = Path(d)
+            ritual_dir = cache / "convmem-crush-ritual"
+            ritual_dir.mkdir(parents=True)
+            session = "sess-index-deny"
+            self._touch_ritual(ritual_dir, session)
+            (ritual_dir / f"progress-{session}.search_seen").touch()
+
+            out = self._run_hook(
+                cache=cache,
+                session=session,
+                tool="bash",
+                command="convmem index --file /tmp/foo.db",
+            )
+            self.assertEqual(out.returncode, 2, out.stderr)
+            self.assertIn("index/add/verify denied", out.stderr)
+
+    def test_doctor_still_allowed_after_ritual_complete(self):
+        with tempfile.TemporaryDirectory() as d:
+            cache = Path(d)
+            ritual_dir = cache / "convmem-crush-ritual"
+            ritual_dir.mkdir(parents=True)
+            session = "sess-doctor-ok"
+            self._touch_ritual(ritual_dir, session)
+
+            out = self._run_hook(
+                cache=cache,
+                session=session,
+                tool="bash",
+                command="convmem doctor",
+            )
+            self.assertEqual(out.returncode, 0, out.stderr)
 
 
 if __name__ == "__main__":

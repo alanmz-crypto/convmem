@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ctypes
+import gc
 import json
 import os
 import re
@@ -778,6 +780,12 @@ def run_refine_daemon(*, verbose: bool = True, use_lock: bool = True) -> None:
                 if verbose:
                     print(f"[refine] job {job}", file=sys.stderr)
                 run_job(job, limit=batch, verbose=verbose)
+            # Release fragmented Python heap arenas back to the OS
+            gc.collect()
+            try:
+                ctypes.CDLL("libc.so.6").malloc_trim(0)
+            except (OSError, AttributeError):
+                pass
             time.sleep(interval)
     except KeyboardInterrupt:
         if verbose:
