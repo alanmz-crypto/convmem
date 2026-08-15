@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-08-14
 **Arc:** CG-2 production activation of committed generations
-**State:** Reviews complete; N1–N3 architecture addenda resolved on planning branch; formal model in progress; no implementation or activation authority
+**State:** Architecture/model lock candidate ready; reviewer delta confirmation pending; no implementation or activation authority
 
 ## 1. Purpose and product goal
 
@@ -82,7 +82,7 @@ Key invariants:
 | Source-observation promotion guard | Missing | CG-1 stale-generation guard exists; current-source guard does not |
 | Source reconciliation | Missing | Current watchdog path has no startup/overflow/periodic manifest reconciliation contract |
 | Authority-resolution/pin linearization | Missing | Proposed in architecture; no production reader or online GC exists |
-| Formal authority model | Missing / Codex lane active | Required before reviewer delta confirmation and Ryan Architecture HITL lock |
+| `docs/plans/formal/cg2/` | **Complete and mechanically checked on branch** | One TLA+ transition model, three exhaustive lock configurations, 123,281 generated / 38,134 distinct states, zero errors |
 | Activation manifest/grant | Forbidden/not present | No production activation authorized |
 
 Current production state remains legacy. `convmem doctor` is operationally
@@ -98,7 +98,8 @@ evidence.
 | Kiro design review at `1222b1e` | **PASS** | Delta confirmation after model revision |
 | Cursor feasibility review at `1222b1e` | **PASS WITH RISKS** | N1–N3 disposition + delta confirmation |
 | Crush evidence/failure review at `1222b1e` | **PASS WITH RISKS** | N1–N3 disposition + delta confirmation |
-| N1–N3 architecture addenda | **RESOLVED ON BRANCH** | Formal model and same-revision reviewer confirmation |
+| N1–N3 architecture addenda | **RESOLVED ON BRANCH** | Same-revision reviewer confirmation |
+| Bounded formal authority model | **DONE ON BRANCH — 3/3 TLC PASS** | Same-revision reviewer confirmation |
 | Ryan Architecture HITL | **NOT DONE** | Formal model + Kiro/Crush/Cursor delta confirmation on one exact revision |
 | Execution and VERIFY plans | **NOT STARTED** | Architecture lock |
 | Implementation | **NOT AUTHORIZED** | Execution plan review + Ryan Execute grant |
@@ -110,14 +111,14 @@ evidence.
 
 ## 5. Your role
 
-**If Ryan sent you as Codex now:** Finish the bounded formal authority model
-against the N1–N3-resolved architecture. Check all 12 required properties,
-update this current-state brief and `LATEST.md`, and push one exact lock-candidate
-revision. Do not write an execution plan or implementation.
+**If Ryan sent you now:** Review only the N1–N3 addenda and bounded formal model
+at the exact lock-candidate SHA. Confirm or reject whether they preserve your
+existing verdict. Kiro checks design consistency, Crush checks failure/evidence
+coverage, and Cursor checks feasibility/refinement risk. Do not implement.
 
-**If Ryan sent you for delta confirmation:** Review only the N1–N3 addenda and
-formal model against the new exact SHA. Confirm or reject whether they preserve
-your existing verdict; do not implement.
+**If Ryan sent you as Codex:** The pre-lock drafting lane is complete. Revise
+only if a delta reviewer finds a concrete defect; do not write an execution
+plan until Ryan locks the architecture.
 
 **If Ryan sent you to revise architecture:** Change only planning/status
 artifacts on the plan branch, reconcile every material reviewer finding, and
@@ -131,21 +132,19 @@ all production owners still use legacy semantics.
 
 ## 6. What remains before live activation
 
-1. Codex authors and mechanically checks the bounded formal authority model
-   against the N1–N3-resolved architecture.
-2. Kiro, Crush, and Cursor quick-confirm the same architecture/model revision.
-3. Ryan Architecture HITL lock.
-4. Codex authors execution and VERIFY plans only after that separate lock.
-5. Plan review and separate Ryan Execute grant.
-6. Cursor implements global serving boundary with all owners legacy.
-7. Independent code/safety verification, copied-corpus rehearsal,
+1. Kiro, Crush, and Cursor quick-confirm the exact architecture/model revision.
+2. Ryan Architecture HITL lock.
+3. Codex authors execution and VERIFY plans only after that separate lock.
+4. Plan review and separate Ryan Execute grant.
+5. Cursor implements global serving boundary with all owners legacy.
+6. Independent code/safety verification, copied-corpus rehearsal,
    implementation-to-model transition mapping, and pinned-Chroma operational evidence.
-8. Separate grant for production legacy-only gateway soak.
-9. Soak PASS and exact activation packet for one eligible owner.
-10. Separate Ryan named-owner canary grant.
-11. Canary, rollback, restart, parity, backlog, and performance evidence PASS.
-12. Bounded owner rollout grants.
-13. Separate GC sub-gate, then eventual legacy retirement.
+7. Separate grant for production legacy-only gateway soak.
+8. Soak PASS and exact activation packet for one eligible owner.
+9. Separate Ryan named-owner canary grant.
+10. Canary, rollback, restart, parity, backlog, and performance evidence PASS.
+11. Bounded owner rollout grants.
+12. Separate GC sub-gate, then eventual legacy retirement.
 
 ## 7. Hard stops
 
@@ -195,6 +194,7 @@ it does not make Chroma the fact ledger.
 |---|---|
 | Canonical architecture draft | `docs/plans/ARCHITECTURE-cg2-production-activation.md` |
 | This arc brief | `docs/plans/STATUS-cg2-production-activation.md` |
+| Bounded authority model and checked configurations | `docs/plans/formal/cg2/` |
 | CG-1 implementation handoff | `docs/inter-model/HANDOFF-CG1-DEPENDABILITY-2026-08-10.md` |
 | CG-1 reviewed closure | `docs/inter-model/CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md` |
 | Read-boundary inventory | `tests/test_file_generation_read_path_inventory.py` |
@@ -219,6 +219,7 @@ Keep this file as current-state orientation, not a diary:
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-08-14 | OpenAI Codex | Completed and mechanically checked the 12-property bounded authority model in three exhaustive configurations; lock-candidate delta review is next |
 | 2026-08-14 | OpenAI Codex | Recorded all three review verdicts and resolved N1–N3 as bounded architecture mechanisms; formal model is the remaining pre-lock artifact |
 | 2026-08-14 | OpenAI Codex | Incorporated advisory correctness dispositions for lost events, read/pin linearization, mixed-mode ANN acceptance, and request-scoped rename semantics |
 | 2026-08-14 | OpenAI Codex | Created the CG-2 arc brief with architecture draft in review state; implementation and activation remain unauthorized |

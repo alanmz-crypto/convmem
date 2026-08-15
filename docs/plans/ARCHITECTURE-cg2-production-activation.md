@@ -1,10 +1,10 @@
 # Architecture Direction — CG-2 production activation
 
-> **DRAFT — architecture review only (2026-08-14).** This document does not
+> **LOCK CANDIDATE — architecture review only (2026-08-14).** This document does not
 > authorize implementation, production configuration, corpus mutation, owner
 > cutover, garbage collection, or activation. CG-1 remains the only locked
-> committed-generation contract. CG-2 requires Kiro/Crush/Cursor review and Ryan
-> Architecture HITL before execution planning.
+> committed-generation contract. Kiro/Crush/Cursor delta confirmation and Ryan
+> Architecture HITL remain required before execution planning.
 
 **Source:** Codex synthesis of the merged CG-1 implementation and closure
 evidence, the ChatGPT CG-2 advisory research memo, ConvMem builder-reference
@@ -810,6 +810,18 @@ The activation packet must bind all evidence to one tested/reviewed SHA:
     - one request never changes its frozen owner generation mid-request;
     - authority resolution terminates within the finite attempt bound and
       produces terminal `AUTHORITY_UNSTABLE` refusal on exhaustion.
+
+    The executable model and three property-focused lock configurations live
+    under `docs/plans/formal/cg2/`. They were exhaustively checked on 2026-08-14
+    with checksum-verified TLA+ v1.7.4 / TLC 2.19 (`5a47802`) using a 2 GiB heap
+    and two workers. The cutover, stale/reconcile/recovery, and rename/pinning
+    instances generated 123,281 states in total (38,134 distinct across the
+    three independent graphs), exhausted every queue, and reported zero
+    errors. Action coverage was nonzero for retry exhaustion, typed fallback,
+    stale rejection, reconciliation, recovery, eligible GC, rename begin/
+    retirement, torn-vector refusal, and both legacy and generation reads.
+    This is architecture evidence only; implementation must later refine these
+    transitions and map tests to them.
 19. Ryan issues a separate one-shot production activation grant naming exact
     resource, operation, owner, and final value/state.
 
