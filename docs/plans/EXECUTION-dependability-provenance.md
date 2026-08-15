@@ -17,15 +17,13 @@ are untrusted for security decisions until they carry valid provenance.
 
 ## Scope lock
 
-### In scope for Stage 1
+### In scope for Stage 1A/1B
 
 - one canonical provenance envelope, commitment algorithm, and policy function;
 - root-ingress evidence with no production channel initially verified;
 - exact normal-ingest and direct inter-model transformation bindings;
 - transformer-aware monotone integrity propagation;
 - unit/Chroma/export/reconstruction parity;
-- CG-1 immutable-manifest and cold-validation continuity;
-- unchanged CG-2 serving with provenance pass-through;
 - per-assertion retrieval visibility;
 - legacy-as-unknown behavior;
 - exact-dedupe protection for independent cross-provenance assertions;
@@ -41,6 +39,16 @@ are untrusted for security decisions until they carry valid provenance.
 - renaming existing `source_trust` code;
 - factual correctness or poisoning classifiers.
 
+### Parallel/later assurance tracks
+
+- CG-1 immutable-manifest/cold-validation continuity and unchanged CG-2
+  provenance pass-through follow the canonical Stage 1 representation under a
+  separate Execute brief.
+- Egress, backup/restore, recovery, endurance, SLO, and broad operational fault
+  work remain separate dependability tracks.
+- Overall arc closure eventually requires the CG-1/CG-2 continuity evidence, but
+  those integrations do not precede or redefine the Stage 1 substrate.
+
 ## Preconditions
 
 Before implementation begins:
@@ -55,7 +63,18 @@ Before implementation begins:
 
 ## Ordered work packages
 
-### P1 — Canonical policy and representation
+```text
+Stage 0 vocabulary/architecture lock
+  → Stage 1A policy + envelope + exact transformation bindings
+  → Stage 1B representation + assertion/dedupe/retrieval continuity
+  → Stage 1 verification and independent review
+
+Parallel/later after the representation is locked:
+  A. CG-1/CG-2 commitment continuity
+  B. egress/recovery/operational assurance
+```
+
+### P1 / Stage 1A — Canonical policy and representation
 
 Create one deep module that owns:
 
@@ -76,13 +95,14 @@ Likely surfaces after re-trace:
 - new internal provenance policy/serialization module under `src/convmem/`;
 - focused policy and canonicalization tests under `tests/`.
 
-### P2 — Transformation-boundary binding and durable continuity
+### P2 / Stage 1A — Transformation-boundary binding and durable continuity
 
 For normal ingest, bind adapter-stable source records, raw-record hashes, each
 exact rendered/truncated view, ordering/chunk/selection parameters, and the full
 provider payload. Bind both ingest rendering and the additional distillation
 truncation. Record requested/resolved provider/model, fallback, generation
-parameters, fixed recipe/config hash, response hash, producer, and transformer.
+parameters, binding version, fixed recipe/config hash, response hash, producer,
+and transformer.
 
 For direct inter-model indexing, treat `source_type` and `author_model` as
 claimed classification only. Direct packaging may preserve only a tested
@@ -102,7 +122,7 @@ Likely surfaces after re-trace:
 - `eval_corpus/reconstruct.py`
 - export/reingest tests and fixtures
 
-### P3 — Assertion-preserving exact dedupe
+### P3 / Stage 1B — Assertion-preserving dedupe and retrieval
 
 Separate assertion identity from content/equivalence identity. Exact duplicates
 with independent or different provenance cannot cause the incoming assertion's
@@ -114,13 +134,23 @@ Do not implement automatic semantic cross-provenance collapse. Existing semantic
 approval must fail closed or require explicit human adjudication when provenance
 differs. A later Stage 2 design decides durable equivalence/tombstone semantics.
 
+Expose the canonical envelope, commitment, and recomputed effective integrity per
+assertion at retrieval boundaries. Representation, propagation, export, and
+retrieval continuity are mandatory integrity requirements. Only supplementary
+display diagnostics may be advisory. Keep relevance, recency, temporal status,
+and `source_trust_boost` outside the integrity calculation.
+
 Likely surfaces after re-trace:
 
 - `src/convmem/ingest_dedupe.py`
 - `src/convmem/refine.py`
 - assertion/equivalence persistence and lifecycle tests
+- `src/convmem/query.py`, `src/convmem/evidence.py`, and response-schema tests
 
-### P4 — CG-1, CG-2, and retrieval continuity
+### A1 / parallel-later — CG-1 and CG-2 continuity
+
+This is not part of the initial substrate implementation order. It receives a
+separate Execute brief after Stage 1 representation is locked.
 
 Make the provenance commitment a required immutable attribute for new-schema
 CG-1 candidates and manifest rows. Include it in candidate/bundle identity as
@@ -132,11 +162,6 @@ Carry the assertion and commitment unchanged through CG-2 serving. The
 request-frozen authority vector remains the sole serving-authority mechanism;
 CG-2 does not recompute provenance or aggregate trust.
 
-Expose per-assertion provenance/effective integrity at retrieval/MCP boundaries.
-Keep relevance, recency, and `source_trust_boost` behavior bit-for-bit unchanged
-unless a compatibility shim is strictly necessary. Any derived synthesis is out
-of this slice unless it binds all selected parents and is capped at agent.
-
 Likely surfaces after re-trace:
 
 - `src/convmem/file_generation_contract.py`
@@ -144,9 +169,8 @@ Likely surfaces after re-trace:
 - `src/convmem/file_generation_store.py`
 - `src/convmem/serving_authority.py`
 - `src/convmem/serving_index_repository.py`
-- `src/convmem/query.py`, `src/convmem/evidence.py`, and response schemas
 
-### P5 — Verification packet and compatibility closure
+### P4 — Stage 1 verification packet and compatibility closure
 
 Run the locked tests in `VERIFY-dependability-provenance.md`. Produce evidence
 for the exact implementation tip, including focused and full regression runs,
@@ -155,6 +179,13 @@ diff checks, no-live-mutation proof, serialized fixtures, and negative controls.
 Kiro reviews the implementation design/result. Copilot performs the targeted
 safety/isolation audit because this changes security-relevant data continuity.
 Ryan alone decides merge and any later migration/activation grant.
+
+### A2 / parallel-later — Broad dependability assurance
+
+Egress controls, backup/restore, recovery, endurance, SLOs, and general
+operational fault injection retain separate owners and plans. They may consume
+the provenance envelope after Stage 1, but they cannot broaden this Execute scope
+or make provenance continuity advisory.
 
 ## Required Stage 1 properties
 
@@ -171,7 +202,7 @@ Ryan alone decides merge and any later migration/activation grant.
 For all three lattice values and supported transformer classes:
 
 ```text
-I(output) <= meet(I(all bound inputs), transformer_cap)
+I(output) = meet(I(all completely bound inputs), transformer_cap)
 ```
 
 Required cases include trusted→lossless packaging, trusted→LLM, agent→LLM,
@@ -191,9 +222,9 @@ repeat summarization, and content that embeds fake provenance fields.
 
 1. Unit → Chroma → export → reconstruction is semantically lossless.
 2. Flat diagnostics cannot override the canonical envelope.
-3. CG-1 cold validation rejects missing or altered commitments.
-4. CG-2 returns the same assertion/commitment selected by serving authority.
-5. Retrieval preserves each assertion's provenance independently.
+3. Missing mandatory envelope/commitment continuity fails or degrades to
+   untrusted; it is never an advisory integrity result.
+4. Retrieval preserves each assertion's provenance independently.
 
 ### Dedupe
 
@@ -202,6 +233,13 @@ repeat summarization, and content that embeds fake provenance fields.
 3. A high-integrity duplicate cannot elevate an untrusted assertion.
 4. Semantic cross-provenance tombstoning cannot occur without explicit human
    adjudication and retained audit evidence.
+
+### Parallel/later CG-1/CG-2 continuity
+
+1. CG-1 cold validation rejects missing or altered commitments.
+2. CG-2 returns the same assertion/commitment selected by serving authority.
+3. Neither integration redefines effective integrity, serving authority, or
+   the Stage 1 envelope.
 
 ## Fault-focused test cases
 
