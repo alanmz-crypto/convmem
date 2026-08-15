@@ -1,9 +1,11 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-15 (export tooling #173 + CG-1 closure #182 + arc-staleness #183 + Crush hook/refine #184 on `main`; LATEST pointer sync)
+**Updated:** 2026-08-15 (CI merge gate #187 + Crush hook/refine #184 on `main`; closeout handoff for Codex)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Recently merged / settled (2026-08-08 through 2026-08-15)
+
+- **CI Behavioral Merge Gate — MERGED, closeout AUTHORIZED (2026-08-15, [#187](https://github.com/alanmz-crypto/convmem/pull/187)):** Who/What: hermetic pytest job in GitHub Actions; `Protect Main` ruleset now requires `pytest (3.12)` alongside `pylint (3.12)`. When: #187 squash-merged to `main` as `c2c6429` 2026-08-15. Why: 1,284+ tests existed but never gated merge — a PR could pass CI while hundreds of tests failed. How: `pylint.yml` pytest job with temp config, no live services; ruleset updated same day. **Closeout AUTHORIZED (not yet implemented):** ARCHITECTURE decision doc + negative-control evidence + critical-invariant manifest + VERIFY. Target lane: Codex (planning). [`KIRO-2026-08-15-ci-behavioral-merge-gate-closeout-handoff.md`](KIRO-2026-08-15-ci-behavioral-merge-gate-closeout-handoff.md)
 
 - **Crush index freeze + refine memory — MERGED + DEPLOYED (2026-08-15, [#184](https://github.com/alanmz-crypto/convmem/pull/184)):** Who/What: hard-deny `convmem index/add/verify` inside Crush hook (exit 2) plus `refine.py` `gc.collect()` + `malloc_trim(0)` between daemon cycles. When: squash-merged to `main` as `e82cbd0`; Kiro PASS @ `2179b08`; live hook deployed via `deploy-agent-protocol.sh`. Why: long-running index inside Crush hit ~60s bash timeout; refine daemon grew ~9.4G over 32h. How: no further action — hook live after Crush restart.
 
