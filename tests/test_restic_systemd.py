@@ -57,6 +57,10 @@ class TestResticSystemdUnits(unittest.TestCase):
             self.assertTrue(src.is_file(), f"missing example {src_name}")
             dst = self.fw.check(self.systemd_dir / dst_name, label="unit")
             shutil.copy2(src, dst)
+            if dst.suffix == ".service":
+                text = dst.read_text(encoding="utf-8")
+                text = text.replace("%h/Projects/convmem", str(REPO))
+                dst.write_text(text, encoding="utf-8")
             self.unit_paths.append(dst)
 
     def tearDown(self) -> None:
