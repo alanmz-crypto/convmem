@@ -99,6 +99,7 @@ class FrozenAuthorityVector:
     evidence_snapshots: Mapping[str, AuthorityEvidenceSnapshot]
     generation_root: str
     chroma_dir: str
+    previous_by_owner: Mapping[str, str] = MappingProxyType({})
 
     def active_generations(self) -> dict[str, str]:
         return {
@@ -108,8 +109,7 @@ class FrozenAuthorityVector:
         }
 
     def previous_generations(self) -> dict[str, str]:
-        # Previous generation retention is wired in T4; T1 returns empty.
-        return {}
+        return dict(self.previous_by_owner)
 
 
 def generation_root_for_cfg(cfg: Mapping[str, Any]) -> Path:
@@ -351,6 +351,16 @@ def resolve_frozen_authority_vector(
         )
 
     frozen_states = MappingProxyType(dict(states))
+    previous_by_owner: dict[str, str] = {}
+    for digest, state in states.items():
+        if state.mode != OwnerAuthorityMode.GENERATIONAL:
+            continue
+        pointer = read_unqualified_pointer(generation_root, digest)
+        if pointer is None:
+            continue
+        previous_id = pointer.get("previous_generation_id")
+        if isinstance(previous_id, str) and previous_id.strip():
+            previous_by_owner[digest] = previous_id.strip()
     return FrozenAuthorityVector(
         by_owner=frozen_states,
         legacy_global=legacy_global,
@@ -358,4 +368,5 @@ def resolve_frozen_authority_vector(
         evidence_snapshots=MappingProxyType(dict(final_snapshots)),
         generation_root=str(generation_root),
         chroma_dir=chroma_dir,
+        previous_by_owner=MappingProxyType(dict(previous_by_owner)),
     )

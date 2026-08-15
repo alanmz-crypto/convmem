@@ -48,6 +48,21 @@ EXPECTED = {
     ),
     ("file_generation_store.py", "__init__", "ChromaStore"): (1, "generation-mediated"),
     (
+        "mixed_mode_control.py",
+        "build_authority_clean_control",
+        "ChromaStore",
+    ): (1, "generation-mediated"),
+    (
+        "mixed_mode_proof.py",
+        "run_mixed_mode_proof",
+        "ChromaStore",
+    ): (1, "generation-mediated"),
+    (
+        "mixed_mode_retrieval.py",
+        "query_units_mixed_ann",
+        "raw.query",
+    ): (1, "generation-mediated"),
+    (
         "file_generation_validate.py",
         "chroma_sequence_positions",
         "sqlite3.connect[chroma]",

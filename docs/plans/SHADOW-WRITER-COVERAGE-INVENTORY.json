@@ -30,6 +30,8 @@
     "chroma_write_store.py:437",
     "convmem.py:628",
     "file_generation_store.py:95",
+    "mixed_mode_control.py:44",
+    "mixed_mode_proof.py:143",
     "shadow_canary.py:528",
     "shadow_canary.py:635",
     "shadow_canary.py:649",
