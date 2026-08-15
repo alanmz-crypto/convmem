@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-08-15
 **Arc:** CG-2 production activation of committed generations
-**State:** Architecture locked by Ryan at `e680ce837653698a5be8b78ba02db2f880c40c63`; execution and VERIFY plans drafted; Kiro plan review next; no implementation or activation authority
+**State:** Architecture locked; Kiro execution-plan review PASS; Ryan Execute granted to Cursor for `6a808f1`; implementation not yet started; no production activation authority
 
 ## 1. Purpose and product goal
 
@@ -75,8 +75,8 @@ Key invariants:
 | `tests/test_file_generation_*.py` | Complete on `main` | CG-1 proof and frozen read-boundary inventory |
 | `docs/plans/ARCHITECTURE-cg2-production-activation.md` | **Locked at `e680ce837653698a5be8b78ba02db2f880c40c63` on `plan/2026-08-14-cg2-production-activation`** | Ryan-approved production authority, migration, health, and rollout design |
 | `docs/inter-model/CURSOR-2026-08-15-cg2-delta-confirmation.md` | **Complete on branch** | Kiro/Crush/Cursor exact-SHA PASS rollup |
-| `docs/plans/EXECUTION-cg2-production-activation.md` | **Drafted on this plan branch** | Bounded five-task package; awaits Kiro plan review and Ryan Execute grant |
-| `docs/plans/VERIFY-cg2-production-activation.md` | **Planning stub on this plan branch** | Must be filled from mechanical Execute evidence before arc close |
+| `docs/plans/EXECUTION-cg2-production-activation.md` | **Reviewed PASS by Kiro at `6a808f1`** | Ryan Execute granted to Cursor for the bounded five-task package |
+| `docs/plans/VERIFY-cg2-production-activation.md` | **Planning stub on this plan branch** | Cursor fills from mechanical Execute evidence before arc close |
 | Production serving repository | Missing | Existing query surfaces still use legacy `ChromaStore` paths |
 | Legacy fence/owner authority artifacts | Missing | No owner is cut over |
 | Generation-aware doctor/parity | Missing | Current checks compare raw IDs |
@@ -102,8 +102,8 @@ evidence.
 | N1–N3 architecture addenda | **RESOLVED** | Preserved path-derived identity and explicit rename migration |
 | Bounded formal authority model | **DONE — 3/3 TLC PASS** | 123,281 generated / 38,134 distinct states; zero errors |
 | Ryan Architecture HITL | **DONE — 2026-08-15** | Locked `e680ce837653698a5be8b78ba02db2f880c40c63` as the execution baseline |
-| Execution and VERIFY plans | **DRAFTED ON BRANCH** | Kiro plan review, then separate Ryan Execute grant |
-| Implementation | **NOT AUTHORIZED** | Execution plan review + Ryan Execute grant |
+| Execution and VERIFY plans | **Kiro PASS — `6a808f1`** | Execute scope granted; implementation handoff is active |
+| Implementation | **AUTHORIZED / NOT STARTED** | Cursor T1–T5 on a fresh implementation branch |
 | Legacy-only serving-gateway soak | **NOT AUTHORIZED** | Implementation and verification evidence + exact production operation grant |
 | First owner canary | **NOT AUTHORIZED** | All activation gates + separate named-owner grant |
 | Broad rollout | **NOT AUTHORIZED** | Canary PASS |
@@ -112,12 +112,13 @@ evidence.
 
 ## 5. Your role
 
-**Current Codex role:** Hand off the drafted CG-2 execution and VERIFY plans for
-designated review. Preserve the separate grants for plan approval,
-implementation, gateway soak, owner activation, and GC.
+**Current Codex role:** Support Cursor’s implementation handoff and preserve the
+separate grants for plan approval, implementation, gateway soak, owner activation,
+and GC. Codex does not implement runtime code in this lane.
 
-**Implementation lane:** Not yet authorized. Cursor implements only after a
-reviewed execution plan and Ryan Execute grant.
+**Implementation lane:** Authorized for the exact T1–T5 package at `6a808f1`.
+Cursor implements on a fresh branch; production operations remain separately
+gated.
 
 **Production state:** CG-1 is merged but hermetic; all production owners still
 use legacy semantics. The architecture lock does not make CG-2 live.
@@ -128,24 +129,22 @@ the architecture while drafting execution work.
 
 ## 6. What remains before live activation
 
-1. Kiro reviews the execution and VERIFY planning package.
-2. Ryan grants Execute for the approved implementation scope.
-3. Cursor implements global serving boundary with all owners legacy.
-4. Independent code/safety verification, copied-corpus rehearsal,
+1. Cursor implements T1–T5 on a fresh branch under the handoff.
+2. Independent code/safety verification, copied-corpus rehearsal,
    implementation-to-model transition mapping, and pinned-Chroma operational evidence.
-5. Separate grant for production legacy-only gateway soak.
-6. Soak PASS and exact activation packet for one eligible owner.
-7. Separate Ryan named-owner canary grant.
-8. Canary, rollback, restart, parity, backlog, and performance evidence PASS.
-9. Bounded owner rollout grants.
-10. Separate GC sub-gate, then eventual legacy retirement.
+3. Separate grant for production legacy-only gateway soak.
+4. Soak PASS and exact activation packet for one eligible owner.
+5. Separate Ryan named-owner canary grant.
+6. Canary, rollback, restart, parity, backlog, and performance evidence PASS.
+7. Bounded owner rollout grants.
+8. Separate GC sub-gate, then eventual legacy retirement.
 
 ## 7. Hard stops
 
 | Stop | Owner | Blocks |
 |---|---|---|
-| Architecture lock | **DONE — Ryan, 2026-08-15** | Execution planning is unlocked; implementation remains separately gated |
-| Execute grant | Ryan | Code/runtime/config changes |
+| Architecture lock | **DONE — Ryan, 2026-08-15** | Execution baseline `e680ce8` |
+| Execute grant | **DONE — Ryan, 2026-08-15** | Cursor T1–T5 scope at plan tip `6a808f1` |
 | Production gateway-soak grant | Ryan, exact operation | Any live read-path switch |
 | Named-owner activation grant | Ryan, exact SHA/owner/state | First or later owner promotion |
 | Zero serving bypasses | Architecture fitness gate | Any generational owner serving |
@@ -188,6 +187,7 @@ it does not make Chroma the fact ledger.
 |---|---|
 | Canonical architecture draft | `docs/plans/ARCHITECTURE-cg2-production-activation.md` |
 | This arc brief | `docs/plans/STATUS-cg2-production-activation.md` |
+| Cursor Execute handoff | `docs/inter-model/CODEX-2026-08-15-cg2-execute-cursor-handoff.md` |
 | Bounded authority model and checked configurations | `docs/plans/formal/cg2/` |
 | CG-1 implementation handoff | `docs/inter-model/HANDOFF-CG1-DEPENDABILITY-2026-08-10.md` |
 | CG-1 reviewed closure | `docs/inter-model/CRUSH-2026-08-13-cg1-g4b-review-pass-closure.md` |
@@ -213,6 +213,8 @@ Keep this file as current-state orientation, not a diary:
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-08-15 | Ryan | Granted Execute to Cursor for the exact five-task CG-2 package at `6a808f1`; production soak, owner activation, and GC remain separate grants |
+| 2026-08-15 | Kiro | Reviewed the execution and VERIFY planning package PASS at `6a808f1`; four implementation-lane observations are non-blocking |
 | 2026-08-15 | OpenAI Codex | Drafted the five-task CG-2 execution plan and VERIFY planning stub from the Ryan-locked architecture; Kiro plan review is next |
 | 2026-08-15 | Ryan | Locked the CG-2 architecture at `e680ce837653698a5be8b78ba02db2f880c40c63` after Kiro, Crush, and Cursor exact-SHA PASS confirmations; execution planning is next |
 | 2026-08-15 | Cursor | Recorded triple exact-SHA delta PASS at `e680ce8`; Ryan Architecture HITL is next |

@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-15 (CG-2 execution + VERIFY plans drafted; Kiro plan review next; no implementation or activation authority)
+**Updated:** 2026-08-15 (Kiro PASS; Ryan Execute granted to Cursor for CG-2 T1–T5; implementation handoff active; no production activation authority)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Recently merged / settled (2026-08-08 through 2026-08-14)
@@ -21,11 +21,11 @@
 
 ## Active handoff
 
-- **CG-2 production activation — EXECUTION + VERIFY PLANS DRAFTED / PLAN REVIEW NEXT (2026-08-15):** Who/What: OpenAI Codex translated Ryan’s locked architecture at `e680ce837653698a5be8b78ba02db2f880c40c63` into a five-task execution package and a VERIFY planning stub. When: drafted on `plan/2026-08-14-cg2-production-activation` after the `47768d1` architecture lock. Why: the next gate is bounded task review before any implementation authority. How: T1 establishes the serving boundary; T2 source freshness/reconciliation; T3 logical accounting; T4 Chroma/lifecycle proof; T5 copied-corpus rehearsal and readiness evidence. **Not authorized:** implementation, production gateway soak, owner cutover, or GC.
+- **CG-2 production activation — EXECUTE GRANTED / CURSOR IMPLEMENTATION NEXT (2026-08-15):** Who/What: Kiro reviewed the execution/VERIFY package PASS at `6a808f1`; Ryan granted Cursor Execute for T1–T5. When: grant issued 2026-08-15 against the locked architecture `e680ce8`. Why: the bounded implementation lane is now open while production operations remain gated. How: Cursor starts with T1 serving authority, then T2 reconciliation, T3 logical accounting, T4 Chroma/lifecycle proof, and T5 copied-corpus readiness evidence. **Not authorized:** production gateway soak, owner cutover, or GC.
 
-  **Review reading:** [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md) · [`EXECUTION-cg2-production-activation.md`](../plans/EXECUTION-cg2-production-activation.md) · [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md) · [`formal model evidence`](../plans/formal/cg2/README.md) · [`STATUS-cg2-production-activation.md`](../plans/STATUS-cg2-production-activation.md) · [`CURSOR-2026-08-15-cg2-delta-confirmation.md`](CURSOR-2026-08-15-cg2-delta-confirmation.md)
+  **Review reading:** [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md) · [`EXECUTION-cg2-production-activation.md`](../plans/EXECUTION-cg2-production-activation.md) · [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md) · [`CODEX-2026-08-15-cg2-execute-cursor-handoff.md`](CODEX-2026-08-15-cg2-execute-cursor-handoff.md) · [`formal model evidence`](../plans/formal/cg2/README.md) · [`STATUS-cg2-production-activation.md`](../plans/STATUS-cg2-production-activation.md)
 
-  **Suggested next:** Kiro reviews the execution/VERIFY planning package; then Ryan decides the separate Execute grant.
+  **Suggested next:** Cursor starts T1 on a fresh implementation branch; stop before any production soak or owner activation and hand off exact-tip evidence for review.
 
 - **Chroma reconcile Tier L — R4 GREEN, arc closed (2026-08-09):** Who/What: Crush index rebuild + DeepSeek Flash V1–V6 post-rebuild verify; Cursor landscape sync. When: rebuild completed 2026-08-08; R4 GREEN 2026-08-09; docs on `main` via [#161](https://github.com/alanmz-crypto/convmem/pull/161). Why: 646 HNSW orphans blocked calibration and contaminated retrieval. How: full re-index, orphan inventory **0**, calibration 100% with `eval-synthesis.py --judge --legacy`, and `convmem doctor` PASS with two non-fatal warnings (legacy embed metadata and external-restic freshness).
 
