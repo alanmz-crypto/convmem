@@ -15,6 +15,18 @@ kiro-cli 2.x stores **full agent chat transcripts** at:
 
 This is **kiro-cli transcript storage** — not a separate “Kiro IDE” product. Soak docs called it “vibe mode”; on disk it is the same `kiro-cli` binary you run in the terminal.
 
+## This document is a living reference — add gaps when you find them
+
+Not every adapter edge case or Track A limitation is documented here. If you
+encounter a situation where Track A behaves unexpectedly (silent 0-chunk ingest,
+unrecognized format, missing transcript, intentional exclusion), check whether
+it is already explained in this file. If it is not, **add a section before
+closing the session** — include what happened, why it is by design (or whether
+it is a real bug), and what the correct model protocol is.
+
+The goal is that the next model hitting the same wall finds the answer here
+instead of rediscovering it from scratch.
+
 ## kiro-cli chat sessions (Track A gap — by design)
 
 `kiro-cli chat` (the terminal chat command) writes **only** a thin prompt sidecar
