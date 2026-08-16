@@ -5,12 +5,12 @@
 **From:** Codex planning lane
 **To:** Kiro adversarial review → Ryan Execute decision
 **Branch:** `plan/2026-08-16-codeql-complex-therapy`
-**Review package SHA:** `190c468a4a034831ccdf60a321bca44b93221af4`
+**Review package SHA:** `190c4683f452c1a2f70ae7630269d92658eb8974`
 
 ## Review binding
 
 The planning package that was reviewed and pushed before this additive handoff
-is exactly `190c468a4a034831ccdf60a321bca44b93221af4`. It contains the
+is exactly `190c4683f452c1a2f70ae7630269d92658eb8974`. It contains the
 producer-identity, trust-boundary, recurring-attestation, and latency-policy
 hardening. The handoff is the explicit carrier for that SHA; the branch tip
 advances when this pointer update is committed. Reviewers must retain the
@@ -86,6 +86,6 @@ merges `main`.
 I finished: [Arc CodeQL Complex Therapy] SHA-bound hardening handoff
 Next step: Kiro adversarial review of the named package and additive carrier, then Ryan's latency-policy and Execute decisions
 Next lane: Kiro → Ryan
-See my work: `190c468a4a034831ccdf60a321bca44b93221af4` and the planning-package comparison above
+See my work: `190c4683f452c1a2f70ae7630269d92658eb8974` and the planning-package comparison above
 
-**TL;DR:** Review package `190c468a4a034831ccdf60a321bca44b93221af4` is explicitly named; Kiro must review its hardening plus the additive carrier before Ryan chooses the latency policy and authorizes Execute.
+**TL;DR:** Review package `190c4683f452c1a2f70ae7630269d92658eb8974` is explicitly named; Kiro must review its hardening plus the additive carrier before Ryan chooses the latency policy and authorizes Execute.
