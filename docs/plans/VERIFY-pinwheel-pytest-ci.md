@@ -131,7 +131,7 @@ deliberate test failure.
 ## Evidence log
 
 ```text
-VERIFY-pinwheel-pytest-ci — tip <recorded-at-commit> — Cursor — 2026-08-16T05:56:18Z
+VERIFY-pinwheel-pytest-ci — tip 7923262956f5c3deb4b7d90898c7ff0b7b8e096a — Cursor — 2026-08-16T05:56:18Z
 V0: PASS — base bc83c85d0522023ea6e404bff4aaed135c47815a, fresh pin evidence, scope; V0d pending disposable auth.
 V1: PASS — exact pin, logs, preserved workflow commands.
 V2: PASS — strict manifest parsing and per-module exit-status collection.
