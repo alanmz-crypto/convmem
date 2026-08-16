@@ -17,5 +17,5 @@ tests/test_governed_writer_gate.py
 tests/test_writer_census.py
 tests/test_chroma_restore_drill.py
 tests/test_complete_data_restore.py
-tests/test_readonly_store.py
+tests/pinwheel_nc_missing.py
 tests/test_ci_contract.py
