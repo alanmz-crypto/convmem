@@ -3,9 +3,8 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** Sol-High narrow literature-derived correction pass prepared after
-tightening selected-generation recovery, crash-closed publication,
-canonicalization drift detection, and UUIDv4 precision. Exact-revision Kiro and
+**State:** Sol-High final review PASS after tightening assertion-ID minting,
+idempotent replay, and invalid-replay failure semantics. Exact-revision Kiro and
 Copilot dispositions plus Ryan's architecture lock remain. No implementation is
 authorized.
 
@@ -165,7 +164,7 @@ Do not append session narrative.
 | 2026-08-15 | Codex Sol-High | Tightened monitor-minted identity, idempotent replay, and invalid-ID/commitment failure semantics for final lock review. |
 | 2026-08-15 | Codex Sol-High | Added the restore-preflight STATE_SPECS/writer-census and separate-validator contract for the provenance registry; implementation remains unauthorized. |
 | 2026-08-15 | Codex Sol-High | Retained T1–T5 and strengthened T3 provenance, acknowledgement, and migration boundaries; clean-SHA rereview required. |
-| 2026-08-15 | Codex Sol-High | Added bounded selected-generation, crash-publication, canonicalization-drift, and UUIDv4 precision corrections; runtime remains unauthorized. |
 
-**TL;DR:** The planning correction is ready for exact-revision Kiro/Copilot
-rechecks and Ryan's lock; no implementation or live-data work is authorized.
+**TL;DR:** Sol-High passes the strengthened T3 provenance architecture; same-SHA
+Kiro/Copilot dispositions and Ryan's lock remain, with no implementation or
+live-data work authorized.

@@ -330,11 +330,9 @@ Stage 1. Even after adjudication, audit evidence for both assertions remains.
 ### R7 — Assertion identity is independent from content
 
 Every assertion has an immutable, opaque `assertion_id` minted by the central
-ConvMem monitor. The initial schema uses a content-independent UUIDv4 in
-canonical lowercase text: the encoded identifier is 128 bits, but UUIDv4 has
-122 random payload bits because version and variant fields are fixed. The
-monitor generates and atomically reserves it in the authoritative assertion
-store before publication;
+ConvMem monitor. The initial schema uses a content-independent random 128-bit
+identifier in canonical lowercase UUID text. The monitor generates and
+atomically reserves it in the authoritative assertion store before publication;
 it retries a collision rather than reusing an existing identity. The ID is not
 derived from content, path, offset, producer, timestamp, or an LLM response.
 Callers, adapters, LLMs, dedupe code, exports, and consumers may carry or
@@ -404,24 +402,6 @@ JSONL or Chroma reconstruction may populate only a quarantined staging target
 until the registry manifest and all cross-surface checks pass. Missing store,
 partial snapshot, stale history, and restore/rebuild mismatch are explicit
 fail-closed recovery states, not reasons to mint trust from IDs in a payload.
-
-### R8.2 — Recovery binds one selected generation; rollback is explicit
-
-Every recovery selects one complete-data-v2 snapshot/generation before reading
-its components, identified by an immutable generation ID and manifest
-commitment. The registry, policy/recipe history, JSONL export, and Chroma
-projection must all verify against that same selected generation. Individually
-valid components from different generations are an impossible authority state
-and remain quarantined. A valid older generation is a rollback candidate only;
-it is never auto-selected because it is restorable. Publishing it requires a
-separate Ryan rollback grant naming the selected generation, the current live
-generation, and the reason. That grant is ConvMem governance, not a TUF
-requirement.
-
-Recovery publication is also crash-closed: interruption at every durable write,
-rename, manifest, pointer, and publication boundary must leave either the prior
-complete authority generation selected or one complete, verified replacement.
-It must never expose a mixed, missing, or partially selected authority set.
 
 ### R9 — Legacy is conservative
 
@@ -528,13 +508,8 @@ failure.
 `provenance_commitment` is SHA-256 over versioned canonical JSON of the
 authoritative envelope, excluding the commitment itself and derived/cache fields.
 Canonical field order, Unicode/number encoding, list order, and null/omission
-semantics are part of the schema version. P1 must publish one normative,
-versioned ConvMem canonicalization profile and serializer implementation, with
-golden vectors covering Unicode, numbers, escaping, lists, nulls, and field
-ordering. The vectors are rerun when the serializer library changes; the plan
-makes no cross-implementation portability claim unless a later scope decision
-explicitly adds one. Hash equality proves byte-level commitment continuity, not
-truth.
+semantics are part of the schema version. Hash equality proves byte-level
+commitment continuity, not truth.
 
 The commitment and envelope must survive without semantic loss across:
 
