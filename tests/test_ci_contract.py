@@ -27,6 +27,7 @@ FULL_SUITE_CMD = "python -m pytest -q"
 CHECKER_INVOCATION = "python scripts/check_ci_critical_invariants.py"
 
 _UNPINNED_PYTEST_RE = re.compile(r"pip\s+install\b.*\bpytest\b(?!\s*==)")
+_PIP_INSTALL_RE = re.compile(r"^(?:python(?:3(?:\.\d+)?)?\s+-m\s+)?pip3?\s+install\b")
 
 
 def _load_checker():
@@ -71,8 +72,16 @@ def _job_install_run(workflow_path: Path, job_name: str) -> str:
     raise AssertionError(f"no install run block in job {job_name}")
 
 
-def _assert_install_pytest_pins(run_block: str, job_name: str) -> None:
-    pip_lines = [line for line in _executable_lines(run_block) if "pip install" in line]
+def _job_pip_install_lines(workflow_path: Path, job_name: str) -> list[str]:
+    lines: list[str] = []
+    for block in _job_run_blocks(workflow_path, job_name):
+        for line in _executable_lines(block):
+            if _PIP_INSTALL_RE.search(line):
+                lines.append(line)
+    return lines
+
+
+def _assert_install_pytest_pins(pip_lines: list[str], job_name: str) -> None:
     pytest_lines = [line for line in pip_lines if re.search(r"\bpytest\b", line)]
     if not pytest_lines:
         raise AssertionError(f"{job_name}: no executable pytest pip install line")
@@ -92,8 +101,8 @@ def _assert_executable_command(run_blocks: list[str], command: str) -> None:
 
 
 def _assert_workflow_contract(workflow_path: Path) -> None:
-    _assert_install_pytest_pins(_job_install_run(workflow_path, "pylint"), "pylint")
-    _assert_install_pytest_pins(_job_install_run(workflow_path, "pytest"), "pytest")
+    _assert_install_pytest_pins(_job_pip_install_lines(workflow_path, "pylint"), "pylint")
+    _assert_install_pytest_pins(_job_pip_install_lines(workflow_path, "pytest"), "pytest")
     pylint_runs = _job_run_blocks(workflow_path, "pylint")
     pytest_runs = _job_run_blocks(workflow_path, "pytest")
     _assert_executable_command(pylint_runs, VERSION_LOG_CMD)
@@ -144,7 +153,7 @@ class WorkflowContractTests(unittest.TestCase):
         try:
             with self.assertRaises(AssertionError):
                 _assert_workflow_contract(tmp_path)
-            _assert_install_pytest_pins(_job_install_run(tmp_path, "pytest"), "pytest")
+            _assert_install_pytest_pins(_job_pip_install_lines(tmp_path, "pytest"), "pytest")
         finally:
             tmp_path.unlink()
 
@@ -232,6 +241,37 @@ class WorkflowContractTests(unittest.TestCase):
             data,
             "Install dependencies",
             install + "\npip install pytest",
+        )
+        tmp_path = _write_temp_workflow(data)
+        try:
+            with self.assertRaises(AssertionError):
+                _assert_workflow_contract(tmp_path)
+        finally:
+            tmp_path.unlink()
+
+
+    def test_contract_fails_when_pin_is_echo_only(self):
+        data = _load_workflow(_WORKFLOW)
+        install = _job_install_run(_WORKFLOW, "pylint")
+        _mutate_pylint_install(
+            data,
+            install.replace(
+                "pip install pylint==4.0.6 pytest==9.1.1",
+                "echo pip install pylint==4.0.6 pytest==9.1.1",
+            ),
+        )
+        tmp_path = _write_temp_workflow(data)
+        try:
+            with self.assertRaises(AssertionError):
+                _assert_workflow_contract(tmp_path)
+            _assert_install_pytest_pins(_job_pip_install_lines(tmp_path, "pytest"), "pytest")
+        finally:
+            tmp_path.unlink()
+
+    def test_contract_fails_when_later_step_reinstalls_unpinned_pytest(self):
+        data = _load_workflow(_WORKFLOW)
+        data["jobs"]["pytest"]["steps"].append(
+            {"name": "Floating reinstall", "run": "pip install pytest"}
         )
         tmp_path = _write_temp_workflow(data)
         try:
