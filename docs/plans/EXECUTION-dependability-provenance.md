@@ -153,6 +153,14 @@ No adapter, caller, Chroma field, source path, role, confidence, or ranking code
 may independently compute integrity. The empty-input and caller-self-upgrade
 negative tests are P1 gates.
 
+P1 must also define the future restore integration: extend
+`complete_data_restore.py` `STATE_SPECS` and `writer_census_for_root()` to
+classify `provenance/` as a required Tier-1 durable path, update
+`docs/RECOVER.md`, and add a separate provenance validator. The registry
+manifest validates store graph/commitment integrity; `.convmem-backup-evidence.json`
+remains capture evidence and does not replace that validator. The preflight must
+run both contracts before a recovered registry can publish.
+
 Likely surfaces after re-trace:
 
 - new repository-root provenance policy/serialization module (`provenance.py`,

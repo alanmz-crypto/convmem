@@ -140,6 +140,17 @@ untrusted evidence with a `provenance_store_unavailable` degraded state. An
 individual missing parent still produces R8's per-assertion `untrusted` result,
 but that result is not a substitute for completing the bulk store recovery.
 
+The future implementation must extend the existing complete-data-v2 restore
+contract: `complete_data_restore.py`'s closed `STATE_SPECS` and
+`writer_census_for_root()` must name `provenance/` as a required Tier-1 durable
+path, and `docs/RECOVER.md` must classify a valid registry as part of the
+required durable recovery set. The registry manifest is not a replacement for
+`.convmem-backup-evidence.json`: the former is authoritative store integrity
+and graph evidence, while the latter remains backup-capture evidence only. A
+separate provenance validator is therefore required, with the restore
+preflight invoking it after top-level path classification and before recovered
+assertion publication.
+
 ## 3. Repository-grounded problem statement
 
 The following are current behaviors on the baseline revision, not hypothetical
