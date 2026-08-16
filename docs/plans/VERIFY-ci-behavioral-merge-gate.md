@@ -19,14 +19,15 @@ Authority:    Post-implementation evidence; do not treat prior chat claims as pr
 **Workflow run:** [Pylint run 31875391865](https://github.com/alanmz-crypto/convmem/actions/runs/31875391865)
 
 **Architecture:** [`ARCHITECTURE-ci-behavioral-merge-gate.md`](ARCHITECTURE-ci-behavioral-merge-gate.md)
-**Goal:** prove what shipped, identify what is still unproven, and avoid closing
-the arc until the negative-control experiment demonstrates enforcement.
+**Goal:** prove what shipped, identify what is still unproven, and record the
+negative-control experiment that demonstrates enforcement.
 
 ## Human consequence
 
 **Consequence:** The ordinary merge path now requires both behavioral pytest and
-Pylint status checks, but the closeout remains incomplete until a known-bad PR
-is observed to be blocked.
+Pylint status checks, and a known-bad PR has now been observed to be blocked.
+The technical evidence closeout is complete; Ryan still owns the documentation
+branch's merge decision.
 
 | | |
 |---|---|
@@ -36,8 +37,8 @@ is observed to be blocked.
 | **Why** | Existing behavioral tests were not previously merge-gating |
 | **How** | GitHub required-status checks reject an ordinary merge when either is not green |
 
-**TL;DR:** Shipped behavior is verified green; enforcement remains
-`BLOCKED_ON_RYAN` pending one disposable failing PR.
+**TL;DR:** Shipped behavior is verified green and the negative control proved
+that ordinary merge is blocked by a failing required pytest check.
 
 ## Scope lock
 
@@ -76,45 +77,38 @@ is observed to be blocked.
 
 ## V3 — Negative control
 
-**Status: `BLOCKED_ON_RYAN`.** This requires an external GitHub mutation and
-observation cycle that is not performed by this documentation pass.
+**Status: `PASS`.** The experiment used disposable PR [#188](https://github.com/alanmz-crypto/convmem/pull/188),
+then closed it without merge and deleted its branch.
 
-Ryan's one-shot procedure:
+| ID | Check | Result | Evidence |
+|----|-------|--------|----------|
+| V3a | Deliberately failing assertion fails locally | **PASS** | Commit `02ee739`; targeted run: 9 passed, 1 failed |
+| V3b | Disposable PR targets `main` at the tested tip | **PASS** | PR #188; head `02ee7392645e8d324c0aaa3fcc62fce610507b7c` |
+| V3c | Required pytest check turns red | **PASS** | [`pytest (3.12)` failed](https://github.com/alanmz-crypto/convmem/actions/runs/31920649555/job/95099894863) |
+| V3d | Ordinary non-bypass merge path is unsatisfied | **PASS** | PR #188 `mergeStateStatus=BLOCKED`; `mergeable=MERGEABLE` |
+| V3e | Break-glass bypass is distinguished and untouched | **PASS** | Ruleset reports `current_user_can_bypass=always`; bypass not exercised |
+| V3f | Disposable PR and branch are removed without merge | **PASS** | PR #188 closed; remote and local branch deleted |
 
-1. Create a disposable branch from current `main`.
-2. Add one deliberate `assert False, "CI gate negative control"` to an existing
-   test, commit it, and push it explicitly.
-3. Open a PR targeting `main`; record the PR URL, head SHA, and Actions run URL.
-4. Confirm `pytest (3.12)` is red and capture the failed job link.
-5. Confirm the PR's ordinary, non-bypass merge path is unsatisfied or blocked by
-   the required failing status; record that status evidence.
-6. If GitHub presents the repository-role bypass option, record it as the
-   expected break-glass capability. Do not exercise it merely to test the gate.
-7. Close the PR without merging, delete the disposable branch, and remove the
-   deliberate failure from any local copy.
-
-The experiment passes only when the same disposable PR tip shows both a failed
-required pytest result and an unsatisfied ordinary merge path. The existence of
-the privileged bypass is expected and does not invalidate the gate; exercising
-that bypass would not be part of this experiment. A passing workflow on #187 is
-not a negative-control result.
+The experiment passes because the same PR tip showed a failed required pytest
+result and a blocked ordinary merge path. The privileged bypass is expected
+break-glass capability, not a failure of the gate, and was not exercised.
 
 ## V4 — Independent sign-off
 
 | ID | Check | Result |
 |----|-------|--------|
 | V4a | All shipped implementation and ruleset checks above remain true | **PASS** |
-| V4b | Negative control proves a bad candidate is blocked | **BLOCKED_ON_RYAN** |
-| V4c | Arc may be called fully closed | **BLOCKED_ON_RYAN** |
+| V4b | Negative control proves a bad candidate is blocked | **PASS** |
+| V4c | Arc CI Kryptonite evidence package is complete | **PASS**; Ryan docs-merge GATE remains |
 
 ## Evidence log
 
 ```text
-VERIFY-ci-behavioral-merge-gate — merge c2c6429 — Codex — 2026-08-15
+VERIFY-ci-behavioral-merge-gate — merge c2c6429; negative control 02ee739 — Codex — 2026-08-16
 V0: PASS — PR #187 run 31875391865 passed pylint (3.12) and pytest (3.12).
 V1: PASS — Protect Main ruleset 19156572 requires both contexts strictly.
 V2: PASS — advisory manifest added; enforcement intentionally deferred.
-V3: BLOCKED_ON_RYAN — disposable failing PR and merge-refusal observation not run.
-Mechanical: PASS for shipped state; closeout: BLOCKED_ON_RYAN.
-Sign-off: Ryan must perform or authorize the external negative-control cycle.
+V3: PASS — PR #188 run 31920649555 failed pytest (3.12); ordinary merge was BLOCKED; bypass unused.
+Mechanical: PASS; Arc CI Kryptonite evidence closeout complete.
+Sign-off: Mendel PASS at review target 062750f; Ryan authorized and observed the negative control; docs merge remains Ryan GATE.
 ```

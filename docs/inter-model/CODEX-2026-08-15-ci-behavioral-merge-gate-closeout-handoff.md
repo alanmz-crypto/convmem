@@ -12,7 +12,7 @@ external evidence step without reopening the shipped CI implementation.
 
 | Field | Value |
 |---|---|
-| **State** | `DOCS_READY__NEGATIVE_CONTROL_PENDING` |
+| **State** | `NEGATIVE_CONTROL_PASS__READY_FOR_RYAN_DOCS_GATE` |
 | **Branch** | `plan/2026-08-15-ci-behavioral-merge-gate-closeout` |
 | **Review target** | Current head of `plan/2026-08-15-ci-behavioral-merge-gate-closeout`; reviewer must record the exact SHA from `git rev-parse HEAD` |
 | **Push status** | Pushed to `origin` with the explicit branch ref |
@@ -30,9 +30,10 @@ The active `Protect Main` ruleset (`19156572`) requires exactly `pylint (3.12)`
 and `pytest (3.12)` under strict status policy. The PR's CodeQL checks passed,
 but CodeQL is not currently a required status in this ruleset.
 
-**Honest boundary:** the implementation is live and required for ordinary
-merges, but no deliberate failing PR has yet demonstrated that the required
-pytest status turns red and that ordinary merge is refused.
+**Closeout result:** a deliberate failing PR has now demonstrated that the
+required pytest status turns red and that ordinary merge is refused. The
+technical evidence package is complete; Ryan's documentation-branch merge
+decision remains the final process gate.
 
 ## What Codex added
 
@@ -46,7 +47,7 @@ The closeout package is a docs-and-inventory change only:
    not wired into CI in v1.
 3. [`docs/plans/VERIFY-ci-behavioral-merge-gate.md`](../plans/VERIFY-ci-behavioral-merge-gate.md)
    binds the shipped evidence to PR #187, workflow run `31875391865`, ruleset
-   `19156572`, and the pending negative control.
+   `19156572`, and completed negative-control PR #188.
 4. [`docs/inter-model/LATEST.md`](LATEST.md) now points to this handoff.
 
 Commit `91bb4a5` contains the architecture, VERIFY, manifest, and initial
@@ -59,6 +60,13 @@ planning handoff.
 - PR [#187](https://github.com/alanmz-crypto/convmem/pull/187) is merged.
 - [Workflow run 31875391865](https://github.com/alanmz-crypto/convmem/actions/runs/31875391865)
   passed both `pylint (3.12)` and `pytest (3.12)`.
+- Disposable [PR #188](https://github.com/alanmz-crypto/convmem/pull/188) tested
+  head `02ee7392645e8d324c0aaa3fcc62fce610507b7c`.
+- [PR #188 pytest job](https://github.com/alanmz-crypto/convmem/actions/runs/31920649555/job/95099894863)
+  failed as intended; Pylint passed and the ordinary merge state was `BLOCKED`.
+- The repository-role bypass was visible as expected and was not exercised.
+- PR #188 was closed without merge; its remote and local disposable branches
+  and worktree were deleted.
 - `Protect Main` is active for `main`; required status policy is strict.
 - `git diff --check` passed for the package.
 - All 15 manifest paths exist on the branch.
@@ -67,30 +75,19 @@ planning handoff.
 
 No runtime code, workflow, ruleset, or production data was changed by Codex.
 
-## Remaining action — Ryan-controlled negative control
+## Closeout result — negative control complete
 
-Do not create or push a deliberate failing PR without Ryan's explicit external
-change authorization. When authorized, use a disposable branch from current
-`main`:
+The Ryan-authorized disposable experiment is recorded in
+[`VERIFY-ci-behavioral-merge-gate.md`](../plans/VERIFY-ci-behavioral-merge-gate.md):
 
-1. Add `assert False, "CI gate negative control"` to an existing tracked test.
-2. Commit and push the disposable branch with an explicit refspec.
-3. Open a PR targeting `main` and record its URL, head SHA, and Actions run URL.
-4. Confirm `pytest (3.12)` is red for that exact tip.
-5. Confirm the ordinary, non-bypass merge path is unsatisfied or blocked by the
-   required failing status; record that status evidence.
-6. If GitHub shows Ryan's repository-role bypass option, record it as the
-   expected break-glass capability and do not exercise it.
-7. Close the PR without merging, delete the disposable branch, and preserve the
-   run/status evidence.
+- PR #188 added one deliberate failing assertion and ran at head `02ee739`.
+- Required `pytest (3.12)` failed; Pylint and CodeQL passed.
+- The ordinary merge path reported `BLOCKED`.
+- The always-available repository-role bypass was recorded but not exercised.
+- PR #188 was closed without merge and its branch/worktree were deleted.
 
-The experiment passes only when the same disposable PR tip shows a red required
-pytest check and an unsatisfied ordinary merge path. The existence of a
-privileged bypass is expected and is not evidence that the gate failed; do not
-exercise the bypass merely to test it. Record both results in
-[`VERIFY-ci-behavioral-merge-gate.md`](../plans/VERIFY-ci-behavioral-merge-gate.md).
-Then update the `LATEST.md` bullet from `BLOCKED_ON_RYAN` to the observed result,
-commit, and push. Do not change the workflow or ruleset during that experiment.
+No further CI experiment is needed. Ryan's remaining action is review and merge
+of the documentation closeout branch.
 
 ## Review instructions for the next agent
 
@@ -99,8 +96,8 @@ commit, and push. Do not change the workflow or ruleset during that experiment.
 - Review the architecture decision against the actual workflow and ruleset;
   especially retain the distinction between passing CodeQL and required CodeQL.
 - Check that the manifest remains advisory and contains only existing paths.
-- Treat the VERIFY record as `BLOCKED_ON_RYAN`, not as a completed enforcement
-  proof.
+- Treat the VERIFY record as the completed enforcement proof; Ryan still owns
+  the documentation merge decision.
 - Do not create a `STATUS` file, add a collection gate, pin dependencies, or
   modify runtime code under this handoff; those are separate follow-up grants.
 - Do not merge or create a PR. Ryan owns the review/merge decision.
@@ -111,7 +108,7 @@ commit, and push. Do not change the workflow or ruleset during that experiment.
 - [x] Advisory invariant manifest committed and pushed
 - [x] VERIFY record committed and pushed
 - [x] `LATEST.md` points to this handoff
-- [ ] Negative-control PR observed and documented
+- [x] Negative-control PR observed and documented
 - [ ] Ryan review and merge decision
 
 **Next lane:** Ryan for external negative-control authorization and final gate;
