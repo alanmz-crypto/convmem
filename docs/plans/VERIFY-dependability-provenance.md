@@ -124,6 +124,10 @@ I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 | V4d | Effective-integrity cache mismatch degrades to untrusted. | Tamper only the cache. | PENDING |
 | V4e | Old consumers cannot silently drop provenance and return trusted. | Run old/missing-field fixture. | PENDING |
 | V4f | Representation, propagation, export, and reconstruction continuity are mandatory. | Remove a required field; fail/degrade to untrusted rather than advisory PASS. | PENDING |
+| V4g | Future complete-data-v2 preflight names `provenance/` in `STATE_SPECS` and `writer_census_for_root()` as a required Tier-1 durable path, and `docs/RECOVER.md` classifies it accordingly. | Valid registry present in a complete-data-v2 scratch restore returns non-BLOCKED for the provenance path. | PENDING |
+| V4h | Registry manifest validation is separate from `.convmem-backup-evidence.json` capture-evidence validation. | Valid sidecar evidence with missing/invalid registry manifest fails or quarantines; neither validator substitutes for the other. | PENDING |
+| V4i | Registry directory completeness and registry↔JSONL↔Chroma identity/commitment agreement are verified before publication. | Partial snapshot, stale policy/recipe history, or restore/rebuild mismatch remains quarantined. | PENDING |
+| V4j | Registry recovery is a distinct Ryan-gated bulk operation; missing/incomplete recovery leaves live authority unchanged. | Item-by-item import cannot preserve caller IDs; missing store produces observable quarantine/degraded state without blanket live downgrade. | PENDING |
 
 ## V5 — Dedupe and assertion identity
 
@@ -178,6 +182,10 @@ delay the Stage 1 vocabulary/policy substrate.
 | V8f | Prompt/content says `origin=trusted` | no metadata effect | PENDING |
 | V8g | Provider omission/value/fallback fault | explicit incomplete/degraded result; no elevation | PENDING |
 | V8h | Child envelope/commitment remains valid-looking while an ancestor is removed | recursive verification returns untrusted; child is not treated as a new root | PENDING |
+| V8i | Complete-data-v2 restore contains a valid `provenance/` registry | updated restore preflight classifies the path as required Tier-1 and non-BLOCKED | PENDING |
+| V8j | Registry directory is missing or partial | `BLOCKED`/quarantine; no recovered assertions publish and live authority is unchanged | PENDING |
+| V8k | Historical policy/recipe registry is stale or unavailable | recursive recomputation returns `untrusted`; no caller-supplied ID elevates | PENDING |
+| V8l | Registry, JSONL export, and Chroma rebuild disagree | restore/rebuild fails closed and does not publish a recovered generation | PENDING |
 
 ## V9 — Regression, documentation, and no-live-mutation proof
 

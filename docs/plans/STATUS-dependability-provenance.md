@@ -58,6 +58,7 @@ decisions.
 | `docs/plans/ARCHITECTURE-dependability-provenance.md` | Drafted on the planning branch; review required. |
 | `docs/plans/EXECUTION-dependability-provenance.md` | Stage 1 decomposition drafted; explicitly not authorized. |
 | `docs/plans/VERIFY-dependability-provenance.md` | Planning stub with predeclared properties; no evidence yet. |
+| `CONVMEM_DATA_ROOT/provenance/` | Planned authoritative registry; restore-preflight classification and validator integration remain future implementation work. |
 | Normal ingest/distillation | Runtime exists on `main`; rendered/truncated input and provenance are not completely bound. |
 | Direct inter-model indexing | Runtime exists; origin fields are caller claims and exported units lose `source_type`. |
 | Exact/semantic dedupe | Runtime exists; content/canonical choice can erase an independent assertion. |
@@ -159,6 +160,7 @@ Do not append session narrative.
 | Date | Lane | Milestone change |
 |---|---|---|
 | 2026-08-15 | Codex Sol-High | Tightened monitor-minted identity, idempotent replay, and invalid-ID/commitment failure semantics for final lock review. |
+| 2026-08-15 | Codex Sol-High | Added the restore-preflight STATE_SPECS/writer-census and separate-validator contract for the provenance registry; implementation remains unauthorized. |
 | 2026-08-15 | Codex Sol-High | Retained T1–T5 and strengthened T3 provenance, acknowledgement, and migration boundaries; clean-SHA rereview required. |
 
 **TL;DR:** Sol-High passes the strengthened T3 provenance architecture; same-SHA

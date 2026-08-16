@@ -74,8 +74,8 @@ The corrected plan requires:
 
 The required negative controls are listed in the verification package:
 
-- [V4g–V4j: registry scope, manifest completeness, bulk recovery, and safe missing-store behavior](../plans/VERIFY-dependability-provenance.md)
-- [V8h–V8l: missing store, partial snapshot, stale policy/recipe history, and restore/rebuild mismatch](../plans/VERIFY-dependability-provenance.md)
+- [V4g–V4j: restore-preflight path classification, separate validator, completeness, and bulk recovery](../plans/VERIFY-dependability-provenance.md#v4--representation-continuity)
+- [V8h–V8l: missing/partial registry, stale history, and restore/rebuild mismatch controls](../plans/VERIFY-dependability-provenance.md#v8--laundering-and-lifecycle-faults)
 - [R8: recursive missing-parent/history/cycle/mismatch behavior](../plans/ARCHITECTURE-dependability-provenance.md#r8--recursive-verification-fails-closed)
 
 ## Code evidence map for re-trace
