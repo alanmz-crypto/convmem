@@ -46,8 +46,9 @@ explicitly answer:
 2. Is ruleset-only enforcement, intentionally inheriting the current GHAS
    `CodeQL` results-check failure semantics but without adding or changing a
    native alert-threshold rule, the intended scope?
-3. Is the malformed-workflow disposable control acceptable, with a fallback
-   control if it does not produce a red/missing required context?
+3. Is the isolated malformed-workflow disposable control acceptable, with the
+   explicit stop/new-Ryan-authorization rule if it does not produce a
+   red/missing required context?
 4. Is Cursor authorized to mutate `Protect Main` and, separately, to create the
    disposable PR/control resources?
 
@@ -146,8 +147,10 @@ fail. The fixture must be isolated from product code and must not contain a
 real long-lived vulnerability. Capture the exact file, branch tip, PR number,
 check-run URLs, conclusion, and ordinary merge state.
 
-The control passes if a required CodeQL context is red or absent and the
-ordinary merge path is blocked. The exact primary fixture is:
+The control passes only if a required CodeQL context is red or absent, the
+pre-existing `pylint (3.12)` and `pytest (3.12)` contexts are successful, and
+the ordinary merge path is blocked. The exact and only currently authorized
+fixture is:
 
 ```text
 path: .github/workflows/codeql-negative-control.yml
@@ -155,18 +158,9 @@ content: name: [codeql-negative-control
 ```
 
 That deliberately malformed workflow YAML is disposable and must never reach
-`main`. If it is accepted without an analyzer failure, close the PR without
-merge and use this pre-approved concrete fallback under the same disposable
-grant:
-
-```text
-path: .github/workflows/pylint.yml
-change: append the single malformed YAML line `: [codeql-negative-control`
-```
-
-If both concrete fixtures fail to produce a red/missing required CodeQL
-context, stop and request a new Ryan authorization before inventing any other
-failure mechanism. The fallback must be documented with the same evidence; an
+`main`. If it is accepted without a meaningful analyzer failure, close/delete
+the PR and request a new Ryan authorization for a different isolated fixture.
+No fallback that edits an established workflow is pre-authorized; an
 unobserved hypothesis is not a pass.
 
 Do not use the repository-role bypass, merge the PR, cancel a check to simulate

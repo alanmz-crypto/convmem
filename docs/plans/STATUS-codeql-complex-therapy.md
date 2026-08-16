@@ -54,9 +54,9 @@ Execute phase.
 |---|---|
 | `docs/inter-model/CURSOR-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Complete input handoff; planning authorized, Execute not authorized |
 | `docs/plans/ARCHITECTURE-codeql-complex-therapy.md` | Corrected on this planning branch; all-three context decision and inherited GHAS result semantics |
-| `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate and concrete fixtures |
+| `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate and isolated negative-control stop |
 | `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V7 evidence matrix, future Execute rows unexecuted |
-| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; conditional-pass corrections ready for Kiro/Ryan review |
+| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; final cleanup ready for Kiro/Ryan review |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
 | GitHub `Protect Main` ruleset `19156572` | Active; currently requires only Pylint/Pytest; no CodeQL contexts yet |
@@ -71,7 +71,7 @@ Execute phase.
 | Live context capture | **DONE** | Fresh PR #197: `Analyze (actions)`, `Analyze (python)`, `CodeQL`; Execute must repeat before PATCH |
 | Architecture package | **CORRECTED on planning branch** | Kiro/Ryan review |
 | Execution package | **CORRECTED on planning branch** | Kiro/Ryan review and Execute grant |
-| VERIFY package | **CORRECTED on planning branch** | Execute evidence |
+| VERIFY package | **CORRECTED on planning branch** | Execute evidence; CodeQL causality required |
 | STATUS package/list updates | **CORRECTED on planning branch** | Review/merge |
 | Ruleset mutation | **NOT STARTED** | Separate Ryan Execute authorization; Cursor |
 | Normal positive control | **NOT STARTED** | Ruleset mutation and a green PR |
@@ -162,7 +162,8 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 |---|---|---|
 | 2026-08-16 | Codex | Created the planning arc brief with live CodeQL contexts and separate Execute/disposable gates |
 | 2026-08-16 | Codex | Applied conditional-pass corrections: inherited GHAS result semantics, full-SHA binding, strict-freshness wording, fresh pre-PATCH identity gate, and concrete disposable fixtures |
+| 2026-08-16 | Codex | Removed the tracked-workflow fallback and required CodeQL-independent causality with Pylint/Pytest successful |
 
-**TL;DR:** Conditional-pass corrections are complete on the plan branch; CodeQL
-remains advisory in the live ruleset, and the next action is Kiro/Ryan review of
-the full pushed correction SHA before Cursor Execute.
+**TL;DR:** Final cleanup is complete on the plan branch; CodeQL remains advisory
+in the live ruleset, and the next action is Kiro adversarial review of the full
+pushed cleanup SHA before Ryan Execute authorization.

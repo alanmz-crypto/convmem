@@ -96,11 +96,11 @@ claim that the future row has already passed.
 | ID | Check | Expected evidence | Planning state |
 |---|---|---|---|
 | V4a | Ryan authorized disposable control | Authorization names the PR/branch purpose and permits create/close/delete only | PLANNED — separate Ryan gate |
-| V4b | Analyzer failure fixture is isolated | Primary exact fixture is `.github/workflows/codeql-negative-control.yml` with `name: [codeql-negative-control`; fallback is the exact malformed line appended to `.github/workflows/pylint.yml`; no product/runtime/data change | PLANNED |
+| V4b | Analyzer failure fixture is isolated | The only currently authorized fixture is `.github/workflows/codeql-negative-control.yml` with `name: [codeql-negative-control`; no established workflow, product/runtime, or data change | PLANNED |
 | V4c | Required CodeQL context is red or missing | `Analyze (actions)`, `Analyze (python)`, or `CodeQL` is failed/absent in the check-run evidence; fixture mechanism is recorded | PLANNED |
-| V4d | Ordinary merge is blocked | PR `mergeStateStatus`/equivalent reports blocked or unsatisfied without bypass | PLANNED |
+| V4d | CodeQL is the independent blocking cause | At least one CodeQL-required context is red/absent, both pre-existing `pylint (3.12)` and `pytest (3.12)` contexts are successful, and PR `mergeStateStatus`/equivalent reports blocked or unsatisfied without bypass | PLANNED |
 | V4e | Inherited result semantics are recorded correctly | A green alert-only result is not red evidence; a red `CodeQL` result is valid only with its check conclusion, finding/threshold behavior, and ordinary blocked state recorded; no threshold is changed | PLANNED |
-| V4f | No invented fallback crosses authorization | If both concrete fixtures fail, stop and obtain new Ryan authorization before any third mechanism | PLANNED |
+| V4f | No unapproved fallback crosses authorization | If the isolated fixture fails to produce a meaningful CodeQL failure, or Pylint/Pytest are not successful, close/delete the disposable PR and obtain new Ryan authorization before any different fixture | PLANNED |
 
 ### V5 — restoration and no-bypass proof
 

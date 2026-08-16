@@ -132,11 +132,11 @@ the PR is never merged and the file is deleted with the disposable branch.
 
 The control is valid only if live logs show one of the required CodeQL contexts
 red (or the required context never appears and strict protection blocks the
-PR) and the ordinary merge state is blocked. If the malformed-workflow fixture
-is accepted without an analyzer failure, it is not evidence. Cursor must use a
-second disposable control that causes a reproducible `Analyze (python)` or
-CodeQL analysis failure, record the exact fixture and run evidence, and still
-leave no change on `main`.
+PR), the existing Pylint/Pytest contexts remain successful, and the ordinary
+merge state is blocked. If the isolated malformed-workflow fixture is accepted
+without a meaningful CodeQL analyzer failure, it is not evidence: close/delete
+the disposable PR and request a new Ryan authorization for a different
+isolated fixture. No tracked predecessor workflow is a pre-authorized fallback.
 
 A source-level vulnerability alone is not an acceptable substitute: a finding
 may be uploaded while the CodeQL check remains green. Likewise, admin bypass,
