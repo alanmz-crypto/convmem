@@ -60,6 +60,7 @@ claim that the future row has already passed.
 | V0c | No implementation slipped into planning | Diff contains only planning docs and required status-list/LATEST updates; no workflow/ruleset mutation | PASS at planning tip |
 | V0d | Ryan authorized external Execute | Explicit Ryan grant names ruleset `19156572`, final context set, and disposable-control phase | PLANNED — Ryan gate |
 | V0e | Same revision is used for review and evidence | Kiro reviews the exact full pushed correction tip named in the Codex handoff; no stale branch claim | PLANNED |
+| V0f | Required-check latency is consciously accepted | Ryan records acceptance of all-three CodeQL contexts on ordinary/documentation-only PRs, with PR #197 observations (40s/56s/3s CodeQL surfaces) treated as evidence, not an SLA | PLANNED — Ryan planning gate |
 
 ### V1 — live baseline and context identity
 
@@ -73,6 +74,7 @@ claim that the future row has already passed.
 | V1f | GHAS result context is exact | `CodeQL`, GitHub Advanced Security app/integration `57789` | PASS — fresh PR #197 head `740424884f8921f1586f6b82648a0a290be40836` |
 | V1g | Contexts are currently advisory | Pre-Execute ruleset has no three CodeQL entries despite fresh PR #197 passing them | PASS — live capture |
 | V1h | Context identities are fresh immediately before mutation | Execute resolves the newest current PR run and rechecks names, app IDs, head SHA, and URLs in the same session before PATCH; mismatch stops mutation | PLANNED — mandatory stop-before-PATCH gate |
+| V1i | Observed latency is documented without overclaim | PR #197 records approximately 40s `Analyze (actions)`, 56s `Analyze (python)`, and 3s `CodeQL`; no universal timing promise is inferred | PASS — planning evidence |
 
 ### V2 — ruleset enforcement implementation
 

@@ -165,6 +165,23 @@ Out of scope:
   changes;
 * exercising or changing the repository-role bypass.
 
+## Product decision required: required-check latency
+
+Requiring all three CodeQL contexts is also a latency decision. Default-setup
+CodeQL runs on pull requests, including documentation-only PRs; adding these
+contexts to `Protect Main` makes their completion part of every ordinary merge
+eligibility calculation. On fresh planning-time PR #197, the observed CodeQL
+surfaces took approximately 40 seconds for `Analyze (actions)`, 56 seconds for
+`Analyze (python)`, and 3 seconds for the GHAS `CodeQL` result. These jobs ran
+alongside the existing Pylint/Pytest checks, which took approximately 5m42s and
+4m16s on that run; these are observations, not an SLA.
+
+The all-three decision therefore accepts the operational cost and queue/wait
+surface of CodeQL on every PR in exchange for explicit analyzer and result
+coverage. Ryan must consciously accept that trade-off during planning review,
+or request a different required-context policy before Execute. No Execute
+authorization is complete until this latency question is answered.
+
 ## Acceptance conditions for Execute
 
 Execution may start only after Ryan reviews this package and separately grants
@@ -173,13 +190,14 @@ only when:
 
 1. the post-patch ruleset contains all five exact required contexts and still
    has strict policy enabled;
-2. a normal PR is green on all five contexts;
-3. a disposable CodeQL analysis failure or missing required context produces an
+2. Ryan has accepted the required-check latency trade-off for ordinary PRs;
+3. a normal PR is green on all five contexts;
+4. a disposable CodeQL analysis failure or missing required context produces an
    ordinary blocked merge;
-4. the disposable resources are closed/removed without entering `main`;
-5. restoration leaves the default CodeQL setup healthy and the ruleset unchanged
+5. the disposable resources are closed/removed without entering `main`;
+6. restoration leaves the default CodeQL setup healthy and the ruleset unchanged
    except for the intended required contexts; and
-6. VERIFY has exact revisions, URLs, ruleset snapshots, and Kiro/Ryan review
+7. VERIFY has exact revisions, URLs, ruleset snapshots, and Kiro/Ryan review
    outcomes.
 
 **TL;DR:** Require `Analyze (actions)`, `Analyze (python)`, and `CodeQL` in the

@@ -28,6 +28,8 @@ Codex has produced:
   preflight, positive, negative, restoration, and sign-off rows; and
 * [`STATUS-codeql-complex-therapy.md`](STATUS-codeql-complex-therapy.md) as the
   current arc brief.
+* [`CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md`](../inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md)
+  as the explicit SHA-bound carrier for Kiro/Ryan review.
 
 The live planning evidence was taken from ruleset `19156572`, historical PR
 #191, and fresh planning-time PR #197/check-runs. The planning branch contains
@@ -49,7 +51,10 @@ explicitly answer:
 3. Is the isolated malformed-workflow disposable control acceptable, with the
    explicit stop/new-Ryan-authorization rule if it does not produce a
    red/missing required context?
-4. Is Cursor authorized to mutate `Protect Main` and, separately, to create the
+4. Does Ryan accept the latency trade-off of requiring all three CodeQL
+   contexts on ordinary PRs, including documentation-only PRs, based on the
+   observed PR #197 timings recorded in ARCHITECTURE?
+5. Is Cursor authorized to mutate `Protect Main` and, separately, to create the
    disposable PR/control resources?
 
 Until those answers are granted, Cursor must not call a mutating ruleset API,

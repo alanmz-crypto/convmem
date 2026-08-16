@@ -56,7 +56,8 @@ Execute phase.
 | `docs/plans/ARCHITECTURE-codeql-complex-therapy.md` | Corrected on this planning branch; all-three context decision and inherited GHAS result semantics |
 | `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate and isolated negative-control stop |
 | `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V7 evidence matrix, future Execute rows unexecuted |
-| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; final cleanup ready for Kiro/Ryan review |
+| `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `45046fafd0aa918042a89ae7e9a85fb707ce55d1`; additive carrier for Kiro/Ryan |
+| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; SHA-bound handoff and latency question ready for Kiro/Ryan review |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
 | GitHub `Protect Main` ruleset `19156572` | Active; currently requires only Pylint/Pytest; no CodeQL contexts yet |
@@ -68,11 +69,13 @@ Execute phase.
 | Milestone | Status | Blocking on |
 |---|---|---|
 | Planning authorization | **DONE** | Ryan authorized Codex planning on 2026-08-16 |
+| Required-check latency decision | **NOT RECORDED** | Ryan must accept the all-three CodeQL wait/queue trade-off before Execute |
 | Live context capture | **DONE** | Fresh PR #197: `Analyze (actions)`, `Analyze (python)`, `CodeQL`; Execute must repeat before PATCH |
 | Architecture package | **CORRECTED on planning branch** | Kiro/Ryan review |
 | Execution package | **CORRECTED on planning branch** | Kiro/Ryan review and Execute grant |
 | VERIFY package | **CORRECTED on planning branch** | Execute evidence; CodeQL causality required |
 | STATUS package/list updates | **CORRECTED on planning branch** | Review/merge |
+| SHA-bound Codex handoff | **READY on planning branch** | Kiro adversarial review |
 | Ruleset mutation | **NOT STARTED** | Separate Ryan Execute authorization; Cursor |
 | Normal positive control | **NOT STARTED** | Ruleset mutation and a green PR |
 | Disposable negative control | **NOT STARTED** | Separate Ryan disposable-control authorization |
@@ -80,7 +83,8 @@ Execute phase.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-If you are reviewing, inspect the four planning files and verify that the
+If you are reviewing, inspect the four planning files plus the SHA-bound Codex
+handoff and verify that the
 all-three context decision is supported by fresh PR/check-run evidence, that
 requiring `CodeQL` intentionally inherits its current results-check failure
 semantics, that required-status membership is distinguished from strict
@@ -96,8 +100,9 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 
 ## 6. What Remains Before "Live" (sequential)
 
-- [ ] Ryan reviews and accepts the architecture, execution, VERIFY, and STATUS
-  package.
+- [ ] Kiro/Ryan review the architecture, execution, VERIFY, STATUS, and
+  SHA-bound handoff package; Ryan records acceptance of the required-check
+  latency trade-off.
 - [ ] Ryan separately authorizes Cursor to patch `Protect Main` with the exact
   five-context required-status set.
 - [ ] Cursor captures before/after ruleset snapshots and proves a normal green
@@ -144,6 +149,7 @@ separate decisions.
 | Architecture | [`docs/plans/ARCHITECTURE-codeql-complex-therapy.md`](ARCHITECTURE-codeql-complex-therapy.md) |
 | Execution | [`docs/plans/EXECUTION-codeql-complex-therapy.md`](EXECUTION-codeql-complex-therapy.md) |
 | Verification | [`docs/plans/VERIFY-codeql-complex-therapy.md`](VERIFY-codeql-complex-therapy.md) |
+| Ryan/Kiro handoff | [`docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md`](../inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md) |
 | Predecessor gate | [`docs/plans/ARCHITECTURE-ci-behavioral-merge-gate.md`](ARCHITECTURE-ci-behavioral-merge-gate.md) |
 | Predecessor evidence | [`docs/plans/VERIFY-ci-behavioral-merge-gate.md`](VERIFY-ci-behavioral-merge-gate.md) |
 | Pinwheel boundary | [`docs/plans/VERIFY-pinwheel-pytest-ci.md`](VERIFY-pinwheel-pytest-ci.md) |
@@ -163,7 +169,8 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Codex | Created the planning arc brief with live CodeQL contexts and separate Execute/disposable gates |
 | 2026-08-16 | Codex | Applied conditional-pass corrections: inherited GHAS result semantics, full-SHA binding, strict-freshness wording, fresh pre-PATCH identity gate, and concrete disposable fixtures |
 | 2026-08-16 | Codex | Removed the tracked-workflow fallback and required CodeQL-independent causality with Pylint/Pytest successful |
+| 2026-08-16 | Codex | Added SHA-bound Ryan/Kiro handoff and explicit required-check latency decision gate |
 
-**TL;DR:** Final cleanup is complete on the plan branch; CodeQL remains advisory
-in the live ruleset, and the next action is Kiro adversarial review of the full
-pushed cleanup SHA before Ryan Execute authorization.
+**TL;DR:** The SHA-bound handoff and latency gate are now documented; CodeQL
+remains advisory in the live ruleset, and the next action is Kiro adversarial
+review before Ryan Execute authorization.
