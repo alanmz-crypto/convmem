@@ -97,6 +97,14 @@ can be sealed, and [V4m](../plans/VERIFY-dependability-provenance.md#v4--represe
 checks the forbidden incoherent candidate while leaving the consistency
 mechanism open.
 
+P1 now has an explicit planning precondition to census every mutator affecting
+manifest-bound authority components and either cover it with one consistency
+protocol or classify it outside the provenance authority set. Existing Restic
+freshness gates, shared writer leases, process locks, and exclusive leases are
+not evidence of V4m without that census and contract. This does not authorize
+CG-1, backup/restore, Shadow, or wiring the existing exclusive-writer primitive;
+that primitive remains implementation context only.
+
 ## Code evidence map for re-trace
 
 Claude previously verified the repository claims. Please recheck the relevant
