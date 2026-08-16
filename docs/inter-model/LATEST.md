@@ -1,10 +1,12 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-16 (CG-2 #186 merged + legacy-only soak IN_PROGRESS; CI merge gate #187 on `main`)
+**Updated:** 2026-08-16 (CodeQL Complex Therapy Grant A CLOSED/PASS; CG-2 soak IN_PROGRESS)
 
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Recently merged / settled (2026-08-08 through 2026-08-16)
+
+- **CodeQL Complex Therapy — Grant A CLOSED/PASS (2026-08-16):** Who/What: `Protect Main` ruleset `19156572` now requires pylint, pytest, `Analyze (actions)`, `Analyze (python)`, and `CodeQL` with correct integration IDs; positive control PR [#198](https://github.com/alanmz-crypto/convmem/pull/198). When: ruleset mutated 2026-08-16; evidence closeout [`e023f55`](https://github.com/alanmz-crypto/convmem/commit/e023f55b4d344eea9abffda3bfc53d6b103c90a1) Kiro-reviewed; Ryan ratified PUT method deviation same day. Why: make CodeQL part of ordinary merge protection. How: live ruleset at [`19156572`](https://api.github.com/repos/alanmz-crypto/convmem/rulesets/19156572); evidence in [`docs/grant-a-evidence/`](https://github.com/alanmz-crypto/convmem/tree/feat/2026-08-16-2026-08-16-codeql-grant-a/docs/grant-a-evidence). **Grant B remains withheld** — no disposable negative control or producer probe authorized. **Resume state:** `GRANT_A_CLOSED` — await separate Ryan Grant B authorization.
 
 - **Pinwheel Pytest CI — CLOSED (2026-08-16, [#191](https://github.com/alanmz-crypto/convmem/pull/191) + disposable [#192](https://github.com/alanmz-crypto/convmem/pull/192)–[#194](https://github.com/alanmz-crypto/convmem/pull/194)):** Who/What: pinned `pytest==9.1.1`, 16-module checker, 21 contract tests. When: impl merged `857a3a2`; disposable + VERIFY [#195](https://github.com/alanmz-crypto/convmem/pull/195); Kiro V7a PASS; Ryan arc-close. Why: reproducible pytest CI after Kryptonite. How: gate live on `main` `d495e4b`. [`VERIFY-pinwheel-pytest-ci.md`](../plans/VERIFY-pinwheel-pytest-ci.md). **Resume state:** `CLOSED` — no further Pinwheel work.
 
