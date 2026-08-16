@@ -76,7 +76,7 @@ V7a. **CodeQL Complex Therapy** is the planned successor arc — separate grant.
 - [x] Implementation merged ([#191](https://github.com/alanmz-crypto/convmem/pull/191) → `857a3a2`).
 - [x] Disposable negative controls ([#192](https://github.com/alanmz-crypto/convmem/pull/192)–[#194](https://github.com/alanmz-crypto/convmem/pull/194)); branches deleted.
 - [x] VERIFY updated with GitHub evidence.
-- [ ] Kiro V7a written sign-off at `857a3a2`.
+- [x] Kiro V7a PASS at `857a3a2` (2026-08-16).
 - [ ] Ryan arc-close acknowledgment. **Gate is live** for ordinary PRs.
 
 ## 7. Hard Stops
@@ -123,3 +123,4 @@ session narrative. Add one milestone-level line below per update.
 | 2026-08-16 | Cursor | Implementation + local verification on `fix/2026-08-16-pinwheel-pytest-ci`; V0d/V3d/V5c-V6a pending external controls |
 | 2026-08-16 | Cursor | Rebased onto `3453a3f`; pin-contract gaps closed; PR [#191](https://github.com/alanmz-crypto/convmem/pull/191) opened (V3d CI_PENDING) |
 | 2026-08-16 | Cursor | Disposable controls #192–#194 PASS; VERIFY/LATEST closeout; V7a Kiro pending |
+| 2026-08-16 | Kiro | V7a PASS at merge SHA `857a3a2`; Ryan arc-close (V7b) pending |
