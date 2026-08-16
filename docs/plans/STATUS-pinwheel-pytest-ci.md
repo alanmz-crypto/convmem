@@ -46,12 +46,12 @@ successful collection.
 
 | Surface | State |
 |---|---|
-| `main` | `bc83c85d0522023ea6e404bff4aaed135c47815a`, PR #189 merge |
-| `.github/workflows/pylint.yml` | Existing Pylint and pytest jobs; pytest unpinned |
-| `tests/ci-critical-invariants.txt` | 15 advisory modules on `main`; remains 15 until implementation adds the contract test atomically |
+| `main` | `857a3a2` — Pinwheel [#191](https://github.com/alanmz-crypto/convmem/pull/191) merged |
+| `.github/workflows/pylint.yml` | Pinwheel: `pytest==9.1.1`, version logs, checker, full suite |
+| `tests/ci-critical-invariants.txt` | 16 enforced modules including `tests/test_ci_contract.py` |
 | `Protect Main` ruleset `19156572` | Active; requires exactly `pylint (3.12)` and `pytest (3.12)`; unchanged by this arc |
 | CodeQL | Passing checks observed, not required; out of scope |
-| Pinwheel implementation | Complete locally on `fix/2026-08-16-pinwheel-pytest-ci` |
+| Pinwheel implementation | **Merged** [#191](https://github.com/alanmz-crypto/convmem/pull/191) |
 | Pinwheel docs | This STATUS, Architecture, Execution, VERIFY, and handoff are the planning package |
 
 ## 4. Completion State
@@ -60,30 +60,24 @@ successful collection.
 |---|---|---|
 | Kiro architecture review | PASS with execution conditions | incorporated below |
 | ChatGPT architecture review | PASS with conditions | incorporated below |
-| Planning package | In progress on this branch | Ryan review / execution authorization |
-| Cursor CI implementation | **Complete locally** | PR + disposable controls |
-| Disposable Pinwheel negative controls | Not authorized | explicit Ryan grant |
+| Planning package | Complete on `main` | — |
+| Cursor CI implementation | **MERGED** [#191](https://github.com/alanmz-crypto/convmem/pull/191) | — |
+| Disposable Pinwheel negative controls | **PASS** | #192–#194 closed without merge |
 | CodeQL hardening | Separate follow-on arc | Pinwheel stability |
 
 ## 5. Your Role
 
-Codex owns the architecture, execution, VERIFY, and handoff records. Kiro and
-ChatGPT provide independent design review. Ryan owns execution authorization,
-disposable PR authorization, external GitHub state, and merge. Cursor owns
-implementation after Ryan's grant. No actor may alter Protect Main, CodeQL, or
-exercise the bypass under this arc.
+Pinwheel mechanical evidence is complete on `main`. **Kiro** owns V7a written
+sign-off at merge SHA `857a3a2`. **Ryan** owns arc-close acknowledgment after
+V7a. **CodeQL Complex Therapy** is the planned successor arc — separate grant.
 
 ## 6. What Remains Before "Live"
 
-- [ ] Ryan reviews this planning package and authorizes execution.
-- [x] Cursor selected `pytest==9.1.1` with execution-time venv evidence from a fresh Python 3.12
-  install and records it in the workflow contract.
-- [x] `tests/test_ci_contract.py`, checker, and 16-entry manifest added
-- [x] Focused tests pass; full suite 1348 pass with 2 isolated pre-existing failures
-- [ ] Ryan authorizes disposable Pinwheel controls and ordinary PR evidence. **PENDING**
-- [ ] Required pytest turns red for each control, ordinary merge is blocked,
-  controls are restored, and a normal green PR passes.
-- [ ] VERIFY and successor handoff are updated at the verified tip.
+- [x] Implementation merged ([#191](https://github.com/alanmz-crypto/convmem/pull/191) → `857a3a2`).
+- [x] Disposable negative controls ([#192](https://github.com/alanmz-crypto/convmem/pull/192)–[#194](https://github.com/alanmz-crypto/convmem/pull/194)); branches deleted.
+- [x] VERIFY updated with GitHub evidence.
+- [ ] Kiro V7a written sign-off at `857a3a2`.
+- [ ] Ryan arc-close acknowledgment. **Gate is live** for ordinary PRs.
 
 ## 7. Hard Stops
 
@@ -128,3 +122,4 @@ session narrative. Add one milestone-level line below per update.
 
 | 2026-08-16 | Cursor | Implementation + local verification on `fix/2026-08-16-pinwheel-pytest-ci`; V0d/V3d/V5c-V6a pending external controls |
 | 2026-08-16 | Cursor | Rebased onto `3453a3f`; pin-contract gaps closed; PR [#191](https://github.com/alanmz-crypto/convmem/pull/191) opened (V3d CI_PENDING) |
+| 2026-08-16 | Cursor | Disposable controls #192–#194 PASS; VERIFY/LATEST closeout; V7a Kiro pending |
