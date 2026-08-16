@@ -116,9 +116,20 @@ def _load_workflow(path: Path) -> dict:
 
 
 def _write_temp_workflow(data: dict) -> Path:
-    tmp = tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False)
-    yaml.safe_dump(data, tmp)
-    return Path(tmp.name)
+    with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False) as tmp:
+        yaml.safe_dump(data, tmp)
+        return Path(tmp.name)
+
+
+def _run_checker_manifest(manifest_path: Path, cwd: Path = _REPO) -> int:
+    proc = subprocess.run(
+        [sys.executable, str(_CHECKER), "--manifest", str(manifest_path)],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return proc.returncode
 
 
 def _mutate_pylint_install(data: dict, new_run: str) -> None:
@@ -286,8 +297,7 @@ class ManifestParserTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             manifest = Path(td) / "bad.txt"
             manifest.write_text("tests/../outside.py" + chr(10))
-            with self.assertRaises(SystemExit):
-                _checker._parse_manifest(manifest)
+            self.assertNotEqual(_run_checker_manifest(manifest), 0)
 
     def test_rejects_duplicate(self):
         with tempfile.TemporaryDirectory() as td:
@@ -295,25 +305,19 @@ class ManifestParserTests(unittest.TestCase):
             manifest.write_text(
                 "tests/test_ci_contract.py" + chr(10) + "tests/test_ci_contract.py" + chr(10)
             )
-            with self.assertRaises(SystemExit):
-                _checker._parse_manifest(manifest)
+            self.assertNotEqual(_run_checker_manifest(manifest), 0)
 
     def test_rejects_absolute_path(self):
         with tempfile.TemporaryDirectory() as td:
             manifest = Path(td) / "abs.txt"
             manifest.write_text("/etc/passwd" + chr(10))
-            with self.assertRaises(SystemExit):
-                _checker._parse_manifest(manifest)
+            self.assertNotEqual(_run_checker_manifest(manifest), 0)
 
     def test_missing_manifest_exits_nonzero(self):
-        proc = subprocess.run(
-            [sys.executable, str(_CHECKER), "--manifest", "tests/nonexistent-manifest.txt"],
-            cwd=_REPO,
-            capture_output=True,
-            text=True,
-            check=False,
+        self.assertNotEqual(
+            _run_checker_manifest(_REPO / "tests/nonexistent-manifest.txt"),
+            0,
         )
-        self.assertNotEqual(proc.returncode, 0)
 
 
 class CheckerSubprocessTests(unittest.TestCase):
@@ -332,7 +336,7 @@ class CheckerSubprocessTests(unittest.TestCase):
         self.assertEqual(code, 0)
         kwargs = run.call_args.kwargs
         self.assertFalse(kwargs.get("shell", False))
-        self.assertEqual(kwargs["cwd"], _checker._repo_root())
+        self.assertEqual(kwargs["cwd"], _REPO)
         self.assertEqual(kwargs["env"]["CONVMEM_CONFIG"], "/tmp/convmem-ci/config.toml")
 
     def test_collect_return_five_fails(self):
@@ -355,25 +359,39 @@ class CheckerSubprocessTests(unittest.TestCase):
 
     def test_symlink_escape_rejected(self):
         with tempfile.TemporaryDirectory() as td:
-            tests_dir = Path(td) / "tests"
+            root = Path(td)
+            tests_dir = root / "tests"
             tests_dir.mkdir()
-            outside = Path(td) / "outside.py"
+            outside = root / "outside.py"
             outside.write_text("def test_outside(): pass" + chr(10))
             link = tests_dir / "escape_link.py"
             link.symlink_to(outside)
-            with self.assertRaises(SystemExit):
-                _checker._validate_target(Path(td), "tests/escape_link.py")
+            manifest = root / "manifest.txt"
+            manifest.write_text("tests/escape_link.py" + chr(10))
+            with mock.patch(
+                "check_ci_critical_invariants._repo_root",
+                return_value=root,
+            ):
+                with self.assertRaises(SystemExit):
+                    _checker.main(["--manifest", str(manifest)])
 
     def test_in_tree_symlink_rejected(self):
         with tempfile.TemporaryDirectory() as td:
-            tests_dir = Path(td) / "tests"
+            root = Path(td)
+            tests_dir = root / "tests"
             tests_dir.mkdir()
             real = tests_dir / "real_target.py"
             real.write_text("def test_real(): pass" + chr(10))
             link = tests_dir / "alias.py"
             link.symlink_to(real)
-            with self.assertRaises(SystemExit):
-                _checker._validate_target(Path(td), "tests/alias.py")
+            manifest = root / "manifest.txt"
+            manifest.write_text("tests/alias.py" + chr(10))
+            with mock.patch(
+                "check_ci_critical_invariants._repo_root",
+                return_value=root,
+            ):
+                with self.assertRaises(SystemExit):
+                    _checker.main(["--manifest", str(manifest)])
 
 
 if __name__ == "__main__":
