@@ -1,5 +1,6 @@
-# Advisory v1 manifest for the CI behavioral merge gate.
-# One tracked pytest module per line. This file is not executed or enforced yet.
+# Enforced manifest for the CI behavioral merge gate (Pinwheel).
+# One direct tests/<filename>.py module per line — no nested subdirectories.
+# Enforced by scripts/check_ci_critical_invariants.py in the pytest CI job.
 # If a path is renamed, update this inventory in the same change.
 
 tests/test_file_generation_pointer.py
@@ -17,3 +18,4 @@ tests/test_writer_census.py
 tests/test_chroma_restore_drill.py
 tests/test_complete_data_restore.py
 tests/test_readonly_store.py
+tests/test_ci_contract.py

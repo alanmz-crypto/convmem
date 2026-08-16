@@ -1,8 +1,10 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-15 (CG-2 #186 merged + legacy-only soak IN_PROGRESS; CI merge gate #187 on `main`)
+**Updated:** 2026-08-16 (CG-2 #186 merged + legacy-only soak IN_PROGRESS; CI merge gate #187 on `main`)
 
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
+
+- **Pinwheel Pytest CI — implementation PR OPEN (2026-08-16, [#191](https://github.com/alanmz-crypto/convmem/pull/191)):** Who/What: dual `pytest==9.1.1` pin, version logs, 16-entry manifest checker, 21 executable-line CI contract tests on rebased tip `8cae19b`. When: PR opened 2026-08-16 after rebase onto `3453a3f`. Why: close unpinned pytest and silent critical-test loss from Kryptonite follow-on. How: wait for CI green on #191 (V3d); Ryan must authorize disposable controls before V5c–V5d. [`VERIFY-pinwheel-pytest-ci.md`](../plans/VERIFY-pinwheel-pytest-ci.md) · [`STATUS-pinwheel-pytest-ci.md`](../plans/STATUS-pinwheel-pytest-ci.md) · [`ADVERSARIAL-REVIEW-pinwheel-pytest-ci.md`](../plans/ADVERSARIAL-REVIEW-pinwheel-pytest-ci.md). **Resume state:** `CI_PENDING` (V3d).
 
 ## Recently merged / settled (2026-08-08 through 2026-08-15)
 
