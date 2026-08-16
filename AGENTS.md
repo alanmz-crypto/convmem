@@ -51,6 +51,28 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 
 ---
 
+## Arc identity (required)
+
+Every session working on a named arc must **know and state its arc codename** (e.g. "Arc Trapdoor Hunt", "Arc Pinwheel Pytest CI"). Full rule in `config/agent-protocol.md`; summary:
+
+1. **Discover** your arc from Ryan's prompt, branch name, STATUS file, or handoff doc. If unclear, **ask**.
+2. **Carry** — include `**Arc: <codename>**` in your first substantive response.
+3. **Stamp** — include the arc codename in every TL;DR, forward announcement, and handoff doc header.
+4. **Boundary** — do not cross into another arc's scope without Ryan's authorization.
+5. **No arc = say so** — `**Arc: none (ad-hoc)**` for routine/maintenance work.
+
+Known arc codenames (canonical list in `config/agent-protocol.md`):
+
+| Codename | Subject | State |
+|----------|---------|-------|
+| Trapdoor Hunt | Dependability & provenance trust architecture | Active |
+| Full Fathom Five | Parent five-arc dependability roadmap (FF1–FF5) | Active — frozen |
+| CI Kryptonite | Behavioral CI merge gate | **Closed** |
+| Pinwheel Pytest CI | Reproducible pytest CI | Planned |
+| CodeQL Complex Therapy | CodeQL merge protection | Planned |
+
+---
+
 ## Commit message guidance
 
 Write commit messages that a new contributor can understand without reading the diff or knowing internal code names. Treat this as a guideline, not an automated gate — there is no hook or CI check enforcing it.
