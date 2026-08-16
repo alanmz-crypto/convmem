@@ -56,7 +56,7 @@ Execute phase.
 | `docs/plans/ARCHITECTURE-codeql-complex-therapy.md` | Corrected on this planning branch; all-three context decision and inherited GHAS result semantics |
 | `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate, isolated negative-control stop, and separately authorized producer probe |
 | `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V8 evidence matrix, future Execute/attestation rows unexecuted |
-| `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `190c4683f452c1a2f70ae7630269d92658eb8974`; additive carrier for Kiro/Ryan |
+| `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `c74c7f8611ac0bf563618270c2c3244715df7d67`; additive carrier for Kiro/Ryan |
 | `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; trust boundary, producer probe, recurring attestation, and latency alternatives ready for Kiro/Ryan review |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
@@ -188,6 +188,7 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Codex | Added GitHub mediation trust boundary, separately authorized producer-identity probe, V8 recurring attestation, and path-scoped latency alternative |
 | 2026-08-16 | Codex | Bound the hardening package and review carrier to full SHA `190c4683f452c1a2f70ae7630269d92658eb8974` |
 | 2026-08-16 | Codex | Added mandatory independent SHA-lineage verification after the transient handoff typo was corrected |
+| 2026-08-16 | Codex | Bound the SHA-lineage package and incident-aware review carrier to full SHA `c74c7f8611ac0bf563618270c2c3244715df7d67` |
 
 **TL;DR:** The SHA-bound handoff now includes explicit producer-binding and
 continuity hardening; CodeQL remains advisory in the live ruleset, and the next

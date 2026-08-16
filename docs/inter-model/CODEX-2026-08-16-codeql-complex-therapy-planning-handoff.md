@@ -5,17 +5,41 @@
 **From:** Codex planning lane
 **To:** Kiro adversarial review → Ryan Execute decision
 **Branch:** `plan/2026-08-16-codeql-complex-therapy`
-**Review package SHA:** `190c4683f452c1a2f70ae7630269d92658eb8974`
+**Review package SHA:** `c74c7f8611ac0bf563618270c2c3244715df7d67`
 
 ## Review binding
 
 The planning package that was reviewed and pushed before this additive handoff
-is exactly `190c4683f452c1a2f70ae7630269d92658eb8974`. It contains the
-producer-identity, trust-boundary, recurring-attestation, and latency-policy
-hardening. The handoff is the explicit carrier for that SHA; the branch tip
-advances when this pointer update is committed. Reviewers must retain the
-named package SHA and the final carrier SHA from the push handoff as separate,
-copy-pasteable identities. No abbreviated SHA is authoritative.
+is exactly `c74c7f8611ac0bf563618270c2c3244715df7d67`. It contains the
+producer-identity, trust-boundary, recurring-attestation, latency-policy, and
+independent SHA-lineage hardening. The handoff is the explicit carrier for
+that SHA; the branch tip advances when this pointer update is committed.
+Reviewers must retain the named package SHA and the final carrier SHA from the
+push handoff as separate, copy-pasteable identities. No abbreviated SHA is
+authoritative.
+
+## SHA incident requiring independent review
+
+The preceding carrier commit `9dfaa6722141b8a82bf5f2a79931501b732dec33`
+temporarily named the package as `190c468a4a034831ccdf60a321bca44b93221af4`,
+which was not the real hardening commit. The actual earlier hardening commit
+was `190c4683f452c1a2f70ae7630269d92658eb8974`; corrective commit
+`790d5fd2efb7023040cc5b1f400cd513ea554fd6` fixed the pointers. This incident
+is review evidence, not an authority source.
+
+Kiro must independently run the following from a fresh checkout or fetched
+remote state, and record the output in the review:
+
+```bash
+git fetch origin
+git rev-parse c74c7f8611ac0bf563618270c2c3244715df7d67
+git show -s --format='%H %s' c74c7f8611ac0bf563618270c2c3244715df7d67
+git log origin/main..origin/plan/2026-08-16-codeql-complex-therapy --oneline
+git rev-parse origin/plan/2026-08-16-codeql-complex-therapy
+```
+
+The `git rev-parse` result for the remote branch is the current carrier
+authority; no pasted final-carrier SHA is authoritative.
 
 ## Consequence
 
@@ -66,6 +90,8 @@ Kiro/Ryan should explicitly decide:
    architecture scope.
 7. The named owner, quarterly cadence, and fail-closed response for recurring
    post-Execute attestation.
+8. The independent SHA-lineage check above passes, including confirmation that
+   the final review uses the fetched remote tip rather than the transient typo.
 
 ## Required review reading
 
@@ -86,6 +112,6 @@ merges `main`.
 I finished: [Arc CodeQL Complex Therapy] SHA-bound hardening handoff
 Next step: Kiro adversarial review of the named package and additive carrier, then Ryan's latency-policy and Execute decisions
 Next lane: Kiro → Ryan
-See my work: `190c4683f452c1a2f70ae7630269d92658eb8974` and the planning-package comparison above
+See my work: `c74c7f8611ac0bf563618270c2c3244715df7d67` and the planning-package comparison above
 
-**TL;DR:** Review package `190c4683f452c1a2f70ae7630269d92658eb8974` is explicitly named; Kiro must review its hardening plus the additive carrier before Ryan chooses the latency policy and authorizes Execute.
+**TL;DR:** Review package `c74c7f8611ac0bf563618270c2c3244715df7d67` is explicitly named; Kiro must independently verify the SHA chain and fetched carrier before Ryan chooses the latency policy and authorizes Execute.
