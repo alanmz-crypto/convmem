@@ -57,7 +57,7 @@ Execute phase.
 | `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate, isolated negative-control stop, and separately authorized producer probe |
 | `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V8 evidence matrix, future Execute/attestation rows unexecuted |
 | `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `c74c7f8611ac0bf563618270c2c3244715df7d67`; additive carrier for Kiro/Ryan |
-| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; Ryan accepted the all-three context set, inherited GHAS semantics, and blanket latency policy, with remaining authorization gates open |
+| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; Ryan accepted the three policy decisions and the exact disposable fixture, with producer-probe and ruleset authorization gates open |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
 | GitHub `Protect Main` ruleset `19156572` | Active; currently requires only Pylint/Pytest; no CodeQL contexts yet |
@@ -72,6 +72,7 @@ Execute phase.
 | Required CodeQL context set | **ACCEPTED by Ryan** | All three CodeQL contexts remain required alongside Pylint/Pytest; Execute is still separately unauthorized |
 | GHAS result semantics | **ACCEPTED by Ryan** | Existing `CodeQL` results-check behavior is inherited; severity thresholds and the separate native merge-protection rule remain unchanged |
 | Required-check latency policy | **ACCEPTED by Ryan** | Blanket all-three protection applies to documentation-only PRs; path-scoped/placeholder architecture is deferred unless latency becomes a separately authorized problem |
+| Disposable negative control | **AUTHORIZED by Ryan — NOT STARTED** | Only `.github/workflows/codeql-negative-control.yml`; failed isolation with green Pylint/Pytest requires close/delete and stop; no improvisation |
 | Live context capture | **DONE** | Fresh PR #197: `Analyze (actions)`, `Analyze (python)`, `CodeQL`; Execute must repeat before PATCH |
 | Architecture package | **CORRECTED on planning branch** | Kiro/Ryan review |
 | Execution package | **CORRECTED on planning branch** | Kiro/Ryan review and Execute grant |
@@ -120,9 +121,9 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
   five-context required-status set.
 - [ ] Cursor captures before/after ruleset snapshots and proves a normal green
   PR on all five contexts.
-- [ ] Ryan separately authorizes disposable controls.
-- [ ] Cursor proves a red/missing CodeQL context blocks ordinary merge, then
-  closes and removes the disposable resources without merging them.
+- [ ] Cursor creates only the exact Ryan-authorized disposable fixture and
+  proves a red/missing CodeQL context blocks ordinary merge; failed isolation
+  with green Pylint/Pytest requires close/delete and stop.
 - [ ] If authorized and technically isolated, Cursor proves a same-named
   nonmatching-producer status cannot satisfy the CodeQL requirement; otherwise
   the probe is recorded as not run/inconclusive, not silently marked PASS.
@@ -195,6 +196,7 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Ryan | Accepted all three CodeQL contexts alongside the existing Pylint/Pytest requirements; Execute remains separately unauthorized |
 | 2026-08-16 | Ryan | Accepted existing GHAS `CodeQL` results-check semantics; no severity-threshold or native merge-protection rule change |
 | 2026-08-16 | Ryan | Accepted blanket all-three CodeQL protection on documentation-only PRs; path-scoped architecture deferred unless latency becomes a real problem |
+| 2026-08-16 | Ryan | Authorized only `.github/workflows/codeql-negative-control.yml` for the disposable negative control; no improvisation or fallback |
 
 **TL;DR:** The SHA-bound handoff now includes explicit producer-binding and
 continuity hardening; CodeQL remains advisory in the live ruleset, and the next
