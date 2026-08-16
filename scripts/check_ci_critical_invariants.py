@@ -53,8 +53,11 @@ def _parse_manifest(manifest_path: Path) -> list[str]:
 
 
 def _validate_target(repo_root: Path, rel_path: str) -> Path:
+    candidate_path = repo_root / rel_path
+    if candidate_path.is_symlink():
+        raise SystemExit(f"manifest path must be a regular file, not symlink: {rel_path}")
     tests_root = (repo_root / "tests").resolve()
-    candidate = (repo_root / rel_path).resolve()
+    candidate = candidate_path.resolve()
     try:
         under_tests = candidate.is_relative_to(tests_root)
     except AttributeError:

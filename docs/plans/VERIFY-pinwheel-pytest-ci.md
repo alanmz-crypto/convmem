@@ -98,10 +98,10 @@ deliberate test failure.
 
 | ID | Check | Result |
 |---|---|---|
-| V4a | Removing the Pylint-job pin fails the contract | **PASS** | local contract negative controls |
-| V4b | Removing/replacing the pytest-job pin fails the contract | **PASS** | local contract negative controls |
-| V4c | Removing the full pytest command fails the contract | **PASS** | local contract negative controls |
-| V4d | Removing the checker invocation fails the contract | **PASS** | local contract negative controls |
+| V4a | Removing the Pylint-job pin fails the contract | **PASS** | local contract negative controls (pylint-job pin isolated in V4a) |
+| V4b | Removing/replacing the pytest-job pin fails the contract | **PASS** | local contract negative controls (pylint-job pin isolated in V4a) |
+| V4c | Removing the full pytest command fails the contract | **PASS** | local contract negative controls (pylint-job pin isolated in V4a) |
+| V4d | Removing the checker invocation fails the contract | **PASS** | local contract negative controls (pylint-job pin isolated in V4a) |
 
 ## V5 — Manifest controls
 
@@ -136,7 +136,7 @@ V0: PASS — base bc83c85d0522023ea6e404bff4aaed135c47815a, fresh pin evidence, 
 V1: PASS — exact pin, logs, preserved workflow commands.
 V2: PASS — strict manifest parsing and per-module exit-status collection.
 V3: PASS — local baseline (2 pre-existing failures isolated); V3d pending ordinary PR.
-V4: PASS — local contract negative controls.
+V4: PASS — local contract negative controls (pylint-job pin isolated in V4a).
 V5: PASS — local checker controls; V5c-V5d pending GitHub controls.
 V6: PASS — local diff governance (V6b diff-only); V6a pending restoration PR.
 Mechanical: PASS (local)

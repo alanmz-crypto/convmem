@@ -1,8 +1,10 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-15 (CG-2 #186 merged + legacy-only soak IN_PROGRESS; CI merge gate #187 on `main`)
+**Updated:** 2026-08-16 (CG-2 #186 merged + legacy-only soak IN_PROGRESS; CI merge gate #187 on `main`)
 
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
+
+- **Pinwheel Pytest CI — IMPLEMENTED locally; PR/disposable controls PENDING (2026-08-16, `fix/2026-08-16-pinwheel-pytest-ci`):** Who/What: dual `pytest==9.1.1` pin, version logs, 16-entry manifest checker, executable-line CI contract tests. When: Cursor execute after Ryan authorization 2026-08-16. Why: close unpinned pytest and silent critical-test loss from Kryptonite follow-on. How: open implementation PR (V3d); Ryan must authorize disposable controls before V5c–V5d. [`VERIFY-pinwheel-pytest-ci.md`](../plans/VERIFY-pinwheel-pytest-ci.md) · [`STATUS-pinwheel-pytest-ci.md`](../plans/STATUS-pinwheel-pytest-ci.md) · [`CODEX-2026-08-15-pinwheel-pytest-ci-handoff.md`](CODEX-2026-08-15-pinwheel-pytest-ci-handoff.md). **Resume state:** `READY_FOR_PR`.
 
 ## Recently merged / settled (2026-08-08 through 2026-08-15)
 

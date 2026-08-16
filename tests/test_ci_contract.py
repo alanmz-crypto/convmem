@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -25,6 +26,9 @@ VERSION_LOG_CMD = "python -m pytest --version"
 FULL_SUITE_CMD = "python -m pytest -q"
 CHECKER_INVOCATION = "python scripts/check_ci_critical_invariants.py"
 
+_UNPINNED_PYTEST_RE = re.compile(r"pip\s+install\b.*\bpytest\b(?!\s*==)")
+
+
 def _load_checker():
     spec = importlib.util.spec_from_file_location("check_ci_critical_invariants", _CHECKER)
     assert spec and spec.loader
@@ -33,34 +37,96 @@ def _load_checker():
     spec.loader.exec_module(mod)
     return mod
 
+
 _checker = _load_checker()
+
+
+def _executable_lines(run_block: str) -> list[str]:
+    lines: list[str] = []
+    for raw in run_block.splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        line = stripped.split("#", 1)[0].strip()
+        if line:
+            lines.append(line)
+    return lines
+
 
 def _job_run_blocks(workflow_path: Path, job_name: str) -> list[str]:
     data = yaml.safe_load(workflow_path.read_text())
     job = data["jobs"][job_name]
     runs: list[str] = []
     for step in job.get("steps", []):
-        if "run" in step:
-            runs.append(step["run"])
+        run = step.get("run")
+        if isinstance(run, str):
+            runs.append(run)
     return runs
+
 
 def _job_install_run(workflow_path: Path, job_name: str) -> str:
     for block in _job_run_blocks(workflow_path, job_name):
-        if "pip install" in block:
+        if any("pip install" in line for line in _executable_lines(block)):
             return block
     raise AssertionError(f"no install run block in job {job_name}")
 
+
+def _assert_install_pytest_pins(run_block: str, job_name: str) -> None:
+    pip_lines = [line for line in _executable_lines(run_block) if "pip install" in line]
+    pytest_lines = [line for line in pip_lines if re.search(r"\bpytest\b", line)]
+    if not pytest_lines:
+        raise AssertionError(f"{job_name}: no executable pytest pip install line")
+    for line in pytest_lines:
+        if APPROVED_PYTEST_PIN not in line:
+            raise AssertionError(f"{job_name}: missing exact pin in executable line: {line}")
+    unpinned = [line for line in pip_lines if _UNPINNED_PYTEST_RE.search(line)]
+    if unpinned:
+        raise AssertionError(f"{job_name}: unpinned pytest install: {unpinned}")
+
+
+def _assert_executable_command(run_blocks: list[str], command: str) -> None:
+    for block in run_blocks:
+        if command in _executable_lines(block):
+            return
+    raise AssertionError(f"executable command missing: {command}")
+
+
 def _assert_workflow_contract(workflow_path: Path) -> None:
-    pylint_install = _job_install_run(workflow_path, "pylint")
-    pytest_install = _job_install_run(workflow_path, "pytest")
-    assert APPROVED_PYTEST_PIN in pylint_install
-    assert APPROVED_PYTEST_PIN in pytest_install
+    _assert_install_pytest_pins(_job_install_run(workflow_path, "pylint"), "pylint")
+    _assert_install_pytest_pins(_job_install_run(workflow_path, "pytest"), "pytest")
     pylint_runs = _job_run_blocks(workflow_path, "pylint")
     pytest_runs = _job_run_blocks(workflow_path, "pytest")
-    assert any(isinstance(block, str) and VERSION_LOG_CMD in block for block in pylint_runs)
-    assert any(isinstance(block, str) and VERSION_LOG_CMD in block for block in pytest_runs)
-    assert any(isinstance(block, str) and FULL_SUITE_CMD in block for block in pytest_runs)
-    assert any(isinstance(block, str) and CHECKER_INVOCATION in block for block in pytest_runs)
+    _assert_executable_command(pylint_runs, VERSION_LOG_CMD)
+    _assert_executable_command(pytest_runs, VERSION_LOG_CMD)
+    _assert_executable_command(pytest_runs, FULL_SUITE_CMD)
+    _assert_executable_command(pytest_runs, CHECKER_INVOCATION)
+
+
+def _load_workflow(path: Path) -> dict:
+    return yaml.safe_load(path.read_text())
+
+
+def _write_temp_workflow(data: dict) -> Path:
+    tmp = tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False)
+    yaml.safe_dump(data, tmp)
+    return Path(tmp.name)
+
+
+def _mutate_pylint_install(data: dict, new_run: str) -> None:
+    for step in data["jobs"]["pylint"]["steps"]:
+        if isinstance(step.get("run"), str) and "pip install" in step["run"]:
+            step["run"] = new_run
+            return
+    raise AssertionError("pylint install step not found")
+
+
+def _mutate_pytest_step_run(data: dict, step_name: str, new_run: str) -> None:
+    for step in data["jobs"]["pytest"]["steps"]:
+        if step.get("name") == step_name:
+            step["run"] = new_run
+            return
+    raise AssertionError(f"pytest step not found: {step_name}")
+
 
 class WorkflowContractTests(unittest.TestCase):
     def test_workflow_contract_live_file(self):
@@ -70,53 +136,110 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertEqual(APPROVED_PYTEST_PIN, "pytest==9.1.1")
         self.assertTrue(PYTEST_PIN_EXECUTION_EVIDENCE.endswith("Z"))
 
-    def test_contract_fails_without_pylint_pin(self):
-        text = _WORKFLOW.read_text().replace(APPROVED_PYTEST_PIN, "pytest")
-        with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False) as tmp:
-            tmp.write(text)
-            tmp_path = Path(tmp.name)
+    def test_contract_fails_without_pylint_pin_only(self):
+        data = _load_workflow(_WORKFLOW)
+        install = _job_install_run(_WORKFLOW, "pylint")
+        _mutate_pylint_install(data, install.replace(APPROVED_PYTEST_PIN, "pytest"))
+        tmp_path = _write_temp_workflow(data)
         try:
             with self.assertRaises(AssertionError):
                 _assert_workflow_contract(tmp_path)
+            _assert_install_pytest_pins(_job_install_run(tmp_path, "pytest"), "pytest")
         finally:
             tmp_path.unlink()
 
     def test_contract_fails_without_pytest_job_pin(self):
-        data = yaml.safe_load(_WORKFLOW.read_text())
-        install = data["jobs"]["pytest"]["steps"][2]["run"]
-        data["jobs"]["pytest"]["steps"][2]["run"] = install.replace(
-            APPROVED_PYTEST_PIN, "pytest"
+        data = _load_workflow(_WORKFLOW)
+        install = _job_install_run(_WORKFLOW, "pytest")
+        for step in data["jobs"]["pytest"]["steps"]:
+            if isinstance(step.get("run"), str) and "pip install" in step["run"]:
+                step["run"] = install.replace(APPROVED_PYTEST_PIN, "pytest")
+        tmp_path = _write_temp_workflow(data)
+        try:
+            with self.assertRaises(AssertionError):
+                _assert_workflow_contract(tmp_path)
+        finally:
+            tmp_path.unlink()
+
+    def test_contract_fails_when_full_suite_is_comment_only(self):
+        data = _load_workflow(_WORKFLOW)
+        _mutate_pytest_step_run(data, "Run pytest", "# " + FULL_SUITE_CMD)
+        tmp_path = _write_temp_workflow(data)
+        try:
+            with self.assertRaises(AssertionError):
+                _assert_workflow_contract(tmp_path)
+        finally:
+            tmp_path.unlink()
+
+    def test_contract_fails_when_full_suite_is_echo_only(self):
+        data = _load_workflow(_WORKFLOW)
+        _mutate_pytest_step_run(data, "Run pytest", "echo " + FULL_SUITE_CMD)
+        tmp_path = _write_temp_workflow(data)
+        try:
+            with self.assertRaises(AssertionError):
+                _assert_workflow_contract(tmp_path)
+        finally:
+            tmp_path.unlink()
+
+    def test_contract_fails_when_checker_is_comment_only(self):
+        data = _load_workflow(_WORKFLOW)
+        _mutate_pytest_step_run(
+            data,
+            "Check critical invariant manifest",
+            "# " + CHECKER_INVOCATION,
         )
-        with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False) as tmp:
-            yaml.safe_dump(data, tmp)
-            tmp_path = Path(tmp.name)
+        tmp_path = _write_temp_workflow(data)
         try:
             with self.assertRaises(AssertionError):
                 _assert_workflow_contract(tmp_path)
         finally:
             tmp_path.unlink()
 
-    def test_contract_fails_without_full_suite(self):
-        text = _WORKFLOW.read_text().replace(FULL_SUITE_CMD, "python -m pytest")
-        with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False) as tmp:
-            tmp.write(text)
-            tmp_path = Path(tmp.name)
+    def test_contract_fails_when_checker_is_echo_only(self):
+        data = _load_workflow(_WORKFLOW)
+        _mutate_pytest_step_run(
+            data,
+            "Check critical invariant manifest",
+            "echo " + CHECKER_INVOCATION,
+        )
+        tmp_path = _write_temp_workflow(data)
         try:
             with self.assertRaises(AssertionError):
                 _assert_workflow_contract(tmp_path)
         finally:
             tmp_path.unlink()
 
-    def test_contract_fails_without_checker(self):
-        text = _WORKFLOW.read_text().replace(CHECKER_INVOCATION, "echo no-checker")
-        with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False) as tmp:
-            tmp.write(text)
-            tmp_path = Path(tmp.name)
+    def test_contract_fails_when_pin_only_in_comment(self):
+        data = _load_workflow(_WORKFLOW)
+        _mutate_pylint_install(
+            data,
+            "python -m pip install --upgrade pip\n"
+            "pip install -r requirements.txt\n"
+            "pip install pylint==4.0.6\n"
+            "# " + APPROVED_PYTEST_PIN,
+        )
+        tmp_path = _write_temp_workflow(data)
         try:
             with self.assertRaises(AssertionError):
                 _assert_workflow_contract(tmp_path)
         finally:
             tmp_path.unlink()
+
+    def test_contract_fails_when_unpinned_pytest_reinstall_follows_pin(self):
+        data = _load_workflow(_WORKFLOW)
+        install = _job_install_run(_WORKFLOW, "pytest")
+        _mutate_pytest_step_run(
+            data,
+            "Install dependencies",
+            install + "\npip install pytest",
+        )
+        tmp_path = _write_temp_workflow(data)
+        try:
+            with self.assertRaises(AssertionError):
+                _assert_workflow_contract(tmp_path)
+        finally:
+            tmp_path.unlink()
+
 
 class ManifestParserTests(unittest.TestCase):
     def test_rejects_malformed_paths(self):
@@ -129,7 +252,9 @@ class ManifestParserTests(unittest.TestCase):
     def test_rejects_duplicate(self):
         with tempfile.TemporaryDirectory() as td:
             manifest = Path(td) / "dup.txt"
-            manifest.write_text("tests/test_ci_contract.py" + chr(10) + "tests/test_ci_contract.py" + chr(10))
+            manifest.write_text(
+                "tests/test_ci_contract.py" + chr(10) + "tests/test_ci_contract.py" + chr(10)
+            )
             with self.assertRaises(SystemExit):
                 _checker._parse_manifest(manifest)
 
@@ -150,6 +275,7 @@ class ManifestParserTests(unittest.TestCase):
         )
         self.assertNotEqual(proc.returncode, 0)
 
+
 class CheckerSubprocessTests(unittest.TestCase):
     def test_collect_return_zero_passes(self):
         with mock.patch("check_ci_critical_invariants.subprocess.run") as run:
@@ -157,7 +283,11 @@ class CheckerSubprocessTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as td:
                 manifest = Path(td) / "manifest.txt"
                 manifest.write_text("tests/test_ci_contract.py" + chr(10))
-                with mock.patch.dict(os.environ, {"CONVMEM_CONFIG": "/tmp/convmem-ci/config.toml"}, clear=False):
+                with mock.patch.dict(
+                    os.environ,
+                    {"CONVMEM_CONFIG": "/tmp/convmem-ci/config.toml"},
+                    clear=False,
+                ):
                     code = _checker.main(["--manifest", str(manifest)])
         self.assertEqual(code, 0)
         kwargs = run.call_args.kwargs
@@ -193,6 +323,18 @@ class CheckerSubprocessTests(unittest.TestCase):
             link.symlink_to(outside)
             with self.assertRaises(SystemExit):
                 _checker._validate_target(Path(td), "tests/escape_link.py")
+
+    def test_in_tree_symlink_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            tests_dir = Path(td) / "tests"
+            tests_dir.mkdir()
+            real = tests_dir / "real_target.py"
+            real.write_text("def test_real(): pass" + chr(10))
+            link = tests_dir / "alias.py"
+            link.symlink_to(real)
+            with self.assertRaises(SystemExit):
+                _checker._validate_target(Path(td), "tests/alias.py")
+
 
 if __name__ == "__main__":
     unittest.main()

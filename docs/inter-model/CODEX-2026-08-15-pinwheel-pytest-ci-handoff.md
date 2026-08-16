@@ -3,21 +3,22 @@
 **Date:** 2026-08-16
 **Author:** Codex
 **For:** Ryan, Kiro, ChatGPT, and Cursor
-**State:** `PLANNING_READY__PASS_WITH_CONDITIONS__NO_IMPLEMENTATION`
+**State:** `IMPLEMENTED_LOCALLY__READY_FOR_PR__DISPOSABLE_CONTROLS_PENDING`
 
 ## Consequence
 
 The Pinwheel plan now has two independent PASS-with-conditions reviews and
 binds the conditions into the architecture, execution, and VERIFY records.
-The package is ready for Ryan's execution decision; it does not authorize CI,
-ruleset, CodeQL, or disposable-PR changes.
+Ryan authorized Cursor execution. Implementation is complete locally on
+`fix/2026-08-16-pinwheel-pytest-ci`. Disposable GitHub controls remain
+unauthorized until Ryan grants them.
 
 ## Current system
 
 PR #189 merged Arc CI Kryptonite to `main` as
 `bc83c85d0522023ea6e404bff4aaed135c47815a`. The active Protect Main ruleset
-`19156572` requires `pylint (3.12)` and `pytest (3.12)`. The workflow still
-installs pytest unpinned. The 15-entry critical manifest is advisory. CodeQL
+`19156572` requires `pylint (3.12)` and `pytest (3.12)`. On `main`, pytest remains unpinned. The fix branch pins `pytest==9.1.1`,
+enforces the 16-entry manifest, and adds executable-line contract tests. CodeQL
 checks pass when produced but are not required.
 
 ## Binding amendments from review
@@ -63,3 +64,11 @@ and return for the Ryan-authorized negative controls.
 - [`EXECUTION-pinwheel-pytest-ci.md`](../plans/EXECUTION-pinwheel-pytest-ci.md)
 - [`VERIFY-pinwheel-pytest-ci.md`](../plans/VERIFY-pinwheel-pytest-ci.md)
 - [`LATEST.md`](LATEST.md)
+
+
+## Implementation status (Cursor)
+
+- **Branch:** `fix/2026-08-16-pinwheel-pytest-ci`
+- **Local verification:** 19 contract tests; manifest checker; full suite (2 pre-existing failures isolated)
+- **Pending:** implementation PR (V3d); disposable GitHub controls (V0d, V5c–V5d); restoration (V6a)
+- **Compare:** https://github.com/alanmz-crypto/convmem/compare/main...fix/2026-08-16-pinwheel-pytest-ci
