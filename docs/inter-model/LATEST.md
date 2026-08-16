@@ -4,6 +4,8 @@
 
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
+- **CodeQL Complex Therapy — planning AUTHORIZED (2026-08-16, `plan/2026-08-16-codeql-complex-therapy`):** Who/What: make CodeQL a required merge gate on `main` (successor to Pinwheel). When: Ryan authorized Codex planning 2026-08-16; no implementation yet. Why: CodeQL passes on PRs but Protect Main only requires pylint + pytest. How: Codex authors ARCHITECTURE/EXECUTION/VERIFY/STATUS; Ryan reviews; then separate Execute grant. [`CURSOR-2026-08-16-codeql-complex-therapy-planning-handoff.md`](CURSOR-2026-08-16-codeql-complex-therapy-planning-handoff.md). **Resume state:** `AUTHORIZED` planning `NOT_STARTED`.
+
 ## Recently merged / settled (2026-08-08 through 2026-08-16)
 
 - **Pinwheel Pytest CI — CLOSED (2026-08-16, [#191](https://github.com/alanmz-crypto/convmem/pull/191) + disposable [#192](https://github.com/alanmz-crypto/convmem/pull/192)–[#194](https://github.com/alanmz-crypto/convmem/pull/194)):** Who/What: pinned `pytest==9.1.1`, 16-module checker, 21 contract tests. When: impl merged `857a3a2`; disposable + VERIFY [#195](https://github.com/alanmz-crypto/convmem/pull/195); Kiro V7a PASS; Ryan arc-close. Why: reproducible pytest CI after Kryptonite. How: gate live on `main` `d495e4b`. [`VERIFY-pinwheel-pytest-ci.md`](../plans/VERIFY-pinwheel-pytest-ci.md). **Resume state:** `CLOSED` — no further Pinwheel work.
