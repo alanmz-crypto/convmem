@@ -117,6 +117,24 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
 
+**Arc identity (required).** Every session working on a named arc must **know and state its arc codename** (e.g. "Arc Trapdoor Hunt", "Arc Pinwheel Pytest CI"). Rules:
+
+1. **Discover:** At session start (after Tier A), determine your arc from: Ryan's prompt, the branch name, the STATUS file, or the handoff doc. If none of these name an arc, **ask Ryan** before doing substantive work: *"Which arc is this session working on?"*
+2. **Carry:** Once known, include `**Arc: <codename>**` in your first substantive response (after the Goal/Role/System/Next block if present).
+3. **Stamp:** Include the arc codename in every TL;DR, forward announcement, and handoff doc header. Format: `[Arc <codename>]` prefix or inline bold.
+4. **Boundary:** Do not perform work that belongs to a *different* named arc without Ryan's explicit authorization. If a task crosses arc boundaries, flag it: *"This touches Arc X but I'm working Arc Y — authorize?"*
+5. **No arc = say so.** If the work is not part of any named arc (ad-hoc fix, routine maintenance), state `**Arc: none (ad-hoc)**` once and proceed normally.
+
+Known arc codenames (update when new arcs are named):
+
+| Codename | Subject | State |
+|----------|---------|-------|
+| Trapdoor Hunt | Dependability & provenance trust architecture | Active — review complete, awaiting lock |
+| Full Fathom Five | Parent five-arc dependability roadmap (FF1–FF5) | Active — parent frozen |
+| CI Kryptonite | Behavioral CI merge gate | **Closed** (PR #187 + #189) |
+| Pinwheel Pytest CI | Reproducible pytest CI | Planned — not yet executed |
+| CodeQL Complex Therapy | CodeQL merge protection | Planned — not yet executed |
+
 
 ## After Tier A — MCP tools (do not repeat brief)
 
