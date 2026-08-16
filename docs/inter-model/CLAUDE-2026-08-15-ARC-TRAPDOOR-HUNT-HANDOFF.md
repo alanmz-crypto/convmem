@@ -1,10 +1,10 @@
 # Claude Handoff — Arc Trapdoor Hunt
 
-**Date:** 2026-08-15  
-**From:** Codex Sol-High planning lane  
-**To:** Claude — independent architecture review  
-**Branch:** `plan/2026-08-15-dependability-provenance`  
-**Review target:** current head of `plan/2026-08-15-dependability-provenance`; reviewer records `git rev-parse HEAD`  
+**Date:** 2026-08-15
+**From:** Codex Sol-High planning lane
+**To:** Claude — independent architecture review
+**Branch:** `plan/2026-08-15-dependability-provenance`
+**Review target:** current head of `plan/2026-08-15-dependability-provenance`; reviewer records `git rev-parse HEAD`
 **Baseline correction context:** `18cf79330be40a043ce32a399308d0761049080e`
 
 ## Purpose
@@ -134,7 +134,7 @@ Restic restore and Chroma/JSONL rebuild can reopen the assertion-identity
 trapdoor. Kiro/Copilot persona reviews recorded earlier are not independent
 sign-offs.
 
-I finished: Claude Arc Trapdoor Hunt handoff  
-Next step: Claude reviews the current branch head and returns an exact-SHA verdict  
-Next lane: Claude  
+I finished: Claude Arc Trapdoor Hunt handoff
+Next step: Claude reviews the current branch head and returns an exact-SHA verdict
+Next lane: Claude
 See my work: this handoff file
