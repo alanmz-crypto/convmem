@@ -126,7 +126,7 @@ deliberate test failure.
 | ID | Check | Result |
 |---|---|---|
 | V7a | Reviewer records written PASS/FAIL naming exact tip SHA and residuals | **PASS** | Kiro PASS at merge SHA `857a3a2` (2026-08-16); 21/21 contract tests; checker 16 modules |
-| V7b | Ryan records the merge/closeout GATE | **PASS** | [#191](https://github.com/alanmz-crypto/convmem/pull/191) squash-merged 2026-08-16 |
+| V7b | Ryan records the merge/closeout GATE | **PASS** | [#191](https://github.com/alanmz-crypto/convmem/pull/191) merged; Ryan arc-close 2026-08-16 (session) |
 
 ## Evidence log
 
@@ -140,5 +140,5 @@ V5: PASS — #192–#194 failed pytest (3.12); merge BLOCKED; bypass unused; bra
 V6: PASS — main at 857a3a2; disposable resources removed.
 Mechanical: PASS
 Sign-off: Kiro V7a PASS at 857a3a2 (2026-08-16)
-Ryan GATE: #191 merged; arc closeout acknowledgment pending (V7b)
+Ryan GATE: #191 merged; arc closed 2026-08-16 (Ryan + Kiro V7a PASS at 857a3a2)
 ```
