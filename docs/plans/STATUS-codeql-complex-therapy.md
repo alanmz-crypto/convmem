@@ -57,12 +57,12 @@ Execute phase.
 | `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate, isolated negative-control stop, and separately authorized producer probe |
 | `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V8 evidence matrix, future Execute/attestation rows unexecuted |
 | `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `c74c7f8611ac0bf563618270c2c3244715df7d67`; additive carrier for Kiro/Ryan |
-| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; Ryan accepted the three policy decisions and the exact disposable fixture, with producer-probe and ruleset authorization gates open |
+| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; Ryan accepted the three policy decisions, the exact disposable fixture, and conditional producer-probe authorization, with ruleset Execute authorization open |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
 | GitHub `Protect Main` ruleset `19156572` | Active; currently requires only Pylint/Pytest; no CodeQL contexts yet |
 | GitHub default CodeQL setup | Configured, default query suite, standard runner |
-| Disposable PR/control | Does not exist and is not authorized yet |
+| Disposable PR/control | Does not exist; the exact fixture and conditional producer probe are authorized, but execution is not authorized yet |
 
 ## 4. Completion State
 
@@ -82,8 +82,8 @@ Execute phase.
 | SHA lineage audit | **NOT RECORDED** | Kiro must independently resolve the package and current remote carrier; the transient `9dfaa6722...` typo is review evidence, not authority |
 | Ruleset mutation | **NOT STARTED** | Separate Ryan Execute authorization; Cursor |
 | Normal positive control | **NOT STARTED** | Ruleset mutation and a green PR |
-| Disposable negative control | **NOT STARTED** | Separate Ryan disposable-control authorization |
-| Producer-identity probe | **NOT STARTED** | Separate Ryan authorization; requires exactly one red/missing CodeQL context and four other required contexts green |
+| Disposable negative-control evidence | **NOT STARTED** | Exact fixture is authorized; requires exactly one red/missing CodeQL context with Pylint/Pytest green, otherwise close/delete and stop |
+| Producer-identity probe | **AUTHORIZED by Ryan — CONDITIONAL / NOT STARTED** | Run only after the fixture isolates exactly one red/missing CodeQL context and the other four required contexts are green; post one same-named green status through the ordinary authenticated user session, then stop on any non-isolated or inconclusive result |
 | Recurring enforcement attestation | **PLANNED** | Named owner, quarterly cadence, baseline, and fail-closed drift response must be recorded |
 | Restoration and arc closeout | **NOT STARTED** | Positive/negative evidence; Kiro/Ryan |
 
@@ -112,8 +112,9 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 ## 6. What Remains Before "Live" (sequential)
 
 - [ ] Kiro/Ryan review the architecture, execution, VERIFY, STATUS, and
-  SHA-bound handoff package; Ryan records the trust boundary,
-  producer-probe authorization, and recurring-attestation owner.
+  SHA-bound handoff package; Ryan's accepted trust boundary and conditional
+  producer-probe authorization are recorded, while the recurring-attestation
+  owner remains open.
 - [ ] Kiro independently verifies the package SHA, the remote branch tip, and
   the `git log` lineage, including the transient `9dfaa6722...` typo and
   corrective `790d5fd2...` commit.
@@ -124,9 +125,10 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 - [ ] Cursor creates only the exact Ryan-authorized disposable fixture and
   proves a red/missing CodeQL context blocks ordinary merge; failed isolation
   with green Pylint/Pytest requires close/delete and stop.
-- [ ] If authorized and technically isolated, Cursor proves a same-named
-  nonmatching-producer status cannot satisfy the CodeQL requirement; otherwise
-  the probe is recorded as not run/inconclusive, not silently marked PASS.
+- [ ] If the exact fixture technically isolates one CodeQL-required context,
+  Cursor proves a same-named nonmatching-producer status cannot satisfy the
+  CodeQL requirement; otherwise close/delete the disposable PR and record the
+  probe as not run/inconclusive, not silently marked PASS.
 - [ ] Kiro reviews the exact final revision and evidence.
 - [ ] Ryan merges and closes the arc; STATUS and LATEST are then updated to the
   post-close current state.
@@ -141,7 +143,7 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 | Native code-scanning rule | Ryan/separate scope | Adding the separate alert/security-severity ruleset rule |
 | Bypass policy | Ryan | Admin/repository-role bypass use or policy changes as proof |
 | Negative-control integrity | Cursor/Kiro | Calling a green alert-only fixture or unobserved hypothesis a pass |
-| Producer identity | Ryan/Cursor/Kiro | Posting a same-named status without explicit probe authorization or treating a non-isolated result as proof |
+| Producer identity | Ryan/Cursor/Kiro | Posting a same-named status outside the conditional probe authorization or treating a non-isolated result as proof |
 | Arc boundary | Ryan | Dependabot, runtime, corpus, Chroma, ledger, Pinwheel, or Kryptonite work |
 
 ## 8. Relationship to ConvMem (the bigger picture)
@@ -197,8 +199,9 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Ryan | Accepted existing GHAS `CodeQL` results-check semantics; no severity-threshold or native merge-protection rule change |
 | 2026-08-16 | Ryan | Accepted blanket all-three CodeQL protection on documentation-only PRs; path-scoped architecture deferred unless latency becomes a real problem |
 | 2026-08-16 | Ryan | Authorized only `.github/workflows/codeql-negative-control.yml` for the disposable negative control; no improvisation or fallback |
+| 2026-08-16 | Ryan | Conditionally authorized the producer-identity probe because integration IDs are part of the required-status security claim; run only after one isolated CodeQL failure with the other four required contexts green |
 
-**TL;DR:** The SHA-bound handoff now includes explicit producer-binding and
-continuity hardening; CodeQL remains advisory in the live ruleset, and the next
-action is Kiro adversarial review before Ryan chooses the latency policy and
-authorizes Execute.
+**TL;DR:** Ryan has conditionally authorized the producer-identity probe after
+the exact disposable fixture isolates one CodeQL failure with the other four
+required contexts green; recurring attestation and ruleset Execute authorization
+remain open.
