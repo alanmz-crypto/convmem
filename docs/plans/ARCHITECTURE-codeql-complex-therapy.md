@@ -203,6 +203,22 @@ Out of scope:
   changes;
 * exercising or changing the repository-role bypass.
 
+## Post-Execute attestation ownership
+
+```text
+OWNER=Ryan
+CADENCE=quarterly + configuration-drift trigger
+EVIDENCE=Cursor collects the externally visible snapshots and check identities
+EXCEPTIONS=Kiro reviews exceptions; Ryan decides policy or gate changes
+```
+
+Ryan is the stable policy and gatekeeping owner. Cursor may perform the bounded
+evidence collection as executor, but does not own the policy. A configuration
+drift trigger means any observed change to the ruleset, default CodeQL setup,
+workflow-language surface, context name, or integration ID prompts an immediate
+attestation; this remains evidence-and-cadence only, with no scheduled workflow
+added by this arc.
+
 ## Product decision required: required-check latency
 
 Requiring all three CodeQL contexts is also a latency decision. Default-setup

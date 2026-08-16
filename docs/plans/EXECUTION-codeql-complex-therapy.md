@@ -230,6 +230,13 @@ If the negative control creates a code-scanning alert, verify that it is tied to
 the disposable ref and is not a `main` finding. Do not remediate unrelated
 Dependabot or code-scanning findings inside this arc.
 
+The post-Execute recurring attestation is owned by Ryan as the stable policy
+and gatekeeping role. Its cadence is quarterly plus an immediate trigger on
+configuration drift. Cursor may collect the ruleset/default-setup/check-identity
+evidence, but is not the policy owner; Kiro reviews exceptions and Ryan decides
+whether any policy or gate change requires a new authorization or reopened arc.
+No scheduled workflow is added by this plan.
+
 ## Phase 6 — review and closeout
 
 Cursor hands the same final implementation tip, post-patch ruleset snapshot,

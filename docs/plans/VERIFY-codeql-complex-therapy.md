@@ -148,9 +148,9 @@ has already run during planning.
 
 | ID | Check | Expected evidence | Planning state |
 |---|---|---|---|
-| V8a | Attestation owner and cadence are explicit | A named owner records a quarterly manual review, plus an immediate review after a ruleset, default-setup, CodeQL workflow-language, or integration-id change | PLANNED — post-Execute operations gate |
+| V8a | Attestation owner and cadence are explicit | `OWNER=Ryan`; `CADENCE=quarterly + configuration-drift trigger`; Cursor collects the evidence and Kiro reviews exceptions; Ryan remains the policy/gatekeeping owner | PLANNED — post-Execute operations gate |
 | V8b | Attestation compares the externally visible contract | The review captures `gh api repos/alanmz-crypto/convmem/rulesets/19156572`, default-setup state, and recent CodeQL check identities, then diffs required contexts, integration ids, target, enforcement, strict policy, and bypass settings against the recorded baseline | PLANNED — post-Execute operations gate |
-| V8c | Drift has a fail-closed response | Any mismatch opens review and stops automatic policy changes; Ryan/Kiro decide whether to update the required set or re-open this arc | PLANNED — post-Execute operations gate |
+| V8c | Drift has a fail-closed response | Any mismatch opens review and stops automatic policy changes; Kiro reviews the exception and Ryan decides whether to update the required set or re-open this arc | PLANNED — post-Execute operations gate |
 
 ## Evidence log template
 

@@ -84,7 +84,7 @@ Execute phase.
 | Normal positive control | **NOT STARTED** | Ruleset mutation and a green PR |
 | Disposable negative-control evidence | **NOT STARTED** | Exact fixture is authorized; requires exactly one red/missing CodeQL context with Pylint/Pytest green, otherwise close/delete and stop |
 | Producer-identity probe | **AUTHORIZED by Ryan — CONDITIONAL / NOT STARTED** | Run only after the fixture isolates exactly one red/missing CodeQL context and the other four required contexts are green; post one same-named green status through the ordinary authenticated user session, then stop on any non-isolated or inconclusive result |
-| Recurring enforcement attestation | **PLANNED** | Named owner, quarterly cadence, baseline, and fail-closed drift response must be recorded |
+| Recurring enforcement attestation | **ACCEPTED by Ryan — NOT STARTED** | `OWNER=Ryan`; `CADENCE=quarterly + configuration-drift trigger`; Cursor collects evidence, Kiro reviews exceptions, and Ryan owns policy/gatekeeping |
 | Restoration and arc closeout | **NOT STARTED** | Positive/negative evidence; Kiro/Ryan |
 
 ## 5. Your Role (read this to know what you're here to do)
@@ -96,9 +96,10 @@ evidence, that
 requiring `CodeQL` intentionally inherits its current results-check failure
 semantics, that required-status membership is distinguished from strict
 freshness, and that the negative control can prove a red/missing required status
-without entering `main`. The review must also decide whether to authorize the
-nonmatching-producer probe, record GitHub's server-side mediation as an accepted
-trust boundary, choose the latency policy, and assign the recurring attestation.
+without entering `main`. The review must also confirm Ryan's conditional
+nonmatching-producer authorization, record GitHub's server-side mediation as an
+accepted trust boundary, and verify the accepted latency policy and recurring
+attestation ownership/cadence.
 Kiro must independently resolve the package and remote carrier SHAs; the
 intermediate mistyped package string is part of the review evidence.
 
@@ -113,8 +114,8 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 
 - [ ] Kiro/Ryan review the architecture, execution, VERIFY, STATUS, and
   SHA-bound handoff package; Ryan's accepted trust boundary and conditional
-  producer-probe authorization are recorded, while the recurring-attestation
-  owner remains open.
+  producer-probe authorization and recurring-attestation owner/cadence are
+  recorded; Execute authorization remains open.
 - [ ] Kiro independently verifies the package SHA, the remote branch tip, and
   the `git log` lineage, including the transient `9dfaa6722...` typo and
   corrective `790d5fd2...` commit.
@@ -129,6 +130,9 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
   Cursor proves a same-named nonmatching-producer status cannot satisfy the
   CodeQL requirement; otherwise close/delete the disposable PR and record the
   probe as not run/inconclusive, not silently marked PASS.
+- [ ] After Execute, Cursor collects the quarterly or drift-triggered
+  attestation evidence; Kiro reviews exceptions and Ryan decides policy/gate
+  disposition.
 - [ ] Kiro reviews the exact final revision and evidence.
 - [ ] Ryan merges and closes the arc; STATUS and LATEST are then updated to the
   post-close current state.
@@ -200,8 +204,8 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Ryan | Accepted blanket all-three CodeQL protection on documentation-only PRs; path-scoped architecture deferred unless latency becomes a real problem |
 | 2026-08-16 | Ryan | Authorized only `.github/workflows/codeql-negative-control.yml` for the disposable negative control; no improvisation or fallback |
 | 2026-08-16 | Ryan | Conditionally authorized the producer-identity probe because integration IDs are part of the required-status security claim; run only after one isolated CodeQL failure with the other four required contexts green |
+| 2026-08-16 | Ryan | Set recurring attestation `OWNER=Ryan`, `CADENCE=quarterly + configuration-drift trigger`; Cursor collects evidence and Kiro reviews exceptions |
 
-**TL;DR:** Ryan has conditionally authorized the producer-identity probe after
-the exact disposable fixture isolates one CodeQL failure with the other four
-required contexts green; recurring attestation and ruleset Execute authorization
-remain open.
+**TL;DR:** Ryan has conditionally authorized the producer-identity probe and
+set recurring attestation ownership to Ryan with quarterly plus configuration-
+drift reviews; ruleset Execute authorization remains open.
