@@ -57,7 +57,7 @@ Execute phase.
 | `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate, isolated negative-control stop, and separately authorized producer probe |
 | `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V8 evidence matrix, future Execute/attestation rows unexecuted |
 | `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `c74c7f8611ac0bf563618270c2c3244715df7d67`; additive carrier for Kiro/Ryan |
-| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; trust boundary, producer probe, recurring attestation, and latency alternatives ready for Kiro/Ryan review |
+| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; Ryan accepted the all-three CodeQL context set, with remaining policy and authorization gates open |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
 | GitHub `Protect Main` ruleset `19156572` | Active; currently requires only Pylint/Pytest; no CodeQL contexts yet |
@@ -69,6 +69,7 @@ Execute phase.
 | Milestone | Status | Blocking on |
 |---|---|---|
 | Planning authorization | **DONE** | Ryan authorized Codex planning on 2026-08-16 |
+| Required CodeQL context set | **ACCEPTED by Ryan** | All three CodeQL contexts remain required alongside Pylint/Pytest; Execute is still separately unauthorized |
 | Required-check latency policy | **NOT RECORDED** | Ryan must accept blanket all-three CodeQL wait/queue cost or choose a path-scoped alternative that reopens workflow/architecture scope |
 | Live context capture | **DONE** | Fresh PR #197: `Analyze (actions)`, `Analyze (python)`, `CodeQL`; Execute must repeat before PATCH |
 | Architecture package | **CORRECTED on planning branch** | Kiro/Ryan review |
@@ -87,8 +88,8 @@ Execute phase.
 ## 5. Your Role (read this to know what you're here to do)
 
 If you are reviewing, inspect the four planning files plus the SHA-bound Codex
-handoff and verify that the
-all-three context decision is supported by fresh PR/check-run evidence, that
+handoff and verify that Ryan's accepted all-three context decision is supported
+by fresh PR/check-run evidence, that
 requiring `CodeQL` intentionally inherits its current results-check failure
 semantics, that required-status membership is distinguished from strict
 freshness, and that the negative control can prove a red/missing required status
@@ -189,6 +190,7 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Codex | Bound the hardening package and review carrier to full SHA `190c4683f452c1a2f70ae7630269d92658eb8974` |
 | 2026-08-16 | Codex | Added mandatory independent SHA-lineage verification after the transient handoff typo was corrected |
 | 2026-08-16 | Codex | Bound the SHA-lineage package and incident-aware review carrier to full SHA `c74c7f8611ac0bf563618270c2c3244715df7d67` |
+| 2026-08-16 | Ryan | Accepted all three CodeQL contexts alongside the existing Pylint/Pytest requirements; Execute remains separately unauthorized |
 
 **TL;DR:** The SHA-bound handoff now includes explicit producer-binding and
 continuity hardening; CodeQL remains advisory in the live ruleset, and the next
