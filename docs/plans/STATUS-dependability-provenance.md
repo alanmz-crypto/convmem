@@ -3,10 +3,10 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** Sol-High final literature pass PASS after tightening assertion-ID
-minting, generation-bound recovery/rollback, crash-closed publication, and
-canonicalization precision. Exact-revision Kiro and Copilot dispositions plus
-Ryan's architecture lock remain. No implementation is authorized.
+**State:** Sol-High final review PASS after tightening assertion-ID minting,
+idempotent replay, and invalid-replay failure semantics. Exact-revision Kiro and
+Copilot dispositions plus Ryan's architecture lock remain. No implementation is
+authorized.
 
 ## 1. What this project is for
 
@@ -164,7 +164,6 @@ Do not append session narrative.
 | 2026-08-15 | Codex Sol-High | Tightened monitor-minted identity, idempotent replay, and invalid-ID/commitment failure semantics for final lock review. |
 | 2026-08-15 | Codex Sol-High | Added the restore-preflight STATE_SPECS/writer-census and separate-validator contract for the provenance registry; implementation remains unauthorized. |
 | 2026-08-15 | Codex Sol-High | Retained T1–T5 and strengthened T3 provenance, acknowledgement, and migration boundaries; clean-SHA rereview required. |
-| 2026-08-15 | Codex Sol-High | Literature trapdoor pass added explicit generation/rollback binding, crash-boundary verification, canonicalization golden vectors, and UUIDv4 precision; runtime remains unauthorized. |
 
 **TL;DR:** Sol-High passes the strengthened T3 provenance architecture; same-SHA
 Kiro/Copilot dispositions and Ryan's lock remain, with no implementation or
