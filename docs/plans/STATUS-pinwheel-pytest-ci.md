@@ -127,3 +127,4 @@ session narrative. Add one milestone-level line below per update.
 | 2026-08-16 | Codex | Created Pinwheel planning brief after Kiro and ChatGPT PASS-with-conditions reviews; locked contract and exit-status requirements |
 
 | 2026-08-16 | Cursor | Implementation + local verification on `fix/2026-08-16-pinwheel-pytest-ci`; V0d/V3d/V5c-V6a pending external controls |
+| 2026-08-16 | Cursor | Rebased onto `3453a3f`; pin-contract gaps closed; PR [#191](https://github.com/alanmz-crypto/convmem/pull/191) opened (V3d CI_PENDING) |
