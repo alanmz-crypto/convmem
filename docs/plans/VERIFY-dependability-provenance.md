@@ -143,12 +143,12 @@ I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 | V5d | Equivalence creates no aggregate trusted assertion. | PENDING |
 | V5e | Semantic cross-provenance tombstone requires human adjudication and retains both audit assertions. | PENDING |
 | V5f | Storage optimization cannot destroy provenance identity. | PENDING |
-| V5g | Assertion IDs are content-independent UUIDv4 values with 122 random payload bits, monitor-minted, atomically reserved, collision-checked, and immutable. | Caller attempts to mint, rewrite, recycle, or force a colliding ID. | PENDING |
-| V5h | Export → reconstruction → re-import preserves a valid ID/commitment pair as idempotent replay only. | Round-trip comparison of ID, canonical envelope, and commitment; replay adds no assertion or corroborator. | PENDING |
-| V5i | Same content without a valid existing ID/commitment pair becomes a new independent assertion. | Ingest identical content twice from different roots. | PENDING |
-| V5j | Parent IDs and commitments match resolved parents. | Alter/remove parent commitment or bind the wrong parent ID. | PENDING |
-| V5k | Invalid identity replay cannot retain, overwrite, alias, or mutate the supplied existing ID. | Supply an existing ID with missing/malformed/mismatching commitment or divergent envelope; identity-preserving import fails. If content is retained, it receives a fresh monitor ID and untrusted provenance. | PENDING |
-| V5l | A parent edge is immutable identity plus expected commitment, not content equivalence. | Replace a parent with same-content assertion under another ID; recursive verification returns untrusted. | PENDING |
+| V5g | Assertion IDs are content-independent UUIDv4 values with 122 random payload bits, monitor-minted, atomically reserved, collision-checked, and immutable. **Negative control:** caller attempts to mint, rewrite, recycle, or force a colliding ID. | PENDING |
+| V5h | Export → reconstruction → re-import preserves a valid ID/commitment pair as idempotent replay only. **Negative control:** round-trip comparison of ID, canonical envelope, and commitment; replay adds no assertion or corroborator. | PENDING |
+| V5i | Same content without a valid existing ID/commitment pair becomes a new independent assertion. **Negative control:** ingest identical content twice from different roots. | PENDING |
+| V5j | Parent IDs and commitments match resolved parents. **Negative control:** alter/remove parent commitment or bind the wrong parent ID. | PENDING |
+| V5k | Invalid identity replay cannot retain, overwrite, alias, or mutate the supplied existing ID. **Negative control:** supply an existing ID with missing/malformed/mismatching commitment or divergent envelope; identity-preserving import fails. If content is retained, it receives a fresh monitor ID and untrusted provenance. | PENDING |
+| V5l | A parent edge is immutable identity plus expected commitment, not content equivalence. **Negative control:** replace a parent with same-content assertion under another ID; recursive verification returns untrusted. | PENDING |
 
 ## V6 — Parallel/later assurance: CG-1 immutable continuity and cold validation
 
@@ -201,7 +201,7 @@ delay the Stage 1 vocabulary/policy substrate.
 | V9d | Existing retrieval ranking behavior is unchanged. | PENDING |
 | V9e | No live corpus/Chroma mutation, Shadow activation, R2b capture, or CG-2 operational action occurred. | PENDING |
 | V9f | Runnable documentation distinguishes reference commands from commands requiring Ryan grant. | PENDING |
-| V9g | New checks are justified by a distinct failure window, owner, or oracle. | Existing standing checks are reused; no duplicate governance ceremony is introduced. | PENDING |
+| V9g | New checks are justified by a distinct failure window, owner, or oracle. **Negative control:** existing standing checks are reused; no duplicate governance ceremony is introduced. | PENDING |
 
 ## V9A — Parallel/later broad assurance tracks
 
