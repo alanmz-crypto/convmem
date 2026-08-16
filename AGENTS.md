@@ -68,7 +68,7 @@ Known arc codenames (canonical list in `config/agent-protocol.md`):
 | Trapdoor Hunt | Dependability & provenance trust architecture | Active |
 | Full Fathom Five | Parent five-arc dependability roadmap (FF1–FF5) | Active — frozen |
 | CI Kryptonite | Behavioral CI merge gate | **Closed** |
-| Pinwheel Pytest CI | Reproducible pytest CI | Planned |
+| Pinwheel Pytest CI | Reproducible pytest CI | **Closed** |
 | CodeQL Complex Therapy | CodeQL merge protection | Planned |
 
 ---

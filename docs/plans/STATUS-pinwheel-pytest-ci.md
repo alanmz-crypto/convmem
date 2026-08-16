@@ -67,17 +67,11 @@ successful collection.
 
 ## 5. Your Role
 
-Pinwheel mechanical evidence is complete on `main`. **Kiro** owns V7a written
-sign-off at merge SHA `857a3a2`. **Ryan** owns arc-close acknowledgment after
-V7a. **CodeQL Complex Therapy** is the planned successor arc — separate grant.
+**Arc closed 2026-08-16.** Reference only. Successor: CodeQL Complex Therapy (separate arc).
 
 ## 6. What Remains Before "Live"
 
-- [x] Implementation merged ([#191](https://github.com/alanmz-crypto/convmem/pull/191) → `857a3a2`).
-- [x] Disposable negative controls ([#192](https://github.com/alanmz-crypto/convmem/pull/192)–[#194](https://github.com/alanmz-crypto/convmem/pull/194)); branches deleted.
-- [x] VERIFY updated with GitHub evidence.
-- [x] Kiro V7a PASS at `857a3a2` (2026-08-16).
-- [ ] Ryan arc-close acknowledgment. **Gate is live** for ordinary PRs.
+All milestones complete. Gate is live on `main`.
 
 ## 7. Hard Stops
 
