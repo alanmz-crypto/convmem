@@ -54,19 +54,26 @@ The corrected plan requires:
 
 1. The complete-data-v2 Restic snapshot covers the provenance registry,
    directory manifest, policy/recipe history, JSONL export, and Chroma
-   projection under one explicit data-root snapshot. A legacy
+   projection under one explicit data-root snapshot and one selected
+   generation/manifest commitment. A legacy
    `convmem-chroma` snapshot is not provenance-store backup.
 2. The registry manifest proves required files/objects, counts, canonical
    digests, policy/recipe history, and the complete assertion graph.
 3. JSONL and Chroma are export/rebuild and retrieval projections. They cannot
    mint, preserve, or elevate assertion identity when the registry is absent.
 4. Registry recovery is a distinct Ryan-gated bulk operation. It restores the
-   whole registry directory to scratch, verifies the manifest and graph, then
-   atomically publishes one recovered store generation. It is not ordinary
-   item-by-item `convmem add`, JSONL re-import, Chroma rebuild, or dedupe.
+   whole registry directory to scratch, verifies the selected generation,
+   manifest, and graph, then atomically publishes one recovered store
+   generation. It is not ordinary item-by-item `convmem add`, JSONL re-import,
+   Chroma rebuild, or dedupe. A valid older generation is not auto-selected;
+   intentional rollback is a separate ConvMem governance grant.
 5. Before publication, recovery verifies file/object hashes, ID uniqueness,
    ID/commitment agreement, every parent edge, historical policy and recipe
-   availability, and registry↔JSONL↔Chroma identity/commitment agreement.
+   availability, selected-generation identity, and registry↔JSONL↔Chroma
+   identity/commitment agreement. Interruption at every durable write, rename,
+   manifest, pointer, and publication boundary must leave either the prior
+   complete authority generation or one complete verified replacement—never a
+   mixed, missing, or partial authority set.
 6. Missing or partial store recovery leaves live authority unchanged. The
    recovered projection remains quarantined or explicitly untrusted with an
    observable `provenance_store_unavailable` degraded state. A caller-supplied
@@ -74,9 +81,26 @@ The corrected plan requires:
 
 The required negative controls are listed in the verification package:
 
-- [V4g–V4j: restore-preflight path classification, separate validator, completeness, and bulk recovery](../plans/VERIFY-dependability-provenance.md#v4--representation-continuity)
+- [V4g–V4l: restore-preflight path classification, separate validator, completeness, bulk recovery, selected-generation binding, and crash publication](../plans/VERIFY-dependability-provenance.md#v4--representation-continuity)
 - [V8h–V8l: missing/partial registry, stale history, and restore/rebuild mismatch controls](../plans/VERIFY-dependability-provenance.md#v8--laundering-and-lifecycle-faults)
 - [R8: recursive missing-parent/history/cycle/mismatch behavior](../plans/ARCHITECTURE-dependability-provenance.md#r8--recursive-verification-fails-closed)
+
+## Narrow correction summary
+
+This revision applies only the authorized literature-derived corrections; it does
+not restore the removed literature survey or import external architectures.
+
+- [TUF specification §§1.5.2 and 2.1.3](https://theupdateframework.github.io/specification/latest/)
+  motivates the ConvMem-specific selected-generation and no-accidental-rollback
+  invariant; Ryan rollback approval remains ConvMem governance.
+- [Pillai et al., OSDI 2014](https://www.usenix.org/conference/osdi14/technical-sessions/presentation/pillai)
+  motivates the V4l crash-at-each-durable-boundary contract.
+- [RFC 8785](https://www.rfc-editor.org/info/rfc8785/) motivates a pinned,
+  versioned ConvMem serializer profile and golden vectors for library drift; no
+  portability claim is added.
+- [RFC 9562 §5.4](https://www.rfc-editor.org/info/rfc9562/) supplies the precise
+  UUIDv4 wording: 128-bit encoding with 122 random payload bits and fixed
+  version/variant fields.
 
 ## Code evidence map for re-trace
 
