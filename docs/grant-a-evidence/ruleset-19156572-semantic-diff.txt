@@ -1,0 +1,77 @@
+Ruleset semantic diff: Protect Main (19156572)
+Source: ruleset-19156572-pre-patch.json → ruleset-19156572-post-patch.json
+Generated: 2026-08-16 (Grant A evidence closeout)
+
+================================================================================
+INTENDED ADDITIONS (required_status_checks only)
+================================================================================
+
++ Analyze (actions) — integration_id 15368
++ Analyze (python)  — integration_id 15368
++ CodeQL            — integration_id 57789
+
+================================================================================
+UNCHANGED (verified identical pre → post)
+================================================================================
+
+Required status checks (retained):
+  - pylint (3.12) — integration_id 15368
+  - pytest (3.12) — integration_id 15368
+
+Enforcement:
+  - enforcement = active
+
+Target:
+  - refs/heads/main (conditions.ref_name.include)
+
+Strict policy:
+  - strict_required_status_checks_policy = true
+  - do_not_enforce_on_create = false
+
+Rule types (order preserved):
+  - deletion
+  - non_fast_forward
+  - pull_request
+  - required_status_checks
+
+pull_request rule parameters (unchanged):
+  - required_approving_review_count = 0
+  - dismiss_stale_reviews_on_push = false
+  - required_reviewers = []
+  - require_code_owner_review = false
+  - require_last_push_approval = false
+  - required_review_thread_resolution = true
+  - allowed_merge_methods = [merge, squash, rebase]
+
+Bypass actors (unchanged):
+  - actor_id = 5
+  - actor_type = RepositoryRole
+  - bypass_mode = always
+
+================================================================================
+BEFORE required_status_checks list
+================================================================================
+
+[
+  {"context": "pylint (3.12)", "integration_id": 15368},
+  {"context": "pytest (3.12)", "integration_id": 15368}
+]
+
+================================================================================
+AFTER required_status_checks list
+================================================================================
+
+[
+  {"context": "pylint (3.12)", "integration_id": 15368},
+  {"context": "pytest (3.12)", "integration_id": 15368},
+  {"context": "Analyze (actions)", "integration_id": 15368},
+  {"context": "Analyze (python)", "integration_id": 15368},
+  {"context": "CodeQL", "integration_id": 57789}
+]
+
+================================================================================
+VERDICT
+================================================================================
+
+Only the three CodeQL-related required_status_checks entries were added.
+All other ruleset settings, rule types, and bypass policy are unchanged.

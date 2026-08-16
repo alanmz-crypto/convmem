@@ -1,0 +1,17 @@
+HTTP/1.1 404 Not Found
+Content-Type: application/json; charset=utf-8
+
+Request:
+  PATCH /repos/alanmz-crypto/convmem/rulesets/19156572
+  Body: same payload as put-payload.json (see put-payload.json)
+  Captured: 2026-08-16T22:28:45Z (Grant A Execute session)
+
+Response body:
+{
+  "message": "Not Found",
+  "documentation_url": "https://docs.github.com/rest",
+  "status": "404"
+}
+
+gh CLI exit: 1
+gh CLI message: gh: Not Found (HTTP 404)
