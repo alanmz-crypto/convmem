@@ -54,10 +54,10 @@ Execute phase.
 |---|---|
 | `docs/inter-model/CURSOR-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Complete input handoff; planning authorized, Execute not authorized |
 | `docs/plans/ARCHITECTURE-codeql-complex-therapy.md` | Corrected on this planning branch; all-three context decision and inherited GHAS result semantics |
-| `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate and isolated negative-control stop |
-| `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V7 evidence matrix, future Execute rows unexecuted |
+| `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate, isolated negative-control stop, and separately authorized producer probe |
+| `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V8 evidence matrix, future Execute/attestation rows unexecuted |
 | `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `45046fafd0aa918042a89ae7e9a85fb707ce55d1`; additive carrier for Kiro/Ryan |
-| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; SHA-bound handoff and latency question ready for Kiro/Ryan review |
+| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; trust boundary, producer probe, recurring attestation, and latency alternatives ready for Kiro/Ryan review |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
 | GitHub `Protect Main` ruleset `19156572` | Active; currently requires only Pylint/Pytest; no CodeQL contexts yet |
@@ -69,16 +69,18 @@ Execute phase.
 | Milestone | Status | Blocking on |
 |---|---|---|
 | Planning authorization | **DONE** | Ryan authorized Codex planning on 2026-08-16 |
-| Required-check latency decision | **NOT RECORDED** | Ryan must accept the all-three CodeQL wait/queue trade-off before Execute |
+| Required-check latency policy | **NOT RECORDED** | Ryan must accept blanket all-three CodeQL wait/queue cost or choose a path-scoped alternative that reopens workflow/architecture scope |
 | Live context capture | **DONE** | Fresh PR #197: `Analyze (actions)`, `Analyze (python)`, `CodeQL`; Execute must repeat before PATCH |
 | Architecture package | **CORRECTED on planning branch** | Kiro/Ryan review |
 | Execution package | **CORRECTED on planning branch** | Kiro/Ryan review and Execute grant |
-| VERIFY package | **CORRECTED on planning branch** | Execute evidence; CodeQL causality required |
+| VERIFY package | **CORRECTED on planning branch** | Execute evidence; CodeQL causality, producer binding, and V8 continuity rows required |
 | STATUS package/list updates | **CORRECTED on planning branch** | Review/merge |
 | SHA-bound Codex handoff | **READY on planning branch** | Kiro adversarial review |
 | Ruleset mutation | **NOT STARTED** | Separate Ryan Execute authorization; Cursor |
 | Normal positive control | **NOT STARTED** | Ruleset mutation and a green PR |
 | Disposable negative control | **NOT STARTED** | Separate Ryan disposable-control authorization |
+| Producer-identity probe | **NOT STARTED** | Separate Ryan authorization; requires exactly one red/missing CodeQL context and four other required contexts green |
+| Recurring enforcement attestation | **PLANNED** | Named owner, quarterly cadence, baseline, and fail-closed drift response must be recorded |
 | Restoration and arc closeout | **NOT STARTED** | Positive/negative evidence; Kiro/Ryan |
 
 ## 5. Your Role (read this to know what you're here to do)
@@ -89,7 +91,9 @@ all-three context decision is supported by fresh PR/check-run evidence, that
 requiring `CodeQL` intentionally inherits its current results-check failure
 semantics, that required-status membership is distinguished from strict
 freshness, and that the negative control can prove a red/missing required status
-without entering `main`.
+without entering `main`. The review must also decide whether to authorize the
+nonmatching-producer probe, record GitHub's server-side mediation as an accepted
+trust boundary, choose the latency policy, and assign the recurring attestation.
 
 If Ryan has granted Execute, Cursor owns the bounded ruleset mutation and the
 separately authorized disposable controls. Preserve exact snapshots and do not
@@ -101,8 +105,8 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 ## 6. What Remains Before "Live" (sequential)
 
 - [ ] Kiro/Ryan review the architecture, execution, VERIFY, STATUS, and
-  SHA-bound handoff package; Ryan records acceptance of the required-check
-  latency trade-off.
+  SHA-bound handoff package; Ryan records the latency-policy choice, trust
+  boundary, producer-probe authorization, and recurring-attestation owner.
 - [ ] Ryan separately authorizes Cursor to patch `Protect Main` with the exact
   five-context required-status set.
 - [ ] Cursor captures before/after ruleset snapshots and proves a normal green
@@ -110,6 +114,9 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 - [ ] Ryan separately authorizes disposable controls.
 - [ ] Cursor proves a red/missing CodeQL context blocks ordinary merge, then
   closes and removes the disposable resources without merging them.
+- [ ] If authorized and technically isolated, Cursor proves a same-named
+  nonmatching-producer status cannot satisfy the CodeQL requirement; otherwise
+  the probe is recorded as not run/inconclusive, not silently marked PASS.
 - [ ] Kiro reviews the exact final revision and evidence.
 - [ ] Ryan merges and closes the arc; STATUS and LATEST are then updated to the
   post-close current state.
@@ -124,6 +131,7 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 | Native code-scanning rule | Ryan/separate scope | Adding the separate alert/security-severity ruleset rule |
 | Bypass policy | Ryan | Admin/repository-role bypass use or policy changes as proof |
 | Negative-control integrity | Cursor/Kiro | Calling a green alert-only fixture or unobserved hypothesis a pass |
+| Producer identity | Ryan/Cursor/Kiro | Posting a same-named status without explicit probe authorization or treating a non-isolated result as proof |
 | Arc boundary | Ryan | Dependabot, runtime, corpus, Chroma, ledger, Pinwheel, or Kryptonite work |
 
 ## 8. Relationship to ConvMem (the bigger picture)
@@ -171,6 +179,9 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Codex | Removed the tracked-workflow fallback and required CodeQL-independent causality with Pylint/Pytest successful |
 | 2026-08-16 | Codex | Added SHA-bound Ryan/Kiro handoff and explicit required-check latency decision gate |
 
-**TL;DR:** The SHA-bound handoff and latency gate are now documented; CodeQL
-remains advisory in the live ruleset, and the next action is Kiro adversarial
-review before Ryan Execute authorization.
+| 2026-08-16 | Codex | Added GitHub mediation trust boundary, separately authorized producer-identity probe, V8 recurring attestation, and path-scoped latency alternative |
+
+**TL;DR:** The SHA-bound handoff now includes explicit producer-binding and
+continuity hardening; CodeQL remains advisory in the live ruleset, and the next
+action is Kiro adversarial review before Ryan chooses the latency policy and
+authorizes Execute.

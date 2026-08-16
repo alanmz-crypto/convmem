@@ -16,7 +16,11 @@ producer identities, required-status membership, strict freshness semantics,
 normal green behavior, a disposable red/missing CodeQL control, and restoration.
 A code-scanning alert alone does not count as evidence; a failed `CodeQL`
 results check does count, and its inherited current failure semantics must be
-recorded without changing the threshold policy.
+recorded without changing the threshold policy. It also tests that a
+same-named status from a nonmatching producer cannot satisfy an integration-id
+bound requirement, records GitHub's server-side mediation as an accepted trust
+boundary, and defines a recurring post-Execute attestation rather than treating
+one successful Execute as permanent proof.
 
 ## Scope lock
 
@@ -26,6 +30,7 @@ recorded without changing the threshold policy.
 | Exact live contexts `Analyze (actions)`, `Analyze (python)`, `CodeQL` | Switching default setup to advanced setup |
 | Normal green PR and ordinary merge eligibility | CodeQL query/language/runner changes |
 | Ryan-authorized disposable analyzer-failure PR | Changing CodeQL results thresholds or adding a native code-scanning rule |
+| Ryan-authorized nonmatching-producer status probe | Scheduled automation for recurring attestation |
 | Cleanup, restoration, Kiro review, and Ryan gate | Bypass exercise, runtime, Chroma, ledger, corpus, Dependabot |
 
 ## Evidence commands
@@ -41,6 +46,7 @@ gh run list --workflow CodeQL --limit 20 --json databaseId,displayTitle,event,he
 gh pr view <pr> --json number,state,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup
 gh pr checks <pr>
 gh api repos/alanmz-crypto/convmem/commits/<head-sha>/check-runs --paginate
+gh api repos/alanmz-crypto/convmem/commits/<head-sha>/status
 ```
 
 The ruleset snapshot is the authority for required membership. PR checks and
@@ -60,7 +66,7 @@ claim that the future row has already passed.
 | V0c | No implementation slipped into planning | Diff contains only planning docs and required status-list/LATEST updates; no workflow/ruleset mutation | PASS at planning tip |
 | V0d | Ryan authorized external Execute | Explicit Ryan grant names ruleset `19156572`, final context set, and disposable-control phase | PLANNED — Ryan gate |
 | V0e | Same revision is used for review and evidence | Kiro reviews the exact full pushed correction tip named in the Codex handoff; no stale branch claim | PLANNED |
-| V0f | Required-check latency is consciously accepted | Ryan records acceptance of all-three CodeQL contexts on ordinary/documentation-only PRs, with PR #197 observations (40s/56s/3s CodeQL surfaces) treated as evidence, not an SLA | PLANNED — Ryan planning gate |
+| V0f | Required-check latency policy is consciously selected | Ryan records either acceptance of all-three CodeQL contexts on ordinary/documentation-only PRs, with PR #197 observations (40s/56s/3s CodeQL surfaces) treated as evidence, not an SLA, or selection of a path-scoped alternative that reopens workflow/architecture scope | PLANNED — Ryan planning gate |
 
 ### V1 — live baseline and context identity
 
@@ -75,6 +81,7 @@ claim that the future row has already passed.
 | V1g | Contexts are currently advisory | Pre-Execute ruleset has no three CodeQL entries despite fresh PR #197 passing them | PASS — live capture |
 | V1h | Context identities are fresh immediately before mutation | Execute resolves the newest current PR run and rechecks names, app IDs, head SHA, and URLs in the same session before PATCH; mismatch stops mutation | PLANNED — mandatory stop-before-PATCH gate |
 | V1i | Observed latency is documented without overclaim | PR #197 records approximately 40s `Analyze (actions)`, 56s `Analyze (python)`, and 3s `CodeQL`; no universal timing promise is inferred | PASS — planning evidence |
+| V1j | GitHub complete-mediation boundary is explicit | Review records that current-head, matching-integration ruleset evaluation is trusted server behavior; the arc does not claim to inspect GitHub's internal caching/revalidation on every future re-push | PLANNED — accepted trust boundary |
 
 ### V2 — ruleset enforcement implementation
 
@@ -103,6 +110,7 @@ claim that the future row has already passed.
 | V4d | CodeQL is the independent blocking cause | At least one CodeQL-required context is red/absent, both pre-existing `pylint (3.12)` and `pytest (3.12)` contexts are successful, and PR `mergeStateStatus`/equivalent reports blocked or unsatisfied without bypass | PLANNED |
 | V4e | Inherited result semantics are recorded correctly | A green alert-only result is not red evidence; a red `CodeQL` result is valid only with its check conclusion, finding/threshold behavior, and ordinary blocked state recorded; no threshold is changed | PLANNED |
 | V4f | No unapproved fallback crosses authorization | If the isolated fixture fails to produce a meaningful CodeQL failure, or Pylint/Pytest are not successful, close/delete the disposable PR and obtain new Ryan authorization before any different fixture | PLANNED |
+| V4g | Nonmatching producer cannot satisfy a required context | On the same disposable head, exactly one CodeQL-required context is red/absent, the other four required contexts are successful, and a same-named green Statuses-API result from a user/nonmatching producer is present; ordinary merge remains blocked | PLANNED — separate Ryan producer-probe gate |
 
 ### V5 — restoration and no-bypass proof
 
@@ -113,6 +121,7 @@ claim that the future row has already passed.
 | V5c | Main has no disposable fixture | `git show origin/main:<fixture>` fails because the file never entered `main` | PLANNED |
 | V5d | Bypass was not exercised | No admin/repository-role bypass action in the evidence; any observed capability is noted only | PLANNED |
 | V5e | Ruleset remains intended state after cleanup | Final snapshot still has the exact five contexts and strict policy | PLANNED |
+| V5f | Producer probe remains disposable | Status URL/creator evidence is retained, the spoofed status is attached only to a disposable commit, and that commit is not reachable from `main` | PLANNED |
 
 ### V6 — regression and boundary checks
 
@@ -131,6 +140,17 @@ claim that the future row has already passed.
 | V7b | Ryan owns merge/closeout decision | Ryan approves documentation/implementation merge and records arc closeout | PLANNED |
 | V7c | Handoff is recoverable | Branch, full tip SHA, `origin/main..HEAD` log, explicit push result, and lowest-effort review links | PLANNED |
 
+### V8 — recurring enforcement attestation
+
+These rows define continuity evidence; they do not claim that a periodic check
+has already run during planning.
+
+| ID | Check | Expected evidence | Planning state |
+|---|---|---|---|
+| V8a | Attestation owner and cadence are explicit | A named owner records a quarterly manual review, plus an immediate review after a ruleset, default-setup, CodeQL workflow-language, or integration-id change | PLANNED — post-Execute operations gate |
+| V8b | Attestation compares the externally visible contract | The review captures `gh api repos/alanmz-crypto/convmem/rulesets/19156572`, default-setup state, and recent CodeQL check identities, then diffs required contexts, integration ids, target, enforcement, strict policy, and bypass settings against the recorded baseline | PLANNED — post-Execute operations gate |
+| V8c | Drift has a fail-closed response | Any mismatch opens review and stops automatic policy changes; Ryan/Kiro decide whether to update the required set or re-open this arc | PLANNED — post-Execute operations gate |
+
 ## Evidence log template
 
 Populate this block only after Execute; do not backfill future results from chat
@@ -145,11 +165,12 @@ V3: <PASS/FAIL> — normal PR, all five statuses green.
 V4: <PASS/FAIL> — disposable CodeQL analyzer failure and ordinary BLOCKED state.
 V5: <PASS/FAIL> — closed/unmerged disposable resources, restoration, no bypass.
 V6: <PASS/FAIL> — predecessor-gate and out-of-scope regression checks.
+V8: <PASS/FAIL> — recurring attestation owner, cadence, baseline, and drift response.
 Mechanical: <PASS/FAIL> — commands, snapshots, and links are reproducible.
 Sign-off: Kiro <PASS/FAIL> at <revision>; Ryan gate <state>.
 ```
 
 **TL;DR:** Verify the exact five-context ruleset, distinguish required-status
-membership from strict freshness, refresh identities immediately before PATCH,
-inherit current GHAS `CodeQL` result semantics without changing thresholds, and
-prove a Ryan-authorized red/missing disposable control is ordinarily blocked.
+membership from strict freshness, test nonmatching-producer rejection, record
+GitHub's mediation boundary, define recurring attestation, and prove a
+Ryan-authorized red/missing disposable control is ordinarily blocked.

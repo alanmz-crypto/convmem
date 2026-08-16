@@ -121,6 +121,24 @@ The ruleset update must preserve, byte-for-byte in meaning, the existing
 deletion, non-fast-forward, pull-request, review-thread-resolution, and bypass
 settings. Only the `required_status_checks` array gains the three named entries.
 
+## Trust boundary: GitHub server-side complete mediation
+
+The plan treats GitHub's server-side ruleset evaluation as a trust boundary,
+not as a behavior that this arc can inspect internally. Required-status entries
+carry both a context string and an integration id because a same-named status
+posted by an ordinary write-capable user must not satisfy a requirement bound
+to GitHub Actions or GHAS. The disposable producer-identity probe below tests
+that externally observable contract once.
+
+The Execute-time capture, strict policy, and current-head evidence defend
+against stale planning evidence and ordinary PR freshness drift. They cannot
+prove that GitHub's internal implementation re-evaluates every cached
+check-run result across every future re-push. This arc therefore records
+GitHub's current-head, matching-producer enforcement as an accepted trust
+boundary; it does not claim to have independently verified GitHub internals.
+If a future probe or attestation contradicts that boundary, execution stops and
+the ruleset is not silently weakened.
+
 ## Negative-control design
 
 The disposable negative control must create an analysis failure, not merely a
@@ -140,8 +158,22 @@ isolated fixture. No tracked predecessor workflow is a pre-authorized fallback.
 
 A source-level vulnerability alone is not an acceptable substitute: a finding
 may be uploaded while the CodeQL check remains green. Likewise, admin bypass,
-manual status manipulation, cancellation, or a broken repository-wide service
-is not a negative-control proof.
+unauthorized status manipulation, cancellation, or a broken repository-wide
+service is not a negative-control proof. The explicitly authorized
+producer-identity probe below is a separate identity test, not the analysis
+failure proof.
+
+If Ryan's disposable-control authorization explicitly includes the optional
+producer-identity probe, the control may also post one same-named successful
+commit status through the ordinary Statuses API using the user-authenticated
+`gh` session. The target must be the one CodeQL-required context that the
+fixture leaves red or absent; the other four required contexts must be green.
+Raw status/check-run evidence must show that the spoofed status came from a
+user or otherwise nonmatching producer, not integration `15368` or `57789`.
+The probe passes only if the ordinary merge remains blocked. If the fixture
+does not isolate exactly one CodeQL context, the identity result is
+inconclusive: close/delete the disposable PR and obtain new authorization for
+another fixture rather than claiming a producer-binding proof.
 
 ## Scope and non-goals
 
@@ -152,6 +184,10 @@ In scope:
 * strict required-status preservation;
 * one or more Ryan-authorized disposable PRs proving red/missing CodeQL blocks
   ordinary merge;
+* one Ryan-authorized producer-identity probe, if the disposable fixture
+  isolates exactly one CodeQL-required context; and
+* a documented post-Execute recurring attestation of the externally visible
+  ruleset/default-setup contract;
 * restoration, cleanup, and independent verification.
 
 Out of scope:
@@ -160,6 +196,8 @@ Out of scope:
 * adding a tracked CodeQL workflow or switching default setup to advanced setup;
 * CodeQL query, language, runner, or results-threshold changes;
 * adding the separate native code-scanning alert-threshold ruleset rule;
+* automatic scheduled enforcement of the recurring attestation; the arc
+  defines the cadence and evidence contract but does not add a new workflow;
 * the open Dependabot critical alert unless Ryan creates a separate scope grant;
 * Pinwheel, Kryptonite, runtime, Chroma, ledger, corpus, or production-data
   changes;
@@ -179,8 +217,15 @@ alongside the existing Pylint/Pytest checks, which took approximately 5m42s and
 The all-three decision therefore accepts the operational cost and queue/wait
 surface of CodeQL on every PR in exchange for explicit analyzer and result
 coverage. Ryan must consciously accept that trade-off during planning review,
-or request a different required-context policy before Execute. No Execute
-authorization is complete until this latency question is answered.
+or request a different required-context policy before Execute. A path-scoped
+alternative is available for that decision: a stable placeholder/required job
+could make CodeQL required for code-relevant changes while giving
+documentation-only PRs a deliberate no-analysis path. That alternative would
+change workflow/default-setup behavior, coverage semantics, and the current
+ruleset-only scope; selecting it reopens architecture and requires a new
+execution plan and authorization. No Execute authorization is complete until
+Ryan chooses between the blanket all-three policy and that explicitly
+re-scoped alternative.
 
 ## Acceptance conditions for Execute
 
@@ -198,7 +243,9 @@ only when:
 6. restoration leaves the default CodeQL setup healthy and the ruleset unchanged
    except for the intended required contexts; and
 7. VERIFY has exact revisions, URLs, ruleset snapshots, and Kiro/Ryan review
-   outcomes.
+   outcomes; and
+8. a named owner, quarterly cadence, drift triggers, and stop/review response
+   exist for the post-Execute recurring attestation.
 
 **TL;DR:** Require `Analyze (actions)`, `Analyze (python)`, and `CodeQL` in the
 existing strict `Protect Main` status set, using a ruleset-only Execute change;

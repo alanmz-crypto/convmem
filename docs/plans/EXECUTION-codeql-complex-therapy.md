@@ -54,8 +54,17 @@ explicitly answer:
 4. Does Ryan accept the latency trade-off of requiring all three CodeQL
    contexts on ordinary PRs, including documentation-only PRs, based on the
    observed PR #197 timings recorded in ARCHITECTURE?
-5. Is Cursor authorized to mutate `Protect Main` and, separately, to create the
-   disposable PR/control resources?
+5. Does Ryan authorize the separate producer-identity probe: one same-named
+   user-authenticated status on the disposable commit, only if the fixture
+   isolates exactly one red/missing CodeQL context while the other four are
+   green?
+6. Is Cursor authorized to mutate `Protect Main` and, separately, to create
+   the disposable PR/control resources named above?
+
+Ryan may also choose a path-scoped/placeholder-job policy for documentation-only
+PRs instead of the blanket all-three requirement. That choice is not an
+Execute approval: it reopens the architecture and workflow-scope decision and
+requires a new plan before any mutation.
 
 Until those answers are granted, Cursor must not call a mutating ruleset API,
 edit a CodeQL/workflow file, or create a disposable PR.
@@ -171,6 +180,40 @@ unobserved hypothesis is not a pass.
 Do not use the repository-role bypass, merge the PR, cancel a check to simulate
 failure, or change the ruleset solely to make the control easier to trigger.
 
+### Phase 4a — producer-identity probe (separate disposable authorization)
+
+Run this probe only when Ryan's disposable-control grant names it explicitly
+and Phase 4 has isolated exactly one red or missing CodeQL-required context.
+Select that actual target from the fresh check evidence; do not assume that
+the malformed workflow will affect a particular surface. Post one green,
+same-named commit status through the ordinary user-authenticated `gh` session:
+
+```bash
+gh api --method POST \
+  repos/alanmz-crypto/convmem/statuses/<disposable-head-sha> \
+  -f state=success \
+  -f context='<target-codeql-context>' \
+  -f description='disposable nonmatching-producer probe'
+```
+
+Then capture the raw status, check-run, and PR state:
+
+```bash
+gh api repos/alanmz-crypto/convmem/commits/<disposable-head-sha>/status
+gh api repos/alanmz-crypto/convmem/commits/<disposable-head-sha>/check-runs --paginate
+gh pr view <disposable-pr> --json number,headRefOid,mergeStateStatus,statusCheckRollup
+```
+
+The probe passes only when the status is visibly user-authored or otherwise
+has no matching integration id, the genuine target context remains red or
+absent, the other four required contexts are successful, and ordinary merge
+eligibility remains blocked. If more than one CodeQL context is red/absent, or
+the status changes the outcome, record the result as inconclusive/FAIL and
+stop. Do not retry with another context or producer. The status is attached to
+the disposable commit and may remain as immutable evidence after branch
+cleanup; prove that commit never reaches `main` rather than attempting a
+destructive status rewrite.
+
 ## Phase 5 — restoration and cleanup
 
 For every disposable control:
@@ -179,7 +222,9 @@ For every disposable control:
 2. delete the disposable remote branch and remove any local disposable worktree;
 3. verify that the fixture does not exist on `main`;
 4. re-run the normal positive check and ruleset snapshot; and
-5. record that the intended five-context set and strict policy remain intact.
+5. record that the intended five-context set and strict policy remain intact;
+6. for the producer probe, retain its status URL/creator evidence and verify
+   its disposable commit is not reachable from `main`.
 
 If the negative control creates a code-scanning alert, verify that it is tied to
 the disposable ref and is not a `main` finding. Do not remediate unrelated
@@ -214,11 +259,14 @@ Stop immediately for any of the following:
   production data;
 * a missing or renamed context that would require guessing;
 * a failed disposable fixture with no reproducible red/missing status;
+* a request to post a same-named status without explicit producer-probe
+  authorization, or a spoofed status that appears to carry a matching app id;
 * a request to exercise admin bypass or merge a disposable PR; or
 * an external mutation that differs from the exact ruleset resource and final
   values authorized by Ryan.
 
-**TL;DR:** Ryan reviews and separately authorizes Cursor’s exact ruleset patch
-and disposable PR controls; Cursor then proves all five required contexts on a
-normal PR, proves a red/missing CodeQL analysis blocks ordinary merge, restores
-the disposable state, and hands the same evidence to Kiro.
+**TL;DR:** Ryan reviews and separately authorizes Cursor's exact ruleset patch,
+disposable PR, and optional producer-identity probe; Cursor proves the five
+required contexts, proves a red/missing CodeQL analysis blocks ordinary merge,
+records the GitHub mediation boundary, defines recurring attestation, and hands
+the same evidence to Kiro.
