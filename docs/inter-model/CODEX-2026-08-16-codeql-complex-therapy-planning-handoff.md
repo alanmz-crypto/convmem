@@ -5,22 +5,27 @@
 **From:** Codex planning lane
 **To:** Kiro adversarial review → Ryan Execute decision
 **Branch:** `plan/2026-08-16-codeql-complex-therapy`
-**Review package SHA:** `45046fafd0aa918042a89ae7e9a85fb707ce55d1`
+**Review package SHA:** `190c468a4a034831ccdf60a321bca44b93221af4`
 
 ## Review binding
 
 The planning package that was reviewed and pushed before this additive handoff
-is exactly `45046fafd0aa918042a89ae7e9a85fb707ce55d1`. The handoff is the
-explicit carrier for that SHA; the branch tip advances when this handoff and
-the latency addendum are committed. Reviewers must retain the named package
-SHA and the final carrier SHA from the push handoff as separate, copy-pasteable
-identities. No abbreviated SHA is authoritative.
+is exactly `190c468a4a034831ccdf60a321bca44b93221af4`. It contains the
+producer-identity, trust-boundary, recurring-attestation, and latency-policy
+hardening. The handoff is the explicit carrier for that SHA; the branch tip
+advances when this pointer update is committed. Reviewers must retain the
+named package SHA and the final carrier SHA from the push handoff as separate,
+copy-pasteable identities. No abbreviated SHA is authoritative.
 
 ## Consequence
 
 The package proposes making the three live CodeQL contexts required alongside
 the existing Pylint/Pytest contexts in `Protect Main` (`19156572`), while
-preserving strict freshness, bypass policy, and all existing rules. It remains
+preserving strict freshness, bypass policy, and all existing rules. It records
+GitHub's server-side current-head/producer mediation as an accepted trust
+boundary, adds a separately authorized same-name/nonmatching-producer probe,
+defines recurring attestation, and surfaces path-scoped gating as a
+re-scoping alternative to blanket latency acceptance. It remains
 planning-only: no ruleset mutation, workflow edit, implementation, or
 disposable PR has been authorized or performed.
 
@@ -53,6 +58,14 @@ Kiro/Ryan should explicitly decide:
    If it does not create an independent CodeQL red/missing condition while
    Pylint/Pytest remain successful, Cursor must close/delete it and obtain new
    Ryan authorization before using a different fixture.
+5. Whether Ryan explicitly authorizes the producer-identity probe, only when
+   exactly one CodeQL-required context is red/missing and the other four are
+   green; otherwise it is not run or counted.
+6. Whether Ryan selects blanket all-three latency acceptance or the
+   path-scoped alternative, understanding that the latter reopens workflow and
+   architecture scope.
+7. The named owner, quarterly cadence, and fail-closed response for recurring
+   post-Execute attestation.
 
 ## Required review reading
 
@@ -65,13 +78,14 @@ Kiro/Ryan should explicitly decide:
 ## Authorization boundary
 
 Until Ryan grants Execute, Cursor must not PATCH `Protect Main`, edit any
-workflow, create a disposable PR, or exercise the bypass. Kiro reviews the
-planning artifact first; Ryan separately grants ruleset Execute and disposable
-controls. No agent merges `main`.
+workflow, create a disposable PR, post a same-named producer probe, or exercise
+the bypass. Kiro reviews the planning artifact first; Ryan separately grants
+ruleset Execute, disposable controls, and the optional producer probe. No agent
+merges `main`.
 
-I finished: [Arc CodeQL Complex Therapy] SHA-bound planning handoff and latency decision gate
-Next step: Kiro adversarial review of the named package and additive carrier, then Ryan’s Execute decision
+I finished: [Arc CodeQL Complex Therapy] SHA-bound hardening handoff
+Next step: Kiro adversarial review of the named package and additive carrier, then Ryan's latency-policy and Execute decisions
 Next lane: Kiro → Ryan
-See my work: `45046fafd0aa918042a89ae7e9a85fb707ce55d1` and the planning-package comparison above
+See my work: `190c468a4a034831ccdf60a321bca44b93221af4` and the planning-package comparison above
 
-**TL;DR:** Review package `45046fafd0aa918042a89ae7e9a85fb707ce55d1` is explicitly named; Kiro must review it plus the additive latency gate before Ryan authorizes Execute.
+**TL;DR:** Review package `190c468a4a034831ccdf60a321bca44b93221af4` is explicitly named; Kiro must review its hardening plus the additive carrier before Ryan chooses the latency policy and authorizes Execute.

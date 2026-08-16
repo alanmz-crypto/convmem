@@ -56,7 +56,7 @@ Execute phase.
 | `docs/plans/ARCHITECTURE-codeql-complex-therapy.md` | Corrected on this planning branch; all-three context decision and inherited GHAS result semantics |
 | `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate, isolated negative-control stop, and separately authorized producer probe |
 | `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V8 evidence matrix, future Execute/attestation rows unexecuted |
-| `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `45046fafd0aa918042a89ae7e9a85fb707ce55d1`; additive carrier for Kiro/Ryan |
+| `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `190c468a4a034831ccdf60a321bca44b93221af4`; additive carrier for Kiro/Ryan |
 | `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; trust boundary, producer probe, recurring attestation, and latency alternatives ready for Kiro/Ryan review |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
@@ -180,6 +180,7 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Codex | Added SHA-bound Ryan/Kiro handoff and explicit required-check latency decision gate |
 
 | 2026-08-16 | Codex | Added GitHub mediation trust boundary, separately authorized producer-identity probe, V8 recurring attestation, and path-scoped latency alternative |
+| 2026-08-16 | Codex | Bound the hardening package and review carrier to full SHA `190c468a4a034831ccdf60a321bca44b93221af4` |
 
 **TL;DR:** The SHA-bound handoff now includes explicit producer-binding and
 continuity hardening; CodeQL remains advisory in the live ruleset, and the next
