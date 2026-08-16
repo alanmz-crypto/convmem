@@ -4,7 +4,7 @@
 
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
-- **Pinwheel Pytest CI — implementation PR OPEN (2026-08-16, [#191](https://github.com/alanmz-crypto/convmem/pull/191)):** Who/What: dual `pytest==9.1.1` pin, version logs, 16-entry manifest checker, 21 executable-line CI contract tests on rebased tip `8cae19b`. When: PR opened 2026-08-16 after rebase onto `3453a3f`. Why: close unpinned pytest and silent critical-test loss from Kryptonite follow-on. How: wait for CI green on #191 (V3d); Ryan must authorize disposable controls before V5c–V5d. [`VERIFY-pinwheel-pytest-ci.md`](../plans/VERIFY-pinwheel-pytest-ci.md) · [`STATUS-pinwheel-pytest-ci.md`](../plans/STATUS-pinwheel-pytest-ci.md) · [`ADVERSARIAL-REVIEW-pinwheel-pytest-ci.md`](../plans/ADVERSARIAL-REVIEW-pinwheel-pytest-ci.md). **Resume state:** `CI_PENDING` (V3d).
+- **Pinwheel Pytest CI — MERGED; disposable controls PASS (2026-08-16, [#191](https://github.com/alanmz-crypto/convmem/pull/191) + disposable [#192](https://github.com/alanmz-crypto/convmem/pull/192)–[#194](https://github.com/alanmz-crypto/convmem/pull/194)):** Who/What: `pytest==9.1.1` pin, 16-module checker, 21 contract tests on `main` `857a3a2`. When: merged + disposable controls 2026-08-16. Why: reproducible pytest CI after Kryptonite. How: three disposable PRs failed `pytest (3.12)`, merge BLOCKED, bypass unused, branches deleted. **V7a Kiro pending.** [`VERIFY-pinwheel-pytest-ci.md`](../plans/VERIFY-pinwheel-pytest-ci.md) · [`STATUS-pinwheel-pytest-ci.md`](../plans/STATUS-pinwheel-pytest-ci.md). **Resume state:** `EVIDENCE_COMPLETE` (V7a only).
 
 ## Recently merged / settled (2026-08-08 through 2026-08-15)
 
