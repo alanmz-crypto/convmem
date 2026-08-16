@@ -119,7 +119,7 @@ I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 
 | ID | Required check | Negative control | Result |
 |---|---|---|---|
-| V4a | Canonicalization uses one normative, versioned ConvMem profile/serializer and is deterministic across process restarts. | Golden vectors for field order, Unicode, numbers, escaping, nulls, and lists fail after serializer-library drift; no cross-implementation portability is assumed. | PENDING |
+| V4a | Canonicalization is versioned and deterministic across process restarts. | Field order/Unicode/null variants have specified behavior. | PENDING |
 | V4b | Unit → Chroma → export → reconstruction preserves envelope/commitment exactly. | Remove/alter flat or canonical field; degrade/fail as specified. | PENDING |
 | V4c | Flat metadata cannot override canonical envelope. | Give scalar cache a more favorable tier than recomputation. | PENDING |
 | V4d | Effective-integrity cache mismatch degrades to untrusted. | Tamper only the cache. | PENDING |
@@ -129,8 +129,6 @@ I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 | V4h | Registry manifest validation is separate from `.convmem-backup-evidence.json` capture-evidence validation. | Valid sidecar evidence with missing/invalid registry manifest fails or quarantines; neither validator substitutes for the other. | PENDING |
 | V4i | Registry directory completeness and registry↔JSONL↔Chroma identity/commitment agreement are verified before publication. | Partial snapshot, stale policy/recipe history, or restore/rebuild mismatch remains quarantined. | PENDING |
 | V4j | Registry recovery is a distinct Ryan-gated bulk operation; missing/incomplete recovery leaves live authority unchanged. | Item-by-item import cannot preserve caller IDs; missing store produces observable quarantine/degraded state without blanket live downgrade. | PENDING |
-| V4k | Recovery binds registry, policy/recipe history, JSONL, and Chroma to one explicitly selected complete-data-v2 generation/manifest commitment. | Individually valid components from different generations, or a valid older generation without a named Ryan rollback grant, remain quarantined and are not published. | PENDING |
-| V4l | Crash interruption at every durable write, rename, manifest, pointer, and publication boundary leaves either the prior complete authority generation or one complete verified replacement. | Inject interruption at each boundary; no mixed, missing, or partially selected authority generation may become live. | PENDING |
 
 ## V5 — Dedupe and assertion identity
 
@@ -142,7 +140,7 @@ I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 | V5d | Equivalence creates no aggregate trusted assertion. | PENDING |
 | V5e | Semantic cross-provenance tombstone requires human adjudication and retains both audit assertions. | PENDING |
 | V5f | Storage optimization cannot destroy provenance identity. | PENDING |
-| V5g | Assertion IDs are content-independent UUIDv4 values with 122 random payload bits, monitor-minted, atomically reserved, collision-checked, and immutable. | Caller attempts to mint, rewrite, recycle, or force a colliding ID. | PENDING |
+| V5g | Assertion IDs are content-independent random 128-bit values, monitor-minted, atomically reserved, collision-checked, and immutable. | Caller attempts to mint, rewrite, recycle, or force a colliding ID. | PENDING |
 | V5h | Export → reconstruction → re-import preserves a valid ID/commitment pair as idempotent replay only. | Round-trip comparison of ID, canonical envelope, and commitment; replay adds no assertion or corroborator. | PENDING |
 | V5i | Same content without a valid existing ID/commitment pair becomes a new independent assertion. | Ingest identical content twice from different roots. | PENDING |
 | V5j | Parent IDs and commitments match resolved parents. | Alter/remove parent commitment or bind the wrong parent ID. | PENDING |

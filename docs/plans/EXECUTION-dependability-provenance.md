@@ -151,14 +151,13 @@ Create one deep module that owns:
 - effective-integrity recomputation and cache-mismatch degradation;
 - legacy/malformed/unknown-policy fallback to untrusted.
 
-P1 must mint content-independent UUIDv4 `assertion_id` values centrally (128-bit
-encoded identifiers with 122 random payload bits), atomically reserve them
-before publication, preserve valid ID/commitment pairs only as idempotent replay,
-and create a new ID for same-content independent assertions. Replay under an
-existing ID requires the same canonical envelope and commitment and creates no
-corroboration or authority evidence. An invalid or mismatching pair fails
-identity-preserving import; retaining the content requires a new monitor-minted
-untrusted assertion. P1 recursively verifies parents,
+P1 must mint content-independent random 128-bit `assertion_id` values centrally,
+atomically reserve them before publication, preserve valid ID/commitment pairs
+only as idempotent replay, and create a new ID for same-content independent
+assertions. Replay under an existing ID requires the same canonical envelope and
+commitment and creates no corroboration or authority evidence. An invalid or
+mismatching pair fails identity-preserving import; retaining the content requires
+a new monitor-minted untrusted assertion. P1 recursively verifies parents,
 historical policy/recipes, bindings, cycles, and commitments before computing
 integrity. A missing ancestor or parent mismatch is untrusted.
 
@@ -172,17 +171,7 @@ classify `provenance/` as a required Tier-1 durable path, update
 `docs/RECOVER.md`, and add a separate provenance validator. The registry
 manifest validates store graph/commitment integrity; `.convmem-backup-evidence.json`
 remains capture evidence and does not replace that validator. The preflight must
-run both contracts before a recovered registry can publish. The recovery plan
-must select one immutable complete-data-v2 generation/manifest commitment before
-reading components; registry, policy/recipe history, JSONL, and Chroma must all
-match it. An older valid generation requires a separate Ryan rollback grant and
-may not be auto-selected. Crash interruption must be injected at every durable
-write, rename, manifest, pointer, and publication boundary, proving the result
-is either the prior complete authority generation or one complete verified
-replacement, never a mixed or missing authority set. P1 must define one
-normative, versioned ConvMem canonicalization profile/serializer and publish
-golden vectors that detect serializer-library drift; no cross-implementation
-portability requirement is implied by this slice.
+run both contracts before a recovered registry can publish.
 
 Likely surfaces after re-trace:
 
