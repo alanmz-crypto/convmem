@@ -12,9 +12,11 @@
 
 This VERIFY plan distinguishes the existing advisory CodeQL behavior from the
 post-Execute required-status behavior. It proves the exact status names and
-producer identities, strict ruleset semantics, normal green behavior, a
-disposable red/missing CodeQL control, and restoration. A CodeQL alert by itself
-does not count as a red required check.
+producer identities, required-status membership, strict freshness semantics,
+normal green behavior, a disposable red/missing CodeQL control, and restoration.
+A code-scanning alert alone does not count as evidence; a failed `CodeQL`
+results check does count, and its inherited current failure semantics must be
+recorded without changing the threshold policy.
 
 ## Scope lock
 
@@ -23,7 +25,7 @@ does not count as a red required check.
 | `Protect Main` required-status membership and strict policy | Workflow edits on `main` or during planning |
 | Exact live contexts `Analyze (actions)`, `Analyze (python)`, `CodeQL` | Switching default setup to advanced setup |
 | Normal green PR and ordinary merge eligibility | CodeQL query/language/runner changes |
-| Ryan-authorized disposable analyzer-failure PR | Alert severity thresholds or native code-scanning rule |
+| Ryan-authorized disposable analyzer-failure PR | Changing CodeQL results thresholds or adding a native code-scanning rule |
 | Cleanup, restoration, Kiro review, and Ryan gate | Bypass exercise, runtime, Chroma, ledger, corpus, Dependabot |
 
 ## Evidence commands
@@ -35,6 +37,7 @@ GitHub pages:
 git rev-parse HEAD
 git merge-base HEAD origin/main
 gh api repos/alanmz-crypto/convmem/rulesets/19156572
+gh run list --workflow CodeQL --limit 20 --json databaseId,displayTitle,event,headSha,createdAt,conclusion
 gh pr view <pr> --json number,state,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup
 gh pr checks <pr>
 gh api repos/alanmz-crypto/convmem/commits/<head-sha>/check-runs --paginate
@@ -52,11 +55,11 @@ claim that the future row has already passed.
 
 | ID | Check | Expected evidence | Planning state |
 |---|---|---|---|
-| V0a | Reviewed revision is identified | Planning tip `0ffdc69`; implementation tip recorded with full SHA before Execute | PASS for planning package |
+| V0a | Reviewed revision is identified | Pre-correction package tip was full SHA `658a9dab9977ba03dbfc6b1301b0f6bce3762f39`; final review binds to the full post-correction pushed SHA in the Codex handoff, never an abbreviated or predecessor SHA | CORRECTED — final SHA supplied after push |
 | V0b | Base is current | `git merge-base` resolves to current `origin/main` (`9c2a6784d760de6b39f154ee400033276c9b8336` at planning time) | PASS for planning package |
 | V0c | No implementation slipped into planning | Diff contains only planning docs and required status-list/LATEST updates; no workflow/ruleset mutation | PASS at planning tip |
 | V0d | Ryan authorized external Execute | Explicit Ryan grant names ruleset `19156572`, final context set, and disposable-control phase | PLANNED — Ryan gate |
-| V0e | Same revision is used for review and evidence | Kiro reviews the exact pushed implementation tip; no stale branch claim | PLANNED |
+| V0e | Same revision is used for review and evidence | Kiro reviews the exact full pushed correction tip named in the Codex handoff; no stale branch claim | PLANNED |
 
 ### V1 — live baseline and context identity
 
@@ -65,10 +68,11 @@ claim that the future row has already passed.
 | V1a | Protect Main targets `main` and is active | Ruleset `19156572`, `refs/heads/main`, enforcement `active` | PASS — live capture |
 | V1b | Existing required statuses are preserved | `pylint (3.12)` and `pytest (3.12)` remain in the post-patch list | PLANNED |
 | V1c | Strict policy is preserved | `strict_required_status_checks_policy=true` before and after | PLANNED |
-| V1d | Python analyzer context is exact | `Analyze (python)`, GitHub Actions app/integration `15368` | PASS — PR #191 head `35e090d...` |
-| V1e | Actions analyzer context is exact | `Analyze (actions)`, GitHub Actions app/integration `15368` | PASS — PR #191 head `35e090d...` |
-| V1f | GHAS result context is exact | `CodeQL`, GitHub Advanced Security app/integration `57789` | PASS — PR #191 head `35e090d...` |
-| V1g | Contexts are currently advisory | Pre-Execute ruleset has no three CodeQL entries despite PR #191 passing them | PASS — live capture |
+| V1d | Python analyzer context is exact | `Analyze (python)`, GitHub Actions app/integration `15368` | PASS — fresh PR #197 head `740424884f8921f1586f6b82648a0a290be40836` |
+| V1e | Actions analyzer context is exact | `Analyze (actions)`, GitHub Actions app/integration `15368` | PASS — fresh PR #197 head `740424884f8921f1586f6b82648a0a290be40836` |
+| V1f | GHAS result context is exact | `CodeQL`, GitHub Advanced Security app/integration `57789` | PASS — fresh PR #197 head `740424884f8921f1586f6b82648a0a290be40836` |
+| V1g | Contexts are currently advisory | Pre-Execute ruleset has no three CodeQL entries despite fresh PR #197 passing them | PASS — live capture |
+| V1h | Context identities are fresh immediately before mutation | Execute resolves the newest current PR run and rechecks names, app IDs, head SHA, and URLs in the same session before PATCH; mismatch stops mutation | PLANNED — mandatory stop-before-PATCH gate |
 
 ### V2 — ruleset enforcement implementation
 
@@ -77,6 +81,7 @@ claim that the future row has already passed.
 | V2a | Required set is exactly five contexts | Post-patch JSON contains Pylint, Pytest, `Analyze (actions)`, `Analyze (python)`, and `CodeQL`, with recorded integration ids | PLANNED |
 | V2b | No unrelated ruleset policy changed | Semantic diff shows only required-status additions; pull-request, deletion, non-fast-forward, bypass, and review-thread settings unchanged | PLANNED |
 | V2c | No workflow/default-setup change occurred | Git diff and GitHub workflow/config snapshots show no CodeQL workflow or default-setup edit | PLANNED |
+| V2d | Strict policy has the correct responsibility | `strict_required_status_checks_policy=true` is preserved and evidence shows freshness/up-to-date behavior; required membership, not strict alone, accounts for red/missing contexts | PLANNED |
 
 ### V3 — positive control
 
@@ -91,10 +96,11 @@ claim that the future row has already passed.
 | ID | Check | Expected evidence | Planning state |
 |---|---|---|---|
 | V4a | Ryan authorized disposable control | Authorization names the PR/branch purpose and permits create/close/delete only | PLANNED — separate Ryan gate |
-| V4b | Analyzer failure fixture is isolated | One temporary malformed workflow YAML file, or the documented fallback fixture; no product/runtime/data change | PLANNED |
+| V4b | Analyzer failure fixture is isolated | Primary exact fixture is `.github/workflows/codeql-negative-control.yml` with `name: [codeql-negative-control`; fallback is the exact malformed line appended to `.github/workflows/pylint.yml`; no product/runtime/data change | PLANNED |
 | V4c | Required CodeQL context is red or missing | `Analyze (actions)`, `Analyze (python)`, or `CodeQL` is failed/absent in the check-run evidence; fixture mechanism is recorded | PLANNED |
 | V4d | Ordinary merge is blocked | PR `mergeStateStatus`/equivalent reports blocked or unsatisfied without bypass | PLANNED |
-| V4e | No false positive is called a pass | If the fixture only creates an alert while checks remain green, discard it and run the fallback; no evidence is promoted | PLANNED |
+| V4e | Inherited result semantics are recorded correctly | A green alert-only result is not red evidence; a red `CodeQL` result is valid only with its check conclusion, finding/threshold behavior, and ordinary blocked state recorded; no threshold is changed | PLANNED |
+| V4f | No invented fallback crosses authorization | If both concrete fixtures fail, stop and obtain new Ryan authorization before any third mechanism | PLANNED |
 
 ### V5 — restoration and no-bypass proof
 
@@ -112,7 +118,7 @@ claim that the future row has already passed.
 |---|---|---|---|
 | V6a | Pylint/Pytest were not weakened | Existing contexts and their integration ids remain unchanged | PLANNED |
 | V6b | Pinwheel/Kryptonite scope is untouched | No workflow, pytest pin, manifest, or contract-test changes in this arc | PLANNED |
-| V6c | Default setup remains healthy | GitHub reports configured default setup and successful normal CodeQL run | PLANNED |
+| V6c | Default setup remains healthy | GitHub reports configured default setup, successful normal CodeQL run, and no changed results-threshold policy | PLANNED |
 | V6d | Dependabot scope remains separate | Critical alert is not modified or reclassified by this work | PLANNED |
 
 ### V7 — independent sign-off and closeout
@@ -131,7 +137,7 @@ claims:
 ```text
 VERIFY-codeql-complex-therapy — implementation tip <full SHA> — Cursor — <UTC>
 V0: <PASS/FAIL> — identity, authorizations, and scope.
-V1: <PASS/FAIL> — live ruleset and exact contexts.
+V1: <PASS/FAIL> — live ruleset, fresh pre-PATCH identity gate, and exact contexts.
 V2: <PASS/FAIL> — required-status mutation and preservation.
 V3: <PASS/FAIL> — normal PR, all five statuses green.
 V4: <PASS/FAIL> — disposable CodeQL analyzer failure and ordinary BLOCKED state.
@@ -141,6 +147,7 @@ Mechanical: <PASS/FAIL> — commands, snapshots, and links are reproducible.
 Sign-off: Kiro <PASS/FAIL> at <revision>; Ryan gate <state>.
 ```
 
-**TL;DR:** Verify the exact five-context strict ruleset, a normal all-green PR,
-a Ryan-authorized red/missing CodeQL disposable control that is ordinarily
-blocked, and complete restoration without bypass or unrelated scope changes.
+**TL;DR:** Verify the exact five-context ruleset, distinguish required-status
+membership from strict freshness, refresh identities immediately before PATCH,
+inherit current GHAS `CodeQL` result semantics without changing thresholds, and
+prove a Ryan-authorized red/missing disposable control is ordinarily blocked.

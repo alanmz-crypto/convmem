@@ -7,14 +7,16 @@
 
 ConvMem's `main` branch has required Pylint and Pytest checks, but CodeQL runs
 on pull requests as an advisory result. The arc makes the live CodeQL analysis
-contract part of ordinary merge protection without changing the CodeQL workflow,
-query policy, or repository bypass policy.
+contract part of ordinary merge protection, intentionally inheriting the
+current GHAS `CodeQL` results-check failure semantics without changing the
+results threshold, CodeQL workflow, query policy, or repository bypass policy.
 
 **Done means:** `Protect Main` strictly requires the existing Pylint/Pytest
 contexts plus the live CodeQL contexts `Analyze (actions)`, `Analyze (python)`,
 and `CodeQL`; a normal PR is green; a disposable CodeQL analysis failure or
-missing required status is ordinarily blocked; disposable resources are removed;
-and Kiro/Ryan review the exact evidence.
+missing required status is ordinarily blocked; strict policy additionally
+requires freshness against the current base; disposable resources are removed;
+and Kiro/Ryan review the exact final SHA and evidence.
 
 ## 2. System Design (how the pieces connect)
 
@@ -37,7 +39,8 @@ and Kiro/Ryan review the exact evidence.
                                   │
                                   ▼
                   ordinary merge eligible only when all
-                     five required statuses are successful
+                five required statuses are present/successful;
+                    strict=true also requires fresh base
 ```
 
 The CodeQL workflow is dynamically provided by GitHub; no tracked CodeQL
@@ -50,10 +53,10 @@ Execute phase.
 | Surface | State |
 |---|---|
 | `docs/inter-model/CURSOR-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Complete input handoff; planning authorized, Execute not authorized |
-| `docs/plans/ARCHITECTURE-codeql-complex-therapy.md` | Complete on this planning branch; exact all-three context decision |
-| `docs/plans/EXECUTION-codeql-complex-therapy.md` | Complete on this planning branch; separate Ryan gates for Execute/disposable controls |
-| `docs/plans/VERIFY-codeql-complex-therapy.md` | Complete on this planning branch; V0–V7 evidence matrix, future rows unexecuted |
-| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; planning package ready for review |
+| `docs/plans/ARCHITECTURE-codeql-complex-therapy.md` | Corrected on this planning branch; all-three context decision and inherited GHAS result semantics |
+| `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate and concrete fixtures |
+| `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V7 evidence matrix, future Execute rows unexecuted |
+| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; conditional-pass corrections ready for Kiro/Ryan review |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
 | GitHub `Protect Main` ruleset `19156572` | Active; currently requires only Pylint/Pytest; no CodeQL contexts yet |
@@ -65,11 +68,11 @@ Execute phase.
 | Milestone | Status | Blocking on |
 |---|---|---|
 | Planning authorization | **DONE** | Ryan authorized Codex planning on 2026-08-16 |
-| Live context capture | **DONE** | PR #191: `Analyze (actions)`, `Analyze (python)`, `CodeQL` |
-| Architecture package | **DONE on planning branch** | Ryan/Kiro review |
-| Execution package | **DONE on planning branch** | Ryan/Kiro review and Execute grant |
-| VERIFY package | **DONE on planning branch** | Execute evidence |
-| STATUS package/list updates | **DONE on planning branch** | Review/merge |
+| Live context capture | **DONE** | Fresh PR #197: `Analyze (actions)`, `Analyze (python)`, `CodeQL`; Execute must repeat before PATCH |
+| Architecture package | **CORRECTED on planning branch** | Kiro/Ryan review |
+| Execution package | **CORRECTED on planning branch** | Kiro/Ryan review and Execute grant |
+| VERIFY package | **CORRECTED on planning branch** | Execute evidence |
+| STATUS package/list updates | **CORRECTED on planning branch** | Review/merge |
 | Ruleset mutation | **NOT STARTED** | Separate Ryan Execute authorization; Cursor |
 | Normal positive control | **NOT STARTED** | Ruleset mutation and a green PR |
 | Disposable negative control | **NOT STARTED** | Separate Ryan disposable-control authorization |
@@ -78,9 +81,11 @@ Execute phase.
 ## 5. Your Role (read this to know what you're here to do)
 
 If you are reviewing, inspect the four planning files and verify that the
-all-three context decision is supported by live PR/check-run evidence, that the
-ruleset mutation is narrowly scoped, and that the negative control can prove a
-red/missing required status without entering `main`.
+all-three context decision is supported by fresh PR/check-run evidence, that
+requiring `CodeQL` intentionally inherits its current results-check failure
+semantics, that required-status membership is distinguished from strict
+freshness, and that the negative control can prove a red/missing required status
+without entering `main`.
 
 If Ryan has granted Execute, Cursor owns the bounded ruleset mutation and the
 separately authorized disposable controls. Preserve exact snapshots and do not
@@ -110,7 +115,8 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 |---|---|---|
 | Planning-only boundary | Ryan | Ruleset mutation, workflow edits, and disposable PRs before Execute |
 | Exact external resource/value | Ryan | Any mutation other than `Protect Main` `19156572` with the named final contexts |
-| CodeQL workflow/default setup | Ryan/separate scope | Workflow, language, query, runner, or setup changes |
+| CodeQL workflow/default setup | Ryan/separate scope | Workflow, language, query, runner, results-threshold, or setup changes |
+| Native code-scanning rule | Ryan/separate scope | Adding the separate alert/security-severity ruleset rule |
 | Bypass policy | Ryan | Admin/repository-role bypass use or policy changes as proof |
 | Negative-control integrity | Cursor/Kiro | Calling a green alert-only fixture or unobserved hypothesis a pass |
 | Arc boundary | Ryan | Dependabot, runtime, corpus, Chroma, ledger, Pinwheel, or Kryptonite work |
@@ -125,8 +131,9 @@ ConvMem merge governance:
 ```
 
 This arc depends on the existing CI gates but does not modify them. It makes
-security-analysis completion part of the same ordinary merge contract while
-leaving vulnerability alert thresholds and broad dependency remediation for
+security-analysis completion and the existing GHAS `CodeQL` results-check
+semantics part of the same ordinary merge contract while leaving threshold
+changes, native code-scanning rules, and broad dependency remediation for
 separate decisions.
 
 ## 9. Key Design Files (for deep dives)
@@ -154,7 +161,8 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | Date | Who | Change |
 |---|---|---|
 | 2026-08-16 | Codex | Created the planning arc brief with live CodeQL contexts and separate Execute/disposable gates |
+| 2026-08-16 | Codex | Applied conditional-pass corrections: inherited GHAS result semantics, full-SHA binding, strict-freshness wording, fresh pre-PATCH identity gate, and concrete disposable fixtures |
 
-**TL;DR:** The planning package is complete on the plan branch; the live system
-still has advisory CodeQL, and the next authorized action is Ryan/Kiro review
-before Cursor Execute.
+**TL;DR:** Conditional-pass corrections are complete on the plan branch; CodeQL
+remains advisory in the live ruleset, and the next action is Kiro/Ryan review of
+the full pushed correction SHA before Cursor Execute.

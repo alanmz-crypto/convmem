@@ -4,7 +4,7 @@
 |---|---|
 | **Arc** | CodeQL Complex Therapy |
 | **Phase** | Planning complete; execution pending Ryan authorization |
-| **Planning tip** | `0ffdc69` on `plan/2026-08-16-codeql-complex-therapy` |
+| **Pre-correction published tip** | `658a9dab9977ba03dbfc6b1301b0f6bce3762f39` on `plan/2026-08-16-codeql-complex-therapy` |
 | **Implementation lane** | Cursor, after a separate Ryan Execute grant |
 | **External gate owner** | Ryan |
 | **Independent review** | Kiro, on the same final artifact and revision |
@@ -29,10 +29,12 @@ Codex has produced:
 * [`STATUS-codeql-complex-therapy.md`](STATUS-codeql-complex-therapy.md) as the
   current arc brief.
 
-The live planning evidence was taken from ruleset `19156572`, PR #191, and the
-PR head check-runs. The planning branch contains documentation only; it does
-not contain a ruleset mutation, workflow edit, disposable fixture, or runtime
-change.
+The live planning evidence was taken from ruleset `19156572`, historical PR
+#191, and fresh planning-time PR #197/check-runs. The planning branch contains
+documentation only; it does not contain a ruleset mutation, workflow edit,
+disposable fixture, or runtime change. The final review must use the full SHA
+of the pushed correction tip supplied in the Codex handoff; neither `0ffdc69`
+nor this pre-correction SHA is the final review binding.
 
 ## Phase 1 — Ryan planning review
 
@@ -41,8 +43,9 @@ explicitly answer:
 
 1. Is the all-three context set (`CodeQL`, `Analyze (python)`, `Analyze
    (actions)`) the intended required subset for the current default setup?
-2. Is ruleset-only enforcement, without a native alert-threshold rule, the
-   intended scope?
+2. Is ruleset-only enforcement, intentionally inheriting the current GHAS
+   `CodeQL` results-check failure semantics but without adding or changing a
+   native alert-threshold rule, the intended scope?
 3. Is the malformed-workflow disposable control acceptable, with a fallback
    control if it does not produce a red/missing required context?
 4. Is Cursor authorized to mutate `Protect Main` and, separately, to create the
@@ -60,8 +63,35 @@ Cursor works from a fresh implementation branch based on the reviewed current
 git fetch origin
 git rev-parse origin/main
 gh api repos/alanmz-crypto/convmem/rulesets/19156572
-gh pr checks 191
+gh run list --workflow CodeQL --limit 20 --json databaseId,displayTitle,event,headSha,createdAt,conclusion
+gh pr view <fresh-current-pr> --json number,state,headRefOid,baseRefName,updatedAt
+gh pr checks <fresh-current-pr>
+gh api repos/alanmz-crypto/convmem/commits/<fresh-pr-head-sha>/check-runs --paginate
 ```
+
+### Phase 2a — stop-before-PATCH identity gate
+
+Immediately before the PATCH, resolve `<fresh-current-pr>` to the newest
+available current PR run from the configured default-setup CodeQL workflow. The
+planning-time reference is PR #197, head
+`740424884f8921f1586f6b82648a0a290be40836`, but Execute must not assume that
+historical run remains current. A current PR may be the implementation/positive
+control PR created under the Execute grant; if no current PR run is available,
+stop before mutation rather than inventing a context identity.
+
+The captured check-runs must contain exactly these names and producer IDs:
+
+```text
+Analyze (actions)   GitHub Actions             app/integration 15368
+Analyze (python)    GitHub Actions             app/integration 15368
+CodeQL              GitHub Advanced Security   app/integration 57789
+```
+
+The PR head SHA, check-run SHA, status names, app IDs, and result URLs are saved
+as the pre-PATCH evidence. If any name, producer, or context differs from the
+reviewed package, Cursor stops before mutating `Protect Main` and requests a
+new Ryan/Kiro decision. This same-session fresh capture is mandatory even
+though PR #197 has already confirmed the identities during planning.
 
 The only authorized external mutation is one patch to:
 
@@ -117,10 +147,27 @@ real long-lived vulnerability. Capture the exact file, branch tip, PR number,
 check-run URLs, conclusion, and ordinary merge state.
 
 The control passes if a required CodeQL context is red or absent and the
-ordinary merge path is blocked. If CodeQL accepts the fixture, close the PR
-without merge and run the planned fallback fixture that causes a reproducible
-Python or CodeQL analyzer failure. The fallback must be documented with the
-same evidence; an unobserved hypothesis is not a pass.
+ordinary merge path is blocked. The exact primary fixture is:
+
+```text
+path: .github/workflows/codeql-negative-control.yml
+content: name: [codeql-negative-control
+```
+
+That deliberately malformed workflow YAML is disposable and must never reach
+`main`. If it is accepted without an analyzer failure, close the PR without
+merge and use this pre-approved concrete fallback under the same disposable
+grant:
+
+```text
+path: .github/workflows/pylint.yml
+change: append the single malformed YAML line `: [codeql-negative-control`
+```
+
+If both concrete fixtures fail to produce a red/missing required CodeQL
+context, stop and request a new Ryan authorization before inventing any other
+failure mechanism. The fallback must be documented with the same evidence; an
+unobserved hypothesis is not a pass.
 
 Do not use the repository-role bypass, merge the PR, cancel a check to simulate
 failure, or change the ruleset solely to make the control easier to trigger.
@@ -163,8 +210,9 @@ negative PR(s): <number(s), closed without merge>
 Stop immediately for any of the following:
 
 * a request to edit a tracked CodeQL/workflow file in this arc;
-* a requested change to Pylint, Pytest, Pinwheel, bypass, alert thresholds,
-  Dependabot, runtime, corpus, or production data;
+* a requested change to Pylint, Pytest, Pinwheel, bypass, CodeQL results
+  thresholds, native code-scanning rules, Dependabot, runtime, corpus, or
+  production data;
 * a missing or renamed context that would require guessing;
 * a failed disposable fixture with no reproducible red/missing status;
 * a request to exercise admin bypass or merge a disposable PR; or

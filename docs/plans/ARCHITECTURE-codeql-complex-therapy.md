@@ -6,8 +6,8 @@
 | **Status** | Planning package; Execute is not authorized by this document |
 | **Owner** | Codex authors the plan; Cursor executes after Ryan's separate grant; Kiro reviews; Ryan owns external authorization and merge |
 | **Baseline** | `origin/main` at `9c2a6784d760de6b39f154ee400033276c9b8336` |
-| **Planning branch** | `plan/2026-08-16-codeql-complex-therapy` at `0ffdc69` |
-| **Decision** | Make the three live CodeQL-related contexts required on `Protect Main`, with strict required-status policy preserved |
+| **Planning branch** | `plan/2026-08-16-codeql-complex-therapy`; pre-correction published tip `658a9dab9977ba03dbfc6b1301b0f6bce3762f39` |
+| **Decision** | Make the three live CodeQL-related contexts required on `Protect Main`, intentionally inheriting the current GHAS `CodeQL` results-check failure semantics while preserving strict freshness policy |
 
 ## Goal and consequence
 
@@ -19,11 +19,16 @@ still satisfy the current required-status set.
 This arc closes that merge-protection gap. After Execute, an ordinary merge to
 `main` must have successful, fresh results for the existing Pylint and Pytest
 contexts plus the three CodeQL contexts observed on the live repository. A
-missing CodeQL context is also unsatisfied under the existing strict policy.
+missing or red required context is unsatisfied because it is named in the
+required-status set; strict policy additionally requires the PR to be tested
+against the current base branch.
 
-This is a merge-completion gate, not a new vulnerability-severity policy. A
-future decision to block on CodeQL alert severity belongs to a separate
-code-scanning merge-protection change with its own thresholds and controls.
+Requiring the GHAS `CodeQL` results check intentionally imports that check's
+existing failure semantics into merge eligibility. If the current CodeQL
+results policy makes a finding cause the `CodeQL` check to fail, that failure
+will block an ordinary merge after Execute. This arc does not add or change a
+native alert-threshold rule or change the existing results policy; it makes the
+current GHAS result a required status surface alongside the two analyzer jobs.
 
 ## Live system baseline
 
@@ -37,18 +42,21 @@ from the handoff:
 | Strict policy | `strict_required_status_checks_policy: true` |
 | CodeQL setup | Default setup `configured`, query suite `default`, standard runner; no tracked CodeQL workflow exists in the repository |
 | Dynamic workflow | GitHub reports an active `CodeQL` workflow at `dynamic/github-code-scanning/codeql` |
-| PR #191 head | `35e090dae25df08a42989d28a9caed5ab1f6255f` (merged as `857a3a244a3ac27d8f1cdc84b34ba4b32d967e0f`) |
+| Historical PR #191 head | `35e090dae25df08a42989d28a9caed5ab1f6255f` (merged as `857a3a244a3ac27d8f1cdc84b34ba4b32d967e0f`) |
+| Fresh planning-time PR #197 head | `740424884f8921f1586f6b82648a0a290be40836` (merged; latest completed PR CodeQL run captured before this correction) |
 
-The exact CodeQL-related check contexts on PR #191 were:
+The exact CodeQL-related check contexts on fresh PR #197 were:
 
 | Context | Producer | Integration/app id | Live evidence |
 |---|---|---:|---|
-| `Analyze (actions)` | GitHub Actions | `15368` / GitHub Actions | run `31950386772`, job `95172844019` |
-| `Analyze (python)` | GitHub Actions | `15368` / GitHub Actions | run `31950386772`, job `95172844080` |
-| `CodeQL` | GitHub Advanced Security | `57789` / `github-advanced-security` | run `95172900037` |
+| `Analyze (actions)` | GitHub Actions | `15368` / GitHub Actions | run `31955068924`, job `95184347389` |
+| `Analyze (python)` | GitHub Actions | `15368` / GitHub Actions | run `31955068924`, job `95184347396` |
+| `CodeQL` | GitHub Advanced Security | `57789` / `github-advanced-security` | run `95184414717` |
 
 The current ruleset does not contain any of these three contexts. This is the
-live distinction between “CodeQL passed on PR #191” and “CodeQL is required.”
+live distinction between “CodeQL passed on PR #197” and “CodeQL is required.”
+Execute must repeat this identity capture immediately before mutation; this
+planning-time capture is not a license to reuse stale names.
 
 ## Decision: the required context set
 
@@ -87,8 +95,9 @@ All three CodeQL contexts are required for a deliberate reason:
 The patch is ruleset-only. It must not add or edit a repository CodeQL workflow,
 change default-setup configuration, change the bypass policy, or alter the
 existing Pylint/Pytest contexts. The native “require code scanning results”
-alert-threshold rule is not part of this arc because choosing an alert severity
-policy is a different product decision from requiring analysis completion.
+alert-threshold rule is not part of this arc, and the existing GHAS results
+threshold is not changed; the deliberate policy choice is to inherit the
+current `CodeQL` results-check semantics by requiring that check.
 
 ## Merge and failure semantics
 
@@ -96,13 +105,17 @@ The invariant is:
 
 ```text
 ordinary merge eligible
-  iff all five required contexts are successful and fresh
-  and strict required-status policy is true
+  iff all five named required contexts are present and successful
+  and, because strict_required_status_checks_policy=true,
+      the PR is tested against the current base branch
 ```
 
-If any required context is red, stale, or absent, the ordinary merge path must
-report an unsatisfied/blocked state. The repository-role bypass remains present
-as an administrative capability but is not evidence and must not be exercised.
+Required-status membership makes a red or absent named context unsatisfied.
+Strict policy adds the freshness/up-to-date requirement; it is not the mechanism
+that creates the named-context requirement. A stale PR therefore remains
+ineligible even when all checks are green until it is tested against the latest
+base. The repository-role bypass remains present as an administrative capability
+but is not evidence and must not be exercised.
 
 The ruleset update must preserve, byte-for-byte in meaning, the existing
 deletion, non-fast-forward, pull-request, review-thread-resolution, and bypass
@@ -145,7 +158,8 @@ Out of scope:
 
 * ruleset or workflow edits during this planning phase;
 * adding a tracked CodeQL workflow or switching default setup to advanced setup;
-* CodeQL query, language, runner, or alert-threshold changes;
+* CodeQL query, language, runner, or results-threshold changes;
+* adding the separate native code-scanning alert-threshold ruleset rule;
 * the open Dependabot critical alert unless Ryan creates a separate scope grant;
 * Pinwheel, Kryptonite, runtime, Chroma, ledger, corpus, or production-data
   changes;
