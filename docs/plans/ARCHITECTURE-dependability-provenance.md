@@ -54,13 +54,19 @@ The wider Trust Arc remains a five-part planning sequence. This package
 strengthens T3 provenance; it does not delete the surrounding dependability
 work or authorize any of it:
 
+P0, the CI Merge Gate, is prerequisite infrastructure outside Full Fathom Five
+and is not counted as one of its five arcs. The canonical parent hierarchy is
+FF1/T1 Trust Baseline → FF2/T2 Existing Evidence + Failure-Gap Matrix →
+FF3/T3 Compatibility & Provenance → FF4/T4 Security, Privacy & Egress →
+FF5/T5 Operational Envelope.
+
 | Track | Planning responsibility | Boundary |
 |---|---|---|
-| T1 | Trust baseline, claim ownership, severity, and declared degraded states | Architecture evidence only; no runtime gate change |
-| T2 | Inventory existing CG-1/CG-2, backup, restore, projection, and provider evidence; classify gaps | Add a new check only for a distinct failure window or owner |
-| T3 | Durable-format compatibility and provenance contract, including acknowledgement and migration semantics | No live migration, corpus rewrite, or activation |
-| T4 | Security/lifecycle and egress planning, including poisoning and provider-failure evidence | No cloud-policy or runtime change in this edit |
-| T5 | Endurance, resource, maintenance, and operational-envelope planning | Measurements and grants remain later work |
+| FF1 / T1 | Trust baseline, claim ownership, severity, and declared degraded states | Architecture evidence only; no runtime gate change |
+| FF2 / T2 | Inventory existing CG-1/CG-2, backup, restore, projection, and provider evidence; classify gaps | Add a new check only for a distinct failure window or owner |
+| FF3 / T3 | Durable-format compatibility and provenance contract, including acknowledgement and migration semantics | No live migration, corpus rewrite, or activation |
+| FF4 / T4 | Security/lifecycle and egress planning, including poisoning and provider-failure evidence | No cloud-policy or runtime change in this edit |
+| FF5 / T5 | Endurance, resource, maintenance, and operational-envelope planning | Measurements and grants remain later work |
 
 The sequence is a planning map, not five simultaneous implementation streams.
 Existing standing checks and accepted evidence are reused where they cover the
@@ -72,6 +78,12 @@ mandatory completed predecessors to any T3/provenance implementation grant.
 Stage 1A/1B is a T3 child slice and cannot receive an implementation grant
 until T1's architecture output and T2's evidence/gap output are complete and
 accepted; T4 and T5 remain parent-sequence work after T3.
+
+The parent roadmap is frozen at this hierarchy. **Full Fathom Five parent
+structure frozen; further findings are review findings, not automatic scope
+additions.** A later Kiro or Copilot finding may create a bounded review issue,
+but it does not silently add a new parent arc, alter the order, or move the
+review target without an explicit planning decision.
 
 ### Acknowledgement and migration semantics
 

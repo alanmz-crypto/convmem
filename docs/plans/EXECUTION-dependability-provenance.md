@@ -55,19 +55,31 @@ The implementation packages below are the bounded provenance slice within the
 existing Trust Arc sequence. T1–T5 remain visible so later work cannot be
 mistaken for discarded scope, but this document authorizes none of it.
 
+P0, the CI Merge Gate, is prerequisite infrastructure outside Full Fathom Five
+and is not counted among the five arcs. The canonical order is FF1/T1 Trust
+Baseline → FF2/T2 Existing Evidence + Failure-Gap Matrix → FF3/T3
+Compatibility & Provenance → FF4/T4 Security, Privacy & Egress → FF5/T5
+Operational Envelope.
+
 | Track | Decomposition | Current disposition |
 |---|---|---|
-| T1 | Trust baseline, claim matrix, severity, and degraded-state contract | Planning only; no runtime gate change |
-| T2 | Existing-proof inventory and smallest missing oracles | Planning only; reuse standing evidence where sufficient |
-| T3 | Compatibility/provenance contract and fixtures | This package's strengthened Stage 1A/1B focus |
-| T4 | Security/lifecycle and egress evidence | Separate plan and grant; no cloud-policy or runtime change |
-| T5 | Endurance/resource/maintenance envelope | Separate plan and grant; no operational change |
+| FF1 / T1 | Trust baseline, claim matrix, severity, and degraded-state contract | Planning only; no runtime gate change |
+| FF2 / T2 | Existing-proof inventory and smallest missing oracles | Planning only; reuse standing evidence where sufficient |
+| FF3 / T3 | Compatibility/provenance contract and fixtures | This package's strengthened Stage 1A/1B focus |
+| FF4 / T4 | Security/lifecycle and egress evidence | Separate plan and grant; no cloud-policy or runtime change |
+| FF5 / T5 | Endurance/resource/maintenance envelope | Separate plan and grant; no operational change |
 
 T1 Trust Baseline and T2 existing-proof inventory/gap analysis must be
 completed and accepted before any T3/provenance implementation grant. Stage
 1A/1B is the T3 child architecture/execution slice, so it cannot receive that
 grant until T1's architecture output and T2's evidence/gap output are complete;
 T4 and T5 remain in the parent sequence after T3.
+
+This is a crystallization boundary, not a new implementation stage:
+**Full Fathom Five parent structure frozen; further findings are review
+findings, not automatic scope additions.** New findings must be recorded
+against the relevant arc and cannot create a new handoff, grant, or parent-plan
+scope without an explicit planning decision.
 
 T3's acknowledgement rule is precise: only the named authoritative durable
 write boundary may return an acknowledged-success result; provider completion,
