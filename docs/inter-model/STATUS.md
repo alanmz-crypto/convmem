@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-09
+**Snapshot:** 2026-08-16
 
 ## Project goal
 
@@ -27,6 +27,8 @@ projection of the ledger/export, and production mutations remain explicitly gate
   separate Ryan grant — see [`STATUS-shadow-ledger-phase0.md`](../plans/STATUS-shadow-ledger-phase0.md).
 - **R2b capture** code is on `main`; live capture is unauthorized; quarantined draft packet
   must not be reused.
+- **Arc CI Kryptonite** is complete on `main`; Pinwheel planning is review-ready and does not
+  authorize CI or GitHub governance changes. See [`STATUS-pinwheel-pytest-ci.md`](../plans/STATUS-pinwheel-pytest-ci.md).
 - Two non-fatal doctor warnings often present: legacy `embed_collection_identity` metadata
   and external restic freshness. They do not authorize corpus mutation or Shadow activation.
 
@@ -38,6 +40,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
+| Pinwheel Pytest CI | Planning package PASS with conditions | Ryan decides execution; then Cursor implements exact pinning, workflow-contract protection, and explicit manifest collection. No CodeQL or Protect Main changes. |
 
 ## Closed arcs — reference STATUS only
 
@@ -73,6 +76,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Complete-data backup STATUS](../plans/STATUS-complete-data-backup-correction-v2.md)
 - [R2b capture STATUS](../plans/STATUS-r2b-capture-auth.md)
 - [Shadow Ledger STATUS](../plans/STATUS-shadow-ledger-phase0.md)
+- [Pinwheel Pytest CI STATUS](../plans/STATUS-pinwheel-pytest-ci.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
 **TL;DR:** Chroma is GREEN; JudgeBench waits on Ryan G3/G4; Shadow waits on
