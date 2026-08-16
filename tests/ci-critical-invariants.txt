@@ -1,0 +1,19 @@
+# Advisory v1 manifest for the CI behavioral merge gate.
+# One tracked pytest module per line. This file is not executed or enforced yet.
+# If a path is renamed, update this inventory in the same change.
+
+tests/test_file_generation_pointer.py
+tests/test_file_generation_read_path_inventory.py
+tests/test_file_generation_read_paths.py
+tests/test_serving_authority.py
+tests/test_source_reconciler.py
+tests/test_logical_accounting.py
+tests/test_mixed_mode_proof.py
+tests/test_cg2_rehearsal.py
+tests/test_shadow_activation.py
+tests/test_governed_recovery_and_writers.py
+tests/test_governed_writer_gate.py
+tests/test_writer_census.py
+tests/test_chroma_restore_drill.py
+tests/test_complete_data_restore.py
+tests/test_readonly_store.py
