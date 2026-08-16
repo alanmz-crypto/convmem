@@ -76,6 +76,7 @@ Execute phase.
 | VERIFY package | **CORRECTED on planning branch** | Execute evidence; CodeQL causality, producer binding, and V8 continuity rows required |
 | STATUS package/list updates | **CORRECTED on planning branch** | Review/merge |
 | SHA-bound Codex handoff | **READY on planning branch** | Kiro adversarial review |
+| SHA lineage audit | **NOT RECORDED** | Kiro must independently resolve the package and current remote carrier; the transient `9dfaa6722...` typo is review evidence, not authority |
 | Ruleset mutation | **NOT STARTED** | Separate Ryan Execute authorization; Cursor |
 | Normal positive control | **NOT STARTED** | Ruleset mutation and a green PR |
 | Disposable negative control | **NOT STARTED** | Separate Ryan disposable-control authorization |
@@ -94,6 +95,8 @@ freshness, and that the negative control can prove a red/missing required status
 without entering `main`. The review must also decide whether to authorize the
 nonmatching-producer probe, record GitHub's server-side mediation as an accepted
 trust boundary, choose the latency policy, and assign the recurring attestation.
+Kiro must independently resolve the package and remote carrier SHAs; the
+intermediate mistyped package string is part of the review evidence.
 
 If Ryan has granted Execute, Cursor owns the bounded ruleset mutation and the
 separately authorized disposable controls. Preserve exact snapshots and do not
@@ -107,6 +110,9 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 - [ ] Kiro/Ryan review the architecture, execution, VERIFY, STATUS, and
   SHA-bound handoff package; Ryan records the latency-policy choice, trust
   boundary, producer-probe authorization, and recurring-attestation owner.
+- [ ] Kiro independently verifies the package SHA, the remote branch tip, and
+  the `git log` lineage, including the transient `9dfaa6722...` typo and
+  corrective `790d5fd2...` commit.
 - [ ] Ryan separately authorizes Cursor to patch `Protect Main` with the exact
   five-context required-status set.
 - [ ] Cursor captures before/after ruleset snapshots and proves a normal green
@@ -181,6 +187,7 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 
 | 2026-08-16 | Codex | Added GitHub mediation trust boundary, separately authorized producer-identity probe, V8 recurring attestation, and path-scoped latency alternative |
 | 2026-08-16 | Codex | Bound the hardening package and review carrier to full SHA `190c4683f452c1a2f70ae7630269d92658eb8974` |
+| 2026-08-16 | Codex | Added mandatory independent SHA-lineage verification after the transient handoff typo was corrected |
 
 **TL;DR:** The SHA-bound handoff now includes explicit producer-binding and
 continuity hardening; CodeQL remains advisory in the live ruleset, and the next
