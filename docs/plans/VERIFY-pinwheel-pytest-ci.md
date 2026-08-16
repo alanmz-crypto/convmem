@@ -60,7 +60,7 @@ deliberate test failure.
 | V0a | Subject tip and PR resolve to the same implementation revision | **PASS** | branch `fix/2026-08-16-pinwheel-pytest-ci`; tip recorded at handoff |
 | V0b | Base is current `main`, not the old Kryptonite planning branch | **PASS** | base `bc83c85d0522023ea6e404bff4aaed135c47815a` |
 | V0c | Selected pytest version was established from fresh Python 3.12 evidence | **PASS** | pytest 9.1.1 from isolated Python 3.12.13 venv; candidate baseline 2026-08-16T05:34:00Z |
-| V0d | Ryan authorization is recorded for any disposable PR/resource | **PENDING** | disposable controls not authorized |
+| V0d | Ryan authorization is recorded for any disposable PR/resource | **PASS** | Ryan authorized disposable controls 2026-08-16; PRs #192–#194 closed without merge |
 | V0e | No Protect Main, CodeQL, runtime, or data changes are in the diff | **PASS** | local diff scope review |
 
 ## V1 — Pin and workflow contract
@@ -89,10 +89,10 @@ deliberate test failure.
 
 | ID | Check | Result |
 |---|---|---|
-| V3a | Focused contract/checker tests pass | **PASS** | 14 contract tests |
+| V3a | Focused contract/checker tests pass | **PASS** | 21 contract tests |
 | V3b | All 16 manifest modules collect successfully | **PASS** | checker PASS |
 | V3c | Full local suite passes or unrelated pre-existing failures are isolated | **PASS** | 1348 passed; isolated: `test_eval_golden` (live corpus), `test_file_generation_read_path_inventory` |
-| V3d | Authorized ordinary PR has green `pytest (3.12)` and `pylint (3.12)` | **PENDING** | implementation PR not opened |
+| V3d | Authorized ordinary PR has green `pytest (3.12)` and `pylint (3.12)` | **PASS** | [#191](https://github.com/alanmz-crypto/convmem/pull/191) merged `857a3a2`; green CI on tip `35e090d` |
 
 ## V4 — Pin controls
 
@@ -109,14 +109,14 @@ deliberate test failure.
 |---|---|---|
 | V5a | Missing/renamed listed module fails the checker | **PASS** | local checker controls |
 | V5b | Listed zero-test module fails by nonzero collection status | **PASS** | local checker controls |
-| V5c | Required `pytest (3.12)` is red on each bad candidate | **PENDING** | disposable GitHub controls |
-| V5d | Ordinary merge path is blocked; bypass is not exercised | **PENDING** | disposable GitHub controls |
+| V5c | Required `pytest (3.12)` is red on each bad candidate | **PASS** | [#192](https://github.com/alanmz-crypto/convmem/pull/192) `b4d2fbc`; [#193](https://github.com/alanmz-crypto/convmem/pull/193) `003a449`; [#194](https://github.com/alanmz-crypto/convmem/pull/194) `aae0e20` — pytest jobs failed |
+| V5d | Ordinary merge path is blocked; bypass is not exercised | **PASS** | #192–#194 `mergeStateStatus=BLOCKED`; ruleset `19156572` bypass `always` recorded, not exercised |
 
 ## V6 — Restoration and governance
 
 | ID | Check | Result |
 |---|---|---|
-| V6a | Controls restored and normal PR is green | **PENDING** | restoration PR after disposable controls |
+| V6a | Controls restored and normal PR is green | **PASS** | `main` at `857a3a2`; disposable PRs closed; branches deleted |
 | V6b | Protect Main required contexts remain unchanged | **PASS** | no local Protect Main/status-context changes in diff (live ruleset not proven by diff alone) |
 | V6c | CodeQL remains out of scope and unchanged | **PASS** | no CodeQL workflow/ruleset edits in diff |
 | V6d | No collection census, runtime, or production-data change slipped in | **PASS** | diff scope lock held |
@@ -126,19 +126,19 @@ deliberate test failure.
 | ID | Check | Result |
 |---|---|---|
 | V7a | Reviewer records written PASS/FAIL naming exact tip SHA and residuals | **PENDING** | post-PR / Ryan GATE |
-| V7b | Ryan records the merge/closeout GATE | **PENDING** | post-PR / Ryan GATE |
+| V7b | Ryan records the merge/closeout GATE | **PASS** | [#191](https://github.com/alanmz-crypto/convmem/pull/191) squash-merged 2026-08-16 |
 
 ## Evidence log
 
 ```text
-VERIFY-pinwheel-pytest-ci — tip 7923262956f5c3deb4b7d90898c7ff0b7b8e096a — Cursor — 2026-08-16T05:56:18Z
-V0: PASS — base bc83c85d0522023ea6e404bff4aaed135c47815a, fresh pin evidence, scope; V0d pending disposable auth.
-V1: PASS — exact pin, logs, preserved workflow commands.
-V2: PASS — strict manifest parsing and per-module exit-status collection.
-V3: PASS — local baseline (2 pre-existing failures isolated); V3d pending ordinary PR.
-V4: PASS — local contract negative controls (pylint-job pin isolated in V4a).
-V5: PASS — local checker controls; V5c-V5d pending GitHub controls.
-V6: PASS — local diff governance (V6b diff-only); V6a pending restoration PR.
-Mechanical: PASS (local)
-Sign-off: pending independent reviewer at implementation PR tip
-Ryan GATE: not accepted (implementation handoff)
+VERIFY-pinwheel-pytest-ci — merge 857a3a2; disposable b4d2fbc / 003a449 / aae0e20 — Cursor — 2026-08-16T13:45Z
+V0: PASS — V0d Ryan authorized disposable controls; scope lock held.
+V1-V2: PASS — exact pin, logs, manifest checker, 21 contract tests.
+V3: PASS — #191 green CI; merge 857a3a2.
+V4: PASS — local contract negative controls.
+V5: PASS — #192–#194 failed pytest (3.12); merge BLOCKED; bypass unused; branches deleted.
+V6: PASS — main at 857a3a2; disposable resources removed.
+Mechanical: PASS
+Sign-off: V7a pending Kiro at merge SHA 857a3a2
+Ryan GATE: #191 merged; arc evidence complete pending V7a
+```
