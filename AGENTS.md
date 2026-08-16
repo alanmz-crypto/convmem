@@ -46,6 +46,7 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 - [`docs/plans/STATUS-shadow-ledger-phase0.md`](docs/plans/STATUS-shadow-ledger-phase0.md) — Shadow Ledger Phase 0 delta capture
 - [`docs/plans/STATUS-chroma-reconcile-tier-l.md`](docs/plans/STATUS-chroma-reconcile-tier-l.md) — Chroma Reconcile Tier L (**closed GREEN**; reference only)
 - [`docs/plans/STATUS-complete-data-backup-correction-v2.md`](docs/plans/STATUS-complete-data-backup-correction-v2.md) — Complete-data backup correction v2
+- [`docs/plans/STATUS-codeql-complex-therapy.md`](docs/plans/STATUS-codeql-complex-therapy.md) — CodeQL Complex Therapy merge protection
 
 **Cross-arc rollup:** [`docs/inter-model/STATUS.md`](docs/inter-model/STATUS.md) — active vs closed arcs and next authorized actions (not a per-arc brief).
 
@@ -69,7 +70,7 @@ Known arc codenames (canonical list in `config/agent-protocol.md`):
 | Full Fathom Five | Parent five-arc dependability roadmap (FF1–FF5) | Active — frozen |
 | CI Kryptonite | Behavioral CI merge gate | **Closed** |
 | Pinwheel Pytest CI | Reproducible pytest CI | **Closed** |
-| CodeQL Complex Therapy | CodeQL merge protection | Planned |
+| CodeQL Complex Therapy | CodeQL merge protection | Planning authorized — Execute not yet granted |
 
 ---
 
