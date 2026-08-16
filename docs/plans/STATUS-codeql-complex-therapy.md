@@ -57,7 +57,7 @@ Execute phase.
 | `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate, isolated negative-control stop, and separately authorized producer probe |
 | `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V8 evidence matrix, future Execute/attestation rows unexecuted |
 | `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `c74c7f8611ac0bf563618270c2c3244715df7d67`; additive carrier for Kiro/Ryan |
-| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; Ryan accepted the all-three context set and inherited GHAS semantics, with remaining policy and authorization gates open |
+| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; Ryan accepted the all-three context set, inherited GHAS semantics, and blanket latency policy, with remaining authorization gates open |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
 | GitHub `Protect Main` ruleset `19156572` | Active; currently requires only Pylint/Pytest; no CodeQL contexts yet |
@@ -71,7 +71,7 @@ Execute phase.
 | Planning authorization | **DONE** | Ryan authorized Codex planning on 2026-08-16 |
 | Required CodeQL context set | **ACCEPTED by Ryan** | All three CodeQL contexts remain required alongside Pylint/Pytest; Execute is still separately unauthorized |
 | GHAS result semantics | **ACCEPTED by Ryan** | Existing `CodeQL` results-check behavior is inherited; severity thresholds and the separate native merge-protection rule remain unchanged |
-| Required-check latency policy | **NOT RECORDED** | Ryan must accept blanket all-three CodeQL wait/queue cost or choose a path-scoped alternative that reopens workflow/architecture scope |
+| Required-check latency policy | **ACCEPTED by Ryan** | Blanket all-three protection applies to documentation-only PRs; path-scoped/placeholder architecture is deferred unless latency becomes a separately authorized problem |
 | Live context capture | **DONE** | Fresh PR #197: `Analyze (actions)`, `Analyze (python)`, `CodeQL`; Execute must repeat before PATCH |
 | Architecture package | **CORRECTED on planning branch** | Kiro/Ryan review |
 | Execution package | **CORRECTED on planning branch** | Kiro/Ryan review and Execute grant |
@@ -89,8 +89,9 @@ Execute phase.
 ## 5. Your Role (read this to know what you're here to do)
 
 If you are reviewing, inspect the four planning files plus the SHA-bound Codex
-handoff and verify that Ryan's accepted all-three context and inherited-GHAS
-semantics decisions are supported by fresh PR/check-run evidence, that
+handoff and verify that Ryan's accepted all-three context, inherited-GHAS
+semantics, and blanket-latency decisions are supported by fresh PR/check-run
+evidence, that
 requiring `CodeQL` intentionally inherits its current results-check failure
 semantics, that required-status membership is distinguished from strict
 freshness, and that the negative control can prove a red/missing required status
@@ -110,8 +111,8 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 ## 6. What Remains Before "Live" (sequential)
 
 - [ ] Kiro/Ryan review the architecture, execution, VERIFY, STATUS, and
-  SHA-bound handoff package; Ryan records the latency-policy choice, trust
-  boundary, producer-probe authorization, and recurring-attestation owner.
+  SHA-bound handoff package; Ryan records the trust boundary,
+  producer-probe authorization, and recurring-attestation owner.
 - [ ] Kiro independently verifies the package SHA, the remote branch tip, and
   the `git log` lineage, including the transient `9dfaa6722...` typo and
   corrective `790d5fd2...` commit.
@@ -193,6 +194,7 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Codex | Bound the SHA-lineage package and incident-aware review carrier to full SHA `c74c7f8611ac0bf563618270c2c3244715df7d67` |
 | 2026-08-16 | Ryan | Accepted all three CodeQL contexts alongside the existing Pylint/Pytest requirements; Execute remains separately unauthorized |
 | 2026-08-16 | Ryan | Accepted existing GHAS `CodeQL` results-check semantics; no severity-threshold or native merge-protection rule change |
+| 2026-08-16 | Ryan | Accepted blanket all-three CodeQL protection on documentation-only PRs; path-scoped architecture deferred unless latency becomes a real problem |
 
 **TL;DR:** The SHA-bound handoff now includes explicit producer-binding and
 continuity hardening; CodeQL remains advisory in the live ruleset, and the next
