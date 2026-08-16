@@ -112,36 +112,6 @@ Copilot safety/isolation disposition, and Ryan's architecture lock. Claude's
 review is an additional independent architecture input, not a replacement for
 those lanes.
 
-## Final literature pass — evidence seeds, not imported architectures
-
-The following short selections were read with nearby context. They are evidence
-seeds for the ConvMem contracts, not designs to import. Confirmations are kept
-separate from the planning corrections below.
-
-### Confirmations retained without redesign
-
-- [Saltzer, Reed & Clark, *End-to-End Arguments in System Design*](https://web.mit.edu/saltzer/www/publications/endtoend/endtoendA4.pdf), PDF p. 2: “only with the knowledge and help of the application.” This confirms that Restic, filesystem, and Chroma health cannot replace application-level provenance validation; the plan already keeps that validator separate.
-- [W3C PROV-DM §2](https://www.w3.org/TR/prov-dm/) and [PROV-CONSTRAINTS abstract](https://www.w3.org/TR/prov-constraints/): “entities and activities” and validation of a “consistent history.” ConvMem already keeps assertion identity, producer/activity, responsibility/assurance, derivation, provenance history, and validation distinct without adopting PROV/RDF.
-- [Green, Karvounarakis & Tannen, *Provenance Semirings*](https://www.cis.upenn.edu/~plclub/propr/greg-slides.pdf), slides 6–10 / [PODS paper](https://dl.acm.org/doi/10.1145/1265530.1265535): “Which input tuples contribute to the presence of a tuple in the output?” This confirms that derivation annotations cannot be replaced by content equality; existing V5a–V5f cover the required independent-assertion behavior.
-- [in-toto, USENIX Security 2019](https://www.usenix.org/conference/usenixsecurity19/presentation/torres-arias): “cryptographically ensures the integrity of the software supply chain.” This is a scope boundary only; no signatures, transparency log, PKI, or supply-chain attestation is imported.
-
-### Corrections made from the probes
-
-- [TUF §1.5.2 and §2.1.3](https://theupdateframework.github.io/specification/latest/) says the snapshot role “prevents mix-and-match attacks” and separately defines rollback protection. Recovery now selects one immutable generation/manifest commitment, rejects individually valid mixed generations, and requires a separate Ryan rollback grant for an older valid generation.
-- [Pillai et al., OSDI 2014](https://www.usenix.org/conference/osdi14/technical-sessions/presentation/pillai) notes that application correctness is “highly dependent on subtle behaviors” of persistence. P1 and V4l now require crash interruption at every durable write/publication boundary to leave only the prior complete authority generation or one complete verified replacement.
-- [Chandy & Lamport, *Distributed Snapshots*](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/12/Determining-Global-States-of-a-Distributed-System.pdf), printed p. 69 §3.1, requires a “meaningful” global system state. V4k makes a mixed-generation registry/JSONL/Chroma composite an explicit quarantine negative control.
-- [RFC 8785 abstract and §3.2.3/§3.2.4](https://www.rfc-editor.org/info/rfc8785/) describes an “invariant format” and deterministic property sorting. P1 and V4a now require a versioned ConvMem canonicalization profile with golden vectors across implementations/library changes; JCS is not adopted wholesale.
-- [RFC 9562 §5.4](https://www.rfc-editor.org/info/rfc9562/) specifies UUIDv4’s “122 bits total” random payload. Architecture, execution, and V5g now use precise UUIDv4 wording rather than promising 128 random payload bits.
-
-### Remaining literature boundary
-
-The literature does not establish factual truth, authenticated ConvMem origin,
-or downstream action enforcement. Runtime implementation, crash injection,
-canonicalization vectors, authenticated channels, and any rollback operation
-remain future work under separate Ryan grants. The exact review binding remains
-non-self-referential: the reviewer records `git rev-parse HEAD` at review time;
-the final pushed SHA is reported outside this file.
-
 ## What Claude should return
 
 Review the current branch head and return:

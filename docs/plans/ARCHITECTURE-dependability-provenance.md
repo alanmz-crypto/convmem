@@ -330,11 +330,9 @@ Stage 1. Even after adjudication, audit evidence for both assertions remains.
 ### R7 — Assertion identity is independent from content
 
 Every assertion has an immutable, opaque `assertion_id` minted by the central
-ConvMem monitor. The initial schema uses a content-independent UUIDv4 in
-canonical lowercase text: the encoded identifier is 128 bits, but UUIDv4 has
-122 random payload bits because version and variant fields are fixed. The
-monitor generates and atomically reserves it in the authoritative assertion
-store before publication;
+ConvMem monitor. The initial schema uses a content-independent random 128-bit
+identifier in canonical lowercase UUID text. The monitor generates and
+atomically reserves it in the authoritative assertion store before publication;
 it retries a collision rather than reusing an existing identity. The ID is not
 derived from content, path, offset, producer, timestamp, or an LLM response.
 Callers, adapters, LLMs, dedupe code, exports, and consumers may carry or
@@ -404,24 +402,6 @@ JSONL or Chroma reconstruction may populate only a quarantined staging target
 until the registry manifest and all cross-surface checks pass. Missing store,
 partial snapshot, stale history, and restore/rebuild mismatch are explicit
 fail-closed recovery states, not reasons to mint trust from IDs in a payload.
-
-### R8.2 — Recovery binds one selected generation; rollback is explicit
-
-Every recovery selects one complete-data-v2 snapshot/generation before reading
-its components, identified by an immutable generation ID and manifest
-commitment. The registry, policy/recipe history, JSONL export, and Chroma
-projection must all verify against that same selected generation. Individually
-valid components from different generations are an impossible authority state
-and remain quarantined. A valid older generation is a rollback candidate only;
-it is never auto-selected because it is restorable. Publishing it requires a
-separate Ryan rollback grant naming the selected generation, the current live
-generation, and the reason. Restic success, filesystem health, or Chroma
-availability is not semantic provenance validation.
-
-Recovery publication is also crash-closed: interruption at every durable write,
-rename, manifest, pointer, and publication boundary must leave either the prior
-complete authority generation selected or one complete, verified replacement.
-It must never expose a mixed, missing, or partially selected authority set.
 
 ### R9 — Legacy is conservative
 
@@ -528,12 +508,8 @@ failure.
 `provenance_commitment` is SHA-256 over versioned canonical JSON of the
 authoritative envelope, excluding the commitment itself and derived/cache fields.
 Canonical field order, Unicode/number encoding, list order, and null/omission
-semantics are part of the schema version. P1 must publish a versioned
-canonicalization profile and golden vectors covering Unicode, numbers, escaping,
-lists, nulls, and field ordering; vectors are checked across supported
-implementations and after serialization-library changes. This is a narrow
-determinism contract, not adoption of JCS as a ConvMem-wide format. Hash equality
-proves byte-level commitment continuity, not truth.
+semantics are part of the schema version. Hash equality proves byte-level
+commitment continuity, not truth.
 
 The commitment and envelope must survive without semantic loss across:
 
@@ -677,15 +653,6 @@ used where present.
 | FRESCO / Temporal Misgrounding / MemStrata | Temporal staleness, deterministic temporal rubrics, bitemporal hypotheses. | Structured temporal metadata is a precondition; none solves free-text conflicts automatically. |
 | AgentChaos / MAS-FIRE | API and handoff fault-injection taxonomies. | Later evaluation tools, not first-slice proofs. |
 | Benchmark Aging | Gold/reference temporal drift. | Requires local benchmark revalidation policy. |
-| TUF 1.0.36, §§1.5.2, 2.1.3 | Snapshot selection must prevent rollback and mix-and-match; applied here as one selected recovery generation plus explicit rollback authorization. | TUF signatures/roles are not being imported; ConvMem currently has no authenticated channel or signed metadata. |
-| Pillai et al., OSDI 2014 | Persistence properties belong to the application update protocol, not only the filesystem. | Local recovery still needs implementation-level crash injection at every durable boundary. |
-| Saltzer, Reed & Clark, *End-to-End Arguments* | Restic/filesystem/Chroma health can support transport/storage integrity but cannot prove application-level provenance semantics. | The end-to-end validator remains ConvMem-specific; lower layers are not discarded. |
-| W3C PROV-DM / PROV-CONSTRAINTS | Confirms distinct entities, activities/producers, responsibility, derivation, provenance-of-provenance, and validation dimensions. | ConvMem uses a smaller native envelope; it does not adopt PROV/RDF. |
-| Green, Karvounarakis & Tannen, *Provenance Semirings* | Confirms derivation annotations are distinct from output/content equivalence; independent assertion paths must survive rebuild/dedupe. | Semiring algebra is evidence for a mechanical invariant, not a ConvMem storage design. |
-| Chandy & Lamport, *Distributed Snapshots* | A recoverable composite must be a meaningful global state; mixed individually valid generations are rejected. | ConvMem is not implementing a distributed snapshot algorithm. |
-| RFC 8785, JCS | Confirms why deterministic canonical bytes and cross-implementation vectors matter for commitments. | Only the required ConvMem canonicalization profile is planned, not wholesale JCS adoption. |
-| RFC 9562, §5.4 | Corrects UUIDv4 precision: 122 random payload bits plus fixed version/variant fields. | This is terminology precision, not an identity redesign. |
-| in-toto, USENIX Security 2019 | Scope boundary: supply-chain signing/transparency/PKI are not implied by provenance continuity. | No signatures, transparency log, PKI, or attestation system is added without a concrete ConvMem requirement. |
 
 ## 11. Stages and implementation boundaries
 
