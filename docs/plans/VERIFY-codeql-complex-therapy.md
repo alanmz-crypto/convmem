@@ -67,7 +67,7 @@ claim that the future row has already passed.
 | V0d | Ryan authorized external Execute | Explicit Ryan grant names ruleset `19156572`, final context set, and disposable-control phase | PLANNED — Ryan gate |
 | V0e | Same revision is used for review and evidence | Kiro reviews the exact full pushed correction tip named in the Codex handoff; no stale branch claim | PLANNED |
 | V0f | Required-check latency policy is consciously selected | Ryan records either acceptance of all-three CodeQL contexts on ordinary/documentation-only PRs, with PR #197 observations (40s/56s/3s CodeQL surfaces) treated as evidence, not an SLA, or selection of a path-scoped alternative that reopens workflow/architecture scope | PLANNED — Ryan planning gate |
-| V0g | SHA lineage is independently verified | Kiro runs `git fetch origin`, resolves the package SHA with `git rev-parse`, inspects `git log origin/main..origin/plan/2026-08-16-codeql-complex-therapy --oneline`, resolves the current remote tip independently, and records the transient `9dfaa6722...` typo plus its `790d5fd2...` correction as process evidence | PLANNED — Kiro mandatory |
+| V0g | SHA lineage is independently verified | Kiro independently resolved package `c74c7f8611ac0bf563618270c2c3244715df7d67`, fetched carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`, confirmed ancestry, inspected the 18-commit planning-only lineage, and verified the `9dfaa6722...` typo plus `790d5fd2...` correction | PASS — Kiro exact-revision recheck |
 
 ### V1 — live baseline and context identity
 

@@ -78,8 +78,8 @@ Execute phase.
 | Execution package | **CORRECTED on planning branch** | Kiro/Ryan review and Execute grant |
 | VERIFY package | **CORRECTED on planning branch** | Execute evidence; CodeQL causality, producer binding, and V8 continuity rows required |
 | STATUS package/list updates | **CORRECTED on planning branch** | Review/merge |
-| SHA-bound Codex handoff | **READY on planning branch** | Kiro adversarial review |
-| SHA lineage audit | **NOT RECORDED** | Kiro must independently resolve the package and current remote carrier; the transient `9dfaa6722...` typo is review evidence, not authority |
+| SHA-bound Codex handoff | **Kiro LINEAGE PASS at exact carrier** | Kiro reviewed carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; full architecture/Execute review remains open |
+| SHA lineage audit | **PASS by Kiro** | Package `c74c7f8611ac0bf563618270c2c3244715df7d67` is an independently confirmed ancestor of carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; `9dfaa6722...` → `790d5fd2...` incident is traceable; no Execute grant follows from this PASS |
 | Ruleset mutation | **NOT STARTED** | Separate Ryan Execute authorization; Cursor |
 | Normal positive control | **NOT STARTED** | Ruleset mutation and a green PR |
 | Disposable negative-control evidence | **NOT STARTED** | Exact fixture is authorized; requires exactly one red/missing CodeQL context with Pylint/Pytest green, otherwise close/delete and stop |
@@ -112,13 +112,11 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 
 ## 6. What Remains Before "Live" (sequential)
 
-- [ ] Kiro/Ryan review the architecture, execution, VERIFY, STATUS, and
-  SHA-bound handoff package; Ryan's accepted trust boundary and conditional
-  producer-probe authorization and recurring-attestation owner/cadence are
-  recorded; Execute authorization remains open.
-- [ ] Kiro independently verifies the package SHA, the remote branch tip, and
-  the `git log` lineage, including the transient `9dfaa6722...` typo and
-  corrective `790d5fd2...` commit.
+- [ ] Kiro/Ryan complete any remaining architecture/package review; Kiro's
+  independent lineage recheck is PASS at
+  carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; Ryan's accepted trust
+  boundary, conditional producer-probe authorization, and recurring-attestation
+  owner/cadence are recorded, but Execute remains open.
 - [ ] Ryan separately authorizes Cursor to patch `Protect Main` with the exact
   five-context required-status set.
 - [ ] Cursor captures before/after ruleset snapshots and proves a normal green
@@ -205,7 +203,8 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Ryan | Authorized only `.github/workflows/codeql-negative-control.yml` for the disposable negative control; no improvisation or fallback |
 | 2026-08-16 | Ryan | Conditionally authorized the producer-identity probe because integration IDs are part of the required-status security claim; run only after one isolated CodeQL failure with the other four required contexts green |
 | 2026-08-16 | Ryan | Set recurring attestation `OWNER=Ryan`, `CADENCE=quarterly + configuration-drift trigger`; Cursor collects evidence and Kiro reviews exceptions |
+| 2026-08-16 | Kiro | PASS on independent SHA-lineage recheck at exact carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; package ancestry, 18-commit planning-only delta, and `9dfaa6722...` → `790d5fd2...` incident verified; Execute remains unauthorized |
 
-**TL;DR:** Ryan has conditionally authorized the producer-identity probe and
-set recurring attestation ownership to Ryan with quarterly plus configuration-
-drift reviews; ruleset Execute authorization remains open.
+**TL;DR:** Kiro PASSed the independent SHA-lineage recheck at carrier
+`b7c0895f7e158c30a90b77d9b211cf3a640d9438`; recurring attestation is Ryan-owned
+with quarterly plus configuration-drift reviews, and Execute remains open.
