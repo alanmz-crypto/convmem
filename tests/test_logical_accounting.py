@@ -169,3 +169,7 @@ def test_manifest_projection_report_flags_mismatch():
     assert report["membership"]["missing_count"] == 1
     assert report["membership"]["unexpected_count"] == 1
     assert not report["gate_pass"]
+
+
+def test_ci_kryptonite_negative_control():
+    assert False, "CI gate negative control"
