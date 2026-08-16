@@ -5,7 +5,8 @@
 
 **State:** Sol-High capture/sealing correction applied after tightening
 selected-generation recovery, crash-closed publication, canonicalization drift
-detection, UUIDv4 precision, and consistent logical source state sealing.
+detection, UUIDv4 precision, and consistent logical source state sealing, with a
+P1 cross-arc census precondition for all manifest-bound mutators.
 Exact-revision Kiro and Copilot rechecks plus Ryan's architecture lock remain
 pending. No implementation is authorized.
 
@@ -166,7 +167,8 @@ Do not append session narrative.
 | 2026-08-15 | Codex Sol-High | Added the restore-preflight STATE_SPECS/writer-census and separate-validator contract for the provenance registry; implementation remains unauthorized. |
 | 2026-08-15 | Codex Sol-High | Retained T1–T5 and strengthened T3 provenance, acknowledgement, and migration boundaries; clean-SHA rereview required. |
 | 2026-08-16 | Codex Sol-High | Added capture/sealing consistency as a mechanism-neutral condition and V4m; runtime remains unauthorized and exact-revision rechecks remain pending. |
+| 2026-08-16 | Codex Sol-High | Added the P1 planning precondition to census every manifest-bound mutator; existing writer/Restic leases remain implementation context, not proof of V4m. |
 
-**TL;DR:** Capture/sealing consistency is now a pending planning control for
-exact-revision Kiro/Copilot rechecks; no implementation or live-data work is
-authorized.
+**TL;DR:** Capture/sealing consistency and the manifest-mutator census are
+pending planning controls for exact-revision Kiro/Copilot rechecks; no
+implementation or live-data work is authorized.

@@ -166,6 +166,18 @@ No adapter, caller, Chroma field, source path, role, confidence, or ranking code
 may independently compute integrity. The empty-input and caller-self-upgrade
 negative tests are P1 gates.
 
+### P1 precondition — census of manifest-bound mutators
+
+Before implementation can claim V4m, P1 must complete a census of every mutator
+affecting manifest-bound authority components. Each path must either be covered
+by one capture/sealing consistency protocol or be explicitly classified outside
+the provenance authority set. Existing Restic freshness gates, shared writer
+leases, process locks, and exclusive leases are not proof of V4m unless the
+census and consistency contract establish their coverage. This is a planning
+dependency/precondition only: it is not a grant to implement CG-1, backup/restore,
+or Shadow, nor to wire the existing exclusive-writer lease. That primitive is
+implementation context only and does not satisfy the guarantee.
+
 P1 must also define the future restore integration: extend
 `complete_data_restore.py` `STATE_SPECS` and `writer_census_for_root()` to
 classify `provenance/` as a required Tier-1 durable path, update
