@@ -88,6 +88,58 @@ require a current backup before any authorized write, and use atomic replacement
 with rollback and old-state fixtures. Legacy data remains readable only under
 the conservative untrusted policy until Ryan grants a separate migration.
 
+### Authoritative assertion store and recovery boundary
+
+The authoritative provenance boundary is a new planned registry rooted at
+`CONVMEM_DATA_ROOT/provenance/`. P1 must lock the exact on-disk encoding and
+writer/reader module, but it may not place the authority outside the explicit
+complete-data root or leave it implicit in a projection. The registry must
+contain, or deterministically address:
+
+- every canonical assertion envelope, assertion ID, and commitment;
+- every immutable parent-ID/parent-commitment edge;
+- root-origin evidence and assertion lifecycle state;
+- every historical `provenance_policy_version` used by a stored envelope; and
+- every transformer identity/version/recipe required to recompute a derivation.
+
+The registry's directory-level manifest is authoritative for completeness. It
+names the schema, store generation, required files/objects, counts, canonical
+digests, policy/recipe history digests, and the complete assertion graph. The
+exact file layout remains a P1 implementation choice, but a flat JSONL export
+or a Chroma collection alone is not an assertion authority. Existing
+`knowledge_units.jsonl` is an export/rebuild surface; Chroma is a retrieval
+projection. Neither may mint, preserve, or elevate identity when the registry
+is absent.
+
+The registry is intentionally inside the complete-data Restic scope. A legacy
+`convmem-chroma` snapshot or a Chroma-only restore is not a provenance-store
+backup and cannot authorize identity-preserving recovery. A complete-data-v2
+snapshot must include the registry, its manifest, policy/recipe history, the
+JSONL export, and the Chroma projection in one verifiable data-root snapshot.
+
+Restoring the registry is a distinct Ryan-gated bulk recovery operation. It
+restores and verifies the whole registry directory and its graph in a scratch
+target, then publishes one atomically selected recovered store generation. It
+is not ordinary item-by-item `convmem add`, JSONL re-import, Chroma rebuild, or
+dedupe processing. Those operations may consume a recovered registry, but may
+not identity-preserve a caller-supplied ID without the verified store.
+
+Before recovered assertions become publishable, recovery must verify the
+directory manifest and every required file/object hash, uniqueness of IDs,
+ID/commitment agreement, recursive parent resolution, historical policy and
+recipe availability, and exact registry↔JSONL↔Chroma identity/commitment
+agreement. The recovered target must be complete for the declared store
+generation; partial snapshots, extra unclassified state, truncated files, and
+restore/rebuild mismatches remain quarantined.
+
+If the registry is missing or incomplete, do not silently rewrite a valid live
+corpus as globally untrusted and do not elevate recovered Chroma/JSONL rows
+from caller-supplied IDs. Leave the live corpus and authority unchanged; keep
+the recovered projection quarantined or expose it only as explicitly
+untrusted evidence with a `provenance_store_unavailable` degraded state. An
+individual missing parent still produces R8's per-assertion `untrusted` result,
+but that result is not a substitute for completing the bulk store recovery.
+
 ## 3. Repository-grounded problem statement
 
 The following are current behaviors on the baseline revision, not hypothetical
@@ -204,6 +256,14 @@ tested preservation contract. Initially:
 | Selection/extraction without a preservation contract | agent or untrusted, per policy |
 | Missing recipe, fallback identity, or contributor | untrusted |
 
+The trusted-preservation and transformer-cap table is a versioned allowlist
+owned by the provenance policy module. A transformer may receive the `trusted`
+cap only when its exact class, implementation identity/version, recipe, and
+tested preservation contract are present in that allowlist. Caller metadata,
+configuration alone, or a conventionally engineered process cannot add an
+entry or obtain a trusted cap. Unknown, revoked, or unavailable allowlist
+history is `untrusted`.
+
 ### R4 — Completeness is boundary completeness
 
 `ancestry_completeness=complete` means:
@@ -299,6 +359,26 @@ child whose parent commitment does not match the resolved parent. A child with a
 valid-looking envelope and commitment but a missing ancestor is therefore not
 valid. Recursive failure is observable as a bounded validation/degraded state,
 not silently treated as a new root.
+
+Recursive verification has a per-operation node, depth, and byte budget and
+memoizes verified subgraphs by `(assertion_id, provenance_commitment,
+provenance_policy_version)` for the duration of that operation. Memoization is
+an optimization only: it is invalidated when the backing store or policy
+snapshot changes and never overrides a missing or mismatching record. Budget
+exhaustion, unavailable history, or cache inconsistency returns `untrusted` and
+an observable degraded result. P1 must lock these bounds before P3 exposes
+recursive verification on broad retrieval paths.
+
+### R8.1 — Store recovery is separate from item import
+
+The assertion registry, policy/recipe history, and directory manifest are one
+recoverable authority set. A valid envelope restored without that set is not a
+valid identity-preserving import. Store recovery must be performed as a
+snapshot/directory-level operation under a separate Ryan grant; item-by-item
+JSONL or Chroma reconstruction may populate only a quarantined staging target
+until the registry manifest and all cross-surface checks pass. Missing store,
+partial snapshot, stale history, and restore/rebuild mismatch are explicit
+fail-closed recovery states, not reasons to mint trust from IDs in a payload.
 
 ### R9 — Legacy is conservative
 
