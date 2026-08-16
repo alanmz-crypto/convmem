@@ -57,6 +57,7 @@ artifacts are recorded for the implementation revision.
 | V0e | Every existing-code path named by the plan resolves from repository root; planned new paths are explicitly labeled planned. | PENDING |
 | V0f | T1 Trust Baseline and T2 existing-proof inventory/gap analysis are completed and accepted before any T3/provenance implementation grant; Stage 1A/1B is the T3 child slice, and T4/T5 remain parent-sequence work after T3 with no runtime or cloud-policy action implied. | PENDING |
 | V0g | P1, P2, and P3 each have a distinct Ryan grant, implementation branch/worktree, PR, and gate; no single grant covers multiple slices. | PENDING |
+| V0h | P0 is outside Full Fathom Five; the canonical parent hierarchy is FF1/T1 → FF2/T2 → FF3/T3 → FF4/T4 → FF5/T5, and the parent structure is frozen against automatic scope additions. | PENDING |
 
 ## V0A — Separate execution-slice authorization
 
