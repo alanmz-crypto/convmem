@@ -2,9 +2,9 @@
 
 ```
 Arc:          Pinwheel Pytest CI
-Subject tip:  9d282ee110151d0392cd3afbc794d10ebde5da64
+Subject tip:  4f86320d17eb7cfb0bd6e5544c4f4efd2e69a870
 Branch:       fix/2026-08-16-pinwheel-pytest-ci
-Base:         bc83c85d0522023ea6e404bff4aaed135c47815a (origin/main)
+Base:         3453a3fd17eb7cfb0bd6e5544c4f4efd2e69a870 (origin/main)
 Compare:      https://github.com/alanmz-crypto/convmem/compare/main...fix/2026-08-16-pinwheel-pytest-ci
 Reviewer:     Independent (Kiro / Grok / human) — defect-first
 Authority:    Tip bytes + local/CI reproduction; do not trust chat claims
@@ -18,7 +18,7 @@ Authority:    Tip bytes + local/CI reproduction; do not trust chat claims
 |---|---|
 | **Who** | Cursor implemented; adversarial reviewer verifies; Ryan owns PR/disposable controls/merge |
 | **What** | Exact pytest pin, executable-line CI contract, manifest checker, 16-entry enforcement |
-| **When** | Review tip `9d282ee` after local implementation + condition fixes |
+| **When** | Review tip `4f86320` after rebase onto `3453a3f` + pin-contract gap closure |
 | **Why** | Close Kryptonite follow-on: unpinned pytest + silent critical-test loss |
 | **How** | Broken controls must fail contract tests locally; GitHub controls are a separate Ryan gate |
 
@@ -74,7 +74,7 @@ Must use **executable-line** inspection (comments/`echo` do not satisfy):
 | In-tree symlink | `test_in_tree_symlink_rejected` |
 | Escape symlink | `test_symlink_escape_rejected` |
 
-**Expected:** 19 contract tests pass at tip.
+**Expected:** 21 contract tests pass at tip.
 
 ### D. Manifest (`tests/ci-critical-invariants.txt`)
 
@@ -153,7 +153,7 @@ Full table: [`VERIFY-pinwheel-pytest-ci.md`](VERIFY-pinwheel-pytest-ci.md)
 
 - Tip matches `9d282ee` (or newer on same branch with Ryan-approved fixes only).
 - Diff scope matches table above.
-- 19 contract tests pass; checker passes 16 modules.
+- 21 contract tests pass; checker passes 16 modules.
 - Executable-line contract cannot be satisfied by comments/echo alone.
 - No disposable PR evidence claimed without Ryan authorization.
 
