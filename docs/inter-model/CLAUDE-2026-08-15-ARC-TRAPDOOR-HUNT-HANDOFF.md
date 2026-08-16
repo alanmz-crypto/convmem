@@ -54,19 +54,31 @@ The corrected plan requires:
 
 1. The complete-data-v2 Restic snapshot covers the provenance registry,
    directory manifest, policy/recipe history, JSONL export, and Chroma
-   projection under one explicit data-root snapshot. A legacy
+   projection under one explicit data-root snapshot and one selected
+   generation/manifest commitment. A legacy
    `convmem-chroma` snapshot is not provenance-store backup.
 2. The registry manifest proves required files/objects, counts, canonical
    digests, policy/recipe history, and the complete assertion graph.
 3. JSONL and Chroma are export/rebuild and retrieval projections. They cannot
    mint, preserve, or elevate assertion identity when the registry is absent.
 4. Registry recovery is a distinct Ryan-gated bulk operation. It restores the
-   whole registry directory to scratch, verifies the manifest and graph, then
-   atomically publishes one recovered store generation. It is not ordinary
-   item-by-item `convmem add`, JSONL re-import, Chroma rebuild, or dedupe.
+   whole registry directory to scratch, verifies the selected generation,
+   manifest, and graph, then atomically publishes one recovered store
+   generation. It is not ordinary item-by-item `convmem add`, JSONL re-import,
+   Chroma rebuild, or dedupe. A valid older generation is not auto-selected;
+   intentional rollback is a separate ConvMem governance grant.
 5. Before publication, recovery verifies file/object hashes, ID uniqueness,
    ID/commitment agreement, every parent edge, historical policy and recipe
-   availability, and registry↔JSONL↔Chroma identity/commitment agreement.
+   availability, selected-generation identity, and registry↔JSONL↔Chroma
+   identity/commitment agreement. A provenance generation may be sealed and
+   published as complete only when all manifest-bound authority components were
+   captured from one consistent logical source state; concurrent mutation during
+   sealing must cause retry, rejection, or quarantine unless an
+   immutable/staged generation or equivalent consistency proof establishes that
+   all components belong to that consistent logical source state. Interruption at every
+   durable write, rename, manifest, pointer, and publication boundary must leave
+   either the prior complete authority generation or one complete verified
+   replacement—never a mixed, missing, or partial authority set.
 6. Missing or partial store recovery leaves live authority unchanged. The
    recovered projection remains quarantined or explicitly untrusted with an
    observable `provenance_store_unavailable` degraded state. A caller-supplied
@@ -74,9 +86,16 @@ The corrected plan requires:
 
 The required negative controls are listed in the verification package:
 
-- [V4g–V4j: restore-preflight path classification, separate validator, completeness, and bulk recovery](../plans/VERIFY-dependability-provenance.md#v4--representation-continuity)
+- [V4g–V4m: restore-preflight path classification, separate validator, completeness, bulk recovery, selected-generation binding, crash publication, and capture/sealing consistency](../plans/VERIFY-dependability-provenance.md#v4--representation-continuity)
 - [V8h–V8l: missing/partial registry, stale history, and restore/rebuild mismatch controls](../plans/VERIFY-dependability-provenance.md#v8--laundering-and-lifecycle-faults)
 - [R8: recursive missing-parent/history/cycle/mismatch behavior](../plans/ARCHITECTURE-dependability-provenance.md#r8--recursive-verification-fails-closed)
+
+The capture/sealing correction is distinct from restore-side selected-generation
+binding: [R8.2](../plans/ARCHITECTURE-dependability-provenance.md#r82--recovery-binds-one-selected-generation-rollback-is-explicit)
+now requires one consistent logical source state before a provenance generation
+can be sealed, and [V4m](../plans/VERIFY-dependability-provenance.md#v4--representation-continuity)
+checks the forbidden incoherent candidate while leaving the consistency
+mechanism open.
 
 ## Code evidence map for re-trace
 

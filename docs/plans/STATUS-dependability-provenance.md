@@ -3,10 +3,11 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** Sol-High final review PASS after tightening assertion-ID minting,
-idempotent replay, and invalid-replay failure semantics. Exact-revision Kiro and
-Copilot dispositions plus Ryan's architecture lock remain. No implementation is
-authorized.
+**State:** Sol-High capture/sealing correction applied after tightening
+selected-generation recovery, crash-closed publication, canonicalization drift
+detection, UUIDv4 precision, and consistent logical source state sealing.
+Exact-revision Kiro and Copilot rechecks plus Ryan's architecture lock remain
+pending. No implementation is authorized.
 
 ## 1. What this project is for
 
@@ -164,7 +165,8 @@ Do not append session narrative.
 | 2026-08-15 | Codex Sol-High | Tightened monitor-minted identity, idempotent replay, and invalid-ID/commitment failure semantics for final lock review. |
 | 2026-08-15 | Codex Sol-High | Added the restore-preflight STATE_SPECS/writer-census and separate-validator contract for the provenance registry; implementation remains unauthorized. |
 | 2026-08-15 | Codex Sol-High | Retained T1–T5 and strengthened T3 provenance, acknowledgement, and migration boundaries; clean-SHA rereview required. |
+| 2026-08-16 | Codex Sol-High | Added capture/sealing consistency as a mechanism-neutral condition and V4m; runtime remains unauthorized and exact-revision rechecks remain pending. |
 
-**TL;DR:** Sol-High passes the strengthened T3 provenance architecture; same-SHA
-Kiro/Copilot dispositions and Ryan's lock remain, with no implementation or
-live-data work authorized.
+**TL;DR:** Capture/sealing consistency is now a pending planning control for
+exact-revision Kiro/Copilot rechecks; no implementation or live-data work is
+authorized.
