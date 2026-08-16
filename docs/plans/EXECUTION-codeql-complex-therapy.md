@@ -3,19 +3,20 @@
 | Field | Value |
 |---|---|
 | **Arc** | CodeQL Complex Therapy |
-| **Phase** | Planning complete; execution pending Ryan authorization |
+| **Phase** | Grant A authorized; ruleset-only execution pending Cursor; Grant B withheld |
 | **Pre-correction published tip** | `658a9dab9977ba03dbfc6b1301b0f6bce3762f39` on `plan/2026-08-16-codeql-complex-therapy` |
-| **Implementation lane** | Cursor, after a separate Ryan Execute grant |
+| **Implementation lane** | Cursor under Grant A for ruleset-only mutation and positive control; Grant B requires a separate Ryan grant |
 | **External gate owner** | Ryan |
 | **Independent review** | Kiro, on the same final artifact and revision |
 
 ## Consequence
 
-The package gives Cursor a bounded, reversible Execute sequence: snapshot the
+Grant A gives Cursor a bounded, reversible ruleset-only sequence: snapshot the
 live ruleset, add the three observed CodeQL contexts while preserving existing
-policy, prove normal and negative behavior, clean up disposable resources, and
-hand the exact evidence to Kiro and Ryan. No implementation or disposable PR
-is authorized by this planning document.
+policy, prove the normal positive case, and hand exact evidence to Kiro and
+Ryan. Grant B is separate and remains withheld; it covers the disposable
+negative control, conditional producer probe, and cleanup. No workflow edit,
+disposable PR, or Grant B action is authorized by Grant A.
 
 ## Phase 0 — planning review (Codex complete)
 
@@ -58,16 +59,19 @@ explicitly answer:
    user-authenticated status on the disposable commit, only if the fixture
    isolates exactly one red/missing CodeQL context while the other four are
    green?
-6. Is Cursor authorized to mutate `Protect Main` and, separately, to create
-   the disposable PR/control resources named above?
+6. Is Cursor authorized to mutate `Protect Main` under Grant A, with the
+   disposable PR/control resources held for a separate Grant B?
 
 Ryan may also choose a path-scoped/placeholder-job policy for documentation-only
 PRs instead of the blanket all-three requirement. That choice is not an
 Execute approval: it reopens the architecture and workflow-scope decision and
 requires a new plan before any mutation.
 
-Until those answers are granted, Cursor must not call a mutating ruleset API,
-edit a CodeQL/workflow file, or create a disposable PR.
+Ryan has accepted the all-three contexts, inherited GHAS semantics, blanket
+latency, exact negative-control scope, and conditional producer-probe scope.
+Grant A now authorizes only the ruleset mutation and normal positive control.
+Until Grant B is separately issued, Cursor must not edit a CodeQL/workflow file,
+create a disposable PR, post a producer probe, or perform disposable cleanup.
 
 ## Phase 2 — Cursor Execute: ruleset-only mutation
 
@@ -272,8 +276,6 @@ Stop immediately for any of the following:
 * an external mutation that differs from the exact ruleset resource and final
   values authorized by Ryan.
 
-**TL;DR:** Ryan reviews and separately authorizes Cursor's exact ruleset patch,
-disposable PR, and optional producer-identity probe; Cursor proves the five
-required contexts, proves a red/missing CodeQL analysis blocks ordinary merge,
-records the GitHub mediation boundary, defines recurring attestation, and hands
-the same evidence to Kiro.
+**TL;DR:** Grant A authorizes Cursor's exact `Protect Main` patch and normal
+five-check positive control. Grant B remains withheld for the disposable PR,
+conditional producer probe, cleanup, and red/missing CodeQL proof.

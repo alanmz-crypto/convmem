@@ -80,10 +80,10 @@ Execute phase.
 | STATUS package/list updates | **CORRECTED on planning branch** | Review/merge |
 | SHA-bound Codex handoff | **Kiro LINEAGE PASS at exact carrier** | Kiro reviewed carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; full architecture/Execute review remains open |
 | SHA lineage audit | **PASS by Kiro** | Package `c74c7f8611ac0bf563618270c2c3244715df7d67` is an independently confirmed ancestor of carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; `9dfaa6722...` → `790d5fd2...` incident is traceable; no Execute grant follows from this PASS |
-| Ruleset mutation | **NOT STARTED** | Separate Ryan Execute authorization; Cursor |
-| Normal positive control | **NOT STARTED** | Ruleset mutation and a green PR |
-| Disposable negative-control evidence | **NOT STARTED** | Exact fixture is authorized; requires exactly one red/missing CodeQL context with Pylint/Pytest green, otherwise close/delete and stop |
-| Producer-identity probe | **AUTHORIZED by Ryan — CONDITIONAL / NOT STARTED** | Run only after the fixture isolates exactly one red/missing CodeQL context and the other four required contexts are green; post one same-named green status through the ordinary authenticated user session, then stop on any non-isolated or inconclusive result |
+| Ruleset mutation | **AUTHORIZED UNDER GRANT A — NOT STARTED** | Cursor may patch only `Protect Main` `19156572` with the exact five contexts after the fresh identity gate |
+| Normal positive control | **AUTHORIZED UNDER GRANT A — NOT STARTED** | All five contexts must be green and ordinary merge eligible; no bypass |
+| Disposable negative-control evidence | **GRANT B NOT ISSUED — NOT STARTED** | Exact fixture scope is accepted, but execution waits for a separate Grant B after Grant A positive proof |
+| Producer-identity probe | **CONDITIONAL SCOPE ACCEPTED — GRANT B NOT ISSUED** | Only after Grant B, one isolated red/missing CodeQL context, and the other four required contexts green; then post one same-named green user status and stop on any non-isolated result |
 | Recurring enforcement attestation | **ACCEPTED by Ryan — NOT STARTED** | `OWNER=Ryan`; `CADENCE=quarterly + configuration-drift trigger`; Cursor collects evidence, Kiro reviews exceptions, and Ryan owns policy/gatekeeping |
 | Restoration and arc closeout | **NOT STARTED** | Positive/negative evidence; Kiro/Ryan |
 
@@ -103,9 +103,10 @@ attestation ownership/cadence.
 Kiro must independently resolve the package and remote carrier SHAs; the
 intermediate mistyped package string is part of the review evidence.
 
-If Ryan has granted Execute, Cursor owns the bounded ruleset mutation and the
-separately authorized disposable controls. Preserve exact snapshots and do not
-edit workflows or broaden the scope.
+If Ryan has granted Grant A, Cursor owns only the bounded ruleset mutation and
+normal positive control. Grant B must be separately granted before any
+disposable control, producer probe, workflow fixture, or cleanup of those
+resources. Preserve exact snapshots and do not broaden the scope.
 
 If Execute evidence exists, Kiro reviews the same final revision and Ryan owns
 the merge and arc closeout. Do not treat a passing chat report as verification.
@@ -117,13 +118,13 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
   carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; Ryan's accepted trust
   boundary, conditional producer-probe authorization, and recurring-attestation
   owner/cadence are recorded, but Execute remains open.
-- [ ] Ryan separately authorizes Cursor to patch `Protect Main` with the exact
-  five-context required-status set.
-- [ ] Cursor captures before/after ruleset snapshots and proves a normal green
-  PR on all five contexts.
-- [ ] Cursor creates only the exact Ryan-authorized disposable fixture and
-  proves a red/missing CodeQL context blocks ordinary merge; failed isolation
-  with green Pylint/Pytest requires close/delete and stop.
+- [ ] Cursor executes Grant A: capture before/after ruleset snapshots and prove
+  a normal green PR on all five contexts.
+- [ ] Ryan separately issues Grant B after the Grant A positive proof; until
+  then no disposable PR, workflow fixture, or producer probe may run.
+- [ ] Under Grant B, Cursor creates only the exact authorized disposable
+  fixture and proves a red/missing CodeQL context blocks ordinary merge;
+  failed isolation with green Pylint/Pytest requires close/delete and stop.
 - [ ] If the exact fixture technically isolates one CodeQL-required context,
   Cursor proves a same-named nonmatching-producer status cannot satisfy the
   CodeQL requirement; otherwise close/delete the disposable PR and record the
@@ -139,7 +140,7 @@ the merge and arc closeout. Do not treat a passing chat report as verification.
 
 | Stop | Gate owner | What it blocks |
 |---|---|---|
-| Planning-only boundary | Ryan | Ruleset mutation, workflow edits, and disposable PRs before Execute |
+| Grant boundary | Ryan | Any mutation outside Grant A; all workflow edits, disposable PRs, and Grant B actions until separately granted |
 | Exact external resource/value | Ryan | Any mutation other than `Protect Main` `19156572` with the named final contexts |
 | CodeQL workflow/default setup | Ryan/separate scope | Workflow, language, query, runner, results-threshold, or setup changes |
 | Native code-scanning rule | Ryan/separate scope | Adding the separate alert/security-severity ruleset rule |
@@ -204,7 +205,8 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Ryan | Conditionally authorized the producer-identity probe because integration IDs are part of the required-status security claim; run only after one isolated CodeQL failure with the other four required contexts green |
 | 2026-08-16 | Ryan | Set recurring attestation `OWNER=Ryan`, `CADENCE=quarterly + configuration-drift trigger`; Cursor collects evidence and Kiro reviews exceptions |
 | 2026-08-16 | Kiro | PASS on independent SHA-lineage recheck at exact carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; package ancestry, 18-commit planning-only delta, and `9dfaa6722...` → `790d5fd2...` incident verified; Execute remains unauthorized |
+| 2026-08-16 | Ryan | Authorized Execute Grant A for ruleset-only `Protect Main` mutation and the normal five-check positive control; Grant B disposable testing remains withheld |
 
-**TL;DR:** Kiro PASSed the independent SHA-lineage recheck at carrier
-`b7c0895f7e158c30a90b77d9b211cf3a640d9438`; recurring attestation is Ryan-owned
-with quarterly plus configuration-drift reviews, and Execute remains open.
+**TL;DR:** Kiro PASSed the independent SHA-lineage recheck; Ryan authorized
+Grant A for ruleset-only mutation plus the positive control, while Grant B
+disposable testing remains withheld.
