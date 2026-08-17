@@ -3,12 +3,11 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** Sol-High capture/sealing correction applied after tightening
-selected-generation recovery, crash-closed publication, canonicalization drift
-detection, UUIDv4 precision, and consistent logical source state sealing, with a
-P1 cross-arc census precondition for all manifest-bound mutators.
-Exact-revision Kiro and Copilot rechecks plus Ryan's architecture lock remain
-pending. No implementation is authorized.
+**State:** **RYAN_T3_LOCK — PASS**. T3 planning is locked at exact technical
+basis `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`. Kiro's prior conditional
+findings on active R8 pin reclamation/loss semantics and V4m evidence phasing
+are resolved in that revision; Copilot passed against the final revision. All
+VERIFY results remain `PENDING`. No implementation is authorized.
 
 ## 1. What this project is for
 
@@ -57,9 +56,9 @@ decisions.
 
 | Surface | Current state |
 |---|---|
-| `docs/plans/ARCHITECTURE-dependability-provenance.md` | Drafted on the planning branch; review required. |
-| `docs/plans/EXECUTION-dependability-provenance.md` | Stage 1 decomposition drafted; explicitly not authorized. |
-| `docs/plans/VERIFY-dependability-provenance.md` | Planning stub with predeclared properties; no evidence yet. |
+| `docs/plans/ARCHITECTURE-dependability-provenance.md` | Locked T3 planning basis at `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; implementation not authorized. |
+| `docs/plans/EXECUTION-dependability-provenance.md` | Locked Stage 1 decomposition; explicitly not an Execute grant. |
+| `docs/plans/VERIFY-dependability-provenance.md` | Locked predeclared evidence rows; all results remain `PENDING`. |
 | `CONVMEM_DATA_ROOT/provenance/` | Planned authoritative registry; restore-preflight classification and validator integration remain future implementation work. |
 | Normal ingest/distillation | Runtime exists on `main`; rendered/truncated input and provenance are not completely bound. |
 | Direct inter-model indexing | Runtime exists; origin fields are caller claims and exported units lose `source_type`. |
@@ -83,7 +82,7 @@ serving authority/repository.
 | P0 CI Merge Gate | Prerequisite; outside Full Fathom Five | Full tests, Pylint, and CodeQL are required before ordinary merges. |
 | Full Fathom Five parent structure | **Frozen for review**; FF1/T1 → FF2/T2 → FF3/T3 → FF4/T4 → FF5/T5 | Each arc has one contract, owner, oracle, exit state, and explicit non-goals; further findings remain bounded review findings. |
 | Trust Arc T1–T5 planning sequence | Retained; T1/T2 are mandatory completed predecessors to any T3 grant; Stage 1A/1B is the T3 child slice | T1 architecture output and T2 evidence/gap output must be complete and accepted before T3 implementation; T4/T5 follow T3 in the parent sequence; no runtime/activation/cloud-policy change follows from this package. |
-| Stage 0 architecture package | **Sol-High PASS after final identity correction; lock pending** | Same-SHA Kiro/Copilot dispositions and Ryan architecture lock. |
+| Stage 0 architecture package | **Locked — RYAN_T3_LOCK — PASS** at `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91` | Kiro conditional findings resolved by the active-pin and V4m phasing corrections; Copilot PASS against the final revision. |
 | Stage 1A policy/representation substrate (T3 child slice) | Not authorized | T1/T2 architecture and evidence outputs complete and accepted, then separate Ryan Execute grant; core policy, envelope, bindings, and representation continuity pass. |
 | Stage 1B assertion/exact-dedupe continuity (T3 child slice) | Not authorized | T1/T2 architecture and evidence outputs complete and accepted, then separate Ryan Execute grant; independent assertions survive cross-tier equivalence and retrieval. |
 | P1/P2/P3 execution slices | Not authorized | Three separate Ryan grants, branches/worktrees, PRs, and review gates; no singular Stage 1 grant. |
@@ -97,24 +96,19 @@ serving authority/repository.
 
 ## 5. Your role now
 
-**Next lane: Kiro and Copilot exact-revision rechecks, then Ryan architecture
-lock.** Confirm the final committed SHA and clean worktree, then verify the final
-assertion-ID admission/replay contract alongside the retained T1–T5 sequence,
-producer authority, recursive verification, commitment continuity,
-assertion-preserving dedupe, and CG-1/CG-2 separation. Ryan adjudicates and locks
-architecture. Cursor does not begin until Ryan separately grants one of P1, P2,
-or P3 Execute.
+**Next lane: Ryan.** The T3 planning package is locked at
+`aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; Ryan must separately grant exactly
+one of P1, P2, or P3 Execute before Cursor begins. No implementation, migration,
+or operational work follows from this lock alone.
 
 ## 6. What remains before this is live
 
-1. Kiro and Copilot record exact-revision dispositions for the final identity
-   correction.
-2. Ryan locks Stage 0 and separately authorizes or rejects each P1/P2/P3 slice.
-3. Cursor re-traces current `main`, implements the bounded granted slice, and
+1. Ryan separately authorizes or rejects exactly one P1/P2/P3 Execute slice.
+2. Cursor re-traces current `main`, implements the bounded granted slice, and
    produces the VERIFY packet without live migration.
-4. Kiro reviews implementation design/result; Copilot performs targeted final
+3. Kiro reviews implementation design/result; Copilot performs targeted final
    audit; Ryan decides merge.
-5. A later plan decides whether/how legacy data migrates. Merge alone never
+4. A later plan decides whether/how legacy data migrates. Merge alone never
    authorizes migration, CG-2 activation, Shadow activation, or R2b capture.
 
 ## 7. Hard stops and residual limitations
@@ -168,7 +162,6 @@ Do not append session narrative.
 | 2026-08-15 | Codex Sol-High | Retained T1–T5 and strengthened T3 provenance, acknowledgement, and migration boundaries; clean-SHA rereview required. |
 | 2026-08-16 | Codex Sol-High | Added capture/sealing consistency as a mechanism-neutral condition and V4m; runtime remains unauthorized and exact-revision rechecks remain pending. |
 | 2026-08-16 | Codex Sol-High | Added the P1 planning precondition to census every manifest-bound mutator; existing writer/Restic leases remain implementation context, not proof of V4m. |
+| 2026-08-17 | Codex | Recorded `RYAN_T3_LOCK — PASS` at `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; Kiro's conditional findings are resolved and Copilot passed the final revision. |
 
-**TL;DR:** Capture/sealing consistency and the manifest-mutator census are
-pending planning controls for exact-revision Kiro/Copilot rechecks; no
-implementation or live-data work is authorized.
+**TL;DR:** T3 planning is locked at `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; all VERIFY results remain `PENDING`, and a separate Ryan Execute grant for exactly one P1/P2/P3 slice is still required.
