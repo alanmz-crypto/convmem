@@ -302,7 +302,14 @@ cap only when its exact class, implementation identity/version, recipe, and
 tested preservation contract are present in that allowlist. Caller metadata,
 configuration alone, or a conventionally engineered process cannot add an
 entry or obtain a trusted cap. Unknown, revoked, or unavailable allowlist
-history is `untrusted`.
+history is `untrusted`. For any transformer eligible for the `trusted` cap,
+the allowlist and authoritative envelope must also bind an immutable,
+content-addressed implementation artifact/build identity; a mutable version
+label alone cannot authorize preservation of `trusted`. A source revision may
+be recorded as additional identity, but it cannot substitute for the exact
+artifact/build identity. Transformers capped below `trusted`, including opaque
+LLM transformations, do not acquire this stronger artifact requirement merely
+because they have a provider or model name.
 
 ### R4 — Completeness is boundary completeness
 
@@ -328,6 +335,8 @@ Every supported generative derivation binds:
   prompt and every dynamic text/tool/retrieval input sent;
 - provider, requested and resolved model, temperature and relevant generation
   parameters, fallback decision, transformer implementation/version;
+- immutable transformer artifact/build identity when the transformer is
+  eligible for the `trusted` preservation cap;
 - fixed recipe/configuration hash and binding schema version;
 - response hash and output locator.
 
@@ -395,6 +404,15 @@ digest, every required input binding, and every parent envelope/commitment. It
 rejects any policy or recipe identifier that resolves to bytes different from
 the committed digest. It tracks a visited-ID set and rejects cycles.
 
+Before resolving the first envelope, one R8 verification operation MUST bind
+exactly one immutable authoritative registry generation and exactly one
+immutable policy/recipe-history snapshot. Every envelope, parent, policy,
+recipe, and required binding resolved during that operation must come from
+those bound snapshots. If the backing authority or either snapshot changes,
+the operation must restart from a newly bound pair or return a fail-closed
+result; it may never mix generations or snapshots within one favorable
+verification result.
+
 If any parent, ancestor, historical policy or recipe, required binding, or
 identity/commitment pair cannot be resolved and verified, the result is
 `untrusted`; no favorable child fields or cached tier may be used as a fallback.
@@ -405,12 +423,12 @@ valid. Recursive failure is observable as a bounded validation/degraded state,
 not silently treated as a new root.
 
 Recursive verification has a per-operation node, depth, and byte budget and
-memoizes verified subgraphs by `(assertion_id, provenance_commitment,
-provenance_policy_version)` for the duration of that operation. Memoization is
-an optimization only: it is invalidated when the backing store or policy
-snapshot changes and never overrides a missing or mismatching record. Budget
-exhaustion, unavailable history, or cache inconsistency returns `untrusted` and
-an observable degraded result. P1 must lock these bounds before P3 exposes
+memoizes verified subgraphs by `(authority_generation, policy_recipe_snapshot,
+assertion_id, provenance_commitment, provenance_policy_version)` for the
+duration of that operation. Memoization is an optimization only: it never
+overrides a missing or mismatching record. Budget exhaustion, unavailable
+history, snapshot change, or cache inconsistency returns `untrusted` and an
+observable degraded result. P1 must lock these bounds before P3 exposes
 recursive verification on broad retrieval paths.
 
 ### R8.1 — Store recovery is separate from item import
@@ -420,28 +438,55 @@ recoverable authority set. A valid envelope restored without that set is not a
 valid identity-preserving import. Store recovery must be performed as a
 snapshot/directory-level operation under a separate Ryan grant; item-by-item
 JSONL or Chroma reconstruction may populate only a quarantined staging target
-until the registry manifest and all cross-surface checks pass. Missing store,
-partial snapshot, stale history, and restore/rebuild mismatch are explicit
-fail-closed recovery states, not reasons to mint trust from IDs in a payload.
+until the registry manifest and authority checks pass. A verified authority
+set may enter `AUTHORITY_RECOVERED_PROJECTION_PENDING` when a rebuildable
+projection is missing or mismatched, but that state is not projection-backed
+serving readiness. Missing store, partial snapshot, stale history, and
+restore/rebuild mismatch are explicit fail-closed recovery states, not reasons
+to mint trust from IDs in a payload.
 
 ### R8.2 — Recovery binds one selected generation; rollback is explicit
 
 Every recovery selects one complete-data-v2 snapshot/generation before reading
 its components, identified by an immutable generation ID and manifest
-commitment. The registry, policy/recipe history, JSONL export, and Chroma
-projection must all verify against that same selected generation. Individually
-valid components from different generations are an impossible authority state
-and remain quarantined. A valid older generation is a rollback candidate only;
-it is never auto-selected because it is restorable. Publishing it requires a
-separate Ryan rollback grant naming the selected generation, the current live
-generation, and the reason. That grant is ConvMem governance, not a TUF
-requirement. Rollback publication additionally requires trusted continuity
-evidence that is not derived solely from the candidate generation or the
-rollbackable authority set being restored. That evidence must bind the previous
-externally accepted generation and manifest commitment to the authorized target
-generation and manifest commitment, the reason, and the fresh rollback-grant
-identity. Without that evidence, an internally valid older generation remains
+commitment. The authoritative registry, policy/recipe history, assertion
+graph, and continuity evidence must verify against that same selected
+generation. JSONL and Chroma remain required captured components of the
+complete-data-v2 recovery set; when present, each must be checked against that
+same generation. Missing or damaged projections do not invalidate otherwise
+verified authority, but they prevent projection activation and keep
+projection-backed serving blocked. Individually valid components from
+different generations are an impossible activation state and remain
+quarantined. A valid older generation is a rollback candidate only; it is never
+auto-selected because it is restorable. Publishing it requires a separate Ryan
+rollback grant naming the selected generation, the current live generation, and
+the reason. That grant is ConvMem governance, not a TUF requirement. Rollback
+publication additionally requires trusted continuity evidence that is not
+derived solely from the candidate generation or the rollbackable authority set
+being restored. That evidence must bind the previous externally accepted
+generation and manifest commitment to the authorized target generation and
+manifest commitment, the reason, and the fresh rollback-grant identity.
+Without that evidence, an internally valid older generation remains
 `BLOCKED`/quarantined and cannot become authoritative.
+
+Recovery and projection activation use explicit states:
+
+```text
+SERVING_READY(g, commitment, fence)
+  → AUTHORITY_RECOVERED_PROJECTION_PENDING(g′, commitment′)
+  → PROJECTION_REBUILDING(g′, commitment′)
+  → PROJECTION_VALIDATED(g′, commitment′)
+  → SERVING_READY(g′, commitment′, new_fence)
+```
+
+An authority change atomically invalidates the old projection-serving fence.
+Projections are rebuilt from the recovered registry, never from an older
+projection. Projection-backed serving is allowed only when the state is
+`SERVING_READY` and the activation fence binds the same generation and
+commitment across the authoritative registry, JSONL source, and Chroma source.
+Missing, stale, or mismatched projections remain blocked/quarantined; the
+previous projection generation is never used as a fallback against newly
+recovered authority.
 
 A provenance generation may be sealed and published as complete only when all
 manifest-bound authority components were captured from one consistent logical source state;
@@ -452,9 +497,11 @@ a capture/sealing condition, distinct from restore-side selected-generation
 binding; it does not prescribe the implementation mechanism.
 
 Recovery publication is also crash-closed: interruption at every durable write,
-rename, manifest, pointer, and publication boundary must leave either the prior
-complete authority generation selected or one complete, verified replacement.
-It must never expose a mixed, missing, or partially selected authority set.
+rename, manifest, pointer, recovery, rebuild, and activation boundary must
+leave either the prior complete authority generation with its valid serving
+fence selected, or one complete verified replacement whose projections remain
+explicitly pending and blocked until activation. It must never expose a mixed,
+missing, partially selected, or stale-fallback authority/projection state.
 
 ### R9 — Legacy is conservative
 
@@ -499,6 +546,7 @@ derivation_kind
 transformer_class
 transformer_identity
 transformer_version
+transformer_artifact_sha256
 transformer_recipe_id
 transformer_recipe_sha256
 selection_parameters
@@ -569,10 +617,14 @@ Canonical field order, Unicode/number encoding, list order, and null/omission
 semantics are part of the schema version. P1 must publish one normative,
 versioned ConvMem canonicalization profile and serializer implementation, with
 golden vectors covering Unicode, numbers, escaping, lists, nulls, and field
-ordering. The vectors are rerun when the serializer library changes; the plan
-makes no cross-implementation portability claim unless a later scope decision
-explicitly adds one. Hash equality proves byte-level commitment continuity, not
-truth.
+ordering. Before canonicalization, the parser must accept only a strict
+validated typed-envelope domain: duplicate object keys, invalid or lone
+surrogate data, NaN/Infinity, out-of-schema numeric values, and any otherwise
+undefined representation are rejected. Parser adversarial fixtures accompany
+the serializer vectors. The vectors are rerun when the serializer library
+changes; the plan makes no cross-implementation portability claim unless a
+later scope decision explicitly adds one. Hash equality proves byte-level
+commitment continuity, not truth.
 
 The commitment and envelope must survive without semantic loss across:
 
