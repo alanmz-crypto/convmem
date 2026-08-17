@@ -97,8 +97,14 @@ T3 defines a migration contract, not a migration operation: a schema mismatch
 does not grant permission to rewrite data. The contract must name the supported
 N-1 window, reject unknown future versions, provide a read-only/dry-run path,
 require a current backup before any authorized write, and use atomic replacement
-with rollback and old-state fixtures. Legacy data remains readable only under
-the conservative untrusted policy until Ryan grants a separate migration.
+with rollback and old-state fixtures. Every authorized migration must also
+include an explicit semantic mapping from the old durable representation to the
+new representation, plus old-state fixture evidence demonstrating preservation
+of durable meaning, including envelope, assertion ID, commitment, and parent-edge
+semantics. Any unmapped or intentionally changed meaning must fail closed as
+rejected, quarantined, or `needs migration`; procedural migration safety does not
+substitute for semantic-preservation evidence. Legacy data remains readable only
+under the conservative untrusted policy until Ryan grants a separate migration.
 
 ### Authoritative assertion store and recovery boundary
 

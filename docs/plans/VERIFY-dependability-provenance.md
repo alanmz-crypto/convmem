@@ -113,7 +113,7 @@ I(output) = meet(I(all completely bound dynamic inputs), transformer_cap)
 | V3f | Secrets are excluded without excluding semantics-bearing request bytes. | Fixture scans serialized envelope for test credential and required payload bytes. | PENDING |
 | V3g | `complete` means supported-boundary inputs, not universal model causality. | Documentation and schema avoid impossible claim. | PENDING |
 | V3h | Acknowledged success is emitted only by the named authoritative durable-write boundary. | Provider completion, projection visibility, index upsert, client receipt, or retrieval alone cannot satisfy the acknowledgement claim. | PENDING |
-| V3i | Migration semantics are explicit and permission-neutral. | N-1/dry-run/backup-before-write/atomic rollback are specified; future versions reject; no live migration is run in this arc. | PENDING |
+| V3i | Migration semantics are explicit and permission-neutral: every authorized migration supplies an old-to-new semantic mapping for the durable representation and old-state fixture evidence demonstrating preservation of durable meaning, including envelope, assertion ID, commitment, and parent-edge semantics; no live migration is run in this arc. | Omit or alter one mapping/fixture semantic, or accept an unmapped or intentionally changed meaning; the migration fails closed as rejected, quarantined, or `needs migration`. N-1/dry-run/backup-before-write/atomic rollback remain required procedural controls; future versions reject. | PENDING |
 
 ## V4 — Representation continuity
 
