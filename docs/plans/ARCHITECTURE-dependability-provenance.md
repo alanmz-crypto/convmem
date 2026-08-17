@@ -444,6 +444,15 @@ generations or snapshots within one favorable verification result, and a result
 from an older pin cannot be presented as current serving authority unless the
 serving activation fence also matches that pin.
 
+While an R8 operation holds an active generation or policy/recipe snapshot pin,
+implementation-controlled reclamation must not remove the pinned state. P1 may
+either prohibit reclamation of pinnable authority generations or provide a
+pin-aware lease/reference mechanism. If the implementation cannot guarantee
+retention, loss of the bound state must be detected and the operation must fail
+closed or restart; it may never continue against substituted state. Retention
+periods, compaction strategy, storage quotas, and mature garbage-collection
+policy remain later lifecycle work.
+
 If any parent, ancestor, historical schema/binding semantic specification,
 policy or recipe, required binding, or identity/commitment pair cannot be
 resolved and verified, the result is

@@ -184,15 +184,28 @@ negative tests are P1 gates.
 
 ### P1 precondition — census of manifest-bound mutators
 
-Before implementation can claim V4m, P1 must complete a census of every mutator
-affecting manifest-bound authority components. Each path must either be covered
-by one capture/sealing consistency protocol or be explicitly classified outside
-the provenance authority set. Existing Restic freshness gates, shared writer
-leases, process locks, and exclusive leases are not proof of V4m unless the
-census and consistency contract establish their coverage. This is a planning
-dependency/precondition only: it is not a grant to implement CG-1, backup/restore,
-or Shadow, nor to wire the existing exclusive-writer lease. That primitive is
-implementation context only and does not satisfy the guarantee.
+Before P1 closes, P1 must complete and lock a census of every mutator affecting
+manifest-bound authority components, together with the consistency mechanism
+that covers each path. Each path must either be covered by one capture/sealing
+consistency protocol or be explicitly classified outside the provenance
+authority set. Every later phase must update and revalidate that census for any
+manifest-bound writer it introduces or changes. Existing Restic freshness gates,
+shared writer leases, process locks, and exclusive leases are not proof of V4m
+unless the census and consistency contract establish their coverage. P1 must
+not claim final V4m PASS from the census alone: V4m reaches PASS only after the
+final implemented writer set has the required universal evidence before T3 arc
+closure. This is a planning dependency/precondition only: it is not a grant to
+implement CG-1, backup/restore, or Shadow, nor to wire the existing
+exclusive-writer lease. That primitive is implementation context only and does
+not satisfy the guarantee.
+
+P1 must also choose and document one R8 pin-retention mechanism: either no
+implementation-controlled reclamation of authority generations or snapshots
+that an active verification operation can pin, or a pin-aware lease/reference
+mechanism. If the bound state can nevertheless be reclaimed, the operation must
+detect that loss and fail closed or restart without substituting another state;
+it may not continue against substituted state. Retention periods, compaction,
+quotas, and mature garbage-collection policy remain later lifecycle work.
 
 P1 must also define the future restore integration: extend
 `complete_data_restore.py` `STATE_SPECS` and `writer_census_for_root()` to
