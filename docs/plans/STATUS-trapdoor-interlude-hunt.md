@@ -8,7 +8,7 @@
 exact reviewed package SHA `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; the
 bounded T1-GEN/T1-REC/T1-BACK amendment is accepted at
 `41d6af4e6e56797d65cbc23e52c40f4dc1795c94`; the four bounded T3 planning
-corrections are applied at `a46a3be0deedcb4d8f43811a4c25c032f1409e85`; and the Trapdoor Bridge is held for
+corrections are applied at `a46a3be2ed21252354dc0b18245059d342cfcb31`; and the Trapdoor Bridge is held for
 exact-SHA recheck against that corrected T3 basis before Ryan's Interlude lock.
 All VERIFY rows remain PENDING; no runtime work is authorized.
 
@@ -45,12 +45,12 @@ and VERIFY rows. It does not redesign T3 or grant implementation.
 
 | Surface | State |
 |---|---|
-| Interlude branch | Original FF1/FF2 acceptance remains bound to `3c746faa47409f7def02d2fd24351fbc936a9720` / `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; the bounded T1-GEN/T1-REC/T1-BACK amendment is accepted at `41d6af4e6e56797d65cbc23e52c40f4dc1795c94`; T3 correction target is `a46a3be0deedcb4d8f43811a4c25c032f1409e85`; the unchanged Bridge is held for recheck. |
+| Interlude branch | Original FF1/FF2 acceptance remains bound to `3c746faa47409f7def02d2fd24351fbc936a9720` / `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; the bounded T1-GEN/T1-REC/T1-BACK amendment is accepted at `41d6af4e6e56797d65cbc23e52c40f4dc1795c94`; T3 correction target is `a46a3be2ed21252354dc0b18245059d342cfcb31`; the unchanged Bridge is held for recheck. |
 | `ARCHITECTURE-trapdoor-interlude-hunt.md` | Draft planning contract; not locked. |
 | `EXECUTION-trapdoor-interlude-hunt.md` | Draft gated sequencing; not authorized for runtime work. |
 | `VERIFY-trapdoor-interlude-hunt.md` | Planning stub; all rows PENDING. |
 | `TRAPDOOR-INTERLUDE-MATRICES.md` | FF1, FF2, and the bounded T1-GEN/T1-REC/T1-BACK amendment are accepted at their exact review revisions; the 11-row Bridge remains unchanged as planning traceability and is held for recheck against corrected T3. |
-| Trapdoor T3 reference branch | Read-only corrected planning basis at `a46a3be0deedcb4d8f43811a4c25c032f1409e85`, superseding `2bb0de4c4c9444b3ddefdb910a609f91eccb24c3` for this recheck; no implementation occurred. |
+| Trapdoor T3 reference branch | Read-only corrected planning basis at `a46a3be2ed21252354dc0b18245059d342cfcb31`, superseding `2bb0de4c4c9444b3ddefdb910a609f91eccb24c3` for this recheck; no implementation occurred. |
 | CodeQL/P0 | Closed/PASS on GitHub main before Interlude branch creation. |
 
 ## 4. Completion state
@@ -70,7 +70,7 @@ and VERIFY rows. It does not redesign T3 or grant implementation.
 The current owner is the fresh Codex Interlude planning lane. It has completed
 FF1/FF2 planning, applied only the accepted bounded literature amendments, and
 constructed the planning-only Trapdoor Bridge. The T3 correction pass is now
-applied at `a46a3be0deedcb4d8f43811a4c25c032f1409e85`; the next owner must recheck the unchanged Bridge against
+applied at `a46a3be2ed21252354dc0b18245059d342cfcb31`; the next owner must recheck the unchanged Bridge against
 that exact T3 SHA and must not implement missing oracles or design Verified
 Ingress Bootstrap in this pass.
 
@@ -82,7 +82,7 @@ lane may infer Ryan acceptance or T3 authorization.
 
 ## 6. What remains before this is complete
 
-1. ChatGPT performs exact-SHA review of corrected T3 `a46a3be0deedcb4d8f43811a4c25c032f1409e85` and the unchanged
+1. ChatGPT performs exact-SHA review of corrected T3 `a46a3be2ed21252354dc0b18245059d342cfcb31` and the unchanged
    Bridge mapping.
 2. Ryan records `RYAN_INTERLUDE_LOCK` only if that corrected-T3 recheck passes;
    all VERIFY rows remain PENDING.
@@ -135,9 +135,9 @@ Track A, not here.
 | 2026-08-17 | Codex | Ryan accepted FF1 at `3c746faa47409f7def02d2fd24351fbc936a9720`; FF2 evidence validation began with bounded classifications and missing-oracle ownership. |
 | 2026-08-17 | Ryan | Accepted FF2 at exact reviewed package SHA `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; Interlude holds for the literature/evidence challenge before Bridge construction. |
 | 2026-08-17 | Codex | Constructed the bounded 11-row Trapdoor Bridge on accepted amendment `41d6af4e6e56797d65cbc23e52c40f4dc1795c94` and T3 basis `2bb0de4c4c9444b3ddefdb910a609f91eccb24c3`; awaiting exact-SHA review and Ryan's Interlude lock. |
-| 2026-08-17 | Codex | Applied the four bounded T3 planning corrections at `a46a3be0deedcb4d8f43811a4c25c032f1409e85`; held the unchanged Bridge for exact-SHA recheck and kept implementation/lock gated. |
+| 2026-08-17 | Codex | Applied the four bounded T3 planning corrections at `a46a3be2ed21252354dc0b18245059d342cfcb31`; held the unchanged Bridge for exact-SHA recheck and kept implementation/lock gated. |
 
 **TL;DR:** [Arc Trapdoor Interlude Hunt] FF1/FF2 and the bounded amendment are
-accepted; four T3 planning corrections are applied at `a46a3be0deedcb4d8f43811a4c25c032f1409e85`, and the
+accepted; four T3 planning corrections are applied at `a46a3be2ed21252354dc0b18245059d342cfcb31`, and the
 unchanged Bridge is held for exact-SHA recheck while all VERIFY rows remain
 PENDING and T3 implementation remains unauthorized.
