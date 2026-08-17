@@ -120,6 +120,7 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-chroma-reconcile-tier-l.md` — Chroma Reconcile Tier L (**closed GREEN**; reference only)
 - `docs/plans/STATUS-complete-data-backup-correction-v2.md` — Complete-data backup correction v2
 - `docs/plans/STATUS-codeql-complex-therapy.md` — CodeQL Complex Therapy merge protection
+- `docs/plans/STATUS-trapdoor-interlude-hunt.md` — Trapdoor Hunt FF1/T1 and FF2/T2 prerequisite contract
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
 
@@ -136,6 +137,7 @@ Known arc codenames (update when new arcs are named):
 | Codename | Subject | State |
 |----------|---------|-------|
 | Trapdoor Hunt | Dependability & provenance trust architecture | Active — review complete, awaiting lock |
+| Trapdoor Interlude Hunt | FF1/T1 trust baseline and FF2/T2 evidence-gap prerequisite | Active — FF1 draft |
 | Full Fathom Five | Parent five-arc dependability roadmap (FF1–FF5) | Active — parent frozen |
 | CI Kryptonite | Behavioral CI merge gate | **Closed** (PR #187 + #189) |
 | Pinwheel Pytest CI | Reproducible pytest CI | **Closed** (#191 + disposable controls) |
