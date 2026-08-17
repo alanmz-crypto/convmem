@@ -91,7 +91,12 @@ For the T1 claim about acknowledged data, an acknowledgement is a success from
 the named authoritative durable-write boundary. A provider response, projection
 visibility, index upsert, client receipt, or retrieval result is not by itself a
 durable acknowledgement. If the authoritative boundary cannot prove the write,
-the result is failure or unknown rather than an acknowledged success.
+the result is failure or unknown rather than an acknowledged success. Strong
+durable acknowledgement is additionally conditional on a declared supported
+persistence profile covering the filesystem, mount, storage, and database
+semantics relied on by that boundary. An unknown or unsupported profile, or
+unproven persistence semantics, returns failure or unknown and cannot emit the
+strong durable claim. Power-loss and profile campaigns remain later T5 work.
 
 T3 defines a migration contract, not a migration operation: a schema mismatch
 does not grant permission to rewrite data. The contract must name the supported
@@ -105,6 +110,12 @@ semantics. Any unmapped or intentionally changed meaning must fail closed as
 rejected, quarantined, or `needs migration`; procedural migration safety does not
 substitute for semantic-preservation evidence. Legacy data remains readable only
 under the conservative untrusted policy until Ryan grants a separate migration.
+The migration semantic inventory must enumerate every durable meaning-bearing
+category, including field presence/default behavior, value and enum domains,
+assertion IDs, commitments, parent edges, policy/recipe references, and
+extensible or unknown fields where applicable. Fixture or property evidence must
+cover every declared category; representative fixtures alone do not establish a
+total mapping.
 
 ### Authoritative assertion store and recovery boundary
 
@@ -378,9 +389,11 @@ silently replacing an established assertion.
 
 Effective integrity is recomputed only after recursively verifying the complete
 assertion graph. Verification resolves the assertion envelope, commitment,
-historical `provenance_policy_version`, transformer identity/version/recipe,
-every required input binding, and every parent envelope/commitment. It tracks a
-visited-ID set and rejects cycles.
+historical `provenance_policy_version` and its committed semantic-content
+digest, transformer identity/version/recipe and its committed semantic-content
+digest, every required input binding, and every parent envelope/commitment. It
+rejects any policy or recipe identifier that resolves to bytes different from
+the committed digest. It tracks a visited-ID set and rejects cycles.
 
 If any parent, ancestor, historical policy or recipe, required binding, or
 identity/commitment pair cannot be resolved and verified, the result is
@@ -422,7 +435,13 @@ and remain quarantined. A valid older generation is a rollback candidate only;
 it is never auto-selected because it is restorable. Publishing it requires a
 separate Ryan rollback grant naming the selected generation, the current live
 generation, and the reason. That grant is ConvMem governance, not a TUF
-requirement.
+requirement. Rollback publication additionally requires trusted continuity
+evidence that is not derived solely from the candidate generation or the
+rollbackable authority set being restored. That evidence must bind the previous
+externally accepted generation and manifest commitment to the authorized target
+generation and manifest commitment, the reason, and the fresh rollback-grant
+identity. Without that evidence, an internally valid older generation remains
+`BLOCKED`/quarantined and cannot become authoritative.
 
 A provenance generation may be sealed and published as complete only when all
 manifest-bound authority components were captured from one consistent logical source state;
@@ -481,11 +500,13 @@ transformer_class
 transformer_identity
 transformer_version
 transformer_recipe_id
+transformer_recipe_sha256
 selection_parameters
 provider_payload_sha256
 recipe_config_sha256
 ancestry_completeness: complete | partial | unknown
 provenance_policy_version
+provenance_policy_sha256
 effective_integrity  # derived/cache only; never authoritative input
 ```
 
@@ -537,7 +558,10 @@ bound inputs and the authorized transformer/producer cap. In particular:
 only after R8 recursive verification succeeds.
 It is never authoritative caller metadata. Consumers recompute it and degrade to
 `untrusted` on cache mismatch, unknown policy, malformed envelope, or commitment
-failure.
+failure. Policy-version and transformer-recipe identifiers are names only; their
+semantic bytes are bound by the corresponding content digests above. An
+authoritative identifier resolving to different semantic bytes is a continuity
+failure and must be rejected or degraded to `untrusted`.
 
 `provenance_commitment` is SHA-256 over versioned canonical JSON of the
 authoritative envelope, excluding the commitment itself and derived/cache fields.
