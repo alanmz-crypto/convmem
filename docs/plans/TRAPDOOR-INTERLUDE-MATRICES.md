@@ -1,7 +1,7 @@
 # Arc Trapdoor Interlude Hunt — Claim, Evidence, and Trapdoor Bridge Matrices
 
 ```text
-Status: Original FF1 accepted at 3c746faa47409f7def02d2fd24351fbc936a9720; original FF2 accepted at 0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361; bounded T1-GEN/T1-REC/T1-BACK amendment accepted at 41d6af4e6e56797d65cbc23e52c40f4dc1795c94; four bounded T3 planning corrections applied at a46a3be2ed21252354dc0b18245059d342cfcb31 and awaiting exact-SHA recheck against the unchanged Bridge; all VERIFY rows PENDING; implementation and Interlude lock unauthorized
+Status: Original FF1 accepted at 3c746faa47409f7def02d2fd24351fbc936a9720; original FF2 accepted at 0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361; bounded T1-GEN/T1-REC/T1-BACK amendment accepted at 41d6af4e6e56797d65cbc23e52c40f4dc1795c94; Bridge refreshed against corrected T3 a46a3be2ed21252354dc0b18245059d342cfcb31; all VERIFY rows PENDING; implementation and Interlude lock unauthorized
 Arc:    Arc Trapdoor Interlude Hunt
 Base:   d10e1d5f4993f60a32142115f8b8c0f0f9ea4481
 ```
@@ -72,18 +72,16 @@ SHA is not current; they remain historical evidence only.
 ## Part C — Trapdoor Bridge
 
 Bridge basis: accepted/amended Interlude matrix revision
-`41d6af4e6e56797d65cbc23e52c40f4dc1795c94`; reconciled Trapdoor T3 planning
-revision `2bb0de4c4c9444b3ddefdb910a609f91eccb24c3`; bounded T3 correction
-revision `a46a3be2ed21252354dc0b18245059d342cfcb31` is now the recheck target.
+`41d6af4e6e56797d65cbc23e52c40f4dc1795c94`; corrected Trapdoor T3 planning
+revision `a46a3be2ed21252354dc0b18245059d342cfcb31`.
 
-Bridge status: **CONSTRUCTED — T3 correction applied; awaiting exact-SHA
-recheck and Ryan's Interlude lock.** This is a bounded traceability map, not
-proof that any T3 requirement is implemented. Every VERIFY result remains
-`PENDING`; every FF2 gap and classification is preserved. `MAPPED — gap
-preserved` means the path is truthful but the missing oracle or implementation
-evidence remains missing. `MAPPED — planning-only` means the T3 requirement is
-intentionally not being executed in this Bridge. The correction pass does not
-silently rewrite any Bridge row; it requires exact-SHA recheck before lock.
+Bridge status: **REFRESHED against corrected T3 — awaiting Ryan's Interlude
+lock.** This is a bounded traceability map, not proof that any T3 requirement
+is implemented. Every VERIFY result remains `PENDING`; every FF2 gap and
+classification is preserved. `MAPPED — gap preserved` means the path is
+truthful but the missing oracle or implementation evidence remains missing.
+`MAPPED — planning-only` means the T3 requirement is intentionally not being
+executed in this Bridge.
 
 | Accepted T1 claim | T2 evidence / gap | Existing T3 requirement | Existing T3 VERIFY row | Bridge disposition |
 |---|---|---|---|---|
@@ -92,8 +90,8 @@ silently rewrite any Bridge row; it requires exact-SHA recheck before lock.
 | T1-CAP | FF2 `PARTIAL`: writer census, atomic capture-evidence publication, skew detection, and hermetic capture flow cover narrower windows; universal manifest-bound mutator participation and one consistent logical source state are not proved. | T3 R8.2/V4m require sealing from one consistent logical source state, with every manifest-bound mutator covered or all authoritative writers entering one immutable staging boundary. | `V4m` | **MAPPED — gap preserved.** V4m is a planned prerequisite oracle, not evidence supplied by the existing census; no capture implementation or broad campaign is authorized. |
 | T1-REC | FF2 `PARTIAL`: existing restore/preflight checks fail closed for missing/unknown current surfaces, but provenance authority recovery and generation-bound projection activation are not evidenced. | T3 R8.1/R8.2 separate recovered authority from projection-backed serving: invalid authority leaves live authority unchanged; valid authority with damaged projections enters projection-pending; rebuild is from recovered authority and activation cannot use stale projections. | `V4i`–`V4l`, `V8i`–`V8l` | **MAPPED — gap preserved.** The accepted authority-first amendment is reflected without weakening fail-closed serving; the recovery/activation implementation and evidence remain missing. |
 | T1-ID | FF2 `PARTIAL`: current ledger and projection identities distinguish durable ledger IDs from Chroma UUIDs, but do not establish monitor-minted provenance authority, replay validity, parent commitments, or alias resistance. | T3 R7 requires monitor-minted immutable assertion identity; R8 requires parent ID/expected commitment agreement and recursive fail-closed verification. Downstream action authority remains out of scope. | `V5g`–`V5l` (decisive: `V5k`) | **MAPPED — gap preserved.** Existing IDs are not promoted to provenance authority; the planned identity/replay controls remain PENDING and no identity architecture change is introduced. |
-| T1-TRANS | FF2 `ABSENT`: adjacent projection/serving/durability controls do not implement provenance propagation, policy calculation, transformer caps, or continuity. | T3 R2–R5 and R8 require conservative integrity meet/cap propagation, bound provider/recipe/transformer evidence, immutable artifact identity for `trusted` eligibility, and recursive verification before effective integrity. | `V1`–`V4`, `V8a`–`V8h` (decisive failure control: `V8h`) | **MAPPED — gap preserved.** This is an honest path from an ABSENT FF2 row to planned T3 requirements; no absent evidence is upgraded and no algebra or implementation is changed. |
-| T1-SCHEMA | FF2 `PARTIAL`: current hash/generation gates reject known malformed state, but provenance envelope, policy, transformer, recipe, and future-version semantics are not evidenced. | T3 versioned envelope/policy/recipe semantics reject future or unknown versions, use strict validated typed-envelope input before canonicalization, and bind policy/recipe semantic bytes by digest. | `V1e`–`V1f`, `V3i`, `V4a` | **MAPPED — gap preserved.** Current hashless-graduation evidence is not overextended into provenance-schema proof; no migration execution or canonicalization redesign is introduced. |
+| T1-TRANS | FF2 `ABSENT`: adjacent projection/serving/durability controls do not implement provenance propagation, policy calculation, transformer caps, or continuity. | T3 R1–R5/R8 require conservative integrity meet/cap propagation, bound provider/recipe/transformer evidence, immutable artifact identity for `trusted` eligibility, and recursive verification before effective integrity. Under the current production ingress inventory, all real roots and descendants remain `untrusted`; V1b/V1h make Verified Ingress Bootstrap a prerequisite before `agent`/`trusted` become operational production capabilities, and R8 pins recursive verification to one immutable authority generation/snapshot. | `V1`–`V4`, `V8a`–`V8h` (specifically `V1b`, `V1h`, `V2h`, `V2i`; decisive failure control: `V8h`) | **MAPPED — gap preserved.** This remains an honest path from an ABSENT FF2 row to planned T3 requirements; no absent evidence is upgraded and no algebra, bootstrap design, or implementation is authorized. |
+| T1-SCHEMA | FF2 `PARTIAL`: current hash/generation gates reject known malformed state, but provenance envelope, policy, transformer, recipe, and future-version semantics are not evidenced. | T3 versioned envelope/policy/recipe semantics reject future or unknown versions, use strict validated typed-envelope input before canonicalization, bind policy/recipe semantic bytes by digest, and identify schema/binding/canonicalization semantics with immutable `schema_semantics_sha256`; same-identifier/different-semantic-bytes substitution fails closed. | `V1e`–`V1f`, `V3i`, `V4a`, `V8k` | **MAPPED — gap preserved.** Current hashless-graduation evidence is not overextended into provenance-schema proof; the corrected schema semantic-digest requirement is now explicit, with no migration execution or canonicalization redesign authorized. |
 | T1-MIG | FF2 `ABSENT`: T3 specifies N-1, reject-future, dry-run, backup-before-write, atomic replacement/rollback, and semantic mapping/fixture obligations, but no migration implementation or behavioral evidence exists. | T3 migration contract requires explicit old-to-new semantic mapping and schema-complete old-state fixture evidence for envelope, assertion ID, commitment, parent edges, and other meaning-bearing categories; unmapped/changed meaning fails closed. No live migration is allowed here. | `V3i` | **MAPPED — planning-only.** The contract is traceable, but the ABSENT classification remains ABSENT; this Bridge grants neither migration execution nor implementation. |
 | T1-BACK | FF2 `PARTIAL`: current snapshot selection, lineage, restore preflight, and durable-surface checks cover existing surfaces; future registry authority and projection activation are not evidenced, and backup evidence is not semantic provenance proof. | T3 complete-data-v2 still captures registry/history plus JSONL/Chroma as the recovery set; the restored-authority completeness/coherence predicate validates authority and continuity, while projection damage blocks serving and requires generation-bound rebuild/activation. | `V4g`–`V4l`, `V8i`–`V8l` (joint predicate; `V8i` is constituent only) | **MAPPED — gap preserved.** The accepted amendment preserves complete-data coverage while separating authority recovery from serving readiness; no backup, restore, or projection operation is authorized. |
 | T1-PROVIDER | FF2 `PARTIAL`: existing write-gate and projection-accounting paths preserve some durable-write/provider distinction, but no complete cross-path provider-failure-to-ack trace proves the authoritative boundary. | T3 acknowledgement remains exclusively at the authoritative durable boundary; provider, index, projection, client, or retrieval completion cannot elevate it. | `V3h`, `V8g` | **MAPPED — gap preserved.** The contractual distinction is retained and the missing trace remains a gap; no provider, projection, or runtime work is authorized. |
@@ -104,10 +102,10 @@ silently rewrite any Bridge row; it requires exact-SHA recheck before lock.
 The Bridge is complete as a planning traceability artifact when every accepted
 T1 claim has an upstream FF2 evidence/gap disposition, an existing T3
 requirement/invariant, and an existing T3 VERIFY row, with no row implying
-runtime authorization. Ryan's next decision is exact-SHA review and Interlude
-lock, not a new FF1/FF2 adjudication. Any T3 contradiction would be a bounded
-review finding, not an automatic architecture rewrite; none was found in this
-Bridge construction.
+runtime authorization. This revision refreshes the T1-TRANS and T1-SCHEMA
+traceability against corrected T3 `a46a3be2ed21252354dc0b18245059d342cfcb31`;
+FF1/FF2 claims and classifications remain unchanged. Ryan's next decision is
+Interlude lock, not a new FF1/FF2 adjudication.
 
 **TL;DR:** [Arc Trapdoor Interlude Hunt] The accepted FF1/FF2 claims now have a
 truthful claim → evidence/gap → T3 requirement → VERIFY trace for all 11 rows;
