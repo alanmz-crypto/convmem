@@ -1,7 +1,7 @@
 # Arc Trapdoor Interlude Hunt — Claim, Evidence, and Trapdoor Bridge Matrices
 
 ```text
-Status: Original FF1 accepted at 3c746faa47409f7def02d2fd24351fbc936a9720; original FF2 accepted at 0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361; bounded T1-GEN/T1-REC/T1-BACK amendment accepted at 41d6af4e6e56797d65cbc23e52c40f4dc1795c94; Bridge refreshed against corrected T3 a46a3be2ed21252354dc0b18245059d342cfcb31; all VERIFY rows PENDING; implementation and Interlude lock unauthorized
+Status: RYAN_INTERLUDE_LOCK — PASS; exact locked Interlude/Bridge revision ccd8c271b7918ecaa2363de489262fd1c3be054c; exact locked T3 planning basis a46a3be2ed21252354dc0b18245059d342cfcb31; original FF1 accepted at 3c746faa47409f7def02d2fd24351fbc936a9720; original FF2 accepted at 0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361; bounded T1-GEN/T1-REC/T1-BACK amendment accepted at 41d6af4e6e56797d65cbc23e52c40f4dc1795c94; all VERIFY rows PENDING; T3 implementation unauthorized
 Arc:    Arc Trapdoor Interlude Hunt
 Base:   d10e1d5f4993f60a32142115f8b8c0f0f9ea4481
 ```
@@ -75,13 +75,14 @@ Bridge basis: accepted/amended Interlude matrix revision
 `41d6af4e6e56797d65cbc23e52c40f4dc1795c94`; corrected Trapdoor T3 planning
 revision `a46a3be2ed21252354dc0b18245059d342cfcb31`.
 
-Bridge status: **REFRESHED against corrected T3 — awaiting Ryan's Interlude
-lock.** This is a bounded traceability map, not proof that any T3 requirement
-is implemented. Every VERIFY result remains `PENDING`; every FF2 gap and
-classification is preserved. `MAPPED — gap preserved` means the path is
-truthful but the missing oracle or implementation evidence remains missing.
-`MAPPED — planning-only` means the T3 requirement is intentionally not being
-executed in this Bridge.
+Bridge status: **LOCKED — `RYAN_INTERLUDE_LOCK — PASS` at exact Interlude
+revision `ccd8c271b7918ecaa2363de489262fd1c3be054c`.** The locked T3 planning
+basis is `a46a3be2ed21252354dc0b18245059d342cfcb31`. This is a bounded
+traceability map, not proof that any T3 requirement is implemented. Every
+VERIFY result remains `PENDING`; every FF2 gap and classification is preserved.
+`MAPPED — gap preserved` means the path is truthful but the missing oracle or
+implementation evidence remains missing. `MAPPED — planning-only` means the
+T3 requirement is intentionally not being executed in this Bridge.
 
 | Accepted T1 claim | T2 evidence / gap | Existing T3 requirement | Existing T3 VERIFY row | Bridge disposition |
 |---|---|---|---|---|
@@ -102,12 +103,14 @@ executed in this Bridge.
 The Bridge is complete as a planning traceability artifact when every accepted
 T1 claim has an upstream FF2 evidence/gap disposition, an existing T3
 requirement/invariant, and an existing T3 VERIFY row, with no row implying
-runtime authorization. This revision refreshes the T1-TRANS and T1-SCHEMA
-traceability against corrected T3 `a46a3be2ed21252354dc0b18245059d342cfcb31`;
-FF1/FF2 claims and classifications remain unchanged. Ryan's next decision is
-Interlude lock, not a new FF1/FF2 adjudication.
+runtime authorization. This locked revision records `RYAN_INTERLUDE_LOCK —
+PASS` at exact Interlude revision `ccd8c271b7918ecaa2363de489262fd1c3be054c`
+against T3 planning basis `a46a3be2ed21252354dc0b18245059d342cfcb31`;
+FF1/FF2 claims and classifications remain unchanged. The next gate is a
+separate T3 lock/review and Ryan Execute grant; no implementation is granted
+by this Bridge.
 
-**TL;DR:** [Arc Trapdoor Interlude Hunt] The accepted FF1/FF2 claims now have a
-truthful claim → evidence/gap → T3 requirement → VERIFY trace for all 11 rows;
-the Bridge records gaps without granting implementation, and all VERIFY rows
-remain PENDING.
+**TL;DR:** [Arc Trapdoor Interlude Hunt] Ryan locked the 11-row Bridge at exact
+revision `ccd8c271b7918ecaa2363de489262fd1c3be054c` against T3 planning basis
+`a46a3be2ed21252354dc0b18245059d342cfcb31`; FF1/FF2 remain accepted, all
+VERIFY rows remain PENDING, and T3 implementation is unauthorized.
