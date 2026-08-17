@@ -3,10 +3,10 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** Interlude branch is at
-`3c746faa47409f7def02d2fd24351fbc936a9720`; Ryan accepted FF1/T1 at that exact
-SHA; FF2/T2 validation is complete and remains unaccepted; no runtime work is
-authorized.
+**State:** Interlude branch tip is
+`a85e4d4613218a9ef2c165db47f021ea83a11dbc`; FF1/T1 acceptance remains bound to
+`3c746faa47409f7def02d2fd24351fbc936a9720`; FF2/T2 validation is complete and
+remains unaccepted; no runtime work is authorized.
 
 ## 1. What this project is for
 
@@ -41,7 +41,7 @@ and VERIFY rows. It does not redesign T3 or grant implementation.
 
 | Surface | State |
 |---|---|
-| Interlude branch | Pushed at `3c746faa47409f7def02d2fd24351fbc936a9720`; FF1 acceptance is bound to this exact revision. |
+| Interlude branch | Pushed at `a85e4d4613218a9ef2c165db47f021ea83a11dbc`; FF1 acceptance remains bound to `3c746faa47409f7def02d2fd24351fbc936a9720`. |
 | `ARCHITECTURE-trapdoor-interlude-hunt.md` | Draft planning contract; not locked. |
 | `EXECUTION-trapdoor-interlude-hunt.md` | Draft gated sequencing; not authorized for runtime work. |
 | `VERIFY-trapdoor-interlude-hunt.md` | Planning stub; all rows PENDING. |
