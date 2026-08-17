@@ -52,89 +52,60 @@ Execute phase.
 
 | Surface | State |
 |---|---|
-| `docs/inter-model/CURSOR-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Complete input handoff; planning authorized, Execute not authorized |
-| `docs/plans/ARCHITECTURE-codeql-complex-therapy.md` | Corrected on this planning branch; all-three context decision and inherited GHAS result semantics |
-| `docs/plans/EXECUTION-codeql-complex-therapy.md` | Corrected on this planning branch; fresh stop-before-PATCH identity gate, isolated negative-control stop, and separately authorized producer probe |
-| `docs/plans/VERIFY-codeql-complex-therapy.md` | Corrected on this planning branch; V0–V8 evidence matrix, future Execute/attestation rows unexecuted |
-| `docs/inter-model/CODEX-2026-08-16-codeql-complex-therapy-planning-handoff.md` | Explicitly names review package SHA `c74c7f8611ac0bf563618270c2c3244715df7d67`; additive carrier for Kiro/Ryan |
-| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; Ryan accepted the three policy decisions, the exact disposable fixture, and conditional producer-probe authorization, with ruleset Execute authorization open |
-| `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; out of scope for this arc |
-| Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow is live |
-| GitHub `Protect Main` ruleset `19156572` | Active; currently requires only Pylint/Pytest; no CodeQL contexts yet |
-| GitHub default CodeQL setup | Configured, default query suite, standard runner |
-| Disposable PR/control | Does not exist; the exact fixture and conditional producer probe are authorized, but execution is not authorized yet |
+| `docs/plans/ARCHITECTURE-codeql-complex-therapy.md` | Architecture locked; all-three context decision and inherited GHAS result semantics remain the governing design |
+| `docs/plans/EXECUTION-codeql-complex-therapy.md` | Execution and cleanup reconciled below; no further mutation is authorized |
+| `docs/plans/VERIFY-codeql-complex-therapy.md` | Grant A/B1/B2 evidence recorded; first recurring attestation remains future operational work |
+| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; closeout is awaiting Kiro review of the final planning tip and Ryan's final state record |
+| `docs/inter-model/LATEST.md` | Closeout pointer updated in the same docs-only pass |
+| `AGENTS.md` / `config/agent-protocol.md` | CodeQL arc state updated from planning-authorized to closeout/closed pending final review |
+| `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; unchanged and out of scope |
+| Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow remains live |
+| GitHub `Protect Main` ruleset `19156572` | Active; requires Pylint, Pytest, `Analyze (actions)`, `Analyze (python)`, and `CodeQL` with integration IDs `15368`, `15368`, `15368`, `15368`, and `57789`; strict policy remains true |
+| Positive control PR #198 | Five checks green and ordinarily merge-eligible; evidence retained in the Grant A closeout |
+| Disposable PRs #199, #200, and #201 | Closed without merge; branches and fixture resources removed; no disposable commit reached `main` |
 
 ## 4. Completion State
 
 | Milestone | Status | Blocking on |
 |---|---|---|
-| Planning authorization | **DONE** | Ryan authorized Codex planning on 2026-08-16 |
-| Required CodeQL context set | **ACCEPTED by Ryan** | All three CodeQL contexts remain required alongside Pylint/Pytest; Execute is still separately unauthorized |
-| GHAS result semantics | **ACCEPTED by Ryan** | Existing `CodeQL` results-check behavior is inherited; severity thresholds and the separate native merge-protection rule remain unchanged |
-| Required-check latency policy | **ACCEPTED by Ryan** | Blanket all-three protection applies to documentation-only PRs; path-scoped/placeholder architecture is deferred unless latency becomes a separately authorized problem |
-| Disposable negative control | **AUTHORIZED by Ryan — NOT STARTED** | Only `.github/workflows/codeql-negative-control.yml`; failed isolation with green Pylint/Pytest requires close/delete and stop; no improvisation |
-| Live context capture | **DONE** | Fresh PR #197: `Analyze (actions)`, `Analyze (python)`, `CodeQL`; Execute must repeat before PATCH |
-| Architecture package | **CORRECTED on planning branch** | Kiro/Ryan review |
-| Execution package | **CORRECTED on planning branch** | Kiro/Ryan review and Execute grant |
-| VERIFY package | **CORRECTED on planning branch** | Execute evidence; CodeQL causality, producer binding, and V8 continuity rows required |
-| STATUS package/list updates | **CORRECTED on planning branch** | Review/merge |
-| SHA-bound Codex handoff | **Kiro LINEAGE PASS at exact carrier** | Kiro reviewed carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; full architecture/Execute review remains open |
-| SHA lineage audit | **PASS by Kiro** | Package `c74c7f8611ac0bf563618270c2c3244715df7d67` is an independently confirmed ancestor of carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; `9dfaa6722...` → `790d5fd2...` incident is traceable; no Execute grant follows from this PASS |
-| Ruleset mutation | **AUTHORIZED UNDER GRANT A — NOT STARTED** | Cursor may patch only `Protect Main` `19156572` with the exact five contexts after the fresh identity gate |
-| Normal positive control | **AUTHORIZED UNDER GRANT A — NOT STARTED** | All five contexts must be green and ordinary merge eligible; no bypass |
-| Disposable negative-control evidence | **GRANT B NOT ISSUED — NOT STARTED** | Exact fixture scope is accepted, but execution waits for a separate Grant B after Grant A positive proof |
-| Producer-identity probe | **CONDITIONAL SCOPE ACCEPTED — GRANT B NOT ISSUED** | Only after Grant B, one isolated red/missing CodeQL context, and the other four required contexts green; then post one same-named green user status and stop on any non-isolated result |
-| Recurring enforcement attestation | **ACCEPTED by Ryan — NOT STARTED** | `OWNER=Ryan`; `CADENCE=quarterly + configuration-drift trigger`; Cursor collects evidence, Kiro reviews exceptions, and Ryan owns policy/gatekeeping |
-| Restoration and arc closeout | **NOT STARTED** | Positive/negative evidence; Kiro/Ryan |
+| Planning authorization | **DONE** | Ryan authorized Codex planning |
+| Required CodeQL context set | **DONE** | Five-context set is live in `Protect Main` |
+| GHAS result semantics | **DONE** | Existing results-check behavior inherited; thresholds and native merge-protection rule unchanged |
+| Required-check latency policy | **DONE** | Blanket all-three protection accepted for documentation-only PRs |
+| Live context capture | **DONE** | Fresh Grant A capture matched names, producer IDs, head SHA, and URLs |
+| Ruleset mutation | **GRANT A CLOSED/PASS** | Five required contexts installed; PATCH 404 → one documented PUT 200; deviation ratified |
+| Normal positive control | **GRANT A CLOSED/PASS** | PR #198 all five checks green; ordinary merge eligible without bypass |
+| Disposable negative control attempt #1 | **FAIL/CLOSED** | Malformed YAML left all five checks green; PR #199 closed, branch removed, new authorization obtained |
+| Disposable negative control attempt #2 | **PASS/CLOSED** | PR #200 produced 1-red/4-green; ordinary merge blocked; PR and branch removed |
+| Producer-identity probe | **B2 PASS/CLOSED** | User `CodeQL` success did not satisfy GHAS integration `57789`; PR #201 and branch removed |
+| Kiro evidence review | **PASS** | Exact implementation SHA `d3d0bdd9986c7f77e60f956c6018493f22b784f2`; final planning-tip review remains |
+| Recurring enforcement attestation | **ACCEPTED by Ryan** | `OWNER=Ryan`; `CADENCE=quarterly + configuration-drift trigger`; first run is not yet due |
+| Restoration and arc closeout | **IN PROGRESS** | Kiro reviews this final planning tip; Ryan records final `CLOSED/PASS` state |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-If you are reviewing, inspect the four planning files plus the SHA-bound Codex
-handoff and verify that Ryan's accepted all-three context, inherited-GHAS
-semantics, and blanket-latency decisions are supported by fresh PR/check-run
-evidence, that
-requiring `CodeQL` intentionally inherits its current results-check failure
-semantics, that required-status membership is distinguished from strict
-freshness, and that the negative control can prove a red/missing required status
-without entering `main`. The review must also confirm Ryan's conditional
-nonmatching-producer authorization, record GitHub's server-side mediation as an
-accepted trust boundary, and verify the accepted latency policy and recurring
-attestation ownership/cadence.
-Kiro must independently resolve the package and remote carrier SHAs; the
-intermediate mistyped package string is part of the review evidence.
+The execution lane is complete. Kiro's remaining role is a read-only exact-SHA
+review of this closeout revision: confirm that the planning records accurately
+map Grant A, B1 attempt #1, B1 attempt #2, and B2 to the preserved evidence, and
+that no stale authorization or "not started" claim remains. Kiro does not rerun
+the controls or mutate GitHub.
 
-If Ryan has granted Grant A, Cursor owns only the bounded ruleset mutation and
-normal positive control. Grant B must be separately granted before any
-disposable control, producer probe, workflow fixture, or cleanup of those
-resources. Preserve exact snapshots and do not broaden the scope.
-
-If Execute evidence exists, Kiro reviews the same final revision and Ryan owns
-the merge and arc closeout. Do not treat a passing chat report as verification.
+Ryan then owns the final arc state and the recurring policy gate. Cursor may
+collect the quarterly or configuration-drift evidence; Kiro reviews exceptions;
+Ryan decides whether drift requires a new authorization or a reopened arc.
+The first attestation is not part of this closeout and no scheduled workflow is
+being added.
 
 ## 6. What Remains Before "Live" (sequential)
 
-- [ ] Kiro/Ryan complete any remaining architecture/package review; Kiro's
-  independent lineage recheck is PASS at
-  carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; Ryan's accepted trust
-  boundary, conditional producer-probe authorization, and recurring-attestation
-  owner/cadence are recorded, but Execute remains open.
-- [ ] Cursor executes Grant A: capture before/after ruleset snapshots and prove
-  a normal green PR on all five contexts.
-- [ ] Ryan separately issues Grant B after the Grant A positive proof; until
-  then no disposable PR, workflow fixture, or producer probe may run.
-- [ ] Under Grant B, Cursor creates only the exact authorized disposable
-  fixture and proves a red/missing CodeQL context blocks ordinary merge;
-  failed isolation with green Pylint/Pytest requires close/delete and stop.
-- [ ] If the exact fixture technically isolates one CodeQL-required context,
-  Cursor proves a same-named nonmatching-producer status cannot satisfy the
-  CodeQL requirement; otherwise close/delete the disposable PR and record the
-  probe as not run/inconclusive, not silently marked PASS.
-- [ ] After Execute, Cursor collects the quarterly or drift-triggered
-  attestation evidence; Kiro reviews exceptions and Ryan decides policy/gate
-  disposition.
-- [ ] Kiro reviews the exact final revision and evidence.
-- [ ] Ryan merges and closes the arc; STATUS and LATEST are then updated to the
-  post-close current state.
+- [x] Grant A ruleset mutation, PUT-deviation ratification, and positive control.
+- [x] B1 attempt #1 safe failure and cleanup.
+- [x] B1 attempt #2 1-red/4-green negative control and cleanup.
+- [x] B2 producer-identity probe, cleanup, and remote-branch absence verification.
+- [x] Kiro PASS on the exact implementation evidence SHA.
+- [ ] Kiro reviews the exact full SHA of this final planning-document closeout.
+- [ ] Ryan records the final `CLOSED/PASS` arc state after that review.
+- [ ] Ryan's first quarterly or configuration-drift attestation, when due.
 
 ## 7. Hard Stops (models cannot cross)
 
@@ -206,7 +177,8 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Ryan | Set recurring attestation `OWNER=Ryan`, `CADENCE=quarterly + configuration-drift trigger`; Cursor collects evidence and Kiro reviews exceptions |
 | 2026-08-16 | Kiro | PASS on independent SHA-lineage recheck at exact carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; package ancestry, 18-commit planning-only delta, and `9dfaa6722...` → `790d5fd2...` incident verified; Execute remains unauthorized |
 | 2026-08-16 | Ryan | Authorized Execute Grant A for ruleset-only `Protect Main` mutation and the normal five-check positive control; Grant B disposable testing remains withheld |
+| 2026-08-17 | Codex | Reconciled Grant A/B1/B2 execution evidence, cleanup, Kiro B2 PASS, and Ryan's recurring-attestation contract; final docs-only closeout review remains |
 
-**TL;DR:** Kiro PASSed the independent SHA-lineage recheck; Ryan authorized
-Grant A for ruleset-only mutation plus the positive control, while Grant B
-disposable testing remains withheld.
+**TL;DR:** Grant A, B1, and B2 are complete and cleaned up; the five-context
+ruleset is live, Kiro PASSed the exact implementation evidence, and only the
+final planning-tip review plus Ryan's closeout record remain.

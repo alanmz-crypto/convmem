@@ -3,20 +3,22 @@
 | Field | Value |
 |---|---|
 | **Arc** | CodeQL Complex Therapy |
-| **Phase** | Grant A authorized; ruleset-only execution pending Cursor; Grant B withheld |
+| **Phase** | Execute complete; Grant A and separately authorized Grant B controls completed and cleaned up |
 | **Pre-correction published tip** | `658a9dab9977ba03dbfc6b1301b0f6bce3762f39` on `plan/2026-08-16-codeql-complex-therapy` |
-| **Implementation lane** | Cursor under Grant A for ruleset-only mutation and positive control; Grant B requires a separate Ryan grant |
+| **Implementation lane** | Cursor completed Grant A, B1, and B2 on disposable implementation branches; all disposable branches were removed |
 | **External gate owner** | Ryan |
 | **Independent review** | Kiro, on the same final artifact and revision |
 
 ## Consequence
 
-Grant A gives Cursor a bounded, reversible ruleset-only sequence: snapshot the
-live ruleset, add the three observed CodeQL contexts while preserving existing
-policy, prove the normal positive case, and hand exact evidence to Kiro and
-Ryan. Grant B is separate and remains withheld; it covers the disposable
-negative control, conditional producer probe, and cleanup. No workflow edit,
-disposable PR, or Grant B action is authorized by Grant A.
+Grant A installed the three observed CodeQL contexts while preserving existing
+policy and proved the normal positive case. Ryan then separately authorized B1
+and B2. B1 attempt #2 proved that a qualifying GHAS CodeQL failure blocks the
+ordinary merge path while the other four required contexts remain green; B2
+proved that a same-named user status cannot satisfy the integration-id-bound
+GHAS requirement. All disposable PRs were closed without merge and all
+disposable branches were removed. No workflow, threshold, native
+code-scanning rule, or bypass policy was changed.
 
 ## Phase 0 — planning review (Codex complete)
 
@@ -69,11 +71,19 @@ requires a new plan before any mutation.
 
 Ryan has accepted the all-three contexts, inherited GHAS semantics, blanket
 latency, exact negative-control scope, and conditional producer-probe scope.
-Grant A now authorizes only the ruleset mutation and normal positive control.
-Until Grant B is separately issued, Cursor must not edit a CodeQL/workflow file,
-create a disposable PR, post a producer probe, or perform disposable cleanup.
+Grant A and the separately issued B1/B2 grants are complete. No further
+execution is authorized by this document. Future work is limited to Ryan's
+quarterly plus configuration-drift attestation, with Cursor collecting evidence
+and Kiro reviewing exceptions.
 
-## Phase 2 — Cursor Execute: ruleset-only mutation
+## Phase 2 — Cursor Execute: ruleset-only mutation (COMPLETE)
+
+Grant A completed on PR #198. The fresh same-session pre-PATCH capture matched
+all five required contexts and producer IDs. The planned PATCH returned 404;
+the documented ruleset endpoint was then used once via PUT, producing the
+intended five-context state. Ryan ratified that narrow method deviation. The
+raw pre/post snapshots, payload, responses, and semantic diff are preserved in
+the Grant A closeout evidence.
 
 Cursor works from a fresh implementation branch based on the reviewed current
 `main`, records the exact branch tip, and performs these read-only checks first:
@@ -112,10 +122,10 @@ reviewed package, Cursor stops before mutating `Protect Main` and requests a
 new Ryan/Kiro decision. This same-session fresh capture is mandatory even
 though PR #197 has already confirmed the identities during planning.
 
-The only authorized external mutation is one patch to:
+The only authorized external ruleset mutation was one update to:
 
 ```text
-PATCH /repos/alanmz-crypto/convmem/rulesets/19156572
+`/repos/alanmz-crypto/convmem/rulesets/19156572`
 ```
 
 The final `rules` payload must retain every existing rule and replace only the
@@ -131,7 +141,7 @@ The final `rules` payload must retain every existing rule and replace only the
 ]
 ```
 
-The patch must preserve `strict_required_status_checks_policy: true`, the
+The update preserved `strict_required_status_checks_policy: true`, the
 `refs/heads/main` condition, enforcement `active`, the pull-request rule,
 deletion/non-fast-forward rules, review-thread resolution, and the existing
 bypass actor/policy. Cursor must save the pre- and post-mutation JSON snapshots
@@ -141,7 +151,12 @@ If the live API rejects an integration id, context, or payload shape, stop and
 report the exact error. Do not retry with a weaker context set or broaden the
 mutation without a new Ryan decision.
 
-## Phase 3 — positive control
+## Phase 3 — positive control (COMPLETE)
+
+PR #198 at head `e023f55b4d344eea9abffda3bfc53d6b103c90a1` passed all five
+required contexts and remained ordinarily `CLEAN`/`MERGEABLE` without bypass.
+The fresh post-closeout check evidence is recorded in the Grant A evidence
+directory.
 
 Use a normal, harmless PR from the Execute branch or a fresh no-op/documentation
 branch after the ruleset mutation. Capture:
@@ -154,7 +169,14 @@ branch after the ruleset mutation. Capture:
 The positive control is complete only when all five statuses are successful and
 the PR is ordinarily merge-eligible. No bypass is used.
 
-## Phase 4 — Ryan-authorized disposable negative control
+## Phase 4 — Ryan-authorized disposable negative control (COMPLETE)
+
+B1 attempt #1 used the malformed-YAML fixture and failed isolation: all five
+contexts stayed green. Cursor closed PR #199, deleted its branch, and stopped.
+After a new Ryan authorization, B1 attempt #2 used the authorized
+`actions/code-injection/critical` fixture. It produced exactly one red CodeQL
+context with the other four required contexts green, and ordinary merge was
+blocked. PR #200 was closed without merge and its branch was deleted.
 
 This phase has a second, separate authorization boundary. Cursor creates one
 disposable branch/PR only after Ryan grants disposable controls.
@@ -167,24 +189,32 @@ check-run URLs, conclusion, and ordinary merge state.
 
 The control passes only if a required CodeQL context is red or absent, the
 pre-existing `pylint (3.12)` and `pytest (3.12)` contexts are successful, and
-the ordinary merge path is blocked. The exact and only currently authorized
-fixture is:
+the ordinary merge path is blocked. B1 attempt #1 used this original fixture:
 
 ```text
 path: .github/workflows/codeql-negative-control.yml
 content: name: [codeql-negative-control
 ```
 
-That deliberately malformed workflow YAML is disposable and must never reach
-`main`. If it is accepted without a meaningful analyzer failure, close/delete
-the PR and request a new Ryan authorization for a different isolated fixture.
+That deliberately malformed workflow YAML was disposable and never reached
+`main`. When it failed to produce a meaningful analyzer failure, Cursor
+closed/deleted the PR and obtained a new Ryan authorization. B1 attempt #2
+then used the separately authorized `actions/code-injection/critical` fixture
+and produced the passing 1-red/4-green result recorded above.
 No fallback that edits an established workflow is pre-authorized; an
 unobserved hypothesis is not a pass.
 
 Do not use the repository-role bypass, merge the PR, cancel a check to simulate
 failure, or change the ruleset solely to make the control easier to trigger.
 
-### Phase 4a — producer-identity probe (separate disposable authorization)
+### Phase 4a — producer-identity probe (separate disposable authorization, COMPLETE)
+
+After B1 attempt #2 isolated exactly one red CodeQL context, Ryan separately
+authorized B2. On disposable head
+`d3d0bdd9986c7f77e60f956c6018493f22b784f2`, Cursor posted one same-named green
+user status. The genuine GHAS `CodeQL` check remained failed and ordinary merge
+remained blocked. Kiro PASSed B2 at that exact SHA. PR #201 was closed without
+merge and its branch was verified absent.
 
 Run this probe only when Ryan's disposable-control grant names it explicitly
 and Phase 4 has isolated exactly one red or missing CodeQL-required context.
@@ -218,7 +248,13 @@ the disposable commit and may remain as immutable evidence after branch
 cleanup; prove that commit never reaches `main` rather than attempting a
 destructive status rewrite.
 
-## Phase 5 — restoration and cleanup
+## Phase 5 — restoration and cleanup (COMPLETE)
+
+PRs #199, #200, and #201 were closed without merge. Their branches were deleted
+and independently verified absent. The disposable fixture is absent from
+`main`; no disposable commit is reachable from `main`. The live ruleset remains
+active with the intended five contexts and strict policy, and no bypass was
+used.
 
 For every disposable control:
 
@@ -241,12 +277,13 @@ evidence, but is not the policy owner; Kiro reviews exceptions and Ryan decides
 whether any policy or gate change requires a new authorization or reopened arc.
 No scheduled workflow is added by this plan.
 
-## Phase 6 — review and closeout
+## Phase 6 — review and closeout (EVIDENCE COMPLETE; DOCUMENTATION CLOSEOUT)
 
-Cursor hands the same final implementation tip, post-patch ruleset snapshot,
-positive PR evidence, negative-control evidence, cleanup evidence, and VERIFY
-file to Kiro. Kiro reviews the exact artifact/revision and records PASS or FAIL.
-Ryan owns the merge and arc closeout. No agent merges or changes `main`.
+Cursor handed the final implementation evidence, ruleset snapshots, positive
+and negative-control evidence, and cleanup evidence to Kiro. Kiro reviewed
+exact SHA `d3d0bdd9986c7f77e60f956c6018493f22b784f2` and PASSed. Ryan owns the
+remaining documentation closeout and recurring-attestation record. No agent
+merges or changes `main`.
 
 The branch handoff must include:
 
@@ -276,6 +313,7 @@ Stop immediately for any of the following:
 * an external mutation that differs from the exact ruleset resource and final
   values authorized by Ryan.
 
-**TL;DR:** Grant A authorizes Cursor's exact `Protect Main` patch and normal
-five-check positive control. Grant B remains withheld for the disposable PR,
-conditional producer probe, cleanup, and red/missing CodeQL proof.
+**TL;DR:** Grant A, B1, and B2 are complete. The five-context ruleset is live;
+the positive control passed; B1 proved a qualifying CodeQL failure blocks
+ordinary merge; B2 proved producer binding; all disposable resources were
+cleaned up; and only docs/attestation closeout remains.

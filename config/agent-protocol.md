@@ -139,7 +139,7 @@ Known arc codenames (update when new arcs are named):
 | Full Fathom Five | Parent five-arc dependability roadmap (FF1–FF5) | Active — parent frozen |
 | CI Kryptonite | Behavioral CI merge gate | **Closed** (PR #187 + #189) |
 | Pinwheel Pytest CI | Reproducible pytest CI | **Closed** (#191 + disposable controls) |
-| CodeQL Complex Therapy | CodeQL merge protection | Planning authorized — Execute not yet granted |
+| CodeQL Complex Therapy | CodeQL merge protection | **Closed** — technical controls PASS; Ryan-owned recurring attestation |
 
 <!-- TIER_A_END -->
 

@@ -70,7 +70,7 @@ Known arc codenames (canonical list in `config/agent-protocol.md`):
 | Full Fathom Five | Parent five-arc dependability roadmap (FF1–FF5) | Active — frozen |
 | CI Kryptonite | Behavioral CI merge gate | **Closed** |
 | Pinwheel Pytest CI | Reproducible pytest CI | **Closed** |
-| CodeQL Complex Therapy | CodeQL merge protection | Planning authorized — Execute not yet granted |
+| CodeQL Complex Therapy | CodeQL merge protection | **Closed** — technical controls PASS; Ryan-owned recurring attestation |
 
 ---
 
