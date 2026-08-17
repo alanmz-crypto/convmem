@@ -1,7 +1,7 @@
 # Arc Trapdoor Interlude Hunt — Claim, Evidence, and Trapdoor Bridge Matrices
 
 ```text
-Status: Original FF1 accepted at 3c746faa47409f7def02d2fd24351fbc936a9720; original FF2 accepted at 0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361; literature-driven bounded reopening of T1-GEN/T1-REC/T1-BACK is awaiting Ryan acceptance; all VERIFY rows PENDING; Bridge unauthorized
+Status: Original FF1 accepted at 3c746faa47409f7def02d2fd24351fbc936a9720; original FF2 accepted at 0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361; literature-driven bounded reopening of T1-GEN/T1-REC/T1-BACK is recorded at amendment revision 63cc61586ab3a7956b8773e378a7ee9da40e0064 and awaiting Ryan acceptance; all VERIFY rows PENDING; Bridge unauthorized
 Arc:    Arc Trapdoor Interlude Hunt
 Base:   d10e1d5f4993f60a32142115f8b8c0f0f9ea4481
 ```
@@ -40,8 +40,9 @@ implied.
 
 This is the completed FF2/T2 validation accepted at exact SHA
 `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`. The literature-driven bounded
-reopening of T1-GEN, T1-REC, and T1-BACK is awaiting Ryan acceptance; the
-classifications below remain unchanged. They are bounded planning
+reopening of T1-GEN, T1-REC, and T1-BACK is recorded at amendment revision
+`63cc61586ab3a7956b8773e378a7ee9da40e0064` and is awaiting Ryan acceptance;
+the classifications below remain unchanged. They are bounded planning
 adjudications against existing artifacts only. They are not VERIFY results and
 do not authorize implementation, migration, runtime, live-data, or operational
 work.
