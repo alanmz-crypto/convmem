@@ -5,8 +5,8 @@
 
 **State:** Interlude branch is at
 `3c746faa47409f7def02d2fd24351fbc936a9720`; Ryan accepted FF1/T1 at that exact
-SHA; FF2/T2 validation is in progress and remains unaccepted; no runtime work
-is authorized.
+SHA; FF2/T2 validation is complete and remains unaccepted; no runtime work is
+authorized.
 
 ## 1. What this project is for
 
@@ -45,7 +45,7 @@ and VERIFY rows. It does not redesign T3 or grant implementation.
 | `ARCHITECTURE-trapdoor-interlude-hunt.md` | Draft planning contract; not locked. |
 | `EXECUTION-trapdoor-interlude-hunt.md` | Draft gated sequencing; not authorized for runtime work. |
 | `VERIFY-trapdoor-interlude-hunt.md` | Planning stub; all rows PENDING. |
-| `TRAPDOOR-INTERLUDE-MATRICES.md` | FF1 accepted; FF2/T2 validation draft in progress; Bridge remains gated. |
+| `TRAPDOOR-INTERLUDE-MATRICES.md` | FF1 accepted; FF2/T2 validation complete and awaiting Ryan acceptance; Bridge remains gated. |
 | Trapdoor T3 reference branch | Read-only upstream design at `8f037a50`; not modified. |
 | CodeQL/P0 | Closed/PASS on GitHub main before Interlude branch creation. |
 
@@ -55,17 +55,18 @@ and VERIFY rows. It does not redesign T3 or grant implementation.
 |---|---|---|
 | P0 CI Merge Gate | **CLOSED/PASS** | GitHub main CodeQL closeout is reachable and accepted. |
 | FF1/T1 Trust Baseline | **ACCEPTED** at `3c746faa47409f7def02d2fd24351fbc936a9720` | Ryan accepted vocabulary, severity, sequencing, and critical-row owner/oracle/degraded-state normalization. |
-| FF2/T2 Evidence + Gap Matrix | Validation in progress; not accepted | Every accepted claim has one classification, failure window, evidence limit, smallest missing oracle, owner, and degraded state; Ryan accepts FF2 before the Bridge. |
+| FF2/T2 Evidence + Gap Matrix | Validation complete; not accepted | Every accepted claim has one classification, failure window, evidence limit, smallest missing oracle, owner, and degraded state; Ryan accepts FF2 before the Bridge. |
 | Trapdoor Bridge | Not started | FF2 accepted and each relevant T3 requirement has an upstream mapping. |
 | Interlude lock | Not authorized | Ryan accepts FF1, FF2, Bridge, and no prohibited work occurred. |
 | Trapdoor T3 implementation | Not authorized | Separate T3 lock and Ryan Execute grant remain required. |
 
 ## 5. Your role now
 
-The current owner is the fresh Codex Interlude planning lane. It is validating
-the accepted FF1 claims against existing repository evidence, classifying each
-row without runtime work, and bounding the smallest missing oracle. It must
-stop for Ryan's FF2 decision before beginning the Trapdoor Bridge.
+The current owner is the fresh Codex Interlude planning lane. It has validated
+the accepted FF1 claims against existing repository evidence, classified each
+row without runtime work, and bounded the smallest missing oracle. It must
+stop for ChatGPT exact-SHA recheck and Ryan's FF2 decision before beginning the
+Trapdoor Bridge.
 
 Kiro is reserved for non-implementing design review; Copilot for a targeted
 safety/isolation/document-integrity audit; Crush for bounded repository
@@ -75,11 +76,10 @@ lane may infer Ryan acceptance or T3 authorization.
 
 ## 6. What remains before this is complete
 
-1. Complete and review the FF2 evidence/gap matrix from accepted FF1 claims.
-2. Obtain Ryan's explicit FF2 acceptance.
-3. Complete the Trapdoor Bridge and resolve bounded contradictions.
-4. Obtain exact-SHA review and Ryan's Interlude lock.
-5. Hand back the closing SHA, accepted matrices, unresolved oracles, T3 impact,
+1. Obtain ChatGPT exact-SHA recheck and Ryan's explicit FF2 acceptance.
+2. Complete the Trapdoor Bridge and resolve bounded contradictions.
+3. Obtain exact-SHA review and Ryan's Interlude lock.
+4. Hand back the closing SHA, accepted matrices, unresolved oracles, T3 impact,
    and confirmation that runtime work and numerical operational targets remain
    deferred.
 
