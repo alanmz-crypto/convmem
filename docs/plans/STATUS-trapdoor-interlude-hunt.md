@@ -3,10 +3,11 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** Interlude branch tip is
-`a85e4d4613218a9ef2c165db47f021ea83a11dbc`; FF1/T1 acceptance remains bound to
-`3c746faa47409f7def02d2fd24351fbc936a9720`; FF2/T2 validation is complete and
-remains unaccepted; no runtime work is authorized.
+**State:** FF2/T2 is accepted at exact reviewed package SHA
+`0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; FF1/T1 acceptance remains bound to
+`3c746faa47409f7def02d2fd24351fbc936a9720`; the Interlude holds for the
+literature/evidence challenge before any Bridge construction; no runtime work
+is authorized.
 
 ## 1. What this project is for
 
@@ -41,11 +42,11 @@ and VERIFY rows. It does not redesign T3 or grant implementation.
 
 | Surface | State |
 |---|---|
-| Interlude branch | Pushed at `a85e4d4613218a9ef2c165db47f021ea83a11dbc`; FF1 acceptance remains bound to `3c746faa47409f7def02d2fd24351fbc936a9720`. |
+| Interlude branch | FF2 accepted at exact reviewed package SHA `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; prior FF2 validation/content revision `a85e4d4613218a9ef2c165db47f021ea83a11dbc`; FF1 acceptance remains bound to `3c746faa47409f7def02d2fd24351fbc936a9720`. |
 | `ARCHITECTURE-trapdoor-interlude-hunt.md` | Draft planning contract; not locked. |
 | `EXECUTION-trapdoor-interlude-hunt.md` | Draft gated sequencing; not authorized for runtime work. |
 | `VERIFY-trapdoor-interlude-hunt.md` | Planning stub; all rows PENDING. |
-| `TRAPDOOR-INTERLUDE-MATRICES.md` | FF1 accepted; FF2/T2 validation complete and awaiting Ryan acceptance; Bridge remains gated. |
+| `TRAPDOOR-INTERLUDE-MATRICES.md` | FF1 and FF2 accepted at their exact review revisions; Bridge remains gated pending the literature/evidence challenge. |
 | Trapdoor T3 reference branch | Read-only upstream design at `8f037a50`; not modified. |
 | CodeQL/P0 | Closed/PASS on GitHub main before Interlude branch creation. |
 
@@ -55,18 +56,19 @@ and VERIFY rows. It does not redesign T3 or grant implementation.
 |---|---|---|
 | P0 CI Merge Gate | **CLOSED/PASS** | GitHub main CodeQL closeout is reachable and accepted. |
 | FF1/T1 Trust Baseline | **ACCEPTED** at `3c746faa47409f7def02d2fd24351fbc936a9720` | Ryan accepted vocabulary, severity, sequencing, and critical-row owner/oracle/degraded-state normalization. |
-| FF2/T2 Evidence + Gap Matrix | Validation complete; not accepted | Every accepted claim has one classification, failure window, evidence limit, smallest missing oracle, owner, and degraded state; Ryan accepts FF2 before the Bridge. |
-| Trapdoor Bridge | Not started | FF2 accepted and each relevant T3 requirement has an upstream mapping. |
+| FF2/T2 Evidence + Gap Matrix | **ACCEPTED** at `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361` | Ryan accepted 9 PARTIAL / 2 ABSENT / 0 SUFFICIENT / 0 STALE and the documented evidence boundaries, limits, missing oracles, owners, and degraded states. |
+| Literature/evidence challenge | **NEXT; Bridge held** | ChatGPT challenges accepted FF1/FF2 assumptions before any Bridge construction decision. |
+| Trapdoor Bridge | Not started; not authorized | A separate decision follows the literature challenge and resolution of any material findings. |
 | Interlude lock | Not authorized | Ryan accepts FF1, FF2, Bridge, and no prohibited work occurred. |
 | Trapdoor T3 implementation | Not authorized | Separate T3 lock and Ryan Execute grant remain required. |
 
 ## 5. Your role now
 
-The current owner is the fresh Codex Interlude planning lane. It has validated
-the accepted FF1 claims against existing repository evidence, classified each
-row without runtime work, and bounded the smallest missing oracle. It must
-stop for ChatGPT exact-SHA recheck and Ryan's FF2 decision before beginning the
-Trapdoor Bridge.
+The current owner is the fresh Codex Interlude planning lane. It has completed
+FF1/FF2 planning and must now hold the accepted package for ChatGPT's external
+literature/evidence challenge. It must not construct the Trapdoor Bridge or
+implement missing oracles unless a later decision explicitly authorizes that
+work.
 
 Kiro is reserved for non-implementing design review; Copilot for a targeted
 safety/isolation/document-integrity audit; Crush for bounded repository
@@ -76,10 +78,15 @@ lane may infer Ryan acceptance or T3 authorization.
 
 ## 6. What remains before this is complete
 
-1. Obtain ChatGPT exact-SHA recheck and Ryan's explicit FF2 acceptance.
-2. Complete the Trapdoor Bridge and resolve bounded contradictions.
-3. Obtain exact-SHA review and Ryan's Interlude lock.
-4. Hand back the closing SHA, accepted matrices, unresolved oracles, T3 impact,
+1. Complete the ChatGPT literature/evidence challenge against accepted FF1/FF2.
+2. Report each material finding with the affected row, challenged assumption,
+   external evidence, challenge severity, survival decision, and smallest
+   correction if required.
+3. Obtain a separate decision on any material findings and on Bridge
+   construction.
+4. If authorized, complete the Trapdoor Bridge and obtain exact-SHA review and
+   Ryan's Interlude lock.
+5. Hand back the closing SHA, accepted matrices, unresolved oracles, T3 impact,
    and confirmation that runtime work and numerical operational targets remain
    deferred.
 
@@ -123,7 +130,8 @@ Track A, not here.
 |---|---|---|
 | 2026-08-16 | Codex | Created isolated Interlude branch after CodeQL/P0 closeout verification; ChatGPT review now requires a fresh Codex owner, concrete FF1 owners/oracles, and explicit FF2-seed wording. |
 | 2026-08-17 | Codex | Ryan accepted FF1 at `3c746faa47409f7def02d2fd24351fbc936a9720`; FF2 evidence validation began with bounded classifications and missing-oracle ownership. |
+| 2026-08-17 | Ryan | Accepted FF2 at exact reviewed package SHA `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; Interlude holds for the literature/evidence challenge before Bridge construction. |
 
-**TL;DR:** FF1 is accepted at the exact normalization tip; FF2 validation is
-in progress, FF2 and the Trapdoor Bridge remain gated by Ryan acceptance, and no
-implementation is authorized.
+**TL;DR:** FF1 and FF2 are accepted at their exact review revisions; the
+literature/evidence challenge is next, while the Trapdoor Bridge and all
+implementation remain gated.
