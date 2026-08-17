@@ -153,13 +153,16 @@ is not ordinary item-by-item `convmem add`, JSONL re-import, Chroma rebuild, or
 dedupe processing. Those operations may consume a recovered registry, but may
 not identity-preserve a caller-supplied ID without the verified store.
 
-Before recovered assertions become publishable, recovery must verify the
-directory manifest and every required file/object hash, uniqueness of IDs,
+Before recovered authority enters
+`AUTHORITY_RECOVERED_PROJECTION_PENDING`, recovery must verify the directory
+manifest and every required authoritative file/object hash, uniqueness of IDs,
 ID/commitment agreement, recursive parent resolution, historical policy and
-recipe availability, and exact registry↔JSONL↔Chroma identity/commitment
-agreement. The recovered target must be complete for the declared store
-generation; partial snapshots, extra unclassified state, truncated files, and
-restore/rebuild mismatches remain quarantined.
+recipe availability, and continuity evidence. Missing or damaged rebuildable
+projections do not invalidate otherwise verified authority. Exact
+registry↔JSONL↔Chroma generation/commitment agreement is required before
+projection activation and `SERVING_READY`; partial snapshots, extra
+unclassified state, truncated files, and mismatched projections remain
+quarantined or blocked at their respective boundary.
 
 If the registry is missing or incomplete, do not silently rewrite a valid live
 corpus as globally untrusted and do not elevate recovered Chroma/JSONL rows
