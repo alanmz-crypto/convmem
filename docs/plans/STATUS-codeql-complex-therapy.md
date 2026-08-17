@@ -55,9 +55,9 @@ Execute phase.
 | `docs/plans/ARCHITECTURE-codeql-complex-therapy.md` | Architecture locked; all-three context decision and inherited GHAS result semantics remain the governing design |
 | `docs/plans/EXECUTION-codeql-complex-therapy.md` | Execution and cleanup reconciled below; no further mutation is authorized |
 | `docs/plans/VERIFY-codeql-complex-therapy.md` | Grant A/B1/B2 evidence recorded; first recurring attestation remains future operational work |
-| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; closeout is awaiting Kiro review of the final planning tip and Ryan's final state record |
+| `docs/plans/STATUS-codeql-complex-therapy.md` | This current arc brief; technical execution and documentation closeout are complete |
 | `docs/inter-model/LATEST.md` | Closeout pointer updated in the same docs-only pass |
-| `AGENTS.md` / `config/agent-protocol.md` | CodeQL arc state updated from planning-authorized to closeout/closed pending final review |
+| `AGENTS.md` / `config/agent-protocol.md` | CodeQL arc state is Closed; Ryan owns the future recurring attestation |
 | `.github/workflows/pylint.yml` | Existing Pylint/Pytest workflow; unchanged and out of scope |
 | Tracked CodeQL workflow | None; GitHub dynamic default-setup workflow remains live |
 | GitHub `Protect Main` ruleset `19156572` | Active; requires Pylint, Pytest, `Analyze (actions)`, `Analyze (python)`, and `CodeQL` with integration IDs `15368`, `15368`, `15368`, `15368`, and `57789`; strict policy remains true |
@@ -78,17 +78,16 @@ Execute phase.
 | Disposable negative control attempt #1 | **FAIL/CLOSED** | Malformed YAML left all five checks green; PR #199 closed, branch removed, new authorization obtained |
 | Disposable negative control attempt #2 | **PASS/CLOSED** | PR #200 produced 1-red/4-green; ordinary merge blocked; PR and branch removed |
 | Producer-identity probe | **B2 PASS/CLOSED** | User `CodeQL` success did not satisfy GHAS integration `57789`; PR #201 and branch removed |
-| Kiro evidence review | **PASS** | Exact implementation SHA `d3d0bdd9986c7f77e60f956c6018493f22b784f2`; final planning-tip review remains |
+| Kiro evidence review | **PASS** | Exact implementation SHA `d3d0bdd9986c7f77e60f956c6018493f22b784f2` and planning tip `cd653d95fd3dd7b3e46565c59d44134d84fae44e` both PASS |
 | Recurring enforcement attestation | **ACCEPTED by Ryan** | `OWNER=Ryan`; `CADENCE=quarterly + configuration-drift trigger`; first run is not yet due |
-| Restoration and arc closeout | **IN PROGRESS** | Kiro reviews this final planning tip; Ryan records final `CLOSED/PASS` state |
+| Restoration and arc closeout | **CLOSED/PASS** | Kiro exact-revision reviews PASSed; Ryan recorded final state |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-The execution lane is complete. Kiro's remaining role is a read-only exact-SHA
-review of this closeout revision: confirm that the planning records accurately
-map Grant A, B1 attempt #1, B1 attempt #2, and B2 to the preserved evidence, and
-that no stale authorization or "not started" claim remains. Kiro does not rerun
-the controls or mutate GitHub.
+The execution and documentation lanes are complete. No further CodeQL control,
+workflow edit, ruleset mutation, or disposable resource action is authorized
+by this arc. Kiro reviews only future attestation exceptions; Kiro does not
+rerun B1/B2 as a routine cadence.
 
 Ryan then owns the final arc state and the recurring policy gate. Cursor may
 collect the quarterly or configuration-drift evidence; Kiro reviews exceptions;
@@ -103,8 +102,8 @@ being added.
 - [x] B1 attempt #2 1-red/4-green negative control and cleanup.
 - [x] B2 producer-identity probe, cleanup, and remote-branch absence verification.
 - [x] Kiro PASS on the exact implementation evidence SHA.
-- [ ] Kiro reviews the exact full SHA of this final planning-document closeout.
-- [ ] Ryan records the final `CLOSED/PASS` arc state after that review.
+- [x] Kiro reviews the exact full SHA of the final planning-document closeout.
+- [x] Ryan records the final `CLOSED/PASS` arc state and recurring-attestation ownership.
 - [ ] Ryan's first quarterly or configuration-drift attestation, when due.
 
 ## 7. Hard Stops (models cannot cross)
@@ -178,7 +177,8 @@ line to the Update Log. Session details belong in Track A ingest, not here.
 | 2026-08-16 | Kiro | PASS on independent SHA-lineage recheck at exact carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`; package ancestry, 18-commit planning-only delta, and `9dfaa6722...` → `790d5fd2...` incident verified; Execute remains unauthorized |
 | 2026-08-16 | Ryan | Authorized Execute Grant A for ruleset-only `Protect Main` mutation and the normal five-check positive control; Grant B disposable testing remains withheld |
 | 2026-08-17 | Codex | Reconciled Grant A/B1/B2 execution evidence, cleanup, Kiro B2 PASS, and Ryan's recurring-attestation contract; final docs-only closeout review remains |
+| 2026-08-17 | Ryan | Recorded Arc CodeQL Complex Therapy `CLOSED/PASS`; future policy is Ryan-owned quarterly plus configuration-drift attestation |
 
-**TL;DR:** Grant A, B1, and B2 are complete and cleaned up; the five-context
-ruleset is live, Kiro PASSed the exact implementation evidence, and only the
-final planning-tip review plus Ryan's closeout record remain.
+**TL;DR:** Arc CodeQL Complex Therapy is `CLOSED/PASS`; Grant A, B1, and B2
+are complete and cleaned up, the five-context ruleset is live, and Ryan owns
+the future quarterly plus configuration-drift attestation.

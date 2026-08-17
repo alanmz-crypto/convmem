@@ -277,13 +277,14 @@ evidence, but is not the policy owner; Kiro reviews exceptions and Ryan decides
 whether any policy or gate change requires a new authorization or reopened arc.
 No scheduled workflow is added by this plan.
 
-## Phase 6 — review and closeout (EVIDENCE COMPLETE; DOCUMENTATION CLOSEOUT)
+## Phase 6 — review and closeout (CLOSED/PASS)
 
 Cursor handed the final implementation evidence, ruleset snapshots, positive
 and negative-control evidence, and cleanup evidence to Kiro. Kiro reviewed
-exact SHA `d3d0bdd9986c7f77e60f956c6018493f22b784f2` and PASSed. Ryan owns the
-remaining documentation closeout and recurring-attestation record. No agent
-merges or changes `main`.
+exact implementation SHA `d3d0bdd9986c7f77e60f956c6018493f22b784f2` and exact
+planning tip `cd653d95fd3dd7b3e46565c59d44134d84fae44e`, and PASSed both. Ryan
+recorded the final `CLOSED/PASS` state and recurring-attestation contract. No
+agent merges or changes `main`.
 
 The branch handoff must include:
 
@@ -313,7 +314,6 @@ Stop immediately for any of the following:
 * an external mutation that differs from the exact ruleset resource and final
   values authorized by Ryan.
 
-**TL;DR:** Grant A, B1, and B2 are complete. The five-context ruleset is live;
-the positive control passed; B1 proved a qualifying CodeQL failure blocks
-ordinary merge; B2 proved producer binding; all disposable resources were
-cleaned up; and only docs/attestation closeout remains.
+**TL;DR:** Grant A, B1, and B2 are complete and Arc CodeQL Complex Therapy is
+CLOSED/PASS. The five-context ruleset is live, producer binding is proven, all
+disposable resources were cleaned up, and Ryan owns future attestation.

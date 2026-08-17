@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | **Arc** | CodeQL Complex Therapy |
-| **Phase** | Execute evidence complete; final planning-document closeout pending |
-| **Reviewer** | Kiro exact-revision review; Ryan closeout and recurring-attestation owner |
+| **Phase** | Execute and planning-document closeout complete; recurring attestation future |
+| **Reviewer** | Kiro exact-revision PASS; Ryan closeout and recurring-attestation owner |
 | **Authority** | Live GitHub API/check-run evidence; do not trust chat claims alone |
 | **Primary target** | `Protect Main` ruleset `19156572` on `refs/heads/main` |
 
@@ -66,7 +66,7 @@ its first quarterly or drift-triggered run.
 | V0b | Base is current | `git merge-base` resolves to current `origin/main` (`9c2a6784d760de6b39f154ee400033276c9b8336` at planning time) | PASS for planning package |
 | V0c | No implementation slipped into planning | Diff contains only planning docs and required status-list/LATEST updates; no workflow/ruleset mutation | PASS at planning tip |
 | V0d | Ryan authorized external Execute | Grant A explicitly named only ruleset `19156572`, the final five-context set, and the normal positive control; B1 and B2 were separately authorized | PASS — authorization boundaries honored |
-| V0e | Same revision is used for review and evidence | Kiro reviewed the exact implementation evidence revision `d3d0bdd9986c7f77e60f956c6018493f22b784f2`; the final planning closeout tip is separately supplied after this docs-only commit | PASS — Kiro B2 review; closeout-tip review pending |
+| V0e | Same revision is used for review and evidence | Kiro reviewed the exact implementation evidence revision `d3d0bdd9986c7f77e60f956c6018493f22b784f2` and the exact planning closeout tip `cd653d95fd3dd7b3e46565c59d44134d84fae44e` | PASS — Kiro exact-revision reviews |
 | V0f | Required-check latency policy is consciously selected | Ryan accepted all-three CodeQL contexts on ordinary/documentation-only PRs; PR #197 timing observations remain evidence, not an SLA | PASS — blanket policy accepted by Ryan |
 | V0g | SHA lineage is independently verified | Kiro independently resolved package `c74c7f8611ac0bf563618270c2c3244715df7d67`, fetched carrier `b7c0895f7e158c30a90b77d9b211cf3a640d9438`, confirmed ancestry, inspected the 18-commit planning-only lineage, and verified the `9dfaa6722...` typo plus `790d5fd2...` correction | PASS — Kiro exact-revision recheck |
 
@@ -138,8 +138,8 @@ its first quarterly or drift-triggered run.
 
 | ID | Check | Expected evidence | Planning state |
 |---|---|---|---|
-| V7a | Kiro reviews exact final revision | Kiro issued PASS at exact implementation evidence SHA `d3d0bdd9986c7f77e60f956c6018493f22b784f2`; final planning-doc tip review follows this closeout commit | PASS — implementation evidence; docs review pending |
-| V7b | Ryan owns merge/closeout decision | Ryan ratified Grant A, authorized B1/B2 separately, and now owns the final docs closeout and arc state | IN PROGRESS — closeout commit authorized |
+| V7a | Kiro reviews exact final revision | Kiro issued PASS at exact implementation evidence SHA `d3d0bdd9986c7f77e60f956c6018493f22b784f2` and exact planning tip `cd653d95fd3dd7b3e46565c59d44134d84fae44e` | PASS — exact-revision reviews |
+| V7b | Ryan owns merge/closeout decision | Ryan ratified Grant A, authorized B1/B2 separately, and recorded the final `CLOSED/PASS` state and recurring-attestation ownership | PASS — Ryan closeout recorded |
 | V7c | Handoff is recoverable | PR/evidence URLs, full implementation SHAs, cleanup results, and exact Kiro review are recorded; this commit supplies the final planning tip | PASS — closeout handoff |
 
 ### V8 — recurring enforcement attestation
@@ -173,12 +173,12 @@ V8: ACCEPTED — Ryan owns quarterly plus configuration-drift attestation;
     first recurring run is not yet due.
 Mechanical: PASS — snapshots, raw responses, check URLs, and live ruleset
 evidence are preserved in the Grant A closeout and disposable handoffs.
-Sign-off: Kiro PASS at `d3d0bdd9986c7f77e60f956c6018493f22b784f2`;
-Ryan final documentation closeout follows this planning commit.
+Sign-off: Kiro PASS at implementation SHA
+`d3d0bdd9986c7f77e60f956c6018493f22b784f2` and planning SHA
+`cd653d95fd3dd7b3e46565c59d44134d84fae44e`; Ryan CLOSED/PASS recorded.
 ```
 
-**TL;DR:** Grant A, B1, and B2 evidence PASSed: the five-context ruleset is
-live, a qualifying CodeQL failure blocks ordinary merge, a same-named
-nonmatching-producer status cannot satisfy GHAS integration `57789`, and all
-disposable resources were removed. Ryan's recurring attestation is accepted and
-awaits its first quarterly or drift-triggered run.
+**TL;DR:** Arc CodeQL Complex Therapy is CLOSED/PASS: Grant A, B1, and B2
+evidence PASSed, the five-context ruleset is live, producer binding is proven,
+and all disposable resources were removed. Ryan owns the future quarterly or
+drift-triggered attestation.
