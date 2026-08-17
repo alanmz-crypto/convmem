@@ -14,6 +14,11 @@ feasibility. It does not authorize code changes, migrations, live Chroma/corpus
 mutation, CG-2 activation, Shadow activation, R2b capture, or external changes.
 Stage 1 must be additive and conservative: existing records remain queryable but
 are untrusted for security decisions until they carry valid provenance.
+Stage 1A/1B may therefore operate as an explicitly untrusted-only production
+substrate. A non-degenerate production integrity feature is separately gated:
+Verified Ingress Bootstrap must be designed and evidenced before Stage 3
+consumer-facing integrity exposure is considered complete. This plan does not
+design or implement that bootstrap.
 
 ## Scope lock
 
@@ -28,6 +33,10 @@ are untrusted for security decisions until they carry valid provenance.
 - legacy-as-unknown behavior;
 - exact-dedupe protection for independent cross-provenance assertions;
 - property, round-trip, negative, and laundering tests.
+
+Stage 1A/1B does not claim operational production access to the `agent` or
+`trusted` tiers while the verified-channel inventory is empty. Synthetic
+fixtures exercise those tiers for substrate verification only.
 
 ### Explicitly out of scope
 
@@ -105,6 +114,11 @@ Before implementation begins:
    slices.
 5. Cursor rebases from the then-current `origin/main` and re-traces any changed
    ingest, dedupe, CG-1, CG-2, export, or retrieval boundary.
+6. Before Stage 3 may claim a non-degenerate production integrity lattice or
+   expose `agent`/`trusted` as operational production capabilities, Ryan must
+   separately approve a Verified Ingress Bootstrap design and evidence showing
+   at least one monitor-controlled authenticated origin boundary. This is a
+   sequencing gate, not an implementation grant in this package.
 
 ## Ordered work packages
 
@@ -113,6 +127,8 @@ Stage 0 vocabulary/architecture lock
   → Stage 1A policy + envelope + exact transformation bindings
   → Stage 1B representation + assertion/dedupe/retrieval continuity
   → Stage 1 verification and independent review
+  → Verified Ingress Bootstrap design/evidence
+  → Stage 3 consumer-facing non-degenerate integrity exposure
 
 Parallel/later after the representation is locked:
   A. CG-1/CG-2 commitment continuity
