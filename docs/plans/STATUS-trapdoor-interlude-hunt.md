@@ -3,11 +3,14 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** FF2/T2 is accepted at exact reviewed package SHA
-`0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; FF1/T1 acceptance remains bound to
-`3c746faa47409f7def02d2fd24351fbc936a9720`; the Interlude holds for the
-literature/evidence challenge before any Bridge construction; no runtime work
-is authorized.
+**State:** Original FF1/T1 is accepted at exact reviewed SHA
+`3c746faa47409f7def02d2fd24351fbc936a9720`; original FF2/T2 is accepted at
+exact reviewed package SHA `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; the
+bounded T1-GEN/T1-REC/T1-BACK amendment is accepted at
+`41d6af4e6e56797d65cbc23e52c40f4dc1795c94`; and the Trapdoor Bridge is
+constructed in the current planning revision, awaiting exact-SHA review and
+Ryan's Interlude lock. All VERIFY rows remain PENDING; no runtime work is
+authorized.
 
 ## 1. What this project is for
 
@@ -42,12 +45,12 @@ and VERIFY rows. It does not redesign T3 or grant implementation.
 
 | Surface | State |
 |---|---|
-| Interlude branch | FF2 accepted at exact reviewed package SHA `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; prior FF2 validation/content revision `a85e4d4613218a9ef2c165db47f021ea83a11dbc`; FF1 acceptance remains bound to `3c746faa47409f7def02d2fd24351fbc936a9720`. |
+| Interlude branch | Original FF1/FF2 acceptance remains bound to `3c746faa47409f7def02d2fd24351fbc936a9720` / `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; the bounded T1-GEN/T1-REC/T1-BACK amendment is accepted at `41d6af4e6e56797d65cbc23e52c40f4dc1795c94`; the Bridge is constructed in the current tip and awaits exact-SHA review. |
 | `ARCHITECTURE-trapdoor-interlude-hunt.md` | Draft planning contract; not locked. |
 | `EXECUTION-trapdoor-interlude-hunt.md` | Draft gated sequencing; not authorized for runtime work. |
 | `VERIFY-trapdoor-interlude-hunt.md` | Planning stub; all rows PENDING. |
-| `TRAPDOOR-INTERLUDE-MATRICES.md` | FF1 and FF2 accepted at their exact review revisions; Bridge remains gated pending the literature/evidence challenge. |
-| Trapdoor T3 reference branch | Read-only upstream design at `8f037a50`; not modified. |
+| `TRAPDOOR-INTERLUDE-MATRICES.md` | FF1, FF2, and the bounded T1-GEN/T1-REC/T1-BACK amendment are accepted at their exact review revisions; the 11-row Bridge is constructed here as planning traceability and awaits exact-SHA review. |
+| Trapdoor T3 reference branch | Read-only planning basis for the Bridge at reconciled revision `2bb0de4c4c9444b3ddefdb910a609f91eccb24c3`; not modified by this Bridge work. |
 | CodeQL/P0 | Closed/PASS on GitHub main before Interlude branch creation. |
 
 ## 4. Completion state
@@ -57,18 +60,17 @@ and VERIFY rows. It does not redesign T3 or grant implementation.
 | P0 CI Merge Gate | **CLOSED/PASS** | GitHub main CodeQL closeout is reachable and accepted. |
 | FF1/T1 Trust Baseline | **ACCEPTED** at `3c746faa47409f7def02d2fd24351fbc936a9720` | Ryan accepted vocabulary, severity, sequencing, and critical-row owner/oracle/degraded-state normalization. |
 | FF2/T2 Evidence + Gap Matrix | **ACCEPTED** at `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361` | Ryan accepted 9 PARTIAL / 2 ABSENT / 0 SUFFICIENT / 0 STALE and the documented evidence boundaries, limits, missing oracles, owners, and degraded states. |
-| Literature/evidence challenge | **NEXT; Bridge held** | ChatGPT challenges accepted FF1/FF2 assumptions before any Bridge construction decision. |
-| Trapdoor Bridge | Not started; not authorized | A separate decision follows the literature challenge and resolution of any material findings. |
-| Interlude lock | Not authorized | Ryan accepts FF1, FF2, Bridge, and no prohibited work occurred. |
+| Literature/evidence challenge | **COMPLETE** | ChatGPT/Sol literature findings were bounded, accepted corrections were applied, and the authority-first amendment was accepted at `41d6af4e6e56797d65cbc23e52c40f4dc1795c94`. |
+| Trapdoor Bridge | **CONSTRUCTED — awaiting exact-SHA review** | All 11 accepted T1 claims map to their accepted FF2 evidence/gap, reconciled T3 requirement/invariant, and T3 VERIFY row without changing classifications or implementation scope. |
+| Interlude lock | Not authorized | Ryan reviews the exact Bridge SHA and records `RYAN_INTERLUDE_LOCK` if the traceability package is accepted. |
 | Trapdoor T3 implementation | Not authorized | Separate T3 lock and Ryan Execute grant remain required. |
 
 ## 5. Your role now
 
 The current owner is the fresh Codex Interlude planning lane. It has completed
-FF1/FF2 planning and must now hold the accepted package for ChatGPT's external
-literature/evidence challenge. It must not construct the Trapdoor Bridge or
-implement missing oracles unless a later decision explicitly authorizes that
-work.
+FF1/FF2 planning, applied only the accepted bounded literature amendments, and
+constructed the planning-only Trapdoor Bridge. It must now hand back the exact
+Bridge SHA for review and must not implement missing oracles or modify T3.
 
 Kiro is reserved for non-implementing design review; Copilot for a targeted
 safety/isolation/document-integrity audit; Crush for bounded repository
@@ -78,17 +80,13 @@ lane may infer Ryan acceptance or T3 authorization.
 
 ## 6. What remains before this is complete
 
-1. Complete the ChatGPT literature/evidence challenge against accepted FF1/FF2.
-2. Report each material finding with the affected row, challenged assumption,
-   external evidence, challenge severity, survival decision, and smallest
-   correction if required.
-3. Obtain a separate decision on any material findings and on Bridge
-   construction.
-4. If authorized, complete the Trapdoor Bridge and obtain exact-SHA review and
-   Ryan's Interlude lock.
-5. Hand back the closing SHA, accepted matrices, unresolved oracles, T3 impact,
-   and confirmation that runtime work and numerical operational targets remain
-   deferred.
+1. ChatGPT performs exact-SHA review of the constructed Trapdoor Bridge.
+2. Ryan records `RYAN_INTERLUDE_LOCK` if the Bridge traceability package is
+   accepted; all VERIFY rows remain PENDING.
+3. Any mapping defect is handled only through a separately authorized bounded
+   correction; the Bridge itself does not repair FF1, FF2, or T3.
+4. A separate T3 Execute grant is required before any implementation, migration,
+   runtime, live-data, or operational work.
 
 ## 7. Hard stops and residual limitations
 
@@ -99,6 +97,8 @@ lane may infer Ryan acceptance or T3 authorization.
 - No implementation, migration, Chroma/corpus mutation, Shadow/R2b operation,
   CG-2 activation, cloud-policy change, or broad fault campaign is allowed.
 - FF1/FF2 acceptance never grants T3 implementation.
+- The Bridge is traceability only; its mapped T3 requirements and PENDING VERIFY
+  rows are not implementation or acceptance evidence.
 
 ## 8. Relationship to other arcs
 
@@ -131,7 +131,8 @@ Track A, not here.
 | 2026-08-16 | Codex | Created isolated Interlude branch after CodeQL/P0 closeout verification; ChatGPT review now requires a fresh Codex owner, concrete FF1 owners/oracles, and explicit FF2-seed wording. |
 | 2026-08-17 | Codex | Ryan accepted FF1 at `3c746faa47409f7def02d2fd24351fbc936a9720`; FF2 evidence validation began with bounded classifications and missing-oracle ownership. |
 | 2026-08-17 | Ryan | Accepted FF2 at exact reviewed package SHA `0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361`; Interlude holds for the literature/evidence challenge before Bridge construction. |
+| 2026-08-17 | Codex | Constructed the bounded 11-row Trapdoor Bridge on accepted amendment `41d6af4e6e56797d65cbc23e52c40f4dc1795c94` and T3 basis `2bb0de4c4c9444b3ddefdb910a609f91eccb24c3`; awaiting exact-SHA review and Ryan's Interlude lock. |
 
-**TL;DR:** FF1 and FF2 are accepted at their exact review revisions; the
-literature/evidence challenge is next, while the Trapdoor Bridge and all
-implementation remain gated.
+**TL;DR:** [Arc Trapdoor Interlude Hunt] FF1/FF2 and the bounded amendment are
+accepted; the 11-row Trapdoor Bridge is constructed for exact-SHA review, while
+all VERIFY rows remain PENDING and T3 implementation remains unauthorized.
