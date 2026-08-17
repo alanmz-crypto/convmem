@@ -7,6 +7,7 @@ Parent:         Full Fathom Five
 Purpose:        FF1/T1 and FF2/T2 prerequisites for Trapdoor Hunt FF3/T3
 Baseline:       origin/main @ d10e1d5f4993f60a32142115f8b8c0f0f9ea4481
 Reference T3:   plan/2026-08-15-dependability-provenance @ 8f037a50c4cdce170320bbfd6160c932f7661798
+Planning lane:  current Codex preparation → ChatGPT review → fresh Codex owner
 ```
 
 ## 1. Decision and consequence
@@ -27,6 +28,23 @@ The interlude has two gated outputs:
 
 FF2 cannot begin as an accepted phase until FF1 is accepted. Trapdoor Hunt T3
 cannot receive an implementation grant until both outputs are accepted.
+
+## 1A. Agent and review choreography
+
+The current Codex preparation is the package handoff, not the long-lived owner
+of the Interlude. After ChatGPT's architecture review, a fresh Codex agent owns
+the Interlude branch and applies only accepted, narrow corrections. That agent
+then completes FF1 for Ryan's acceptance, performs FF2 only after FF1 is
+accepted, and completes the Trapdoor Bridge only after FF2 is accepted.
+
+Kiro is the non-implementing design-review/sign-off lane when Ryan requests an
+exact-SHA review. GitHub Copilot is a targeted safety, isolation, and document-
+integrity audit lane, not an uncontested architecture author. Crush may perform
+bounded repository discovery when specifically useful, but does not accept the
+architecture. Cursor is the implementation lane only after a separate Ryan
+Execute grant; it does not implement this Interlude or Trapdoor T3 during this
+planning work. Ryan accepts FF1, accepts FF2 and the Bridge, locks the
+Interlude, and owns any merge or later Execute grant.
 
 ## 2. Entry gate and exact baseline
 

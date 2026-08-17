@@ -60,12 +60,15 @@ evidence may be recorded only in an explicitly authorized verification phase.
 
 | ID | Required check | Result |
 |---|---|---|
-| V4a | ChatGPT reviews the exact Interlude SHA and checks sequencing, scope, claim/oracle completeness, and duplicate-oracle rejection. | PENDING |
-| V4b | Kiro or another authorized design-review lane reviews the exact planning SHA if Ryan requests it. | PENDING |
-| V4c | Any Copilot audit is targeted to safety/isolation/document integrity at the same exact SHA. | PENDING |
-| V4d | Ryan explicitly accepts FF1 before FF2 begins. | PENDING |
-| V4e | Ryan explicitly accepts FF2 and the Trapdoor Bridge. | PENDING |
-| V4f | Ryan records `RYAN_INTERLUDE_LOCK`; no T3 implementation authorization is inferred. | PENDING |
+| V4a | ChatGPT reviews the exact Interlude SHA for sequencing, scope, claim/oracle completeness, and duplicate-oracle rejection; its result is a recommendation, not acceptance. | PENDING |
+| V4b | The fresh Codex Interlude owner applies accepted review findings, completes FF1, and later performs FF2 and the Bridge only after the preceding Ryan gate. | PENDING |
+| V4c | Kiro performs a non-implementing design review of the exact planning SHA if Ryan requests it. | PENDING |
+| V4d | GitHub Copilot performs only a targeted safety/isolation/document-integrity audit at the same exact SHA; it is not an uncontested re-review. | PENDING |
+| V4e | Crush performs bounded repository discovery only if specifically needed; it does not accept architecture or authorize work. | PENDING |
+| V4f | Cursor is not authorized to implement the Interlude or T3 from this package; implementation requires a separate Ryan Execute grant. | PENDING |
+| V4g | Ryan explicitly accepts FF1 before the fresh Codex owner begins FF2 validation. | PENDING |
+| V4h | Ryan explicitly accepts FF2 and the Trapdoor Bridge. | PENDING |
+| V4i | Ryan records `RYAN_INTERLUDE_LOCK`; no T3 implementation authorization is inferred. | PENDING |
 
 ## V5 — Planning hygiene
 

@@ -38,6 +38,13 @@ failure consequence, severity, owner, oracle, degraded state, and assumptions.
 Use repository vocabulary. Do not turn `doctor PASS` into a reliability claim.
 Do not introduce numerical operational targets.
 
+The fresh Codex Interlude owner receives ChatGPT's review as correction input,
+traces each critical owner/oracle to repository evidence, and presents the
+result to Ryan. Kiro may perform non-implementing design review; Copilot may
+perform a targeted safety/isolation/document-integrity audit; Crush may perform
+bounded repository discovery. Cursor is not an implementation lane for this
+planning arc. Ryan alone accepts FF1 and controls the later transition.
+
 ### FF1 stop condition
 
 Stop for Ryan review when every catastrophic/critical claim has one owner, one
@@ -49,7 +56,9 @@ Do not start FF2 acceptance before Ryan accepts FF1.
 
 ## Phase 2 — FF2/T2 Existing Evidence + Failure-Gap Matrix
 
-After FF1 acceptance, inspect each accepted claim against existing evidence.
+The package may contain a provisional FF2 seed inventory before FF1 acceptance,
+but that is not FF2 work completed or accepted. After Ryan records FF1
+acceptance, the fresh Codex owner validates each accepted claim against existing evidence.
 Record exact paths, test names, plan revisions, implementation SHAs, and
 evidence limits. Classify each claim `SUFFICIENT`, `PARTIAL`, `ABSENT`, or
 `STALE`.
@@ -67,7 +76,7 @@ condition.
 
 ## Phase 3 — Trapdoor Bridge
 
-After FF2 acceptance, map each relevant T1 claim through its T2 evidence to the
+After Ryan accepts FF2, the fresh Codex owner maps each relevant T1 claim through its T2 evidence to the
 existing Trapdoor T3 requirement and VERIFY row. Preserve R8.2, V4m, the
 mutator-census precondition, migration/version boundaries, identity rules, and
 projection/authority separation.

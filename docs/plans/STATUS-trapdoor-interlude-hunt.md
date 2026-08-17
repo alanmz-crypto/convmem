@@ -5,7 +5,8 @@
 
 **State:** Branch created from GitHub `main` at
 `d10e1d5f4993f60a32142115f8b8c0f0f9ea4481`; FF1/T1 planning draft in progress;
-FF1 is not accepted, FF2 has not begun, and no runtime work is authorized.
+FF1 is not accepted, and FF2 validation/adjudication has not begun beyond its
+provisional seed inventory; no runtime work is authorized.
 
 ## 1. What this project is for
 
@@ -54,17 +55,23 @@ and VERIFY rows. It does not redesign T3 or grant implementation.
 |---|---|---|
 | P0 CI Merge Gate | **CLOSED/PASS** | GitHub main CodeQL closeout is reachable and accepted. |
 | FF1/T1 Trust Baseline | Draft in progress | Ryan accepts vocabulary and every critical claim has owner, oracle, degraded state. |
-| FF2/T2 Evidence + Gap Matrix | Not started | FF1 accepted first; then every claim classified and missing oracle bounded. |
+| FF2/T2 Evidence + Gap Matrix | Seed inventory drafted; validation/adjudication not started | FF1 accepted first; then every claim classified and missing oracle bounded. |
 | Trapdoor Bridge | Not started | FF2 accepted and each relevant T3 requirement has an upstream mapping. |
 | Interlude lock | Not authorized | Ryan accepts FF1, FF2, Bridge, and no prohibited work occurred. |
 | Trapdoor T3 implementation | Not authorized | Separate T3 lock and Ryan Execute grant remain required. |
 
 ## 5. Your role now
 
-The next lane is the planning/review lane for FF1/T1. Read the five Interlude
-artifacts, inspect the repository evidence, and challenge claims that lack an
-owner, oracle, or degraded state. Do not begin FF2 acceptance until Ryan locks
-FF1. Do not modify Trapdoor T3.
+The next owner is a fresh Codex Interlude planning lane. It must apply ChatGPT's
+conditional-pass findings, make the critical FF1 owners and oracles concrete
+from repository evidence, and present FF1 to Ryan. After Ryan accepts FF1, the
+same Codex owner performs FF2 validation and later the Trapdoor Bridge.
+
+Kiro is reserved for non-implementing design review; Copilot for a targeted
+safety/isolation/document-integrity audit; Crush for bounded repository
+discovery if needed; Cursor for implementation only after a separate Ryan
+Execute grant. None of these lanes may silently redesign Trapdoor T3, and no
+lane may infer Ryan acceptance or T3 authorization.
 
 ## 6. What remains before this is complete
 
@@ -116,7 +123,7 @@ Track A, not here.
 
 | Date | Lane | Milestone change |
 |---|---|---|
-| 2026-08-16 | Codex | Created isolated Interlude branch from GitHub main after CodeQL/P0 closeout verification; began FF1 draft. |
+| 2026-08-16 | Codex | Created isolated Interlude branch after CodeQL/P0 closeout verification; ChatGPT review now requires a fresh Codex owner, concrete FF1 owners/oracles, and explicit FF2-seed wording. |
 
 **TL;DR:** Interlude is in FF1 draft only; FF2 and the Trapdoor bridge remain
 gated by Ryan acceptance and no implementation is authorized.
