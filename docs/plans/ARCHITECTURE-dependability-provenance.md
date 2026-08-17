@@ -248,6 +248,27 @@ boundary is separately designed and evidenced, use this inventory:
 Synthetic tests may create verified roots. Production code may not infer
 verification from content, role, process identity, source path, or caller input.
 
+### 4.4 Initial production consequence and sequencing
+
+Under the initial verified-channel inventory, every real production root has
+`untrusted` integrity. Because every derived result takes the meet of all
+completely bound inputs, every production descendant with such a root also
+resolves to `untrusted`; the `agent` and `trusted` tiers are not reachable for
+real production assertions until a verified ingress exists. Synthetic fixtures
+may exercise those tiers, but synthetic results are not production evidence.
+
+This is an explicit initial-state consequence, not a relaxation of R1/R2 and
+not a claim that the substrate is useless. Stage 1A/1B may proceed as an
+explicitly untrusted-only provenance representation and continuity substrate.
+However, ConvMem must not present the three-level lattice as a non-degenerate
+operational production feature, and Stage 3 consumer-facing integrity exposure
+cannot be considered complete, until a separately approved **Verified Ingress
+Bootstrap** has been designed and evidenced. That bootstrap must establish at
+least one monitor-controlled authenticated origin boundary that R1 can classify
+above `untrusted`; it is not designed or implemented by this package. This
+gate does not import the excluded full per-agent identity, mTLS/OAuth, or signed
+agent-message architecture.
+
 ## 5. Normative integrity rules
 
 ### R1 — Root integrity is not derivation integrity
@@ -401,23 +422,31 @@ silently replacing an established assertion.
 
 Effective integrity is recomputed only after recursively verifying the complete
 assertion graph. Verification resolves the assertion envelope, commitment,
-historical `provenance_policy_version` and its committed semantic-content
-digest, transformer identity/version/recipe and its committed semantic-content
-digest, every required input binding, and every parent envelope/commitment. It
-rejects any policy or recipe identifier that resolves to bytes different from
-the committed digest. It tracks a visited-ID set and rejects cycles.
+`schema_version`/`binding_version` and their immutable semantic specification
+digest, historical `provenance_policy_version` and its committed
+semantic-content digest, transformer identity/version/recipe and its committed
+semantic-content digest, every required input binding, and every parent
+envelope/commitment. It rejects any schema, policy, or recipe identifier that
+resolves to semantic bytes different from the committed digest. It tracks a
+visited-ID set and rejects cycles.
 
 Before resolving the first envelope, one R8 verification operation MUST bind
 exactly one immutable authoritative registry generation and exactly one
-immutable policy/recipe-history snapshot. Every envelope, parent, policy,
-recipe, and required binding resolved during that operation must come from
-those bound snapshots. If the backing authority or either snapshot changes,
-the operation must restart from a newly bound pair or return a fail-closed
-result; it may never mix generations or snapshots within one favorable
-verification result.
+immutable policy/recipe-history snapshot as an operation-scope pin. Every
+envelope, parent, policy, recipe, schema semantic specification, and required
+binding resolved during that operation must come from those bound snapshots.
+Publication of a newer generation does not invalidate a traversal already
+pinned to an immutable older generation; the result remains explicitly scoped
+to that pinned pair. If the bound authority or either snapshot is lost, becomes
+mutable, fails its integrity check, or is otherwise unavailable, the operation
+must fail closed or restart from a newly bound pair. It may never mix
+generations or snapshots within one favorable verification result, and a result
+from an older pin cannot be presented as current serving authority unless the
+serving activation fence also matches that pin.
 
-If any parent, ancestor, historical policy or recipe, required binding, or
-identity/commitment pair cannot be resolved and verified, the result is
+If any parent, ancestor, historical schema/binding semantic specification,
+policy or recipe, required binding, or identity/commitment pair cannot be
+resolved and verified, the result is
 `untrusted`; no favorable child fields or cached tier may be used as a fallback.
 The same result applies to a cycle, duplicate ID with divergent envelope, or a
 child whose parent commitment does not match the resolved parent. A child with a
@@ -427,11 +456,12 @@ not silently treated as a new root.
 
 Recursive verification has a per-operation node, depth, and byte budget and
 memoizes verified subgraphs by `(authority_generation, policy_recipe_snapshot,
-assertion_id, provenance_commitment, provenance_policy_version)` for the
+schema_semantics_sha256, assertion_id, provenance_commitment,
+provenance_policy_version)` for the
 duration of that operation. Memoization is an optimization only: it never
-overrides a missing or mismatching record. Budget exhaustion, unavailable
-history, snapshot change, or cache inconsistency returns `untrusted` and an
-observable degraded result. P1 must lock these bounds before P3 exposes
+overrides a missing or mismatching record. Budget exhaustion, unavailable bound
+history, pin loss, bound-state integrity failure, or cache inconsistency returns
+`untrusted` and an observable degraded result. P1 must lock these bounds before P3 exposes
 recursive verification on broad retrieval paths.
 
 ### R8.1 — Store recovery is separate from item import
@@ -482,6 +512,20 @@ SERVING_READY(g, commitment, fence)
   → SERVING_READY(g′, commitment′, new_fence)
 ```
 
+The following transition/failure rules are normative:
+
+| Current condition | Allowed transition | Required failure behavior |
+|---|---|---|
+| `SERVING_READY(g, commitment, fence)` and a verified authority change selects `g′` | Atomically invalidate the old fence and enter `AUTHORITY_RECOVERED_PROJECTION_PENDING(g′, commitment′)` | The operation must leave either the prior complete generation with its valid fence or the new authority explicitly projection-pending; mixed generations are forbidden. |
+| Authority is missing, partial, unverifiable, or continuity-invalid | `BLOCKED`/quarantine; live authority unchanged | No recovered authority or projection may publish. |
+| `AUTHORITY_RECOVERED_PROJECTION_PENDING(g′, commitment′)` with absent/damaged/mismatched projections | Remain projection-pending, or enter `PROJECTION_REBUILDING(g′, commitment′)` only through the authorized rebuild path | Projection-backed serving remains blocked; the prior projection generation is not a fallback. |
+| `PROJECTION_REBUILDING(g′, commitment′)` | `PROJECTION_VALIDATED(g′, commitment′)` only after exact generation/commitment validation | Crash, rebuild error, or mismatch returns to projection-pending and quarantines the failed projection; it cannot activate. |
+| `PROJECTION_VALIDATED(g′, commitment′)` | `SERVING_READY(g′, commitment′, new_fence)` only through atomic activation | Activation interruption or fence mismatch leaves the replacement pending/blocked or preserves the prior complete state under V4l; it never exposes a stale or mixed serving state. |
+
+No transition permits an older projection to serve against a newly recovered
+authority. The table makes the failure edges explicit; it does not add a new
+recovery mechanism or authorize recovery implementation.
+
 An authority change atomically invalidates the old projection-serving fence.
 Projections are rebuilt from the recovered registry, never from an older
 projection. Projection-backed serving is allowed only when the state is
@@ -527,6 +571,7 @@ The authoritative envelope is conceptually:
 ```text
 schema_version
 binding_version
+schema_semantics_sha256
 assertion_id
 root_bindings[]:
   source_identity
@@ -609,18 +654,27 @@ bound inputs and the authorized transformer/producer cap. In particular:
 only after R8 recursive verification succeeds.
 It is never authoritative caller metadata. Consumers recompute it and degrade to
 `untrusted` on cache mismatch, unknown policy, malformed envelope, or commitment
-failure. Policy-version and transformer-recipe identifiers are names only; their
-semantic bytes are bound by the corresponding content digests above. An
-authoritative identifier resolving to different semantic bytes is a continuity
-failure and must be rejected or degraded to `untrusted`.
+failure. Schema and binding identifiers are names only; their semantic
+specification is bound by an immutable version-to-digest mapping covering the
+envelope field domain, presence/default and omission semantics, binding rules,
+and the canonicalization profile. Policy-version and transformer-recipe
+identifiers are also names only; their semantic bytes are bound by the
+corresponding content digests above. An authoritative identifier resolving to
+different semantic bytes is a continuity failure and must be rejected or
+degraded to `untrusted`. The same schema or binding identifier may never be
+reused for different semantic bytes. `schema_semantics_sha256` is part of the
+authoritative envelope and commitment; it is not a mutable display or
+implementation-version label.
 
 `provenance_commitment` is SHA-256 over versioned canonical JSON of the
 authoritative envelope, excluding the commitment itself and derived/cache fields.
 Canonical field order, Unicode/number encoding, list order, and null/omission
-semantics are part of the schema version. P1 must publish one normative,
-versioned ConvMem canonicalization profile and serializer implementation, with
-golden vectors covering Unicode, numbers, escaping, lists, nulls, and field
-ordering. Before canonicalization, the parser must accept only a strict
+semantics are part of the immutable schema/binding semantic specification, not
+only a mutable schema-version label. P1 must publish one normative, versioned
+ConvMem canonicalization profile and serializer implementation with an
+immutable semantic specification digest, and golden vectors covering Unicode,
+numbers, escaping, lists, nulls, and field ordering. Before canonicalization,
+the parser must accept only a strict
 validated typed-envelope domain: duplicate object keys, invalid or lone
 surrogate data, NaN/Infinity, out-of-schema numeric values, and any otherwise
 undefined representation are rejected. Parser adversarial fixtures accompany
@@ -784,7 +838,8 @@ claims, defeaters, and non-goals. Kiro review and Ryan lock are required.
 
 Implement one policy module and canonical envelope; bind normal and direct ingest;
 propagate through normalization, Chroma, export, and reconstruction; handle legacy
-conservatively. No live migration.
+conservatively. Production operation in this stage is explicitly untrusted-only
+until Verified Ingress Bootstrap evidence exists. No live migration.
 
 ### Stage 1B — assertion continuity and exact dedupe
 
@@ -800,7 +855,10 @@ cross-provenance tombstone. Preserve both audit assertions.
 ### Stage 3 — retrieval and consumer visibility
 
 Expose per-assertion evidence and derived review hints. Keep ranking independent.
-Define consumer contract without claiming downstream enforcement.
+Define consumer contract without claiming downstream enforcement. Stage 3 is not
+complete as an operational non-degenerate integrity-classification feature until
+the separately approved and evidenced Verified Ingress Bootstrap exists; before
+that gate, consumer-facing integrity remains explicitly untrusted-only.
 
 ### Parallel/later assurance track A — CG-1 and CG-2 continuity
 
