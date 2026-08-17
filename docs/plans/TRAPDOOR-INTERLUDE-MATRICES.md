@@ -1,7 +1,7 @@
 # Arc Trapdoor Interlude Hunt — Claim, Evidence, and Trapdoor Bridge Matrices
 
 ```text
-Status: Original FF1 accepted at 3c746faa47409f7def02d2fd24351fbc936a9720; original FF2 accepted at 0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361; bounded T1-GEN/T1-REC/T1-BACK amendment accepted at 41d6af4e6e56797d65cbc23e52c40f4dc1795c94; Trapdoor Bridge constructed on those accepted bases in this revision and awaiting exact-SHA review; all VERIFY rows PENDING; implementation and Interlude lock unauthorized
+Status: Original FF1 accepted at 3c746faa47409f7def02d2fd24351fbc936a9720; original FF2 accepted at 0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361; bounded T1-GEN/T1-REC/T1-BACK amendment accepted at 41d6af4e6e56797d65cbc23e52c40f4dc1795c94; four bounded T3 planning corrections applied at a46a3be0deedcb4d8f43811a4c25c032f1409e85 and awaiting exact-SHA recheck against the unchanged Bridge; all VERIFY rows PENDING; implementation and Interlude lock unauthorized
 Arc:    Arc Trapdoor Interlude Hunt
 Base:   d10e1d5f4993f60a32142115f8b8c0f0f9ea4481
 ```
@@ -73,15 +73,17 @@ SHA is not current; they remain historical evidence only.
 
 Bridge basis: accepted/amended Interlude matrix revision
 `41d6af4e6e56797d65cbc23e52c40f4dc1795c94`; reconciled Trapdoor T3 planning
-revision `2bb0de4c4c9444b3ddefdb910a609f91eccb24c3`.
+revision `2bb0de4c4c9444b3ddefdb910a609f91eccb24c3`; bounded T3 correction
+revision `a46a3be0deedcb4d8f43811a4c25c032f1409e85` is now the recheck target.
 
-Bridge status: **CONSTRUCTED — awaiting exact-SHA review and Ryan's Interlude
-lock.** This is a bounded traceability map, not proof that any T3 requirement
-is implemented. Every VERIFY result remains `PENDING`; every FF2 gap and
-classification is preserved. `MAPPED — gap preserved` means the path is
-truthful but the missing oracle or implementation evidence remains missing.
-`MAPPED — planning-only` means the T3 requirement is intentionally not being
-executed in this Bridge.
+Bridge status: **CONSTRUCTED — T3 correction applied; awaiting exact-SHA
+recheck and Ryan's Interlude lock.** This is a bounded traceability map, not
+proof that any T3 requirement is implemented. Every VERIFY result remains
+`PENDING`; every FF2 gap and classification is preserved. `MAPPED — gap
+preserved` means the path is truthful but the missing oracle or implementation
+evidence remains missing. `MAPPED — planning-only` means the T3 requirement is
+intentionally not being executed in this Bridge. The correction pass does not
+silently rewrite any Bridge row; it requires exact-SHA recheck before lock.
 
 | Accepted T1 claim | T2 evidence / gap | Existing T3 requirement | Existing T3 VERIFY row | Bridge disposition |
 |---|---|---|---|---|
