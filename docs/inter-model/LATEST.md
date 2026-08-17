@@ -1,8 +1,12 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-16 (CG-2 #186 merged + legacy-only soak IN_PROGRESS; CI merge gate #187 on `main`)
+**Updated:** 2026-08-16 (CodeQL B1 attempt #2 authorized → Cursor; CG-2 soak IN_PROGRESS; CI merge gate on `main`)
 
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
+
+## Active handoffs
+
+- **CodeQL Complex Therapy — B1 attempt #2 AUTHORIZED, NOT_STARTED (2026-08-16):** Who/What: Kiro design review → Cursor Execute. Disposable PR with `actions/code-injection/critical` fixture to prove GHAS `CodeQL` results check fails (1 red / 4 green) while merge is blocked. When: Ryan authorized exact fixture 2026-08-16; Grant A CLOSED/PASS ([#198](https://github.com/alanmz-crypto/convmem/pull/198)); B1 attempt #1 failed (malformed YAML, [#199](https://github.com/alanmz-crypto/convmem/pull/199) closed). Why: negative control for five-context merge protection. How: Cursor reads [`KIRO-2026-08-16-codeql-b1-attempt2-handoff.md`](KIRO-2026-08-16-codeql-b1-attempt2-handoff.md) and opens exactly one disposable PR. **Resume state:** `NOT_STARTED` — Cursor executes; B2 not authorized.
 
 ## Recently merged / settled (2026-08-08 through 2026-08-16)
 
