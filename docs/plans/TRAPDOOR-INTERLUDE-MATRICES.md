@@ -1,7 +1,7 @@
 # Arc Trapdoor Interlude Hunt — Claim, Evidence, and Trapdoor Bridge Matrices
 
 ```text
-Status: DRAFT — FF1/T1 not accepted; FF2/T2 seed drafted but not validated; all VERIFY rows PENDING
+Status: FF1 accepted at 3c746faa47409f7def02d2fd24351fbc936a9720; FF2 validation complete and awaiting Ryan acceptance; all VERIFY rows PENDING
 Arc:    Arc Trapdoor Interlude Hunt
 Base:   d10e1d5f4993f60a32142115f8b8c0f0f9ea4481
 ```
@@ -11,8 +11,8 @@ runtime contract and not an implementation grant.
 
 ## Part A — FF1/T1 Trust Baseline claim matrix
 
-Severity labels are proposed for Ryan review. No numerical operational target
-is implied.
+Severity labels are accepted with FF1. No numerical operational target is
+implied.
 
 | Claim ID | Property | Scope | Acknowledgement boundary | Failure consequence | Severity | Owner | Oracle | Degraded state | Notes / assumptions |
 |---|---|---|---|---|---|---|---|---|---|
