@@ -74,6 +74,34 @@ def safe_json_parse(text: str) -> list:
     ) from last_error
 
 
+def distill_consumed_view(chunk_text: str) -> str:
+    """Return the exact bounded text sent to the distillation provider."""
+
+    return chunk_text[:_MAX_CHUNK_CHARS]
+
+
+def distill_prompt(chunk_text: str) -> str:
+    """Return the exact distillation request prompt for provenance binding."""
+
+    return DISTILL_PROMPT.format(chunk=distill_consumed_view(chunk_text))
+
+
+def distill_with_response(
+    chunk_text: str,
+    model: str,
+    ollama_host: str,
+    deepseek_base_url: str = "https://api.deepseek.com",
+) -> tuple[list[dict], str]:
+    """Extract knowledge units and retain the provider response for binding."""
+
+    prompt = distill_prompt(chunk_text)
+    # Pass the configured model straight through; llm.generate owns the
+    # provider fallback (warn-once / CONVMEM_FAIL_ON_FALLBACK) so the
+    # distillation path can no longer swap silently.
+    raw = generate(prompt, model, ollama_host, deepseek_base_url, timeout=120)
+    return safe_json_parse(raw), raw
+
+
 def distill(
     chunk_text: str,
     model: str,
@@ -81,14 +109,14 @@ def distill(
     deepseek_base_url: str = "https://api.deepseek.com",
 ) -> list[dict]:
     """Extract knowledge units from a conversation chunk."""
-    if len(chunk_text) > _MAX_CHUNK_CHARS:
-        chunk_text = chunk_text[:_MAX_CHUNK_CHARS]
-    prompt = DISTILL_PROMPT.format(chunk=chunk_text)
-    # Pass the configured model straight through; llm.generate owns the
-    # provider fallback (warn-once / CONVMEM_FAIL_ON_FALLBACK) so the
-    # distillation path can no longer swap silently.
-    raw = generate(prompt, model, ollama_host, deepseek_base_url, timeout=120)
-    return safe_json_parse(raw)
+
+    units, _raw = distill_with_response(
+        chunk_text,
+        model,
+        ollama_host,
+        deepseek_base_url,
+    )
+    return units
 
 
 UNIT_TYPES = ("solution", "decision", "explanation", "pattern", "observation")
