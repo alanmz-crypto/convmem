@@ -35,7 +35,24 @@ ROOT_DERIVATION = "root"
 INTEGRITY_LEVELS = ("untrusted", "agent", "trusted")
 PRODUCER_CLASSES = ("user", "trusted_tool", "agent", "external", "unknown")
 PRODUCER_ASSURANCES = ("verified", "claimed", "unknown")
+ORIGIN_CLASSES = (
+    "transcript",
+    "agent_artifact",
+    "inter_model",
+    "filesystem",
+    "legacy",
+    "synthetic",
+    "external",
+    "unknown",
+)
 ANCESTRY_STATES = ("complete", "partial", "unknown")
+
+# These are safety budgets, not operational SLOs.  They make recursive
+# verification fail closed before an untrusted graph can consume unbounded
+# stack, traversal, or canonicalization resources.
+MAX_VERIFICATION_DEPTH = 128
+MAX_VERIFICATION_NODES = 512
+MAX_VERIFICATION_BYTES = 1_048_576
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _UUID4_RE = re.compile(
@@ -254,7 +271,8 @@ def _validate_root_binding(binding: Any, index: int) -> None:
     _require_string(binding["record_locator"], f"{path}.record_locator")
     _require_hash(binding["raw_record_sha256"], f"{path}.raw_record_sha256")
     _require_hash(binding["input_view_sha256"], f"{path}.input_view_sha256")
-    _require_string(binding["origin_class"], f"{path}.origin_class")
+    if binding["origin_class"] not in ORIGIN_CLASSES:
+        raise EnvelopeValidationError(f"{path}.origin_class is not supported")
     if binding["origin_assurance"] not in PRODUCER_ASSURANCES:
         raise EnvelopeValidationError(f"{path}.origin_assurance is not supported")
     evidence = binding["origin_evidence"]
@@ -288,7 +306,11 @@ def _validate_input_binding(binding: Any, index: int) -> None:
     _require_hash(binding["exact_input_view_sha256"], f"{path}.exact_input_view_sha256")
 
 
-def validate_envelope(envelope: Mapping[str, Any]) -> dict[str, Any]:
+def validate_envelope(
+    envelope: Mapping[str, Any],
+    *,
+    schema_semantics: Mapping[tuple[str, str], bytes] | None = None,
+) -> dict[str, Any]:
     """Validate and copy an envelope in the strict typed domain."""
 
     if not isinstance(envelope, Mapping):
@@ -302,12 +324,24 @@ def validate_envelope(envelope: Mapping[str, Any]) -> dict[str, Any]:
         raise EnvelopeValidationError(f"unknown envelope fields: {sorted(unknown)}")
     result = _thaw_value(envelope)
     _validate_json_value(result)
-    if result["schema_version"] != SCHEMA_VERSION:
-        raise EnvelopeValidationError("unsupported schema_version")
-    if result["binding_version"] != BINDING_VERSION:
-        raise EnvelopeValidationError("unsupported binding_version")
+    _require_string(result["schema_version"], "schema_version")
+    _require_string(result["binding_version"], "binding_version")
     _require_hash(result["schema_semantics_sha256"], "schema_semantics_sha256")
-    if result["schema_semantics_sha256"] != SCHEMA_SEMANTICS_SHA256:
+    schema_key = (result["schema_version"], result["binding_version"])
+    if schema_semantics is None:
+        expected_schema_sha256 = (
+            SCHEMA_SEMANTICS_SHA256
+            if schema_key == (SCHEMA_VERSION, BINDING_VERSION)
+            else None
+        )
+    else:
+        semantic_bytes = schema_semantics.get(schema_key)
+        expected_schema_sha256 = (
+            sha256_hex(semantic_bytes) if semantic_bytes is not None else None
+        )
+    if expected_schema_sha256 is None:
+        raise EnvelopeValidationError("unsupported schema/binding version")
+    if result["schema_semantics_sha256"] != expected_schema_sha256:
         raise EnvelopeValidationError("schema semantic specification digest mismatch")
     _require_uuid4(result["assertion_id"])
     if not isinstance(result["root_bindings"], (list, tuple)):
@@ -346,34 +380,54 @@ def validate_envelope(envelope: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
-def authoritative_envelope(envelope: Mapping[str, Any]) -> dict[str, Any]:
+def authoritative_envelope(
+    envelope: Mapping[str, Any],
+    *,
+    schema_semantics: Mapping[tuple[str, str], bytes] | None = None,
+) -> dict[str, Any]:
     """Return the validated commitment preimage without cache fields."""
 
-    result = validate_envelope(envelope)
+    result = validate_envelope(envelope, schema_semantics=schema_semantics)
     result.pop("effective_integrity", None)
     result.pop("provenance_commitment", None)
     return result
 
 
-def canonical_envelope_bytes(envelope: Mapping[str, Any]) -> bytes:
+def canonical_envelope_bytes(
+    envelope: Mapping[str, Any],
+    *,
+    schema_semantics: Mapping[tuple[str, str], bytes] | None = None,
+) -> bytes:
     """Canonicalize only a validated typed envelope."""
 
-    return canonical_bytes(authoritative_envelope(envelope))
+    return canonical_bytes(
+        authoritative_envelope(envelope, schema_semantics=schema_semantics)
+    )
 
 
-def provenance_commitment(envelope: Mapping[str, Any]) -> str:
+def provenance_commitment(
+    envelope: Mapping[str, Any],
+    *,
+    schema_semantics: Mapping[tuple[str, str], bytes] | None = None,
+) -> str:
     """Compute the authoritative SHA-256 provenance commitment."""
 
-    return sha256_hex(canonical_envelope_bytes(envelope))
+    return sha256_hex(
+        canonical_envelope_bytes(envelope, schema_semantics=schema_semantics)
+    )
 
 
-def parse_envelope(payload: str | bytes) -> dict[str, Any]:
+def parse_envelope(
+    payload: str | bytes,
+    *,
+    schema_semantics: Mapping[tuple[str, str], bytes] | None = None,
+) -> dict[str, Any]:
     """Strictly parse and validate a serialized envelope."""
 
     parsed = parse_json(payload)
     if not isinstance(parsed, Mapping):
         raise EnvelopeValidationError("serialized envelope must be an object")
-    return validate_envelope(parsed)
+    return validate_envelope(parsed, schema_semantics=schema_semantics)
 
 
 def _new_uuid4() -> str:
@@ -447,6 +501,8 @@ class PolicyDefinition:
 
     def transformer_cap(self, envelope: Mapping[str, Any]) -> str:
         transformer_class = envelope["transformer_class"]
+        if transformer_class == "root":
+            return "trusted"
         if transformer_class in {"llm", "summarize", "distill", "rewrite", "classify"}:
             return "agent"
         rule = self.rule_for(envelope)
@@ -468,6 +524,7 @@ def _default_policy() -> PolicyDefinition:
     semantic = {
         "policy_version": POLICY_VERSION,
         "transformer_caps": {
+            "root": "trusted",
             "llm": "agent",
             "summarize": "agent",
             "distill": "agent",
@@ -515,6 +572,16 @@ class VerificationResult:
         return self.status == "verified"
 
 
+@dataclass
+class _VerificationContext:
+    """Per-operation traversal state and bounded verification budget."""
+
+    memo: dict[str, VerificationResult]
+    active: set[str]
+    nodes: int = 0
+    bytes_seen: int = 0
+
+
 @dataclass(frozen=True)
 class _AuthoritySnapshot:
     generation: str
@@ -523,6 +590,7 @@ class _AuthoritySnapshot:
     policies: Mapping[str, PolicyDefinition]
     recipes: Mapping[str, bytes]
     schema_semantics: Mapping[tuple[str, str], bytes]
+    verified_channels: frozenset[tuple[str, str, str, str]]
 
 
 class VerificationPin:
@@ -561,6 +629,34 @@ class VerificationPin:
         self.close()
 
 
+class _MonitorAuthority:
+    """Private monitor-owned authority fixture for the P1 synthetic path.
+
+    The real Verified Ingress Bootstrap is intentionally out of scope.  Tests
+    use this private capability to model the monitor populating the inventory;
+    envelopes never populate it and callers cannot elevate by changing envelope
+    metadata alone.
+    """
+
+    def __init__(self, registry: "ProvenanceRegistry"):
+        self._registry = registry
+
+    def register_verified_channel(
+        self,
+        *,
+        origin_class: str,
+        channel_class: str,
+        channel_locator: str,
+        channel_evidence_sha256: str,
+    ) -> None:
+        self._registry._register_monitor_verified_channel(  # pylint: disable=protected-access
+            origin_class=origin_class,
+            channel_class=channel_class,
+            channel_locator=channel_locator,
+            channel_evidence_sha256=channel_evidence_sha256,
+        )
+
+
 class ProvenanceRegistry:
     """Copy-on-write authority registry used by P1 and hermetic tests.
 
@@ -580,8 +676,10 @@ class ProvenanceRegistry:
         self._schema_semantics: dict[tuple[str, str], bytes] = {
             (SCHEMA_VERSION, BINDING_VERSION): SCHEMA_SEMANTICS_BYTES
         }
+        self._verified_channels: set[tuple[str, str, str, str]] = set()
         self._snapshots: dict[str, _AuthoritySnapshot] = {}
         self._active_pins: dict[str, int] = {}
+        self._monitor_authority = _MonitorAuthority(self)
         self._publish_snapshot()
 
     @property
@@ -607,7 +705,15 @@ class ProvenanceRegistry:
             f"{schema}|{binding}": sha256_hex(value)
             for (schema, binding), value in sorted(self._schema_semantics.items())
         }
-        return canonical_hash({"policies": policies, "recipes": recipes, "schemas": schemas})
+        channels = [list(channel) for channel in sorted(self._verified_channels)]
+        return canonical_hash(
+            {
+                "policies": policies,
+                "recipes": recipes,
+                "schemas": schemas,
+                "verified_channels": channels,
+            }
+        )
 
     def _publish_snapshot(self) -> _AuthoritySnapshot:
         self._counter += 1
@@ -628,6 +734,7 @@ class ProvenanceRegistry:
             policies=MappingProxyType(dict(self._policies)),
             recipes=MappingProxyType(dict(self._recipes)),
             schema_semantics=MappingProxyType(dict(self._schema_semantics)),
+            verified_channels=frozenset(self._verified_channels),
         )
         self._snapshots[generation] = snapshot
         return snapshot
@@ -712,9 +819,37 @@ class ProvenanceRegistry:
             self._publish_snapshot()
         return sha256_hex(semantic_bytes)
 
-    def _store_record(self, envelope: Mapping[str, Any]) -> AssertionRecord:
-        validated = validate_envelope(envelope)
-        commitment = provenance_commitment(validated)
+    def _register_monitor_verified_channel(
+        self,
+        *,
+        origin_class: str,
+        channel_class: str,
+        channel_locator: str,
+        channel_evidence_sha256: str,
+    ) -> None:
+        """Populate the monitor inventory; production bootstrap is later work."""
+
+        if origin_class not in ORIGIN_CLASSES:
+            raise EnvelopeValidationError("origin_class is not supported")
+        _require_string(channel_class, "channel_class")
+        _require_string(channel_locator, "channel_locator")
+        _require_hash(channel_evidence_sha256, "channel_evidence_sha256")
+        if channel_class == "unverified" or channel_locator == "unverified://none":
+            raise EnvelopeValidationError("unverified channel cannot enter authority inventory")
+        channel = (origin_class, channel_class, channel_locator, channel_evidence_sha256)
+        with self._lock:
+            if channel not in self._verified_channels:
+                self._verified_channels.add(channel)
+                self._publish_snapshot()
+
+    def _store_record(
+        self,
+        envelope: Mapping[str, Any],
+        *,
+        schema_semantics: Mapping[tuple[str, str], bytes] | None = None,
+    ) -> AssertionRecord:
+        validated = validate_envelope(envelope, schema_semantics=schema_semantics)
+        commitment = provenance_commitment(validated, schema_semantics=schema_semantics)
         assertion_id = validated["assertion_id"]
         with self._lock:
             if assertion_id in self._records:
@@ -735,7 +870,10 @@ class ProvenanceRegistry:
         for _attempt in range(8):
             candidate["assertion_id"] = _new_uuid4()
             try:
-                return self._store_record(candidate)
+                with self.pin() as pin:
+                    return self._store_record(
+                        candidate, schema_semantics=pin.snapshot.schema_semantics
+                    )
             except IdentityReplayError as exc:
                 if "already reserved" not in str(exc):
                     raise
@@ -751,24 +889,34 @@ class ProvenanceRegistry:
         material is rejected and can never overwrite an existing row.
         """
 
-        candidate = validate_envelope(envelope)
-        expected = provenance_commitment(candidate)
-        supplied = commitment or candidate.get("provenance_commitment")
-        if supplied != expected:
-            raise IdentityReplayError("identity-preserving import commitment mismatch")
         with self.pin() as pin:
+            candidate = validate_envelope(
+                envelope, schema_semantics=pin.snapshot.schema_semantics
+            )
+            expected = provenance_commitment(
+                candidate, schema_semantics=pin.snapshot.schema_semantics
+            )
+            supplied = commitment or candidate.get("provenance_commitment")
+            if supplied != expected:
+                raise IdentityReplayError("identity-preserving import commitment mismatch")
             result = self._verify(candidate["assertion_id"], pin, candidate_override=candidate)
             if not result.verified:
                 raise IdentityReplayError(f"identity-preserving import is not verifiable: {result.reason}")
-        with self._lock:
-            existing = self._records.get(candidate["assertion_id"])
-            if existing:
-                same_envelope = authoritative_envelope(existing.envelope) == authoritative_envelope(candidate)
-                if existing.commitment == expected and same_envelope:
-                    return existing, True
-                raise IdentityReplayError("existing assertion has divergent envelope or commitment")
-            stored = self._store_record(candidate)
-            return stored, False
+            with self._lock:
+                existing = pin.snapshot.records.get(candidate["assertion_id"])
+                if existing:
+                    same_envelope = authoritative_envelope(
+                        existing.envelope, schema_semantics=pin.snapshot.schema_semantics
+                    ) == authoritative_envelope(
+                        candidate, schema_semantics=pin.snapshot.schema_semantics
+                    )
+                    if existing.commitment == expected and same_envelope:
+                        return existing, True
+                    raise IdentityReplayError("existing assertion has divergent envelope or commitment")
+                stored = self._store_record(
+                    candidate, schema_semantics=pin.snapshot.schema_semantics
+                )
+                return stored, False
 
     def mint_untrusted_replacement(self, envelope: Mapping[str, Any]) -> AssertionRecord:
         """Retain invalid replay content only under a fresh untrusted identity."""
@@ -815,68 +963,142 @@ class ProvenanceRegistry:
         pin: VerificationPin,
         *,
         candidate_override: Mapping[str, Any] | None = None,
-        visited: set[str] | None = None,
+        context: _VerificationContext | None = None,
+        depth: int = 0,
     ) -> VerificationResult:
         pin.ensure_active()
-        visited = visited or set()
-        if assertion_id in visited:
+        context = context or _VerificationContext(memo={}, active=set())
+        if candidate_override is None and assertion_id in context.memo:
+            return context.memo[assertion_id]
+        if depth > MAX_VERIFICATION_DEPTH:
+            return self._degraded(assertion_id, pin, "verification depth budget exceeded")
+        if assertion_id in context.active:
             return self._degraded(assertion_id, pin, "cycle detected")
-        visited.add(assertion_id)
+        context.nodes += 1
+        if context.nodes > MAX_VERIFICATION_NODES:
+            return self._degraded(assertion_id, pin, "verification node budget exceeded")
+        context.active.add(assertion_id)
         envelope = candidate_override or pin.snapshot.records.get(assertion_id)
         if envelope is None:
-            return self._degraded(assertion_id, pin, "missing assertion")
-        if isinstance(envelope, AssertionRecord):
-            envelope = envelope.envelope
+            result = self._degraded(assertion_id, pin, "missing assertion")
+            context.active.discard(assertion_id)
+            if candidate_override is None:
+                context.memo[assertion_id] = result
+            return result
+
+        def remember(result: VerificationResult) -> VerificationResult:
+            if candidate_override is None:
+                context.memo[assertion_id] = result
+            return result
+
         try:
-            validated = validate_envelope(envelope)
-            expected = provenance_commitment(validated)
+            if isinstance(envelope, AssertionRecord):
+                envelope = envelope.envelope
+            validated = validate_envelope(
+                envelope, schema_semantics=pin.snapshot.schema_semantics
+            )
+            canonical = canonical_envelope_bytes(
+                validated, schema_semantics=pin.snapshot.schema_semantics
+            )
+            context.bytes_seen += len(canonical)
+            if context.bytes_seen > MAX_VERIFICATION_BYTES:
+                return remember(
+                    self._degraded(
+                        assertion_id, pin, "verification byte budget exceeded"
+                    )
+                )
+            expected = sha256_hex(canonical)
             stored = pin.snapshot.records.get(assertion_id)
             if stored and stored.commitment != expected:
-                return self._degraded(assertion_id, pin, "stored commitment mismatch")
+                return remember(self._degraded(assertion_id, pin, "stored commitment mismatch"))
             if validated.get("provenance_commitment") not in (None, expected):
-                return self._degraded(assertion_id, pin, "envelope commitment mismatch")
+                return remember(self._degraded(assertion_id, pin, "envelope commitment mismatch"))
             schema_bytes = pin.snapshot.schema_semantics.get(
                 (validated["schema_version"], validated["binding_version"])
             )
             if schema_bytes is None or sha256_hex(schema_bytes) != validated["schema_semantics_sha256"]:
-                return self._degraded(assertion_id, pin, "schema semantic bytes unavailable or changed")
+                return remember(
+                    self._degraded(
+                        assertion_id, pin, "schema semantic bytes unavailable or changed"
+                    )
+                )
             policy = pin.snapshot.policies.get(validated["provenance_policy_version"])
             if policy is None or policy.semantic_sha256 != validated["provenance_policy_sha256"]:
-                return self._degraded(assertion_id, pin, "policy semantic bytes unavailable or changed")
+                return remember(
+                    self._degraded(
+                        assertion_id, pin, "policy semantic bytes unavailable or changed"
+                    )
+                )
             recipe_bytes = pin.snapshot.recipes.get(validated["transformer_recipe_id"])
             if recipe_bytes is None or sha256_hex(recipe_bytes) != validated["transformer_recipe_sha256"]:
-                return self._degraded(assertion_id, pin, "recipe semantic bytes unavailable or changed")
+                return remember(
+                    self._degraded(
+                        assertion_id, pin, "recipe semantic bytes unavailable or changed"
+                    )
+                )
             if validated["ancestry_completeness"] != "complete":
-                return self._degraded(assertion_id, pin, "ancestry is incomplete")
+                return remember(self._degraded(assertion_id, pin, "ancestry is incomplete"))
+            cap = policy.transformer_cap(validated)
             if validated["input_bindings"]:
                 parent_levels: list[str] = []
                 for binding in validated["input_bindings"]:
                     parent_id = binding["parent_assertion_id"]
                     parent = pin.snapshot.records.get(parent_id)
                     if parent is None:
-                        return self._degraded(assertion_id, pin, "missing parent")
+                        return remember(self._degraded(assertion_id, pin, "missing parent"))
                     if parent.commitment != binding["parent_provenance_commitment"]:
-                        return self._degraded(assertion_id, pin, "parent commitment mismatch")
-                    parent_result = self._verify(parent_id, pin, visited=set(visited))
+                        return remember(
+                            self._degraded(assertion_id, pin, "parent commitment mismatch")
+                        )
+                    parent_result = self._verify(
+                        parent_id, pin, context=context, depth=depth + 1
+                    )
                     if not parent_result.verified:
-                        return self._degraded(assertion_id, pin, f"parent degraded: {parent_result.reason}")
+                        return remember(
+                            self._degraded(
+                                assertion_id,
+                                pin,
+                                f"parent degraded: {parent_result.reason}",
+                            )
+                        )
                     parent_levels.append(parent_result.effective_integrity)
-                cap = policy.transformer_cap(validated)
                 integrity = _meet([*parent_levels, cap])
             else:
-                integrity = _root_integrity(validated["root_bindings"])
+                integrity = _meet(
+                    [
+                        _root_integrity(
+                            validated["root_bindings"], pin.snapshot.verified_channels
+                        ),
+                        cap,
+                    ]
+                )
             if validated.get("effective_integrity") not in (None, integrity):
-                return self._degraded(assertion_id, pin, "effective-integrity cache mismatch")
-            return VerificationResult(
-                assertion_id,
-                integrity,
-                "verified",
-                None,
-                pin.generation,
-                pin.policy_snapshot,
+                return remember(
+                    self._degraded(
+                        assertion_id, pin, "effective-integrity cache mismatch"
+                    )
+                )
+            return remember(
+                VerificationResult(
+                    assertion_id,
+                    integrity,
+                    "verified",
+                    None,
+                    pin.generation,
+                    pin.policy_snapshot,
+                )
             )
-        except (EnvelopeValidationError, CommitmentError, PinError) as exc:
-            return self._degraded(assertion_id, pin, str(exc))
+        except (
+            EnvelopeValidationError,
+            CommitmentError,
+            PinError,
+            RecursionError,
+            KeyError,
+            TypeError,
+        ) as exc:
+            return remember(self._degraded(assertion_id, pin, str(exc)))
+        finally:
+            context.active.discard(assertion_id)
 
 
 def _meet(levels: Sequence[str]) -> str:
@@ -888,13 +1110,21 @@ def _meet(levels: Sequence[str]) -> str:
         return "untrusted"
 
 
-def _root_integrity(bindings: Sequence[Mapping[str, Any]]) -> str:
+def _root_integrity(
+    bindings: Sequence[Mapping[str, Any]],
+    verified_channels: frozenset[tuple[str, str, str, str]],
+) -> str:
     if not bindings:
         return "untrusted"
     if all(
         binding["origin_assurance"] == "verified"
-        and binding["origin_evidence"]["channel_class"] != "unverified"
-        and binding["origin_evidence"]["channel_locator"] != "unverified://none"
+        and (
+            binding["origin_class"],
+            binding["origin_evidence"]["channel_class"],
+            binding["origin_evidence"]["channel_locator"],
+            binding["origin_evidence"]["channel_evidence_sha256"],
+        )
+        in verified_channels
         for binding in bindings
     ):
         return "trusted"
