@@ -1,20 +1,23 @@
 # Execution Plan — Dependability and Provenance Integrity
 
 ```text
-Status:       P1 COMPLETE / MERGED — T3 governance lock complete; VERIFY pending
-Depends on:  locked T3 basis; separate Ryan P2 Execute grant required next
-Owner:       Cursor only after the separately named P2 Execute grant
+Status:       P2 IMPLEMENTATION IN PROGRESS — P1 merged; VERIFY pending
+Depends on:  locked T3 basis; P1 closeout `809de5c6b296ea56428cf766bab4eb8912cafff3`
+Owner:       Cursor P2 implementation lane under Ryan's exact Execute grant
 Baseline:    locked T3 @ aae0cad0bb05b0e436e213b28abbe0ff05ba2e91
 Grant:       Ryan T3 P1 Execute @ 83f63eb82a18fae38dfe0920146e9e427d39aabb
 Branch:      impl/2026-08-17-trapdoor-t3-p1; PR #203
 Closeout:    PR #203 merged at `836e83960e834327868fedef0368366622869db7`
+P2 grant:     Ryan T3 P2 Execute from `809de5c6b296ea56428cf766bab4eb8912cafff3`
+P2 branch:    impl/2026-08-18-trapdoor-t3-p2; `/home/lauer/Projects/convmem-trapdoor-t3-p2`
+P2 PR:        [PR #204](https://github.com/alanmz-crypto/convmem/pull/204)
 ```
 
 ## Human consequence
 
-This plan decomposes the first implementation slice so reviewers can test its
-feasibility. Ryan authorized only the P1 implementation/correction surface
-named above, and that unit is now complete and merged. It does not authorize
+This plan decomposes the implementation slices so reviewers can test their
+feasibility. Ryan authorized P1 and it is now complete and merged. Ryan has
+now separately authorized only the named P2 implementation surface. It does not authorize
 migrations, live Chroma/corpus mutation,
 CG-2 activation, Shadow activation, R2b capture, or external changes.
 Stage 1 must be additive and conservative: existing records remain queryable but
@@ -151,12 +154,13 @@ planning package:
 | Slice | Scope | Ryan grant | Implementation branch | PR | Gate |
 |---|---|---|---|---|---|
 | P1 | Policy, envelope, monitor-minted assertion identity, recursive verification | Complete; granted at `83f63eb82a18fae38dfe0920146e9e427d39aabb`, final head `ec093b10afb6bd8a51a131174857ecbded4287bc` | `impl/2026-08-17-trapdoor-t3-p1` (`/tmp/convmem-trapdoor-t3-p1`) | [PR #203](https://github.com/alanmz-crypto/convmem/pull/203) | Focused/full validation, Kiro PASS, Copilot PASS, merged at `836e83960e834327868fedef0368366622869db7` |
-| P2 | Current-ingest bindings and unit/Chroma/export/reconstruction continuity | Separate P2 Execute grant | `feat/2026-08-15-provenance-bindings` | Separate P2 PR | Binding/round-trip VERIFY plus review |
+| P2 | Current-ingest bindings and unit/Chroma/export/reconstruction continuity | **Granted** from `809de5c6b296ea56428cf766bab4eb8912cafff3` | `impl/2026-08-18-trapdoor-t3-p2` | [PR #204](https://github.com/alanmz-crypto/convmem/pull/204) | Binding/round-trip VERIFY, P1 regression, Kiro PASS, Copilot PASS, then Ryan merge decision |
 | P3 | Assertion-preserving exact dedupe, retrieval visibility, and same-content independence | Separate P3 Execute grant | `feat/2026-08-15-provenance-assertion-continuity` | Separate P3 PR | Identity/dedupe/retrieval VERIFY plus review |
 
 P1 implementation was authorized only on the named branch/worktree and PR for
-that grant, and is now merged. P2/P3 remain unauthorized; no migration, live
-operation, or later-phase work follows from P1 completion.
+that grant, and is now merged. P2 is authorized only on the named branch and PR
+above. P3 and later work remain unauthorized; no migration, live operation,
+Bootstrap, CG-2, Shadow, R2b, or T4/T5 work follows from P2.
 
 ### P1 / Stage 1A — Canonical policy and representation
 

@@ -47,6 +47,24 @@ final V4m evidence claim:
 - Shadow/R2b capture paths;
 - `complete_data_restore.py`, backup workflows, and live-data replacement.
 
+## P2 revalidation
+
+P2 adds the following projection-bound writers to the census.  They carry the
+P1 envelope and commitment but do not become authority:
+
+| Mutator | Projection state affected | Consistency mechanism | P2 disposition |
+|---|---|---|---|
+| `ingest._commit_chunk_to_stores()` | Normal-ingest unit, Chroma metadata, and JSONL export | Existing source fence, production writer lease, export lock, and one unit envelope/commitment derived before the projection writes | Revalidated for P2 continuity; not final V4m evidence |
+| `inter_model_index.index_inter_model_messages()` | Direct inter-model unit, Chroma metadata, and JSONL export | Existing source fence, production writer lease, export lock, and one unit envelope/commitment derived before the projection writes | Revalidated for P2 continuity; caller labels remain claims |
+| `ChromaStore.add_unit()` / `update_unit()` / `update_unit_metadata()` | Chroma projection rows | Projection envelope/commitment self-consistency gate; provenance continuity cannot be removed from an existing bound row | Revalidated for P2 continuity; registry authority remains separate |
+| `eval_corpus.reconstruct.build_canonical_unit()` | Canonical reconstruction/export package | Rebuild derives from the serialized envelope and commitment; malformed or absent provenance is explicitly untrusted | Revalidated for P2 continuity; no authority import |
+
+This revalidation does not prove that the current locks capture one complete
+logical authority state across every future writer.  P3 and any later CG-1,
+restore, or serving writer must re-census its paths.  Final universal V4m
+evidence remains `PENDING` until the final writer set and overlap controls are
+known.
+
 This boundary is deliberate. P2/P3 and any future restore integration must add
 or revise entries for writers they introduce or change, then revalidate the
 consistency mechanism before T3 closure. The existing complete-data-v2 writer
