@@ -1,9 +1,9 @@
 # P1 provenance mutator census and consistency baseline
 
-**Arc:** Trapdoor Hunt  
-**Who:** P1 implementation lane  
+**Arc:** Trapdoor Hunt
+**Who:** P1 implementation lane
 **What:** The P1 census of mutators that can change the in-memory provenance
-authority, plus the consistency mechanism selected for this slice.  
+authority, plus the consistency mechanism selected for this slice.
 **Why:** This is the required V4m planning baseline. It is not final universal
 capture evidence and does not mark V4m PASS.
 
@@ -55,7 +55,7 @@ provenance capture participation.
 
 ## Disposition
 
-**P1 census baseline: complete for the P1 in-memory authority set.**  
+**P1 census baseline: complete for the P1 in-memory authority set.**
 **V4m: PENDING.** Final V4m evidence requires the final implemented
 manifest-bound writer set, universal mutator coverage or one universally entered
 immutable staging boundary, and the required adversarial overlap evidence before
