@@ -63,11 +63,12 @@ artifacts are recorded for the implementation revision.
 
 | Slice | Required authorization record | Required branch/PR separation | Result |
 |---|---|---|---|
-| P1 policy/identity | Ryan Execute grant naming P1 scope | `feat/2026-08-15-provenance-policy` and its own PR | PENDING |
-| P2 bindings/continuity | Ryan Execute grant naming P2 scope | `feat/2026-08-15-provenance-bindings` and its own PR | PENDING |
-| P3 assertion/dedupe/retrieval | Ryan Execute grant naming P3 scope | `feat/2026-08-15-provenance-assertion-continuity` and its own PR | PENDING |
+| P1 policy/identity | Ryan Execute grant naming P1 scope | `impl/2026-08-17-trapdoor-t3-p1`, PR #203 | PENDING |
+| P2 bindings/continuity | Ryan Execute grant naming P2 scope | `impl/2026-08-18-trapdoor-t3-p2`, PR #204 | PENDING |
+| P3 assertion/dedupe/retrieval | Separate Ryan Execute grant required; P3 remains unauthorized | No branch or PR exists | PENDING |
 
-These are reserved targets only; this planning branch creates none of them.
+P1 and P2 have distinct grants, branches, worktrees, and PRs. P3 remains a
+reserved planning slice only and has no implementation branch or PR.
 
 ## V1 — Root authority and policy ownership
 
