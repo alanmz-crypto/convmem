@@ -26,6 +26,8 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
 
+from canonical_json import canonical_json_bytes
+
 
 SCHEMA_VERSION = "convmem/provenance-envelope-v1"
 BINDING_VERSION = "convmem/provenance-binding-v1"
@@ -127,17 +129,11 @@ def _validate_json_value(value: Any, *, path: str = "$") -> None:
 
 
 def _canonical_json_bytes(value: Any) -> bytes:
-    _validate_json_value(value)
-    try:
-        return json.dumps(
-            value,
-            ensure_ascii=False,
-            allow_nan=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-    except (TypeError, UnicodeEncodeError, ValueError) as exc:
-        raise EnvelopeValidationError(f"value is not canonical JSON: {exc}") from exc
+    return canonical_json_bytes(
+        value,
+        validate=_validate_json_value,
+        error_type=EnvelopeValidationError,
+    )
 
 
 def canonical_bytes(value: Any) -> bytes:
