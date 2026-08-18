@@ -207,6 +207,40 @@ def validate_projection(unit: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def provenance_identity(unit: Mapping[str, Any]) -> tuple[str, str] | None:
+    """Return a validated assertion identity/commitment pair when present.
+
+    Content, physical projection IDs, and ledger IDs are not provenance
+    authority.  Callers use this helper only to distinguish a valid replay of
+    the same assertion from a distinct or unknown provenance assertion.
+    """
+
+    checked = validate_projection(unit)
+    if checked["status"] != "self-consistent":
+        return None
+    assertion_id = checked.get("assertion_id")
+    commitment = checked.get("commitment")
+    if not assertion_id or not commitment:
+        return None
+    return str(assertion_id), str(commitment)
+
+
+def require_projection_identity_continuity(
+    previous: Mapping[str, Any] | None,
+    candidate: Mapping[str, Any],
+) -> None:
+    """Reject physical projection replacement that would lose an assertion."""
+
+    previous_identity = provenance_identity(previous or {})
+    candidate_identity = provenance_identity(candidate)
+    if previous_identity != candidate_identity and (
+        previous_identity is not None or candidate_identity is not None
+    ):
+        raise ValueError(
+            "projection replacement would discard distinct provenance identity"
+        )
+
+
 def attach_unit_provenance(unit: Mapping[str, Any], envelope: Mapping[str, Any]) -> dict[str, Any]:
     """Attach the canonical envelope and commitment to an in-memory unit."""
 
@@ -280,5 +314,7 @@ __all__ = [
     "enforce_projection_metadata",
     "envelope_from_unit",
     "projection_metadata",
+    "provenance_identity",
+    "require_projection_identity_continuity",
     "validate_projection",
 ]

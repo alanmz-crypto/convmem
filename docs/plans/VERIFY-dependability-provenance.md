@@ -65,10 +65,10 @@ artifacts are recorded for the implementation revision.
 |---|---|---|---|
 | P1 policy/identity | Ryan Execute grant naming P1 scope | `impl/2026-08-17-trapdoor-t3-p1`, PR #203 | PENDING |
 | P2 bindings/continuity | Ryan Execute grant naming P2 scope | `impl/2026-08-18-trapdoor-t3-p2`, PR #204 | PENDING |
-| P3 assertion/dedupe/retrieval | Separate Ryan Execute grant required; P3 remains unauthorized | No branch or PR exists | PENDING |
+| P3 assertion/dedupe/retrieval | Ryan T3 P3 Execute grant from `6be6b353740b58b9652dccc1335906fdacd4e568` | `impl/2026-08-18-trapdoor-t3-p3`, PR #205 | PENDING |
 
-P1 and P2 have distinct grants, branches, worktrees, and PRs. P3 remains a
-reserved planning slice only and has no implementation branch or PR.
+P1, P2, and P3 have distinct grants, branches, worktrees, and PRs. P3
+implementation evidence remains pending.
 
 ## V1 — Root authority and policy ownership
 

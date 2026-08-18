@@ -65,6 +65,23 @@ restore, or serving writer must re-census its paths.  Final universal V4m
 evidence remains `PENDING` until the final writer set and overlap controls are
 known.
 
+## P3 revalidation
+
+P3 changes existing projection-bound writers but introduces no new
+manifest-bound authority writer:
+
+| Mutator | P3 continuity obligation | P3 disposition |
+|---|---|---|
+| `ingest._commit_chunk_to_stores()` | A new assertion that collides with a stable source/chunk projection address receives a distinct projection slot; the prior assertion remains available until successful reindex pruning. | Revalidated by safe-reindex regression; V4m remains pending |
+| `ingest_dedupe.evaluate_ingest_batch()` | Exact suppression is identity-preserving replay only; distinct, missing, or malformed provenance remains independently accepted. | Revalidated in P3 tests; V4m remains pending |
+| `ChromaStore.add_unit()` / `update_unit()` / `update_unit_metadata()` | A physical projection slot may not replace a bound assertion with a distinct or missing identity; exact identity/commitment replay remains allowed. | Revalidated in P3 tests; V4m remains pending |
+| `refine.job_chroma_dedupe()` / semantic tombstone path | Automatic or approved dedupe cannot tombstone across distinct provenance identities. | Revalidated in P3 tests; V4m remains pending |
+| `query.py`, `evidence.py`, and `ask.py` retrieval paths | Ranking, ledger-result, and projection dedupe retain distinct validated assertion identities and only collapse legacy twins or exact assertion replays. | Revalidated in P3 tests; V4m remains pending |
+
+P3 does not add a new capture/sealing writer or claim final universal V4m
+evidence.  The final writer set, universal coverage, and overlap controls remain
+an arc-closure obligation.
+
 This boundary is deliberate. P2/P3 and any future restore integration must add
 or revise entries for writers they introduce or change, then revalidate the
 consistency mechanism before T3 closure. The existing complete-data-v2 writer

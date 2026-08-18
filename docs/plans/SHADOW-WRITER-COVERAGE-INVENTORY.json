@@ -8,17 +8,17 @@
     "convmem.py:367",
     "convmem.py:471",
     "convmem.py:636",
-    "ingest.py:556",
-    "ingest.py:888",
-    "ingest.py:926",
+    "ingest.py:561",
+    "ingest.py:923",
+    "ingest.py:961",
     "inter_model_index.py:201"
   ],
   "open_production_write_store_call_sites": [
     "observe.py:234",
     "propose_decision.py:549",
     "propose_decision.py:581",
-    "refine.py:274",
-    "refine.py:720",
+    "refine.py:280",
+    "refine.py:741",
     "source_purge.py:316"
   ],
   "must_use_factory_bypass_sites": [],

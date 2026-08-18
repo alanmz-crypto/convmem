@@ -23,6 +23,7 @@ from domains import domain_breadcrumb, domain_matches, is_known_domain, normaliz
 from llm import ollama_embed
 from meta_format import when_from_meta
 from open_source import citation_open_meta, resolve_open_target
+from provenance_binding import provenance_identity
 from site_filter import filter_results_by_site, normalize_site
 
 # ---------------------------------------------------------------------------
@@ -175,6 +176,9 @@ def _extract_ledger_ids(text: str) -> list[str]:
 
 def _result_dedupe_key(r: dict) -> str:
     meta = r.get("metadata") or {}
+    identity = provenance_identity(meta)
+    if identity is not None:
+        return f"assertion:{identity[0]}:{identity[1]}"
     lid = (meta.get("ledger_id") or "").strip()
     if lid:
         return f"ledger:{lid}"
