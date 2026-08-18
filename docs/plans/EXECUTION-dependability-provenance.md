@@ -1,9 +1,9 @@
 # Execution Plan — Dependability and Provenance Integrity
 
 ```text
-Status:       P3 PR RECORDED — implementation authorized; VERIFY pending
+Status:       P3 COMPLETE / MERGED — P1/P2 merged; T3 VERIFY pending
 Depends on:  locked T3 basis; P1 closeout `809de5c6b296ea56428cf766bab4eb8912cafff3`
-Owner:       Cursor P3 implementation lane under Ryan's exact Execute grant
+Owner:       Ryan governance closeout after Cursor P3 implementation and review
 Baseline:    locked T3 @ aae0cad0bb05b0e436e213b28abbe0ff05ba2e91
 Grant:       Ryan T3 P1 Execute @ 83f63eb82a18fae38dfe0920146e9e427d39aabb
 Branch:      impl/2026-08-17-trapdoor-t3-p1; PR #203
@@ -16,12 +16,14 @@ P2 merge:     `017d1247685c858ad96bb47cc61582234d9ae1aa`
 P3 grant:     Ryan T3 P3 Execute from `6be6b353740b58b9652dccc1335906fdacd4e568`
 P3 branch:    impl/2026-08-18-trapdoor-t3-p3; `/home/lauer/Projects/convmem-trapdoor-t3-p3`
 P3 PR:        [PR #205](https://github.com/alanmz-crypto/convmem/pull/205)
+P3 head:      `8aa687724cdedf22b4b602f09cbc5e053d22d046`
+P3 merge:     `ebe0dfc9a17a4288892dce6f10cd6744f6d27315`
 ```
 
 ## Human consequence
 
 This plan decomposes the implementation slices so reviewers can test their
-feasibility. Ryan authorized P1 and P2; both are now complete and merged. It does not authorize
+feasibility. Ryan authorized P1, P2, and P3; all three are now complete and merged. It does not authorize
 migrations, live Chroma/corpus mutation,
 CG-2 activation, Shadow activation, R2b capture, or external changes.
 Stage 1 must be additive and conservative: existing records remain queryable but
@@ -159,13 +161,13 @@ planning package:
 |---|---|---|---|---|---|
 | P1 | Policy, envelope, monitor-minted assertion identity, recursive verification | Complete; granted at `83f63eb82a18fae38dfe0920146e9e427d39aabb`, final head `ec093b10afb6bd8a51a131174857ecbded4287bc` | `impl/2026-08-17-trapdoor-t3-p1` (`/tmp/convmem-trapdoor-t3-p1`) | [PR #203](https://github.com/alanmz-crypto/convmem/pull/203) | Focused/full validation, Kiro PASS, Copilot PASS, merged at `836e83960e834327868fedef0368366622869db7` |
 | P2 | Current-ingest bindings and unit/Chroma/export/reconstruction continuity | **Complete/merged** from `809de5c6b296ea56428cf766bab4eb8912cafff3`; head `182f122614311df649ab0614ae6d26e9108646eb`; merge `017d1247685c858ad96bb47cc61582234d9ae1aa` | `impl/2026-08-18-trapdoor-t3-p2` | [PR #204](https://github.com/alanmz-crypto/convmem/pull/204) | Binding/round-trip validation, P1 regression, Kiro PASS, Copilot PASS, Ryan merge complete |
-| P3 | Assertion-preserving exact dedupe, retrieval visibility, and same-content independence | **Granted** from `6be6b353740b58b9652dccc1335906fdacd4e568`; PR identity recorded | `impl/2026-08-18-trapdoor-t3-p3` (`/home/lauer/Projects/convmem-trapdoor-t3-p3`) | [PR #205](https://github.com/alanmz-crypto/convmem/pull/205) | Identity/dedupe/retrieval VERIFY plus review |
+| P3 | Assertion-preserving exact dedupe, retrieval visibility, and same-content independence | **Complete/merged** from `6be6b353740b58b9652dccc1335906fdacd4e568`; head `8aa687724cdedf22b4b602f09cbc5e053d22d046`; merge `ebe0dfc9a17a4288892dce6f10cd6744f6d27315` | `impl/2026-08-18-trapdoor-t3-p3` (`/home/lauer/Projects/convmem-trapdoor-t3-p3`) | [PR #205](https://github.com/alanmz-crypto/convmem/pull/205) | Identity/dedupe/retrieval validation, Kiro PASS, Copilot PASS, Ryan merge complete |
 
 P1 implementation was authorized only on the named branch/worktree and PR for
-that grant, and is now merged. P2 was likewise authorized only on the named
-branch and PR above, and is now merged. P3's dedicated PR identity is recorded;
-functional work is authorized only on that lane. No migration, live operation,
-Bootstrap, CG-2, Shadow, R2b, or T4/T5 work follows from P2.
+that grant, and is now merged. P2 and P3 were likewise authorized only on their
+named branches and PRs, and are now merged. P4 is the next separately gated
+Stage 1 verification/compatibility-closure phase; no migration, live operation,
+Bootstrap, CG-2, Shadow, R2b, or T4/T5 work follows from P3.
 
 ### P1 / Stage 1A — Canonical policy and representation
 

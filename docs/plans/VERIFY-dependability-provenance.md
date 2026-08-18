@@ -65,10 +65,10 @@ artifacts are recorded for the implementation revision.
 |---|---|---|---|
 | P1 policy/identity | Ryan Execute grant naming P1 scope | `impl/2026-08-17-trapdoor-t3-p1`, PR #203 | PENDING |
 | P2 bindings/continuity | Ryan Execute grant naming P2 scope | `impl/2026-08-18-trapdoor-t3-p2`, PR #204 | PENDING |
-| P3 assertion/dedupe/retrieval | Ryan T3 P3 Execute grant from `6be6b353740b58b9652dccc1335906fdacd4e568` | `impl/2026-08-18-trapdoor-t3-p3`, PR #205 | PENDING |
+| P3 assertion/dedupe/retrieval | Ryan T3 P3 Execute grant from `6be6b353740b58b9652dccc1335906fdacd4e568` | `impl/2026-08-18-trapdoor-t3-p3`, PR #205; implementation head `8aa687724cdedf22b4b602f09cbc5e053d22d046`, squash-merged at `ebe0dfc9a17a4288892dce6f10cd6744f6d27315` | PENDING |
 
 P1, P2, and P3 have distinct grants, branches, worktrees, and PRs. P3
-implementation evidence remains pending.
+implementation has merged, but repository VERIFY evidence remains pending.
 
 ## V1 — Root authority and policy ownership
 
