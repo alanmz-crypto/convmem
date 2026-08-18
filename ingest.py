@@ -23,10 +23,34 @@ from pathlib import Path
 from adapters.detect import TOOL_BY_FORMAT, detect_format, get_parser
 from chroma_write_store import production_chroma_write_session
 from config import load_config
-from distill import distill, normalize_unit
-from llm import ollama_embed, summarize
+from distill import (
+    distill_consumed_view,
+    distill_prompt,
+    distill as _distill,
+    distill_with_response,
+    normalize_unit,
+)
+from llm import (
+    ollama_embed,
+    resolve_generation_binding,
+    summarize,
+    summarize_consumed_view,
+    summarize_prompt,
+)
+from provenance_binding import attach_unit_provenance, build_ingest_envelope, projection_metadata
 
 _SYNTHESIS_FAIL_LOG = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
+
+# Keep the established ingest.distill patch seam for hermetic tests and other
+# callers while using the response-aware path during ordinary execution.
+distill = _distill
+
+
+def _distill_with_provenance(*args, **kwargs) -> tuple[list[dict], str]:
+    if distill is not _distill:
+        units = distill(*args, **kwargs)
+        return units, json.dumps(units, ensure_ascii=False, sort_keys=True)
+    return distill_with_response(*args, **kwargs)
 
 
 @dataclass
@@ -161,14 +185,22 @@ def render_chunk(messages: list[dict], total_budget: int = 10000) -> str:
     """
     if not messages:
         return ""
+    return "\n".join(render_chunk_message_views(messages, total_budget=total_budget))
+
+
+def render_chunk_message_views(messages: list[dict], total_budget: int = 10000) -> list[str]:
+    """Return each exact per-message view used by :func:`render_chunk`."""
+
+    if not messages:
+        return []
     per_msg = max(150, total_budget // len(messages))
     lines = []
-    for m in messages:
-        content = m["content"].strip()
+    for message in messages:
+        content = message["content"].strip()
         if len(content) > per_msg:
             content = content[:per_msg] + " […]"
-        lines.append(f"{m['role']}: {content}")
-    return "\n".join(lines)
+        lines.append(f"{message['role']}: {content}")
+    return lines
 
 
 def _chunk_date(messages: list[dict]) -> str:
@@ -657,9 +689,10 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             continue
 
         distill_failed = False
+        distill_response = ""
         for attempt in range(3):
             try:
-                raw_units = distill(
+                raw_units, distill_response = _distill_with_provenance(
                     text,
                     model=models["distill_model"],
                     ollama_host=models["ollama_host"],
@@ -684,6 +717,52 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
         )
 
         session_meta = _chunk_session_meta(ch["messages"], path)
+        summary_binding = resolve_generation_binding(models["summarize_model"])
+        distill_binding = resolve_generation_binding(models["distill_model"])
+        message_views = render_chunk_message_views(ch["messages"])
+        selection_parameters = {
+            "chunk_start": ch["start_offset"],
+            "chunk_end": ch["end_offset"],
+            "chunk_size": chunk_size,
+            "overlap": overlap,
+            "message_order": list(range(ch["start_offset"], ch["end_offset"] + 1)),
+            "rendered_chunk_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            "summary_consumed_view_sha256": hashlib.sha256(
+                summarize_consumed_view(text).encode("utf-8")
+            ).hexdigest(),
+            "distill_consumed_view_sha256": hashlib.sha256(
+                distill_consumed_view(text).encode("utf-8")
+            ).hexdigest(),
+            "summary_provider": summary_binding,
+            "distill_provider": distill_binding,
+        }
+        provider_payload = {
+            "summary": {
+                **summary_binding,
+                "temperature": 0.2,
+                "prompt": summarize_prompt(text),
+                "response_sha256": hashlib.sha256(summary.encode("utf-8")).hexdigest(),
+            },
+            "distill": {
+                **distill_binding,
+                "temperature": 0.2,
+                "prompt": distill_prompt(text),
+                "response_sha256": hashlib.sha256(
+                    distill_response.encode("utf-8")
+                ).hexdigest(),
+            },
+        }
+        recipe_spec = {
+            "kind": "normal-ingest-distill-v1",
+            "summary_prompt_version": "locked-summarize-prompt-v1",
+            "distill_prompt_version": "locked-distill-prompt-v1",
+            "summary_temperature": 0.2,
+            "distill_temperature": 0.2,
+            "chunk_size": chunk_size,
+            "overlap": overlap,
+            "summary_max_chars": 8000,
+            "distill_max_chars": 8000,
+        }
         units_to_add: list[tuple] = []
         for unit_idx, raw in enumerate(raw_units):
             unit = normalize_unit(
@@ -698,6 +777,27 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             )
             if unit is None:
                 continue
+            unit["source_type"] = session_meta.get("source_type", "")
+            envelope = build_ingest_envelope(
+                records=ch["messages"],
+                consumed_views=message_views,
+                source_identity=path_key,
+                locator_prefix=f"chunk:{ch['start_offset']}",
+                source_type=session_meta.get("source_type"),
+                transformer_class="distill",
+                transformer_identity=str(distill_binding["resolved_model"]),
+                transformer_version="distill-v1",
+                derivation_kind="distill",
+                producer_class="agent",
+                producer_assurance="claimed",
+                selection_parameters=selection_parameters,
+                provider_payload=provider_payload,
+                recipe_id="normal-ingest-distill-v1",
+                recipe_spec=recipe_spec,
+                output_locator=f"{path_key}#chunk:{ch['start_offset']}:unit:{unit_idx}",
+                output_value=raw,
+            )
+            unit = attach_unit_provenance(unit, envelope)
             doc = unit["summary"] + " " + " ".join(unit["keywords"])
             try:
                 unit_embedding = ollama_embed(
@@ -723,6 +823,7 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
                 "domain": unit["domain"],
                 "author_model": unit["author_model"],
                 "verifier_model": unit["verifier_model"] or "",
+                **projection_metadata(unit),
                 **session_meta,
             }
             units_to_add.append((unit, doc, unit_embedding, unit_meta))

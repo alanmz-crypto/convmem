@@ -230,7 +230,10 @@ class ChromaStore:
         embedding: list[float],
         metadata: dict,
     ) -> None:
+        from provenance_binding import enforce_projection_metadata
+
         meta = dict(metadata or {})
+        meta = enforce_projection_metadata(meta)
         # Block semantic *replace* of governed decisions outside the approval protocol.
         # First-time creates (and legacy seed/repair into empty ids) remain allowed;
         # observe._reject_governed_bypass covers upsert=True without proposal_id.
@@ -367,10 +370,23 @@ class ChromaStore:
     def update_unit_metadata(self, unit_id: str, metadata: dict) -> None:
         """Replace metadata for an existing unit."""
         from shadow_sink import classify_metadata_operation
+        from provenance_binding import (
+            PROVENANCE_COMMITMENT_KEY,
+            PROVENANCE_ENVELOPE_KEY,
+            enforce_projection_metadata,
+        )
 
         before = self.get_unit(unit_id)
         before_meta = (before or {}).get("metadata") if before else None
         meta = dict(metadata)
+        if before_meta and (
+            PROVENANCE_ENVELOPE_KEY in before_meta
+            or PROVENANCE_COMMITMENT_KEY in before_meta
+        ) and not (
+            PROVENANCE_ENVELOPE_KEY in meta or PROVENANCE_COMMITMENT_KEY in meta
+        ):
+            raise ValueError("projection metadata cannot remove provenance continuity")
+        meta = enforce_projection_metadata(meta)
         meta["id"] = unit_id
         event_id = self._prepare_shadow_event_id()
         operation = classify_metadata_operation(before_meta, meta)
@@ -394,7 +410,23 @@ class ChromaStore:
         metadata: dict,
     ) -> None:
         """Replace document, embedding, and metadata for an existing unit."""
+        from provenance_binding import (
+            PROVENANCE_COMMITMENT_KEY,
+            PROVENANCE_ENVELOPE_KEY,
+            enforce_projection_metadata,
+        )
+
         meta = dict(metadata or {})
+        before = self.get_unit(unit_id)
+        before_meta = (before or {}).get("metadata") if before else None
+        if before_meta and (
+            PROVENANCE_ENVELOPE_KEY in before_meta
+            or PROVENANCE_COMMITMENT_KEY in before_meta
+        ) and not (
+            PROVENANCE_ENVELOPE_KEY in meta or PROVENANCE_COMMITMENT_KEY in meta
+        ):
+            raise ValueError("projection update cannot remove provenance continuity")
+        meta = enforce_projection_metadata(meta)
         event_id = self._prepare_shadow_event_id()
         self._collection(UNITS).update(
             ids=[unit_id],
