@@ -1,17 +1,20 @@
 # Execution Plan — Dependability and Provenance Integrity
 
 ```text
-Status:       LOCKED — NOT AUTHORIZED FOR IMPLEMENTATION
-Depends on:  Kiro review, targeted Copilot audit, Ryan architecture lock — complete
-Owner:       Cursor after a separate Ryan Execute grant
-Baseline:    origin/main @ 2f427fcfb8818dd665310bae7e8cd5ffa066bdcc
+Status:       P1 EXECUTE ACTIVE — T3 governance lock complete; VERIFY pending
+Depends on:  locked T3 basis and Ryan P1 Execute grant; Kiro re-review required
+Owner:       Cursor on the dedicated P1 correction branch
+Baseline:    locked T3 @ aae0cad0bb05b0e436e213b28abbe0ff05ba2e91
+Grant:       Ryan T3 P1 Execute @ 83f63eb82a18fae38dfe0920146e9e427d39aabb
+Branch:      impl/2026-08-17-trapdoor-t3-p1; PR #203
 ```
 
 ## Human consequence
 
 This plan decomposes the first implementation slice so reviewers can test its
-feasibility. It does not authorize code changes, migrations, live Chroma/corpus
-mutation, CG-2 activation, Shadow activation, R2b capture, or external changes.
+feasibility. Ryan has authorized only the P1 implementation/correction surface
+named above. It does not authorize migrations, live Chroma/corpus mutation,
+CG-2 activation, Shadow activation, R2b capture, or external changes.
 Stage 1 must be additive and conservative: existing records remain queryable but
 are untrusted for security decisions until they carry valid provenance.
 Stage 1A/1B may therefore operate as an explicitly untrusted-only production
@@ -145,12 +148,13 @@ planning package:
 
 | Slice | Scope | Ryan grant | Implementation branch | PR | Gate |
 |---|---|---|---|---|---|
-| P1 | Policy, envelope, monitor-minted assertion identity, recursive verification | Separate P1 Execute grant | `feat/2026-08-15-provenance-policy` | Separate P1 PR | Policy/property VERIFY plus Kiro/Copilot review |
+| P1 | Policy, envelope, monitor-minted assertion identity, recursive verification | Granted at `83f63eb82a18fae38dfe0920146e9e427d39aabb`; correction lane active | `impl/2026-08-17-trapdoor-t3-p1` (`/tmp/convmem-trapdoor-t3-p1`) | [PR #203](https://github.com/alanmz-crypto/convmem/pull/203) | Focused/full validation, then Kiro re-review; Copilot only after Kiro PASS |
 | P2 | Current-ingest bindings and unit/Chroma/export/reconstruction continuity | Separate P2 Execute grant | `feat/2026-08-15-provenance-bindings` | Separate P2 PR | Binding/round-trip VERIFY plus review |
 | P3 | Assertion-preserving exact dedupe, retrieval visibility, and same-content independence | Separate P3 Execute grant | `feat/2026-08-15-provenance-assertion-continuity` | Separate P3 PR | Identity/dedupe/retrieval VERIFY plus review |
 
-No implementation branch, PR, grant, merge, migration, or live operation is
-created or authorized by this planning branch.
+P1 implementation is authorized only on the named branch/worktree and PR for
+this grant. P2/P3 remain uncreated and unauthorized; no merge, migration, or
+live operation follows from the P1 grant.
 
 ### P1 / Stage 1A — Canonical policy and representation
 
@@ -229,6 +233,32 @@ never a mixed or missing authority set. P1 must define one normative, versioned
 ConvMem canonicalization profile/serializer and publish golden vectors that
 detect serializer-library drift; no cross-implementation portability
 requirement is implied by this slice.
+
+### P1 review-finding disposition and predecessor binding
+
+The bounded Kiro findings are handled on this correction branch as follows:
+
+- root and derivation transformer caps, recursive cycle/depth/node/byte bounds,
+  literal canonicalization vectors, V2a lattice/property coverage, successful
+  replay, origin/schema validation, and the P1 mutator census are implemented
+  and tested in the P1 surface;
+- the restore item is limited to the future `provenance/` validator and
+  `STATE_SPECS`/writer-census integration boundary in `docs/RECOVER.md`;
+  restore execution remains deferred because it belongs to later recovery and
+  durable-data scope, not this in-memory P1 grant;
+- active-pin retention is closed for P1 by disabling implementation-controlled
+  reclamation. Pin-aware GC, retention periods, compaction, quotas, and loss
+  drills remain deferred under the locked T4/T5 lifecycle boundary;
+- final universal V4m evidence remains deferred beyond P1 because P2/P3 and
+  later CG-1/restore/projection writers have not yet entered the implementation
+  set. The P1 census is a required baseline, not a VERIFY PASS;
+- V0f is bound to existing accepted predecessor evidence, not recreated here:
+  [FF1/T1 accepted at `3c746faa`](https://github.com/alanmz-crypto/convmem/commit/3c746faa47409f7def02d2fd24351fbc936a9720),
+  [FF2/T2 accepted at `0c2ab32`](https://github.com/alanmz-crypto/convmem/commit/0c2ab32b49a1a970fb3d1f76409d53ec1f0c6361),
+  and [Interlude locked at `17609b2`](https://github.com/alanmz-crypto/convmem/commit/17609b2d11b824cc3474337aca20cd7506d5699e).
+
+All repository VERIFY rows remain `PENDING`; these dispositions do not
+self-promote any candidate result.
 
 Likely surfaces after re-trace:
 

@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import copy
 import hashlib
-import json
 import math
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
+
+from canonical_json import canonical_json_bytes
 
 MANIFEST_SCHEMA = "convmem/file-generation-manifest-v1"
 POINTER_SCHEMA = "convmem/file-active-generation-pointer-v1"
@@ -68,17 +69,11 @@ def _reject_nonfinite(value: Any) -> None:
 def canonical_bytes(value: Any) -> bytes:
     """Return the sole JSON representation used by CG-1 hashes."""
 
-    _reject_nonfinite(value)
-    try:
-        return json.dumps(
-            value,
-            ensure_ascii=False,
-            allow_nan=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise GenerationContractError(f"value is not canonical JSON: {exc}") from exc
+    return canonical_json_bytes(
+        value,
+        validate=_reject_nonfinite,
+        error_type=GenerationContractError,
+    )
 
 
 def canonical_hash(value: Any) -> str:
