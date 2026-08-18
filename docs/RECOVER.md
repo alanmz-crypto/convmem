@@ -106,6 +106,19 @@ Authoritative-first order when Ryan authorizes replacement:
 
 Do **not** treat capture evidence as the thing to restore from.
 
+### Future provenance restore integration boundary (planning only)
+
+The P1 provenance registry is not yet a durable restore surface. A future
+restore slice must add `provenance/` to `complete_data_restore.py` `STATE_SPECS`
+and `writer_census_for_root()`, run a separate provenance validator for the
+registry graph/commitments and policy/recipe/schema history, and require that
+validator alongside the existing complete-data-v2 preflight before recovered
+authority can publish. The selected complete-data-v2 generation and manifest
+commitment remain the binding input; backup evidence remains evidence and never
+becomes provenance authority. This note defines only the integration boundary:
+it does not implement restore, migration, rollback, live replacement, or
+projection rebuild.
+
 ### Restore chroma from Restic
 
 ```bash
