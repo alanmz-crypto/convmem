@@ -230,7 +230,10 @@ class ChromaStore:
         embedding: list[float],
         metadata: dict,
     ) -> None:
-        from provenance_binding import enforce_projection_metadata
+        from provenance_binding import (
+            enforce_projection_metadata,
+            require_projection_identity_continuity,
+        )
 
         meta = dict(metadata or {})
         meta = enforce_projection_metadata(meta)
@@ -239,6 +242,7 @@ class ChromaStore:
         # observe._reject_governed_bypass covers upsert=True without proposal_id.
         existing = self.get_unit(unit_id)
         if existing is not None:
+            require_projection_identity_continuity(existing.get("metadata"), meta)
             existing_meta = existing.get("metadata") or {}
             existing_lid = str(
                 existing_meta.get("ledger_id") or existing.get("id") or unit_id or ""
@@ -374,6 +378,7 @@ class ChromaStore:
             PROVENANCE_COMMITMENT_KEY,
             PROVENANCE_ENVELOPE_KEY,
             enforce_projection_metadata,
+            require_projection_identity_continuity,
         )
 
         before = self.get_unit(unit_id)
@@ -387,6 +392,7 @@ class ChromaStore:
         ):
             raise ValueError("projection metadata cannot remove provenance continuity")
         meta = enforce_projection_metadata(meta)
+        require_projection_identity_continuity(before_meta, meta)
         meta["id"] = unit_id
         event_id = self._prepare_shadow_event_id()
         operation = classify_metadata_operation(before_meta, meta)
@@ -414,6 +420,7 @@ class ChromaStore:
             PROVENANCE_COMMITMENT_KEY,
             PROVENANCE_ENVELOPE_KEY,
             enforce_projection_metadata,
+            require_projection_identity_continuity,
         )
 
         meta = dict(metadata or {})
@@ -427,6 +434,7 @@ class ChromaStore:
         ):
             raise ValueError("projection update cannot remove provenance continuity")
         meta = enforce_projection_metadata(meta)
+        require_projection_identity_continuity(before_meta, meta)
         event_id = self._prepare_shadow_event_id()
         self._collection(UNITS).update(
             ids=[unit_id],

@@ -18,6 +18,7 @@ from ledger_recent import (
 )
 from llm import generate_stream
 from meta_format import when_from_meta, when_label
+from provenance_binding import provenance_identity
 from query import query_raw, query_units
 
 ASK_PROMPT = """You answer questions using ONLY the retrieved excerpts from past AI coding sessions below.
@@ -120,7 +121,23 @@ def _retrieval_query(question: str, history: list[tuple[str, str]] | None) -> st
 
 def _result_key(r: dict) -> str:
     meta = r.get("metadata", {})
+    identity = provenance_identity(meta)
+    if identity is not None:
+        return f"assertion:{identity[0]}:{identity[1]}"
     return f"{meta.get('source_path','')}|{meta.get('title','')}|{meta.get('start_offset','')}"
+
+
+def _ledger_result_key(r: dict) -> tuple[str, ...] | None:
+    """Return identity for recent/context dedupe, never content equivalence."""
+
+    meta = r.get("metadata") or {}
+    identity = provenance_identity(meta)
+    if identity is not None:
+        return ("assertion", identity[0], identity[1])
+    ledger_id = str(meta.get("ledger_id") or "").strip()
+    if ledger_id:
+        return ("legacy-ledger", ledger_id)
+    return None
 
 
 def _merge_results(
@@ -176,18 +193,12 @@ def _prepend_recent_decisions(
 
     recent_units = [decision_record_to_unit(r) for r in records[:max_recent]]
     semantic_ids = {
-        ((u.get("metadata") or {}).get("ledger_id") or "").strip()
-        for u in semantic
-        if ((u.get("metadata") or {}).get("ledger_id") or "").strip()
+        key for u in semantic if (key := _ledger_result_key(u)) is not None
     }
     recent_after_dedupe = [
         u
         for u in recent_units
-        if not (
-            ((u.get("metadata") or {}).get("ledger_id") or "").strip()
-            and ((u.get("metadata") or {}).get("ledger_id") or "").strip()
-            in semantic_ids
-        )
+        if _ledger_result_key(u) not in semantic_ids
     ]
     if total_limit <= 0:
         return []
