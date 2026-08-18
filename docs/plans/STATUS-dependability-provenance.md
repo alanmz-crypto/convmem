@@ -3,14 +3,12 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** **RYAN_T3_LOCK — PASS** at exact technical basis
-`aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; Kiro's prior conditional findings
-on active R8 pin reclamation/loss semantics and V4m evidence phasing are
-resolved, and Copilot passed against the final planning revision. Ryan granted
-P1 Execute at `83f63eb82a18fae38dfe0920146e9e427d39aabb`; the bounded P1
-correction lane is active on `impl/2026-08-17-trapdoor-t3-p1` in
-`/tmp/convmem-trapdoor-t3-p1` for draft PR #203. All repository VERIFY rows
-remain `PENDING`; Kiro's read-only implementation re-review is the next gate.
+**State:** **P1 COMPLETE / MERGED** under **RYAN_T3_LOCK — PASS** at exact
+technical basis `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`. Kiro and Copilot
+passed the final P1 correction at `ec093b10afb6bd8a51a131174857ecbded4287bc`,
+and PR #203 merged into the planning branch at
+`836e83960e834327868fedef0368366622869db7`. All repository VERIFY rows remain
+`PENDING`; P2 and P3 remain unauthorized pending separate Ryan Execute grants.
 
 ## 1. What this project is for
 
@@ -60,9 +58,9 @@ decisions.
 | Surface | Current state |
 |---|---|
 | `docs/plans/ARCHITECTURE-dependability-provenance.md` | Locked T3 technical basis `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; unchanged in P1 correction lane. |
-| `docs/plans/EXECUTION-dependability-provenance.md` | P1 Execute bookkeeping reconciled to grant `83f63eb82a18fae38dfe0920146e9e427d39aabb`, branch, worktree, and PR #203. |
+| `docs/plans/EXECUTION-dependability-provenance.md` | P1 Execute is complete and merged at PR #203 merge commit `836e83960e834327868fedef0368366622869db7`; P2 remains a separate unauthorized Execute unit. |
 | `docs/plans/VERIFY-dependability-provenance.md` | Planning stub with predeclared properties; no evidence yet. |
-| `provenance.py` + `tests/test_provenance.py` | P1 in-memory policy/envelope/identity/verification substrate and focused tests on the correction branch; not yet merged. |
+| `provenance.py` + `tests/test_provenance.py` | P1 in-memory policy/envelope/identity/verification substrate and focused tests; merged through PR #203. |
 | `docs/plans/P1-PROVENANCE-MUTATOR-CENSUS.md` | P1 V4m mutator census and consistency-contract baseline; V4m remains PENDING. |
 | `CONVMEM_DATA_ROOT/provenance/` | Future durable registry; restore-preflight classification and validator integration remain outside P1 implementation. |
 | Normal ingest/distillation | Runtime exists on `main`; rendered/truncated input and provenance are not completely bound. |
@@ -88,9 +86,9 @@ serving authority/repository.
 | Full Fathom Five parent structure | **Frozen for review**; FF1/T1 → FF2/T2 → FF3/T3 → FF4/T4 → FF5/T5 | Each arc has one contract, owner, oracle, exit state, and explicit non-goals; further findings remain bounded review findings. |
 | Trust Arc T1–T5 planning sequence | Retained; T1/T2 are mandatory completed predecessors to any T3 grant; Stage 1A/1B is the T3 child slice | T1 architecture output and T2 evidence/gap output must be complete and accepted before T3 implementation; T4/T5 follow T3 in the parent sequence; no runtime/activation/cloud-policy change follows from this package. |
 | Stage 0 architecture package | **Locked** at `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91` | No further architecture edits in P1 correction lane. |
-| Stage 1A policy/representation substrate (T3 child slice) | **P1 Execute active; bounded BLOCK correction** | Correct implementation, focused/full validation, Kiro PASS, then Ryan merge/next-gate decision. |
+| Stage 1A policy/representation substrate (T3 child slice) | **P1 complete/merged** | P1 implementation, focused/full validation, Kiro PASS, Copilot PASS, and PR #203 merge complete; VERIFY remains PENDING. |
 | Stage 1B assertion/exact-dedupe continuity (T3 child slice) | Not authorized | T1/T2 architecture and evidence outputs complete and accepted, then separate Ryan Execute grant; independent assertions survive cross-tier equivalence and retrieval. |
-| P1/P2/P3 execution slices | P1 granted and active; P2/P3 not authorized | Separate grants, branches/worktrees, PRs, and review gates; no singular Stage 1 grant. |
+| P1/P2/P3 execution slices | **P1 complete/merged; P2/P3 unauthorized** | Separate grants, branches/worktrees, PRs, and review gates; no singular Stage 1 grant. |
 | Stage 2 semantic dedupe | Deferred | Separate design and grant. |
 | Stage 3 consumer visibility | Deferred beyond Stage 1 minimum | Consumer contract and enforcement boundary reviewed. |
 | CG-1/CG-2 assurance integration | Parallel/later | Separate Execute brief after canonical Stage 1 representation is locked. |
@@ -101,21 +99,19 @@ serving authority/repository.
 
 ## 5. Your role now
 
-**Next lane: Kiro exact-revision implementation re-review after base
-reconciliation.** Confirm that the reconciliation preserves the reviewed P1
-implementation, locked T3 requirements, planning/status state, scope isolation,
-and regression results. Copilot is not called until Kiro returns PASS; Ryan then
-decides the P1 implementation/merge gate. No P2/P3, migration, Bootstrap,
-live-data, Chroma, CG-2, Shadow, R2b, or T4/T5 work is authorized.
+**Next lane: Ryan.** Decide whether to issue a separate P2 Execute grant from
+post-P1 base `836e83960e834327868fedef0368366622869db7`, naming its branch,
+worktree, and PR. No P2/P3, migration, Bootstrap, live-data, Chroma, CG-2,
+Shadow, R2b, or T4/T5 work is authorized by this closeout.
 
 ## 6. What remains before this is live
 
-1. Cursor pushes the bounded P1 correction and reports its exact SHA and tests.
-2. Kiro performs the required read-only implementation re-review at that SHA.
-3. If Kiro PASSes, Copilot performs the targeted safety/isolation audit; Ryan
-   decides the P1 merge/close gate.
-4. P2/P3, migration, Bootstrap, CG-2, Shadow, R2b, and T4/T5 require separate
-   authorization and are not implied by this lane.
+1. P1 is merged at PR #203 merge commit `836e83960e834327868fedef0368366622869db7`.
+2. Ryan may separately authorize P2 from this post-closeout base, with a named
+   branch, worktree, and PR; current-ingest, Chroma, export, and reconstruction
+   work remain unauthorized until then.
+3. P3, migration, Bootstrap, CG-2, Shadow, R2b, and T4/T5 require separate
+   authorization and are not implied by P1 completion.
 
 ## 7. Hard stops and residual limitations
 
@@ -168,9 +164,9 @@ Do not append session narrative.
 | 2026-08-15 | Codex Sol-High | Retained T1–T5 and strengthened T3 provenance, acknowledgement, and migration boundaries; clean-SHA rereview required. |
 | 2026-08-16 | Codex Sol-High | Added capture/sealing consistency as a mechanism-neutral condition and V4m; runtime remains unauthorized and exact-revision rechecks remain pending. |
 | 2026-08-16 | Codex Sol-High | Added the P1 planning precondition to census every manifest-bound mutator; existing writer/Restic leases remain implementation context, not proof of V4m. |
-| 2026-08-18 | Codex | Ryan P1 Execute active on PR #203; bounded BLOCK correction, V4m baseline, restore boundary, and branch/grant bookkeeping are in progress; VERIFY remains PENDING. |
+| 2026-08-18 | Codex | PR #203 merged P1 at `836e83960e834327868fedef0368366622869db7`; P2 remains unauthorized and VERIFY remains PENDING. |
 
-**TL;DR:** P1 Execute is active only on the named correction branch/PR; the
-monitor-controlled authority and bounded verification corrections are being
-validated, with V4m and all VERIFY rows still PENDING. Kiro re-review is next;
-P2/P3 and live/Bootstrap/T4/T5 work remain unauthorized.
+**TL;DR:** P1 is complete and merged at PR #203; the monitor-controlled
+authority and bounded verification corrections are landed, with V4m and all
+VERIFY rows still PENDING. Ryan must separately authorize P2; P3 and
+live/Bootstrap/T4/T5 work remain unauthorized.
