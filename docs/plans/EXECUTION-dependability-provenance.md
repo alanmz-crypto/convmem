@@ -1,9 +1,9 @@
 # Execution Plan — Dependability and Provenance Integrity
 
 ```text
-Status:       P3 LANE CREATION ONLY — PR pending; no functional implementation
+Status:       P3 PR RECORDED — implementation authorized; VERIFY pending
 Depends on:  locked T3 basis; P1 closeout `809de5c6b296ea56428cf766bab4eb8912cafff3`
-Owner:       Cursor P3 lane creation under Ryan's exact Execute grant
+Owner:       Cursor P3 implementation lane under Ryan's exact Execute grant
 Baseline:    locked T3 @ aae0cad0bb05b0e436e213b28abbe0ff05ba2e91
 Grant:       Ryan T3 P1 Execute @ 83f63eb82a18fae38dfe0920146e9e427d39aabb
 Branch:      impl/2026-08-17-trapdoor-t3-p1; PR #203
@@ -15,7 +15,7 @@ P2 head:      `182f122614311df649ab0614ae6d26e9108646eb`
 P2 merge:     `017d1247685c858ad96bb47cc61582234d9ae1aa`
 P3 grant:     Ryan T3 P3 Execute from `6be6b353740b58b9652dccc1335906fdacd4e568`
 P3 branch:    impl/2026-08-18-trapdoor-t3-p3; `/home/lauer/Projects/convmem-trapdoor-t3-p3`
-P3 PR:        pending creation; no functional implementation may begin before its URL is recorded
+P3 PR:        [PR #205](https://github.com/alanmz-crypto/convmem/pull/205)
 ```
 
 ## Human consequence
@@ -159,12 +159,12 @@ planning package:
 |---|---|---|---|---|---|
 | P1 | Policy, envelope, monitor-minted assertion identity, recursive verification | Complete; granted at `83f63eb82a18fae38dfe0920146e9e427d39aabb`, final head `ec093b10afb6bd8a51a131174857ecbded4287bc` | `impl/2026-08-17-trapdoor-t3-p1` (`/tmp/convmem-trapdoor-t3-p1`) | [PR #203](https://github.com/alanmz-crypto/convmem/pull/203) | Focused/full validation, Kiro PASS, Copilot PASS, merged at `836e83960e834327868fedef0368366622869db7` |
 | P2 | Current-ingest bindings and unit/Chroma/export/reconstruction continuity | **Complete/merged** from `809de5c6b296ea56428cf766bab4eb8912cafff3`; head `182f122614311df649ab0614ae6d26e9108646eb`; merge `017d1247685c858ad96bb47cc61582234d9ae1aa` | `impl/2026-08-18-trapdoor-t3-p2` | [PR #204](https://github.com/alanmz-crypto/convmem/pull/204) | Binding/round-trip validation, P1 regression, Kiro PASS, Copilot PASS, Ryan merge complete |
-| P3 | Assertion-preserving exact dedupe, retrieval visibility, and same-content independence | **Granted** from `6be6b353740b58b9652dccc1335906fdacd4e568`; lane creation only until PR identity is recorded | `impl/2026-08-18-trapdoor-t3-p3` (`/home/lauer/Projects/convmem-trapdoor-t3-p3`) | Pending creation | Identity/dedupe/retrieval VERIFY plus review |
+| P3 | Assertion-preserving exact dedupe, retrieval visibility, and same-content independence | **Granted** from `6be6b353740b58b9652dccc1335906fdacd4e568`; PR identity recorded | `impl/2026-08-18-trapdoor-t3-p3` (`/home/lauer/Projects/convmem-trapdoor-t3-p3`) | [PR #205](https://github.com/alanmz-crypto/convmem/pull/205) | Identity/dedupe/retrieval VERIFY plus review |
 
 P1 implementation was authorized only on the named branch/worktree and PR for
 that grant, and is now merged. P2 was likewise authorized only on the named
-branch and PR above, and is now merged. P3 is authorized only for lane creation
-until its dedicated PR identity is recorded; no migration, live operation,
+branch and PR above, and is now merged. P3's dedicated PR identity is recorded;
+functional work is authorized only on that lane. No migration, live operation,
 Bootstrap, CG-2, Shadow, R2b, or T4/T5 work follows from P2.
 
 ### P1 / Stage 1A — Canonical policy and representation

@@ -3,14 +3,16 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** **P3 LANE CREATION ONLY; T3 VERIFY PENDING**. P2 was implemented on
+**State:** **P3 AUTHORIZED / PR #205 RECORDED; T3 VERIFY PENDING**. P2 was implemented on
 PR #204 at exact head `182f122614311df649ab0614ae6d26e9108646eb` and squash-merged
 at `017d1247685c858ad96bb47cc61582234d9ae1aa`. The locked T3 technical basis
 remains `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; P1 is complete/merged at
 PR #203 merge commit `836e83960e834327868fedef0368366622869db7`. P3 is authorized
-from closeout `6be6b353740b58b9652dccc1335906fdacd4e568` only to create its branch,
-worktree, and dedicated Draft PR; no functional implementation may begin before
-the actual PR number/URL is recorded. All repository VERIFY rows remain `PENDING`.
+from closeout `6be6b353740b58b9652dccc1335906fdacd4e568` on branch
+`impl/2026-08-18-trapdoor-t3-p3`, worktree
+`/home/lauer/Projects/convmem-trapdoor-t3-p3`, and [PR #205](https://github.com/alanmz-crypto/convmem/pull/205).
+Functional P3 work is now authorized only on that lane. All repository VERIFY
+rows remain `PENDING`.
 
 ## 1. What this project is for
 
@@ -60,7 +62,7 @@ decisions.
 | Surface | Current state |
 |---|---|
 | `docs/plans/ARCHITECTURE-dependability-provenance.md` | Locked T3 technical basis `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; unchanged in P1 correction lane. |
-| `docs/plans/EXECUTION-dependability-provenance.md` | P1/P2 are complete/merged; P3 lane `impl/2026-08-18-trapdoor-t3-p3` is created from `6be6b353740b58b9652dccc1335906fdacd4e568`, with its dedicated PR pending creation. |
+| `docs/plans/EXECUTION-dependability-provenance.md` | P1/P2 are complete/merged; P3 is authorized on `impl/2026-08-18-trapdoor-t3-p3` from `6be6b353740b58b9652dccc1335906fdacd4e568`, with [PR #205](https://github.com/alanmz-crypto/convmem/pull/205) recorded. |
 | `docs/plans/VERIFY-dependability-provenance.md` | Planning stub with predeclared properties; no evidence yet. |
 | `provenance.py` + `tests/test_provenance.py` | P1 in-memory policy/envelope/identity/verification substrate and focused tests; merged through PR #203. |
 | `docs/plans/P1-PROVENANCE-MUTATOR-CENSUS.md` | P1 V4m mutator census and consistency-contract baseline; V4m remains PENDING. |
@@ -90,7 +92,7 @@ serving authority/repository.
 | Stage 0 architecture package | **Locked** at `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91` | No further architecture edits in P1 correction lane. |
 | Stage 1A policy/representation substrate (T3 child slice) | **P1 complete/merged** | P1 implementation, focused/full validation, Kiro PASS, Copilot PASS, and PR #203 merge complete; VERIFY remains PENDING. |
 | Stage 1B assertion/exact-dedupe continuity (T3 child slice) | Not authorized | T1/T2 architecture and evidence outputs complete and accepted, then separate Ryan Execute grant; independent assertions survive cross-tier equivalence and retrieval. |
-| P1/P2/P3 execution slices | **P1/P2 complete/merged; P3 lane creation only** | P3 has a separate Ryan Execute grant; functional implementation waits for the dedicated PR identity to be recorded. |
+| P1/P2/P3 execution slices | **P1/P2 complete/merged; P3 authorized** | P3 has a separate Ryan Execute grant, branch/worktree, and [PR #205](https://github.com/alanmz-crypto/convmem/pull/205); implementation remains limited to the P3 scope. |
 | Stage 2 semantic dedupe | Deferred | Separate design and grant. |
 | Stage 3 consumer visibility | Deferred beyond Stage 1 minimum | Consumer contract and enforcement boundary reviewed. |
 | CG-1/CG-2 assurance integration | Parallel/later | Separate Execute brief after canonical Stage 1 representation is locked. |
@@ -101,11 +103,10 @@ serving authority/repository.
 
 ## 5. Your role now
 
-**Current lane: P3 lane creation only** on branch
+**Current lane: Cursor P3 implementation** on branch
 `impl/2026-08-18-trapdoor-t3-p3` in worktree
 `/home/lauer/Projects/convmem-trapdoor-t3-p3`, from exact basis
-`6be6b353740b58b9652dccc1335906fdacd4e568`. Create and record the dedicated
-Draft PR before functional P3 implementation. P3 implementation, migration, Bootstrap,
+`6be6b353740b58b9652dccc1335906fdacd4e568`, [PR #205](https://github.com/alanmz-crypto/convmem/pull/205). P3 implementation is limited to assertion continuity, exact dedupe, and retrieval provenance. Migration, Bootstrap,
 live-data/Chroma mutation, CG-2, Shadow, R2b, and T4/T5 remain unauthorized.
 
 ## 6. What remains before this is live
@@ -114,9 +115,10 @@ live-data/Chroma mutation, CG-2, Shadow, R2b, and T4/T5 remain unauthorized.
 2. P2 is complete/merged at implementation head
    `182f122614311df649ab0614ae6d26e9108646eb`, PR #204 merge commit
    `017d1247685c858ad96bb47cc61582234d9ae1aa`; Kiro and Copilot both passed.
-3. P3 has a separate Execute grant but remains at lane creation only until its
-   actual dedicated PR number/URL is recorded; migration, Bootstrap, CG-2,
-   Shadow, R2b, and T4/T5 remain separately gated.
+3. P3 has its separate Execute grant and dedicated PR; complete only the
+   authorized assertion/retrieval continuity scope before the Kiro/Copilot and
+   Ryan merge gates. Migration, Bootstrap, CG-2, Shadow, R2b, and T4/T5 remain
+   separately gated.
 
 ## 7. Hard stops and residual limitations
 
@@ -173,5 +175,6 @@ Do not append session narrative.
 | 2026-08-18 | Cursor | Ryan granted P2 from closeout `809de5c6b296ea56428cf766bab4eb8912cafff3`; PR #204 is in progress for current-ingest and projection continuity, with VERIFY still PENDING. |
 | 2026-08-18 | Codex | PR #204 P2 implementation `182f122614311df649ab0614ae6d26e9108646eb` merged at `017d1247685c858ad96bb47cc61582234d9ae1aa`; P3 remains unauthorized and VERIFY remains PENDING. |
 | 2026-08-18 | Codex | Ryan granted P3 from closeout `6be6b353740b58b9652dccc1335906fdacd4e568`; branch/worktree created and Draft PR creation is pending before implementation. |
+| 2026-08-18 | Codex | Dedicated P3 Draft [PR #205](https://github.com/alanmz-crypto/convmem/pull/205) recorded; functional work remains limited to the authorized P3 scope and VERIFY remains PENDING. |
 
-**TL;DR:** P1 and P2 are complete and merged; P3 lane creation is underway from the exact closeout basis, with functional implementation blocked until its dedicated Draft PR is recorded; all VERIFY rows remain PENDING.
+**TL;DR:** P1 and P2 are complete and merged; P3 is authorized on [PR #205](https://github.com/alanmz-crypto/convmem/pull/205) from the exact closeout basis, with all VERIFY rows still PENDING and excluded capabilities separately gated.
