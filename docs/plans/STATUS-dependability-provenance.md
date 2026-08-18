@@ -3,12 +3,14 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** T3 is governance-locked at
-`aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; Ryan granted P1 Execute at
-`83f63eb82a18fae38dfe0920146e9e427d39aabb`. The bounded P1 BLOCK-correction
-lane is active on `impl/2026-08-17-trapdoor-t3-p1` in
+**State:** **RYAN_T3_LOCK — PASS** at exact technical basis
+`aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; Kiro's prior conditional findings
+on active R8 pin reclamation/loss semantics and V4m evidence phasing are
+resolved, and Copilot passed against the final planning revision. Ryan granted
+P1 Execute at `83f63eb82a18fae38dfe0920146e9e427d39aabb`; the bounded P1
+correction lane is active on `impl/2026-08-17-trapdoor-t3-p1` in
 `/tmp/convmem-trapdoor-t3-p1` for draft PR #203. All repository VERIFY rows
-remain PENDING; Kiro's read-only implementation re-review is the next gate.
+remain `PENDING`; Kiro's read-only implementation re-review is the next gate.
 
 ## 1. What this project is for
 
@@ -99,11 +101,12 @@ serving authority/repository.
 
 ## 5. Your role now
 
-**Next lane: Kiro exact-revision implementation re-review.** Confirm the pushed
-P1 correction SHA, differential/full-suite result, BLOCK correction, V4m census,
-and bounded-finding dispositions. Copilot is not called until Kiro returns PASS;
-Ryan then decides the P1 implementation/merge gate. No P2/P3, migration,
-Bootstrap, live-data, Chroma, CG-2, Shadow, R2b, or T4/T5 work is authorized.
+**Next lane: Kiro exact-revision implementation re-review after base
+reconciliation.** Confirm that the reconciliation preserves the reviewed P1
+implementation, locked T3 requirements, planning/status state, scope isolation,
+and regression results. Copilot is not called until Kiro returns PASS; Ryan then
+decides the P1 implementation/merge gate. No P2/P3, migration, Bootstrap,
+live-data, Chroma, CG-2, Shadow, R2b, or T4/T5 work is authorized.
 
 ## 6. What remains before this is live
 
