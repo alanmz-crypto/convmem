@@ -86,7 +86,7 @@ def _root_bindings(
     return roots
 
 
-def build_ingest_envelope(
+def build_ingest_envelope(  # pylint: disable=too-many-arguments
     *,
     records: Sequence[Any],
     consumed_views: Sequence[str],

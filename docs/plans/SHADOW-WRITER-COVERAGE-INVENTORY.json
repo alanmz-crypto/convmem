@@ -8,10 +8,10 @@
     "convmem.py:367",
     "convmem.py:471",
     "convmem.py:636",
-    "ingest.py:524",
-    "ingest.py:787",
-    "ingest.py:825",
-    "inter_model_index.py:162"
+    "ingest.py:556",
+    "ingest.py:888",
+    "ingest.py:926",
+    "inter_model_index.py:201"
   ],
   "open_production_write_store_call_sites": [
     "observe.py:234",
@@ -194,7 +194,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 524,
+      "line": 556,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -203,7 +203,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 787,
+      "line": 888,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "reads_reindex_snapshot_under_writer_gate",
       "required_routing": "production_chroma_write_session",
@@ -212,7 +212,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 825,
+      "line": 926,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -221,7 +221,7 @@
     },
     {
       "file": "inter_model_index.py",
-      "line": 162,
+      "line": 201,
       "snippet": "with production_chroma_write_session(entrypoint=\"inter_model_index\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
