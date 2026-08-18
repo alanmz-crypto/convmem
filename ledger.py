@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from domains import normalize_domain
-from provenance_binding import provenance_identity
 
 LEDGER_KINDS = ("observation", "decision", "verification")
 _SEVERITIES = {"critical", "high", "medium", "low", "info"}
@@ -435,13 +434,13 @@ def _kind(meta: dict) -> str:
 
 
 def _dedupe_by_ledger_id(metas: list[dict]) -> list[dict]:
-    """Dedupe legacy ledger twins without collapsing assertions."""
-    by_lid: dict[str, dict[tuple[str, str] | None, dict]] = {}
+    """Keep one metadata row per ledger_id (last wins — e.g. re-ingest)."""
+    by_lid: dict[str, dict] = {}
     for meta in metas:
         lid = (meta.get("ledger_id") or "").strip()
         if lid:
-            by_lid.setdefault(lid, {})[provenance_identity(meta)] = meta
-    return [meta for identities in by_lid.values() for meta in identities.values()]
+            by_lid[lid] = meta
+    return list(by_lid.values())
 
 
 def related_chain(store, ledger_id: str) -> dict | None:

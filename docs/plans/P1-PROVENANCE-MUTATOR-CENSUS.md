@@ -75,7 +75,7 @@ manifest-bound authority writer:
 | `ingest_dedupe.evaluate_ingest_batch()` | Exact suppression is identity-preserving replay only; distinct, missing, or malformed provenance remains independently accepted. | Revalidated in P3 tests; V4m remains pending |
 | `ChromaStore.add_unit()` / `update_unit()` / `update_unit_metadata()` | A physical projection slot may not replace a bound assertion with a distinct or missing identity; exact identity/commitment replay remains allowed. | Revalidated in P3 tests; V4m remains pending |
 | `refine.job_chroma_dedupe()` / semantic tombstone path | Automatic or approved dedupe cannot tombstone across distinct provenance identities. | Revalidated in P3 tests; V4m remains pending |
-| `query.py`, `evidence.py`, `ledger.py`, and `ask.py` retrieval paths | Ranking, ledger, and projection dedupe retain distinct validated assertion identities and only collapse legacy twins or exact assertion replays. | Revalidated in P3 tests; V4m remains pending |
+| `query.py`, `evidence.py`, and `ask.py` retrieval paths | Ranking, ledger-result, and projection dedupe retain distinct validated assertion identities and only collapse legacy twins or exact assertion replays. | Revalidated in P3 tests; V4m remains pending |
 
 P3 does not add a new capture/sealing writer or claim final universal V4m
 evidence.  The final writer set, universal coverage, and overlap controls remain
