@@ -37,7 +37,12 @@ from llm import (
     summarize_consumed_view,
     summarize_prompt,
 )
-from provenance_binding import attach_unit_provenance, build_ingest_envelope, projection_metadata
+from provenance_binding import (
+    attach_unit_provenance,
+    build_ingest_envelope,
+    projection_metadata,
+    provenance_identity,
+)
 
 _SYNTHESIS_FAIL_LOG = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
 
@@ -558,16 +563,46 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
             cfg = _pw.live_cfg
             store.add_summary(doc_id, summary, summary_embedding, metadata)
             dedupe = evaluate_ingest_batch(store, cfg, units_to_add)
+            written_projection_ids: set[str] = set()
             for unit, doc, unit_embedding, unit_meta in dedupe.accepted:
-                store.add_unit(unit["id"], doc, unit_embedding, unit_meta)
+                projection_unit = dict(unit)
+                projection_meta = dict(unit_meta)
+                existing = store.get_unit(unit["id"])
+                existing_identity = (
+                    provenance_identity(existing.get("metadata") or {})
+                    if existing is not None
+                    else None
+                )
+                candidate_identity = provenance_identity(unit_meta)
+                if (
+                    existing is not None
+                    and candidate_identity is not None
+                    and existing_identity != candidate_identity
+                    and (existing_identity is not None or candidate_identity is not None)
+                ):
+                    # A stable source/chunk id is a projection address, not
+                    # provenance authority. Keep the old assertion intact
+                    # while staging a distinct assertion for this generation.
+                    projection_id = hashlib.sha256(
+                        (
+                            "convmem-p3-projection-v1:"
+                            f"{unit['id']}:{candidate_identity[0]}:{candidate_identity[1]}"
+                        ).encode("utf-8")
+                    ).hexdigest()
+                    projection_unit["id"] = projection_id
+                    projection_meta["id"] = projection_id
+                store.add_unit(
+                    projection_unit["id"], doc, unit_embedding, projection_meta
+                )
+                written_projection_ids.add(projection_unit["id"])
                 if units_export:
                     units_export.parent.mkdir(parents=True, exist_ok=True)
                     with export_flock(cfg):
                         with open(units_export, "a", encoding="utf-8") as uf:
-                            uf.write(json.dumps(unit) + "\n")
+                            uf.write(json.dumps(projection_unit) + "\n")
                 n_units += 1
             if written_unit_ids is not None:
-                written_unit_ids.update(row[0]["id"] for row in dedupe.accepted)
+                written_unit_ids.update(written_projection_ids)
         dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
         if verbose:
             for row in dedupe.exact_suppressions:

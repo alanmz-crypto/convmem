@@ -72,6 +72,7 @@ manifest-bound authority writer:
 
 | Mutator | P3 continuity obligation | P3 disposition |
 |---|---|---|
+| `ingest._commit_chunk_to_stores()` | A new assertion that collides with a stable source/chunk projection address receives a distinct projection slot; the prior assertion remains available until successful reindex pruning. | Revalidated by safe-reindex regression; V4m remains pending |
 | `ingest_dedupe.evaluate_ingest_batch()` | Exact suppression is identity-preserving replay only; distinct, missing, or malformed provenance remains independently accepted. | Revalidated in P3 tests; V4m remains pending |
 | `ChromaStore.add_unit()` / `update_unit()` / `update_unit_metadata()` | A physical projection slot may not replace a bound assertion with a distinct or missing identity; exact identity/commitment replay remains allowed. | Revalidated in P3 tests; V4m remains pending |
 | `refine.job_chroma_dedupe()` / semantic tombstone path | Automatic or approved dedupe cannot tombstone across distinct provenance identities. | Revalidated in P3 tests; V4m remains pending |
