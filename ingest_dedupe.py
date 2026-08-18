@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from vector_similarity import cosine_similarity
+from provenance_binding import provenance_identity
 
 
 def _now_iso() -> str:
@@ -65,6 +66,17 @@ def _logical_id(row: dict, metadata: dict) -> str:
     )
 
 
+def _exact_replay_identity(
+    new_identity: tuple[str, str] | None,
+    existing_identity: tuple[str, str] | None,
+) -> bool:
+    """Allow exact suppression only for legacy pairs or the same assertion."""
+
+    if new_identity is None and existing_identity is None:
+        return True
+    return new_identity is not None and new_identity == existing_identity
+
+
 def evaluate_ingest_batch(  # pylint: disable=too-many-locals,too-many-nested-blocks
     store,
     cfg: dict,
@@ -84,6 +96,7 @@ def evaluate_ingest_batch(  # pylint: disable=too-many-locals,too-many-nested-bl
         content_hash = unit_content_hash(document)
         unit = dict(unit)
         metadata = dict(metadata)
+        new_identity = provenance_identity(unit)
         unit["content_hash"] = content_hash
         metadata["content_hash"] = content_hash
 
@@ -95,6 +108,7 @@ def evaluate_ingest_batch(  # pylint: disable=too-many-locals,too-many-nested-bl
         for candidate in existing:
             candidate_id = str(candidate.get("id") or "")
             candidate_meta = candidate.get("metadata") or {}
+            candidate_identity = provenance_identity(candidate_meta)
             same_identity = candidate_id == unit["id"]
             if generation_identity_fields:
                 same_identity = _logical_id(candidate, candidate_meta) == _logical_id(
@@ -107,8 +121,12 @@ def evaluate_ingest_batch(  # pylint: disable=too-many-locals,too-many-nested-bl
                 canonical_unit_text(candidate.get("document") or "") == canonical
             )
             if same_hash or same_text:
-                exact_match = candidate_id
-                break
+                if _exact_replay_identity(new_identity, candidate_identity):
+                    exact_match = candidate_id
+                    break
+                # Distinct, missing, or malformed provenance is never an
+                # identity-preserving replay of this content.
+                continue
             distance = candidate.get("distance")
             if distance is None:
                 continue
@@ -123,9 +141,12 @@ def evaluate_ingest_batch(  # pylint: disable=too-many-locals,too-many-nested-bl
                 accepted_embedding,
                 accepted_meta,
             ) in accepted_rows:
+                accepted_identity = provenance_identity(accepted_meta)
                 if accepted_meta.get("content_hash") == content_hash:
-                    exact_match = accepted_unit["id"]
-                    break
+                    if _exact_replay_identity(new_identity, accepted_identity):
+                        exact_match = accepted_unit["id"]
+                        break
+                    continue
                 similarity = cosine_similarity(embedding, accepted_embedding)
                 if similarity >= threshold:
                     semantic.append((similarity, accepted_unit["id"], accepted_meta))

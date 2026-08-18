@@ -20,6 +20,7 @@ from domains import DEFAULT_DOMAINS, normalize_domain
 from process_lock import acquire_lock, release_lock
 from vector_similarity import cosine_similarity
 from ingest_dedupe import semantic_queue_at_max_depth
+from provenance_binding import provenance_identity
 
 JOB_NAMES = (
     "chroma_dedupe",
@@ -188,6 +189,11 @@ def _tombstone_semantic_duplicate(
         raise ValueError(f"canonical unit not found: {canonical_id}")
     if is_superseded(canon.get("metadata") or {}):
         raise ValueError(f"canonical unit is tombstoned: {canonical_id}")
+    tombstone_identity = provenance_identity(meta)
+    canonical_identity = provenance_identity(canon.get("metadata") or {})
+    if tombstone_identity is not None or canonical_identity is not None:
+        if tombstone_identity != canonical_identity:
+            raise ValueError("cross-provenance tombstone is blocked")
     meta["id"] = tombstone_id
     write_undo_snapshot(cfg, "semantic_dedupe", [meta])
     new_meta = dict(meta)
@@ -333,12 +339,27 @@ def job_chroma_dedupe(
             continue
         by_lid[lid].append(m)
 
-    stats = {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0, "llm_calls": 0}
+    stats = {
+        "processed": 0,
+        "tombstoned": 0,
+        "skipped": 0,
+        "errors": 0,
+        "llm_calls": 0,
+        "provenance_blocked": 0,
+    }
     groups = [(lid, g) for lid, g in by_lid.items() if len(g) > 1]
     if limit is not None:
         groups = groups[:limit]
 
     for lid, group in groups:
+        identity_values = [provenance_identity(meta) for meta in group]
+        identities = {identity for identity in identity_values if identity is not None}
+        if identities and (
+            len(identities) > 1 or any(identity is None for identity in identity_values)
+        ):
+            stats["provenance_blocked"] += 1
+            stats["skipped"] += 1
+            continue
         canonical = _pick_canonical(group)
         canon_id = canonical["id"]
         to_tombstone = [m for m in group if m["id"] != canon_id]

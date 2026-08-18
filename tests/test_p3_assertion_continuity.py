@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 from chroma_store import ChromaStore
-from evidence import dedupe_results_by_ledger_id
+from ask import _prepend_recent_decisions
+from evidence import dedupe_results_by_ledger_id, filter_superseded_decisions
 from ingest_dedupe import evaluate_ingest_batch
 from provenance import (
     IdentityReplayError,
@@ -22,6 +23,7 @@ from provenance_binding import (
     projection_metadata,
 )
 from refine import apply_dedupe_queue_record, job_chroma_dedupe
+from query import _merge_priority_hits
 
 
 def _provenance_row(
@@ -105,7 +107,7 @@ def test_exact_content_with_distinct_provenance_remains_accepted(tmp_path: Path)
         result = evaluate_ingest_batch(store, _cfg(tmp_path), [incoming])
 
         assert [row[0]["id"] for row in result.accepted] == ["incoming"]
-        assert result.exact_suppressions == []
+        assert not result.exact_suppressions
     finally:
         store.close()
 
@@ -127,7 +129,55 @@ def test_content_only_match_cannot_alias_new_row_to_authoritative_projection(
         result = evaluate_ingest_batch(store, _cfg(tmp_path), [incoming])
 
         assert [row[0]["id"] for row in result.accepted] == ["legacy-incoming"]
-        assert result.exact_suppressions == []
+        assert not result.exact_suppressions
+    finally:
+        store.close()
+
+
+def test_physical_projection_replace_blocks_distinct_provenance(
+    tmp_path: Path,
+) -> None:
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    store = ChromaStore(str(chroma))
+    try:
+        existing = _provenance_row("physical-slot", "source-a")
+        incoming = _provenance_row("physical-slot", "source-b")
+        store.add_unit(existing[0]["id"], existing[1], existing[2], existing[3])
+
+        with pytest.raises(ValueError, match="discard distinct provenance"):
+            store.add_unit(
+                incoming[0]["id"], incoming[1], incoming[2], incoming[3]
+            )
+        with pytest.raises(ValueError, match="discard distinct provenance"):
+            store.update_unit_metadata(incoming[0]["id"], incoming[3])
+        with pytest.raises(ValueError, match="discard distinct provenance"):
+            store.update_unit(
+                incoming[0]["id"], incoming[1], incoming[2], incoming[3]
+            )
+
+        retained = store.get_unit("physical-slot")
+        assert retained is not None
+        assert retained["metadata"]["provenance_commitment"] == existing[3][
+            "provenance_commitment"
+        ]
+    finally:
+        store.close()
+
+
+def test_physical_projection_replay_allows_same_identity(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    store = ChromaStore(str(chroma))
+    try:
+        original = _provenance_row("physical-slot", "source-a")
+        store.add_unit(original[0]["id"], original[1], original[2], original[3])
+
+        store.add_unit(original[0]["id"], original[1], original[2], original[3])
+
+        retained = store.get_unit("physical-slot")
+        assert retained is not None
+        assert retained["metadata"]["assertion_id"] == original[3]["assertion_id"]
     finally:
         store.close()
 
@@ -146,6 +196,22 @@ def test_retrieval_keeps_same_ledger_id_when_assertions_have_distinct_provenance
     assert all(row["metadata"].get("provenance_commitment") for row in kept)
 
 
+def test_recent_ledger_injection_does_not_hide_distinct_provenance():
+    semantic = [{
+        "id": "semantic",
+        "metadata": _provenance_row(
+            "semantic", "source-a", ledger_id="dec_shared"
+        )[3],
+    }]
+    recent = [{"id": "dec_shared", "summary": "same ledger, new assertion"}]
+
+    merged = _prepend_recent_decisions(semantic, recent, total_limit=2)
+
+    assert len(merged) == 2
+    assert merged[0].get("evidence_status") == "recent_decision"
+    assert merged[1]["id"] == "semantic"
+
+
 def test_retrieval_keeps_integrity_fields_independent_for_duplicate_content():
     first = _provenance_row("first", "source-a")[3]
     second = _provenance_row("second", "source-b")[3]
@@ -162,6 +228,33 @@ def test_retrieval_keeps_integrity_fields_independent_for_duplicate_content():
         "untrusted",
         "trusted",
     ]
+
+
+def test_priority_merge_does_not_drop_distinct_provenance_assertions():
+    first = _provenance_row("first", "source-a")[3]
+    second = _provenance_row("second", "source-b")[3]
+    merged = _merge_priority_hits(
+        [{"id": "first", "metadata": first}],
+        [{"id": "second", "metadata": second}],
+    )
+
+    assert [row["id"] for row in merged] == ["second", "first"]
+
+
+def test_supersession_filter_does_not_hide_distinct_provenance_decisions():
+    child = _provenance_row("child", "source-child", ledger_id="dec_child")[3]
+    parent = _provenance_row("parent", "source-parent", ledger_id="dec_parent")[3]
+    child.update({"ledger_kind": "decision", "relates_to": "dec_parent"})
+    parent.update({"ledger_kind": "decision", "relates_to": "obs_root"})
+
+    kept = filter_superseded_decisions(
+        [
+            {"id": "child", "metadata": child},
+            {"id": "parent", "metadata": parent},
+        ]
+    )
+
+    assert [row["id"] for row in kept] == ["child", "parent"]
 
 
 def test_approved_semantic_tombstone_requires_provenance_adjudication(
