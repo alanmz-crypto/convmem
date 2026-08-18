@@ -5,13 +5,13 @@
 > the locked T3 requirements or promote repository VERIFY rows.
 
 ```text
-Status:       P4 evidence collection not started
+Status:       P4 PR #207 recorded; evidence collection not started
 Arc:          Trapdoor Hunt
 Starting basis: 6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1
 Locked T3:    aae0cad0bb05b0e436e213b28abbe0ff05ba2e91
 Branch:       verify/2026-08-18-trapdoor-t3-p4
 Worktree:     /home/lauer/Projects/convmem-trapdoor-t3-p4
-PR:           to be recorded before evidence collection
+PR:           https://github.com/alanmz-crypto/convmem/pull/207
 ```
 
 ## Evidence-only boundary
