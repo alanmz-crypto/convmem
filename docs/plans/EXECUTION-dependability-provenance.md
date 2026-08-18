@@ -1,19 +1,21 @@
 # Execution Plan — Dependability and Provenance Integrity
 
 ```text
-Status:       P1 EXECUTE ACTIVE — T3 governance lock complete; VERIFY pending
-Depends on:  locked T3 basis and Ryan P1 Execute grant; Kiro re-review required
-Owner:       Cursor on the dedicated P1 correction branch
+Status:       P1 COMPLETE / MERGED — T3 governance lock complete; VERIFY pending
+Depends on:  locked T3 basis; separate Ryan P2 Execute grant required next
+Owner:       Cursor only after the separately named P2 Execute grant
 Baseline:    locked T3 @ aae0cad0bb05b0e436e213b28abbe0ff05ba2e91
 Grant:       Ryan T3 P1 Execute @ 83f63eb82a18fae38dfe0920146e9e427d39aabb
 Branch:      impl/2026-08-17-trapdoor-t3-p1; PR #203
+Closeout:    PR #203 merged at `836e83960e834327868fedef0368366622869db7`
 ```
 
 ## Human consequence
 
 This plan decomposes the first implementation slice so reviewers can test its
-feasibility. Ryan has authorized only the P1 implementation/correction surface
-named above. It does not authorize migrations, live Chroma/corpus mutation,
+feasibility. Ryan authorized only the P1 implementation/correction surface
+named above, and that unit is now complete and merged. It does not authorize
+migrations, live Chroma/corpus mutation,
 CG-2 activation, Shadow activation, R2b capture, or external changes.
 Stage 1 must be additive and conservative: existing records remain queryable but
 are untrusted for security decisions until they carry valid provenance.
@@ -148,13 +150,13 @@ planning package:
 
 | Slice | Scope | Ryan grant | Implementation branch | PR | Gate |
 |---|---|---|---|---|---|
-| P1 | Policy, envelope, monitor-minted assertion identity, recursive verification | Granted at `83f63eb82a18fae38dfe0920146e9e427d39aabb`; correction lane active | `impl/2026-08-17-trapdoor-t3-p1` (`/tmp/convmem-trapdoor-t3-p1`) | [PR #203](https://github.com/alanmz-crypto/convmem/pull/203) | Focused/full validation, then Kiro re-review; Copilot only after Kiro PASS |
+| P1 | Policy, envelope, monitor-minted assertion identity, recursive verification | Complete; granted at `83f63eb82a18fae38dfe0920146e9e427d39aabb`, final head `ec093b10afb6bd8a51a131174857ecbded4287bc` | `impl/2026-08-17-trapdoor-t3-p1` (`/tmp/convmem-trapdoor-t3-p1`) | [PR #203](https://github.com/alanmz-crypto/convmem/pull/203) | Focused/full validation, Kiro PASS, Copilot PASS, merged at `836e83960e834327868fedef0368366622869db7` |
 | P2 | Current-ingest bindings and unit/Chroma/export/reconstruction continuity | Separate P2 Execute grant | `feat/2026-08-15-provenance-bindings` | Separate P2 PR | Binding/round-trip VERIFY plus review |
 | P3 | Assertion-preserving exact dedupe, retrieval visibility, and same-content independence | Separate P3 Execute grant | `feat/2026-08-15-provenance-assertion-continuity` | Separate P3 PR | Identity/dedupe/retrieval VERIFY plus review |
 
-P1 implementation is authorized only on the named branch/worktree and PR for
-this grant. P2/P3 remain uncreated and unauthorized; no merge, migration, or
-live operation follows from the P1 grant.
+P1 implementation was authorized only on the named branch/worktree and PR for
+that grant, and is now merged. P2/P3 remain unauthorized; no migration, live
+operation, or later-phase work follows from P1 completion.
 
 ### P1 / Stage 1A — Canonical policy and representation
 
