@@ -1,6 +1,7 @@
 # Copy to config.toml (gitignored) for Codex sessions in this repo.
 # Enables localhost Ollama + DeepSeek for `convmem ask` / doctor.
-# kiro-cli auth store needs write access (SQLite WAL) for `kiro-cli whoami` / agent spawn.
+# kiro-cli needs write access to its data dir (SQLite WAL for auth) and ~/.kiro
+# (settings, sessions, logs) to start without EROFS errors in the sandbox.
 [sandbox_workspace_write]
 network_access = true
-writable_roots = ["/home/lauer/.local/share/kiro-cli"]
+writable_roots = ["/home/lauer/.local/share/kiro-cli", "/home/lauer/.kiro"]
