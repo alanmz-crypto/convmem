@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-18 (Arc Trapdoor Hunt P4 verification packet and review handoff)
+**Updated:** 2026-08-18 (Arc Trapdoor Hunt P4 evidence merged; T3 closure pending)
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
 ## Recently merged / settled (2026-08-08 through 2026-08-15)
@@ -23,7 +23,7 @@
 
 ## Active handoff
 
-- **Arc Trapdoor Hunt — T3 P4 verification evidence (2026-08-18):** Who/What: Codex evidence-only packet for the merged P1/P2/P3 implementation, tested at `6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1` against locked T3 basis `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`. When: Ryan granted P4 from post-P3 closeout; branch `verify/2026-08-18-trapdoor-t3-p4`, worktree `/home/lauer/Projects/convmem-trapdoor-t3-p4`, draft [PR #207](https://github.com/alanmz-crypto/convmem/pull/207). Why: collect deterministic VERIFY evidence without repairing implementation or changing VERIFY state. How: focused evidence and candidate/baseline differential are recorded; Kiro PASS and Copilot targeted review are being reconciled through the bounded documentation correction. **Do not begin migration, live-data, Chroma, Verified Ingress Bootstrap, CG-1/CG-2, Shadow, R2b, T4, or T5 work.**
+- **Arc Trapdoor Hunt — T3 P4 verification evidence (2026-08-18):** Who/What: Codex evidence-only packet for the merged P1/P2/P3 implementation, tested at `6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1` against locked T3 basis `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`. When: PR #207 was squash-merged at `37c6aabde0dd8f1b7cc190d36a8a19d7a07b8c34` with evidence candidate `b7b5fe0b82285fd522cb9e6e3ed54722ac29007f`. Why: record P4 completion without repairing implementation or changing VERIFY state. How: the packet records 57 PASS candidates / 32 PENDING entries; Kiro PASSed, Copilot's bookkeeping-only FAIL was adjudicated nonblocking by Sol-High, and all repository VERIFY rows remain `PENDING`. T3 closure is not granted. **Do not begin migration, live-data, Chroma, Verified Ingress Bootstrap, CG-1/CG-2, Shadow, R2b, T4, or T5 work. The next lane is a separate read-only classification of the 32 PENDING entries.**
 
 - **Chroma reconcile Tier L — R4 GREEN, arc closed (2026-08-09):** Who/What: Crush index rebuild + DeepSeek Flash V1–V6 post-rebuild verify; Cursor landscape sync. When: rebuild completed 2026-08-08; R4 GREEN 2026-08-09; docs on `main` via [#161](https://github.com/alanmz-crypto/convmem/pull/161). Why: 646 HNSW orphans blocked calibration and contaminated retrieval. How: full re-index, orphan inventory **0**, calibration 100% with `eval-synthesis.py --judge --legacy`, and `convmem doctor` PASS with two non-fatal warnings (legacy embed metadata and external-restic freshness).
 

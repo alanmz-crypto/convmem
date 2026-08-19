@@ -1,7 +1,7 @@
 # Execution Plan — Dependability and Provenance Integrity
 
 ```text
-Status:       P3 COMPLETE / MERGED — P1/P2 merged; T3 VERIFY pending
+Status:       P4 COMPLETE / MERGED — P1/P2/P3 merged; T3 VERIFY pending
 Depends on:  locked T3 basis; P1 closeout `809de5c6b296ea56428cf766bab4eb8912cafff3`
 Owner:       Ryan governance closeout after Cursor P3 implementation and review
 Baseline:    locked T3 @ aae0cad0bb05b0e436e213b28abbe0ff05ba2e91
@@ -18,12 +18,18 @@ P3 branch:    impl/2026-08-18-trapdoor-t3-p3; `/home/lauer/Projects/convmem-trap
 P3 PR:        [PR #205](https://github.com/alanmz-crypto/convmem/pull/205)
 P3 head:      `8aa687724cdedf22b4b602f09cbc5e053d22d046`
 P3 merge:     `ebe0dfc9a17a4288892dce6f10cd6744f6d27315`
+P4 grant:     Ryan T3 P4 Execute from `6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1`
+P4 branch:    verify/2026-08-18-trapdoor-t3-p4; `/home/lauer/Projects/convmem-trapdoor-t3-p4`
+P4 PR:        [PR #207](https://github.com/alanmz-crypto/convmem/pull/207)
+P4 evidence:  `b7b5fe0b82285fd522cb9e6e3ed54722ac29007f`
+P4 merge:     `37c6aabde0dd8f1b7cc190d36a8a19d7a07b8c34`
 ```
 
 ## Human consequence
 
 This plan decomposes the implementation slices so reviewers can test their
-feasibility. Ryan authorized P1, P2, and P3; all three are now complete and merged. It does not authorize
+feasibility. Ryan authorized P1, P2, P3, and the P4 evidence lane; all are now
+complete/merged. It does not authorize
 migrations, live Chroma/corpus mutation,
 CG-2 activation, Shadow activation, R2b capture, or external changes.
 Stage 1 must be additive and conservative: existing records remain queryable but
@@ -354,7 +360,7 @@ Likely surfaces after re-trace:
 - `serving_authority.py`
 - `serving_index_repository.py`
 
-### P4 — Stage 1 verification packet and compatibility closure
+### P4 — Stage 1 verification packet and compatibility closure — COMPLETE/MERGED
 
 Run the locked tests in `VERIFY-dependability-provenance.md`. Produce evidence
 for the exact implementation tip, including focused and full regression runs,
@@ -362,7 +368,11 @@ diff checks, no-live-mutation proof, serialized fixtures, and negative controls.
 
 Kiro reviews the implementation design/result. Copilot performs the targeted
 safety/isolation audit because this changes security-relevant data continuity.
-Ryan alone decides merge and any later migration/activation grant.
+The packet records 57 PASS candidates and 32 PENDING entries. Kiro PASSed;
+Copilot's bookkeeping-only FAIL was adjudicated nonblocking by Sol-High. All
+repository VERIFY rows remain `PENDING`, final V4m evidence remains `PENDING`,
+and T3 closure has not been granted. Ryan alone decides any later closure,
+migration, or activation grant.
 
 ### A2 / parallel-later — Broad dependability assurance
 
