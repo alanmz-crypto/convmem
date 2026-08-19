@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
-from chroma_write_store import open_production_write_store
+from chroma_write_store import open_production_write_store, production_writer_boundary
 from domains import DEFAULT_DOMAINS, normalize_domain
 from process_lock import acquire_lock, release_lock
 from vector_similarity import cosine_similarity
@@ -252,6 +252,17 @@ def apply_dedupe_queue_record(
 
 
 def apply_approved_dedupe(
+    target: str,
+    *,
+    verbose: bool = True,
+) -> dict:
+    """Apply approved dedupe under one universal mutation/capture boundary."""
+
+    with production_writer_boundary(entrypoint="refine.write"):
+        return _apply_approved_dedupe_impl(target, verbose=verbose)
+
+
+def _apply_approved_dedupe_impl(
     target: str,
     *,
     verbose: bool = True,
@@ -727,6 +738,18 @@ def _cost_caps(cfg: dict) -> dict[str, int]:
 
 
 def run_job(
+    job: str,
+    *,
+    limit: int | None = None,
+    verbose: bool = True,
+) -> dict:
+    """Run one refinement job under one universal mutation/capture boundary."""
+
+    with production_writer_boundary(entrypoint="refine.write"):
+        return _run_job_impl(job, limit=limit, verbose=verbose)
+
+
+def _run_job_impl(
     job: str,
     *,
     limit: int | None = None,
