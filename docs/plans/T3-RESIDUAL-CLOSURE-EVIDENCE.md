@@ -32,7 +32,7 @@ and stops for a separate Ryan correction grant.
 | VERIFY row | Required evidence | Observed result | Disposition |
 |---|---|---|---|
 | V3f | `tests/test_t3_residual_closure.py::test_v3f_serialized_envelope_contains_hashes_but_no_secret_material` | Serialized envelope contains semantic hashes and no fixture secret/API-key material; parser and commitment round-trip passed | PASS candidate; repository row remains PENDING |
-| V3h | `tests/test_atomic_files.py`, `tests/test_file_generation_durability.py`, `tests/test_writer_census.py`, `tests/test_governed_writer_gate.py`, `tests/test_governed_recovery_and_writers.py` | Hermetic writable-profile atomic publication, writer-lease ordering, and durable close controls: 24 passed | PASS candidate for exercised profile; power-loss/T5 work not claimed; repository row remains PENDING |
+| V3h | `tests/test_atomic_files.py`, `tests/test_file_generation_durability.py`, `tests/test_writer_census.py`, `tests/test_governed_writer_gate.py`, `tests/test_governed_recovery_and_writers.py` | Hermetic writable-profile atomic publication, writer-lease ordering, and durable close controls: 31 passed | PASS candidate for exercised profile; power-loss/T5 work not claimed; repository row remains PENDING |
 | V4m | `tests/test_t3_residual_closure.py::test_v4m_finalized_p1_p3_census_is_explicitly_revalidated_but_not_promoted`; census and writer inventory | P1/P2/P3 mutator inventory and no-bypass routing are inspectable, but universal final writer coverage and representative overlap proof are absent; census explicitly remains V4m PENDING | PENDING — T3 closure blocker |
 | V8c | `tests/test_t3_residual_closure.py::test_v8c_same_root_does_not_create_corroboration_or_elevation` | Two distinct model derivations preserve one root lineage, distinct assertion IDs, and `untrusted` effective integrity | PASS candidate; repository row remains PENDING |
 | V8e | `tests/test_t3_residual_closure.py::test_v8e_untrusted_retrieval_conversation_recapture_distill_chain` | Retrieval → reconstructed conversation → recapture → distill stages all remain `untrusted` and independently identified | PASS candidate; repository row remains PENDING |
@@ -45,7 +45,7 @@ All repository VERIFY rows remain formally `PENDING` throughout this lane.
 ## Validation record
 
 - Residual controls: `pytest -q tests/test_t3_residual_closure.py` — 5 passed.
-- Focused continuity/durability set: 86 passed in 8.00s; atomic/writer set: 24
+- Focused continuity/durability set: 86 passed in 8.00s; atomic/writer set: 31
   passed in 1.84s.
 - Pylint regression gate: PASS, 491 findings and 253 fingerprints, with no
   new/increased findings versus `ci/pylint-baseline.json`; raw Pylint status 30
