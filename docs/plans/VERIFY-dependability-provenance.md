@@ -1,7 +1,7 @@
 # VERIFY — Dependability and Provenance Integrity
 
 ```text
-Status:       PLANNING STUB — ALL IMPLEMENTATION EVIDENCE PENDING
+Status:       PLANNING STUB — ALL REPOSITORY VERIFY ROWS PENDING; P4 EVIDENCE MERGED
 Subject:      Future Stage 1 implementation at the reviewer-recorded SHA
 Architecture: ARCHITECTURE-dependability-provenance.md
 Execution:    EXECUTION-dependability-provenance.md
@@ -10,9 +10,11 @@ Authority:    This file is not an Execute grant or implementation PASS
 
 ## Human consequence and five Ws
 
-No provenance implementation has passed. These rows predeclare the evidence a
-future implementation must produce so a model cannot redefine success after
-seeing results.
+No repository VERIFY row has passed. The merged P4 evidence packet tested
+implementation `6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1` and records 57 PASS
+candidates / 32 PENDING entries, but those recommendations do not promote any
+row. These rows predeclare the evidence a future implementation must produce so
+a model cannot redefine success after seeing results.
 
 | Field | Answer |
 |---|---|
