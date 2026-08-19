@@ -3,7 +3,7 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** **P4 COMPLETE / MERGED; T3 VERIFY PENDING**. P2 was implemented on
+**State:** **P4 AND RESIDUAL EVIDENCE COMPLETE / MERGED; T3 VERIFY PENDING**. P2 was implemented on
 PR #204 at exact head `182f122614311df649ab0614ae6d26e9108646eb` and squash-merged
 at `017d1247685c858ad96bb47cc61582234d9ae1aa`. P3 was implemented on PR #205 at
 exact head `8aa687724cdedf22b4b602f09cbc5e053d22d046` and squash-merged at
@@ -17,7 +17,12 @@ is active. P4 evidence was tested against implementation basis
 `37c6aabde0dd8f1b7cc190d36a8a19d7a07b8c34`. Kiro PASSed; Copilot's
 bookkeeping-only FAIL was adjudicated nonblocking by Sol-High. The P4 packet
 records 57 PASS candidates and 32 PENDING entries; final V4m evidence remains
-PENDING. All repository VERIFY rows remain `PENDING`, and T3 is not yet closed.
+PENDING. The corrected residual evidence candidate
+`d796be0ad6fb0c86bf46cf34519a8332252fce1e` was reviewed by Kiro and Copilot and
+squash-merged through [PR #209](https://github.com/alanmz-crypto/convmem/pull/209)
+at `66926ac2e68f045e9f36fd26157a3d2ca07b9608`. It records V3f, V3h, V8c, V8e,
+and V8g as PASS candidates; V4m, V9a, and V9d remain T3 closure blockers. All
+repository VERIFY rows remain `PENDING`, and T3 is not yet closed.
 
 ## 1. What this project is for
 
@@ -67,9 +72,10 @@ decisions.
 | Surface | Current state |
 |---|---|
 | `docs/plans/ARCHITECTURE-dependability-provenance.md` | Locked T3 technical basis `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; unchanged in P1 correction lane. |
-| `docs/plans/EXECUTION-dependability-provenance.md` | P1/P2/P3 are complete/merged; P4 evidence is complete/merged at PR #207; T3 VERIFY remains pending. |
+| `docs/plans/EXECUTION-dependability-provenance.md` | P1/P2/P3, P4 evidence, and residual closure evidence are complete/merged; T3 VERIFY remains pending. |
 | `docs/plans/VERIFY-dependability-provenance.md` | Planning stub with predeclared properties; all repository VERIFY rows remain `PENDING`. |
 | `docs/plans/P4-VERIFY-EVIDENCE.md` | Merged P4 deterministic evidence packet for implementation `6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1`; 57 PASS candidates and 32 PENDING entries are recorded without VERIFY promotion. |
+| `docs/plans/T3-RESIDUAL-CLOSURE-EVIDENCE.md` | Merged PR #209 residual evidence; V3f/V3h/V8c/V8e/V8g are PASS candidates, while V4m/V9a/V9d remain PENDING closure blockers. |
 | `provenance.py` + `tests/test_provenance.py` | P1 in-memory policy/envelope/identity/verification substrate and focused tests; merged through PR #203. |
 | `docs/plans/P1-PROVENANCE-MUTATOR-CENSUS.md` | P1 V4m mutator census and consistency-contract baseline; V4m remains PENDING. |
 | `CONVMEM_DATA_ROOT/provenance/` | Future durable registry; restore-preflight classification and validator integration remain outside P1 implementation. |
@@ -100,6 +106,7 @@ serving authority/repository.
 | Stage 1B assertion/exact-dedupe continuity (T3 child slice) | **P3 complete/merged** | P3 implementation, focused/full validation, Kiro PASS, Copilot PASS, and PR #205 merge complete; VERIFY remains PENDING. |
 | P1/P2/P3 execution slices | **P1/P2/P3 complete/merged** | P3 implementation and review/merge gates are complete; P4 evidence is complete/merged. |
 | T3 P4 verification/evidence | **Complete/merged; T3 closure pending** | PR #207 merged at `37c6aab…`; 57 PASS candidates and 32 PENDING entries recorded; all repository VERIFY rows remain PENDING. |
+| T3 residual closure evidence | **Complete/merged; T3 closure pending** | PR #209 merged at `66926ac…`; V3f/V3h/V8c/V8e/V8g are PASS candidates; V4m/V9a/V9d remain PENDING blockers. |
 | Stage 2 semantic dedupe | Deferred | Separate design and grant. |
 | Stage 3 consumer visibility | Deferred beyond Stage 1 minimum | Consumer contract and enforcement boundary reviewed. |
 | CG-1/CG-2 assurance integration | Parallel/later | Separate Execute brief after canonical Stage 1 representation is locked. |
@@ -110,15 +117,16 @@ serving authority/repository.
 
 ## 5. Your role now
 
-**Current lane: P4 closeout complete; T3 closure not granted.** P3 implementation on branch
+**Current lane: residual T3 closure evidence complete; T3 closure not granted.** P3 implementation on branch
 `impl/2026-08-18-trapdoor-t3-p3` and [PR #205](https://github.com/alanmz-crypto/convmem/pull/205)
 is complete/merged at `ebe0dfc9a17a4288892dce6f10cd6744f6d27315`, with Kiro and
 Copilot reviews complete. P4 evidence is complete/merged at PR #207; its packet
 records 57 PASS candidates and 32 PENDING entries, with all repository VERIFY
-rows still formally `PENDING`. The next lane is a separate read-only
-classification of those PENDING entries; no implementation repair or VERIFY
-promotion is authorized. Migration, Bootstrap, live-data/Chroma mutation,
-CG-1/CG-2, Shadow, R2b, and T4/T5 remain unauthorized.
+rows still formally `PENDING`. The residual evidence packet settles five
+candidate rows and leaves only V4m, V9a, and V9d as the remaining T3 closure
+blockers. The next lane is narrowly focused on those three rows; no
+implementation repair or VERIFY promotion is authorized. Migration, Bootstrap,
+live-data/Chroma mutation, CG-1/CG-2, Shadow, R2b, and T4/T5 remain unauthorized.
 
 ## 6. What remains before this is live
 
@@ -136,9 +144,11 @@ CG-1/CG-2, Shadow, R2b, and T4/T5 remain unauthorized.
    the packet records 57 PASS candidates / 32 PENDING entries. All repository
    VERIFY rows and final V4m evidence remain `PENDING`; T3 closure is not yet
    granted.
-5. The separate read-only classification of the 32 PENDING entries has not
-   started. Migration, Bootstrap, CG-1/CG-2, Shadow, R2b, and T4/T5 remain
-   separately gated.
+5. Residual closure evidence is merged at PR #209 commit
+   `66926ac2e68f045e9f36fd26157a3d2ca07b9608`; V3f/V3h/V8c/V8e/V8g remain PASS
+   candidates, while V4m/V9a/V9d are the remaining T3 closure blockers.
+   Migration, Bootstrap, CG-1/CG-2, Shadow, R2b, and T4/T5 remain separately
+   gated.
 
 ## 7. Hard stops and residual limitations
 
@@ -199,5 +209,6 @@ Do not append session narrative.
 | 2026-08-18 | Codex | PR #205 P3 implementation `8aa687724cdedf22b4b602f09cbc5e053d22d046` squash-merged at `ebe0dfc9a17a4288892dce6f10cd6744f6d27315`; P4 remains unauthorized and VERIFY remains PENDING. |
 | 2026-08-18 | Codex | Ryan granted P4 from `6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1`; deterministic evidence is collected on Draft PR #207, Kiro PASSed, Copilot found stale handoff/status bookkeeping, and bounded same-tip documentation re-review is pending. |
 | 2026-08-18 | Codex | PR #207 P4 evidence candidate `b7b5fe0b82285fd522cb9e6e3ed54722ac29007f` squash-merged at `37c6aabde0dd8f1b7cc190d36a8a19d7a07b8c34`; 57 PASS candidates / 32 PENDING entries recorded, all repository VERIFY rows remain PENDING, and T3 closure is not granted. |
+| 2026-08-18 | Codex | PR #209 residual evidence candidate `d796be0ad6fb0c86bf46cf34519a8332252fce1e` squash-merged at `66926ac2e68f045e9f36fd26157a3d2ca07b9608`; V3f/V3h/V8c/V8e/V8g remain PASS candidates, V4m/V9a/V9d remain PENDING blockers, and all repository VERIFY rows remain PENDING. |
 
-**TL;DR:** P1–P3 and P4 evidence are complete and merged; 57 evidence PASS candidates and 32 PENDING entries remain advisory, all VERIFY rows remain PENDING, and T3 closure is not granted.
+**TL;DR:** P1–P3, P4 evidence, and residual evidence are complete and merged; V4m/V9a/V9d remain the T3 closure blockers, all VERIFY rows remain PENDING, and T3 closure is not granted.

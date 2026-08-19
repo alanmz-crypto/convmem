@@ -1,7 +1,7 @@
 # Execution Plan — Dependability and Provenance Integrity
 
 ```text
-Status:       P4 COMPLETE / MERGED — P1/P2/P3 merged; T3 VERIFY pending
+Status:       RESIDUAL EVIDENCE COMPLETE / MERGED — P1/P2/P3/P4 merged; V4m/V9a/V9d block T3 closure
 Depends on:  locked T3 basis; P1 closeout `809de5c6b296ea56428cf766bab4eb8912cafff3`
 Owner:       Ryan governance closeout after Cursor P3 implementation and review
 Baseline:    locked T3 @ aae0cad0bb05b0e436e213b28abbe0ff05ba2e91
@@ -23,6 +23,9 @@ P4 branch:    verify/2026-08-18-trapdoor-t3-p4; `/home/lauer/Projects/convmem-tr
 P4 PR:        [PR #207](https://github.com/alanmz-crypto/convmem/pull/207)
 P4 evidence:  `b7b5fe0b82285fd522cb9e6e3ed54722ac29007f`
 P4 merge:     `37c6aabde0dd8f1b7cc190d36a8a19d7a07b8c34`
+Residual evidence PR: [PR #209](https://github.com/alanmz-crypto/convmem/pull/209)
+Residual evidence: `d796be0ad6fb0c86bf46cf34519a8332252fce1e`
+Residual merge: `66926ac2e68f045e9f36fd26157a3d2ca07b9608`
 ```
 
 ## Human consequence
@@ -171,9 +174,10 @@ planning package:
 
 P1 implementation was authorized only on the named branch/worktree and PR for
 that grant, and is now merged. P2 and P3 were likewise authorized only on their
-named branches and PRs, and are now merged. P4 is the next separately gated
-Stage 1 verification/compatibility-closure phase; no migration, live operation,
-Bootstrap, CG-2, Shadow, R2b, or T4/T5 work follows from P3.
+named branches and PRs, and are now merged. P4 and the residual evidence lane
+are complete/merged; V4m, V9a, and V9d remain the only identified T3 closure
+blockers. No migration, live operation, Bootstrap, CG-2, Shadow, R2b, or T4/T5
+work follows from these evidence records.
 
 ### P1 / Stage 1A — Canonical policy and representation
 
@@ -373,6 +377,16 @@ Copilot's bookkeeping-only FAIL was adjudicated nonblocking by Sol-High. All
 repository VERIFY rows remain `PENDING`, final V4m evidence remains `PENDING`,
 and T3 closure has not been granted. Ryan alone decides any later closure,
 migration, or activation grant.
+
+### Residual closure evidence — COMPLETE/MERGED
+
+PR #209 recorded deterministic residual evidence for V3f, V3h, V4m, V8c, V8e,
+V8g, V9a, and V9d. The corrected candidate `d796be0ad6fb0c86bf46cf34519a8332252fce1e`
+was Kiro- and Copilot-reviewed and squash-merged at
+`66926ac2e68f045e9f36fd26157a3d2ca07b9608`. V3f, V3h, V8c, V8e, and V8g remain
+PASS candidates; V4m, V9a, and V9d remain PENDING T3 closure blockers. All
+repository VERIFY rows remain formally `PENDING`; no implementation or oracle
+semantics changed.
 
 ### A2 / parallel-later — Broad dependability assurance
 
