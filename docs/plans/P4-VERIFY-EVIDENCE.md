@@ -34,8 +34,9 @@ are excluded.
 
 The implementation revision tested throughout this packet is the exact
 post-P3 closeout tip `6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1`.  The P4
-branch contains only this evidence packet; it does not change that
-implementation.  “PASS candidate” below is an evidence recommendation only;
+branch contains only this evidence packet plus the current handoff/status
+reconciliation; none of those documentation changes alters the implementation.
+“PASS candidate” below is an evidence recommendation only;
 the repository VERIFY rows remain `PENDING`.
 
 ### Revision, authorization, and slice gates
@@ -46,7 +47,7 @@ the repository VERIFY rows remain `PENDING`.
 | V0b | Copilot targeted audit of the same final P4 SHA | Not yet run | PENDING |
 | V0c | T3 lock and separate P1/P2/P3 grants in the accepted status history | Present in the post-P3 closeout; P4 review still pending | PENDING |
 | V0d | P4 packet binds evidence to `6ec5b6c…` and the baseline is explicit | Present; independent review still pending | PASS candidate |
-| V0e | Named implementation paths resolve in the repository; no P4 code paths added | Present; P4 diff is documentation-only | PASS candidate |
+| V0e | Named implementation paths resolve in the repository; no P4 code paths added | Present; P4 diff is documentation/status-only | PASS candidate |
 | V0f | Accepted T1/T2 inventory and T3 child-slice history | Present in locked planning/status history | PENDING |
 | V0g | Distinct P1/P2/P3 grants, branches, worktrees, and PRs | Present in accepted execution/status history | PASS candidate |
 | V0h | Frozen FF1–FF5 parent hierarchy | Present in locked planning history | PENDING |
@@ -146,9 +147,9 @@ the repository VERIFY rows remain `PENDING`.
 |---|---|---|---|
 | V9a | Focused suite: 90 passed, 1 deselected. Controlled full suite: candidate and exact baseline both 42 failed / 1344 passed / 2 skipped / 9 warnings / 222 subtests; identical failure identities | No novel regression; full PASS oracle is not satisfied | PENDING |
 | V9b | Pylint regression gate and `git diff --check` | Pylint gate PASS: 494 findings, 253 fingerprints, no new/increased vs `6ec5b6c…`; diff check clean | PASS candidate |
-| V9c | `git diff --name-status 6ec5b6c…`: only `docs/plans/P4-VERIFY-EVIDENCE.md` | Documentation-only P4 evidence change | PASS candidate |
+| V9c | `git diff --name-status 6ec5b6c…`: only `docs/plans/P4-VERIFY-EVIDENCE.md`, `docs/inter-model/LATEST.md`, and `docs/plans/STATUS-dependability-provenance.md` | Documentation/status-only P4 reconciliation; no implementation files | PASS candidate |
 | V9d | Relevant retrieval/dedupe regression tests in focused suite | Passed for exercised paths; full suite remains baseline-matched but not all green | PENDING |
-| V9e | P4 branch diff is documentation-only; commands used hermetic `/tmp` config/cache; no production mutation was authorized or performed | No-live-mutation evidence collected | PASS candidate |
+| V9e | P4 branch diff is documentation/status-only; commands used hermetic `/tmp` config/cache; no production mutation was authorized or performed | No-live-mutation evidence collected | PASS candidate |
 | V9f | This packet identifies commands, grants, exclusions, and evidence-only stop rules | Present | PASS candidate |
 | V9g | Existing locked rows reused; no new VERIFY row or governance ceremony added | Present | PASS candidate |
 | V10a | Kiro review of final P4 packet | Not yet run | PENDING |
@@ -169,7 +170,7 @@ not executed in this P4 lane; they remain `PENDING`.
 - Controlled full-suite differential: candidate `42 failed, 1344 passed, 2 skipped, 9 warnings, 222 subtests passed`; exact baseline `42 failed, 1344 passed, 2 skipped, 9 warnings, 222 subtests passed`; failure identities were identical and no candidate-only failure occurred.
 - Pylint: `Pylint regression gate PASS (494 findings, 253 fingerprints; no new/increased vs baseline)` with status 30 accepted and base `6ec5b6c…`.
 - `git diff --check`: clean.
-- No-live-mutation proof: P4 changed only this Markdown evidence file; test configuration/cache used `/tmp`; the only attempted production-writer paths stopped at the read-only lock before mutation; no live corpus, Chroma, Shadow, R2b, CG-2, migration, or Bootstrap operation occurred.
+- No-live-mutation proof: P4 changed only Markdown evidence/handoff/status files; test configuration/cache used `/tmp`; the only attempted production-writer paths stopped at the read-only lock before mutation; no live corpus, Chroma, Shadow, R2b, CG-2, migration, or Bootstrap operation occurred.
 - V4m mutator-census disposition: P3 census/revalidation is present; final universal writer coverage and overlap evidence remain `PENDING`.
 - Kiro evidence review: pending against the final P4 SHA.
 - Copilot targeted audit: pending against the same final P4 SHA after Kiro PASS.
