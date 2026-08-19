@@ -1,7 +1,7 @@
 # VERIFY — Dependability and Provenance Integrity
 
 ```text
-Status:       PLANNING STUB — ALL REPOSITORY VERIFY ROWS PENDING; P4 EVIDENCE MERGED
+Status:       PLANNING CONTRACT — FINAL T3 EVIDENCE MERGED; ALL REPOSITORY VERIFY ROWS PENDING; RYAN_T3_CLOSE PENDING
 Subject:      Future Stage 1 implementation at the reviewer-recorded SHA
 Architecture: ARCHITECTURE-dependability-provenance.md
 Execution:    EXECUTION-dependability-provenance.md

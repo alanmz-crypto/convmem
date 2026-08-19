@@ -1,7 +1,7 @@
 # Execution Plan — Dependability and Provenance Integrity
 
 ```text
-Status:       RESIDUAL EVIDENCE COMPLETE / MERGED — P1/P2/P3/P4 merged; V4m/V9a/V9d block T3 closure
+Status:       FINAL T3 EVIDENCE COMPLETE / MERGED — awaiting RYAN_T3_CLOSE; all VERIFY rows remain PENDING
 Depends on:  locked T3 basis; P1 closeout `809de5c6b296ea56428cf766bab4eb8912cafff3`
 Owner:       Ryan governance closeout after Cursor P3 implementation and review
 Baseline:    locked T3 @ aae0cad0bb05b0e436e213b28abbe0ff05ba2e91
@@ -25,6 +25,10 @@ P4 evidence:  `b7b5fe0b82285fd522cb9e6e3ed54722ac29007f`
 P4 merge:     `37c6aabde0dd8f1b7cc190d36a8a19d7a07b8c34`
 Residual evidence PR: [PR #209](https://github.com/alanmz-crypto/convmem/pull/209)
 Residual evidence: `d796be0ad6fb0c86bf46cf34519a8332252fce1e`
+Final V4m PR: [PR #211](https://github.com/alanmz-crypto/convmem/pull/211)
+Final V4m candidate: `6dc50d9ec56e016a32c7eddf3d66636b41923ed8`
+Final V4m merge: `6b9f6d7544710e81f67ae9d6a15e5a8982a7ce6c`
+Final closure owner: Ryan; formal T3 close remains pending
 Residual merge: `66926ac2e68f045e9f36fd26157a3d2ca07b9608`
 ```
 
@@ -174,10 +178,13 @@ planning package:
 
 P1 implementation was authorized only on the named branch/worktree and PR for
 that grant, and is now merged. P2 and P3 were likewise authorized only on their
-named branches and PRs, and are now merged. P4 and the residual evidence lane
-are complete/merged; V4m, V9a, and V9d remain the only identified T3 closure
-blockers. No migration, live operation, Bootstrap, CG-2, Shadow, R2b, or T4/T5
-work follows from these evidence records.
+named branches and PRs, and are now merged. P4, the residual evidence lane, and
+the final V4m correction are complete/merged. V3f, V3h, V4m, V8c, V8e, V8g,
+V9a, and V9d have final PASS-candidate evidence against the same exact
+implementation candidate `6dc50d9ec56e016a32c7eddf3d66636b41923ed8`; the
+formal rows remain `PENDING` for Ryan's close decision. No migration, live
+operation, Bootstrap, CG-2, Shadow, R2b, or T4/T5 work follows from these
+evidence records.
 
 ### P1 / Stage 1A — Canonical policy and representation
 
@@ -380,13 +387,32 @@ migration, or activation grant.
 
 ### Residual closure evidence — COMPLETE/MERGED
 
-PR #209 recorded deterministic residual evidence for V3f, V3h, V4m, V8c, V8e,
-V8g, V9a, and V9d. The corrected candidate `d796be0ad6fb0c86bf46cf34519a8332252fce1e`
-was Kiro- and Copilot-reviewed and squash-merged at
-`66926ac2e68f045e9f36fd26157a3d2ca07b9608`. V3f, V3h, V8c, V8e, and V8g remain
-PASS candidates; V4m, V9a, and V9d remain PENDING T3 closure blockers. All
-repository VERIFY rows remain formally `PENDING`; no implementation or oracle
-semantics changed.
+PR #209 recorded the first deterministic residual evidence for V3f, V3h, V4m,
+V8c, V8e, V8g, V9a, and V9d. Its corrected candidate
+`d796be0ad6fb0c86bf46cf34519a8332252fce1e` was Kiro- and Copilot-reviewed and
+squash-merged at `66926ac2e68f045e9f36fd26157a3d2ca07b9608`; its historical
+limitations are preserved in the packet.
+
+### Final T3 closure evidence — COMPLETE/MERGED; RYAN_T3_CLOSE PENDING
+
+PR #211's final implementation candidate
+`6dc50d9ec56e016a32c7eddf3d66636b41923ed8` was Kiro- and Copilot-reviewed and
+squash-merged at `6b9f6d7544710e81f67ae9d6a15e5a8982a7ce6c`. The final exact-SHA
+evidence contains PASS candidates for V4m, V9a, and V9d while preserving the
+five earlier PASS candidates (V3f, V3h, V8c, V8e, V8g). The hermetic full suite
+was green at baseline (`1382 passed, 3 skipped`) and candidate (`1387 passed,
+3 skipped`), with no failures; Golden Eval remained `8/10` on both; Restic and
+temporary-path checks passed on both; Pylint, `py_compile`, and
+`git diff --check` passed. Sol-High was not invoked because Kiro and Copilot
+did not materially conflict.
+
+The proposed disposition of every row that remained PENDING after the P4
+classification is recorded in `STATUS-dependability-provenance.md` §6a. It
+does not alter repository VERIFY states: all rows remain formally `PENDING`.
+The proposal identifies no remaining technical T3 closure blocker; V1h,
+V3i, V4g–V4l, V7d–V7e, and V8i–V8l remain explicitly deferred to their
+already-separated Bootstrap, migration, recovery/CG-2, or T4/T5 gates, while
+V10e is Ryan's final governance action.
 
 ### A2 / parallel-later — Broad dependability assurance
 
