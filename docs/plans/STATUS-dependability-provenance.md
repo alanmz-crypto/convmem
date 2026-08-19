@@ -3,14 +3,19 @@
 > Current-state arc brief. This is not a changelog and grants no implementation
 > or operational authority.
 
-**State:** **P3 COMPLETE / MERGED; T3 VERIFY PENDING**. P2 was implemented on
+**State:** **P4 EVIDENCE COLLECTED / REVIEW CORRECTION PENDING; T3 VERIFY PENDING**. P2 was implemented on
 PR #204 at exact head `182f122614311df649ab0614ae6d26e9108646eb` and squash-merged
 at `017d1247685c858ad96bb47cc61582234d9ae1aa`. P3 was implemented on PR #205 at
 exact head `8aa687724cdedf22b4b602f09cbc5e053d22d046` and squash-merged at
 `ebe0dfc9a17a4288892dce6f10cd6744f6d27315`. The locked T3 technical basis remains
 `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; P1 is complete/merged at PR #203
 merge commit `836e83960e834327868fedef0368366622869db7`. No implementation lane
-is active. All repository VERIFY rows remain `PENDING`.
+is active. P4 evidence is collected in Draft [PR #207](https://github.com/alanmz-crypto/convmem/pull/207)
+on `verify/2026-08-18-trapdoor-t3-p4`; its implementation test basis remains
+`6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1`. Kiro has PASSed the packet;
+Copilot identified stale handoff/status bookkeeping, so a bounded documentation
+reconciliation and same-tip re-review remain. All repository VERIFY rows remain
+`PENDING`.
 
 ## 1. What this project is for
 
@@ -62,6 +67,7 @@ decisions.
 | `docs/plans/ARCHITECTURE-dependability-provenance.md` | Locked T3 technical basis `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91`; unchanged in P1 correction lane. |
 | `docs/plans/EXECUTION-dependability-provenance.md` | P1/P2/P3 are complete/merged; P3 head `8aa687724cdedf22b4b602f09cbc5e053d22d046` merged at `ebe0dfc9a17a4288892dce6f10cd6744f6d27315`. |
 | `docs/plans/VERIFY-dependability-provenance.md` | Planning stub with predeclared properties; no evidence yet. |
+| `docs/plans/P4-VERIFY-EVIDENCE.md` | P4 deterministic evidence packet for implementation `6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1`; candidate/baseline failures are recorded without VERIFY promotion. |
 | `provenance.py` + `tests/test_provenance.py` | P1 in-memory policy/envelope/identity/verification substrate and focused tests; merged through PR #203. |
 | `docs/plans/P1-PROVENANCE-MUTATOR-CENSUS.md` | P1 V4m mutator census and consistency-contract baseline; V4m remains PENDING. |
 | `CONVMEM_DATA_ROOT/provenance/` | Future durable registry; restore-preflight classification and validator integration remain outside P1 implementation. |
@@ -90,7 +96,8 @@ serving authority/repository.
 | Stage 0 architecture package | **Locked** at `aae0cad0bb05b0e436e213b28abbe0ff05ba2e91` | No further architecture edits in P1 correction lane. |
 | Stage 1A policy/representation substrate (T3 child slice) | **P1 complete/merged** | P1 implementation, focused/full validation, Kiro PASS, Copilot PASS, and PR #203 merge complete; VERIFY remains PENDING. |
 | Stage 1B assertion/exact-dedupe continuity (T3 child slice) | **P3 complete/merged** | P3 implementation, focused/full validation, Kiro PASS, Copilot PASS, and PR #205 merge complete; VERIFY remains PENDING. |
-| P1/P2/P3 execution slices | **P1/P2/P3 complete/merged** | P3 implementation and review/merge gates are complete; P4 requires a separate Ryan Execute grant. |
+| P1/P2/P3 execution slices | **P1/P2/P3 complete/merged** | P3 implementation and review/merge gates are complete; P4 evidence review is the current lane. |
+| T3 P4 verification/evidence | **Evidence collected; bounded documentation correction and same-tip re-review pending** | Kiro PASSed; Copilot found stale LATEST/STATUS bookkeeping; no implementation repair is authorized. |
 | Stage 2 semantic dedupe | Deferred | Separate design and grant. |
 | Stage 3 consumer visibility | Deferred beyond Stage 1 minimum | Consumer contract and enforcement boundary reviewed. |
 | CG-1/CG-2 assurance integration | Parallel/later | Separate Execute brief after canonical Stage 1 representation is locked. |
@@ -101,12 +108,14 @@ serving authority/repository.
 
 ## 5. Your role now
 
-**Current lane: Ryan governance closeout.** P3 implementation on branch
+**Current lane: P4 evidence reconciliation and independent review.** P3 implementation on branch
 `impl/2026-08-18-trapdoor-t3-p3` and [PR #205](https://github.com/alanmz-crypto/convmem/pull/205)
 is complete/merged at `ebe0dfc9a17a4288892dce6f10cd6744f6d27315`, with Kiro and
-Copilot reviews complete. No implementation lane is active. P4, migration,
-Bootstrap, live-data/Chroma mutation, CG-2, Shadow, R2b, and T4/T5 remain
-unauthorized.
+Copilot reviews complete. P4 evidence is collected on Draft PR #207 and needs
+only the bounded LATEST/STATUS reconciliation followed by same-tip Kiro and
+Copilot review. No implementation repair or VERIFY promotion is authorized.
+Migration, Bootstrap, live-data/Chroma mutation, CG-1/CG-2, Shadow, R2b, and
+T4/T5 remain unauthorized.
 
 ## 6. What remains before this is live
 
@@ -117,9 +126,10 @@ unauthorized.
 3. P3 is complete/merged at implementation head
    `8aa687724cdedf22b4b602f09cbc5e053d22d046`, PR #205 merge commit
    `ebe0dfc9a17a4288892dce6f10cd6744f6d27315`; Kiro and Copilot both passed.
-4. P4 — the Stage 1 verification packet and compatibility closure — requires a
-   separate Ryan Execute grant. Migration, Bootstrap, CG-2, Shadow, R2b, and
-   T4/T5 remain separately gated.
+4. P4 — the Stage 1 verification packet and compatibility closure — is underway
+   on Draft PR #207 from the post-P3 closeout. Kiro/Copilot same-tip review and
+   Ryan's verification/closure decision remain. Migration, Bootstrap, CG-1/CG-2,
+   Shadow, R2b, and T4/T5 remain separately gated.
 
 ## 7. Hard stops and residual limitations
 
@@ -178,5 +188,6 @@ Do not append session narrative.
 | 2026-08-18 | Codex | Ryan granted P3 from closeout `6be6b353740b58b9652dccc1335906fdacd4e568`; branch/worktree created and Draft PR creation is pending before implementation. |
 | 2026-08-18 | Codex | Dedicated P3 Draft [PR #205](https://github.com/alanmz-crypto/convmem/pull/205) recorded; functional work remains limited to the authorized P3 scope and VERIFY remains PENDING. |
 | 2026-08-18 | Codex | PR #205 P3 implementation `8aa687724cdedf22b4b602f09cbc5e053d22d046` squash-merged at `ebe0dfc9a17a4288892dce6f10cd6744f6d27315`; P4 remains unauthorized and VERIFY remains PENDING. |
+| 2026-08-18 | Codex | Ryan granted P4 from `6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1`; deterministic evidence is collected on Draft PR #207, Kiro PASSed, Copilot found stale handoff/status bookkeeping, and bounded same-tip documentation re-review is pending. |
 
-**TL;DR:** P1, P2, and P3 are complete and merged; P4 requires a separate grant, all VERIFY rows remain PENDING, and excluded capabilities remain separately gated.
+**TL;DR:** P1, P2, and P3 are complete and merged; P4 evidence is collected and undergoing bounded documentation reconciliation/review, all VERIFY rows remain PENDING, and excluded capabilities remain separately gated.
