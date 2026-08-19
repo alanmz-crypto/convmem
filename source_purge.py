@@ -232,15 +232,18 @@ def undo_exclude_source(cfg: dict, target: str) -> bool:
     purge for that source is still in progress. ``target`` must already be
     absolute or home-qualified (CLI resolves existing relative paths).
     """
-    from ingest import undo_exclude_processed_path
+    from chroma_write_store import production_writer_boundary
 
-    candidates = build_path_candidates(target)
-    if not candidates:
-        return False
-    canonical = candidates[0]
-    processed_path = cfg["index"]["processed_log"]
-    with source_flock(cfg, canonical):
-        return undo_exclude_processed_path(processed_path, canonical)
+    with production_writer_boundary(entrypoint="source_purge.execute"):
+        from ingest import undo_exclude_processed_path
+
+        candidates = build_path_candidates(target)
+        if not candidates:
+            return False
+        canonical = candidates[0]
+        processed_path = cfg["index"]["processed_log"]
+        with source_flock(cfg, canonical):
+            return undo_exclude_processed_path(processed_path, canonical)
 
 
 def mark_purge_exclusion(cfg: dict, canonical_path: str, reason: str) -> str:
@@ -276,6 +279,25 @@ def mark_purge_exclusion(cfg: dict, canonical_path: str, reason: str) -> str:
 
 
 def execute_purge(
+    cfg: dict,
+    target: str,
+    reason: str = "",
+    *,
+    _hooks: dict | None = None,
+) -> PurgeResult:
+    """Execute purge under one universal mutation/capture boundary."""
+
+    from chroma_write_store import production_writer_boundary
+
+    # Preserve the read-only invalid-target path: no writer boundary or lock
+    # artifacts are created when there is no mutation candidate.
+    if not build_path_candidates(target):
+        return _execute_purge_impl(cfg, target, reason=reason, _hooks=_hooks)
+    with production_writer_boundary(entrypoint="source_purge.execute"):
+        return _execute_purge_impl(cfg, target, reason=reason, _hooks=_hooks)
+
+
+def _execute_purge_impl(
     cfg: dict,
     target: str,
     reason: str = "",

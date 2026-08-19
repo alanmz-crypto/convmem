@@ -8,25 +8,25 @@
     "convmem.py:367",
     "convmem.py:471",
     "convmem.py:636",
-    "ingest.py:561",
-    "ingest.py:923",
-    "ingest.py:961",
+    "ingest.py:571",
+    "ingest.py:933",
+    "ingest.py:971",
     "inter_model_index.py:201"
   ],
   "open_production_write_store_call_sites": [
     "observe.py:234",
     "propose_decision.py:549",
     "propose_decision.py:581",
-    "refine.py:280",
-    "refine.py:741",
-    "source_purge.py:316"
+    "refine.py:291",
+    "refine.py:764",
+    "source_purge.py:338"
   ],
   "must_use_factory_bypass_sites": [],
   "must_use_factory_count": 0,
   "allowlisted_direct_sites": [
     "chroma_store.py:74",
     "chroma_store.py:99",
-    "chroma_write_store.py:437",
+    "chroma_write_store.py:528",
     "convmem.py:620",
     "file_generation_store.py:95",
     "mixed_mode_control.py:44",
