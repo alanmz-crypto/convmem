@@ -741,12 +741,17 @@ def approve_and_ingest(cfg: dict, proposal_id: str, *, signer: str, ledger_id: s
         raise ValueError(
             f"Invalid --signer {signer!r}; use ryan or kiro-review (or kiro-* identity)"
         )
+    from chroma_write_store import production_writer_boundary
     from conflict_events import governed_lock
-    with governed_lock(cfg):
-        proposal, ledger = _approve_unlocked(cfg, proposal_id, signer=signer, ledger_id=ledger_id)
-        stats = ingest_approved_ledger(cfg, ledger)
-        _mark_approved_unlocked(cfg, proposal_id)
-        return proposal, ledger, stats
+
+    with production_writer_boundary(entrypoint="propose_decision.write"):
+        with governed_lock(cfg):
+            proposal, ledger = _approve_unlocked(
+                cfg, proposal_id, signer=signer, ledger_id=ledger_id
+            )
+            stats = ingest_approved_ledger(cfg, ledger)
+            _mark_approved_unlocked(cfg, proposal_id)
+            return proposal, ledger, stats
 
 
 

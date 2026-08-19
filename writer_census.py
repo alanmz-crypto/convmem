@@ -31,7 +31,9 @@ KNOWN_ENTRYPOINTS = frozenset(
     {
         "convmem.add", "convmem.verify", "convmem.monitor", "convmem.forget",
         "ingest.write", "refine.write", "observe.repair_empty_ledger_documents",
-        "propose_decision.write", "source_purge.execute", "inter_model_index",
+        "ingest.processed", "ingest.export",
+        "propose_decision.write", "propose_decision.governed",
+        "source_purge.execute", "inter_model_index", "production.writer",
     }
 )
 

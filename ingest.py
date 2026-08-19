@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from adapters.detect import TOOL_BY_FORMAT, detect_format, get_parser
-from chroma_write_store import production_chroma_write_session
+from chroma_write_store import production_chroma_write_session, production_writer_boundary
 from config import load_config
 from distill import (
     distill_consumed_view,
@@ -148,11 +148,14 @@ def mutate_processed(processed_path: str, mutator: Callable[[dict], None]) -> di
     Hold only for read+mutate+write. Never across parse/LLM/embed/Chroma work.
     Always releases the lock on exception paths (via `_processed_lock`).
     """
-    with _processed_lock(processed_path):
-        data = load_processed(processed_path)
-        mutator(data)
-        save_processed(processed_path, data)
-        return data
+    with production_writer_boundary(
+        entrypoint="ingest.processed",
+    ):
+        with _processed_lock(processed_path):
+            data = load_processed(processed_path)
+            mutator(data)
+            save_processed(processed_path, data)
+            return data
 
 
 def chunk_messages(messages: list[dict], size: int, overlap: int) -> list[dict]:
@@ -460,6 +463,13 @@ def watch_skip_reason(
 
 
 def _deduplicate_units_export(export_path: Path) -> int:
+    """Compact the export inside the universal mutation boundary."""
+
+    with production_writer_boundary(entrypoint="ingest.export"):
+        return _deduplicate_units_export_impl(export_path)
+
+
+def _deduplicate_units_export_impl(export_path: Path) -> int:
     """Rewrite knowledge_units.jsonl keeping only the last occurrence of each unit ID.
 
     This prevents unbounded growth from repeated re-indexing. Returns lines removed.
@@ -1186,6 +1196,25 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
 
 
 def index(
+    force_file: str | None = None,
+    limit_files: int | None = None,
+    verbose: bool = True,
+    force_reindex: bool = False,
+    supersede_on_reindex: bool = False,
+) -> dict:
+    """Run ingest under one universal mutation/capture boundary."""
+
+    with production_writer_boundary(entrypoint="ingest.write"):
+        return _index_impl(
+            force_file=force_file,
+            limit_files=limit_files,
+            verbose=verbose,
+            force_reindex=force_reindex,
+            supersede_on_reindex=supersede_on_reindex,
+        )
+
+
+def _index_impl(
     force_file: str | None = None,
     limit_files: int | None = None,
     verbose: bool = True,
