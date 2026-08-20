@@ -13,7 +13,7 @@ pytest.importorskip("chromadb")
 
 # pylint: disable=wrong-import-position
 from chroma_store import ChromaStore
-from chroma_write_store import open_chroma_for_write
+from chroma_write_store import open_chroma_for_write, production_writer_boundary
 from shadow_ledger import (
     SHADOW_DIR_MODE,
     atomic_write_json_private,
@@ -109,23 +109,29 @@ def test_unit_mutating_methods_emit_or_exclude() -> None:
 def test_add_update_delete_and_supersede_emit(tmp_path: Path) -> None:
     chroma = tmp_path / "chroma"
     cfg = _complete_cfg(tmp_path, chroma)
-    store, decision = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
-    assert decision.inject is True
-    assert store.mutation_sink is not None
-    try:
-        store.add_unit("u1", "hello", _emb(), {"source_path": "/a", "title": "t"})
-        store.update_unit("u1", "hello2", _emb(), {"source_path": "/a", "title": "t2"})
-        store.update_unit_metadata(
-            "u1", {"source_path": "/a", "title": "t3", "id": "u1"}
-        )
-        store.add_unit("u2", "other", _emb(), {"source_path": "/a", "title": "x"})
-        n = store.supersede_units_for_source("/a", superseded_by="job")
-        assert n >= 1
-        store.add_unit("u3", "z", _emb(), {"source_path": "/b", "title": "z"})
-        deleted = store.delete_units_for_source("/b")
-        assert deleted == 1
-    finally:
-        store.close()
+    with production_writer_boundary(
+        lock_path=tmp_path / "writer.lock",
+        attest_dir=tmp_path / "attest",
+        census_dir=tmp_path / "census",
+        entrypoint="test.phase0_t2",
+    ):
+        store, decision = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
+        assert decision.inject is True
+        assert store.mutation_sink is not None
+        try:
+            store.add_unit("u1", "hello", _emb(), {"source_path": "/a", "title": "t"})
+            store.update_unit("u1", "hello2", _emb(), {"source_path": "/a", "title": "t2"})
+            store.update_unit_metadata(
+                "u1", {"source_path": "/a", "title": "t3", "id": "u1"}
+            )
+            store.add_unit("u2", "other", _emb(), {"source_path": "/a", "title": "x"})
+            n = store.supersede_units_for_source("/a", superseded_by="job")
+            assert n >= 1
+            store.add_unit("u3", "z", _emb(), {"source_path": "/b", "title": "z"})
+            deleted = store.delete_units_for_source("/b")
+            assert deleted == 1
+        finally:
+            store.close()
     events = _read_events(Path(cfg["shadow_ledger"]["ledger_path"]))
     ops = [e["operation"] for e in events]
     assert "create" in ops
@@ -163,14 +169,20 @@ def test_no_sink_when_disabled_is_neutral(tmp_path: Path) -> None:
         "index": {"chroma_dir": str(chroma)},
         "shadow_ledger": {"enabled": False},
     }
-    store, decision = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
-    assert decision.inject is False
-    assert store.mutation_sink is None
-    try:
-        store.add_unit("u1", "plain", _emb(), {"source_path": "/p"})
-        assert store.get_unit("u1")["document"] == "plain"
-    finally:
-        store.close()
+    with production_writer_boundary(
+        lock_path=tmp_path / "writer.lock",
+        attest_dir=tmp_path / "attest",
+        census_dir=tmp_path / "census",
+        entrypoint="test.phase0_t2.disabled",
+    ):
+        store, decision = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
+        assert decision.inject is False
+        assert store.mutation_sink is None
+        try:
+            store.add_unit("u1", "plain", _emb(), {"source_path": "/p"})
+            assert store.get_unit("u1")["document"] == "plain"
+        finally:
+            store.close()
     assert not Path(tmp_path / "ledger.jsonl").exists()
 
 
@@ -189,9 +201,15 @@ def test_classify_metadata_operations() -> None:
 def test_summaries_not_shadowed(tmp_path: Path) -> None:
     chroma = tmp_path / "chroma"
     cfg = _complete_cfg(tmp_path, chroma)
-    store, _ = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
-    try:
-        store.add_summary("s1", "sum", _emb(), {"source_path": "/s"})
-    finally:
-        store.close()
+    with production_writer_boundary(
+        lock_path=tmp_path / "writer.lock",
+        attest_dir=tmp_path / "attest",
+        census_dir=tmp_path / "census",
+        entrypoint="test.phase0_t2.summary",
+    ):
+        store, _ = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
+        try:
+            store.add_summary("s1", "sum", _emb(), {"source_path": "/s"})
+        finally:
+            store.close()
     assert not _read_events(Path(cfg["shadow_ledger"]["ledger_path"]))
