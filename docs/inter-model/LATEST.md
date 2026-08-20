@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-17 (CodeQL Complex Therapy CLOSED/PASS; future attestation Ryan-owned)
+**Updated:** 2026-08-20 (Crush DeepSeek max-tokens verification handoff opened; awaiting Kiro)
 
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
@@ -33,6 +33,12 @@
 - **Cross-model export tooling — MERGED (2026-08-14, [#173](https://github.com/alanmz-crypto/convmem/pull/173)):** Who/What: `scripts/export-chatgpt-snapshot.sh` and `scripts/export-claude-bundle.sh` for giving ChatGPT/Claude full project context without changing push conventions. When: squash-merged 2026-08-14 with CG-1 dependability handoff docs. Why: cloud models need repo-grounded bundles without altering push/ref conventions. How: run scripts from repo root; outputs are local artifacts only.
 
 ## Active handoff
+
+- **DeepSeek max-tokens context-window overflow — VERIFY (2026-08-20, docs branch):** Who/What: Crush diagnosed that DeepSeek V4 'over context window' failures in Crush stem from `default_max_tokens: -1` (no cap) on the DeepSeek models, reserving DeepSeek's full 384K max-output against the 1M window and overflowing once input accumulates ~600K. When: opened 2026-08-20 on `docs/2026-08-20-crush-deepseek-max-tokens-verification` (clean branch from `origin/main`; no config changed). Why: fix the recurring context-full errors on normal operational steps. How: Kiro independently verifies the mechanism + fix proposal (cap `default_max_tokens` to 8-16K on both `deepseek-v4-flash` and `deepseek-v4-pro`); Ryan authorizes + applies to `~/.config/crush/crush.json`.
+
+  **Merge reading:** [`KIRO-2026-08-20-crush-deepseek-max-tokens-verification.md`](KIRO-2026-08-20-crush-deepseek-max-tokens-verification.md)
+
+  **Resume state:** `BLOCKED_ON_KIRO` — awaiting Kiro verdict + Ryan config authorization.
 
 - **Chroma reconcile Tier L — R4 GREEN, arc closed (2026-08-09):** Who/What: Crush index rebuild + DeepSeek Flash V1–V6 post-rebuild verify; Cursor landscape sync. When: rebuild completed 2026-08-08; R4 GREEN 2026-08-09; docs on `main` via [#161](https://github.com/alanmz-crypto/convmem/pull/161). Why: 646 HNSW orphans blocked calibration and contaminated retrieval. How: full re-index, orphan inventory **0**, calibration 100% with `eval-synthesis.py --judge --legacy`, and `convmem doctor` PASS with two non-fatal warnings (legacy embed metadata and external-restic freshness).
 
