@@ -110,7 +110,7 @@ def test_static_scan_matches_inventory_routing() -> None:
 def test_hermetic_direct_ctor_bypasses_sink_even_when_cfg_eligible(
     tmp_path: Path,
 ) -> None:
-    """Control: ChromaStore(dir) => no sink, no ledger (why factory is mandatory)."""
+    """Direct production-eligible construction cannot bypass the writer gate."""
     pytest.importorskip("chromadb")
     from chroma_store import ChromaStore
     from shadow_ledger import (
@@ -148,16 +148,19 @@ def test_hermetic_direct_ctor_bypasses_sink_even_when_cfg_eligible(
         },
     }
     del _cfg  # unused; documents the eligible shape intentionally
-    store = ChromaStore(str(chroma))  # anti-pattern control
+    store = ChromaStore(str(chroma), require_writer_boundary=True)  # anti-pattern control
     try:
         assert store.mutation_sink is None
-        store.add_unit(
-            "u1",
-            "doc",
-            [0.01] * 8,
-            {"source_path": "/t", "title": "t"},
-        )
-        assert store.get_unit("u1") is not None
+        from chroma_write_store import WriterBoundaryError
+
+        with pytest.raises(WriterBoundaryError, match="shared writer boundary"):
+            store.add_unit(
+                "u1",
+                "doc",
+                [0.01] * 8,
+                {"source_path": "/t", "title": "t"},
+            )
+        assert store.get_unit("u1") is None
     finally:
         store.close()
     assert not ledger.exists(), "direct ctor must not write shadow ledger"
@@ -167,7 +170,7 @@ def test_positive_control_factory_attaches_sink(tmp_path: Path) -> None:
     """Sink works when factory injects — wiring path is live."""
     pytest.importorskip("chromadb")
     import os
-    from chroma_write_store import open_chroma_for_write
+    from chroma_write_store import open_chroma_for_write, production_writer_boundary
     from shadow_ledger import (
         SHADOW_DIR_MODE,
         atomic_write_json_private,
@@ -214,18 +217,24 @@ def test_positive_control_factory_attaches_sink(tmp_path: Path) -> None:
             "health_path": str(health),
         },
     }
-    store, decision = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
-    try:
-        assert decision.inject is True
-        assert store.mutation_sink is not None
-        store.add_unit(
-            "u1",
-            "doc",
-            [0.01] * 8,
-            {"source_path": "/t", "title": "t"},
-        )
-    finally:
-        store.close()
+    with production_writer_boundary(
+        lock_path=tmp_path / "writer.lock",
+        attest_dir=tmp_path / "attest",
+        census_dir=tmp_path / "census",
+        entrypoint="test.factory",
+    ):
+        store, decision = open_chroma_for_write(cfg, chroma, use_strict_validator=False)
+        try:
+            assert decision.inject is True
+            assert store.mutation_sink is not None
+            store.add_unit(
+                "u1",
+                "doc",
+                [0.01] * 8,
+                {"source_path": "/t", "title": "t"},
+            )
+        finally:
+            store.close()
     all_lines = [json.loads(l) for l in ledger.read_text().splitlines() if l.strip()]
     events = [o for o in all_lines if o.get("record_type") != "ledger_header"]
     assert len(events) == 1
