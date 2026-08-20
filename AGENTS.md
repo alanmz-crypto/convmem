@@ -14,6 +14,8 @@ map to delegate-down tiers 4 / 5–6 / 9. Full invocation map: `~/.codex/CODE-X-
 
 **Repo-specific only:** `.codex/config.toml.example` for sandbox network override in this repo. Copy to `.codex/config.toml` to allow `convmem ask` in Codex.
 
+**OpenCode (experimental):** Terminal AI coding assistant using Alibaba Cloud models (Qwen, DeepSeek, GLM, Kimi via DashScope). No assigned lane — exploratory/ad-hoc only. Setup: copy `config/opencode-alibaba-cloud.example.json` to `opencode.json` (gitignored). Requires `DASHSCOPE_API_KEY` in environment. No default model — select via `/models` each session. Instructions: `config/opencode-instructions-convmem.example.md`.
+
 **Lost?** Read [`docs/MODEL-WORKFLOW.md`](docs/MODEL-WORKFLOW.md) — which repo, which script, which reference (prod digest, lab fork, record blocks).
 
 **Codex / DeepSeek verify work:** [`docs/CODEX-DEEPSEEK-VERIFY.md`](docs/CODEX-DEEPSEEK-VERIFY.md)

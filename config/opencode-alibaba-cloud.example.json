@@ -1,0 +1,5 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "enabled_providers": ["alibaba", "alibaba-cn"],
+  "disabled_providers": ["deepseek", "deepinfra", "google", "opencode"]
+}
