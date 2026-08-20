@@ -16,6 +16,10 @@ chroma/
 config.toml
 !.codex/config.toml.example
 
+# OpenCode local config (contains provider references — never commit)
+opencode.json
+opencode.jsonc
+
 # Python
 __pycache__/
 *.py[cod]
