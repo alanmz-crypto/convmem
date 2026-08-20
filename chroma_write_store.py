@@ -14,7 +14,7 @@ import os
 import threading
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,6 +30,10 @@ from shadow_sink import JsonlUnitMutationSink
 from shadow_validation import validate_shadow_activation
 
 WritePurpose = Literal["production", "test"]
+
+
+class WriterBoundaryError(RuntimeError):
+    """A production-authoritative mutation was attempted outside its gate."""
 
 WRITER_GATE_PROTOCOL_VERSION = 1
 DEFAULT_WRITER_LOCK = Path("~/.local/share/convmem/locks/chroma_writer_gate.lock")
@@ -104,6 +108,20 @@ _writer_tls = threading.local()
 
 def _held_writer_lease() -> _HeldWriterLease | None:
     return getattr(_writer_tls, "held", None)
+
+
+def require_writer_attestation() -> WriterAttestation:
+    """Return the internal writer attestation for the current execution scope.
+
+    The attestation is established only by ``shared_writer_lease``.  Caller
+    metadata and direct store construction cannot manufacture it.
+    """
+    held = _held_writer_lease()
+    if held is None:
+        raise WriterBoundaryError(
+            "production-authoritative mutation requires the shared writer boundary"
+        )
+    return held.attestation
 
 
 def _same_lock_path(left: Path, right: Path) -> bool:
@@ -530,6 +548,7 @@ def open_chroma_for_write(
         create_collections=create_collections,
         mutation_sink=sink,
         on_close=on_close,
+        require_writer_boundary=purpose == "production",
     )
     return store, decision
 
@@ -548,17 +567,19 @@ def chroma_write_session(
     Deprecated for production callers — use production_chroma_write_session
     so config is loaded only after the shared lease is held.
     """
-    store, _decision = open_chroma_for_write(
-        cfg,
-        chroma_dir,
-        purpose=purpose,
-        create_collections=create_collections,
-        mutation_sink=mutation_sink,
-    )
-    try:
-        yield store
-    finally:
-        store.close()
+    boundary = production_writer_boundary() if purpose == "production" else nullcontext()
+    with boundary:
+        store, _decision = open_chroma_for_write(
+            cfg,
+            chroma_dir,
+            purpose=purpose,
+            create_collections=create_collections,
+            mutation_sink=mutation_sink,
+        )
+        try:
+            yield store
+        finally:
+            store.close()
 
 
 @contextmanager

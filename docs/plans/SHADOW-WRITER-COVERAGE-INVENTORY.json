@@ -26,7 +26,7 @@
   "allowlisted_direct_sites": [
     "chroma_store.py:74",
     "chroma_store.py:99",
-    "chroma_write_store.py:528",
+    "chroma_write_store.py:546",
     "convmem.py:620",
     "file_generation_store.py:95",
     "mixed_mode_control.py:44",
