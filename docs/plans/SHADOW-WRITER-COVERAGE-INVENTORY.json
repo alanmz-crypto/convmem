@@ -27,7 +27,7 @@
     "cg2_rehearsal.py:84",
     "chroma_store.py:74",
     "chroma_store.py:99",
-    "chroma_write_store.py:546",
+    "chroma_write_store.py:550",
     "convmem.py:620",
     "file_generation_store.py:95",
     "mixed_mode_control.py:44",
@@ -56,7 +56,7 @@
     },
     {
       "file": "chroma_write_store.py",
-      "line": 546,
+      "line": 550,
       "snippet": "store = ChromaStore(",
       "class": "factory_internal",
       "required_routing": "allowlisted_direct",
