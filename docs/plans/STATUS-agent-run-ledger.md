@@ -56,7 +56,7 @@ separate evidence-citing proposal stage.
 | `.kiro/hooks/` | **Missing** in the repository; Kiro capture is planned, not installed |
 | Architecture plan | [`ARCHITECTURE-agent-run-ledger.md`](ARCHITECTURE-agent-run-ledger.md) — authored on this planning branch |
 | Execution plan | [`EXECUTION-agent-run-ledger.md`](EXECUTION-agent-run-ledger.md) — authored on this planning branch |
-| Implementation/tests | **In progress** on `feat/2026-08-20-agent-run-ledger`; T0 fixtures landed |
+| Implementation/tests | **In progress** — T0 fixtures + T1/T2 schema/writer/reducer on feat branch |
 
 ## 4. Completion State
 
@@ -144,4 +144,5 @@ session narrative here; session details belong in Track A ingest.
 | Date | Who | Change |
 |---|---|---|
 | 2026-08-20 | Cursor | Execute started on feat branch; T0 Kiro hook contract fixtures landed |
+| 2026-08-20 | Cursor | T1/T2 schema, reducer, and durable writer landed with focused tests |
 | 2026-08-20 | Codex | Created Runway Ledger architecture, execution, and STATUS package from Kiro's identity-tracking investigation; implementation remains unauthorized |
