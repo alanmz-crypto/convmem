@@ -359,7 +359,10 @@ def test_invalid_parent_identity_replay_fails_closed():
         )
     )
     tampered = child.as_dict()
-    tampered["input_bindings"][0]["parent_assertion_id"] = parent.assertion_id[:-1] + "0"
+    replacement_digit = "0" if parent.assertion_id[-1] != "0" else "1"
+    tampered["input_bindings"][0]["parent_assertion_id"] = (
+        parent.assertion_id[:-1] + replacement_digit
+    )
 
     with pytest.raises(IdentityReplayError):
         registry.import_replay(tampered, child.commitment)
