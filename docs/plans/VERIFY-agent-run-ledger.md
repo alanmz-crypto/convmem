@@ -37,3 +37,10 @@ A Cursor smoke test briefly wrote one `run_started` for `sess_test` to
 `~/.local/share/convmem/agent_runs.jsonl` before the test data-dir override
 landed. File was newly created (mode 0600). No truncation/repair performed
 (capture path must not rewrite). Ryan may leave or authorize separate repair.
+
+## Claude pre-soak fixes (2026-08-20)
+
+| ID | Result | Evidence |
+|----|--------|----------|
+| Q4 | PASS | No-ID starts no longer share `delivery_event_id`; hook + API tests |
+| Q7 | PASS | Writer failure still exit 0 / empty stdout, but stderr names the error |

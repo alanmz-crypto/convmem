@@ -426,3 +426,89 @@ def test_v12_cross_client_envelopes_reduce():
         "crush",
         "copilot",
     }
+
+
+def test_q4_two_sessions_no_native_id_same_cwd(tmp_path: Path):
+    """Two sessions without native IDs must not collide (Claude Q4)."""
+    ledger = arl.AgentRunLedger(data_dir=tmp_path)
+    r1 = arl.start_run(
+        ledger,
+        client="kiro",
+        native_session_id=None,
+        source_kind="kiro_hook",
+        source_ref="SessionStart",
+        cwd="/home/lauer/Projects/convmem",
+        collect_git=False,
+    )
+    r2 = arl.start_run(
+        ledger,
+        client="kiro",
+        native_session_id=None,
+        source_kind="kiro_hook",
+        source_ref="SessionStart",
+        cwd="/home/lauer/Projects/convmem",
+        collect_git=False,
+    )
+    assert r1["run_id"] != r2["run_id"]
+    assert r1["created"] is True
+    assert r2["created"] is True
+    reduced = ledger.load()
+    assert len(reduced.runs) == 2
+
+
+def test_q7_hook_failure_writes_stderr(tmp_path: Path, monkeypatch):
+    """Hook failures must produce stderr output, not total silence (Claude Q7)."""
+    import subprocess
+    import sys
+
+    # Make the log path a directory (causes OSError on open-for-append).
+    bad_dir = tmp_path / "agent_runs.jsonl"
+    bad_dir.mkdir()
+    monkeypatch.setenv("CONVMEM_AGENT_RUN_DATA_DIR", str(tmp_path))
+    script = Path(__file__).resolve().parents[1] / "scripts" / "kiro-agent-run-hook.py"
+    fixture = (
+        Path(__file__).resolve().parent / "fixtures" / "agent_run_ledger" / "stdin"
+    )
+    result = subprocess.run(
+        [sys.executable, str(script), "start"],
+        input=(fixture / "session_start_ok.json").read_text(encoding="utf-8"),
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "CONVMEM_AGENT_RUN_DATA_DIR": str(tmp_path)},
+    )
+    assert result.returncode == 0  # still fail-open
+    assert result.stdout == ""  # still empty stdout
+    assert "convmem agent-run hook" in result.stderr
+
+
+def test_q4_hook_two_missing_id_starts_same_cwd(tmp_path: Path, monkeypatch):
+    """Hook path: two no-ID SessionStarts must both create runs (Claude Q4)."""
+    import subprocess
+    import sys
+
+    monkeypatch.setenv("CONVMEM_AGENT_RUN_DATA_DIR", str(tmp_path))
+    script = Path(__file__).resolve().parents[1] / "scripts" / "kiro-agent-run-hook.py"
+    fixture = (
+        Path(__file__).resolve().parent
+        / "fixtures"
+        / "agent_run_ledger"
+        / "stdin"
+        / "session_start_missing_id.json"
+    )
+    payload = fixture.read_text(encoding="utf-8")
+    env = {**os.environ, "CONVMEM_AGENT_RUN_DATA_DIR": str(tmp_path)}
+    for _ in range(2):
+        result = subprocess.run(
+            [sys.executable, str(script), "start"],
+            input=payload,
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+        )
+        assert result.returncode == 0
+        assert result.stdout == ""
+    reduced = arl.AgentRunLedger(data_dir=tmp_path).load()
+    assert len(reduced.runs) == 2
+    assert all(v.identity_completeness == "partial" for v in reduced.runs.values())

@@ -146,4 +146,5 @@ session narrative here; session details belong in Track A ingest.
 | 2026-08-20 | Cursor | T1/T2 schema, reducer, and durable writer landed with focused tests |
 | 2026-08-20 | Cursor | T3–T7 CLI, Kiro edge (disabled hooks), git facts, ingest resolver |
 | 2026-08-20 | Cursor | V13 green; opened PR #215 at tip `a2a2865` |
+| 2026-08-20 | Cursor | Claude Q4/Q7 pre-soak fixes on PR #215 (no-ID collision + stderr) |
 | 2026-08-20 | Codex | Created Runway Ledger architecture, execution, and STATUS package from Kiro's identity-tracking investigation; implementation remains unauthorized |

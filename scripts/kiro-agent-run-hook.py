@@ -80,13 +80,19 @@ def main(argv: list[str]) -> int:
             if hook_name not in _START_ALIASES and hook_name not in {"SessionStart"}:
                 # Still allow start when wrapper was invoked as start.
                 pass
-            event_id = delivery_event_id(
-                client="kiro",
-                hook_event_name=hook_name,
-                session_id=native,
-                cwd=cwd,
-                source_ref="SessionStart",
-            )
+            # No stable idempotency key without a native session ID — use a
+            # fresh event_id so two no-ID sessions in the same cwd do not
+            # collide and silently drop the second start (Claude Q4).
+            if native is None:
+                event_id = None
+            else:
+                event_id = delivery_event_id(
+                    client="kiro",
+                    hook_event_name=hook_name,
+                    session_id=native,
+                    cwd=cwd,
+                    source_ref="SessionStart",
+                )
             start_run(
                 ledger,
                 client="kiro",
@@ -100,13 +106,16 @@ def main(argv: list[str]) -> int:
             return 0
 
         # stop
-        event_id = delivery_event_id(
-            client="kiro",
-            hook_event_name=hook_name,
-            session_id=native,
-            cwd=cwd,
-            source_ref="Stop",
-        )
+        if native is None:
+            event_id = None
+        else:
+            event_id = delivery_event_id(
+                client="kiro",
+                hook_event_name=hook_name,
+                session_id=native,
+                cwd=cwd,
+                source_ref="Stop",
+            )
         try:
             stop_run(
                 ledger,
@@ -133,12 +142,16 @@ def main(argv: list[str]) -> int:
                 reason=reason,
                 native_session_id=native,
                 repository=None,
-                event_id=delivery_event_id(
-                    client="kiro",
-                    hook_event_name=f"diagnostic:{hook_name}",
-                    session_id=native,
-                    cwd=cwd,
-                    source_ref=reason,
+                event_id=(
+                    None
+                    if native is None
+                    else delivery_event_id(
+                        client="kiro",
+                        hook_event_name=f"diagnostic:{hook_name}",
+                        session_id=native,
+                        cwd=cwd,
+                        source_ref=reason,
+                    )
                 ),
             )
             try:
@@ -146,7 +159,14 @@ def main(argv: list[str]) -> int:
             except AgentRunLedgerError:
                 pass
         return 0
-    except Exception:  # noqa: BLE001 — fail-open for client lifecycle
+    except Exception as exc:  # noqa: BLE001 — fail-open for client lifecycle
+        try:
+            print(
+                f"convmem agent-run hook ({mode}): {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+        except Exception:  # noqa: BLE001,S110
+            pass
         return 0
 
 
