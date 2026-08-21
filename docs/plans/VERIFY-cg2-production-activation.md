@@ -44,7 +44,7 @@ enable GC.
 | **How** | Static inventories, hermetic pytest, isolated copied-corpus rehearsal, Chroma 1.5.9 mixed-mode proof. |
 
 **TL;DR:** Mechanical checks PASS on isolated fixtures at pinned Chroma 1.5.9;
-legacy-only soak grant is recorded, but soak completion and V8b closeout remain UNRESOLVED.
+V8b (the separate legacy-only soak grant) is recorded and satisfied; soak completion remains UNRESOLVED and is not covered by V8b.
 
 ### Merge reading
 
@@ -169,7 +169,7 @@ legacy-only soak grant is recorded, but soak completion and V8b closeout remain 
 | ID | Check | Result | Evidence |
 |---|---|---|---|
 | V8a | Independent reviewer signs exact tip | PENDING | Kiro at PR |
-| V8b | Ryan accepts package / grants soak separately | Grant recorded; completion UNRESOLVED | Legacy-only soak grant recorded in `LATEST.md`; no completion evidence. V8b closeout semantics UNRESOLVED — Ryan decision required |
+| V8b | Ryan accepts package / grants soak separately | **PASS** — legacy-only gateway soak grant recorded | Grant recorded in `LATEST.md`. V8b covers the grant, not soak success; soak completion remains separately UNRESOLVED |
 | V8c | First-owner packet (future) | PENDING | Not in Execute scope |
 
 ## Formal property → test map
