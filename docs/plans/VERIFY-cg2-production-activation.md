@@ -44,8 +44,9 @@ enable GC.
 | **How** | Static inventories, hermetic pytest, isolated copied-corpus rehearsal, Chroma 1.5.9 mixed-mode proof. |
 
 **TL;DR:** Mechanical checks PASS on isolated fixtures at pinned Chroma 1.5.9;
-V8b (the separate legacy-only soak grant) is recorded and satisfied; soak
-**completion** was separately Ryan-accepted 2026-08-21 (not a V8b status change).
+V8a independent sign-off is **PASS** (Kiro); V8b (soak grant) is **PASS**; soak
+**completion** was separately Ryan-accepted 2026-08-21; V8c (first-owner packet)
+remains **PENDING** — no owner authorization granted.
 
 ### Merge reading
 
@@ -169,15 +170,15 @@ V8b (the separate legacy-only soak grant) is recorded and satisfied; soak
 
 | ID | Check | Result | Evidence |
 |---|---|---|---|
-| V8a | Independent reviewer signs exact tip | PENDING | Kiro at PR |
+| V8a | Independent reviewer signs exact tip | **PASS** — independent sign-off justified | Kiro independent review of CG-2 implementation tip `2f427fcfb8818dd665310bae7e8cd5ffa066bdcc` and preservation check on `main` `451f523b48c9fd998a050edfe6766d14249dcc6b` (CG-2 implementation surfaces unchanged between them). Focused CG-2 tests **43/43 PASS**; CG-2 + generation-core **76/76 PASS**; query/doctor/rerank **84/84 PASS**. Full suite timed out at 180s — **not** claimed PASS or FAIL. No material defects. Non-blocking carry-forward for V8c/canary prep: `FrozenGenerationStable` and `RetryBudgetTerminates` share one test; structural immutability supplements coverage (does **not** block V8a). |
 | V8b | Ryan accepts package / grants soak separately | **PASS** — legacy-only gateway soak grant recorded | Grant recorded in `LATEST.md`. V8b covers the **grant only**, not soak-completion success (see Soak-completion evidence below). |
-| V8c | First-owner packet (future) | PENDING | Not in Execute scope |
+| V8c | First-owner packet (future) | PENDING | Not authorized. Next governed step after V8a PASS: prepare first-owner packet for Ryan GATE — preparation ≠ grant. |
 
 ## Soak-completion evidence (separate from V8b)
 
 **Status:** **ACCEPTED** — Ryan accepted completed CG-2 legacy-only gateway soak on **2026-08-21**.
 
-This record does **not** change V8a/V8b/V8c. V8b remains the soak **grant**. Soak
+This record does **not** redefine V8b. V8b remains the soak **grant**. Soak
 **completion** is evidenced here only. First generational owner, activation,
 activation manifest, GC, Shadow, and R2b remain unauthorized.
 
@@ -189,7 +190,7 @@ activation manifest, GC, Shadow, and R2b remain unauthorized.
 | RUNBOOK pauses | No demonstrated CG-2 RUNBOOK pause condition during the accepted window |
 | Midnight observer samples | Six `RESET_REQUIRED` samples (~00:00 / 00:15 CDT Aug 19–21) adjudicated **non-blocking**. Timing is consistent with the daily restic freshness boundary; the exact failing doctor check was **not** captured (checker discards doctor JSON on nonzero exit). Checker is observer-only; these observer events do **not** reset the RUNBOOK soak clock. |
 | Final retrieval eval | **2026-08-21T08:17Z** — `python scripts/eval-retrieval.py` exit **0**; 8/8 PASS; P@1 **87.5%**; P@k **100%**; MRR **0.9375**; Recall@k **100%**; **no regression vs baseline**; no watch restart; no production/repository mutation |
-| Out of scope of this acceptance | V8a still PENDING; first owner / activation / GC / Shadow / R2b **not** granted |
+| Out of scope of this acceptance | First owner / activation / GC / Shadow / R2b **not** granted (V8c remains PENDING) |
 
 ## Formal property → test map
 
@@ -204,10 +205,10 @@ Architecture baseline: e680ce837653698a5be8b78ba02db2f880c40c63
 Execution grant plan: 6a808f1543f2c93270d9f0ed1ae88cad27f6556b
 Subject tip (branch): feat/2026-08-15-cg2-production-activation @ 2a20209
 Mechanical run: pytest isolated CG-2 bundle + full suite (see PR)
-Independent sign-off (V8a): PENDING
+Independent sign-off (V8a): PASS — Kiro; subject 2f427fc; main preservation 451f523
 Ryan GATE soak grant (V8b): PASS — grant recorded (not completion)
 Soak completion: ACCEPTED 2026-08-21 (separate evidence section above)
-First-owner packet (V8c): PENDING
+First-owner packet (V8c): PENDING — preparation next; not authorized
 Production activation: NOT PERFORMED
 Automatic GC: NOT PERFORMED
 ```
