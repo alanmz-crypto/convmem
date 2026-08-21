@@ -56,7 +56,7 @@ separate evidence-citing proposal stage.
 | `.kiro/hooks/` | **Missing** in the repository; Kiro capture is planned, not installed |
 | Architecture plan | [`ARCHITECTURE-agent-run-ledger.md`](ARCHITECTURE-agent-run-ledger.md) — authored on this planning branch |
 | Execution plan | [`EXECUTION-agent-run-ledger.md`](EXECUTION-agent-run-ledger.md) — authored on this planning branch |
-| Implementation/tests | **In progress** — T0–T7 on feat branch; V0–V12 focused PASS; V13 full suite pending |
+| Implementation/tests | **PR open** — [#215](https://github.com/alanmz-crypto/convmem/pull/215) tip `a2a2865`; V0–V13 PASS; hooks disabled |
 
 ## 4. Completion State
 
@@ -145,4 +145,5 @@ session narrative here; session details belong in Track A ingest.
 | 2026-08-20 | Cursor | Execute started on feat branch; T0 Kiro hook contract fixtures landed |
 | 2026-08-20 | Cursor | T1/T2 schema, reducer, and durable writer landed with focused tests |
 | 2026-08-20 | Cursor | T3–T7 CLI, Kiro edge (disabled hooks), git facts, ingest resolver |
+| 2026-08-20 | Cursor | V13 green; opened PR #215 at tip `a2a2865` |
 | 2026-08-20 | Codex | Created Runway Ledger architecture, execution, and STATUS package from Kiro's identity-tracking investigation; implementation remains unauthorized |
