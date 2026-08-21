@@ -1,0 +1,52 @@
+{
+  "cases": [
+    {
+      "id": "clean_branch",
+      "cwd_is_git": true,
+      "outputs": {
+        "toplevel": {"exit": 0, "stdout": "/home/lauer/Projects/convmem\n"},
+        "head_sha": {"exit": 0, "stdout": "d10e1d5f4993f60a32142115f8b8c0f0f9ea4481\n"},
+        "branch": {"exit": 0, "stdout": "feat/2026-08-20-agent-run-ledger\n"},
+        "dirty": {"exit": 0, "stdout": ""},
+        "name_only_diff": {"exit": 0, "stdout": ""}
+      },
+      "expected": {
+        "repository": "/home/lauer/Projects/convmem",
+        "branch": "feat/2026-08-20-agent-run-ledger",
+        "head_revision": "d10e1d5f4993f60a32142115f8b8c0f0f9ea4481",
+        "dirty_tree": false
+      }
+    },
+    {
+      "id": "detached_dirty",
+      "cwd_is_git": true,
+      "outputs": {
+        "toplevel": {"exit": 0, "stdout": "/home/lauer/Projects/convmem\n"},
+        "head_sha": {"exit": 0, "stdout": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"},
+        "branch": {"exit": 1, "stdout": ""},
+        "dirty": {"exit": 0, "stdout": " M agent_run_ledger.py\n"},
+        "name_only_diff": {"exit": 0, "stdout": "agent_run_ledger.py\n"}
+      },
+      "expected": {
+        "repository": "/home/lauer/Projects/convmem",
+        "branch": "detached",
+        "head_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "dirty_tree": true,
+        "files_observed": [{"path": "agent_run_ledger.py", "relation": "observed"}]
+      }
+    },
+    {
+      "id": "non_git_cwd",
+      "cwd_is_git": false,
+      "outputs": {
+        "toplevel": {"exit": 128, "stdout": "", "stderr": "fatal: not a git repository\n"}
+      },
+      "expected": {
+        "repository": null,
+        "branch": null,
+        "head_revision": null,
+        "dirty_tree": "unknown"
+      }
+    }
+  ]
+}

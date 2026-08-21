@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "convmem-agent-run-stop",
+      "description": "Arc Runway Ledger Stop capture (disabled until Ryan grant)",
+      "trigger": "Stop",
+      "enabled": false,
+      "timeout": 15,
+      "action": {
+        "type": "command",
+        "command": "python3 scripts/kiro-agent-run-hook.py stop"
+      }
+    }
+  ]
+}

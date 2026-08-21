@@ -52,7 +52,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
-    "unresolved", "tldr", "work", "shadow-inventory", "shadow-activate",
+    "unresolved", "tldr", "work", "agent-run", "shadow-inventory", "shadow-activate",
     "shadow-rollback", "shadow-canary", "writer-census-start",
     "writer-census-status", "writer-census-report",
 }
@@ -814,6 +814,224 @@ def work_resume_cmd(
         raise typer.Exit(1) from exc
     typer.echo(f"Resumed {name}. Push every commit; do not merge main.")
 
+
+
+agent_run_app = typer.Typer(help="Agent run identity ledger (Arc Runway Ledger).")
+app.add_typer(agent_run_app, name="agent-run")
+
+
+def _agent_run_ledger_from_opts(data_dir: Path | None):
+    from agent_run_ledger import AgentRunLedger
+
+    return AgentRunLedger(data_dir=data_dir) if data_dir is not None else AgentRunLedger()
+
+
+def _emit_agent_run(payload: dict, *, json_mode: bool) -> None:
+    if json_mode:
+        typer.echo(json.dumps(payload, sort_keys=True))
+    else:
+        for key in sorted(payload):
+            typer.echo(f"{key}: {payload[key]}")
+
+
+@agent_run_app.command("start")
+def agent_run_start_cmd(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    client: str = typer.Option(..., "--client", help="kiro|codex|cursor|crush|copilot|..."),
+    native_session_id: str | None = typer.Option(None, "--native-session-id"),
+    cwd: Path | None = typer.Option(None, "--cwd", help="Working directory for Git facts"),
+    source_kind: str = typer.Option("cli", "--source-kind"),
+    source_ref: str = typer.Option("agent-run start", "--source-ref"),
+    event_id: str | None = typer.Option(None, "--event-id"),
+    data_dir: Path | None = typer.Option(None, "--data-dir"),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable JSON"),
+    no_git: bool = typer.Option(False, "--no-git"),
+):
+    """Append run_started; returns run_id after durable append."""
+    from agent_run_ledger import AgentRunLedgerError, start_run
+
+    ledger = _agent_run_ledger_from_opts(data_dir)
+    try:
+        payload = start_run(
+            ledger,
+            client=client,
+            native_session_id=native_session_id,
+            source_kind=source_kind,
+            source_ref=source_ref,
+            cwd=cwd,
+            event_id=event_id,
+            collect_git=not no_git,
+        )
+    except AgentRunLedgerError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    _emit_agent_run(payload, json_mode=json_out)
+
+
+@agent_run_app.command("stop")
+def agent_run_stop_cmd(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    client: str = typer.Option(..., "--client"),
+    status: str = typer.Option("completed", "--status", help="completed|aborted|unknown"),
+    run_id: str | None = typer.Option(None, "--run-id"),
+    native_session_id: str | None = typer.Option(None, "--native-session-id"),
+    repository: str | None = typer.Option(None, "--repository"),
+    cwd: Path | None = typer.Option(None, "--cwd"),
+    source_kind: str = typer.Option("cli", "--source-kind"),
+    source_ref: str = typer.Option("agent-run stop", "--source-ref"),
+    event_id: str | None = typer.Option(None, "--event-id"),
+    data_dir: Path | None = typer.Option(None, "--data-dir"),
+    json_out: bool = typer.Option(False, "--json"),
+    no_git: bool = typer.Option(False, "--no-git"),
+):
+    """Append run_stopped for an exact run_id or unique identity match."""
+    from agent_run_ledger import (
+        AgentRunLedgerError,
+        AmbiguityError,
+        NotFoundError,
+        stop_run,
+    )
+
+    ledger = _agent_run_ledger_from_opts(data_dir)
+    try:
+        payload = stop_run(
+            ledger,
+            client=client,
+            status=status,
+            source_kind=source_kind,
+            source_ref=source_ref,
+            run_id=run_id,
+            native_session_id=native_session_id,
+            repository=repository,
+            cwd=cwd,
+            event_id=event_id,
+            collect_git=not no_git,
+        )
+    except AmbiguityError as exc:
+        _emit_agent_run(
+            {"error": "ambiguous", "detail": str(exc)},
+            json_mode=bool(json_out),
+        )
+        raise typer.Exit(2) from exc
+    except NotFoundError as exc:
+        _emit_agent_run(
+            {"error": "not_found", "detail": str(exc)},
+            json_mode=bool(json_out),
+        )
+        raise typer.Exit(2) from exc
+    except AgentRunLedgerError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    _emit_agent_run(payload, json_mode=json_out)
+
+
+@agent_run_app.command("enrich")
+def agent_run_enrich_cmd(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    run_id: str = typer.Option(..., "--run-id"),
+    client: str = typer.Option(..., "--client"),
+    commits: list[str] = typer.Option([], "--commits", help="40-hex SHAs (explicit)"),
+    files: list[str] = typer.Option([], "--files", help="Repo-relative paths (explicit)"),
+    ledger_ids: list[str] = typer.Option([], "--ledger-id", help="obs_/dec_/ver_ ids"),
+    source_kind: str = typer.Option("cli", "--source-kind"),
+    source_ref: str = typer.Option("agent-run enrich", "--source-ref"),
+    data_dir: Path | None = typer.Option(None, "--data-dir"),
+    json_out: bool = typer.Option(False, "--json"),
+):
+    """Append explicit enrichment facts for a run."""
+    from agent_run_ledger import AgentRunLedgerError, NotFoundError, enrich_run
+
+    facts = {
+        "commits": [
+            {"sha": sha, "relation": "explicit", "source": "caller"} for sha in commits
+        ],
+        "files": [
+            {
+                "path": path,
+                "relation": "explicit",
+                "source": "caller",
+                "change": "unknown",
+            }
+            for path in files
+        ],
+        "ledger_records": [
+            {"ledger_id": lid, "relation": "explicit", "source": "caller"}
+            for lid in ledger_ids
+        ],
+    }
+    ledger = _agent_run_ledger_from_opts(data_dir)
+    try:
+        payload = enrich_run(
+            ledger,
+            run_id=run_id,
+            client=client,
+            source_kind=source_kind,
+            source_ref=source_ref,
+            facts=facts,
+        )
+    except NotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(2) from exc
+    except AgentRunLedgerError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    _emit_agent_run(payload, json_mode=json_out)
+
+
+@agent_run_app.command("show")
+def agent_run_show_cmd(
+    run_id: str = typer.Argument(...),
+    data_dir: Path | None = typer.Option(None, "--data-dir"),
+    json_out: bool = typer.Option(True, "--json/--human", help="JSON by default"),
+):
+    """Show reduced run state."""
+    ledger = _agent_run_ledger_from_opts(data_dir)
+    reduced = ledger.load()
+    view = reduced.runs.get(run_id)
+    if view is None:
+        typer.echo(f"unknown run_id: {run_id}", err=True)
+        raise typer.Exit(2)
+    payload = view.to_dict()
+    if not payload["terminal_evidence"]:
+        payload["note"] = "no terminal evidence recorded"
+    _emit_agent_run(payload, json_mode=json_out)
+
+
+@agent_run_app.command("list")
+def agent_run_list_cmd(
+    data_dir: Path | None = typer.Option(None, "--data-dir"),
+    status: str | None = typer.Option(None, "--status"),
+    json_out: bool = typer.Option(True, "--json/--human"),
+):
+    """List reduced runs."""
+    ledger = _agent_run_ledger_from_opts(data_dir)
+    reduced = ledger.load()
+    rows = []
+    for view in reduced.runs.values():
+        if status and view.status != status:
+            continue
+        rows.append(
+            {
+                "run_id": view.run_id,
+                "client": view.client,
+                "native_session_id": view.native_session_id,
+                "status": view.status,
+                "identity_completeness": view.identity_completeness,
+                "terminal_evidence": view.terminal_evidence,
+            }
+        )
+    payload = {"runs": rows, "diagnostics": len(reduced.diagnostics)}
+    _emit_agent_run(payload, json_mode=json_out)
+
+
+@agent_run_app.command("validate")
+def agent_run_validate_cmd(
+    data_dir: Path | None = typer.Option(None, "--data-dir"),
+    json_out: bool = typer.Option(True, "--json/--human"),
+):
+    """Validate the event log without repairing it."""
+    ledger = _agent_run_ledger_from_opts(data_dir)
+    report = ledger.validate()
+    _emit_agent_run(report, json_mode=json_out)
+    if not report.get("ok", False):
+        raise typer.Exit(1)
 
 def _resolve_approve_signer(signer: str | None) -> str:
     return (signer or os.environ.get("CONVMEM_SIGNER") or "ryan").strip()
