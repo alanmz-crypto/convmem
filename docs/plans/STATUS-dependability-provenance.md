@@ -80,6 +80,7 @@ decisions.
 | `docs/plans/P4-VERIFY-EVIDENCE.md` | Merged P4 deterministic evidence packet for implementation `6ec5b6c031ae8fdedbd90ef1392232d25f0bfaf1`; 57 PASS candidates and 32 PENDING entries are recorded without VERIFY promotion. |
 | `docs/plans/T3-RESIDUAL-CLOSURE-EVIDENCE.md` | Historical merged PR #209 residual packet; its original V4m/V9a/V9d limitation is superseded by the final exact-SHA evidence recorded below, without rewriting the historical packet. |
 | `PR #211 final V4m evidence` | Exact candidate `6dc50d9ec56e016a32c7eddf3d66636b41923ed8`, merged at `6b9f6d7544710e81f67ae9d6a15e5a8982a7ce6c`; V4m/V9a/V9d are accepted PASS rows for closed T3. |
+| `PR #213 post-close hardening` | Runtime writer-attestation enforcement candidate `f069c780a257d2e68075c06806b0913b35aeac2d`, merged at `013f692442029a0d64326b3504e6216f320ff595`; T3 remains CLOSED and deferred rows remain PENDING. |
 | `provenance.py` + `tests/test_provenance.py` | P1 in-memory policy/envelope/identity/verification substrate and focused tests; merged through PR #203. |
 | `docs/plans/P1-PROVENANCE-MUTATOR-CENSUS.md` | P1 mutator census and consistency-contract baseline; final V4m universal evidence is accepted in PR #211. |
 | `CONVMEM_DATA_ROOT/provenance/` | Future durable registry; restore-preflight classification and validator integration remain outside P1 implementation. |
@@ -129,8 +130,11 @@ correction are complete/merged. PR #211's exact implementation candidate
 `6dc50d9ec56e016a32c7eddf3d66636b41923ed8` is merged at
 `6b9f6d7544710e81f67ae9d6a15e5a8982a7ce6c`; Kiro and Copilot both PASSed on
 that candidate. V3f, V3h, V4m, V8c, V8e, V8g, V9a, and V9d are accepted as
-PASS. Ryan recorded `RYAN_T3_CLOSE — PASS`; satisfied rows
-are now PASS and deferred rows remain PENDING with explicit later-gate owners.
+PASS. Ryan recorded `RYAN_T3_CLOSE — PASS`; satisfied rows are now PASS and
+deferred rows remain PENDING with explicit later-gate owners. A post-T3 bounded
+hardening correction then added runtime writer-attestation enforcement in PR #213,
+merged at `013f692442029a0d64326b3504e6216f320ff595`; this did not reopen T3 or
+change any formal VERIFY disposition.
 The final dispositions for every remaining row are in §6a; no new
 implementation or evidence lane is authorized. Migration, Bootstrap,
 live-data/Chroma mutation, CG-1/CG-2, Shadow, R2b, and T4/T5 remain
@@ -163,6 +167,11 @@ unauthorized.
 7. Ryan recorded `RYAN_T3_CLOSE — PASS`; T3 is CLOSED. Deferred rows remain
    live `PENDING` requirements under their separately authorized later gates.
    No subsequent implementation phase is authorized by this record.
+8. Post-T3 bounded hardening correction PR #213 is merged at
+   `013f692442029a0d64326b3504e6216f320ff595` from candidate
+   `f069c780a257d2e68075c06806b0913b35aeac2d`; Kiro and Copilot both PASSed.
+   The correction strengthens runtime enforcement of the existing V4m boundary;
+   it does not reopen T3 or authorize any deferred gate.
 
 ## 6a. Final T3 closure dispositions
 
@@ -270,5 +279,6 @@ Do not append session narrative.
 | 2026-08-18 | Codex | PR #207 P4 evidence candidate `b7b5fe0b82285fd522cb9e6e3ed54722ac29007f` squash-merged at `37c6aabde0dd8f1b7cc190d36a8a19d7a07b8c34`; 57 PASS candidates / 32 PENDING entries recorded, all repository VERIFY rows remain PENDING, and T3 closure is not granted. |
 | 2026-08-18 | Codex | PR #209 residual evidence candidate `d796be0ad6fb0c86bf46cf34519a8332252fce1e` squash-merged at `66926ac2e68f045e9f36fd26157a3d2ca07b9608`; V3f/V3h/V8c/V8e/V8g remain PASS candidates, V4m/V9a/V9d remain PENDING blockers, and all repository VERIFY rows remain PENDING. |
 | 2026-08-19 | Codex | Ryan recorded `RYAN_T3_CLOSE — PASS` after PR #211 final evidence; T3 is CLOSED, satisfied rows are PASS, and later-gate rows remain explicitly deferred/PENDING. |
+| 2026-08-20 | Codex | Post-T3 bounded hardening correction PR #213 merged at `013f692442029a0d64326b3504e6216f320ff595`; runtime V4m enforcement strengthened, T3 remains CLOSED, and deferred rows are unchanged. |
 
-**TL;DR:** T3 is CLOSED at the final PR #211 implementation and merge SHAs; satisfied rows are PASS, later-gate rows remain explicitly deferred/PENDING, and no later-stage authorization was granted.
+**TL;DR:** T3 is CLOSED; PR #213 added bounded post-close V4m runtime enforcement without changing satisfied PASS rows, deferred PENDING rows, or later-stage authorization.
