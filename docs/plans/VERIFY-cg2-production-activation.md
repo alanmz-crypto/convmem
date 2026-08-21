@@ -15,7 +15,10 @@ Does **not** authorize production soak, owner cutover, or GC.
 
 **Subject / tip:** `2a20209` (T5 complete — CG-2 Execute T1–T5 on branch)
 
-**Architecture baseline:** `e680ce837653698a5be8b78ba02db2f880c40c63`
+**Architecture baseline (prior lock text):** `e680ce837653698a5be8b78ba02db2f880c40c63`
+
+**Design A architecture lock (`main` base):** `cd9554e4c3006f7e0695d5d17a69696cc913c566`
+(amendments papered 2026-08-21; docs branch — not yet merged)
 
 **Execution plan (Ryan grant):** `6a808f1543f2c93270d9f0ed1ae88cad27f6556b`
 
@@ -45,8 +48,8 @@ enable GC.
 
 **TL;DR:** Mechanical checks PASS on isolated fixtures at pinned Chroma 1.5.9;
 V8a independent sign-off is **PASS** (Kiro); V8b (soak grant) is **PASS**; soak
-**completion** was separately Ryan-accepted 2026-08-21; V8c (first-owner packet)
-remains **PENDING** — no owner authorization granted.
+**completion** was separately Ryan-accepted 2026-08-21; V8c remains **PENDING**
+(definition papered under Design A — not PASS). No owner activation granted.
 
 ### Merge reading
 
@@ -118,7 +121,7 @@ remains **PENDING** — no owner authorization granted.
 
 | ID | Check | Result | Evidence |
 |---|---|---|---|
-| V3a | Source mutation refuses promotion | PASS | `tests/test_source_freshness_promotion.py` |
+| V3a | Source mutation refuses forward promotion | PASS | `tests/test_source_freshness_promotion.py` |
 | V3b | Startup/sweep/overflow paths run | PASS | `tests/test_source_reconciler.py` |
 | V3c | Lost notification found and queued | PASS | `test_discover_legacy_drift_when_source_changes`, sweep tests |
 | V3d | Dirty state cleared only by successful sweep | PASS | `test_sweep_queues_owner_work_and_clears_dirty` |
@@ -152,7 +155,7 @@ remains **PENDING** — no owner authorization granted.
 |---|---|---|---|
 | V6a | Kill/corruption paths fail closed or recover | PASS | `tests/test_file_generation_validate.py`, pointer recovery tests |
 | V6b | Active/previous retention survives restart | PASS | `test_mixed_mode_proof.py::test_retention_survives_restart` |
-| V6c | Rollback uses retained generation, not legacy resurrection | PASS | `tests/test_file_generation_store.py` previous retention |
+| V6c | Rollback uses retained generation, not legacy resurrection | **PENDING** — Design A implementation | Existing evidence (`tests/test_file_generation_store.py` previous retention) proves **retention substrate only**, not `rollback_active_pointer`. Generation-switch rollback API + Design A drill remain unimplemented; do not treat prior PASS as Design A rollback proof. |
 | V6d | Recovery follows durable pointer | PASS | `tests/test_file_generation_pointer.py` recovery paths |
 | V6e | GC disabled; protected generations not deleted | PASS | `PHYSICAL_DELETION_DISABLED`; no delete in proof path |
 
@@ -172,7 +175,7 @@ remains **PENDING** — no owner authorization granted.
 |---|---|---|---|
 | V8a | Independent reviewer signs exact tip | **PASS** — independent sign-off justified | Kiro independent review of CG-2 implementation tip `2f427fcfb8818dd665310bae7e8cd5ffa066bdcc` and preservation check on `main` `451f523b48c9fd998a050edfe6766d14249dcc6b` (CG-2 implementation surfaces unchanged between them). Focused CG-2 tests **43/43 PASS**; CG-2 + generation-core **76/76 PASS**; query/doctor/rerank **84/84 PASS**. Full suite timed out at 180s — **not** claimed PASS or FAIL. No material defects. Non-blocking carry-forward for V8c/canary prep: `FrozenGenerationStable` and `RetryBudgetTerminates` share one test; structural immutability supplements coverage (does **not** block V8a). |
 | V8b | Ryan accepts package / grants soak separately | **PASS** — legacy-only gateway soak grant recorded | Grant recorded in `LATEST.md`. V8b covers the **grant only**, not soak-completion success (see Soak-completion evidence below). |
-| V8c | First-owner packet (future) | PENDING | Not authorized. Next governed step after V8a PASS: prepare first-owner packet for Ryan GATE — preparation ≠ grant. |
+| V8c | First-owner packet + one-shot activation grant | **PENDING** (not PASS) | **Definition (Design A / HITL #3):** V8c PASS = Ryan accepted the complete first-owner packet **and** issued the exact one-shot first-owner activation grant. Packet **before grant** must already bind exact `G_rb` (id + manifest SHA) **and** exact `G_canary` (id + manifest SHA) plus source hashes, pipeline fingerprints, embedding provenance, qualification evidence, and implementation SHA. No “fill `G_canary` at cutover”; no post-grant packet amendment to discover the target. Grant is one-shot and self-invalidating: if source/current authority/preconditions change before publication, first-cutover refuses and a **new packet + new V8c grant** are required. **Canary completion** is a separate later evidence record and Ryan decision — not implied by V8c PASS. **Current state:** not authorized; do not mark PASS. Next governed docs step after Design A architecture papering: Design A **execution plan** (packet field anchoring), not premature full V8c packet papering. |
 
 ## Soak-completion evidence (separate from V8b)
 
@@ -208,7 +211,9 @@ Mechanical run: pytest isolated CG-2 bundle + full suite (see PR)
 Independent sign-off (V8a): PASS — Kiro; subject 2f427fc; main preservation 451f523
 Ryan GATE soak grant (V8b): PASS — grant recorded (not completion)
 Soak completion: ACCEPTED 2026-08-21 (separate evidence section above)
-First-owner packet (V8c): PENDING — preparation next; not authorized
+First-owner packet (V8c): PENDING — definition papered (Design A); not PASS; not authorized
+V8c PASS definition: complete packet accepted + exact one-shot activation grant
+Canary completion: separate later evidence / Ryan decision
 Production activation: NOT PERFORMED
 Automatic GC: NOT PERFORMED
 ```
