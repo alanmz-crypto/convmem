@@ -9,6 +9,8 @@ from pathlib import Path
 from chroma_write_store import production_chroma_write_session
 from distill import make_unit_id
 from llm import ollama_embed
+from provenance_binding import attach_unit_provenance, build_ingest_envelope, projection_metadata
+from provenance import sha256_hex
 
 _TOOL = "inter-model"
 _DOMAIN = "coding.tooling"
@@ -104,7 +106,43 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
             "domain": _DOMAIN,
             "author_model": author_model,
             "verifier_model": None,
+            "source_type": source_type,
         }
+        envelope = build_ingest_envelope(
+            records=[msg],
+            consumed_views=[content],
+            source_identity=path_key,
+            locator_prefix=f"section:{section_index}",
+            source_type=source_type,
+            transformer_class="packaging",
+            transformer_identity="inter_model_index",
+            transformer_version="inter-model-v1",
+            derivation_kind="packaging",
+            producer_class="external",
+            producer_assurance="claimed",
+            selection_parameters={
+                "section_index": section_index,
+                "content_sha256": sha256_hex(content),
+                "max_embedding_chars": _MAX_EMBED_CHARS,
+                "source_type_claim": source_type,
+                "author_model_claim": author_model,
+            },
+            provider_payload={
+                "kind": "direct-inter-model-packaging",
+                "content": content,
+                "source_type_claim": source_type,
+                "author_model_claim": author_model,
+            },
+            recipe_id="inter-model-packaging-v1",
+            recipe_spec={
+                "kind": "inter-model-packaging-v1",
+                "document_projection": "title-summary-keywords",
+                "max_embedding_chars": _MAX_EMBED_CHARS,
+            },
+            output_locator=f"{path_key}#section:{section_index}",
+            output_value=unit,
+        )
+        unit = attach_unit_provenance(unit, envelope)
         meta = {
             "id": unit_id,
             "type": unit["type"],
@@ -118,6 +156,7 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
             "author_model": unit["author_model"],
             "verifier_model": "",
             "source_type": source_type,
+            **projection_metadata(unit),
             "conversation_id": "",
             "session_id": "",
             "workspace_directory": "",
@@ -170,7 +209,7 @@ def index_inter_model_messages(  # pylint: disable=too-many-locals,too-many-argu
                 export_path.parent.mkdir(parents=True, exist_ok=True)
                 with export_flock_path(export_path):
                     with open(export_path, "a", encoding="utf-8") as uf:
-                        uf.write(json.dumps(unit) + "\n")
+                        uf.write(json.dumps(unit, ensure_ascii=False) + "\n")
             if unit_ids_out is not None:
                 unit_ids_out.update(row[0]["id"] for row in dedupe.accepted)
             persist_ingest_dedupe(cfg, dedupe)

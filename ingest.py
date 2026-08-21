@@ -21,12 +21,41 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from adapters.detect import TOOL_BY_FORMAT, detect_format, get_parser
-from chroma_write_store import production_chroma_write_session
+from chroma_write_store import production_chroma_write_session, production_writer_boundary
 from config import load_config
-from distill import distill, normalize_unit
-from llm import ollama_embed, summarize
+from distill import (
+    distill_consumed_view,
+    distill_prompt,
+    distill as _distill,
+    distill_with_response,
+    normalize_unit,
+)
+from llm import (
+    ollama_embed,
+    resolve_generation_binding,
+    summarize,
+    summarize_consumed_view,
+    summarize_prompt,
+)
+from provenance_binding import (
+    attach_unit_provenance,
+    build_ingest_envelope,
+    projection_metadata,
+    provenance_identity,
+)
 
 _SYNTHESIS_FAIL_LOG = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
+
+# Keep the established ingest.distill patch seam for hermetic tests and other
+# callers while using the response-aware path during ordinary execution.
+distill = _distill
+
+
+def _distill_with_provenance(*args, **kwargs) -> tuple[list[dict], str]:
+    if distill is not _distill:
+        units = distill(*args, **kwargs)
+        return units, json.dumps(units, ensure_ascii=False, sort_keys=True)
+    return distill_with_response(*args, **kwargs)
 
 
 @dataclass
@@ -119,11 +148,14 @@ def mutate_processed(processed_path: str, mutator: Callable[[dict], None]) -> di
     Hold only for read+mutate+write. Never across parse/LLM/embed/Chroma work.
     Always releases the lock on exception paths (via `_processed_lock`).
     """
-    with _processed_lock(processed_path):
-        data = load_processed(processed_path)
-        mutator(data)
-        save_processed(processed_path, data)
-        return data
+    with production_writer_boundary(
+        entrypoint="ingest.processed",
+    ):
+        with _processed_lock(processed_path):
+            data = load_processed(processed_path)
+            mutator(data)
+            save_processed(processed_path, data)
+            return data
 
 
 def chunk_messages(messages: list[dict], size: int, overlap: int) -> list[dict]:
@@ -161,14 +193,22 @@ def render_chunk(messages: list[dict], total_budget: int = 10000) -> str:
     """
     if not messages:
         return ""
+    return "\n".join(render_chunk_message_views(messages, total_budget=total_budget))
+
+
+def render_chunk_message_views(messages: list[dict], total_budget: int = 10000) -> list[str]:
+    """Return each exact per-message view used by :func:`render_chunk`."""
+
+    if not messages:
+        return []
     per_msg = max(150, total_budget // len(messages))
     lines = []
-    for m in messages:
-        content = m["content"].strip()
+    for message in messages:
+        content = message["content"].strip()
         if len(content) > per_msg:
             content = content[:per_msg] + " […]"
-        lines.append(f"{m['role']}: {content}")
-    return "\n".join(lines)
+        lines.append(f"{message['role']}: {content}")
+    return lines
 
 
 def _chunk_date(messages: list[dict]) -> str:
@@ -437,6 +477,13 @@ def watch_skip_reason(
 
 
 def _deduplicate_units_export(export_path: Path) -> int:
+    """Compact the export inside the universal mutation boundary."""
+
+    with production_writer_boundary(entrypoint="ingest.export"):
+        return _deduplicate_units_export_impl(export_path)
+
+
+def _deduplicate_units_export_impl(export_path: Path) -> int:
     """Rewrite knowledge_units.jsonl keeping only the last occurrence of each unit ID.
 
     This prevents unbounded growth from repeated re-indexing. Returns lines removed.
@@ -540,16 +587,46 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
             cfg = _pw.live_cfg
             store.add_summary(doc_id, summary, summary_embedding, metadata)
             dedupe = evaluate_ingest_batch(store, cfg, units_to_add)
+            written_projection_ids: set[str] = set()
             for unit, doc, unit_embedding, unit_meta in dedupe.accepted:
-                store.add_unit(unit["id"], doc, unit_embedding, unit_meta)
+                projection_unit = dict(unit)
+                projection_meta = dict(unit_meta)
+                existing = store.get_unit(unit["id"])
+                existing_identity = (
+                    provenance_identity(existing.get("metadata") or {})
+                    if existing is not None
+                    else None
+                )
+                candidate_identity = provenance_identity(unit_meta)
+                if (
+                    existing is not None
+                    and candidate_identity is not None
+                    and existing_identity != candidate_identity
+                    and (existing_identity is not None or candidate_identity is not None)
+                ):
+                    # A stable source/chunk id is a projection address, not
+                    # provenance authority. Keep the old assertion intact
+                    # while staging a distinct assertion for this generation.
+                    projection_id = hashlib.sha256(
+                        (
+                            "convmem-p3-projection-v1:"
+                            f"{unit['id']}:{candidate_identity[0]}:{candidate_identity[1]}"
+                        ).encode("utf-8")
+                    ).hexdigest()
+                    projection_unit["id"] = projection_id
+                    projection_meta["id"] = projection_id
+                store.add_unit(
+                    projection_unit["id"], doc, unit_embedding, projection_meta
+                )
+                written_projection_ids.add(projection_unit["id"])
                 if units_export:
                     units_export.parent.mkdir(parents=True, exist_ok=True)
                     with export_flock(cfg):
                         with open(units_export, "a", encoding="utf-8") as uf:
-                            uf.write(json.dumps(unit) + "\n")
+                            uf.write(json.dumps(projection_unit) + "\n")
                 n_units += 1
             if written_unit_ids is not None:
-                written_unit_ids.update(row[0]["id"] for row in dedupe.accepted)
+                written_unit_ids.update(written_projection_ids)
         dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
         if verbose:
             for row in dedupe.exact_suppressions:
@@ -671,9 +748,10 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             continue
 
         distill_failed = False
+        distill_response = ""
         for attempt in range(3):
             try:
-                raw_units = distill(
+                raw_units, distill_response = _distill_with_provenance(
                     text,
                     model=models["distill_model"],
                     ollama_host=models["ollama_host"],
@@ -698,6 +776,52 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
         )
 
         session_meta = _chunk_session_meta(ch["messages"], path, tool=tool)
+        summary_binding = resolve_generation_binding(models["summarize_model"])
+        distill_binding = resolve_generation_binding(models["distill_model"])
+        message_views = render_chunk_message_views(ch["messages"])
+        selection_parameters = {
+            "chunk_start": ch["start_offset"],
+            "chunk_end": ch["end_offset"],
+            "chunk_size": chunk_size,
+            "overlap": overlap,
+            "message_order": list(range(ch["start_offset"], ch["end_offset"] + 1)),
+            "rendered_chunk_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            "summary_consumed_view_sha256": hashlib.sha256(
+                summarize_consumed_view(text).encode("utf-8")
+            ).hexdigest(),
+            "distill_consumed_view_sha256": hashlib.sha256(
+                distill_consumed_view(text).encode("utf-8")
+            ).hexdigest(),
+            "summary_provider": summary_binding,
+            "distill_provider": distill_binding,
+        }
+        provider_payload = {
+            "summary": {
+                **summary_binding,
+                "temperature": 0.2,
+                "prompt": summarize_prompt(text),
+                "response_sha256": hashlib.sha256(summary.encode("utf-8")).hexdigest(),
+            },
+            "distill": {
+                **distill_binding,
+                "temperature": 0.2,
+                "prompt": distill_prompt(text),
+                "response_sha256": hashlib.sha256(
+                    distill_response.encode("utf-8")
+                ).hexdigest(),
+            },
+        }
+        recipe_spec = {
+            "kind": "normal-ingest-distill-v1",
+            "summary_prompt_version": "locked-summarize-prompt-v1",
+            "distill_prompt_version": "locked-distill-prompt-v1",
+            "summary_temperature": 0.2,
+            "distill_temperature": 0.2,
+            "chunk_size": chunk_size,
+            "overlap": overlap,
+            "summary_max_chars": 8000,
+            "distill_max_chars": 8000,
+        }
         units_to_add: list[tuple] = []
         for unit_idx, raw in enumerate(raw_units):
             unit = normalize_unit(
@@ -712,6 +836,27 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             )
             if unit is None:
                 continue
+            unit["source_type"] = session_meta.get("source_type", "")
+            envelope = build_ingest_envelope(
+                records=ch["messages"],
+                consumed_views=message_views,
+                source_identity=path_key,
+                locator_prefix=f"chunk:{ch['start_offset']}",
+                source_type=session_meta.get("source_type"),
+                transformer_class="distill",
+                transformer_identity=str(distill_binding["resolved_model"]),
+                transformer_version="distill-v1",
+                derivation_kind="distill",
+                producer_class="agent",
+                producer_assurance="claimed",
+                selection_parameters=selection_parameters,
+                provider_payload=provider_payload,
+                recipe_id="normal-ingest-distill-v1",
+                recipe_spec=recipe_spec,
+                output_locator=f"{path_key}#chunk:{ch['start_offset']}:unit:{unit_idx}",
+                output_value=raw,
+            )
+            unit = attach_unit_provenance(unit, envelope)
             doc = unit["summary"] + " " + " ".join(unit["keywords"])
             try:
                 unit_embedding = ollama_embed(
@@ -737,6 +882,7 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
                 "domain": unit["domain"],
                 "author_model": unit["author_model"],
                 "verifier_model": unit["verifier_model"] or "",
+                **projection_metadata(unit),
                 **session_meta,
             }
             units_to_add.append((unit, doc, unit_embedding, unit_meta))
@@ -1064,6 +1210,25 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
 
 
 def index(
+    force_file: str | None = None,
+    limit_files: int | None = None,
+    verbose: bool = True,
+    force_reindex: bool = False,
+    supersede_on_reindex: bool = False,
+) -> dict:
+    """Run ingest under one universal mutation/capture boundary."""
+
+    with production_writer_boundary(entrypoint="ingest.write"):
+        return _index_impl(
+            force_file=force_file,
+            limit_files=limit_files,
+            verbose=verbose,
+            force_reindex=force_reindex,
+            supersede_on_reindex=supersede_on_reindex,
+        )
+
+
+def _index_impl(
     force_file: str | None = None,
     limit_files: int | None = None,
     verbose: bool = True,

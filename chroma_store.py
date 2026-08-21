@@ -115,6 +115,7 @@ class ChromaStore:
         create_collections: bool = True,
         mutation_sink: Any | None = None,
         on_close: Any | None = None,
+        require_writer_boundary: bool = False,
     ):
         self.chroma_dir = str(Path(chroma_dir).expanduser())
         # SegmentAPI + hnswlib compat shim can count() but fails upsert on
@@ -124,7 +125,17 @@ class ChromaStore:
         # Optional Phase 0 observer — knowledge_units only; never loads config.
         self.mutation_sink = mutation_sink
         self._on_close = on_close
+        # Production factories set this. Direct/test stores remain projection-
+        # only and do not acquire authority merely by being constructible.
+        self._require_writer_boundary = require_writer_boundary
         self.client = chromadb.PersistentClient(path=self.chroma_dir)
+
+    def _require_authorized_writer(self) -> None:
+        if not self._require_writer_boundary:
+            return
+        from chroma_write_store import require_writer_attestation
+
+        require_writer_attestation()
 
     def _prepare_shadow_event_id(self) -> str | None:
         sink = self.mutation_sink
@@ -199,6 +210,7 @@ class ChromaStore:
         embedding: list[float],
         metadata: dict,
     ) -> None:
+        self._require_authorized_writer()
         self._collection(SUMMARIES).upsert(
             ids=[doc_id],
             documents=[document],
@@ -230,12 +242,20 @@ class ChromaStore:
         embedding: list[float],
         metadata: dict,
     ) -> None:
+        self._require_authorized_writer()
+        from provenance_binding import (
+            enforce_projection_metadata,
+            require_projection_identity_continuity,
+        )
+
         meta = dict(metadata or {})
+        meta = enforce_projection_metadata(meta)
         # Block semantic *replace* of governed decisions outside the approval protocol.
         # First-time creates (and legacy seed/repair into empty ids) remain allowed;
         # observe._reject_governed_bypass covers upsert=True without proposal_id.
         existing = self.get_unit(unit_id)
         if existing is not None:
+            require_projection_identity_continuity(existing.get("metadata"), meta)
             existing_meta = existing.get("metadata") or {}
             existing_lid = str(
                 existing_meta.get("ledger_id") or existing.get("id") or unit_id or ""
@@ -366,11 +386,27 @@ class ChromaStore:
 
     def update_unit_metadata(self, unit_id: str, metadata: dict) -> None:
         """Replace metadata for an existing unit."""
+        self._require_authorized_writer()
         from shadow_sink import classify_metadata_operation
+        from provenance_binding import (
+            PROVENANCE_COMMITMENT_KEY,
+            PROVENANCE_ENVELOPE_KEY,
+            enforce_projection_metadata,
+            require_projection_identity_continuity,
+        )
 
         before = self.get_unit(unit_id)
         before_meta = (before or {}).get("metadata") if before else None
         meta = dict(metadata)
+        if before_meta and (
+            PROVENANCE_ENVELOPE_KEY in before_meta
+            or PROVENANCE_COMMITMENT_KEY in before_meta
+        ) and not (
+            PROVENANCE_ENVELOPE_KEY in meta or PROVENANCE_COMMITMENT_KEY in meta
+        ):
+            raise ValueError("projection metadata cannot remove provenance continuity")
+        meta = enforce_projection_metadata(meta)
+        require_projection_identity_continuity(before_meta, meta)
         meta["id"] = unit_id
         event_id = self._prepare_shadow_event_id()
         operation = classify_metadata_operation(before_meta, meta)
@@ -394,7 +430,26 @@ class ChromaStore:
         metadata: dict,
     ) -> None:
         """Replace document, embedding, and metadata for an existing unit."""
+        self._require_authorized_writer()
+        from provenance_binding import (
+            PROVENANCE_COMMITMENT_KEY,
+            PROVENANCE_ENVELOPE_KEY,
+            enforce_projection_metadata,
+            require_projection_identity_continuity,
+        )
+
         meta = dict(metadata or {})
+        before = self.get_unit(unit_id)
+        before_meta = (before or {}).get("metadata") if before else None
+        if before_meta and (
+            PROVENANCE_ENVELOPE_KEY in before_meta
+            or PROVENANCE_COMMITMENT_KEY in before_meta
+        ) and not (
+            PROVENANCE_ENVELOPE_KEY in meta or PROVENANCE_COMMITMENT_KEY in meta
+        ):
+            raise ValueError("projection update cannot remove provenance continuity")
+        meta = enforce_projection_metadata(meta)
+        require_projection_identity_continuity(before_meta, meta)
         event_id = self._prepare_shadow_event_id()
         self._collection(UNITS).update(
             ids=[unit_id],
@@ -432,6 +487,7 @@ class ChromaStore:
         candidate_ids: set[str] | None = None,
     ) -> int:
         """Remove selected knowledge units indexed from ``source_path``."""
+        self._require_authorized_writer()
         col = self._collection(UNITS)
         res = col.get(
             where={"source_path": source_path},
@@ -516,6 +572,7 @@ class ChromaStore:
         candidate_ids: set[str] | None = None,
     ) -> int:
         """Tombstone active units for ``source_path`` (refine-style; keeps history)."""
+        self._require_authorized_writer()
         col = self._collection(UNITS)
         res = col.get(where={"source_path": source_path}, include=["metadatas"])
         ids = res.get("ids") or []
@@ -560,6 +617,7 @@ class ChromaStore:
         candidate_ids: set[str] | None = None,
     ) -> int:
         """Remove selected conversation summaries indexed from ``source_path``."""
+        self._require_authorized_writer()
         col = self._collection(SUMMARIES)
         res = col.get(where={"source_path": source_path}, include=[])
         ids = res.get("ids") or []
