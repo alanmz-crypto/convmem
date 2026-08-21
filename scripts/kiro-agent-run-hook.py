@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=invalid-name  # hyphenated installable hook script
 """Kiro edge adapter for Arc Runway Ledger (fail-open).
 
 Reads hook STDIN JSON, calls the shared agent-run API, always exits 0 with
@@ -17,7 +18,7 @@ _REPO = Path(__file__).resolve().parents[1]
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
-from agent_run_ledger import (
+from agent_run_ledger import (  # pylint: disable=wrong-import-position
     AgentRunLedger,
     AgentRunLedgerError,
     AmbiguityError,
@@ -159,13 +160,13 @@ def main(argv: list[str]) -> int:
             except AgentRunLedgerError:
                 pass
         return 0
-    except Exception as exc:  # noqa: BLE001 — fail-open for client lifecycle
+    except Exception as exc:  # pylint: disable=broad-exception-caught  # noqa: BLE001 — fail-open
         try:
             print(
                 f"convmem agent-run hook ({mode}): {type(exc).__name__}: {exc}",
                 file=sys.stderr,
             )
-        except Exception:  # noqa: BLE001,S110
+        except Exception:  # pylint: disable=broad-exception-caught  # noqa: BLE001,S110
             pass
         return 0
 

@@ -6,6 +6,8 @@ capture code is written. No live hooks; fixtures only.
 
 from __future__ import annotations
 
+# pylint: disable=redefined-outer-name  # pytest fixtures
+
 import json
 from pathlib import Path
 
@@ -18,7 +20,7 @@ GIT_DIR = FIXTURE_ROOT / "git"
 
 
 @pytest.fixture(scope="module")
-def contract() -> dict:
+def kiro_hook_contract() -> dict:
     raw = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
     assert raw["schema_version"] == 1
     assert raw["slice"] == "T0"
@@ -26,21 +28,21 @@ def contract() -> dict:
     return raw
 
 
-def test_t0_contract_documents_fail_open_and_forbidden_fields(contract: dict) -> None:
-    exit_policy = contract["exit_policy"]
+def test_t0_contract_documents_fail_open_and_forbidden_fields(kiro_hook_contract: dict) -> None:
+    exit_policy = kiro_hook_contract["exit_policy"]
     assert exit_policy["fail_open_exit_code"] == 0
     assert exit_policy["stdout"] == "empty"
     assert exit_policy["never_emit_stop_block_decision"] is True
 
-    forbidden = set(contract["stdin_fields"]["forbidden_to_persist"])
+    forbidden = set(kiro_hook_contract["stdin_fields"]["forbidden_to_persist"])
     assert "assistant_response" in forbidden
     assert "USER_PROMPT" in forbidden
 
-    assert contract["native_session_id"]["normalize_sess_prefix"] is False
-    assert contract["stop_fallback"]["never_close_newest_by_recency"] is True
-    assert contract["stop_cadence"]["docs_conflict"] is True
-    assert contract["stop_cadence"]["soak_required_before_enable"] is True
-    assert contract["hook_files"]["default_enabled_for_landing"] is False
+    assert kiro_hook_contract["native_session_id"]["normalize_sess_prefix"] is False
+    assert kiro_hook_contract["stop_fallback"]["never_close_newest_by_recency"] is True
+    assert kiro_hook_contract["stop_cadence"]["docs_conflict"] is True
+    assert kiro_hook_contract["stop_cadence"]["soak_required_before_enable"] is True
+    assert kiro_hook_contract["hook_files"]["default_enabled_for_landing"] is False
 
 
 @pytest.mark.parametrize(
@@ -74,18 +76,18 @@ def test_t0_session_start_missing_id_is_explicit() -> None:
 
 
 def test_t0_stop_with_assistant_response_marks_content_for_redaction(
-    contract: dict,
+    kiro_hook_contract: dict,
 ) -> None:
     payload = json.loads(
         (STDIN_DIR / "stop_with_assistant_response.json").read_text(encoding="utf-8")
     )
     assert "assistant_response" in payload
     assert payload["assistant_response"]
-    assert "assistant_response" in contract["stdin_fields"]["forbidden_to_persist"]
+    assert "assistant_response" in kiro_hook_contract["stdin_fields"]["forbidden_to_persist"]
 
 
-def test_t0_event_name_aliases_cover_legacy_and_pascal(contract: dict) -> None:
-    aliases = contract["stdin_fields"]["event_name_aliases"]
+def test_t0_event_name_aliases_cover_legacy_and_pascal(kiro_hook_contract: dict) -> None:
+    aliases = kiro_hook_contract["stdin_fields"]["event_name_aliases"]
     assert "agentSpawn" in aliases["SessionStart"]
     assert "SessionStart" in aliases["SessionStart"]
     assert "stop" in aliases["Stop"]
@@ -115,8 +117,8 @@ def test_t0_git_command_fixture_is_bounded() -> None:
     assert detached["expected"]["dirty_tree"] is True
 
 
-def test_t0_contract_lists_all_fixture_files(contract: dict) -> None:
-    for rel in contract["fixtures"]["stdin"] + contract["fixtures"]["git"]:
+def test_t0_contract_lists_all_fixture_files(kiro_hook_contract: dict) -> None:
+    for rel in kiro_hook_contract["fixtures"]["stdin"] + kiro_hook_contract["fixtures"]["git"]:
         path = FIXTURE_ROOT / rel
         assert path.is_file(), f"missing fixture {rel}"
 

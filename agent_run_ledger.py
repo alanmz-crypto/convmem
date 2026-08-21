@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """Agent Run Ledger — durable, append-only run identity events (Arc Runway Ledger).
 
 Deep module: envelope validation, sibling-lock append, deterministic reducer,
@@ -14,6 +15,7 @@ import re
 import secrets
 import time
 from collections.abc import Iterable, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -361,7 +363,7 @@ class EvidenceConflict:
 
 
 @dataclass
-class RunView:
+class RunView:  # pylint: disable=too-many-instance-attributes
     run_id: str
     client: str
     native_session_id: str | None
@@ -649,23 +651,23 @@ def validate_log_text(text: str) -> tuple[list[dict[str, Any]], int]:
     last_seq = 0
     digests: dict[str, str] = {}
 
-    for number, raw in enumerate(lines, 1):
-        if not raw.strip():
+    for lineno, line in enumerate(lines, start=1):
+        if line.strip() == "":
             continue
         try:
-            row = json.loads(raw)
+            parsed = json.loads(line)
         except json.JSONDecodeError as exc:
-            raise CorruptionError(f"malformed JSON at line {number}") from exc
-        if not isinstance(row, dict):
-            raise CorruptionError(f"non-object event at line {number}")
+            raise CorruptionError(f"malformed JSON at line {lineno}") from exc
+        if not isinstance(parsed, dict):
+            raise CorruptionError(f"non-object event at line {lineno}")
         try:
-            event = validate_envelope(row, require_sequence=True)
+            event = validate_envelope(parsed, require_sequence=True)
         except AgentRunLedgerError as exc:
-            raise CorruptionError(f"invalid envelope at line {number}: {exc}") from exc
+            raise CorruptionError(f"invalid envelope at line {lineno}: {exc}") from exc
 
         seq = event["sequence"]
         if seq <= last_seq:
-            raise CorruptionError(f"non-increasing sequence at line {number}")
+            raise CorruptionError(f"non-increasing sequence at line {lineno}")
         last_seq = seq
 
         eid = event["event_id"]
@@ -720,34 +722,35 @@ class AgentRunLedger:
         _reject_symlink(self.log_path, label="log")
         _reject_symlink(self.lock_path, label="lock")
 
-    def _acquire_lock(self):
-        """Return an open lock file handle holding an exclusive flock.
-
-        Caller must close the handle (and unlock). Open is intentional so the
-        lock outlives the acquisition loop — same pattern as conflict_events.
-        """
+    @contextmanager
+    def _hold_lock(self):
+        """Exclusive sibling flock for durable appends."""
         self._prepare_paths()
-        handle = open(self.lock_path, "a+", encoding="utf-8")  # noqa: SIM115
-        try:
-            os.chmod(self.lock_path, 0o600)
-        except OSError:
-            pass
-        deadline = time.monotonic() + self.lock_timeout_s
-        while True:
+        with open(self.lock_path, "a+", encoding="utf-8") as handle:
             try:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                return handle
-            except BlockingIOError:
-                if time.monotonic() >= deadline:
-                    handle.close()
-                    raise AgentRunLedgerError("agent run ledger lock timeout")
-                time.sleep(0.01)
+                os.chmod(self.lock_path, 0o600)
+            except OSError:
+                pass
+            deadline = time.monotonic() + self.lock_timeout_s
+            while True:
+                try:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError as exc:
+                    if time.monotonic() >= deadline:
+                        raise AgentRunLedgerError(
+                            "agent run ledger lock timeout"
+                        ) from exc
+                    time.sleep(0.01)
+            try:
+                yield handle
+            finally:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
     def append_event(self, event: Mapping[str, Any]) -> AppendResult:
         """Validate, assign sequence, durable append. Exact event_id retry is idempotent."""
         normalized = validate_envelope(event, require_sequence=False)
-        lock_handle = self._acquire_lock()
-        try:
+        with self._hold_lock():
             if self.log_path.exists():
                 text = self.log_path.read_text(encoding="utf-8")
                 existing, next_seq = validate_log_text(text)
@@ -790,11 +793,6 @@ class AgentRunLedger:
                 finally:
                     os.close(dir_fd)
             return AppendResult(event=to_write, created=True)
-        finally:
-            try:
-                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
-            finally:
-                lock_handle.close()
 
     def _assert_transition_allowed(
         self, event: Mapping[str, Any], reduced: ReduceResult
@@ -844,7 +842,7 @@ class AgentRunLedger:
         return report
 
 
-def build_start_event(
+def build_start_event(  # pylint: disable=too-many-arguments
     *,
     client: str,
     native_session_id: str | None,
@@ -876,7 +874,7 @@ def build_start_event(
     )
 
 
-def build_stop_event(
+def build_stop_event(  # pylint: disable=too-many-arguments
     *,
     run_id: str,
     client: str,
@@ -909,7 +907,7 @@ def build_stop_event(
     )
 
 
-def build_enrich_event(
+def build_enrich_event(  # pylint: disable=too-many-arguments
     *,
     run_id: str,
     client: str,
@@ -1092,7 +1090,7 @@ def start_run(
     }
 
 
-def stop_run(
+def stop_run(  # pylint: disable=too-many-arguments
     ledger: AgentRunLedger,
     *,
     client: str,
@@ -1159,12 +1157,12 @@ def enrich_run(
     if run_id not in reduced.runs:
         raise NotFoundError(f"unknown run_id: {run_id}")
     event = build_enrich_event(
-        run_id=run_id,
         client=client,
+        event_id=event_id,
+        facts=facts,
+        run_id=run_id,
         source_kind=source_kind,
         source_ref=source_ref,
-        facts=facts,
-        event_id=event_id,
     )
     appended = ledger.append_event(event)
     return {

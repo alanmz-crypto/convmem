@@ -835,7 +835,7 @@ def _emit_agent_run(payload: dict, *, json_mode: bool) -> None:
 
 
 @agent_run_app.command("start")
-def agent_run_start_cmd(
+def agent_run_start_cmd(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     client: str = typer.Option(..., "--client", help="kiro|codex|cursor|crush|copilot|..."),
     native_session_id: str | None = typer.Option(None, "--native-session-id"),
     cwd: Path | None = typer.Option(None, "--cwd", help="Working directory for Git facts"),
@@ -868,7 +868,7 @@ def agent_run_start_cmd(
 
 
 @agent_run_app.command("stop")
-def agent_run_stop_cmd(
+def agent_run_stop_cmd(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     client: str = typer.Option(..., "--client"),
     status: str = typer.Option("completed", "--status", help="completed|aborted|unknown"),
     run_id: str | None = typer.Option(None, "--run-id"),
@@ -908,13 +908,13 @@ def agent_run_stop_cmd(
     except AmbiguityError as exc:
         _emit_agent_run(
             {"error": "ambiguous", "detail": str(exc)},
-            json_mode=True if json_out else False,
+            json_mode=bool(json_out),
         )
         raise typer.Exit(2) from exc
     except NotFoundError as exc:
         _emit_agent_run(
             {"error": "not_found", "detail": str(exc)},
-            json_mode=True if json_out else False,
+            json_mode=bool(json_out),
         )
         raise typer.Exit(2) from exc
     except AgentRunLedgerError as exc:
@@ -924,7 +924,7 @@ def agent_run_stop_cmd(
 
 
 @agent_run_app.command("enrich")
-def agent_run_enrich_cmd(
+def agent_run_enrich_cmd(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     run_id: str = typer.Option(..., "--run-id"),
     client: str = typer.Option(..., "--client"),
     commits: list[str] = typer.Option([], "--commits", help="40-hex SHAs (explicit)"),

@@ -84,7 +84,7 @@ def test_v1_duplicate_exact_event_id_idempotent():
     start = dict(_start(event_id="arevt_dup1"), sequence=1)
     reduced = arl.reduce_events([start, start])
     assert len(reduced.runs) == 1
-    assert reduced.problems == []
+    assert not reduced.problems
 
 
 def test_v2_invalid_schema_and_illegal_transition():
@@ -419,13 +419,9 @@ def test_v12_cross_client_envelopes_reduce():
         )
     reduced = arl.reduce_events(events)
     assert len(reduced.runs) == 5
-    assert {v.client for v in reduced.runs.values()} == {
-        "kiro",
-        "codex",
-        "cursor",
-        "crush",
-        "copilot",
-    }
+    expected_clients = {"kiro", "codex", "cursor", "crush", "copilot"}
+    assert expected_clients <= arl.VALID_CLIENTS
+    assert {v.client for v in reduced.runs.values()} == expected_clients
 
 
 def test_q4_two_sessions_no_native_id_same_cwd(tmp_path: Path):
