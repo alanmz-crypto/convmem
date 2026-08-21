@@ -147,7 +147,8 @@ class _BoundaryVisitor(ast.NodeVisitor):
 def _discover() -> Counter[tuple[str, str, str]]:
     discovered: Counter[tuple[str, str, str]] = Counter()
     for path in sorted(ROOT.rglob("*.py")):
-        if "tests" in path.parts or any(part.startswith(".") for part in path.parts):
+        rel_parts = path.relative_to(ROOT).parts
+        if "tests" in rel_parts or any(part.startswith(".") for part in rel_parts):
             continue
         text = path.read_text(encoding="utf-8", errors="ignore")
         if not any(

@@ -120,6 +120,7 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-chroma-reconcile-tier-l.md` — Chroma Reconcile Tier L (**closed GREEN**; reference only)
 - `docs/plans/STATUS-complete-data-backup-correction-v2.md` — Complete-data backup correction v2
 - `docs/plans/STATUS-codeql-complex-therapy.md` — CodeQL Complex Therapy merge protection
+- `docs/plans/STATUS-agent-run-ledger.md` — Runway Ledger Agent Run identity tracking
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
 
@@ -140,6 +141,7 @@ Known arc codenames (update when new arcs are named):
 | CI Kryptonite | Behavioral CI merge gate | **Closed** (PR #187 + #189) |
 | Pinwheel Pytest CI | Reproducible pytest CI | **Closed** (#191 + disposable controls) |
 | CodeQL Complex Therapy | CodeQL merge protection | **Closed** — technical controls PASS; Ryan-owned recurring attestation |
+| Runway Ledger | Agent Run identity tracking | Active — Cursor Execute on `feat/2026-08-20-agent-run-ledger` (T0 done) |
 
 <!-- TIER_A_END -->
 

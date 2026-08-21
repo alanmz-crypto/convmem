@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "purpose": "Bounded Git fact collection for agent-run start/stop enrichment",
+  "timeout_seconds": 5,
+  "commands": [
+    {
+      "id": "toplevel",
+      "argv": ["git", "rev-parse", "--show-toplevel"],
+      "maps_to": "repository",
+      "on_nonzero": null
+    },
+    {
+      "id": "head_sha",
+      "argv": ["git", "rev-parse", "HEAD"],
+      "maps_to": "facts.head_revision",
+      "on_nonzero": null
+    },
+    {
+      "id": "branch",
+      "argv": ["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
+      "maps_to": "branch",
+      "on_nonzero": "detached"
+    },
+    {
+      "id": "dirty",
+      "argv": ["git", "status", "--porcelain"],
+      "maps_to": "facts.dirty_tree",
+      "on_nonzero": "unknown",
+      "notes": "Non-empty stdout means dirty; empty means clean. Do not parse beyond presence."
+    },
+    {
+      "id": "name_only_diff",
+      "argv": ["git", "diff", "--name-only", "HEAD"],
+      "maps_to": "facts.files_observed",
+      "relation": "observed",
+      "on_nonzero": []
+    }
+  ],
+  "rules": [
+    "Never invent repository/branch from cwd alone",
+    "Never convert a SHA into a branch name",
+    "Non-Git cwd yields null repository and null/unknown Git facts",
+    "Observed files are not explicit authorship"
+  ]
+}

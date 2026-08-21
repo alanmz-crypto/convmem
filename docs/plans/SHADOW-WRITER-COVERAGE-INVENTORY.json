@@ -4,13 +4,13 @@
   "open_chroma_for_write_production_call_sites": [],
   "chroma_write_session_production_call_sites": [],
   "production_chroma_write_session_call_sites": [
-    "convmem.py:1445",
+    "convmem.py:1663",
     "convmem.py:367",
     "convmem.py:471",
     "convmem.py:636",
-    "ingest.py:524",
-    "ingest.py:787",
-    "ingest.py:825",
+    "ingest.py:538",
+    "ingest.py:801",
+    "ingest.py:839",
     "inter_model_index.py:162"
   ],
   "open_production_write_store_call_sites": [
