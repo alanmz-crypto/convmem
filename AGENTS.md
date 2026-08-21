@@ -49,6 +49,7 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 - [`docs/plans/STATUS-codeql-complex-therapy.md`](docs/plans/STATUS-codeql-complex-therapy.md) — CodeQL Complex Therapy merge protection
 - [`docs/plans/STATUS-pinwheel-pytest-ci.md`](docs/plans/STATUS-pinwheel-pytest-ci.md) — Pinwheel Pytest CI (**closed**; reference only)
 - [`docs/plans/STATUS-agent-run-ledger.md`](docs/plans/STATUS-agent-run-ledger.md) — Runway Ledger Agent Run identity tracking
+- [`docs/plans/STATUS-dependability-provenance.md`](docs/plans/STATUS-dependability-provenance.md) — Dependability and provenance Trust Arc (**T3 closed**; later gates deferred)
 
 **Cross-arc rollup:** [`docs/inter-model/STATUS.md`](docs/inter-model/STATUS.md) — active vs closed arcs and next authorized actions (not a per-arc brief).
 

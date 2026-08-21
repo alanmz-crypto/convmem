@@ -41,15 +41,20 @@ def new_event(event_type: str, proposal_id: str, **extra: object) -> dict:
 
 @contextmanager
 def governed_lock(cfg: dict):
-    """Exclusive advisory lock scoped to the configured data root."""
-    path = lock_path(cfg)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a+", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    """Data-root lock nested inside the universal provenance writer boundary."""
+    from chroma_write_store import production_writer_boundary
+
+    with production_writer_boundary(
+        entrypoint="propose_decision.governed"
+    ):
+        path = lock_path(cfg)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a+", encoding="utf-8") as handle:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def append_event(cfg: dict, event: dict) -> None:

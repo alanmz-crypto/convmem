@@ -120,6 +120,7 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-codeql-complex-therapy.md` — CodeQL Complex Therapy merge protection
 - `docs/plans/STATUS-pinwheel-pytest-ci.md` — Pinwheel Pytest CI (**closed**; reference only)
 - `docs/plans/STATUS-agent-run-ledger.md` — Runway Ledger Agent Run identity tracking
+- `docs/plans/STATUS-dependability-provenance.md` — Dependability and provenance Trust Arc (**T3 closed**; later gates deferred)
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
 

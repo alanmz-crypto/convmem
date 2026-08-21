@@ -13,6 +13,7 @@ import math
 from datetime import datetime, timezone
 
 from ledger import _dedupe_by_ledger_id, _kind, build_ledger_index
+from provenance_binding import provenance_identity
 
 # Additive boosts applied to semantic score (0–1 scale).
 _BOOST_UNRESOLVED = 0.18
@@ -261,12 +262,25 @@ def filter_superseded_decisions(results: list[dict]) -> list[dict]:
     filter — not a Chroma unit-tombstone check.
     """
     parent_ids: set[str] = set()
+    decisions_by_id: dict[str, dict] = {
+        (r.get("metadata") or {}).get("ledger_id", "").strip(): r
+        for r in results
+        if (r.get("metadata") or {}).get("ledger_id")
+    }
     for r in results:
         meta = r.get("metadata") or {}
         if (meta.get("ledger_kind") or "").strip() != "decision":
             continue
         relates_to = (meta.get("relates_to") or "").strip()
         if relates_to.startswith("dec_"):
+            child_identity = provenance_identity(meta)
+            parent = decisions_by_id.get(relates_to)
+            parent_identity = (
+                provenance_identity(parent.get("metadata") or {}) if parent else None
+            )
+            if child_identity is not None or parent_identity is not None:
+                if child_identity != parent_identity:
+                    continue
             parent_ids.add(relates_to)
     if not parent_ids:
         return results
@@ -278,15 +292,18 @@ def filter_superseded_decisions(results: list[dict]) -> list[dict]:
 
 
 def dedupe_results_by_ledger_id(results: list[dict]) -> list[dict]:
-    """Keep one hit per ledger_id (first wins — list should already be rank-sorted)."""
-    seen: set[str] = set()
+    """Dedupe legacy ledger twins without collapsing provenance assertions."""
+    seen: dict[str, set[tuple[str, str] | None]] = {}
     out: list[dict] = []
     for r in results:
-        lid = ((r.get("metadata") or {}).get("ledger_id") or "").strip()
+        meta = r.get("metadata") or {}
+        lid = (meta.get("ledger_id") or "").strip()
         if lid:
-            if lid in seen:
+            identity = provenance_identity(meta)
+            identities = seen.setdefault(lid, set())
+            if identity in identities:
                 continue
-            seen.add(lid)
+            identities.add(identity)
         out.append(r)
     return out
 
