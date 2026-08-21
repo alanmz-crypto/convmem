@@ -234,12 +234,12 @@ def undo_exclude_source(cfg: dict, target: str) -> bool:
     """
     from chroma_write_store import production_writer_boundary
 
+    candidates = build_path_candidates(target)
+    if not candidates:
+        return False
     with production_writer_boundary(entrypoint="source_purge.execute"):
         from ingest import undo_exclude_processed_path
 
-        candidates = build_path_candidates(target)
-        if not candidates:
-            return False
         canonical = candidates[0]
         processed_path = cfg["index"]["processed_log"]
         with source_flock(cfg, canonical):
