@@ -187,7 +187,7 @@ activation manifest, GC, Shadow, and R2b remain unauthorized.
 | Watch continuity | PID **955623**; started **2026-08-18 02:12:54 CDT**; `NRestarts=0`; continuous ≥72h through acceptance |
 | Authority | `owners=0` (legacy-only); live `logical_projection` PASS; `source_reconciliation` fresh (staleness ≪ 300s) |
 | RUNBOOK pauses | No demonstrated CG-2 RUNBOOK pause condition during the accepted window |
-| Midnight observer samples | Six `RESET_REQUIRED` samples (~00:00 / 00:15 CDT Aug 19–21) adjudicated **non-blocking** instrumentation artifacts (date-boundary `restic_gate` / doctor-exit cascade); checker is observer-only; does not reset the soak clock under RUNBOOK semantics |
+| Midnight observer samples | Six `RESET_REQUIRED` samples (~00:00 / 00:15 CDT Aug 19–21) adjudicated **non-blocking**. Timing is consistent with the daily restic freshness boundary; the exact failing doctor check was **not** captured (checker discards doctor JSON on nonzero exit). Checker is observer-only; these observer events do **not** reset the RUNBOOK soak clock. |
 | Final retrieval eval | **2026-08-21T08:17Z** — `python scripts/eval-retrieval.py` exit **0**; 8/8 PASS; P@1 **87.5%**; P@k **100%**; MRR **0.9375**; Recall@k **100%**; **no regression vs baseline**; no watch restart; no production/repository mutation |
 | Out of scope of this acceptance | V8a still PENDING; first owner / activation / GC / Shadow / R2b **not** granted |
 
