@@ -30,6 +30,7 @@ Final V4m candidate: `6dc50d9ec56e016a32c7eddf3d66636b41923ed8`
 Final V4m merge: `6b9f6d7544710e81f67ae9d6a15e5a8982a7ce6c`
 Prepared governance closeout basis: `50052e6a3cb3f48ec53a0ebcfb4132a76da94b28`
 Final closure: `RYAN_T3_CLOSE — PASS`; T3 is formally closed
+Post-close hardening: PR #213 merged at `013f692442029a0d64326b3504e6216f320ff595`
 Residual merge: `66926ac2e68f045e9f36fd26157a3d2ca07b9608`
 ```
 
@@ -413,6 +414,20 @@ the VERIFY record. Satisfied rows are PASS; V1h,
 V3i, V4g–V4l, V7d–V7e, and V8i–V8l remain explicitly deferred to their
 already-separated Bootstrap, migration, recovery/CG-2, or T4/T5 gates. V10e is
 recorded as `RYAN_T3_CLOSE — PASS`; no later-stage authorization is implied.
+
+### Post-T3 bounded hardening correction — COMPLETE/MERGED
+
+An independent post-close audit identified a bounded enforcement weakness: the
+existing V4m writer census and shared/exclusive boundary did not itself require
+the authoritative Chroma mutation sinks to prove that the production writer
+boundary was held. The reviewed correction added internal writer attestation at
+all seven mutation sinks while preserving projection/read-only stores, nested
+writers, and exclusive capture. PR #213 candidate
+`f069c780a257d2e68075c06806b0913b35aeac2d` was reviewed by Kiro and Copilot,
+passed the reconstructed hermetic validation, and merged at
+`013f692442029a0d64326b3504e6216f320ff595` into the Trapdoor integration branch.
+This is recorded as `POST-T3 BOUNDED HARDENING CORRECTION`; T3 remains CLOSED,
+and no VERIFY disposition or deferred-gate ownership changed.
 
 ### A2 / parallel-later — Broad dependability assurance
 

@@ -30,6 +30,17 @@ formal `DEFERRED` value. T3 closure does not authorize any later gate.
 below; deferred later-gate rows remain live requirements and are not technical
 T3 PASS results.
 
+### Post-T3 bounded hardening correction — recorded
+
+After T3 closure, an independent audit confirmed a bounded V4m enforcement
+weakness: static writer discovery did not structurally require the production
+writer boundary at authoritative Chroma mutation sinks. The correction added
+internal writer attestation at all seven sinks without changing the V4m
+requirement, the formal VERIFY table, or any deferred-gate disposition. PR #213
+candidate `f069c780a257d2e68075c06806b0913b35aeac2d` was Kiro- and Copilot-reviewed
+and merged at `013f692442029a0d64326b3504e6216f320ff595`. T3 remains CLOSED;
+satisfied rows remain PASS and deferred rows remain PENDING.
+
 ## Scope lock
 
 | In scope | Out of scope |
@@ -252,8 +263,11 @@ to `PASS` by this closeout:
 migration authority, activation authority, or downstream enforcement claimed.
 2026-08-19 — Ryan recorded RYAN_T3_CLOSE — PASS. T3 is CLOSED; deferred rows
 remain PENDING under their separately gated later stages.
+2026-08-20 — Post-T3 bounded hardening correction PR #213 merged at
+013f692442029a0d64326b3504e6216f320ff595; formal VERIFY dispositions and
+deferred ownership remain unchanged.
 ```
 
-**TL;DR:** T3 is CLOSED at final implementation `6dc50d9…` and merge
-`6b9f6d7…`; satisfied T3/governance rows are PASS, while explicitly deferred
-later-gate rows remain PENDING and no later-stage authorization is implied.
+**TL;DR:** T3 is CLOSED; PR #213 added bounded V4m runtime enforcement while
+satisfied rows remain PASS, deferred rows remain PENDING, and no later-stage
+authorization is implied.
