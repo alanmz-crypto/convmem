@@ -39,7 +39,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
-| CG-2 authority migration | Merged on `main` (#186); V8b (legacy-only gateway soak grant) **PASS**; **legacy-only soak completed and Ryan-accepted 2026-08-21**. V8a still PENDING. First generational owner / activation / GC not authorized. | Do not activate, grant a first owner, or run GC. Arc remains active pending V8a and any later owner-gated work. See [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md) (soak-completion evidence) and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
+| CG-2 authority migration | Merged on `main` (#186); V8a **PASS** (Kiro independent sign-off); V8b (soak grant) **PASS**; **legacy-only soak completed and Ryan-accepted 2026-08-21**. V8c first-owner packet **PENDING** — not authorized. | Next governed step: prepare V8c first-owner packet for Ryan GATE (preparation ≠ grant). Do not activate, publish fence/pointer, run GC, or enable Shadow/R2b. See [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md) and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
 
 ## Closed arcs — reference STATUS only
 
@@ -84,4 +84,4 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Runway Ledger STATUS](../plans/STATUS-agent-run-ledger.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Chroma is GREEN; Pinwheel and CodeQL are closed; Runway Ledger is CLOSED; CG-2 legacy-only soak is completed and Ryan-accepted 2026-08-21 (V8a PENDING; first owner/activation/GC still unauthorized); JudgeBench G3 + Phase A are merged, awaiting Ryan's calibration-experiment grant and G4; Shadow waits on activation evidence then Ryan grant; R2b waits on a fresh authorization packet.
+**TL;DR:** Chroma is GREEN; Pinwheel and CodeQL are closed; Runway Ledger is CLOSED; CG-2 has V8a PASS + soak completed/accepted (V8c first-owner packet PENDING, not authorized); JudgeBench G3 + Phase A are merged, awaiting Ryan's calibration-experiment grant and G4; Shadow waits on activation evidence then Ryan grant; R2b waits on a fresh authorization packet.
