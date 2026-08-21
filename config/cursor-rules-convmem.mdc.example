@@ -140,7 +140,7 @@ Known arc codenames (update when new arcs are named):
 | CI Kryptonite | Behavioral CI merge gate | **Closed** (PR #187 + #189) |
 | Pinwheel Pytest CI | Reproducible pytest CI | **Closed** (#191 + disposable controls) |
 | CodeQL Complex Therapy | CodeQL merge protection | **Closed** — technical controls PASS; Ryan-owned recurring attestation |
-| Runway Ledger | Agent Run identity tracking | Implemented on `main` (#215/#216); soak passed; **arc closing** — Runway-owned |
+| Runway Ledger | Agent Run identity tracking | **CLOSED** — core implementation merged (#215); hook-enable soak passed and #216 merged; other clients are future slices, not unfinished Runway work |
 
 
 ## Handoff and resume contract
