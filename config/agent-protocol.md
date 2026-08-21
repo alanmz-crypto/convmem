@@ -1,6 +1,6 @@
 # convmem — Local knowledge corpus protocol
 
-convmem is a local-first knowledge corpus on this machine (1457+ units). It indexes AI chat transcripts, security observations, and decision records into ChromaDB (Ollama nomic-embed-text embeddings). CLI and MCP access. Read-only to agents by default.
+convmem is a local-first knowledge corpus on this machine. It indexes AI chat transcripts, security observations, and decision records into ChromaDB (Ollama nomic-embed-text embeddings). CLI and MCP access. Read-only to agents by default.
 
 **Do not ask "what is convmem" or suggest alternatives.** It exists on this machine. Use it.
 
@@ -119,9 +119,9 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-shadow-ledger-phase0.md` — Shadow Ledger Phase 0 delta capture
 - `docs/plans/STATUS-chroma-reconcile-tier-l.md` — Chroma Reconcile Tier L (**closed GREEN**; reference only)
 - `docs/plans/STATUS-complete-data-backup-correction-v2.md` — Complete-data backup correction v2
-- `docs/plans/STATUS-codeql-complex-therapy.md` — CodeQL Complex Therapy merge protection
+- `docs/plans/STATUS-codeql-complex-therapy.md` — CodeQL Complex Therapy merge protection (**closed/PASS**; reference only)
 - `docs/plans/STATUS-pinwheel-pytest-ci.md` — Pinwheel Pytest CI (**closed**; reference only)
-- `docs/plans/STATUS-agent-run-ledger.md` — Runway Ledger Agent Run identity tracking
+- `docs/plans/STATUS-agent-run-ledger.md` — Runway Ledger Agent Run identity tracking (**closed**; reference only)
 - `docs/plans/STATUS-dependability-provenance.md` — Dependability and provenance Trust Arc (**T3 closed**; later gates deferred)
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
