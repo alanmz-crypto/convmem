@@ -234,6 +234,30 @@ def test_nested_composite_writer_reuses_one_custom_boundary(tmp_path: Path) -> N
             assert inner.lock_path == lock
 
 
+def test_nested_shared_lease_rejects_different_lock_and_keeps_outer_usable(
+    tmp_path: Path,
+) -> None:
+    from chroma_write_store import (
+        WriterBoundaryError,
+        _held_writer_lease,
+        require_writer_attestation,
+        shared_writer_lease,
+    )
+
+    outer_lock = tmp_path / "outer.lock"
+    inner_lock = tmp_path / "inner.lock"
+    with shared_writer_lease(lock_path=outer_lock, attest_dir=tmp_path / "attest"):
+        outer = _held_writer_lease()
+        assert outer is not None
+        with pytest.raises(WriterBoundaryError, match="outer lock path"):
+            with shared_writer_lease(
+                lock_path=inner_lock, attest_dir=tmp_path / "attest"
+            ):
+                pass
+        assert _held_writer_lease() is outer
+        assert require_writer_attestation() is outer.attestation
+
+
 def test_code_derived_writer_routes_use_universal_or_existing_gate() -> None:
     expected_routes = {
         "ingest.py": ("production_writer_boundary", "production_chroma_write_session"),

@@ -257,6 +257,28 @@ def test_supersession_filter_does_not_hide_distinct_provenance_decisions():
     assert [row["id"] for row in kept] == ["child", "parent"]
 
 
+def test_supersession_filter_only_hides_matching_provenance_parent():
+    child = _provenance_row("child", "source-child", ledger_id="dec_child")[3]
+    matching_parent = dict(child)
+    matching_parent.update({"ledger_id": "dec_parent"})
+    distinct_sibling = _provenance_row(
+        "distinct-sibling", "source-sibling", ledger_id="dec_parent"
+    )[3]
+    child.update({"ledger_kind": "decision", "relates_to": "dec_parent"})
+    matching_parent.update({"ledger_kind": "decision", "relates_to": "obs_root"})
+    distinct_sibling.update({"ledger_kind": "decision", "relates_to": "obs_root"})
+
+    kept = filter_superseded_decisions(
+        [
+            {"id": "child", "metadata": child},
+            {"id": "matching-parent", "metadata": matching_parent},
+            {"id": "distinct-sibling", "metadata": distinct_sibling},
+        ]
+    )
+
+    assert [row["id"] for row in kept] == ["child", "distinct-sibling"]
+
+
 def test_approved_semantic_tombstone_requires_provenance_adjudication(
     tmp_path: Path,
 ) -> None:

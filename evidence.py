@@ -261,12 +261,12 @@ def filter_superseded_decisions(results: list[dict]) -> list[dict]:
     Shared by ``query_units`` (search_fast / CLI search) and ask. Cheap in-list
     filter — not a Chroma unit-tombstone check.
     """
-    parent_ids: set[str] = set()
-    decisions_by_id: dict[str, dict] = {
-        (r.get("metadata") or {}).get("ledger_id", "").strip(): r
-        for r in results
-        if (r.get("metadata") or {}).get("ledger_id")
-    }
+    suppressed: set[tuple[str, tuple[str, str] | None]] = set()
+    decisions_by_id: dict[str, list[dict]] = {}
+    for r in results:
+        ledger_id = (r.get("metadata") or {}).get("ledger_id", "").strip()
+        if ledger_id:
+            decisions_by_id.setdefault(ledger_id, []).append(r)
     for r in results:
         meta = r.get("metadata") or {}
         if (meta.get("ledger_kind") or "").strip() != "decision":
@@ -274,20 +274,22 @@ def filter_superseded_decisions(results: list[dict]) -> list[dict]:
         relates_to = (meta.get("relates_to") or "").strip()
         if relates_to.startswith("dec_"):
             child_identity = provenance_identity(meta)
-            parent = decisions_by_id.get(relates_to)
-            parent_identity = (
-                provenance_identity(parent.get("metadata") or {}) if parent else None
-            )
-            if child_identity is not None or parent_identity is not None:
-                if child_identity != parent_identity:
-                    continue
-            parent_ids.add(relates_to)
-    if not parent_ids:
+            for parent in decisions_by_id.get(relates_to, []):
+                parent_meta = parent.get("metadata") or {}
+                parent_identity = provenance_identity(parent_meta)
+                if child_identity is None and parent_identity is None:
+                    suppressed.add((relates_to, None))
+                elif child_identity is not None and child_identity == parent_identity:
+                    suppressed.add((relates_to, parent_identity))
+    if not suppressed:
         return results
     return [
         r
         for r in results
-        if (r.get("metadata") or {}).get("ledger_id") not in parent_ids
+        if (
+            (r.get("metadata") or {}).get("ledger_id", "").strip(),
+            provenance_identity(r.get("metadata") or {}),
+        ) not in suppressed
     ]
 
 

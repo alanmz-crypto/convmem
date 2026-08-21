@@ -327,7 +327,11 @@ def shared_writer_lease(
     """
     path = (lock_path or DEFAULT_WRITER_LOCK).expanduser()
     held = _held_writer_lease()
-    if held is not None and (lock_path is None or _same_lock_path(held.lock_path, path)):
+    if held is not None:
+        if lock_path is not None and not _same_lock_path(held.lock_path, path):
+            raise WriterBoundaryError(
+                "nested shared writer lease must reuse the outer lock path"
+            )
         path = held.lock_path
         held.depth += 1
         try:
