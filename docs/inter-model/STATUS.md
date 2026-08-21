@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-21 (main tip `4121fb9`)
+**Snapshot:** 2026-08-21 (coordination reconciled through PR #220)
 
 > **Trapdoor Hunt / T3:** held CLOSED-for-coordination pending a separate Claude post-surge verification; do not reopen or technically reassess here. Runway Ledger is an externally owned active lane.
 
