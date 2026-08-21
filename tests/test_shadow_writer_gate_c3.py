@@ -157,6 +157,136 @@ def test_exclusive_blocks_while_shared_held(tmp_path: Path) -> None:
                 pass
 
 
+def _child_hold_shared(lock_path: str, attest_dir: str, ready_path: str, release_path: str) -> None:
+    from chroma_write_store import shared_writer_lease
+
+    with shared_writer_lease(
+        lock_path=Path(lock_path),
+        attest_dir=Path(attest_dir),
+        entrypoint="ingest.write",
+    ):
+        Path(ready_path).write_text("ready", encoding="utf-8")
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and not Path(release_path).exists():
+            time.sleep(0.01)
+
+
+def _wait_for(path: Path) -> None:
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline and not path.exists():
+        time.sleep(0.01)
+    assert path.exists(), f"child did not signal: {path}"
+
+
+def test_capture_generation_is_exclusive_and_unique(tmp_path: Path) -> None:
+    import fcntl
+
+    from chroma_write_store import capture_generation
+
+    lock = tmp_path / "gate.lock"
+    with capture_generation(lock_path=lock) as first:
+        assert first.generation_id.startswith("capture-")
+        fd = os.open(lock, os.O_RDWR | os.O_CLOEXEC)
+        try:
+            with pytest.raises(BlockingIOError):
+                fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        finally:
+            os.close(fd)
+    with capture_generation(lock_path=lock) as second:
+        assert second.generation_id.startswith("capture-")
+        assert second.generation_id != first.generation_id
+
+
+def test_capture_generation_rejects_overlapping_writer(tmp_path: Path) -> None:
+    from chroma_write_store import capture_generation
+
+    lock = tmp_path / "gate.lock"
+    ready = tmp_path / "ready"
+    release = tmp_path / "release"
+    proc = mp.Process(
+        target=_child_hold_shared,
+        args=(str(lock), str(tmp_path / "attest"), str(ready), str(release)),
+    )
+    proc.start()
+    _wait_for(ready)
+    with pytest.raises(TimeoutError, match="writer_quiesce_timeout"):
+        with capture_generation(lock_path=lock, timeout_ms=200):
+            pass
+    release.write_text("release", encoding="utf-8")
+    proc.join(timeout=5)
+    assert proc.exitcode == 0
+
+
+def test_nested_composite_writer_reuses_one_custom_boundary(tmp_path: Path) -> None:
+    from chroma_write_store import _held_writer_lease, production_writer_boundary
+
+    lock = tmp_path / "gate.lock"
+    with production_writer_boundary(
+        lock_path=lock,
+        attest_dir=tmp_path / "attest",
+        entrypoint="propose_decision.write",
+    ):
+        outer = _held_writer_lease()
+        assert outer is not None
+        with production_writer_boundary(entrypoint="propose_decision.governed"):
+            inner = _held_writer_lease()
+            assert inner is outer
+            assert inner.lock_path == lock
+
+
+def test_nested_shared_lease_rejects_different_lock_and_keeps_outer_usable(
+    tmp_path: Path,
+) -> None:
+    from chroma_write_store import (
+        WriterBoundaryError,
+        _held_writer_lease,
+        require_writer_attestation,
+        shared_writer_lease,
+    )
+
+    outer_lock = tmp_path / "outer.lock"
+    inner_lock = tmp_path / "inner.lock"
+    with shared_writer_lease(lock_path=outer_lock, attest_dir=tmp_path / "attest"):
+        outer = _held_writer_lease()
+        assert outer is not None
+        with pytest.raises(WriterBoundaryError, match="outer lock path"):
+            with shared_writer_lease(
+                lock_path=inner_lock, attest_dir=tmp_path / "attest"
+            ):
+                pass
+        assert _held_writer_lease() is outer
+        assert require_writer_attestation() is outer.attestation
+
+
+def test_code_derived_writer_routes_use_universal_or_existing_gate() -> None:
+    expected_routes = {
+        "ingest.py": ("production_writer_boundary", "production_chroma_write_session"),
+        "observe.py": ("open_production_write_store",),
+        "inter_model_index.py": ("production_chroma_write_session",),
+        "propose_decision.py": ("production_writer_boundary", "open_production_write_store"),
+        "refine.py": ("production_writer_boundary", "open_production_write_store"),
+        "source_purge.py": ("production_writer_boundary", "open_production_write_store"),
+        "convmem.py": ("production_chroma_write_session",),
+    }
+    for filename, markers in expected_routes.items():
+        source = (ROOT / filename).read_text(encoding="utf-8")
+        missing = [marker for marker in markers if marker not in source]
+        assert not missing, f"{filename} lacks writer boundary markers: {missing}"
+
+
+def test_all_new_writer_entrypoints_are_census_allowlisted() -> None:
+    from writer_census import KNOWN_ENTRYPOINTS
+
+    assert {
+        "ingest.processed",
+        "ingest.export",
+        "propose_decision.governed",
+        "production.writer",
+        "refine.write",
+        "source_purge.execute",
+    } <= KNOWN_ENTRYPOINTS
+
+
 def test_classify_legacy_writer_pids(tmp_path: Path) -> None:
     from chroma_write_store import (
         WRITER_GATE_PROTOCOL_VERSION,

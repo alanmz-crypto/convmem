@@ -11,8 +11,10 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import threading
 import time
-from contextlib import contextmanager
+import uuid
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +30,10 @@ from shadow_sink import JsonlUnitMutationSink
 from shadow_validation import validate_shadow_activation
 
 WritePurpose = Literal["production", "test"]
+
+
+class WriterBoundaryError(RuntimeError):
+    """A production-authoritative mutation was attempted outside its gate."""
 
 WRITER_GATE_PROTOCOL_VERSION = 1
 DEFAULT_WRITER_LOCK = Path("~/.local/share/convmem/locks/chroma_writer_gate.lock")
@@ -77,6 +83,49 @@ class WriterAttestation:
             "protocol_version": self.protocol_version,
             "recorded_at_utc": self.recorded_at_utc,
         }
+
+
+@dataclass(frozen=True)
+class CaptureGeneration:
+    """One exclusive capture/sealing boundary over the writer gate."""
+
+    generation_id: str
+    lock_path: Path
+    started_at_utc: str
+
+
+@dataclass
+class _HeldWriterLease:
+    """Process-local nesting state for one shared mutation boundary."""
+
+    lock_path: Path
+    attestation: WriterAttestation
+    depth: int = 1
+
+
+_writer_tls = threading.local()
+
+
+def _held_writer_lease() -> _HeldWriterLease | None:
+    return getattr(_writer_tls, "held", None)
+
+
+def require_writer_attestation() -> WriterAttestation:
+    """Return the internal writer attestation for the current execution scope.
+
+    The attestation is established only by ``shared_writer_lease``.  Caller
+    metadata and direct store construction cannot manufacture it.
+    """
+    held = _held_writer_lease()
+    if held is None:
+        raise WriterBoundaryError(
+            "production-authoritative mutation requires the shared writer boundary"
+        )
+    return held.attestation
+
+
+def _same_lock_path(left: Path, right: Path) -> bool:
+    return left.resolve(strict=False) == right.resolve(strict=False)
 
 
 def current_code_revision() -> str:
@@ -277,6 +326,19 @@ def shared_writer_lease(
     context manager through its callback.
     """
     path = (lock_path or DEFAULT_WRITER_LOCK).expanduser()
+    held = _held_writer_lease()
+    if held is not None:
+        if lock_path is not None and not _same_lock_path(held.lock_path, path):
+            raise WriterBoundaryError(
+                "nested shared writer lease must reuse the outer lock path"
+            )
+        path = held.lock_path
+        held.depth += 1
+        try:
+            yield held.attestation
+        finally:
+            held.depth -= 1
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(path), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
     deadline = time.monotonic() + (timeout_ms / 1000.0)
@@ -306,6 +368,7 @@ def shared_writer_lease(
         fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
         raise
+    _writer_tls.held = _HeldWriterLease(path, attestation)
     try:
         yield attestation
     finally:
@@ -321,6 +384,7 @@ def shared_writer_lease(
         try:
             fcntl.flock(fd, fcntl.LOCK_UN)
         finally:
+            _writer_tls.held = None
             os.close(fd)
 
 
@@ -353,6 +417,55 @@ def exclusive_writer_lease(
             fcntl.flock(fd, fcntl.LOCK_UN)
         finally:
             os.close(fd)
+
+
+@contextmanager
+def production_writer_boundary(
+    *,
+    lock_path: Path | None = None,
+    attest_dir: Path | None = None,
+    census_dir: Path | None = None,
+    entrypoint: str = "production.writer",
+    timeout_ms: int = 30_000,
+) -> Iterator[WriterAttestation]:
+    """Cover a provenance-relevant mutation with the shared writer gate.
+
+    Existing Chroma sessions and composite writers use this same boundary.
+    Re-entry is deliberately safe so a composite route cannot open a second
+    independent consistency system around an already leased store.
+    """
+
+    with shared_writer_lease(
+        lock_path=lock_path,
+        attest_dir=attest_dir,
+        census_dir=census_dir,
+        entrypoint=entrypoint,
+        timeout_ms=timeout_ms,
+    ) as attestation:
+        yield attestation
+
+
+@contextmanager
+def capture_generation(
+    *,
+    lock_path: Path | None = None,
+    timeout_ms: int = 30_000,
+) -> Iterator[CaptureGeneration]:
+    """Bind one seal/capture operation to an exclusive writer-free generation.
+
+    All compliant mutation routes hold the same shared gate.  Therefore the
+    exclusive interval is the only point at which a capture may read and seal
+    its manifest-bound components; an overlapping mutation waits or times
+    out, and cannot be combined into the captured logical state.
+    """
+
+    path = (lock_path or DEFAULT_WRITER_LOCK).expanduser()
+    with exclusive_writer_lease(lock_path=path, timeout_ms=timeout_ms):
+        yield CaptureGeneration(
+            generation_id=f"capture-{uuid.uuid4().hex}",
+            lock_path=path,
+            started_at_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        )
 
 
 def decide_production_sink_injection(
@@ -439,6 +552,7 @@ def open_chroma_for_write(
         create_collections=create_collections,
         mutation_sink=sink,
         on_close=on_close,
+        require_writer_boundary=purpose == "production",
     )
     return store, decision
 
@@ -457,17 +571,19 @@ def chroma_write_session(
     Deprecated for production callers — use production_chroma_write_session
     so config is loaded only after the shared lease is held.
     """
-    store, _decision = open_chroma_for_write(
-        cfg,
-        chroma_dir,
-        purpose=purpose,
-        create_collections=create_collections,
-        mutation_sink=mutation_sink,
-    )
-    try:
-        yield store
-    finally:
-        store.close()
+    boundary = production_writer_boundary() if purpose == "production" else nullcontext()
+    with boundary:
+        store, _decision = open_chroma_for_write(
+            cfg,
+            chroma_dir,
+            purpose=purpose,
+            create_collections=create_collections,
+            mutation_sink=mutation_sink,
+        )
+        try:
+            yield store
+        finally:
+            store.close()
 
 
 @contextmanager

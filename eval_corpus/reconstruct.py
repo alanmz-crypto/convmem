@@ -7,6 +7,15 @@ from typing import Any
 
 from eval_corpus import RECONSTRUCTION_SCHEMA_VERSION
 from eval_corpus.classify import classify_source_path
+from provenance_binding import (
+    PROVENANCE_ASSERTION_ID_KEY,
+    PROVENANCE_COMMITMENT_KEY,
+    PROVENANCE_ENVELOPE_KEY,
+    PROVENANCE_INTEGRITY_KEY,
+    PROVENANCE_STATUS_KEY,
+    projection_metadata,
+    validate_projection,
+)
 
 RECIPE_ORDINARY = "ordinary_summary_keywords@v1"
 RECIPE_INTER_MODEL = "inter_model_embed@v1"
@@ -94,6 +103,12 @@ SHADOW_META_KEYS = (
     "confidence",
     "author_model",
     "verifier_model",
+    "source_type",
+    PROVENANCE_ASSERTION_ID_KEY,
+    PROVENANCE_COMMITMENT_KEY,
+    PROVENANCE_ENVELOPE_KEY,
+    PROVENANCE_INTEGRITY_KEY,
+    PROVENANCE_STATUS_KEY,
     "relates_to",
     "severity",
     "status",
@@ -109,10 +124,25 @@ def normalized_shadow_metadata(unit: dict) -> dict[str, Any]:
     Always persists ``document_recipe_version`` (Gate 1 recipe strata).
     """
     out: dict[str, Any] = {}
+    provenance = validate_projection(unit)
+    has_provenance_data = any(
+        key in unit
+        for key in (
+            PROVENANCE_ENVELOPE_KEY,
+            PROVENANCE_COMMITMENT_KEY,
+            PROVENANCE_ASSERTION_ID_KEY,
+        )
+    )
+    projection = projection_metadata(unit) if has_provenance_data else {}
     for key in SHADOW_META_KEYS:
         if key not in unit:
-            continue
-        val = unit.get(key)
+            if not has_provenance_data or key not in projection or not projection[key]:
+                continue
+            val = projection[key]
+        else:
+            val = unit.get(key)
+            if key == PROVENANCE_ENVELOPE_KEY:
+                val = projection[PROVENANCE_ENVELOPE_KEY]
         if val is None or val == "":
             continue
         if key == "keywords":
@@ -128,6 +158,9 @@ def normalized_shadow_metadata(unit: dict) -> dict[str, Any]:
             out[key] = val if not isinstance(val, (str, int, float, bool, list)) else val
             if isinstance(val, str):
                 out[key] = val
+    if provenance["envelope"] is not None:
+        out[PROVENANCE_STATUS_KEY] = provenance["status"]
+        out[PROVENANCE_INTEGRITY_KEY] = "untrusted"
     recipe = str(unit.get("document_recipe_version") or "").strip()
     if not recipe:
         recipe = select_recipe(unit)
@@ -154,4 +187,21 @@ def build_canonical_unit(unit: dict) -> dict[str, Any]:
         "source_path": str(unit.get("source_path") or ""),
     }
     row.update(meta)
+    checked = validate_projection(unit)
+    if checked["envelope"] is not None:
+        row[PROVENANCE_ENVELOPE_KEY] = checked["envelope"]
+        row[PROVENANCE_COMMITMENT_KEY] = checked["commitment"]
+        row[PROVENANCE_ASSERTION_ID_KEY] = checked["assertion_id"]
+        row[PROVENANCE_STATUS_KEY] = checked["status"]
+        row[PROVENANCE_INTEGRITY_KEY] = "untrusted"
+    elif any(
+        key in unit
+        for key in (
+            PROVENANCE_ENVELOPE_KEY,
+            PROVENANCE_COMMITMENT_KEY,
+            PROVENANCE_ASSERTION_ID_KEY,
+        )
+    ):
+        row[PROVENANCE_STATUS_KEY] = "untrusted"
+        row[PROVENANCE_INTEGRITY_KEY] = "untrusted"
     return row

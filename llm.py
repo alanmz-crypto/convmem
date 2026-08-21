@@ -33,6 +33,49 @@ Conversation:
 _MAX_CHUNK_CHARS = 8000
 
 
+def resolve_generation_binding(model: str) -> dict[str, object]:
+    """Describe the provider/model path selected by the generation contract.
+
+    This is observational metadata only.  Actual generation continues through
+    the existing provider fallback code below; this helper never elevates an
+    origin or changes the selected model.
+    """
+
+    requested = str(model)
+    if "deepseek-v4" in requested and os.environ.get("DEEPSEEK_API_KEY"):
+        return {
+            "provider": "deepseek",
+            "requested_model": requested,
+            "resolved_model": requested,
+            "fallback": False,
+        }
+    if "deepseek-v4" in requested:
+        return {
+            "provider": "ollama",
+            "requested_model": requested,
+            "resolved_model": os.environ.get("CONVMEM_FALLBACK_MODEL", "llama3.1:8b"),
+            "fallback": True,
+        }
+    return {
+        "provider": "ollama",
+        "requested_model": requested,
+        "resolved_model": requested,
+        "fallback": False,
+    }
+
+
+def summarize_consumed_view(chunk_text: str) -> str:
+    """Return the exact bounded text sent to the summarization provider."""
+
+    return chunk_text[:_MAX_CHUNK_CHARS]
+
+
+def summarize_prompt(chunk_text: str) -> str:
+    """Return the exact summarization request prompt."""
+
+    return SUMMARIZE_PROMPT.format(messages=summarize_consumed_view(chunk_text))
+
+
 def ollama_embed(text: str, model: str, host: str) -> list[float]:
     """Return an embedding vector for `text` from a local Ollama model."""
     resp = requests.post(
@@ -374,9 +417,7 @@ def summarize(
     deepseek_base_url: str = "https://api.deepseek.com",
 ) -> str:
     """Summarize a conversation chunk into 3 sentences + a Keywords line."""
-    if len(chunk_text) > _MAX_CHUNK_CHARS:
-        chunk_text = chunk_text[:_MAX_CHUNK_CHARS]
-    prompt = SUMMARIZE_PROMPT.format(messages=chunk_text)
+    prompt = summarize_prompt(chunk_text)
 
     if "deepseek-v4" in model and os.environ.get("DEEPSEEK_API_KEY"):
         return _deepseek_generate(prompt, model, deepseek_base_url, timeout=120)

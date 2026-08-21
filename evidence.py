@@ -13,6 +13,7 @@ import math
 from datetime import datetime, timezone
 
 from ledger import _dedupe_by_ledger_id, _kind, build_ledger_index
+from provenance_binding import provenance_identity
 
 # Additive boosts applied to semantic score (0–1 scale).
 _BOOST_UNRESOLVED = 0.18
@@ -260,33 +261,51 @@ def filter_superseded_decisions(results: list[dict]) -> list[dict]:
     Shared by ``query_units`` (search_fast / CLI search) and ask. Cheap in-list
     filter — not a Chroma unit-tombstone check.
     """
-    parent_ids: set[str] = set()
+    suppressed: set[tuple[str, tuple[str, str] | None]] = set()
+    decisions_by_id: dict[str, list[dict]] = {}
+    for r in results:
+        ledger_id = (r.get("metadata") or {}).get("ledger_id", "").strip()
+        if ledger_id:
+            decisions_by_id.setdefault(ledger_id, []).append(r)
     for r in results:
         meta = r.get("metadata") or {}
         if (meta.get("ledger_kind") or "").strip() != "decision":
             continue
         relates_to = (meta.get("relates_to") or "").strip()
         if relates_to.startswith("dec_"):
-            parent_ids.add(relates_to)
-    if not parent_ids:
+            child_identity = provenance_identity(meta)
+            for parent in decisions_by_id.get(relates_to, []):
+                parent_meta = parent.get("metadata") or {}
+                parent_identity = provenance_identity(parent_meta)
+                if child_identity is None and parent_identity is None:
+                    suppressed.add((relates_to, None))
+                elif child_identity is not None and child_identity == parent_identity:
+                    suppressed.add((relates_to, parent_identity))
+    if not suppressed:
         return results
     return [
         r
         for r in results
-        if (r.get("metadata") or {}).get("ledger_id") not in parent_ids
+        if (
+            (r.get("metadata") or {}).get("ledger_id", "").strip(),
+            provenance_identity(r.get("metadata") or {}),
+        ) not in suppressed
     ]
 
 
 def dedupe_results_by_ledger_id(results: list[dict]) -> list[dict]:
-    """Keep one hit per ledger_id (first wins — list should already be rank-sorted)."""
-    seen: set[str] = set()
+    """Dedupe legacy ledger twins without collapsing provenance assertions."""
+    seen: dict[str, set[tuple[str, str] | None]] = {}
     out: list[dict] = []
     for r in results:
-        lid = ((r.get("metadata") or {}).get("ledger_id") or "").strip()
+        meta = r.get("metadata") or {}
+        lid = (meta.get("ledger_id") or "").strip()
         if lid:
-            if lid in seen:
+            identity = provenance_identity(meta)
+            identities = seen.setdefault(lid, set())
+            if identity in identities:
                 continue
-            seen.add(lid)
+            identities.add(identity)
         out.append(r)
     return out
 
