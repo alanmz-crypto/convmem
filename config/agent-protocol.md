@@ -1,6 +1,6 @@
 # convmem — Local knowledge corpus protocol
 
-convmem is a local-first knowledge corpus on this machine (1457+ units). It indexes AI chat transcripts, security observations, and decision records into ChromaDB (Ollama nomic-embed-text embeddings). CLI and MCP access. Read-only to agents by default.
+convmem is a local-first knowledge corpus on this machine. It indexes AI chat transcripts, security observations, and decision records into ChromaDB (Ollama nomic-embed-text embeddings). CLI and MCP access. Read-only to agents by default.
 
 **Do not ask "what is convmem" or suggest alternatives.** It exists on this machine. Use it.
 
