@@ -26,8 +26,7 @@ negative-control experiment that demonstrates enforcement.
 
 **Consequence:** The ordinary merge path now requires both behavioral pytest and
 Pylint status checks, and a known-bad PR has now been observed to be blocked.
-The technical evidence closeout is complete; Ryan still owns the documentation
-branch's merge decision.
+The technical evidence closeout is complete and the closeout documentation merged via #189; Arc CI Kryptonite is CLOSED. No docs-merge gate remains.
 
 | | |
 |---|---|
@@ -99,7 +98,7 @@ break-glass capability, not a failure of the gate, and was not exercised.
 |----|-------|--------|
 | V4a | All shipped implementation and ruleset checks above remain true | **PASS** |
 | V4b | Negative control proves a bad candidate is blocked | **PASS** |
-| V4c | Arc CI Kryptonite evidence package is complete | **PASS**; Ryan docs-merge GATE remains |
+| V4c | Arc CI Kryptonite evidence package is complete | **PASS** — closeout documentation merged via #189 |
 
 ## Evidence log
 
