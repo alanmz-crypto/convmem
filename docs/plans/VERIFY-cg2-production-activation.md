@@ -44,7 +44,8 @@ enable GC.
 | **How** | Static inventories, hermetic pytest, isolated copied-corpus rehearsal, Chroma 1.5.9 mixed-mode proof. |
 
 **TL;DR:** Mechanical checks PASS on isolated fixtures at pinned Chroma 1.5.9;
-V8b (the separate legacy-only soak grant) is recorded and satisfied; soak completion remains UNRESOLVED and is not covered by V8b.
+V8b (the separate legacy-only soak grant) is recorded and satisfied; soak
+**completion** was separately Ryan-accepted 2026-08-21 (not a V8b status change).
 
 ### Merge reading
 
@@ -169,8 +170,26 @@ V8b (the separate legacy-only soak grant) is recorded and satisfied; soak comple
 | ID | Check | Result | Evidence |
 |---|---|---|---|
 | V8a | Independent reviewer signs exact tip | PENDING | Kiro at PR |
-| V8b | Ryan accepts package / grants soak separately | **PASS** — legacy-only gateway soak grant recorded | Grant recorded in `LATEST.md`. V8b covers the grant, not soak success; soak completion remains separately UNRESOLVED |
+| V8b | Ryan accepts package / grants soak separately | **PASS** — legacy-only gateway soak grant recorded | Grant recorded in `LATEST.md`. V8b covers the **grant only**, not soak-completion success (see Soak-completion evidence below). |
 | V8c | First-owner packet (future) | PENDING | Not in Execute scope |
+
+## Soak-completion evidence (separate from V8b)
+
+**Status:** **ACCEPTED** — Ryan accepted completed CG-2 legacy-only gateway soak on **2026-08-21**.
+
+This record does **not** change V8a/V8b/V8c. V8b remains the soak **grant**. Soak
+**completion** is evidenced here only. First generational owner, activation,
+activation manifest, GC, Shadow, and R2b remain unauthorized.
+
+| Field | Evidence |
+|---|---|
+| Acceptance date | 2026-08-21 (Ryan GATE — soak completion) |
+| Watch continuity | PID **955623**; started **2026-08-18 02:12:54 CDT**; `NRestarts=0`; continuous ≥72h through acceptance |
+| Authority | `owners=0` (legacy-only); live `logical_projection` PASS; `source_reconciliation` fresh (staleness ≪ 300s) |
+| RUNBOOK pauses | No demonstrated CG-2 RUNBOOK pause condition during the accepted window |
+| Midnight observer samples | Six `RESET_REQUIRED` samples (~00:00 / 00:15 CDT Aug 19–21) adjudicated **non-blocking**. Timing is consistent with the daily restic freshness boundary; the exact failing doctor check was **not** captured (checker discards doctor JSON on nonzero exit). Checker is observer-only; these observer events do **not** reset the RUNBOOK soak clock. |
+| Final retrieval eval | **2026-08-21T08:17Z** — `python scripts/eval-retrieval.py` exit **0**; 8/8 PASS; P@1 **87.5%**; P@k **100%**; MRR **0.9375**; Recall@k **100%**; **no regression vs baseline**; no watch restart; no production/repository mutation |
+| Out of scope of this acceptance | V8a still PENDING; first owner / activation / GC / Shadow / R2b **not** granted |
 
 ## Formal property → test map
 
@@ -185,8 +204,10 @@ Architecture baseline: e680ce837653698a5be8b78ba02db2f880c40c63
 Execution grant plan: 6a808f1543f2c93270d9f0ed1ae88cad27f6556b
 Subject tip (branch): feat/2026-08-15-cg2-production-activation @ 2a20209
 Mechanical run: pytest isolated CG-2 bundle + full suite (see PR)
-Independent sign-off: pending PR
-Ryan GATE (soak): pending
+Independent sign-off (V8a): PENDING
+Ryan GATE soak grant (V8b): PASS — grant recorded (not completion)
+Soak completion: ACCEPTED 2026-08-21 (separate evidence section above)
+First-owner packet (V8c): PENDING
 Production activation: NOT PERFORMED
 Automatic GC: NOT PERFORMED
 ```
