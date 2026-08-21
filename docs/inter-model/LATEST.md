@@ -1,6 +1,8 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-21 (Arc Runway Ledger merged #215/#216; coordination-maintenance pass)
+**Updated:** 2026-08-21 (Arc Trapdoor Hunt closed-T3 main integration candidate)
+
+- **Arc Trapdoor Hunt — CLOSED T3 main-integration candidate (draft [PR #221](https://github.com/alanmz-crypto/convmem/pull/221), 2026-08-21):** Who/What: Codex mechanically composed frozen closed-T3 tip `3ac2384d484bdb99d4ecd23f26c17264a7246adb` with current-main basis `8df2849959d01f9c41542a6388388e049f43b74c` on an isolated integration branch. When: candidate validation and exact-SHA Kiro/Copilot review are in progress. Why: T3 must reach main without rewriting its frozen history or changing Runway Ledger semantics. How: regenerated writer inventories, preserved current CI/protocol surfaces, and retained all deferred gates as unauthorized. **Resume state:** finish deterministic validation and reviewers, then stop for Ryan before merge. [`STATUS-dependability-provenance.md`](../plans/STATUS-dependability-provenance.md)
 
 - **Arc Runway Ledger — IMPLEMENTED; arc closing (merged #215/#216, 2026-08-20):** Who/What: Deterministic agent run identity tracking — append-only JSONL event ledger correlating client sessions to work (Kiro first capture client). When: core merged via PR #215; hooks enabled + soak passed + PR #216 merged 2026-08-20; arc recorded as closing in its STATUS Update Log. Why: native session IDs were lost after agents finish; this provides a unified correlation layer. How: `agent_run_ledger.py`, Kiro SessionStart/Stop hooks, additive forward-only ingest association (unique-match-only), CLI query surface. **Resume state:** arc is Runway-owned and closing — other clients (Codex, Cursor, Crush, Copilot) are future slices, not arc requirements. Stay off this arc unless on the Runway lane. [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md)
 

@@ -4,9 +4,11 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-21 (main tip `4121fb9`)
+**Snapshot:** 2026-08-21 (integration basis `8df2849`; draft PR #221)
 
-> **Trapdoor Hunt / T3:** held CLOSED-for-coordination pending a separate Claude post-surge verification; do not reopen or technically reassess here. Runway Ledger is an externally owned active lane.
+> **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. Draft PR #221
+> integrates frozen T3 onto current main without reopening it; Runway Ledger
+> semantics remain externally owned and unchanged.
 
 ## Project goal
 
@@ -41,6 +43,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
 | CG-2 authority migration | Merged on `main` (#186); legacy-only gateway soak **grant recorded**; **soak completion UNRESOLVED** (V8b still PENDING). First generational owner / activation / GC not authorized. | Do not activate, grant a first owner, or run GC. Close V8b only after soak completion is verified. See [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md) and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
 | Runway Ledger — Agent Run identity tracking | Implemented on `main` (#215); hooks enabled (#216); soak passed 2026-08-20; **arc closing** (Ryan recorded arc-close). Other clients are future slices, not arc requirements. | Stay clear unless on the Runway lane: the arc is Runway-owned and in closeout. Reflect only its current status. See [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md). |
+| Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED** on frozen branch; Claude whole-surge PASS; draft main-integration PR #221 under exact-SHA validation/review | Finish Kiro/Copilot review of the integration candidate, then stop for Ryan before any merge. Deferred Bootstrap/migration/CG-2/Shadow/R2b/T4/T5 work remains unauthorized. |
 
 ## Closed arcs — reference STATUS only
 
@@ -84,4 +87,4 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Runway Ledger STATUS](../plans/STATUS-agent-run-ledger.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Chroma is GREEN; Pinwheel and CodeQL are closed; Runway Ledger is implemented and closing; CG-2 is merged with soak completion unresolved; JudgeBench G3 + Phase A are merged, awaiting Ryan's calibration-experiment grant and G4; Shadow waits on activation evidence then Ryan grant; R2b waits on a fresh authorization packet.
+**TL;DR:** Closed T3 is in draft main-integration PR #221 without reopening deferred work; Runway Ledger remains unchanged, and all other arc gates retain their existing owners.

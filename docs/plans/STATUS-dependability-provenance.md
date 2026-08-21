@@ -22,10 +22,14 @@ skipped, 0 failures` and candidate `1387 passed, 3 skipped, 0 failures`;
 Golden Eval remained `8/10` on both; Restic and temporary-path checks passed
 on both; Pylint, `py_compile`, and `git diff --check` passed.
 
-No implementation lane is active. T3-satisfied and governance-satisfied
-VERIFY rows are recorded as `PASS`; deferred later-gate rows remain `PENDING`
-with explicit deferral records. T3 is formally closed, but Arc Trapdoor Hunt
-and its later gates remain separately governed.
+The closed T3 package is now on an unmerged main-integration candidate in
+[PR #221](https://github.com/alanmz-crypto/convmem/pull/221), based on
+`origin/main` `8df2849959d01f9c41542a6388388e049f43b74c` and the frozen Trapdoor tip
+`3ac2384d484bdb99d4ecd23f26c17264a7246adb`. This is integration and regression
+validation only; it does not reopen T3. T3-satisfied and governance-satisfied
+VERIFY rows remain `PASS`; deferred later-gate rows remain `PENDING` with
+explicit deferral records. Arc Trapdoor Hunt and its later gates remain
+separately governed.
 
 ## 1. What this project is for
 
@@ -123,7 +127,7 @@ serving authority/repository.
 
 ## 5. Your role now
 
-**Current lane: T3 governance close complete; later stages remain separately
+**Current lane: closed T3 main-integration review; later stages remain separately
 gated.** The
 P1/P2/P3 implementation slices, P4 evidence, residual evidence, and final V4m
 correction are complete/merged. PR #211's exact implementation candidate
@@ -135,8 +139,10 @@ deferred rows remain PENDING with explicit later-gate owners. A post-T3 bounded
 hardening correction then added runtime writer-attestation enforcement in PR #213,
 merged at `013f692442029a0d64326b3504e6216f320ff595`; this did not reopen T3 or
 change any formal VERIFY disposition.
-The final dispositions for every remaining row are in §6a; no new
-implementation or evidence lane is authorized. Migration, Bootstrap,
+The integration candidate composes this frozen result with current-main Runway
+Ledger and CI/protocol changes without altering either architecture. The final
+dispositions for every remaining row are in §6a; no new implementation or
+evidence lane is authorized. Migration, Bootstrap,
 live-data/Chroma mutation, CG-1/CG-2, Shadow, R2b, and T4/T5 remain
 unauthorized.
 
@@ -280,5 +286,6 @@ Do not append session narrative.
 | 2026-08-18 | Codex | PR #209 residual evidence candidate `d796be0ad6fb0c86bf46cf34519a8332252fce1e` squash-merged at `66926ac2e68f045e9f36fd26157a3d2ca07b9608`; V3f/V3h/V8c/V8e/V8g remain PASS candidates, V4m/V9a/V9d remain PENDING blockers, and all repository VERIFY rows remain PENDING. |
 | 2026-08-19 | Codex | Ryan recorded `RYAN_T3_CLOSE — PASS` after PR #211 final evidence; T3 is CLOSED, satisfied rows are PASS, and later-gate rows remain explicitly deferred/PENDING. |
 | 2026-08-20 | Codex | Post-T3 bounded hardening correction PR #213 merged at `013f692442029a0d64326b3504e6216f320ff595`; runtime V4m enforcement strengthened, T3 remains CLOSED, and deferred rows are unchanged. |
+| 2026-08-21 | Codex | Opened draft PR #221 to integrate frozen closed T3 `3ac2384d…` onto current-main basis `8df2849…`; validation/review is in progress and no main merge is authorized. |
 
-**TL;DR:** T3 is CLOSED; PR #213 added bounded post-close V4m runtime enforcement without changing satisfied PASS rows, deferred PENDING rows, or later-stage authorization.
+**TL;DR:** T3 remains CLOSED; draft PR #221 is the isolated main-integration candidate, with deferred gates unchanged and merge reserved for Ryan.
