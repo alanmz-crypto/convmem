@@ -505,13 +505,22 @@ only after both IDs and both manifest SHA-256 digests are already in the packet.
 - target generation = exact grant-bound `G_canary`;
 - structural revalidation that `G_rb` still matches the grant-bound baseline
   (generation id, manifest SHA, convert-v1 fingerprint, retained/qualified
-  evidence). Failure → **pause / refuse**; no fence, no pointer, no activation.
+  evidence).
+
+**Baseline / precondition failure timing (Design A):**
+
+| When discovered | Required behavior |
+|---|---|
+| **Before durable fence** (baseline structural failure, stale grant preconditions, or refuse of first-cutover publish with no fence yet) | **Pause / refuse**; no fence, no pointer, no activation; owner does not enter `FENCED_NO_POINTER`; never treat refusal as completed cutover |
+| **After durable fence**, before successful pointer publication (baseline/precondition failure or crash/refuse mid-cutover) | Owner remains **`FENCED_NO_POINTER`**; fence monotonic; **never LEGACY**; no pointer until exact recovery/qualification succeeds under a fresh grant path as required |
 
 **One-shot grant self-invalidation:** If source bytes, current authority, or
 preconditions change after the grant but before successful first-cutover
 publication, forward/first-cutover publication **refuses**. That grant is
 stale/unused. A fresh evidence packet and a **new** Ryan V8c grant are required.
-V8c PASS never means a refused operation nevertheless completed.
+V8c PASS never means a refused operation nevertheless completed. If a durable
+fence already exists when refusal is discovered, the owner stays
+`FENCED_NO_POINTER` (never LEGACY) per the table above.
 
 **Semantics split (papered; not marked PASS here):**
 
@@ -763,13 +772,14 @@ No execution plan may add direct SQL/WAL deletion as generation GC.
 |---|---|
 | Parser, embedding, LLM, or staging failure | Candidate fails/abandons; current authority unchanged |
 | Process crash before pointer publication | Candidate remains non-authoritative |
-| Crash after first-cutover fence, before pointer | Owner unavailable; legacy cannot resurrect; fence monotonic |
+| Crash after first-cutover fence, before pointer | Owner **`FENCED_NO_POINTER`**; legacy cannot resurrect; fence monotonic |
 | Crash after pointer bytes, before caller observes success | Exact recovery/qualification decides; no fallback |
 | Active generation changes during build | Existing CG-1 stale-generation check refuses promotion |
-| Source bytes change during forward build/publication | Mandatory source-hash check refuses promotion; queues rebuild |
-| First-cutover baseline structural failure (`G_rb`) | Pause / refuse; no fence, no pointer, no activation |
+| Source bytes change during forward build/publication | Mandatory source-hash check refuses forward promotion; queues rebuild |
+| First-cutover baseline/precondition failure **before** durable fence | Pause / refuse; no fence, no pointer, no activation (§7.0) |
+| First-cutover baseline/precondition failure **after** durable fence | Remain **`FENCED_NO_POINTER`**; never LEGACY; fence monotonic; no pointer until exact recovery/qualification (§7.0) |
 | First cutover would set `previous_generation_id=None` | Refuse; Design A requires exact `G_rb` |
-| Grant preconditions stale before first-cutover publish | Refuse; one-shot grant unused/stale; new packet + new V8c grant required |
+| Grant preconditions stale before successful first-cutover publish | Refuse; one-shot grant unused/stale; new packet + new V8c grant required; if fence already durable → `FENCED_NO_POINTER`, never LEGACY |
 | Watch event is lost, coalesced, or overflows | Mark scope reconciliation-required; compare source inventory/manifests and enqueue latest drift before clearing |
 | Authority evidence changes during resolution | Discard tentative mapping and retry before row dereference |
 | Authority resolution exhausts retry budget | Return observable `AUTHORITY_UNSTABLE`; no durable quarantine, cache entry, rows, or fallback |
@@ -1027,8 +1037,14 @@ Reviewers should answer explicitly:
    quality separately and staying within ratified cost?
 3. Is the monotonic fence + pointer sequence the smallest correct first-cutover
    state machine?
-4. Is source-hash revalidation structurally unavoidable on every production
-   promotion path?
+4. **Design A lock (reconciled):** Source freshness / source-hash revalidation
+   is mandatory on every **forward** production promotion path
+   (`publish_active_pointer` / first-cutover forward publish). Generation-switch
+   **rollback** (`rollback_active_pointer`) does **not** require live source
+   bytes to equal the retained manifest; it requires fresh qualification of the
+   exact retained generation plus durable reconciliation when source has
+   advanced. Reviewers confirm this split—not “every promotion path”—is
+   correctly implemented and tested.
 5. Do any production, fallback, exact-lookup, evidence, count, restore, or MCP
    paths remain outside the proposed serving repository classification?
 6. Are activation and reclamation separated strongly enough?

@@ -79,7 +79,11 @@ stale/unused; require a **new packet + new V8c grant**.
 - Mixed-mode proof gate FAIL (`authorized_cardinality` or `authority_safety`)
 - Unexplained eval/gateway divergence during granted soak
 - Missing embedding identity or ambiguous owner/alias state
-- Baseline structural failure for grant-bound `G_rb` (pause / refuse; no fence)
+- Baseline/precondition failure for grant-bound `G_rb` **before** durable fence
+  (pause / refuse; no fence, no pointer, no activation)
+- Baseline/precondition failure **after** durable fence (owner stays
+  `FENCED_NO_POINTER`; never LEGACY; fence monotonic; pause for repair /
+  fresh grant as required — do not resurrect LEGACY)
 - First pointer would have `previous_generation_id=None` (refuse; Design A)
 - Attempted further serving promotion during the first-canary window (refuse)
 
@@ -89,9 +93,12 @@ stale/unused; require a **new packet + new V8c grant**.
 2. Revalidate grant preconditions (source, authority, baseline structure).
 3. Publish monotonic fence; then `publish_first_cutover_active_pointer` with
    `expected_active=None`, `previous_generation_id=G_rb`, target=`G_canary`.
-4. Do **not** promote a second serving generation for that owner during the
+4. If cutover fails **before** the fence is durable: refuse; leave no fence.
+   If failure is discovered **after** a durable fence: remain
+   `FENCED_NO_POINTER`; **never LEGACY**.
+5. Do **not** promote a second serving generation for that owner during the
    canary window.
-5. GC remains disabled.
+6. GC remains disabled.
 
 ## Rollback vs recovery (do not conflate)
 

@@ -121,7 +121,7 @@ V8a independent sign-off is **PASS** (Kiro); V8b (soak grant) is **PASS**; soak
 
 | ID | Check | Result | Evidence |
 |---|---|---|---|
-| V3a | Source mutation refuses promotion | PASS | `tests/test_source_freshness_promotion.py` |
+| V3a | Source mutation refuses forward promotion | PASS | `tests/test_source_freshness_promotion.py` |
 | V3b | Startup/sweep/overflow paths run | PASS | `tests/test_source_reconciler.py` |
 | V3c | Lost notification found and queued | PASS | `test_discover_legacy_drift_when_source_changes`, sweep tests |
 | V3d | Dirty state cleared only by successful sweep | PASS | `test_sweep_queues_owner_work_and_clears_dirty` |
@@ -155,7 +155,7 @@ V8a independent sign-off is **PASS** (Kiro); V8b (soak grant) is **PASS**; soak
 |---|---|---|---|
 | V6a | Kill/corruption paths fail closed or recover | PASS | `tests/test_file_generation_validate.py`, pointer recovery tests |
 | V6b | Active/previous retention survives restart | PASS | `test_mixed_mode_proof.py::test_retention_survives_restart` |
-| V6c | Rollback uses retained generation, not legacy resurrection | PASS | `tests/test_file_generation_store.py` previous retention |
+| V6c | Rollback uses retained generation, not legacy resurrection | **PENDING** — Design A implementation | Existing evidence (`tests/test_file_generation_store.py` previous retention) proves **retention substrate only**, not `rollback_active_pointer`. Generation-switch rollback API + Design A drill remain unimplemented; do not treat prior PASS as Design A rollback proof. |
 | V6d | Recovery follows durable pointer | PASS | `tests/test_file_generation_pointer.py` recovery paths |
 | V6e | GC disabled; protected generations not deleted | PASS | `PHYSICAL_DELETION_DISABLED`; no delete in proof path |
 
