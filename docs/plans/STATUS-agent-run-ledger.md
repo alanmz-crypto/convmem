@@ -81,16 +81,16 @@ revision after implementation; Ryan owns merges.
 
 ## 6. What Remains Before “Live”
 
+All milestones complete:
+
 1. ~~Kiro reviews the architecture and execution package~~ — PASS.
 2. ~~Ryan locks Architecture and Execution~~ — granted 2026-08-20.
 3. ~~Cursor proves the Kiro hook contract (T0)~~ — fixtures + contract tests.
-4. ~~Cursor implements T1–T7~~ — on feat branch; hooks disabled pending Ryan grant.
-5. Run V13 full suite; open PR; Kiro reviews exact tip.
-6. Ryan grants the exact local hook installation/disposable soak if the gate is
-   green. Verify private file permissions and fail-open behavior.
-7. Ryan separately decides whether to enable forward-only `agent_run_id`
-   association. No historical backfill is implied.
-8. Add other clients only as separately reviewed edge adapters.
+4. ~~Cursor implements T1–T7~~ — merged via PR #215.
+5. ~~V0–V13 focused tests; Claude independent review; Kiro final review~~ — all PASS.
+6. ~~Ryan grants hook enable + soak~~ — soak passed 2026-08-20; PR #216 enables hooks.
+7. ~~Forward-only `agent_run_id` ingest association~~ — active, unique-match-only.
+8. Other clients (Codex, Cursor, Crush, Copilot) — future slices, not required for arc close.
 
 ## 7. Hard Stops
 
@@ -147,4 +147,5 @@ session narrative here; session details belong in Track A ingest.
 | 2026-08-20 | Cursor | T3–T7 CLI, Kiro edge (disabled hooks), git facts, ingest resolver |
 | 2026-08-20 | Cursor | V13 green; opened PR #215 at tip `a2a2865` |
 | 2026-08-20 | Cursor | Claude Q4/Q7 pre-soak fixes on PR #215 (no-ID collision + stderr) |
+| 2026-08-20 | Kiro | Soak passed; hooks enabled; PR #216 opened; arc closing |
 | 2026-08-20 | Codex | Created Runway Ledger architecture, execution, and STATUS package from Kiro's identity-tracking investigation; implementation remains unauthorized |
