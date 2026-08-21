@@ -24,7 +24,7 @@
 | V10 | PASS | Explicit ledger_id enrichment round-trip |
 | V11 | PASS | 0600/0700 modes; symlink refusal |
 | V12 | PASS | Cross-client envelopes reduce |
-| V13 | PENDING | Full suite run before PR |
+| V13 | PASS | Full suite: 1391 passed after inventory line-number + worktree discovery fixes; tip `6de6ada` era + follow-up |
 
 ## Ryan GATEs remaining
 
