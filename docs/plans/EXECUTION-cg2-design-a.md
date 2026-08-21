@@ -178,8 +178,8 @@ required change falls outside this set is a scope-stop for Luna/Ryan review.
 |---|---|
 | `cg2_rollback_baseline.py` (new) | Capture one frozen owner-scoped accepted LEGACY serving set; convert rows without re-embedding; create/validate immutable `RETAINED_ROLLBACK_BASELINE` evidence; prove bidirectional logical equivalence. |
 | `cg2_cutover_guard.py` (new) | Low-level hash-bound first-canary-open artifact, path, immutable publication, and validation. It imports no pointer/orchestration module, avoiding an authority cycle. No close writer in this Execute. |
-| `cg2_first_cutover.py` (new) | Narrow orchestration: preflight exact bindings before fence; one owner-lock commit section for monotonic fence, open guard, and dedicated first pointer; no CLI and no production defaults. |
-| `file_generation_pointer.py` | Separate current-active CAS from durable previous lineage; add dedicated first-cutover and rollback APIs; keep recovery exact-payload only; make ordinary forward publication reject first-pointer use and open-canary promotion. |
+| `cg2_first_cutover.py` (new) | Public dedicated first-cutover operation: preflight exact bindings before fence; acquire the owner lock exactly once for monotonic fence, open guard, and dedicated first pointer; resume `FENCED_NO_POINTER` only under a fresh grant; no CLI and no production defaults. |
+| `file_generation_pointer.py` | Separate current-active CAS from durable previous lineage; provide one private lock-held pointer-publication primitive shared by forward publish, first cutover, rollback, and exact recovery; add rollback API; keep recovery exact-payload only; make ordinary forward publication reject first-pointer use and open-canary promotion. |
 | `file_generation_store.py` | Accept an exact retained-baseline protection map when evaluating staging backpressure; never treat protected `G_rb` as abandoned. |
 | `serving_authority.py` | Make fence publication immutable/idempotent-identical and reject replacement; preserve `FENCED_NO_POINTER` resolution. No fence deletion API. |
 | `source_reconciler.py` | Add one atomic helper that durably records/coalesces a rollback-created desired-source obligation before stale-source rollback pointer publication. Reuse existing state file and budgets. |
@@ -324,8 +324,16 @@ rollback_active_pointer(
 recover_active_pointer(owner_key, ...)
 ```
 
-All three publication APIs use one private, owner-lock-held pointer writer;
-there is no parallel pointer format or authority file.
+Each public authority-changing operation acquires the existing `source_flock`
+for its owner exactly once. Public operations own preflight/orchestration and
+locking; one private lock-held pointer-publication primitive performs the
+actual pointer write for ordinary forward publication, first cutover, rollback,
+and exact recovery. The private primitive assumes the correct owner lock is
+already held and never acquires it. High-level first-cutover and rollback code
+must call that private primitive directly while holding their one lock; they
+must not call another public operation that reacquires `source_flock`.
+`source_flock` itself is not changed to tolerate nested locking. There is no
+parallel pointer format or authority file.
 
 - Ordinary forward publication CASes against exact current active, performs
   mandatory current-source freshness, and writes durable
@@ -367,15 +375,47 @@ artifact hashes, pointer absence, current source, and owner binding, then:
 1. atomically publishes the immutable monotonic fence;
 2. atomically publishes the immutable first-canary-open guard naming exact
    `G_rb` and `G_canary`;
-3. reruns the final exact qualification/binding checks and calls
-   `publish_first_cutover_active_pointer` with CAS `None`, previous=`G_rb`, and
-   active=`G_canary`;
+3. reruns the final exact qualification/binding checks and invokes the private
+   lock-held pointer writer with first-cutover semantics: CAS `None`,
+   previous=`G_rb`, and active=`G_canary`;
 4. returns the module-sealed qualified active pointer.
 
 No catch block removes or rewrites the fence. A crash or failure after step 1
 and before successful step 3 leaves `FENCED_NO_POINTER`; a fresh request can
 never resolve LEGACY. The guard is non-serving evidence and may exist in that
 fail-closed state.
+
+#### 5.5.1 Fresh-grant completion from `FENCED_NO_POINTER`
+
+The dedicated public `publish_first_cutover_active_pointer` operation also owns
+the only normal completion path for both resumable crash states:
+
+- fence present / guard absent / pointer absent;
+- fence present / exact guard present / pointer absent.
+
+Neither state may reuse or continue under the pre-crash grant. Resume requires
+a fresh Ryan one-shot grant bound to the exact `G_rb` and `G_canary`. Before
+acquiring the owner lock,
+the operation requalifies both exact grant-bound generations and reconstructs
+the exact expected immutable fence/guard evidence. Under its single owner-lock
+commit section it then:
+
+1. revalidates the existing fence as immutable, structurally valid, and bound
+   to the exact owner/source expected by the fresh grant;
+2. validates the guard as either absent or exact/byte-identical to the expected
+   guard for the same `G_rb`, `G_canary`, owner/source, and evidence hashes;
+3. if the guard is absent, atomically publishes that exact guard; if it is
+   already exact, leaves its bytes unchanged;
+4. rechecks pointer absence and the fresh grant's exact structural and
+   qualification preconditions;
+5. invokes the private lock-held pointer writer once to complete the exact
+   first pointer with CAS `None`, previous=`G_rb`, and active=`G_canary`.
+
+A missing fence is not a resume state and follows ordinary pre-fence cutover.
+A conflicting, malformed, or corrupt fence or guard fails closed and requires
+operator repair; normal code neither rewrites the artifact nor attempts a
+different generation. Resume never clears the fence, removes the guard,
+restores LEGACY, or reuses the stale pre-crash grant.
 
 ### 5.6 Rollback after source advance
 
@@ -463,10 +503,15 @@ the one-abandoned-generation guard.
   as previous.
 - Prove `recover_active_pointer` has no target-generation parameter and cannot
   change active generation even when another complete generation exists.
+- Add a lock-acquisition oracle that wraps `source_flock`, fails immediately on
+  reentry, and records exactly one acquisition for each public operation;
+  explicitly exercise first cutover and rollback so neither can call a public
+  pointer API while already holding the owner lock.
 
 **Then implement**
 
-- Refactor `file_generation_pointer.py` around one private locked writer.
+- Refactor `file_generation_pointer.py` around one private lock-held writer
+  shared by forward publish, first cutover, rollback, and exact recovery.
 - Add `cg2_cutover_guard.py`; make ordinary forward publication refuse an open
   guard without importing the high-level cutover orchestrator.
 
@@ -481,8 +526,8 @@ python -m pytest tests/test_file_generation_pointer.py \
 ```
 
 **Stop if:** any public API still uses one value for both CAS and durable
-lineage, recovery can select a target, or ordinary forward can create a first
-pointer.
+lineage, recovery can select a target, ordinary forward can create a first
+pointer, or first cutover/rollback acquires `source_flock` more than once.
 
 ### D3 — First-cutover structural gate, fence sequencing, and canary guard
 
@@ -495,6 +540,16 @@ pointer.
 - Assert every pre-fence refusal leaves no fence and no pointer.
 - Inject failure/crash after durable fence and before pointer; assert
   `FENCED_NO_POINTER`, monotonic fence bytes, no pointer, and no LEGACY recovery.
+- Add explicit `fence -> crash -> fresh-grant resume` coverage: start from
+  fence present / guard absent / pointer absent, requalify exact grant-bound
+  `G_rb` and `G_canary`, publish the missing exact guard and first pointer, and
+  prove the fence bytes never change.
+- Add explicit `fence -> guard -> crash -> fresh-grant resume` coverage: start
+  from fence present / exact guard present / pointer absent, preserve exact
+  guard/fence bytes, and complete only the grant-bound first pointer.
+- Add wrong-guard refusal coverage: conflicting, corrupt, wrong-owner, or
+  wrong-generation guard bytes fail closed with no pointer publication and an
+  operator-repair result.
 - Assert successful first pointer has active=`G_canary`,
   `expected_active=None`, previous=`G_rb`.
 - Assert a second forward promotion and second first-cutover operation refuse
@@ -506,6 +561,8 @@ pointer.
 - Make fence publication immutable/idempotent-identical in
   `serving_authority.py`.
 - Complete low-level guard publication/validation in `cg2_cutover_guard.py`.
+- Implement both resume states in the same dedicated first-cutover operation;
+  require a fresh one-shot grant and reuse the private lock-held pointer writer.
 
 **Dependencies:** D1 and D2 complete.
 
@@ -517,7 +574,8 @@ python -m pytest tests/test_cg2_first_cutover.py \
 ```
 
 **Stop if:** any structural check can occur only after the fence, an exception
-path clears the fence, a fenced/no-pointer owner can resolve LEGACY, or a
+path clears the fence, a fenced/no-pointer owner can resolve LEGACY, a resume
+can reuse the pre-crash grant or overwrite conflicting fence/guard bytes, or a
 second promotion bypasses the open guard.
 
 ### D4 — Rollback after source advance and durable reconciliation
@@ -603,6 +661,9 @@ Required new transitions/state:
 - exact LEGACY-set conversion to qualified retained baseline;
 - pre-fence structural refusal;
 - durable fence without pointer;
+- fresh-grant resume from fence/no-guard/no-pointer;
+- fresh-grant resume from fence/exact-guard/no-pointer;
+- wrong/conflicting guard refusal with no pointer and no LEGACY restoration;
 - first pointer with CAS `NoGen`, previous=`G_rb`, active=`G_canary`;
 - ordinary forward promotion with CAS separate from lineage;
 - source advance followed by exact retained-generation rollback;
@@ -610,6 +671,8 @@ Required new transitions/state:
 - same-pointer recovery with no generation selection;
 - first-canary-open refusal of a second forward promotion;
 - GC exclusion for `RETAINED_ROLLBACK_BASELINE`.
+- one acquisition/release interval per authority-changing operation, with the
+  lock-held publication action unable to reacquire the owner lock.
 
 Required new named checks:
 
@@ -618,11 +681,15 @@ Required new named checks:
 - `CASSeparateFromRollbackLineage`
 - `PreFenceRefusalPreservesLegacy`
 - `PostFenceFailureNeverLegacy`
+- `FenceCrashResumeRequiresFreshGrant`
+- `GuardCrashResumeRequiresFreshGrant`
+- `WrongGuardRefusesFirstPointer`
 - `RollbackAfterSourceAdvanceKeepsReconciliation`
 - `RollbackNeverResurrectsLegacy`
 - `RecoveryNeverSwitchesGeneration`
 - `FirstCanaryBlocksSecondPromotion`
 - `RollbackBaselineNeverGCEligible`
+- `AuthorityOperationAcquiresOwnerLockOnce`
 
 The three restored historical configurations and the new Design A
 configuration must all run; a shared-model change can invalidate old checks.
@@ -709,8 +776,12 @@ Import direction is one-way:
 - `cg2_rollback_baseline.py` uses the existing store/manifest contract and
   never writes a pointer or fence.
 - `cg2_first_cutover.py` orchestrates existing baseline, guard, fence, pointer,
-  source-observation, and reconciliation checks; those lower modules never
-  import it.
+  source-observation, and reconciliation checks; its public operation owns the
+  single owner-lock interval and calls the private lock-held pointer writer,
+  never another public pointer operation; lower modules never import it.
+- `file_generation_pointer.py` public forward/rollback/recovery operations each
+  own one `source_flock` interval; the shared private writer assumes that lock
+  and cannot reacquire it. Do not modify `source_flock` for nested locking.
 - `source_reconciler.py` remains the sole durable desired-source queue.
 - `ServingIndexRepository` remains the sole serving read boundary.
 
@@ -731,12 +802,14 @@ rollback authority file is permitted.
 | `G_rb != G_canary` | first-cutover preflight | equality refusal before fence |
 | Pre-fence refusal remains LEGACY | preflight before commit phase | missing/corrupt/wrong-owner/wrong-SHA/non-equivalent matrix |
 | Post-fence failure is `FENCED_NO_POINTER` | one-lock fence/guard/pointer sequence; authority resolver | injected crash between fence and pointer; serving-open refusal |
+| `FENCED_NO_POINTER` resumes only under fresh exact grant | dedicated first-cutover resume path; immutable fence/guard validation | fence→crash→resume; fence→guard→crash→resume; wrong-guard refusal |
 | Fence never clears to recover LEGACY | immutable fence; no delete API | fence byte identity across failure/rollback/recovery |
 | Forward stale source refuses | ordinary/first forward source check | existing + Design A stale-source tests |
 | Rollback may follow source advance | `rollback_active_pointer` | source-advanced exact retained-generation rollback test |
 | Newer desired source remains durable | existing reconciliation state helper | persistence/restart/coalescing test after rollback |
 | Rollback never resurrects LEGACY | rollback pointer path + monotonic fence | authority mode and row-selection assertions |
 | Recovery cannot switch generation | exact-payload recovery only | alternate complete generation negative test/signature test |
+| Every authority change owns one owner-lock interval | public orchestration + shared private lock-held pointer writer | reentry-failing/counting `source_flock` oracle for first cutover and rollback |
 | No second serving promotion during canary | immutable open guard checked by forward APIs | second ordinary/first-cutover refusal; rollback/recovery allowed |
 | Frozen generation stays stable mid-request | existing `ServingIndexRepository` frozen vector | dedicated pointer-change-mid-request test |
 | GC disabled / baseline retained | `PHYSICAL_DELETION_DISABLED`; retention inventory | baseline survives cutover/rollback/reopen; no delete call |
@@ -763,8 +836,10 @@ LEGACY snapshot
 → exact convert-v1 G_rb
 → fresh qualification + equivalence
 → exact G_canary qualification
-→ first fence + first pointer
-→ crash-between-fence/pointer control
+→ fence → crash → fresh-grant resume
+→ fence → guard → crash → fresh-grant resume
+→ wrong-guard fail-closed control
+→ exact first pointer
 → source advance
 → rollback_active_pointer to G_rb
 → restart
@@ -773,7 +848,9 @@ LEGACY snapshot
 
 Evidence must include exact IDs/SHAs, pointer before/after, fence/guard hashes,
 reconciliation state hash, retention inventory, production paths absent, and
-`physical_deletion_disabled=true`.
+`physical_deletion_disabled=true`. The rehearsal also records fresh grant
+identities for both resume cases and the one-acquisition owner-lock oracle for
+first cutover and rollback.
 
 **V6c remains PENDING** until this drill uses the implemented, real
 `rollback_active_pointer` and passes at the reviewed implementation tip.
@@ -861,6 +938,12 @@ Stop and report to Luna/Ryan if any of the following occurs:
 - Successful source-advanced rollback can occur without durable reconciliation
   obligation.
 - Any failure path removes the fence or resolves a post-fence owner as LEGACY.
+- A `FENCED_NO_POINTER` resume can reuse an old grant, accept non-identical
+  fence/guard evidence, or overwrite a conflicting artifact instead of
+  requiring operator repair.
+- First cutover or rollback reacquires `source_flock`, calls a public pointer
+  API while already locked, or requires changing `source_flock` to permit
+  nesting.
 - `G_rb` becomes abandoned, GC-eligible, or serving without active pointer
   selection.
 - A formal counterexample, zero-coverage required transition, unexplained test
