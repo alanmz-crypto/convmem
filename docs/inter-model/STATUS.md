@@ -4,9 +4,9 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-21 (coordination reconciled through PR #220)
+**Snapshot:** 2026-08-21
 
-> **Trapdoor Hunt / T3:** held CLOSED-for-coordination pending a separate Claude post-surge verification; do not reopen or technically reassess here. Runway Ledger is an externally owned active lane.
+> **Trapdoor Hunt / T3:** held CLOSED-for-coordination pending a separate Claude post-surge verification; do not reopen or technically reassess here.
 
 ## Project goal
 
@@ -40,7 +40,6 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
 | CG-2 authority migration | Merged on `main` (#186); V8b (legacy-only gateway soak grant) **recorded/PASS**; **soak completion UNRESOLVED**. First generational owner / activation / GC not authorized. | Do not activate, grant a first owner, or run GC. Do not claim soak success until completion is verified. See [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md) and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
-| Runway Ledger — Agent Run identity tracking | **CLOSED** — implementation merged (#215); hook-enable soak passed + #216 merged; other clients are future slices, not unfinished Runway work. | No remaining Runway execution. Other clients are optional future slices, separate from this closed arc. See [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md). |
 
 ## Closed arcs — reference STATUS only
 
@@ -49,6 +48,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | Chroma Reconcile Tier L | **Closed GREEN** (#161) | Optional R5 anomaly disposition; Ryan-gated watch/refine ops only. Do not re-run R4 without regression request. |
 | Pinwheel Pytest CI | **Closed** (#191; closeout #195/#196/#197) | Reproducible pytest gate live on `main`. No further Pinwheel work. |
 | CodeQL Complex Therapy | **Closed/PASS** (#202) | `Protect Main` requires the five CodeQL/Pylint/Pytest contexts. Ryan owns the quarterly + config-drift attestation. No technical execution remains. |
+| Runway Ledger — Agent Run identity tracking | **CLOSED** | Core implementation merged (#215); hook-enable soak passed + #216 merged; other clients are future optional slices, not unfinished Runway work; no remaining Runway execution. See [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md). |
 
 ## Recently completed, not active blockers
 
