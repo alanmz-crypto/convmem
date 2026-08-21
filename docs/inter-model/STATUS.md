@@ -22,8 +22,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - **Chroma Reconcile Tier L is closed GREEN** — 0 HNSW-without-METADATA orphans post-rebuild;
   legacy calibration path passed 5/5. See
   [`STATUS-chroma-reconcile-tier-l.md`](../plans/STATUS-chroma-reconcile-tier-l.md).
-- **JudgeBench T2–T5 code is on `main` (#155)**; G3 gold corpus and G4 judge selection are
-  Ryan-gated. Upstream Chroma R4 GREEN unblocks calibration work.
+- **JudgeBench G3 corpus is merged and locked on `main` (#170)**; Phase A fail-closed calibration prep is merged on `main` (#171). Running the calibration experiment and G4 judge selection remain Ryan-gated. Upstream Chroma R4 GREEN.
 - **Shadow Ledger Phase 0 code + corrective C1–C7 are on `main`** (#122, #126, #131, #134);
   shadow remains **disabled**. Activation requires **activation-ready evidence** then a
   separate Ryan grant — see [`STATUS-shadow-ledger-phase0.md`](../plans/STATUS-shadow-ledger-phase0.md).
@@ -36,7 +35,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 
 | Arc | State | Next authorized action |
 |---|---|---|
-| JudgeBench semantic calibration v1 | T2–T5 on `main`; Chroma R4 GREEN | Ryan authors/locks G3 gold + split; then calibration run and G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
+| JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
@@ -85,4 +84,4 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Runway Ledger STATUS](../plans/STATUS-agent-run-ledger.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Chroma is GREEN; Pinwheel and CodeQL are closed; Runway Ledger is implemented and closing; CG-2 is merged with soak completion unresolved; JudgeBench waits on Ryan G3/G4; Shadow waits on activation evidence then Ryan grant; R2b waits on a fresh authorization packet.
+**TL;DR:** Chroma is GREEN; Pinwheel and CodeQL are closed; Runway Ledger is implemented and closing; CG-2 is merged with soak completion unresolved; JudgeBench G3 + Phase A are merged, awaiting Ryan's calibration-experiment grant and G4; Shadow waits on activation evidence then Ryan grant; R2b waits on a fresh authorization packet.

@@ -42,13 +42,13 @@
 
   **What this packages:** Corpus is trustworthy for retrieval-dependent eval again. Arc closed except optional R5 anomaly disposition and Ryan-gated ops (watch/refine).
 
-  **Suggested next:** JudgeBench G3 (Ryan gold) — see STATUS-judgebench.
+  **Suggested next:** JudgeBench calibration-experiment grant + G4 — see STATUS-judgebench (G3 already locked).
 
-- **JudgeBench semantic calibration v1 — code on `main`, G3 blocked (2026-08-09):** Who/What: S1–S9 (#144) + T2–T5 (#155) merged; VERIFY CHK-001..006 and CHK-008 PASSED. When: #155 merged 2026-08-09. Why: offline judge calibration before live quality claims. How: read arc brief; populate `cases.jsonl`/`gold.jsonl` only after Ryan G3 lock.
+- **JudgeBench semantic calibration v1 — G3 locked; Phase A merged (2026-08-21 reconcile):** Who/What: S1–S9 (#144) + T2–T5 (#155) merged; **G3 corpus merged and locked** (#170); **Phase A fail-closed calibration prep merged** (#171); VERIFY CHK-001..006 and CHK-008 PASSED, CHK-007 PARTIAL (no calibration run). When: #155 merged 2026-08-09, #170/#171 merged 2026-08-10. Why: offline judge calibration before live quality claims. How: read arc brief; `cases.jsonl`/`gold.jsonl` are already Ryan-locked; the corpus is populated.
 
   **Merge reading:** [`docs/plans/STATUS-judgebench.md`](../plans/STATUS-judgebench.md) · [`VERIFY-judgebench.md`](../plans/VERIFY-judgebench.md) · [`ARCHITECTURE-judgebench.md`](../plans/ARCHITECTURE-judgebench.md)
 
-  **Suggested next:** Ryan authors ~30–50 semantic cases (G3); standing checks `eval-provenance-wiring` / `eval-negative-control-coverage` when assigned.
+  **Suggested next:** Ryan's separate 60-call calibration-experiment grant, then G4 judge selection; standing checks `eval-provenance-wiring` / `eval-negative-control-coverage` when assigned.
 
 - **STATUS arc-brief pattern — on `main` (#160–#161):** Four arc briefs + cross-arc rollup [`docs/inter-model/STATUS.md`](STATUS.md). New arcs require `STATUS-<slug>.md` at plan start.
 
