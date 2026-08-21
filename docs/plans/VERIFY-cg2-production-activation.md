@@ -44,7 +44,7 @@ enable GC.
 | **How** | Static inventories, hermetic pytest, isolated copied-corpus rehearsal, Chroma 1.5.9 mixed-mode proof. |
 
 **TL;DR:** Mechanical checks PASS on isolated fixtures at pinned Chroma 1.5.9;
-human sign-off and Ryan soak grant remain pending.
+V8b (the separate legacy-only soak grant) is recorded and satisfied; soak completion remains UNRESOLVED and is not covered by V8b.
 
 ### Merge reading
 
@@ -169,7 +169,7 @@ human sign-off and Ryan soak grant remain pending.
 | ID | Check | Result | Evidence |
 |---|---|---|---|
 | V8a | Independent reviewer signs exact tip | PENDING | Kiro at PR |
-| V8b | Ryan accepts package / grants soak separately | PENDING RYAN GATE | |
+| V8b | Ryan accepts package / grants soak separately | **PASS** — legacy-only gateway soak grant recorded | Grant recorded in `LATEST.md`. V8b covers the grant, not soak success; soak completion remains separately UNRESOLVED |
 | V8c | First-owner packet (future) | PENDING | Not in Execute scope |
 
 ## Formal property → test map
