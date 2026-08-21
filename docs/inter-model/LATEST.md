@@ -1,6 +1,8 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-17 (CodeQL Complex Therapy CLOSED/PASS; future attestation Ryan-owned)
+**Updated:** 2026-08-20 (Arc Runway Ledger planning PASS; Cursor Execute authorized)
+
+- **Arc Runway Ledger — AUTHORIZED, not yet implemented (2026-08-20, `plan/2026-08-20-agent-run-ledger`):** Who/What: Deterministic agent run identity tracking — append-only JSONL event ledger correlating client sessions to work (commits, files, ledger records). When: Codex authored ARCHITECTURE+EXECUTION on planning branch `99d9b26`; Kiro reviewed PASS with no blocking conditions; Ryan Architecture+Execution lock granted same day. Why: after agents finish work, native session IDs are lost; ConvMem needs a unified correlation layer. How: new `agent_run_ledger.py` module, Kiro SessionStart/Stop hooks (first client), additive ingest association, CLI query surface. **Resume state:** `NOT_STARTED` — Cursor implements T0–T8 per execution plan. Ryan GATEs: live hook installation (after T0/T4) and forward-only ingest enable (after V9). [`KIRO-2026-08-20-runway-ledger-execute-handoff.md`](KIRO-2026-08-20-runway-ledger-execute-handoff.md) · [`ARCHITECTURE-agent-run-ledger.md`](../plans/ARCHITECTURE-agent-run-ledger.md) · [`EXECUTION-agent-run-ledger.md`](../plans/EXECUTION-agent-run-ledger.md) · [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md)
 
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
