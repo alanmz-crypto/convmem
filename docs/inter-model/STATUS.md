@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-21 (draft Trapdoor integration PR #221 refreshed through main `94169be`)
+**Snapshot:** 2026-08-21 (draft Trapdoor integration PR #221 refreshed through main `ef5769a`)
 
 > **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. Draft PR #221
 > integrates frozen T3 onto current main without reopening it; Runway Ledger is

@@ -25,7 +25,7 @@ on both; Pylint, `py_compile`, and `git diff --check` passed.
 The closed T3 package is now on an unmerged main-integration candidate in
 [PR #221](https://github.com/alanmz-crypto/convmem/pull/221), created from
 `origin/main` `8df2849959d01f9c41542a6388388e049f43b74c`, refreshed through
-`9381efee3a80032c57dd9a9d499b2f81281a5d94`, and the frozen Trapdoor tip
+`ef5769a1c99297b6660d5948f931324175dd31eb`, and the frozen Trapdoor tip
 `3ac2384d484bdb99d4ecd23f26c17264a7246adb`. This is integration and regression
 validation only; it does not reopen T3. T3-satisfied and governance-satisfied
 VERIFY rows remain `PASS`; deferred later-gate rows remain `PENDING` with
@@ -287,6 +287,6 @@ Do not append session narrative.
 | 2026-08-18 | Codex | PR #209 residual evidence candidate `d796be0ad6fb0c86bf46cf34519a8332252fce1e` squash-merged at `66926ac2e68f045e9f36fd26157a3d2ca07b9608`; V3f/V3h/V8c/V8e/V8g remain PASS candidates, V4m/V9a/V9d remain PENDING blockers, and all repository VERIFY rows remain PENDING. |
 | 2026-08-19 | Codex | Ryan recorded `RYAN_T3_CLOSE — PASS` after PR #211 final evidence; T3 is CLOSED, satisfied rows are PASS, and later-gate rows remain explicitly deferred/PENDING. |
 | 2026-08-20 | Codex | Post-T3 bounded hardening correction PR #213 merged at `013f692442029a0d64326b3504e6216f320ff595`; runtime V4m enforcement strengthened, T3 remains CLOSED, and deferred rows are unchanged. |
-| 2026-08-21 | Codex | Draft PR #221 validation basis `e97a8fb3eb52d825d143b2713c710299894c7c5a`, based on main through `94169be…` and integrating frozen closed T3 `3ac2384d…`, passed the exact-SHA hermetic full suite (1,445 passed, 3 skipped, 230 subtests), focused P1–P3/V4m/Runway tests (125 passed), V9d regression (61 passed), Golden Eval (8/10), Restic (18 passed), temporary-path control, Pylint regression gate, `py_compile`, `git diff --check`, and current CI invariant manifest; no migration, live-data/Chroma mutation, Bootstrap, CG-2 activation, Shadow/R2b activation, or T4/T5 work occurred, independent review remains required, and no main merge is authorized. |
+| 2026-08-21 | Codex | Draft PR #221 implementation validation basis `e97a8fb3eb52d825d143b2713c710299894c7c5a`, subsequently refreshed only for main protocol changes through `ef5769a…` while integrating frozen closed T3 `3ac2384d…`, passed the hermetic full suite (1,445 passed, 3 skipped, 230 subtests), focused P1–P3/V4m/Runway tests (125 passed), V9d regression (61 passed), Golden Eval (8/10), Restic (18 passed), temporary-path control, Pylint regression gate, `py_compile`, `git diff --check`, and current CI invariant manifest; no migration, live-data/Chroma mutation, Bootstrap, CG-2 activation, Shadow/R2b activation, or T4/T5 work occurred, independent review remains required, and no main merge is authorized. |
 
 **TL;DR:** T3 remains CLOSED; draft PR #221 is the isolated main-integration candidate, with deferred gates unchanged and merge reserved for Ryan.
