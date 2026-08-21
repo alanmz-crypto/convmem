@@ -4,11 +4,11 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-21 (coordination through PR #220; draft integration PR #221 refreshed from main `9381efe`)
+**Snapshot:** 2026-08-21 (draft Trapdoor integration PR #221 refreshed through main `94169be`)
 
 > **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. Draft PR #221
-> integrates frozen T3 onto current main without reopening it; Runway Ledger
-> semantics remain externally owned and unchanged.
+> integrates frozen T3 onto current main without reopening it; Runway Ledger is
+> CLOSED and its semantics remain unchanged.
 
 ## Project goal
 
@@ -42,7 +42,6 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
 | CG-2 authority migration | Merged on `main` (#186); V8b (legacy-only gateway soak grant) **recorded/PASS**; **soak completion UNRESOLVED**. First generational owner / activation / GC not authorized. | Do not activate, grant a first owner, or run GC. Do not claim soak success until completion is verified. See [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md) and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
-| Runway Ledger — Agent Run identity tracking | Implemented on `main` (#215); hooks enabled (#216); soak passed 2026-08-20; **arc closing** (Ryan recorded arc-close). Other clients are future slices, not arc requirements. | Stay clear unless on the Runway lane: the arc is Runway-owned and in closeout. Reflect only its current status. See [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md). |
 | Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED** on frozen branch; Claude whole-surge PASS; draft main-integration PR #221 under exact-SHA validation/review | Finish Kiro/Copilot review of the integration candidate, then stop for Ryan before any merge. Deferred Bootstrap/migration/CG-2/Shadow/R2b/T4/T5 work remains unauthorized. |
 
 ## Closed arcs — reference STATUS only
@@ -52,6 +51,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | Chroma Reconcile Tier L | **Closed GREEN** (#161) | Optional R5 anomaly disposition; Ryan-gated watch/refine ops only. Do not re-run R4 without regression request. |
 | Pinwheel Pytest CI | **Closed** (#191; closeout #195/#196/#197) | Reproducible pytest gate live on `main`. No further Pinwheel work. |
 | CodeQL Complex Therapy | **Closed/PASS** (#202) | `Protect Main` requires the five CodeQL/Pylint/Pytest contexts. Ryan owns the quarterly + config-drift attestation. No technical execution remains. |
+| Runway Ledger — Agent Run identity tracking | **CLOSED** | Core implementation merged (#215); hook-enable soak passed + #216 merged; other clients are future optional slices, not unfinished Runway work; no remaining Runway execution. See [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md). |
 
 ## Recently completed, not active blockers
 
@@ -87,4 +87,4 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Runway Ledger STATUS](../plans/STATUS-agent-run-ledger.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Closed T3 is in draft main-integration PR #221 without reopening deferred work; Runway Ledger remains unchanged, and all other arc gates retain their existing owners.
+**TL;DR:** Closed T3 is in draft main-integration PR #221 without reopening deferred work; Runway Ledger is CLOSED; CG-2 soak completion, JudgeBench calibration, Shadow activation, and R2b authorization retain their existing gates.

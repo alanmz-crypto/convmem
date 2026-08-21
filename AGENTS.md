@@ -74,7 +74,7 @@ Known arc codenames (canonical list in `config/agent-protocol.md`):
 | CI Kryptonite | Behavioral CI merge gate | **Closed** |
 | Pinwheel Pytest CI | Reproducible pytest CI | **Closed** |
 | CodeQL Complex Therapy | CodeQL merge protection | **Closed** — technical controls PASS; Ryan-owned recurring attestation |
-| Runway Ledger | Agent Run identity tracking | Implemented on `main` (#215/#216); soak passed; **arc closing** — Runway-owned |
+| Runway Ledger | Agent Run identity tracking | **CLOSED** — implementation merged (#215); soak passed + hooks enabled (#216); other clients are future slices |
 
 ---
 
