@@ -13,7 +13,7 @@
 |-------|--------|
 | **State** | `IN_PROGRESS` |
 | **Branch** | `feat/2026-08-20-agent-run-ledger` (create from `origin/main`) |
-| **Tip SHA** | pending first Execute commit |
+| **Tip SHA** | see branch tip after T3–T7 commit |
 | **Push status** | n/a |
 | **PR** | not opened |
 | **Ryan GATE** | Hook installation requires separate exact external-change grant after T0/T4 pass. Forward-only ingest association requires separate grant after V9. |

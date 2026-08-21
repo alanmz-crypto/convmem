@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "convmem-agent-run-start",
+      "description": "Arc Runway Ledger SessionStart capture (disabled until Ryan grant)",
+      "trigger": "SessionStart",
+      "enabled": false,
+      "timeout": 15,
+      "action": {
+        "type": "command",
+        "command": "python3 scripts/kiro-agent-run-hook.py start"
+      }
+    }
+  ]
+}

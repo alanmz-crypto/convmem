@@ -56,7 +56,7 @@ separate evidence-citing proposal stage.
 | `.kiro/hooks/` | **Missing** in the repository; Kiro capture is planned, not installed |
 | Architecture plan | [`ARCHITECTURE-agent-run-ledger.md`](ARCHITECTURE-agent-run-ledger.md) — authored on this planning branch |
 | Execution plan | [`EXECUTION-agent-run-ledger.md`](EXECUTION-agent-run-ledger.md) — authored on this planning branch |
-| Implementation/tests | **In progress** — T0 fixtures + T1/T2 schema/writer/reducer on feat branch |
+| Implementation/tests | **In progress** — T0–T7 on feat branch; V0–V12 focused PASS; V13 full suite pending |
 
 ## 4. Completion State
 
@@ -84,9 +84,8 @@ revision after implementation; Ryan owns merges.
 1. ~~Kiro reviews the architecture and execution package~~ — PASS.
 2. ~~Ryan locks Architecture and Execution~~ — granted 2026-08-20.
 3. ~~Cursor proves the Kiro hook contract (T0)~~ — fixtures + contract tests.
-4. Cursor implements T1–T7: reducer/writer, CLI, Kiro edge, Git enrichment,
-   additive ingest association, and explicit ledger links.
-5. Run V0–V13 focused and full verification; fill the evidence table.
+4. ~~Cursor implements T1–T7~~ — on feat branch; hooks disabled pending Ryan grant.
+5. Run V13 full suite; open PR; Kiro reviews exact tip.
 6. Ryan grants the exact local hook installation/disposable soak if the gate is
    green. Verify private file permissions and fail-open behavior.
 7. Ryan separately decides whether to enable forward-only `agent_run_id`
@@ -145,4 +144,5 @@ session narrative here; session details belong in Track A ingest.
 |---|---|---|
 | 2026-08-20 | Cursor | Execute started on feat branch; T0 Kiro hook contract fixtures landed |
 | 2026-08-20 | Cursor | T1/T2 schema, reducer, and durable writer landed with focused tests |
+| 2026-08-20 | Cursor | T3–T7 CLI, Kiro edge (disabled hooks), git facts, ingest resolver |
 | 2026-08-20 | Codex | Created Runway Ledger architecture, execution, and STATUS package from Kiro's identity-tracking investigation; implementation remains unauthorized |

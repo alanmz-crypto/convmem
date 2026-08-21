@@ -16,14 +16,14 @@ SHA2 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 
 def _start(**kwargs):
-    base = dict(
-        client="kiro",
-        native_session_id="sess_abc",
-        repository="/repo",
-        branch="main",
-        source_kind="test",
-        source_ref="start",
-    )
+    base = {
+        "client": "kiro",
+        "native_session_id": "sess_abc",
+        "repository": "/repo",
+        "branch": "main",
+        "source_kind": "test",
+        "source_ref": "start",
+    }
     base.update(kwargs)
     return arl.build_start_event(**base)
 
@@ -283,3 +283,146 @@ def test_delivery_event_id_stable():
     )
     assert a == b
     assert a.startswith("arevt_")
+
+
+def test_v8_kiro_hook_adapter_fail_open(tmp_path: Path, monkeypatch):
+    import subprocess
+    import sys
+
+    monkeypatch.setenv("CONVMEM_AGENT_RUN_DATA_DIR", str(tmp_path))
+    script = Path(__file__).resolve().parents[1] / "scripts" / "kiro-agent-run-hook.py"
+    fixture = Path(__file__).resolve().parent / "fixtures" / "agent_run_ledger" / "stdin"
+
+    def run_hook(mode: str, stdin_name: str) -> subprocess.CompletedProcess[str]:
+        payload = (fixture / stdin_name).read_text(encoding="utf-8")
+        return subprocess.run(
+            [sys.executable, str(script), mode],
+            input=payload,
+            capture_output=True,
+            text=True,
+            check=False,
+            env={**os.environ, "CONVMEM_AGENT_RUN_DATA_DIR": str(tmp_path)},
+        )
+
+    ok = run_hook("start", "session_start_ok.json")
+    assert ok.returncode == 0
+    assert ok.stdout == ""
+
+    missing = run_hook("start", "session_start_missing_id.json")
+    assert missing.returncode == 0
+
+    # Stop with assistant_response must not persist that field.
+    stop = run_hook("stop", "stop_with_assistant_response.json")
+    assert stop.returncode == 0
+    assert stop.stdout == ""
+    text = (tmp_path / "agent_runs.jsonl").read_text(encoding="utf-8")
+    assert "SENSITIVE_MODEL_OUTPUT_MUST_NOT_BE_PERSISTED" not in text
+    assert "assistant_response" not in text
+
+    # Writer failure path: point at a symlink log — still exit 0.
+    bad = tmp_path / "bad"
+    bad.mkdir()
+    real = bad / "real.jsonl"
+    real.write_text("", encoding="utf-8")
+    link = bad / "agent_runs.jsonl"
+    link.symlink_to(real)
+    monkeypatch.setenv("CONVMEM_AGENT_RUN_DATA_DIR", str(bad))
+    failed = subprocess.run(
+        [sys.executable, str(script), "start"],
+        input=(fixture / "session_start_ok.json").read_text(encoding="utf-8"),
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "CONVMEM_AGENT_RUN_DATA_DIR": str(bad)},
+    )
+    assert failed.returncode == 0
+    assert failed.stdout == ""
+
+
+def test_v6_git_facts_non_git_cwd(tmp_path: Path):
+    facts = arl.collect_git_facts(tmp_path)
+    assert facts["repository"] is None
+    assert facts["facts"]["head_revision"] is None
+
+
+def test_v10_ledger_link_enrichment(tmp_path: Path):
+    ledger = arl.AgentRunLedger(data_dir=tmp_path)
+    start = ledger.append_event(_start(event_id="arevt_l1", run_id="run_ledger1"))
+    arl.enrich_run(
+        ledger,
+        run_id=start.event["run_id"],
+        client="kiro",
+        source_kind="cli",
+        source_ref="link",
+        facts={
+            "ledger_records": [
+                {
+                    "ledger_id": "obs_staging2_monitor_csp-missing",
+                    "relation": "explicit",
+                    "source": "caller",
+                }
+            ]
+        },
+    )
+    view = ledger.load().runs["run_ledger1"]
+    assert view.ledger_records[0]["ledger_id"] == "obs_staging2_monitor_csp-missing"
+
+
+def test_v9_ingest_association_unique_and_ambiguous(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("CONVMEM_AGENT_RUN_DATA_DIR", str(tmp_path))
+    # No run log → None
+    assert (
+        arl.resolve_agent_run_id_for_ingest(
+            client="kiro", native_session_id="sess_a", data_dir=tmp_path
+        )
+        is None
+    )
+
+    ledger = arl.AgentRunLedger(data_dir=tmp_path)
+    ledger.append_event(
+        _start(event_id="arevt_i1", run_id="run_i1", native_session_id="sess_unique")
+    )
+    assert (
+        arl.resolve_agent_run_id_for_ingest(
+            client="kiro", native_session_id="sess_unique", data_dir=tmp_path
+        )
+        == "run_i1"
+    )
+
+    ledger.append_event(
+        _start(event_id="arevt_i2", run_id="run_i2", native_session_id="sess_dup")
+    )
+    ledger.append_event(
+        _start(event_id="arevt_i3", run_id="run_i3", native_session_id="sess_dup")
+    )
+    assert (
+        arl.resolve_agent_run_id_for_ingest(
+            client="kiro", native_session_id="sess_dup", data_dir=tmp_path
+        )
+        is None
+    )
+
+
+def test_v12_cross_client_envelopes_reduce():
+    events = []
+    for i, client in enumerate(["kiro", "codex", "cursor", "crush", "copilot"]):
+        events.append(
+            dict(
+                _start(
+                    client=client,
+                    run_id=f"run_cc{i}",
+                    event_id=f"arevt_cc{i}",
+                    native_session_id=f"sess_{client}",
+                ),
+                sequence=i + 1,
+            )
+        )
+    reduced = arl.reduce_events(events)
+    assert len(reduced.runs) == 5
+    assert {v.client for v in reduced.runs.values()} == {
+        "kiro",
+        "codex",
+        "cursor",
+        "crush",
+        "copilot",
+    }

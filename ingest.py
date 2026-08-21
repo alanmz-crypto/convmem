@@ -179,7 +179,7 @@ def _chunk_date(messages: list[dict]) -> str:
     return ""
 
 
-def _chunk_session_meta(messages: list[dict], path: str) -> dict:
+def _chunk_session_meta(messages: list[dict], path: str, tool: str = "") -> dict:
     from open_source import _session_id_from_path
 
     conv_id = next(
@@ -202,6 +202,20 @@ def _chunk_session_meta(messages: list[dict], path: str) -> dict:
     }
     if source_type:
         meta["source_type"] = source_type
+    # Optional forward-only agent_run_id (unique exact match only).
+    try:
+        from agent_run_ledger import resolve_agent_run_id_for_ingest
+
+        run_id = resolve_agent_run_id_for_ingest(
+            client=tool or "unknown",
+            native_session_id=session_id or None,
+            repository=workspace or None,
+        )
+        if run_id:
+            meta["agent_run_id"] = run_id
+    except (OSError, ImportError, ValueError, TypeError, KeyError):
+        # Unavailable/corrupt run log must not change ingest behavior.
+        pass
     return meta
 
 
@@ -683,7 +697,7 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
             "degraded" if distill_failed else "empty" if not raw_units else "done"
         )
 
-        session_meta = _chunk_session_meta(ch["messages"], path)
+        session_meta = _chunk_session_meta(ch["messages"], path, tool=tool)
         units_to_add: list[tuple] = []
         for unit_idx, raw in enumerate(raw_units):
             unit = normalize_unit(

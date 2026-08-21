@@ -705,6 +705,9 @@ class AgentRunLedger:
         data_dir: Path | None = None,
         lock_timeout_s: float = 5.0,
     ) -> None:
+        env_dir = os.environ.get("CONVMEM_AGENT_RUN_DATA_DIR")
+        if data_dir is None and env_dir:
+            data_dir = Path(env_dir)
         root = (data_dir or DEFAULT_DATA_DIR).expanduser()
         self.log_path = (log_path or (root / AGENT_RUN_LOG_NAME)).expanduser()
         self.lock_path = (lock_path or (root / AGENT_RUN_LOCK_NAME)).expanduser()
@@ -718,8 +721,13 @@ class AgentRunLedger:
         _reject_symlink(self.lock_path, label="lock")
 
     def _acquire_lock(self):
+        """Return an open lock file handle holding an exclusive flock.
+
+        Caller must close the handle (and unlock). Open is intentional so the
+        lock outlives the acquisition loop — same pattern as conflict_events.
+        """
         self._prepare_paths()
-        handle = open(self.lock_path, "a+", encoding="utf-8")
+        handle = open(self.lock_path, "a+", encoding="utf-8")  # noqa: SIM115
         try:
             os.chmod(self.lock_path, 0o600)
         except OSError:
@@ -970,3 +978,234 @@ def build_diagnostic_event(
             "facts": {},
         }
     )
+
+
+def collect_git_facts(cwd: str | Path | None, *, timeout_s: float = 5.0) -> dict[str, Any]:
+    """Collect confirmed Git facts from cwd. Never invents repository/branch."""
+    import subprocess
+
+    result: dict[str, Any] = {
+        "repository": None,
+        "branch": None,
+        "facts": {
+            "head_revision": None,
+            "commits": [],
+            "files": [],
+            "ledger_records": [],
+        },
+        "dirty_tree": "unknown",
+    }
+    if cwd is None:
+        return result
+    workdir = str(Path(cwd).expanduser())
+
+    def _run(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            argv,
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+        )
+
+    try:
+        top = _run(["git", "rev-parse", "--show-toplevel"])
+    except (OSError, subprocess.TimeoutExpired):
+        return result
+    if top.returncode != 0:
+        return result
+    repository = top.stdout.strip() or None
+    result["repository"] = repository
+
+    try:
+        head = _run(["git", "rev-parse", "HEAD"])
+        if head.returncode == 0:
+            sha = head.stdout.strip()
+            if _SHA40_RE.fullmatch(sha):
+                result["facts"]["head_revision"] = sha
+        branch = _run(["git", "symbolic-ref", "--quiet", "--short", "HEAD"])
+        if branch.returncode == 0 and branch.stdout.strip():
+            result["branch"] = branch.stdout.strip()
+        else:
+            result["branch"] = "detached"
+        dirty = _run(["git", "status", "--porcelain"])
+        if dirty.returncode == 0:
+            result["dirty_tree"] = bool(dirty.stdout.strip())
+        names = _run(["git", "diff", "--name-only", "HEAD"])
+        if names.returncode == 0:
+            files = []
+            for line in names.stdout.splitlines():
+                path = line.strip()
+                if path and not path.startswith("/"):
+                    files.append(
+                        {
+                            "path": path,
+                            "relation": "observed",
+                            "source": "git",
+                            "change": "unknown",
+                        }
+                    )
+            result["facts"]["files"] = files
+    except (OSError, subprocess.TimeoutExpired):
+        return result
+    return result
+
+
+def start_run(
+    ledger: AgentRunLedger,
+    *,
+    client: str,
+    native_session_id: str | None,
+    source_kind: str,
+    source_ref: str,
+    cwd: str | Path | None = None,
+    event_id: str | None = None,
+    collect_git: bool = True,
+) -> dict[str, Any]:
+    git = collect_git_facts(cwd) if collect_git else {
+        "repository": None,
+        "branch": None,
+        "facts": {},
+    }
+    event = build_start_event(
+        client=client,
+        native_session_id=native_session_id,
+        repository=git.get("repository"),
+        branch=git.get("branch"),
+        source_kind=source_kind,
+        source_ref=source_ref,
+        facts=git.get("facts") or {},
+        event_id=event_id,
+    )
+    appended = ledger.append_event(event)
+    return {
+        "run_id": appended.event["run_id"],
+        "event_id": appended.event["event_id"],
+        "created": appended.created,
+        "native_session_id": appended.event.get("native_session_id"),
+        "identity_completeness": _identity_completeness(
+            appended.event.get("native_session_id")
+        ),
+        "repository": appended.event.get("repository"),
+        "branch": appended.event.get("branch"),
+    }
+
+
+def stop_run(
+    ledger: AgentRunLedger,
+    *,
+    client: str,
+    status: str,
+    source_kind: str,
+    source_ref: str,
+    run_id: str | None = None,
+    native_session_id: str | None = None,
+    repository: str | None = None,
+    cwd: str | Path | None = None,
+    event_id: str | None = None,
+    collect_git: bool = True,
+) -> dict[str, Any]:
+    git = collect_git_facts(cwd) if collect_git and cwd is not None else {
+        "repository": repository,
+        "branch": None,
+        "facts": {},
+    }
+    repo = repository if repository is not None else git.get("repository")
+    reduced = ledger.load()
+    if run_id:
+        view = reduced.runs.get(run_id)
+        if view is None:
+            raise NotFoundError(f"unknown run_id: {run_id}")
+    else:
+        view = resolve_unique_active_run(
+            reduced,
+            client=client,
+            native_session_id=native_session_id,
+            repository=repo,
+        )
+    event = build_stop_event(
+        run_id=view.run_id,
+        client=client,
+        status=status,
+        native_session_id=native_session_id if native_session_id is not None else view.native_session_id,
+        repository=repo,
+        branch=git.get("branch") if git.get("branch") is not None else view.branch,
+        source_kind=source_kind,
+        source_ref=source_ref,
+        facts=git.get("facts") or {},
+        event_id=event_id,
+    )
+    appended = ledger.append_event(event)
+    return {
+        "run_id": appended.event["run_id"],
+        "event_id": appended.event["event_id"],
+        "created": appended.created,
+        "status": appended.event["status"],
+    }
+
+
+def enrich_run(
+    ledger: AgentRunLedger,
+    *,
+    run_id: str,
+    client: str,
+    source_kind: str,
+    source_ref: str,
+    facts: Mapping[str, Any],
+    event_id: str | None = None,
+) -> dict[str, Any]:
+    reduced = ledger.load()
+    if run_id not in reduced.runs:
+        raise NotFoundError(f"unknown run_id: {run_id}")
+    event = build_enrich_event(
+        run_id=run_id,
+        client=client,
+        source_kind=source_kind,
+        source_ref=source_ref,
+        facts=facts,
+        event_id=event_id,
+    )
+    appended = ledger.append_event(event)
+    return {
+        "run_id": appended.event["run_id"],
+        "event_id": appended.event["event_id"],
+        "created": appended.created,
+    }
+
+
+def resolve_agent_run_id_for_ingest(
+    *,
+    client: str,
+    native_session_id: str | None,
+    repository: str | None = None,
+    data_dir: Path | None = None,
+) -> str | None:
+    """Return a run_id only for a unique exact match; else None (omit field)."""
+    if not native_session_id:
+        return None
+    client_key = client if client in VALID_CLIENTS else "unknown"
+    if client == "inter-model":
+        return None
+    log_path = default_log_path(data_dir)
+    if data_dir is not None:
+        log_path = Path(data_dir).expanduser() / AGENT_RUN_LOG_NAME
+    if not log_path.exists():
+        return None
+    try:
+        ledger = AgentRunLedger(data_dir=data_dir)
+        reduced = ledger.load()
+    except (OSError, CorruptionError, AgentRunLedgerError):
+        return None
+    matches = [
+        view
+        for view in reduced.runs.values()
+        if view.client == client_key and view.native_session_id == native_session_id
+    ]
+    if repository:
+        narrowed = [m for m in matches if m.repository == repository]
+        if narrowed:
+            matches = narrowed
+    if len(matches) != 1:
+        return None
+    return matches[0].run_id
