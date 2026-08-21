@@ -5,7 +5,7 @@
       "name": "convmem-agent-run-start",
       "description": "Arc Runway Ledger SessionStart capture (disabled until Ryan grant)",
       "trigger": "SessionStart",
-      "enabled": false,
+      "enabled": true,
       "timeout": 15,
       "action": {
         "type": "command",

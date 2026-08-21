@@ -5,7 +5,7 @@
       "name": "convmem-agent-run-stop",
       "description": "Arc Runway Ledger Stop capture (disabled until Ryan grant)",
       "trigger": "Stop",
-      "enabled": false,
+      "enabled": true,
       "timeout": 15,
       "action": {
         "type": "command",
