@@ -1,8 +1,8 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-21 (Arc Runway Ledger merged #215/#216; coordination-maintenance pass)
+**Updated:** 2026-08-21 (Arc Runway Ledger CLOSED; coordination-maintenance pass)
 
-- **Arc Runway Ledger — IMPLEMENTED; arc closing (merged #215/#216, 2026-08-20):** Who/What: Deterministic agent run identity tracking — append-only JSONL event ledger correlating client sessions to work (Kiro first capture client). When: core merged via PR #215; hooks enabled + soak passed + PR #216 merged 2026-08-20; arc recorded as closing in its STATUS Update Log. Why: native session IDs were lost after agents finish; this provides a unified correlation layer. How: `agent_run_ledger.py`, Kiro SessionStart/Stop hooks, additive forward-only ingest association (unique-match-only), CLI query surface. **Resume state:** arc is Runway-owned and closing — other clients (Codex, Cursor, Crush, Copilot) are future slices, not arc requirements. Stay off this arc unless on the Runway lane. [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md)
+- **Arc Runway Ledger — CLOSED (merged #215/#216, 2026-08-20):** Who/What: Deterministic agent run identity tracking — append-only JSONL event ledger correlating client sessions to work (Kiro first capture client). When: core merged via PR #215; hook-enable soak passed + PR #216 merged 2026-08-20. Why: native session IDs were lost after agents finish; this provides a unified correlation layer. How: `agent_run_ledger.py`, Kiro SessionStart/Stop hooks, additive forward-only ingest association (unique-match-only), CLI query surface. **State:** Runway Ledger is **CLOSED** — no remaining Runway execution. Other clients (Codex, Cursor, Crush, Copilot) are optional future slices, not unfinished Runway work. [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md)
 
 **Live counts:** run `convmem brief` — do not trust stale numbers here.
 
