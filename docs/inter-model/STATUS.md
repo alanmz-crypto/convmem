@@ -4,7 +4,9 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-09
+**Snapshot:** 2026-08-21 (main tip `4121fb9`)
+
+> **Trapdoor Hunt / T3:** held CLOSED-for-coordination pending a separate Claude post-surge verification; do not reopen or technically reassess here. Runway Ledger is an externally owned active lane.
 
 ## Project goal
 
@@ -38,13 +40,16 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
-| Runway Ledger — Agent Run identity tracking | Cursor Execute in progress (T0 contract fixtures landed) | Continue T1–T8 on `feat/2026-08-20-agent-run-ledger`. Ryan GATEs remain for live hook install and forward ingest. See [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md). |
+| CG-2 authority migration | Merged on `main` (#186); legacy-only gateway soak **grant recorded**; **soak completion UNRESOLVED** (V8b still PENDING). First generational owner / activation / GC not authorized. | Do not activate, grant a first owner, or run GC. Close V8b only after soak completion is verified. See [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md) and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
+| Runway Ledger — Agent Run identity tracking | Implemented on `main` (#215); hooks enabled (#216); soak passed 2026-08-20; **arc closing** (Ryan recorded arc-close). Other clients are future slices, not arc requirements. | Stay clear unless on the Runway lane: the arc is Runway-owned and in closeout. Reflect only its current status. See [`STATUS-agent-run-ledger.md`](../plans/STATUS-agent-run-ledger.md). |
 
 ## Closed arcs — reference STATUS only
 
 | Arc | State | Notes |
 |---|---|---|
 | Chroma Reconcile Tier L | **Closed GREEN** (#161) | Optional R5 anomaly disposition; Ryan-gated watch/refine ops only. Do not re-run R4 without regression request. |
+| Pinwheel Pytest CI | **Closed** (#191; closeout #195/#196/#197) | Reproducible pytest gate live on `main`. No further Pinwheel work. |
+| CodeQL Complex Therapy | **Closed/PASS** (#202) | `Protect Main` requires the five CodeQL/Pylint/Pytest contexts. Ryan owns the quarterly + config-drift attestation. No technical execution remains. |
 
 ## Recently completed, not active blockers
 
@@ -74,8 +79,10 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Complete-data backup STATUS](../plans/STATUS-complete-data-backup-correction-v2.md)
 - [R2b capture STATUS](../plans/STATUS-r2b-capture-auth.md)
 - [Shadow Ledger STATUS](../plans/STATUS-shadow-ledger-phase0.md)
+- [Pinwheel Pytest CI STATUS](../plans/STATUS-pinwheel-pytest-ci.md) (closed)
+- [CodeQL Complex Therapy STATUS](../plans/STATUS-codeql-complex-therapy.md) (closed)
+- [CG-2 VERIFY](../plans/VERIFY-cg2-production-activation.md) and [CG-2 RUNBOOK](../plans/RUNBOOK-cg2-production-activation.md)
 - [Runway Ledger STATUS](../plans/STATUS-agent-run-ledger.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Chroma is GREEN; JudgeBench waits on Ryan G3/G4; Shadow waits on
-activation-ready evidence (C7/C6) then Ryan grant; R2b waits on a fresh authorization packet.
+**TL;DR:** Chroma is GREEN; Pinwheel and CodeQL are closed; Runway Ledger is implemented and closing; CG-2 is merged with soak completion unresolved; JudgeBench waits on Ryan G3/G4; Shadow waits on activation evidence then Ryan grant; R2b waits on a fresh authorization packet.

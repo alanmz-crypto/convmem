@@ -112,6 +112,9 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-shadow-ledger-phase0.md` — Shadow Ledger Phase 0 delta capture
 - `docs/plans/STATUS-chroma-reconcile-tier-l.md` — Chroma Reconcile Tier L (**closed GREEN**; reference only)
 - `docs/plans/STATUS-complete-data-backup-correction-v2.md` — Complete-data backup correction v2
+- `docs/plans/STATUS-codeql-complex-therapy.md` — CodeQL Complex Therapy merge protection
+- `docs/plans/STATUS-pinwheel-pytest-ci.md` — Pinwheel Pytest CI (**closed**; reference only)
+- `docs/plans/STATUS-agent-run-ledger.md` — Runway Ledger Agent Run identity tracking
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
 
@@ -130,8 +133,9 @@ Known arc codenames (update when new arcs are named):
 | Trapdoor Hunt | Dependability & provenance trust architecture | Active — review complete, awaiting lock |
 | Full Fathom Five | Parent five-arc dependability roadmap (FF1–FF5) | Active — parent frozen |
 | CI Kryptonite | Behavioral CI merge gate | **Closed** (PR #187 + #189) |
-| Pinwheel Pytest CI | Reproducible pytest CI | Planned — not yet executed |
-| CodeQL Complex Therapy | CodeQL merge protection | Planned — not yet executed |
+| Pinwheel Pytest CI | Reproducible pytest CI | **Closed** (#191 + disposable controls) |
+| CodeQL Complex Therapy | CodeQL merge protection | **Closed** — technical controls PASS; Ryan-owned recurring attestation |
+| Runway Ledger | Agent Run identity tracking | Implemented on `main` (#215/#216); soak passed; **arc closing** — Runway-owned |
 
 
 ## Builder reference
