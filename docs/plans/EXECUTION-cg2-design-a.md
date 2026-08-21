@@ -13,13 +13,20 @@ Authority:    Awaiting Ryan HITL — planning artifact only
 **Arc:** CG-2
 
 **Canonical base:** `origin/main` at
-`8aff0a316cb4304c5313556abc3cdf5439746835`
+`06d9064648c96e46642d1820a504dace8af5ab38`
 
 **Locked authority:**
 [`ARCHITECTURE-cg2-production-activation.md`](ARCHITECTURE-cg2-production-activation.md),
 [`RUNBOOK-cg2-production-activation.md`](RUNBOOK-cg2-production-activation.md),
 and [`VERIFY-cg2-production-activation.md`](VERIFY-cg2-production-activation.md)
 as present at the canonical base.
+
+**Post-#221 compatibility confirmation:** The change from the prior Design A
+base through this canonical tip is documentation/coordination-only
+(`docs/inter-model/LATEST.md`, `docs/inter-model/STATUS.md`, and
+`docs/plans/STATUS-dependability-provenance.md`). It does not change the locked
+Design A Architecture, RUNBOOK, or VERIFY semantics. This refresh records
+compatibility with that post-#221 state; it does not reopen the lock.
 
 **Prior CG-2 execution-plan authority:**
 `6a808f1543f2c93270d9f0ed1ae88cad27f6556b`. Its T1–T5 implementation is
@@ -134,7 +141,15 @@ to alternatives:
   retirement.
 - Shadow Ledger, R2b, rename migration, hardlink policy, or a second authority
   system.
+- Changes to `chroma_write_store.py` merely to accommodate #221's universal
+  writer boundary.
 - Changes to the locked architecture or production runbook semantics.
+
+Design A Execute is hermetic: conversion, staging, qualification, rehearsal,
+and evidence collection use temporary roots and temporary Chroma only. A later
+separately authorized production `G_rb`/`G_canary` build must enter the
+existing universal production writer boundary. Direct use of hermetic
+`FileGenerationStore` against live Chroma outside that boundary is prohibited.
 
 ## 3. Canonical repository facts
 
@@ -153,6 +168,10 @@ The plan is based on these observed `main` surfaces:
   previous generations. Without a baseline-protection input, staging
   `G_canary` after `G_rb` classifies `G_rb` as abandoned and refuses the second
   stage.
+- `chroma_write_store.py` is the existing universal production writer boundary
+  after #221. Design A Execute must not modify it merely to enable the
+  hermetic plan; production generation construction is a later separately
+  authorized operation and may not bypass that boundary.
 - `source_reconciler.py` already owns durable dirty scopes and coalesced desired
   owner work. Rollback must reuse it rather than create another queue.
 - `ServingIndexRepository` already freezes one authority vector per operation.
@@ -194,7 +213,7 @@ No change is expected in `convmem.py`, `mcp_server.py`, production config,
 
 | Path | Expected coverage |
 |---|---|
-| `tests/test_cg2_rollback_baseline.py` (new) | Frozen LEGACY snapshot, convert-v1 identity, provenance, exact equivalence, malformed/wrong-owner/wrong-SHA/non-equivalent refusals. |
+| `tests/test_cg2_rollback_baseline.py` (new) | Frozen LEGACY snapshot, convert-v1 identity, exact provenance preservation/equivalence, same-ledger-ID plus distinct-valid-provenance positive case, invalid/missing-provenance conservative negative case, and malformed/wrong-owner/wrong-SHA/non-equivalent refusals. |
 | `tests/test_cg2_first_cutover.py` (new) | Exact structural gate, pre/post-fence timing, `G_rb != G_canary`, first pointer fields, open-canary guard, crash state. |
 | `tests/test_file_generation_pointer.py` | CAS/lineage API split, ordinary forward behavior, rollback publication, stale CAS, recovery signature/identity. |
 | `tests/test_file_generation_validate.py` | Fresh qualification of baseline/canary/rollback target and persisted corruption refusal. |
@@ -236,7 +255,12 @@ and the already-soaked LEGACY serving classifier:
    governed projections are excluded.
 3. Require every admitted row to have one unambiguous owner, logical identity,
    document, persisted float32 embedding, and collection membership. Missing or
-   duplicate logical identity refuses conversion.
+   duplicate logical identity refuses conversion. For a provenance-bearing row,
+   a valid `(assertion_id, provenance_commitment)` pair and its provenance
+   envelope are part of that row's immutable identity. A `ledger_id` alone is
+   never assertion identity. Rows without valid provenance retain the existing
+   conservative legacy identity treatment; conversion does not synthesize a
+   provenance pair for them.
 4. Bind the processed/accepted source hash that produced the LEGACY set. Do not
    substitute the current filesystem hash when it differs; current source
    freshness belongs to forward `G_canary`, not rollback baseline identity.
@@ -250,18 +274,25 @@ The normalized row identity is:
 (owner_digest, collection_name, logical_id,
  document_hash, persisted_embedding_hash,
  embedding_model, embedding_dimension,
- immutable_semantic_metadata_hash)
+ immutable_semantic_metadata_hash,
+ provenance_envelope_hash, assertion_id, provenance_commitment)
 ```
 
 Generation-only metadata and physical IDs are excluded from equivalence.
 Supersession state participates through admission: excluded superseded units
-cannot appear in `G_rb`.
+cannot appear in `G_rb`. For rows with valid provenance, the envelope,
+`assertion_id`, and `provenance_commitment` are preserved exactly and
+participate in the bidirectional equivalence evidence. Two rows with the same
+`ledger_id` but distinct valid provenance identities therefore remain two
+distinct rows. Conversion never dedupes, merges, or remints provenance.
 
 ### 5.2 Convert-v1 and embedding provenance
 
 Conversion copies admitted documents and persisted embeddings; it never calls
-an embedder, parser, LLM, or deduper. It assigns CG-1 generation-scoped physical
-IDs and manifests them through `FileGenerationStore` and
+an embedder, parser, LLM, or deduper. It copies each valid provenance envelope,
+`assertion_id`, and `provenance_commitment` byte-for-byte into the generation
+evidence; it never dedupes, merges, or remints those identities. It assigns
+CG-1 generation-scoped physical IDs and manifests them through `FileGenerationStore` and
 `build_generation_manifest`.
 
 The conversion refuses unless explicit provenance names, for each collection:
@@ -295,9 +326,11 @@ Required hash-bound fields:
 - exact convert-v1 fingerprint;
 - `G_rb.generation_id`, manifest filename, and manifest SHA-256;
 - per-collection embedding provenance;
+- provenance envelope, `assertion_id`, and `provenance_commitment` identity
+  evidence for every provenance-bearing row;
 - cold-qualification result identity;
 - bidirectional equivalence result with zero missing, unexpected, duplicate,
-  wrong-owner, and non-equivalent rows;
+  wrong-owner, non-equivalent, or provenance-identity-changing rows;
 - evidence payload hash.
 
 Publication is idempotent only for identical bytes. The record cannot be
@@ -468,6 +501,14 @@ and is pushed immediately by the implementation lane.
 - Require exact snapshot-to-`G_rb` set equality in both directions.
 - Require deterministic generation ID and literal convert-v1 fingerprint.
 - Require immutable retained evidence and manifest SHA binding.
+- Add a positive case with two LEGACY rows sharing one `ledger_id` but carrying
+  distinct valid `(assertion_id, provenance_commitment)` identities; both must
+  survive conversion and equivalence.
+- Add a negative case with missing or invalid provenance; it must follow the
+  existing conservative legacy identity policy, without synthesized provenance.
+- Assert provenance envelopes, assertion identities, and commitments are
+  byte-identical through `G_rb`; conversion never dedupes, merges, or remints
+  them.
 - Prove missing/corrupt/wrong-owner/wrong-SHA/non-equivalent evidence refuses.
 
 **Then implement**
@@ -486,9 +527,10 @@ python -m pytest tests/test_cg2_rollback_baseline.py \
   tests/test_file_generation_store.py tests/test_file_generation_contract.py -q
 ```
 
-**Stop if:** provenance must be guessed, exact owner rows cannot be frozen, the
-conversion would re-embed/re-dedupe, or `G_canary` staging requires weakening
-the one-abandoned-generation guard.
+**Stop if:** provenance must be guessed, exact owner rows cannot be frozen, a
+same-ledger-ID distinct-provenance pair collapses, provenance is reminted or
+deduped, the conversion would re-embed/re-dedupe, or `G_canary` staging requires
+weakening the one-abandoned-generation guard.
 
 ### D2 — Authority API separation
 
@@ -792,9 +834,10 @@ rollback authority file is permitted.
 
 | Locked invariant | Implementation surface | Required mechanical evidence |
 |---|---|---|
-| Accepted LEGACY set converts exactly to `G_rb` | `cg2_rollback_baseline.py`, existing store/manifest APIs | `test_frozen_legacy_set_is_bidirectionally_equivalent_to_grb` |
+| Accepted LEGACY set converts exactly to `G_rb` | `cg2_rollback_baseline.py`, existing store/manifest APIs | `test_frozen_legacy_set_is_bidirectionally_equivalent_to_grb`; same-ledger-ID distinct-provenance positive/negative D1 cases |
 | Ratified convert-v1 fingerprint | `cg2_rollback_baseline.py` constant + evidence validator | deterministic ID/fingerprint test; wrong fingerprint refusal |
 | Embedding provenance is explicit | baseline evidence + manifest collection specs | missing/model/dimension/config mismatch refusals |
+| Provenance identity is preserved | baseline conversion/evidence; no ledger-only identity | exact envelope/`assertion_id`/`provenance_commitment` preservation; no dedupe/remint |
 | `RETAINED_ROLLBACK_BASELINE` is protected, not serving | baseline evidence; store protection map; mixed inventory | baseline non-serving test; stage-`G_canary` test; reopen retention test |
 | CAS and durable rollback lineage are separate | `file_generation_pointer.py` public APIs/private writer | forward, first-cutover, rollback pointer-field matrix |
 | Ordinary publish cannot create first pointer | `publish_active_pointer` | `expected_active=None` refusal test |
@@ -829,7 +872,9 @@ rollback authority file is permitted.
 ### Hermetic rehearsal evidence
 
 One temporary-root run must exercise real public Design A APIs, not mocks of
-the transition under test:
+the transition under test. It must use temporary Chroma only; it must not open
+live Chroma through hermetic `FileGenerationStore` or modify
+`chroma_write_store.py`:
 
 ```text
 LEGACY snapshot
