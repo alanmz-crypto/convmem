@@ -22,15 +22,14 @@ skipped, 0 failures` and candidate `1387 passed, 3 skipped, 0 failures`;
 Golden Eval remained `8/10` on both; Restic and temporary-path checks passed
 on both; Pylint, `py_compile`, and `git diff --check` passed.
 
-The closed T3 package is now on an unmerged main-integration candidate in
-[PR #221](https://github.com/alanmz-crypto/convmem/pull/221), created from
-`origin/main` `8df2849959d01f9c41542a6388388e049f43b74c`, refreshed through
-`ef5769a1c99297b6660d5948f931324175dd31eb`, and the frozen Trapdoor tip
-`3ac2384d484bdb99d4ecd23f26c17264a7246adb`. This is integration and regression
-validation only; it does not reopen T3. T3-satisfied and governance-satisfied
-VERIFY rows remain `PASS`; deferred later-gate rows remain `PENDING` with
-explicit deferral records. Arc Trapdoor Hunt and its later gates remain
-separately governed.
+The closed T3 package is squash-merged through [PR #221](https://github.com/alanmz-crypto/convmem/pull/221)
+at merge commit `722141d31e586151f361ef7006ad74c71cdff534`, from final reviewed
+head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`. The merge includes the bounded
+writer-boundary and provenance-supersession corrections and completes current-main
+Runway Ledger integration. It does not reopen T3. T3-satisfied and
+governance-satisfied VERIFY rows remain `PASS`; deferred later-gate rows remain
+`PENDING` with explicit deferral records. Bootstrap, migration/backfill, CG-2
+activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized.
 
 ## 1. What this project is for
 
@@ -128,7 +127,7 @@ serving authority/repository.
 
 ## 5. Your role now
 
-**Current lane: closed T3 main-integration review; later stages remain separately
+**Current lane: closed T3 main integration; later stages remain separately
 gated.** The
 P1/P2/P3 implementation slices, P4 evidence, residual evidence, and final V4m
 correction are complete/merged. PR #211's exact implementation candidate
@@ -140,8 +139,8 @@ deferred rows remain PENDING with explicit later-gate owners. A post-T3 bounded
 hardening correction then added runtime writer-attestation enforcement in PR #213,
 merged at `013f692442029a0d64326b3504e6216f320ff595`; this did not reopen T3 or
 change any formal VERIFY disposition.
-The integration candidate composes this frozen result with current-main Runway
-Ledger and CI/protocol changes without altering either architecture. The final
+The merged result composes this frozen result with current-main Runway Ledger and
+CI/protocol changes without altering either architecture. The final
 dispositions for every remaining row are in §6a; no new implementation or
 evidence lane is authorized. Migration, Bootstrap,
 live-data/Chroma mutation, CG-1/CG-2, Shadow, R2b, and T4/T5 remain
@@ -287,6 +286,6 @@ Do not append session narrative.
 | 2026-08-18 | Codex | PR #209 residual evidence candidate `d796be0ad6fb0c86bf46cf34519a8332252fce1e` squash-merged at `66926ac2e68f045e9f36fd26157a3d2ca07b9608`; V3f/V3h/V8c/V8e/V8g remain PASS candidates, V4m/V9a/V9d remain PENDING blockers, and all repository VERIFY rows remain PENDING. |
 | 2026-08-19 | Codex | Ryan recorded `RYAN_T3_CLOSE — PASS` after PR #211 final evidence; T3 is CLOSED, satisfied rows are PASS, and later-gate rows remain explicitly deferred/PENDING. |
 | 2026-08-20 | Codex | Post-T3 bounded hardening correction PR #213 merged at `013f692442029a0d64326b3504e6216f320ff595`; runtime V4m enforcement strengthened, T3 remains CLOSED, and deferred rows are unchanged. |
-| 2026-08-21 | Codex | Draft PR #221 implementation validation basis `e97a8fb3eb52d825d143b2713c710299894c7c5a`, subsequently refreshed only for main protocol changes through `ef5769a…` while integrating frozen closed T3 `3ac2384d…`, passed the hermetic full suite (1,445 passed, 3 skipped, 230 subtests), focused P1–P3/V4m/Runway tests (125 passed), V9d regression (61 passed), Golden Eval (8/10), Restic (18 passed), temporary-path control, Pylint regression gate, `py_compile`, `git diff --check`, and current CI invariant manifest; no migration, live-data/Chroma mutation, Bootstrap, CG-2 activation, Shadow/R2b activation, or T4/T5 work occurred, independent review remains required, and no main merge is authorized. |
+| 2026-08-21 | Codex | PR #221 squash-merged at `722141d31e586151f361ef7006ad74c71cdff534` from final reviewed head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`; bounded writer-boundary and provenance-supersession corrections are included and Runway/current-main integration is complete. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
 
-**TL;DR:** T3 remains CLOSED; draft PR #221 is the isolated main-integration candidate, with deferred gates unchanged and merge reserved for Ryan.
+**TL;DR:** T3 remains CLOSED; PR #221 is squash-merged with bounded writer-boundary/provenance-supersession corrections and Runway/current-main integration complete, while deferred gates remain unchanged and unauthorized.

@@ -4,11 +4,12 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-21 (draft Trapdoor integration PR #221 refreshed through main `ef5769a`)
+**Snapshot:** 2026-08-21 (Trapdoor integration PR #221 merged at `722141d31e586151f361ef7006ad74c71cdff534`)
 
-> **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. Draft PR #221
-> integrates frozen T3 onto current main without reopening it; Runway Ledger is
-> CLOSED and its semantics remain unchanged.
+> **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. PR #221 is
+> squash-merged onto current main; its bounded writer-boundary and
+> provenance-supersession corrections are included. Runway Ledger is CLOSED and
+> its current-main integration is complete.
 
 ## Project goal
 
@@ -42,7 +43,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
 | CG-2 authority migration | Merged on `main` (#186); V8a **PASS** (Kiro independent sign-off); V8b (soak grant) **PASS**; **legacy-only soak completed and Ryan-accepted 2026-08-21**. Design A architecture papered (docs branch `docs/2026-08-21-cg2-design-a-arch-lock`, not yet merged). V8c first-owner packet **PENDING** — not authorized. | Next governed step: **Design A execution planning only**; no implementation/activation yet. V8c packet remains PENDING and comes **after** Design A implementation/evidence. Do not activate, publish fence/pointer, run GC, or enable Shadow/R2b. See [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md), [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md), and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
-| Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED** on frozen branch; draft main-integration PR #221 contains bounded corrections under exact-SHA validation/review | Finish exact-SHA Copilot review of the bounded-fix candidate, then stop for Ryan before any merge. Deferred Bootstrap/migration/CG-2/Shadow/R2b/T4/T5 work remains unauthorized. |
+| Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED**; PR #221 squash-merged at `722141d31e586151f361ef7006ad74c71cdff534` from final reviewed head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`; bounded writer-boundary and provenance-supersession corrections are on current `main` with Runway integration complete | No further T3 integration work. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
 
 ## Closed arcs — reference STATUS only
 
@@ -87,4 +88,4 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Runway Ledger STATUS](../plans/STATUS-agent-run-ledger.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Closed T3 is in draft main-integration PR #221 without reopening deferred work; Chroma is GREEN; Pinwheel, CodeQL, and Runway Ledger are CLOSED; CG-2 Design A is papered and planning-only with V8c PENDING; JudgeBench awaits Ryan's calibration-experiment grant and G4; Shadow waits on activation evidence then Ryan grant; R2b awaits a fresh authorization packet.
+**TL;DR:** T3 is CLOSED and PR #221 is squash-merged with the bounded writer-boundary/provenance-supersession corrections and Runway integration on current `main`; Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized.
