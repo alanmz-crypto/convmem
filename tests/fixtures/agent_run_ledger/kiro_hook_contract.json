@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "arc": "Runway Ledger",
+  "slice": "T0",
+  "client": "kiro",
+  "documented_at": "2026-08-20",
+  "sources": [
+    "https://kiro.dev/docs/hooks.md",
+    "https://kiro.dev/docs/hooks/types.md",
+    "https://kiro.dev/docs/hooks/actions.md",
+    "https://kiro.dev/docs/cli/v3/hooks-migration.md",
+    "https://kiro.dev/docs/cli/2x-reference.md",
+    "local:kiro-cli 2.18.1",
+    "local:~/.kiro/sessions/*/sess_*/session.json"
+  ],
+  "hook_files": {
+    "path_glob": ".kiro/hooks/*.json",
+    "version": "v1",
+    "triggers": ["SessionStart", "Stop"],
+    "action_type": "command",
+    "default_enabled_for_landing": false
+  },
+  "stdin_fields": {
+    "required_preferred": ["cwd", "session_id"],
+    "event_name_aliases": {
+      "SessionStart": ["SessionStart", "agentSpawn"],
+      "Stop": ["Stop", "stop", "agentStop"]
+    },
+    "forbidden_to_persist": ["assistant_response", "tool_input", "tool_response", "prompt", "USER_PROMPT"]
+  },
+  "native_session_id": {
+    "resolution_order": [
+      "stdin.session_id",
+      "explicit_session_json_via_kiro_session_jsonl.read_session_meta",
+      "null"
+    ],
+    "normalize_sess_prefix": false,
+    "local_session_json_prefix": "sess_"
+  },
+  "exit_policy": {
+    "fail_open_exit_code": 0,
+    "stdout": "empty",
+    "never_emit_stop_block_decision": true,
+    "writer_failure": "exit_0_plus_capture_diagnostic_when_possible"
+  },
+  "idempotency": {
+    "delivery_key_fields": [
+      "client",
+      "hook_event_name_or_trigger",
+      "session_id_or_null",
+      "cwd_or_null",
+      "source_ref"
+    ],
+    "same_event_id_changed_payload": "error"
+  },
+  "stop_cadence": {
+    "docs_conflict": true,
+    "mvp_policy": "treat_as_run_stopped_lookup_exact_match_only",
+    "soak_required_before_enable": true
+  },
+  "stop_fallback": {
+    "zero_matches": "capture_diagnostic",
+    "multiple_matches": "ambiguity_diagnostic_no_close",
+    "missing_native_id_without_run_id": "capture_diagnostic",
+    "never_close_newest_by_recency": true
+  },
+  "fixtures": {
+    "stdin": [
+      "stdin/session_start_ok.json",
+      "stdin/session_start_missing_id.json",
+      "stdin/stop_ok.json",
+      "stdin/stop_missing_id.json",
+      "stdin/stop_with_assistant_response.json"
+    ],
+    "git": [
+      "git/commands.json",
+      "git/sample_outputs.json"
+    ]
+  }
+}
