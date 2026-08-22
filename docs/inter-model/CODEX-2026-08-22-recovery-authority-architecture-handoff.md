@@ -5,11 +5,13 @@
 **From:** OpenAI Codex architecture-author lane
 **To:** Kiro architecture review/sign-off → Ryan Architecture Lock
 **Branch:** `plan/2026-08-22-recovery-authority`
-**Review package SHA:** to be filled after the package commit; the immutable
-baseline is `c1fac4c2c40662d9d1f88a1a020835feecce682b`
+**Review package SHA:** `22852a07e66920874045e0e85c4572ab6c0b29b8` (formal
+Architecture Direction plus evidence packet); the immutable baseline is
+`c1fac4c2c40662d9d1f88a1a020835feecce682b`
 **State:** `READY_FOR_KIRO_REVIEW`
-**Push status:** branch created from and pushed against the exact baseline;
-package commit will be pushed immediately after commit
+**Push status:** package commit `22852a07e66920874045e0e85c4572ab6c0b29b8`
+pushed to the explicit origin branch; this SHA-bound carrier update is pushed
+immediately after commit
 
 ## Planning status
 
@@ -46,6 +48,13 @@ baseline named above. This package does not authorize:
 
 The later broad T5 fault-injection campaign remains outside V4l. V4l owns the
 recovery-side interruption and crash-closure invariants only.
+
+## Review binding
+
+The formal package is the exact review SHA named above. The branch tip may
+advance by the SHA-bound carrier update below; reviewers must retain the
+package SHA as the architecture bytes under review and verify the final
+remote branch tip independently.
 
 ## Evidence packet
 
@@ -215,7 +224,8 @@ architecture.
       boundary, and Kiro reconciliation recorded.
 - [x] No implementation, restore, migration, activation, or execution plan
       performed.
-- [ ] Fill the final package SHA after commit and push.
+- [x] Formal package SHA is bound above; the final carrier tip is reported in
+      the Codex handoff after its explicit push.
 
 **Kiro (picking up):**
 
