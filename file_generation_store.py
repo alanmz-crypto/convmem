@@ -118,6 +118,7 @@ class FileGenerationStore:
         ids; stable/governed rows must retain stable physical identity.
         """
 
+        self._assert_not_unattested_production_chroma()
         grouped: dict[str, list[StagedRow]] = {}
         materialized = list(rows)
         proposed_by_owner: dict[str, set[str]] = {}
@@ -163,6 +164,32 @@ class FileGenerationStore:
                 embeddings=embeddings,
                 metadatas=metadatas,
             )
+
+    def _assert_not_unattested_production_chroma(self) -> None:
+        """Refuse staging into the live configured Chroma without writer attestation.
+
+        Temporary Execute stores are allowed. A later production G_rb build may
+        stage after the existing writer boundary is held. Not a tmp-path heuristic.
+        """
+
+        from chroma_write_store import require_writer_attestation
+        from config import load_config
+
+        try:
+            live_cfg = load_config()
+            live = str(
+                Path(str((live_cfg.get("index") or {}).get("chroma_dir") or ""))
+                .expanduser()
+                .resolve()
+            )
+        except (OSError, TypeError, ValueError, KeyError):
+            return
+        if not live:
+            return
+        target = str(Path(self.chroma_dir).expanduser().resolve())
+        if target != live:
+            return
+        require_writer_attestation()
 
     def _assert_owner_budget(self, owner_digest: str, proposed_generation: str) -> None:
         active = self._active_generations().get(owner_digest)
