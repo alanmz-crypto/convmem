@@ -1,13 +1,13 @@
 # Execution Plan — Recovery Authority
 
-**Arc:** Recovery Authority  
-**Phase:** Execution Planning  
-**Source:** Ryan's Execution Planning authorization for the locked Recovery Authority direction  
-**Architecture lock:** `22852a07e66920874045e0e85c4572ab6c0b29b8` (the locked architecture bytes)  
-**Carrier branch:** `plan/2026-08-22-recovery-authority`  
-**Carrier tip:** `a133629f96cc34c4df2fda2730b5bcb272d743da`  
-**Baseline:** `origin/main` at `c1fac4c2c40662d9d1f88a1a020835feecce682b`  
-**Kiro architecture verdict:** PASS, no required architecture amendments  
+**Arc:** Recovery Authority
+**Phase:** Execution Planning
+**Source:** Ryan's Execution Planning authorization for the locked Recovery Authority direction
+**Architecture lock:** `22852a07e66920874045e0e85c4572ab6c0b29b8` (the locked architecture bytes)
+**Carrier branch:** `plan/2026-08-22-recovery-authority`
+**Carrier tip:** `a133629f96cc34c4df2fda2730b5bcb272d743da`
+**Baseline:** `origin/main` at `c1fac4c2c40662d9d1f88a1a020835feecce682b`
+**Kiro architecture verdict:** PASS, no required architecture amendments
 **Authority:** Ryan — Execution Planning only; Execute is NOT AUTHORIZED
 
 ## Planning Status

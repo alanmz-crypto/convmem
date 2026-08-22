@@ -1,11 +1,11 @@
 # Verify Plan — Recovery Authority
 
-**Arc:** Recovery Authority  
-**Phase:** Pre-Execute VERIFY companion  
-**Status:** Planning companion only; no implementation evidence and no PASS claims  
-**Architecture:** locked at `22852a07e66920874045e0e85c4572ab6c0b29b8`  
-**Execution plan:** [`EXECUTION-recovery-authority.md`](EXECUTION-recovery-authority.md)  
-**Baseline:** `origin/main` at `c1fac4c2c40662d9d1f88a1a020835feecce682b`  
+**Arc:** Recovery Authority
+**Phase:** Pre-Execute VERIFY companion
+**Status:** Planning companion only; no implementation evidence and no PASS claims
+**Architecture:** locked at `22852a07e66920874045e0e85c4572ab6c0b29b8`
+**Execution plan:** [`EXECUTION-recovery-authority.md`](EXECUTION-recovery-authority.md)
+**Baseline:** `origin/main` at `c1fac4c2c40662d9d1f88a1a020835feecce682b`
 **Authority:** Existing [`VERIFY-dependability-provenance.md`](VERIFY-dependability-provenance.md) owns the canonical row IDs and substantive oracles; this file maps this arc's task evidence onto them.
 
 ## Planning Status
