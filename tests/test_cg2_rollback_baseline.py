@@ -1,5 +1,7 @@
 """D1 — Exact LEGACY snapshot, convert-v1, and retained rollback baseline."""
 
+# pylint: disable=too-many-lines,duplicate-code,protected-access
+
 from __future__ import annotations
 
 import hashlib
@@ -48,7 +50,7 @@ EMBED_MODEL = "test-embed-v1"
 EMBED_DIM = 2
 
 
-def _cfg(tmp_path: Path, *, chroma: Path, generations: Path, processed: Path) -> dict:
+def _cfg(*, chroma: Path, generations: Path, processed: Path) -> dict:
     return {
         "index": {
             "chroma_dir": str(chroma),
@@ -319,7 +321,7 @@ def _prepare(tmp_path: Path, **seed_kwargs):
         encoding="utf-8",
     )
     seeded = _seed_legacy_corpus(chroma, source, **seed_kwargs)
-    cfg = _cfg(tmp_path, chroma=chroma, generations=generations, processed=processed)
+    cfg = _cfg(chroma=chroma, generations=generations, processed=processed)
     provision_generation_layout(generations)
     return source, accepted_hash, chroma, generations, cfg, seeded
 
@@ -351,6 +353,7 @@ def test_frozen_legacy_set_is_bidirectionally_equivalent_to_grb(tmp_path: Path) 
         },
     ) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -378,7 +381,7 @@ def test_frozen_legacy_set_is_bidirectionally_equivalent_to_grb(tmp_path: Path) 
     twin_b = seeded["twin_b"]
     evidence = validate_retained_rollback_baseline_evidence(
         generations,
-        owner_digest=snapshot.owner_digest,
+        owner_digest_value=snapshot.owner_digest,
         generation_id=result.generation_id,
         expected_manifest_sha256=result.manifest_sha256,
     )
@@ -414,6 +417,7 @@ def test_same_ledger_distinct_provenance_survive_without_dedupe_or_remint(
 
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -466,6 +470,7 @@ def test_invalid_provenance_follows_conservative_legacy_policy_without_synthesis
 
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -501,6 +506,7 @@ def test_literal_convert_v1_fingerprint_and_deterministic_generation_id(
     assert CONVERT_V1_FINGERPRINT == "convmem/cg2-rollback-baseline-convert-v1"
     with FileGenerationStore(chroma, active_generations=dict) as store:
         first = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -529,6 +535,7 @@ def test_persisted_embeddings_and_explicit_embedding_provenance(tmp_path: Path) 
 
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -536,7 +543,7 @@ def test_persisted_embeddings_and_explicit_embedding_provenance(tmp_path: Path) 
         )
         evidence = validate_retained_rollback_baseline_evidence(
             generations,
-            owner_digest=snapshot.owner_digest,
+            owner_digest_value=snapshot.owner_digest,
             generation_id=result.generation_id,
             expected_manifest_sha256=result.manifest_sha256,
         )
@@ -557,6 +564,7 @@ def test_immutable_retained_evidence_and_manifest_sha_binding(tmp_path: Path) ->
     )
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -569,7 +577,7 @@ def test_immutable_retained_evidence_and_manifest_sha_binding(tmp_path: Path) ->
     original = path.read_bytes()
     evidence = validate_retained_rollback_baseline_evidence(
         generations,
-        owner_digest=snapshot.owner_digest,
+        owner_digest_value=snapshot.owner_digest,
         generation_id=result.generation_id,
         expected_manifest_sha256=result.manifest_sha256,
     )
@@ -583,6 +591,7 @@ def test_immutable_retained_evidence_and_manifest_sha_binding(tmp_path: Path) ->
     # Idempotent only for identical bytes.
     with FileGenerationStore(chroma, active_generations=dict) as store:
         again = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -600,7 +609,7 @@ def test_immutable_retained_evidence_and_manifest_sha_binding(tmp_path: Path) ->
     ):
         validate_retained_rollback_baseline_evidence(
             generations,
-            owner_digest=snapshot.owner_digest,
+            owner_digest_value=snapshot.owner_digest,
             generation_id=result.generation_id,
             expected_manifest_sha256=result.manifest_sha256,
         )
@@ -617,6 +626,7 @@ def test_missing_corrupt_wrong_owner_wrong_sha_non_equivalent_refusals(
     )
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -626,7 +636,7 @@ def test_missing_corrupt_wrong_owner_wrong_sha_non_equivalent_refusals(
     with pytest.raises(RollbackBaselineError, match="missing|not found"):
         validate_retained_rollback_baseline_evidence(
             generations,
-            owner_digest=snapshot.owner_digest,
+            owner_digest_value=snapshot.owner_digest,
             generation_id="missing-generation",
             expected_manifest_sha256=result.manifest_sha256,
         )
@@ -638,7 +648,7 @@ def test_missing_corrupt_wrong_owner_wrong_sha_non_equivalent_refusals(
     with pytest.raises(RollbackBaselineError, match="corrupt|invalid|JSON"):
         validate_retained_rollback_baseline_evidence(
             generations,
-            owner_digest=snapshot.owner_digest,
+            owner_digest_value=snapshot.owner_digest,
             generation_id=result.generation_id,
             expected_manifest_sha256=result.manifest_sha256,
         )
@@ -653,6 +663,7 @@ def test_missing_corrupt_wrong_owner_wrong_sha_non_equivalent_refusals(
     )
     with FileGenerationStore(chroma2, active_generations=dict) as store:
         result2 = convert_and_retain_rollback_baseline(
+            cfg=cfg2,
             snapshot=snapshot2,
             store=store,
             generation_root=generations2,
@@ -665,16 +676,14 @@ def test_missing_corrupt_wrong_owner_wrong_sha_non_equivalent_refusals(
     payload = json.loads(evidence_path.read_text(encoding="utf-8"))
     payload["owner_digest"] = "0" * 64
     payload.pop("evidence_payload_hash", None)
-    from file_generation_contract import canonical_hash as _ch
-
-    payload["evidence_payload_hash"] = _ch(
+    payload["evidence_payload_hash"] = canonical_hash(
         {k: v for k, v in payload.items() if k != "evidence_payload_hash"}
     )
     evidence_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
     with pytest.raises(RollbackBaselineError, match="owner"):
         validate_retained_rollback_baseline_evidence(
             generations2,
-            owner_digest=snapshot2.owner_digest,
+            owner_digest_value=snapshot2.owner_digest,
             generation_id=result2.generation_id,
             expected_manifest_sha256=result2.manifest_sha256,
         )
@@ -690,6 +699,7 @@ def test_missing_corrupt_wrong_owner_wrong_sha_non_equivalent_refusals(
     )
     with FileGenerationStore(chroma3, active_generations=dict) as store:
         result3 = convert_and_retain_rollback_baseline(
+            cfg=cfg3,
             snapshot=snapshot3,
             store=store,
             generation_root=generations3,
@@ -699,7 +709,7 @@ def test_missing_corrupt_wrong_owner_wrong_sha_non_equivalent_refusals(
     with pytest.raises(RollbackBaselineError, match="SHA|sha|manifest"):
         validate_retained_rollback_baseline_evidence(
             generations3,
-            owner_digest=snapshot3.owner_digest,
+            owner_digest_value=snapshot3.owner_digest,
             generation_id=result3.generation_id,
             expected_manifest_sha256="0" * 64,
         )
@@ -714,7 +724,7 @@ def test_missing_corrupt_wrong_owner_wrong_sha_non_equivalent_refusals(
     with pytest.raises(RollbackBaselineError, match="equivalent|digest|payload"):
         validate_retained_rollback_baseline_evidence(
             generations3,
-            owner_digest=snapshot3.owner_digest,
+            owner_digest_value=snapshot3.owner_digest,
             generation_id=result3.generation_id,
             expected_manifest_sha256=result3.manifest_sha256,
         )
@@ -758,6 +768,7 @@ def test_mixed_or_missing_embedding_provenance_refuses(tmp_path: Path) -> None:
         provenance = _embedding_provenance(store)
         with pytest.raises(RollbackBaselineError, match="dimension|mixed"):
             convert_and_retain_rollback_baseline(
+                cfg=cfg,
                 snapshot=mixed_snapshot,
                 store=store,
                 generation_root=generations,
@@ -778,6 +789,7 @@ def test_mixed_or_missing_embedding_provenance_refuses(tmp_path: Path) -> None:
         provenance[UNITS]["embedding_model"] = ""
         with pytest.raises(RollbackBaselineError, match="embedding_model|provenance"):
             convert_and_retain_rollback_baseline(
+                cfg=cfg2,
                 snapshot=snapshot2,
                 store=store,
                 generation_root=generations2,
@@ -807,6 +819,7 @@ def test_empty_peer_set_is_not_bidirectionally_equivalent(tmp_path: Path) -> Non
     )
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -853,6 +866,7 @@ def test_grb_protection_permits_g_canary_staging_and_unrelated_abandoned_still_b
         },
     ) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -995,6 +1009,7 @@ def test_wrong_collection_uuid_and_configuration_refuse_convert(tmp_path: Path) 
         bad_uuid[UNITS]["collection_uuid"] = "00000000-0000-0000-0000-000000000000"
         with pytest.raises(RollbackBaselineError, match="UUID|uuid"):
             convert_and_retain_rollback_baseline(
+                cfg=cfg,
                 snapshot=snapshot,
                 store=store,
                 generation_root=generations,
@@ -1006,6 +1021,7 @@ def test_wrong_collection_uuid_and_configuration_refuse_convert(tmp_path: Path) 
         bad_cfg[UNITS]["configuration"] = {"hnsw:space": "l2"}
         with pytest.raises(RollbackBaselineError, match="configuration"):
             convert_and_retain_rollback_baseline(
+                cfg=cfg,
                 snapshot=snapshot,
                 store=store,
                 generation_root=generations,
@@ -1034,6 +1050,7 @@ def test_adversarial_evidence_mutation_with_recomputed_hash_refuses(
     )
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -1053,7 +1070,7 @@ def test_adversarial_evidence_mutation_with_recomputed_hash_refuses(
     with pytest.raises(RollbackBaselineError, match="digest|equivalent|bind|manifest"):
         validate_retained_rollback_baseline_evidence(
             generations,
-            owner_digest=snapshot.owner_digest,
+            owner_digest_value=snapshot.owner_digest,
             generation_id=result.generation_id,
             expected_manifest_sha256=result.manifest_sha256,
         )
@@ -1067,7 +1084,7 @@ def test_adversarial_evidence_mutation_with_recomputed_hash_refuses(
     with pytest.raises(RollbackBaselineError, match="source|digest|bind|generation"):
         validate_retained_rollback_baseline_evidence(
             generations,
-            owner_digest=snapshot.owner_digest,
+            owner_digest_value=snapshot.owner_digest,
             generation_id=result.generation_id,
             expected_manifest_sha256=result.manifest_sha256,
         )
@@ -1108,6 +1125,7 @@ def test_load_config_failure_refuses_production_boundary(tmp_path: Path) -> None
                 RollbackBaselineError, match="cannot resolve live production identity"
             ):
                 convert_and_retain_rollback_baseline(
+                    cfg=cfg,
                     snapshot=snapshot,
                     store=store,
                     generation_root=generations,
@@ -1131,6 +1149,7 @@ def test_malformed_production_path_config_refuses(tmp_path: Path) -> None:
                 RollbackBaselineError, match="cannot resolve live production identity"
             ):
                 convert_and_retain_rollback_baseline(
+                    cfg=cfg,
                     snapshot=snapshot,
                     store=store,
                     generation_root=generations,
@@ -1154,6 +1173,7 @@ def test_configured_production_chroma_without_attestation_refuses(
                 RollbackBaselineError, match="writer boundary|production Chroma"
             ):
                 convert_and_retain_rollback_baseline(
+                    cfg=cfg,
                     snapshot=snapshot,
                     store=store,
                     generation_root=generations,
@@ -1176,6 +1196,7 @@ def test_hermetic_non_production_target_with_resolved_live_config_allowed(
     with patch("cg2_rollback_baseline.load_config", return_value=live):
         with FileGenerationStore(chroma, active_generations=dict) as store:
             result = convert_and_retain_rollback_baseline(
+                cfg=cfg,
                 snapshot=snapshot,
                 store=store,
                 generation_root=generations,
@@ -1200,7 +1221,6 @@ def test_unauthenticated_live_capture_never_opens_chroma_store(tmp_path: Path) -
         }
     }
     cfg = _cfg(
-        tmp_path,
         chroma=live_chroma,
         generations=generations,
         processed=tmp_path / "processed.json",
@@ -1228,7 +1248,7 @@ def test_unauthenticated_live_capture_never_opens_chroma_store(tmp_path: Path) -
                     source_path=str(source),
                     accepted_source_hash=accepted_hash,
                 )
-    assert opened == []
+    assert not opened
 
 
 def test_live_generation_root_without_attestation_refuses_before_bytes(
@@ -1239,7 +1259,7 @@ def test_live_generation_root_without_attestation_refuses_before_bytes(
     )
     live = _fake_live_cfg(tmp_path / "live")
     live_gens = Path(live["index"]["generation_root"])
-    before = {path for path in live_gens.rglob("*")}
+    before = set(live_gens.rglob("*"))
     snapshot = capture_accepted_legacy_serving_snapshot(
         cfg=cfg,
         source_path=str(source),
@@ -1252,12 +1272,13 @@ def test_live_generation_root_without_attestation_refuses_before_bytes(
                 match="writer boundary|production generation root",
             ):
                 convert_and_retain_rollback_baseline(
+                    cfg=cfg,
                     snapshot=snapshot,
                     store=store,
                     generation_root=live_gens,
                     embedding_provenance=_embedding_provenance(store),
                 )
-    after = {path for path in live_gens.rglob("*")}
+    after = set(live_gens.rglob("*"))
     assert after == before
 
 
@@ -1292,6 +1313,7 @@ def test_temp_generation_root_remains_hermetic(tmp_path: Path) -> None:
     with patch("cg2_rollback_baseline.load_config", return_value=live):
         with FileGenerationStore(chroma, active_generations=dict) as store:
             result = convert_and_retain_rollback_baseline(
+                cfg=cfg,
                 snapshot=snapshot,
                 store=store,
                 generation_root=generations,
@@ -1302,7 +1324,7 @@ def test_temp_generation_root_remains_hermetic(tmp_path: Path) -> None:
 
 
 def test_unresolvable_live_generation_config_refuses(tmp_path: Path) -> None:
-    source, accepted_hash, chroma, generations, cfg, _seeded = _prepare(tmp_path)
+    source, accepted_hash, _chroma, _generations, cfg, _seeded = _prepare(tmp_path)
     snapshot = capture_accepted_legacy_serving_snapshot(
         cfg=cfg,
         source_path=str(source),
@@ -1312,14 +1334,15 @@ def test_unresolvable_live_generation_config_refuses(tmp_path: Path) -> None:
         "cg2_rollback_baseline.load_config",
         return_value={"index": {}},
     ):
-        with FileGenerationStore(chroma, active_generations=dict) as store:
+        with FileGenerationStore(_chroma, active_generations=dict) as store:
             with pytest.raises(
                 RollbackBaselineError, match="cannot resolve live production identity"
             ):
                 convert_and_retain_rollback_baseline(
+                    cfg=cfg,
                     snapshot=snapshot,
                     store=store,
-                    generation_root=generations,
+                    generation_root=_generations,
                     embedding_provenance=_embedding_provenance(store),
                 )
 
@@ -1345,7 +1368,7 @@ def test_uppercase_claimed_accepted_source_hash_refuses(tmp_path: Path) -> None:
 
 
 def test_non_hex_processed_key_refuses(tmp_path: Path) -> None:
-    source, _accepted_hash, chroma, generations, cfg, _seeded = _prepare(tmp_path)
+    source, _accepted_hash, _chroma, _generations, cfg, _seeded = _prepare(tmp_path)
     processed = Path(cfg["index"]["processed_log"])
     bad_key = "z" * 64
     processed.write_text(
@@ -1378,6 +1401,7 @@ def test_cold_qualification_missing_or_tampered_bindings_refuse(
     )
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -1394,6 +1418,7 @@ def test_cold_qualification_missing_or_tampered_bindings_refuse(
         "owner_digest",
         "manifest_sha256",
         "identity",
+        "sequence_positions",
     )
     for field in required_cold:
         payload = json.loads(json.dumps(original))
@@ -1407,7 +1432,7 @@ def test_cold_qualification_missing_or_tampered_bindings_refuse(
         ):
             validate_retained_rollback_baseline_evidence(
                 generations,
-                owner_digest=snapshot.owner_digest,
+                owner_digest_value=snapshot.owner_digest,
                 generation_id=result.generation_id,
                 expected_manifest_sha256=result.manifest_sha256,
             )
@@ -1431,7 +1456,7 @@ def test_cold_qualification_missing_or_tampered_bindings_refuse(
         ):
             validate_retained_rollback_baseline_evidence(
                 generations,
-                owner_digest=snapshot.owner_digest,
+                owner_digest_value=snapshot.owner_digest,
                 generation_id=result.generation_id,
                 expected_manifest_sha256=result.manifest_sha256,
             )
@@ -1446,6 +1471,7 @@ def test_empty_equivalence_object_with_rehash_refuses(tmp_path: Path) -> None:
     )
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -1461,7 +1487,7 @@ def test_empty_equivalence_object_with_rehash_refuses(tmp_path: Path) -> None:
     with pytest.raises(RollbackBaselineError, match="equivalence|equivalent"):
         validate_retained_rollback_baseline_evidence(
             generations,
-            owner_digest=snapshot.owner_digest,
+            owner_digest_value=snapshot.owner_digest,
             generation_id=result.generation_id,
             expected_manifest_sha256=result.manifest_sha256,
         )
@@ -1476,6 +1502,7 @@ def test_omitted_equivalence_counts_refuse(tmp_path: Path) -> None:
     )
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -1500,7 +1527,7 @@ def test_omitted_equivalence_counts_refuse(tmp_path: Path) -> None:
         with pytest.raises(RollbackBaselineError, match="equivalence|equivalent"):
             validate_retained_rollback_baseline_evidence(
                 generations,
-                owner_digest=snapshot.owner_digest,
+                owner_digest_value=snapshot.owner_digest,
                 generation_id=result.generation_id,
                 expected_manifest_sha256=result.manifest_sha256,
             )
@@ -1517,6 +1544,7 @@ def test_modified_equivalence_count_result_disagreement_refuses(
     )
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -1533,7 +1561,7 @@ def test_modified_equivalence_count_result_disagreement_refuses(
     with pytest.raises(RollbackBaselineError, match="equivalence|equivalent"):
         validate_retained_rollback_baseline_evidence(
             generations,
-            owner_digest=snapshot.owner_digest,
+            owner_digest_value=snapshot.owner_digest,
             generation_id=result.generation_id,
             expected_manifest_sha256=result.manifest_sha256,
         )
@@ -1548,6 +1576,7 @@ def test_modified_equivalence_identity_with_rehash_refuses(tmp_path: Path) -> No
     )
     with FileGenerationStore(chroma, active_generations=dict) as store:
         result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
             snapshot=snapshot,
             store=store,
             generation_root=generations,
@@ -1563,7 +1592,118 @@ def test_modified_equivalence_identity_with_rehash_refuses(tmp_path: Path) -> No
     with pytest.raises(RollbackBaselineError, match="equivalence|equivalent|identity"):
         validate_retained_rollback_baseline_evidence(
             generations,
-            owner_digest=snapshot.owner_digest,
+            owner_digest_value=snapshot.owner_digest,
+            generation_id=result.generation_id,
+            expected_manifest_sha256=result.manifest_sha256,
+        )
+
+
+def test_tampered_snapshot_accepted_source_hash_refuses_convert(tmp_path: Path) -> None:
+    source, accepted_hash, chroma, generations, cfg, _seeded = _prepare(tmp_path)
+    snapshot = capture_accepted_legacy_serving_snapshot(
+        cfg=cfg,
+        source_path=str(source),
+        accepted_source_hash=accepted_hash,
+    )
+    tampered_upper = LegacyServingSnapshot(
+        owner_key=snapshot.owner_key,
+        owner_digest=snapshot.owner_digest,
+        canonical_source_path=snapshot.canonical_source_path,
+        accepted_source_hash=accepted_hash.upper(),
+        rows=snapshot.rows,
+        snapshot_digest=snapshot.snapshot_digest,
+        candidate_bundle_hash=snapshot.candidate_bundle_hash,
+    )
+    with FileGenerationStore(chroma, active_generations=dict) as store:
+        with pytest.raises(RollbackBaselineError, match="SHA-256 hex|canonical|accepted"):
+            convert_and_retain_rollback_baseline(
+                cfg=cfg,
+                snapshot=tampered_upper,
+                store=store,
+                generation_root=generations,
+                embedding_provenance=_embedding_provenance(store),
+            )
+
+    wrong_hash = "a" * 64
+    tampered_wrong = LegacyServingSnapshot(
+        owner_key=snapshot.owner_key,
+        owner_digest=snapshot.owner_digest,
+        canonical_source_path=snapshot.canonical_source_path,
+        accepted_source_hash=wrong_hash,
+        rows=snapshot.rows,
+        snapshot_digest=snapshot.snapshot_digest,
+        candidate_bundle_hash=snapshot.candidate_bundle_hash,
+    )
+    with FileGenerationStore(chroma, active_generations=dict) as store:
+        with pytest.raises(
+            RollbackBaselineError, match="accepted_source_hash|processed|unbound"
+        ):
+            convert_and_retain_rollback_baseline(
+                cfg=cfg,
+                snapshot=tampered_wrong,
+                store=store,
+                generation_root=generations,
+                embedding_provenance=_embedding_provenance(store),
+            )
+
+
+def test_fresh_process_qualification_failure_refuses_retained_evidence(
+    tmp_path: Path,
+) -> None:
+    source, accepted_hash, chroma, generations, cfg, _seeded = _prepare(tmp_path)
+    snapshot = capture_accepted_legacy_serving_snapshot(
+        cfg=cfg,
+        source_path=str(source),
+        accepted_source_hash=accepted_hash,
+    )
+    with FileGenerationStore(chroma, active_generations=dict) as store:
+        with patch(
+            "cg2_rollback_baseline.run_cold_validation",
+            side_effect=RuntimeError("fresh-process refused"),
+        ):
+            with pytest.raises(RollbackBaselineError, match="fresh-process"):
+                convert_and_retain_rollback_baseline(
+                    cfg=cfg,
+                    snapshot=snapshot,
+                    store=store,
+                    generation_root=generations,
+                    embedding_provenance=_embedding_provenance(store),
+                )
+    assert not list(generations.rglob("rollback_baselines/*.json"))
+
+
+def test_in_process_only_cold_qualification_cannot_pass_validation(
+    tmp_path: Path,
+) -> None:
+    source, accepted_hash, chroma, generations, cfg, _seeded = _prepare(tmp_path)
+    snapshot = capture_accepted_legacy_serving_snapshot(
+        cfg=cfg,
+        source_path=str(source),
+        accepted_source_hash=accepted_hash,
+    )
+    with FileGenerationStore(chroma, active_generations=dict) as store:
+        result = convert_and_retain_rollback_baseline(
+            cfg=cfg,
+            snapshot=snapshot,
+            store=store,
+            generation_root=generations,
+            embedding_provenance=_embedding_provenance(store),
+        )
+    path = rollback_baseline_evidence_path(
+        generations, snapshot.owner_digest, result.generation_id
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    cold = dict(payload["cold_qualification"])
+    cold.pop("sequence_positions", None)
+    payload["cold_qualification"] = cold
+    payload = _rehash_evidence(payload)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    with pytest.raises(
+        RollbackBaselineError, match="cold-qualification|fresh-process|sequence"
+    ):
+        validate_retained_rollback_baseline_evidence(
+            generations,
+            owner_digest_value=snapshot.owner_digest,
             generation_id=result.generation_id,
             expected_manifest_sha256=result.manifest_sha256,
         )
