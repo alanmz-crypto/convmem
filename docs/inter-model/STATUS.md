@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-21 (Trapdoor integration PR #221 merged at `722141d31e586151f361ef7006ad74c71cdff534`)
+**Snapshot:** 2026-08-22 (Recovery Authority Execution Plan ready for Kiro; Trapdoor integration PR #221 remains merged at `722141d31e586151f361ef7006ad74c71cdff534`)
 
 > **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. PR #221 is
 > squash-merged onto current main; its bounded writer-boundary and
@@ -44,6 +44,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
 | CG-2 authority migration | Merged on `main` (#186); V8a **PASS** (Kiro independent sign-off); V8b (soak grant) **PASS**; **legacy-only soak completed and Ryan-accepted 2026-08-21**. Design A architecture papered (docs branch `docs/2026-08-21-cg2-design-a-arch-lock`, not yet merged). V8c first-owner packet **PENDING** — not authorized. | Next governed step: **Design A execution planning only**; no implementation/activation yet. V8c packet remains PENDING and comes **after** Design A implementation/evidence. Do not activate, publish fence/pointer, run GC, or enable Shadow/R2b. See [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md), [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md), and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
 | Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED**; PR #221 squash-merged at `722141d31e586151f361ef7006ad74c71cdff534` from final reviewed head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`; bounded writer-boundary and provenance-supersession corrections are on current `main` with Runway integration complete | No further T3 integration work. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
+| Recovery Authority | Architecture locked at `22852a07`; Execution Plan and VERIFY companion are ready for Kiro; T1–T4 not authorized; V4k **BLOCKED** on CG-2 Design A ratification and stable generation/pointer semantics | Kiro Execution Plan review → Ryan; no implementation, restore, activation, migration, live mutation, or T5 campaign. |
 
 ## Closed arcs — reference STATUS only
 
@@ -86,6 +87,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [CodeQL Complex Therapy STATUS](../plans/STATUS-codeql-complex-therapy.md) (closed)
 - [CG-2 VERIFY](../plans/VERIFY-cg2-production-activation.md) and [CG-2 RUNBOOK](../plans/RUNBOOK-cg2-production-activation.md)
 - [Runway Ledger STATUS](../plans/STATUS-agent-run-ledger.md)
+- [Recovery Authority STATUS](../plans/STATUS-recovery-authority.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
 **TL;DR:** T3 is CLOSED and PR #221 is squash-merged with the bounded writer-boundary/provenance-supersession corrections and Runway integration on current `main`; Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized.
