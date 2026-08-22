@@ -6,7 +6,7 @@ Planning Status
 Phase:        Design A Superseding Execution Planning
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Functions:    Planner
-Lanes:        Sol authors; Luna coordinates; Ryan HITL; Cursor implements only after grant
+Lanes:        Cursor Auto authors superseding plan; Luna independently reviews; Ryan HITL; Cursor implements only after grant
 Authority:    Awaiting Ryan HITL — planning artifact only
 ```
 
@@ -295,7 +295,8 @@ Rules:
 - content-addressed candidate and validation filenames;
 - ratification record references candidate + validation digests explicitly;
 - immutable publication: byte-identical rewrite allowed; divergent rewrite refuses;
-- not a serving pointer, not active generation state;
+- **non-serving evidence only** — this root is NOT a serving authority, serving
+  database, pointer, owner-state machine, or second generation authority system;
 - D1 resolves ratification only within this root.
 
 Hermetic tests use temporary generation roots only.
@@ -333,18 +334,43 @@ Any churn during capture refuses candidate emission.
 Public hermetic entry:
 
 ```text
-validate_d0_legacy_vector_candidate(generation_root, *, candidate_sha256, validator_identity) -> ValidationReference
+validate_d0_legacy_vector_candidate(cfg, *, owner_key, source_path, accepted_source_hash, candidate_sha256, validator_identity) -> ValidationReference
 ```
 
-Requirements:
+Independent validation is corroboration, not repair of a torn candidate. It uses
+the **same existing owner/source locking and consistency protocol** as candidate
+capture — no new lock mechanism.
 
-- read-only reopen of persisted candidate + Chroma state;
-- independently reproduce all roots and query-context digest;
-- publish separate validation artifact with its own validator/code identity and
-  result SHA-256;
-- refuse if candidate fields cannot be reproduced;
-- must not be callable from the same execution path that emitted the candidate
-  (test oracle: monkeypatch/subprocess/spawn separation).
+Under existing `source_flock` **exactly once**:
+
+1. Acquire the existing `source_flock` for the owner (single acquisition; no
+   nested reentry).
+2. Establish exact owner authority = `LEGACY` via
+   `serving_authority.resolve_frozen_authority_vector`.
+3. Establish accepted-source state and bind accepted source hash to the processed
+   log (same binding semantics as capture).
+4. Derive live `QUERY_EMBEDDING_CONTEXT_V1` and compute
+   `query_embedding_context_sha256`.
+5. Reread persisted covered rows/vectors/provenance from Chroma read-only;
+   independently reproduce all candidate roots (leaf, collection, aggregate
+   snapshot) and query-context digest from persisted state only.
+6. Load candidate artifact by content address; refuse if reproduced roots or
+   query-context digest do not match candidate claims — no candidate field is
+   accepted merely because the candidate says it.
+7. **End-of-validation recheck before releasing the lock:** re-verify owner
+   authority still `LEGACY`, accepted source unchanged, exact row/vector/provenance
+   roots unchanged, and `query_embedding_context_sha256` unchanged.
+8. Any start/end drift or mismatch refuses validation publication.
+
+Then publish separate validation artifact with its own validator/code identity and
+immutable result SHA-256.
+
+**Separate executions:** candidate capture and validation must not be emitted by
+one self-attesting execution. Test oracle: monkeypatch/subprocess/spawn separation
+so the candidate path cannot emit validation. Optional: assign independent
+validation to a separate lane for stronger separation-of-duties.
+
+Candidate and validation remain distinct evidence artifacts with distinct digests.
 
 ### 5.5 Ryan ratification record (contract only)
 
@@ -381,11 +407,24 @@ Governed query adapter sources at architecture SHA:
 | Input transform | identity Unicode string at embedding boundary |
 | Vector transform/normalization | identity float vector / none |
 | Model identifier | exact configured `embed_model` sent on wire |
-| Model artifact digest | resolve from Ollama model registry for selected model; emit `sha256:<64 lowercase hex>` — **fail closed if unresolved** (do not copy config; do not use eval degrade-to-empty) |
-| Quantization | resolve from same registry record — fail closed if unresolved |
+| Model artifact digest | **Pin:** `GET {ollama_host}/api/tags` → matching model entry (`name` or `model` == configured embed model) → field `digest`; normalize to `sha256:<64 lowercase hex>` per architecture; **fail closed if unresolved** — do not copy config; do not infer from dimension |
+| Quantization | **Pin:** same `/api/tags` entry → `details.quantization_level` — fail closed if unresolved |
 | Dimension | positive int from governed query-embedding response; must equal every admitted collection dimension |
 | Runtime identifier | exact string `ollama` for this repository path |
-| Runtime version | Ollama `/api/version` `version` field — fail closed if unresolved |
+| Runtime version | **Pin:** `GET {ollama_host}/api/version` → JSON field `version` — fail closed if unresolved |
+
+**Implementation note:** `eval_provenance.model_digest_and_quant` and
+`eval_provenance.ollama_version` document the intended HTTP sources but degrade
+to empty strings on failure. D0 must **not** reuse that degrade behavior; implement
+fail-closed resolution in `cg2_legacy_vector_attestation.py` (or a D0-only adapter
+calling the same endpoints). If repository inspection during Execute cannot
+establish a trustworthy exact resolution path without architecture change, **STOP**
+for Luna/Ryan review — do not guess.
+
+**Runtime drift:** a change to the ratified `embedding_runtime_version` changes
+`QUERY_EMBEDDING_CONTEXT_V1` and therefore makes the existing `G_rb` D0 authority
+chain ineligible until a new separately authorized D0 capture → validation → Ryan
+ratification exists. Rehearsal evidence must record this operational risk.
 
 Pipeline fingerprint = SHA-256 over canonical `QUERY_EMBEDDING_PIPELINE_V1` object
 with architecture field order.
@@ -543,129 +582,98 @@ git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
 
 ## 7. D2 — Authority API separation
 
-**Depends on:** D0 boundary stable + amended D1 public evidence validator stable.
+**Depends on:** D0 public read boundary stable + amended D1 retained-evidence
+validator stable. No production D0 operations required.
 
-Carry forward prior plan (`c48d9a9…`) with dependency note: first cutover and
-rollback preflight will later require D0 chain fields — implement APIs now without
-live D0 production data.
+**Execute authorizes:** pointer API refactor, cutover guard module, hermetic tests.
+**Execute does NOT authorize:** production pointer publication, live cutover, or
+production D0 data.
 
-Surfaces (unchanged intent):
+### 7.1 Expected surfaces
 
-- `file_generation_pointer.py` — CAS vs lineage split, private lock-held writer,
-  rollback/recovery separation;
-- `cg2_cutover_guard.py` (new);
-- `tests/test_file_generation_pointer.py` amendments;
-- lock oracle via existing `source_flock` patterns.
+| Path | Responsibility |
+|---|---|
+| `file_generation_pointer.py` | Separate current-active CAS from durable previous lineage; one private lock-held pointer-publication primitive shared by forward publish, first cutover, rollback, and exact recovery; add `rollback_active_pointer`; keep recovery exact-payload only; ordinary forward publication rejects first-pointer use and open-canary promotion |
+| `cg2_cutover_guard.py` (new) | Low-level hash-bound first-canary-open artifact, path, immutable publication, and validation; imports no pointer/orchestration module (no authority cycle); no close writer in this Execute |
+| `tests/test_file_generation_pointer.py` | CAS/lineage API split, ordinary forward behavior, rollback publication, stale CAS, recovery signature/identity, one-lock oracle |
+| `tests/test_file_generation_validate.py` | Fresh qualification of baseline/canary/rollback target and persisted corruption refusal |
+| `tests/test_source_freshness_promotion.py` | Stale-source forward refusal (reuse/extend) |
 
-**STOP if:** ordinary publish can create first pointer; rollback/recovery share
-target selection; nested owner lock required.
+No change expected in `convmem.py`, `mcp_server.py`, production config, `watch.py`,
+`doctor.py`, Shadow, or R2b.
 
-## 8. D3 — First-cutover structural gate
+### 7.2 Pointer API contracts
 
-**Depends on:** D2 + D1 retained-evidence validator.
-
-Add to first-cutover preflight (prior plan plus):
-
-- complete ratified D0 chain verification;
-- `G_rb` proof profile = `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`;
-- exact retained-evidence SHA;
-- live query-context re-derivation equals D0-ratified digest;
-- before fence, independent reread/rebind of D0-covered current LEGACY rows
-  (not stored D1 snapshot).
-
-Surfaces:
-
-- `cg2_first_cutover.py` (new);
-- `cg2_cutover_guard.py`;
-- `tests/test_cg2_first_cutover.py` (new);
-- pointer/store/orchestration tests from prior plan.
-
-## 9. D4 — Rollback after source advance
-
-**Depends on:** D2 + D3 contracts stable.
-
-For **`G_rb` rollback specifically** require:
-
-- fresh qualification;
-- complete D0 chain;
-- retained-evidence SHA binding;
-- exact query-context equality.
-
-Do **not** impose D0 on later known-model rollback targets.
-
-Preserve durable reconciliation-before-pointer rule from prior plan.
-
-## 10. D5 — Rehearsal extension
-
-**Depends on:** D1–D4 public contracts stable.
-
-Extend `cg2_rehearsal.py` hermetic drill:
+Public semantics after Design A:
 
 ```text
-D0 candidate (fixture)
-→ independent validation (fixture)
-→ synthetic Ryan ratification fixture
-→ D1 G_rb
-→ G_canary (KNOWN_MODEL_AND_VECTOR_V1)
-→ first cutover
-→ source advance
-→ G_rb rollback
-→ restart/recovery
+publish_active_pointer(
+    target_manifest_reference,
+    expected_active_generation_id=<non-None current active>, ...)
+
+publish_first_cutover_active_pointer(
+    canary_manifest_reference,
+    rollback_baseline_evidence,
+    expected_active_generation_id=None, ...)
+
+rollback_active_pointer(
+    retained_manifest_reference,
+    expected_active_generation_id=<exact current active>, ...)
+
+recover_active_pointer(owner_key, ...)
 ```
 
-All temporary roots/temporary Chroma. No live path.
+Each public authority-changing operation acquires the existing `source_flock` for
+its owner **exactly once**. Public operations own preflight/orchestration and
+locking; one **private lock-held pointer-publication primitive** performs the
+actual pointer write for ordinary forward publication, first cutover, rollback,
+and exact recovery. The private primitive assumes the correct owner lock is
+already held and never acquires it. High-level first-cutover and rollback code
+must call that private primitive directly while holding their one lock; they
+must **not** call another public operation that reacquires `source_flock`.
+`source_flock` itself is not changed to tolerate nested locking. There is no
+parallel pointer format or authority file.
 
-Record: D0 digests, query-context digests, evidence SHAs, fence/guard hashes,
-production paths absent.
+- **Ordinary forward publication** CASes against exact current active, performs
+  mandatory current-source freshness, and writes durable `previous_generation_id`
+  equal to that CAS-proven current active generation.
+- **First cutover** CASes against pointer absence while writing durable
+  `previous_generation_id=G_rb` and active=`G_canary`.
+- **Rollback** CASes against exact current active, fresh-qualifies the retained
+  target, does not require target source hash to equal live source, and writes
+  durable previous equal to the former active generation.
+- **Recovery** accepts no target reference or generation ID. It validates and
+  republishes the exact visible payload bytes only.
 
-## 11. D6 — Formal model
+### 7.3 Red tests first
 
-**Depends on:** D1–D4 stable public contracts.
+- In `tests/test_file_generation_pointer.py`, assert ordinary publication
+  rejects `expected_active_generation_id=None`.
+- Prove stale CAS refusal is independent of retained rollback target.
+- Prove ordinary forward writes previous=current active.
+- Prove first cutover can express expected active `None` with previous=`G_rb`.
+- Prove rollback switches to an exact retained target and writes former active
+  as previous.
+- Prove `recover_active_pointer` has no target-generation parameter and cannot
+  change active generation even when another complete generation exists.
+- Add a lock-acquisition oracle that wraps `source_flock`, fails immediately on
+  reentry, and records exactly one acquisition for each public operation;
+  explicitly exercise first cutover and rollback so neither can call a public
+  pointer API while already holding the owner lock.
 
-Restore/update `docs/plans/formal/cg2/*` per prior plan and add properties:
+### 7.4 Then implement
 
-| Property | Intent |
-|---|---|
-| `UnknownModelOnlyForRatifiedLegacyBaseline` | Only `G_rb` uses unknown-model profile |
-| `ProspectiveGenerationRequiresKnownWriterModel` | Canary/later gens require known profile |
-| `D0CandidateNotAuthority` | Candidate self-hash alone proves nothing |
-| `D0ValidationRequired` | Validation digest required |
-| `D0RatificationRequired` | Ryan ratification required for authority |
-| `FirstCutoverRebindsCurrentLegacyRoot` | Live reread before fence |
-| `GRollbackRequiresExactQueryContext` | **G_rb-only** query-context equality |
+- Refactor `file_generation_pointer.py` around one private lock-held writer
+  shared by forward publish, first cutover, rollback, and exact recovery.
+- Add `cg2_cutover_guard.py`; make ordinary forward publication refuse an open
+  guard without importing the high-level cutover orchestrator.
 
-Carry forward all prior Design A properties from blocked plan mapping.
-
-Verification:
-
-```bash
-# Exact TLC commands pinned in formal/README at Execute time
-git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
-```
-
-2026-08-14 TLC evidence remains historical old-revision only.
-
-## 12. D7 — Execute closure
-
-**Depends on:** D1–D6 pass at one implementation tip.
-
-Update Execute evidence collectors (`cg2_rehearsal.collect_execute_evidence`,
-property map, mixed-mode proof labels) at Execute time only.
-
-**Do not edit** `VERIFY-cg2-production-activation.md` during Execute planning.
-
-Flag for later Execute evidence: VERIFY still contains stale generic
-"embedding provenance for both generations" wording — must be reconciled when
-VERIFY is updated after implementation evidence exists.
-
-V6c remains **PENDING** until real rollback drill passes at reviewed tip.
-
-V8c remains **PENDING**.
-
-Final suite before Ryan stop:
+### 7.5 D2 verification
 
 ```bash
-python -m pytest -q
+python -m pytest tests/test_file_generation_pointer.py \
+  tests/test_file_generation_validate.py \
+  tests/test_source_freshness_promotion.py -q
 python -m pylint $(git ls-files '*.py') --output-format=json > /tmp/pylint-report.json
 python scripts/pylint_regression_gate.py ci \
   --report /tmp/pylint-report.json \
@@ -675,27 +683,812 @@ python scripts/pylint_regression_gate.py ci \
 git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
 ```
 
-## 13. Reviewer observations (disposition)
+### 7.6 D2 STOP if
+
+- any public API still uses one value for both CAS and durable lineage;
+- recovery can select a target generation;
+- ordinary forward can create a first pointer;
+- first cutover/rollback acquires `source_flock` more than once;
+- work expands beyond §7.1 surface table.
+
+## 8. D3 — First-cutover structural gate, fence sequencing, and canary guard
+
+**Depends on:** D0 + amended D1 + D2 complete.
+
+**Execute authorizes:** first-cutover orchestrator, fence immutability, guard
+publication, hermetic tests. **Execute does NOT authorize:** production first
+cutover or live fence publication.
+
+### 8.1 Expected surfaces
+
+| Path | Responsibility |
+|---|---|
+| `cg2_first_cutover.py` (new) | Public dedicated first-cutover operation: preflight exact bindings before fence; acquire owner lock exactly once for monotonic fence, open guard, and dedicated first pointer; resume `FENCED_NO_POINTER` only under fresh grant; no CLI and no production defaults |
+| `cg2_cutover_guard.py` | Complete low-level guard publication/validation (started in D2) |
+| `serving_authority.py` | Fence publication immutable/idempotent-identical; reject replacement; preserve `FENCED_NO_POINTER` resolution; no fence deletion API |
+| `tests/test_cg2_first_cutover.py` (new) | Exact structural gate, pre/post-fence timing, proof profiles, D0 chain, query context, crash/resume states |
+| `tests/test_serving_authority.py` | Monotonic fence bytes; durable fence with no pointer resolves only `FENCED_NO_POINTER` |
+| `tests/test_serving_index_repository.py` | Supporting authority-resolution fixtures as needed |
+
+### 8.2 First-cutover preflight (before any fence bytes)
+
+`cg2_first_cutover.py` has a preflight phase and one commit phase. Before any
+fence bytes exist, preflight must prove exactly:
+
+1. `G_rb != G_canary` (distinct generation IDs);
+2. exact `G_rb` generation ID and manifest SHA match immutable retained-baseline
+   evidence;
+3. exact `G_canary` generation ID and manifest SHA match caller's grant-bound inputs;
+4. **`G_rb` proof profile = `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`**;
+5. **`G_canary` proof profile = `KNOWN_MODEL_AND_VECTOR_V1`**;
+6. complete ratified D0 chain verification (candidate + validation + ratification
+   digests, accepted snapshot root, ratified query-context digest);
+7. exact retained-evidence SHA binding for `G_rb`;
+8. live query-embedding context re-derivation equals D0-ratified
+   `query_embedding_context_sha256`;
+9. both manifests bind the same owner key/digest and canonical source path;
+10. both have internally consistent collection dimensions/configuration under their
+    respective proof profiles;
+11. both pass fresh-process exact qualification;
+12. current pointer is absent, current owner is LEGACY, reconciliation is fresh,
+    and current source hash equals `G_canary.source_hash`;
+13. the first-canary guard does not already exist;
+14. **before fence:** independent reread/rebind of D0-covered current LEGACY rows
+    under the existing owner lock — not a stored D1 snapshot; reproduced roots must
+    match ratified D0 roots.
+
+Any preflight failure returns before fence publication. Missing, corrupt,
+wrong-owner, wrong-manifest-SHA, non-equivalent, unqualified baseline evidence,
+D0 chain mismatch, or query-context mismatch therefore leaves the owner LEGACY.
+
+### 8.3 Commit phase (one owner lock)
+
+The commit phase acquires the existing owner lock once, rechecks all exact
+artifact hashes, pointer absence, current source, owner binding, D0 chain, and
+query context, then:
+
+1. atomically publishes the immutable monotonic fence;
+2. atomically publishes the immutable first-canary-open guard naming exact
+   `G_rb` and `G_canary` and evidence hashes;
+3. reruns the final exact qualification/binding checks and invokes the private
+   lock-held pointer writer with first-cutover semantics:
+   `expected_active_generation_id=None`, durable `previous_generation_id=G_rb`,
+   active=`G_canary` (exact grant-bound `G_canary`);
+4. returns the module-sealed qualified active pointer.
+
+No catch block removes or rewrites the fence. A crash or failure after step 1
+and before successful step 3 leaves `FENCED_NO_POINTER`; a fresh request can
+never resolve LEGACY. The guard is non-serving evidence and may exist in that
+fail-closed state.
+
+Successful first pointer fields:
+
+- `expected_active_generation_id = None` (CAS against pointer absence);
+- durable `previous_generation_id = G_rb`;
+- active generation = exact grant-bound `G_canary`.
+
+While the open guard is present:
+
+- ordinary forward `publish_active_pointer` refuses;
+- another first-cutover publish refuses;
+- `rollback_active_pointer` remains available under its contract;
+- `recover_active_pointer` remains available for exact same-pointer recovery;
+- no API in this Execute closes, deletes, or mutates the guard.
+
+### 8.4 Fresh-grant completion from `FENCED_NO_POINTER`
+
+The dedicated public `publish_first_cutover_active_pointer` operation owns the
+only normal completion path for both resumable crash states:
+
+- fence present / guard absent / pointer absent;
+- fence present / exact guard present / pointer absent.
+
+Neither state may reuse or continue under the pre-crash grant. Resume requires
+a fresh Ryan one-shot grant bound to the exact `G_rb` and `G_canary`. Before
+acquiring the owner lock, the operation requalifies both exact grant-bound
+generations and reconstructs the exact expected immutable fence/guard evidence.
+Under its single owner-lock commit section it then:
+
+1. revalidates the existing fence as immutable, structurally valid, and bound
+   to the exact owner/source expected by the fresh grant;
+2. validates the guard as either absent or exact/byte-identical to the expected
+   guard for the same `G_rb`, `G_canary`, owner/source, and evidence hashes;
+3. if the guard is absent, atomically publishes that exact guard; if already
+   exact, leaves bytes unchanged;
+4. rechecks pointer absence and the fresh grant's exact structural and
+   qualification preconditions (including D0 chain and query context for `G_rb`);
+5. invokes the private lock-held pointer writer once to complete the exact
+   first pointer with CAS `None`, previous=`G_rb`, and active=`G_canary`.
+
+A missing fence is not a resume state. Conflicting, malformed, or corrupt fence
+or guard fails closed and requires operator repair.
+
+### 8.5 Red tests first
+
+- Parameterized pre-fence refusal matrix: missing baseline, corrupt evidence,
+  wrong owner, wrong source, wrong manifest SHA, failed qualification,
+  non-equivalent set, D0 chain mismatch, query-context mismatch, and
+  `G_rb == G_canary`.
+- Assert every pre-fence refusal leaves no fence and no pointer.
+- Inject failure/crash after durable fence and before pointer; assert
+  `FENCED_NO_POINTER`, monotonic fence bytes, no pointer, no LEGACY recovery.
+- `fence → crash → fresh-grant resume` coverage.
+- `fence → guard → crash → fresh-grant resume` coverage.
+- Wrong-guard refusal: conflicting/corrupt/wrong-owner/wrong-generation guard
+  bytes fail closed with no pointer publication.
+- Assert successful first pointer has active=`G_canary`, CAS `None`,
+  previous=`G_rb`.
+- Assert second forward promotion and second first-cutover operation refuse
+  while guard is open; rollback and same-pointer recovery remain callable.
+
+### 8.6 D3 verification
+
+```bash
+python -m pytest tests/test_cg2_first_cutover.py \
+  tests/test_serving_authority.py \
+  tests/test_serving_index_repository.py -q
+python -m pylint $(git ls-files '*.py') --output-format=json > /tmp/pylint-report.json
+python scripts/pylint_regression_gate.py ci \
+  --report /tmp/pylint-report.json \
+  --pylint-status $? \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref 06d9064648c96e46642d1820a504dace8af5ab38
+git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
+```
+
+### 8.7 D3 STOP if
+
+- any structural check can occur only after the fence;
+- an exception path clears the fence;
+- a fenced/no-pointer owner can resolve LEGACY;
+- resume can reuse the pre-crash grant or overwrite conflicting fence/guard bytes;
+- a second promotion bypasses the open guard;
+- first cutover can skip D0 reread or query-context check;
+- work expands beyond §8.1 surface table.
+
+## 9. D4 — Rollback after source advance and durable reconciliation
+
+**Depends on:** D2 complete; D3 supplies fence and guard fixtures.
+
+**Execute authorizes:** rollback pointer API completion, reconciliation helper,
+hermetic tests. **Execute does NOT authorize:** production rollback on live owner.
+
+### 9.1 Expected surfaces
+
+| Path | Responsibility |
+|---|---|
+| `file_generation_pointer.py` | Complete `rollback_active_pointer` generation-switch rollback under one owner lock |
+| `source_reconciler.py` | Add one atomic helper that durably records/coalesces a rollback-created desired-source obligation **before** stale-source rollback pointer publication; reuse existing state file, queue budget, and coalescing semantics |
+| `tests/test_file_generation_pointer.py` | Rollback with unchanged/advanced/missing source, stale CAS, corrupt target |
+| `tests/test_source_reconciler.py` | Rollback-created reconciliation obligation persists, coalesces to latest desired source, survives restart |
+| `tests/test_source_freshness_promotion.py` | Stale-source forward publication still refuses after source advance |
+| `tests/test_cg2_first_cutover.py` | Fence/guard fixtures for rollback assertions |
+
+### 9.2 Rollback algorithm
+
+Rollback runs under the existing owner lock in this order:
+
+1. Require monotonic fence, valid active pointer, exact current-active CAS, and
+   exact retained target named by durable lineage/retained evidence.
+2. Fresh-process qualify the target manifest and rows.
+3. **For `G_rb` rollback target only** (proof profile
+   `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`): additionally require complete D0
+   chain verification, exact retained-evidence SHA binding, and live
+   query-embedding context equality with D0-ratified digest. **Do not impose
+   D0 or query-context requirements on later known-model rollback generations.**
+4. Observe current source. Equality is not a rollback precondition.
+5. If source is missing or differs from target manifest, durably mark the
+   existing source-reconciliation state dirty and coalesce/enqueue the latest
+   desired source observation **before** pointer publication. Failure to make
+   that obligation durable refuses rollback while the current pointer remains.
+6. Publish target active with durable previous equal to the former active.
+7. Re-read the fence and open-canary guard; neither is removed or cleared.
+
+Source advance does **not** prohibit rollback. The obligation-before-pointer
+order permits harmless extra reconciliation if pointer publication later refuses,
+but never permits a successful stale-source rollback without durable desired-state
+debt. Rollback stays GENERATIONAL and never invokes a LEGACY path.
+
+Recovery remains same-pointer only and cannot substitute for rollback.
+
+### 9.3 Red tests first
+
+- Rollback with unchanged source, advanced source, missing source, stale
+  current-active CAS, corrupt target, reconciliation persistence failure.
+- Prove stale-source forward publication still refuses.
+- Prove source-advanced rollback succeeds only after durable dirty/pending state
+  exists and obligation survives process restart.
+- Prove newer desired source remains coalesced, fence byte-identical, guard
+  remains open, owner remains GENERATIONAL, no LEGACY row selected.
+- Prove recovery still cannot switch generation (recovery-separation negative
+  oracle).
+- Prove `G_rb` rollback refuses without D0 chain / query-context match; prove
+  known-model rollback target does **not** require D0 chain.
+
+### 9.4 D4 verification
+
+```bash
+python -m pytest tests/test_file_generation_pointer.py \
+  tests/test_source_freshness_promotion.py \
+  tests/test_source_reconciler.py \
+  tests/test_cg2_first_cutover.py -q
+python -m pylint $(git ls-files '*.py') --output-format=json > /tmp/pylint-report.json
+python scripts/pylint_regression_gate.py ci \
+  --report /tmp/pylint-report.json \
+  --pylint-status $? \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref 06d9064648c96e46642d1820a504dace8af5ab38
+git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
+```
+
+### 9.5 D4 STOP if
+
+- rollback requires retained source equality with live source;
+- successful rollback can precede durable reconciliation debt;
+- rollback removes the fence;
+- recovery shares the rollback target-selection path;
+- D0/query-context checks apply to non-`G_rb` rollback targets;
+- work expands beyond §9.1 surface table.
+
+## 10. D5 — Request freeze, retention, and isolated Design A rehearsal
+
+**Depends on:** D0–D4 public contracts stable.
+
+**Execute authorizes:** rehearsal extension, property map update, mixed-mode proof
+inventory update, request-freeze test. **Execute does NOT authorize:** live paths,
+production roots, GC, or canary closure.
+
+### 10.1 Expected surfaces
+
+| Path | Responsibility |
+|---|---|
+| `cg2_rehearsal.py` | Isolated Design A drill through D0→ratification fixture→D1→cutover→rollback; evidence bundle collection; architecture identity = ratified `3d8b151…` |
+| `cg2_property_map.py` | Design A properties/tests; replace false `FrozenGenerationStable` mapping with dedicated mid-request test |
+| `mixed_mode_proof.py` | Include exact retained rollback baselines in retention inventory; physical deletion disabled |
+| `tests/test_cg2_rehearsal.py` | End-to-end isolated drill; no live path |
+| `tests/test_serving_index_repository.py` | `test_frozen_generation_stays_stable_when_pointer_changes_mid_request` |
+| `tests/test_mixed_mode_proof.py` | `G_rb` protected across staging/cutover/rollback/reopen |
+
+Change `ServingIndexRepository` runtime **only** if the dedicated freeze test
+exposes an actual violation; that would exceed §10.1 — STOP for Luna/Ryan first.
+
+### 10.2 Hermetic rehearsal contract
+
+All steps use **temporary roots and temporary Chroma only**. No live/production
+path. No GC. No canary closure. No production D0 capture or Ryan production
+ratification.
+
+Required sequence:
+
+```text
+D0 candidate fixture (hermetic Chroma)
+→ separate independent D0 validation execution
+→ synthetic hermetic Ryan-ratification fixture
+→ D1 G_rb (LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1)
+→ G_canary qualification (KNOWN_MODEL_AND_VECTOR_V1)
+→ first cutover (including fence→crash→fresh-grant resume and
+   fence→guard→crash→fresh-grant resume controls)
+→ request frozen against one authority vector (FrozenGenerationStable)
+→ source advance
+→ G_rb rollback (with D0 chain + query-context checks)
+→ reconciliation persisted
+→ process restart
+→ recover exact rolled-back pointer (same-pointer recovery — not generation switch)
+→ authority re-open verification
+```
+
+Explicit assertions required in rehearsal evidence:
+
+- no live/production path contact;
+- `FrozenGenerationStable` / request freeze;
+- exact first pointer fields (CAS `None`, previous=`G_rb`, active=`G_canary`);
+- fence state monotonic/immutable;
+- first-canary guard open and blocking second promotion;
+- retained `G_rb` protected in inventory;
+- `physical_deletion_disabled=true`;
+- no GC eligibility for baseline;
+- durable reconciliation obligation after source-advanced rollback;
+- source-advanced rollback succeeded only with reconciliation debt present;
+- same-pointer recovery distinct from generation-switch rollback;
+- complete D0 authority chain digests recorded;
+- `G_rb` query-context digest recorded and matched at rollback;
+- restart durability for reconciliation state and fence/guard bytes;
+- production configured paths absent from rehearsal roots.
+
+### 10.3 Evidence bundle fields
+
+Rehearsal JSON must include at minimum:
+
+- architecture SHA `3d8b151…` and execution-plan SHA;
+- implementation SHA at rehearsal tip;
+- D0 candidate, validation, and synthetic ratification digests;
+- ratified and live query-context digests;
+- exact `G_rb` and `G_canary` generation IDs and manifest SHAs;
+- retained-evidence SHA;
+- pointer before/after rollback;
+- fence and guard content hashes;
+- reconciliation state hash before/after restart;
+- retention inventory snapshot;
+- fresh-grant identities for both resume cases;
+- one-acquisition owner-lock oracle results for first cutover and rollback;
+- explicit `no_production_operations=true`.
+
+### 10.4 Red tests first
+
+- Add `tests/test_serving_index_repository.py::test_frozen_generation_stays_stable_when_pointer_changes_mid_request`.
+- Extend mixed-mode tests: `G_rb` remains protected across `G_canary` staging,
+  first cutover, rollback, reopen; physical deletion disabled.
+- Extend `tests/test_cg2_rehearsal.py` for full sequence above under temporary
+  roots only.
+
+### 10.5 D5 verification
+
+```bash
+python -m pytest tests/test_serving_index_repository.py \
+  tests/test_mixed_mode_proof.py \
+  tests/test_cg2_rehearsal.py -q
+python -m pylint $(git ls-files '*.py') --output-format=json > /tmp/pylint-report.json
+python scripts/pylint_regression_gate.py ci \
+  --report /tmp/pylint-report.json \
+  --pylint-status $? \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref 06d9064648c96e46642d1820a504dace8af5ab38
+git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
+```
+
+### 10.6 D5 STOP if
+
+- rehearsal touches configured production roots;
+- a retained baseline is classified abandoned/GC-eligible;
+- frozen-generation test needs a new authority mechanism;
+- rehearsal requires production D0 ratification;
+- work expands beyond §10.1 surface table.
+
+## 11. D6 — Formal model restore and extension
+
+**Depends on:** D0–D4 public contracts stable. Model work begins only after those
+contracts stabilize.
+
+**Execute authorizes:** formal file restoration and extension, TLC runs, README
+evidence update. **Execute does NOT authorize:** treating historical TLC runs as
+Design A proof.
+
+### 11.1 Formal surfaces (explicit list)
+
+| Path | Expected change |
+|---|---|
+| `docs/plans/formal/cg2/CG2Authority.tla` | Restore from `e680ce837653698a5be8b78ba02db2f880c40c63`, then add Design A baseline, D0 chain, first-cutover, rollback, recovery, reconciliation, canary-window, query-context (G_rb-only), and refusal transitions |
+| `docs/plans/formal/cg2/CG2Cutover.cfg` | Restore and rerun cutover/read-authority properties against changed shared model |
+| `docs/plans/formal/cg2/CG2StaleReconcile.cfg` | Restore and rerun stale-source reconciliation and recovery properties |
+| `docs/plans/formal/cg2/CG2Rename.cfg` | Restore and rerun rename/pinning properties |
+| `docs/plans/formal/cg2/CG2DesignA.cfg` (new) | Focused exhaustive instance for exact baseline, D0 chain, first cutover, rollback-after-source-advance, recovery separation, canary guard, query-context (G_rb-only) |
+| `docs/plans/formal/cg2/README.md` | Preserve 2026-08-14 evidence as historical old-revision only; map new properties/configs; record separate Design A run |
+
+Restoration diff must be reviewed against `e680ce8` before model edits.
+
+### 11.2 Required new transitions/state
+
+- D0 candidate capture (non-authoritative until ratified);
+- independent D0 validation required;
+- Ryan D0 ratification required for authority;
+- exact LEGACY-set conversion to qualified retained baseline under unknown-model
+  profile;
+- pre-fence structural refusal preserves LEGACY;
+- durable fence without pointer (`FENCED_NO_POINTER`);
+- fresh-grant resume from fence/no-guard/no-pointer;
+- fresh-grant resume from fence/exact-guard/no-pointer;
+- wrong/conflicting guard refusal with no pointer and no LEGACY restoration;
+- first pointer with CAS `NoGen`, previous=`G_rb`, active=`G_canary`;
+- first cutover rebinds current LEGACY root (live reread);
+- ordinary forward promotion with CAS separate from lineage;
+- source advance followed by exact retained-generation rollback;
+- **`G_rb` rollback requires exact query context** (not all retained gens);
+- durable reconciliation-required before/with stale-source rollback;
+- same-pointer recovery with no generation selection;
+- first-canary-open refusal of second forward promotion;
+- GC exclusion for `RETAINED_ROLLBACK_BASELINE`;
+- one acquisition/release interval per authority-changing operation.
+
+### 11.3 Required named properties
+
+**New (ratified amendment):**
+
+| Property | Intent |
+|---|---|
+| `UnknownModelOnlyForRatifiedLegacyBaseline` | Only `G_rb` uses unknown-model profile |
+| `ProspectiveGenerationRequiresKnownWriterModel` | Canary/later gens require known profile |
+| `D0CandidateNotAuthority` | Candidate self-hash alone proves nothing |
+| `D0ValidationRequired` | Validation digest required |
+| `D0RatificationRequired` | Ryan ratification required for authority |
+| `FirstCutoverRebindsCurrentLegacyRoot` | Live LEGACY reread before fence |
+| `GRollbackRequiresExactQueryContext` | **G_rb / LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1 only** |
+
+**Prior Design A properties (carry forward):**
+
+- `FirstCutoverHasExactRollbackBaseline`
+- `FirstCutoverGenerationsDistinct`
+- `CASSeparateFromRollbackLineage`
+- `PreFenceRefusalPreservesLegacy`
+- `PostFenceFailureNeverLegacy`
+- `FenceCrashResumeRequiresFreshGrant`
+- `GuardCrashResumeRequiresFreshGrant`
+- `WrongGuardRefusesFirstPointer`
+- `RollbackAfterSourceAdvanceKeepsReconciliation`
+- `RollbackNeverResurrectsLegacy`
+- `RecoveryNeverSwitchesGeneration`
+- `FirstCanaryBlocksSecondPromotion`
+- `RollbackBaselineNeverGCEligible`
+- `AuthorityOperationAcquiresOwnerLockOnce`
+
+**Prior architecture properties (from restored model — must remain checked):**
+
+- fence monotonicity; `FENCED_NO_POINTER`; first-cutover CAS;
+- rollback/recovery distinction; stale-source reconciliation;
+- canary-open guard; retention/no-GC; `FrozenGenerationStable` where applicable.
+
+### 11.4 TLC invocation (all four configurations required)
+
+```bash
+TLA_JAR=/path/to/tla2tools.jar  # record exact JAR path, TLC version, checksum
+
+for config in CG2Cutover CG2StaleReconcile CG2Rename CG2DesignA; do
+  java -Xmx2g -XX:+UseParallelGC -cp "$TLA_JAR" tlc2.TLC \
+    -workers 2 -coverage 1 \
+    -config "docs/plans/formal/cg2/${config}.cfg" \
+    docs/plans/formal/cg2/CG2Authority.tla
+done
+```
+
+**Success criteria per configuration:**
+
+- empty error queue, zero counterexamples;
+- generated/distinct state counts and depth recorded in README;
+- nonzero action coverage for every required new transition;
+- no skipped configuration accepted;
+- timeout is not PASS — investigate or STOP.
+
+**Evidence recording:** TLA+ release/JAR checksum, exact command lines, per-config
+generated/distinct counts, depth, coverage summary. README preserves 2026-08-14
+counts as historical old-revision evidence only; Design A run is a separate section.
+
+Historical TLC results at `e680ce8` / 2026-08-14 remain old-revision evidence only.
+
+### 11.5 D6 verification
+
+```bash
+for config in CG2Cutover CG2StaleReconcile CG2Rename CG2DesignA; do
+  java -Xmx2g -XX:+UseParallelGC -cp "$TLA_JAR" tlc2.TLC \
+    -workers 2 -coverage 1 \
+    -config "docs/plans/formal/cg2/${config}.cfg" \
+    docs/plans/formal/cg2/CG2Authority.tla
+done
+git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
+```
+
+### 11.6 D6 STOP if
+
+- TLC finds a counterexample;
+- any required action has zero coverage;
+- restored model cannot be tied to `e680ce8`;
+- a property needs an architecture decision not already locked at `3d8b151…`;
+- `GRollbackRequiresExactQueryContext` is scoped beyond `G_rb`;
+- work expands beyond §11.1 surface table.
+
+## 12. D7 — Execute closure, evidence, and Ryan stop
+
+**Depends on:** D0–D6 pass at **one implementation tip**.
+
+**Execute authorizes:** evidence collectors, property map, VERIFY row updates
+(within Execute evidence phase). **Execute does NOT authorize:** production
+operations listed in §12.4.
+
+### 12.1 Execute-time tasks
+
+After D0–D6 pass at one tip:
+
+1. Update `cg2_property_map.py` with every Design A property → exact pytest
+   node mapping (including D0 properties and dedicated `FrozenGenerationStable`).
+2. Update `cg2_rehearsal.collect_execute_evidence()` with canonical architecture
+   SHA `3d8b151…`, execution-plan SHA, implementation SHA, model SHA, focused/full
+   test results, TLC evidence identities, D0 chain fixture digests, and explicit
+   no-production flags.
+3. Update `docs/plans/VERIFY-cg2-production-activation.md` mechanical rows **only
+   after implementation evidence exists** — do not edit VERIFY during planning.
+4. Request independent review of the exact implementation/model tip.
+5. Stop for Ryan. Do not build production generations or prepare V8c.
+
+### 12.2 Required final mechanical bundle
+
+Before Ryan Execute-close stop, all of the following must pass at the **same**
+implementation tip:
+
+```bash
+# Focused Design A suites (D0–D6)
+python -m pytest tests/test_cg2_legacy_vector_attestation.py -q
+python -m pytest tests/test_cg2_rollback_baseline.py \
+  tests/test_file_generation_store.py \
+  tests/test_file_generation_contract.py -q
+python -m pytest tests/test_file_generation_pointer.py \
+  tests/test_file_generation_validate.py \
+  tests/test_source_freshness_promotion.py -q
+python -m pytest tests/test_cg2_first_cutover.py \
+  tests/test_serving_authority.py \
+  tests/test_serving_index_repository.py -q
+python -m pytest tests/test_source_reconciler.py -q
+python -m pytest tests/test_mixed_mode_proof.py \
+  tests/test_cg2_rehearsal.py -q
+
+# Complete repository suite
+python -m pytest -q
+
+# Pylint regression gate (any runtime Python change in D0–D6)
+python -m pylint $(git ls-files '*.py') --output-format=json > /tmp/pylint-report.json
+python scripts/pylint_regression_gate.py ci \
+  --report /tmp/pylint-report.json \
+  --pylint-status $? \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref 06d9064648c96e46642d1820a504dace8af5ab38
+
+git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
+
+# All four TLC configurations (see §11.4)
+for config in CG2Cutover CG2StaleReconcile CG2Rename CG2DesignA; do
+  java -Xmx2g -XX:+UseParallelGC -cp "$TLA_JAR" tlc2.TLC \
+    -workers 2 -coverage 1 \
+    -config "docs/plans/formal/cg2/${config}.cfg" \
+    docs/plans/formal/cg2/CG2Authority.tla
+done
+
+# Hermetic rehearsal (real public APIs, temporary roots only)
+python -m pytest tests/test_cg2_rehearsal.py -q
+```
+
+Also required in bundle:
+
+- architecture-invariant → implementation → exact test-node map;
+- property-to-test mapping completeness check;
+- architecture SHA `3d8b151…` and plan SHA consistency check;
+- hermetic rehearsal JSON artifact;
+- independent-review PASS naming the exact same tip SHA.
+
+### 12.3 Same-tip rule
+
+Independent final review must inspect the **exact** implementation/evidence tip
+that Ryan would later consider complete. Any implementation correction after
+review invalidates that review and requires re-review of the new exact tip.
+Review of a different SHA, deferral, or partial bundle is not sign-off.
+
+### 12.4 Failure discipline — explicit closure refusal
+
+Execute closure must **refuse** if any of:
+
+- skipped required tests;
+- unexplained timeout (full suite or TLC);
+- partial TLC execution (any of four configs skipped);
+- Pylint regression gate failure;
+- dirty expected worktree or unplanned surface changes;
+- scope expansion beyond §14 surface matrix;
+- production-path contact in tests or rehearsal;
+- changed architecture semantics without Ryan amendment;
+- stale or missing evidence artifacts;
+- review against a different SHA than implementation tip.
+
+### 12.5 Production-negative confirmations
+
+Execute closure must prove **no**:
+
+- production D0 capture;
+- production D0 validation;
+- Ryan production ratification;
+- production `G_rb`;
+- production `G_canary`;
+- production fence;
+- production pointer;
+- owner activation;
+- V8c grant/PASS;
+- canary closure;
+- GC;
+- Shadow;
+- R2b.
+
+Production `G_rb` and `G_canary` identities are necessarily absent from the
+Execute-close bundle; their build is a later separately granted phase.
+
+### 12.6 VERIFY reconciliation (Execute-time only)
+
+During Execute evidence update, reconcile stale VERIFY wording:
+
+- **Current stale wording:** generic "embedding provenance" for both generations.
+- **Required distinction after evidence:**
+  - `G_rb`: historical-vector-state provenance under
+    `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1` (D0 ratified chain);
+  - `G_canary`: known-model-and-vector provenance under
+    `KNOWN_MODEL_AND_VECTOR_V1`.
+
+Do **not** edit VERIFY during planning.
+
+**V6c** remains **PENDING** until real `rollback_active_pointer` drill passes at
+reviewed implementation tip. Mocked pointer rewrite does not satisfy V6c.
+
+**V8c** remains **PENDING** until Ryan accepts complete packet and issues exact
+one-shot activation grant.
+
+## 13. Dependency boundaries
+
+```text
+existing CG-1 contract/store + D0 hermetic substrate
+        │
+        ├── D1 amended G_rb conversion/evidence
+        │       └── retained-baseline protection
+        │
+        └── D2 separated pointer mechanics
+                 │
+                 ├── D3 first-cutover orchestration + open guard
+                 └── D4 rollback + existing reconciliation state
+                          │
+                          └── D5 integrated rehearsal / request freeze
+
+D0–D4 stable contracts ──► D6 formal refinement
+D5 + D6 exact tip ───────► D7 independent review / Ryan HITL
+```
+
+Import direction is one-way:
+
+- `cg2_legacy_vector_attestation.py` never writes pointer or fence; exports D1
+  read boundary only.
+- `cg2_cutover_guard.py` imports only low-level contract/atomic-file helpers.
+- `file_generation_pointer.py` may read the low-level guard but does not import
+  `cg2_first_cutover.py` or the serving repository.
+- `cg2_rollback_baseline.py` uses existing store/manifest contract and D0 chain;
+  never writes pointer or fence.
+- `cg2_first_cutover.py` orchestrates D0 chain, baseline, guard, fence, pointer,
+  source-observation, and reconciliation checks; owns single owner-lock interval;
+  calls private lock-held pointer writer only.
+- `source_reconciler.py` remains the sole durable desired-source queue.
+- `ServingIndexRepository` remains the sole serving read boundary.
+
+No new daemon, CLI command, service, pointer format, current-active registry, or
+rollback authority file is permitted.
+
+## 14. Self-contained allowed-surface matrix (D0–D7)
+
+If fulfilling the ratified architecture requires a surface **outside** this table
+during Execute: **STOP for Luna/Ryan scope review.** Do not silently widen scope.
+Implementation agents must **not** consult superseded plan `c48d9a9…` for omitted
+detail — this table and stage sections above are authoritative.
+
+### D0
+
+| Category | Paths |
+|---|---|
+| Runtime/evidence | `cg2_legacy_vector_attestation.py` (new); `complete_data_restore.py` (minimal extend); read-only refs: `query.py`, `llm.py`, `eval_provenance.py`, `file_generation_contract.py`, `purge_locks.py`, `serving_authority.py` |
+| Tests | `tests/test_cg2_legacy_vector_attestation.py` (new) |
+| Formal | none |
+| Documentation/evidence | none (fixtures inside tests only) |
+
+### D1
+
+| Category | Paths |
+|---|---|
+| Runtime/evidence | `cg2_rollback_baseline.py` (new/amended); `file_generation_store.py` (retained-baseline protection) |
+| Tests | `tests/test_cg2_rollback_baseline.py` (new/amended); `tests/test_file_generation_store.py`; `tests/test_file_generation_contract.py` |
+| Formal | none |
+| Documentation/evidence | none |
+
+### D2
+
+| Category | Paths |
+|---|---|
+| Runtime/evidence | `file_generation_pointer.py`; `cg2_cutover_guard.py` (new) |
+| Tests | `tests/test_file_generation_pointer.py`; `tests/test_file_generation_validate.py`; `tests/test_source_freshness_promotion.py` |
+| Formal | none |
+| Documentation/evidence | none |
+
+### D3
+
+| Category | Paths |
+|---|---|
+| Runtime/evidence | `cg2_first_cutover.py` (new); `cg2_cutover_guard.py`; `serving_authority.py` (fence immutability) |
+| Tests | `tests/test_cg2_first_cutover.py` (new); `tests/test_serving_authority.py`; `tests/test_serving_index_repository.py` |
+| Formal | none |
+| Documentation/evidence | none |
+
+### D4
+
+| Category | Paths |
+|---|---|
+| Runtime/evidence | `file_generation_pointer.py` (`rollback_active_pointer`); `source_reconciler.py` (rollback obligation helper) |
+| Tests | `tests/test_file_generation_pointer.py`; `tests/test_source_reconciler.py`; `tests/test_source_freshness_promotion.py`; `tests/test_cg2_first_cutover.py` |
+| Formal | none |
+| Documentation/evidence | none |
+
+### D5
+
+| Category | Paths |
+|---|---|
+| Runtime/evidence | `cg2_rehearsal.py`; `cg2_property_map.py`; `mixed_mode_proof.py`; `ServingIndexRepository` (only if freeze test exposes violation — else STOP first) |
+| Tests | `tests/test_cg2_rehearsal.py`; `tests/test_serving_index_repository.py`; `tests/test_mixed_mode_proof.py` |
+| Formal | none |
+| Documentation/evidence | rehearsal JSON evidence bundle (generated by tests/collect helper) |
+
+### D6
+
+| Category | Paths |
+|---|---|
+| Runtime/evidence | none |
+| Tests | none (formal verification replaces unit tests for model) |
+| Formal | `docs/plans/formal/cg2/CG2Authority.tla`; `CG2Cutover.cfg`; `CG2StaleReconcile.cfg`; `CG2Rename.cfg`; `CG2DesignA.cfg` (new); `README.md` |
+| Documentation/evidence | TLC run records in formal README |
+
+### D7
+
+| Category | Paths |
+|---|---|
+| Runtime/evidence | `cg2_property_map.py`; `cg2_rehearsal.py` (evidence collector) |
+| Tests | full suite verification (no new tests required unless gap found — then STOP) |
+| Formal | TLC re-run confirmation at closure tip |
+| Documentation/evidence | `docs/plans/VERIFY-cg2-production-activation.md` (Execute-time update only); Execute-close bundle artifact |
+
+### Explicitly out of scope (all stages)
+
+| Category | Paths — no Execute change without separate authorization |
+|---|---|
+| Production operations | live D0 capture; live D0 validation; Ryan production ratification; production `G_rb`/`G_canary`; fence/pointer publication; owner activation; V8c; canary closure; GC; Shadow; R2b |
+| Runtime (frozen) | `convmem.py`, `mcp_server.py`, `watch.py`, `doctor.py`, `chroma_write_store.py`, production config |
+| Architecture/RUNBOOK | read-only inputs at `3d8b151…` |
+
+## 15. Architecture invariant → implementation → test map
+
+| Locked invariant | Implementation surface | Required mechanical evidence |
+|---|---|---|
+| D0 candidate not authority | `cg2_legacy_vector_attestation.py` | validation/ratification required oracles; tampered candidate refuses |
+| D0 validation separate execution | D0 capture vs validation APIs | subprocess/separation oracle |
+| D0 ratification fail-closed | ratification validator | digest mismatch / deletion refuses |
+| Query context G_rb-only | D0 adapter; D1/D3/D4 checks | scoped rollback tests; known-model rollback without D0 |
+| Accepted LEGACY set converts exactly to `G_rb` | `cg2_rollback_baseline.py` + D0 chain | bidirectional equivalence; D0 root match |
+| Ratified convert-v1 fingerprint | `cg2_rollback_baseline.py` constant | deterministic ID/fingerprint test |
+| Unknown-model profile for `G_rb` | manifest under `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1` | UNKNOWN/null historic model fields |
+| Known-model profile for `G_canary` | canary manifest/evidence | `KNOWN_MODEL_AND_VECTOR_V1` binding |
+| Provenance identity preserved | D1 envelope rebind | byte-identical envelope/`assertion_id`/`commitment`; no dedupe/remint |
+| `RETAINED_ROLLBACK_BASELINE` protected | baseline evidence; store protection | non-serving test; stage-`G_canary` test; reopen retention |
+| CAS and durable lineage separate | `file_generation_pointer.py` | forward, first-cutover, rollback pointer-field matrix |
+| Ordinary publish cannot create first pointer | `publish_active_pointer` | `expected_active=None` refusal |
+| First cutover exact `G_rb` + `G_canary` + D0 chain | `cg2_first_cutover.py` | exact IDs/SHAs/D0/query-context tests |
+| `G_rb != G_canary` | first-cutover preflight | equality refusal before fence |
+| Pre-fence refusal remains LEGACY | preflight before commit | refusal matrix |
+| Post-fence failure is `FENCED_NO_POINTER` | one-lock fence/guard/pointer sequence | injected crash test |
+| Fresh-grant resume only | dedicated first-cutover resume | fence→crash→resume; guard→crash→resume |
+| Fence never clears to LEGACY | immutable fence | fence byte identity across failure/rollback |
+| Rollback after source advance | `rollback_active_pointer` | source-advanced rollback + reconciliation |
+| Reconciliation before stale rollback pointer | `source_reconciler.py` | persistence/restart/coalescing test |
+| `G_rb` rollback needs D0 + query context | D4 preflight | G_rb-only oracles; known-model negative |
+| Recovery cannot switch generation | exact-payload recovery | alternate generation negative test |
+| One owner-lock interval per authority change | public orchestration + private writer | reentry-failing `source_flock` oracle |
+| No second promotion during canary | immutable open guard | second forward/first-cutover refusal |
+| Frozen generation stable mid-request | `ServingIndexRepository` | pointer-change-mid-request test |
+| GC disabled / baseline retained | `PHYSICAL_DELETION_DISABLED`; inventory | baseline survives cutover/rollback/reopen |
+| Complete-data restore preserves D0/G_rb | `complete_data_restore.py` | restore matrix tests |
+
+## 16. Reviewer observations (disposition)
 
 | Observation | Disposition in this plan |
 |---|---|
-| Query-context formal property applies to G_rb only | §1.8, D3, D4, D6 property scoped explicitly |
-| VERIFY generic embedding-provenance wording stale | Flagged §12; no VERIFY edit in planning |
-| Ollama runtime version equality operationally significant | Noted §5.6; rehearsal should record runtime version drift risk |
-| D0 candidate/validation must be separate executions | §5.4, D0 tests; optional independent validation lane noted for Ryan |
-| Pin Ollama digest/quant/runtime sources | §5.6 table |
+| Query-context formal property applies to G_rb only | §1.8, §8.2, §9.2, §11.3 `GRollbackRequiresExactQueryContext` scoped to `G_rb` |
+| VERIFY generic embedding-provenance wording stale | §12.6 Execute-time reconciliation; no VERIFY edit in planning |
+| Ollama runtime version equality operationally significant | §5.6 runtime drift paragraph; §10.2 rehearsal records risk |
+| D0 candidate/validation must be separate executions | §5.3–§5.4; D0 tests; optional independent validation lane |
+| Pin Ollama digest/quant/runtime sources | §5.6 exact `/api/tags` and `/api/version` pins; STOP if untrustworthy |
 | Ratification format + fail-closed invalidation explicit | §5.5 |
 | D0 evidence default retain after canary | §5.8 |
-| Quiet-owner preference for later V8c | Noted for production phase outside Execute |
-| Hardware/backend not ratified query context | Explicitly excluded §5.6; optional hermetic measurement only |
+| Quiet-owner preference for later V8c | Noted — production phase outside Execute; LEGACY ingest after D0 invalidates chain |
+| Hardware/backend not ratified query context | §5.6 excluded; optional hermetic measurement only |
 
-## 14. Global scope-stop rule
+## 17. Global scope-stop rule
 
-If Execute discovers required work outside the stage surface tables in §5.1, §6.1,
-and prior-plan D2–D7 tables ( amended dependencies only ), stop for Luna/Ryan
+If Execute discovers required work outside §14 surface matrix, stop for Luna/Ryan
 review. Do not silently widen scope.
 
-## 15. Global STOP conditions
+## 18. Global STOP conditions
 
 Stop and report `UNRESOLVED — Ryan decision required` if:
 
@@ -709,14 +1502,25 @@ Stop and report `UNRESOLVED — Ryan decision required` if:
 - first cutover can skip D0 reread or query-context check;
 - formal model lacks required new properties;
 - pylint regression gate fails;
-- restore path could re-embed and claim same `G_rb`.
+- restore path could re-embed and claim same `G_rb`;
+- ordinary publication can bypass first cutover or open-canary guard;
+- rollback and recovery share target-selection path;
+- successful source-advanced rollback without durable reconciliation debt;
+- any failure path removes fence or resolves post-fence owner as LEGACY;
+- `FENCED_NO_POINTER` resume reuses old grant or overwrites conflicting artifacts;
+- first cutover or rollback reacquires `source_flock` or requires nested locking;
+- `G_rb` becomes abandoned, GC-eligible, or serving without active pointer;
+- TLC counterexample, zero-coverage transition, unexplained test failure, or timeout;
+- required work expands into GC, Shadow, R2b, production activation, or V8c.
 
-## 16. Authorization sequence
+## 19. Authorization sequence
 
-1. Luna reviews this superseding plan against architecture `3d8b151…`.
+1. Luna re-reviews this superseding plan against architecture `3d8b151…`.
 2. Ryan grants Design A Execute against this exact planning commit (or revises).
-3. Cursor implements **D0 → D1 → D2 → …** on a fresh branch; push each slice.
-4. Independent Luna verification signs exact implementation tip.
+3. Cursor implements **D0 → D1 → D2 → …** on a fresh branch; commit and push
+   every slice.
+4. Independent Luna verification signs exact implementation/model tip (same-tip
+   rule §12.3).
 5. Ryan receives Execute-close bundle; separately authorizes production D0, then
    production D1 `G_rb`, then later packet/V8c phases.
 
