@@ -13,7 +13,7 @@
 |---|---|
 | **State** | `READY_FOR_KIRO` |
 | **Branch** | `plan/2026-08-22-recovery-authority` |
-| **Tip SHA** | `8add9a7c9bd78bec3ee71e1d471eade707c9802f` — final package tip; architecture bytes remain `22852a07e66920874045e0e85c4572ab6c0b29b8`. |
+| **Package SHA** | `8add9a7c9bd78bec3ee71e1d471eade707c9802f` — planning-package content commit; later commits only bind pointers and clean Markdown. The final branch tip is reported with this handoff. |
 | **Push status** | Must be pushed to origin before handoff; no merge to main. |
 | **PR** | Not opened |
 | **Ryan GATE** | Kiro Execution Plan verdict, then Ryan's separate Execute grants. |
