@@ -429,6 +429,58 @@ cat > docs/chatgpt-pack/README.md << 'EOF'
 EOF
 echo "  -> docs/chatgpt-pack/README.md"
 
+# --- opencode instructions (config/opencode-instructions-convmem.example.md) ---
+# Plain markdown — no front-matter (opencode instructions= field takes raw md paths).
+# opencode is Tier A (bash allowed) but write-restricted: edit=deny except scratch,
+# record/index denied. Role: research/analysis/review only — never direct code edits.
+# Referenced by opencode.json: "instructions": ["config/opencode-instructions-convmem.example.md"]
+{
+  echo "# convmem — Local knowledge corpus"
+  echo ""
+  echo "You have **shell** (\`convmem\` CLI) and **MCP** (convmem tools via \`opencode.json\` mcp block) on this machine."
+  echo ""
+  echo "**Before answering anything** (including directory listing, git, or docker):"
+  echo ""
+  extract_section TIER_A
+  echo ""
+  echo "## After Tier A — MCP tools (do not repeat brief)"
+  echo ""
+  extract_section MCP_AFTER_TIER_A
+  echo ""
+  echo "## Session close"
+  echo ""
+  extract_section SESSION_CLOSE
+  echo ""
+  echo "## opencode — role and constraints"
+  echo ""
+  echo "opencode is a **read-only research and review lane** in this repo. The \`opencode.json\` permissions deny file edits (except \`.opencode/scratch/\`) and deny \`convmem record\` and \`convmem index\`."
+  echo ""
+  echo "- **Do not** write files outside \`.opencode/scratch/\`."
+  echo "- **Do not** run \`convmem record\`, \`convmem index\`, or \`convmem add\` — these are denied by the permission config."
+  echo "- You are in the **research/analysis** lane: read code, search corpus, ask questions, surface findings."
+  echo "- Handoff: paste findings into chat for Ryan. No markdown logs unless Ryan explicitly requested one."
+  echo "- \`convmem record\` **only** when Ryan says **record block**, **closing**, or **end session** (Ryan runs these)."
+  echo ""
+  extract_section TEAM_CHARTER
+  echo ""
+  echo "## Bounded autonomy"
+  echo ""
+  extract_section BOUNDED_AUTONOMY
+  echo ""
+  echo "## Response TL;DR"
+  echo ""
+  extract_section RESPONSE_TLDR
+  echo ""
+  echo "## Context brief (Who / What / When / Why / How)"
+  echo ""
+  extract_section CONTEXT_BRIEF
+  echo ""
+  echo "## Workflow routing (when unsure)"
+  echo ""
+  extract_section WORKFLOW_ROUTING
+} > config/opencode-instructions-convmem.example.md
+echo "  -> config/opencode-instructions-convmem.example.md"
+
 # --- Crush rules (Tier A — shell + MCP; soak #8: MCP-only ignored) ---
 {
   echo "# convmem — Local knowledge corpus (shell + MCP)"
