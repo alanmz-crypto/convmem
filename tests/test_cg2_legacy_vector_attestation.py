@@ -32,6 +32,13 @@ from cg2_legacy_vector_attestation import (
     validate_d0_ratification_record,
     vector_encoding_sha256,
     verify_d0_chain_for_grb_conversion,
+    _artifact_sha256,
+    _publish_immutable,
+    candidate_path,
+    d0_owner_root,
+    owner_digest,
+    ratification_path,
+    validation_path,
 )
 from chroma_store import ChromaStore
 from complete_data_restore import (
@@ -449,7 +456,6 @@ def test_ratification_missing_mismatch_invalidated(d0_env):
     mismatched["candidate_artifact_sha256"] = "1" * 64
     # record itself still structurally valid, but chain load must refuse
     generation_root = generation_root_for_cfg(d0_env["cfg"])
-    from cg2_legacy_vector_attestation import ratification_path, _publish_immutable
 
     path = ratification_path(generation_root, candidate.owner_digest, "ryan-d0-fixture-1")
     _publish_immutable(path, canonical_bytes(base))
@@ -547,7 +553,6 @@ def test_restore_preserves_d0_and_keeps_backup_evidence_non_authoritative(d0_env
         "capture_time": cand["capture_start_time"],
         "query_embedding_context_sha256": cand["query_embedding_context_sha256"],
     }
-    from cg2_legacy_vector_attestation import _publish_immutable, ratification_path
 
     generation_root = Path(generation_root_for_cfg(d0_env["cfg"]))
     _publish_immutable(
@@ -587,3 +592,339 @@ def test_restore_preserves_d0_and_keeps_backup_evidence_non_authoritative(d0_env
     assert blocked_rows
     assert blocked_rows[0].outcome == OUTCOME_BLOCKED
     assert blocked.exit_code == EXIT_BLOCKED
+
+# ---------------------------------------------------------------------------
+# Luna verification blockers — adversarial authority tests
+# ---------------------------------------------------------------------------
+
+
+def _rehash_and_write_candidate(generation_root, owner_digest_value: str, body: dict) -> str:
+
+    body = dict(body)
+    body.pop("artifact_sha256", None)
+    sha = _artifact_sha256(body, "artifact_sha256")
+    body["artifact_sha256"] = sha
+    _publish_immutable(
+        candidate_path(generation_root, owner_digest_value, sha),
+        canonical_bytes(body),
+    )
+    return sha
+
+
+def _rehash_and_write_validation(generation_root, owner_digest_value: str, body: dict) -> str:
+
+    body = dict(body)
+    body.pop("validation_result_sha256", None)
+    sha = _artifact_sha256(body, "validation_result_sha256")
+    body["validation_result_sha256"] = sha
+    _publish_immutable(
+        validation_path(generation_root, owner_digest_value, sha),
+        canonical_bytes(body),
+    )
+    return sha
+
+
+def _ratification_record(
+    candidate_sha: str, validation_sha: str, cand: dict, ratification_id: str
+) -> dict:
+    return {
+        "schema_version": CG2_D0_RATIFICATION_V1,
+        "ratification_id": ratification_id,
+        "candidate_artifact_sha256": candidate_sha,
+        "validation_result_sha256": validation_sha,
+        "owner_key": cand["owner_key"],
+        "owner_digest": cand["owner_digest"],
+        "accepted_legacy_snapshot_root": cand["accepted_legacy_snapshot_root"],
+        "accepted_legacy_vector_root": cand["accepted_legacy_vector_root"],
+        "producer_repository_sha": cand["producer_repository_sha"],
+        "capture_identity": cand["capture_module_identity"],
+        "capture_time": cand["capture_start_time"],
+        "query_embedding_context_sha256": cand["query_embedding_context_sha256"],
+    }
+
+
+def test_validation_refuses_narrowed_collections_empty(d0_env):
+    candidate = _capture(d0_env)
+    body = json.loads(candidate.path.read_text(encoding="utf-8"))
+    body["collections"] = []
+    sha = _rehash_and_write_candidate(
+        generation_root_for_cfg(d0_env["cfg"]), candidate.owner_digest, body
+    )
+    with pytest.raises(D0AttestationError):
+        _validate(d0_env, sha)
+
+
+def test_validation_refuses_removed_collection(d0_env):
+    candidate = _capture(d0_env)
+    body = json.loads(candidate.path.read_text(encoding="utf-8"))
+    assert len(body["collections"]) >= 1
+    body["collections"] = body["collections"][:-1]
+    sha = _rehash_and_write_candidate(
+        generation_root_for_cfg(d0_env["cfg"]), candidate.owner_digest, body
+    )
+    with pytest.raises(D0AttestationError):
+        _validate(d0_env, sha)
+
+
+def test_validation_refuses_removed_leaf(d0_env):
+    candidate = _capture(d0_env)
+    body = json.loads(candidate.path.read_text(encoding="utf-8"))
+    target = body["collections"][0]
+    assert target["leaves"]
+    target["leaves"] = target["leaves"][:-1]
+    target["row_count"] = len(target["leaves"])
+    sha = _rehash_and_write_candidate(
+        generation_root_for_cfg(d0_env["cfg"]), candidate.owner_digest, body
+    )
+    with pytest.raises(D0AttestationError):
+        _validate(d0_env, sha)
+
+
+def test_validation_refuses_changed_dimension(d0_env):
+    candidate = _capture(d0_env)
+    body = json.loads(candidate.path.read_text(encoding="utf-8"))
+    for collection in body["collections"]:
+        collection["embedding_dimension"] = int(collection["embedding_dimension"]) + 7
+    sha = _rehash_and_write_candidate(
+        generation_root_for_cfg(d0_env["cfg"]), candidate.owner_digest, body
+    )
+    with pytest.raises(D0AttestationError):
+        _validate(d0_env, sha)
+
+
+def test_validation_refuses_changed_canonical_source(d0_env):
+    candidate = _capture(d0_env)
+    body = json.loads(candidate.path.read_text(encoding="utf-8"))
+    body["canonical_source_path"] = f"{body['canonical_source_path']}-mutated"
+    sha = _rehash_and_write_candidate(
+        generation_root_for_cfg(d0_env["cfg"]), candidate.owner_digest, body
+    )
+    with pytest.raises(D0AttestationError):
+        _validate(d0_env, sha)
+
+
+def test_validation_refuses_changed_accepted_source(d0_env):
+    candidate = _capture(d0_env)
+    body = json.loads(candidate.path.read_text(encoding="utf-8"))
+    body["accepted_source_hash"] = "ab" * 32
+    sha = _rehash_and_write_candidate(
+        generation_root_for_cfg(d0_env["cfg"]), candidate.owner_digest, body
+    )
+    with pytest.raises(D0AttestationError):
+        _validate(d0_env, sha)
+
+
+def test_validation_refuses_query_context_payload_with_stale_digest(d0_env):
+    candidate = _capture(d0_env)
+    body = json.loads(candidate.path.read_text(encoding="utf-8"))
+    context = dict(body["query_embedding_context"])
+    context["embedding_runtime_version"] = f"{context['embedding_runtime_version']}-mutated"
+    body["query_embedding_context"] = context
+    sha = _rehash_and_write_candidate(
+        generation_root_for_cfg(d0_env["cfg"]), candidate.owner_digest, body
+    )
+    with pytest.raises(D0AttestationError):
+        _validate(d0_env, sha)
+
+
+def test_validation_refuses_leaf_metadata_change_without_root_update(d0_env):
+    candidate = _capture(d0_env)
+    body = json.loads(candidate.path.read_text(encoding="utf-8"))
+    leaf = body["collections"][0]["leaves"][0]
+    leaf["document_hash"] = "cd" * 32
+    sha = _rehash_and_write_candidate(
+        generation_root_for_cfg(d0_env["cfg"]), candidate.owner_digest, body
+    )
+    with pytest.raises(D0AttestationError):
+        _validate(d0_env, sha)
+
+
+def test_cross_owner_substitution_refuses_chain_load(d0_env, tmp_path):
+    import shutil
+
+    candidate = _capture(d0_env)
+    validation = _validate(d0_env, candidate.candidate_sha256)
+    cand = json.loads(candidate.path.read_text(encoding="utf-8"))
+    generation_root = Path(generation_root_for_cfg(d0_env["cfg"]))
+
+    other_source = tmp_path / "other-owner.txt"
+    other_source.write_text("other-owner", encoding="utf-8")
+    other_key = ownership_key(str(other_source))
+    other_digest = owner_digest(other_key)
+
+    shutil.copytree(
+        d0_owner_root(generation_root, candidate.owner_digest),
+        d0_owner_root(generation_root, other_digest),
+    )
+    record = _ratification_record(
+        candidate.candidate_sha256,
+        validation.validation_result_sha256,
+        {**cand, "owner_key": other_key, "owner_digest": other_digest},
+        "cross-owner-ratification",
+    )
+    _publish_immutable(
+        ratification_path(generation_root, other_digest, "cross-owner-ratification"),
+        canonical_bytes(record),
+    )
+    with pytest.raises(D0AttestationError):
+        load_ratified_d0_chain(
+            generation_root,
+            owner_digest=other_digest,
+            ratification_id="cross-owner-ratification",
+        )
+
+
+def test_owner_key_digest_inconsistency_and_candidate_validation_owner_mismatch(d0_env):
+    candidate = _capture(d0_env)
+    validation = _validate(d0_env, candidate.candidate_sha256)
+    cand = json.loads(candidate.path.read_text(encoding="utf-8"))
+    generation_root = Path(generation_root_for_cfg(d0_env["cfg"]))
+
+    bad_key = _ratification_record(
+        candidate.candidate_sha256,
+        validation.validation_result_sha256,
+        cand,
+        "owner-key-mismatch",
+    )
+    bad_key["owner_key"] = f"{d0_env['owner_key']}-other"
+    with pytest.raises(D0AttestationError):
+        validate_d0_ratification_record(bad_key)
+
+    val = json.loads(validation.path.read_text(encoding="utf-8"))
+    val["owner_key"] = f"{d0_env['owner_key']}-other"
+    val_sha = _rehash_and_write_validation(generation_root, candidate.owner_digest, val)
+    record = _ratification_record(
+        candidate.candidate_sha256, val_sha, cand, "cand-val-owner-mismatch"
+    )
+    _publish_immutable(
+        ratification_path(generation_root, candidate.owner_digest, "cand-val-owner-mismatch"),
+        canonical_bytes(record),
+    )
+    with pytest.raises(D0AttestationError):
+        load_ratified_d0_chain(
+            generation_root,
+            owner_digest=candidate.owner_digest,
+            ratification_id="cand-val-owner-mismatch",
+        )
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "accepted_legacy_snapshot_root",
+        "accepted_legacy_vector_root",
+        "owner_digest",
+        "candidate_artifact_sha256",
+        "query_embedding_context_sha256",
+    ],
+)
+def test_chain_load_refuses_self_rehashed_validation_drift(d0_env, field):
+    candidate = _capture(d0_env)
+    validation = _validate(d0_env, candidate.candidate_sha256)
+    cand = json.loads(candidate.path.read_text(encoding="utf-8"))
+    generation_root = Path(generation_root_for_cfg(d0_env["cfg"]))
+    body = json.loads(validation.path.read_text(encoding="utf-8"))
+    body[field] = "ef" * 32
+    val_sha = _rehash_and_write_validation(generation_root, candidate.owner_digest, body)
+    record = _ratification_record(
+        candidate.candidate_sha256, val_sha, cand, f"val-drift-{field}"
+    )
+    _publish_immutable(
+        ratification_path(generation_root, candidate.owner_digest, f"val-drift-{field}"),
+        canonical_bytes(record),
+    )
+    with pytest.raises(D0AttestationError):
+        load_ratified_d0_chain(
+            generation_root,
+            owner_digest=candidate.owner_digest,
+            ratification_id=f"val-drift-{field}",
+        )
+
+
+@pytest.mark.parametrize(
+    "bad_id",
+    ["../../outside", "../x", "/x", "a/b", r"a\b", "..", "."],
+)
+def test_ratification_id_path_traversal_refused(d0_env, bad_id):
+
+    generation_root = Path(generation_root_for_cfg(d0_env["cfg"]))
+    with pytest.raises(D0AttestationError):
+        ratification_path(generation_root, "ab" * 32, bad_id)
+
+
+def test_ratification_id_single_component_still_works(d0_env):
+
+    generation_root = Path(generation_root_for_cfg(d0_env["cfg"]))
+    path = ratification_path(generation_root, "ab" * 32, "ryan-ok-id")
+    assert path.name == "ryan-ok-id.json"
+    assert path.parent.name == "ratifications"
+
+
+def test_ollama_tags_require_unique_exact_match(d0_env, monkeypatch):
+    class _Resp:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._payload
+
+    def _set_tags(models):
+        def _get(url, timeout=5):  # pylint: disable=unused-argument
+            if url.endswith("/api/tags"):
+                return _Resp({"models": models})
+            if url.endswith("/api/version"):
+                return _Resp({"version": "0.11.4"})
+            raise AssertionError(url)
+
+        monkeypatch.setattr("cg2_legacy_vector_attestation.requests.get", _get)
+        monkeypatch.setattr(
+            "cg2_legacy_vector_attestation.ollama_embed",
+            lambda text, model, host: [0.01, 0.02, 0.03],
+        )
+
+    _set_tags([])
+    with pytest.raises(D0AttestationError):
+        derive_query_embedding_context(d0_env["cfg"], admitted_dimension=3)
+
+    for field in ("name", "model"):
+        entry = {
+            "name": "other",
+            "model": "other",
+            "digest": f"sha256:{'11' * 32}",
+            "details": {"quantization_level": "Q4_0"},
+        }
+        entry[field] = MODEL
+        _set_tags([entry])
+        ctx, digest = derive_query_embedding_context(d0_env["cfg"], admitted_dimension=3)
+        assert digest
+        assert ctx["query_embedding_model_identifier"] == MODEL
+
+    both = {
+        "name": MODEL,
+        "model": MODEL,
+        "digest": f"sha256:{'22' * 32}",
+        "details": {"quantization_level": "Q4_0"},
+    }
+    _set_tags([both])
+    derive_query_embedding_context(d0_env["cfg"], admitted_dimension=3)
+
+    ambiguous = [
+        {
+            "name": MODEL,
+            "model": "x",
+            "digest": f"sha256:{'33' * 32}",
+            "details": {"quantization_level": "Q4_0"},
+        },
+        {
+            "name": "y",
+            "model": MODEL,
+            "digest": f"sha256:{'44' * 32}",
+            "details": {"quantization_level": "Q5_0"},
+        },
+    ]
+    _set_tags(ambiguous)
+    with pytest.raises(D0AttestationError, match="ambiguous|multiple"):
+        derive_query_embedding_context(d0_env["cfg"], admitted_dimension=3)

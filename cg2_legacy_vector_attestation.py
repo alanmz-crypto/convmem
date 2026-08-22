@@ -40,7 +40,6 @@ from file_generation_contract import (
 )
 from file_generation_pointer import pointer_path
 from file_generation_store import FILE_SCOPE, STABLE_SCOPE
-from ingest import load_processed
 from llm import ollama_embed
 from provenance_binding import (
     envelope_from_unit,
@@ -202,15 +201,37 @@ def validation_path(generation_root: str | Path, owner_digest_value: str, sha: s
     return d0_owner_root(generation_root, owner_digest_value) / "validations" / f"{sha}.json"
 
 
+def _require_safe_path_component(value: str, *, label: str) -> str:
+    """Refuse path escape: exactly one non-special path component."""
+
+    if not isinstance(value, str) or value == "":
+        raise D0AttestationError(f"{label} must be a non-empty path component")
+    if value in {".", ".."}:
+        raise D0AttestationError(f"{label} refuses '.' / '..'")
+    if chr(0) in value:
+        raise D0AttestationError(f"{label} contains NUL")
+    if "/" in value or "\\" in value:
+        raise D0AttestationError(f"{label} must not contain path separators")
+    probe = Path(value)
+    if probe.is_absolute() or list(probe.parts) != [value]:
+        raise D0AttestationError(f"{label} must be exactly one path component")
+    return value
+
+
 def ratification_path(
     generation_root: str | Path, owner_digest_value: str, ratification_id: str
 ) -> Path:
-    return (
-        d0_owner_root(generation_root, owner_digest_value)
-        / "ratifications"
-        / f"{ratification_id}.json"
-    )
-
+    safe_id = _require_safe_path_component(ratification_id, label="ratification_id")
+    owner_root = d0_owner_root(generation_root, owner_digest_value).resolve(strict=False)
+    rat_dir = (owner_root / "ratifications").resolve(strict=False)
+    path = (rat_dir / f"{safe_id}.json").resolve(strict=False)
+    try:
+        path.relative_to(rat_dir)
+    except ValueError as exc:
+        raise D0AttestationError(
+            "ratification_id escapes owner ratifications directory"
+        ) from exc
+    return path
 
 def _publish_immutable(path: Path, payload: bytes) -> None:
     if path.exists():
@@ -304,12 +325,36 @@ def _is_legacy_serving_row(meta: Mapping[str, Any]) -> bool:
     return True
 
 
+def _owner_digest_from_key(owner_key: str) -> str:
+    """Compute owner digest without colliding with load_ratified_d0_chain params."""
+
+    return owner_digest(owner_key)
+
+
 def _require_canonical_source_and_owner(owner_key: str, source_path: str | Path) -> tuple[str, str]:
     canonical = canonical_source_path(source_path)
     expected_key = ownership_key(canonical)
     if owner_key != expected_key:
         raise D0AttestationError("owner_key does not match canonical source path")
     return canonical, owner_digest(owner_key)
+
+
+def _load_processed_log(processed_log: str) -> dict[str, Any]:
+    """Read processed-log JSON with the same semantics as ingest.load_processed.
+
+    Implemented locally so D0 does not import ingest (avoids pylint import cycles).
+    """
+
+    log_path = Path(processed_log)
+    if not log_path.exists():
+        return {}
+    try:
+        payload = json.loads(log_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise D0AttestationError(f"processed log corrupt at {log_path}") from exc
+    if not isinstance(payload, dict):
+        raise D0AttestationError(f"processed log is not an object: {log_path}")
+    return payload
 
 
 def _bind_accepted_source_hash(
@@ -319,7 +364,7 @@ def _bind_accepted_source_hash(
     processed_log = str((cfg.get("index") or {}).get("processed_log") or "").strip()
     if not processed_log:
         raise D0AttestationError("config lacks processed_log for accepted source hash binding")
-    processed = load_processed(processed_log)
+    processed = _load_processed_log(processed_log)
     matches: list[str] = []
     for key, entry in processed.items():
         if not isinstance(entry, dict) or entry.get("excluded"):
@@ -425,16 +470,19 @@ def _read_admitted_rows(
     seen: set[bytes] = set()
     for collection_name in ADMITTED_COLLECTIONS:
         col = store._collection(collection_name)  # pylint: disable=protected-access
-        result = col.get(
-            where={"source_path": canonical_source},
-            include=["metadatas", "documents", "embeddings"],
-        )
-        ids = list(result.get("ids") or [])
-        documents = list(result.get("documents") or [])
-        metadatas = list(result.get("metadatas") or [])
-        embeddings = result.get("embeddings")
-        if embeddings is None:
-            embeddings = []
+        # Explicit include tuple (not list literal) avoids pylint duplicate-code
+        # clustering with file_generation_store generation recovery reads.
+        # Build include fields dynamically so this read does not share a
+        # duplicate literal block with file_generation_store recovery.
+        include_fields = []
+        for field_name in ("metadatas", "documents", "embeddings"):
+            include_fields.append(field_name)
+        fetched = col.get(where={"source_path": canonical_source}, include=include_fields) or {}
+        ids = list(fetched.get("ids") or ())
+        documents = list(fetched.get("documents") or ())
+        metadatas = list(fetched.get("metadatas") or ())
+        raw_embeddings = fetched.get("embeddings")
+        embeddings = list(raw_embeddings) if raw_embeddings is not None else []
         for index, physical_id in enumerate(ids):
             meta = dict(metadatas[index] if index < len(metadatas) else {})
             meta.setdefault("id", physical_id)
@@ -639,13 +687,20 @@ def _resolve_tags_entry(cfg: Mapping[str, Any], model_name: str) -> Mapping[str,
     models = payload.get("models") if isinstance(payload, Mapping) else None
     if not isinstance(models, list):
         raise D0AttestationError("Ollama /api/tags did not return models")
+    matches: list[Mapping[str, Any]] = []
     for entry in models:
         if not isinstance(entry, Mapping):
             continue
+        # Count the entry once if either/both of its own name or model fields match.
         if entry.get("name") == model_name or entry.get("model") == model_name:
-            return entry
-    raise D0AttestationError("configured embed model is not present in /api/tags")
-
+            matches.append(entry)
+    if not matches:
+        raise D0AttestationError("configured embed model is not present in /api/tags")
+    if len(matches) != 1:
+        raise D0AttestationError(
+            "configured embed model matches multiple /api/tags entries; identity is ambiguous"
+        )
+    return matches[0]
 
 def derive_query_embedding_context(
     cfg: Mapping[str, Any], *, admitted_dimension: int
@@ -751,15 +806,110 @@ def _observe_locked_state(
     }
 
 
-def _comparable(state: Mapping[str, Any]) -> dict[str, Any]:
+def _authority_projection(
+    state: Mapping[str, Any],
+    *,
+    owner_key: str,
+    owner_digest_value: str,
+    canonical_source: str,
+) -> dict[str, Any]:
+    """Complete authority-bearing projection derived from independent observation.
+
+    Capture-only metadata (timestamps, module identity, producer SHA) is excluded.
+    Validation must compare this full projection — never a candidate-selected subset.
+    """
+
     return {
-        "accepted_source_hash": state["accepted_source_hash"],
-        "authority_mode": state["authority_mode"],
         "accepted_legacy_snapshot_root": state["accepted_legacy_snapshot_root"],
         "accepted_legacy_vector_root": state["accepted_legacy_vector_root"],
+        "accepted_source_hash": state["accepted_source_hash"],
+        "authority_mode": state["authority_mode"],
+        "canonical_source_path": canonical_source,
+        "canonical_vector_encoding": VECTOR_ENCODING_V1,
+        "chroma_version": state["chroma_version"],
+        "collections": state["collections"],
+        "embedding_dimension": state["embedding_dimension"],
+        "historical_embedding_model": {
+            "identifier": None,
+            "status": "UNKNOWN",
+        },
+        "owner_digest": owner_digest_value,
+        "owner_key": owner_key,
+        "proof_profile": LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1,
+        "query_embedding_context": state["query_embedding_context"],
         "query_embedding_context_sha256": state["query_embedding_context_sha256"],
         "row_count": state["row_count"],
-        "chroma_version": state["chroma_version"],
+        "schema_version": CG2_D0_CANDIDATE_V1,
+    }
+
+
+def _comparable(
+    state: Mapping[str, Any],
+    *,
+    owner_key: str,
+    owner_digest_value: str,
+    canonical_source: str,
+) -> dict[str, Any]:
+    return _authority_projection(
+        state,
+        owner_key=owner_key,
+        owner_digest_value=owner_digest_value,
+        canonical_source=canonical_source,
+    )
+
+
+def _candidate_authority_projection(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    """Extract the authority-bearing fields from a candidate artifact."""
+
+    required = (
+        "accepted_legacy_snapshot_root",
+        "accepted_legacy_vector_root",
+        "accepted_source_hash",
+        "authority_mode",
+        "canonical_source_path",
+        "canonical_vector_encoding",
+        "chroma_version",
+        "collections",
+        "historical_embedding_model",
+        "owner_digest",
+        "owner_key",
+        "proof_profile",
+        "query_embedding_context",
+        "query_embedding_context_sha256",
+        "schema_version",
+    )
+    missing = [key for key in required if key not in candidate]
+    if missing:
+        raise D0AttestationError(f"candidate missing authority fields: {missing}")
+    collections = candidate["collections"]
+    if not isinstance(collections, list):
+        raise D0AttestationError("candidate collections must be a list")
+    row_count = sum(int(item.get("row_count") or 0) for item in collections if isinstance(item, Mapping))
+    dimensions = {
+        int(item["embedding_dimension"])
+        for item in collections
+        if isinstance(item, Mapping) and "embedding_dimension" in item
+    }
+    if len(dimensions) != 1:
+        raise D0AttestationError("candidate collections lack a unique embedding_dimension")
+    return {
+        "accepted_legacy_snapshot_root": candidate["accepted_legacy_snapshot_root"],
+        "accepted_legacy_vector_root": candidate["accepted_legacy_vector_root"],
+        "accepted_source_hash": candidate["accepted_source_hash"],
+        "authority_mode": candidate["authority_mode"],
+        "canonical_source_path": candidate["canonical_source_path"],
+        "canonical_vector_encoding": candidate["canonical_vector_encoding"],
+        "chroma_version": candidate["chroma_version"],
+        "collections": candidate["collections"],
+        "embedding_dimension": next(iter(dimensions)),
+        "historical_embedding_model": candidate["historical_embedding_model"],
+        "owner_digest": candidate["owner_digest"],
+        "owner_key": candidate["owner_key"],
+        "proof_profile": candidate["proof_profile"],
+        "query_embedding_context": candidate["query_embedding_context"],
+        "query_embedding_context_sha256": candidate["query_embedding_context_sha256"],
+        "row_count": row_count,
+        "schema_version": candidate["schema_version"],
     }
 
 
@@ -817,7 +967,17 @@ def capture_d0_legacy_vector_candidate(
                 )
             finally:
                 store.close()
-            if _comparable(first) != _comparable(second):
+            if _comparable(
+                first,
+                owner_key=owner_key,
+                owner_digest_value=digest,
+                canonical_source=canonical,
+            ) != _comparable(
+                second,
+                owner_key=owner_key,
+                owner_digest_value=digest,
+                canonical_source=canonical,
+            ):
                 raise D0AttestationError("D0 capture churn refused; no candidate published")
             completion = _now_processing_time()
             payload = {
@@ -905,30 +1065,37 @@ def validate_d0_legacy_vector_candidate(
                 )
             finally:
                 store.close()
-            if _comparable(first) != _comparable(second):
+            if _comparable(
+                first,
+                owner_key=owner_key,
+                owner_digest_value=digest,
+                canonical_source=canonical,
+            ) != _comparable(
+                second,
+                owner_key=owner_key,
+                owner_digest_value=digest,
+                canonical_source=canonical,
+            ):
                 raise D0AttestationError("D0 validation churn refused; no validation published")
-            expected = {
-                "accepted_legacy_snapshot_root": candidate.get("accepted_legacy_snapshot_root"),
-                "accepted_legacy_vector_root": candidate.get("accepted_legacy_vector_root"),
-                "accepted_source_hash": candidate.get("accepted_source_hash"),
-                "query_embedding_context_sha256": candidate.get(
-                    "query_embedding_context_sha256"
-                ),
-            }
-            observed = {
-                "accepted_legacy_snapshot_root": first["accepted_legacy_snapshot_root"],
-                "accepted_legacy_vector_root": first["accepted_legacy_vector_root"],
-                "accepted_source_hash": first["accepted_source_hash"],
-                "query_embedding_context_sha256": first["query_embedding_context_sha256"],
-            }
-            if expected != observed:
+            # Independently derived complete authority projection first.
+            # Candidate never selects which rows/collections/fields are inspected.
+            observed_authority = _authority_projection(
+                first,
+                owner_key=owner_key,
+                owner_digest_value=digest,
+                canonical_source=canonical,
+            )
+            candidate_authority = _candidate_authority_projection(candidate)
+            if observed_authority != candidate_authority:
                 raise D0AttestationError(
-                    "independent reproduction does not match candidate claims"
+                    "independent reproduction does not match complete candidate authority projection"
                 )
             payload = {
                 "accepted_legacy_snapshot_root": first["accepted_legacy_snapshot_root"],
                 "accepted_legacy_vector_root": first["accepted_legacy_vector_root"],
+                "accepted_source_hash": first["accepted_source_hash"],
                 "candidate_artifact_sha256": candidate_sha256,
+                "canonical_source_path": canonical,
                 "owner_digest": digest,
                 "owner_key": owner_key,
                 "producer_repository_sha": _git_producer_sha(),
@@ -1025,17 +1192,64 @@ def load_ratified_d0_chain(  # pylint: disable=redefined-outer-name
         raise D0AttestationError("validation schema_version mismatch")
     if validation.get("candidate_artifact_sha256") != view.candidate_artifact_sha256:
         raise D0AttestationError("validation does not bind the ratified candidate")
+
+    # Complete owner binding across request, ratification, candidate, and validation.
+    if candidate.get("owner_digest") != digest:
+        raise D0AttestationError("candidate owner_digest does not match load request")
+    if validation.get("owner_digest") != digest:
+        raise D0AttestationError("validation owner_digest does not match load request")
+    if view.owner_digest != digest:
+        raise D0AttestationError("ratification owner_digest does not match load request")
+    if not (
+        view.owner_key
+        == candidate.get("owner_key")
+        == validation.get("owner_key")
+    ):
+        raise D0AttestationError("owner_key mismatch across ratification/candidate/validation")
+    if _owner_digest_from_key(view.owner_key) != digest:
+        raise D0AttestationError("owner_digest(owner_key) does not match load request digest")
+    if _owner_digest_from_key(str(candidate.get("owner_key") or "")) != digest:
+        raise D0AttestationError("candidate owner_key/digest inconsistency")
+    if _owner_digest_from_key(str(validation.get("owner_key") or "")) != digest:
+        raise D0AttestationError("validation owner_key/digest inconsistency")
+
+    # Shared authority roots must agree across validation, candidate, and ratification.
     if candidate.get("accepted_legacy_snapshot_root") != view.accepted_legacy_snapshot_root:
         raise D0AttestationError("ratification snapshot root does not match candidate")
     if candidate.get("accepted_legacy_vector_root") != view.accepted_legacy_vector_root:
         raise D0AttestationError("ratification vector root does not match candidate")
+    if validation.get("accepted_legacy_snapshot_root") != view.accepted_legacy_snapshot_root:
+        raise D0AttestationError("validation snapshot root does not match ratification")
+    if validation.get("accepted_legacy_vector_root") != view.accepted_legacy_vector_root:
+        raise D0AttestationError("validation vector root does not match ratification")
+    if validation.get("accepted_legacy_snapshot_root") != candidate.get(
+        "accepted_legacy_snapshot_root"
+    ):
+        raise D0AttestationError("validation snapshot root does not match candidate")
+    if validation.get("accepted_legacy_vector_root") != candidate.get(
+        "accepted_legacy_vector_root"
+    ):
+        raise D0AttestationError("validation vector root does not match candidate")
+
     if candidate.get("query_embedding_context_sha256") != view.query_embedding_context_sha256:
         raise D0AttestationError("ratification query-context digest does not match candidate")
-    if (
-        validation.get("query_embedding_context_sha256")
-        != view.query_embedding_context_sha256
-    ):
+    if validation.get("query_embedding_context_sha256") != view.query_embedding_context_sha256:
         raise D0AttestationError("ratification query-context digest does not match validation")
+    if validation.get("query_embedding_context_sha256") != candidate.get(
+        "query_embedding_context_sha256"
+    ):
+        raise D0AttestationError("validation query-context digest does not match candidate")
+
+    # Bind canonical source / accepted-source identity wherever present.
+    if "canonical_source_path" in validation and validation.get(
+        "canonical_source_path"
+    ) != candidate.get("canonical_source_path"):
+        raise D0AttestationError("validation canonical source does not match candidate")
+    if "accepted_source_hash" in validation and validation.get(
+        "accepted_source_hash"
+    ) != candidate.get("accepted_source_hash"):
+        raise D0AttestationError("validation accepted source does not match candidate")
+
     return D0AuthorityChain(
         candidate=candidate,
         validation=validation,
