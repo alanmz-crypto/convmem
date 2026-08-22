@@ -433,52 +433,70 @@ else
   SKIPPED+="  - Copilot CLI (no ~/.copilot and no copilot binary)\n"
 fi
 
-# --- opencode instructions ---
+# --- opencode instructions + MCP ---
 # opencode.json (project-local) already references config/opencode-instructions-convmem.example.md.
 # The file is a repo artifact — no user-config copy needed for in-repo use.
-# For cross-project use, ~/.config/opencode/opencode.jsonc can reference the absolute path.
+# For cross-project use, ~/.config/opencode/opencode.jsonc holds instructions + MCP wiring.
 OPENCODE_INSTRUCTIONS="$(pwd)/config/opencode-instructions-convmem.example.md"
 OPENCODE_GLOBAL="$HOME/.config/opencode/opencode.jsonc"
+OPENCODE_MCP_COMMAND_0="/home/lauer/miniforge3/envs/convmem/bin/python"
+OPENCODE_MCP_COMMAND_1="$(pwd)/mcp_server.py"
 if [ -f "$OPENCODE_INSTRUCTIONS" ]; then
   echo "  [ok]     $OPENCODE_INSTRUCTIONS present (referenced by opencode.json)"
   DEPLOY_REPORT+="  - opencode instructions file present (in-repo wiring active)\n"
   # Wire global config if opencode is installed and not already wired
   if [ -f "$OPENCODE_GLOBAL" ]; then
-    wire_result=$(python3 - <<PY "$OPENCODE_GLOBAL" "$OPENCODE_INSTRUCTIONS"
+    wire_result=$(python3 - <<PY "$OPENCODE_GLOBAL" "$OPENCODE_INSTRUCTIONS" "$OPENCODE_MCP_COMMAND_0" "$OPENCODE_MCP_COMMAND_1"
 import json, sys
-dest, instructions_path = sys.argv[1], sys.argv[2]
+dest, instructions_path, cmd0, cmd1 = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 with open(dest) as f:
-    # Strip JSONC comments (simple line-comment strip)
     lines = [l for l in f if not l.lstrip().startswith("//")]
     try:
         cfg = json.loads("".join(lines))
     except json.JSONDecodeError:
         print("parse_error")
         sys.exit(0)
+changed = False
+# Wire instructions
 existing = cfg.get("instructions") or []
-if instructions_path in existing:
-    print("skip")
-else:
+if instructions_path not in existing:
     existing.append(instructions_path)
     cfg["instructions"] = existing
+    changed = True
+# Wire MCP block
+mcp = cfg.setdefault("mcp", {})
+convmem = mcp.get("convmem", {})
+expected_cmd = [cmd0, cmd1]
+if convmem.get("command") != expected_cmd or not convmem.get("enabled"):
+    mcp["convmem"] = {
+        "type": "local",
+        "command": expected_cmd,
+        "environment": {"CONVMEM_MCP_PROFILE": "shell"},
+        "enabled": True,
+    }
+    cfg["mcp"] = mcp
+    changed = True
+if changed:
     with open(dest, "w") as f:
         json.dump(cfg, f, indent=2)
         f.write("\n")
     print("wired")
+else:
+    print("skip")
 PY
 )
     case "$wire_result" in
       wired)
-        echo "  [deploy] $OPENCODE_GLOBAL (added convmem instructions path)"
-        DEPLOY_REPORT+="  - Wired convmem instructions into global opencode.jsonc\n"
+        echo "  [deploy] $OPENCODE_GLOBAL (convmem instructions + MCP block)"
+        DEPLOY_REPORT+="  - Wired convmem instructions + MCP into global opencode.jsonc\n"
         ;;
       skip)
-        echo "  [skip]   $OPENCODE_GLOBAL already references convmem instructions"
+        echo "  [skip]   $OPENCODE_GLOBAL already has convmem instructions + MCP"
         DEPLOY_REPORT+="  - Global opencode.jsonc already wired\n"
         ;;
       parse_error)
         echo "  [warn]   $OPENCODE_GLOBAL has JSONC that could not be parsed — add manually:"
-        echo "           \"instructions\": [\"$OPENCODE_INSTRUCTIONS\"]"
+        echo "           \"instructions\": [\"$OPENCODE_INSTRUCTIONS\"], \"mcp\": { \"convmem\": { ... } }"
         SKIPPED+="  - opencode global wiring (JSONC parse error)\n"
         ;;
     esac
