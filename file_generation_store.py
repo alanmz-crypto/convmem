@@ -168,8 +168,9 @@ class FileGenerationStore:
     def _assert_not_unattested_production_chroma(self) -> None:
         """Refuse staging into the live configured Chroma without writer attestation.
 
-        Temporary Execute stores are allowed. A later production G_rb build may
-        stage after the existing writer boundary is held. Not a tmp-path heuristic.
+        Temporary Execute stores are allowed once live identity resolves. A later
+        production G_rb build may stage after the existing writer boundary is
+        held. Not a tmp-path heuristic. Unresolvable live identity fails closed.
         """
 
         from chroma_write_store import require_writer_attestation
@@ -177,16 +178,22 @@ class FileGenerationStore:
 
         try:
             live_cfg = load_config()
-            live = str(
-                Path(str((live_cfg.get("index") or {}).get("chroma_dir") or ""))
-                .expanduser()
-                .resolve()
-            )
-        except (OSError, TypeError, ValueError, KeyError):
-            return
-        if not live:
-            return
-        target = str(Path(self.chroma_dir).expanduser().resolve())
+        except Exception as exc:  # noqa: BLE001 — fail closed on config errors
+            raise RuntimeError(
+                "cannot resolve live production identity for Chroma staging"
+            ) from exc
+        try:
+            chroma_raw = str((live_cfg.get("index") or {}).get("chroma_dir") or "").strip()
+            if not chroma_raw:
+                raise RuntimeError(
+                    "cannot resolve live production identity for Chroma staging"
+                )
+            live = Path(chroma_raw).expanduser().resolve()
+        except (OSError, TypeError, ValueError, KeyError, AttributeError) as exc:
+            raise RuntimeError(
+                "cannot resolve live production identity for Chroma staging"
+            ) from exc
+        target = Path(self.chroma_dir).expanduser().resolve()
         if target != live:
             return
         require_writer_attestation()
