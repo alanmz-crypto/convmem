@@ -17,6 +17,8 @@ from typing import Any
 
 from atomic_files import atomic_write_json
 from chroma_store import SUMMARIES, UNITS, ChromaStore, is_superseded
+from chroma_write_store import WriterBoundaryError, require_writer_attestation
+from config import load_config
 from file_generation_contract import (
     build_generation_manifest,
     candidate_bundle_hash,
@@ -37,6 +39,7 @@ from provenance_binding import (
     provenance_identity,
     validate_projection,
 )
+from ingest import load_processed
 from purge_locks import source_flock
 from serving_authority import (
     OwnerAuthorityMode,
@@ -170,6 +173,43 @@ def _provenance_fields(
     return assertion_id, commitment, str(envelope)
 
 
+def _semantic_immutable(meta: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        key: meta[key]
+        for key in ("source_path", "start_offset", "content_hash", "ledger_id")
+        if key in meta and meta[key] not in ("", None)
+    }
+
+
+def _identity_tuple(
+    *,
+    owner_digest_value: str,
+    collection_name: str,
+    logical_id: str,
+    document_hash: str,
+    persisted_embedding_hash: str,
+    embedding_model: str,
+    embedding_dimension: int,
+    immutable_semantic_metadata_hash: str,
+    provenance_envelope_hash: str | None,
+    assertion_id: str | None,
+    provenance_commitment: str | None,
+) -> dict[str, Any]:
+    return {
+        "owner_digest": owner_digest_value,
+        "collection_name": collection_name,
+        "logical_id": logical_id,
+        "document_hash": document_hash,
+        "persisted_embedding_hash": persisted_embedding_hash,
+        "embedding_model": embedding_model,
+        "embedding_dimension": int(embedding_dimension),
+        "immutable_semantic_metadata_hash": immutable_semantic_metadata_hash,
+        "provenance_envelope_hash": provenance_envelope_hash,
+        "assertion_id": assertion_id,
+        "provenance_commitment": provenance_commitment,
+    }
+
+
 def _normalized_row_identity(
     *,
     owner_digest_value: str,
@@ -177,30 +217,24 @@ def _normalized_row_identity(
     embedding_model: str,
     embedding_dimension: int,
 ) -> dict[str, Any]:
-    meta = dict(row.metadata)
-    # Provenance participates via the validated row fields only — never via a
-    # raw malformed envelope that conversion deliberately strips.
-    immutable = {
-        key: meta[key]
-        for key in ("source_path", "start_offset", "content_hash", "ledger_id")
-        if key in meta and meta[key] not in ("", None)
-    }
     envelope_value = row.provenance_envelope
-    return {
-        "owner_digest": owner_digest_value,
-        "collection_name": row.collection_name,
-        "logical_id": row.logical_id,
-        "document_hash": canonical_hash(row.document),
-        "persisted_embedding_hash": canonical_hash(row.embedding_list),
-        "embedding_model": embedding_model,
-        "embedding_dimension": int(embedding_dimension),
-        "immutable_semantic_metadata_hash": canonical_hash(immutable),
-        "provenance_envelope_hash": (
+    return _identity_tuple(
+        owner_digest_value=owner_digest_value,
+        collection_name=row.collection_name,
+        logical_id=row.logical_id,
+        document_hash=canonical_hash(row.document),
+        persisted_embedding_hash=canonical_hash(row.embedding_list),
+        embedding_model=embedding_model,
+        embedding_dimension=int(embedding_dimension),
+        immutable_semantic_metadata_hash=canonical_hash(
+            _semantic_immutable(dict(row.metadata))
+        ),
+        provenance_envelope_hash=(
             canonical_hash(envelope_value) if envelope_value is not None else None
         ),
-        "assertion_id": row.assertion_id,
-        "provenance_commitment": row.provenance_commitment,
-    }
+        assertion_id=row.assertion_id,
+        provenance_commitment=row.provenance_commitment,
+    )
 
 
 def _snapshot_digest(
@@ -223,6 +257,106 @@ def _snapshot_digest(
     return canonical_hash(
         {"schema": "convmem/cg2-legacy-serving-snapshot-v1", "rows": identities}
     )
+
+
+def _observed_embedding_maps(
+    rows: Sequence[LegacyServingRow],
+    models: Mapping[str, str],
+    dims: Mapping[str, int],
+) -> tuple[dict[str, str], dict[str, int]]:
+    snapshot_models = {
+        name: str(models.get(name) or "unspecified") for name in (UNITS, SUMMARIES)
+    }
+    snapshot_dims = {name: int(dims.get(name) or 0) for name in (UNITS, SUMMARIES)}
+    for row in rows:
+        observed = len(row.embedding)
+        current = snapshot_dims[row.collection_name]
+        if current <= 0:
+            snapshot_dims[row.collection_name] = observed
+        elif current != observed:
+            raise RollbackBaselineError(
+                f"mixed embedding dimensions in {row.collection_name}"
+            )
+    return snapshot_models, snapshot_dims
+
+
+def _bind_accepted_source_hash(
+    cfg: Mapping[str, Any], *, canonical_source: str, claimed: str
+) -> str:
+    """Bind caller hash to the processed/accepted observation for this source."""
+
+    processed_log = str((cfg.get("index") or {}).get("processed_log") or "").strip()
+    if not processed_log:
+        raise RollbackBaselineError(
+            "config lacks processed_log for accepted source hash binding"
+        )
+    processed = load_processed(processed_log)
+    matches: list[str] = []
+    for key, entry in processed.items():
+        if not isinstance(entry, dict) or entry.get("excluded"):
+            continue
+        path_value = entry.get("path")
+        if not path_value:
+            continue
+        if canonical_source_path(str(path_value)) == canonical_source:
+            matches.append(str(key))
+    unique = sorted(set(matches))
+    if len(unique) != 1:
+        raise RollbackBaselineError(
+            "accepted LEGACY source hash is not uniquely bound in processed log"
+        )
+    bound = unique[0]
+    if claimed != bound:
+        raise RollbackBaselineError(
+            "wrong accepted_source_hash; refusing unbound or filesystem-substituted hash"
+        )
+    return bound
+
+
+def _refuse_unattested_production_chroma(chroma_dir: str | Path) -> None:
+    """Refuse writes to the configured production Chroma without the writer gate.
+
+    Temporary Execute stores differ from the live configured path and are allowed.
+    A later authorized production G_rb build may proceed when the existing writer
+    boundary attestation is held. This is identity binding, not a tmp-path heuristic.
+    """
+
+    try:
+        live_cfg = load_config()
+        live = str(
+            Path(str((live_cfg.get("index") or {}).get("chroma_dir") or ""))
+            .expanduser()
+            .resolve()
+        )
+    except (OSError, TypeError, ValueError, KeyError):
+        return
+    if not live or live == str(Path(".").resolve()):
+        return
+    target = str(Path(chroma_dir).expanduser().resolve())
+    if target != live:
+        return
+    try:
+        require_writer_attestation()
+    except WriterBoundaryError as exc:
+        raise RollbackBaselineError(
+            "production Chroma mutation requires the existing writer boundary"
+        ) from exc
+
+
+def _assert_row_owner_consistency(
+    meta: Mapping[str, Any],
+    *,
+    owner_digest_value: str,
+    owner_key: str,
+) -> None:
+    indicated = str(meta.get("owner_digest") or "").strip()
+    if indicated and indicated != owner_digest_value:
+        raise RollbackBaselineError(
+            "conflicting/foreign owner_digest on LEGACY row"
+        )
+    indicated_key = str(meta.get("owner_key") or "").strip()
+    if indicated_key and indicated_key != owner_key:
+        raise RollbackBaselineError("conflicting/foreign owner_key on LEGACY row")
 
 
 def _bundle_hash_from_rows(rows: Sequence[LegacyServingRow]) -> str:
@@ -319,9 +453,9 @@ def _admit_rows(
     store: ChromaStore,
     *,
     owner_digest_value: str,
+    owner_key: str,
     canonical_source: str,
 ) -> list[LegacyServingRow]:
-    del owner_digest_value  # owner binding is enforced by caller authority checks
     admitted: list[LegacyServingRow] = []
     seen_logical: dict[str, str] = {}
     for collection_name in (UNITS, SUMMARIES):
@@ -332,6 +466,9 @@ def _admit_rows(
                 raise RollbackBaselineError(
                     "owner/source binding mismatch in LEGACY row"
                 )
+            _assert_row_owner_consistency(
+                meta, owner_digest_value=owner_digest_value, owner_key=owner_key
+            )
             logical_id = _conversion_logical_id(meta, physical_id)
             key = f"{collection_name}:{logical_id}"
             if key in seen_logical:
@@ -385,63 +522,49 @@ def capture_accepted_legacy_serving_snapshot(
     dims = dict(embedding_dimension_by_collection or {})
 
     with source_flock(dict(cfg), canonical):
+        bound_hash = _bind_accepted_source_hash(
+            cfg, canonical_source=canonical, claimed=accepted_source_hash
+        )
         _require_legacy_owner(cfg, owner_digest_value=digest, owner_key=owner_key)
         with ChromaStore(chroma_dir, mutation_sink=None) as store:
             first = _admit_rows(
-                store, owner_digest_value=digest, canonical_source=canonical
+                store,
+                owner_digest_value=digest,
+                owner_key=owner_key,
+                canonical_source=canonical,
+            )
+            snapshot_models, snapshot_dims = _observed_embedding_maps(first, models, dims)
+            first_digest = _snapshot_digest(
+                digest,
+                first,
+                embedding_model_by_collection=snapshot_models,
+                embedding_dimension_by_collection=snapshot_dims,
             )
             _require_legacy_owner(cfg, owner_digest_value=digest, owner_key=owner_key)
             second = _admit_rows(
-                store, owner_digest_value=digest, canonical_source=canonical
+                store,
+                owner_digest_value=digest,
+                owner_key=owner_key,
+                canonical_source=canonical,
             )
-        first_ids = [
-            (row.collection_name, row.physical_id, row.logical_id) for row in first
-        ]
-        second_ids = [
-            (row.collection_name, row.physical_id, row.logical_id) for row in second
-        ]
-        if first_ids != second_ids:
+            second_digest = _snapshot_digest(
+                digest,
+                second,
+                embedding_model_by_collection=snapshot_models,
+                embedding_dimension_by_collection=snapshot_dims,
+            )
+        if first_digest != second_digest:
             raise RollbackBaselineError(
                 "LEGACY serving set churned during capture; refusing partial snapshot"
             )
-        for left, right in zip(first, second):
-            if (
-                left.document != right.document
-                or left.embedding != right.embedding
-                or left.assertion_id != right.assertion_id
-                or left.provenance_commitment != right.provenance_commitment
-                or left.provenance_envelope != right.provenance_envelope
-            ):
-                raise RollbackBaselineError(
-                    "LEGACY serving row content churned during capture"
-                )
 
-    snapshot_models = {
-        name: str(models.get(name) or "unspecified") for name in (UNITS, SUMMARIES)
-    }
-    snapshot_dims = {name: int(dims.get(name) or 0) for name in (UNITS, SUMMARIES)}
-    for row in first:
-        observed = len(row.embedding)
-        current = snapshot_dims[row.collection_name]
-        if current <= 0:
-            snapshot_dims[row.collection_name] = observed
-        elif current != observed:
-            raise RollbackBaselineError(
-                f"mixed embedding dimensions in {row.collection_name}"
-            )
-    digest_value = _snapshot_digest(
-        digest,
-        first,
-        embedding_model_by_collection=snapshot_models,
-        embedding_dimension_by_collection=snapshot_dims,
-    )
     return LegacyServingSnapshot(
         owner_key=owner_key,
         owner_digest=digest,
         canonical_source_path=canonical,
-        accepted_source_hash=accepted_source_hash,
+        accepted_source_hash=bound_hash,
         rows=tuple(first),
-        snapshot_digest=digest_value,
+        snapshot_digest=first_digest,
         candidate_bundle_hash=_bundle_hash_from_rows(first),
     )
 
@@ -449,6 +572,7 @@ def capture_accepted_legacy_serving_snapshot(
 def _validate_embedding_provenance(
     snapshot: LegacyServingSnapshot,
     embedding_provenance: Mapping[str, Mapping[str, Any]],
+    store: FileGenerationStore,
 ) -> dict[str, dict[str, Any]]:
     validated: dict[str, dict[str, Any]] = {}
     for collection_name in (UNITS, SUMMARIES):
@@ -482,6 +606,15 @@ def _validate_embedding_provenance(
         if not uuid or not isinstance(configuration, Mapping):
             raise RollbackBaselineError(
                 f"collection identity provenance missing for {collection_name}"
+            )
+        actual = store.collection_identity(collection_name)
+        if str(actual["collection_uuid"]) != uuid:
+            raise RollbackBaselineError(
+                f"collection UUID mismatch for {collection_name}"
+            )
+        if dict(actual["configuration"]) != dict(configuration):
+            raise RollbackBaselineError(
+                f"collection configuration mismatch for {collection_name}"
             )
         evidence_digest = str(raw.get("provenance_evidence_digest") or "").strip()
         capture_timestamp = str(raw.get("capture_timestamp") or "").strip()
@@ -774,7 +907,10 @@ def convert_and_retain_rollback_baseline(
 ) -> RollbackBaselineResult:
     """Convert a frozen LEGACY snapshot into retained ``G_rb`` evidence."""
 
-    validated_provenance = _validate_embedding_provenance(snapshot, embedding_provenance)
+    _refuse_unattested_production_chroma(store.chroma_dir)
+    validated_provenance = _validate_embedding_provenance(
+        snapshot, embedding_provenance, store
+    )
     rebound_digest = _snapshot_digest(
         snapshot.owner_digest,
         snapshot.rows,
@@ -966,6 +1102,51 @@ def convert_and_retain_rollback_baseline(
     )
 
 
+def _snapshot_digest_from_manifest(manifest: Mapping[str, Any]) -> str:
+    """Recompute the LEGACY/G_rb identity digest from the published manifest."""
+
+    owner = str(manifest["owner_digest"])
+    identities: list[dict[str, Any]] = []
+    for collection_name, raw_spec in dict(manifest.get("collections") or {}).items():
+        spec = dict(raw_spec)
+        model = str(spec["embedding_model"])
+        dimension = int(spec["embedding_dimension"])
+        for _physical_id, raw_row in dict(spec.get("rows") or {}).items():
+            row = dict(raw_row)
+            imm = dict(row.get("immutable_metadata") or {})
+            assertion = str(imm.get(PROVENANCE_ASSERTION_ID_KEY) or "").strip() or None
+            commitment = str(imm.get(PROVENANCE_COMMITMENT_KEY) or "").strip() or None
+            envelope = imm.get(PROVENANCE_ENVELOPE_KEY)
+            if envelope in ("", None):
+                envelope_hash = None
+            else:
+                envelope_hash = canonical_hash(str(envelope))
+            if assertion is None:
+                commitment = None
+                envelope_hash = None
+            identities.append(
+                _identity_tuple(
+                    owner_digest_value=owner,
+                    collection_name=str(collection_name),
+                    logical_id=str(row["logical_id"]),
+                    document_hash=str(row["document_hash"]),
+                    persisted_embedding_hash=str(row["embedding_hash"]),
+                    embedding_model=model,
+                    embedding_dimension=dimension,
+                    immutable_semantic_metadata_hash=canonical_hash(
+                        _semantic_immutable(imm)
+                    ),
+                    provenance_envelope_hash=envelope_hash,
+                    assertion_id=assertion,
+                    provenance_commitment=commitment,
+                )
+            )
+    identities.sort(key=canonical_hash)
+    return canonical_hash(
+        {"schema": "convmem/cg2-legacy-serving-snapshot-v1", "rows": identities}
+    )
+
+
 def validate_retained_rollback_baseline_evidence(
     generation_root: str | Path,
     *,
@@ -988,6 +1169,29 @@ def validate_retained_rollback_baseline_evidence(
         ) from exc
     if not isinstance(payload, dict):
         raise RollbackBaselineError("corrupt retained rollback baseline evidence")
+    required = (
+        "schema",
+        "state",
+        "owner_key",
+        "owner_digest",
+        "canonical_source_path",
+        "accepted_source_hash",
+        "normalized_snapshot_digest",
+        "convert_fingerprint",
+        "generation_id",
+        "manifest_filename",
+        "manifest_sha256",
+        "embedding_provenance",
+        "provenance_identity_evidence",
+        "cold_qualification",
+        "bidirectional_equivalence",
+        "evidence_payload_hash",
+    )
+    missing = [field for field in required if field not in payload]
+    if missing:
+        raise RollbackBaselineError(
+            f"baseline evidence missing required fields: {missing}"
+        )
     if payload.get("schema") != ROLLBACK_BASELINE_SCHEMA:
         raise RollbackBaselineError("unsupported rollback baseline evidence schema")
     if payload.get("state") != RETAINED_ROLLBACK_BASELINE:
@@ -1014,26 +1218,8 @@ def validate_retained_rollback_baseline_evidence(
     if expected_manifest_sha256 is not None and manifest_sha != expected_manifest_sha256:
         raise RollbackBaselineError("wrong manifest SHA in retained baseline evidence")
 
-    equivalence = dict(payload.get("bidirectional_equivalence") or {})
-    for key in (
-        "missing_count",
-        "unexpected_count",
-        "duplicate_count",
-        "wrong_owner_count",
-        "non_equivalent_count",
-        "provenance_identity_changing_count",
-    ):
-        if int(equivalence.get(key) or 0) != 0:
-            raise RollbackBaselineError(
-                f"non-equivalent retained baseline evidence ({key})"
-            )
-
-    digest = str(payload.get("normalized_snapshot_digest") or "")
-    if len(digest) != 64:
-        raise RollbackBaselineError("normalized snapshot digest missing or invalid")
-
     try:
-        load_manifest_reference(
+        reference = load_manifest_reference(
             generation_root,
             manifest_filename=str(payload["manifest_filename"]),
             expected_sha256=manifest_sha,
@@ -1042,5 +1228,114 @@ def validate_retained_rollback_baseline_evidence(
         raise RollbackBaselineError(
             f"manifest SHA binding failed for retained baseline: {exc}"
         ) from exc
+    manifest = dict(reference.manifest)
+
+    if str(manifest.get("owner_digest") or "") != owner_digest:
+        raise RollbackBaselineError("manifest owner does not bind to baseline evidence")
+    if str(manifest.get("owner_key") or "") != str(payload.get("owner_key") or ""):
+        raise RollbackBaselineError("owner_key does not bind to published manifest")
+    if str(manifest.get("canonical_source_path") or "") != str(
+        payload.get("canonical_source_path") or ""
+    ):
+        raise RollbackBaselineError("canonical source does not bind to published manifest")
+    if str(manifest.get("source_hash") or "") != str(payload.get("accepted_source_hash") or ""):
+        raise RollbackBaselineError("accepted source hash does not bind to published manifest")
+    fingerprints = dict(manifest.get("fingerprints") or {})
+    if fingerprints.get("convert") != CONVERT_V1_FINGERPRINT or fingerprints.get(
+        "pipeline"
+    ) != CONVERT_V1_FINGERPRINT:
+        raise RollbackBaselineError("manifest convert fingerprint does not bind")
+    expected_generation = make_generation_id(
+        owner_digest=str(manifest["owner_digest"]),
+        source_hash=str(manifest["source_hash"]),
+        pipeline_fingerprint=CONVERT_V1_FINGERPRINT,
+        candidate_bundle_hash=str(manifest["candidate_bundle_hash"]),
+    )
+    if generation_id != expected_generation or str(manifest["generation_id"]) != expected_generation:
+        raise RollbackBaselineError("generation_id does not bind to manifest identity")
+
+    provenance = dict(payload.get("embedding_provenance") or {})
+    for collection_name, raw_spec in dict(manifest.get("collections") or {}).items():
+        spec = dict(raw_spec)
+        bound = dict(provenance.get(collection_name) or {})
+        if str(bound.get("collection_uuid") or "") != str(spec.get("collection_uuid") or ""):
+            raise RollbackBaselineError(
+                f"embedding provenance UUID does not bind to manifest {collection_name}"
+            )
+        if dict(bound.get("configuration") or {}) != dict(spec.get("configuration") or {}):
+            raise RollbackBaselineError(
+                f"embedding provenance configuration does not bind to manifest {collection_name}"
+            )
+        if str(bound.get("embedding_model") or "") != str(spec.get("embedding_model") or ""):
+            raise RollbackBaselineError(
+                f"embedding model does not bind to manifest {collection_name}"
+            )
+        if int(bound.get("embedding_dimension") or 0) != int(spec.get("embedding_dimension") or 0):
+            raise RollbackBaselineError(
+                f"embedding dimension does not bind to manifest {collection_name}"
+            )
+
+    recomputed_digest = _snapshot_digest_from_manifest(manifest)
+    if str(payload.get("normalized_snapshot_digest") or "") != recomputed_digest:
+        raise RollbackBaselineError(
+            "normalized snapshot digest does not bind to manifest identity set"
+        )
+
+    expected_prov: set[tuple[str, str, str, str]] = set()
+    for collection_name, raw_spec in dict(manifest.get("collections") or {}).items():
+        for raw_row in dict(dict(raw_spec).get("rows") or {}).values():
+            imm = dict(dict(raw_row).get("immutable_metadata") or {})
+            assertion = str(imm.get(PROVENANCE_ASSERTION_ID_KEY) or "").strip()
+            if not assertion:
+                continue
+            expected_prov.add(
+                (
+                    str(collection_name),
+                    str(dict(raw_row).get("logical_id") or ""),
+                    assertion,
+                    str(imm.get(PROVENANCE_COMMITMENT_KEY) or ""),
+                )
+            )
+    observed_prov = set()
+    for item in payload.get("provenance_identity_evidence") or []:
+        row = dict(item)
+        observed_prov.add(
+            (
+                str(row.get("collection_name") or ""),
+                str(row.get("logical_id") or ""),
+                str(row.get("assertion_id") or ""),
+                str(row.get("provenance_commitment") or ""),
+            )
+        )
+    if expected_prov != observed_prov:
+        raise RollbackBaselineError(
+            "provenance identity evidence does not bind to manifest assertions"
+        )
+
+    cold = dict(payload.get("cold_qualification") or {})
+    expected_cold_identity = canonical_hash(
+        {
+            "generation_id": generation_id,
+            "owner_digest": owner_digest,
+            "manifest_sha256": manifest_sha,
+        }
+    )
+    if str(cold.get("identity") or "") != expected_cold_identity:
+        raise RollbackBaselineError("cold-qualification identity does not bind")
+
+    equivalence = dict(payload.get("bidirectional_equivalence") or {})
+    nested = dict(equivalence.get("result") or {})
+    for key in (
+        "missing_count",
+        "unexpected_count",
+        "duplicate_count",
+        "wrong_owner_count",
+        "non_equivalent_count",
+        "provenance_identity_changing_count",
+    ):
+        if int(equivalence.get(key) or 0) != 0 or int(nested.get(key) or 0) != 0:
+            raise RollbackBaselineError(
+                f"non-equivalent retained baseline evidence ({key})"
+            )
 
     return payload
