@@ -1,10 +1,10 @@
 # Codex Handoff — Recovery Authority Execution Planning
 
-**Arc:** Recovery Authority  
-**Date:** 2026-08-22  
-**Author:** OpenAI Codex / Luna — planning lane  
-**For:** Kiro Execution Plan review → Ryan  
-**Authorization:** Ryan, Execution Planning only  
+**Arc:** Recovery Authority
+**Date:** 2026-08-22
+**Author:** OpenAI Codex / Luna — planning lane
+**For:** Kiro Execution Plan review → Ryan
+**Authorization:** Ryan, Execution Planning only
 **Execute:** NOT AUTHORIZED
 
 ## Resume state
