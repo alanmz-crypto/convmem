@@ -86,10 +86,12 @@ class FileGenerationStore:
         *,
         active_generations: Callable[[], Mapping[str, str]],
         previous_generations: Callable[[], Mapping[str, str]] | None = None,
+        retained_baselines: Callable[[], Mapping[str, set[str]]] | None = None,
     ) -> None:
         self.chroma_dir = str(Path(chroma_dir))
         self._active_generations = active_generations
         self._previous_generations = previous_generations or (dict)
+        self._retained_baselines = retained_baselines or (dict)
         # No mutation sink: candidate staging must emit no authoritative Shadow
         # events.  The caller is responsible for providing temporary state.
         self._store = ChromaStore(self.chroma_dir, mutation_sink=None)
@@ -165,6 +167,11 @@ class FileGenerationStore:
     def _assert_owner_budget(self, owner_digest: str, proposed_generation: str) -> None:
         active = self._active_generations().get(owner_digest)
         previous = self._previous_generations().get(owner_digest)
+        retained = {
+            str(value)
+            for value in (self._retained_baselines().get(owner_digest) or set())
+            if value
+        }
         known: set[str] = set()
         for collection_name in (UNITS, SUMMARIES):
             col = self._store._collection(collection_name)  # pylint: disable=protected-access
@@ -181,7 +188,7 @@ class FileGenerationStore:
                 generation = str((meta or {}).get("generation_id") or "")
                 if generation:
                     known.add(generation)
-        protected = {value for value in (active, previous) if value}
+        protected = {value for value in (active, previous) if value} | retained
         abandoned = known - protected
         if abandoned and proposed_generation not in abandoned:
             raise GenerationBackpressureError(
