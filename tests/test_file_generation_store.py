@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=duplicate-code
+
 import tempfile
 import unittest
 from pathlib import Path

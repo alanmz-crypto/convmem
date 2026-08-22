@@ -6,10 +6,14 @@ generation ``G_rb``.  Never embeds, parses, calls an LLM, or dedupes the
 accepted set.
 """
 
+# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-branches
+# pylint: disable=too-many-arguments,too-many-locals,too-many-statements,duplicate-code
+
 from __future__ import annotations
 
 import copy
 import json
+import math
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -151,7 +155,9 @@ def _as_float_tuple(embedding: Any) -> tuple[float, ...]:
     if not isinstance(embedding, (list, tuple)) or not embedding:
         raise RollbackBaselineError("admitted LEGACY row lacks persisted embedding")
     values = tuple(float(value) for value in embedding)
-    if any(value != value or value in (float("inf"), float("-inf")) for value in values):
+    if any(
+        math.isnan(value) or value in (float("inf"), float("-inf")) for value in values
+    ):
         raise RollbackBaselineError("admitted LEGACY embedding is non-finite")
     return values
 
@@ -957,6 +963,25 @@ def _with_evidence_hash(payload: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _baseline_evidence_body(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Compare retained evidence without fresh-process position drift."""
+
+    body = copy.deepcopy(dict(payload))
+    body.pop("evidence_payload_hash", None)
+    cold = dict(body.get("cold_qualification") or {})
+    cold.pop("sequence_positions", None)
+    body["cold_qualification"] = cold
+    return body
+
+
+def _baseline_evidence_matches(
+    left: Mapping[str, Any], right: Mapping[str, Any]
+) -> bool:
+    if left == right:
+        return True
+    return _baseline_evidence_body(left) == _baseline_evidence_body(right)
+
+
 def _publish_evidence(
     generation_root: str | Path,
     payload: Mapping[str, Any],
@@ -975,7 +1000,7 @@ def _publish_evidence(
             raise RollbackBaselineError(
                 f"corrupt existing baseline evidence: {exc}"
             ) from exc
-        if current != obj:
+        if not _baseline_evidence_matches(current, obj):
             raise RollbackBaselineError(
                 f"immutable rollback baseline evidence collision at {path}"
             )
@@ -989,16 +1014,31 @@ def _publish_evidence(
 
 def convert_and_retain_rollback_baseline(
     *,
+    cfg: Mapping[str, Any],
     snapshot: LegacyServingSnapshot,
     store: FileGenerationStore,
     generation_root: str | Path,
     embedding_provenance: Mapping[str, Mapping[str, Any]],
-    run_fresh_process_qualification: bool = True,
 ) -> RollbackBaselineResult:
     """Convert a frozen LEGACY snapshot into retained ``G_rb`` evidence."""
 
     _refuse_unattested_production_chroma(store.chroma_dir)
     _refuse_unattested_production_generation_root(generation_root)
+    bound_source_hash = _bind_accepted_source_hash(
+        cfg,
+        canonical_source=snapshot.canonical_source_path,
+        claimed=snapshot.accepted_source_hash,
+    )
+    if bound_source_hash != snapshot.accepted_source_hash:
+        snapshot = LegacyServingSnapshot(
+            owner_key=snapshot.owner_key,
+            owner_digest=snapshot.owner_digest,
+            canonical_source_path=snapshot.canonical_source_path,
+            accepted_source_hash=bound_source_hash,
+            rows=snapshot.rows,
+            snapshot_digest=snapshot.snapshot_digest,
+            candidate_bundle_hash=snapshot.candidate_bundle_hash,
+        )
     validated_provenance = _validate_embedding_provenance(
         snapshot, embedding_provenance, store
     )
@@ -1054,23 +1094,22 @@ def convert_and_retain_rollback_baseline(
         },
     )
     reference = publish_manifest(generation_root, manifest)
-    if run_fresh_process_qualification:
+    try:
         cold = run_cold_validation(
             store.chroma_dir,
             reference.path,
             expected_manifest_sha256=reference.file_sha256,
         )
-    else:
-        cold = store.validate_manifest_exact(manifest)
-        if cold.get("state") != "HEALTHY":
-            raise RollbackBaselineError(f"in-process qualification failed: {cold}")
-        cold = {
-            "valid": True,
-            "generation_id": generation_id,
-            "owner_digest": snapshot.owner_digest,
-            "validation": cold,
-            "manifest_sha256": reference.file_sha256,
-        }
+    except RuntimeError as exc:
+        raise RollbackBaselineError(
+            f"fresh-process qualification failed: {exc}"
+        ) from exc
+    if cold.get("valid") is not True:
+        raise RollbackBaselineError("fresh-process qualification refused")
+    if "elapsed_seconds" not in cold or "sequence_positions" not in cold:
+        raise RollbackBaselineError(
+            "fresh-process qualification evidence is incomplete"
+        )
 
     generation_rows = _read_generation_rows(
         store, owner_digest_value=snapshot.owner_digest, generation_id=generation_id
@@ -1139,6 +1178,7 @@ def convert_and_retain_rollback_baseline(
                 "manifest_sha256": reference.file_sha256,
             }
         ),
+        "sequence_positions": cold["sequence_positions"],
     }
     equivalence_counts = {
         key: int(equivalence[key]) for key in _EQUIVALENCE_COUNT_KEYS
@@ -1243,13 +1283,15 @@ def _snapshot_digest_from_manifest(manifest: Mapping[str, Any]) -> str:
 def validate_retained_rollback_baseline_evidence(
     generation_root: str | Path,
     *,
-    owner_digest: str,
+    owner_digest_value: str,
     generation_id: str,
     expected_manifest_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Validate immutable retained rollback-baseline evidence."""
 
-    path = rollback_baseline_evidence_path(generation_root, owner_digest, generation_id)
+    path = rollback_baseline_evidence_path(
+        generation_root, owner_digest_value, generation_id
+    )
     if not path.is_file():
         raise RollbackBaselineError(
             f"missing retained rollback baseline evidence: {path}"
@@ -1289,7 +1331,7 @@ def validate_retained_rollback_baseline_evidence(
         raise RollbackBaselineError("unsupported rollback baseline evidence schema")
     if payload.get("state") != RETAINED_ROLLBACK_BASELINE:
         raise RollbackBaselineError("evidence is not RETAINED_ROLLBACK_BASELINE")
-    if str(payload.get("owner_digest") or "") != owner_digest:
+    if str(payload.get("owner_digest") or "") != owner_digest_value:
         raise RollbackBaselineError("wrong-owner retained rollback baseline evidence")
     if str(payload.get("generation_id") or "") != generation_id:
         raise RollbackBaselineError("generation_id mismatch in baseline evidence")
@@ -1323,7 +1365,7 @@ def validate_retained_rollback_baseline_evidence(
         ) from exc
     manifest = dict(reference.manifest)
 
-    if str(manifest.get("owner_digest") or "") != owner_digest:
+    if str(manifest.get("owner_digest") or "") != owner_digest_value:
         raise RollbackBaselineError("manifest owner does not bind to baseline evidence")
     if str(manifest.get("owner_key") or "") != str(payload.get("owner_key") or ""):
         raise RollbackBaselineError("owner_key does not bind to published manifest")
@@ -1414,6 +1456,7 @@ def validate_retained_rollback_baseline_evidence(
         "owner_digest",
         "manifest_sha256",
         "identity",
+        "sequence_positions",
     ):
         if field not in cold:
             raise RollbackBaselineError(
@@ -1423,14 +1466,18 @@ def validate_retained_rollback_baseline_evidence(
         raise RollbackBaselineError("cold-qualification result is not valid")
     if str(cold.get("generation_id") or "") != generation_id:
         raise RollbackBaselineError("cold-qualification generation_id does not bind")
-    if str(cold.get("owner_digest") or "") != owner_digest:
+    if str(cold.get("owner_digest") or "") != owner_digest_value:
         raise RollbackBaselineError("cold-qualification owner_digest does not bind")
     if str(cold.get("manifest_sha256") or "") != manifest_sha:
         raise RollbackBaselineError("cold-qualification manifest SHA does not bind")
+    if not isinstance(cold.get("sequence_positions"), dict):
+        raise RollbackBaselineError(
+            "cold-qualification lacks fresh-process sequence_positions"
+        )
     expected_cold_identity = canonical_hash(
         {
             "generation_id": generation_id,
-            "owner_digest": owner_digest,
+            "owner_digest": owner_digest_value,
             "manifest_sha256": manifest_sha,
         }
     )
@@ -1479,7 +1526,7 @@ def validate_retained_rollback_baseline_evidence(
         normalized_snapshot_digest=str(payload["normalized_snapshot_digest"]),
         manifest_sha256=manifest_sha,
         generation_id=generation_id,
-        owner_digest_value=owner_digest,
+        owner_digest_value=owner_digest_value,
     )
     if str(equivalence.get("identity") or "") != expected_equivalence_identity:
         raise RollbackBaselineError(
