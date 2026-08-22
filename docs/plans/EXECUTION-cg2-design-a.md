@@ -95,7 +95,7 @@ Implementation must preserve all of the following:
    not create D0, ratify, or accept caller authority objects.
 7. **No caller-held snapshot staging.** D1 rereads covered rows under lock and
    stages those reread rows only.
-8. **Query-context equality is G_rb-specific.**  
+8. **Query-context equality is G_rb-specific.**
    `live_query_embedding_context_sha256 == D0_ratified_query_embedding_context_sha256`
    is required for D1, first cutover, and `G_rb` rollback only — not for later
    known-model rollback generations.
