@@ -1347,6 +1347,191 @@ def _noop_missing_valid(_ctx: RestoreContext) -> Classification:
     return Classification("?", "?", OUTCOME_VALID, "unused")
 
 
+
+def _iter_existing_files(path: Path) -> list[Path]:
+    if path.is_file():
+        return [path]
+    if not path.is_dir():
+        return []
+    found: list[Path] = []
+    for child in sorted(path.iterdir(), key=lambda item: item.name):
+        found.extend(_iter_existing_files(child))
+    return found
+
+
+def _json_claims_reembed_as_same_grb(payload: Any) -> bool:
+    """Refuse restore classification of re-embed-as-same-G_rb substitution."""
+
+    if isinstance(payload, Mapping):
+        lowered = {str(key).lower(): value for key, value in payload.items()}
+        for key in (
+            "reembed_as_same_grb",
+            "reconstructed_as_grb",
+            "re_embed_as_grb",
+        ):
+            if lowered.get(key) not in (None, False, "", 0):
+                return True
+        profile = payload.get("proof_profile")
+        historic = payload.get("historical_embedding_model")
+        if (
+            profile == "LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1"
+            and isinstance(historic, Mapping)
+            and (
+                historic.get("status") != "UNKNOWN"
+                or historic.get("identifier") not in (None,)
+            )
+        ):
+            return True
+        return any(_json_claims_reembed_as_same_grb(value) for value in payload.values())
+    if isinstance(payload, list):
+        return any(_json_claims_reembed_as_same_grb(value) for value in payload)
+    return False
+
+
+def _validate_file_generations(  # pylint: disable=too-many-return-statements,too-many-nested-blocks
+    ctx: RestoreContext,
+) -> Classification:
+    """Retain D0 evidence and generation artifacts; never re-embed as G_rb."""
+
+    spec = _spec("file_generations")
+    path = ctx.root / spec.path
+    if not path.exists():
+        return _missing(spec, "absent — optional retained generation/D0 evidence")
+    if not path.is_dir():
+        return Classification(
+            path=spec.path,
+            authority=spec.authority,
+            outcome=OUTCOME_BLOCKED,
+            detail="file_generations must be a directory",
+        )
+    try:
+        from cg2_legacy_vector_attestation import (  # pylint: disable=import-outside-toplevel
+            D0_DIRNAME,
+            D0AttestationError,
+            load_ratified_d0_chain,
+            validate_d0_ratification_record,
+            verify_d0_content_addressed_file,
+        )
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        return Classification(
+            path=spec.path,
+            authority=spec.authority,
+            outcome=OUTCOME_BLOCKED,
+            detail=f"cannot import D0 attestation validator: {exc}",
+        )
+
+    d0_root = path / D0_DIRNAME
+    if d0_root.exists():
+        if not d0_root.is_dir():
+            return Classification(
+                path=spec.path,
+                authority=spec.authority,
+                outcome=OUTCOME_BLOCKED,
+                detail="legacy_vector_attestation must be a directory",
+            )
+        for owner_dir in sorted(d0_root.iterdir(), key=lambda item: item.name):
+            if not owner_dir.is_dir() or not _HEX64.fullmatch(owner_dir.name):
+                return Classification(
+                    path=spec.path,
+                    authority=spec.authority,
+                    outcome=OUTCOME_BLOCKED,
+                    detail=f"unexpected D0 path: {owner_dir.name}",
+                )
+            names = {child.name for child in owner_dir.iterdir()}
+            unexpected = names - {"candidates", "validations", "ratifications"}
+            if unexpected:
+                return Classification(
+                    path=spec.path,
+                    authority=spec.authority,
+                    outcome=OUTCOME_BLOCKED,
+                    detail=f"unexpected D0 owner entries: {sorted(unexpected)}",
+                )
+            for bucket, kind in (("candidates", "candidate"), ("validations", "validation")):
+                bucket_dir = owner_dir / bucket
+                if not bucket_dir.exists():
+                    continue
+                if not bucket_dir.is_dir():
+                    return Classification(
+                        path=spec.path,
+                        authority=spec.authority,
+                        outcome=OUTCOME_BLOCKED,
+                        detail=f"D0 {bucket} must be a directory",
+                    )
+                for artifact in sorted(bucket_dir.iterdir(), key=lambda item: item.name):
+                    if not artifact.is_file() or artifact.suffix != ".json" or not _HEX64.fullmatch(artifact.stem):
+                        return Classification(
+                            path=spec.path,
+                            authority=spec.authority,
+                            outcome=OUTCOME_BLOCKED,
+                            detail=f"unexpected D0 {kind} artifact name: {artifact.name}",
+                        )
+                    try:
+                        verify_d0_content_addressed_file(artifact, kind=kind)
+                    except D0AttestationError as exc:
+                        return Classification(
+                            path=spec.path,
+                            authority=spec.authority,
+                            outcome=OUTCOME_BLOCKED,
+                            detail=str(exc),
+                        )
+            rat_dir = owner_dir / "ratifications"
+            if rat_dir.exists():
+                if not rat_dir.is_dir():
+                    return Classification(
+                        path=spec.path,
+                        authority=spec.authority,
+                        outcome=OUTCOME_BLOCKED,
+                        detail="D0 ratifications must be a directory",
+                    )
+                for record_path in sorted(rat_dir.iterdir(), key=lambda item: item.name):
+                    if not record_path.is_file() or record_path.suffix != ".json":
+                        return Classification(
+                            path=spec.path,
+                            authority=spec.authority,
+                            outcome=OUTCOME_BLOCKED,
+                            detail=f"unexpected D0 ratification name: {record_path.name}",
+                        )
+                    try:
+                        raw = json.loads(record_path.read_text(encoding="utf-8"))
+                        view = validate_d0_ratification_record(raw)
+                        if view.ratification_id != record_path.stem:
+                            raise D0AttestationError("ratification_id does not match filename")
+                        load_ratified_d0_chain(
+                            path,
+                            owner_digest=owner_dir.name,
+                            ratification_id=record_path.stem,
+                        )
+                    except (OSError, json.JSONDecodeError, D0AttestationError, TypeError, ValueError) as exc:
+                        return Classification(
+                            path=spec.path,
+                            authority=spec.authority,
+                            outcome=OUTCOME_BLOCKED,
+                            detail=f"invalid D0 ratification: {exc}",
+                        )
+
+    for artifact in _iter_existing_files(path):
+        if artifact.suffix != ".json":
+            continue
+        try:
+            payload = json.loads(artifact.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            continue
+        if _json_claims_reembed_as_same_grb(payload):
+            return Classification(
+                path=spec.path,
+                authority=spec.authority,
+                outcome=OUTCOME_BLOCKED,
+                detail="restore must not substitute re-embedded vectors as the same G_rb",
+            )
+
+    return Classification(
+        path=spec.path,
+        authority=spec.authority,
+        outcome=OUTCOME_VALID,
+        detail="retained D0/generation evidence — non-reconstructible; default retain",
+    )
+
+
 STATE_SPECS: tuple[StateSpec, ...] = (
     StateSpec("chroma", "tier1_authoritative", "required", _validate_chroma, OUTCOME_BLOCKED, ""),
     StateSpec(
@@ -1594,6 +1779,14 @@ STATE_SPECS: tuple[StateSpec, ...] = (
         "forbidden_scratch",
         "forbidden_in_snapshot",
         _validate_forbidden_scratch("restore-drill"),
+        OUTCOME_VALID,
+        "",
+    ),
+    StateSpec(
+        "file_generations",
+        "retained_d0_and_generation_evidence",
+        "optional",
+        _validate_file_generations,
         OUTCOME_VALID,
         "",
     ),
