@@ -21,12 +21,14 @@ Authority:    Awaiting Ryan HITL — planning artifact only
 and [`VERIFY-cg2-production-activation.md`](VERIFY-cg2-production-activation.md)
 as present at the canonical base.
 
-**Post-#221 compatibility confirmation:** The change from the prior Design A
-base through this canonical tip is documentation/coordination-only
-(`docs/inter-model/LATEST.md`, `docs/inter-model/STATUS.md`, and
-`docs/plans/STATUS-dependability-provenance.md`). It does not change the locked
-Design A Architecture, RUNBOOK, or VERIFY semantics. This refresh records
-compatibility with that post-#221 state; it does not reopen the lock.
+**Post-#221 compatibility confirmation:** The Design A architecture lock was
+established at `8aff0a316cb4304c5313556abc3cdf5439746835`. PR #221 at
+`722141d31e586151f361ef7006ad74c71cdff534` included runtime/provenance
+substrate changes now incorporated by this plan. Only the move from
+`722141d31e586151f361ef7006ad74c71cdff534` to
+`06d9064648c96e46642d1820a504dace8af5ab38` (#231) was
+documentation/coordination-only. The locked Design A Architecture, RUNBOOK,
+and VERIFY semantics remain unchanged.
 
 **Prior CG-2 execution-plan authority:**
 `6a808f1543f2c93270d9f0ed1ae88cad27f6556b`. Its T1–T5 implementation is
