@@ -265,6 +265,10 @@ resumption on live owner.
 
 ### 5.1 Expected surfaces
 
+Authority-bearing public function names listed in §5.3–§5.7 and §8 are part of
+the reviewed Execute contract. If implementation discovers a required rename or
+signature change, that is a **plan/scope review STOP** — not silent Execute drift.
+
 | Path | Responsibility |
 |---|---|
 | `cg2_legacy_vector_attestation.py` (new) | D0 candidate capture; independent validation; ratification record validator; canonical roots; query-context derivation; governed-root layout; read-only D1 consumption helpers |
@@ -303,8 +307,9 @@ Hermetic tests use temporary generation roots only.
 
 ### 5.3 D0 candidate capture (hermetic API)
 
-Public hermetic entry (exact name may adjust during Execute if repo conventions
-require, but single module above):
+**Pinned public contract** (module `cg2_legacy_vector_attestation.py` — names are
+reviewed authority; changing any name or signature requires plan/scope review STOP,
+not silent Execute drift):
 
 ```text
 capture_d0_legacy_vector_candidate(cfg, *, owner_key, source_path, accepted_source_hash) -> CandidateReference
@@ -331,7 +336,8 @@ Any churn during capture refuses candidate emission.
 
 ### 5.4 Independent validation (separate execution)
 
-Public hermetic entry:
+**Pinned public contract** (same module; name/signature changes require plan/scope
+review STOP):
 
 ```text
 validate_d0_legacy_vector_candidate(cfg, *, owner_key, source_path, accepted_source_hash, candidate_sha256, validator_identity) -> ValidationReference
@@ -374,7 +380,8 @@ Candidate and validation remain distinct evidence artifacts with distinct digest
 
 ### 5.5 Ryan ratification record (contract only)
 
-Public validators:
+**Pinned public validators** (same module; name/signature changes require plan/scope
+review STOP):
 
 ```text
 validate_d0_ratification_record(record) -> RatificationView
@@ -437,7 +444,8 @@ retry policy, PID, deployment path.
 
 ### 5.7 D1 read-only consumption boundary
 
-Export from D0 module only:
+**Pinned public exports** (same module; name/signature changes require plan/scope
+review STOP):
 
 ```text
 load_ratified_d0_chain(...) -> D0AuthorityChain
@@ -472,6 +480,11 @@ Default retention after first-canary window: **retain** until separately authori
 - ratification refuses digest mismatch / missing fields / invalidated record;
 - query-context refuses missing model digest, quant, runtime version;
 - separate-execution oracle (candidate path cannot emit validation);
+- **validation lock oracle:** wrap `source_flock` and assert
+  `validate_d0_legacy_vector_candidate` acquires it **exactly once** per call;
+- **validation churn oracle:** mutate authority, accepted source, row/vector/provenance
+  roots, or query-context digest between validation start and end-of-lock recheck;
+  assert validation refuses publication;
 - production-boundary refusal on configured-live paths without attestation;
 - hermetic-only: no writes under configured live generation root in tests.
 
@@ -703,63 +716,90 @@ cutover or live fence publication.
 
 | Path | Responsibility |
 |---|---|
-| `cg2_first_cutover.py` (new) | Public dedicated first-cutover operation: preflight exact bindings before fence; acquire owner lock exactly once for monotonic fence, open guard, and dedicated first pointer; resume `FENCED_NO_POINTER` only under fresh grant; no CLI and no production defaults |
+| `cg2_first_cutover.py` (new) | Public dedicated first-cutover operation `publish_first_cutover_active_pointer`: one continuous `source_flock` interval for final LEGACY reread through fence/guard/first pointer; resume `FENCED_NO_POINTER` only under fresh grant; no CLI and no production defaults |
 | `cg2_cutover_guard.py` | Complete low-level guard publication/validation (started in D2) |
 | `serving_authority.py` | Fence publication immutable/idempotent-identical; reject replacement; preserve `FENCED_NO_POINTER` resolution; no fence deletion API |
 | `tests/test_cg2_first_cutover.py` (new) | Exact structural gate, pre/post-fence timing, proof profiles, D0 chain, query context, crash/resume states |
 | `tests/test_serving_authority.py` | Monotonic fence bytes; durable fence with no pointer resolves only `FENCED_NO_POINTER` |
 | `tests/test_serving_index_repository.py` | Supporting authority-resolution fixtures as needed |
 
-### 8.2 First-cutover preflight (before any fence bytes)
+### 8.2 Non-lock preflight (before `source_flock`)
 
-`cg2_first_cutover.py` has a preflight phase and one commit phase. Before any
-fence bytes exist, preflight must prove exactly:
+`publish_first_cutover_active_pointer` in `cg2_first_cutover.py` may perform
+**purely non-authority-mutating** checks before acquiring `source_flock`: grant
+binding validation, artifact existence reads, fresh-process qualification of
+grant-bound `G_rb` and `G_canary`, and reconstruction of expected fence/guard
+evidence for resume paths. These checks must not publish fence, guard, or pointer
+bytes and must not reread authoritative LEGACY rows for cutover binding.
+
+If any non-lock preflight check fails, return before acquiring `source_flock`.
+The owner remains `LEGACY` with no new fence.
+
+Non-lock preflight must still prove (among grant-bound inputs):
 
 1. `G_rb != G_canary` (distinct generation IDs);
 2. exact `G_rb` generation ID and manifest SHA match immutable retained-baseline
    evidence;
-3. exact `G_canary` generation ID and manifest SHA match caller's grant-bound inputs;
+3. exact `G_canary` generation ID and manifest SHA match caller's grant-bound
+   inputs;
 4. **`G_rb` proof profile = `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`**;
 5. **`G_canary` proof profile = `KNOWN_MODEL_AND_VECTOR_V1`**;
 6. complete ratified D0 chain verification (candidate + validation + ratification
    digests, accepted snapshot root, ratified query-context digest);
 7. exact retained-evidence SHA binding for `G_rb`;
-8. live query-embedding context re-derivation equals D0-ratified
-   `query_embedding_context_sha256`;
-9. both manifests bind the same owner key/digest and canonical source path;
-10. both have internally consistent collection dimensions/configuration under their
-    respective proof profiles;
-11. both pass fresh-process exact qualification;
-12. current pointer is absent, current owner is LEGACY, reconciliation is fresh,
+8. both manifests bind the same owner key/digest and canonical source path;
+9. both have internally consistent collection dimensions/configuration under their
+   respective proof profiles;
+10. both pass fresh-process exact qualification;
+11. current pointer is absent, current owner is LEGACY, reconciliation is fresh,
     and current source hash equals `G_canary.source_hash`;
-13. the first-canary guard does not already exist;
-14. **before fence:** independent reread/rebind of D0-covered current LEGACY rows
-    under the existing owner lock — not a stored D1 snapshot; reproduced roots must
-    match ratified D0 roots.
+12. the first-canary guard does not already exist (initial cutover) or matches
+    exact resume expectation (fresh-grant resume).
 
-Any preflight failure returns before fence publication. Missing, corrupt,
-wrong-owner, wrong-manifest-SHA, non-equivalent, unqualified baseline evidence,
-D0 chain mismatch, or query-context mismatch therefore leaves the owner LEGACY.
+Missing, corrupt, wrong-owner, wrong-manifest-SHA, non-equivalent, or unqualified
+baseline evidence, or D0 chain mismatch, therefore refuses before lock acquisition.
 
-### 8.3 Commit phase (one owner lock)
+### 8.3 Single-lock cutover interval (authoritative)
 
-The commit phase acquires the existing owner lock once, rechecks all exact
-artifact hashes, pointer absence, current source, owner binding, D0 chain, and
-query context, then:
+The dedicated public `publish_first_cutover_active_pointer` operation acquires
+`source_flock` **EXACTLY ONCE** per invocation. There must **NOT** be:
 
-1. atomically publishes the immutable monotonic fence;
-2. atomically publishes the immutable first-canary-open guard naming exact
-   `G_rb` and `G_canary` and evidence hashes;
-3. reruns the final exact qualification/binding checks and invokes the private
-   lock-held pointer writer with first-cutover semantics:
-   `expected_active_generation_id=None`, durable `previous_generation_id=G_rb`,
-   active=`G_canary` (exact grant-bound `G_canary`);
-4. returns the module-sealed qualified active pointer.
+- a non-lock preflight acquisition followed by a second commit acquisition;
+- lock release between the final authoritative LEGACY reread and fence publication;
+- a second lock acquisition by the private pointer writer or any nested public
+  pointer API.
 
-No catch block removes or rewrites the fence. A crash or failure after step 1
-and before successful step 3 leaves `FENCED_NO_POINTER`; a fresh request can
-never resolve LEGACY. The guard is non-serving evidence and may exist in that
-fail-closed state.
+The private lock-held pointer writer assumes the lock is already held and **must
+not** call `source_flock` or any public pointer operation that would reacquire it.
+
+**Inside the one lock-held interval, in this order:**
+
+1. revalidate exact `LEGACY` authority;
+2. reload/revalidate the ratified D0 chain as required;
+3. derive and compare exact `query_embedding_context_sha256`;
+4. **first lock-held cutover action:** independently reread the complete
+   D0-covered LEGACY rows/vectors/provenance (not a stored D1 snapshot);
+5. recompute and compare the exact D0 roots; any drift discovered here refuses
+   **before** fence publication;
+6. recheck all grant-bound `G_rb`/`G_canary` identities and remaining
+   preconditions (pointer still absent on initial cutover; resume preconditions
+   per §8.4);
+7. only if every check still passes, publish the monotonic fence (initial cutover)
+   or revalidate existing fence bytes unchanged (fresh-grant resume);
+8. publish/open the first-canary guard as architecturally ordered (or validate
+   byte-identical guard on resume);
+9. publish the dedicated first pointer via the **private lock-held writer** with:
+   - `expected_active_generation_id = None`;
+   - durable `previous_generation_id = G_rb`;
+   - active/target generation = exact grant-bound `G_canary`;
+10. release the one lock only after the authority-changing operation reaches its
+    specified durable outcome (pointer published, or fail-closed refusal before
+    any fence bytes on initial cutover).
+
+No catch block removes or rewrites the fence. A crash or failure after step 7
+(fence published) and before successful step 9 leaves `FENCED_NO_POINTER`; a fresh
+request can never resolve LEGACY. The guard is non-serving evidence and may exist
+in that fail-closed state.
 
 Successful first pointer fields:
 
@@ -777,43 +817,52 @@ While the open guard is present:
 
 ### 8.4 Fresh-grant completion from `FENCED_NO_POINTER`
 
-The dedicated public `publish_first_cutover_active_pointer` operation owns the
-only normal completion path for both resumable crash states:
+The same public `publish_first_cutover_active_pointer` operation owns the only
+normal completion path for both resumable crash states:
 
 - fence present / guard absent / pointer absent;
 - fence present / exact guard present / pointer absent.
 
 Neither state may reuse or continue under the pre-crash grant. Resume requires
-a fresh Ryan one-shot grant bound to the exact `G_rb` and `G_canary`. Before
-acquiring the owner lock, the operation requalifies both exact grant-bound
-generations and reconstructs the exact expected immutable fence/guard evidence.
-Under its single owner-lock commit section it then:
+a fresh Ryan one-shot grant bound to the exact `G_rb` and `G_canary`.
 
-1. revalidates the existing fence as immutable, structurally valid, and bound
-   to the exact owner/source expected by the fresh grant;
-2. validates the guard as either absent or exact/byte-identical to the expected
-   guard for the same `G_rb`, `G_canary`, owner/source, and evidence hashes;
-3. if the guard is absent, atomically publishes that exact guard; if already
-   exact, leaves bytes unchanged;
-4. rechecks pointer absence and the fresh grant's exact structural and
-   qualification preconditions (including D0 chain and query context for `G_rb`);
-5. invokes the private lock-held pointer writer once to complete the exact
-   first pointer with CAS `None`, previous=`G_rb`, and active=`G_canary`.
+Before acquiring `source_flock`, the operation may requalify both exact grant-bound
+generations and reconstruct expected immutable fence/guard evidence (non-lock
+preflight per §8.2).
+
+**Resume still uses exactly one `source_flock` acquisition.** Inside that single
+lock-held interval (§8.3 steps adapted for resume):
+
+1. revalidate existing fence as immutable and grant-bound;
+2. reload/revalidate D0 chain and query context;
+3. reread D0-covered LEGACY rows and recompute roots under the lock;
+4. validate guard absent or byte-identical; publish missing exact guard if needed;
+5. complete first pointer via private lock-held writer (no lock reacquisition).
 
 A missing fence is not a resume state. Conflicting, malformed, or corrupt fence
 or guard fails closed and requires operator repair.
 
 ### 8.5 Red tests first
 
-- Parameterized pre-fence refusal matrix: missing baseline, corrupt evidence,
-  wrong owner, wrong source, wrong manifest SHA, failed qualification,
+- Parameterized non-lock preflight refusal matrix: missing baseline, corrupt
+  evidence, wrong owner, wrong source, wrong manifest SHA, failed qualification,
   non-equivalent set, D0 chain mismatch, query-context mismatch, and
-  `G_rb == G_canary`.
-- Assert every pre-fence refusal leaves no fence and no pointer.
+  `G_rb == G_canary` — all before `source_flock` acquisition; no fence, no pointer.
+- **Single-lock acquisition oracle:** wrap `source_flock` with reentry failure;
+  assert `publish_first_cutover_active_pointer` acquires it **exactly once** per
+  successful or refused cutover attempt; assert a two-acquisition implementation
+  fails the test.
+- **Lock-held reread oracle:** assert final D0-covered LEGACY reread occurs while
+  `source_flock` is held and before fence publication on initial cutover.
+- **Fence-before-release oracle:** assert fence bytes exist before lock release on
+  success; assert pointer publication uses private writer without `source_flock`
+  reacquisition.
+- **Drift-before-fence oracle:** inject row/root/query-context drift during final
+  lock-held reread; assert refusal before any fence bytes.
 - Inject failure/crash after durable fence and before pointer; assert
   `FENCED_NO_POINTER`, monotonic fence bytes, no pointer, no LEGACY recovery.
-- `fence → crash → fresh-grant resume` coverage.
-- `fence → guard → crash → fresh-grant resume` coverage.
+- `fence → crash → fresh-grant resume` coverage (one lock on resume).
+- `fence → guard → crash → fresh-grant resume` coverage (one lock on resume).
 - Wrong-guard refusal: conflicting/corrupt/wrong-owner/wrong-generation guard
   bytes fail closed with no pointer publication.
 - Assert successful first pointer has active=`G_canary`, CAS `None`,
@@ -838,7 +887,11 @@ git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
 
 ### 8.7 D3 STOP if
 
-- any structural check can occur only after the fence;
+- `publish_first_cutover_active_pointer` acquires `source_flock` more than once;
+- final D0-covered LEGACY reread occurs outside the single lock interval;
+- lock is released between final reread and fence publication;
+- private pointer writer reacquires `source_flock`;
+- any structural check can occur only after the fence without prior lock-held reread;
 - an exception path clears the fence;
 - a fenced/no-pointer owner can resolve LEGACY;
 - resume can reuse the pre-crash grant or overwrite conflicting fence/guard bytes;
@@ -1126,52 +1179,157 @@ Restoration diff must be reviewed against `e680ce8` before model edits.
 - rollback/recovery distinction; stale-source reconciliation;
 - canary-open guard; retention/no-GC; `FrozenGenerationStable` where applicable.
 
-### 11.4 TLC invocation (all four configurations required)
+### 11.4 TLC tool preflight (fail-closed input contract)
+
+`TLA_JAR` must be supplied as an **absolute, readable path** to the exact approved
+`tla2tools.jar` for the Execute run. Do not guess a path, symlink an unapproved
+copy, or silently download a different tool.
+
+Before **any** TLC configuration runs, mechanically require:
 
 ```bash
-TLA_JAR=/path/to/tla2tools.jar  # record exact JAR path, TLC version, checksum
+set -euo pipefail
+
+: "${TLA_JAR:?TLA_JAR must be set to absolute readable path to approved tla2tools.jar}"
+test -r "$TLA_JAR" || { echo "D6 STOP: TLA_JAR not readable: $TLA_JAR" >&2; exit 1; }
+
+TLA_JAR_SHA256="$(sha256sum "$TLA_JAR" | awk '{print $1}')"
+TLC_VERSION="$(java -cp "$TLA_JAR" tlc2.TLC -version 2>&1 | tr -d '\r')"
+JAVA_VERSION="$(java -version 2>&1 | head -n1 | tr -d '\r')"
+
+# Execute evidence input must name the approved JAR SHA-256 for this run.
+# Mismatch is D6 STOP — do not proceed with a different JAR.
+: "${TLA_JAR_APPROVED_SHA256:?approved JAR digest required in Execute evidence input}"
+if [[ "$TLA_JAR_SHA256" != "$TLA_JAR_APPROVED_SHA256" ]]; then
+  echo "D6 STOP: TLA_JAR SHA-256 mismatch" >&2
+  exit 1
+fi
+```
+
+Record in evidence: `TLA_JAR` path, `TLA_JAR_SHA256`, `TLC_VERSION`, `JAVA_VERSION`,
+and the approved digest that matched.
+
+### 11.5 TLC execution (all four configurations — fail-fast)
+
+**Pinned per-configuration timeout:** `1800` seconds (30 minutes). Any timeout is
+D6 STOP — not PASS.
+
+**Pinned module:** `docs/plans/formal/cg2/CG2Authority.tla`
+
+**Required configurations (no skips):**
+
+| Config file | Must run |
+|---|---|
+| `docs/plans/formal/cg2/CG2Cutover.cfg` | yes |
+| `docs/plans/formal/cg2/CG2StaleReconcile.cfg` | yes |
+| `docs/plans/formal/cg2/CG2Rename.cfg` | yes |
+| `docs/plans/formal/cg2/CG2DesignA.cfg` | yes |
+
+Execute all four in order; **abort on first failure** — later configs must not
+hide an earlier failure.
+
+```bash
+set -euo pipefail
+
+TLA_TIMEOUT_SECONDS=1800
+TLA_MODULE="docs/plans/formal/cg2/CG2Authority.tla"
+TLC_JAVA_OPTS=(-Xmx2g -XX:+UseParallelGC)
+
+# Run §11.4 preflight first (sets TLA_JAR_SHA256, TLC_VERSION, JAVA_VERSION)
 
 for config in CG2Cutover CG2StaleReconcile CG2Rename CG2DesignA; do
-  java -Xmx2g -XX:+UseParallelGC -cp "$TLA_JAR" tlc2.TLC \
-    -workers 2 -coverage 1 \
-    -config "docs/plans/formal/cg2/${config}.cfg" \
-    docs/plans/formal/cg2/CG2Authority.tla
+  cfg_path="docs/plans/formal/cg2/${config}.cfg"
+  test -r "$cfg_path" || { echo "D6 STOP: missing config $cfg_path" >&2; exit 1; }
+
+  log_path="/tmp/tlc-${config}-$(git rev-parse HEAD).log"
+  cmd=(
+    timeout "${TLA_TIMEOUT_SECONDS}"
+    java "${TLC_JAVA_OPTS[@]}"
+    -cp "$TLA_JAR" tlc2.TLC
+    -workers 2 -coverage 1
+    -config "$cfg_path"
+    "$TLA_MODULE"
+  )
+
+  start_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  set +e
+  "${cmd[@]}" >"$log_path" 2>&1
+  exit_status=$?
+  set -e
+  end_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  if [[ $exit_status -eq 124 ]]; then
+    echo "D6 STOP: TLC timeout for ${config} after ${TLA_TIMEOUT_SECONDS}s" >&2
+    exit 1
+  fi
+  if [[ $exit_status -ne 0 ]]; then
+    echo "D6 STOP: TLC non-zero exit for ${config}: ${exit_status}" >&2
+    exit 1
+  fi
+  if [[ ! -s "$log_path" ]]; then
+    echo "D6 STOP: TLC produced no output for ${config}" >&2
+    exit 1
+  fi
+
+  # Record per-config evidence (see §11.6) before proceeding to next config.
 done
 ```
 
 **Success criteria per configuration:**
 
-- empty error queue, zero counterexamples;
-- generated/distinct state counts and depth recorded in README;
+- exit status `0` within pinned timeout;
+- complete TLC log captured (generated/distinct state counts, depth, coverage);
+- empty error queue, zero counterexamples in log;
 - nonzero action coverage for every required new transition;
-- no skipped configuration accepted;
-- timeout is not PASS — investigate or STOP.
+- checksum/version preflight matched approved Execute input.
 
-**Evidence recording:** TLA+ release/JAR checksum, exact command lines, per-config
-generated/distinct counts, depth, coverage summary. README preserves 2026-08-14
-counts as historical old-revision evidence only; Design A run is a separate section.
+Any timeout, non-zero status, missing config, skipped config, incomplete output,
+or checksum/version mismatch is **D6 STOP**.
 
 Historical TLC results at `e680ce8` / 2026-08-14 remain old-revision evidence only.
 
-### 11.5 D6 verification
+### 11.6 README evidence (per configuration — required fields)
+
+Update `docs/plans/formal/cg2/README.md` with a **separate Design A run section**
+(one subsection per configuration). Historical 2026-08-14 counts remain
+historical-only and must not be rewritten as Design A proof.
+
+For **each** of the four configurations, record:
+
+- exact implementation/model git SHA at TLC run time;
+- exact config path;
+- exact command line (including `timeout`, Java opts, `-config`, module path);
+- `TLA_JAR` path used;
+- TLA JAR SHA-256 (`TLA_JAR_SHA256`);
+- TLC version string (`TLC_VERSION`);
+- Java version string (`JAVA_VERSION`);
+- start timestamp and end timestamp (or elapsed seconds);
+- exit status;
+- PASS or failure result;
+- generated states, distinct states, depth, and action-coverage summary from log.
+
+### 11.7 D6 verification
 
 ```bash
-for config in CG2Cutover CG2StaleReconcile CG2Rename CG2DesignA; do
-  java -Xmx2g -XX:+UseParallelGC -cp "$TLA_JAR" tlc2.TLC \
-    -workers 2 -coverage 1 \
-    -config "docs/plans/formal/cg2/${config}.cfg" \
-    docs/plans/formal/cg2/CG2Authority.tla
-done
+# After exporting TLA_JAR and TLA_JAR_APPROVED_SHA256 from Execute evidence input:
+bash -lc 'source docs/plans/formal/cg2/run-design-a-tlc.sh'  # optional helper script at Execute time only
+# Or run §11.4 preflight + §11.5 loop inline at the reviewed implementation tip.
+
 git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
 ```
 
-### 11.6 D6 STOP if
+If Execute adds `run-design-a-tlc.sh`, it must implement §11.4–§11.5 exactly;
+adding that script is within §11.1 formal surfaces only when D6 Execute begins.
+
+### 11.8 D6 STOP if
 
 - TLC finds a counterexample;
 - any required action has zero coverage;
 - restored model cannot be tied to `e680ce8`;
 - a property needs an architecture decision not already locked at `3d8b151…`;
 - `GRollbackRequiresExactQueryContext` is scoped beyond `G_rb`;
+- TLA JAR unreadable, digest mismatch, or unapproved tool version;
+- any TLC configuration times out, exits non-zero, is skipped, or produces incomplete output;
 - work expands beyond §11.1 surface table.
 
 ## 12. D7 — Execute closure, evidence, and Ryan stop
@@ -1231,13 +1389,9 @@ python scripts/pylint_regression_gate.py ci \
 
 git diff --check 06d9064648c96e46642d1820a504dace8af5ab38...HEAD
 
-# All four TLC configurations (see §11.4)
-for config in CG2Cutover CG2StaleReconcile CG2Rename CG2DesignA; do
-  java -Xmx2g -XX:+UseParallelGC -cp "$TLA_JAR" tlc2.TLC \
-    -workers 2 -coverage 1 \
-    -config "docs/plans/formal/cg2/${config}.cfg" \
-    docs/plans/formal/cg2/CG2Authority.tla
-done
+# All four TLC configurations — §11.4 preflight + §11.5 fail-fast loop
+# (TLA_JAR absolute path + TLA_JAR_APPROVED_SHA256 from Execute evidence input;
+#  pinned timeout 1800s per config; abort on first failure)
 
 # Hermetic rehearsal (real public APIs, temporary roots only)
 python -m pytest tests/test_cg2_rehearsal.py -q
@@ -1442,7 +1596,7 @@ detail — this table and stage sections above are authoritative.
 | Locked invariant | Implementation surface | Required mechanical evidence |
 |---|---|---|
 | D0 candidate not authority | `cg2_legacy_vector_attestation.py` | validation/ratification required oracles; tampered candidate refuses |
-| D0 validation separate execution | D0 capture vs validation APIs | subprocess/separation oracle |
+| D0 validation separate execution + one lock | D0 capture vs validation APIs | subprocess/separation oracle; validation acquires `source_flock` exactly once; churn oracle |
 | D0 ratification fail-closed | ratification validator | digest mismatch / deletion refuses |
 | Query context G_rb-only | D0 adapter; D1/D3/D4 checks | scoped rollback tests; known-model rollback without D0 |
 | Accepted LEGACY set converts exactly to `G_rb` | `cg2_rollback_baseline.py` + D0 chain | bidirectional equivalence; D0 root match |
@@ -1453,7 +1607,7 @@ detail — this table and stage sections above are authoritative.
 | `RETAINED_ROLLBACK_BASELINE` protected | baseline evidence; store protection | non-serving test; stage-`G_canary` test; reopen retention |
 | CAS and durable lineage separate | `file_generation_pointer.py` | forward, first-cutover, rollback pointer-field matrix |
 | Ordinary publish cannot create first pointer | `publish_active_pointer` | `expected_active=None` refusal |
-| First cutover exact `G_rb` + `G_canary` + D0 chain | `cg2_first_cutover.py` | exact IDs/SHAs/D0/query-context tests |
+| First cutover exact `G_rb` + `G_canary` + D0 chain | `cg2_first_cutover.publish_first_cutover_active_pointer` | exact IDs/SHAs/D0/query-context tests; single-lock acquisition oracle |
 | `G_rb != G_canary` | first-cutover preflight | equality refusal before fence |
 | Pre-fence refusal remains LEGACY | preflight before commit | refusal matrix |
 | Post-fence failure is `FENCED_NO_POINTER` | one-lock fence/guard/pointer sequence | injected crash test |
@@ -1463,7 +1617,7 @@ detail — this table and stage sections above are authoritative.
 | Reconciliation before stale rollback pointer | `source_reconciler.py` | persistence/restart/coalescing test |
 | `G_rb` rollback needs D0 + query context | D4 preflight | G_rb-only oracles; known-model negative |
 | Recovery cannot switch generation | exact-payload recovery | alternate generation negative test |
-| One owner-lock interval per authority change | public orchestration + private writer | reentry-failing `source_flock` oracle |
+| One owner-lock interval per authority change | public orchestration + private writer | reentry-failing `source_flock` oracle; first cutover exactly once; private writer never reacquires |
 | No second promotion during canary | immutable open guard | second forward/first-cutover refusal |
 | Frozen generation stable mid-request | `ServingIndexRepository` | pointer-change-mid-request test |
 | GC disabled / baseline retained | `PHYSICAL_DELETION_DISABLED`; inventory | baseline survives cutover/rollback/reopen |
