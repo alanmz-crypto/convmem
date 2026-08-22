@@ -436,7 +436,8 @@ revalidation of the grant-bound baseline (see §7).
    window: `G_rb`);
 2. fresh-process qualifies that exact manifest and rows (vector identity,
    completeness); for `G_rb`, this also verifies the complete D0 authority
-   chain, exact retained-evidence SHA, and required contemporary query context;
+   chain, exact retained-evidence SHA, and exact equality of the live
+   `query_embedding_context_sha256` to the D0-ratified value;
 3. acquires the owner lock;
 4. CAS-requires the current active generation exactly;
 5. publishes the retained generation as active **without** requiring
@@ -448,9 +449,10 @@ revalidation of the grant-bound baseline (see §7).
 
 While `G_rb` remains the first-canary rollback target, rollback fails closed if
 the D0 candidate, independent validation evidence, Ryan ratification, exact
-vectors, retained evidence, or required contemporary query-embedding context is
-missing, mismatched, unavailable, or incompatible. A later embedding-model or
-query-context migration is a separate transition and is not authorized here.
+vectors, retained evidence, or exact D0-ratified
+`query_embedding_context_sha256` equality is missing, unavailable, or false. A
+later semantic query-context migration is a separate transition and is not
+authorized here.
 
 **`recover_active_pointer`:** Durability recovery only. Same generation, exact
 pointer payload. Not rollback.
@@ -556,26 +558,138 @@ state and is mandatory before D1 may construct `G_rb`. D0 binds, for both
 - exact canonical provenance envelope and hash, `assertion_id`, and
   `provenance_commitment` where valid; absent or invalid provenance retains
   conservative legacy-unproven treatment without synthesis or elevation;
-- the effective contemporary query-embedding context under which the LEGACY
-  baseline is accepted, clearly labeled operational context and never
-  historical embedding provenance;
+- the canonical `QUERY_EMBEDDING_CONTEXT_V1` payload and
+  `query_embedding_context_sha256` under which the LEGACY baseline is accepted,
+  clearly labeled contemporary semantic query context and never historical
+  embedding provenance;
 - capture start/completion time labeled attestation-processing time only;
 - producer repository SHA, capture-module/code identity, schema version,
   Chroma version, canonical vector encoding, and immutable artifact SHA-256.
 
 Vector hashes use one specified canonical IEEE-754 binary32 encoding and byte
 order over cold-readable persisted values, reject non-finite values, and bind
-each vector to its exact row leaf. A canonical ordered leaf set supplies the
-per-collection and aggregate roots. The artifact need not duplicate raw vectors
-when the actual LEGACY/`G_rb` rows and complete-data backup retain them. Hashes
-are verification material, never reconstruction material. A full Merkle object
-graph remains unnecessary absent a measured partial-proof need.
+each vector to its exact row leaf. Each leaf is ordered by the exact tuple
+`(collection_name, conversion_logical_id, physical_id)`, comparing the UTF-8
+bytes of each validated string lexicographically. `conversion_logical_id` is
+the admitted explicit `logical_id`, or the exact physical id when no explicit
+logical id exists; it is never inferred from `ledger_id`. The tuple is included
+in the leaf preimage. A missing component, invalid Unicode, or duplicate tuple
+refuses capture; insertion order and an arbitrary hash sort never break ties.
+This same global ordering defines the aggregate root, while each collection root
+uses the corresponding suffix tuple `(conversion_logical_id, physical_id)`.
+
+D0 candidate capture uses the existing owner `source_flock` once, revalidates
+accepted-source and exact `LEGACY` authority after acquisition, and captures the
+complete row/vector set while holding that lock. It rechecks authority,
+collection UUID/configuration, row counts, the covered root, and the resolved
+`QUERY_EMBEDDING_CONTEXT_V1` digest before release. Any data, authority, or
+semantic-context churn or start/end mismatch refuses without emitting an
+eligible candidate. An execution plan may instead use an already-architecture-
+locked read/copy/recheck protocol only if it is proved equally strong; this
+amendment creates no second lock. Later independent validation is corroboration,
+not a way to repair or ratify a torn capture.
+
+The artifact need not duplicate raw vectors when the actual LEGACY/`G_rb` rows
+and complete-data backup retain them. Hashes are verification material, never
+reconstruction material. A full Merkle object graph remains unnecessary absent
+a measured partial-proof need.
 
 The artifact SHA-256 is computed over one canonical payload encoding with the
 artifact-digest field omitted; its content-addressed name/reference carries the
 result. This avoids a circular self-digest while still making byte mutation
 detectable. The independent validation result uses the same construction for
 its own result SHA-256.
+
+#### 7.0.1a `QUERY_EMBEDDING_CONTEXT_V1`
+
+This context contains only identity that determines the semantic query-vector
+space used against preserved `G_rb` vectors. The current repository path passes
+the exact text supplied to `query.query_units` / `query.query_raw` through
+`llm.ollama_embed`, posts `model` plus that exact string as `prompt` to Ollama
+`/api/embeddings`, selects `response.embedding`, and performs no text
+preprocessing, vector transform, or normalization before cosine retrieval. The
+context boundary begins at that exact-text query API: upstream surface query
+formulation, including `ask._retrieval_query` history concatenation, changes the
+query content but not the embedding-space function and is deployment/query-
+policy evidence outside this payload. Any future transform between this boundary
+and the model changes `QUERY_EMBEDDING_PIPELINE_V1`.
+
+The payload is one strict JSON object with exactly these required, non-null
+fields and no extensions:
+
+- `schema_version`: exact string `QUERY_EMBEDDING_CONTEXT_V1`;
+- `query_embedding_model_identifier`: the non-empty exact model identifier sent
+  by the governed query adapter;
+- `query_embedding_model_artifact_digest`: the non-empty lowercase Ollama model
+  manifest digest in `sha256:<64 lowercase hex>` form, resolved from the actual
+  selected model rather than copied from configuration;
+- `query_embedding_model_quantization`: the non-empty quantization identity
+  resolved for that same model artifact;
+- `embedding_dimension`: a positive JSON integer measured from the governed
+  query-embedding response and equal to every admitted `G_rb` collection
+  dimension; any later observed output dimension difference refuses;
+- `query_embedding_pipeline_fingerprint`: lowercase SHA-256 over the canonical
+  `QUERY_EMBEDDING_PIPELINE_V1` recipe below;
+- `embedding_runtime_identifier`: exact string `ollama` for this repository
+  path; and
+- `embedding_runtime_version`: the non-empty exact runtime version returned by
+  the selected Ollama runtime.
+
+`QUERY_EMBEDDING_PIPELINE_V1` is the strict canonical recipe object whose exact
+fields are `schema_version=QUERY_EMBEDDING_PIPELINE_V1`,
+`input_text_transform=IDENTITY_UNICODE_STRING_V1`,
+`request_operation=OLLAMA_POST_API_EMBEDDINGS_PROMPT_V1`,
+`output_selector=embedding`, `query_vector_transform=IDENTITY_FLOAT_VECTOR_V1`,
+and `query_vector_normalization=NONE`. The request-operation value means an
+Ollama `/api/embeddings` POST whose semantic inputs are exactly the context-
+bound model identifier and the unmodified embedding-boundary query text in
+`prompt`; it excludes the host, URL authority, timeout, credentials, retry
+policy, socket, and process placement. The pipeline fingerprint is an immutable
+recipe-specification digest, not a mutable label; the later execution plan must
+map the governed adapter to this exact recipe and fail if the live path differs.
+
+Both recipe and context use ConvMem canonical JSON: strict typed values; valid
+Unicode scalar strings; no duplicate or unknown keys; UTF-8; `ensure_ascii=false`;
+`allow_nan=false`; object keys sorted lexicographically; comma/colon separators;
+and no insignificant whitespace. The recipe key order is exactly:
+`input_text_transform`, `output_selector`, `query_vector_normalization`,
+`query_vector_transform`, `request_operation`, `schema_version`. The context
+key order is exactly:
+`embedding_dimension`, `embedding_runtime_identifier`,
+`embedding_runtime_version`, `query_embedding_model_artifact_digest`,
+`query_embedding_model_identifier`, `query_embedding_model_quantization`,
+`query_embedding_pipeline_fingerprint`, `schema_version`. Omission and `null`
+are forbidden for every field; inability to resolve any value refuses D0.
+
+`query_embedding_context_sha256` is the lowercase 64-hex SHA-256 of those exact
+canonical UTF-8 context bytes and is stored outside the hashed payload. The
+context payload and digest are contemporary operational authority only. They do
+not identify the historical model that produced LEGACY vectors.
+
+Semantic query context is distinct from deployment/runtime metadata. Hostname,
+endpoint URL/authority, port, credentials, timeout, retry policy, PID, device
+address, and deployment path are excluded because the current adapter does not
+feed them into query-vector semantics. The model artifact digest, quantization,
+Ollama runtime identity/version, dimension, and pipeline recipe remain included
+because changing them can change produced query vectors. A deployment move that
+changes only excluded metadata leaves the canonical payload and digest
+unchanged.
+
+For D1, first cutover, and first-canary rollback, compatibility is defined only
+as:
+
+```text
+live_query_embedding_context_sha256
+    == D0_ratified_query_embedding_context_sha256
+```
+
+No fuzzy rule, same-dimension shortcut, current-config inference, alias claim,
+or discretionary compatibility judgment is permitted. The live value is
+re-derived from the governed query adapter and actual selected model/runtime.
+If equality is false or either value cannot be produced, `G_rb` is ineligible.
+A changed semantic query context requires a separately designed and ratified
+migration/transition; this amendment cannot replace the D0 value and treat the
+same first-canary rollback contract as eligible.
 
 #### 7.0.2 Three-part D0 authority chain
 
@@ -590,19 +704,35 @@ Ryan durable ratification
 ```
 
 The candidate self-hash is not authority. Independent validation reopens the
-persisted read-only data, reproduces every covered row/vector/snapshot root, and
-publishes immutable validation evidence that identifies its validator,
+persisted read-only data under the same existing lock/consistency protocol,
+reproduces every covered row/vector/snapshot root, independently re-derives the
+canonical `QUERY_EMBEDDING_CONTEXT_V1` through the actual governed query path,
+and publishes immutable validation evidence that identifies its validator,
 repository SHA, validation-module/code identity, schema version, validation
-time, reproduced roots, and result SHA-256. Ryan's durable ratification binds
-the exact D0 artifact SHA-256, independent validation-result SHA-256, owner,
-accepted legacy snapshot/vector root, producer SHA, and attestation capture
-identity/timestamp. Changing and rehashing either the candidate or validation
-evidence invalidates ratification.
+time, reproduced roots, reproduced
+`query_embedding_context_sha256`, and result SHA-256. Ryan's durable
+ratification binds the exact D0 artifact SHA-256, independent validation-result
+SHA-256, owner, accepted legacy snapshot/vector root, producer SHA, and
+attestation capture identity/timestamp, including the one exact context digest
+equal in candidate and validation evidence. Changing and rehashing either the
+candidate or validation evidence invalidates ratification.
 
-Candidate capture and independent validation use separately reviewable roles
-and evidence. Only Ryan may ratify. D0 capture or ratification authority does
-not authorize a production `G_rb` or `G_canary` build, fence/pointer
-publication, owner activation, D1 resumption, or D2.
+Candidate production and independent validation are separately performed
+verification roles and separate executions with separate evidence. The
+validator independently rereads persisted state and reproduces the roots; one
+execution cannot emit both candidate and validation evidence as a self-
+attesting operation. The roles may reuse the same specified canonicalization
+algorithm or reviewed software stack; independence does not require gratuitous
+second-stack diversity. Only Ryan may ratify.
+
+The candidate, independent validation evidence, and Ryan ratification live as
+immutable, content-addressed, non-serving evidence under one fixed governed D0
+authority root. They are not serving authority, a generation pointer, a second
+database, or a second owner-state machine. Exact filesystem/API layout remains
+an execution-plan decision, but D1 resolves a ratification reference only
+within this governed root. D0 capture or ratification authority does not
+authorize a production `G_rb` or `G_canary` build, fence/pointer publication,
+owner activation, D1 resumption, or D2.
 
 #### 7.0.3 D1 is an authority consumer only
 
@@ -610,7 +740,10 @@ D1 receives only a ratification reference and expected artifact identity. It
 loads the candidate, independent validation, and Ryan ratification from fixed
 durable authority locations and verifies the complete chain. D1 cannot create
 D0 authority, create Ryan ratification, accept arbitrary caller-provided
-authority objects, infer a historical model, or substitute current config.
+authority objects, infer a historical model, or substitute current config. It
+re-derives the live canonical `QUERY_EMBEDDING_CONTEXT_V1` through the governed
+query adapter and actual selected model/runtime and refuses unless its
+`query_embedding_context_sha256` exactly equals the D0-ratified value.
 
 Before conversion, D1 reacquires the owner lock, revalidates exact `LEGACY`
 authority, independently rereads the exact covered rows, recomputes all roots,
@@ -651,8 +784,9 @@ only after both IDs and both manifest SHA-256 digests are already in the packet.
   (generation id, manifest SHA, convert-v1 fingerprint, exact retained-evidence
   SHA, D0 artifact SHA, independent validation-result SHA, Ryan ratification,
   vector/snapshot roots, and fresh qualification evidence);
-- verification that the required contemporary query-embedding context remains
-  available and compatible;
+- re-derivation of the live `QUERY_EMBEDDING_CONTEXT_V1` from the governed
+  adapter/model/runtime and exact equality of its
+  `query_embedding_context_sha256` to the D0-ratified value;
 - while holding the owner lock and **before fence publication**, an independent
   reread/rebind of the exact D0-covered current accepted LEGACY row/vector state.
 
@@ -858,8 +992,10 @@ owner canary. Preserve:
 - active generation (`G_canary` after first cutover);
 - Design A retained rollback baseline `G_rb` (`RETAINED_ROLLBACK_BASELINE`);
 - the exact D0 candidate artifact, independent D0 validation evidence, Ryan
-  ratification, aggregate/per-collection roots, contemporary query-context
-  binding, `G_rb` manifest, and retained-evidence bytes/SHA;
+  ratification, aggregate/per-collection roots, canonical
+  `QUERY_EMBEDDING_CONTEXT_V1` payload and D0-ratified
+  `query_embedding_context_sha256`, `G_rb` manifest, and retained-evidence
+  bytes/SHA;
 - immediately previous committed generation after later promotions;
 - in-flight candidate;
 - abandoned candidate until explicit inspection/cleanup;
@@ -940,15 +1076,16 @@ Complete-data backup and restore preserve and verify together:
 - the D0 candidate artifact and independent validation evidence;
 - the Ryan ratification record;
 - applicable pointer, monotonic fence, and first-canary guard state;
-- the required contemporary query-context binding.
+- the exact canonical `QUERY_EMBEDDING_CONTEXT_V1` payload and D0-ratified
+  `query_embedding_context_sha256`.
 
 The generation/evidence roots must be within the governed complete-data backup
 scope; an externally configured root is ineligible until equivalent coverage is
 proved. Restore independently verifies artifact and validation-result digests,
 Ryan bindings, manifest/evidence SHAs, vector/snapshot roots, exact cold-readable
-rows, and query context before treating `G_rb` as rollback-eligible. Missing or
-mismatched authority is `BLOCKED`/quarantined; restore never re-embeds and claims
-the same `G_rb`.
+rows, and exact live-versus-ratified `query_embedding_context_sha256` equality
+before treating `G_rb` as rollback-eligible. Missing or mismatched authority is
+`BLOCKED`/quarantined; restore never re-embeds and claims the same `G_rb`.
 
 Existing complete-data capture evidence remains explicitly non-authoritative.
 It may expose snapshot skew but cannot replace D0, independent validation, Ryan
@@ -969,7 +1106,7 @@ ratification, or exact preserved vectors.
 | Current config, dimension, Chroma default, caller input, or present setting is offered as historical model identity | Refuse as an authority-boundary violation; historical model remains explicitly `UNKNOWN` |
 | `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1` appears on `G_canary` or any prospective generation | Refuse; prospective generations require `KNOWN_MODEL_AND_VECTOR_V1` writer evidence |
 | D0-covered row/vector/provenance/snapshot root drifts before D1 or first cutover | Refuse; require a new candidate, independent validation, and Ryan ratification |
-| Required contemporary query context is unavailable or incompatible while `G_rb` is rollback target | Refuse first cutover/rollback; no query-context substitution |
+| Live `QUERY_EMBEDDING_CONTEXT_V1` cannot be resolved or its SHA-256 is not exactly the D0-ratified `query_embedding_context_sha256` while `G_rb` is rollback target | Refuse D1/first cutover/rollback; same dimension, current config, aliases, and fuzzy compatibility cannot substitute |
 | `G_rb` vectors or required recovery authority are lost/mismatched | Fail closed; never re-embed or synthesize a same-identity replacement |
 | Restore lacks complete D0/validation/Ryan authority | `BLOCKED`/quarantine; non-authoritative backup evidence cannot substitute |
 | First-cutover baseline/precondition failure **before** durable fence | Pause / refuse; no fence, no pointer, no activation (§7.0) |
@@ -1070,8 +1207,9 @@ Requires a separate **one-shot** activation grant naming:
 - exact source hashes and production pipeline fingerprints;
 - `G_rb` proof profile=`LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`, exact D0 artifact
   SHA, independent validation-result SHA, Ryan D0 ratification reference,
-  accepted snapshot/vector roots, contemporary query-context binding, and exact
-  retained-evidence SHA;
+  accepted snapshot/vector roots, exact canonical `QUERY_EMBEDDING_CONTEXT_V1`
+  payload and D0-ratified `query_embedding_context_sha256`, and exact retained-
+  evidence SHA;
 - `G_canary` proof profile=`KNOWN_MODEL_AND_VECTOR_V1`, writer-produced
   embedding-model provenance, and exact vector identity;
 - qualification evidence and independent review packet;
@@ -1090,9 +1228,10 @@ implied by V8c PASS.
 
 The owner must have no alias ambiguity, an exact ratified D0 historical-vector-
 state authority for `G_rb`, known writer-produced embedding identity for
-`G_canary`, compatible contemporary query context, modest size, and exact
-logical parity. Automatic GC and rename migration remain off. During the first-
-canary window, no further serving promotion of that owner.
+`G_canary`, exact live-versus-D0-ratified `query_embedding_context_sha256`
+equality, modest size, and exact logical parity. Automatic GC and rename
+migration remain off. During the first-canary window, no further serving
+promotion of that owner.
 
 ### A7 — bounded owner batches
 
@@ -1115,8 +1254,9 @@ profile-specific provenance + exact vector identity + qualification evidence)
 **before** Ryan issues the V8c activation grant. For `G_rb`, the packet also
 binds the D0 artifact SHA-256, independent validation-result SHA-256, Ryan D0
 ratification reference, accepted snapshot/vector roots, contemporary query-
-context binding, and exact retained-evidence SHA. No post-grant packet amendment
-to discover either target or its authority.
+embedding context payload and its exact D0-ratified
+`query_embedding_context_sha256`, and exact retained-evidence SHA. No post-grant
+packet amendment to discover either target or its authority.
 
 1. Full repository and focused CG-2 suites pass with no unexplained failures.
 2. Independent architecture and implementation reviews PASS the same revision.
@@ -1159,7 +1299,8 @@ to discover either target or its authority.
     storage amplification.
 16. **Design A rollback drill:** `rollback_active_pointer` restores exact `G_rb`
     through fresh qualification of its manifest, rows, D0 chain, retained-
-    evidence SHA, and required query context; when source has advanced,
+    evidence SHA, and exact live-versus-D0-ratified
+    `query_embedding_context_sha256` equality; when source has advanced,
     reconciliation-required remains durable; fence stays monotonic; never
     LEGACY. Separate tests prove `recover_active_pointer` cannot switch
     generations.
@@ -1186,8 +1327,9 @@ to discover either target or its authority.
     - loss of non-reconstructible `G_rb` or its authority cannot transition to a
       synthesized replacement with the same rollback-baseline identity;
     - `rollback_active_pointer` may restore retained generation after source
-      advance while leaving reconciliation-required and preserving compatible
-      query context; never resurrect LEGACY;
+      advance while leaving reconciliation-required only when the live
+      `query_embedding_context_sha256` exactly equals the D0-ratified value;
+      never resurrect LEGACY;
     - `recover_active_pointer` never changes generation identity;
     - during the first-canary window, no second serving promotion of that owner;
     - under a stated fair-reconciler assumption, lost notification state cannot
@@ -1306,9 +1448,10 @@ Reviewers should answer explicitly:
     the candidate self-hash, part of Ryan's exact ratification?
 12. Can D1 and first cutover consume and rebind D0 without any capability to
     self-attest, substitute, or stage a caller-held snapshot?
-13. Are non-reconstructible `G_rb`, query-context compatibility, and complete-
-    data restore semantics fail-closed without weakening the existing
-    fence/pointer/rollback state machine?
+13. Are non-reconstructible `G_rb`, exact live-versus-D0-ratified
+    `query_embedding_context_sha256` equality, and complete-data restore
+    semantics fail-closed without weakening the existing fence/pointer/rollback
+    state machine?
 
 This amendment exits only when independent Claude adversarial review targets one
 exact candidate revision and Ryan ratifies that reviewed revision. Only then may
