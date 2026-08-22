@@ -433,6 +433,64 @@ else
   SKIPPED+="  - Copilot CLI (no ~/.copilot and no copilot binary)\n"
 fi
 
+# --- opencode instructions ---
+# opencode.json (project-local) already references config/opencode-instructions-convmem.example.md.
+# The file is a repo artifact — no user-config copy needed for in-repo use.
+# For cross-project use, ~/.config/opencode/opencode.jsonc can reference the absolute path.
+OPENCODE_INSTRUCTIONS="$(pwd)/config/opencode-instructions-convmem.example.md"
+OPENCODE_GLOBAL="$HOME/.config/opencode/opencode.jsonc"
+if [ -f "$OPENCODE_INSTRUCTIONS" ]; then
+  echo "  [ok]     $OPENCODE_INSTRUCTIONS present (referenced by opencode.json)"
+  DEPLOY_REPORT+="  - opencode instructions file present (in-repo wiring active)\n"
+  # Wire global config if opencode is installed and not already wired
+  if [ -f "$OPENCODE_GLOBAL" ]; then
+    wire_result=$(python3 - <<PY "$OPENCODE_GLOBAL" "$OPENCODE_INSTRUCTIONS"
+import json, sys
+dest, instructions_path = sys.argv[1], sys.argv[2]
+with open(dest) as f:
+    # Strip JSONC comments (simple line-comment strip)
+    lines = [l for l in f if not l.lstrip().startswith("//")]
+    try:
+        cfg = json.loads("".join(lines))
+    except json.JSONDecodeError:
+        print("parse_error")
+        sys.exit(0)
+existing = cfg.get("instructions") or []
+if instructions_path in existing:
+    print("skip")
+else:
+    existing.append(instructions_path)
+    cfg["instructions"] = existing
+    with open(dest, "w") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    print("wired")
+PY
+)
+    case "$wire_result" in
+      wired)
+        echo "  [deploy] $OPENCODE_GLOBAL (added convmem instructions path)"
+        DEPLOY_REPORT+="  - Wired convmem instructions into global opencode.jsonc\n"
+        ;;
+      skip)
+        echo "  [skip]   $OPENCODE_GLOBAL already references convmem instructions"
+        DEPLOY_REPORT+="  - Global opencode.jsonc already wired\n"
+        ;;
+      parse_error)
+        echo "  [warn]   $OPENCODE_GLOBAL has JSONC that could not be parsed — add manually:"
+        echo "           \"instructions\": [\"$OPENCODE_INSTRUCTIONS\"]"
+        SKIPPED+="  - opencode global wiring (JSONC parse error)\n"
+        ;;
+    esac
+  else
+    echo "  [skip]   $OPENCODE_GLOBAL not found — opencode not installed globally"
+    SKIPPED+="  - opencode global wiring (no ~/.config/opencode/opencode.jsonc)\n"
+  fi
+else
+  echo "  [warn]   $OPENCODE_INSTRUCTIONS missing — run generate-agent-protocol.sh first"
+  SKIPPED+="  - opencode instructions (example file missing; run generate first)\n"
+fi
+
 # --- Crush rules dir ---
 CRUSH_RULES=""
 for candidate in "$HOME/.config/crush/rules" "$HOME/.crush/rules"; do
