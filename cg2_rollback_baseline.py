@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,6 +44,7 @@ from ingest import load_processed
 from purge_locks import source_flock
 from serving_authority import (
     OwnerAuthorityMode,
+    ServingAuthorityError,
     fence_path,
     generation_root_for_cfg,
     pointer_path,
@@ -53,6 +55,16 @@ from serving_authority import (
 CONVERT_V1_FINGERPRINT = "convmem/cg2-rollback-baseline-convert-v1"
 ROLLBACK_BASELINE_SCHEMA = "convmem/cg2-rollback-baseline-evidence-v1"
 RETAINED_ROLLBACK_BASELINE = "RETAINED_ROLLBACK_BASELINE"
+_SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+_EQUIVALENCE_COUNT_KEYS = (
+    "missing_count",
+    "unexpected_count",
+    "duplicate_count",
+    "wrong_owner_count",
+    "non_equivalent_count",
+    "provenance_identity_changing_count",
+)
+_EQUIVALENCE_IDENTITY_SCHEMA = "convmem/cg2-bidirectional-equivalence-v1"
 
 _IMMUTABLE_METADATA_KEYS = (
     "source_path",
@@ -280,11 +292,20 @@ def _observed_embedding_maps(
     return snapshot_models, snapshot_dims
 
 
+def _require_canonical_sha256_hex(value: object, *, label: str) -> str:
+    if not isinstance(value, str) or not _SHA256_HEX.fullmatch(value):
+        raise RollbackBaselineError(f"{label} must be a canonical SHA-256 hex digest")
+    return value
+
+
 def _bind_accepted_source_hash(
     cfg: Mapping[str, Any], *, canonical_source: str, claimed: str
 ) -> str:
     """Bind caller hash to the processed/accepted observation for this source."""
 
+    claimed_hash = _require_canonical_sha256_hex(
+        claimed, label="accepted_source_hash"
+    )
     processed_log = str((cfg.get("index") or {}).get("processed_log") or "").strip()
     if not processed_log:
         raise RollbackBaselineError(
@@ -305,35 +326,62 @@ def _bind_accepted_source_hash(
         raise RollbackBaselineError(
             "accepted LEGACY source hash is not uniquely bound in processed log"
         )
-    bound = unique[0]
-    if claimed != bound:
+    bound = _require_canonical_sha256_hex(
+        unique[0], label="processed accepted source key"
+    )
+    if claimed_hash != bound:
         raise RollbackBaselineError(
             "wrong accepted_source_hash; refusing unbound or filesystem-substituted hash"
         )
     return bound
 
 
-def _refuse_unattested_production_chroma(chroma_dir: str | Path) -> None:
-    """Refuse writes to the configured production Chroma without the writer gate.
+def _resolve_live_production_paths() -> tuple[Path, Path]:
+    """Resolve configured live Chroma and generation-root identity.
 
-    Temporary Execute stores differ from the live configured path and are allowed.
-    A later authorized production G_rb build may proceed when the existing writer
-    boundary attestation is held. This is identity binding, not a tmp-path heuristic.
+    Inability to resolve refuses rather than assuming a caller path is safe.
     """
 
     try:
         live_cfg = load_config()
-        live = str(
-            Path(str((live_cfg.get("index") or {}).get("chroma_dir") or ""))
-            .expanduser()
-            .resolve()
-        )
-    except (OSError, TypeError, ValueError, KeyError):
-        return
-    if not live or live == str(Path(".").resolve()):
-        return
-    target = str(Path(chroma_dir).expanduser().resolve())
-    if target != live:
+    except Exception as exc:  # noqa: BLE001 — any config failure is fail-closed
+        raise RollbackBaselineError(
+            "cannot resolve live production identity"
+        ) from exc
+    if not isinstance(live_cfg, Mapping):
+        raise RollbackBaselineError("cannot resolve live production identity")
+    try:
+        chroma_raw = str((live_cfg.get("index") or {}).get("chroma_dir") or "").strip()
+        if not chroma_raw:
+            raise RollbackBaselineError("cannot resolve live production identity")
+        live_chroma = Path(chroma_raw).expanduser().resolve()
+        live_generation_root = generation_root_for_cfg(live_cfg).expanduser().resolve()
+    except (
+        OSError,
+        TypeError,
+        ValueError,
+        KeyError,
+        ServingAuthorityError,
+        RollbackBaselineError,
+    ) as exc:
+        raise RollbackBaselineError(
+            "cannot resolve live production identity"
+        ) from exc
+    return live_chroma, live_generation_root
+
+
+def _refuse_unattested_production_chroma(chroma_dir: str | Path) -> None:
+    """Refuse opening/mutating configured production Chroma without the writer gate.
+
+    Temporary Execute stores differ from the live configured path and are allowed
+    once live identity resolves. A later authorized production G_rb build may
+    proceed when the existing writer boundary attestation is held. This is
+    identity binding, not a tmp-path heuristic.
+    """
+
+    live_chroma, _live_generation_root = _resolve_live_production_paths()
+    target = Path(chroma_dir).expanduser().resolve()
+    if target != live_chroma:
         return
     try:
         require_writer_attestation()
@@ -341,6 +389,42 @@ def _refuse_unattested_production_chroma(chroma_dir: str | Path) -> None:
         raise RollbackBaselineError(
             "production Chroma mutation requires the existing writer boundary"
         ) from exc
+
+
+def _refuse_unattested_production_generation_root(generation_root: str | Path) -> None:
+    """Refuse mutating the configured live generation root without the writer gate."""
+
+    _live_chroma, live_generation_root = _resolve_live_production_paths()
+    target = Path(generation_root).expanduser().resolve()
+    if target != live_generation_root:
+        return
+    try:
+        require_writer_attestation()
+    except WriterBoundaryError as exc:
+        raise RollbackBaselineError(
+            "production generation root mutation requires the existing writer boundary"
+        ) from exc
+
+
+def _equivalence_identity(
+    *,
+    normalized_snapshot_digest: str,
+    manifest_sha256: str,
+    generation_id: str,
+    owner_digest_value: str,
+) -> str:
+    """Bind zero-count equivalence to independently verified D1 identities."""
+
+    payload = {
+        "schema": _EQUIVALENCE_IDENTITY_SCHEMA,
+        "normalized_snapshot_digest": normalized_snapshot_digest,
+        "manifest_sha256": manifest_sha256,
+        "generation_id": generation_id,
+        "owner_digest": owner_digest_value,
+    }
+    for key in _EQUIVALENCE_COUNT_KEYS:
+        payload[key] = 0
+    return canonical_hash(payload)
 
 
 def _assert_row_owner_consistency(
@@ -512,14 +596,20 @@ def capture_accepted_legacy_serving_snapshot(
 ) -> LegacyServingSnapshot:
     """Capture one frozen owner-scoped accepted LEGACY serving set under lock."""
 
-    if not isinstance(accepted_source_hash, str) or len(accepted_source_hash) != 64:
-        raise RollbackBaselineError("accepted_source_hash must be a SHA-256 hex digest")
+    if not isinstance(accepted_source_hash, str) or not _SHA256_HEX.fullmatch(
+        accepted_source_hash
+    ):
+        raise RollbackBaselineError(
+            "accepted_source_hash must be a canonical SHA-256 hex digest"
+        )
     canonical = canonical_source_path(source_path)
     owner_key = ownership_key(canonical)
     digest = owner_digest(owner_key)
     chroma_dir = str((cfg.get("index") or {})["chroma_dir"])
     models = dict(embedding_model_by_collection or {})
     dims = dict(embedding_dimension_by_collection or {})
+
+    _refuse_unattested_production_chroma(chroma_dir)
 
     with source_flock(dict(cfg), canonical):
         bound_hash = _bind_accepted_source_hash(
@@ -908,6 +998,7 @@ def convert_and_retain_rollback_baseline(
     """Convert a frozen LEGACY snapshot into retained ``G_rb`` evidence."""
 
     _refuse_unattested_production_chroma(store.chroma_dir)
+    _refuse_unattested_production_generation_root(generation_root)
     validated_provenance = _validate_embedding_provenance(
         snapshot, embedding_provenance, store
     )
@@ -1034,6 +1125,29 @@ def convert_and_retain_rollback_baseline(
     published_at = min(
         str(spec["capture_timestamp"]) for spec in validated_provenance.values()
     )
+    if cold.get("valid") is not True:
+        raise RollbackBaselineError("cold-qualification result is not valid")
+    cold_qualification = {
+        "valid": True,
+        "generation_id": generation_id,
+        "owner_digest": snapshot.owner_digest,
+        "manifest_sha256": reference.file_sha256,
+        "identity": canonical_hash(
+            {
+                "generation_id": generation_id,
+                "owner_digest": snapshot.owner_digest,
+                "manifest_sha256": reference.file_sha256,
+            }
+        ),
+    }
+    equivalence_counts = {
+        key: int(equivalence[key]) for key in _EQUIVALENCE_COUNT_KEYS
+    }
+    for key, value in equivalence_counts.items():
+        if value != 0:
+            raise RollbackBaselineError(
+                f"snapshot and G_rb are not bidirectionally equivalent ({key}={value})"
+            )
     evidence = _with_evidence_hash(
         {
             "schema": ROLLBACK_BASELINE_SCHEMA,
@@ -1049,37 +1163,16 @@ def convert_and_retain_rollback_baseline(
             "manifest_sha256": reference.file_sha256,
             "embedding_provenance": validated_provenance,
             "provenance_identity_evidence": provenance_identity_evidence,
-            "cold_qualification": {
-                "valid": bool(cold.get("valid", True)),
-                "generation_id": generation_id,
-                "owner_digest": snapshot.owner_digest,
-                "manifest_sha256": reference.file_sha256,
-                "identity": canonical_hash(
-                    {
-                        "generation_id": generation_id,
-                        "owner_digest": snapshot.owner_digest,
-                        "manifest_sha256": reference.file_sha256,
-                    }
-                ),
-            },
+            "cold_qualification": cold_qualification,
             "bidirectional_equivalence": {
-                "missing_count": 0,
-                "unexpected_count": 0,
-                "duplicate_count": 0,
-                "wrong_owner_count": 0,
-                "non_equivalent_count": 0,
-                "provenance_identity_changing_count": 0,
-                "result": {
-                    key: equivalence[key]
-                    for key in (
-                        "missing_count",
-                        "unexpected_count",
-                        "duplicate_count",
-                        "wrong_owner_count",
-                        "non_equivalent_count",
-                        "provenance_identity_changing_count",
-                    )
-                },
+                **equivalence_counts,
+                "result": dict(equivalence_counts),
+                "identity": _equivalence_identity(
+                    normalized_snapshot_digest=rebound_digest,
+                    manifest_sha256=reference.file_sha256,
+                    generation_id=generation_id,
+                    owner_digest_value=snapshot.owner_digest,
+                ),
             },
             "active_pointer": None,
             "serving": False,
@@ -1312,7 +1405,28 @@ def validate_retained_rollback_baseline_evidence(
             "provenance identity evidence does not bind to manifest assertions"
         )
 
-    cold = dict(payload.get("cold_qualification") or {})
+    cold = payload.get("cold_qualification")
+    if not isinstance(cold, dict):
+        raise RollbackBaselineError("cold-qualification evidence missing")
+    for field in (
+        "valid",
+        "generation_id",
+        "owner_digest",
+        "manifest_sha256",
+        "identity",
+    ):
+        if field not in cold:
+            raise RollbackBaselineError(
+                f"cold-qualification missing required field: {field}"
+            )
+    if cold.get("valid") is not True:
+        raise RollbackBaselineError("cold-qualification result is not valid")
+    if str(cold.get("generation_id") or "") != generation_id:
+        raise RollbackBaselineError("cold-qualification generation_id does not bind")
+    if str(cold.get("owner_digest") or "") != owner_digest:
+        raise RollbackBaselineError("cold-qualification owner_digest does not bind")
+    if str(cold.get("manifest_sha256") or "") != manifest_sha:
+        raise RollbackBaselineError("cold-qualification manifest SHA does not bind")
     expected_cold_identity = canonical_hash(
         {
             "generation_id": generation_id,
@@ -1323,19 +1437,53 @@ def validate_retained_rollback_baseline_evidence(
     if str(cold.get("identity") or "") != expected_cold_identity:
         raise RollbackBaselineError("cold-qualification identity does not bind")
 
-    equivalence = dict(payload.get("bidirectional_equivalence") or {})
-    nested = dict(equivalence.get("result") or {})
-    for key in (
-        "missing_count",
-        "unexpected_count",
-        "duplicate_count",
-        "wrong_owner_count",
-        "non_equivalent_count",
-        "provenance_identity_changing_count",
-    ):
-        if int(equivalence.get(key) or 0) != 0 or int(nested.get(key) or 0) != 0:
+    equivalence = payload.get("bidirectional_equivalence")
+    if not isinstance(equivalence, dict):
+        raise RollbackBaselineError("bidirectional equivalence evidence missing")
+    nested = equivalence.get("result")
+    if not isinstance(nested, dict):
+        raise RollbackBaselineError(
+            "bidirectional equivalence result evidence missing"
+        )
+    for key in _EQUIVALENCE_COUNT_KEYS:
+        if key not in equivalence:
+            raise RollbackBaselineError(
+                f"bidirectional equivalence missing required field: {key}"
+            )
+        if key not in nested:
+            raise RollbackBaselineError(
+                f"bidirectional equivalence result missing required field: {key}"
+            )
+        try:
+            top_count = equivalence[key]
+            nested_count = nested[key]
+            if not isinstance(top_count, int) or isinstance(top_count, bool):
+                raise TypeError
+            if not isinstance(nested_count, int) or isinstance(nested_count, bool):
+                raise TypeError
+        except TypeError as exc:
+            raise RollbackBaselineError(
+                f"bidirectional equivalence {key} must be an explicit integer"
+            ) from exc
+        if top_count != nested_count:
+            raise RollbackBaselineError(
+                f"bidirectional equivalence {key} disagrees with result"
+            )
+        if top_count != 0:
             raise RollbackBaselineError(
                 f"non-equivalent retained baseline evidence ({key})"
             )
+    # Snapshot digest already rebound to the published manifest above. That is
+    # the independent set-equality proof; stored zeroes alone are not trust.
+    expected_equivalence_identity = _equivalence_identity(
+        normalized_snapshot_digest=str(payload["normalized_snapshot_digest"]),
+        manifest_sha256=manifest_sha,
+        generation_id=generation_id,
+        owner_digest_value=owner_digest,
+    )
+    if str(equivalence.get("identity") or "") != expected_equivalence_identity:
+        raise RollbackBaselineError(
+            "bidirectional equivalence identity does not rebind to verified evidence"
+        )
 
     return payload

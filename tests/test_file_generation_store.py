@@ -395,6 +395,14 @@ class FileGenerationStoreTests(unittest.TestCase):
             with self.assertRaises(WriterBoundaryError):
                 self.store.stage_rows([file_row("fg1_prod", "L-prod", "G_live")])
 
+    def test_unresolvable_live_chroma_identity_refuses_staging(self) -> None:
+        """Fail closed when production Chroma identity cannot be resolved."""
+        with patch(
+            "config.load_config", side_effect=RuntimeError("config unavailable")
+        ):
+            with self.assertRaises(RuntimeError):
+                self.store.stage_rows([file_row("fg1_fail_closed", "L-fc", "G_fc")])
+
 
 if __name__ == "__main__":
     unittest.main()
