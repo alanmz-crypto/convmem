@@ -24,15 +24,12 @@ from cg2_legacy_vector_attestation import (
     verify_d0_chain_for_grb_conversion,
 )
 from cg2_rollback_baseline import (
-    RollbackBaselineError,
     rollback_baseline_evidence_path,
     validate_retained_rollback_baseline_evidence,
 )
-from file_generation_contract import canonical_source_path, owner_digest
+from file_generation_contract import canonical_source_path
 from file_generation_pointer import (
     _read_json,
-    GenerationPublicationError,
-    GenerationQualificationError,
     ManifestReference,
     QualifiedActivePointer,
     _publish_pointer_under_lock,
@@ -48,7 +45,6 @@ from serving_authority import (
     OwnerAuthorityMode,
     build_legacy_fence,
     fence_path,
-    generation_root_for_cfg,
     publish_legacy_fence,
     resolve_frozen_authority_vector,
     validate_legacy_fence,
@@ -63,7 +59,7 @@ class FirstCutoverError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class FirstCutoverGrant:
+class FirstCutoverGrant:  # pylint: disable=too-many-instance-attributes
     """Ryan one-shot activation grant bound to exact G_rb and G_canary."""
 
     grant_id: str
@@ -184,6 +180,69 @@ def _lock_held_reread_d0_legacy(
     }
 
 
+
+def _require_grant_bound_guard(
+    existing_guard: Mapping[str, Any],
+    *,
+    owner_key: str,
+    grant: FirstCutoverGrant,
+) -> None:
+    validate_canary_open_guard(existing_guard)
+    expected_guard = build_canary_open_guard(
+        owner_key=owner_key,
+        canary_generation_id=grant.canary_generation_id,
+        rollback_baseline_generation_id=grant.grb_generation_id,
+        published_at=str(existing_guard["published_at"]),
+    )
+    if dict(existing_guard) != expected_guard:
+        raise FirstCutoverError(
+            "lock-held guard does not match grant-bound expectation"
+        )
+
+
+def _preflight_authority_state(
+    generation_root: str | Path,
+    grant: FirstCutoverGrant,
+    cfg: Mapping[str, Any],
+    *,
+    resume: bool,
+    prior_grant_id: str | None,
+    guard: Mapping[str, Any] | None,
+) -> None:
+    fence_exists = fence_path(generation_root, grant.owner_digest).exists()
+    pointer = read_unqualified_pointer(generation_root, grant.owner_digest)
+    if resume:
+        if prior_grant_id is None or prior_grant_id == grant.grant_id:
+            raise FirstCutoverError(
+                "fresh-grant resume requires prior_grant_id distinct from grant_id"
+            )
+        if not fence_exists:
+            raise FirstCutoverError("resume requires existing fence")
+        if pointer is not None:
+            raise FirstCutoverError("resume requires pointer absence")
+        vector = resolve_frozen_authority_vector(
+            cfg, owner_digests={grant.owner_digest}
+        )
+        state = vector.by_owner.get(grant.owner_digest)
+        if state is None or state.mode != OwnerAuthorityMode.FENCED_NO_POINTER:
+            raise FirstCutoverError(
+                "resume requires FENCED_NO_POINTER authority"
+            )
+        return
+    if prior_grant_id is not None:
+        raise FirstCutoverError("prior_grant_id is only valid for resume")
+    if fence_exists:
+        raise FirstCutoverError("initial cutover requires fence absence")
+    if pointer is not None:
+        raise FirstCutoverError("initial cutover requires pointer absence")
+    if guard is not None:
+        raise FirstCutoverError("initial cutover requires guard absence")
+    vector = resolve_frozen_authority_vector(cfg, owner_digests={grant.owner_digest})
+    state = vector.by_owner.get(grant.owner_digest)
+    if state is None or state.mode != OwnerAuthorityMode.LEGACY:
+        raise FirstCutoverError("initial cutover requires LEGACY authority")
+
+
 def _preflight_first_cutover(
     generation_root: str | Path,
     canary_ref: ManifestReference,
@@ -263,42 +322,15 @@ def _preflight_first_cutover(
     _fresh_qualify(chroma_dir, grb_ref)
     _fresh_qualify(chroma_dir, canary_ref)
 
-    fence_exists = fence_path(generation_root, grant.owner_digest).exists()
-    pointer = read_unqualified_pointer(generation_root, grant.owner_digest)
     guard = read_canary_open_guard(generation_root, grant.owner_digest)
-
-    if resume:
-        if prior_grant_id is None or prior_grant_id == grant.grant_id:
-            raise FirstCutoverError(
-                "fresh-grant resume requires prior_grant_id distinct from grant_id"
-            )
-        if not fence_exists:
-            raise FirstCutoverError("resume requires existing fence")
-        if pointer is not None:
-            raise FirstCutoverError("resume requires pointer absence")
-        vector = resolve_frozen_authority_vector(
-            cfg, owner_digests={grant.owner_digest}
-        )
-        state = vector.by_owner.get(grant.owner_digest)
-        if state is None or state.mode != OwnerAuthorityMode.FENCED_NO_POINTER:
-            raise FirstCutoverError(
-                "resume requires FENCED_NO_POINTER authority"
-            )
-    else:
-        if prior_grant_id is not None:
-            raise FirstCutoverError("prior_grant_id is only valid for resume")
-        if fence_exists:
-            raise FirstCutoverError("initial cutover requires fence absence")
-        if pointer is not None:
-            raise FirstCutoverError("initial cutover requires pointer absence")
-        if guard is not None:
-            raise FirstCutoverError("initial cutover requires guard absence")
-        vector = resolve_frozen_authority_vector(
-            cfg, owner_digests={grant.owner_digest}
-        )
-        state = vector.by_owner.get(grant.owner_digest)
-        if state is None or state.mode != OwnerAuthorityMode.LEGACY:
-            raise FirstCutoverError("initial cutover requires LEGACY authority")
+    _preflight_authority_state(
+        generation_root,
+        grant,
+        cfg,
+        resume=resume,
+        prior_grant_id=prior_grant_id,
+        guard=guard,
+    )
 
     assert_reconciliation_fresh(cfg, budget=ReconciliationBudget())
     live_source = observe_source_hash(canonical_source_path(canary_manifest["canonical_source_path"]))
@@ -308,14 +340,9 @@ def _preflight_first_cutover(
         )
 
     if resume and guard is not None:
-        expected = build_canary_open_guard(
-            owner_key=owner_key,
-            canary_generation_id=grant.canary_generation_id,
-            rollback_baseline_generation_id=grant.grb_generation_id,
-            published_at=str(guard["published_at"]),
+        _require_grant_bound_guard(
+            guard, owner_key=owner_key, grant=grant
         )
-        if guard != expected:
-            raise FirstCutoverError("existing guard does not match grant-bound expectation")
 
     return grb_ref, evidence, chain
 
@@ -344,7 +371,7 @@ def publish_first_cutover_active_pointer(
     fence_file = fence_path(generation_root, owner_digest_value)
 
     resume = fence_file.exists()
-    grb_ref, _evidence, chain = _preflight_first_cutover(
+    _, _evidence, chain = _preflight_first_cutover(
         generation_root,
         canary_manifest_reference,
         grant=grant,
@@ -436,7 +463,11 @@ def publish_first_cutover_active_pointer(
                 published_at=published_at or _utc_now(),
             )
         else:
-            validate_canary_open_guard(existing_guard)
+            _require_grant_bound_guard(
+                existing_guard,
+                owner_key=owner_key,
+                grant=grant,
+            )
 
         if read_canary_open_guard(generation_root, owner_digest_value) is None:
             raise FirstCutoverError("open canary guard must exist before pointer")

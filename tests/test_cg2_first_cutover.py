@@ -6,13 +6,18 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timezone
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from atomic_files import atomic_write_json
-from cg2_cutover_guard import read_canary_open_guard
+from cg2_cutover_guard import (
+    CutoverGuardError,
+    build_canary_open_guard,
+    canary_guard_path,
+    publish_canary_open_guard,
+    read_canary_open_guard,
+)
 from cg2_first_cutover import (
     FirstCutoverError,
     FirstCutoverGrant,
@@ -39,14 +44,13 @@ from serving_authority import (
     fence_path,
     resolve_frozen_authority_vector,
 )
+from purge_locks import source_flock as real_source_flock
 from source_reconciler import reconciliation_state_path
 
 from tests.test_cg2_rollback_baseline import (
     EMBED_DIM,
     EMBED_MODEL,
-    _cfg,
     _convert_grb,
-    _mock_d0_runtime,
     _mock_hermetic_production_paths,
     _mock_ollama_only,
     _prepare,
@@ -290,7 +294,7 @@ def test_preflight_refuses_grb_equals_canary(d3_env):
     with patch("cg2_first_cutover.source_flock", oracle):
         with pytest.raises(FirstCutoverError, match="distinct generation IDs"):
             _cutover(d3_env, d3_env["canary_ref"], bad)
-    assert oracle.acquisitions == []
+    assert not oracle.acquisitions
 
 
 @pytest.mark.parametrize(
@@ -358,7 +362,7 @@ def test_preflight_refusal_matrix(d3_env, mutator, match):
     with patch("cg2_first_cutover.source_flock", oracle):
         with pytest.raises((FirstCutoverError, RollbackBaselineError), match=match):
             _cutover(d3_env, d3_env["canary_ref"], bad)
-    assert oracle.acquisitions == []
+    assert not oracle.acquisitions
     assert read_unqualified_pointer(d3_env["generations"], grant.owner_digest) is None
     assert not fence_path(d3_env["generations"], grant.owner_digest).exists()
 
@@ -516,3 +520,200 @@ def test_rollback_and_recovery_remain_callable_with_open_guard(d3_env):
     )
     assert recovered.pointer["active_generation_id"] == grant.grb_generation_id
     assert read_canary_open_guard(d3_env["generations"], grant.owner_digest) is not None
+
+def _source_flock_inject_on_enter(oracle: _OneLockOracle, inject):
+    def wrapping(cfg, canonical_source):
+        if oracle._held:
+            raise AssertionError(f"nested source_flock reentry for {canonical_source}")
+        ctx = real_source_flock(cfg, canonical_source)
+
+        class _Wrapper:
+            def __enter__(self):
+                oracle._held = True
+                oracle.acquisitions.append(str(canonical_source))
+                entered = ctx.__enter__()
+                inject()
+                return entered
+
+            def __exit__(self, exc_type, exc, tb):
+                oracle._held = False
+                return ctx.__exit__(exc_type, exc, tb)
+
+        return _Wrapper()
+
+    return wrapping
+
+
+def _crash_to_fenced_no_pointer(d3_env, grant):
+    with patch(
+        "cg2_first_cutover._publish_pointer_under_lock",
+        side_effect=RuntimeError("simulated crash after fence"),
+    ):
+        with pytest.raises(RuntimeError, match="simulated crash"):
+            _cutover(d3_env, d3_env["canary_ref"], grant)
+
+
+@pytest.mark.parametrize(
+    "wrong_field,wrong_value",
+    [
+        ("canary", "wrong-canary-generation-id"),
+        ("grb", "wrong-grb-generation-id"),
+    ],
+)
+def test_lock_held_initial_toctou_refuses_grant_conflicting_guard(
+    d3_env, wrong_field, wrong_value
+):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-toctou-initial"
+    )
+    owner_key = str(d3_env["canary_ref"].manifest["owner_key"])
+
+    def _inject() -> None:
+        publish_canary_open_guard(
+            d3_env["generations"],
+            owner_key=owner_key,
+            canary_generation_id=(
+                wrong_value if wrong_field == "canary" else grant.canary_generation_id
+            ),
+            rollback_baseline_generation_id=(
+                wrong_value if wrong_field == "grb" else grant.grb_generation_id
+            ),
+            published_at="2026-08-23T00:00:01Z",
+        )
+
+    oracle = _OneLockOracle()
+    with patch(
+        "cg2_first_cutover.source_flock",
+        _source_flock_inject_on_enter(oracle, _inject),
+    ):
+        with pytest.raises(FirstCutoverError, match="grant-bound expectation"):
+            _cutover(d3_env, d3_env["canary_ref"], grant)
+    assert len(oracle.acquisitions) == 1
+    assert read_unqualified_pointer(d3_env["generations"], grant.owner_digest) is None
+
+
+@pytest.mark.parametrize(
+    "wrong_field,wrong_value",
+    [
+        ("canary", "wrong-canary-generation-id"),
+        ("grb", "wrong-grb-generation-id"),
+    ],
+)
+def test_lock_held_resume_toctou_refuses_grant_conflicting_guard(
+    d3_env, wrong_field, wrong_value
+):
+    first_grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-toctou-resume-old"
+    )
+    _crash_to_fenced_no_pointer(d3_env, first_grant)
+    resume_grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-toctou-resume-new"
+    )
+    owner_key = str(d3_env["canary_ref"].manifest["owner_key"])
+    existing = read_canary_open_guard(d3_env["generations"], resume_grant.owner_digest)
+    assert existing is not None
+    published_at = str(existing["published_at"])
+
+    def _inject() -> None:
+        wrong = build_canary_open_guard(
+            owner_key=owner_key,
+            canary_generation_id=(
+                wrong_value if wrong_field == "canary" else resume_grant.canary_generation_id
+            ),
+            rollback_baseline_generation_id=(
+                wrong_value if wrong_field == "grb" else resume_grant.grb_generation_id
+            ),
+            published_at=published_at,
+        )
+        atomic_write_json(
+            canary_guard_path(d3_env["generations"], resume_grant.owner_digest),
+            wrong,
+        )
+
+    oracle = _OneLockOracle()
+    with patch(
+        "cg2_first_cutover.source_flock",
+        _source_flock_inject_on_enter(oracle, _inject),
+    ):
+        with pytest.raises(FirstCutoverError, match="grant-bound expectation"):
+            _cutover(
+                d3_env,
+                d3_env["canary_ref"],
+                resume_grant,
+                prior_grant_id=first_grant.grant_id,
+            )
+    assert len(oracle.acquisitions) == 1
+    assert read_unqualified_pointer(d3_env["generations"], resume_grant.owner_digest) is None
+
+
+def test_lock_held_resume_accepts_exact_grant_bound_guard(d3_env):
+    first_grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-resume-exact-old"
+    )
+    _crash_to_fenced_no_pointer(d3_env, first_grant)
+    resume_grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-resume-exact-new"
+    )
+    oracle = _OneLockOracle()
+    with patch("cg2_first_cutover.source_flock", oracle):
+        qualified = _cutover(
+            d3_env,
+            d3_env["canary_ref"],
+            resume_grant,
+            prior_grant_id=first_grant.grant_id,
+        )
+    assert len(oracle.acquisitions) == 1
+    assert qualified.pointer["active_generation_id"] == resume_grant.canary_generation_id
+
+
+def test_lock_held_refuses_corrupt_guard(d3_env):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-corrupt-guard"
+    )
+    owner_key = str(d3_env["canary_ref"].manifest["owner_key"])
+
+    def _inject() -> None:
+        publish_canary_open_guard(
+            d3_env["generations"],
+            owner_key=owner_key,
+            canary_generation_id=grant.canary_generation_id,
+            rollback_baseline_generation_id=grant.grb_generation_id,
+            published_at="2026-08-23T00:00:02Z",
+        )
+        path = canary_guard_path(d3_env["generations"], grant.owner_digest)
+        path.write_text("{not-json", encoding="utf-8")
+
+    oracle = _OneLockOracle()
+    with patch(
+        "cg2_first_cutover.source_flock",
+        _source_flock_inject_on_enter(oracle, _inject),
+    ):
+        with pytest.raises((FirstCutoverError, CutoverGuardError)):
+            _cutover(d3_env, d3_env["canary_ref"], grant)
+    assert read_unqualified_pointer(d3_env["generations"], grant.owner_digest) is None
+
+def test_lock_held_refuses_wrong_owner_guard(d3_env):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-wrong-owner"
+    )
+
+    def _inject() -> None:
+        wrong = build_canary_open_guard(
+            owner_key="source:/tmp/other-canonical-owner",
+            canary_generation_id=grant.canary_generation_id,
+            rollback_baseline_generation_id=grant.grb_generation_id,
+            published_at="2026-08-23T00:00:03Z",
+        )
+        atomic_write_json(
+            canary_guard_path(d3_env["generations"], grant.owner_digest),
+            wrong,
+        )
+
+    oracle = _OneLockOracle()
+    with patch(
+        "cg2_first_cutover.source_flock",
+        _source_flock_inject_on_enter(oracle, _inject),
+    ):
+        with pytest.raises((FirstCutoverError, CutoverGuardError)):
+            _cutover(d3_env, d3_env["canary_ref"], grant)
+    assert read_unqualified_pointer(d3_env["generations"], grant.owner_digest) is None
