@@ -31,6 +31,7 @@ from provenance_registry_restore import (  # noqa: E402
 )
 from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-position
     BackupContext,
+    BackupProfile,
     ResolverError,
     check_restic_available,
 )
@@ -55,9 +56,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument(
         "--profile",
-        default=RestoreProfile.COMPLETE_DATA_V2.value,
+        default=None,
         choices=(RestoreProfile.COMPLETE_DATA_V2.value, RestoreProfile.COMPLETE_DATA_V3.value),
-        help="Restore contract profile (v2 legacy or v3 provenance-aware)",
+        help="Restore contract profile (defaults from CONVMEM_BACKUP_PROFILE)",
     )
     args = parser.parse_args(argv)
 
@@ -123,12 +124,19 @@ def main(argv: list[str] | None = None) -> int:
         target_dir=str(Path(args.target).expanduser().resolve()),
     )
 
-    try:
-        profile = RestoreProfile.parse(args.profile)
-    except ValueError as exc:
-        report.finalize("BLOCKED", str(exc), exit_code=31)
-        print(f"preflight: ERROR: {exc}", file=sys.stderr)
-        return 31
+    if args.profile is None:
+        profile = (
+            RestoreProfile.COMPLETE_DATA_V3
+            if ctx.profile is BackupProfile.COMPLETE_DATA_V3
+            else RestoreProfile.COMPLETE_DATA_V2
+        )
+    else:
+        try:
+            profile = RestoreProfile.parse(args.profile)
+        except ValueError as exc:
+            report.finalize("BLOCKED", str(exc), exit_code=31)
+            print(f"preflight: ERROR: {exc}", file=sys.stderr)
+            return 31
 
     registry_validation = None
     if profile is RestoreProfile.COMPLETE_DATA_V3:
