@@ -123,7 +123,7 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-pinwheel-pytest-ci.md` — Pinwheel Pytest CI (**closed**; reference only)
 - `docs/plans/STATUS-agent-run-ledger.md` — Runway Ledger Agent Run identity tracking (**closed**; reference only)
 - `docs/plans/STATUS-dependability-provenance.md` — Dependability and provenance Trust Arc (**T3 closed**; later gates deferred)
-- `docs/plans/STATUS-recovery-authority.md` — Recovery Authority execution planning (**Kiro review pending; Execute unauthorized**)
+- `docs/plans/STATUS-recovery-authority.md` — Recovery Authority T1 execution (**landed via PR #234; T2 not authorized**)
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
 
@@ -145,7 +145,7 @@ Known arc codenames (update when new arcs are named):
 | Pinwheel Pytest CI | Reproducible pytest CI | **Closed** (#191 + disposable controls) |
 | CodeQL Complex Therapy | CodeQL merge protection | **Closed** — technical controls PASS; Ryan-owned recurring attestation |
 | Runway Ledger | Agent Run identity tracking | **CLOSED** — core implementation merged (#215); hook-enable soak passed and #216 merged; other clients are future slices, not unfinished Runway work |
-| Recovery Authority | Provenance-aware complete-data recovery and rollback continuity | Active — Execution Plan ready for Kiro; V4k blocked on CG-2 Design A |
+| Recovery Authority | Provenance-aware complete-data recovery and rollback continuity | Active — T1 landed (PR #234); T2 not authorized; V4k blocked on CG-2 Design A |
 
 <!-- TIER_A_END -->
 
