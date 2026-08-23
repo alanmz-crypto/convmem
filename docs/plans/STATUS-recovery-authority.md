@@ -48,7 +48,7 @@ complete-data-v2 remains a legacy contract and is not migrated to v3.
 | Architecture Direction | **LOCKED** at `22852a07e66920874045e0e85c4572ab6c0b29b8` | — |
 | Execution Plan | **ACCEPTED** at `b0c1dd226fa4e1f7cee5c74ae99a13191d7742ab`; Kiro PASS | — |
 | Recovery Authority T1 | **COMPLETE / LANDED** via PR #234; squash SHA `cac3cc35b8a74d43f9d353554cb7c80cb2f13801` on `main` | — |
-| T2 | **IN PROGRESS** on `feat/2026-08-23-2026-08-23-recovery-authority-t2` | Independent review → Ryan |
+| T2 | **READY_FOR_INDEPENDENT_REVIEW** on `feat/2026-08-23-2026-08-23-recovery-authority-t2`; tip `66d5c13`; draft PR #236 | Kiro VERIFY (V4i/V8i/V8l) → Ryan |
 | T3–T4 implementation | **NOT AUTHORIZED / NOT STARTED** | Separate Ryan grants after T2 |
 | V4k selected-generation/rollback execution | **BLOCKED (D1)** | CG-2 Design A ratification and stable generation/pointer semantics, then a fresh Ryan grant |
 | Live recovery/activation | **NOT AUTHORIZED** | Separate Ryan operational grants; outside this package |
@@ -65,15 +65,16 @@ PASS) and issue separate Execute grants. T2 is the next planned task but is
 NOT yet authorized. Do not treat plan acceptance or the T1 landing as live
 recovery or authority activation.
 
-**If you are Cursor:** T2 Execute is authorized for the authority-recovery /
-projection-agreement state machine only. Do not begin T3+ or live operations.
+**If you are Cursor:** T2 Execute is complete pending independent review. Do not merge, start T3+, or perform live operations.
+
+**If you are Kiro:** review T2 against VERIFY mapping V4i, V8i, V8l (V7d/V7e traces only). Do not implement.
 
 ## 6. What Remains Before "Live" (sequential)
 
 - [x] Kiro reviews the committed Execution Plan package (PASS, off-GitHub).
 - [x] Ryan accepts the plan.
-- [x] Ryan issues a separate T1 grant; T1 implemented, verified, and landed via PR #234 at `cac3cc35`.
-- [ ] T2 Execute in progress; T3 and T4 remain separately gated after T2.
+- [x] T2 Execute complete on branch; independent review pending (not merged).
+- [ ] T3 and T4 remain separately gated after T2 review/merge.
 - [ ] CG-2 Design A is ratified with stable generation/pointer semantics.
 - [ ] Only after that unlock, Ryan may separately grant V4k planning/execute work (D1).
 - [ ] Any live recovery, replacement, projection activation, or serving change
