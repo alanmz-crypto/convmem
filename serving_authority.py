@@ -172,11 +172,23 @@ def build_legacy_fence(owner_key: str, published_at: str) -> dict[str, Any]:
 
 
 def publish_legacy_fence(generation_root: str | Path, owner_key: str, published_at: str) -> Path:
+    """Durably publish a monotonic legacy fence; idempotent for identical bytes."""
+
     provision_generation_layout(generation_root)
     digest = owner_digest(owner_key)
     path = fence_path(generation_root, digest)
     payload = build_legacy_fence(owner_key, published_at)
+    if path.exists():
+        current = _read_json(path)
+        if current != payload:
+            raise ServingAuthorityError(
+                f"immutable legacy fence collision at {path}"
+            )
+        return path
     atomic_write_json(path, payload)
+    reread = _read_json(path)
+    if reread != payload:
+        raise ServingAuthorityError("published legacy fence reread mismatch")
     return path
 
 
