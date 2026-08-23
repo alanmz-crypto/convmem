@@ -302,6 +302,8 @@ def _read_jsonl_projection(root: Path) -> ProjectionFingerprint:
     generation_id = next(iter(generation_ids), "")
     manifest_commitment = ""
     projection_binding = ""
+    body_ids = tuple(sorted(set(assertion_ids)))
+    body_commitments = tuple(sorted(commitments))
     bind_path = root / "knowledge_units.projection.json"
     if bind_path.is_file():
         try:
@@ -309,8 +311,8 @@ def _read_jsonl_projection(root: Path) -> ProjectionFingerprint:
         except (OSError, json.JSONDecodeError) as exc:
             return ProjectionFingerprint(
                 present=True,
-                assertion_ids=tuple(sorted(set(assertion_ids))),
-                provenance_commitments=tuple(sorted(commitments)),
+                assertion_ids=body_ids,
+                provenance_commitments=body_commitments,
                 generation_id=generation_id,
                 detail=f"jsonl projection binding unreadable: {exc}",
             )
@@ -320,19 +322,43 @@ def _read_jsonl_projection(root: Path) -> ProjectionFingerprint:
             projection_binding = str(body.get("projection_binding") or "").strip()
             listed = body.get("assertion_ids")
             if isinstance(listed, list) and listed:
-                assertion_ids = [str(x) for x in listed]
+                listed_ids = tuple(sorted({str(x) for x in listed if str(x).strip()}))
+                if listed_ids != body_ids:
+                    return ProjectionFingerprint(
+                        present=True,
+                        assertion_ids=body_ids,
+                        provenance_commitments=body_commitments,
+                        generation_id=generation_id,
+                        manifest_commitment=manifest_commitment,
+                        projection_binding=projection_binding,
+                        detail="jsonl sidecar assertion-id set disagrees with body",
+                    )
             raw_cmt = body.get("provenance_commitments")
             if isinstance(raw_cmt, dict) and raw_cmt:
-                commitments = [
-                    (str(aid), str(cmt))
-                    for aid, cmt in sorted(raw_cmt.items())
-                    if str(aid).strip() and str(cmt).strip()
-                ]
+                side_cmt = tuple(
+                    sorted(
+                        (str(aid), str(cmt))
+                        for aid, cmt in raw_cmt.items()
+                        if str(aid).strip() and str(cmt).strip()
+                    )
+                )
+                if body_commitments and side_cmt != body_commitments:
+                    return ProjectionFingerprint(
+                        present=True,
+                        assertion_ids=body_ids,
+                        provenance_commitments=body_commitments,
+                        generation_id=generation_id,
+                        manifest_commitment=manifest_commitment,
+                        projection_binding=projection_binding,
+                        detail="jsonl sidecar commitments disagree with body",
+                    )
+                if not body_commitments:
+                    body_commitments = side_cmt
 
     return ProjectionFingerprint(
         present=True,
-        assertion_ids=tuple(sorted(set(assertion_ids))),
-        provenance_commitments=tuple(sorted(commitments)),
+        assertion_ids=body_ids,
+        provenance_commitments=body_commitments,
         generation_id=generation_id,
         manifest_commitment=manifest_commitment,
         projection_binding=projection_binding,
@@ -352,6 +378,7 @@ def _read_chroma_projection(root: Path) -> ProjectionFingerprint:
         )
 
     ku_ids = list(snap.get("required_ids", {}).get("knowledge_units") or [])
+    body_ids = tuple(sorted(set(str(x) for x in ku_ids if str(x).strip())))
     binding_path = chroma_dir / "projection_binding.json"
     generation_id = ""
     manifest_commitment = ""
@@ -363,18 +390,30 @@ def _read_chroma_projection(root: Path) -> ProjectionFingerprint:
         except (OSError, json.JSONDecodeError) as exc:
             return ProjectionFingerprint(
                 present=True,
-                assertion_ids=tuple(sorted(ku_ids)),
+                assertion_ids=body_ids,
                 detail=f"chroma projection_binding unreadable: {exc}",
             )
         if not isinstance(body, dict):
             return ProjectionFingerprint(
                 present=True,
-                assertion_ids=tuple(sorted(ku_ids)),
+                assertion_ids=body_ids,
                 detail="chroma projection_binding not an object",
             )
         generation_id = str(body.get("generation_id") or "").strip()
         manifest_commitment = str(body.get("manifest_commitment") or "").strip()
         projection_binding = str(body.get("projection_binding") or "").strip()
+        listed = body.get("assertion_ids")
+        if isinstance(listed, list) and listed:
+            listed_ids = tuple(sorted({str(x) for x in listed if str(x).strip()}))
+            if listed_ids != body_ids:
+                return ProjectionFingerprint(
+                    present=True,
+                    assertion_ids=body_ids,
+                    generation_id=generation_id,
+                    manifest_commitment=manifest_commitment,
+                    projection_binding=projection_binding,
+                    detail="chroma sidecar assertion-id set disagrees with embedding ids",
+                )
         raw_cmt = body.get("provenance_commitments") or {}
         if isinstance(raw_cmt, dict):
             commitments = [
@@ -382,14 +421,10 @@ def _read_chroma_projection(root: Path) -> ProjectionFingerprint:
                 for aid, cmt in sorted(raw_cmt.items())
                 if str(aid).strip() and str(cmt).strip()
             ]
-        # Prefer explicit assertion list when provided.
-        listed = body.get("assertion_ids")
-        if isinstance(listed, list) and listed:
-            ku_ids = [str(x) for x in listed]
 
     return ProjectionFingerprint(
         present=True,
-        assertion_ids=tuple(sorted(set(ku_ids))),
+        assertion_ids=body_ids,
         provenance_commitments=tuple(commitments),
         generation_id=generation_id,
         manifest_commitment=manifest_commitment,
@@ -426,7 +461,10 @@ def _projection_matches(
 ) -> tuple[bool, str]:
     if not actual.present:
         return False, "projection absent"
-    if "mixed" in actual.detail or "malformed" in actual.detail or "unreadable" in actual.detail:
+    if any(
+        token in actual.detail
+        for token in ("mixed", "malformed", "unreadable", "disagree")
+    ):
         return False, actual.detail
     if not actual.generation_id or not actual.manifest_commitment or not actual.projection_binding:
         return False, "projection missing generation/manifest/binding fields"

@@ -256,6 +256,34 @@ class TestRecoveryStateMachine(unittest.TestCase):
             self.assertEqual(result.state, RecoveryState.QUARANTINED)
             self.assertFalse(result.serving_ready)
 
+    def test_sidecar_cannot_override_missing_body_assertion_ids(self):
+        """Body assertion-id set is authoritative; sidecar cannot fill gaps."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _seal_candidate(root)
+            # Empty JSONL body while sidecar still lists matching registry IDs.
+            (root / "knowledge_units.jsonl").write_text("", encoding="utf-8")
+            # Empty Chroma embedding set while binding sidecar still lists IDs.
+            db = root / "chroma" / "chroma.sqlite3"
+            if db.is_file():
+                import sqlite3
+
+                conn = sqlite3.connect(db)
+                try:
+                    conn.execute("DELETE FROM embeddings")
+                    conn.commit()
+                finally:
+                    conn.close()
+            result = evaluate_recovery_authority(root)
+            self.assertEqual(result.state, RecoveryState.QUARANTINED)
+            self.assertFalse(result.serving_ready)
+            self.assertNotEqual(result.state, RecoveryState.PROJECTION_VALIDATED)
+            detail = (result.detail + " " + json.dumps(result.reports)).lower()
+            self.assertTrue(
+                "disagree" in detail or "assertion-id" in detail or "mismatch" in detail,
+                msg=result.detail,
+            )
+
     def test_no_state_is_serving_ready(self):
         for state in RecoveryState:
             self.assertFalse(state.is_serving_ready)
