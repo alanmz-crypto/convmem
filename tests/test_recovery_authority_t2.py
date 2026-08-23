@@ -314,14 +314,40 @@ class TestRecoveryStateMachine(unittest.TestCase):
             self.assertNotEqual(result.state, RecoveryState.PROJECTION_VALIDATED)
             self.assertFalse(result.serving_ready)
 
-    def test_non_object_jsonl_row_quarantined(self):
+    def test_non_object_jsonl_row_is_pending(self):
+        """Damaged JSONL body is rebuildable when authority is valid."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             _seal_candidate(root)
             (root / "knowledge_units.jsonl").write_text("[\"not-an-object\"]\n", encoding="utf-8")
+            shutil.rmtree(root / "provenance")
+            build_registry_fixture(
+                root, generation_id="pg-fixture-001", assertion_ids=("assert-fixture-001",)
+            )
             result = evaluate_recovery_authority(root)
-            self.assertEqual(result.state, RecoveryState.QUARANTINED)
+            self.assertEqual(
+                result.state, RecoveryState.AUTHORITY_RECOVERED_PROJECTION_PENDING
+            )
             self.assertFalse(result.serving_ready)
+            self.assertTrue(result.state.authority_recovered)
+
+    def test_unreadable_chroma_is_pending(self):
+        """Unreadable Chroma with valid authority is rebuildable, not quarantine."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _seal_candidate(root, include_jsonl=False, include_chroma=True)
+            db = root / "chroma" / "chroma.sqlite3"
+            db.write_bytes(b"not-a-sqlite-db")
+            shutil.rmtree(root / "provenance")
+            build_registry_fixture(
+                root, generation_id="pg-fixture-001", assertion_ids=("assert-fixture-001",)
+            )
+            result = evaluate_recovery_authority(root)
+            self.assertEqual(
+                result.state, RecoveryState.AUTHORITY_RECOVERED_PROJECTION_PENDING
+            )
+            self.assertFalse(result.serving_ready)
+            self.assertTrue(result.state.authority_recovered)
 
     def test_rebuildable_projection_missing_bindings_is_pending(self):
         """Present bodies without binding metadata are rebuildable, not quarantine."""

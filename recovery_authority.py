@@ -514,15 +514,17 @@ def _projection_matches(
 def _is_rebuildable_projection_reason(reason: str) -> bool:
     """True when failure means rebuild/pending, not quarantine.
 
-    Missing binding metadata means the projection is not yet an exact
-    qualified projection of recovered authority — not that authority is
-    contradicted by a stale or forged projection.
+    Unavailable or damaged projections that do not contradict recovered
+    authority are rebuildable. Stale, mixed, or disagreeing projections
+    remain quarantine paths.
     """
-    rebuildable = {
+    if reason in {
         "projection absent",
         "projection missing generation/manifest/binding fields",
-    }
-    return reason in rebuildable
+    }:
+        return True
+    damaged_tokens = ("malformed", "unreadable", "non-object")
+    return any(token in reason for token in damaged_tokens)
 
 
 def _registry_reports(registry: RegistryValidationResult, **extra: Any) -> dict[str, Any]:
