@@ -32,6 +32,7 @@ from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-posi
     BackupProfile,
     TAG_COMPLETE_DATA_V2,
     TAG_COMPLETE_DATA_V3,
+    captures_backup_evidence,
 )
 
 
@@ -209,6 +210,13 @@ class TestEvidenceSeparateFromRegistry(unittest.TestCase):
             self.assertFalse(evidence.get("authority"))
             self.assertFalse(evidence.get("repair_source"))
 
+
+
+class TestBackupEvidenceProfilePredicate(unittest.TestCase):
+    def test_complete_data_profiles_capture_sidecar(self):
+        self.assertTrue(captures_backup_evidence(BackupProfile.COMPLETE_DATA_V2))
+        self.assertTrue(captures_backup_evidence(BackupProfile.COMPLETE_DATA_V3))
+        self.assertFalse(captures_backup_evidence(BackupProfile.LEGACY_CHROMA))
 
 if __name__ == "__main__":
     unittest.main()

@@ -38,6 +38,7 @@ from backup_workflows import (  # noqa: E402
     restore_validated_snapshot,
     run_integrity_check,
 )
+from complete_data_restore import EVIDENCE_FILENAME  # noqa: E402
 from restic_snapshot import (  # noqa: E402
     EXIT_INVALID_ID,
     EXIT_NO_TAGGED_SNAPSHOT,
@@ -46,6 +47,7 @@ from restic_snapshot import (  # noqa: E402
     BackupProfile,
     TAG_COMPLETE_DATA_V2,
     TAG_LEGACY_CHROMA,
+    captures_backup_evidence,
     resolve_snapshot,
 )
 
@@ -390,6 +392,52 @@ class TestEnsureCreatesSnapshot(unittest.TestCase):
         self.assertEqual(len(outcome.source.id), 64)
         self.assertTrue(outcome.details.get("backed_up"))
 
+
+
+class TestCapturesBackupEvidencePredicate(unittest.TestCase):
+    def test_complete_data_profiles_capture_evidence(self):
+        self.assertTrue(captures_backup_evidence(BackupProfile.COMPLETE_DATA_V2))
+        self.assertTrue(captures_backup_evidence(BackupProfile.COMPLETE_DATA_V3))
+
+    def test_legacy_profile_does_not_capture_evidence(self):
+        self.assertFalse(captures_backup_evidence(BackupProfile.LEGACY_CHROMA))
+
+
+@unittest.skipUnless(_restic_available(), "restic >= 0.19.0 not available")
+class TestCompleteDataBackupEvidenceCapture(unittest.TestCase):
+    """Complete-data v2/v3 backups capture evidence; legacy does not."""
+
+    def setUp(self):
+        self.fx = HermeticFixture()
+        self.addCleanup(self.fx.cleanup)
+        self.fx.init_repos()
+
+    def _assert_backup_captured_evidence(self, profile: str) -> None:
+        ctx = self.fx.load_ctx(profile=profile)
+        evidence_path = self.fx.data_root / EVIDENCE_FILENAME
+        self.assertFalse(evidence_path.is_file())
+        outcome = ensure_current_snapshot(ctx)
+        self.assertEqual(outcome.status, STATUS_PASS, outcome.message)
+        self.assertTrue(outcome.details.get("evidence_captured"))
+        self.assertTrue(evidence_path.is_file())
+        payload = json.loads(evidence_path.read_text(encoding="utf-8"))
+        self.assertFalse(payload.get("authority"))
+        self.assertFalse(payload.get("repair_source"))
+
+    def test_v2_backup_captures_evidence(self):
+        self._assert_backup_captured_evidence("complete-data-v2")
+
+    def test_v3_backup_captures_evidence(self):
+        self._assert_backup_captured_evidence("complete-data-v3")
+
+    def test_legacy_backup_does_not_capture_evidence(self):
+        legacy = self.fx.load_ctx(profile="legacy-chroma", include_data_root=False)
+        evidence_path = self.fx.data_root / EVIDENCE_FILENAME
+        self.assertFalse(evidence_path.is_file())
+        outcome = ensure_current_snapshot(legacy)
+        self.assertEqual(outcome.status, STATUS_PASS, outcome.message)
+        self.assertNotIn("evidence_captured", outcome.details)
+        self.assertFalse(evidence_path.is_file())
 
 if __name__ == "__main__":
     unittest.main()

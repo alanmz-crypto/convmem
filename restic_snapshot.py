@@ -78,6 +78,14 @@ class BackupProfile(str, Enum):
     COMPLETE_DATA_V3 = "complete-data-v3"
 
 
+def captures_backup_evidence(profile: BackupProfile) -> bool:
+    """True when a profile participates in complete-data capture-evidence semantics."""
+    return profile in {
+        BackupProfile.COMPLETE_DATA_V2,
+        BackupProfile.COMPLETE_DATA_V3,
+    }
+
+
 class ResolverError(Exception):
     """Checked failure with a numeric exit code."""
 
