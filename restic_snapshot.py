@@ -52,6 +52,7 @@ EXIT_BLOCKED = 31
 EXIT_ISOLATION_FAILURE = 32
 
 TAG_COMPLETE_DATA_V2 = "convmem-data-v2"
+TAG_COMPLETE_DATA_V3 = "convmem-data-v3"
 TAG_LEGACY_CHROMA = "convmem-chroma"
 
 _DEFAULT_ENV_FILE = Path("~/.config/convmem/restic.env")
@@ -74,6 +75,15 @@ class BackupProfile(str, Enum):
 
     LEGACY_CHROMA = "legacy-chroma"
     COMPLETE_DATA_V2 = "complete-data-v2"
+    COMPLETE_DATA_V3 = "complete-data-v3"
+
+
+def captures_backup_evidence(profile: BackupProfile) -> bool:
+    """True when a profile participates in complete-data capture-evidence semantics."""
+    return profile in {
+        BackupProfile.COMPLETE_DATA_V2,
+        BackupProfile.COMPLETE_DATA_V3,
+    }
 
 
 class ResolverError(Exception):
@@ -163,6 +173,8 @@ class BackupContext:
     data_root_derived: bool = False
 
     def default_tag(self) -> str:
+        if self.profile is BackupProfile.COMPLETE_DATA_V3:
+            return TAG_COMPLETE_DATA_V3
         if self.profile is BackupProfile.COMPLETE_DATA_V2:
             return TAG_COMPLETE_DATA_V2
         return TAG_LEGACY_CHROMA
@@ -218,10 +230,10 @@ class BackupContext:
 
         data_root_raw = (raw.get("CONVMEM_DATA_ROOT") or "").strip()
         data_root_derived = False
-        if profile is BackupProfile.COMPLETE_DATA_V2:
+        if profile in {BackupProfile.COMPLETE_DATA_V2, BackupProfile.COMPLETE_DATA_V3}:
             if not data_root_raw:
                 raise ResolverError(
-                    "complete-data-v2 requires explicit CONVMEM_DATA_ROOT "
+                    f"{profile.value} requires explicit CONVMEM_DATA_ROOT "
                     "(parent derivation from Chroma is forbidden)",
                     EXIT_INVALID_CONFIG,
                 )
@@ -337,7 +349,7 @@ def _parse_profile(raw: str) -> BackupProfile:
     except ValueError as exc:
         raise ResolverError(
             f"invalid CONVMEM_BACKUP_PROFILE={value!r}; "
-            f"expected legacy-chroma|complete-data-v2",
+            f"expected legacy-chroma|complete-data-v2|complete-data-v3",
             EXIT_INVALID_CONFIG,
         ) from exc
 
