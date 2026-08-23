@@ -74,7 +74,16 @@ class _RegistryValidationContext:
 
 
 def tree_commitment_excluded_relative_paths() -> frozenset[str]:
-    return frozenset({EVIDENCE_FILENAME, SELECTOR_REL})
+    return frozenset(
+        {
+            EVIDENCE_FILENAME,
+            SELECTOR_REL,
+            # Projection qualification sidecars (T2): carry M_g/binding without
+            # entering the sealed tree commitment (avoids T_g↔M_g cycles).
+            "chroma/projection_binding.json",
+            "knowledge_units.projection.json",
+        }
+    )
 
 
 def _tree_commitment_excluded(rel: str) -> bool:

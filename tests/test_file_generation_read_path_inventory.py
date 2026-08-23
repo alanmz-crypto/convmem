@@ -72,6 +72,11 @@ EXPECTED = {
         "chroma_sequence_positions",
         "sqlite3.connect[chroma]",
     ): (1, "generation-mediated"),
+    (
+        "recovery_authority.py",
+        "write_matching_projections",
+        "sqlite3.connect[chroma]",
+    ): (1, "excluded-administrative"),
     ("scripts/chroma_orphan_inventory.py", "_raw_query", "raw.query"): (
         1,
         "excluded-administrative",
