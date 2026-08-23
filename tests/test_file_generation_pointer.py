@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 import file_generation_pointer as pointers
+import cg2_cutover_guard
 from atomic_files import PostPublicationDurabilityError, PrePublicationError
 from file_generation_contract import (
     build_generation_manifest,
@@ -83,6 +84,29 @@ def _pointer_mechanics_fresh_process_seam():
         yield runner
 
 
+GRB_GENERATION_ID = "cg2-rollback-baseline-placeholder"
+
+
+def _publish_first_cutover(
+    root: Path,
+    source: Path,
+    label: str,
+    *,
+    grb_id: str = GRB_GENERATION_ID,
+) -> pointers.QualifiedActivePointer:
+    reference = pointers.publish_manifest(root, _manifest(source, label))
+    return pointers.publish_first_cutover_active_pointer(
+        root,
+        reference,
+        rollback_baseline_generation_id=grb_id,
+        chroma_dir=root / "chroma",
+        cfg=_cfg(root),
+        backend_fingerprint="rust-a",
+        candidate_revalidator=lambda manifest: True,
+        published_at=f"2026-08-10T00:00:0{label}Z",
+    )
+
+
 def _publish(
     root: Path,
     source: Path,
@@ -90,16 +114,52 @@ def _publish(
     *,
     previous: str | None,
 ) -> pointers.QualifiedActivePointer:
+    if previous is None:
+        return _publish_first_cutover(root, source, label)
     reference = pointers.publish_manifest(root, _manifest(source, label))
     return pointers.publish_active_pointer(
         root,
         reference,
         chroma_dir=root / "chroma",
         cfg=_cfg(root),
-        expected_previous_generation_id=previous,
+        expected_active_generation_id=previous,
         backend_fingerprint="rust-a",
         candidate_revalidator=lambda manifest: True,
         published_at=f"2026-08-10T00:00:0{label}Z",
+    )
+
+
+def _publish_first_cutover_ref(
+    root: Path,
+    reference: pointers.ManifestReference,
+    *,
+    grb_id: str = GRB_GENERATION_ID,
+) -> pointers.QualifiedActivePointer:
+    return pointers.publish_first_cutover_active_pointer(
+        root,
+        reference,
+        rollback_baseline_generation_id=grb_id,
+        chroma_dir=root / "chroma",
+        cfg=_cfg(root),
+        backend_fingerprint="rust-a",
+        candidate_revalidator=lambda manifest: True,
+    )
+
+
+def _publish_forward_ref(
+    root: Path,
+    reference: pointers.ManifestReference,
+    *,
+    expected_active: str,
+) -> pointers.QualifiedActivePointer:
+    return pointers.publish_active_pointer(
+        root,
+        reference,
+        chroma_dir=root / "chroma",
+        cfg=_cfg(root),
+        expected_active_generation_id=expected_active,
+        backend_fingerprint="rust-a",
+        candidate_revalidator=lambda manifest: True,
     )
 
 
@@ -131,15 +191,25 @@ def test_promote_and_stale_candidate_guard(tmp_path: Path) -> None:
     root = tmp_path / "generations"
     n = _publish(root, source, "1", previous=None)
     assert n.pointer["active_generation_id"] == n.manifest["generation_id"]
+    assert n.pointer["previous_generation_id"] == GRB_GENERATION_ID
 
     stale_ref = pointers.publish_manifest(root, _manifest(source, "2"))
+    with pytest.raises(pointers.GenerationPublicationError, match="non-None"):
+        pointers.publish_active_pointer(
+            root,
+            stale_ref,
+            chroma_dir=root / "chroma",
+            cfg=_cfg(root),
+            expected_active_generation_id=None,
+            backend_fingerprint="rust-a",
+        )
     with pytest.raises(pointers.StaleGenerationError):
         pointers.publish_active_pointer(
             root,
             stale_ref,
             chroma_dir=root / "chroma",
             cfg=_cfg(root),
-            expected_previous_generation_id=None,
+            expected_active_generation_id="wrong-active",
             backend_fingerprint="rust-a",
         )
     still_n = pointers.read_unqualified_pointer(root, n.manifest["owner_digest"])
@@ -163,12 +233,12 @@ def test_fresh_qualification_or_candidate_drift_refuses_promotion(tmp_path: Path
             else patch.object(pointers, "_run_fresh_process_qualification")
         )
         with pytest.raises(pointers.GenerationQualificationError), cold_runner:
-            pointers.publish_active_pointer(
+            pointers.publish_first_cutover_active_pointer(
                 root,
                 reference,
+                rollback_baseline_generation_id=GRB_GENERATION_ID,
                 chroma_dir=root / "chroma",
                 cfg=_cfg(root),
-                expected_previous_generation_id=None,
                 backend_fingerprint="rust-a",
                 candidate_revalidator=lambda manifest, value=drift: value,
             )
@@ -200,7 +270,7 @@ def test_prepublication_failure_leaves_n_serving(tmp_path: Path) -> None:
             candidate,
             chroma_dir=root / "chroma",
             cfg=_cfg(root),
-            expected_previous_generation_id=n.manifest["generation_id"],
+            expected_active_generation_id=n.manifest["generation_id"],
             backend_fingerprint="rust-a",
         )
     current = pointers.read_unqualified_pointer(root, n.manifest["owner_digest"])
@@ -231,7 +301,7 @@ def test_postpublication_failure_requires_exact_durable_republish(
             candidate,
             chroma_dir=root / "chroma",
             cfg=_cfg(root),
-            expected_previous_generation_id=n.manifest["generation_id"],
+            expected_active_generation_id=n.manifest["generation_id"],
             backend_fingerprint="rust-a",
         )
 
@@ -318,12 +388,12 @@ def test_public_authority_apis_have_no_fake_validator_seam(tmp_path: Path) -> No
     ).parameters
 
     with pytest.raises(TypeError, match="exact_generation_validator"):
-        pointers.publish_active_pointer(  # pylint: disable=unexpected-keyword-arg
+        pointers.publish_first_cutover_active_pointer(  # pylint: disable=unexpected-keyword-arg
             root,
             reference,
+            rollback_baseline_generation_id=GRB_GENERATION_ID,
             chroma_dir=root / "chroma",
             cfg=_cfg(root),
-            expected_previous_generation_id=None,
             backend_fingerprint="rust-a",
             exact_generation_validator=lambda manifest: True,
         )
@@ -469,3 +539,235 @@ def test_unrelated_owner_promotions_do_not_clobber(tmp_path: Path) -> None:
     read_b = pointers.read_unqualified_pointer(root, active_b.manifest["owner_digest"])
     assert read_a["active_generation_id"] == active_a.manifest["generation_id"]
     assert read_b["active_generation_id"] == active_b.manifest["generation_id"]
+
+def test_forward_refuses_first_pointer_creation(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    reference = pointers.publish_manifest(root, _manifest(source, "1"))
+    with pytest.raises(pointers.GenerationPublicationError, match="first active pointer"):
+        pointers.publish_active_pointer(
+            root,
+            reference,
+            chroma_dir=root / "chroma",
+            cfg=_cfg(root),
+            expected_active_generation_id=reference.manifest["generation_id"],
+            backend_fingerprint="rust-a",
+        )
+
+
+def test_forward_writes_previous_from_cas_proven_active(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    first = _publish(root, source, "1", previous=None)
+    second = _publish(root, source, "2", previous=first.manifest["generation_id"])
+    assert second.pointer["active_generation_id"] == second.manifest["generation_id"]
+    assert second.pointer["previous_generation_id"] == first.manifest["generation_id"]
+
+
+def test_first_cutover_pointer_capability(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    qualified = _publish_first_cutover(root, source, "1", grb_id="G_rb")
+    assert qualified.pointer["active_generation_id"] == qualified.manifest["generation_id"]
+    assert qualified.pointer["previous_generation_id"] == "G_rb"
+    with pytest.raises(pointers.StaleGenerationError, match="pointer absence"):
+        _publish_first_cutover(root, source, "2", grb_id="G_rb2")
+
+
+def test_rollback_switches_to_retained_target(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    retained_ref = pointers.publish_manifest(root, _manifest(source, "1"))
+    rolled = pointers.rollback_active_pointer(
+        root,
+        retained_ref,
+        chroma_dir=root / "chroma",
+        cfg=_cfg(root),
+        expected_active_generation_id=current.manifest["generation_id"],
+        backend_fingerprint="rust-a",
+        candidate_revalidator=lambda manifest: True,
+    )
+    assert rolled.pointer["active_generation_id"] == retained.manifest["generation_id"]
+    assert rolled.pointer["previous_generation_id"] == current.manifest["generation_id"]
+
+
+def test_rollback_stale_cas_refuses_independent_of_target_validity(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    active = _publish(root, source, "1", previous=None)
+    retained_ref = pointers.publish_manifest(root, _manifest(source, "1"))
+    with pytest.raises(pointers.StaleGenerationError, match="rollback CAS mismatch"):
+        pointers.rollback_active_pointer(
+            root,
+            retained_ref,
+            chroma_dir=root / "chroma",
+            cfg=_cfg(root),
+            expected_active_generation_id="wrong-active",
+            backend_fingerprint="rust-a",
+            candidate_revalidator=lambda manifest: True,
+        )
+    still = pointers.read_unqualified_pointer(root, active.manifest["owner_digest"])
+    assert still["active_generation_id"] == active.manifest["generation_id"]
+
+
+def test_rollback_does_not_require_live_source_match(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("v1", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained_manifest = _manifest(source, "1")
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    source.write_text("v2-advanced", encoding="utf-8")
+    retained_ref = pointers.publish_manifest(root, retained_manifest)
+    rolled = pointers.rollback_active_pointer(
+        root,
+        retained_ref,
+        chroma_dir=root / "chroma",
+        cfg=_cfg(root),
+        expected_active_generation_id=current.manifest["generation_id"],
+        backend_fingerprint="rust-a",
+        candidate_revalidator=lambda manifest: True,
+    )
+    assert rolled.pointer["active_generation_id"] == retained.manifest["generation_id"]
+
+
+def test_recovery_has_no_generation_selection_parameter() -> None:
+    params = inspect.signature(pointers.recover_active_pointer).parameters
+    forbidden = {
+        name
+        for name in params
+        if name.endswith("_generation_id")
+        or name.endswith("_manifest_reference")
+        or "target" in name
+    }
+    assert forbidden == set()
+
+
+def test_recovery_cannot_switch_to_another_complete_generation(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    visible = _publish(root, source, "1", previous=None)
+    alt_ref = pointers.publish_manifest(root, _manifest(source, "2"))
+    recovered = pointers.recover_active_pointer(
+        root,
+        visible.manifest["owner_key"],
+        chroma_dir=root / "chroma",
+        cfg=_cfg(root),
+        recovery_revalidator=lambda manifest: True,
+    )
+    assert recovered.pointer["active_generation_id"] == visible.manifest["generation_id"]
+    assert recovered.pointer["active_generation_id"] != alt_ref.manifest["generation_id"]
+
+
+def test_open_canary_guard_blocks_ordinary_forward(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    active = _publish(root, source, "1", previous=None)
+    cg2_cutover_guard.publish_canary_open_guard(
+        root,
+        owner_key=active.manifest["owner_key"],
+        canary_generation_id="canary-gen",
+        rollback_baseline_generation_id=GRB_GENERATION_ID,
+        published_at="2026-08-10T00:00:00Z",
+    )
+    forward_ref = pointers.publish_manifest(root, _manifest(source, "2"))
+    with pytest.raises(pointers.GenerationPublicationError, match="first-canary guard"):
+        _publish_forward_ref(root, forward_ref, expected_active=active.manifest["generation_id"])
+
+
+class _OneLockOracle:
+    def __init__(self) -> None:
+        self.acquisitions: list[str] = []
+        self._held = False
+
+    def __call__(self, cfg, canonical_source):
+        if self._held:
+            raise AssertionError(f"nested source_flock reentry for {canonical_source}")
+        self._held = True
+        self.acquisitions.append(str(canonical_source))
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self._held = False
+        return False
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        "forward",
+        "first_cutover",
+        "rollback",
+        "recovery",
+    ],
+)
+def test_public_pointer_operations_acquire_source_flock_once(
+    tmp_path: Path, operation: str
+) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    oracle = _OneLockOracle()
+    if operation == "forward":
+        active = _publish(root, source, "1", previous=None)
+        forward_ref = pointers.publish_manifest(root, _manifest(source, "2"))
+        with patch.object(pointers, "source_flock", oracle):
+            pointers.publish_active_pointer(
+                root,
+                forward_ref,
+                chroma_dir=root / "chroma",
+                cfg=_cfg(root),
+                expected_active_generation_id=active.manifest["generation_id"],
+                backend_fingerprint="rust-a",
+                candidate_revalidator=lambda manifest: True,
+            )
+    elif operation == "first_cutover":
+        reference = pointers.publish_manifest(root, _manifest(source, "1"))
+        with patch.object(pointers, "source_flock", oracle):
+            pointers.publish_first_cutover_active_pointer(
+                root,
+                reference,
+                rollback_baseline_generation_id=GRB_GENERATION_ID,
+                chroma_dir=root / "chroma",
+                cfg=_cfg(root),
+                backend_fingerprint="rust-a",
+                candidate_revalidator=lambda manifest: True,
+            )
+    elif operation == "rollback":
+        retained_manifest = _manifest(source, "1")
+        retained = _publish(root, source, "1", previous=None)
+        current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+        retained_ref = pointers.publish_manifest(root, retained_manifest)
+        with patch.object(pointers, "source_flock", oracle):
+            pointers.rollback_active_pointer(
+                root,
+                retained_ref,
+                chroma_dir=root / "chroma",
+                cfg=_cfg(root),
+                expected_active_generation_id=current.manifest["generation_id"],
+                backend_fingerprint="rust-a",
+                candidate_revalidator=lambda manifest: True,
+            )
+    else:
+        active = _publish(root, source, "1", previous=None)
+        with patch.object(pointers, "source_flock", oracle):
+            pointers.recover_active_pointer(
+                root,
+                active.manifest["owner_key"],
+                chroma_dir=root / "chroma",
+                cfg=_cfg(root),
+                recovery_revalidator=lambda manifest: True,
+            )
+    assert len(oracle.acquisitions) == 1

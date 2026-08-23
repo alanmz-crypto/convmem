@@ -401,49 +401,100 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _publish_pointer_under_lock(
+    generation_root: str | Path,
+    manifest_reference: ManifestReference,
+    *,
+    path: Path,
+    chroma_dir: str | Path,
+    previous_generation_id: str | None,
+    backend_fingerprint: str,
+    candidate_revalidator: Callable[[Mapping[str, Any]], Any] | None = None,
+    published_at: str | None = None,
+) -> QualifiedActivePointer:
+    """Qualify and write one active pointer while the owner source lock is held."""
+
+    fresh_ref = _reload_verified_caller_reference(
+        generation_root, manifest_reference
+    )
+    pointer = build_active_pointer(
+        manifest=fresh_ref.manifest,
+        manifest_filename=fresh_ref.path.name,
+        manifest_sha256=fresh_ref.file_sha256,
+        previous_generation_id=previous_generation_id,
+        backend_fingerprint=backend_fingerprint,
+        published_at=published_at or _utc_now(),
+    )
+    _qualify_pointer(
+        generation_root,
+        pointer,
+        chroma_dir=chroma_dir,
+        candidate_revalidator=candidate_revalidator,
+    )
+    atomic_write_json(path, pointer)
+    return _make_qualified_active_pointer(
+        path=path,
+        pointer=pointer,
+        manifest=fresh_ref.manifest,
+        recovered=False,
+    )
+
+
 def publish_active_pointer(
     generation_root: str | Path,
     manifest_reference: ManifestReference,
     *,
     chroma_dir: str | Path,
     cfg: Mapping[str, Any],
-    expected_previous_generation_id: str | None,
+    expected_active_generation_id: str,
     backend_fingerprint: str,
     candidate_revalidator: Callable[[Mapping[str, Any]], Any] | None = None,
     published_at: str | None = None,
 ) -> QualifiedActivePointer:
-    """Qualify and durably promote one owner under its existing source lock.
+    """Ordinary forward publication: CAS current active and record durable lineage.
 
     ``PostPublicationDurabilityError`` is deliberately not caught.  Visible
     bytes after that exception remain unqualified; rereading them is not
     recovery.
     """
 
-    # Establish the exact persisted owner/generation before choosing the lock
-    # or pointer path.  A caller cannot cross-wire B's path/hash to A's manifest
-    # and cause B to validate while publishing under A's authority.
+    if expected_active_generation_id is None:
+        raise GenerationPublicationError(
+            "ordinary forward publication requires non-None expected_active_generation_id"
+        )
+    if not str(expected_active_generation_id).strip():
+        raise GenerationPublicationError(
+            "ordinary forward publication requires non-empty expected_active_generation_id"
+        )
+
     verified_ref = _reload_verified_caller_reference(
         generation_root, manifest_reference
     )
     manifest = verified_ref.manifest
     canonical_source = canonical_source_path(manifest["canonical_source_path"])
-    path = pointer_path(generation_root, str(manifest["owner_digest"]))
+    owner_digest_value = str(manifest["owner_digest"])
+    path = pointer_path(generation_root, owner_digest_value)
     with source_flock(dict(cfg), canonical_source):
-        # Recheck the caller/persisted binding under the owner lock before any
-        # stale check, validation, or publication action.
+        from cg2_cutover_guard import read_canary_open_guard
+
+        if read_canary_open_guard(generation_root, owner_digest_value) is not None:
+            raise GenerationPublicationError(
+                "ordinary forward publication refused while first-canary guard is open"
+            )
+
         fresh_ref = _reload_verified_caller_reference(
             generation_root, manifest_reference
         )
-        current = read_unqualified_pointer(
-            generation_root, str(fresh_ref.manifest["owner_digest"])
-        )
-        current_generation = (
-            None if current is None else str(current["active_generation_id"])
-        )
-        if current_generation != expected_previous_generation_id:
+        current = read_unqualified_pointer(generation_root, owner_digest_value)
+        if current is None:
+            raise GenerationPublicationError(
+                "ordinary forward publication cannot create the first active pointer"
+            )
+        current_generation = str(current["active_generation_id"])
+        if current_generation != expected_active_generation_id:
             raise StaleGenerationError(
                 "active generation changed while candidate was queued: "
-                f"expected {expected_previous_generation_id!r}, got {current_generation!r}"
+                f"expected {expected_active_generation_id!r}, got {current_generation!r}"
             )
         from source_observation import observe_source_hash
 
@@ -454,26 +505,110 @@ def publish_active_pointer(
                 f"manifest={fresh_ref.manifest['source_hash']!r} "
                 f"current={observed_hash!r}"
             )
-        pointer = build_active_pointer(
-            manifest=fresh_ref.manifest,
-            manifest_filename=fresh_ref.path.name,
-            manifest_sha256=fresh_ref.file_sha256,
-            previous_generation_id=expected_previous_generation_id,
-            backend_fingerprint=backend_fingerprint,
-            published_at=published_at or _utc_now(),
-        )
-        _qualify_pointer(
+        return _publish_pointer_under_lock(
             generation_root,
-            pointer,
-            chroma_dir=chroma_dir,
-            candidate_revalidator=candidate_revalidator,
-        )
-        atomic_write_json(path, pointer)
-        return _make_qualified_active_pointer(
+            manifest_reference,
             path=path,
-            pointer=pointer,
-            manifest=fresh_ref.manifest,
-            recovered=False,
+            chroma_dir=chroma_dir,
+            previous_generation_id=current_generation,
+            backend_fingerprint=backend_fingerprint,
+            candidate_revalidator=candidate_revalidator,
+            published_at=published_at,
+        )
+
+
+def publish_first_cutover_active_pointer(
+    generation_root: str | Path,
+    canary_manifest_reference: ManifestReference,
+    *,
+    rollback_baseline_generation_id: str,
+    chroma_dir: str | Path,
+    cfg: Mapping[str, Any],
+    backend_fingerprint: str,
+    candidate_revalidator: Callable[[Mapping[str, Any]], Any] | None = None,
+    published_at: str | None = None,
+) -> QualifiedActivePointer:
+    """Pointer-layer first-cutover capability: CAS absence, previous=G_rb."""
+
+    if not str(rollback_baseline_generation_id or "").strip():
+        raise GenerationPublicationError(
+            "first-cutover publication requires rollback_baseline_generation_id"
+        )
+
+    verified_ref = _reload_verified_caller_reference(
+        generation_root, canary_manifest_reference
+    )
+    manifest = verified_ref.manifest
+    canonical_source = canonical_source_path(manifest["canonical_source_path"])
+    owner_digest_value = str(manifest["owner_digest"])
+    path = pointer_path(generation_root, owner_digest_value)
+    with source_flock(dict(cfg), canonical_source):
+        current = read_unqualified_pointer(generation_root, owner_digest_value)
+        if current is not None:
+            raise StaleGenerationError(
+                "first-cutover publication requires pointer absence: "
+                f"found active {current['active_generation_id']!r}"
+            )
+        return _publish_pointer_under_lock(
+            generation_root,
+            canary_manifest_reference,
+            path=path,
+            chroma_dir=chroma_dir,
+            previous_generation_id=str(rollback_baseline_generation_id),
+            backend_fingerprint=backend_fingerprint,
+            candidate_revalidator=candidate_revalidator,
+            published_at=published_at,
+        )
+
+
+def rollback_active_pointer(
+    generation_root: str | Path,
+    retained_manifest_reference: ManifestReference,
+    *,
+    chroma_dir: str | Path,
+    cfg: Mapping[str, Any],
+    expected_active_generation_id: str,
+    backend_fingerprint: str,
+    candidate_revalidator: Callable[[Mapping[str, Any]], Any] | None = None,
+    published_at: str | None = None,
+) -> QualifiedActivePointer:
+    """Rollback to a retained target; CAS current active, no live-source requirement."""
+
+    if expected_active_generation_id is None:
+        raise GenerationPublicationError(
+            "rollback publication requires non-None expected_active_generation_id"
+        )
+    if not str(expected_active_generation_id).strip():
+        raise GenerationPublicationError(
+            "rollback publication requires non-empty expected_active_generation_id"
+        )
+
+    verified_ref = _reload_verified_caller_reference(
+        generation_root, retained_manifest_reference
+    )
+    manifest = verified_ref.manifest
+    canonical_source = canonical_source_path(manifest["canonical_source_path"])
+    owner_digest_value = str(manifest["owner_digest"])
+    path = pointer_path(generation_root, owner_digest_value)
+    with source_flock(dict(cfg), canonical_source):
+        current = read_unqualified_pointer(generation_root, owner_digest_value)
+        if current is None:
+            raise StaleGenerationError("rollback publication requires an existing pointer")
+        current_generation = str(current["active_generation_id"])
+        if current_generation != expected_active_generation_id:
+            raise StaleGenerationError(
+                "rollback CAS mismatch: "
+                f"expected {expected_active_generation_id!r}, got {current_generation!r}"
+            )
+        return _publish_pointer_under_lock(
+            generation_root,
+            retained_manifest_reference,
+            path=path,
+            chroma_dir=chroma_dir,
+            previous_generation_id=current_generation,
+            backend_fingerprint=backend_fingerprint,
+            candidate_revalidator=candidate_revalidator,
+            published_at=published_at,
         )
 
 
