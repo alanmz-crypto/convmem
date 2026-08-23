@@ -30,6 +30,9 @@ from cg2_rollback_baseline import (
     convert_and_retain_rollback_baseline,
     rollback_baseline_evidence_path,
     validate_retained_rollback_baseline_evidence,
+
+    D0_PHYSICAL_ID_KEY,
+    _d1_generation_logical_key,
 )
 from chroma_store import SUMMARIES, UNITS, ChromaStore
 from file_generation_contract import (
@@ -296,6 +299,78 @@ def _seed_legacy_corpus(
             docs["summary_id"] = "legacy-summary"
 
         return docs
+    finally:
+        store.close()
+
+
+
+
+def _seed_same_logical_distinct_physical(chroma: Path, source: Path) -> dict[str, object]:
+    """Two LEGACY rows sharing conversion logical id with distinct physical ids."""
+
+    canonical = canonical_source_path(source)
+    store = ChromaStore(str(chroma))
+    try:
+        shared_logical = "shared-conversion-logical"
+        meta_a = {
+            "id": "phys-shared-a",
+            "logical_id": shared_logical,
+            "source_path": canonical,
+            "ledger_id": "obs_shared_logical_a",
+            "content_hash": canonical_hash("identical twin body"),
+            "start_offset": 10,
+        }
+        meta_b = {
+            "id": "phys-shared-b",
+            "logical_id": shared_logical,
+            "source_path": canonical,
+            "ledger_id": "obs_shared_logical_b",
+            "content_hash": canonical_hash("identical twin body"),
+            "start_offset": 11,
+        }
+        store.add_unit("phys-shared-a", "identical twin body", [0.2, 0.8], meta_a)
+        store.add_unit("phys-shared-b", "identical twin body", [0.2, 0.8], meta_b)
+        return {
+            "canonical": canonical,
+            "shared_logical": shared_logical,
+            "phys_a": "phys-shared-a",
+            "phys_b": "phys-shared-b",
+            "meta_a": meta_a,
+            "meta_b": meta_b,
+        }
+    finally:
+        store.close()
+
+
+def _seed_same_logical_distinct_provenance(chroma: Path, source: Path) -> dict[str, object]:
+    canonical = canonical_source_path(source)
+    store = ChromaStore(str(chroma))
+    try:
+        shared_logical = "shared-conversion-logical-prov"
+        meta_a = _provenance_meta(
+            unit_id="phys-prov-a",
+            source_path=canonical,
+            document="shared logical provenance body",
+            ledger_id="obs_shared_logical_prov",
+            source_identity=f"{canonical}#prov-a",
+        )
+        meta_b = _provenance_meta(
+            unit_id="phys-prov-b",
+            source_path=canonical,
+            document="shared logical provenance body",
+            ledger_id="obs_shared_logical_prov",
+            source_identity=f"{canonical}#prov-b",
+        )
+        meta_a["logical_id"] = shared_logical
+        meta_b["logical_id"] = shared_logical
+        store.add_unit("phys-prov-a", "shared logical provenance body", [0.55, 0.45], meta_a)
+        store.add_unit("phys-prov-b", "shared logical provenance body", [0.45, 0.55], meta_b)
+        return {
+            "canonical": canonical,
+            "shared_logical": shared_logical,
+            "meta_a": meta_a,
+            "meta_b": meta_b,
+        }
     finally:
         store.close()
 
@@ -866,7 +941,7 @@ def test_invalid_provenance_follows_conservative_legacy_policy_without_synthesis
                 "$and": [
                     {"generation_scope": FILE_SCOPE},
                     {"generation_id": result.generation_id},
-                    {"logical_id": "legacy-bad-prov"},
+                    {"d0_conversion_logical_id": "legacy-bad-prov"},
                 ]
             },
             include=["metadatas"],
@@ -1278,3 +1353,451 @@ def test_non_legacy_owner_refuses_convert(tmp_path, monkeypatch):
                 owner_digest_value=owner_digest_value,
                 ratification_id=ratification_id,
             )
+
+
+# --- Luna blocker 1: full D0 identity preservation ---
+
+
+def test_same_logical_distinct_physical_ids_admit_stage_and_equivalence(tmp_path, monkeypatch):
+    _mock_hermetic_production_paths(monkeypatch, tmp_path)
+    _mock_ollama_only(monkeypatch)
+    source = tmp_path / "src.md"
+    source.write_text("body\n", encoding="utf-8")
+    chroma = tmp_path / "chroma"
+    generations = tmp_path / "generations"
+    chroma.mkdir()
+    generations.mkdir()
+    seeded = _seed_same_logical_distinct_physical(chroma, source)
+    # also need a summary? D0/D1 may require both collections - use prepare-like cfg
+    source, accepted_hash, chroma, generations, cfg, _seeded = _prepare(
+        tmp_path,
+        with_provenance_twins=False,
+        with_invalid_provenance=False,
+        with_superseded=False,
+        with_stable=False,
+        with_summary=True,
+        with_other_source=False,
+    )
+    # wipe units and reseed only same-logical pair + keep summary from prepare
+    store = ChromaStore(str(chroma))
+    try:
+        col = store._collection(UNITS)
+        existing = col.get(include=[])
+        if existing.get("ids"):
+            col.delete(ids=list(existing["ids"]))
+    finally:
+        store.close()
+    seeded = _seed_same_logical_distinct_physical(chroma, source)
+    owner_digest_value, ratification_id, *_ = _ratify_d0_chain(cfg, source, accepted_hash)
+    with FileGenerationStore(chroma, active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=cfg,
+            store=store,
+            generation_root=generations,
+            owner_digest_value=owner_digest_value,
+            ratification_id=ratification_id,
+        )
+        staged = store.raw_store._collection(UNITS).get(
+            where={
+                "$and": [
+                    {"generation_scope": FILE_SCOPE},
+                    {"generation_id": result.generation_id},
+                    {"d0_conversion_logical_id": seeded["shared_logical"]},
+                ]
+            },
+            include=["metadatas"],
+        )
+    metas = [dict(m or {}) for m in staged.get("metadatas") or []]
+    assert len(metas) == 2
+    assert {m[D0_PHYSICAL_ID_KEY] for m in metas} == {seeded["phys_a"], seeded["phys_b"]}
+    assert {m["logical_id"] for m in metas} == {
+        _d1_generation_logical_key(UNITS, seeded["shared_logical"], seeded["phys_a"]),
+        _d1_generation_logical_key(UNITS, seeded["shared_logical"], seeded["phys_b"]),
+    }
+    validate_retained_rollback_baseline_evidence(
+        generations,
+        owner_digest_value=owner_digest_value,
+        generation_id=result.generation_id,
+        expected_manifest_sha256=result.manifest_sha256,
+    )
+
+
+def test_same_logical_distinct_physical_with_distinct_provenance_survive(tmp_path, monkeypatch):
+    _mock_hermetic_production_paths(monkeypatch, tmp_path)
+    _mock_ollama_only(monkeypatch)
+    source, accepted_hash, chroma, generations, cfg, _seeded = _prepare(
+        tmp_path,
+        with_provenance_twins=False,
+        with_invalid_provenance=False,
+        with_superseded=False,
+        with_stable=False,
+        with_summary=True,
+        with_other_source=False,
+    )
+    store = ChromaStore(str(chroma))
+    try:
+        col = store._collection(UNITS)
+        existing = col.get(include=[])
+        if existing.get("ids"):
+            col.delete(ids=list(existing["ids"]))
+    finally:
+        store.close()
+    seeded = _seed_same_logical_distinct_provenance(chroma, source)
+    owner_digest_value, ratification_id, *_ = _ratify_d0_chain(cfg, source, accepted_hash)
+    with FileGenerationStore(chroma, active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=cfg,
+            store=store,
+            generation_root=generations,
+            owner_digest_value=owner_digest_value,
+            ratification_id=ratification_id,
+        )
+        staged = store.raw_store._collection(UNITS).get(
+            where={
+                "$and": [
+                    {"generation_scope": FILE_SCOPE},
+                    {"generation_id": result.generation_id},
+                    {"d0_conversion_logical_id": seeded["shared_logical"]},
+                ]
+            },
+            include=["metadatas"],
+        )
+    metas = [dict(m or {}) for m in staged.get("metadatas") or []]
+    assert len(metas) == 2
+    assert {m.get("assertion_id") for m in metas} == {
+        seeded["meta_a"]["assertion_id"],
+        seeded["meta_b"]["assertion_id"],
+    }
+
+
+def test_same_logical_identical_content_distinct_physical_survive(tmp_path, monkeypatch):
+    test_same_logical_distinct_physical_ids_admit_stage_and_equivalence(tmp_path, monkeypatch)
+
+
+def test_mutate_preserved_d0_physical_id_refuses_validation(d1_env):
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=d1_env["cfg"],
+            store=store,
+            generation_root=d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            ratification_id=d1_env["ratification_id"],
+        )
+        col = store.raw_store._collection(UNITS)
+        staged = col.get(
+            where={
+                "$and": [
+                    {"generation_scope": FILE_SCOPE},
+                    {"generation_id": result.generation_id},
+                ]
+            },
+            include=["metadatas"],
+        )
+        ids = list(staged.get("ids") or [])
+        metas = [dict(m or {}) for m in staged.get("metadatas") or []]
+        assert ids and metas
+        metas[0] = {**metas[0], D0_PHYSICAL_ID_KEY: "tampered-physical"}
+        col.update(ids=[ids[0]], metadatas=[metas[0]])
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        with pytest.raises(
+            RollbackBaselineError,
+            match="D0|physical|logical|bind|digest|equivalent|qualification|collision",
+        ):
+            _convert_grb(
+                cfg=d1_env["cfg"],
+                store=store,
+                generation_root=d1_env["generations"],
+                owner_digest_value=d1_env["owner_digest"],
+                ratification_id=d1_env["ratification_id"],
+            )
+
+
+def test_swap_preserved_d0_physical_ids_between_twins_refuses(d1_env):
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=d1_env["cfg"],
+            store=store,
+            generation_root=d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            ratification_id=d1_env["ratification_id"],
+        )
+        col = store.raw_store._collection(UNITS)
+        staged = col.get(
+            where={
+                "$and": [
+                    {"generation_scope": FILE_SCOPE},
+                    {"generation_id": result.generation_id},
+                    {"ledger_id": "obs_shared_twin"},
+                ]
+            },
+            include=["metadatas"],
+        )
+        ids = list(staged.get("ids") or [])
+        metas = [dict(m or {}) for m in staged.get("metadatas") or []]
+        assert len(ids) == 2
+        swapped = [
+            {**metas[0], D0_PHYSICAL_ID_KEY: metas[1][D0_PHYSICAL_ID_KEY]},
+            {**metas[1], D0_PHYSICAL_ID_KEY: metas[0][D0_PHYSICAL_ID_KEY]},
+        ]
+        col.update(ids=ids, metadatas=swapped)
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        with pytest.raises(
+            RollbackBaselineError,
+            match="D0|physical|logical|bind|digest|equivalent|qualification|collision",
+        ):
+            _convert_grb(
+                cfg=d1_env["cfg"],
+                store=store,
+                generation_root=d1_env["generations"],
+                owner_digest_value=d1_env["owner_digest"],
+                ratification_id=d1_env["ratification_id"],
+            )
+
+
+def test_delete_preserved_d0_physical_identity_refuses(d1_env):
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=d1_env["cfg"],
+            store=store,
+            generation_root=d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            ratification_id=d1_env["ratification_id"],
+        )
+        col = store.raw_store._collection(UNITS)
+        staged = col.get(
+            where={
+                "$and": [
+                    {"generation_scope": FILE_SCOPE},
+                    {"generation_id": result.generation_id},
+                ]
+            },
+            include=["metadatas"],
+        )
+        ids = list(staged.get("ids") or [])
+        metas = [dict(m or {}) for m in staged.get("metadatas") or []]
+        metas[0] = {k: v for k, v in metas[0].items() if k != D0_PHYSICAL_ID_KEY}
+        col.update(ids=[ids[0]], metadatas=[metas[0]])
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        with pytest.raises(RollbackBaselineError, match="d0_physical|missing|D0|bind|qualification|collision"):
+            _convert_grb(
+                cfg=d1_env["cfg"],
+                store=store,
+                generation_root=d1_env["generations"],
+                owner_digest_value=d1_env["owner_digest"],
+                ratification_id=d1_env["ratification_id"],
+            )
+
+
+def test_changing_only_d0_physical_ids_changes_candidate_identity():
+    from cg2_rollback_baseline import LegacyServingRow, _bundle_hash_from_rows
+
+    def _row(physical_id: str) -> LegacyServingRow:
+        return LegacyServingRow(
+            collection_name=UNITS,
+            physical_id=physical_id,
+            logical_id="shared-L",
+            document="body",
+            embedding=(0.1, 0.9),
+            metadata={
+                "logical_id": "shared-L",
+                "source_path": "/tmp/x",
+                "ledger_id": "obs_l",
+                "content_hash": "a" * 64,
+                "start_offset": 0,
+            },
+        )
+
+    first = _bundle_hash_from_rows([_row("phys-a1")])
+    second = _bundle_hash_from_rows([_row("phys-a2")])
+    assert first != second
+
+
+
+# --- Luna blocker 2: exact immutable-byte evidence ---
+
+
+def test_exact_byte_identical_evidence_rewrite_is_idempotent(d1_env):
+    test_immutable_retained_evidence_byte_idempotent(d1_env)
+
+
+def test_sequence_positions_only_change_refuses_evidence_collision(d1_env):
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=d1_env["cfg"],
+            store=store,
+            generation_root=d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            ratification_id=d1_env["ratification_id"],
+        )
+    path = rollback_baseline_evidence_path(
+        d1_env["generations"], d1_env["owner_digest"], result.generation_id
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    cold = dict(payload["cold_qualification"])
+    positions = dict(cold["sequence_positions"])
+    positions["queue_max_seq_id"] = int(positions.get("queue_max_seq_id") or 0) + 7
+    if "segment_max_seq_ids" in positions:
+        positions["segment_max_seq_ids"] = dict(positions["segment_max_seq_ids"] or {})
+        positions["segment_max_seq_ids"]["__tamper__"] = 99
+    cold["sequence_positions"] = positions
+    payload["cold_qualification"] = cold
+    path.write_text(json.dumps(_rehash_evidence(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        with pytest.raises(RollbackBaselineError, match="immutable|collision|sequence|cold|bind"):
+            _convert_grb(
+                cfg=d1_env["cfg"],
+                store=store,
+                generation_root=d1_env["generations"],
+                owner_digest_value=d1_env["owner_digest"],
+                ratification_id=d1_env["ratification_id"],
+            )
+
+
+def test_sequence_positions_removed_refuses(d1_env):
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=d1_env["cfg"],
+            store=store,
+            generation_root=d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            ratification_id=d1_env["ratification_id"],
+        )
+    path = rollback_baseline_evidence_path(
+        d1_env["generations"], d1_env["owner_digest"], result.generation_id
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    cold = dict(payload["cold_qualification"])
+    cold.pop("sequence_positions", None)
+    payload["cold_qualification"] = cold
+    path.write_text(json.dumps(_rehash_evidence(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with pytest.raises(RollbackBaselineError, match="sequence_positions|cold-qualification"):
+        validate_retained_rollback_baseline_evidence(
+            d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            generation_id=result.generation_id,
+            expected_manifest_sha256=result.manifest_sha256,
+        )
+
+
+def test_same_parsed_json_different_whitespace_refuses_byte_collision(d1_env):
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=d1_env["cfg"],
+            store=store,
+            generation_root=d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            ratification_id=d1_env["ratification_id"],
+        )
+    path = rollback_baseline_evidence_path(
+        d1_env["generations"], d1_env["owner_digest"], result.generation_id
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    # Compact JSON: same parsed object, different on-disk bytes.
+    path.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True) + "\n", encoding="utf-8")
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        with pytest.raises(RollbackBaselineError, match="immutable|collision|bind|digest|cold"):
+            _convert_grb(
+                cfg=d1_env["cfg"],
+                store=store,
+                generation_root=d1_env["generations"],
+                owner_digest_value=d1_env["owner_digest"],
+                ratification_id=d1_env["ratification_id"],
+            )
+
+
+def test_cold_identity_change_refuses(d1_env):
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=d1_env["cfg"],
+            store=store,
+            generation_root=d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            ratification_id=d1_env["ratification_id"],
+        )
+    path = rollback_baseline_evidence_path(
+        d1_env["generations"], d1_env["owner_digest"], result.generation_id
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    cold = dict(payload["cold_qualification"])
+    cold["identity"] = "a" * 64
+    payload["cold_qualification"] = cold
+    path.write_text(json.dumps(_rehash_evidence(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with pytest.raises(RollbackBaselineError, match="cold-qualification|identity|bind"):
+        validate_retained_rollback_baseline_evidence(
+            d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            generation_id=result.generation_id,
+            expected_manifest_sha256=result.manifest_sha256,
+        )
+
+
+def test_provenance_evidence_change_refuses(d1_env):
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=d1_env["cfg"],
+            store=store,
+            generation_root=d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            ratification_id=d1_env["ratification_id"],
+        )
+    path = rollback_baseline_evidence_path(
+        d1_env["generations"], d1_env["owner_digest"], result.generation_id
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    rows = list(payload.get("provenance_identity_evidence") or [])
+    assert rows
+    rows[0] = {**rows[0], "assertion_id": "00000000-0000-0000-0000-000000000000"}
+    payload["provenance_identity_evidence"] = rows
+    path.write_text(json.dumps(_rehash_evidence(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with pytest.raises(RollbackBaselineError, match="provenance|bind|assertion"):
+        validate_retained_rollback_baseline_evidence(
+            d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            generation_id=result.generation_id,
+            expected_manifest_sha256=result.manifest_sha256,
+        )
+
+
+def test_equivalence_evidence_change_refuses(d1_env):
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=d1_env["cfg"],
+            store=store,
+            generation_root=d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            ratification_id=d1_env["ratification_id"],
+        )
+    path = rollback_baseline_evidence_path(
+        d1_env["generations"], d1_env["owner_digest"], result.generation_id
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    eq = dict(payload["bidirectional_equivalence"])
+    eq["missing_count"] = 1
+    payload["bidirectional_equivalence"] = eq
+    path.write_text(json.dumps(_rehash_evidence(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with pytest.raises(RollbackBaselineError, match="equivalent|equivalence|bind|count"):
+        validate_retained_rollback_baseline_evidence(
+            d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            generation_id=result.generation_id,
+            expected_manifest_sha256=result.manifest_sha256,
+        )
+
+
+def test_legitimate_new_evidence_hash_validation_succeeds(d1_env):
+    with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        result = _convert_grb(
+            cfg=d1_env["cfg"],
+            store=store,
+            generation_root=d1_env["generations"],
+            owner_digest_value=d1_env["owner_digest"],
+            ratification_id=d1_env["ratification_id"],
+        )
+    payload = validate_retained_rollback_baseline_evidence(
+        d1_env["generations"],
+        owner_digest_value=d1_env["owner_digest"],
+        generation_id=result.generation_id,
+        expected_manifest_sha256=result.manifest_sha256,
+    )
+    assert payload.get("evidence_payload_hash")
+    assert isinstance(payload["cold_qualification"]["sequence_positions"], dict)

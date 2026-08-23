@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from atomic_files import atomic_write_json
+from atomic_files import atomic_write_bytes
 from chroma_store import SUMMARIES, UNITS, ChromaStore, is_superseded
 from chroma_write_store import WriterBoundaryError, require_writer_attestation
 from config import load_config
@@ -68,6 +68,10 @@ from chroma_readonly import collection_config_metadata, collection_uuid
 CONVERT_V1_FINGERPRINT = "convmem/cg2-rollback-baseline-convert-v1"
 ROLLBACK_BASELINE_SCHEMA = "convmem/cg2-rollback-baseline-evidence-v1"
 RETAINED_ROLLBACK_BASELINE = "RETAINED_ROLLBACK_BASELINE"
+D1_GENERATION_ROW_KEY_SCHEMA = "convmem/cg2-d1-generation-row-key-v1"
+D0_CONVERSION_LOGICAL_ID_KEY = "d0_conversion_logical_id"
+D0_PHYSICAL_ID_KEY = "d0_physical_id"
+
 UNKNOWN_EMBEDDING_MODEL = "UNKNOWN"
 _SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 _EQUIVALENCE_COUNT_KEYS = (
@@ -87,7 +91,8 @@ _IMMUTABLE_METADATA_KEYS = (
     "ledger_id",
     PROVENANCE_ASSERTION_ID_KEY,
     PROVENANCE_COMMITMENT_KEY,
-    PROVENANCE_ENVELOPE_KEY,
+    PROVENANCE_ENVELOPE_KEY,    D0_CONVERSION_LOGICAL_ID_KEY,
+    D0_PHYSICAL_ID_KEY,
 )
 
 
@@ -186,6 +191,37 @@ def _conversion_logical_id(meta: Mapping[str, Any], physical_id: str) -> str:
     return str(physical_id)
 
 
+def _d1_generation_logical_key(
+    collection_name: str,
+    conversion_logical_id: str,
+    d0_physical_id: str,
+) -> str:
+    """Deterministic CG-1 generation-local logical id from full D0 identity."""
+
+    return canonical_hash(
+        {
+            "schema": D1_GENERATION_ROW_KEY_SCHEMA,
+            "collection_name": collection_name,
+            "conversion_logical_id": conversion_logical_id,
+            "d0_physical_id": d0_physical_id,
+        }
+    )
+
+
+def _d0_identity_from_row(row: LegacyServingRow) -> tuple[str, str, str]:
+    """Return (collection_name, conversion_logical_id, d0_physical_id)."""
+
+    meta = dict(row.metadata)
+    conversion = str(meta.get(D0_CONVERSION_LOGICAL_ID_KEY) or row.logical_id or "").strip()
+    physical = str(meta.get(D0_PHYSICAL_ID_KEY) or row.physical_id or "").strip()
+    if not conversion or not physical:
+        raise RollbackBaselineError(
+            "row lacks preserved D0 conversion logical id / physical id"
+        )
+    return row.collection_name, conversion, physical
+
+
+
 def _provenance_fields(
     meta: Mapping[str, Any],
 ) -> tuple[str | None, str | None, str | None]:
@@ -214,6 +250,7 @@ def _identity_tuple(
     owner_digest_value: str,
     collection_name: str,
     logical_id: str,
+    d0_physical_id: str,
     document_hash: str,
     persisted_embedding_hash: str,
     embedding_model: str,
@@ -227,6 +264,7 @@ def _identity_tuple(
         "owner_digest": owner_digest_value,
         "collection_name": collection_name,
         "logical_id": logical_id,
+        "d0_physical_id": d0_physical_id,
         "document_hash": document_hash,
         "persisted_embedding_hash": persisted_embedding_hash,
         "embedding_model": embedding_model,
@@ -245,11 +283,13 @@ def _normalized_row_identity(
     embedding_model: str,
     embedding_dimension: int,
 ) -> dict[str, Any]:
+    _collection, conversion_logical_id, d0_physical_id = _d0_identity_from_row(row)
     envelope_value = row.provenance_envelope
     return _identity_tuple(
         owner_digest_value=owner_digest_value,
         collection_name=row.collection_name,
-        logical_id=row.logical_id,
+        logical_id=conversion_logical_id,
+        d0_physical_id=d0_physical_id,
         document_hash=canonical_hash(row.document),
         persisted_embedding_hash=canonical_hash(row.embedding_list),
         embedding_model=embedding_model,
@@ -753,30 +793,29 @@ def _assert_row_owner_consistency(
 
 
 def _bundle_hash_from_rows(rows: Sequence[LegacyServingRow]) -> str:
-    units = [
-        {
-            "logical_id": row.logical_id,
+    units = []
+    summaries = []
+    for row in rows:
+        generation_logical_id = _d1_generation_logical_key(
+            row.collection_name, row.logical_id, row.physical_id
+        )
+        item = {
+            "logical_id": generation_logical_id,
             "document": row.document,
             "embedding": row.embedding_list,
-            "metadata": dict(row.metadata),
+            "metadata": {
+                **dict(row.metadata),
+                D0_CONVERSION_LOGICAL_ID_KEY: row.logical_id,
+                D0_PHYSICAL_ID_KEY: row.physical_id,
+            },
         }
-        for row in rows
-        if row.collection_name == UNITS
-    ]
-    summaries = [
-        {
-            "logical_id": row.logical_id,
-            "document": row.document,
-            "embedding": row.embedding_list,
-            "metadata": dict(row.metadata),
-        }
-        for row in rows
-        if row.collection_name == SUMMARIES
-    ]
+        if row.collection_name == UNITS:
+            units.append(item)
+        elif row.collection_name == SUMMARIES:
+            summaries.append(item)
     units.sort(key=lambda item: str(item["logical_id"]))
     summaries.sort(key=lambda item: str(item["logical_id"]))
     return candidate_bundle_hash(units, summaries)
-
 
 def _is_legacy_serving_row(meta: Mapping[str, Any]) -> bool:
     if is_superseded(dict(meta)):
@@ -850,7 +889,7 @@ def _admit_rows(
     canonical_source: str,
 ) -> list[LegacyServingRow]:
     admitted: list[LegacyServingRow] = []
-    seen_logical: dict[str, str] = {}
+    seen_d0: set[tuple[str, str, str]] = set()
     for collection_name in (UNITS, SUMMARIES):
         for physical_id, document, meta, embedding in _read_collection_rows(
             store, collection_name, canonical_source=canonical_source
@@ -863,12 +902,13 @@ def _admit_rows(
                 meta, owner_digest_value=owner_digest_value, owner_key=owner_key
             )
             logical_id = _conversion_logical_id(meta, physical_id)
-            key = f"{collection_name}:{logical_id}"
-            if key in seen_logical:
+            d0_key = (collection_name, logical_id, str(physical_id))
+            if d0_key in seen_d0:
                 raise RollbackBaselineError(
-                    f"duplicate logical identity in accepted LEGACY set: {key}"
+                    "duplicate D0 identity in accepted LEGACY set: "
+                    f"{collection_name}/{logical_id}/{physical_id}"
                 )
-            seen_logical[key] = physical_id
+            seen_d0.add(d0_key)
             assertion_id, commitment, envelope = _provenance_fields(meta)
             if assertion_id is None:
                 checked = validate_projection(meta)
@@ -906,15 +946,20 @@ def _stage_converted_rows(
 ) -> list[StagedRow]:
     staged: list[StagedRow] = []
     for row in snapshot.rows:
+        generation_logical_id = _d1_generation_logical_key(
+            row.collection_name, row.logical_id, row.physical_id
+        )
         physical_id = make_physical_id(
-            row.collection_name, generation_id, row.logical_id
+            row.collection_name, generation_id, generation_logical_id
         )
         meta = dict(row.metadata)
         meta.update(
             {
                 "id": physical_id,
                 "physical_id": physical_id,
-                "logical_id": row.logical_id,
+                "logical_id": generation_logical_id,
+                D0_CONVERSION_LOGICAL_ID_KEY: row.logical_id,
+                D0_PHYSICAL_ID_KEY: row.physical_id,
                 "source_path": snapshot.canonical_source_path,
                 "generation_scope": FILE_SCOPE,
                 "owner_digest": snapshot.owner_digest,
@@ -940,7 +985,7 @@ def _stage_converted_rows(
             StagedRow(
                 row.collection_name,
                 physical_id,
-                row.logical_id,
+                generation_logical_id,
                 row.document,
                 row.embedding_list,
                 meta,
@@ -951,7 +996,6 @@ def _stage_converted_rows(
         )
     store.stage_rows(staged)
     return staged
-
 
 def _read_generation_rows(
     store: FileGenerationStore,
@@ -978,20 +1022,33 @@ def _read_generation_rows(
         embeddings = result.get("embeddings")
         if embeddings is None:
             embeddings = []
-        for index, physical_id in enumerate(ids):
+        for index, generation_physical_id in enumerate(ids):
             meta = dict(metadatas[index] if index < len(metadatas) else {})
             document = documents[index] if index < len(documents) else None
             if not isinstance(document, str):
                 raise RollbackBaselineError(
-                    f"G_rb row {collection_name}/{physical_id} lacks document"
+                    f"G_rb row {collection_name}/{generation_physical_id} lacks document"
+                )
+            conversion_logical_id = str(meta.get(D0_CONVERSION_LOGICAL_ID_KEY) or "").strip()
+            d0_physical_id = str(meta.get(D0_PHYSICAL_ID_KEY) or "").strip()
+            if not conversion_logical_id or not d0_physical_id:
+                raise RollbackBaselineError(
+                    "G_rb row missing preserved D0 conversion logical id / physical id"
+                )
+            expected_generation_logical = _d1_generation_logical_key(
+                collection_name, conversion_logical_id, d0_physical_id
+            )
+            if str(meta.get("logical_id") or "") != expected_generation_logical:
+                raise RollbackBaselineError(
+                    "G_rb generation-local logical id does not bind to preserved D0 identity"
                 )
             embedding = embeddings[index] if index < len(embeddings) else None
             assertion_id, commitment, envelope = _provenance_fields(meta)
             rows.append(
                 LegacyServingRow(
                     collection_name=collection_name,
-                    physical_id=str(physical_id),
-                    logical_id=str(meta.get("logical_id") or ""),
+                    physical_id=d0_physical_id,
+                    logical_id=conversion_logical_id,
                     document=document,
                     embedding=_as_float_tuple(embedding),
                     metadata=meta,
@@ -1002,7 +1059,6 @@ def _read_generation_rows(
             )
     rows.sort(key=lambda row: (row.collection_name, row.logical_id, row.physical_id))
     return rows
-
 
 def prove_bidirectional_equivalence(
     snapshot: LegacyServingSnapshot,
@@ -1122,23 +1178,24 @@ def _with_evidence_hash(payload: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
-def _baseline_evidence_body(payload: Mapping[str, Any]) -> dict[str, Any]:
-    """Compare retained evidence without fresh-process position drift."""
+def _evidence_json_bytes(payload: Mapping[str, Any]) -> bytes:
+    """Exact deterministic JSON bytes published for retained baseline evidence."""
 
-    body = copy.deepcopy(dict(payload))
-    body.pop("evidence_payload_hash", None)
-    cold = dict(body.get("cold_qualification") or {})
-    cold.pop("sequence_positions", None)
-    body["cold_qualification"] = cold
-    return body
+    serialized = json.dumps(
+        dict(payload),
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    )
+    if not serialized.endswith("\n"):
+        serialized += "\n"
+    return serialized.encode("utf-8")
 
 
-def _baseline_evidence_matches(
-    left: Mapping[str, Any], right: Mapping[str, Any]
-) -> bool:
-    if left == right:
-        return True
-    return _baseline_evidence_body(left) == _baseline_evidence_body(right)
+def _baseline_evidence_matches(left_bytes: bytes, right_bytes: bytes) -> bool:
+    """Retained evidence is idempotent only on exact immutable byte equality."""
+
+    return left_bytes == right_bytes
 
 
 def _publish_evidence(
@@ -1151,25 +1208,24 @@ def _publish_evidence(
         str(payload["generation_id"]),
     )
     path.parent.mkdir(parents=True, exist_ok=True)
-    obj = dict(payload)
+    intended = _evidence_json_bytes(payload)
     if path.exists():
         try:
-            current = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
+            current = path.read_bytes()
+        except OSError as exc:
             raise RollbackBaselineError(
                 f"corrupt existing baseline evidence: {exc}"
             ) from exc
-        if not _baseline_evidence_matches(current, obj):
+        if not _baseline_evidence_matches(current, intended):
             raise RollbackBaselineError(
                 f"immutable rollback baseline evidence collision at {path}"
             )
         return path
-    atomic_write_json(path, obj)
-    reread = json.loads(path.read_text(encoding="utf-8"))
-    if reread != obj:
+    atomic_write_bytes(path, intended)
+    reread = path.read_bytes()
+    if reread != intended:
         raise RollbackBaselineError("published baseline evidence reread mismatch")
     return path
-
 
 def convert_and_retain_rollback_baseline(
     *,
@@ -1222,6 +1278,86 @@ def convert_and_retain_rollback_baseline(
         pipeline_fingerprint=CONVERT_V1_FINGERPRINT,
         candidate_bundle_hash=snapshot.candidate_bundle_hash,
     )
+    evidence_path = rollback_baseline_evidence_path(
+        generation_root, snapshot.owner_digest, generation_id
+    )
+    if evidence_path.exists():
+        # Idempotent re-entry must not re-stage: Chroma sequence positions are
+        # authority-bearing cold evidence and advance on write. Existing bytes
+        # must remain the exact canonical serialization, and live cold
+        # validation must still bind to the retained package.
+        try:
+            existing_bytes = evidence_path.read_bytes()
+            existing_payload = json.loads(existing_bytes.decode("utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise RollbackBaselineError(
+                f"corrupt existing baseline evidence: {exc}"
+            ) from exc
+        canonical_existing = _evidence_json_bytes(existing_payload)
+        if existing_bytes != canonical_existing:
+            raise RollbackBaselineError(
+                "immutable rollback baseline evidence collision: non-canonical bytes"
+            )
+        existing = validate_retained_rollback_baseline_evidence(
+            generation_root,
+            owner_digest_value=snapshot.owner_digest,
+            generation_id=generation_id,
+        )
+        if str(existing.get("normalized_snapshot_digest") or "") != snapshot.snapshot_digest:
+            raise RollbackBaselineError(
+                "retained evidence snapshot digest does not bind on idempotent re-entry"
+            )
+        if str(existing.get("accepted_source_hash") or "") != snapshot.accepted_source_hash:
+            raise RollbackBaselineError(
+                "retained evidence accepted source hash does not bind on idempotent re-entry"
+            )
+        reference = load_manifest_reference(
+            generation_root,
+            manifest_filename=str(existing["manifest_filename"]),
+            expected_sha256=str(existing["manifest_sha256"]),
+        )
+        try:
+            live_cold = run_cold_validation(
+                store.chroma_dir,
+                reference.path,
+                expected_manifest_sha256=reference.file_sha256,
+            )
+        except RuntimeError as exc:
+            raise RollbackBaselineError(
+                f"fresh-process qualification failed on idempotent re-entry: {exc}"
+            ) from exc
+        if live_cold.get("valid") is not True:
+            raise RollbackBaselineError(
+                "fresh-process qualification refused on idempotent re-entry"
+            )
+        retained_positions = dict(
+            dict(existing.get("cold_qualification") or {}).get("sequence_positions") or {}
+        )
+        live_positions = dict(live_cold.get("sequence_positions") or {})
+        if retained_positions != live_positions:
+            raise RollbackBaselineError(
+                "immutable rollback baseline evidence collision: sequence_positions drift"
+            )
+        generation_rows = _read_generation_rows(
+            store,
+            owner_digest_value=snapshot.owner_digest,
+            generation_id=generation_id,
+        )
+        return RollbackBaselineResult(
+            generation_id=generation_id,
+            owner_digest=snapshot.owner_digest,
+            convert_fingerprint=CONVERT_V1_FINGERPRINT,
+            manifest_sha256=str(existing["manifest_sha256"]),
+            manifest_filename=str(existing["manifest_filename"]),
+            evidence_path=evidence_path,
+            evidence=existing,
+            cold_qualification=dict(existing.get("cold_qualification") or {}),
+            equivalence=dict(existing.get("bidirectional_equivalence") or {}),
+            snapshot=snapshot,
+            generation_rows=tuple(generation_rows),
+        )
+
+
     provision_generation_layout(generation_root)
     _stage_converted_rows(
         store,
@@ -1302,10 +1438,15 @@ def convert_and_retain_rollback_baseline(
     for row in snapshot.rows:
         if row.assertion_id is None:
             continue
+        generation_logical_id = _d1_generation_logical_key(
+            row.collection_name, row.logical_id, row.physical_id
+        )
         provenance_identity_evidence.append(
             {
                 "collection_name": row.collection_name,
-                "logical_id": row.logical_id,
+                "logical_id": generation_logical_id,
+                D0_CONVERSION_LOGICAL_ID_KEY: row.logical_id,
+                D0_PHYSICAL_ID_KEY: row.physical_id,
                 "ledger_id": row.metadata.get("ledger_id"),
                 "assertion_id": row.assertion_id,
                 "provenance_commitment": row.provenance_commitment,
@@ -1320,7 +1461,8 @@ def convert_and_retain_rollback_baseline(
     provenance_identity_evidence.sort(
         key=lambda item: (
             str(item["collection_name"]),
-            str(item["logical_id"]),
+            str(item[D0_CONVERSION_LOGICAL_ID_KEY]),
+            str(item[D0_PHYSICAL_ID_KEY]),
             str(item["assertion_id"]),
         )
     )
@@ -1418,11 +1560,20 @@ def _snapshot_digest_from_manifest(manifest: Mapping[str, Any]) -> str:
             if assertion is None:
                 commitment = None
                 envelope_hash = None
+            conversion_logical_id = str(
+                imm.get(D0_CONVERSION_LOGICAL_ID_KEY) or ""
+            ).strip()
+            d0_physical_id = str(imm.get(D0_PHYSICAL_ID_KEY) or "").strip()
+            if not conversion_logical_id or not d0_physical_id:
+                raise RollbackBaselineError(
+                    "manifest row missing preserved D0 identity for snapshot digest"
+                )
             identities.append(
                 _identity_tuple(
                     owner_digest_value=owner,
                     collection_name=str(collection_name),
-                    logical_id=str(row["logical_id"]),
+                    logical_id=conversion_logical_id,
+                    d0_physical_id=d0_physical_id,
                     document_hash=str(row["document_hash"]),
                     persisted_embedding_hash=str(row["embedding_hash"]),
                     embedding_model=model,
@@ -1577,7 +1728,19 @@ def validate_retained_rollback_baseline_evidence(
             "normalized snapshot digest does not bind to manifest identity set"
         )
 
-    expected_prov: set[tuple[str, str, str, str]] = set()
+    for collection_name, raw_spec in dict(manifest.get("collections") or {}).items():
+        for raw_row in dict(dict(raw_spec).get("rows") or {}).values():
+            imm = dict(dict(raw_row).get("immutable_metadata") or {})
+            if not str(imm.get(D0_CONVERSION_LOGICAL_ID_KEY) or "").strip():
+                raise RollbackBaselineError(
+                    "manifest row missing immutable d0_conversion_logical_id"
+                )
+            if not str(imm.get(D0_PHYSICAL_ID_KEY) or "").strip():
+                raise RollbackBaselineError(
+                    "manifest row missing immutable d0_physical_id"
+                )
+
+    expected_prov: set[tuple[str, str, str, str, str]] = set()
     for collection_name, raw_spec in dict(manifest.get("collections") or {}).items():
         for raw_row in dict(dict(raw_spec).get("rows") or {}).values():
             imm = dict(dict(raw_row).get("immutable_metadata") or {})
@@ -1587,7 +1750,8 @@ def validate_retained_rollback_baseline_evidence(
             expected_prov.add(
                 (
                     str(collection_name),
-                    str(dict(raw_row).get("logical_id") or ""),
+                    str(imm.get(D0_CONVERSION_LOGICAL_ID_KEY) or ""),
+                    str(imm.get(D0_PHYSICAL_ID_KEY) or ""),
                     assertion,
                     str(imm.get(PROVENANCE_COMMITMENT_KEY) or ""),
                 )
@@ -1598,7 +1762,8 @@ def validate_retained_rollback_baseline_evidence(
         observed_prov.add(
             (
                 str(row.get("collection_name") or ""),
-                str(row.get("logical_id") or ""),
+                str(row.get(D0_CONVERSION_LOGICAL_ID_KEY) or ""),
+                str(row.get(D0_PHYSICAL_ID_KEY) or ""),
                 str(row.get("assertion_id") or ""),
                 str(row.get("provenance_commitment") or ""),
             )
