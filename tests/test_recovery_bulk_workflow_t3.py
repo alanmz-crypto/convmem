@@ -259,6 +259,32 @@ class TestPrepareScratchWorkflow(unittest.TestCase):
             )
             self.assertEqual(outcome.exit_code, EXIT_ISOLATION_FAILURE)
 
+    def test_nonempty_scratch_blocked_before_restore(self):
+        with tempfile.TemporaryDirectory() as td:
+            live = Path(td) / "live"
+            scratch = Path(td) / "scratch"
+            live.mkdir()
+            scratch.mkdir()
+            (scratch / "decisions-approved.jsonl").write_text("{}\n", encoding="utf-8")
+            grant = OperationalGrant(
+                grant_id="g1",
+                operation=SCRATCH_CANDIDATE_PREPARE,
+                authorized_target=str(scratch),
+            )
+            report = RestoreReport(Path(td) / "report.json")
+            ctx = mock.Mock()
+            ctx.data_root = live
+            outcome = prepare_scratch_recovery_candidate(
+                ctx,
+                snapshot_id="a" * 64,
+                scratch_target=scratch,
+                grant=grant,
+                report=report,
+                live_data_root=live,
+            )
+            self.assertEqual(outcome.exit_code, EXIT_ISOLATION_FAILURE)
+            self.assertIn("empty", outcome.message.lower())
+
     def test_refuse_live_replacement_without_grant(self):
         with tempfile.TemporaryDirectory() as td:
             live = Path(td) / "live"

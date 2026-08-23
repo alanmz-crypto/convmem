@@ -35,6 +35,7 @@ from recovery_bulk_workflow import (  # noqa: F401 re-export T3 workflow surface
     validate_item_import_not_registry_substitute,
     validate_operational_grant,
     validate_scratch_recovery_candidate,
+    assert_scratch_target_empty,
 )
 from restic_snapshot import (
     EXIT_ACTION_FAILURE,

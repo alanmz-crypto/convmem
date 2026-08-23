@@ -131,6 +131,20 @@ def assert_scratch_target_isolated(
         )
 
 
+def assert_scratch_target_empty(scratch_target: Path | str) -> None:
+    """Reject reused scratch directories that could confuse restored-root discovery."""
+    scratch = Path(scratch_target).expanduser().resolve()
+    if scratch.is_dir():
+        leftover = [p.name for p in scratch.iterdir()]
+        if leftover:
+            raise ResolverError(
+                "scratch target must be empty before bulk recovery restore; "
+                f"found leftover entries: {sorted(leftover)}",
+                EXIT_ISOLATION_FAILURE,
+            )
+    scratch.mkdir(parents=True, exist_ok=True)
+
+
 def validate_operational_grant(
     grant: OperationalGrant | None,
     *,
@@ -372,6 +386,7 @@ def prepare_scratch_recovery_candidate(
 
     try:
         assert_scratch_target_isolated(scratch, live)
+        assert_scratch_target_empty(scratch)
     except ResolverError as exc:
         report.step("scratch_isolation", "BLOCKED", str(exc))
         report.finalize("BLOCKED", str(exc), exit_code=exc.exit_code)
