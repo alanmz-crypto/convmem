@@ -601,7 +601,8 @@ def test_rollback_stale_cas_refuses_independent_of_target_validity(tmp_path: Pat
     source = tmp_path / "source"
     source.write_text("x", encoding="utf-8")
     root = tmp_path / "generations"
-    active = _publish(root, source, "1", previous=None)
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
     retained_ref = pointers.publish_manifest(root, _manifest(source, "1"))
     with pytest.raises(pointers.StaleGenerationError, match="rollback CAS mismatch"):
         pointers.rollback_active_pointer(
@@ -613,8 +614,8 @@ def test_rollback_stale_cas_refuses_independent_of_target_validity(tmp_path: Pat
             backend_fingerprint="rust-a",
             candidate_revalidator=lambda manifest: True,
         )
-    still = pointers.read_unqualified_pointer(root, active.manifest["owner_digest"])
-    assert still["active_generation_id"] == active.manifest["generation_id"]
+    still = pointers.read_unqualified_pointer(root, retained.manifest["owner_digest"])
+    assert still["active_generation_id"] == current.manifest["generation_id"]
 
 
 def test_rollback_does_not_require_live_source_match(tmp_path: Path) -> None:
@@ -637,6 +638,128 @@ def test_rollback_does_not_require_live_source_match(tmp_path: Path) -> None:
     )
     assert rolled.pointer["active_generation_id"] == retained.manifest["generation_id"]
 
+
+
+
+def _rollback(
+    root: Path,
+    reference: pointers.ManifestReference,
+    *,
+    expected_active: str,
+) -> pointers.QualifiedActivePointer:
+    return pointers.rollback_active_pointer(
+        root,
+        reference,
+        chroma_dir=root / "chroma",
+        cfg=_cfg(root),
+        expected_active_generation_id=expected_active,
+        backend_fingerprint="rust-a",
+        candidate_revalidator=lambda manifest: True,
+    )
+
+
+def test_rollback_exact_previous_generation_target_succeeds(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    retained_ref = pointers.publish_manifest(root, _manifest(source, "1"))
+    rolled = _rollback(root, retained_ref, expected_active=current.manifest["generation_id"])
+    assert rolled.pointer["active_generation_id"] == retained.manifest["generation_id"]
+    assert rolled.pointer["previous_generation_id"] == current.manifest["generation_id"]
+
+
+def test_rollback_refuses_orphan_generation_outside_lineage(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    orphan_ref = pointers.publish_manifest(root, _manifest(source, "orphan"))
+    with pytest.raises(pointers.GenerationPublicationError, match="durable previous_generation_id"):
+        _rollback(root, orphan_ref, expected_active=current.manifest["generation_id"])
+
+
+def test_rollback_refuses_current_active_as_target(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    current_ref = pointers.publish_manifest(root, _manifest(source, "2"))
+    with pytest.raises(pointers.GenerationPublicationError, match="durable previous_generation_id"):
+        _rollback(root, current_ref, expected_active=current.manifest["generation_id"])
+
+
+def test_rollback_refuses_another_complete_fresh_qualified_generation(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    other_ref = pointers.publish_manifest(root, _manifest(source, "3"))
+    with pytest.raises(pointers.GenerationPublicationError, match="durable previous_generation_id"):
+        _rollback(root, other_ref, expected_active=current.manifest["generation_id"])
+
+
+def test_rollback_refuses_missing_durable_previous(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    only = _publish_first_cutover(root, source, "1")
+    target_ref = pointers.publish_manifest(root, _manifest(source, "1"))
+    with pytest.raises(pointers.GenerationPublicationError, match="durable previous_generation_id"):
+        _rollback(root, target_ref, expected_active=only.manifest["generation_id"])
+
+
+def test_rollback_refuses_target_one_value_off_from_previous(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    near_ref = pointers.publish_manifest(root, _manifest(source, "1"))
+    with patch.object(
+        pointers,
+        "read_unqualified_pointer",
+        wraps=pointers.read_unqualified_pointer,
+    ) as reader:
+        original = pointers.read_unqualified_pointer(root, retained.manifest["owner_digest"])
+
+        def _patched(_root_arg, digest):
+            value = original if digest == retained.manifest["owner_digest"] else None
+            if value is not None:
+                mutated = dict(value)
+                mutated["previous_generation_id"] = "almost-" + str(value["previous_generation_id"])
+                return mutated
+            return value
+
+        reader.side_effect = _patched
+        with pytest.raises(pointers.GenerationPublicationError, match="durable previous_generation_id"):
+            _rollback(root, near_ref, expected_active=current.manifest["generation_id"])
+
+
+def test_rollback_stale_cas_precedes_valid_previous_target(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    retained_ref = pointers.publish_manifest(root, _manifest(source, "1"))
+    with pytest.raises(pointers.StaleGenerationError, match="rollback CAS mismatch"):
+        _rollback(root, retained_ref, expected_active="wrong-active")
+
+
+def test_rollback_stale_cas_precedes_orphan_target(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    orphan_ref = pointers.publish_manifest(root, _manifest(source, "orphan"))
+    with pytest.raises(pointers.StaleGenerationError, match="rollback CAS mismatch"):
+        _rollback(root, orphan_ref, expected_active="wrong-active")
 
 def test_recovery_has_no_generation_selection_parameter() -> None:
     params = inspect.signature(pointers.recover_active_pointer).parameters

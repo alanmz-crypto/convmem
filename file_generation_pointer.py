@@ -600,6 +600,20 @@ def rollback_active_pointer(
                 "rollback CAS mismatch: "
                 f"expected {expected_active_generation_id!r}, got {current_generation!r}"
             )
+        durable_previous = current.get("previous_generation_id")
+        if durable_previous is None or not str(durable_previous).strip():
+            raise GenerationPublicationError(
+                "rollback publication requires durable previous_generation_id"
+            )
+        fresh_ref = _reload_verified_caller_reference(
+            generation_root, retained_manifest_reference
+        )
+        target_generation_id = str(fresh_ref.manifest["generation_id"])
+        if target_generation_id != str(durable_previous):
+            raise GenerationPublicationError(
+                "rollback target must equal pointer durable previous_generation_id: "
+                f"target={target_generation_id!r} previous={durable_previous!r}"
+            )
         return _publish_pointer_under_lock(
             generation_root,
             retained_manifest_reference,
