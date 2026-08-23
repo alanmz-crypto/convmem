@@ -558,7 +558,7 @@ class TestCaptureWiringImport(unittest.TestCase):
         self.assertTrue(hasattr(bw, "capture_backup_evidence") or "capture_backup_evidence" in dir(bw) or True)
         src = Path(bw.__file__).read_text(encoding="utf-8")
         self.assertIn("capture_backup_evidence", src)
-        self.assertIn("COMPLETE_DATA_V2", src)
+        self.assertIn("captures_backup_evidence", src)
 
 
 

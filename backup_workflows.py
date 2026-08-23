@@ -28,6 +28,7 @@ from restic_snapshot import (
     BackupContext,
     BackupProfile,
     ResolverError,
+    captures_backup_evidence,
     SnapshotRef,
     backup_data_root,
     check_restic_available,
@@ -105,7 +106,7 @@ def _legacy_health_outcome(ctx: BackupContext, *, scope: str) -> WorkflowOutcome
         message=(
             f"WARN_LEGACY_ONLY: profile={ctx.profile.value} "
             f"(data_root_derived={ctx.data_root_derived}); "
-            f"{scope} never claims complete-data-v2 protection"
+            f"{scope} never claims complete-data-v2/v3 protection"
         ),
         exit_code=EXIT_OK,
         details={
@@ -220,9 +221,9 @@ def ensure_current_snapshot(
                 )
 
             # Snapshot-if-stale: backup then re-resolve. No legacy fallback.
-            # Pre-snapshot capture evidence for complete-data-v2 only.
+            # Pre-snapshot capture evidence for complete-data profiles.
             evidence_meta = {}
-            if ctx.profile is BackupProfile.COMPLETE_DATA_V2:
+            if captures_backup_evidence(ctx.profile):
                 evidence = capture_backup_evidence(ctx.data_root)
                 evidence_meta = {
                     "evidence_captured": True,

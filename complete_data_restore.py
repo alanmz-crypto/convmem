@@ -17,6 +17,7 @@ import re
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
@@ -51,6 +52,28 @@ CODE_EVIDENCE_SKEW = "EVIDENCE_MID_CAPTURE_SKEW"
 
 EVIDENCE_FILENAME = ".convmem-backup-evidence.json"
 EVIDENCE_SCHEMA_VERSION = 1
+
+PROVENANCE_PATH = "provenance"
+CODE_QUARANTINED_PROVENANCE = "QUARANTINED_PROVENANCE"
+
+
+class RestoreProfile(str, Enum):
+    """Closed complete-data restore contract selector."""
+
+    COMPLETE_DATA_V2 = "complete-data-v2"
+    COMPLETE_DATA_V3 = "complete-data-v3"
+
+    @classmethod
+    def parse(cls, raw: str | None) -> "RestoreProfile":
+        value = (raw or cls.COMPLETE_DATA_V2.value).strip()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(
+                f"invalid restore profile {value!r}; "
+                f"expected {cls.COMPLETE_DATA_V2.value}|{cls.COMPLETE_DATA_V3.value}"
+            ) from exc
+
 
 REQUIRED_CHROMA_COLLECTIONS = ("knowledge_units", "conversation_summaries")
 
@@ -276,9 +299,13 @@ def derived_export_fingerprint(path: Path) -> dict[str, Any]:
     }
 
 
-def writer_census_for_root(root: Path) -> dict[str, str]:
+def writer_census_for_root(
+    root: Path,
+    *,
+    profile: RestoreProfile = RestoreProfile.COMPLETE_DATA_V2,
+) -> dict[str, str]:
     """Classify each top-level name by closed StateSpec authority family."""
-    by_path = {spec.path: spec for spec in STATE_SPECS}
+    by_path = {spec.path: spec for spec in state_specs_for_profile(profile)}
     census: dict[str, str] = {}
     if not root.is_dir():
         return census
@@ -1283,6 +1310,36 @@ def _validate_evidence_sidecar(ctx: RestoreContext) -> Classification:
     )
 
 
+def _validate_provenance(ctx: RestoreContext) -> Classification:
+    spec = _spec(PROVENANCE_PATH)
+    prov_dir = ctx.root / PROVENANCE_PATH
+    if not prov_dir.is_dir():
+        return _missing(spec, "provenance directory missing")
+    # Structural presence only; durable registry validation is a separate call.
+    if not (prov_dir / "selector.json").is_file():
+        return Classification(
+            path=spec.path,
+            authority=spec.authority,
+            outcome=OUTCOME_BLOCKED,
+            detail="provenance selector missing",
+            code=CODE_QUARANTINED_PROVENANCE,
+        )
+    if not (prov_dir / "generations").is_dir():
+        return Classification(
+            path=spec.path,
+            authority=spec.authority,
+            outcome=OUTCOME_BLOCKED,
+            detail="provenance generations missing",
+            code=CODE_QUARANTINED_PROVENANCE,
+        )
+    return Classification(
+        path=spec.path,
+        authority=spec.authority,
+        outcome=OUTCOME_VALID,
+        detail="provenance directory present (registry validated separately)",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Closed StateSpec table
 # ---------------------------------------------------------------------------
@@ -1550,6 +1607,22 @@ STATE_SPECS: tuple[StateSpec, ...] = (
     ),
 )
 
+_PROVENANCE_STATE_SPEC = StateSpec(
+    PROVENANCE_PATH,
+    "tier1_provenance_authority",
+    "required",
+    _validate_provenance,
+    OUTCOME_BLOCKED,
+    "",
+)
+
+
+def state_specs_for_profile(profile: RestoreProfile) -> tuple[StateSpec, ...]:
+    """Return the closed StateSpec table for a restore profile."""
+    if profile is RestoreProfile.COMPLETE_DATA_V3:
+        return STATE_SPECS + (_PROVENANCE_STATE_SPEC,)
+    return STATE_SPECS
+
 # Additional glob-ish known names handled in inventory (suffix patterns).
 _KNOWN_PREFIXES = (
     "dedupe_queue.jsonl.",
@@ -1576,11 +1649,15 @@ def _spec(path: str) -> StateSpec:
     for spec in STATE_SPECS:
         if spec.path == path:
             return spec
+    if path == PROVENANCE_PATH:
+        return _PROVENANCE_STATE_SPEC
     raise KeyError(path)
 
 
-def closed_state_spec_paths() -> tuple[str, ...]:
-    return tuple(spec.path for spec in STATE_SPECS)
+def closed_state_spec_paths(
+    *, profile: RestoreProfile = RestoreProfile.COMPLETE_DATA_V2
+) -> tuple[str, ...]:
+    return tuple(spec.path for spec in state_specs_for_profile(profile))
 
 
 # ---------------------------------------------------------------------------
@@ -1591,6 +1668,7 @@ def inventory_restored_state(
     expected_data_root: Path | str | None = None,
     *,
     evidence: dict[str, Any] | None = None,
+    profile: RestoreProfile = RestoreProfile.COMPLETE_DATA_V2,
 ) -> InventoryResult:
     """Classify restored durable state via the closed StateSpec table."""
     result = InventoryResult()
@@ -1632,7 +1710,8 @@ def inventory_restored_state(
     try:
         # Run closed table — one classification per StateSpec path.
         seen_paths: set[str] = set()
-        for spec in STATE_SPECS:
+        specs = state_specs_for_profile(profile)
+        for spec in specs:
             seen_paths.add(spec.path)
             path = root / spec.path
             # Shadow validator covers sibling files; skip redundant sibling specs
@@ -1902,11 +1981,21 @@ def run_preflight_validation(
     expected_data_root: Path | str | None = None,
     report: RestoreReport | None = None,
     snapshot_meta: Mapping[str, Any] | None = None,
+    profile: RestoreProfile = RestoreProfile.COMPLETE_DATA_V2,
+    registry_validation: Mapping[str, Any] | None = None,
 ) -> InventoryResult:
     """Inventory + validators after a successful restore."""
     if report and snapshot_meta:
         report.set_snapshot_identity(**dict(snapshot_meta))  # type: ignore[arg-type]
-    inventory = inventory_restored_state(restored_root, expected_data_root)
+    if report:
+        report.set_meta(restore_profile=profile.value)
+        if registry_validation is not None:
+            report.set_meta(registry_validation=dict(registry_validation))
+    inventory = inventory_restored_state(
+        restored_root,
+        expected_data_root,
+        profile=profile,
+    )
     if report:
         report.record_inventory(inventory)
         for c in inventory.classifications:
@@ -1923,3 +2012,19 @@ def run_preflight_validation(
             exit_code=inventory.exit_code,
         )
     return inventory
+
+def record_restic_tree_binding(
+    report: RestoreReport,
+    *,
+    snapshot_id: str,
+    tree_id: str,
+    provenance_tuple: Mapping[str, str] | None = None,
+) -> None:
+    """Preserve exact Restic/tree/provenance tuple evidence (no auto-election)."""
+    binding = {
+        "restic_snapshot_id": snapshot_id,
+        "restic_root_tree_id": tree_id,
+    }
+    if provenance_tuple is not None:
+        binding.update(dict(provenance_tuple))
+    report.set_meta(restic_tree_binding=binding)
