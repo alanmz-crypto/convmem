@@ -4,7 +4,12 @@ Deep orchestration over restic_snapshot.BackupContext. No consumer may invoke
 Restic selection/check/copy/restore directly, and no workflow may catch a
 resolver failure then fall back to legacy selection.
 
+Recovery Authority T3 adds a scratch-only bulk-recovery candidate workflow
+that selects one exact Restic snapshot/tree, validates v3 provenance authority,
+and prepares an isolated replacement candidate without mutating live authority.
+
 Architecture: docs/plans/ARCHITECTURE-complete-data-backup-correction-v2.md
+Recovery Authority: docs/plans/ARCHITECTURE-recovery-authority.md
 """
 
 from __future__ import annotations
@@ -14,9 +19,23 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from complete_data_restore import capture_backup_evidence
+from recovery_bulk_workflow import (  # noqa: F401 re-export T3 workflow surface
+    BULK_RECOVERY_REPORT_KIND,
+    LIVE_AUTHORITY_REPLACEMENT,
+    SCRATCH_CANDIDATE_PREPARE,
+    BulkRecoveryOutcome,
+    OperationalGrant,
+    assert_scratch_target_isolated,
+    fingerprint_data_root,
+    prepare_scratch_recovery_candidate,
+    refuse_live_authority_replacement,
+    validate_item_import_not_registry_substitute,
+    validate_operational_grant,
+    validate_scratch_recovery_candidate,
+)
 from restic_snapshot import (
     EXIT_ACTION_FAILURE,
     EXIT_INVALID_CONFIG,
@@ -28,9 +47,9 @@ from restic_snapshot import (
     BackupContext,
     BackupProfile,
     ResolverError,
-    captures_backup_evidence,
     SnapshotRef,
     backup_data_root,
+    captures_backup_evidence,
     check_restic_available,
     check_snapshot,
     copy_snapshot_to_external,
@@ -433,6 +452,9 @@ def restore_validated_snapshot(
         )
     except ResolverError as exc:
         return _fail_from_resolver(exc)
+
+
+# Recovery Authority T3 workflow lives in recovery_bulk_workflow.py (re-exported above).
 
 
 # ---------------------------------------------------------------------------

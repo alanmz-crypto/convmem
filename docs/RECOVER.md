@@ -131,6 +131,12 @@ Exact Restic snapshot/tree selection is preserved as evidence
 `(restic_snapshot_id, restic_root_tree_id, T_g, P_g, M_g)`; preflight rejects
 “most complete” or automatic snapshot election heuristics.
 
+**Recovery Authority T3 (scratch-only bulk recovery):** use
+`scripts/complete_data_restore_preflight.py --bulk-scratch --grant-id <id>`
+with an isolated `--target` directory and explicit `--snapshot-id` (full 64-char
+hex). This prepares a v3 recovery **candidate** in scratch only; it does not
+replace live authority and is not a live-replacement grant.
+
 Live replacement, provenance-authority activation, projection rebuild, and
 serving publication remain separately Ryan-gated — preflight classifies only.
 
