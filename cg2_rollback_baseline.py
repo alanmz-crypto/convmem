@@ -31,8 +31,6 @@ from file_generation_contract import (
     canonical_source_path,
     make_generation_id,
     make_physical_id,
-    owner_digest,
-    ownership_key,
 )
 from file_generation_pointer import load_manifest_reference, publish_manifest, provision_generation_layout
 from file_generation_store import FILE_SCOPE, STABLE_SCOPE, FileGenerationStore, StagedRow
@@ -41,6 +39,7 @@ from provenance_binding import (
     PROVENANCE_ASSERTION_ID_KEY,
     PROVENANCE_COMMITMENT_KEY,
     PROVENANCE_ENVELOPE_KEY,
+    envelope_from_unit,
     provenance_identity,
     validate_projection,
 )
@@ -65,7 +64,6 @@ from cg2_legacy_vector_attestation import (
     vector_encoding_sha256,
 )
 from chroma_readonly import collection_config_metadata, collection_uuid
-from provenance_binding import envelope_from_unit
 
 CONVERT_V1_FINGERPRINT = "convmem/cg2-rollback-baseline-convert-v1"
 ROLLBACK_BASELINE_SCHEMA = "convmem/cg2-rollback-baseline-evidence-v1"

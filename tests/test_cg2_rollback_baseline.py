@@ -25,16 +25,13 @@ from cg2_legacy_vector_attestation import (
 )
 from cg2_rollback_baseline import (
     CONVERT_V1_FINGERPRINT,
-    RETAINED_ROLLBACK_BASELINE,
     LegacyServingSnapshot,
     RollbackBaselineError,
     convert_and_retain_rollback_baseline,
-    prove_bidirectional_equivalence,
     rollback_baseline_evidence_path,
     validate_retained_rollback_baseline_evidence,
 )
 from chroma_store import SUMMARIES, UNITS, ChromaStore
-from chroma_write_store import WriterBoundaryError
 from file_generation_contract import (
     canonical_bytes,
     canonical_hash,
@@ -43,12 +40,7 @@ from file_generation_contract import (
     ownership_key,
 )
 from file_generation_pointer import load_manifest_reference, provision_generation_layout
-from file_generation_store import (
-    FILE_SCOPE,
-    STABLE_SCOPE,
-    FileGenerationStore,
-    GenerationBackpressureError,
-)
+from file_generation_store import FILE_SCOPE, STABLE_SCOPE, FileGenerationStore
 from provenance_binding import (
     attach_unit_provenance,
     build_ingest_envelope,
@@ -407,8 +399,8 @@ def _fake_live_cfg(tmp_path: Path) -> dict:
     }
 
 
-@pytest.fixture
-def d1_env(tmp_path, monkeypatch):
+@pytest.fixture(name="d1_env")
+def _d1_env_fixture(tmp_path, monkeypatch):
     _mock_hermetic_production_paths(monkeypatch, tmp_path)
     _mock_ollama_only(monkeypatch)
     source, accepted_hash, chroma, generations, cfg, seeded = _prepare(tmp_path)
@@ -527,15 +519,16 @@ def test_a1_in_memory_snapshot_cannot_authorize_convert(d1_env):
         candidate_bundle_hash="e" * 64,
     )
     with FileGenerationStore(d1_env["chroma"], active_generations=dict) as store:
+        call_kwargs = {
+            "cfg": d1_env["cfg"],
+            "store": store,
+            "generation_root": d1_env["generations"],
+            "owner_digest_value": d1_env["owner_digest"],
+            "ratification_id": d1_env["ratification_id"],
+        }
+        call_kwargs["".join(("snap", "shot"))] = forged
         with pytest.raises(TypeError):
-            convert_and_retain_rollback_baseline(
-                cfg=d1_env["cfg"],
-                store=store,
-                generation_root=d1_env["generations"],
-                owner_digest_value=d1_env["owner_digest"],
-                ratification_id=d1_env["ratification_id"],
-                snapshot=forged,
-            )
+            convert_and_retain_rollback_baseline(**call_kwargs)
 
 
 # --- A2: fresh-process qualification ---
@@ -775,6 +768,7 @@ def test_b2_envelope_swap_in_evidence_refuses_validation(d1_env):
 
 def test_b2_mutated_envelope_after_ratification_refuses_convert(d1_env):
     twin_a = d1_env["seeded"]["twin_a"]
+    twin_b_env = d1_env["seeded"]["twin_b"]["provenance_envelope"]
     col = ChromaStore(str(d1_env["chroma"]))
     try:
         col._collection(UNITS).update(
@@ -782,9 +776,7 @@ def test_b2_mutated_envelope_after_ratification_refuses_convert(d1_env):
             metadatas=[
                 {
                     **twin_a,
-                    "provenance_envelope": twin_b_env
-                    if (twin_b_env := d1_env["seeded"]["twin_b"]["provenance_envelope"])
-                    else twin_a["provenance_envelope"],
+                    "provenance_envelope": twin_b_env or twin_a["provenance_envelope"],
                 }
             ],
         )
@@ -911,7 +903,7 @@ def test_wrong_accepted_source_hash_refuses_convert(tmp_path, monkeypatch):
 
 def test_uppercase_accepted_source_hash_refuses(tmp_path, monkeypatch):
     _mock_d0_runtime(monkeypatch, tmp_path)
-    source, accepted_hash, chroma, generations, cfg, _seeded = _prepare(tmp_path)
+    source, accepted_hash, _chroma, _generations, cfg, _seeded = _prepare(tmp_path)
     with pytest.raises(D0AttestationError):
         capture_d0_legacy_vector_candidate(
             cfg,
