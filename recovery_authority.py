@@ -370,6 +370,9 @@ def _read_chroma_projection(root: Path) -> ProjectionFingerprint:
     chroma_dir = root / "chroma"
     if not chroma_dir.is_dir():
         return ProjectionFingerprint(present=False, detail="chroma directory missing")
+    if not (chroma_dir / "chroma.sqlite3").is_file():
+        # Empty or placeholder tree — unavailable/rebuildable, not a broken body.
+        return ProjectionFingerprint(present=False, detail="chroma.sqlite3 missing")
     try:
         snap = chroma_logical_snapshot(chroma_dir)
     except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -481,6 +484,20 @@ def _projection_matches(
     return True, "exact agreement"
 
 
+def _is_rebuildable_projection_reason(reason: str) -> bool:
+    """True when failure means rebuild/pending, not quarantine.
+
+    Missing binding metadata means the projection is not yet an exact
+    qualified projection of recovered authority — not that authority is
+    contradicted by a stale or forged projection.
+    """
+    rebuildable = {
+        "projection absent",
+        "projection missing generation/manifest/binding fields",
+    }
+    return reason in rebuildable
+
+
 def _registry_reports(registry: RegistryValidationResult, **extra: Any) -> dict[str, Any]:
     report = {
         "checks": registry.checks,
@@ -576,42 +593,45 @@ def _evaluate_projections(
         present_name = "jsonl" if jsonl_fp.present else "chroma"
         present_fp = jsonl_fp if jsonl_fp.present else chroma_fp
         ok, reason = _projection_matches(expected, present_fp)
-        if not ok:
-            state = RecoveryState.QUARANTINED
+        if ok or _is_rebuildable_projection_reason(reason):
+            state = RecoveryState.AUTHORITY_RECOVERED_PROJECTION_PENDING
             transitions.append(
                 {
                     "from": "REGISTRY_VALIDATED",
                     "to": state.value,
-                    "result": reason,
+                    "result": "partial_or_rebuildable_projections",
                     "source": present_name,
+                    "match_ok": ok,
+                    "reason": reason if not ok else "exact_agreement",
                 }
             )
-            agreement["status"] = "quarantined"
+            agreement["status"] = "pending"
             return RecoveryAuthorityResult(
                 state=state,
-                detail=f"broken/stale {present_name} projection: {reason}",
-                code="QUARANTINED_PROJECTION_MISMATCH",
+                detail=(
+                    "authority recovered; one projection unavailable/rebuildable; "
+                    "non-serving"
+                ),
+                code="AUTHORITY_RECOVERED_PROJECTION_PENDING",
                 serving_ready=False,
                 provenance_tuple=tuple_,
                 reports={**base_reports, "projection_agreement": agreement},
                 transitions=transitions,
             )
-        state = RecoveryState.AUTHORITY_RECOVERED_PROJECTION_PENDING
+        state = RecoveryState.QUARANTINED
         transitions.append(
             {
                 "from": "REGISTRY_VALIDATED",
                 "to": state.value,
-                "result": "partial_projections",
+                "result": reason,
+                "source": present_name,
             }
         )
-        agreement["status"] = "pending"
+        agreement["status"] = "quarantined"
         return RecoveryAuthorityResult(
             state=state,
-            detail=(
-                "authority recovered; one projection unavailable/rebuildable; "
-                "non-serving"
-            ),
-            code="AUTHORITY_RECOVERED_PROJECTION_PENDING",
+            detail=f"broken/stale {present_name} projection: {reason}",
+            code="QUARANTINED_PROJECTION_MISMATCH",
             serving_ready=False,
             provenance_tuple=tuple_,
             reports={**base_reports, "projection_agreement": agreement},
@@ -621,6 +641,39 @@ def _evaluate_projections(
     jsonl_ok, jsonl_reason = _projection_matches(expected, jsonl_fp)
     chroma_ok, chroma_reason = _projection_matches(expected, chroma_fp)
     if not jsonl_ok or not chroma_ok:
+        rebuildable_only = (jsonl_ok or _is_rebuildable_projection_reason(jsonl_reason)) and (
+            chroma_ok or _is_rebuildable_projection_reason(chroma_reason)
+        )
+        if rebuildable_only:
+            state = RecoveryState.AUTHORITY_RECOVERED_PROJECTION_PENDING
+            transitions.append(
+                {
+                    "from": "REGISTRY_VALIDATED",
+                    "to": state.value,
+                    "result": "rebuildable_projections",
+                }
+            )
+            agreement.update(
+                {
+                    "jsonl_ok": jsonl_ok,
+                    "chroma_ok": chroma_ok,
+                    "status": "pending",
+                    "jsonl_reason": jsonl_reason,
+                    "chroma_reason": chroma_reason,
+                }
+            )
+            return RecoveryAuthorityResult(
+                state=state,
+                detail=(
+                    "authority recovered; projections unavailable/rebuildable; "
+                    "non-serving"
+                ),
+                code="AUTHORITY_RECOVERED_PROJECTION_PENDING",
+                serving_ready=False,
+                provenance_tuple=tuple_,
+                reports={**base_reports, "projection_agreement": agreement},
+                transitions=transitions,
+            )
         state = RecoveryState.QUARANTINED
         transitions.append(
             {

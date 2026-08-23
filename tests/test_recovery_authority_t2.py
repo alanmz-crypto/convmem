@@ -256,6 +256,33 @@ class TestRecoveryStateMachine(unittest.TestCase):
             self.assertEqual(result.state, RecoveryState.QUARANTINED)
             self.assertFalse(result.serving_ready)
 
+    def test_rebuildable_projection_missing_bindings_is_pending(self):
+        """Present bodies without binding metadata are rebuildable, not quarantine."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _seal_candidate(root)
+            # Drop binding sidecars only — bodies remain, authority remains valid.
+            (root / "knowledge_units.projection.json").unlink()
+            (root / "chroma" / "projection_binding.json").unlink()
+            result = evaluate_recovery_authority(root)
+            self.assertEqual(
+                result.state, RecoveryState.AUTHORITY_RECOVERED_PROJECTION_PENDING
+            )
+            self.assertFalse(result.serving_ready)
+            self.assertTrue(result.state.authority_recovered)
+
+    def test_empty_chroma_dir_without_sqlite_is_pending(self):
+        """Placeholder chroma/ without sqlite is unavailable, not broken."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _seal_candidate(root, include_chroma=False)
+            (root / "chroma").mkdir(exist_ok=True)
+            result = evaluate_recovery_authority(root)
+            self.assertEqual(
+                result.state, RecoveryState.AUTHORITY_RECOVERED_PROJECTION_PENDING
+            )
+            self.assertFalse(result.serving_ready)
+
     def test_sidecar_cannot_override_missing_body_assertion_ids(self):
         """Body assertion-id set is authoritative; sidecar cannot fill gaps."""
         with tempfile.TemporaryDirectory() as td:
