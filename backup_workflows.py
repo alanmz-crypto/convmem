@@ -105,7 +105,7 @@ def _legacy_health_outcome(ctx: BackupContext, *, scope: str) -> WorkflowOutcome
         message=(
             f"WARN_LEGACY_ONLY: profile={ctx.profile.value} "
             f"(data_root_derived={ctx.data_root_derived}); "
-            f"{scope} never claims complete-data-v2 protection"
+            f"{scope} never claims complete-data-v2/v3 protection"
         ),
         exit_code=EXIT_OK,
         details={

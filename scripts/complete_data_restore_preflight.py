@@ -20,9 +20,14 @@ from backup_workflows import (  # noqa: E402  # pylint: disable=wrong-import-pos
     restore_validated_snapshot,
 )
 from complete_data_restore import (  # noqa: E402  # pylint: disable=wrong-import-position
+    RestoreProfile,
     RestoreReport,
     locate_restored_data_root,
+    record_restic_tree_binding,
     run_preflight_validation,
+)
+from provenance_registry_restore import (  # noqa: E402
+    validate_provenance_registry,
 )
 from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-position
     BackupContext,
@@ -48,6 +53,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Durable report directory (outside disposable restore target)",
     )
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--profile",
+        default=RestoreProfile.COMPLETE_DATA_V2.value,
+        choices=(RestoreProfile.COMPLETE_DATA_V2.value, RestoreProfile.COMPLETE_DATA_V3.value),
+        help="Restore contract profile (v2 legacy or v3 provenance-aware)",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -112,10 +123,64 @@ def main(argv: list[str] | None = None) -> int:
         target_dir=str(Path(args.target).expanduser().resolve()),
     )
 
+    try:
+        profile = RestoreProfile.parse(args.profile)
+    except ValueError as exc:
+        report.finalize("BLOCKED", str(exc), exit_code=31)
+        print(f"preflight: ERROR: {exc}", file=sys.stderr)
+        return 31
+
+    registry_validation = None
+    if profile is RestoreProfile.COMPLETE_DATA_V3:
+        registry_result = validate_provenance_registry(restored_root)
+        registry_validation = {
+            "outcome": registry_result.outcome,
+            "detail": registry_result.detail,
+            "code": registry_result.code,
+            "checks": registry_result.checks,
+        }
+        if registry_result.provenance_tuple is not None:
+            registry_validation["provenance_tuple"] = (
+                registry_result.provenance_tuple.as_dict()
+            )
+        report.step(
+            "validate_provenance_registry",
+            registry_result.outcome,
+            registry_result.detail,
+            code=registry_result.code,
+        )
+        if not registry_result.ok:
+            report.finalize(
+                registry_result.outcome,
+                registry_result.detail,
+                exit_code=31,
+            )
+            if args.json:
+                print(report.json_path.read_text(encoding="utf-8"))
+            else:
+                print(
+                    f"preflight: {registry_result.outcome}: {registry_result.detail} "
+                    f"report={report.json_path}",
+                    file=sys.stderr,
+                )
+            return 31
+
+    provenance_tuple = None
+    if registry_validation and registry_validation.get("provenance_tuple"):
+        provenance_tuple = registry_validation["provenance_tuple"]
+    record_restic_tree_binding(
+        report,
+        snapshot_id=ref.id,
+        tree_id=ref.tree,
+        provenance_tuple=provenance_tuple,
+    )
+
     inventory = run_preflight_validation(
         restored_root,
         expected_data_root=ctx.data_root,
         report=report,
+        profile=profile,
+        registry_validation=registry_validation,
     )
 
     if args.json:

@@ -106,18 +106,33 @@ Authoritative-first order when Ryan authorizes replacement:
 
 Do **not** treat capture evidence as the thing to restore from.
 
-### Future provenance restore integration boundary (planning only)
+### Complete-data-v2 vs complete-data-v3 (coexistence)
 
-The P1 provenance registry is not yet a durable restore surface. A future
-restore slice must add `provenance/` to `complete_data_restore.py` `STATE_SPECS`
-and `writer_census_for_root()`, run a separate provenance validator for the
-registry graph/commitments and policy/recipe/schema history, and require that
-validator alongside the existing complete-data-v2 preflight before recovered
-authority can publish. The selected complete-data-v2 generation and manifest
-commitment remain the binding input; backup evidence remains evidence and never
-becomes provenance authority. This note defines only the integration boundary:
-it does not implement restore, migration, rollback, live replacement, or
-projection rebuild.
+Two closed restore contracts coexist. They are **not** interchangeable and there
+is **no** automatic v2→v3 migration, upgrade, or reinterpretation.
+
+| Profile | Restic tag | Provenance authority | Missing registry |
+|---|---|---|---|
+| **complete-data-v2** (legacy) | `convmem-data-v2` | Not required | Normal v2 preflight; `provenance/` is not part of the v2 contract |
+| **complete-data-v3** (provenance-aware) | `convmem-data-v3` | Required immutable registry under `provenance/` | **BLOCKED** / quarantined — authority cannot be inferred from JSONL, Chroma, or backup evidence |
+
+**v3 requirements:** a valid v3 candidate must include `provenance/` with an
+immutable generation `P_g`, manifest commitment `M_g`, and tree commitment
+`T_g`, plus required history/graph/profile bindings. Preflight runs **two
+independent validators**:
+
+1. **Registry manifest/graph/history validation** — durable provenance authority
+2. **`.convmem-backup-evidence.json` validation** — capture evidence only
+
+A valid sidecar **cannot** repair or satisfy an invalid or missing registry.
+Missing or partial provenance authority fails closed (blocked/quarantined).
+
+Exact Restic snapshot/tree selection is preserved as evidence
+`(restic_snapshot_id, restic_root_tree_id, T_g, P_g, M_g)`; preflight rejects
+“most complete” or automatic snapshot election heuristics.
+
+Live replacement, provenance-authority activation, projection rebuild, and
+serving publication remain separately Ryan-gated — preflight classifies only.
 
 ### Restore chroma from Restic
 
