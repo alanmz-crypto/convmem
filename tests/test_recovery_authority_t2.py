@@ -318,12 +318,13 @@ class TestRecoveryStateMachine(unittest.TestCase):
         """Damaged JSONL body is rebuildable when authority is valid."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            _seal_candidate(root)
+            _seal_candidate(root, include_chroma=False)
             (root / "knowledge_units.jsonl").write_text("[\"not-an-object\"]\n", encoding="utf-8")
             shutil.rmtree(root / "provenance")
             build_registry_fixture(
                 root, generation_id="pg-fixture-001", assertion_ids=("assert-fixture-001",)
             )
+            (root / "knowledge_units.projection.json").unlink(missing_ok=True)
             result = evaluate_recovery_authority(root)
             self.assertEqual(
                 result.state, RecoveryState.AUTHORITY_RECOVERED_PROJECTION_PENDING
