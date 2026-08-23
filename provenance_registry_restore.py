@@ -7,7 +7,6 @@ repair. Missing or partial registry authority fails closed.
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
@@ -63,11 +62,22 @@ class RegistryValidationResult:
         return self.outcome == OUTCOME_VALID
 
 
+@dataclass
+class _RegistryValidationContext:
+    data_root: Path
+    checks: list[dict[str, Any]]
+    expected_tree_commitment: str | None
+    generation_id: str = ""
+    manifest: dict[str, Any] | None = None
+    selector_manifest: str = ""
+    selector_tree: str = ""
+
+
 def tree_commitment_excluded_relative_paths() -> frozenset[str]:
     return frozenset({EVIDENCE_FILENAME, SELECTOR_REL})
 
 
-def _tree_commitment_excluded(root: Path, rel: str) -> bool:
+def _tree_commitment_excluded(rel: str) -> bool:
     if rel in tree_commitment_excluded_relative_paths():
         return True
     # Manifest commits T_g and must not self-reference (Architecture §10).
@@ -84,7 +94,7 @@ def compute_tree_commitment(root: Path) -> str:
         if not path.is_file():
             continue
         rel = path.relative_to(root).as_posix()
-        if _tree_commitment_excluded(root, rel):
+        if _tree_commitment_excluded(rel):
             continue
         entries.append((rel, path.stat().st_size, _sha256_file(path)))
     payload = [{"path": p, "size": s, "sha256": h} for p, s, h in entries]
@@ -111,254 +121,313 @@ def _manifest_path(root: Path, generation_id: str) -> Path:
     return _generation_dir(root, generation_id) / "manifest.json"
 
 
-def validate_provenance_registry(
-    root: Path | str,
-    *,
-    expected_tree_commitment: str | None = None,
-) -> RegistryValidationResult:
-    """Validate immutable registry manifest/graph/history for a v3 candidate."""
-    data_root = Path(root).expanduser().resolve()
-    checks: list[dict[str, Any]] = []
+def _blocked(detail: str, code: str, checks: list[dict[str, Any]]) -> RegistryValidationResult:
+    return RegistryValidationResult(
+        outcome=OUTCOME_BLOCKED,
+        detail=detail,
+        code=code,
+        checks=checks,
+    )
 
-    selector_path = data_root / SELECTOR_REL
+
+def _quarantined(detail: str, code: str, checks: list[dict[str, Any]]) -> RegistryValidationResult:
+    return RegistryValidationResult(
+        outcome=OUTCOME_QUARANTINED,
+        detail=detail,
+        code=code,
+        checks=checks,
+    )
+
+
+def _load_selector(ctx: _RegistryValidationContext) -> RegistryValidationResult | None:
+    selector_path = ctx.data_root / SELECTOR_REL
     if not selector_path.is_file():
-        return RegistryValidationResult(
-            outcome=OUTCOME_BLOCKED,
-            detail="provenance selector missing",
-            code="BLOCKED_PROVENANCE_SELECTOR_MISSING",
-            checks=checks,
+        return _blocked(
+            "provenance selector missing",
+            "BLOCKED_PROVENANCE_SELECTOR_MISSING",
+            ctx.checks,
         )
-
     try:
         selector = _read_json_object(selector_path)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail=f"provenance selector unreadable: {exc}",
-            code="QUARANTINED_PROVENANCE_SELECTOR_INVALID",
-            checks=checks,
+        return _quarantined(
+            f"provenance selector unreadable: {exc}",
+            "QUARANTINED_PROVENANCE_SELECTOR_INVALID",
+            ctx.checks,
         )
-
     if selector.get("schema_version") != REGISTRY_SELECTOR_SCHEMA:
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail="provenance selector schema mismatch",
-            code="QUARANTINED_PROVENANCE_SELECTOR_SCHEMA",
-            checks=checks,
+        return _quarantined(
+            "provenance selector schema mismatch",
+            "QUARANTINED_PROVENANCE_SELECTOR_SCHEMA",
+            ctx.checks,
         )
-
     generation_id = str(selector.get("generation_id") or "").strip()
     selector_manifest = str(selector.get("manifest_commitment") or "").strip()
     selector_tree = str(selector.get("tree_commitment") or "").strip()
-    if not generation_id or not _HEX64.match(selector_manifest) or not _HEX64.match(selector_tree):
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail="provenance selector missing P_g/M_g/T_g bindings",
-            code="QUARANTINED_PROVENANCE_SELECTOR_INCOMPLETE",
-            checks=checks,
+    if (
+        not generation_id
+        or not _HEX64.match(selector_manifest)
+        or not _HEX64.match(selector_tree)
+    ):
+        return _quarantined(
+            "provenance selector missing P_g/M_g/T_g bindings",
+            "QUARANTINED_PROVENANCE_SELECTOR_INCOMPLETE",
+            ctx.checks,
         )
+    ctx.generation_id = generation_id
+    ctx.selector_manifest = selector_manifest
+    ctx.selector_tree = selector_tree
+    return None
 
-    gen_dir = _generation_dir(data_root, generation_id)
+
+def _load_generation_manifest(ctx: _RegistryValidationContext) -> RegistryValidationResult | None:
+    gen_dir = _generation_dir(ctx.data_root, ctx.generation_id)
     if not gen_dir.is_dir():
-        return RegistryValidationResult(
-            outcome=OUTCOME_BLOCKED,
-            detail=f"registry generation directory missing: {generation_id}",
-            code="BLOCKED_PROVENANCE_GENERATION_MISSING",
-            checks=checks,
+        return _blocked(
+            f"registry generation directory missing: {ctx.generation_id}",
+            "BLOCKED_PROVENANCE_GENERATION_MISSING",
+            ctx.checks,
         )
-
-    manifest_path = _manifest_path(data_root, generation_id)
+    manifest_path = _manifest_path(ctx.data_root, ctx.generation_id)
     if not manifest_path.is_file():
-        return RegistryValidationResult(
-            outcome=OUTCOME_BLOCKED,
-            detail="registry manifest missing",
-            code="BLOCKED_PROVENANCE_MANIFEST_MISSING",
-            checks=checks,
+        return _blocked(
+            "registry manifest missing",
+            "BLOCKED_PROVENANCE_MANIFEST_MISSING",
+            ctx.checks,
         )
-
     try:
         manifest = _read_json_object(manifest_path)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail=f"registry manifest unreadable: {exc}",
-            code="QUARANTINED_PROVENANCE_MANIFEST_INVALID",
-            checks=checks,
+        return _quarantined(
+            f"registry manifest unreadable: {exc}",
+            "QUARANTINED_PROVENANCE_MANIFEST_INVALID",
+            ctx.checks,
         )
+    ctx.manifest = manifest
+    return None
 
+
+def _validate_manifest_header(ctx: _RegistryValidationContext) -> RegistryValidationResult | None:
+    assert ctx.manifest is not None
+    manifest = ctx.manifest
     if manifest.get("schema_version") != REGISTRY_MANIFEST_SCHEMA:
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail="registry manifest schema mismatch",
-            code="QUARANTINED_PROVENANCE_MANIFEST_SCHEMA",
-            checks=checks,
+        return _quarantined(
+            "registry manifest schema mismatch",
+            "QUARANTINED_PROVENANCE_MANIFEST_SCHEMA",
+            ctx.checks,
         )
-
     manifest_generation = str(manifest.get("generation_id") or "").strip()
-    manifest_tree = str(manifest.get("tree_commitment") or "").strip()
+    if manifest_generation != ctx.generation_id:
+        return _quarantined(
+            "registry manifest generation_id mismatch",
+            "QUARANTINED_PROVENANCE_GENERATION_MISMATCH",
+            ctx.checks,
+        )
     manifest_commitment = str(manifest.get("manifest_commitment") or "").strip()
-    if manifest_generation != generation_id:
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail="registry manifest generation_id mismatch",
-            code="QUARANTINED_PROVENANCE_GENERATION_MISMATCH",
-            checks=checks,
+    if _manifest_commitment(manifest) != manifest_commitment:
+        return _quarantined(
+            "registry manifest commitment mismatch",
+            "QUARANTINED_PROVENANCE_MANIFEST_COMMITMENT",
+            ctx.checks,
         )
-
-    recomputed_manifest = _manifest_commitment(manifest)
-    if recomputed_manifest != manifest_commitment:
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail="registry manifest commitment mismatch",
-            code="QUARANTINED_PROVENANCE_MANIFEST_COMMITMENT",
-            checks=checks,
+    manifest_tree = str(manifest.get("tree_commitment") or "").strip()
+    if manifest_tree != ctx.selector_tree or manifest_commitment != ctx.selector_manifest:
+        return _quarantined(
+            "selector/manifest binding mismatch",
+            "QUARANTINED_PROVENANCE_SELECTOR_BINDING",
+            ctx.checks,
         )
+    return None
 
-    if manifest_tree != selector_tree or manifest_commitment != selector_manifest:
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail="selector/manifest binding mismatch",
-            code="QUARANTINED_PROVENANCE_SELECTOR_BINDING",
-            checks=checks,
-        )
 
-    computed_tree = compute_tree_commitment(data_root)
-    checks.append({"check": "tree_commitment", "computed": computed_tree, "expected": manifest_tree})
+def _validate_tree_commitment(ctx: _RegistryValidationContext) -> RegistryValidationResult | None:
+    assert ctx.manifest is not None
+    manifest_tree = str(ctx.manifest.get("tree_commitment") or "").strip()
+    computed_tree = compute_tree_commitment(ctx.data_root)
+    ctx.checks.append(
+        {
+            "check": "tree_commitment",
+            "computed": computed_tree,
+            "expected": manifest_tree,
+        }
+    )
     if computed_tree != manifest_tree:
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail="tree commitment T_g mismatch",
-            code="QUARANTINED_PROVENANCE_TREE_COMMITMENT",
-            checks=checks,
+        return _quarantined(
+            "tree commitment T_g mismatch",
+            "QUARANTINED_PROVENANCE_TREE_COMMITMENT",
+            ctx.checks,
         )
-
-    if expected_tree_commitment is not None and computed_tree != expected_tree_commitment:
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail="tree commitment does not match expected snapshot binding",
-            code="QUARANTINED_PROVENANCE_TREE_EXPECTED",
-            checks=checks,
+    if (
+        ctx.expected_tree_commitment is not None
+        and computed_tree != ctx.expected_tree_commitment
+    ):
+        return _quarantined(
+            "tree commitment does not match expected snapshot binding",
+            "QUARANTINED_PROVENANCE_TREE_EXPECTED",
+            ctx.checks,
         )
+    return None
 
-    object_digests = manifest.get("object_digests")
+
+def _validate_object_digests(ctx: _RegistryValidationContext) -> RegistryValidationResult | None:
+    assert ctx.manifest is not None
+    gen_dir = _generation_dir(ctx.data_root, ctx.generation_id)
+    object_digests = ctx.manifest.get("object_digests")
     if not isinstance(object_digests, dict) or not object_digests:
-        return RegistryValidationResult(
-            outcome=OUTCOME_BLOCKED,
-            detail="registry manifest missing object_digests",
-            code="BLOCKED_PROVENANCE_MANIFEST_OBJECTS",
-            checks=checks,
+        return _blocked(
+            "registry manifest missing object_digests",
+            "BLOCKED_PROVENANCE_MANIFEST_OBJECTS",
+            ctx.checks,
         )
-
     for rel, expected_digest in sorted(object_digests.items()):
         rel_str = str(rel)
         if not _HEX64.match(str(expected_digest)):
-            return RegistryValidationResult(
-                outcome=OUTCOME_QUARANTINED,
-                detail=f"invalid digest for {rel_str}",
-                code="QUARANTINED_PROVENANCE_OBJECT_DIGEST",
-                checks=checks,
+            return _quarantined(
+                f"invalid digest for {rel_str}",
+                "QUARANTINED_PROVENANCE_OBJECT_DIGEST",
+                ctx.checks,
             )
         obj_path = gen_dir / rel_str
         if not obj_path.is_file():
-            return RegistryValidationResult(
-                outcome=OUTCOME_BLOCKED,
-                detail=f"registry object missing: {rel_str}",
-                code="BLOCKED_PROVENANCE_OBJECT_MISSING",
-                checks=checks,
+            return _blocked(
+                f"registry object missing: {rel_str}",
+                "BLOCKED_PROVENANCE_OBJECT_MISSING",
+                ctx.checks,
             )
         actual = _sha256_file(obj_path)
-        checks.append({"check": "object_digest", "path": rel_str, "ok": actual == expected_digest})
+        ctx.checks.append(
+            {"check": "object_digest", "path": rel_str, "ok": actual == expected_digest}
+        )
         if actual != expected_digest:
-            return RegistryValidationResult(
-                outcome=OUTCOME_QUARANTINED,
-                detail=f"registry object digest mismatch: {rel_str}",
-                code="QUARANTINED_PROVENANCE_OBJECT_MISMATCH",
-                checks=checks,
+            return _quarantined(
+                f"registry object digest mismatch: {rel_str}",
+                "QUARANTINED_PROVENANCE_OBJECT_MISMATCH",
+                ctx.checks,
             )
+    return None
 
+
+def _validate_graph_and_history(ctx: _RegistryValidationContext) -> RegistryValidationResult | None:
+    assert ctx.manifest is not None
+    gen_dir = _generation_dir(ctx.data_root, ctx.generation_id)
     graph_path = gen_dir / "graph.json"
     if not graph_path.is_file():
-        return RegistryValidationResult(
-            outcome=OUTCOME_BLOCKED,
-            detail="registry graph missing",
-            code="BLOCKED_PROVENANCE_GRAPH_MISSING",
-            checks=checks,
+        return _blocked(
+            "registry graph missing",
+            "BLOCKED_PROVENANCE_GRAPH_MISSING",
+            ctx.checks,
         )
-    graph_commitment = str(manifest.get("graph_commitment") or "").strip()
+    graph_commitment = str(ctx.manifest.get("graph_commitment") or "").strip()
     actual_graph = _sha256_file(graph_path)
     if not _HEX64.match(graph_commitment) or actual_graph != graph_commitment:
-        return RegistryValidationResult(
-            outcome=OUTCOME_QUARANTINED,
-            detail="registry graph commitment mismatch",
-            code="QUARANTINED_PROVENANCE_GRAPH_COMMITMENT",
-            checks=checks,
+        return _quarantined(
+            "registry graph commitment mismatch",
+            "QUARANTINED_PROVENANCE_GRAPH_COMMITMENT",
+            ctx.checks,
         )
 
-    history_commitments = manifest.get("history_commitments")
+    history_commitments = ctx.manifest.get("history_commitments")
     if not isinstance(history_commitments, dict):
-        return RegistryValidationResult(
-            outcome=OUTCOME_BLOCKED,
-            detail="registry manifest missing history_commitments",
-            code="BLOCKED_PROVENANCE_HISTORY_MISSING",
-            checks=checks,
+        return _blocked(
+            "registry manifest missing history_commitments",
+            "BLOCKED_PROVENANCE_HISTORY_MISSING",
+            ctx.checks,
         )
-    required_history = ("schema_registry", "policy_registry", "recipe_registry")
-    history_dir = gen_dir / "history"
-    for key in required_history:
+    for key in ("schema_registry", "policy_registry", "recipe_registry"):
         rel = f"history/{key}.json"
         expected = str(history_commitments.get(key) or "").strip()
         hist_path = gen_dir / rel
         if not hist_path.is_file():
-            return RegistryValidationResult(
-                outcome=OUTCOME_BLOCKED,
-                detail=f"registry history missing: {key}",
-                code="BLOCKED_PROVENANCE_HISTORY_FILE",
-                checks=checks,
+            return _blocked(
+                f"registry history missing: {key}",
+                "BLOCKED_PROVENANCE_HISTORY_FILE",
+                ctx.checks,
             )
         actual = _sha256_file(hist_path)
-        checks.append({"check": "history", "name": key, "ok": actual == expected})
+        ctx.checks.append({"check": "history", "name": key, "ok": actual == expected})
         if not _HEX64.match(expected) or actual != expected:
-            return RegistryValidationResult(
-                outcome=OUTCOME_QUARANTINED,
-                detail=f"registry history commitment mismatch: {key}",
-                code="QUARANTINED_PROVENANCE_HISTORY_COMMITMENT",
-                checks=checks,
+            return _quarantined(
+                f"registry history commitment mismatch: {key}",
+                "QUARANTINED_PROVENANCE_HISTORY_COMMITMENT",
+                ctx.checks,
             )
+    return None
 
-    assertion_ids = manifest.get("assertion_ids")
+
+def _validate_assertion_index(ctx: _RegistryValidationContext) -> RegistryValidationResult | None:
+    assert ctx.manifest is not None
+    object_digests = ctx.manifest.get("object_digests")
+    assertion_ids = ctx.manifest.get("assertion_ids")
     if not isinstance(assertion_ids, list):
-        return RegistryValidationResult(
-            outcome=OUTCOME_BLOCKED,
-            detail="registry manifest missing assertion_ids",
-            code="BLOCKED_PROVENANCE_ASSERTION_INDEX",
-            checks=checks,
+        return _blocked(
+            "registry manifest missing assertion_ids",
+            "BLOCKED_PROVENANCE_ASSERTION_INDEX",
+            ctx.checks,
+        )
+    if not isinstance(object_digests, dict):
+        return _blocked(
+            "registry manifest missing object_digests",
+            "BLOCKED_PROVENANCE_MANIFEST_OBJECTS",
+            ctx.checks,
         )
     for assertion_id in assertion_ids:
         aid = str(assertion_id).strip()
         rel = f"assertions/{aid}.json"
         if rel not in object_digests:
-            return RegistryValidationResult(
-                outcome=OUTCOME_QUARANTINED,
-                detail=f"assertion not listed in object_digests: {aid}",
-                code="QUARANTINED_PROVENANCE_ASSERTION_INDEX",
-                checks=checks,
+            return _quarantined(
+                f"assertion not listed in object_digests: {aid}",
+                "QUARANTINED_PROVENANCE_ASSERTION_INDEX",
+                ctx.checks,
             )
+    return None
 
+
+def _success_result(ctx: _RegistryValidationContext) -> RegistryValidationResult:
+    assert ctx.manifest is not None
+    manifest_path = _manifest_path(ctx.data_root, ctx.generation_id)
+    manifest_commitment = str(ctx.manifest.get("manifest_commitment") or "").strip()
+    manifest_tree = str(ctx.manifest.get("tree_commitment") or "").strip()
     provenance_tuple = ProvenanceTuple(
-        generation_id=generation_id,
+        generation_id=ctx.generation_id,
         manifest_commitment=manifest_commitment,
         tree_commitment=manifest_tree,
     )
     return RegistryValidationResult(
         outcome=OUTCOME_VALID,
         detail=(
-            f"registry valid generation={generation_id} "
+            f"registry valid generation={ctx.generation_id} "
             f"M_g={manifest_commitment[:12]} T_g={manifest_tree[:12]}"
         ),
         provenance_tuple=provenance_tuple,
-        manifest_path=str(manifest_path.relative_to(data_root)),
-        checks=checks,
+        manifest_path=str(manifest_path.relative_to(ctx.data_root)),
+        checks=ctx.checks,
     )
+
+
+def validate_provenance_registry(
+    root: Path | str,
+    *,
+    expected_tree_commitment: str | None = None,
+) -> RegistryValidationResult:
+    """Validate immutable registry manifest/graph/history for a v3 candidate."""
+    ctx = _RegistryValidationContext(
+        data_root=Path(root).expanduser().resolve(),
+        checks=[],
+        expected_tree_commitment=expected_tree_commitment,
+    )
+    for step in (
+        _load_selector,
+        _load_generation_manifest,
+        _validate_manifest_header,
+        _validate_tree_commitment,
+        _validate_object_digests,
+        _validate_graph_and_history,
+        _validate_assertion_index,
+    ):
+        failure = step(ctx)
+        if failure is not None:
+            return failure
+    return _success_result(ctx)
 
 
 def build_registry_fixture(
@@ -371,9 +440,8 @@ def build_registry_fixture(
     root = root.expanduser().resolve()
     gen_dir = _generation_dir(root, generation_id)
     assertions_dir = gen_dir / "assertions"
-    history_dir = gen_dir / "history"
     assertions_dir.mkdir(parents=True, exist_ok=True)
-    history_dir.mkdir(parents=True, exist_ok=True)
+    (gen_dir / "history").mkdir(parents=True, exist_ok=True)
 
     graph_body = {"schema_version": "convmem/provenance-graph-v1", "edges": []}
     graph_path = gen_dir / "graph.json"
@@ -381,9 +449,18 @@ def build_registry_fixture(
     graph_commitment = _sha256_file(graph_path)
 
     history_files = {
-        "schema_registry": {"schema_version": "convmem/provenance-schema-history-v1", "entries": []},
-        "policy_registry": {"schema_version": "convmem/provenance-policy-history-v1", "entries": []},
-        "recipe_registry": {"schema_version": "convmem/provenance-recipe-history-v1", "entries": []},
+        "schema_registry": {
+            "schema_version": "convmem/provenance-schema-history-v1",
+            "entries": [],
+        },
+        "policy_registry": {
+            "schema_version": "convmem/provenance-policy-history-v1",
+            "entries": [],
+        },
+        "recipe_registry": {
+            "schema_version": "convmem/provenance-recipe-history-v1",
+            "entries": [],
+        },
     }
     history_commitments: dict[str, str] = {}
     object_digests: dict[str, str] = {"graph.json": graph_commitment}
@@ -400,7 +477,9 @@ def build_registry_fixture(
         envelope = {
             "schema_version": "convmem/provenance-envelope-v1",
             "assertion_id": aid,
-            "provenance_commitment": _sha256_bytes(json.dumps({"assertion_id": aid}, sort_keys=True).encode()),
+            "provenance_commitment": _sha256_bytes(
+                json.dumps({"assertion_id": aid}, sort_keys=True).encode()
+            ),
         }
         path = gen_dir / rel
         path.write_text(json.dumps(envelope, sort_keys=True), encoding="utf-8")

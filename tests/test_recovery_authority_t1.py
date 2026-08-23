@@ -12,10 +12,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from complete_data_restore import (  # noqa: E402
+from complete_data_restore import (  # noqa: E402  # pylint: disable=wrong-import-position
     EVIDENCE_FILENAME,
     OUTCOME_BLOCKED,
-    OUTCOME_VALID,
     RestoreProfile,
     build_backup_evidence,
     capture_backup_evidence,
@@ -23,13 +22,17 @@ from complete_data_restore import (  # noqa: E402
     state_specs_for_profile,
     writer_census_for_root,
 )
-from provenance_registry_restore import (  # noqa: E402
+from provenance_registry_restore import (  # noqa: E402  # pylint: disable=wrong-import-position
     OUTCOME_QUARANTINED,
     build_registry_fixture,
     compute_tree_commitment,
     validate_provenance_registry,
 )
-from restic_snapshot import BackupProfile, TAG_COMPLETE_DATA_V2, TAG_COMPLETE_DATA_V3  # noqa: E402
+from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-position
+    BackupProfile,
+    TAG_COMPLETE_DATA_V2,
+    TAG_COMPLETE_DATA_V3,
+)
 
 
 def _make_chroma(root: Path) -> None:

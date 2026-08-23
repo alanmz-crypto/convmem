@@ -26,7 +26,7 @@ from complete_data_restore import (  # noqa: E402  # pylint: disable=wrong-impor
     record_restic_tree_binding,
     run_preflight_validation,
 )
-from provenance_registry_restore import (  # noqa: E402
+from provenance_registry_restore import (  # noqa: E402  # pylint: disable=wrong-import-position
     validate_provenance_registry,
 )
 from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-position
