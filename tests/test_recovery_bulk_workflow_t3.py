@@ -12,7 +12,7 @@ from unittest import mock
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from backup_workflows import (  # noqa: E402  # pylint: disable=wrong-import-position
+from recovery_bulk_workflow import (  # noqa: E402  # pylint: disable=wrong-import-position
     LIVE_AUTHORITY_REPLACEMENT,
     SCRATCH_CANDIDATE_PREPARE,
     STATUS_FAIL,
@@ -30,12 +30,8 @@ from complete_data_restore import (  # noqa: E402  # pylint: disable=wrong-impor
     RestoreProfile,
     RestoreReport,
 )
-from provenance_registry_restore import (  # noqa: E402  # pylint: disable=wrong-import-position
-    build_registry_fixture,
-)
 from recovery_authority import (  # noqa: E402  # pylint: disable=wrong-import-position
     RecoveryState,
-    write_matching_projections,
 )
 from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-position
     EXIT_BLOCKED,
@@ -46,8 +42,10 @@ from restic_snapshot import (  # noqa: E402  # pylint: disable=wrong-import-posi
 )
 from tests.test_recovery_authority_t1 import (  # noqa: E402  # pylint: disable=wrong-import-position
     _minimal_v2_root,
+    _partial_selector_v2_root,
 )
 from tests.test_recovery_authority_t2 import (  # noqa: E402  # pylint: disable=wrong-import-position
+    _install_registry_fixture,
     _seal_candidate,
 )
 
@@ -160,10 +158,7 @@ class TestScratchCandidateValidation(unittest.TestCase):
     def test_partial_registry_quarantined(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            _minimal_v2_root(root)
-            selector = root / "provenance" / "selector.json"
-            selector.parent.mkdir(parents=True)
-            selector.write_text("{}", encoding="utf-8")
+            _partial_selector_v2_root(root)
             outcome = validate_scratch_recovery_candidate(root, profile=RestoreProfile.COMPLETE_DATA_V3)
             self.assertEqual(outcome.status, STATUS_FAIL)
             self.assertEqual(
@@ -311,15 +306,7 @@ class TestSidecarInvalidAuthority(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             _seal_candidate(root)
-            pt = build_registry_fixture(
-                root, generation_id="pg-fixture-001", assertion_ids=("assert-fixture-001",)
-            )
-            write_matching_projections(
-                root,
-                pt,
-                assertion_ids=("assert-fixture-001",),
-                rewrite_bodies=False,
-            )
+            _install_registry_fixture(root, rewrite_bodies=False)
             (root / "provenance/generations/pg-fixture-001/manifest.json").write_text(
                 "{}", encoding="utf-8"
             )

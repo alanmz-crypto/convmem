@@ -19,24 +19,9 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Sequence
 
 from complete_data_restore import capture_backup_evidence
-from recovery_bulk_workflow import (  # noqa: F401 re-export T3 workflow surface
-    BULK_RECOVERY_REPORT_KIND,
-    LIVE_AUTHORITY_REPLACEMENT,
-    SCRATCH_CANDIDATE_PREPARE,
-    BulkRecoveryOutcome,
-    OperationalGrant,
-    assert_scratch_target_isolated,
-    fingerprint_data_root,
-    prepare_scratch_recovery_candidate,
-    refuse_live_authority_replacement,
-    validate_item_import_not_registry_substitute,
-    validate_operational_grant,
-    validate_scratch_recovery_candidate,
-    assert_scratch_target_empty,
-)
 from restic_snapshot import (
     EXIT_ACTION_FAILURE,
     EXIT_INVALID_CONFIG,
@@ -455,7 +440,7 @@ def restore_validated_snapshot(
         return _fail_from_resolver(exc)
 
 
-# Recovery Authority T3 workflow lives in recovery_bulk_workflow.py (re-exported above).
+# Recovery Authority T3 workflow lives in recovery_bulk_workflow.py (import directly).
 
 
 # ---------------------------------------------------------------------------

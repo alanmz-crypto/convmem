@@ -16,11 +16,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from backup_workflows import (  # noqa: E402  # pylint: disable=wrong-import-position
+from backup_workflows import restore_validated_snapshot  # noqa: E402  # pylint: disable=wrong-import-position
+from recovery_bulk_workflow import (  # noqa: E402  # pylint: disable=wrong-import-position
     OperationalGrant,
     SCRATCH_CANDIDATE_PREPARE,
+    bind_restore_report_snapshot,
     prepare_scratch_recovery_candidate,
-    restore_validated_snapshot,
 )
 from complete_data_restore import (  # noqa: E402  # pylint: disable=wrong-import-position
     RestoreProfile,
@@ -146,15 +147,11 @@ def main(argv: list[str] | None = None) -> int:
         return outcome.exit_code or 1
 
     ref = outcome.source
-    report.set_snapshot_identity(
-        snapshot_id=ref.id,
-        tree=ref.tree,
-        original=ref.original,
-        tags=ref.tags,
-        paths=ref.paths,
-        repository=ref.repository,
+    bind_restore_report_snapshot(
+        report,
+        ref,
         restic_version=restic_ver,
-        time=ref.time.isoformat(),
+        include_time=True,
     )
     report.step("resolve_and_restore", "PASS", outcome.message)
 

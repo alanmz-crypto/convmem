@@ -55,7 +55,7 @@ class OperationalGrant:
 
 
 @dataclass
-class BulkRecoveryOutcome:
+class BulkRecoveryOutcome:  # pylint: disable=too-many-instance-attributes
     """Structured outcome for scratch bulk-recovery candidate preparation."""
 
     status: str
@@ -69,17 +69,17 @@ class BulkRecoveryOutcome:
 
     @property
     def ok(self) -> bool:
-        return self.status == STATUS_PASS
+        return STATUS_PASS == self.status
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
-            "status": self.status,
-            "message": self.message,
-            "exit_code": self.exit_code,
-            "recovery_state": self.recovery_state,
-            "provenance_tuple": self.provenance_tuple,
-            "report_path": str(self.report_path) if self.report_path else None,
             "details": dict(self.details),
+            "exit_code": self.exit_code,
+            "message": self.message,
+            "provenance_tuple": self.provenance_tuple,
+            "recovery_state": self.recovery_state,
+            "report_path": str(self.report_path) if self.report_path else None,
+            "status": self.status,
         }
         if self.source is not None:
             payload["source"] = self.source.to_dict()
@@ -87,6 +87,29 @@ class BulkRecoveryOutcome:
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2, sort_keys=True)
+
+
+def bind_restore_report_snapshot(
+    report: RestoreReport,
+    ref: SnapshotRef,
+    *,
+    restic_version: str | None = None,
+    include_time: bool = False,
+) -> None:
+    """Record resolved snapshot identity on a RestoreReport (shared T3/preflight)."""
+    kwargs: dict[str, Any] = {
+        "snapshot_id": ref.id,
+        "tree": ref.tree,
+        "original": ref.original,
+        "tags": ref.tags,
+        "paths": ref.paths,
+        "repository": ref.repository,
+    }
+    if restic_version is not None:
+        kwargs["restic_version"] = restic_version
+    if include_time:
+        kwargs["time"] = ref.time.isoformat()
+    report.set_snapshot_identity(**kwargs)
 
 
 def fingerprint_data_root(
@@ -417,14 +440,7 @@ def prepare_scratch_recovery_candidate(
             report_path=report.json_path,
         )
 
-    report.set_snapshot_identity(
-        snapshot_id=ref.id,
-        tree=ref.tree,
-        original=ref.original,
-        tags=ref.tags,
-        paths=ref.paths,
-        repository=ref.repository,
-    )
+    bind_restore_report_snapshot(report, ref)
     report.step("resolve_snapshot", "PASS", f"exact id={ref.id}")
 
     try:
