@@ -256,6 +256,73 @@ class TestRecoveryStateMachine(unittest.TestCase):
             self.assertEqual(result.state, RecoveryState.QUARANTINED)
             self.assertFalse(result.serving_ready)
 
+    def test_stale_body_generation_without_sidecar_quarantined(self):
+        """Body generation stamps must match recovered authority even without bindings."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _seal_candidate(root)
+            rows = []
+            for line in (root / "knowledge_units.jsonl").read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                row = json.loads(line)
+                row["generation_id"] = "stale-body-generation"
+                rows.append(row)
+            (root / "knowledge_units.jsonl").write_text(
+                "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows),
+                encoding="utf-8",
+            )
+            # Re-seal registry so T_g matches the stale-stamped body; authority gen stays fixture id.
+            shutil.rmtree(root / "provenance")
+            build_registry_fixture(root, generation_id="pg-fixture-001", assertion_ids=("assert-fixture-001",))
+            (root / "knowledge_units.projection.json").unlink(missing_ok=True)
+            (root / "chroma" / "projection_binding.json").unlink(missing_ok=True)
+            result = evaluate_recovery_authority(root)
+            self.assertEqual(result.state, RecoveryState.QUARANTINED)
+            self.assertIn("generation", result.detail.lower())
+
+    def test_sidecar_cannot_hide_stale_body_generation(self):
+        """Sidecar generation must not override a disagreeing body stamp into validated."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            pt = _seal_candidate(root)
+            rows = []
+            for line in (root / "knowledge_units.jsonl").read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                row = json.loads(line)
+                row["generation_id"] = "stale-body-generation"
+                rows.append(row)
+            (root / "knowledge_units.jsonl").write_text(
+                "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows),
+                encoding="utf-8",
+            )
+            shutil.rmtree(root / "provenance")
+            pt = build_registry_fixture(
+                root, generation_id="pg-fixture-001", assertion_ids=("assert-fixture-001",)
+            )
+            write_matching_projections(
+                root,
+                pt,
+                assertion_ids=("assert-fixture-001",),
+                include_jsonl=True,
+                include_chroma=True,
+                rewrite_bodies=False,
+            )
+            result = evaluate_recovery_authority(root)
+            self.assertEqual(result.state, RecoveryState.QUARANTINED)
+            self.assertNotEqual(result.state, RecoveryState.PROJECTION_VALIDATED)
+            self.assertFalse(result.serving_ready)
+
+    def test_non_object_jsonl_row_quarantined(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _seal_candidate(root)
+            (root / "knowledge_units.jsonl").write_text("[\"not-an-object\"]\n", encoding="utf-8")
+            result = evaluate_recovery_authority(root)
+            self.assertEqual(result.state, RecoveryState.QUARANTINED)
+            self.assertFalse(result.serving_ready)
+
     def test_rebuildable_projection_missing_bindings_is_pending(self):
         """Present bodies without binding metadata are rebuildable, not quarantine."""
         with tempfile.TemporaryDirectory() as td:

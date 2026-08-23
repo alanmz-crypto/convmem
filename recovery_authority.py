@@ -317,7 +317,16 @@ def _read_jsonl_projection(root: Path) -> ProjectionFingerprint:
                 detail=f"jsonl projection binding unreadable: {exc}",
             )
         if isinstance(body, dict):
-            generation_id = str(body.get("generation_id") or generation_id).strip()
+            sidecar_gid = str(body.get("generation_id") or "").strip()
+            if sidecar_gid and generation_id and sidecar_gid != generation_id:
+                return ProjectionFingerprint(
+                    present=True,
+                    assertion_ids=body_ids,
+                    provenance_commitments=body_commitments,
+                    generation_id=generation_id,
+                    detail="jsonl sidecar generation disagrees with body",
+                )
+            generation_id = sidecar_gid or generation_id
             manifest_commitment = str(body.get("manifest_commitment") or "").strip()
             projection_binding = str(body.get("projection_binding") or "").strip()
             listed = body.get("assertion_ids")
@@ -466,13 +475,31 @@ def _projection_matches(
         return False, "projection absent"
     if any(
         token in actual.detail
-        for token in ("mixed", "malformed", "unreadable", "disagree")
+        for token in (
+            "mixed",
+            "malformed",
+            "unreadable",
+            "disagree",
+            "non-object",
+        )
     ):
         return False, actual.detail
-    if not actual.generation_id or not actual.manifest_commitment or not actual.projection_binding:
-        return False, "projection missing generation/manifest/binding fields"
-    if actual.generation_id != expected.generation_id:
+    # Body-derived stamps can contradict recovered authority even when
+    # binding sidecars are absent (rebuildable incomplete != stale body).
+    if actual.generation_id and actual.generation_id != expected.generation_id:
         return False, "generation mismatch"
+    if actual.assertion_ids and set(actual.assertion_ids) != set(expected.assertion_ids):
+        return False, "assertion-id set mismatch"
+    if actual.provenance_commitments and dict(actual.provenance_commitments) != dict(
+        expected.provenance_commitments
+    ):
+        return False, "provenance commitment mismatch"
+    if (
+        not actual.generation_id
+        or not actual.manifest_commitment
+        or not actual.projection_binding
+    ):
+        return False, "projection missing generation/manifest/binding fields"
     if actual.manifest_commitment != expected.manifest_commitment:
         return False, "manifest commitment mismatch"
     if actual.projection_binding != expected.projection_binding:
