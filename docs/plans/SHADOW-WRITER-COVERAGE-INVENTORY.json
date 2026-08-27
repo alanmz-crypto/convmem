@@ -1,5 +1,5 @@
 {
-  "purpose": "VERIFY V3 writer coverage — C3 production routes lease+live-config; zero bypass",
+  "purpose": "VERIFY V3 writer coverage \u2014 C3 production routes lease+live-config; zero bypass",
   "proof_class": "code_path static + hermetic (C3 writer gate)",
   "open_chroma_for_write_production_call_sites": [],
   "chroma_write_session_production_call_sites": [],
@@ -24,12 +24,13 @@
   "must_use_factory_bypass_sites": [],
   "must_use_factory_count": 0,
   "allowlisted_direct_sites": [
+    "cg2_legacy_vector_attestation.py:930",
     "cg2_rehearsal.py:84",
     "chroma_store.py:74",
     "chroma_store.py:99",
     "chroma_write_store.py:550",
     "convmem.py:620",
-    "file_generation_store.py:95",
+    "file_generation_store.py:97",
     "mixed_mode_control.py:44",
     "mixed_mode_proof.py:140",
     "shadow_canary.py:528",

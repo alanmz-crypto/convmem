@@ -68,6 +68,11 @@ EXPECTED = {
         "ChromaStore",
     ): (1, "generation-mediated"),
     (
+        "cg2_legacy_vector_attestation.py",
+        "_open_hermetic_store",
+        "ChromaStore",
+    ): (1, "generation-mediated"),
+    (
         "file_generation_validate.py",
         "chroma_sequence_positions",
         "sqlite3.connect[chroma]",

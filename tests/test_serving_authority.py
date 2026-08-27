@@ -117,3 +117,43 @@ def test_build_legacy_fence_validates_payload() -> None:
     fence = build_legacy_fence("source:/tmp/a.jsonl", "2026-08-15T00:00:00Z")
     assert fence["schema"] == "convmem/legacy-owner-fence-v1"
     assert fence["owner_digest"] == fence["owner_digest"]
+
+
+def test_fence_idempotent_identical_republish(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    cfg = _cfg(tmp_path, chroma)
+    root = generation_root_for_cfg(cfg)
+    owner_key = "source:/tmp/fence-idempotent.jsonl"
+    first = publish_legacy_fence(root, owner_key, "2026-08-23T00:00:00Z")
+    second = publish_legacy_fence(root, owner_key, "2026-08-23T00:00:00Z")
+    assert first == second
+    assert first.exists()
+
+
+def test_fence_conflicting_bytes_refused(tmp_path: Path) -> None:
+
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    cfg = _cfg(tmp_path, chroma)
+    root = generation_root_for_cfg(cfg)
+    owner_key = "source:/tmp/fence-conflict.jsonl"
+    publish_legacy_fence(root, owner_key, "2026-08-23T00:00:00Z")
+    with pytest.raises(ServingAuthorityError, match="collision"):
+        publish_legacy_fence(root, owner_key, "2026-08-23T00:01:00Z")
+
+
+def test_fenced_no_pointer_mode_explicit(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    cfg = _cfg(tmp_path, chroma)
+    root = generation_root_for_cfg(cfg)
+    owner_key = "source:/tmp/fenced-no-pointer.jsonl"
+    from file_generation_contract import owner_digest
+
+    digest = owner_digest(owner_key)
+    publish_legacy_fence(root, owner_key, "2026-08-23T00:00:00Z")
+    vector = resolve_frozen_authority_vector(cfg, owner_digests={digest})
+    state = vector.by_owner[digest]
+    assert state.mode == OwnerAuthorityMode.FENCED_NO_POINTER
+    assert state.mode != OwnerAuthorityMode.LEGACY

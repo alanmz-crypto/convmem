@@ -11,13 +11,14 @@ from file_generation_contract import build_generation_manifest
 from file_generation_pointer import (
     GenerationQualificationError,
     ManifestReference,
-    publish_active_pointer,
+    publish_first_cutover_active_pointer,
     publish_manifest,
     read_unqualified_pointer,
     recover_active_pointer,
 )
 from file_generation_store import FileGenerationStore, StagedRow
 from file_generation_validate import cold_validate, run_cold_validation
+from tests.test_file_generation_pointer import GRB_GENERATION_ID
 from projection_parity import entity_key
 
 
@@ -123,12 +124,12 @@ def test_revalidator_mutation_cannot_cross_final_cold_qualification(
         return True
 
     with pytest.raises(GenerationQualificationError, match="fresh-process exact generation"):
-        publish_active_pointer(
+        publish_first_cutover_active_pointer(
             generations,
             reference,
             chroma_dir=chroma,
             cfg={"index": {"processed_log": str(tmp_path / "processed.json")}},
-            expected_previous_generation_id=None,
+            rollback_baseline_generation_id=GRB_GENERATION_ID,
             backend_fingerprint="rust-bindings/test",
             candidate_revalidator=corrupt_before_publish,
         )
@@ -142,12 +143,12 @@ def test_revalidator_mutation_cannot_cross_final_cold_qualification(
     _, recovery_chroma, recovery_generations, recovery_candidate, recovery_reference = (
         _prepare_staged_generation(tmp_path, "recover")
     )
-    publish_active_pointer(
+    publish_first_cutover_active_pointer(
         recovery_generations,
         recovery_reference,
         chroma_dir=recovery_chroma,
         cfg={"index": {"processed_log": str(tmp_path / "processed-recover.json")}},
-        expected_previous_generation_id=None,
+        rollback_baseline_generation_id=GRB_GENERATION_ID,
         backend_fingerprint="rust-bindings/test",
     )
 
@@ -193,12 +194,12 @@ def test_cross_wired_manifest_reference_cannot_select_another_owner(
         file_sha256=reference_b.file_sha256,
     )
     with pytest.raises(GenerationQualificationError, match="filename does not match"):
-        publish_active_pointer(
+        publish_first_cutover_active_pointer(
             generations_b,
             cross_wired,
             chroma_dir=chroma_b,
             cfg={"index": {"processed_log": str(tmp_path / "processed-cross.json")}},
-            expected_previous_generation_id=None,
+            rollback_baseline_generation_id=GRB_GENERATION_ID,
             backend_fingerprint="rust-bindings/test",
         )
     assert read_unqualified_pointer(generations_b, candidate_a.owner_digest) is None
@@ -259,12 +260,12 @@ def test_cold_process_validation_precedes_pointer_and_export_view_round_trips(
             expected_manifest_sha256="0" * 64,
         )
 
-    qualified = publish_active_pointer(
+    qualified = publish_first_cutover_active_pointer(
         generations,
         reference,
         chroma_dir=chroma,
         cfg={"index": {"processed_log": str(tmp_path / "processed.json")}},
-        expected_previous_generation_id=None,
+        rollback_baseline_generation_id=GRB_GENERATION_ID,
         backend_fingerprint="rust-bindings/test",
         candidate_revalidator=lambda value: (
             hashlib.sha256(source.read_bytes()).hexdigest() == value["source_hash"]
@@ -374,11 +375,11 @@ def test_cold_validation_fails_after_corruption_in_fresh_process(
     # itself; corrupt persisted rows cannot be promoted by supplying a fake
     # truthy validator because it has no validator argument.
     with pytest.raises(GenerationQualificationError, match="fresh-process exact generation"):
-        publish_active_pointer(
+        publish_first_cutover_active_pointer(
             generations,
             reference,
             chroma_dir=chroma,
             cfg={"index": {"processed_log": str(tmp_path / "processed.json")}},
-            expected_previous_generation_id=None,
+            rollback_baseline_generation_id=GRB_GENERATION_ID,
             backend_fingerprint="rust-bindings/test",
         )
