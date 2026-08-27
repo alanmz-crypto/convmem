@@ -4,7 +4,12 @@ Deep orchestration over restic_snapshot.BackupContext. No consumer may invoke
 Restic selection/check/copy/restore directly, and no workflow may catch a
 resolver failure then fall back to legacy selection.
 
+Recovery Authority T3 adds a scratch-only bulk-recovery candidate workflow
+that selects one exact Restic snapshot/tree, validates v3 provenance authority,
+and prepares an isolated replacement candidate without mutating live authority.
+
 Architecture: docs/plans/ARCHITECTURE-complete-data-backup-correction-v2.md
+Recovery Authority: docs/plans/ARCHITECTURE-recovery-authority.md
 """
 
 from __future__ import annotations
@@ -28,9 +33,9 @@ from restic_snapshot import (
     BackupContext,
     BackupProfile,
     ResolverError,
-    captures_backup_evidence,
     SnapshotRef,
     backup_data_root,
+    captures_backup_evidence,
     check_restic_available,
     check_snapshot,
     copy_snapshot_to_external,
@@ -433,6 +438,9 @@ def restore_validated_snapshot(
         )
     except ResolverError as exc:
         return _fail_from_resolver(exc)
+
+
+# Recovery Authority T3 workflow lives in recovery_bulk_workflow.py (import directly).
 
 
 # ---------------------------------------------------------------------------

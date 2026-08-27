@@ -94,6 +94,28 @@ def _seal_candidate(
     return provenance_tuple
 
 
+def _install_registry_fixture(
+    root: Path,
+    *,
+    include_jsonl: bool = True,
+    include_chroma: bool = True,
+    rewrite_bodies: bool = False,
+):
+    """Install the shared pg-fixture-001 registry with matching projections."""
+    provenance_tuple = build_registry_fixture(
+        root, generation_id="pg-fixture-001", assertion_ids=("assert-fixture-001",)
+    )
+    write_matching_projections(
+        root,
+        provenance_tuple,
+        assertion_ids=("assert-fixture-001",),
+        include_jsonl=include_jsonl,
+        include_chroma=include_chroma,
+        rewrite_bodies=rewrite_bodies,
+    )
+    return provenance_tuple
+
+
 class TestRecoveryStateMachine(unittest.TestCase):
     def test_complete_valid_registry_and_projections(self):
         with tempfile.TemporaryDirectory() as td:
@@ -285,7 +307,7 @@ class TestRecoveryStateMachine(unittest.TestCase):
         """Sidecar generation must not override a disagreeing body stamp into validated."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            pt = _seal_candidate(root)
+            _seal_candidate(root)
             rows = []
             for line in (root / "knowledge_units.jsonl").read_text(encoding="utf-8").splitlines():
                 if not line.strip():
@@ -298,13 +320,8 @@ class TestRecoveryStateMachine(unittest.TestCase):
                 encoding="utf-8",
             )
             shutil.rmtree(root / "provenance")
-            pt = build_registry_fixture(
-                root, generation_id="pg-fixture-001", assertion_ids=("assert-fixture-001",)
-            )
-            write_matching_projections(
+            _install_registry_fixture(
                 root,
-                pt,
-                assertion_ids=("assert-fixture-001",),
                 include_jsonl=True,
                 include_chroma=True,
                 rewrite_bodies=False,
