@@ -16,6 +16,7 @@ from cg2_cutover_guard import (
     validate_canary_open_guard,
 )
 from cg2_legacy_vector_attestation import (
+    ADMITTED_COLLECTIONS,
     D0AttestationError,
     KNOWN_MODEL_AND_VECTOR_V1,
     LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1,
@@ -24,15 +25,18 @@ from cg2_legacy_vector_attestation import (
     verify_d0_chain_for_grb_conversion,
 )
 from cg2_rollback_baseline import (
+    RollbackBaselineError,
     rollback_baseline_evidence_path,
     validate_retained_rollback_baseline_evidence,
 )
 from file_generation_contract import canonical_source_path
 from file_generation_pointer import (
-    _read_json,
+    GenerationQualificationError,
     ManifestReference,
     QualifiedActivePointer,
     _publish_pointer_under_lock,
+    _read_json,
+    _reload_verified_caller_reference,
     load_manifest_reference,
     pointer_path,
     provision_generation_layout,
@@ -94,7 +98,17 @@ def _validate_canary_proof_profile(manifest: Mapping[str, Any]) -> None:
         raise FirstCutoverError(
             "G_canary proof profile must be KNOWN_MODEL_AND_VECTOR_V1"
         )
-    for collection_name, raw_spec in dict(manifest.get("collections") or {}).items():
+    collections = dict(manifest.get("collections") or {})
+    if set(collections) != set(ADMITTED_COLLECTIONS):
+        raise FirstCutoverError(
+            "G_canary must declare the exact ratified admitted collection set"
+        )
+    for collection_name in ADMITTED_COLLECTIONS:
+        raw_spec = collections[collection_name]
+        if not isinstance(raw_spec, Mapping):
+            raise FirstCutoverError(
+                f"G_canary collection {collection_name} is not an object"
+            )
         spec = dict(raw_spec)
         model = str(spec.get("embedding_model") or "").strip()
         if not model:
@@ -106,6 +120,34 @@ def _validate_canary_proof_profile(manifest: Mapping[str, Any]) -> None:
             raise FirstCutoverError(
                 f"G_canary collection {collection_name} has invalid embedding dimension"
             )
+        rows = dict(spec.get("rows") or {})
+        if not rows:
+            raise FirstCutoverError(
+                f"G_canary collection {collection_name} lacks writer-produced rows"
+            )
+        for physical_id, raw_row in rows.items():
+            row = dict(raw_row)
+            row_model = str(row.get("embedding_model") or "").strip()
+            if row_model != model:
+                raise FirstCutoverError(
+                    f"G_canary row {collection_name}/{physical_id} model identity mismatch"
+                )
+            row_dimension = int(row.get("embedding_dimension") or 0)
+            if row_dimension != dimension:
+                raise FirstCutoverError(
+                    f"G_canary row {collection_name}/{physical_id} dimension mismatch"
+                )
+            for field in ("document_hash", "embedding_hash"):
+                if not str(row.get(field) or "").strip():
+                    raise FirstCutoverError(
+                        f"G_canary row {collection_name}/{physical_id} lacks vector identity"
+                    )
+            immutable = dict(row.get("immutable_metadata") or {})
+            if not immutable:
+                raise FirstCutoverError(
+                    f"G_canary row {collection_name}/{physical_id} "
+                    "lacks writer-produced provenance"
+                )
 
 
 def _fresh_qualify(
@@ -179,6 +221,69 @@ def _lock_held_reread_d0_legacy(
         "embedding_dimension": dimension,
     }
 
+
+
+
+
+def _lock_held_revalidate_grant_material(
+    generation_root: str | Path,
+    canary_manifest_reference: ManifestReference,
+    *,
+    grant: FirstCutoverGrant,
+    chroma_dir: str | Path,
+    canonical_source: str,
+) -> tuple[ManifestReference, dict[str, Any], ManifestReference]:
+    """Reread grant-bound G_canary, G_rb evidence, and source under source_flock."""
+
+    try:
+        canary_ref = _reload_verified_caller_reference(
+            generation_root, canary_manifest_reference
+        )
+    except GenerationQualificationError as exc:
+        raise FirstCutoverError(
+            f"lock-held G_canary manifest reload refused: {exc}"
+        ) from exc
+
+    if canary_ref.file_sha256 != grant.canary_manifest_sha256:
+        raise FirstCutoverError("lock-held G_canary manifest SHA drift")
+    if str(canary_ref.manifest.get("generation_id") or "") != grant.canary_generation_id:
+        raise FirstCutoverError("lock-held G_canary generation identity drift")
+    _validate_canary_proof_profile(canary_ref.manifest)
+    _fresh_qualify(chroma_dir, canary_ref)
+
+    evidence_path = rollback_baseline_evidence_path(
+        generation_root, grant.owner_digest, grant.grb_generation_id
+    )
+    if not evidence_path.is_file():
+        raise FirstCutoverError("lock-held G_rb evidence missing")
+    if _evidence_file_sha256(evidence_path) != grant.grb_evidence_sha256:
+        raise FirstCutoverError("lock-held G_rb evidence SHA drift")
+    try:
+        evidence = validate_retained_rollback_baseline_evidence(
+            generation_root,
+            owner_digest_value=grant.owner_digest,
+            generation_id=grant.grb_generation_id,
+            expected_manifest_sha256=grant.grb_manifest_sha256,
+        )
+    except RollbackBaselineError as exc:
+        raise FirstCutoverError(
+            f"lock-held G_rb evidence revalidation refused: {exc}"
+        ) from exc
+    _validate_grb_proof_profile(evidence)
+
+    grb_ref = load_manifest_reference(
+        generation_root,
+        manifest_filename=str(evidence["manifest_filename"]),
+        expected_sha256=grant.grb_manifest_sha256,
+    )
+    if str(grb_ref.manifest.get("generation_id") or "") != grant.grb_generation_id:
+        raise FirstCutoverError("lock-held G_rb generation identity drift")
+
+    live_source = observe_source_hash(canonical_source)
+    if live_source != str(canary_ref.manifest.get("source_hash") or ""):
+        raise FirstCutoverError("lock-held source hash drift")
+
+    return canary_ref, evidence, grb_ref
 
 
 def _require_grant_bound_guard(
@@ -430,17 +535,13 @@ def publish_first_cutover_active_pointer(
         with FileGenerationStore(str(chroma_dir), active_generations=dict) as store:
             _lock_held_reread_d0_legacy(cfg, store, chain)
 
-        if str(canary_manifest_reference.manifest["generation_id"] or "") != grant.canary_generation_id:
-            raise FirstCutoverError("lock-held canary identity drift")
-        if canary_manifest_reference.file_sha256 != grant.canary_manifest_sha256:
-            raise FirstCutoverError("lock-held canary manifest SHA drift")
-        grb_locked = load_manifest_reference(
+        canary_manifest_reference, _evidence, _grb_locked = _lock_held_revalidate_grant_material(
             generation_root,
-            manifest_filename=str(_evidence["manifest_filename"]),
-            expected_sha256=grant.grb_manifest_sha256,
+            canary_manifest_reference,
+            grant=grant,
+            chroma_dir=chroma_dir,
+            canonical_source=canonical_source,
         )
-        if str(grb_locked.manifest["generation_id"] or "") != grant.grb_generation_id:
-            raise FirstCutoverError("lock-held G_rb identity drift")
 
         current_pointer = read_unqualified_pointer(generation_root, owner_digest_value)
         if current_pointer is not None:

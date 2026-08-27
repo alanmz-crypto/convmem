@@ -717,3 +717,119 @@ def test_lock_held_refuses_wrong_owner_guard(d3_env):
         with pytest.raises((FirstCutoverError, CutoverGuardError)):
             _cutover(d3_env, d3_env["canary_ref"], grant)
     assert read_unqualified_pointer(d3_env["generations"], grant.owner_digest) is None
+def _build_shallow_forged_canary(env: dict) -> ManifestReference:
+    base = env["canary_ref"].manifest
+    manifest = build_generation_manifest(
+        owner_key=str(base["owner_key"]),
+        generation_id=f"{base['generation_id']}-shallow-forged",
+        canonical_source=str(base["canonical_source_path"]),
+        source_hash=str(base["source_hash"]),
+        candidate_bundle_hash=str(base["candidate_bundle_hash"]),
+        fingerprints=dict(base.get("fingerprints") or {}),
+        collections={},
+        recorded_only_annotations={"proof_profile": KNOWN_MODEL_AND_VECTOR_V1},
+        suppression_outcomes=list(base.get("suppression_outcomes") or []),
+        known_projection_loss_risks=list(base.get("known_projection_loss_risks") or []),
+    )
+    return publish_manifest(env["generations"], manifest)
+
+
+def test_preflight_refuses_shallow_forged_canary_manifest(d3_env):
+    shallow_ref = _build_shallow_forged_canary(d3_env)
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], shallow_ref, grant_id="grant-shallow-preflight"
+    )
+    oracle = _OneLockOracle()
+    with patch("cg2_first_cutover.source_flock", oracle):
+        with pytest.raises(FirstCutoverError, match="admitted collection set|writer-produced rows"):
+            _cutover(d3_env, shallow_ref, grant)
+    assert not oracle.acquisitions
+
+
+def test_lock_held_canary_mutation_refuses_before_fence(d3_env):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-canary-mut"
+    )
+    canary_path = d3_env["canary_ref"].path
+
+    def _inject() -> None:
+        payload = dict(d3_env["canary_ref"].manifest)
+        payload["source_hash"] = "0" * 64
+        atomic_write_json(canary_path, payload)
+
+    oracle = _OneLockOracle()
+    with patch(
+        "cg2_first_cutover.source_flock",
+        _source_flock_inject_on_enter(oracle, _inject),
+    ):
+        with pytest.raises(FirstCutoverError, match="reload refused|manifest SHA drift|hash-bound"):
+            _cutover(d3_env, d3_env["canary_ref"], grant)
+    assert len(oracle.acquisitions) == 1
+    assert not fence_path(d3_env["generations"], grant.owner_digest).exists()
+    assert read_unqualified_pointer(d3_env["generations"], grant.owner_digest) is None
+
+
+def test_lock_held_grb_evidence_removal_refuses_before_fence(d3_env):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-grb-evidence"
+    )
+    evidence_path = rollback_baseline_evidence_path(
+        d3_env["generations"], grant.owner_digest, grant.grb_generation_id
+    )
+
+    def _inject() -> None:
+        evidence_path.unlink()
+
+    oracle = _OneLockOracle()
+    with patch(
+        "cg2_first_cutover.source_flock",
+        _source_flock_inject_on_enter(oracle, _inject),
+    ):
+        with pytest.raises(FirstCutoverError, match="G_rb evidence missing|evidence SHA drift|revalidation refused"):
+            _cutover(d3_env, d3_env["canary_ref"], grant)
+    assert len(oracle.acquisitions) == 1
+    assert not fence_path(d3_env["generations"], grant.owner_digest).exists()
+
+
+def test_lock_held_source_mutation_refuses_before_fence(d3_env):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-source-mut"
+    )
+
+    def _inject() -> None:
+        d3_env["source"].write_bytes(d3_env["source"].read_bytes() + b"\n")
+
+    oracle = _OneLockOracle()
+    with patch(
+        "cg2_first_cutover.source_flock",
+        _source_flock_inject_on_enter(oracle, _inject),
+    ):
+        with pytest.raises(FirstCutoverError, match="source hash drift"):
+            _cutover(d3_env, d3_env["canary_ref"], grant)
+    assert len(oracle.acquisitions) == 1
+    assert not fence_path(d3_env["generations"], grant.owner_digest).exists()
+
+
+def test_lock_held_shallow_forged_canary_swap_refuses_before_fence(d3_env):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-shallow-lock"
+    )
+    canary_path = d3_env["canary_ref"].path
+
+    def _inject() -> None:
+        shallow = dict(d3_env["canary_ref"].manifest)
+        shallow["collections"] = {}
+        atomic_write_json(canary_path, shallow)
+
+    oracle = _OneLockOracle()
+    with patch(
+        "cg2_first_cutover.source_flock",
+        _source_flock_inject_on_enter(oracle, _inject),
+    ):
+        with pytest.raises(
+            FirstCutoverError,
+            match="reload refused|manifest SHA drift|admitted collection set|writer-produced rows|hash-bound",
+        ):
+            _cutover(d3_env, d3_env["canary_ref"], grant)
+    assert len(oracle.acquisitions) == 1
+    assert not fence_path(d3_env["generations"], grant.owner_digest).exists()
