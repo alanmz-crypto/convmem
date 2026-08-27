@@ -38,6 +38,23 @@ DEFAULT_LEDGER_PATH = "~/.local/share/convmem/shadow_ledger.jsonl"
 DEFAULT_MANIFEST_PATH = "~/.local/share/convmem/shadow_activation.json"
 DEFAULT_HEALTH_PATH = "~/.local/share/convmem/shadow_health.json"
 
+# Bounded tail reader window used by read_ledger_header_and_tail (default tail_chunk).
+LEDGER_TAIL_CHUNK_BYTES = 65_536
+
+
+def maximum_supported_event_bytes(
+    *, tail_chunk: int = LEDGER_TAIL_CHUNK_BYTES
+) -> int:
+    """Maximum appendable event byte length including trailing LF.
+
+    Derived mechanically from the tail-reader window: one expand doubles the
+    initial tail_chunk, so the largest recoverable final record is
+    2 * tail_chunk - 1 bytes (inclusive of the newline).
+    """
+    if tail_chunk <= 0:
+        raise ValueError("tail_chunk must be positive")
+    return 2 * tail_chunk - 1
+
 
 def canonical_json_bytes(obj: Any) -> bytes:
     """UTF-8 canonical JSON: sorted keys, compact separators, reject NaN."""

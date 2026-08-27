@@ -28,14 +28,14 @@
     "cg2_rehearsal.py:84",
     "chroma_store.py:74",
     "chroma_store.py:99",
-    "chroma_write_store.py:550",
+    "chroma_write_store.py:566",
     "convmem.py:620",
     "file_generation_store.py:97",
     "mixed_mode_control.py:44",
     "mixed_mode_proof.py:140",
-    "shadow_canary.py:528",
-    "shadow_canary.py:635",
-    "shadow_canary.py:649",
+    "shadow_canary.py:576",
+    "shadow_canary.py:683",
+    "shadow_canary.py:697",
     "shadow_replay.py:177"
   ],
   "sites": [

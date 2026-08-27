@@ -22,6 +22,7 @@ from shadow_ledger import (
     SecureLedgerError,
     SecureLedgerRefused,
     atomic_write_json_private_secure,
+    maximum_supported_event_bytes,
     open_existing_shadow_ledger_fd,
     read_ledger_header_and_tail,
     projection_state_hash,
@@ -48,6 +49,73 @@ LOCK_ACQUIRE_TIMEOUT_MS = 250
 # Measured append latency above this is degraded (no signal interruption).
 # Degradation marker only — not an approved activation SLO.
 FSYNC_DEGRADED_LATENCY_MS = 500.0
+
+
+class EventTooLarge(SecureLedgerError):
+    """Encoded event exceeds the tail-reader maximum; carries no payload."""
+
+    def __init__(self, *, attempted_bytes: int, maximum_bytes: int):
+        self.attempted_bytes = int(attempted_bytes)
+        self.maximum_bytes = int(maximum_bytes)
+        super().__init__(
+            f"event_too_large attempted={self.attempted_bytes} maximum={self.maximum_bytes}"
+        )
+
+
+def build_mutation_event(
+    *,
+    event_id: str,
+    sequence: int | None,
+    operation: str,
+    stable_entity_id: str,
+    document: str | None,
+    metadata: Mapping[str, Any] | None,
+    deleted: bool,
+    embed_model: str = "unknown",
+    embed_dims: int | None = None,
+    writer_route: str = "",
+) -> dict[str, Any]:
+    """Construct one complete shadow mutation event (shared encoder input)."""
+    meta = dict(metadata or {}) if not deleted else dict(metadata or {})
+    ledger_id = str(meta.get("ledger_id") or "") or None
+    doc = None if deleted else document
+    return {
+        "shadow_schema_version": SHADOW_SCHEMA_VERSION,
+        "event_id": event_id,
+        "sequence": sequence,
+        "collection": COLLECTION_KNOWLEDGE_UNITS,
+        "operation": operation,
+        "stable_entity_id": stable_entity_id,
+        "ledger_id": ledger_id,
+        "recorded_at": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%S.%fZ"
+        ),
+        "post_state": {
+            "document": doc,
+            "metadata": meta if meta else {},
+            "deleted": bool(deleted),
+        },
+        "document_hash": (
+            None if deleted or doc is None else sha256_canonical(doc)
+        ),
+        "metadata_hash": sha256_canonical(meta),
+        "state_hash": projection_state_hash(
+            stable_entity_id=stable_entity_id,
+            deleted=deleted,
+            document=doc,
+            metadata=meta,
+        ),
+        "embed_model": embed_model or "unknown",
+        "authority": "shadow",
+        "writer_route": writer_route or "",
+        "embed_dims": embed_dims,
+    }
+
+
+def encode_event_line(event: Mapping[str, Any]) -> bytes:
+    """Encode exactly once to immutable bytes (includes trailing LF)."""
+    line = json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n"
+    return line.encode("utf-8")
 
 
 class UnitMutationSink(Protocol):
@@ -98,6 +166,8 @@ class ShadowHealth:
     complete_append_ms: float | None = None
     bytes_read_for_sequence: int | None = None
     health_persist_failed: bool = False
+    last_oversize_attempted_bytes: int | None = None
+    last_oversize_max_bytes: int | None = None
 
 
 def assess_shadow_status(
@@ -138,6 +208,7 @@ def assess_shadow_status(
         or klass == "lock_timeout"
         or klass == "uncertain_ack"
         or h.get("health_persist_failed")
+        or klass == "event_too_large"
     ):
         return "degraded"
     return "healthy"
@@ -210,42 +281,25 @@ class JsonlUnitMutationSink:
             self._record_failure("invalid_operation", event_id=event_id)
             log.error("shadow reject unknown operation=%s", operation)
             return
-        meta = dict(metadata or {}) if not deleted else dict(metadata or {})
-        ledger_id = str(meta.get("ledger_id") or "") or None
-        doc = None if deleted else document
-        event = {
-            "shadow_schema_version": SHADOW_SCHEMA_VERSION,
-            "event_id": event_id,
-            "sequence": None,  # assigned under lock
-            "collection": COLLECTION_KNOWLEDGE_UNITS,
-            "operation": operation,
-            "stable_entity_id": stable_entity_id,
-            "ledger_id": ledger_id,
-            "recorded_at": datetime.now(timezone.utc).strftime(
-                "%Y-%m-%dT%H:%M:%S.%fZ"
-            ),
-            "post_state": {
-                "document": doc,
-                "metadata": meta if meta else {},
-                "deleted": bool(deleted),
-            },
-            "document_hash": (
-                None if deleted or doc is None else sha256_canonical(doc)
-            ),
-            "metadata_hash": sha256_canonical(meta),
-            "state_hash": projection_state_hash(
-                stable_entity_id=stable_entity_id,
-                deleted=deleted,
-                document=doc,
-                metadata=meta,
-            ),
-            "embed_model": embed_model or "unknown",
-            "authority": "shadow",
-            "writer_route": writer_route or "",
-            "embed_dims": embed_dims,
-        }
+        event = build_mutation_event(
+            event_id=event_id,
+            sequence=None,
+            operation=operation,
+            stable_entity_id=stable_entity_id,
+            document=document,
+            metadata=metadata,
+            deleted=deleted,
+            embed_model=embed_model,
+            embed_dims=embed_dims,
+            writer_route=writer_route,
+        )
         try:
             self._append_event(event)
+        except EventTooLarge as exc:
+            self._record_event_too_large(
+                attempted_bytes=exc.attempted_bytes,
+                maximum_bytes=exc.maximum_bytes,
+            )
         except Exception as exc:  # pylint: disable=broad-exception-caught
             klass = self._classify_failure(exc)
             self._record_failure(klass, event_id=event_id)
@@ -259,6 +313,8 @@ class JsonlUnitMutationSink:
     @staticmethod
     def _classify_failure(exc: BaseException) -> str:
         msg = str(exc).lower()
+        if isinstance(exc, EventTooLarge):
+            return "event_too_large"
         if isinstance(exc, SecureLedgerRefused):
             if "header" in msg:
                 return "invalid_header"
@@ -310,8 +366,12 @@ class JsonlUnitMutationSink:
                 timing.bytes_read_for_sequence = head_tail.bytes_read
                 event["sequence"] = head_tail.next_sequence
 
-                line = json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n"
-                data = line.encode("utf-8")
+                data = encode_event_line(event)
+                maximum = maximum_supported_event_bytes()
+                if len(data) > maximum:
+                    raise EventTooLarge(
+                        attempted_bytes=len(data), maximum_bytes=maximum
+                    )
                 hooks.lseek(fd, 0, os.SEEK_END)
                 try:
                     write_all_fd(fd, data, hooks=self._hooks)
@@ -467,11 +527,33 @@ class JsonlUnitMutationSink:
             "complete_append_ms": self._health.complete_append_ms,
             "bytes_read_for_sequence": self._health.bytes_read_for_sequence,
             "health_persist_failed": self._health.health_persist_failed,
+            "last_oversize_attempted_bytes": self._health.last_oversize_attempted_bytes,
+            "last_oversize_max_bytes": self._health.last_oversize_max_bytes,
         }
 
     def telemetry(self) -> dict[str, Any]:
         """Return the current payload-free append telemetry for C6 evidence."""
         return dict(self._health_payload())
+
+    def _record_event_too_large(
+        self, *, attempted_bytes: int, maximum_bytes: int
+    ) -> None:
+        self._health.last_failure_at = datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        self._health.last_failure_class = "event_too_large"
+        self._health.consecutive_failures += 1
+        self._health.last_oversize_attempted_bytes = int(attempted_bytes)
+        self._health.last_oversize_max_bytes = int(maximum_bytes)
+        self._health.status = assess_shadow_status(
+            enabled=True,
+            health=self._health_payload(),
+            ledger_corrupt=False,
+        )
+        try:
+            self._persist_health()
+        except Exception:  # pylint: disable=broad-exception-caught
+            self._health.health_persist_failed = True
 
     def _record_failure(self, klass: str, *, event_id: str | None) -> None:
         self._health.last_failure_at = datetime.now(timezone.utc).strftime(

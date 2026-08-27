@@ -486,8 +486,51 @@ def _seed_event(sequence: int) -> bytes:
     return (json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
 
 
-def seed_synthetic_ledger(ledger_path: Path, event_count: int) -> None:
+
+
+def validate_seed_ledger_target(
+    ledger_path: Path,
+    *,
+    scratch_root: Path,
+    production_chroma_root: Path | None = None,
+    activation_artifacts: tuple[Path, ...] = (),
+) -> None:
+    """Refuse scratch seeding that aliases live Shadow/Chroma/activation paths."""
+    ledger = _absolute(ledger_path)
+    scratch = _absolute(scratch_root)
+    if not _is_same_or_under(ledger, scratch):
+        raise CanaryRefused(
+            "canary_live_path", "seed ledger must remain under scratch root"
+        )
+    if production_chroma_root is not None:
+        chroma = _absolute(production_chroma_root)
+        if _is_same_or_under(ledger, chroma) or _is_same_or_under(chroma, ledger):
+            raise CanaryRefused(
+                "canary_live_path", "seed ledger overlaps production Chroma"
+            )
+    for artifact in activation_artifacts:
+        target = _absolute(artifact)
+        if _is_same_or_under(ledger, target) or _is_same_or_under(target, ledger):
+            raise CanaryRefused(
+                "canary_live_path", "seed ledger overlaps activation artifact"
+            )
+
+
+def seed_synthetic_ledger(
+    ledger_path: Path,
+    event_count: int,
+    *,
+    scratch_root: Path,
+    production_chroma_root: Path | None = None,
+    activation_artifacts: tuple[Path, ...] = (),
+) -> None:
     """Bulk-seed a private ledger outside the timed path using synthetic records."""
+    validate_seed_ledger_target(
+        ledger_path,
+        scratch_root=scratch_root,
+        production_chroma_root=production_chroma_root,
+        activation_artifacts=activation_artifacts,
+    )
     if event_count < 0:
         raise CanaryRefused("canary_input_invalid", "seed event count must be non-negative")
     fd, dir_fd, _st = open_existing_shadow_ledger_fd(ledger_path)
@@ -523,7 +566,12 @@ def _prepare_validation_fixture(root: Path, event_count: int) -> tuple[Path, Pat
         ledger_identity=identity,
         starting_sequence=0,
     )
-    seed_synthetic_ledger(ledger_path, event_count)
+    seed_synthetic_ledger(
+        ledger_path,
+        event_count,
+        scratch_root=root,
+        production_chroma_root=None,
+    )
     atomic_write_json_private_secure(health_path, {"status": "canary"})
     store = ChromaStore(str(chroma))
     try:

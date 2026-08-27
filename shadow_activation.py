@@ -637,6 +637,50 @@ def _cleanup_identity(record: Mapping[str, Any]) -> None:
     path.unlink()
 
 
+
+
+def _read_shadow_health_failure_class(health_path: Path) -> str | None:
+    """Return last_failure_class or raise on unreadable health (fail closed)."""
+    if not health_path.is_file():
+        return None
+    try:
+        payload = json.loads(health_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ActivationRefused(
+            "health_unreadable", "shadow health unavailable for first-event gate"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise ActivationRefused(
+            "health_unreadable", "shadow health payload invalid"
+        )
+    klass = payload.get("last_failure_class")
+    return str(klass) if isinstance(klass, str) else None
+
+
+def _rollback_first_event_refusal(
+    layout: ActivationLayout,
+    journal: dict[str, Any],
+    h: ActivationHooks,
+    *,
+    refusal_code: str,
+) -> ActivationOutcome:
+    journal["state"] = ActivationState.ROLLBACK_PENDING.value
+    journal["first_event_refusal"] = refusal_code
+    _write_journal(layout.journal_path, journal, h)
+    rollback_activation(
+        config_path=layout.config_path,
+        activation_id=layout.activation_id,
+        writer_lock_path=layout.writer_lock_path,
+        journal_path=layout.journal_path,
+        mountinfo_text=h.mountinfo(),
+    )
+    return ActivationOutcome(
+        layout.activation_id,
+        ActivationState.DISABLED_AFTER_ROLLBACK.value,
+        False,
+        refusal_code=refusal_code,
+    )
+
 def _load_first_event(path: Path) -> tuple[dict[str, Any], dict[str, Any]] | None:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -1058,6 +1102,16 @@ def activate_shadow(  # pylint: disable=too-many-locals,too-many-statements,too-
 
         deadline = h.monotonic() + FIRST_EVENT_TIMEOUT_SECONDS
         while h.monotonic() < deadline:
+            try:
+                health_klass = _read_shadow_health_failure_class(layout.health_path)
+            except ActivationRefused as exc:
+                return _rollback_first_event_refusal(
+                    layout, journal, h, refusal_code=exc.code
+                )
+            if health_klass == "event_too_large":
+                return _rollback_first_event_refusal(
+                    layout, journal, h, refusal_code="first_event_too_large"
+                )
             try:
                 evidence = _verify_first_event(layout, revision=revision)
             except ActivationRefused as exc:

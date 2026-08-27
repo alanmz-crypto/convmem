@@ -157,6 +157,24 @@ class ChromaStore:
         sink = self.mutation_sink
         if sink is None or not event_id:
             return
+        companion = None
+        try:
+            from event_size_evidence import current_session_companion, session_in_window
+
+            companion = current_session_companion()
+        except Exception:  # pylint: disable=broad-exception-caught
+            companion = None
+        if companion is not None:
+            try:
+                companion.observe_mutation(
+                    operation=operation,
+                    document=document,
+                    metadata=metadata,
+                    deleted=deleted,
+                    in_window=session_in_window(),
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                companion.record_measurement_gap(reason="observe_failed")
         try:
             sink.observe(
                 event_id=event_id,

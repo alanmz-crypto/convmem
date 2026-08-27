@@ -191,7 +191,7 @@ def test_seeded_ledger_has_bounded_tail_sequence(tmp_path: Path) -> None:
     create_shadow_ledger_header(
         ledger, activation_id="canary", ledger_identity="identity", starting_sequence=0
     )
-    seed_synthetic_ledger(ledger, 3)
+    seed_synthetic_ledger(ledger, 3, scratch_root=root)
     fd, dir_fd, _st = open_existing_shadow_ledger_fd(ledger)
     try:
         tail = read_ledger_header_and_tail(fd)

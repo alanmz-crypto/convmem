@@ -115,7 +115,7 @@ removes the rebuild blocker for arming C7 or capturing an activation baseline.
 | Production activation manifest | Forbidden until activation transaction succeeds | Created only by `shadow-activate` under grant |
 | `docs/plans/ACTIVATION-shadow-ledger-phase0-runbook.md` | Executable operator doc not written | Codex/Cursor after Ryan authorizes |
 | C7 `census-report.json` | Prior armed census removed 2026-08-06; no replacement | Ryan grant → `writer-census-start` → 7 UTC days → report |
-| C6 event-size evidence artifact | Design handoff still open; no payload-free source locked | DeepSeek/Kiro design; optional small Execute slice |
+| C6 event-size evidence code | Corrective slice on branch `feat/2026-08-27-c6-corrective` (not merged) | Cursor under Ryan grant; **not operated** |
 | C6 canary PASS report | Requires C7 report + event-size evidence + Ryan C6 grant | Cursor under grant |
 | Fresh live `SHADOW-WRITER-CENSUS.json` | On-disk file is static binding at old SHA | Regenerate at deployed SHA immediately before activation |
 | Live config `enabled = true` | Requires successful `shadow-activate`, not hand-edits | Ryan grant + token |
@@ -137,7 +137,7 @@ removes the rebuild blocker for arming C7 or capturing an activation baseline.
 | C5 activation transaction code | Merged disabled (#131) | **DONE on `main`** | — |
 | C7 writer census code | Merged (#134) | **DONE on `main`** | — |
 | C7 operational evidence | 7-day census + report | **NOT DONE** | Prior census removed 2026-08-06; re-arm after Ryan grant |
-| C6 event-size evidence | Payload-free design | **NOT DONE** | Open handoff; blocks canary |
+| C6 event-size evidence code | Corrective implementation | **ON BRANCH** (awaiting review) | Independent review before canary |
 | C6 canary PASS | Performance matrix | **NOT DONE** | Requires C7 report + C6 evidence + Ryan grant |
 | Activation runbook | Executable operator doc | **NOT DONE** | Draft from corrective plan §10 |
 | Production activation grant | Live `shadow-activate` | **NOT DONE / HOLD** | Ryan grant + token after activation-ready |
@@ -188,7 +188,7 @@ shadowing without the full activation-ready path.
 
 **Activation-ready** (evidence + runbook; still no live enable):
 
-- [ ] Close C6 payload-free event-size evidence design ([handoff](../inter-model/DEEPSEEK-2026-07-30-C6-PAYLOAD-FREE-EVENT-SIZE-EVIDENCE-HANDOFF.md))
+- [x] C6 event-size evidence corrective code on branch `feat/2026-08-27-c6-corrective` (independent review pending)
 - [ ] Ryan grant → C7 `writer-census-start` → 7 complete UTC days → `writer-census-report` + independent SHA review
 - [ ] Ryan grant → `shadow-canary` PASS (requires C7 report + event-size evidence)
 - [ ] Regenerate `SHADOW-WRITER-CENSUS.json` at deployed SHA (live process/service scan)
@@ -294,3 +294,4 @@ had — updated to reflect reality after your work.
 |------|-----|--------|
 | 2026-08-09 | Crush | Initial arc brief; code + VERIFY on `main` via #122, activation HOLD/NOT READY, runbook missing |
 | 2026-08-09 | Cursor | Landscape hygiene: C1–C7 code on `main`; activation-ready ops gates (C7/C6 evidence, fresh census, runbook) |
+| 2026-08-27 | Cursor | C6 corrective slice: tail safety, payload-free companion, hermetic benchmark; Shadow still disabled |

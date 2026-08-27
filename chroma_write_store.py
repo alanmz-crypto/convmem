@@ -357,6 +357,10 @@ def shared_writer_lease(
     write_attestation(attestation, attest_dir=attest_dir)
     # C7's separate journal lock is taken only after this writer gate.  A
     # durable open failure refuses before the caller can mutate Chroma.
+    from event_size_evidence import (
+        EventSizeEvidenceRefused,
+        open_event_size_companion,
+    )
     from writer_census import record_writer_open
 
     try:
@@ -368,18 +372,30 @@ def shared_writer_lease(
         fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
         raise
+    if census_session is not None:
+        try:
+            open_event_size_companion(
+                census_dir=census_session.census_dir,
+                session_nonce=census_session.nonce,
+            )
+        except EventSizeEvidenceRefused:
+            clear_attestation(attestation.pid, attest_dir=attest_dir)
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
+            raise
     _writer_tls.held = _HeldWriterLease(path, attestation)
     try:
         yield attestation
     finally:
-        # Preserve a successful Chroma mutation if telemetry close fails; the
-        # unmatched durable open makes the eventual census report fail closed.
+        from event_size_evidence import finalize_session_companion
         from writer_census import WriterCensusRefused, record_writer_close
 
-        try:
-            record_writer_close(census_session)
-        except WriterCensusRefused:
-            pass
+        companion_ok = finalize_session_companion()
+        if companion_ok:
+            try:
+                record_writer_close(census_session)
+            except WriterCensusRefused:
+                pass
         clear_attestation(attestation.pid, attest_dir=attest_dir)
         try:
             fcntl.flock(fd, fcntl.LOCK_UN)
