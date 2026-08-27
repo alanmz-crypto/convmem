@@ -589,4 +589,121 @@ def run_benchmark_cell(
         **stats,
     )
 
+@dataclass(frozen=True)
+class HermeticBenchmarkReport:
+    """Raw overhead metrics only — no PASS thresholds."""
+
+    cells: tuple[BenchmarkCellResult, ...]
+    h_events_memory_exercise: int
+    modes_exercised: tuple[str, ...]
+
+
+def _noop_mutation() -> None:
+    return None
+
+
+def _synthetic_document(shape: str, *, target_bytes: int | None = None) -> str:
+    if shape == "empty":
+        return ""
+    if shape == "boundary":
+        from shadow_ledger import maximum_supported_event_bytes
+
+        target = target_bytes or maximum_supported_event_bytes()
+        low, high = 0, target * 2
+        while low < high:
+            mid = (low + high) // 2
+            size = measure_encoded_size(
+                operation="replace",
+                document="x" * mid,
+                metadata={},
+                deleted=False,
+            )
+            if size < target:
+                low = mid + 1
+            else:
+                high = mid
+        return "x" * low
+    return "x" * 1024
+
+
+def run_hermetic_overhead_benchmark(
+    *,
+    steady_samples: int = 1000,
+    warmup_samples: int = 100,
+    h_events: int = 50_000,
+) -> HermeticBenchmarkReport:
+    """Hermetic three-mode benchmark over synthetic structural shapes."""
+    from shadow_ledger import maximum_supported_event_bytes
+
+    shapes = ("empty", "small_1k", "boundary")
+    mutation_classes = ("create", "replace", "delete")
+    cells: list[BenchmarkCellResult] = []
+    for mode in ("control", "unarmed", "armed"):
+        for mutation in mutation_classes:
+            for shape in shapes:
+                if mode == "control":
+
+                    def op(m=mutation, s=shape) -> None:
+                        if s == "boundary":
+                            doc = _synthetic_document("boundary")
+                        elif s == "empty":
+                            doc = ""
+                        else:
+                            doc = _synthetic_document("small_1k")
+                        measure_encoded_size(
+                            operation=m,
+                            document=None if m == "delete" else doc,
+                            metadata={},
+                            deleted=m == "delete",
+                        )
+
+                elif mode == "unarmed":
+
+                    def op() -> None:
+                        reset_inertness_counters()
+                        assert current_session_companion() is None
+
+                else:
+
+                    def op() -> None:
+                        hist = BoundedSizeHistogram()
+                        for _ in range(10):
+                            hist.observe(
+                                measure_encoded_size(
+                                    operation="replace",
+                                    document="x" * 128,
+                                    metadata={},
+                                    deleted=False,
+                                )
+                            )
+
+                cells.append(
+                    run_benchmark_cell(
+                        mode=mode,
+                        mutation_class=mutation,
+                        structural_shape=shape,
+                        operation=op,
+                        sample_count=steady_samples,
+                        warmup_count=warmup_samples,
+                    )
+                )
+    hist = BoundedSizeHistogram()
+    for _ in range(h_events):
+        hist.observe(
+            measure_encoded_size(
+                operation="replace",
+                document="x",
+                metadata={},
+                deleted=False,
+            )
+        )
+    if hist.overflow and hist.total_observations < h_events:
+        raise EventSizeEvidenceRefused(
+            "benchmark_unbounded_memory", "histogram overflow under memory exercise"
+        )
+    return HermeticBenchmarkReport(
+        cells=tuple(cells),
+        h_events_memory_exercise=h_events,
+        modes_exercised=("control", "unarmed", "armed"),
+    )
 

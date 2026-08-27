@@ -685,3 +685,16 @@ def test_measure_encoded_size_hermetic(tmp_path: Path) -> None:
             assert measure_sentinel not in text
             assert META_SENTINEL not in text
     assert not (scratch / SUMMARY_NAME).exists()
+
+
+def test_hermetic_overhead_benchmark_completeness() -> None:
+    from event_size_evidence import run_hermetic_overhead_benchmark
+
+    report = run_hermetic_overhead_benchmark(
+        steady_samples=50,
+        warmup_samples=10,
+        h_events=50_000,
+    )
+    assert report.h_events_memory_exercise == 50_000
+    assert report.modes_exercised == ("control", "unarmed", "armed")
+    assert len(report.cells) == 3 * 3 * 3
