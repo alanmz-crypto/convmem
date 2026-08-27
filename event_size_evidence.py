@@ -14,6 +14,7 @@ import json
 import os
 import stat
 import threading
+import uuid
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -502,10 +503,69 @@ def measure_encoded_size(
     )
     return len(encode_event_line(event))
 
-
-# --- Hermetic benchmark harness (test-only entry; not reachable from CLI) ---
-
 BENCHMARK_MODES = frozenset({"control", "unarmed", "armed"})
+MUTATION_CLASSES = (
+    "create",
+    "replace",
+    "metadata_update",
+    "supersede",
+    "restore",
+    "delete",
+)
+SESSION_KINDS = ("context_long", "context_short", "manual_long", "manual_short")
+BENCHMARK_RUN_COUNT = 3
+MODE_ORDERS = (
+    ("control", "unarmed", "armed"),
+    ("unarmed", "armed", "control"),
+    ("armed", "control", "unarmed"),
+)
+DEFAULT_STEADY_SAMPLES = 1000
+DEFAULT_WARMUP_SAMPLES = 100
+DEFAULT_H_EVENTS = 50_000
+INVENTORY_PATH = Path(__file__).resolve().parent / "docs/plans/SHADOW-WRITER-CENSUS.json"
+
+# Justified matrix: every mutation class and every structural risk shape appears
+# at least once; not full Cartesian product.
+STRUCTURAL_SHAPE_MATRIX: tuple[tuple[str, str], ...] = (
+    ("create", "empty"),
+    ("create", "small_1k"),
+    ("create", "doc_heavy"),
+    ("create", "escape_heavy"),
+    ("create", "utf8_multibyte"),
+    ("create", "region_64k"),
+    ("create", "boundary_131071"),
+    ("replace", "small_1k"),
+    ("replace", "doc_heavy"),
+    ("replace", "meta_heavy"),
+    ("replace", "escape_heavy"),
+    ("replace", "utf8_multibyte"),
+    ("replace", "region_64k"),
+    ("replace", "boundary_131071"),
+    ("metadata_update", "empty"),
+    ("metadata_update", "small_1k"),
+    ("metadata_update", "meta_heavy"),
+    ("supersede", "small_1k"),
+    ("supersede", "meta_heavy"),
+    ("restore", "small_1k"),
+    ("delete", "small_1k"),
+)
+
+_benchmark_runtime = threading.local()
+
+
+def benchmark_control_bypass_active() -> bool:
+    return bool(getattr(_benchmark_runtime, "control_bypass", False))
+
+
+def benchmark_session_active() -> bool:
+    return bool(getattr(_benchmark_runtime, "session_active", False))
+
+
+@dataclass(frozen=True)
+class BenchmarkCellKey:
+    mutation_class: str
+    structural_shape: str
+    session_kind: str
 
 
 @dataclass(frozen=True)
@@ -513,6 +573,8 @@ class BenchmarkCellResult:
     mode: str
     mutation_class: str
     structural_shape: str
+    session_kind: str
+    run_index: int
     sample_count: int
     p50_ms: float
     p95_ms: float
@@ -522,6 +584,86 @@ class BenchmarkCellResult:
     stddev_ms: float
     throughput_ops_per_s: float
     errors: int
+    encoder_calls: int
+    bytes_processed: int
+    evidence_gaps: int
+    peak_rss_delta_kb: int
+
+
+@dataclass(frozen=True)
+class BenchmarkComparisonMetrics:
+    unarmed_vs_control_p99_delta_ms: float
+    unarmed_vs_control_p99_factor: float
+    unarmed_throughput_loss: float
+    armed_vs_unarmed_p99_delta_ms: float
+    armed_vs_unarmed_p99_factor: float
+    armed_max_delta_ms: float
+    short_session_close_p99_ms: float
+    short_session_close_max_ms: float
+    peak_rss_delta_kb: int
+
+
+@dataclass(frozen=True)
+class HermeticBenchmarkReport:
+    verdict: str
+    runs: int
+    cells: tuple[BenchmarkCellResult, ...]
+    comparisons: tuple[BenchmarkComparisonMetrics, ...]
+    h_events_memory_exercise: int
+    memory_exercise_overflow: int
+    memory_exercise_peak_rss_delta_kb: int
+    concurrency_level: int
+    concurrency_errors: int
+    mode_orders: tuple[tuple[str, ...], ...]
+    payloads: str = "none"
+
+
+@dataclass(frozen=True)
+class BenchmarkFixture:
+    root: Path
+    chroma_dir: Path
+    config_path: Path
+    census_armed_dir: Path
+    census_unarmed_dir: Path
+    gate_path: Path
+    attest_dir: Path
+
+
+@dataclass(frozen=True)
+class WorkloadSpec:
+    mutation_class: str
+    structural_shape: str
+    unit_id: str
+    source_path: str
+    document: str | None
+    metadata: dict[str, Any]
+    embedding: list[float]
+
+
+def conservative_writer_concurrency_from_inventory(
+    inventory_path: Path | None = None,
+) -> int:
+    """Derive conservative concurrent writers from static writer census binding."""
+    path = inventory_path or INVENTORY_PATH
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise EventSizeEvidenceRefused(
+            "benchmark_inventory_unreadable", "writer inventory unavailable"
+        ) from exc
+    units = payload.get("systemd_units") if isinstance(payload, dict) else None
+    if not isinstance(units, list):
+        raise EventSizeEvidenceRefused(
+            "benchmark_inventory_invalid", "writer inventory lacks systemd_units"
+        )
+    writers = {
+        name
+        for name in units
+        if isinstance(name, str) and ("watch" in name or "refine" in name)
+    }
+    if len(writers) < 2:
+        return 1
+    return 2
 
 
 def _percentile(values: list[float], pct: float) -> float:
@@ -557,6 +699,601 @@ def _bench_stats(samples_ms: list[float]) -> dict[str, float]:
     }
 
 
+def _peak_rss_kb() -> int:
+    import resource
+
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    # Linux reports kilobytes; other platforms may differ — store raw value.
+    return int(usage.ru_maxrss)
+
+
+def _shape_document(shape: str, *, mutation_class: str) -> str | None:
+    if mutation_class == "delete":
+        return "deleted-document"
+    if shape == "empty":
+        return ""
+    if shape == "small_1k":
+        return "x" * 1024
+    if shape == "doc_heavy":
+        return "d" * 16_384
+    if shape == "meta_heavy":
+        return "metadata-shape-body"
+    if shape == "escape_heavy":
+        return 'quote"\\backslash\x01control'
+    if shape == "utf8_multibyte":
+        return "日本語テスト🔒"
+    if shape == "region_64k":
+        return "r" * 60_000
+    if shape == "boundary_131071":
+        from shadow_ledger import maximum_supported_event_bytes
+
+        target = maximum_supported_event_bytes()
+        low, high = 0, target * 2
+        while low < high:
+            mid = (low + high) // 2
+            size = measure_encoded_size(
+                operation="replace",
+                document="b" * mid,
+                metadata={},
+                deleted=False,
+            )
+            if size < target:
+                low = mid + 1
+            else:
+                high = mid
+        return "b" * low
+    raise EventSizeEvidenceRefused("benchmark_shape_invalid", f"unknown shape {shape}")
+
+
+def _shape_metadata(shape: str, *, unit_id: str, source_path: str) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "id": unit_id,
+        "source_path": source_path,
+        "kind": "benchmark",
+    }
+    if shape == "meta_heavy":
+        base.update({f"meta_{i}": "m" * 256 for i in range(32)})
+    if shape == "empty":
+        base = {"id": unit_id, "source_path": source_path, "kind": "benchmark"}
+    return base
+
+
+def build_workload_spec(
+    *, mutation_class: str, structural_shape: str, seed: int
+) -> WorkloadSpec:
+    unit_id = f"bench-{mutation_class}-{structural_shape}-{seed}"
+    source_path = f"/bench/source/{seed}"
+    document = _shape_document(structural_shape, mutation_class=mutation_class)
+    metadata = _shape_metadata(
+        structural_shape, unit_id=unit_id, source_path=source_path
+    )
+    embedding = [0.01 * (i % 8) for i in range(8)]
+    return WorkloadSpec(
+        mutation_class=mutation_class,
+        structural_shape=structural_shape,
+        unit_id=unit_id,
+        source_path=source_path,
+        document=document,
+        metadata=metadata,
+        embedding=embedding,
+    )
+
+
+def _write_benchmark_config(config_path: Path, chroma_dir: Path) -> None:
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        "[index]\n" + f'chroma_dir = {json.dumps(str(chroma_dir))}\n',
+        encoding="utf-8",
+    )
+
+
+def _arm_census_header(census_dir: Path, *, armed: bool, chroma_dir: Path, gate_path: Path) -> None:
+    from datetime import timedelta
+    from writer_census import HEADER_NAME, _create_events, _write_new_json
+
+    from chroma_write_store import WRITER_GATE_PROTOCOL_VERSION, current_code_revision
+
+    directory = _private_dir(census_dir, create=True)
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(hours=1)
+    end = now + timedelta(days=7)
+    header = {
+        "schema_version": 1,
+        "census_id": f"bench-{uuid.uuid4().hex}",
+        "created_at_utc": _utc_stamp(now),
+        "window_start_utc": _utc_stamp(start),
+        "window_end_utc": _utc_stamp(end),
+        "code_revision": current_code_revision(),
+        "writer_gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
+        "chroma_root_identity": hashlib.sha256(str(chroma_dir.resolve()).encode()).hexdigest(),
+        "writer_gate_identity": hashlib.sha256(str(gate_path.resolve()).encode()).hexdigest(),
+        "event_size_evidence_armed": bool(armed),
+    }
+    if (directory / HEADER_NAME).exists():
+        (directory / HEADER_NAME).unlink()
+    if (directory / "session-events.jsonl").exists():
+        (directory / "session-events.jsonl").unlink()
+    _write_new_json(directory, HEADER_NAME, header)
+    _create_events(directory)
+
+
+def create_benchmark_fixture(root: Path) -> BenchmarkFixture:
+    chroma_dir = root / "chroma"
+    chroma_dir.mkdir(parents=True, exist_ok=True)
+    config_path = root / "config.toml"
+    _write_benchmark_config(config_path, chroma_dir)
+    gate_path = root / "gate.lock"
+    attest_dir = root / "attest"
+    attest_dir.mkdir(parents=True, exist_ok=True)
+    census_armed = root / "census-armed"
+    census_unarmed = root / "census-unarmed"
+    _arm_census_header(census_armed, armed=True, chroma_dir=chroma_dir, gate_path=gate_path)
+    _arm_census_header(
+        census_unarmed, armed=False, chroma_dir=chroma_dir, gate_path=gate_path
+    )
+    return BenchmarkFixture(
+        root=root,
+        chroma_dir=chroma_dir,
+        config_path=config_path,
+        census_armed_dir=census_armed,
+        census_unarmed_dir=census_unarmed,
+        gate_path=gate_path,
+        attest_dir=attest_dir,
+    )
+
+
+def _census_dir_for_mode(fixture: BenchmarkFixture, mode: str) -> Path | None:
+    if mode == "unarmed":
+        return fixture.census_unarmed_dir
+    if mode in {"control", "armed"}:
+        return fixture.census_armed_dir
+    raise EventSizeEvidenceRefused("benchmark_mode_invalid", mode)
+
+
+
+
+def _with_production_session(
+    fixture: BenchmarkFixture,
+    *,
+    mode: str,
+    session_kind: str,
+    mutate: Callable[[Any], None],
+) -> None:
+    from chroma_write_store import (
+        open_production_write_store,
+        production_chroma_write_session,
+    )
+
+    census_dir = _census_dir_for_mode(fixture, mode)
+    ctx: Any = benchmark_control_bypass() if mode == "control" else _null_context()
+    with ctx:
+        if session_kind in {"context_short", "context_long"}:
+            with production_chroma_write_session(
+                fixture.config_path,
+                lock_path=fixture.gate_path,
+                attest_dir=fixture.attest_dir,
+                census_dir=census_dir,
+                entrypoint="production.writer",
+            ) as session:
+                mutate(session.store)
+            return
+        if session_kind in {"manual_short", "manual_long"}:
+            session = open_production_write_store(
+                fixture.config_path,
+                lock_path=fixture.gate_path,
+                attest_dir=fixture.attest_dir,
+                census_dir=census_dir,
+                entrypoint="production.writer",
+            )
+            try:
+                mutate(session.store)
+            finally:
+                session.store.close()
+            return
+    raise EventSizeEvidenceRefused("benchmark_session_invalid", session_kind)
+
+def _prepare_entity(store: Any, spec: WorkloadSpec) -> None:
+    existing = store.get_unit(spec.unit_id)
+    if spec.mutation_class == "create":
+        if existing is None:
+            store.add_unit(
+                spec.unit_id,
+                spec.document or "",
+                spec.embedding,
+                spec.metadata,
+            )
+        return
+    if existing is None:
+        store.add_unit(
+            spec.unit_id,
+            spec.document or "seed",
+            spec.embedding,
+            dict(spec.metadata),
+        )
+    if spec.mutation_class == "supersede":
+        if not (existing.get("metadata") or {}).get("superseded"):
+            store.supersede_units_for_source(
+                spec.source_path,
+                superseded_by="bench",
+                candidate_ids={spec.unit_id},
+            )
+    if spec.mutation_class == "restore":
+        meta = dict((existing or {}).get("metadata") or spec.metadata)
+        meta["superseded"] = True
+        meta["superseded_by"] = "bench"
+        store.update_unit_metadata(spec.unit_id, meta)
+
+
+def _execute_mutation(store: Any, spec: WorkloadSpec) -> int:
+    before = inertness_snapshot()
+    if spec.mutation_class == "create":
+        if store.get_unit(spec.unit_id) is None:
+            store.add_unit(
+                spec.unit_id,
+                spec.document or "",
+                spec.embedding,
+                spec.metadata,
+            )
+    elif spec.mutation_class == "replace":
+        _prepare_entity(store, spec)
+        store.update_unit(
+            spec.unit_id,
+            spec.document or "replaced",
+            spec.embedding,
+            dict(spec.metadata),
+        )
+    elif spec.mutation_class == "metadata_update":
+        _prepare_entity(store, spec)
+        meta = dict(spec.metadata)
+        meta["bench_tag"] = "updated"
+        store.update_unit_metadata(spec.unit_id, meta)
+    elif spec.mutation_class == "supersede":
+        _prepare_entity(store, spec)
+        store.supersede_units_for_source(
+            spec.source_path,
+            superseded_by="bench",
+            candidate_ids={spec.unit_id},
+        )
+    elif spec.mutation_class == "restore":
+        _prepare_entity(store, spec)
+        meta = dict((store.get_unit(spec.unit_id) or {}).get("metadata") or spec.metadata)
+        meta.pop("superseded", None)
+        meta.pop("superseded_by", None)
+        store.update_unit_metadata(spec.unit_id, meta)
+    elif spec.mutation_class == "delete":
+        _prepare_entity(store, spec)
+        store.delete_units_for_source(
+            spec.source_path,
+            candidate_ids={spec.unit_id},
+        )
+    else:
+        raise EventSizeEvidenceRefused(
+            "benchmark_mutation_invalid", spec.mutation_class
+        )
+    after = inertness_snapshot()
+    gaps = after["retained_observations"] - before["retained_observations"]
+    if gaps < 0:
+        gaps = 0
+    return gaps
+
+
+def _production_mutation_once(
+    fixture: BenchmarkFixture,
+    *,
+    mode: str,
+    spec: WorkloadSpec,
+    session_kind: str,
+) -> None:
+    _with_production_session(
+        fixture,
+        mode=mode,
+        session_kind=session_kind,
+        mutate=lambda store: _execute_mutation(store, spec),
+    )
+
+
+class _null_context:
+    def __enter__(self) -> None:
+        return None
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+
+class benchmark_control_bypass:
+    """Hermetic/test-only companion bypass; only valid during benchmark sessions."""
+
+    def __enter__(self) -> None:
+        if not benchmark_session_active():
+            raise EventSizeEvidenceRefused(
+                "benchmark_control_bypass_forbidden",
+                "control bypass is unreachable outside benchmark harness",
+            )
+        _benchmark_runtime.control_bypass = True
+
+    def __exit__(self, *args: object) -> None:
+        _benchmark_runtime.control_bypass = False
+
+
+def _run_mode_samples(
+    fixture: BenchmarkFixture,
+    *,
+    mode: str,
+    spec: WorkloadSpec,
+    session_kind: str,
+    sample_count: int,
+    warmup_count: int,
+) -> BenchmarkCellResult:
+    if mode == "control":
+        warmup_ctx: Any = benchmark_control_bypass()
+        sample_ctx: Any = benchmark_control_bypass()
+    else:
+        warmup_ctx = _null_context()
+        sample_ctx = _null_context()
+
+    with warmup_ctx:
+        for i in range(warmup_count):
+            warm_spec = build_workload_spec(
+                mutation_class=spec.mutation_class,
+                structural_shape=spec.structural_shape,
+                seed=10_000 + i,
+            )
+            _production_mutation_once(
+                fixture, mode=mode, spec=warm_spec, session_kind=session_kind
+            )
+
+    samples: list[float] = []
+    errors = 0
+    encoder_delta = 0
+    gaps = 0
+    rss_before = _peak_rss_kb()
+    with sample_ctx:
+        for i in range(sample_count):
+            sample_spec = build_workload_spec(
+                mutation_class=spec.mutation_class,
+                structural_shape=spec.structural_shape,
+                seed=20_000 + i,
+            )
+            enc_before = inertness_snapshot()["encoder_calls"]
+            gap_before = inertness_snapshot()["retained_observations"]
+            start = time.perf_counter()
+            try:
+                _production_mutation_once(
+                    fixture,
+                    mode=mode,
+                    spec=sample_spec,
+                    session_kind=session_kind,
+                )
+            except Exception:
+                errors += 1
+            samples.append((time.perf_counter() - start) * 1000.0)
+            enc_after = inertness_snapshot()["encoder_calls"]
+            gap_after = inertness_snapshot()["retained_observations"]
+            encoder_delta += max(0, enc_after - enc_before)
+            gaps += max(0, gap_after - gap_before)
+    bytes_total = measure_encoded_size(
+        operation=spec.mutation_class,
+        document=spec.document,
+        metadata=spec.metadata,
+        deleted=spec.mutation_class == "delete",
+    ) * max(1, sample_count)
+    stats = _bench_stats(samples)
+    return BenchmarkCellResult(
+        mode=mode,
+        mutation_class=spec.mutation_class,
+        structural_shape=spec.structural_shape,
+        session_kind=session_kind,
+        run_index=-1,
+        sample_count=sample_count,
+        errors=errors,
+        encoder_calls=encoder_delta,
+        bytes_processed=bytes_total,
+        evidence_gaps=gaps,
+        peak_rss_delta_kb=max(0, _peak_rss_kb() - rss_before),
+        **stats,
+    )
+
+
+def _compare_modes(
+    control: BenchmarkCellResult,
+    unarmed: BenchmarkCellResult,
+    armed: BenchmarkCellResult,
+) -> BenchmarkComparisonMetrics:
+    def factor(base: float, other: float) -> float:
+        if base <= 0:
+            return 0.0
+        return other / base
+
+    throughput_loss = 0.0
+    if control.throughput_ops_per_s > 0:
+        throughput_loss = 1.0 - (unarmed.throughput_ops_per_s / control.throughput_ops_per_s)
+    return BenchmarkComparisonMetrics(
+        unarmed_vs_control_p99_delta_ms=unarmed.p99_ms - control.p99_ms,
+        unarmed_vs_control_p99_factor=factor(control.p99_ms, unarmed.p99_ms),
+        unarmed_throughput_loss=throughput_loss,
+        armed_vs_unarmed_p99_delta_ms=armed.p99_ms - unarmed.p99_ms,
+        armed_vs_unarmed_p99_factor=factor(unarmed.p99_ms, armed.p99_ms),
+        armed_max_delta_ms=armed.max_ms - unarmed.max_ms,
+        short_session_close_p99_ms=unarmed.p99_ms,
+        short_session_close_max_ms=unarmed.max_ms,
+        peak_rss_delta_kb=max(
+            control.peak_rss_delta_kb,
+            unarmed.peak_rss_delta_kb,
+            armed.peak_rss_delta_kb,
+        ),
+    )
+
+
+def run_memory_exercise(
+    fixture: BenchmarkFixture,
+    *,
+    h_events: int = DEFAULT_H_EVENTS,
+) -> tuple[int, int, int]:
+    """Armed long session through actual companion lifecycle."""
+    from chroma_write_store import production_chroma_write_session
+
+    rss_before = _peak_rss_kb()
+    with production_chroma_write_session(
+        fixture.config_path,
+        lock_path=fixture.gate_path,
+        attest_dir=fixture.attest_dir,
+        census_dir=fixture.census_armed_dir,
+        entrypoint="production.writer",
+    ) as session:
+        companion = current_session_companion()
+        if companion is None:
+            raise EventSizeEvidenceRefused(
+                "benchmark_companion_missing", "armed memory exercise requires companion"
+            )
+        for i in range(h_events):
+            spec = build_workload_spec(
+                mutation_class="replace",
+                structural_shape="small_1k",
+                seed=30_000 + i,
+            )
+            _execute_mutation(session.store, spec)
+        overflow = companion.histogram.overflow
+        retained = companion.histogram.total_observations
+    if retained > MAX_RETAINED_OBSERVATIONS:
+        raise EventSizeEvidenceRefused(
+            "benchmark_unbounded_memory", "companion retained observations exceeded cap"
+        )
+    return overflow, retained, max(0, _peak_rss_kb() - rss_before)
+
+
+def _concurrency_worker(payload: dict[str, str], out_queue: Any) -> None:
+    import chromadb  # noqa: F401
+
+    _benchmark_runtime.session_active = True
+
+    fixture = create_benchmark_fixture(Path(payload["root"]))
+    spec = build_workload_spec(
+        mutation_class="create",
+        structural_shape="small_1k",
+        seed=int(payload["seed"]),
+    )
+    start = time.perf_counter()
+    error = None
+    try:
+        _production_mutation_once(
+            fixture,
+            mode=payload["mode"],
+            spec=spec,
+            session_kind="context_short",
+        )
+    except Exception as exc:  # pragma: no cover - reported via queue
+        error = type(exc).__name__
+    elapsed_ms = (time.perf_counter() - start) * 1000.0
+    out_queue.put({"elapsed_ms": elapsed_ms, "error": error})
+
+
+def run_multiprocess_concurrency_cell(
+    fixture: BenchmarkFixture,
+    *,
+    concurrency: int,
+    mode: str = "unarmed",
+) -> tuple[int, list[dict[str, Any]]]:
+    import multiprocessing
+
+    ctx = multiprocessing.get_context("spawn")
+    out: Any = ctx.Queue()
+    processes = []
+    for index in range(concurrency):
+        child_root = fixture.root / f"mp-{index}"
+        child_root.mkdir(parents=True, exist_ok=True)
+        child_fixture = create_benchmark_fixture(child_root)
+        payload = {
+            "root": str(child_root),
+            "seed": str(40_000 + index),
+            "mode": mode,
+        }
+        proc = ctx.Process(target=_concurrency_worker, args=(payload, out))
+        proc.start()
+        processes.append(proc)
+    results: list[dict[str, Any]] = []
+    for _ in processes:
+        results.append(out.get(timeout=120))
+    for proc in processes:
+        proc.join(timeout=30)
+    errors = sum(1 for item in results if item.get("error"))
+    return errors, results
+
+
+def run_hermetic_overhead_benchmark(
+    *,
+    root: Path,
+    steady_samples: int = DEFAULT_STEADY_SAMPLES,
+    warmup_samples: int = DEFAULT_WARMUP_SAMPLES,
+    h_events: int = DEFAULT_H_EVENTS,
+    inventory_path: Path | None = None,
+    matrix: tuple[tuple[str, str], ...] | None = None,
+    session_kinds: tuple[str, ...] | None = None,
+    run_count: int = BENCHMARK_RUN_COUNT,
+) -> HermeticBenchmarkReport:
+    """Execute three independent counterbalanced runs; verdict is MEASURED only."""
+    pytest = __import__("pytest")
+    pytest.importorskip("chromadb")
+
+    _benchmark_runtime.session_active = True
+    try:
+        concurrency = conservative_writer_concurrency_from_inventory(inventory_path)
+        all_cells: list[BenchmarkCellResult] = []
+        comparisons: list[BenchmarkComparisonMetrics] = []
+        shape_matrix = matrix or STRUCTURAL_SHAPE_MATRIX
+        kinds = session_kinds or ("context_short", "context_long", "manual_short", "manual_long")
+        for run_index in range(run_count):
+            fixture = create_benchmark_fixture(root / f"run-{run_index}")
+            mode_order = MODE_ORDERS[run_index % len(MODE_ORDERS)]
+            for mutation_class, structural_shape in shape_matrix:
+                for session_kind in kinds:
+                    spec = build_workload_spec(
+                        mutation_class=mutation_class,
+                        structural_shape=structural_shape,
+                        seed=run_index,
+                    )
+                    mode_results: dict[str, BenchmarkCellResult] = {}
+                    for mode in mode_order:
+                        result = _run_mode_samples(
+                            fixture,
+                            mode=mode,
+                            spec=spec,
+                            session_kind=session_kind,
+                            sample_count=steady_samples,
+                            warmup_count=warmup_samples,
+                        )
+                        mode_results[mode] = BenchmarkCellResult(
+                            **{**result.__dict__, "run_index": run_index}
+                        )
+                    comparisons.append(
+                        _compare_modes(
+                            mode_results["control"],
+                            mode_results["unarmed"],
+                            mode_results["armed"],
+                        )
+                    )
+                    all_cells.extend(mode_results.values())
+        mem_fixture = create_benchmark_fixture(root / "memory")
+        overflow, _retained, mem_rss = run_memory_exercise(mem_fixture, h_events=h_events)
+        mp_fixture = create_benchmark_fixture(root / "concurrency")
+        mp_errors, _mp_results = run_multiprocess_concurrency_cell(
+            mp_fixture, concurrency=concurrency, mode="unarmed"
+        )
+        return HermeticBenchmarkReport(
+            verdict="MEASURED",
+            runs=run_count,
+            cells=tuple(all_cells),
+            comparisons=tuple(comparisons),
+            h_events_memory_exercise=h_events,
+            memory_exercise_overflow=overflow,
+            memory_exercise_peak_rss_delta_kb=mem_rss,
+            concurrency_level=concurrency,
+            concurrency_errors=mp_errors,
+            mode_orders=MODE_ORDERS,
+        )
+    finally:
+        _benchmark_runtime.session_active = False
+        _benchmark_runtime.control_bypass = False
+
 def run_benchmark_cell(
     *,
     mode: str,
@@ -566,6 +1303,7 @@ def run_benchmark_cell(
     sample_count: int = 1000,
     warmup_count: int = 100,
 ) -> BenchmarkCellResult:
+    """Low-level timing helper for hermetic micro-benchmarks."""
     if mode not in BENCHMARK_MODES:
         raise EventSizeEvidenceRefused("benchmark_mode_invalid", f"unknown mode {mode}")
     for _ in range(warmup_count):
@@ -584,126 +1322,14 @@ def run_benchmark_cell(
         mode=mode,
         mutation_class=mutation_class,
         structural_shape=structural_shape,
+        session_kind="micro",
+        run_index=0,
         sample_count=sample_count,
         errors=errors,
+        encoder_calls=0,
+        bytes_processed=0,
+        evidence_gaps=0,
+        peak_rss_delta_kb=0,
         **stats,
-    )
-
-@dataclass(frozen=True)
-class HermeticBenchmarkReport:
-    """Raw overhead metrics only — no PASS thresholds."""
-
-    cells: tuple[BenchmarkCellResult, ...]
-    h_events_memory_exercise: int
-    modes_exercised: tuple[str, ...]
-
-
-def _noop_mutation() -> None:
-    return None
-
-
-def _synthetic_document(shape: str, *, target_bytes: int | None = None) -> str:
-    if shape == "empty":
-        return ""
-    if shape == "boundary":
-        from shadow_ledger import maximum_supported_event_bytes
-
-        target = target_bytes or maximum_supported_event_bytes()
-        low, high = 0, target * 2
-        while low < high:
-            mid = (low + high) // 2
-            size = measure_encoded_size(
-                operation="replace",
-                document="x" * mid,
-                metadata={},
-                deleted=False,
-            )
-            if size < target:
-                low = mid + 1
-            else:
-                high = mid
-        return "x" * low
-    return "x" * 1024
-
-
-def run_hermetic_overhead_benchmark(
-    *,
-    steady_samples: int = 1000,
-    warmup_samples: int = 100,
-    h_events: int = 50_000,
-) -> HermeticBenchmarkReport:
-    """Hermetic three-mode benchmark over synthetic structural shapes."""
-    from shadow_ledger import maximum_supported_event_bytes
-
-    shapes = ("empty", "small_1k", "boundary")
-    mutation_classes = ("create", "replace", "delete")
-    cells: list[BenchmarkCellResult] = []
-    for mode in ("control", "unarmed", "armed"):
-        for mutation in mutation_classes:
-            for shape in shapes:
-                if mode == "control":
-
-                    def op(m=mutation, s=shape) -> None:
-                        if s == "boundary":
-                            doc = _synthetic_document("boundary")
-                        elif s == "empty":
-                            doc = ""
-                        else:
-                            doc = _synthetic_document("small_1k")
-                        measure_encoded_size(
-                            operation=m,
-                            document=None if m == "delete" else doc,
-                            metadata={},
-                            deleted=m == "delete",
-                        )
-
-                elif mode == "unarmed":
-
-                    def op() -> None:
-                        reset_inertness_counters()
-                        assert current_session_companion() is None
-
-                else:
-
-                    def op() -> None:
-                        hist = BoundedSizeHistogram()
-                        for _ in range(10):
-                            hist.observe(
-                                measure_encoded_size(
-                                    operation="replace",
-                                    document="x" * 128,
-                                    metadata={},
-                                    deleted=False,
-                                )
-                            )
-
-                cells.append(
-                    run_benchmark_cell(
-                        mode=mode,
-                        mutation_class=mutation,
-                        structural_shape=shape,
-                        operation=op,
-                        sample_count=steady_samples,
-                        warmup_count=warmup_samples,
-                    )
-                )
-    hist = BoundedSizeHistogram()
-    for _ in range(h_events):
-        hist.observe(
-            measure_encoded_size(
-                operation="replace",
-                document="x",
-                metadata={},
-                deleted=False,
-            )
-        )
-    if hist.overflow and hist.total_observations < h_events:
-        raise EventSizeEvidenceRefused(
-            "benchmark_unbounded_memory", "histogram overflow under memory exercise"
-        )
-    return HermeticBenchmarkReport(
-        cells=tuple(cells),
-        h_events_memory_exercise=h_events,
-        modes_exercised=("control", "unarmed", "armed"),
     )
 

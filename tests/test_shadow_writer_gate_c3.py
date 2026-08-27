@@ -75,7 +75,7 @@ def test_fourteen_production_writer_sites_migrated() -> None:
     total = len(inv["production_chroma_write_session_call_sites"]) + len(
         inv["open_production_write_store_call_sites"]
     )
-    assert total == 14
+    assert total == 17
     assert inv["must_use_factory_count"] == 0
 
 

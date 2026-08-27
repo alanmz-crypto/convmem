@@ -17,12 +17,26 @@ from event_size_evidence import (
     EventSizeBinding,
     EventSizeEvidenceRefused,
     MAX_RETAINED_OBSERVATIONS,
+    MUTATION_CLASSES,
+    STRUCTURAL_SHAPE_MATRIX,
+    _benchmark_runtime,
+    _execute_mutation,
+    _production_mutation_once,
+    _run_mode_samples,
+    benchmark_control_bypass,
+    benchmark_session_active,
+    build_workload_spec,
+    conservative_writer_concurrency_from_inventory,
+    create_benchmark_fixture,
     finalize_session_companion,
     inertness_snapshot,
     is_companion_armed,
     open_event_size_companion,
     reset_inertness_counters,
     run_benchmark_cell,
+    run_hermetic_overhead_benchmark,
+    run_memory_exercise,
+    run_multiprocess_concurrency_cell,
     validate_binding_against_report,
 )
 from shadow_authorization import ensure_private_directory
@@ -687,14 +701,155 @@ def test_measure_encoded_size_hermetic(tmp_path: Path) -> None:
     assert not (scratch / SUMMARY_NAME).exists()
 
 
-def test_hermetic_overhead_benchmark_completeness() -> None:
-    from event_size_evidence import run_hermetic_overhead_benchmark
+def test_hermetic_overhead_benchmark_mini(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
 
     report = run_hermetic_overhead_benchmark(
-        steady_samples=50,
-        warmup_samples=10,
-        h_events=50_000,
+        root=tmp_path / "bench",
+        steady_samples=2,
+        warmup_samples=1,
+        h_events=100,
+        matrix=(("create", "small_1k"), ("delete", "small_1k")),
+        session_kinds=("context_short", "manual_short"),
+        run_count=3,
     )
-    assert report.h_events_memory_exercise == 50_000
-    assert report.modes_exercised == ("control", "unarmed", "armed")
-    assert len(report.cells) == 3 * 3 * 3
+    assert report.verdict == "MEASURED"
+    assert report.runs == 3
+    assert len(report.comparisons) > 0
+    assert report.concurrency_level >= 1
+    assert conservative_writer_concurrency_from_inventory() >= 1
+
+
+def test_structural_shape_matrix_covers_all_operations() -> None:
+    assert set(m for m, _ in STRUCTURAL_SHAPE_MATRIX) == set(MUTATION_CLASSES)
+
+
+def test_all_six_operations_use_production_emit_path(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    fixture = create_benchmark_fixture(tmp_path / "armed")
+    _benchmark_runtime.session_active = True
+    try:
+        for mutation_class in MUTATION_CLASSES:
+            spec = build_workload_spec(
+                mutation_class=mutation_class,
+                structural_shape="small_1k",
+                seed=42,
+            )
+            result = _run_mode_samples(
+                fixture,
+                mode="armed",
+                spec=spec,
+                session_kind="context_short",
+                sample_count=1,
+                warmup_count=0,
+            )
+            assert result.encoder_calls > 0, mutation_class
+    finally:
+        _benchmark_runtime.session_active = False
+        _benchmark_runtime.control_bypass = False
+
+
+def test_control_bypass_unreachable_outside_benchmark() -> None:
+    assert not benchmark_session_active()
+    with pytest.raises(
+        EventSizeEvidenceRefused, match="benchmark_control_bypass_forbidden"
+    ):
+        with benchmark_control_bypass():
+            pass
+
+
+def test_three_modes_share_same_workload_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("chromadb")
+    fixture = create_benchmark_fixture(tmp_path / "modes")
+    spec = build_workload_spec(
+        mutation_class="replace",
+        structural_shape="small_1k",
+        seed=1,
+    )
+    calls: list[tuple[str, str, str]] = []
+    real_execute = _execute_mutation
+    current_mode = {"value": ""}
+
+    def tracked_execute(store: Any, workload: Any) -> int:
+        calls.append((current_mode["value"], workload.mutation_class, workload.structural_shape))
+        return real_execute(store, workload)
+
+    monkeypatch.setattr("event_size_evidence._execute_mutation", tracked_execute)
+    _benchmark_runtime.session_active = True
+    try:
+        for mode in ("control", "unarmed", "armed"):
+            current_mode["value"] = mode
+            reset_inertness_counters()
+            _production_mutation_once(
+                fixture,
+                mode=mode,
+                spec=spec,
+                session_kind="context_short",
+            )
+    finally:
+        _benchmark_runtime.session_active = False
+        _benchmark_runtime.control_bypass = False
+
+    assert len(calls) == 3
+    assert all(
+        mutation_class == spec.mutation_class and shape == spec.structural_shape
+        for _mode, mutation_class, shape in calls
+    )
+
+
+def test_multiprocess_writer_lease_concurrency(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    fixture = create_benchmark_fixture(tmp_path / "mp")
+    errors, _results = run_multiprocess_concurrency_cell(fixture, concurrency=2)
+    assert errors == 0
+
+
+def test_long_and_short_session_kinds_exercised(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    report = run_hermetic_overhead_benchmark(
+        root=tmp_path / "sessions",
+        steady_samples=1,
+        warmup_samples=0,
+        h_events=10,
+        matrix=(("create", "small_1k"),),
+        session_kinds=("context_long", "manual_short"),
+        run_count=1,
+    )
+    kinds = {cell.session_kind for cell in report.cells}
+    assert "context_long" in kinds
+    assert "manual_short" in kinds
+
+
+def test_unarmed_hot_path_zero_encoder_calls(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    fixture = create_benchmark_fixture(tmp_path / "unarmed")
+    spec = build_workload_spec(
+        mutation_class="replace",
+        structural_shape="small_1k",
+        seed=1,
+    )
+    _benchmark_runtime.session_active = True
+    try:
+        result = _run_mode_samples(
+            fixture,
+            mode="unarmed",
+            spec=spec,
+            session_kind="context_short",
+            sample_count=3,
+            warmup_count=0,
+        )
+        assert result.encoder_calls == 0
+    finally:
+        _benchmark_runtime.session_active = False
+        _benchmark_runtime.control_bypass = False
+
+
+@pytest.mark.slow
+def test_memory_exercise_50000_bounded(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    fixture = create_benchmark_fixture(tmp_path / "memory")
+    overflow, retained, _rss = run_memory_exercise(fixture, h_events=50_000)
+    assert retained <= MAX_RETAINED_OBSERVATIONS
+    assert overflow >= 0
