@@ -86,10 +86,12 @@ class FileGenerationStore:
         *,
         active_generations: Callable[[], Mapping[str, str]],
         previous_generations: Callable[[], Mapping[str, str]] | None = None,
+        retained_baselines: Callable[[], Mapping[str, set[str]]] | None = None,
     ) -> None:
         self.chroma_dir = str(Path(chroma_dir))
         self._active_generations = active_generations
         self._previous_generations = previous_generations or (dict)
+        self._retained_baselines = retained_baselines or (dict)
         # No mutation sink: candidate staging must emit no authoritative Shadow
         # events.  The caller is responsible for providing temporary state.
         self._store = ChromaStore(self.chroma_dir, mutation_sink=None)
@@ -116,6 +118,7 @@ class FileGenerationStore:
         ids; stable/governed rows must retain stable physical identity.
         """
 
+        self._assert_not_unattested_production_chroma()
         grouped: dict[str, list[StagedRow]] = {}
         materialized = list(rows)
         proposed_by_owner: dict[str, set[str]] = {}
@@ -162,9 +165,48 @@ class FileGenerationStore:
                 metadatas=metadatas,
             )
 
+
+    def _assert_not_unattested_production_chroma(self) -> None:
+        """Refuse staging into the live configured Chroma without writer attestation.
+
+        Temporary Execute stores are allowed once live identity resolves. A later
+        production G_rb build may stage after the existing writer boundary is
+        held. Not a tmp-path heuristic. Unresolvable live identity fails closed.
+        """
+
+        from chroma_write_store import require_writer_attestation
+        from config import load_config
+
+        try:
+            live_cfg = load_config()
+        except Exception as exc:  # noqa: BLE001 — fail closed on config errors
+            raise RuntimeError(
+                "cannot resolve live production identity for Chroma staging"
+            ) from exc
+        try:
+            chroma_raw = str((live_cfg.get("index") or {}).get("chroma_dir") or "").strip()
+            if not chroma_raw:
+                raise RuntimeError(
+                    "cannot resolve live production identity for Chroma staging"
+                )
+            live = Path(chroma_raw).expanduser().resolve()
+        except (OSError, TypeError, ValueError, KeyError, AttributeError) as exc:
+            raise RuntimeError(
+                "cannot resolve live production identity for Chroma staging"
+            ) from exc
+        target = Path(self.chroma_dir).expanduser().resolve()
+        if target != live:
+            return
+        require_writer_attestation()
+
     def _assert_owner_budget(self, owner_digest: str, proposed_generation: str) -> None:
         active = self._active_generations().get(owner_digest)
         previous = self._previous_generations().get(owner_digest)
+        retained = {
+            str(value)
+            for value in (self._retained_baselines().get(owner_digest) or set())
+            if value
+        }
         known: set[str] = set()
         for collection_name in (UNITS, SUMMARIES):
             col = self._store._collection(collection_name)  # pylint: disable=protected-access
@@ -181,7 +223,7 @@ class FileGenerationStore:
                 generation = str((meta or {}).get("generation_id") or "")
                 if generation:
                     known.add(generation)
-        protected = {value for value in (active, previous) if value}
+        protected = {value for value in (active, previous) if value} | retained
         abandoned = known - protected
         if abandoned and proposed_generation not in abandoned:
             raise GenerationBackpressureError(

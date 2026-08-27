@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import ledger
 from chroma_store import SUMMARIES, UNITS
@@ -56,10 +57,14 @@ class FileGenerationStoreTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.active: dict[str, str] = {}
         self.previous: dict[str, str] = {}
+        self.retained: dict[str, set[str]] = {}
         self.store = FileGenerationStore(
             Path(self.tmp.name) / "chroma",
             active_generations=lambda: dict(self.active),
             previous_generations=lambda: dict(self.previous),
+            retained_baselines=lambda: {
+                owner: set(gens) for owner, gens in self.retained.items()
+            },
         )
 
     def tearDown(self) -> None:
@@ -357,6 +362,48 @@ class FileGenerationStoreTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(GenerationValidationError, "unexpected"):
             self.store.validate_manifest_exact(manifest)
+
+
+    def test_retained_rollback_baseline_permits_canary_staging_without_deletion(
+        self,
+    ) -> None:
+        """Protected G_rb is not abandoned; G_canary may stage after it."""
+        self.store.stage_rows([file_row("fg1_grb", "L0", "G_rb")])
+        self.retained["owner-a"] = {"G_rb"}
+        before = self.store.all_physical_ids(UNITS)
+
+        self.store.stage_rows([file_row("fg1_canary", "L1", "G_canary")])
+        self.active["owner-a"] = "G_canary"
+        self.assertEqual(
+            self.store.all_physical_ids(UNITS), before | {"fg1_canary"}
+        )
+
+        # Unrelated abandoned generation still blocks a further stage.
+        self.store.stage_rows([file_row("fg1_abandoned", "L2", "A")])
+        with self.assertRaises(GenerationBackpressureError):
+            self.store.stage_rows([file_row("fg1_blocked", "L3", "B")])
+        self.assertIn("fg1_grb", self.store.all_physical_ids(UNITS))
+        self.assertIn("fg1_canary", self.store.all_physical_ids(UNITS))
+        self.assertIn("fg1_abandoned", self.store.all_physical_ids(UNITS))
+        self.assertNotIn("fg1_blocked", self.store.all_physical_ids(UNITS))
+
+    def test_unattested_write_to_configured_production_chroma_is_refused(self) -> None:
+        """Staging the live configured Chroma path requires the writer boundary."""
+        from chroma_write_store import WriterBoundaryError
+
+        live = {"index": {"chroma_dir": self.store.chroma_dir}}
+        with patch("config.load_config", return_value=live):
+            with self.assertRaises(WriterBoundaryError):
+                self.store.stage_rows([file_row("fg1_prod", "L-prod", "G_live")])
+
+    def test_unresolvable_live_chroma_identity_refuses_staging(self) -> None:
+        """Fail closed when production Chroma identity cannot be resolved."""
+        with patch(
+            "config.load_config", side_effect=RuntimeError("config unavailable")
+        ):
+            with self.assertRaises(RuntimeError):
+                self.store.stage_rows([file_row("fg1_fail_closed", "L-fc", "G_fc")])
+
 
 
 if __name__ == "__main__":
