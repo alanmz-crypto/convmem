@@ -99,6 +99,14 @@ def _minimal_v2_root(root: Path) -> None:
     (root / "processed.json").write_text("{}", encoding="utf-8")
 
 
+def _partial_selector_v2_root(root: Path) -> None:
+    """Minimal v2 root with an empty selector stub (partial registry)."""
+    _minimal_v2_root(root)
+    selector = root / "provenance" / "selector.json"
+    selector.parent.mkdir(parents=True)
+    selector.write_text("{}", encoding="utf-8")
+
+
 class TestProfileCoexistence(unittest.TestCase):
     def test_v2_state_specs_exclude_provenance(self):
         paths = {spec.path for spec in state_specs_for_profile(RestoreProfile.COMPLETE_DATA_V2)}
@@ -152,10 +160,7 @@ class TestRegistryValidation(unittest.TestCase):
     def test_partial_registry_quarantined(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            _minimal_v2_root(root)
-            selector = root / "provenance" / "selector.json"
-            selector.parent.mkdir(parents=True)
-            selector.write_text("{}", encoding="utf-8")
+            _partial_selector_v2_root(root)
             result = validate_provenance_registry(root)
             self.assertIn(result.outcome, {OUTCOME_BLOCKED, OUTCOME_QUARANTINED})
 
