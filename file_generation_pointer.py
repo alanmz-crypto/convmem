@@ -561,7 +561,7 @@ def publish_first_cutover_active_pointer(
         )
 
 
-def rollback_active_pointer(
+def rollback_active_pointer(  # pylint: disable=too-many-arguments
     generation_root: str | Path,
     retained_manifest_reference: ManifestReference,
     *,
@@ -571,8 +571,10 @@ def rollback_active_pointer(
     backend_fingerprint: str,
     candidate_revalidator: Callable[[Mapping[str, Any]], Any] | None = None,
     published_at: str | None = None,
+    grb_ratification_id: str | None = None,
+    grb_evidence_sha256: str | None = None,
 ) -> QualifiedActivePointer:
-    """Rollback to a retained target; CAS current active, no live-source requirement."""
+    """Rollback to a retained target under one owner lock with durable reconciliation."""
 
     if expected_active_generation_id is None:
         raise GenerationPublicationError(
@@ -588,42 +590,308 @@ def rollback_active_pointer(
     )
     manifest = verified_ref.manifest
     canonical_source = canonical_source_path(manifest["canonical_source_path"])
+    owner_key = str(manifest["owner_key"])
     owner_digest_value = str(manifest["owner_digest"])
     path = pointer_path(generation_root, owner_digest_value)
     with source_flock(dict(cfg), canonical_source):
-        current = read_unqualified_pointer(generation_root, owner_digest_value)
-        if current is None:
-            raise StaleGenerationError("rollback publication requires an existing pointer")
-        current_generation = str(current["active_generation_id"])
-        if current_generation != expected_active_generation_id:
-            raise StaleGenerationError(
-                "rollback CAS mismatch: "
-                f"expected {expected_active_generation_id!r}, got {current_generation!r}"
-            )
-        durable_previous = current.get("previous_generation_id")
-        if durable_previous is None or not str(durable_previous).strip():
-            raise GenerationPublicationError(
-                "rollback publication requires durable previous_generation_id"
-            )
+        fence_before, guard_before, fence_file = _rollback_fence_and_guard_snapshot(
+            generation_root, owner_digest_value
+        )
+        current_generation = _rollback_validate_cas_and_lineage(
+            generation_root,
+            owner_digest_value,
+            expected_active_generation_id=expected_active_generation_id,
+            retained_manifest_reference=retained_manifest_reference,
+            chroma_dir=chroma_dir,
+            cfg=cfg,
+            grb_authority=(grb_ratification_id, grb_evidence_sha256),
+            candidate_revalidator=candidate_revalidator,
+        )
         fresh_ref = _reload_verified_caller_reference(
             generation_root, retained_manifest_reference
         )
-        target_generation_id = str(fresh_ref.manifest["generation_id"])
-        if target_generation_id != str(durable_previous):
-            raise GenerationPublicationError(
-                "rollback target must equal pointer durable previous_generation_id: "
-                f"target={target_generation_id!r} previous={durable_previous!r}"
-            )
-        return _publish_pointer_under_lock(
+        _rollback_record_reconciliation_if_needed(
+            cfg,
+            owner_key=owner_key,
+            canonical_source=canonical_source,
+            target_source_hash=str(fresh_ref.manifest.get("source_hash") or ""),
+        )
+        published = _publish_pointer_under_lock(
             generation_root,
             retained_manifest_reference,
             path=path,
             chroma_dir=chroma_dir,
             previous_generation_id=current_generation,
             backend_fingerprint=backend_fingerprint,
-            candidate_revalidator=candidate_revalidator,
+            candidate_revalidator=None,
             published_at=published_at,
         )
+        _rollback_assert_authority_artifacts_preserved(
+            generation_root,
+            owner_digest_value,
+            fence_file=fence_file,
+            fence_before=fence_before,
+            guard_before=guard_before,
+        )
+        return published
+
+
+def _rollback_fence_and_guard_snapshot(
+    generation_root: str | Path,
+    owner_digest_value: str,
+) -> tuple[dict[str, Any], dict[str, Any] | None, Path]:
+    from cg2_cutover_guard import read_canary_open_guard
+    from serving_authority import fence_path, validate_legacy_fence
+
+    fence_file = fence_path(generation_root, owner_digest_value)
+    if not fence_file.exists():
+        raise GenerationPublicationError(
+            "rollback publication requires a monotonic legacy fence"
+        )
+    fence_before = _read_json(fence_file)
+    validate_legacy_fence(fence_before)
+    guard_before = read_canary_open_guard(generation_root, owner_digest_value)
+    return fence_before, guard_before, fence_file
+
+
+def _rollback_validate_cas_and_lineage(
+    generation_root: str | Path,
+    owner_digest_value: str,
+    *,
+    expected_active_generation_id: str,
+    retained_manifest_reference: ManifestReference,
+    chroma_dir: str | Path,
+    cfg: Mapping[str, Any],
+    grb_authority: tuple[str | None, str | None] | None,
+    candidate_revalidator: Callable[[Mapping[str, Any]], Any] | None = None,
+) -> str:
+    current = read_unqualified_pointer(generation_root, owner_digest_value)
+    if current is None:
+        raise StaleGenerationError("rollback publication requires an existing pointer")
+    current_generation = str(current["active_generation_id"])
+    if current_generation != expected_active_generation_id:
+        raise StaleGenerationError(
+            "rollback CAS mismatch: "
+            f"expected {expected_active_generation_id!r}, got {current_generation!r}"
+        )
+    durable_previous = current.get("previous_generation_id")
+    if durable_previous is None or not str(durable_previous).strip():
+        raise GenerationPublicationError(
+            "rollback publication requires durable previous_generation_id"
+        )
+    fresh_ref = _reload_verified_caller_reference(
+        generation_root, retained_manifest_reference
+    )
+    target_generation_id = str(fresh_ref.manifest["generation_id"])
+    if target_generation_id != str(durable_previous):
+        raise GenerationPublicationError(
+            "rollback target must equal pointer durable previous_generation_id: "
+            f"target={target_generation_id!r} previous={durable_previous!r}"
+        )
+    _run_fresh_process_qualification(chroma_dir, fresh_ref)
+    if candidate_revalidator is not None:
+        _require_true(
+            candidate_revalidator(fresh_ref.manifest),
+            "source/config/model/exclusion revalidation failed",
+        )
+    if _is_grb_rollback_target(generation_root, fresh_ref.manifest):
+        grb_ratification_id, grb_evidence_sha256 = grb_authority or (None, None)
+        _validate_grb_rollback_authority(
+            generation_root,
+            fresh_ref,
+            cfg=cfg,
+            grb_ratification_id=grb_ratification_id,
+            grb_evidence_sha256=grb_evidence_sha256,
+        )
+    return current_generation
+
+
+def _rollback_record_reconciliation_if_needed(
+    cfg: Mapping[str, Any],
+    *,
+    owner_key: str,
+    canonical_source: str,
+    target_source_hash: str,
+) -> None:
+    from source_observation import SourceObservationError, observe_source_hash
+    from source_reconciler import (
+        RollbackReconciliationError,
+        record_rollback_reconciliation_obligation,
+    )
+
+    try:
+        observed_source_hash = observe_source_hash(canonical_source)
+    except SourceObservationError:
+        observed_source_hash = None
+    if observed_source_hash == target_source_hash:
+        return
+    source_reason = (
+        "generational_source_missing"
+        if observed_source_hash is None
+        else "generational_source_hash_mismatch"
+    )
+    try:
+        record_rollback_reconciliation_obligation(
+            cfg,
+            owner_key=owner_key,
+            canonical_path=canonical_source,
+            target_source_hash=target_source_hash,
+            observed_source_hash=observed_source_hash,
+            source_reason=source_reason,
+        )
+    except RollbackReconciliationError as exc:
+        raise GenerationPublicationError(str(exc)) from exc
+
+
+def _rollback_assert_authority_artifacts_preserved(
+    generation_root: str | Path,
+    owner_digest_value: str,
+    *,
+    fence_file: Path,
+    fence_before: Mapping[str, Any],
+    guard_before: Mapping[str, Any] | None,
+) -> None:
+    from cg2_cutover_guard import read_canary_open_guard
+    from serving_authority import validate_legacy_fence
+
+    fence_after = _read_json(fence_file)
+    validate_legacy_fence(fence_after)
+    if fence_after != fence_before:
+        raise GenerationPublicationError(
+            "rollback publication must preserve monotonic fence bytes"
+        )
+    guard_after = read_canary_open_guard(generation_root, owner_digest_value)
+    if guard_before is None:
+        if guard_after is not None:
+            raise GenerationPublicationError(
+                "rollback publication must not create a first-canary guard"
+            )
+        return
+    if guard_after is None or dict(guard_after) != dict(guard_before):
+        raise GenerationPublicationError(
+            "rollback publication must preserve open first-canary guard bytes"
+        )
+
+
+def _manifest_proof_profile(manifest: Mapping[str, Any]) -> str | None:
+    annotations = dict(manifest.get("recorded_only_annotations") or {})
+    profile = annotations.get("proof_profile")
+    return str(profile) if profile else None
+
+
+def _is_grb_rollback_target(
+    generation_root: str | Path,
+    manifest: Mapping[str, Any],
+) -> bool:
+    profile = _manifest_proof_profile(manifest)
+    from cg2_legacy_vector_attestation import (
+        KNOWN_MODEL_AND_VECTOR_V1,
+        LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1,
+    )
+
+    if profile == KNOWN_MODEL_AND_VECTOR_V1:
+        return False
+    if profile == LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1:
+        return True
+    from cg2_rollback_baseline import (  # pylint: disable=import-outside-toplevel
+        RollbackBaselineError,
+        rollback_baseline_evidence_path,
+        validate_retained_rollback_baseline_evidence,
+    )
+
+    owner_digest_value = str(manifest["owner_digest"])
+    generation_id = str(manifest["generation_id"])
+    evidence_path = rollback_baseline_evidence_path(
+        generation_root, owner_digest_value, generation_id
+    )
+    if not evidence_path.is_file():
+        return False
+    try:
+        evidence = validate_retained_rollback_baseline_evidence(
+            generation_root,
+            owner_digest_value=owner_digest_value,
+            generation_id=generation_id,
+            expected_manifest_sha256=None,
+        )
+    except RollbackBaselineError:
+        return False
+    return evidence.get("proof_profile") == LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1
+
+
+def _validate_grb_rollback_authority(
+    generation_root: str | Path,
+    fresh_ref: ManifestReference,
+    *,
+    cfg: Mapping[str, Any],
+    grb_ratification_id: str | None,
+    grb_evidence_sha256: str | None,
+) -> None:
+    from cg2_legacy_vector_attestation import (  # pylint: disable=import-outside-toplevel
+        D0AttestationError,
+        derive_query_embedding_context,
+        load_ratified_d0_chain,
+        verify_d0_chain_for_grb_conversion,
+    )
+    from cg2_rollback_baseline import (  # pylint: disable=import-outside-toplevel
+        RollbackBaselineError,
+        rollback_baseline_evidence_path,
+        validate_retained_rollback_baseline_evidence,
+    )
+
+    if not str(grb_ratification_id or "").strip():
+        raise GenerationPublicationError(
+            "G_rb rollback requires grb_ratification_id"
+        )
+    owner_digest_value = str(fresh_ref.manifest["owner_digest"])
+    generation_id = str(fresh_ref.manifest["generation_id"])
+    evidence_path = rollback_baseline_evidence_path(
+        generation_root, owner_digest_value, generation_id
+    )
+    if not evidence_path.is_file():
+        raise GenerationPublicationError("G_rb rollback requires retained baseline evidence")
+    if grb_evidence_sha256 is not None:
+        actual_sha = hashlib.sha256(evidence_path.read_bytes()).hexdigest()
+        if actual_sha != grb_evidence_sha256:
+            raise GenerationPublicationError("G_rb retained evidence SHA mismatch")
+    try:
+        evidence = validate_retained_rollback_baseline_evidence(
+            generation_root,
+            owner_digest_value=owner_digest_value,
+            generation_id=generation_id,
+            expected_manifest_sha256=fresh_ref.file_sha256,
+        )
+    except RollbackBaselineError as exc:
+        raise GenerationPublicationError(str(exc)) from exc
+    dimension = next(
+        (
+            int(dict(spec).get("embedding_dimension") or 0)
+            for spec in dict(evidence.get("embedding_provenance") or {}).values()
+            if int(dict(spec).get("embedding_dimension") or 0) > 0
+        ),
+        int(
+            dict(dict(evidence.get("embedding_provenance") or {}).get("knowledge_units") or {})
+            .get("embedding_dimension")
+            or 0
+        ),
+    )
+    if dimension <= 0:
+        raise GenerationPublicationError(
+            "G_rb evidence lacks embedding dimension for query-context binding"
+        )
+    try:
+        chain = load_ratified_d0_chain(
+            generation_root,
+            owner_digest=owner_digest_value,
+            ratification_id=str(grb_ratification_id),
+        )
+        _, live_query_sha = derive_query_embedding_context(
+            cfg, admitted_dimension=dimension
+        )
+        verify_d0_chain_for_grb_conversion(
+            chain, live_query_context_sha256=live_query_sha
+        )
+    except D0AttestationError as exc:
+        raise GenerationPublicationError(str(exc)) from exc
 
 
 def recover_active_pointer(

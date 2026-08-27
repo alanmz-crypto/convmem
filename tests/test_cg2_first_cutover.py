@@ -494,20 +494,8 @@ def test_rollback_and_recovery_remain_callable_with_open_guard(d3_env):
     active = _cutover(d3_env, d3_env["canary_ref"], grant)
     assert read_canary_open_guard(d3_env["generations"], grant.owner_digest) is not None
 
-    from file_generation_pointer import load_manifest_reference
-
-    grb_reference = load_manifest_reference(
-        d3_env["generations"],
-        manifest_filename=d3_env["grb_result"].manifest_filename,
-        expected_sha256=d3_env["grb_result"].manifest_sha256,
-    )
-    rolled = rollback_active_pointer(
-        d3_env["generations"],
-        grb_reference,
-        chroma_dir=d3_env["chroma"],
-        cfg=d3_env["cfg"],
-        expected_active_generation_id=active.pointer["active_generation_id"],
-        backend_fingerprint=BACKEND_FINGERPRINT,
+    rolled = _rollback_grb(
+        d3_env, grant, active_generation_id=active.pointer["active_generation_id"]
     )
     assert rolled.pointer["active_generation_id"] == grant.grb_generation_id
     assert read_canary_open_guard(d3_env["generations"], grant.owner_digest) is not None
@@ -833,3 +821,143 @@ def test_lock_held_shallow_forged_canary_swap_refuses_before_fence(d3_env):
             _cutover(d3_env, d3_env["canary_ref"], grant)
     assert len(oracle.acquisitions) == 1
     assert not fence_path(d3_env["generations"], grant.owner_digest).exists()
+
+
+def _rollback_grb(d3_env, grant, *, active_generation_id: str):
+    from file_generation_pointer import load_manifest_reference
+
+    grb_reference = load_manifest_reference(
+        d3_env["generations"],
+        manifest_filename=d3_env["grb_result"].manifest_filename,
+        expected_sha256=d3_env["grb_result"].manifest_sha256,
+    )
+    return rollback_active_pointer(
+        d3_env["generations"],
+        grb_reference,
+        chroma_dir=d3_env["chroma"],
+        cfg=d3_env["cfg"],
+        expected_active_generation_id=active_generation_id,
+        backend_fingerprint=BACKEND_FINGERPRINT,
+        grb_ratification_id=grant.ratification_id,
+        grb_evidence_sha256=grant.grb_evidence_sha256,
+    )
+
+
+def test_grb_rollback_refuses_missing_ratification_id(d3_env):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-grb-refuse-rat"
+    )
+    active = _cutover(d3_env, d3_env["canary_ref"], grant)
+    from file_generation_pointer import GenerationPublicationError, load_manifest_reference
+
+    grb_reference = load_manifest_reference(
+        d3_env["generations"],
+        manifest_filename=d3_env["grb_result"].manifest_filename,
+        expected_sha256=d3_env["grb_result"].manifest_sha256,
+    )
+    with pytest.raises(GenerationPublicationError, match="grb_ratification_id"):
+        rollback_active_pointer(
+            d3_env["generations"],
+            grb_reference,
+            chroma_dir=d3_env["chroma"],
+            cfg=d3_env["cfg"],
+            expected_active_generation_id=active.pointer["active_generation_id"],
+            backend_fingerprint=BACKEND_FINGERPRINT,
+        )
+    still = read_unqualified_pointer(d3_env["generations"], grant.owner_digest)
+    assert still["active_generation_id"] == grant.canary_generation_id
+
+
+def test_grb_rollback_refuses_evidence_sha_mismatch(d3_env):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-grb-refuse-evidence"
+    )
+    active = _cutover(d3_env, d3_env["canary_ref"], grant)
+    from file_generation_pointer import GenerationPublicationError, load_manifest_reference
+
+    grb_reference = load_manifest_reference(
+        d3_env["generations"],
+        manifest_filename=d3_env["grb_result"].manifest_filename,
+        expected_sha256=d3_env["grb_result"].manifest_sha256,
+    )
+    with pytest.raises(GenerationPublicationError, match="evidence SHA mismatch"):
+        rollback_active_pointer(
+            d3_env["generations"],
+            grb_reference,
+            chroma_dir=d3_env["chroma"],
+            cfg=d3_env["cfg"],
+            expected_active_generation_id=active.pointer["active_generation_id"],
+            backend_fingerprint=BACKEND_FINGERPRINT,
+            grb_ratification_id=grant.ratification_id,
+            grb_evidence_sha256="0" * 64,
+        )
+    still = read_unqualified_pointer(d3_env["generations"], grant.owner_digest)
+    assert still["active_generation_id"] == grant.canary_generation_id
+
+
+def test_grb_rollback_refuses_query_context_drift(d3_env, monkeypatch):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-grb-refuse-query"
+    )
+    active = _cutover(d3_env, d3_env["canary_ref"], grant)
+    from file_generation_pointer import GenerationPublicationError
+
+    _context, live_sha = derive_query_embedding_context(
+        d3_env["cfg"], admitted_dimension=EMBED_DIM
+    )
+    assert live_sha == grant.query_embedding_context_sha256
+
+    def _drifted_context(_cfg, *, admitted_dimension):
+        del admitted_dimension
+        return _context, "f" * 64
+
+    monkeypatch.setattr(
+        "cg2_legacy_vector_attestation.derive_query_embedding_context",
+        _drifted_context,
+    )
+    with pytest.raises(GenerationPublicationError):
+        _rollback_grb(
+            d3_env, grant, active_generation_id=active.pointer["active_generation_id"]
+        )
+    still = read_unqualified_pointer(d3_env["generations"], grant.owner_digest)
+    assert still["active_generation_id"] == grant.canary_generation_id
+
+
+def test_grb_rollback_after_source_advance_records_reconciliation(d3_env):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-grb-advanced-source"
+    )
+    active = _cutover(d3_env, d3_env["canary_ref"], grant)
+    d3_env["source"].write_text("advanced-source-bytes", encoding="utf-8")
+    rolled = _rollback_grb(
+        d3_env, grant, active_generation_id=active.pointer["active_generation_id"]
+    )
+    assert rolled.pointer["active_generation_id"] == grant.grb_generation_id
+    from source_reconciler import pending_owner_work
+
+    pending = pending_owner_work(d3_env["cfg"])
+    assert pending
+    assert pending[0].reason in {
+        "generational_source_hash_mismatch",
+        "generational_source_missing",
+    }
+
+
+def test_rollback_preserves_fence_and_generational_owner(d3_env):
+    grant = _make_grant(
+        d3_env, d3_env["grb_result"], d3_env["canary_ref"], grant_id="grant-grb-fence-owner"
+    )
+    active = _cutover(d3_env, d3_env["canary_ref"], grant)
+    fence_file = fence_path(d3_env["generations"], grant.owner_digest)
+    fence_before = fence_file.read_text(encoding="utf-8")
+    guard_before = read_canary_open_guard(d3_env["generations"], grant.owner_digest)
+    rolled = _rollback_grb(
+        d3_env, grant, active_generation_id=active.pointer["active_generation_id"]
+    )
+    assert fence_file.read_text(encoding="utf-8") == fence_before
+    assert read_canary_open_guard(d3_env["generations"], grant.owner_digest) == guard_before
+    vector = resolve_frozen_authority_vector(
+        d3_env["cfg"], owner_digests={grant.owner_digest}
+    )
+    assert vector.by_owner[grant.owner_digest].mode == OwnerAuthorityMode.GENERATIONAL
+    assert rolled.pointer["active_generation_id"] == grant.grb_generation_id

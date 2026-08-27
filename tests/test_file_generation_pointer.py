@@ -28,7 +28,20 @@ real_fresh_process_qualification = (
 
 
 def _cfg(tmp_path: Path) -> dict:
-    return {"index": {"processed_log": str(tmp_path / "data" / "processed.json")}}
+    root = tmp_path / "generations"
+    return {
+        "index": {
+            "processed_log": str(tmp_path / "data" / "processed.json"),
+            "generation_root": str(root),
+            "chroma_dir": str(root / "chroma"),
+        }
+    }
+
+
+def _ensure_fence(root: Path, owner_key: str) -> None:
+    from serving_authority import publish_legacy_fence
+
+    publish_legacy_fence(root, owner_key, "2026-08-10T00:00:00Z")
 
 
 def _manifest(source: Path, label: str) -> dict:
@@ -584,15 +597,7 @@ def test_rollback_switches_to_retained_target(tmp_path: Path) -> None:
     retained = _publish(root, source, "1", previous=None)
     current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
     retained_ref = pointers.publish_manifest(root, _manifest(source, "1"))
-    rolled = pointers.rollback_active_pointer(
-        root,
-        retained_ref,
-        chroma_dir=root / "chroma",
-        cfg=_cfg(root),
-        expected_active_generation_id=current.manifest["generation_id"],
-        backend_fingerprint="rust-a",
-        candidate_revalidator=lambda manifest: True,
-    )
+    rolled = _rollback(root, retained_ref, expected_active=current.manifest["generation_id"])
     assert rolled.pointer["active_generation_id"] == retained.manifest["generation_id"]
     assert rolled.pointer["previous_generation_id"] == current.manifest["generation_id"]
 
@@ -604,6 +609,7 @@ def test_rollback_stale_cas_refuses_independent_of_target_validity(tmp_path: Pat
     retained = _publish(root, source, "1", previous=None)
     current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
     retained_ref = pointers.publish_manifest(root, _manifest(source, "1"))
+    _ensure_fence(root, str(retained_ref.manifest["owner_key"]))
     with pytest.raises(pointers.StaleGenerationError, match="rollback CAS mismatch"):
         pointers.rollback_active_pointer(
             root,
@@ -619,23 +625,8 @@ def test_rollback_stale_cas_refuses_independent_of_target_validity(tmp_path: Pat
 
 
 def test_rollback_does_not_require_live_source_match(tmp_path: Path) -> None:
-    source = tmp_path / "source"
-    source.write_text("v1", encoding="utf-8")
-    root = tmp_path / "generations"
-    retained_manifest = _manifest(source, "1")
-    retained = _publish(root, source, "1", previous=None)
-    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
-    source.write_text("v2-advanced", encoding="utf-8")
-    retained_ref = pointers.publish_manifest(root, retained_manifest)
-    rolled = pointers.rollback_active_pointer(
-        root,
-        retained_ref,
-        chroma_dir=root / "chroma",
-        cfg=_cfg(root),
-        expected_active_generation_id=current.manifest["generation_id"],
-        backend_fingerprint="rust-a",
-        candidate_revalidator=lambda manifest: True,
-    )
+    root, retained, current, retained_ref, _cfg = _rollback_setup_after_source_change(tmp_path)
+    rolled = _rollback(root, retained_ref, expected_active=current.manifest["generation_id"])
     assert rolled.pointer["active_generation_id"] == retained.manifest["generation_id"]
 
 
@@ -646,7 +637,9 @@ def _rollback(
     reference: pointers.ManifestReference,
     *,
     expected_active: str,
+    **kwargs,
 ) -> pointers.QualifiedActivePointer:
+    _ensure_fence(root, str(reference.manifest["owner_key"]))
     return pointers.rollback_active_pointer(
         root,
         reference,
@@ -655,7 +648,30 @@ def _rollback(
         expected_active_generation_id=expected_active,
         backend_fingerprint="rust-a",
         candidate_revalidator=lambda manifest: True,
+        **kwargs,
     )
+
+
+def _rollback_setup_after_source_change(
+    tmp_path: Path,
+    *,
+    initial: str = "v1",
+    advanced: str | None = "v2-advanced",
+    remove_source: bool = False,
+) -> tuple[Path, pointers.QualifiedActivePointer, pointers.QualifiedActivePointer, pointers.ManifestReference, dict]:
+    source = tmp_path / "source"
+    source.write_text(initial, encoding="utf-8")
+    root = tmp_path / "generations"
+    cfg = _cfg(root)
+    retained_manifest = _manifest(source, "1")
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    if remove_source:
+        source.unlink()
+    elif advanced is not None:
+        source.write_text(advanced, encoding="utf-8")
+    retained_ref = pointers.publish_manifest(root, retained_manifest)
+    return root, retained, current, retained_ref, cfg
 
 
 def test_rollback_exact_previous_generation_target_succeeds(tmp_path: Path) -> None:
@@ -859,20 +875,13 @@ def test_public_pointer_operations_acquire_source_flock_once(
     elif operation == "first_cutover":
         reference = pointers.publish_manifest(root, _manifest(source, "1"))
         with patch.object(pointers, "source_flock", oracle):
-            pointers.publish_first_cutover_active_pointer(
-                root,
-                reference,
-                rollback_baseline_generation_id=GRB_GENERATION_ID,
-                chroma_dir=root / "chroma",
-                cfg=_cfg(root),
-                backend_fingerprint="rust-a",
-                candidate_revalidator=lambda manifest: True,
-            )
+            _publish_first_cutover_ref(root, reference)
     elif operation == "rollback":
         retained_manifest = _manifest(source, "1")
         retained = _publish(root, source, "1", previous=None)
         current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
         retained_ref = pointers.publish_manifest(root, retained_manifest)
+        _ensure_fence(root, str(retained_ref.manifest["owner_key"]))
         with patch.object(pointers, "source_flock", oracle):
             pointers.rollback_active_pointer(
                 root,
@@ -894,3 +903,69 @@ def test_public_pointer_operations_acquire_source_flock_once(
                 recovery_revalidator=lambda manifest: True,
             )
     assert len(oracle.acquisitions) == 1
+
+
+def test_rollback_unchanged_source_skips_reconciliation_debt(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("stable", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    retained_ref = pointers.publish_manifest(root, _manifest(source, "1"))
+    with patch("source_reconciler.record_rollback_reconciliation_obligation") as recorder:
+        rolled = _rollback(root, retained_ref, expected_active=current.manifest["generation_id"])
+        recorder.assert_not_called()
+    assert rolled.pointer["active_generation_id"] == retained.manifest["generation_id"]
+
+
+def test_rollback_reconciliation_persistence_failure_leaves_pointer_unchanged(
+    tmp_path: Path,
+) -> None:
+    root, retained, current, retained_ref, _cfg = _rollback_setup_after_source_change(tmp_path)
+    from source_reconciler import RollbackReconciliationError
+
+    with patch(
+        "source_reconciler.record_rollback_reconciliation_obligation",
+        side_effect=RollbackReconciliationError("simulated persistence failure"),
+    ):
+        with pytest.raises(pointers.GenerationPublicationError, match="persistence failure"):
+            _rollback(root, retained_ref, expected_active=current.manifest["generation_id"])
+    still = pointers.read_unqualified_pointer(root, retained.manifest["owner_digest"])
+    assert still["active_generation_id"] == current.manifest["generation_id"]
+
+
+def test_rollback_refuses_without_monotonic_fence(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    retained_ref = pointers.publish_manifest(root, _manifest(source, "1"))
+    with pytest.raises(pointers.GenerationPublicationError, match="monotonic legacy fence"):
+        pointers.rollback_active_pointer(
+            root,
+            retained_ref,
+            chroma_dir=root / "chroma",
+            cfg=_cfg(root),
+            expected_active_generation_id=current.manifest["generation_id"],
+            backend_fingerprint="rust-a",
+            candidate_revalidator=lambda manifest: True,
+        )
+
+
+def test_rollback_refuses_corrupt_target_qualification(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_text("x", encoding="utf-8")
+    root = tmp_path / "generations"
+    retained = _publish(root, source, "1", previous=None)
+    current = _publish(root, source, "2", previous=retained.manifest["generation_id"])
+    retained_ref = pointers.publish_manifest(root, _manifest(source, "1"))
+    with patch.object(
+        pointers,
+        "_run_fresh_process_qualification",
+        side_effect=pointers.GenerationQualificationError("corrupt target"),
+    ):
+        with pytest.raises(pointers.GenerationQualificationError, match="corrupt target"):
+            _rollback(root, retained_ref, expected_active=current.manifest["generation_id"])
+    still = pointers.read_unqualified_pointer(root, retained.manifest["owner_digest"])
+    assert still["active_generation_id"] == current.manifest["generation_id"]
