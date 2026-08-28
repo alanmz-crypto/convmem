@@ -1564,15 +1564,17 @@ def run_hermetic_overhead_benchmark(
             for cell_index, (mutation_class, structural_shape) in enumerate(
                 shape_matrix
             ):
-                cell_tag = f"{cell_index}-{mutation_class}-{structural_shape}"
-                mode_fixtures = create_mode_fixture_group(
-                    root,
-                    mutation_class=mutation_class,
-                    structural_shape=structural_shape,
-                    run_index=run_index,
-                    cell_tag=cell_tag,
-                )
                 for session_kind in kinds:
+                    cell_tag = (
+                        f"{cell_index}-{mutation_class}-{structural_shape}-{session_kind}"
+                    )
+                    mode_fixtures = create_mode_fixture_group(
+                        root,
+                        mutation_class=mutation_class,
+                        structural_shape=structural_shape,
+                        run_index=run_index,
+                        cell_tag=cell_tag,
+                    )
                     spec = build_workload_spec(
                         mutation_class=mutation_class,
                         structural_shape=structural_shape,

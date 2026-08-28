@@ -1036,6 +1036,147 @@ def test_stateful_operations_equivalently_initialized(tmp_path: Path) -> None:
                 session.store.close()
 
 
+
+def test_benchmark_session_kind_cells_are_state_isolated(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Real orchestration must not reuse fixtures across session kinds."""
+    pytest.importorskip("chromadb")
+    import event_size_evidence as ese
+
+    cell_tags: list[str] = []
+    fixture_roots_by_tag: dict[str, set[Path]] = {}
+    actual_creates: list[tuple[str, str]] = []
+    preconditions: list[tuple[str, str, str, bool]] = []
+    current: dict[str, str] = {}
+    in_run_samples = {"value": False}
+
+    real_create_group = ese.create_mode_fixture_group
+
+    def tracking_create_group(root: Path, **kwargs: Any) -> dict[str, Any]:
+        tag = str(kwargs["cell_tag"])
+        cell_tags.append(tag)
+        fixtures = real_create_group(root, **kwargs)
+        fixture_roots_by_tag[tag] = {fx.root.resolve() for fx in fixtures.values()}
+        return fixtures
+
+    real_execute = ese._execute_mutation
+
+    def tracking_execute(store: Any, spec: Any) -> int:
+        if in_run_samples["value"] and spec.mutation_class == "create":
+            was_absent = store.get_unit(spec.unit_id) is None
+            result = real_execute(store, spec)
+            if was_absent:
+                actual_creates.append((current["session_kind"], current["mode"]))
+            return result
+        return real_execute(store, spec)
+
+    real_run_samples = ese._run_mode_samples
+
+    def tracking_run_samples(
+        fixture: Any,
+        *,
+        mode: str,
+        spec: Any,
+        session_kind: str,
+        sample_count: int,
+        warmup_count: int,
+    ) -> Any:
+        from chroma_write_store import open_production_write_store
+
+        current["session_kind"] = session_kind
+        current["mode"] = mode
+        census_dir = ese._census_dir_for_mode(fixture, mode)
+        session = open_production_write_store(
+            fixture.config_path,
+            lock_path=fixture.gate_path,
+            attest_dir=fixture.attest_dir,
+            census_dir=census_dir,
+            entrypoint="production.writer",
+        )
+        try:
+            unit = session.store.get_unit(spec.unit_id)
+            if spec.mutation_class == "create":
+                ok = unit is None
+            elif spec.mutation_class == "delete":
+                ok = unit is not None
+            elif spec.mutation_class in {"supersede", "restore"}:
+                ok = unit is not None and bool(
+                    (unit.get("metadata") or {}).get("superseded")
+                )
+            else:
+                ok = True
+            preconditions.append((session_kind, mode, spec.mutation_class, ok))
+        finally:
+            session.store.close()
+
+        in_run_samples["value"] = True
+        try:
+            return real_run_samples(
+                fixture,
+                mode=mode,
+                spec=spec,
+                session_kind=session_kind,
+                sample_count=sample_count,
+                warmup_count=warmup_count,
+            )
+        finally:
+            in_run_samples["value"] = False
+
+    monkeypatch.setattr(ese, "create_mode_fixture_group", tracking_create_group)
+    monkeypatch.setattr(ese, "_execute_mutation", tracking_execute)
+    monkeypatch.setattr(ese, "_run_mode_samples", tracking_run_samples)
+
+    session_kinds = ("context_short", "manual_short")
+    matrix = (
+        ("create", "small_1k"),
+        ("supersede", "small_1k"),
+        ("restore", "small_1k"),
+        ("delete", "small_1k"),
+    )
+    report = run_hermetic_overhead_benchmark(
+        root=tmp_path / "isolation",
+        steady_samples=1,
+        warmup_samples=0,
+        h_events=10,
+        matrix=matrix,
+        session_kinds=session_kinds,
+        run_count=1,
+    )
+    assert report.verdict == "MEASURED"
+
+    expected_cells = len(matrix) * len(session_kinds)
+    assert len(cell_tags) == expected_cells
+    for tag in cell_tags:
+        assert any(kind in tag for kind in session_kinds)
+
+    create_tags = [t for t in cell_tags if "-create-" in t]
+    for session_kind in session_kinds:
+        kind_tags = [t for t in create_tags if t.endswith(session_kind)]
+        assert len(kind_tags) == 1
+        for other_kind in session_kinds:
+            if other_kind == session_kind:
+                continue
+            other_tag = next(t for t in create_tags if t.endswith(other_kind))
+            assert fixture_roots_by_tag[kind_tags[0]].isdisjoint(
+                fixture_roots_by_tag[other_tag]
+            )
+
+    expected_creates = len(session_kinds) * 3
+    assert len(actual_creates) == expected_creates
+    assert {(kind, mode) for kind, mode in actual_creates} == {
+        (session_kind, mode)
+        for session_kind in session_kinds
+        for mode in ("control", "unarmed", "armed")
+    }
+
+    for session_kind, mode, mutation_class, ok in preconditions:
+        assert ok, (
+            f"precondition failed for {mutation_class} "
+            f"mode={mode} session_kind={session_kind}"
+        )
+
+
 def test_close_persistence_from_explicit_timing(tmp_path: Path) -> None:
     pytest.importorskip("chromadb")
     fixture = create_benchmark_fixture(tmp_path / "close")
