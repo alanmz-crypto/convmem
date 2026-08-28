@@ -1,10 +1,10 @@
 # Architecture Amendment — R2b mutable-source quiescence v2
 
-**Arc:** R2b Capture Authorization  
-**Date:** 2026-08-27  
+**Arc:** R2b Capture Authorization
+**Date:** 2026-08-27
 **Status:** Normative planning amendment; implementation and live operation are
-unauthorized  
-**Base:** [`ARCHITECTURE-r2b-capture-auth.md`](ARCHITECTURE-r2b-capture-auth.md)  
+unauthorized
+**Base:** [`ARCHITECTURE-r2b-capture-auth.md`](ARCHITECTURE-r2b-capture-auth.md)
 **Base revision:** D4 `89a7e045b130f005f57539478d9a180cbea905df` on `origin/main`
 
 This versioned amendment corrects the v1 architecture's incompatibility with a

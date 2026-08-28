@@ -1,10 +1,10 @@
 # VERIFY Plan — R2b v2 writer-gate quiescence
 
-**Arc:** R2b Capture Authorization  
-**Date:** 2026-08-27  
-**Status:** Planning only; NOT RUN  
-**Architecture:** [`ARCHITECTURE-r2b-mutable-source-quiescence-v2.md`](ARCHITECTURE-r2b-mutable-source-quiescence-v2.md)  
-**Execution:** [`EXECUTION-2026-08-27-r2b-v2-quiescence.md`](EXECUTION-2026-08-27-r2b-v2-quiescence.md)  
+**Arc:** R2b Capture Authorization
+**Date:** 2026-08-27
+**Status:** Planning only; NOT RUN
+**Architecture:** [`ARCHITECTURE-r2b-mutable-source-quiescence-v2.md`](ARCHITECTURE-r2b-mutable-source-quiescence-v2.md)
+**Execution:** [`EXECUTION-2026-08-27-r2b-v2-quiescence.md`](EXECUTION-2026-08-27-r2b-v2-quiescence.md)
 **Base VERIFY:** [`VERIFY-r2b-capture.md`](VERIFY-r2b-capture.md)
 
 This matrix verifies a later implementation and one later authorized

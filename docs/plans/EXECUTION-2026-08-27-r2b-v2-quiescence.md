@@ -1,11 +1,11 @@
 # Execution Plan — R2b v2 writer-gate quiescence
 
-**Arc:** R2b Capture Authorization  
-**Date:** 2026-08-27  
+**Arc:** R2b Capture Authorization
+**Date:** 2026-08-27
 **Status:** Planning only; no implementation, gate acquisition, packet, grant,
-capture, cleanup, or live benchmark  
-**Base:** D4 `89a7e045b130f005f57539478d9a180cbea905df` on `origin/main`  
-**Architecture:** [`ARCHITECTURE-r2b-mutable-source-quiescence-v2.md`](ARCHITECTURE-r2b-mutable-source-quiescence-v2.md)  
+capture, cleanup, or live benchmark
+**Base:** D4 `89a7e045b130f005f57539478d9a180cbea905df` on `origin/main`
+**Architecture:** [`ARCHITECTURE-r2b-mutable-source-quiescence-v2.md`](ARCHITECTURE-r2b-mutable-source-quiescence-v2.md)
 **VERIFY:** [`VERIFY-r2b-v2-quiescence.md`](VERIFY-r2b-v2-quiescence.md)
 
 ## 1. Execution contract
