@@ -939,8 +939,8 @@ def collect_execute_evidence(
         "production_activation_performed": False,
         "automatic_gc_performed": False,
         "no_production_operations": (
-            rehearsal_report.get("no_production_operations", True)
-            if rehearsal_report
-            else True
+            rehearsal_report.get("no_production_operations")
+            if rehearsal_report is not None
+            else None
         ),
     }
