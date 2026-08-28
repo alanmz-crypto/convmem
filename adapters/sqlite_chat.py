@@ -5,6 +5,7 @@ Branches:
   - Open WebUI: flat `chat_message` rows
   - Crush: `sessions` + `messages` with JSON `parts` arrays
   - Cursor store.db: content-addressed blob DAG via latestRootBlobId
+  - OpenCode: `message` + `part` + `session` with JSON data columns
 """
 
 import json
@@ -354,6 +355,80 @@ def _parse_openwebui(conn: sqlite3.Connection) -> list[dict]:
     return messages
 
 
+def _opencode_ms_to_iso(value) -> str | None:
+    """Convert OpenCode epoch-millisecond timestamp to ISO-8601 UTC string."""
+    if value is None:
+        return None
+    try:
+        ts_ms = int(value)
+        return datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).isoformat()
+    except (ValueError, OSError, OverflowError):
+        return None
+
+
+def is_sqlite_opencode_schema(tables: set[str]) -> bool:
+    """OpenCode: message + part + session tables (Drizzle ORM schema)."""
+    return {"message", "part", "session"}.issubset(tables)
+
+
+def _parse_opencode(conn: sqlite3.Connection) -> list[dict]:
+    """OpenCode: join message → part, collect text parts per message in order."""
+    messages: list[dict] = []
+    cursor = conn.execute(
+        "SELECT m.session_id, m.time_created, "
+        "  json_extract(m.data, '$.role') AS role, "
+        "  json_extract(m.data, '$.modelID') AS model_id, "
+        "  json_extract(m.data, '$.providerID') AS provider_id, "
+        "  json_extract(p.data, '$.type') AS part_type, "
+        "  json_extract(p.data, '$.text') AS part_text "
+        "FROM message m "
+        "JOIN part p ON p.message_id = m.id "
+        "ORDER BY m.session_id, m.time_created, m.id, p.time_created, p.id"
+    )
+
+    # Accumulate text parts per (session_id, message timestamp, role).
+    current_key: tuple | None = None
+    current_texts: list[str] = []
+    current_meta: dict = {}
+
+    def _flush():
+        if current_texts and current_meta:
+            content = "\n\n".join(current_texts)
+            if content.strip():
+                msg: dict = {
+                    "role": current_meta["role"],
+                    "content": content.strip(),
+                    "timestamp": _opencode_ms_to_iso(current_meta["time_created"]),
+                    "session_id": current_meta.get("session_id"),
+                }
+                if current_meta.get("model_id"):
+                    msg["model"] = current_meta["model_id"]
+                if current_meta.get("provider_id"):
+                    msg["provider"] = current_meta["provider_id"]
+                messages.append(msg)
+
+    for session_id, time_created, role, model_id, provider_id, part_type, part_text in cursor:
+        if role not in ("user", "assistant"):
+            continue
+        key = (session_id, time_created, role)
+        if key != current_key:
+            _flush()
+            current_key = key
+            current_texts = []
+            current_meta = {
+                "role": role,
+                "time_created": time_created,
+                "session_id": session_id,
+                "model_id": model_id,
+                "provider_id": provider_id,
+            }
+        if part_type == "text" and isinstance(part_text, str) and part_text.strip():
+            current_texts.append(part_text.strip())
+
+    _flush()
+    return messages
+
+
 def parse(filepath: str) -> list[dict]:
     """Parse a SQLite chat store into canonical messages.
 
@@ -372,6 +447,8 @@ def parse(filepath: str) -> list[dict]:
             return _parse_crush(conn, filepath)
         if "blobs" in tables and "meta" in tables:
             return _parse_cursor_store(conn, filepath)
+        if is_sqlite_opencode_schema(tables):
+            return _parse_opencode(conn)
         raise NotImplementedError(
             f"No SQLite adapter branch matches schema in {filepath} "
             f"(tables: {sorted(tables)[:10]}...)"
