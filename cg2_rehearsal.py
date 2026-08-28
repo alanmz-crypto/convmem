@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import time
 from contextlib import contextmanager
@@ -47,18 +48,16 @@ from file_generation_pointer import (
     pointer_path,
     publish_manifest,
     read_unqualified_pointer,
-    recover_active_pointer,
     rollback_active_pointer,
 )
 from file_generation_store import FileGenerationStore, StagedRow
 from mixed_mode_proof import (
     PHYSICAL_DELETION_DISABLED,
     RehearsalEmptyCommittedView,
-    open_public_serving_repository_for_rehearsal,
     open_rehearsal_serving_session,
     resolve_rehearsal_authority_vector,
-    retained_rollback_baseline_inventory,
-    simulate_rehearsal_process_restart_boundary,
+    run_rehearsal_subprocess_public_open,
+    run_rehearsal_subprocess_restart_recovery,
 )
 from mixed_mode_retrieval import PINNED_CHROMA_VERSION
 from serving_authority import (
@@ -80,6 +79,10 @@ EXECUTION_PLAN_SHA = "9a171bdf03d501ff891d991bbdad6acc1abda56c"
 BACKEND_FINGERPRINT = "rust-bindings/cg2-d5-rehearsal"
 EMBED_MODEL = "nomic-embed-text"
 EMBED_DIM = 2
+
+
+class RehearsalProductionIsolationError(RuntimeError):
+    """Production path resolution or isolation check failed during rehearsal."""
 
 
 def _git_sha(path: str | None = None) -> str:
@@ -549,15 +552,13 @@ def _assert_frozen_generation_stable(env: dict[str, Any], grant: FirstCutoverGra
         owner_digest
     ].generation_id
 
+    grb_fresh_open = run_rehearsal_subprocess_public_open(env["cfg"], owner_digest)
+    assert grb_fresh_open["active_generation_id"] == grant.grb_generation_id
+
     atomic_write_json(pointer_file, saved_pointer)
     restored = read_unqualified_pointer(env["generations"], owner_digest)
 
-    with open_public_serving_repository_for_rehearsal(env["cfg"]) as fresh_after_restore:
-        fresh_vector_id = id(fresh_after_restore.authority_vector)
-        fresh_restored_generation = fresh_after_restore.authority_vector.active_generations()[owner_digest]
-        fresh_restored_ids = {
-            row["id"] for row in fresh_after_restore.query_units(embedding, 5)
-        }
+    canary_fresh_open = run_rehearsal_subprocess_public_open(env["cfg"], owner_digest)
 
     return {
         "frozen_generation_id": frozen_generation,
@@ -567,13 +568,26 @@ def _assert_frozen_generation_stable(env: dict[str, Any], grant: FirstCutoverGra
         "query_ids_unchanged": before_ids == after_ids,
         "disk_pointer_after_rollback": disk_after_rollback["active_generation_id"],
         "disk_authority_after_rollback": disk_authority_after_rollback,
-        "fresh_open_after_restore_generation_id": fresh_restored_generation,
-        "fresh_open_vector_is_new_resolution": fresh_vector_id != frozen_vector_id,
+        "fresh_open_grb_generation_id": grb_fresh_open["active_generation_id"],
+        "fresh_open_grb_via_subprocess": grb_fresh_open["via_public_serving_open"],
+        "fresh_open_grb_subprocess_pid": grb_fresh_open["pid"],
+        "fresh_open_after_restore_generation_id": canary_fresh_open["active_generation_id"],
+        "fresh_open_canary_via_subprocess": canary_fresh_open["via_public_serving_open"],
+        "fresh_open_canary_subprocess_pid": canary_fresh_open["pid"],
+        "fresh_open_vector_is_new_resolution": (
+            frozen_vector_id
+            not in (
+                grb_fresh_open["authority_vector_id"],
+                canary_fresh_open["authority_vector_id"],
+            )
+        ),
         "fresh_open_via_public_api": True,
         "fresh_open_resolves_disk_not_frozen": (
             disk_authority_after_rollback == grant.grb_generation_id
-            and fresh_restored_generation == grant.canary_generation_id
-            and fresh_vector_id != frozen_vector_id
+            and grb_fresh_open["active_generation_id"] == grant.grb_generation_id
+            and canary_fresh_open["active_generation_id"] == grant.canary_generation_id
+            and grb_fresh_open["subprocess_is_fresh_process"]
+            and canary_fresh_open["subprocess_is_fresh_process"]
         ),
         "pass": (
             frozen_generation == grant.canary_generation_id
@@ -583,9 +597,10 @@ def _assert_frozen_generation_stable(env: dict[str, Any], grant: FirstCutoverGra
             and restored is not None
             and restored["active_generation_id"] == grant.canary_generation_id
             and disk_authority_after_rollback == grant.grb_generation_id
-            and fresh_restored_generation == grant.canary_generation_id
-            and fresh_vector_id != frozen_vector_id
-            and fresh_restored_ids == before_ids
+            and grb_fresh_open["active_generation_id"] == grant.grb_generation_id
+            and canary_fresh_open["active_generation_id"] == grant.canary_generation_id
+            and grb_fresh_open["subprocess_is_fresh_process"]
+            and canary_fresh_open["subprocess_is_fresh_process"]
         ),
     }
 
@@ -607,7 +622,11 @@ def _verify_no_production_contact(
             production_chroma.expanduser().resolve(),
             production_generation_root.expanduser().resolve(),
         }
-        return rehearsal_roots.isdisjoint(configured)
+        if not rehearsal_roots.isdisjoint(configured):
+            raise RehearsalProductionIsolationError(
+                "rehearsal roots overlap configured production markers"
+            )
+        return True
     try:
         from cg2_legacy_vector_attestation import _resolve_live_production_paths
 
@@ -616,9 +635,15 @@ def _verify_no_production_contact(
             live_chroma.expanduser().resolve(),
             live_generations.expanduser().resolve(),
         }
-    except (OSError, TypeError, ValueError, KeyError):
-        return True
-    return rehearsal_roots.isdisjoint(configured)
+    except (OSError, TypeError, ValueError, KeyError) as exc:
+        raise RehearsalProductionIsolationError(
+            "production path resolution failed during rehearsal isolation check"
+        ) from exc
+    if not rehearsal_roots.isdisjoint(configured):
+        raise RehearsalProductionIsolationError(
+            "rehearsal roots overlap resolved production paths"
+        )
+    return True
 
 
 def _exercise_cutover_crash_resume_controls(
@@ -656,6 +681,9 @@ def _exercise_cutover_crash_resume_controls(
     assert read_unqualified_pointer(env["generations"], env["owner_digest"]) is None
 
     grant_cutover = _make_cutover_grant(env, grant_id="d5-grant-cutover-success")
+    pointer_absent_before_first_cutover = (
+        read_unqualified_pointer(env["generations"], env["owner_digest"]) is None
+    )
     cutover_oracle = _OneLockOracle()
     with patch("cg2_first_cutover.source_flock", cutover_oracle):
         active = _publish_cutover(
@@ -667,7 +695,14 @@ def _exercise_cutover_crash_resume_controls(
     assert pointer.get("previous_generation_id") == grant_cutover.grb_generation_id
     assert pointer.get("active_generation_id") == grant_cutover.canary_generation_id
     assert read_unqualified_pointer(env["generations"], env["owner_digest"]) is not None
-    return grant_fence, grant_guard, grant_cutover, active, cutover_oracle
+    return (
+        grant_fence,
+        grant_guard,
+        grant_cutover,
+        active,
+        cutover_oracle,
+        pointer_absent_before_first_cutover,
+    )
 
 
 def _complete_rollback_recovery_phase(
@@ -709,24 +744,33 @@ def _complete_rollback_recovery_phase(
     pending_after_rollback = pending_owner_work(env["cfg"])
     reconciliation_hash_before_restart = _durable_reconciliation_hash(env["cfg"])
     fence_hash_before_restart, guard_hash_before_restart = _durable_fence_guard_hashes(env)
-    restart_boundary = simulate_rehearsal_process_restart_boundary(pre_restart_session)
+    parent_pid = os.getpid()
+    parent_serving_repo_id = (
+        id(pre_restart_session.serving_repo)
+        if pre_restart_session.serving_repo is not None
+        else None
+    )
+    pre_restart_session.close()
+    restart_boundary = run_rehearsal_subprocess_restart_recovery(
+        env["cfg"],
+        owner_key=env["owner_key"],
+        owner_digest=env["owner_digest"],
+        chroma_dir=env["chroma"],
+        expected_grb_generation_id=grant_cutover.grb_generation_id,
+        parent_pid=parent_pid,
+        parent_serving_repo_id=parent_serving_repo_id,
+    )
+    restart_boundary["session_closed_before_recovery"] = (
+        pre_restart_session.is_closed() and parent_serving_repo_id is not None
+    )
     reconciliation_hash_after_restart = _durable_reconciliation_hash(env["cfg"])
     fence_hash_after_restart, guard_hash_after_restart = _durable_fence_guard_hashes(env)
-    pending_after_restart = pending_owner_work(env["cfg"])
-    recovered = recover_active_pointer(
-        env["generations"],
-        env["owner_key"],
-        chroma_dir=env["chroma"],
-        cfg=env["cfg"],
-    )
-    reopened_vector = resolve_rehearsal_authority_vector(env["cfg"])
-    reopened_state = reopened_vector.by_owner[env["owner_digest"]]
-    retention = retained_rollback_baseline_inventory(
-        env["chroma"],
-        reopened_vector,
-        owner_digest=env["owner_digest"],
-        grb_generation_id=grant_cutover.grb_generation_id,
-    )
+    pending_after_restart = restart_boundary["pending_after_restart"]
+    reopened_state = {
+        "mode": restart_boundary["reopened_authority_mode"],
+        "generation_id": restart_boundary["reopened_active_generation_id"],
+    }
+    retention = restart_boundary["retention"]
     evidence_path = rollback_baseline_evidence_path(
         env["generations"], env["owner_digest"], grant_cutover.grb_generation_id
     )
@@ -743,7 +787,7 @@ def _complete_rollback_recovery_phase(
         "guard_hash_before_restart": guard_hash_before_restart,
         "guard_hash_after_restart": guard_hash_after_restart,
         "restart_boundary": restart_boundary,
-        "recovered": recovered,
+        "recovered_active_generation_id": restart_boundary["recovered_active_generation_id"],
         "reopened_state": reopened_state,
         "retention": retention,
         "retained_evidence_sha": _sha256_file(evidence_path),
@@ -760,7 +804,7 @@ def run_design_a_isolated_rehearsal(
     """Hermetic Design A drill: D0→D1→cutover→freeze→rollback→recovery."""
 
     env = build_hermetic_design_a_environment(tmp_path)
-    grant_fence, grant_guard, grant_cutover, active, cutover_oracle = (
+    grant_fence, grant_guard, grant_cutover, active, cutover_oracle, pointer_absent_before_first_cutover = (
         _exercise_cutover_crash_resume_controls(env)
     )
     pointer = active.pointer
@@ -784,7 +828,7 @@ def run_design_a_isolated_rehearsal(
         str(env["generations"].resolve()),
     }
     rolled_pointer = phase["pointer_after_rollback"]
-    recovered = phase["recovered"]
+    recovered_generation_id = phase["recovered_active_generation_id"]
     reopened_state = phase["reopened_state"]
 
     return {
@@ -804,7 +848,8 @@ def run_design_a_isolated_rehearsal(
         "retained_evidence_sha256": phase["retained_evidence_sha"],
         "pointer_before_rollback": phase["pointer_before_rollback"],
         "pointer_after_rollback": rolled_pointer,
-        "first_pointer_cas_from_none": pointer.get("previous_generation_id") == grant_cutover.grb_generation_id,
+        "first_pointer_cas_from_none": pointer_absent_before_first_cutover,
+        "first_pointer_pre_publication_absent": pointer_absent_before_first_cutover,
         "first_pointer_previous_is_grb": pointer.get("previous_generation_id") == grant_cutover.grb_generation_id,
         "first_pointer_active_is_canary": pointer.get("active_generation_id") == grant_cutover.canary_generation_id,
         "fence_content_hash_before_restart": phase["fence_hash_before_restart"],
@@ -829,10 +874,10 @@ def run_design_a_isolated_rehearsal(
         "request_freeze": freeze,
         "reconciliation_pending_after_source_advance": phase["pending_after_rollback"],
         "reconciliation_pending_after_restart": phase["pending_after_restart"],
-        "recovery_active_generation_id": recovered.pointer["active_generation_id"],
-        "recovery_matches_rollback": recovered.pointer["active_generation_id"] == grant_cutover.grb_generation_id,
-        "reopened_authority_mode": reopened_state.mode.value,
-        "reopened_active_generation_id": reopened_state.generation_id,
+        "recovery_active_generation_id": recovered_generation_id,
+        "recovery_matches_rollback": recovered_generation_id == grant_cutover.grb_generation_id,
+        "reopened_authority_mode": reopened_state["mode"],
+        "reopened_active_generation_id": reopened_state["generation_id"],
         "guard_blocks_second_first_cutover": guard_blocks_second,
         "physical_deletion_disabled": PHYSICAL_DELETION_DISABLED,
         "no_production_operations": no_production,

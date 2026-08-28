@@ -178,6 +178,7 @@ def test_frozen_generation_stays_stable_when_pointer_changes_mid_request(
     assert freeze["pointer_restored_to"] == grant.canary_generation_id
     assert freeze["query_ids_unchanged"] is True
     assert freeze["disk_authority_after_rollback"] == grant.grb_generation_id
+    assert freeze["fresh_open_grb_generation_id"] == grant.grb_generation_id
     assert freeze["fresh_open_after_restore_generation_id"] == grant.canary_generation_id
-    assert freeze["fresh_open_vector_is_new_resolution"] is True
+    assert freeze["fresh_open_grb_subprocess_pid"] != __import__("os").getpid()
     assert freeze["fresh_open_resolves_disk_not_frozen"] is True

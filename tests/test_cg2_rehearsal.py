@@ -6,10 +6,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 from cg2_property_map import PROPERTY_TEST_MAP, build_property_map_report
 from cg2_rehearsal import (
     ARCHITECTURE_SHA,
     EXECUTION_PLAN_SHA,
+    RehearsalProductionIsolationError,
+    _verify_no_production_contact,
     build_hermetic_design_a_environment,
     collect_execute_evidence,
     failure_matrix_evidence,
@@ -86,6 +90,10 @@ def test_design_a_isolated_rehearsal(tmp_path: Path, monkeypatch) -> None:
     assert report["physical_deletion_disabled"] is True
     assert report["request_freeze"]["pass"] is True
     assert report["request_freeze"]["fresh_open_resolves_disk_not_frozen"] is True
+    assert report["request_freeze"]["fresh_open_grb_generation_id"] == report["grb_generation_id"]
+    assert report["request_freeze"]["fresh_open_grb_subprocess_pid"] != __import__("os").getpid()
+    assert report["first_pointer_cas_from_none"] is True
+    assert report["first_pointer_pre_publication_absent"] is True
     assert report["first_pointer_previous_is_grb"] is True
     assert report["first_pointer_active_is_canary"] is True
     assert report["one_lock_cutover_oracle"]["pass"] is True
@@ -99,6 +107,9 @@ def test_design_a_isolated_rehearsal(tmp_path: Path, monkeypatch) -> None:
         "rollback_pointer_publication",
     ]
     assert report["restart_boundary"]["session_closed_before_recovery"] is True
+    assert report["restart_boundary"]["subprocess_is_fresh_process"] is True
+    assert report["restart_boundary"]["recovery_in_fresh_process"] is True
+    assert report["restart_boundary"]["recovery_matches_expected_grb"] is True
     assert report["reconciliation_state_hash_before_restart"] == report[
         "reconciliation_state_hash_after_restart"
     ]
@@ -123,6 +134,38 @@ def test_hermetic_environment_builds_grb_and_canary(tmp_path: Path, monkeypatch)
     env = build_hermetic_design_a_environment(tmp_path / "env")
     assert env["grb_result"].generation_id
     assert env["canary_ref"].manifest["generation_id"]
+
+
+def test_production_isolation_fails_closed_on_resolution_error(
+    tmp_path: Path, monkeypatch
+) -> None:
+    install_hermetic_production_boundary_patches(monkeypatch, tmp_path)
+    env = build_hermetic_design_a_environment(tmp_path / "isolation")
+    def _resolution_failure():
+        raise OSError("simulated production path resolution failure")
+
+    monkeypatch.setattr(
+        "cg2_legacy_vector_attestation._resolve_live_production_paths",
+        _resolution_failure,
+    )
+    with pytest.raises(RehearsalProductionIsolationError, match="resolution failed"):
+        _verify_no_production_contact(env, production_chroma=None, production_generation_root=None)
+
+
+def test_subprocess_public_open_resolves_active_generation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from cg2_rehearsal import _make_cutover_grant, _publish_cutover
+    from mixed_mode_proof import run_rehearsal_subprocess_public_open
+
+    install_hermetic_production_boundary_patches(monkeypatch, tmp_path)
+    env = build_hermetic_design_a_environment(tmp_path / "public-open")
+    grant = _make_cutover_grant(env, grant_id="public-open-grant")
+    _publish_cutover(env, grant)
+    probe = run_rehearsal_subprocess_public_open(env["cfg"], env["owner_digest"])
+    assert probe["via_public_serving_open"] is True
+    assert probe["subprocess_is_fresh_process"] is True
+    assert probe["active_generation_id"] == grant.canary_generation_id
 
 
 if __name__ == "__main__":
