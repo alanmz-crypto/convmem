@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-23 (Recovery Authority T1 via PR #234 and T2 via PR #236 both landed; Trapdoor integration PR #221 remains merged at `722141d31e586151f361ef7006ad74c71cdff534`)
+**Snapshot:** 2026-08-27 (R2b v2 normative writer-gate plan prepared; D4 is on `main` at `89a7e045b130f005f57539478d9a180cbea905df`)
 
 > **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. PR #221 is
 > squash-merged onto current main; its bounded writer-boundary and
@@ -29,8 +29,9 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - **Shadow Ledger Phase 0 code + corrective C1–C7 are on `main`** (#122, #126, #131, #134);
   shadow remains **disabled**. Activation requires **activation-ready evidence** then a
   separate Ryan grant — see [`STATUS-shadow-ledger-phase0.md`](../plans/STATUS-shadow-ledger-phase0.md).
-- **R2b capture** code is on `main`; live capture is unauthorized; quarantined draft packet
-  must not be reused.
+- **R2b capture** v1 code is on `main`, but its timing-only live path is superseded for
+  future execution by the v2 exclusive writer-gate amendment. Live capture remains
+  unauthorized; quarantined v1 and `2026-08-27-r2b-capture-02` packets must not be reused.
 - Two non-fatal doctor warnings often present: legacy `embed_collection_identity` metadata
   and external restic freshness. They do not authorize corpus mutation or Shadow activation.
 
@@ -40,7 +41,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 |---|---|---|
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
-| R2b capture authorization | Code on `main`; live capture unauthorized | Fresh T4 packet + Ryan ACCEPT AND GRANT before any capture. |
+| R2b capture authorization | v2 writer-gate plan prepared; implementation and live capture unauthorized | Ryan architecture review → Cursor implementation → same-tip Copilot/Kiro review. Only then: policy-pending duration acceptance, fresh quiescence authority, packet ACCEPT, and **ACCEPT AND GRANT**. No v1 packet upgrade/reuse. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
 | CG-2 authority migration | Merged on `main` (#186); V8a **PASS** (Kiro independent sign-off); V8b (soak grant) **PASS**; **legacy-only soak completed and Ryan-accepted 2026-08-21**. Design A architecture papered (docs branch `docs/2026-08-21-cg2-design-a-arch-lock`, not yet merged). V8c first-owner packet **PENDING** — not authorized. | Next governed step: **Design A execution planning only**; no implementation/activation yet. V8c packet remains PENDING and comes **after** Design A implementation/evidence. Do not activate, publish fence/pointer, run GC, or enable Shadow/R2b. See [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md), [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md), and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
 | Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED**; PR #221 squash-merged at `722141d31e586151f361ef7006ad74c71cdff534` from final reviewed head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`; bounded writer-boundary and provenance-supersession corrections are on current `main` with Runway integration complete | No further T3 integration work. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
