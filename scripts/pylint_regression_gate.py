@@ -120,6 +120,19 @@ _ALLOWED_CYCLIC_PAIRS = frozenset(
         ("query", "serving_index_repository"),
         ("metadata_keyword_fallback", "query"),
         ("metadata_keyword_fallback", "serving_index_repository"),
+        ("cg2_legacy_vector_attestation", "complete_data_restore"),
+        ("cg2_legacy_vector_attestation", "file_generation_pointer"),
+        ("cg2_legacy_vector_attestation", "serving_authority"),
+        ("cg2_rollback_baseline", "file_generation_pointer"),
+        ("cg2_rollback_baseline", "ingest"),
+        ("cg2_rollback_baseline", "serving_authority"),
+        ("file_generation_pointer", "logical_accounting"),
+        ("file_generation_pointer", "serving_authority"),
+        ("file_generation_pointer", "source_reconciler"),
+        ("query", "serving_authority"),
+        ("serving_authority", "serving_index_repository"),
+        ("serving_authority", "source_reconciler"),
+        ("logical_accounting", "serving_authority"),
     }
 )
 
