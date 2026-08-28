@@ -13,7 +13,13 @@ from typing import Any
 from chroma_store import ChromaStore, UNITS
 from file_generation_store import FileGenerationStore
 from file_generation_validate import chroma_sequence_positions
-from logical_accounting import build_physical_inventory_report
+from logical_accounting import (
+    PhysicalRowClass,
+    build_physical_inventory_report,
+    classify_physical_row,
+    discover_file_generations_by_owner,
+)
+from chroma_readonly import collection_metadata_rows
 from mixed_mode_control import build_authority_clean_control
 from mixed_mode_retrieval import (
     MixedModeCandidateBudget,
@@ -98,6 +104,45 @@ def retention_inventory_report(
         "abandoned_count": int(counts.get("abandoned", 0)),
         "serving_units": int(physical.get("serving_units_count", 0)),
         "physical_units": int(physical.get("physical_units_count", 0)),
+        "physical_deletion_disabled": PHYSICAL_DELETION_DISABLED,
+    }
+
+
+def retained_rollback_baseline_inventory(
+    chroma_dir: str | Path,
+    vector: FrozenAuthorityVector,
+    *,
+    owner_digest: str,
+    grb_generation_id: str,
+) -> dict[str, Any]:
+    """Report whether retained G_rb remains protected and not GC-eligible."""
+
+    inventory = retention_inventory_report(chroma_dir, vector)
+    known_by_owner = discover_file_generations_by_owner(str(chroma_dir), UNITS)
+    grb_rows = 0
+    abandoned_grb_rows = 0
+    for meta in collection_metadata_rows(str(chroma_dir), UNITS):
+        if str(meta.get("owner_digest") or "") != owner_digest:
+            continue
+        if str(meta.get("generation_id") or "") != grb_generation_id:
+            continue
+        grb_rows += 1
+        classification = classify_physical_row(
+            meta,
+            collection_kind=UNITS,
+            active_generations=vector.active_generations(),
+            previous_generations=vector.previous_generations(),
+            known_generations_by_owner=known_by_owner,
+        )
+        if classification == PhysicalRowClass.ABANDONED:
+            abandoned_grb_rows += 1
+    return {
+        **inventory,
+        "grb_generation_id": grb_generation_id,
+        "grb_row_count": grb_rows,
+        "grb_abandoned_row_count": abandoned_grb_rows,
+        "grb_protected": grb_rows > 0 and abandoned_grb_rows == 0,
+        "grb_gc_eligible": abandoned_grb_rows > 0,
         "physical_deletion_disabled": PHYSICAL_DELETION_DISABLED,
     }
 

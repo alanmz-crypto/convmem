@@ -154,3 +154,25 @@ def test_runtime_boundary_inventory_records_reads(tmp_path: Path) -> None:
     assert after >= before
     assert ("serving_index_repository.py", "count_units", "ChromaStore") in after
     assert ("serving_index_repository.py", "units_metadata", "ChromaStore") in after
+
+
+def test_frozen_generation_stays_stable_when_pointer_changes_mid_request(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from cg2_rehearsal import (
+        _assert_frozen_generation_stable,
+        _make_cutover_grant,
+        _publish_cutover,
+        build_hermetic_design_a_environment,
+        install_hermetic_production_boundary_patches,
+    )
+
+    install_hermetic_production_boundary_patches(monkeypatch, tmp_path)
+    env = build_hermetic_design_a_environment(tmp_path / "freeze")
+    grant = _make_cutover_grant(env, grant_id="freeze-grant-1")
+    _publish_cutover(env, grant)
+    freeze = _assert_frozen_generation_stable(env, grant)
+    assert freeze["pass"] is True
+    assert freeze["still_frozen_generation_id"] == grant.canary_generation_id
+    assert freeze["pointer_changed_to"] == grant.grb_generation_id
+    assert freeze["pointer_restored_to"] == grant.canary_generation_id

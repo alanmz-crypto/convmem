@@ -81,9 +81,14 @@ PROPERTY_TEST_MAP: dict[str, dict[str, Any]] = {
     },
     "FrozenGenerationStable": {
         "tests": [
-            "tests/test_serving_authority.py::test_retry_budget_exhaustion_raises_authority_unstable",
+            (
+                "tests/test_serving_index_repository.py::"
+                "test_frozen_generation_stays_stable_when_pointer_changes_mid_request"
+            ),
         ],
-        "notes": "Resolution retry budget terminates without silent drift",
+        "notes": (
+            "Request-frozen authority vector ignores mid-request pointer changes"
+        ),
     },
     "RetryBudgetTerminates": {
         "tests": [
