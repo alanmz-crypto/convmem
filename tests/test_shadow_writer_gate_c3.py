@@ -8,6 +8,7 @@ import json
 import multiprocessing as mp
 import os
 import re
+import threading
 import time
 from pathlib import Path
 
@@ -99,6 +100,171 @@ def test_shared_lease_writes_and_clears_attestation(tmp_path: Path) -> None:
         mode = (attest / f"{att.pid}.json").stat().st_mode & 0o777
         assert mode == 0o600
     assert load_attestation(os.getpid(), attest_dir=attest) is None
+
+
+def test_concurrent_same_process_shared_leases_keep_attestation(tmp_path: Path) -> None:
+    """Overlapping same-PID leases must not unlink attestation early."""
+    from chroma_write_store import (
+        _process_writer_leases,
+        load_attestation,
+        production_writer_boundary,
+    )
+
+    lock = tmp_path / "gate.lock"
+    attest = tmp_path / "attest"
+    pid = os.getpid()
+    attestation_path = attest / f"{pid}.json"
+    iterations = 40
+    errors: list[BaseException] = []
+    both_inside = threading.Barrier(2)
+    release = threading.Barrier(2)
+
+    def hold_one(tag: str) -> None:
+        try:
+            with production_writer_boundary(
+                lock_path=lock,
+                attest_dir=attest,
+                entrypoint=f"test.concurrent.{tag}",
+            ):
+                both_inside.wait(timeout=5)
+                assert attestation_path.is_file(), f"{tag}: attestation missing while leased"
+                loaded = load_attestation(pid, attest_dir=attest)
+                assert loaded is not None
+                assert loaded["pid"] == pid
+                release.wait(timeout=5)
+        except BaseException as exc:  # noqa: BLE001 — collect for main thread
+            errors.append(exc)
+
+    for _ in range(iterations):
+        t1 = threading.Thread(target=hold_one, args=("a",))
+        t2 = threading.Thread(target=hold_one, args=("b",))
+        t1.start()
+        t2.start()
+        t1.join(timeout=10)
+        t2.join(timeout=10)
+        assert not t1.is_alive() and not t2.is_alive(), "threads hung"
+        assert errors == [], errors
+
+    assert load_attestation(pid, attest_dir=attest) is None
+    assert not attestation_path.exists()
+    with _process_writer_leases.lock:
+        assert _process_writer_leases.active_count == 0
+        assert _process_writer_leases.attestation is None
+
+
+def test_intermediate_shared_lease_exit_preserves_attestation(tmp_path: Path) -> None:
+    from chroma_write_store import load_attestation, shared_writer_lease
+
+    lock = tmp_path / "gate.lock"
+    attest = tmp_path / "attest"
+    pid = os.getpid()
+    attestation_path = attest / f"{pid}.json"
+    inner_ready = threading.Event()
+    inner_may_exit = threading.Event()
+    errors: list[BaseException] = []
+
+    def inner() -> None:
+        try:
+            with shared_writer_lease(
+                lock_path=lock,
+                attest_dir=attest,
+                entrypoint="test.intermediate.inner",
+            ):
+                inner_ready.set()
+                assert attestation_path.is_file()
+                inner_may_exit.wait(timeout=5)
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    with shared_writer_lease(
+        lock_path=lock,
+        attest_dir=attest,
+        entrypoint="test.intermediate.outer",
+    ):
+        assert attestation_path.is_file()
+        t = threading.Thread(target=inner)
+        t.start()
+        assert inner_ready.wait(timeout=5)
+        assert load_attestation(pid, attest_dir=attest) is not None
+        inner_may_exit.set()
+        t.join(timeout=5)
+        assert errors == []
+        assert not t.is_alive()
+        assert load_attestation(pid, attest_dir=attest) is not None
+        assert attestation_path.is_file()
+    assert load_attestation(pid, attest_dir=attest) is None
+
+
+def test_nested_shared_lease_process_count_and_attestation_lifecycle(
+    tmp_path: Path,
+) -> None:
+    from chroma_write_store import (
+        _held_writer_lease,
+        _process_writer_leases,
+        load_attestation,
+        production_writer_boundary,
+        require_writer_attestation,
+    )
+
+    lock = tmp_path / "gate.lock"
+    attest = tmp_path / "attest"
+    pid = os.getpid()
+    attestation_path = attest / f"{pid}.json"
+
+    with production_writer_boundary(
+        lock_path=lock,
+        attest_dir=attest,
+        entrypoint="test.nested.outer",
+    ):
+        outer = _held_writer_lease()
+        assert outer is not None
+        with _process_writer_leases.lock:
+            assert _process_writer_leases.active_count == 1
+        assert attestation_path.is_file()
+        with production_writer_boundary(entrypoint="test.nested.inner"):
+            inner = _held_writer_lease()
+            assert inner is outer
+            with _process_writer_leases.lock:
+                assert _process_writer_leases.active_count == 2
+            assert require_writer_attestation() is outer.attestation
+            assert load_attestation(pid, attest_dir=attest) is not None
+        with _process_writer_leases.lock:
+            assert _process_writer_leases.active_count == 1
+        assert load_attestation(pid, attest_dir=attest) is not None
+    assert load_attestation(pid, attest_dir=attest) is None
+    with _process_writer_leases.lock:
+        assert _process_writer_leases.active_count == 0
+
+
+def test_shared_lease_exception_unwind_does_not_leak_process_count(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from chroma_write_store import (
+        _process_writer_leases,
+        load_attestation,
+        shared_writer_lease,
+    )
+    import writer_census
+
+    lock = tmp_path / "gate.lock"
+    attest = tmp_path / "attest"
+    pid = os.getpid()
+
+    def boom(*_a, **_k):  # type: ignore[no-untyped-def]
+        raise RuntimeError("census open failed")
+
+    monkeypatch.setattr(writer_census, "record_writer_open", boom)
+    with pytest.raises(RuntimeError, match="census open failed"):
+        with shared_writer_lease(
+            lock_path=lock,
+            attest_dir=attest,
+            entrypoint="test.unwind",
+        ):
+            pass
+    assert load_attestation(pid, attest_dir=attest) is None
+    with _process_writer_leases.lock:
+        assert _process_writer_leases.active_count == 0
+        assert _process_writer_leases.attestation is None
 
 
 def _child_hold_exclusive(lock_path: str, ready_path: str, release_path: str) -> None:
