@@ -66,7 +66,7 @@ transaction. It authorizes neither. Every row receives `PASS`, `FAIL`,
 | V4d | Trusted snapshot is computed only after coverage proof and while that lease remains live | Call trace/order evidence |
 | V4e | Snapshot binds export bytes, processed presence/bytes, collection name/ID, full Chroma extracted set, documents, and superseded state | Recomputed digest |
 | V4f | Packet binds complete snapshot, open-evidence digest, gate identity, coverage, revision, deadline, exact paths/argv, and fixed controls | Packet digest/field dump |
-| V4g | Sidecar and capture directory are absent before their respective gates | Filesystem/order evidence |
+| V4g | Sidecar is absent before packet ACCEPT; materialization does not create or populate the capture directory; the capture directory remains absent until the separately granted capture reaches its creation point | Filesystem/order evidence |
 | V4h | Snapshot, packet, or source drift requires a fresh run; it is never repaired in place | Negative test |
 
 ## V5 — HITL, materialization, and remaining budget
@@ -80,13 +80,14 @@ transaction. It authorizes neither. Every row receives `PASS`, `FAIL`,
 | V5e | Proposed values are supported by representative scratch evidence and separately accepted by Ryan; no 900-second ratification | Benchmark evidence and Ryan decision |
 | V5f | Sufficient remaining budget is proven before **ACCEPT AND GRANT** | Boundary calculation |
 | V5g | Expiry is terminal and cannot extend, re-ACCEPT, regrant, or retry the run | Timeout tests |
+| V5h | `packet ACCEPT` is not a capture grant, and materialized authority is not permission to create or populate capture output | Authority/order test |
 
 ## V6 — capture and marker
 
 | ID | Check | Required evidence |
 |---|---|---|
 | V6a | Ryan **ACCEPT AND GRANT** is the only capture grant and is bound to the live lease and exact packet | Grant digest and capability trace |
-| V6b | Exactly one capture runs with `capture_id = run_id`, canonical overlap, spot `n = 20`, and one attempt | argv/report evidence |
+| V6b | Exactly one capture begins after the grant; only then is the previously absent target created, with `capture_id = run_id`, canonical overlap, spot `n = 20`, and one attempt | argv/report/order evidence |
 | V6c | No service/process control, source/config mutation, backup restore, reconciliation workaround, generation operation, or cleanup occurs | Scoped audit |
 | V6d | Final trusted source recomputation occurs before marker publication and equals the approved snapshot | Full comparison |
 | V6e | `corpus_package_manifest.json` is last and atomic; it validates exact inventory and every required non-marker hash | Instrumented write order and marker validation |
@@ -97,11 +98,13 @@ transaction. It authorizes neither. Every row receives `PASS`, `FAIL`,
 
 | ID | Check | Required evidence |
 |---|---|---|
-| V7a | `quiescence-close.json` is durable before lock release and includes terminal state, final source result, marker/failure result, deadline status, and release intent/result | Ordering proof |
-| V7b | Post-release observation matches pre-quiescence service/process state except lease release | State digest |
-| V7c | Gate-unavailable, unknown writer, snapshot, packet, Ryan expiry, binder, pre-target capture, post-target capture, source mutation, crash, missing close, replay, PID reuse, and inode replacement each fail closed as specified | Failure matrix evidence |
-| V7d | Partial output is quarantined and never cleaned, overwritten, resumed, or reused | Path and negative evidence |
-| V7e | Every retry has a new run ID, authority, lease, snapshot, packet, ACCEPT, grant, and absent target | New-chain evidence or N/A |
+| V7a | `quiescence-close.json` is written and fsynced before lock release; it contains only the terminal disposition up to release, final source result, marker/failure result, deadline state, exact live lease/gate identity, release intent, pre-release state, and preceding-evidence hashes; it does not claim release success or contain post-release observation | Ordering and field proof |
+| V7b | The kernel gate is actually released before `quiescence-release.json` is written and fsynced; release evidence binds the close digest, gate identity, actual release result, post-release timestamp/observation, comparison, and anomaly | Lock/release trace and digest |
+| V7c | Post-release observation matches the bound pre-quiescence/pre-release service/process state except for lease release | State comparison |
+| V7d | Gate-unavailable, unknown writer, snapshot, packet, Ryan expiry, binder, pre-target capture, post-target capture, source mutation, crash, missing close, missing release evidence, crash between close and release, replay, PID reuse, and inode replacement each fail closed as specified | Failure matrix evidence |
+| V7e | If release succeeds but release evidence cannot be written, the lock remains released but VERIFY/arc closure fails closed; the run cannot resume, replay, repair, or regrant | Negative-path evidence |
+| V7f | Partial output is quarantined and never cleaned, overwritten, resumed, or reused | Path and negative evidence |
+| V7g | Every retry has a new run ID, authority, lease, snapshot, packet, ACCEPT, grant, and absent target | New-chain evidence or N/A |
 
 ## V8 — independent review and close
 

@@ -64,18 +64,25 @@ The following sequence is normative and linear:
 4. Trusted materialization/binder validation rechecks the packet, source,
    paths, target absence, deadline, and lease continuity.
 5. Ryan issues **ACCEPT AND GRANT** only after sufficient remaining budget is
-   proven for capture, final source recomputation, close evidence, and release.
-6. Exactly one capture runs into the previously absent target.
+   proven for capture, final source recomputation, close evidence, release, and
+   release evidence.
+6. Exactly one capture begins. Only then may the capture operation create the
+   previously absent target at its authorized creation point.
 7. Trusted code recomputes the final source identity before publishing the
    existing completion marker.
 8. Trusted code durably records close evidence while the lease is still held,
-   then releases the exclusive gate.
+   then releases the exclusive gate and writes post-release evidence.
 9. Independent VERIFY and Ryan's close GATE occur after release; they do not
    extend, repair, or regrant the transaction.
 
 A pre-quiescence authority can authorize preparation only. It can never
 authorize capture because the exact source identity and live lease evidence do
 not yet exist.
+
+`packet ACCEPT` is not a capture grant. `materialized authority` is not
+permission to create or populate the capture directory. The target remains
+absent until after **ACCEPT AND GRANT**, when the single authorized capture
+operation reaches its creation point.
 
 ## 4. Continuous live capability
 
@@ -207,9 +214,9 @@ release_and_close
 ```
 
 The implementation must prove sufficient remaining budget before **ACCEPT AND
-GRANT** for the capture, final recomputation, close evidence, and release. The
-effective limit is the earliest of the hard transaction deadline, current
-phase bound, and inherited packet-freshness bound.
+GRANT** for the capture, final recomputation, close evidence, release, and
+release evidence. The effective limit is the earliest of the hard transaction
+deadline, current phase bound, and inherited packet-freshness bound.
 
 Concrete production values remain Ryan-owned and policy-pending. A future
 scratch benchmark must state workload, hardware, implementation revision,
@@ -229,28 +236,42 @@ private authorization root, with no capture-directory write implied:
 | `quiescence-start.json` | Fresh run, v2 policy, authority digest, exact revision, bound paths, target-absence proof, Restic precondition, and transaction start/deadline policy |
 | `quiescence-open.json` | Same run and authority, gate path/inode/protocol, coordinator PID/start time, live lease start/deadline, writer coverage and runtime census digests, pre-quiescence service/process observation, and live-ownership proof |
 | `capture.json` | Fresh v2 packet, complete trusted source snapshot, exact paths and argv, fixed controls, implementation revision, policy, deadline, gate identity, and `quiescence-open.json` digest; sidecar absent until packet ACCEPT |
-| `quiescence-close.json` | Terminal state, final source comparison, marker or failure result, deadline status, close timestamp, release intent/result, and post-release observation |
+| `quiescence-close.json` | Written and fsynced while the exclusive lease is held: terminal disposition up to release, final source comparison, marker or failure result, deadline state, close timestamp, exact live lease/gate identity, release intent, pre-release process/service state, and hashes of preceding evidence; it must not claim release success or contain post-release observation |
+| `quiescence-release.json` | Written and fsynced only after the kernel gate is released: run ID, close-record digest, gate identity, actual release result, post-release timestamp, post-release process/service observation, comparison with bound pre-quiescence/pre-release state, and any release/post-release anomaly |
 
 The packet binds the live open evidence and the exact gate identity; open JSON
 alone cannot establish continuity. The capture directory remains absent until
-materialization after packet ACCEPT and **ACCEPT AND GRANT**.
+the separately granted capture operation reaches its authorized creation point
+after packet ACCEPT and **ACCEPT AND GRANT**. Materialization does not create or
+populate that directory.
 
-The inherited capture ordering is:
+The inherited capture ordering, extended by the v2 evidence boundary, is:
 
 ```text
-live materialization
-→ create absent capture_dir
+packet ACCEPT
+→ live materialization (no capture-directory write)
+→ remaining-budget proof
+→ ACCEPT AND GRANT
+→ exactly one capture begins
+→ create absent capture_dir at the authorized capture point
 → write all non-marker artifacts
 → final trusted source recomputation
 → write corpus_package_manifest.json last and atomically
 → no further capture-directory write
-→ write quiescence-close.json while lease remains held
+→ write and fsync quiescence-close.json while lease remains held
 → release gate
+→ write quiescence-release.json after actual release
 ```
+
+`quiescence-release.json` is evidence of transaction closure only. It is not
+permission to resume, repair, capture, clean up, or reuse the run.
 
 The marker remains the sole structural completion authority. A `FAILED` report,
 drift, exception, timeout, crash, or missing close evidence never completes a
-run. No cleanup, overwrite, resume, or partial-output reuse is part of R2b.
+run. If release occurs but `quiescence-release.json` cannot be written, the
+source lock remains released but overall VERIFY and arc closure fail closed;
+the run cannot resume or replay. No cleanup, overwrite, resume, or
+partial-output reuse is part of R2b.
 
 ## 9. Failure semantics
 
@@ -265,8 +286,9 @@ run. No cleanup, overwrite, resume, or partial-output reuse is part of R2b.
 | Capture failure before target creation | No capture; abort/release; fresh run required |
 | Capture failure after target creation | Preserve partial output as quarantined evidence; no marker, cleanup, overwrite, resume, or same-run retry |
 | Source mutation while gate is held | Hard fail as writer bypass; no marker; quarantine and fresh authority |
-| Coordinator crash | Run is terminal; kernel lock release is not permission to resume; stale evidence cannot regrant |
-| Missing close evidence or release/close timeout | Terminal quarantine; no extension or repair in place |
+| Coordinator crash, including after close evidence and before/during release | Run is terminal and non-resumable; kernel lock release is not permission to resume; stale evidence cannot regrant |
+| Missing close evidence or close timeout | Terminal quarantine; no extension or repair in place |
+| Release succeeds but release evidence is missing or release/post-release evidence times out | Lock may already be released, but closure fails closed; no resume, replay, repair, or regrant |
 | Replay or reacquisition | Refuse consumed run, nonce, authority, capability, or lock identity; fresh run required |
 | PID reuse or replaced/alternate lock inode | Refuse continuity; no capture or regrant |
 
