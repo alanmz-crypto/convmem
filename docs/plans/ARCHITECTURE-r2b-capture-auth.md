@@ -4,7 +4,9 @@
 
 **Decision:** Option A — phase-scoped `authorization_phase: "r2b"`
 
-**Status:** Proposed architecture; implementation and live capture remain unauthorized
+**Status:** Base v1 architecture; implementation exists, but mutable-source v2
+correction is the current architecture under review. Live capture remains
+unauthorized.
 
 **Supersedes:** [PR #64](https://github.com/alanmz-crypto/convmem/pull/64)
 
@@ -21,6 +23,12 @@ Authority:    Docs PR only — merge is not an R2b execution grant
 **Execution plan:** [`EXECUTION-2026-07-20-r2b-capture.md`](EXECUTION-2026-07-20-r2b-capture.md)
 
 **Verify plan:** [`VERIFY-r2b-capture.md`](VERIFY-r2b-capture.md)
+
+**Current mutable-source correction:** [`ARCHITECTURE-r2b-mutable-source-quiescence-v2.md`](ARCHITECTURE-r2b-mutable-source-quiescence-v2.md)
+is the normative v2 amendment. It preserves this document's trusted snapshot,
+path, fixed-control, capability, marker, and quarantine contracts while adding
+exclusive writer-gate quiescence, exact-tip zero-bypass proof, a separate
+ACQUIRE WRITER QUIESCENCE AND PREPARE authority, and bounded deadlines.
 
 **Gate 1 harness pin:** `3b2790f50414f0445c35748e52f849c6276839f7`
 

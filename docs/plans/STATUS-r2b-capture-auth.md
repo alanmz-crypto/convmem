@@ -1,235 +1,192 @@
 # Arc Brief — R2b Capture Authorization
 
-> **Every model working on this arc must read this file at session start.**
-> After reading, state: "Goal: [one sentence]. My role: [what I'm here to do]. The system currently: [what exists]. Missing: [what doesn't exist yet]."
+> Every model working on this arc must read this file at session start.
 
----
+**Arc codename:** R2b Capture Authorization
 
 ## 1. What This Is For (product goal)
 
-ConvMem answers questions by retrieving evidence from a local corpus. The corpus is
-built by *capture* — turning exported/processed data plus a Chroma collection into a
-package of `knowledge_units` and evaluation artifacts. Today that capture pipeline can
-be run, but nothing proves a capture was **authorized**: which exact sources were
-approved, under what fixed controls, and that the output is the immutable, complete
-result of one approved run.
+ConvMem answers questions from a local knowledge corpus. R2b is the
+phase-scoped authorization boundary for producing one deterministic capture
+from an export, processed state, and Chroma collection. The packet binds the
+exact sources, controls, implementation revision, and output location; the
+completion marker proves the resulting artifact set is complete.
 
-**R2b replaces this** with an honest, phase-scoped authorization boundary: by default a
-real capture refuses to run unless it is bound to one explicitly approved
-`authorization_phase: "r2b"` manifest. An approval authorizes **one exact capture**, not
-a directory or a reusable retry loop. When complete, a capture is structurally complete
-only when a last-atomic completion marker validates every required prior artifact and
-the exact inventory.
+The v1 boundary is implemented on main, but normal production ingestion is
+mutable. The observed complete-identity stability window was insufficient for a
+human-gated timing-only T4 to T6 transaction. V2 corrects that feasibility gap
+with exclusive writer-gate quiescence while preserving exact source binding and
+fail-closed authorization.
 
-**Done means:** Ryan ACCEPT AND GRANTs a filled, timestamp-valid R2b packet; a single
-deterministic capture runs into an absent `capture_dir`; the completion marker proves the
-exact approved sources/controls were used; and a post-capture VERIFY closes the arc.
-
----
+Done means: a reviewed and implemented v2 transaction obtains Ryan's separate
+writer-quiescence preparation authority, Ryan ACCEPTs a fresh packet, Ryan
+ACCEPT AND GRANTs one capture, the held gate spans snapshot through final source
+recomputation, and independent VERIFY plus Ryan GATE close the arc.
 
 ## 2. System Design (how the pieces connect)
 
-```
-              ┌───────────────────────────────────────────────────────────┐
-              │                    AUTHORIZATION CHAIN                    │
-              │                                                           │
- Approved     │  manifest + sidecar ──► bind_r2b_capture ──► _R2bCapability│
- manifest     │        (AUTH_ROOT/<run_id>/capture.json      (opaque,     │
- (real/r2b)   │         + .approved.sha256)                   HMAC-sealed) │
-              └──────────────────────┬────────────────────────────────────┘
-                                     ▼
-                    run_capture(..., r2b_capability=capability)
-                                     │
-                                     ▼
-                 materialize_r2b_write_authorization
-                 (recheck age/approval/bindings/source/symlinks/target)
-                                     │
-                                     ▼
-                 first capture_dir creation/write  (EVAL_ROOT/<run_id>/capture)
+    exact-tip mutation-route coverage
+      -> Ryan ACQUIRE WRITER QUIESCENCE AND PREPARE
+      -> one continuously held exclusive writer-gate lease
+      -> trusted complete source snapshot
+      -> fresh packet -> Ryan ACCEPT -> ACCEPT AND GRANT
+      -> one capture -> final source check -> marker -> close -> release
 
- Trusted source snapshot (recomputed pre-capability, at materialization, post-extract):
-   export sha256 + processed state + canonical Chroma collection/ID/doc/superseded digest
+Quiescence means owning the existing exclusive writer gate. Compliant writers
+remain running and wait at their normal shared gate. R2b does not stop, pause,
+restart, signal, kill, reload, reconfigure, or otherwise control services or
+processes.
 
- Write order (last marker wins):
-   materialize auth → capture_dir → export/processed copies → canonical Chroma extract
-   → corpus_package.jsonl → overlap_validation.json → historical_spot_check.json
-   → capture_report.json → final live-source drift check
-   → corpus_package_manifest.json  (completion marker — LAST atomic write)
-```
+V2 exact contract:
 
-**Key constraints (invariants from architecture lock):**
-- Approval authorizes one exact capture, not a directory or retry loop (invariant 1).
-- The approved manifest and sidecar are the source of truth; capability/grant fields are
-  never independent sources of authorization (invariant 3).
-- Source identity is recomputed by trusted code before capability minting and at execution
-  (invariant 4); stable Chroma IDs are insufficient.
-- A capture is structurally complete only when the last atomic marker validates every
-  required prior artifact and the exact inventory (invariant 5).
-- Failure, drift, or interruption never produces a completion marker; partial directories
-  are quarantined; retry requires a fresh directory and grant (invariant 6).
-- The one-hour staleness rule applies at ACCEPT, binder execution, and materialization.
+    r2b_contract_version = 2
+    service_policy = "no_service_state_changes"
+    source_quiescence_policy = "exclusive_writer_gate_v1"
 
----
+The base R2b controls remain capture_id=run_id, canonical overlap, historical
+spot n=20, and one attempt/max-retries 1. Trusted source identity includes
+export SHA-256, processed state and digest, Chroma collection identity,
+extracted unit count, sorted-ID hash, and canonical capture-slice SHA-256.
 
 ## 3. What Exists Right Now (file map)
 
-### On `main` (merged, stable)
+### Merged v1 machinery on main
 
-| File | What it does | State |
-|------|-------------|-------|
-| `eval_corpus/r2b_capture_auth.py` | R2b schema/precedence, safe `run_id`/path rules, `bind_r2b_capture`, `_R2bCapability`, materializer; plain binder refuses R2b | Complete |
-| `eval_corpus/r2b_capture_run.py` | `run_capture(..., r2b_capability=capability)`; capability required before eval-root write; canonical Chroma helper; last expanded marker | Complete |
-| `eval_corpus/capture.py` | Shared canonical Chroma source-identity helper; capture extraction | Complete |
-| `scripts/eval_corpus_capture.py` | CLI; preserves/passes capability; fixed controls (`capture_id=run_id`, canonical overlap, spot `n=20`, one attempt); exact exit mapping | Complete |
-| `tests/r2b_hermetic.py` | Hermetic tests, including failure classes | Complete |
-| `tests/test_eval_r2b_auth_schema.py` | R2b schema and capability forgery/staleness tests | Complete |
-| `tests/test_eval_r2b_capture_marker.py` | Marker order/inventory/hashes tests | Complete |
-| `docs/plans/ARCHITECTURE-r2b-capture-auth.md` | Locked architecture (Option A, phase-scoped `r2b`) | Complete |
-| `docs/plans/EXECUTION-2026-07-20-r2b-capture.md` | T1–T8 task/gate sequence | Complete |
-| `docs/plans/VERIFY-r2b-capture.md` | V0–V6 filled against architecture; **NOT RUN** | Stub/filled, not executed |
+| File | Product role | State |
+|---|---|---|
+| eval_corpus/r2b_capture_auth.py | R2b schema, trusted binding, opaque capability, materialization | Complete v1; v2 extension not implemented |
+| eval_corpus/r2b_capture_run.py | Capability-gated capture and last completion marker | Complete v1; v2 lease continuity not implemented |
+| eval_corpus/capture.py | Shared canonical Chroma source identity/extraction | Complete v1 |
+| scripts/eval_corpus_capture.py | Fixed-control capture CLI and exit mapping | Complete v1 |
+| chroma_write_store.py | Existing shared/exclusive writer gate | Merged machinery; v2 lease integration not implemented |
+| writer_census.py | Payload-free writer session census | Existing machinery; v2 zero-bypass binding not implemented |
+| tests/r2b_hermetic.py and tests/test_eval_r2b_*.py | v1 authorization and marker tests | Complete v1 |
 
-Implementation was merged to `main` via [#67](https://github.com/alanmz-crypto/convmem/pull/67)
-with tree proof at `c0f06f5`.
+### Review documents on the current docs branch
+
+| File | Product role | State |
+|---|---|---|
+| docs/plans/ARCHITECTURE-r2b-mutable-source-quiescence-v2.md | Normative v2 architecture amendment | Prepared for review |
+| docs/plans/EXECUTION-2026-08-27-r2b-v2-quiescence.md | Bounded phases, duration evidence, and future transaction order | Prepared for review |
+| docs/plans/VERIFY-r2b-v2-quiescence.md | Q0-Q9 implementation and transaction checks | Prepared; not run |
+| docs/plans/ARCHITECTURE-r2b-capture-auth.md | Base v1 architecture, now linked to v2 amendment | Updated pointer |
+| docs/plans/EXECUTION-2026-07-20-r2b-capture.md | Base v1 execution sequence | Updated pointer |
+| docs/plans/VERIFY-r2b-capture.md | Base v1 verification sequence | Updated pointer |
+
+The base v1 implementation was merged through PR #67 with the historical tree
+proof recorded in the prior status. The current v2 docs branch is not main
+and does not authorize implementation or execution.
 
 ### Does NOT Exist Yet
 
-| What | Why not | Who can create it |
-|------|---------|-------------------|
-| A current, timestamp-valid T4 packet draft | Old draft `~/.local/share/convmem/authorizations/r2b/2026-07-21-r2b-capture-01/` is **QUARANTINED/abandoned** (stale T4, no sidecar) | Cursor, after `restic_gate: PASS` + fresh trusted snapshot |
-| Ryan packet **ACCEPT** | Requires a valid <=1h timezone-aware snapshot/digest | Ryan (T5) |
-| Sidecar `capture.json.approved.sha256` + materialized manifest | Requires ACCEPT on the new packet | Ryan + operator (T5) |
-| Ryan **ACCEPT AND GRANT** | A filled, approved packet is the only execution authority | Ryan only (T5) |
-| One executed live capture into absent `capture_dir` | Requires the grant; never before it | Named operator (T6) |
-| Mechanical VERIFY + Kiro sign-off + Ryan GATE | Requires the executed capture (T7) | Kiro + Ryan |
-
----
+| What | Why not | Owner after review |
+|---|---|---|
+| Exact-tip zero-bypass coverage proof for v2 | Every route capable of mutating export, processed state, or Chroma must be accounted for | Cursor implementation, Copilot/Kiro review |
+| Evidence-derived production duration values | Architecture defines separately bounded phases; 900 seconds is not ratified | Cursor evidence, Ryan acceptance |
+| v2 quiescence authority and lease | Requires reviewed implementation and one-shot authority schema | Cursor after explicit Ryan authorization |
+| Current v2 packet | Both 2026-07-21-r2b-capture-01/ and 2026-08-27-r2b-capture-02/ remain quarantined and unusable | Later named operator |
+| Ryan packet ACCEPT / ACCEPT AND GRANT | Requires the future v2 chain and a fresh run | Ryan |
+| Live v2 capture and VERIFY | Requires all preceding gates | Named operator, Kiro, Ryan |
 
 ## 4. Completion State
 
-| # | Milestone | Status | Blocking on |
-|---|-----------|--------|-------------|
-| T1 | Architecture docs replacement | **DONE on `main`** | — |
-| T2 | Implementation (schema, snapshot, capability chain, marker, tests) | **DONE on `main`** (#67) | — |
-| T3 | Copilot + Kiro same-tip review; Ryan merge + tree proof | **DONE** (merged as `c0f06f5`) | — |
-| T4 | `restic_gate: PASS`, trusted fresh snapshot, filled packet draft | **BLOCKED** | Fresh snapshot + new draft packet; old draft quarantined |
-| T5 | Ryan ACCEPT + materialize + **ACCEPT AND GRANT** | **NOT STARTED** | Ryan two-stage HITL on a current packet |
-| T6 | Execute one capture into absent `capture_dir` | **NOT STARTED** | Requires T5 grant |
-| T7 | Mechanical VERIFY + Kiro sign-off + Ryan GATE | **NOT STARTED** | Requires T6 |
+| Milestone | Status | Blocking on |
+|---|---|---|
+| Base v1 architecture and implementation | DONE on main | — |
+| v1 timing-only T4 retry | CLOSED AS INFEASIBLE | Complete-identity stability window too short |
+| V2 architecture amendment and bounded plans | IN REVIEW on docs branch | Ryan architecture review |
+| V2 implementation and adversarial tests | NOT AUTHORIZED | Ryan implementation authorization |
+| Exact-tip zero-bypass proof | NOT AVAILABLE | V2 implementation and same-tip review |
+| Duration proposal and Ryan acceptance | NOT AVAILABLE | Representative scratch/runtime evidence |
+| Fresh v2 packet | BLOCKED | V2 implementation, coverage proof, accepted bounds |
+| Packet ACCEPT and ACCEPT AND GRANT | NOT STARTED | Fresh valid v2 packet and Ryan |
+| Capture, mechanical VERIFY, Kiro sign-off, Ryan GATE | NOT STARTED | Ryan grant and capture |
 
-**Summary: Code is on `main` and complete. The gap is not code. It is authorization —
-a fresh T4 packet, Ryan ACCEPT, and **ACCEPT AND GRANT**.** No model can advance past
-T5 without Ryan's explicit grant.
+The current gap is architecture review followed by implementation and evidence,
+not another timing-only packet retry. No model may acquire production
+quiescence, create a v2 packet, grant, or capture from this status.
 
----
+## 5. Your Role (for the next model)
 
-## 5. Your Role (read this to know what you're here to do)
+Review the v2 amendment, bounded execution plan, and Q0-Q9 verification plan.
+Check that exclusive gate ownership is never described as service/process
+control; that every mutation route is covered; that unknown, unattested,
+uninspectable, stale-revision, PID-reused, alternate-lock, and bypass-capable
+routes are hard HOLDs; and that duration values remain unratified until Ryan
+separately accepts evidence-derived values.
 
-**If Ryan sent you here to run T4 (the packet step):** Before editing anything, run
-`convmem doctor` and confirm `restic_gate: PASS`. Produce a *fresh* trusted source
-snapshot and a *new* draft packet under `AUTH_ROOT/<new_run_id>/` in the same operator
-session. Do **not** reuse or repair `2026-07-21-r2b-capture-01/` — it is quarantined and
-must not be **ACCEPT AND GRANT**-ed from. The old draft has no sidecar and its snapshot
-is stale.
+After review, wait for explicit implementation authorization. Do not create a
+packet, sidecar, capture directory, or grant. Do not stop or signal services,
+mutate sources, activate CG-2 or Recovery Authority, clean evidence, or reuse
+either quarantined run.
 
-**If Ryan sent you here to review or verify:** Read the applied branch against the
-architecture. Key questions: does the binder refuse R2b on the plain path? Does the
-materializer re-derive every binding from the approved body? Does the marker validate the
-exact inventory with no write after it? Is `capture_id=run_id`, spot `n=20`, one attempt?
+## 6. What Remains Before Live v2
 
-**If Ryan sent you here for the grant/execution gate:** You are assisting Ryan. The
-packet must be filled and timestamp-valid, ACCEPT within the one-hour bound, then
-**ACCEPT AND GRANT**. Only then may one capture run. Do not let a verbal
-`GRANT: yes` substitute for a filled, approved packet.
+- [ ] Ryan reviews the v2 amendment and bounded execution/VERIFY plans
+- [ ] Cursor receives explicit authorization and implements v2
+- [ ] Exact-tip route inventory and runtime census prove zero bypass
+- [ ] Scratch/runtime evidence proposes acquisition, HITL, capture, release/close, and total bounds
+- [ ] Ryan separately accepts the concrete duration values
+- [ ] Copilot and Kiro issue same-tip implementation verdicts
+- [ ] A fresh run obtains the first authority and held gate
+- [ ] Trusted snapshot and filled packet are prepared; Ryan ACCEPTs
+- [ ] Existing materialization and Ryan ACCEPT AND GRANT succeed
+- [ ] One capture runs with fixed controls into an absent target
+- [ ] Final source check, last marker, close/release, mechanical VERIFY, Kiro sign-off, and Ryan GATE complete
+- [ ] Stop before B-Accept; that requires a new architecture and grant
 
-**If you don't know why you're here:** Ask Ryan. The most likely next action is producing
-a fresh T4 packet and awaiting ACCEPT AND GRANT. The capture cannot be advanced by any
-model without that grant.
+## 7. Hard Stops
 
----
+| Stop | Gate owner | Effect |
+|---|---|---|
+| Architecture review | Ryan | No implementation or live authority from this docs branch |
+| Implementation authorization | Ryan | No Cursor v2 implementation before explicit authorization |
+| Zero-bypass proof | Trusted v2 code/review | Any unknown or bypass-capable route is HOLD; never remove it by service control |
+| Duration acceptance | Ryan | No live v2 grant before evidence-derived concrete values are accepted |
+| Restic gate | Operational precondition | No trusted snapshot or eval-root write unless PASS |
+| Packet ACCEPT | Ryan | No sidecar/materialization/capture grant |
+| ACCEPT AND GRANT | Ryan | No capture |
+| Existing one-hour freshness | Trusted binder/materializer | Stale/future/naive packet refuses; no in-place extension |
+| Quarantined runs | Operator protocol | Never reuse, repair, upgrade, or grant from 2026-07-21-r2b-capture-01/ or 2026-08-27-r2b-capture-02/ |
+| No-service-state policy | Architecture | No start/stop/restart, signal/kill, reload, config mutation, or source mutation |
+| Marker authority | Capture/VERIFY | No valid last marker means no structurally complete capture |
+| Failure/replay | Trusted implementation | Timeout, crash, drift, replay, or partial output permanently closes the run |
 
-## 6. What Remains Before "Live" (sequential)
+## 8. Relationship to ConvMem
 
-- [ ] `convmem doctor` confirms `restic_gate: PASS` (absolute precondition)
-- [ ] Produce fresh trusted source snapshot + new R2b packet draft (do **not** use quarantined `2026-07-21-r2b-capture-01/`)
-- [ ] Ryan packet **ACCEPT** (snapshot timezone-aware, not future, <=1h; no source drift)
-- [ ] Materialize manifest, sidecar, hashes, exact argv; Ryan **ACCEPT AND GRANT**
-- [ ] Execute exactly one capture into absent `EVAL_ROOT/<run_id>/capture` (`--max-retries 1`)
-- [ ] Mechanical VERIFY (V0–V5) then Kiro sign-off (V6)
-- [ ] Ryan GATE closes the capture arc
-- [ ] **[Stop]** B-Accept is explicitly out of scope — new architecture/grant required
+    R2b v2 — source authority and one capture
+      -> corpus package / knowledge_units
+      -> downstream retrieval and embedding evaluation
+      -> separate JudgeBench and Gate 2 work
 
----
+CG-2 and Recovery Authority are independent authority domains. V2 must
+enumerate their potentially mutating routes for coverage but does not activate,
+pause, roll back, restore, or mutate either domain. B-Accept and promotion are
+out of scope.
 
-## 7. Hard Stops (models cannot cross)
+## 9. Key Design Files
 
-| Stop | Gate owner | What it blocks |
-|------|-----------|----------------|
-| T5 — Ryan ACCEPT + **ACCEPT AND GRANT** | Ryan | Any live capture; the gap is not code, it is authority |
-| Restic precondition | `restic_gate: PASS` | Snapshot computation and eval-root capture write — no waiver |
-| One-hour staleness | ACCEPT/binder/materialization | Every path where the approved timestamp must remain fresh |
-| Quarantined draft `2026-07-21-r2b-capture-01/` | Operator protocol | **ACCEPT AND GRANT** from it — never reuse/repair; it has no sidecar |
-| Marker authority | Architecture invariant 5 | Live capture never completes without the last atomic marker |
-| Failure/quarantine semantics | Architecture invariant 6 | No same-directory retry; retry = new `run_id`, fresh packet, new grant |
-| Cleanup | Separate prohibited operation | No reuse/resume/overwrite without separate authorization |
-
----
-
-## 8. Relationship to ConvMem (the bigger picture)
-
-R2b is one gate in ConvMem's capture → package → evaluate pipeline:
-
-```
-ConvMem capture/eval landscape:
-├── R2b capture (THIS ARC) — authorize + run one content-bound capture
-├── R2a config generation — earlier, now-superseded R2 family step (done)
-├── corpus package / knowledge_units — output of the R2b capture write path
-├── Chroma eval / embedding-model eval — downstream consumers of the captured corpus
-├── JudgeBench — offline semantic calibration on retrieved evidence (SEPARATE arc)
-└── Gate 2 / B-Accept / promotion — explicitly out of R2b scope (FUTURE, new grants)
-```
-
-R2b is upstream of corpus quality: until a capture is authorized and completed with a
-valid marker, the packaged data feeding downstream eval has no proven provenance. But
-R2b itself is narrowly scoped — it authorizes exactly one capture and stops before
-B-Accept.
-
----
-
-## 9. Key Design Files (for deep dives)
-
-| Purpose | Path | Read when |
-|---------|------|-----------|
-| Architecture (locked, canonical) | `docs/plans/ARCHITECTURE-r2b-capture-auth.md` | You need invariants, schema, marker, or capability-chain detail |
-| Execution plan (tasks/gates) | `docs/plans/EXECUTION-2026-07-20-r2b-capture.md` | You need T1–T8 sequencing or authority sequence |
-| VERIFY checklist | `docs/plans/VERIFY-r2b-capture.md` | You're reviewing or closing V0–V6 |
-| LATEST.md entry ("R2b capture: code on main") | `docs/inter-model/LATEST.md` | Current handoff context; draft packet quarantined |
-
----
+| Purpose | Path |
+|---|---|
+| Normative v2 architecture | docs/plans/ARCHITECTURE-r2b-mutable-source-quiescence-v2.md |
+| Bounded v2 execution | docs/plans/EXECUTION-2026-08-27-r2b-v2-quiescence.md |
+| V2 verification | docs/plans/VERIFY-r2b-v2-quiescence.md |
+| Base architecture | docs/plans/ARCHITECTURE-r2b-capture-auth.md |
+| Base execution | docs/plans/EXECUTION-2026-07-20-r2b-capture.md |
+| Base verification | docs/plans/VERIFY-r2b-capture.md |
+| Current arc brief | docs/plans/STATUS-r2b-capture-auth.md |
 
 ## 10. How to Update This Brief (departure protocol)
 
-**When you finish working on this arc, update this file before handoff.** The goal is that
-the *next* model reads this one document and has the same quality of mental landscape you
-had — updated to reflect reality after your work.
+Keep this file as a current-state snapshot, not a session diary. Update the
+file map, completion state, next-model role, and remaining gates when a
+milestone changes. Preserve the quarantine and authority boundaries. Put
+session narrative in Track A session ingest rather than here. Keep one
+milestone-level line in the update log below.
 
-**Rules — keep this a snapshot, not a log:**
+### Update Log
 
-1. **Overwrite, don't append.** Update section 3 (file map) and section 4 (completion
-   state) to reflect current reality. When a milestone lands (e.g. packet ACCEPT, grant,
-   capture run), move it from "What Remains"/"NOT STARTED" to "Done".
-2. **Keep section 5 (Your Role) generic.** Rewrite the role guidance to reflect what the
-   *next* model probably needs to do — not what you just did.
-3. **Update section 6 (What Remains) by removing completed items.** The list should always
-   show only what's still ahead, ending at "live capture enabled."
-4. **Touch the diagram (section 2) only if the design changed.**
-5. **One line in the Update Log.** Date, your name, what changed at the milestone level.
-6. **Do not add session-specific context.** Session narrative belongs in Track A ingest.
-7. **The test: could a model read *only* this file and know what to do?**
-
----
-
-## Update Log
-
-| Date | Who | Change |
-|------|-----|--------|
-| 2026-08-09 | Crush | Initial arc brief; code on `main` via #67, draft packet QUARANTINED, T5 grant pending Ryan |
+| Date | Who | Milestone change |
+|---|---|---|
+| 2026-08-09 | Crush | Initial arc brief; v1 code on main; prior draft quarantined |
+| 2026-08-27 | Codex | Added the accepted-in-principle v2 exclusive writer-gate correction and bounded execution/VERIFY plans; implementation and live execution remain unauthorized |

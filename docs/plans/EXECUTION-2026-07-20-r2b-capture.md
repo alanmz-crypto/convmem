@@ -1,5 +1,10 @@
 # Execution Plan — R2b authorization, capture, and corpus package
 
+> **Current correction:** The mutable-live-source transaction is specified by
+> [`EXECUTION-2026-08-27-r2b-v2-quiescence.md`](EXECUTION-2026-08-27-r2b-v2-quiescence.md).
+> This document remains the base v1 capture sequence and does not authorize
+> implementation, quiescence, packet creation, grant, or live capture.
+
 ```
 Planning Status
 

@@ -1,5 +1,10 @@
 # Verify Plan — R2b capture + corpus package
 
+> **Current correction:** The mutable-live-source checks are extended by
+> [`VERIFY-r2b-v2-quiescence.md`](VERIFY-r2b-v2-quiescence.md), including
+> exact-tip zero-bypass coverage, lease continuity, duration acceptance, and
+> gate-only quiescence. This base plan remains required for the later capture.
+
 ```
 Planning Status
 
