@@ -20,6 +20,7 @@ from event_size_evidence import (
     MUTATION_CLASSES,
     STRUCTURAL_SHAPE_MATRIX,
     _benchmark_runtime,
+    _compare_modes,
     _execute_mutation,
     _production_mutation_once,
     _run_mode_samples,
@@ -28,6 +29,8 @@ from event_size_evidence import (
     build_workload_spec,
     conservative_writer_concurrency_from_inventory,
     create_benchmark_fixture,
+    create_mode_fixture_group,
+    create_shared_gate_arena,
     finalize_session_companion,
     inertness_snapshot,
     is_companion_armed,
@@ -799,11 +802,32 @@ def test_three_modes_share_same_workload_path(
     )
 
 
+def test_spawned_processes_share_gate_identity(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    arena = create_shared_gate_arena(tmp_path / "gate-id", concurrency=2)
+    report = run_multiprocess_concurrency_cell(arena, concurrency=2, mode="unarmed")
+    assert report.errors == 0
+    assert arena.gate_path.resolve().exists()
+    assert all(proc_root != arena.gate_path.parent for proc_root in arena.process_roots)
+
+
+def test_genuine_contention_overlapping_holds(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    arena = create_shared_gate_arena(tmp_path / "contention", concurrency=2)
+    report = run_multiprocess_concurrency_cell(
+        arena, concurrency=2, mode="unarmed", hold_ms=300.0
+    )
+    assert report.errors == 0
+    assert report.overlapping_pairs >= 1
+    assert len(report.hold_samples_ms) == 2
+
+
 def test_multiprocess_writer_lease_concurrency(tmp_path: Path) -> None:
     pytest.importorskip("chromadb")
-    fixture = create_benchmark_fixture(tmp_path / "mp")
-    errors, _results = run_multiprocess_concurrency_cell(fixture, concurrency=2)
-    assert errors == 0
+    arena = create_shared_gate_arena(tmp_path / "mp", concurrency=2)
+    report = run_multiprocess_concurrency_cell(arena, concurrency=2, mode="unarmed")
+    assert report.errors == 0
+    assert report.overlapping_pairs >= 1
 
 
 def test_long_and_short_session_kinds_exercised(tmp_path: Path) -> None:
@@ -821,6 +845,247 @@ def test_long_and_short_session_kinds_exercised(tmp_path: Path) -> None:
     assert "context_long" in kinds
     assert "manual_short" in kinds
 
+
+
+
+def test_long_session_multiple_mutations_one_lease(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("chromadb")
+    fixture = create_benchmark_fixture(tmp_path / "long")
+    spec = build_workload_spec(
+        mutation_class="replace",
+        structural_shape="small_1k",
+        seed=1,
+    )
+    opens = {"count": 0}
+    import chroma_write_store as cws
+
+    real_ctx = cws.production_chroma_write_session
+
+    class _CountingCtx:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self._inner = real_ctx(*args, **kwargs)
+
+        def __enter__(self) -> Any:
+            opens["count"] += 1
+            return self._inner.__enter__()
+
+        def __exit__(self, *args: Any) -> Any:
+            return self._inner.__exit__(*args)
+
+    monkeypatch.setattr(cws, "production_chroma_write_session", _CountingCtx)
+    _benchmark_runtime.session_active = True
+    try:
+        result = _run_mode_samples(
+            fixture,
+            mode="unarmed",
+            spec=spec,
+            session_kind="context_long",
+            sample_count=3,
+            warmup_count=2,
+        )
+        assert result.sample_count == 3
+        assert opens["count"] == 1
+    finally:
+        _benchmark_runtime.session_active = False
+        _benchmark_runtime.control_bypass = False
+
+
+def test_short_session_reopens_per_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("chromadb")
+    fixture = create_benchmark_fixture(tmp_path / "short")
+    spec = build_workload_spec(
+        mutation_class="replace",
+        structural_shape="small_1k",
+        seed=1,
+    )
+    opens = {"count": 0}
+    import chroma_write_store as cws
+
+    real_ctx = cws.production_chroma_write_session
+
+    class _CountingCtx:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self._inner = real_ctx(*args, **kwargs)
+
+        def __enter__(self) -> Any:
+            opens["count"] += 1
+            return self._inner.__enter__()
+
+        def __exit__(self, *args: Any) -> Any:
+            return self._inner.__exit__(*args)
+
+    monkeypatch.setattr(cws, "production_chroma_write_session", _CountingCtx)
+    _benchmark_runtime.session_active = True
+    try:
+        result = _run_mode_samples(
+            fixture,
+            mode="unarmed",
+            spec=spec,
+            session_kind="context_short",
+            sample_count=3,
+            warmup_count=2,
+        )
+        assert result.sample_count == 3
+        assert opens["count"] == 5
+        assert result.close_sample_count == 3
+    finally:
+        _benchmark_runtime.session_active = False
+        _benchmark_runtime.control_bypass = False
+
+
+def test_each_mode_starts_from_equivalent_state(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    fixtures = create_mode_fixture_group(
+        tmp_path,
+        mutation_class="replace",
+        structural_shape="small_1k",
+        run_index=0,
+        cell_tag="equiv",
+    )
+    roots = {mode: fx.root.resolve() for mode, fx in fixtures.items()}
+    assert len(set(roots.values())) == 3
+    for mode, fx in fixtures.items():
+        assert fx.gate_path.resolve() != fx.root.resolve()
+
+
+def test_create_not_noop_in_later_modes(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    fixtures = create_mode_fixture_group(
+        tmp_path,
+        mutation_class="create",
+        structural_shape="small_1k",
+        run_index=0,
+        cell_tag="create",
+    )
+    spec = build_workload_spec(
+        mutation_class="create",
+        structural_shape="small_1k",
+        seed=0,
+    )
+    _benchmark_runtime.session_active = True
+    try:
+        for mode in ("control", "unarmed", "armed"):
+            reset_inertness_counters()
+            _production_mutation_once(
+                fixtures[mode],
+                mode=mode,
+                spec=spec,
+                session_kind="context_short",
+            )
+            from chroma_write_store import open_production_write_store
+
+            session = open_production_write_store(
+                fixtures[mode].config_path,
+                lock_path=fixtures[mode].gate_path,
+                attest_dir=fixtures[mode].attest_dir,
+                census_dir=fixtures[mode].census_unarmed_dir,
+                entrypoint="production.writer",
+            )
+            try:
+                assert session.store.get_unit(spec.unit_id) is not None
+            finally:
+                session.store.close()
+    finally:
+        _benchmark_runtime.session_active = False
+        _benchmark_runtime.control_bypass = False
+
+
+def test_stateful_operations_equivalently_initialized(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    for mutation_class in ("supersede", "restore", "delete"):
+        fixtures = create_mode_fixture_group(
+            tmp_path / mutation_class,
+            mutation_class=mutation_class,
+            structural_shape="small_1k",
+            run_index=0,
+            cell_tag=mutation_class,
+        )
+        spec = build_workload_spec(
+            mutation_class=mutation_class,
+            structural_shape="small_1k",
+            seed=0,
+        )
+        from chroma_write_store import open_production_write_store
+
+        for mode, fx in fixtures.items():
+            census = (
+                fx.census_unarmed_dir if mode == "unarmed" else fx.census_armed_dir
+            )
+            session = open_production_write_store(
+                fx.config_path,
+                lock_path=fx.gate_path,
+                attest_dir=fx.attest_dir,
+                census_dir=census,
+                entrypoint="production.writer",
+            )
+            try:
+                if mutation_class == "delete":
+                    assert session.store.get_unit(spec.unit_id) is not None
+                else:
+                    unit = session.store.get_unit(spec.unit_id)
+                    assert unit is not None
+                    if mutation_class == "supersede":
+                        assert (unit.get("metadata") or {}).get("superseded")
+                    if mutation_class == "restore":
+                        assert (unit.get("metadata") or {}).get("superseded")
+            finally:
+                session.store.close()
+
+
+def test_close_persistence_from_explicit_timing(tmp_path: Path) -> None:
+    pytest.importorskip("chromadb")
+    fixture = create_benchmark_fixture(tmp_path / "close")
+    spec = build_workload_spec(
+        mutation_class="replace",
+        structural_shape="small_1k",
+        seed=1,
+    )
+    _benchmark_runtime.session_active = True
+    try:
+        unarmed = _run_mode_samples(
+            fixture,
+            mode="unarmed",
+            spec=spec,
+            session_kind="manual_short",
+            sample_count=5,
+            warmup_count=0,
+        )
+        armed_fixture = create_benchmark_fixture(tmp_path / "close-armed")
+        armed = _run_mode_samples(
+            armed_fixture,
+            mode="armed",
+            spec=spec,
+            session_kind="manual_short",
+            sample_count=5,
+            warmup_count=0,
+        )
+        control = _run_mode_samples(
+            create_benchmark_fixture(tmp_path / "close-control"),
+            mode="control",
+            spec=spec,
+            session_kind="manual_short",
+            sample_count=5,
+            warmup_count=0,
+        )
+        metrics = _compare_modes(control, unarmed, armed)
+        assert unarmed.close_sample_count == 5
+        assert armed.close_sample_count == 5
+        assert unarmed.close_max_ms > 0.0
+        assert armed.close_max_ms > 0.0
+        assert metrics.short_session_close_p99_ms == max(
+            unarmed.close_p99_ms, armed.close_p99_ms
+        )
+        assert metrics.short_session_close_max_ms == max(
+            unarmed.close_max_ms, armed.close_max_ms
+        )
+        assert metrics.short_session_close_p99_ms != unarmed.p99_ms or unarmed.p99_ms == 0.0
+    finally:
+        _benchmark_runtime.session_active = False
+        _benchmark_runtime.control_bypass = False
 
 def test_unarmed_hot_path_zero_encoder_calls(tmp_path: Path) -> None:
     pytest.importorskip("chromadb")

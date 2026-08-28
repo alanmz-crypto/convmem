@@ -588,6 +588,9 @@ class BenchmarkCellResult:
     bytes_processed: int
     evidence_gaps: int
     peak_rss_delta_kb: int
+    close_p99_ms: float = 0.0
+    close_max_ms: float = 0.0
+    close_sample_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -627,6 +630,24 @@ class BenchmarkFixture:
     census_unarmed_dir: Path
     gate_path: Path
     attest_dir: Path
+
+
+@dataclass(frozen=True)
+class SharedGateArena:
+    root: Path
+    gate_path: Path
+    attest_dir: Path
+    process_roots: tuple[Path, ...]
+
+
+@dataclass(frozen=True)
+class ConcurrencyOverlapReport:
+    concurrency: int
+    mode: str
+    errors: int
+    overlapping_pairs: int
+    hold_samples_ms: tuple[float, ...]
+    payloads: str = "none"
 
 
 @dataclass(frozen=True)
@@ -817,19 +838,34 @@ def _arm_census_header(census_dir: Path, *, armed: bool, chroma_dir: Path, gate_
     _create_events(directory)
 
 
-def create_benchmark_fixture(root: Path) -> BenchmarkFixture:
+def _session_kind_is_long(session_kind: str) -> bool:
+    return session_kind.endswith("_long")
+
+
+def _session_kind_is_short(session_kind: str) -> bool:
+    return session_kind.endswith("_short")
+
+
+def create_benchmark_fixture(
+    root: Path,
+    *,
+    gate_path: Path | None = None,
+    attest_dir: Path | None = None,
+) -> BenchmarkFixture:
     chroma_dir = root / "chroma"
     chroma_dir.mkdir(parents=True, exist_ok=True)
     config_path = root / "config.toml"
     _write_benchmark_config(config_path, chroma_dir)
-    gate_path = root / "gate.lock"
-    attest_dir = root / "attest"
-    attest_dir.mkdir(parents=True, exist_ok=True)
+    resolved_gate = gate_path or (root / "gate.lock")
+    resolved_attest = attest_dir or (root / "attest")
+    resolved_attest.mkdir(parents=True, exist_ok=True)
     census_armed = root / "census-armed"
     census_unarmed = root / "census-unarmed"
-    _arm_census_header(census_armed, armed=True, chroma_dir=chroma_dir, gate_path=gate_path)
     _arm_census_header(
-        census_unarmed, armed=False, chroma_dir=chroma_dir, gate_path=gate_path
+        census_armed, armed=True, chroma_dir=chroma_dir, gate_path=resolved_gate
+    )
+    _arm_census_header(
+        census_unarmed, armed=False, chroma_dir=chroma_dir, gate_path=resolved_gate
     )
     return BenchmarkFixture(
         root=root,
@@ -837,9 +873,86 @@ def create_benchmark_fixture(root: Path) -> BenchmarkFixture:
         config_path=config_path,
         census_armed_dir=census_armed,
         census_unarmed_dir=census_unarmed,
+        gate_path=resolved_gate,
+        attest_dir=resolved_attest,
+    )
+
+
+def create_shared_gate_arena(root: Path, *, concurrency: int) -> SharedGateArena:
+    shared = root / "shared"
+    shared.mkdir(parents=True, exist_ok=True)
+    gate_path = shared / "gate.lock"
+    attest_dir = shared / "attest"
+    attest_dir.mkdir(parents=True, exist_ok=True)
+    process_roots: list[Path] = []
+    for index in range(concurrency):
+        proc_root = root / f"proc-{index}"
+        proc_root.mkdir(parents=True, exist_ok=True)
+        create_benchmark_fixture(
+            proc_root, gate_path=gate_path, attest_dir=attest_dir
+        )
+        process_roots.append(proc_root)
+    return SharedGateArena(
+        root=root,
         gate_path=gate_path,
         attest_dir=attest_dir,
+        process_roots=tuple(process_roots),
     )
+
+
+def initialize_equivalent_workload_state(
+    fixture: BenchmarkFixture, spec: WorkloadSpec
+) -> None:
+    """Establish identical disposable Chroma state before a comparison cell."""
+    if spec.mutation_class == "create":
+        return
+    seed_spec = WorkloadSpec(
+        mutation_class=spec.mutation_class,
+        structural_shape=spec.structural_shape,
+        unit_id=spec.unit_id,
+        source_path=spec.source_path,
+        document=spec.document,
+        metadata=dict(spec.metadata),
+        embedding=list(spec.embedding),
+    )
+
+    def _seed(store: Any) -> None:
+        _prepare_entity(store, seed_spec)
+
+    _with_production_session(
+        fixture,
+        mode="unarmed",
+        session_kind="context_short",
+        mutate=_seed,
+    )
+
+
+def create_mode_fixture_group(
+    root: Path,
+    *,
+    mutation_class: str,
+    structural_shape: str,
+    run_index: int,
+    cell_tag: str,
+    gate_path: Path | None = None,
+    attest_dir: Path | None = None,
+) -> dict[str, BenchmarkFixture]:
+    """Fresh equivalently initialized fixture per mode (no cross-mode state)."""
+    spec = build_workload_spec(
+        mutation_class=mutation_class,
+        structural_shape=structural_shape,
+        seed=run_index,
+    )
+    fixtures: dict[str, BenchmarkFixture] = {}
+    for mode in ("control", "unarmed", "armed"):
+        fx = create_benchmark_fixture(
+            root / f"run-{run_index}-{cell_tag}-{mode}",
+            gate_path=gate_path,
+            attest_dir=attest_dir,
+        )
+        initialize_equivalent_workload_state(fx, spec)
+        fixtures[mode] = fx
+    return fixtures
 
 
 def _census_dir_for_mode(fixture: BenchmarkFixture, mode: str) -> Path | None:
@@ -850,15 +963,14 @@ def _census_dir_for_mode(fixture: BenchmarkFixture, mode: str) -> Path | None:
     raise EventSizeEvidenceRefused("benchmark_mode_invalid", mode)
 
 
-
-
 def _with_production_session(
     fixture: BenchmarkFixture,
     *,
     mode: str,
     session_kind: str,
     mutate: Callable[[Any], None],
-) -> None:
+) -> tuple[float, float]:
+    """Run one session block; return (mutation_ms, close_persistence_ms)."""
     from chroma_write_store import (
         open_production_write_store,
         production_chroma_write_session,
@@ -866,8 +978,24 @@ def _with_production_session(
 
     census_dir = _census_dir_for_mode(fixture, mode)
     ctx: Any = benchmark_control_bypass() if mode == "control" else _null_context()
+    close_ms = 0.0
     with ctx:
         if session_kind in {"context_short", "context_long"}:
+            if _session_kind_is_short(session_kind):
+                mut_start = time.perf_counter()
+                with production_chroma_write_session(
+                    fixture.config_path,
+                    lock_path=fixture.gate_path,
+                    attest_dir=fixture.attest_dir,
+                    census_dir=census_dir,
+                    entrypoint="production.writer",
+                ) as session:
+                    mutate(session.store)
+                    mutation_ms = (time.perf_counter() - mut_start) * 1000.0
+                    close_start = time.perf_counter()
+                close_ms = (time.perf_counter() - close_start) * 1000.0
+                return mutation_ms, close_ms
+            mut_start = time.perf_counter()
             with production_chroma_write_session(
                 fixture.config_path,
                 lock_path=fixture.gate_path,
@@ -876,7 +1004,8 @@ def _with_production_session(
                 entrypoint="production.writer",
             ) as session:
                 mutate(session.store)
-            return
+            mutation_ms = (time.perf_counter() - mut_start) * 1000.0
+            return mutation_ms, 0.0
         if session_kind in {"manual_short", "manual_long"}:
             session = open_production_write_store(
                 fixture.config_path,
@@ -885,12 +1014,20 @@ def _with_production_session(
                 census_dir=census_dir,
                 entrypoint="production.writer",
             )
+            mut_start = time.perf_counter()
             try:
                 mutate(session.store)
             finally:
+                mutation_ms = (time.perf_counter() - mut_start) * 1000.0
+                if _session_kind_is_short(session_kind):
+                    close_start = time.perf_counter()
+                    session.store.close()
+                    close_ms = (time.perf_counter() - close_start) * 1000.0
+                    return mutation_ms, close_ms
                 session.store.close()
-            return
+            return mutation_ms, 0.0
     raise EventSizeEvidenceRefused("benchmark_session_invalid", session_kind)
+
 
 def _prepare_entity(store: Any, spec: WorkloadSpec) -> None:
     existing = store.get_unit(spec.unit_id)
@@ -910,8 +1047,9 @@ def _prepare_entity(store: Any, spec: WorkloadSpec) -> None:
             spec.embedding,
             dict(spec.metadata),
         )
+        existing = store.get_unit(spec.unit_id)
     if spec.mutation_class == "supersede":
-        if not (existing.get("metadata") or {}).get("superseded"):
+        if not ((existing or {}).get("metadata") or {}).get("superseded"):
             store.supersede_units_for_source(
                 spec.source_path,
                 superseded_by="bench",
@@ -972,9 +1110,7 @@ def _execute_mutation(store: Any, spec: WorkloadSpec) -> int:
         )
     after = inertness_snapshot()
     gaps = after["retained_observations"] - before["retained_observations"]
-    if gaps < 0:
-        gaps = 0
-    return gaps
+    return max(0, gaps)
 
 
 def _production_mutation_once(
@@ -983,8 +1119,8 @@ def _production_mutation_once(
     mode: str,
     spec: WorkloadSpec,
     session_kind: str,
-) -> None:
-    _with_production_session(
+) -> tuple[float, float]:
+    return _with_production_session(
         fixture,
         mode=mode,
         session_kind=session_kind,
@@ -1024,53 +1160,123 @@ def _run_mode_samples(
     sample_count: int,
     warmup_count: int,
 ) -> BenchmarkCellResult:
-    if mode == "control":
-        warmup_ctx: Any = benchmark_control_bypass()
-        sample_ctx: Any = benchmark_control_bypass()
-    else:
-        warmup_ctx = _null_context()
-        sample_ctx = _null_context()
-
-    with warmup_ctx:
-        for i in range(warmup_count):
-            warm_spec = build_workload_spec(
-                mutation_class=spec.mutation_class,
-                structural_shape=spec.structural_shape,
-                seed=10_000 + i,
-            )
-            _production_mutation_once(
-                fixture, mode=mode, spec=warm_spec, session_kind=session_kind
-            )
-
+    ctx: Any = (
+        benchmark_control_bypass() if mode == "control" else _null_context()
+    )
     samples: list[float] = []
+    close_samples: list[float] = []
     errors = 0
     encoder_delta = 0
     gaps = 0
     rss_before = _peak_rss_kb()
-    with sample_ctx:
-        for i in range(sample_count):
-            sample_spec = build_workload_spec(
-                mutation_class=spec.mutation_class,
-                structural_shape=spec.structural_shape,
-                seed=20_000 + i,
-            )
-            enc_before = inertness_snapshot()["encoder_calls"]
-            gap_before = inertness_snapshot()["retained_observations"]
-            start = time.perf_counter()
-            try:
-                _production_mutation_once(
+
+    def _timed_mutation(store: Any, workload: WorkloadSpec) -> None:
+        nonlocal encoder_delta, gaps
+        enc_before = inertness_snapshot()["encoder_calls"]
+        gap_before = inertness_snapshot()["retained_observations"]
+        _execute_mutation(store, workload)
+        enc_after = inertness_snapshot()["encoder_calls"]
+        gap_after = inertness_snapshot()["retained_observations"]
+        encoder_delta += max(0, enc_after - enc_before)
+        gaps += max(0, gap_after - gap_before)
+
+    if _session_kind_is_long(session_kind):
+        from chroma_write_store import (
+            open_production_write_store,
+            production_chroma_write_session,
+        )
+
+        census_dir = _census_dir_for_mode(fixture, mode)
+        with ctx:
+            if session_kind == "context_long":
+                with production_chroma_write_session(
+                    fixture.config_path,
+                    lock_path=fixture.gate_path,
+                    attest_dir=fixture.attest_dir,
+                    census_dir=census_dir,
+                    entrypoint="production.writer",
+                ) as session:
+                    for i in range(warmup_count):
+                        warm_spec = build_workload_spec(
+                            mutation_class=spec.mutation_class,
+                            structural_shape=spec.structural_shape,
+                            seed=10_000 + i,
+                        )
+                        _timed_mutation(session.store, warm_spec)
+                    for i in range(sample_count):
+                        sample_spec = build_workload_spec(
+                            mutation_class=spec.mutation_class,
+                            structural_shape=spec.structural_shape,
+                            seed=20_000 + i,
+                        )
+                        start = time.perf_counter()
+                        try:
+                            _timed_mutation(session.store, sample_spec)
+                        except Exception:
+                            errors += 1
+                        samples.append((time.perf_counter() - start) * 1000.0)
+            else:
+                session = open_production_write_store(
+                    fixture.config_path,
+                    lock_path=fixture.gate_path,
+                    attest_dir=fixture.attest_dir,
+                    census_dir=census_dir,
+                    entrypoint="production.writer",
+                )
+                try:
+                    for i in range(warmup_count):
+                        warm_spec = build_workload_spec(
+                            mutation_class=spec.mutation_class,
+                            structural_shape=spec.structural_shape,
+                            seed=10_000 + i,
+                        )
+                        _timed_mutation(session.store, warm_spec)
+                    for i in range(sample_count):
+                        sample_spec = build_workload_spec(
+                            mutation_class=spec.mutation_class,
+                            structural_shape=spec.structural_shape,
+                            seed=20_000 + i,
+                        )
+                        start = time.perf_counter()
+                        try:
+                            _timed_mutation(session.store, sample_spec)
+                        except Exception:
+                            errors += 1
+                        samples.append((time.perf_counter() - start) * 1000.0)
+                finally:
+                    session.store.close()
+    else:
+        with ctx:
+            for i in range(warmup_count):
+                warm_spec = build_workload_spec(
+                    mutation_class=spec.mutation_class,
+                    structural_shape=spec.structural_shape,
+                    seed=10_000 + i,
+                )
+                _with_production_session(
                     fixture,
                     mode=mode,
-                    spec=sample_spec,
                     session_kind=session_kind,
+                    mutate=lambda store, ws=warm_spec: _timed_mutation(store, ws),
                 )
-            except Exception:
-                errors += 1
-            samples.append((time.perf_counter() - start) * 1000.0)
-            enc_after = inertness_snapshot()["encoder_calls"]
-            gap_after = inertness_snapshot()["retained_observations"]
-            encoder_delta += max(0, enc_after - enc_before)
-            gaps += max(0, gap_after - gap_before)
+            for i in range(sample_count):
+                sample_spec = build_workload_spec(
+                    mutation_class=spec.mutation_class,
+                    structural_shape=spec.structural_shape,
+                    seed=20_000 + i,
+                )
+                try:
+                    mutation_ms, close_ms = _with_production_session(
+                        fixture,
+                        mode=mode,
+                        session_kind=session_kind,
+                        mutate=lambda store, ws=sample_spec: _timed_mutation(store, ws),
+                    )
+                    samples.append(mutation_ms)
+                    close_samples.append(close_ms)
+                except Exception:
+                    errors += 1
+
     bytes_total = measure_encoded_size(
         operation=spec.mutation_class,
         document=spec.document,
@@ -1078,6 +1284,10 @@ def _run_mode_samples(
         deleted=spec.mutation_class == "delete",
     ) * max(1, sample_count)
     stats = _bench_stats(samples)
+    close_stats = _bench_stats(close_samples) if close_samples else {
+        "p99_ms": 0.0,
+        "max_ms": 0.0,
+    }
     return BenchmarkCellResult(
         mode=mode,
         mutation_class=spec.mutation_class,
@@ -1090,6 +1300,9 @@ def _run_mode_samples(
         bytes_processed=bytes_total,
         evidence_gaps=gaps,
         peak_rss_delta_kb=max(0, _peak_rss_kb() - rss_before),
+        close_p99_ms=close_stats["p99_ms"],
+        close_max_ms=close_stats["max_ms"],
+        close_sample_count=len(close_samples),
         **stats,
     )
 
@@ -1106,7 +1319,11 @@ def _compare_modes(
 
     throughput_loss = 0.0
     if control.throughput_ops_per_s > 0:
-        throughput_loss = 1.0 - (unarmed.throughput_ops_per_s / control.throughput_ops_per_s)
+        throughput_loss = 1.0 - (
+            unarmed.throughput_ops_per_s / control.throughput_ops_per_s
+        )
+    close_p99 = max(unarmed.close_p99_ms, armed.close_p99_ms)
+    close_max = max(unarmed.close_max_ms, armed.close_max_ms)
     return BenchmarkComparisonMetrics(
         unarmed_vs_control_p99_delta_ms=unarmed.p99_ms - control.p99_ms,
         unarmed_vs_control_p99_factor=factor(control.p99_ms, unarmed.p99_ms),
@@ -1114,8 +1331,8 @@ def _compare_modes(
         armed_vs_unarmed_p99_delta_ms=armed.p99_ms - unarmed.p99_ms,
         armed_vs_unarmed_p99_factor=factor(unarmed.p99_ms, armed.p99_ms),
         armed_max_delta_ms=armed.max_ms - unarmed.max_ms,
-        short_session_close_p99_ms=unarmed.p99_ms,
-        short_session_close_max_ms=unarmed.max_ms,
+        short_session_close_p99_ms=close_p99,
+        short_session_close_max_ms=close_max,
         peak_rss_delta_kb=max(
             control.peak_rss_delta_kb,
             unarmed.peak_rss_delta_kb,
@@ -1143,15 +1360,16 @@ def run_memory_exercise(
         companion = current_session_companion()
         if companion is None:
             raise EventSizeEvidenceRefused(
-                "benchmark_companion_missing", "armed memory exercise requires companion"
+                "benchmark_companion_missing",
+                "armed memory exercise requires companion",
             )
         for i in range(h_events):
-            spec = build_workload_spec(
+            sample_spec = build_workload_spec(
                 mutation_class="replace",
                 structural_shape="small_1k",
                 seed=30_000 + i,
             )
-            _execute_mutation(session.store, spec)
+            _execute_mutation(session.store, sample_spec)
         overflow = companion.histogram.overflow
         retained = companion.histogram.total_observations
     if retained > MAX_RETAINED_OBSERVATIONS:
@@ -1161,62 +1379,158 @@ def run_memory_exercise(
     return overflow, retained, max(0, _peak_rss_kb() - rss_before)
 
 
-def _concurrency_worker(payload: dict[str, str], out_queue: Any) -> None:
+_mp_barrier: Any = None
+
+
+def _init_shared_gate_worker(barrier: Any) -> None:
+    global _mp_barrier
+    _mp_barrier = barrier
+
+
+def _shared_gate_worker_entry(
+    barrier: Any, payload: dict[str, str], out_queue: Any
+) -> None:
+    _init_shared_gate_worker(barrier)
+    _shared_gate_worker(payload, out_queue)
+
+
+def _shared_gate_worker(payload: dict[str, str], out_queue: Any) -> None:
     import chromadb  # noqa: F401
 
+    global _mp_barrier
     _benchmark_runtime.session_active = True
-
-    fixture = create_benchmark_fixture(Path(payload["root"]))
+    proc_root = Path(payload["proc_root"])
+    fixture = create_benchmark_fixture(
+        proc_root,
+        gate_path=Path(payload["gate_path"]),
+        attest_dir=Path(payload["attest_dir"]),
+    )
     spec = build_workload_spec(
         mutation_class="create",
         structural_shape="small_1k",
         seed=int(payload["seed"]),
     )
-    start = time.perf_counter()
+    hold_ms = float(payload["hold_ms"])
     error = None
+    acquired_at = 0.0
+    released_at = 0.0
     try:
-        _production_mutation_once(
-            fixture,
-            mode=payload["mode"],
-            spec=spec,
-            session_kind="context_short",
+        if _mp_barrier is not None:
+            _mp_barrier.wait()
+        from chroma_write_store import production_chroma_write_session
+
+        census_dir = _census_dir_for_mode(fixture, payload["mode"])
+        ctx: Any = (
+            benchmark_control_bypass()
+            if payload["mode"] == "control"
+            else _null_context()
         )
+        with ctx:
+            with production_chroma_write_session(
+                fixture.config_path,
+                lock_path=fixture.gate_path,
+                attest_dir=fixture.attest_dir,
+                census_dir=census_dir,
+                entrypoint="production.writer",
+            ) as session:
+                acquired_at = time.monotonic()
+                _execute_mutation(session.store, spec)
+                time.sleep(hold_ms / 1000.0)
+                released_at = time.monotonic()
     except Exception as exc:  # pragma: no cover - reported via queue
         error = type(exc).__name__
-    elapsed_ms = (time.perf_counter() - start) * 1000.0
-    out_queue.put({"elapsed_ms": elapsed_ms, "error": error})
+    out_queue.put(
+        {
+            "error": error,
+            "acquired_at": acquired_at,
+            "released_at": released_at,
+            "gate_path": str(fixture.gate_path.resolve()),
+        }
+    )
+
+
+def _intervals_overlap(a_start: float, a_end: float, b_start: float, b_end: float) -> bool:
+    return a_start < b_end and b_start < a_end
 
 
 def run_multiprocess_concurrency_cell(
-    fixture: BenchmarkFixture,
+    arena: SharedGateArena,
     *,
     concurrency: int,
     mode: str = "unarmed",
-) -> tuple[int, list[dict[str, Any]]]:
+    hold_ms: float = 200.0,
+) -> ConcurrencyOverlapReport:
     import multiprocessing
 
+    if concurrency < 1:
+        raise EventSizeEvidenceRefused(
+            "benchmark_concurrency_invalid", "concurrency must be positive"
+        )
+    if concurrency > len(arena.process_roots):
+        raise EventSizeEvidenceRefused(
+            "benchmark_concurrency_invalid", "arena lacks process roots"
+        )
     ctx = multiprocessing.get_context("spawn")
     out: Any = ctx.Queue()
+    barrier = ctx.Barrier(concurrency) if concurrency > 1 else None
     processes = []
     for index in range(concurrency):
-        child_root = fixture.root / f"mp-{index}"
-        child_root.mkdir(parents=True, exist_ok=True)
-        child_fixture = create_benchmark_fixture(child_root)
         payload = {
-            "root": str(child_root),
-            "seed": str(40_000 + index),
+            "proc_root": str(arena.process_roots[index]),
+            "gate_path": str(arena.gate_path.resolve()),
+            "attest_dir": str(arena.attest_dir.resolve()),
+            "seed": str(50_000 + index),
             "mode": mode,
+            "hold_ms": str(hold_ms),
         }
-        proc = ctx.Process(target=_concurrency_worker, args=(payload, out))
+        if barrier is not None:
+            proc = ctx.Process(
+                target=_shared_gate_worker_entry,
+                args=(barrier, payload, out),
+            )
+        else:
+            proc = ctx.Process(target=_shared_gate_worker, args=(payload, out))
         proc.start()
         processes.append(proc)
     results: list[dict[str, Any]] = []
     for _ in processes:
-        results.append(out.get(timeout=120))
+        results.append(out.get(timeout=180))
     for proc in processes:
-        proc.join(timeout=30)
+        proc.join(timeout=60)
+    gate_identity = str(arena.gate_path.resolve())
+    if not all(item.get("gate_path") == gate_identity for item in results):
+        raise EventSizeEvidenceRefused(
+            "benchmark_gate_mismatch", "worker did not use shared gate path"
+        )
     errors = sum(1 for item in results if item.get("error"))
-    return errors, results
+    intervals = [
+        (float(item["acquired_at"]), float(item["released_at"]))
+        for item in results
+        if item.get("acquired_at") and item.get("released_at")
+    ]
+    overlapping = 0
+    for left in range(len(intervals)):
+        for right in range(left + 1, len(intervals)):
+            a0, a1 = intervals[left]
+            b0, b1 = intervals[right]
+            if _intervals_overlap(a0, a1, b0, b1):
+                overlapping += 1
+    hold_samples = tuple(
+        max(0.0, (float(item["released_at"]) - float(item["acquired_at"])) * 1000.0)
+        for item in results
+        if item.get("acquired_at") and item.get("released_at")
+    )
+    if concurrency > 1 and overlapping == 0 and errors == 0:
+        raise EventSizeEvidenceRefused(
+            "benchmark_no_contention", "shared gate showed no overlapping holds"
+        )
+    return ConcurrencyOverlapReport(
+        concurrency=concurrency,
+        mode=mode,
+        errors=errors,
+        overlapping_pairs=overlapping,
+        hold_samples_ms=hold_samples,
+    )
 
 
 def run_hermetic_overhead_benchmark(
@@ -1231,8 +1545,12 @@ def run_hermetic_overhead_benchmark(
     run_count: int = BENCHMARK_RUN_COUNT,
 ) -> HermeticBenchmarkReport:
     """Execute three independent counterbalanced runs; verdict is MEASURED only."""
-    pytest = __import__("pytest")
-    pytest.importorskip("chromadb")
+    try:
+        import chromadb  # noqa: F401
+    except ImportError as exc:
+        raise EventSizeEvidenceRefused(
+            "benchmark_chroma_missing", "chromadb required"
+        ) from exc
 
     _benchmark_runtime.session_active = True
     try:
@@ -1240,11 +1558,20 @@ def run_hermetic_overhead_benchmark(
         all_cells: list[BenchmarkCellResult] = []
         comparisons: list[BenchmarkComparisonMetrics] = []
         shape_matrix = matrix or STRUCTURAL_SHAPE_MATRIX
-        kinds = session_kinds or ("context_short", "context_long", "manual_short", "manual_long")
+        kinds = session_kinds or SESSION_KINDS
         for run_index in range(run_count):
-            fixture = create_benchmark_fixture(root / f"run-{run_index}")
             mode_order = MODE_ORDERS[run_index % len(MODE_ORDERS)]
-            for mutation_class, structural_shape in shape_matrix:
+            for cell_index, (mutation_class, structural_shape) in enumerate(
+                shape_matrix
+            ):
+                cell_tag = f"{cell_index}-{mutation_class}-{structural_shape}"
+                mode_fixtures = create_mode_fixture_group(
+                    root,
+                    mutation_class=mutation_class,
+                    structural_shape=structural_shape,
+                    run_index=run_index,
+                    cell_tag=cell_tag,
+                )
                 for session_kind in kinds:
                     spec = build_workload_spec(
                         mutation_class=mutation_class,
@@ -1254,7 +1581,7 @@ def run_hermetic_overhead_benchmark(
                     mode_results: dict[str, BenchmarkCellResult] = {}
                     for mode in mode_order:
                         result = _run_mode_samples(
-                            fixture,
+                            mode_fixtures[mode],
                             mode=mode,
                             spec=spec,
                             session_kind=session_kind,
@@ -1274,10 +1601,19 @@ def run_hermetic_overhead_benchmark(
                     all_cells.extend(mode_results.values())
         mem_fixture = create_benchmark_fixture(root / "memory")
         overflow, _retained, mem_rss = run_memory_exercise(mem_fixture, h_events=h_events)
-        mp_fixture = create_benchmark_fixture(root / "concurrency")
-        mp_errors, _mp_results = run_multiprocess_concurrency_cell(
-            mp_fixture, concurrency=concurrency, mode="unarmed"
+        arena = create_shared_gate_arena(root / "concurrency", concurrency=concurrency)
+        mp_unarmed = run_multiprocess_concurrency_cell(
+            arena, concurrency=concurrency, mode="unarmed"
         )
+        mp_errors = mp_unarmed.errors
+        if concurrency > 1:
+            arena_armed = create_shared_gate_arena(
+                root / "concurrency-armed", concurrency=concurrency
+            )
+            mp_armed = run_multiprocess_concurrency_cell(
+                arena_armed, concurrency=concurrency, mode="armed"
+            )
+            mp_errors += mp_armed.errors
         return HermeticBenchmarkReport(
             verdict="MEASURED",
             runs=run_count,
@@ -1293,6 +1629,7 @@ def run_hermetic_overhead_benchmark(
     finally:
         _benchmark_runtime.session_active = False
         _benchmark_runtime.control_bypass = False
+
 
 def run_benchmark_cell(
     *,
@@ -1330,6 +1667,9 @@ def run_benchmark_cell(
         bytes_processed=0,
         evidence_gaps=0,
         peak_rss_delta_kb=0,
+        close_p99_ms=0.0,
+        close_max_ms=0.0,
+        close_sample_count=0,
         **stats,
     )
 
