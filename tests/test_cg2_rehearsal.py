@@ -85,14 +85,28 @@ def test_design_a_isolated_rehearsal(tmp_path: Path, monkeypatch) -> None:
     assert report["no_production_operations"] is True
     assert report["physical_deletion_disabled"] is True
     assert report["request_freeze"]["pass"] is True
+    assert report["request_freeze"]["fresh_open_resolves_disk_not_frozen"] is True
     assert report["first_pointer_previous_is_grb"] is True
     assert report["first_pointer_active_is_canary"] is True
     assert report["one_lock_cutover_oracle"]["pass"] is True
     assert report["one_lock_rollback_oracle"]["pass"] is True
     assert report["reconciliation_pending_after_source_advance"] is True
+    assert report["reconciliation_pending_after_restart"] is True
     assert report["recovery_matches_rollback"] is True
+    assert report["reconciliation_ordering_trace"] == [
+        "source_advanced",
+        "reconciliation_obligation_durable",
+        "rollback_pointer_publication",
+    ]
+    assert report["restart_boundary"]["session_closed_before_recovery"] is True
     assert report["reconciliation_state_hash_before_restart"] == report[
         "reconciliation_state_hash_after_restart"
+    ]
+    assert report["fence_content_hash_before_restart"] == report[
+        "fence_content_hash_after_restart"
+    ]
+    assert report["guard_content_hash_before_restart"] == report[
+        "guard_content_hash_after_restart"
     ]
     assert report["retention_inventory"]["grb_protected"] is True
     assert report["retention_inventory"]["grb_gc_eligible"] is False

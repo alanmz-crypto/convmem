@@ -7,8 +7,11 @@ online GC, and internal queue surgery remain disabled in this slice.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
+from unittest.mock import patch
 
 from chroma_store import ChromaStore, UNITS
 from file_generation_store import FileGenerationStore
@@ -27,7 +30,8 @@ from mixed_mode_retrieval import (
     query_units_mixed_ann,
     verify_authority_safety,
 )
-from serving_authority import FrozenAuthorityVector
+from serving_authority import FrozenAuthorityVector, generation_root_for_cfg, resolve_frozen_authority_vector
+from serving_index_repository import ServingIndexRepository, open_serving_index_repository
 
 PROOF_SCHEMA = "convmem/mixed-mode-proof-v1"
 PHYSICAL_DELETION_DISABLED = True
@@ -250,3 +254,92 @@ def query_control_exact_cosine(
         )
     scored.sort(key=lambda item: (float(item["distance"]), str(item["id"])))
     return scored[:top_k]
+
+
+class RehearsalEmptyCommittedView:
+    def query_units(self, _embedding, _top_k):
+        return []
+
+    def get_unit(self, _unit_id):
+        return None
+
+
+@dataclass
+class RehearsalProcessSession:
+    """Tracks open serving resources for one simulated process lifetime."""
+
+    serving_repo: ServingIndexRepository | None = None
+    authority_vector: Any | None = None
+    backing_store: Any | None = None
+
+    def close(self) -> None:
+        if self.serving_repo is not None:
+            self.serving_repo.close()
+            self.serving_repo = None
+        self.authority_vector = None
+        self.backing_store = None
+
+    def is_closed(self) -> bool:
+        return self.serving_repo is None
+
+
+def rehearsal_real_owner_digests(generation_root: Path) -> set[str]:
+    """Exclude guard filenames that discover_owner_digests mis-classifies as owners."""
+
+    from serving_authority import discover_owner_digests
+
+    return {
+        digest
+        for digest in discover_owner_digests(generation_root)
+        if not digest.endswith(".canary_guard")
+    }
+
+
+def resolve_rehearsal_authority_vector(cfg: dict[str, Any]) -> FrozenAuthorityVector:
+    generation_root = generation_root_for_cfg(cfg)
+    if generation_root.exists():
+        return resolve_frozen_authority_vector(
+            cfg, owner_digests=rehearsal_real_owner_digests(generation_root)
+        )
+    return resolve_frozen_authority_vector(cfg)
+
+
+@contextmanager
+def open_public_serving_repository_for_rehearsal(
+    cfg: dict[str, Any],
+) -> Iterator[ServingIndexRepository]:
+    """Invoke public serving open with rehearsal-corrected owner discovery."""
+
+    with patch(
+        "serving_index_repository.resolve_frozen_authority_vector",
+        resolve_rehearsal_authority_vector,
+    ):
+        with open_serving_index_repository(cfg) as repo:
+            yield repo
+
+
+def open_rehearsal_serving_session(cfg: dict[str, Any]) -> RehearsalProcessSession:
+    """Open a request-scoped serving repository like production reads."""
+
+    from serving_index_repository import _open_backing_store
+
+    session = RehearsalProcessSession()
+    vector = resolve_rehearsal_authority_vector(cfg)
+    store = _open_backing_store(vector)
+    session.authority_vector = vector
+    session.backing_store = store
+    session.serving_repo = ServingIndexRepository(vector, store, cfg=cfg)
+    return session
+
+
+def simulate_rehearsal_process_restart_boundary(
+    session: RehearsalProcessSession,
+) -> dict[str, Any]:
+    """Close process-local handles so recovery reopens from durable state only."""
+
+    had_repo = session.serving_repo is not None
+    session.close()
+    return {
+        "mechanism": "close_serving_repository_drop_process_handles_reopen_from_durable_paths",
+        "session_closed_before_recovery": had_repo and session.is_closed(),
+    }

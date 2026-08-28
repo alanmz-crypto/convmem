@@ -1,10 +1,6 @@
-"""CG-2 Design A isolated rehearsal and Execute evidence (D5).
+"""CG-2 Design A isolated rehearsal and Execute evidence (D5)."""
 
-Runs only in temporary Chroma and generation roots.  Does not publish production
-fences, pointers, activation manifests, or perform GC.
-"""
-
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,too-many-lines
 
 from __future__ import annotations
 
@@ -44,6 +40,7 @@ from file_generation_contract import (
     canonical_source_path,
     ownership_key,
 )
+import file_generation_pointer as fg_pointer
 from file_generation_pointer import (
     ManifestReference,
     load_manifest_reference,
@@ -56,7 +53,12 @@ from file_generation_pointer import (
 from file_generation_store import FileGenerationStore, StagedRow
 from mixed_mode_proof import (
     PHYSICAL_DELETION_DISABLED,
+    RehearsalEmptyCommittedView,
+    open_public_serving_repository_for_rehearsal,
+    open_rehearsal_serving_session,
+    resolve_rehearsal_authority_vector,
     retained_rollback_baseline_inventory,
+    simulate_rehearsal_process_restart_boundary,
 )
 from mixed_mode_retrieval import PINNED_CHROMA_VERSION
 from serving_authority import (
@@ -65,7 +67,11 @@ from serving_authority import (
     resolve_frozen_authority_vector,
 )
 from serving_index_repository import ServingIndexRepository, open_serving_index_repository
-from source_reconciler import pending_owner_work, reconciliation_state_path
+from source_reconciler import (
+    pending_owner_work,
+    record_rollback_reconciliation_obligation,
+    reconciliation_state_path,
+)
 
 REHEARSAL_SCHEMA = "convmem/cg2-rehearsal-v1"
 DESIGN_A_REHEARSAL_SCHEMA = "convmem/cg2-design-a-rehearsal-v1"
@@ -95,12 +101,14 @@ def _sha256_json(path: Path) -> str:
     return _sha256_bytes(canonical_bytes(json.loads(path.read_text(encoding="utf-8"))))
 
 
-class _EmptyCommittedView:
-    def query_units(self, _embedding, _top_k):
-        return []
+def _durable_reconciliation_hash(cfg: dict[str, Any]) -> str:
+    return _sha256_bytes(reconciliation_state_path(cfg).read_bytes())
 
-    def get_unit(self, _unit_id):
-        return None
+
+def _durable_fence_guard_hashes(env: dict[str, Any]) -> tuple[str, str]:
+    fence_file = fence_path(env["generations"], env["owner_digest"])
+    guard = read_canary_open_guard(env["generations"], env["owner_digest"])
+    return _sha256_file(fence_file), _sha256_bytes(canonical_bytes(dict(guard or {})))
 
 
 class _OneLockOracle:
@@ -344,7 +352,7 @@ def _build_canary(
             [{"document": "canary unit body", "metadata": {"title": "Canary"}}],
         ),
         embed=lambda _text: [0.01, 0.02],
-        committed_store=_EmptyCommittedView(),
+        committed_store=RehearsalEmptyCommittedView(),
         dedupe_cfg={"ingest_dedup": {"candidate_k": 10}},
         pipeline_fingerprint={
             "parser": "cg2-canary-parser-v1",
@@ -521,7 +529,9 @@ def _assert_frozen_generation_stable(env: dict[str, Any], grant: FirstCutoverGra
     owner_digest = env["owner_digest"]
     pointer_file = pointer_path(env["generations"], owner_digest)
     saved_pointer = json.loads(pointer_file.read_text(encoding="utf-8"))
+    frozen_vector_id: int | None = None
     with _frozen_serving_repository(env) as repo:
+        frozen_vector_id = id(repo.authority_vector)
         frozen_generation = repo.authority_vector.active_generations()[owner_digest]
         before_rows = repo.query_units(embedding, 5)
         before_ids = {row["id"] for row in before_rows}
@@ -532,14 +542,39 @@ def _assert_frozen_generation_stable(env: dict[str, Any], grant: FirstCutoverGra
         after_rows = repo.query_units(embedding, 5)
         after_ids = {row["id"] for row in after_rows}
         still_frozen = repo.authority_vector.active_generations()[owner_digest]
+
+    disk_after_rollback = read_unqualified_pointer(env["generations"], owner_digest)
+    assert disk_after_rollback is not None
+    disk_authority_after_rollback = resolve_rehearsal_authority_vector(env["cfg"]).by_owner[
+        owner_digest
+    ].generation_id
+
     atomic_write_json(pointer_file, saved_pointer)
     restored = read_unqualified_pointer(env["generations"], owner_digest)
+
+    with open_public_serving_repository_for_rehearsal(env["cfg"]) as fresh_after_restore:
+        fresh_vector_id = id(fresh_after_restore.authority_vector)
+        fresh_restored_generation = fresh_after_restore.authority_vector.active_generations()[owner_digest]
+        fresh_restored_ids = {
+            row["id"] for row in fresh_after_restore.query_units(embedding, 5)
+        }
+
     return {
         "frozen_generation_id": frozen_generation,
         "still_frozen_generation_id": still_frozen,
         "pointer_changed_to": after_pointer["active_generation_id"],
         "pointer_restored_to": restored["active_generation_id"] if restored else None,
         "query_ids_unchanged": before_ids == after_ids,
+        "disk_pointer_after_rollback": disk_after_rollback["active_generation_id"],
+        "disk_authority_after_rollback": disk_authority_after_rollback,
+        "fresh_open_after_restore_generation_id": fresh_restored_generation,
+        "fresh_open_vector_is_new_resolution": fresh_vector_id != frozen_vector_id,
+        "fresh_open_via_public_api": True,
+        "fresh_open_resolves_disk_not_frozen": (
+            disk_authority_after_rollback == grant.grb_generation_id
+            and fresh_restored_generation == grant.canary_generation_id
+            and fresh_vector_id != frozen_vector_id
+        ),
         "pass": (
             frozen_generation == grant.canary_generation_id
             and still_frozen == grant.canary_generation_id
@@ -547,6 +582,10 @@ def _assert_frozen_generation_stable(env: dict[str, Any], grant: FirstCutoverGra
             and before_ids == after_ids
             and restored is not None
             and restored["active_generation_id"] == grant.canary_generation_id
+            and disk_authority_after_rollback == grant.grb_generation_id
+            and fresh_restored_generation == grant.canary_generation_id
+            and fresh_vector_id != frozen_vector_id
+            and fresh_restored_ids == before_ids
         ),
     }
 
@@ -635,31 +674,53 @@ def _complete_rollback_recovery_phase(
     env: dict[str, Any],
     grant_cutover: FirstCutoverGrant,
 ) -> dict[str, Any]:
+    pre_restart_session = open_rehearsal_serving_session(env["cfg"])
+    ordering_trace: list[str] = []
     env["source"].write_text("advanced-source-bytes-v2", encoding="utf-8")
+    ordering_trace.append("source_advanced")
     pointer_before_rollback = dict(
         read_unqualified_pointer(env["generations"], env["owner_digest"]) or {}
     )
     rollback_oracle = _OneLockOracle()
-    with patch("file_generation_pointer.source_flock", rollback_oracle):
+    original_record = record_rollback_reconciliation_obligation
+    original_publish = fg_pointer._publish_pointer_under_lock  # pylint: disable=protected-access
+
+    def _track_record(*args, **kwargs):
+        ordering_trace.append("reconciliation_obligation_durable")
+        return original_record(*args, **kwargs)
+
+    def _track_publish(*args, **kwargs):
+        ordering_trace.append("rollback_pointer_publication")
+        return original_publish(*args, **kwargs)
+
+    with patch("file_generation_pointer.source_flock", rollback_oracle), patch(
+        "source_reconciler.record_rollback_reconciliation_obligation",
+        side_effect=_track_record,
+    ), patch.object(
+        fg_pointer,
+        "_publish_pointer_under_lock",
+        side_effect=_track_publish,
+    ):
         rolled = _rollback_grb(
             env,
             grant_cutover,
             active_generation_id=grant_cutover.canary_generation_id,
         )
-    reconciliation_before = reconciliation_state_path(env["cfg"]).read_text(encoding="utf-8")
-    fence_file = fence_path(env["generations"], env["owner_digest"])
-    guard = read_canary_open_guard(env["generations"], env["owner_digest"])
+    pending_after_rollback = pending_owner_work(env["cfg"])
+    reconciliation_hash_before_restart = _durable_reconciliation_hash(env["cfg"])
+    fence_hash_before_restart, guard_hash_before_restart = _durable_fence_guard_hashes(env)
+    restart_boundary = simulate_rehearsal_process_restart_boundary(pre_restart_session)
+    reconciliation_hash_after_restart = _durable_reconciliation_hash(env["cfg"])
+    fence_hash_after_restart, guard_hash_after_restart = _durable_fence_guard_hashes(env)
+    pending_after_restart = pending_owner_work(env["cfg"])
     recovered = recover_active_pointer(
         env["generations"],
         env["owner_key"],
         chroma_dir=env["chroma"],
         cfg=env["cfg"],
     )
-    reopened_vector = resolve_frozen_authority_vector(
-        env["cfg"], owner_digests={env["owner_digest"]}
-    )
+    reopened_vector = resolve_rehearsal_authority_vector(env["cfg"])
     reopened_state = reopened_vector.by_owner[env["owner_digest"]]
-    reconciliation_after = reconciliation_state_path(env["cfg"]).read_text(encoding="utf-8")
     retention = retained_rollback_baseline_inventory(
         env["chroma"],
         reopened_vector,
@@ -672,11 +733,16 @@ def _complete_rollback_recovery_phase(
     return {
         "pointer_before_rollback": pointer_before_rollback,
         "pointer_after_rollback": dict(rolled.pointer),
-        "pending": pending_owner_work(env["cfg"]),
-        "reconciliation_hash_before": _sha256_bytes(reconciliation_before.encode("utf-8")),
-        "reconciliation_hash_after": _sha256_bytes(reconciliation_after.encode("utf-8")),
-        "fence_hash": _sha256_file(fence_file),
-        "guard_hash": _sha256_bytes(canonical_bytes(dict(guard or {}))),
+        "pending_after_rollback": bool(pending_after_rollback),
+        "pending_after_restart": bool(pending_after_restart),
+        "ordering_trace": ordering_trace,
+        "reconciliation_hash_before_restart": reconciliation_hash_before_restart,
+        "reconciliation_hash_after_restart": reconciliation_hash_after_restart,
+        "fence_hash_before_restart": fence_hash_before_restart,
+        "fence_hash_after_restart": fence_hash_after_restart,
+        "guard_hash_before_restart": guard_hash_before_restart,
+        "guard_hash_after_restart": guard_hash_after_restart,
+        "restart_boundary": restart_boundary,
         "recovered": recovered,
         "reopened_state": reopened_state,
         "retention": retention,
@@ -741,10 +807,14 @@ def run_design_a_isolated_rehearsal(
         "first_pointer_cas_from_none": pointer.get("previous_generation_id") == grant_cutover.grb_generation_id,
         "first_pointer_previous_is_grb": pointer.get("previous_generation_id") == grant_cutover.grb_generation_id,
         "first_pointer_active_is_canary": pointer.get("active_generation_id") == grant_cutover.canary_generation_id,
-        "fence_content_hash": phase["fence_hash"],
-        "guard_content_hash": phase["guard_hash"],
-        "reconciliation_state_hash_before_restart": phase["reconciliation_hash_before"],
-        "reconciliation_state_hash_after_restart": phase["reconciliation_hash_after"],
+        "fence_content_hash_before_restart": phase["fence_hash_before_restart"],
+        "fence_content_hash_after_restart": phase["fence_hash_after_restart"],
+        "guard_content_hash_before_restart": phase["guard_hash_before_restart"],
+        "guard_content_hash_after_restart": phase["guard_hash_after_restart"],
+        "reconciliation_state_hash_before_restart": phase["reconciliation_hash_before_restart"],
+        "reconciliation_state_hash_after_restart": phase["reconciliation_hash_after_restart"],
+        "reconciliation_ordering_trace": phase["ordering_trace"],
+        "restart_boundary": phase["restart_boundary"],
         "retention_inventory": phase["retention"],
         "fresh_grant_fence_crash": grant_fence.grant_id,
         "fresh_grant_guard_crash": grant_guard.grant_id,
@@ -757,7 +827,8 @@ def run_design_a_isolated_rehearsal(
             "pass": len(phase["rollback_oracle"].acquisitions) == 1,
         },
         "request_freeze": freeze,
-        "reconciliation_pending_after_source_advance": bool(phase["pending"]),
+        "reconciliation_pending_after_source_advance": phase["pending_after_rollback"],
+        "reconciliation_pending_after_restart": phase["pending_after_restart"],
         "recovery_active_generation_id": recovered.pointer["active_generation_id"],
         "recovery_matches_rollback": recovered.pointer["active_generation_id"] == grant_cutover.grb_generation_id,
         "reopened_authority_mode": reopened_state.mode.value,
