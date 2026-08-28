@@ -28,10 +28,10 @@ Ryan ACQUIRE WRITER QUIESCENCE AND PREPARE
 trusted source snapshot + draft packet
         │ Ryan ACCEPT
         ▼
-materialization/binder validation → Ryan ACCEPT AND GRANT
-        │ one capture, then final trusted source recomputation
+materialization (no capture output) → remaining-budget proof → Ryan ACCEPT AND GRANT
+        │ one capture begins → create target → final trusted source recomputation
         ▼
-quiescence-close evidence → release gate → independent VERIFY / Ryan GATE
+quiescence-close evidence → release gate → release evidence → independent VERIFY / Ryan GATE
 ```
 
 R2b v1 is historical policy and code provenance. The v2 correction is planning
@@ -90,7 +90,7 @@ packet or acquire the gate from this document.
 6. Ryan **ACCEPTs** the packet; materialization/binder validation occurs while
    the same lease remains live.
 7. Ryan **ACCEPT AND GRANTs**; exactly one capture runs, followed by final source
-   recomputation, durable close evidence, gate release, and VERIFY.
+   recomputation, durable close evidence, gate release, release evidence, and VERIFY.
 
 Every failure consumes the run and authority chain. Retry means a new run ID,
 new lease authority, new packet, new ACCEPT, and new grant. No partial output is

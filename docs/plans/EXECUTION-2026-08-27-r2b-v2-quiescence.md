@@ -26,11 +26,14 @@ fresh run
 → trusted snapshot + draft packet
 → Ryan ACCEPT
 → materialization/binder validation
+→ remaining-budget proof
 → Ryan ACCEPT AND GRANT
-→ exactly one capture
+→ exactly one capture begins
+→ create absent capture_dir at the authorized capture point
 → final trusted source recomputation
 → close evidence
 → release gate
+→ release evidence
 → VERIFY / Ryan GATE
 ```
 
@@ -62,7 +65,7 @@ Cursor must not start these slices until Ryan authorizes implementation.
 | I3 — coverage | Exact-tip route inventory plus runtime census for all export/processed/Chroma mutation routes | Watch/F0, refine, monitor/reconciliation, manual, CG-2/D4, Recovery Authority, and unknown/bypass hard-HOLD tests |
 | I4 — source/packet | Snapshot and packet creation under the held lease; bind packet to open evidence and exact paths/argv | Shared canonical Chroma identity; content/metadata drift; sidecar absent before ACCEPT |
 | I5 — deadlines | Absolute monotonic transaction deadline and bounded acquisition, HITL reservation, capture, and close/release phases | Remaining-budget proof before grant; expiry consumes run; no in-place extension |
-| I6 — capture/close | Pass the live capability through materialization to exactly one capture; final source check; durable close before release | No write before materialization; marker last; no marker on failure; release ordering |
+| I6 — capture/close | Pass the live capability through materialization to exactly one capture; final source check; durable close before release and release evidence after release | Materialization creates no capture output; target creation follows grant; marker last; no marker on failure; release ordering |
 | I7 — adversarial VERIFY | Tests and evidence adapters for every Q/V row, including prohibited operations | Same exact implementation revision across implementation, Copilot, and Kiro evidence |
 | I8 — migration guard | New v2-only live emission and separately activated refusal of new v1 live execution | Old manifests and quarantined runs remain untouched and unusable |
 
@@ -129,22 +132,40 @@ regranted, or cleaned by R2b.
 10. Trusted binder/materializer rechecks the approved body, sidecar, exact
     paths, source identity, coverage, live lease, deadline, and absent target.
 11. Before **ACCEPT AND GRANT**, prove sufficient remaining budget for capture,
-    final source recomputation, close evidence, and release. Ryan's grant is
-    one-run/one-attempt authority only.
+    final source recomputation, close evidence, release, and release evidence.
+    Ryan's grant is one-run/one-attempt authority only.
 
 ### 4.3 Capture and close
 
-12. Materialize authorization before the first capture-directory write.
-13. Execute exactly one capture with inherited fixed controls: `capture_id` is
+12. Materialization has already validated and materialized the approved
+    authority while the lease remains live; it is not capture permission and
+    does not create or populate `capture_dir`.
+13. After **ACCEPT AND GRANT**, begin the exactly one authorized capture. Only
+    at that capture creation point may the previously absent `capture_dir` be
+    created.
+14. Execute exactly one capture with inherited fixed controls: `capture_id` is
     `run_id`, canonical overlap, spot `n = 20`, and one attempt.
-14. Recompute the complete trusted live source identity. Any difference, writer
+15. Recompute the complete trusted live source identity. Any difference, writer
     bypass, timeout, exception, or failed outcome prevents the marker.
-15. Publish the inherited completion marker last and atomically only for a valid
+16. Publish the inherited completion marker last and atomically only for a valid
     complete or unresolved artifact set.
-16. Write `quiescence-close.json` while the lease remains live, including the
-    marker/failure result and final source comparison.
-17. Release the gate, record the post-release observation, and stop. VERIFY and
-    Ryan's GATE are separate later stages.
+17. Write and fsync `quiescence-close.json` while the lease remains live. It
+    includes the pre-release terminal disposition, marker/failure result, final
+    source comparison, deadline state, release intent, pre-release state, and
+    preceding-evidence hashes; it does not claim release success.
+18. Release the kernel gate. Then write and fsync `quiescence-release.json`
+    with the close digest, actual release result, post-release timestamp and
+    observation, comparison, and any anomaly.
+19. Stop. VERIFY and Ryan's GATE are separate later stages. Missing release
+    evidence makes closure fail closed even if the kernel gate was released.
+
+The transaction evidence set is `quiescence-start.json`,
+`quiescence-open.json`, `capture.json`, `quiescence-close.json`, and
+`quiescence-release.json`. The close record is written and fsynced before
+release and contains no release-success or post-release claim. The release
+record is written and fsynced only after actual kernel release, binds the close
+digest, and records the release result and post-release comparison. Failure to
+write it leaves the lock released but makes VERIFY and arc closure fail closed.
 
 ## 5. Duration and benchmark gate
 
@@ -178,8 +199,9 @@ consumes the run; it never extends in place.
 | Capture fails before target creation | No marker; close/release; fresh run |
 | Capture fails after target creation | Preserve partial output as quarantined evidence; no cleanup/resume/overwrite/retry |
 | Source mutates while lease is held | Treat as bypass/noncompliance; no marker; quarantine; fresh authority |
-| Coordinator crash | Terminal run; kernel release is not resumption authority; no regrant |
-| Missing close evidence or close/release timeout | Terminal quarantine; no extension or repair in place |
+| Coordinator crash, including after close evidence and before/during release | Terminal and non-resumable; kernel release is not resumption authority; no regrant |
+| Missing close evidence or close timeout | Terminal quarantine; no extension or repair in place |
+| Release succeeds but release evidence is missing or release/post-release evidence times out | Lock may already be released, but closure fails closed; no resume, replay, repair, or regrant |
 | Replay, reacquisition, PID reuse, or lock-inode replacement | Refuse continuity; fresh run and authority chain |
 
 Any retry requires a new run ID, quiescence authority, open evidence, trusted
@@ -198,7 +220,7 @@ or cleans the failed output.
 | Quiescence preparation | Ryan | One live lease and packet draft only |
 | Packet ACCEPT | Ryan | Materialization validation only |
 | ACCEPT AND GRANT | Ryan | Exactly one capture |
-| VERIFY / close GATE | Kiro + Ryan | Arc closure only |
+| VERIFY / close GATE | Kiro + Ryan | Arc closure only after release evidence |
 
 Docs approval, implementation merge, duration acceptance, packet ACCEPT, and
 **ACCEPT AND GRANT** are distinct. None is implied by another.
