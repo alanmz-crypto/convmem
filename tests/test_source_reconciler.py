@@ -129,3 +129,78 @@ def test_startup_reconciliation_runs_sweep(tmp_path: Path) -> None:
     cfg = _cfg(tmp_path, source)
     report = run_startup_reconciliation(cfg)
     assert report.reason == "startup"
+
+
+def test_record_rollback_reconciliation_obligation_persists_state(tmp_path: Path) -> None:
+    source = tmp_path / "transcript.jsonl"
+    source.write_text("v1", encoding="utf-8")
+    cfg = _cfg(tmp_path, source)
+    from file_generation_contract import ownership_key
+    from source_reconciler import (
+        record_rollback_reconciliation_obligation,
+    )
+
+    owner_key = ownership_key(str(source.resolve()))
+    record_rollback_reconciliation_obligation(
+        cfg,
+        owner_key=owner_key,
+        canonical_path=str(source.resolve()),
+        target_source_hash="target-hash",
+        observed_source_hash="observed-hash",
+        source_reason="generational_source_hash_mismatch",
+    )
+    pending = pending_owner_work(cfg)
+    assert len(pending) == 1
+    assert pending[0].observed_hash == "observed-hash"
+    data = __import__("json").loads(reconciliation_state_path(cfg).read_text(encoding="utf-8"))
+    assert f"rollback:{owner_key}:generational_source_hash_mismatch" in data["dirty_scopes"]
+
+
+def test_rollback_reconciliation_obligation_survives_process_restart(tmp_path: Path) -> None:
+    source = tmp_path / "transcript.jsonl"
+    source.write_text("v1", encoding="utf-8")
+    cfg = _cfg(tmp_path, source)
+    from file_generation_contract import ownership_key
+    from source_reconciler import record_rollback_reconciliation_obligation
+
+    owner_key = ownership_key(str(source.resolve()))
+    record_rollback_reconciliation_obligation(
+        cfg,
+        owner_key=owner_key,
+        canonical_path=str(source.resolve()),
+        target_source_hash="target-hash",
+        observed_source_hash=None,
+        source_reason="generational_source_missing",
+    )
+    state_path = reconciliation_state_path(cfg)
+    reloaded = __import__("json").loads(state_path.read_text(encoding="utf-8"))
+    assert reloaded["pending_by_owner"][owner_key]["reason"] == "generational_source_missing"
+
+
+def test_rollback_reconciliation_coalesces_to_latest_desired_source(tmp_path: Path) -> None:
+    source = tmp_path / "transcript.jsonl"
+    source.write_text("v1", encoding="utf-8")
+    cfg = _cfg(tmp_path, source)
+    from file_generation_contract import ownership_key
+    from source_reconciler import record_rollback_reconciliation_obligation
+
+    owner_key = ownership_key(str(source.resolve()))
+    record_rollback_reconciliation_obligation(
+        cfg,
+        owner_key=owner_key,
+        canonical_path=str(source.resolve()),
+        target_source_hash="target-a",
+        observed_source_hash="observed-a",
+        source_reason="generational_source_hash_mismatch",
+    )
+    record_rollback_reconciliation_obligation(
+        cfg,
+        owner_key=owner_key,
+        canonical_path=str(source.resolve()),
+        target_source_hash="target-b",
+        observed_source_hash="observed-b",
+        source_reason="generational_source_hash_mismatch",
+    )
+    pending = pending_owner_work(cfg)
+    assert len(pending) == 1
+    assert pending[0].observed_hash == "observed-b"

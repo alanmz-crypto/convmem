@@ -30,6 +30,10 @@ class ReconciliationAdmissionError(RuntimeError):
     """The reconciliation queue refused additional owner work."""
 
 
+class RollbackReconciliationError(RuntimeError):
+    """Rollback could not durably persist reconciliation debt before pointer publication."""
+
+
 @dataclass(frozen=True)
 class ReconciliationBudget:
     max_pending_owners: int = 256
@@ -227,6 +231,43 @@ def discover_generational_source_drift(cfg: Mapping[str, Any]) -> list[SourceDri
                 )
             )
     return findings
+
+
+def record_rollback_reconciliation_obligation(
+    cfg: Mapping[str, Any],
+    *,
+    owner_key: str,
+    canonical_path: str,
+    target_source_hash: str,
+    observed_source_hash: str | None,
+    source_reason: str,
+    budget: ReconciliationBudget | None = None,
+) -> None:
+    """Durably record rollback-created reconciliation debt before pointer publication."""
+
+    if source_reason not in {
+        "generational_source_hash_mismatch",
+        "generational_source_missing",
+    }:
+        raise ValueError(f"unsupported rollback reconciliation reason: {source_reason}")
+    scope = f"rollback:{owner_key}"
+    try:
+        mark_reconciliation_dirty(cfg, scope, reason=source_reason)
+        enqueue_owner_work(
+            cfg,
+            SourceDriftFinding(
+                canonical_path=canonical_path,
+                owner_key=owner_key,
+                reason=source_reason,
+                recorded_hash=target_source_hash,
+                observed_hash=observed_source_hash,
+            ),
+            budget=budget,
+        )
+    except (ReconciliationAdmissionError, OSError, RuntimeError) as exc:
+        raise RollbackReconciliationError(
+            f"rollback reconciliation obligation could not be persisted: {exc}"
+        ) from exc
 
 
 def mark_reconciliation_dirty(
