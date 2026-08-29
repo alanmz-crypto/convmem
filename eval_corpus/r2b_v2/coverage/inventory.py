@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[3]
 SHADOW_INVENTORY = ROOT / "docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json"
 V2_INVENTORY = ROOT / "docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json"
 
-_REQUIRED_CATEGORIES = (
+REQUIRED_ROUTE_CATEGORIES: tuple[str, ...] = (
     "watch_f0",
     "refine",
     "monitor_reconciliation",
@@ -156,6 +156,33 @@ def _load_shadow_chroma_sites() -> list[dict[str, Any]]:
     return sites
 
 
+def scan_repo_for_unlisted_chroma_ctor() -> list[str]:
+    """Detect direct ChromaStore construction outside allowlisted shadow inventory."""
+    if not SHADOW_INVENTORY.is_file():
+        return ["shadow inventory missing"]
+    allow = set(
+        json.loads(SHADOW_INVENTORY.read_text(encoding="utf-8")).get(
+            "allowlisted_direct_sites", []
+        )
+    )
+    ctor = re.compile(r"ChromaStore\s*\(")
+    hits: list[str] = []
+    for path in sorted(ROOT.rglob("*.py")):
+        rel = str(path.relative_to(ROOT))
+        if rel.startswith("tests/") or "docs/" in rel or rel.startswith(".worktrees/"):
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for i, line in enumerate(text.splitlines(), 1):
+            if not ctor.search(line):
+                continue
+            if line.strip().startswith("class ChromaStore"):
+                continue
+            site = f"{rel}:{i}"
+            if site not in allow:
+                hits.append(site)
+    return hits
+
+
 def build_static_route_inventory(
     *,
     code_revision: str | None = None,
@@ -167,13 +194,15 @@ def build_static_route_inventory(
     for route in routes:
         route.setdefault("code_revision", revision)
     categories = {route["category"] for route in routes}
-    missing_categories = sorted(set(_REQUIRED_CATEGORIES) - categories)
+    missing_categories = sorted(set(REQUIRED_ROUTE_CATEGORIES) - categories)
+    unlisted_ctor_sites = scan_repo_for_unlisted_chroma_ctor()
     payload = {
         "proof_class": "r2b_v2_static_route_inventory",
         "code_revision": revision,
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
-        "required_categories": list(_REQUIRED_CATEGORIES),
+        "required_categories": list(REQUIRED_ROUTE_CATEGORIES),
         "missing_categories": missing_categories,
+        "unlisted_chroma_ctor_sites": unlisted_ctor_sites,
         "routes": sorted(routes, key=lambda r: r["route_id"]),
         "shadow_inventory_path": str(SHADOW_INVENTORY.relative_to(ROOT)),
     }
@@ -194,6 +223,12 @@ def verify_inventory_matches_tip(
         errors.append("stale inventory revision")
     if inventory.get("missing_categories"):
         errors.append(f"incomplete category coverage: {inventory['missing_categories']}")
+    unlisted = scan_repo_for_unlisted_chroma_ctor()
+    if unlisted:
+        errors.append(f"unlisted direct ChromaStore ctor sites: {unlisted}")
+    inventory_unlisted = inventory.get("unlisted_chroma_ctor_sites") or []
+    if inventory_unlisted:
+        errors.append(f"inventory records unlisted ctor sites: {inventory_unlisted}")
     expected = build_static_route_inventory(code_revision=revision)
     if inventory.get("inventory_digest") != expected["inventory_digest"]:
         errors.append("inventory digest mismatch vs current tip")
@@ -210,29 +245,6 @@ def verify_shadow_inventory_unchanged() -> list[str]:
     if data.get("must_use_factory_bypass_sites"):
         return ["shadow inventory bypass sites must remain empty"]
     return []
-
-
-def scan_repo_for_unlisted_chroma_ctor() -> list[str]:
-    """Detect direct ChromaStore construction outside allowlisted shadow inventory."""
-    if not SHADOW_INVENTORY.is_file():
-        return ["shadow inventory missing"]
-    allow = set(json.loads(SHADOW_INVENTORY.read_text(encoding="utf-8")).get("allowlisted_direct_sites", []))
-    ctor = re.compile(r"ChromaStore\s*\(")
-    hits: list[str] = []
-    for path in sorted(ROOT.rglob("*.py")):
-        rel = str(path.relative_to(ROOT))
-        if rel.startswith("tests/") or "docs/" in rel or rel.startswith(".worktrees/"):
-            continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        for i, line in enumerate(text.splitlines(), 1):
-            if not ctor.search(line):
-                continue
-            if line.strip().startswith("class ChromaStore"):
-                continue
-            site = f"{rel}:{i}"
-            if site not in allow:
-                hits.append(site)
-    return hits
 
 
 def write_v2_inventory_file(path: Path | None = None) -> Path:

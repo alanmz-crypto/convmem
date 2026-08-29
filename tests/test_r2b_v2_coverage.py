@@ -10,6 +10,7 @@ from pathlib import Path
 from chroma_write_store import current_code_revision
 
 from eval_corpus.r2b_v2.coverage.inventory import (
+    REQUIRED_ROUTE_CATEGORIES,
     build_static_route_inventory,
     scan_repo_for_unlisted_chroma_ctor,
     verify_inventory_matches_tip,
@@ -18,10 +19,14 @@ from eval_corpus.r2b_v2.coverage.inventory import (
 from eval_corpus.r2b_v2.coverage.proof import (
     CoverageProofError,
     CoverageHoldClass,
+    DiagnosticCoverageResult,
+    TrustedCoverageProof,
+    mint_trusted_coverage_proof,
     prove_zero_bypass_coverage,
     source_authority_from_lease_and_coverage,
 )
 from eval_corpus.r2b_v2.lease import acquire_r2b_quiescence_lease
+from eval_corpus.r2b_v2.trusted import _reset_for_tests
 
 
 class R2bV2CoverageInventoryTests(unittest.TestCase):
@@ -44,17 +49,7 @@ class R2bV2CoverageInventoryTests(unittest.TestCase):
     def test_required_route_categories_present(self):
         inv = build_static_route_inventory(code_revision="tip")
         categories = {route["category"] for route in inv["routes"]}
-        for required in (
-            "watch_f0",
-            "refine",
-            "monitor_reconciliation",
-            "manual_production",
-            "cg2_d4",
-            "recovery_authority",
-            "export_writers",
-            "processed_state_writers",
-            "chroma_writers",
-        ):
+        for required in REQUIRED_ROUTE_CATEGORIES:
             self.assertIn(required, categories)
 
     def test_scan_matches_shadow_allowlist(self):
@@ -75,7 +70,56 @@ class R2bV2CoverageInventoryTests(unittest.TestCase):
         self.assertEqual(extra, [], msg=extra)
 
 
+class R2bV2DiagnosticCoverageTests(unittest.TestCase):
+    def test_diagnostic_result_separate_from_trusted(self):
+        diag = DiagnosticCoverageResult(
+            code_revision="rev",
+            inventory_digest="inv",
+            runtime_census_digest="rt",
+            coverage_digest="cov",
+            gate_identity="gate-id",
+            gate_path="/tmp/gate.lock",
+            gate_protocol=1,
+            passed=True,
+        )
+        self.assertFalse(isinstance(diag, TrustedCoverageProof))
+
+    def test_skip_runtime_cannot_mint_trusted(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            inv = build_static_route_inventory(code_revision="skip-test")
+            diag = prove_zero_bypass_coverage(
+                chroma_dir=root / "chroma",
+                processed_path=root / "processed.json",
+                export_root=root / "export",
+                test_gate_path=root / "gate.lock",
+                code_revision="skip-test",
+                static_inventory=inv,
+                skip_runtime=True,
+            )
+            self.assertTrue(diag.runtime_census_skipped)
+            with self.assertRaises(CoverageProofError) as ctx:
+                mint_trusted_coverage_proof(diag)
+            self.assertIn("skip_runtime", str(ctx.exception))
+
+    def test_trusted_proof_not_caller_constructible(self):
+        with self.assertRaises(CoverageProofError):
+            TrustedCoverageProof(
+                code_revision="x",
+                inventory_digest="i",
+                runtime_census_digest="r",
+                coverage_digest="c",
+                gate_identity="g",
+                gate_path="/tmp/g",
+                gate_protocol=1,
+                token=b"forged",
+            )
+
+
 class R2bV2CoverageProofTests(unittest.TestCase):
+    def setUp(self) -> None:
+        _reset_for_tests()
+
     def test_empty_runtime_census_passes_when_clean(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -91,7 +135,7 @@ class R2bV2CoverageProofTests(unittest.TestCase):
                 chroma_dir=chroma,
                 processed_path=processed,
                 export_root=export,
-                gate_path=gate,
+                test_gate_path=gate,
                 code_revision="cov-test",
                 static_inventory=inv,
                 skip_runtime=False,
@@ -108,7 +152,7 @@ class R2bV2CoverageProofTests(unittest.TestCase):
                 chroma_dir=root / "chroma",
                 processed_path=root / "processed.json",
                 export_root=root / "export",
-                gate_path=root / "gate.lock",
+                test_gate_path=root / "gate.lock",
                 code_revision="cov-bypass",
                 static_inventory=inv,
                 bypass_capable_routes=[{"route": "rogue", "detail": "direct write"}],
@@ -132,7 +176,7 @@ class R2bV2CoverageProofTests(unittest.TestCase):
                 chroma_dir=chroma,
                 processed_path=processed,
                 export_root=export,
-                gate_path=gate,
+                test_gate_path=gate,
                 code_revision=current_code_revision(),
                 static_inventory=inv,
                 bypass_capable_routes=[{"route": "incomplete"}],
@@ -142,21 +186,60 @@ class R2bV2CoverageProofTests(unittest.TestCase):
                 run_id="neg-run",
                 grant_digest="g",
                 authority_digest="a",
-                lock_path=gate,
+                test_lock_path=gate,
                 writer_coverage_digest=bad.coverage_digest,
                 open_evidence_digest="open",
                 monotonic_deadline=time.monotonic() + 30,
                 bound_source_paths=(str(export), str(processed), str(chroma)),
-                implementation_revision=current_code_revision(),
+                timeout_ms=5000,
             )
             try:
                 with self.assertRaises(CoverageProofError) as ctx:
-                    source_authority_from_lease_and_coverage(
-                        lease,
-                        bad,
-                        open_evidence_digest="open",
-                    )
-                self.assertIn("NO SOURCE AUTHORITY", str(ctx.exception))
+                    mint_trusted_coverage_proof(bad)
+                self.assertIn("skip_runtime", str(ctx.exception))
+            finally:
+                lease.release()
+
+    def test_trusted_coverage_establishes_source_authority(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            chroma = root / "chroma"
+            processed = root / "processed.json"
+            export = root / "export"
+            chroma.mkdir()
+            export.mkdir()
+            processed.write_text("{}", encoding="utf-8")
+            gate = root / "gate.lock"
+            rev = current_code_revision()
+            inv = build_static_route_inventory(code_revision=rev)
+            diag = prove_zero_bypass_coverage(
+                chroma_dir=chroma,
+                processed_path=processed,
+                export_root=export,
+                test_gate_path=gate,
+                code_revision=rev,
+                static_inventory=inv,
+            )
+            trusted = mint_trusted_coverage_proof(diag)
+            lease = acquire_r2b_quiescence_lease(
+                run_id="pos-run",
+                grant_digest="g",
+                authority_digest="a",
+                test_lock_path=gate,
+                writer_coverage_digest=trusted.coverage_digest,
+                open_evidence_digest="open-ev",
+                monotonic_deadline=time.monotonic() + 30,
+                bound_source_paths=(str(export), str(processed), str(chroma)),
+                timeout_ms=5000,
+            )
+            try:
+                auth = source_authority_from_lease_and_coverage(
+                    lease,
+                    trusted,
+                    open_evidence_digest="open-ev",
+                )
+                self.assertEqual(auth.run_id, "pos-run")
+                self.assertTrue(auth.gate_held)
             finally:
                 lease.release()
 
