@@ -262,6 +262,27 @@ Nonzero Design A action coverage includes: D0 chain, `ConvertLegacyToGRb`,
 **`ForwardPromote` (4883)**, **`RefuseSecondPromotionWhileGuardOpen`
 (37686)**, **`CloseAuthorizedCanaryGuard` (41008)**.
 
+## D7 Execute-closure TLC rerun (2026-08-29 — closure tip `b64860b`)
+
+Fresh four-configuration TLC rerun at D7 closure implementation tip
+`b64860b05575c62b4563c02ed6f05bb39910b4dc` after property-map and evidence-
+collector updates. D6 corrective evidence at `ca1298e` remains valid historical
+D6 proof; this section is the authoritative D7 closure-tip TLC record.
+
+| Field | Value |
+|---|---|
+| Closure tip | `b64860b05575c62b4563c02ed6f05bb39910b4dc` |
+| D6 accepted starting tip | `9a042fbc0d18500b91e056f47f60a00e20ccdb75` |
+| Java | OpenJDK 21.0.12 (nix headless) |
+| Logs | `/tmp/tlc-<Config>-b64860b05575c62b4563c02ed6f05bb39910b4dc.log` |
+
+**Suite result:** all four configurations **PASS** (exit `0`).
+
+| Transition | `CG2DesignA.cfg` | `CG2Cutover.cfg` |
+|---|---:|---:|
+| `ForwardPromote` | **4881** | 0 |
+| `RefuseSecondPromotionWhileGuardOpen` | **37608** | **6344** |
+
 ## Running TLC manually
 
 With a checksum-verified JAR available outside the repository:
