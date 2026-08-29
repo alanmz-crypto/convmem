@@ -68,6 +68,11 @@ EXPECTED = {
         "ChromaStore",
     ): (1, "generation-mediated"),
     (
+        "cg2_rehearsal.py",
+        "_seed_minimal_legacy_corpus",
+        "ChromaStore",
+    ): (1, "generation-mediated"),
+    (
         "cg2_legacy_vector_attestation.py",
         "_open_hermetic_store",
         "ChromaStore",

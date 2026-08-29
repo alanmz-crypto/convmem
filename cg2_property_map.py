@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
 from typing import Any
 
 SCHEMA = "convmem/cg2-design-a-property-map-v2"
+REPO_ROOT = Path(__file__).resolve().parent
 
 # Inherited §13.18 architecture properties (historical formal map).
 PROPERTY_TEST_MAP: dict[str, dict[str, Any]] = {
@@ -63,7 +66,10 @@ PROPERTY_TEST_MAP: dict[str, dict[str, Any]] = {
     },
     "TentativePinWindowProtected": {
         "tests": [
-            "tests/test_mixed_mode_proof.py::test_retention_survives_restart",
+            (
+                "tests/test_mixed_mode_proof.py::MixedModeProofTests::"
+                "test_retention_survives_restart"
+            ),
         ],
         "notes": "Retained inactive rows survive reopen",
     },
@@ -75,7 +81,10 @@ PROPERTY_TEST_MAP: dict[str, dict[str, Any]] = {
     },
     "RenameGroupStable": {
         "tests": [
-            "tests/test_file_generation_read_paths.py::test_reused_active_generation_id_cannot_cross_owner_boundary",
+            (
+                "tests/test_file_generation_read_paths.py::GenerationReadPathTests::"
+                "test_reused_active_generation_id_cannot_cross_owner_boundary"
+            ),
         ],
         "notes": "Shared generation id cannot cross owner boundary",
     },
@@ -237,7 +246,10 @@ DESIGN_A_FORMAL_PROPERTY_MAP: dict[str, dict[str, Any]] = {
     },
     "RollbackBaselineNeverGCEligible": {
         "tests": [
-            "tests/test_mixed_mode_proof.py::test_grb_retained_across_design_a_lifecycle",
+            (
+                "tests/test_mixed_mode_proof.py::MixedModeProofTests::"
+                "test_grb_retained_across_design_a_lifecycle"
+            ),
             "tests/test_cg2_rollback_baseline.py::test_grb_protection_permits_canary_staging",
         ],
         "notes": "RETAINED_ROLLBACK_BASELINE protected across lifecycle",
@@ -312,10 +324,13 @@ DESIGN_A_INVARIANT_MAP: dict[str, dict[str, Any]] = {
     "retained_rollback_baseline_protected": {
         "tests": [
             (
-                "tests/test_file_generation_store.py::"
+                "tests/test_file_generation_store.py::FileGenerationStoreTests::"
                 "test_retained_rollback_baseline_permits_canary_staging_without_deletion"
             ),
-            "tests/test_mixed_mode_proof.py::test_grb_retained_across_design_a_lifecycle",
+            (
+                "tests/test_mixed_mode_proof.py::MixedModeProofTests::"
+                "test_grb_retained_across_design_a_lifecycle"
+            ),
         ],
         "implementation": "file_generation_store.py",
     },
@@ -412,7 +427,10 @@ DESIGN_A_INVARIANT_MAP: dict[str, dict[str, Any]] = {
     },
     "gc_disabled_baseline_retained": {
         "tests": [
-            "tests/test_mixed_mode_proof.py::test_grb_retained_across_design_a_lifecycle",
+            (
+                "tests/test_mixed_mode_proof.py::MixedModeProofTests::"
+                "test_grb_retained_across_design_a_lifecycle"
+            ),
         ],
         "implementation": "mixed_mode_proof.py",
     },
@@ -433,9 +451,48 @@ REQUIRED_DESIGN_A_FORMAL_PROPERTIES = frozenset(DESIGN_A_FORMAL_PROPERTY_MAP)
 REQUIRED_DESIGN_A_INVARIANTS = frozenset(DESIGN_A_INVARIANT_MAP)
 
 
+def _iter_mapped_test_nodes() -> list[str]:
+    nodes: list[str] = []
+    for mapping in (
+        PROPERTY_TEST_MAP,
+        DESIGN_A_FORMAL_PROPERTY_MAP,
+        DESIGN_A_INVARIANT_MAP,
+    ):
+        for entry in mapping.values():
+            nodes.extend(entry.get("tests", []))
+    return nodes
+
+
+def verify_property_map_node_resolution() -> dict[str, Any]:
+    """Mechanically verify every mapped pytest node collects at least one test."""
+
+    unresolved: list[str] = []
+    resolved_count = 0
+    for node in _iter_mapped_test_nodes():
+        result = subprocess.run(
+            ["python", "-m", "pytest", node, "--collect-only", "-q"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        combined = f"{result.stdout}\n{result.stderr}".lower()
+        if result.returncode != 0 or "no tests collected" in combined:
+            unresolved.append(node)
+        else:
+            resolved_count += 1
+    return {
+        "mapped_node_count": len(_iter_mapped_test_nodes()),
+        "resolved_node_count": resolved_count,
+        "unresolved_nodes": unresolved,
+        "all_nodes_resolve": not unresolved,
+    }
+
+
 def verify_property_map_completeness() -> dict[str, Any]:
     """Return completeness oracle for D7 Execute-close bundle."""
 
+    node_resolution = verify_property_map_node_resolution()
     return {
         "schema": SCHEMA,
         "inherited_formal_complete": REQUIRED_INHERITED_FORMAL_PROPERTIES
@@ -451,6 +508,7 @@ def verify_property_map_completeness() -> dict[str, Any]:
             "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal"
             in PROPERTY_TEST_MAP["FrozenGenerationStable"]["tests"]
         ),
+        "node_resolution": node_resolution,
     }
 
 

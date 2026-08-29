@@ -14,6 +14,7 @@ from cg2_property_map import (
     PROPERTY_TEST_MAP,
     build_property_map_report,
     verify_property_map_completeness,
+    verify_property_map_node_resolution,
 )
 from cg2_rehearsal import (
     ARCHITECTURE_SHA,
@@ -67,6 +68,11 @@ class Cg2RehearsalTests(unittest.TestCase):
         self.assertTrue(completeness["frozen_generation_stable_dedicated"])
         self.assertGreaterEqual(len(DESIGN_A_FORMAL_PROPERTY_MAP), 20)
         self.assertGreaterEqual(len(DESIGN_A_INVARIANT_MAP), 25)
+        resolution = verify_property_map_node_resolution()
+        self.assertTrue(
+            resolution["all_nodes_resolve"],
+            msg=f"unresolved nodes: {resolution['unresolved_nodes']}",
+        )
 
     def test_execute_evidence_bundle(self) -> None:
         bundle = collect_execute_evidence()
@@ -79,6 +85,9 @@ class Cg2RehearsalTests(unittest.TestCase):
         self.assertTrue(bundle["no_production_operations"])
         self.assertIn("authority_races", failure_matrix_evidence())
         self.assertTrue(bundle["property_map_completeness"]["design_a_formal_complete"])
+        self.assertTrue(
+            bundle["property_map_completeness"]["node_resolution"]["all_nodes_resolve"]
+        )
 
     def test_measured_budgets_use_ratified_constants(self) -> None:
         budgets = measured_budgets()
