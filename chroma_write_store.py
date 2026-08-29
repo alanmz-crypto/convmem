@@ -11,6 +11,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import tempfile
 import threading
 import time
 import uuid
@@ -96,14 +97,31 @@ class CaptureGeneration:
 
 @dataclass
 class _HeldWriterLease:
-    """Process-local nesting state for one shared mutation boundary."""
+    """Thread-local nesting state for one shared mutation boundary."""
 
     lock_path: Path
     attestation: WriterAttestation
     depth: int = 1
 
 
+@dataclass
+class _ProcessWriterLeaseRegistry:
+    """Process-wide active shared-lease count for one PID attestation file.
+
+    Thread-local ``_HeldWriterLease.depth`` tracks same-thread re-entry only.
+    ``active_count`` is the union of all overlapping same-process leases
+    (cross-thread and nested) so intermediate exits never unlink the PID
+    attestation while any lease remains active.
+    """
+
+    lock: threading.Lock
+    active_count: int = 0
+    attestation: WriterAttestation | None = None
+    attest_dir: Path | None = None
+
+
 _writer_tls = threading.local()
+_process_writer_leases = _ProcessWriterLeaseRegistry(lock=threading.Lock())
 
 
 def _held_writer_lease() -> _HeldWriterLease | None:
@@ -126,6 +144,44 @@ def require_writer_attestation() -> WriterAttestation:
 
 def _same_lock_path(left: Path, right: Path) -> bool:
     return left.resolve(strict=False) == right.resolve(strict=False)
+
+
+def _acquire_process_writer_lease(
+    *,
+    attest_dir: Path | None,
+    entrypoint: str,
+) -> WriterAttestation:
+    """Establish or extend process-scoped ownership of the PID attestation."""
+    with _process_writer_leases.lock:
+        first = _process_writer_leases.active_count == 0
+        if first:
+            attestation = build_writer_attestation(entrypoint=entrypoint)
+            write_attestation(attestation, attest_dir=attest_dir)
+            _process_writer_leases.attestation = attestation
+            _process_writer_leases.attest_dir = attest_dir
+        else:
+            attestation = _process_writer_leases.attestation
+            if attestation is None:
+                raise RuntimeError("active writer lease missing attestation")
+        _process_writer_leases.active_count += 1
+        return attestation
+
+
+def _release_process_writer_lease() -> bool:
+    """Drop one process-scoped lease; return True when attestation may clear."""
+    with _process_writer_leases.lock:
+        if _process_writer_leases.active_count <= 0:
+            raise RuntimeError("writer lease release without matching acquire")
+        _process_writer_leases.active_count -= 1
+        if _process_writer_leases.active_count == 0:
+            attestation = _process_writer_leases.attestation
+            attest_dir = _process_writer_leases.attest_dir
+            _process_writer_leases.attestation = None
+            _process_writer_leases.attest_dir = None
+            if attestation is not None:
+                clear_attestation(attestation.pid, attest_dir=attest_dir)
+            return True
+        return False
 
 
 def current_code_revision() -> str:
@@ -183,8 +239,33 @@ def write_attestation(
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{attestation.pid}.json"
     payload = json.dumps(attestation.as_dict(), indent=2, sort_keys=True) + "\n"
-    path.write_text(payload, encoding="utf-8")
-    os.chmod(path, 0o600)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=str(directory),
+    )
+    published = False
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            fd = -1
+            handle.write(payload.encode("utf-8"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(tmp_name, 0o600)
+        os.replace(tmp_name, path)
+        published = True
+    except BaseException:
+        if not published:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+            if fd >= 0:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+        raise
     return path
 
 
@@ -333,11 +414,16 @@ def shared_writer_lease(
                 "nested shared writer lease must reuse the outer lock path"
             )
         path = held.lock_path
+        _acquire_process_writer_lease(
+            attest_dir=attest_dir,
+            entrypoint=entrypoint,
+        )
         held.depth += 1
         try:
             yield held.attestation
         finally:
             held.depth -= 1
+            _release_process_writer_lease()
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(path), os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
@@ -353,8 +439,15 @@ def shared_writer_lease(
                     f"writer_quiesce_timeout: shared lease after {timeout_ms}ms"
                 ) from exc
             time.sleep(0.01)
-    attestation = build_writer_attestation(entrypoint=entrypoint)
-    write_attestation(attestation, attest_dir=attest_dir)
+    try:
+        attestation = _acquire_process_writer_lease(
+            attest_dir=attest_dir,
+            entrypoint=entrypoint,
+        )
+    except Exception:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+        raise
     # C7's separate journal lock is taken only after this writer gate.  A
     # durable open failure refuses before the caller can mutate Chroma.
     from writer_census import record_writer_open
@@ -364,7 +457,7 @@ def shared_writer_lease(
             census_dir=census_dir, entrypoint=entrypoint, writer_gate_path=path
         )
     except Exception:
-        clear_attestation(attestation.pid, attest_dir=attest_dir)
+        _release_process_writer_lease()
         fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
         raise
@@ -380,7 +473,7 @@ def shared_writer_lease(
             record_writer_close(census_session)
         except WriterCensusRefused:
             pass
-        clear_attestation(attestation.pid, attest_dir=attest_dir)
+        _release_process_writer_lease()
         try:
             fcntl.flock(fd, fcntl.LOCK_UN)
         finally:
