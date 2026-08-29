@@ -303,14 +303,20 @@ DESIGN_A_INVARIANT_MAP: dict[str, dict[str, Any]] = {
     },
     "provenance_identity_preserved": {
         "tests": [
-            "tests/test_cg2_rollback_baseline.py::test_same_ledger_distinct_provenance_survive_without_dedupe_or_remint",
+            (
+                "tests/test_cg2_rollback_baseline.py::"
+                "test_same_ledger_distinct_provenance_survive_without_dedupe_or_remint"
+            ),
             "tests/test_cg2_rollback_baseline.py::test_b2_envelope_swap_in_evidence_refuses_validation",
         ],
         "implementation": "cg2_rollback_baseline.py",
     },
     "retained_rollback_baseline_protected": {
         "tests": [
-            "tests/test_file_generation_store.py::test_retained_rollback_baseline_permits_canary_staging_without_deletion",
+            (
+                "tests/test_file_generation_store.py::"
+                "test_retained_rollback_baseline_permits_canary_staging_without_deletion"
+            ),
             "tests/test_mixed_mode_proof.py::test_grb_retained_across_design_a_lifecycle",
         ],
         "implementation": "file_generation_store.py",
@@ -412,7 +418,10 @@ DESIGN_A_INVARIANT_MAP: dict[str, dict[str, Any]] = {
     },
     "complete_data_restore_preserves_d0_grb": {
         "tests": [
-            "tests/test_cg2_legacy_vector_attestation.py::test_restore_preserves_d0_and_keeps_backup_evidence_non_authoritative",
+            (
+                "tests/test_cg2_legacy_vector_attestation.py::"
+                "test_restore_preserves_d0_and_keeps_backup_evidence_non_authoritative"
+            ),
             "tests/test_complete_data_restore.py",
         ],
         "implementation": "complete_data_restore.py",
