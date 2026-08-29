@@ -1,7 +1,7 @@
 {
-  "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+  "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
   "gate_protocol": 1,
-  "inventory_digest": "e04aa55090b92635c1a0f0c194fa568de022982f1ca8a6af0c73d7c51f068bb7",
+  "inventory_digest": "f5ec3f1f258374f00191858e716a7e854def503721e03ed2a4a7aa2867935a7c",
   "missing_categories": [],
   "proof_class": "r2b_v2_static_route_inventory",
   "required_categories": [
@@ -18,7 +18,7 @@
   "routes": [
     {
       "category": "cg2_d4",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "file_generation_pointer.py",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -32,7 +32,7 @@
     },
     {
       "category": "cg2_d4",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "source_reconciler.py",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -45,7 +45,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "convmem.py:1663",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -58,7 +58,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "convmem.py:367",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -71,7 +71,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "convmem.py:471",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -84,7 +84,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "convmem.py:636",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -97,7 +97,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "ingest.py:585",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -110,7 +110,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "ingest.py:947",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -123,7 +123,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "ingest.py:985",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -136,7 +136,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "inter_model_index.py:201",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -149,7 +149,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "observe.py:234",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -162,7 +162,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "propose_decision.py:549",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -175,7 +175,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "propose_decision.py:581",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -188,7 +188,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "refine.py:291",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -201,7 +201,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "refine.py:764",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -214,7 +214,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "source_purge.py:338",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -227,7 +227,7 @@
     },
     {
       "category": "manual_production",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "convmem.py:index_command",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -241,7 +241,7 @@
     },
     {
       "category": "processed_state_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "exclude_cli.py",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -253,7 +253,7 @@
     },
     {
       "category": "monitor_reconciliation",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "watch.py:run_startup_reconciliation",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -266,7 +266,7 @@
     },
     {
       "category": "monitor_reconciliation",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "observe.py",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -278,7 +278,7 @@
     },
     {
       "category": "chroma_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "propose_decision.py",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -290,7 +290,7 @@
     },
     {
       "category": "recovery_authority",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "complete_data_restore.py",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -304,7 +304,7 @@
     },
     {
       "category": "refine",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "refine.py:run_refine_job",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -317,7 +317,7 @@
     },
     {
       "category": "export_writers",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "source_purge.py",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -331,7 +331,7 @@
     },
     {
       "category": "watch_f0",
-      "code_revision": "c6e8b2b0293edf8b0faf29e9e393e69eca6ca494",
+      "code_revision": "e2af5001c4de0852e94769fc5692105353d5046c",
       "coverage_status": "gated",
       "entrypoint": "watch.py:watch_index_event",
       "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
@@ -344,5 +344,6 @@
       "route_id": "watch_f0_ingest"
     }
   ],
-  "shadow_inventory_path": "docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json"
+  "shadow_inventory_path": "docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json",
+  "unlisted_chroma_ctor_sites": []
 }
