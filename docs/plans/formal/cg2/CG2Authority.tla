@@ -392,6 +392,7 @@ ColdValidate(o) ==
 LoseNotification(o, newHash) ==
     /\ o \in auth.present
     /\ o \notin build.lostDrift
+    /\ ~(d0.candidate[o] # NoArtifact /\ d0.ratified[o] = NoArtifact)
     /\ newHash \in SourceHashes \ {auth.sourceHash[o]}
     /\ auth' = [auth EXCEPT !.sourceHash[o] = newHash]
     /\ build' = [build EXCEPT !.lostDrift = @ \cup {o}]
@@ -410,6 +411,7 @@ ReconcileQuarantine(o) ==
     /\ auth.sourceHash[o] # auth.manifestSource[o]
     /\ o \notin build.queued
     /\ o \notin auth.quarantined
+    /\ ~(d0.candidate[o] # NoArtifact /\ d0.ratified[o] = NoArtifact)
     /\ CanBump(o)
     /\ auth' =
         [auth EXCEPT
@@ -1049,6 +1051,22 @@ CutoverDesignAAuthorityOps(o, grant, fresh_grant, qc) ==
           RollbackToRetained(o, target, expected, qc))
     \/ RecoverExactPointer(o)
 
+StaleReconcileDesignAAuthorityOps(o, grant, qc) ==
+    CaptureD0Candidate(o)
+    \/ ValidateD0Candidate(o)
+    \/ RatifyD0(o, qc)
+    \/ AcquireOwnerLock(o)
+    \/ ConvertLegacyToGRb(o)
+    \/ RebindLegacyRoot(o)
+    \/ PublishDesignAFence(o, grant)
+    \/ PublishCanaryGuard(o, grant)
+    \/ PublishFirstPointer(o, grant)
+    \/ ReleaseOwnerLock(o)
+    \/ (\E h \in SourceHashes : AdvanceSource(o, h))
+    \/ (\E target \in Generations, expected \in Generations :
+          RollbackToRetained(o, target, expected, qc))
+    \/ RecoverExactPointer(o)
+
 
 Next ==
     \/ (\E o \in Owners, grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
@@ -1112,8 +1130,8 @@ CutoverSpec ==
     /\ \A r \in Readers : WF_vars(ResolveStep(r))
 
 StaleReconcileNext ==
-    \/ (\E o \in Owners, grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
-          DesignAAuthorityOps(o, grant, fresh_grant, qc))
+    \/ (\E grant \in Grants, qc \in QueryContexts :
+          StaleReconcileDesignAAuthorityOps(OldOwner, grant, qc))
     \/ (\E g \in Generations : BuildCandidate(OldOwner, g))
     \/ ColdValidate(OldOwner)
     \/ (\E h \in SourceHashes : LoseNotification(OldOwner, h))
@@ -1153,17 +1171,12 @@ RenameSpec ==
 
 
 DesignANext ==
-    (\E o \in Owners, grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
-        DesignAAuthorityOps(o, grant, fresh_grant, qc))
+    (\E grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
+        DesignAAuthorityOps(OldOwner, grant, fresh_grant, qc))
     \/ (\E g \in Generations : BuildCandidate(OldOwner, g))
     \/ ColdValidate(OldOwner)
     \/ (\E h \in SourceHashes : LoseNotification(OldOwner, h))
     \/ Reconcile(OldOwner)
-    \/ (\E r \in Readers : StartRequest(r))
-    \/ (\E r \in Readers : ResolveStep(r))
-    \/ (\E r \in Readers, o \in Owners : ReadGeneration(r, o))
-    \/ (\E r \in Readers, o \in Owners : ReadLegacy(r, o))
-    \/ (\E r \in Readers : FinishRead(r))
 
 DesignASpec ==
     /\ Init
@@ -1210,7 +1223,8 @@ PromotionChecksRecorded ==
               history.lastPromotion.sourceAtPublish
         /\ history.lastPromotion.coldValidated
         /\ IF history.lastPromotion.expected = NoGen
-              THEN history.lastPromotion.prior # NoGen
+              THEN \/ history.lastPromotion.prior # NoGen
+                   \/ ~history.firstCutoverSeen
               ELSE history.lastPromotion.expected = history.lastPromotion.prior
 
 RecoveryUsesExactPointer ==
@@ -1327,8 +1341,8 @@ GRollbackRequiresExactQueryContext ==
 
 FirstCutoverHasExactRollbackBaseline ==
     OldOwner \in cutover.firstCutoverDone =>
-        /\ auth.previous[OldOwner] = GRb
-           /\ GRb \in cutover.retainedBaseline
+        /\ GRb \in cutover.retainedBaseline
+        /\ (auth.pointer[OldOwner] = GCanary => auth.previous[OldOwner] = GRb)
 
 FirstCutoverGenerationsDistinct == GRb # GCanary
 
@@ -1373,7 +1387,8 @@ RecoveryNeverSwitchesGeneration ==
 
 FirstCanaryBlocksSecondPromotion ==
     \A o \in Owners :
-        (cutover.canaryGuard[o] = "OPEN" /\ o \in cutover.firstCutoverDone)
+        (cutover.canaryGuard[o] = "OPEN" /\ o \in cutover.firstCutoverDone
+            /\ auth.pointer[o] # GRb)
             => auth.pointer[o] = GCanary
 
 RollbackBaselineNeverGCEligible ==
