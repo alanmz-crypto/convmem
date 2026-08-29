@@ -21,6 +21,16 @@ _GENERATION_POINTER_WRITE = re.compile(
     r"commit_generation_pointer|set_active_generation)\s*\("
 )
 
+_GOVERNED_ROUTE_STATUSES = frozenset({"gated", "read_only_nonmutation"})
+
+# Infrastructure modules that construct FileGenerationStore for read/validation only.
+_READ_ONLY_GENERATION_STORE_MODULES = frozenset(
+    {
+        "file_generation_store.py",
+        "mixed_mode_proof.py",
+    }
+)
+
 REQUIRED_ROUTE_CATEGORIES: tuple[str, ...] = (
     "watch_f0",
     "refine",
@@ -274,8 +284,10 @@ def scan_repo_for_unlisted_generation_store_ctor() -> list[str]:
 
 
 def _listed_generation_store_files() -> set[str]:
-    files = {"file_generation_store.py", "mixed_mode_proof.py"}
+    files = set(_READ_ONLY_GENERATION_STORE_MODULES)
     for route in _STATIC_ROUTES:
+        if route.get("coverage_status") not in _GOVERNED_ROUTE_STATUSES:
+            continue
         files.add(route["entrypoint"].split(":")[0])
     return files
 
@@ -300,6 +312,7 @@ def _scan_generation_pointer_write_uncached() -> list[str]:
         route["entrypoint"].split(":")[0]
         for route in _STATIC_ROUTES
         if route.get("category") == "cg2_d4"
+        and route.get("coverage_status") in _GOVERNED_ROUTE_STATUSES
     }
     hits: list[str] = []
     for site in _scan_repo_pattern(_GENERATION_POINTER_WRITE):
@@ -392,6 +405,10 @@ def verify_inventory_matches_tip(
         errors.append("stale inventory revision")
     if inventory.get("missing_categories"):
         errors.append(f"incomplete category coverage: {inventory['missing_categories']}")
+    for route in inventory.get("routes", []):
+        status = route.get("coverage_status")
+        if status not in _GOVERNED_ROUTE_STATUSES:
+            errors.append(f"ungoverned route classification: {route.get('route_id')}")
     unlisted = scan_repo_for_unlisted_chroma_ctor()
     if unlisted:
         errors.append(f"unlisted direct ChromaStore ctor sites: {unlisted}")

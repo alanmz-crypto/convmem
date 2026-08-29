@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import pickle
+import re
 import secrets
 from dataclasses import dataclass, field
 from enum import Enum
@@ -22,16 +23,23 @@ from chroma_write_store import (
     load_attestation,
 )
 
+from eval_corpus.r2b_v2._registry_mint import (
+    consume_diagnostic_ticket,
+    mint_coverage_from_consumed_ticket,
+    register_diagnostic_ticket,
+)
 from eval_corpus.r2b_v2.authority_registry import (
     AuthorityHandle,
     AuthorityRegistryError,
     CoverageAuthorityRecord,
     DiagnosticMintTicket,
-    consume_diagnostic_ticket,
+    SourceAuthorityRecord,
+    bind_coverage_to_lease,
+    current_authority_epoch,
     lookup_coverage_handle,
     lookup_lease_handle,
-    mint_coverage_handle,
-    register_diagnostic_ticket,
+    lookup_source_handle,
+    mint_source_authority_record,
 )
 from eval_corpus.r2b_v2.coverage_evidence import CoverageEvidenceIdentity
 from eval_corpus.r2b_v2.coverage.inventory import (
@@ -99,6 +107,7 @@ class DiagnosticCoverageResult:
     hold_classes: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     passed: bool = False
     _mint_ticket: str | None = field(default=None, repr=False, compare=False)
+    _provenance_seal: str | None = field(default=None, repr=False, compare=False)
 
     def __init__(
         self,
@@ -114,6 +123,7 @@ class DiagnosticCoverageResult:
         hold_classes: dict[str, list[dict[str, Any]]] | None = None,
         passed: bool = False,
         _mint_ticket: str | None = None,
+        _provenance_seal: str | None = None,
     ) -> None:
         self.identity = CoverageEvidenceIdentity(
             code_revision=code_revision,
@@ -128,6 +138,7 @@ class DiagnosticCoverageResult:
         self.hold_classes = hold_classes if hold_classes is not None else {}
         self.passed = passed
         self._mint_ticket = _mint_ticket
+        self._provenance_seal = _provenance_seal
         self.__post_init__()
 
     @property
@@ -161,6 +172,10 @@ class DiagnosticCoverageResult:
     @property
     def mint_ticket(self) -> str | None:
         return self._mint_ticket
+
+    @property
+    def provenance_seal(self) -> str | None:
+        return self._provenance_seal
 
     def __post_init__(self) -> None:
         empty_required = (
@@ -241,15 +256,62 @@ def _trusted_coverage_from_handle(handle: AuthorityHandle) -> TrustedCoveragePro
     return proof
 
 
-@dataclass(frozen=True)
-class SourceAuthorityProof:
-    """Distinct proof that source authority was established — not gate alone."""
+_GIT_SHA40 = re.compile(r"^[0-9a-f]{40}$")
 
-    run_id: str
-    coverage_digest: str
-    gate_held: bool
-    gate_identity: str
-    gate_path: str
+
+class SourceAuthorityProof:
+    """Process-local source authority proof — not constructible by callers."""
+
+    __slots__ = ("_handle",)
+
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        raise CoverageProofError("SourceAuthorityProof cannot be constructed by callers")
+
+    def __bool__(self) -> bool:
+        raise CoverageProofError(
+            "SourceAuthorityProof is not reducible to a boolean authority claim"
+        )
+
+    def __copy__(self) -> SourceAuthorityProof:
+        raise CoverageProofError("SourceAuthorityProof cannot be copied")
+
+    def __deepcopy__(self, _memo: dict[int, Any]) -> SourceAuthorityProof:
+        raise CoverageProofError("SourceAuthorityProof cannot be deep-copied")
+
+    def __reduce__(self) -> Any:
+        raise CoverageProofError("SourceAuthorityProof is not serializable")
+
+    @property
+    def authority_handle(self) -> AuthorityHandle:
+        return self._handle
+
+    @property
+    def run_id(self) -> str:
+        return lookup_source_handle(self._handle).run_id
+
+    @property
+    def coverage_digest(self) -> str:
+        return lookup_source_handle(self._handle).coverage_digest
+
+    @property
+    def gate_held(self) -> bool:
+        lookup_source_handle(self._handle)
+        return True
+
+    @property
+    def gate_identity(self) -> str:
+        return lookup_source_handle(self._handle).gate_identity
+
+    @property
+    def gate_path(self) -> str:
+        return lookup_source_handle(self._handle).gate_path
+
+
+def _source_authority_from_handle(handle: AuthorityHandle) -> SourceAuthorityProof:
+    lookup_source_handle(handle)
+    proof = object.__new__(SourceAuthorityProof)
+    proof._handle = handle  # pylint: disable=attribute-defined-outside-init,protected-access
+    return proof
 
 
 def _resolve_gate_policy(
@@ -270,15 +332,25 @@ def _resolve_implementation_revision(
     code_revision: str | None,
     test_override: bool,
 ) -> str:
-    if code_revision is not None:
-        return code_revision
     if test_override:
-        return current_code_revision()
+        revision = code_revision or current_code_revision()
+        if revision == "unknown":
+            raise CoverageProofError("trusted implementation revision is unavailable")
+        return revision
+    if code_revision is not None:
+        if not _GIT_SHA40.match(code_revision):
+            raise CoverageProofError("implementation revision must be an authoritative git SHA")
+        tip = load_v2_implementation_tip()
+        if tip and tip != "unknown" and code_revision != tip:
+            raise CoverageProofError("implementation revision does not match bound inventory tip")
+        return code_revision
     tip = load_v2_implementation_tip()
     if tip and tip != "unknown":
+        if not _GIT_SHA40.match(tip):
+            raise CoverageProofError("bound inventory implementation tip is not authoritative")
         return tip
     revision = current_code_revision()
-    if revision == "unknown":
+    if revision == "unknown" or not _GIT_SHA40.match(revision):
         raise CoverageProofError("trusted implementation revision is unavailable")
     return revision
 
@@ -569,7 +641,8 @@ def prove_zero_bypass_coverage(
     ).hexdigest()
     passed = all(not items for items in holds.values())
     mint_ticket = secrets.token_hex(16) if passed and not skip_runtime else None
-    if mint_ticket is not None:
+    provenance_seal = secrets.token_hex(16) if mint_ticket is not None else None
+    if mint_ticket is not None and provenance_seal is not None:
         evidence = CoverageEvidenceIdentity(
             code_revision=revision,
             inventory_digest=inventory["inventory_digest"],
@@ -580,7 +653,8 @@ def prove_zero_bypass_coverage(
             gate_protocol=policy.protocol,
         )
         register_diagnostic_ticket(
-            DiagnosticMintTicket(ticket_id=mint_ticket, evidence=evidence)
+            DiagnosticMintTicket(ticket_id=mint_ticket, evidence=evidence),
+            provenance_seal=provenance_seal,
         )
     return DiagnosticCoverageResult(
         code_revision=revision,
@@ -594,6 +668,7 @@ def prove_zero_bypass_coverage(
         hold_classes=holds,
         passed=passed,
         _mint_ticket=mint_ticket,
+        _provenance_seal=provenance_seal,
     )
 
 
@@ -605,23 +680,17 @@ def mint_trusted_coverage_proof(
         raise CoverageProofError("skip_runtime cannot mint trusted coverage authority")
     if not diagnostic.passed:
         raise CoverageProofError("diagnostic coverage did not pass — cannot mint trusted proof")
+    if not diagnostic.provenance_seal:
+        raise CoverageProofError("diagnostic census provenance seal missing")
     try:
         ticket = consume_diagnostic_ticket(
             diagnostic.mint_ticket,
             coverage_digest=diagnostic.coverage_digest,
+            provenance_seal=diagnostic.provenance_seal,
         )
     except AuthorityRegistryError as exc:
         raise CoverageProofError(str(exc)) from exc
-    record = CoverageAuthorityRecord(
-        code_revision=ticket.evidence.code_revision,
-        inventory_digest=ticket.evidence.inventory_digest,
-        runtime_census_digest=ticket.evidence.runtime_census_digest,
-        coverage_digest=ticket.evidence.coverage_digest,
-        gate_identity=ticket.evidence.gate_identity,
-        gate_path=ticket.evidence.gate_path,
-        gate_protocol=ticket.evidence.gate_protocol,
-    )
-    handle = mint_coverage_handle(record)
+    handle = mint_coverage_from_consumed_ticket(ticket)
     return _trusted_coverage_from_handle(handle)
 
 
@@ -688,13 +757,27 @@ def source_authority_from_lease_and_coverage(
         and coverage_record.runtime_census_digest != expected_runtime_census_digest
     ):
         raise CoverageProofError("runtime_census_digest mismatch")
-    return SourceAuthorityProof(
+    bind_coverage_to_lease(
+        coverage_handle_id=trusted_coverage.authority_handle.handle_id,
+        lease_handle_id=lease.authority_handle.handle_id,
+    )
+    source_record = SourceAuthorityRecord(
+        lease_handle_id=lease.authority_handle.handle_id,
+        coverage_handle_id=trusted_coverage.authority_handle.handle_id,
+        authority_epoch=current_authority_epoch(),
         run_id=lease_record.run_id,
         coverage_digest=coverage_record.coverage_digest,
-        gate_held=True,
         gate_identity=coverage_record.gate_identity,
         gate_path=coverage_record.gate_path,
+        open_evidence_digest=open_evidence_digest,
     )
+    source_handle = mint_source_authority_record(source_record)
+    return _source_authority_from_handle(source_handle)
+
+
+def attempt_forge_source_authority_proof(**kwargs: Any) -> None:
+    """Attack seam: refuse caller-constructed source authority proofs."""
+    SourceAuthorityProof(**kwargs)
 
 
 def attempt_forge_trusted_coverage_proof(**kwargs: Any) -> None:
