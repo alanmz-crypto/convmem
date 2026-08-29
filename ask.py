@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config import load_config
+from domains import domain_matches, normalize_domain
 from ledger_recent import (
     RECENT_DECISIONS_DAYS,
     RECENT_DECISIONS_LIMIT,
@@ -183,13 +184,13 @@ def _prepend_recent_decisions(
         site_key = site.strip()
         records = [r for r in records if (r.get("site") or "").strip() == site_key]
     if domain:
-        prefix = domain.split(".")[0].strip()
-        if prefix:
-            records = [
-                r
-                for r in records
-                if (r.get("domain") or "").startswith(prefix)
-            ]
+        active = normalize_domain(domain)
+        records = [
+            r
+            for r in records
+            if (rd := r.get("domain"))
+            and domain_matches(normalize_domain(rd), active)
+        ]
 
     recent_units = [decision_record_to_unit(r) for r in records[:max_recent]]
     semantic_ids = {
@@ -445,8 +446,9 @@ def _trace_request(
     evidence: bool,
     domain: str | None,
     site: str | None,
+    scope_meta: dict | None = None,
 ) -> dict:
-    return {
+    req = {
         "retrieval_query": search_q,
         "top_k": top_k,
         "fetch_k": fetch_k,
@@ -455,6 +457,9 @@ def _trace_request(
         "domain": domain,
         "site": site,
     }
+    if scope_meta:
+        req["scope"] = scope_meta
+    return req
 
 
 def _format_context(
@@ -607,6 +612,7 @@ def _select_units_or_hybrid(
     top_k: int,
     fetch_k: int,
     site: str | None,
+    domain: str | None,
     evidence: bool,
     cfg: dict,
 ) -> tuple[
@@ -628,7 +634,9 @@ def _select_units_or_hybrid(
     warning: str | None = None
     best = _max_score(units)
     if not evidence and (best is None or best < _LOW_CONFIDENCE):
-        raw_hits = query_raw(search_q, top_k=fetch_k, site=site, cfg=cfg)
+        raw_hits = query_raw(
+            search_q, top_k=fetch_k, site=site, domain=domain, cfg=cfg
+        )
         merged = _merge_results(units, raw_hits, fetch_k)
         pair_slice = merged[:fetch_k]
         cands = [r for r, _ in pair_slice]
@@ -796,11 +804,17 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
     site: str | None = None,
     evidence: bool = False,
     trace: bool = False,
+    cross_domain: bool = False,
     cfg: dict | None = None,
 ) -> RetrievalBundle:
     """Retrieval-only pipeline (no LLM). Behavior matches pre-extraction ask()."""
+    from read_scope import resolve_retrieval_domain
+
     if cfg is None:
         cfg = load_config()
+    effective_domain, scope_meta = resolve_retrieval_domain(
+        domain, cross_domain=cross_domain
+    )
     fetch_k = max(top_k, _ASK_TOP_K)
     warning: str | None = None
     search_q = _retrieval_query(question, history)
@@ -816,7 +830,9 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
     dropped: list[dict] = []
 
     if raw:
-        results = query_raw(search_q, top_k=fetch_k, site=site, cfg=cfg)
+        results = query_raw(
+            search_q, top_k=fetch_k, site=site, domain=effective_domain, cfg=cfg
+        )
         if trace:
             stages["candidates"] = _trace_stage(
                 results, limit=limit, origins=["raw_summary"] * len(results)
@@ -838,7 +854,7 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
         units = query_units(
             search_q,
             top_k=fetch_k,
-            domain=domain,
+            domain=effective_domain,
             site=site,
             cfg=cfg,
             retrieval_trace=query_trace,
@@ -868,7 +884,7 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
             units, ev_stages = _apply_evidence_and_recent(
                 units,
                 cfg,
-                domain=domain,
+                domain=effective_domain,
                 site=site,
                 fetch_k=fetch_k,
                 trace=trace,
@@ -896,6 +912,7 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
             top_k=top_k,
             fetch_k=fetch_k,
             site=site,
+            domain=effective_domain,
             evidence=evidence,
             cfg=cfg,
         )
@@ -914,8 +931,9 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
         fetch_k=fetch_k,
         raw=raw,
         evidence=evidence,
-        domain=domain,
+        domain=effective_domain,
         site=site,
+        scope_meta=scope_meta,
     )
 
     if not results:
@@ -975,6 +993,7 @@ def ask(  # pylint: disable=too-many-arguments
     site: str | None = None,
     evidence: bool = False,
     trace: bool = False,
+    cross_domain: bool = False,
     return_eval_trace: bool = False,
 ) -> dict:
     """Retrieve relevant memories and generate a cited answer.
@@ -1004,6 +1023,7 @@ def ask(  # pylint: disable=too-many-arguments
         site=site,
         evidence=evidence,
         trace=trace,
+        cross_domain=cross_domain,
         cfg=cfg,
     )
     if not bundle.results:
@@ -1074,9 +1094,16 @@ def run_interactive(
     history: list[tuple[str, str]] = []
 
     def _print_banner() -> None:
+        from read_scope import get_read_scope
+
         err_console.print("[dim]convmem ask — interactive mode[/dim]")
         if domain:
             err_console.print(f"[dim]  Scoped to domain: {domain}[/dim]")
+        elif (session_scope := get_read_scope()):
+            err_console.print(
+                f"[dim]  Session read scope: {session_scope} "
+                "(override with --domain or widen with --cross-domain)[/dim]"
+            )
         if site:
             err_console.print(f"[dim]  Scoped to site: {site}[/dim]")
         if evidence:
