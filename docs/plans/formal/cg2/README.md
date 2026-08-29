@@ -118,7 +118,7 @@ The 2026-08-14 lock-candidate run used the official stable TLA+ v1.7.4 JAR
 
 Counts are historical-only and must not be cited as Design A proof.
 
-## Design A TLC run evidence (2026-08-28 — Ryan-approved JAR)
+## Design A TLC run evidence (2026-08-29 — Ryan-approved JAR, corrective coverage pass)
 
 **Tool preflight (§11.4):**
 
@@ -129,13 +129,22 @@ Counts are historical-only and must not be cited as Design A proof.
 | JAR SHA-256 | `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88` |
 | TLC version | `TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)` |
 | Java | `openjdk version "17.0.14" 2025-01-21` (Temurin 17 LTS) |
-| Model SHA at run | `0b5dd4ceae3108c4938f8f1ab3c83af320fa520e` |
+| Model SHA at run | `ca1298e2c5741e2fca99dbd670d0775a398064f8` |
+| D5 accepted tip | `f0dcac165f75585885f4123b14af8700b4e2674d` |
 | Runner | `docs/plans/formal/cg2/run-design-a-tlc.sh` (§11.4–§11.5) |
 | Workers / heap / coverage | `2` / `2 GiB` / `-coverage 1` |
 | Timeout per config | `1800` seconds |
 
 **Suite result:** all four configurations **PASS** (exit `0`, empty queue, no
 counterexamples). Historical 2026-08-14 counts above remain historical-only.
+
+**Required transition coverage (suite):**
+
+| Transition | `CG2DesignA.cfg` | `CG2Cutover.cfg` | Notes |
+|---|---:|---:|---|
+| `ForwardPromote` | **4883** | 0 | Cutover graph closes guard before post-canary CAS promote; Design A config exercises close-then-promote path |
+| `RefuseSecondPromotionWhileGuardOpen` | **37686** | **6336** | Nonzero in both cutover-focused configs |
+| `CloseAuthorizedCanaryGuard` | **41008** | **8985** | Separately authorized canary closure (Design A semantics) |
 
 ### Design A run subsections
 
@@ -144,11 +153,11 @@ counterexamples). Historical 2026-08-14 counts above remain historical-only.
 | Field | Value |
 |---|---|
 | Config | `docs/plans/formal/cg2/CG2Cutover.cfg` |
-| Start (UTC) | `2026-08-29T03:40:23Z` |
-| End (UTC) | `2026-08-29T03:41:34Z` |
+| Start (UTC) | `2026-08-29T05:51:25Z` |
+| End (UTC) | `2026-08-29T05:53:55Z` |
 | Exit | `0` |
-| Generated / distinct / depth | `10,249,297` / `311,336` / `29` |
-| Log | `/tmp/tlc-CG2Cutover-0b5dd4ceae3108c4938f8f1ab3c83af320fa520e.log` |
+| Generated / distinct / depth | `19,629,281` / `610,744` / `33` |
+| Log | `/tmp/tlc-CG2Cutover-ca1298e2c5741e2fca99dbd670d0775a398064f8.log` |
 | Result | **PASS** |
 
 Command:
@@ -157,6 +166,7 @@ Command:
 timeout 1800 java -Xmx2g -XX:+UseParallelGC \
   -cp /home/lauer/.local/share/tlaplus/tla2tools-v1.7.4.jar tlc2.TLC \
   -workers 2 -coverage 1 \
+  -metadir "$HOME/.local/share/tlaplus/tlc-states/CG2Cutover-<sha>-$$" \
   -config docs/plans/formal/cg2/CG2Cutover.cfg \
   docs/plans/formal/cg2/CG2Authority.tla
 ```
@@ -164,7 +174,8 @@ timeout 1800 java -Xmx2g -XX:+UseParallelGC \
 Nonzero Design A action coverage includes: D0 capture/validate/ratify,
 `ConvertLegacyToGRb`, `RebindLegacyRoot`, `PublishDesignAFence`,
 `ResumeFromFence`, `PublishCanaryGuard`, `ResumeFromGuard`,
-`PublishFirstPointer`, `RecoverExactPointer`, plus read-authority /
+`PublishFirstPointer`, `RecoverExactPointer`, **`RefuseSecondPromotionWhileGuardOpen`
+(6336)**, **`CloseAuthorizedCanaryGuard` (8985)**, plus read-authority /
 retry / freeze / refusal / mediated-fallback rows from restored graph.
 
 #### CG2StaleReconcile.cfg
@@ -172,11 +183,11 @@ retry / freeze / refusal / mediated-fallback rows from restored graph.
 | Field | Value |
 |---|---|
 | Config | `docs/plans/formal/cg2/CG2StaleReconcile.cfg` |
-| Start (UTC) | `2026-08-29T03:41:34Z` |
-| End (UTC) | `2026-08-29T03:44:56Z` |
+| Start (UTC) | `2026-08-29T05:53:55Z` |
+| End (UTC) | `2026-08-29T05:57:16Z` |
 | Exit | `0` |
 | Generated / distinct / depth | `24,316,705` / `1,298,112` / `29` |
-| Log | `/tmp/tlc-CG2StaleReconcile-0b5dd4ceae3108c4938f8f1ab3c83af320fa520e.log` |
+| Log | `/tmp/tlc-CG2StaleReconcile-ca1298e2c5741e2fca99dbd670d0775a398064f8.log` |
 | Result | **PASS** |
 
 Command:
@@ -185,6 +196,7 @@ Command:
 timeout 1800 java -Xmx2g -XX:+UseParallelGC \
   -cp /home/lauer/.local/share/tlaplus/tla2tools-v1.7.4.jar tlc2.TLC \
   -workers 2 -coverage 1 \
+  -metadir "$HOME/.local/share/tlaplus/tlc-states/CG2StaleReconcile-<sha>-$$" \
   -config docs/plans/formal/cg2/CG2StaleReconcile.cfg \
   docs/plans/formal/cg2/CG2Authority.tla
 ```
@@ -198,11 +210,11 @@ plus stale-source queue/quarantine reconciliation and GC rows.
 | Field | Value |
 |---|---|
 | Config | `docs/plans/formal/cg2/CG2Rename.cfg` |
-| Start (UTC) | `2026-08-29T03:44:56Z` |
-| End (UTC) | `2026-08-29T03:44:58Z` |
+| Start (UTC) | `2026-08-29T05:57:16Z` |
+| End (UTC) | `2026-08-29T05:57:18Z` |
 | Exit | `0` |
 | Generated / distinct / depth | `29,097` / `11,062` / `24` |
-| Log | `/tmp/tlc-CG2Rename-0b5dd4ceae3108c4938f8f1ab3c83af320fa520e.log` |
+| Log | `/tmp/tlc-CG2Rename-ca1298e2c5741e2fca99dbd670d0775a398064f8.log` |
 | Result | **PASS** |
 
 Command:
@@ -225,11 +237,11 @@ generation read, legacy read.
 | Field | Value |
 |---|---|
 | Config | `docs/plans/formal/cg2/CG2DesignA.cfg` |
-| Start (UTC) | `2026-08-29T03:44:58Z` |
-| End (UTC) | `2026-08-29T03:45:47Z` |
+| Start (UTC) | `2026-08-29T05:57:18Z` |
+| End (UTC) | `2026-08-29T06:00:24Z` |
 | Exit | `0` |
-| Generated / distinct / depth | `7,900,129` / `199,872` / `23` |
-| Log | `/tmp/tlc-CG2DesignA-0b5dd4ceae3108c4938f8f1ab3c83af320fa520e.log` |
+| Generated / distinct / depth | `27,458,849` / `728,768` / `28` |
+| Log | `/tmp/tlc-CG2DesignA-ca1298e2c5741e2fca99dbd670d0775a398064f8.log` |
 | Result | **PASS** |
 
 Command:
@@ -238,6 +250,7 @@ Command:
 timeout 1800 java -Xmx2g -XX:+UseParallelGC \
   -cp /home/lauer/.local/share/tlaplus/tla2tools-v1.7.4.jar tlc2.TLC \
   -workers 2 -coverage 1 \
+  -metadir "$HOME/.local/share/tlaplus/tlc-states/CG2DesignA-<sha>-$$" \
   -config docs/plans/formal/cg2/CG2DesignA.cfg \
   docs/plans/formal/cg2/CG2Authority.tla
 ```
@@ -245,12 +258,9 @@ timeout 1800 java -Xmx2g -XX:+UseParallelGC \
 Nonzero Design A action coverage includes: D0 chain, `ConvertLegacyToGRb`,
 `RebindLegacyRoot`, fence/guard crash-resume (`ResumeFromFence`,
 `ResumeFromGuard`), `RefuseWrongGuard`, first pointer publish,
-`AdvanceSource`, `RollbackToRetained`, `RecoverExactPointer`.
-`ForwardPromote` / `RefuseSecondPromotionWhileGuardOpen` show `0` enables
-in this focused graph; canary-window blocking is verified by
-`FirstCanaryBlocksSecondPromotion` invariant and structural
-`ForwardPromote` guards; ordinary forward CAS promotion is covered in
-`CG2Rename.cfg` via `PromoteCandidate`.
+`AdvanceSource`, `RollbackToRetained`, `RecoverExactPointer`,
+**`ForwardPromote` (4883)**, **`RefuseSecondPromotionWhileGuardOpen`
+(37686)**, **`CloseAuthorizedCanaryGuard` (41008)**.
 
 ## Running TLC manually
 
