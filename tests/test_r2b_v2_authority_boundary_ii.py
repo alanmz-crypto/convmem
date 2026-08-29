@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 import eval_corpus.r2b_v2._registry_mint as registry_mint
-import eval_corpus.r2b_v2.authority_registry as authority_registry
+from eval_corpus.r2b_v2 import authority_registry
 from eval_corpus.r2b_v2._registry_mint import (
     AuthorityRegistryError,
     SourceAuthorityRecord,
@@ -16,13 +16,17 @@ from eval_corpus.r2b_v2._registry_mint import (
 )
 from eval_corpus.r2b_v2.coverage.proof import (
     _source_authority_from_handle,
-    source_authority_from_lease_and_coverage,
 )
 from eval_corpus.r2b_v2.coverage_evidence import CoverageEvidenceIdentity
 from eval_corpus.r2b_v2.lease import R2bQuiescenceLeaseError
 from eval_corpus.r2b_v2.lock_custodian import custodian_for_tests
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
-from tests.r2b_v2_helpers import acquire_test_lease, clean_coverage_bundle
+from tests.r2b_v2_helpers import (
+    acquire_test_lease,
+    clean_coverage_bundle,
+    run_dual_coverage_chain_case,
+    run_legitimate_source_authority_case,
+)
 
 
 class FakeCustodian:
@@ -77,7 +81,9 @@ class R2bV2AuthorityBoundaryIITests(unittest.TestCase):
             lease = acquire_test_lease(Path(td), run_id="cust-overwrite")
             custodian_id = lease._holder.custodian_id  # pylint: disable=protected-access
             with self.assertRaises(AuthorityRegistryError):
-                registry_mint._register_lease_custodian(custodian_id, FakeCustodian())
+                registry_mint._register_lease_custodian(  # pylint: disable=protected-access
+                    custodian_id, FakeCustodian()
+                )
             lease.release()
 
     def test_custodian_substitution_via_public_register_impossible(self) -> None:
@@ -86,40 +92,26 @@ class R2bV2AuthorityBoundaryIITests(unittest.TestCase):
             holder = lease._holder  # pylint: disable=protected-access
             custodian_for_tests(holder).force_unlock_for_tests()
             with self.assertRaises(AttributeError):
-                authority_registry.register_custodian(holder.custodian_id, FakeCustodian())
+                getattr(authority_registry, "register_custodian")(
+                    holder.custodian_id, FakeCustodian()
+                )
             with self.assertRaises(R2bQuiescenceLeaseError):
                 lease.verify()
             lease.release()
 
     def test_legitimate_source_authority_still_obtained(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            lease, trusted, *_ = clean_coverage_bundle(Path(td), "good-ii")
-            try:
-                auth = source_authority_from_lease_and_coverage(
-                    lease,
-                    trusted,
-                    open_evidence_digest=lease.bindings.open_evidence_digest,
-                )
-                self.assertEqual(auth.run_id, "bind-run")
-                self.assertTrue(auth.gate_held)
-            finally:
-                lease.release()
+        run_legitimate_source_authority_case(self, "good-ii")
 
     def test_cross_chain_compose_and_mint_refused(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            lease_a, trusted_a, *_ = clean_coverage_bundle(root / "a", "rev-a", run_id="run-a")
-            lease_b, _, *_ = clean_coverage_bundle(root / "b", "rev-b", run_id="run-b")
-            try:
-                with self.assertRaises(AuthorityRegistryError):
-                    compose_and_mint_source_authority(
-                        lease_handle=lease_b.authority_handle,
-                        coverage_handle=trusted_a.authority_handle,
-                        open_evidence_digest=lease_b.bindings.open_evidence_digest,
-                    )
-            finally:
-                lease_a.release()
-                lease_b.release()
+        def exercise(testcase, _lease_a, trusted_a, lease_b, _trusted_b):
+            with testcase.assertRaises(AuthorityRegistryError):
+                compose_and_mint_source_authority(
+                    lease_handle=lease_b.authority_handle,
+                    coverage_handle=trusted_a.authority_handle,
+                    open_evidence_digest=lease_b.bindings.open_evidence_digest,
+                )
+
+        run_dual_coverage_chain_case(self, exercise)
 
     def test_registry_mutation_surface_audit(self) -> None:
         """Structural audit: public registry exports are read-only or test invalidation."""

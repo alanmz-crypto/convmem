@@ -63,7 +63,7 @@ class DiagnosticMintTicket:
 
 
 @dataclass(frozen=True)
-class SourceAuthorityRecord:
+class SourceAuthorityRecord:  # pylint: disable=too-many-instance-attributes
     lease_handle_id: str
     coverage_handle_id: str
     authority_epoch: int

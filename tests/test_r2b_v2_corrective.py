@@ -21,7 +21,7 @@ from eval_corpus.r2b_v2.lease import (
     verify_r2b_quiescence_lease,
 )
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
-from tests.r2b_v2_helpers import clean_coverage_bundle, refuse_source_authority
+from tests.r2b_v2_helpers import clean_coverage_bundle, refuse_wrong_open_evidence_case
 
 
 class R2bV2CrossSliceBindingTests(unittest.TestCase):
@@ -55,13 +55,7 @@ class R2bV2CrossSliceBindingTests(unittest.TestCase):
                 lease.release()
 
     def test_mismatched_open_evidence_refused(self):
-        with tempfile.TemporaryDirectory() as td:
-            refuse_source_authority(
-                self,
-                Path(td),
-                "bind-open",
-                open_evidence_digest="wrong-open",
-            )
+        refuse_wrong_open_evidence_case(self)
 
     def test_state_machine_cross_slice_binding(self):
         with tempfile.TemporaryDirectory() as td:
