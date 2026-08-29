@@ -925,7 +925,11 @@ RefuseSecondPromotionWhileGuardOpen(o) ==
     /\ o \in cutover.firstCutoverDone
     /\ build.candidateGen[o] # NoGen
     /\ build.candidateCold[o]
-    /\ UNCHANGED vars
+    /\ build' =
+        [build EXCEPT
+            !.candidateGen[o] = NoGen,
+            !.candidateCold[o] = FALSE]
+    /\ UNCHANGED <<auth, reads, pins, history, d0, cutover>>
 
 CloseAuthorizedCanaryGuard(o) ==
     /\ o \in cutover.firstCutoverDone
