@@ -8,7 +8,13 @@ from pathlib import Path
 
 import pytest
 
-from cg2_property_map import PROPERTY_TEST_MAP, build_property_map_report
+from cg2_property_map import (
+    DESIGN_A_FORMAL_PROPERTY_MAP,
+    DESIGN_A_INVARIANT_MAP,
+    PROPERTY_TEST_MAP,
+    build_property_map_report,
+    verify_property_map_completeness,
+)
 from cg2_rehearsal import (
     ARCHITECTURE_SHA,
     EXECUTION_PLAN_SHA,
@@ -54,15 +60,25 @@ class Cg2RehearsalTests(unittest.TestCase):
         self.assertTrue(required <= set(PROPERTY_TEST_MAP))
         report = build_property_map_report()
         self.assertGreaterEqual(report["property_count"], 12)
+        completeness = verify_property_map_completeness()
+        self.assertTrue(completeness["inherited_formal_complete"])
+        self.assertTrue(completeness["design_a_formal_complete"])
+        self.assertTrue(completeness["design_a_invariant_complete"])
+        self.assertTrue(completeness["frozen_generation_stable_dedicated"])
+        self.assertGreaterEqual(len(DESIGN_A_FORMAL_PROPERTY_MAP), 20)
+        self.assertGreaterEqual(len(DESIGN_A_INVARIANT_MAP), 25)
 
     def test_execute_evidence_bundle(self) -> None:
         bundle = collect_execute_evidence()
         self.assertEqual(bundle["architecture_sha"], ARCHITECTURE_SHA)
         self.assertEqual(bundle["execution_plan_sha"], EXECUTION_PLAN_SHA)
+        self.assertEqual(bundle["execute_phase"], "D7_closure")
         self.assertTrue(bundle["chroma_version_matches_pin"])
         self.assertFalse(bundle["production_activation_performed"])
         self.assertFalse(bundle["automatic_gc_performed"])
+        self.assertTrue(bundle["no_production_operations"])
         self.assertIn("authority_races", failure_matrix_evidence())
+        self.assertTrue(bundle["property_map_completeness"]["design_a_formal_complete"])
 
     def test_measured_budgets_use_ratified_constants(self) -> None:
         budgets = measured_budgets()

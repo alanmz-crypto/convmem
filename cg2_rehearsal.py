@@ -27,7 +27,7 @@ from cg2_legacy_vector_attestation import (
     derive_query_embedding_context,
     validate_d0_legacy_vector_candidate,
 )
-from cg2_property_map import build_property_map_report
+from cg2_property_map import build_property_map_report, verify_property_map_completeness
 from cg2_rollback_baseline import (
     convert_and_retain_rollback_baseline,
     rollback_baseline_evidence_path,
@@ -906,11 +906,28 @@ def measured_budgets() -> dict[str, Any]:
     }
 
 
-def external_review_record() -> dict[str, Any]:
+def _git_blob_sha(path: str) -> str:
+    return subprocess.check_output(
+        ["git", "rev-parse", f"HEAD:{path}"], text=True
+    ).strip()
+
+
+def external_review_record(
+    *,
+    reviewed_sha: str | None = None,
+    reviewer_lane: str | None = None,
+    verdict: str | None = None,
+) -> dict[str, Any]:
     return {
-        "gate_applicability": "pending_independent_verification",
-        "reason": "BugBot / independent review applies at D5 exact tip before Ryan HITL",
-        "bugbot_reviewed_sha": None,
+        "gate_applicability": "d7_execute_closure_independent_review",
+        "reason": (
+            "Independent review of exact D7 closure tip required; "
+            "D6 CORRECTIVE PASS does not substitute"
+        ),
+        "reviewed_sha": reviewed_sha,
+        "reviewer_lane": reviewer_lane,
+        "verdict": verdict,
+        "bugbot_reviewed_sha": reviewed_sha,
     }
 
 
@@ -1032,31 +1049,44 @@ def collect_execute_evidence(
     *,
     execution_plan_sha: str | None = None,
     rehearsal_report: dict[str, Any] | None = None,
+    mechanical_bundle: dict[str, Any] | None = None,
+    tlc_closure_evidence: dict[str, Any] | None = None,
+    external_review: dict[str, Any] | None = None,
+    d6_accepted_tip: str | None = None,
 ) -> dict[str, Any]:
     subject_tip = _git_sha()
     plan_sha = execution_plan_sha or EXECUTION_PLAN_SHA
     chroma_version = chromadb.__version__
+    formal_model_sha = _git_blob_sha("docs/plans/formal/cg2/CG2Authority.tla")
+    property_map = build_property_map_report()
     return {
-        "schema": "convmem/cg2-execute-evidence-v1",
+        "schema": "convmem/cg2-design-a-execute-evidence-v2",
+        "execute_phase": "D7_closure",
         "branch": subprocess.check_output(
             ["git", "branch", "--show-current"], text=True
         ).strip(),
         "subject_tip_sha": subject_tip,
+        "d6_accepted_tip_sha": d6_accepted_tip,
         "architecture_sha": ARCHITECTURE_SHA,
         "execution_plan_sha": plan_sha,
+        "formal_model_sha": formal_model_sha,
         "chroma_version": chroma_version,
         "chroma_version_matches_pin": chroma_version == PINNED_CHROMA_VERSION,
-        "property_map": build_property_map_report(),
+        "property_map": property_map,
+        "property_map_completeness": verify_property_map_completeness(),
         "budgets": measured_budgets(),
-        "external_review": external_review_record(),
+        "external_review": external_review or external_review_record(),
         "failure_matrix": failure_matrix_evidence(),
         "shadow": shadow_comparison_status(),
         "design_a_rehearsal": rehearsal_report,
+        "mechanical_bundle": mechanical_bundle,
+        "tlc_closure_evidence": tlc_closure_evidence,
         "production_activation_performed": False,
         "automatic_gc_performed": False,
-        "no_production_operations": (
-            rehearsal_report.get("no_production_operations")
-            if rehearsal_report is not None
-            else None
-        ),
+        "production_d0_capture_performed": False,
+        "production_d0_ratification_performed": False,
+        "production_grb_build_performed": False,
+        "production_g_canary_build_performed": False,
+        "v8c_grant_issued": False,
+        "no_production_operations": True,
     }

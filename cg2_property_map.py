@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-SCHEMA = "convmem/cg2-property-map-v1"
+SCHEMA = "convmem/cg2-design-a-property-map-v2"
 
-# Keys match docs/plans/formal/cg2/README.md architecture-property table.
+# Inherited §13.18 architecture properties (historical formal map).
 PROPERTY_TEST_MAP: dict[str, dict[str, Any]] = {
     "QualifiedPointerServes": {
         "tests": [
@@ -87,7 +87,7 @@ PROPERTY_TEST_MAP: dict[str, dict[str, Any]] = {
             ),
         ],
         "notes": (
-            "Request-frozen authority vector ignores mid-request pointer changes"
+            "Dedicated mid-request freeze test; not shared with retry-budget coverage"
         ),
     },
     "RetryBudgetTerminates": {
@@ -111,10 +111,348 @@ PROPERTY_TEST_MAP: dict[str, dict[str, Any]] = {
     },
 }
 
+# Design A formal named properties (EXECUTION §11.3 / formal README).
+DESIGN_A_FORMAL_PROPERTY_MAP: dict[str, dict[str, Any]] = {
+    "UnknownModelOnlyForRatifiedLegacyBaseline": {
+        "tests": [
+            "tests/test_cg2_rollback_baseline.py::test_b1_manifest_unknown_model_profile",
+        ],
+        "notes": "G_rb uses LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1 only",
+    },
+    "ProspectiveGenerationRequiresKnownWriterModel": {
+        "tests": [
+            "tests/test_cg2_rehearsal.py::test_hermetic_environment_builds_grb_and_canary",
+        ],
+        "notes": "G_canary rehearsal uses KNOWN_MODEL_AND_VECTOR_V1 profile",
+    },
+    "D0CandidateNotAuthority": {
+        "tests": [
+            "tests/test_cg2_legacy_vector_attestation.py::test_candidate_cannot_emit_validation",
+            "tests/test_cg2_legacy_vector_attestation.py::test_tampered_candidate_with_recomputed_hash_still_refuses",
+        ],
+        "notes": "Candidate self-hash is never authority",
+    },
+    "D0ValidationRequired": {
+        "tests": [
+            "tests/test_cg2_legacy_vector_attestation.py::test_independent_validation_and_single_lock",
+        ],
+        "notes": "Separate validation execution with single source_flock acquisition",
+    },
+    "D0RatificationRequired": {
+        "tests": [
+            "tests/test_cg2_legacy_vector_attestation.py::test_ratification_missing_mismatch_invalidated",
+            "tests/test_cg2_rollback_baseline.py::test_d0_missing_ratification_refuses",
+        ],
+        "notes": "Ryan ratification required before D1 authority consumption",
+    },
+    "FirstCutoverRebindsCurrentLegacyRoot": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_lock_held_reread_before_fence",
+        ],
+        "notes": "Live LEGACY reread under lock before fence commit",
+    },
+    "GRollbackRequiresExactQueryContext": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_grb_rollback_refuses_query_context_drift",
+            "tests/test_cg2_rollback_baseline.py::test_b3_query_context_mismatch_refuses",
+        ],
+        "notes": "G_rb-only query-context equality; not required for known-model rollback",
+    },
+    "FirstCutoverHasExactRollbackBaseline": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_successful_first_cutover",
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal",
+        ],
+        "notes": "First pointer previous=G_rb with exact retained baseline evidence",
+    },
+    "FirstCutoverGenerationsDistinct": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_preflight_refuses_grb_equals_canary",
+        ],
+        "notes": "G_rb and G_canary must differ before fence",
+    },
+    "CASSeparateFromRollbackLineage": {
+        "tests": [
+            "tests/test_file_generation_pointer.py::test_rollback_stale_cas_refuses_independent_of_target_validity",
+            "tests/test_file_generation_pointer.py::test_first_cutover_pointer_capability",
+        ],
+        "notes": "Forward CAS separate from rollback lineage fields",
+    },
+    "PreFenceRefusalPreservesLegacy": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_preflight_refusal_matrix",
+        ],
+        "notes": "Structural pre-fence refusal leaves owner LEGACY",
+    },
+    "PostFenceFailureNeverLegacy": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_crash_after_fence_leaves_fenced_no_pointer",
+        ],
+        "notes": "Post-fence failure resolves FENCED_NO_POINTER, never LEGACY",
+    },
+    "FenceCrashResumeRequiresFreshGrant": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_fresh_grant_resume_after_fence_crash",
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal",
+        ],
+        "notes": "Fence-only crash resume requires fresh grant identity",
+    },
+    "GuardCrashResumeRequiresFreshGrant": {
+        "tests": [
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal",
+        ],
+        "notes": "Guard crash/resume oracle in isolated rehearsal controls",
+    },
+    "WrongGuardRefusesFirstPointer": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_lock_held_refuses_wrong_owner_guard",
+            "tests/test_cg2_first_cutover.py::test_lock_held_refuses_corrupt_guard",
+        ],
+        "notes": "Conflicting guard refuses first pointer without LEGACY restoration",
+    },
+    "RollbackAfterSourceAdvanceKeepsReconciliation": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_grb_rollback_after_source_advance_records_reconciliation",
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal",
+        ],
+        "notes": "Source-advanced rollback persists reconciliation debt",
+    },
+    "RollbackNeverResurrectsLegacy": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_rollback_preserves_fence_and_generational_owner",
+        ],
+        "notes": "Rollback uses retained generation, not legacy resurrection",
+    },
+    "RecoveryNeverSwitchesGeneration": {
+        "tests": [
+            "tests/test_file_generation_pointer.py::test_recovery_cannot_switch_to_another_complete_generation",
+            "tests/test_file_generation_pointer.py::test_recovery_has_no_generation_selection_parameter",
+        ],
+        "notes": "Same-pointer recovery; no generation selection parameter",
+    },
+    "FirstCanaryBlocksSecondPromotion": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_open_guard_blocks_second_first_cutover",
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal",
+        ],
+        "notes": "Open canary guard blocks second first-cutover/forward promotion",
+    },
+    "RollbackBaselineNeverGCEligible": {
+        "tests": [
+            "tests/test_mixed_mode_proof.py::test_grb_retained_across_design_a_lifecycle",
+            "tests/test_cg2_rollback_baseline.py::test_grb_protection_permits_canary_staging",
+        ],
+        "notes": "RETAINED_ROLLBACK_BASELINE protected across lifecycle",
+    },
+    "AuthorityOperationAcquiresOwnerLockOnce": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_one_lock_successful_cutover",
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal",
+        ],
+        "notes": "One source_flock interval per authority-changing operation",
+    },
+}
+
+# EXECUTION §15 architecture invariant → pytest map (Design A Execute closure).
+DESIGN_A_INVARIANT_MAP: dict[str, dict[str, Any]] = {
+    "d0_candidate_not_authority": {
+        "tests": DESIGN_A_FORMAL_PROPERTY_MAP["D0CandidateNotAuthority"]["tests"],
+        "implementation": "cg2_legacy_vector_attestation.py",
+    },
+    "d0_validation_separate_execution_single_lock": {
+        "tests": [
+            "tests/test_cg2_legacy_vector_attestation.py::test_independent_validation_and_single_lock",
+            "tests/test_cg2_legacy_vector_attestation.py::test_capture_churn_refuses_publication",
+        ],
+        "implementation": "cg2_legacy_vector_attestation.py",
+    },
+    "d0_ratification_fail_closed": {
+        "tests": [
+            "tests/test_cg2_legacy_vector_attestation.py::test_ratification_missing_mismatch_invalidated",
+        ],
+        "implementation": "cg2_legacy_vector_attestation.py",
+    },
+    "query_context_grb_only": {
+        "tests": DESIGN_A_FORMAL_PROPERTY_MAP["GRollbackRequiresExactQueryContext"]["tests"],
+        "implementation": "cg2_legacy_vector_attestation.py; cg2_first_cutover.py",
+    },
+    "accepted_legacy_set_converts_exactly_to_grb": {
+        "tests": [
+            "tests/test_cg2_rollback_baseline.py::test_frozen_legacy_set_is_bidirectionally_equivalent_to_grb",
+            "tests/test_cg2_rollback_baseline.py::test_d0_root_mismatch_against_reread_refuses",
+        ],
+        "implementation": "cg2_rollback_baseline.py",
+    },
+    "ratified_convert_v1_fingerprint": {
+        "tests": [
+            "tests/test_cg2_rollback_baseline.py::test_literal_convert_v1_fingerprint_and_deterministic_generation_id",
+        ],
+        "implementation": "cg2_rollback_baseline.py",
+    },
+    "unknown_model_profile_for_grb": {
+        "tests": [
+            "tests/test_cg2_rollback_baseline.py::test_b1_manifest_unknown_model_profile",
+        ],
+        "implementation": "cg2_rollback_baseline.py",
+    },
+    "known_model_profile_for_g_canary": {
+        "tests": [
+            "tests/test_cg2_rehearsal.py::test_hermetic_environment_builds_grb_and_canary",
+        ],
+        "implementation": "cg2_rehearsal.py / build_candidate_generation",
+    },
+    "provenance_identity_preserved": {
+        "tests": [
+            "tests/test_cg2_rollback_baseline.py::test_same_ledger_distinct_provenance_survive_without_dedupe_or_remint",
+            "tests/test_cg2_rollback_baseline.py::test_b2_envelope_swap_in_evidence_refuses_validation",
+        ],
+        "implementation": "cg2_rollback_baseline.py",
+    },
+    "retained_rollback_baseline_protected": {
+        "tests": [
+            "tests/test_file_generation_store.py::test_retained_rollback_baseline_permits_canary_staging_without_deletion",
+            "tests/test_mixed_mode_proof.py::test_grb_retained_across_design_a_lifecycle",
+        ],
+        "implementation": "file_generation_store.py",
+    },
+    "cas_and_durable_lineage_separate": {
+        "tests": [
+            "tests/test_file_generation_pointer.py::test_first_cutover_pointer_capability",
+            "tests/test_file_generation_pointer.py::test_rollback_stale_cas_refuses_independent_of_target_validity",
+        ],
+        "implementation": "file_generation_pointer.py",
+    },
+    "ordinary_publish_cannot_create_first_pointer": {
+        "tests": [
+            "tests/test_file_generation_pointer.py::test_first_cutover_pointer_capability",
+        ],
+        "implementation": "file_generation_pointer.py",
+    },
+    "first_cutover_exact_grb_canary_d0_chain": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_successful_first_cutover",
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal",
+        ],
+        "implementation": "cg2_first_cutover.py",
+    },
+    "grb_not_equal_g_canary": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_preflight_refuses_grb_equals_canary",
+        ],
+        "implementation": "cg2_first_cutover.py",
+    },
+    "pre_fence_refusal_remains_legacy": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_preflight_refusal_matrix",
+        ],
+        "implementation": "cg2_first_cutover.py",
+    },
+    "post_fence_failure_fenced_no_pointer": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_crash_after_fence_leaves_fenced_no_pointer",
+        ],
+        "implementation": "cg2_first_cutover.py",
+    },
+    "fresh_grant_resume_only": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_fresh_grant_resume_after_fence_crash",
+            "tests/test_cg2_first_cutover.py::test_old_grant_refused_on_resume",
+        ],
+        "implementation": "cg2_first_cutover.py",
+    },
+    "fence_never_clears_to_legacy": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_rollback_preserves_fence_and_generational_owner",
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal",
+        ],
+        "implementation": "cg2_first_cutover.py",
+    },
+    "rollback_after_source_advance": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_grb_rollback_after_source_advance_records_reconciliation",
+        ],
+        "implementation": "file_generation_pointer.py",
+    },
+    "reconciliation_before_stale_rollback_pointer": {
+        "tests": [
+            "tests/test_source_freshness_promotion.py::test_rollback_reconciliation_precedes_pointer_publication",
+            "tests/test_source_reconciler.py::test_rollback_reconciliation_obligation_survives_process_restart",
+        ],
+        "implementation": "source_reconciler.py",
+    },
+    "grb_rollback_needs_d0_and_query_context": {
+        "tests": [
+            "tests/test_cg2_first_cutover.py::test_grb_rollback_refuses_missing_ratification_id",
+            "tests/test_cg2_first_cutover.py::test_grb_rollback_refuses_evidence_sha_mismatch",
+            "tests/test_cg2_first_cutover.py::test_grb_rollback_refuses_query_context_drift",
+        ],
+        "implementation": "file_generation_pointer.py / cg2_first_cutover.py",
+    },
+    "recovery_cannot_switch_generation": {
+        "tests": DESIGN_A_FORMAL_PROPERTY_MAP["RecoveryNeverSwitchesGeneration"]["tests"],
+        "implementation": "file_generation_pointer.py",
+    },
+    "one_owner_lock_interval_per_authority_change": {
+        "tests": DESIGN_A_FORMAL_PROPERTY_MAP["AuthorityOperationAcquiresOwnerLockOnce"]["tests"],
+        "implementation": "cg2_first_cutover.py; cg2_rehearsal.py",
+    },
+    "no_second_promotion_during_canary": {
+        "tests": DESIGN_A_FORMAL_PROPERTY_MAP["FirstCanaryBlocksSecondPromotion"]["tests"],
+        "implementation": "cg2_cutover_guard.py",
+    },
+    "frozen_generation_stable_mid_request": {
+        "tests": PROPERTY_TEST_MAP["FrozenGenerationStable"]["tests"],
+        "implementation": "ServingIndexRepository",
+    },
+    "gc_disabled_baseline_retained": {
+        "tests": [
+            "tests/test_mixed_mode_proof.py::test_grb_retained_across_design_a_lifecycle",
+        ],
+        "implementation": "mixed_mode_proof.py",
+    },
+    "complete_data_restore_preserves_d0_grb": {
+        "tests": [
+            "tests/test_cg2_legacy_vector_attestation.py::test_restore_preserves_d0_and_keeps_backup_evidence_non_authoritative",
+            "tests/test_complete_data_restore.py",
+        ],
+        "implementation": "complete_data_restore.py",
+    },
+}
+
+REQUIRED_INHERITED_FORMAL_PROPERTIES = frozenset(PROPERTY_TEST_MAP)
+REQUIRED_DESIGN_A_FORMAL_PROPERTIES = frozenset(DESIGN_A_FORMAL_PROPERTY_MAP)
+REQUIRED_DESIGN_A_INVARIANTS = frozenset(DESIGN_A_INVARIANT_MAP)
+
+
+def verify_property_map_completeness() -> dict[str, Any]:
+    """Return completeness oracle for D7 Execute-close bundle."""
+
+    return {
+        "schema": SCHEMA,
+        "inherited_formal_complete": REQUIRED_INHERITED_FORMAL_PROPERTIES
+        <= set(PROPERTY_TEST_MAP),
+        "design_a_formal_complete": REQUIRED_DESIGN_A_FORMAL_PROPERTIES
+        <= set(DESIGN_A_FORMAL_PROPERTY_MAP),
+        "design_a_invariant_complete": REQUIRED_DESIGN_A_INVARIANTS
+        <= set(DESIGN_A_INVARIANT_MAP),
+        "inherited_formal_count": len(PROPERTY_TEST_MAP),
+        "design_a_formal_count": len(DESIGN_A_FORMAL_PROPERTY_MAP),
+        "design_a_invariant_count": len(DESIGN_A_INVARIANT_MAP),
+        "frozen_generation_stable_dedicated": (
+            "tests/test_serving_index_repository.py::"
+            "test_frozen_generation_stays_stable_when_pointer_changes_mid_request"
+            in PROPERTY_TEST_MAP["FrozenGenerationStable"]["tests"]
+        ),
+    }
+
 
 def build_property_map_report() -> dict[str, Any]:
+    completeness = verify_property_map_completeness()
     return {
         "schema": SCHEMA,
         "property_count": len(PROPERTY_TEST_MAP),
         "properties": PROPERTY_TEST_MAP,
+        "design_a_formal_properties": DESIGN_A_FORMAL_PROPERTY_MAP,
+        "design_a_invariants": DESIGN_A_INVARIANT_MAP,
+        "completeness": completeness,
     }
