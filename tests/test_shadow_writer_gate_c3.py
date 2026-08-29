@@ -267,6 +267,55 @@ def test_shared_lease_exception_unwind_does_not_leak_process_count(
         assert _process_writer_leases.attestation is None
 
 
+def test_first_acquire_write_attestation_failure_rolls_back_process_registry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import chroma_write_store
+    from chroma_write_store import (
+        _process_writer_leases,
+        load_attestation,
+        shared_writer_lease,
+    )
+
+    lock = tmp_path / "gate.lock"
+    attest = tmp_path / "attest"
+    pid = os.getpid()
+    fail_once = {"pending": True}
+    real_write_attestation = chroma_write_store.write_attestation
+
+    def boom_once(attestation, *, attest_dir=None):  # type: ignore[no-untyped-def]
+        if fail_once["pending"]:
+            fail_once["pending"] = False
+            raise RuntimeError("write attestation failed")
+        return real_write_attestation(attestation, attest_dir=attest_dir)
+
+    monkeypatch.setattr(chroma_write_store, "write_attestation", boom_once)
+    with pytest.raises(RuntimeError, match="write attestation failed"):
+        with shared_writer_lease(
+            lock_path=lock,
+            attest_dir=attest,
+            entrypoint="test.write_attestation_failure",
+        ):
+            pass
+    assert load_attestation(pid, attest_dir=attest) is None
+    with _process_writer_leases.lock:
+        assert _process_writer_leases.active_count == 0
+        assert _process_writer_leases.attestation is None
+
+    with shared_writer_lease(
+        lock_path=lock,
+        attest_dir=attest,
+        entrypoint="test.write_attestation_recovery",
+    ) as recovered:
+        assert load_attestation(pid, attest_dir=attest) is not None
+        assert recovered.entrypoint == "test.write_attestation_recovery"
+
+    assert load_attestation(pid, attest_dir=attest) is None
+    with _process_writer_leases.lock:
+        assert _process_writer_leases.active_count == 0
+        assert _process_writer_leases.attestation is None
+
+
 def _child_hold_exclusive(lock_path: str, ready_path: str, release_path: str) -> None:
     import fcntl
 

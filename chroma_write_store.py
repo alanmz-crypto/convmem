@@ -153,7 +153,6 @@ def _acquire_process_writer_lease(
     """Establish or extend process-scoped ownership of the PID attestation."""
     with _process_writer_leases.lock:
         first = _process_writer_leases.active_count == 0
-        _process_writer_leases.active_count += 1
         if first:
             attestation = build_writer_attestation(entrypoint=entrypoint)
             write_attestation(attestation, attest_dir=attest_dir)
@@ -163,6 +162,7 @@ def _acquire_process_writer_lease(
             attestation = _process_writer_leases.attestation
             if attestation is None:
                 raise RuntimeError("active writer lease missing attestation")
+        _process_writer_leases.active_count += 1
         return attestation
 
 
