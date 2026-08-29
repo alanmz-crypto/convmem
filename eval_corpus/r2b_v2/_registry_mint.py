@@ -86,7 +86,9 @@ def _new_handle_id() -> str:
     return secrets.token_hex(16)
 
 
-def register_custodian(custodian_id: str, custodian: Any) -> None:
+def _register_lease_custodian(custodian_id: str, custodian: Any) -> None:
+    if custodian_id in _CUSTODIAN_REF:
+        raise AuthorityRegistryError("custodian id already registered")
     _CUSTODIAN_REF[custodian_id] = custodian
 
 
@@ -148,14 +150,46 @@ def mint_lease_handle(record: LeaseAuthorityRecord) -> AuthorityHandle:
     return AuthorityHandle("lease", handle_id)
 
 
-def bind_coverage_to_lease(*, coverage_handle_id: str, lease_handle_id: str) -> None:
+def _bind_coverage_to_lease(*, coverage_handle_id: str, lease_handle_id: str) -> None:
     existing = _COVERAGE_LEASE_BINDING.get(coverage_handle_id)
     if existing is not None and existing != lease_handle_id:
         raise AuthorityRegistryError("coverage already bound to a different lease")
     _COVERAGE_LEASE_BINDING[coverage_handle_id] = lease_handle_id
 
 
-def mint_source_authority_record(record: SourceAuthorityRecord) -> AuthorityHandle:
+def compose_and_mint_source_authority(
+    *,
+    lease_handle: AuthorityHandle,
+    coverage_handle: AuthorityHandle,
+    open_evidence_digest: str,
+) -> AuthorityHandle:
+    """Mint source authority only from validated lease+coverage composition."""
+    lease_record = lookup_lease_handle(lease_handle)
+    coverage_record = lookup_coverage_handle(coverage_handle)
+    if lease_record.open_evidence_digest != open_evidence_digest:
+        raise AuthorityRegistryError("open_evidence_digest mismatch")
+    if lease_record.gate_path != coverage_record.gate_path:
+        raise AuthorityRegistryError("gate_path mismatch between lease and trusted coverage")
+    if lease_record.gate_protocol != coverage_record.gate_protocol:
+        raise AuthorityRegistryError("gate_protocol mismatch between lease and trusted coverage")
+    if lease_record.writer_coverage_digest != coverage_record.coverage_digest:
+        raise AuthorityRegistryError("writer_coverage_digest mismatch — cross-slice binding failed")
+    if lease_record.implementation_revision != coverage_record.code_revision:
+        raise AuthorityRegistryError("implementation revision mismatch between lease and coverage")
+    _bind_coverage_to_lease(
+        coverage_handle_id=coverage_handle.handle_id,
+        lease_handle_id=lease_handle.handle_id,
+    )
+    record = SourceAuthorityRecord(
+        lease_handle_id=lease_handle.handle_id,
+        coverage_handle_id=coverage_handle.handle_id,
+        authority_epoch=_AUTHORITY_EPOCH,
+        run_id=lease_record.run_id,
+        coverage_digest=coverage_record.coverage_digest,
+        gate_identity=coverage_record.gate_identity,
+        gate_path=coverage_record.gate_path,
+        open_evidence_digest=open_evidence_digest,
+    )
     handle_id = _new_handle_id()
     _SOURCE_RECORDS[handle_id] = record
     return AuthorityHandle("source", handle_id)

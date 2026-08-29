@@ -12,7 +12,7 @@ from typing import Any
 
 from chroma_write_store import _proc_start_time, current_code_revision
 
-from eval_corpus.r2b_v2._registry_mint import mint_lease_handle
+from eval_corpus.r2b_v2._registry_mint import _register_lease_custodian, mint_lease_handle
 from eval_corpus.r2b_v2.authority_registry import (
     AuthorityHandle,
     AuthorityRegistryError,
@@ -20,7 +20,6 @@ from eval_corpus.r2b_v2.authority_registry import (
     current_authority_epoch,
     lookup_custodian,
     lookup_lease_handle,
-    register_custodian,
     release_lease_handle,
 )
 from eval_corpus.r2b_v2.gate_policy import GatePolicy, production_gate_policy, test_gate_policy
@@ -213,7 +212,7 @@ def acquire_r2b_quiescence_lease(
             time.sleep(0.01)
     assert custodian is not None
     custodian_id = f"lease-{run_id}-{time.monotonic_ns()}"
-    register_custodian(custodian_id, custodian)
+    _register_lease_custodian(custodian_id, custodian)
     monotonic_start = time.monotonic()
     record = LeaseAuthorityRecord(
         run_id=run_id,
