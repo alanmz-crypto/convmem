@@ -10,6 +10,7 @@ from file_generation_store import FileGenerationStore
 from mixed_mode_proof import (
     PHYSICAL_DELETION_DISABLED,
     characterize_chroma_storage,
+    retained_rollback_baseline_inventory,
     run_mixed_mode_proof,
 )
 from mixed_mode_retrieval import (
@@ -155,6 +156,57 @@ class MixedModeProofTests(unittest.TestCase):
         self.assertEqual(storage["chroma_version"], "1.5.9")
         self.assertTrue(storage["physical_deletion_disabled"])
         self.assertEqual(PHYSICAL_DELETION_DISABLED, True)
+
+    def test_grb_retained_across_design_a_lifecycle(self) -> None:
+        """G_rb stays protected across staging, cutover, rollback, and reopen."""
+
+        lifecycle_chroma = self.root / "lifecycle-chroma"
+        retained: dict[str, set[str]] = {"owner-a": {"G_rb"}}
+        active: dict[str, str] = {"owner-a": "G_rb"}
+        previous: dict[str, str] = {}
+        stages = [
+            ({"owner-a": "G_rb"}, {}),
+            ({"owner-a": "G_canary"}, {"owner-a": "G_rb"}),
+            ({"owner-a": "G_rb"}, {"owner-a": "G_canary"}),
+        ]
+        with FileGenerationStore(
+            lifecycle_chroma,
+            active_generations=lambda: dict(active),
+            previous_generations=lambda: dict(previous),
+            retained_baselines=lambda: {k: set(v) for k, v in retained.items()},
+        ) as store:
+            store.stage_rows([file_row("fg1_grb", "L0", "G_rb")])
+            store.stage_rows([file_row("fg1_canary", "L1", "G_canary")])
+            for stage_active, stage_previous in stages:
+                active.clear()
+                active.update(stage_active)
+                previous.clear()
+                previous.update(stage_previous)
+                vector = _frozen_vector(lifecycle_chroma, active, previous)
+                report = retained_rollback_baseline_inventory(
+                    lifecycle_chroma,
+                    vector,
+                    owner_digest="owner-a",
+                    grb_generation_id="G_rb",
+                )
+                self.assertTrue(report["grb_protected"])
+                self.assertFalse(report["grb_gc_eligible"])
+                self.assertTrue(report["physical_deletion_disabled"])
+        with FileGenerationStore(
+            lifecycle_chroma,
+            active_generations=lambda: dict(active),
+            previous_generations=lambda: dict(previous),
+            retained_baselines=lambda: {k: set(v) for k, v in retained.items()},
+        ):
+            vector = _frozen_vector(lifecycle_chroma, active, previous)
+            reopened = retained_rollback_baseline_inventory(
+                lifecycle_chroma,
+                vector,
+                owner_digest="owner-a",
+                grb_generation_id="G_rb",
+            )
+        self.assertTrue(reopened["grb_protected"])
+        self.assertFalse(reopened["grb_gc_eligible"])
 
 
 if __name__ == "__main__":
