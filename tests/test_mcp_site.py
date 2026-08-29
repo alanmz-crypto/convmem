@@ -188,6 +188,7 @@ class McpSiteTests(unittest.TestCase):
             raw=False,
             evidence=True,
             trace=False,
+            cross_domain=False,
         )
 
     @patch("brief.gather_brief_payload", return_value={"generated_at": "t", "projects": []})
