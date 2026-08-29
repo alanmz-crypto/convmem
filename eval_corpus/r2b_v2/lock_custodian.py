@@ -5,28 +5,20 @@ from __future__ import annotations
 import fcntl
 import multiprocessing as mp
 import os
-import struct
 from multiprocessing.connection import Connection
 from typing import Any
+
+_CUSTODIAN_IO_TIMEOUT_SEC = 5.0
 
 
 class LockCustodianError(RuntimeError):
     """Lock custodian acquisition, verification, or release failure."""
 
 
-def _fd_holds_exclusive(fd: int) -> bool:
-    """Return True when this fd still holds an exclusive flock."""
-    try:
-        lockdata = struct.pack("hhllhh", fcntl.F_WRLCK, 0, 0, 0, 0, 0)
-        result = fcntl.fcntl(fd, fcntl.F_GETLK, lockdata)
-        l_type, _, _, _, l_pid, _ = struct.unpack("hhllhh", result)
-    except (OSError, struct.error):
-        return False
-    if l_type == fcntl.F_UNLCK:
-        return True
-    if l_pid == os.getpid():
-        return l_type == fcntl.F_WRLCK
-    return False
+def _recv_response(conn: Connection, *, timeout: float = _CUSTODIAN_IO_TIMEOUT_SEC) -> dict[str, Any]:
+    if not conn.poll(timeout):
+        raise LockCustodianError("custodian communication timeout")
+    return conn.recv()
 
 
 def _custodian_worker(lock_path: str, parent_pid: int, conn: Connection) -> None:
@@ -54,9 +46,6 @@ def _custodian_worker(lock_path: str, parent_pid: int, conn: Connection) -> None
                 continue
             if os.getppid() != parent_pid:
                 conn.send({"ok": False, "reason": "parent_dead"})
-                continue
-            if not _fd_holds_exclusive(fd):
-                conn.send({"ok": False, "reason": "lost_exclusive"})
                 continue
             conn.send({"ok": True, "inode": inode})
         elif cmd == "release":
@@ -92,7 +81,7 @@ class LockCustodian:
         if self._proc.exitcode is not None:
             raise LockCustodianError("custodian process exited")
         self._conn.send({"cmd": "verify"})
-        resp = self._conn.recv()
+        resp = _recv_response(self._conn)
         if not resp.get("ok"):
             raise LockCustodianError(str(resp.get("reason", "custodian verify failed")))
 
@@ -100,8 +89,8 @@ class LockCustodian:
         if self._proc.is_alive():
             self._conn.send({"cmd": "release"})
             try:
-                self._conn.recv()
-            except EOFError:
+                _recv_response(self._conn)
+            except (EOFError, LockCustodianError):
                 pass
             self._proc.join(timeout=5)
         if self._proc.is_alive():
@@ -110,11 +99,11 @@ class LockCustodian:
 
     def force_unlock_for_tests(self) -> None:
         self._conn.send({"cmd": "force_unlock"})
-        self._conn.recv()
+        _recv_response(self._conn)
 
     def downgrade_to_shared_for_tests(self) -> None:
         self._conn.send({"cmd": "downgrade_sh"})
-        self._conn.recv()
+        _recv_response(self._conn)
 
 
 def spawn_lock_custodian(lock_path: str) -> LockCustodian:

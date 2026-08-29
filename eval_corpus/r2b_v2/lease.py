@@ -12,13 +12,14 @@ from typing import Any
 
 from chroma_write_store import _proc_start_time, current_code_revision
 
+from eval_corpus.r2b_v2._registry_mint import mint_lease_handle
 from eval_corpus.r2b_v2.authority_registry import (
     AuthorityHandle,
     AuthorityRegistryError,
     LeaseAuthorityRecord,
+    current_authority_epoch,
     lookup_custodian,
     lookup_lease_handle,
-    mint_lease_handle,
     register_custodian,
     release_lease_handle,
 )
@@ -54,21 +55,23 @@ class _LeaseBindingsView:
 
 
 class _LeaseHolder:
-    __slots__ = ("bindings", "custodian", "custodian_id", "handle", "ownership_active")
+    __slots__ = ("bindings", "custodian_id", "handle", "ownership_active")
 
     def __init__(
         self,
         *,
         bindings: _LeaseBindingsView,
-        custodian: LockCustodian,
         custodian_id: str,
         handle: AuthorityHandle,
     ) -> None:
         self.bindings = bindings
-        self.custodian = custodian
         self.custodian_id = custodian_id
         self.handle = handle
         self.ownership_active = True
+
+    @property
+    def custodian(self) -> LockCustodian:
+        return lookup_custodian(self.custodian_id)
 
     def verify_live_ownership(self) -> None:
         if not self.ownership_active:
@@ -90,7 +93,7 @@ class _LeaseHolder:
         if st.st_ino != self.bindings.gate_inode:
             raise R2bQuiescenceLeaseError("gate inode identity mismatch")
         try:
-            self.custodian.verify()
+            lookup_custodian(self.custodian_id).verify()
         except LockCustodianError as exc:
             raise R2bQuiescenceLeaseError(
                 "original authorized holder no longer owns exclusive kernel lock"
@@ -102,7 +105,9 @@ class _LeaseHolder:
         )
         self.ownership_active = False
         try:
-            self.custodian.release()
+            lookup_custodian(self.custodian_id).release()
+        except AuthorityRegistryError:
+            pass
         finally:
             release_lease_handle(self.handle)
         consume_authority(key)
@@ -227,13 +232,13 @@ def acquire_r2b_quiescence_lease(
         bound_source_paths=bound_source_paths,
         phase_bounds=phase_bounds,
         custodian_id=custodian_id,
+        mint_epoch=current_authority_epoch(),
     )
     register_active_authority(key)
     handle = mint_lease_handle(record)
     bindings = _LeaseBindingsView(record, monotonic_start)
     holder = _LeaseHolder(
         bindings=bindings,
-        custodian=lookup_custodian(custodian_id),
         custodian_id=custodian_id,
         handle=handle,
     )
