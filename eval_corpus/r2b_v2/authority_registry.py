@@ -7,7 +7,6 @@ from eval_corpus.r2b_v2._registry_mint import (  # noqa: F401
     DiagnosticMintTicket,
     LeaseAuthorityRecord,
     SourceAuthorityRecord,
-    bind_coverage_to_lease,
     current_authority_epoch,
     invalidate_all_authority,
     invalidate_coverage_handle,
@@ -16,8 +15,6 @@ from eval_corpus.r2b_v2._registry_mint import (  # noqa: F401
     lookup_custodian,
     lookup_lease_handle,
     lookup_source_handle,
-    mint_source_authority_record,
-    register_custodian,
     release_lease_handle,
 )
 
@@ -28,7 +25,6 @@ __all__ = [
     "DiagnosticMintTicket",
     "LeaseAuthorityRecord",
     "SourceAuthorityRecord",
-    "bind_coverage_to_lease",
     "current_authority_epoch",
     "invalidate_all_authority",
     "invalidate_coverage_handle",
@@ -37,7 +33,5 @@ __all__ = [
     "lookup_custodian",
     "lookup_lease_handle",
     "lookup_source_handle",
-    "mint_source_authority_record",
-    "register_custodian",
     "release_lease_handle",
 ]
