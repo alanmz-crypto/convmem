@@ -5,6 +5,7 @@ from __future__ import annotations
 import fcntl
 import multiprocessing as mp
 import os
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -19,7 +20,12 @@ from eval_corpus.r2b_v2.coverage.proof import (
     prove_zero_bypass_coverage,
     source_authority_from_lease_and_coverage,
 )
-from eval_corpus.r2b_v2.lease import R2bQuiescenceLease, acquire_r2b_quiescence_lease
+from eval_corpus.r2b_v2.lease import (
+    R2bQuiescenceLease,
+    R2bQuiescenceLeaseError,
+    acquire_r2b_quiescence_lease,
+)
+from eval_corpus.r2b_v2.lock_custodian import custodian_for_tests
 
 
 def acquire_test_lease(  # pylint: disable=too-many-arguments
@@ -158,3 +164,77 @@ def clean_coverage_bundle(
         implementation_revision=rev,
     )
     return lease, trusted, chroma, processed, export, gate
+
+
+def obtain_source_authority(lease: R2bQuiescenceLease, trusted: Any) -> Any:
+    return source_authority_from_lease_and_coverage(
+        lease,
+        trusted,
+        open_evidence_digest=lease.bindings.open_evidence_digest,
+    )
+
+
+def assert_legitimate_source_authority(
+    testcase: TestCase,
+    lease: R2bQuiescenceLease,
+    trusted: Any,
+    *,
+    run_id: str = "bind-run",
+) -> Any:
+    auth = obtain_source_authority(lease, trusted)
+    testcase.assertEqual(auth.run_id, run_id)
+    testcase.assertTrue(auth.gate_held)
+    return auth
+
+
+def run_legitimate_source_authority_case(testcase: TestCase, rev: str) -> None:
+    with tempfile.TemporaryDirectory() as td:
+        lease, trusted, *_ = clean_coverage_bundle(Path(td), rev)
+        try:
+            assert_legitimate_source_authority(testcase, lease, trusted)
+        finally:
+            lease.release()
+
+
+def refuse_wrong_open_evidence_case(testcase: TestCase) -> None:
+    with tempfile.TemporaryDirectory() as td:
+        refuse_source_authority(
+            testcase,
+            Path(td),
+            "bind-open",
+            open_evidence_digest="wrong-open",
+        )
+
+
+def run_dual_coverage_chain_case(testcase: TestCase, exercise: Any) -> None:
+    with tempfile.TemporaryDirectory() as td:
+        with dual_coverage_chains(Path(td), "rev-a", "rev-b") as chains:
+            exercise(testcase, *chains)
+
+
+def assert_custodian_force_unlock_breaks_verify(
+    testcase: TestCase,
+    lease: R2bQuiescenceLease,
+) -> None:
+    holder = lease._holder  # pylint: disable=protected-access
+    custodian_for_tests(holder).force_unlock_for_tests()
+    with testcase.assertRaises(R2bQuiescenceLeaseError):
+        lease.verify()
+
+
+@contextmanager
+def dual_coverage_chains(
+    root: Path,
+    rev_a: str,
+    rev_b: str,
+    *,
+    run_a: str = "run-a",
+    run_b: str = "run-b",
+) -> Iterator[tuple[R2bQuiescenceLease, Any, R2bQuiescenceLease, Any]]:
+    lease_a, trusted_a, *_ = clean_coverage_bundle(root / "a", rev_a, run_id=run_a)
+    lease_b, trusted_b, *_ = clean_coverage_bundle(root / "b", rev_b, run_id=run_b)
+    try:
+        yield lease_a, trusted_a, lease_b, trusted_b
+    finally:
+        lease_a.release()
+        lease_b.release()

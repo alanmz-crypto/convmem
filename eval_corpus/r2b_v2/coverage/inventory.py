@@ -136,6 +136,15 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "coverage_status": "gated",
     },
     {
+        "route_id": "cg2_rehearsal",
+        "category": "cg2_d4",
+        "entrypoint": "cg2_rehearsal.py",
+        "mutation_surfaces": ("chroma", "processed", "generation_store"),
+        "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
+        "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
+        "coverage_status": "gated",
+    },
+    {
         "route_id": "recovery_authority_restore",
         "category": "recovery_authority",
         "entrypoint": "complete_data_restore.py",

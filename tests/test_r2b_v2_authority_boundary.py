@@ -27,8 +27,12 @@ from eval_corpus.r2b_v2.lock_custodian import custodian_for_tests
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
 from tests.r2b_v2_helpers import (
     acquire_test_lease,
+    assert_custodian_force_unlock_breaks_verify,
     clean_coverage_bundle,
-    refuse_source_authority,
+    obtain_source_authority,
+    refuse_wrong_open_evidence_case,
+    run_dual_coverage_chain_case,
+    run_legitimate_source_authority_case,
     sample_diagnostic_coverage_result,
 )
 
@@ -88,28 +92,23 @@ class R2bV2AuthorityBoundaryTests(unittest.TestCase):
         """Probe 4: mutable custodian reference cannot preserve authority."""
         with tempfile.TemporaryDirectory() as td:
             lease = acquire_test_lease(Path(td), run_id="cust-sub")
-            holder = lease._holder  # pylint: disable=protected-access
-            custodian_for_tests(holder).force_unlock_for_tests()
-            with self.assertRaises(R2bQuiescenceLeaseError):
-                lease.verify()
+            assert_custodian_force_unlock_breaks_verify(self, lease)
             lease.release()
 
     def test_cross_chain_coverage_replay_refused(self) -> None:
         """Probe 5: trusted coverage from chain A cannot authorize lease B."""
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            lease_a, trusted_a, *_ = clean_coverage_bundle(root / "a", "rev-a", run_id="run-a")
-            lease_b, _, *_ = clean_coverage_bundle(root / "b", "rev-b", run_id="run-b")
-            try:
-                with self.assertRaises((CoverageProofError, R2bQuiescenceLeaseError)):
-                    source_authority_from_lease_and_coverage(
-                        lease_b,
-                        trusted_a,
-                        open_evidence_digest=lease_b.bindings.open_evidence_digest,
-                    )
-            finally:
-                lease_a.release()
-                lease_b.release()
+
+        def exercise(
+            testcase,
+            _lease_a,
+            trusted_a,
+            lease_b,
+            _trusted_b,
+        ):
+            with testcase.assertRaises((CoverageProofError, R2bQuiescenceLeaseError)):
+                obtain_source_authority(lease_b, trusted_a)
+
+        run_dual_coverage_chain_case(self, exercise)
 
     def test_runtime_attestation_without_gate_lease_is_not_source_authority(self) -> None:
         """Probe 6: trusted coverage without a live lease cannot become source authority."""
@@ -170,11 +169,7 @@ class R2bV2AuthorityBoundaryTests(unittest.TestCase):
         """Probe 9: stale source proof cannot survive registry epoch invalidation."""
         with tempfile.TemporaryDirectory() as td:
             lease, trusted, *_ = clean_coverage_bundle(Path(td), "reload-src")
-            auth = source_authority_from_lease_and_coverage(
-                lease,
-                trusted,
-                open_evidence_digest=lease.bindings.open_evidence_digest,
-            )
+            auth = obtain_source_authority(lease, trusted)
             invalidate_all_authority()
             with self.assertRaises(AuthorityRegistryError):
                 _ = auth.run_id
@@ -195,24 +190,7 @@ class R2bV2AuthorityBoundaryTests(unittest.TestCase):
             lease.release()
 
     def test_legitimate_chain_still_obtains_source_authority(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            lease, trusted, *_ = clean_coverage_bundle(Path(td), "good-chain")
-            try:
-                auth = source_authority_from_lease_and_coverage(
-                    lease,
-                    trusted,
-                    open_evidence_digest=lease.bindings.open_evidence_digest,
-                )
-                self.assertEqual(auth.run_id, "bind-run")
-                self.assertTrue(auth.gate_held)
-            finally:
-                lease.release()
+        run_legitimate_source_authority_case(self, "good-chain")
 
     def test_cross_chain_open_evidence_refused(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            refuse_source_authority(
-                self,
-                Path(td),
-                "bind-open",
-                open_evidence_digest="wrong-open",
-            )
+        refuse_wrong_open_evidence_case(self)

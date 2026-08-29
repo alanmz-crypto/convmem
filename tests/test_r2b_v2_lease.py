@@ -17,9 +17,12 @@ from eval_corpus.r2b_v2.lease import (
     lease_from_serialized_payload,
     verify_r2b_quiescence_lease,
 )
-from eval_corpus.r2b_v2.lock_custodian import custodian_for_tests
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
-from tests.r2b_v2_helpers import acquire_test_lease as _acquire, foreign_lock_holder_process
+from tests.r2b_v2_helpers import (
+    acquire_test_lease as _acquire,
+    assert_custodian_force_unlock_breaks_verify,
+    foreign_lock_holder_process,
+)
 
 
 class R2bV2LeaseTests(unittest.TestCase):
@@ -118,10 +121,7 @@ class R2bV2LeaseTests(unittest.TestCase):
     def test_lock_un_before_verify_refused(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             lease = _acquire(Path(td))
-            holder = lease._holder  # pylint: disable=protected-access
-            custodian_for_tests(holder).force_unlock_for_tests()
-            with self.assertRaises(R2bQuiescenceLeaseError):
-                lease.verify()
+            assert_custodian_force_unlock_breaks_verify(self, lease)
             lease.release()
 
     def test_cross_run_reuse_refused(self) -> None:
