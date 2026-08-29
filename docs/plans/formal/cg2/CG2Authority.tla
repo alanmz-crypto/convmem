@@ -65,7 +65,7 @@ FallbackModes == {"NONE", "MEDIATED"}
 
 ProofProfiles == {"UNKNOWN_MODEL_V1", "KNOWN_MODEL_V1"}
 CutoverPhases == {"NONE", "PREFLIGHT_OK", "LOCK_HELD", "FENCED", "GUARDED", "POINTER_PUBLISHED"}
-GuardStates == {"ABSENT", "OPEN", "REFUSED"}
+GuardStates == {"ABSENT", "OPEN", "REFUSED", "CLOSED"}
 LockStates == {"FREE", "HELD"}
 
 D0Type ==
@@ -924,11 +924,19 @@ RefuseSecondPromotionWhileGuardOpen(o) ==
     /\ cutover.canaryGuard[o] = "OPEN"
     /\ o \in cutover.firstCutoverDone
     /\ build.candidateGen[o] # NoGen
+    /\ build.candidateCold[o]
     /\ UNCHANGED vars
+
+CloseAuthorizedCanaryGuard(o) ==
+    /\ o \in cutover.firstCutoverDone
+    /\ cutover.canaryGuard[o] = "OPEN"
+    /\ cutover' = [cutover EXCEPT !.canaryGuard[o] = "CLOSED"]
+    /\ UNCHANGED <<auth, build, reads, pins, history, d0>>
 
 ForwardPromote(o, g, expected_active) ==
     LET old == auth.pointer[o]
-    IN /\ cutover.canaryGuard[o] # "OPEN"
+    IN /\ o \in cutover.firstCutoverDone
+       /\ cutover.canaryGuard[o] # "OPEN"
        /\ g # NoGen
        /\ expected_active = old
        /\ build.candidateGen[o] = g
@@ -1020,7 +1028,8 @@ DesignAAuthorityOps(o, grant, fresh_grant, qc) ==
     \/ ReleaseOwnerLock(o)
     \/ RefusePreFenceStructural(o)
     \/ RefuseSecondPromotionWhileGuardOpen(o)
-    \/ (\E g \in Generations, expected \in Generations :
+    \/ CloseAuthorizedCanaryGuard(o)
+    \/ (\E g \in Generations, expected \in Generations \cup {NoGen} :
           ForwardPromote(o, g, expected))
     \/ (\E h \in SourceHashes : AdvanceSource(o, h))
     \/ (\E target \in Generations, expected \in Generations :
@@ -1045,7 +1054,8 @@ CutoverDesignAAuthorityOps(o, grant, fresh_grant, qc) ==
     \/ ReleaseOwnerLock(o)
     \/ RefusePreFenceStructural(o)
     \/ RefuseSecondPromotionWhileGuardOpen(o)
-    \/ (\E g \in Generations, expected \in Generations :
+    \/ CloseAuthorizedCanaryGuard(o)
+    \/ (\E g \in Generations, expected \in Generations \cup {NoGen} :
           ForwardPromote(o, g, expected))
     \/ (\E target \in Generations, expected \in Generations :
           RollbackToRetained(o, target, expected, qc))
