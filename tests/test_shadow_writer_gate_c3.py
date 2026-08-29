@@ -132,7 +132,7 @@ def test_concurrent_same_process_shared_leases_keep_attestation(tmp_path: Path) 
                 assert loaded is not None
                 assert loaded["pid"] == pid
                 release.wait(timeout=5)
-        except BaseException as exc:  # noqa: BLE001 — collect for main thread
+        except BaseException as exc:  # pylint: disable=broad-exception-caught
             errors.append(exc)
 
     for _ in range(iterations):
@@ -143,7 +143,7 @@ def test_concurrent_same_process_shared_leases_keep_attestation(tmp_path: Path) 
         t1.join(timeout=10)
         t2.join(timeout=10)
         assert not t1.is_alive() and not t2.is_alive(), "threads hung"
-        assert errors == [], errors
+        assert not errors, errors
 
     assert load_attestation(pid, attest_dir=attest) is None
     assert not attestation_path.exists()
@@ -173,7 +173,7 @@ def test_intermediate_shared_lease_exit_preserves_attestation(tmp_path: Path) ->
                 inner_ready.set()
                 assert attestation_path.is_file()
                 inner_may_exit.wait(timeout=5)
-        except BaseException as exc:  # noqa: BLE001
+        except BaseException as exc:  # pylint: disable=broad-exception-caught
             errors.append(exc)
 
     with shared_writer_lease(
@@ -188,7 +188,7 @@ def test_intermediate_shared_lease_exit_preserves_attestation(tmp_path: Path) ->
         assert load_attestation(pid, attest_dir=attest) is not None
         inner_may_exit.set()
         t.join(timeout=5)
-        assert errors == []
+        assert not errors
         assert not t.is_alive()
         assert load_attestation(pid, attest_dir=attest) is not None
         assert attestation_path.is_file()
@@ -348,8 +348,8 @@ def test_write_attestation_late_failure_leaves_no_orphan(
             pass
     assert not attestation_path.exists()
     assert load_attestation(pid, attest_dir=attest) is None
-    assert list(attest.glob("*.tmp")) == []
-    assert list(attest.glob(f".{pid}.json.*.tmp")) == []
+    assert not list(attest.glob("*.tmp"))
+    assert not list(attest.glob(f".{pid}.json.*.tmp"))
     with _process_writer_leases.lock:
         assert _process_writer_leases.active_count == 0
         assert _process_writer_leases.attestation is None
