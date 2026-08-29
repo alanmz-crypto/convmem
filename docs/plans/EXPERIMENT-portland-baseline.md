@@ -25,38 +25,57 @@ treated as the current baseline behavior, not something to rebuild.
 
 ## 1. Primary hypothesis (H1)
 
-A fresh Agent B, operating in its normal environment **plus ConvMem**, recovers
-Portland facts — especially paraphrased, vague, synthesis, and current-vs-stale
-queries — that it **cannot** recover, or can recover only materially harder, in
-the same environment **without ConvMem**.
+A fresh Agent B operating in its **real, ordinary environment plus ConvMem
+(C1)** recovers Portland facts — especially paraphrased, vague, synthesis, and
+current-vs-stale queries — either more successfully or with materially less
+effort than the **same agent in the same ordinary environment without ConvMem
+(C0)**.
 
-"Materially harder" is made mechanical in §8 (lower Hit@k / MRR, or requires
-manual artifact spelunking the baseline agent would not perform unprompted).
+The competing baseline is deliberately strong: C0 keeps the agent's normal
+filesystem/search, GitHub access, agent-transcript directories, and other native
+recovery paths. If those ordinary paths already recover the facts, that counts
+**for** the baseline, not against it. "Materially less effort" is made mechanical
+in §8 via a pre-declared, equal effort budget (tool-call/search-action count) —
+not judged retrospectively.
 
 ## 2. Null / baseline hypothesis (H0)
 
-Agent B recovers the same Portland facts equally well without ConvMem, because
-the facts are already reachable through ordinary context: repo docs, handoffs,
-indexed chat transcripts, model-native memory, or generic web/search. If H0
-holds, ConvMem adds no unique recovery value **for this domain** and the
-observed "shared memory" is artifact recovery, not ConvMem recovery.
+The natural agent (C0) recovers the same Portland facts about as successfully,
+and within about the same effort budget, **without** ConvMem — because the facts
+are already reachable through ordinary means: filesystem search, GitHub/handoff
+artifacts, indexed or on-disk agent transcripts, model-native context, or
+generic search. If H0 holds, ConvMem adds no unique recovery value **for this
+domain** over the agent's real existing environment. Under this design, C0
+finding a fact by ordinary search is **legitimate baseline success**, not
+contamination.
 
 ## 3. Exact experimental conditions
 
-Two conditions, **same question set**, paired per question.
+Two conditions, **same question set**, paired per question. The substantive
+environment is held constant; **ConvMem is the only added capability.**
 
 | Condition | Agent B environment | ConvMem access |
 |-----------|--------------------|----------------|
-| **C0 — Baseline** | Fresh session, no Agent-A transcript, no Portland facts in any reachable repo doc/handoff/artifact, no ConvMem tools | **Disabled** |
-| **C1 — ConvMem** | Identical fresh session and identical prohibited-artifact controls | **Enabled** (`search` / `ask` / `ask --trace`, scoped) |
+| **C0 — Natural agent baseline** | Fresh session; **no** pasted Agent-A transcript and **no** answer-bearing experiment handoff. Otherwise **retains all ordinary capabilities**: normal tools, filesystem + `grep`/search, GitHub access, agent-transcript directories (`~/.codex`, `~/.cursor`, `~/.kiro`, …), and pre-existing artifacts. | **Disabled** (ConvMem tools removed from the manifest) |
+| **C1 — Natural baseline + ConvMem** | **Identical** ordinary environment as C0, same fresh-session and same experiment-leakage controls | **Enabled** (normal ConvMem integration: `search` / `ask` / `ask --trace`) |
 
-The **only** intended difference between C0 and C1 is ConvMem availability.
-Everything else (model, prompt scaffolding, question wording, allowed generic
-tools) is held constant. Contamination controls in §6 apply to **both**
-conditions so C0 is a genuine "no privileged Portland source" baseline.
+**What is controlled vs. what is preserved:**
+- **Preserved in both:** every ordinary recovery path (filesystem search,
+  GitHub, transcript directories, native context). These are the *competing
+  baseline*, not contamination. If C0 independently finds a Portland fact by
+  searching a Kiro/Cursor/Crush transcript, GitHub, or another ordinary
+  artifact, **that is a legitimate C0 success** — record its source path (§8).
+- **Excluded from both (experiment-created leakage only):** pasting the Agent-A
+  transcript into Agent B's prompt, and any special handoff/brief that contains
+  the K1–K10 answer values. See §6.
+- **Never done:** specially teaching Agent B where the answers are.
+
+The **only** intended difference between C0 and C1 is ConvMem availability
+(model, prompt scaffolding, question wording, and ordinary tools held constant).
 
 Run order: run **C0 first** for every question, then C1. This prevents C1
-retrieval output from leaking into the operator's framing of C0.
+retrieval output from framing C0 — and §6 additionally freezes the C1 corpus so
+C0's own session can never become a C1 source.
 
 
 ## 4. Knowledge items to seed (Phase A)
@@ -91,52 +110,91 @@ Rules for the seed set:
 
 ## 5. Fresh-agent isolation procedure (Phase B)
 
-Agent B must start with **no** Agent-A transcript and **no** handoff containing
-the answers. Setup:
+Agent B starts fresh with **no** pasted Agent-A transcript and **no**
+answer-bearing handoff — but keeps its ordinary environment (§3). Setup:
 
-1. New agent session, new session id. Do not load or reference Agent A's
-   transcript file.
-2. No handoff document that contains substantive Portland facts is placed on
-   any branch Agent B can read (see §6). A *coordination* handoff (naming the
-   experiment, the branch, the question count) is allowed **only** if it
-   contains zero Portland answer content.
-3. Agent B receives an identical task prompt in both conditions: "Answer these
-   questions about the Portland relocation. Use the tools available to you."
-   The prompt does not itself contain any answer.
-4. In **C1**, Agent B is told ConvMem is available and may set the session read
-   scope (`convmem scope set relocation`) or query with `--domain`. This mirrors
-   the PR #247 scoped-retrieval baseline; the operator records whether Agent B
-   used scope, and whether cross-domain widening was needed for K10.
-5. In **C0**, ConvMem tools are removed from the agent's tool set entirely (not
-   merely "asked not to use them").
+1. New agent session, new session id. Do not paste or reference Agent A's
+   transcript in the prompt. (The transcript may still exist on disk as an
+   ordinary artifact the agent *could* find by its own search — that is a
+   legitimate C0 path, not a plant.)
+2. No experiment handoff/brief containing substantive Portland answers is placed
+   where Agent B would read it. A *coordination* handoff (naming the experiment,
+   branch, question count) is allowed **only** with zero Portland answer content.
+3. **Identical neutral task prompt in both conditions**, containing no answers
+   and no coaching:
 
-## 6. Preventing / detecting artifact leakage
+   > "Answer these Portland-relocation questions using the tools normally
+   >  available to you."
 
-This is the load-bearing control. ConvMem's own indexer ingests agent
-transcripts from `~/.codex/`, `~/.cursor/`, `~/.kiro/`, `~/.continue/`,
-`.crush/crush.db`, plus repo handoffs — so "fresh agent shares memory" can be
-**artifact recovery**, not ConvMem retrieval. We must separate the two.
+4. **Do not cue scope.** Do not instruct Agent B to `convmem scope set
+   relocation` or to widen. If the *normal installed* ConvMem integration/rules
+   already instruct the agent to query or scope memory, retain those in C1
+   unchanged — they are part of the ConvMem system under evaluation — but add no
+   experiment-specific coaching. Then **observe** (feeds the §9 automatic-subject
+   and cross-domain labels): whether C1 invokes ConvMem at all; whether it
+   chooses an appropriate scope; whether it widens when appropriate; and whether
+   it returns to scope afterward.
+5. In **C0**, ConvMem tools are removed from the tool manifest entirely (not
+   merely "asked not to use them"). All other ordinary tools remain.
 
-**Prohibited from leaking into the C0-reachable environment:**
-- Portland facts in any `docs/inter-model/*.md`, `docs/plans/*.md`, `LATEST.md`,
-  or other tracked repo file readable on Agent B's branch.
-- Portland facts in a handoff, README, or copied artifact.
-- The Agent-A transcript file being present/loadable in Agent B's session.
+## 6. Experiment-created leakage exclusion + corpus freeze
 
-**Detection / control checklist (run before Phase B, both conditions):**
-- [ ] `grep -ri "portland\|<seed keywords>"` across the repo working tree on
-      Agent B's branch returns **only** this brief and the eval fixtures — never
-      the answer values. (This brief uses *illustrative* placeholders, not the
-      real seeded values, precisely so it is safe to commit.)
-- [ ] Confirm no `docs/inter-model/` file added in this arc contains seed values.
-- [ ] Confirm Agent B's session directory does not contain the Agent-A rollout.
-- [ ] For C0: confirm ConvMem tools are absent from the tool manifest.
-- [ ] For C1: capture `ask --trace` provenance so every recovered fact is tied
-      to an Agent-A source unit (proves ConvMem path, not artifact path).
+Two distinct isolation jobs. **Do not conflate them.**
 
-**The decisive contrast:** a fact that Agent B recovers in C1 with a ConvMem
-trace pointing to an Agent-A source unit, but *cannot* recover in C0 after the
-leakage checklist passes, is genuine ConvMem recovery.
+### 6a. Exclude experiment-created leakage (not natural artifacts)
+
+Ordinary Agent-A artifacts (its on-disk transcript, any pre-existing repo doc it
+naturally produced) are **legitimate C0 recovery paths** — leave them. What must
+be excluded is leakage *manufactured by this experiment*:
+
+**Prohibited (experiment-created):**
+- Pasting the Agent-A transcript or the K1–K10 answer values into Agent B's prompt.
+- Any experiment handoff/brief/README that lists the answer values.
+- Putting K1–K10 answers into *this* brief or into `docs/inter-model/`/`LATEST.md`
+  specifically to coordinate the experiment.
+
+**Verification (run before Phase B):**
+- [ ] `grep -ri "portland\|<seed keywords>"` over files **added by this arc**
+      (this brief, the golden fixture, any coordination handoff) returns no
+      answer values. This brief uses *illustrative placeholders*, not the real
+      seeded values, so it is safe to commit.
+- [ ] Confirm Agent B's prompt contains no Agent-A transcript paste and no answers.
+- [ ] For C0: confirm ConvMem tools are absent from the tool manifest; confirm
+      all other ordinary tools are present (so C0 is a real baseline, not a
+      crippled one).
+
+Naturally-occurring artifacts are explicitly **allowed** in C0. Their use is
+scored as a baseline success with its source class recorded (§8), never flagged
+as contamination.
+
+### 6b. Freeze the ConvMem corpus against C0 → C1 contamination
+
+ConvMem ingests agent transcripts, so **C0's own session could become a new C1
+source** unless prevented. Bind this procedure before execution:
+
+1. Agent A produces K1–K10.
+2. Capture/index the intended Agent-A material into ConvMem (§10).
+3. **Freeze** the exact ConvMem corpus/store state to be used for C1 — record a
+   frozen marker: Chroma unit count + newest `ledger_id`/timestamp, or an
+   isolated copy of the store directory. This frozen snapshot is the *only* thing
+   C1 may retrieve from.
+4. Run **C0**.
+5. Ensure C0's transcript, guesses, questions, and outputs **cannot enter** the
+   frozen C1 corpus: run C0 with ConvMem watch/index disabled or pointed away
+   from the frozen store, or run C1 against an isolated copy taken at step 3.
+6. Run **C1** against the pre-C0 frozen corpus/store state only.
+
+**Critical invariant:**
+> C1 may retrieve Agent-A knowledge, but **never** knowledge generated by C0 or
+> by the operator after the freeze.
+
+**Mechanical verification of the invariant (run after C1):**
+- [ ] The C1 store's unit count / newest-id marker equals the step-3 frozen
+      marker (no new units ingested between freeze and C1).
+- [ ] For every C1 recovery, the `ask --trace` provenance chain resolves to a
+      source unit whose id/timestamp predates the freeze (i.e. an Agent-A unit,
+      never a C0-session unit).
+- [ ] Grep the frozen store for any C0 session-id / C0 transcript path → zero hits.
 
 
 ## 7. Question set
@@ -161,30 +219,54 @@ under the relocation scope, and whether widening was required to reach it.
 
 ## 8. Metrics / scoring
 
-Reuse existing tooling (§10). Encode Q1–Q8 as a golden fixture in the exact
-`golden_queries.jsonl` schema (`query`, `acceptable_ids`, `top_k`, `note`),
-where `acceptable_ids` are the ledger/unit ids of the seeded Agent-A source
-units for each expected fact.
+Because C0 recovers via heterogeneous ordinary paths (filesystem, GitHub,
+transcript search, native context) there is **no common ranked ConvMem result
+list** from which a C0 MRR could be computed. So the **primary** paired outcome
+is system-level, and ranked-retrieval metrics are demoted to C1-only
+diagnostics.
 
-Per question, per condition, mechanically compute (via `eval_corpus/metrics.py`
-+ `scripts/eval-retrieval.py`):
-- **P@1** — is the correct source unit the top hit?
-- **Hit@k / Recall@k** — does a correct unit appear in top-k?
-- **MRR** — rank quality of the first correct unit.
+### 8a. Primary paired system-value metrics (both conditions, same questions)
 
-Condition-level result = paired comparison C1 vs C0 on the **same** questions
-(reuse `eval_corpus/paired_stats.py` for the paired delta). Primary readout:
+Declare a **fixed, equal effort budget before running** (e.g. *N tool
+calls / search actions per question* — set the exact N in the run config, not
+retrospectively). Per question, per condition, record mechanically:
 
-> ΔHit@k and ΔMRR (C1 − C0), per question and aggregate.
+- **Recovered?** expected fact correctly recovered within the budget — yes/no.
+- **Source class used** (the path that produced the correct answer):
+  `native/current-context` · `transcript-search` · `github/handoff/artifact` ·
+  `other-ordinary` · `convmem`.
+- **Effort to recovery:** number of tool calls / search actions before the
+  correct fact appeared.
+- **Failed-within-budget:** yes/no (miss once the budget is exhausted).
 
-Answer-level scoring (does the agent's *answer* contain the expected fact) is
-recorded as a secondary, mechanically-graded field: expected-fact string/id
-present in the answer = pass. Avoid subjective "seemed better" — every cell is
-Hit/MRR or fact-present/absent.
+Paired readout (C1 vs C0 on the same questions):
+> Δrecovered (count C1 − C0) and Δeffort (median actions-to-recovery C0 − C1),
+> plus the source-class breakdown.
 
-**Decisive-value metric:** count of questions where C1 = hit AND C0 = miss,
-with a C1 `ask --trace` provenance chain to an Agent-A source unit. This is the
-"recovered through ConvMem, unavailable via baseline" count that answers H1.
+**Strongest ConvMem-value result:**
+> C1 correctly recovers Kx within the budget via a ConvMem provenance chain,
+> while C0 either fails within the same budget or needs measurably more ordinary
+> search effort.
+
+**Symmetric honesty:** if C0 readily finds the same fact by ordinary artifact /
+transcript / GitHub search within budget, that is **evidence against unique
+ConvMem value** — reported as such, never relabeled contamination.
+
+### 8b. C1-only ConvMem retrieval diagnostics (secondary)
+
+For C1 only, retain the existing tooling to *explain ConvMem's retrieval
+behavior* (why a fact was hit or missed), not as the primary pass/fail:
+
+- Encode Q1–Q8 as a golden fixture in the `golden_queries.jsonl` schema
+  (`query`, `acceptable_ids`, `top_k`, `note`), `acceptable_ids` = seeded
+  Agent-A source-unit ids.
+- Compute **P@1 / Hit@k / Recall@k / MRR** via `eval_corpus/metrics.py` +
+  `scripts/eval-retrieval.py`.
+- Capture `ask --trace` provenance per question.
+
+These localize any C1 miss to a §9 label (ranking vs capture vs classification
+vs temporal vs provenance). They do **not** enter the paired C0/C1 verdict,
+since C0 has no comparable ranked list.
 
 
 ## 9. Failure taxonomy (diagnostic labels, not new projects)
@@ -218,12 +300,15 @@ Confirmed present on disk (inspected 2026-08-29):
 - **Retrieval trace:** `convmem ask --trace` → `convmem.ask.trace.v1`
   (five-stage: candidates → evidence rerank → dedupe → recent injection → final
   context; citations carry `evidence_status` + `ledger_id`). Supplies the
-  provenance chain for §8's decisive-value metric and the §9 provenance label.
+  ConvMem source-class attribution for §8a (proving a C1 recovery came *through
+  ConvMem*, tied to a pre-freeze Agent-A unit) and the §9 provenance label.
 - **Scoring:** `eval_corpus/metrics.py` (`p_at_1`, `hit_at_k`, `recall_at_k`,
   `recall_at_k_complete`, `mrr`, `first_relevant_rank`) and
   `scripts/eval-retrieval.py` (runs a `golden_queries.jsonl` fixture through
   `query_units`, emits P@1 / P@k / MRR / recall@k JSON).
-- **Paired comparison:** `eval_corpus/paired_stats.py` for the C1−C0 paired delta.
+- **Paired comparison:** `eval_corpus/paired_stats.py` may support the C1-only
+  ranked-metric summary; the **primary** C0/C1 paired verdict is the system-value
+  table in §8a (recovered? / source class / effort), scored per the run config.
 - **Fixture schema:** `tests/fixtures/golden_queries.jsonl` (`query`,
   `acceptable_ids`, `top_k`, `note`) — Portland questions encode as one new
   fixture in this exact schema.
@@ -254,29 +339,38 @@ The only hard requirements are the already-landed pieces in §10.
 
 **GO to run** when:
 - [ ] Seed set K1–K10 defined with real Agent-A values + provenance ids.
-- [ ] Leakage checklist (§6) passes on Agent B's branch (grep clean of answer values).
-- [ ] Portland golden fixture written in `golden_queries.jsonl` schema.
-- [ ] C0 tool-manifest confirmed ConvMem-free; C1 confirmed ConvMem-enabled.
+- [ ] Experiment-created-leakage check (§6a) passes: files added by this arc
+      contain no answer values; Agent B prompt has no transcript paste/answers.
+- [ ] ConvMem corpus **frozen** with a recorded marker (§6b step 3).
+- [ ] Fixed effort budget N declared in the run config (§8a).
+- [ ] Portland golden fixture written in `golden_queries.jsonl` schema (C1 diagnostic).
+- [ ] C0 manifest confirmed ConvMem-free **with all other ordinary tools present**;
+      C1 confirmed ConvMem-enabled on the frozen corpus.
 
 **STOP conditions:**
-- If results show H1 (ConvMem recovers what baseline cannot): **stop the
-  experiment as designed.** Report the decisive-value count and per-label misses.
+- If results show H1 (ConvMem recovers within budget what the natural baseline
+  cannot, or with materially less effort): **stop the experiment as designed.**
+  Report Δrecovered, Δeffort, source-class breakdown, and per-label C1 misses.
 - If the result exposes a **new architectural problem** (automatic contextual
   inference, cross-domain policy, temporal-state reconstruction, capture-quality
   control): **STOP before designing any solution** and first identify relevant
   literature / prior art. Research precedes solution design — not this diagnostic.
-- If H0 holds (baseline matches ConvMem): report that ConvMem adds no unique
-  value *for this domain* and that observed sharing was artifact recovery.
+- If H0 holds (the natural agent matches ConvMem within budget): report that
+  ConvMem adds no unique value *for this domain* over the agent's real existing
+  environment — this is a legitimate result, not contamination.
 
 ---
 
 ## Answers to the required questions
 
 **Can this experiment be run now?**
-Yes. Every piece of machinery it depends on (capture via `index`/`record`,
-scoped retrieval + trace from PR #247, and P@1/Hit@k/MRR/Recall@k scoring in
-`eval_corpus/metrics.py` + `scripts/eval-retrieval.py`) is already on `main`.
-The remaining work is experiment setup, not new architecture.
+Yes. Every piece it depends on is already on `main`: capture via
+`index`/`record`, ConvMem retrieval + `ask --trace` (PR #247), and the C1-only
+ranked scoring in `eval_corpus/metrics.py` + `scripts/eval-retrieval.py`. The
+primary system-value metrics (recovered? / source class / effort) are plain
+mechanical observation of the two runs. The corpus freeze uses existing store
+state + a recorded marker. Remaining work is experiment setup, not new
+architecture.
 
 **Is any unfinished existing ConvMem plan genuinely prerequisite?**
 No. JudgeBench, Shadow Ledger Phase 0, and embedding-model eval were each
@@ -289,12 +383,19 @@ and only *if*, the result exposes a new architectural problem (per §12 STOP).
 **What is the smallest implementation / setup work needed to execute it?**
 1. Agent A performs real Portland work; capture K1–K10 via normal `index`/
    `record`, recording provenance ids. (~1 short session)
-2. Author the K8→K9 supersession through the existing ledger path.
-3. Write one Portland `golden_queries.jsonl` fixture (Q1–Q8 → seeded unit ids).
-4. Prepare two runnable Agent-B harness configs: C0 (ConvMem tools removed) and
-   C1 (ConvMem enabled, relocation scope). Run C0 then C1 on the fixed Q set.
-5. Score with `scripts/eval-retrieval.py` + `paired_stats.py`; capture C1
-   `ask --trace` provenance; fill the §9 label table for any miss.
+2. Author the K8→K9 supersession through the existing ledger path, then **freeze
+   the ConvMem corpus** and record the frozen marker (§6b).
+3. Write one Portland `golden_queries.jsonl` fixture (Q1–Q8 → seeded unit ids)
+   for the C1-only ranked diagnostics.
+4. Prepare two runnable Agent-B harness configs with the **same neutral prompt
+   and no scope cueing**: C0 (ConvMem tools removed, all other ordinary tools
+   present, index disabled/redirected so C0 cannot write the frozen corpus) and
+   C1 (ConvMem enabled against the frozen corpus). Declare the fixed effort
+   budget N. Run C0 then C1 on the fixed Q set.
+5. Score the §8a system-value table (recovered? / source class / effort) as the
+   primary paired result; run `scripts/eval-retrieval.py` + capture C1
+   `ask --trace` as secondary C1 diagnostics; verify the §6b corpus-freeze
+   invariant; fill the §9 label table for any C1 miss.
 
 No new evaluator, no new retrieval code, no schema change.
 
@@ -302,27 +403,36 @@ No new evaluator, no new retrieval code, no schema change.
 
 ## TL;DR
 
-- Smallest paired experiment: **C0 (fresh agent, no ConvMem, no leaked Portland
-  artifacts)** vs **C1 (same agent + ConvMem scoped retrieval)** on one fixed
-  8-question set over ~10 varied seeded Portland facts.
-- Decisive metric: count of questions C1 hits and C0 misses **with an
-  `ask --trace` provenance chain** to an Agent-A source unit — that is ConvMem
-  recovery, not artifact recovery.
-- Contamination control is load-bearing: ConvMem indexes agent transcripts +
-  handoffs, so the baseline must strip Portland facts from every C0-reachable
-  artifact and remove ConvMem tools entirely; this brief uses placeholder
-  values so it is safe to commit.
+- Smallest paired experiment: **C0 (natural agent — no ConvMem, but keeps its
+  ordinary filesystem/GitHub/transcript search)** vs **C1 (same natural agent +
+  ConvMem)** on one fixed 8-question set over ~10 varied seeded Portland facts.
+- Ordinary recovery paths are the **competing baseline**, not contamination: if
+  C0 finds a fact by ordinary search, that is legitimate baseline success and
+  counts against unique ConvMem value.
+- Primary metric is **system-level within a pre-declared effort budget**:
+  recovered? / source class / actions-to-recovery — not a paired MRR (C0 has no
+  ranked ConvMem list). P@1/Hit@k/MRR + `ask --trace` are retained as **C1-only**
+  diagnostics.
+- Two isolation jobs: exclude only *experiment-created* leakage (transcript
+  paste / answer-bearing handoff), and **freeze the ConvMem corpus** so C0's own
+  session can never become a C1 source (mechanically verified via the frozen
+  marker + pre-freeze provenance timestamps).
+- No scope cueing: identical neutral prompt in both conditions; whether C1
+  invokes/scopes/widens ConvMem is *observed*, not instructed.
 - Reuses only landed machinery (PR #247 scope + trace, `eval_corpus/metrics.py`,
   `eval-retrieval.py`, `golden_queries.jsonl`, supersession). No dependency on
-  JudgeBench / Shadow Ledger / embedding eval.
-- **Runnable now.** Setup only (seed + fixture + two harness configs). Stop after
-  design — implementation and run not started.
+  JudgeBench / Shadow Ledger / embedding eval. **Runnable now**, setup only.
 
 ## Jargon TL;DR
 
 | Term | Meaning |
 |------|---------|
-| C0 / C1 | Baseline condition (no ConvMem) / treatment condition (fresh agent + ConvMem) |
+| C0 / C1 | Natural-agent baseline (no ConvMem, keeps ordinary search/GitHub/transcripts) / same natural agent + ConvMem |
+| Natural baseline | C0 with all ordinary recovery paths intact — the competing mechanism, not contamination |
+| Source class | Which path produced a correct answer: native context / transcript-search / github-artifact / other-ordinary / convmem |
+| Effort budget | Pre-declared fixed cap of tool calls/search actions per question, so "materially harder" is mechanical, not retrospective |
+| Corpus freeze | Snapshotting the ConvMem store state (marker: unit count + newest id/timestamp) before C0 so C0's session can never become a C1 source |
+| Experiment-created leakage | Answer values injected by the experiment (transcript paste, answer-bearing handoff) — excluded; distinct from naturally-occurring Agent-A artifacts |
 | Agent A / Agent B | Knowledge-creating agent (Phase A) / fresh recovery agent (Phase B) |
 | K1–K10 | The seeded Portland knowledge items (see §4) |
 | Q1–Q8 | The fixed recovery question set (see §7) |
@@ -334,5 +444,5 @@ No new evaluator, no new retrieval code, no schema change.
 | ask --trace | `convmem.ask.trace.v1` five-stage retrieval trace with citation provenance (`evidence_status`, `ledger_id`) |
 | Track A | Indexing the session chat transcript into ConvMem |
 | Supersession | Ledger mechanic where a newer decision (K9) replaces/tombstones a stale one (K8) |
-| Artifact recovery | Finding a fact via GitHub/handoff/indexed-transcript search rather than via ConvMem retrieval — the confound this experiment isolates |
+| Artifact recovery | Finding a fact via GitHub/handoff/transcript search rather than ConvMem — here a **legitimate C0 baseline path**, not contamination; the experiment measures whether ConvMem beats it |
 | HITL | Human-in-the-loop (Ryan authorizes/merges) |
