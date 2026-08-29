@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import unittest
-from pathlib import Path
 from unittest import mock
 
 from watch import _flush_path_subprocess, _scoped_index_cmd

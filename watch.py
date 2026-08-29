@@ -13,12 +13,11 @@ import time
 from pathlib import Path
 from typing import Callable
 
-_DEFAULT_INDEX_MEM_MAX = "2G"
-_DEFAULT_INDEX_MEM_HIGH = "1500M"
-_scoped_fallback_logged = False
-
 from adapters.detect import get_parser
 from process_lock import release_lock
+
+_DEFAULT_INDEX_MEM_MAX = "2G"
+_DEFAULT_INDEX_MEM_HIGH = "1500M"
 
 # Live databases that change constantly — watch re-index causes OOM + duplication.
 _LIVE_WATCH_SKIP_SUFFIXES = (
@@ -168,15 +167,13 @@ def _scoped_index_cmd(
     verbose: bool = False,
 ) -> list[str]:
     """Wrap index argv in a memory-capped systemd user scope when available."""
-    global _scoped_fallback_logged  # pylint: disable=global-statement
-
     if not shutil.which("systemd-run") or not _user_systemd_session_available():
-        if verbose and not _scoped_fallback_logged:
+        if verbose and not getattr(_scoped_index_cmd, "fallback_logged", False):
             print(
                 "[watch] systemd-run scope unavailable; index child uncapped",
                 file=sys.stderr,
             )
-            _scoped_fallback_logged = True
+            _scoped_index_cmd.fallback_logged = True
         return inner_cmd
 
     watch_cfg = cfg.get("watch") or {}
