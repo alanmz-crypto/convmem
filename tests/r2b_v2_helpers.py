@@ -130,6 +130,7 @@ def clean_coverage_bundle(
     chroma = root / "chroma"
     processed = root / "processed.json"
     export = root / "export"
+    root.mkdir(parents=True, exist_ok=True)
     chroma.mkdir(exist_ok=True)
     export.mkdir(exist_ok=True)
     processed.write_text("{}", encoding="utf-8")
