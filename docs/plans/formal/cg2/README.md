@@ -118,62 +118,139 @@ The 2026-08-14 lock-candidate run used the official stable TLA+ v1.7.4 JAR
 
 Counts are historical-only and must not be cited as Design A proof.
 
-## Design A TLC run evidence (pending Ryan JAR approval)
+## Design A TLC run evidence (2026-08-28 — Ryan-approved JAR)
 
-**Status:** model and configurations restored/extended at implementation tip;
-**TLC not executed** — awaiting Ryan approval of exact `tla2tools.jar`
-SHA-256 per §11.4.
+**Tool preflight (§11.4):**
 
-When authorized, run (in order, abort on first failure):
+| Field | Value |
+|---|---|
+| `TLA_JAR` | `/home/lauer/.local/share/tlaplus/tla2tools-v1.7.4.jar` |
+| JAR SHA-1 | `bee4a54f3ee3d4afc347c3240ec2d9e93b075104` |
+| JAR SHA-256 | `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88` |
+| TLC version | `TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)` |
+| Java | `openjdk version "17.0.14" 2025-01-21` (Temurin 17 LTS) |
+| Model SHA at run | `0b5dd4ceae3108c4938f8f1ab3c83af320fa520e` |
+| Runner | `docs/plans/formal/cg2/run-design-a-tlc.sh` (§11.4–§11.5) |
+| Workers / heap / coverage | `2` / `2 GiB` / `-coverage 1` |
+| Timeout per config | `1800` seconds |
 
-1. `CG2Cutover.cfg`
-2. `CG2StaleReconcile.cfg`
-3. `CG2Rename.cfg`
-4. `CG2DesignA.cfg`
+**Suite result:** all four configurations **PASS** (exit `0`, empty queue, no
+counterexamples). Historical 2026-08-14 counts above remain historical-only.
 
-Pinned module: `docs/plans/formal/cg2/CG2Authority.tla`
-Pinned timeout: `1800` seconds per configuration
-
-Optional helper (implements §11.4–§11.5 exactly):
-
-```sh
-export TLA_JAR=/absolute/path/to/tla2tools.jar
-export TLA_JAR_APPROVED_SHA256=<ryan-approved-sha256>
-bash docs/plans/formal/cg2/run-design-a-tlc.sh
-```
-
-Each successful run must record in this README (one subsection per
-configuration):
-
-- exact implementation/model git SHA at TLC run time;
-- exact config path;
-- exact command line (including `timeout`, Java opts, `-config`, module path);
-- `TLA_JAR` path used;
-- TLA JAR SHA-256 (`TLA_JAR_SHA256`);
-- TLC version string (`TLC_VERSION`);
-- Java version string (`JAVA_VERSION`);
-- start timestamp and end timestamp (or elapsed seconds);
-- exit status;
-- PASS or failure result;
-- generated states, distinct states, depth, and action-coverage summary from log.
-
-### Design A run subsections (fill after TLC)
+### Design A run subsections
 
 #### CG2Cutover.cfg
 
-_Pending JAR approval._
+| Field | Value |
+|---|---|
+| Config | `docs/plans/formal/cg2/CG2Cutover.cfg` |
+| Start (UTC) | `2026-08-29T03:40:23Z` |
+| End (UTC) | `2026-08-29T03:41:34Z` |
+| Exit | `0` |
+| Generated / distinct / depth | `10,249,297` / `311,336` / `29` |
+| Log | `/tmp/tlc-CG2Cutover-0b5dd4ceae3108c4938f8f1ab3c83af320fa520e.log` |
+| Result | **PASS** |
+
+Command:
+
+```sh
+timeout 1800 java -Xmx2g -XX:+UseParallelGC \
+  -cp /home/lauer/.local/share/tlaplus/tla2tools-v1.7.4.jar tlc2.TLC \
+  -workers 2 -coverage 1 \
+  -config docs/plans/formal/cg2/CG2Cutover.cfg \
+  docs/plans/formal/cg2/CG2Authority.tla
+```
+
+Nonzero Design A action coverage includes: D0 capture/validate/ratify,
+`ConvertLegacyToGRb`, `RebindLegacyRoot`, `PublishDesignAFence`,
+`ResumeFromFence`, `PublishCanaryGuard`, `ResumeFromGuard`,
+`PublishFirstPointer`, `RecoverExactPointer`, plus read-authority /
+retry / freeze / refusal / mediated-fallback rows from restored graph.
 
 #### CG2StaleReconcile.cfg
 
-_Pending JAR approval._
+| Field | Value |
+|---|---|
+| Config | `docs/plans/formal/cg2/CG2StaleReconcile.cfg` |
+| Start (UTC) | `2026-08-29T03:41:34Z` |
+| End (UTC) | `2026-08-29T03:44:56Z` |
+| Exit | `0` |
+| Generated / distinct / depth | `24,316,705` / `1,298,112` / `29` |
+| Log | `/tmp/tlc-CG2StaleReconcile-0b5dd4ceae3108c4938f8f1ab3c83af320fa520e.log` |
+| Result | **PASS** |
+
+Command:
+
+```sh
+timeout 1800 java -Xmx2g -XX:+UseParallelGC \
+  -cp /home/lauer/.local/share/tlaplus/tla2tools-v1.7.4.jar tlc2.TLC \
+  -workers 2 -coverage 1 \
+  -config docs/plans/formal/cg2/CG2StaleReconcile.cfg \
+  docs/plans/formal/cg2/CG2Authority.tla
+```
+
+Nonzero Design A action coverage includes: full D0 chain, first-cutover
+publish path, `AdvanceSource`, `RollbackToRetained`, `RecoverExactPointer`,
+plus stale-source queue/quarantine reconciliation and GC rows.
 
 #### CG2Rename.cfg
 
-_Pending JAR approval._
+| Field | Value |
+|---|---|
+| Config | `docs/plans/formal/cg2/CG2Rename.cfg` |
+| Start (UTC) | `2026-08-29T03:44:56Z` |
+| End (UTC) | `2026-08-29T03:44:58Z` |
+| Exit | `0` |
+| Generated / distinct / depth | `29,097` / `11,062` / `24` |
+| Log | `/tmp/tlc-CG2Rename-0b5dd4ceae3108c4938f8f1ab3c83af320fa520e.log` |
+| Result | **PASS** |
+
+Command:
+
+```sh
+timeout 1800 java -Xmx2g -XX:+UseParallelGC \
+  -cp /home/lauer/.local/share/tlaplus/tla2tools-v1.7.4.jar tlc2.TLC \
+  -workers 2 -coverage 1 \
+  -config docs/plans/formal/cg2/CG2Rename.cfg \
+  docs/plans/formal/cg2/CG2Authority.tla
+```
+
+Nonzero action coverage includes: `BuildCandidate`, `ColdValidate`,
+`FenceOwner`, `PromoteCandidate` (ordinary forward CAS promotion),
+`BeginRename`, old-owner retirement, freeze/torn-vector refusal,
+generation read, legacy read.
 
 #### CG2DesignA.cfg
 
-_Pending JAR approval._
+| Field | Value |
+|---|---|
+| Config | `docs/plans/formal/cg2/CG2DesignA.cfg` |
+| Start (UTC) | `2026-08-29T03:44:58Z` |
+| End (UTC) | `2026-08-29T03:45:47Z` |
+| Exit | `0` |
+| Generated / distinct / depth | `7,900,129` / `199,872` / `23` |
+| Log | `/tmp/tlc-CG2DesignA-0b5dd4ceae3108c4938f8f1ab3c83af320fa520e.log` |
+| Result | **PASS** |
+
+Command:
+
+```sh
+timeout 1800 java -Xmx2g -XX:+UseParallelGC \
+  -cp /home/lauer/.local/share/tlaplus/tla2tools-v1.7.4.jar tlc2.TLC \
+  -workers 2 -coverage 1 \
+  -config docs/plans/formal/cg2/CG2DesignA.cfg \
+  docs/plans/formal/cg2/CG2Authority.tla
+```
+
+Nonzero Design A action coverage includes: D0 chain, `ConvertLegacyToGRb`,
+`RebindLegacyRoot`, fence/guard crash-resume (`ResumeFromFence`,
+`ResumeFromGuard`), `RefuseWrongGuard`, first pointer publish,
+`AdvanceSource`, `RollbackToRetained`, `RecoverExactPointer`.
+`ForwardPromote` / `RefuseSecondPromotionWhileGuardOpen` show `0` enables
+in this focused graph; canary-window blocking is verified by
+`FirstCanaryBlocksSecondPromotion` invariant and structural
+`ForwardPromote` guards; ordinary forward CAS promotion is covered in
+`CG2Rename.cfg` via `PromoteCandidate`.
 
 ## Running TLC manually
 
