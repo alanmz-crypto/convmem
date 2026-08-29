@@ -316,6 +316,60 @@ def test_first_acquire_write_attestation_failure_rolls_back_process_registry(
         assert _process_writer_leases.attestation is None
 
 
+def test_write_attestation_late_failure_leaves_no_orphan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from chroma_write_store import (
+        _process_writer_leases,
+        load_attestation,
+        shared_writer_lease,
+    )
+
+    lock = tmp_path / "gate.lock"
+    attest = tmp_path / "attest"
+    pid = os.getpid()
+    attestation_path = attest / f"{pid}.json"
+    fail_once = {"pending": True}
+    real_chmod = os.chmod
+
+    def chmod_fail(path, mode):  # type: ignore[no-untyped-def]
+        if fail_once["pending"] and str(path).endswith(".tmp"):
+            fail_once["pending"] = False
+            raise OSError(13, "chmod failed")
+        return real_chmod(path, mode)
+
+    monkeypatch.setattr(os, "chmod", chmod_fail)
+    with pytest.raises(OSError, match="chmod failed"):
+        with shared_writer_lease(
+            lock_path=lock,
+            attest_dir=attest,
+            entrypoint="test.late_attestation_failure",
+        ):
+            pass
+    assert not attestation_path.exists()
+    assert load_attestation(pid, attest_dir=attest) is None
+    assert list(attest.glob("*.tmp")) == []
+    assert list(attest.glob(f".{pid}.json.*.tmp")) == []
+    with _process_writer_leases.lock:
+        assert _process_writer_leases.active_count == 0
+        assert _process_writer_leases.attestation is None
+
+    with shared_writer_lease(
+        lock_path=lock,
+        attest_dir=attest,
+        entrypoint="test.late_attestation_recovery",
+    ) as recovered:
+        assert attestation_path.is_file()
+        assert load_attestation(pid, attest_dir=attest) is not None
+        assert recovered.entrypoint == "test.late_attestation_recovery"
+
+    assert load_attestation(pid, attest_dir=attest) is None
+    assert not attestation_path.exists()
+    with _process_writer_leases.lock:
+        assert _process_writer_leases.active_count == 0
+        assert _process_writer_leases.attestation is None
+
+
 def _child_hold_exclusive(lock_path: str, ready_path: str, release_path: str) -> None:
     import fcntl
 

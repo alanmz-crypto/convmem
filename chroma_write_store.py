@@ -11,6 +11,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import tempfile
 import threading
 import time
 import uuid
@@ -238,8 +239,33 @@ def write_attestation(
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{attestation.pid}.json"
     payload = json.dumps(attestation.as_dict(), indent=2, sort_keys=True) + "\n"
-    path.write_text(payload, encoding="utf-8")
-    os.chmod(path, 0o600)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=str(directory),
+    )
+    published = False
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            fd = -1
+            handle.write(payload.encode("utf-8"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(tmp_name, 0o600)
+        os.replace(tmp_name, path)
+        published = True
+    except BaseException:
+        if not published:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+            if fd >= 0:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+        raise
     return path
 
 
