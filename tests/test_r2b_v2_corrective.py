@@ -80,7 +80,7 @@ class R2bV2CrossSliceBindingTests(unittest.TestCase):
 
     def test_mismatched_coverage_digest_refused(self):
         with tempfile.TemporaryDirectory() as td:
-            lease, trusted, *_ = self._clean_coverage_bundle(Path(td), "bind-digest")
+            lease, _, *_ = self._clean_coverage_bundle(Path(td), "bind-digest")
             try:
                 with self.assertRaises(R2bQuiescenceLeaseError):
                     verify_r2b_quiescence_lease(
@@ -117,7 +117,7 @@ class R2bV2CrossSliceBindingTests(unittest.TestCase):
 
     def test_state_machine_wrong_run_id_refused(self):
         with tempfile.TemporaryDirectory() as td:
-            lease, trusted, *_ = self._clean_coverage_bundle(Path(td), "bind-runid")
+            lease, _, *_ = self._clean_coverage_bundle(Path(td), "bind-runid")
             sm = new_authority_state_machine("other-run")
             sm.transition(AuthorityState.PREPARED, reason="init")
             sm.transition(AuthorityState.Q_AUTHORIZED, reason="prep")
