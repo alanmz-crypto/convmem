@@ -48,25 +48,37 @@ _RATIFIED_DURATION_RE = re.compile(
 )
 
 
+def _contract_version_errors(manifest: dict[str, Any]) -> list[str]:
+    """Strict contract version parsing — only exact int 2 is valid."""
+    raw = manifest.get("r2b_contract_version")
+    if raw is None:
+        return ["r2b_contract_version is required for v2 manifests"]
+    if isinstance(raw, bool):
+        return [f"r2b_contract_version must be exact int {R2B_CONTRACT_VERSION}, not bool"]
+    if not isinstance(raw, int):
+        return [
+            f"r2b_contract_version must be exact int {R2B_CONTRACT_VERSION}, "
+            f"got {type(raw).__name__}"
+        ]
+    if raw != R2B_CONTRACT_VERSION:
+        return [f"r2b_contract_version must be exact int {R2B_CONTRACT_VERSION}, got {raw}"]
+    return []
+
+
 def detect_contract_version(manifest: dict[str, Any]) -> int:
-    """Return manifest contract version; absent or non-numeric means v1."""
+    """Return manifest contract version; absent or non-exact means v1."""
     raw = manifest.get("r2b_contract_version")
     if raw is None:
         return 1
-    try:
-        return int(raw)
-    except (TypeError, ValueError):
-        return 1
+    if isinstance(raw, int) and not isinstance(raw, bool) and raw == R2B_CONTRACT_VERSION:
+        return R2B_CONTRACT_VERSION
+    return 1
 
 
 def validate_v2_policy_fields(manifest: dict[str, Any]) -> list[str]:
     """Validate only the v2 policy triple; does not upgrade v1 manifests."""
     errors: list[str] = []
-    version = detect_contract_version(manifest)
-    if version != R2B_CONTRACT_VERSION:
-        errors.append(
-            f"r2b_contract_version must be {R2B_CONTRACT_VERSION}, got {version!r}"
-        )
+    errors.extend(_contract_version_errors(manifest))
     if str(manifest.get("service_policy") or "") != SERVICE_POLICY_V2:
         errors.append(f'service_policy must be "{SERVICE_POLICY_V2}"')
     if str(manifest.get("source_quiescence_policy") or "") != SOURCE_QUIESCENCE_POLICY_V2:
@@ -159,6 +171,7 @@ __all__ = [
     "SERVICE_POLICY_V2",
     "SOURCE_QUIESCENCE_POLICY_V2",
     "REQUIRED_R2B_FIELDS",
+    "_contract_version_errors",
     "assert_no_ratified_duration_defaults",
     "detect_contract_version",
     "make_r2b_v2_run_manifest_for_tests",

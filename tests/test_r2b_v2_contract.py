@@ -10,19 +10,27 @@ from eval_corpus.run_manifest import validate_r2b_manifest_schema
 from eval_corpus.r2b_v2.authority_state import (
     AuthorityState,
     AuthorityStateError,
-    AuthorityStateMachine,
+    new_authority_state_machine,
+    observe_authority_state,
     reconstruct_state_machine,
+    transition_to_coverage_proven,
+    transition_to_q_held,
 )
 from eval_corpus.r2b_v2.contract import (
     R2B_CONTRACT_VERSION,
     SERVICE_POLICY_V2,
     SOURCE_QUIESCENCE_POLICY_V2,
+    _contract_version_errors,
     assert_no_ratified_duration_defaults,
     detect_contract_version,
     make_r2b_v2_run_manifest_for_tests,
     validate_r2b_v2_manifest_schema,
     validate_v2_policy_fields,
 )
+from eval_corpus.r2b_v2.coverage.inventory import build_static_route_inventory
+from eval_corpus.r2b_v2.coverage.proof import mint_trusted_coverage_proof, prove_zero_bypass_coverage
+from eval_corpus.r2b_v2.lease import acquire_r2b_quiescence_lease
+from eval_corpus.r2b_v2.trusted import _reset_for_tests
 from tests.r2b_hermetic import r2b_source_paths
 
 
@@ -50,6 +58,13 @@ class R2bV2ContractTests(unittest.TestCase):
     def test_absent_contract_version_is_v1(self):
         self.assertEqual(detect_contract_version({}), 1)
 
+    def test_strict_contract_version_only_exact_int_two(self):
+        self.assertEqual(_contract_version_errors({"r2b_contract_version": 2}), [])
+        self.assertTrue(_contract_version_errors({"r2b_contract_version": "2"}))
+        self.assertTrue(_contract_version_errors({"r2b_contract_version": 2.0}))
+        self.assertTrue(_contract_version_errors({"r2b_contract_version": True}))
+        self.assertTrue(_contract_version_errors({"r2b_contract_version": 3}))
+
     def test_wrong_policy_values_refuse(self):
         with tempfile.TemporaryDirectory() as td:
             body = make_r2b_v2_run_manifest_for_tests(paths=r2b_source_paths(Path(td)))
@@ -59,9 +74,9 @@ class R2bV2ContractTests(unittest.TestCase):
 
     def test_no_default_production_duration(self):
         payload = (
-            'acquisition_bound: 900\n'
-            'transaction_deadline = 3600\n'
-            'policy says 900 seconds is fine'
+            "acquisition_bound: 900\n"
+            "transaction_deadline = 3600\n"
+            "policy says 900 seconds is fine"
         )
         errs = assert_no_ratified_duration_defaults(payload)
         self.assertTrue(errs)
@@ -75,8 +90,18 @@ class R2bV2ContractTests(unittest.TestCase):
 
 
 class R2bV2AuthorityStateTests(unittest.TestCase):
+    def setUp(self) -> None:
+        _reset_for_tests()
+
+    def test_new_authority_state_machine_factory(self):
+        sm = new_authority_state_machine("run-factory")
+        self.assertEqual(sm.run_id, "run-factory")
+        self.assertEqual(sm.state, AuthorityState.NEW)
+        obs = observe_authority_state(sm)
+        self.assertFalse(obs["resumed"])
+
     def test_happy_path_through_coverage_proven(self):
-        sm = AuthorityStateMachine(run_id="run-1")
+        sm = new_authority_state_machine("run-1")
         sm.transition(AuthorityState.PREPARED, reason="init")
         sm.transition(AuthorityState.Q_AUTHORIZED, reason="prep grant")
         sm.transition(AuthorityState.Q_ACQUIRING, reason="acquire start")
@@ -84,31 +109,86 @@ class R2bV2AuthorityStateTests(unittest.TestCase):
         sm.transition(AuthorityState.COVERAGE_PROVEN, reason="coverage ok")
         self.assertEqual(sm.state, AuthorityState.COVERAGE_PROVEN)
 
+    def test_i4_plus_transition_blocked(self):
+        sm = new_authority_state_machine("run-i4")
+        sm.transition(AuthorityState.PREPARED, reason="init")
+        sm.transition(AuthorityState.Q_AUTHORIZED, reason="prep")
+        sm.transition(AuthorityState.Q_ACQUIRING, reason="acquire")
+        sm.transition(AuthorityState.Q_HELD, reason="held")
+        sm.transition(AuthorityState.COVERAGE_PROVEN, reason="coverage")
+        with self.assertRaises(AuthorityStateError) as ctx:
+            sm.transition(AuthorityState.SNAPSHOT_BOUND, reason="i4 blocked")
+        self.assertIn("I4+", str(ctx.exception))
+
     def test_invalid_transition_refuses(self):
-        sm = AuthorityStateMachine(run_id="run-2")
+        sm = new_authority_state_machine("run-2")
         with self.assertRaises(AuthorityStateError):
             sm.transition(AuthorityState.Q_HELD, reason="skip")
 
     def test_aborted_cannot_return(self):
-        sm = AuthorityStateMachine(run_id="run-3")
+        sm = new_authority_state_machine("run-3")
         sm.transition(AuthorityState.PREPARED, reason="init")
         sm.abort(reason="fail")
         with self.assertRaises(AuthorityStateError):
             sm.transition(AuthorityState.Q_AUTHORIZED, reason="retry")
 
     def test_quarantined_cannot_return(self):
-        sm = AuthorityStateMachine(run_id="run-4")
+        sm = new_authority_state_machine("run-4")
         sm.transition(AuthorityState.PREPARED, reason="init")
         sm.quarantine(reason="hold")
         with self.assertRaises(AuthorityStateError):
             sm.transition(AuthorityState.Q_AUTHORIZED, reason="retry")
 
     def test_reconstructed_state_cannot_resume(self):
-        sm = reconstruct_state_machine(
-            run_id="run-5", state=AuthorityState.Q_HELD
-        )
+        sm = reconstruct_state_machine(run_id="run-5", state=AuthorityState.Q_HELD)
         with self.assertRaises(AuthorityStateError):
             sm.transition(AuthorityState.COVERAGE_PROVEN, reason="resume")
+
+    def test_evidence_coupled_transitions(self):
+        import time
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            chroma = root / "chroma"
+            processed = root / "processed.json"
+            export = root / "export"
+            chroma.mkdir()
+            export.mkdir()
+            processed.write_text("{}", encoding="utf-8")
+            gate = root / "gate.lock"
+            rev = "evidence-rev"
+            inv = build_static_route_inventory(code_revision=rev)
+            diag = prove_zero_bypass_coverage(
+                chroma_dir=chroma,
+                processed_path=processed,
+                export_root=export,
+                test_gate_path=gate,
+                code_revision=rev,
+                static_inventory=inv,
+            )
+            trusted = mint_trusted_coverage_proof(diag)
+            sm = new_authority_state_machine("evidence-run")
+            sm.transition(AuthorityState.PREPARED, reason="init")
+            sm.transition(AuthorityState.Q_AUTHORIZED, reason="prep")
+            lease = acquire_r2b_quiescence_lease(
+                run_id="evidence-run",
+                grant_digest="g",
+                authority_digest="a",
+                test_lock_path=gate,
+                writer_coverage_digest=trusted.coverage_digest,
+                open_evidence_digest="open-ev",
+                monotonic_deadline=time.monotonic() + 30,
+                bound_source_paths=(str(export), str(processed), str(chroma)),
+                timeout_ms=5000,
+            )
+            try:
+                transition_to_q_held(sm, lease, reason="lease held")
+                transition_to_coverage_proven(
+                    sm, lease, trusted, reason="coverage proven"
+                )
+                self.assertEqual(sm.state, AuthorityState.COVERAGE_PROVEN)
+            finally:
+                lease.release()
 
 
 if __name__ == "__main__":
