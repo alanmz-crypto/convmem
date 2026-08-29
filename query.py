@@ -198,6 +198,71 @@ def _merge_priority_hits(primary: list[dict], extras: list[dict]) -> list[dict]:
     return merged
 
 
+def _filter_results_by_scope(
+    results: list[dict],
+    *,
+    domain: str | None,
+    site_norm: str | None,
+) -> list[dict]:
+    """Apply hierarchical domain and exact site filters to retrieval rows."""
+    if site_norm:
+        results = filter_results_by_site(results, site_norm)
+    if domain:
+        results = [
+            r
+            for r in results
+            if (ud := _unit_domain(r.get("metadata", {}))) is not None
+            and domain_matches(ud, domain)
+        ]
+    return results
+
+
+def _filter_ledger_extras_by_domain(
+    hits: list[dict],
+    domain: str | None,
+) -> list[dict]:
+    """Drop ledger/anchor priority hits that fall outside an active domain scope."""
+    if not domain:
+        return hits
+    return [
+        hit
+        for hit in hits
+        if (ud := _unit_domain(hit.get("metadata") or {})) is not None
+        and domain_matches(ud, domain)
+    ]
+
+
+def _fetch_scoped_units(
+    repo,
+    embedding: list[float],
+    *,
+    candidate_k: int,
+    domain: str | None,
+    site_norm: str | None,
+) -> list[dict]:
+    """Vector fetch with bounded adaptive over-fetch when scope filters are active."""
+    if not domain and not site_norm:
+        return repo.query_units(embedding, candidate_k)
+
+    try:
+        collection_bound = max(candidate_k, int(repo.count_units()))
+    except Exception:  # pylint: disable=broad-exception-caught
+        collection_bound = candidate_k
+
+    n_fetch = min(candidate_k * 3, collection_bound)
+    filtered: list[dict] = []
+    while True:
+        raw = repo.query_units(embedding, n_fetch)
+        filtered = _filter_results_by_scope(raw, domain=domain, site_norm=site_norm)
+        if len(filtered) >= candidate_k or n_fetch >= collection_bound:
+            break
+        next_fetch = min(max(n_fetch * 2, n_fetch + candidate_k), collection_bound)
+        if next_fetch <= n_fetch:
+            break
+        n_fetch = next_fetch
+    return filtered
+
+
 def _ledger_lookup_hits(cfg: dict, store, query: str) -> list[dict]:
     """Exact ledger id lookup + protocol fallback anchor from approved JSONL."""
     from ledger import find_unit_by_ledger_id
@@ -375,14 +440,14 @@ def query_units(
     )
 
     candidate_k = max(top_k, int(qcfg.get("top_k_candidates", 20) or 20))
-    n_fetch = candidate_k
     domain = normalize_domain(domain) if domain else None
     site_norm = normalize_site(site) if site else None
+    scoped_fetch_k = candidate_k
     if domain or site_norm:
         # Domain filtering is hierarchical (parent matches children), which
         # Chroma's exact-match `where` can't express, so over-fetch and
         # filter client-side before reranking/truncating.
-        n_fetch = candidate_k * 3
+        scoped_fetch_k = candidate_k * 3
 
     ledger_extras: list[dict] = []
     from serving_authority import ServingBackendTransient
@@ -392,17 +457,19 @@ def query_units(
         with open_serving_index_repository(
             cfg, mediated_fallback=_fallback_query_rows
         ) as repo:
-            results = repo.query_units(embedding, n_fetch)
+            if domain or site_norm:
+                results = _fetch_scoped_units(
+                    repo,
+                    embedding,
+                    candidate_k=candidate_k,
+                    domain=domain,
+                    site_norm=site_norm,
+                )
+            else:
+                results = repo.query_units(embedding, candidate_k)
             if not skip_ledger_priority:
                 ledger_extras = _ledger_lookup_hits(cfg, repo.legacy_store(), text)
-        if site_norm:
-            results = filter_results_by_site(results, site_norm)
-        if domain:
-            results = [
-                r for r in results
-                if (ud := _unit_domain(r.get("metadata", {}))) is not None
-                and domain_matches(ud, domain)
-            ]
+                ledger_extras = _filter_ledger_extras_by_domain(ledger_extras, domain)
     except ServingBackendTransient:
         with open_serving_index_repository(
             cfg, mediated_fallback=_fallback_query_rows
@@ -410,12 +477,13 @@ def query_units(
             results = repo.mediated_keyword_fallback(
                 "knowledge_units",
                 text,
-                n_fetch,
+                scoped_fetch_k,
                 domain=domain,
                 site=site,
             ).rows
         if not skip_ledger_priority:
             ledger_extras = _ledger_lookup_hits(cfg, None, text)
+            ledger_extras = _filter_ledger_extras_by_domain(ledger_extras, domain)
     for r in results:
         d = r.get("distance")
         if d is not None:
@@ -480,6 +548,7 @@ def query_raw(
     text: str,
     top_k: int = 5,
     site: str | None = None,
+    domain: str | None = None,
     *,
     cfg: dict | None = None,
 ) -> list[dict]:
@@ -491,7 +560,8 @@ def query_raw(
         text, model=models["embed_model"], host=models["ollama_host"]
     )
     site_norm = normalize_site(site) if site else None
-    n_fetch = top_k * 3 if site_norm else top_k
+    domain_norm = normalize_domain(domain) if domain else None
+    n_fetch = top_k * 3 if (site_norm or domain_norm) else top_k
     from serving_authority import ServingBackendTransient
     from serving_index_repository import open_serving_index_repository
 
@@ -500,8 +570,9 @@ def query_raw(
             cfg, mediated_fallback=_fallback_query_rows
         ) as repo:
             results = repo.query_summaries(embedding, n_fetch)
-        if site_norm:
-            results = filter_results_by_site(results, site_norm)
+        results = _filter_results_by_scope(
+            results, domain=domain_norm, site_norm=site_norm
+        )
     except ServingBackendTransient:
         with open_serving_index_repository(
             cfg, mediated_fallback=_fallback_query_rows
@@ -510,6 +581,7 @@ def query_raw(
                 "conversation_summaries",
                 text,
                 n_fetch,
+                domain=domain,
                 site=site,
             ).rows
     for r in results:

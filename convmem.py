@@ -52,7 +52,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
-    "unresolved", "tldr", "work", "agent-run", "shadow-inventory", "shadow-activate",
+    "unresolved", "tldr", "work", "agent-run", "scope", "shadow-inventory", "shadow-activate",
     "shadow-rollback", "shadow-canary", "writer-census-start",
     "writer-census-status", "writer-census-report",
 }
@@ -106,7 +106,7 @@ def _guard_write() -> None:
 
 
 @app.command()
-def search(
+def search(  # pylint: disable=too-many-positional-arguments
     query: str = typer.Argument(..., help="What you're trying to recall"),
     raw: bool = typer.Option(False, "--raw", help="Search conversation summaries (fallback layer)"),
     top: int = typer.Option(5, "--top", help="Number of results"),
@@ -116,17 +116,27 @@ def search(
     site: str | None = typer.Option(
         None, "--site", help="Scope to a site hostname, e.g. staging2.willowyhollow.com"
     ),
+    cross_domain: bool = typer.Option(
+        False,
+        "--cross-domain",
+        help="Widen retrieval to all domains for this call only (non-sticky)",
+    ),
     open_at: int | None = typer.Option(
         None, "--open", min=1, help="Open result # in its source chat app"
     ),
 ):
     """Search past conversations."""
     from query import query_raw, query_units, render_search_results, render_warning
+    from read_scope import resolve_retrieval_domain
+
+    effective_domain, _scope_meta = resolve_retrieval_domain(
+        domain, cross_domain=cross_domain
+    )
 
     if raw:
-        if domain:
-            render_warning("--domain has no effect with --raw (summaries aren't domain-tagged).")
-        results = query_raw(query, top_k=top, site=site)
+        results = query_raw(
+            query, top_k=top, site=site, domain=effective_domain
+        )
         render_search_results(results, units=False)
     else:
         if not _primary_search_ready():
@@ -140,7 +150,9 @@ def search(
                 "primary search is thin. Use --raw until backfill completes, or:\n"
                 "rm ~/.local/share/convmem/processed.json && convmem index"
             )
-        results = query_units(query, top_k=top, domain=domain, site=site)
+        results = query_units(
+            query, top_k=top, domain=effective_domain, site=site
+        )
         render_search_results(results, units=True)
 
     from next_steps import after_search
@@ -209,6 +221,11 @@ def ask_command(  # pylint: disable=too-many-arguments
         "--trace",
         help="Print retrieval trace JSON (convmem.ask.trace.v1) on stderr",
     ),
+    cross_domain: bool = typer.Option(
+        False,
+        "--cross-domain",
+        help="Widen retrieval to all domains for this call only (non-sticky)",
+    ),
     open_at: int | None = typer.Option(
         None, "--open", min=1, help="After answering, open source citation #"
     ),
@@ -232,6 +249,7 @@ def ask_command(  # pylint: disable=too-many-arguments
         site=site,
         evidence=evidence,
         trace=show_trace,
+        cross_domain=cross_domain,
     )
     render_ask_output(out)
     if show_trace and out.get("trace") is not None:
@@ -772,6 +790,41 @@ def doctor(
 
 work_app = typer.Typer(help="Always-GitHub-Fallback: start/resume task branches.")
 app.add_typer(work_app, name="work")
+
+scope_app = typer.Typer(help="Session read-scope default for retrieval (read-only).")
+app.add_typer(scope_app, name="scope")
+
+
+@scope_app.command("set")
+def scope_set_command(
+    domain: str = typer.Argument(..., help="Domain for this session's default retrieval scope"),
+):
+    """Set session read-scope default (e.g. relocation)."""
+    from read_scope import set_read_scope
+
+    normalized = set_read_scope(domain)
+    typer.echo(f"Session read scope set to: {normalized}")
+
+
+@scope_app.command("clear")
+def scope_clear_command():
+    """Clear session read-scope default."""
+    from read_scope import clear_read_scope
+
+    clear_read_scope()
+    typer.echo("Session read scope cleared.")
+
+
+@scope_app.command("show")
+def scope_show_command():
+    """Show active session read-scope default, if any."""
+    from read_scope import get_read_scope
+
+    active = get_read_scope()
+    if active:
+        typer.echo(active)
+    else:
+        typer.echo("(none)")
 
 
 @work_app.command("start")

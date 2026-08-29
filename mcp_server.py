@@ -764,10 +764,11 @@ if _mcp_profile() != "shell":
 
 
 @mcp.tool()
-def search_fast(query: str, top_k: int = 5, domain: str = "", site: str = "") -> str:
+def search_fast(query: str, top_k: int = 5, domain: str = "", site: str = "", cross_domain: bool = False) -> str:
     """Fast corpus search. System runbook: call brief() first. Repo: include project slug in query."""
     _apply_shell_roots_brief_boundary_sync()
     from query import query_units
+    from read_scope import resolve_retrieval_domain
 
     blocked = _blocked_until_brief_json()
     if blocked:
@@ -787,8 +788,11 @@ def search_fast(query: str, top_k: int = 5, domain: str = "", site: str = "") ->
             indent=2,
         )
 
+    effective_domain, _scope_meta = resolve_retrieval_domain(
+        domain or None, cross_domain=cross_domain
+    )
     results = query_units(
-        query, top_k=top_k, domain=domain or None, site=site or None
+        query, top_k=top_k, domain=effective_domain, site=site or None
     )
     if not results:
         return json.dumps({"results": [], "message": "No relevant knowledge units found."})
@@ -796,13 +800,17 @@ def search_fast(query: str, top_k: int = 5, domain: str = "", site: str = "") ->
 
 
 @mcp.tool()
-def search(query: str, top_k: int = 5, domain: str = "", site: str = "") -> str:
+def search(query: str, top_k: int = 5, domain: str = "", site: str = "", cross_domain: bool = False) -> str:
     """Search the knowledge corpus for relevant units. Returns scored results."""
     _apply_shell_roots_brief_boundary_sync()
     from query import query_units
+    from read_scope import resolve_retrieval_domain
 
+    effective_domain, _scope_meta = resolve_retrieval_domain(
+        domain or None, cross_domain=cross_domain
+    )
     results = query_units(
-        query, top_k=top_k, domain=domain or None, site=site or None
+        query, top_k=top_k, domain=effective_domain, site=site or None
     )
     return _search_payload(results)
 
@@ -816,6 +824,7 @@ def ask(
     evidence: bool = True,
     *,
     trace: bool = False,
+    cross_domain: bool = False,
 ) -> str:
     """Answer a question using retrieved memories. Returns answer + citations.
 
@@ -836,6 +845,7 @@ def ask(
         raw=False,
         evidence=evidence,
         trace=trace,
+        cross_domain=cross_domain,
     )
     payload = {
         "answer": result.get("answer", ""),
