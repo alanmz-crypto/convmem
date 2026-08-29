@@ -13,14 +13,14 @@ tip** (code-bearing commit), not the later evidence-only commit.
 
 | Role | SHA |
 |---|---|
-| `implementation_tip` | `e2af5001c4de0852e94769fc5692105353d5046c` |
-| `evidence_tip` | `5cdc6be…` (inventory commit on clean-base branch) |
+| `implementation_tip` | `337add3db0aba78f6f571b40d543c635a7909c63` |
+| `evidence_tip` | `3f45bdd…` (latest inventory bind on clean-base branch) |
 
 `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` is generated at
 `implementation_tip` via detached worktree:
 
 ```bash
-git worktree add /tmp/r2b-inv-bind e2af500
+git worktree add /tmp/r2b-inv-bind 337add3
 cd /tmp/r2b-inv-bind
 python -c "from eval_corpus.r2b_v2.coverage.inventory import write_v2_inventory_file; write_v2_inventory_file()"
 ```
