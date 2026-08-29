@@ -1025,6 +1025,30 @@ DesignAAuthorityOps(o, grant, fresh_grant, qc) ==
           RollbackToRetained(o, target, expected, qc))
     \/ RecoverExactPointer(o)
 
+CutoverDesignAAuthorityOps(o, grant, fresh_grant, qc) ==
+    CaptureD0Candidate(o)
+    \/ ValidateD0Candidate(o)
+    \/ RatifyD0(o, qc)
+    \/ AcquireOwnerLock(o)
+    \/ ConvertLegacyToGRb(o)
+    \/ RebindLegacyRoot(o)
+    \/ PublishDesignAFence(o, grant)
+    \/ CrashAfterFence(o)
+    \/ ResumeFromFence(o, fresh_grant)
+    \/ PublishCanaryGuard(o, grant)
+    \/ CrashAfterGuard(o)
+    \/ ResumeFromGuard(o, fresh_grant)
+    \/ RefuseWrongGuard(o)
+    \/ PublishFirstPointer(o, grant)
+    \/ ReleaseOwnerLock(o)
+    \/ RefusePreFenceStructural(o)
+    \/ RefuseSecondPromotionWhileGuardOpen(o)
+    \/ (\E g \in Generations, expected \in Generations :
+          ForwardPromote(o, g, expected))
+    \/ (\E target \in Generations, expected \in Generations :
+          RollbackToRetained(o, target, expected, qc))
+    \/ RecoverExactPointer(o)
+
 
 Next ==
     \/ (\E o \in Owners, grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
@@ -1067,8 +1091,8 @@ product (for example, recovery-history choices cannot affect rename pins).
 ***************************************************************************)
 
 CutoverNext ==
-    \/ (\E o \in Owners, grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
-          DesignAAuthorityOps(o, grant, fresh_grant, qc))
+    \/ (\E grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
+          CutoverDesignAAuthorityOps(OldOwner, grant, fresh_grant, qc))
     \/ (\E g \in Generations : BuildCandidate(OldOwner, g))
     \/ ColdValidate(OldOwner)
     \/ (\E g \in Generations : GarbageCollect(g))
