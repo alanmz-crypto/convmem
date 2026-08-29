@@ -12,10 +12,10 @@ step" on the convmem-watch OOM incident)
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS` |
+| **State** | `READY_FOR_PR` |
 | **Branch** | `fix/2026-08-29-2026-08-29-watch-index-subprocess-memcap` |
-| **Tip SHA** | pending first commit |
-| **Push status** | branch created on origin |
+| **Tip SHA** | `b0d2a8f` |
+| **Push status** | pushed to origin |
 | **PR** | `not opened` |
 | **Ryan GATE** | none (routine ops reliability fix; not arc-scoped) |
 | **Track A ingest** | this Kiro session `messages.jsonl` |
