@@ -1,22 +1,25 @@
-# R2b v2 I1–I3 authority-boundary corrective evidence
+# R2b v2 I1–I3 authority-boundary corrective II evidence
 
 **Arc:** R2b Capture Authorization
 **Current base:** `a19b5cbb2e431aafeda304057c98e6bd81aa0ffd` (PR #247)
-**Prior review tip (failed):** `98e49a32f888133b7ef26f061c00e2929c72a779` (PR #249)
-**Status:** Authority-boundary corrective — NOT operational VERIFY
+**Prior review tip (failed):** `b28078ebba59edcfbf19e5cb7281410048f549f6` / `4ba6550ec164245190476094d7f64ce5ec5778bc`
+**Status:** Authority-boundary corrective II — NOT operational VERIFY
 
 ## Two-SHA model
 
 | Role | SHA |
 |---|---|
-| `implementation_tip` | `b28078ebba59edcfbf19e5cb7281410048f549f6` |
+| `implementation_tip` | `5d72f45` |
 | `evidence_tip` | *(this commit)* |
 
-Inventory digest: `a8bed0dd605b971dd4f479a59b09faea1d290395b9d678d51ef5cfd80e6ca669`
+Inventory digest: `1d151a01c91bfd0aae835e601afc150b9556ab94061f34847e5fb469cbb8f54d`
 
-## Authority-boundary design
+## Authority-boundary design (corrective II)
 
-- Registry minting internalized in `_registry_mint.py` (not public import surface)
+- Source-authority mint internalized: `compose_and_mint_source_authority` requires live lease+coverage handles and cross-slice binding checks
+- No public `mint_source_authority_record` or `register_custodian` on `authority_registry` import surface
+- Custodian registration lifecycle-only via `_register_lease_custodian` (overwrite refused)
+- Registry minting remains in `_registry_mint.py` (not public import surface)
 - Diagnostic census provenance seal required to consume tickets
 - Coverage mint requires consumed ticket one-shot; mint seal + epoch on records
 - Source authority proof opaque, registry-backed, epoch-bound
