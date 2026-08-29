@@ -1,0 +1,32 @@
+{
+  "schema": "portland-baseline.run-manifest.v2",
+  "execution_base_sha": "PLACEHOLDER",
+  "accepted_design_sha": "aa8fe35628e78ea939bb3d8a5c4f242f0cf9cb71",
+  "experiment_branch": "fix/2026-08-29-portland-invalidate-report",
+  "agent_b_model": "cursor-composer-2.5 (fresh Agent-B session per question)",
+  "effort_budget_n": 5,
+  "action_definition": "One action = one bounded recovery attempt: a single rg/grep invocation, one file read, one gh search/fetch, or one convmem search/ask call. Agent chooses queries; harness does not.",
+  "source_class_enum": [
+    "native/current-context",
+    "transcript-search",
+    "github/handoff/artifact",
+    "other-ordinary",
+    "convmem"
+  ],
+  "c0_definition": "Fresh Agent B per question; ConvMem disabled; ordinary filesystem rg/read, gh, and transcript directories available.",
+  "c1_definition": "Fresh Agent B per question; identical ordinary environment plus frozen ConvMem (search/ask). CONVMEM_CONFIG points at rerun c1-frozen snapshot.",
+  "symmetry_requirement": "C0 and C1 tool manifests differ only by ConvMem tools; verified before each condition run.",
+  "artifact_policy": "Natural Agent-A transcripts available; experiment-created answer-bearing markdown and inter-model handoffs excluded from C0 roots.",
+  "corpus_freeze_method": "rsync pre-C0 chroma snapshot; multi-field marker in frozen/marker.json",
+  "scoring_rules": "Executor records outcomes; authoritative verdict only after independent review. P@1/MRR omitted if evaluator identity contract cannot match document-derived units.",
+  "questions": [
+    {"id": "Q1", "text": "What is the rent budget ceiling for the Portland move?", "expected_k": ["K2"]},
+    {"id": "Q2", "text": "How much can we afford for housing there each month?", "expected_k": ["K2"]},
+    {"id": "Q3", "text": "What did we think about that one neighborhood?", "expected_k": ["K3"]},
+    {"id": "Q4", "text": "Given the must-haves, what kind of place should we look for?", "expected_k": ["K1", "K2", "K4"]},
+    {"id": "Q5", "text": "What's the current decision on which Portland neighborhood to prioritize?", "expected_k": ["K9"]},
+    {"id": "Q6", "text": "Which option did we rule out and why?", "expected_k": ["K5", "K6"]},
+    {"id": "Q7", "text": "What's still open / undecided about the move?", "expected_k": ["K7"]},
+    {"id": "Q8", "text": "Is there anything relevant we filed elsewhere?", "expected_k": ["K10"]}
+  ]
+}
