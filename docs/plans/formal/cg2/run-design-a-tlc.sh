@@ -7,7 +7,7 @@ set -euo pipefail
 test -r "$TLA_JAR" || { echo "D6 STOP: TLA_JAR not readable: $TLA_JAR" >&2; exit 1; }
 
 TLA_JAR_SHA256="$(sha256sum "$TLA_JAR" | awk '{print $1}')"
-TLC_VERSION="$(java -cp "$TLA_JAR" tlc2.TLC -version 2>&1 | tr -d '\r')"
+TLC_VERSION="$(java -cp "$TLA_JAR" tlc2.TLC -version 2>&1 | head -n1 | tr -d '\r' || true)"
 JAVA_VERSION="$(java -version 2>&1 | head -n1 | tr -d '\r')"
 
 : "${TLA_JAR_APPROVED_SHA256:?approved JAR digest required in Execute evidence input}"
@@ -21,7 +21,7 @@ fi
 TLA_TIMEOUT_SECONDS=1800
 TLA_MODULE="docs/plans/formal/cg2/CG2Authority.tla"
 TLC_JAVA_OPTS=(-Xmx2g -XX:+UseParallelGC)
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 cd "$REPO_ROOT"
 
 echo "TLA_JAR=$TLA_JAR"
@@ -35,11 +35,14 @@ for config in CG2Cutover CG2StaleReconcile CG2Rename CG2DesignA; do
   test -r "$cfg_path" || { echo "D6 STOP: missing config $cfg_path" >&2; exit 1; }
 
   log_path="/tmp/tlc-${config}-$(git rev-parse HEAD).log"
+  metadir="${TLC_METADIR:-$HOME/.local/share/tlaplus/tlc-states}/${config}-$(git rev-parse HEAD)-$$"
+  mkdir -p "$metadir"
   cmd=(
     timeout "${TLA_TIMEOUT_SECONDS}"
     java "${TLC_JAVA_OPTS[@]}"
     -cp "$TLA_JAR" tlc2.TLC
     -workers 2 -coverage 1
+    -metadir "$metadir"
     -config "$cfg_path"
     "$TLA_MODULE"
   )

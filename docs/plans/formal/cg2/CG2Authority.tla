@@ -74,6 +74,7 @@ D0Type ==
      ratified : [Owners -> D0Artifacts \cup {NoArtifact}],
      legacyRootAtCapture : [Owners -> SourceHashes],
      legacyRootAtCutover : [Owners -> SourceHashes],
+     legacyRootAtFirstCutover : [Owners -> SourceHashes],
      ratifiedQueryContext : [Owners -> QueryContexts]]
 
 CutoverTrackType ==
@@ -296,6 +297,7 @@ Init ==
          ratified |-> [o \in Owners |-> NoArtifact],
          legacyRootAtCapture |-> InitialSourceMap,
          legacyRootAtCutover |-> InitialSourceMap,
+         legacyRootAtFirstCutover |-> InitialSourceMap,
          ratifiedQueryContext |-> [o \in Owners |-> CHOOSE q \in QueryContexts : TRUE]]
     /\ cutover =
         [grantId |-> [o \in Owners |-> NoGrant],
@@ -417,10 +419,17 @@ ReconcileQuarantine(o) ==
 
 Reconcile(o) == ReconcileQueue(o) \/ ReconcileQuarantine(o)
 
+D0ChainComplete(o) ==
+    /\ d0.candidate[o] # NoArtifact
+    /\ d0.validated[o] = d0.candidate[o]
+    /\ d0.ratified[o] = d0.candidate[o]
+
 FenceOwner(o) ==
     /\ o \in auth.present
     /\ o \notin auth.retired
     /\ o \notin auth.fence
+    /\ ~(d0.candidate[o] # NoArtifact /\ ~D0ChainComplete(o))
+    /\ cutover.grbBound[o] = NoGen
     /\ CanBump(o)
     /\ auth' =
         [auth EXCEPT
@@ -444,6 +453,7 @@ PromoteCandidate(o) ==
        /\ build.candidateCold[o]
        /\ build.candidateExpected[o] = old
        /\ build.candidateSource[o] = auth.sourceHash[o]
+       /\ cutover.grbBound[o] = NoGen
        /\ o \in auth.present
        /\ o \in auth.fence
        /\ o \notin auth.retired
@@ -489,6 +499,7 @@ ConcurrentPromotion(o, g) ==
        /\ o \in auth.fence
        /\ o \notin auth.retired
        /\ o \notin auth.quarantined
+       /\ cutover.grbBound[o] = NoGen
        /\ o # NewOwner \/ OldOwner \in auth.retired
        /\ FreeGeneration(g)
        /\ CanBump(o)
@@ -727,11 +738,6 @@ UseMediatedTransientFallback(r) ==
             ![r].fallbackMode = "MEDIATED"]
     /\ UNCHANGED <<auth, build, pins, history, d0, cutover>>
 
-D0ChainComplete(o) ==
-    /\ d0.candidate[o] # NoArtifact
-    /\ d0.validated[o] = d0.candidate[o]
-    /\ d0.ratified[o] = d0.candidate[o]
-
 AcquireOwnerLock(o) ==
     /\ cutover.lockHeld[o] = "FREE"
     /\ cutover' = [cutover EXCEPT !.lockHeld[o] = "HELD"]
@@ -876,6 +882,7 @@ PublishFirstPointer(o, grant) ==
     /\ auth.pointer[o] = NoGen
     /\ build.candidateGen[o] = GCanary
     /\ build.candidateCold[o]
+    /\ build.candidateSource[o] = auth.sourceHash[o]
     /\ CanBump(o)
     /\ auth' =
         [auth EXCEPT
@@ -884,6 +891,9 @@ PublishFirstPointer(o, grant) ==
             !.qualified = @ \cup {GCanary},
             !.manifestSource[o] = build.candidateSource[o],
             !.evidenceEpoch[o] = @ + 1]
+    /\ d0' = [d0 EXCEPT
+        !.legacyRootAtCutover[o] = auth.sourceHash[o],
+        !.legacyRootAtFirstCutover[o] = auth.sourceHash[o]]
     /\ cutover' =
         [cutover EXCEPT
             !.phase[o] = "POINTER_PUBLISHED",
@@ -895,7 +905,7 @@ PublishFirstPointer(o, grant) ==
             !.lastFirstCutover =
                 [owner |-> o,
                  grant |-> grant,
-                 legacyRoot |-> d0.legacyRootAtCutover[o],
+                 legacyRoot |-> auth.sourceHash[o],
                  casExpected |-> NoGen,
                  previous |-> GRb,
                  active |-> GCanary],
@@ -906,7 +916,7 @@ PublishFirstPointer(o, grant) ==
         [build EXCEPT
             !.candidateGen[o] = NoGen,
             !.candidateCold[o] = FALSE]
-    /\ UNCHANGED <<reads, pins, d0>>
+    /\ UNCHANGED <<reads, pins>>
 
 RefuseSecondPromotionWhileGuardOpen(o) ==
     /\ cutover.canaryGuard[o] = "OPEN"
@@ -1061,10 +1071,6 @@ CutoverNext ==
           DesignAAuthorityOps(o, grant, fresh_grant, qc))
     \/ (\E g \in Generations : BuildCandidate(OldOwner, g))
     \/ ColdValidate(OldOwner)
-    \/ FenceOwner(OldOwner)
-    \/ PromoteCandidate(OldOwner)
-    \/ RejectStaleCandidate(OldOwner)
-    \/ (\E g \in Generations : ConcurrentPromotion(OldOwner, g))
     \/ (\E g \in Generations : GarbageCollect(g))
     \/ DropLegacy(OldOwner)
     \/ (\E r \in Readers : StartRequest(r))
@@ -1088,10 +1094,6 @@ StaleReconcileNext ==
     \/ ColdValidate(OldOwner)
     \/ (\E h \in SourceHashes : LoseNotification(OldOwner, h))
     \/ Reconcile(OldOwner)
-    \/ FenceOwner(OldOwner)
-    \/ PromoteCandidate(OldOwner)
-    \/ RejectStaleCandidate(OldOwner)
-    \/ (\E g \in Generations : ConcurrentPromotion(OldOwner, g))
     \/ RecoverExactPointer(OldOwner)
     \/ FlipCompleteness(OldOwner)
     \/ (\E g \in Generations : GarbageCollect(g))
@@ -1180,10 +1182,12 @@ FrozenLegacyFinishEnabled ==
 
 PromotionChecksRecorded ==
     ~history.promotionSeen \/
-        /\ history.lastPromotion.expected = history.lastPromotion.prior
         /\ history.lastPromotion.candidateSource =
               history.lastPromotion.sourceAtPublish
         /\ history.lastPromotion.coldValidated
+        /\ IF history.lastPromotion.expected = NoGen
+              THEN history.lastPromotion.prior # NoGen
+              ELSE history.lastPromotion.expected = history.lastPromotion.prior
 
 RecoveryUsesExactPointer ==
     ~history.recoverySeen \/
@@ -1290,7 +1294,7 @@ D0RatificationRequired ==
 
 FirstCutoverRebindsCurrentLegacyRoot ==
     ~history.firstCutoverSeen \/ history.lastFirstCutover.legacyRoot =
-        d0.legacyRootAtCutover[history.lastFirstCutover.owner]
+        d0.legacyRootAtFirstCutover[history.lastFirstCutover.owner]
 
 GRollbackRequiresExactQueryContext ==
     ~history.rollbackSeen \/ history.lastRollback.target # GRb \/
