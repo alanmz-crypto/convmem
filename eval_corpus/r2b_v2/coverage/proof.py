@@ -24,6 +24,7 @@ from chroma_write_store import (
 )
 
 from eval_corpus.r2b_v2._registry_mint import (
+    compose_and_mint_source_authority,
     consume_diagnostic_ticket,
     mint_coverage_from_consumed_ticket,
     register_diagnostic_ticket,
@@ -33,13 +34,9 @@ from eval_corpus.r2b_v2.authority_registry import (
     AuthorityRegistryError,
     CoverageAuthorityRecord,
     DiagnosticMintTicket,
-    SourceAuthorityRecord,
-    bind_coverage_to_lease,
-    current_authority_epoch,
     lookup_coverage_handle,
     lookup_lease_handle,
     lookup_source_handle,
-    mint_source_authority_record,
 )
 from eval_corpus.r2b_v2.coverage_evidence import CoverageEvidenceIdentity
 from eval_corpus.r2b_v2.coverage.inventory import (
@@ -757,21 +754,11 @@ def source_authority_from_lease_and_coverage(
         and coverage_record.runtime_census_digest != expected_runtime_census_digest
     ):
         raise CoverageProofError("runtime_census_digest mismatch")
-    bind_coverage_to_lease(
-        coverage_handle_id=trusted_coverage.authority_handle.handle_id,
-        lease_handle_id=lease.authority_handle.handle_id,
-    )
-    source_record = SourceAuthorityRecord(
-        lease_handle_id=lease.authority_handle.handle_id,
-        coverage_handle_id=trusted_coverage.authority_handle.handle_id,
-        authority_epoch=current_authority_epoch(),
-        run_id=lease_record.run_id,
-        coverage_digest=coverage_record.coverage_digest,
-        gate_identity=coverage_record.gate_identity,
-        gate_path=coverage_record.gate_path,
+    source_handle = compose_and_mint_source_authority(
+        lease_handle=lease.authority_handle,
+        coverage_handle=trusted_coverage.authority_handle,
         open_evidence_digest=open_evidence_digest,
     )
-    source_handle = mint_source_authority_record(source_record)
     return _source_authority_from_handle(source_handle)
 
 
