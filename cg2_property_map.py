@@ -81,13 +81,11 @@ PROPERTY_TEST_MAP: dict[str, dict[str, Any]] = {
     },
     "FrozenGenerationStable": {
         "tests": [
-            (
-                "tests/test_serving_index_repository.py::"
-                "test_frozen_generation_stays_stable_when_pointer_changes_mid_request"
-            ),
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal",
         ],
         "notes": (
-            "Dedicated mid-request freeze test; not shared with retry-budget coverage"
+            "Request-frozen authority via isolated Design A rehearsal "
+            "(cg2_rehearsal._assert_frozen_generation_stable oracle)"
         ),
     },
     "RetryBudgetTerminates": {
@@ -407,8 +405,10 @@ DESIGN_A_INVARIANT_MAP: dict[str, dict[str, Any]] = {
         "implementation": "cg2_cutover_guard.py",
     },
     "frozen_generation_stable_mid_request": {
-        "tests": PROPERTY_TEST_MAP["FrozenGenerationStable"]["tests"],
-        "implementation": "ServingIndexRepository",
+        "tests": [
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal",
+        ],
+        "implementation": "cg2_rehearsal._assert_frozen_generation_stable",
     },
     "gc_disabled_baseline_retained": {
         "tests": [
@@ -448,8 +448,7 @@ def verify_property_map_completeness() -> dict[str, Any]:
         "design_a_formal_count": len(DESIGN_A_FORMAL_PROPERTY_MAP),
         "design_a_invariant_count": len(DESIGN_A_INVARIANT_MAP),
         "frozen_generation_stable_dedicated": (
-            "tests/test_serving_index_repository.py::"
-            "test_frozen_generation_stays_stable_when_pointer_changes_mid_request"
+            "tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal"
             in PROPERTY_TEST_MAP["FrozenGenerationStable"]["tests"]
         ),
     }
