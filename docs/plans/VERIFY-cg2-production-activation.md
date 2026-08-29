@@ -79,6 +79,34 @@ V8a independent sign-off is **PASS** (Kiro); V8b (soak grant) is **PASS**; soak
 | **Negative control** | Inventory tests fail on unclassified reads; cardinality error on forced underfill (`test_mixed_mode_proof`). |
 | **Dual-path coverage** | Serving repository, query layer, MCP stats labeling, doctor checks, mixed-mode proof. |
 
+## Design A Execute closure (D7 — mechanical evidence)
+
+**Status:** Mechanical bundle collected at closure tip `b64860b` (branch
+`feat/2026-08-27-2026-08-27-cg2-d5-rehearsal`). **Does not** authorize
+production D0, production `G_rb`/`G_canary`, V8c, cutover, PR merge/landing,
+or any production operation.
+
+| Field | Value |
+|---|---|
+| D6 accepted starting tip | `9a042fbc0d18500b91e056f47f60a00e20ccdb75` |
+| D7 closure tip | `b64860b05575c62b4563c02ed6f05bb39910b4dc` |
+| Design A architecture SHA | `3d8b151907f02c8b8ead89585fb43904840b210b` |
+| Superseding execution plan SHA | `9a171bdf03d501ff891d991bbdad6acc1abda56c` |
+| D6 TLC model tip (historical) | `ca1298e2c5741e2fca99dbd670d0775a398064f8` |
+| Property map schema | `convmem/cg2-design-a-property-map-v2` |
+| Evidence collector schema | `convmem/cg2-design-a-execute-evidence-v2` |
+
+**Provenance distinction (§12.6 reconciliation):**
+
+| Generation | Proof profile | Meaning |
+|---|---|---|
+| `G_rb` | `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1` | Historical exact-vector state under ratified D0 chain; `historical_embedding_model.status=UNKNOWN`, identifier `null` |
+| `G_canary` | `KNOWN_MODEL_AND_VECTOR_V1` | Writer-produced model and vector provenance under known-model profile |
+
+**Production-negative confirmations:** no production D0 capture/validation,
+no Ryan production D0 ratification, no production `G_rb`/`G_canary` build,
+no fence/pointer publication, no owner activation, no V8c grant, no GC/Shadow/R2b.
+
 ## V0 — Preconditions and evidence identity
 
 | Field | Value |
@@ -155,7 +183,7 @@ V8a independent sign-off is **PASS** (Kiro); V8b (soak grant) is **PASS**; soak
 |---|---|---|---|
 | V6a | Kill/corruption paths fail closed or recover | PASS | `tests/test_file_generation_validate.py`, pointer recovery tests |
 | V6b | Active/previous retention survives restart | PASS | `test_mixed_mode_proof.py::test_retention_survives_restart` |
-| V6c | Rollback uses retained generation, not legacy resurrection | **PENDING** — Design A implementation | Existing evidence (`tests/test_file_generation_store.py` previous retention) proves **retention substrate only**, not `rollback_active_pointer`. Generation-switch rollback API + Design A drill remain unimplemented; do not treat prior PASS as Design A rollback proof. |
+| V6c | Rollback uses retained generation, not legacy resurrection | **PASS** — Design A drill at closure tip | `tests/test_cg2_first_cutover.py` rollback/reconciliation oracles; `tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal` end-to-end G_rb rollback + same-pointer recovery + retained baseline inventory at D7 closure tip `b64860b`. |
 | V6d | Recovery follows durable pointer | PASS | `tests/test_file_generation_pointer.py` recovery paths |
 | V6e | GC disabled; protected generations not deleted | PASS | `PHYSICAL_DELETION_DISABLED`; no delete in proof path |
 
@@ -175,7 +203,7 @@ V8a independent sign-off is **PASS** (Kiro); V8b (soak grant) is **PASS**; soak
 |---|---|---|---|
 | V8a | Independent reviewer signs exact tip | **PASS** — independent sign-off justified | Kiro independent review of CG-2 implementation tip `2f427fcfb8818dd665310bae7e8cd5ffa066bdcc` and preservation check on `main` `451f523b48c9fd998a050edfe6766d14249dcc6b` (CG-2 implementation surfaces unchanged between them). Focused CG-2 tests **43/43 PASS**; CG-2 + generation-core **76/76 PASS**; query/doctor/rerank **84/84 PASS**. Full suite timed out at 180s — **not** claimed PASS or FAIL. No material defects. Non-blocking carry-forward for V8c/canary prep: `FrozenGenerationStable` and `RetryBudgetTerminates` share one test; structural immutability supplements coverage (does **not** block V8a). |
 | V8b | Ryan accepts package / grants soak separately | **PASS** — legacy-only gateway soak grant recorded | Grant recorded in `LATEST.md`. V8b covers the **grant only**, not soak-completion success (see Soak-completion evidence below). |
-| V8c | First-owner packet + one-shot activation grant | **PENDING** (not PASS) | **Definition (Design A / HITL #3):** V8c PASS = Ryan accepted the complete first-owner packet **and** issued the exact one-shot first-owner activation grant. Packet **before grant** must already bind exact `G_rb` (id + manifest SHA) **and** exact `G_canary` (id + manifest SHA) plus source hashes, pipeline fingerprints, embedding provenance, qualification evidence, and implementation SHA. No “fill `G_canary` at cutover”; no post-grant packet amendment to discover the target. Grant is one-shot and self-invalidating: if source/current authority/preconditions change before publication, first-cutover refuses and a **new packet + new V8c grant** are required. **Canary completion** is a separate later evidence record and Ryan decision — not implied by V8c PASS. **Current state:** not authorized; do not mark PASS. Next governed docs step after Design A architecture papering: Design A **execution plan** (packet field anchoring), not premature full V8c packet papering. |
+| V8c | First-owner packet + one-shot activation grant | **PENDING** (not PASS) | **Definition (Design A / HITL #3):** V8c PASS = Ryan accepted the complete first-owner packet **and** issued the exact one-shot first-owner activation grant. Packet **before grant** must bind exact `G_rb` and `G_canary` ids/manifest SHAs plus source hashes, pipeline fingerprints, qualification evidence, and implementation SHA. **Provenance (reconciled at D7):** `G_rb` = `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`; `G_canary` = `KNOWN_MODEL_AND_VECTOR_V1`. Grant is one-shot and self-invalidating. **Current state:** not authorized; Design A D7 Execute closure is separate; V8c remains a later Ryan GATE. |
 
 ## Soak-completion evidence (separate from V8b)
 
@@ -197,23 +225,19 @@ activation manifest, GC, Shadow, and R2b remain unauthorized.
 
 ## Formal property → test map
 
-See `cg2_property_map.py` and `collect_execute_evidence()["property_map"]`.
-Fifteen architecture properties mapped to pytest modules (12 core + fallback pair).
+See `cg2_property_map.py` (`convmem/cg2-design-a-property-map-v2`) and
+`collect_execute_evidence()["property_map"]` at D7 closure tip.
 
 ## Evidence log
 
 ```text
-VERIFY-cg2-production-activation — Execute mechanical fill
-Architecture baseline: e680ce837653698a5be8b78ba02db2f880c40c63
-Execution grant plan: 6a808f1543f2c93270d9f0ed1ae88cad27f6556b
-Subject tip (branch): feat/2026-08-15-cg2-production-activation @ 2a20209
-Mechanical run: pytest isolated CG-2 bundle + full suite (see PR)
-Independent sign-off (V8a): PASS — Kiro; subject 2f427fc; main preservation 451f523
-Ryan GATE soak grant (V8b): PASS — grant recorded (not completion)
-Soak completion: ACCEPTED 2026-08-21 (separate evidence section above)
-First-owner packet (V8c): PENDING — definition papered (Design A); not PASS; not authorized
-V8c PASS definition: complete packet accepted + exact one-shot activation grant
-Canary completion: separate later evidence / Ryan decision
+Design A Execute closure (D7) — mechanical update at b64860b
+Design A architecture: 3d8b151907f02c8b8ead89585fb43904840b210b
+Superseding execution plan: 9a171bdf03d501ff891d991bbdad6acc1abda56c
+D6 accepted tip: 9a042fbc0d18500b91e056f47f60a00e20ccdb75
+D7 closure tip: b64860b05575c62b4563c02ed6f05bb39910b4dc
+V6c Design A rollback drill: PASS (mechanical, closure tip)
+First-owner packet (V8c): PENDING — provenance reconciled; not PASS
 Production activation: NOT PERFORMED
 Automatic GC: NOT PERFORMED
 ```
