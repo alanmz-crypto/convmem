@@ -7,10 +7,15 @@ in a subprocess so Chroma/ML memory is not retained in the watch parent.
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
 from typing import Callable
+
+_DEFAULT_INDEX_MEM_MAX = "2G"
+_DEFAULT_INDEX_MEM_HIGH = "1500M"
+_scoped_fallback_logged = False
 
 from adapters.detect import get_parser
 from process_lock import release_lock
@@ -151,13 +156,58 @@ def _convmem_cli_argv() -> list[str]:
     return [sys.executable, str(Path(__file__).resolve().parent / "convmem.py")]
 
 
+def _user_systemd_session_available() -> bool:
+    runtime = os.environ.get("XDG_RUNTIME_DIR", "")
+    return bool(runtime) and Path(runtime).is_dir()
+
+
+def _scoped_index_cmd(
+    inner_cmd: list[str],
+    cfg: dict,
+    *,
+    verbose: bool = False,
+) -> list[str]:
+    """Wrap index argv in a memory-capped systemd user scope when available."""
+    global _scoped_fallback_logged  # pylint: disable=global-statement
+
+    if not shutil.which("systemd-run") or not _user_systemd_session_available():
+        if verbose and not _scoped_fallback_logged:
+            print(
+                "[watch] systemd-run scope unavailable; index child uncapped",
+                file=sys.stderr,
+            )
+            _scoped_fallback_logged = True
+        return inner_cmd
+
+    watch_cfg = cfg.get("watch") or {}
+    mem_max = watch_cfg.get("subprocess_memory_max", _DEFAULT_INDEX_MEM_MAX)
+    mem_high = watch_cfg.get("subprocess_memory_high", _DEFAULT_INDEX_MEM_HIGH)
+    return [
+        "systemd-run",
+        "--user",
+        "--scope",
+        "--quiet",
+        "-p",
+        f"MemoryMax={mem_max}",
+        "-p",
+        f"MemoryHigh={mem_high}",
+        "-p",
+        "MemorySwapMax=0",
+        "--",
+    ] + inner_cmd
+
+
 def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
     """Run index in a child process so ML/Chroma memory is released after each file."""
     import subprocess
 
-    cmd = _convmem_cli_argv() + ["index", "--file", path]
+    from config import load_config
+
+    cfg = load_config()
+    inner_cmd = _convmem_cli_argv() + ["index", "--file", path]
+    cmd = _scoped_index_cmd(inner_cmd, cfg, verbose=verbose)
     if verbose:
-        print(f"[watch] spawn: {' '.join(cmd[-3:])}", file=sys.stderr)
+        print(f"[watch] spawn: {' '.join(inner_cmd[-3:])}", file=sys.stderr)
     proc = subprocess.run(
         cmd,
         text=True,
