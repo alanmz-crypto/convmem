@@ -106,7 +106,7 @@ def _guard_write() -> None:
 
 
 @app.command()
-def search(
+def search(  # pylint: disable=too-many-positional-arguments
     query: str = typer.Argument(..., help="What you're trying to recall"),
     raw: bool = typer.Option(False, "--raw", help="Search conversation summaries (fallback layer)"),
     top: int = typer.Option(5, "--top", help="Number of results"),

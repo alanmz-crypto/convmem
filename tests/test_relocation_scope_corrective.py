@@ -161,7 +161,7 @@ class LedgerAnchorScopeTests(unittest.TestCase):
         side_effect=lambda _q, candidates, _m, top_k: candidates[:top_k],
     )
     def test_scoped_query_drops_protocol_anchor(
-        self, _rerank, mock_cfg, _embed, mock_lookup
+        self, _rerank, _cfg_mock, _embed, mock_lookup
     ):
         store = mock.MagicMock()
         store.query_units.return_value = [_unit("r1", "relocation", 0.8)]
@@ -195,7 +195,7 @@ class LedgerAnchorScopeTests(unittest.TestCase):
         side_effect=lambda _q, candidates, _m, top_k: candidates[:top_k],
     )
     def test_scoped_query_drops_out_of_domain_ledger_id(
-        self, _rerank, mock_cfg, _embed, mock_lookup
+        self, _rerank, _cfg_mock, _embed, mock_lookup
     ):
         store = mock.MagicMock()
         store.query_units.return_value = [_unit("r1", "relocation", 0.8)]
@@ -214,7 +214,7 @@ class LedgerAnchorScopeTests(unittest.TestCase):
         ]
         with patch_query_serving(store):
             results = query_units(
-                f"details for dec_prop_20260623_161428_c311",
+                "details for dec_prop_20260623_161428_c311",
                 top_k=5,
                 domain="relocation",
             )
@@ -306,7 +306,7 @@ class SessionReadScopeTests(unittest.TestCase):
     """T5 — session default, explicit override, clear."""
 
     def setUp(self):
-        self._tmpdir = tempfile.TemporaryDirectory()
+        self._tmpdir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
         self._scope_path = Path(self._tmpdir.name) / "read_scope.json"
         self._env_patch = mock.patch.dict(
             "os.environ",
@@ -358,7 +358,7 @@ class CrossDomainNonStickyTests(unittest.TestCase):
     """T6 — explicit crossover widens once; next call respects scope."""
 
     def setUp(self):
-        self._tmpdir = tempfile.TemporaryDirectory()
+        self._tmpdir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
         self._scope_path = Path(self._tmpdir.name) / "read_scope.json"
         self._env_patch = mock.patch.dict(
             "os.environ",
@@ -404,7 +404,7 @@ class WriteClassificationAuditTests(unittest.TestCase):
     """T7 — writes stay content-classified; session scope is read-only."""
 
     def setUp(self):
-        self._tmpdir = tempfile.TemporaryDirectory()
+        self._tmpdir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
         self._scope_path = Path(self._tmpdir.name) / "read_scope.json"
         self._env_patch = mock.patch.dict(
             "os.environ",
