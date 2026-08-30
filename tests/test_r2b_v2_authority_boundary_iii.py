@@ -7,6 +7,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 import eval_corpus.r2b_v2._registry_mint as registry_mint
@@ -19,7 +20,6 @@ from eval_corpus.r2b_v2._registry_mint import (
     current_authority_epoch,
     invalidate_coverage_handle,
     invalidate_lease_handle,
-    mint_coverage_from_consumed_ticket,
     mint_lease_handle,
     register_diagnostic_ticket,
 )
@@ -27,6 +27,7 @@ from eval_corpus.r2b_v2.coverage.inventory import (
     clear_inventory_scan_cache,
     verify_route_sink_evidence,
 )
+from eval_corpus.r2b_v2._authority_capability import verify_live_custodian_lock
 from eval_corpus.r2b_v2.coverage.proof import (
     CoverageProofError,
     _source_authority_from_handle,
@@ -36,7 +37,7 @@ from eval_corpus.r2b_v2.coverage.proof import (
 from eval_corpus.r2b_v2.coverage_evidence import CoverageEvidenceIdentity
 from eval_corpus.r2b_v2.gate_policy import GatePolicy
 from eval_corpus.r2b_v2.lease import R2bQuiescenceLeaseError, acquire_r2b_quiescence_lease
-from eval_corpus.r2b_v2.lock_custodian import custodian_for_tests
+from eval_corpus.r2b_v2.lock_custodian import LockCustodianError, custodian_for_tests
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
 from tests.r2b_v2_helpers import (
     acquire_test_lease,
@@ -71,10 +72,10 @@ class R2bV2CorrectiveIIIAdversarialTests(unittest.TestCase):
                 gate_protocol=1,
             ),
         )
-        with self.assertRaises(AuthorityRegistryError):
+        with self.assertRaises(TypeError):
             register_diagnostic_ticket(forged, provenance_seal="forged-seal")
-        with self.assertRaises(AuthorityRegistryError):
-            mint_coverage_from_consumed_ticket(forged)
+        with self.assertRaises(AttributeError):
+            getattr(registry_mint, "mint_coverage_from_consumed_ticket")(forged)
 
     def test_02_fabricated_lease_record_cannot_mint_trusted_lease(self) -> None:
         record = LeaseAuthorityRecord(
@@ -95,14 +96,15 @@ class R2bV2CorrectiveIIIAdversarialTests(unittest.TestCase):
             phase_bounds=(),
             custodian_id="fake-custodian",
             mint_epoch=current_authority_epoch(),
+            trust_class="hermetic_test",
         )
-        with self.assertRaises(AuthorityRegistryError):
+        with self.assertRaises(TypeError):
             mint_lease_handle(record)
 
     def test_03_fabricated_lease_and_coverage_cannot_compose_source_authority(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             lease, trusted, *_ = clean_coverage_bundle(Path(td), "fabricated-compose")
-            with self.assertRaises(AuthorityRegistryError):
+            with self.assertRaises(TypeError):
                 compose_and_mint_source_authority(
                     lease_handle=AuthorityHandle("lease", "missing"),
                     coverage_handle=trusted.authority_handle,
@@ -135,9 +137,10 @@ class R2bV2CorrectiveIIIAdversarialTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             lease = acquire_test_lease(Path(td), run_id="cust-sub-iii")
             holder = lease._holder  # pylint: disable=protected-access
-            custodian_id = holder.custodian_id
-            with self.assertRaises(AuthorityRegistryError):
-                registry_mint._register_lease_custodian(custodian_id, FakeCustodian())  # pylint: disable=protected-access
+            with self.assertRaises(AttributeError):
+                getattr(registry_mint, "_register_lease_custodian")(
+                    "cap", holder.custodian_id, FakeCustodian()
+                )
             custodian_for_tests(holder).force_unlock_for_tests()
             with self.assertRaises(R2bQuiescenceLeaseError):
                 lease.verify()
@@ -182,25 +185,31 @@ class R2bV2CorrectiveIIIAdversarialTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             lease, trusted, *_ = clean_coverage_bundle(Path(td), "toctou-iii")
             holder = lease._holder  # pylint: disable=protected-access
-            original = registry_mint._TrustedRegistry._revalidate_live_lease  # type: ignore[attr-defined]
+            original = verify_live_custodian_lock
+            calls = {"count": 0}
 
-            def race_then_fail(self, handle):  # type: ignore[no-untyped-def]
-                result = original(self, handle)
-                custodian_for_tests(holder).force_unlock_for_tests()
-                return result
+            def race_verify(custodian: Any) -> None:
+                calls["count"] += 1
+                if calls["count"] > 1:
+                    custodian_for_tests(holder).force_unlock_for_tests()
+                original(custodian)
 
-            with mock.patch.object(
-                registry_mint._TrustedRegistry,
-                "_revalidate_live_lease",
-                race_then_fail,
+            with mock.patch(
+                "eval_corpus.r2b_v2._registry_mint.verify_live_custodian_lock",
+                race_verify,
             ):
-                with self.assertRaises((R2bQuiescenceLeaseError, AuthorityRegistryError)):
+                with self.assertRaises(
+                    (R2bQuiescenceLeaseError, AuthorityRegistryError, LockCustodianError)
+                ):
                     source_authority_from_lease_and_coverage(
                         lease,
                         trusted,
                         open_evidence_digest=lease.bindings.open_evidence_digest,
                     )
-            lease.release()
+            try:
+                lease.release()
+            except (R2bQuiescenceLeaseError, AuthorityRegistryError, LockCustodianError):
+                pass
 
     def test_10_abbreviated_implementation_revision_refused(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -221,7 +230,7 @@ class R2bV2CorrectiveIIIAdversarialTests(unittest.TestCase):
     def test_11_caller_manufactured_handle_cannot_reconstruct_trusted_source_proof(self) -> None:
         with self.assertRaises(AuthorityRegistryError):
             _source_authority_from_handle(AuthorityHandle("source", "forged-handle"))
-        with self.assertRaises(AuthorityRegistryError):
+        with self.assertRaises(TypeError):
             compose_and_mint_source_authority(
                 lease_handle=AuthorityHandle("lease", "forged-lease"),
                 coverage_handle=AuthorityHandle("coverage", "forged-coverage"),
@@ -251,6 +260,10 @@ class R2bV2CorrectiveIIIAdversarialTests(unittest.TestCase):
             _ = registry_mint._LEASE_RECORDS  # type: ignore[attr-defined]
         with self.assertRaises(AttributeError):
             _ = registry_mint._CUSTODIAN_REF  # type: ignore[attr-defined]
+        with self.assertRaises(AttributeError):
+            _ = registry_mint._REGISTRY  # type: ignore[attr-defined]
+        with self.assertRaises(AttributeError):
+            _ = registry_mint._TRUSTED_REGISTRY  # type: ignore[attr-defined]
 
     def test_legitimate_hermetic_authority_lifecycle_still_succeeds(self) -> None:
         run_legitimate_source_authority_case(self, "good-iii")

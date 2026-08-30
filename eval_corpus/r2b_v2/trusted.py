@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 
+from eval_corpus.r2b_v2._authority_capability import reset_capabilities_for_tests
 from eval_corpus.r2b_v2.authority_registry import invalidate_all_authority
 
 
@@ -43,5 +44,6 @@ os.register_at_fork(after_in_child=_invalidate_trusted_state_after_fork)
 
 def _reset_for_tests() -> None:
     invalidate_all_authority()
+    reset_capabilities_for_tests()
     _ACTIVE_AUTHORITY_KEYS.clear()
     _CONSUMED_AUTHORITY_KEYS.clear()

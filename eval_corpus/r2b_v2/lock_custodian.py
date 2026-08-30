@@ -80,8 +80,11 @@ class LockCustodian:
     def verify(self) -> None:
         if self._proc.exitcode is not None:
             raise LockCustodianError("custodian process exited")
-        self._conn.send({"cmd": "verify"})
-        resp = _recv_response(self._conn)
+        try:
+            self._conn.send({"cmd": "verify"})
+            resp = _recv_response(self._conn)
+        except (EOFError, ConnectionResetError, BrokenPipeError, OSError) as exc:
+            raise LockCustodianError("custodian communication failed") from exc
         if not resp.get("ok"):
             raise LockCustodianError(str(resp.get("reason", "custodian verify failed")))
 

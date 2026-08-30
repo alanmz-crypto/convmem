@@ -23,13 +23,17 @@ from chroma_write_store import (
     load_attestation,
 )
 
+from eval_corpus.r2b_v2._authority_capability import (
+    issue_census_capability,
+    issue_lease_capability,
+    issue_source_capability,
+    trust_class_for_gate_policy,
+)
 from eval_corpus.r2b_v2._registry_mint import (
-    census_mint_window,
+    finalize_diagnostic_and_mint_coverage,
     compose_and_mint_source_authority,
-    consume_diagnostic_ticket,
-    mint_coverage_from_consumed_ticket,
+    DiagnosticMintTicket,
     register_diagnostic_ticket,
-    source_composition_window,
 )
 from eval_corpus.r2b_v2.authority_registry import (
     AuthorityHandle,
@@ -107,6 +111,7 @@ class DiagnosticCoverageResult:
     passed: bool = False
     _mint_ticket: str | None = field(default=None, repr=False, compare=False)
     _provenance_seal: str | None = field(default=None, repr=False, compare=False)
+    _census_capability: Any = field(default=None, repr=False, compare=False)
 
     def __init__(
         self,
@@ -123,6 +128,7 @@ class DiagnosticCoverageResult:
         passed: bool = False,
         _mint_ticket: str | None = None,
         _provenance_seal: str | None = None,
+        _census_capability: Any = None,
     ) -> None:
         self.identity = CoverageEvidenceIdentity(
             code_revision=code_revision,
@@ -138,6 +144,7 @@ class DiagnosticCoverageResult:
         self.passed = passed
         self._mint_ticket = _mint_ticket
         self._provenance_seal = _provenance_seal
+        self._census_capability = _census_capability
         self.__post_init__()
 
     @property
@@ -641,7 +648,15 @@ def prove_zero_bypass_coverage(
     passed = all(not items for items in holds.values())
     mint_ticket = secrets.token_hex(16) if passed and not skip_runtime else None
     provenance_seal = secrets.token_hex(16) if mint_ticket is not None else None
+    census_capability = None
     if mint_ticket is not None and provenance_seal is not None:
+        trust_class = trust_class_for_gate_policy(policy.policy_class)
+        census_capability = issue_census_capability(
+            coverage_digest=coverage_digest,
+            gate_identity=policy.canonical_identity,
+            code_revision=revision,
+            trust_class=trust_class,
+        )
         evidence = CoverageEvidenceIdentity(
             code_revision=revision,
             inventory_digest=inventory["inventory_digest"],
@@ -652,8 +667,11 @@ def prove_zero_bypass_coverage(
             gate_protocol=policy.protocol,
         )
         ticket = DiagnosticMintTicket(ticket_id=mint_ticket, evidence=evidence)
-        with census_mint_window(coverage_digest=coverage_digest):
-            register_diagnostic_ticket(ticket, provenance_seal=provenance_seal)
+        register_diagnostic_ticket(
+            census_capability,
+            ticket,
+            provenance_seal=provenance_seal,
+        )
     return DiagnosticCoverageResult(
         code_revision=revision,
         inventory_digest=inventory["inventory_digest"],
@@ -667,6 +685,7 @@ def prove_zero_bypass_coverage(
         passed=passed,
         _mint_ticket=mint_ticket,
         _provenance_seal=provenance_seal,
+        _census_capability=census_capability,
     )
 
 
@@ -680,15 +699,19 @@ def mint_trusted_coverage_proof(
         raise CoverageProofError("diagnostic coverage did not pass — cannot mint trusted proof")
     if not diagnostic.provenance_seal:
         raise CoverageProofError("diagnostic census provenance seal missing")
+    if diagnostic._census_capability is None:
+        raise CoverageProofError("diagnostic census capability missing")
     try:
-        ticket = consume_diagnostic_ticket(
+        handle = finalize_diagnostic_and_mint_coverage(
+            diagnostic._census_capability,
             diagnostic.mint_ticket,
             coverage_digest=diagnostic.coverage_digest,
             provenance_seal=diagnostic.provenance_seal,
+            gate_identity=diagnostic.gate_identity,
+            code_revision=diagnostic.code_revision,
         )
     except AuthorityRegistryError as exc:
         raise CoverageProofError(str(exc)) from exc
-    handle = mint_coverage_from_consumed_ticket(ticket)
     return _trusted_coverage_from_handle(handle)
 
 
@@ -755,12 +778,18 @@ def source_authority_from_lease_and_coverage(
         and coverage_record.runtime_census_digest != expected_runtime_census_digest
     ):
         raise CoverageProofError("runtime_census_digest mismatch")
-    with source_composition_window():
-        source_handle = compose_and_mint_source_authority(
-            lease_handle=lease.authority_handle,
-            coverage_handle=trusted_coverage.authority_handle,
-            open_evidence_digest=open_evidence_digest,
-        )
+    source_capability = issue_source_capability(
+        lease_handle_id=lease.authority_handle.handle_id,
+        coverage_handle_id=trusted_coverage.authority_handle.handle_id,
+        open_evidence_digest=open_evidence_digest,
+        trust_class=lease_record.trust_class,
+    )
+    source_handle = compose_and_mint_source_authority(
+        source_capability,
+        lease_handle=lease.authority_handle,
+        coverage_handle=trusted_coverage.authority_handle,
+        open_evidence_digest=open_evidence_digest,
+    )
     return _source_authority_from_handle(source_handle)
 
 
