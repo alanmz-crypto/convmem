@@ -1,8 +1,8 @@
 # [Arc Naturalistic ConvMem product-value evaluation] G4 implementation handoff
 
-**Date:** 2026-08-30  
-**Author:** Codex implementation lane  
-**For:** Kiro independent review  
+**Date:** 2026-08-30
+**Author:** Codex implementation and PR Steward lanes
+**For:** Ryan merge disposition
 **Authorization:** Ryan, 2026-08-30 (direct G4 implementation-lane assignment and handoff request)
 
 ---
@@ -162,10 +162,10 @@ G5, merge, G6, or a live study.
 
 ## Handoff summary
 
-**Who:** Codex corrected the bounded G4 implementation; Kiro owns independent review.  
-**What:** Fail-closed analysis/statistical machinery at `fa7d68b`.  
-**When:** 2026-08-30, after the original `0e191c3` freeze was found to accept invalid inputs.  
-**Why:** Prevent malformed or ambiguous evidence from producing trustworthy-looking co-primary results.  
+**Who:** Codex corrected the bounded G4 implementation and is stewarding PR delivery; Kiro independently reviewed it; Ryan owns merge disposition.
+**What:** Fail-closed analysis/statistical machinery at `fa7d68b`.
+**When:** 2026-08-30, after the original `0e191c3` freeze was found to accept invalid inputs.
+**Why:** Prevent malformed or ambiguous evidence from producing trustworthy-looking co-primary results.
 **How:** Strict score/input validation, explicit opportunity/evaluability accounting, scorer independence, immutable parameter slots, and adversarial synthetic tests.
 
 **TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] Kiro PASSed exact
