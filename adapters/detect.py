@@ -23,7 +23,7 @@ from adapters import (
     markdown_chat,
     sqlite_chat,
 )
-from adapters.sqlite_chat import is_sqlite_crush_schema
+from adapters.sqlite_chat import is_sqlite_crush_schema, is_sqlite_opencode_schema
 
 # Map detected format -> human-facing tool name (used in metadata).
 TOOL_BY_FORMAT = {
@@ -38,6 +38,7 @@ TOOL_BY_FORMAT = {
     "aider_markdown": "aider",
     "sqlite_crush": "crush",
     "sqlite_cursor_store": "cursor",
+    "sqlite_opencode": "opencode",
     "inter_model_doc": "inter-model",
     "kiro_steering": "kiro",
 }
@@ -56,6 +57,7 @@ _PARSERS: dict[str, Optional[Callable[[str], list[dict]]]] = {
     "aider_markdown": markdown_chat.parse,
     "sqlite_crush": sqlite_chat.parse,
     "sqlite_cursor_store": sqlite_chat.parse,
+    "sqlite_opencode": sqlite_chat.parse,
     "inter_model_doc": inter_model_doc.parse,
     "kiro_steering": kiro_steering.parse,
 }
@@ -121,6 +123,8 @@ def _detect_sqlite(path: Path) -> Optional[str]:
             return "sqlite_cursor_store"
         if is_sqlite_crush_schema(con, tables):
             return "sqlite_crush"
+        if is_sqlite_opencode_schema(tables):
+            return "sqlite_opencode"
         return None
     finally:
         con.close()
