@@ -1,24 +1,24 @@
 # Architecture Direction — CG-2 production activation
 
-> **ARCHITECTURE AMENDMENT CANDIDATE — Design A legacy exact-vector bootstrap
-> (2026-08-22; adversarial review pending).** This candidate supersedes the
-> 2026-08-21 Design A lock at
-> `8aff0a316cb4304c5313556abc3cdf5439746835` only after independent review and
-> Ryan ratification. The amendment is required because the accepted LEGACY
-> corpus has no independently durable historical embedding-model identity; the
-> blocked execution plan at `c48d9a9cc2b20df6d9a834f3e4377046504fed76`
-> correctly stopped rather than guess. Until this amendment is ratified, that
-> prior lock remains the governing architecture and the execution plan remains
-> blocked. This document does **not** authorize implementation, D1 resumption,
-> D2, production configuration, corpus mutation, owner cutover, garbage
-> collection, Shadow, R2b, or V8c activation. CG-1 remains the committed-
-> generation identity contract. Execute and production grants remain separate.
+> **RYAN-LOCKED D1 REFERENCE-V2 CORRECTIVE — planning package
+> (2026-08-29; independent plan review pending).** The accepted D0 chain and
+> `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1` remain authoritative. This corrective
+> supersedes only the copied-Chroma meaning of `G_rb`: `G_rb` is now a
+> versioned retained-reference target to the exact original D0-covered LEGACY
+> physical rows. Qualification, retained evidence, serving, and rollback must
+> resolve to and consume those same rows. The independently failed copied
+> generation `2d01dfca08ac388e7ac74d145e789a8a35d8b97c4bf2ee6d971a95a8a74c4b3c`
+> is non-authoritative, quarantined, permanently ineligible, and preserved
+> untouched pending a separate cleanup grant. This document does **not**
+> authorize implementation, D1 execution, production mutation, cleanup, D2,
+> `G_canary`, V8c, fence/pointer publication, cutover, retirement, or D2+.
 
 **Source:** Codex synthesis of the merged CG-1 implementation and closure
 evidence, the ChatGPT CG-2 advisory research memo, ConvMem builder-reference
 guidance, and primary literature listed in §15; Design A amendments from Ryan
-Architecture HITL 2026-08-21; legacy exact-vector amendment drafted by OpenAI
-Codex Sol High under Ryan's 2026-08-22 architecture decision.
+Architecture HITL 2026-08-21; D0 exact-vector amendment ratified 2026-08-22;
+reference-v2 corrective adjudicated by OpenAI Codex Sol and locked by Ryan on
+2026-08-29 after two independent reviews rejected the copied-vector corrective.
 
 **Reviewed CG-1 stabilization:**
 `2ed229244ea1d7cdf9a83630ad56d5a194426826`
@@ -43,14 +43,14 @@ Chroma reads, or premature reclamation to become serving authority.
 
 | Field | Value |
 |---|---|
-| Phase | Architecture amendment candidate — independent adversarial review pending (2026-08-22) |
+| Phase | D1 reference-v2 corrective locked; exact planning package awaiting independent review (2026-08-29) |
 | Product goal | Failed or interrupted reindexing can never corrupt the corpus that ConvMem serves |
 | This arc | Move CG-1 from hermetic substrate to bounded production use |
-| Author | OpenAI Codex (original); Design A amendments Cursor Auto under Ryan lock; exact-vector amendment OpenAI Codex Sol High |
+| Author | OpenAI Codex (original); Design A amendments Cursor Auto; exact-vector amendment OpenAI Codex Sol High; reference-v2 corrective OpenAI Codex Sol under Ryan lock |
 | Research input | ChatGPT advisory memo; external claims rechecked before inclusion; Design A HITL; D1 Luna substrate verification and Sol High adjudication |
-| Review lanes | Independent Claude adversarial architecture review next; Ryan ratification after review |
-| Authority | Amendment candidate only; no Execute, D0 capture, D1, D2, V8c, or production grant |
-| Next phase | Independent adversarial review, then Ryan architecture ratification; execution-plan rewrite only after ratification |
+| Review lanes | Independent Kiro review of this exact corrective planning package; Ryan acceptance after review |
+| Authority | Architecture semantic lock only; no implementation, D1 retry, cleanup, D2, V8c, or production grant |
+| Next phase | Independent plan review, then Ryan plan acceptance; only then a bounded Cursor implementation grant |
 
 The activation order is the central decision:
 
@@ -386,29 +386,28 @@ QUEUED → BUILDING → BUILT → STAGED → COLD_VALIDATED → PROMOTABLE → A
              └──────── failure at any pre-active stage ────────► ABANDONED
 
 ACTIVE → PREVIOUS_RETAINED → GC_ELIGIBLE → DELETING → DELETED
-
-COLD_VALIDATED ──(Design A convert-v1)──► RETAINED_ROLLBACK_BASELINE
 ```
 
 `GC_ELIGIBLE` is a proved state, not a synonym for inactive.
 
-**`RETAINED_ROLLBACK_BASELINE` (Design A):** A lifecycle/evidence state for the
-first-cutover rollback generation `G_rb`. The generation is manifested,
-historical-vector-state-proven under
-`LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`, cold-qualified, physically retained,
-and grant-bound. This profile proves exact preserved vector state while
-explicitly declining to identify the historical embedding model; it is not
-embedding-model provenance. The profile is legal only for `G_rb`. `G_canary`
-and every later prospective generation require the structurally distinct
-`KNOWN_MODEL_AND_VECTOR_V1` profile with writer-produced model provenance and
-exact vector identity. An unknown-model prospective generation is invalid.
+**`RETAINED_ROLLBACK_BASELINE` (Design A):** The terminal eligibility state for
+the first-cutover rollback target `G_rb`. It is established only when a
+reference-v2 manifest, complete D0 chain, fresh-process serving-path
+qualification, immutable rollback-baseline evidence v2, and required recovery
+coverage all bind the same original physical LEGACY rows. Cold qualification is
+a predicate for this state, not a lifecycle literal. No
+`G_RB_CONVERT_COLD_VALIDATED` state exists.
 
-`G_rb` is **not** a second durable serving authority: it never holds serving
-authority until selected by generation-switch rollback (or appears only as
-`previous_generation_id` on the first canary pointer). It is not `LEGACY`
-authority and does not compete with the active pointer. Its proof profile does
-not elevate the provenance or truth of legacy content; missing or invalid row
-provenance remains conservatively legacy-unproven.
+`G_rb` is a typed retained-reference target, not a copied generation and not a
+second physical vector authority. Its deterministic target ID may occupy the
+existing pointer field named `previous_generation_id`, whose bytes remain an
+opaque target identifier; target resolution dispatches by manifest variant.
+When selected, the serving repository reads only the exact physical IDs named
+by the reference-v2 manifest from their original collection UUIDs and scores
+the float32 values returned by that read. The same target-aware reader is used
+by cold qualification and rollback serving. `G_canary` and later prospective
+generations remain ordinary copied generations under
+`KNOWN_MODEL_AND_VECTOR_V1`.
 
 ### 6.3 Rollback, recovery, and forward publication (Design A)
 
@@ -434,22 +433,25 @@ revalidation of the grant-bound baseline (see §7).
 
 1. selects the exact retained previous/grant-bound generation (first-canary
    window: `G_rb`);
-2. fresh-process qualifies that exact manifest and rows (vector identity,
-   completeness); for `G_rb`, this also verifies the complete D0 authority
-   chain, exact retained-evidence SHA, and exact equality of the live
-   `query_embedding_context_sha256` to the D0-ratified value;
+2. fresh-process qualifies that exact target through the same target-aware row
+   reader used by serving; for `G_rb`, this verifies the reference-v2 manifest,
+   exact original collection UUID/configuration and physical IDs, complete D0
+   chain, rollback-baseline-evidence-v2 SHA, exact readback rows/vectors, and
+   exact equality of the live `query_embedding_context_sha256` to the
+   D0-ratified value;
 3. acquires the owner lock;
 4. CAS-requires the current active generation exactly;
-5. publishes the retained generation as active **without** requiring
-   live source bytes to equal the retained manifest `source_hash`;
+5. publishes the retained target as active **without** requiring live source
+   bytes to equal the retained manifest `source_hash`;
 6. if live source has advanced, durably marks reconciliation-required and
    enqueues desired state for the newer source;
 7. records the former active generation as retained history;
 8. leaves the fence monotonic — owner remains GENERATIONAL; **never LEGACY**.
 
 While `G_rb` remains the first-canary rollback target, rollback fails closed if
-the D0 candidate, independent validation evidence, Ryan ratification, exact
-vectors, retained evidence, or exact D0-ratified
+the D0 candidate, independent validation evidence, Ryan ratification,
+reference-v2 manifest, original rows, rollback-baseline evidence v2, recovery
+coverage, or exact D0-ratified
 `query_embedding_context_sha256` equality is missing, unavailable, or false. A
 later semantic query-context migration is a separate transition and is not
 authorized here.
@@ -512,13 +514,31 @@ Convergence does not rely on delivery of one filesystem notification.
 `None`, so generation-switch rollback cannot name a committed prior generation.
 Design A forbids proceeding with that gap.
 
-**`G_rb` definition:** Exact convert of the independently attested and
-Ryan-ratified accepted pre-cutover LEGACY serving set for the named owner under
-a **ratified convert-v1** pipeline fingerprint (example name:
-`convmem/cg2-rollback-baseline-convert-v1` or equivalent ratified string).
-Distinct from ordinary live-source rebuild fingerprints. Deterministic under
-CG-1 `make_generation_id` (no random salt required when the fingerprint and
-convert inputs are exact).
+**`G_rb` definition:** A versioned retained-reference target to the exact
+original D0-covered LEGACY physical rows for the named owner. Its fingerprint
+is exactly `convmem/cg2-rollback-baseline-reference-v2`. Its deterministic
+target ID is derived from that fingerprint, the owner/source binding, accepted
+D0 roots, original collection UUID/configuration identities, and the ordered
+referenced physical IDs. It is not produced by `Collection.add`/`upsert`, does
+not allocate generation row IDs, and has no copied or sidecar vector authority.
+
+The word **exact** means the combined guarantee:
+
+1. **Canonical physical state:** the same original collection UUIDs and exact
+   D0-covered physical row IDs remain present with byte-identical documents,
+   immutable semantic/provenance metadata, and D0-canonical float32 readback
+   hashes;
+2. **Serving state:** qualification and rollback scoring obtain embeddings by
+   reading those exact rows through the target-aware serving reader; and
+3. **Context state:** the live query-embedding context equals the D0-ratified
+   context exactly.
+
+This does not attest hidden HNSW graph bytes or a pre-Chroma model-output
+vector. D0 attested the float32 values returned by a cold read of the original
+LEGACY Chroma collections. Chroma's cosine representation is therefore part of
+that original physical serving state. Re-inserting those readback values into a
+new cosine collection can normalize/reconstruct them again and change float32
+bytes; retaining the original rows avoids that non-idempotent copy boundary.
 
 `G_rb` uses `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`, which is
 **historical-vector-state provenance**, not embedding-model provenance. For
@@ -532,7 +552,8 @@ historical_embedding_model.identifier = null
 No current config value, vector dimension, Chroma default, caller argument, or
 present-day embedding setting may populate or refine those fields. The profile
 proves the exact preserved legacy vector state and makes no claim about which
-historical model created it. It is permitted only for first-cutover `G_rb`.
+historical model created it. It remains unchanged and is permitted only for
+first-cutover `G_rb`.
 
 `G_canary` and every later prospective generation use
 `KNOWN_MODEL_AND_VECTOR_V1`: writer-produced embedding-model provenance plus
@@ -745,27 +766,53 @@ re-derives the live canonical `QUERY_EMBEDDING_CONTEXT_V1` through the governed
 query adapter and actual selected model/runtime and refuses unless its
 `query_embedding_context_sha256` exactly equals the D0-ratified value.
 
-Before conversion, D1 reacquires the owner lock, revalidates exact `LEGACY`
-authority, independently rereads the exact covered rows, recomputes all roots,
-and stages those reread rows. It never stages a caller-held snapshot. Any
-authority, row, vector, collection, provenance, or root drift refuses and
-requires a new D0 candidate, independent validation, and Ryan ratification.
+Before reference publication, D1 reacquires the owner lock, revalidates exact
+`LEGACY` authority, independently rereads the exact covered rows, and
+recomputes all D0 roots. It stages **no Chroma rows and no vector sidecars**.
+Any authority, row, vector, collection, provenance, or root drift refuses. A
+new D0 chain is required only when the accepted original state itself changed;
+this corrective does not invalidate the already-ratified unchanged D0 chain.
 
-Retained rollback-baseline evidence is immutable exact bytes. Publication may
-not ignore or normalize away `sequence_positions`. Authority use reruns
-fresh-process qualification rather than trusting stored qualification evidence.
-Complete ordered provenance evidence is recomputed from manifest immutable
-metadata and includes collection, logical identity, exact canonical envelope,
-envelope hash, `assertion_id`, and `provenance_commitment`; removal, swap,
-mutation, substitution, or rehash refuses. These are requirements for the later
-amended execution plan, not implementation authorization.
+D1 then derives the reference-v2 target ID and publishes a narrow immutable
+manifest variant. That manifest binds:
+
+- schema/target kind=`RETAINED_LEGACY_REFERENCE_V2` and fingerprint
+  `convmem/cg2-rollback-baseline-reference-v2`;
+- owner/source identity and the complete D0 artifact, validation, ratification,
+  aggregate root, and query-context bindings;
+- each original collection's name, UUID, canonical configuration, dimension,
+  and exactly ordered physical IDs; and
+- exact per-row logical identity, document hash, immutable semantic/provenance
+  hash, and canonical float32 vector hash.
+
+The manifest contains hashes and selectors, never replacement vector bytes.
+The existing pointer representation remains unchanged: its
+`previous_generation_id` is an opaque rollback target ID, and target resolution
+selects either the existing copied-generation manifest reader or this new
+retained-reference manifest reader.
+
+Fresh-process cold qualification reopens the actual production Chroma store and
+governed generation root, loads the complete D0 chain, verifies live query
+context, collection UUID/configuration, and exact membership, and calls the
+same target-aware row reader used by serving. It rejects missing, additional,
+substituted, duplicate, wrong-owner, or rewritten referenced rows; recomputes
+the D0 roots and float32 hashes; and proves the serving-reader output equals the
+D0-bound vector state exactly. It also proves that no copied generation or
+sidecar vector store participates.
+
+Rollback-baseline evidence v2 is immutable exact bytes binding the manifest
+SHA, qualification result, exact serving-selector identity/fingerprint, D0
+chain, and recovery-coverage evidence. `RETAINED_ROLLBACK_BASELINE` may be
+established only after those predicates pass. Stored cold evidence is never a
+substitute for current qualification at first cutover or rollback.
 
 **Before fence / before V8c activation grant — both generations exact:**
 
-1. Complete and ratify the exact three-part D0 authority chain.
-2. D1 consumes that fixed authority and builds and cold-qualifies **`G_rb`**
-   (manifested under `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`, exact-vector-
-   proven, retained as `RETAINED_ROLLBACK_BASELINE`, grant-bound).
+1. Load and verify the already-complete exact three-part D0 authority chain.
+2. D1 consumes that fixed authority and publishes and cold-qualifies **`G_rb`**
+   as a reference-v2 target under `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`, with
+   no copied rows or sidecar vectors, then establishes
+   `RETAINED_ROLLBACK_BASELINE` only after recovery coverage is proved.
 3. Build and cold-qualify the **exact** first-canary generation **`G_canary`**
    (manifested under `KNOWN_MODEL_AND_VECTOR_V1`, writer-model-and-vector-
    proven, with pipeline fingerprint, source hash, and qualification evidence
@@ -781,14 +828,16 @@ only after both IDs and both manifest SHA-256 digests are already in the packet.
 - durable `previous_generation_id = G_rb`;
 - target generation = exact grant-bound `G_canary`;
 - structural revalidation that `G_rb` still matches the grant-bound baseline
-  (generation id, manifest SHA, convert-v1 fingerprint, exact retained-evidence
-  SHA, D0 artifact SHA, independent validation-result SHA, Ryan ratification,
-  vector/snapshot roots, and fresh qualification evidence);
+  (target id, reference-v2 manifest SHA/fingerprint, exact rollback-baseline-
+  evidence-v2 SHA, D0 artifact SHA, independent validation-result SHA, Ryan
+  ratification, vector/snapshot roots, serving-selector binding, recovery
+  coverage, and fresh qualification evidence);
 - re-derivation of the live `QUERY_EMBEDDING_CONTEXT_V1` from the governed
   adapter/model/runtime and exact equality of its
   `query_embedding_context_sha256` to the D0-ratified value;
 - while holding the owner lock and **before fence publication**, an independent
-  reread/rebind of the exact D0-covered current accepted LEGACY row/vector state.
+  reread/rebind through the target-aware serving reader of the exact D0-covered
+  current accepted LEGACY row/vector state.
 
 Any mismatch returns before the fence. First-cutover code may not use a stored
 D1 snapshot as this rebind. After a durable fence, existing
@@ -994,8 +1043,8 @@ owner canary. Preserve:
 - the exact D0 candidate artifact, independent D0 validation evidence, Ryan
   ratification, aggregate/per-collection roots, canonical
   `QUERY_EMBEDDING_CONTEXT_V1` payload and D0-ratified
-  `query_embedding_context_sha256`, `G_rb` manifest, and retained-evidence
-  bytes/SHA;
+  `query_embedding_context_sha256`, reference-v2 manifest, rollback-baseline-
+  evidence-v2 bytes/SHA, exact serving selector, and recovery-coverage binding;
 - immediately previous committed generation after later promotions;
 - in-flight candidate;
 - abandoned candidate until explicit inspection/cleanup;
@@ -1071,8 +1120,9 @@ rollback-baseline identity.
 
 Complete-data backup and restore preserve and verify together:
 
-- actual `G_rb` rows/vectors;
-- its manifest and exact retained rollback-baseline evidence;
+- the original referenced Chroma collections and exact D0-covered physical
+  rows/vectors, including collection UUID/configuration;
+- the reference-v2 manifest and exact rollback-baseline evidence v2;
 - the D0 candidate artifact and independent validation evidence;
 - the Ryan ratification record;
 - applicable pointer, monotonic fence, and first-canary guard state;
@@ -1082,9 +1132,12 @@ Complete-data backup and restore preserve and verify together:
 The generation/evidence roots must be within the governed complete-data backup
 scope; an externally configured root is ineligible until equivalent coverage is
 proved. Restore independently verifies artifact and validation-result digests,
-Ryan bindings, manifest/evidence SHAs, vector/snapshot roots, exact cold-readable
-rows, and exact live-versus-ratified `query_embedding_context_sha256` equality
-before treating `G_rb` as rollback-eligible. Missing or mismatched authority is
+Ryan bindings, reference-manifest/evidence SHAs, collection identity and
+configuration, vector/snapshot roots, exact target-aware serving-reader output,
+and exact live-versus-ratified `query_embedding_context_sha256` equality before
+treating `G_rb` as rollback-eligible. Recovery coverage is a required predicate
+before first-cutover eligibility, not a new lifecycle state. Missing or
+mismatched authority is
 `BLOCKED`/quarantined; restore never re-embeds and claims the same `G_rb`.
 
 Existing complete-data capture evidence remains explicitly non-authoritative.
@@ -1107,7 +1160,9 @@ ratification, or exact preserved vectors.
 | `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1` appears on `G_canary` or any prospective generation | Refuse; prospective generations require `KNOWN_MODEL_AND_VECTOR_V1` writer evidence |
 | D0-covered row/vector/provenance/snapshot root drifts before D1 or first cutover | Refuse; require a new candidate, independent validation, and Ryan ratification |
 | Live `QUERY_EMBEDDING_CONTEXT_V1` cannot be resolved or its SHA-256 is not exactly the D0-ratified `query_embedding_context_sha256` while `G_rb` is rollback target | Refuse D1/first cutover/rollback; same dimension, current config, aliases, and fuzzy compatibility cannot substitute |
-| `G_rb` vectors or required recovery authority are lost/mismatched | Fail closed; never re-embed or synthesize a same-identity replacement |
+| Referenced original `G_rb` rows or required recovery authority are lost/mismatched | Fail closed; never re-embed, copy, or synthesize a same-identity replacement |
+| Reference selector resolves outside exact collection UUIDs/physical IDs or serving uses a copied/sidecar vector | Refuse qualification/retention/rollback; split authority is forbidden |
+| Failed copied generation `2d01df…` is offered for reuse, activation, or `G_rb` identity | Refuse permanently; it is non-authoritative and quarantined; cleanup requires a separate grant |
 | Restore lacks complete D0/validation/Ryan authority | `BLOCKED`/quarantine; non-authoritative backup evidence cannot substitute |
 | First-cutover baseline/precondition failure **before** durable fence | Pause / refuse; no fence, no pointer, no activation (§7.0) |
 | First-cutover baseline/precondition failure **after** durable fence | Remain **`FENCED_NO_POINTER`**; never LEGACY; fence monotonic; no pointer until exact recovery/qualification (§7.0) |
@@ -1132,14 +1187,16 @@ ratification, or exact preserved vectors.
 
 ### A0 — architecture
 
-The original A0 review sequence produced the 2026-08-21 lock. This amendment
-does not rewrite that history. For the exact-vector amendment, the required A0
-sequence is:
+The original A0 review sequence produced the 2026-08-21 lock and the D0
+amendment. This corrective does not rewrite that history. Ryan locked the
+reference-v2 semantic correction on 2026-08-29. The required planning sequence
+is now:
 
-- this candidate is committed and pushed at one exact SHA;
-- independent Claude performs adversarial architecture review of that SHA;
-- material findings are resolved on a new exact candidate SHA and rereviewed;
-- Ryan ratifies or rejects the exact reviewed amendment SHA.
+- this architecture/execution/runbook/VERIFY/property/formal corrective package
+  is committed and pushed at one exact SHA;
+- independent Kiro reviews that exact SHA;
+- material findings are resolved on a new exact SHA and rereviewed; and
+- Ryan accepts or rejects the exact reviewed planning package.
 
 The following original review disciplines remain useful evidence but are not
 silently restated as PASS for this amendment:
@@ -1156,11 +1213,10 @@ silently restated as PASS for this amendment:
 
 ### A1 — execution planning
 
-Only after this amendment receives independent review and Ryan ratification may
-Codex replace the blocked execution plan
-`c48d9a9cc2b20df6d9a834f3e4377046504fed76` with a plan that adds D0 and
-corrects D1. Planning does not authorize implementation, D0 production capture,
-D1 resumption, or D2.
+This document's companion execution plan specifies the reference-v2
+corrective. It does not authorize implementation, D1 execution, cleanup, or
+D2. Only Ryan acceptance after independent review may open a separately bounded
+Cursor implementation lane.
 
 ### A2 — global repository implementation, no activation
 
@@ -1200,16 +1256,17 @@ Requires a separate **one-shot** activation grant naming:
 
 - exact implementation SHA;
 - exact owner / source path;
-- exact `G_rb.generation_id` + `G_rb.manifest_sha256` (convert-v1, cold-qualified,
-  `RETAINED_ROLLBACK_BASELINE`);
+- exact `G_rb` target ID + reference-v2 manifest SHA-256
+  (`convmem/cg2-rollback-baseline-reference-v2`, serving-path cold-qualified,
+  recovery-covered, `RETAINED_ROLLBACK_BASELINE`);
 - exact `G_canary.generation_id` + `G_canary.manifest_sha256` (already built and
   cold-qualified **before** the grant);
 - exact source hashes and production pipeline fingerprints;
 - `G_rb` proof profile=`LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`, exact D0 artifact
   SHA, independent validation-result SHA, Ryan D0 ratification reference,
   accepted snapshot/vector roots, exact canonical `QUERY_EMBEDDING_CONTEXT_V1`
-  payload and D0-ratified `query_embedding_context_sha256`, and exact retained-
-  evidence SHA;
+  payload and D0-ratified `query_embedding_context_sha256`, exact target-aware
+  serving-selector fingerprint, and exact rollback-baseline-evidence-v2 SHA;
 - `G_canary` proof profile=`KNOWN_MODEL_AND_VECTOR_V1`, writer-produced
   embedding-model provenance, and exact vector identity;
 - qualification evidence and independent review packet;
@@ -1227,11 +1284,11 @@ complete first-owner packet accepted + exact one-shot activation grant issued.
 implied by V8c PASS.
 
 The owner must have no alias ambiguity, an exact ratified D0 historical-vector-
-state authority for `G_rb`, known writer-produced embedding identity for
-`G_canary`, exact live-versus-D0-ratified `query_embedding_context_sha256`
-equality, modest size, and exact logical parity. Automatic GC and rename
-migration remain off. During the first-canary window, no further serving
-promotion of that owner.
+state authority for `G_rb`, exact reference-v2 selector and recovery coverage,
+known writer-produced embedding identity for `G_canary`, exact live-versus-D0-
+ratified `query_embedding_context_sha256` equality, modest size, and exact
+logical parity. Automatic GC and rename migration remain off. During the
+first-canary window, no further serving promotion of that owner.
 
 ### A7 — bounded owner batches
 
@@ -1242,20 +1299,22 @@ backlog, recovery, or performance gate failure.
 
 Online GC is independently reviewed and enabled only after read-pin and Chroma
 deletion evidence. Legacy serving code is removed only after every intended
-owner is generational, rollback no longer depends on legacy rows, and the
-accepted soak window has zero fallback events.
+owner is generational, rollback no longer depends on retained legacy-reference
+rows, and the accepted soak window has zero fallback events.
 
 ## 13. Required evidence before first generational canary
 
 The activation packet must bind all evidence to one tested/reviewed
 implementation SHA, and must already contain **exact** `G_rb` and **exact**
-`G_canary` (IDs + manifest SHA-256 + source hashes + pipeline fingerprints +
-profile-specific provenance + exact vector identity + qualification evidence)
+`G_canary` (target/generation IDs + manifest SHA-256 + source hashes + pipeline
+fingerprints + profile-specific provenance + exact vector identity +
+qualification evidence)
 **before** Ryan issues the V8c activation grant. For `G_rb`, the packet also
 binds the D0 artifact SHA-256, independent validation-result SHA-256, Ryan D0
 ratification reference, accepted snapshot/vector roots, contemporary query-
 embedding context payload and its exact D0-ratified
-`query_embedding_context_sha256`, and exact retained-evidence SHA. No post-grant
+`query_embedding_context_sha256`, exact serving-selector fingerprint,
+rollback-baseline-evidence-v2 SHA, and recovery-coverage evidence. No post-grant
 packet amendment to discover either target or its authority.
 
 1. Full repository and focused CG-2 suites pass with no unexplained failures.
@@ -1284,8 +1343,8 @@ packet amendment to discover either target or its authority.
 11. Pointer/fence/source-path crash injection passes every transition. A real
     child-process kill during first-cutover / forward publication is followed by
     fresh recovery proving that the exact durable authority is honored and both
-    the active and immediate-previous (`G_rb`) generation rows remain physically
-    intact and exact-generation readable.
+    the active generation and immediate-previous `G_rb` referenced original
+    rows remain physically intact and exact-target readable through serving.
 12. Alias ambiguity and hardlink collision block owner eligibility.
 13. `G_rb` has ratified `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1` historical-
     vector-state provenance with model status exactly `UNKNOWN`, dimension
@@ -1298,8 +1357,9 @@ packet amendment to discover either target or its authority.
     cold-reopen replay, repeated generation churn, delete behavior, and physical
     storage amplification.
 16. **Design A rollback drill:** `rollback_active_pointer` restores exact `G_rb`
-    through fresh qualification of its manifest, rows, D0 chain, retained-
-    evidence SHA, and exact live-versus-D0-ratified
+    through fresh qualification of its reference-v2 manifest, original rows,
+    target-aware serving-reader output, D0 chain, rollback-baseline-evidence-v2
+    SHA, recovery coverage, and exact live-versus-D0-ratified
     `query_embedding_context_sha256` equality; when source has advanced,
     reconciliation-required remains durable; fence stays monotonic; never
     LEGACY. Separate tests prove `recover_active_pointer` cannot switch
@@ -1322,11 +1382,23 @@ packet amendment to discover either target or its authority.
       prospective generation requires `KNOWN_MODEL_AND_VECTOR_V1`;
     - D1 and first cutover refuse unless the exact three-part D0 authority chain
       validates and the current accepted LEGACY row/vector roots rebind;
+    - a retained `G_rb` is necessarily reference-v2 and its qualification,
+      proof, serving, and rollback resolution all name the same original
+      collection UUIDs and physical IDs;
+    - no copied generation, sidecar vector store, re-embedding, or second
+      normalization path can qualify or serve as `G_rb`;
+    - the target-aware serving reader returns exactly the D0-bound documents,
+      metadata, and canonical float32 readback hashes;
+    - first-cutover eligibility implies complete-data recovery coverage of the
+      original rows, D0 chain, reference manifest/evidence, pointer/fence/guard,
+      and query-context binding;
+    - the failed convert-v1 ID `2d01dfca…` is never eligible, active, previous,
+      or reusable;
     - current configuration, dimension, defaults, or caller input can never
       populate historical embedding-model identity;
     - loss of non-reconstructible `G_rb` or its authority cannot transition to a
       synthesized replacement with the same rollback-baseline identity;
-    - `rollback_active_pointer` may restore retained generation after source
+    - `rollback_active_pointer` may restore the retained reference target after source
       advance while leaving reconciliation-required only when the live
       `query_embedding_context_sha256` exactly equals the D0-ratified value;
       never resurrect LEGACY;
@@ -1337,7 +1409,7 @@ packet amendment to discover either target or its authority.
       quarantines an observed source/manifest mismatch;
     - recovery never changes pointer choice by completeness;
     - GC never selects an active/protected/pinned/`RETAINED_ROLLBACK_BASELINE`
-      generation;
+      target or any physical row it references;
     - no target is reclaimed between tentative resolution and a validated pin;
     - rename migration never admits old and new owners to one newly resolved
       vector;
@@ -1379,8 +1451,12 @@ CG-2 does not authorize:
 - an unknown-model proof profile on `G_canary` or any prospective generation;
 - treating a self-hashed D0 candidate or validation result as authority without
   independent reproduction and Ryan ratification;
-- reconstructing `G_rb` by re-embedding, model guessing, or semantic-equivalent
-  replacement;
+- constructing or reconstructing `G_rb` by Chroma re-upsert, copied generation,
+  vector sidecar authority, re-embedding, model guessing, normalization
+  reconstruction, or semantic-equivalent replacement;
+- weakening exact rollback to a finite-query behavioral-equivalence test;
+- reusing or activating failed convert-v1 target `2d01dfca…`;
+- adding `G_RB_CONVERT_COLD_VALIDATED` or an `abandoned_d1` schema;
 - changing CG-1 owner identity to an unrelated stable-ID scheme;
 - automatic hardlink owner merging;
 - naive epoch-based reclamation;
@@ -1390,8 +1466,8 @@ CG-2 does not authorize:
 - Shadow Ledger activation;
 - automatic GC in the first canary;
 - transparent rename migration in the first canary;
-- execution-plan rewrite before this amendment receives independent review and
-  Ryan ratification;
+- implementation before this corrective package receives independent review
+  and Ryan acceptance;
 - implementation before Architecture and Execution HITL.
 
 ## 15. Literature and authoritative references
@@ -1429,7 +1505,7 @@ Reviewers should answer explicitly:
    (`publish_active_pointer` / first-cutover forward publish). Generation-switch
    **rollback** (`rollback_active_pointer`) does **not** require live source
    bytes to equal the retained manifest; it requires fresh qualification of the
-   exact retained generation plus durable reconciliation when source has
+   exact retained target plus durable reconciliation when source has
    advanced. Reviewers confirm this split—not “every promotion path”—is
    correctly implemented and tested.
 5. Do any production, fallback, exact-lookup, evidence, count, restore, or MCP
@@ -1447,14 +1523,20 @@ Reviewers should answer explicitly:
 11. Does the three-part D0 chain make independent validation evidence, not just
     the candidate self-hash, part of Ryan's exact ratification?
 12. Can D1 and first cutover consume and rebind D0 without any capability to
-    self-attest, substitute, or stage a caller-held snapshot?
-13. Are non-reconstructible `G_rb`, exact live-versus-D0-ratified
+    self-attest, substitute, stage a caller-held snapshot, copy Chroma rows, or
+    make a vector sidecar authoritative?
+13. Does one target-aware reader resolve the exact same original collection
+    UUIDs and physical IDs for cold qualification, serving, first cutover, and
+    rollback?
+14. Does complete-data recovery cover the original referenced rows and all
+    bindings needed to prove them eligible before first cutover?
+15. Are non-reconstructible `G_rb`, exact live-versus-D0-ratified
     `query_embedding_context_sha256` equality, and complete-data restore
     semantics fail-closed without weakening the existing fence/pointer/rollback
     state machine?
 
-This amendment exits only when independent Claude adversarial review targets one
-exact candidate revision and Ryan ratifies that reviewed revision. Only then may
-the blocked execution plan be rewritten. No implementation, D0 production
-capture, D1 resumption, D2, or production activation follows directly from this
-document.
+This planning phase exits only when independent Kiro review targets one exact
+corrective package revision and Ryan accepts that reviewed revision. Only then
+may Ryan issue a separately bounded Cursor implementation grant. No D0 change,
+production D1 retry, cleanup, D2, or production activation follows directly
+from this document.

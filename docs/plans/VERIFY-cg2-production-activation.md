@@ -3,15 +3,17 @@
 ```text
 Planning Status
 
-Phase:        Verify (Execute mechanical evidence filled)
+Phase:        Verify (historical gateway evidence retained; D1 reference-v2 corrective PENDING)
 Characters:   Independent Reviewer, Test-First Reviewer
 Functions:    Reviewer
 Lanes:        Cursor mechanical; Kiro or named independent lane sign-off; Ryan GATE
-Authority:    Post-Execute HITL — mechanical evidence from isolated rehearsal
+Authority:    Planning oracle only for reference-v2; no corrective PASS or production grant
 ```
 
-**Status:** Mechanical Execute evidence filled on `feat/2026-08-15-cg2-production-activation`.
-Does **not** authorize production soak, owner cutover, or GC.
+**Status:** Historical gateway/Design A mechanical evidence is preserved below.
+The copied-`G_rb` D1 meaning and its V6c drill do **not** verify reference-v2.
+All corrective rows are PENDING. This document authorizes no implementation,
+D1 retry, cleanup, owner cutover, or GC.
 
 **Subject / tip:** `2a20209` (T5 complete — CG-2 Execute T1–T5 on branch)
 
@@ -23,38 +25,37 @@ Does **not** authorize production soak, owner cutover, or GC.
 **Execution plan (Ryan grant):** `6a808f1543f2c93270d9f0ed1ae88cad27f6556b`
 
 **EXECUTION / ARCHITECTURE:**
-[`EXECUTION-cg2-production-activation.md`](EXECUTION-cg2-production-activation.md) /
+[`EXECUTION-cg2-design-a.md`](EXECUTION-cg2-design-a.md) /
 [`ARCHITECTURE-cg2-production-activation.md`](ARCHITECTURE-cg2-production-activation.md)
 
-**Goal:** Prove implementation preserves one serving authority, rejects stale work,
-handles lost source notifications, accounts for logical identity, and remains safe
-through isolated rehearsal — before any separately granted gateway soak.
+**Goal:** Preserve valid gateway evidence and define the prospective proof that
+reference-v2 qualification, retained evidence, serving, rollback, and recovery
+all bind the same original D0-covered physical state.
 
 ## Human consequence
 
-Passing mechanical VERIFY lets Ryan decide whether to open a PR and later grant
-**legacy-only gateway soak**. It does **not** activate a generational owner or
-enable GC.
+Passing the new corrective rows at one independently reviewed implementation and
+formal-model tip would let Ryan decide whether to grant a separate production
+D1 reference publication. It would not activate an owner or enable GC.
 
 ### 5 Ws
 
 | | |
 |---|---|
-| **Who** | Cursor supplied mechanical evidence; Kiro or Ryan-named reviewer signs at PR; Ryan gates soak and activation separately. |
-| **What** | CG-2 authority migration T1–T5 on feature branch. |
-| **When** | After Execute on branch; before gateway soak grant. |
-| **Why** | Race-sensitive authority, reconciliation, and mixed-mode paths need mechanical oracles beyond ordinary green tests. |
-| **How** | Static inventories, hermetic pytest, isolated copied-corpus rehearsal, Chroma 1.5.9 mixed-mode proof. |
+| **Who** | Cursor will supply corrective evidence only after grant; Kiro independently reviews one exact implementation/model tip; Ryan gates production separately. |
+| **What** | Retained-reference-v2 manifest, same-reader qualification/serving, recovery binding, property map v3, and formal model. |
+| **When** | After independent plan review and Ryan implementation grant; before any D1 retry. |
+| **Why** | The failed copied generation drifted under cosine Chroma, and sidecar proof would not govern rollback serving. |
+| **How** | Exact-ID target reader + D0 root reproduction + recovery restore + negative controls + TLC invariants. |
 
-**TL;DR:** Mechanical checks PASS on isolated fixtures at pinned Chroma 1.5.9;
-V8a independent sign-off is **PASS** (Kiro); V8b (soak grant) is **PASS**; soak
-**completion** was separately Ryan-accepted 2026-08-21; V8c remains **PENDING**
-(definition papered under Design A — not PASS). No owner activation granted.
+**TL;DR:** Historical V8a/V8b/soak evidence remains valid; copied-`G_rb` V6c is
+not evidence for reference-v2. Corrective D1, property-map-v3, formal, recovery,
+and V8c rows remain PENDING. No owner activation granted.
 
 ### Merge reading
 
 - [CG-2 architecture](ARCHITECTURE-cg2-production-activation.md)
-- [CG-2 execution plan](EXECUTION-cg2-production-activation.md)
+- [CG-2 D1 corrective execution plan](EXECUTION-cg2-design-a.md)
 - [Operator runbook](RUNBOOK-cg2-production-activation.md)
 - [Formal model](formal/cg2/README.md)
 - [Property map](../cg2_property_map.py) (`cg2_property_map.py`)
@@ -106,6 +107,34 @@ or any production operation.
 **Production-negative confirmations:** no production D0 capture/validation,
 no Ryan production D0 ratification, no production `G_rb`/`G_canary` build,
 no fence/pointer publication, no owner activation, no V8c grant, no GC/Shadow/R2b.
+
+## D1 reference-v2 corrective gate — prospective evidence
+
+These rows supersede the copied-generation interpretation of historical V6c.
+They may be marked PASS only together at one exact implementation/model tip
+after independent review. A failure in any row blocks production D1.
+
+| ID | Prospective check | Current result | Required evidence |
+|---|---|---|---|
+| D1R0 | Reviewed planning and implementation identity | PENDING | Ryan-accepted planning SHA; exact implementation/model SHA; independent Kiro PASS on that tip |
+| D1R1 | Existing D0 chain is consumed unchanged | PENDING | Frozen candidate `d4be814a…`, validation `4af93884…`, ratification `ryan-d0-webui-2026-08-29`, root `28df8846…`; no recapture/reratification |
+| D1R2 | Correct protocol identity | PENDING | Fingerprint `convmem/cg2-rollback-baseline-reference-v2`; new deterministic target ID; `RETAINED_LEGACY_REFERENCE_V2`; evidence v2; unchanged proof profile |
+| D1R3 | Exact original physical membership | PENDING | Fresh process verifies original collection UUID/configuration and exactly ordered D0 physical IDs; missing/additional/substituted/duplicate/wrong-owner rows refuse |
+| D1R4 | Exact row/readback state | PENDING | Serving-reader documents, immutable metadata/provenance, and canonical float32 hashes reproduce all D0 roots; one-ULP mutation refuses |
+| D1R5 | One qualification/serving authority | PENDING | Spy/integration evidence proves cold qualification, first-cutover rebind, and rollback scoring call the same target-aware reader with identical target descriptor/output |
+| D1R6 | No copied or sidecar vector authority | PENDING | Static inventory + write/lookup spies prove no Chroma add/upsert, `.f32le`/sidecar, re-embedding, or reconstruction participates |
+| D1R7 | Fresh-process production-shape qualification | PENDING | Child process reopens actual-layout Chroma and governed generation root, reloads D0, verifies context and selector, and rejects stale/forged evidence |
+| D1R8 | Retention lifecycle truthful | PENDING | `RETAINED_ROLLBACK_BASELINE` only after D1R1–D1R7 and D1R9; no `G_RB_CONVERT_COLD_VALIDATED` literal |
+| D1R9 | Recovery covers one complete target | PENDING | Backup/restore jointly preserves original rows, reference manifest/evidence, D0 chain, pointer/fence/guard, and query context; restored serving-reader roots match |
+| D1R10 | Failed convert-v1 remains terminal | PENDING | `2d01dfca…` cannot be reused, activated, selected as previous, or cleaned; no `abandoned_d1` schema |
+| D1R11 | D0 exception contract preserved | PENDING | Non-finite D0 vector raises `D0AttestationError`; full pre-existing suite has no regression |
+| D1R12 | Property map and formal model close the same contract | PENDING | Property map v3 exact-node coverage; TLC all configs PASS same tip; negative mutations for wrong selector, copied serving, D0/context drift, missing recovery, failed-ID reuse |
+
+**Corrective rollback drill:** after hermetic first cutover, resolve
+`previous_generation_id` as the reference-v2 target, run fresh qualification,
+switch the pointer, issue a real serving query, and prove scoring consumed the
+exact D0-bound target-reader vectors. Then prove same-pointer recovery does not
+switch targets and source advance leaves durable reconciliation-required.
 
 ## V0 — Preconditions and evidence identity
 
@@ -183,7 +212,7 @@ no fence/pointer publication, no owner activation, no V8c grant, no GC/Shadow/R2
 |---|---|---|---|
 | V6a | Kill/corruption paths fail closed or recover | PASS | `tests/test_file_generation_validate.py`, pointer recovery tests |
 | V6b | Active/previous retention survives restart | PASS | `test_mixed_mode_proof.py::test_retention_survives_restart` |
-| V6c | Rollback uses retained generation, not legacy resurrection | **PASS** — Design A drill at closure tip | `tests/test_cg2_first_cutover.py` rollback/reconciliation oracles; `tests/test_cg2_rehearsal.py::test_design_a_isolated_rehearsal` end-to-end G_rb rollback + same-pointer recovery + retained baseline inventory at D7 closure tip `b64860b`. |
+| V6c | Rollback uses retained target, not legacy resurrection | **HISTORICAL PASS / REFERENCE-V2 PENDING** | Copied-generation drill passed at `b64860b` but does not prove the corrected physical authority. Reference-v2 closure requires D1R1–D1R12 and the corrective rollback drill above. |
 | V6d | Recovery follows durable pointer | PASS | `tests/test_file_generation_pointer.py` recovery paths |
 | V6e | GC disabled; protected generations not deleted | PASS | `PHYSICAL_DELETION_DISABLED`; no delete in proof path |
 
@@ -203,7 +232,7 @@ no fence/pointer publication, no owner activation, no V8c grant, no GC/Shadow/R2
 |---|---|---|---|
 | V8a | Independent reviewer signs exact tip | **PASS** — independent sign-off justified | Kiro independent review of CG-2 implementation tip `2f427fcfb8818dd665310bae7e8cd5ffa066bdcc` and preservation check on `main` `451f523b48c9fd998a050edfe6766d14249dcc6b` (CG-2 implementation surfaces unchanged between them). Focused CG-2 tests **43/43 PASS**; CG-2 + generation-core **76/76 PASS**; query/doctor/rerank **84/84 PASS**. Full suite timed out at 180s — **not** claimed PASS or FAIL. No material defects. Non-blocking carry-forward for V8c/canary prep: `FrozenGenerationStable` and `RetryBudgetTerminates` share one test; structural immutability supplements coverage (does **not** block V8a). |
 | V8b | Ryan accepts package / grants soak separately | **PASS** — legacy-only gateway soak grant recorded | Grant recorded in `LATEST.md`. V8b covers the **grant only**, not soak-completion success (see Soak-completion evidence below). |
-| V8c | First-owner packet + one-shot activation grant | **PENDING** (not PASS) | **Definition (Design A / HITL #3):** V8c PASS = Ryan accepted the complete first-owner packet **and** issued the exact one-shot first-owner activation grant. Packet **before grant** must bind exact `G_rb` and `G_canary` ids/manifest SHAs plus source hashes, pipeline fingerprints, qualification evidence, and implementation SHA. **Provenance (reconciled at D7):** `G_rb` = `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1`; `G_canary` = `KNOWN_MODEL_AND_VECTOR_V1`. Grant is one-shot and self-invalidating. **Current state:** not authorized; Design A D7 Execute closure is separate; V8c remains a later Ryan GATE. |
+| V8c | First-owner packet + one-shot activation grant | **PENDING** (not PASS) | **Definition:** Ryan accepts the complete packet and issues the exact one-shot grant. Before grant, packet binds reference-v2 `G_rb` target ID/manifest/evidence-v2/selector/recovery coverage and exact `G_canary` generation ID/manifest, source/pipeline/profile/qualification evidence, and one reviewed implementation/model SHA. D1R0–D1R12 and corrective V6c must PASS first. Grant remains one-shot/self-invalidating. |
 
 ## Soak-completion evidence (separate from V8b)
 
@@ -225,8 +254,10 @@ activation manifest, GC, Shadow, and R2b remain unauthorized.
 
 ## Formal property → test map
 
-See `cg2_property_map.py` (`convmem/cg2-design-a-property-map-v2`) and
-`collect_execute_evidence()["property_map"]` at D7 closure tip.
+Historical evidence uses `convmem/cg2-design-a-property-map-v2`. Corrective
+closure requires `convmem/cg2-design-a-property-map-v3` mapping every D1R
+property to exact pytest and TLC evidence at the same implementation tip. Until
+that artifact exists and passes completeness validation, D1R12 is PENDING.
 
 ## Evidence log
 
@@ -236,7 +267,8 @@ Design A architecture: 3d8b151907f02c8b8ead89585fb43904840b210b
 Superseding execution plan: 9a171bdf03d501ff891d991bbdad6acc1abda56c
 D6 accepted tip: 9a042fbc0d18500b91e056f47f60a00e20ccdb75
 D7 closure tip: b64860b05575c62b4563c02ed6f05bb39910b4dc
-V6c Design A rollback drill: PASS (mechanical, closure tip)
+V6c copied-generation drill: HISTORICAL PASS only; reference-v2 PENDING
+D1R0-D1R12: PENDING — corrective planning oracle, no implementation evidence
 First-owner packet (V8c): PENDING — provenance reconciled; not PASS
 Production activation: NOT PERFORMED
 Automatic GC: NOT PERFORMED
