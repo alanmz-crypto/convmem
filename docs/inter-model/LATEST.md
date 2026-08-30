@@ -2,7 +2,9 @@
 
 **Updated:** 2026-08-30 (Tier-0 verification-sweep reviewer handoffs authored)
 
-- **[Arc Recent-Completions Verification Sweep] Tier-0 step 1 DISPATCH — Kiro execute #253 (2026-08-30):** Who/What: Action handoff for Kiro to run C1–C12 claims attestation at landed SHA `a924d3887329dd51f1e0ac917f8ab21bae513c57` — not handoff extraction. When: now; steps 2–3 (#221, #202) blocked until Kiro returns output contract. Why: trust-map GAP. How: [`KIRO-2026-08-30-verification-sweep-253-execute-handoff.md`](KIRO-2026-08-30-verification-sweep-253-execute-handoff.md). **Resume state:** `AUTHORIZED — Kiro executing step 1`. Background: [`CURSOR-2026-08-30-verification-sweep-tier0-coordination-handoff.md`](CURSOR-2026-08-30-verification-sweep-tier0-coordination-handoff.md).
+- **[Arc Recent-Completions Verification Sweep] Tier-0 step 1 CLOSED — #253 Kiro PASS (2026-08-30):** Who/What: Kiro independently reverified C1–C12 at `a924d3887329dd51f1e0ac917f8ab21bae513c57` — 12 PASS, 0 FAIL; Copilot NOT_RUN; **GAP closed: Y**. When: step 1 complete. Why: trust-map claims attested. How: verdict in Kiro session; spec [`KIRO-2026-08-30-verification-sweep-253-execute-handoff.md`](KIRO-2026-08-30-verification-sweep-253-execute-handoff.md).
+
+- **[Arc Recent-Completions Verification Sweep] Tier-0 step 2 DISPATCH — #221 Copilot + Kiro (2026-08-30):** Who/What: Terminal PASS/FAIL at landed SHA `722141d31e586151f361ef7006ad74c71cdff534` on Trapdoor T3 main integration — disposit prior Copilot scope-limit; not COMMENTED deferral. When: now; step 3 (#202) blocked until both lanes return. Why: live write-gating on `main` with unresolved audit-lane concern. How: [`CURSOR-2026-08-30-verification-sweep-221-execute-handoff.md`](CURSOR-2026-08-30-verification-sweep-221-execute-handoff.md). **Resume state:** `AUTHORIZED — step 2 executing`.
 
 ## Current routing
 
