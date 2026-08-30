@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-SCHEMA = "convmem/cg2-design-a-property-map-v2"
+SCHEMA = "convmem/cg2-design-a-property-map-v3"
 REPO_ROOT = Path(__file__).resolve().parent
 
 # Inherited §13.18 architecture properties (historical formal map).
@@ -157,6 +157,57 @@ DESIGN_A_FORMAL_PROPERTY_MAP: dict[str, dict[str, Any]] = {
             "tests/test_cg2_first_cutover.py::test_lock_held_reread_before_fence",
         ],
         "notes": "Live LEGACY reread under lock before fence commit",
+    },
+
+    "GRbAuthoritySinglePhysicalState": {
+        "tests": [
+            "tests/test_cg2_reference_v2.py::test_same_reader_spy_qualification_and_serving",
+        ],
+        "notes": "Qualification and serving share one exact-ID reader",
+    },
+    "GRbReferenceMembershipExact": {
+        "tests": [
+            "tests/test_cg2_reference_v2.py::test_adversarial_missing_physical_id_refuses",
+            "tests/test_cg2_reference_v2.py::test_adversarial_substituted_physical_id_refuses",
+        ],
+        "notes": "Selector membership equals D0 physical-id set exactly",
+    },
+    "GRbServingReadsReferencedRows": {
+        "tests": [
+            "tests/test_cg2_reference_v2.py::test_serving_reads_referenced_rows_only",
+        ],
+        "notes": "Rollback serving consumes target-aware reader output",
+    },
+    "GRbNoCopiedOrSidecarAuthority": {
+        "tests": [
+            "tests/test_cg2_reference_v2.py::test_zero_copied_vector_rows",
+        ],
+        "notes": "No Chroma staging/upsert on reference-v2 retention path",
+    },
+    "GRbColdQualificationBeforeRetention": {
+        "tests": [
+            "tests/test_cg2_reference_v2.py::test_reference_v2_happy_path",
+        ],
+        "notes": "Retention requires fresh-process reference-v2 qualification",
+    },
+    "GRbRecoveryCoverageBeforeFirstCutover": {
+        "tests": [
+            "tests/test_cg2_reference_v2.py::test_recovery_eligibility_binds_rows",
+        ],
+        "notes": "Recovery coverage binds referenced original rows",
+    },
+    "GRbFailedV1NeverEligible": {
+        "tests": [
+            "tests/test_cg2_reference_v2.py::test_failed_convert_v1_target_id_refuses",
+        ],
+        "notes": "Failed convert-v1 target id is permanently ineligible",
+    },
+    "GRbReferenceFingerprintVersioned": {
+        "tests": [
+            "tests/test_cg2_reference_v2.py::test_deterministic_reference_v2_target_id",
+            "tests/test_cg2_reference_v2.py::test_reference_v2_id_differs_from_convert_v1",
+        ],
+        "notes": "Only reference-v2 fingerprint derives corrected target id",
     },
     "GRollbackRequiresExactQueryContext": {
         "tests": [

@@ -87,11 +87,15 @@ class FileGenerationStore:
         active_generations: Callable[[], Mapping[str, str]],
         previous_generations: Callable[[], Mapping[str, str]] | None = None,
         retained_baselines: Callable[[], Mapping[str, set[str]]] | None = None,
+        reference_v2_descriptors: Callable[[], Mapping[str, Any]] | None = None,
+        retained_reference_physical_ids: Callable[[], Mapping[str, set[str]]] | None = None,
     ) -> None:
         self.chroma_dir = str(Path(chroma_dir))
         self._active_generations = active_generations
         self._previous_generations = previous_generations or (dict)
         self._retained_baselines = retained_baselines or (dict)
+        self._reference_v2_descriptors = reference_v2_descriptors or (dict)
+        self._retained_reference_physical_ids = retained_reference_physical_ids or (dict)
         # No mutation sink: candidate staging must emit no authoritative Shadow
         # events.  The caller is responsible for providing temporary state.
         self._store = ChromaStore(self.chroma_dir, mutation_sink=None)
@@ -104,6 +108,10 @@ class FileGenerationStore:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
+
+    def retained_reference_physical_ids(self, owner_digest: str) -> set[str]:
+        """Return protected original physical ids for one retained reference target."""
+        return set(self._retained_reference_physical_ids().get(owner_digest) or set())
 
     @property
     def raw_store(self) -> ChromaStore:
@@ -671,6 +679,60 @@ class FileGenerationStore:
             raise GenerationReadError(f"unusable cosine distance for active row {label}")
         return distance
 
+
+    def _reference_v2_descriptor_for_owner(
+        self, owner_digest: str | None
+    ) -> Any | None:
+        if owner_digest is None:
+            return None
+        return self._reference_v2_descriptors().get(owner_digest)
+
+    def _query_reference_v2(
+        self,
+        collection_name: str,
+        embedding: list[float],
+        top_k: int,
+        *,
+        include_superseded: bool,
+        descriptor: Any,
+    ) -> list[dict[str, Any]]:
+        from cg2_retained_reference import read_retained_reference_rows  # pylint: disable=import-outside-toplevel
+
+        query_vector = self._validated_embedding(embedding, label="query")
+        active_rows = read_retained_reference_rows(
+            self,
+            descriptor,
+            include_embeddings=True,
+        )
+        active_rows = [
+            row for row in active_rows if row.get("collection_name") == collection_name
+        ]
+        if not active_rows:
+            return []
+        fetch = top_k if include_superseded else max(top_k * 3, top_k)
+        rows: list[dict[str, Any]] = []
+        for row in active_rows:
+            row_embedding = self._validated_embedding(
+                row.get("embedding"),
+                label=str(row["id"]),
+                expected_dimension=len(query_vector),
+            )
+            rows.append(
+                {
+                    "id": row["id"],
+                    "document": row["document"],
+                    "metadata": row["metadata"],
+                    "distance": self._cosine_distance(
+                        query_vector, row_embedding, label=str(row["id"])
+                    ),
+                }
+            )
+        rows.sort(key=lambda item: (float(item["distance"]), str(item["id"])))
+        rows = rows[: min(fetch, len(rows))]
+        if not include_superseded:
+            rows = [row for row in rows if not is_superseded(row.get("metadata") or {})]
+        return rows[:top_k]
+
     def _query(
         self,
         collection_name: str,
@@ -682,6 +744,15 @@ class FileGenerationStore:
     ) -> list[dict[str, Any]]:
         if top_k <= 0:
             return []
+        descriptor = self._reference_v2_descriptor_for_owner(owner_digest)
+        if descriptor is not None:
+            return self._query_reference_v2(
+                collection_name,
+                embedding,
+                top_k,
+                include_superseded=include_superseded,
+                descriptor=descriptor,
+            )
         query_vector = self._validated_embedding(embedding, label="query")
         active_rows = self._get_rows(
             collection_name,

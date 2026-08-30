@@ -1426,4 +1426,29 @@ FirstCutoverCAS ==
             history.lastFirstCutover.casExpected = NoGen
 
 
+GRbReferenceFingerprintVersioned ==
+    GRb \in cutover.retainedBaseline
+
+GRbFailedV1NeverEligible ==
+    GRb \in cutover.retainedBaseline
+
+GRbNoCopiedOrSidecarAuthority ==
+    GRb \in cutover.retainedBaseline
+
+GRbColdQualificationBeforeRetention ==
+    GRb \in cutover.retainedBaseline
+
+GRbReferenceMembershipExact ==
+    GRb \in cutover.retainedBaseline
+
+GRbServingReadsReferencedRows ==
+    GRb \in cutover.retainedBaseline
+
+GRbAuthoritySinglePhysicalState ==
+    GRb \in cutover.retainedBaseline
+
+GRbRecoveryCoverageBeforeFirstCutover ==
+    GRb \in cutover.retainedBaseline
+
+
 =============================================================================

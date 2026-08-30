@@ -2221,3 +2221,76 @@ def record_restic_tree_binding(
     if provenance_tuple is not None:
         binding.update(dict(provenance_tuple))
     report.set_meta(restic_tree_binding=binding)
+
+def validate_reference_v2_recovery_eligibility(
+    cfg: Mapping[str, Any],
+    *,
+    generation_root: str | Path,
+    manifest: Mapping[str, Any],
+    evidence: Mapping[str, Any] | None,
+    chroma_dir: str | Path,
+) -> dict[str, Any]:
+    """Minimal recovery binding for reference-v2 retained rollback baselines."""
+
+    from cg2_retained_reference import (  # pylint: disable=import-outside-toplevel
+        RetainedReferenceError,
+        build_descriptor_from_manifest,
+        read_retained_reference_rows,
+    )
+    from file_generation_contract import (  # pylint: disable=import-outside-toplevel
+        is_failed_convert_v1_target_id,
+        is_retained_legacy_reference_manifest,
+        refuse_failed_convert_v1_target_id,
+        validate_retained_legacy_reference_manifest,
+    )
+    from file_generation_store import FileGenerationStore  # pylint: disable=import-outside-toplevel
+
+    if not is_retained_legacy_reference_manifest(manifest):
+        return {"eligible": False, "reason": "manifest is not reference-v2"}
+    validate_retained_legacy_reference_manifest(manifest)
+    generation_id = str(manifest.get("generation_id") or "")
+    refuse_failed_convert_v1_target_id(generation_id)
+    if is_failed_convert_v1_target_id(generation_id):
+        return {"eligible": False, "reason": "failed convert-v1 target id"}
+
+    d0_bindings = dict(manifest.get("d0_bindings") or {})
+    for field in (
+        "ratification_id",
+        "accepted_legacy_snapshot_root",
+        "accepted_legacy_vector_root",
+        "query_embedding_context_sha256",
+        "candidate_artifact_sha256",
+        "validation_result_sha256",
+    ):
+        if not str(d0_bindings.get(field) or "").strip():
+            return {"eligible": False, "reason": f"incomplete d0 binding: {field}"}
+
+    descriptor = build_descriptor_from_manifest(manifest)
+    try:
+        with FileGenerationStore(chroma_dir, active_generations=dict) as store:
+            rows = read_retained_reference_rows(store, descriptor, include_embeddings=False)
+    except RetainedReferenceError as exc:
+        return {"eligible": False, "reason": f"manifest-without-rows: {exc}"}
+
+    expected_count = sum(
+        len(list(dict(spec).get("physical_ids") or []))
+        for spec in dict(descriptor.collections).values()
+    )
+    if len(rows) != expected_count:
+        return {
+            "eligible": False,
+            "reason": "referenced physical row count mismatch",
+            "expected": expected_count,
+            "observed": len(rows),
+        }
+
+    return {
+        "eligible": True,
+        "generation_id": generation_id,
+        "referenced_physical_row_count": len(rows),
+        "d0_bindings": d0_bindings,
+        "generation_root": str(generation_root),
+        "chroma_dir": str(chroma_dir),
+        "evidence_bound": evidence is not None,
+    }
+

@@ -26,6 +26,10 @@ from file_generation_contract import (
     owner_digest,
     validate_active_pointer,
     validate_generation_manifest,
+    validate_published_manifest,
+    is_retained_legacy_reference_manifest,
+    is_failed_convert_v1_target_id,
+    refuse_failed_convert_v1_target_id,
 )
 from purge_locks import source_flock
 
@@ -236,7 +240,7 @@ def publish_manifest(
 ) -> ManifestReference:
     """Durably publish an immutable manifest, idempotently for identical bytes."""
 
-    validate_generation_manifest(manifest)
+    validate_published_manifest(manifest)
     provision_generation_layout(generation_root)
     path = manifest_path(
         generation_root, str(manifest["owner_digest"]), str(manifest["generation_id"])
@@ -249,7 +253,7 @@ def publish_manifest(
     else:
         atomic_write_json(path, obj)
     reread = _read_json(path)
-    validate_generation_manifest(reread)
+    validate_published_manifest(reread)
     if reread != obj:
         raise GenerationQualificationError("published manifest reread mismatch")
     return ManifestReference(path=path, manifest=reread, file_sha256=_file_sha256(path))
@@ -268,7 +272,7 @@ def load_manifest_reference(
     if actual != expected_sha256:
         raise GenerationQualificationError("pointer-to-manifest file hash mismatch")
     manifest = _read_json(path)
-    validate_generation_manifest(manifest)
+    validate_published_manifest(manifest)
     return ManifestReference(path=path, manifest=manifest, file_sha256=actual)
 
 
@@ -276,7 +280,7 @@ def _reload_verified_caller_reference(
     generation_root: str | Path, manifest_reference: ManifestReference
 ) -> ManifestReference:
     """Bind caller-held manifest identity to its canonical persisted bytes."""
-    validate_generation_manifest(manifest_reference.manifest)
+    validate_published_manifest(manifest_reference.manifest)
     expected_path = manifest_path(
         generation_root,
         str(manifest_reference.manifest["owner_digest"]),
@@ -793,10 +797,14 @@ def _is_grb_rollback_target(
         return False
     if profile == LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1:
         return True
+    from file_generation_contract import is_retained_legacy_reference_manifest  # pylint: disable=import-outside-toplevel
+    if is_retained_legacy_reference_manifest(manifest):
+        return True
     from cg2_rollback_baseline import (  # pylint: disable=import-outside-toplevel
         RollbackBaselineError,
         rollback_baseline_evidence_path,
         validate_retained_rollback_baseline_evidence,
+        validate_retained_rollback_baseline_evidence_v2,
     )
 
     owner_digest_value = str(manifest["owner_digest"])
@@ -807,12 +815,20 @@ def _is_grb_rollback_target(
     if not evidence_path.is_file():
         return False
     try:
-        evidence = validate_retained_rollback_baseline_evidence(
-            generation_root,
-            owner_digest_value=owner_digest_value,
-            generation_id=generation_id,
-            expected_manifest_sha256=None,
-        )
+        if is_retained_legacy_reference_manifest(manifest):
+            evidence = validate_retained_rollback_baseline_evidence_v2(
+                generation_root,
+                owner_digest_value=owner_digest_value,
+                generation_id=generation_id,
+                expected_manifest_sha256=None,
+            )
+        else:
+            evidence = validate_retained_rollback_baseline_evidence(
+                generation_root,
+                owner_digest_value=owner_digest_value,
+                generation_id=generation_id,
+                expected_manifest_sha256=None,
+            )
     except RollbackBaselineError:
         return False
     return evidence.get("proof_profile") == LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1
@@ -833,9 +849,11 @@ def _validate_grb_rollback_authority(
         verify_d0_chain_for_grb_conversion,
     )
     from cg2_rollback_baseline import (  # pylint: disable=import-outside-toplevel
+        ROLLBACK_BASELINE_EVIDENCE_V2_SCHEMA,
         RollbackBaselineError,
         rollback_baseline_evidence_path,
         validate_retained_rollback_baseline_evidence,
+        validate_retained_rollback_baseline_evidence_v2,
     )
 
     if not str(grb_ratification_id or "").strip():
@@ -844,6 +862,7 @@ def _validate_grb_rollback_authority(
         )
     owner_digest_value = str(fresh_ref.manifest["owner_digest"])
     generation_id = str(fresh_ref.manifest["generation_id"])
+    refuse_failed_convert_v1_target_id(generation_id)
     evidence_path = rollback_baseline_evidence_path(
         generation_root, owner_digest_value, generation_id
     )
@@ -854,12 +873,20 @@ def _validate_grb_rollback_authority(
         if actual_sha != grb_evidence_sha256:
             raise GenerationPublicationError("G_rb retained evidence SHA mismatch")
     try:
-        evidence = validate_retained_rollback_baseline_evidence(
-            generation_root,
-            owner_digest_value=owner_digest_value,
-            generation_id=generation_id,
-            expected_manifest_sha256=fresh_ref.file_sha256,
-        )
+        if is_retained_legacy_reference_manifest(fresh_ref.manifest):
+            evidence = validate_retained_rollback_baseline_evidence_v2(
+                generation_root,
+                owner_digest_value=owner_digest_value,
+                generation_id=generation_id,
+                expected_manifest_sha256=fresh_ref.file_sha256,
+            )
+        else:
+            evidence = validate_retained_rollback_baseline_evidence(
+                generation_root,
+                owner_digest_value=owner_digest_value,
+                generation_id=generation_id,
+                expected_manifest_sha256=fresh_ref.file_sha256,
+            )
     except RollbackBaselineError as exc:
         raise GenerationPublicationError(str(exc)) from exc
     dimension = next(

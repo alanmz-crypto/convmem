@@ -268,7 +268,10 @@ def _as_float_tuple(embedding: Any) -> tuple[float, ...]:
         embedding = embedding.tolist()
     if not isinstance(embedding, (list, tuple)) or not embedding:
         raise D0AttestationError("admitted LEGACY row lacks persisted embedding")
-    values = tuple(float(value) for value in embedding)
+    try:
+        values = tuple(float(value) for value in embedding)
+    except (TypeError, ValueError) as exc:
+        raise D0AttestationError("admitted LEGACY embedding is malformed") from exc
     if any(not math.isfinite(value) for value in values):
         raise D0AttestationError("admitted LEGACY embedding is non-finite")
     return values

@@ -25,12 +25,17 @@ from chroma_store import SUMMARIES, UNITS, ChromaStore, is_superseded
 from chroma_write_store import WriterBoundaryError, require_writer_attestation
 from config import load_config
 from file_generation_contract import (
+    REFERENCE_V2_FINGERPRINT,
     build_generation_manifest,
+    build_retained_legacy_reference_manifest,
     candidate_bundle_hash,
     canonical_hash,
     canonical_source_path,
+    is_failed_convert_v1_target_id,
     make_generation_id,
     make_physical_id,
+    make_reference_v2_target_id,
+    refuse_failed_convert_v1_target_id,
 )
 from file_generation_pointer import load_manifest_reference, publish_manifest, provision_generation_layout
 from file_generation_store import FILE_SCOPE, STABLE_SCOPE, FileGenerationStore, StagedRow
@@ -65,7 +70,10 @@ from cg2_legacy_vector_attestation import (
 )
 from chroma_readonly import collection_config_metadata, collection_uuid
 
+verify_d0_chain_for_grb_reference = verify_d0_chain_for_grb_conversion
+
 CONVERT_V1_FINGERPRINT = "convmem/cg2-rollback-baseline-convert-v1"
+ROLLBACK_BASELINE_EVIDENCE_V2_SCHEMA = "convmem/cg2-rollback-baseline-evidence-v2"
 ROLLBACK_BASELINE_SCHEMA = "convmem/cg2-rollback-baseline-evidence-v1"
 RETAINED_ROLLBACK_BASELINE = "RETAINED_ROLLBACK_BASELINE"
 D1_GENERATION_ROW_KEY_SCHEMA = "convmem/cg2-d1-generation-row-key-v1"
@@ -1860,3 +1868,430 @@ def validate_retained_rollback_baseline_evidence(
         )
 
     return payload
+
+@dataclass(frozen=True)
+class ReferenceV2BaselineResult:
+    """Qualified retained rollback baseline produced by reference-v2."""
+
+    generation_id: str
+    owner_digest: str
+    reference_fingerprint: str
+    manifest_sha256: str
+    manifest_filename: str
+    evidence_path: Path
+    evidence: Mapping[str, Any]
+    cold_qualification: Mapping[str, Any]
+    membership: Mapping[str, Any]
+    snapshot: LegacyServingSnapshot
+    selector_fingerprint: str
+
+
+def _collections_selector_from_rows(
+    rows: Sequence[LegacyServingRow],
+    historical_bindings: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    selector: dict[str, Any] = {}
+    grouped: dict[str, list[LegacyServingRow]] = {}
+    for row in rows:
+        grouped.setdefault(row.collection_name, []).append(row)
+    for collection_name, collection_rows in grouped.items():
+        binding = dict(historical_bindings[collection_name])
+        ordered = sorted(
+            collection_rows,
+            key=lambda item: (item.logical_id, item.physical_id),
+        )
+        row_identities: dict[str, Any] = {}
+        for row in ordered:
+            envelope_hash = (
+                canonical_hash(row.provenance_envelope)
+                if row.provenance_envelope is not None
+                else None
+            )
+            row_identities[row.physical_id] = {
+                "conversion_logical_id": row.logical_id,
+                "document_hash": canonical_hash(row.document),
+                "vector_encoding_sha256": vector_encoding_sha256(row.embedding),
+                "immutable_semantic_metadata_hash": canonical_hash(
+                    _semantic_immutable(dict(row.metadata))
+                ),
+                "provenance_envelope_hash": envelope_hash,
+                "assertion_id": row.assertion_id,
+                "provenance_commitment": row.provenance_commitment,
+            }
+        selector[collection_name] = {
+            "collection_uuid": str(binding["collection_uuid"]),
+            "configuration": copy.deepcopy(dict(binding["configuration"])),
+            "embedding_model": str(binding["embedding_model"]),
+            "embedding_dimension": int(binding["embedding_dimension"]),
+            "physical_ids": [row.physical_id for row in ordered],
+            "row_identities": row_identities,
+        }
+    return selector
+
+
+def retain_reference_v2_rollback_baseline(
+    *,
+    cfg: Mapping[str, Any],
+    store: FileGenerationStore,
+    generation_root: str | Path,
+    owner_digest_value: str,
+    ratification_id: str,
+) -> ReferenceV2BaselineResult:
+    """Retain G_rb as a reference-v2 target over exact original D0 rows."""
+
+    from cg2_retained_reference import (  # pylint: disable=import-outside-toplevel
+        RetainedReferenceError,
+        build_descriptor_from_manifest,
+        qualify_retained_reference_membership,
+        read_retained_reference_rows,
+        serving_selector_fingerprint,
+    )
+    from complete_data_restore import (  # pylint: disable=import-outside-toplevel
+        validate_reference_v2_recovery_eligibility,
+    )
+    from file_generation_validate import (  # pylint: disable=import-outside-toplevel
+        run_reference_v2_cold_validation,
+    )
+
+    _refuse_unattested_production_chroma(store.chroma_dir)
+    _refuse_unattested_production_generation_root(generation_root)
+    try:
+        chain = load_ratified_d0_chain(
+            generation_root,
+            owner_digest=owner_digest_value,
+            ratification_id=ratification_id,
+        )
+    except D0AttestationError as exc:
+        raise RollbackBaselineError(str(exc)) from exc
+
+    candidate = chain.candidate
+    dimension = _admitted_dimension_from_d0_candidate(candidate)
+    _context, context_sha = derive_query_embedding_context(
+        cfg, admitted_dimension=dimension
+    )
+    try:
+        verify_d0_chain_for_grb_reference(
+            chain, live_query_context_sha256=context_sha
+        )
+    except D0AttestationError as exc:
+        raise RollbackBaselineError(str(exc)) from exc
+
+    rows = _reread_rows_for_d0_chain(cfg, store, chain)
+    historical_bindings = _historical_bindings_from_d0_chain(chain, store, rows=rows)
+    snapshot = _snapshot_from_reread_rows(
+        owner_key=str(candidate["owner_key"]),
+        owner_digest_value=chain.owner_digest,
+        canonical_source=str(candidate["canonical_source_path"]),
+        accepted_source_hash=str(candidate["accepted_source_hash"]),
+        rows=rows,
+        historical_bindings=historical_bindings,
+    )
+    d0_roots = _recompute_d0_roots(rows, store.chroma_dir, dimension)
+    if d0_roots["snapshot"] != chain.ratification.accepted_legacy_snapshot_root:
+        raise RollbackBaselineError(
+            "reread snapshot root does not match ratified D0 chain"
+        )
+    if d0_roots["vector"] != chain.ratification.accepted_legacy_vector_root:
+        raise RollbackBaselineError(
+            "reread vector root does not match ratified D0 chain"
+        )
+
+    collections_selector = _collections_selector_from_rows(rows, historical_bindings)
+    generation_id = make_reference_v2_target_id(
+        owner_digest=snapshot.owner_digest,
+        source_hash=snapshot.accepted_source_hash,
+        snapshot_root=d0_roots["snapshot"],
+        vector_root=d0_roots["vector"],
+        collections_selector=collections_selector,
+    )
+    refuse_failed_convert_v1_target_id(generation_id)
+    if is_failed_convert_v1_target_id(generation_id):
+        raise RollbackBaselineError("reference-v2 target id collides with failed convert-v1")
+
+    evidence_path = rollback_baseline_evidence_path(
+        generation_root, snapshot.owner_digest, generation_id
+    )
+    if evidence_path.exists():
+        existing = validate_retained_rollback_baseline_evidence_v2(
+            generation_root,
+            owner_digest_value=snapshot.owner_digest,
+            generation_id=generation_id,
+        )
+        reference = load_manifest_reference(
+            generation_root,
+            manifest_filename=str(existing["manifest_filename"]),
+            expected_sha256=str(existing["manifest_sha256"]),
+        )
+        descriptor = build_descriptor_from_manifest(reference.manifest)
+        try:
+            live_cold = run_reference_v2_cold_validation(
+                store.chroma_dir,
+                reference.path,
+                descriptor=descriptor,
+                expected_manifest_sha256=reference.file_sha256,
+            )
+        except RuntimeError as exc:
+            raise RollbackBaselineError(
+                f"fresh-process reference-v2 qualification failed on idempotent re-entry: {exc}"
+            ) from exc
+        if live_cold.get("valid") is not True:
+            raise RollbackBaselineError(
+                "fresh-process reference-v2 qualification refused on idempotent re-entry"
+            )
+        return ReferenceV2BaselineResult(
+            generation_id=generation_id,
+            owner_digest=snapshot.owner_digest,
+            reference_fingerprint=REFERENCE_V2_FINGERPRINT,
+            manifest_sha256=str(existing["manifest_sha256"]),
+            manifest_filename=str(existing["manifest_filename"]),
+            evidence_path=evidence_path,
+            evidence=existing,
+            cold_qualification=dict(existing.get("cold_qualification") or {}),
+            membership=dict(existing.get("membership_qualification") or {}),
+            snapshot=snapshot,
+            selector_fingerprint=str(existing.get("serving_selector_fingerprint") or ""),
+        )
+
+    provision_generation_layout(generation_root)
+    descriptor = None
+    manifest = build_retained_legacy_reference_manifest(
+        owner_key=snapshot.owner_key,
+        generation_id=generation_id,
+        canonical_source=snapshot.canonical_source_path,
+        source_hash=snapshot.accepted_source_hash,
+        fingerprints={
+            "pipeline": REFERENCE_V2_FINGERPRINT,
+            "reference": REFERENCE_V2_FINGERPRINT,
+        },
+        collections_selector=collections_selector,
+        d0_bindings={
+            "ratification_id": ratification_id,
+            "accepted_legacy_snapshot_root": d0_roots["snapshot"],
+            "accepted_legacy_vector_root": d0_roots["vector"],
+            "query_embedding_context_sha256": context_sha,
+            "candidate_artifact_sha256": chain.ratification.candidate_artifact_sha256,
+            "validation_result_sha256": chain.ratification.validation_result_sha256,
+        },
+        proof_profile=LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1,
+        recorded_only_annotations={
+            "lifecycle_state": RETAINED_ROLLBACK_BASELINE,
+            "legacy_snapshot_digest": snapshot.snapshot_digest,
+        },
+    )
+    reference = publish_manifest(generation_root, manifest)
+    descriptor = build_descriptor_from_manifest(reference.manifest)
+    selector_fingerprint = serving_selector_fingerprint(descriptor)
+
+    read_rows = read_retained_reference_rows(store, descriptor, include_embeddings=True)
+    try:
+        membership = qualify_retained_reference_membership(
+            read_rows, descriptor, d0_roots
+        )
+    except RetainedReferenceError as exc:
+        raise RollbackBaselineError(str(exc)) from exc
+
+    try:
+        cold = run_reference_v2_cold_validation(
+            store.chroma_dir,
+            reference.path,
+            descriptor=descriptor,
+            expected_manifest_sha256=reference.file_sha256,
+        )
+    except RuntimeError as exc:
+        raise RollbackBaselineError(
+            f"fresh-process reference-v2 qualification failed: {exc}"
+        ) from exc
+    if cold.get("valid") is not True:
+        raise RollbackBaselineError("fresh-process reference-v2 qualification refused")
+    if "elapsed_seconds" not in cold or "sequence_positions" not in cold:
+        raise RollbackBaselineError(
+            "fresh-process reference-v2 qualification evidence is incomplete"
+        )
+
+    recovery = validate_reference_v2_recovery_eligibility(
+        cfg,
+        generation_root=generation_root,
+        manifest=reference.manifest,
+        evidence=None,
+        chroma_dir=store.chroma_dir,
+    )
+    if recovery.get("eligible") is not True:
+        raise RollbackBaselineError("reference-v2 recovery coverage refused")
+
+    published_at = str(chain.ratification.capture_time)
+    cold_qualification = {
+        "valid": True,
+        "generation_id": generation_id,
+        "owner_digest": snapshot.owner_digest,
+        "manifest_sha256": reference.file_sha256,
+        "identity": canonical_hash(
+            {
+                "generation_id": generation_id,
+                "owner_digest": snapshot.owner_digest,
+                "manifest_sha256": reference.file_sha256,
+                "selector_fingerprint": selector_fingerprint,
+            }
+        ),
+        "sequence_positions": cold["sequence_positions"],
+        "reader_log_count": len(cold.get("reader_log") or []),
+    }
+    evidence = _with_evidence_hash(
+        {
+            "schema": ROLLBACK_BASELINE_EVIDENCE_V2_SCHEMA,
+            "state": RETAINED_ROLLBACK_BASELINE,
+            "owner_key": snapshot.owner_key,
+            "owner_digest": snapshot.owner_digest,
+            "canonical_source_path": snapshot.canonical_source_path,
+            "accepted_source_hash": snapshot.accepted_source_hash,
+            "normalized_snapshot_digest": snapshot.snapshot_digest,
+            "reference_fingerprint": REFERENCE_V2_FINGERPRINT,
+            "generation_id": generation_id,
+            "manifest_filename": reference.path.name,
+            "manifest_sha256": reference.file_sha256,
+            "serving_selector_fingerprint": selector_fingerprint,
+            "membership_qualification": membership,
+            "recovery_coverage": recovery,
+            "cold_qualification": cold_qualification,
+            "active_pointer": None,
+            "serving": False,
+            "published_at": published_at,
+            "proof_profile": LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1,
+            "d0_bindings": dict(manifest.get("d0_bindings") or {}),
+        }
+    )
+    evidence_path = _publish_evidence(generation_root, evidence)
+    return ReferenceV2BaselineResult(
+        generation_id=generation_id,
+        owner_digest=snapshot.owner_digest,
+        reference_fingerprint=REFERENCE_V2_FINGERPRINT,
+        manifest_sha256=reference.file_sha256,
+        manifest_filename=reference.path.name,
+        evidence_path=evidence_path,
+        evidence=evidence,
+        cold_qualification=cold,
+        membership=membership,
+        snapshot=snapshot,
+        selector_fingerprint=selector_fingerprint,
+    )
+
+
+def validate_retained_rollback_baseline_evidence_v2(
+    generation_root: str | Path,
+    *,
+    owner_digest_value: str,
+    generation_id: str,
+    expected_manifest_sha256: str | None = None,
+) -> dict[str, Any]:
+    """Validate immutable retained reference-v2 rollback-baseline evidence."""
+
+    refuse_failed_convert_v1_target_id(generation_id)
+    path = rollback_baseline_evidence_path(
+        generation_root, owner_digest_value, generation_id
+    )
+    if not path.is_file():
+        raise RollbackBaselineError(
+            f"missing retained reference-v2 baseline evidence: {path}"
+        )
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RollbackBaselineError(
+            f"corrupt retained reference-v2 baseline evidence: {exc}"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise RollbackBaselineError("corrupt retained reference-v2 baseline evidence")
+    required = (
+        "schema",
+        "state",
+        "owner_key",
+        "owner_digest",
+        "canonical_source_path",
+        "accepted_source_hash",
+        "normalized_snapshot_digest",
+        "reference_fingerprint",
+        "generation_id",
+        "manifest_filename",
+        "manifest_sha256",
+        "serving_selector_fingerprint",
+        "membership_qualification",
+        "recovery_coverage",
+        "cold_qualification",
+        "evidence_payload_hash",
+        "proof_profile",
+        "d0_bindings",
+    )
+    missing = [field for field in required if field not in payload]
+    if missing:
+        raise RollbackBaselineError(
+            f"reference-v2 baseline evidence missing required fields: {missing}"
+        )
+    if payload.get("schema") != ROLLBACK_BASELINE_EVIDENCE_V2_SCHEMA:
+        raise RollbackBaselineError(
+            "unsupported reference-v2 rollback baseline evidence schema"
+        )
+    if payload.get("state") != RETAINED_ROLLBACK_BASELINE:
+        raise RollbackBaselineError("evidence is not RETAINED_ROLLBACK_BASELINE")
+    if str(payload.get("owner_digest") or "") != owner_digest_value:
+        raise RollbackBaselineError("wrong-owner retained reference-v2 evidence")
+    if str(payload.get("generation_id") or "") != generation_id:
+        raise RollbackBaselineError("generation_id mismatch in reference-v2 evidence")
+    if payload.get("reference_fingerprint") != REFERENCE_V2_FINGERPRINT:
+        raise RollbackBaselineError("wrong reference fingerprint in baseline evidence")
+    if payload.get("active_pointer") not in (None, False):
+        raise RollbackBaselineError("baseline evidence must not name an active pointer")
+    if payload.get("serving") not in (None, False):
+        raise RollbackBaselineError("baseline evidence must not itself serve")
+
+    expected_hash = payload.get("evidence_payload_hash")
+    unhashed = copy.deepcopy(payload)
+    unhashed.pop("evidence_payload_hash", None)
+    actual_hash = canonical_hash(unhashed)
+    if not isinstance(expected_hash, str) or expected_hash != actual_hash:
+        raise RollbackBaselineError("evidence payload hash mismatch")
+
+    manifest_sha = str(payload.get("manifest_sha256") or "")
+    if expected_manifest_sha256 is not None and manifest_sha != expected_manifest_sha256:
+        raise RollbackBaselineError("wrong manifest SHA in retained reference-v2 evidence")
+
+    try:
+        reference = load_manifest_reference(
+            generation_root,
+            manifest_filename=str(payload["manifest_filename"]),
+            expected_sha256=manifest_sha,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise RollbackBaselineError(
+            f"manifest SHA binding failed for retained reference-v2 baseline: {exc}"
+        ) from exc
+    manifest = dict(reference.manifest)
+    if str(manifest.get("generation_id") or "") != generation_id:
+        raise RollbackBaselineError("manifest generation_id does not bind to evidence")
+    from cg2_retained_reference import (  # pylint: disable=import-outside-toplevel
+        build_descriptor_from_manifest,
+        serving_selector_fingerprint,
+    )
+
+    descriptor = build_descriptor_from_manifest(manifest)
+    if str(payload.get("serving_selector_fingerprint") or "") != serving_selector_fingerprint(
+        descriptor
+    ):
+        raise RollbackBaselineError("serving selector fingerprint does not bind")
+
+    cold = payload.get("cold_qualification")
+    if not isinstance(cold, dict) or cold.get("valid") is not True:
+        raise RollbackBaselineError("cold-qualification result is not valid")
+    if str(cold.get("generation_id") or "") != generation_id:
+        raise RollbackBaselineError("cold-qualification generation_id does not bind")
+    if str(cold.get("manifest_sha256") or "") != manifest_sha:
+        raise RollbackBaselineError("cold-qualification manifest SHA does not bind")
+
+    recovery = payload.get("recovery_coverage")
+    if not isinstance(recovery, dict) or recovery.get("eligible") is not True:
+        raise RollbackBaselineError("recovery coverage evidence is not eligible")
+
+    membership = payload.get("membership_qualification")
+    if not isinstance(membership, dict) or membership.get("valid") is not True:
+        raise RollbackBaselineError("membership qualification evidence is not valid")
+
+    return payload
+

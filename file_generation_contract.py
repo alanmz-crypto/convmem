@@ -412,3 +412,260 @@ def validate_active_pointer(pointer: Mapping[str, Any]) -> None:
         if not isinstance(pointer.get(field), str) or not pointer[field]:
             raise GenerationContractError(f"pointer missing {field}")
     validate_payload_hash(pointer, "pointer_payload_hash")
+
+REFERENCE_V2_FINGERPRINT = "convmem/cg2-rollback-baseline-reference-v2"
+FAILED_CONVERT_V1_TARGET_ID = (
+    "2d01dfca08ac388e7ac74d145e789a8a35d8b97c4bf2ee6d971a95a8a74c4b3c"
+)
+RETAINED_LEGACY_REFERENCE_V2_SCHEMA = "convmem/retained-legacy-reference-manifest-v2"
+REFERENCE_V2_IDENTITY_SCHEMA = "convmem/cg2-rollback-baseline-reference-v2-identity-v1"
+RETAINED_LEGACY_REFERENCE_V2 = "RETAINED_LEGACY_REFERENCE_V2"
+
+_REFERENCE_V2_SELECTOR_FIELDS = {
+    "collection_uuid",
+    "configuration",
+    "embedding_model",
+    "embedding_dimension",
+    "physical_ids",
+    "row_identities",
+}
+_REFERENCE_V2_ROW_IDENTITY_FIELDS = {
+    "conversion_logical_id",
+    "document_hash",
+    "vector_encoding_sha256",
+    "immutable_semantic_metadata_hash",
+    "provenance_envelope_hash",
+    "assertion_id",
+    "provenance_commitment",
+}
+_REFERENCE_V2_FORBIDDEN_MANIFEST_KEYS = frozenset(
+    {
+        "collections",
+        "candidate_bundle_hash",
+        "embedding",
+        "embeddings",
+        "vector_sidecar",
+        "sidecar_path",
+    }
+)
+
+
+def is_failed_convert_v1_target_id(target_id: str) -> bool:
+    return target_id == FAILED_CONVERT_V1_TARGET_ID
+
+
+def refuse_failed_convert_v1_target_id(target_id: str) -> None:
+    if is_failed_convert_v1_target_id(target_id):
+        raise GenerationContractError(
+            "failed convert-v1 target id is permanently ineligible"
+        )
+
+
+def is_retained_legacy_reference_manifest(manifest: Mapping[str, Any]) -> bool:
+    return manifest.get("schema") == RETAINED_LEGACY_REFERENCE_V2_SCHEMA
+
+
+def validate_published_manifest(manifest: Mapping[str, Any]) -> None:
+    """Dispatch manifest validation by schema without weakening copied-generation v1."""
+
+    if is_retained_legacy_reference_manifest(manifest):
+        validate_retained_legacy_reference_manifest(manifest)
+        return
+    validate_generation_manifest(manifest)
+
+
+def make_reference_v2_target_id(
+    owner_digest: str,
+    source_hash: str,
+    snapshot_root: str,
+    vector_root: str,
+    collections_selector: Mapping[str, Any],
+) -> str:
+    fields = (owner_digest, source_hash, snapshot_root, vector_root)
+    if any(not isinstance(field, str) or not field for field in fields):
+        raise GenerationContractError(
+            "reference-v2 identity fields must be non-empty strings"
+        )
+    if not isinstance(collections_selector, Mapping) or not collections_selector:
+        raise GenerationContractError("collections_selector must be a non-empty object")
+    target_id = canonical_hash(
+        {
+            "schema": REFERENCE_V2_IDENTITY_SCHEMA,
+            "owner_digest": owner_digest,
+            "source_hash": source_hash,
+            "snapshot_root": snapshot_root,
+            "vector_root": vector_root,
+            "collections_selector": copy.deepcopy(dict(collections_selector)),
+        }
+    )
+    refuse_failed_convert_v1_target_id(target_id)
+    return target_id
+
+
+def _validate_reference_v2_selector(
+    collections_selector: Mapping[str, Any],
+) -> None:
+    for collection_name, raw_spec in collections_selector.items():
+        if not isinstance(collection_name, str) or not collection_name:
+            raise GenerationContractError("collection names must be non-empty strings")
+        if not isinstance(raw_spec, Mapping):
+            raise GenerationContractError(
+                f"collection selector {collection_name} is not an object"
+            )
+        extra_or_missing = set(raw_spec) ^ _REFERENCE_V2_SELECTOR_FIELDS
+        if extra_or_missing:
+            raise GenerationContractError(
+                f"collection selector {collection_name} fields mismatch: {sorted(extra_or_missing)}"
+            )
+        spec = dict(raw_spec)
+        if not isinstance(spec["collection_uuid"], str) or not spec["collection_uuid"]:
+            raise GenerationContractError(f"collection {collection_name} lacks UUID")
+        if not isinstance(spec["configuration"], Mapping):
+            raise GenerationContractError(
+                f"collection {collection_name} configuration is not an object"
+            )
+        if not isinstance(spec["embedding_model"], str) or not spec["embedding_model"]:
+            raise GenerationContractError(
+                f"collection {collection_name} lacks embedding model"
+            )
+        dimension = spec["embedding_dimension"]
+        if (
+            not isinstance(dimension, int)
+            or isinstance(dimension, bool)
+            or dimension < 1
+        ):
+            raise GenerationContractError(
+                f"collection {collection_name} has invalid embedding dimension"
+            )
+        physical_ids = spec["physical_ids"]
+        row_identities = spec["row_identities"]
+        if not isinstance(physical_ids, list) or not isinstance(row_identities, Mapping):
+            raise GenerationContractError(
+                f"collection {collection_name} selector lists must be objects"
+            )
+        if len(set(physical_ids)) != len(physical_ids):
+            raise GenerationContractError(
+                f"collection {collection_name} has duplicate physical ids"
+            )
+        if set(physical_ids) != set(row_identities):
+            raise GenerationContractError(
+                f"collection {collection_name} physical_ids/row_identities mismatch"
+            )
+        for physical_id in physical_ids:
+            if not isinstance(physical_id, str) or not physical_id:
+                raise GenerationContractError("physical ids must be non-empty strings")
+            if physical_id.startswith(PHYSICAL_ID_PREFIX):
+                raise GenerationContractError(
+                    "reference-v2 manifest must not name copied generation physical ids"
+                )
+            row = row_identities[physical_id]
+            if not isinstance(row, Mapping) or set(row) != _REFERENCE_V2_ROW_IDENTITY_FIELDS:
+                raise GenerationContractError(
+                    f"row identity fields mismatch for {physical_id}"
+                )
+            for field in ("document_hash", "vector_encoding_sha256", "immutable_semantic_metadata_hash"):
+                if not isinstance(row[field], str) or not row[field]:
+                    raise GenerationContractError(
+                        f"row {field} missing for {physical_id}"
+                    )
+
+
+def build_retained_legacy_reference_manifest(
+    *,
+    owner_key: str,
+    generation_id: str,
+    canonical_source: str,
+    source_hash: str,
+    fingerprints: Mapping[str, str],
+    collections_selector: Mapping[str, Mapping[str, Any]],
+    d0_bindings: Mapping[str, Any],
+    proof_profile: str,
+    recorded_only_annotations: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    expected_owner = ownership_key(canonical_source)
+    if owner_key != expected_owner:
+        raise GenerationContractError("owner key does not match canonical source")
+    refuse_failed_convert_v1_target_id(generation_id)
+    selector = copy.deepcopy(dict(collections_selector))
+    _validate_reference_v2_selector(selector)
+    manifest = {
+        "schema": RETAINED_LEGACY_REFERENCE_V2_SCHEMA,
+        "target_kind": RETAINED_LEGACY_REFERENCE_V2,
+        "generation_scope": GENERATION_SCOPE,
+        "owner_key": owner_key,
+        "owner_digest": owner_digest(owner_key),
+        "generation_id": generation_id,
+        "canonical_source_path": canonical_source_path(canonical_source),
+        "source_hash": source_hash,
+        "fingerprints": copy.deepcopy(dict(fingerprints)),
+        "proof_profile": proof_profile,
+        "collections_selector": selector,
+        "d0_bindings": copy.deepcopy(dict(d0_bindings)),
+        "recorded_only_annotations": copy.deepcopy(
+            dict(recorded_only_annotations or {})
+        ),
+    }
+    forbidden = _REFERENCE_V2_FORBIDDEN_MANIFEST_KEYS.intersection(manifest)
+    if forbidden:
+        raise GenerationContractError(
+            f"reference-v2 manifest contains forbidden fields: {sorted(forbidden)}"
+        )
+    expected_id = make_reference_v2_target_id(
+        owner_digest=str(manifest["owner_digest"]),
+        source_hash=str(manifest["source_hash"]),
+        snapshot_root=str(dict(d0_bindings).get("accepted_legacy_snapshot_root") or ""),
+        vector_root=str(dict(d0_bindings).get("accepted_legacy_vector_root") or ""),
+        collections_selector=selector,
+    )
+    if generation_id != expected_id:
+        raise GenerationContractError("generation_id does not match reference-v2 derivation")
+    return _with_payload_hash(manifest, "manifest_payload_hash")
+
+
+def validate_retained_legacy_reference_manifest(manifest: Mapping[str, Any]) -> None:
+    if manifest.get("schema") != RETAINED_LEGACY_REFERENCE_V2_SCHEMA:
+        raise GenerationContractError("unsupported retained reference manifest schema")
+    if manifest.get("target_kind") != RETAINED_LEGACY_REFERENCE_V2:
+        raise GenerationContractError("manifest is not RETAINED_LEGACY_REFERENCE_V2")
+    if manifest.get("generation_scope") != GENERATION_SCOPE:
+        raise GenerationContractError("manifest is not file-derived")
+    canonical = canonical_source_path(str(manifest.get("canonical_source_path", "")))
+    if manifest.get("owner_key") != ownership_key(canonical):
+        raise GenerationContractError("manifest owner/source mismatch")
+    if manifest.get("owner_digest") != owner_digest(str(manifest["owner_key"])):
+        raise GenerationContractError("manifest owner digest mismatch")
+    forbidden = _REFERENCE_V2_FORBIDDEN_MANIFEST_KEYS.intersection(manifest)
+    if forbidden:
+        raise GenerationContractError(
+            f"reference-v2 manifest contains forbidden fields: {sorted(forbidden)}"
+        )
+    fingerprints = dict(manifest.get("fingerprints") or {})
+    if fingerprints.get("pipeline") != REFERENCE_V2_FINGERPRINT or fingerprints.get(
+        "reference"
+    ) != REFERENCE_V2_FINGERPRINT:
+        raise GenerationContractError("reference-v2 fingerprint does not bind")
+    selector = dict(manifest.get("collections_selector") or {})
+    _validate_reference_v2_selector(selector)
+    d0_bindings = dict(manifest.get("d0_bindings") or {})
+    for field in (
+        "ratification_id",
+        "accepted_legacy_snapshot_root",
+        "accepted_legacy_vector_root",
+        "query_embedding_context_sha256",
+        "candidate_artifact_sha256",
+        "validation_result_sha256",
+    ):
+        if not isinstance(d0_bindings.get(field), str) or not d0_bindings[field]:
+            raise GenerationContractError(f"manifest d0_bindings missing {field}")
+    expected_id = make_reference_v2_target_id(
+        owner_digest=str(manifest["owner_digest"]),
+        source_hash=str(manifest["source_hash"]),
+        snapshot_root=str(d0_bindings["accepted_legacy_snapshot_root"]),
+        vector_root=str(d0_bindings["accepted_legacy_vector_root"]),
+        collections_selector=selector,
+    )
+    if str(manifest.get("generation_id") or "") != expected_id:
+        raise GenerationContractError("generation_id does not bind to reference-v2 inputs")
+    refuse_failed_convert_v1_target_id(str(manifest["generation_id"]))
+    validate_payload_hash(manifest, "manifest_payload_hash")
+

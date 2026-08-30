@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from file_generation_contract import validate_generation_manifest
+from file_generation_contract import validate_generation_manifest, validate_published_manifest
 from file_generation_store import FileGenerationStore
 
 BAR_P_DURABILITY = {
@@ -122,11 +122,118 @@ def run_cold_validation(
     return result
 
 
+
+
+from file_generation_contract import (
+    is_retained_legacy_reference_manifest,
+    validate_published_manifest,
+    validate_retained_legacy_reference_manifest,
+)
+from cg2_retained_reference import (
+    READER_CALL_LOG,
+    RetainedReferenceTargetDescriptor,
+    build_descriptor_from_manifest,
+    qualify_retained_reference_membership,
+    read_retained_reference_rows,
+)
+
+
+def cold_validate_reference_v2(
+    chroma_dir: str | Path,
+    manifest: dict[str, Any],
+    *,
+    descriptor: RetainedReferenceTargetDescriptor | None = None,
+) -> dict[str, Any]:
+    """Reopen Chroma and qualify a reference-v2 manifest via the exact-ID reader."""
+
+    validate_retained_legacy_reference_manifest(manifest)
+    if descriptor is None:
+        descriptor = build_descriptor_from_manifest(manifest)
+    d0_bindings = dict(manifest.get("d0_bindings") or {})
+    d0_roots = {
+        "snapshot": str(d0_bindings.get("accepted_legacy_snapshot_root") or ""),
+        "vector": str(d0_bindings.get("accepted_legacy_vector_root") or ""),
+    }
+    started = time.perf_counter()
+    with FileGenerationStore(chroma_dir, active_generations=dict) as store:
+        rows = read_retained_reference_rows(store, descriptor, include_embeddings=True)
+        membership = qualify_retained_reference_membership(rows, descriptor, d0_roots)
+    elapsed = time.perf_counter() - started
+    return {
+        "valid": True,
+        "generation_id": manifest["generation_id"],
+        "owner_digest": manifest["owner_digest"],
+        "elapsed_seconds": elapsed,
+        "sequence_positions": chroma_sequence_positions(chroma_dir),
+        "membership": membership,
+        "reader_log": list(READER_CALL_LOG),
+    }
+
+
+def run_reference_v2_cold_validation(
+    chroma_dir: str | Path,
+    manifest_path: str | Path,
+    *,
+    descriptor: RetainedReferenceTargetDescriptor,
+    expected_manifest_sha256: str | None = None,
+    timeout_seconds: float = 120.0,
+) -> dict[str, Any]:
+    """Run reference-v2 qualification in a new interpreter process."""
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "file_generation_validate",
+            "--chroma-dir",
+            str(chroma_dir),
+            "--manifest",
+            str(manifest_path),
+            "--reference-v2",
+            "--descriptor-json",
+            json.dumps(
+                {
+                    "owner_digest": descriptor.owner_digest,
+                    "generation_id": descriptor.generation_id,
+                    "reference_fingerprint": descriptor.reference_fingerprint,
+                    "proof_profile": descriptor.proof_profile,
+                    "collections": dict(descriptor.collections),
+                },
+                sort_keys=True,
+            ),
+            *(
+                ["--expected-manifest-sha256", expected_manifest_sha256]
+                if expected_manifest_sha256 is not None
+                else []
+            ),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout_seconds,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"reference-v2 cold validation failed ({proc.returncode}): {proc.stderr.strip()}"
+        )
+    result = json.loads(proc.stdout)
+    if not result.get("valid"):
+        raise RuntimeError(f"reference-v2 cold validation refused: {result}")
+    if (
+        expected_manifest_sha256 is not None
+        and result.get("manifest_sha256") != expected_manifest_sha256
+    ):
+        raise RuntimeError("reference-v2 cold validation manifest hash mismatch")
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--chroma-dir", required=True)
     parser.add_argument("--manifest", required=True)
     parser.add_argument("--expected-manifest-sha256")
+    parser.add_argument("--reference-v2", action="store_true")
+    parser.add_argument("--descriptor-json")
     args = parser.parse_args(argv)
     manifest_bytes = Path(args.manifest).read_bytes()
     manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
@@ -136,7 +243,24 @@ def main(argv: list[str] | None = None) -> int:
     ):
         raise RuntimeError("cold generation validation manifest hash mismatch")
     manifest = json.loads(manifest_bytes)
-    result = cold_validate(args.chroma_dir, manifest)
+    if args.reference_v2:
+        if not args.descriptor_json:
+            raise RuntimeError("reference-v2 cold validation requires --descriptor-json")
+        descriptor_payload = json.loads(args.descriptor_json)
+        descriptor = RetainedReferenceTargetDescriptor(
+            owner_digest=str(descriptor_payload["owner_digest"]),
+            generation_id=str(descriptor_payload["generation_id"]),
+            reference_fingerprint=str(descriptor_payload["reference_fingerprint"]),
+            proof_profile=str(descriptor_payload["proof_profile"]),
+            collections=dict(descriptor_payload["collections"]),
+        )
+        result = cold_validate_reference_v2(
+            args.chroma_dir, manifest, descriptor=descriptor
+        )
+    elif is_retained_legacy_reference_manifest(manifest):
+        result = cold_validate_reference_v2(args.chroma_dir, manifest)
+    else:
+        result = cold_validate(args.chroma_dir, manifest)
     result["manifest_sha256"] = manifest_sha256
     print(json.dumps(result, sort_keys=True))
     return 0
