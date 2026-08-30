@@ -1,5 +1,7 @@
 """Hermetic G4 tests for naturalistic analysis/statistical machinery."""
 
+# pylint: disable=wrong-import-position
+
 from __future__ import annotations
 
 import copy
@@ -60,6 +62,11 @@ class BoundedScoreContractTests(unittest.TestCase):
             result = validate_bounded_normalized_score(score)
             self.assertFalse(result.ok)
 
+    def test_non_finite_and_boolean_scores_rejected(self):
+        for score in (float("nan"), float("inf"), -float("inf"), True, False):
+            result = validate_bounded_normalized_score(score)
+            self.assertFalse(result.ok, repr(score))
+
     def test_none_allowed_for_non_scored_states(self):
         self.assertTrue(validate_bounded_normalized_score(None).ok)
 
@@ -118,6 +125,7 @@ class CoPrimaryAggregationTests(unittest.TestCase):
         self.assertTrue(result.ok, result.errors)
         assert result.co_primary is not None
         self.assertAlmostEqual(result.co_primary.opportunity_prevalence, 1 / 3)
+        self.assertAlmostEqual(result.co_primary.opportunity_density, 1 / 3)
         self.assertEqual(result.co_primary.zero_target_episode_count, 2)
         self.assertEqual(result.co_primary.conditional_episode_count, 1)
         self.assertAlmostEqual(result.co_primary.conditional_mean_effect or 0, 0.15, places=2)
@@ -152,6 +160,57 @@ class CoPrimaryAggregationTests(unittest.TestCase):
                 ReliabilityState.RELIABILITY_NOT_APPLICABLE,
             )
 
+    def test_target_present_but_not_evaluable_counts_as_opportunity_only(self):
+        from eval_naturalistic.analysis import EpisodeRegistryViewV1
+
+        episodes = [
+            EpisodeRegistryViewV1(
+                "ep-not-evaluable",
+                EpisodeRegistryStatus.TARGETS_PRESENT_BUT_NOT_EVALUABLE,
+                3,
+            )
+        ]
+        result = self._aggregate(episodes, [])
+        self.assertTrue(result.ok, result.errors)
+        assert result.co_primary is not None
+        self.assertEqual(result.co_primary.opportunity_prevalence, 1.0)
+        self.assertEqual(result.co_primary.opportunity_density, 3.0)
+        self.assertEqual(result.co_primary.target_bearing_episode_count, 1)
+        self.assertEqual(result.co_primary.target_bearing_evaluable_episode_count, 0)
+        self.assertEqual(result.co_primary.target_bearing_not_evaluable_episode_count, 1)
+        self.assertIsNone(result.co_primary.conditional_mean_effect)
+
+    def test_duplicate_registry_episode_fails_closed(self):
+        from eval_naturalistic.analysis import EpisodeRegistryViewV1
+
+        episodes, scores = make_c0_better_than_c1_fixture()
+        episodes.append(
+            EpisodeRegistryViewV1("ep-c0-win-001", EpisodeRegistryStatus.TARGETS_PRESENT, 1)
+        )
+        result = self._aggregate(episodes, scores)
+        self.assertFalse(result.ok)
+        self.assertIsNone(result.co_primary)
+        self.assertTrue(any("duplicate episode registry" in error for error in result.errors))
+
+    def test_duplicate_condition_score_fails_closed(self):
+        episodes, scores = make_c0_better_than_c1_fixture()
+        scores.append(copy.deepcopy(scores[0]))
+        scores[-1].normalized_score = 0.10
+        result = self._aggregate(episodes, scores)
+        self.assertFalse(result.ok)
+        self.assertIsNone(result.co_primary)
+        self.assertTrue(any("duplicate within-episode score" in error for error in result.errors))
+
+    def test_orphan_score_fails_closed(self):
+        episodes, scores = make_c0_better_than_c1_fixture()
+        orphan = copy.deepcopy(scores[0])
+        orphan.episode_id = "ep-unknown"
+        scores.append(orphan)
+        result = self._aggregate(episodes, scores)
+        self.assertFalse(result.ok)
+        self.assertIsNone(result.co_primary)
+        self.assertTrue(any("unknown episode" in error for error in result.errors))
+
 
 class TargetRichEpisodeWeightingTests(unittest.TestCase):
     def test_many_targets_produce_one_episode_score(self):
@@ -179,7 +238,7 @@ class TargetRichEpisodeWeightingTests(unittest.TestCase):
         from eval_naturalistic.analysis import EpisodeRegistryViewV1
 
         result = compute_co_primary_aggregation(
-            [EpisodeRegistryViewV1("ep-rich-001", EpisodeRegistryStatus.TARGETS_PRESENT)],
+            [EpisodeRegistryViewV1("ep-rich-001", EpisodeRegistryStatus.TARGETS_PRESENT, 3)],
             [c0_episode, c1_episode],
             lineage_inputs={"episode": "ep-rich-001"},
         )
@@ -187,23 +246,77 @@ class TargetRichEpisodeWeightingTests(unittest.TestCase):
         self.assertEqual(result.co_primary.conditional_episode_count, 1)
         self.assertAlmostEqual(result.co_primary.conditional_mean_effect or 0, 0.10, places=2)
 
+    def test_duplicate_target_rows_are_non_estimable(self):
+        c0_targets, _ = make_target_rich_episode_target_scores(
+            c0_scores=[0.40, 0.60],
+            c1_scores=[0.50, 0.70],
+        )
+        c0_targets[1].target_id = c0_targets[0].target_id
+        score = aggregate_targets_to_within_episode_score(
+            c0_targets,
+            episode_id="ep-rich-001",
+            condition=TrialCondition.C0,
+        )
+        self.assertIsNone(score.normalized_score)
+        self.assertEqual(score.reliability_state, ReliabilityState.RELIABILITY_NON_ESTIMABLE)
+        self.assertTrue(any("duplicate target score" in error for error in score.validation_errors))
+
+    def test_invalid_target_score_is_non_estimable(self):
+        c0_targets, _ = make_target_rich_episode_target_scores(
+            c0_scores=[float("nan")],
+            c1_scores=[0.50],
+        )
+        score = aggregate_targets_to_within_episode_score(
+            c0_targets,
+            episode_id="ep-rich-001",
+            condition=TrialCondition.C0,
+        )
+        self.assertIsNone(score.normalized_score)
+        self.assertTrue(score.validation_errors)
+
 
 class ScorerReliabilityTests(unittest.TestCase):
     def test_disagreement_without_frozen_gate(self):
         primary, secondary = make_scorer_disagreement_fixture()
-        record = record_scorer_reliability(primary, secondary, gate_value=None)
+        record = record_scorer_reliability(
+            primary, secondary, gate_value=None, agreement_tolerance=0.05
+        )
         self.assertIsNone(record.passes_gate)
         self.assertGreater(record.disagreement_count, 0)
 
     def test_disagreement_below_frozen_gate_fails_closed(self):
         primary, secondary = make_scorer_disagreement_fixture()
-        record = record_scorer_reliability(primary, secondary, gate_value="0.95")
+        record = record_scorer_reliability(
+            primary, secondary, gate_value="0.95", agreement_tolerance=0.05
+        )
         self.assertFalse(record.passes_gate)
 
     def test_agreement_with_frozen_gate_passes(self):
         primary, secondary = make_scorer_agreement_fixture()
-        record = record_scorer_reliability(primary, secondary, gate_value="0.50")
+        record = record_scorer_reliability(
+            primary, secondary, gate_value="0.50", agreement_tolerance=0.05
+        )
         self.assertTrue(record.passes_gate)
+
+    def test_same_scorer_identity_cannot_pass_independence_gate(self):
+        primary, secondary = make_scorer_agreement_fixture()
+        for submission in secondary:
+            submission.scorer_id = "scorer-a"
+        record = record_scorer_reliability(
+            primary, secondary, gate_value="0.50", agreement_tolerance=0.05
+        )
+        self.assertIsNone(record.passes_gate)
+        self.assertTrue(any("independent" in error for error in record.errors))
+
+    def test_missing_pair_counts_against_observed_agreement(self):
+        primary, secondary = make_scorer_agreement_fixture()
+        secondary.pop()
+        record = record_scorer_reliability(
+            primary, secondary, gate_value="0.75", agreement_tolerance=0.05
+        )
+        self.assertEqual(record.observed_statistic, 0.5)
+        self.assertIsNone(record.passes_gate)
+        self.assertTrue(any("missing secondary" in error for error in record.errors))
 
 
 class ParameterSlotTests(unittest.TestCase):
@@ -220,6 +333,13 @@ class ParameterSlotTests(unittest.TestCase):
         slots = make_pending_parameter_slots()[:-1]
         result = validate_required_parameter_slots(slots)
         self.assertFalse(result.ok)
+
+    def test_duplicate_required_slot_rejected(self):
+        slots = make_pending_parameter_slots()
+        slots.append(copy.deepcopy(slots[0]))
+        result = validate_required_parameter_slots(slots)
+        self.assertFalse(result.ok)
+        self.assertTrue(any("duplicate information parameter" in error for error in result.errors))
 
     def test_post_result_fill_rejected(self):
         before = make_pending_parameter_slots()
@@ -295,7 +415,9 @@ class InformationGateTests(unittest.TestCase):
         )
         assert agg.co_primary is not None
         primary, secondary = make_scorer_disagreement_fixture()
-        record = record_scorer_reliability(primary, secondary, gate_value="0.95")
+        record = record_scorer_reliability(
+            primary, secondary, gate_value="0.95", agreement_tolerance=0.05
+        )
         gate = evaluate_information_gate_readiness(
             make_pending_parameter_slots(),
             agg.co_primary,
@@ -318,7 +440,7 @@ class SparseStateDistinctionTests(unittest.TestCase):
 
 class LineageFailClosedTests(unittest.TestCase):
     def test_lineage_digest_mismatch_rejected(self):
-        frame, episode, evidence, registry = make_sealed_registry_chain_for_lineage()
+        frame, _, _, registry = make_sealed_registry_chain_for_lineage()
         expected = artifact_content_digest(
             {
                 "frame": frame.header.content_digest,

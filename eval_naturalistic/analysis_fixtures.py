@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from eval_naturalistic.analysis import (
     EpisodeRegistryViewV1,
+    REQUIRED_INFORMATION_PARAMETER_SLOTS,
     ScorerSubmissionV1,
     WithinEpisodeScoreV1,
 )
@@ -46,18 +47,7 @@ def make_pending_parameter_slots() -> list[ParameterSlotV1]:
             freeze_status=ParameterFreezeStatus.PENDING,
             construct_defining=True,
         )
-        for name in sorted(
-            {
-                "meaningful_advantage",
-                "equivalence_margin",
-                "target_bearing_episode_information_floor",
-                "secondary_information_floor",
-                "precision_confidence_criterion",
-                "sparse_reliability_criterion",
-                "scorer_reliability_gate",
-                "terminal_disposition_rules",
-            }
-        )
+        for name in sorted(REQUIRED_INFORMATION_PARAMETER_SLOTS)
     ]
 
 
@@ -104,8 +94,8 @@ def make_paired_episode_scores(
 
 def make_c1_better_than_c0_fixture() -> tuple[list[EpisodeRegistryViewV1], list[WithinEpisodeScoreV1]]:
     episodes = [
-        EpisodeRegistryViewV1("ep-c1-win-001", EpisodeRegistryStatus.TARGETS_PRESENT),
-        EpisodeRegistryViewV1("ep-c1-win-002", EpisodeRegistryStatus.TARGETS_PRESENT),
+        EpisodeRegistryViewV1("ep-c1-win-001", EpisodeRegistryStatus.TARGETS_PRESENT, 1),
+        EpisodeRegistryViewV1("ep-c1-win-002", EpisodeRegistryStatus.TARGETS_PRESENT, 1),
     ]
     scores: list[WithinEpisodeScoreV1] = []
     scores.extend(make_paired_episode_scores(episode_id="ep-c1-win-001", c0_score=0.40, c1_score=0.70))
@@ -115,7 +105,7 @@ def make_c1_better_than_c0_fixture() -> tuple[list[EpisodeRegistryViewV1], list[
 
 def make_c0_better_than_c1_fixture() -> tuple[list[EpisodeRegistryViewV1], list[WithinEpisodeScoreV1]]:
     episodes = [
-        EpisodeRegistryViewV1("ep-c0-win-001", EpisodeRegistryStatus.TARGETS_PRESENT),
+        EpisodeRegistryViewV1("ep-c0-win-001", EpisodeRegistryStatus.TARGETS_PRESENT, 1),
     ]
     scores = make_paired_episode_scores(episode_id="ep-c0-win-001", c0_score=0.80, c1_score=0.55)
     return episodes, scores
@@ -125,8 +115,8 @@ def make_equivalent_null_like_fixture() -> tuple[list[EpisodeRegistryViewV1], li
     """Synthetic near-zero paired effect — not a live product null declaration."""
 
     episodes = [
-        EpisodeRegistryViewV1("ep-equiv-001", EpisodeRegistryStatus.TARGETS_PRESENT),
-        EpisodeRegistryViewV1("ep-equiv-002", EpisodeRegistryStatus.TARGETS_PRESENT),
+        EpisodeRegistryViewV1("ep-equiv-001", EpisodeRegistryStatus.TARGETS_PRESENT, 1),
+        EpisodeRegistryViewV1("ep-equiv-002", EpisodeRegistryStatus.TARGETS_PRESENT, 1),
     ]
     scores: list[WithinEpisodeScoreV1] = []
     scores.extend(make_paired_episode_scores(episode_id="ep-equiv-001", c0_score=0.50, c1_score=0.51))
@@ -136,17 +126,17 @@ def make_equivalent_null_like_fixture() -> tuple[list[EpisodeRegistryViewV1], li
 
 def make_zero_target_episodes_fixture() -> tuple[list[EpisodeRegistryViewV1], list[WithinEpisodeScoreV1]]:
     episodes = [
-        EpisodeRegistryViewV1("ep-zero-001", EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS),
-        EpisodeRegistryViewV1("ep-zero-002", EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS),
+        EpisodeRegistryViewV1("ep-zero-001", EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS, 0),
+        EpisodeRegistryViewV1("ep-zero-002", EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS, 0),
     ]
     return episodes, []
 
 
 def make_mixed_zero_and_target_fixture() -> tuple[list[EpisodeRegistryViewV1], list[WithinEpisodeScoreV1]]:
     episodes = [
-        EpisodeRegistryViewV1("ep-mix-zero", EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS),
-        EpisodeRegistryViewV1("ep-mix-target", EpisodeRegistryStatus.TARGETS_PRESENT),
-        EpisodeRegistryViewV1("ep-mix-zero-2", EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS),
+        EpisodeRegistryViewV1("ep-mix-zero", EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS, 0),
+        EpisodeRegistryViewV1("ep-mix-target", EpisodeRegistryStatus.TARGETS_PRESENT, 1),
+        EpisodeRegistryViewV1("ep-mix-zero-2", EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS, 0),
     ]
     scores = make_paired_episode_scores(episode_id="ep-mix-target", c0_score=0.45, c1_score=0.60)
     return episodes, scores
@@ -154,7 +144,7 @@ def make_mixed_zero_and_target_fixture() -> tuple[list[EpisodeRegistryViewV1], l
 
 def make_sparse_non_estimable_fixture() -> tuple[list[EpisodeRegistryViewV1], list[WithinEpisodeScoreV1]]:
     episodes = [
-        EpisodeRegistryViewV1("ep-sparse-001", EpisodeRegistryStatus.TARGETS_PRESENT),
+        EpisodeRegistryViewV1("ep-sparse-001", EpisodeRegistryStatus.TARGETS_PRESENT, 1),
     ]
     scores = [
         WithinEpisodeScoreV1(
