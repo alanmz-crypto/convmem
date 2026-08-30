@@ -256,14 +256,15 @@ class R2bV2CorrectiveIIIAdversarialTests(unittest.TestCase):
         )
 
     def test_direct_registry_store_mutation_forbidden(self) -> None:
-        with self.assertRaises(AttributeError):
-            _ = registry_mint._LEASE_RECORDS  # type: ignore[attr-defined]
-        with self.assertRaises(AttributeError):
-            _ = registry_mint._CUSTODIAN_REF  # type: ignore[attr-defined]
-        with self.assertRaises(AttributeError):
-            _ = registry_mint._REGISTRY  # type: ignore[attr-defined]
-        with self.assertRaises(AttributeError):
-            _ = registry_mint._TRUSTED_REGISTRY  # type: ignore[attr-defined]
+        forbidden = (
+            "_LEASE_RECORDS",
+            "_CUSTODIAN_REF",
+            "_REGISTRY",
+            "_TRUSTED_REGISTRY",
+        )
+        for name in forbidden:
+            with self.assertRaises(AttributeError):
+                getattr(registry_mint, name)
 
     def test_legitimate_hermetic_authority_lifecycle_still_succeeds(self) -> None:
         run_legitimate_source_authority_case(self, "good-iii")
