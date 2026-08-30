@@ -18,7 +18,7 @@
 | **Implementation SHA** | `23b2495927a9891070c7c294e45bdb641eaab352` |
 | **Branch tip SHA** | `e249fa3901f6f7de23041be344136b0bdd97c20c` (docs stamp only) |
 | **Push status** | pushed to `origin` after freeze |
-| **PR** | opened by PR Steward (URL in LATEST after push) |
+| **PR** | [PR #259](https://github.com/alanmz-crypto/convmem/pull/259) |
 | **Ryan GATE** | After Kiro exact-SHA PASS, Ryan owns whether to merge G5. **No G6 grant is contained here.** |
 | **Classification** | `methodology_validation_not_product_evidence` |
 
