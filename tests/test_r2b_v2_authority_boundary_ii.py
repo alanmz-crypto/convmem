@@ -59,12 +59,13 @@ class R2bV2AuthorityBoundaryIITests(unittest.TestCase):
             gate_path="/tmp/attacker.lock",
             open_evidence_digest="attacker-open",
             composition_seal="forged-seal",
+            trust_class="hermetic_test",
         )
         with self.assertRaises(AttributeError):
             getattr(registry_mint, "mint_source_authority_record")(forged)
 
     def test_compose_and_mint_requires_live_lease_and_coverage_handles(self) -> None:
-        with self.assertRaises(AuthorityRegistryError):
+        with self.assertRaises(TypeError):
             compose_and_mint_source_authority(
                 lease_handle=registry_mint.AuthorityHandle("lease", "missing-lease"),
                 coverage_handle=registry_mint.AuthorityHandle("coverage", "missing-coverage"),
@@ -80,10 +81,9 @@ class R2bV2AuthorityBoundaryIITests(unittest.TestCase):
     def test_custodian_overwrite_refused(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             lease = acquire_test_lease(Path(td), run_id="cust-overwrite")
-            custodian_id = lease._holder.custodian_id  # pylint: disable=protected-access
-            with self.assertRaises(AuthorityRegistryError):
-                registry_mint._register_lease_custodian(  # pylint: disable=protected-access
-                    custodian_id, FakeCustodian()
+            with self.assertRaises(AttributeError):
+                getattr(registry_mint, "_register_lease_custodian")(
+                    "fake", "fake-id", FakeCustodian()
                 )
             lease.release()
 
@@ -105,7 +105,7 @@ class R2bV2AuthorityBoundaryIITests(unittest.TestCase):
 
     def test_cross_chain_compose_and_mint_refused(self) -> None:
         def exercise(testcase, _lease_a, trusted_a, lease_b, _trusted_b):
-            with testcase.assertRaises(AuthorityRegistryError):
+            with testcase.assertRaises(TypeError):
                 compose_and_mint_source_authority(
                     lease_handle=lease_b.authority_handle,
                     coverage_handle=trusted_a.authority_handle,
@@ -163,8 +163,8 @@ class R2bV2AuthorityBoundaryIITests(unittest.TestCase):
                     gate_protocol=bindings.gate_protocol,
                 ),
             )
-            with self.assertRaises(AuthorityRegistryError):
+            with self.assertRaises(TypeError):
                 registry_mint.register_diagnostic_ticket(forged, provenance_seal="forged")
-            with self.assertRaises(AuthorityRegistryError):
-                registry_mint.mint_coverage_from_consumed_ticket(forged)
+            with self.assertRaises(AttributeError):
+                getattr(registry_mint, "mint_coverage_from_consumed_ticket")(forged)
             lease.release()

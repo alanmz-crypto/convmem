@@ -14,9 +14,11 @@ from typing import Any
 
 from chroma_write_store import _proc_start_time, current_code_revision
 
+from eval_corpus.r2b_v2._authority_capability import (
+    issue_lease_capability,
+    trust_class_for_gate_policy,
+)
 from eval_corpus.r2b_v2._registry_mint import (
-    _register_lease_custodian,
-    lease_acquisition_window,
     mint_lease_handle,
 )
 from eval_corpus.r2b_v2.coverage.inventory import load_v2_implementation_tip
@@ -61,7 +63,7 @@ class _LeaseBindingsView:
 
 
 class _LeaseHolder:
-    __slots__ = ("bindings", "custodian_id", "handle", "ownership_active")
+    __slots__ = ("bindings", "custodian_id", "handle", "ownership_active", "_custodian")
 
     def __init__(
         self,
@@ -69,15 +71,17 @@ class _LeaseHolder:
         bindings: _LeaseBindingsView,
         custodian_id: str,
         handle: AuthorityHandle,
+        custodian: LockCustodian,
     ) -> None:
         self.bindings = bindings
         self.custodian_id = custodian_id
         self.handle = handle
         self.ownership_active = True
+        self._custodian = custodian
 
     @property
     def custodian(self) -> LockCustodian:
-        return lookup_custodian(self.custodian_id)
+        return self._custodian
 
     def verify_live_ownership(self) -> None:
         if not self.ownership_active:
@@ -100,7 +104,7 @@ class _LeaseHolder:
             raise R2bQuiescenceLeaseError("gate inode identity mismatch")
         try:
             lookup_custodian(self.custodian_id).verify()
-        except LockCustodianError as exc:
+        except (LockCustodianError, AuthorityRegistryError) as exc:
             raise R2bQuiescenceLeaseError(
                 "original authorized holder no longer owns exclusive kernel lock"
             ) from exc
@@ -233,34 +237,44 @@ def acquire_r2b_quiescence_lease(
     assert custodian is not None
     custodian_id = f"lease-{run_id}-{time.monotonic_ns()}"
     monotonic_start = time.monotonic()
-    with lease_acquisition_window():
-        _register_lease_custodian(custodian_id, custodian)
-        record = LeaseAuthorityRecord(
-            run_id=run_id,
-            grant_digest=grant_digest,
-            authority_digest=authority_digest,
-            gate_path=str(path),
-            gate_inode=custodian.inode,
-            gate_identity=policy.canonical_identity,
-            gate_protocol=policy.protocol,
-            coordinator_pid=os.getpid(),
-            coordinator_start_time=_proc_start_time(os.getpid()),
-            implementation_revision=revision,
-            writer_coverage_digest=writer_coverage_digest,
-            open_evidence_digest=open_evidence_digest,
-            monotonic_deadline=monotonic_deadline,
-            bound_source_paths=bound_source_paths,
-            phase_bounds=phase_bounds,
-            custodian_id=custodian_id,
-            mint_epoch=current_authority_epoch(),
-        )
-        register_active_authority(key)
-        handle = mint_lease_handle(record)
+    trust_class = trust_class_for_gate_policy(policy.policy_class)
+    lease_capability = issue_lease_capability(
+        custodian_id=custodian_id,
+        gate_path=str(path),
+        gate_inode=custodian.inode,
+        run_id=run_id,
+        grant_digest=grant_digest,
+        authority_digest=authority_digest,
+        trust_class=trust_class,
+    )
+    record = LeaseAuthorityRecord(
+        run_id=run_id,
+        grant_digest=grant_digest,
+        authority_digest=authority_digest,
+        gate_path=str(path),
+        gate_inode=custodian.inode,
+        gate_identity=policy.canonical_identity,
+        gate_protocol=policy.protocol,
+        coordinator_pid=os.getpid(),
+        coordinator_start_time=_proc_start_time(os.getpid()),
+        implementation_revision=revision,
+        writer_coverage_digest=writer_coverage_digest,
+        open_evidence_digest=open_evidence_digest,
+        monotonic_deadline=monotonic_deadline,
+        bound_source_paths=bound_source_paths,
+        phase_bounds=phase_bounds,
+        custodian_id=custodian_id,
+        mint_epoch=current_authority_epoch(),
+        trust_class=trust_class,
+    )
+    register_active_authority(key)
+    handle = mint_lease_handle(lease_capability, record, custodian=custodian)
     bindings = _LeaseBindingsView(record, monotonic_start)
     holder = _LeaseHolder(
         bindings=bindings,
         custodian_id=custodian_id,
         handle=handle,
+        custodian=custodian,
     )
     return R2bQuiescenceLease(holder)
 

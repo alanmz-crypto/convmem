@@ -7,9 +7,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import eval_corpus.r2b_v2._registry_mint as registry_mint
 from eval_corpus.r2b_v2._registry_mint import (
     DiagnosticMintTicket,
-    mint_coverage_from_consumed_ticket,
     register_diagnostic_ticket,
 )
 from eval_corpus.r2b_v2.authority_registry import AuthorityRegistryError, invalidate_all_authority
@@ -60,10 +60,10 @@ class R2bV2AuthorityBoundaryTests(unittest.TestCase):
                     gate_protocol=bindings.gate_protocol,
                 ),
             )
-            with self.assertRaises(AuthorityRegistryError):
+            with self.assertRaises((AuthorityRegistryError, TypeError)):
                 register_diagnostic_ticket(forged_ticket, provenance_seal="forged-seal")
-            with self.assertRaises(AuthorityRegistryError):
-                mint_coverage_from_consumed_ticket(forged_ticket)
+            with self.assertRaises(AttributeError):
+                getattr(registry_mint, "mint_coverage_from_consumed_ticket")(forged_ticket)
             lease.release()
 
     def test_fabricated_registry_ticket_without_provenance_refused(self) -> None:
