@@ -1,9 +1,19 @@
-"""Naturalistic ConvMem product-value study methodology substrate (G1).
+"""Naturalistic ConvMem product-value study methodology substrate (G1+G2).
 
-Schema-only contracts, content-addressing, and validation for the accepted
-artifact chain. No live study execution, adjudication, or statistical analysis.
+G1: schema-only contracts, content-addressing, and cross-artifact validation.
+G2: adjudication workflow and sealed target-registry machinery.
 """
 
+from eval_naturalistic.adjudication import (
+    AdjudicationWorkflowConfigV1,
+    CandidateAdjudicationBundleV1,
+    RegistryBuildResult,
+    build_evidence_adjudication_view,
+    build_sealed_target_registry,
+    reject_capture_driven_registry_mutation,
+    validate_registry_build,
+    validate_registry_membership_immutable,
+)
 from eval_naturalistic.contracts import (
     ActionLatencyRecordV1,
     AgentBTraceV1,
@@ -24,6 +34,7 @@ from eval_naturalistic.contract_validate import (
     NaturalisticValidation,
     validate_artifact_chain,
     validate_capture_independent_registry,
+    validate_generation_integrity,
     validate_parent_binding,
     validate_role_collision,
     validate_seal_immutability,
@@ -35,6 +46,7 @@ from eval_naturalistic.digest import (
     make_artifact_id,
 )
 from eval_naturalistic.enums import (
+    AdjudicationResolutionMethod,
     CaptureDiagnosticState,
     CensusMode,
     EligibilityDisposition,
@@ -42,6 +54,7 @@ from eval_naturalistic.enums import (
     EpisodeRegistryStatus,
     LeakageReviewDisposition,
     ParameterFreezeStatus,
+    RegistryBuildOutcome,
     ReliabilityState,
     SamplingMode,
     StudyTerminalDisposition,
@@ -52,7 +65,10 @@ from eval_naturalistic.enums import (
 __all__ = [
     "ARTIFACT_ID_PREFIX",
     "ActionLatencyRecordV1",
+    "AdjudicationResolutionMethod",
+    "AdjudicationWorkflowConfigV1",
     "AgentBTraceV1",
+    "CandidateAdjudicationBundleV1",
     "CensusMode",
     "CensusSampleManifestV1",
     "CaptureDiagnosticState",
@@ -68,6 +84,8 @@ __all__ = [
     "ParameterFreezeStatus",
     "ProbeManifestV1",
     "RawEvidenceManifestV1",
+    "RegistryBuildOutcome",
+    "RegistryBuildResult",
     "ReliabilityState",
     "SamplingMode",
     "ScoringKeyV1",
@@ -79,10 +97,16 @@ __all__ = [
     "TrialIdentityV1",
     "TrialTerminalDisposition",
     "artifact_content_digest",
+    "build_evidence_adjudication_view",
+    "build_sealed_target_registry",
     "make_artifact_id",
+    "reject_capture_driven_registry_mutation",
     "validate_artifact_chain",
     "validate_capture_independent_registry",
+    "validate_generation_integrity",
     "validate_parent_binding",
+    "validate_registry_build",
+    "validate_registry_membership_immutable",
     "validate_role_collision",
     "validate_seal_immutability",
     "validate_terminal_state_distinction",

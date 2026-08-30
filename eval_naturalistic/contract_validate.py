@@ -124,7 +124,7 @@ def validate_capture_independent_registry(
     registry: TargetRegistryV1,
     capture: ConvMemCaptureStateV1,
     *,
-    mutated_capture: ConvMemCaptureStateV1 | None = None,
+    proposed_registry: TargetRegistryV1 | None = None,
 ) -> NaturalisticValidation:
     errors: list[str] = []
     if capture.target_registry_artifact_id != registry.header.artifact_id:
@@ -135,13 +135,11 @@ def validate_capture_independent_registry(
     capture_target_ids = {state.target_id for state in capture.target_states}
     if not capture_target_ids.issubset(registry_target_ids):
         _append(errors, "capture state references unknown target_ids")
-    if mutated_capture is not None:
-        before = {t.target_id for t in registry.targets if t.eligibility_disposition.value == "eligible"}
-        after_registry = registry
-        if len(after_registry.targets) != len(registry.targets):
-            _append(errors, "capture mutation altered registry membership")
-        if before != {t.target_id for t in after_registry.targets if t.eligibility_disposition.value == "eligible"}:
-            _append(errors, "capture mutation removed eligible targets from registry")
+    if proposed_registry is not None:
+        from eval_naturalistic.adjudication import reject_capture_driven_registry_mutation
+
+        mutation = reject_capture_driven_registry_mutation(registry, proposed_registry)
+        errors.extend(mutation.errors)
     return NaturalisticValidation(errors=errors)
 
 
