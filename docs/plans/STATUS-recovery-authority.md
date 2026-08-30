@@ -37,9 +37,10 @@ complete-data-v2 remains a legacy contract and is not migrated to v3.
 | `docs/plans/EXECUTION-recovery-authority.md` | **Accepted Execution Plan** at `b0c1dd226fa4e1f7cee5c74ae99a13191d7742ab`; independently Kiro-verified (PASS, off-GitHub). |
 | `docs/plans/VERIFY-recovery-authority.md` | Current arc VERIFY companion; maps to canonical V4/V8/V6/V7 rows. |
 | `docs/plans/VERIFY-dependability-provenance.md` | Existing authoritative oracle rows; V4g–V4l/V8i/V8j/V8l remain deferred/PENDING and are not silently replaced. |
-| `complete_data_restore.py` / `backup_workflows.py` / `restic_snapshot.py` | Existing v2 restore/profile surfaces; the **complete-data-v3 substrate and registry validation now exist** (T1) and the **projection-agreement state machine now exists** (T2). |
-| `docs/RECOVER.md` | Existing v2 recovery guide and provenance integration boundary; **T1 v3 wording correction landed**. |
-| CG-1/CG-2 generation and serving surfaces | Existing bounded contracts; V4k execution remains blocked pending CG-2 Design A ratification and stable semantics. |
+| `complete_data_restore.py` / `backup_workflows.py` / `restic_snapshot.py` | Existing v2 restore/profile surfaces; the **complete-data-v3 substrate and registry validation exist** (T1), the **projection-agreement state machine exists** (T2), and the scratch-only orchestration entry is wired (T3). |
+| `recovery_bulk_workflow.py` / `scripts/complete_data_restore_preflight.py` | **T3 landed** via PR #238 at `d250feb2bbbf81e2c3dd8513d79fb0e2140266a3`; exact-snapshot, empty-target, scratch-only candidate preparation with no live publication. |
+| `docs/RECOVER.md` | Existing v2 recovery guide plus landed T1/T3 provenance and scratch-workflow boundaries. |
+| CG-1/CG-2 generation and serving surfaces | Design A Execute-close is on `main`; later reference-v2 corrective work remains branch-only. V4k remains blocked until the separately governed serving/recovery dependency is accepted, implemented, and verified. |
 
 ## 4. Completion State
 
@@ -49,8 +50,9 @@ complete-data-v2 remains a legacy contract and is not migrated to v3.
 | Execution Plan | **ACCEPTED** at `b0c1dd226fa4e1f7cee5c74ae99a13191d7742ab`; Kiro PASS | — |
 | Recovery Authority T1 | **COMPLETE / LANDED** via PR #234; squash SHA `cac3cc35b8a74d43f9d353554cb7c80cb2f13801` on `main` | — |
 | Recovery Authority T2 | **COMPLETE / INDEPENDENTLY VERIFIED / LANDED** via PR #236; reviewed tip `c91a218015caadb82ce6294358777234d90754e5`; landing SHA `62f0f2355543f1daefa237bfc0811f94d8982989` on `main` | — |
-| T3–T4 implementation | **NOT AUTHORIZED / NOT STARTED** | Scratch-only bulk recovery (V4j, plan task T3) is next but needs a separate Ryan grant |
-| V4k selected-generation/rollback execution | **BLOCKED (D1)** | CG-2 Design A ratification and stable generation/pointer semantics, then a fresh Ryan grant |
+| Recovery Authority T3 | **COMPLETE / LANDED** via PR #238; landing SHA `d250feb2bbbf81e2c3dd8513d79fb0e2140266a3` on `main` | — |
+| Recovery Authority T4 | **NOT AUTHORIZED / NOT STARTED** | Separate Ryan T4 grant; T3 landing does not grant recovery-side crash-closure implementation |
+| V4k selected-generation/rollback execution | **BLOCKED (D1)** | CG-2 reference-v2 serving/recovery dependency closure, then a fresh Ryan grant |
 | Live recovery/activation | **NOT AUTHORIZED** | Separate Ryan operational grants; outside this package |
 
 ## 5. Your Role (read this to know what you're here to do)
@@ -60,14 +62,14 @@ the exact tip and returned `PASS` (off-GitHub). No further Kiro review is
 required for the accepted plan; re-verify only if a downstream change alters its
 boundaries.
 
-**If you are Ryan:** decide whether to accept the next Kiro-recommended Execute
-grant. T1 and T2 are complete and landed; the next plan task is scratch-only bulk
-recovery (V4j, plan task T3), which is NOT yet authorized. Do not treat plan
-acceptance or the T1/T2 landings as live recovery or authority activation.
+**If you are Ryan:** T1, T2, and T3 are complete and landed. Decide separately
+whether to grant T4 recovery-side interruption/crash-closure verification. Do
+not treat any landing as live recovery, replacement, serving, or authority
+activation.
 
 **If you are Cursor:** do not begin from this brief. Wait for a Ryan grant
 naming exactly one eligible task, branch/worktree, and acceptance evidence.
-T1 and T2 are complete and landed; T3 onward are not authorized.
+T1–T3 are complete and landed; T4 is not authorized. V4k remains blocked.
 
 ## 6. What Remains Before "Live" (sequential)
 
@@ -75,20 +77,22 @@ T1 and T2 are complete and landed; T3 onward are not authorized.
 - [x] Ryan accepts the plan.
 - [x] Ryan issues a separate T1 grant; T1 implemented, verified, and landed via PR #234 at `cac3cc35`.
 - [x] Ryan issues a separate T2 grant; T2 implemented, independently verified, and landed via PR #236.
-- [ ] T3 and T4 proceed only as separately granted downstream tasks (scratch-only bulk recovery, V4j, is next but NOT AUTHORIZED).
-- [ ] CG-2 Design A is ratified with stable generation/pointer semantics.
-- [ ] Only after that unlock, Ryan may separately grant V4k planning/execute work (D1).
+- [x] Ryan issues a separate T3 grant; scratch-only bulk recovery implemented, verified, and landed via PR #238 at `d250feb2`.
+- [ ] T4 proceeds only under a separate Ryan grant; it is NOT AUTHORIZED.
+- [ ] CG-2 reference-v2 serving/recovery semantics close under their separate plan, implementation, and verification gates.
+- [ ] Only after that dependency closes may Ryan separately grant V4k planning/execute work (D1).
 - [ ] Any live recovery, replacement, projection activation, or serving change
       requires a distinct Ryan operational grant.
 
 ## 7. Hard Stops (models cannot cross)
 
-- No implementation, migration, bulk restore, live-data mutation, provenance
-  authority activation, CG-2 activation, Shadow, R2b, V1h, V3i, T5, or T3
-  reopening.
+- No T4 or V4k implementation, migration, live restore, replacement, live-data
+  mutation, provenance authority activation, CG-2 activation, Shadow, R2b,
+  V1h, V3i, T5, or closed provenance-T3 reopening.
 - No automatic v2→v3 migration or reinterpretation.
 - No stale projection fallback or serving from projection-pending state.
-- No V4k execution before CG-2 Design A ratification and stable semantics.
+- No V4k execution before the CG-2 reference-v2 serving/recovery dependency
+  closes and Ryan issues a fresh V4k grant.
 - No dedicated DeepSeek R1 adversarial direct/API call without Ryan's explicit
   grant; routine ConvMem/Ollama tooling is unaffected.
 
@@ -124,17 +128,15 @@ planning artifacts.
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-08-30 | Codex Sol | Reconciled the brief to live `main`: T3 landed via PR #238 at `d250feb2`; T4 remains unstarted/unauthorized and V4k remains separately blocked. |
 | 2026-08-23 | Cursor | T2 Execute started: authority recovery / projection agreement state machine on feat branch. |
 | 2026-08-22 | Codex Luna | Created the Recovery Authority Execution Plan and VERIFY companion; T1–T4 remain unstarted and V4k is hard-blocked pending CG-2 Design A ratification. |
 | 2026-08-23 | Crush (DeepSeek V4 Flash) | T1 completed, independently Kiro-verified (off-GitHub), and landed via PR #234 at squash SHA `cac3cc35b8a74d43f9d353554cb7c80cb2f13801` on `main`; status synced to post-T1 current state. |
 | 2026-08-23 | Crush | T2 completed, independently verified (exact-tip BugBot clean + Kiro PASS), and landed via PR #236 at SHA `62f0f2355543f1daefa237bfc0811f94d8982989` on `main` (reviewed tip `c91a218015caadb82ce6294358777234d90754e5`); status synced to post-T2 current state. |
 
-**TL;DR:** Recovery Authority architecture is locked at `22852a07`, the
-Execution Plan is accepted at `b0c1dd22`, and T1 and T2 are complete, verified,
-and landed on `main` (T1 via PR #234 `cac3cc35`; T2 via PR #236
-`62f0f235`). Recovered authority, projection validity, and serving readiness
-remain separate; T2 is non-serving. The next plan task, scratch-only bulk
-recovery (V4j, T3), is NOT AUTHORIZED; T4 remains unstarted/unauthorized; V4k
-(D1) remains blocked pending CG-2 Design A. No live recovery, migration,
-activation, serving, or CG-2 authority is open.
+**TL;DR:** Recovery Authority T1–T3 are landed on `main` (PRs #234, #236,
+and #238); T3 is scratch-only and non-serving. T4 remains unstarted and
+unauthorized, while V4k remains blocked on separately governed CG-2
+reference-v2 closure. No live recovery, replacement, activation, serving, or
+CG-2 authority is open.
 [Arc Recovery Authority]
