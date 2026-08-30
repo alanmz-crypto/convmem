@@ -84,6 +84,15 @@ preserved as upstream and component diagnostics, never as eligibility gates.
    adjudication, capture failure, and Agent-B failure are different states.
 8. **One local authority.** The study controller orchestrates a state machine;
    it does not become a second source of truth or a second agent surface.
+9. **Complete-census adjudication.** Every candidate in the complete target
+   census receives two independent adjudications from raw evidence. Disputes
+   are resolved by a blinded third adjudicator or a predeclared blinded
+   consensus procedure, and disagreement is retained as a registry-quality
+   metric.
+10. **Reliability is explicit.** Sparse episode evidence and scorer
+    disagreement produce visible reliability states. They cannot silently
+    receive the confidence of well-supported episodes or yield a product
+    verdict without passing the frozen reliability gate.
 
 ## 4. Lifecycle state machine
 
@@ -153,18 +162,32 @@ defines a target-independent continuation task.
 | **Study owner / Ryan** | All study artifacts and review reports | Frame/policy approval and final study disposition | Change frozen artifacts after exposure; delegate merge authority. |
 | **Study controller** | Manifests, mechanical run state, environment metadata | State transitions, hashes, run records | Act as Agent B, select targets, edit probes, or add context. |
 | **Raw-evidence recorder** | Ordinary Agent-A outputs and permitted source metadata | Immutable raw-evidence manifest and source copies | Filter for interesting content or inspect ConvMem success to decide retention. |
-| **Target adjudicator** | Complete raw evidence and versioned eligibility rules | Target census, rationale, ambiguity status, strata labels | Read ConvMem capture/rank, C0/C1 outputs, or expected treatment advantage. |
-| **Probe author** | Sealed registry partition, raw evidence, predeclared probe families | Probe definitions and sealed acceptable-response key | Read ConvMem search results, capture labels, condition outcomes, or treatment order. |
+| **Target adjudicator A/B** | Complete raw evidence and versioned eligibility rules | Independent target census decision, rationale, ambiguity status, strata labels | Read ConvMem capture/rank, C0/C1 outputs, or expected treatment advantage; see the other adjudicator's decision before submitting. |
+| **Probe author** | The sealed target record and the minimum raw context needed to construct a realistic task, plus predeclared probe families | Probe definition; submits the scoring key to a separately sealed scorer partition | Claim answer blindness; read ConvMem search results, capture labels, condition outcomes, treatment order, or scorer decisions; author a target they adjudicated. |
+| **Leakage reviewer** | Frozen probe, the author-visible target/context view, and the leakage checklist; no ConvMem or outcome material | Independent leakage review/sign-off before probe freeze | Be the probe author or target adjudicator for that target; reveal answer or source/treatment/ConvMem cues to Agent B. |
 | **Agent-B executor** | Ordinary files/repository/GitHub/transcripts, assigned probe, normal tools; C1 additionally has frozen ConvMem | Agent-B transcript, actions, output, and trace | Read registry, answer key, controller internals, or an earlier Agent-B session. |
 | **Scorer** | Frozen Agent-B outputs, raw evidence, sealed rubric/key, bounded traces | Target and episode scores | Change scoring rules after seeing condition labels or use retrieval rank as truth. |
 | **Kiro** | Architecture and review evidence | Design-review verdict and required revisions | Implement runtime or experiment code. |
 | **Codex** | Existing plans and methodology evidence | Architecture draft | Run Agent A/B or authorize implementation. |
 | **Cursor** | Only after Ryan acceptance | Future implementation | Start from this draft without the acceptance gate. |
 
-The assessor multiplicity decision is intentionally unresolved: independent
-duplicate adjudication with disagreement review is the stronger default, but
-the minimum acceptable design (two full assessors, or one assessor plus a
-blinded duplicate audit) requires Kiro review.
+Two independent adjudicators operate over the complete candidate census. They
+submit decisions separately, without seeing the other's work, and use the same
+frozen admissibility procedure in §8. A disagreement is resolved only by a
+third blinded adjudicator or by a blinded consensus procedure that was named
+and frozen before adjudication. The registry retains both original decisions,
+the resolution, the disagreement reason, and agreement/disagreement rates by
+eligibility seam. This is a registry-quality metric, not a reason to reduce
+the census to one assessor plus an audit.
+
+The probe author is not answer-blind in the fictional sense: seeing the sealed
+target record and the minimum raw context needed to construct a realistic task
+necessarily permits knowledge of the underlying target content. The safety
+boundary is instead that the author cannot expose that content or any
+treatment/memory cue to Agent B, and cannot author a probe for a target they
+adjudicated. A separate leakage reviewer must sign off every target-specific
+probe before freeze. The reviewer and author remain blind to ConvMem capture,
+retrieval, treatment order, future C0/C1 outcomes, and downstream scores.
 
 ## 6. Prospective episode frame
 
@@ -262,17 +285,68 @@ study does not fail because one or more categories never occur.
   needed to judge grounding. A temporal target requires a validity time or an
   explicit `currentness=unknown` status.
 
+### Mechanical admissibility procedure
+
+Each adjudicator applies the following decision tree independently to every
+candidate found in the complete raw-evidence view. The decision record cites
+the candidate span, the surrounding context used, the applicable rule, and a
+yes/no/ambiguous result for each seam; it cannot contain a result-derived or
+capture-derived rationale.
+
+1. **Natural origin and local support.** Confirm that the candidate is present
+   in an admissible ordinary source and cite immutable supporting span IDs.
+   Evaluator-authored text, target-directed transformations, purely stylistic
+   text, or a candidate with no locally interpretable support is `INELIGIBLE`.
+2. **Stable semantic subject.** Record the subject identity, proposition/state,
+   and validity interval needed to distinguish this item from unrelated text.
+   If the text is substantive but the subject cannot be resolved from the
+   frozen evidence and permitted local context, record
+   `AMBIGUOUS_NON_EVALUABLE`; a merely non-semantic fragment is
+   `INELIGIBLE`.
+3. **Truth/current-state determinability.** Using only frozen raw evidence,
+   record whether the proposition/state is supported as true, false,
+   superseded, contradictory, or explicitly unknown at the relevant time.
+   Cite event times and source spans. An unknown status is admissible only if
+   it is itself supported by the evidence and the frozen scoring rubric
+   defines how it is scored. Otherwise the candidate is
+   `AMBIGUOUS_NON_EVALUABLE`, not silently eligible.
+4. **Recovery/continuation evaluability.** Identify a predeclared probe family
+   that can ask the later agent to continue or recover the work and identify
+   the observable response/artifact that can be scored. If no such mapping can
+   be made without adding information or relying on a future result, record
+   `AMBIGUOUS_NON_EVALUABLE`.
+5. **Ambiguity resolution.** The adjudicator may resolve ambiguity only by
+   consulting the frozen raw evidence, its manifest, and the frozen rules.
+   If the ambiguity remains after that view, preserve the candidate with the
+   ambiguity reason and exclude it from the eligible denominator.
+6. **Unitization and duplicate check.** Split independently scorable claims;
+   merge repeated mentions only when subject, semantic claim, and validity
+   interval match; retain all supporting spans. If unitization cannot be
+   completed without an undocumented semantic choice, record
+   `AMBIGUOUS_NON_EVALUABLE`.
+
+The final candidate result is exactly one of `ELIGIBLE`, `INELIGIBLE`, or
+`AMBIGUOUS_NON_EVALUABLE`. Only `ELIGIBLE` enters the target census count.
+`INELIGIBLE` and `AMBIGUOUS_NON_EVALUABLE` remain in the adjudication ledger
+with reasons, so discretionary seams cannot silently alter the denominator.
+The two independent decisions are compared only after both are sealed; any
+disagreement follows the blinded resolution rule above.
+
 Ambiguous candidates are retained in the adjudication record with a reason and
 resolution status. They are not silently converted to zero targets or silently
 included in the evaluable primary set.
 
 ## 9. Outcome-blind adjudication and sealed registry
 
-The target assessor receives the complete raw-evidence manifests and the frozen
-eligibility/unitization rules through a view that excludes ConvMem stores,
-retrieval traces, capture labels, target-specific search results, C0/C1
-outputs, and treatment order. Technical metadata needed to prove access
-separation is retained in an audit log.
+Each candidate and each selected episode is adjudicated independently by two
+identified adjudicators over the complete raw-evidence manifests and the
+frozen eligibility/unitization rules. Each adjudicator's view excludes ConvMem
+stores, retrieval traces, capture labels, target-specific search results,
+C0/C1 outputs, treatment order, and the other adjudicator's pending decision.
+Technical access metadata is retained in an audit log. After both decisions
+are sealed, disagreements are resolved by the frozen blinded third-adjudicator
+or blinded-consensus procedure; neither procedure may consult treatment or
+result material.
 
 The sealed `TargetRegistry` contains one episode entry for every selected
 episode and, where applicable, target records with at least:
@@ -283,7 +357,8 @@ episode and, where applicable, target records with at least:
 - target class and naturally observed secondary-stratum labels;
 - temporal validity/currentness and provenance requirement;
 - eligibility rationale, unitization rationale, and duplicate links;
-- adjudication status, ambiguity/disagreement record, and assessor identity;
+- both independent adjudication records, adjudication status, ambiguity and
+  disagreement record, blinded resolution record, and assessor identities;
 - registry policy version, creation time, and registry digest.
 
 The registry is sealed before any target-specific probe is created, sample is
@@ -297,27 +372,30 @@ retrieval result can mint or delete a target.
 ## 10. Census versus probability sampling
 
 A census is mandatory whenever the prospectively frozen workload ceiling makes
-complete adjudication and probing feasible. The ceiling and decision rule must
-be fixed before the target count is known; it cannot be raised after seeing a
-favorable roster.
+complete adjudication and probing feasible, and is preferred whenever
+prospectively feasible. The ceiling and decision rule must be fixed before the
+target count is known; it cannot be raised after seeing a favorable roster.
 
-If sampling is allowed by that rule:
+If sampling is allowed by that rule, prefer whole-episode probability sampling
+so that the episode-primary estimand keeps episode weight independent of target
+count:
 
 - seal the full registry first, including zero-target episodes and unsampled
   targets;
 - derive the sampler seed from a precommitted study seed plus immutable study
   and registry identities;
-- use a fixed sample-size/allocation rule and record inclusion probability for
-  every sampled target;
+- use a fixed episode sample-size/allocation rule and record the inclusion
+  probability for every selected episode and its targets;
 - retain the complete unsampled roster and its digest;
 - never stratify or oversample on capture status, retrieval success,
   memorability, searchability, semantic interest, or expected C1 advantage;
-- make the analysis aware of the sampling design, especially where a sampled
-  target set is used to estimate an episode score.
+- make the analysis aware of the sampling design. Individual-target sampling
+  is not the default and is permitted only if a prospectively frozen design
+  proves that it preserves episode weighting and does not favor target-rich
+  episodes.
 
-The architecture does not yet choose whether a large registry is handled by
-within-episode target sampling, whole-episode sampling, or a two-stage design.
-That choice affects the episode estimand and is a Kiro review question.
+The execution plan must freeze the exact whole-episode rule, or justify an
+alternative probability design, before the registry is observed.
 
 ## 11. Leakage-safe continuation/recovery probes
 
@@ -341,20 +419,38 @@ Each `ProbeRecord` binds:
 - target/sample inclusion probability where relevant;
 - author, seal time, prompt digest, key digest, and leakage-audit result.
 
-The probe author may read sealed raw evidence and the adjudicated target record,
-but not ConvMem capture/search output, C0/C1 outcomes, or treatment order. The
-Agent-B view contains neither the registry nor the answer key. The controller
-must not paste an answer-bearing handoff or target inventory into either
-condition.
+The probe author may read the sealed target record and the minimum raw context
+needed for realistic construction. This necessarily means the author may know
+the underlying target content; the protocol does not call this answer-blind.
+The author may not read ConvMem capture/search output, C0/C1 outcomes,
+treatment order, or scorer decisions, and may not author a target they
+adjudicated. The Agent-B view contains neither the registry nor the answer key.
+The controller must not paste an answer-bearing handoff or target inventory
+into either condition.
+
+An independent leakage reviewer, who is neither the probe author nor an
+adjudicator for that target, reviews and signs off every target-specific probe
+before freeze. The review checks that the Agent-B-visible probe does not reveal
+answer content, an answer-bearing paraphrase, a source path, a source-location
+hint, a treatment cue, or a ConvMem cue. Any exception because the ordinary
+task legitimately exposes information to both conditions must be documented
+and frozen before execution. The scoring key remains in a separately sealed
+partition whose digest is visible for integrity but whose contents are not
+available to the author, reviewer, controller, or Agent B beyond their
+declared role.
+
+> **Hard role-separation invariant:** No individual may author the probe for a
+> target they adjudicated.
 
 The leakage audit checks at least:
 
-- answer values and source-span text are not copied into the probe unless the
-  ordinary task legitimately exposes them to both conditions;
-- source-path, ledger-ID, rank, ConvMem, condition, and treatment cues are
-  absent unless part of the ordinary task;
+- answer values, answer-bearing paraphrases, source-span text, source paths,
+  and source-location hints are not exposed by the probe unless the ordinary
+  task legitimately exposes them to both conditions;
+- ConvMem, condition, treatment, retrieval-rank, and capture cues are absent
+  unless part of the ordinary task;
 - no C0/C1 transcript, score, capture label, or retrieval rank was available to
-  author or executor;
+  author, reviewer, or executor;
 - the probe asks for a realistic task outcome rather than a memorization
   recital;
 - the acceptable-response key was sealed before execution and condition labels
@@ -416,16 +512,17 @@ The common scoring vocabulary contains:
 Retrieval rank and capture state are diagnostic variables, not product-value
 outcomes.
 
-### Provisional primary outcome
+### Primary outcome contract
 
-The recommended starting point for Kiro review is an episode-level bounded
-continuation utility score derived from the predeclared behavioral rubric. Each
-episode contributes at most one normalized score per condition, formed from its
-eligible target probes without target-count weighting across episodes. The
-target-level correctness/currentness/provenance components remain secondary
-diagnostics unless the final architecture justifies a different primary.
+The primary conditional outcome is a bounded, normalized within-episode
+continuation-utility score derived from the predeclared behavioral rubric. Each
+episode contributes at most one score per condition, formed from its eligible,
+evaluable target probes under the frozen within-episode aggregation rule.
+Target-level correctness/currentness/provenance components remain secondary
+diagnostics. Target-rich episodes cannot receive more primary weight merely by
+producing more target rows.
 
-The default estimand is therefore two-part:
+The authoritative presentation is two-part and co-primary:
 
 1. **Opportunity component:** prevalence and density of eligible targets across
    all prospectively selected episodes, including zero-target episodes.
@@ -435,19 +532,54 @@ The default estimand is therefore two-part:
 This makes the conditioning set pre-treatment and visible. It does not pretend
 that a zero-target episode supplied an unobserved recovery outcome.
 
-### Alternatives that remain open
+### Secondary derived summaries
 
 - **All-episode opportunity-weighted effect:** assign a declared zero effect
   contribution to zero-target episodes, representing expected benefit per
   ordinary episode. This must not be described as a treatment failure.
-- **Two-part primary report:** retain opportunity prevalence and conditional
-  effect as co-primary quantities, with no single composite.
 - **Task-level primary:** use a naturally occurring continuation-task success
   outcome when the task rubric itself is sufficiently stable, with target
   results as supporting diagnostics.
 
-The architecture records enough information to compute these alternatives from
-the same sealed artifacts, but does not silently choose among them.
+These are secondary or diagnostic summaries only. They cannot replace the
+two-part co-primary presentation or collapse its opportunity and conditional
+components into one headline effect.
+
+### Sparse-episode reliability
+
+Every episode/condition score carries an architecture-level
+`score_reliability` state in addition to its numeric score and terminal status.
+At minimum the state vocabulary distinguishes `RELIABILITY_ACCEPTABLE`,
+`RELIABILITY_SPARSE`, `RELIABILITY_NON_ESTIMABLE`, and
+`RELIABILITY_NOT_APPLICABLE` for zero-target episodes. A sparse episode may be
+retained with a descriptive normalized score, but it must not silently receive
+the same epistemic confidence as a well-supported episode, and it must not be
+treated as a zero effect.
+
+The execution plan must prospectively freeze the evidence rule that separates
+these states and the disposition of `RELIABILITY_SPARSE` in conditional
+analysis. No episode may be removed, down-weighted, or reclassified after the
+condition results are known. If the frozen reliability rule leaves the
+conditional product effect non-estimable, the product conclusion is
+`BLOCKED / NON-ESTIMABLE`, not null.
+
+### Continuation-score reliability
+
+Two independent scoring roles score the complete eligible/evaluable scoring
+set with condition labels masked. They independently apply the frozen target
+rubric and derive the bounded episode score; they do not see the other scorer's
+decision before submission. Disagreements use a blinded third scorer or a
+predeclared blinded consensus procedure. The scoring manifest records raw
+agreement and a scale-appropriate reliability check: weighted kappa for
+ordinal/categorical dimensions and an intraclass-correlation or equivalent
+predeclared statistic for the bounded episode score. The exact statistic and
+minimum acceptable reliability gate must be frozen before scoring begins.
+
+If the gate fails, affected scores remain available as diagnostic evidence but
+cannot support a product verdict. The frozen disposition is
+`BLOCKED / NON-ESTIMABLE` when the primary episode score is not reliably
+interpretable, or `DIAGNOSTIC` for an isolated secondary dimension; low scorer
+reliability must never silently become a product null or positive result.
 
 ## 15. Zero-target and non-evaluable episodes
 
@@ -483,6 +615,7 @@ The frozen frame exposes, without selecting values opportunistically:
 - minimum number of target-bearing episodes;
 - minimum total information/target count for secondary estimates;
 - precision criterion for a usable interval;
+- sparse-episode reliability rule and scorer-reliability minimum gate;
 - confidence/randomization procedure and treatment of ties;
 - sparse/non-estimable terminal rule.
 
@@ -495,7 +628,7 @@ The terminal interpretation is:
 - `COMPLETE — NEGATIVE`: valid estimate favors C0 under the frozen negative
   criterion;
 - `BLOCKED / NON-ESTIMABLE`: too few episodes/targets or intervals too wide;
-  no product verdict;
+  or a frozen scorer/sparse reliability gate fails; no product verdict;
 - `DIAGNOSTIC`: identity, completeness, or instrumentation failure prevents
   interpretation;
 - `INVALID`: a protocol invariant was violated.
@@ -559,7 +692,12 @@ Freeze and hash:
 - `EpisodeFrame` and selected-episode schedule;
 - population, retention, and context-gap rules;
 - eligibility/unitization policy and adjudicator access policy;
+- two independent adjudicator identities, disagreement resolution, and
+  registry-quality metrics;
 - probe families and high-level behavioral scoring vocabulary;
+- probe-author, leakage-reviewer, scorer, and scoring-key separation;
+- sparse-episode and continuation-score reliability states, statistics, and
+  gate slots;
 - C0/C1 environment and order policy;
 - census/sampling policy and workload threshold;
 - primary/secondary outcome definitions and null/information framework.
@@ -595,14 +733,15 @@ result.
 
 | Architecture component | Existing foundation | Disposition |
 |---|---|---|
-| Raw evidence capture | v3 controller events/replies/raw files; evidence recorder; `index_runner.py` | Reuse with episode/source identity and completeness linkage. |
-| Corpus/snapshot identity | `eval_corpus/capture.py`; run manifests; v3 background/C1 hashes | Reuse with study-generation binding. |
+| Raw evidence capture | v3 controller events/replies/raw files and evidence-recorder conventions | Historical foundation only; exact current implementation path is to be relocated or built with episode/source identity and completeness linkage. No `index_runner.py` exists at this tip. |
+| Corpus/snapshot identity | `eval_corpus/capture.py`; `serving_index_repository.py` | Reuse immutable capture/manifest and serving-generation identity with study-generation binding. |
+| Existing indexing anchors | `inter_model_index.py`; `serving_index_repository.py` | Reuse only for ordinary indexing/serving projection mechanics; neither becomes target-registry authority. |
 | Retrieval/provenance traces | `ask.py`, `query.py`, `ask --trace` | Reuse as diagnostics; add target/probe linkage without making traces authoritative. |
-| Fresh isolated Agent-B execution | Historical Portland C0/C1 plan and harness | Reuse as bounded execution foundation; do not treat old fixed questions as design. |
-| C0/C1 symmetry | Historical run manifest and v3 environment controls | Reuse with natural probe/episode manifests and frozen order. |
-| Action/latency accounting | `scripts/experiments/portland-baseline/action_counter.py` | Reuse with ordinary-work action taxonomy and controller exclusion. |
-| Paired results | `eval_corpus/paired_stats.py` and `runner.py` | Extend for episode clusters, unequal target counts, zero states, and margin-based verdicts. |
-| Capture states | v3 admissibility labels and capture validation | Reuse only as post-registry diagnostics; never as selection logic. |
+| Fresh isolated Agent-B execution | Historical Portland C0/C1 plan and harness; no current reusable path verified | Historical/to-be-relocated foundation only; do not treat old fixed questions as design. |
+| C0/C1 symmetry | Historical run manifest and v3 environment controls | Historical/to-be-relocated controls; reinstantiate as natural probe/episode manifests and frozen order. |
+| Action/latency accounting | `eval_corpus/runner.py` latency harness | Reuse latency-measurement conventions; add a new ordinary-work action taxonomy and controller-exclusion layer. The cited `scripts/experiments/portland-baseline/action_counter.py` does not exist at this tip. |
+| Paired results | `eval_corpus/paired_stats.py` and `eval_corpus/runner.py` | Extend for episode clusters, unequal target counts, zero states, reliability states, and margin-based verdicts. |
+| Capture states | `eval_corpus/capture.py`; serving-generation identity from `serving_index_repository.py` | Reuse only as post-registry diagnostics; never as selection logic. |
 | JudgeBench | Offline frozen semantic calibration | Optional scorer support only; never the target universe or primary product oracle. |
 | Natural episode frame | None found | New methodology artifact. |
 | Natural target registry | None found | New methodology artifact and authority boundary. |
@@ -620,20 +759,27 @@ The future implementation must provide checks for:
 1. frame immutability, selected-episode retention, and prework order freeze;
 2. raw-source completeness, timestamp/hash consistency, and snapshot identity;
 3. assessor access exclusion from ConvMem/result material;
-4. one registry entry per selected episode, including zero-target entries;
-5. unique target IDs, resolvable source spans, duplicate decisions, and sealed
+4. mechanical stable-subject, truth/currentness, recovery-evaluability, and
+   ambiguity decisions for every candidate;
+5. two independent full-census adjudications, blinded disagreement resolution,
+   and registry-quality metrics;
+6. one registry entry per selected episode, including zero-target entries;
+7. unique target IDs, resolvable source spans, duplicate decisions, and sealed
    registry digest;
-6. census/sample reproducibility, inclusion probabilities, and unsampled-row
+8. census/whole-episode-sample reproducibility, inclusion probabilities, and
+   unsampled-row
    preservation;
-7. probe/key separation, answer-leakage detection, and treatment-cue absence;
-8. natural-capture-only enforcement and capture-after-registry ordering;
-9. exact C0/C1 environment equality except for frozen ConvMem availability;
-10. fresh Agent-B sessions, frozen order, no controller-as-agent actions, and
+9. probe/key separation, independent leakage sign-off, answer/paraphrase/path/
+   location/treatment/ConvMem leakage detection, and treatment-cue absence;
+10. natural-capture-only enforcement and capture-after-registry ordering;
+11. exact C0/C1 environment equality except for frozen ConvMem availability;
+12. fresh Agent-B sessions, frozen order, no controller-as-agent actions, and
     complete trace/action records;
-11. independent scoring labels and frozen null/information parameters;
-12. reconstruction of every final result through the identity chain;
-13. terminal-state distinctions among invalid, diagnostic, sparse,
-    zero-target, positive, null/equivalent, and negative outcomes.
+13. independent masked scoring, scale-appropriate reliability statistics,
+    scorer-reliability gate, and frozen null/information parameters;
+14. reconstruction of every final result through the identity chain;
+15. terminal-state distinctions among invalid, diagnostic, sparse,
+   zero-target, positive, null/equivalent, and negative outcomes.
 
 Verification should replay a controlled fixture for mechanics, but controlled
 fixtures cannot be substituted for the eventual naturalistic evidence.
@@ -647,31 +793,35 @@ fixtures cannot be substituted for the eventual naturalistic evidence.
 - capture/retrieval/uplift separation;
 - two-stage freeze sequence before downstream exposure;
 - C0/C1 symmetry and fresh-session boundary;
+- two independent adjudicators over the complete census with blinded dispute
+  resolution;
+- two-part co-primary estimand, bounded normalized episode score, and explicit
+  sparse/scorer reliability states;
+- probe-author knowledge boundary, independent leakage review, and hard
+  adjudicator/probe-author separation;
+- census preference and whole-episode sampling when sampling is necessary;
 - explicit terminal states and no product verdict from sparse evidence;
 - no service split and no use of v3 target construction.
 
 ### Kiro should challenge
 
-1. Should primary target census use two independent adjudicators, one assessor
-   plus blinded duplicate audit, or another disagreement design?
-2. Is the provisional two-part estimand the right default, and how should a
-   zero-target episode contribute to any single headline effect?
-3. Should the primary episode score be a normalized within-episode target
-   utility, a behavioral continuation-task result, or a two-level report?
-4. What prework workload rule makes census mandatory, and what probability
-   sampling design remains valid for an episode-primary estimand?
-5. What probe-family constraints ensure realistic continuation without making
+1. What prework workload rule makes census mandatory, and what evidence should
+   justify any deviation from preferred whole-episode sampling?
+2. What probe-family constraints ensure realistic continuation without making
    the task answer-bearing or trivia-like?
-6. What evidence is sufficient to label current/stale/superseded or
+3. What evidence is sufficient to label current/stale/superseded or
    cross-domain status as a reliable secondary stratum?
+4. Which evidence-based choices should define the still-open sparse-episode,
+   scorer-reliability, and null/information thresholds at T0?
 
 ### Sol is not required now
 
 No current issue is a construct-level conflict requiring another Sol pass. A
 future Sol adjudication is warranted only if Kiro and the architecture owner
-produce materially conflicting, written positions on the zero-target
-estimand, the meaningful-advantage margin, or another construct-defining
-choice. Routine implementation difficulty is not an escalation trigger.
+produce materially conflicting, written positions on a construct-defining
+choice such as the meaningful-advantage/equivalence contract. Routine
+implementation difficulty, sparse data, or scorer disagreement is not an
+escalation trigger by itself.
 
 ## 23. Next gate
 
@@ -681,4 +831,3 @@ phase. Only then may Cursor implement the methodology layer.
 
 **Next sequence:** Codex architecture draft → Kiro design review → Ryan
 acceptance → Cursor implementation.
-
