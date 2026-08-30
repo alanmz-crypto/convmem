@@ -502,7 +502,7 @@ def build_sealed_probe_bundle(
     )
     probe = ProbeManifestV1.from_dict(probe_dict)
 
-    review_body = {
+    review_body: dict[str, Any] = {
         "header": ArtifactHeaderV1(
             artifact_id="pending",
             schema_version=LeakageReviewManifestV1.SCHEMA,
@@ -520,9 +520,10 @@ def build_sealed_probe_bundle(
         "disposition": LeakageReviewDisposition.APPROVED.value,
         "checklist_items": checklist.items,
         "review_tool_version": config.review_tool_version,
-        "exception_record": ordinary_task_exception,
         "sign_off_time": config.seal_time,
     }
+    if ordinary_task_exception is not None:
+        review_body["exception_record"] = ordinary_task_exception
     review_dict = _finalize_body(
         review_body,
         kind="leakage_review",
