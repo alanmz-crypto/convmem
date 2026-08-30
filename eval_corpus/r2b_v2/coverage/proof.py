@@ -25,21 +25,19 @@ from chroma_write_store import (
 
 from eval_corpus.r2b_v2._authority_capability import (
     issue_census_capability,
-    issue_lease_capability,
     issue_source_capability,
     trust_class_for_gate_policy,
 )
 from eval_corpus.r2b_v2._registry_mint import (
-    finalize_diagnostic_and_mint_coverage,
-    compose_and_mint_source_authority,
     DiagnosticMintTicket,
+    compose_and_mint_source_authority,
+    finalize_diagnostic_and_mint_coverage,
     register_diagnostic_ticket,
 )
 from eval_corpus.r2b_v2.authority_registry import (
     AuthorityHandle,
     AuthorityRegistryError,
     CoverageAuthorityRecord,
-    DiagnosticMintTicket,
     lookup_coverage_handle,
     lookup_lease_handle,
     lookup_source_handle,
@@ -182,6 +180,12 @@ class DiagnosticCoverageResult:
     @property
     def provenance_seal(self) -> str | None:
         return self._provenance_seal
+
+    def require_census_capability(self) -> Any:
+        """Return the bound census capability or fail closed."""
+        if self._census_capability is None:
+            raise CoverageProofError("diagnostic census capability missing")
+        return self._census_capability
 
     def __post_init__(self) -> None:
         empty_required = (
@@ -573,6 +577,42 @@ def inspect_runtime_writers(
     return list(seen.values()), holds
 
 
+def _register_passing_census_ticket(
+    *,
+    policy: GatePolicy,
+    revision: str,
+    inventory: dict[str, Any],
+    runtime_digest: str,
+    coverage_digest: str,
+    gate_path: str,
+    mint_ticket: str,
+    provenance_seal: str,
+) -> Any:
+    trust_class = trust_class_for_gate_policy(policy.policy_class)
+    census_capability = issue_census_capability(
+        coverage_digest=coverage_digest,
+        gate_identity=policy.canonical_identity,
+        code_revision=revision,
+        trust_class=trust_class,
+    )
+    evidence = CoverageEvidenceIdentity(
+        code_revision=revision,
+        inventory_digest=inventory["inventory_digest"],
+        runtime_census_digest=runtime_digest,
+        coverage_digest=coverage_digest,
+        gate_identity=policy.canonical_identity,
+        gate_path=gate_path,
+        gate_protocol=policy.protocol,
+    )
+    ticket = DiagnosticMintTicket(ticket_id=mint_ticket, evidence=evidence)
+    register_diagnostic_ticket(
+        census_capability,
+        ticket,
+        provenance_seal=provenance_seal,
+    )
+    return census_capability
+
+
 def prove_zero_bypass_coverage(
     *,
     chroma_dir: Path,
@@ -650,26 +690,14 @@ def prove_zero_bypass_coverage(
     provenance_seal = secrets.token_hex(16) if mint_ticket is not None else None
     census_capability = None
     if mint_ticket is not None and provenance_seal is not None:
-        trust_class = trust_class_for_gate_policy(policy.policy_class)
-        census_capability = issue_census_capability(
+        census_capability = _register_passing_census_ticket(
+            policy=policy,
+            revision=revision,
+            inventory=inventory,
+            runtime_digest=runtime_digest,
             coverage_digest=coverage_digest,
-            gate_identity=policy.canonical_identity,
-            code_revision=revision,
-            trust_class=trust_class,
-        )
-        evidence = CoverageEvidenceIdentity(
-            code_revision=revision,
-            inventory_digest=inventory["inventory_digest"],
-            runtime_census_digest=runtime_digest,
-            coverage_digest=coverage_digest,
-            gate_identity=policy.canonical_identity,
             gate_path=gate_path,
-            gate_protocol=policy.protocol,
-        )
-        ticket = DiagnosticMintTicket(ticket_id=mint_ticket, evidence=evidence)
-        register_diagnostic_ticket(
-            census_capability,
-            ticket,
+            mint_ticket=mint_ticket,
             provenance_seal=provenance_seal,
         )
     return DiagnosticCoverageResult(
@@ -699,11 +727,10 @@ def mint_trusted_coverage_proof(
         raise CoverageProofError("diagnostic coverage did not pass — cannot mint trusted proof")
     if not diagnostic.provenance_seal:
         raise CoverageProofError("diagnostic census provenance seal missing")
-    if diagnostic._census_capability is None:
-        raise CoverageProofError("diagnostic census capability missing")
+    census_capability = diagnostic.require_census_capability()
     try:
         handle = finalize_diagnostic_and_mint_coverage(
-            diagnostic._census_capability,
+            census_capability,
             diagnostic.mint_ticket,
             coverage_digest=diagnostic.coverage_digest,
             provenance_seal=diagnostic.provenance_seal,
