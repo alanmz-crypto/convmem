@@ -1,8 +1,28 @@
 # Portland Rerun3 — Seed Ready Report
 
-**Status: `RERUN3 SEED READY`** (valid candidate — attempt 1 of 3)
+> **SUPERSEDED — PRE-V3 SEED NON-ADMISSIBLE (2026-08-30)**
+>
+> This report documents the **pre-Protocol-v3** candidate generated before Codex
+> Sol Extra-High adjudication was available. It is preserved as **protocol-development
+> evidence only**.
+>
+> **Classification:** `PRE-V3 SEED — NON-ADMISSIBLE UNDER FINAL PROTOCOL`
+>
+> - Do **not** run Agent B from this candidate.
+> - Do **not** use thread `01a05042-8c04-7302-8baa-b7fa0039b228`, its K1–K10 inventory,
+>   answer values, 27,603-unit C1 snapshot, or semantic admissibility result for
+>   Protocol-v3 evidence.
+> - **Authorized Protocol-v3 lane:** branch `experiment/2026-08-30-portland-rerun3-v3`,
+>   harness `run_controller_v3.py`, run ID `portland-baseline-2026-08-30-rerun3-v3`.
+>
+> History below is **unchanged** for audit trail.
 
-Agent-B execution is **not authorized**. Await Ryan seed review before 16 Codex trials.
+---
+
+**Historical status (pre-v3): `RERUN3 SEED READY`** (attempt 1 of 3 — **non-admissible under v3**)
+
+Agent-B execution was **never authorized** from this candidate. Await Ryan seed review
+before any Agent-B work; Protocol-v3 supersedes this gate entirely.
 
 ## Prior runs (preserved)
 
