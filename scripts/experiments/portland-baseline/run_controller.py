@@ -17,7 +17,7 @@ from seed_admissibility import evaluate_seed, write_private_inventory
 
 RUN_ID = os.environ.get("PORTLAND_RUN_ID", "portland-baseline-2026-08-30-rerun3")
 RESTIC_SNAPSHOT = "d3908f4e"
-RESTIC_REPO = "/home/lauer/.local/share/convmem/restic"
+RESTIC_REPO = "/home/lauer/.local/share/convmem-restic"
 RESTIC_PASSWORD_FILE = "/run/media/lauer/BIT-Brg-larch-7t/convmem-secrets/restic.password"
 MAX_AGENT_A_ATTEMPTS = 3
 
@@ -101,7 +101,14 @@ units_export = "/dev/null"
 
 [models]
 embed_model = "nomic-embed-text"
+summarize_model = "llama3.1:8b"
+distill_model = "deepseek-v4-flash"
 ollama_host = "http://localhost:11434"
+rerank_model = "BAAI/bge-reranker-v2-m3"
+deepseek_base_url = "https://api.deepseek.com"
+
+[distill]
+min_confidence = 0.6
 
 [watch]
 debounce_seconds = 90
@@ -240,6 +247,8 @@ def run_agent_a(r: Path, attempt: int) -> dict:
         record["index_stdout_tail"] = (idx.stdout or "")[-1500:]
         record["index_stderr_tail"] = (idx.stderr or "")[-1500:]
         record["index_cwd"] = str(INDEX_CWD)
+        m = re.search(r"units_indexed=(\d+)", idx.stdout or "")
+        record["units_indexed"] = int(m.group(1)) if m else 0
     save_json(r / "results" / f"agent_a_attempt_{attempt}.json", record)
     return record
 
@@ -309,9 +318,11 @@ def cmd_agent_a(_: argparse.Namespace) -> int:
             reset_live_from_background(r)
         rec = run_agent_a(r, attempt)
         transcript = transcript_text(rec.get("rollout_path", ""))
-        if rec.get("index_exit") != 0:
-            print(f"RERUN3 BLOCKED: indexing failed on attempt {attempt}", flush=True)
-            return 4
+        if rec.get("index_exit") != 0 or rec.get("units_indexed", 0) <= 0:
+            print(f"RERUN3 BLOCKED: indexing failed on attempt {attempt} (exit={rec.get('index_exit')}, units={rec.get('units_indexed')})", flush=True)
+            if attempt >= MAX_AGENT_A_ATTEMPTS:
+                return 4
+            continue
         adm = evaluate_seed(
             transcript=transcript,
             config_path=r / "config" / "live-config.toml",
@@ -323,6 +334,11 @@ def cmd_agent_a(_: argparse.Namespace) -> int:
         print(json.dumps({"agent_a": rec, "admissibility": adm}, indent=2))
         if adm.get("admissible"):
             marker = freeze_c1(r)
+            if marker.get("frozen_units", 0) < 1000:
+                print(f"RERUN3 BLOCKED: frozen corpus too small ({marker.get('frozen_units')} units)", flush=True)
+                if attempt >= MAX_AGENT_A_ATTEMPTS:
+                    return 5
+                continue
             save_json(r / "results" / "rerun3_seed_ready.json", {
                 "status": "RERUN3 SEED READY",
                 "agent_a_thread_id": rec.get("thread_id"),

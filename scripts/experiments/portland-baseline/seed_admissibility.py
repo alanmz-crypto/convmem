@@ -96,7 +96,7 @@ def evaluate_seed(
     for kid, role in K_ROLES.items():
         fn = checks[kid]
         transcript_hit = fn(transcript)
-        corpus_blob = _search(config_path, neutral_queries[kid], repo_cwd) + transcript
+        corpus_blob = _search(config_path, neutral_queries[kid], repo_cwd)
         corpus_hit = fn(corpus_blob)
         if kid == "K10" and transcript_hit and _k10_wrong_property(corpus_blob):
             status = "wrong_property"
