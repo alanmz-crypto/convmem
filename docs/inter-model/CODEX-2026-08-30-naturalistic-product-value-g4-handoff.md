@@ -1,0 +1,164 @@
+# [Arc Naturalistic ConvMem product-value evaluation] G4 implementation handoff
+
+**Date:** 2026-08-30  
+**Author:** Codex implementation lane  
+**For:** Kiro independent review  
+**Authorization:** Ryan, 2026-08-30 (direct G4 implementation-lane assignment and handoff request)
+
+---
+
+## Resume state
+
+| Field | Value |
+|---|---|
+| **State** | `READY_FOR_REVIEW` |
+| **Branch** | `feat/2026-08-30-naturalistic-product-value-g4` |
+| **Review target** | `fa7d68b4b272a9802b0983c708800d6953ec45f8` |
+| **Parent** | `91cda5c56d5f9dd86c0afda1c2a6fe1d353f575b` (frozen G3 implementation) |
+| **Superseded G4 freeze** | `0e191c3197c7c950bdcbb7e1aaef0abe1bdc4e76` |
+| **Push status** | Review target pushed to `origin`; this handoff commit is a carrier only |
+| **PR** | Not opened; independent review comes first |
+| **Ryan GATE** | Ryan disposition after exact-SHA Kiro review; no G5 or live-study authority |
+| **Track A ingest** | `/home/lauer/.codex/sessions/2026/08/30/rollout-2026-08-30T02-03-24-01a0517a-e776-7d41-b11a-c38d8c977954.jsonl` (nudge attempted; active file changed during ingest and watch should retry after debounce) |
+
+The branch tip advances when this handoff and `LATEST.md` pointer are committed.
+The implementation bytes under review remain exactly `fa7d68b`; do not substitute
+the carrier commit as the reviewed implementation SHA.
+
+---
+
+## Product goal and lane boundary
+
+The parent arc asks whether ConvMem creates measurable product value during
+ordinary work using prospective, sealed, symmetric C0/C1 evaluation rather than
+retrospective anecdotes. G4 implements only the pre-live analysis/statistical
+machinery: bounded episode scores, two-part co-primary aggregation,
+sparse/scorer reliability records, and information-gate parameter slots.
+
+**Why this review exists:** the original G4 implementation at `0e191c3` passed
+its happy-path tests but silently accepted malformed and structurally ambiguous
+inputs. Codex corrected those G4 contract defects at `fa7d68b` before independent
+review.
+
+## Exact review scope
+
+Review the implementation delta:
+
+```bash
+git diff 91cda5c56d5f9dd86c0afda1c2a6fe1d353f575b..fa7d68b4b272a9802b0983c708800d6953ec45f8 -- \
+  eval_naturalistic/__init__.py \
+  eval_naturalistic/analysis.py \
+  eval_naturalistic/analysis_fixtures.py \
+  tests/test_naturalistic_analysis.py
+```
+
+The corrective commit `fa7d68b` specifically:
+
+1. rejects non-finite, boolean, duplicate, orphaned, and invalid score inputs;
+2. prevents duplicate episode/condition rows from overwriting or double-weighting results;
+3. separates target-bearing opportunity from conditional evaluability and reports opportunity density;
+4. keeps zero-target and target-present-but-not-evaluable episodes visible without invented treatment effects;
+5. requires an explicit synthetic agreement tolerance and distinct scorer identities;
+6. fails closed on missing scorer pairs, malformed gates, duplicate parameter slots, and post-result parameter mutation;
+7. preserves the G4 ceiling: information-gate machinery cannot emit a product conclusion.
+
+## Governing contracts
+
+- [`ARCHITECTURE-naturalistic-product-value.md`](../plans/ARCHITECTURE-naturalistic-product-value.md), especially §§14–16 and §21.
+- [`EXECUTION-naturalistic-product-value.md`](../plans/EXECUTION-naturalistic-product-value.md), especially G4 and T8–T10.
+- G4 grant: synthetic analysis machinery only; no real scoring, product conclusion, or live numerical choices.
+
+## What is explicitly out of scope
+
+- G5 end-to-end dry-run or T0–T10 fixture campaign.
+- Prospective episode collection, Agent A/B execution, live ConvMem use, or corpus mutation.
+- Treatment assignment/randomization, trial runner, study controller, or environment qualification.
+- Selection of meaningful-advantage, equivalence, precision, sparse, or scorer-reliability values.
+- PR creation, merge, G6 freeze, or any live-study authorization.
+- Repairing inherited G1–G3 lint/cycle debt or the unrelated full-suite Click failure in this review.
+
+## Verification already run
+
+At exact implementation SHA `fa7d68b`:
+
+```text
+python -m pytest -q \
+  tests/test_naturalistic_contracts.py \
+  tests/test_naturalistic_adjudication.py \
+  tests/test_naturalistic_probe.py \
+  tests/test_naturalistic_analysis.py
+
+98 passed, 8 subtests passed
+```
+
+```text
+python -m pylint \
+  eval_naturalistic/analysis.py \
+  eval_naturalistic/analysis_fixtures.py \
+  tests/test_naturalistic_analysis.py
+
+10.00/10
+```
+
+`compileall` and `git diff --check` also passed.
+
+## Known inherited caveats
+
+These are visible integration issues, not claimed G4 PASSes:
+
+1. Repository-wide Pylint fails on accumulated G1–G3 naturalistic findings and
+   the inherited `eval_naturalistic.adjudication` ↔
+   `eval_naturalistic.contract_validate` import cycle. The changed G4 files are
+   focused-lint clean.
+2. The repository-wide pytest run was stopped at 11% after isolating its first
+   failure: `tests/test_add_severity.py::AddSeverityTests::test_invalid_severity_rejected`
+   received empty Click runner output. The complete naturalistic G1–G4 suite is
+   green; no full-suite PASS is claimed.
+3. The arc has architecture and execution plans but no required
+   `docs/plans/STATUS-naturalistic-product-value.md`. Creating that arc brief is
+   planning/governance work and was not folded into the bounded G4 corrective.
+
+## Independent review questions
+
+Kiro should issue a written `PASS` or `FAIL` bound to exact SHA `fa7d68b` and
+answer:
+
+1. Do malformed, duplicate, orphaned, sparse, and non-evaluable inputs fail closed without becoming null or ordinary-confidence evidence?
+2. Does co-primary A retain every prospective episode while distinguishing target opportunity from conditional evaluability?
+3. Does co-primary B give each evaluable episode at most one paired contribution regardless of target count?
+4. Are scorer agreement and information-gate slots honest pre-live records rather than hidden live parameter choices?
+5. Can any path at this SHA emit a positive, negative, or null/equivalent product conclusion before later authorization?
+6. Did the corrective remain entirely within G4 and avoid implementing G5 mechanics?
+
+If `FAIL`, return concrete file/line findings to the G4 implementation lane; do
+not edit implementation code in the Kiro lane. If `PASS`, return the exact-SHA
+verdict to Ryan for disposition. A PASS does not authorize G5, a PR, merge, or a
+live study.
+
+## Leaving / picking up checklist
+
+**Author (leaving):**
+
+- [x] G4 implementation committed and pushed.
+- [x] Focused verification recorded above.
+- [x] This handoff and `LATEST.md` pointer prepared on the same branch.
+- [ ] Arc STATUS update — no arc brief exists; procedural gap recorded above.
+
+**Reviewer (picking up):**
+
+- [ ] Verify branch ancestry and inspect exact implementation SHA `fa7d68b`.
+- [ ] Read the architecture §§14–16 and execution G4/T8–T10 contracts.
+- [ ] Run or independently reproduce the focused verification.
+- [ ] Return exact-SHA written `PASS` or `FAIL` without crossing into G5.
+
+## Handoff summary
+
+**Who:** Codex corrected the bounded G4 implementation; Kiro owns independent review.  
+**What:** Fail-closed analysis/statistical machinery at `fa7d68b`.  
+**When:** 2026-08-30, after the original `0e191c3` freeze was found to accept invalid inputs.  
+**Why:** Prevent malformed or ambiguous evidence from producing trustworthy-looking co-primary results.  
+**How:** Strict score/input validation, explicit opportunity/evaluability accounting, scorer independence, immutable parameter slots, and adversarial synthetic tests.
+
+**TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] Review exact SHA
+`fa7d68b`; G4 focused verification is green, inherited integration caveats are
+explicit, and G5/live work remains unauthorized.
