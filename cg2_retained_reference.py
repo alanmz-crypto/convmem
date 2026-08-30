@@ -192,7 +192,13 @@ def qualify_retained_reference_membership(
         )
 
     non_equivalent = 0
+    wrong_owner = 0
     for row in rows:
+        meta = dict(row.get("metadata") or {})
+        indicated_owner = str(meta.get("owner_digest") or "").strip()
+        if indicated_owner and indicated_owner != descriptor.owner_digest:
+            wrong_owner += 1
+            continue
         key = (str(row["collection_name"]), str(row["physical_id"]))
         expected = dict(expected_by_key[key])
         document_hash = canonical_hash(str(row.get("document") or ""))
@@ -206,6 +212,10 @@ def qualify_retained_reference_membership(
         vector_hash = vector_encoding_sha256(list(embedding))
         if vector_hash != str(expected.get("vector_encoding_sha256") or ""):
             non_equivalent += 1
+    if wrong_owner:
+        raise RetainedReferenceError(
+            f"retained reference includes wrong-owner physical ids ({wrong_owner})"
+        )
     if non_equivalent:
         raise RetainedReferenceError(
             f"retained reference readback is not exact ({non_equivalent} rows)"
@@ -219,7 +229,7 @@ def qualify_retained_reference_membership(
         "missing_count": len(missing),
         "unexpected_count": len(unexpected),
         "duplicate_count": 0,
-        "wrong_owner_count": 0,
+        "wrong_owner_count": wrong_owner,
         "non_equivalent_count": non_equivalent,
         "provenance_identity_changing_count": 0,
         "snapshot_root": snapshot,

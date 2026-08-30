@@ -162,6 +162,7 @@ DESIGN_A_FORMAL_PROPERTY_MAP: dict[str, dict[str, Any]] = {
     "GRbAuthoritySinglePhysicalState": {
         "tests": [
             "tests/test_cg2_reference_v2.py::test_same_reader_spy_qualification_and_serving",
+            "tests/test_cg2_reference_v2.py::test_reference_v2_first_cutover_rollback_same_reader_rehearsal",
         ],
         "notes": "Qualification and serving share one exact-ID reader",
     },
@@ -169,6 +170,9 @@ DESIGN_A_FORMAL_PROPERTY_MAP: dict[str, dict[str, Any]] = {
         "tests": [
             "tests/test_cg2_reference_v2.py::test_adversarial_missing_physical_id_refuses",
             "tests/test_cg2_reference_v2.py::test_adversarial_substituted_physical_id_refuses",
+            "tests/test_cg2_reference_v2.py::test_adversarial_duplicate_physical_id_refuses",
+            "tests/test_cg2_reference_v2.py::test_adversarial_additional_physical_id_refuses",
+            "tests/test_cg2_reference_v2.py::test_adversarial_wrong_owner_physical_id_refuses",
         ],
         "notes": "Selector membership equals D0 physical-id set exactly",
     },
@@ -181,6 +185,8 @@ DESIGN_A_FORMAL_PROPERTY_MAP: dict[str, dict[str, Any]] = {
     "GRbNoCopiedOrSidecarAuthority": {
         "tests": [
             "tests/test_cg2_reference_v2.py::test_zero_copied_vector_rows",
+            "tests/test_cg2_reference_v2.py::test_reference_v2_static_inventory_no_sidecar_or_copied_vector_authority",
+            "tests/test_cg2_reference_v2.py::test_reference_v2_lookup_spy_no_sidecar_or_generation_get_rows",
         ],
         "notes": "No Chroma staging/upsert on reference-v2 retention path",
     },

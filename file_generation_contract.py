@@ -384,7 +384,7 @@ def build_active_pointer(
     backend_fingerprint: str,
     published_at: str,
 ) -> dict[str, Any]:
-    validate_generation_manifest(manifest)
+    validate_published_manifest(manifest)
     pointer = {
         "schema": POINTER_SCHEMA,
         "owner_key": manifest["owner_key"],

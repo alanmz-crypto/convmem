@@ -901,6 +901,15 @@ def _validate_grb_rollback_authority(
             or 0
         ),
     )
+    if dimension <= 0 and is_retained_legacy_reference_manifest(fresh_ref.manifest):
+        dimension = next(
+            (
+                int(dict(spec).get("embedding_dimension") or 0)
+                for spec in dict(fresh_ref.manifest.get("collections_selector") or {}).values()
+                if int(dict(spec).get("embedding_dimension") or 0) > 0
+            ),
+            0,
+        )
     if dimension <= 0:
         raise GenerationPublicationError(
             "G_rb evidence lacks embedding dimension for query-context binding"
