@@ -1,37 +1,39 @@
-# R2b v2 I1–I3 authority-boundary corrective III evidence (current-main integration)
+# R2b v2 I1–I3 authority-boundary corrective IV evidence
 
 **Arc:** R2b Capture Authorization
-**Integration base:** `e930ae4c2fb67eabbfa570f7caacda8d9ddac79d` (`origin/main` at publication)
-**Failed Corrective II review tip (preserved):** `d30173d5defd7879d70348080f72c6fda5a7056a`
-**Status:** Corrective III candidate — NOT operational VERIFY
+**Integration base:** `e930ae4c2fb67eabbfa570f7caacda8d9ddac79d`
+**Failed Corrective III review tip (preserved):** `99014697b0b0e9a4c563ea0ca0d89135513a33b5`
+**Status:** Corrective IV candidate — NOT operational VERIFY
 
 ## Two-SHA model
 
 | Role | SHA |
 |---|---|
-| `implementation_tip` | `dfa282b95aa9cde941be67aa91bc8fb0033b09ab` |
+| `implementation_tip` | `1b0dd44fe8797d12c8627512b36e079f677adcc0` |
 | `evidence_tip` | *(this commit)* |
 | `integration_base` | `e930ae4c2fb67eabbfa570f7caacda8d9ddac79d` |
 
-Inventory digest: `9595f2d03763ef93215e339663aae3ce4e43fa227a649e194da9ed56b64ebbe2`
+## Corrective IV summary
 
-## Corrective III summary
-
-- **Sealed registry stores:** backing dicts reject ordinary caller mutation; module-level registry exports blocked
-- **Lifecycle-gated minting:** census, lease acquisition, and source composition windows required for trusted inserts
-- **Custodian binding:** object-identity verification; substitution via registry overwrite forbidden
-- **Cascade invalidation:** lease/coverage invalidation revokes dependent source authority
-- **Issuance revalidation:** final lease+custodian re-check under composition window closes TOCTOU
-- **Canonical gate binding:** caller-supplied production gate policy and revision substitution refused
-- **Full SHA binding:** authority-bearing paths require 40-char git SHA; abbreviated tips fail closed
-- **Per-sink scanner governance:** mutation sinks listed at file:line; new sinks in known routes fail inventory
+- **Possession capabilities:** `AuthorityMintCapability` tokens issued only from canonical
+  lifecycle modules; single-use, chain-bound, non-constructible by callers
+- **Mint windows removed:** `census_mint_window`, `lease_acquisition_window`, and
+  `source_composition_window` no longer exist on the import surface
+- **Closure-held registry:** trusted backing state held in closure; module globals
+  `_REGISTRY` / `_TRUSTED_REGISTRY` unreachable
+- **Continuous lock binding:** every trusted lookup re-verifies custodian kernel-lock
+  possession; source authority fails closed after lock loss or custodian death
+- **Trust class separation:** hermetic test fixtures vs production-capable authority
+  distinguished in records; caller production gate policy still refused
+- **Per-sink scanner governance:** unchanged from Corrective III — sink-specific evidence
 
 ## Test evidence
 
-- R2b v2 focused suite: **120 passed**, 1 skipped
-- Corrective III adversarial regressions: **16 tests** in `test_r2b_v2_authority_boundary_iii.py`
-- PR #247 relocation-scope regressions: **included in run — pass**
-- Pylint regression gate vs `e930ae4`: **PASS**
+- R2b v2 focused suite: **104 passed**
+- Corrective IV adversarial regressions: **17 tests** in `test_r2b_v2_authority_boundary_iv.py`
+- PR #247 relocation-scope regressions: **19 passed**
+- Scanner/inventory verification: **PASS**
+- Pylint (changed modules): **10.00/10**
 
 ## Authority boundaries (unchanged)
 
@@ -39,4 +41,8 @@ I4–I8: NONE | Production gate: NOT ACQUIRED | Live authority: NONE | 900s: NOT
 
 ## Claim offered for independent review
 
-> Corrective III removes ordinary caller-controlled manufacture, substitution, replay, survival, and independent attestation of trusted R2b I1–I3 authority, while preserving a functional legitimate canonical authority lifecycle and detecting ungoverned current-main mutation sinks individually.
+> Corrective IV establishes a real possession-based authority boundary: ordinary Python
+> callers cannot invoke trusted mint phases, mutate trusted backing state, manufacture an
+> equivalent authority capability, substitute the custodian, preserve trust after
+> kernel-lock loss, or conceal ungoverned mutation sinks, while the genuine canonical
+> R2b I1–I3 lifecycle remains functional.
