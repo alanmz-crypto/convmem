@@ -11,8 +11,8 @@
 `a1128b92d2b02aa77a96524ba353ca0da025ce01`. Ryan granted G5. Cursor implemented
 a synthetic end-to-end dry-run on `feat/2026-08-30-naturalistic-g5-dry-run`.
 The candidate is **methodology validation, not product evidence**. G5 is not
-closed until independent Kiro review PASSes the exact candidate SHA. No G6
-authority is implied.
+closed until independent Kiro review PASSes exact SHA
+`23b2495927a9891070c7c294e45bdb641eaab352`. No G6 authority is implied.
 
 ---
 
