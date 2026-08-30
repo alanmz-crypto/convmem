@@ -9,8 +9,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from eval_naturalistic.contract_validate import validate_generation_integrity, validate_scoring_key_separation
-from eval_naturalistic.contracts import ProbeManifestV1, seal_artifact_dict
+from eval_naturalistic.contract_validate import (
+    validate_generation_integrity,
+    validate_scoring_key_separation,
+    validate_seal_immutability,
+)
+from eval_naturalistic.contracts import ProbeManifestV1, verify_artifact_digest, seal_artifact_dict
 from eval_naturalistic.enums import (
     LeakageReviewDisposition,
     ProbeBuildOutcome,
@@ -204,6 +208,44 @@ class LeakageReviewTests(unittest.TestCase):
         )
         self.assertFalse(result.ok)
         self.assertIsNone(result.probe)
+
+    def test_leakage_review_seal_verifies_without_exception(self):
+        result = build_valid_probe_bundle()
+        self.assertTrue(result.ok, result.errors)
+        assert result.leakage_review is not None
+        review_dict = result.leakage_review.to_dict()
+        self.assertTrue(verify_artifact_digest(review_dict))
+        seal_check = validate_seal_immutability(
+            result.leakage_review,
+            label="LeakageReviewManifest",
+        )
+        self.assertTrue(seal_check.ok, seal_check.errors)
+        self.assertNotIn("exception_record", review_dict)
+
+    def test_leakage_review_seal_verifies_with_exception(self):
+        registry, census = make_sealed_registry_and_census()
+        target = registry.targets[0]
+        draft = make_probe_draft(target=target)
+        exception = "ordinary-task exception documented before freeze"
+        result = build_sealed_probe_bundle(
+            registry=registry,
+            census=census,
+            target=target,
+            draft=draft,
+            leakage_reviewer_id=LEAK_REVIEWER_ID,
+            config=make_default_probe_config(),
+            ordinary_task_exception=exception,
+        )
+        self.assertTrue(result.ok, result.errors)
+        assert result.leakage_review is not None
+        review_dict = result.leakage_review.to_dict()
+        self.assertEqual(review_dict.get("exception_record"), exception)
+        self.assertTrue(verify_artifact_digest(review_dict))
+        seal_check = validate_seal_immutability(
+            result.leakage_review,
+            label="LeakageReviewManifest",
+        )
+        self.assertTrue(seal_check.ok, seal_check.errors)
 
 
 class ScoringKeySeparationTests(unittest.TestCase):
