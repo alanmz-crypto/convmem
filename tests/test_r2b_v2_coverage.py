@@ -1,4 +1,5 @@
 """Hermetic tests for R2b v2 zero-bypass coverage proof (I3)."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 
@@ -27,7 +28,11 @@ from eval_corpus.r2b_v2.coverage.proof import (
 )
 from eval_corpus.r2b_v2.lease import acquire_r2b_quiescence_lease
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
-from tests.r2b_v2_helpers import clean_coverage_bundle, hermetic_implementation_revision, sample_diagnostic_coverage_result
+from tests.r2b_v2_helpers import (
+    clean_coverage_bundle,
+    hermetic_implementation_revision,
+    sample_diagnostic_coverage_result,
+)
 
 
 class R2bV2CoverageInventoryTests(unittest.TestCase):

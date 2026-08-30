@@ -29,7 +29,7 @@ from eval_corpus.r2b_v2.authority_registry import (
     lookup_lease_handle,
     release_lease_handle,
 )
-from eval_corpus.r2b_v2.gate_policy import GatePolicy, production_gate_policy, test_gate_policy
+from eval_corpus.r2b_v2.gate_policy import GatePolicy, resolve_trusted_gate_policy
 from eval_corpus.r2b_v2.lock_custodian import LockCustodian, LockCustodianError, spawn_lock_custodian
 from eval_corpus.r2b_v2.trusted import (
     authority_key,
@@ -195,18 +195,13 @@ def acquire_r2b_quiescence_lease(
         raise R2bQuiescenceLeaseError(
             "authority chain already consumed — same-run reacquisition refused"
         )
-    if gate_policy is not None and test_lock_path is not None:
-        raise R2bQuiescenceLeaseError("gate_policy and test_lock_path are mutually exclusive")
-    if gate_policy is not None:
-        if gate_policy.policy_class != "test_fixture":
-            raise R2bQuiescenceLeaseError(
-                "caller-supplied gate policy cannot mint trusted authority"
-            )
-        policy = gate_policy
-    elif test_lock_path is not None:
-        policy = test_gate_policy(test_lock_path)
-    else:
-        policy = production_gate_policy()
+    policy = resolve_trusted_gate_policy(
+        gate_policy,
+        test_lock_path,
+        error_cls=R2bQuiescenceLeaseError,
+        mutual_exclusion_message="gate_policy and test_lock_path are mutually exclusive",
+        untrusted_policy_message="caller-supplied gate policy cannot mint trusted authority",
+    )
     path = policy.resolve_path()
     if test_lock_path is not None:
         revision = implementation_revision or hashlib.sha256(

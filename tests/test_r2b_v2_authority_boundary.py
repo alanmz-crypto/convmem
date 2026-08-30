@@ -1,4 +1,5 @@
 """Authority-boundary adjudication and corrective regressions for R2b v2 I1-I3."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 

@@ -89,20 +89,19 @@ class _SealedStore(MutableMapping[str, Any]):
         self._data: dict[str, Any] = {}
         self._owner = owner
 
-    def _allow(self) -> bool:
-        return self._owner._internal_mutation_active
+    def _guard_mutation(self) -> None:
+        if not self._owner._internal_mutation_active:  # pylint: disable=protected-access
+            raise AuthorityRegistryError("direct registry mutation forbidden")
 
     def __getitem__(self, key: str) -> Any:
         return self._data[key]
 
     def __setitem__(self, key: str, value: Any) -> None:
-        if not self._allow():
-            raise AuthorityRegistryError("direct registry mutation forbidden")
+        self._guard_mutation()
         self._data[key] = value
 
     def __delitem__(self, key: str) -> None:
-        if not self._allow():
-            raise AuthorityRegistryError("direct registry mutation forbidden")
+        self._guard_mutation()
         del self._data[key]
 
     def __iter__(self) -> Iterator[str]:
@@ -115,23 +114,22 @@ class _SealedStore(MutableMapping[str, Any]):
         return self._data.get(key, default)
 
     def pop(self, key: str, default: Any = None) -> Any:
-        if not self._allow():
-            raise AuthorityRegistryError("direct registry mutation forbidden")
+        self._guard_mutation()
         return self._data.pop(key, default)
 
     def clear(self) -> None:
-        if not self._allow():
-            raise AuthorityRegistryError("direct registry mutation forbidden")
+        self._guard_mutation()
         self._data.clear()
 
     def setdefault(self, key: str, default: Any = None) -> Any:
-        if not self._allow():
-            raise AuthorityRegistryError("direct registry mutation forbidden")
+        self._guard_mutation()
         return self._data.setdefault(key, default)
 
 
 class _TrustedRegistry:
     """Process-local trusted authority state with lifecycle-gated mutation."""
+
+    # pylint: disable=too-many-instance-attributes
 
     __slots__ = (
         "_internal_mutation_active",
@@ -389,42 +387,64 @@ class _TrustedRegistry:
             ).add(handle_id)
         return AuthorityHandle("source", handle_id)
 
-    def lookup_lease_handle(self, handle: AuthorityHandle) -> LeaseAuthorityRecord:
-        if not isinstance(handle, AuthorityHandle) or handle.kind != "lease":
-            raise AuthorityRegistryError("invalid lease authority handle")
+    def _lookup_registered_handle(
+        self,
+        handle: AuthorityHandle,
+        *,
+        expected_kind: str,
+        store: _SealedStore,
+        invalid_kind_message: str,
+        missing_message: str,
+        epoch_mismatch_message: str | None = None,
+        epoch_getter: Any = None,
+    ) -> Any:
+        if not isinstance(handle, AuthorityHandle) or handle.kind != expected_kind:
+            raise AuthorityRegistryError(invalid_kind_message)
         if handle.handle_id in self._invalidated:
-            raise AuthorityRegistryError("lease authority handle invalidated")
-        record = self._lease_records.get(handle.handle_id)
+            raise AuthorityRegistryError(f"{expected_kind} authority handle invalidated")
+        record = store.get(handle.handle_id)
         if record is None:
-            raise AuthorityRegistryError("lease authority handle not registered")
-        if record.mint_epoch != _AUTHORITY_EPOCH:
-            raise AuthorityRegistryError("lease authority handle epoch invalidated")
+            raise AuthorityRegistryError(missing_message)
+        if epoch_getter is not None and epoch_mismatch_message is not None:
+            if epoch_getter(record) != _AUTHORITY_EPOCH:
+                raise AuthorityRegistryError(epoch_mismatch_message)
         return record
 
+    def lookup_lease_handle(self, handle: AuthorityHandle) -> LeaseAuthorityRecord:
+        return self._lookup_registered_handle(
+            handle,
+            expected_kind="lease",
+            store=self._lease_records,
+            invalid_kind_message="invalid lease authority handle",
+            missing_message="lease authority handle not registered",
+            epoch_mismatch_message="lease authority handle epoch invalidated",
+            epoch_getter=lambda record: record.mint_epoch,
+        )
+
     def lookup_coverage_handle(self, handle: AuthorityHandle) -> CoverageAuthorityRecord:
-        if not isinstance(handle, AuthorityHandle) or handle.kind != "coverage":
-            raise AuthorityRegistryError("invalid coverage authority handle")
-        if handle.handle_id in self._invalidated:
-            raise AuthorityRegistryError("coverage authority handle invalidated")
-        record = self._coverage_records.get(handle.handle_id)
-        if record is None:
-            raise AuthorityRegistryError("coverage authority handle not registered")
-        if record.mint_epoch != _AUTHORITY_EPOCH:
-            raise AuthorityRegistryError("coverage authority handle epoch invalidated")
+        record = self._lookup_registered_handle(
+            handle,
+            expected_kind="coverage",
+            store=self._coverage_records,
+            invalid_kind_message="invalid coverage authority handle",
+            missing_message="coverage authority handle not registered",
+            epoch_mismatch_message="coverage authority handle epoch invalidated",
+            epoch_getter=lambda record: record.mint_epoch,
+        )
         if record.mint_seal != _PROCESS_MINT_SEAL:
             raise AuthorityRegistryError("coverage authority mint seal invalid")
         return record
 
     def lookup_source_handle(self, handle: AuthorityHandle) -> SourceAuthorityRecord:
-        if not isinstance(handle, AuthorityHandle) or handle.kind != "source":
-            raise AuthorityRegistryError("invalid source authority handle")
-        if handle.handle_id in self._invalidated:
-            raise AuthorityRegistryError("source authority handle invalidated")
-        record = self._source_records.get(handle.handle_id)
-        if record is None:
-            raise AuthorityRegistryError("source authority handle not registered")
-        if record.authority_epoch != _AUTHORITY_EPOCH:
-            raise AuthorityRegistryError("source authority handle epoch invalidated")
+        record = self._lookup_registered_handle(
+            handle,
+            expected_kind="source",
+            store=self._source_records,
+            invalid_kind_message="invalid source authority handle",
+            missing_message="source authority handle not registered",
+            epoch_mismatch_message="source authority handle epoch invalidated",
+            epoch_getter=lambda record: record.authority_epoch,
+        )
         lease = AuthorityHandle("lease", record.lease_handle_id)
         coverage = AuthorityHandle("coverage", record.coverage_handle_id)
         self.lookup_lease_handle(lease)
@@ -512,6 +532,11 @@ _FORBIDDEN_MODULE_ATTRS = frozenset(
 )
 
 
+def _registry_call(method: str, *args: Any, **kwargs: Any) -> Any:
+    with _REGISTRY_LOCK:
+        return getattr(_REGISTRY, method)(*args, **kwargs)
+
+
 def __getattr__(name: str) -> Any:
     if name in _FORBIDDEN_MODULE_ATTRS:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
@@ -535,18 +560,15 @@ def source_composition_window() -> Iterator[None]:
 
 
 def _register_lease_custodian(custodian_id: str, custodian: Any) -> None:
-    with _REGISTRY_LOCK:
-        _REGISTRY.register_lease_custodian(custodian_id, custodian)
+    _registry_call("register_lease_custodian", custodian_id, custodian)
 
 
 def lookup_custodian(custodian_id: str) -> Any:
-    with _REGISTRY_LOCK:
-        return _REGISTRY.lookup_custodian(custodian_id)
+    return _registry_call("lookup_custodian", custodian_id)
 
 
 def register_diagnostic_ticket(ticket: DiagnosticMintTicket, *, provenance_seal: str) -> None:
-    with _REGISTRY_LOCK:
-        _REGISTRY.register_diagnostic_ticket(ticket, provenance_seal=provenance_seal)
+    _registry_call("register_diagnostic_ticket", ticket, provenance_seal=provenance_seal)
 
 
 def consume_diagnostic_ticket(
@@ -555,22 +577,20 @@ def consume_diagnostic_ticket(
     coverage_digest: str,
     provenance_seal: str,
 ) -> DiagnosticMintTicket:
-    with _REGISTRY_LOCK:
-        return _REGISTRY.consume_diagnostic_ticket(
-            ticket_id,
-            coverage_digest=coverage_digest,
-            provenance_seal=provenance_seal,
-        )
+    return _registry_call(
+        "consume_diagnostic_ticket",
+        ticket_id,
+        coverage_digest=coverage_digest,
+        provenance_seal=provenance_seal,
+    )
 
 
 def mint_coverage_from_consumed_ticket(ticket: DiagnosticMintTicket) -> AuthorityHandle:
-    with _REGISTRY_LOCK:
-        return _REGISTRY.mint_coverage_from_consumed_ticket(ticket)
+    return _registry_call("mint_coverage_from_consumed_ticket", ticket)
 
 
 def mint_lease_handle(record: LeaseAuthorityRecord) -> AuthorityHandle:
-    with _REGISTRY_LOCK:
-        return _REGISTRY.mint_lease_handle(record)
+    return _registry_call("mint_lease_handle", record)
 
 
 def compose_and_mint_source_authority(
@@ -579,44 +599,37 @@ def compose_and_mint_source_authority(
     coverage_handle: AuthorityHandle,
     open_evidence_digest: str,
 ) -> AuthorityHandle:
-    with _REGISTRY_LOCK:
-        return _REGISTRY.compose_and_mint_source_authority(
-            lease_handle=lease_handle,
-            coverage_handle=coverage_handle,
-            open_evidence_digest=open_evidence_digest,
-        )
+    return _registry_call(
+        "compose_and_mint_source_authority",
+        lease_handle=lease_handle,
+        coverage_handle=coverage_handle,
+        open_evidence_digest=open_evidence_digest,
+    )
 
 
 def lookup_lease_handle(handle: AuthorityHandle) -> LeaseAuthorityRecord:
-    with _REGISTRY_LOCK:
-        return _REGISTRY.lookup_lease_handle(handle)
+    return _registry_call("lookup_lease_handle", handle)
 
 
 def lookup_coverage_handle(handle: AuthorityHandle) -> CoverageAuthorityRecord:
-    with _REGISTRY_LOCK:
-        return _REGISTRY.lookup_coverage_handle(handle)
+    return _registry_call("lookup_coverage_handle", handle)
 
 
 def lookup_source_handle(handle: AuthorityHandle) -> SourceAuthorityRecord:
-    with _REGISTRY_LOCK:
-        return _REGISTRY.lookup_source_handle(handle)
+    return _registry_call("lookup_source_handle", handle)
 
 
 def invalidate_lease_handle(handle: AuthorityHandle) -> None:
-    with _REGISTRY_LOCK:
-        _REGISTRY.invalidate_lease_handle(handle)
+    _registry_call("invalidate_lease_handle", handle)
 
 
 def release_lease_handle(handle: AuthorityHandle) -> LeaseAuthorityRecord:
-    with _REGISTRY_LOCK:
-        return _REGISTRY.release_lease_handle(handle)
+    return _registry_call("release_lease_handle", handle)
 
 
 def invalidate_coverage_handle(handle: AuthorityHandle) -> None:
-    with _REGISTRY_LOCK:
-        _REGISTRY.invalidate_coverage_handle(handle)
+    _registry_call("invalidate_coverage_handle", handle)
 
 
 def invalidate_all_authority() -> None:
-    with _REGISTRY_LOCK:
-        _REGISTRY.invalidate_all_authority()
+    _registry_call("invalidate_all_authority")
