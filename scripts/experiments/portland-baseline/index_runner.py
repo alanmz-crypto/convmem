@@ -24,7 +24,7 @@ def index_file(
     env = os.environ.copy()
     env["CONVMEM_CONFIG"] = str(Path(config_path).resolve())
     return subprocess.run(
-        ["convmem", "index", "--file", str(Path(source_path).resolve())],
+        ["convmem", "index", "--file", str(Path(source_path).resolve()), "--force"],
         capture_output=True,
         text=True,
         env=env,

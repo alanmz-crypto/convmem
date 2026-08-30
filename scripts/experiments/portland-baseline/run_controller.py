@@ -90,6 +90,7 @@ def write_configs(r: Path) -> None:
         ("c1-frozen", r / "c1-frozen" / "chroma", r / "c1-frozen" / "processed.json"),
     ):
         chroma.parent.mkdir(parents=True, exist_ok=True)
+        units_export = chroma.parent / "knowledge_units.jsonl"
         text = f"""[sources]
 paths = []
 inventory = ""
@@ -97,7 +98,7 @@ inventory = ""
 [index]
 chroma_dir = "{chroma}"
 processed_log = "{processed}"
-units_export = "/dev/null"
+units_export = "{units_export}"
 
 [models]
 embed_model = "nomic-embed-text"
