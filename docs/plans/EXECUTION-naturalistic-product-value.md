@@ -929,4 +929,4 @@ collect natural episodes. The live study remains review-required.
 - [ ] Any implementation or live-study grant.
 
 **Next sequence:** Kiro independent execution-plan review → Ryan acceptance →
-bounded Cursor implementation grants. 
+bounded Cursor implementation grants.
