@@ -11,19 +11,18 @@
 
 | Field | Value |
 |---|---|
-| **State** | `READY_FOR_REVIEW` |
+| **State** | `REVIEW_PASS_PENDING_RYAN` |
 | **Branch** | `feat/2026-08-30-naturalistic-product-value-g4` |
 | **Review target** | `fa7d68b4b272a9802b0983c708800d6953ec45f8` |
 | **Parent** | `91cda5c56d5f9dd86c0afda1c2a6fe1d353f575b` (frozen G3 implementation) |
 | **Superseded G4 freeze** | `0e191c3197c7c950bdcbb7e1aaef0abe1bdc4e76` |
-| **Push status** | Review target pushed to `origin`; this handoff commit is a carrier only |
-| **PR** | Not opened; independent review comes first |
-| **Ryan GATE** | Ryan disposition after exact-SHA Kiro review; no G5 or live-study authority |
+| **Push status** | Review target pushed to `origin`; later documentation and main-integration commits are carriers only |
+| **PR** | PR Steward assigned; combined G1–G4 delivery to `main` |
+| **Ryan GATE** | Ryan owns merge disposition after PR CI; no G5 or live-study authority |
 | **Track A ingest** | `/home/lauer/.codex/sessions/2026/08/30/rollout-2026-08-30T02-03-24-01a0517a-e776-7d41-b11a-c38d8c977954.jsonl` (nudge attempted; active file changed during ingest and watch should retry after debounce) |
 
-The branch tip advances when this handoff and `LATEST.md` pointer are committed.
-The implementation bytes under review remain exactly `fa7d68b`; do not substitute
-the carrier commit as the reviewed implementation SHA.
+The implementation bytes reviewed remain exactly `fa7d68b`; do not substitute
+a later carrier commit as the reviewed implementation SHA.
 
 ---
 
@@ -118,10 +117,22 @@ These are visible integration issues, not claimed G4 PASSes:
    `docs/plans/STATUS-naturalistic-product-value.md`. Creating that arc brief is
    planning/governance work and was not folded into the bounded G4 corrective.
 
+## Independent review outcome
+
+Kiro issued **PASS** bound to exact implementation SHA
+`fa7d68b4b272a9802b0983c708800d6953ec45f8` and independently reproduced the
+focused verification. Kiro confirmed all six review questions: fail-closed
+input handling; complete opportunity/evaluability accounting; one paired
+episode contribution regardless of target count; honest pre-live scorer and
+information slots; no reachable product conclusion; and no G5 mechanics.
+
+The review also confirmed that the later carrier changed documentation only and
+that the working-tree implementation files were byte-identical to `fa7d68b`.
+The PASS does not authorize G5, merge, G6, or live-study work.
+
 ## Independent review questions
 
-Kiro should issue a written `PASS` or `FAIL` bound to exact SHA `fa7d68b` and
-answer:
+Kiro answered the following questions with `PASS` at exact SHA `fa7d68b`:
 
 1. Do malformed, duplicate, orphaned, sparse, and non-evaluable inputs fail closed without becoming null or ordinary-confidence evidence?
 2. Does co-primary A retain every prospective episode while distinguishing target opportunity from conditional evaluability?
@@ -130,10 +141,8 @@ answer:
 5. Can any path at this SHA emit a positive, negative, or null/equivalent product conclusion before later authorization?
 6. Did the corrective remain entirely within G4 and avoid implementing G5 mechanics?
 
-If `FAIL`, return concrete file/line findings to the G4 implementation lane; do
-not edit implementation code in the Kiro lane. If `PASS`, return the exact-SHA
-verdict to Ryan for disposition. A PASS does not authorize G5, a PR, merge, or a
-live study.
+The exact-SHA PASS is now in Ryan/PR Steward disposition. It does not authorize
+G5, merge, G6, or a live study.
 
 ## Leaving / picking up checklist
 
@@ -144,12 +153,12 @@ live study.
 - [x] This handoff and `LATEST.md` pointer prepared on the same branch.
 - [ ] Arc STATUS update — no arc brief exists; procedural gap recorded above.
 
-**Reviewer (picking up):**
+**Reviewer (completed):**
 
-- [ ] Verify branch ancestry and inspect exact implementation SHA `fa7d68b`.
-- [ ] Read the architecture §§14–16 and execution G4/T8–T10 contracts.
-- [ ] Run or independently reproduce the focused verification.
-- [ ] Return exact-SHA written `PASS` or `FAIL` without crossing into G5.
+- [x] Verified branch ancestry and exact implementation SHA `fa7d68b`.
+- [x] Read the architecture §§14–16 and execution G4/T8–T10 contracts.
+- [x] Independently reproduced focused verification.
+- [x] Returned exact-SHA `PASS` without crossing into G5.
 
 ## Handoff summary
 
@@ -159,6 +168,6 @@ live study.
 **Why:** Prevent malformed or ambiguous evidence from producing trustworthy-looking co-primary results.  
 **How:** Strict score/input validation, explicit opportunity/evaluability accounting, scorer independence, immutable parameter slots, and adversarial synthetic tests.
 
-**TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] Review exact SHA
-`fa7d68b`; G4 focused verification is green, inherited integration caveats are
-explicit, and G5/live work remains unauthorized.
+**TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] Kiro PASSed exact
+G4 SHA `fa7d68b`; the combined G1–G4 package is in PR Steward delivery, inherited
+integration caveats remain explicit, and G5/live work is unauthorized.
