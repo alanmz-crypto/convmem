@@ -1,8 +1,8 @@
 # Documentation Handoff: [Arc Project-state reconciliation only] Current-state correction
 
-**Date:** 2026-08-30  
-**Author:** Codex (forensic reconciliation/documentation lane)  
-**For:** Ryan (review and PR decision)  
+**Date:** 2026-08-30
+**Author:** Codex (forensic reconciliation/documentation lane)
+**For:** Ryan (review and PR decision)
 **Authorization:** Ryan, 2026-08-30 (bounded project-state reconciliation handoff)
 
 ---
