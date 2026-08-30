@@ -35,16 +35,19 @@ trust map.
 
 ---
 
-## Execution order
+## Execution order (single-agent dispatches)
 
-| Seq | Item | Handoff | Primary lane | Landed SHA |
-|-----|------|---------|--------------|------------|
-| 1 | PR #253 project-state reconciliation | [253 claims attestation](CURSOR-2026-08-30-verification-sweep-253-claims-attestation-handoff.md) | **Kiro** (+ Copilot if code-grounded claim fails) | `a924d3887329dd51f1e0ac917f8ab21bae513c57` |
-| 2 | PR #221 Trapdoor T3 integration | [221 trapdoor integration](CURSOR-2026-08-30-verification-sweep-221-trapdoor-integration-handoff.md) | **Copilot audit-lane + Kiro** (both required) | `722141d31e586151f361ef7006ad74c71cdff534` |
-| 3 | PR #202 CodeQL arc closeout | [202 CodeQL closeout](CURSOR-2026-08-30-verification-sweep-202-codeql-closeout-handoff.md) | **Kiro + Copilot audit-lane** | `d10e1d5f4993f60a32142115f8b8c0f0f9ea4481` |
+| Seq | Item | Execute handoff | Lane | Landed SHA | State |
+|-----|------|-----------------|------|------------|-------|
+| 1 | PR #253 project-state reconciliation | [KIRO-253 execute](KIRO-2026-08-30-verification-sweep-253-execute-handoff.md) | Kiro | `a924d388…` | **CLOSED** |
+| 2a | PR #221 Trapdoor T3 integration | [COPILOT-221 execute](COPILOT-2026-08-30-verification-sweep-221-execute-handoff.md) | Copilot audit-lane | `722141d…` | **ACTIVE** |
+| 2b | PR #221 Trapdoor T3 integration | [KIRO-221 execute](KIRO-2026-08-30-verification-sweep-221-execute-handoff.md) | Kiro | `722141d…` | Blocked on 2a |
+| 3a | PR #202 CodeQL closeout | [KIRO-202 execute](KIRO-2026-08-30-verification-sweep-202-execute-handoff.md) | Kiro | `d10e1d5…` | Blocked on step 2 |
+| 3b | PR #202 CodeQL closeout | [COPILOT-202 execute](COPILOT-2026-08-30-verification-sweep-202-execute-handoff.md) | Copilot audit-lane | `d10e1d5…` | Blocked on 3a |
 
-Execute **in sequence**. Do not parallelize #221 before #253 completes — downstream
-routing may change if #253 claims fail.
+Dispatch **one agent at a time**. Background specs: [253 claims](CURSOR-2026-08-30-verification-sweep-253-claims-attestation-handoff.md) · [221 trapdoor](CURSOR-2026-08-30-verification-sweep-221-trapdoor-integration-handoff.md) · [202 CodeQL](CURSOR-2026-08-30-verification-sweep-202-codeql-closeout-handoff.md)
+
+Routing index: [221 execute index](CURSOR-2026-08-30-verification-sweep-221-execute-handoff.md)
 
 ---
 
