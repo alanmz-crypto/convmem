@@ -4,12 +4,62 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 from adapters.detect import detect_format, get_parser
 from adapters.inter_model_doc import is_inter_model_doc, parse
-from inter_model_index import index_inter_model_messages
+from chroma_store import ChromaStore
+from distill import make_unit_id
+from inter_model_index import InterModelIndexError, index_inter_model_messages
+
+
+class _FakeProductionWrite:
+    def __init__(self, store: ChromaStore, cfg: dict) -> None:
+        self.store = store
+        self.live_cfg = cfg
+
+
+def _inter_model_index_cfg(tmp_path: Path) -> dict:
+    return {
+        "index": {
+            "processed_log": str(tmp_path / "processed.json"),
+            "units_export": str(tmp_path / "knowledge_units.jsonl"),
+            "chroma_dir": str(tmp_path / "chroma"),
+        },
+        "ingest_dedup": {
+            "semantic_similarity": 0.92,
+            "candidate_k": 10,
+            "max_semantic_candidates_per_unit": 3,
+        },
+    }
+
+
+def _run_inter_model_index(cfg: dict, path: Path, store: ChromaStore) -> int:
+    messages = parse(str(path))
+
+    @contextmanager
+    def fake_session(*, entrypoint=None):
+        del entrypoint
+        yield _FakeProductionWrite(store, cfg)
+
+    with mock.patch(
+        "inter_model_index.production_chroma_write_session", fake_session
+    ), mock.patch("inter_model_index.ollama_embed", return_value=[0.1, 0.2, 0.3]):
+        Path(cfg["index"]["processed_log"]).write_text("{}", encoding="utf-8")
+        return index_inter_model_messages(
+            str(path),
+            messages,
+            path_key=str(path.resolve()),
+            chroma_dir=cfg["index"]["chroma_dir"],
+            embed_model="nomic-embed-text",
+            ollama_host="http://localhost:11434",
+            cfg=cfg,
+            verbose=False,
+        )
 
 
 class InterModelDocAdapterTests(unittest.TestCase):
@@ -125,6 +175,48 @@ class InterModelIndexTests(unittest.TestCase):
             if isinstance(meta, dict):
                 self.assertEqual(meta.get("tool"), "inter-model")
                 self.assertEqual(meta.get("source_type"), "inter_model_doc")
+
+
+def test_reindex_unchanged_section_replays_provenance_identity(tmp_path: Path) -> None:
+    cfg = _inter_model_index_cfg(tmp_path)
+    path = tmp_path / "docs" / "inter-model" / "HANDOFF-test.md"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "## Packet\n\nStable inter-model body for provenance replay.\n",
+        encoding="utf-8",
+    )
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    try:
+        assert _run_inter_model_index(cfg, path, store) == 1
+        first_messages = parse(str(path))
+        unit_id = make_unit_id(
+            str(path.resolve()), int(first_messages[0]["section_index"]), "Packet", 0
+        )
+        first = store.get_unit(unit_id)
+        assert first is not None
+        first_assertion = first["metadata"]["assertion_id"]
+
+        assert _run_inter_model_index(cfg, path, store) == 1
+        second = store.get_unit(unit_id)
+        assert second is not None
+        assert second["metadata"]["assertion_id"] == first_assertion
+    finally:
+        store.close()
+
+
+def test_reindex_changed_section_fails_closed(tmp_path: Path) -> None:
+    cfg = _inter_model_index_cfg(tmp_path)
+    path = tmp_path / "docs" / "inter-model" / "HANDOFF-change.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("## Packet\n\nOriginal body.\n", encoding="utf-8")
+    store = ChromaStore(cfg["index"]["chroma_dir"])
+    try:
+        assert _run_inter_model_index(cfg, path, store) == 1
+        path.write_text("## Packet\n\nReplacement body.\n", encoding="utf-8")
+        with pytest.raises(InterModelIndexError, match="supersession"):
+            _run_inter_model_index(cfg, path, store)
+    finally:
+        store.close()
 
 
 if __name__ == "__main__":

@@ -38,7 +38,7 @@ activation against the live corpus is forbidden for this verification slice.
 | `ingest.py:478` | `production_chroma_write_session` |
 | `ingest.py:535` | `production_chroma_write_session` |
 | `ingest.py:751` | `production_chroma_write_session` |
-| `inter_model_index.py:155` | `production_chroma_write_session` |
+| `inter_model_index.py:301` | `production_chroma_write_session` |
 | `observe.py:230` | `open_production_write_store` |
 | `propose_decision.py:549` | `open_production_write_store` |
 | `propose_decision.py:582` | `open_production_write_store` |
