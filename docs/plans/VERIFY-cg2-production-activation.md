@@ -128,7 +128,9 @@ after independent review. A failure in any row blocks production D1.
 | D1R9 | Recovery covers one complete target | PENDING | Backup/restore jointly preserves original rows, reference manifest/evidence, D0 chain, pointer/fence/guard, and query context; restored serving-reader roots match |
 | D1R10 | Failed convert-v1 remains terminal | PENDING | `2d01dfca…` cannot be reused, activated, selected as previous, or cleaned; no `abandoned_d1` schema |
 | D1R11 | D0 exception contract preserved | PENDING | Non-finite D0 vector raises `D0AttestationError`; full pre-existing suite has no regression |
-| D1R12 | Property map and formal model close the same contract | PENDING | Property map v3 exact-node coverage; TLC all configs PASS same tip; negative mutations for wrong selector, copied serving, D0/context drift, missing recovery, failed-ID reuse |
+| D1R12 | Property map and formal model close the same contract | **SATISFIED / PASS** | Kiro independent PASS on formal corrective `7a8fd76350b7076f5d75e3ad53c7392647b2eac0` (parent runtime PASS base `8897d1358f985e38a1070816189460d980824d75`, 2026-08-30). Static review: eight substantive `GRb*` invariants wired in all four positive TLC configs (`CG2DesignA`, `CG2Cutover`, `CG2StaleReconcile`, `CG2Rename`); wrong-selector and copied-serving negative controls target `GRbReferenceMembershipExact` and `GRbServingReadsReferencedRows`; formal/runtime correspondence adequate to the accepted reference-v2 implementation; corrective delta formal-model-only (`8897d13..7a8fd763`). Property map v3 schema at runtime base (`convmem/cg2-design-a-property-map-v3` in `cg2_property_map.py`). **Evidence caveat:** no fresh empirical TLC rerun stamped to `7a8fd763…` — review and evidence-only executor lanes had no Java/TLC (`TLA_JAR` unset); corroborating historical logs plus static model review only. **Does not authorize production D1, V8c, or any downstream CG-2 gate; D1R0–D1R11 remain PENDING.** |
+
+**D1R12 formal closure record (2026-08-30):** The retained-reference-v2 formal obligation is **SATISFIED / PASS** at corrective SHA `7a8fd76350b7076f5d75e3ad53c7392647b2eac0` on branch `fix/2026-08-30-cg2-d1-reference-v2-formal-d1r12`. Kiro independently reviewed the frozen delta `8897d1358f985e38a1070816189460d980824d75..7a8fd76350b7076f5d75e3ad53c7392647b2eac0` and returned **PASS**. Fresh empirical TLC rerun at the corrective tip remains **deferred** (no Java/TLC in the review lane); that deferral is evidence-strengthening only and does not revert the independent PASS. This closure record does not itself authorize production activity or unrelated downstream work.
 
 **Corrective rollback drill:** after hermetic first cutover, resolve
 `previous_generation_id` as the reference-v2 target, run fresh qualification,
@@ -255,9 +257,12 @@ activation manifest, GC, Shadow, and R2b remain unauthorized.
 ## Formal property → test map
 
 Historical evidence uses `convmem/cg2-design-a-property-map-v2`. Corrective
-closure requires `convmem/cg2-design-a-property-map-v3` mapping every D1R
-property to exact pytest and TLC evidence at the same implementation tip. Until
-that artifact exists and passes completeness validation, D1R12 is PENDING.
+closure uses `convmem/cg2-design-a-property-map-v3` (`cg2_property_map.py`) at
+runtime PASS base `8897d1358f985e38a1070816189460d980824d75`. **D1R12 formal
+obligation: SATISFIED / PASS** at formal corrective `7a8fd76350b7076f5d75e3ad53c7392647b2eac0`
+(Kiro independent PASS, 2026-08-30). Fresh empirical TLC rerun at the corrective
+tip is deferred — no Java/TLC in the review lane; D1R0–D1R11 pytest/runtime rows
+remain PENDING.
 
 ## Evidence log
 
@@ -268,7 +273,8 @@ Superseding execution plan: 9a171bdf03d501ff891d991bbdad6acc1abda56c
 D6 accepted tip: 9a042fbc0d18500b91e056f47f60a00e20ccdb75
 D7 closure tip: b64860b05575c62b4563c02ed6f05bb39910b4dc
 V6c copied-generation drill: HISTORICAL PASS only; reference-v2 PENDING
-D1R0-D1R12: PENDING — corrective planning oracle, no implementation evidence
+D1R12 formal obligation: SATISFIED / PASS at 7a8fd76350b7076f5d75e3ad53c7392647b2eac0 (Kiro independent PASS; parent runtime base 8897d1358f985e38a1070816189460d980824d75); fresh empirical TLC rerun deferred — no Java/TLC in review lane
+D1R0-D1R11: PENDING — runtime/reference-v2 rows not yet closed
 First-owner packet (V8c): PENDING — provenance reconciled; not PASS
 Production activation: NOT PERFORMED
 Automatic GC: NOT PERFORMED
