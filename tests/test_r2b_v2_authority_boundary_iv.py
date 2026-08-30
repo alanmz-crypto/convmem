@@ -15,7 +15,6 @@ import eval_corpus.r2b_v2._registry_mint as registry_mint
 from eval_corpus.r2b_v2._authority_capability import (
     AuthorityCapabilityError,
     AuthorityMintCapability,
-    MintPhase,
     issue_census_capability,
 )
 from eval_corpus.r2b_v2._registry_mint import (
@@ -86,14 +85,15 @@ class R2bV2CorrectiveIVAdversarialTests(unittest.TestCase):
             getattr(registry_mint, "source_composition_window")()
 
     def test_04_direct_registry_backing_unreachable(self) -> None:
-        with self.assertRaises(AttributeError):
-            _ = registry_mint._REGISTRY  # type: ignore[attr-defined]
-        with self.assertRaises(AttributeError):
-            _ = registry_mint._TRUSTED_REGISTRY  # type: ignore[attr-defined]
-        with self.assertRaises(AttributeError):
-            _ = registry_mint._FACADE  # type: ignore[attr-defined]
-        with self.assertRaises(AttributeError):
-            _ = registry_mint._TrustedRegistry  # type: ignore[attr-defined]
+        forbidden = (
+            "_REGISTRY",
+            "_TRUSTED_REGISTRY",
+            "_FACADE",
+            "_TrustedRegistry",
+        )
+        for name in forbidden:
+            with self.assertRaises(AttributeError):
+                getattr(registry_mint, name)
 
     def test_05_fake_gate_policy_cannot_mint_production_equivalent_authority(self) -> None:
         attacker_policy = GatePolicy(

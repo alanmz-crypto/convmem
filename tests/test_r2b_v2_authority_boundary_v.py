@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import copy
 import importlib
-import inspect
 import tempfile
 import time
 import unittest
@@ -17,7 +16,6 @@ import eval_corpus.r2b_v2._registry_mint as registry_mint
 from eval_corpus.r2b_v2._authority_capability import (
     AuthorityCapabilityError,
     AuthorityMintCapability,
-    MintPhase,
     issue_census_capability,
 )
 from eval_corpus.r2b_v2._registry_mint import (
@@ -41,14 +39,13 @@ from eval_corpus.r2b_v2.coverage.proof import (
     prove_zero_bypass_coverage,
 )
 from eval_corpus.r2b_v2.coverage_evidence import CoverageEvidenceIdentity
-from eval_corpus.r2b_v2.gate_policy import GatePolicy, production_gate_policy
+from eval_corpus.r2b_v2.gate_policy import production_gate_policy
 from eval_corpus.r2b_v2.lease import R2bQuiescenceLeaseError, acquire_r2b_quiescence_lease
 from eval_corpus.r2b_v2.lock_custodian import LockCustodianError, custodian_for_tests
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
 from tests.r2b_v2_helpers import (
     acquire_test_lease,
     clean_coverage_bundle,
-    hermetic_implementation_revision,
     run_legitimate_source_authority_case,
     obtain_source_authority,
     sample_diagnostic_coverage_result,
@@ -104,14 +101,16 @@ class R2bV2CorrectiveVAdversarialTests(unittest.TestCase):
             )
 
     def test_02_reflection_cannot_obtain_mutable_production_registry(self) -> None:
+        mint_forbidden = (
+            "_TrustedRegistry",
+            "_REGISTRY",
+            "_VAULT",
+        )
+        for name in mint_forbidden:
+            with self.assertRaises(AttributeError):
+                getattr(registry_mint, name)
         with self.assertRaises(AttributeError):
-            _ = registry_mint._TrustedRegistry  # type: ignore[attr-defined]
-        with self.assertRaises(AttributeError):
-            _ = registry_mint._REGISTRY  # type: ignore[attr-defined]
-        with self.assertRaises(AttributeError):
-            _ = registry_mint._VAULT  # type: ignore[attr-defined]
-        with self.assertRaises(AttributeError):
-            _ = authority_vault._build_vault  # type: ignore[attr-defined]
+            getattr(authority_vault, "_build_vault")
         self.assertIsNone(authority_vault.vault_dispatch("probe_closure_registry_mutation"))
 
     def test_03_caller_substitutes_cannot_become_production_custodians(self) -> None:
