@@ -27,21 +27,23 @@ from eval_corpus.r2b_v2.coverage.proof import (
 )
 from eval_corpus.r2b_v2.lease import acquire_r2b_quiescence_lease
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
-from tests.r2b_v2_helpers import sample_diagnostic_coverage_result
-from tests.r2b_v2_helpers import clean_coverage_bundle
+from tests.r2b_v2_helpers import clean_coverage_bundle, hermetic_implementation_revision, sample_diagnostic_coverage_result
 
 
 class R2bV2CoverageInventoryTests(unittest.TestCase):
     def test_static_inventory_binds_revision(self):
-        inv = build_static_route_inventory(code_revision="tip-sha")
-        self.assertEqual(inv["code_revision"], "tip-sha")
+        revision = hermetic_implementation_revision("tip-sha")
+        inv = build_static_route_inventory(code_revision=revision)
+        self.assertEqual(inv["code_revision"], revision)
         self.assertFalse(inv["missing_categories"])
-        errs = verify_inventory_matches_tip(inv, code_revision="tip-sha")
+        errs = verify_inventory_matches_tip(inv, code_revision=revision)
         self.assertEqual(errs, [])
 
     def test_stale_inventory_refuses(self):
-        inv = build_static_route_inventory(code_revision="old-sha")
-        errs = verify_inventory_matches_tip(inv, code_revision="new-sha")
+        old = hermetic_implementation_revision("old-sha")
+        new = hermetic_implementation_revision("new-sha")
+        inv = build_static_route_inventory(code_revision=old)
+        errs = verify_inventory_matches_tip(inv, code_revision=new)
         self.assertTrue(errs)
 
     def test_shadow_inventory_contract_preserved(self):
@@ -49,7 +51,7 @@ class R2bV2CoverageInventoryTests(unittest.TestCase):
         self.assertEqual(errs, [], msg=errs)
 
     def test_required_route_categories_present(self):
-        inv = build_static_route_inventory(code_revision="tip")
+        inv = build_static_route_inventory(code_revision=hermetic_implementation_revision("tip"))
         categories = {route["category"] for route in inv["routes"]}
         for required in REQUIRED_ROUTE_CATEGORIES:
             self.assertIn(required, categories)
@@ -80,13 +82,14 @@ class R2bV2DiagnosticCoverageTests(unittest.TestCase):
     def test_skip_runtime_cannot_mint_trusted(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            inv = build_static_route_inventory(code_revision="skip-test")
+            revision = hermetic_implementation_revision("skip-test")
+            inv = build_static_route_inventory(code_revision=revision)
             diag = prove_zero_bypass_coverage(
                 chroma_dir=root / "chroma",
                 processed_path=root / "processed.json",
                 export_root=root / "export",
                 test_gate_path=root / "gate.lock",
-                code_revision="skip-test",
+                code_revision=revision,
                 static_inventory=inv,
                 skip_runtime=True,
             )
@@ -122,13 +125,14 @@ class R2bV2CoverageProofTests(unittest.TestCase):
             export.mkdir()
             processed.write_text("{}", encoding="utf-8")
             gate = root / "gate.lock"
-            inv = build_static_route_inventory(code_revision="cov-test")
+            revision = hermetic_implementation_revision("cov-test")
+            inv = build_static_route_inventory(code_revision=revision)
             result = prove_zero_bypass_coverage(
                 chroma_dir=chroma,
                 processed_path=processed,
                 export_root=export,
                 test_gate_path=gate,
-                code_revision="cov-test",
+                code_revision=revision,
                 static_inventory=inv,
                 skip_runtime=False,
             )
@@ -139,13 +143,14 @@ class R2bV2CoverageProofTests(unittest.TestCase):
     def test_bypass_route_hold(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            inv = build_static_route_inventory(code_revision="cov-bypass")
+            revision = hermetic_implementation_revision("cov-bypass")
+            inv = build_static_route_inventory(code_revision=revision)
             result = prove_zero_bypass_coverage(
                 chroma_dir=root / "chroma",
                 processed_path=root / "processed.json",
                 export_root=root / "export",
                 test_gate_path=root / "gate.lock",
-                code_revision="cov-bypass",
+                code_revision=revision,
                 static_inventory=inv,
                 bypass_capable_routes=[{"route": "rogue", "detail": "direct write"}],
                 skip_runtime=True,

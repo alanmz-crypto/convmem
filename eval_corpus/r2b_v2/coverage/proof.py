@@ -24,10 +24,12 @@ from chroma_write_store import (
 )
 
 from eval_corpus.r2b_v2._registry_mint import (
+    census_mint_window,
     compose_and_mint_source_authority,
     consume_diagnostic_ticket,
     mint_coverage_from_consumed_ticket,
     register_diagnostic_ticket,
+    source_composition_window,
 )
 from eval_corpus.r2b_v2.authority_registry import (
     AuthorityHandle,
@@ -318,6 +320,10 @@ def _resolve_gate_policy(
     if gate_policy is not None and test_gate_path is not None:
         raise CoverageProofError("gate_policy and test_gate_path are mutually exclusive")
     if gate_policy is not None:
+        if gate_policy.policy_class != "test_fixture":
+            raise CoverageProofError(
+                "caller-supplied gate policy cannot mint trusted authority"
+            )
         return gate_policy
     if test_gate_path is not None:
         return test_gate_policy(test_gate_path)
@@ -329,14 +335,14 @@ def _resolve_implementation_revision(
     code_revision: str | None,
     test_override: bool,
 ) -> str:
+    if code_revision is not None and not _GIT_SHA40.match(code_revision):
+        raise CoverageProofError("implementation revision must be an authoritative git SHA")
     if test_override:
         revision = code_revision or current_code_revision()
-        if revision == "unknown":
+        if revision == "unknown" or not _GIT_SHA40.match(revision):
             raise CoverageProofError("trusted implementation revision is unavailable")
         return revision
     if code_revision is not None:
-        if not _GIT_SHA40.match(code_revision):
-            raise CoverageProofError("implementation revision must be an authoritative git SHA")
         tip = load_v2_implementation_tip()
         if tip and tip != "unknown" and code_revision != tip:
             raise CoverageProofError("implementation revision does not match bound inventory tip")
@@ -582,7 +588,7 @@ def prove_zero_bypass_coverage(
     gate_path = str(policy.resolve_path())
     revision = _resolve_implementation_revision(
         code_revision=code_revision,
-        test_override=test_gate_path is not None or gate_policy is not None,
+        test_override=test_gate_path is not None,
     )
     inventory = static_inventory or build_static_route_inventory(code_revision=revision)
     holds: dict[str, list[dict[str, Any]]] = {
@@ -649,10 +655,9 @@ def prove_zero_bypass_coverage(
             gate_path=gate_path,
             gate_protocol=policy.protocol,
         )
-        register_diagnostic_ticket(
-            DiagnosticMintTicket(ticket_id=mint_ticket, evidence=evidence),
-            provenance_seal=provenance_seal,
-        )
+        ticket = DiagnosticMintTicket(ticket_id=mint_ticket, evidence=evidence)
+        with census_mint_window(coverage_digest=coverage_digest):
+            register_diagnostic_ticket(ticket, provenance_seal=provenance_seal)
     return DiagnosticCoverageResult(
         code_revision=revision,
         inventory_digest=inventory["inventory_digest"],
@@ -754,11 +759,12 @@ def source_authority_from_lease_and_coverage(
         and coverage_record.runtime_census_digest != expected_runtime_census_digest
     ):
         raise CoverageProofError("runtime_census_digest mismatch")
-    source_handle = compose_and_mint_source_authority(
-        lease_handle=lease.authority_handle,
-        coverage_handle=trusted_coverage.authority_handle,
-        open_evidence_digest=open_evidence_digest,
-    )
+    with source_composition_window():
+        source_handle = compose_and_mint_source_authority(
+            lease_handle=lease.authority_handle,
+            coverage_handle=trusted_coverage.authority_handle,
+            open_evidence_digest=open_evidence_digest,
+        )
     return _source_authority_from_handle(source_handle)
 
 

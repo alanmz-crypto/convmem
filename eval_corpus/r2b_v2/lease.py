@@ -4,15 +4,22 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import os
 import pickle
+import re
 import time
 from pathlib import Path
 from typing import Any
 
 from chroma_write_store import _proc_start_time, current_code_revision
 
-from eval_corpus.r2b_v2._registry_mint import _register_lease_custodian, mint_lease_handle
+from eval_corpus.r2b_v2._registry_mint import (
+    _register_lease_custodian,
+    lease_acquisition_window,
+    mint_lease_handle,
+)
+from eval_corpus.r2b_v2.coverage.inventory import load_v2_implementation_tip
 from eval_corpus.r2b_v2.authority_registry import (
     AuthorityHandle,
     AuthorityRegistryError,
@@ -190,14 +197,32 @@ def acquire_r2b_quiescence_lease(
         )
     if gate_policy is not None and test_lock_path is not None:
         raise R2bQuiescenceLeaseError("gate_policy and test_lock_path are mutually exclusive")
-    if gate_policy is None:
-        policy = test_gate_policy(test_lock_path) if test_lock_path is not None else production_gate_policy()
-    else:
+    if gate_policy is not None:
+        if gate_policy.policy_class != "test_fixture":
+            raise R2bQuiescenceLeaseError(
+                "caller-supplied gate policy cannot mint trusted authority"
+            )
         policy = gate_policy
+    elif test_lock_path is not None:
+        policy = test_gate_policy(test_lock_path)
+    else:
+        policy = production_gate_policy()
     path = policy.resolve_path()
-    revision = implementation_revision or current_code_revision()
-    if revision == "unknown":
-        raise R2bQuiescenceLeaseError("trusted implementation revision is unavailable")
+    if test_lock_path is not None:
+        revision = implementation_revision or hashlib.sha256(
+            b"r2b-v2-test:default-lease"
+        ).hexdigest()[:40]
+        if revision == "unknown" or not re.match(r"^[0-9a-f]{40}$", revision):
+            raise R2bQuiescenceLeaseError("trusted implementation revision is unavailable")
+    else:
+        tip = load_v2_implementation_tip()
+        revision = tip if tip and tip != "unknown" else current_code_revision()
+        if implementation_revision is not None and implementation_revision != revision:
+            raise R2bQuiescenceLeaseError(
+                "caller-supplied implementation revision cannot mint trusted authority"
+            )
+        if revision == "unknown" or len(revision) != 40:
+            raise R2bQuiescenceLeaseError("trusted implementation revision is unavailable")
     deadline = time.monotonic() + (timeout_ms / 1000.0)
     custodian: LockCustodian | None = None
     while True:
@@ -212,29 +237,30 @@ def acquire_r2b_quiescence_lease(
             time.sleep(0.01)
     assert custodian is not None
     custodian_id = f"lease-{run_id}-{time.monotonic_ns()}"
-    _register_lease_custodian(custodian_id, custodian)
     monotonic_start = time.monotonic()
-    record = LeaseAuthorityRecord(
-        run_id=run_id,
-        grant_digest=grant_digest,
-        authority_digest=authority_digest,
-        gate_path=str(path),
-        gate_inode=custodian.inode,
-        gate_identity=policy.canonical_identity,
-        gate_protocol=policy.protocol,
-        coordinator_pid=os.getpid(),
-        coordinator_start_time=_proc_start_time(os.getpid()),
-        implementation_revision=revision,
-        writer_coverage_digest=writer_coverage_digest,
-        open_evidence_digest=open_evidence_digest,
-        monotonic_deadline=monotonic_deadline,
-        bound_source_paths=bound_source_paths,
-        phase_bounds=phase_bounds,
-        custodian_id=custodian_id,
-        mint_epoch=current_authority_epoch(),
-    )
-    register_active_authority(key)
-    handle = mint_lease_handle(record)
+    with lease_acquisition_window():
+        _register_lease_custodian(custodian_id, custodian)
+        record = LeaseAuthorityRecord(
+            run_id=run_id,
+            grant_digest=grant_digest,
+            authority_digest=authority_digest,
+            gate_path=str(path),
+            gate_inode=custodian.inode,
+            gate_identity=policy.canonical_identity,
+            gate_protocol=policy.protocol,
+            coordinator_pid=os.getpid(),
+            coordinator_start_time=_proc_start_time(os.getpid()),
+            implementation_revision=revision,
+            writer_coverage_digest=writer_coverage_digest,
+            open_evidence_digest=open_evidence_digest,
+            monotonic_deadline=monotonic_deadline,
+            bound_source_paths=bound_source_paths,
+            phase_bounds=phase_bounds,
+            custodian_id=custodian_id,
+            mint_epoch=current_authority_epoch(),
+        )
+        register_active_authority(key)
+        handle = mint_lease_handle(record)
     bindings = _LeaseBindingsView(record, monotonic_start)
     holder = _LeaseHolder(
         bindings=bindings,

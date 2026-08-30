@@ -34,6 +34,7 @@ from tests.r2b_v2_helpers import (
     run_dual_coverage_chain_case,
     run_legitimate_source_authority_case,
     sample_diagnostic_coverage_result,
+    hermetic_implementation_revision,
 )
 
 
@@ -58,8 +59,9 @@ class R2bV2AuthorityBoundaryTests(unittest.TestCase):
                     gate_protocol=bindings.gate_protocol,
                 ),
             )
-            register_diagnostic_ticket(forged_ticket, provenance_seal="forged-seal")
-            with self.assertRaises(Exception):
+            with self.assertRaises(AuthorityRegistryError):
+                register_diagnostic_ticket(forged_ticket, provenance_seal="forged-seal")
+            with self.assertRaises(AuthorityRegistryError):
                 mint_coverage_from_consumed_ticket(forged_ticket)
             lease.release()
 
@@ -118,13 +120,14 @@ class R2bV2AuthorityBoundaryTests(unittest.TestCase):
             chroma.mkdir()
             (root / "processed.json").write_text("{}", encoding="utf-8")
             (root / "export").mkdir()
-            inv = build_static_route_inventory(code_revision="attest-only")
+            revision = hermetic_implementation_revision("attest-only")
+            inv = build_static_route_inventory(code_revision=revision)
             diag = prove_zero_bypass_coverage(
                 chroma_dir=chroma,
                 processed_path=root / "processed.json",
                 export_root=root / "export",
                 test_gate_path=root / "gate.lock",
-                code_revision="attest-only",
+                code_revision=revision,
                 static_inventory=inv,
                 skip_runtime=True,
             )
@@ -149,7 +152,8 @@ class R2bV2AuthorityBoundaryTests(unittest.TestCase):
 
     def test_ungoverned_route_classification_fails_inventory(self) -> None:
         """Probe 8: declared routes must carry governed classification."""
-        inv = build_static_route_inventory(code_revision="tip-sha")
+        revision = hermetic_implementation_revision("tip-sha")
+        inv = build_static_route_inventory(code_revision=revision)
         inv["routes"] = [
             {
                 "route_id": "rogue",
@@ -159,10 +163,10 @@ class R2bV2AuthorityBoundaryTests(unittest.TestCase):
                 "gate_path": "/tmp/gate.lock",
                 "gate_protocol": 1,
                 "coverage_status": "declared_only",
-                "code_revision": "tip-sha",
+                "code_revision": revision,
             }
         ]
-        errs = verify_inventory_matches_tip(inv, code_revision="tip-sha")
+        errs = verify_inventory_matches_tip(inv, code_revision=revision)
         self.assertTrue(any("ungoverned route classification" in err for err in errs))
 
     def test_old_source_proof_invalid_after_reload(self) -> None:
