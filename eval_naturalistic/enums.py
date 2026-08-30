@@ -109,3 +109,24 @@ class RegistryBuildOutcome(str, Enum):
     EVIDENCE_INCOMPLETE = "evidence_incomplete"
     ADJUDICATION_AMBIGUOUS = "adjudication_ambiguous"
     PROTOCOL_INVALID = "protocol_invalid"
+
+
+class ProbeFamilyKind(str, Enum):
+    CONTINUATION_RECOVERY = "continuation_recovery"
+    DIRECT_RECALL = "direct_recall"
+
+
+class ProbeBuildOutcome(str, Enum):
+    SEALED = "sealed"
+    ROLE_OR_PROVENANCE_REJECTED = "role_or_provenance_rejected"
+    LEAKAGE_REJECTED = "leakage_rejected"
+    PROTOCOL_INVALID = "protocol_invalid"
+
+
+class LeakageCheckKind(str, Enum):
+    ANSWER_LEAKAGE = "answer_leakage"
+    CLOSE_PARAPHRASE = "close_paraphrase"
+    SOURCE_PATH = "source_path"
+    SOURCE_LOCATION = "source_location"
+    TREATMENT_CONDITION = "treatment_condition"
+    CONVMEM_RETRIEVAL = "convmem_retrieval"

@@ -34,6 +34,7 @@ from eval_naturalistic.enums import (
     EvidenceCompletenessState,
     LeakageReviewDisposition,
     ParameterFreezeStatus,
+    ProbeFamilyKind,
     SamplingMode,
 )
 
@@ -285,6 +286,7 @@ def make_synthetic_census(*, registry: TargetRegistryV1) -> CensusSampleManifest
 def make_synthetic_probe(
     *,
     registry: TargetRegistryV1,
+    census: CensusSampleManifestV1 | None = None,
     probe_author_id: str = "probe-author-001",
     adjudicator_collision: bool = False,
 ) -> ProbeManifestV1:
@@ -293,20 +295,29 @@ def make_synthetic_probe(
     probe = ProbeManifestV1(
         header=_base_header(
             role="probe_author",
-            parent_id=registry.header.artifact_id,
-            parent_digest=registry.header.content_digest,
+            parent_id=(census or registry).header.artifact_id,
+            parent_digest=(census or registry).header.content_digest,
         ),
         probe_id="probe-001",
         target_id=target_id,
         episode_id=registry.episode_entries[0].episode_id,
         probe_family_id="family-continuation-001",
+        probe_family_kind=ProbeFamilyKind.CONTINUATION_RECOVERY,
         probe_author_id=probe_author_id,
         leakage_reviewer_id="leak-reviewer-001",
         adjudicator_collision_check_passed=not adjudicator_collision,
         leakage_review_disposition=LeakageReviewDisposition.APPROVED,
         prompt_content_digest="111" * 21 + "1",
+        permitted_context_digest="333" * 21 + "3",
+        probe_author_provenance_digest="444" * 21 + "4",
+        target_registry_artifact_id=registry.header.artifact_id,
+        target_registry_digest=registry.header.content_digest or "",
+        sample_manifest_artifact_id=census.header.artifact_id if census else None,
+        sample_manifest_digest=census.header.content_digest if census else None,
         scoring_key_digest="222" * 21 + "2",
         scoring_key_partition_identity="partition-scorer-001",
+        leakage_review_manifest_id="leak-review-001",
+        leakage_review_digest="555" * 21 + "5",
     )
     body = _finalize(
         probe.to_dict(),
