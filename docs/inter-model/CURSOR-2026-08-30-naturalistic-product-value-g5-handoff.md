@@ -15,7 +15,7 @@
 | **Branch** | `feat/2026-08-30-naturalistic-g5-dry-run` |
 | **Worktree** | `~/.local/share/convmem/worktrees/feat-2026-08-30-naturalistic-g5-dry-run` |
 | **Parent SHA** | `a1128b92d2b02aa77a96524ba353ca0da025ce01` (`origin/main` at grant time) |
-| **Tip SHA** | *stamped after freeze commit* |
+| **Tip SHA** | `23b2495927a9891070c7c294e45bdb641eaab352` |
 | **Push status** | pushed to `origin` after freeze |
 | **PR** | not opened; G5 review precedes any merge decision |
 | **Ryan GATE** | After Kiro exact-SHA PASS, Ryan owns whether to merge G5. **No G6 grant is contained here.** |
@@ -133,7 +133,7 @@ A PASS does not authorize G6, merge, or a product conclusion.
 - [x] G5 dry-run implemented on an isolated worktree/branch from `origin/main`.
 - [x] Focused verification recorded above.
 - [x] This handoff, `LATEST.md`, and arc STATUS updated.
-- [ ] Exact tip SHA stamped after freeze commit and pushed.
+- [x] Exact tip SHA stamped after freeze commit and pushed.
 
 **Reviewer (Kiro):**
 
