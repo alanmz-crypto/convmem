@@ -31,6 +31,20 @@ class InterModelIndexError(RuntimeError):
     """A direct-section index could not complete safely."""
 
 
+def _existing_section_content_unchanged(
+    existing: dict,
+    existing_meta: dict,
+    doc: str,
+) -> bool:
+    from ingest_dedupe import canonical_unit_text, unit_content_hash
+
+    existing_hash = existing_meta.get("content_hash")
+    if existing_hash:
+        return existing_hash == unit_content_hash(doc)
+    existing_doc = str(existing.get("document") or "")
+    return canonical_unit_text(existing_doc) == canonical_unit_text(doc)
+
+
 def _replay_unchanged_inter_model_projection(
     store,
     unit: dict,
@@ -40,30 +54,21 @@ def _replay_unchanged_inter_model_projection(
 ) -> tuple[dict, str, list[float], dict]:
     """Reuse provenance identity when re-indexing unchanged section content."""
 
-    from ingest_dedupe import canonical_unit_text, unit_content_hash
+    from ingest_dedupe import unit_content_hash
 
     existing = store.get_unit(unit["id"])
     if not isinstance(existing, dict) or not existing.get("id"):
         return unit, doc, embedding, meta
 
     existing_meta = existing.get("metadata") or {}
-    new_hash = unit_content_hash(doc)
-    existing_hash = existing_meta.get("content_hash")
-    if existing_hash:
-        if existing_hash != new_hash:
-            return unit, doc, embedding, meta
-    else:
-        existing_doc = str(existing.get("document") or "")
-        if canonical_unit_text(existing_doc) != canonical_unit_text(doc):
-            return unit, doc, embedding, meta
+    if not _existing_section_content_unchanged(existing, existing_meta, doc):
+        return unit, doc, embedding, meta
 
     if not existing_meta.get(PROVENANCE_COMMITMENT_KEY):
         return unit, doc, embedding, meta
 
+    new_hash = unit_content_hash(doc)
     replayed_unit = dict(unit)
-    replayed_meta = dict(meta)
-    replayed_meta["content_hash"] = new_hash
-    replayed_unit["content_hash"] = new_hash
 
     envelope = envelope_from_unit({PROVENANCE_ENVELOPE_KEY: existing_meta.get(PROVENANCE_ENVELOPE_KEY)})
     if envelope is None:
@@ -78,7 +83,9 @@ def _replay_unchanged_inter_model_projection(
     replayed_unit[PROVENANCE_INTEGRITY_KEY] = existing_meta.get(
         PROVENANCE_INTEGRITY_KEY, "untrusted"
     )
+    replayed_unit["content_hash"] = new_hash
     replayed_meta = dict(meta)
+
     replayed_meta["content_hash"] = new_hash
     replayed_meta.update(projection_metadata(replayed_unit))
 
@@ -94,7 +101,6 @@ def _guard_changed_inter_model_replace(
 ) -> None:
     """Fail closed when section content changes but the projection slot is occupied."""
 
-    from ingest_dedupe import canonical_unit_text, unit_content_hash
     from provenance_binding import provenance_identity
 
     existing = store.get_unit(unit["id"])
@@ -102,14 +108,7 @@ def _guard_changed_inter_model_replace(
         return
 
     existing_meta = existing.get("metadata") or {}
-    new_hash = unit_content_hash(doc)
-    existing_hash = existing_meta.get("content_hash")
-    if existing_hash:
-        unchanged = existing_hash == new_hash
-    else:
-        existing_doc = str(existing.get("document") or "")
-        unchanged = canonical_unit_text(existing_doc) == canonical_unit_text(doc)
-    if unchanged:
+    if _existing_section_content_unchanged(existing, existing_meta, doc):
         return
 
     if provenance_identity(unit) == provenance_identity(existing_meta):
