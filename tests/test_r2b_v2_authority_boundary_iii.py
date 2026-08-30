@@ -195,7 +195,7 @@ class R2bV2CorrectiveIIIAdversarialTests(unittest.TestCase):
                 original(custodian)
 
             with mock.patch(
-                "eval_corpus.r2b_v2._registry_mint.verify_live_custodian_lock",
+                "eval_corpus.r2b_v2._authority_vault.verify_live_custodian_lock",
                 race_verify,
             ):
                 with self.assertRaises(
