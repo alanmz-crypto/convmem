@@ -128,14 +128,14 @@ class AuthorityMintCapability:
         self._validate_binding(phase=MintPhase.CENSUS, binding=binding)
         if self._census_stage != 0:
             raise AuthorityCapabilityError("census capability register stage invalid")
-        self._census_stage = 1
+        self._census_stage = 1  # pylint: disable=attribute-defined-outside-init
         return self._trust_class
 
     def _consume_census_mint(self, *, binding: dict[str, Any]) -> str:
         self._validate_binding(phase=MintPhase.CENSUS, binding=binding)
         if self._census_stage != 1:
             raise AuthorityCapabilityError("census capability mint stage invalid")
-        self._census_stage = 2
+        self._census_stage = 2  # pylint: disable=attribute-defined-outside-init
         _consumed_capability_ids.add(self._capability_id)
         return self._trust_class
 

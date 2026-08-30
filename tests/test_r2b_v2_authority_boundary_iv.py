@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import copy
 import importlib
 import tempfile
 import time
@@ -35,8 +36,6 @@ from eval_corpus.r2b_v2.coverage.inventory import (
 from eval_corpus.r2b_v2.coverage.proof import (
     CoverageProofError,
     mint_trusted_coverage_proof,
-    prove_zero_bypass_coverage,
-    source_authority_from_lease_and_coverage,
 )
 from eval_corpus.r2b_v2.coverage_evidence import CoverageEvidenceIdentity
 from eval_corpus.r2b_v2.gate_policy import GatePolicy
@@ -229,7 +228,7 @@ class R2bV2CorrectiveIVAdversarialTests(unittest.TestCase):
             AuthorityMintCapability()
         cap = _forged_capability()
         with self.assertRaises(AuthorityCapabilityError):
-            cap.__copy__()
+            copy.copy(cap)
         with self.assertRaises(AuthorityCapabilityError):
             cap.__reduce__()
         with self.assertRaises(AuthorityCapabilityError):

@@ -1,4 +1,5 @@
 """Corrective II regressions for P0-A/P0-B authority-boundary closure."""
+# pylint: disable=no-value-for-parameter
 
 from __future__ import annotations
 
