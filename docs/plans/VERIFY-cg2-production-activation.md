@@ -117,7 +117,7 @@ after independent review. A failure in any row blocks production D1.
 | ID | Prospective check | Current result | Required evidence |
 |---|---|---|---|
 | D1R0 | Reviewed planning and implementation identity | PENDING | Ryan-accepted planning SHA; exact implementation/model SHA; independent Kiro PASS on that tip |
-| D1R1 | Existing D0 chain is consumed unchanged | PENDING | Frozen candidate `d4be814a…`, validation `4af93884…`, ratification `ryan-d0-webui-2026-08-29`, root `28df8846…`; no recapture/reratification |
+| D1R1 | Existing D0 chain is consumed unchanged | **SATISFIED / PASS** | Kiro independent PASS on runtime `8897d1358f985e38a1070816189460d980824d75` (2026-08-30, fresh seed). Reference-v2 consume prefix loads ratified production D0 unchanged: candidate `d4be814abc59e77a2d1420b6d7db8859f5a5fe6f449f107fbdd23eb9aecaa0be`, validation `4af9388454e80dedeb6988500647d2766333e22d4e5fecacadf055d14b667793`, ratification `ryan-d0-webui-2026-08-29`, vector root `28df88466daaf16c270b1112d2a160fecc9d47c1014bc5bf91e94ae70e83a24e`, snapshot root `8ee62dfd434e092b6c9d5367dbd53fa9e4402078dfa30aad2277f417ce1ebd49`, query context `df95af20d1774bb225d77fe2408450ee69ff3e7a9fee383ffa79e72febb370be`, owner `6daf07d443fbd1c4559f4c6516d7f1f585db25106f1aca3437b2ca7ecf0e39b3`; 37 LEGACY rows reread; roots reproduced exactly; `ChromaStore(create_collections=False)` structurally non-creating; nonexistent-collection probe raised `NotFoundError` without creating collections; no write calls in reread path; D0 artifacts and Chroma SQLite unchanged before/after. Earlier `FileGenerationStore` / `get_or_create_collection` access-path defect closed by corrected read-only attestation. **Does not authorize production D1, V8c, D1R9, or global D1 closure.** |
 | D1R2 | Correct protocol identity | PENDING | Fingerprint `convmem/cg2-rollback-baseline-reference-v2`; new deterministic target ID; `RETAINED_LEGACY_REFERENCE_V2`; evidence v2; unchanged proof profile |
 | D1R3 | Exact original physical membership | PENDING | Fresh process verifies original collection UUID/configuration and exactly ordered D0 physical IDs; missing/additional/substituted/duplicate/wrong-owner rows refuse |
 | D1R4 | Exact row/readback state | PENDING | Serving-reader documents, immutable metadata/provenance, and canonical float32 hashes reproduce all D0 roots; one-ULP mutation refuses |
@@ -133,6 +133,8 @@ after independent review. A failure in any row blocks production D1.
 **D1R12 formal closure record (2026-08-30):** The retained-reference-v2 formal obligation is **SATISFIED / PASS** at corrective SHA `7a8fd76350b7076f5d75e3ad53c7392647b2eac0` on branch `fix/2026-08-30-cg2-d1-reference-v2-formal-d1r12`. Kiro independently reviewed the frozen delta `8897d1358f985e38a1070816189460d980824d75..7a8fd76350b7076f5d75e3ad53c7392647b2eac0`, reran TLC v1.7.4 at that tip, and returned **PASS**. This closure record does not itself authorize production activity or unrelated downstream work.
 
 **D1R12 ledger reconciliation (2026-08-30, Ryan):** Documentation commit `d2d6f41` ("docs: record D1R12 formal obligation SATISFIED after Kiro PASS") was created **before** the independent Kiro review existed and stated the empirical TLC rerun was *deferred (no Java/TLC in the review lane)*. That prospective record is superseded here: (1) `d2d6f41` prematurely recorded the expected PASS; (2) the actual independent Kiro review and TLC v1.7.4 execution occurred afterward on 2026-08-30; (3) that later independent PASS + empirical run now substantively support the D1R12 SATISFIED state; (4) the PASS derives from Kiro's independent review and model checking, not from the earlier documentation claim. The formal model at `d2d6f41` is byte-identical to the reviewed `7a8fd76`, so the technical result was never contaminated; no git history repair was performed (repository governance did not require it). The only residual open item is the jar SHA-attestation wrapper (separate control), not the empirical model-checking result.
+
+**D1R1 closure record (2026-08-30):** The existing production D0 consume-unchanged obligation is **SATISFIED / PASS** at runtime `8897d1358f985e38a1070816189460d980824d75`. Kiro independently reviewed the corrected read-only attestation (fresh seed) and authorized marking D1R1 SATISFIED. Kiro established that reference-v2 consumes the already-ratified production D0 chain unchanged via `load_ratified_d0_chain`, live LEGACY row reread, exact root reproduction, structurally non-creating Chroma access, and before/after no-mutation checks. This closure record does not authorize production D1, V8c, D1R9, or global D1 closure.
 
 **Corrective rollback drill:** after hermetic first cutover, resolve
 `previous_generation_id` as the reference-v2 target, run fresh qualification,
@@ -265,7 +267,8 @@ obligation: SATISFIED / PASS** at formal corrective `7a8fd76350b7076f5d75e3ad53c
 (Kiro independent PASS, 2026-08-30). Empirical TLC v1.7.4 was rerun by Kiro at
 the corrective tip (four positive configs PASS, two negative controls fail on
 their target invariants); the jar SHA-attestation wrapper is a separate,
-unattested control. D1R0–D1R11 pytest/runtime rows remain PENDING.
+unattested control. **D1R1: SATISFIED / PASS** at runtime `8897d1358f985e38a1070816189460d980824d75`
+(Kiro independent PASS, 2026-08-30). **D1R9 remains PENDING.** D1 is not globally closed.
 
 ## Evidence log
 
@@ -278,7 +281,8 @@ D7 closure tip: b64860b05575c62b4563c02ed6f05bb39910b4dc
 V6c copied-generation drill: HISTORICAL PASS only; reference-v2 PENDING
 D1R12 formal obligation: SATISFIED / PASS at 7a8fd76350b7076f5d75e3ad53c7392647b2eac0 (Kiro independent PASS; parent runtime base 8897d1358f985e38a1070816189460d980824d75); empirical TLC v1.7.4 rerun by Kiro at corrective tip — 4 positive configs PASS, 2 negative controls fail on target invariants; jar SHA-attestation wrapper (run-d1r12-tlc.sh) separate/unattested control
 D1R12 ledger reconciliation: doc commit d2d6f41 prematurely recorded expected PASS before independent review; superseded — SATISFIED rests on later independent Kiro review + TLC run; formal model at d2d6f41 byte-identical to 7a8fd76; no history repair required
-D1R0-D1R11: PENDING — runtime/reference-v2 rows not yet closed
+D1R1 consume-unchanged: SATISFIED / PASS at 8897d1358f985e38a1070816189460d980824d75 (Kiro independent PASS, 2026-08-30; fresh seed; structurally non-creating ChromaStore read path)
+D1R9: PENDING — sole remaining substantive D1 row (arc state)
 First-owner packet (V8c): PENDING — provenance reconciled; not PASS
 Production activation: NOT PERFORMED
 Automatic GC: NOT PERFORMED
