@@ -33,7 +33,12 @@ CONSTANTS
     QueryContexts,
     D0Artifacts,
     NoArtifact,
-    NoGrant
+    NoGrant,
+    PhysicalRows,
+    FailedV1Gen,
+    NoReader,
+    EnableWrongSelectorMutation,
+    EnableCopiedServingMutation
 
 ASSUME /\ Owners # {}
        /\ Generations # {}
@@ -54,6 +59,13 @@ ASSUME /\ Owners # {}
        /\ D0Artifacts # {}
        /\ NoArtifact \notin D0Artifacts
        /\ NoGrant \notin Grants
+       /\ PhysicalRows # {}
+       /\ FailedV1Gen \in Generations
+       /\ FailedV1Gen # GRb
+       /\ FailedV1Gen # GCanary
+       /\ NoReader \notin Readers
+       /\ EnableWrongSelectorMutation \in BOOLEAN
+       /\ EnableCopiedServingMutation \in BOOLEAN
 
 RequestStates == {"IDLE", "RESOLVING", "FROZEN", "REFUSED", "DONE"}
 ResolvePhases == {"NOT_STARTED", "SNAPSHOT", "VERIFY", "OWNER_DONE"}
@@ -67,6 +79,7 @@ ProofProfiles == {"UNKNOWN_MODEL_V1", "KNOWN_MODEL_V1"}
 CutoverPhases == {"NONE", "PREFLIGHT_OK", "LOCK_HELD", "FENCED", "GUARDED", "POINTER_PUBLISHED"}
 GuardStates == {"ABSENT", "OPEN", "REFUSED", "CLOSED"}
 LockStates == {"FREE", "HELD"}
+ReferenceIdentities == {"NONE", "REFERENCE_V2", "CONVERT_V1", "FAILED_V1"}
 
 D0Type ==
     [candidate : [Owners -> D0Artifacts \cup {NoArtifact}],
@@ -127,9 +140,23 @@ ReadTargetType ==
 
 LegacyReadType == [reader : Readers, owner : Owners]
 
-VARIABLES auth, build, reads, pins, history, d0, cutover
+ReferenceType ==
+    [d0Physical : [Owners -> SUBSET PhysicalRows],
+     selector : [Owners -> SUBSET PhysicalRows],
+     servingConsumed : [Owners -> SUBSET PhysicalRows],
+     copiedGeneration : [Owners -> Generations \cup {NoGen}],
+     sidecarActive : [Owners -> BOOLEAN],
+     coldQualified : [Owners -> BOOLEAN],
+     retained : [Owners -> BOOLEAN],
+     recoveryComplete : [Owners -> BOOLEAN],
+     identity : [Owners -> ReferenceIdentities],
+     qualifyReader : [Owners -> Readers \cup {NoReader}],
+     serveReader : [Owners -> Readers \cup {NoReader}],
+     servingFromCopied : [Owners -> BOOLEAN]]
 
-vars == <<auth, build, reads, pins, history, d0, cutover>>
+VARIABLES auth, build, reads, pins, history, d0, cutover, ref
+
+vars == <<auth, build, reads, pins, history, d0, cutover, ref>>
 
 AuthType ==
     [present : SUBSET Owners,
@@ -201,8 +228,12 @@ TypeOK ==
     /\ history \in HistoryType
     /\ d0 \in D0Type
     /\ cutover \in CutoverTrackType
+    /\ ref \in ReferenceType
 
 NoGenerationMap == [o \in Owners |-> NoGen]
+NoReaderMap == [o \in Owners |-> NoReader]
+EmptyPhysicalMap == [o \in Owners |-> {}]
+NoneIdentityMap == [o \in Owners |-> "NONE"]
 InitialSourceMap == [o \in Owners |-> InitialSource]
 ArbitraryGeneration == CHOOSE g \in Generations : TRUE
 ArbitraryReader == CHOOSE r \in Readers : TRUE
@@ -312,6 +343,19 @@ Init ==
          firstCutoverDone |-> {},
          fenceMonotonic |-> [o \in Owners |-> FALSE],
          guardBytes |-> [o \in Owners |-> FALSE]]
+    /\ ref =
+        [d0Physical |-> EmptyPhysicalMap,
+         selector |-> EmptyPhysicalMap,
+         servingConsumed |-> EmptyPhysicalMap,
+         copiedGeneration |-> NoGenerationMap,
+         sidecarActive |-> [o \in Owners |-> FALSE],
+         coldQualified |-> [o \in Owners |-> FALSE],
+         retained |-> [o \in Owners |-> FALSE],
+         recoveryComplete |-> [o \in Owners |-> FALSE],
+         identity |-> NoneIdentityMap,
+         qualifyReader |-> NoReaderMap,
+         serveReader |-> NoReaderMap,
+         servingFromCopied |-> [o \in Owners |-> FALSE]]
 
 OwnerMode(o) ==
     IF o \notin auth.present \/ o \in auth.retired THEN "EXCLUDED"
@@ -381,13 +425,13 @@ BuildCandidate(o, g) ==
             !.candidateExpected[o] = auth.pointer[o],
             !.candidateSource[o] = auth.sourceHash[o],
             !.candidateCold[o] = FALSE]
-    /\ UNCHANGED <<auth, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<auth, reads, pins, history, d0, cutover, ref>>
 
 ColdValidate(o) ==
     /\ build.candidateGen[o] # NoGen
     /\ ~build.candidateCold[o]
     /\ build' = [build EXCEPT !.candidateCold[o] = TRUE]
-    /\ UNCHANGED <<auth, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<auth, reads, pins, history, d0, cutover, ref>>
 
 LoseNotification(o, newHash) ==
     /\ o \in auth.present
@@ -396,7 +440,7 @@ LoseNotification(o, newHash) ==
     /\ newHash \in SourceHashes \ {auth.sourceHash[o]}
     /\ auth' = [auth EXCEPT !.sourceHash[o] = newHash]
     /\ build' = [build EXCEPT !.lostDrift = @ \cup {o}]
-    /\ UNCHANGED <<reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<reads, pins, history, d0, cutover, ref>>
 
 ReconcileQueue(o) ==
     /\ o \in build.lostDrift
@@ -404,7 +448,7 @@ ReconcileQueue(o) ==
     /\ o \notin build.queued
     /\ o \notin auth.quarantined
     /\ build' = [build EXCEPT !.queued = @ \cup {o}]
-    /\ UNCHANGED <<auth, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<auth, reads, pins, history, d0, cutover, ref>>
 
 ReconcileQuarantine(o) ==
     /\ o \in build.lostDrift
@@ -417,7 +461,7 @@ ReconcileQuarantine(o) ==
         [auth EXCEPT
             !.quarantined = @ \cup {o},
             !.evidenceEpoch[o] = @ + 1]
-    /\ UNCHANGED <<build, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<build, reads, pins, history, d0, cutover, ref>>
 
 Reconcile(o) == ReconcileQueue(o) \/ ReconcileQuarantine(o)
 
@@ -437,7 +481,7 @@ FenceOwner(o) ==
         [auth EXCEPT
             !.fence = @ \cup {o},
             !.evidenceEpoch[o] = @ + 1]
-    /\ UNCHANGED <<build, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<build, reads, pins, history, d0, cutover, ref>>
 
 PromotionRecord(o, g, expected, prior, source) ==
     [owner |-> o,
@@ -479,7 +523,7 @@ PromoteCandidate(o) ==
                !.lastPromotion =
                    PromotionRecord(o, g, build.candidateExpected[o], old,
                                    build.candidateSource[o])]
-       /\ UNCHANGED <<reads, pins, d0, cutover>>
+       /\ UNCHANGED <<reads, pins, d0, cutover, ref>>
 
 RejectStaleCandidate(o) ==
     /\ build.candidateGen[o] # NoGen
@@ -493,7 +537,7 @@ RejectStaleCandidate(o) ==
     /\ history' =
         [history EXCEPT
             !.staleRejectedOwners = @ \cup {o}]
-    /\ UNCHANGED <<auth, reads, pins, d0, cutover>>
+    /\ UNCHANGED <<auth, reads, pins, d0, cutover, ref>>
 
 ConcurrentPromotion(o, g) ==
     LET old == auth.pointer[o]
@@ -517,7 +561,7 @@ ConcurrentPromotion(o, g) ==
                !.promotionSeen = TRUE,
                !.lastPromotion =
                    PromotionRecord(o, g, old, old, auth.sourceHash[o])]
-       /\ UNCHANGED <<build, reads, pins, d0, cutover>>
+       /\ UNCHANGED <<build, reads, pins, d0, cutover, ref>>
 
 BeginRename ==
     /\ NewOwner \notin auth.present
@@ -529,7 +573,7 @@ BeginRename ==
             !.present = @ \cup {NewOwner},
             !.fence = @ \cup {NewOwner},
             !.evidenceEpoch[NewOwner] = @ + 1]
-    /\ UNCHANGED <<build, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<build, reads, pins, history, d0, cutover, ref>>
 
 RetireOldOwner ==
     /\ NewOwner \in auth.present
@@ -542,7 +586,7 @@ RetireOldOwner ==
         [auth EXCEPT
             !.retired = @ \cup {OldOwner},
             !.evidenceEpoch[OldOwner] = @ + 1]
-    /\ UNCHANGED <<build, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<build, reads, pins, history, d0, cutover, ref>>
 
 Recover(o) ==
     /\ history' =
@@ -553,11 +597,11 @@ Recover(o) ==
                  pointerAtRecovery |-> auth.pointer[o],
                  completenessAtRecovery |-> auth.completeness[o],
                  selected |-> auth.pointer[o]]]
-    /\ UNCHANGED <<auth, build, reads, pins, d0, cutover>>
+    /\ UNCHANGED <<auth, build, reads, pins, d0, cutover, ref>>
 
 FlipCompleteness(o) ==
     /\ auth' = [auth EXCEPT !.completeness[o] = ~@]
-    /\ UNCHANGED <<build, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<build, reads, pins, history, d0, cutover, ref>>
 
 GarbageCollect(g) ==
     /\ g \in auth.qualified
@@ -565,14 +609,14 @@ GarbageCollect(g) ==
     /\ g \notin ProtectedGenerations
     /\ g \notin cutover.retainedBaseline
     /\ auth' = [auth EXCEPT !.deleted = @ \cup {g}]
-    /\ UNCHANGED <<build, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<build, reads, pins, history, d0, cutover, ref>>
 
 DropLegacy(o) ==
     /\ o \in auth.fence
     /\ auth.legacyRetained[o]
     /\ LegacyFrozenFor(o) = {}
     /\ auth' = [auth EXCEPT !.legacyRetained[o] = FALSE]
-    /\ UNCHANGED <<build, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<build, reads, pins, history, d0, cutover, ref>>
 
 StartRequest(r) ==
     /\ reads[r].state = "IDLE"
@@ -584,7 +628,7 @@ StartRequest(r) ==
             ![r].error = "NONE",
             ![r].failureClass = "NONE",
             ![r].fallbackMode = "NONE"]
-    /\ UNCHANGED <<auth, build, pins, history, d0, cutover>>
+    /\ UNCHANGED <<auth, build, pins, history, d0, cutover, ref>>
 
 SnapshotOwner(r, o) ==
     LET kind == OwnerMode(o)
@@ -601,7 +645,7 @@ SnapshotOwner(r, o) ==
            IF kind = "ACTIVE"
               THEN pins \cup {Pin(r, o, g, FALSE)}
               ELSE pins
-       /\ UNCHANGED <<auth, build, history, d0, cutover>>
+       /\ UNCHANGED <<auth, build, history, d0, cutover, ref>>
 
 VerifyOwner(r, o) ==
     LET kind == reads[r].tentativeKind[o]
@@ -620,7 +664,7 @@ VerifyOwner(r, o) ==
               THEN (pins \ {Pin(r, o, g, FALSE)})
                    \cup {Pin(r, o, g, TRUE)}
               ELSE pins
-       /\ UNCHANGED <<auth, build, history, d0, cutover>>
+       /\ UNCHANGED <<auth, build, history, d0, cutover, ref>>
 
 RetryOwner(r, o) ==
     /\ reads[r].state = "RESOLVING"
@@ -632,7 +676,7 @@ RetryOwner(r, o) ==
             ![r].phase[o] = "SNAPSHOT",
             ![r].attempts[o] = @ + 1]
     /\ pins' = pins \ OwnerReaderPins(r, o)
-    /\ UNCHANGED <<auth, build, history, d0, cutover>>
+    /\ UNCHANGED <<auth, build, history, d0, cutover, ref>>
 
 ExhaustRetryBudget(r, o) ==
     /\ reads[r].state = "RESOLVING"
@@ -645,7 +689,7 @@ ExhaustRetryBudget(r, o) ==
             ![r].attempts[o] = MaxAttempts,
             ![r].error = "AUTHORITY_UNSTABLE"]
     /\ pins' = pins \ ReaderPins(r)
-    /\ UNCHANGED <<auth, build, history, d0, cutover>>
+    /\ UNCHANGED <<auth, build, history, d0, cutover, ref>>
 
 FreezeVector(r) ==
     /\ reads[r].state = "RESOLVING"
@@ -657,7 +701,7 @@ FreezeVector(r) ==
             ![r].frozenKind = reads[r].selectedKind,
             ![r].frozenGen = reads[r].selectedGen,
             ![r].frozenWitness = reads[r].selectedGen]
-    /\ UNCHANGED <<auth, build, pins, history, d0, cutover>>
+    /\ UNCHANGED <<auth, build, pins, history, d0, cutover, ref>>
 
 RefuseTornVector(r) ==
     /\ reads[r].state = "RESOLVING"
@@ -672,7 +716,7 @@ RefuseTornVector(r) ==
                 THEN "RENAME_CONFLICT"
                 ELSE "AUTHORITY_UNSTABLE"]
     /\ pins' = pins \ ReaderPins(r)
-    /\ UNCHANGED <<auth, build, history, d0, cutover>>
+    /\ UNCHANGED <<auth, build, history, d0, cutover, ref>>
 
 ResolveStep(r) ==
     (\E o \in Owners : SnapshotOwner(r, o))
@@ -688,6 +732,13 @@ ReadGeneration(r, o) ==
        /\ reads[r].frozenKind[o] = "ACTIVE"
        /\ Pin(r, o, g, TRUE) \in pins
        /\ g \notin auth.deleted
+       /\ ref' =
+           IF g = GRb /\ ref.retained[o]
+              THEN [ref EXCEPT
+                       !.serveReader[o] = r,
+                       !.servingConsumed[o] = ref.selector[o],
+                       !.servingFromCopied[o] = FALSE]
+              ELSE ref
        /\ history' =
            [history EXCEPT
                !.generationReadSeen = TRUE,
@@ -701,13 +752,13 @@ ReadLegacy(r, o) ==
     /\ auth.legacyRetained[o]
     /\ history' =
         [history EXCEPT !.legacyReadSeen = TRUE]
-    /\ UNCHANGED <<auth, build, reads, pins, d0, cutover>>
+    /\ UNCHANGED <<auth, build, reads, pins, d0, cutover, ref>>
 
 FinishRead(r) ==
     /\ reads[r].state = "FROZEN"
     /\ reads' = [reads EXCEPT ![r].state = "DONE"]
     /\ pins' = pins \ ReaderPins(r)
-    /\ UNCHANGED <<auth, build, history, d0, cutover>>
+    /\ UNCHANGED <<auth, build, history, d0, cutover, ref>>
 
 InjectAuthorityFailure(r) ==
     /\ reads[r].state = "FROZEN"
@@ -718,7 +769,7 @@ InjectAuthorityFailure(r) ==
             ![r].failureClass = "AUTHORITY",
             ![r].fallbackMode = "NONE"]
     /\ pins' = pins \ ReaderPins(r)
-    /\ UNCHANGED <<auth, build, history, d0, cutover>>
+    /\ UNCHANGED <<auth, build, history, d0, cutover, ref>>
 
 InjectIntegrityFailure(r) ==
     /\ reads[r].state = "FROZEN"
@@ -729,7 +780,7 @@ InjectIntegrityFailure(r) ==
             ![r].failureClass = "INTEGRITY",
             ![r].fallbackMode = "NONE"]
     /\ pins' = pins \ ReaderPins(r)
-    /\ UNCHANGED <<auth, build, history, d0, cutover>>
+    /\ UNCHANGED <<auth, build, history, d0, cutover, ref>>
 
 UseMediatedTransientFallback(r) ==
     /\ reads[r].state = "FROZEN"
@@ -738,12 +789,12 @@ UseMediatedTransientFallback(r) ==
         [reads EXCEPT
             ![r].failureClass = "TRANSIENT",
             ![r].fallbackMode = "MEDIATED"]
-    /\ UNCHANGED <<auth, build, pins, history, d0, cutover>>
+    /\ UNCHANGED <<auth, build, pins, history, d0, cutover, ref>>
 
 AcquireOwnerLock(o) ==
     /\ cutover.lockHeld[o] = "FREE"
     /\ cutover' = [cutover EXCEPT !.lockHeld[o] = "HELD"]
-    /\ UNCHANGED <<auth, build, reads, pins, history, d0>>
+    /\ UNCHANGED <<auth, build, reads, pins, history, d0, ref>>
 
 ReleaseOwnerLock(o) ==
     /\ cutover.lockHeld[o] = "HELD"
@@ -752,7 +803,7 @@ ReleaseOwnerLock(o) ==
         [history EXCEPT
             !.lockCycleSeen = TRUE,
             !.lastLockOwner = o]
-    /\ UNCHANGED <<auth, build, reads, pins, d0>>
+    /\ UNCHANGED <<auth, build, reads, pins, d0, ref>>
 
 CaptureD0Candidate(o) ==
     /\ o \in auth.present
@@ -763,14 +814,14 @@ CaptureD0Candidate(o) ==
             !.candidate[o] = CHOOSE a \in D0Artifacts : TRUE,
             !.legacyRootAtCapture[o] = auth.sourceHash[o]]
     /\ history' = [history EXCEPT !.d0CaptureSeen = TRUE]
-    /\ UNCHANGED <<auth, build, reads, pins, cutover>>
+    /\ UNCHANGED <<auth, build, reads, pins, cutover, ref>>
 
 ValidateD0Candidate(o) ==
     /\ d0.candidate[o] # NoArtifact
     /\ d0.validated[o] = NoArtifact
     /\ d0' = [d0 EXCEPT !.validated[o] = d0.candidate[o]]
     /\ history' = [history EXCEPT !.d0ValidationSeen = TRUE]
-    /\ UNCHANGED <<auth, build, reads, pins, cutover>>
+    /\ UNCHANGED <<auth, build, reads, pins, cutover, ref>>
 
 RatifyD0(o, qc) ==
     /\ qc \in QueryContexts
@@ -781,12 +832,38 @@ RatifyD0(o, qc) ==
             !.ratified[o] = d0.validated[o],
             !.ratifiedQueryContext[o] = qc]
     /\ history' = [history EXCEPT !.d0RatificationSeen = TRUE]
-    /\ UNCHANGED <<auth, build, reads, pins, cutover>>
+    /\ UNCHANGED <<auth, build, reads, pins, cutover, ref>>
+
+BindD0PhysicalMembership(o) ==
+    /\ D0ChainComplete(o)
+    /\ ref.d0Physical[o] = {}
+    /\ LET r == CHOOSE r \in Readers : TRUE
+       IN \/ \E row \in PhysicalRows :
+             /\ ref' = [ref EXCEPT
+                          !.d0Physical[o] = {row},
+                          !.coldQualified[o] = TRUE,
+                          !.qualifyReader[o] = r]
+          \/ /\ ref' = [ref EXCEPT
+                          !.d0Physical[o] = PhysicalRows,
+                          !.coldQualified[o] = TRUE,
+                          !.qualifyReader[o] = r]
+    /\ UNCHANGED <<auth, build, reads, pins, history, d0, cutover>>
+
+EstablishReferenceRecoveryCoverage(o) ==
+    /\ ref.d0Physical[o] # {}
+    /\ ~ref.recoveryComplete[o]
+    /\ ref' = [ref EXCEPT !.recoveryComplete[o] = TRUE]
+    /\ UNCHANGED <<auth, build, reads, pins, history, d0, cutover>>
+
 
 ConvertLegacyToGRb(o) ==
     /\ D0ChainComplete(o)
     /\ cutover.grbBound[o] = NoGen
     /\ cutover.lockHeld[o] = "HELD"
+    /\ ref.coldQualified[o]
+    /\ ref.recoveryComplete[o]
+    /\ ref.d0Physical[o] # {}
+    /\ ref.identity[o] # "FAILED_V1"
     /\ auth' =
         [auth EXCEPT !.qualified = @ \cup {GRb}]
     /\ cutover' =
@@ -794,6 +871,11 @@ ConvertLegacyToGRb(o) ==
             !.grbBound[o] = GRb,
             !.retainedBaseline = @ \cup {GRb},
             !.proofProfile[GRb] = "UNKNOWN_MODEL_V1"]
+    /\ ref' =
+        [ref EXCEPT
+            !.retained[o] = TRUE,
+            !.selector[o] = ref.d0Physical[o],
+            !.identity[o] = "REFERENCE_V2"]
     /\ UNCHANGED <<build, reads, pins, history, d0>>
 
 RefusePreFenceStructural(o) ==
@@ -807,7 +889,7 @@ RebindLegacyRoot(o) ==
     /\ D0ChainComplete(o)
     /\ d0' = [d0 EXCEPT !.legacyRootAtCutover[o] = auth.sourceHash[o]]
     /\ cutover' = [cutover EXCEPT !.phase[o] = "PREFLIGHT_OK"]
-    /\ UNCHANGED <<auth, build, reads, pins, history>>
+    /\ UNCHANGED <<auth, build, reads, pins, history, ref>>
 
 PublishDesignAFence(o, grant) ==
     /\ grant \in Grants
@@ -824,7 +906,7 @@ PublishDesignAFence(o, grant) ==
             !.grantId[o] = grant,
             !.phase[o] = "FENCED",
             !.fenceMonotonic[o] = TRUE]
-    /\ UNCHANGED <<build, reads, pins, history, d0>>
+    /\ UNCHANGED <<build, reads, pins, history, d0, ref>>
 
 CrashAfterFence(o) ==
     /\ cutover.phase[o] = "FENCED"
@@ -841,7 +923,7 @@ ResumeFromFence(o, fresh_grant) ==
         [cutover EXCEPT
             !.priorGrantId[o] = cutover.grantId[o],
             !.grantId[o] = fresh_grant]
-    /\ UNCHANGED <<auth, build, reads, pins, history, d0>>
+    /\ UNCHANGED <<auth, build, reads, pins, history, d0, ref>>
 
 PublishCanaryGuard(o, grant) ==
     /\ grant = cutover.grantId[o]
@@ -852,7 +934,7 @@ PublishCanaryGuard(o, grant) ==
             !.canaryGuard[o] = "OPEN",
             !.guardBytes[o] = TRUE,
             !.phase[o] = "GUARDED"]
-    /\ UNCHANGED <<auth, build, reads, pins, history, d0>>
+    /\ UNCHANGED <<auth, build, reads, pins, history, d0, ref>>
 
 CrashAfterGuard(o) ==
     /\ cutover.phase[o] = "GUARDED"
@@ -868,19 +950,20 @@ ResumeFromGuard(o, fresh_grant) ==
         [cutover EXCEPT
             !.priorGrantId[o] = cutover.grantId[o],
             !.grantId[o] = fresh_grant]
-    /\ UNCHANGED <<auth, build, reads, pins, history, d0>>
+    /\ UNCHANGED <<auth, build, reads, pins, history, d0, ref>>
 
 RefuseWrongGuard(o) ==
     /\ cutover.phase[o] = "FENCED"
     /\ cutover.canaryGuard[o] = "ABSENT"
     /\ cutover' = [cutover EXCEPT !.canaryGuard[o] = "REFUSED"]
     /\ auth.pointer[o] = NoGen
-    /\ UNCHANGED <<auth, build, reads, pins, history, d0>>
+    /\ UNCHANGED <<auth, build, reads, pins, history, d0, ref>>
 
 PublishFirstPointer(o, grant) ==
     /\ grant = cutover.grantId[o]
     /\ cutover.phase[o] = "GUARDED"
     /\ cutover.grbBound[o] = GRb
+    /\ ref.recoveryComplete[o]
     /\ auth.pointer[o] = NoGen
     /\ build.candidateGen[o] = GCanary
     /\ build.candidateCold[o]
@@ -918,7 +1001,7 @@ PublishFirstPointer(o, grant) ==
         [build EXCEPT
             !.candidateGen[o] = NoGen,
             !.candidateCold[o] = FALSE]
-    /\ UNCHANGED <<reads, pins>>
+    /\ UNCHANGED <<reads, pins, ref>>
 
 RefuseSecondPromotionWhileGuardOpen(o) ==
     /\ cutover.canaryGuard[o] = "OPEN"
@@ -929,13 +1012,13 @@ RefuseSecondPromotionWhileGuardOpen(o) ==
         [build EXCEPT
             !.candidateGen[o] = NoGen,
             !.candidateCold[o] = FALSE]
-    /\ UNCHANGED <<auth, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<auth, reads, pins, history, d0, cutover, ref>>
 
 CloseAuthorizedCanaryGuard(o) ==
     /\ o \in cutover.firstCutoverDone
     /\ cutover.canaryGuard[o] = "OPEN"
     /\ cutover' = [cutover EXCEPT !.canaryGuard[o] = "CLOSED"]
-    /\ UNCHANGED <<auth, build, reads, pins, history, d0>>
+    /\ UNCHANGED <<auth, build, reads, pins, history, d0, ref>>
 
 ForwardPromote(o, g, expected_active) ==
     LET old == auth.pointer[o]
@@ -968,13 +1051,13 @@ ForwardPromote(o, g, expected_active) ==
                !.promotionSeen = TRUE,
                !.lastPromotion =
                    PromotionRecord(o, g, old, old, build.candidateSource[o])]
-       /\ UNCHANGED <<reads, pins, d0, cutover>>
+       /\ UNCHANGED <<reads, pins, d0, cutover, ref>>
 
 AdvanceSource(o, h) ==
     /\ h \in SourceHashes
     /\ h # auth.sourceHash[o]
     /\ auth' = [auth EXCEPT !.sourceHash[o] = h]
-    /\ UNCHANGED <<build, reads, pins, history, d0, cutover>>
+    /\ UNCHANGED <<build, reads, pins, history, d0, cutover, ref>>
 
 RollbackToRetained(o, target, expected_active, qc) ==
     /\ target \in cutover.retainedBaseline
@@ -1001,7 +1084,7 @@ RollbackToRetained(o, target, expected_active, qc) ==
                        expectedActive |-> expected_active,
                        queryContext |-> qc,
                        sourceStale |-> stale]]
-    /\ UNCHANGED <<build, reads, pins, d0>>
+    /\ UNCHANGED <<build, reads, pins, d0, ref>>
 
 RecoverExactPointer(o) ==
     /\ history' =
@@ -1012,12 +1095,56 @@ RecoverExactPointer(o) ==
                  pointerAtRecovery |-> auth.pointer[o],
                  completenessAtRecovery |-> auth.completeness[o],
                  selected |-> auth.pointer[o]]]
+    /\ UNCHANGED <<auth, build, reads, pins, d0, cutover, ref>>
+
+
+MutateWrongSelector(o) ==
+    /\ EnableWrongSelectorMutation
+    /\ ref.retained[o]
+    /\ ref.d0Physical[o] # {}
+    /\ ref.selector[o] = ref.d0Physical[o]
+    /\ LET wrong ==
+           IF Cardinality(ref.d0Physical[o]) < Cardinality(PhysicalRows)
+           THEN PhysicalRows \ ref.d0Physical[o]
+           ELSE ref.d0Physical[o] \ {CHOOSE row \in ref.d0Physical[o] : TRUE}
+       IN /\ wrong # ref.d0Physical[o]
+          /\ ref' = [ref EXCEPT !.selector[o] = wrong]
+    /\ UNCHANGED <<auth, build, reads, pins, history, d0, cutover>>
+
+InjectCopiedServing(o) ==
+    /\ EnableCopiedServingMutation
+    /\ ref.retained[o]
+    /\ ~ref.servingFromCopied[o]
+    /\ ref.copiedGeneration[o] = NoGen
+    /\ LET g == CHOOSE g \in Generations : g # GRb
+           r == CHOOSE r \in Readers : TRUE
+       IN /\ ref' =
+              [ref EXCEPT
+                  !.copiedGeneration[o] = g,
+                  !.servingFromCopied[o] = TRUE,
+                  !.serveReader[o] = r,
+                  !.servingConsumed[o] = {}]
+          /\ history' =
+              [history EXCEPT
+                  !.generationReadSeen = TRUE,
+                  !.lastGenerationRead =
+                      [reader |-> r, owner |-> o, generation |-> GRb]]
     /\ UNCHANGED <<auth, build, reads, pins, d0, cutover>>
+
+ReferencePrepNext ==
+    \/ (\E o \in Owners : BindD0PhysicalMembership(o))
+    \/ (\E o \in Owners : EstablishReferenceRecoveryCoverage(o))
+
+ReferenceFaultNext ==
+    \/ (\E o \in Owners : MutateWrongSelector(o))
+    \/ (\E o \in Owners : InjectCopiedServing(o))
 
 DesignAAuthorityOps(o, grant, fresh_grant, qc) ==
     CaptureD0Candidate(o)
     \/ ValidateD0Candidate(o)
     \/ RatifyD0(o, qc)
+    \/ BindD0PhysicalMembership(o)
+    \/ EstablishReferenceRecoveryCoverage(o)
     \/ AcquireOwnerLock(o)
     \/ ConvertLegacyToGRb(o)
     \/ RebindLegacyRoot(o)
@@ -1044,6 +1171,8 @@ CutoverDesignAAuthorityOps(o, grant, fresh_grant, qc) ==
     CaptureD0Candidate(o)
     \/ ValidateD0Candidate(o)
     \/ RatifyD0(o, qc)
+    \/ BindD0PhysicalMembership(o)
+    \/ EstablishReferenceRecoveryCoverage(o)
     \/ AcquireOwnerLock(o)
     \/ ConvertLegacyToGRb(o)
     \/ RebindLegacyRoot(o)
@@ -1069,6 +1198,8 @@ StaleReconcileDesignAAuthorityOps(o, grant, qc) ==
     CaptureD0Candidate(o)
     \/ ValidateD0Candidate(o)
     \/ RatifyD0(o, qc)
+    \/ BindD0PhysicalMembership(o)
+    \/ EstablishReferenceRecoveryCoverage(o)
     \/ AcquireOwnerLock(o)
     \/ ConvertLegacyToGRb(o)
     \/ RebindLegacyRoot(o)
@@ -1083,6 +1214,8 @@ StaleReconcileDesignAAuthorityOps(o, grant, qc) ==
 
 
 Next ==
+    \/ ReferencePrepNext
+    \/ ReferenceFaultNext
     \/ (\E o \in Owners, grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
           DesignAAuthorityOps(o, grant, fresh_grant, qc))
     \/ (\E o \in Owners, g \in Generations : BuildCandidate(o, g))
@@ -1123,6 +1256,8 @@ product (for example, recovery-history choices cannot affect rename pins).
 ***************************************************************************)
 
 CutoverNext ==
+    \/ ReferencePrepNext
+    \/ ReferenceFaultNext
     \/ (\E grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
           CutoverDesignAAuthorityOps(OldOwner, grant, fresh_grant, qc))
     \/ (\E g \in Generations : BuildCandidate(OldOwner, g))
@@ -1144,6 +1279,8 @@ CutoverSpec ==
     /\ \A r \in Readers : WF_vars(ResolveStep(r))
 
 StaleReconcileNext ==
+    \/ ReferencePrepNext
+    \/ ReferenceFaultNext
     \/ (\E grant \in Grants, qc \in QueryContexts :
           StaleReconcileDesignAAuthorityOps(OldOwner, grant, qc))
     \/ (\E g \in Generations : BuildCandidate(OldOwner, g))
@@ -1185,7 +1322,9 @@ RenameSpec ==
 
 
 DesignANext ==
-    (\E grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
+    ReferencePrepNext
+    \/ ReferenceFaultNext
+    \/ (\E grant \in Grants, fresh_grant \in Grants, qc \in QueryContexts :
         DesignAAuthorityOps(OldOwner, grant, fresh_grant, qc))
     \/ (\E g \in Generations : BuildCandidate(OldOwner, g))
     \/ ColdValidate(OldOwner)
@@ -1427,28 +1566,54 @@ FirstCutoverCAS ==
 
 
 GRbReferenceFingerprintVersioned ==
-    GRb \in cutover.retainedBaseline
+    /\ FailedV1Gen \notin cutover.retainedBaseline
+    /\ \A o \in Owners :
+        ref.retained[o] => ref.identity[o] = "REFERENCE_V2"
+    /\ \A o \in Owners :
+        cutover.grbBound[o] = GRb => ref.identity[o] # "CONVERT_V1"
 
 GRbFailedV1NeverEligible ==
-    GRb \in cutover.retainedBaseline
+    /\ FailedV1Gen \notin cutover.retainedBaseline
+    /\ \A o \in Owners :
+        ref.identity[o] = "FAILED_V1" => ~ref.retained[o]
 
 GRbNoCopiedOrSidecarAuthority ==
-    GRb \in cutover.retainedBaseline
+    \A o \in Owners :
+        ref.retained[o] =>
+            /\ ref.copiedGeneration[o] = NoGen
+            /\ ~ref.sidecarActive[o]
+            /\ ~ref.servingFromCopied[o]
 
 GRbColdQualificationBeforeRetention ==
-    GRb \in cutover.retainedBaseline
+    \A o \in Owners :
+        ref.retained[o] => ref.coldQualified[o]
 
 GRbReferenceMembershipExact ==
-    GRb \in cutover.retainedBaseline
+    \A o \in Owners :
+        ref.retained[o] => ref.selector[o] = ref.d0Physical[o]
 
 GRbServingReadsReferencedRows ==
-    GRb \in cutover.retainedBaseline
+    ~history.generationReadSeen \/
+        IF history.lastGenerationRead.generation = GRb
+           /\ ref.retained[history.lastGenerationRead.owner]
+        THEN /\ ref.servingConsumed[history.lastGenerationRead.owner]
+                  \subseteq ref.selector[history.lastGenerationRead.owner]
+             /\ ~ref.servingFromCopied[history.lastGenerationRead.owner]
+        ELSE TRUE
 
 GRbAuthoritySinglePhysicalState ==
-    GRb \in cutover.retainedBaseline
+    /\ \A o \in Owners :
+        ref.retained[o] =>
+            /\ ref.copiedGeneration[o] = NoGen
+            /\ ~ref.sidecarActive[o]
+            /\ ~ref.servingFromCopied[o]
+    /\ \A o \in Owners :
+        ref.serveReader[o] # NoReader =>
+            ref.qualifyReader[o] = ref.serveReader[o]
 
 GRbRecoveryCoverageBeforeFirstCutover ==
-    GRb \in cutover.retainedBaseline
+    \A o \in Owners :
+        o \in cutover.firstCutoverDone => ref.recoveryComplete[o]
 
 
 =============================================================================
