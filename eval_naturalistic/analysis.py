@@ -7,6 +7,7 @@ No live numerical thresholds or product conclusions.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -29,7 +30,7 @@ from eval_naturalistic.enums import (
 SCORE_BOUND_MIN = 0.0
 SCORE_BOUND_MAX = 1.0
 WITHIN_EPISODE_AGGREGATION_RULE_ID = "mean-of-evaluable-target-scores-v1"
-SCORER_RELIABILITY_STATISTIC_ID = "icc-or-weighted-kappa-slot-v1"
+SCORER_RELIABILITY_STATISTIC_ID = "bounded-score-within-tolerance-agreement-rate-v1"
 
 REQUIRED_INFORMATION_PARAMETER_SLOTS = frozenset(
     {
@@ -50,6 +51,13 @@ TARGET_BEARING_EVALUABLE_STATUSES = frozenset(
     }
 )
 
+TARGET_BEARING_STATUSES = frozenset(
+    {
+        EpisodeRegistryStatus.TARGETS_PRESENT,
+        EpisodeRegistryStatus.TARGETS_PRESENT_BUT_NOT_EVALUABLE,
+    }
+)
+
 SPARSE_RELIABILITY_STATES = frozenset(
     {
         ReliabilityState.RELIABILITY_SPARSE,
@@ -64,6 +72,7 @@ class EpisodeRegistryViewV1:
 
     episode_id: str
     registry_status: EpisodeRegistryStatus
+    eligible_target_count: int
 
 
 @dataclass
@@ -76,6 +85,7 @@ class WithinEpisodeScoreV1:
     reliability_state: ReliabilityState
     target_count: int
     aggregation_rule_id: str = WITHIN_EPISODE_AGGREGATION_RULE_ID
+    validation_errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {
@@ -84,6 +94,7 @@ class WithinEpisodeScoreV1:
             "reliability_state": self.reliability_state.value,
             "target_count": self.target_count,
             "aggregation_rule_id": self.aggregation_rule_id,
+            "validation_errors": self.validation_errors,
         }
         if self.normalized_score is not None:
             out["normalized_score"] = self.normalized_score
@@ -111,7 +122,7 @@ class ScorerSubmissionV1:
 
 
 @dataclass
-class ScorerReliabilityRecordV1:
+class ScorerReliabilityRecordV1:  # pylint: disable=too-many-instance-attributes
     """Scorer agreement record with frozen statistic/gate slots (no live gate value)."""
 
     statistic_identity: str
@@ -122,6 +133,7 @@ class ScorerReliabilityRecordV1:
     disagreement_count: int
     passes_gate: bool | None
     scorer_ids: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {
@@ -131,6 +143,7 @@ class ScorerReliabilityRecordV1:
             "disagreement_count": self.disagreement_count,
             "passes_gate": self.passes_gate,
             "scorer_ids": self.scorer_ids,
+            "errors": self.errors,
         }
         if self.gate_value is not None:
             out["gate_value"] = self.gate_value
@@ -140,15 +153,20 @@ class ScorerReliabilityRecordV1:
 
 
 @dataclass
-class CoPrimaryAggregationV1:
+class CoPrimaryAggregationV1:  # pylint: disable=too-many-instance-attributes
     """Two-part co-primary structure: opportunity + conditional continuation benefit."""
 
     opportunity_prevalence: float
+    opportunity_density: float
     opportunity_episode_count: int
     target_bearing_episode_count: int
+    target_bearing_evaluable_episode_count: int
+    target_bearing_not_evaluable_episode_count: int
+    eligible_target_count: int
     zero_target_episode_count: int
     incomplete_episode_count: int
     ambiguous_episode_count: int
+    protocol_invalid_episode_count: int
     conditional_mean_effect: float | None
     conditional_episode_count: int
     sparse_episode_count: int
@@ -159,11 +177,16 @@ class CoPrimaryAggregationV1:
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {
             "opportunity_prevalence": self.opportunity_prevalence,
+            "opportunity_density": self.opportunity_density,
             "opportunity_episode_count": self.opportunity_episode_count,
             "target_bearing_episode_count": self.target_bearing_episode_count,
+            "target_bearing_evaluable_episode_count": self.target_bearing_evaluable_episode_count,
+            "target_bearing_not_evaluable_episode_count": self.target_bearing_not_evaluable_episode_count,
+            "eligible_target_count": self.eligible_target_count,
             "zero_target_episode_count": self.zero_target_episode_count,
             "incomplete_episode_count": self.incomplete_episode_count,
             "ambiguous_episode_count": self.ambiguous_episode_count,
+            "protocol_invalid_episode_count": self.protocol_invalid_episode_count,
             "conditional_episode_count": self.conditional_episode_count,
             "sparse_episode_count": self.sparse_episode_count,
             "non_estimable_episode_count": self.non_estimable_episode_count,
@@ -176,7 +199,7 @@ class CoPrimaryAggregationV1:
 
 
 @dataclass
-class InformationGateEvaluationV1:
+class InformationGateEvaluationV1:  # pylint: disable=too-many-instance-attributes
     """T10 gate machinery: slots and readiness only — no opportunistic live values."""
 
     parameter_slots_digest: str
@@ -209,11 +232,13 @@ def validate_bounded_normalized_score(
     errors: list[str] = []
     if score is None:
         return NaturalisticValidation(errors=errors)
-    if not isinstance(score, (int, float)):
+    if isinstance(score, bool) or not isinstance(score, (int, float)):
         errors.append(f"{label}: must be numeric")
         return NaturalisticValidation(errors=errors)
     value = float(score)
-    if value < SCORE_BOUND_MIN or value > SCORE_BOUND_MAX:
+    if not math.isfinite(value):
+        errors.append(f"{label}: must be finite")
+    elif value < SCORE_BOUND_MIN or value > SCORE_BOUND_MAX:
         errors.append(
             f"{label}: {value} outside bounded contract [{SCORE_BOUND_MIN}, {SCORE_BOUND_MAX}]"
         )
@@ -222,6 +247,10 @@ def validate_bounded_normalized_score(
 
 def is_target_bearing_evaluable(status: EpisodeRegistryStatus) -> bool:
     return status in TARGET_BEARING_EVALUABLE_STATUSES
+
+
+def is_target_bearing(status: EpisodeRegistryStatus) -> bool:
+    return status in TARGET_BEARING_STATUSES
 
 
 def is_zero_target_episode(status: EpisodeRegistryStatus) -> bool:
@@ -251,6 +280,32 @@ def aggregate_targets_to_within_episode_score(
             reliability_state=ReliabilityState.RELIABILITY_NOT_APPLICABLE,
             target_count=0,
             aggregation_rule_id=aggregation_rule_id,
+        )
+
+    errors: list[str] = []
+    seen_target_ids: set[str] = set()
+    seen_trial_ids: set[str] = set()
+    for score in target_scores:
+        bound = validate_bounded_normalized_score(
+            score.normalized_score,
+            label=f"target_score[{score.target_id}]",
+        )
+        errors.extend(bound.errors)
+        if score.target_id in seen_target_ids:
+            errors.append(f"duplicate target score row: {score.target_id}")
+        seen_target_ids.add(score.target_id)
+        if score.trial_id in seen_trial_ids:
+            errors.append(f"duplicate trial score row: {score.trial_id}")
+        seen_trial_ids.add(score.trial_id)
+    if errors:
+        return WithinEpisodeScoreV1(
+            episode_id=episode_id,
+            condition=condition,
+            normalized_score=None,
+            reliability_state=ReliabilityState.RELIABILITY_NON_ESTIMABLE,
+            target_count=len(target_scores),
+            aggregation_rule_id=aggregation_rule_id,
+            validation_errors=errors,
         )
 
     reliability_states = {score.reliability_state for score in target_scores}
@@ -314,6 +369,8 @@ def _score_for_condition(
     return scores_by_condition.get(condition)
 
 
+# This is the one orchestration boundary that validates and assembles both co-primary parts.
+# pylint: disable-next=too-many-locals,too-many-branches
 def compute_co_primary_aggregation(
     episodes: list[EpisodeRegistryViewV1],
     within_episode_scores: list[WithinEpisodeScoreV1],
@@ -327,17 +384,59 @@ def compute_co_primary_aggregation(
         errors.append("co-primary aggregation requires at least one episode")
         return AnalysisAggregationResult(ok=False, co_primary=None, episode_outcomes=[], errors=errors)
 
+    episode_ids = [episode.episode_id for episode in episodes]
+    known_episode_ids = set(episode_ids)
+    duplicate_episode_ids = sorted(
+        episode_id for episode_id in known_episode_ids if episode_ids.count(episode_id) > 1
+    )
+    if duplicate_episode_ids:
+        errors.append("duplicate episode registry rows: " + ", ".join(duplicate_episode_ids))
+
+    one_score = prove_one_score_per_episode_per_condition(within_episode_scores)
+    errors.extend(one_score.errors)
+
     scores_by_episode: dict[str, dict[TrialCondition, WithinEpisodeScoreV1]] = {}
     for score in within_episode_scores:
-        bound = validate_bounded_normalized_score(score.normalized_score)
+        bound = validate_bounded_normalized_score(
+            score.normalized_score,
+            label=f"within_episode_score[{score.episode_id}/{score.condition.value}]",
+        )
         errors.extend(bound.errors)
+        errors.extend(score.validation_errors)
+        if score.episode_id not in known_episode_ids:
+            errors.append(f"within-episode score references unknown episode: {score.episode_id}")
+        if score.target_count <= 0:
+            errors.append(
+                f"{score.episode_id}/{score.condition.value}: scored condition must have target_count > 0"
+            )
         scores_by_episode.setdefault(score.episode_id, {})[score.condition] = score
+
+    for episode in episodes:
+        if not is_target_bearing_evaluable(episode.registry_status) and episode.episode_id in scores_by_episode:
+            errors.append(
+                f"{episode.episode_id}: non-evaluable episode must not carry condition scores"
+            )
+        if episode.eligible_target_count < 0:
+            errors.append(f"{episode.episode_id}: eligible_target_count must be non-negative")
+        if is_target_bearing(episode.registry_status) and episode.eligible_target_count == 0:
+            errors.append(f"{episode.episode_id}: target-bearing episode requires eligible_target_count > 0")
+        if not is_target_bearing(episode.registry_status) and episode.eligible_target_count != 0:
+            errors.append(
+                f"{episode.episode_id}: non-target-bearing episode requires eligible_target_count == 0"
+            )
+
+    if errors:
+        return AnalysisAggregationResult(ok=False, co_primary=None, episode_outcomes=[], errors=errors)
 
     total = len(episodes)
     target_bearing = 0
+    target_bearing_evaluable = 0
+    target_bearing_not_evaluable = 0
+    eligible_target_count = 0
     zero_target = 0
     incomplete = 0
     ambiguous = 0
+    protocol_invalid = 0
     sparse_count = 0
     non_estimable_count = 0
     paired_effects: list[float] = []
@@ -357,16 +456,24 @@ def compute_co_primary_aggregation(
 
     for episode in episodes:
         status = episode.registry_status
+        if is_target_bearing(status):
+            target_bearing += 1
+            eligible_target_count += episode.eligible_target_count
         if is_zero_target_episode(status):
             zero_target += 1
         elif status == EpisodeRegistryStatus.EVIDENCE_INCOMPLETE:
             incomplete += 1
         elif status == EpisodeRegistryStatus.TARGET_ADJUDICATION_AMBIGUOUS:
             ambiguous += 1
+        elif status == EpisodeRegistryStatus.TARGETS_PRESENT_BUT_NOT_EVALUABLE:
+            target_bearing_not_evaluable += 1
+        elif status == EpisodeRegistryStatus.PROTOCOL_INVALID:
+            protocol_invalid += 1
+            errors.append(f"{episode.episode_id}: protocol-invalid episode blocks valid aggregation")
         elif is_target_bearing_evaluable(status):
-            target_bearing += 1
+            target_bearing_evaluable += 1
 
-        opportunity_component = 1.0 if is_target_bearing_evaluable(status) else 0.0
+        opportunity_component = 1.0 if is_target_bearing(status) else 0.0
         conditional_effect: float | None = None
         reliability = ReliabilityState.RELIABILITY_NOT_APPLICABLE
 
@@ -380,12 +487,12 @@ def compute_co_primary_aggregation(
                 )
                 reliability = ReliabilityState.RELIABILITY_NON_ESTIMABLE
                 non_estimable_count += 1
-            elif sparse_blocks_ordinary_conclusion(c0.reliability_state) or sparse_blocks_ordinary_conclusion(
-                c1.reliability_state
-            ):
-                if (
-                    c0.reliability_state == ReliabilityState.RELIABILITY_SPARSE
-                    or c1.reliability_state == ReliabilityState.RELIABILITY_SPARSE
+            elif sparse_blocks_ordinary_conclusion(
+                c0.reliability_state
+            ) or sparse_blocks_ordinary_conclusion(c1.reliability_state):
+                if ReliabilityState.RELIABILITY_SPARSE in (
+                    c0.reliability_state,
+                    c1.reliability_state,
                 ):
                     sparse_count += 1
                     reliability = ReliabilityState.RELIABILITY_SPARSE
@@ -417,11 +524,23 @@ def compute_co_primary_aggregation(
         )
 
     opportunity_prevalence = target_bearing / total
+    opportunity_density = eligible_target_count / total
     conditional_mean = sum(paired_effects) / len(paired_effects) if paired_effects else None
 
+    has_incomplete_primary_evidence = any(
+        count > 0
+        for count in (
+            sparse_count,
+            non_estimable_count,
+            incomplete,
+            ambiguous,
+            target_bearing_not_evaluable,
+            protocol_invalid,
+        )
+    )
     if target_bearing == 0:
         agg_reliability = ReliabilityState.RELIABILITY_NON_ESTIMABLE
-    elif sparse_count > 0 or non_estimable_count > 0:
+    elif has_incomplete_primary_evidence:
         agg_reliability = ReliabilityState.RELIABILITY_NON_ESTIMABLE
     elif conditional_mean is None:
         agg_reliability = ReliabilityState.RELIABILITY_NON_ESTIMABLE
@@ -431,11 +550,16 @@ def compute_co_primary_aggregation(
     lineage_digest = artifact_content_digest(lineage_inputs)
     co_primary = CoPrimaryAggregationV1(
         opportunity_prevalence=opportunity_prevalence,
+        opportunity_density=opportunity_density,
         opportunity_episode_count=total,
         target_bearing_episode_count=target_bearing,
+        target_bearing_evaluable_episode_count=target_bearing_evaluable,
+        target_bearing_not_evaluable_episode_count=target_bearing_not_evaluable,
+        eligible_target_count=eligible_target_count,
         zero_target_episode_count=zero_target,
         incomplete_episode_count=incomplete,
         ambiguous_episode_count=ambiguous,
+        protocol_invalid_episode_count=protocol_invalid,
         conditional_mean_effect=conditional_mean,
         conditional_episode_count=len(paired_effects),
         sparse_episode_count=sparse_count,
@@ -456,13 +580,24 @@ def validate_required_parameter_slots(
     slots: list[ParameterSlotV1],
 ) -> NaturalisticValidation:
     errors: list[str] = []
-    present = {slot.slot_name for slot in slots}
+    slot_names = [slot.slot_name for slot in slots]
+    present = set(slot_names)
+    duplicates = sorted(name for name in present if slot_names.count(name) > 1)
+    if duplicates:
+        errors.append("duplicate information parameter slots: " + ", ".join(duplicates))
     missing = REQUIRED_INFORMATION_PARAMETER_SLOTS - present
     if missing:
         errors.append(
             "missing required information parameter slots: "
             + ", ".join(sorted(missing))
         )
+    for slot in slots:
+        if slot.slot_name not in REQUIRED_INFORMATION_PARAMETER_SLOTS:
+            continue
+        if slot.freeze_status == ParameterFreezeStatus.FROZEN and slot.value is None:
+            errors.append(f"frozen parameter slot '{slot.slot_name}' requires a value")
+        if slot.freeze_status == ParameterFreezeStatus.PENDING and slot.value is not None:
+            errors.append(f"pending parameter slot '{slot.slot_name}' must not carry a value")
     return NaturalisticValidation(errors=errors)
 
 
@@ -473,16 +608,27 @@ def reject_post_result_parameter_mutation(
     """Post-result slot fills or value changes invalidate the analysis generation."""
 
     errors: list[str] = []
+    validation_before = validate_required_parameter_slots(slots_before)
+    validation_after = validate_required_parameter_slots(slots_after)
+    errors.extend(validation_before.errors)
+    errors.extend(validation_after.errors)
     before = {slot.slot_name: slot for slot in slots_before}
     after = {slot.slot_name: slot for slot in slots_after}
+
+    removed = sorted(set(before) - set(after))
+    added = sorted(set(after) - set(before))
+    if removed:
+        errors.append("post-result removal of parameter slots: " + ", ".join(removed))
+    if added:
+        errors.append("post-result addition of parameter slots: " + ", ".join(added))
 
     for name in REQUIRED_INFORMATION_PARAMETER_SLOTS:
         if name not in before or name not in after:
             continue
         prev = before[name]
         curr = after[name]
-        if prev.freeze_status == ParameterFreezeStatus.FROZEN and curr.value != prev.value:
-            errors.append(f"post-result mutation of frozen parameter slot '{name}'")
+        if prev.to_dict() != curr.to_dict():
+            errors.append(f"post-result mutation of parameter slot '{name}'")
         if (
             prev.freeze_status in {ParameterFreezeStatus.PENDING, ParameterFreezeStatus.NOT_APPLICABLE}
             and curr.freeze_status == ParameterFreezeStatus.FROZEN
@@ -499,43 +645,80 @@ def record_scorer_reliability(
     secondary_submissions: list[ScorerSubmissionV1],
     *,
     gate_value: str | None = None,
-    agreement_tolerance: float = 0.05,
+    agreement_tolerance: float,
 ) -> ScorerReliabilityRecordV1:
-    """Record scorer agreement; gate evaluation requires a frozen gate_value."""
+    """Record bounded-score agreement; product use still requires a T0-frozen gate."""
 
-    primary_by_key = {
-        (sub.episode_id, sub.condition.value): sub for sub in primary_submissions
-    }
-    secondary_by_key = {
-        (sub.episode_id, sub.condition.value): sub for sub in secondary_submissions
-    }
+    errors: list[str] = []
+
+    def _submission_map(
+        submissions: list[ScorerSubmissionV1],
+        *,
+        label: str,
+    ) -> dict[tuple[str, str], ScorerSubmissionV1]:
+        result: dict[tuple[str, str], ScorerSubmissionV1] = {}
+        for submission in submissions:
+            key = (submission.episode_id, submission.condition.value)
+            if key in result:
+                errors.append(
+                    f"duplicate {label} scorer submission for "
+                    f"episode={submission.episode_id} condition={submission.condition.value}"
+                )
+            result[key] = submission
+            bound = validate_bounded_normalized_score(
+                submission.normalized_score,
+                label=f"{label}_scorer[{submission.episode_id}/{submission.condition.value}]",
+            )
+            errors.extend(bound.errors)
+        return result
+
+    primary_by_key = _submission_map(primary_submissions, label="primary")
+    secondary_by_key = _submission_map(secondary_submissions, label="secondary")
+    primary_ids = {sub.scorer_id for sub in primary_submissions}
+    secondary_ids = {sub.scorer_id for sub in secondary_submissions}
+    if len(primary_ids) != 1:
+        errors.append("primary scorer submissions must have exactly one scorer identity")
+    if len(secondary_ids) != 1:
+        errors.append("secondary scorer submissions must have exactly one scorer identity")
+    if primary_ids & secondary_ids:
+        errors.append("primary and secondary scorer identities must be independent")
+    tolerance_validation = validate_bounded_normalized_score(
+        agreement_tolerance,
+        label="agreement_tolerance",
+    )
+    errors.extend(tolerance_validation.errors)
     keys = sorted(set(primary_by_key) | set(secondary_by_key))
     agreement = 0
     disagreement = 0
-    comparable = 0
     for key in keys:
         a = primary_by_key.get(key)
         b = secondary_by_key.get(key)
         if a is None or b is None:
             disagreement += 1
+            missing_role = "primary" if a is None else "secondary"
+            errors.append(
+                f"missing {missing_role} scorer submission for episode={key[0]} condition={key[1]}"
+            )
             continue
         if a.normalized_score is None or b.normalized_score is None:
             disagreement += 1
             continue
-        comparable += 1
         if abs(a.normalized_score - b.normalized_score) <= agreement_tolerance:
             agreement += 1
         else:
             disagreement += 1
 
-    observed = agreement / comparable if comparable else None
+    observed = agreement / len(keys) if keys else None
     passes: bool | None = None
-    if gate_value is not None and observed is not None:
+    if gate_value is not None and observed is not None and not errors:
         try:
             threshold = float(gate_value)
-            passes = observed >= threshold
-        except ValueError:
-            passes = None
+            if not math.isfinite(threshold) or not SCORE_BOUND_MIN <= threshold <= SCORE_BOUND_MAX:
+                errors.append("scorer reliability gate must be finite and within [0.0, 1.0]")
+            else:
+                passes = observed >= threshold
+        except (TypeError, ValueError):
+            errors.append("scorer reliability gate must be numeric")
 
     scorer_ids = sorted(
         {sub.scorer_id for sub in primary_submissions}
@@ -550,6 +733,7 @@ def record_scorer_reliability(
         disagreement_count=disagreement,
         passes_gate=passes,
         scorer_ids=scorer_ids,
+        errors=errors,
     )
 
 
@@ -567,7 +751,7 @@ def evaluate_information_gate_readiness(
     slots_digest = artifact_content_digest(
         {"parameter_slots": [slot.to_dict() for slot in parameter_slots]}
     )
-    all_frozen = all(
+    all_frozen = slot_validation.ok and all(
         slot.freeze_status == ParameterFreezeStatus.FROZEN and slot.value is not None
         for slot in parameter_slots
         if slot.slot_name in REQUIRED_INFORMATION_PARAMETER_SLOTS
@@ -578,8 +762,9 @@ def evaluate_information_gate_readiness(
 
     scorer_passes: bool | None = None
     if scorer_reliability is not None:
+        errors.extend(scorer_reliability.errors)
         scorer_passes = scorer_reliability.passes_gate
-        if scorer_reliability.gate_value is None:
+        if scorer_reliability.gate_value is None or scorer_reliability.errors:
             scorer_passes = None
         elif scorer_passes is False:
             errors.append("scorer reliability below frozen gate")
