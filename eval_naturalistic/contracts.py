@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+# This module is the intentionally explicit durable-schema catalog; its records mirror
+# governed wire fields and therefore exceed generic module/class-size heuristics.
+# pylint: disable=too-many-lines,too-many-instance-attributes
+
 from dataclasses import dataclass, field
 from typing import Any
 
 from eval_naturalistic.base import (
     ArtifactHeaderV1,
-    StructuralContractError,
     _enum_from_value,
     _require_dict,
     _require_list,

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# Repeated fixture setup is intentionally explicit so each synthetic contract is legible.
+# pylint: disable=duplicate-code
+
 from eval_naturalistic.base import ArtifactHeaderV1
 from eval_naturalistic.contracts import (
     ProbeAuthorProvenanceV1,

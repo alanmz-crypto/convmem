@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# Fixed durable-schema records intentionally exceed Pylint's generic class-size heuristic.
+# pylint: disable=too-many-instance-attributes,duplicate-code
+
 import copy
 from dataclasses import dataclass
 from enum import Enum
@@ -10,6 +13,20 @@ from typing import Any
 
 class StructuralContractError(ValueError):
     """Raised when raw data violates a naturalistic JSON contract."""
+
+
+@dataclass
+class NaturalisticValidation:
+    """Fail-closed validation result shared across methodology stages."""
+
+    errors: list[str]
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors
+
+    def as_status(self) -> str:
+        return "pass" if self.ok else "fail"
 
 
 def _enum_from_value(enum_type: type[Enum], value: Any, field_name: str) -> Any:

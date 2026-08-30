@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Protocol
 
+from eval_naturalistic.base import NaturalisticValidation
 from eval_naturalistic.contracts import (
     CensusSampleManifestV1,
     ConvMemCaptureStateV1,
@@ -17,18 +17,6 @@ from eval_naturalistic.contracts import (
 )
 from eval_naturalistic.digest import artifact_content_digest
 from eval_naturalistic.enums import StudyTerminalDisposition
-
-
-@dataclass
-class NaturalisticValidation:
-    errors: list[str]
-
-    @property
-    def ok(self) -> bool:
-        return not self.errors
-
-    def as_status(self) -> str:
-        return "pass" if self.ok else "fail"
 
 
 class _HasHeader(Protocol):

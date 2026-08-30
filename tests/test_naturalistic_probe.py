@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# Hermetic path bootstrapping precedes project imports; repeated setup is intentional.
+# pylint: disable=wrong-import-position,duplicate-code
+
 import copy
 import sys
 import unittest
@@ -14,7 +17,7 @@ from eval_naturalistic.contract_validate import (
     validate_scoring_key_separation,
     validate_seal_immutability,
 )
-from eval_naturalistic.contracts import ProbeManifestV1, verify_artifact_digest, seal_artifact_dict
+from eval_naturalistic.contracts import ProbeManifestV1, verify_artifact_digest
 from eval_naturalistic.enums import (
     LeakageReviewDisposition,
     ProbeBuildOutcome,
@@ -32,7 +35,6 @@ from eval_naturalistic.probe_fixtures import (
     CONTINUATION_PROBE_TEXT,
     DIRECT_RECALL_PROBE_TEXT,
     LEAK_REVIEWER_ID,
-    PROBE_AUTHOR_ID,
     VALID_GROUND_TRUTH,
     build_valid_probe_bundle,
     make_default_probe_config,

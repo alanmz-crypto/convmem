@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# Hermetic path bootstrapping precedes project imports; repeated setup is intentional.
+# pylint: disable=wrong-import-position,duplicate-code
+
 import copy
 import sys
 import unittest
@@ -10,7 +13,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval_naturalistic.adjudication import (
-    AdjudicationWorkflowConfigV1,
     CandidateAdjudicationBundleV1,
     build_evidence_adjudication_view,
     build_sealed_target_registry,
@@ -39,7 +41,6 @@ from eval_naturalistic.contracts import (
     seal_artifact_dict,
 )
 from eval_naturalistic.enums import (
-    CaptureDiagnosticState,
     EligibilityDisposition,
     EpisodeRegistryStatus,
     RegistryBuildOutcome,
@@ -107,7 +108,10 @@ class AdjudicationWorkflowTests(unittest.TestCase):
         self.assertTrue(result.ok, result.errors)
         assert result.registry is not None
         self.assertEqual(result.episode_status, EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS)
-        self.assertEqual(result.registry.episode_entries[0].registry_status, EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS)
+        self.assertEqual(
+            result.registry.episode_entries[0].registry_status,
+            EpisodeRegistryStatus.ZERO_ELIGIBLE_TARGETS,
+        )
 
     def test_zero_eligible_targets_with_empty_candidate_census(self):
         frame, episode, evidence, workflow = make_synthetic_adjudication_chain()
@@ -397,7 +401,7 @@ class CaptureIndependenceAdversarialTests(unittest.TestCase):
 
 class EvidenceViewTests(unittest.TestCase):
     def test_evidence_view_excludes_capture_material(self):
-        frame, episode, evidence, _workflow = make_synthetic_adjudication_chain()
+        _frame, _episode, evidence, _workflow = make_synthetic_adjudication_chain()
         view = build_evidence_adjudication_view(evidence)
         self.assertIn("sources", view)
         self.assertNotIn("target_states", view)
