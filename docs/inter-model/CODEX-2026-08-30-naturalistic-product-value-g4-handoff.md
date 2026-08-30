@@ -11,13 +11,13 @@
 
 | Field | Value |
 |---|---|
-| **State** | `REVIEW_PASS_PENDING_RYAN` |
+| **State** | `PR_CI_PENDING_RYAN` |
 | **Branch** | `feat/2026-08-30-naturalistic-product-value-g4` |
 | **Review target** | `fa7d68b4b272a9802b0983c708800d6953ec45f8` |
 | **Parent** | `91cda5c56d5f9dd86c0afda1c2a6fe1d353f575b` (frozen G3 implementation) |
 | **Superseded G4 freeze** | `0e191c3197c7c950bdcbb7e1aaef0abe1bdc4e76` |
-| **Push status** | Review target pushed to `origin`; later documentation and main-integration commits are carriers only |
-| **PR** | PR Steward assigned; combined G1–G4 delivery to `main` |
+| **Push status** | Review target pushed to `origin`; later integration, documentation, and G1–G3 lint-gate cleanup commits preserve the reviewed G4 bytes |
+| **PR** | [Combined G1–G4 delivery PR #255](https://github.com/alanmz-crypto/convmem/pull/255) is open against `main` |
 | **Ryan GATE** | Ryan owns merge disposition after PR CI; no G5 or live-study authority |
 | **Track A ingest** | `/home/lauer/.codex/sessions/2026/08/30/rollout-2026-08-30T02-03-24-01a0517a-e776-7d41-b11a-c38d8c977954.jsonl` (nudge attempted; active file changed during ingest and watch should retry after debounce) |
 
@@ -74,7 +74,7 @@ The corrective commit `fa7d68b` specifically:
 - Treatment assignment/randomization, trial runner, study controller, or environment qualification.
 - Selection of meaningful-advantage, equivalence, precision, sparse, or scorer-reliability values.
 - PR creation, merge, G6 freeze, or any live-study authorization.
-- Repairing inherited G1–G3 lint/cycle debt or the unrelated full-suite Click failure in this review.
+- Repairing inherited G1–G3 lint/cycle debt or the unrelated full-suite Click failure at the exact G4 review SHA.
 
 ## Verification already run
 
@@ -101,18 +101,23 @@ python -m pylint \
 
 `compileall` and `git diff --check` also passed.
 
-## Known inherited caveats
+At PR tip after the mechanical G1–G3 cleanup, the same focused suite remains
+green and the exact repository Pylint regression gate passes with no new or
+increased findings against the PR base. The three G4 files reviewed by Kiro
+remain byte-identical to `fa7d68b`.
+
+## Integration state and remaining caveats
 
 These are visible integration issues, not claimed G4 PASSes:
 
-1. Repository-wide Pylint fails on accumulated G1–G3 naturalistic findings and
-   the inherited `eval_naturalistic.adjudication` ↔
-   `eval_naturalistic.contract_validate` import cycle. The changed G4 files are
-   focused-lint clean.
-2. The repository-wide pytest run was stopped at 11% after isolating its first
+1. PR Steward cleanup removed the new G1–G3 Pylint findings and broke the real
+   `eval_naturalistic.adjudication` ↔ `eval_naturalistic.contract_validate`
+   import cycle. This was outside the exact-SHA G4 review but inside the
+   combined PR's CI-delivery scope; it does not change the reviewed G4 bytes.
+2. The original repository-wide pytest run was stopped at 11% after isolating its first
    failure: `tests/test_add_severity.py::AddSeverityTests::test_invalid_severity_rejected`
    received empty Click runner output. The complete naturalistic G1–G4 suite is
-   green; no full-suite PASS is claimed.
+   green; PR #255 owns the current full-suite result.
 3. The arc has architecture and execution plans but no required
    `docs/plans/STATUS-naturalistic-product-value.md`. Creating that arc brief is
    planning/governance work and was not folded into the bounded G4 corrective.
