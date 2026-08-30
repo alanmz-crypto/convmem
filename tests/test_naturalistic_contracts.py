@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# Hermetic path bootstrapping precedes project imports; repeated setup is intentional.
+# pylint: disable=wrong-import-position,duplicate-code
+
 import copy
 import sys
 import unittest

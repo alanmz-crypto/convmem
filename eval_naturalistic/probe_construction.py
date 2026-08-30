@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# Probe records and the fail-closed builder intentionally mirror the governed contract.
+# pylint: disable=too-many-instance-attributes,too-many-locals
+
 import copy
 import re
 from dataclasses import dataclass

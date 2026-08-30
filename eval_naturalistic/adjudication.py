@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+# Candidate bundles are fixed governed records, not behavior-heavy classes.
+# pylint: disable=too-many-instance-attributes
+
 import copy
 from dataclasses import dataclass, field
 from typing import Any
 
-from eval_naturalistic.base import ArtifactHeaderV1
-from eval_naturalistic.contract_validate import NaturalisticValidation
+from eval_naturalistic.base import ArtifactHeaderV1, NaturalisticValidation
 from eval_naturalistic.contracts import (
     AdjudicationRecordV1,
     EpisodeFrameV1,
@@ -243,7 +245,6 @@ def _build_target_record(
     *,
     episode_id: str,
     disposition: EligibilityDisposition,
-    workflow: AdjudicationWorkflowConfigV1,
 ) -> TargetRecordV1:
     adjudicator_ids = sorted(
         {record.adjudicator_id for record in bundle.adjudication_records}
@@ -402,7 +403,6 @@ def build_sealed_target_registry(
                 bundle,
                 episode_id=episode.episode_id,
                 disposition=disposition,
-                workflow=workflow,
             )
         )
 
