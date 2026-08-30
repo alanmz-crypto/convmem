@@ -11,14 +11,14 @@
 
 | Field | Value |
 |---|---|
-| **State** | `PR_CI_PENDING_RYAN` |
+| **State** | `READY_FOR_RYAN_MERGE` |
 | **Branch** | `feat/2026-08-30-naturalistic-product-value-g4` |
 | **Review target** | `fa7d68b4b272a9802b0983c708800d6953ec45f8` |
 | **Parent** | `91cda5c56d5f9dd86c0afda1c2a6fe1d353f575b` (frozen G3 implementation) |
 | **Superseded G4 freeze** | `0e191c3197c7c950bdcbb7e1aaef0abe1bdc4e76` |
 | **Push status** | Review target pushed to `origin`; later integration, documentation, and G1–G3 lint-gate cleanup commits preserve the reviewed G4 bytes |
 | **PR** | [Combined G1–G4 delivery PR #255](https://github.com/alanmz-crypto/convmem/pull/255) is open against `main` |
-| **Ryan GATE** | Ryan owns merge disposition after PR CI; no G5 or live-study authority |
+| **Ryan GATE** | Ryan owns merge disposition now that PR CI is green; no G5 or live-study authority |
 | **Track A ingest** | `/home/lauer/.codex/sessions/2026/08/30/rollout-2026-08-30T02-03-24-01a0517a-e776-7d41-b11a-c38d8c977954.jsonl` (nudge attempted; active file changed during ingest and watch should retry after debounce) |
 
 The implementation bytes reviewed remain exactly `fa7d68b`; do not substitute
@@ -114,10 +114,10 @@ These are visible integration issues, not claimed G4 PASSes:
    `eval_naturalistic.adjudication` ↔ `eval_naturalistic.contract_validate`
    import cycle. This was outside the exact-SHA G4 review but inside the
    combined PR's CI-delivery scope; it does not change the reviewed G4 bytes.
-2. The original repository-wide pytest run was stopped at 11% after isolating its first
-   failure: `tests/test_add_severity.py::AddSeverityTests::test_invalid_severity_rejected`
-   received empty Click runner output. The complete naturalistic G1–G4 suite is
-   green; PR #255 owns the current full-suite result.
+2. An earlier local repository-wide pytest run was stopped at 11% after isolating
+   its first failure: `tests/test_add_severity.py::AddSeverityTests::test_invalid_severity_rejected`
+   received empty Click runner output. The current GitHub pytest check for PR #255
+   passed; the complete naturalistic G1–G4 suite is also green.
 3. The arc has architecture and execution plans but no required
    `docs/plans/STATUS-naturalistic-product-value.md`. Creating that arc brief is
    planning/governance work and was not folded into the bounded G4 corrective.
@@ -174,5 +174,5 @@ G5, merge, G6, or a live study.
 **How:** Strict score/input validation, explicit opportunity/evaluability accounting, scorer independence, immutable parameter slots, and adversarial synthetic tests.
 
 **TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] Kiro PASSed exact
-G4 SHA `fa7d68b`; the combined G1–G4 package is in PR Steward delivery, inherited
-integration caveats remain explicit, and G5/live work is unauthorized.
+G4 SHA `fa7d68b`; PR #255 is technically merge-ready for Ryan, the remaining
+governance caveat is explicit, and G5/live work is unauthorized.
