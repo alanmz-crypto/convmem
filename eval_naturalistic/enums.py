@@ -97,3 +97,15 @@ class AdmissibleSourceClass(str, Enum):
     REPOSITORY = "repository"
     GITHUB = "github"
     OTHER = "other"
+
+
+class AdjudicationResolutionMethod(str, Enum):
+    THIRD_ADJUDICATOR = "third_adjudicator"
+    BLINDED_CONSENSUS = "blinded_consensus"
+
+
+class RegistryBuildOutcome(str, Enum):
+    SEALED = "sealed"
+    EVIDENCE_INCOMPLETE = "evidence_incomplete"
+    ADJUDICATION_AMBIGUOUS = "adjudication_ambiguous"
+    PROTOCOL_INVALID = "protocol_invalid"

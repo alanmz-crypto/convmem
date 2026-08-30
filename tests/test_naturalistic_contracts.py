@@ -19,6 +19,11 @@ from eval_naturalistic.contract_validate import (
     validate_seal_immutability,
     validate_terminal_state_distinction,
 )
+from eval_naturalistic.adjudication import build_sealed_target_registry
+from eval_naturalistic.adjudication_fixtures import (
+    make_agreeing_eligible_candidate,
+    make_default_workflow,
+)
 from eval_naturalistic.base import StructuralContractError
 from eval_naturalistic.contracts import (
     EpisodeFrameV1,
@@ -26,7 +31,9 @@ from eval_naturalistic.contracts import (
     EpisodeRecordV1,
     RawEvidenceManifestV1,
     StudyAnalysisV1,
+    TargetRecordV1,
     TargetRegistryV1,
+    TargetSpanBindingV1,
     TrialIdentityV1,
     artifact_content_digest,
     seal_artifact_dict,
@@ -35,6 +42,7 @@ from eval_naturalistic.contracts import (
 from eval_naturalistic.digest import artifact_content_digest as digest_fn
 from eval_naturalistic.enums import (
     CaptureDiagnosticState,
+    EligibilityDisposition,
     EpisodeRegistryStatus,
     ReliabilityState,
     StudyTerminalDisposition,
@@ -265,11 +273,17 @@ class CaptureIndependenceTests(unittest.TestCase):
         frame = make_synthetic_frame()
         episode = make_synthetic_episode(frame=frame)
         evidence = make_synthetic_evidence(episode=episode)
-        registry = make_synthetic_registry(evidence=evidence)
-        absent = make_synthetic_capture(
-            registry=registry,
-            capture_state=CaptureDiagnosticState.ABSENT_FROM_CONVMEM,
+        workflow = make_default_workflow()
+        build = build_sealed_target_registry(
+            frame=frame,
+            episode=episode,
+            evidence=evidence,
+            candidates=[make_agreeing_eligible_candidate()],
+            workflow=workflow,
         )
+        assert build.registry is not None
+        registry = build.registry
+        absent = make_synthetic_capture(registry=registry)
         captured = make_synthetic_capture(
             registry=registry,
             capture_state=CaptureDiagnosticState.CAPTURED,
@@ -283,6 +297,51 @@ class CaptureIndependenceTests(unittest.TestCase):
             {t.target_id for t in registry.targets},
             {t.target_id for t in registry.targets},
         )
+
+    def test_capture_driven_injection_rejected(self):
+        frame = make_synthetic_frame()
+        episode = make_synthetic_episode(frame=frame)
+        evidence = make_synthetic_evidence(episode=episode)
+        workflow = make_default_workflow()
+        build = build_sealed_target_registry(
+            frame=frame,
+            episode=episode,
+            evidence=evidence,
+            candidates=[make_agreeing_eligible_candidate()],
+            workflow=workflow,
+        )
+        assert build.registry is not None
+        registry = build.registry
+        capture = make_synthetic_capture(registry=registry)
+        injected_body = copy.deepcopy(registry.to_dict())
+        injected_body["targets"].append(
+            TargetRecordV1(
+                target_id="tgt-injected-adversarial",
+                episode_id=episode.episode_id,
+                span_bindings=[TargetSpanBindingV1(source_id="src-001", span_start=1, span_end=2)],
+                eligibility_disposition=EligibilityDisposition.ELIGIBLE,
+                ground_truth_partition_digest=None,
+                provenance_requirement=None,
+                admissibility_rationale=None,
+                unitization_rationale=None,
+                duplicate_of_target_id=None,
+                parent_target_id=None,
+                ambiguity_state=None,
+                secondary_strata=[],
+                adjudication_records=[],
+                resolution_identity=None,
+                adjudicator_ids=[],
+            ).to_dict()
+        )
+        injected_body = seal_artifact_dict(injected_body, seal_time="2026-08-30T04:00:00Z")
+        injected_registry = TargetRegistryV1.from_dict(injected_body)
+        result = validate_capture_independent_registry(
+            registry,
+            capture,
+            proposed_registry=injected_registry,
+        )
+        self.assertFalse(result.ok)
+        self.assertTrue(any("injection rejected" in err for err in result.errors))
 
 
 class RoleCollisionTests(unittest.TestCase):
