@@ -11,7 +11,8 @@
 
 | Field | Value |
 |-------|--------|
-| **State** | `AUTHORIZED — execute now` |
+| **State** | `CLOSED` — PR [#258](https://github.com/alanmz-crypto/convmem/pull/258) opened |
+| **PR** | [#258](https://github.com/alanmz-crypto/convmem/pull/258) |
 | **Sequence** | **Remediation delivery** — blocks Copilot step 2a-r until Ryan merges |
 | **Branch** | `fix/2026-08-30-2026-08-30-inter-model-provenance-reindex` |
 | **Tip SHA** | `cf706d732ac5f66a8ac31ea72397d9b0cdb21770` |

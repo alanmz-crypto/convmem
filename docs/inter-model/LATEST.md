@@ -1,8 +1,10 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-30 (next-agent dispatch — fix PR delivery)
+**Updated:** 2026-08-30 (fix PR #258 open — CI in progress)
 
-- **[Arc Recent-Completions Verification Sweep] NEXT AGENT — fix PR delivery (2026-08-30):** Who/What: **Cursor** opens PR for provenance re-index fix on `fix/2026-08-30-2026-08-30-inter-model-provenance-reindex` @ `cf706d732ac5f66a8ac31ea72397d9b0cdb21770`; confirm CI; return READY_FOR_RYAN_MERGE. When: **now** (one agent at a time). Why: no PR open yet; Copilot 2a-r blocked until fix lands on `main`. How: [`CURSOR-2026-08-30-verification-sweep-221-fix-pr-execute-handoff.md`](CURSOR-2026-08-30-verification-sweep-221-fix-pr-execute-handoff.md). **Resume state:** `AUTHORIZED — Cursor executing`. After Ryan merge → [`COPILOT-2026-08-30-verification-sweep-221-rerun-execute-handoff.md`](COPILOT-2026-08-30-verification-sweep-221-rerun-execute-handoff.md).
+- **[Arc Recent-Completions Verification Sweep] Fix PR #258 READY_FOR_RYAN_MERGE when CI green (2026-08-30):** Who/What: Cursor opened PR #258 for provenance re-index fix @ `cf706d732ac5f66a8ac31ea72397d9b0cdb21770` — local pre-flight 16/16 PASS; GitHub CI pylint+pytest pending at handoff. When: now. Why: unblock Copilot step 2a-r after merge. How: [PR #258](https://github.com/alanmz-crypto/convmem/pull/258) — Ryan squash-merge when required checks green → dispatch [`COPILOT-2026-08-30-verification-sweep-221-rerun-execute-handoff.md`](COPILOT-2026-08-30-verification-sweep-221-rerun-execute-handoff.md). **Resume state:** `READY_FOR_RYAN_MERGE` (pending CI).
+
+- **[Arc Recent-Completions Verification Sweep] NEXT AGENT — fix PR delivery (2026-08-30):** Who/What: Cursor opened PR #258 — **CLOSED**. When: complete. How: [`CURSOR-2026-08-30-verification-sweep-221-fix-pr-execute-handoff.md`](CURSOR-2026-08-30-verification-sweep-221-fix-pr-execute-handoff.md).
 
 - **[Arc Recent-Completions Verification Sweep] Ryan proxy GATE — #221 remediation AUTHORIZED (2026-08-30):** Who/What: Ryan appointed agent proxy; accepted Copilot step 2a FAIL; authorized bounded fix on `fix/2026-08-30-2026-08-30-inter-model-provenance-reindex` @ `cf706d7` — replay provenance on unchanged inter-model re-index, fail-closed on changed content. When: fix pushed. Why: close provenance re-index gap found at `722141d…`. How: merge fix → Copilot 2a-r → Kiro 2b → #202 3a/3b. **Historical FAIL @ `722141d…` stands.** **Resume state:** `REMEDIATION_READY_FOR_MERGE`.
 
