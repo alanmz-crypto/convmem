@@ -4,6 +4,9 @@
 
 from __future__ import annotations
 
+import struct
+from unittest.mock import patch
+
 import pytest
 
 from cg2_legacy_vector_attestation import (
@@ -321,3 +324,85 @@ def test_recovery_eligibility_binds_rows(ref_v2_env):
 def test_malformed_embedding_raises_d0_attestation_error():
     with pytest.raises(D0AttestationError):
         vector_encoding_sha256([{"not": "a float"}])
+
+
+def _next_float32_up(value: float) -> float:
+    bits = struct.unpack(">I", struct.pack(">f", float(value)))[0]
+    return struct.unpack(">f", struct.pack(">I", bits + 1))[0]
+
+
+def test_adversarial_one_ulp_vector_drift_refuses(ref_v2_env):
+    """D1R4: one-ULP embedding mutation must refuse exact readback."""
+    env = ref_v2_env
+    with FileGenerationStore(env["chroma"], active_generations=dict) as store:
+        result = _retain_v2(
+            cfg=env["cfg"],
+            store=store,
+            generation_root=env["generations"],
+            owner_digest_value=env["owner_digest"],
+            ratification_id=env["ratification_id"],
+        )
+        reference = load_manifest_reference(
+            env["generations"],
+            manifest_filename=result.manifest_filename,
+            expected_sha256=result.manifest_sha256,
+        )
+        descriptor = build_descriptor_from_manifest(reference.manifest)
+        d0_bindings = dict(reference.manifest.get("d0_bindings") or {})
+        d0_roots = {
+            "snapshot": str(d0_bindings["accepted_legacy_snapshot_root"]),
+            "vector": str(d0_bindings["accepted_legacy_vector_root"]),
+        }
+        with FileGenerationStore(env["chroma"], active_generations=dict) as read_store:
+            rows = read_retained_reference_rows(
+                read_store,
+                descriptor,
+                include_embeddings=True,
+            )
+    tampered = dict(rows[0])
+    embedding = list(tampered["embedding"])
+    embedding[0] = _next_float32_up(embedding[0])
+    tampered["embedding"] = embedding
+    with pytest.raises(RetainedReferenceError, match="exact|non_equivalent|readback"):
+        qualify_retained_reference_membership([tampered] + list(rows[1:]), descriptor, d0_roots)
+
+
+def test_reference_v2_fresh_process_failure_refuses_retained_evidence(ref_v2_env):
+    """D1R7: subprocess cold qualification failure must refuse retention."""
+    env = ref_v2_env
+    with FileGenerationStore(env["chroma"], active_generations=dict) as store:
+        with patch(
+            "file_generation_validate.run_reference_v2_cold_validation",
+            side_effect=RuntimeError("fresh-process refused"),
+        ):
+            with pytest.raises(RollbackBaselineError, match="fresh-process"):
+                _retain_v2(
+                    cfg=env["cfg"],
+                    store=store,
+                    generation_root=env["generations"],
+                    owner_digest_value=env["owner_digest"],
+                    ratification_id=env["ratification_id"],
+                )
+    assert not list(env["generations"].rglob("rollback_baselines/*.json"))
+
+
+def test_retention_lifecycle_uses_retained_rollback_baseline_only(ref_v2_env):
+    """D1R8: evidence state is RETAINED_ROLLBACK_BASELINE, not convert literals."""
+    env = ref_v2_env
+    with FileGenerationStore(env["chroma"], active_generations=dict) as store:
+        result = _retain_v2(
+            cfg=env["cfg"],
+            store=store,
+            generation_root=env["generations"],
+            owner_digest_value=env["owner_digest"],
+            ratification_id=env["ratification_id"],
+        )
+    evidence = validate_retained_rollback_baseline_evidence_v2(
+        env["generations"],
+        owner_digest_value=env["owner_digest"],
+        generation_id=result.generation_id,
+        expected_manifest_sha256=result.manifest_sha256,
+    )
+    assert evidence["state"] == "RETAINED_ROLLBACK_BASELINE"
+    assert "G_RB_CONVERT_COLD_VALIDATED" not in str(evidence)
+    assert "abandoned_d1" not in str(evidence)
