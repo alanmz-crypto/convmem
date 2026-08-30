@@ -115,7 +115,7 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 
 **Active STATUS files:**
 - `docs/plans/STATUS-judgebench.md` — JudgeBench semantic calibration v1
-- `docs/plans/STATUS-r2b-capture-auth.md` — R2b capture authorization
+- `docs/plans/STATUS-r2b-capture-auth.md` — R2b capture authorization (Arc Unbroken Key)
 - `docs/plans/STATUS-shadow-ledger-phase0.md` — Shadow Ledger Phase 0 delta capture
 - `docs/plans/STATUS-chroma-reconcile-tier-l.md` — Chroma Reconcile Tier L (**closed GREEN**; reference only)
 - `docs/plans/STATUS-complete-data-backup-correction-v2.md` — Complete-data backup correction v2
@@ -146,6 +146,7 @@ Known arc codenames (update when new arcs are named):
 | CodeQL Complex Therapy | CodeQL merge protection | **Closed** — technical controls PASS; Ryan-owned recurring attestation |
 | Runway Ledger | Agent Run identity tracking | **CLOSED** — core implementation merged (#215); hook-enable soak passed and #216 merged; other clients are future slices, not unfinished Runway work |
 | Recovery Authority | Provenance-aware complete-data recovery and rollback continuity | Active — T1 landed (PR #234); T2 landed (PR #236); T3 not authorized; V4k blocked on CG-2 Design A |
+| Unbroken Key | R2b capture authorization under continuously held canonical writer-gate possession | Active — Corrective IV FAIL at #252 tip `6b5a8f9`; Cursor corrective required |
 
 <!-- TIER_A_END -->
 
