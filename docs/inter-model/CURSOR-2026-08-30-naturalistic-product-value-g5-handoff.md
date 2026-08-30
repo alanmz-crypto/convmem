@@ -11,13 +11,14 @@
 
 | Field | Value |
 |---|---|
-| **State** | `READY_FOR_REVIEW` |
+| **State** | `READY_FOR_PR` |
 | **Branch** | `feat/2026-08-30-naturalistic-g5-dry-run` |
 | **Worktree** | `~/.local/share/convmem/worktrees/feat-2026-08-30-naturalistic-g5-dry-run` |
 | **Parent SHA** | `a1128b92d2b02aa77a96524ba353ca0da025ce01` (`origin/main` at grant time) |
-| **Tip SHA** | `23b2495927a9891070c7c294e45bdb641eaab352` |
+| **Implementation SHA** | `23b2495927a9891070c7c294e45bdb641eaab352` |
+| **Branch tip SHA** | `e249fa3901f6f7de23041be344136b0bdd97c20c` (docs stamp only) |
 | **Push status** | pushed to `origin` after freeze |
-| **PR** | not opened; G5 review precedes any merge decision |
+| **PR** | opened by PR Steward (URL in LATEST after push) |
 | **Ryan GATE** | After Kiro exact-SHA PASS, Ryan owns whether to merge G5. **No G6 grant is contained here.** |
 | **Classification** | `methodology_validation_not_product_evidence` |
 
@@ -124,7 +125,14 @@ Answer each with `PASS` or `FAIL` at the exact candidate SHA:
 6. Can G5 emit a positive, negative, or null/equivalent product conclusion, or assume G6 authority?
 7. Are the new T5–T7 checks synthetic mechanical packages only, and not a live Agent A/B runner or study controller?
 
-A PASS does not authorize G6, merge, or a product conclusion.
+## Independent review outcome
+
+Kiro issued **PASS** bound to exact implementation SHA `23b2495927a9891070c7c294e45bdb641eaab352` on 2026-08-30.
+All seven review questions passed. Verification independently reproduced:
+109 passed + 8 subtests; Pylint 10.00/10; `python -m eval_naturalistic.dry_run`
+exit 0 (20/20 scenarios demonstrated).
+
+A PASS does not authorize G6 or a product conclusion. Ryan owns merge.
 
 ## Leaving / picking up checklist
 
@@ -137,10 +145,10 @@ A PASS does not authorize G6, merge, or a product conclusion.
 
 **Reviewer (Kiro):**
 
-- [ ] Verify parent SHA `a1128b92d2b02aa77a96524ba353ca0da025ce01` and exact candidate tip.
-- [ ] Read architecture/execution G5 and STATUS.
-- [ ] Independently reproduce focused pytest and pylint.
-- [ ] Return exact-SHA `PASS` or `FAIL` without crossing into G6.
+- [x] Verify parent SHA `a1128b92d2b02aa77a96524ba353ca0da025ce01` and exact candidate tip.
+- [x] Read architecture/execution G5 and STATUS.
+- [x] Independently reproduce focused pytest and pylint.
+- [x] Return exact-SHA `PASS` without crossing into G6.
 
 ## Handoff summary
 
@@ -150,6 +158,6 @@ A PASS does not authorize G6, merge, or a product conclusion.
 **Why:** Prove the evaluation pipeline fail-closes before any prospective study.
 **How:** Hermetic fixtures, G4 seed reuse, named adversarial controls, and an explicit methodology-validation classification.
 
-**TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] G5 synthetic dry-run
-is ready for Kiro review. It is methodology validation, not product evidence, and
-it does not authorize G6.
+**TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] G5 is Kiro-PASS at
+exact SHA `23b2495927a9891070c7c294e45bdb641eaab352` and ready for Ryan merge. Methodology validation, not product
+evidence. G6 is not authorized.
