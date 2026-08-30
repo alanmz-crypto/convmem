@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-30 (`origin/main` is at `e930ae4c2fb67eabbfa570f7caacda8d9ddac79d`; branch and PR work named below is not on `main` unless explicitly stated)
+**Snapshot:** 2026-08-30 (`origin/main` is at `787a6ef8077f099820b8ab903777dd67951c9bb7`; branch and PR work named below is not on `main` unless explicitly stated)
 
 > **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. PR #221 is
 > squash-merged onto current main; its bounded writer-boundary and
@@ -48,7 +48,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 | CG-2 authority migration | Design A Execute-close is **LANDED** via PR #250 at `e930ae4c…`; the accepted D7 source was transplanted onto current main. A later retained-reference-v2 corrective remains branch-only and must not be attributed to `main`. V8c and every production step remain PENDING/unauthorized. | No further Design A landing work. Separately governed reference-v2 review/implementation may proceed only under its own accepted plan/grant. Do not run production D0/D1, publish fence/pointer, activate an owner, run GC, or enable Shadow/R2b. See [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md), [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md), and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
 | Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED**; PR #221 squash-merged at `722141d31e586151f361ef7006ad74c71cdff534` from final reviewed head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`; bounded writer-boundary and provenance-supersession corrections are on current `main` with Runway integration complete | No further T3 integration work. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
 | Recovery Authority | T1 landed via PR #234, T2 via PR #236, and scratch-only T3 via PR #238 at `d250feb2…`. T3 prepares an isolated replacement candidate and does not publish serving state or touch live authority. T4 remains unstarted; V4k remains **BLOCKED** on separately governed CG-2 reference-v2 closure. | T4 is next in the accepted sequence but **NOT AUTHORIZED**. V4k needs a later fresh grant after its dependency closes. No live restore, replacement, projection activation, serving, migration, mutation, or T5 campaign. |
-| Naturalistic product-value evaluation | Architecture, execution plan, and stacked G1–G4 implementation branches exist; latest remote tip is `fa7d68b4…`. **None is on `main`; no PR is open.** | Treat as branch-only implementation evidence. The plan grants no study execution: no Agent A/B run, episode collection, target adjudication, recapture, or product conclusion follows from these branches. |
+| Naturalistic product-value evaluation | G1–G4 methodology package is **LANDED on `main`** via squash-merged PR #255 at `787a6ef8…`; Kiro PASS remains bound to exact G4 implementation SHA `fa7d68b4…`; arc brief is [`STATUS-naturalistic-product-value.md`](../plans/STATUS-naturalistic-product-value.md). | Ryan must make a separate explicit G5 dry-run grant. Until then, no G5 execution, Agent A/B run, episode collection, target adjudication, recapture, product conclusion, G6 freeze, or live study. |
 | Portland baseline experiment | Protocol-v3 branch `experiment/2026-08-30-portland-rerun3-v3` ended in **RERUN3 SEED-GENERATION FAILURE** at `9ba72378…`; pre-v3 seed evidence is superseded but preserved. Nothing is on `main`. | No retry and no Agent B execution are authorized. Preserve the failed/superseded evidence; do not treat it as a product verdict. |
 
 ## Closed arcs — reference STATUS only
@@ -66,7 +66,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
   prior READY_FOR_PR handoff is historical.
 - Relocation retrieval scoping **landed** via PR #247 at `a19b5cbb`.
 - Shared writer-attestation hardening **landed** via PR #243 at `872a0e48`.
-- STATUS arc-brief pattern on `main` (#160–#161): four arc briefs + cross-arc rollup (this file).
+- STATUS arc-brief pattern on `main` (#160–#161): arc briefs + cross-arc rollup (this file); Naturalistic brief added in the post-merge reconciliation for PR #255.
 - Summarizer GPU contention fix: automated ingest uses `deepseek-v4-flash`; embed timeout 300s;
   `OLLAMA_MAX_LOADED_MODELS=2`; chunk failures logged/retried.
 - Prior C7 writer census was **removed 2026-08-06** after freeze lift — Shadow activation
@@ -97,9 +97,10 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [CG-2 VERIFY](../plans/VERIFY-cg2-production-activation.md) and [CG-2 RUNBOOK](../plans/RUNBOOK-cg2-production-activation.md)
 - [Runway Ledger STATUS](../plans/STATUS-agent-run-ledger.md)
 - [Recovery Authority STATUS](../plans/STATUS-recovery-authority.md)
+- [Naturalistic product-value STATUS](../plans/STATUS-naturalistic-product-value.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** `main` is `e930ae4c`: Recovery Authority T3 and CG-2 Design A
-Execute-close are landed but non-live; R2b and Naturalistic work are branch-only;
-Portland is stopped at seed-generation failure. No production activation or new
-operational authority follows from this snapshot.
+**TL;DR:** `main` is `787a6ef8`: Naturalistic G1–G4 methodology is landed but
+non-live; G5 and every study/live/product-disposition step remain Ryan-gated.
+Recovery/CG-2 remain non-live, R2b remains corrective/blocked, and Portland is
+stopped at seed-generation failure.
