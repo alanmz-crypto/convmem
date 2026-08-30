@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-30
 **Author:** Codex implementation and PR Steward lanes
-**For:** Ryan merge disposition
+**For:** Ryan's next-gate disposition
 **Authorization:** Ryan, 2026-08-30 (direct G4 implementation-lane assignment and handoff request)
 
 ---
@@ -11,14 +11,14 @@
 
 | Field | Value |
 |---|---|
-| **State** | `READY_FOR_RYAN_MERGE` |
+| **State** | `MERGED_G1_G4; G5_NOT_AUTHORIZED` |
 | **Branch** | `feat/2026-08-30-naturalistic-product-value-g4` |
 | **Review target** | `fa7d68b4b272a9802b0983c708800d6953ec45f8` |
 | **Parent** | `91cda5c56d5f9dd86c0afda1c2a6fe1d353f575b` (frozen G3 implementation) |
 | **Superseded G4 freeze** | `0e191c3197c7c950bdcbb7e1aaef0abe1bdc4e76` |
 | **Push status** | Review target pushed to `origin`; later integration, documentation, and G1–G3 lint-gate cleanup commits preserve the reviewed G4 bytes |
-| **PR** | [Combined G1–G4 delivery PR #255](https://github.com/alanmz-crypto/convmem/pull/255) is open against `main` |
-| **Ryan GATE** | Ryan owns merge disposition now that PR CI is green; no G5 or live-study authority |
+| **PR** | [Combined G1–G4 delivery PR #255](https://github.com/alanmz-crypto/convmem/pull/255) squash-merged to `main` as `787a6ef8077f099820b8ab903777dd67951c9bb7` |
+| **Ryan GATE** | Ryan owns the separate G5 grant and all later study/live gates; the merge grants no G5 or live-study authority |
 | **Track A ingest** | `/home/lauer/.codex/sessions/2026/08/30/rollout-2026-08-30T02-03-24-01a0517a-e776-7d41-b11a-c38d8c977954.jsonl` (nudge attempted; active file changed during ingest and watch should retry after debounce) |
 
 The implementation bytes reviewed remain exactly `fa7d68b`; do not substitute
@@ -146,8 +146,8 @@ Kiro answered the following questions with `PASS` at exact SHA `fa7d68b`:
 5. Can any path at this SHA emit a positive, negative, or null/equivalent product conclusion before later authorization?
 6. Did the corrective remain entirely within G4 and avoid implementing G5 mechanics?
 
-The exact-SHA PASS is now in Ryan/PR Steward disposition. It does not authorize
-G5, merge, G6, or a live study.
+The exact-SHA PASS is now landed through PR #255. It does not authorize G5,
+G6, or a live study; those remain separate Ryan-owned gates.
 
 ## Leaving / picking up checklist
 
@@ -156,7 +156,7 @@ G5, merge, G6, or a live study.
 - [x] G4 implementation committed and pushed.
 - [x] Focused verification recorded above.
 - [x] This handoff and `LATEST.md` pointer prepared on the same branch.
-- [ ] Arc STATUS update — no arc brief exists; procedural gap recorded above.
+- [x] Arc STATUS update — [`STATUS-naturalistic-product-value.md`](../plans/STATUS-naturalistic-product-value.md) and canonical routing are reconciled after merge.
 
 **Reviewer (completed):**
 
@@ -167,12 +167,13 @@ G5, merge, G6, or a live study.
 
 ## Handoff summary
 
-**Who:** Codex corrected the bounded G4 implementation and is stewarding PR delivery; Kiro independently reviewed it; Ryan owns merge disposition.
+**Who:** Codex corrected the bounded G4 implementation and stewarded PR delivery; Kiro independently reviewed it; Ryan owns the next gate.
 **What:** Fail-closed analysis/statistical machinery at `fa7d68b`.
 **When:** 2026-08-30, after the original `0e191c3` freeze was found to accept invalid inputs.
 **Why:** Prevent malformed or ambiguous evidence from producing trustworthy-looking co-primary results.
-**How:** Strict score/input validation, explicit opportunity/evaluability accounting, scorer independence, immutable parameter slots, and adversarial synthetic tests.
+**How:** Strict score/input validation, explicit opportunity/evaluability accounting, scorer independence, immutable parameter slots, and adversarial synthetic tests; the package is now on `main` without study authority.
 
 **TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] Kiro PASSed exact
-G4 SHA `fa7d68b`; PR #255 is technically merge-ready for Ryan, the remaining
-governance caveat is explicit, and G5/live work is unauthorized.
+G4 SHA `fa7d68b`; PR #255 is squash-merged at `787a6ef8`, the G1–G4 package is
+landed, and the remaining governance boundary is an explicit Ryan-owned G5
+grant. G5/live work is unauthorized until then.
