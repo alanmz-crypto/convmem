@@ -11,7 +11,7 @@
     "ingest.py:585",
     "ingest.py:947",
     "ingest.py:985",
-    "inter_model_index.py:201"
+    "inter_model_index.py:301"
   ],
   "open_production_write_store_call_sites": [
     "observe.py:234",
@@ -199,7 +199,7 @@
     },
     {
       "file": "inter_model_index.py",
-      "line": 201,
+      "line": 301,
       "snippet": "with production_chroma_write_session(entrypoint=\"inter_model_index\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
