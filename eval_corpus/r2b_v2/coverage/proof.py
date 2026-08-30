@@ -349,20 +349,19 @@ def _resolve_implementation_revision(
         if revision == "unknown" or not _GIT_SHA40.match(revision):
             raise CoverageProofError("trusted implementation revision is unavailable")
         return revision
-    if code_revision is not None:
-        tip = load_v2_implementation_tip()
-        if tip and tip != "unknown" and code_revision != tip:
-            raise CoverageProofError("implementation revision does not match bound inventory tip")
-        return code_revision
-    tip = load_v2_implementation_tip()
-    if tip and tip != "unknown":
-        if not _GIT_SHA40.match(tip):
-            raise CoverageProofError("bound inventory implementation tip is not authoritative")
-        return tip
-    revision = current_code_revision()
-    if revision == "unknown" or not _GIT_SHA40.match(revision):
+    executing = current_code_revision()
+    if executing == "unknown" or not _GIT_SHA40.match(executing):
         raise CoverageProofError("trusted implementation revision is unavailable")
-    return revision
+    tip = load_v2_implementation_tip()
+    if tip and tip != "unknown" and tip != executing:
+        raise CoverageProofError(
+            "implementation revision disagreement between executing code and inventory tip"
+        )
+    if code_revision is not None and code_revision != executing:
+        raise CoverageProofError(
+            "caller-supplied implementation revision disagrees with executing code"
+        )
+    return executing
 
 
 def _attestation_digest(att: dict[str, Any] | None) -> str:

@@ -214,14 +214,19 @@ def acquire_r2b_quiescence_lease(
         if revision == "unknown" or not re.match(r"^[0-9a-f]{40}$", revision):
             raise R2bQuiescenceLeaseError("trusted implementation revision is unavailable")
     else:
+        executing = current_code_revision()
+        if executing == "unknown" or not re.match(r"^[0-9a-f]{40}$", executing):
+            raise R2bQuiescenceLeaseError("trusted implementation revision is unavailable")
         tip = load_v2_implementation_tip()
-        revision = tip if tip and tip != "unknown" else current_code_revision()
-        if implementation_revision is not None and implementation_revision != revision:
+        if tip and tip != "unknown" and tip != executing:
+            raise R2bQuiescenceLeaseError(
+                "implementation revision disagreement between executing code and inventory tip"
+            )
+        if implementation_revision is not None and implementation_revision != executing:
             raise R2bQuiescenceLeaseError(
                 "caller-supplied implementation revision cannot mint trusted authority"
             )
-        if revision == "unknown" or len(revision) != 40:
-            raise R2bQuiescenceLeaseError("trusted implementation revision is unavailable")
+        revision = executing
     deadline = time.monotonic() + (timeout_ms / 1000.0)
     custodian: LockCustodian | None = None
     while True:

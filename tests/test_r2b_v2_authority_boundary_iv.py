@@ -63,14 +63,9 @@ class FakeCustodian:
 
 
 def _forged_capability() -> AuthorityMintCapability:
-    """Attempt to manufacture a capability object without canonical issuance."""
+    """Attempt to manufacture a capability object without vault issuance."""
     cap = object.__new__(AuthorityMintCapability)
-    cap._issuer_secret = b"forged-secret"  # pylint: disable=attribute-defined-outside-init
-    cap._phase = MintPhase.CENSUS  # pylint: disable=attribute-defined-outside-init
-    cap._binding_digest = "forged"  # pylint: disable=attribute-defined-outside-init
     cap._capability_id = "forged-id"  # pylint: disable=attribute-defined-outside-init
-    cap._trust_class = "production"  # pylint: disable=attribute-defined-outside-init
-    cap._census_stage = 0  # pylint: disable=attribute-defined-outside-init
     return cap
 
 
@@ -97,10 +92,8 @@ class R2bV2CorrectiveIVAdversarialTests(unittest.TestCase):
             _ = registry_mint._TRUSTED_REGISTRY  # type: ignore[attr-defined]
         with self.assertRaises(AttributeError):
             _ = registry_mint._FACADE  # type: ignore[attr-defined]
-        isolated = registry_mint._TrustedRegistry()  # type: ignore[attr-defined]
-        store = isolated._lease_records  # pylint: disable=protected-access
-        with self.assertRaises(AuthorityRegistryError):
-            store["attacker"] = "payload"
+        with self.assertRaises(AttributeError):
+            _ = registry_mint._TrustedRegistry  # type: ignore[attr-defined]
 
     def test_05_fake_gate_policy_cannot_mint_production_equivalent_authority(self) -> None:
         attacker_policy = GatePolicy(

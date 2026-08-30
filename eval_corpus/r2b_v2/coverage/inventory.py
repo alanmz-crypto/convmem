@@ -326,7 +326,11 @@ def _scan_route_entrypoint_mutation_sinks(entrypoint: str) -> list[str]:
     path = ROOT / module
     if not path.is_file():
         return []
-    patterns = (_GENERATION_STORE_CTOR, re.compile(r"ChromaStore\s*\("))
+    patterns = (
+        _GENERATION_STORE_CTOR,
+        re.compile(r"ChromaStore\s*\("),
+        _GENERATION_POINTER_WRITE,
+    )
     hits: list[str] = []
     text = path.read_text(encoding="utf-8", errors="replace")
     for i, line in enumerate(text.splitlines(), 1):
@@ -389,16 +393,13 @@ def scan_repo_for_unlisted_generation_pointer_writes() -> list[str]:
 
 
 def _scan_generation_pointer_write_uncached() -> list[str]:
-    listed_files = {
-        route["entrypoint"].split(":", maxsplit=1)[0]
-        for route in _STATIC_ROUTES
-        if route.get("category") == "cg2_d4"
-        and route.get("coverage_status") in _GOVERNED_ROUTE_STATUSES
-    }
+    listed_sites = _governed_mutation_sink_allowlist()
     hits: list[str] = []
     for site in _scan_repo_pattern(_GENERATION_POINTER_WRITE):
         rel = site.split(":", 1)[0]
-        if rel not in listed_files:
+        if rel.startswith("eval_corpus/"):
+            continue
+        if site not in listed_sites:
             hits.append(site)
     return hits
 
