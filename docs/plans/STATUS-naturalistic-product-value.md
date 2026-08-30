@@ -8,11 +8,11 @@
 
 **Current state:** G1–G4 remain landed on `main` through squash-merged PR #255 at
 `787a6ef8077f099820b8ab903777dd67951c9bb7`, with docs/routing reconciled at
-`a1128b92d2b02aa77a96524ba353ca0da025ce01`. Ryan granted G5. Cursor implemented
-a synthetic end-to-end dry-run on `feat/2026-08-30-naturalistic-g5-dry-run`.
-The candidate is **methodology validation, not product evidence**. G5 is not
-closed until independent Kiro review PASSes exact SHA
-`23b2495927a9891070c7c294e45bdb641eaab352`. No G6 authority is implied.
+`a1128b92d2b02aa77a96524ba353ca0da025ce01`. G5 synthetic dry-run is implemented
+on `feat/2026-08-30-naturalistic-g5-dry-run` at exact SHA `23b2495927a9891070c7c294e45bdb641eaab352` (branch tip
+`e249fa3901f6f7de23041be344136b0bdd97c20c` is docs-only). Kiro independently PASSed all seven review questions at
+that exact SHA. Classification remains **methodology validation, not product
+evidence**. G5 awaits Ryan merge decision; **G6 is not authorized**.
 
 ---
 
@@ -85,22 +85,21 @@ Key invariants:
 | G2 adjudication machinery | **DONE on `main`** | PR #255; no natural episode census has run |
 | G3 probe construction machinery | **DONE on `main`** | PR #255; no live key or study sample exists |
 | G4 analysis/statistical machinery | **DONE on `main`** | Kiro PASS at exact `fa7d68b`; focused 98 tests + 8 subtests; Pylint 10/10 |
-| G5 dry-run/fixture verification | **CANDIDATE AWAITING KIRO** | Ryan granted G5; synthetic dry-run implemented; not closed until exact-SHA Kiro PASS |
+| G5 dry-run/fixture verification | **KIRO PASS — AWAITING RYAN MERGE** | Exact SHA `23b2495927a9891070c7c294e45bdb641eaab352`; Kiro PASS 2026-08-30; PR opened; not product evidence |
 | G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED** | Requires closed G5, then a distinct Ryan grant |
 | Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-If Ryan sent you as **Kiro**, independently review the frozen G5 candidate at
-the exact SHA named in
-[`CURSOR-2026-08-30-naturalistic-product-value-g5-handoff.md`](../inter-model/CURSOR-2026-08-30-naturalistic-product-value-g5-handoff.md).
-Reproduce the focused verification. Return PASS or FAIL. Do not implement, merge,
-freeze G6, or interpret synthetic 0.3 as product evidence.
+If Ryan sent you to **merge or close G5**, read the open G5 PR and this brief.
+Kiro PASS is bound to exact SHA `23b2495927a9891070c7c294e45bdb641eaab352`. Squash-merge is OK. Landing G5 closes
+methodology dry-run verification only — it does **not** authorize G6, live study,
+threshold freeze, or any product conclusion.
 
-If Ryan sent you for status, the G5 candidate is implemented and awaiting that
-Kiro review. Do not infer G6, live study, or a product conclusion from G5 work.
+If Ryan sent you for **G6 or live study**, stop. G6 requires a separate explicit
+Ryan grant after G5 is merged.
 
-Ryan owns every transition into G6, live execution, and product interpretation.
+Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 
 ## 6. What Remains Before "Live"
 
@@ -109,7 +108,8 @@ Ryan owns every transition into G6, live execution, and product interpretation.
 - [x] Reconcile canonical routing and add this arc brief.
 - [x] Ryan explicitly grants G5 synthetic dry-run/fixture verification.
 - [x] Cursor implements only the granted G5 dry-run; retain synthetic-only data.
-- [ ] Independent Kiro review accepts the exact G5 candidate SHA.
+- [x] Independent Kiro review accepts the exact G5 candidate SHA (`23b2495927a9891070c7c294e45bdb641eaab352`).
+- [ ] Ryan merges G5 (squash OK).
 - [ ] Ryan separately authorizes G6 prospective freeze and later T7–T11 gates.
 - [ ] Only a fully authorized T10 path may produce a product disposition.
 
@@ -118,7 +118,7 @@ Ryan owns every transition into G6, live execution, and product interpretation.
 | Stop | Owner / invariant | What it blocks |
 |---|---|---|
 | G4 ceiling | Analysis contract; T10-only disposition rule | Any product conclusion from G1–G4 code or fixtures |
-| G5 review | Kiro, then Ryan | G5 is not closed until exact-SHA independent PASS; G6 remains unauthorized |
+| G5 merge | Ryan | Landing G5 closes dry-run verification; G6 remains unauthorized |
 | G6 and later grants | Ryan | Prospective frame, agents, episodes, scoring, and live ConvMem |
 | Pre-live numerical slots | Ryan after the required review | Choosing meaningful-advantage, equivalence, precision, sparsity, or scorer thresholds |
 | Corpus/live boundary | Arc execution plan | Corpus access, mutation, or ordinary-work campaign from this lane |
@@ -152,7 +152,8 @@ the session transcript separately under Track A.
 
 - 2026-08-30 — Codex: recorded PR #255 squash merge of G1–G4 on `main`, exact-SHA Kiro PASS, and the separate Ryan-owned G5 boundary.
 - 2026-08-30 — Cursor: implemented Ryan-granted G5 synthetic dry-run; candidate awaiting exact-SHA Kiro review. No product evidence. No G6 authority.
+- 2026-08-30 — Kiro: independent G5 PASS at exact SHA `23b2495927a9891070c7c294e45bdb641eaab352`; PR Steward opened merge PR for Ryan.
 
-**TL;DR:** G1–G4 remain on `main`; the G5 synthetic dry-run is implemented and
-classified as methodology validation, not product evidence. Next action is
-independent Kiro review of the exact candidate SHA. G6 is not authorized.
+**TL;DR:** G1–G4 remain on `main`; G5 dry-run is Kiro-PASS at `23b2495927a9891070c7c294e45bdb641eaab352` and
+awaiting Ryan merge. Methodology validation only — not product evidence. G6 is
+not authorized.
