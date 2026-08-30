@@ -346,7 +346,7 @@ def verify_route_sink_evidence() -> list[str]:
         if route.get("coverage_status") not in _GOVERNED_ROUTE_STATUSES:
             continue
         entrypoint = str(route.get("entrypoint", ""))
-        module = entrypoint.split(":", 1)[0]
+        module = entrypoint.split(":", maxsplit=1)[0]
         declared = frozenset(route.get("governed_mutation_sinks", ()))
         found = frozenset(_scan_route_entrypoint_mutation_sinks(entrypoint))
         if module in _READ_ONLY_GENERATION_STORE_MODULES:
@@ -390,7 +390,7 @@ def scan_repo_for_unlisted_generation_pointer_writes() -> list[str]:
 
 def _scan_generation_pointer_write_uncached() -> list[str]:
     listed_files = {
-        route["entrypoint"].split(":")[0]
+        route["entrypoint"].split(":", maxsplit=1)[0]
         for route in _STATIC_ROUTES
         if route.get("category") == "cg2_d4"
         and route.get("coverage_status") in _GOVERNED_ROUTE_STATUSES

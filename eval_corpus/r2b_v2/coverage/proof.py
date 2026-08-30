@@ -47,7 +47,7 @@ from eval_corpus.r2b_v2.coverage.inventory import (
     verify_inventory_matches_tip,
     verify_shadow_inventory_unchanged,
 )
-from eval_corpus.r2b_v2.gate_policy import GatePolicy, production_gate_policy, test_gate_policy
+from eval_corpus.r2b_v2.gate_policy import GatePolicy, resolve_trusted_gate_policy
 from eval_corpus.r2b_v2.lease import R2bQuiescenceLease, verify_r2b_quiescence_lease
 
 
@@ -317,17 +317,13 @@ def _resolve_gate_policy(
     gate_policy: GatePolicy | None,
     test_gate_path: Path | None,
 ) -> GatePolicy:
-    if gate_policy is not None and test_gate_path is not None:
-        raise CoverageProofError("gate_policy and test_gate_path are mutually exclusive")
-    if gate_policy is not None:
-        if gate_policy.policy_class != "test_fixture":
-            raise CoverageProofError(
-                "caller-supplied gate policy cannot mint trusted authority"
-            )
-        return gate_policy
-    if test_gate_path is not None:
-        return test_gate_policy(test_gate_path)
-    return production_gate_policy()
+    return resolve_trusted_gate_policy(
+        gate_policy,
+        test_gate_path,
+        error_cls=CoverageProofError,
+        mutual_exclusion_message="gate_policy and test_gate_path are mutually exclusive",
+        untrusted_policy_message="caller-supplied gate policy cannot mint trusted authority",
+    )
 
 
 def _resolve_implementation_revision(

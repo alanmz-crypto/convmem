@@ -1,4 +1,5 @@
 """Corrective III adversarial regressions — authority-boundary closure."""
+# pylint: disable=duplicate-code,protected-access
 
 from __future__ import annotations
 
