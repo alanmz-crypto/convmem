@@ -167,8 +167,6 @@ def _crush_parts_to_content(parts_raw) -> str:
 
 def _parse_crush(conn: sqlite3.Connection, filepath: str) -> list[dict]:
     """Crush: messages ordered by created_at; parts JSON holds turn text."""
-    from pathlib import Path
-
     workspace = ""
     p = Path(filepath)
     if p.name == "crush.db" and p.parent.name == ".crush":
