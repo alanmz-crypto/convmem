@@ -147,8 +147,12 @@ def _assert_canonical_issuer() -> None:
     )
 
 
-def _build_vault() -> dict[str, Any]:
-    """Hold all trusted authority state in one closure."""
+def _build_vault() -> dict[str, Any]:  # pylint: disable=too-many-statements
+    """Hold all trusted authority state in one closure.
+
+    Single closure is intentional: authority state must not be splittable
+    across helpers that would re-expose mutable backing surfaces.
+    """
     _mutation_root = object()
     _mutation_token: contextvars.ContextVar[Any] = contextvars.ContextVar(
         "r2b_v2_registry_mutation", default=None
@@ -157,7 +161,7 @@ def _build_vault() -> dict[str, Any]:
     _consumed_capability_ids: set[str] = set()
     _lock = threading.RLock()
 
-    class AuthorityMintCapability:
+    class AuthorityMintCapability:  # pylint: disable=redefined-outer-name
         """Opaque possession token — ledger-backed, not forgeable by field copy."""
 
         __slots__ = ("_capability_id",)
@@ -650,10 +654,10 @@ def _build_vault() -> dict[str, Any]:
             "census_stage": 0,
         }
         cap = object.__new__(AuthorityMintCapability)
-        cap._capability_id = cap_id  # pylint: disable=attribute-defined-outside-init
+        cap._capability_id = cap_id  # pylint: disable=attribute-defined-outside-init,protected-access
         return cap
 
-    def vault_dispatch(op: str, *args: Any, **kwargs: Any) -> Any:
+    def vault_dispatch(op: str, *args: Any, **kwargs: Any) -> Any:  # pylint: disable=redefined-outer-name
         with _lock:
             if op == "issue_census_capability":
                 return _issue_capability(
