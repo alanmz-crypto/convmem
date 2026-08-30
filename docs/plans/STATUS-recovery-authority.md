@@ -39,7 +39,7 @@ complete-data-v2 remains a legacy contract and is not migrated to v3.
 | `docs/plans/VERIFY-dependability-provenance.md` | Existing authoritative oracle rows; V4g–V4l/V8i/V8j/V8l remain deferred/PENDING and are not silently replaced. |
 | `complete_data_restore.py` / `backup_workflows.py` / `restic_snapshot.py` | Existing v2 restore/profile surfaces; the **complete-data-v3 substrate and registry validation now exist** (T1) and the **projection-agreement state machine now exists** (T2). |
 | `docs/RECOVER.md` | Existing v2 recovery guide and provenance integration boundary; **T1 v3 wording correction landed**. |
-| CG-1/CG-2 generation and serving surfaces | Existing bounded contracts; V4k execution remains blocked pending CG-2 Design A ratification and stable semantics. |
+| CG-1/CG-2 generation and serving surfaces | Ryan locked CG-2 reference-v2 semantics on 2026-08-29; exact corrective planning is awaiting independent review. V4k remains blocked until that serving/recovery contract is implemented and verified. |
 
 ## 4. Completion State
 
@@ -50,7 +50,7 @@ complete-data-v2 remains a legacy contract and is not migrated to v3.
 | Recovery Authority T1 | **COMPLETE / LANDED** via PR #234; squash SHA `cac3cc35b8a74d43f9d353554cb7c80cb2f13801` on `main` | — |
 | Recovery Authority T2 | **COMPLETE / INDEPENDENTLY VERIFIED / LANDED** via PR #236; reviewed tip `c91a218015caadb82ce6294358777234d90754e5`; landing SHA `62f0f2355543f1daefa237bfc0811f94d8982989` on `main` | — |
 | T3–T4 implementation | **NOT AUTHORIZED / NOT STARTED** | Scratch-only bulk recovery (V4j, plan task T3) is next but needs a separate Ryan grant |
-| V4k selected-generation/rollback execution | **BLOCKED (D1)** | CG-2 Design A ratification and stable generation/pointer semantics, then a fresh Ryan grant |
+| V4k selected-generation/rollback execution | **BLOCKED (D1)** | Reference-v2 corrective plan acceptance, implementation, same-reader/recovery verification, then a fresh Ryan grant |
 | Live recovery/activation | **NOT AUTHORIZED** | Separate Ryan operational grants; outside this package |
 
 ## 5. Your Role (read this to know what you're here to do)
@@ -76,8 +76,9 @@ T1 and T2 are complete and landed; T3 onward are not authorized.
 - [x] Ryan issues a separate T1 grant; T1 implemented, verified, and landed via PR #234 at `cac3cc35`.
 - [x] Ryan issues a separate T2 grant; T2 implemented, independently verified, and landed via PR #236.
 - [ ] T3 and T4 proceed only as separately granted downstream tasks (scratch-only bulk recovery, V4j, is next but NOT AUTHORIZED).
-- [ ] CG-2 Design A is ratified with stable generation/pointer semantics.
-- [ ] Only after that unlock, Ryan may separately grant V4k planning/execute work (D1).
+- [x] Ryan locks CG-2 retained-reference-v2 architecture semantics (2026-08-29).
+- [ ] Reference-v2 corrective plan receives exact-tip independent PASS and Ryan acceptance; implementation/verification then proceeds only under a separate grant.
+- [ ] Only after corrective closure may Ryan separately grant V4k planning/execute work.
 - [ ] Any live recovery, replacement, projection activation, or serving change
       requires a distinct Ryan operational grant.
 
@@ -88,7 +89,8 @@ T1 and T2 are complete and landed; T3 onward are not authorized.
   reopening.
 - No automatic v2→v3 migration or reinterpretation.
 - No stale projection fallback or serving from projection-pending state.
-- No V4k execution before CG-2 Design A ratification and stable semantics.
+- No V4k execution before CG-2 reference-v2 planning, implementation, and
+  serving/recovery verification close under their separate grants.
 - No dedicated DeepSeek R1 adversarial direct/API call without Ryan's explicit
   grant; routine ConvMem/Ollama tooling is unaffected.
 
@@ -124,6 +126,7 @@ planning artifacts.
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-08-29 | Codex Sol | Updated the V4k blocker: Ryan locked CG-2 reference-v2 semantics; corrective plan review, implementation, and serving/recovery verification still precede any fresh V4k grant. |
 | 2026-08-23 | Cursor | T2 Execute started: authority recovery / projection agreement state machine on feat branch. |
 | 2026-08-22 | Codex Luna | Created the Recovery Authority Execution Plan and VERIFY companion; T1–T4 remain unstarted and V4k is hard-blocked pending CG-2 Design A ratification. |
 | 2026-08-23 | Crush (DeepSeek V4 Flash) | T1 completed, independently Kiro-verified (off-GitHub), and landed via PR #234 at squash SHA `cac3cc35b8a74d43f9d353554cb7c80cb2f13801` on `main`; status synced to post-T1 current state. |
@@ -135,6 +138,7 @@ and landed on `main` (T1 via PR #234 `cac3cc35`; T2 via PR #236
 `62f0f235`). Recovered authority, projection validity, and serving readiness
 remain separate; T2 is non-serving. The next plan task, scratch-only bulk
 recovery (V4j, T3), is NOT AUTHORIZED; T4 remains unstarted/unauthorized; V4k
-(D1) remains blocked pending CG-2 Design A. No live recovery, migration,
+(D1) remains blocked pending independently accepted and implemented CG-2
+reference-v2 serving/recovery semantics. No live recovery, migration,
 activation, serving, or CG-2 authority is open.
 [Arc Recovery Authority]
