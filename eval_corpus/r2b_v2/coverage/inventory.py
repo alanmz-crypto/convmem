@@ -80,6 +80,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
+        "governed_mutation_sinks": ("convmem.py:638",),
     },
     {
         "route_id": "cg2_file_generation_pointer",
@@ -89,6 +90,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
+        "governed_mutation_sinks": (),
     },
     {
         "route_id": "cg2_source_reconciler",
@@ -107,6 +109,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
+        "governed_mutation_sinks": ("cg2_first_cutover.py:535",),
     },
     {
         "route_id": "cg2_file_generation_validate",
@@ -116,6 +119,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
+        "governed_mutation_sinks": ("file_generation_validate.py:67",),
     },
     {
         "route_id": "cg2_mixed_mode_control",
@@ -125,6 +129,10 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
+        "governed_mutation_sinks": (
+            "mixed_mode_control.py:33",
+            "mixed_mode_control.py:44",
+        ),
     },
     {
         "route_id": "cg2_serving_index_repository",
@@ -134,6 +142,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
+        "governed_mutation_sinks": ("serving_index_repository.py:211",),
     },
     {
         "route_id": "cg2_rehearsal",
@@ -143,6 +152,12 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
+        "governed_mutation_sinks": (
+            "cg2_rehearsal.py:199",
+            "cg2_rehearsal.py:332",
+            "cg2_rehearsal.py:382",
+            "cg2_rehearsal.py:951",
+        ),
     },
     {
         "route_id": "recovery_authority_restore",
@@ -292,21 +307,78 @@ def scan_repo_for_unlisted_generation_store_ctor() -> list[str]:
     return list(_cached_generation_store_ctor_scan())
 
 
-def _listed_generation_store_files() -> set[str]:
-    files = set(_READ_ONLY_GENERATION_STORE_MODULES)
+def _governed_mutation_sink_allowlist() -> frozenset[str]:
+    """Sink-level allowlist derived from route evidence — not filename-level."""
+    sinks: set[str] = set()
     for route in _STATIC_ROUTES:
         if route.get("coverage_status") not in _GOVERNED_ROUTE_STATUSES:
             continue
-        files.add(route["entrypoint"].split(":")[0])
-    return files
+        for site in route.get("governed_mutation_sinks", ()):
+            sinks.add(site)
+    for site in _load_shadow_chroma_sites():
+        sinks.add(str(site.get("entrypoint", "")))
+    return frozenset(s for s in sinks if s)
+
+
+def _scan_route_entrypoint_mutation_sinks(entrypoint: str) -> list[str]:
+    """Return mutation sink sites found in one route entrypoint module."""
+    module = entrypoint.split(":", 1)[0]
+    path = ROOT / module
+    if not path.is_file():
+        return []
+    patterns = (_GENERATION_STORE_CTOR, re.compile(r"ChromaStore\s*\("))
+    hits: list[str] = []
+    text = path.read_text(encoding="utf-8", errors="replace")
+    for i, line in enumerate(text.splitlines(), 1):
+        if line.strip().startswith("class ChromaStore"):
+            continue
+        for pattern in patterns:
+            if pattern.search(line):
+                hits.append(f"{module}:{i}")
+                break
+    return hits
+
+
+def verify_route_sink_evidence() -> list[str]:
+    """Fail when a governed route lacks sink-level evidence or has drift."""
+    errors: list[str] = []
+    for route in _STATIC_ROUTES:
+        if route.get("coverage_status") not in _GOVERNED_ROUTE_STATUSES:
+            continue
+        entrypoint = str(route.get("entrypoint", ""))
+        module = entrypoint.split(":", 1)[0]
+        declared = frozenset(route.get("governed_mutation_sinks", ()))
+        found = frozenset(_scan_route_entrypoint_mutation_sinks(entrypoint))
+        if module in _READ_ONLY_GENERATION_STORE_MODULES:
+            continue
+        undocumented = sorted(found - declared)
+        if undocumented:
+            errors.append(
+                f"route {route.get('route_id')}: undocumented mutation sinks {undocumented}"
+            )
+        stale = sorted(declared - found)
+        if stale:
+            errors.append(f"route {route.get('route_id')}: stale governed sinks {stale}")
+    return errors
+
+
+def _listed_generation_store_sites() -> set[str]:
+    allow = set(_governed_mutation_sink_allowlist())
+    for site in _scan_repo_pattern(_GENERATION_STORE_CTOR):
+        rel = site.split(":", 1)[0]
+        if rel in _READ_ONLY_GENERATION_STORE_MODULES:
+            allow.add(site)
+    return allow
 
 
 def _scan_generation_store_ctor_uncached() -> list[str]:
-    listed_files = _listed_generation_store_files()
+    listed_sites = _listed_generation_store_sites()
     hits: list[str] = []
     for site in _scan_repo_pattern(_GENERATION_STORE_CTOR):
         rel = site.split(":", 1)[0]
-        if rel not in listed_files and not rel.startswith("eval_corpus/"):
+        if rel.startswith("eval_corpus/"):
+            continue
+        if site not in listed_sites:
             hits.append(site)
     return hits
 
@@ -384,6 +456,7 @@ def build_static_route_inventory(
     unlisted_generation_store_sites = scan_repo_for_unlisted_generation_store_ctor()
     unlisted_generation_pointer_sites = scan_repo_for_unlisted_generation_pointer_writes()
     undocumented_mutation_sinks = scan_repo_for_undocumented_mutation_sinks()
+    route_sink_errors = verify_route_sink_evidence()
     payload = {
         "proof_class": "r2b_v2_static_route_inventory",
         "code_revision": revision,
@@ -394,6 +467,7 @@ def build_static_route_inventory(
         "unlisted_generation_store_ctor_sites": unlisted_generation_store_sites,
         "unlisted_generation_pointer_write_sites": unlisted_generation_pointer_sites,
         "undocumented_mutation_sinks": undocumented_mutation_sinks,
+        "route_sink_evidence_errors": route_sink_errors,
         "routes": sorted(routes, key=lambda r: r["route_id"]),
         "shadow_inventory_path": str(SHADOW_INVENTORY.relative_to(ROOT)),
     }
@@ -432,6 +506,9 @@ def verify_inventory_matches_tip(
         found = scanner()
         if found:
             errors.append(f"unlisted {label} sites: {found}")
+    route_sink_errors = verify_route_sink_evidence()
+    if route_sink_errors:
+        errors.extend(route_sink_errors)
     expected = build_static_route_inventory(code_revision=revision)
     if inventory.get("inventory_digest") != expected["inventory_digest"]:
         errors.append("inventory digest mismatch vs current tip")

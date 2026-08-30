@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import multiprocessing as mp
 import os
 import tempfile
@@ -26,6 +27,11 @@ from eval_corpus.r2b_v2.lease import (
     acquire_r2b_quiescence_lease,
 )
 from eval_corpus.r2b_v2.lock_custodian import custodian_for_tests
+
+
+def hermetic_implementation_revision(label: str) -> str:
+    """Deterministic 40-char test revision for hermetic authority fixtures."""
+    return hashlib.sha256(f"r2b-v2-test:{label}".encode()).hexdigest()[:40]
 
 
 def acquire_test_lease(  # pylint: disable=too-many-arguments
@@ -52,7 +58,11 @@ def acquire_test_lease(  # pylint: disable=too-many-arguments
         "timeout_ms": timeout_ms,
     }
     if implementation_revision is not None:
-        kwargs["implementation_revision"] = implementation_revision
+        kwargs["implementation_revision"] = (
+            hermetic_implementation_revision(implementation_revision)
+            if len(implementation_revision) != 40
+            else implementation_revision
+        )
     return acquire_r2b_quiescence_lease(**kwargs)
 
 
@@ -133,6 +143,7 @@ def clean_coverage_bundle(
     authority_digest: str = "auth-bind",
     open_evidence_digest: str = "open-bind",
 ) -> tuple:
+    revision = hermetic_implementation_revision(rev)
     chroma = root / "chroma"
     processed = root / "processed.json"
     export = root / "export"
@@ -141,13 +152,13 @@ def clean_coverage_bundle(
     export.mkdir(exist_ok=True)
     processed.write_text("{}", encoding="utf-8")
     gate = root / "gate.lock"
-    inv = build_static_route_inventory(code_revision=rev)
+    inv = build_static_route_inventory(code_revision=revision)
     diag = prove_zero_bypass_coverage(
         chroma_dir=chroma,
         processed_path=processed,
         export_root=export,
         test_gate_path=gate,
-        code_revision=rev,
+        code_revision=revision,
         static_inventory=inv,
     )
     trusted = mint_trusted_coverage_proof(diag)
@@ -161,7 +172,7 @@ def clean_coverage_bundle(
         monotonic_deadline=time.monotonic() + 30,
         bound_source_paths=(str(export), str(processed), str(chroma)),
         timeout_ms=5000,
-        implementation_revision=rev,
+        implementation_revision=revision,
     )
     return lease, trusted, chroma, processed, export, gate
 

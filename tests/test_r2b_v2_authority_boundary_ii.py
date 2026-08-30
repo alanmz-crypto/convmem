@@ -58,6 +58,7 @@ class R2bV2AuthorityBoundaryIITests(unittest.TestCase):
             gate_identity="attacker-gate",
             gate_path="/tmp/attacker.lock",
             open_evidence_digest="attacker-open",
+            composition_seal="forged-seal",
         )
         with self.assertRaises(AttributeError):
             getattr(registry_mint, "mint_source_authority_record")(forged)
@@ -162,7 +163,8 @@ class R2bV2AuthorityBoundaryIITests(unittest.TestCase):
                     gate_protocol=bindings.gate_protocol,
                 ),
             )
-            registry_mint.register_diagnostic_ticket(forged, provenance_seal="forged")
+            with self.assertRaises(AuthorityRegistryError):
+                registry_mint.register_diagnostic_ticket(forged, provenance_seal="forged")
             with self.assertRaises(AuthorityRegistryError):
                 registry_mint.mint_coverage_from_consumed_ticket(forged)
             lease.release()
