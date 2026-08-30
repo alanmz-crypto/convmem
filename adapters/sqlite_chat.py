@@ -5,6 +5,7 @@ Branches:
   - Open WebUI: flat `chat_message` rows
   - Crush: `sessions` + `messages` with JSON `parts` arrays
   - Cursor store.db: content-addressed blob DAG via latestRootBlobId
+  - OpenCode: `message` + `part` + `session` with JSON data columns
 """
 
 import json
@@ -166,8 +167,6 @@ def _crush_parts_to_content(parts_raw) -> str:
 
 def _parse_crush(conn: sqlite3.Connection, filepath: str) -> list[dict]:
     """Crush: messages ordered by created_at; parts JSON holds turn text."""
-    from pathlib import Path
-
     workspace = ""
     p = Path(filepath)
     if p.name == "crush.db" and p.parent.name == ".crush":
@@ -354,6 +353,104 @@ def _parse_openwebui(conn: sqlite3.Connection) -> list[dict]:
     return messages
 
 
+def _opencode_ms_to_iso(value) -> str | None:
+    """Convert OpenCode epoch-millisecond timestamp to ISO-8601 UTC."""
+    if value is None:
+        return None
+    try:
+        return datetime.fromtimestamp(int(value) / 1000, tz=timezone.utc).isoformat()
+    except (ValueError, OSError, OverflowError):
+        return None
+
+
+def is_sqlite_opencode_schema(tables: set[str]) -> bool:
+    """OpenCode's Drizzle store has singular message, part, and session tables."""
+    return {"message", "part", "session"}.issubset(tables)
+
+
+def _opencode_json(value) -> dict:
+    if isinstance(value, bytes):
+        value = value.decode("utf-8", errors="replace")
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _parse_opencode(conn: sqlite3.Connection) -> list[dict]:
+    """OpenCode: join message rows to their ordered text parts."""
+    messages: list[dict] = []
+    cursor = conn.execute(
+        "SELECT m.id, m.session_id, m.time_created, m.data, "
+        "p.time_created, p.id, p.data "
+        "FROM message m "
+        "JOIN part p ON p.message_id = m.id "
+        "ORDER BY m.session_id, m.time_created, m.id, p.time_created, p.id"
+    )
+
+    current_id: str | None = None
+    current_texts: list[str] = []
+    current_meta: dict = {}
+
+    def flush() -> None:
+        if not current_texts or not current_meta:
+            return
+        content = "\n\n".join(current_texts).strip()
+        if not content:
+            return
+        message = {
+            "role": current_meta["role"],
+            "content": content,
+            "timestamp": _opencode_ms_to_iso(current_meta["time_created"]),
+            "session_id": current_meta.get("session_id"),
+        }
+        if current_meta.get("model_id"):
+            message["model"] = current_meta["model_id"]
+        if current_meta.get("provider_id"):
+            message["provider"] = current_meta["provider_id"]
+        messages.append(message)
+
+    for message_id, session_id, time_created, raw_message, _, _, raw_part in cursor:
+        message_data = _opencode_json(raw_message)
+        role = message_data.get("role")
+        if role not in ("user", "assistant"):
+            continue
+
+        if message_id != current_id:
+            flush()
+            current_id = message_id
+            model = message_data.get("model")
+            current_meta = {
+                "role": role,
+                "time_created": time_created,
+                "session_id": session_id,
+                "model_id": message_data.get("modelID"),
+                "provider_id": message_data.get("providerID"),
+            }
+            if isinstance(model, dict):
+                current_meta["model_id"] = current_meta["model_id"] or model.get(
+                    "modelID"
+                )
+                current_meta["provider_id"] = current_meta["provider_id"] or model.get(
+                    "providerID"
+                )
+            current_texts = []
+
+        part_data = _opencode_json(raw_part)
+        text = part_data.get("text")
+        if (
+            part_data.get("type") == "text"
+            and isinstance(text, str)
+            and text.strip()
+        ):
+            current_texts.append(text.strip())
+
+    flush()
+    return messages
+
+
 def parse(filepath: str) -> list[dict]:
     """Parse a SQLite chat store into canonical messages.
 
@@ -372,6 +469,8 @@ def parse(filepath: str) -> list[dict]:
             return _parse_crush(conn, filepath)
         if "blobs" in tables and "meta" in tables:
             return _parse_cursor_store(conn, filepath)
+        if is_sqlite_opencode_schema(tables):
+            return _parse_opencode(conn)
         raise NotImplementedError(
             f"No SQLite adapter branch matches schema in {filepath} "
             f"(tables: {sorted(tables)[:10]}...)"
