@@ -1,6 +1,8 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-30 (live repository state reconciled at `main@e930ae4c`)
+**Updated:** 2026-08-30 (Tier-0 verification-sweep reviewer handoffs authored)
+
+- **[Arc Recent-Completions Verification Sweep] Tier-0 re-verification AUTHORIZED (2026-08-30, Ryan proxy GATE):** Who/What: Cursor drafted three reviewer handoffs after inventory + Claude evaluation; order `#253 → #221 → #202` (live-main risk first). When: evaluation closed; verdicts pending. Why: GAP rows — zero Copilot/Kiro verdict at landed SHA for trust-map (#253), write-gating integration (#221), CodeQL closeout (#202). How: route briefs to Kiro + Copilot audit-lane in sequence; Tier-1 queue follows verdicts. **Resume state:** `AUTHORIZED — verdicts pending`. Evidence: [`CURSOR-2026-08-30-verification-sweep-tier0-coordination-handoff.md`](CURSOR-2026-08-30-verification-sweep-tier0-coordination-handoff.md) · [#253 claims](CURSOR-2026-08-30-verification-sweep-253-claims-attestation-handoff.md) · [#221 integration](CURSOR-2026-08-30-verification-sweep-221-trapdoor-integration-handoff.md) · [#202 CodeQL](CURSOR-2026-08-30-verification-sweep-202-codeql-closeout-handoff.md).
 
 ## Current routing
 
