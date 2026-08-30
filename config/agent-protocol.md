@@ -124,6 +124,7 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-agent-run-ledger.md` — Runway Ledger Agent Run identity tracking (**closed**; reference only)
 - `docs/plans/STATUS-dependability-provenance.md` — Dependability and provenance Trust Arc (**T3 closed**; later gates deferred)
 - `docs/plans/STATUS-recovery-authority.md` — Recovery Authority T1/T2 execution (**landed via PR #234 and #236; T3 not authorized**)
+- `docs/plans/STATUS-naturalistic-product-value.md` — Naturalistic ConvMem product-value evaluation (**G1–G4 landed; G5 not authorized**)
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
 
