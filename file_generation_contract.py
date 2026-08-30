@@ -668,4 +668,3 @@ def validate_retained_legacy_reference_manifest(manifest: Mapping[str, Any]) -> 
         raise GenerationContractError("generation_id does not bind to reference-v2 inputs")
     refuse_failed_convert_v1_target_id(str(manifest["generation_id"]))
     validate_payload_hash(manifest, "manifest_payload_hash")
-

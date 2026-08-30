@@ -321,4 +321,3 @@ def test_recovery_eligibility_binds_rows(ref_v2_env):
 def test_malformed_embedding_raises_d0_attestation_error():
     with pytest.raises(D0AttestationError):
         vector_encoding_sha256([{"not": "a float"}])
-

@@ -2294,4 +2294,3 @@ def validate_retained_rollback_baseline_evidence_v2(
         raise RollbackBaselineError("membership qualification evidence is not valid")
 
     return payload
-

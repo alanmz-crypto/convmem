@@ -2293,4 +2293,3 @@ def validate_reference_v2_recovery_eligibility(
         "chroma_dir": str(chroma_dir),
         "evidence_bound": evidence is not None,
     }
-

@@ -234,4 +234,3 @@ def manifest_is_reference_v2(manifest: Mapping[str, Any]) -> bool:
         return is_retained_legacy_reference_manifest(manifest)
     except GenerationContractError:
         return False
-
