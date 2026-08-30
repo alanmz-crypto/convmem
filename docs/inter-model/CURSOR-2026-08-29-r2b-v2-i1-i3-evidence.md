@@ -9,11 +9,11 @@
 
 | Role | SHA |
 |---|---|
-| `implementation_tip` | `6379073235fc3ad5e84faa867d44eed5628f99c5` |
+| `implementation_tip` | `dfa282b95aa9cde941be67aa91bc8fb0033b09ab` |
 | `evidence_tip` | *(this commit)* |
 | `integration_base` | `e930ae4c2fb67eabbfa570f7caacda8d9ddac79d` |
 
-Inventory digest: `f27f782e849de61c0907f0b30fe97911f86148744d9d5a6a8213fb28740ae50d`
+Inventory digest: `9595f2d03763ef93215e339663aae3ce4e43fa227a649e194da9ed56b64ebbe2`
 
 ## Corrective III summary
 
@@ -31,6 +31,7 @@ Inventory digest: `f27f782e849de61c0907f0b30fe97911f86148744d9d5a6a8213fb28740ae
 - R2b v2 focused suite: **120 passed**, 1 skipped
 - Corrective III adversarial regressions: **16 tests** in `test_r2b_v2_authority_boundary_iii.py`
 - PR #247 relocation-scope regressions: **included in run — pass**
+- Pylint regression gate vs `e930ae4`: **PASS**
 
 ## Authority boundaries (unchanged)
 
