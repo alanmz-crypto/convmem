@@ -88,7 +88,7 @@ class SchemaRoundTripTests(unittest.TestCase):
         evidence = make_synthetic_evidence(episode=episode)
         registry = make_synthetic_registry(evidence=evidence)
         census = make_synthetic_census(registry=registry)
-        probe = make_synthetic_probe(registry=registry)
+        probe = make_synthetic_probe(registry=registry, census=census)
         scoring_key = make_synthetic_scoring_key(probe=probe)
         capture = make_synthetic_capture(registry=registry)
 

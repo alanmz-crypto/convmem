@@ -25,6 +25,7 @@ from eval_naturalistic.enums import (
     EvidenceCompletenessState,
     LeakageReviewDisposition,
     ParameterFreezeStatus,
+    ProbeFamilyKind,
     ReliabilityState,
     SamplingMode,
     StudyTerminalDisposition,
@@ -730,6 +731,160 @@ class CensusSampleManifestV1:
 
 
 @dataclass
+class ProbeAuthorProvenanceV1:
+    """Records bounded, explicit probe-author access and blindness claims."""
+
+    probe_author_id: str
+    target_id: str
+    access_recorded: bool
+    treatment_blind: bool
+    c0_c1_result_blind: bool
+    capture_retrieval_blind: bool
+    permitted_views: list[str]
+    forbidden_reference_tokens: list[str] = field(default_factory=list)
+
+    _FIELDS = {
+        "probe_author_id",
+        "target_id",
+        "access_recorded",
+        "treatment_blind",
+        "c0_c1_result_blind",
+        "capture_retrieval_blind",
+        "permitted_views",
+        "forbidden_reference_tokens",
+    }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ProbeAuthorProvenanceV1":
+        data = _require_dict(data, "ProbeAuthorProvenanceV1")
+        _require_no_unknown_props(data, cls._FIELDS, "ProbeAuthorProvenanceV1")
+        return cls(
+            probe_author_id=_require_str(data["probe_author_id"], "probe_author_id"),
+            target_id=_require_str(data["target_id"], "target_id"),
+            access_recorded=bool(data["access_recorded"]),
+            treatment_blind=bool(data["treatment_blind"]),
+            c0_c1_result_blind=bool(data["c0_c1_result_blind"]),
+            capture_retrieval_blind=bool(data["capture_retrieval_blind"]),
+            permitted_views=list(_require_list(data["permitted_views"], "permitted_views")),
+            forbidden_reference_tokens=list(data.get("forbidden_reference_tokens", [])),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "probe_author_id": self.probe_author_id,
+            "target_id": self.target_id,
+            "access_recorded": self.access_recorded,
+            "treatment_blind": self.treatment_blind,
+            "c0_c1_result_blind": self.c0_c1_result_blind,
+            "capture_retrieval_blind": self.capture_retrieval_blind,
+            "permitted_views": self.permitted_views,
+            "forbidden_reference_tokens": self.forbidden_reference_tokens,
+        }
+
+
+@dataclass
+class ScoringKeyContentV1:
+    """Answer-bearing scoring material kept in the scorer partition."""
+
+    header: ArtifactHeaderV1
+    probe_id: str
+    target_id: str
+    ground_truth_value: str
+    rubric_version: str
+
+    SCHEMA = f"{SCHEMA_NAMESPACE}/scoring-key-content-v1"
+    _FIELDS = {
+        "header",
+        "probe_id",
+        "target_id",
+        "ground_truth_value",
+        "rubric_version",
+    }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ScoringKeyContentV1":
+        data = _require_dict(data, "ScoringKeyContentV1")
+        _require_no_unknown_props(data, cls._FIELDS, "ScoringKeyContentV1")
+        return cls(
+            header=_header_from(data),
+            probe_id=_require_str(data["probe_id"], "probe_id"),
+            target_id=_require_str(data["target_id"], "target_id"),
+            ground_truth_value=_require_str(data["ground_truth_value"], "ground_truth_value"),
+            rubric_version=_require_str(data["rubric_version"], "rubric_version"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "header": _header_to(self.header),
+            "probe_id": self.probe_id,
+            "target_id": self.target_id,
+            "ground_truth_value": self.ground_truth_value,
+            "rubric_version": self.rubric_version,
+        }
+
+
+@dataclass
+class LeakageReviewManifestV1:
+    """Independent leakage reviewer sign-off bound to a probe digest."""
+
+    header: ArtifactHeaderV1
+    probe_id: str
+    probe_digest: str
+    reviewer_id: str
+    disposition: LeakageReviewDisposition
+    checklist_items: list[dict[str, Any]]
+    review_tool_version: str
+    sign_off_time: str
+    exception_record: str | None = None
+
+    SCHEMA = f"{SCHEMA_NAMESPACE}/leakage-review-manifest-v1"
+    _FIELDS = {
+        "header",
+        "probe_id",
+        "probe_digest",
+        "reviewer_id",
+        "disposition",
+        "checklist_items",
+        "review_tool_version",
+        "sign_off_time",
+        "exception_record",
+    }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LeakageReviewManifestV1":
+        data = _require_dict(data, "LeakageReviewManifestV1")
+        _require_no_unknown_props(data, cls._FIELDS, "LeakageReviewManifestV1")
+        return cls(
+            header=_header_from(data),
+            probe_id=_require_str(data["probe_id"], "probe_id"),
+            probe_digest=_require_str(data["probe_digest"], "probe_digest"),
+            reviewer_id=_require_str(data["reviewer_id"], "reviewer_id"),
+            disposition=_enum_from_value(
+                LeakageReviewDisposition, data["disposition"], "disposition"
+            ),
+            checklist_items=list(_require_list(data["checklist_items"], "checklist_items")),
+            review_tool_version=_require_str(data["review_tool_version"], "review_tool_version"),
+            sign_off_time=_require_str(data["sign_off_time"], "sign_off_time"),
+            exception_record=data.get("exception_record"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
+            "header": _header_to(self.header),
+            "probe_id": self.probe_id,
+            "probe_digest": self.probe_digest,
+            "reviewer_id": self.reviewer_id,
+            "disposition": self.disposition.value,
+            "checklist_items": self.checklist_items,
+            "review_tool_version": self.review_tool_version,
+            "sign_off_time": self.sign_off_time,
+        }
+        if self.exception_record is not None:
+            out["exception_record"] = self.exception_record
+        return out
+
+
+@dataclass
 class ScoringKeyV1:
     """Separately sealable scoring authority."""
 
@@ -781,13 +936,22 @@ class ProbeManifestV1:
     target_id: str
     episode_id: str
     probe_family_id: str
+    probe_family_kind: ProbeFamilyKind
     probe_author_id: str
     leakage_reviewer_id: str
     adjudicator_collision_check_passed: bool
     leakage_review_disposition: LeakageReviewDisposition
     prompt_content_digest: str
+    permitted_context_digest: str
+    probe_author_provenance_digest: str
+    target_registry_artifact_id: str
+    target_registry_digest: str
+    sample_manifest_artifact_id: str | None
+    sample_manifest_digest: str | None
     scoring_key_digest: str
     scoring_key_partition_identity: str
+    leakage_review_manifest_id: str
+    leakage_review_digest: str
 
     SCHEMA = f"{SCHEMA_NAMESPACE}/probe-manifest-v1"
     _FIELDS = {
@@ -796,13 +960,22 @@ class ProbeManifestV1:
         "target_id",
         "episode_id",
         "probe_family_id",
+        "probe_family_kind",
         "probe_author_id",
         "leakage_reviewer_id",
         "adjudicator_collision_check_passed",
         "leakage_review_disposition",
         "prompt_content_digest",
+        "permitted_context_digest",
+        "probe_author_provenance_digest",
+        "target_registry_artifact_id",
+        "target_registry_digest",
+        "sample_manifest_artifact_id",
+        "sample_manifest_digest",
         "scoring_key_digest",
         "scoring_key_partition_identity",
+        "leakage_review_manifest_id",
+        "leakage_review_digest",
     }
 
     @classmethod
@@ -815,6 +988,9 @@ class ProbeManifestV1:
             target_id=_require_str(data["target_id"], "target_id"),
             episode_id=_require_str(data["episode_id"], "episode_id"),
             probe_family_id=_require_str(data["probe_family_id"], "probe_family_id"),
+            probe_family_kind=_enum_from_value(
+                ProbeFamilyKind, data["probe_family_kind"], "probe_family_kind"
+            ),
             probe_author_id=_require_str(data["probe_author_id"], "probe_author_id"),
             leakage_reviewer_id=_require_str(
                 data["leakage_reviewer_id"], "leakage_reviewer_id"
@@ -830,28 +1006,60 @@ class ProbeManifestV1:
             prompt_content_digest=_require_str(
                 data["prompt_content_digest"], "prompt_content_digest"
             ),
+            permitted_context_digest=_require_str(
+                data["permitted_context_digest"], "permitted_context_digest"
+            ),
+            probe_author_provenance_digest=_require_str(
+                data["probe_author_provenance_digest"], "probe_author_provenance_digest"
+            ),
+            target_registry_artifact_id=_require_str(
+                data["target_registry_artifact_id"], "target_registry_artifact_id"
+            ),
+            target_registry_digest=_require_str(
+                data["target_registry_digest"], "target_registry_digest"
+            ),
+            sample_manifest_artifact_id=data.get("sample_manifest_artifact_id"),
+            sample_manifest_digest=data.get("sample_manifest_digest"),
             scoring_key_digest=_require_str(data["scoring_key_digest"], "scoring_key_digest"),
             scoring_key_partition_identity=_require_str(
                 data["scoring_key_partition_identity"],
                 "scoring_key_partition_identity",
             ),
+            leakage_review_manifest_id=_require_str(
+                data["leakage_review_manifest_id"], "leakage_review_manifest_id"
+            ),
+            leakage_review_digest=_require_str(
+                data["leakage_review_digest"], "leakage_review_digest"
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "header": _header_to(self.header),
             "probe_id": self.probe_id,
             "target_id": self.target_id,
             "episode_id": self.episode_id,
             "probe_family_id": self.probe_family_id,
+            "probe_family_kind": self.probe_family_kind.value,
             "probe_author_id": self.probe_author_id,
             "leakage_reviewer_id": self.leakage_reviewer_id,
             "adjudicator_collision_check_passed": self.adjudicator_collision_check_passed,
             "leakage_review_disposition": self.leakage_review_disposition.value,
             "prompt_content_digest": self.prompt_content_digest,
+            "permitted_context_digest": self.permitted_context_digest,
+            "probe_author_provenance_digest": self.probe_author_provenance_digest,
+            "target_registry_artifact_id": self.target_registry_artifact_id,
+            "target_registry_digest": self.target_registry_digest,
             "scoring_key_digest": self.scoring_key_digest,
             "scoring_key_partition_identity": self.scoring_key_partition_identity,
+            "leakage_review_manifest_id": self.leakage_review_manifest_id,
+            "leakage_review_digest": self.leakage_review_digest,
         }
+        if self.sample_manifest_artifact_id is not None:
+            out["sample_manifest_artifact_id"] = self.sample_manifest_artifact_id
+        if self.sample_manifest_digest is not None:
+            out["sample_manifest_digest"] = self.sample_manifest_digest
+        return out
 
     def agent_b_view(self) -> dict[str, Any]:
         """Public representation: binds key digest only, never key content."""
