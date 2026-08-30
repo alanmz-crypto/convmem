@@ -40,8 +40,8 @@ trust map.
 | Seq | Item | Execute handoff | Lane | Landed SHA | State |
 |-----|------|-----------------|------|------------|-------|
 | 1 | PR #253 project-state reconciliation | [KIRO-253 execute](KIRO-2026-08-30-verification-sweep-253-execute-handoff.md) | Kiro | `a924d388…` | **CLOSED** |
-| 2a | PR #221 Trapdoor T3 integration | [COPILOT-221 execute](COPILOT-2026-08-30-verification-sweep-221-execute-handoff.md) | Copilot audit-lane | `722141d…` | **ACTIVE** |
-| 2b | PR #221 Trapdoor T3 integration | [KIRO-221 execute](KIRO-2026-08-30-verification-sweep-221-execute-handoff.md) | Kiro | `722141d…` | Blocked on 2a |
+| 2a | PR #221 Trapdoor T3 integration | [COPILOT-221 execute](COPILOT-2026-08-30-verification-sweep-221-execute-handoff.md) | Copilot audit-lane | `722141d…` | **CLOSED — FAIL** |
+| 2b | PR #221 Trapdoor T3 integration | [KIRO-221 execute](KIRO-2026-08-30-verification-sweep-221-execute-handoff.md) | Kiro | `722141d…` | Blocked — remediation |
 | 3a | PR #202 CodeQL closeout | [KIRO-202 execute](KIRO-2026-08-30-verification-sweep-202-execute-handoff.md) | Kiro | `d10e1d5…` | Blocked on step 2 |
 | 3b | PR #202 CodeQL closeout | [COPILOT-202 execute](COPILOT-2026-08-30-verification-sweep-202-execute-handoff.md) | Copilot audit-lane | `d10e1d5…` | Blocked on 3a |
 
