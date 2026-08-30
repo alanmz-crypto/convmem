@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-28 (R2b v2 clean-base recovery candidate prepared; `main` is at `872a0e483dd5eff09ccaef3c655af82f5e81e92e`; reviewed base was `89a7e045b130f005f57539478d9a180cbea905df`)
+**Snapshot:** 2026-08-30 (`origin/main` is at `e930ae4c2fb67eabbfa570f7caacda8d9ddac79d`; branch and PR work named below is not on `main` unless explicitly stated)
 
 > **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. PR #221 is
 > squash-merged onto current main; its bounded writer-boundary and
@@ -29,9 +29,11 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - **Shadow Ledger Phase 0 code + corrective C1–C7 are on `main`** (#122, #126, #131, #134);
   shadow remains **disabled**. Activation requires **activation-ready evidence** then a
   separate Ryan grant — see [`STATUS-shadow-ledger-phase0.md`](../plans/STATUS-shadow-ledger-phase0.md).
-- **R2b capture** v1 code is on `main`, but its timing-only live path is superseded for
-  future execution by the v2 exclusive writer-gate amendment. Live capture remains
-  unauthorized; quarantined v1 and `2026-08-27-r2b-capture-02` packets must not be reused.
+- **R2b capture** v1 code and the v2 normative plan are on `main`, but v2 I1–I3
+  implementation exists only in draft PRs. PR #252 is the current carrier at
+  unreviewed Corrective V tip `20d7f567184500c33c9c82eb0d1c4d90fe6bc5f2`;
+  required Pylint is failing. Live capture remains unauthorized; quarantined v1
+  and `2026-08-27-r2b-capture-02` packets must not be reused.
 - Two non-fatal doctor warnings often present: legacy `embed_collection_identity` metadata
   and external restic freshness. They do not authorize corpus mutation or Shadow activation.
 
@@ -41,11 +43,13 @@ projection of the ledger/export, and production mutations remain explicitly gate
 |---|---|---|
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
-| R2b capture authorization | v2 writer-gate plan prepared; implementation and live capture unauthorized | Ryan architecture review → Cursor implementation → same-tip Copilot/Kiro review. Only then: policy-pending duration acceptance, fresh quiescence authority, packet ACCEPT, and **ACCEPT AND GRANT**. No v1 packet upgrade/reuse. |
+| R2b capture authorization | v2 I1–I3 is **branch-only active corrective implementation**. Draft PR #252 is the current carrier at `20d7f567…`, with required Pylint failing and no review PASS. Draft PRs #246/#248/#249/#251 are superseded but preserved. | Restore all required CI on one immutable tip → fresh Copilot audit → Kiro only after Copilot PASS → Ryan merge decision. No I4–I8, live gate, duration, packet ACCEPT, **ACCEPT AND GRANT**, or capture authority. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
-| CG-2 authority migration | Merged on `main` (#186); V8a **PASS** (Kiro independent sign-off); V8b (soak grant) **PASS**; **legacy-only soak completed and Ryan-accepted 2026-08-21**. Design A architecture papered (docs branch `docs/2026-08-21-cg2-design-a-arch-lock`, not yet merged). V8c first-owner packet **PENDING** — not authorized. | Next governed step: **Design A execution planning only**; no implementation/activation yet. V8c packet remains PENDING and comes **after** Design A implementation/evidence. Do not activate, publish fence/pointer, run GC, or enable Shadow/R2b. See [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md), [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md), and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
+| CG-2 authority migration | Design A Execute-close is **LANDED** via PR #250 at `e930ae4c…`; the accepted D7 source was transplanted onto current main. A later retained-reference-v2 corrective remains branch-only and must not be attributed to `main`. V8c and every production step remain PENDING/unauthorized. | No further Design A landing work. Separately governed reference-v2 review/implementation may proceed only under its own accepted plan/grant. Do not run production D0/D1, publish fence/pointer, activate an owner, run GC, or enable Shadow/R2b. See [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md), [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md), and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
 | Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED**; PR #221 squash-merged at `722141d31e586151f361ef7006ad74c71cdff534` from final reviewed head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`; bounded writer-boundary and provenance-supersession corrections are on current `main` with Runway integration complete | No further T3 integration work. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
-| Recovery Authority | Architecture locked `22852a07e66920874045e0e85c4572ab6c0b29b8`; Execution Plan accepted `b0c1dd226fa4e1f7cee5c74ae99a13191d7742ab` (Kiro PASS); **T1 landed** via PR #234 (squash SHA `cac3cc35b8a74d43f9d353554cb7c80cb2f13801`); **T2 complete, independently verified, and landed** via PR #236 (reviewed tip `c91a218015caadb82ce6294358777234d90754e5`; landing SHA `62f0f2355543f1daefa237bfc0811f94d8982989`); recovered authority / projection validity / serving readiness remain separate, T2 is non-serving; T3–T4 unstarted; V4k **BLOCKED** on CG-2 Design A ratification and stable generation/pointer semantics | Scratch-only bulk recovery (V4j, plan task T3) is next but NOT AUTHORIZED; T4 unstarted; D1/V4k blocked; no implementation, restore, activation, migration, live mutation, or T5 campaign. |
+| Recovery Authority | T1 landed via PR #234, T2 via PR #236, and scratch-only T3 via PR #238 at `d250feb2…`. T3 prepares an isolated replacement candidate and does not publish serving state or touch live authority. T4 remains unstarted; V4k remains **BLOCKED** on separately governed CG-2 reference-v2 closure. | T4 is next in the accepted sequence but **NOT AUTHORIZED**. V4k needs a later fresh grant after its dependency closes. No live restore, replacement, projection activation, serving, migration, mutation, or T5 campaign. |
+| Naturalistic product-value evaluation | Architecture, execution plan, and stacked G1–G4 implementation branches exist; latest remote tip is `fa7d68b4…`. **None is on `main`; no PR is open.** | Treat as branch-only implementation evidence. The plan grants no study execution: no Agent A/B run, episode collection, target adjudication, recapture, or product conclusion follows from these branches. |
+| Portland baseline experiment | Protocol-v3 branch `experiment/2026-08-30-portland-rerun3-v3` ended in **RERUN3 SEED-GENERATION FAILURE** at `9ba72378…`; pre-v3 seed evidence is superseded but preserved. Nothing is on `main`. | No retry and no Agent B execution are authorized. Preserve the failed/superseded evidence; do not treat it as a product verdict. |
 
 ## Closed arcs — reference STATUS only
 
@@ -58,6 +62,10 @@ projection of the ledger/export, and production mutations remain explicitly gate
 
 ## Recently completed, not active blockers
 
+- Watch subprocess OOM isolation **landed** via PR #245 at `3dd355a5`; the
+  prior READY_FOR_PR handoff is historical.
+- Relocation retrieval scoping **landed** via PR #247 at `a19b5cbb`.
+- Shared writer-attestation hardening **landed** via PR #243 at `872a0e48`.
 - STATUS arc-brief pattern on `main` (#160–#161): four arc briefs + cross-arc rollup (this file).
 - Summarizer GPU contention fix: automated ingest uses `deepseek-v4-flash`; embed timeout 300s;
   `OLLAMA_MAX_LOADED_MODELS=2`; chunk failures logged/retried.
@@ -91,4 +99,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Recovery Authority STATUS](../plans/STATUS-recovery-authority.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** T3 is CLOSED and PR #221 is squash-merged with the bounded writer-boundary/provenance-supersession corrections and Runway integration on current `main`; Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized.
+**TL;DR:** `main` is `e930ae4c`: Recovery Authority T3 and CG-2 Design A
+Execute-close are landed but non-live; R2b and Naturalistic work are branch-only;
+Portland is stopped at seed-generation failure. No production activation or new
+operational authority follows from this snapshot.
