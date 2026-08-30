@@ -1,8 +1,10 @@
-"""Naturalistic ConvMem product-value study methodology substrate (G1+G2+G3).
+"""Naturalistic ConvMem product-value study methodology substrate (G1+G2+G3+G4).
 
 G1: schema-only contracts, content-addressing, and cross-artifact validation.
 G2: adjudication workflow and sealed target-registry machinery.
 G3: probe construction, leakage review, and scoring-key freeze machinery.
+G4: bounded within-episode scores, co-primary aggregation, sparse/scorer reliability,
+    and information-gate parameter slots (synthetic/pre-live only).
 """
 
 from eval_naturalistic.adjudication import (
@@ -14,6 +16,22 @@ from eval_naturalistic.adjudication import (
     reject_capture_driven_registry_mutation,
     validate_registry_build,
     validate_registry_membership_immutable,
+)
+from eval_naturalistic.analysis import (
+    AnalysisAggregationResult,
+    CoPrimaryAggregationV1,
+    EpisodeRegistryViewV1,
+    InformationGateEvaluationV1,
+    REQUIRED_INFORMATION_PARAMETER_SLOTS,
+    ScorerReliabilityRecordV1,
+    ScorerSubmissionV1,
+    WithinEpisodeScoreV1,
+    aggregate_targets_to_within_episode_score,
+    compute_co_primary_aggregation,
+    evaluate_information_gate_readiness,
+    record_scorer_reliability,
+    reject_post_result_parameter_mutation,
+    validate_required_parameter_slots,
 )
 from eval_naturalistic.contracts import (
     ActionLatencyRecordV1,
@@ -92,10 +110,12 @@ __all__ = [
     "AdjudicationResolutionMethod",
     "AdjudicationWorkflowConfigV1",
     "AgentBTraceV1",
+    "AnalysisAggregationResult",
     "CandidateAdjudicationBundleV1",
     "CensusMode",
     "CensusSampleManifestV1",
     "CaptureDiagnosticState",
+    "CoPrimaryAggregationV1",
     "ConvMemCaptureStateV1",
     "EligibilityDisposition",
     "EpisodeDisposition",
@@ -103,6 +123,8 @@ __all__ = [
     "EpisodeOutcomeV1",
     "EpisodeRecordV1",
     "EpisodeRegistryStatus",
+    "EpisodeRegistryViewV1",
+    "InformationGateEvaluationV1",
     "LeakageCheckKind",
     "LeakageReviewDisposition",
     "LeakageReviewManifestV1",
@@ -115,11 +137,14 @@ __all__ = [
     "ProbeDraftV1",
     "ProbeFamilyKind",
     "ProbeManifestV1",
+    "REQUIRED_INFORMATION_PARAMETER_SLOTS",
     "RawEvidenceManifestV1",
     "RegistryBuildOutcome",
     "RegistryBuildResult",
     "ReliabilityState",
     "SamplingMode",
+    "ScorerReliabilityRecordV1",
+    "ScorerSubmissionV1",
     "ScoringKeyContentV1",
     "ScoringKeyV1",
     "StudyAnalysisV1",
@@ -129,14 +154,20 @@ __all__ = [
     "TrialCondition",
     "TrialIdentityV1",
     "TrialTerminalDisposition",
+    "WithinEpisodeScoreV1",
+    "aggregate_targets_to_within_episode_score",
     "artifact_content_digest",
     "build_evidence_adjudication_view",
     "build_sealed_probe_bundle",
     "build_sealed_target_registry",
+    "compute_co_primary_aggregation",
     "compute_text_digest",
+    "evaluate_information_gate_readiness",
     "make_artifact_id",
+    "record_scorer_reliability",
     "reject_capture_driven_registry_mutation",
     "reject_post_freeze_probe_mutation",
+    "reject_post_result_parameter_mutation",
     "reject_probe_repair_after_outcomes",
     "run_leakage_checklist",
     "validate_artifact_chain",
@@ -150,6 +181,7 @@ __all__ = [
     "validate_registry_build",
     "validate_registry_membership_immutable",
     "validate_registry_sample_parent_binding",
+    "validate_required_parameter_slots",
     "validate_role_collision",
     "validate_scoring_key_integrity_binding",
     "validate_scoring_key_separation",
