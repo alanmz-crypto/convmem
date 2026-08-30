@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+
 from eval_naturalistic.analysis import (
     EpisodeRegistryViewV1,
     REQUIRED_INFORMATION_PARAMETER_SLOTS,
@@ -49,6 +51,18 @@ def make_pending_parameter_slots() -> list[ParameterSlotV1]:
         )
         for name in sorted(REQUIRED_INFORMATION_PARAMETER_SLOTS)
     ]
+
+
+def make_post_result_threshold_fill_attempt() -> tuple[list[ParameterSlotV1], list[ParameterSlotV1]]:
+    """Synthetic post-result fill of a pending slot — for fail-closed tests only."""
+
+    before = make_pending_parameter_slots()
+    after = copy.deepcopy(before)
+    for slot in after:
+        if slot.slot_name == "meaningful_advantage":
+            slot.freeze_status = ParameterFreezeStatus.FROZEN
+            slot.value = "0.10"
+    return before, after
 
 
 def make_synthetic_target_score(

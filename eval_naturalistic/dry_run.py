@@ -37,6 +37,7 @@ from eval_naturalistic.analysis_fixtures import (
     G4_SYNTHETIC_FIXTURE_SEED,
     make_c1_better_than_c0_fixture,
     make_pending_parameter_slots,
+    make_post_result_threshold_fill_attempt,
     make_scorer_disagreement_fixture,
     make_target_rich_episode_target_scores,
     make_zero_target_episodes_fixture,
@@ -61,7 +62,6 @@ from eval_naturalistic.enums import (
     CaptureDiagnosticState,
     EligibilityDisposition,
     EpisodeRegistryStatus,
-    ParameterFreezeStatus,
     ProbeBuildOutcome,
     ReliabilityState,
     StudyTerminalDisposition,
@@ -714,12 +714,7 @@ def _adversarial_target_rich() -> G5ScenarioResult:
 
 
 def _adversarial_post_result_threshold() -> G5ScenarioResult:
-    before = make_pending_parameter_slots()
-    after = copy.deepcopy(before)
-    for slot in after:
-        if slot.slot_name == "meaningful_advantage":
-            slot.freeze_status = ParameterFreezeStatus.FROZEN
-            slot.value = "0.10"
+    before, after = make_post_result_threshold_fill_attempt()
     check = reject_post_result_parameter_mutation(before, after)
     return _scenario(
         "post_result_threshold_change",
