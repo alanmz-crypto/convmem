@@ -1,34 +1,41 @@
-# R2b v2 I1–I3 authority-boundary corrective II evidence (current-main integration)
+# R2b v2 I1–I3 authority-boundary corrective III evidence (current-main integration)
 
 **Arc:** R2b Capture Authorization
 **Integration base:** `e930ae4c2fb67eabbfa570f7caacda8d9ddac79d` (`origin/main` at publication)
-**Prior CI-red publication:** PR #251 @ `c870133` / implementation `5d72f45`
-**Status:** Current-main integration corrective — NOT operational VERIFY
+**Failed Corrective II review tip (preserved):** `d30173d5defd7879d70348080f72c6fda5a7056a`
+**Status:** Corrective III candidate — NOT operational VERIFY
 
 ## Two-SHA model
 
 | Role | SHA |
 |---|---|
-| `implementation_tip` | `539a1cf` |
+| `implementation_tip` | `6379073235fc3ad5e84faa867d44eed5628f99c5` |
 | `evidence_tip` | *(this commit)* |
 | `integration_base` | `e930ae4c2fb67eabbfa570f7caacda8d9ddac79d` |
 
-Inventory digest: `86256ddae6d81d6de55b4ed2a05abe47746a549b4b57798de220fdbd91ef51be`
+Inventory digest: `f27f782e849de61c0907f0b30fe97911f86148744d9d5a6a8213fb28740ae50d`
 
-## Integration corrective
+## Corrective III summary
 
-- Transplanted Corrective II (`5d72f45` semantics) onto `e930ae4` via cherry-pick + inventory integration
-- Classified landed CG-2 `cg2_rehearsal.py` `FileGenerationStore` sites as `cg2_d4` / `gated`
-- Zero-bypass scans: PASS (0 unlisted mutation sinks)
-- Pylint regression gate vs `e930ae4`: PASS
+- **Sealed registry stores:** backing dicts reject ordinary caller mutation; module-level registry exports blocked
+- **Lifecycle-gated minting:** census, lease acquisition, and source composition windows required for trusted inserts
+- **Custodian binding:** object-identity verification; substitution via registry overwrite forbidden
+- **Cascade invalidation:** lease/coverage invalidation revokes dependent source authority
+- **Issuance revalidation:** final lease+custodian re-check under composition window closes TOCTOU
+- **Canonical gate binding:** caller-supplied production gate policy and revision substitution refused
+- **Full SHA binding:** authority-bearing paths require 40-char git SHA; abbreviated tips fail closed
+- **Per-sink scanner governance:** mutation sinks listed at file:line; new sinks in known routes fail inventory
 
-## Authority-boundary design (unchanged)
+## Test evidence
 
-- Source-authority mint internalized: `compose_and_mint_source_authority`
-- No public `mint_source_authority_record` or `register_custodian`
-- Custodian registration lifecycle-only via `_register_lease_custodian`
-- Diagnostic provenance seal, one-shot tickets, coverage-to-lease binding, epoch invalidation
+- R2b v2 focused suite: **120 passed**, 1 skipped
+- Corrective III adversarial regressions: **16 tests** in `test_r2b_v2_authority_boundary_iii.py`
+- PR #247 relocation-scope regressions: **included in run — pass**
 
 ## Authority boundaries (unchanged)
 
 I4–I8: NONE | Production gate: NOT ACQUIRED | Live authority: NONE | 900s: NOT RATIFIED
+
+## Claim offered for independent review
+
+> Corrective III removes ordinary caller-controlled manufacture, substitution, replay, survival, and independent attestation of trusted R2b I1–I3 authority, while preserving a functional legitimate canonical authority lifecycle and detecting ungoverned current-main mutation sinks individually.
