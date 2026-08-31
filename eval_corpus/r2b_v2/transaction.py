@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -19,13 +20,20 @@ from eval_corpus.r2b_v2.capture_close import (
     release_gate_and_write_release_evidence,
     write_close_evidence,
 )
+from eval_corpus.r2b_v2.coverage.inventory import build_static_route_inventory
 from eval_corpus.r2b_v2.coverage.proof import (
     SourceAuthorityProof,
     TrustedCoverageProof,
+    mint_trusted_coverage_proof,
+    prove_zero_bypass_coverage,
     source_authority_from_lease_and_coverage,
 )
-from eval_corpus.r2b_v2.duration_policy import DurationPolicy, PhaseDeadlineTracker
-from eval_corpus.r2b_v2.lease import R2bQuiescenceLease
+from eval_corpus.r2b_v2.duration_policy import (
+    DurationPolicy,
+    PhaseDeadlineExpired,
+    PhaseDeadlineTracker,
+)
+from eval_corpus.r2b_v2.lease import R2bQuiescenceLease, acquire_r2b_quiescence_lease
 from eval_corpus.r2b_v2.materialization import materialize_v2_packet
 from eval_corpus.r2b_v2.packet import (
     accept_capture_packet,
@@ -42,6 +50,62 @@ SnapshotRecomputeFn = Callable[..., dict[str, Any]]
 
 class ScratchTransactionError(RuntimeError):
     """Scratch I4–I6 transaction failure."""
+
+
+def perform_scratch_acquisition(  # pylint: disable=too-many-arguments
+    tracker: PhaseDeadlineTracker,
+    *,
+    run_id: str,
+    chroma_dir: Path,
+    processed_path: Path,
+    export_root: Path,
+    gate_path: Path,
+    open_evidence_digest: str,
+    implementation_revision: str,
+    grant_digest: str = "scratch-grant",
+    authority_digest: str = "scratch-authority",
+) -> tuple[R2bQuiescenceLease, TrustedCoverageProof]:
+    """Coverage proof + writer-gate acquisition under acquisition_bound."""
+    tracker.start_phase("acquisition")
+    gate_path.parent.mkdir(parents=True, exist_ok=True)
+    if not gate_path.exists():
+        gate_path.touch()
+    inv = build_static_route_inventory(code_revision=implementation_revision)
+    diag = prove_zero_bypass_coverage(
+        chroma_dir=chroma_dir,
+        processed_path=processed_path,
+        export_root=export_root,
+        test_gate_path=gate_path,
+        code_revision=implementation_revision,
+        static_inventory=inv,
+    )
+    trusted = mint_trusted_coverage_proof(diag)
+    timeout_ms = max(1, int(tracker.policy.acquisition_bound * 1000))
+    try:
+        lease = acquire_r2b_quiescence_lease(
+            run_id=run_id,
+            grant_digest=grant_digest,
+            authority_digest=authority_digest,
+            test_lock_path=gate_path,
+            writer_coverage_digest=trusted.coverage_digest,
+            open_evidence_digest=open_evidence_digest,
+            monotonic_deadline=time.monotonic() + tracker.policy.transaction_deadline,
+            bound_source_paths=(
+                str(export_root),
+                str(processed_path),
+                str(chroma_dir),
+            ),
+            timeout_ms=timeout_ms,
+            implementation_revision=implementation_revision,
+        )
+    except TimeoutError as exc:
+        tracker.mark_consumed(reason="acquisition lock timeout")
+        raise PhaseDeadlineExpired(
+            "acquisition",
+            "acquisition lock wait exceeded acquisition_bound",
+        ) from exc
+    tracker.check_phase_bound("acquisition", tracker.policy.acquisition_bound)
+    return lease, trusted
 
 
 @dataclass(frozen=True)
@@ -69,11 +133,17 @@ def run_scratch_transaction(  # pylint: disable=too-many-arguments,too-many-loca
     future_argv: list[str],
     snapshot_recompute_fn: SnapshotRecomputeFn,
     runtime: dict[str, str],
+    tracker: PhaseDeadlineTracker | None = None,
 ) -> ScratchTransactionResult:
-    """End-to-end scratch I4→I6 path for benchmark readiness."""
+    """End-to-end scratch I4→I6 path for benchmark readiness.
+
+    When ``tracker`` is omitted a fresh tracker is created. Acquisition must be
+    enforced separately via :func:`perform_scratch_acquisition` before calling
+    this function with a pre-held lease.
+    """
     assert_scratch_transaction_paths(root=root, auth_dir=auth_dir, paths=paths)
-    tracker = PhaseDeadlineTracker.begin(duration_policy)
-    tracker.start_phase("acquisition")
+    if tracker is None:
+        tracker = PhaseDeadlineTracker.begin(duration_policy)
 
     machine = new_authority_state_machine(run_id)
     machine.transition(AuthorityState.PREPARED, reason="scratch prepare")
@@ -175,4 +245,50 @@ def run_scratch_transaction(  # pylint: disable=too-many-arguments,too-many-loca
         close_digest=close_digest,
         release_digest=release_digest,
         capture_result=capture_result,
+    )
+
+
+def run_scratch_transaction_with_acquisition(  # pylint: disable=too-many-arguments
+    *,
+    root: Path,
+    run_id: str,
+    paths: dict[str, str],
+    auth_dir: Path,
+    bundle_dir: Path,
+    duration_policy: DurationPolicy,
+    open_evidence_digest: str,
+    gate_identity: str | None = None,
+    implementation_revision: str,
+    future_argv: list[str],
+    snapshot_recompute_fn: SnapshotRecomputeFn,
+    runtime: dict[str, str],
+) -> ScratchTransactionResult:
+    """Composed scratch path: bounded acquisition then I4–I6 transaction."""
+    tracker = PhaseDeadlineTracker.begin(duration_policy)
+    lease, trusted = perform_scratch_acquisition(
+        tracker,
+        run_id=run_id,
+        chroma_dir=Path(paths["chroma_dir"]),
+        processed_path=Path(paths["processed"]),
+        export_root=Path(paths["export"]).parent,
+        gate_path=bundle_dir / "gate.lock",
+        open_evidence_digest=open_evidence_digest,
+        implementation_revision=implementation_revision,
+    )
+    resolved_gate_identity = gate_identity or trusted.gate_identity
+    return run_scratch_transaction(
+        root=root,
+        run_id=run_id,
+        lease=lease,
+        trusted_coverage=trusted,
+        paths=paths,
+        auth_dir=auth_dir,
+        duration_policy=duration_policy,
+        open_evidence_digest=open_evidence_digest,
+        gate_identity=resolved_gate_identity,
+        implementation_revision=implementation_revision,
+        future_argv=future_argv,
+        snapshot_recompute_fn=snapshot_recompute_fn,
+        runtime=runtime,
+        tracker=tracker,
     )

@@ -33,6 +33,14 @@ _AUTHORITY_CORE_SEEDS: tuple[str, ...] = (
     "eval_corpus/r2b_v2/trusted.py",
     "eval_corpus/r2b_v2/contract.py",
     "eval_corpus/r2b_v2/authority_state.py",
+    "eval_corpus/r2b_v2/duration_policy.py",
+    "eval_corpus/r2b_v2/capture_close.py",
+    "eval_corpus/r2b_v2/transaction.py",
+    "eval_corpus/r2b_v2/scratch_capture.py",
+    "eval_corpus/r2b_v2/scratch_isolation.py",
+    "eval_corpus/r2b_v2/materialization.py",
+    "eval_corpus/r2b_v2/packet.py",
+    "eval_corpus/r2b_v2/quiescence_evidence.py",
 )
 
 _AUTHORITY_ROUTE_ENTRYPOINTS: tuple[str, ...] = (
