@@ -6,10 +6,49 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from query import query_units
+from serving_authority import ServingBackendTransient
 from tests.serving_repo_mock import patch_query_serving
 
 
 class QueryUnitsSearchHardenTests(unittest.TestCase):
+    @patch("query._ledger_lookup_hits", return_value=[])
+    @patch("query._fallback_query_rows")
+    @patch("query.ollama_embed", return_value=[0.1, 0.2])
+    @patch("query.load_config")
+    @patch(
+        "rerank.rerank",
+        side_effect=lambda _query, candidates, _model, top_k: candidates[:top_k],
+    )
+    def test_readonly_open_uses_keyword_fallback(
+        self, _rerank, mock_cfg, _embed, fallback, _lookup
+    ):
+        mock_cfg.return_value = {
+            "models": {
+                "embed_model": "nomic-embed-text",
+                "ollama_host": "http://x",
+                "rerank_model": "x",
+            },
+            "index": {"chroma_dir": "/tmp/chroma"},
+            "query": {"rerank": False, "recency_weight": 0.0, "top_k_candidates": 20},
+        }
+        fallback.return_value = [
+            {
+                "id": "kw-1",
+                "metadata": {"title": "readonly hit"},
+                "document": "readonly hit",
+                "score": 0.5,
+            }
+        ]
+        with patch(
+            "serving_index_repository.open_serving_index_repository",
+            side_effect=ServingBackendTransient("readonly"),
+        ):
+            out = query_units("readonly query", top_k=1)
+
+        self.assertEqual(out[0]["id"], "kw-1")
+        self.assertEqual(out[0]["retrieval_mode"], "keyword_fallback")
+        fallback.assert_called_once()
+
     @patch("query._ledger_lookup_hits", return_value=[])
     @patch("query.ollama_embed", return_value=[0.1, 0.2])
     @patch("query.load_config")
