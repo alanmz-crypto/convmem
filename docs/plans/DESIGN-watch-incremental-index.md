@@ -2,7 +2,7 @@
 
 **Arc: Trapdoor Hunt**
 
-**Status:** REVISED after adversarial review → Ryan gate. Design-only; no implementation authority.
+**Status:** REVISED after adversarial review; interim relief applied 2026-08-31 → **READY for Ryan Execute-grant decision.** Design-only; no implementation authority.
 **Review:** Two independent adversarial reviewers (correctness attack + resource/ops attack) each broke the first draft. §3A had a **fatal prune flaw**; §3B (2G bound) and §3C (900s timeout) were quantitatively wrong. All findings are dispositioned in §10; §3–§5 below are the corrected design.
 **Author:** Kiro (design/review lane)
 **Date:** 2026-08-31
@@ -260,3 +260,67 @@ The append-never-prunes rule (C1) is the single most important constraint for an
 | Execute grant | Ryan-authorized permission for the implementer lane (Cursor) to write runtime code from a design. |
 | Copilot audit lane | Independent safety/isolation review lane in the team charter. |
 | PR #245 | The prior watch-OOM subprocess-cap fix; its config comment documents the low-cap cgroup-reclaim hang. |
+
+
+## 12. §3B profiling specification (precondition to the Execute grant)
+
+The units-in-flight bound `K` must be derived from measurement, not asserted. This section
+specifies the profile so the implementer produces a defensible `K`. **Scratch-only; no
+production writes.**
+
+**What to measure:** child-process RSS as a function of accepted units held in memory during
+one real large-file index — isolating the `evaluate_ingest_batch` accumulation
+(`ingest_dedupe.py`: `accepted_rows` of `(unit, doc, embedding, meta)` + O(n²) cosine +
+per-unit `query_units`).
+
+**Method (hermetic, scratch DB):**
+1. Point `CONVMEM_DATA_ROOT` (or config) at a throwaway data dir; copy a representative large
+   source (e.g. a ~5 MB transcript) into a scratch inventory.
+2. Instrument `_process_file_chunks` / the batch write with a sampler that records, per N
+   accepted units, `VmRSS` from `/proc/self/status` (reuse the `brief.py:_watch_process_memory`
+   read pattern) plus `tracemalloc` current/peak (as in `tests/test_file_generation_scale.py`).
+3. Run the index child under the systemd scope so the measured process is the real one.
+4. Plot RSS vs units-in-flight; find the slope (MB per resident unit) and the fixed floor
+   (Python + Chroma + client). Existing evidence floor: successful children peaked 3.4–4.5 GiB —
+   confirm how much of that is floor vs accumulation.
+
+**Deliverable:** a chosen `K` (flush interval) such that `floor + K × per_unit_MB + margin`
+sits under the target scope cap, plus the raw RSS-vs-units table in the Execute PR. If the
+floor alone is near the cap, that is a finding: the subprocess model needs the flush loop
+(3B) to be effective, and the cap must be set above the floor with margin.
+
+**Non-goal:** do not tune the embedding/model path here; 3C handles lifetime, 3B handles
+resident-set. Keep them separate.
+
+## 13. Prune-safety confirming trace (the C1 constraint, for the implementer)
+
+Verified directly against the tree (not reviewer-asserted):
+
+- `distill.py:125 make_unit_id(source_path, start_offset, title, unit_index)` =
+  `sha256(source_path \0 start_offset \0 unit_index)` — **title excluded**, so IDs are stable
+  across re-index **iff** `start_offset` (absolute message index) and `unit_index` are stable.
+- `chroma_store.py:494 delete_units_for_source(..., keep_ids, candidate_ids)` computes
+  `selected = candidate_ids − keep_ids` then `col.delete(selected)`.
+- Today's full rebuild is safe only because reparsing the whole file reproduces every prior
+  ID into `keep_ids`, so `selected` = only genuinely-removed chunks.
+
+**Implementer rules that follow (non-negotiable):**
+1. Append path calls `_index_one_file` with `snapshot=None` → `_prune_completed_reindex` never
+   runs → nothing is deleted. New/seam units are `store.add_unit` upserts only.
+2. Seam re-emission uses the **stored absolute `start_offset`** of the last window (from
+   `indexed_message_count`), never a restart at 0, so upserts land on the same IDs.
+3. A full rebuild (fallback) keeps today's snapshot + prune behavior unchanged.
+4. Add a regression test that appends one line to an already-indexed append-only file and
+   asserts the prior unit IDs still exist in Chroma afterward (guards against C1 regressing).
+
+## 14. Interim relief applied (2026-08-31)
+
+Ryan authorized and Kiro applied the config-only ceiling raise: `subprocess_memory_max`/
+`subprocess_memory_high` `6G → 12G` in `~/.config/convmem/config.toml` (both equal, per the
+#245 no-throttle-band pattern). Verified: the next spawned scope
+(`run-p514193-i553741.scope`) reported `MemoryMax=12G`, and the scope is a sibling of
+`convmem-watch.service` under `app.slice` (not nested), so the service's 8 G `MemoryMax` does
+not clip it. Children read config per-spawn — no watcher restart needed. This buys headroom
+using the host's ample RAM; it does **not** change the root cause. Swap remains disabled for
+the child (`MemorySwapMax=0`, hardcoded in `watch.py:_scoped_index_cmd`); with 12 G RAM the
+child should not need it at current file sizes.
