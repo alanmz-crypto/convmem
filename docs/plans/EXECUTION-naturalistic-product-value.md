@@ -1,11 +1,11 @@
 # Execution Plan — Naturalistic ConvMem Product-Value Study
 
-> **CORRECTIVE AMENDMENT — REVIEW REQUIRED — NOT AUTHORIZED FOR
-> IMPLEMENTATION OR EXECUTION.** Ryan accepted D1–D6 as the G5 corrective
-> design direction on 2026-08-30. This plan amendment authorizes no code,
-> parameter freeze, G6/T0 transition, Agent-A or Agent-B run, natural evidence
-> access, episode collection, target adjudication, scoring, target-directed
-> recapture, or product conclusion.
+> **CORRECTIVE DESIGN ACCEPTED — IMPLEMENTATION AND EXECUTION NOT AUTHORIZED.**
+> Kiro PASSed the co-versioned package at exact `b6a1ccf`; its two wording-only
+> corrections are `fde840b`. Ryan accepted that corrected design on 2026-08-30.
+> This acceptance authorizes no G5C code, parameter freeze, G6/T0 transition,
+> Agent-A or Agent-B run, natural evidence access, episode collection, target
+> adjudication, scoring, target-directed recapture, or product conclusion.
 >
 > **Arc:** Naturalistic ConvMem product-value evaluation
 >
@@ -1043,13 +1043,13 @@ an explicitly bounded requested correction tied to this plan revision:
 ## 19. Review and authorization sequence
 
 ```text
-Corrective architecture/execution amendment (Codex) — this revision
+Corrective architecture/execution amendment (Codex) — complete
         ↓
-Kiro exact-revision architecture/execution review
+Kiro exact-revision architecture/execution review — PASS at b6a1ccf
         ↓
-Ryan amendment acceptance or bounded correction request
+Ryan design acceptance — accepted with wording-only fde840b
         ↓
-Separate Ryan grant for bounded G5 corrective implementation, if accepted
+Separate Ryan grant for bounded G5C implementation — NOT GRANTED
         ↓
 Corrected G5 synthetic PASS and independent review
         ↓
@@ -1077,10 +1077,10 @@ collect natural episodes. The live study remains review-required.
       replay mismatch.
 - [x] Numerical/product-contract choices remain explicitly unresolved with
       evidence, authority, freeze point, and construct status.
-- [ ] Kiro independent execution-plan review.
-- [ ] Ryan execution-plan acceptance.
+- [x] Kiro independent architecture/execution PASS at exact `b6a1ccf`.
+- [x] Ryan design acceptance with wording-only corrections at `fde840b`.
 - [ ] Any implementation or live-study grant.
 
-**Next sequence:** Kiro exact-revision corrective review → Ryan
-acceptance/revision decision → only then a separately authorized bounded G5
-implementation slice. Gate remains C; G6/T0 remains closed.
+**Next sequence:** a separately authorized bounded G5C implementation grant, if
+Ryan chooses to issue one → synthetic correction → fresh independent review.
+Gate remains C; G6/T0 remains closed.

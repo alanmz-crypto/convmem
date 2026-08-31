@@ -17,8 +17,9 @@ corrective design direction, and Codex committed the bounded architecture and
 execution amendment at exact revision `b6a1ccff82ef2456d5b65be122e2e714f84f5ad2`.
 Kiro independently **PASSed** both files at that exact revision with two
 nonblocking wording corrections; Codex applied only those corrections at
-`fde840b`. Ryan's accept/revise decision is next. **No G5C implementation or
-G6/T0 work is authorized.**
+`fde840b`. Ryan has now **accepted the corrected design as design-only**.
+**No G5C implementation, G6/T0 work, corpus access, parameter selection, or
+product disposition is authorized.**
 
 ---
 
@@ -30,7 +31,7 @@ meaningful recovery and continuation when evaluated prospectively, symmetrically
 and with sealed evidence?
 
 **Done means:** a later, separately authorized prospective study can produce an
-auditable co-primary report and an allowed product disposition. A methodology
+auditable structured result tuple and an allowed product disposition. A methodology
 merge, dry-run, or partial result is not a product conclusion.
 
 ## 2. System Design (how the pieces connect)
@@ -78,8 +79,8 @@ Key invariants:
 
 | Surface | State |
 |---|---|
-| `docs/plans/ARCHITECTURE-naturalistic-product-value.md` | Kiro PASS at exact `b6a1ccf`; “four”→“five” wording correction applied at `fde840b`; non-authorizing |
-| `docs/plans/EXECUTION-naturalistic-product-value.md` | Kiro PASS at exact `b6a1ccf`; missing scorer-integrity wording restored at `fde840b`; non-authorizing |
+| `docs/plans/ARCHITECTURE-naturalistic-product-value.md` | Kiro PASS at exact `b6a1ccf`; “four”→“five” wording correction at `fde840b`; Ryan design-accepted; non-authorizing |
+| `docs/plans/EXECUTION-naturalistic-product-value.md` | Kiro PASS at exact `b6a1ccf`; scorer-integrity wording restored at `fde840b`; Ryan design-accepted; non-authorizing |
 | `eval_naturalistic/contracts.py`, `base.py`, `enums.py`, `digest.py` | G1 contract and identity substrate on `main` |
 | `eval_naturalistic/adjudication.py` and fixtures | G2 target census/adjudication scaffold on `main` |
 | `eval_naturalistic/probe_construction.py` and fixtures | G3 probe/key construction scaffold on `main` |
@@ -100,21 +101,20 @@ Key invariants:
 | G3 probe construction machinery | **DONE on `main`** | PR #255; no live key or study sample exists |
 | G4 analysis/statistical machinery | **DONE on `main`** | Kiro PASS at exact `fa7d68b`; focused 98 tests + 8 subtests; Pylint 10/10 |
 | G5 dry-run/fixture verification | **LANDED; METHODOLOGY GATE REOPENED — C** | Original composition defect remains in landed code; corrective design has Kiro PASS at `b6a1ccf` |
-| G5C corrective implementation/dry-run | **NOT AUTHORIZED** | Blocked on Ryan accept/revise and a separate bounded implementation grant; Kiro design PASS alone is not authority |
+| G5C corrective implementation/dry-run | **DESIGN ACCEPTED; IMPLEMENTATION NOT AUTHORIZED** | Requires a separate bounded Ryan implementation grant; design acceptance is not code authority |
 | G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Blocked on G5 corrective design, implementation, and fresh independent PASS before any separate Ryan grant |
 | Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-G5 code remains landed on `main`, but the methodology gate is **C — corrective
-required**. Ryan accepted D1–D6 as direction, not implementation authority.
+G5 code remains landed on `main`, and methodology gate **C** remains open until
+the accepted corrective is implemented and freshly reviewed. Ryan's acceptance
+is design-only.
 
-If Ryan sent you for **accept/revise advice**, use Kiro's PASS at exact
-`b6a1ccf` and confirm that `fde840b` contains only the two requested wording
-fixes. If Ryan sent you for **G5C implementation**, stop unless a later Ryan
-grant names that exact bounded row. If Ryan sent you for **G6 or live study**,
-stop. G6 remains closed until the corrective is accepted, implemented, and
-independently PASSed, followed by a fresh explicit Ryan grant.
+If Ryan sent you for **G5C implementation**, stop unless a later Ryan grant
+explicitly names the bounded G5C row and exact scope. If Ryan sent you for
+**G6 or live study**, stop. G6 remains closed until the corrective is
+implemented and independently PASSed, followed by a fresh explicit Ryan grant.
 
 If Ryan sent you for **status**, read this brief and [`LATEST.md`](../inter-model/LATEST.md).
 Do not infer product value from G1–G5 machinery or synthetic fixtures.
@@ -139,7 +139,7 @@ Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 - [x] Kiro accepts exact corrective revision `b6a1ccf` with two nonblocking
       wording corrections.
 - [x] Codex applies only those wording corrections at `fde840b`.
-- [ ] Ryan accepts or revises the Kiro-PASSed corrective design.
+- [x] Ryan accepts the Kiro-PASSed corrected methodology design as design-only.
 - [ ] Ryan separately grants bounded Cursor G5 corrective implementation.
 - [ ] Fresh independent review restores G5 PASS on the corrected scope.
 - [ ] Ryan separately authorizes G6 prospective freeze and later T7–T11 gates.
@@ -150,7 +150,7 @@ Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 | Stop | Owner / invariant | What it blocks |
 |---|---|---|
 | G4 ceiling | Analysis contract; T10-only disposition rule | Any product conclusion from G1–G4 code or fixtures |
-| G5 corrective | Ryan → Codex plan → Kiro review → Ryan implementation grant | Any corrective code before the design is accepted |
+| G5C implementation | Separate bounded Ryan grant after accepted design | Any corrective code; design acceptance alone is insufficient |
 | G6 grant | Ryan after corrected G5 PASS | Prospective study freeze and every live gate; not implied by landed code or synthetic results |
 | G6 and later grants | Ryan | Prospective frame, agents, episodes, scoring, and live ConvMem |
 | Pre-live numerical slots | Ryan after the required review | Choosing meaningful-advantage, equivalence, precision, sparsity, or scorer thresholds |
@@ -192,8 +192,9 @@ the session transcript separately under Track A.
 - 2026-08-30 — Ryan: requested focused ChatGPT advice on the six corrective methodology decisions before choosing or authorizing a plan.
 - 2026-08-30 — Codex: translated Ryan-accepted D1–D6 into exact corrective revision `b6a1ccf`; independent Kiro review is next and all implementation/live gates remain closed.
 - 2026-08-30 — Kiro/Codex: Kiro PASSed exact `b6a1ccf` with two nonblocking axis-wording corrections; Codex applied only those at `fde840b`; Ryan accept/revise is next.
+- 2026-08-30 — Ryan: accepted corrected design `b6a1ccf` + wording-only `fde840b` as design-only; G5C implementation and all live/T0 authority remain separately gated.
 
 **TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] G1–G5 remain on
-`main`, but gate C remains open. Kiro PASSed the non-authorizing amendment at
-exact `b6a1ccf`; its two wording corrections are at `fde840b`. Ryan
-accept/revise is next, with G5C implementation and G6/T0 still closed.
+`main`, but gate C remains open. Kiro PASSed `b6a1ccf`, and Ryan accepted it
+with wording-only `fde840b` as design-only. G5C implementation and G6/T0 remain
+closed pending separate grants and fresh review.

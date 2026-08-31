@@ -1,11 +1,11 @@
 # Architecture Direction — Naturalistic ConvMem Product-Value Study
 
-> **CORRECTIVE AMENDMENT — REVIEW REQUIRED — NOT AUTHORIZED FOR
-> IMPLEMENTATION.** Ryan accepted D1–D6 as the G5 corrective design direction
-> on 2026-08-30. This amendment is for independent Kiro review. It authorizes no
-> implementation, parameter selection or freeze, Agent A/B run, natural
-> evidence access, target-registry population, G6/T0 transition, corpus
-> mutation, scoring, or product conclusion.
+> **CORRECTIVE DESIGN ACCEPTED — IMPLEMENTATION NOT AUTHORIZED.** Kiro PASSed
+> the co-versioned architecture/execution package at exact `b6a1ccf`; its two
+> wording-only corrections are `fde840b`. Ryan accepted that corrected design
+> on 2026-08-30. This acceptance authorizes no G5C implementation, parameter
+> selection or freeze, Agent A/B run, natural evidence access, target-registry
+> population, G6/T0 transition, corpus mutation, scoring, or product conclusion.
 >
 > **Arc:** Naturalistic ConvMem product-value evaluation
 >
@@ -986,17 +986,17 @@ escalation trigger by itself.
 
 ## 23. Next gate
 
-This corrective amendment is ready for exact-revision Kiro design review.
-After review, Ryan decides whether to accept the amendment and separately
-authorize a bounded G5 implementation slice. No review PASS grants G6/T0,
-parameter freeze, natural evidence access, Agent A/B, scoring, or product
-interpretation.
+Kiro PASSed exact corrective revision `b6a1ccf`, and Ryan accepted it with the
+wording-only corrections at `fde840b`. The next possible action is a separately
+authorized bounded G5C implementation slice. Design acceptance itself grants no
+implementation, G6/T0, parameter freeze, natural evidence access, Agent A/B,
+scoring, or product interpretation.
 
 The gate remains **C**. It escalates to **D / constructed-panel redesign** only
 if the opportunity registry cannot be constructed without treatment/capture-
 derived information, or genuinely paired C0/C1 replay cannot be achieved
 without uncontrolled environment differences.
 
-**Next sequence:** Codex corrective amendment → Kiro exact-revision review →
-Ryan acceptance/revision decision → separately authorized bounded G5
-implementation, if any.
+**Next sequence:** separate Ryan G5C implementation grant, if any → bounded
+synthetic implementation → fresh independent review → later fresh Ryan G6/T0
+decision, if warranted.
