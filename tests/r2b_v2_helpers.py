@@ -249,3 +249,51 @@ def dual_coverage_chains(
     finally:
         lease_a.release()
         lease_b.release()
+
+
+def scratch_benchmark_candidate_policy() -> "DurationPolicy":
+    """Sol conditional candidates for scratch tests only — not production acceptance."""
+    from eval_corpus.r2b_v2.duration_policy import DurationPolicy
+
+    return DurationPolicy(
+        acquisition_bound=30.0,
+        hitl_reservation_bound=600.0,
+        capture_bound=120.0,
+        release_close_bound=20.0,
+        transaction_deadline=800.0,
+    )
+
+
+def scratch_transaction_fixture(
+    tmp_path: Path,
+    *,
+    run_id: str = "scratch-i456",
+    rev: str = "i456-rev",
+) -> dict[str, Any]:
+    """Hermetic I4–I6 scratch bundle under tmp_path."""
+    from eval_corpus.capture import recompute_source_snapshot
+    from tests.r2b_hermetic import capture_runtime, r2b_auth_dir, r2b_source_paths
+
+    root = tmp_path
+    paths = r2b_source_paths(root, run_id=run_id)
+    lease, trusted, *_ = clean_coverage_bundle(
+        root / "bundle",
+        rev,
+        run_id=run_id,
+        open_evidence_digest="open-scratch",
+    )
+    revision = hermetic_implementation_revision(rev)
+    return {
+        "root": root,
+        "run_id": run_id,
+        "paths": paths,
+        "auth_dir": r2b_auth_dir(root, run_id),
+        "runtime": capture_runtime(paths),
+        "lease": lease,
+        "trusted": trusted,
+        "open_evidence_digest": "open-scratch",
+        "gate_identity": trusted.gate_identity,
+        "implementation_revision": revision,
+        "future_argv": ["convmem", "capture", "--scratch"],
+        "snapshot_recompute_fn": recompute_source_snapshot,
+    }

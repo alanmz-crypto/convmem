@@ -107,16 +107,12 @@ class R2bV2AuthorityStateTests(unittest.TestCase):
         sm.transition(AuthorityState.COVERAGE_PROVEN, reason="coverage ok")
         self.assertEqual(sm.state, AuthorityState.COVERAGE_PROVEN)
 
-    def test_i4_plus_transition_blocked(self):
+    def test_snapshot_bound_requires_coverage_proven(self):
         sm = new_authority_state_machine("run-i4")
         sm.transition(AuthorityState.PREPARED, reason="init")
         sm.transition(AuthorityState.Q_AUTHORIZED, reason="prep")
-        sm.transition(AuthorityState.Q_ACQUIRING, reason="acquire")
-        sm.transition(AuthorityState.Q_HELD, reason="held")
-        sm.transition(AuthorityState.COVERAGE_PROVEN, reason="coverage")
-        with self.assertRaises(AuthorityStateError) as ctx:
-            sm.transition(AuthorityState.SNAPSHOT_BOUND, reason="i4 blocked")
-        self.assertIn("I4+", str(ctx.exception))
+        with self.assertRaises(AuthorityStateError):
+            sm.transition(AuthorityState.SNAPSHOT_BOUND, reason="skip coverage")
 
     def test_invalid_transition_refuses(self):
         sm = new_authority_state_machine("run-2")

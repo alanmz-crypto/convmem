@@ -33,43 +33,29 @@ class AuthorityState(str, Enum):
 
 _TERMINAL = frozenset({AuthorityState.ABORTED, AuthorityState.QUARANTINED})
 
-# I1–I3 substrate: transitions through COVERAGE_PROVEN only; I4+ blocked here.
+# Full v2 state machine including I4–I6 scratch-reachable transitions.
 _ALLOWED: dict[AuthorityState, frozenset[AuthorityState]] = {
     AuthorityState.NEW: frozenset({AuthorityState.PREPARED, *_TERMINAL}),
     AuthorityState.PREPARED: frozenset({AuthorityState.Q_AUTHORIZED, *_TERMINAL}),
     AuthorityState.Q_AUTHORIZED: frozenset({AuthorityState.Q_ACQUIRING, *_TERMINAL}),
     AuthorityState.Q_ACQUIRING: frozenset({AuthorityState.Q_HELD, *_TERMINAL}),
     AuthorityState.Q_HELD: frozenset({AuthorityState.COVERAGE_PROVEN, *_TERMINAL}),
-    AuthorityState.COVERAGE_PROVEN: frozenset({*_TERMINAL}),
-    # I4+ states exist for schema completeness; not reachable in I1–I3 substrate.
-    AuthorityState.SNAPSHOT_BOUND: frozenset({*_TERMINAL}),
-    AuthorityState.PACKET_DRAFTED: frozenset({*_TERMINAL}),
-    AuthorityState.PACKET_ACCEPTED: frozenset({*_TERMINAL}),
-    AuthorityState.MATERIALIZED: frozenset({*_TERMINAL}),
-    AuthorityState.CAPTURE_GRANTED: frozenset({*_TERMINAL}),
-    AuthorityState.CAPTURING: frozenset({*_TERMINAL}),
-    AuthorityState.FINAL_SOURCE_CHECKED: frozenset({*_TERMINAL}),
-    AuthorityState.SEALED: frozenset({*_TERMINAL}),
-    AuthorityState.CLOSING: frozenset({*_TERMINAL}),
+    AuthorityState.COVERAGE_PROVEN: frozenset({AuthorityState.SNAPSHOT_BOUND, *_TERMINAL}),
+    AuthorityState.SNAPSHOT_BOUND: frozenset({AuthorityState.PACKET_DRAFTED, *_TERMINAL}),
+    AuthorityState.PACKET_DRAFTED: frozenset({AuthorityState.PACKET_ACCEPTED, *_TERMINAL}),
+    AuthorityState.PACKET_ACCEPTED: frozenset({AuthorityState.MATERIALIZED, *_TERMINAL}),
+    AuthorityState.MATERIALIZED: frozenset({AuthorityState.CAPTURE_GRANTED, *_TERMINAL}),
+    AuthorityState.CAPTURE_GRANTED: frozenset({AuthorityState.CAPTURING, *_TERMINAL}),
+    AuthorityState.CAPTURING: frozenset(
+        {AuthorityState.FINAL_SOURCE_CHECKED, *_TERMINAL}
+    ),
+    AuthorityState.FINAL_SOURCE_CHECKED: frozenset({AuthorityState.SEALED, *_TERMINAL}),
+    AuthorityState.SEALED: frozenset({AuthorityState.CLOSING, *_TERMINAL}),
+    AuthorityState.CLOSING: frozenset({AuthorityState.CLOSED, *_TERMINAL}),
     AuthorityState.CLOSED: frozenset(),
     AuthorityState.ABORTED: frozenset(),
     AuthorityState.QUARANTINED: frozenset(),
 }
-
-_I4_PLUS = frozenset(
-    {
-        AuthorityState.SNAPSHOT_BOUND,
-        AuthorityState.PACKET_DRAFTED,
-        AuthorityState.PACKET_ACCEPTED,
-        AuthorityState.MATERIALIZED,
-        AuthorityState.CAPTURE_GRANTED,
-        AuthorityState.CAPTURING,
-        AuthorityState.FINAL_SOURCE_CHECKED,
-        AuthorityState.SEALED,
-        AuthorityState.CLOSING,
-        AuthorityState.CLOSED,
-    }
-)
 
 
 class AuthorityStateError(RuntimeError):
@@ -106,10 +92,6 @@ class AuthorityStateMachine:
         if self._resumed:
             raise AuthorityStateError(
                 "run cannot be resumed or reacquired by reconstructing state"
-            )
-        if nxt in _I4_PLUS:
-            raise AuthorityStateError(
-                f"I4+ transition to {nxt.value} is not authorized in I1–I3 substrate"
             )
         if self.terminal:
             raise AuthorityStateError(
