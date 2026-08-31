@@ -1,8 +1,11 @@
 # [Arc Naturalistic ConvMem product-value evaluation] G5 Methodology Corrective Handoff
 
-**Date:** 2026-08-30  
-**Author:** Codex Sol, with delegated Codex Luna T9 falsification support  
-**For:** Codex architecture/planning lane; then Kiro exact-revision design review  
+**Date:** 2026-08-30
+
+**Author:** Codex Sol, with delegated Codex Luna T9 falsification support
+
+**For:** Codex architecture/planning lane; then Kiro exact-revision design review
+
 **Authorization:** Ryan, 2026-08-30 — select the best collaborator, delegate down where possible, and create a handoff
 
 ---
@@ -30,12 +33,16 @@ agreed with C and found no basis for D/full redesign yet.
 
 **Who:** Ryan owns every methodology choice and later grant; Codex may author a
 corrective plan only after authorization; Kiro reviews the exact plan revision;
-Cursor implements only after a later bounded grant.  
+Cursor implements only after a later bounded grant.
+
 **What:** One corrective amendment spanning estimand, validator/state,
-disposition/roles/environment/scoring, and G5 acceptance.  
-**When:** Before any G5 corrective code and before any G6/T0 activity.  
+disposition/roles/environment/scoring, and G5 acceptance.
+
+**When:** Before any G5 corrective code and before any G6/T0 activity.
+
 **Why:** Prevent post-treatment selection, incomplete prospective state, or
-unblinded scoring from producing a confidently wrong product conclusion.  
+unblinded scoring from producing a confidently wrong product conclusion.
+
 **How:** Resolve the decisions below, amend the existing architecture rather
 than layering duplicate subsystems, then require exact-revision review.
 
