@@ -14,12 +14,12 @@
 
 | Field | Value |
 |---|---|
-| **State** | `BLOCKED_ON_RYAN` — decision packet ready; corrective-plan authoring not yet granted |
+| **State** | `IN_PROGRESS` — ChatGPT advisory requested; corrective-plan authoring not yet granted |
 | **Branch** | `plan/2026-08-30-naturalistic-g5-methodology-corrective-handoff` |
 | **Tip SHA** | Branch tip containing this handoff |
 | **Push status** | Pushed to origin after each commit |
 | **PR** | Not opened; Ryan did not authorize PR creation |
-| **Ryan GATE** | Decide the six methodology choices below, then explicitly authorize a bounded architecture/execution corrective if desired |
+| **Ryan GATE** | Review ChatGPT's advice, decide the six methodology choices below, then explicitly authorize a bounded architecture/execution corrective if desired |
 | **Track A ingest** | Codex rollout indexed under the session-start protocol |
 
 ## Consequence for Ryan
@@ -69,6 +69,10 @@ Luna's verdict was **REVISE / gate C**:
   contracts need one bounded planning amendment before code.
 
 ## Ryan decisions required
+
+Ryan requested a focused ChatGPT advisory before locking these choices. Use
+[`CHATGPT-2026-08-30-naturalistic-g5-corrective-advisory-handoff.md`](CHATGPT-2026-08-30-naturalistic-g5-corrective-advisory-handoff.md)
+as the review packet; ChatGPT advises, while Ryan retains every decision.
 
 1. **Missingness policy:** bounds plus per-arm process accounting, a predeclared
    composite failure outcome, or tolerance-only non-comparability. Recommended:
