@@ -576,5 +576,39 @@ class ProspectiveManifestG5CTests(unittest.TestCase):
         ]
         self.assertNotEqual(param.annotation, bytes)
 
+    def test_pending_slots_fail_frame_frozen_transition(self):
+        from eval_naturalistic.contracts import (
+            make_frozen_prospective_manifest,
+            make_pending_prospective_manifest,
+            seal_artifact_dict,
+            validate_prospective_manifest_freeze_transition,
+            validate_prospective_manifest_structural,
+        )
+        from eval_naturalistic.digest import artifact_content_digest
+        from eval_naturalistic.fixtures import make_synthetic_frame
+
+        frame = make_synthetic_frame()
+        pending = make_pending_prospective_manifest(frame=frame)
+        pending_body = seal_artifact_dict(pending.to_dict(), seal_time="2026-08-30T01:00:00Z")
+        pending_body["logged_freeze_digest"] = artifact_content_digest(pending_body)
+
+        draft_ok = validate_prospective_manifest_structural(pending_body, require_logged_freeze=False)
+        self.assertTrue(draft_ok.ok, draft_ok.errors)
+        freeze_fail = validate_prospective_manifest_freeze_transition(
+            pending_body,
+            require_logged_freeze=True,
+        )
+        self.assertFalse(freeze_fail.ok)
+        self.assertTrue(any("pending at FRAME_FROZEN" in err for err in freeze_fail.errors))
+
+        frozen = make_frozen_prospective_manifest(frame=frame)
+        frozen_body = seal_artifact_dict(frozen.to_dict(), seal_time="2026-08-30T01:00:00Z")
+        frozen_body["logged_freeze_digest"] = artifact_content_digest(frozen_body)
+        freeze_ok = validate_prospective_manifest_freeze_transition(
+            frozen_body,
+            require_logged_freeze=True,
+        )
+        self.assertTrue(freeze_ok.ok, freeze_ok.errors)
+
 if __name__ == "__main__":
     unittest.main()

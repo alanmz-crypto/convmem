@@ -1903,6 +1903,22 @@ def make_complete_prospective_policy_text() -> dict[str, Any]:
   }
 
 
+def make_frozen_synthetic_information_slots() -> list[ParameterSlotV1]:
+    """Fixture-only frozen slot values for synthetic T0 freeze exercises — not live parameters."""
+
+    authority = "synthetic-t0-freeze-authority-v1"
+    return [
+        ParameterSlotV1(
+            slot_name=name,
+            freeze_status=ParameterFreezeStatus.FROZEN,
+            value=f"synthetic-fixture-{name}-v1",
+            authority=authority,
+            construct_defining=True,
+        )
+        for name in sorted(PROSPECTIVE_INFORMATION_SLOT_NAMES)
+    ]
+
+
 def make_pending_prospective_manifest(*, frame: EpisodeFrameV1) -> ProspectiveManifestV1:
     policy = make_complete_prospective_policy_text()
     header = ArtifactHeaderV1(
@@ -1922,6 +1938,38 @@ def make_pending_prospective_manifest(*, frame: EpisodeFrameV1) -> ProspectiveMa
         frame_artifact_id=frame.header.artifact_id,
         frame_digest=frame.header.content_digest or "",
         information_slots=make_pending_information_slots(),
+        opportunity_authority_rule=policy["opportunity_authority_rule"],
+        failure_reason_taxonomy=policy["failure_reason_taxonomy"],
+        missing_outcome_bounds_policy=policy["missing_outcome_bounds_policy"],
+        orthogonal_state_precedence=policy["orthogonal_state_precedence"],
+        paired_replay_policy=policy["paired_replay_policy"],
+        scorer_integrity_policy=policy["scorer_integrity_policy"],
+        scorer_reliability_policy=policy["scorer_reliability_policy"],
+        logged_freeze_digest=None,
+    )
+
+
+def make_frozen_prospective_manifest(*, frame: EpisodeFrameV1) -> ProspectiveManifestV1:
+    """Synthetic manifest eligible for FRAME_FROZEN transition (fixture values only)."""
+
+    policy = make_complete_prospective_policy_text()
+    header = ArtifactHeaderV1(
+        artifact_id="pending",
+        schema_version=ProspectiveManifestV1.SCHEMA,
+        parent_artifact_id=frame.header.artifact_id,
+        parent_digest=frame.header.content_digest,
+        created_at="2026-08-30T00:00:00Z",
+        seal_time=None,
+        responsible_role="study_owner",
+        content_digest=None,
+        sealed=False,
+    )
+    return ProspectiveManifestV1(
+        header=header,
+        study_id=frame.study_id,
+        frame_artifact_id=frame.header.artifact_id,
+        frame_digest=frame.header.content_digest or "",
+        information_slots=make_frozen_synthetic_information_slots(),
         opportunity_authority_rule=policy["opportunity_authority_rule"],
         failure_reason_taxonomy=policy["failure_reason_taxonomy"],
         missing_outcome_bounds_policy=policy["missing_outcome_bounds_policy"],
@@ -1992,6 +2040,57 @@ def validate_prospective_manifest_structural(
         header_digest = manifest.header.content_digest
         if header_digest is not None and header_digest != rederived:
             errors.append("header content_digest does not match re-derived serialized digest")
+
+    return NaturalisticValidation(errors=errors)
+
+
+def validate_prospective_manifest_freeze_transition(
+    serialized_body: dict[str, Any],
+    *,
+    require_logged_freeze: bool = True,
+) -> NaturalisticValidation:
+    """Reject FRAME_FROZEN when required information slots remain draft-state PENDING."""
+
+    from eval_naturalistic.base import NaturalisticValidation
+
+    structural = validate_prospective_manifest_structural(
+        serialized_body,
+        require_logged_freeze=require_logged_freeze,
+    )
+    errors = list(structural.errors)
+    if errors:
+        return NaturalisticValidation(errors=errors)
+
+    try:
+        manifest = ProspectiveManifestV1.from_dict(serialized_body)
+    except StructuralContractError as exc:
+        return NaturalisticValidation(errors=[str(exc)])
+
+    for slot in manifest.information_slots:
+        if slot.slot_name not in PROSPECTIVE_INFORMATION_SLOT_NAMES:
+            continue
+        if slot.freeze_status == ParameterFreezeStatus.PENDING:
+            errors.append(
+                f"slot '{slot.slot_name}' must not remain pending at FRAME_FROZEN"
+            )
+        elif slot.freeze_status == ParameterFreezeStatus.FROZEN:
+            if _is_placeholder_text(slot.value):
+                errors.append(
+                    f"slot '{slot.slot_name}' frozen without substantive value at FRAME_FROZEN"
+                )
+            if not slot.authority:
+                errors.append(
+                    f"slot '{slot.slot_name}' frozen without authority at FRAME_FROZEN"
+                )
+        elif slot.freeze_status == ParameterFreezeStatus.NOT_APPLICABLE:
+            if not slot.authority:
+                errors.append(
+                    f"slot '{slot.slot_name}' not_applicable without frozen rule at FRAME_FROZEN"
+                )
+        else:
+            errors.append(
+                f"slot '{slot.slot_name}' has invalid freeze status at FRAME_FROZEN"
+            )
 
     return NaturalisticValidation(errors=errors)
 

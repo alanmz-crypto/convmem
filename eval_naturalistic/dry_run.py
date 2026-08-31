@@ -57,9 +57,11 @@ from eval_naturalistic.contracts import (
     TargetRecordV1,
     TargetRegistryV1,
     TargetSpanBindingV1,
+    make_frozen_prospective_manifest,
     make_pending_prospective_manifest,
     reject_arm_dependent_registry_rule,
     seal_artifact_dict,
+    validate_prospective_manifest_freeze_transition,
     validate_prospective_manifest_structural,
     verify_handoff_artifact_digest,
 )
@@ -130,6 +132,7 @@ G5_REQUIRED_FAIL_CLOSED_SCENARIOS = frozenset(
         "malformed_score",
         "pending_information_gate_slots",
         "incomplete_nominal_t0_frame",
+        "pending_slots_block_frame_frozen",
         "false_completeness_placeholder_slot",
         "freeze_tamper_post_seal",
         "handoff_artifact_mismatch",
@@ -224,7 +227,13 @@ def _seal_prospective_manifest(manifest: ProspectiveManifestV1) -> tuple[dict[st
 
 
 def _validate_t0_prospective_manifest(serialized: dict[str, Any], *, require_freeze: bool) -> list[str]:
-    result = validate_prospective_manifest_structural(serialized, require_logged_freeze=require_freeze)
+    if require_freeze:
+        result = validate_prospective_manifest_freeze_transition(
+            serialized,
+            require_logged_freeze=True,
+        )
+    else:
+        result = validate_prospective_manifest_structural(serialized, require_logged_freeze=False)
     return list(result.errors)
 
 
@@ -282,8 +291,8 @@ def run_g5_end_to_end() -> dict[str, Any]:
     ledger_entries: list[StageBoundaryLedgerEntryV1] = []
 
     frame = make_synthetic_frame(study_id="study-g5-synthetic-001")
-    pending_manifest = make_pending_prospective_manifest(frame=frame)
-    sealed_manifest_body, freeze_digest = _seal_prospective_manifest(pending_manifest)
+    frozen_manifest = make_frozen_prospective_manifest(frame=frame)
+    sealed_manifest_body, freeze_digest = _seal_prospective_manifest(frozen_manifest)
     t0_errors = _validate_t0_prospective_manifest(sealed_manifest_body, require_freeze=True)
     handoff_ok = verify_handoff_artifact_digest(
         logged_digest=freeze_digest,
@@ -295,7 +304,7 @@ def run_g5_end_to_end() -> dict[str, Any]:
     if not arm_blind.ok:
         t0_errors.extend(arm_blind.errors)
     registry_rule = reject_arm_dependent_registry_rule(
-        pending_manifest.opportunity_authority_rule
+        frozen_manifest.opportunity_authority_rule
     )
     if not registry_rule.ok:
         t0_errors.extend(registry_rule.errors)
@@ -1171,14 +1180,43 @@ def _adversarial_incomplete_nominal_t0() -> G5ScenarioResult:
     incomplete = manifest.to_dict()
     incomplete["information_slots"] = incomplete["information_slots"][:2]
     check = validate_prospective_manifest_structural(incomplete, require_logged_freeze=False)
-    e2e_blocked = not validate_prospective_manifest_structural(incomplete, require_logged_freeze=True).ok
+    sealed_full, _ = _seal_prospective_manifest(manifest)
+    freeze_blocked = not validate_prospective_manifest_freeze_transition(
+        sealed_full,
+        require_logged_freeze=True,
+    ).ok
     return _scenario(
         "incomplete_nominal_t0_frame",
         "T0",
-        demonstrated=(not check.ok) and e2e_blocked,
+        demonstrated=(not check.ok) and freeze_blocked,
         fail_closed=True,
-        notes="Subset of eight PENDING slots fails structural validation before T0_T2.",
+        notes="Subset of eight PENDING slots fails draft validation; full pending set fails FRAME_FROZEN.",
         details={"errors": check.errors},
+    )
+
+
+def _adversarial_pending_slots_block_frame_frozen() -> G5ScenarioResult:
+    frame = make_synthetic_frame()
+    manifest = make_pending_prospective_manifest(frame=frame)
+    sealed, _ = _seal_prospective_manifest(manifest)
+    draft_ok = validate_prospective_manifest_structural(sealed, require_logged_freeze=False)
+    freeze_fail = validate_prospective_manifest_freeze_transition(
+        sealed,
+        require_logged_freeze=True,
+    )
+    frozen_manifest = make_frozen_prospective_manifest(frame=frame)
+    sealed_frozen, _ = _seal_prospective_manifest(frozen_manifest)
+    freeze_ok = validate_prospective_manifest_freeze_transition(
+        sealed_frozen,
+        require_logged_freeze=True,
+    )
+    return _scenario(
+        "pending_slots_block_frame_frozen",
+        "T0",
+        demonstrated=draft_ok.ok and (not freeze_fail.ok) and freeze_ok.ok,
+        fail_closed=True,
+        notes="Eight PENDING slots pass draft validation but fail FRAME_FROZEN; frozen fixture passes.",
+        details={"pending_errors": freeze_fail.errors},
     )
 
 
@@ -1463,6 +1501,7 @@ def _adversarial_boundary_composition_proof() -> G5ScenarioResult:
 def run_g5c_adversarial_suite() -> list[G5ScenarioResult]:
     return [
         _adversarial_incomplete_nominal_t0(),
+        _adversarial_pending_slots_block_frame_frozen(),
         _adversarial_false_completeness(),
         _adversarial_freeze_tamper(),
         _adversarial_handoff_mismatch(),

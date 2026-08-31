@@ -105,22 +105,19 @@ Key invariants:
 | G3 probe construction machinery | **DONE on `main`** | PR #255; no live key or study sample exists |
 | G4 analysis/statistical machinery | **DONE on `main`** | Kiro PASS at exact `fa7d68b`; focused 98 tests + 8 subtests; Pylint 10/10 |
 | G5 dry-run/fixture verification | **LANDED; METHODOLOGY GATE REOPENED — C** | Original composition defect remains in landed code; corrective design has Kiro PASS at `b6a1ccf` |
-| G5C corrective implementation/dry-run | **AUTHORIZED — NOT STARTED** | Cursor may modify only the handoff allowlist on `fix/2026-08-30-naturalistic-g5c-corrective`; stop for exact-tip Kiro review |
-| G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Blocked on G5 corrective design, implementation, and fresh independent PASS before any separate Ryan grant |
+| G5C corrective implementation/dry-run | **IMPLEMENTED on branch; Kiro PASS `a64b566`; T0-freeze prerequisite landed** | Branch `fix/2026-08-30-naturalistic-g5c-corrective`; ChatGPT small re-review pending |
+| G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | ChatGPT prerequisite (freeze rejects PENDING) must PASS re-review before bounded G6/T0 grant |
 | Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-G5 code remains landed on `main`, and methodology gate **C** remains open until
-the accepted corrective is implemented and freshly reviewed. Ryan's acceptance
-is design-only.
+G5C is implemented on branch `fix/2026-08-30-naturalistic-g5c-corrective` with Kiro
+PASS at `a64b566`. ChatGPT G6/T0 readiness found a T0 freeze-state gap; Cursor
+closed it with freeze-transition validation. **Next:** ChatGPT same-seed small
+re-review at branch tip; Ryan may merge G5C; G6 remains closed until re-review
+PASS and explicit Ryan grant.
 
-If Ryan sent you for **G5C implementation**, read the dedicated Cursor handoff,
-start the required new worktree/branch from accepted carrier `c089070`, modify
-only its strict allowlist, run synthetic verification, push, and stop for fresh
-exact-tip Kiro review. If Ryan sent you for **G6 or live study**, stop. G6
-remains closed until the corrective is implemented and independently PASSed,
-followed by a fresh explicit Ryan grant.
+If Ryan sent you for **G6 or live study**, stop.
 
 If Ryan sent you for **status**, read this brief and [`LATEST.md`](../inter-model/LATEST.md).
 Do not infer product value from G1–G5 machinery or synthetic fixtures.
@@ -148,9 +145,12 @@ Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 - [x] Ryan accepts the Kiro-PASSed corrected methodology design as design-only.
 - [x] Ryan separately grants bounded Cursor G5 corrective implementation.
 - [x] Codex creates the strict-allowlist Cursor implementation handoff.
-- [ ] Cursor implements and pushes the bounded G5C corrective on the required
+- [x] Cursor implements and pushes the bounded G5C corrective on the required
       new branch.
-- [ ] Fresh independent review restores G5 PASS on the corrected scope.
+- [x] Fresh independent review restores G5 PASS on the corrected scope (Kiro `a64b566`).
+- [x] ChatGPT G6/T0 readiness review identifies T0 freeze-state prerequisite.
+- [x] Cursor implements T0 freeze-transition enforcement on G5C branch.
+- [ ] ChatGPT small re-review PASS on T0-freeze prerequisite at branch tip.
 - [ ] Ryan separately authorizes G6 prospective freeze and later T7–T11 gates.
 - [ ] Only a fully authorized T10 path may produce a product disposition.
 
@@ -204,8 +204,9 @@ the session transcript separately under Track A.
 - 2026-08-30 — Kiro/Codex: Kiro PASSed exact `b6a1ccf` with two nonblocking axis-wording corrections; Codex applied only those at `fde840b`; Ryan accept/revise is next.
 - 2026-08-30 — Ryan: accepted corrected design `b6a1ccf` + wording-only `fde840b` as design-only; G5C implementation and all live/T0 authority remain separately gated.
 - 2026-08-30 — Ryan/Codex: Ryan granted the strict bounded G5C file/test scope; Codex routed Cursor to a new implementation branch and exact-tip Kiro stop; G6/live authority remains closed.
+- 2026-08-31 — ChatGPT: G6/T0 readiness prerequisite — T0 must reject PENDING slots at FRAME_FROZEN; Cursor implemented freeze-transition validator on G5C branch; small re-review pending; G6 still closed.
 
-**TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] G1–G5 remain on
-`main`, and gate C remains open. G5C implementation is now narrowly authorized
-but `NOT_STARTED` under the strict Cursor handoff; G6/T0, live evidence, corpus
-access, scoring, parameters, and product conclusions remain closed.
+**TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] G5C is on branch
+with Kiro PASS; ChatGPT T0-freeze prerequisite implemented; await ChatGPT small
+re-review before Ryan may grant bounded G6/T0. G6, live evidence, and product
+conclusions remain closed.
