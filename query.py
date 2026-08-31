@@ -15,6 +15,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from chroma_store import ChromaStore
 from chroma_readonly import collection_metadata_rows
@@ -168,6 +169,27 @@ def _fallback_query_rows(
     return run_keyword_fallback(
         collection_name, text, top_k, domain=domain, site=site, cfg=cfg,
     )
+
+
+def _keyword_fallback_for_repo(
+    repo: Any | None,
+    collection_name: str,
+    text: str,
+    top_k: int,
+    *,
+    domain: str | None,
+    site: str | None,
+    cfg: dict,
+) -> list[dict]:
+    """Use the request-bound fallback when a serving repo opened successfully."""
+    if repo is None:
+        return _fallback_query_rows(
+            collection_name, text, top_k,
+            domain=domain, site=site, cfg=cfg,
+        )
+    return repo.mediated_keyword_fallback(
+        collection_name, text, top_k, domain=domain, site=site
+    ).rows
 
 
 def _extract_ledger_ids(text: str) -> list[str]:
@@ -453,6 +475,7 @@ def query_units(
     from serving_authority import ServingBackendTransient
     from serving_index_repository import open_serving_index_repository
 
+    repo = None
     try:
         with open_serving_index_repository(
             cfg, mediated_fallback=_fallback_query_rows
@@ -471,16 +494,12 @@ def query_units(
                 ledger_extras = _ledger_lookup_hits(cfg, repo.legacy_store(), text)
                 ledger_extras = _filter_ledger_extras_by_domain(ledger_extras, domain)
     except ServingBackendTransient:
-        with open_serving_index_repository(
-            cfg, mediated_fallback=_fallback_query_rows
-        ) as repo:
-            results = repo.mediated_keyword_fallback(
-                "knowledge_units",
-                text,
-                scoped_fetch_k,
-                domain=domain,
-                site=site,
-            ).rows
+        results = _keyword_fallback_for_repo(
+            repo, "knowledge_units", text, scoped_fetch_k,
+            domain=domain, site=site, cfg=cfg,
+        )
+        for result in results:
+            result["retrieval_mode"] = "keyword_fallback"
         if not skip_ledger_priority:
             ledger_extras = _ledger_lookup_hits(cfg, None, text)
             ledger_extras = _filter_ledger_extras_by_domain(ledger_extras, domain)
@@ -565,6 +584,7 @@ def query_raw(
     from serving_authority import ServingBackendTransient
     from serving_index_repository import open_serving_index_repository
 
+    repo = None
     try:
         with open_serving_index_repository(
             cfg, mediated_fallback=_fallback_query_rows
@@ -574,16 +594,12 @@ def query_raw(
             results, domain=domain_norm, site_norm=site_norm
         )
     except ServingBackendTransient:
-        with open_serving_index_repository(
-            cfg, mediated_fallback=_fallback_query_rows
-        ) as repo:
-            results = repo.mediated_keyword_fallback(
-                "conversation_summaries",
-                text,
-                n_fetch,
-                domain=domain,
-                site=site,
-            ).rows
+        results = _keyword_fallback_for_repo(
+            repo, "conversation_summaries", text, n_fetch,
+            domain=domain, site=site, cfg=cfg,
+        )
+        for result in results:
+            result["retrieval_mode"] = "keyword_fallback"
     for r in results:
         d = r.get("distance")
         if d is not None:
@@ -788,6 +804,10 @@ def render_search_results(results: list[dict], *, units: bool = True) -> None:
     if not results:
         render_warning("No results found.")
         return
+    if any(r.get("retrieval_mode") == "keyword_fallback" for r in results):
+        render_warning(
+            "Chroma vector search unavailable; showing SQLite keyword fallback results."
+        )
     for i, r in enumerate(results, 1):
         meta = r.get("metadata", {})
         panel = Panel(

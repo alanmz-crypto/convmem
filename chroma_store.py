@@ -47,7 +47,7 @@ def invalidate_superseded_cache(chroma_dir: str) -> None:
 
 def is_chroma_contention_error(exc: BaseException) -> bool:
     """True when another process holds the Chroma sqlite write lock."""
-    msg = str(exc).lower()
+    msg = _exception_messages(exc)
     return (
         "readonly" in msg
         or "database is locked" in msg
@@ -59,7 +59,7 @@ def is_chroma_vector_query_fallback_error(exc: BaseException) -> bool:
     """True when vector query cannot run but readonly keyword fallback may."""
     if is_chroma_contention_error(exc):
         return True
-    msg = str(exc).lower()
+    msg = _exception_messages(exc)
     return "embedding with dimension" in msg or (
         "dimension" in msg and "embedding" in msg
     )
@@ -81,7 +81,7 @@ def open_chroma_for_read(chroma_dir: str, *, retries: int = 5) -> "ChromaStore":
                     store.close()
                 except Exception:
                     pass
-            if is_chroma_contention_error(e) and attempt + 1 < retries:
+            if is_chroma_contention_error(e) and attempt + 1 < retries and "readonly" not in _exception_messages(e):
                 time.sleep(0.15 * (attempt + 1))
                 continue
             raise
@@ -100,6 +100,18 @@ def open_chroma_for_verify(chroma_dir: str) -> "ChromaStore":
     # Touch primary collection so open fails early if restore is incomplete.
     store._collection(UNITS)
     return store
+
+
+def _exception_messages(exc: BaseException) -> str:
+    """Include chained causes because Chroma can mask its original error."""
+    messages: list[str] = []
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        messages.append(str(current).lower())
+        current = current.__cause__ or current.__context__
+    return "\n".join(messages)
 
 
 def is_superseded(meta: dict) -> bool:
