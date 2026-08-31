@@ -128,6 +128,7 @@ planning artifacts.
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-08-31 | Kiro | Recorded prior-art input for the still-unauthorized T4/V4l boundary inventory (link to `docs/kernel-panic-durability-insight-2026-08-31.md`, findings from a real unclean kernel panic). T4 remains NOT AUTHORIZED / NOT STARTED; no status change. |
 | 2026-08-30 | Codex Sol | Reconciled the brief to live `main`: T3 landed via PR #238 at `d250feb2`; T4 remains unstarted/unauthorized and V4k remains separately blocked. |
 | 2026-08-23 | Cursor | T2 Execute started: authority recovery / projection agreement state machine on feat branch. |
 | 2026-08-22 | Codex Luna | Created the Recovery Authority Execution Plan and VERIFY companion; T1–T4 remain unstarted and V4k is hard-blocked pending CG-2 Design A ratification. |
