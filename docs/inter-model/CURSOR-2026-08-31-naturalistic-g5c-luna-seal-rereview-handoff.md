@@ -13,7 +13,7 @@
 |-------|--------|
 | **State** | `READY_FOR_LUNA_REREVIEW` |
 | **Branch** | `fix/2026-08-30-naturalistic-g5c-corrective` |
-| **Tip SHA** | *(set at push)* |
+| **Tip SHA** | `d902b4919a25c59ed272ac1961916f3f011866ab` |
 | **Synthetic fixture seed** | `20260830` (`G4_SYNTHETIC_FIXTURE_SEED`) — **same seed as prior Luna pass** |
 | **Ryan GATE** | Luna closure PASS → Ryan may merge G5C branch; G6 still separate grant |
 | **G6 authority** | **CLOSED** |
