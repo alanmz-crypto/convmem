@@ -238,7 +238,16 @@ def open_serving_index_repository(
 
     store: ChromaStore | FileGenerationStore | None = None
     try:
-        store = _open_backing_store(vector)
+        try:
+            store = _open_backing_store(vector)
+        except Exception as exc:
+            # PersistentClient performs tenant validation during construction.
+            # In read-only sandboxes that startup write can fail before a
+            # repository exists; expose it as the same mediated transient used
+            # for query-time Chroma contention.
+            if is_chroma_vector_query_fallback_error(exc):
+                raise ServingBackendTransient(str(exc)) from exc
+            raise
         repo = ServingIndexRepository(
             vector,
             store,

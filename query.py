@@ -471,16 +471,16 @@ def query_units(
                 ledger_extras = _ledger_lookup_hits(cfg, repo.legacy_store(), text)
                 ledger_extras = _filter_ledger_extras_by_domain(ledger_extras, domain)
     except ServingBackendTransient:
-        with open_serving_index_repository(
-            cfg, mediated_fallback=_fallback_query_rows
-        ) as repo:
-            results = repo.mediated_keyword_fallback(
-                "knowledge_units",
-                text,
-                scoped_fetch_k,
-                domain=domain,
-                site=site,
-            ).rows
+        results = _fallback_query_rows(
+            "knowledge_units",
+            text,
+            scoped_fetch_k,
+            domain=domain,
+            site=site,
+            cfg=cfg,
+        )
+        for result in results:
+            result["retrieval_mode"] = "keyword_fallback"
         if not skip_ledger_priority:
             ledger_extras = _ledger_lookup_hits(cfg, None, text)
             ledger_extras = _filter_ledger_extras_by_domain(ledger_extras, domain)
@@ -574,16 +574,16 @@ def query_raw(
             results, domain=domain_norm, site_norm=site_norm
         )
     except ServingBackendTransient:
-        with open_serving_index_repository(
-            cfg, mediated_fallback=_fallback_query_rows
-        ) as repo:
-            results = repo.mediated_keyword_fallback(
-                "conversation_summaries",
-                text,
-                n_fetch,
-                domain=domain,
-                site=site,
-            ).rows
+        results = _fallback_query_rows(
+            "conversation_summaries",
+            text,
+            n_fetch,
+            domain=domain,
+            site=site,
+            cfg=cfg,
+        )
+        for result in results:
+            result["retrieval_mode"] = "keyword_fallback"
     for r in results:
         d = r.get("distance")
         if d is not None:
@@ -788,6 +788,10 @@ def render_search_results(results: list[dict], *, units: bool = True) -> None:
     if not results:
         render_warning("No results found.")
         return
+    if any(r.get("retrieval_mode") == "keyword_fallback" for r in results):
+        render_warning(
+            "Chroma vector search unavailable; showing SQLite keyword fallback results."
+        )
     for i, r in enumerate(results, 1):
         meta = r.get("metadata", {})
         panel = Panel(
