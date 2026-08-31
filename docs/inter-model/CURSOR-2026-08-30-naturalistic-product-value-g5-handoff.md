@@ -11,7 +11,7 @@
 
 | Field | Value |
 |---|---|
-| **State** | `READY_FOR_PR` |
+| **State** | `MERGED` |
 | **Branch** | `feat/2026-08-30-naturalistic-g5-dry-run` |
 | **Worktree** | `~/.local/share/convmem/worktrees/feat-2026-08-30-naturalistic-g5-dry-run` |
 | **Parent SHA** | `a1128b92d2b02aa77a96524ba353ca0da025ce01` (`origin/main` at grant time) |
@@ -158,6 +158,6 @@ A PASS does not authorize G6 or a product conclusion. Ryan owns merge.
 **Why:** Prove the evaluation pipeline fail-closes before any prospective study.
 **How:** Hermetic fixtures, G4 seed reuse, named adversarial controls, and an explicit methodology-validation classification.
 
-**TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] G5 is Kiro-PASS at
-exact SHA `23b2495927a9891070c7c294e45bdb641eaab352` and ready for Ryan merge. Methodology validation, not product
-evidence. G6 is not authorized.
+**TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] G5 is merged on
+`main` at `6843bbeebbaed6a109fe94967fdd03fb3569b583`. Methodology validation closed — not product evidence.
+G6 requires Ryan's separate grant.
