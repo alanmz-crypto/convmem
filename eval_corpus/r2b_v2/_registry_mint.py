@@ -1,6 +1,4 @@
 """Private trusted authority registry — vault-backed minting only."""
-# pylint: disable=duplicate-code
-# __all__ intentionally overlaps authority_registry (private mint vs public façade).
 
 from eval_corpus.r2b_v2._authority_vault import (  # noqa: F401
     AuthorityHandle,
