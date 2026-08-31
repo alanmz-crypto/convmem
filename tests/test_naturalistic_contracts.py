@@ -534,5 +534,47 @@ class ProspectiveManifestG5CTests(unittest.TestCase):
         summaries = ledger.derived_group_summaries()
         self.assertTrue(all(summaries.values()))
 
+    def test_structural_content_invalid_fails_closed(self):
+        from eval_naturalistic.contracts import validate_prospective_manifest_structural
+
+        body = {
+            "header": "not-a-dict",
+            "study_id": "study-synthetic-001",
+            "frame_artifact_id": "frame-001",
+            "frame_digest": "d" + "0" * 63,
+            "information_slots": [],
+            "opportunity_authority_rule": "policy-opportunity-authority-v1",
+            "failure_reason_taxonomy": ["reason-protocol-invalid"],
+            "missing_outcome_bounds_policy": "policy-missing-outcome-bounds-v1",
+            "orthogonal_state_precedence": ["protocol_invalid"],
+            "paired_replay_policy": "policy-paired-replay-v1",
+            "scorer_integrity_policy": "policy-scorer-integrity-v1",
+            "scorer_reliability_policy": "policy-scorer-reliability-v1",
+        }
+        check = validate_prospective_manifest_structural(body)
+        self.assertFalse(check.ok)
+        self.assertTrue(check.errors)
+        self.assertIn("header", check.errors[0])
+
+    def test_non_boolean_passed_raises_structural_error(self):
+        from eval_naturalistic.contracts import StageBoundaryPredicateResultV1
+
+        with self.assertRaises(StructuralContractError):
+            StageBoundaryPredicateResultV1.from_dict(
+                {"predicate_name": "x", "passed": "notbool"}
+            )
+
+    def test_raw_serialization_decode_not_contracts_layer(self):
+        """Canonical JSON byte decode is upstream; contracts validators take decoded dict bodies."""
+
+        import inspect
+
+        from eval_naturalistic.contracts import validate_prospective_manifest_structural
+
+        param = inspect.signature(validate_prospective_manifest_structural).parameters[
+            "serialized_body"
+        ]
+        self.assertNotEqual(param.annotation, bytes)
+
 if __name__ == "__main__":
     unittest.main()

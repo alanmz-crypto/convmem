@@ -10,6 +10,7 @@ from typing import Any
 
 from eval_naturalistic.base import (
     ArtifactHeaderV1,
+    StructuralContractError,
     _enum_from_value,
     _require_dict,
     _require_list,
