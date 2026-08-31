@@ -77,9 +77,12 @@ def _identity(path: Path) -> str:
 
 def _writer_contract() -> tuple[str, int]:
     """Avoid importing C3 while it is importing the census hook."""
-    from chroma_write_store import WRITER_GATE_PROTOCOL_VERSION, current_code_revision
+    from chroma_write_store import (
+        WRITER_GATE_PROTOCOL_VERSION,
+        current_implementation_revision,
+    )
 
-    return current_code_revision(), WRITER_GATE_PROTOCOL_VERSION
+    return current_implementation_revision(), WRITER_GATE_PROTOCOL_VERSION
 
 
 def _private_dir(path: Path, *, create: bool) -> Path:
