@@ -34,7 +34,7 @@ from eval_corpus.r2b_v2.packet import (
     transition_snapshot_bound,
 )
 from eval_corpus.r2b_v2.quiescence_evidence import write_quiescence_open
-from eval_corpus.r2b_v2.scratch_isolation import assert_scratch_paths
+from eval_corpus.r2b_v2.scratch_isolation import assert_scratch_transaction_paths
 from eval_corpus.run_manifest import canonical_manifest_body_sha256
 
 SnapshotRecomputeFn = Callable[..., dict[str, Any]]
@@ -71,14 +71,7 @@ def run_scratch_transaction(  # pylint: disable=too-many-arguments,too-many-loca
     runtime: dict[str, str],
 ) -> ScratchTransactionResult:
     """End-to-end scratch I4→I6 path for benchmark readiness."""
-    assert_scratch_paths(
-        ("root", root),
-        ("auth_dir", auth_dir),
-        ("export", paths["export"]),
-        ("processed", paths["processed"]),
-        ("chroma_dir", paths["chroma_dir"]),
-        ("capture_dir", paths["capture_dir"]),
-    )
+    assert_scratch_transaction_paths(root=root, auth_dir=auth_dir, paths=paths)
     tracker = PhaseDeadlineTracker.begin(duration_policy)
     tracker.start_phase("acquisition")
 
@@ -147,7 +140,11 @@ def run_scratch_transaction(  # pylint: disable=too-many-arguments,too-many-loca
     )
     grant_capture(machine, lease, tracker, materialized)
     capture_result = execute_authorized_capture(
-        machine, lease, tracker, materialized
+        machine,
+        lease,
+        tracker,
+        materialized,
+        snapshot_recompute_fn=snapshot_recompute_fn,
     )
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

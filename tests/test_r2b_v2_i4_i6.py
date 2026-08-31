@@ -23,7 +23,6 @@ from eval_corpus.r2b_v2.capture_close import (
     execute_authorized_capture,
     grant_capture,
     release_gate_and_write_release_evidence,
-    write_close_evidence,
 )
 from eval_corpus.r2b_v2.duration_policy import (
     DurationPolicy,
@@ -42,11 +41,10 @@ from eval_corpus.r2b_v2.packet import (
     transition_snapshot_bound,
 )
 from eval_corpus.r2b_v2.scratch_isolation import ScratchIsolationError, assert_scratch_path
-from eval_corpus.r2b_v2.transaction import ScratchTransactionError, run_scratch_transaction
+from eval_corpus.r2b_v2.transaction import run_scratch_transaction
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
-from eval_corpus.run_manifest import approval_sidecar_path, write_approval_sidecar
 from tests.r2b_v2_helpers import (
-    clean_coverage_bundle,
+    advance_to_materialized,
     obtain_source_authority,
     scratch_benchmark_candidate_policy,
     scratch_transaction_fixture,
@@ -298,45 +296,24 @@ class R2bV2FailureInjectionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
-            _advance_to_coverage_proven(sm, fx["lease"], fx["trusted"])
-            transition_snapshot_bound(
-                sm,
-                fx["lease"],
-                obtain_source_authority(fx["lease"], fx["trusted"]),
-                reason="b",
-            )
-            snap = fx["snapshot_recompute_fn"](
-                export=Path(fx["paths"]["export"]),
-                processed=Path(fx["paths"]["processed"]),
-                chroma_dir=Path(fx["paths"]["chroma_dir"]),
-            )
-            manifest_path = draft_capture_packet(
-                sm,
-                fx["lease"],
-                fx["trusted"],
-                auth_dir=fx["auth_dir"],
-                paths=fx["paths"],
-                source_snapshot=snap,
-                duration_policy=scratch_benchmark_candidate_policy(),
-                future_argv=fx["future_argv"],
-                open_evidence_digest=fx["open_evidence_digest"],
-                gate_identity=fx["gate_identity"],
-                implementation_revision=fx["implementation_revision"],
-            )
-            accept_capture_packet(sm, fx["lease"], manifest_path)
-            mat = materialize_v2_packet(
-                sm,
-                fx["lease"],
-                manifest_path,
-                runtime=fx["runtime"],
-                snapshot_recompute_fn=fx["snapshot_recompute_fn"],
-                restic_gate_fn=lambda: None,
-            )
+            _manifest_path, mat = advance_to_materialized(fx, sm)
             tracker = PhaseDeadlineTracker.begin(scratch_benchmark_candidate_policy())
             grant_capture(sm, fx["lease"], tracker, mat)
-            execute_authorized_capture(sm, fx["lease"], tracker, mat)
+            execute_authorized_capture(
+                sm,
+                fx["lease"],
+                tracker,
+                mat,
+                snapshot_recompute_fn=fx["snapshot_recompute_fn"],
+            )
             with self.assertRaises(AuthorityStateError):
-                execute_authorized_capture(sm, fx["lease"], tracker, mat)
+                execute_authorized_capture(
+                    sm,
+                    fx["lease"],
+                    tracker,
+                    mat,
+                    snapshot_recompute_fn=fx["snapshot_recompute_fn"],
+                )
             fx["lease"].release()
 
     def test_release_failure_quarantines(self):

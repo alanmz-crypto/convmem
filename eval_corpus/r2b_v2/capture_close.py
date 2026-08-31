@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from eval_corpus.r2b_capture_auth import compare_source_snapshots
 from eval_corpus.r2b_v2.authority_state import (
@@ -18,12 +18,17 @@ from eval_corpus.r2b_v2.duration_policy import (
 )
 from eval_corpus.r2b_v2.lease import R2bQuiescenceLease, verify_r2b_quiescence_lease
 from eval_corpus.r2b_v2.materialization import V2MaterializationResult
-from eval_corpus.r2b_v2.scratch_capture import run_scratch_v2_capture
 from eval_corpus.r2b_v2.quiescence_evidence import (
     write_quiescence_close,
     write_quiescence_release,
 )
+from eval_corpus.r2b_v2.scratch_capture import (
+    prepare_scratch_capture_artifacts,
+    publish_scratch_completion_marker,
+)
 from eval_corpus.r2b_v2.scratch_isolation import assert_scratch_path
+
+SnapshotRecomputeFn = Callable[..., dict[str, Any]]
 
 
 class R2bV2CaptureCloseError(RuntimeError):
@@ -64,7 +69,10 @@ def execute_authorized_capture(
     lease: R2bQuiescenceLease,
     tracker: PhaseDeadlineTracker,
     materialized: V2MaterializationResult,
+    *,
+    snapshot_recompute_fn: SnapshotRecomputeFn,
 ) -> dict[str, Any]:
+    """CAPTURING → final source check → marker last → SEALED."""
     verify_r2b_quiescence_lease(lease, expected_run_id=machine.run_id)
     lease.verify()
     tracker.start_phase("capture")
@@ -79,18 +87,38 @@ def execute_authorized_capture(
     machine.transition(AuthorityState.CAPTURING, reason="begin authorized capture")
     try:
         tracker.check_phase_bound("capture", tracker.policy.capture_bound)
-        result = run_scratch_v2_capture(materialized)
+        prepared = prepare_scratch_capture_artifacts(materialized)
     except PhaseDeadlineExpired:
         tracker.mark_consumed(reason="capture timeout")
         machine.quarantine(reason="capture phase timeout")
         raise
-    report = result.get("capture_report") or {}
-    if report.get("status") == "FAILED":
-        machine.quarantine(reason=f"capture failed: {report.get('error')}")
-        raise R2bV2CaptureCloseError(str(report.get("error") or "capture failed"))
-    machine.transition(AuthorityState.FINAL_SOURCE_CHECKED, reason="final source checked")
+
+    capture_dir = Path(prepared["capture_dir"])
+    try:
+        final_source_recompute(
+            machine,
+            lease,
+            bindings.source_snapshot,
+            export=bindings.export,
+            processed=bindings.processed,
+            chroma_dir=bindings.chroma_dir,
+            snapshot_recompute_fn=snapshot_recompute_fn,
+        )
+    except R2bV2CaptureCloseError:
+        _remove_marker_if_present(capture_dir)
+        raise
+
+    sealed = publish_scratch_completion_marker(
+        materialized, capture_dir=capture_dir
+    )
     machine.transition(AuthorityState.SEALED, reason="marker last")
-    return result
+    return {**prepared, **sealed}
+
+
+def _remove_marker_if_present(capture_dir: Path) -> None:
+    marker = capture_dir / "corpus_package_manifest.json"
+    if marker.exists():
+        marker.unlink()
 
 
 def final_source_recompute(
@@ -101,23 +129,25 @@ def final_source_recompute(
     export: Path,
     processed: Path,
     chroma_dir: Path,
-    snapshot_recompute_fn: Any,
+    snapshot_recompute_fn: SnapshotRecomputeFn,
 ) -> None:
     verify_r2b_quiescence_lease(lease, expected_run_id=machine.run_id)
     lease.verify()
-    if machine.state not in (
-        AuthorityState.CAPTURING,
-        AuthorityState.FINAL_SOURCE_CHECKED,
-    ):
-        raise AuthorityStateError("final source check at wrong state")
+    if machine.state != AuthorityState.CAPTURING:
+        raise AuthorityStateError(
+            f"final source check requires CAPTURING, got {machine.state.value}"
+        )
     live = snapshot_recompute_fn(
         export=export, processed=processed, chroma_dir=chroma_dir
     )
     try:
         compare_source_snapshots(approved_snapshot, live)
     except PermissionError as exc:
-        machine.quarantine(reason="source drift after snapshot")
+        machine.quarantine(reason="source drift during capture")
         raise R2bV2CaptureCloseError(f"source drift: {exc}") from exc
+    machine.transition(
+        AuthorityState.FINAL_SOURCE_CHECKED, reason="final source matched"
+    )
 
 
 def write_close_evidence(
@@ -174,12 +204,18 @@ def release_gate_and_write_release_evidence(
         machine.quarantine(reason=f"release failure: {exc}")
         raise R2bV2CaptureCloseError(f"release failure: {exc}") from exc
     release_path = auth_dir / "quiescence-release.json"
-    release_digest = write_quiescence_release(
-        release_path,
-        run_id=machine.run_id,
-        close_digest=close_digest,
-        release_result="released",
-        post_release_observation={"gate_released": True},
-    )
+    try:
+        release_digest = write_quiescence_release(
+            release_path,
+            run_id=machine.run_id,
+            close_digest=close_digest,
+            release_result="released",
+            post_release_observation={"gate_released": True},
+        )
+    except Exception as exc:
+        machine.quarantine(reason=f"release evidence failure: {exc}")
+        raise R2bV2CaptureCloseError(
+            f"release evidence failure: {exc}"
+        ) from exc
     machine.transition(AuthorityState.CLOSED, reason="release evidence written")
     return release_digest

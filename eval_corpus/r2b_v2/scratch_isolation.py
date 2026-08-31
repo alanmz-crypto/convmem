@@ -52,3 +52,22 @@ def assert_scratch_path(path: Path | str, *, label: str) -> Path:
 def assert_scratch_paths(*labeled_paths: tuple[str, Path | str]) -> None:
     for label, path in labeled_paths:
         assert_scratch_path(path, label=label)
+
+
+def assert_scratch_transaction_paths(
+    *,
+    paths: dict[str, str],
+    auth_dir: Path,
+    root: Path | None = None,
+) -> None:
+    """Validate all scratch transaction paths stay under tempfile."""
+    labeled: list[tuple[str, Path | str]] = [
+        ("auth_dir", auth_dir),
+        ("export", paths["export"]),
+        ("processed", paths["processed"]),
+        ("chroma_dir", paths["chroma_dir"]),
+        ("capture_dir", paths["capture_dir"]),
+    ]
+    if root is not None:
+        labeled.insert(0, ("root", root))
+    assert_scratch_paths(*labeled)

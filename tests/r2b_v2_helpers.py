@@ -297,3 +297,75 @@ def scratch_transaction_fixture(
         "future_argv": ["convmem", "capture", "--scratch"],
         "snapshot_recompute_fn": recompute_source_snapshot,
     }
+
+
+def advance_to_packet_accepted(
+    fx: dict[str, Any],
+    sm: "AuthorityStateMachine",
+) -> Path:
+    """Hermetic helper: COVERAGE_PROVEN through PACKET_ACCEPTED (no materialize)."""
+    from eval_corpus.r2b_v2.authority_state import (
+        AuthorityState,
+        transition_to_coverage_proven,
+        transition_to_q_held,
+    )
+    from eval_corpus.r2b_v2.packet import (
+        accept_capture_packet,
+        compute_trusted_snapshot,
+        draft_capture_packet,
+        transition_snapshot_bound,
+    )
+
+    sm.transition(AuthorityState.PREPARED, reason="test prepare")
+    sm.transition(AuthorityState.Q_AUTHORIZED, reason="test authorize")
+    transition_to_q_held(sm, fx["lease"], reason="test held")
+    transition_to_coverage_proven(
+        sm, fx["lease"], fx["trusted"], reason="test coverage"
+    )
+    transition_snapshot_bound(
+        sm,
+        fx["lease"],
+        obtain_source_authority(fx["lease"], fx["trusted"]),
+        reason="bind",
+    )
+    snap = compute_trusted_snapshot(
+        fx["lease"],
+        export=Path(fx["paths"]["export"]),
+        processed=Path(fx["paths"]["processed"]),
+        chroma_dir=Path(fx["paths"]["chroma_dir"]),
+        snapshot_recompute_fn=fx["snapshot_recompute_fn"],
+    )
+    manifest_path = draft_capture_packet(
+        sm,
+        fx["lease"],
+        fx["trusted"],
+        auth_dir=fx["auth_dir"],
+        paths=fx["paths"],
+        source_snapshot=snap,
+        duration_policy=scratch_benchmark_candidate_policy(),
+        future_argv=fx["future_argv"],
+        open_evidence_digest=fx["open_evidence_digest"],
+        gate_identity=fx["gate_identity"],
+        implementation_revision=fx["implementation_revision"],
+    )
+    accept_capture_packet(sm, fx["lease"], manifest_path)
+    return manifest_path
+
+
+def advance_to_materialized(
+    fx: dict[str, Any],
+    sm: "AuthorityStateMachine",
+) -> tuple[Path, "V2MaterializationResult"]:
+    """Hermetic helper: COVERAGE_PROVEN through MATERIALIZED."""
+    from eval_corpus.r2b_v2.materialization import V2MaterializationResult, materialize_v2_packet
+
+    manifest_path = advance_to_packet_accepted(fx, sm)
+    mat = materialize_v2_packet(
+        sm,
+        fx["lease"],
+        manifest_path,
+        runtime=fx["runtime"],
+        snapshot_recompute_fn=fx["snapshot_recompute_fn"],
+        restic_gate_fn=lambda: None,
+    )
+    return manifest_path, mat
