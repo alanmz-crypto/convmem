@@ -1,4 +1,8 @@
-"""Process-local trusted authority registry for R2b v2 lease and coverage proofs."""
+"""Process-local trusted authority registry for R2b v2 lease and coverage proofs.
+
+Public re-exports are derived from ``_registry_mint.__all__`` so pylint R0801
+duplicate-code debt stays off the public mint boundary.
+"""
 # pylint: disable=unused-import
 
 from eval_corpus.r2b_v2 import _registry_mint
