@@ -33,6 +33,7 @@ from eval_naturalistic.analysis_fixtures import (
     make_equivalent_null_like_fixture,
     make_mixed_zero_and_target_fixture,
     make_pending_parameter_slots,
+    make_post_result_threshold_fill_attempt,
     make_scorer_agreement_fixture,
     make_scorer_disagreement_fixture,
     make_sealed_registry_chain_for_lineage,
@@ -342,12 +343,7 @@ class ParameterSlotTests(unittest.TestCase):
         self.assertTrue(any("duplicate information parameter" in error for error in result.errors))
 
     def test_post_result_fill_rejected(self):
-        before = make_pending_parameter_slots()
-        after = copy.deepcopy(before)
-        for slot in after:
-            if slot.slot_name == "meaningful_advantage":
-                slot.freeze_status = ParameterFreezeStatus.FROZEN
-                slot.value = "0.10"
+        before, after = make_post_result_threshold_fill_attempt()
         result = reject_post_result_parameter_mutation(before, after)
         self.assertFalse(result.ok)
         self.assertTrue(any("post-result fill" in err for err in result.errors))
