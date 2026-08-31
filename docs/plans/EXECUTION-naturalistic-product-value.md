@@ -83,8 +83,8 @@ to reopen:
     protocol/environment/isolation/scorer-integrity failures are invalid and
     never enter bounds.
 12. Final dispositions are mechanically derived from orthogonal protocol,
-    information, missingness/comparability, and scorer-reliability states using
-    frozen precedence.
+    information, missingness/comparability, scorer-integrity, and
+    scorer-reliability states using frozen precedence.
 13. C0/C1 use paired replay from one sealed pre-trial state in fresh sessions;
     mechanical comparison proves C1 ConvMem access is the sole intended
     difference.

@@ -163,7 +163,7 @@ FRAME_FROZEN ──► OBSERVATION_OPEN ──► EPISODE_EVIDENCE_SEALED
                                DERIVED FINAL DISPOSITION
 ```
 
-The assessment record has four orthogonal axes rather than one overloaded
+The assessment record has five orthogonal axes rather than one overloaded
 terminal enum:
 
 - `protocol_validity`: valid, invalid, or unresolved;
