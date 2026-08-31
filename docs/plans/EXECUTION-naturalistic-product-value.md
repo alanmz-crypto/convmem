@@ -7,15 +7,16 @@
 >
 > **Arc:** Naturalistic ConvMem product-value evaluation
 >
-> **PRE-G6 contract status:** corrected documentation package; exact review
-> required; not authorized for implementation, G6, T0, or naturalistic work.
+> **PRE-G6 contract status:** V2 corrective package materialized; fresh-seed
+> exact-byte review required; not locked and not authorized for implementation,
+> G6, T0, or naturalistic work.
 >
-> **Architecture SSoT:**
-> [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md)
-> plus canonical contract artifact
-> [`naturalistic-pre-g6-contract-v1.json`](artifacts/naturalistic-pre-g6-contract-v1.json).
-> The contract is proposed for exact review and is not an implementation or
-> live-study grant.
+> **Normative SSoT:**
+> [`naturalistic-pre-g6-contract-v2.json`](artifacts/naturalistic-pre-g6-contract-v2.json)
+> with its schema, conformance cases, validator, and digest sidecar. The
+> architecture and this execution document are explanatory projections. V1 is
+> the superseded exact-review baseline. The contract is not an implementation
+> or live-study grant.
 
 ## Planning status and human consequence
 
@@ -39,8 +40,9 @@ accounting, resolver blindness, summary firewall, scorer amendment rule, and
 single controller-side C0/C1 evidence path. No study artifact or runtime
 implementation is authorized.
 
-**Next gate:** Kiro independently reviews this plan; Ryan accepts or rejects
-the plan; only then may bounded implementation grants be issued to Cursor.
+**Next gate:** fresh-seed Luna xHigh performs an exact-byte V2 review; Ryan then
+accepts or rejects architecture lock. A bounded Cursor implementation plan or
+grant is separate and later.
 
 ## 1. Locked architecture decisions
 
@@ -82,25 +84,37 @@ to reopen:
 ## 2. Stage dependency graph and global rules
 
 ```text
-P0 ConstructFreeze (T0 / before Agent A)
-  └─► T1 EvidenceSeal (after Agent A)
-        └─► P2 OpaqueResolver + T2 BlindedAdjudication
-              └─► TargetRegistrySeal
-                    └─► T3 Census/sample freeze
-                          └─► T4 Probe/key/scorer instantiation
-                                └─► T5 Natural capture + C1 snapshot
-                                      └─► T6 C0/C1 qualification
-                                            └─► T7 Agent-B paired execution
-                                                  └─► T8 Blinded scoring
-                                                        └─► T9 Episode aggregation
-                                                              └─► T10 Information/null gate
+P0_T0_CONSTRUCT_FREEZE
+  → P1_T1_EVIDENCE_SEAL
+  → P2_OPAQUE_RESOLUTION
+  → P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL
+  → T3_SAMPLE_SEAL
+  → T4_PROBE_KEY_SCORER_SEAL
+  → T5_C1_SNAPSHOT_CAPTURE_DIAGNOSIS
+  → T6_C0_C1_READINESS
+  → T7_EXECUTION
+  → T8_MASKED_SCORING
+  → T9_AGGREGATION
+  → T10_INFORMATION_GATE
 ```
 
-The exact stage contract is `naturalistic-pre-g6-contract-v1`. T0 freezes the
-construct root; T1 seals actual evidence identities; resolution is computed
-once but remains opaque through adjudication; registry, probes, and target-key
-instantiation occur only after blinded decisions seal. The evidence seal must
-carry the exact construct-root digest and cannot amend it.
+The exact stage contract is the V2 JSON `stage_graph`; this diagram is derived
+and has no independent transition semantics. T0 freezes the construct root; T1
+seals actual evidence identities and produces the condition-neutral blind view;
+P2 computes resolution once; P3/T2 seals blinded adjudication and registry
+authority; registry, probes, and target-key instantiation occur only after the
+relevant earlier outputs exist. The evidence seal carries the exact construct-
+root digest and cannot amend it.
+
+The exact artifact names and production/consumption edges are only those in the
+canonical graph. Generic nouns used in the detailed sections below describe
+contents or human views inside those canonical artifacts; they do not create
+additional sealed outputs or alternate stage dependencies.
+
+GitHub Issue #263 is the source-resolution provenance root. The controller must
+represent source presence, verbatim availability, summary availability, and
+resolver result independently. A query miss or summary-only result cannot be
+reported as authoritative source absence.
 
 The implementation grants may develop and test their own mechanics in
 parallel only where the dependency table permits it. Live study artifacts
@@ -244,14 +258,18 @@ conversation/transcript events, tool calls and outputs, files/notes created in
 ordinary work, repository state, GitHub-visible state, and explicitly allowed
 source metadata. Capture-time and event-time are distinct fields.
 
-T1 creates the P1 `EvidenceSealManifest`. It records the actual source
+T1 creates the P1 `EvidenceSealManifestV2` and
+`AdjudicationEvidenceViewV1`. It records the actual source
 system/tenant/realm, occurrence namespace, physical instance, native identity,
 revision/as-of identity, logical-lineage assertion, evidence-complete record
 envelopes, source/snapshot identities, raw-envelope/canonical/profile
-commitments, attachment/reference completeness, and resolver input/output
-identities. Every P1 artifact has the P0 construct digest as an exact parent.
-P1 may instantiate evidence facts but may not amend P0 policy, eligibility,
-estimand, treatment, assurance, scoring, or denominator semantics.
+commitments, attachment/reference completeness, adapter identity, capture-time
+authority checks, and condition-neutral availability. Every P1 artifact has
+the P0 construct digest as an exact parent. Resolver status, result, failure,
+output digest, and target census/ground truth are forbidden because P2 and P3
+have not produced them. P1 may instantiate evidence facts but may not amend P0
+policy, eligibility, estimand, treatment, assurance, scoring, or denominator
+semantics.
 
 ### Inputs, outputs, and identity requirements
 
@@ -826,7 +844,7 @@ after implementation and dry-run verification.
 | G3 Probe/leakage machinery | Implement probe/key partitions, role overlap checks, leakage checklist/reviewer sign-off, probe freeze | G1–G2 | Leakage and key-separation fixtures | Real target probes, treatment exposure |
 | G4 Analysis/statistical machinery | Implement bounded within-episode score contract, sparse states, scorer reliability records, co-primary aggregation, information gate slots | G1; architecture decisions | Synthetic paired fixtures; no chosen live numerical values | Product conclusion, real scoring |
 | G5 Dry-run/fixture verification | Exercise T0–T10 mechanics with synthetic episodes, zero-targets, duplicates, leakage, asymmetry, failures, and full lineage | G1–G4 | Independent dry-run PASS report; no natural evidence | Prospective freeze, Agent A/B, live ConvMem |
-| G6 Actual prospective study freeze | Ryan instantiates and approves T0 values, roles, schedule/window, environments, order, parameter slots, and terminal rules | G5 PASS; Kiro plan review; Ryan authorization | `FRAME_FROZEN` and T0 verification | Agent A before gate; no result collection |
+| G6 Actual prospective study freeze | Ryan instantiates and approves T0 values, roles, schedule/window, environments, order, parameter slots, and terminal rules | G5 PASS; V2 exact-byte review; Ryan architecture lock and explicit G6 authorization | `FRAME_FROZEN` and T0 verification | Agent A before gate; no result collection |
 | G7 Agent-A episode execution | Collect only the selected ordinary episodes and seal raw evidence | G6 | T1 complete episode/evidence bundle | Replacement episodes, target selection, B trials |
 | G8 Target census | Two independent adjudicators complete and seal the raw-evidence census; resolve disagreements | G7 | T2 sealed `TargetRegistry` and quality report | Probe construction before seal; capture-based decisions |
 | G9 Census/sample, probe, capture, and C1 readiness | Apply T3; construct/review T4 probes; freeze T5 natural snapshot; qualify T6 | G8; staged sub-gates | Sample/probe/key/capture/environment manifests | Target-directed recapture; B execution before T6 PASS |
@@ -963,18 +981,22 @@ The exact contract additionally requires these identity/evidence controls:
     episode complexity must be reported as differential missingness.
 32. **Arm-correlated missingness:** unequal C0/C1 resolution, retry, cache, or
     evaluability patterns must trigger diagnostic/integrity review.
-33. **Pending-slot freeze:** any of the eight information slots still pending
-    at attempted P0 freeze must stop T0.
+33. **Pending-decision freeze:** any of the 20 canonical decision-registry
+    entries missing, unknown, out of domain, or structurally incomplete at
+    attempted P0 freeze must stop T0.
 
 For every control, verification records the fail-closed output, retained
 denominator/accounting state, classification, and exact blocked transition.
 Digest equality alone is not sufficient evidence.
 
-## 17. Still-unresolved numerical and product-contract choices
+## 17. Human projection of remaining Ryan value selections
 
-This plan identifies, but does not choose, the following values. Each must be
-resolved prospectively and bound into T0 or the explicitly named pre-scoring
-freeze. None may be selected merely for convenience.
+The V2 JSON `decision_registry` is the sole decision inventory. Its 20 entries
+define stable IDs, semantics, allowed domains/states, units, preferred policies,
+owner authority, P0 freeze, evidence, validators, exact failures, downsides,
+and overturning evidence. Ryan chooses concrete live values; no implementer
+invents rules. The compact table below is a human view of commonly discussed
+numerical choices, not a second registry and not a complete inventory.
 
 | Choice | Freeze point | Evidence needed before choice | Acceptance authority | Construct-defining? |
 |---|---|---|---|---|
@@ -989,22 +1011,19 @@ freeze. None may be selected merely for convenience.
 | Fixed episode count/observation window | T0 before Agent A | Ordinary-work population, feasible capture window, expected opportunity rate, and operational constraints | Ryan | Study-population-defining |
 | Whole-episode sampling allocation/weights, if needed | T0 before registry use | Population frame, selection probabilities, episode-weight preservation proof | Ryan after Kiro sampling review | Estimand-defining |
 
-The meaningful-advantage and equivalence choices are construct-level. If Kiro
-and Ryan later produce materially conflicting written positions on either, a
-bounded Sol adjudication may be appropriate. Sol is not invoked by this plan
-or by ordinary implementation difficulty.
+Every table row maps to one or more canonical decision IDs. The table cannot
+add a value, authority, exception, freeze point, or validator. No value may
+remain pending at P0/T0 unless the canonical record's allowed domain contains
+an explicit, prospectively frozen non-applicability state. The full registry
+also covers frame, sampling, identity, source, assurance, attachment/material,
+retention, resolver/blind-view, lineage, multiplicity, scorer/key, and
+implementation-amendment policies.
 
-The corrected contract fixes the decision surfaces and their freeze stages;
-Ryan still supplies the concrete study values. No value may remain pending at
-P0/T0 unless the contract records an explicit, prospectively frozen
-non-applicability rule. Source-class inclusion, lower-assurance allowance,
-attachment completeness, retention value, and finite multiplicity bounds are
-P0/T0 decisions, not implementation defaults.
+## 18. Exact questions for fresh-seed V2 review
 
-## 18. Exact questions for independent execution-plan review
-
-Kiro's independent review should answer each question with `PASS`, `FAIL`, or
-an explicitly bounded requested correction tied to this plan revision:
+The fresh-seed Luna xHigh reviewer should answer each question with `PASS`,
+`FAIL`, or an explicitly bounded requested correction tied to the exact V2
+artifact SHA and canonical digest:
 
 1. Does T0 enumerate every architecture-required freeze item and prevent Agent
    A from beginning before the mechanical freeze gate passes?
@@ -1037,23 +1056,26 @@ an explicitly bounded requested correction tied to this plan revision:
     accurately labeled at the corrected architecture tip?
 13. Does the verification matrix cover all requested adversarial cases and
     identify the correct failure disposition for each?
-14. Does any remaining choice now constitute a genuine construct-level conflict
-    requiring Sol, or can the choice remain a bounded later Ryan/Kiro decision?
+14. Does every remaining Ryan choice reduce to an allowed-domain value
+    selection under the canonical registry, with no architecture rule left for
+    the implementer to invent?
 
 ## 19. Review and authorization sequence
 
 ```text
-Corrected architecture amendment (Codex) — complete and pushed
+PRE-G6 exact review of V1 (Sol) — CORRECTIVE REQUIRED
         ↓
-Execution plan (Codex) — this document; awaiting independent review
+PRE-G6 V2 corrective materialization (Sol) — this package
         ↓
-Kiro execution-plan review
+Fresh-seed Luna xHigh exact-byte review
         ↓
-Ryan execution-plan acceptance
+Ryan architecture lock decision
         ↓
-Cursor G1–G5 bounded implementation/dry-run grants
+Bounded Cursor implementation planning/grant
         ↓
-Ryan explicit live-study grants G6–G11
+Independent implementation verification
+        ↓
+Only afterward reconsider G6/T0
 ```
 
 No branch, plan, or dry-run PASS is an implicit grant to run Agent A/B or
@@ -1079,9 +1101,10 @@ collect natural episodes. The live study remains review-required.
 - [x] Identity/lineage, capability-vector, unknown-multiplicity,
       resolver-blindness, snapshot-authority, summary-firewall, scorer-
       amendment, and C0/C1 informative-missingness controls are explicit.
-- [ ] Kiro independent execution-plan review.
-- [ ] Ryan execution-plan acceptance.
+- [ ] Fresh-seed Luna xHigh exact-byte V2 review.
+- [ ] Ryan architecture lock decision.
 - [ ] Any implementation or live-study grant.
 
-**Next sequence:** Kiro independent execution-plan review → Ryan acceptance →
-bounded Cursor implementation grants.
+**Next sequence:** fresh-seed Luna xHigh exact-byte review → Ryan architecture
+lock decision → bounded Cursor implementation planning/grant → independent
+implementation verification → only then reconsider G6/T0.

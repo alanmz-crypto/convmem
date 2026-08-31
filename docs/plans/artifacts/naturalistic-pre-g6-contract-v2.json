@@ -45,10 +45,90 @@
       "docs/plans/EXECUTION-naturalistic-product-value.md"
     ]
   },
+  "amendment_policy": {
+    "construct_amendment_requires": [
+      "new_contract_version",
+      "new_canonical_digest_and_sidecar",
+      "changed_field_manifest",
+      "reason_and_scope",
+      "outcome_blind_independent_review",
+      "explicit_Ryan_authorization"
+    ],
+    "before_agent_a": "dependent_unstarted_artifacts_must_be_rebuilt_from_new_parent",
+    "after_agent_a": "invalidate_dependent_study_generation;_never_retrofit_observed_outcomes",
+    "same_authority_identity_with_changed_estimand": "PROHIBITED",
+    "implementation_amendment_is_additional_to_construct_amendment": true,
+    "validator": "V-AMENDMENT-AUTHORITY",
+    "failure_transition": "INVALID_OR_BLOCKED"
+  },
+  "role_access_policy": {
+    "roles": {
+      "adjudicator": {
+        "may_read": [
+          "AdjudicationEvidenceViewV1"
+        ],
+        "may_not_read": [
+          "OpaqueResolverManifestV2",
+          "resolver_status",
+          "resolver_assurance",
+          "resolver_failure_reason",
+          "resolver_paths_and_locators",
+          "resolver_retry_count_and_timing",
+          "resolver_queue_order",
+          "resolver_timestamps",
+          "resolver_missing_file_signals",
+          "resolver_completeness_labels",
+          "C0C1_outputs",
+          "effects"
+        ]
+      },
+      "controller": {
+        "may_read": [
+          "all_stage_manifests"
+        ],
+        "may_write": [
+          "stage_transition_records",
+          "digests",
+          "controller_side_evidence_packages"
+        ],
+        "must_not_do": [
+          "act_as_agent_b",
+          "select_or_delete_targets",
+          "edit_frozen_probes",
+          "answer_or_search_for_agent_b"
+        ]
+      },
+      "agent_b": {
+        "may_read": [
+          "ordinary_environment",
+          "assigned_probe",
+          "declared_condition_view"
+        ],
+        "must_not_read": [
+          "TargetRegistryV2",
+          "ScoringKeyManifestV2",
+          "OpaqueResolverManifestV2",
+          "controller_internals",
+          "other_agent_b_session"
+        ]
+      }
+    },
+    "adjudication_interface": {
+      "artifact": "AdjudicationEvidenceViewV1",
+      "constant_shape": true,
+      "condition_neutral_inventory_and_availability_allowed": true,
+      "all_resolver_derived_fields_hidden": true,
+      "resolver_join_stage": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL",
+      "validator": "V-ROLE-ACCESS-ADJUDICATION"
+    },
+    "unknown_or_unlisted_field": "DENY_AND_FAIL_CLOSED"
+  },
   "stage_graph": [
     {
       "id": "P0_T0_CONSTRUCT_FREEZE",
       "parent": null,
+      "parent_artifact": null,
+      "parent_digest_field": null,
       "consumes": ["EXTERNAL:architecture_lock_candidate", "EXTERNAL:ryan_decision_values", "EXTERNAL:environment_inventory", "EXTERNAL:implementation_inventory"],
       "produces": ["ConstructFreezeManifestV2", "RoleAccessManifestV2", "DecisionRegistryInstanceV2", "ImplementationManifestV2", "EpisodeScheduleV2"],
       "authority_created": "construct_semantics_and_prospective_study_frame",
@@ -60,6 +140,8 @@
     {
       "id": "P1_T1_EVIDENCE_SEAL",
       "parent": "P0_T0_CONSTRUCT_FREEZE",
+      "parent_artifact": "ConstructFreezeManifestV2",
+      "parent_digest_field": "construct_freeze_digest",
       "consumes": ["ConstructFreezeManifestV2", "EpisodeScheduleV2", "EXTERNAL:ordinary_episode_evidence"],
       "produces": ["EvidenceSealManifestV2", "EvidenceAvailabilityManifestV2", "AdjudicationEvidenceViewV1"],
       "authority_created": "actual_occurrence_revision_snapshot_and_evidence_envelope_authority",
@@ -71,6 +153,8 @@
     {
       "id": "P2_OPAQUE_RESOLUTION",
       "parent": "P1_T1_EVIDENCE_SEAL",
+      "parent_artifact": "EvidenceSealManifestV2",
+      "parent_digest_field": "evidence_seal_digest",
       "consumes": ["ConstructFreezeManifestV2", "EvidenceSealManifestV2", "EvidenceAvailabilityManifestV2"],
       "produces": ["OpaqueResolverManifestV2"],
       "authority_created": "resolver_result_and_capability_vector_authority_hidden_from_adjudicators",
@@ -82,17 +166,21 @@
     {
       "id": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL",
       "parent": "P2_OPAQUE_RESOLUTION",
-      "consumes": ["ConstructFreezeManifestV2", "EvidenceSealManifestV2", "EvidenceAvailabilityManifestV2", "AdjudicationEvidenceViewV1"],
+      "parent_artifact": "OpaqueResolverManifestV2",
+      "parent_digest_field": "resolver_output_digest",
+      "consumes": ["ConstructFreezeManifestV2", "EvidenceSealManifestV2", "EvidenceAvailabilityManifestV2", "AdjudicationEvidenceViewV1", "OpaqueResolverManifestV2"],
       "produces": ["IndependentAdjudicationSetA", "IndependentAdjudicationSetB", "BlindedDisagreementResolutionV2", "TargetRegistryV2", "RegistryQualityReportV2"],
       "authority_created": "natural_target_census_ground_truth_unitization_and_registry_membership",
       "validator": "V-STAGE-P3",
       "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
-      "required_fields": ["two_independent_decisions", "opaque_source_span_ids", "orthogonal_target_states", "semantic_unit_deduplication", "unknown_multiplicity_bounds", "registry_digest"],
+      "required_fields": ["resolver_output_digest", "two_independent_decisions", "opaque_source_span_ids", "orthogonal_target_states", "semantic_unit_deduplication", "unknown_multiplicity_bounds", "registry_digest"],
       "forbidden_fields": ["resolver_status_in_adjudication_view", "assurance_vector_in_adjudication_view", "capture_state", "treatment_order", "agent_b_outputs", "scores", "effects"]
     },
     {
       "id": "T3_SAMPLE_SEAL",
       "parent": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL",
+      "parent_artifact": "TargetRegistryV2",
+      "parent_digest_field": "registry_digest",
       "consumes": ["ConstructFreezeManifestV2", "TargetRegistryV2"],
       "produces": ["CensusAcceptanceV2", "EpisodeSampleManifestV2", "UnsampledRosterCommitmentV2"],
       "authority_created": "census_or_probability_sample_membership",
@@ -104,78 +192,92 @@
     {
       "id": "T4_PROBE_KEY_SCORER_SEAL",
       "parent": "T3_SAMPLE_SEAL",
+      "parent_artifact": "EpisodeSampleManifestV2",
+      "parent_digest_field": "sample_manifest_digest",
       "consumes": ["ConstructFreezeManifestV2", "TargetRegistryV2", "EpisodeSampleManifestV2"],
       "produces": ["ProbeManifestV2", "ScoringKeyManifestV2", "LeakageReviewManifestV2", "ScorerRuntimeSealV2"],
       "authority_created": "probe_key_and_scorer_instantiation_under_prefrozen_semantics",
       "validator": "V-STAGE-T4",
       "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
-      "required_fields": ["mechanical_key_instantiation_proof", "probe_author_not_adjudicator", "independent_leakage_review", "scorer_implementation_digest", "key_digest"],
+      "required_fields": ["sample_manifest_digest", "mechanical_key_instantiation_proof", "probe_author_not_adjudicator", "independent_leakage_review", "scorer_implementation_digest", "key_digest"],
       "forbidden_fields": ["capture_status", "treatment_order", "agent_b_outputs", "scores", "effects", "target_specific_semantic_scoring_change"]
     },
     {
       "id": "T5_C1_SNAPSHOT_CAPTURE_DIAGNOSIS",
       "parent": "T4_PROBE_KEY_SCORER_SEAL",
+      "parent_artifact": "ProbeManifestV2",
+      "parent_digest_field": "probe_manifest_digest",
       "consumes": ["EvidenceSealManifestV2", "OpaqueResolverManifestV2", "TargetRegistryV2", "ProbeManifestV2", "EXTERNAL:natural_conv_mem_state"],
       "produces": ["ConvMemCaptureStateV2", "C1SnapshotManifestV2", "ControllerEvidencePackageV2"],
       "authority_created": "natural_c1_treatment_snapshot_and_post_registry_capture_diagnostics",
       "validator": "V-STAGE-T5",
       "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
-      "required_fields": ["no_target_directed_repair", "immutable_c1_snapshot", "complete_registry_capture_roster", "controller_side_evidence_package_digest"],
+      "required_fields": ["probe_manifest_digest", "no_target_directed_repair", "immutable_c1_snapshot", "complete_registry_capture_roster", "controller_side_evidence_package_digest"],
       "forbidden_fields": ["registry_membership_change", "target_directed_reindex", "agent_b_outputs", "scores", "effects"]
     },
     {
       "id": "T6_C0_C1_READINESS",
       "parent": "T5_C1_SNAPSHOT_CAPTURE_DIAGNOSIS",
+      "parent_artifact": "C1SnapshotManifestV2",
+      "parent_digest_field": "c1_snapshot_manifest_digest",
       "consumes": ["ConstructFreezeManifestV2", "ProbeManifestV2", "ControllerEvidencePackageV2", "C1SnapshotManifestV2"],
       "produces": ["C0C1EqualityManifestV2", "SessionIsolationManifestV2", "ConditionOrderManifestV2", "EnvironmentQualificationReportV2"],
       "authority_created": "paired_arm_readiness_with_conv_mem_as_sole_declared_difference",
       "validator": "V-STAGE-T6",
       "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
-      "required_fields": ["all_equality_paths_match", "treatment_difference_exactly_declared", "fresh_session_proof", "order_frozen", "informative_missingness_check"],
+      "required_fields": ["c1_snapshot_manifest_digest", "all_equality_paths_match", "treatment_difference_exactly_declared", "fresh_session_proof", "order_frozen", "informative_missingness_check"],
       "forbidden_fields": ["undeclared_arm_difference", "prior_trial_context", "registry_or_key_in_agent_view", "agent_b_outputs", "scores", "effects"]
     },
     {
       "id": "T7_EXECUTION",
       "parent": "T6_C0_C1_READINESS",
+      "parent_artifact": "C0C1EqualityManifestV2",
+      "parent_digest_field": "c0_c1_equality_manifest_digest",
       "consumes": ["ProbeManifestV2", "C0C1EqualityManifestV2", "SessionIsolationManifestV2", "ConditionOrderManifestV2"],
       "produces": ["AgentBTrialRecordV2", "AgentBTraceV2", "ExecutionManifestV2"],
       "authority_created": "paired_fresh_session_execution_evidence",
       "validator": "V-STAGE-T7",
       "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
-      "required_fields": ["one_terminal_record_per_required_arm", "complete_trace", "fresh_session_ids", "no_replacement", "no_controller_as_agent"],
+      "required_fields": ["c0_c1_equality_manifest_digest", "one_terminal_record_per_required_arm", "complete_trace", "fresh_session_ids", "no_replacement", "no_controller_as_agent"],
       "forbidden_fields": ["controller_answer", "controller_search", "condition_specific_repair", "score", "effect"]
     },
     {
       "id": "T8_MASKED_SCORING",
       "parent": "T7_EXECUTION",
-      "consumes": ["ScoringKeyManifestV2", "ScorerRuntimeSealV2", "AgentBTrialRecordV2", "AgentBTraceV2"],
+      "parent_artifact": "ExecutionManifestV2",
+      "parent_digest_field": "execution_manifest_digest",
+      "consumes": ["ScoringKeyManifestV2", "ScorerRuntimeSealV2", "AgentBTrialRecordV2", "AgentBTraceV2", "ExecutionManifestV2"],
       "produces": ["IndependentTargetScoreSetA", "IndependentTargetScoreSetB", "EpisodeScoreSetV2", "ScoringReliabilityReportV2"],
       "authority_created": "masked_target_and_episode_score_authority",
       "validator": "V-STAGE-T8",
       "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
-      "required_fields": ["condition_labels_masked", "two_independent_scores", "frozen_key_and_scorer_digests", "reliability_gate", "sparse_state"],
+      "required_fields": ["execution_manifest_digest", "condition_labels_masked", "two_independent_scores", "frozen_key_and_scorer_digests", "reliability_gate", "sparse_state"],
       "forbidden_fields": ["unmasked_condition_label", "post_execution_key_edit", "post_result_scorer_semantic_change", "effect_based_rescoring"]
     },
     {
       "id": "T9_AGGREGATION",
       "parent": "T8_MASKED_SCORING",
+      "parent_artifact": "EpisodeScoreSetV2",
+      "parent_digest_field": "episode_score_set_digest",
       "consumes": ["TargetRegistryV2", "EpisodeSampleManifestV2", "EpisodeScoreSetV2", "ScoringReliabilityReportV2"],
       "produces": ["OpportunityBoundsReportV2", "EpisodeAggregationReportV2", "AnalysisLineageManifestV2"],
       "authority_created": "co_primary_opportunity_and_conditional_episode_estimates",
       "validator": "V-STAGE-T9",
       "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
-      "required_fields": ["orthogonal_uncertainty_propagated", "one_primary_weight_per_episode", "lower_upper_opportunity_bounds", "paired_episode_coverage", "full_lineage"],
+      "required_fields": ["episode_score_set_digest", "orthogonal_uncertainty_propagated", "one_primary_weight_per_episode", "lower_upper_opportunity_bounds", "paired_episode_coverage", "full_lineage"],
       "forbidden_fields": ["recovered_count_as_total_when_unknown", "target_count_episode_weighting", "post_result_membership_change", "final_product_disposition"]
     },
     {
       "id": "T10_INFORMATION_GATE",
       "parent": "T9_AGGREGATION",
+      "parent_artifact": "EpisodeAggregationReportV2",
+      "parent_digest_field": "episode_aggregation_report_digest",
       "consumes": ["DecisionRegistryInstanceV2", "OpportunityBoundsReportV2", "EpisodeAggregationReportV2", "AnalysisLineageManifestV2"],
       "produces": ["InformationGateReportV2", "StudyDispositionV2"],
       "authority_created": "only_stage_permitted_to_emit_an_allowed_product_disposition",
       "validator": "V-STAGE-T10",
       "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
-      "required_fields": ["all_decision_values_bound", "unbounded_multiplicity_blocks_dependent_estimands", "information_and_reliability_gates", "no_adaptation_attestation", "co_primary_presentation"],
+      "required_fields": ["episode_aggregation_report_digest", "all_decision_values_bound", "unbounded_multiplicity_blocks_dependent_estimands", "information_and_reliability_gates", "no_adaptation_attestation", "co_primary_presentation"],
       "forbidden_fields": ["post_result_threshold_change", "adaptive_window_extension", "false_null_from_insufficient_information"]
     }
   ],

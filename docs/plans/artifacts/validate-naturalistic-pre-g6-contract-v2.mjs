@@ -152,6 +152,13 @@ assert(deepEqual(contract.stage_graph.map((stage) => stage.id), expectedStages),
 const producedAt = new Map();
 contract.stage_graph.forEach((stage, index) => {
   assert(stage.parent === (index === 0 ? null : contract.stage_graph[index - 1].id), `${stage.id}: parent is not immediate predecessor`);
+  if (index === 0) {
+    assert(stage.parent_artifact === null && stage.parent_digest_field === null, "P0 must have no stage parent");
+  } else {
+    assert(typeof stage.parent_artifact === "string" && typeof stage.parent_digest_field === "string", `${stage.id}: exact parent artifact/digest field required`);
+    assert(stage.consumes.includes(stage.parent_artifact), `${stage.id}: parent artifact is not consumed`);
+    assert(stage.required_fields.includes(stage.parent_digest_field), `${stage.id}: parent digest field is not required`);
+  }
   assert(new Set(stage.required_fields.filter((field) => stage.forbidden_fields.includes(field))).size === 0, `${stage.id}: field both required and forbidden`);
   for (const consumed of stage.consumes) {
     if (!consumed.startsWith("EXTERNAL:")) assert(producedAt.has(consumed), `${stage.id}: consumes ${consumed} before production`);
@@ -165,6 +172,11 @@ const p1 = contract.stage_graph[1];
 assert(p1.forbidden_fields.includes("resolver_output_digest") && p1.forbidden_fields.includes("target_census"), "P1 must forbid P2/P3 knowledge");
 assert(contract.stage_graph[2].produces.includes("OpaqueResolverManifestV2"), "P2 must produce resolver authority");
 assert(contract.stage_graph[3].produces.includes("TargetRegistryV2"), "P3/T2 must produce registry authority");
+assert(contract.amendment_policy.same_authority_identity_with_changed_estimand === "PROHIBITED", "estimand amendment cannot retain authority identity");
+assert(contract.amendment_policy.construct_amendment_requires.includes("new_contract_version") && contract.amendment_policy.construct_amendment_requires.includes("new_canonical_digest_and_sidecar") && contract.amendment_policy.construct_amendment_requires.includes("outcome_blind_independent_review"), "construct amendment controls incomplete");
+assert(contract.role_access_policy.adjudication_interface.artifact === "AdjudicationEvidenceViewV1", "adjudication interface artifact differs");
+assert(contract.role_access_policy.adjudication_interface.constant_shape === true && contract.role_access_policy.adjudication_interface.all_resolver_derived_fields_hidden === true, "role access does not enforce a constant blind interface");
+assert(contract.role_access_policy.roles.adjudicator.may_not_read.includes("resolver_retry_count_and_timing") && contract.role_access_policy.roles.adjudicator.may_not_read.includes("resolver_missing_file_signals"), "adjudicator side-channel deny list incomplete");
 
 const decisionFields = ["id", "name", "semantics", "allowed_domain", "units", "allowed_states", "preferred", "owner_authority", "freeze_stage", "evidence_required", "validator", "failure_transition", "accepted_downside", "overturning_evidence"];
 const decisionIds = new Set();

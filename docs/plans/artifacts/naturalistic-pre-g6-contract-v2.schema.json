@@ -14,6 +14,8 @@
     "authorization",
     "canonicalization",
     "normative_authority",
+    "amendment_policy",
+    "role_access_policy",
     "stage_graph",
     "source_resolution_contract",
     "identity_model",
@@ -56,6 +58,8 @@
     },
     "canonicalization": {"type": "object", "required": ["serialization", "encoding", "digest", "trailing_bytes", "self_digest", "sidecar", "validator"]},
     "normative_authority": {"type": "object", "required": ["canonical_contract", "schema", "conformance_cases", "prose_role", "conflict_rule", "derived_views"]},
+    "amendment_policy": {"type": "object", "required": ["construct_amendment_requires", "before_agent_a", "after_agent_a", "same_authority_identity_with_changed_estimand", "implementation_amendment_is_additional_to_construct_amendment", "validator", "failure_transition"]},
+    "role_access_policy": {"type": "object", "required": ["roles", "adjudication_interface", "unknown_or_unlisted_field"]},
     "stage_graph": {
       "type": "array",
       "minItems": 12,
@@ -63,10 +67,12 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "parent", "consumes", "produces", "authority_created", "validator", "failure_transition", "required_fields", "forbidden_fields"],
+        "required": ["id", "parent", "parent_artifact", "parent_digest_field", "consumes", "produces", "authority_created", "validator", "failure_transition", "required_fields", "forbidden_fields"],
         "properties": {
           "id": {"type": "string", "minLength": 1},
           "parent": {"type": ["string", "null"]},
+          "parent_artifact": {"type": ["string", "null"]},
+          "parent_digest_field": {"type": ["string", "null"]},
           "consumes": {"type": "array", "items": {"type": "string"}},
           "produces": {"type": "array", "minItems": 1, "items": {"type": "string"}},
           "authority_created": {"type": "string", "minLength": 1},
