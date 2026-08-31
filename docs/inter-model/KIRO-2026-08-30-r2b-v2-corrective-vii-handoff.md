@@ -13,7 +13,7 @@
 
 | Field | Value |
 |-------|--------|
-| **State** | `NOT_STARTED` (Kiro independent re-review) |
+| **State** | `BLOCKED_ON_RYAN` (Kiro PASS 2026-08-30 — merge/hold decision) |
 | **Branch** | `fix/2026-08-30-2026-08-30-r2b-v2-corrective-vi` |
 | **Frozen tip SHA** | `ea7bc9de10b8eed34a6f8ab11d8f50d3106df614` |
 | **Push status** | `pushed to origin` |
@@ -197,4 +197,4 @@ Charter default: Copilot audit-lane PASS on same tip before Kiro. Ryan appointed
 
 ## TL;DR
 
-Corrective VII @ `ea7bc9d` removes `_MUTATION_GUARD` and makes registry mutation frame-based like the ledger guard Kiro already accepted in VI. Kiro re-reviews frozen tip; PASS unlocks Ryan merge/hold on PR #252 lineage; FAIL sends Cursor to Corrective VIII.
+**Kiro verdict (2026-08-30): PASS** at `ea7bc9d`. VII removed `_MUTATION_GUARD` and made registry mutation frame-based like the ledger guard. Ryan GATE: merge/hold on PR #252 lineage; optional Copilot audit per charter. No Corrective VIII needed unless Ryan reopens scope.
