@@ -14,7 +14,7 @@ Ryan relayed verdict 2026-08-31 — merge G5C yes, grant G6 no until prerequisit
 |-------|--------|
 | **State** | `READY_FOR_CHATGPT_REREVIEW` |
 | **Branch** | `fix/2026-08-30-naturalistic-g5c-corrective` |
-| **Tip SHA** | *(set at push — run `git rev-parse HEAD` on branch tip)* |
+| **Tip SHA** | `93d4ce42b8c8f0c5e66a0b2774e6c200e7be8aa6` |
 | **Push status** | pushed to origin |
 | **PR** | not opened (Ryan may squash-merge G5C branch after reviews) |
 | **Ryan GATE** | ChatGPT small re-review PASS → then Ryan may consider bounded G6/T0 grant |
