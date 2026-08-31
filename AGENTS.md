@@ -51,7 +51,7 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 - [`docs/plans/STATUS-agent-run-ledger.md`](docs/plans/STATUS-agent-run-ledger.md) — Runway Ledger Agent Run identity tracking (**closed**; reference only)
 - [`docs/plans/STATUS-dependability-provenance.md`](docs/plans/STATUS-dependability-provenance.md) — Dependability and provenance Trust Arc (**T3 closed**; later gates deferred)
 - [`docs/plans/STATUS-recovery-authority.md`](docs/plans/STATUS-recovery-authority.md) — Recovery Authority T1/T2 execution (**landed via PR #234 and #236; T3 not authorized**)
-- [`docs/plans/STATUS-naturalistic-product-value.md`](docs/plans/STATUS-naturalistic-product-value.md) — Naturalistic ConvMem product-value evaluation (**G1–G4 landed; G5 Kiro PASS — PR for merge**)
+- [`docs/plans/STATUS-naturalistic-product-value.md`](docs/plans/STATUS-naturalistic-product-value.md) — Naturalistic ConvMem product-value evaluation (**G1–G5 landed; G6 Ryan-gated**)
 
 **Cross-arc rollup:** [`docs/inter-model/STATUS.md`](docs/inter-model/STATUS.md) — active vs closed arcs and next authorized actions (not a per-arc brief).
 
