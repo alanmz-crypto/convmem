@@ -45,18 +45,6 @@ def invalidate_superseded_cache(chroma_dir: str) -> None:
     _superseded_cache.pop(chroma_dir, None)
 
 
-def _exception_messages(exc: BaseException) -> str:
-    """Include chained causes because Chroma can mask its original error."""
-    messages: list[str] = []
-    seen: set[int] = set()
-    current: BaseException | None = exc
-    while current is not None and id(current) not in seen:
-        seen.add(id(current))
-        messages.append(str(current).lower())
-        current = current.__cause__ or current.__context__
-    return "\n".join(messages)
-
-
 def is_chroma_contention_error(exc: BaseException) -> bool:
     """True when another process holds the Chroma sqlite write lock."""
     msg = _exception_messages(exc)
@@ -93,12 +81,7 @@ def open_chroma_for_read(chroma_dir: str, *, retries: int = 5) -> "ChromaStore":
                     store.close()
                 except Exception:
                     pass
-            if is_chroma_contention_error(e) and attempt + 1 < retries:
-                # A read-only mount is permanent for this process. Retrying
-                # lets Chroma's buggy Rust cleanup mask the useful code: 8
-                # error with a later AttributeError.
-                if "readonly" in _exception_messages(e):
-                    raise
+            if is_chroma_contention_error(e) and attempt + 1 < retries and "readonly" not in _exception_messages(e):
                 time.sleep(0.15 * (attempt + 1))
                 continue
             raise
@@ -117,6 +100,18 @@ def open_chroma_for_verify(chroma_dir: str) -> "ChromaStore":
     # Touch primary collection so open fails early if restore is incomplete.
     store._collection(UNITS)
     return store
+
+
+def _exception_messages(exc: BaseException) -> str:
+    """Include chained causes because Chroma can mask its original error."""
+    messages: list[str] = []
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        messages.append(str(current).lower())
+        current = current.__cause__ or current.__context__
+    return "\n".join(messages)
 
 
 def is_superseded(meta: dict) -> bool:

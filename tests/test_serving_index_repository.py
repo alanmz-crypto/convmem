@@ -15,6 +15,7 @@ from serving_authority import (
     publish_legacy_fence,
 )
 from serving_index_repository import (
+    MediatedFallbackResult,
     open_serving_index_repository,
     runtime_serving_read_sites,
 )
@@ -107,6 +108,10 @@ def test_transient_backend_uses_mediated_fallback_only(tmp_path: Path) -> None:
         ) as mock_open:
             repo = MagicMock()
             repo.query_units.side_effect = ServingBackendTransient("locked")
+            repo.mediated_keyword_fallback.return_value = MediatedFallbackResult(
+                rows=fallback_rows,
+                collection_name="knowledge_units",
+            )
             repo.legacy_store.return_value = MagicMock()
             cm = MagicMock()
             cm.__enter__.return_value = repo
@@ -116,7 +121,8 @@ def test_transient_backend_uses_mediated_fallback_only(tmp_path: Path) -> None:
             results = query_units("hello", top_k=1, cfg=cfg)
 
     assert results[0]["id"] == "kw-1"
-    fallback.assert_called_once()
+    repo.mediated_keyword_fallback.assert_called_once()  # pylint: disable=no-member
+    fallback.assert_not_called()
     mock_open.assert_called()
 
 
