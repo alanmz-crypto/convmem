@@ -93,7 +93,7 @@ class R2bV2CorrectiveVIAdversarialTests(unittest.TestCase):
         registry = _closure_freevar_map(inner)["registry"]
         store = registry._lease_records
         module_dict = dict(vars(authority_vault))
-        for key, value in module_dict.items():
+        for _name, value in module_dict.items():
             if isinstance(value, list):
                 for item in value:
                     if hasattr(item, "depth"):
