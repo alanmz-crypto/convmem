@@ -96,11 +96,12 @@ G5 code remains landed on `main`, but the methodology gate is **C — corrective
 required**. Do not edit the implementation until Ryan accepts a corrective
 architecture/execution amendment and separately grants bounded implementation.
 
-If Ryan sent you for **corrective planning**, read the current Codex corrective
-handoff and wait for Ryan's six methodology decisions and explicit planning
-grant. If Ryan sent you for **G6 or live study**, stop. G6 remains closed until
-the corrective is designed, implemented, and independently accepted, followed
-by a separate explicit Ryan G6 grant.
+If Ryan sent you for **ChatGPT advisory**, read the focused ChatGPT handoff and
+recommend one answer for each of D1–D6; advice does not authorize planning. If
+Ryan sent you for **corrective planning**, wait for Ryan's post-advisory decisions
+and explicit planning grant. If Ryan sent you for **G6 or live study**, stop. G6
+remains closed until the corrective is designed, implemented, and independently
+accepted, followed by a separate explicit Ryan G6 grant.
 
 If Ryan sent you for **status**, read this brief and [`LATEST.md`](../inter-model/LATEST.md).
 Do not infer product value from G1–G5 machinery or synthetic fixtures.
@@ -117,6 +118,7 @@ Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 - [x] Independent Kiro review accepts the exact G5 candidate SHA (`23b2495927a9891070c7c294e45bdb641eaab352`).
 - [x] Ryan merges G5 (squash-merged PR #259).
 - [x] Independent Claude/ChatGPT methodology review reopens G5 at gate C.
+- [ ] ChatGPT advises Ryan on the six corrective methodology decisions.
 - [ ] Ryan decides the corrective estimand, missingness, opportunity, failure,
       disposition, and environment policies.
 - [ ] Ryan authorizes a bounded Codex architecture/execution corrective.
@@ -170,6 +172,7 @@ the session transcript separately under Track A.
 - 2026-08-30 — Ryan: squash-merged G5 via PR #259 to `6843bbeebbaed6a109fe94967fdd03fb3569b583`; arc at methodology milestone; G6 Ryan-gated.
 - 2026-08-30 — Ryan: squash-merged routing refresh PR #261 to `676d6b5`; locked G6 closed until ChatGPT review regardless of synthetic results.
 - 2026-08-30 — Codex: ingested Claude/ChatGPT methodology review; gate is C, G5 corrective design is Ryan-gated, and G6 remains closed.
+- 2026-08-30 — Ryan: requested focused ChatGPT advice on the six corrective methodology decisions before choosing or authorizing a plan.
 
 **TL;DR:** G1–G5 remain on `main`, but G5's methodology gate is reopened at C
 after the prospective-frame composition defect. Ryan must decide and authorize a
