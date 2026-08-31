@@ -9,7 +9,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from chroma_write_store import WRITER_GATE_PROTOCOL_VERSION, current_code_revision
+from chroma_write_store import WRITER_GATE_PROTOCOL_VERSION
+
+_IMPLEMENTATION_REVISION_PREFIX = "r2b-v2-implementation:"
+_PLACEHOLDER_REVISION = "0" * 40
 
 ROOT = Path(__file__).resolve().parents[3]
 SHADOW_INVENTORY = ROOT / "docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json"
@@ -233,13 +236,56 @@ def _load_shadow_chroma_sites() -> list[dict[str, Any]]:
     return sites
 
 
-def load_v2_implementation_tip() -> str:
-    """Return the committed implementation tip bound by the v2 inventory artifact."""
+def load_committed_v2_inventory() -> dict[str, Any] | None:
+    """Return the committed v2 inventory artifact, if present."""
     if not V2_INVENTORY.is_file():
-        return current_code_revision()
-    data = json.loads(V2_INVENTORY.read_text(encoding="utf-8"))
+        return None
+    return json.loads(V2_INVENTORY.read_text(encoding="utf-8"))
+
+
+def load_v2_implementation_tip() -> str:
+    """Return the implementation revision recorded in the committed v2 inventory."""
+    data = load_committed_v2_inventory()
+    if data is None:
+        return resolve_r2b_implementation_revision()
     tip = str(data.get("code_revision") or data.get("implementation_tip") or "")
-    return tip or current_code_revision()
+    return tip or resolve_r2b_implementation_revision()
+
+
+def _strip_revision_binding_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    """Remove revision-binding fields so payload reflects governed content only."""
+    stripped = dict(payload)
+    stripped.pop("inventory_digest", None)
+    stripped.pop("code_revision", None)
+    routes = []
+    for route in stripped.get("routes", ()):
+        route_copy = dict(route)
+        route_copy.pop("code_revision", None)
+        routes.append(route_copy)
+    stripped["routes"] = routes
+    return stripped
+
+
+def resolve_r2b_implementation_revision() -> str:
+    """Return the authoritative R2b v2 implementation identity (Interpretation B).
+
+    ``implementation_revision`` is a deterministic SHA-256 digest (first 40 hex
+    chars) of the governed mutation-route inventory content: static routes,
+    shadow-derived writer coordinates, repository mutation-sink scans, and gate
+    protocol. It identifies code-bearing implementation state for the R2b
+    authority chain — not raw repository ``HEAD`` — and stays stable when only
+    documentation, evidence, CI metadata, handoffs, or merge bookkeeping move.
+    """
+    payload = build_static_route_inventory(code_revision=_PLACEHOLDER_REVISION)
+    canonical = json.dumps(
+        _strip_revision_binding_fields(payload),
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    digest = hashlib.sha256(
+        f"{_IMPLEMENTATION_REVISION_PREFIX}{canonical}".encode("utf-8")
+    ).hexdigest()
+    return digest[:40]
 
 
 _SKIP_SCAN_PREFIXES = (
@@ -446,7 +492,7 @@ def build_static_route_inventory(
     code_revision: str | None = None,
 ) -> dict[str, Any]:
     """Derive the revision-bound static inventory from trusted route evidence."""
-    revision = code_revision or current_code_revision()
+    revision = code_revision or resolve_r2b_implementation_revision()
     routes = [dict(route, code_revision=revision) for route in _STATIC_ROUTES]
     routes.extend(_load_shadow_chroma_sites())
     for route in routes:
@@ -483,7 +529,7 @@ def verify_inventory_matches_tip(
     code_revision: str | None = None,
 ) -> list[str]:
     """Refuse stale or incomplete static inventories."""
-    revision = code_revision or current_code_revision()
+    revision = code_revision or resolve_r2b_implementation_revision()
     errors: list[str] = []
     if inventory.get("code_revision") != revision:
         errors.append("stale inventory revision")

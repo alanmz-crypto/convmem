@@ -30,16 +30,17 @@ from eval_corpus.r2b_v2._registry_mint import (
     register_diagnostic_ticket,
 )
 from eval_corpus.r2b_v2.coverage.inventory import (
+    build_static_route_inventory,
     clear_inventory_scan_cache,
     verify_route_sink_evidence,
 )
 from eval_corpus.r2b_v2.coverage.proof import (
+    CoverageHoldClass,
     CoverageProofError,
     mint_trusted_coverage_proof,
     prove_zero_bypass_coverage,
 )
 from eval_corpus.r2b_v2.coverage_evidence import CoverageEvidenceIdentity
-from eval_corpus.r2b_v2.gate_policy import production_gate_policy
 from eval_corpus.r2b_v2.lease import R2bQuiescenceLeaseError, acquire_r2b_quiescence_lease
 from eval_corpus.r2b_v2.lock_custodian import LockCustodianError, custodian_for_tests
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
@@ -128,45 +129,43 @@ class R2bV2CorrectiveVAdversarialTests(unittest.TestCase):
 
     def test_04_production_authority_cannot_bind_to_stale_inventory_revision(self) -> None:
         stale = "0" * 40
+        stale_inventory = build_static_route_inventory(code_revision=stale)
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             chroma = root / "chroma"
             chroma.mkdir()
             (root / "processed.json").write_text("{}", encoding="utf-8")
             (root / "export").mkdir()
-            with mock.patch(
-                "eval_corpus.r2b_v2.coverage.proof.load_v2_implementation_tip",
-                return_value=stale,
-            ), mock.patch(
-                "eval_corpus.r2b_v2.coverage.proof.current_code_revision",
-                return_value="f" * 40,
-            ):
-                with self.assertRaises(CoverageProofError):
-                    prove_zero_bypass_coverage(
-                        chroma_dir=chroma,
-                        processed_path=root / "processed.json",
-                        export_root=root / "export",
-                        gate_policy=production_gate_policy(),
-                        skip_runtime=True,
-                    )
-            with mock.patch(
-                "eval_corpus.r2b_v2.lease.load_v2_implementation_tip",
-                return_value=stale,
-            ), mock.patch(
-                "eval_corpus.r2b_v2.lease.current_code_revision",
-                return_value="f" * 40,
-            ):
-                with self.assertRaises(R2bQuiescenceLeaseError):
-                    acquire_r2b_quiescence_lease(
-                        run_id="stale-rev",
-                        grant_digest="g",
-                        authority_digest="a",
-                        writer_coverage_digest="cov",
-                        open_evidence_digest="open",
-                        monotonic_deadline=time.monotonic() + 30,
-                        bound_source_paths=("/tmp",),
-                        timeout_ms=1000,
-                    )
+            result = prove_zero_bypass_coverage(
+                chroma_dir=chroma,
+                processed_path=root / "processed.json",
+                export_root=root / "export",
+                static_inventory=stale_inventory,
+                skip_runtime=True,
+            )
+            self.assertFalse(result.passed)
+            static_holds = result.hold_classes[
+                CoverageHoldClass.INCOMPLETE_STATIC_COVERAGE.value
+            ]
+            self.assertTrue(
+                any(
+                    "stale inventory revision" in item.get("detail", "")
+                    for item in static_holds
+                ),
+                static_holds,
+            )
+            with self.assertRaises(R2bQuiescenceLeaseError):
+                acquire_r2b_quiescence_lease(
+                    run_id="stale-rev",
+                    grant_digest="g",
+                    authority_digest="a",
+                    writer_coverage_digest="cov",
+                    open_evidence_digest="open",
+                    monotonic_deadline=time.monotonic() + 30,
+                    bound_source_paths=("/tmp",),
+                    timeout_ms=1000,
+                    implementation_revision=stale,
+                )
 
     def test_05_new_mutation_sink_in_governed_file_detected_not_suppressed(self) -> None:
         clear_inventory_scan_cache()
