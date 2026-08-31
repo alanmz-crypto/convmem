@@ -1,0 +1,334 @@
+{
+  "artifact_type": "naturalistic_pre_g6_contract",
+  "contract_version": "naturalistic-pre-g6-contract-v1",
+  "arc": "Naturalistic ConvMem product-value evaluation",
+  "status": "PROPOSED_NOT_LOCKED",
+  "authority": {
+    "construct_freeze": {
+      "stage": "P0_PRE_AGENT_A",
+      "artifact_type": "ConstructFreezeManifestV1",
+      "binds": [
+        "study_population_and_episode_selection",
+        "information_slots",
+        "source_class_and_adapter_capability_policy",
+        "identity_namespace_and_lineage_rules",
+        "evidence_complete_envelope_and_canonicalization_policy",
+        "resolver_semantics_and_version_policy",
+        "attachment_and_material_span_policy",
+        "snapshot_retention_and_replay_policy",
+        "target_eligibility_unitization_and_denominator_policy",
+        "missingness_evaluability_integrity_and_invalidity_policy",
+        "legacy_and_summary_firewall",
+        "scorer_semantics_and_score_range",
+        "disposition_precedence",
+        "controller_side_c0_c1_evidence_path",
+        "role_access_and_blinded_views",
+        "replay_and_counterbalance_policy"
+      ],
+      "must_not_contain": [
+        "post_agent_a_source_identity_values",
+        "result_dependent_placeholders",
+        "implicit_attachment_policy",
+        "implicit_target_multiplicity_rule"
+      ]
+    },
+    "evidence_seal": {
+      "stage": "P1_POST_AGENT_A",
+      "artifact_type": "EvidenceSealManifestV1",
+      "required_parent_field": "construct_freeze_digest",
+      "binds": [
+        "actual_source_occurrence_identity",
+        "physical_instance_and_lineage_assertion",
+        "revision_or_asof_identity",
+        "evidence_complete_record_envelopes",
+        "evidence_snapshot_identity",
+        "raw_envelope_canonical_and_profile_commitments",
+        "attachment_and_reference_completeness",
+        "opaque_resolver_inputs_and_outputs"
+      ],
+      "may_not_change": "any_construct_freeze_field"
+    },
+    "digest_procedure": {
+      "serialization": "RFC8785_JSON_CANONICALIZATION_SCHEME",
+      "encoding": "UTF-8",
+      "digest": "SHA-256(canonical_bytes)",
+      "self_digest": "excluded_from_canonical_bytes",
+      "sidecar": "docs/plans/artifacts/naturalistic-pre-g6-contract-v1.json.sha256"
+    }
+  },
+  "amendment_policy": {
+    "versioning": "immutable_semantic_version_and_new_digest",
+    "before_agent_a": "explicit_amendment_and_outcome_blind_independent_review",
+    "after_agent_a": "construct_change_invalidates_dependent_generation",
+    "after_registry_seal": "no_construct_or_membership_repair; create_new_generation",
+    "unchanged_profile_digest_is_sufficient": false,
+    "implementation_change_requires": [
+      "new_implementation_identity",
+      "explicit_amendment",
+      "outcome_blind_equivalence_review",
+      "adversarial_differential_evidence",
+      "stage_authorization"
+    ]
+  },
+  "identity_model": {
+    "occurrence_reference_fields": [
+      "source_system_id",
+      "tenant_or_realm_id",
+      "authority_scope_id",
+      "occurrence_namespace_id",
+      "physical_source_instance_id",
+      "native_id_namespace",
+      "native_record_id",
+      "source_revision_or_asof_id"
+    ],
+    "separate_evidence_fields": [
+      "logical_lineage_id",
+      "evidence_snapshot_id",
+      "evidence_complete_envelope_digest",
+      "canonical_content_digest",
+      "canonicalization_profile_digest"
+    ],
+    "issuance": "provider_or_importer_issuer_controls_occurrence_namespace",
+    "hash_role": "verification_only_not_identity",
+    "rules": {
+      "clone": "new_physical_instance_without_immutable_lineage",
+      "restore": "new_physical_instance; identical content does not collapse identity",
+      "import_export": "importer_mints_local_occurrence_namespace",
+      "migration": "new occurrence namespace unless immutable issuer lineage proves continuity",
+      "preserved_row_ids": "do_not_preserve_source_authority",
+      "id_reuse": "delete_and_recreate_is_new_occurrence",
+      "edit": "new revision of same occurrence only with provider revision semantics",
+      "partial_export": "evidence_snapshot_with_unknown_cross_instance_deduplication"
+    },
+    "content_commitment": {
+      "preimage": "self_excluding_domain_separated_instance_manifest",
+      "required": ["issuer_identity", "import_or_creation_event", "instance_nonce"],
+      "cannot_assert": "source_truth_or_logical_population_membership"
+    }
+  },
+  "source_evidence_contract": {
+    "raw_definition": "adapter_defined_evidence_complete_record_envelope",
+    "required_semantics": [
+      "evidential_fields",
+      "authorship",
+      "chronology_and_timezone",
+      "reply_or_parent_structure",
+      "validity_metadata",
+      "unknown_and_extension_fields",
+      "attachment_blob_and_external_reference_semantics",
+      "tool_output_reference_semantics",
+      "accepted_and_rejected_record_behavior",
+      "filtering",
+      "extraction_order",
+      "duplicate_handling",
+      "completeness_declaration"
+    ],
+    "commitments": [
+      "evidence_complete_envelope_digest",
+      "canonical_content_digest",
+      "canonicalization_profile_digest",
+      "attachment_reference_inventory_digest",
+      "source_and_snapshot_identity_digest"
+    ],
+    "canonicalization_rule": "normalization_may_not_erase_a_distinction_required_by_admitted_target_classes",
+    "raw_transport_bytes_required": false,
+    "raw_transport_substitute": "complete_adapter_defined_envelope"
+  },
+  "capability_vector": {
+    "dimensions": {
+      "occurrence_identity": ["NATIVE_UNIQUE", "ISSUER_ATTESTED", "DERIVED", "ABSENT"],
+      "source_instance_binding": ["ATTESTED", "DECLARED", "ABSENT"],
+      "revision_asof_binding": ["REVISION_PINNED", "ASOF_PINNED", "CURRENT_ONLY", "UNKNOWN"],
+      "evidence_completeness": ["COMPLETE", "PARTIAL_KNOWN", "UNKNOWN", "MISSING"],
+      "canonical_verification": ["VERIFIED", "UNVERIFIED", "MISMATCH"],
+      "temporal_reproducibility": ["REPLAYABLE", "CAPTURE_ATTESTED", "MUTABLE", "UNKNOWN"],
+      "attachment_material_span_completeness": ["COMPLETE", "PARTIAL_KNOWN", "UNKNOWN", "MISSING"],
+      "preservation_replay_capability": ["SEALED_REPLAYABLE", "SEALED_NONREPLAYABLE", "UNSEALED", "ABSENT"],
+      "lineage_assurance": ["IMMUTABLE_ATTESTED", "DECLARED", "UNKNOWN", "ABSENT"]
+    },
+    "derived_ceiling": "use_specific_meet_of_capabilities",
+    "ceiling_uses": ["ADJUDICATION", "PRIMARY_SCORING", "SECONDARY_DIAGNOSTIC", "EXCLUSION"],
+    "ordinal_enum_is_normative_authority": false,
+    "lower_assurance_catch_all_allowed": false
+  },
+  "denominator_model": {
+    "fixed_episode_denominator": "all_prospectively_selected_episodes",
+    "target_statuses": [
+      "CONFIRMED_PRESENT",
+      "CONFIRMED_ABSENT",
+      "TARGET_STATUS_UNKNOWN",
+      "TARGET_MULTIPLICITY_UNKNOWN",
+      "RESOLVABLE",
+      "NON_RESOLVABLE",
+      "EVALUABLE",
+      "NON_EVALUABLE",
+      "INVALID"
+    ],
+    "rules": [
+      "unknown_is_not_zero",
+      "capture_failure_does_not_delete_an_admitted_target",
+      "episode_retention_does_not_imply_target_count_certainty",
+      "finite_target_count_bounds_must_be_frozen_before_exposure",
+      "unbounded_multiplicity_makes_dependent_quantity_unknown_or_blocked",
+      "target_rich_rows_cannot_increase_episode_primary_weight"
+    ],
+    "estimand_sets": [
+      "episode_opportunity",
+      "enumerated_candidate",
+      "registry_member",
+      "target_bearing_evaluable_episode",
+      "paired_evaluable_episode"
+    ]
+  },
+  "stage_chain": [
+    {"id": "P0", "name": "CONSTRUCT_FREEZE", "when": "before_agent_a", "artifact": "ConstructFreezeManifestV1"},
+    {"id": "P1", "name": "EVIDENCE_SEAL", "when": "after_agent_a_before_adjudication", "artifact": "EvidenceSealManifestV1", "parent": "P0"},
+    {"id": "P2", "name": "OPAQUE_RESOLUTION", "when": "after_p1_before_adjudication", "artifact": "OpaqueResolverManifestV1", "visible_to_adjudicator": false},
+    {"id": "P3", "name": "BLINDED_ADJUDICATION_AND_REGISTRY_SEAL", "when": "after_p2", "artifact": "TargetRegistryV1"},
+    {"id": "P4", "name": "SAMPLE_PROBE_SCORER_AND_RUNTIME_SEAL", "when": "before_agent_b", "artifact": "PreExecutionSealV1"},
+    {"id": "P5", "name": "MASKED_SCORING_AND_ANALYSIS", "when": "after_agent_b", "artifact": "StudyAnalysisV1"}
+  ],
+  "role_access": {
+    "adjudication_view_excludes": [
+      "resolver_status",
+      "assurance_vector",
+      "failure_reason",
+      "source_path",
+      "missing_file_marker",
+      "queue_order",
+      "retry_timing",
+      "capture_timestamp",
+      "completeness_label",
+      "resolver_derived_metadata"
+    ],
+    "resolver_join_stage": "after_registry_decisions_and_blinded_resolution_seal",
+    "controller_may": ["validate", "hash", "seal", "assign", "record"],
+    "controller_may_not": ["answer_for_agent_b", "search_for_agent_b", "select_targets", "repair_frozen_artifacts"]
+  },
+  "snapshot_authority": {
+    "source_occurrence_authority": "establishes_which_occurrence_and_revision_is_referred_to",
+    "preservation_authority": "attests_to_the_bytes_and_references_captured_at_seal",
+    "study_evidentiary_authority": "sealed_package_permitted_by_policy_for_adjudication_and_scoring",
+    "source_snapshot_disagreement": "deterministic_revision_or_integrity_event; never_silent_overwrite",
+    "source_deleted_after_seal": "preserved_package_remains_usable_only_under_capture_attestation_and_capability_ceiling",
+    "tamper_detection": "digest_seal_and_retention_integrity_failure",
+    "snapshot_is_second_source_authority": false
+  },
+  "legacy_and_summary_firewall": {
+    "legacy_descendants_prohibited": [
+      "summaries", "embeddings", "tags", "rankings", "query_expansions", "caches", "candidate_ids", "planning_claims", "metadata", "other_derived_features"
+    ],
+    "human_contamination": "clean_role_recusal_attestation; contaminated_normative_lineage_is_invalid_or_diagnostic",
+    "summary_audit_provenance": [
+      "ordered_consumed_inputs", "retrieval_filter_ranking_truncation", "system_developer_user_prompts", "model_and_build", "sampling_configuration_and_seed_when_meaningful", "tool_identity_and_outputs", "hidden_context_declaration", "output_digest"
+    ],
+    "summary_replay_provenance": "records_actual_replayability_without_promising_bit_identity_for_nondeterministic_or_networked_processing",
+    "summary_proves_truth": false
+  },
+  "scorer_policy": {
+    "semantic_freeze": "before_agent_a_using_synthetic_or_held_out_calibration",
+    "target_specific_key": "mechanical_instantiation_after_registry_seal_only",
+    "required_implementation_identity": true,
+    "replacement_requires": [
+      "new_implementation_digest",
+      "explicit_amendment",
+      "outcome_blind_review",
+      "acceptance_rejection_comparison",
+      "ordering_comparison",
+      "rare_source_coverage",
+      "attachment_and_error_path_coverage",
+      "stage_authorization"
+    ]
+  },
+  "c0_c1_symmetry": {
+    "single_controller_side_operations": ["resolution", "packaging", "snapshot_handling", "retry_policy", "cache_state", "completeness_checks"],
+    "common_inputs": ["sealed_ordinary_evidence", "tools", "environment", "probe", "runtime_contract", "order_policy"],
+    "sole_intended_difference": "conv_mem_unavailable_in_c0_and_available_in_c1",
+    "agent_visible_resolver_state": false,
+    "informative_missingness": {
+      "arm_correlated_pattern": "diagnostic_review",
+      "comparison_changed": "integrity_failure_or_study_invalidity",
+      "ordinary_boundable_missingness": false
+    }
+  },
+  "missingness_matrix": [
+    {"case": "known_unsupported_adapter", "classification": "T0_EXCLUSION_OR_T0_INVALID"},
+    {"case": "unresolved_source", "classification": "RETAINED_UNKNOWN_NON_EVALUABLE"},
+    {"case": "source_missing_after_valid_seal", "classification": "DIAGNOSTIC_OR_NON_EVALUABLE"},
+    {"case": "source_mutation_or_late_capture", "classification": "MISSINGNESS_IF_OBLIGATION_MET_ELSE_PROTOCOL_FAILURE"},
+    {"case": "wrong_source_instance_or_revision", "classification": "INTEGRITY_FAILURE"},
+    {"case": "raw_or_canonical_hash_mismatch", "classification": "INTEGRITY_FAILURE"},
+    {"case": "recorder_failure", "classification": "INSTRUMENTATION_FAILURE"},
+    {"case": "missing_attachment", "classification": "NON_EVALUABLE_OR_INTEGRITY_FAILURE_PER_T0_POLICY"},
+    {"case": "resolver_implementation_bug", "classification": "IMPLEMENTATION_OR_INTEGRITY_FAILURE"},
+    {"case": "treatment_correlated_missingness", "classification": "DIAGNOSTIC_AND_POSSIBLY_INVALID"}
+  ],
+  "invariants": [
+    "occurrence_uniqueness",
+    "verification_not_identity",
+    "construct_immutability",
+    "evidence_parentage",
+    "no_silent_target_loss",
+    "unknown_multiplicity_propagation",
+    "resolver_blindness",
+    "legacy_isolation",
+    "snapshot_conflict_determinism",
+    "implementation_binding",
+    "scorer_independence",
+    "arm_symmetry",
+    "no_post_hoc_upgrade"
+  ],
+  "information_slots": [
+    {"name": "meaningful_episode_advantage", "freeze": "P0", "value": "RYAN_REQUIRED_BEFORE_CONSTRUCT_FREEZE"},
+    {"name": "equivalence_margin", "freeze": "P0", "value": "RYAN_REQUIRED_BEFORE_CONSTRUCT_FREEZE"},
+    {"name": "target_bearing_episode_information_floor", "freeze": "P0", "value": "RYAN_REQUIRED_BEFORE_CONSTRUCT_FREEZE"},
+    {"name": "secondary_information_floor", "freeze": "P0", "value": "RYAN_REQUIRED_BEFORE_CONSTRUCT_FREEZE"},
+    {"name": "precision_confidence_rule", "freeze": "P0", "value": "RYAN_REQUIRED_BEFORE_CONSTRUCT_FREEZE"},
+    {"name": "sparse_reliability_rule", "freeze": "P0", "value": "RYAN_REQUIRED_BEFORE_CONSTRUCT_FREEZE"},
+    {"name": "scorer_reliability_gate", "freeze": "P0", "value": "RYAN_REQUIRED_BEFORE_CONSTRUCT_FREEZE"},
+    {"name": "census_sampling_workload_threshold", "freeze": "P0", "value": "RYAN_REQUIRED_BEFORE_CONSTRUCT_FREEZE"}
+  ],
+  "verification_controls": [
+    "clone_restore_identity_collision",
+    "provider_migration_preserved_row_ids",
+    "partial_exports_same_logical_source",
+    "duplicate_content_different_native_ids",
+    "edit_delete_recreate",
+    "parser_acceptance_change",
+    "canonical_text_same_metadata_changed",
+    "unknown_field_mutation",
+    "attachment_change_or_loss",
+    "unknown_target_multiplicity",
+    "resolver_queue_and_timing_side_channel",
+    "source_snapshot_disagreement",
+    "source_deleted_after_valid_seal",
+    "legacy_derived_feature_influence",
+    "summary_omits_consumed_input",
+    "post_freeze_implementation_rare_path_change",
+    "scorer_author_natural_target_exposure",
+    "adapter_failure_correlated_with_episode_complexity",
+    "arm_correlated_missingness",
+    "c0_c1_retry_cache_asymmetry",
+    "information_slot_pending_at_freeze"
+  ],
+  "ryan_decisions": [
+    {"name": "full_authority_identity_requirements", "preferred": "issuer_attested_vector_capabilities", "stage": "P0", "downside": "some_sources_are_excluded_or_lower_assurance", "overturning_evidence": "provider_proof_of_global_nonreused_migration_safe_identity"},
+    {"name": "lower_assurance_treatment", "preferred": "use_specific_ceiling_and_no_primary_upgrade", "stage": "P0", "downside": "fewer_primary_records", "overturning_evidence": "proof_that_lower_assurance_cannot_change_membership_or_evaluability"},
+    {"name": "source_class_exclusions", "preferred": "prospective_per_class_policy", "stage": "P0", "downside": "narrower_population", "overturning_evidence": "complete_adapter_capability_evidence"},
+    {"name": "attachment_completeness", "preferred": "class_specific_explicit_policy", "stage": "P0", "downside": "attachment_dependent_targets_may_be_non_evaluable", "overturning_evidence": "evidence_complete_blob_capture_and_replay"},
+    {"name": "material_span_assurance", "preferred": "separate_vector_dimension_and_score_ceiling", "stage": "P0", "downside": "partial records cannot support primary scoring", "overturning_evidence": "rubric_proof_that_material_span_is_not_evidential"},
+    {"name": "retention_period_and_location", "preferred": "minimum_integrity_and_replay_contract_then_t0_value", "stage": "P0", "downside": "storage_and_privacy_cost", "overturning_evidence": "independent_replay_without_retained_package"},
+    {"name": "resolver_controller_side_status", "preferred": "compute_once_and_hide_until_registry_seal", "stage": "P0", "downside": "less_adjudicator_diagnostic_context", "overturning_evidence": "access_proof_with_no_inferable_side_channel"},
+    {"name": "source_instance_lineage_issuance", "preferred": "issuer_scoped_nonce_and_attested_lineage", "stage": "P0", "downside": "provider_without_issuer_support_cannot_claim_full_authority", "overturning_evidence": "independent_immutable_lineage_record"},
+    {"name": "unknown_target_multiplicity", "preferred": "finite_predeclared_bound_or_unknown_blocked", "stage": "P0", "downside": "more_blocked_opportunity_results", "overturning_evidence": "complete_census_or_defensible_finite_bound"},
+    {"name": "scorer_and_implementation_amendment", "preferred": "semantic_pre_freeze_plus_digest_bound_differential_review", "stage": "P0", "downside": "harmless changes can require a new generation", "overturning_evidence": "complete rare-path equivalence evidence"
+    }
+  ],
+  "authorization": {
+    "implementation_authorized": false,
+    "g6_authorized": false,
+    "t0_authorized": false,
+    "naturalistic_execution_authorized": false,
+    "product_disposition_authorized": false
+  }
+}

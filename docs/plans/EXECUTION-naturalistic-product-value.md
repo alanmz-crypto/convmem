@@ -5,17 +5,21 @@
 > It authorizes no code, no Agent-A or Agent-B run, no episode collection, no
 > target adjudication, no target-directed recapture, and no product conclusion.
 >
-> **Arc:** none (ad-hoc) — Naturalistic ConvMem product-value evaluation
+> **Arc:** Naturalistic ConvMem product-value evaluation
+>
+> **PRE-G6 contract status:** corrected documentation package; exact review
+> required; not authorized for implementation, G6, T0, or naturalistic work.
 >
 > **Architecture SSoT:**
 > [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md)
-> at corrected architecture amendment `6581be6` on the architecture branch.
-> This execution branch carries that architecture and amendment as
-> `776bfd0`/`1ed41d8` before this plan is added.
+> plus canonical contract artifact
+> [`naturalistic-pre-g6-contract-v1.json`](artifacts/naturalistic-pre-g6-contract-v1.json).
+> The contract is proposed for exact review and is not an implementation or
+> live-study grant.
 
 ## Planning status and human consequence
 
-The accepted architecture is now operationalized as a serial, fail-closed
+The corrected architecture is now operationalized as a serial, fail-closed
 study workflow. The important consequence for Ryan is that no downstream lane
 can begin ordinary work, target adjudication, probe construction, or paired
 execution merely because an earlier artifact exists: each transition has a
@@ -28,11 +32,12 @@ naturalistic C0/C1 ConvMem product-value study.
 grant boundaries, and verification obligations. Codex does not implement or
 run the study.
 
-**System state:** the architecture is accepted and corrected for dual
-adjudication, mechanical admissibility, probe leakage boundaries, whole-episode
-sampling preference, two-part co-primary estimation, sparse/scorer reliability,
-and verified reuse anchors. No study artifact or runtime implementation is
-authorized.
+**System state:** the existing methodology is closed through G5C; this branch
+adds the PRE-G6 staged authority contract, identity/lineage model,
+evidence-complete source envelope, capability vector, unknown-multiplicity
+accounting, resolver blindness, summary firewall, scorer amendment rule, and
+single controller-side C0/C1 evidence path. No study artifact or runtime
+implementation is authorized.
 
 **Next gate:** Kiro independently reviews this plan; Ryan accepts or rejects
 the plan; only then may bounded implementation grants be issued to Cursor.
@@ -77,18 +82,25 @@ to reopen:
 ## 2. Stage dependency graph and global rules
 
 ```text
-T0 Study freeze
-  └─► T1 Natural episode collection
-        └─► T2 Blind complete target census
-              └─► T3 Census/sample freeze
-                    └─► T4 Probe/key construction
-                          └─► T5 Natural capture + C1 snapshot
-                                └─► T6 C0/C1 qualification
-                                      └─► T7 Agent-B paired execution
-                                            └─► T8 Blinded scoring
-                                                  └─► T9 Episode aggregation
-                                                        └─► T10 Information/null gate
+P0 ConstructFreeze (T0 / before Agent A)
+  └─► T1 EvidenceSeal (after Agent A)
+        └─► P2 OpaqueResolver + T2 BlindedAdjudication
+              └─► TargetRegistrySeal
+                    └─► T3 Census/sample freeze
+                          └─► T4 Probe/key/scorer instantiation
+                                └─► T5 Natural capture + C1 snapshot
+                                      └─► T6 C0/C1 qualification
+                                            └─► T7 Agent-B paired execution
+                                                  └─► T8 Blinded scoring
+                                                        └─► T9 Episode aggregation
+                                                              └─► T10 Information/null gate
 ```
+
+The exact stage contract is `naturalistic-pre-g6-contract-v1`. T0 freezes the
+construct root; T1 seals actual evidence identities; resolution is computed
+once but remains opaque through adjudication; registry, probes, and target-key
+instantiation occur only after blinded decisions seal. The evidence seal must
+carry the exact construct-root digest and cannot amend it.
 
 The implementation grants may develop and test their own mechanics in
 parallel only where the dependency table permits it. Live study artifacts
@@ -102,6 +114,12 @@ the prior artifact identities. Every actor/session has a stable identity and
 role, and every transition records authority, timestamp, input digests, output
 digests, and software/environment identity.
 
+Canonical contract bytes use RFC 8785 JCS over UTF-8. The contract digest is
+SHA-256 over those bytes, with the digest stored in the adjacent `.sha256`
+sidecar rather than inside the self-referential JSON. Contract amendments get a
+new version and digest; after Agent-A exposure, a construct amendment
+invalidates the dependent generation instead of repairing it.
+
 The controller is a mechanical state machine. It may validate, hash, seal,
 assign, and record; it may not answer for Agent B, search on Agent B's behalf,
 select interesting targets, edit a frozen probe, add context, or choose a
@@ -111,10 +129,12 @@ favorable analysis rule.
 
 ### Purpose and entry authority
 
-T0 instantiates the accepted architecture as one frozen study registration
-before ordinary work begins. Ryan is the study owner and must approve the
-registration. The controller verifies completeness mechanically. **No Agent A
-may begin before T0 freeze verification passes.**
+T0 instantiates the corrected architecture as the immutable P0 construct
+registration before ordinary work begins. Ryan is the study owner and must
+approve the registration. The controller verifies completeness mechanically.
+**No Agent A may begin before T0 construct-freeze verification passes.** T0
+does not invent post-Agent-A source identities; those belong to the later P1
+evidence seal.
 
 ### Required T0 content
 
@@ -153,6 +173,18 @@ implicit choice to a later actor:
   `COMPLETE — NEGATIVE`, `BLOCKED / NON-ESTIMABLE`, `DIAGNOSTIC`, and
   `INVALID`.
 
+The P0 `ConstructFreezeManifest` also binds the exact contract artifact and
+digest, source system/tenant/realm and occurrence-namespace rules,
+physical-instance/lineage/issuer rules, evidence-complete envelope schemas,
+parser acceptance/filter/order/duplicate rules, unknown-field and attachment
+policy, resolver semantics and version policy, capability-vector dimensions
+and use-specific ceilings, unknown target multiplicity and bound rules, the
+full missingness/integrity taxonomy, legacy-descendant quarantine,
+audit/replay summary provenance, scorer semantics and implementation policy,
+controller-side resolution, C0/C1 symmetry, informative-missingness handling,
+and all role/view boundaries. These are construct-defining even when concrete
+source-class values remain Ryan-owned T0 decisions.
+
 The frame must also specify which parameters are construct-defining versus
 operational. T0 cannot defer a choice by leaving a prose placeholder that
 permits a result-dependent value. A slot may remain pending only while the
@@ -183,6 +215,12 @@ non-applicability rule before `FRAME_FROZEN`.
   or in which the leakage reviewer is not independent, is rejected.
 - An empty or result-dependent numerical slot is a T0 failure, not a later
   analysis decision.
+- A P0 manifest that contains a post-Agent-A identity placeholder, an
+  unscoped source class, an ordinal assurance enum as normative authority, or
+  an unspecified attachment/multiplicity rule is rejected.
+- A scorer contract whose author may inspect natural targets or outcomes, or a
+  replacement policy that relies only on an unchanged profile digest, is
+  rejected.
 
 ### Stop condition
 
@@ -205,6 +243,15 @@ The recorder captures the complete admissible ordinary evidence defined by T0:
 conversation/transcript events, tool calls and outputs, files/notes created in
 ordinary work, repository state, GitHub-visible state, and explicitly allowed
 source metadata. Capture-time and event-time are distinct fields.
+
+T1 creates the P1 `EvidenceSealManifest`. It records the actual source
+system/tenant/realm, occurrence namespace, physical instance, native identity,
+revision/as-of identity, logical-lineage assertion, evidence-complete record
+envelopes, source/snapshot identities, raw-envelope/canonical/profile
+commitments, attachment/reference completeness, and resolver input/output
+identities. Every P1 artifact has the P0 construct digest as an exact parent.
+P1 may instantiate evidence facts but may not amend P0 policy, eligibility,
+estimand, treatment, assurance, scoring, or denominator semantics.
 
 ### Inputs, outputs, and identity requirements
 
@@ -236,6 +283,8 @@ T2 must later refine every selected episode to an explicit registry/analysis
 - A missing source cannot be represented as a complete manifest.
 - A manifest digest must change if source bytes, event bounds, completeness,
   or source identity changes.
+- A P1 evidence seal without an exact P0 parent digest, or one that silently
+  changes a source-class/filter/order/canonicalization rule, is rejected.
 - A replacement schedule, unsealed raw source, duplicate episode ID, or
   unexplained instrumentation gap is a gate failure.
 - T1 stops the affected episode as `DIAGNOSTIC` for instrumentation/identity
@@ -253,6 +302,14 @@ view and frozen rules, independently enumerate/adjudicate candidates, and
 submit before seeing the other decision. The ConvMem store, capture state,
 retrieval traces, target-specific search results, C0/C1 outcomes, treatment
 order, and downstream scores are unread and uninspected for census decisions.
+
+The resolver may already have computed P2 mechanically, but its result is an
+opaque controller-side artifact. The adjudicator view excludes resolver status,
+assurance, failure reasons, paths, missing markers, queue order, retry timing,
+timestamps, completeness labels, and any other resolver-derived side channel.
+Only after both adjudication decisions and any blinded disagreement resolution
+are sealed may the controller join resolver and capability-vector status to the
+registry.
 
 ### Mechanical adjudication procedure
 
@@ -279,6 +336,12 @@ The final candidate disposition is exactly one of:
 Only `ELIGIBLE` enters the eligible target count. The other two dispositions
 remain in the adjudication ledger with reasons, so they cannot silently become
 zero or alter the denominator through undocumented judgment.
+
+The registry also retains `TARGET_STATUS_UNKNOWN` and
+`TARGET_MULTIPLICITY_UNKNOWN` when sealed evidence cannot prove absence or
+complete enumeration. Those states are not `ZERO_ELIGIBLE_TARGETS`. A
+dependent opportunity or effect quantity may use them only under the frozen
+finite-bound rule; otherwise it is `UNKNOWN` or `BLOCKED / NON-ESTIMABLE`.
 
 ### Registry output and resolution
 
@@ -309,6 +372,9 @@ rate, and missing-evidence rate. It must not report only the resolved roster.
 - Capture-dependent inclusion, retrieval-dependent exclusion, adjudicator
   access to treatment/result material, an unsealed candidate edit, or a
   disagreement resolved by the original probe author is rejected.
+- Any explicit or inferred resolver side channel, including a path, missing
+  marker, queue/timing cue, or completeness label, is a resolver-blindness
+  failure and stops T2.
 - Every selected episode gets a registry entry. A true all-zero census entry is
   `ZERO_ELIGIBLE_TARGETS`, never missing and never `EVIDENCE_INCOMPLETE`.
 - Registry sealing is one-way. A later target edit creates a new invalid
@@ -431,6 +497,13 @@ the study identify the natural ConvMem state. Normal Agent-A capture and the
 accepted background defined at T0 are retained. There is no target-directed
 recapture, rewriting, routing, note creation, query treatment, or repair.
 
+All resolution, evidence packaging, snapshot handling, retry policy, cache
+state, and completeness checks are performed once controller-side from the
+sealed P1 evidence state. C0 and C1 do not independently resolve, repair, or
+select source evidence. Any arm-correlated resolution or evaluability pattern
+is retained as differential/informative missingness and reviewed under the
+frozen diagnostic, integrity-failure, or invalidity rule.
+
 The `C1SnapshotManifest` must prove that C1 contains only naturally produced
 study material plus the background explicitly accepted at T0. A target-specific
 addition, repair, or post-census reindex is not accepted background merely
@@ -501,6 +574,9 @@ Randomized or counterbalanced C0/C1 order is frozen before the first trial.
 - A reused Agent-B context/session, registry/key exposure, controller action on
   behalf of Agent B, or mutable C1 snapshot is rejected.
 - Changing order after observing an outcome is rejected.
+- Arm-correlated resolver retries, cache state, snapshot timing, or source
+  completeness is not ordinary missingness; it triggers the frozen
+  differential-missingness review and may invalidate the comparison.
 - A qualification report cannot be generated from self-reported equality alone;
   it needs manifest comparison and a fresh-session check.
 
@@ -575,6 +651,15 @@ The score record covers correctness, currentness, provenance/grounding,
 unsupported claims, realistic continuation utility, and permitted effort/
 latency diagnostics. Retrieval rank and capture state are not scoring truth.
 
+The scorer semantic contract, prompt/rubric meaning, score range, missing/tie
+rules, and reliability semantics were frozen before Agent A using synthetic or
+held-out calibration material. Target-specific keys may be mechanically
+instantiated after registry sealing but cannot change the scoring construct.
+Every behavior-relevant scorer implementation is identified by digest. Any
+replacement requires an explicit amendment, outcome-blind equivalence review,
+adversarial differential evidence, acceptance/order/rare-source/
+attachment/error-path comparison, and stage authorization.
+
 The reliability report records raw agreement and scale-appropriate checks:
 weighted kappa for ordinal/categorical dimensions and an intraclass-correlation
 or equivalent predeclared statistic for the bounded episode score. The exact
@@ -606,6 +691,8 @@ receive ordinary confidence or become a zero effect.
   dimension may be `DIAGNOSTIC`.
 - Sparse episodes cannot be silently excluded, down-weighted, or reclassified
   after seeing C1−C0 results.
+- A scorer implementation or rubric replacement with only an unchanged
+  contract/profile digest is rejected.
 
 T8 stops `INVALID` for scoring-key or masking violations, `DIAGNOSTIC` for
 isolated scoring instrumentation failure, and `BLOCKED / NON-ESTIMABLE` when
@@ -625,6 +712,12 @@ the population definition.
 
 No missing, incomplete, ambiguous, or zero-target state may be collapsed into
 one convenient denominator. `EVIDENCE_INCOMPLETE` is not zero.
+
+`TARGET_STATUS_UNKNOWN` and `TARGET_MULTIPLICITY_UNKNOWN` remain visible in the
+opportunity report. If no finite prospectively frozen bound exists for an
+unknown multiplicity, the dependent opportunity quantity is `UNKNOWN` and the
+conditional product effect is `BLOCKED / NON-ESTIMABLE`; it is never replaced
+with the count of resolvable targets.
 
 ### Co-primary B — conditional episode continuation benefit
 
@@ -827,6 +920,56 @@ for at least the following:
     target; verify opportunity reporting remains descriptive and product effect
     is not called null.
 
+The exact contract additionally requires these identity/evidence controls:
+
+15. **Clone/restore collision:** same native IDs and identical bytes across
+    physical instances must remain distinct unless immutable lineage proves
+    continuity.
+16. **Migration/preserved IDs:** provider migration with preserved row IDs must
+    not inherit source authority without an issuer-approved migration relation.
+17. **Partial exports:** two incomplete exports of one logical source must
+    retain uncertain multiplicity/deduplication rather than become a complete
+    census.
+18. **Native-ID duplicate content:** duplicate bytes under different native
+    IDs must preserve occurrence identity while applying the frozen duplicate
+    policy.
+19. **Edit/delete/recreate:** a revision, deletion, and recreation must resolve
+    to the correct occurrence/revision relationship.
+20. **Parser acceptance:** a parser change that accepts or rejects records must
+    change the implementation/evidence generation and fail an old-generation
+    seal.
+21. **Metadata-only change:** unchanged canonical text with changed authorship,
+    reply, timezone, or validity metadata must not hash as equivalent when the
+    field is evidential.
+22. **Unknown-field mutation:** extension-field changes must be preserved or
+    explicitly make the record incomplete/non-evaluable.
+23. **Attachment loss/change:** missing or changed blobs must follow the frozen
+    attachment policy and never appear complete by default.
+24. **Unknown multiplicity:** unresolved evidence that may contain additional
+    targets must retain unknown status; no finite-bound claim may be invented.
+25. **Resolver side channel:** queue order, timing, paths, missing markers,
+    and completeness labels must be absent from the adjudicator view.
+26. **Snapshot conflict/deletion:** source/snapshot disagreement and source
+    deletion after valid seal must follow the three-authority rule.
+27. **Legacy descendant:** a legacy-derived tag, embedding, cache, or candidate
+    ID influencing a normative artifact must be detected and quarantined.
+28. **Summary omission:** a summary missing one consumed input or hidden tool
+    output must fail audit provenance completeness.
+29. **Rare replacement path:** a post-freeze implementation change that passes
+    old golden vectors must still fail without differential rare-source review.
+30. **Scorer exposure:** scorer authors exposed to natural target phrasing or
+    outcomes must invalidate the affected scoring generation.
+31. **Complexity-correlated adapter failure:** source failures correlated with
+    episode complexity must be reported as differential missingness.
+32. **Arm-correlated missingness:** unequal C0/C1 resolution, retry, cache, or
+    evaluability patterns must trigger diagnostic/integrity review.
+33. **Pending-slot freeze:** any of the eight information slots still pending
+    at attempted P0 freeze must stop T0.
+
+For every control, verification records the fail-closed output, retained
+denominator/accounting state, classification, and exact blocked transition.
+Digest equality alone is not sufficient evidence.
+
 ## 17. Still-unresolved numerical and product-contract choices
 
 This plan identifies, but does not choose, the following values. Each must be
@@ -850,6 +993,13 @@ The meaningful-advantage and equivalence choices are construct-level. If Kiro
 and Ryan later produce materially conflicting written positions on either, a
 bounded Sol adjudication may be appropriate. Sol is not invoked by this plan
 or by ordinary implementation difficulty.
+
+The corrected contract fixes the decision surfaces and their freeze stages;
+Ryan still supplies the concrete study values. No value may remain pending at
+P0/T0 unless the contract records an explicit, prospectively frozen
+non-applicability rule. Source-class inclusion, lower-assurance allowance,
+attachment completeness, retention value, and finite multiplicity bounds are
+P0/T0 decisions, not implementation defaults.
 
 ## 18. Exact questions for independent execution-plan review
 
@@ -924,6 +1074,11 @@ collect natural episodes. The live study remains review-required.
       target-rich weighting, and post-result threshold changes.
 - [x] Numerical/product-contract choices remain explicitly unresolved with
       evidence, authority, freeze point, and construct status.
+- [x] PRE-G6 corrected contract is materialized as a canonical versioned
+      artifact with a staged parent-bound authority chain.
+- [x] Identity/lineage, capability-vector, unknown-multiplicity,
+      resolver-blindness, snapshot-authority, summary-firewall, scorer-
+      amendment, and C0/C1 informative-missingness controls are explicit.
 - [ ] Kiro independent execution-plan review.
 - [ ] Ryan execution-plan acceptance.
 - [ ] Any implementation or live-study grant.

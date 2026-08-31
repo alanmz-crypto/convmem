@@ -4,7 +4,14 @@
 > architecture draft for Kiro design review. It authorizes no Agent A/B run,
 > no corpus mutation, no target-registry population, and no production change.
 >
-> **Arc:** none (ad-hoc) — Portland / ConvMem product-value evaluation
+> **Arc:** Naturalistic ConvMem product-value evaluation
+>
+> **PRE-G6 contract status:** corrected documentation package; exact review
+> required; not authorized for implementation, G6, T0, or naturalistic work.
+>
+> **Canonical contract artifact:**
+> `docs/plans/artifacts/naturalistic-pre-g6-contract-v1.json` with sidecar
+> `naturalistic-pre-g6-contract-v1.json.sha256`.
 >
 > Protocol v3 is closed at `RERUN3 V3 FAILURE PUBLISHED` (closure SHA
 > `9ba7237`). Its K1–K10 seed-construction evidence remains protocol-feasibility
@@ -93,6 +100,26 @@ preserved as upstream and component diagnostics, never as eligibility gates.
     disagreement produce visible reliability states. They cannot silently
     receive the confidence of well-supported episodes or yield a product
     verdict without passing the frozen reliability gate.
+11. **Construct and evidence freezes are different authorities.** A
+    pre-Agent-A construct root fixes every estimand-, treatment-, identity-,
+    and processing-defining rule. A post-Agent-A evidence seal binds actual
+    occurrences and snapshots to that root; it may instantiate evidence but
+    may not amend construct semantics.
+12. **Hashes verify; they do not identify.** A digest can verify bytes or a
+    derived artifact only after an issuer-scoped occurrence identity has been
+    established. No content hash, canonical hash, summary, path, or retrieval
+    trace may manufacture source authority.
+13. **Unknown is not zero.** Unknown source completeness, target status, or
+    target multiplicity is retained as an explicit accounting state. A
+    dependent quantity is bounded only by a finite, prospectively declared
+    bound; otherwise it is unknown or blocked.
+14. **Resolution is mechanically early and access-controlled.** The
+    controller may compute source resolution before adjudication, but the
+    adjudication view excludes every resolver-derived value and side channel
+    until the registry is sealed.
+15. **Every behavior-relevant implementation is identified.** A stable
+    contract/profile digest never substitutes for an implementation digest or
+    an outcome-blind amendment and differential review.
 
 ## 4. Lifecycle state machine
 
@@ -683,36 +710,269 @@ digests are visible for integrity, but their values are not visible to Agent B.
 Retrieval traces may be retained for diagnostics, but they never replace the
 raw-evidence or registry link.
 
+## 18A. PRE-G6 corrected contract — exact authority package
+
+This section is the normative architecture summary for the exact contract
+artifact at
+`docs/plans/artifacts/naturalistic-pre-g6-contract-v1.json`. The JSON artifact
+is canonical for field names, allowed values, stage relationships, invariants,
+and verification controls. This document supplies the rationale and study
+interpretation. A conflict is a contract defect; neither document silently
+wins by recency.
+
+### Artifact identity and amendment rule
+
+- Contract version: `naturalistic-pre-g6-contract-v1`.
+- Canonical serialization: RFC 8785 JSON Canonicalization Scheme (JCS), UTF-8,
+  with no embedded self-digest field.
+- Contract digest: SHA-256 over the canonical bytes, recorded in the adjacent
+  `.sha256` sidecar and in the eventual Ryan lock record.
+- The contract artifact and sidecar are one documentation package. An amendment
+  receives a new version and new digest; it never edits a locked version in
+  place.
+- An amendment is allowed only before the dependent stage, must state the
+  changed fields and reason, receive outcome-blind independent review, and
+  create a new construct generation. After Agent-A exposure, a construct
+  amendment invalidates the dependent study generation; it cannot repair an
+  observed result.
+
+### Staged authority and digest chain
+
+```text
+CONSTRUCT_DRAFT
+    │ all construct-defining semantics and eight information slots fixed
+    ▼
+CONSTRUCT_FREEZE (P0 / T0)
+    │ exact contract + StudyFrame + RoleAccessManifest + implementation policy
+    ▼
+OBSERVATION_OPEN
+    │ selected episodes only; no replacement
+    ▼
+EVIDENCE_SEAL (P1 / T1)
+    │ actual occurrence, lineage, revision/as-of, envelope, snapshot, resolver
+    │ artifacts parent-bind to CONSTRUCT_FREEZE
+    ▼
+OPAQUE_RESOLUTION (P2)
+    │ resolver status is computed but withheld from adjudication views
+    ▼
+BLINDED_ADJUDICATION (P3 / T2)
+    ▼
+TARGET_REGISTRY_SEAL
+    │ resolver/assurance status joins only after independent decisions seal
+    ▼
+SAMPLE_PROBE_SCORER_SEAL (P4 / T3–T4)
+    ▼
+C0C1_READY → EXECUTION → MASKED_SCORING → AGGREGATION → INFORMATION_GATE
+```
+
+The P0 root contains no post-Agent-A identity placeholder. The P1 evidence
+seal contains actual evidence-dependent identities and has a required
+`construct_freeze_digest` parent field. No later artifact may change the P0
+contract, and no P1 evidence may change the P0 population, eligibility,
+assurance, scoring, missingness, denominator, or treatment rules.
+
+### Normative identity and lineage model
+
+An occurrence reference has separate, non-interchangeable components:
+
+- source system plus tenant/realm and authority scope;
+- issuer-scoped occurrence namespace and physical/source-instance identity;
+- native ID namespace and native record ID;
+- provider revision or as-of identity;
+- logical lineage relation, when independently attested;
+- evidence snapshot identity and evidence-complete envelope digest.
+
+Native identity establishes occurrence. Hashes verify the envelope, canonical
+content, profile, snapshot, or derived artifact; hashes never establish
+occurrence. Imports mint an importer-scoped occurrence namespace. Preserved row
+IDs do not preserve source authority. Delete/recreate and provider ID reuse
+create a new occurrence. Edit creates a new revision of the same occurrence
+only when the provider's revision semantics support that claim.
+
+Clone and restore create a new physical instance unless an immutable,
+issuer-attributed lineage record proves continuity. A content-addressed
+instance commitment is computed from a self-excluding, domain-separated
+instance manifest and includes an issuer/import event nonce when identical
+restores must remain distinct. Partial exports are evidence snapshots, not
+independent logical populations; without lineage they remain separate
+occurrences with uncertain cross-instance deduplication. Logical lineage may
+inform population deduplication under the frozen policy, but cannot overwrite
+occurrence authority.
+
+### Evidence-complete source contract
+
+Each admitted source class names an adapter-specific evidence-complete record
+envelope and serialization profile. The profile defines evidential fields,
+authorship, chronology, reply/parent structure, validity metadata, unknown and
+extension fields, attachments/blobs, tool-output references, accepted and
+rejected records, filtering, extraction order, duplicate handling, and
+completeness declarations. “Raw” means the complete adapter-defined envelope,
+not an assumed provider transport byte stream.
+
+The P1 seal carries separate commitments for the evidence-complete envelope,
+canonical content, canonicalization profile, attachment/reference inventory,
+and source/snapshot identity. A canonicalizer may normalize equivalent
+serialization but may not erase a distinction required by the admitted target
+classes. Parser acceptance, filtering, ordering, and unknown-field behavior
+are source-evidence contract fields, not hidden implementation behavior.
+
+### Capability vector and denominator states
+
+Stored assurance is a vector with at least: occurrence identity,
+source-instance binding, revision/as-of binding, evidence completeness,
+canonical verification, temporal reproducibility, attachment/material-span
+completeness, preservation/replay capability, and lineage assurance. A
+human-readable assurance ceiling is derived for a named use (adjudication,
+scoring, diagnostic, or exclusion) and is never an independent authority.
+
+Accounting distinguishes the fixed episode denominator from target and
+evaluable sets. Every selected episode remains. Target records distinguish
+`CONFIRMED_PRESENT`, `CONFIRMED_ABSENT`, `TARGET_STATUS_UNKNOWN`,
+`TARGET_MULTIPLICITY_UNKNOWN`, `RESOLVABLE`, `NON_RESOLVABLE`, `EVALUABLE`,
+`NON_EVALUABLE`, and `INVALID`. Unknown multiplicity is carried as a bound
+only when a finite bound was frozen before exposure; otherwise the dependent
+opportunity or effect quantity is `UNKNOWN` or `BLOCKED / NON-ESTIMABLE`.
+Unknown source evidence is never converted to zero targets.
+
+### Blinded resolution and three authority classes
+
+The controller computes resolution once, from the sealed evidence state, into
+an opaque resolver artifact. The adjudication view excludes resolution,
+assurance, failure reasons, paths, missing markers, queue order, retry timing,
+timestamps, completeness labels, and all other resolver-derived side channels.
+The status join occurs only after registry decisions are sealed.
+
+The source occurrence is the **source-occurrence authority**. The immutable
+captured package is **preservation authority** for the bytes it attests. The
+sealed package permitted by the frozen study policy is **study-evidentiary
+authority** for adjudication and scoring. Source/snapshot disagreement is a
+deterministic integrity or revision event, never a silent overwrite. If the
+source later mutates or disappears, the preserved package remains usable only
+under its recorded capture attestation and capability ceiling. Tampering is a
+digest, seal, and retention-integrity failure.
+
+### Legacy and future-summary firewall
+
+Legacy quarantine covers prose and every descendant feature, including
+embeddings, tags, rankings, query expansions, caches, candidate IDs, metadata,
+and planning claims. Human contamination requires clean-role separation,
+recusal, and an attestation; contaminated normative lineage is invalid or
+diagnostic, never silently clean.
+
+Future summaries record audit provenance and replay provenance separately.
+Audit provenance binds the complete consumed view where applicable: ordered
+inputs, retrieval/filter/ranking/truncation state, prompts, model/build,
+sampling settings, tool identities and outputs, hidden-context declaration,
+and output digest. Replay provenance records what can actually be replayed;
+nondeterministic or networked processing is not falsely promised to be
+bit-identical. Summary provenance proves derivation, never truth.
+
+### Scorer and implementation replacement
+
+Scorer semantic contract, prompt/rubric meaning, score range, missing/tie rules,
+and reliability semantics are frozen before Agent A using synthetic or held-
+out calibration material. Target-specific keys may be mechanically instantiated
+after registry sealing, but cannot change the scoring construct.
+
+Every behavior-relevant implementation has an implementation identity/digest.
+Replacement requires a new version, explicit amendment, outcome-blind review,
+acceptance/rejection comparison, ordering comparison, rare-source coverage,
+attachment/error-path coverage, differential evidence, and stage authorization.
+An unchanged profile digest never authorizes replacement by itself.
+
+### C0/C1 and informative missingness
+
+Evidence resolution, packaging, snapshot handling, retry policy, cache state,
+and completeness checks run once controller-side. C0 and C1 receive the same
+sealed ordinary evidence, tools, environment, probe, and runtime contract;
+only ConvMem availability differs. Neither agent sees resolver state or can
+repair evidence. Arm-correlated resolution, evaluability, retry, or missingness
+triggers diagnostic review; if it changes the comparison or violates the
+frozen path, it is integrity failure or study invalidity, not ordinary
+boundable missingness.
+
+### Missingness and invalidity matrix
+
+The contract uses these default classifications; a narrower source-class rule
+may only be frozen prospectively:
+
+- known unsupported adapter: excluded before T0, or T0 invalid if an admitted
+  class is unsupported;
+- unresolved source: retained unknown/non-evaluable, not zero;
+- source missing after valid seal: preservation failure, diagnostic or
+  non-evaluable under the frozen impact rule;
+- source mutation or late capture: missingness only when capture obligations
+  were met; otherwise protocol/instrumentation failure;
+- wrong source instance or wrong revision: integrity failure;
+- raw or canonical hash mismatch: integrity failure;
+- recorder failure: instrumentation failure, with retained episode and impact;
+- missing attachment: non-evaluable or integrity failure according to the
+  attachment policy, never silently complete;
+- resolver implementation bug: implementation/integrity failure, not ordinary
+  missingness;
+- treatment-correlated missingness: diagnostic review at minimum, and
+  invalidity when it changes the estimand or arm comparison.
+
+### Required formal invariants
+
+The exact artifact records occurrence uniqueness, verification-not-identity,
+construct immutability, evidence parentage, no silent target loss, unknown
+multiplicity propagation, resolver blindness, legacy isolation, deterministic
+snapshot conflict handling, implementation binding, scorer independence, arm
+symmetry, and no post-hoc upgrade. These invariants are acceptance conditions
+for exact review, not implementation suggestions.
+
 ## 19. Freeze sequence
 
 ### Before Agent A
 
-Freeze and hash:
+The P0 `ConstructFreezeManifest` freezes and hashes:
 
 - `EpisodeFrame` and selected-episode schedule;
 - population, retention, and context-gap rules;
+- all eight information slots and their pre-result authority;
+- admitted source classes and adapter capability policy;
+- source system/tenant/realm, occurrence namespace, instance, lineage, and
+  issuer rules;
+- evidence-complete envelope, parser acceptance, filtering, extraction order,
+  duplicate, unknown-field, canonicalization, and attachment policies;
+- resolver semantics/version policy and capability-vector ceilings;
+- denominator, unknown-multiplicity, missingness, evaluability, integrity, and
+  invalidity rules;
 - eligibility/unitization policy and adjudicator access policy;
 - two independent adjudicator identities, disagreement resolution, and
   registry-quality metrics;
+- legacy-descendant quarantine and summary audit/replay provenance;
 - probe families and high-level behavioral scoring vocabulary;
 - probe-author, leakage-reviewer, scorer, and scoring-key separation;
+- scorer semantics, score range, missing/tie rules, and implementation
+  replacement policy;
 - sparse-episode and continuation-score reliability states, statistics, and
   gate slots;
 - C0/C1 environment and order policy;
+- controller-side evidence-processing and informative-missingness policy;
 - census/sampling policy and workload threshold;
 - primary/secondary outcome definitions and null/information framework.
 
 ### After Agent A, before ConvMem/result inspection
 
-Freeze and hash:
+The P1 `EvidenceSealManifest` freezes and hashes, with the exact P0 digest as
+parent:
 
 - complete raw evidence for every selected episode;
-- source/snapshot identities and completeness status;
+- source occurrence, physical instance, issuer/lineage, revision/as-of, and
+  evidence snapshot identities;
+- evidence-complete record envelopes, raw-envelope/canonical/profile
+  commitments, attachment/reference completeness, and opaque resolver output;
+- source/snapshot disagreement and preservation-integrity results;
+- completeness status and target-multiplicity uncertainty;
 - target census, target ground truth, currentness, provenance requirements,
   ambiguity, and natural strata;
 - registry completeness audit.
 
-Capture-state review must occur only after the registry is sealed and must not
+Resolver status and capability-vector fields remain unavailable to adjudicators
+until their decisions and any blinded disagreement resolution are sealed.
+Capture-state review and status joins occur only after registry seal and must not
 change registry membership.
 
 ### Before Agent B
@@ -720,7 +980,8 @@ change registry membership.
 Freeze and hash:
 
 - census acceptance or reproducible sample;
-- probe prompts, behavioral tasks, acceptable responses, and scoring key;
+- probe prompts, behavioral tasks, and target-specific keys mechanically
+  instantiated under the pre-frozen scorer semantics;
 - leakage audit and role-access audit;
 - C0/C1 environment manifests and frozen ConvMem snapshot;
 - randomized/counterbalanced condition order;
@@ -784,6 +1045,28 @@ The future implementation must provide checks for:
 Verification should replay a controlled fixture for mechanics, but controlled
 fixtures cannot be substituted for the eventual naturalistic evidence.
 
+### PRE-G6 exact verification controls
+
+The exact review must exercise these controls and record the blocked stage and
+classification for each failure: cloned/restored sources with same native IDs;
+provider migration with preserved row IDs; two partial exports of one logical
+source; duplicate content under distinct native IDs; edit/delete/recreate;
+parser acceptance changes; unchanged canonical text with changed authorship,
+reply, or time metadata; unknown-field mutation; missing or changed
+attachments; unknown target multiplicity; resolver queue/timing side channels;
+source/snapshot disagreement; source deletion after valid seal;
+legacy-derived tags or embeddings influencing candidates; summary omission of
+an input; post-freeze rare-path implementation changes that pass old golden
+vectors; scorer-author exposure to natural target phrasing; adapter failures
+correlated with episode complexity; arm-correlated missingness; C0/C1 retry or
+cache asymmetry; and all eight information slots left pending at attempted
+freeze.
+
+Each control must demonstrate fail-closed behavior, retained accounting,
+deterministic `INVALID`/`DIAGNOSTIC`/`BLOCKED`/non-evaluable classification,
+and the exact transition that cannot advance. A control that only checks a
+digest or a grouped stage flag is insufficient.
+
 ## 22. Review questions and escalation boundary
 
 ### Luna has justified
@@ -825,9 +1108,10 @@ escalation trigger by itself.
 
 ## 23. Next gate
 
-This document is ready for Kiro design review. After Kiro review, Ryan decides
-whether to accept the architecture and authorize a separate implementation
-phase. Only then may Cursor implement the methodology layer.
+The corrected contract is ready for exact independent contract review, not for
+implementation. After that review, Ryan decides whether to lock the
+architecture and authorize a separate bounded implementation phase. Only then
+may Cursor implement the methodology layer.
 
-**Next sequence:** Codex architecture draft → Kiro design review → Ryan
-acceptance → Cursor implementation.
+**Next sequence:** exact contract review → Ryan architecture lock → bounded
+implementation planning/grant → independent exact-tip verification.
