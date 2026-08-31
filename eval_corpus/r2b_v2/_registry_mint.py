@@ -1,0 +1,51 @@
+"""Private trusted authority registry — vault-backed minting only."""
+# pylint: disable=duplicate-code
+# __all__ intentionally overlaps authority_registry (private mint vs public façade).
+
+from eval_corpus.r2b_v2._authority_vault import (  # noqa: F401
+    AuthorityHandle,
+    AuthorityMintCapability,
+    AuthorityRegistryError,
+    CoverageAuthorityRecord,
+    DiagnosticMintTicket,
+    LeaseAuthorityRecord,
+    SourceAuthorityRecord,
+    compose_and_mint_source_authority,
+    current_authority_epoch,
+    finalize_diagnostic_and_mint_coverage,
+    invalidate_all_authority,
+    invalidate_coverage_handle,
+    invalidate_lease_handle,
+    lookup_coverage_handle,
+    lookup_custodian,
+    lookup_lease_handle,
+    lookup_source_handle,
+    mint_lease_handle,
+    register_diagnostic_ticket,
+    release_lease_handle,
+    verify_live_custodian_lock,
+)
+
+__all__ = [
+    "AuthorityHandle",
+    "AuthorityMintCapability",
+    "AuthorityRegistryError",
+    "CoverageAuthorityRecord",
+    "DiagnosticMintTicket",
+    "LeaseAuthorityRecord",
+    "SourceAuthorityRecord",
+    "compose_and_mint_source_authority",
+    "current_authority_epoch",
+    "finalize_diagnostic_and_mint_coverage",
+    "invalidate_all_authority",
+    "invalidate_coverage_handle",
+    "invalidate_lease_handle",
+    "lookup_coverage_handle",
+    "lookup_custodian",
+    "lookup_lease_handle",
+    "lookup_source_handle",
+    "mint_lease_handle",
+    "register_diagnostic_ticket",
+    "release_lease_handle",
+    "verify_live_custodian_lock",
+]
