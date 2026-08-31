@@ -2044,12 +2044,36 @@ def validate_prospective_manifest_structural(
     return NaturalisticValidation(errors=errors)
 
 
+def _validate_frozen_artifact_seal(
+    serialized_body: dict[str, Any],
+    *,
+    label: str = "prospective manifest",
+) -> list[str]:
+    """Require sealed header metadata independent of caller orchestration."""
+
+    errors: list[str] = []
+    header = serialized_body.get("header")
+    if not isinstance(header, dict):
+        errors.append(f"{label}: missing header")
+        return errors
+    if not header.get("sealed"):
+        errors.append(f"{label}: artifact header must be sealed at FRAME_FROZEN")
+    seal_time = header.get("seal_time")
+    if seal_time is None or _is_placeholder_text(str(seal_time)):
+        errors.append(f"{label}: sealed artifact requires seal_time at FRAME_FROZEN")
+    body_for_seal = copy.deepcopy(serialized_body)
+    body_for_seal.pop("logged_freeze_digest", None)
+    if not verify_artifact_digest(body_for_seal):
+        errors.append(f"{label}: sealed content_digest does not match body at FRAME_FROZEN")
+    return errors
+
+
 def validate_prospective_manifest_freeze_transition(
     serialized_body: dict[str, Any],
     *,
     require_logged_freeze: bool = True,
 ) -> NaturalisticValidation:
-    """Reject FRAME_FROZEN when required information slots remain draft-state PENDING."""
+    """Reject FRAME_FROZEN when manifest is unsealed or slots remain draft-state PENDING."""
 
     from eval_naturalistic.base import NaturalisticValidation
 
@@ -2065,6 +2089,8 @@ def validate_prospective_manifest_freeze_transition(
         manifest = ProspectiveManifestV1.from_dict(serialized_body)
     except StructuralContractError as exc:
         return NaturalisticValidation(errors=[str(exc)])
+
+    errors.extend(_validate_frozen_artifact_seal(serialized_body))
 
     for slot in manifest.information_slots:
         if slot.slot_name not in PROSPECTIVE_INFORMATION_SLOT_NAMES:

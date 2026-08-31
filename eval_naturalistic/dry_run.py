@@ -133,6 +133,7 @@ G5_REQUIRED_FAIL_CLOSED_SCENARIOS = frozenset(
         "pending_information_gate_slots",
         "incomplete_nominal_t0_frame",
         "pending_slots_block_frame_frozen",
+        "unsealed_manifest_blocks_frame_frozen",
         "false_completeness_placeholder_slot",
         "freeze_tamper_post_seal",
         "handoff_artifact_mismatch",
@@ -1220,6 +1221,36 @@ def _adversarial_pending_slots_block_frame_frozen() -> G5ScenarioResult:
     )
 
 
+def _adversarial_unsealed_manifest_blocks_frame_frozen() -> G5ScenarioResult:
+    frame = make_synthetic_frame()
+    frozen_manifest = make_frozen_prospective_manifest(frame=frame)
+    sealed, _ = _seal_prospective_manifest(frozen_manifest)
+    unsealed = copy.deepcopy(sealed)
+    header = dict(unsealed["header"])
+    header["sealed"] = False
+    unsealed["header"] = header
+    body_for_digest = copy.deepcopy(unsealed)
+    body_for_digest.pop("logged_freeze_digest", None)
+    unsealed["logged_freeze_digest"] = artifact_content_digest(body_for_digest)
+    freeze_fail = validate_prospective_manifest_freeze_transition(
+        unsealed,
+        require_logged_freeze=True,
+    )
+    sealed_frozen, _ = _seal_prospective_manifest(frozen_manifest)
+    freeze_ok = validate_prospective_manifest_freeze_transition(
+        sealed_frozen,
+        require_logged_freeze=True,
+    )
+    return _scenario(
+        "unsealed_manifest_blocks_frame_frozen",
+        "T0",
+        demonstrated=(not freeze_fail.ok) and freeze_ok.ok,
+        fail_closed=True,
+        notes="sealed=False with self-consistent freeze digest fails FRAME_FROZEN; sealed frozen passes.",
+        details={"unsealed_errors": freeze_fail.errors},
+    )
+
+
 def _adversarial_false_completeness() -> G5ScenarioResult:
     frame = make_synthetic_frame()
     manifest = make_pending_prospective_manifest(frame=frame)
@@ -1502,6 +1533,7 @@ def run_g5c_adversarial_suite() -> list[G5ScenarioResult]:
     return [
         _adversarial_incomplete_nominal_t0(),
         _adversarial_pending_slots_block_frame_frozen(),
+        _adversarial_unsealed_manifest_blocks_frame_frozen(),
         _adversarial_false_completeness(),
         _adversarial_freeze_tamper(),
         _adversarial_handoff_mismatch(),

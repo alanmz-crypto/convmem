@@ -610,5 +610,36 @@ class ProspectiveManifestG5CTests(unittest.TestCase):
         )
         self.assertTrue(freeze_ok.ok, freeze_ok.errors)
 
+    def test_unsealed_manifest_fails_freeze_transition_with_valid_digest(self):
+        import copy
+
+        from eval_naturalistic.contracts import (
+            make_frozen_prospective_manifest,
+            seal_artifact_dict,
+            validate_prospective_manifest_freeze_transition,
+        )
+        from eval_naturalistic.digest import artifact_content_digest
+        from eval_naturalistic.fixtures import make_synthetic_frame
+
+        frame = make_synthetic_frame()
+        frozen = make_frozen_prospective_manifest(frame=frame)
+        sealed = seal_artifact_dict(frozen.to_dict(), seal_time="2026-08-30T01:00:00Z")
+        unsealed = copy.deepcopy(sealed)
+        header = dict(unsealed["header"])
+        header["sealed"] = False
+        unsealed["header"] = header
+        body_for_digest = copy.deepcopy(unsealed)
+        body_for_digest.pop("logged_freeze_digest", None)
+        unsealed["logged_freeze_digest"] = artifact_content_digest(body_for_digest)
+
+        freeze_fail = validate_prospective_manifest_freeze_transition(
+            unsealed,
+            require_logged_freeze=True,
+        )
+        self.assertFalse(freeze_fail.ok)
+        self.assertTrue(
+            any("must be sealed at FRAME_FROZEN" in err for err in freeze_fail.errors)
+        )
+
 if __name__ == "__main__":
     unittest.main()
