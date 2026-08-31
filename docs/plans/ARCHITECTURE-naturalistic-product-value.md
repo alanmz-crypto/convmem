@@ -987,16 +987,17 @@ escalation trigger by itself.
 ## 23. Next gate
 
 Kiro PASSed exact corrective revision `b6a1ccf`, and Ryan accepted it with the
-wording-only corrections at `fde840b`. The next possible action is a separately
-authorized bounded G5C implementation slice. Design acceptance itself grants no
-implementation, G6/T0, parameter freeze, natural evidence access, Agent A/B,
-scoring, or product interpretation.
+wording-only corrections at `fde840b`. Ryan subsequently granted only the
+strict G5C evaluator/fixture/test allowlist recorded in the Cursor handoff.
+Neither design acceptance nor that synthetic corrective grant authorizes G6/T0,
+parameter freeze, natural evidence access, Agent A/B, scoring, or product
+interpretation.
 
 The gate remains **C**. It escalates to **D / constructed-panel redesign** only
 if the opportunity registry cannot be constructed without treatment/capture-
 derived information, or genuinely paired C0/C1 replay cannot be achieved
 without uncontrolled environment differences.
 
-**Next sequence:** separate Ryan G5C implementation grant, if any → bounded
-synthetic implementation → fresh independent review → later fresh Ryan G6/T0
+**Next sequence:** bounded Cursor G5C synthetic implementation → fresh
+exact-tip Kiro review → Ryan merge/hold decision → later fresh Ryan G6/T0
 decision, if warranted.

@@ -18,8 +18,11 @@ execution amendment at exact revision `b6a1ccff82ef2456d5b65be122e2e714f84f5ad2`
 Kiro independently **PASSed** both files at that exact revision with two
 nonblocking wording corrections; Codex applied only those corrections at
 `fde840b`. Ryan has now **accepted the corrected design as design-only**.
-**No G5C implementation, G6/T0 work, corpus access, parameter selection, or
-product disposition is authorized.**
+Ryan has now issued a **bounded G5C implementation grant** covering only the
+named evaluator, synthetic-fixture, and focused-test files in the Cursor
+handoff. Implementation is `NOT_STARTED`. **No G6/T0 work, live evidence,
+corpus/index access, parameter selection, scoring, or product disposition is
+authorized.**
 
 ---
 
@@ -90,6 +93,7 @@ Key invariants:
 | PR #255 / PR #259 | G1–G4 via #255; G5 dry-run via #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583` |
 | `docs/inter-model/CODEX-2026-08-30-naturalistic-g5-methodology-corrective-handoff.md` | Historical corrective synthesis that led to accepted D1–D6; no implementation grant |
 | `docs/inter-model/CODEX-2026-08-30-naturalistic-g5-corrective-kiro-review-handoff.md` | Exact-revision Kiro review packet for `b6a1ccf`; no implementation grant |
+| `docs/inter-model/CODEX-2026-08-30-naturalistic-g5c-cursor-handoff.md` | Current bounded G5C implementation grant; strict file allowlist; Cursor `NOT_STARTED` |
 | Live runner, study controller, Agent A/B campaign, and corpus access | Absent and unauthorized; G5 does not add them |
 
 ## 4. Completion State
@@ -101,7 +105,7 @@ Key invariants:
 | G3 probe construction machinery | **DONE on `main`** | PR #255; no live key or study sample exists |
 | G4 analysis/statistical machinery | **DONE on `main`** | Kiro PASS at exact `fa7d68b`; focused 98 tests + 8 subtests; Pylint 10/10 |
 | G5 dry-run/fixture verification | **LANDED; METHODOLOGY GATE REOPENED — C** | Original composition defect remains in landed code; corrective design has Kiro PASS at `b6a1ccf` |
-| G5C corrective implementation/dry-run | **DESIGN ACCEPTED; IMPLEMENTATION NOT AUTHORIZED** | Requires a separate bounded Ryan implementation grant; design acceptance is not code authority |
+| G5C corrective implementation/dry-run | **AUTHORIZED — NOT STARTED** | Cursor may modify only the handoff allowlist on `fix/2026-08-30-naturalistic-g5c-corrective`; stop for exact-tip Kiro review |
 | G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Blocked on G5 corrective design, implementation, and fresh independent PASS before any separate Ryan grant |
 | Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
 
@@ -111,10 +115,12 @@ G5 code remains landed on `main`, and methodology gate **C** remains open until
 the accepted corrective is implemented and freshly reviewed. Ryan's acceptance
 is design-only.
 
-If Ryan sent you for **G5C implementation**, stop unless a later Ryan grant
-explicitly names the bounded G5C row and exact scope. If Ryan sent you for
-**G6 or live study**, stop. G6 remains closed until the corrective is
-implemented and independently PASSed, followed by a fresh explicit Ryan grant.
+If Ryan sent you for **G5C implementation**, read the dedicated Cursor handoff,
+start the required new worktree/branch from accepted carrier `c089070`, modify
+only its strict allowlist, run synthetic verification, push, and stop for fresh
+exact-tip Kiro review. If Ryan sent you for **G6 or live study**, stop. G6
+remains closed until the corrective is implemented and independently PASSed,
+followed by a fresh explicit Ryan grant.
 
 If Ryan sent you for **status**, read this brief and [`LATEST.md`](../inter-model/LATEST.md).
 Do not infer product value from G1–G5 machinery or synthetic fixtures.
@@ -140,7 +146,10 @@ Do not interpret synthetic `0.3` as evidence that ConvMem helps.
       wording corrections.
 - [x] Codex applies only those wording corrections at `fde840b`.
 - [x] Ryan accepts the Kiro-PASSed corrected methodology design as design-only.
-- [ ] Ryan separately grants bounded Cursor G5 corrective implementation.
+- [x] Ryan separately grants bounded Cursor G5 corrective implementation.
+- [x] Codex creates the strict-allowlist Cursor implementation handoff.
+- [ ] Cursor implements and pushes the bounded G5C corrective on the required
+      new branch.
 - [ ] Fresh independent review restores G5 PASS on the corrected scope.
 - [ ] Ryan separately authorizes G6 prospective freeze and later T7–T11 gates.
 - [ ] Only a fully authorized T10 path may produce a product disposition.
@@ -150,7 +159,7 @@ Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 | Stop | Owner / invariant | What it blocks |
 |---|---|---|
 | G4 ceiling | Analysis contract; T10-only disposition rule | Any product conclusion from G1–G4 code or fixtures |
-| G5C implementation | Separate bounded Ryan grant after accepted design | Any corrective code; design acceptance alone is insufficient |
+| G5C implementation | Ryan grant + strict Cursor handoff allowlist | Any file outside the allowlist, live evidence, or continuation past exact-tip Kiro review |
 | G6 grant | Ryan after corrected G5 PASS | Prospective study freeze and every live gate; not implied by landed code or synthetic results |
 | G6 and later grants | Ryan | Prospective frame, agents, episodes, scoring, and live ConvMem |
 | Pre-live numerical slots | Ryan after the required review | Choosing meaningful-advantage, equivalence, precision, sparsity, or scorer thresholds |
@@ -172,6 +181,7 @@ separately governed.
 | Serial execution and grant plan | [`EXECUTION-naturalistic-product-value.md`](EXECUTION-naturalistic-product-value.md) |
 | G4 implementation handoff and exact review scope | [`../inter-model/CODEX-2026-08-30-naturalistic-product-value-g4-handoff.md`](../inter-model/CODEX-2026-08-30-naturalistic-product-value-g4-handoff.md) |
 | G5 dry-run candidate and Kiro review packet | [`../inter-model/CURSOR-2026-08-30-naturalistic-product-value-g5-handoff.md`](../inter-model/CURSOR-2026-08-30-naturalistic-product-value-g5-handoff.md) |
+| Current G5C Cursor implementation handoff | [`../inter-model/CODEX-2026-08-30-naturalistic-g5c-cursor-handoff.md`](../inter-model/CODEX-2026-08-30-naturalistic-g5c-cursor-handoff.md) |
 | Cross-arc routing | [`../inter-model/STATUS.md`](../inter-model/STATUS.md) and [`../inter-model/LATEST.md`](../inter-model/LATEST.md) |
 
 ## 10. How to Update This Brief (departure protocol)
@@ -193,8 +203,9 @@ the session transcript separately under Track A.
 - 2026-08-30 — Codex: translated Ryan-accepted D1–D6 into exact corrective revision `b6a1ccf`; independent Kiro review is next and all implementation/live gates remain closed.
 - 2026-08-30 — Kiro/Codex: Kiro PASSed exact `b6a1ccf` with two nonblocking axis-wording corrections; Codex applied only those at `fde840b`; Ryan accept/revise is next.
 - 2026-08-30 — Ryan: accepted corrected design `b6a1ccf` + wording-only `fde840b` as design-only; G5C implementation and all live/T0 authority remain separately gated.
+- 2026-08-30 — Ryan/Codex: Ryan granted the strict bounded G5C file/test scope; Codex routed Cursor to a new implementation branch and exact-tip Kiro stop; G6/live authority remains closed.
 
 **TL;DR:** [Arc Naturalistic ConvMem product-value evaluation] G1–G5 remain on
-`main`, but gate C remains open. Kiro PASSed `b6a1ccf`, and Ryan accepted it
-with wording-only `fde840b` as design-only. G5C implementation and G6/T0 remain
-closed pending separate grants and fresh review.
+`main`, and gate C remains open. G5C implementation is now narrowly authorized
+but `NOT_STARTED` under the strict Cursor handoff; G6/T0, live evidence, corpus
+access, scoring, parameters, and product conclusions remain closed.

@@ -32,12 +32,12 @@ run the study.
 
 **System state:** G1–G5 implementation is landed, but G5's compositional PASS
 is reopened at verdict C because the nominal T0_T2 path accepted an incomplete
-prospective frame. D1–D6 are accepted as design direction; their mechanics are
-not implemented or independently reviewed. G6/T0 remains closed.
+prospective frame. Kiro PASSed and Ryan accepted the D1–D6 corrective design.
+Ryan has granted only the strict G5C evaluator/fixture/test allowlist;
+implementation is `NOT_STARTED`. G6/T0 remains closed.
 
-**Next gate:** Kiro independently reviews the exact corrective architecture and
-execution revision; Ryan then accepts or revises it. Any later implementation
-requires a separate bounded grant.
+**Next gate:** Cursor implements the bounded synthetic G5C handoff on the named
+new branch, pushes exact evidence, and stops for fresh exact-tip Kiro review.
 
 ## 1. Locked architecture decisions
 
@@ -1049,9 +1049,13 @@ Kiro exact-revision architecture/execution review — PASS at b6a1ccf
         ↓
 Ryan design acceptance — accepted with wording-only fde840b
         ↓
-Separate Ryan grant for bounded G5C implementation — NOT GRANTED
+Separate Ryan grant for bounded G5C implementation — GRANTED for named files
         ↓
-Corrected G5 synthetic PASS and independent review
+Cursor implementation on new branch — NOT STARTED
+        ↓
+Fresh exact-tip Kiro implementation review
+        ↓
+Corrected G5 synthetic PASS, if earned
         ↓
 Fresh Ryan decision on any G6/T0 planning grant
 ```
@@ -1079,8 +1083,12 @@ collect natural episodes. The live study remains review-required.
       evidence, authority, freeze point, and construct status.
 - [x] Kiro independent architecture/execution PASS at exact `b6a1ccf`.
 - [x] Ryan design acceptance with wording-only corrections at `fde840b`.
-- [ ] Any implementation or live-study grant.
+- [x] Ryan grants only the bounded G5C implementation allowlist recorded in the
+      Cursor handoff.
+- [ ] Cursor completes and pushes the bounded synthetic corrective.
+- [ ] Fresh Kiro review PASSes the exact implementation tip.
+- [ ] Any G6/T0 or live-study grant.
 
-**Next sequence:** a separately authorized bounded G5C implementation grant, if
-Ryan chooses to issue one → synthetic correction → fresh independent review.
-Gate remains C; G6/T0 remains closed.
+**Next sequence:** Cursor implements only the named G5C allowlist on a new
+branch → fresh exact-tip Kiro review → Ryan merge/hold decision. Gate remains
+C; G6/T0 remains closed.
