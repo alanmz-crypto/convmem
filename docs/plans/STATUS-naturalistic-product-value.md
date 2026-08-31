@@ -6,12 +6,16 @@
 
 **Arc:** Naturalistic ConvMem product-value evaluation
 
-**Current state:** G1–G5 are landed on `main`. G1–G4 via squash-merged PR #255
-(`787a6ef8…`); G5 synthetic dry-run via squash-merged PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`.
-Kiro independently PASSed G5 at exact implementation SHA `23b2495927a9891070c7c294e45bdb641eaab352` before
-merge. Classification remains **methodology validation, not product evidence**.
-**G6 is not authorized.** Ryan locked G6 closed until independent **ChatGPT**
-review — favorable synthetic dry-run results do not open G6.
+**Current state:** G1–G5 are landed on `main`; classification remains
+**methodology validation, not product evidence**. Sol's exact review of the V1
+PRE-G6 contract at `82cc01a94ade8760c08df80512dbada410ca620d` returned
+`CORRECTIVE REQUIRED`. The isolated planning branch
+`plan/2026-08-31-naturalistic-pre-g6-contract-v2` now materializes a sole
+canonical V2 authority rooted in GitHub Issue #263. Its RFC 8785 digest is
+`5fec1b40ab2771968c851a4b12c1e0f5740c0eed24ebfb94a7f69e137e97fb34`.
+V2 awaits fresh-seed Luna xHigh exact-byte review and is **not Ryan-locked**.
+**G6 and T0 remain unauthorized.** The active G6 lane was inspected and kept
+separate; synthetic results still do not open G6.
 
 ---
 
@@ -65,8 +69,11 @@ Key invariants:
 
 | Surface | State |
 |---|---|
-| `docs/plans/ARCHITECTURE-naturalistic-product-value.md` | Locked planning package; non-authorizing design document |
-| `docs/plans/EXECUTION-naturalistic-product-value.md` | Serial gate plan; non-authorizing execution document |
+| `docs/plans/ARCHITECTURE-naturalistic-product-value.md` | V2 explanatory projection; non-authorizing and not independently normative |
+| `docs/plans/EXECUTION-naturalistic-product-value.md` | V2 stage/grant projection; non-authorizing and not independently normative |
+| `docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json` | Sole proposed V2 semantic authority; awaiting exact review and Ryan lock |
+| V2 schema, conformance JSON, validator, and `.sha256` sidecar | Exact-byte review package; 12 stages, 20 decisions, 20 invariants, 33 controls, 18 required adversarial cases |
+| `naturalistic-pre-g6-contract-v1.json` and sidecar | Superseded exact-review baseline; must not be implemented |
 | `eval_naturalistic/contracts.py`, `base.py`, `enums.py`, `digest.py` | G1 contract and identity substrate on `main` |
 | `eval_naturalistic/adjudication.py` and fixtures | G2 target census/adjudication scaffold on `main` |
 | `eval_naturalistic/probe_construction.py` and fixtures | G3 probe/key construction scaffold on `main` |
@@ -85,25 +92,24 @@ Key invariants:
 | G3 probe construction machinery | **DONE on `main`** | PR #255; no live key or study sample exists |
 | G4 analysis/statistical machinery | **DONE on `main`** | Kiro PASS at exact `fa7d68b`; focused 98 tests + 8 subtests; Pylint 10/10 |
 | G5 dry-run/fixture verification | **DONE on `main`** | PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`; Kiro PASS at `23b2495927a9891070c7c294e45bdb641eaab352`; methodology validation only |
-| G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Closed until ChatGPT review; then Ryan explicit G6 grant if warranted |
+| PRE-G6 exact contract | **V2 CORRECTIVE MATERIALIZED — NOT LOCKED** | V1 review required correction; V2 exact package awaits fresh-seed Luna xHigh review, then Ryan architecture-lock decision |
+| G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Closed until V2 exact review, architecture lock, implementation, and independent verification; then Ryan explicit G6 grant if warranted |
 | Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-G5 is **closed on `main`**. Do not reopen dry-run implementation unless Ryan
-explicitly authorizes a corrective.
+The next lane is a **fresh-seed Luna xHigh exact-byte review** of the V2 JSON,
+schema, conformance cases, validator, sidecar, and explanatory projections at
+one exact corrective SHA. The reviewer must not trust V1 approvals or this
+materializer's self-checks.
 
-If Ryan sent you for **G6 or live study**, stop. G6 remains **closed** until
-independent **ChatGPT** review completes — synthetic dry-run pass or favorable
-fixture numbers do not authorize G6. After ChatGPT review, Ryan must still issue
-a separate explicit G6 grant. G6 is prospective study freeze (T0): roles,
-schedule/window, environments, order, and all parameter slots must be Ryan-locked
-before any episode collection.
+After an exact-review PASS, Ryan alone may decide architecture lock. Only after
+that may Ryan grant bounded Cursor implementation planning. Independent
+implementation verification must precede any reconsideration of actual G6/T0.
 
-If Ryan sent you for **status**, read this brief and [`LATEST.md`](../inter-model/LATEST.md).
-Do not infer product value from G1–G5 machinery or synthetic fixtures.
-
-Do not interpret synthetic `0.3` as evidence that ConvMem helps.
+If sent for **G6 or live study**, stop. G6 remains closed. Do not access natural
+evidence, choose live values, build the live registry, run agents, score, or
+interpret synthetic `0.3` as product evidence.
 
 ## 6. What Remains Before "Live"
 
@@ -114,8 +120,13 @@ Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 - [x] Cursor implements only the granted G5 dry-run; retain synthetic-only data.
 - [x] Independent Kiro review accepts the exact G5 candidate SHA (`23b2495927a9891070c7c294e45bdb641eaab352`).
 - [x] Ryan merges G5 (squash-merged PR #259).
-- [ ] Independent ChatGPT review of G5 methodology / G6 readiness (Ryan GATE).
-- [ ] Ryan separately authorizes G6 prospective freeze and later T7–T11 gates.
+- [x] Sol exact-review V1 and identify contract blockers.
+- [x] Materialize the isolated V2 corrective with Issue #263 provenance and no G6 lane merge.
+- [ ] Fresh-seed Luna xHigh exact-byte review of one V2 corrective SHA.
+- [ ] Ryan architecture-lock decision after exact-review PASS.
+- [ ] Bounded Cursor implementation planning/grant, if Ryan authorizes it.
+- [ ] Independent exact-tip implementation verification.
+- [ ] Only then may Ryan reconsider G6 prospective freeze and later live gates.
 - [ ] Only a fully authorized T10 path may produce a product disposition.
 
 ## 7. Hard Stops (models cannot cross)
@@ -123,7 +134,8 @@ Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 | Stop | Owner / invariant | What it blocks |
 |---|---|---|
 | G4 ceiling | Analysis contract; T10-only disposition rule | Any product conclusion from G1–G4 code or fixtures |
-| G6 grant | Ryan after ChatGPT review | Prospective study freeze and every live gate; not implied by G5 landing or synthetic results |
+| V2 architecture lock | Fresh-seed exact review, then Ryan | Any bounded implementation planning; materialization is not self-certification |
+| G6 grant | Ryan only after architecture lock, implementation, and independent verification | Prospective study freeze and every live gate; not implied by G5 landing, V2 materialization, or synthetic results |
 | G6 and later grants | Ryan | Prospective frame, agents, episodes, scoring, and live ConvMem |
 | Pre-live numerical slots | Ryan after the required review | Choosing meaningful-advantage, equivalence, precision, sparsity, or scorer thresholds |
 | Corpus/live boundary | Arc execution plan | Corpus access, mutation, or ordinary-work campaign from this lane |
@@ -140,7 +152,9 @@ separately governed.
 
 | Purpose | Path |
 |---|---|
-| Locked architecture | [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md) |
+| Sole proposed V2 authority | [`artifacts/naturalistic-pre-g6-contract-v2.json`](artifacts/naturalistic-pre-g6-contract-v2.json) |
+| V2 schema / conformance / validator | [`artifacts/naturalistic-pre-g6-contract-v2.schema.json`](artifacts/naturalistic-pre-g6-contract-v2.schema.json), [`artifacts/naturalistic-pre-g6-contract-v2.conformance.json`](artifacts/naturalistic-pre-g6-contract-v2.conformance.json), [`artifacts/validate-naturalistic-pre-g6-contract-v2.mjs`](artifacts/validate-naturalistic-pre-g6-contract-v2.mjs) |
+| Explanatory architecture | [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md) |
 | Serial execution and grant plan | [`EXECUTION-naturalistic-product-value.md`](EXECUTION-naturalistic-product-value.md) |
 | G4 implementation handoff and exact review scope | [`../inter-model/CODEX-2026-08-30-naturalistic-product-value-g4-handoff.md`](../inter-model/CODEX-2026-08-30-naturalistic-product-value-g4-handoff.md) |
 | G5 dry-run candidate and Kiro review packet | [`../inter-model/CURSOR-2026-08-30-naturalistic-product-value-g5-handoff.md`](../inter-model/CURSOR-2026-08-30-naturalistic-product-value-g5-handoff.md) |
@@ -159,8 +173,9 @@ the session transcript separately under Track A.
 - 2026-08-30 — Cursor: implemented Ryan-granted G5 synthetic dry-run; candidate awaiting exact-SHA Kiro review. No product evidence. No G6 authority.
 - 2026-08-30 — Kiro: independent G5 PASS at exact SHA `23b2495927a9891070c7c294e45bdb641eaab352`; PR Steward opened merge PR for Ryan.
 - 2026-08-30 — Ryan: squash-merged G5 via PR #259 to `6843bbeebbaed6a109fe94967fdd03fb3569b583`; arc at methodology milestone; G6 Ryan-gated.
-- 2026-08-30 — Ryan: squash-merged routing refresh PR #261 to `676d6b5`; locked G6 closed until ChatGPT review regardless of synthetic results.
+- 2026-08-30 — Ryan: squash-merged routing refresh PR #261 to `676d6b5`; locked G6 closed pending the required independent PRE-G6 exact review regardless of synthetic results.
+- 2026-08-31 — Sol: materialized the Issue-#263-rooted PRE-G6 V2 exact-contract corrective after V1 exact review required correction; fresh-seed review next, with G6 separate and closed.
 
-**TL;DR:** G1–G5 are on `main` (routing at `676d6b5` via PR #261). Methodology
-validation only — not product evidence. G6 stays closed until ChatGPT review,
-then Ryan explicit grant if warranted.
+**TL;DR:** PRE-G6 V2 is materialized but not reviewed or locked. Fresh-seed
+Luna xHigh exact-byte review comes next; Ryan lock, implementation, and
+independent verification must all precede any G6/T0 reconsideration.
