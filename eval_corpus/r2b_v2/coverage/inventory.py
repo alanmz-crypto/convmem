@@ -11,7 +11,11 @@ from typing import Any
 
 from chroma_write_store import WRITER_GATE_PROTOCOL_VERSION
 
-_IMPLEMENTATION_REVISION_PREFIX = "r2b-v2-implementation:"
+from eval_corpus.r2b_v2.coverage.authority_manifest import (
+    clear_authority_manifest_cache,
+    compute_implementation_revision,
+)
+
 _PLACEHOLDER_REVISION = "0" * 40
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -270,22 +274,12 @@ def resolve_r2b_implementation_revision() -> str:
     """Return the authoritative R2b v2 implementation identity (Interpretation B).
 
     ``implementation_revision`` is a deterministic SHA-256 digest (first 40 hex
-    chars) of the governed mutation-route inventory content: static routes,
-    shadow-derived writer coordinates, repository mutation-sink scans, and gate
-    protocol. It identifies code-bearing implementation state for the R2b
-    authority chain — not raw repository ``HEAD`` — and stays stable when only
-    documentation, evidence, CI metadata, handoffs, or merge bookkeeping move.
+    chars) of the fail-closed authority-content manifest: explicit seeds plus
+    transitive local dependency closure over governed writer, proof, lease, and
+    route-entrypoint modules. It binds authority-bearing implementation content
+    — not raw repository ``HEAD`` or inventory coordinate metadata alone.
     """
-    payload = build_static_route_inventory(code_revision=_PLACEHOLDER_REVISION)
-    canonical = json.dumps(
-        _strip_revision_binding_fields(payload),
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-    digest = hashlib.sha256(
-        f"{_IMPLEMENTATION_REVISION_PREFIX}{canonical}".encode("utf-8")
-    ).hexdigest()
-    return digest[:40]
+    return compute_implementation_revision()
 
 
 _SKIP_SCAN_PREFIXES = (
@@ -317,6 +311,7 @@ def _scan_repo_pattern(
 
 def clear_inventory_scan_cache() -> None:
     """Test seam: drop cached repository scans."""
+    clear_authority_manifest_cache()
     _cached_chroma_ctor_scan.cache_clear()
     _cached_generation_store_ctor_scan.cache_clear()
     _cached_generation_pointer_write_scan.cache_clear()
