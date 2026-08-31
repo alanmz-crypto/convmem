@@ -6,12 +6,16 @@
 
 **Arc:** Naturalistic ConvMem product-value evaluation
 
-**Current state:** G1–G5 are landed on `main`. G1–G4 via squash-merged PR #255
-(`787a6ef8…`); G5 synthetic dry-run via squash-merged PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`.
-Kiro independently PASSed G5 at exact implementation SHA `23b2495927a9891070c7c294e45bdb641eaab352` before
-merge. Classification remains **methodology validation, not product evidence**.
-**G6 is not authorized.** Ryan locked G6 closed until independent **ChatGPT**
-review — favorable synthetic dry-run results do not open G6.
+**Current state:** G1–G5 methodology machinery is on `main` (PR #255, PR #259).
+PRE-G6 Contract V2 is **architecture-locked** at commit
+`9f4791c2744c02d742fdb9c0fa1e9dd150591ac1` (canonical digest
+`917ad129a4f9641f65b809e143467b1f2c48ea41203166365b8e3efd459b627e`, 47,330
+JCS bytes) on branch
+`fix/2026-08-31-naturalistic-pre-g6-v2-firewall-corrective`. Classification
+remains **methodology validation, not product evidence**. **G6 and T0 are not
+authorized.** Implementation remains unauthorized; bounded implementation planning
+and independent verification must precede any separate Ryan reconsideration of
+G6/T0.
 
 ---
 
@@ -24,143 +28,133 @@ and with sealed evidence?
 
 **Done means:** a later, separately authorized prospective study can produce an
 auditable co-primary report and an allowed product disposition. A methodology
-merge, dry-run, or partial result is not a product conclusion.
+merge, dry-run, architecture lock, or partial result is not a product conclusion.
 
 ## 2. System Design (how the pieces connect)
 
 ```
-Ryan-frozen frame and roles
+Ryan-frozen construct (P0)
             │
             ▼
-ordinary episodes → raw evidence → blinded target census/adjudication
-                                          │
-                                          ▼
-                                   sealed sample / probe key
-                                          │
-                                          ▼
-                            symmetric C0/C1 capture and scoring
-                                          │
-                                          ▼
-                      bounded co-primary analysis + information gate
-                                          │
-                                          ▼
-                           later allowed product disposition
+P1 evidence seal → P2 opaque resolution → P3 blinded registry seal
+            │
+            ▼
+T3 sample seal → T4 probe/key seal → T5 C1 snapshot/diagnosis
+            │
+            ▼
+T6 C0/C1 readiness → T7 execution → T8 scoring → T9 aggregation → T10 gate
+            │
+            ▼
+           later allowed product disposition (T10 only)
 ```
 
-The landed G1–G4 package supplies contracts, fixtures, adjudication and probe
-scaffolds, bounded episode scoring, co-primary aggregation, sparse/scorer
-reliability states, and information-gate parameter slots. It does not collect
-episodes, run agents, select live thresholds, or access the ConvMem corpus.
+**Canonical authority:** [`naturalistic-pre-g6-contract-v2.json`](artifacts/naturalistic-pre-g6-contract-v2.json)
+at locked digest `917ad129…`. Architecture and execution prose are explanatory
+projections only.
 
-Key invariants:
+Key invariants (compatible with locked V2):
 
 - every episode remains in the opportunity denominator;
 - target count cannot weight an episode more than once in paired analysis;
+- adjudicators see `AdjudicationEvidenceViewV1`, not P2 resolver internals;
+- P1/P2 firewall denies canonical `resolver_result` and `capability_vector`
+  from P1 material and adjudicator-visible surfaces;
+- Issue #263: source present but verbatim unavailable must never collapse into
+  source absent;
 - malformed, duplicate, orphaned, sparse, and non-evaluable inputs fail closed;
-- target-present-but-not-evaluable is opportunity-only, never invented effect;
-- scorer and gate slots are explicit pre-live records, not hidden defaults;
-- G4 can never emit a positive, negative, null, or equivalent product conclusion.
+- G4/T10 ceiling: no product conclusion from G1–G5 machinery or synthetic fixtures.
 
 ## 3. What Exists Right Now (file map)
 
 | Surface | State |
 |---|---|
-| `docs/plans/ARCHITECTURE-naturalistic-product-value.md` | Locked planning package; non-authorizing design document |
-| `docs/plans/EXECUTION-naturalistic-product-value.md` | Serial gate plan; non-authorizing execution document |
-| `eval_naturalistic/contracts.py`, `base.py`, `enums.py`, `digest.py` | G1 contract and identity substrate on `main` |
-| `eval_naturalistic/adjudication.py` and fixtures | G2 target census/adjudication scaffold on `main` |
-| `eval_naturalistic/probe_construction.py` and fixtures | G3 probe/key construction scaffold on `main` |
-| `eval_naturalistic/analysis.py` and fixtures | G4 bounded analysis/statistical machinery on `main`; reviewed bytes unchanged at `fa7d68b` |
-| `eval_naturalistic/dry_run.py`, `dry_run_mechanics.py` | G5 synthetic T0–T10 dry-run harness; not a live study controller |
-| `tests/test_naturalistic_{contracts,adjudication,probe,analysis,dry_run}.py` | Focused G1–G5 coverage on `main` |
-| PR #255 / PR #259 | G1–G4 via #255; G5 dry-run via #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583` |
-| Live runner, study controller, Agent A/B campaign, and corpus access | Absent and unauthorized; G5 does not add them |
+| [`naturalistic-pre-g6-contract-v2.json`](artifacts/naturalistic-pre-g6-contract-v2.json) | **Architecture-locked** @ `9f4791c` / digest `917ad129…` (branch-only until merge) |
+| [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md) | Explanatory projection reconciled to V2 (this branch) |
+| [`EXECUTION-naturalistic-product-value.md`](EXECUTION-naturalistic-product-value.md) | Explanatory execution projection reconciled to V2 (this branch) |
+| `eval_naturalistic/*` on `main` | G1–G5 methodology substrate + synthetic dry-run; **does not satisfy V2 runtime obligations** |
+| PRE-G6 V2 runtime (P1 identity, P2 resolver, manifests listed in §5) | **Not implemented or not verified** |
+| Live runner, study controller, Agent A/B, corpus access | Absent and unauthorized |
 
 ## 4. Completion State
 
 | Gate | State | Evidence / next authority |
 |---|---|---|
-| G1 architecture/contracts | **DONE on `main`** | PR #255; architecture remains non-authorizing |
-| G2 adjudication machinery | **DONE on `main`** | PR #255; no natural episode census has run |
-| G3 probe construction machinery | **DONE on `main`** | PR #255; no live key or study sample exists |
-| G4 analysis/statistical machinery | **DONE on `main`** | Kiro PASS at exact `fa7d68b`; focused 98 tests + 8 subtests; Pylint 10/10 |
-| G5 dry-run/fixture verification | **DONE on `main`** | PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`; Kiro PASS at `23b2495927a9891070c7c294e45bdb641eaab352`; methodology validation only |
-| G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Closed until ChatGPT review; then Ryan explicit G6 grant if warranted |
-| Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
+| G1–G4 methodology | **DONE on `main`** | PR #255 |
+| G5 synthetic dry-run | **DONE on `main`** | PR #259; Kiro PASS @ `23b24959`; not product evidence |
+| PRE-G6 Contract V2 architecture | **LOCKED** (Ryan, 2026-08-31) | `9f4791c` / digest `917ad129…`; Luna EXACT-BYTE PASS |
+| G6 planning reconciliation to V2 | **IN PROGRESS** (this branch) | Docs-only; awaiting independent review |
+| Bounded implementation plan | **NOT STARTED** | Requires planning-doc review + Ryan grant |
+| G6/T0 prospective freeze | **NOT AUTHORIZED** | Separate Ryan grant after implementation verification |
+| Product disposition | **UNAVAILABLE** | T10 only, after full authorized path |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-G5 is **closed on `main`**. Do not reopen dry-run implementation unless Ryan
-explicitly authorizes a corrective.
+If Ryan sent you for **G6/T0/live study**, stop — not authorized.
 
-If Ryan sent you for **G6 or live study**, stop. G6 remains **closed** until
-independent **ChatGPT** review completes — synthetic dry-run pass or favorable
-fixture numbers do not authorize G6. After ChatGPT review, Ryan must still issue
-a separate explicit G6 grant. G6 is prospective study freeze (T0): roles,
-schedule/window, environments, order, and all parameter slots must be Ryan-locked
-before any episode collection.
+If Ryan sent you for **implementation**, stop unless a bounded grant names exact
+scope. Architecture lock ≠ implementation authorization.
 
-If Ryan sent you for **status**, read this brief and [`LATEST.md`](../inter-model/LATEST.md).
-Do not infer product value from G1–G5 machinery or synthetic fixtures.
+If Ryan sent you for **planning reconciliation or review**, read locked V2 JSON
+first, then reconciled ARCHITECTURE/EXECUTION/STATUS. Do not treat prose as
+authority over the canonical contract.
 
-Do not interpret synthetic `0.3` as evidence that ConvMem helps.
+**Not yet implemented or verified** (forward obligations — architecture lock
+does not prove runtime conformance):
+
+- richer P1 evidence identity and envelope commitments;
+- P2 opaque resolver and P1/P2 canonical-field firewall;
+- capability vector semantics;
+- unknown target multiplicity bounds;
+- transitive provenance firewall;
+- scorer/runtime implementation binding;
+- `ControllerEvidencePackageV2`, `C0C1EqualityManifestV2`,
+  `SessionIsolationManifestV2`, `ConditionOrderManifestV2`;
+- informative-missingness checks.
 
 ## 6. What Remains Before "Live"
 
-- [x] Land G1–G4 methodology package on `main` (PR #255).
-- [x] Record exact-SHA Kiro PASS and focused verification.
-- [x] Reconcile canonical routing and add this arc brief.
-- [x] Ryan explicitly grants G5 synthetic dry-run/fixture verification.
-- [x] Cursor implements only the granted G5 dry-run; retain synthetic-only data.
-- [x] Independent Kiro review accepts the exact G5 candidate SHA (`23b2495927a9891070c7c294e45bdb641eaab352`).
-- [x] Ryan merges G5 (squash-merged PR #259).
-- [ ] Independent ChatGPT review of G5 methodology / G6 readiness (Ryan GATE).
-- [ ] Ryan separately authorizes G6 prospective freeze and later T7–T11 gates.
-- [ ] Only a fully authorized T10 path may produce a product disposition.
+- [x] Land G1–G5 on `main`.
+- [x] PRE-G6 Contract V2 architecture lock (Ryan @ `9f4791c`).
+- [ ] G6 planning docs reconciled to locked V2 (this branch).
+- [ ] Independent planning-doc review.
+- [ ] Bounded implementation plan/grant → Ryan approval.
+- [ ] Independent implementation verification against locked V2.
+- [ ] Ryan separate G6/T0 grant (if warranted).
+- [ ] Only authorized T10 path may produce product disposition.
 
 ## 7. Hard Stops (models cannot cross)
 
 | Stop | Owner / invariant | What it blocks |
 |---|---|---|
-| G4 ceiling | Analysis contract; T10-only disposition rule | Any product conclusion from G1–G4 code or fixtures |
-| G6 grant | Ryan after ChatGPT review | Prospective study freeze and every live gate; not implied by G5 landing or synthetic results |
-| G6 and later grants | Ryan | Prospective frame, agents, episodes, scoring, and live ConvMem |
-| Pre-live numerical slots | Ryan after the required review | Choosing meaningful-advantage, equivalence, precision, sparsity, or scorer thresholds |
-| Corpus/live boundary | Arc execution plan | Corpus access, mutation, or ordinary-work campaign from this lane |
+| Canonical JSON authority | Locked V2 @ `917ad129…` | Prose overrides; canonical byte edits without amendment |
+| Architecture lock ≠ implement | `implementation_authorized: false` | Runtime code, live study |
+| G6/T0 grant | Ryan after implementation verification | Prospective freeze, Agent A/B, natural evidence |
+| Adjudicator firewall | V2 role access | P2 internals, `resolver_result`, `capability_vector` in adjudication |
+| Issue #263 invariant | V2 provenance root | Collapsing verbatim-unavailable into source-absent |
+| G4/T10 ceiling | Analysis contract | Product conclusion from machinery or synthetic fixtures |
+| Corpus/live boundary | Arc execution plan | Corpus access or ordinary-work campaign from this lane |
 
 ## 8. Relationship to ConvMem (the bigger picture)
 
-This is an evaluation arc, not a serving-path change. It consumes sealed
-evaluation artifacts and eventually reports product evidence alongside ConvMem's
-retrieval, synthesis, and provenance surfaces. It does not replace JudgeBench,
-R2b capture authorization, Shadow activation, or Recovery Authority; each remains
-separately governed.
+Evaluation arc — not a serving-path change. Separately governed from JudgeBench,
+R2b, Shadow, Recovery Authority.
 
 ## 9. Key Design Files (for deep dives)
 
 | Purpose | Path |
 |---|---|
-| Locked architecture | [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md) |
-| Serial execution and grant plan | [`EXECUTION-naturalistic-product-value.md`](EXECUTION-naturalistic-product-value.md) |
-| G4 implementation handoff and exact review scope | [`../inter-model/CODEX-2026-08-30-naturalistic-product-value-g4-handoff.md`](../inter-model/CODEX-2026-08-30-naturalistic-product-value-g4-handoff.md) |
-| G5 dry-run candidate and Kiro review packet | [`../inter-model/CURSOR-2026-08-30-naturalistic-product-value-g5-handoff.md`](../inter-model/CURSOR-2026-08-30-naturalistic-product-value-g5-handoff.md) |
-| Cross-arc routing | [`../inter-model/STATUS.md`](../inter-model/STATUS.md) and [`../inter-model/LATEST.md`](../inter-model/LATEST.md) |
+| **Canonical architecture (SSoT)** | [`artifacts/naturalistic-pre-g6-contract-v2.json`](artifacts/naturalistic-pre-g6-contract-v2.json) @ `9f4791c` |
+| Explanatory architecture projection | [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md) |
+| Explanatory execution projection | [`EXECUTION-naturalistic-product-value.md`](EXECUTION-naturalistic-product-value.md) |
+| Cross-arc routing | [`../inter-model/LATEST.md`](../inter-model/LATEST.md) |
 
 ## 10. How to Update This Brief (departure protocol)
 
-Keep this document a current-state snapshot, not a session diary. When a gate
-changes state, overwrite sections 3–6, remove completed future work from section
-6, and add one milestone-level line below. Do not add chat narrative here; ingest
-the session transcript separately under Track A.
+Snapshot only — one Update Log line per milestone. Session narrative → Track A.
 
 ### Update Log
 
-- 2026-08-30 — Codex: recorded PR #255 squash merge of G1–G4 on `main`, exact-SHA Kiro PASS, and the separate Ryan-owned G5 boundary.
-- 2026-08-30 — Cursor: implemented Ryan-granted G5 synthetic dry-run; candidate awaiting exact-SHA Kiro review. No product evidence. No G6 authority.
-- 2026-08-30 — Kiro: independent G5 PASS at exact SHA `23b2495927a9891070c7c294e45bdb641eaab352`; PR Steward opened merge PR for Ryan.
-- 2026-08-30 — Ryan: squash-merged G5 via PR #259 to `6843bbeebbaed6a109fe94967fdd03fb3569b583`; arc at methodology milestone; G6 Ryan-gated.
-- 2026-08-30 — Ryan: squash-merged routing refresh PR #261 to `676d6b5`; locked G6 closed until ChatGPT review regardless of synthetic results.
+- 2026-08-30 — G1–G5 landed on `main`; G6 Ryan-gated pending review (superseded).
+- 2026-08-31 — PRE-G6 V2 architecture locked @ `9f4791c` / digest `917ad129…`; Luna EXACT-BYTE PASS; G6 planning reconciliation to V2 in progress; G6/T0 remain unauthorized.
 
-**TL;DR:** G1–G5 are on `main` (routing at `676d6b5` via PR #261). Methodology
-validation only — not product evidence. G6 stays closed until ChatGPT review,
-then Ryan explicit grant if warranted.
+**TL;DR:** G1–G5 on `main`. PRE-G6 V2 locked @ `9f4791c`. Planning docs reconciling to V2. Implementation unauthorized. G6/T0 require separate Ryan grant after implementation verification.

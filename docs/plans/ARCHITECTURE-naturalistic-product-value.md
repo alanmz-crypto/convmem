@@ -1,14 +1,80 @@
 # Architecture Direction — Naturalistic ConvMem Product-Value Study
 
-> **REVIEW REQUIRED — NOT AUTHORIZED FOR IMPLEMENTATION.** This is an
-> architecture draft for Kiro design review. It authorizes no Agent A/B run,
-> no corpus mutation, no target-registry population, and no production change.
+> **EXPLANATORY PROJECTION ONLY — NOT AUTHORIZED FOR IMPLEMENTATION.** This
+> document projects the locked PRE-G6 Contract V2 for human readability. It
+> authorizes no Agent A/B run, no corpus mutation, no target-registry
+> population, and no production change.
 >
-> **Arc:** none (ad-hoc) — Portland / ConvMem product-value evaluation
+> **Arc:** Naturalistic ConvMem product-value evaluation
 >
 > Protocol v3 is closed at `RERUN3 V3 FAILURE PUBLISHED` (closure SHA
 > `9ba7237`). Its K1–K10 seed-construction evidence remains protocol-feasibility
 > evidence only and is not part of this study.
+
+## 0. Canonical authority (PRE-G6 Contract V2)
+
+**Semantic single source of truth (SSoT):**
+
+[`docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json`](artifacts/naturalistic-pre-g6-contract-v2.json)
+
+| Lock field | Value |
+|---|---|
+| Locked commit | `9f4791c2744c02d742fdb9c0fa1e9dd150591ac1` |
+| Branch | `fix/2026-08-31-naturalistic-pre-g6-v2-firewall-corrective` |
+| Parent | `6646422cd7422886cb3a78045241e01205d30665` |
+| Canonical RFC 8785/JCS digest | `917ad129a4f9641f65b809e143467b1f2c48ea41203166365b8e3efd459b627e` |
+| Canonical byte count | 47,330 |
+
+Ryan architecture-locked this exact byte sequence on 2026-08-31 after
+independent exact-byte review (`EXACT-BYTE PASS — V2 FIREWALL CLOSED`).
+
+**Conflict rule:** when this prose and the canonical JSON disagree, the JSON
+wins and this document must be corrected before review.
+
+**Lock-status caveat:** the locked JSON retains historical
+`"status": "PROPOSED_NOT_LOCKED"` and authorization flags
+(`implementation_authorized`, `g6_authorized`, `t0_authorized` all `false`).
+Ryan's external lock binds the exact bytes as architecture authority; those
+STOP-state flags remain valid facts.
+
+**Authoritative stage sequence** (from locked `stage_graph`):
+
+```text
+P0_T0_CONSTRUCT_FREEZE
+  → P1_T1_EVIDENCE_SEAL
+  → P2_OPAQUE_RESOLUTION
+  → P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL
+  → T3_SAMPLE_SEAL
+  → T4_PROBE_KEY_SCORER_SEAL
+  → T5_C1_SNAPSHOT_CAPTURE_DIAGNOSIS
+  → T6_C0_C1_READINESS
+  → T7_EXECUTION
+  → T8_MASKED_SCORING
+  → T9_AGGREGATION
+  → T10_INFORMATION_GATE
+```
+
+**Authority-producing stages (V2 vocabulary):**
+
+| Stage | Authority created |
+|---|---|
+| P1 `P1_T1_EVIDENCE_SEAL` | Occurrence/revision/snapshot/evidence-envelope authority |
+| P2 `P2_OPAQUE_RESOLUTION` | `resolver_result` and `capability_vector` authority (hidden from adjudicators) |
+| P3 `P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL` | Target census, unitization, and registry membership |
+
+P2 is a distinct authority-producing stage. It must not be collapsed into P1
+or P3 in planning prose.
+
+**Issue #263 source semantics (locked invariant):** distinguish four axes —
+source presence, verbatim availability, summary availability, and resolver
+result. **Source present but verbatim unavailable must never collapse into
+source absent.** Query misses, extraction failures, summary-only availability,
+and resolver failures do not establish source absence.
+
+Sections below retain legacy explanatory diagrams and vocabulary where still
+useful. Where legacy stage names (`T0` study freeze, `T1` collection,
+`T2` census) appear, map them to the V2 sequence above; they are not
+independent architecture authority.
 
 ## 1. Product question and consequence
 
@@ -67,9 +133,13 @@ preserved as upstream and component diagnostics, never as eligibility gates.
 1. **Episode-first denominator.** The selected episode frame is fixed before
    outcomes. Every selected episode remains represented, including zero-target
    episodes.
-2. **Raw evidence is study truth.** Target membership comes only from complete,
-   timestamped ordinary evidence and predeclared rules. Chroma and retrieval
-   traces are derivatives and diagnostics.
+2. **Staged evidence authority, not undifferentiated raw access.** P1 seals
+   occurrence/revision/snapshot/evidence-envelope authority; P2 produces
+   resolver-result and capability-vector authority; P3 produces registry
+   membership authority. Chroma and retrieval cannot certify study truth —
+   they remain derivatives and diagnostics. Target membership comes from the
+   sealed registry after blinded adjudication over
+   `AdjudicationEvidenceViewV1`, not from unrestricted P1/P2 internals.
 3. **Capture is not eligibility.** An eligible target remains in the registry
    when ConvMem fails to capture it.
 4. **Freeze before exposure.** Every artifact that can affect eligibility,
@@ -84,17 +154,22 @@ preserved as upstream and component diagnostics, never as eligibility gates.
    adjudication, capture failure, and Agent-B failure are different states.
 8. **One local authority.** The study controller orchestrates a state machine;
    it does not become a second source of truth or a second agent surface.
-9. **Complete-census adjudication.** Every candidate in the complete target
-   census receives two independent adjudications from raw evidence. Disputes
-   are resolved by a blinded third adjudicator or a predeclared blinded
-   consensus procedure, and disagreement is retained as a registry-quality
-   metric.
+9. **Complete-census adjudication over the blind view.** Every candidate in the
+   complete target census receives two independent adjudications over
+   `AdjudicationEvidenceViewV1` — the complete **authorized condition-neutral
+   evidence view**, not unrestricted P1/P2 internals. Disputes are resolved by
+   a blinded third adjudicator or a predeclared blinded consensus procedure,
+   and disagreement is retained as a registry-quality metric.
 10. **Reliability is explicit.** Sparse episode evidence and scorer
     disagreement produce visible reliability states. They cannot silently
     receive the confidence of well-supported episodes or yield a product
     verdict without passing the frozen reliability gate.
 
 ## 4. Lifecycle state machine
+
+> **Authority note:** §0 lists the locked V2 `stage_graph`. The diagram and
+> state names below are an explanatory legacy projection. Planning grants,
+> dependencies, and stop conditions must use the V2 stage IDs.
 
 The study is an append-only sequence of frozen artifacts. A later state may
 read an earlier artifact but may not rewrite it. Any violation enters `INVALID`
@@ -162,7 +237,7 @@ defines a target-independent continuation task.
 | **Study owner / Ryan** | All study artifacts and review reports | Frame/policy approval and final study disposition | Change frozen artifacts after exposure; delegate merge authority. |
 | **Study controller** | Manifests, mechanical run state, environment metadata | State transitions, hashes, run records | Act as Agent B, select targets, edit probes, or add context. |
 | **Raw-evidence recorder** | Ordinary Agent-A outputs and permitted source metadata | Immutable raw-evidence manifest and source copies | Filter for interesting content or inspect ConvMem success to decide retention. |
-| **Target adjudicator A/B** | Complete raw evidence and versioned eligibility rules | Independent target census decision, rationale, ambiguity status, strata labels | Read ConvMem capture/rank, C0/C1 outputs, or expected treatment advantage; see the other adjudicator's decision before submitting. |
+| **Target adjudicator A/B** | `AdjudicationEvidenceViewV1` and versioned eligibility rules — the complete authorized condition-neutral evidence view | Independent target census decision, rationale, ambiguity status, strata labels | Read `OpaqueResolverManifestV2`, `resolver_result`, `capability_vector`, resolver paths/locators, resolver failures/retries/timing, ConvMem capture/rank, C0/C1 outputs, or expected treatment advantage; see the other adjudicator's decision before submitting. |
 | **Probe author** | The sealed target record and the minimum raw context needed to construct a realistic task, plus predeclared probe families | Probe definition; submits the scoring key to a separately sealed scorer partition | Claim answer blindness; read ConvMem search results, capture labels, condition outcomes, treatment order, or scorer decisions; author a target they adjudicated. |
 | **Leakage reviewer** | Frozen probe, the author-visible target/context view, and the leakage checklist; no ConvMem or outcome material | Independent leakage review/sign-off before probe freeze | Be the probe author or target adjudicator for that target; reveal answer or source/treatment/ConvMem cues to Agent B. |
 | **Agent-B executor** | Ordinary files/repository/GitHub/transcripts, assigned probe, normal tools; C1 additionally has frozen ConvMem | Agent-B transcript, actions, output, and trace | Read registry, answer key, controller internals, or an earlier Agent-B session. |
@@ -171,10 +246,13 @@ defines a target-independent continuation task.
 | **Codex** | Existing plans and methodology evidence | Architecture draft | Run Agent A/B or authorize implementation. |
 | **Cursor** | Only after Ryan acceptance | Future implementation | Start from this draft without the acceptance gate. |
 
-Two independent adjudicators operate over the complete candidate census. They
-submit decisions separately, without seeing the other's work, and use the same
-frozen admissibility procedure in §8. A disagreement is resolved only by a
-third blinded adjudicator or by a blinded consensus procedure that was named
+Two independent adjudicators operate over the complete candidate census through
+`AdjudicationEvidenceViewV1`. They submit decisions separately, without seeing
+the other's work, and use the same frozen admissibility procedure in §8. The
+adjudicator firewall explicitly denies `OpaqueResolverManifestV2`,
+`resolver_result`, `capability_vector`, and other resolver-derived side
+channels (see locked `role_access_policy`). A disagreement is resolved only by
+a third blinded adjudicator or by a blinded consensus procedure that was named
 and frozen before adjudication. The registry retains both original decisions,
 the resolution, the disagreement reason, and agreement/disagreement rates by
 eligibility seam. This is a registry-quality metric, not a reason to reduce
@@ -216,29 +294,33 @@ Each episode receives an immutable `episode_id` and an `EpisodeRecord` containin
 frame version, selection position, scheduled window, observed timestamps,
 environment identity, raw-evidence status, target count, and terminal status.
 
-## 7. Complete raw-evidence layer
+## 7. Evidence seal and source identity (P1 authority)
 
-After Agent A work, the recorder seals all admissible ordinary evidence before
-target adjudication. The evidence set may include conversation/transcript
-events, tool calls and outputs, files and notes created during ordinary work,
-repository state, GitHub-visible state, and other sources explicitly permitted
-by the frozen frame.
+After Agent A work, P1 (`P1_T1_EVIDENCE_SEAL`) seals admissible ordinary
+evidence before resolver output or target adjudication. The evidence set may
+include conversation/transcript events, tool calls and outputs, files and notes
+created during ordinary work, repository state, GitHub-visible state, and other
+sources explicitly permitted by the frozen frame.
 
-`RawEvidenceManifest` binds:
+The locked V2 model binds more than a thin source tuple. Implementation must
+carry forward, at minimum:
 
-- `episode_id` and source identity;
-- source class, path or locator, and admissibility decision;
-- content digest and byte/record count where applicable;
-- event-time and capture-time bounds;
-- repository/GitHub/filesystem/snapshot identity;
-- producer/tool identity and provenance fields;
-- completeness status and any missing-source explanation;
-- manifest digest, seal time, and recorder authority.
+- occurrence identity and `occurrence_reference`;
+- physical/source instance (`physical_instance_id`);
+- native identity and revision/as-of identity (`revision_or_asof_id`);
+- lineage edges where applicable;
+- evidence snapshot (`evidence_snapshot_id`);
+- evidence-complete envelope digest;
+- raw/canonical content and canonicalization profile commitments;
+- adapter implementation identity;
+- condition-neutral evidence availability (distinct from resolver result).
 
-The manifest records missing or unavailable evidence explicitly. A partial
-manifest cannot be presented as a complete census input. No selected target is
-rewritten, retagged, specially routed, specially indexed, or turned into a
-study note.
+Legacy prose referring to `source ID/class/locator + digest + counts/times +
+snapshot` alone is insufficient — it is an explanatory shorthand for the richer
+P1 binding above.
+
+`EvidenceSealManifestV2` and related P1 artifacts bind the commitments listed
+in the locked contract's `source_evidence_contract.commitments` array.
 
 ## 8. Natural target eligibility and unitization
 
@@ -288,7 +370,7 @@ study does not fail because one or more categories never occur.
 ### Mechanical admissibility procedure
 
 Each adjudicator applies the following decision tree independently to every
-candidate found in the complete raw-evidence view. The decision record cites
+candidate visible in `AdjudicationEvidenceViewV1`. The decision record cites
 the candidate span, the surrounding context used, the applicable rule, and a
 yes/no/ambiguous result for each seam; it cannot contain a result-derived or
 capture-derived rationale.
@@ -303,9 +385,10 @@ capture-derived rationale.
    frozen evidence and permitted local context, record
    `AMBIGUOUS_NON_EVALUABLE`; a merely non-semantic fragment is
    `INELIGIBLE`.
-3. **Truth/current-state determinability.** Using only frozen raw evidence,
-   record whether the proposition/state is supported as true, false,
-   superseded, contradictory, or explicitly unknown at the relevant time.
+3. **Truth/current-state determinability.** Using only the frozen authorized
+   evidence view (not P2 resolver internals), record whether the
+   proposition/state is supported as true, false, superseded, contradictory, or
+   explicitly unknown at the relevant time.
    Cite event times and source spans. An unknown status is admissible only if
    it is itself supported by the evidence and the frozen scoring rubric
    defines how it is scored. Otherwise the candidate is
@@ -316,7 +399,8 @@ capture-derived rationale.
    be made without adding information or relying on a future result, record
    `AMBIGUOUS_NON_EVALUABLE`.
 5. **Ambiguity resolution.** The adjudicator may resolve ambiguity only by
-   consulting the frozen raw evidence, its manifest, and the frozen rules.
+   consulting the frozen authorized evidence view, its manifest, and the
+   frozen rules.
    If the ambiguity remains after that view, preserve the candidate with the
    ambiguity reason and exclude it from the eligible denominator.
 6. **Unitization and duplicate check.** Split independently scorable claims;
@@ -752,6 +836,29 @@ The architecture keeps these as one study-methodology boundary in the existing
 local monolith. A separate service is not justified by the current failure
 mode; the hard boundary is authority and artifact state, not deployment.
 
+## 20.5. Implementation obligations not yet verified
+
+Architecture lock at digest `917ad129…` does **not** prove runtime conformance.
+The following remain **not implemented or not independently verified** on
+`main` and must be treated as forward obligations in any bounded
+implementation plan:
+
+- richer P1 evidence identity and envelope commitments;
+- P2 opaque resolver semantics and the P1/P2 canonical-field firewall
+  (`resolver_result`, `capability_vector`);
+- capability vector reduction and per-use acceptance semantics;
+- unknown target multiplicity bounds and registry-quality reporting;
+- transitive provenance firewall (legacy-summary descendant stripping);
+- scorer/runtime implementation binding to frozen semantics;
+- `ControllerEvidencePackageV2`;
+- `C0C1EqualityManifestV2`;
+- `SessionIsolationManifestV2`;
+- `ConditionOrderManifestV2`;
+- informative-missingness checks at aggregation.
+
+G1–G5 machinery on `main` exercises synthetic dry-run mechanics only. It does
+not satisfy these PRE-G6 V2 runtime obligations.
+
 ## 21. Verification requirements for later implementation
 
 The future implementation must provide checks for:
@@ -789,7 +896,8 @@ fixtures cannot be substituted for the eventual naturalistic evidence.
 ### Luna has justified
 
 - episode-first denominator and no replacement of selected episodes;
-- raw evidence and sealed registry as study authority;
+- staged P1/P2/P3 evidence authority and sealed registry as study authority;
+- `AdjudicationEvidenceViewV1` blind boundary and P2 resolver firewall;
 - capture/retrieval/uplift separation;
 - two-stage freeze sequence before downstream exposure;
 - C0/C1 symmetry and fresh-session boundary;
@@ -825,9 +933,12 @@ escalation trigger by itself.
 
 ## 23. Next gate
 
-This document is ready for Kiro design review. After Kiro review, Ryan decides
-whether to accept the architecture and authorize a separate implementation
-phase. Only then may Cursor implement the methodology layer.
+PRE-G6 Contract V2 is architecture-locked. This explanatory projection is
+reconciled to locked digest `917ad129a4f9641f65b809e143467b1f2c48ea41203166365b8e3efd459b627e`.
 
-**Next sequence:** Codex architecture draft → Kiro design review → Ryan
-acceptance → Cursor implementation.
+**Next authorized activity:** independent planning-doc review → bounded
+implementation-plan/grant preparation → Ryan approval.
+
+This lock does **not** authorize G6, T0, runtime implementation, live
+parameter selection, Agent A/B, naturalistic evidence collection, registry
+execution, scoring, or product-value interpretation.
