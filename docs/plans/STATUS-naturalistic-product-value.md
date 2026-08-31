@@ -6,11 +6,12 @@
 
 **Arc:** Naturalistic ConvMem product-value evaluation
 
-**Current state:** G1–G4 are landed on `main` through squash-merged PR #255 at
-`787a6ef8077f099820b8ab903777dd67951c9bb7`. Kiro's independent PASS is bound to
-the exact G4 implementation SHA `fa7d68b4b272a9802b0983c708800d6953ec45f8`.
-This is a pre-live methodology substrate only; no product disposition or study
-execution authority follows from the merge.
+**Current state:** G1–G5 are landed on `main`. G1–G4 via squash-merged PR #255
+(`787a6ef8…`); G5 synthetic dry-run via squash-merged PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`.
+Kiro independently PASSed G5 at exact implementation SHA `23b2495927a9891070c7c294e45bdb641eaab352` before
+merge. Classification remains **methodology validation, not product evidence**.
+**G6 is not authorized.** Ryan locked G6 closed until independent **ChatGPT**
+review — favorable synthetic dry-run results do not open G6.
 
 ---
 
@@ -70,9 +71,10 @@ Key invariants:
 | `eval_naturalistic/adjudication.py` and fixtures | G2 target census/adjudication scaffold on `main` |
 | `eval_naturalistic/probe_construction.py` and fixtures | G3 probe/key construction scaffold on `main` |
 | `eval_naturalistic/analysis.py` and fixtures | G4 bounded analysis/statistical machinery on `main`; reviewed bytes unchanged at `fa7d68b` |
-| `tests/test_naturalistic_{contracts,adjudication,probe,analysis}.py` | Focused G1–G4 coverage; PR #255 CI passed |
-| PR #255 | Squash-merged to `main` as `787a6ef8…`; GitHub pytest, Pylint, and CodeQL checks passed |
-| Live runner, study controller, Agent A/B campaign, and corpus access | Not part of G1–G4; absent or unauthorized |
+| `eval_naturalistic/dry_run.py`, `dry_run_mechanics.py` | G5 synthetic T0–T10 dry-run harness; not a live study controller |
+| `tests/test_naturalistic_{contracts,adjudication,probe,analysis,dry_run}.py` | Focused G1–G5 coverage on `main` |
+| PR #255 / PR #259 | G1–G4 via #255; G5 dry-run via #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583` |
+| Live runner, study controller, Agent A/B campaign, and corpus access | Absent and unauthorized; G5 does not add them |
 
 ## 4. Completion State
 
@@ -82,31 +84,37 @@ Key invariants:
 | G2 adjudication machinery | **DONE on `main`** | PR #255; no natural episode census has run |
 | G3 probe construction machinery | **DONE on `main`** | PR #255; no live key or study sample exists |
 | G4 analysis/statistical machinery | **DONE on `main`** | Kiro PASS at exact `fa7d68b`; focused 98 tests + 8 subtests; Pylint 10/10 |
-| G5 dry-run/fixture verification | **NOT STARTED** | Requires Ryan's separate explicit grant; synthetic only |
-| G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED** | Requires G5 evidence, then distinct Ryan grants |
+| G5 dry-run/fixture verification | **DONE on `main`** | PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`; Kiro PASS at `23b2495927a9891070c7c294e45bdb641eaab352`; methodology validation only |
+| G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Closed until ChatGPT review; then Ryan explicit G6 grant if warranted |
 | Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-If Ryan sent you for status or delivery, verify `main@787a6ef8`, this brief, and
-the linked handoff; do not reopen implementation or infer a G5 grant.
+G5 is **closed on `main`**. Do not reopen dry-run implementation unless Ryan
+explicitly authorizes a corrective.
 
-If Ryan explicitly grants G5, the next implementation lane is Cursor for the
-bounded synthetic dry-run, followed by the required independent review. Keep
-fixtures synthetic and preserve the G4 ceiling. Ryan owns every transition into
-G5, G6, live execution, and product interpretation.
+If Ryan sent you for **G6 or live study**, stop. G6 remains **closed** until
+independent **ChatGPT** review completes — synthetic dry-run pass or favorable
+fixture numbers do not authorize G6. After ChatGPT review, Ryan must still issue
+a separate explicit G6 grant. G6 is prospective study freeze (T0): roles,
+schedule/window, environments, order, and all parameter slots must be Ryan-locked
+before any episode collection.
 
-If you do not know why you are here, ask Ryan. The default next decision is a
-bounded G5 grant, not a live study.
+If Ryan sent you for **status**, read this brief and [`LATEST.md`](../inter-model/LATEST.md).
+Do not infer product value from G1–G5 machinery or synthetic fixtures.
+
+Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 
 ## 6. What Remains Before "Live"
 
 - [x] Land G1–G4 methodology package on `main` (PR #255).
 - [x] Record exact-SHA Kiro PASS and focused verification.
 - [x] Reconcile canonical routing and add this arc brief.
-- [ ] Ryan explicitly grants G5 synthetic dry-run/fixture verification.
-- [ ] Cursor implements only the granted G5 dry-run; retain synthetic-only data.
-- [ ] Independent review accepts the exact G5 artifact and evidence.
+- [x] Ryan explicitly grants G5 synthetic dry-run/fixture verification.
+- [x] Cursor implements only the granted G5 dry-run; retain synthetic-only data.
+- [x] Independent Kiro review accepts the exact G5 candidate SHA (`23b2495927a9891070c7c294e45bdb641eaab352`).
+- [x] Ryan merges G5 (squash-merged PR #259).
+- [ ] Independent ChatGPT review of G5 methodology / G6 readiness (Ryan GATE).
 - [ ] Ryan separately authorizes G6 prospective freeze and later T7–T11 gates.
 - [ ] Only a fully authorized T10 path may produce a product disposition.
 
@@ -115,7 +123,7 @@ bounded G5 grant, not a live study.
 | Stop | Owner / invariant | What it blocks |
 |---|---|---|
 | G4 ceiling | Analysis contract; T10-only disposition rule | Any product conclusion from G1–G4 code or fixtures |
-| G5 grant | Ryan | Dry-run execution before explicit authorization |
+| G6 grant | Ryan after ChatGPT review | Prospective study freeze and every live gate; not implied by G5 landing or synthetic results |
 | G6 and later grants | Ryan | Prospective frame, agents, episodes, scoring, and live ConvMem |
 | Pre-live numerical slots | Ryan after the required review | Choosing meaningful-advantage, equivalence, precision, sparsity, or scorer thresholds |
 | Corpus/live boundary | Arc execution plan | Corpus access, mutation, or ordinary-work campaign from this lane |
@@ -135,6 +143,7 @@ separately governed.
 | Locked architecture | [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md) |
 | Serial execution and grant plan | [`EXECUTION-naturalistic-product-value.md`](EXECUTION-naturalistic-product-value.md) |
 | G4 implementation handoff and exact review scope | [`../inter-model/CODEX-2026-08-30-naturalistic-product-value-g4-handoff.md`](../inter-model/CODEX-2026-08-30-naturalistic-product-value-g4-handoff.md) |
+| G5 dry-run candidate and Kiro review packet | [`../inter-model/CURSOR-2026-08-30-naturalistic-product-value-g5-handoff.md`](../inter-model/CURSOR-2026-08-30-naturalistic-product-value-g5-handoff.md) |
 | Cross-arc routing | [`../inter-model/STATUS.md`](../inter-model/STATUS.md) and [`../inter-model/LATEST.md`](../inter-model/LATEST.md) |
 
 ## 10. How to Update This Brief (departure protocol)
@@ -147,7 +156,11 @@ the session transcript separately under Track A.
 ### Update Log
 
 - 2026-08-30 — Codex: recorded PR #255 squash merge of G1–G4 on `main`, exact-SHA Kiro PASS, and the separate Ryan-owned G5 boundary.
+- 2026-08-30 — Cursor: implemented Ryan-granted G5 synthetic dry-run; candidate awaiting exact-SHA Kiro review. No product evidence. No G6 authority.
+- 2026-08-30 — Kiro: independent G5 PASS at exact SHA `23b2495927a9891070c7c294e45bdb641eaab352`; PR Steward opened merge PR for Ryan.
+- 2026-08-30 — Ryan: squash-merged G5 via PR #259 to `6843bbeebbaed6a109fe94967fdd03fb3569b583`; arc at methodology milestone; G6 Ryan-gated.
+- 2026-08-30 — Ryan: squash-merged routing refresh PR #261 to `676d6b5`; locked G6 closed until ChatGPT review regardless of synthetic results.
 
-**TL;DR:** G1–G4 are landed and reviewed, but this arc remains pre-live; Ryan's
-next decision is an explicit synthetic G5 grant, and no product conclusion is
-available from the merged methodology.
+**TL;DR:** G1–G5 are on `main` (routing at `676d6b5` via PR #261). Methodology
+validation only — not product evidence. G6 stays closed until ChatGPT review,
+then Ryan explicit grant if warranted.
