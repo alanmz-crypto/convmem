@@ -19,6 +19,7 @@ from eval_naturalistic.v2.evidence import (
     VerbatimEvidenceAvailabilityV2,
     normalized_reported_presence,
 )
+from eval_naturalistic.v2.firewall import reject_p2_fields_on_p1
 from eval_naturalistic.v2.identity import (
     LineageEdgeV2,
     OccurrenceReferenceV2,
@@ -218,6 +219,7 @@ def validate_availability_manifest(
 
 
 def parse_evidence_seal_manifest_v2(data: dict[str, Any]) -> EvidenceSealManifestV2:
+    reject_p2_fields_on_p1(data, label="EvidenceSealManifestV2")
     validate_p1_forbidden_fields(data, label="EvidenceSealManifestV2")
     reject_hash_or_locator_identity(data.get("occurrence_reference", {}))
     manifest = EvidenceSealManifestV2.from_dict(data)
@@ -232,6 +234,7 @@ def parse_evidence_availability_manifest_v2(
     *,
     seal: EvidenceSealManifestV2,
 ) -> EvidenceAvailabilityManifestV2:
+    reject_p2_fields_on_p1(data, label="EvidenceAvailabilityManifestV2")
     validate_p1_forbidden_fields(data, label="EvidenceAvailabilityManifestV2")
     manifest = EvidenceAvailabilityManifestV2.from_dict(data)
     result = validate_availability_manifest(manifest, seal=seal)
