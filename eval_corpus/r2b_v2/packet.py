@@ -24,7 +24,10 @@ from eval_corpus.r2b_v2.contract import (
 from eval_corpus.r2b_v2.coverage.proof import SourceAuthorityProof, TrustedCoverageProof
 from eval_corpus.r2b_v2.duration_policy import DurationPolicy
 from eval_corpus.r2b_v2.lease import R2bQuiescenceLease, verify_r2b_quiescence_lease
-from eval_corpus.r2b_v2.scratch_isolation import assert_scratch_paths
+from eval_corpus.r2b_v2.scratch_isolation import (
+    assert_scratch_source_paths,
+    assert_scratch_transaction_path_dict,
+)
 from eval_corpus.run_manifest import (
     R2B_REQUIRED_PROHIBITED,
     approval_sidecar_path,
@@ -51,11 +54,7 @@ def compute_trusted_snapshot(
     """Trusted source snapshot while the exclusive lease remains live."""
     verify_r2b_quiescence_lease(lease)
     lease.verify()
-    assert_scratch_paths(
-        ("export", export),
-        ("processed", processed),
-        ("chroma_dir", chroma_dir),
-    )
+    assert_scratch_source_paths(export, processed, chroma_dir)
     return snapshot_recompute_fn(
         export=export,
         processed=processed,
@@ -102,13 +101,7 @@ def draft_capture_packet(  # pylint: disable=too-many-arguments
         expected_coverage_digest=trusted_coverage.coverage_digest,
     )
     lease.verify()
-    assert_scratch_paths(
-        ("auth_dir", auth_dir),
-        ("export", paths["export"]),
-        ("processed", paths["processed"]),
-        ("chroma_dir", paths["chroma_dir"]),
-        ("capture_dir", paths["capture_dir"]),
-    )
+    assert_scratch_transaction_path_dict(auth_dir, paths)
     capture_dir = Path(paths["capture_dir"])
     if capture_dir.exists():
         raise R2bV2PacketError("capture_dir must be absent before packet draft")

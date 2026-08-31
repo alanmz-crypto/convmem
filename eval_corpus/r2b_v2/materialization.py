@@ -1,4 +1,5 @@
 """V2 packet validation and binding without v1 service-policy coupling."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 

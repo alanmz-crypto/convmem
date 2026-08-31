@@ -1,4 +1,5 @@
 """Hermetic I4–I6 scratch transaction tests for R2b v2."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 

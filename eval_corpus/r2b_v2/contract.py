@@ -41,6 +41,14 @@ R2B_V2_REQUIRED_PROHIBITED_PREP = frozenset(
 # applicable; schema validation requires the v1 capture set at minimum.
 R2B_V2_REQUIRED_PROHIBITED = frozenset(R2B_REQUIRED_PROHIBITED) | R2B_V2_REQUIRED_PROHIBITED_PREP
 
+DURATION_POLICY_FIELD_NAMES: tuple[str, ...] = (
+    "acquisition_bound",
+    "hitl_reservation_bound",
+    "capture_bound",
+    "release_close_bound",
+    "transaction_deadline",
+)
+
 _RATIFIED_DURATION_RE = re.compile(
     r"\b(900|acquisition_bound|hitl_reservation_bound|capture_bound|"
     r"release_close_bound|transaction_deadline)\s*[:=]\s*\d+",
@@ -115,13 +123,7 @@ def validate_r2b_v2_manifest_schema(manifest: dict[str, Any]) -> list[str]:
         if missing:
             errors.append(f"prohibited_actions missing required v2 entries: {missing}")
     # Duration policy fields may exist as names only; concrete values are forbidden.
-    for field in (
-        "acquisition_bound",
-        "hitl_reservation_bound",
-        "capture_bound",
-        "release_close_bound",
-        "transaction_deadline",
-    ):
+    for field in DURATION_POLICY_FIELD_NAMES:
         value = manifest.get(field)
         if value is not None and value != "":
             errors.append(
@@ -165,6 +167,7 @@ def make_r2b_v2_run_manifest_for_tests(
 
 
 __all__ = [
+    "DURATION_POLICY_FIELD_NAMES",
     "R2B_CONTRACT_VERSION",
     "R2B_V2_REQUIRED_PROHIBITED",
     "R2B_V2_REQUIRED_PROHIBITED_PREP",

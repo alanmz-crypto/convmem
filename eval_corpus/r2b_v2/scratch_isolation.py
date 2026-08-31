@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 from chroma_write_store import DEFAULT_ATTEST_DIR, DEFAULT_WRITER_LOCK
+from eval_corpus.run_manifest import path_is_temp_contained
 
 
 class ScratchIsolationError(RuntimeError):
@@ -20,17 +20,34 @@ _PRODUCTION_MARKERS = (
 
 
 def _is_under_temp(path: Path) -> bool:
-    try:
-        resolved = path.expanduser().resolve(strict=False)
-        temp_root = Path(tempfile.gettempdir()).resolve()
-    except OSError:
-        return False
-    try:
-        return resolved == temp_root or resolved.is_relative_to(temp_root)
-    except (ValueError, AttributeError):
-        prefix = str(temp_root)
-        text = str(resolved)
-        return text == prefix or text.startswith(prefix + "/")
+    return path_is_temp_contained(path)
+
+
+def assert_scratch_source_paths(
+    export: Path | str,
+    processed: Path | str,
+    chroma_dir: Path | str,
+) -> None:
+    """Validate export/processed/chroma paths for scratch execution."""
+    assert_scratch_paths(
+        ("export", export),
+        ("processed", processed),
+        ("chroma_dir", chroma_dir),
+    )
+
+
+def assert_scratch_transaction_path_dict(
+    auth_dir: Path,
+    paths: dict[str, str],
+) -> None:
+    """Validate all packet paths for scratch execution."""
+    assert_scratch_paths(
+        ("auth_dir", auth_dir),
+        ("export", paths["export"]),
+        ("processed", paths["processed"]),
+        ("chroma_dir", paths["chroma_dir"]),
+        ("capture_dir", paths["capture_dir"]),
+    )
 
 
 def assert_scratch_path(path: Path | str, *, label: str) -> Path:
@@ -61,13 +78,9 @@ def assert_scratch_transaction_paths(
     root: Path | None = None,
 ) -> None:
     """Validate all scratch transaction paths stay under tempfile."""
-    labeled: list[tuple[str, Path | str]] = [
-        ("auth_dir", auth_dir),
-        ("export", paths["export"]),
-        ("processed", paths["processed"]),
-        ("chroma_dir", paths["chroma_dir"]),
-        ("capture_dir", paths["capture_dir"]),
-    ]
+    labeled: list[tuple[str, Path | str]] = []
     if root is not None:
-        labeled.insert(0, ("root", root))
-    assert_scratch_paths(*labeled)
+        labeled.append(("root", root))
+    assert_scratch_transaction_path_dict(auth_dir, paths)
+    if labeled:
+        assert_scratch_paths(*labeled)

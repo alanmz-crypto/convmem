@@ -1,4 +1,5 @@
 """Corrective failure-injection matrix for R2b v2 I4–I6."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 

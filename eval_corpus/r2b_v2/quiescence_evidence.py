@@ -42,7 +42,7 @@ def write_quiescence_open(
     return sha256_file(path)
 
 
-def write_quiescence_close(
+def write_quiescence_close(  # pylint: disable=too-many-arguments
     path: Path,
     *,
     run_id: str,

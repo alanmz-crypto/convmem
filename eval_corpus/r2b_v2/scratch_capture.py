@@ -11,7 +11,7 @@ from typing import Any
 from eval_corpus.io_atomic import atomic_write_json, sha256_file
 from eval_corpus.r2b_capture_auth import canonical_source_snapshot_sha256
 from eval_corpus.r2b_v2.materialization import V2MaterializationResult
-from eval_corpus.r2b_v2.scratch_isolation import assert_scratch_paths
+from eval_corpus.r2b_v2.scratch_isolation import assert_scratch_path, assert_scratch_source_paths
 
 
 def _now() -> str:
@@ -23,12 +23,12 @@ def prepare_scratch_capture_artifacts(
 ) -> dict[str, Any]:
     """Copy sources into capture_dir — no completion marker yet."""
     bindings = materialized.bindings
-    assert_scratch_paths(
-        ("export", bindings.export),
-        ("processed", bindings.processed),
-        ("chroma_dir", bindings.chroma_dir),
-        ("capture_dir", bindings.capture_dir),
+    assert_scratch_source_paths(
+        bindings.export,
+        bindings.processed,
+        bindings.chroma_dir,
     )
+    assert_scratch_path(bindings.capture_dir, label="capture_dir")
     capture_dir = bindings.capture_dir
     capture_dir.mkdir(parents=True, exist_ok=False)
 

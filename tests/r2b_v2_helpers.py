@@ -1,4 +1,5 @@
 """Shared hermetic fixtures for R2b v2 tests."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 

@@ -9,6 +9,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
+from eval_corpus.r2b_v2.contract import DURATION_POLICY_FIELD_NAMES
+
 
 class DurationPolicyError(RuntimeError):
     """Invalid or expired duration policy."""
@@ -52,13 +54,7 @@ class DurationPolicy:
                 raise DurationPolicyError(f"{name} must be positive, got {value}")
 
     def policy_field_names(self) -> tuple[str, ...]:
-        return (
-            "acquisition_bound",
-            "hitl_reservation_bound",
-            "capture_bound",
-            "release_close_bound",
-            "transaction_deadline",
-        )
+        return DURATION_POLICY_FIELD_NAMES
 
     def as_reference_dict(self) -> dict[str, str]:
         """Named fields only — concrete seconds are not embedded in manifests."""
