@@ -149,6 +149,19 @@ SHA-attestation wrapper (`run-d1r12-tlc.sh`) still unattested — separate
 supply-chain control, not the empirical TLC model-checking result. **Does not
 authorize production D1 publication, V8c, owner cutover, activation, or GC.**
 
+**D1 final verification battery (2026-08-30, Ryan-delegated re-check):** After
+ledger write, Cursor independently re-ran the integrated closure battery at
+ledger head `5be1d203f484fffd525f1e7734d8148ccb8cac28` (implementation tip
+`9cfb085836ca92c308d1a8f966aced9bbb48546e` unchanged). **Results: ALL PASS.**
+`tests/test_cg2_reference_v2.py` **20/20**; D1R11 regression **51/51**;
+CG-2 broader suite (rehearsal, first-cutover, legacy attestation, serving
+authority) **88/88**; D1R1 production read-only re-bind **8/8 checks PASS**
+(frozen D0 roots, 37 rows, D0 artifacts unchanged); D1R9 restored-reader re-bind
+**8/8 checks PASS** (cold validation, recovery eligibility, path isolation;
+`production_has_retained_reference_v2 = false` caveat unchanged). Report:
+`/tmp/d1-final-verification-20260830/final_verification_report.json`. Does not
+change ledger status or authorize production.
+
 **D1R12 formal closure record (2026-08-30):** Subsumed by integrated closure
 at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. Prior per-row PASS at formal
 corrective `7a8fd76350b7076f5d75e3ad53c7392647b2eac0` retained in evidence chain.
@@ -316,6 +329,7 @@ D1R12 formal obligation: subsumed by integrated closure; prior PASS at 7a8fd7635
 D1R12 ledger reconciliation: d2d6f41 premature record superseded by integrated closure
 D1R1 consume-unchanged: subsumed by integrated closure; re-bound at 9cfb085836ca92c308d1a8f966aced9bbb48546e
 D1R9 recovery drill: subsumed by integrated closure; re-bound at 9cfb085836ca92c308d1a8f966aced9bbb48546e; restic snapshot 7d9ea1465c129e778ce4787008ac06820bf6f9abc28fd76a9f47fcdd55d2d0e1; target 2740ec5b5f01f2f293d07bbf0677c4e26f8daadefab8192682410e6685af2364; evidence /tmp/d1r9-ra-drill-20260830/evidence/
+D1 final verification battery (Ryan-delegated): 20/20 refv2 + 51/51 D1R11 + 88/88 CG-2 broader + D1R1 live rebind 8/8 + D1R9 live rebind 8/8 ALL PASS at ledger head 5be1d20; report /tmp/d1-final-verification-20260830/final_verification_report.json
 First-owner packet (V8c): PENDING — provenance reconciled; not PASS
 Production activation: NOT PERFORMED
 Automatic GC: NOT PERFORMED
