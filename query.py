@@ -453,6 +453,7 @@ def query_units(
     from serving_authority import ServingBackendTransient
     from serving_index_repository import open_serving_index_repository
 
+    repo = None
     try:
         with open_serving_index_repository(
             cfg, mediated_fallback=_fallback_query_rows
@@ -471,14 +472,16 @@ def query_units(
                 ledger_extras = _ledger_lookup_hits(cfg, repo.legacy_store(), text)
                 ledger_extras = _filter_ledger_extras_by_domain(ledger_extras, domain)
     except ServingBackendTransient:
-        results = _fallback_query_rows(
-            "knowledge_units",
-            text,
-            scoped_fetch_k,
-            domain=domain,
-            site=site,
-            cfg=cfg,
-        )
+        if repo is None:
+            results = _fallback_query_rows(
+                "knowledge_units", text, scoped_fetch_k,
+                domain=domain, site=site, cfg=cfg,
+            )
+        else:
+            results = repo.mediated_keyword_fallback(
+                "knowledge_units", text, scoped_fetch_k,
+                domain=domain, site=site,
+            ).rows
         for result in results:
             result["retrieval_mode"] = "keyword_fallback"
         if not skip_ledger_priority:
@@ -565,6 +568,7 @@ def query_raw(
     from serving_authority import ServingBackendTransient
     from serving_index_repository import open_serving_index_repository
 
+    repo = None
     try:
         with open_serving_index_repository(
             cfg, mediated_fallback=_fallback_query_rows
@@ -574,14 +578,16 @@ def query_raw(
             results, domain=domain_norm, site_norm=site_norm
         )
     except ServingBackendTransient:
-        results = _fallback_query_rows(
-            "conversation_summaries",
-            text,
-            n_fetch,
-            domain=domain,
-            site=site,
-            cfg=cfg,
-        )
+        if repo is None:
+            results = _fallback_query_rows(
+                "conversation_summaries", text, n_fetch,
+                domain=domain, site=site, cfg=cfg,
+            )
+        else:
+            results = repo.mediated_keyword_fallback(
+                "conversation_summaries", text, n_fetch,
+                domain=domain, site=site,
+            ).rows
         for result in results:
             result["retrieval_mode"] = "keyword_fallback"
     for r in results:
