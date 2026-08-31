@@ -5,6 +5,7 @@ G2: adjudication workflow and sealed target-registry machinery.
 G3: probe construction, leakage review, and scoring-key freeze machinery.
 G4: bounded within-episode scores, co-primary aggregation, sparse/scorer reliability,
     and information-gate parameter slots (synthetic/pre-live only).
+G5: synthetic end-to-end dry-run of G1–G4. Methodology validation only; not product evidence.
 """
 
 from eval_naturalistic.adjudication import (
@@ -62,6 +63,13 @@ from eval_naturalistic.contract_validate import (
     validate_scoring_key_separation,
     validate_seal_immutability,
     validate_terminal_state_distinction,
+)
+from eval_naturalistic.dry_run import (
+    G5_CLASSIFICATION,
+    G5DryRunReport,
+    run_g4_safe_synthetic_example,
+    run_g5_dry_run,
+    run_g5_end_to_end,
 )
 from eval_naturalistic.digest import (
     ARTIFACT_ID_PREFIX,
@@ -124,6 +132,8 @@ __all__ = [
     "EpisodeRecordV1",
     "EpisodeRegistryStatus",
     "EpisodeRegistryViewV1",
+    "G5DryRunReport",
+    "G5_CLASSIFICATION",
     "InformationGateEvaluationV1",
     "LeakageCheckKind",
     "LeakageReviewDisposition",
@@ -168,6 +178,9 @@ __all__ = [
     "reject_capture_driven_registry_mutation",
     "reject_post_freeze_probe_mutation",
     "reject_post_result_parameter_mutation",
+    "run_g4_safe_synthetic_example",
+    "run_g5_dry_run",
+    "run_g5_end_to_end",
     "reject_probe_repair_after_outcomes",
     "run_leakage_checklist",
     "validate_artifact_chain",
