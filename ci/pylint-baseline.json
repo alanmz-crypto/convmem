@@ -5567,28 +5567,6 @@
       "message": "Consider merging these comparisons with 'in' by using 'cur in ('main', 'master')'. Use a set instead if elements are hashable.",
       "message-id": "R1714",
       "type": "refactor"
-    },
-    {
-      "type": "refactor",
-      "module": "writer_census",
-      "obj": "",
-      "line": 1,
-      "column": 0,
-      "path": "writer_census.py",
-      "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==eval_corpus.r2b_v2._registry_mint:[37:44]\n==eval_corpus.r2b_v2.authority_registry:[28:35]\n    \"invalidate_all_authority\",\n    \"invalidate_coverage_handle\",\n    \"invalidate_lease_handle\",\n    \"lookup_coverage_handle\",\n    \"lookup_custodian\",\n    \"lookup_lease_handle\",\n    \"lookup_source_handle\",",
-      "message-id": "R0801"
-    },
-    {
-      "type": "refactor",
-      "module": "writer_census",
-      "obj": "",
-      "line": 1,
-      "column": 0,
-      "path": "writer_census.py",
-      "symbol": "duplicate-code",
-      "message": "Similar lines in 2 files\n==eval_corpus.r2b_v2._registry_mint:[29:34]\n==eval_corpus.r2b_v2.authority_registry:[22:27]\n    \"AuthorityRegistryError\",\n    \"CoverageAuthorityRecord\",\n    \"DiagnosticMintTicket\",\n    \"LeaseAuthorityRecord\",\n    \"SourceAuthorityRecord\",",
-      "message-id": "R0801"
     }
   ]
 }

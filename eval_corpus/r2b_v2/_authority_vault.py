@@ -1,4 +1,5 @@
 """Single vault for R2b v2 trusted authority — guarded sinks, closure-free dispatch."""
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
