@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from chroma_write_store import _proc_start_time, current_code_revision
+from chroma_write_store import _proc_start_time
 
 from eval_corpus.r2b_v2._authority_capability import (
     issue_lease_capability,
@@ -21,7 +21,7 @@ from eval_corpus.r2b_v2._authority_capability import (
 from eval_corpus.r2b_v2._registry_mint import (
     mint_lease_handle,
 )
-from eval_corpus.r2b_v2.coverage.inventory import load_v2_implementation_tip
+from eval_corpus.r2b_v2.coverage.inventory import resolve_r2b_implementation_revision
 from eval_corpus.r2b_v2.authority_registry import (
     AuthorityHandle,
     AuthorityRegistryError,
@@ -214,19 +214,13 @@ def acquire_r2b_quiescence_lease(
         if revision == "unknown" or not re.match(r"^[0-9a-f]{40}$", revision):
             raise R2bQuiescenceLeaseError("trusted implementation revision is unavailable")
     else:
-        executing = current_code_revision()
-        if executing == "unknown" or not re.match(r"^[0-9a-f]{40}$", executing):
+        revision = resolve_r2b_implementation_revision()
+        if revision == "unknown" or not re.match(r"^[0-9a-f]{40}$", revision):
             raise R2bQuiescenceLeaseError("trusted implementation revision is unavailable")
-        tip = load_v2_implementation_tip()
-        if tip and tip != "unknown" and tip != executing:
-            raise R2bQuiescenceLeaseError(
-                "implementation revision disagreement between executing code and inventory tip"
-            )
-        if implementation_revision is not None and implementation_revision != executing:
+        if implementation_revision is not None and implementation_revision != revision:
             raise R2bQuiescenceLeaseError(
                 "caller-supplied implementation revision cannot mint trusted authority"
             )
-        revision = executing
     deadline = time.monotonic() + (timeout_ms / 1000.0)
     custodian: LockCustodian | None = None
     while True:

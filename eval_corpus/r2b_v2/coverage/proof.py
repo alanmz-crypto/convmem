@@ -18,7 +18,6 @@ from typing import Any
 from chroma_write_store import (
     WRITER_GATE_PROTOCOL_VERSION,
     classify_legacy_writer_pids,
-    current_code_revision,
     list_pids_with_open_path,
     load_attestation,
 )
@@ -45,7 +44,7 @@ from eval_corpus.r2b_v2.authority_registry import (
 from eval_corpus.r2b_v2.coverage_evidence import CoverageEvidenceIdentity
 from eval_corpus.r2b_v2.coverage.inventory import (
     build_static_route_inventory,
-    load_v2_implementation_tip,
+    resolve_r2b_implementation_revision,
     verify_inventory_matches_tip,
     verify_shadow_inventory_unchanged,
 )
@@ -343,25 +342,22 @@ def _resolve_implementation_revision(
     test_override: bool,
 ) -> str:
     if code_revision is not None and not _GIT_SHA40.match(code_revision):
-        raise CoverageProofError("implementation revision must be an authoritative git SHA")
+        raise CoverageProofError(
+            "implementation revision must be a 40-char lowercase hex identity"
+        )
     if test_override:
-        revision = code_revision or current_code_revision()
+        revision = code_revision or resolve_r2b_implementation_revision()
         if revision == "unknown" or not _GIT_SHA40.match(revision):
             raise CoverageProofError("trusted implementation revision is unavailable")
         return revision
-    executing = current_code_revision()
-    if executing == "unknown" or not _GIT_SHA40.match(executing):
+    revision = resolve_r2b_implementation_revision()
+    if revision == "unknown" or not _GIT_SHA40.match(revision):
         raise CoverageProofError("trusted implementation revision is unavailable")
-    tip = load_v2_implementation_tip()
-    if tip and tip != "unknown" and tip != executing:
-        raise CoverageProofError(
-            "implementation revision disagreement between executing code and inventory tip"
-        )
-    if code_revision is not None and code_revision != executing:
+    if code_revision is not None and code_revision != revision:
         raise CoverageProofError(
             "caller-supplied implementation revision disagrees with executing code"
         )
-    return executing
+    return revision
 
 
 def _attestation_digest(att: dict[str, Any] | None) -> str:
@@ -502,7 +498,7 @@ def inspect_runtime_writers(
     expected_revision: str | None = None,
 ) -> tuple[list[RuntimeWriterRecord], dict[str, list[dict[str, Any]]]]:
     """Bind runtime identity for every observed writer-like process."""
-    revision = expected_revision or current_code_revision()
+    revision = expected_revision or resolve_r2b_implementation_revision()
     gate_path = str(gate_policy.resolve_path())
     holds: dict[str, list[dict[str, Any]]] = {
         cls.value: [] for cls in CoverageHoldClass

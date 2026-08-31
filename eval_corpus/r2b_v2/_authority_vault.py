@@ -1,8 +1,8 @@
-"""Single closure vault for R2b v2 trusted authority — not introspectable by design."""
+"""Single vault for R2b v2 trusted authority — guarded sinks, closure-free dispatch."""
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
-import contextvars
 import hashlib
 import inspect
 import json
@@ -147,18 +147,100 @@ def _assert_canonical_issuer() -> None:
     )
 
 
-def _build_vault() -> dict[str, Any]:  # pylint: disable=too-many-statements
-    """Hold all trusted authority state in one closure.
+def _vault_internal_frame_active(allowed_names: frozenset[str]) -> bool:
+    frame = inspect.currentframe()
+    if frame is not None:
+        frame = frame.f_back
+    vault_module = __name__
+    while frame is not None:
+        if (
+            frame.f_globals.get("__name__") == vault_module
+            and frame.f_code.co_name in allowed_names
+        ):
+            return True
+        frame = frame.f_back
+    return False
 
-    Single closure is intentional: authority state must not be splittable
-    across helpers that would re-expose mutable backing surfaces.
-    """
-    _mutation_root = object()
-    _mutation_token: contextvars.ContextVar[Any] = contextvars.ContextVar(
-        "r2b_v2_registry_mutation", default=None
-    )
-    _capability_ledger: dict[str, dict[str, Any]] = {}
-    _consumed_capability_ids: set[str] = set()
+
+_LEDGER_WRITE_FRAMES = frozenset({"_issue_capability", "_reset_capabilities_for_tests"})
+_LEDGER_RECORD_WRITE_FRAMES = frozenset(
+    {
+        "_consume_census_register",
+        "_consume_census_mint",
+        "_consume_lease",
+        "_consume_source",
+    }
+)
+_CONSUMED_ID_WRITE_FRAMES = frozenset(
+    {
+        "_consume_census_mint",
+        "_consume_lease",
+        "_consume_source",
+    }
+)
+_REGISTRY_MUTATION_FRAMES = frozenset(
+    {
+        "register_diagnostic_ticket",
+        "finalize_diagnostic_and_mint_coverage",
+        "mint_lease_handle",
+        "compose_and_mint_source_authority",
+        "invalidate_lease_handle",
+        "invalidate_coverage_handle",
+        "invalidate_all_authority",
+        "_bind_coverage_to_lease",
+        "_invalidate_source_ids",
+    }
+)
+
+
+class _GuardedLedgerRecord(dict[str, Any]):
+    def __setitem__(self, key: str, value: Any) -> None:
+        if not _vault_internal_frame_active(_LEDGER_RECORD_WRITE_FRAMES):
+            raise AuthorityCapabilityError(
+                "direct capability ledger record mutation forbidden"
+            )
+        super().__setitem__(key, value)
+
+    def __delitem__(self, key: str) -> None:
+        if not _vault_internal_frame_active(_LEDGER_RECORD_WRITE_FRAMES):
+            raise AuthorityCapabilityError(
+                "direct capability ledger record mutation forbidden"
+            )
+        super().__delitem__(key)
+
+
+class _GuardedLedger(dict[str, dict[str, Any]]):
+    def __setitem__(self, key: str, value: dict[str, Any]) -> None:
+        if not _vault_internal_frame_active(_LEDGER_WRITE_FRAMES):
+            raise AuthorityCapabilityError("direct capability ledger mutation forbidden")
+        if not isinstance(value, _GuardedLedgerRecord):
+            value = _GuardedLedgerRecord(value)
+        super().__setitem__(key, value)
+
+    def __delitem__(self, key: str) -> None:
+        if not _vault_internal_frame_active(_LEDGER_WRITE_FRAMES):
+            raise AuthorityCapabilityError("direct capability ledger mutation forbidden")
+        super().__delitem__(key)
+
+    def clear(self) -> None:
+        if not _vault_internal_frame_active(_LEDGER_WRITE_FRAMES):
+            raise AuthorityCapabilityError("direct capability ledger mutation forbidden")
+        super().clear()
+
+
+class _GuardedConsumedSet(set[str]):
+    def add(self, element: str) -> None:
+        if not _vault_internal_frame_active(_CONSUMED_ID_WRITE_FRAMES):
+            raise AuthorityCapabilityError(
+                "direct consumed-capability mutation forbidden"
+            )
+        super().add(element)
+
+
+def _build_vault() -> dict[str, Any]:  # pylint: disable=too-many-statements
+    """Hold trusted authority state behind guarded sinks and a single dispatch holder."""
+    _capability_ledger: _GuardedLedger = _GuardedLedger()
+    _consumed_capability_ids: _GuardedConsumedSet = _GuardedConsumedSet()
     _lock = threading.RLock()
 
     class AuthorityMintCapability:  # pylint: disable=redefined-outer-name
@@ -234,14 +316,7 @@ def _build_vault() -> dict[str, Any]:  # pylint: disable=too-many-statements
 
     @contextmanager
     def _mutation() -> Iterator[None]:
-        if _mutation_token.get() is not _mutation_root:
-            token = _mutation_token.set(_mutation_root)
-            try:
-                yield
-            finally:
-                _mutation_token.reset(token)
-        else:
-            yield
+        yield
 
     class _SealedStore(MutableMapping[str, Any]):
         __slots__ = ("_data",)
@@ -250,7 +325,7 @@ def _build_vault() -> dict[str, Any]:  # pylint: disable=too-many-statements
             self._data: dict[str, Any] = {}
 
         def _guard_mutation(self) -> None:
-            if _mutation_token.get() is not _mutation_root:
+            if not _vault_internal_frame_active(_REGISTRY_MUTATION_FRAMES):
                 raise AuthorityRegistryError("direct registry mutation forbidden")
 
         def __getitem__(self, key: str) -> Any:
@@ -647,12 +722,14 @@ def _build_vault() -> dict[str, Any]:  # pylint: disable=too-many-statements
         if trust_class not in (_TRUST_CLASS_PRODUCTION, _TRUST_CLASS_HERMETIC):
             raise AuthorityCapabilityError("invalid trust class for capability issuance")
         cap_id = secrets.token_hex(16)
-        _capability_ledger[cap_id] = {
-            "phase": phase,
-            "binding_digest": _binding_digest(phase, binding),
-            "trust_class": trust_class,
-            "census_stage": 0,
-        }
+        _capability_ledger[cap_id] = _GuardedLedgerRecord(
+            {
+                "phase": phase,
+                "binding_digest": _binding_digest(phase, binding),
+                "trust_class": trust_class,
+                "census_stage": 0,
+            }
+        )
         cap = object.__new__(AuthorityMintCapability)
         cap._capability_id = cap_id  # pylint: disable=attribute-defined-outside-init,protected-access
         return cap
@@ -693,8 +770,12 @@ def _build_vault() -> dict[str, Any]:  # pylint: disable=too-many-statements
                     trust_class=kwargs["trust_class"],
                 )
             if op == "reset_capabilities_for_tests":
-                _capability_ledger.clear()
-                _consumed_capability_ids.clear()
+
+                def _reset_capabilities_for_tests() -> None:
+                    _capability_ledger.clear()
+                    _consumed_capability_ids.clear()
+
+                _reset_capabilities_for_tests()
                 return None
             if op == "current_authority_epoch":
                 return registry._authority_epoch  # pylint: disable=protected-access
@@ -714,10 +795,33 @@ def _build_vault() -> dict[str, Any]:  # pylint: disable=too-many-statements
     }
 
 
+class _VaultHolder:
+    """Route dispatch without exposing closure-backed inner dispatch."""
+
+    __slots__ = ("__inner",)
+
+    def __init__(self, inner_dispatch: Any) -> None:
+        object.__setattr__(self, "_VaultHolder__inner", inner_dispatch)
+
+    def __getattribute__(self, name: str) -> Any:
+        if name in {"__inner", "_VaultHolder__inner", "__dict__"}:
+            raise AttributeError(name)
+        return super().__getattribute__(name)
+
+    def dispatch(self, op: str, *args: Any, **kwargs: Any) -> Any:
+        inner = object.__getattribute__(self, "_VaultHolder__inner")
+        return inner(op, *args, **kwargs)
+
+
 _vault_bundle = _build_vault()
-vault_dispatch = _vault_bundle["dispatch"]
+_vault_holder = _VaultHolder(_vault_bundle["dispatch"])
 AuthorityMintCapability = _vault_bundle["AuthorityMintCapability"]
 del _vault_bundle, _build_vault
+
+
+def vault_dispatch(op: str, *args: Any, **kwargs: Any) -> Any:
+    """Module-level dispatch entry — no introspectable closure cells."""
+    return _vault_holder.dispatch(op, *args, **kwargs)
 
 
 def issue_census_capability(
@@ -886,7 +990,7 @@ _FORBIDDEN_MODULE_ATTRS = frozenset(
         "_TRUSTED_REGISTRY",
         "_FACADE",
         "_build_vault",
-        "vault_dispatch",
+        "_vault_holder",
         "census_mint_window",
         "lease_acquisition_window",
         "source_composition_window",
