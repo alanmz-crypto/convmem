@@ -69,6 +69,8 @@
         ],
         "may_not_read": [
           "OpaqueResolverManifestV2",
+          "resolver_result",
+          "capability_vector",
           "resolver_status",
           "resolver_assurance",
           "resolver_failure_reason",
@@ -121,6 +123,15 @@
       "resolver_join_stage": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL",
       "validator": "V-ROLE-ACCESS-ADJUDICATION"
     },
+    "canonical_field_name_enforcement": {
+      "canonical_forbidden_p2_fields": ["resolver_result", "capability_vector"],
+      "aliases": {
+        "resolver_result": ["resolverResult", "resolver-result"],
+        "capability_vector": ["capabilityVector", "capability-vector"]
+      },
+      "rule": "normalize_known_aliases_to_canonical_names_before_any_P1_or_adjudicator_allow_deny_decision",
+      "unknown_alias": "DENY_AND_FAIL_CLOSED"
+    },
     "unknown_or_unlisted_field": "DENY_AND_FAIL_CLOSED"
   },
   "stage_graph": [
@@ -148,7 +159,7 @@
       "validator": "V-STAGE-P1",
       "failure_transition": "DIAGNOSTIC_OR_BLOCKED_PER_CAPTURE_RULE",
       "required_fields": ["construct_freeze_digest", "occurrence_reference", "physical_instance_id", "revision_or_asof_id", "evidence_snapshot_id", "evidence_complete_envelope_digest", "canonical_content_digest", "canonicalization_profile_digest", "adapter_implementation_digest", "condition_neutral_evidence_availability"],
-      "forbidden_fields": ["resolver_status", "resolver_failure_reason", "resolver_output_digest", "target_census", "target_ground_truth", "registry_membership", "probe_keys", "agent_b_outputs", "scores", "effects"]
+      "forbidden_fields": ["resolver_status", "resolver_failure_reason", "resolver_result", "capability_vector", "resolver_output_digest", "target_census", "target_ground_truth", "registry_membership", "probe_keys", "agent_b_outputs", "scores", "effects"]
     },
     {
       "id": "P2_OPAQUE_RESOLUTION",
@@ -382,7 +393,7 @@
     "built_from": ["EvidenceSealManifestV2", "EvidenceAvailabilityManifestV2"],
     "built_before": "P2_OPAQUE_RESOLUTION",
     "allowed_fields": ["episode_id", "opaque_occurrence_token", "opaque_span_token", "source_class", "condition_neutral_source_inventory", "condition_neutral_evidence_availability", "event_time", "authorship", "chronology", "reply_structure", "canonical_evidence_content", "attachment_material_availability", "extension_field_presence", "completeness_scope_without_resolver_result"],
-    "forbidden_fields": ["resolver_status", "resolver_result", "assurance_vector", "resolver_failure_reason", "source_path", "native_locator", "missing_file_marker_from_resolver", "queue_order", "retry_count", "retry_timing", "capture_timestamp", "resolver_completeness_label", "resolver_derived_metadata"],
+    "forbidden_fields": ["resolver_status", "resolver_result", "capability_vector", "assurance_vector", "resolver_failure_reason", "source_path", "native_locator", "missing_file_marker_from_resolver", "queue_order", "retry_count", "retry_timing", "capture_timestamp", "resolver_completeness_label", "resolver_derived_metadata"],
     "view_shape_rule": "stable_order_and_constant_schema_independent_of_resolver_outcome",
     "join_rule": "resolver_and_capability_status_join_only_after_both_adjudications_and_blinded_disagreement_resolution_are_sealed",
     "validator": "V-ADJUDICATION-VIEW"
@@ -478,7 +489,7 @@
     "single_canonical_authority", "rfc8785_digest_exactness", "stage_causal_parentage", "construct_immutability", "evidence_parentage", "occurrence_uniqueness", "lineage_never_collapses_physical_identity", "semantic_dedup_independent_of_physical_identity", "verification_not_identity", "no_silent_target_loss", "orthogonal_unknown_state", "unknown_multiplicity_propagation", "resolver_blindness", "snapshot_conflict_determinism", "transitive_legacy_isolation", "summary_provenance_not_truth", "initial_implementation_binding", "mechanical_key_instantiation", "arm_symmetry", "no_post_hoc_upgrade"
   ],
   "verification_controls": [
-    "jcs_without_trailing_newline", "p1_cannot_bind_p2_output", "clone_with_lineage_remains_distinct", "restore_preserved_native_ids_remains_distinct", "duplicate_content_distinct_occurrences", "known_present_additional_multiplicity_unknown", "unbounded_multiplicity_blocks", "incomplete_source_inventory_hidden_resolver", "source_deleted_after_intact_seal", "source_modified_after_seal", "stripped_origin_legacy_descendant", "summary_missing_consumed_dependency", "post_freeze_parser_canonicalizer_replacement", "target_specific_semantic_key_change", "unlisted_implementation_component", "nested_c0_c1_mismatch", "unknown_ryan_decision_value", "decision_missing_validator_or_authority",
+    "jcs_without_trailing_newline", "p1_cannot_bind_p2_output", "p1_rejects_resolver_result", "p1_rejects_capability_vector", "adjudicator_view_rejects_resolver_result", "adjudicator_view_rejects_capability_vector", "clone_with_lineage_remains_distinct", "restore_preserved_native_ids_remains_distinct", "duplicate_content_distinct_occurrences", "known_present_additional_multiplicity_unknown", "unbounded_multiplicity_blocks", "incomplete_source_inventory_hidden_resolver", "source_deleted_after_intact_seal", "source_modified_after_seal", "stripped_origin_legacy_descendant", "summary_missing_consumed_dependency", "post_freeze_parser_canonicalizer_replacement", "target_specific_semantic_key_change", "unlisted_implementation_component", "nested_c0_c1_mismatch", "unknown_ryan_decision_value", "decision_missing_validator_or_authority",
     "provider_migration_preserved_row_ids", "partial_exports_same_logical_source", "edit_delete_recreate", "parser_acceptance_change", "canonical_text_same_metadata_changed", "unknown_field_mutation", "attachment_change_or_loss", "resolver_queue_and_timing_side_channel", "source_snapshot_disagreement", "legacy_derived_feature_influence", "scorer_author_natural_target_exposure", "adapter_failure_correlated_with_episode_complexity", "arm_correlated_missingness", "c0_c1_retry_cache_asymmetry", "information_slot_pending_at_freeze"
   ],
   "coordination": {
