@@ -86,6 +86,33 @@ class R2bV2CorrectiveVIAdversarialTests(unittest.TestCase):
         with self.assertRaises(AuthorityRegistryError):
             store["evil_injected"] = "payload"
 
+    def test_03b_module_global_mutation_guard_cannot_open_sealed_store(self) -> None:
+        self.assertFalse(hasattr(authority_vault, "_MUTATION_GUARD"))
+        holder = object.__getattribute__(authority_vault, "_vault_holder")
+        inner = object.__getattribute__(holder, "_VaultHolder__inner")
+        registry = _closure_freevar_map(inner)["registry"]
+        store = registry._lease_records
+        module_dict = dict(vars(authority_vault))
+        for key, value in module_dict.items():
+            if isinstance(value, list):
+                for item in value:
+                    if hasattr(item, "depth"):
+                        item.depth = 5
+        with self.assertRaises(AuthorityRegistryError):
+            store["global_bypass"] = "payload"
+
+    def test_03c_foreign_mutation_frame_spoof_cannot_mutate_sealed_store(self) -> None:
+        holder = object.__getattribute__(authority_vault, "_vault_holder")
+        inner = object.__getattribute__(holder, "_VaultHolder__inner")
+        registry = _closure_freevar_map(inner)["registry"]
+        store = registry._lease_records
+
+        def mint_lease_handle() -> None:
+            store["foreign_spoof"] = "payload"
+
+        with self.assertRaises(AuthorityRegistryError):
+            mint_lease_handle()
+
     def test_04_direct_consumed_capability_set_mutation_forbidden(self) -> None:
         holder = object.__getattribute__(authority_vault, "_vault_holder")
         inner = object.__getattribute__(holder, "_VaultHolder__inner")
