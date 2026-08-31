@@ -146,13 +146,6 @@ def _assert_canonical_issuer() -> None:
     )
 
 
-_MUTATION_GUARD = [threading.local()]
-
-
-def _registry_mutation_active() -> bool:
-    return int(getattr(_MUTATION_GUARD[0], "depth", 0)) > 0
-
-
 def _vault_internal_frame_active(allowed_names: frozenset[str]) -> bool:
     frame = inspect.currentframe()
     if frame is not None:
@@ -184,6 +177,19 @@ _CONSUMED_ID_WRITE_FRAMES = frozenset(
         "_consume_source",
     }
 )
+_REGISTRY_MUTATION_FRAMES = frozenset(
+    {
+        "register_diagnostic_ticket",
+        "finalize_diagnostic_and_mint_coverage",
+        "mint_lease_handle",
+        "compose_and_mint_source_authority",
+        "invalidate_lease_handle",
+        "invalidate_coverage_handle",
+        "invalidate_all_authority",
+        "_bind_coverage_to_lease",
+        "_invalidate_source_ids",
+    }
+)
 
 
 class _GuardedLedgerRecord(dict[str, Any]):
@@ -199,7 +205,7 @@ class _GuardedLedgerRecord(dict[str, Any]):
             raise AuthorityCapabilityError(
                 "direct capability ledger record mutation forbidden"
             )
-        super().__delitem__(key, value)
+        super().__delitem__(key)
 
 
 class _GuardedLedger(dict[str, dict[str, Any]]):
@@ -309,13 +315,7 @@ def _build_vault() -> dict[str, Any]:  # pylint: disable=too-many-statements
 
     @contextmanager
     def _mutation() -> Iterator[None]:
-        local = _MUTATION_GUARD[0]
-        depth = int(getattr(local, "depth", 0))
-        local.depth = depth + 1
-        try:
-            yield
-        finally:
-            local.depth = depth
+        yield
 
     class _SealedStore(MutableMapping[str, Any]):
         __slots__ = ("_data",)
@@ -324,7 +324,7 @@ def _build_vault() -> dict[str, Any]:  # pylint: disable=too-many-statements
             self._data: dict[str, Any] = {}
 
         def _guard_mutation(self) -> None:
-            if not _registry_mutation_active():
+            if not _vault_internal_frame_active(_REGISTRY_MUTATION_FRAMES):
                 raise AuthorityRegistryError("direct registry mutation forbidden")
 
         def __getitem__(self, key: str) -> Any:
@@ -990,7 +990,6 @@ _FORBIDDEN_MODULE_ATTRS = frozenset(
         "_FACADE",
         "_build_vault",
         "_vault_holder",
-        "_MUTATION_GUARD",
         "census_mint_window",
         "lease_acquisition_window",
         "source_composition_window",
