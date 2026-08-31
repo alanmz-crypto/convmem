@@ -5,6 +5,8 @@
 **For:** Codex Luna (same-seed narrow closure review) + Ryan (routing)  
 **Authorization:** Ryan 2026-08-31 — Luna + Cursor sufficient; no Claude pass; G6 closed.
 
+**Revision note:** Tip includes artifact_id minting corrective after seal-state slice.
+
 ---
 
 ## Resume state
@@ -25,7 +27,8 @@
 | Revision | What Luna saw | Status |
 |----------|---------------|--------|
 | `a64b566` | Pending-at-freeze false-green (eight `PENDING` slots could pass T0 freeze) | **Closed** at `93d4ce4` via `validate_prospective_manifest_freeze_transition` |
-| `a64b566` / post-`93d4ce4` | Freeze validator did not require `header.sealed=True` or independent seal metadata | **Closed** at this tip |
+| `a64b566` / post-`93d4ce4` | Freeze validator did not require `header.sealed=True` or independent seal metadata | **Closed** at `d902b49` |
+| Post-`d902b49` | `artifact_id="pending"` valid on sealed/frozen manifest | **Closed** at this tip |
 
 **Stale inference to discard:** “current G5C artifact still contains the original T0 false-green defect” — that referred to `a64b566`, not the post-`93d4ce4` branch.
 
@@ -40,9 +43,13 @@
 3. Verifies `content_digest` against body **excluding** `logged_freeze_digest` (post-seal field).
 4. Preserves pending/frozen slot rules from `93d4ce4`.
 
+At this tip, sealing mints `artifact_id` from content digest (`PROSPECTIVE_MANIFEST_ARTIFACT_KIND`); freeze validation rejects placeholder or mismatched IDs.
+
 **New adversarial scenario:** `unsealed_manifest_blocks_frame_frozen` — `sealed=False` with otherwise self-consistent `logged_freeze_digest` **fails** freeze transition.
 
-**New unit test:** `test_unsealed_manifest_fails_freeze_transition_with_valid_digest`.
+**New adversarial scenario:** `placeholder_artifact_id_blocks_frame_frozen` — `artifact_id="pending"` or arbitrary ID with valid digest **fails**; minted ID **passes**.
+
+**New unit tests:** `test_unsealed_manifest_fails_freeze_transition_with_valid_digest`, `test_placeholder_artifact_id_fails_freeze_transition`.
 
 ---
 
@@ -55,8 +62,10 @@
 | 3 | `sealed=False` + self-consistent freeze digest: freeze FAIL | Yes (this tip) |
 | 4 | T0 cannot PASS on unsealed manifest | Yes |
 | 5 | T0 cannot PASS on pending manifest | Yes |
-| 6 | Synthetic `0.3` still no product disposition / no G6 authority | Yes |
-| 7 | No Agent A/B, corpus, live collection introduced | Yes |
+| 6 | `artifact_id="pending"` or content-mismatched ID cannot pass freeze | Yes (this tip) |
+| 7 | Minted content-derived `artifact_id` passes freeze | Yes (this tip) |
+| 8 | Synthetic `0.3` still no product disposition / no G6 authority | Yes |
+| 9 | No Agent A/B, corpus, live collection introduced | Yes |
 
 ---
 

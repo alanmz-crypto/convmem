@@ -59,6 +59,7 @@ from eval_naturalistic.contracts import (
     TargetSpanBindingV1,
     make_frozen_prospective_manifest,
     make_pending_prospective_manifest,
+    PROSPECTIVE_MANIFEST_ARTIFACT_KIND,
     reject_arm_dependent_registry_rule,
     seal_artifact_dict,
     validate_prospective_manifest_freeze_transition,
@@ -134,6 +135,7 @@ G5_REQUIRED_FAIL_CLOSED_SCENARIOS = frozenset(
         "incomplete_nominal_t0_frame",
         "pending_slots_block_frame_frozen",
         "unsealed_manifest_blocks_frame_frozen",
+        "placeholder_artifact_id_blocks_frame_frozen",
         "false_completeness_placeholder_slot",
         "freeze_tamper_post_seal",
         "handoff_artifact_mismatch",
@@ -221,7 +223,11 @@ def _ledger_entry(
 
 def _seal_prospective_manifest(manifest: ProspectiveManifestV1) -> tuple[dict[str, Any], str]:
     body = manifest.to_dict()
-    sealed = seal_artifact_dict(body, seal_time="2026-08-30T00:00:00Z")
+    sealed = seal_artifact_dict(
+        body,
+        seal_time="2026-08-30T00:00:00Z",
+        artifact_kind=PROSPECTIVE_MANIFEST_ARTIFACT_KIND,
+    )
     digest = artifact_content_digest(sealed)
     sealed["logged_freeze_digest"] = digest
     return sealed, digest
@@ -1251,6 +1257,46 @@ def _adversarial_unsealed_manifest_blocks_frame_frozen() -> G5ScenarioResult:
     )
 
 
+def _adversarial_placeholder_artifact_id_blocks_frame_frozen() -> G5ScenarioResult:
+    frame = make_synthetic_frame()
+    frozen_manifest = make_frozen_prospective_manifest(frame=frame)
+    sealed_good, _ = _seal_prospective_manifest(frozen_manifest)
+    bad = copy.deepcopy(sealed_good)
+    header = dict(bad["header"])
+    header["artifact_id"] = "pending"
+    bad["header"] = header
+    body_for_digest = copy.deepcopy(bad)
+    body_for_digest.pop("logged_freeze_digest", None)
+    bad["logged_freeze_digest"] = artifact_content_digest(body_for_digest)
+    freeze_fail = validate_prospective_manifest_freeze_transition(
+        bad,
+        require_logged_freeze=True,
+    )
+    freeze_ok = validate_prospective_manifest_freeze_transition(
+        sealed_good,
+        require_logged_freeze=True,
+    )
+    wrong_id = copy.deepcopy(sealed_good)
+    wrong_header = dict(wrong_id["header"])
+    wrong_header["artifact_id"] = "nps1_prospective_manifest_arbitrary0000"
+    wrong_id["header"] = wrong_header
+    wrong_body_for_digest = copy.deepcopy(wrong_id)
+    wrong_body_for_digest.pop("logged_freeze_digest", None)
+    wrong_id["logged_freeze_digest"] = artifact_content_digest(wrong_body_for_digest)
+    wrong_fail = validate_prospective_manifest_freeze_transition(
+        wrong_id,
+        require_logged_freeze=True,
+    )
+    return _scenario(
+        "placeholder_artifact_id_blocks_frame_frozen",
+        "T0",
+        demonstrated=(not freeze_fail.ok) and freeze_ok.ok and (not wrong_fail.ok),
+        fail_closed=True,
+        notes="artifact_id pending or content-mismatched fails FRAME_FROZEN; minted id passes.",
+        details={"pending_errors": freeze_fail.errors, "wrong_id_errors": wrong_fail.errors},
+    )
+
+
 def _adversarial_false_completeness() -> G5ScenarioResult:
     frame = make_synthetic_frame()
     manifest = make_pending_prospective_manifest(frame=frame)
@@ -1534,6 +1580,7 @@ def run_g5c_adversarial_suite() -> list[G5ScenarioResult]:
         _adversarial_incomplete_nominal_t0(),
         _adversarial_pending_slots_block_frame_frozen(),
         _adversarial_unsealed_manifest_blocks_frame_frozen(),
+        _adversarial_placeholder_artifact_id_blocks_frame_frozen(),
         _adversarial_false_completeness(),
         _adversarial_freeze_tamper(),
         _adversarial_handoff_mismatch(),

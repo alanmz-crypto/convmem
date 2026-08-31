@@ -578,6 +578,7 @@ class ProspectiveManifestG5CTests(unittest.TestCase):
 
     def test_pending_slots_fail_frame_frozen_transition(self):
         from eval_naturalistic.contracts import (
+            PROSPECTIVE_MANIFEST_ARTIFACT_KIND,
             make_frozen_prospective_manifest,
             make_pending_prospective_manifest,
             seal_artifact_dict,
@@ -602,7 +603,11 @@ class ProspectiveManifestG5CTests(unittest.TestCase):
         self.assertTrue(any("pending at FRAME_FROZEN" in err for err in freeze_fail.errors))
 
         frozen = make_frozen_prospective_manifest(frame=frame)
-        frozen_body = seal_artifact_dict(frozen.to_dict(), seal_time="2026-08-30T01:00:00Z")
+        frozen_body = seal_artifact_dict(
+            frozen.to_dict(),
+            seal_time="2026-08-30T01:00:00Z",
+            artifact_kind=PROSPECTIVE_MANIFEST_ARTIFACT_KIND,
+        )
         frozen_body["logged_freeze_digest"] = artifact_content_digest(frozen_body)
         freeze_ok = validate_prospective_manifest_freeze_transition(
             frozen_body,
@@ -614,6 +619,7 @@ class ProspectiveManifestG5CTests(unittest.TestCase):
         import copy
 
         from eval_naturalistic.contracts import (
+            PROSPECTIVE_MANIFEST_ARTIFACT_KIND,
             make_frozen_prospective_manifest,
             seal_artifact_dict,
             validate_prospective_manifest_freeze_transition,
@@ -623,7 +629,11 @@ class ProspectiveManifestG5CTests(unittest.TestCase):
 
         frame = make_synthetic_frame()
         frozen = make_frozen_prospective_manifest(frame=frame)
-        sealed = seal_artifact_dict(frozen.to_dict(), seal_time="2026-08-30T01:00:00Z")
+        sealed = seal_artifact_dict(
+            frozen.to_dict(),
+            seal_time="2026-08-30T01:00:00Z",
+            artifact_kind=PROSPECTIVE_MANIFEST_ARTIFACT_KIND,
+        )
         unsealed = copy.deepcopy(sealed)
         header = dict(unsealed["header"])
         header["sealed"] = False
@@ -640,6 +650,71 @@ class ProspectiveManifestG5CTests(unittest.TestCase):
         self.assertTrue(
             any("must be sealed at FRAME_FROZEN" in err for err in freeze_fail.errors)
         )
+
+    def test_placeholder_artifact_id_fails_freeze_transition(self):
+        import copy
+
+        from eval_naturalistic.contracts import (
+            PROSPECTIVE_MANIFEST_ARTIFACT_KIND,
+            make_frozen_prospective_manifest,
+            seal_artifact_dict,
+            validate_prospective_manifest_freeze_transition,
+        )
+        from eval_naturalistic.digest import artifact_content_digest, make_artifact_id
+        from eval_naturalistic.fixtures import make_synthetic_frame
+
+        frame = make_synthetic_frame()
+        frozen = make_frozen_prospective_manifest(frame=frame)
+        sealed = seal_artifact_dict(
+            frozen.to_dict(),
+            seal_time="2026-08-30T01:00:00Z",
+            artifact_kind=PROSPECTIVE_MANIFEST_ARTIFACT_KIND,
+        )
+        body_for_digest = copy.deepcopy(sealed)
+        body_for_digest.pop("logged_freeze_digest", None)
+        sealed["logged_freeze_digest"] = artifact_content_digest(body_for_digest)
+
+        pending_id = copy.deepcopy(sealed)
+        pending_id["header"] = {**pending_id["header"], "artifact_id": "pending"}
+        pending_body = copy.deepcopy(pending_id)
+        pending_body.pop("logged_freeze_digest", None)
+        pending_id["logged_freeze_digest"] = artifact_content_digest(pending_body)
+        pending_fail = validate_prospective_manifest_freeze_transition(
+            pending_id,
+            require_logged_freeze=True,
+        )
+        self.assertFalse(pending_fail.ok)
+        self.assertTrue(
+            any("artifact_id must be content-derived" in err for err in pending_fail.errors)
+        )
+
+        wrong_id = copy.deepcopy(sealed)
+        wrong_id["header"] = {
+            **wrong_id["header"],
+            "artifact_id": "nps1_prospective_manifest_arbitrary0000",
+        }
+        wrong_body = copy.deepcopy(wrong_id)
+        wrong_body.pop("logged_freeze_digest", None)
+        wrong_id["logged_freeze_digest"] = artifact_content_digest(wrong_body)
+        wrong_fail = validate_prospective_manifest_freeze_transition(
+            wrong_id,
+            require_logged_freeze=True,
+        )
+        self.assertFalse(wrong_fail.ok)
+        self.assertTrue(
+            any("does not match sealed content identity" in err for err in wrong_fail.errors)
+        )
+
+        expected_id = make_artifact_id(
+            kind=PROSPECTIVE_MANIFEST_ARTIFACT_KIND,
+            content_digest=sealed["header"]["content_digest"],
+        )
+        self.assertEqual(sealed["header"]["artifact_id"], expected_id)
+        freeze_ok = validate_prospective_manifest_freeze_transition(
+            sealed,
+            require_logged_freeze=True,
+        )
+        self.assertTrue(freeze_ok.ok, freeze_ok.errors)
 
 if __name__ == "__main__":
     unittest.main()

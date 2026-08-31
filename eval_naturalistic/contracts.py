@@ -1454,6 +1454,8 @@ PROSPECTIVE_INFORMATION_SLOT_NAMES = frozenset(
     }
 )
 
+PROSPECTIVE_MANIFEST_ARTIFACT_KIND = "prospective_manifest"
+
 PLACEHOLDER_MARKERS = frozenset({"", "PENDING", "TBD", "placeholder", "not_applicable_without_rule"})
 
 
@@ -2065,6 +2067,19 @@ def _validate_frozen_artifact_seal(
     body_for_seal.pop("logged_freeze_digest", None)
     if not verify_artifact_digest(body_for_seal):
         errors.append(f"{label}: sealed content_digest does not match body at FRAME_FROZEN")
+    artifact_id = header.get("artifact_id")
+    if not isinstance(artifact_id, str) or _is_placeholder_text(artifact_id):
+        errors.append(f"{label}: artifact_id must be content-derived at FRAME_FROZEN")
+    content_digest = header.get("content_digest")
+    if isinstance(content_digest, str) and len(content_digest) == 64 and isinstance(artifact_id, str):
+        expected_id = make_artifact_id(
+            kind=PROSPECTIVE_MANIFEST_ARTIFACT_KIND,
+            content_digest=content_digest,
+        )
+        if artifact_id != expected_id:
+            errors.append(
+                f"{label}: artifact_id does not match sealed content identity at FRAME_FROZEN"
+            )
     return errors
 
 
@@ -2161,18 +2176,28 @@ def reject_arm_dependent_registry_rule(rule_text: str) -> NaturalisticValidation
         )
     return NaturalisticValidation(errors=[])
 
-def seal_artifact_dict(body: dict[str, Any], *, seal_time: str) -> dict[str, Any]:
-    """Compute digest and mark an artifact body sealed."""
+def seal_artifact_dict(
+    body: dict[str, Any],
+    *,
+    seal_time: str,
+    artifact_kind: str | None = None,
+) -> dict[str, Any]:
+    """Compute digest, optionally mint content-derived artifact_id, and mark sealed."""
 
     header = _require_dict(body.get("header"), "header")
     digest = artifact_content_digest(body)
-    header = {
+    header_update: dict[str, Any] = {
         **header,
         "content_digest": digest,
         "seal_time": seal_time,
         "sealed": True,
     }
-    return {**body, "header": header}
+    if artifact_kind is not None:
+        header_update["artifact_id"] = make_artifact_id(
+            kind=artifact_kind,
+            content_digest=digest,
+        )
+    return {**body, "header": header_update}
 
 
 def verify_artifact_digest(body: dict[str, Any]) -> bool:
