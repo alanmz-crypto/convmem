@@ -3,17 +3,19 @@
 ```text
 Planning Status
 
-Phase:        Verify (historical gateway evidence retained; D1 reference-v2 corrective PENDING)
+Phase:        Verify (historical gateway evidence retained; D1 reference-v2 globally closed)
 Characters:   Independent Reviewer, Test-First Reviewer
 Functions:    Reviewer
-Lanes:        Cursor mechanical; Kiro or named independent lane sign-off; Ryan GATE
-Authority:    Planning oracle only for reference-v2; no corrective PASS or production grant
+Lanes:        Cursor mechanical; Kiro independent integrated sign-off; Ryan GATE
+Authority:    D1 integrated closure recorded at one tip; no production grant
 ```
 
 **Status:** Historical gateway/Design A mechanical evidence is preserved below.
-The copied-`G_rb` D1 meaning and its V6c drill do **not** verify reference-v2.
-All corrective rows are PENDING. This document authorizes no implementation,
-D1 retry, cleanup, owner cutover, or GC.
+D1 reference-v2 corrective is **globally closed** at integrated review tip
+`9cfb085836ca92c308d1a8f966aced9bbb48546e` (Kiro integrated PASS, 2026-08-30;
+Ryan-delegated ledger write). The copied-`G_rb` V6c drill remains historical
+only. This document authorizes no production D1 publication, owner cutover,
+V8c grant, cleanup, or GC.
 
 **Subject / tip:** `2a20209` (T5 complete — CG-2 Execute T1–T5 on branch)
 
@@ -48,9 +50,9 @@ D1 reference publication. It would not activate an owner or enable GC.
 | **Why** | The failed copied generation drifted under cosine Chroma, and sidecar proof would not govern rollback serving. |
 | **How** | Exact-ID target reader + D0 root reproduction + recovery restore + negative controls + TLC invariants. |
 
-**TL;DR:** Historical V8a/V8b/soak evidence remains valid; copied-`G_rb` V6c is
-not evidence for reference-v2. Corrective D1, property-map-v3, formal, recovery,
-and V8c rows remain PENDING. No owner activation granted.
+**TL;DR:** Historical V8a/V8b/soak evidence remains valid. D1R0–D1R12 are
+**SATISFIED / PASS together** at `9cfb085836ca92c308d1a8f966aced9bbb48546e`.
+V8c and production D1 remain unauthorized. No owner activation granted.
 
 ### Merge reading
 
@@ -108,35 +110,62 @@ or any production operation.
 no Ryan production D0 ratification, no production `G_rb`/`G_canary` build,
 no fence/pointer publication, no owner activation, no V8c grant, no GC/Shadow/R2b.
 
-## D1 reference-v2 corrective gate — prospective evidence
+## D1 reference-v2 corrective gate — integrated closure
 
 These rows supersede the copied-generation interpretation of historical V6c.
-They may be marked PASS only together at one exact implementation/model tip
-after independent review. A failure in any row blocks production D1.
+**Global D1 closure:** all rows **SATISFIED / PASS** together at integrated
+review tip `9cfb085836ca92c308d1a8f966aced9bbb48546e` (Kiro integrated
+independent review, 2026-08-30). Closure does not authorize production D1.
 
 | ID | Prospective check | Current result | Required evidence |
 |---|---|---|---|
-| D1R0 | Reviewed planning and implementation identity | PENDING | Ryan-accepted planning SHA; exact implementation/model SHA; independent Kiro PASS on that tip |
-| D1R1 | Existing D0 chain is consumed unchanged | **SATISFIED / PASS** | Kiro independent PASS on runtime `8897d1358f985e38a1070816189460d980824d75` (2026-08-30, fresh seed). Reference-v2 consume prefix loads ratified production D0 unchanged: candidate `d4be814abc59e77a2d1420b6d7db8859f5a5fe6f449f107fbdd23eb9aecaa0be`, validation `4af9388454e80dedeb6988500647d2766333e22d4e5fecacadf055d14b667793`, ratification `ryan-d0-webui-2026-08-29`, vector root `28df88466daaf16c270b1112d2a160fecc9d47c1014bc5bf91e94ae70e83a24e`, snapshot root `8ee62dfd434e092b6c9d5367dbd53fa9e4402078dfa30aad2277f417ce1ebd49`, query context `df95af20d1774bb225d77fe2408450ee69ff3e7a9fee383ffa79e72febb370be`, owner `6daf07d443fbd1c4559f4c6516d7f1f585db25106f1aca3437b2ca7ecf0e39b3`; 37 LEGACY rows reread; roots reproduced exactly; `ChromaStore(create_collections=False)` structurally non-creating; nonexistent-collection probe raised `NotFoundError` without creating collections; no write calls in reread path; D0 artifacts and Chroma SQLite unchanged before/after. Earlier `FileGenerationStore` / `get_or_create_collection` access-path defect closed by corrected read-only attestation. **Does not authorize production D1, V8c, D1R9, or global D1 closure.** |
-| D1R2 | Correct protocol identity | PENDING | Fingerprint `convmem/cg2-rollback-baseline-reference-v2`; new deterministic target ID; `RETAINED_LEGACY_REFERENCE_V2`; evidence v2; unchanged proof profile |
-| D1R3 | Exact original physical membership | PENDING | Fresh process verifies original collection UUID/configuration and exactly ordered D0 physical IDs; missing/additional/substituted/duplicate/wrong-owner rows refuse |
-| D1R4 | Exact row/readback state | PENDING | Serving-reader documents, immutable metadata/provenance, and canonical float32 hashes reproduce all D0 roots; one-ULP mutation refuses |
-| D1R5 | One qualification/serving authority | PENDING | Spy/integration evidence proves cold qualification, first-cutover rebind, and rollback scoring call the same target-aware reader with identical target descriptor/output |
-| D1R6 | No copied or sidecar vector authority | PENDING | Static inventory + write/lookup spies prove no Chroma add/upsert, `.f32le`/sidecar, re-embedding, or reconstruction participates |
-| D1R7 | Fresh-process production-shape qualification | PENDING | Child process reopens actual-layout Chroma and governed generation root, reloads D0, verifies context and selector, and rejects stale/forged evidence |
-| D1R8 | Retention lifecycle truthful | PENDING | `RETAINED_ROLLBACK_BASELINE` only after D1R1–D1R7 and D1R9; no `G_RB_CONVERT_COLD_VALIDATED` literal |
-| D1R9 | Recovery covers one complete target | **SATISFIED / PASS** | Kiro independent PASS on runtime `8897d1358f985e38a1070816189460d980824d75` (2026-08-30, fresh seed). Isolated restic backup → restore → serving-reader verification for reference-v2 target `2740ec5b5f01f2f293d07bbf0677c4e26f8daadefab8192682410e6685af2364` (owner `6daf07d443fbd1c4559f4c6516d7f1f585db25106f1aca3437b2ca7ecf0e39b3`); manifest SHA-256 `8ca18854215d6c100aa11ca686f88b590609bfcac7f21dec44fcbc9f70b8ab0c`; restic snapshot `7d9ea1465c129e778ce4787008ac06820bf6f9abc28fd76a9f47fcdd55d2d0e1` (profile `COMPLETE_DATA_V2`, tag `d1r9-drill`); evidence `/tmp/d1r9-ra-drill-20260830/evidence/`. Production lacked retained reference-v2 — complete target materialized on isolated scratch only; backup derived from scratch retain, restored under `/tmp/d1r9-ra-drill-20260830/restore_target/` with disjoint reader paths (`ChromaStore(create_collections=False)`). Restored state preserves D0 candidate `d4be814a…`, validation `4af93884…`, ratification `ryan-d0-webui-2026-08-29`, 37 original LEGACY physical rows, snapshot root `8ee62df…`, vector root `28df8846…`, query context `df95af20…`; `validate_reference_v2_recovery_eligibility`, membership, and cold validation PASS; no re-embedding, substitute vectors, or reconstruction. D0 artifacts unchanged; post-drill production D0 roots verified exact. **Does not authorize production D1, V8c, or global D1 closure.** |
-| D1R10 | Failed convert-v1 remains terminal | PENDING | `2d01dfca…` cannot be reused, activated, selected as previous, or cleaned; no `abandoned_d1` schema |
-| D1R11 | D0 exception contract preserved | PENDING | Non-finite D0 vector raises `D0AttestationError`; full pre-existing suite has no regression |
-| D1R12 | Property map and formal model close the same contract | **SATISFIED / PASS** | Kiro independent PASS on formal corrective `7a8fd76350b7076f5d75e3ad53c7392647b2eac0` (parent runtime PASS base `8897d1358f985e38a1070816189460d980824d75`, 2026-08-30). Eight substantive `GRb*` invariants wired in all four positive TLC configs (`CG2DesignA`, `CG2Cutover`, `CG2StaleReconcile`, `CG2Rename`); wrong-selector and copied-serving negative controls target `GRbReferenceMembershipExact` and `GRbServingReadsReferencedRows`; formal/runtime correspondence adequate to the accepted reference-v2 implementation; corrective delta formal-model-only (`8897d1358f985e38a1070816189460d980824d75..7a8fd76350b7076f5d75e3ad53c7392647b2eac0`). Property map v3 schema at runtime base (`convmem/cg2-design-a-property-map-v3` in `cg2_property_map.py`). **Empirical evidence:** Kiro reran **TLC v1.7.4** in an isolated detached worktree at the frozen corrective — four positive configs completed with drained state spaces and no invariant violations; both negative controls exited with the expected `Invariant … is violated` on their target properties. **Residual caveat:** the committed `run-d1r12-tlc.sh` jar SHA-attestation wrapper was not executed (`TLA_JAR_APPROVED_SHA256` unavailable) — the empirical model-checking result is independently verified; the jar supply-chain SHA attestation is a separate control and is NOT independently attested. **Does not authorize production D1, V8c, or any downstream CG-2 gate; D1R0–D1R11 remain PENDING.** |
+| D1R0 | Reviewed planning and implementation identity | **SATISFIED / PASS** | Kiro integrated independent PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e` (2026-08-30, fresh seed). Ryan-accepted planning SHA `8b5b53e2a460753711392379535b127cefa244b8`; formal corrective `7a8fd76350b7076f5d75e3ad53c7392647b2eac0` is ancestor; runtime delta `8897d1358f985e38a1070816189460d980824d75..9cfb085836ca92c308d1a8f966aced9bbb48546e` limited to reference-v2 implementation surfaces; commits after tip on branch are docs-only (`d9f1c8b`, `2b16ead`). |
+| D1R1 | Existing D0 chain is consumed unchanged | **SATISFIED / PASS** | Kiro integrated independent PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e` (2026-08-30, fresh seed). Re-bound at final tip: reference-v2 consume prefix loads ratified production D0 unchanged — candidate `d4be814abc59e77a2d1420b6d7db8859f5a5fe6f449f107fbdd23eb9aecaa0be`, validation `4af9388454e80dedeb6988500647d2766333e22d4e5fecacadf055d14b667793`, ratification `ryan-d0-webui-2026-08-29`, vector root `28df88466daaf16c270b1112d2a160fecc9d47c1014bc5bf91e94ae70e83a24e`, snapshot root `8ee62dfd434e092b6c9d5367dbd53fa9e4402078dfa30aad2277f417ce1ebd49`, query context `df95af20d1774bb225d77fe2408450ee69ff3e7a9fee383ffa79e72febb370be`, owner `6daf07d443fbd1c4559f4c6516d7f1f585db25106f1aca3437b2ca7ecf0e39b3`; 37 LEGACY rows; roots reproduced; `ChromaStore(create_collections=False)` structurally non-creating; D0 artifacts unchanged. Prior per-row PASS at `8897d135…` subsumed by integrated closure. |
+| D1R2 | Correct protocol identity | **SATISFIED / PASS** | Kiro integrated PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. Fingerprint `convmem/cg2-rollback-baseline-reference-v2`; deterministic reference-v2 target ID; `RETAINED_LEGACY_REFERENCE_V2` / `convmem/retained-legacy-reference-manifest-v2`; evidence v2; `LEGACY_EXACT_VECTOR_UNKNOWN_MODEL_V1` unchanged. Primary: `tests/test_cg2_reference_v2.py::test_deterministic_reference_v2_target_id`. |
+| D1R3 | Exact original physical membership | **SATISFIED / PASS** | Kiro integrated PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. Hermetic adversarial membership oracles refuse duplicate/additional/wrong-owner/missing/substituted physical IDs. Primary tests: `test_adversarial_{duplicate,additional,wrong_owner,missing,substituted}_physical_id_refuses`. |
+| D1R4 | Exact row/readback state | **SATISFIED / PASS** | Kiro integrated PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. Serving-reader documents, immutable metadata/provenance, and canonical float32 hashes reproduce all D0 roots; one-ULP mutation refuses (`test_adversarial_one_ulp_vector_drift_refuses`). |
+| D1R5 | One qualification/serving authority | **SATISFIED / PASS** | Kiro integrated PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. Spy/integration evidence: cold qualification, first-cutover rebind, and rollback scoring call the same target-aware reader (`test_same_reader_spy_qualification_and_serving`, `test_reference_v2_first_cutover_rollback_same_reader_rehearsal`). |
+| D1R6 | No copied or sidecar vector authority | **SATISFIED / PASS** | Kiro integrated PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. Static inventory + write/lookup spies prove no Chroma add/upsert, `.f32le`/sidecar, re-embedding, or reconstruction participates (`test_zero_copied_vector_rows`, `test_reference_v2_static_inventory_no_sidecar_or_copied_vector_authority`, `test_reference_v2_lookup_spy_no_sidecar_or_generation_get_rows`). |
+| D1R7 | Fresh-process production-shape qualification | **SATISFIED / PASS** | Kiro integrated PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. Child process reopens actual-layout Chroma and governed generation root, reloads D0, verifies context and selector, rejects stale/forged evidence (`test_reference_v2_fresh_process_failure_refuses_retained_evidence`). |
+| D1R8 | Retention lifecycle truthful | **SATISFIED / PASS** | Kiro integrated PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. `RETAINED_ROLLBACK_BASELINE` only after D1R1–D1R7 and D1R9; no `G_RB_CONVERT_COLD_VALIDATED` literal (`test_retention_lifecycle_uses_retained_rollback_baseline_only`). |
+| D1R9 | Recovery covers one complete target | **SATISFIED / PASS** | Kiro integrated independent PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e` (2026-08-30, fresh seed). Re-bound restored reader with tip code: restic snapshot `7d9ea1465c129e778ce4787008ac06820bf6f9abc28fd76a9f47fcdd55d2d0e1`; target `2740ec5b5f01f2f293d07bbf0677c4e26f8daadefab8192682410e6685af2364`; manifest SHA-256 `8ca18854215d6c100aa11ca686f88b590609bfcac7f21dec44fcbc9f70b8ab0c`; evidence `/tmp/d1r9-ra-drill-20260830/evidence/`. Restored state preserves D0 chain, 37 LEGACY rows, exact snapshot/vector/query-context roots; recovery eligibility/membership/cold validation PASS; path isolation. **Non-blocking caveats (carry forward):** (1) production lacked retained reference-v2 at drill time — complete target materialized on isolated scratch only (`production_has_retained_reference_v2 = false`); (2) restore-inventory reported BLOCKED exit 31 on out-of-scope `decisions-approved.jsonl`. Prior per-row PASS at `8897d135…` subsumed by integrated closure. |
+| D1R10 | Failed convert-v1 remains terminal | **SATISFIED / PASS** | Kiro integrated PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. `2d01dfca08ac388e7ac74d145e789a8a35d8b97c4bf2ee6d971a95a8a74c4b3c` cannot be reused, activated, selected as previous, or cleaned; no `abandoned_d1` schema (`test_failed_convert_v1_target_id_refuses`, `test_reference_v2_id_differs_from_convert_v1`). |
+| D1R11 | D0 exception contract preserved | **SATISFIED / PASS** | Kiro integrated PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. Non-finite D0 vector raises `D0AttestationError`; full pre-existing suite has no regression — Kiro independently reproduced **51/51 PASS** (`test_malformed_embedding_raises_d0_attestation_error`, `test_vector_float32_encoding_and_nonfinite_refusal`, `tests/test_cg2_rollback_baseline.py`). |
+| D1R12 | Property map and formal model close the same contract | **SATISFIED / PASS** | Kiro integrated PASS at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. Formal corrective `7a8fd76350b7076f5d75e3ad53c7392647b2eac0` is ancestor; `convmem/cg2-design-a-property-map-v3` at tip; eight substantive `GRb*` invariants in four positive TLC configs; negative controls on `GRbReferenceMembershipExact` and `GRbServingReadsReferencedRows`. Prior TLC v1.7.4 empirical PASS at corrective tip retained. **Non-blocking caveat (carry forward):** jar SHA-attestation wrapper (`run-d1r12-tlc.sh`) still unattested — separate supply-chain control, not the empirical model-checking result. |
 
-**D1R12 formal closure record (2026-08-30):** The retained-reference-v2 formal obligation is **SATISFIED / PASS** at corrective SHA `7a8fd76350b7076f5d75e3ad53c7392647b2eac0` on branch `fix/2026-08-30-cg2-d1-reference-v2-formal-d1r12`. Kiro independently reviewed the frozen delta `8897d1358f985e38a1070816189460d980824d75..7a8fd76350b7076f5d75e3ad53c7392647b2eac0`, reran TLC v1.7.4 at that tip, and returned **PASS**. This closure record does not itself authorize production activity or unrelated downstream work.
+**D1 integrated closure record (2026-08-30, Ryan-delegated ledger write):** All
+D1 reference-v2 corrective obligations **D1R0–D1R12** are **SATISFIED / PASS
+together** at integrated review tip `9cfb085836ca92c308d1a8f966aced9bbb48546e`
+on branch `fix/2026-08-30-cg2-d1r0-d1r11-closure-evidence`. Kiro performed one
+integrated independent review (fresh seed) and returned **ALL 13 rows PASS**.
+Kiro independently reproduced **20/20** reference-v2 pytest and **51/51**
+regression checks. Ryan delegated the global D1 ledger write to Cursor on
+2026-08-30 after Kiro integrated PASS. **Three non-blocking caveats (carry
+forward verbatim):** (1) D1R9 scratch materialization —
+`production_has_retained_reference_v2 = false` (complete target materialized
+on isolated scratch only; production not cut over); (2) D1R9 restore-inventory
+BLOCKED exit 31 on out-of-scope `decisions-approved.jsonl`; (3) D1R12 jar
+SHA-attestation wrapper (`run-d1r12-tlc.sh`) still unattested — separate
+supply-chain control, not the empirical TLC model-checking result. **Does not
+authorize production D1 publication, V8c, owner cutover, activation, or GC.**
 
-**D1R12 ledger reconciliation (2026-08-30, Ryan):** Documentation commit `d2d6f41` ("docs: record D1R12 formal obligation SATISFIED after Kiro PASS") was created **before** the independent Kiro review existed and stated the empirical TLC rerun was *deferred (no Java/TLC in the review lane)*. That prospective record is superseded here: (1) `d2d6f41` prematurely recorded the expected PASS; (2) the actual independent Kiro review and TLC v1.7.4 execution occurred afterward on 2026-08-30; (3) that later independent PASS + empirical run now substantively support the D1R12 SATISFIED state; (4) the PASS derives from Kiro's independent review and model checking, not from the earlier documentation claim. The formal model at `d2d6f41` is byte-identical to the reviewed `7a8fd76`, so the technical result was never contaminated; no git history repair was performed (repository governance did not require it). The only residual open item is the jar SHA-attestation wrapper (separate control), not the empirical model-checking result.
+**D1R12 formal closure record (2026-08-30):** Subsumed by integrated closure
+at `9cfb085836ca92c308d1a8f966aced9bbb48546e`. Prior per-row PASS at formal
+corrective `7a8fd76350b7076f5d75e3ad53c7392647b2eac0` retained in evidence chain.
 
-**D1R1 closure record (2026-08-30):** The existing production D0 consume-unchanged obligation is **SATISFIED / PASS** at runtime `8897d1358f985e38a1070816189460d980824d75`. Kiro independently reviewed the corrected read-only attestation (fresh seed) and authorized marking D1R1 SATISFIED. Kiro established that reference-v2 consumes the already-ratified production D0 chain unchanged via `load_ratified_d0_chain`, live LEGACY row reread, exact root reproduction, structurally non-creating Chroma access, and before/after no-mutation checks. This closure record does not authorize production D1, V8c, D1R9, or global D1 closure.
+**D1R12 ledger reconciliation (2026-08-30, Ryan):** Documentation commit
+`d2d6f41` prematurely recorded expected PASS before independent review; superseded
+by later Kiro independent review + TLC run and now by integrated closure at
+`9cfb085836ca92c308d1a8f966aced9bbb48546e`. Formal model at `d2d6f41` byte-identical
+to `7a8fd76`; no history repair required.
 
-**D1R9 closure record (2026-08-30):** The recovery-covers-one-complete-target obligation is **SATISFIED / PASS** at runtime `8897d1358f985e38a1070816189460d980824d75`. Kiro independently reviewed the isolated backup → restore → serving-reader drill (fresh seed) and authorized marking D1R9 SATISFIED. Kiro verified restic backup/restore preserved the authoritative D0-bound physical rows, reference-v2 manifest/evidence bindings, and exact snapshot/vector/query-context roots on the restored reader without substitute vector authority or production cutover. Evidence identity: restic snapshot `7d9ea1465c129e778ce4787008ac06820bf6f9abc28fd76a9f47fcdd55d2d0e1`; target `2740ec5b5f01f2f293d07bbf0677c4e26f8daadefab8192682410e6685af2364`; drill evidence `/tmp/d1r9-ra-drill-20260830/evidence/`. This closure record does not authorize production D1, V8c, or global D1 closure.
+**D1R1 closure record (2026-08-30):** Subsumed by integrated closure at
+`9cfb085836ca92c308d1a8f966aced9bbb48546e`. Prior per-row PASS at `8897d135…`
+re-bound at final tip.
+
+**D1R9 closure record (2026-08-30):** Subsumed by integrated closure at
+`9cfb085836ca92c308d1a8f966aced9bbb48546e`. Prior per-row PASS at `8897d135…`
+re-bound at final tip with tip code on restored reader.
 
 **Corrective rollback drill:** after hermetic first cutover, resolve
 `previous_generation_id` as the reference-v2 target, run fresh qualification,
@@ -220,7 +249,7 @@ switch targets and source advance leaves durable reconciliation-required.
 |---|---|---|---|
 | V6a | Kill/corruption paths fail closed or recover | PASS | `tests/test_file_generation_validate.py`, pointer recovery tests |
 | V6b | Active/previous retention survives restart | PASS | `test_mixed_mode_proof.py::test_retention_survives_restart` |
-| V6c | Rollback uses retained target, not legacy resurrection | **HISTORICAL PASS / REFERENCE-V2 PENDING** | Copied-generation drill passed at `b64860b` but does not prove the corrected physical authority. Reference-v2 closure requires D1R1–D1R12 and the corrective rollback drill above. |
+| V6c | Rollback uses retained target, not legacy resurrection | **HISTORICAL PASS / REFERENCE-V2 PENDING** | Copied-generation drill passed at `b64860b` but does not prove the corrected physical authority. D1R0–D1R12 globally closed at `9cfb085836ca92c308d1a8f966aced9bbb48546e` (D1R5 same-reader rollback rehearsal PASS); this VERIFY row not re-marked separately. |
 | V6d | Recovery follows durable pointer | PASS | `tests/test_file_generation_pointer.py` recovery paths |
 | V6e | GC disabled; protected generations not deleted | PASS | `PHYSICAL_DELETION_DISABLED`; no delete in proof path |
 
@@ -240,7 +269,7 @@ switch targets and source advance leaves durable reconciliation-required.
 |---|---|---|---|
 | V8a | Independent reviewer signs exact tip | **PASS** — independent sign-off justified | Kiro independent review of CG-2 implementation tip `2f427fcfb8818dd665310bae7e8cd5ffa066bdcc` and preservation check on `main` `451f523b48c9fd998a050edfe6766d14249dcc6b` (CG-2 implementation surfaces unchanged between them). Focused CG-2 tests **43/43 PASS**; CG-2 + generation-core **76/76 PASS**; query/doctor/rerank **84/84 PASS**. Full suite timed out at 180s — **not** claimed PASS or FAIL. No material defects. Non-blocking carry-forward for V8c/canary prep: `FrozenGenerationStable` and `RetryBudgetTerminates` share one test; structural immutability supplements coverage (does **not** block V8a). |
 | V8b | Ryan accepts package / grants soak separately | **PASS** — legacy-only gateway soak grant recorded | Grant recorded in `LATEST.md`. V8b covers the **grant only**, not soak-completion success (see Soak-completion evidence below). |
-| V8c | First-owner packet + one-shot activation grant | **PENDING** (not PASS) | **Definition:** Ryan accepts the complete packet and issues the exact one-shot grant. Before grant, packet binds reference-v2 `G_rb` target ID/manifest/evidence-v2/selector/recovery coverage and exact `G_canary` generation ID/manifest, source/pipeline/profile/qualification evidence, and one reviewed implementation/model SHA. D1R0–D1R12 and corrective V6c must PASS first. Grant remains one-shot/self-invalidating. |
+| V8c | First-owner packet + one-shot activation grant | **PENDING** (not PASS) | **Definition:** Ryan accepts the complete packet and issues the exact one-shot grant. Before grant, packet binds reference-v2 `G_rb` target ID/manifest/evidence-v2/selector/recovery coverage and exact `G_canary` generation ID/manifest, source/pipeline/profile/qualification evidence, and one reviewed implementation/model SHA. **D1R0–D1R12: SATISFIED / PASS** at integrated tip `9cfb085836ca92c308d1a8f966aced9bbb48546e`; corrective V6c row not re-marked. Grant remains one-shot/self-invalidating. **Current state:** not authorized — Ryan GATE separate. |
 
 ## Soak-completion evidence (separate from V8b)
 
@@ -264,13 +293,12 @@ activation manifest, GC, Shadow, and R2b remain unauthorized.
 
 Historical evidence uses `convmem/cg2-design-a-property-map-v2`. Corrective
 closure uses `convmem/cg2-design-a-property-map-v3` (`cg2_property_map.py`) at
-runtime PASS base `8897d1358f985e38a1070816189460d980824d75`. **D1R12 formal
-obligation: SATISFIED / PASS** at formal corrective `7a8fd76350b7076f5d75e3ad53c7392647b2eac0`
-(Kiro independent PASS, 2026-08-30). Empirical TLC v1.7.4 was rerun by Kiro at
-the corrective tip (four positive configs PASS, two negative controls fail on
-their target invariants); the jar SHA-attestation wrapper is a separate,
-unattested control. **D1R1: SATISFIED / PASS** at runtime `8897d1358f985e38a1070816189460d980824d75`
-(Kiro independent PASS, 2026-08-30). **D1R9: SATISFIED / PASS** at runtime `8897d1358f985e38a1070816189460d980824d75` (Kiro independent PASS, 2026-08-30; fresh seed; isolated restic restore drill). D1 is not globally closed.
+integrated review tip `9cfb085836ca92c308d1a8f966aced9bbb48546e`. **D1 globally
+closed:** D1R0–D1R12 **SATISFIED / PASS** together (Kiro integrated independent
+PASS, 2026-08-30). Non-blocking carry-forward: D1R9 scratch materialization
+(`production_has_retained_reference_v2 = false`); D1R9 restore-inventory BLOCKED
+exit 31 on out-of-scope `decisions-approved.jsonl`; D1R12 jar SHA-attestation
+wrapper unattested.
 
 ## Evidence log
 
@@ -280,11 +308,14 @@ Design A architecture: 3d8b151907f02c8b8ead89585fb43904840b210b
 Superseding execution plan: 9a171bdf03d501ff891d991bbdad6acc1abda56c
 D6 accepted tip: 9a042fbc0d18500b91e056f47f60a00e20ccdb75
 D7 closure tip: b64860b05575c62b4563c02ed6f05bb39910b4dc
-V6c copied-generation drill: HISTORICAL PASS only; reference-v2 PENDING
-D1R12 formal obligation: SATISFIED / PASS at 7a8fd76350b7076f5d75e3ad53c7392647b2eac0 (Kiro independent PASS; parent runtime base 8897d1358f985e38a1070816189460d980824d75); empirical TLC v1.7.4 rerun by Kiro at corrective tip — 4 positive configs PASS, 2 negative controls fail on target invariants; jar SHA-attestation wrapper (run-d1r12-tlc.sh) separate/unattested control
-D1R12 ledger reconciliation: doc commit d2d6f41 prematurely recorded expected PASS before independent review; superseded — SATISFIED rests on later independent Kiro review + TLC run; formal model at d2d6f41 byte-identical to 7a8fd76; no history repair required
-D1R1 consume-unchanged: SATISFIED / PASS at 8897d1358f985e38a1070816189460d980824d75 (Kiro independent PASS, 2026-08-30; fresh seed; structurally non-creating ChromaStore read path)
-D1R9 recovery drill: SATISFIED / PASS at 8897d1358f985e38a1070816189460d980824d75 (Kiro independent PASS, 2026-08-30; restic snapshot 7d9ea1465c129e778ce4787008ac06820bf6f9abc28fd76a9f47fcdd55d2d0e1; target 2740ec5b5f01f2f293d07bbf0677c4e26f8daadefab8192682410e6685af2364; evidence /tmp/d1r9-ra-drill-20260830/evidence/)
+V6c copied-generation drill: HISTORICAL PASS only; reference-v2 D1 globally closed at 9cfb085836ca92c308d1a8f966aced9bbb48546e
+D1 integrated closure: ALL D1R0-D1R12 SATISFIED / PASS at 9cfb085836ca92c308d1a8f966aced9bbb48546e (Kiro integrated independent PASS, 2026-08-30; Ryan-delegated ledger write)
+D1 integrated evidence: 20/20 reference-v2 pytest; 51/51 regression; manifest /tmp/d1-integrated-evidence-20260830/integrated_d1_evidence_manifest.json
+D1 non-blocking caveats: (1) D1R9 production_has_retained_reference_v2=false scratch materialization; (2) D1R9 restore-inventory BLOCKED exit 31 on out-of-scope decisions-approved.jsonl; (3) D1R12 jar SHA-attestation wrapper unattested
+D1R12 formal obligation: subsumed by integrated closure; prior PASS at 7a8fd76350b7076f5d75e3ad53c7392647b2eac0 retained in chain
+D1R12 ledger reconciliation: d2d6f41 premature record superseded by integrated closure
+D1R1 consume-unchanged: subsumed by integrated closure; re-bound at 9cfb085836ca92c308d1a8f966aced9bbb48546e
+D1R9 recovery drill: subsumed by integrated closure; re-bound at 9cfb085836ca92c308d1a8f966aced9bbb48546e; restic snapshot 7d9ea1465c129e778ce4787008ac06820bf6f9abc28fd76a9f47fcdd55d2d0e1; target 2740ec5b5f01f2f293d07bbf0677c4e26f8daadefab8192682410e6685af2364; evidence /tmp/d1r9-ra-drill-20260830/evidence/
 First-owner packet (V8c): PENDING — provenance reconciled; not PASS
 Production activation: NOT PERFORMED
 Automatic GC: NOT PERFORMED

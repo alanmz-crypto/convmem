@@ -13,7 +13,7 @@
 
 | Field | Value |
 |-------|--------|
-| **State** | `NOT_STARTED` (Kiro integrated review) |
+| **State** | `CLOSED` (global D1 ledger written, Ryan-delegated) |
 | **Branch** | `fix/2026-08-30-cg2-d1r0-d1r11-closure-evidence` |
 | **Integrated review tip** | `9cfb085836ca92c308d1a8f966aced9bbb48546e` |
 | **Branch docs tip** | `2b16ead3095cfe5d6e281a1722496882603e592e` (docs-only after `9cfb085`) |
