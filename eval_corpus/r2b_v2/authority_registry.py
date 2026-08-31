@@ -1,4 +1,6 @@
 """Process-local trusted authority registry for R2b v2 lease and coverage proofs."""
+# pylint: disable=duplicate-code
+# __all__ intentionally overlaps _registry_mint (public façade vs private mint).
 
 from eval_corpus.r2b_v2._registry_mint import (  # noqa: F401
     AuthorityHandle,
