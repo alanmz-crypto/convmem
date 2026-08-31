@@ -1,7 +1,7 @@
 {
   "artifact_type": "naturalistic_pre_g6_contract_v2_conformance",
   "contract_version": "naturalistic-pre-g6-contract-v2",
-  "case_count": 18,
+  "case_count": 22,
   "cases": [
     {
       "id": "jcs_without_trailing_newline",
@@ -16,6 +16,46 @@
       "input": "P1_manifest_with_resolver_output_or_target_census",
       "expected": "V_STAGE_P1_REJECTS_LATER_STAGE_FIELD",
       "blocked_transition": "P1_T1_EVIDENCE_SEAL"
+    },
+    {
+      "id": "p1_rejects_resolver_result",
+      "scenario": "P1 evidence material independently injects the canonical P2 field resolver_result.",
+      "input": {
+        "surface": "P1_T1_EVIDENCE_SEAL",
+        "field": "resolver_result"
+      },
+      "expected": "V_STAGE_P1_REJECTS_CANONICAL_P2_FIELD",
+      "blocked_transition": "P1_T1_EVIDENCE_SEAL"
+    },
+    {
+      "id": "p1_rejects_capability_vector",
+      "scenario": "P1 evidence material independently injects the canonical P2 field capability_vector.",
+      "input": {
+        "surface": "P1_T1_EVIDENCE_SEAL",
+        "field": "capability_vector"
+      },
+      "expected": "V_STAGE_P1_REJECTS_CANONICAL_P2_FIELD",
+      "blocked_transition": "P1_T1_EVIDENCE_SEAL"
+    },
+    {
+      "id": "adjudicator_view_rejects_resolver_result",
+      "scenario": "The adjudicator-visible evidence view independently injects the canonical P2 field resolver_result.",
+      "input": {
+        "surface": "AdjudicationEvidenceViewV1",
+        "field": "resolver_result"
+      },
+      "expected": "V_ADJUDICATION_VIEW_REJECTS_CANONICAL_P2_FIELD",
+      "blocked_transition": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL"
+    },
+    {
+      "id": "adjudicator_view_rejects_capability_vector",
+      "scenario": "The adjudicator-visible evidence view independently injects the canonical P2 field capability_vector.",
+      "input": {
+        "surface": "AdjudicationEvidenceViewV1",
+        "field": "capability_vector"
+      },
+      "expected": "V_ADJUDICATION_VIEW_REJECTS_CANONICAL_P2_FIELD",
+      "blocked_transition": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL"
     },
     {
       "id": "clone_with_lineage_remains_distinct",

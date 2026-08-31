@@ -169,7 +169,11 @@ contract.stage_graph.forEach((stage, index) => {
   }
 });
 const p1 = contract.stage_graph[1];
+const canonicalP2FirewallFields = ["resolver_result", "capability_vector"];
 assert(p1.forbidden_fields.includes("resolver_output_digest") && p1.forbidden_fields.includes("target_census"), "P1 must forbid P2/P3 knowledge");
+for (const field of canonicalP2FirewallFields) {
+  assert(p1.forbidden_fields.includes(field), `P1 must forbid canonical P2 field ${field}`);
+}
 assert(contract.stage_graph[2].produces.includes("OpaqueResolverManifestV2"), "P2 must produce resolver authority");
 assert(contract.stage_graph[3].produces.includes("TargetRegistryV2"), "P3/T2 must produce registry authority");
 assert(contract.amendment_policy.same_authority_identity_with_changed_estimand === "PROHIBITED", "estimand amendment cannot retain authority identity");
@@ -177,6 +181,32 @@ assert(contract.amendment_policy.construct_amendment_requires.includes("new_cont
 assert(contract.role_access_policy.adjudication_interface.artifact === "AdjudicationEvidenceViewV1", "adjudication interface artifact differs");
 assert(contract.role_access_policy.adjudication_interface.constant_shape === true && contract.role_access_policy.adjudication_interface.all_resolver_derived_fields_hidden === true, "role access does not enforce a constant blind interface");
 assert(contract.role_access_policy.roles.adjudicator.may_not_read.includes("resolver_retry_count_and_timing") && contract.role_access_policy.roles.adjudicator.may_not_read.includes("resolver_missing_file_signals"), "adjudicator side-channel deny list incomplete");
+
+const firewallPolicy = contract.role_access_policy.canonical_field_name_enforcement;
+assert(deepEqual(firewallPolicy.canonical_forbidden_p2_fields, canonicalP2FirewallFields), "canonical P2 firewall field set differs");
+assert(firewallPolicy.rule === "normalize_known_aliases_to_canonical_names_before_any_P1_or_adjudicator_allow_deny_decision", "canonical alias enforcement rule differs");
+assert(firewallPolicy.unknown_alias === "DENY_AND_FAIL_CLOSED", "unknown aliases must fail closed");
+
+function canonicalFirewallField(field) {
+  if (canonicalP2FirewallFields.includes(field)) return field;
+  for (const [canonical, aliases] of Object.entries(firewallPolicy.aliases)) {
+    if (aliases.includes(field)) return canonical;
+  }
+  return field;
+}
+
+const adjudicatorDeny = contract.role_access_policy.roles.adjudicator.may_not_read;
+const adjudicationViewDeny = contract.adjudication_view.forbidden_fields;
+for (const field of canonicalP2FirewallFields) {
+  assert(adjudicatorDeny.includes(field), `adjudicator RoleAccess must deny canonical P2 field ${field}`);
+  assert(adjudicationViewDeny.includes(field), `AdjudicationEvidenceViewV1 must forbid canonical P2 field ${field}`);
+  for (const alias of firewallPolicy.aliases[field] ?? []) {
+    assert(canonicalFirewallField(alias) === field, `alias ${alias} must canonicalize to ${field}`);
+    assert(p1.forbidden_fields.includes(canonicalFirewallField(alias)), `P1 alias ${alias} bypasses canonical firewall`);
+    assert(adjudicatorDeny.includes(canonicalFirewallField(alias)), `RoleAccess alias ${alias} bypasses canonical firewall`);
+    assert(adjudicationViewDeny.includes(canonicalFirewallField(alias)), `adjudication-view alias ${alias} bypasses canonical firewall`);
+  }
+}
 
 const decisionFields = ["id", "name", "semantics", "allowed_domain", "units", "allowed_states", "preferred", "owner_authority", "freeze_stage", "evidence_required", "validator", "failure_transition", "accepted_downside", "overturning_evidence"];
 const decisionIds = new Set();
@@ -190,6 +220,10 @@ for (const decision of contract.decision_registry) {
 const requiredCases = [
   "jcs_without_trailing_newline",
   "p1_cannot_bind_p2_output",
+  "p1_rejects_resolver_result",
+  "p1_rejects_capability_vector",
+  "adjudicator_view_rejects_resolver_result",
+  "adjudicator_view_rejects_capability_vector",
   "clone_with_lineage_remains_distinct",
   "restore_preserved_native_ids_remains_distinct",
   "duplicate_content_distinct_occurrences",
@@ -214,6 +248,29 @@ for (const item of conformance.cases) {
   assert(contract.verification_controls.includes(item.id), `${item.id}: missing verification control`);
 }
 
+const firewallCaseExpectations = new Map([
+  ["p1_rejects_resolver_result", ["P1_T1_EVIDENCE_SEAL", "resolver_result", "V_STAGE_P1_REJECTS_CANONICAL_P2_FIELD"]],
+  ["p1_rejects_capability_vector", ["P1_T1_EVIDENCE_SEAL", "capability_vector", "V_STAGE_P1_REJECTS_CANONICAL_P2_FIELD"]],
+  ["adjudicator_view_rejects_resolver_result", ["AdjudicationEvidenceViewV1", "resolver_result", "V_ADJUDICATION_VIEW_REJECTS_CANONICAL_P2_FIELD"]],
+  ["adjudicator_view_rejects_capability_vector", ["AdjudicationEvidenceViewV1", "capability_vector", "V_ADJUDICATION_VIEW_REJECTS_CANONICAL_P2_FIELD"]]
+]);
+for (const [caseId, [surface, field, expectedReason]] of firewallCaseExpectations) {
+  const item = conformance.cases.find((candidate) => candidate.id === caseId);
+  assert(item, `missing independent firewall case ${caseId}`);
+  assert(deepEqual(item.input, { surface, field }), `${caseId}: input fixture differs`);
+  assert(item.expected === expectedReason, `${caseId}: intended firewall reason differs`);
+  const canonical = canonicalFirewallField(item.input.field);
+  assert(canonical === field, `${caseId}: canonical field normalization differs`);
+  if (surface === "P1_T1_EVIDENCE_SEAL") {
+    assert(p1.forbidden_fields.includes(canonical), `${caseId}: P1 accepted forbidden canonical P2 field`);
+    assert(item.blocked_transition === "P1_T1_EVIDENCE_SEAL", `${caseId}: wrong blocked transition`);
+  } else {
+    assert(adjudicationViewDeny.includes(canonical), `${caseId}: adjudication view accepted forbidden canonical P2 field`);
+    assert(adjudicatorDeny.includes(canonical), `${caseId}: RoleAccess accepted forbidden canonical P2 field`);
+    assert(item.blocked_transition === "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL", `${caseId}: wrong blocked transition`);
+  }
+}
+
 const requiredEvidenceSemantics = ["acceptance_and_rejection", "ordering", "filtering", "duplicate_handling", "authorship", "chronology_and_timezone", "reply_or_parent_structure", "validity_metadata", "unknown_and_extension_fields", "attachments_and_blobs", "referenced_and_tool_material", "omissions_and_completeness_declaration"];
 assert(deepEqual(contract.source_evidence_contract.required_semantics, requiredEvidenceSemantics), "evidence-complete semantics differ");
 assert(contract.provenance_roots.some((root) => root.id === "github_issue_263"), "Issue #263 provenance root missing");
@@ -229,6 +286,7 @@ const useClasses = ["DISCOVERY_ELIGIBILITY", "ADJUDICATION", "PRIMARY_SCORING", 
 assert(deepEqual(Object.keys(contract.capability_model.per_use_acceptance), useClasses), "capability per-use table differs");
 assert(contract.adjudication_view.built_before === "P2_OPAQUE_RESOLUTION", "adjudication view must precede resolver output");
 assert(contract.adjudication_view.forbidden_fields.includes("resolver_failure_reason") && contract.adjudication_view.forbidden_fields.includes("retry_timing"), "blind view side-channel exclusions incomplete");
+assert(canonicalP2FirewallFields.every((field) => contract.adjudication_view.forbidden_fields.includes(field)), "blind view canonical P2 field exclusions incomplete");
 assert(contract.snapshot_authority.snapshot_is_occurrence_authority === false, "snapshot cannot become occurrence authority");
 assert(contract.legacy_summary_firewall.unknown_lineage === "NON_NORMATIVE", "unknown provenance must be non-normative");
 assert(contract.legacy_summary_firewall.stripping_original_content_cleans_descendant === false, "stripping legacy prose cannot clean descendants");
@@ -251,6 +309,7 @@ process.stdout.write(`${JSON.stringify({
   invariant_count: contract.invariants.length,
   control_count: contract.verification_controls.length,
   conformance_case_count: conformance.cases.length,
+  firewall_negative_case_count: firewallCaseExpectations.size,
   implementation_component_count: contract.implementation_binding.required_component_ids.length,
   issue_263_provenance_root: true,
   g6_lane: contract.coordination.g6_lane
