@@ -1,0 +1,502 @@
+{
+  "artifact_type": "naturalistic_pre_g6_contract",
+  "contract_version": "naturalistic-pre-g6-contract-v2",
+  "arc": "Naturalistic ConvMem product-value evaluation",
+  "status": "PROPOSED_NOT_LOCKED",
+  "supersedes": {
+    "version": "naturalistic-pre-g6-contract-v1",
+    "reviewed_commit": "82cc01a94ade8760c08df80512dbada410ca620d",
+    "reason": "exact_review_found_digest_stage_identity_uncertainty_blindness_provenance_implementation_and_decision_registry_defects"
+  },
+  "provenance_roots": [
+    {
+      "id": "github_issue_263",
+      "url": "https://github.com/alanmz-crypto/convmem/issues/263",
+      "title": "Expose verbatim end-of-chat missives through retrieval",
+      "state_at_contract_materialization": "OPEN",
+      "relationship": "source_resolution_semantics_root",
+      "required_invariant": "source_present_but_verbatim_evidence_unavailable_must_never_be_reported_as_source_absent"
+    }
+  ],
+  "authorization": {
+    "implementation_authorized": false,
+    "g6_authorized": false,
+    "t0_authorized": false,
+    "naturalistic_execution_authorized": false,
+    "product_disposition_authorized": false
+  },
+  "canonicalization": {
+    "serialization": "RFC8785_JSON_CANONICALIZATION_SCHEME",
+    "encoding": "UTF-8",
+    "digest": "SHA-256(canonical_bytes)",
+    "trailing_bytes": "PROHIBITED",
+    "self_digest": "excluded_from_canonical_bytes",
+    "sidecar": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json.sha256",
+    "validator": "docs/plans/artifacts/validate-naturalistic-pre-g6-contract-v2.mjs"
+  },
+  "normative_authority": {
+    "canonical_contract": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json",
+    "schema": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.schema.json",
+    "conformance_cases": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.conformance.json",
+    "prose_role": "explanatory_projection_only",
+    "conflict_rule": "canonical_contract_wins_and_prose_must_be_corrected_before_review",
+    "derived_views": [
+      "docs/plans/ARCHITECTURE-naturalistic-product-value.md",
+      "docs/plans/EXECUTION-naturalistic-product-value.md"
+    ]
+  },
+  "amendment_policy": {
+    "construct_amendment_requires": [
+      "new_contract_version",
+      "new_canonical_digest_and_sidecar",
+      "changed_field_manifest",
+      "reason_and_scope",
+      "outcome_blind_independent_review",
+      "explicit_Ryan_authorization"
+    ],
+    "before_agent_a": "dependent_unstarted_artifacts_must_be_rebuilt_from_new_parent",
+    "after_agent_a": "invalidate_dependent_study_generation;_never_retrofit_observed_outcomes",
+    "same_authority_identity_with_changed_estimand": "PROHIBITED",
+    "implementation_amendment_is_additional_to_construct_amendment": true,
+    "validator": "V-AMENDMENT-AUTHORITY",
+    "failure_transition": "INVALID_OR_BLOCKED"
+  },
+  "role_access_policy": {
+    "roles": {
+      "adjudicator": {
+        "may_read": [
+          "AdjudicationEvidenceViewV1"
+        ],
+        "may_not_read": [
+          "OpaqueResolverManifestV2",
+          "resolver_result",
+          "capability_vector",
+          "resolver_status",
+          "resolver_assurance",
+          "resolver_failure_reason",
+          "resolver_paths_and_locators",
+          "resolver_retry_count_and_timing",
+          "resolver_queue_order",
+          "resolver_timestamps",
+          "resolver_missing_file_signals",
+          "resolver_completeness_labels",
+          "C0C1_outputs",
+          "effects"
+        ]
+      },
+      "controller": {
+        "may_read": [
+          "all_stage_manifests"
+        ],
+        "may_write": [
+          "stage_transition_records",
+          "digests",
+          "controller_side_evidence_packages"
+        ],
+        "must_not_do": [
+          "act_as_agent_b",
+          "select_or_delete_targets",
+          "edit_frozen_probes",
+          "answer_or_search_for_agent_b"
+        ]
+      },
+      "agent_b": {
+        "may_read": [
+          "ordinary_environment",
+          "assigned_probe",
+          "declared_condition_view"
+        ],
+        "must_not_read": [
+          "TargetRegistryV2",
+          "ScoringKeyManifestV2",
+          "OpaqueResolverManifestV2",
+          "controller_internals",
+          "other_agent_b_session"
+        ]
+      }
+    },
+    "adjudication_interface": {
+      "artifact": "AdjudicationEvidenceViewV1",
+      "constant_shape": true,
+      "condition_neutral_inventory_and_availability_allowed": true,
+      "all_resolver_derived_fields_hidden": true,
+      "resolver_join_stage": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL",
+      "validator": "V-ROLE-ACCESS-ADJUDICATION"
+    },
+    "canonical_field_name_enforcement": {
+      "canonical_forbidden_p2_fields": ["resolver_result", "capability_vector"],
+      "aliases": {
+        "resolver_result": ["resolverResult", "resolver-result"],
+        "capability_vector": ["capabilityVector", "capability-vector"]
+      },
+      "rule": "normalize_known_aliases_to_canonical_names_before_any_P1_or_adjudicator_allow_deny_decision",
+      "unknown_alias": "DENY_AND_FAIL_CLOSED"
+    },
+    "unknown_or_unlisted_field": "DENY_AND_FAIL_CLOSED"
+  },
+  "stage_graph": [
+    {
+      "id": "P0_T0_CONSTRUCT_FREEZE",
+      "parent": null,
+      "parent_artifact": null,
+      "parent_digest_field": null,
+      "consumes": ["EXTERNAL:architecture_lock_candidate", "EXTERNAL:ryan_decision_values", "EXTERNAL:environment_inventory", "EXTERNAL:implementation_inventory"],
+      "produces": ["ConstructFreezeManifestV2", "RoleAccessManifestV2", "DecisionRegistryInstanceV2", "ImplementationManifestV2", "EpisodeScheduleV2"],
+      "authority_created": "construct_semantics_and_prospective_study_frame",
+      "validator": "V-STAGE-P0",
+      "failure_transition": "INVALID_NOT_STARTED",
+      "required_fields": ["contract_digest", "decision_values_complete", "implementation_identities_complete", "episode_selection_rule", "role_access_policy", "source_class_policy", "scorer_semantics", "c0_c1_equality_policy"],
+      "forbidden_fields": ["actual_source_occurrence_ids", "actual_evidence_snapshot_ids", "resolver_outputs", "natural_target_ids", "registry_membership", "agent_b_outputs", "scores", "effects"]
+    },
+    {
+      "id": "P1_T1_EVIDENCE_SEAL",
+      "parent": "P0_T0_CONSTRUCT_FREEZE",
+      "parent_artifact": "ConstructFreezeManifestV2",
+      "parent_digest_field": "construct_freeze_digest",
+      "consumes": ["ConstructFreezeManifestV2", "EpisodeScheduleV2", "EXTERNAL:ordinary_episode_evidence"],
+      "produces": ["EvidenceSealManifestV2", "EvidenceAvailabilityManifestV2", "AdjudicationEvidenceViewV1"],
+      "authority_created": "actual_occurrence_revision_snapshot_and_evidence_envelope_authority",
+      "validator": "V-STAGE-P1",
+      "failure_transition": "DIAGNOSTIC_OR_BLOCKED_PER_CAPTURE_RULE",
+      "required_fields": ["construct_freeze_digest", "occurrence_reference", "physical_instance_id", "revision_or_asof_id", "evidence_snapshot_id", "evidence_complete_envelope_digest", "canonical_content_digest", "canonicalization_profile_digest", "adapter_implementation_digest", "condition_neutral_evidence_availability"],
+      "forbidden_fields": ["resolver_status", "resolver_failure_reason", "resolver_result", "capability_vector", "resolver_output_digest", "target_census", "target_ground_truth", "registry_membership", "probe_keys", "agent_b_outputs", "scores", "effects"]
+    },
+    {
+      "id": "P2_OPAQUE_RESOLUTION",
+      "parent": "P1_T1_EVIDENCE_SEAL",
+      "parent_artifact": "EvidenceSealManifestV2",
+      "parent_digest_field": "evidence_seal_digest",
+      "consumes": ["ConstructFreezeManifestV2", "EvidenceSealManifestV2", "EvidenceAvailabilityManifestV2"],
+      "produces": ["OpaqueResolverManifestV2"],
+      "authority_created": "resolver_result_and_capability_vector_authority_hidden_from_adjudicators",
+      "validator": "V-STAGE-P2",
+      "failure_transition": "DIAGNOSTIC_OR_INTEGRITY_FAILURE",
+      "required_fields": ["evidence_seal_digest", "resolver_implementation_digest", "resolver_input_digest", "resolver_result", "capability_vector", "resolver_output_digest"],
+      "forbidden_fields": ["registry_membership", "probe_keys", "agent_b_outputs", "scores", "effects"]
+    },
+    {
+      "id": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL",
+      "parent": "P2_OPAQUE_RESOLUTION",
+      "parent_artifact": "OpaqueResolverManifestV2",
+      "parent_digest_field": "resolver_output_digest",
+      "consumes": ["ConstructFreezeManifestV2", "EvidenceSealManifestV2", "EvidenceAvailabilityManifestV2", "AdjudicationEvidenceViewV1", "OpaqueResolverManifestV2"],
+      "produces": ["IndependentAdjudicationSetA", "IndependentAdjudicationSetB", "BlindedDisagreementResolutionV2", "TargetRegistryV2", "RegistryQualityReportV2"],
+      "authority_created": "natural_target_census_ground_truth_unitization_and_registry_membership",
+      "validator": "V-STAGE-P3",
+      "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
+      "required_fields": ["resolver_output_digest", "two_independent_decisions", "opaque_source_span_ids", "orthogonal_target_states", "semantic_unit_deduplication", "unknown_multiplicity_bounds", "registry_digest"],
+      "forbidden_fields": ["resolver_status_in_adjudication_view", "assurance_vector_in_adjudication_view", "capture_state", "treatment_order", "agent_b_outputs", "scores", "effects"]
+    },
+    {
+      "id": "T3_SAMPLE_SEAL",
+      "parent": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL",
+      "parent_artifact": "TargetRegistryV2",
+      "parent_digest_field": "registry_digest",
+      "consumes": ["ConstructFreezeManifestV2", "TargetRegistryV2"],
+      "produces": ["CensusAcceptanceV2", "EpisodeSampleManifestV2", "UnsampledRosterCommitmentV2"],
+      "authority_created": "census_or_probability_sample_membership",
+      "validator": "V-STAGE-T3",
+      "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
+      "required_fields": ["registry_digest", "frozen_sampling_rule", "episode_inclusion_probabilities", "zero_target_episode_retention", "unsampled_roster_digest"],
+      "forbidden_fields": ["capture_dependent_selection", "retrieval_dependent_selection", "agent_b_outputs", "scores", "effects"]
+    },
+    {
+      "id": "T4_PROBE_KEY_SCORER_SEAL",
+      "parent": "T3_SAMPLE_SEAL",
+      "parent_artifact": "EpisodeSampleManifestV2",
+      "parent_digest_field": "sample_manifest_digest",
+      "consumes": ["ConstructFreezeManifestV2", "TargetRegistryV2", "EpisodeSampleManifestV2"],
+      "produces": ["ProbeManifestV2", "ScoringKeyManifestV2", "LeakageReviewManifestV2", "ScorerRuntimeSealV2"],
+      "authority_created": "probe_key_and_scorer_instantiation_under_prefrozen_semantics",
+      "validator": "V-STAGE-T4",
+      "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
+      "required_fields": ["sample_manifest_digest", "mechanical_key_instantiation_proof", "probe_author_not_adjudicator", "independent_leakage_review", "scorer_implementation_digest", "key_digest"],
+      "forbidden_fields": ["capture_status", "treatment_order", "agent_b_outputs", "scores", "effects", "target_specific_semantic_scoring_change"]
+    },
+    {
+      "id": "T5_C1_SNAPSHOT_CAPTURE_DIAGNOSIS",
+      "parent": "T4_PROBE_KEY_SCORER_SEAL",
+      "parent_artifact": "ProbeManifestV2",
+      "parent_digest_field": "probe_manifest_digest",
+      "consumes": ["EvidenceSealManifestV2", "OpaqueResolverManifestV2", "TargetRegistryV2", "ProbeManifestV2", "EXTERNAL:natural_conv_mem_state"],
+      "produces": ["ConvMemCaptureStateV2", "C1SnapshotManifestV2", "ControllerEvidencePackageV2"],
+      "authority_created": "natural_c1_treatment_snapshot_and_post_registry_capture_diagnostics",
+      "validator": "V-STAGE-T5",
+      "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
+      "required_fields": ["probe_manifest_digest", "no_target_directed_repair", "immutable_c1_snapshot", "complete_registry_capture_roster", "controller_side_evidence_package_digest"],
+      "forbidden_fields": ["registry_membership_change", "target_directed_reindex", "agent_b_outputs", "scores", "effects"]
+    },
+    {
+      "id": "T6_C0_C1_READINESS",
+      "parent": "T5_C1_SNAPSHOT_CAPTURE_DIAGNOSIS",
+      "parent_artifact": "C1SnapshotManifestV2",
+      "parent_digest_field": "c1_snapshot_manifest_digest",
+      "consumes": ["ConstructFreezeManifestV2", "ProbeManifestV2", "ControllerEvidencePackageV2", "C1SnapshotManifestV2"],
+      "produces": ["C0C1EqualityManifestV2", "SessionIsolationManifestV2", "ConditionOrderManifestV2", "EnvironmentQualificationReportV2"],
+      "authority_created": "paired_arm_readiness_with_conv_mem_as_sole_declared_difference",
+      "validator": "V-STAGE-T6",
+      "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
+      "required_fields": ["c1_snapshot_manifest_digest", "all_equality_paths_match", "treatment_difference_exactly_declared", "fresh_session_proof", "order_frozen", "informative_missingness_check"],
+      "forbidden_fields": ["undeclared_arm_difference", "prior_trial_context", "registry_or_key_in_agent_view", "agent_b_outputs", "scores", "effects"]
+    },
+    {
+      "id": "T7_EXECUTION",
+      "parent": "T6_C0_C1_READINESS",
+      "parent_artifact": "C0C1EqualityManifestV2",
+      "parent_digest_field": "c0_c1_equality_manifest_digest",
+      "consumes": ["ProbeManifestV2", "C0C1EqualityManifestV2", "SessionIsolationManifestV2", "ConditionOrderManifestV2"],
+      "produces": ["AgentBTrialRecordV2", "AgentBTraceV2", "ExecutionManifestV2"],
+      "authority_created": "paired_fresh_session_execution_evidence",
+      "validator": "V-STAGE-T7",
+      "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
+      "required_fields": ["c0_c1_equality_manifest_digest", "one_terminal_record_per_required_arm", "complete_trace", "fresh_session_ids", "no_replacement", "no_controller_as_agent"],
+      "forbidden_fields": ["controller_answer", "controller_search", "condition_specific_repair", "score", "effect"]
+    },
+    {
+      "id": "T8_MASKED_SCORING",
+      "parent": "T7_EXECUTION",
+      "parent_artifact": "ExecutionManifestV2",
+      "parent_digest_field": "execution_manifest_digest",
+      "consumes": ["ScoringKeyManifestV2", "ScorerRuntimeSealV2", "AgentBTrialRecordV2", "AgentBTraceV2", "ExecutionManifestV2"],
+      "produces": ["IndependentTargetScoreSetA", "IndependentTargetScoreSetB", "EpisodeScoreSetV2", "ScoringReliabilityReportV2"],
+      "authority_created": "masked_target_and_episode_score_authority",
+      "validator": "V-STAGE-T8",
+      "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
+      "required_fields": ["execution_manifest_digest", "condition_labels_masked", "two_independent_scores", "frozen_key_and_scorer_digests", "reliability_gate", "sparse_state"],
+      "forbidden_fields": ["unmasked_condition_label", "post_execution_key_edit", "post_result_scorer_semantic_change", "effect_based_rescoring"]
+    },
+    {
+      "id": "T9_AGGREGATION",
+      "parent": "T8_MASKED_SCORING",
+      "parent_artifact": "EpisodeScoreSetV2",
+      "parent_digest_field": "episode_score_set_digest",
+      "consumes": ["TargetRegistryV2", "EpisodeSampleManifestV2", "EpisodeScoreSetV2", "ScoringReliabilityReportV2"],
+      "produces": ["OpportunityBoundsReportV2", "EpisodeAggregationReportV2", "AnalysisLineageManifestV2"],
+      "authority_created": "co_primary_opportunity_and_conditional_episode_estimates",
+      "validator": "V-STAGE-T9",
+      "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
+      "required_fields": ["episode_score_set_digest", "orthogonal_uncertainty_propagated", "one_primary_weight_per_episode", "lower_upper_opportunity_bounds", "paired_episode_coverage", "full_lineage"],
+      "forbidden_fields": ["recovered_count_as_total_when_unknown", "target_count_episode_weighting", "post_result_membership_change", "final_product_disposition"]
+    },
+    {
+      "id": "T10_INFORMATION_GATE",
+      "parent": "T9_AGGREGATION",
+      "parent_artifact": "EpisodeAggregationReportV2",
+      "parent_digest_field": "episode_aggregation_report_digest",
+      "consumes": ["DecisionRegistryInstanceV2", "OpportunityBoundsReportV2", "EpisodeAggregationReportV2", "AnalysisLineageManifestV2"],
+      "produces": ["InformationGateReportV2", "StudyDispositionV2"],
+      "authority_created": "only_stage_permitted_to_emit_an_allowed_product_disposition",
+      "validator": "V-STAGE-T10",
+      "failure_transition": "INVALID_DIAGNOSTIC_OR_BLOCKED",
+      "required_fields": ["episode_aggregation_report_digest", "all_decision_values_bound", "unbounded_multiplicity_blocks_dependent_estimands", "information_and_reliability_gates", "no_adaptation_attestation", "co_primary_presentation"],
+      "forbidden_fields": ["post_result_threshold_change", "adaptive_window_extension", "false_null_from_insufficient_information"]
+    }
+  ],
+  "source_resolution_contract": {
+    "provenance_root": "github_issue_263",
+    "orthogonal_fields": {
+      "source_presence": ["PRESENT", "ABSENT", "UNKNOWN"],
+      "verbatim_evidence_availability": ["AVAILABLE", "UNAVAILABLE", "NOT_APPLICABLE", "UNKNOWN"],
+      "summary_evidence_availability": ["AVAILABLE", "UNAVAILABLE", "NOT_APPLICABLE", "UNKNOWN"],
+      "resolver_result": ["EXACT_MATCH", "SUMMARY_ONLY", "NO_MATCH", "EVIDENCE_UNAVAILABLE", "ERROR"]
+    },
+    "required_provenance_fields_when_available": ["source_path", "session_id", "message_id", "occurrence_reference", "evidence_snapshot_id", "envelope_digest"],
+    "rules": [
+      "source_presence_present_and_summary_only_must_not_emit_source_absent",
+      "source_presence_present_and_verbatim_unavailable_emits_explicit_evidence_unavailable",
+      "no_match_is_a_query_result_not_source_absence_authority",
+      "summary_is_derivative_and_never_replaces_verbatim_or_occurrence_authority",
+      "missing_message_level_provenance_lowers_capability_and_cannot_be_silently_upgraded"
+    ],
+    "validator": "V-SOURCE-RESOLUTION-263",
+    "failure_transition": "DIAGNOSTIC_OR_NON_NORMATIVE"
+  },
+  "identity_model": {
+    "occurrence_reference_fields": ["source_system_id", "tenant_or_realm_id", "authority_scope_id", "occurrence_namespace_id", "physical_source_instance_id", "native_id_namespace", "native_record_id", "source_revision_or_asof_id"],
+    "separate_fields": ["logical_lineage_id", "evidence_snapshot_id", "semantic_unit_id", "evidence_complete_envelope_digest", "canonical_content_digest", "canonicalization_profile_digest"],
+    "hash_role": "verification_only_not_identity",
+    "physical_identity_rules": {
+      "clone": "always_new_physical_instance_and_occurrence_reference; lineage_edge_optional",
+      "restore": "always_new_physical_instance_and_occurrence_reference; preserved_native_ids_do_not_collapse_identity",
+      "migration": "new_physical_instance_and_occurrence_reference; issuer_attested_lineage_may_assert_logical_continuity_only",
+      "import_export": "importer_mints_local_occurrence_namespace_and_new_occurrence_reference",
+      "native_id_reuse": "delete_and_recreate_is_new_occurrence",
+      "edit": "new_revision_of_same_occurrence_only_when_provider_revision_semantics_attest_continuity",
+      "duplicate_content": "matching_bytes_do_not_collapse_occurrence_identity",
+      "partial_export": "evidence_snapshot_with_explicit_unknown_cross_instance_deduplication"
+    },
+    "semantic_unit_rule": {
+      "identity_inputs": ["stable_subject", "proposition_or_state", "validity_interval", "unitization_policy_version"],
+      "supporting_occurrences": "many_allowed_and_all_retained",
+      "merge_when": "subject_proposition_and_validity_interval_equivalent_under_frozen_unitization_policy",
+      "split_when": "truth_currentness_provenance_or_continuation_consequence_can_differ",
+      "must_not_infer_equivalence_from": ["physical_instance_equality", "native_id_equality", "content_hash_equality", "lineage_edge_alone"],
+      "uncertain_equivalence": "retain_distinct_candidates_and_mark_deduplication_unknown"
+    },
+    "conformance_examples": ["clone_with_lineage", "restore_preserved_native_ids", "migration_attested_lineage", "native_id_reuse", "provider_revision_edit", "duplicate_content_distinct_occurrences", "partial_export_unknown_dedup", "import_export_local_namespace"]
+  },
+  "source_evidence_contract": {
+    "raw_definition": "adapter_defined_evidence_complete_record_envelope_not_transport_serialization",
+    "required_semantics": ["acceptance_and_rejection", "ordering", "filtering", "duplicate_handling", "authorship", "chronology_and_timezone", "reply_or_parent_structure", "validity_metadata", "unknown_and_extension_fields", "attachments_and_blobs", "referenced_and_tool_material", "omissions_and_completeness_declaration"],
+    "commitments": ["evidence_complete_envelope_digest", "canonical_content_digest", "canonicalization_profile_digest", "attachment_reference_inventory_digest", "source_and_snapshot_identity_digest", "adapter_implementation_digest"],
+    "canonicalization_rule": "normalization_may_not_erase_any_distinction_required_by_an_admitted_target_class",
+    "unstable_transport_hash_is_raw_authority": false,
+    "per_source_class_policy": "decision_registry_D_SOURCE_001"
+  },
+  "capability_model": {
+    "dimensions": {
+      "occurrence_identity": {"values": ["NATIVE_UNIQUE", "ISSUER_ATTESTED", "DERIVED", "ABSENT"], "failure": "ABSENT"},
+      "source_instance_binding": {"values": ["ATTESTED", "DECLARED", "ABSENT"], "failure": "ABSENT"},
+      "revision_asof_binding": {"values": ["REVISION_PINNED", "ASOF_PINNED", "CURRENT_ONLY", "UNKNOWN"], "failure": "UNKNOWN_FOR_TIME_DEPENDENT_USE"},
+      "evidence_completeness": {"values": ["COMPLETE", "PARTIAL_KNOWN", "UNKNOWN", "MISSING"], "failure": "MISSING"},
+      "canonical_verification": {"values": ["VERIFIED", "UNVERIFIED", "MISMATCH"], "failure": "MISMATCH"},
+      "temporal_reproducibility": {"values": ["REPLAYABLE", "CAPTURE_ATTESTED", "MUTABLE", "UNKNOWN"], "failure": "UNKNOWN_FOR_REPLAY_USE"},
+      "attachment_material_span_completeness": {"values": ["COMPLETE", "PARTIAL_KNOWN", "UNKNOWN", "MISSING"], "failure": "MISSING_FOR_ATTACHMENT_DEPENDENT_USE"},
+      "preservation_replay_capability": {"values": ["SEALED_REPLAYABLE", "SEALED_NONREPLAYABLE", "UNSEALED", "ABSENT"], "failure": "ABSENT"},
+      "lineage_assurance": {"values": ["IMMUTABLE_ATTESTED", "DECLARED", "UNKNOWN", "ABSENT"], "failure": "ABSENT_FOR_LINEAGE_DEPENDENT_USE"}
+    },
+    "per_use_acceptance": {
+      "DISCOVERY_ELIGIBILITY": {"required": ["occurrence_identity!=ABSENT", "evidence_completeness!=MISSING", "canonical_verification!=MISMATCH"], "degradation": "partial_or_unknown_completeness_sets_multiplicity_unknown"},
+      "ADJUDICATION": {"required": ["occurrence_identity!=ABSENT", "source_instance_binding!=ABSENT", "evidence_completeness in [COMPLETE,PARTIAL_KNOWN]", "canonical_verification!=MISMATCH"], "degradation": "target_specific_material_gap_sets_non_evaluable"},
+      "PRIMARY_SCORING": {"required": ["decision:D_ASSURANCE_001", "canonical_verification==VERIFIED", "preservation_replay_capability in [SEALED_REPLAYABLE,SEALED_NONREPLAYABLE]", "target_material_span_policy_passes"], "degradation": "blocked_or_non_evaluable"},
+      "SECONDARY_DIAGNOSTIC": {"required": ["occurrence_identity!=ABSENT", "canonical_verification!=MISMATCH"], "degradation": "label_lower_assurance"},
+      "REPLAY_AUDIT": {"required": ["preservation_replay_capability==SEALED_REPLAYABLE", "temporal_reproducibility==REPLAYABLE", "canonical_verification==VERIFIED"], "degradation": "audit_only_without_replay_claim"}
+    },
+    "reduction_rule": "a_use_is_allowed_only_when_every_required_predicate_passes; no_scalar_or_ordinal_assurance_label_has_normative_authority",
+    "derived_human_ceiling": "recomputable_display_only"
+  },
+  "denominator_model": {
+    "fixed_episode_denominator": "all_prospectively_selected_episodes",
+    "orthogonal_target_state": {
+      "existence_status": ["CONFIRMED_PRESENT", "CONFIRMED_ABSENT", "UNKNOWN"],
+      "multiplicity_status": ["EXACT", "FINITE_BOUNDED", "UNBOUNDED_UNKNOWN"],
+      "resolvability": ["RESOLVABLE", "NON_RESOLVABLE", "UNKNOWN"],
+      "evaluability": ["EVALUABLE", "NON_EVALUABLE", "UNKNOWN"],
+      "integrity": ["VALID", "DIAGNOSTIC", "INVALID"]
+    },
+    "target_count_bounds": {
+      "fields": ["known_count", "lower_bound", "upper_bound"],
+      "unbounded_upper_representation": null,
+      "rules": ["known_count_equals_number_evidenced_not_total_when_upper_unknown", "lower_bound_must_be_at_least_known_count", "exact_requires_lower_equals_upper", "unbounded_unknown_requires_upper_bound_null"]
+    },
+    "estimand_propagation": {
+      "REGISTRY": "retain_all_axes_and_bounds_without_collapse",
+      "OPPORTUNITY_PREVALENCE": "report_lower_and_upper_episode_bounds; unbounded_episode_existence_uncertainty_remains_unknown",
+      "OPPORTUNITY_DENSITY": "aggregate_finite_lower_upper_bounds; any_unbounded_upper_makes_upper_and_point_estimate_unknown",
+      "CONDITIONAL_EFFECT": "requires_prefrozen_target_bearing_evaluable_episode_membership; unbounded_multiplicity_blocks_when_membership_or_within_episode_score_can_change",
+      "T10": "any_required_unbounded_dependent_quantity_yields_BLOCKED_NON_ESTIMABLE"
+    },
+    "rules": ["unknown_is_not_zero", "recovered_target_count_never_substitutes_for_possible_total", "capture_failure_never_deletes_an_admitted_target", "target_rich_rows_never_increase_primary_episode_weight"]
+  },
+  "adjudication_view": {
+    "artifact_type": "AdjudicationEvidenceViewV1",
+    "built_from": ["EvidenceSealManifestV2", "EvidenceAvailabilityManifestV2"],
+    "built_before": "P2_OPAQUE_RESOLUTION",
+    "allowed_fields": ["episode_id", "opaque_occurrence_token", "opaque_span_token", "source_class", "condition_neutral_source_inventory", "condition_neutral_evidence_availability", "event_time", "authorship", "chronology", "reply_structure", "canonical_evidence_content", "attachment_material_availability", "extension_field_presence", "completeness_scope_without_resolver_result"],
+    "forbidden_fields": ["resolver_status", "resolver_result", "capability_vector", "assurance_vector", "resolver_failure_reason", "source_path", "native_locator", "missing_file_marker_from_resolver", "queue_order", "retry_count", "retry_timing", "capture_timestamp", "resolver_completeness_label", "resolver_derived_metadata"],
+    "view_shape_rule": "stable_order_and_constant_schema_independent_of_resolver_outcome",
+    "join_rule": "resolver_and_capability_status_join_only_after_both_adjudications_and_blinded_disagreement_resolution_are_sealed",
+    "validator": "V-ADJUDICATION-VIEW"
+  },
+  "snapshot_authority": {
+    "authority_classes": {
+      "source_occurrence_authority": "identifies_the_occurrence_and_revision_referred_to",
+      "preservation_authority": "attests_to_captured_bytes_references_and_integrity_at_seal",
+      "study_evidentiary_authority": "permits_the_sealed_package_for_adjudication_and_scoring_under_frozen_policy"
+    },
+    "decision_inputs": ["capture_obligation_satisfied", "capture_time_occurrence_revision_match", "preserved_package_integrity", "post_seal_source_state"],
+    "ordered_decision_rules": [
+      {"priority": 1, "when": "capture_obligation_satisfied==false", "result": "PROTOCOL_OR_INSTRUMENTATION_FAILURE", "package_use": "NON_NORMATIVE"},
+      {"priority": 2, "when": "capture_time_occurrence_revision_match==false", "result": "INTEGRITY_FAILURE", "package_use": "NON_NORMATIVE"},
+      {"priority": 3, "when": "preserved_package_integrity==false", "result": "PRESERVATION_FAILURE", "package_use": "NON_EVALUABLE"},
+      {"priority": 4, "when": "all_prior_checks_pass and post_seal_source_state==UNCHANGED", "result": "VALID_SEALED_EVIDENCE", "package_use": "NORMATIVE_WITH_CAPABILITY_CEILING"},
+      {"priority": 5, "when": "all_prior_checks_pass and post_seal_source_state==MODIFIED", "result": "VALID_ASOF_SEALED_EVIDENCE_WITH_SOURCE_DRIFT_DIAGNOSTIC", "package_use": "NORMATIVE_WITH_CAPTURE_TIME_CAPABILITY_CEILING"},
+      {"priority": 6, "when": "all_prior_checks_pass and post_seal_source_state==DELETED", "result": "VALID_ASOF_SEALED_EVIDENCE_WITH_SOURCE_DELETION_DIAGNOSTIC", "package_use": "NORMATIVE_WITH_CAPTURE_TIME_CAPABILITY_CEILING"},
+      {"priority": 7, "when": "no_rule_matches", "result": "INVALID_UNCLASSIFIED_AUTHORITY_STATE", "package_use": "NON_NORMATIVE"}
+    ],
+    "snapshot_is_occurrence_authority": false,
+    "later_source_mutation_is_preservation_failure": false
+  },
+  "legacy_summary_firewall": {
+    "provenance_requirement": "parent_complete_transitive_dag_for_every_normative_influence",
+    "unknown_lineage": "NON_NORMATIVE",
+    "contamination_propagation": "any_legacy_or_unknown_ancestor_taints_all_descendants_until_independent_clean_reconstruction_from_allowed_roots",
+    "covered_descendants": ["prose", "summaries", "embeddings", "tags", "candidate_ids", "rankings", "caches", "query_expansions", "metadata", "planning_derived_features", "copied_intermediate_artifacts", "other_derived_features"],
+    "stripping_original_content_cleans_descendant": false,
+    "prospective_summary": {
+      "audit_provenance_required": ["ordered_consumed_inputs", "retrieval_filter_ranking_truncation", "system_developer_user_prompts", "model_and_build", "sampling_configuration_and_seed_when_meaningful", "tool_identity_and_outputs", "external_context_identity_and_output", "hidden_context_declaration", "output_digest"],
+      "unrecorded_output_relevant_hidden_or_external_context": "NON_NORMATIVE_DIAGNOSTIC_ONLY",
+      "replay_provenance": "records_actual_replayability_without_promising_bit_identity",
+      "proves_truth": false
+    },
+    "validator": "V-TRANSITIVE-PROVENANCE"
+  },
+  "implementation_binding": {
+    "manifest_type": "ImplementationManifestV2",
+    "required_component_ids": ["adapter", "parser_extractor", "canonicalizer", "resolver", "adjudication_view_builder", "snapshot_packager", "registry_builder", "sampler", "probe_builder", "key_instantiator", "scorer", "controller", "replay_order", "aggregator_information_gate"],
+    "required_identity_fields": ["component_id", "implementation_version", "content_digest", "build_or_environment_digest", "behavioral_contract_digest", "bound_stage"],
+    "unlisted_behavior_relevant_component": "P0_VALIDATION_FAILURE",
+    "replacement_requires": ["new_implementation_identity", "new_manifest_digest", "explicit_amendment", "outcome_blind_independent_review", "acceptance_rejection_differential", "ordering_differential", "rare_source_coverage", "attachment_and_error_path_coverage", "stage_authorization"],
+    "unchanged_contract_or_profile_digest_is_sufficient": false,
+    "after_agent_a_behavior_change": "invalidate_dependent_generation_unless_change_was_prefrozen_and_unused",
+    "validator": "V-IMPLEMENTATION-MANIFEST"
+  },
+  "scorer_key_policy": {
+    "semantic_freeze": "P0_T0_CONSTRUCT_FREEZE_using_synthetic_or_held_out_material_only",
+    "scorer_author_must_not_inspect": ["natural_episodes", "natural_target_phrasing", "arm_outputs", "apparent_effects"],
+    "target_key_instantiator": {
+      "versioned_template_required": true,
+      "allowed_substitutions": ["target_id", "probe_id", "supported_answer_values_from_sealed_target_record", "validity_interval", "required_provenance_tokens", "mechanically_derived_tolerance_values_prefrozen_by_template"],
+      "prohibited_additions": ["new_partial_credit_rule", "target_specific_provenance_exception", "new_admissibility_semantics", "target_specific_scoring_interpretation", "result_dependent_rule"]
+    },
+    "mechanical_instantiation_proof": ["template_digest", "input_target_digest", "substitution_map_digest", "output_key_digest", "no_extra_field_validation"],
+    "validator": "V-SCORER-KEY-INSTANTIATION"
+  },
+  "c0_c1_equality": {
+    "manifest_type": "C0C1EqualityManifestV2",
+    "comparison": "RFC8785_canonical_value_equality_at_every_required_path",
+    "required_equal_paths": ["model.id", "model.build", "model.settings", "prompts.system", "prompts.developer", "prompts.user_task", "tools.identity_and_versions", "network.policy", "source_evidence.package_digest", "resolver.manifest_digest", "resolver.visible_state", "cache.controller_state_digest", "retry.policy_digest", "budgets.limits", "execution.order_policy", "session.freshness_policy", "shared_state.digest", "external_replay.manifest_digest", "environment.runtime_versions", "readable_roots", "stopping_rules"],
+    "only_permitted_difference": {"path": "treatment.conv_mem_availability", "c0": "UNAVAILABLE", "c1": "AVAILABLE_FROZEN_SNAPSHOT"},
+    "condition_specific_prompt_insertion": "only_the_declared_machine_treatment_mount_instruction_may_differ_and_its_digest_is_bound_to_treatment.conv_mem_availability",
+    "unknown_or_missing_path": "T6_QUALIFICATION_FAILURE",
+    "other_difference": "T6_INVALID",
+    "informative_missingness": {"arm_correlated_pattern": "DIAGNOSTIC_REVIEW", "comparison_changed": "INTEGRITY_FAILURE_OR_STUDY_INVALIDITY", "ordinary_boundable_missingness": false},
+    "validator": "V-C0C1-EQUALITY"
+  },
+  "decision_registry": [
+    {"id":"D_PRODUCT_001","name":"meaningful_episode_advantage","semantics":"smallest_practically_meaningful_paired_episode_C1_minus_C0_advantage","allowed_domain":{"type":"number","minimum_exclusive":0,"maximum_inclusive":1},"units":"normalized_episode_score","allowed_states":["VALUE"],"preferred":"RYAN_TO_SELECT_FROM_PRESTUDY_PRODUCT_AND_CALIBRATION_EVIDENCE","owner_authority":"Ryan_after_independent_measurement_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["product_decision_use","held_out_score_calibration","prestudy_variance_analysis"],"validator":"finite_number_in_domain","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"larger_threshold_can_reduce_positive_dispositions","overturning_evidence":"new_outcome_blind_product_or_calibration_evidence"},
+    {"id":"D_PRODUCT_002","name":"equivalence_margin","semantics":"largest_absolute_effect_treated_as_practically_equivalent_under_the_frozen_null_claim","allowed_domain":{"type":"number","minimum_inclusive":0,"maximum_exclusive":"D_PRODUCT_001"},"units":"normalized_episode_score","allowed_states":["VALUE","NOT_APPLICABLE_WITH_FROZEN_NULL_FORM"],"preferred":"RYAN_TO_SELECT_OUTCOME_BLIND","owner_authority":"Ryan_after_independent_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["smallest_practical_difference","score_error","intended_null_claim"],"validator":"domain_and_cross_decision_constraint","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"narrow_margin_requires_more_information","overturning_evidence":"new_outcome_blind_null_contract_evidence"},
+    {"id":"D_INFO_001","name":"target_bearing_episode_information_floor","semantics":"minimum_number_of_target_bearing_evaluable_episodes_required_for_conditional_product_inference","allowed_domain":{"type":"integer","minimum_inclusive":2},"units":"episodes","allowed_states":["VALUE"],"preferred":"RYAN_TO_SELECT_FROM_PRESTUDY_design_analysis","owner_authority":"Ryan_after_independent_design_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["paired_episode_variance","finite_sample_behavior","scorer_reliability"],"validator":"integer_in_domain","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"higher_floor_increases_blocked_results","overturning_evidence":"revised_outcome_blind_precision_analysis"},
+    {"id":"D_INFO_002","name":"secondary_information_floor","semantics":"minimum_information_for_target_level_secondary_diagnostics","allowed_domain":{"type":"integer","minimum_inclusive":1},"units":"targets_or_predeclared_information_units","allowed_states":["VALUE"],"preferred":"RYAN_TO_SELECT_FROM_SECONDARY_precision_needs","owner_authority":"Ryan_after_independent_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["secondary_precision_analysis","target_score_reliability"],"validator":"integer_and_unit_declared","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"higher_floor_suppresses_secondary_reporting","overturning_evidence":"revised_outcome_blind_secondary_analysis"},
+    {"id":"D_PRECISION_001","name":"precision_confidence_rule","semantics":"predeclared_interval_or_randomization_rule_that_determines_whether_effect_information_is_usable","allowed_domain":{"type":"object","required":["method","confidence_or_alpha","tie_rule","missing_pair_rule"]},"units":"method_specific","allowed_states":["VALUE"],"preferred":"PREDECLARED_METHOD_VALIDATED_BY_SIMULATION","owner_authority":"Ryan_after_independent_statistical_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["decision_risk","estimator_behavior","prestudy_simulation"],"validator":"supported_method_and_complete_parameters","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"strict_precision_can_block_disposition","overturning_evidence":"better_outcome_blind_method_evidence"},
+    {"id":"D_RELIABILITY_001","name":"sparse_episode_rule","semantics":"maps_per_episode_evidence_to_ACCEPTABLE_SPARSE_NON_ESTIMABLE_or_NOT_APPLICABLE_without_post_result_reclassification","allowed_domain":{"type":"object","required":["evidence_measure","thresholds","sparse_disposition"]},"units":"declared_evidence_measure","allowed_states":["VALUE"],"preferred":"HELD_OUT_CALIBRATED_RULE","owner_authority":"Ryan_after_scorer_and_independent_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["held_out_episode_evidence","rubric_sensitivity","score_stability"],"validator":"total_mapping_over_all_episode_states","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"more_sparse_or_blocked_episodes","overturning_evidence":"new_held_out_reliability_evidence"},
+    {"id":"D_RELIABILITY_002","name":"scorer_reliability_statistic_and_gate","semantics":"scale_appropriate_statistic_and_minimum_gate_for_independent_masked_scorers","allowed_domain":{"type":"object","required":["statistic_by_scale","minimum_gate","resolution_rule"]},"units":"statistic_specific","allowed_states":["VALUE"],"preferred":"WEIGHTED_KAPPA_AND_ICC_OR_JUSTIFIED_EQUIVALENT","owner_authority":"Ryan_after_independent_measurement_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["scale_types","held_out_scoring_pilot","agreement_distribution"],"validator":"statistic_matches_scale_and_gate_in_valid_range","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"below_gate_results_are_blocked","overturning_evidence":"better_held_out_reliability_method"},
+    {"id":"D_SAMPLING_001","name":"census_sampling_workload_threshold","semantics":"pretarget_count_rule_determining_when_complete_dual_census_is_feasible","allowed_domain":{"type":"object","required":["cost_measure","census_ceiling","benchmark_version"]},"units":"declared_workload_units","allowed_states":["VALUE"],"preferred":"CENSUS_WHEN_BENCHMARKED_FEASIBLE","owner_authority":"Ryan_after_operational_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["dual_adjudication_benchmark","probe_construction_benchmark"],"validator":"threshold_precedes_target_count_and_uses_registered_benchmark","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"census_cost_or_sampling_variance","overturning_evidence":"new_outcome_blind_workload_benchmark"},
+    {"id":"D_FRAME_001","name":"episode_count_or_observation_window","semantics":"prospective_population_exposure_limit_with_no_post_result_extension","allowed_domain":{"one_of":[{"type":"integer","minimum_inclusive":1,"unit":"episodes"},{"type":"duration","minimum_exclusive":"PT0S"}]},"units":"episodes_or_duration","allowed_states":["VALUE"],"preferred":"RYAN_TO_SELECT_FROM_ordinary_work_feasibility","owner_authority":"Ryan","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["ordinary_work_population","capture_feasibility","expected_opportunity_rate"],"validator":"exactly_one_count_or_duration_and_no_adaptive_extension","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"fixed_window_may_be_sparse","overturning_evidence":"new_outcome_blind_operational_evidence"},
+    {"id":"D_SAMPLING_002","name":"whole_episode_sampling_allocation_and_weights","semantics":"probability_design_preserving_episode_primary_weight_when_census_is_not_used","allowed_domain":{"type":"object","required":["design","sample_size_rule","inclusion_probability_rule","analysis_weight_rule"]},"units":"probability_design","allowed_states":["VALUE","NOT_APPLICABLE_WHEN_CENSUS"],"preferred":"WHOLE_EPISODE_PROBABILITY_SAMPLE","owner_authority":"Ryan_after_sampling_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["population_frame","episode_weight_preservation_proof"],"validator":"positive_inclusion_probabilities_and_no_target_rich_weighting","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"less_target_level_efficiency","overturning_evidence":"alternative_design_proof_preserving_estimand"},
+    {"id":"D_IDENTITY_001","name":"full_authority_identity_requirements","semantics":"capability_predicates_required_to_claim_full_occurrence_revision_and_source_instance_authority","allowed_domain":{"type":"set","members_from":["occurrence_identity","source_instance_binding","revision_asof_binding","lineage_assurance"]},"units":"capability_predicates","allowed_states":["VALUE"],"preferred":"ISSUER_ATTESTED_VECTOR_REQUIREMENTS","owner_authority":"Ryan_after_source_contract_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["provider_identity_and_revision_guarantees"],"validator":"predicates_reference_known_dimension_values","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"some_sources_remain_lower_assurance","overturning_evidence":"provider_proof_of_nonreused_migration_safe_identity"},
+    {"id":"D_ASSURANCE_001","name":"lower_assurance_primary_treatment","semantics":"exact_capability_predicates_and_disposition_for_records_below_full_authority","allowed_domain":{"enum":["EXCLUDE_PRIMARY_RETAIN_DIAGNOSTIC","ALLOW_PRIMARY_WHEN_NAMED_PREDICATES_PASS","EXCLUDE_SOURCE_CLASS_AT_T0"]},"units":"policy","allowed_states":["VALUE"],"preferred":"EXCLUDE_PRIMARY_RETAIN_DIAGNOSTIC","owner_authority":"Ryan_after_source_and_measurement_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["membership_and_evaluability_impact_analysis"],"validator":"policy_and_predicates_total_over_capability_vectors","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"fewer_primary_records","overturning_evidence":"proof_lower_assurance_cannot_change_membership_or_evaluability"},
+    {"id":"D_SOURCE_001","name":"admitted_source_classes","semantics":"closed_list_of_source_classes_with_evidence_complete_adapter_profile_and_capability_policy","allowed_domain":{"type":"array","items_required":["source_class","adapter_profile_digest","implementation_component_id","acceptance_policy","completeness_policy"]},"units":"source_classes","allowed_states":["NONEMPTY_VALUE"],"preferred":"ONLY_CLASSES_WITH_COMPLETE_ADAPTER_EVIDENCE","owner_authority":"Ryan_after_adapter_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["adapter_conformance","issue_263_resolution_state_support_where_applicable"],"validator":"every_class_has_profile_implementation_and_B3_semantics","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"narrower_population","overturning_evidence":"new_complete_adapter_capability_evidence"},
+    {"id":"D_ATTACHMENT_001","name":"attachment_completeness_policy","semantics":"per_source_class_requirement_for_blob_reference_and_material_capture","allowed_domain":{"type":"mapping","value_enum":["REQUIRED_COMPLETE","PARTIAL_ALLOWED_NON_EVALUABLE_WHEN_TARGET_DEPENDS","NOT_EVIDENTIAL_WITH_PROOF"]},"units":"policy_by_source_class","allowed_states":["VALUE"],"preferred":"REQUIRED_COMPLETE_FOR_EVIDENTIAL_ATTACHMENTS","owner_authority":"Ryan_after_source_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["blob_capture_and_replay_capability","target_class_material_needs"],"validator":"every_admitted_source_class_mapped","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"attachment_dependent_targets_may_be_non_evaluable","overturning_evidence":"proof_attachment_material_is_not_evidential"},
+    {"id":"D_MATERIAL_001","name":"material_span_assurance_policy","semantics":"capability_and_score_ceiling_for_missing_or_partial_referenced_material","allowed_domain":{"enum":["PRIMARY_REQUIRES_COMPLETE","TARGET_SPECIFIC_REQUIREMENT","DIAGNOSTIC_ONLY_WHEN_PARTIAL"]},"units":"policy","allowed_states":["VALUE"],"preferred":"TARGET_SPECIFIC_REQUIREMENT_WITH_PRIMARY_COMPLETE","owner_authority":"Ryan_after_rubric_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["rubric_material_dependency_analysis"],"validator":"maps_every_material_state_and_target_dependency","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"partial_records_lose_primary_eligibility","overturning_evidence":"rubric_proof_material_span_not_evidential"},
+    {"id":"D_RETENTION_001","name":"retention_period_and_location","semantics":"minimum_duration_location_integrity_and_access_policy_for_sealed_evidence_and_replay_artifacts","allowed_domain":{"type":"object","required":["duration","locations","integrity_check","access_policy","deletion_rule"]},"units":"duration_and_storage_policy","allowed_states":["VALUE"],"preferred":"MINIMUM_PERIOD_SUPPORTING_AUDIT_AND_AUTHORIZED_REPLAY","owner_authority":"Ryan_after_privacy_and_storage_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["audit_window","storage_cost","privacy_constraints"],"validator":"duration_positive_locations_named_integrity_and_deletion_rules_present","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"storage_and_privacy_cost","overturning_evidence":"independent_audit_without_retained_package"},
+    {"id":"D_RESOLVER_001","name":"resolver_and_blinded_view_policy","semantics":"compute_once_controller_side_hide_P2_outputs_until_registry_seal_and_expose_only_condition_neutral_P1_availability","allowed_domain":{"enum":["V2_FIXED_POLICY"]},"units":"policy","allowed_states":["VALUE"],"preferred":"V2_FIXED_POLICY","owner_authority":"Ryan_after_access_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["view_noninterference_fixture","unknown_multiplicity_accounting_fixture"],"validator":"AdjudicationEvidenceViewV1_schema_and_side_channel_tests","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"less_adjudicator_diagnostic_context","overturning_evidence":"alternative_access_proof_with_no_inferable_side_channel"},
+    {"id":"D_LINEAGE_001","name":"source_instance_lineage_issuance","semantics":"issuer_scoped_occurrence_namespace_and_logical_lineage_attestation_without_physical_identity_collapse","allowed_domain":{"enum":["ISSUER_SCOPED_NONCE_AND_ATTESTED_LINEAGE","LOCAL_IMPORTER_NAMESPACE_WITH_UNKNOWN_LINEAGE"]},"units":"identity_policy","allowed_states":["VALUE"],"preferred":"ISSUER_SCOPED_NONCE_AND_ATTESTED_LINEAGE","owner_authority":"Ryan_after_source_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["issuer_or_import_event_identity"],"validator":"physical_occurrence_always_distinct_across_clone_restore_import_migration","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"providers_without_issuer_support_remain_lower_assurance","overturning_evidence":"independent_immutable_lineage_record"},
+    {"id":"D_MULTIPLICITY_001","name":"unknown_target_multiplicity_policy","semantics":"allowed_finite_bound_source_and_unbounded_blocking_rule","allowed_domain":{"type":"object","required":["bound_sources","bound_validator","unbounded_disposition"]},"units":"targets","allowed_states":["VALUE"],"preferred":"DEFENSIBLE_PREFROZEN_FINITE_BOUND_OR_BLOCK","owner_authority":"Ryan_after_design_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["complete_census_or_bound_justification"],"validator":"bounds_prefrozen_lower_le_known_and_upper_ge_lower_or_null","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"more_blocked_opportunity_results","overturning_evidence":"complete_census_or_new_defensible_finite_bound"},
+    {"id":"D_AMEND_001","name":"implementation_amendment_policy","semantics":"identity_bound_outcome_blind_differential_review_for_every_behavior_relevant_change","allowed_domain":{"enum":["V2_FIXED_POLICY"]},"units":"policy","allowed_states":["VALUE"],"preferred":"V2_FIXED_POLICY","owner_authority":"Ryan_after_independent_review","freeze_stage":"P0_T0_CONSTRUCT_FREEZE","evidence_required":["complete_implementation_inventory","rare_path_differentials"],"validator":"ImplementationManifestV2_and_replacement_evidence_complete","failure_transition":"INVALID_NOT_STARTED","accepted_downside":"harmless_changes_can_require_new_generation","overturning_evidence":"complete_outcome_blind_equivalence_evidence"}
+  ],
+  "invariants": [
+    "single_canonical_authority", "rfc8785_digest_exactness", "stage_causal_parentage", "construct_immutability", "evidence_parentage", "occurrence_uniqueness", "lineage_never_collapses_physical_identity", "semantic_dedup_independent_of_physical_identity", "verification_not_identity", "no_silent_target_loss", "orthogonal_unknown_state", "unknown_multiplicity_propagation", "resolver_blindness", "snapshot_conflict_determinism", "transitive_legacy_isolation", "summary_provenance_not_truth", "initial_implementation_binding", "mechanical_key_instantiation", "arm_symmetry", "no_post_hoc_upgrade"
+  ],
+  "verification_controls": [
+    "jcs_without_trailing_newline", "p1_cannot_bind_p2_output", "p1_rejects_resolver_result", "p1_rejects_capability_vector", "adjudicator_view_rejects_resolver_result", "adjudicator_view_rejects_capability_vector", "clone_with_lineage_remains_distinct", "restore_preserved_native_ids_remains_distinct", "duplicate_content_distinct_occurrences", "known_present_additional_multiplicity_unknown", "unbounded_multiplicity_blocks", "incomplete_source_inventory_hidden_resolver", "source_deleted_after_intact_seal", "source_modified_after_seal", "stripped_origin_legacy_descendant", "summary_missing_consumed_dependency", "post_freeze_parser_canonicalizer_replacement", "target_specific_semantic_key_change", "unlisted_implementation_component", "nested_c0_c1_mismatch", "unknown_ryan_decision_value", "decision_missing_validator_or_authority",
+    "provider_migration_preserved_row_ids", "partial_exports_same_logical_source", "edit_delete_recreate", "parser_acceptance_change", "canonical_text_same_metadata_changed", "unknown_field_mutation", "attachment_change_or_loss", "resolver_queue_and_timing_side_channel", "source_snapshot_disagreement", "legacy_derived_feature_influence", "scorer_author_natural_target_exposure", "adapter_failure_correlated_with_episode_complexity", "arm_correlated_missingness", "c0_c1_retry_cache_asymmetry", "information_slot_pending_at_freeze"
+  ],
+  "coordination": {
+    "g6_lane": "separate_and_closed",
+    "g6_assumptions_preserved": ["G5C_is_methodology_validation_only", "G6_requires_Ryan_explicit_grant", "synthetic_results_do_not_open_G6"],
+    "g6_conflicts_found": [],
+    "dependency_chain": ["github_issue_263", "naturalistic_pre_g6_contract_v2", "future_G6_readiness"],
+    "issue_263_implementation_state": "OPEN_AND_NOT_RESOLVED_BY_THIS_PLANNING_CONTRACT"
+  }
+}
