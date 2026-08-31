@@ -1,10 +1,13 @@
 # Architecture Direction — Naturalistic ConvMem Product-Value Study
 
-> **REVIEW REQUIRED — NOT AUTHORIZED FOR IMPLEMENTATION.** This is an
-> architecture draft for Kiro design review. It authorizes no Agent A/B run,
-> no corpus mutation, no target-registry population, and no production change.
+> **CORRECTIVE AMENDMENT — REVIEW REQUIRED — NOT AUTHORIZED FOR
+> IMPLEMENTATION.** Ryan accepted D1–D6 as the G5 corrective design direction
+> on 2026-08-30. This amendment is for independent Kiro review. It authorizes no
+> implementation, parameter selection or freeze, Agent A/B run, natural
+> evidence access, target-registry population, G6/T0 transition, corpus
+> mutation, scoring, or product conclusion.
 >
-> **Arc:** none (ad-hoc) — Portland / ConvMem product-value evaluation
+> **Arc:** Naturalistic ConvMem product-value evaluation
 >
 > Protocol v3 is closed at `RERUN3 V3 FAILURE PUBLISHED` (closure SHA
 > `9ba7237`). Its K1–K10 seed-construction evidence remains protocol-feasibility
@@ -93,12 +96,38 @@ preserved as upstream and component diagnostics, never as eligibility gates.
     disagreement produce visible reliability states. They cannot silently
     receive the confidence of well-supported episodes or yield a product
     verdict without passing the frozen reliability gate.
+11. **The registry is the opportunity authority.** The sealed
+    `TargetRegistry`, derived only from Agent-A raw episode evidence under the
+    frozen adjudication rule, is the sole denominator ledger. Later capture,
+    execution, evaluability, or scoring records reference it but cannot change
+    its membership.
+12. **Missingness is observed, not discarded.** Natural ConvMem capture,
+    per-arm trial-evidence capture, and per-arm score evaluability are separate
+    axes. Valid-but-missing outcomes remain in the fixed opportunity
+    denominator and enter the frozen bounds procedure.
+13. **Invalidity is not missingness.** Protocol, isolation, environment,
+    lineage, registry-mutation, or scorer-blinding failures invalidate the
+    affected trial or study. They are never assigned latent scores or bounded
+    away.
+14. **No authoritative scalar.** The first naturalistic study reports a
+    structured product-result tuple: opportunity prevalence, complete-pair
+    effect with bounds where needed, and full capture/evaluability/failure
+    accounting. Any scalar is secondary and assumption-dependent.
+15. **Paired replay has one intended difference.** C0 and C1 start from one
+    sealed pre-trial state in fresh sessions with mechanically compared
+    environments. The only intended treatment difference is C1 access to the
+    frozen ConvMem surface.
 
 ## 4. Lifecycle state machine
 
 The study is an append-only sequence of frozen artifacts. A later state may
-read an earlier artifact but may not rewrite it. Any violation enters `INVALID`
-or `DIAGNOSTIC`; it does not silently restart the study.
+read an earlier artifact but may not rewrite it. Orchestration success is not
+evidence of content completeness: every transition is established from the
+serialized artifact against the frozen schema and policy. Before freeze,
+incompleteness remains in or returns to `FRAME_DRAFT`. After freeze, no
+in-place rollback exists: a permissible correction requires a new generation,
+while a digest mismatch, handed-off-artifact mismatch, isolation breach, or
+registry mutation is an integrity incident.
 
 ```text
 FRAME_DRAFT
@@ -127,29 +156,52 @@ FRAME_FROZEN ──► OBSERVATION_OPEN ──► EPISODE_EVIDENCE_SEALED
                                            ▼
                                   ANALYSIS_READY
                                            │
-                   ┌───────────────┬──────┼───────────────┐
-                   ▼               ▼      ▼               ▼
-              POSITIVE       NULL/EQUIVALENT  NEGATIVE  BLOCKED/NON-ESTIMABLE
-
-Any state ── protocol violation ──► INVALID
-Any state ── evidence/identity failure ──► DIAGNOSTIC
+                                           ▼
+                              ORTHOGONAL STATE ASSESSMENT
+                                           │
+                                           ▼
+                               DERIVED FINAL DISPOSITION
 ```
+
+The assessment record has four orthogonal axes rather than one overloaded
+terminal enum:
+
+- `protocol_validity`: valid, invalid, or unresolved;
+- `information_sufficiency`: sufficient, sparse, or insufficient;
+- `missingness_comparability`: complete, bounded, inconclusive bounds, or not
+  applicable;
+- `scorer_integrity`: valid, invalid/unblinded, or unresolved;
+- `scorer_reliability`: acceptable, below threshold, or not applicable.
+
+The final disposition is derived mechanically in this precedence order:
+
+1. protocol, isolation, lineage, registry, or freeze invalidity;
+2. environment or scorer-integrity invalidity;
+3. insufficient opportunity or information;
+4. below-threshold scorer reliability or valid missingness whose frozen bounds
+   are inconclusive;
+5. only then, positive, null/equivalent, or negative effect interpretation.
+
+The derived label may use the existing compact vocabulary, but it must carry
+machine-readable reason codes and the complete orthogonal state record. A
+generic `BLOCKED / NON-ESTIMABLE` label without its reason and precedence path
+is not a sufficient study result.
 
 ### State authority and transition conditions
 
 | State | Authority | Required transition evidence |
 |---|---|---|
-| `FRAME_FROZEN` | Ryan-approved study owner | Frame, policies, environment, order rule, and hashes are immutable. |
+| `FRAME_FROZEN` | Ryan-approved study owner | One atomic manifest passes structural validation, is hashed from canonical serialized bytes, and is append-only logged before execution can resolve. |
 | `OBSERVATION_OPEN` | Mechanical controller | Only prospectively selected episodes are observed; no replacement episodes. |
 | `EPISODE_EVIDENCE_SEALED` | Evidence recorder/controller | Complete raw-source manifest, timestamps, hashes, and snapshot identities exist. |
 | `TARGET_ADJUDICATION` | Blind target assessor(s) | Assessor access excludes ConvMem capture/retrieval and C0/C1 results. |
 | `TARGET_REGISTRY_SEALED` | Study owner after audit | Every episode has a census entry, including explicit zero-target entries. |
 | `CENSUS_ACCEPTED` / `SAMPLE_SEALED` | Mechanical sampler | Census or fixed probability sample is reproducible and unsampled rows remain. |
 | `PROBES_SEALED` | Probe author + study controller | Probe, acceptable response, scoring key, and leakage audit are frozen. |
-| `C0C1_READY` | Mechanical controller | Common artifacts and manifests match; only ConvMem availability differs. |
-| `EXECUTION_COMPLETE` | Mechanical controller | Fresh Agent-B sessions, frozen order, full traces, and terminal statuses exist. |
-| `SCORING_LOCKED` | Blinded scorer | Condition labels are masked while primary outcomes are scored. |
-| `ANALYSIS_READY` | Analysis owner | Identity chain is complete and all information thresholds are evaluated. |
+| `C0C1_READY` | Mechanical controller | One sealed pre-trial state has two fresh replay packages; mechanical comparison proves the only intended difference is C1 ConvMem access. |
+| `EXECUTION_COMPLETE` | Mechanical controller | Fresh paired sessions, frozen randomized execution order, complete per-arm evidence/capture/evaluability records, and terminal statuses exist. |
+| `SCORING_LOCKED` | Blinded scorer | Structurally matched, condition-neutral packages and randomized presentation order are scored without condition-correlated metadata or form. |
+| `ANALYSIS_READY` | Analysis owner | Identity chain, orthogonal states, complete-pair estimate, missingness bounds, reason codes, and all frozen information gates are present. |
 
 `ZERO_ELIGIBLE_TARGETS` is an episode status inside the sealed registry, not a
 study failure. It has no C0/C1 target trial unless the approved probe family
@@ -161,12 +213,15 @@ defines a target-independent continuation task.
 |---|---|---|---|
 | **Study owner / Ryan** | All study artifacts and review reports | Frame/policy approval and final study disposition | Change frozen artifacts after exposure; delegate merge authority. |
 | **Study controller** | Manifests, mechanical run state, environment metadata | State transitions, hashes, run records | Act as Agent B, select targets, edit probes, or add context. |
+| **Structural freeze validator** | Canonical serialized manifest bytes and frozen schema/policy | Independent validation report and re-derived digest | Trust orchestration success, consume mutable builder objects, import execution/capture/scoring modules, or repair the manifest. |
 | **Raw-evidence recorder** | Ordinary Agent-A outputs and permitted source metadata | Immutable raw-evidence manifest and source copies | Filter for interesting content or inspect ConvMem success to decide retention. |
 | **Target adjudicator A/B** | Complete raw evidence and versioned eligibility rules | Independent target census decision, rationale, ambiguity status, strata labels | Read ConvMem capture/rank, C0/C1 outputs, or expected treatment advantage; see the other adjudicator's decision before submitting. |
 | **Probe author** | The sealed target record and the minimum raw context needed to construct a realistic task, plus predeclared probe families | Probe definition; submits the scoring key to a separately sealed scorer partition | Claim answer blindness; read ConvMem search results, capture labels, condition outcomes, treatment order, or scorer decisions; author a target they adjudicated. |
 | **Leakage reviewer** | Frozen probe, the author-visible target/context view, and the leakage checklist; no ConvMem or outcome material | Independent leakage review/sign-off before probe freeze | Be the probe author or target adjudicator for that target; reveal answer or source/treatment/ConvMem cues to Agent B. |
 | **Agent-B executor** | Ordinary files/repository/GitHub/transcripts, assigned probe, normal tools; C1 additionally has frozen ConvMem | Agent-B transcript, actions, output, and trace | Read registry, answer key, controller internals, or an earlier Agent-B session. |
 | **Scorer** | Frozen Agent-B outputs, raw evidence, sealed rubric/key, bounded traces | Target and episode scores | Change scoring rules after seeing condition labels or use retrieval rank as truth. |
+| **Analysis owner** | Sealed registry, valid trial/evaluability records, masked scores, and frozen analysis contract | Structured result tuple, bounds, orthogonal states, and derived disposition | Change registry membership, classify protocol failures as missing outcomes, or choose a favorable scalar or threshold. |
+| **Scoring dispute resolver** | The same condition-neutral package and sealed rubric supplied to initial scorers | Blinded resolution record | Be either initial scorer, see condition identity, or use capture/retrieval metadata to break a tie. |
 | **Kiro** | Architecture and review evidence | Design-review verdict and required revisions | Implement runtime or experiment code. |
 | **Codex** | Existing plans and methodology evidence | Architecture draft | Run Agent A/B or authorize implementation. |
 | **Cursor** | Only after Ryan acceptance | Future implementation | Start from this draft without the acceptance gate. |
@@ -362,8 +417,10 @@ episode and, where applicable, target records with at least:
 - registry policy version, creation time, and registry digest.
 
 The registry is sealed before any target-specific probe is created, sample is
-drawn, or C0/C1 result is observed. Capture status is an additional later
-field; it cannot change registry membership.
+drawn, or C0/C1 execution begins. It is the sole opportunity-denominator
+authority. Every later capture, trial, evaluability, score, bound, and failure
+record references a registry entry; none may mint, delete, or reclassify one.
+Capture status is an additional later field and cannot change membership.
 
 The registry is the authoritative study census. The ledger/raw evidence owns
 the ordinary facts; Chroma is a frozen ConvMem treatment projection. No
@@ -456,6 +513,15 @@ The leakage audit checks at least:
 - the acceptable-response key was sealed before execution and condition labels
   were masked during primary scoring.
 
+Role separation is required where it prevents information leakage, preserves
+zero-discretion mechanics, or controls motivated judgment. Shared canonical
+serialization and digest primitives are permitted trusted-kernel components;
+completeness and policy validation must remain independent of the builders and
+stages whose claims are checked. Different sessions are the minimum
+calibration/study scorer separation; different identities or model families
+are preferred where practical, but role labels alone do not establish
+methodological independence.
+
 ## 12. Natural capture and component diagnostics
 
 Normal Agent-A ConvMem behavior is allowed. No target receives special content
@@ -479,22 +545,32 @@ unsupported claim, stale use, and continuation failure.
 
 ## 13. C0/C1 treatment model
 
-Both fresh Agent-B conditions receive identical, immutable:
+Both conditions replay one sealed pre-trial state in fresh sessions or process
+state. They receive identical, immutable:
 
 - Agent-A raw artifacts and ordinary evidence;
 - filesystem, repository, GitHub state, and ordinary tools;
 - model/build/settings, readable roots, network policy, and budget;
 - context-gap schedule and probe;
-- execution order manifest and scoring policy.
+- execution policy, scoring policy, budget, and stopping rules.
 
 Only C1 receives normal ConvMem availability against the frozen study snapshot.
 C0 has no ConvMem retrieval or memory context but retains legitimate ordinary
 transcripts, files, repository history, GitHub, and other permitted tools.
 
 The controller is mechanical. It cannot answer, search on behalf of Agent B,
-paste a target, or repair a condition after execution. C0/C1 order is randomly
-assigned or counterbalanced according to the frame rule and frozen before the
-first Agent-B trial. Every trial uses a genuinely fresh Agent-B session.
+paste a target, retry selectively, or repair a condition after execution. C0
+and C1 share no mutable conversational/session state, writable cache,
+rate-limit state, database row, or cross-arm artifact. External mutable
+services are snapshotted/replayed identically or excluded. Execution order is
+randomized or counterbalanced under a frozen seed and is distinct from scorer
+presentation order. Every trial uses a genuinely fresh Agent-B session.
+
+Mechanical manifest comparison, not a human assertion of “same environment,”
+must prove treatment symmetry. A difference in model/build/settings, prompt,
+tools, readable roots, budget, stopping rule, replayed external state, or
+environment policy invalidates the affected pair. The only intended treatment
+difference is C1 access to the frozen ConvMem surface.
 
 ## 14. Outcome model and episode-primary estimand
 
@@ -514,36 +590,54 @@ outcomes.
 
 ### Primary outcome contract
 
-The primary conditional outcome is a bounded, normalized within-episode
-continuation-utility score derived from the predeclared behavioral rubric. Each
-episode contributes at most one score per condition, formed from its eligible,
-evaluable target probes under the frozen within-episode aggregation rule.
-Target-level correctness/currentness/provenance components remain secondary
-diagnostics. Target-rich episodes cannot receive more primary weight merely by
-producing more target rows.
+The primary score is a bounded, normalized within-episode continuation-utility
+score derived from the predeclared behavioral rubric. Each episode contributes
+at most one score per condition under the frozen within-episode aggregation
+rule. Target-level correctness/currentness/provenance components remain
+secondary diagnostics. Target-rich episodes cannot receive more primary weight
+merely by producing more target rows.
 
-The authoritative presentation is two-part and co-primary:
+The authoritative product result is a structured tuple, not one scalar:
 
-1. **Opportunity component:** prevalence and density of eligible targets across
-   all prospectively selected episodes, including zero-target episodes.
-2. **Conditional product component:** the episode-level C1−C0 continuation
-   effect among episodes with at least one eligible, evaluable target.
+1. **Opportunity prevalence:** target-bearing episodes over the complete
+   prospectively fixed `EpisodeFrame`, plus target density and zero-target
+   count. Membership comes only from the sealed `TargetRegistry`.
+2. **Complete-pair conditional effect:** the paired episode-level C1−C0 effect
+   among registry opportunities with valid, captured, score-evaluable outcomes
+   in both arms. The report labels this conditioning explicitly; it is not the
+   product's unconditional effect.
+3. **Denominator accounting and bounds:** per-arm trial-evidence capture,
+   per-arm score evaluability, mutually exclusive frozen failure reasons, and
+   deterministic worst/best-case or approved sensitivity bounds across valid
+   missing outcomes using the frozen score support. Bounds operate on one
+   episode-opportunity contribution per target-bearing episode; target rows are
+   secondary inputs to the frozen within-episode aggregation rule.
 
-This makes the conditioning set pre-treatment and visible. It does not pretend
-that a zero-target episode supplied an unobserved recovery outcome.
+The analysis degrades gracefully from complete-pair estimate, to bounded
+estimate, to inconclusive bounds. A C0/C1 missingness asymmetry is reported as
+a co-primary process result and may widen or make the bounds inconclusive; it
+does not trigger a lone cliff-edge tolerance that discards all comparison.
+Any tolerance or decision threshold is a T0 value, not selected here.
+Every permitted sensitivity procedure and analyst choice it exposes must also
+be frozen before evidence exposure; “approved sensitivity” is not post-result
+discretion.
 
 ### Secondary derived summaries
 
-- **All-episode opportunity-weighted effect:** assign a declared zero effect
-  contribution to zero-target episodes, representing expected benefit per
-  ordinary episode. This must not be described as a treatment failure.
-- **Task-level primary:** use a naturally occurring continuation-task success
-  outcome when the task rubric itself is sufficiently stable, with target
-  results as supporting diagnostics.
+- `P_opp × Effect_evaluable` is an extrapolated opportunity-effect statistic.
+  Because `P_opp` includes all target-bearing episodes while the effect is
+  estimated only in complete pairs, it assumes the evaluable subset's effect
+  transports to non-evaluable opportunities. It does **not** assign those
+  opportunities zero effect.
+- `P_evaluable × Effect_evaluable` describes the observed evaluable
+  contribution and effectively assigns zero contribution outside that set; it
+  is not a product-effect estimand.
+- A naturally occurring continuation-task summary may be reported when the
+  task rubric is sufficiently stable, with target results as diagnostics.
 
-These are secondary or diagnostic summaries only. They cannot replace the
-two-part co-primary presentation or collapse its opportunity and conditional
-components into one headline effect.
+Every scalar is secondary, named with its assumptions, and forbidden as the
+authoritative first-study result unless a separately validated utility model
+with prospectively frozen weights later earns its own review and authority.
 
 ### Sparse-episode reliability
 
@@ -566,9 +660,15 @@ conditional product effect non-estimable, the product conclusion is
 ### Continuation-score reliability
 
 Two independent scoring roles score the complete eligible/evaluable scoring
-set with condition labels masked. They independently apply the frozen target
-rubric and derive the bounded episode score; they do not see the other scorer's
-decision before submission. Disagreements use a blinded third scorer or a
+set from structurally identical, condition-neutral packages. Condition names,
+session/episode identifiers, filenames/paths, latency, tool counts, raw tool
+traces, retrieval-only blocks, and other condition-correlated form or metadata
+are stripped or symmetrically normalized before presentation. Within-pair
+presentation order is independently randomized and logged. If an LLM scores,
+episode content is untrusted input and is isolated from scoring instructions;
+calibration and study scoring use disjoint material and different sessions at
+minimum. Scorers apply the frozen rubric independently and do not see the
+other score before submission. Disagreements use a blinded third scorer or a
 predeclared blinded consensus procedure. The scoring manifest records raw
 agreement and a scale-appropriate reliability check: weighted kappa for
 ordinal/categorical dimensions and an intraclass-correlation or equivalent
@@ -602,13 +702,29 @@ Capture failure is not target absence. Agent-B failure is not target absence.
 The analysis must report these counts separately and must not collapse them
 into a convenient denominator.
 
+For every registry opportunity, the outcome ledger records three distinct
+axes in order:
+
+1. natural ConvMem capture diagnostic (`CAPTURED`, absent, ambiguous, or
+   malformed), which describes the C1 memory surface and never changes target
+   membership;
+2. trial-evidence capture by arm, with one frozen reason code per failed arm;
+3. score evaluability by arm, with one frozen reason code per non-evaluable
+   arm and a paired-score record only when both arms are valid and evaluable.
+
+Valid post-treatment outcome missingness is analytically boundable. A wrong
+environment, isolation breach, scorer unblinding, registry mutation, wrong
+frozen state, lineage/hash mismatch, or other protocol-integrity failure is not
+missing data: it invalidates the affected pair or study and never enters the
+bounds procedure.
+
 If the observation window completes with no target-bearing evaluable episode,
 the opportunity result may still be descriptive, but the ConvMem product effect
 is `BLOCKED / NON-ESTIMABLE`, not a null.
 
 ## 16. Interpretable null and information model
 
-The frozen frame exposes, without selecting values opportunistically:
+The atomic frozen manifest exposes, without selecting values opportunistically:
 
 - smallest meaningful per-episode C1−C0 advantage;
 - equivalence or non-inferiority margin, if that form is chosen;
@@ -617,9 +733,12 @@ The frozen frame exposes, without selecting values opportunistically:
 - precision criterion for a usable interval;
 - sparse-episode reliability rule and scorer-reliability minimum gate;
 - confidence/randomization procedure and treatment of ties;
+- score support and deterministic missing-outcome bounds procedure;
+- frozen failure/reason taxonomy and orthogonal-state precedence;
 - sparse/non-estimable terminal rule.
 
-The terminal interpretation is:
+The derived terminal interpretation is evaluated only after the precedence
+rules in §4:
 
 - `COMPLETE — POSITIVE`: valid estimate meets the meaningful positive
   criterion and the precision/information rule;
@@ -627,11 +746,14 @@ The terminal interpretation is:
   exclude the meaningful-advantage interval under the frozen null rule;
 - `COMPLETE — NEGATIVE`: valid estimate favors C0 under the frozen negative
   criterion;
-- `BLOCKED / NON-ESTIMABLE`: too few episodes/targets or intervals too wide;
-  or a frozen scorer/sparse reliability gate fails; no product verdict;
-- `DIAGNOSTIC`: identity, completeness, or instrumentation failure prevents
-  interpretation;
-- `INVALID`: a protocol invariant was violated.
+- `BLOCKED / NON-ESTIMABLE`: valid evidence has too few opportunities,
+  insufficient information, or bounds too wide for the frozen decision rule;
+  the exact reason code is mandatory and no product verdict is emitted;
+- `DIAGNOSTIC`: a permitted diagnostic or secondary measurement is unavailable
+  without invalidating the primary comparison; the exact axis/reason is kept;
+- `INVALID`: a protocol, isolation, environment, lineage, registry, freeze, or
+  scorer-blinding invariant was violated. Invalid evidence is excluded from
+  outcome bounds and cannot support an effect interpretation.
 
 No numerical margin is selected in this draft. A convenient executable value is
 not evidence of product meaning.
@@ -687,7 +809,15 @@ raw-evidence or registry link.
 
 ### Before Agent A
 
-Freeze and hash:
+The following content is one atomic, content-addressed study configuration. A
+partial freeze is not a durable state. The structural validator consumes the
+canonical serialized bytes, checks required content rather than status flags,
+and writes the digest to an append-only externally timestamped log. The
+execution entry point must refuse to resolve without that logged digest. A
+second responsible role re-derives the digest from the exact artifact to be
+handed downstream and mechanically verifies the isolation boundary.
+
+Freeze and hash together:
 
 - `EpisodeFrame` and selected-episode schedule;
 - population, retention, and context-gap rules;
@@ -698,9 +828,23 @@ Freeze and hash:
 - probe-author, leakage-reviewer, scorer, and scoring-key separation;
 - sparse-episode and continuation-score reliability states, statistics, and
   gate slots;
-- C0/C1 environment and order policy;
+- natural-capture, per-arm trial-capture, and per-arm score-evaluability axes;
+- fixed failure/reason taxonomy, boundable-versus-invalid classification, and
+  orthogonal-state precedence;
+- bounded score support, complete-pair estimator, missing-outcome bounds
+  procedure, and structured no-authoritative-scalar reporting contract;
+- C0/C1 sealed replay, environment equality, mutable-service, isolation/reset,
+  execution-order, and scorer-presentation-order policies;
 - census/sampling policy and workload threshold;
 - primary/secondary outcome definitions and null/information framework.
+
+Historical or synthetic calibration evidence used to justify any parameter
+must be identified and hashed with a disjointness statement. Natural study
+corpus contents, index/statistics, prior study queries/results, capture logs,
+opportunity prevalence, episode counts, or study-identifying metadata must be
+technically unreachable to any T0 parameter-setting process. Isolation is
+verified by failed resolution/authentication or absent mounts, not by an agent
+promise.
 
 ### After Agent A, before ConvMem/result inspection
 
@@ -723,7 +867,9 @@ Freeze and hash:
 - probe prompts, behavioral tasks, acceptable responses, and scoring key;
 - leakage audit and role-access audit;
 - C0/C1 environment manifests and frozen ConvMem snapshot;
-- randomized/counterbalanced condition order;
+- randomized/counterbalanced execution order and independently randomized
+  scorer presentation order;
+- condition-neutral scorer package transform and its validation report;
 - information thresholds and analysis procedure.
 
 After this point, no stage may modify an earlier artifact because of a C0/C1
@@ -772,21 +918,27 @@ The future implementation must provide checks for:
 9. probe/key separation, independent leakage sign-off, answer/paraphrase/path/
    location/treatment/ConvMem leakage detection, and treatment-cue absence;
 10. natural-capture-only enforcement and capture-after-registry ordering;
-11. exact C0/C1 environment equality except for frozen ConvMem availability;
-12. fresh Agent-B sessions, frozen order, no controller-as-agent actions, and
-    complete trace/action records;
-13. independent masked scoring, scale-appropriate reliability statistics,
+11. exact C0/C1 sealed-state replay equality except for frozen ConvMem access,
+    including cache/database/external-service and execution-order controls;
+12. fresh Agent-B sessions, no controller-as-agent actions, separate natural
+    capture/trial-capture/evaluability axes, and complete trace/action records;
+13. deterministic worst/best-case bounds for valid missing outcomes and proof
+    that protocol/environment failures cannot enter those bounds;
+14. condition-neutral scoring packages, independent presentation order,
+    independent masked scoring, scale-appropriate reliability statistics,
     scorer-reliability gate, and frozen null/information parameters;
-14. reconstruction of every final result through the identity chain;
-15. terminal-state distinctions among invalid, diagnostic, sparse,
-   zero-target, positive, null/equivalent, and negative outcomes.
+15. structural manifest validation from serialized bytes, exact-artifact hash
+    re-derivation, and injected tamper/mismatch/isolation failures;
+16. reconstruction of every final result through the identity chain;
+17. orthogonal-state and reason-code precedence before any positive,
+    null/equivalent, or negative outcome.
 
 Verification should replay a controlled fixture for mechanics, but controlled
 fixtures cannot be substituted for the eventual naturalistic evidence.
 
 ## 22. Review questions and escalation boundary
 
-### Luna has justified
+### Accepted D1–D6 corrective direction
 
 - episode-first denominator and no replacement of selected episodes;
 - raw evidence and sealed registry as study authority;
@@ -795,8 +947,8 @@ fixtures cannot be substituted for the eventual naturalistic evidence.
 - C0/C1 symmetry and fresh-session boundary;
 - two independent adjudicators over the complete census with blinded dispute
   resolution;
-- two-part co-primary estimand, bounded normalized episode score, and explicit
-  sparse/scorer reliability states;
+- structured result tuple, bounded normalized episode score, deterministic
+  missing-outcome bounds, and explicit sparse/scorer reliability states;
 - probe-author knowledge boundary, independent leakage review, and hard
   adjudicator/probe-author separation;
 - census preference and whole-episode sampling when sampling is necessary;
@@ -811,8 +963,17 @@ fixtures cannot be substituted for the eventual naturalistic evidence.
    the task answer-bearing or trivia-like?
 3. What evidence is sufficient to label current/stale/superseded or
    cross-domain status as a reliable secondary stratum?
-4. Which evidence-based choices should define the still-open sparse-episode,
-   scorer-reliability, and null/information thresholds at T0?
+4. Does the missingness contract preserve the opportunity denominator, report
+   per-arm capture/evaluability, degrade from complete-pair estimate to bounds
+   to inconclusive bounds, and exclude invalid trials from all bounds?
+5. Are the orthogonal states, mandatory reason codes, and precedence rules
+   sufficient to prevent a generic non-estimable sink or an effect verdict
+   after protocol/environment/scorer failure?
+6. Does paired replay establish treatment symmetry mechanically without
+   over-prescribing infrastructure, and does it fail closed for shared state or
+   non-replayable external services?
+7. Does G5 need any additional synthetic fault beyond the amendment's bounded
+   acceptance matrix before it can regain PASS?
 
 ### Sol is not required now
 
@@ -825,9 +986,17 @@ escalation trigger by itself.
 
 ## 23. Next gate
 
-This document is ready for Kiro design review. After Kiro review, Ryan decides
-whether to accept the architecture and authorize a separate implementation
-phase. Only then may Cursor implement the methodology layer.
+This corrective amendment is ready for exact-revision Kiro design review.
+After review, Ryan decides whether to accept the amendment and separately
+authorize a bounded G5 implementation slice. No review PASS grants G6/T0,
+parameter freeze, natural evidence access, Agent A/B, scoring, or product
+interpretation.
 
-**Next sequence:** Codex architecture draft → Kiro design review → Ryan
-acceptance → Cursor implementation.
+The gate remains **C**. It escalates to **D / constructed-panel redesign** only
+if the opportunity registry cannot be constructed without treatment/capture-
+derived information, or genuinely paired C0/C1 replay cannot be achieved
+without uncontrolled environment differences.
+
+**Next sequence:** Codex corrective amendment → Kiro exact-revision review →
+Ryan acceptance/revision decision → separately authorized bounded G5
+implementation, if any.

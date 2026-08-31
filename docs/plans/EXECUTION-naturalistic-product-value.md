@@ -1,25 +1,27 @@
 # Execution Plan — Naturalistic ConvMem Product-Value Study
 
-> **REVIEW REQUIRED — NOT AUTHORIZED FOR IMPLEMENTATION OR EXECUTION.** This
-> plan translates the corrected architecture into separately grantable stages.
-> It authorizes no code, no Agent-A or Agent-B run, no episode collection, no
-> target adjudication, no target-directed recapture, and no product conclusion.
+> **CORRECTIVE AMENDMENT — REVIEW REQUIRED — NOT AUTHORIZED FOR
+> IMPLEMENTATION OR EXECUTION.** Ryan accepted D1–D6 as the G5 corrective
+> design direction on 2026-08-30. This plan amendment authorizes no code,
+> parameter freeze, G6/T0 transition, Agent-A or Agent-B run, natural evidence
+> access, episode collection, target adjudication, scoring, target-directed
+> recapture, or product conclusion.
 >
-> **Arc:** none (ad-hoc) — Naturalistic ConvMem product-value evaluation
+> **Arc:** Naturalistic ConvMem product-value evaluation
 >
 > **Architecture SSoT:**
 > [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md)
-> at corrected architecture amendment `6581be6` on the architecture branch.
-> This execution branch carries that architecture and amendment as
-> `776bfd0`/`1ed41d8` before this plan is added.
+> in the same corrective-amendment revision submitted to Kiro. The review
+> handoff binds both files to one exact commit digest.
 
 ## Planning status and human consequence
 
-The accepted architecture is now operationalized as a serial, fail-closed
-study workflow. The important consequence for Ryan is that no downstream lane
-can begin ordinary work, target adjudication, probe construction, or paired
-execution merely because an earlier artifact exists: each transition has a
-named authority, a sealed manifest, and a separate grant.
+The accepted D1–D6 direction is operationalized below as a bounded corrective
+to G5's synthetic composition claim. The important consequence for Ryan is
+that an incomplete frame, mutable opportunity denominator, unclassified
+failure, asymmetric replay environment, or missing stage guarantee cannot be
+labeled successful merely because an isolated validator or downstream stage
+passes.
 
 **Goal:** produce an independently reviewable execution contract for a
 naturalistic C0/C1 ConvMem product-value study.
@@ -28,14 +30,14 @@ naturalistic C0/C1 ConvMem product-value study.
 grant boundaries, and verification obligations. Codex does not implement or
 run the study.
 
-**System state:** the architecture is accepted and corrected for dual
-adjudication, mechanical admissibility, probe leakage boundaries, whole-episode
-sampling preference, two-part co-primary estimation, sparse/scorer reliability,
-and verified reuse anchors. No study artifact or runtime implementation is
-authorized.
+**System state:** G1–G5 implementation is landed, but G5's compositional PASS
+is reopened at verdict C because the nominal T0_T2 path accepted an incomplete
+prospective frame. D1–D6 are accepted as design direction; their mechanics are
+not implemented or independently reviewed. G6/T0 remains closed.
 
-**Next gate:** Kiro independently reviews this plan; Ryan accepts or rejects
-the plan; only then may bounded implementation grants be issued to Cursor.
+**Next gate:** Kiro independently reviews the exact corrective architecture and
+execution revision; Ryan then accepts or revises it. Any later implementation
+requires a separate bounded grant.
 
 ## 1. Locked architecture decisions
 
@@ -49,10 +51,10 @@ to reopen:
 2. The census is preferred whenever prospectively feasible. If sampling is
    necessary, whole-episode probability sampling is preferred; individual
    target sampling may not change episode weight or favor target-rich episodes.
-3. The primary presentation is co-primary and two-part: opportunity prevalence
-   across all selected episodes, including zero-target episodes, plus the
-   episode-level C1−C0 continuation benefit among target-bearing/evaluable
-   episodes.
+3. The authoritative product result is a structured tuple: opportunity
+   prevalence across the fixed frame; complete-pair C1−C0 continuation effect
+   with deterministic bounds for valid missing outcomes; and full per-arm
+   capture/evaluability/failure accounting. No scalar is authoritative.
 4. The conditional outcome is one bounded, normalized within-episode
    continuation-utility score per episode and condition. Target-level outcomes
    are secondary diagnostics.
@@ -73,6 +75,19 @@ to reopen:
 9. No numerical value is invented by this plan for a meaningful advantage,
    equivalence margin, information floor, sparse floor, scorer floor, sampling
    threshold, or precision/confidence criterion.
+10. The sealed raw-evidence `TargetRegistry` is the sole opportunity and
+    denominator authority. Later capture/evaluability/score records may only
+    reference it.
+11. Natural ConvMem capture, per-arm trial-evidence capture, and per-arm score
+    evaluability are distinct axes. Valid missing outcomes are boundable;
+    protocol/environment/isolation/scorer-integrity failures are invalid and
+    never enter bounds.
+12. Final dispositions are mechanically derived from orthogonal protocol,
+    information, missingness/comparability, and scorer-reliability states using
+    frozen precedence.
+13. C0/C1 use paired replay from one sealed pre-trial state in fresh sessions;
+    mechanical comparison proves C1 ConvMem access is the sole intended
+    difference.
 
 ## 2. Stage dependency graph and global rules
 
@@ -90,11 +105,11 @@ T0 Study freeze
                                                         └─► T10 Information/null gate
 ```
 
-The implementation grants may develop and test their own mechanics in
+Future implementation grants may develop and test their own mechanics in
 parallel only where the dependency table permits it. Live study artifacts
 follow the serial chain above. A later grant may not repair an earlier sealed
-artifact; it must produce `INVALID`, `DIAGNOSTIC`, or
-`BLOCKED / NON-ESTIMABLE` according to the failure rule and stop.
+artifact. It records the orthogonal state axes and derives the allowed
+disposition under the frozen precedence rule.
 
 Every artifact that affects eligibility, sampling, probing, scoring, treatment
 assignment, or analysis is content-addressed with a SHA-256 digest and bound to
@@ -107,6 +122,21 @@ assign, and record; it may not answer for Agent B, search on Agent B's behalf,
 select interesting targets, edit a frozen probe, add context, or choose a
 favorable analysis rule.
 
+All later stage-specific stop labels are shorthand inputs to the orthogonal
+state record, not a flat final enum. A defect discovered before exposure may be
+`BLOCKED / NOT STARTED`; a post-freeze protocol, isolation, environment,
+lineage, registry, or scorer-blinding breach is `INVALID`; valid-but-missing
+outcomes retain per-arm reason codes for bounds; and an unavailable secondary
+diagnostic may be `DIAGNOSTIC` only when it cannot affect treatment assignment,
+primary outcome validity, or the fixed denominator. The precedence in T10
+derives the sole final study disposition.
+
+Scorer integrity and scorer reliability are different axes: condition/package
+unblinding, key mutation, or scoring-context contamination is protocol
+`INVALID`; valid independent scoring below the frozen agreement threshold is
+`BLOCKED` with a reliability reason; disagreement isolated to a non-primary
+secondary dimension may be `DIAGNOSTIC`.
+
 ## 3. T0 — Study preregistration and freeze
 
 ### Purpose and entry authority
@@ -118,8 +148,9 @@ may begin before T0 freeze verification passes.**
 
 ### Required T0 content
 
-The `StudyFrame` and `T0FreezeManifest` must instantiate, without leaving an
-implicit choice to a later actor:
+The `StudyFrame` and `T0FreezeManifest` form one atomic, content-addressed
+configuration and must instantiate, without leaving an implicit choice to a
+later actor:
 
 - ordinary-work episode population, prospectively selected episode rule, and
   inclusion/exclusion criteria;
@@ -143,7 +174,19 @@ implicit choice to a later actor:
 - scoring vocabulary, bounded normalized within-episode score contract,
   target-level secondary outcomes, sparse reliability states, and scorer
   reliability statistic/gate slots;
-- the authoritative two-part co-primary estimand and zero-target handling;
+- the structured result tuple, complete-pair estimator, bounded score support,
+  deterministic missing-outcome bounds/sensitivity procedure, zero-target
+  handling, and prohibition on an authoritative scalar;
+- separate natural-capture, per-arm trial-evidence-capture, and per-arm
+  score-evaluability axes;
+- fixed reason taxonomy distinguishing valid missing outcomes from protocol,
+  environment, isolation, lineage, registry, freeze, and scorer-integrity
+  invalidity;
+- orthogonal protocol validity, information sufficiency, missingness/
+  comparability, scorer integrity, and scorer reliability records, plus
+  final-disposition precedence;
+- paired sealed-state replay, reset/isolation, mutable external-service,
+  execution-order, and scorer-presentation-order policies;
 - null/information parameter slots: meaningful advantage, equivalence margin,
   target-bearing episode information floor, secondary information floor,
   precision/confidence rule, sparse reliability rule, scorer-reliability rule,
@@ -158,6 +201,16 @@ operational. T0 cannot defer a choice by leaving a prose placeholder that
 permits a result-dependent value. A slot may remain pending only while the
 study is `FRAME_DRAFT`; it must have a frozen value or an explicitly frozen
 non-applicability rule before `FRAME_FROZEN`.
+
+A structural validator must consume the canonical serialized bytes, reject
+missing or placeholder content even when status flags claim completion, and
+re-derive the digest independently of orchestration. Shared canonical
+serialization and hash primitives are allowed; stage builders and
+capture/execution/scoring modules are not. A second responsible role verifies
+that the exact serialized artifact handed downstream matches the logged freeze
+digest and that forbidden natural corpus/index paths are mechanically
+unreachable. Execution entry points refuse to resolve without the valid,
+append-only-logged digest.
 
 ### Inputs, outputs, and identity requirements
 
@@ -467,13 +520,19 @@ study treatment. No C1 failure authorizes a recapture.
 
 ### Symmetry proof
 
-The controller mechanically proves that C0 and C1 receive the same:
+The controller forks C0 and C1 from one sealed pre-trial state and
+mechanically proves that they receive the same:
 
 - sealed raw evidence and ordinary files;
 - repository, GitHub, filesystem, readable-root, and network policy;
 - model, build, prompt/settings, budget, stopping rules, and tool versions;
 - context gap, probe, scoring policy, and session initialization;
 - execution manifest and allowed ordinary tools.
+
+The pair shares no mutable conversational/session state, writable cache,
+database row, rate-limit state, or cross-arm artifact. Time-varying external
+services are snapshotted/replayed identically or excluded. Execution-order
+randomization is frozen independently of scorer-presentation order.
 
 Only C1 receives normal ConvMem availability against the immutable T5 snapshot.
 C0 has no ConvMem retrieval or memory context. The controller cannot answer,
@@ -492,12 +551,15 @@ Randomized or counterbalanced C0/C1 order is frozen before the first trial.
 | Fresh-session mechanism | `SessionIsolationManifest` | Controller ID, real session IDs, process/container identity where applicable, prior-session absence proof, Agent-B package digest |
 | Frozen order rule | `ConditionOrderManifest` | Randomization/counterbalance rule, seed, assignment per pair, freeze time/digest, no-result-before-freeze attestation |
 | Mechanical comparison | `EnvironmentQualificationReport` | Equality comparison, sole intended C0/C1 difference, verifier identity/version, pass/fail digest |
+| External-state/reset policy | `ReplayIsolationReport` | Sealed pre-trial-state digest, per-arm reset evidence, cache/database/external-service comparison, exclusion reasons, verifier identity |
 
 ### Invariants, negative tests, and stop condition
 
 - Any C0/C1 tool, readable-root, network, model, budget, prompt, gap, or
   stopping-rule difference other than ConvMem availability is a qualification
   failure.
+- Any shared mutable state, non-replayed external dependency, or cross-arm
+  carryover is an environment-invalidity failure, not a missing outcome.
 - A reused Agent-B context/session, registry/key exposure, controller action on
   behalf of Agent B, or mutable C1 snapshot is rejected.
 - Changing order after observing an outcome is rejected.
@@ -523,9 +585,10 @@ actions, tool outputs, complete transcript, final answer/artifact, action
 count, latency, provenance trace, and terminal disposition. A failed or
 uninteresting trial is retained; it is not replaced.
 
-### Required terminal dispositions
+### Required terminal and evaluability records
 
-Each selected trial ends as one explicit state, for example:
+Each selected trial ends as one explicit state and a separate arm-level
+evidence-capture/evaluability record, for example:
 
 - `TRIAL_COMPLETE` — final output and trace are complete;
 - `TRIAL_AGENT_FAILURE` — Agent B failed or stopped under the frozen rule;
@@ -535,6 +598,13 @@ Each selected trial ends as one explicit state, for example:
 
 These trial states do not rewrite target eligibility or turn missing evidence
 into a zero-target episode.
+
+The frozen reason taxonomy classifies `TRIAL_AGENT_FAILURE` or
+`TRIAL_TOOL_FAILURE` as boundable outcome missingness only when the pair passed
+all protocol/environment/isolation checks and the rubric defines a latent
+bounded score. `TRIAL_PROTOCOL_INVALID`, wrong environment, shared state,
+scorer unblinding, registry mutation, or lineage/freeze mismatch is invalid,
+never boundable.
 
 ### Inputs, outputs, and identity requirements
 
@@ -556,20 +626,24 @@ into a zero-target episode.
 - The complete execution manifest must include failed and zero-opportunity
   episode relationships where applicable.
 
-T7 stops `INVALID` for protocol or context leakage, `DIAGNOSTIC` for trace or
-instrumentation loss, and `BLOCKED / NON-ESTIMABLE` if enough paired trials
-cannot be identified under the frozen design. It does not authorize reruns
-chosen for favorable outcomes.
+T7 records protocol validity, per-arm capture/evaluability, and reason codes.
+Invalid pairs stop before scoring; valid missing outcomes remain for T9 bounds.
+It does not authorize reruns chosen for favorable outcomes.
 
 ## 11. T8 — Blinded scoring
 
 ### Scoring and reliability rule
 
 Two independent scoring roles score the complete eligible/evaluable target set
-and derive the bounded episode score with condition labels masked. Each scorer
-uses the sealed key and frozen rubric and submits independently before seeing
-the other's decisions. Disagreements are resolved by the frozen blinded third
-scorer or blinded consensus procedure.
+from structurally identical, condition-neutral packages. Condition names,
+session/episode IDs, filenames/paths, latency, tool counts, raw tool traces,
+retrieval-only blocks, and other condition-correlated form or metadata are
+stripped or symmetrically normalized. Pair presentation order is randomized
+under its own frozen seed. If an LLM scores, transcript content is untrusted
+input isolated from scoring instructions, and calibration/study contexts are
+disjoint. Each scorer uses the sealed key and frozen rubric and submits before
+seeing the other's decisions. Disagreements are resolved by the frozen blinded
+third scorer or consensus procedure.
 
 The score record covers correctness, currentness, provenance/grounding,
 unsupported claims, realistic continuation utility, and permitted effort/
@@ -591,14 +665,15 @@ receive ordinary confidence or become a zero effect.
 
 | Input authority | Output artifact | Required identity binding |
 |---|---|---|
-| Sealed key/rubric; blinded trial records; raw evidence required by rubric | Independent `TargetScoreSet` and `EpisodeScoreSet` | Score version, scorer IDs, masked condition package digest, trial/probe/target/episode IDs, key/rubric digests, score and reliability states |
+| Sealed key/rubric; blinded trial records; raw evidence required by rubric | Independent `TargetScoreSet` and `EpisodeScoreSet` | Score version, scorer IDs, condition-neutral package/transform digest, randomized presentation-order identity, trial/probe/target/episode IDs, key/rubric digests, score and reliability states |
 | Second scorer and resolution role | `ScoringReliabilityReport` | Agreement counts, scale/statistic identity, gate value, resolution records, scorer-role identities, report digest |
 | Frozen sparse rule | Sparse disposition report | Evidence basis, episode reliability states, inclusion/disposition rule, no-result-change attestation |
 
 ### Invariants, negative tests, and stop condition
 
-- A scorer who sees condition labels, treatment order, capture status, or future
-  results is removed from the affected scoring set and the set is diagnostic.
+- A scorer who sees condition labels, treatment order, capture status,
+  condition-correlated form/metadata, or future results invalidates the
+  affected scoring generation; this is not score missingness.
 - A key edited after trial execution or exposed to Agent B invalidates the
   affected scoring generation.
 - Reliability below the frozen gate does not yield a product verdict. Affected
@@ -626,14 +701,23 @@ the population definition.
 No missing, incomplete, ambiguous, or zero-target state may be collapsed into
 one convenient denominator. `EVIDENCE_INCOMPLETE` is not zero.
 
-### Co-primary B — conditional episode continuation benefit
+### Co-primary B — complete-pair effect and missing-outcome bounds
 
-For each target-bearing/evaluable episode in the frozen conditional analysis
-set, use exactly one bounded normalized within-episode continuation-utility
+For each target-bearing episode with valid, score-evaluable outcomes in both
+arms, use exactly one bounded normalized within-episode continuation-utility
 score for C0 and one for C1, then form the paired C1−C0 episode contribution
-under the T0 estimator. The within-episode rule may combine target-level
-diagnostics only through the frozen aggregation contract. Raw target count
-cannot determine episode weight.
+under the T0 estimator. Raw target count cannot determine episode weight.
+
+Every target-bearing episode has one immutable `episode_opportunity_id` linked
+to its registry rows. Every such episode without a complete valid pair remains
+in the denominator ledger. Target rows are secondary inputs to the frozen
+within-episode aggregation rule, not additional primary denominator units.
+Report C0 and C1 trial-capture and score-evaluability rates
+separately, with frozen mutually exclusive reasons. Apply the deterministic
+worst/best-case or prospectively frozen sensitivity procedure only to valid
+missing outcomes over the frozen score support. Report the complete-pair
+estimate and bounds together; if the bounds span the frozen decision region, the
+missingness/comparability state is inconclusive rather than a product null.
 
 The report must display episode count, target-bearing/evaluable count, sparse
 reliability states, incomplete/ambiguous counts, paired contribution coverage,
@@ -645,7 +729,7 @@ co-primary A and do not receive an invented treatment score in co-primary B.
 | Input authority | Output artifact | Required identity binding |
 |---|---|---|
 | T1 EpisodeFrame/records; T2 registry; T3 census/sample | Opportunity analysis input | Frame, episode roster, registry/sample digests, zero-target and incomplete-state counts |
-| T8 accepted target/episode scores and reliability report | `EpisodeAggregationReport` | Score-set digest, reliability gate result, one-score-per-episode proof, conditional-set rule/digest, estimator/version identity |
+| T7 validity/capture/evaluability ledger; T8 accepted scores and reliability report | `EpisodeAggregationReport` | Registry denominator digest, per-arm rates/reasons, score-set digest, one-score-per-episode proof, complete-pair estimator, bounds/support identity, reliability result |
 | Full identity chain | Analysis lineage manifest | All parent artifact digests from frame through trial, score, and aggregation |
 
 ### Invariants, negative tests, and stop condition
@@ -658,8 +742,12 @@ co-primary A and do not receive an invented treatment score in co-primary B.
   correction.
 - Any episode included in co-primary B must have the required paired scores or
   a frozen explicit terminal disposition.
+- Invalid trials cannot receive latent scores or enter the bounds calculation.
+- A tolerance alarm cannot replace the frozen bounds procedure or silently
+  suppress a decision-informative bound.
 
-T9 stops `INVALID` for post-result estimator or membership changes,
+T9 emits analysis artifacts and intervals, never a product disposition. It
+stops `INVALID` for post-result estimator or membership changes,
 `DIAGNOSTIC` for lineage/aggregation defects, and `BLOCKED / NON-ESTIMABLE`
 when the frozen conditional set or reliable score cannot be formed. It may
 still produce the descriptive opportunity report when valid.
@@ -677,35 +765,43 @@ Before any product conclusion, the analysis owner applies the T0-frozen:
 - precision/confidence or randomization criterion;
 - sparse-episode disposition;
 - scorer-reliability disposition;
-- treatment of ties, missing pairs, and terminal trial states.
+- treatment of ties, valid missing pairs, bounds, and invalid terminal states;
+- orthogonal-state reason taxonomy and precedence.
 
 No threshold, margin, confidence rule, sparse rule, or inclusion rule may be
 adapted because the results are sparse, unfavorable, or inconvenient. There is
 no extension of the observation window after results are seen.
 
-### Allowed terminal interpretations
+### Derived terminal interpretations
+
+The controller derives the disposition in this order: protocol/isolation/
+lineage/registry/freeze invalidity; environment or scorer-integrity invalidity;
+insufficient opportunity/information; valid missingness with inconclusive
+bounds; only then effect interpretation.
 
 - `COMPLETE — POSITIVE`: valid co-primary analysis meets the frozen meaningful
   positive criterion and information/precision rule.
 - `COMPLETE — NULL / EQUIVALENT`: valid analysis is sufficiently informative
   under the frozen null rule to exclude the meaningful-advantage interval.
 - `COMPLETE — NEGATIVE`: valid analysis meets the frozen criterion favoring C0.
-- `BLOCKED / NON-ESTIMABLE`: evidence, precision, sparse reliability, or scorer
-  reliability is insufficient for a product verdict.
-- `DIAGNOSTIC`: an identity, completeness, instrumentation, or isolated
-  secondary scoring failure prevents interpretation of the affected result.
-- `INVALID`: a protocol invariant or freeze boundary was violated.
+- `BLOCKED / NON-ESTIMABLE`: valid evidence is insufficient or valid
+  missing-outcome bounds are inconclusive; exact reason codes are required.
+- `DIAGNOSTIC`: an allowed diagnostic/secondary measurement is unavailable
+  without invalidating the primary evidence; exact reason codes are required.
+- `INVALID`: a protocol, isolation, environment, lineage, registry, freeze, or
+  scorer-blinding invariant was violated. Invalid evidence is never bounded.
 
-The final report contains both co-primary components and their information
-states. An all-episode opportunity-weighted effect, if computed, is explicitly
-secondary and cannot replace the two-part presentation.
+The final report contains the structured tuple: opportunity prevalence,
+complete-pair effect plus bounds, and full capture/evaluability/failure
+accounting. Any opportunity-weighted scalar is explicitly secondary, names its
+transportability or zero-contribution assumption, and cannot replace the tuple.
 
 ### Inputs, outputs, and identity requirements
 
 | Input authority | Output artifact | Required identity binding |
 |---|---|---|
 | T0 parameter registry; T9 aggregation; reliability reports | `InformationGateReport` | Every parameter digest, estimator/score version, data/lineage digest, gate calculation, analysis owner ID |
-| Frozen terminal-state rule | `StudyDisposition` | Exact terminal label, rationale, unresolved diagnostics, report digest, no-adaptation attestation |
+| Frozen state/reason/precedence rule | `StudyDisposition` | Orthogonal states, exact derived label and reason codes, precedence path, unresolved diagnostics, report digest, no-adaptation attestation |
 
 ### Invariants, negative tests, and stop condition
 
@@ -731,18 +827,26 @@ after implementation and dry-run verification.
 | G1 Methodology substrate and artifact schemas | Implement content-addressed IDs, freeze manifests, role/access manifests, state transitions, immutable artifact readers/writers | Plan accepted | Schema tests and hash/seal fixtures | Live episode data, ConvMem mutation, Agent A/B |
 | G2 Adjudication/registry machinery | Implement complete-census views, mechanical admissibility procedure, dual decisions, disagreement resolution, registry seal | G1 | Registry fixture and access-separation tests | Real target census, capture inspection, study execution |
 | G3 Probe/leakage machinery | Implement probe/key partitions, role overlap checks, leakage checklist/reviewer sign-off, probe freeze | G1–G2 | Leakage and key-separation fixtures | Real target probes, treatment exposure |
-| G4 Analysis/statistical machinery | Implement bounded within-episode score contract, sparse states, scorer reliability records, co-primary aggregation, information gate slots | G1; architecture decisions | Synthetic paired fixtures; no chosen live numerical values | Product conclusion, real scoring |
-| G5 Dry-run/fixture verification | Exercise T0–T10 mechanics with synthetic episodes, zero-targets, duplicates, leakage, asymmetry, failures, and full lineage | G1–G4 | Independent dry-run PASS report; no natural evidence | Prospective freeze, Agent A/B, live ConvMem |
-| G6 Actual prospective study freeze | Ryan instantiates and approves T0 values, roles, schedule/window, environments, order, parameter slots, and terminal rules | G5 PASS; Kiro plan review; Ryan authorization | `FRAME_FROZEN` and T0 verification | Agent A before gate; no result collection |
+| G4 Landed analysis/statistical baseline | Existing bounded episode scores, sparse/reliability records, aggregation, and information slots; this landed baseline is not re-granted by the amendment | G1; prior grants | Existing synthetic fixtures | New corrective mechanics, product conclusion, real scoring |
+| G5C Corrective implementation and dry-run | Make only the changes to landed G1–G4 machinery required for structural completeness, immutable opportunity authority, separate capture/evaluability axes, valid-vs-invalid classification, deterministic bounds, orthogonal state/reason precedence, paired replay, and an individual T0–T10 boundary ledger; then rerun corrected G5 | Kiro-reviewed amendment; separate Ryan implementation grant | Independent corrected-scope G5 PASS report at exact revision; synthetic evidence only | Prospective freeze, live parameter values, Agent A/B, natural corpus/index, live ConvMem, scoring, product conclusion |
+| G6 Actual prospective study freeze | Ryan instantiates and approves T0 values, roles, schedule/window, environments, order, parameter slots, and terminal rules | Corrected G5C PASS; Kiro plan review; fresh Ryan authorization | `FRAME_FROZEN` and T0 verification | Agent A before gate; no result collection |
 | G7 Agent-A episode execution | Collect only the selected ordinary episodes and seal raw evidence | G6 | T1 complete episode/evidence bundle | Replacement episodes, target selection, B trials |
 | G8 Target census | Two independent adjudicators complete and seal the raw-evidence census; resolve disagreements | G7 | T2 sealed `TargetRegistry` and quality report | Probe construction before seal; capture-based decisions |
 | G9 Census/sample, probe, capture, and C1 readiness | Apply T3; construct/review T4 probes; freeze T5 natural snapshot; qualify T6 | G8; staged sub-gates | Sample/probe/key/capture/environment manifests | Target-directed recapture; B execution before T6 PASS |
 | G10 Agent-B paired execution | Run both fresh conditions for the selected pairs with complete traces | G9/T6 PASS | T7 execution bundle and terminal roster | Controller answers/searches; reused context; replacement trials |
-| G11 Scoring and analysis | Blind T8 scoring/reliability, T9 aggregation, T10 information/null gate | G10 | Co-primary report and allowed disposition | Threshold changes, product claim before gate |
+| G11 Scoring and analysis | Blind T8 scoring/reliability, T9 aggregation/bounds, T10 information/null gate | G10 | Structured result tuple and allowed derived disposition | Threshold changes, scalar headline, product claim before gate |
 
 Cursor may receive only a bounded grant naming one row and its exact output
 contract. Ryan owns the transition from implementation/dry-run grants to G6–G11
 live study grants. Codex does not send work to Cursor from this plan.
+
+`G5C` is one bounded corrective grant over the landed baseline; it is not a
+retroactive G4 grant and does not reopen unrelated G1–G4 scope. Its internal
+`StageBoundaryLedger` must record, for each individual T0 through T10 boundary,
+the canonical input digest, required predicates, output digest, validator
+result, and next-stage assumptions. The existing grouped `T0_T2`, `T3_T5`,
+`T6_T7`, and `T8_T10` statuses may remain as summaries only; they cannot be the
+sole evidence for composition.
 
 ## 15. Reuse and new-component implementation map
 
@@ -755,7 +859,7 @@ The map is a planning boundary, not authorization to edit these modules.
 | Retrieval/provenance diagnostics | Reuse `ask.py`, `query.py`, and existing trace interfaces | Diagnostics only; raw evidence and TargetRegistry remain authoritative |
 | Latency harness | Reuse `eval_corpus/runner.py` latency conventions | Add the study's ordinary-work action taxonomy and controller-exclusion proof; do not claim an action counter module exists |
 | Paired statistics and runner conventions | Reuse `eval_corpus/paired_stats.py` and `eval_corpus/runner.py` | Extend only behind the episode-level, unequal-target, zero-state, reliability, and margin contracts |
-| Raw evidence recorder/controller | Historical v3 controller event/reply/raw-file conventions | Historical/to-be-relocated foundation; the exact current implementation path must be verified during G1/G5 before live use |
+| Raw evidence recorder/controller | Historical v3 controller event/reply/raw-file conventions | Historical/to-be-relocated foundation; the exact current implementation path must be verified during G1/G5C before live use |
 | Historical Portland C0/C1 harness | Historical/to-be-relocated foundation; no current reusable path verified | Do not reuse old fixed questions as design; revalidate fresh-session and symmetry behavior in fixtures |
 | Obsolete cited paths | `scripts/experiments/portland-baseline/action_counter.py` and `index_runner.py` are absent at the corrected tip | They are not reusable modules. Any recovered historical artifact must be explicitly relocated, reviewed, and renamed before use |
 | Artifact IDs, freeze/seal state, and role access | New methodology substrate | New schemas and mechanical checks for `StudyFrame`, `EpisodeRecord`, `RawEvidenceManifest`, state transitions, access audit, and lineage |
@@ -777,17 +881,17 @@ the stage. A passing fixture does not authorize live study use by itself.
 
 | Stage | Input authority | Required output/hash/identity | Core invariants | Adversarial negatives | Stop disposition |
 |---|---|---|---|---|---|
-| T0 | Accepted architecture; Ryan registration; environment/workload evidence | Frozen frame, role manifest, schedule, parameter registry, all digests and approver IDs | Complete fields; no result-dependent slots; no replacement; roles and terminals explicit | Post-freeze edit; missing slot; adjudicator/probe overlap; capture-based sample rule | `INVALID / NOT STARTED` or `BLOCKED` |
+| T0 | Accepted architecture; Ryan registration; environment/workload evidence | Atomic serialized manifest, role/schedule/parameter records, logged/re-derived digest, isolation report | Structural content complete; no placeholder/status shortcut; exact handed artifact; execution refuses absent freeze | Partial frame; placeholder marked complete; post-freeze tamper; handed-artifact mismatch; mounted forbidden study path | `INVALID / NOT STARTED`, integrity incident, or `BLOCKED` |
 | T1 | Frozen frame/schedule; ordinary work | Episode records and complete raw manifests with source/session/snapshot digests | Every selected episode retained; completeness explicit; no ConvMem-based retention | Replace boring episode; omit zero-opportunity episode; mark partial manifest complete | `DIAGNOSTIC` / `BLOCKED` |
 | T2 | Sealed raw evidence; frozen rules | Two full adjudication sets, blinded resolution, registry and quality report digests | Mechanical seam decisions; raw-only; one episode row each; registry one-way seal | Capture-dependent exclusion; unsealed target edit; single-assessor shortcut; duplicate drift | `INVALID` / `DIAGNOSTIC` / `BLOCKED` |
 | T3 | Sealed registry; T0 sample rule | Census acceptance or episode sample manifest; seed, probabilities, unsampled digest | Census if feasible; whole-episode sampling; zero rows preserved; no discretionary picking | Target-rich episode overweight; manual target pick; missing zero-target episode | `INVALID` / `DIAGNOSTIC` / `BLOCKED` |
 | T4 | Sealed registry/sample; T0 probe families | Probe/key/leakage manifests and digests; role IDs | Realistic task; author knows boundary honestly; author ≠ adjudicator; separate key/reviewer | Answer/paraphrase/path/location leakage; treatment/ConvMem cue; identity collision | `INVALID` / `DIAGNOSTIC` / `BLOCKED` |
 | T5 | Sealed probes/sample; normal ConvMem state | Capture-state map and immutable C1 snapshot manifest | Natural capture only; uncaptured targets retained; registry unchanged | Target-directed reindex; recapture; capture-based deletion; mutable snapshot | `INVALID` / `DIAGNOSTIC` / `BLOCKED` |
-| T6 | T0 environment/order; T4/T5 packages | C0/C1 comparison, fresh-session proof, order manifest, qualification digest | Same evidence/tools/model/gap/budget; only C1 ConvMem; no registry/key B access | Tool asymmetry; reused session; prior-trial leakage; controller acts as B | `INVALID` / `DIAGNOSTIC` / `BLOCKED` |
-| T7 | Qualified packages/order; selected probes | Full paired trial traces, IDs, actions, latency, provenance, terminal roster | Fresh pair; no replacement; explicit trial terminal state; complete raw evidence | Reused Agent-B context; controller answer/search; missing action trace; condition repair | `INVALID` / `DIAGNOSTIC` / `BLOCKED` |
-| T8 | Masked trial outputs; sealed key/rubric | Independent target/episode scores, reliability report, sparse states | Complete scoring set; independent raters; frozen statistic/gate; no low-reliability verdict | Unmasked scorer; post-result key edit; sparse exclusion; below-gate positive/null | `INVALID` / `DIAGNOSTIC` / `BLOCKED` |
-| T9 | Episode frame/registry/sample; accepted scores | Opportunity and conditional reports; one-score proof; lineage digest | All-zero not null; no target-count episode weighting; co-primary split preserved | Post-result score normalization; target-rich overweight; missing zero rows | `INVALID` / `DIAGNOSTIC` / `BLOCKED` |
-| T10 | Frozen parameter registry; T9 outputs; reliability reports | Information gate and final allowed disposition with all parent digests | No threshold/observation adaptation; valid insufficient data is blocked | Post-result threshold change; extension for unfavorable sparsity; false null | `INVALID` / `DIAGNOSTIC` / `BLOCKED` or complete label |
+| T6 | T0 replay/isolation/order policy; T4/T5 packages | Sealed-state comparison, fresh-session/reset proof, external-state report, execution-order digest | Same state/tools/model/gap/budget/external replay; only C1 ConvMem; no shared mutable state | Tool/root mismatch; reused session/cache/DB row; non-replayed service; controller acts as B | `INVALID`, or pre-execution `BLOCKED / NOT STARTED` |
+| T7 | Qualified packages/order; selected probes | Full paired traces plus per-arm validity/capture/evaluability/reason ledger | Fresh pair; no replacement; missingness distinct from invalidity | Protocol failure labeled missing; missing trace silently repaired; condition-specific retry | `INVALID`, valid missing outcome, or explicit diagnostic |
+| T8 | Condition-neutral trial packages; sealed key/rubric | Independent scores, presentation-order/transform digest, reliability report | Structurally matched packages; independent randomized order; frozen reliability; untrusted-content boundary | Condition-correlated form/metadata; scorer prompt injection; calibration context overlap; below-gate verdict | `INVALID` / `DIAGNOSTIC` / `BLOCKED` |
+| T9 | Fixed registry denominator; T7 validity/evaluability; accepted scores | Opportunity report, per-arm process accounting, complete-pair estimate, deterministic bounds | Every opportunity accounted; invalid evidence excluded from bounds; no target-count weighting | Drop asymmetric failures; bound protocol invalidity; tolerance-only cliff; missing zero rows | `INVALID` / `DIAGNOSTIC` / bounded or inconclusive result |
+| T10 | Frozen parameter/state/reason/precedence registry; T9 outputs | Structured result tuple and derived disposition with full lineage | Precedence applied before effect; no scalar headline; no threshold adaptation | Product verdict after protocol/scorer failure; generic sink; post-result rule change | `INVALID` / `DIAGNOSTIC` / `BLOCKED` or complete label |
 
 ### Required adversarial verification set
 
@@ -826,6 +930,41 @@ for at least the following:
 14. **All-zero window:** construct a valid observation window with no eligible
     target; verify opportunity reporting remains descriptive and product effect
     is not called null.
+15. **Incomplete nominal T0_T2 frame:** begin from a schema-verified fixture in
+    which every prospective slot is explicitly `PENDING`; populate only a
+    subset and verify `run_g5_end_to_end()` fails before T0_T2 success.
+16. **False completeness flag:** mark an empty/placeholder slot complete;
+    verify serialized-content validation rejects it despite the status flag.
+17. **Stage-local corruption sweep:** corrupt each T0–T10 stage input in turn;
+    verify that stage fails closed and no later stage repairs, ignores, or
+    replaces the missing guarantee.
+18. **Boundary composition proof:** on the full happy path, assert at every
+    boundary that the prior output actually satisfies each guarantee the next
+    stage assumes, rather than asserting only a success return value.
+19. **Freeze/hand-off tamper:** alter serialized bytes after freeze or hand the
+    second validator a different artifact; verify digest mismatch, execution
+    refusal, and integrity-incident handling.
+20. **Arm/result-dependent opportunity rule:** make registry membership consult
+    arm, capture, retrieval, or C0/C1 outcomes; verify manifest or lifecycle
+    validation rejects it before execution.
+21. **Asymmetric valid missingness:** create different C0/C1 trial-capture or
+    evaluability rates; verify every registry row remains, per-arm rates and
+    reasons are reported, bounds are deterministic, and an effect is emitted
+    only when the frozen decision rule permits it.
+22. **Invalid-versus-boundable separation:** inject an environment/isolation/
+    freeze failure and a valid missing outcome; verify only the latter enters
+    bounds and invalidity wins disposition precedence.
+23. **Disposition precedence:** combine protocol invalidity, sparse
+    information, scorer failure, and an apparently positive effect; verify the
+    derived result follows the frozen precedence and retains every reason.
+24. **Paired-replay mismatch:** vary a readable root, shared cache/database
+    state, mutable external-service response, or execution order after freeze;
+    verify qualification rejects the pair before scoring.
+
+The G5 corrective also requires an import-boundary check showing that the T0
+structural validator does not import execution, capture, or scoring modules.
+The validator may share only canonical serialization/schema identifiers and
+the cryptographic digest primitive. All scenarios remain synthetic-only.
 
 ## 17. Still-unresolved numerical and product-contract choices
 
@@ -845,6 +984,10 @@ freeze. None may be selected merely for convenience.
 | Confidence/precision criterion | T0 before Agent A | Decision risk, estimator behavior, planned interval/randomization method, and pre-study simulation | Ryan after Kiro review | Product-inference-defining |
 | Fixed episode count/observation window | T0 before Agent A | Ordinary-work population, feasible capture window, expected opportunity rate, and operational constraints | Ryan | Study-population-defining |
 | Whole-episode sampling allocation/weights, if needed | T0 before registry use | Population frame, selection probabilities, episode-weight preservation proof | Ryan after Kiro sampling review | Estimand-defining |
+| Bounded score support and decision-informative-bounds criterion | T0 before Agent A | Rubric range proof, synthetic behavior under missingness patterns, and product decision region | Ryan after Kiro methodology review | Estimand/inference-defining |
+| Any capture/evaluability asymmetry alarm or sensitivity parameter | T0 before Agent A | Synthetic missingness qualification and evidence independent of live outcomes | Ryan after Kiro methodology review | Interpretation-defining; not an estimator cliff |
+| Failure/reason enum and orthogonal-state precedence | T0 before Agent A | Synthetic coverage of every boundable, invalid, diagnostic, sparse, scorer, and environment branch | Ryan after Kiro review | Protocol/interpretation-defining |
+| Paired replay and external-service acceptance policy | T0 before Agent A | Adversarial qualification showing fresh state, no carryover, and repeatable external evidence | Ryan after Kiro environment review | Identification-defining |
 
 The meaningful-advantage and equivalence choices are construct-level. If Kiro
 and Ryan later produce materially conflicting written positions on either, a
@@ -876,34 +1019,41 @@ an explicitly bounded requested correction tied to this plan revision:
 8. Does T8 define independent masked scoring, disagreement resolution,
    scale-appropriate reliability checks, sparse states, and fail-closed
    below-gate dispositions without inventing numerical floors?
-9. Does T9 preserve the authoritative two-part co-primary presentation,
-   use one bounded normalized score per episode/condition, keep target-level
-   outcomes secondary, and preserve zero-target episodes correctly?
-10. Does T10 prevent post-result threshold changes, adaptive extension, false
-    null conclusions, and conflation of invalid/diagnostic/blocked states?
+9. Does T9 preserve the sealed registry denominator, report per-arm capture and
+   evaluability, compute the complete-pair effect and deterministic bounds for
+   valid missing outcomes, and exclude invalid trials from bounds?
+10. Does T10 derive dispositions from orthogonal states and exact reasons in
+    the required precedence, prevent a generic non-estimable sink, and prohibit
+    an authoritative scalar or effect verdict after an invalidity?
 11. Are G1–G11 separately grantable, with Ryan authorization required before
     live T0, Agent A, census, Agent B, scoring, or analysis work?
 12. Are every reuse-map path and every historical/to-be-relocated claim
     accurately labeled at the corrected architecture tip?
-13. Does the verification matrix cover all requested adversarial cases and
-    identify the correct failure disposition for each?
+13. Does corrected G5 cover the original incomplete-frame composition defect,
+    false completeness flags, every-stage corruption, boundary guarantees,
+    validator tamper, arm-dependent registry rules, asymmetric missingness,
+    invalid-vs-boundable separation, precedence, and replay mismatch?
 14. Does any remaining choice now constitute a genuine construct-level conflict
     requiring Sol, or can the choice remain a bounded later Ryan/Kiro decision?
+15. Is the state machine's distinction between editable incompleteness and a
+    post-freeze integrity incident sufficient and mechanically testable?
+16. Do scorer-package normalization and untrusted-transcript controls prevent
+    condition disclosure without removing task content needed by the rubric?
 
 ## 19. Review and authorization sequence
 
 ```text
-Corrected architecture amendment (Codex) — complete and pushed
+Corrective architecture/execution amendment (Codex) — this revision
         ↓
-Execution plan (Codex) — this document; awaiting independent review
+Kiro exact-revision architecture/execution review
         ↓
-Kiro execution-plan review
+Ryan amendment acceptance or bounded correction request
         ↓
-Ryan execution-plan acceptance
+Separate Ryan grant for bounded G5 corrective implementation, if accepted
         ↓
-Cursor G1–G5 bounded implementation/dry-run grants
+Corrected G5 synthetic PASS and independent review
         ↓
-Ryan explicit live-study grants G6–G11
+Fresh Ryan decision on any G6/T0 planning grant
 ```
 
 No branch, plan, or dry-run PASS is an implicit grant to run Agent A/B or
@@ -911,22 +1061,26 @@ collect natural episodes. The live study remains review-required.
 
 ## 20. Exit criteria for this planning lane
 
-- [x] Corrected architecture committed before this plan was drafted.
-- [x] Corrected architecture pushed on its architecture branch.
-- [x] Execution branch carries the accepted architecture and amendment.
+- [x] Ryan accepted D1–D6 as corrective design direction.
+- [x] Architecture and execution amendments incorporate D1–D6 without choosing
+      live parameter values.
+- [x] Architecture and execution amendments are co-versioned for one exact
+      Kiro review revision.
 - [x] T0–T10 stages specify authority, artifacts, identities, invariants,
       negative tests, and stop dispositions.
 - [x] Grant decomposition separates methodology, adjudication, probes,
       analysis, dry-run, freeze, Agent A, census, Agent B, and scoring/analysis.
 - [x] Reuse/new-component map identifies verified anchors and obsolete paths.
-- [x] Adversarial verification includes capture exclusion, sealing, leakage,
-      role collision, symmetry, context reuse, reindexing, zero targets,
-      target-rich weighting, and post-result threshold changes.
+- [x] Corrected G5 verification includes the original incomplete-frame defect,
+      structural validation, full-stage corruption/composition, tamper,
+      asymmetric missingness/bounds, invalidity separation, precedence, and
+      replay mismatch.
 - [x] Numerical/product-contract choices remain explicitly unresolved with
       evidence, authority, freeze point, and construct status.
 - [ ] Kiro independent execution-plan review.
 - [ ] Ryan execution-plan acceptance.
 - [ ] Any implementation or live-study grant.
 
-**Next sequence:** Kiro independent execution-plan review → Ryan acceptance →
-bounded Cursor implementation grants.
+**Next sequence:** Kiro exact-revision corrective review → Ryan
+acceptance/revision decision → only then a separately authorized bounded G5
+implementation slice. Gate remains C; G6/T0 remains closed.
