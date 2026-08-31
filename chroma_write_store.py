@@ -65,10 +65,11 @@ class ProductionWriteSession:
 
 
 @dataclass(frozen=True)
-class WriterAttestation:
+class WriterAttestation:  # pylint: disable=too-many-instance-attributes
     pid: int
     start_time: str
     code_revision: str
+    git_revision: str
     executable: str
     entrypoint: str
     protocol_version: int
@@ -79,6 +80,7 @@ class WriterAttestation:
             "pid": self.pid,
             "start_time": self.start_time,
             "code_revision": self.code_revision,
+            "git_revision": self.git_revision,
             "executable": self.executable,
             "entrypoint": self.entrypoint,
             "protocol_version": self.protocol_version,
@@ -184,7 +186,7 @@ def _release_process_writer_lease() -> bool:
         return False
 
 
-def current_code_revision() -> str:
+def current_git_revision() -> str:
     try:
         import subprocess
 
@@ -202,6 +204,18 @@ def current_code_revision() -> str:
     return "unknown"
 
 
+def current_implementation_revision() -> str:
+    """Authority-bound implementation identity shared with R2b coverage/proof."""
+    from eval_corpus.r2b_v2.coverage.inventory import resolve_r2b_implementation_revision
+
+    return resolve_r2b_implementation_revision()
+
+
+def current_code_revision() -> str:
+    """Git HEAD provenance for debugging and non-authority telemetry."""
+    return current_git_revision()
+
+
 def _proc_start_time(pid: int) -> str:
     try:
         # Field 22 in /proc/pid/stat is starttime (clock ticks).
@@ -217,12 +231,14 @@ def build_writer_attestation(
     *,
     entrypoint: str = "production_chroma_write_session",
     code_revision: str | None = None,
+    git_revision: str | None = None,
 ) -> WriterAttestation:
     pid = os.getpid()
     return WriterAttestation(
         pid=pid,
         start_time=_proc_start_time(pid),
-        code_revision=code_revision or current_code_revision(),
+        code_revision=code_revision or current_implementation_revision(),
+        git_revision=git_revision or current_git_revision(),
         executable=os.path.realpath(f"/proc/{pid}/exe") if Path(f"/proc/{pid}/exe").exists() else "unknown",
         entrypoint=entrypoint,
         protocol_version=WRITER_GATE_PROTOCOL_VERSION,
@@ -306,7 +322,8 @@ def generate_writer_census(
     )
     return {
         "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "code_revision": code_revision or current_code_revision(),
+        "code_revision": code_revision or current_implementation_revision(),
+        "git_revision": current_git_revision(),
         "protocol_version": WRITER_GATE_PROTOCOL_VERSION,
         "systemd_units": list(KNOWN_WRITER_SYSTEMD_UNITS),
         "cmdline_signatures": list(KNOWN_WRITER_CMDLINE_SIGNATURES),
@@ -348,7 +365,7 @@ def classify_legacy_writer_pids(
     expected_revision: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return refusal records for unattested / mismatched writer PIDs."""
-    expected = expected_revision or current_code_revision()
+    expected = expected_revision or current_implementation_revision()
     refusals: list[dict[str, Any]] = []
     for pid in pids:
         if pid == os.getpid():
