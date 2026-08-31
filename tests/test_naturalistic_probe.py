@@ -4,7 +4,6 @@ from __future__ import annotations
 
 # Hermetic path bootstrapping precedes project imports; repeated setup is intentional.
 # pylint: disable=wrong-import-position,duplicate-code
-
 import copy
 import sys
 import unittest
@@ -318,7 +317,9 @@ class FreezeIntegrityTests(unittest.TestCase):
         bad_probe = copy.deepcopy(result.probe.to_dict())
         bad_probe["target_registry_digest"] = "deadbeef" * 8
         proposed = ProbeManifestV1.from_dict(bad_probe)
-        from eval_naturalistic.probe_construction import validate_registry_sample_parent_binding
+        from eval_naturalistic.probe_construction import (
+            validate_registry_sample_parent_binding,
+        )
 
         binding = validate_registry_sample_parent_binding(
             registry=registry,

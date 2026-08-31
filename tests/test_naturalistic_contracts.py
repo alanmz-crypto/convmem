@@ -4,7 +4,6 @@ from __future__ import annotations
 
 # Hermetic path bootstrapping precedes project imports; repeated setup is intentional.
 # pylint: disable=wrong-import-position,duplicate-code
-
 import copy
 import sys
 import unittest
@@ -12,6 +11,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from eval_naturalistic.adjudication import build_sealed_target_registry
+from eval_naturalistic.adjudication_fixtures import (
+    make_agreeing_eligible_candidate,
+    make_default_workflow,
+)
+from eval_naturalistic.base import StructuralContractError
 from eval_naturalistic.contract_validate import (
     validate_artifact_chain,
     validate_capture_independent_registry,
@@ -22,12 +27,6 @@ from eval_naturalistic.contract_validate import (
     validate_seal_immutability,
     validate_terminal_state_distinction,
 )
-from eval_naturalistic.adjudication import build_sealed_target_registry
-from eval_naturalistic.adjudication_fixtures import (
-    make_agreeing_eligible_candidate,
-    make_default_workflow,
-)
-from eval_naturalistic.base import StructuralContractError
 from eval_naturalistic.contracts import (
     EpisodeFrameV1,
     EpisodeOutcomeV1,
@@ -62,7 +61,6 @@ from eval_naturalistic.fixtures import (
     make_synthetic_registry,
     make_synthetic_scoring_key,
 )
-
 
 ARTIFACT_ROUND_TRIP_CASES = [
     ("EpisodeFrameV1", EpisodeFrameV1, make_synthetic_frame),
@@ -485,6 +483,56 @@ class AdversarialNegativeTests(unittest.TestCase):
         )
         self.assertFalse(result.ok)
 
+
+
+class ProspectiveManifestG5CTests(unittest.TestCase):
+    def test_pending_manifest_requires_all_eight_slots(self):
+        from eval_naturalistic.contracts import (
+            make_pending_prospective_manifest,
+            validate_prospective_manifest_structural,
+        )
+        from eval_naturalistic.fixtures import make_synthetic_frame
+
+        manifest = make_pending_prospective_manifest(frame=make_synthetic_frame())
+        body = manifest.to_dict()
+        check = validate_prospective_manifest_structural(body, require_logged_freeze=False)
+        self.assertTrue(check.ok, check.errors)
+        self.assertEqual(len(body["information_slots"]), 8)
+
+    def test_incomplete_manifest_rejected(self):
+        from eval_naturalistic.contracts import (
+            make_pending_prospective_manifest,
+            validate_prospective_manifest_structural,
+        )
+        from eval_naturalistic.fixtures import make_synthetic_frame
+
+        body = make_pending_prospective_manifest(frame=make_synthetic_frame()).to_dict()
+        body["information_slots"] = body["information_slots"][:2]
+        check = validate_prospective_manifest_structural(body, require_logged_freeze=False)
+        self.assertFalse(check.ok)
+
+    def test_stage_ledger_derives_group_summaries(self):
+        from eval_naturalistic.contracts import StageBoundaryLedgerEntryV1, StageBoundaryLedgerV1
+        from eval_naturalistic.enums import StudyStageId
+
+        entries = [
+            StageBoundaryLedgerEntryV1(
+                stage_id=stage,
+                input_artifact_digest="0" * 64,
+                required_predicates=[],
+                validator_identity="test",
+                validator_version="1",
+                output_artifact_digest=None,
+                guarantees_exported=["g"],
+                next_stage_assumptions=["a"],
+                failure_reasons=[],
+                passed=True,
+            )
+            for stage in StudyStageId
+        ]
+        ledger = StageBoundaryLedgerV1(entries=entries)
+        summaries = ledger.derived_group_summaries()
+        self.assertTrue(all(summaries.values()))
 
 if __name__ == "__main__":
     unittest.main()

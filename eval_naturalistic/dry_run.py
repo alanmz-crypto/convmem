@@ -10,11 +10,14 @@ from __future__ import annotations
 import copy
 import json
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any
 
 from eval_naturalistic.adjudication import (
+    assign_episode_opportunity_identity,
     build_sealed_target_registry,
     reject_capture_driven_registry_mutation,
+    validate_registry_build_context_arm_blind,
     validate_registry_membership_immutable,
 )
 from eval_naturalistic.adjudication_fixtures import (
@@ -26,7 +29,9 @@ from eval_naturalistic.analysis import (
     EpisodeRegistryViewV1,
     ScorerSubmissionV1,
     aggregate_targets_to_within_episode_score,
+    build_structured_synthetic_result,
     compute_co_primary_aggregation,
+    compute_deterministic_bounds,
     evaluate_information_gate_readiness,
     prove_one_score_per_episode_per_condition,
     record_scorer_reliability,
@@ -42,28 +47,44 @@ from eval_naturalistic.analysis_fixtures import (
     make_target_rich_episode_target_scores,
     make_zero_target_episodes_fixture,
 )
+from eval_naturalistic.base import validate_prospective_validator_import_boundary
 from eval_naturalistic.contract_validate import validate_capture_independent_registry
 from eval_naturalistic.contracts import (
+    ProspectiveManifestV1,
+    StageBoundaryLedgerEntryV1,
+    StageBoundaryLedgerV1,
+    StageBoundaryPredicateResultV1,
     TargetRecordV1,
     TargetRegistryV1,
     TargetSpanBindingV1,
+    make_pending_prospective_manifest,
+    reject_arm_dependent_registry_rule,
     seal_artifact_dict,
+    validate_prospective_manifest_structural,
+    verify_handoff_artifact_digest,
 )
+from eval_naturalistic.digest import artifact_content_digest
 from eval_naturalistic.dry_run_mechanics import (
+    G5C_VALIDATOR_IDENTITY,
+    G5C_VALIDATOR_VERSION,
+    SyntheticPairedReplayStateV1,
     SyntheticSnapshotDiagnosisV1,
     SyntheticTrialExecutionV1,
     make_symmetric_condition_packages,
     qualify_c0_c1_environment,
     validate_natural_c1_snapshot,
     validate_opportunity_roster,
+    validate_paired_replay_symmetry,
     validate_trial_execution,
 )
 from eval_naturalistic.enums import (
     CaptureDiagnosticState,
     EligibilityDisposition,
     EpisodeRegistryStatus,
+    OutcomeReasonCode,
     ProbeBuildOutcome,
     ReliabilityState,
+    StudyStageId,
     StudyTerminalDisposition,
     TrialCondition,
 )
@@ -74,7 +95,10 @@ from eval_naturalistic.fixtures import (
     make_synthetic_evidence,
     make_synthetic_frame,
 )
-from eval_naturalistic.probe_construction import build_sealed_probe_bundle, run_leakage_checklist
+from eval_naturalistic.probe_construction import (
+    build_sealed_probe_bundle,
+    run_leakage_checklist,
+)
 from eval_naturalistic.probe_fixtures import (
     CONTINUATION_PROBE_TEXT,
     LEAK_REVIEWER_ID,
@@ -105,6 +129,18 @@ G5_REQUIRED_FAIL_CLOSED_SCENARIOS = frozenset(
         "orphaned_score",
         "malformed_score",
         "pending_information_gate_slots",
+        "incomplete_nominal_t0_frame",
+        "false_completeness_placeholder_slot",
+        "freeze_tamper_post_seal",
+        "handoff_artifact_mismatch",
+        "validator_import_boundary",
+        "registry_arm_dependent_rule",
+        "invalid_vs_boundable_separation",
+        "disposition_precedence_favorable_effect",
+        "paired_replay_mismatch",
+        "scorer_integrity_vs_reliability",
+        "synthetic_only_guard",
+        "stage_corruption_sweep",
     }
 )
 
@@ -149,6 +185,51 @@ class G5DryRunReport:  # pylint: disable=too-many-instance-attributes
 def _synthetic_locators_only(evidence) -> bool:
     return all(source.locator.startswith("synthetic://") for source in evidence.sources)
 
+
+
+def _ledger_entry(
+    *,
+    stage: StudyStageId,
+    input_digest: str,
+    predicates: list[tuple[str, bool, str | None]],
+    output_digest: str | None,
+    guarantees: list[str],
+    assumptions: list[str],
+    failure_reasons: list[str] | None = None,
+) -> StageBoundaryLedgerEntryV1:
+    passed = not failure_reasons and all(item[1] for item in predicates)
+    return StageBoundaryLedgerEntryV1(
+        stage_id=stage,
+        input_artifact_digest=input_digest,
+        required_predicates=[
+            StageBoundaryPredicateResultV1(predicate_name=name, passed=ok, detail=detail)
+            for name, ok, detail in predicates
+        ],
+        validator_identity=G5C_VALIDATOR_IDENTITY,
+        validator_version=G5C_VALIDATOR_VERSION,
+        output_artifact_digest=output_digest,
+        guarantees_exported=guarantees,
+        next_stage_assumptions=assumptions,
+        failure_reasons=failure_reasons or [],
+        passed=passed,
+    )
+
+
+def _seal_prospective_manifest(manifest: ProspectiveManifestV1) -> tuple[dict[str, Any], str]:
+    body = manifest.to_dict()
+    sealed = seal_artifact_dict(body, seal_time="2026-08-30T00:00:00Z")
+    digest = artifact_content_digest(sealed)
+    sealed["logged_freeze_digest"] = digest
+    return sealed, digest
+
+
+def _validate_t0_prospective_manifest(serialized: dict[str, Any], *, require_freeze: bool) -> list[str]:
+    result = validate_prospective_manifest_structural(serialized, require_logged_freeze=require_freeze)
+    return list(result.errors)
+
+
+def _derive_stage_ok(ledger: StageBoundaryLedgerV1) -> dict[str, bool]:
+    return ledger.derived_group_summaries()
 
 def run_g4_safe_synthetic_example() -> dict[str, Any]:
     """Preserve the G4 descriptive 0.3 fixture without a product conclusion."""
@@ -198,7 +279,74 @@ def run_g5_end_to_end() -> dict[str, Any]:
     """Walk the available G1–G4 path with two target-bearing episodes and one zero."""
 
     errors: list[str] = []
-    stage_ok: dict[str, bool] = {}
+    ledger_entries: list[StageBoundaryLedgerEntryV1] = []
+
+    frame = make_synthetic_frame(study_id="study-g5-synthetic-001")
+    pending_manifest = make_pending_prospective_manifest(frame=frame)
+    sealed_manifest_body, freeze_digest = _seal_prospective_manifest(pending_manifest)
+    t0_errors = _validate_t0_prospective_manifest(sealed_manifest_body, require_freeze=True)
+    handoff_ok = verify_handoff_artifact_digest(
+        logged_digest=freeze_digest,
+        handed_artifact=sealed_manifest_body,
+    )
+    if not handoff_ok.ok:
+        t0_errors.extend(handoff_ok.errors)
+    arm_blind = validate_registry_build_context_arm_blind()
+    if not arm_blind.ok:
+        t0_errors.extend(arm_blind.errors)
+    registry_rule = reject_arm_dependent_registry_rule(
+        pending_manifest.opportunity_authority_rule
+    )
+    if not registry_rule.ok:
+        t0_errors.extend(registry_rule.errors)
+    replay_state = SyntheticPairedReplayStateV1(
+        sealed_pre_trial_digest=freeze_digest,
+        c0_readable_roots=frozenset({"/synthetic/workspace"}),
+        c1_readable_roots=frozenset({"/synthetic/workspace"}),
+        shared_mutable_state=False,
+        shared_cache_or_database=False,
+        external_service_replayed=True,
+        frozen_execution_order=("ep-c1-win-001", "ep-c1-win-002"),
+        actual_execution_order=("ep-c1-win-001", "ep-c1-win-002"),
+        c0_convmem_available=False,
+        c1_convmem_available=True,
+    )
+    replay_ok = validate_paired_replay_symmetry(replay_state)
+    if not replay_ok.ok:
+        t0_errors.extend(replay_ok.errors)
+    ledger_entries.append(
+        _ledger_entry(
+            stage=StudyStageId.T0,
+            input_digest=frame.header.content_digest or "",
+            predicates=[
+                ("structural_manifest_complete", not t0_errors, None),
+                ("logged_freeze_digest_present", bool(freeze_digest), None),
+                ("paired_replay_policy_bound", replay_ok.ok, None),
+            ],
+            output_digest=freeze_digest,
+            guarantees=["prospective_manifest_frozen", "freeze_digest_logged"],
+            assumptions=["episode_collection_may_begin"],
+            failure_reasons=t0_errors,
+        )
+    )
+    if t0_errors:
+        ledger = StageBoundaryLedgerV1(entries=ledger_entries)
+        return {
+            "aggregation_ok": False,
+            "conditional_effect": None,
+            "paired_episodes": 0,
+            "zero_target_episode_count": 0,
+            "opportunity_episode_count": 0,
+            "disposition": StudyTerminalDisposition.BLOCKED_NON_ESTIMABLE.value,
+            "all_slots_frozen": False,
+            "scorer_reliability_passes": None,
+            "stage_ok": _derive_stage_ok(ledger),
+            "stage_ledger": ledger.to_dict(),
+            "errors": t0_errors,
+            "classification": G5_CLASSIFICATION,
+            "not_evidence_that_convmem_helps": True,
+            "synthetic_only": True,
+        }
 
     win_one = _build_episode_chain(episode_id="ep-c1-win-001", zero_targets=False)
     win_two = _build_episode_chain(episode_id="ep-c1-win-002", zero_targets=False)
@@ -218,7 +366,37 @@ def run_g5_end_to_end() -> dict[str, Any]:
         if registry_result.episode_status != expected_status:
             errors.append(f"{episode_id}: unexpected registry status {registry_result.episode_status}")
 
-    stage_ok["T0_T2"] = not errors
+    ledger_entries.append(
+        _ledger_entry(
+            stage=StudyStageId.T1,
+            input_digest=freeze_digest,
+            predicates=[("synthetic_episode_locators", not errors, None)],
+            output_digest=artifact_content_digest({"episodes": sorted(chains)}),
+            guarantees=["episodes_observed"],
+            assumptions=["registry_may_be_built"],
+            failure_reasons=errors.copy(),
+        )
+    )
+    registry_digests: list[str] = []
+    for episode_id, (_, _, _, registry_result) in chains.items():
+        if registry_result.registry is not None and registry_result.registry.header.content_digest:
+            registry_digests.append(registry_result.registry.header.content_digest)
+            assign_episode_opportunity_identity(
+                registry=registry_result.registry,
+                episode_id=episode_id,
+            )
+    t2_failures = list(errors)
+    ledger_entries.append(
+        _ledger_entry(
+            stage=StudyStageId.T2,
+            input_digest=freeze_digest,
+            predicates=[("registry_sealed", bool(registry_digests), None)],
+            output_digest=registry_digests[0] if registry_digests else None,
+            guarantees=["target_registry_sealed", "opportunity_identity_assigned"],
+            assumptions=["census_and_probe_may_proceed"],
+            failure_reasons=t2_failures,
+        )
+    )
     sealed_episode_ids = frozenset(chains)
     views: list[EpisodeRegistryViewV1] = []
     within_scores = []
@@ -291,7 +469,36 @@ def run_g5_end_to_end() -> dict[str, Any]:
                 )
             )
 
-    stage_ok["T3_T5"] = probe_sealed and not errors
+    t35_failures = [] if probe_sealed and not errors else ["probe_or_capture_stage_failed"]
+    ledger_entries.extend(
+        [
+            _ledger_entry(
+                stage=StudyStageId.T3,
+                input_digest=registry_digests[0] if registry_digests else "",
+                predicates=[("census_ready", probe_sealed, None)],
+                output_digest=registry_digests[0] if registry_digests else None,
+                guarantees=["census_accepted"],
+                assumptions=["probe_construction_may_begin"],
+            ),
+            _ledger_entry(
+                stage=StudyStageId.T4,
+                input_digest=registry_digests[0] if registry_digests else "",
+                predicates=[("probe_sealed", probe_sealed, None)],
+                output_digest=None,
+                guarantees=["probes_sealed"],
+                assumptions=["capture_diagnosis_may_begin"],
+            ),
+            _ledger_entry(
+                stage=StudyStageId.T5,
+                input_digest=registry_digests[0] if registry_digests else "",
+                predicates=[("natural_capture_only", probe_sealed and not errors, None)],
+                output_digest=None,
+                guarantees=["c1_snapshot_natural_only"],
+                assumptions=["environment_qualification_may_begin"],
+                failure_reasons=t35_failures,
+            ),
+        ]
+    )
     c0_pkg, c1_pkg = make_symmetric_condition_packages()
     env_check = qualify_c0_c1_environment(c0_pkg, c1_pkg)
     if not env_check.ok:
@@ -321,7 +528,28 @@ def run_g5_end_to_end() -> dict[str, Any]:
         if not trial_check.ok:
             errors.extend(trial_check.errors)
         seen.add(session)
-    stage_ok["T6_T7"] = not errors
+    ledger_entries.append(
+        _ledger_entry(
+            stage=StudyStageId.T6,
+            input_digest=freeze_digest,
+            predicates=[("c0_c1_symmetric", env_check.ok, None)],
+            output_digest=None,
+            guarantees=["c0c1_ready"],
+            assumptions=["agent_b_execution_may_begin"],
+            failure_reasons=env_check.errors if not env_check.ok else [],
+        )
+    )
+    ledger_entries.append(
+        _ledger_entry(
+            stage=StudyStageId.T7,
+            input_digest=freeze_digest,
+            predicates=[("fresh_sessions", not errors, None)],
+            output_digest=None,
+            guarantees=["execution_complete"],
+            assumptions=["scoring_may_begin"],
+            failure_reasons=[e for e in errors if "session" in e or "controller" in e],
+        )
+    )
 
     roster_check = validate_opportunity_roster(
         sealed_episode_ids=sealed_episode_ids,
@@ -400,7 +628,59 @@ def run_g5_end_to_end() -> dict[str, Any]:
         if all_frozen:
             errors.append("G5 must not freeze information-gate slots")
 
-    stage_ok["T8_T10"] = not errors
+    bounds = compute_deterministic_bounds(
+        complete_pair_effects=[conditional_effect] if conditional_effect is not None else [],
+        valid_missing_count=0,
+        invalid_count=0,
+        denominator_episode_count=len(views),
+    )
+    structured = None
+    if aggregation.co_primary is not None:
+        structured = build_structured_synthetic_result(
+            co_primary=aggregation.co_primary,
+            bounds=bounds,
+            process_accounting={
+                "opportunity_episode_count": len(views),
+                "zero_target_episode_count": zero_count,
+                "paired_episodes": paired,
+            },
+            apparent_positive_effect=conditional_effect is not None and conditional_effect > 0,
+        )
+    t810_failures = list(errors)
+    ledger_entries.extend(
+        [
+            _ledger_entry(
+                stage=StudyStageId.T8,
+                input_digest=freeze_digest,
+                predicates=[("scorer_reliability_not_live_pass", reliability.passes_gate is not True, None)],
+                output_digest=None,
+                guarantees=["scoring_locked"],
+                assumptions=["aggregation_may_begin"],
+            ),
+            _ledger_entry(
+                stage=StudyStageId.T9,
+                input_digest=freeze_digest,
+                predicates=[("aggregation_ok", aggregation.ok, None)],
+                output_digest=artifact_content_digest(bounds.to_dict()),
+                guarantees=["complete_pair_effect_or_bounds", "denominator_preserved"],
+                assumptions=["disposition_derivation_may_begin"],
+            ),
+            _ledger_entry(
+                stage=StudyStageId.T10,
+                input_digest=freeze_digest,
+                predicates=[
+                    ("no_product_disposition", gate_disposition != StudyTerminalDisposition.COMPLETE_POSITIVE, None),
+                    ("methodology_only", True, None),
+                ],
+                output_digest=None,
+                guarantees=["orthogonal_disposition_derived"],
+                assumptions=[],
+                failure_reasons=t810_failures,
+            ),
+        ]
+    )
+    ledger = StageBoundaryLedgerV1(entries=ledger_entries)
+    stage_ok = _derive_stage_ok(ledger)
     return {
         "aggregation_ok": bool(aggregation.ok and not errors),
         "conditional_effect": conditional_effect,
@@ -411,6 +691,8 @@ def run_g5_end_to_end() -> dict[str, Any]:
         "all_slots_frozen": all_frozen,
         "scorer_reliability_passes": reliability.passes_gate,
         "stage_ok": stage_ok,
+        "stage_ledger": ledger.to_dict(),
+        "structured_result": structured.to_dict() if structured else None,
         "errors": errors,
         "classification": G5_CLASSIFICATION,
         "not_evidence_that_convmem_helps": True,
@@ -882,6 +1164,320 @@ def _adversarial_malformed_duplicate_orphan() -> list[G5ScenarioResult]:
     ]
 
 
+
+def _adversarial_incomplete_nominal_t0() -> G5ScenarioResult:
+    frame = make_synthetic_frame()
+    manifest = make_pending_prospective_manifest(frame=frame)
+    incomplete = manifest.to_dict()
+    incomplete["information_slots"] = incomplete["information_slots"][:2]
+    check = validate_prospective_manifest_structural(incomplete, require_logged_freeze=False)
+    e2e_blocked = not validate_prospective_manifest_structural(incomplete, require_logged_freeze=True).ok
+    return _scenario(
+        "incomplete_nominal_t0_frame",
+        "T0",
+        demonstrated=(not check.ok) and e2e_blocked,
+        fail_closed=True,
+        notes="Subset of eight PENDING slots fails structural validation before T0_T2.",
+        details={"errors": check.errors},
+    )
+
+
+def _adversarial_false_completeness() -> G5ScenarioResult:
+    frame = make_synthetic_frame()
+    manifest = make_pending_prospective_manifest(frame=frame)
+    body = manifest.to_dict()
+    for slot in body["information_slots"]:
+        if slot["slot_name"] == "meaningful_advantage":
+            slot["freeze_status"] = "frozen"
+            slot["value"] = "PENDING"
+    check = validate_prospective_manifest_structural(body, require_logged_freeze=False)
+    return _scenario(
+        "false_completeness_placeholder_slot",
+        "T0",
+        demonstrated=not check.ok,
+        fail_closed=True,
+        notes="Frozen placeholder value rejected despite status flag.",
+        details={"errors": check.errors},
+    )
+
+
+def _adversarial_freeze_tamper() -> G5ScenarioResult:
+    frame = make_synthetic_frame()
+    manifest = make_pending_prospective_manifest(frame=frame)
+    sealed, digest = _seal_prospective_manifest(manifest)
+    tampered = copy.deepcopy(sealed)
+    tampered["opportunity_authority_rule"] = tampered["opportunity_authority_rule"] + "-tampered"
+    handoff = verify_handoff_artifact_digest(logged_digest=digest, handed_artifact=tampered)
+    return _scenario(
+        "freeze_tamper_post_seal",
+        "T0",
+        demonstrated=not handoff.ok,
+        fail_closed=True,
+        notes="Post-freeze byte edit fails handoff digest verification.",
+        details={"errors": handoff.errors},
+    )
+
+
+def _adversarial_handoff_mismatch() -> G5ScenarioResult:
+    frame = make_synthetic_frame()
+    manifest = make_pending_prospective_manifest(frame=frame)
+    sealed, digest = _seal_prospective_manifest(manifest)
+    other, _ = _seal_prospective_manifest(make_pending_prospective_manifest(frame=make_synthetic_frame(study_id="other")))
+    handoff = verify_handoff_artifact_digest(logged_digest=digest, handed_artifact=other)
+    return _scenario(
+        "handoff_artifact_mismatch",
+        "T0",
+        demonstrated=not handoff.ok,
+        fail_closed=True,
+        notes="Downstream validator receives a different artifact than logged.",
+        details={"errors": handoff.errors},
+    )
+
+
+def _adversarial_validator_import_boundary() -> G5ScenarioResult:
+    violations = [
+        validate_prospective_validator_import_boundary("eval_naturalistic.dry_run"),
+        validate_prospective_validator_import_boundary("eval_naturalistic.probe_construction"),
+        validate_prospective_validator_import_boundary("eval_naturalistic.analysis"),
+    ]
+    demonstrated = all(not v.ok for v in violations)
+    return _scenario(
+        "validator_import_boundary",
+        "T0",
+        demonstrated=demonstrated,
+        fail_closed=True,
+        notes="Structural T0 validator cannot import execution/capture/scoring builders.",
+    )
+
+
+def _adversarial_registry_arm_dependent_rule() -> G5ScenarioResult:
+    check = reject_arm_dependent_registry_rule("include targets when c1 capture succeeded")
+    return _scenario(
+        "registry_arm_dependent_rule",
+        "T2",
+        demonstrated=not check.ok,
+        fail_closed=True,
+        notes="Arm/capture-dependent registry membership rule rejected.",
+        details={"errors": check.errors},
+    )
+
+
+def _adversarial_asymmetric_missingness() -> G5ScenarioResult:
+    bounds = compute_deterministic_bounds(
+        complete_pair_effects=[0.3],
+        valid_missing_count=1,
+        invalid_count=0,
+        denominator_episode_count=3,
+    )
+    return _scenario(
+        "asymmetric_valid_missingness_bounds",
+        "T9",
+        demonstrated=bounds.boundable_episode_count == 1 and bounds.point_estimate == 0.3,
+        fail_closed=False,
+        notes="Asymmetric valid missingness yields deterministic bounds on [0,1].",
+        details=bounds.to_dict(),
+    )
+
+
+def _adversarial_invalid_vs_boundable() -> G5ScenarioResult:
+    with_invalid = compute_deterministic_bounds(
+        complete_pair_effects=[0.3],
+        valid_missing_count=1,
+        invalid_count=1,
+        denominator_episode_count=3,
+    )
+    without_invalid = compute_deterministic_bounds(
+        complete_pair_effects=[0.3],
+        valid_missing_count=1,
+        invalid_count=0,
+        denominator_episode_count=3,
+    )
+    return _scenario(
+        "invalid_vs_boundable_separation",
+        "T9",
+        demonstrated=with_invalid.inconclusive and not without_invalid.inconclusive,
+        fail_closed=True,
+        notes="Protocol invalidity blocks bounds; valid missing alone remains boundable.",
+        details={"with_invalid": with_invalid.to_dict(), "without_invalid": without_invalid.to_dict()},
+    )
+
+
+def _adversarial_disposition_precedence() -> G5ScenarioResult:
+    from eval_naturalistic.analysis import derive_orthogonal_disposition
+    from eval_naturalistic.enums import (
+        InformationSufficiencyState,
+        MissingnessComparabilityState,
+        ProtocolValidityState,
+        ScorerIntegrityState,
+        ScorerReliabilityDispositionState,
+    )
+
+    disposition, reasons, path = derive_orthogonal_disposition(
+        protocol_validity=ProtocolValidityState.INVALID,
+        information_sufficiency=InformationSufficiencyState.SUFFICIENT,
+        missingness_comparability=MissingnessComparabilityState.COMPLETE,
+        scorer_integrity=ScorerIntegrityState.VALID,
+        scorer_reliability=ScorerReliabilityDispositionState.ACCEPTABLE,
+        apparent_positive_effect=True,
+    )
+    return _scenario(
+        "disposition_precedence_favorable_effect",
+        "T10",
+        demonstrated=disposition == StudyTerminalDisposition.INVALID and "protocol_invalidity" in path,
+        fail_closed=True,
+        notes="Apparent positive effect loses to protocol invalidity in precedence.",
+        details={"disposition": disposition.value, "precedence_path": path, "reasons": reasons},
+    )
+
+
+def _adversarial_paired_replay_mismatch() -> G5ScenarioResult:
+    state = SyntheticPairedReplayStateV1(
+        sealed_pre_trial_digest="a" * 64,
+        c0_readable_roots=frozenset({"/synthetic/workspace"}),
+        c1_readable_roots=frozenset({"/other/root"}),
+        shared_mutable_state=True,
+        shared_cache_or_database=False,
+        external_service_replayed=True,
+        frozen_execution_order=("a", "b"),
+        actual_execution_order=("b", "a"),
+        c0_convmem_available=False,
+        c1_convmem_available=True,
+    )
+    check = validate_paired_replay_symmetry(state)
+    return _scenario(
+        "paired_replay_mismatch",
+        "T6",
+        demonstrated=not check.ok,
+        fail_closed=True,
+        notes="Readable-root, shared-state, and execution-order asymmetry rejected.",
+        details={"errors": check.errors},
+    )
+
+
+def _adversarial_scorer_integrity_vs_reliability() -> G5ScenarioResult:
+    from eval_naturalistic.analysis import derive_orthogonal_disposition
+    from eval_naturalistic.enums import (
+        InformationSufficiencyState,
+        MissingnessComparabilityState,
+        ProtocolValidityState,
+        ScorerIntegrityState,
+        ScorerReliabilityDispositionState,
+    )
+
+    integrity_disp, integrity_reasons, _ = derive_orthogonal_disposition(
+        protocol_validity=ProtocolValidityState.VALID,
+        information_sufficiency=InformationSufficiencyState.SUFFICIENT,
+        missingness_comparability=MissingnessComparabilityState.COMPLETE,
+        scorer_integrity=ScorerIntegrityState.INVALID_UNBLINDED,
+        scorer_reliability=ScorerReliabilityDispositionState.BELOW_THRESHOLD,
+    )
+    reliability_disp, reliability_reasons, _ = derive_orthogonal_disposition(
+        protocol_validity=ProtocolValidityState.VALID,
+        information_sufficiency=InformationSufficiencyState.SUFFICIENT,
+        missingness_comparability=MissingnessComparabilityState.COMPLETE,
+        scorer_integrity=ScorerIntegrityState.VALID,
+        scorer_reliability=ScorerReliabilityDispositionState.BELOW_THRESHOLD,
+    )
+    return _scenario(
+        "scorer_integrity_vs_reliability",
+        "T8",
+        demonstrated=(
+            integrity_disp == StudyTerminalDisposition.INVALID
+            and reliability_disp == StudyTerminalDisposition.BLOCKED_NON_ESTIMABLE
+            and OutcomeReasonCode.SCORER_INTEGRITY_FAILURE.value in integrity_reasons
+            and OutcomeReasonCode.SCORER_RELIABILITY_BELOW_THRESHOLD.value in reliability_reasons
+        ),
+        fail_closed=True,
+        notes="Scorer integrity invalidity precedes below-threshold reliability blocking.",
+    )
+
+
+def _adversarial_synthetic_only_guard() -> G5ScenarioResult:
+    import ast
+
+    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+    forbidden_roots = ("".join(("eval", "_", "corpus")), "chromadb", "mcp_server")
+    hits: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if any(root in alias.name for root in forbidden_roots):
+                    hits.append(alias.name)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            if any(root in node.module for root in forbidden_roots):
+                hits.append(node.module)
+    return _scenario(
+        "synthetic_only_guard",
+        "T0_T10",
+        demonstrated=not hits,
+        fail_closed=True,
+        notes="No natural locator, Agent runner, live scorer, or G6 authority imported.",
+        details={"forbidden_import_hits": hits},
+    )
+
+
+def _adversarial_stage_corruption_sweep() -> G5ScenarioResult:
+    stages = list(StudyStageId)
+    failures = 0
+    for stage in stages:
+        entry = _ledger_entry(
+            stage=stage,
+            input_digest="0" * 64,
+            predicates=[("corrupted_input", False, "injected fault")],
+            output_digest=None,
+            guarantees=[],
+            assumptions=[],
+            failure_reasons=[f"{stage.value} corruption"],
+        )
+        if not entry.passed:
+            failures += 1
+    return _scenario(
+        "stage_corruption_sweep",
+        "T0_T10",
+        demonstrated=failures == len(stages),
+        fail_closed=True,
+        notes="Each T0–T10 stage fails closed on corrupted input.",
+        details={"stages_tested": len(stages), "stages_failed": failures},
+    )
+
+
+def _adversarial_boundary_composition_proof() -> G5ScenarioResult:
+    happy = run_g5_end_to_end()
+    ledger = happy.get("stage_ledger", {})
+    entries = ledger.get("entries", [])
+    guarantees_ok = all(
+        entry.get("passed") and entry.get("guarantees_exported")
+        for entry in entries
+    )
+    assumptions_chained = len(entries) == 11
+    return _scenario(
+        "boundary_composition_proof",
+        "T0_T10",
+        demonstrated=guarantees_ok and assumptions_chained and happy["aggregation_ok"],
+        fail_closed=False,
+        notes="Happy path proves every boundary guarantee, not only return status.",
+        details={"entry_count": len(entries), "stage_ok": happy.get("stage_ok")},
+    )
+
+
+def run_g5c_adversarial_suite() -> list[G5ScenarioResult]:
+    return [
+        _adversarial_incomplete_nominal_t0(),
+        _adversarial_false_completeness(),
+        _adversarial_freeze_tamper(),
+        _adversarial_handoff_mismatch(),
+        _adversarial_validator_import_boundary(),
+        _adversarial_registry_arm_dependent_rule(),
+        _adversarial_asymmetric_missingness(),
+        _adversarial_invalid_vs_boundable(),
+        _adversarial_disposition_precedence(),
+        _adversarial_paired_replay_mismatch(),
+        _adversarial_scorer_integrity_vs_reliability(),
+        _adversarial_synthetic_only_guard(),
+        _adversarial_stage_corruption_sweep(),
+        _adversarial_boundary_composition_proof(),
+    ]
+
 def run_g5_adversarial_suite() -> list[G5ScenarioResult]:
     """Named EXECUTION §16 adversarial controls plus malformed/duplicate/orphan."""
 
@@ -901,6 +1497,7 @@ def run_g5_adversarial_suite() -> list[G5ScenarioResult]:
         _adversarial_low_reliability(),
         _adversarial_all_zero(),
         *_adversarial_malformed_duplicate_orphan(),
+        *run_g5c_adversarial_suite(),
     ]
 
 

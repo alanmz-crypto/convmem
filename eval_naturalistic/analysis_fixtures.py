@@ -5,8 +5,8 @@ from __future__ import annotations
 import copy
 
 from eval_naturalistic.analysis import (
-    EpisodeRegistryViewV1,
     REQUIRED_INFORMATION_PARAMETER_SLOTS,
+    EpisodeRegistryViewV1,
     ScorerSubmissionV1,
     WithinEpisodeScoreV1,
 )

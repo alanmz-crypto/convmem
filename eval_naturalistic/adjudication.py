@@ -4,8 +4,8 @@ from __future__ import annotations
 
 # Candidate bundles are fixed governed records, not behavior-heavy classes.
 # pylint: disable=too-many-instance-attributes
-
 import copy
+import hashlib
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -603,3 +603,47 @@ def reject_capture_driven_registry_mutation(
         errors.append(f"capture-driven target substitution rejected: {names}")
 
     return NaturalisticValidation(errors=errors)
+
+from eval_naturalistic.contracts import EpisodeOpportunityIdentityV1
+
+
+def assign_episode_opportunity_identity(
+    *,
+    registry: TargetRegistryV1,
+    episode_id: str,
+) -> EpisodeOpportunityIdentityV1:
+    """Assign one immutable episode-opportunity identity per target-bearing episode."""
+
+    digest = registry.header.content_digest
+    if not digest:
+        raise ValueError("registry must be sealed with content digest before opportunity identity")
+    composite = hashlib.sha256(f"{digest}:{episode_id}".encode()).hexdigest()
+    opportunity_id = make_artifact_id(kind="episode_opportunity", content_digest=composite)
+    return EpisodeOpportunityIdentityV1(
+        episode_opportunity_id=opportunity_id,
+        episode_id=episode_id,
+        registry_artifact_id=registry.header.artifact_id,
+        registry_digest=digest,
+    )
+
+
+def validate_registry_build_context_arm_blind(
+  *,
+  condition: str | None = None,
+  capture_state: str | None = None,
+  retrieval_result: str | None = None,
+  trial_outcome: str | None = None,
+) -> NaturalisticValidation:
+    """Registry construction cannot inspect arm, capture, retrieval, or results."""
+
+    errors: list[str] = []
+    if condition is not None:
+        errors.append("registry build must not inspect condition")
+    if capture_state is not None:
+        errors.append("registry build must not inspect capture state")
+    if retrieval_result is not None:
+        errors.append("registry build must not inspect retrieval results")
+    if trial_outcome is not None:
+        errors.append("registry build must not inspect trial outcomes")
+    return NaturalisticValidation(errors=errors)
+

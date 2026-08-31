@@ -6,7 +6,6 @@ import hashlib
 from typing import Any
 
 from canonical_json import canonical_json_bytes
-
 from eval_naturalistic.base import StructuralContractError, strip_digest_metadata
 
 ARTIFACT_ID_PREFIX = "nps1_"

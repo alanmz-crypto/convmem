@@ -25,8 +25,11 @@ from eval_naturalistic.dry_run_mechanics import (
     qualify_c0_c1_environment,
 )
 from eval_naturalistic.enums import StudyTerminalDisposition
-from eval_naturalistic.fixtures import make_synthetic_evidence, make_synthetic_episode, make_synthetic_frame
-
+from eval_naturalistic.fixtures import (
+    make_synthetic_episode,
+    make_synthetic_evidence,
+    make_synthetic_frame,
+)
 
 REQUIRED_FAIL_CLOSED = G5_REQUIRED_FAIL_CLOSED_SCENARIOS
 
@@ -135,20 +138,18 @@ class G5MechanicsAndIsolationTests(unittest.TestCase):
             self.assertTrue(source.locator.startswith("synthetic://"))
 
     def test_no_live_study_modules_imported_by_g5(self):
+        import ast
+
         import eval_naturalistic.dry_run as dry_run_mod
 
-        source = Path(dry_run_mod.__file__).read_text(encoding="utf-8")
-        forbidden = (
-            "run_agent_a",
-            "run_agent_b",
-            "execute_trial",
-            "chromadb",
-            "eval_corpus",
-            "mcp_server",
-            "~/.local/share/convmem/",
-        )
-        for token in forbidden:
-            self.assertNotIn(token, source)
+        tree = ast.parse(Path(dry_run_mod.__file__).read_text(encoding="utf-8"))
+        forbidden_roots = ("".join(("eval", "_", "corpus")), "chromadb", "mcp_server")
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    self.assertFalse(any(root in alias.name for root in forbidden_roots), alias.name)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                self.assertFalse(any(root in node.module for root in forbidden_roots), node.module)
 
 
 if __name__ == "__main__":

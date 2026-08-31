@@ -151,3 +151,47 @@ def validate_opportunity_roster(
     if extra:
         errors.append("opportunity roster includes unknown episodes: " + ", ".join(extra))
     return NaturalisticValidation(errors=errors)
+
+
+@dataclass(frozen=True)
+class SyntheticPairedReplayStateV1:
+    """Sealed pre-trial state replayed into fresh C0/C1 sessions."""
+
+    sealed_pre_trial_digest: str
+    c0_readable_roots: frozenset[str]
+    c1_readable_roots: frozenset[str]
+    shared_mutable_state: bool
+    shared_cache_or_database: bool
+    external_service_replayed: bool
+    frozen_execution_order: tuple[str, ...]
+    actual_execution_order: tuple[str, ...]
+    c0_convmem_available: bool
+    c1_convmem_available: bool
+
+
+def validate_paired_replay_symmetry(state: SyntheticPairedReplayStateV1) -> NaturalisticValidation:
+    """Paired replay: only intended difference is C1 ConvMem access."""
+
+    errors: list[str] = []
+    if state.c0_readable_roots != state.c1_readable_roots:
+        errors.append("paired-replay readable root mismatch")
+    if state.shared_mutable_state:
+        errors.append("paired-replay shared mutable session state")
+    if state.shared_cache_or_database:
+        errors.append("paired-replay shared cache/database state")
+    if not state.external_service_replayed:
+        errors.append("external-service response not replayed identically")
+    if state.frozen_execution_order != state.actual_execution_order:
+        errors.append("execution order changed after freeze")
+    if state.c0_convmem_available:
+        errors.append("c0 must not have ConvMem in paired replay")
+    if not state.c1_convmem_available:
+        errors.append("c1 must have ConvMem in paired replay")
+    if not state.sealed_pre_trial_digest:
+        errors.append("sealed pre-trial digest required")
+    return NaturalisticValidation(errors=errors)
+
+
+G5C_VALIDATOR_IDENTITY = "g5c-synthetic-boundary-validator"
+G5C_VALIDATOR_VERSION = "2026-08-30-g5c-v1"
+

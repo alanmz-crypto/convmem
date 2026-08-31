@@ -4,7 +4,6 @@ from __future__ import annotations
 
 # Fixed durable-schema records intentionally exceed Pylint's generic class-size heuristic.
 # pylint: disable=too-many-instance-attributes,duplicate-code
-
 import copy
 from dataclasses import dataclass
 from enum import Enum
@@ -116,7 +115,7 @@ class ArtifactHeaderV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ArtifactHeaderV1":
+    def from_dict(cls, data: dict[str, Any]) -> ArtifactHeaderV1:
         data = _require_dict(data, "ArtifactHeaderV1")
         _require_no_unknown_props(data, cls._FIELDS, "ArtifactHeaderV1")
         try:
@@ -161,3 +160,34 @@ class ArtifactHeaderV1:
         if self.content_digest is not None:
             out["content_digest"] = self.content_digest
         return out
+
+PROSPECTIVE_VALIDATOR_ALLOWED_IMPORT_PREFIXES = (
+    "eval_naturalistic.base",
+    "eval_naturalistic.digest",
+    "eval_naturalistic.enums",
+    "canonical_json",
+)
+
+
+def validate_prospective_validator_import_boundary(module_name: str) -> NaturalisticValidation:
+    """G5C: structural T0 validator may not import execution/capture/scoring builders."""
+
+    forbidden_fragments = (
+        "dry_run",
+        "probe_construction",
+        "adjudication",
+        "analysis",
+        "fixtures",
+        "eval_corpus",
+        "mcp_server",
+        "chromadb",
+    )
+    if not any(module_name.startswith(prefix) for prefix in PROSPECTIVE_VALIDATOR_ALLOWED_IMPORT_PREFIXES):
+        if any(fragment in module_name for fragment in forbidden_fragments):
+            return NaturalisticValidation(
+                errors=[f"prospective validator import boundary violation: {module_name}"]
+            )
+    if module_name == "eval_naturalistic.contracts":
+        return NaturalisticValidation(errors=[])
+
+

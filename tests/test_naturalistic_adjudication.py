@@ -4,7 +4,6 @@ from __future__ import annotations
 
 # Hermetic path bootstrapping precedes project imports; repeated setup is intentional.
 # pylint: disable=wrong-import-position,duplicate-code
-
 import copy
 import sys
 import unittest
@@ -477,6 +476,41 @@ class TerminalStateDistinctionTests(unittest.TestCase):
         self.assertIn(EpisodeRegistryStatus.EVIDENCE_INCOMPLETE, statuses)
         self.assertIn(EpisodeRegistryStatus.TARGET_ADJUDICATION_AMBIGUOUS, statuses)
 
+
+
+class G5CAdjudicationTests(unittest.TestCase):
+    def test_episode_opportunity_identity_bound_to_registry(self):
+        from eval_naturalistic.adjudication import (
+            assign_episode_opportunity_identity,
+            build_sealed_target_registry,
+        )
+        from eval_naturalistic.adjudication_fixtures import (
+            make_agreeing_eligible_candidate,
+            make_default_workflow,
+            make_synthetic_adjudication_chain,
+        )
+
+        frame, episode, evidence, workflow = make_synthetic_adjudication_chain()
+        result = build_sealed_target_registry(
+            frame=frame,
+            episode=episode,
+            evidence=evidence,
+            candidates=[make_agreeing_eligible_candidate()],
+            workflow=workflow,
+        )
+        self.assertTrue(result.ok)
+        assert result.registry is not None
+        identity = assign_episode_opportunity_identity(
+            registry=result.registry,
+            episode_id=episode.episode_id,
+        )
+        self.assertEqual(identity.registry_digest, result.registry.header.content_digest)
+
+    def test_registry_build_rejects_arm_context(self):
+        from eval_naturalistic.adjudication import validate_registry_build_context_arm_blind
+
+        check = validate_registry_build_context_arm_blind(condition="c1")
+        self.assertFalse(check.ok)
 
 if __name__ == "__main__":
     unittest.main()

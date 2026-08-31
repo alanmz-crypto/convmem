@@ -21,8 +21,14 @@ from eval_naturalistic.contracts import (
 from eval_naturalistic.digest import artifact_content_digest
 from eval_naturalistic.enums import (
     EpisodeRegistryStatus,
+    InformationSufficiencyState,
+    MissingnessComparabilityState,
+    OutcomeReasonCode,
     ParameterFreezeStatus,
+    ProtocolValidityState,
     ReliabilityState,
+    ScorerIntegrityState,
+    ScorerReliabilityDispositionState,
     StudyTerminalDisposition,
     TrialCondition,
 )
@@ -538,11 +544,7 @@ def compute_co_primary_aggregation(
             protocol_invalid,
         )
     )
-    if target_bearing == 0:
-        agg_reliability = ReliabilityState.RELIABILITY_NON_ESTIMABLE
-    elif has_incomplete_primary_evidence:
-        agg_reliability = ReliabilityState.RELIABILITY_NON_ESTIMABLE
-    elif conditional_mean is None:
+    if target_bearing == 0 or has_incomplete_primary_evidence or conditional_mean is None:
         agg_reliability = ReliabilityState.RELIABILITY_NON_ESTIMABLE
     else:
         agg_reliability = ReliabilityState.RELIABILITY_ACCEPTABLE
@@ -834,3 +836,216 @@ def prove_one_score_per_episode_per_condition(
             )
         seen.add(key)
     return NaturalisticValidation(errors=errors)
+
+
+@dataclass
+class MissingnessBoundsV1:
+    lower_bound: float
+    upper_bound: float
+    point_estimate: float | None
+    boundable_episode_count: int
+    complete_pair_count: int
+    inconclusive: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "lower_bound": self.lower_bound,
+            "upper_bound": self.upper_bound,
+            "point_estimate": self.point_estimate,
+            "boundable_episode_count": self.boundable_episode_count,
+            "complete_pair_count": self.complete_pair_count,
+            "inconclusive": self.inconclusive,
+        }
+
+
+@dataclass
+class StructuredSyntheticResultV1:
+    """G5C structured synthetic result — no authoritative scalar or product disposition."""
+
+    classification: str
+    opportunity_prevalence: float
+    complete_pair_effect: float | None
+    bounds: MissingnessBoundsV1 | None
+    process_accounting: dict[str, Any]
+    orthogonal_state: dict[str, Any]
+    disposition: StudyTerminalDisposition
+    reason_codes: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "classification": self.classification,
+            "opportunity_prevalence": self.opportunity_prevalence,
+            "complete_pair_effect": self.complete_pair_effect,
+            "bounds": self.bounds.to_dict() if self.bounds else None,
+            "process_accounting": self.process_accounting,
+            "orthogonal_state": self.orthogonal_state,
+            "disposition": self.disposition.value,
+            "reason_codes": list(self.reason_codes),
+        }
+
+
+def compute_deterministic_bounds(
+    *,
+    complete_pair_effects: list[float],
+    valid_missing_count: int,
+    invalid_count: int,
+    denominator_episode_count: int,
+) -> MissingnessBoundsV1:
+    """Deterministic worst/best-case bounds on [0,1] for valid missing only."""
+
+    if invalid_count > 0:
+        return MissingnessBoundsV1(
+            lower_bound=0.0,
+            upper_bound=0.0,
+            point_estimate=None,
+            boundable_episode_count=0,
+            complete_pair_count=len(complete_pair_effects),
+            inconclusive=True,
+        )
+
+    if denominator_episode_count <= 0:
+        return MissingnessBoundsV1(
+            lower_bound=0.0,
+            upper_bound=0.0,
+            point_estimate=None,
+            boundable_episode_count=0,
+            complete_pair_count=0,
+            inconclusive=True,
+        )
+
+    complete = len(complete_pair_effects)
+    missing = valid_missing_count
+    total = denominator_episode_count
+    if complete == 0 and missing == 0:
+        return MissingnessBoundsV1(
+            lower_bound=0.0,
+            upper_bound=0.0,
+            point_estimate=None,
+            boundable_episode_count=0,
+            complete_pair_count=0,
+            inconclusive=True,
+        )
+
+    if complete > 0 and missing == 0:
+        point = sum(complete_pair_effects) / complete
+        return MissingnessBoundsV1(
+            lower_bound=point,
+            upper_bound=point,
+            point_estimate=point,
+            boundable_episode_count=0,
+            complete_pair_count=complete,
+            inconclusive=False,
+        )
+
+    # valid missing: worst/best on unit interval contribution per missing episode
+    complete_sum = sum(complete_pair_effects)
+    lower = (complete_sum + missing * (SCORE_BOUND_MIN - SCORE_BOUND_MAX)) / total
+    upper = (complete_sum + missing * (SCORE_BOUND_MAX - SCORE_BOUND_MIN)) / total
+    lower = max(SCORE_BOUND_MIN, min(SCORE_BOUND_MAX, lower))
+    upper = max(SCORE_BOUND_MIN, min(SCORE_BOUND_MAX, upper))
+    point = complete_sum / complete if complete else None
+    inconclusive = upper - lower > 0.5
+    return MissingnessBoundsV1(
+        lower_bound=lower,
+        upper_bound=upper,
+        point_estimate=point,
+        boundable_episode_count=missing,
+        complete_pair_count=complete,
+        inconclusive=inconclusive,
+    )
+
+
+def derive_orthogonal_disposition(
+    *,
+    protocol_validity: ProtocolValidityState,
+    information_sufficiency: InformationSufficiencyState,
+    missingness_comparability: MissingnessComparabilityState,
+    scorer_integrity: ScorerIntegrityState,
+    scorer_reliability: ScorerReliabilityDispositionState,
+    apparent_positive_effect: bool = False,
+) -> tuple[StudyTerminalDisposition, list[str], list[str]]:
+    """Orthogonal precedence — G5C never emits product conclusions."""
+
+    reason_codes: list[str] = []
+    precedence_path: list[str] = []
+
+    if protocol_validity == ProtocolValidityState.INVALID:
+        precedence_path.append("protocol_invalidity")
+        reason_codes.append(OutcomeReasonCode.PROTOCOL_INVALID.value)
+        return StudyTerminalDisposition.INVALID, reason_codes, precedence_path
+
+    if scorer_integrity == ScorerIntegrityState.INVALID_UNBLINDED:
+        precedence_path.append("environment_or_scorer_integrity_invalidity")
+        reason_codes.append(OutcomeReasonCode.SCORER_INTEGRITY_FAILURE.value)
+        return StudyTerminalDisposition.INVALID, reason_codes, precedence_path
+
+    if information_sufficiency == InformationSufficiencyState.INSUFFICIENT:
+        precedence_path.append("insufficient_opportunity_or_information")
+        reason_codes.append(OutcomeReasonCode.INCOMPLETE_PROSPECTIVE_MANIFEST.value)
+        return StudyTerminalDisposition.BLOCKED_NON_ESTIMABLE, reason_codes, precedence_path
+
+    if scorer_reliability == ScorerReliabilityDispositionState.BELOW_THRESHOLD:
+        precedence_path.append("below_threshold_reliability_or_inconclusive_bounds")
+        reason_codes.append(OutcomeReasonCode.SCORER_RELIABILITY_BELOW_THRESHOLD.value)
+        return StudyTerminalDisposition.BLOCKED_NON_ESTIMABLE, reason_codes, precedence_path
+
+    if missingness_comparability == MissingnessComparabilityState.INCONCLUSIVE_BOUNDS:
+        precedence_path.append("below_threshold_reliability_or_inconclusive_bounds")
+        reason_codes.append(OutcomeReasonCode.VALID_MISSING_OUTCOME.value)
+        return StudyTerminalDisposition.BLOCKED_NON_ESTIMABLE, reason_codes, precedence_path
+
+    if apparent_positive_effect:
+        precedence_path.append("effect_interpretation_deferred_to_later_study")
+        reason_codes.append("methodology_validation_not_product_evidence")
+        return StudyTerminalDisposition.BLOCKED_NON_ESTIMABLE, reason_codes, precedence_path
+
+    precedence_path.append("effect_interpretation_deferred_to_later_study")
+    return StudyTerminalDisposition.BLOCKED_NON_ESTIMABLE, reason_codes, precedence_path
+
+
+def build_structured_synthetic_result(
+    *,
+    co_primary: CoPrimaryAggregationV1,
+    bounds: MissingnessBoundsV1,
+    process_accounting: dict[str, Any],
+    apparent_positive_effect: bool,
+) -> StructuredSyntheticResultV1:
+    missingness = (
+        MissingnessComparabilityState.COMPLETE
+        if bounds.point_estimate is not None and not bounds.inconclusive
+        else MissingnessComparabilityState.BOUNDED
+        if not bounds.inconclusive
+        else MissingnessComparabilityState.INCONCLUSIVE_BOUNDS
+    )
+    info_suff = (
+        InformationSufficiencyState.INSUFFICIENT
+        if co_primary.target_bearing_episode_count == 0
+        else InformationSufficiencyState.SUFFICIENT
+    )
+    disposition, reason_codes, precedence_path = derive_orthogonal_disposition(
+        protocol_validity=ProtocolValidityState.VALID,
+        information_sufficiency=info_suff,
+        missingness_comparability=missingness,
+        scorer_integrity=ScorerIntegrityState.VALID,
+        scorer_reliability=ScorerReliabilityDispositionState.NOT_APPLICABLE,
+        apparent_positive_effect=apparent_positive_effect,
+    )
+    orthogonal = {
+        "protocol_validity": ProtocolValidityState.VALID.value,
+        "information_sufficiency": info_suff.value,
+        "missingness_comparability": missingness.value,
+        "scorer_integrity": ScorerIntegrityState.VALID.value,
+        "scorer_reliability": ScorerReliabilityDispositionState.NOT_APPLICABLE.value,
+        "precedence_path": precedence_path,
+    }
+    return StructuredSyntheticResultV1(
+        classification="methodology_validation_not_product_evidence",
+        opportunity_prevalence=co_primary.opportunity_prevalence,
+        complete_pair_effect=bounds.point_estimate,
+        bounds=bounds,
+        process_accounting=process_accounting,
+        orthogonal_state=orthogonal,
+        disposition=disposition,
+        reason_codes=reason_codes,
+    )
+

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 # Probe records and the fail-closed builder intentionally mirror the governed contract.
 # pylint: disable=too-many-instance-attributes,too-many-locals
-
 import copy
 import re
 from dataclasses import dataclass
@@ -79,18 +78,18 @@ class ProbeBuildResult:
     outcome: ProbeBuildOutcome | None = None
 
 
-_TREATMENT_CUE_RE = re.compile(r"\b(c0|c1|control\s+condition|treatment\s+arm)\b", re.I)
+_TREATMENT_CUE_RE = re.compile(r"\b(c0|c1|control\s+condition|treatment\s+arm)\b", re.IGNORECASE)
 _CONVMEM_CUE_RE = re.compile(
     r"\b(convmem|chroma|retrieval\s+rank|capture\s+state|memory\s+corpus)\b",
-    re.I,
+    re.IGNORECASE,
 )
 _SOURCE_PATH_RE = re.compile(
     r"(/home/|synthetic://|\.(?:py|md|jsonl|toml)\b|src-\d+)",
-    re.I,
+    re.IGNORECASE,
 )
 _SOURCE_LOCATION_RE = re.compile(
     r"\b(line\s+\d+|span\s+\d+|offset\s+\d+|character\s+\d+)\b",
-    re.I,
+    re.IGNORECASE,
 )
 
 

@@ -130,3 +130,83 @@ class LeakageCheckKind(str, Enum):
     SOURCE_LOCATION = "source_location"
     TREATMENT_CONDITION = "treatment_condition"
     CONVMEM_RETRIEVAL = "convmem_retrieval"
+
+class StudyStageId(str, Enum):
+    """Individual T0–T10 methodology boundaries."""
+
+    T0 = "T0"
+    T1 = "T1"
+    T2 = "T2"
+    T3 = "T3"
+    T4 = "T4"
+    T5 = "T5"
+    T6 = "T6"
+    T7 = "T7"
+    T8 = "T8"
+    T9 = "T9"
+    T10 = "T10"
+
+
+class ProtocolValidityState(str, Enum):
+    VALID = "valid"
+    INVALID = "invalid"
+    UNRESOLVED = "unresolved"
+
+
+class InformationSufficiencyState(str, Enum):
+    SUFFICIENT = "sufficient"
+    SPARSE = "sparse"
+    INSUFFICIENT = "insufficient"
+
+
+class MissingnessComparabilityState(str, Enum):
+    COMPLETE = "complete"
+    BOUNDED = "bounded"
+    INCONCLUSIVE_BOUNDS = "inconclusive_bounds"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class ScorerIntegrityState(str, Enum):
+    VALID = "valid"
+    INVALID_UNBLINDED = "invalid_unblinded"
+    UNRESOLVED = "unresolved"
+
+
+class ScorerReliabilityDispositionState(str, Enum):
+    ACCEPTABLE = "acceptable"
+    BELOW_THRESHOLD = "below_threshold"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class TrialEvidenceCaptureState(str, Enum):
+    CAPTURED = "captured"
+    NOT_CAPTURED = "not_captured"
+    INVALID = "invalid"
+
+
+class ScoreEvaluabilityState(str, Enum):
+    EVALUABLE = "evaluable"
+    NOT_EVALUABLE = "not_evaluable"
+    INVALID = "invalid"
+
+
+class OutcomeReasonCode(str, Enum):
+    """Fixed synthetic reason vocabulary for G5C outcome axes."""
+
+    VALID_MISSING_OUTCOME = "valid_missing_outcome"
+    PROTOCOL_INVALID = "protocol_invalid"
+    ENVIRONMENT_ASYMMETRY = "environment_asymmetry"
+    ISOLATION_BREACH = "isolation_breach"
+    LINEAGE_MISMATCH = "lineage_mismatch"
+    REGISTRY_MUTATION = "registry_mutation"
+    FREEZE_TAMPER = "freeze_tamper"
+    HANDOFF_MISMATCH = "handoff_mismatch"
+    SCORER_INTEGRITY_FAILURE = "scorer_integrity_failure"
+    SCORER_RELIABILITY_BELOW_THRESHOLD = "scorer_reliability_below_threshold"
+    DIAGNOSTIC_SECONDARY_DISAGREEMENT = "diagnostic_secondary_disagreement"
+    TRIAL_EVIDENCE_NOT_CAPTURED = "trial_evidence_not_captured"
+    SCORE_NOT_EVALUABLE = "score_not_evaluable"
+    CONVMEM_NOT_CAPTURED = "convmem_not_captured"
+    PLACEHOLDER_CONTENT = "placeholder_content"
+    INCOMPLETE_PROSPECTIVE_MANIFEST = "incomplete_prospective_manifest"
+

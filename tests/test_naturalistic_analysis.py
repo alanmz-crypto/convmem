@@ -469,5 +469,42 @@ class SyntheticOnlyGuardTests(unittest.TestCase):
         self.assertEqual(SCORE_BOUND_MAX, 1.0)
 
 
+
+class G5CAnalysisTests(unittest.TestCase):
+    def test_deterministic_bounds_complete_pair(self):
+        from eval_naturalistic.analysis import compute_deterministic_bounds
+
+        bounds = compute_deterministic_bounds(
+            complete_pair_effects=[0.3, 0.2],
+            valid_missing_count=0,
+            invalid_count=0,
+            denominator_episode_count=2,
+        )
+        self.assertEqual(bounds.point_estimate, 0.25)
+        self.assertFalse(bounds.inconclusive)
+
+    def test_orthogonal_disposition_precedence(self):
+        from eval_naturalistic.analysis import derive_orthogonal_disposition
+        from eval_naturalistic.enums import (
+            InformationSufficiencyState,
+            MissingnessComparabilityState,
+            ProtocolValidityState,
+            ScorerIntegrityState,
+            ScorerReliabilityDispositionState,
+            StudyTerminalDisposition,
+        )
+
+        disposition, reasons, path = derive_orthogonal_disposition(
+            protocol_validity=ProtocolValidityState.INVALID,
+            information_sufficiency=InformationSufficiencyState.SUFFICIENT,
+            missingness_comparability=MissingnessComparabilityState.COMPLETE,
+            scorer_integrity=ScorerIntegrityState.VALID,
+            scorer_reliability=ScorerReliabilityDispositionState.ACCEPTABLE,
+            apparent_positive_effect=True,
+        )
+        self.assertEqual(disposition, StudyTerminalDisposition.INVALID)
+        self.assertIn("protocol_invalidity", path)
+        self.assertTrue(reasons)
+
 if __name__ == "__main__":
     unittest.main()

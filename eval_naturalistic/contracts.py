@@ -5,7 +5,6 @@ from __future__ import annotations
 # This module is the intentionally explicit durable-schema catalog; its records mirror
 # governed wire fields and therefore exceed generic module/class-size heuristics.
 # pylint: disable=too-many-lines,too-many-instance-attributes
-
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -17,7 +16,11 @@ from eval_naturalistic.base import (
     _require_no_unknown_props,
     _require_str,
 )
-from eval_naturalistic.digest import SCHEMA_NAMESPACE, artifact_content_digest, make_artifact_id
+from eval_naturalistic.digest import (
+    SCHEMA_NAMESPACE,
+    artifact_content_digest,
+    make_artifact_id,
+)
 from eval_naturalistic.enums import (
     AdmissibleSourceClass,
     CaptureDiagnosticState,
@@ -56,7 +59,7 @@ class ParameterSlotV1:
     _FIELDS = {"slot_name", "freeze_status", "value", "authority", "construct_defining"}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ParameterSlotV1":
+    def from_dict(cls, data: dict[str, Any]) -> ParameterSlotV1:
         data = _require_dict(data, "ParameterSlotV1")
         _require_no_unknown_props(data, cls._FIELDS, "ParameterSlotV1")
         return cls(
@@ -132,7 +135,7 @@ class EpisodeFrameV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EpisodeFrameV1":
+    def from_dict(cls, data: dict[str, Any]) -> EpisodeFrameV1:
         data = _require_dict(data, "EpisodeFrameV1")
         _require_no_unknown_props(data, cls._FIELDS, "EpisodeFrameV1")
         slots = [
@@ -218,7 +221,7 @@ class EpisodeFrameV1:
             out["parent_revision_digest"] = self.parent_revision_digest
         return out
 
-    def with_computed_identity(self, *, kind: str = "frame") -> "EpisodeFrameV1":
+    def with_computed_identity(self, *, kind: str = "frame") -> EpisodeFrameV1:
         body = self.to_dict()
         digest = artifact_content_digest(body)
         header = self.header
@@ -262,7 +265,7 @@ class EpisodeRecordV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EpisodeRecordV1":
+    def from_dict(cls, data: dict[str, Any]) -> EpisodeRecordV1:
         data = _require_dict(data, "EpisodeRecordV1")
         _require_no_unknown_props(data, cls._FIELDS, "EpisodeRecordV1")
         return cls(
@@ -316,7 +319,7 @@ class EvidenceSourceV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EvidenceSourceV1":
+    def from_dict(cls, data: dict[str, Any]) -> EvidenceSourceV1:
         data = _require_dict(data, "EvidenceSourceV1")
         _require_no_unknown_props(data, cls._FIELDS, "EvidenceSourceV1")
         return cls(
@@ -369,7 +372,7 @@ class RawEvidenceManifestV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "RawEvidenceManifestV1":
+    def from_dict(cls, data: dict[str, Any]) -> RawEvidenceManifestV1:
         data = _require_dict(data, "RawEvidenceManifestV1")
         _require_no_unknown_props(data, cls._FIELDS, "RawEvidenceManifestV1")
         return cls(
@@ -414,7 +417,7 @@ class TargetSpanBindingV1:
     _FIELDS = {"source_id", "span_start", "span_end"}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TargetSpanBindingV1":
+    def from_dict(cls, data: dict[str, Any]) -> TargetSpanBindingV1:
         data = _require_dict(data, "TargetSpanBindingV1")
         _require_no_unknown_props(data, cls._FIELDS, "TargetSpanBindingV1")
         return cls(
@@ -440,7 +443,7 @@ class AdjudicationRecordV1:
     _FIELDS = {"adjudicator_id", "disposition", "rationale"}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AdjudicationRecordV1":
+    def from_dict(cls, data: dict[str, Any]) -> AdjudicationRecordV1:
         data = _require_dict(data, "AdjudicationRecordV1")
         _require_no_unknown_props(data, cls._FIELDS, "AdjudicationRecordV1")
         return cls(
@@ -496,7 +499,7 @@ class TargetRecordV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TargetRecordV1":
+    def from_dict(cls, data: dict[str, Any]) -> TargetRecordV1:
         data = _require_dict(data, "TargetRecordV1")
         _require_no_unknown_props(data, cls._FIELDS, "TargetRecordV1")
         return cls(
@@ -561,7 +564,7 @@ class EpisodeRegistryEntryV1:
     _FIELDS = {"episode_id", "registry_status", "evidence_manifest_digest", "target_ids"}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EpisodeRegistryEntryV1":
+    def from_dict(cls, data: dict[str, Any]) -> EpisodeRegistryEntryV1:
         data = _require_dict(data, "EpisodeRegistryEntryV1")
         _require_no_unknown_props(data, cls._FIELDS, "EpisodeRegistryEntryV1")
         return cls(
@@ -604,7 +607,7 @@ class TargetRegistryV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TargetRegistryV1":
+    def from_dict(cls, data: dict[str, Any]) -> TargetRegistryV1:
         data = _require_dict(data, "TargetRegistryV1")
         _require_no_unknown_props(data, cls._FIELDS, "TargetRegistryV1")
         return cls(
@@ -644,7 +647,7 @@ class SampleRosterEntryV1:
     _FIELDS = {"episode_id", "target_ids", "inclusion_probability"}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "SampleRosterEntryV1":
+    def from_dict(cls, data: dict[str, Any]) -> SampleRosterEntryV1:
         data = _require_dict(data, "SampleRosterEntryV1")
         _require_no_unknown_props(data, cls._FIELDS, "SampleRosterEntryV1")
         return cls(
@@ -689,7 +692,7 @@ class CensusSampleManifestV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "CensusSampleManifestV1":
+    def from_dict(cls, data: dict[str, Any]) -> CensusSampleManifestV1:
         data = _require_dict(data, "CensusSampleManifestV1")
         _require_no_unknown_props(data, cls._FIELDS, "CensusSampleManifestV1")
         return cls(
@@ -758,7 +761,7 @@ class ProbeAuthorProvenanceV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ProbeAuthorProvenanceV1":
+    def from_dict(cls, data: dict[str, Any]) -> ProbeAuthorProvenanceV1:
         data = _require_dict(data, "ProbeAuthorProvenanceV1")
         _require_no_unknown_props(data, cls._FIELDS, "ProbeAuthorProvenanceV1")
         return cls(
@@ -805,7 +808,7 @@ class ScoringKeyContentV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ScoringKeyContentV1":
+    def from_dict(cls, data: dict[str, Any]) -> ScoringKeyContentV1:
         data = _require_dict(data, "ScoringKeyContentV1")
         _require_no_unknown_props(data, cls._FIELDS, "ScoringKeyContentV1")
         return cls(
@@ -854,7 +857,7 @@ class LeakageReviewManifestV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "LeakageReviewManifestV1":
+    def from_dict(cls, data: dict[str, Any]) -> LeakageReviewManifestV1:
         data = _require_dict(data, "LeakageReviewManifestV1")
         _require_no_unknown_props(data, cls._FIELDS, "LeakageReviewManifestV1")
         return cls(
@@ -907,7 +910,7 @@ class ScoringKeyV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ScoringKeyV1":
+    def from_dict(cls, data: dict[str, Any]) -> ScoringKeyV1:
         data = _require_dict(data, "ScoringKeyV1")
         _require_no_unknown_props(data, cls._FIELDS, "ScoringKeyV1")
         return cls(
@@ -982,7 +985,7 @@ class ProbeManifestV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ProbeManifestV1":
+    def from_dict(cls, data: dict[str, Any]) -> ProbeManifestV1:
         data = _require_dict(data, "ProbeManifestV1")
         _require_no_unknown_props(data, cls._FIELDS, "ProbeManifestV1")
         return cls(
@@ -1086,7 +1089,7 @@ class TargetCaptureStateV1:
     _FIELDS = {"target_id", "capture_state", "capture_manifest_digest"}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TargetCaptureStateV1":
+    def from_dict(cls, data: dict[str, Any]) -> TargetCaptureStateV1:
         data = _require_dict(data, "TargetCaptureStateV1")
         _require_no_unknown_props(data, cls._FIELDS, "TargetCaptureStateV1")
         return cls(
@@ -1125,7 +1128,7 @@ class ConvMemCaptureStateV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ConvMemCaptureStateV1":
+    def from_dict(cls, data: dict[str, Any]) -> ConvMemCaptureStateV1:
         data = _require_dict(data, "ConvMemCaptureStateV1")
         _require_no_unknown_props(data, cls._FIELDS, "ConvMemCaptureStateV1")
         return cls(
@@ -1175,7 +1178,7 @@ class TrialIdentityV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TrialIdentityV1":
+    def from_dict(cls, data: dict[str, Any]) -> TrialIdentityV1:
         data = _require_dict(data, "TrialIdentityV1")
         _require_no_unknown_props(data, cls._FIELDS, "TrialIdentityV1")
         return cls(
@@ -1217,7 +1220,7 @@ class AgentBTraceV1:
     _FIELDS = {"header", "trial_id", "trace_digest", "final_response_digest"}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AgentBTraceV1":
+    def from_dict(cls, data: dict[str, Any]) -> AgentBTraceV1:
         data = _require_dict(data, "AgentBTraceV1")
         _require_no_unknown_props(data, cls._FIELDS, "AgentBTraceV1")
         return cls(
@@ -1250,7 +1253,7 @@ class ActionLatencyRecordV1:
     _FIELDS = {"header", "trial_id", "action_count", "latency_ms_total", "record_digest"}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ActionLatencyRecordV1":
+    def from_dict(cls, data: dict[str, Any]) -> ActionLatencyRecordV1:
         data = _require_dict(data, "ActionLatencyRecordV1")
         _require_no_unknown_props(data, cls._FIELDS, "ActionLatencyRecordV1")
         return cls(
@@ -1283,7 +1286,7 @@ class TargetScoreV1:
     _FIELDS = {"header", "target_id", "trial_id", "normalized_score", "reliability_state"}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TargetScoreV1":
+    def from_dict(cls, data: dict[str, Any]) -> TargetScoreV1:
         data = _require_dict(data, "TargetScoreV1")
         _require_no_unknown_props(data, cls._FIELDS, "TargetScoreV1")
         return cls(
@@ -1328,7 +1331,7 @@ class EpisodeOutcomeV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EpisodeOutcomeV1":
+    def from_dict(cls, data: dict[str, Any]) -> EpisodeOutcomeV1:
         data = _require_dict(data, "EpisodeOutcomeV1")
         _require_no_unknown_props(data, cls._FIELDS, "EpisodeOutcomeV1")
         return cls(
@@ -1378,7 +1381,7 @@ class StudyAnalysisV1:
     }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "StudyAnalysisV1":
+    def from_dict(cls, data: dict[str, Any]) -> StudyAnalysisV1:
         data = _require_dict(data, "StudyAnalysisV1")
         _require_no_unknown_props(data, cls._FIELDS, "StudyAnalysisV1")
         return cls(
@@ -1409,6 +1412,628 @@ class StudyAnalysisV1:
             out["conditional_episode_effect"] = self.conditional_episode_effect
         return out
 
+
+
+# --- G5C corrective: prospective manifest, boundary ledger, opportunity identity ---
+
+import copy
+
+from eval_naturalistic.enums import (
+    InformationSufficiencyState,
+    MissingnessComparabilityState,
+    OutcomeReasonCode,
+    ProtocolValidityState,
+    ScoreEvaluabilityState,
+    ScorerIntegrityState,
+    ScorerReliabilityDispositionState,
+    StudyStageId,
+    TrialEvidenceCaptureState,
+)
+
+PROSPECTIVE_POLICY_FIELD_NAMES = (
+    "opportunity_authority_rule",
+    "failure_reason_taxonomy",
+    "missing_outcome_bounds_policy",
+    "orthogonal_state_precedence",
+    "paired_replay_policy",
+    "scorer_integrity_policy",
+    "scorer_reliability_policy",
+)
+
+PROSPECTIVE_INFORMATION_SLOT_NAMES = frozenset(
+    {
+        "meaningful_advantage",
+        "equivalence_margin",
+        "target_bearing_episode_information_floor",
+        "secondary_information_floor",
+        "precision_confidence_criterion",
+        "sparse_reliability_criterion",
+        "scorer_reliability_gate",
+        "terminal_disposition_rules",
+    }
+)
+
+PLACEHOLDER_MARKERS = frozenset({"", "PENDING", "TBD", "placeholder", "not_applicable_without_rule"})
+
+
+def _is_placeholder_text(value: str | None) -> bool:
+    if value is None:
+        return True
+    stripped = value.strip()
+    if not stripped:
+        return True
+    return stripped.upper() in PLACEHOLDER_MARKERS or stripped.lower() in PLACEHOLDER_MARKERS
+
+
+@dataclass
+class ProspectiveManifestV1:
+    """Complete prospective manifest: eight information slots plus frozen policy fields."""
+
+    header: ArtifactHeaderV1
+    study_id: str
+    frame_artifact_id: str
+    frame_digest: str
+    information_slots: list[ParameterSlotV1]
+    opportunity_authority_rule: str
+    failure_reason_taxonomy: list[str]
+    missing_outcome_bounds_policy: str
+    orthogonal_state_precedence: list[str]
+    paired_replay_policy: str
+    scorer_integrity_policy: str
+    scorer_reliability_policy: str
+    logged_freeze_digest: str | None = None
+
+    SCHEMA = f"{SCHEMA_NAMESPACE}/prospective-manifest-v1"
+    _FIELDS = {
+        "header",
+        "study_id",
+        "frame_artifact_id",
+        "frame_digest",
+        "information_slots",
+        "opportunity_authority_rule",
+        "failure_reason_taxonomy",
+        "missing_outcome_bounds_policy",
+        "orthogonal_state_precedence",
+        "paired_replay_policy",
+        "scorer_integrity_policy",
+        "scorer_reliability_policy",
+        "logged_freeze_digest",
+    }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ProspectiveManifestV1:
+        data = _require_dict(data, "ProspectiveManifestV1")
+        _require_no_unknown_props(data, cls._FIELDS, "ProspectiveManifestV1")
+        slots = [
+            ParameterSlotV1.from_dict(item)
+            for item in _require_list(data.get("information_slots", []), "information_slots")
+        ]
+        taxonomy = [
+            _require_str(item, "failure_reason_taxonomy[]")
+            for item in _require_list(data["failure_reason_taxonomy"], "failure_reason_taxonomy")
+        ]
+        precedence = [
+            _require_str(item, "orthogonal_state_precedence[]")
+            for item in _require_list(data["orthogonal_state_precedence"], "orthogonal_state_precedence")
+        ]
+        return cls(
+            header=_header_from(data),
+            study_id=_require_str(data["study_id"], "study_id"),
+            frame_artifact_id=_require_str(data["frame_artifact_id"], "frame_artifact_id"),
+            frame_digest=_require_str(data["frame_digest"], "frame_digest"),
+            information_slots=slots,
+            opportunity_authority_rule=_require_str(
+                data["opportunity_authority_rule"], "opportunity_authority_rule"
+            ),
+            failure_reason_taxonomy=taxonomy,
+            missing_outcome_bounds_policy=_require_str(
+                data["missing_outcome_bounds_policy"], "missing_outcome_bounds_policy"
+            ),
+            orthogonal_state_precedence=precedence,
+            paired_replay_policy=_require_str(data["paired_replay_policy"], "paired_replay_policy"),
+            scorer_integrity_policy=_require_str(
+                data["scorer_integrity_policy"], "scorer_integrity_policy"
+            ),
+            scorer_reliability_policy=_require_str(
+                data["scorer_reliability_policy"], "scorer_reliability_policy"
+            ),
+            logged_freeze_digest=data.get("logged_freeze_digest"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
+            "header": _header_to(self.header),
+            "study_id": self.study_id,
+            "frame_artifact_id": self.frame_artifact_id,
+            "frame_digest": self.frame_digest,
+            "information_slots": [slot.to_dict() for slot in self.information_slots],
+            "opportunity_authority_rule": self.opportunity_authority_rule,
+            "failure_reason_taxonomy": list(self.failure_reason_taxonomy),
+            "missing_outcome_bounds_policy": self.missing_outcome_bounds_policy,
+            "orthogonal_state_precedence": list(self.orthogonal_state_precedence),
+            "paired_replay_policy": self.paired_replay_policy,
+            "scorer_integrity_policy": self.scorer_integrity_policy,
+            "scorer_reliability_policy": self.scorer_reliability_policy,
+        }
+        if self.logged_freeze_digest is not None:
+            out["logged_freeze_digest"] = self.logged_freeze_digest
+        return out
+
+
+@dataclass
+class StageBoundaryPredicateResultV1:
+    predicate_name: str
+    passed: bool
+    detail: str | None = None
+
+    _FIELDS = {"predicate_name", "passed", "detail"}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> StageBoundaryPredicateResultV1:
+        data = _require_dict(data, "StageBoundaryPredicateResultV1")
+        _require_no_unknown_props(data, cls._FIELDS, "StageBoundaryPredicateResultV1")
+        passed = data["passed"]
+        if not isinstance(passed, bool):
+            raise StructuralContractError("StageBoundaryPredicateResultV1: passed must be boolean")
+        return cls(
+            predicate_name=_require_str(data["predicate_name"], "predicate_name"),
+            passed=passed,
+            detail=data.get("detail"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
+            "predicate_name": self.predicate_name,
+            "passed": self.passed,
+        }
+        if self.detail is not None:
+            out["detail"] = self.detail
+        return out
+
+
+@dataclass
+class StageBoundaryLedgerEntryV1:
+    """One individual T0–T10 boundary record."""
+
+    stage_id: StudyStageId
+    input_artifact_digest: str
+    required_predicates: list[StageBoundaryPredicateResultV1]
+    validator_identity: str
+    validator_version: str
+    output_artifact_digest: str | None
+    guarantees_exported: list[str]
+    next_stage_assumptions: list[str]
+    failure_reasons: list[str]
+    passed: bool
+
+    _FIELDS = {
+        "stage_id",
+        "input_artifact_digest",
+        "required_predicates",
+        "validator_identity",
+        "validator_version",
+        "output_artifact_digest",
+        "guarantees_exported",
+        "next_stage_assumptions",
+        "failure_reasons",
+        "passed",
+    }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> StageBoundaryLedgerEntryV1:
+        data = _require_dict(data, "StageBoundaryLedgerEntryV1")
+        _require_no_unknown_props(data, cls._FIELDS, "StageBoundaryLedgerEntryV1")
+        passed = data["passed"]
+        if not isinstance(passed, bool):
+            raise StructuralContractError("StageBoundaryLedgerEntryV1: passed must be boolean")
+        return cls(
+            stage_id=_enum_from_value(StudyStageId, data["stage_id"], "stage_id"),
+            input_artifact_digest=_require_str(data["input_artifact_digest"], "input_artifact_digest"),
+            required_predicates=[
+                StageBoundaryPredicateResultV1.from_dict(item)
+                for item in _require_list(data["required_predicates"], "required_predicates")
+            ],
+            validator_identity=_require_str(data["validator_identity"], "validator_identity"),
+            validator_version=_require_str(data["validator_version"], "validator_version"),
+            output_artifact_digest=data.get("output_artifact_digest"),
+            guarantees_exported=[
+                _require_str(item, "guarantees_exported[]")
+                for item in _require_list(data["guarantees_exported"], "guarantees_exported")
+            ],
+            next_stage_assumptions=[
+                _require_str(item, "next_stage_assumptions[]")
+                for item in _require_list(data["next_stage_assumptions"], "next_stage_assumptions")
+            ],
+            failure_reasons=[
+                _require_str(item, "failure_reasons[]")
+                for item in _require_list(data.get("failure_reasons", []), "failure_reasons")
+            ],
+            passed=passed,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
+            "stage_id": self.stage_id.value,
+            "input_artifact_digest": self.input_artifact_digest,
+            "required_predicates": [item.to_dict() for item in self.required_predicates],
+            "validator_identity": self.validator_identity,
+            "validator_version": self.validator_version,
+            "guarantees_exported": list(self.guarantees_exported),
+            "next_stage_assumptions": list(self.next_stage_assumptions),
+            "failure_reasons": list(self.failure_reasons),
+            "passed": self.passed,
+        }
+        if self.output_artifact_digest is not None:
+            out["output_artifact_digest"] = self.output_artifact_digest
+        return out
+
+
+@dataclass
+class StageBoundaryLedgerV1:
+    entries: list[StageBoundaryLedgerEntryV1]
+
+    _FIELDS = {"entries"}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> StageBoundaryLedgerV1:
+        data = _require_dict(data, "StageBoundaryLedgerV1")
+        _require_no_unknown_props(data, cls._FIELDS, "StageBoundaryLedgerV1")
+        return cls(
+            entries=[
+                StageBoundaryLedgerEntryV1.from_dict(item)
+                for item in _require_list(data["entries"], "entries")
+            ]
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"entries": [entry.to_dict() for entry in self.entries]}
+
+    def derived_group_summaries(self) -> dict[str, bool]:
+        by_stage = {entry.stage_id: entry.passed for entry in self.entries}
+        return {
+            "T0_T2": all(by_stage.get(stage, False) for stage in StudyStageId if stage.value in {"T0", "T1", "T2"}),
+            "T3_T5": all(by_stage.get(stage, False) for stage in StudyStageId if stage.value in {"T3", "T4", "T5"}),
+            "T6_T7": all(by_stage.get(stage, False) for stage in StudyStageId if stage.value in {"T6", "T7"}),
+            "T8_T10": all(
+                by_stage.get(stage, False) for stage in StudyStageId if stage.value in {"T8", "T9", "T10"}
+            ),
+        }
+
+
+@dataclass
+class EpisodeOpportunityIdentityV1:
+    """Immutable episode-opportunity identity bound to sealed registry authority."""
+
+    episode_opportunity_id: str
+    episode_id: str
+    registry_artifact_id: str
+    registry_digest: str
+
+    _FIELDS = {"episode_opportunity_id", "episode_id", "registry_artifact_id", "registry_digest"}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> EpisodeOpportunityIdentityV1:
+        data = _require_dict(data, "EpisodeOpportunityIdentityV1")
+        _require_no_unknown_props(data, cls._FIELDS, "EpisodeOpportunityIdentityV1")
+        return cls(
+            episode_opportunity_id=_require_str(data["episode_opportunity_id"], "episode_opportunity_id"),
+            episode_id=_require_str(data["episode_id"], "episode_id"),
+            registry_artifact_id=_require_str(data["registry_artifact_id"], "registry_artifact_id"),
+            registry_digest=_require_str(data["registry_digest"], "registry_digest"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "episode_opportunity_id": self.episode_opportunity_id,
+            "episode_id": self.episode_id,
+            "registry_artifact_id": self.registry_artifact_id,
+            "registry_digest": self.registry_digest,
+        }
+
+
+@dataclass
+class OutcomeAxisRecordV1:
+    """Separate outcome axes for one episode-opportunity."""
+
+    episode_opportunity_id: str
+    convmem_capture_state: CaptureDiagnosticState
+    c0_trial_capture: TrialEvidenceCaptureState
+    c1_trial_capture: TrialEvidenceCaptureState
+    c0_score_evaluability: ScoreEvaluabilityState
+    c1_score_evaluability: ScoreEvaluabilityState
+    protocol_integrity_valid: bool
+    scorer_reliability_state: ScorerReliabilityDispositionState
+    reason_codes: list[str]
+
+    _FIELDS = {
+        "episode_opportunity_id",
+        "convmem_capture_state",
+        "c0_trial_capture",
+        "c1_trial_capture",
+        "c0_score_evaluability",
+        "c1_score_evaluability",
+        "protocol_integrity_valid",
+        "scorer_reliability_state",
+        "reason_codes",
+    }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> OutcomeAxisRecordV1:
+        data = _require_dict(data, "OutcomeAxisRecordV1")
+        _require_no_unknown_props(data, cls._FIELDS, "OutcomeAxisRecordV1")
+        protocol_valid = data["protocol_integrity_valid"]
+        if not isinstance(protocol_valid, bool):
+            raise StructuralContractError("OutcomeAxisRecordV1: protocol_integrity_valid must be boolean")
+        return cls(
+            episode_opportunity_id=_require_str(data["episode_opportunity_id"], "episode_opportunity_id"),
+            convmem_capture_state=_enum_from_value(
+                CaptureDiagnosticState, data["convmem_capture_state"], "convmem_capture_state"
+            ),
+            c0_trial_capture=_enum_from_value(
+                TrialEvidenceCaptureState, data["c0_trial_capture"], "c0_trial_capture"
+            ),
+            c1_trial_capture=_enum_from_value(
+                TrialEvidenceCaptureState, data["c1_trial_capture"], "c1_trial_capture"
+            ),
+            c0_score_evaluability=_enum_from_value(
+                ScoreEvaluabilityState, data["c0_score_evaluability"], "c0_score_evaluability"
+            ),
+            c1_score_evaluability=_enum_from_value(
+                ScoreEvaluabilityState, data["c1_score_evaluability"], "c1_score_evaluability"
+            ),
+            protocol_integrity_valid=protocol_valid,
+            scorer_reliability_state=_enum_from_value(
+                ScorerReliabilityDispositionState,
+                data["scorer_reliability_state"],
+                "scorer_reliability_state",
+            ),
+            reason_codes=[
+                _require_str(item, "reason_codes[]")
+                for item in _require_list(data.get("reason_codes", []), "reason_codes")
+            ],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "episode_opportunity_id": self.episode_opportunity_id,
+            "convmem_capture_state": self.convmem_capture_state.value,
+            "c0_trial_capture": self.c0_trial_capture.value,
+            "c1_trial_capture": self.c1_trial_capture.value,
+            "c0_score_evaluability": self.c0_score_evaluability.value,
+            "c1_score_evaluability": self.c1_score_evaluability.value,
+            "protocol_integrity_valid": self.protocol_integrity_valid,
+            "scorer_reliability_state": self.scorer_reliability_state.value,
+            "reason_codes": list(self.reason_codes),
+        }
+
+
+@dataclass
+class OrthogonalStateRecordV1:
+    protocol_validity: ProtocolValidityState
+    information_sufficiency: InformationSufficiencyState
+    missingness_comparability: MissingnessComparabilityState
+    scorer_integrity: ScorerIntegrityState
+    scorer_reliability: ScorerReliabilityDispositionState
+    reason_codes: list[str]
+    precedence_path: list[str]
+
+    _FIELDS = {
+        "protocol_validity",
+        "information_sufficiency",
+        "missingness_comparability",
+        "scorer_integrity",
+        "scorer_reliability",
+        "reason_codes",
+        "precedence_path",
+    }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> OrthogonalStateRecordV1:
+        data = _require_dict(data, "OrthogonalStateRecordV1")
+        _require_no_unknown_props(data, cls._FIELDS, "OrthogonalStateRecordV1")
+        return cls(
+            protocol_validity=_enum_from_value(
+                ProtocolValidityState, data["protocol_validity"], "protocol_validity"
+            ),
+            information_sufficiency=_enum_from_value(
+                InformationSufficiencyState, data["information_sufficiency"], "information_sufficiency"
+            ),
+            missingness_comparability=_enum_from_value(
+                MissingnessComparabilityState,
+                data["missingness_comparability"],
+                "missingness_comparability",
+            ),
+            scorer_integrity=_enum_from_value(
+                ScorerIntegrityState, data["scorer_integrity"], "scorer_integrity"
+            ),
+            scorer_reliability=_enum_from_value(
+                ScorerReliabilityDispositionState,
+                data["scorer_reliability"],
+                "scorer_reliability",
+            ),
+            reason_codes=[
+                _require_str(item, "reason_codes[]")
+                for item in _require_list(data.get("reason_codes", []), "reason_codes")
+            ],
+            precedence_path=[
+                _require_str(item, "precedence_path[]")
+                for item in _require_list(data.get("precedence_path", []), "precedence_path")
+            ],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "protocol_validity": self.protocol_validity.value,
+            "information_sufficiency": self.information_sufficiency.value,
+            "missingness_comparability": self.missingness_comparability.value,
+            "scorer_integrity": self.scorer_integrity.value,
+            "scorer_reliability": self.scorer_reliability.value,
+            "reason_codes": list(self.reason_codes),
+            "precedence_path": list(self.precedence_path),
+        }
+
+
+def make_pending_information_slots() -> list[ParameterSlotV1]:
+    return [
+        ParameterSlotV1(
+            slot_name=name,
+            freeze_status=ParameterFreezeStatus.PENDING,
+            construct_defining=True,
+        )
+        for name in sorted(PROSPECTIVE_INFORMATION_SLOT_NAMES)
+    ]
+
+
+def make_complete_prospective_policy_text() -> dict[str, Any]:
+  return {
+    "opportunity_authority_rule": "sealed_target_registry_is_sole_denominator_authority",
+    "failure_reason_taxonomy": [code.value for code in OutcomeReasonCode],
+    "missing_outcome_bounds_policy": "deterministic_worst_best_on_unit_interval_for_valid_missing_only",
+    "orthogonal_state_precedence": [
+        "protocol_invalidity",
+        "environment_or_scorer_integrity_invalidity",
+        "insufficient_opportunity_or_information",
+        "below_threshold_reliability_or_inconclusive_bounds",
+        "effect_interpretation_deferred_to_later_study",
+    ],
+    "paired_replay_policy": "fresh_symmetric_replay_single_convmem_difference",
+    "scorer_integrity_policy": "condition_neutral_packages_no_unblinding",
+    "scorer_reliability_policy": "below_threshold_blocks_not_invalidates",
+  }
+
+
+def make_pending_prospective_manifest(*, frame: EpisodeFrameV1) -> ProspectiveManifestV1:
+    policy = make_complete_prospective_policy_text()
+    header = ArtifactHeaderV1(
+        artifact_id="pending",
+        schema_version=ProspectiveManifestV1.SCHEMA,
+        parent_artifact_id=frame.header.artifact_id,
+        parent_digest=frame.header.content_digest,
+        created_at="2026-08-30T00:00:00Z",
+        seal_time=None,
+        responsible_role="study_owner",
+        content_digest=None,
+        sealed=False,
+    )
+    return ProspectiveManifestV1(
+        header=header,
+        study_id=frame.study_id,
+        frame_artifact_id=frame.header.artifact_id,
+        frame_digest=frame.header.content_digest or "",
+        information_slots=make_pending_information_slots(),
+        opportunity_authority_rule=policy["opportunity_authority_rule"],
+        failure_reason_taxonomy=policy["failure_reason_taxonomy"],
+        missing_outcome_bounds_policy=policy["missing_outcome_bounds_policy"],
+        orthogonal_state_precedence=policy["orthogonal_state_precedence"],
+        paired_replay_policy=policy["paired_replay_policy"],
+        scorer_integrity_policy=policy["scorer_integrity_policy"],
+        scorer_reliability_policy=policy["scorer_reliability_policy"],
+        logged_freeze_digest=None,
+    )
+
+
+def validate_prospective_manifest_structural(
+    serialized_body: dict[str, Any],
+    *,
+    require_logged_freeze: bool = False,
+) -> NaturalisticValidation:
+    """Validate canonical serialized manifest bytes — not builder flags."""
+
+    from eval_naturalistic.base import NaturalisticValidation
+
+    errors: list[str] = []
+    try:
+        manifest = ProspectiveManifestV1.from_dict(serialized_body)
+    except StructuralContractError as exc:
+        return NaturalisticValidation(errors=[str(exc)])
+
+    present_slots = {slot.slot_name for slot in manifest.information_slots}
+    missing_slots = sorted(PROSPECTIVE_INFORMATION_SLOT_NAMES - present_slots)
+    if missing_slots:
+        errors.append("incomplete prospective manifest: missing information slots: " + ", ".join(missing_slots))
+    extra_slots = sorted(present_slots - PROSPECTIVE_INFORMATION_SLOT_NAMES)
+    if extra_slots:
+        errors.append("prospective manifest has unknown information slots: " + ", ".join(extra_slots))
+
+    for slot in manifest.information_slots:
+        if slot.freeze_status == ParameterFreezeStatus.FROZEN and _is_placeholder_text(slot.value):
+            errors.append(f"slot '{slot.slot_name}' falsely marked frozen with placeholder value")
+        if slot.freeze_status == ParameterFreezeStatus.NOT_APPLICABLE and not slot.authority:
+            errors.append(f"slot '{slot.slot_name}' not_applicable without frozen rule")
+
+    for field_name in PROSPECTIVE_POLICY_FIELD_NAMES:
+        value = getattr(manifest, field_name)
+        if field_name == "failure_reason_taxonomy":
+            if not value:
+                errors.append("failure_reason_taxonomy must not be empty")
+            elif any(_is_placeholder_text(item) for item in value):
+                errors.append("failure_reason_taxonomy contains placeholder entries")
+        elif field_name == "orthogonal_state_precedence":
+            if not value:
+                errors.append("orthogonal_state_precedence must not be empty")
+        elif _is_placeholder_text(value):
+            errors.append(f"prospective manifest policy field '{field_name}' is placeholder or empty")
+
+    if _is_placeholder_text(manifest.frame_digest):
+        errors.append("frame_digest must not be placeholder")
+    if require_logged_freeze:
+        if not manifest.logged_freeze_digest:
+            errors.append("logged freeze digest required before stage advance")
+        else:
+            body_for_digest = copy.deepcopy(serialized_body)
+            body_for_digest.pop("logged_freeze_digest", None)
+            derived = artifact_content_digest(body_for_digest)
+            if manifest.logged_freeze_digest != derived:
+                errors.append("logged freeze digest does not match serialized artifact digest")
+
+    if manifest.logged_freeze_digest is None:
+        rederived = artifact_content_digest(serialized_body)
+        header_digest = manifest.header.content_digest
+        if header_digest is not None and header_digest != rederived:
+            errors.append("header content_digest does not match re-derived serialized digest")
+
+    return NaturalisticValidation(errors=errors)
+
+
+def verify_handoff_artifact_digest(*, logged_digest: str, handed_artifact: dict[str, Any]) -> NaturalisticValidation:
+    from eval_naturalistic.base import NaturalisticValidation
+
+    body_for_digest = copy.deepcopy(handed_artifact)
+    body_for_digest.pop("logged_freeze_digest", None)
+    actual = artifact_content_digest(body_for_digest)
+    if logged_digest != actual:
+        return NaturalisticValidation(
+            errors=[
+                f"handoff artifact digest mismatch (logged={logged_digest}, actual={actual})"
+            ]
+        )
+    return NaturalisticValidation(errors=[])
+
+
+def reject_arm_dependent_registry_rule(rule_text: str) -> NaturalisticValidation:
+    from eval_naturalistic.base import NaturalisticValidation
+
+    lowered = rule_text.lower()
+    forbidden = (
+        "condition",
+        "capture",
+        "retrieval",
+        "c0",
+        "c1",
+        "convmem",
+        "score",
+        "outcome",
+        "result",
+    )
+    hits = sorted({token for token in forbidden if token in lowered})
+    if hits:
+        return NaturalisticValidation(
+            errors=[
+                "registry rule must not depend on arm/capture/results: matched "
+                + ", ".join(hits)
+            ]
+        )
+    return NaturalisticValidation(errors=[])
 
 def seal_artifact_dict(body: dict[str, Any], *, seal_time: str) -> dict[str, Any]:
     """Compute digest and mark an artifact body sealed."""
