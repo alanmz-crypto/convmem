@@ -19,8 +19,6 @@ from serving_index_repository import (
     open_serving_index_repository,
     runtime_serving_read_sites,
 )
-
-
 from tests.serving_test_helpers import assert_serving_open_raises, serving_test_cfg
 
 
@@ -99,7 +97,7 @@ def test_transient_backend_uses_mediated_fallback_only(tmp_path: Path) -> None:
 
     with patch("query.ollama_embed", return_value=[0.1] * 8), patch(
         "query._fallback_query_rows", return_value=fallback_rows
-    ), patch(
+    ) as fallback, patch(
         "rerank.rerank",
         side_effect=lambda _q, rows, _m, k: rows[:k],
     ):
@@ -124,7 +122,22 @@ def test_transient_backend_uses_mediated_fallback_only(tmp_path: Path) -> None:
 
     assert results[0]["id"] == "kw-1"
     repo.mediated_keyword_fallback.assert_called_once()  # pylint: disable=no-member
+    fallback.assert_not_called()
     mock_open.assert_called()
+
+
+def test_readonly_chroma_open_is_transient(tmp_path: Path) -> None:
+    """A Chroma startup write failure enters the mediated fallback path."""
+
+    chroma = tmp_path / "chroma"
+    chroma.mkdir()
+    cfg = _cfg(tmp_path, chroma)
+
+    with patch(
+        "serving_index_repository._open_backing_store",
+        side_effect=RuntimeError("attempt to write a readonly database"),
+    ), pytest.raises(ServingBackendTransient), open_serving_index_repository(cfg):
+        pass
 
 
 def test_serving_authority_error_is_not_transient(tmp_path: Path) -> None:
