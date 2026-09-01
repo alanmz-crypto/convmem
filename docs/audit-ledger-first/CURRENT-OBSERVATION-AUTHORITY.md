@@ -6,6 +6,14 @@
 > files are treated as an approved baseline. **Does not authorize** shadow hooks,
 > cutover, restore-order flip, or Neutral.
 
+> **Current-state note (verified 2026-09-01):** The structural conclusion documented
+> here remains accurate at repository state `22f664fa058ffa0d8153ebbc93c8882a008f34f3`:
+> Chroma is first in the existing observation/search path, while
+> `knowledge_units.jsonl` is a derived and incomplete export rather than a universally
+> canonical source. The specific record counts below are a point-in-time snapshot from
+> the original 2026-07-24 salvage audit; they were not re-verified for this documentation
+> update.
+
 ## Architecture #115 corrections (applied 2026-07-24)
 
 - **Chroma remains authoritative** for observations through Phase 0. Shadow is

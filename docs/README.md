@@ -17,6 +17,7 @@ root. Keep it separate from the protocol handoff pointer.
 
 | Doc | Role |
 |-----|------|
+| [`RESEARCH.md`](RESEARCH.md) | Technical/research orientation: problem, mechanism, evaluation boundaries, current evidence, limitations, and reproducibility |
 | [`STATUS.md`](STATUS.md) | Where to read for live ops |
 | [`ROADMAP.md`](ROADMAP.md) | Product roadmap |
 | [`RECOVER.md`](RECOVER.md) | Disaster recovery |
