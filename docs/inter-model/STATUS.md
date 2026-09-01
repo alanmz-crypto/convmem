@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-09-01 (`origin/main` is at `8a6c876c230358ad384e2e553d33a5baf97bc58d`; branch and PR work named below is not on `main` unless explicitly stated)
+**Snapshot:** 2026-09-01 (`origin/main` is at `0b6b436ca054a1b04dc9c5c46eb2533268fe0a90`; branch and PR work named below is not on `main` unless explicitly stated)
 
 > **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. PR #221 is
 > squash-merged onto current main; its bounded writer-boundary and
@@ -43,7 +43,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 |---|---|---|
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
-| R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are superseded but preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
+| R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
 | CG-2 authority migration | Design A Execute-close is **LANDED** via PR #250 at `e930ae4c…`; the accepted D7 source was transplanted onto current main. A later retained-reference-v2 corrective remains branch-only and must not be attributed to `main`. V8c and every production step remain PENDING/unauthorized. | No further Design A landing work. Separately governed reference-v2 review/implementation may proceed only under its own accepted plan/grant. Do not run production D0/D1, publish fence/pointer, activate an owner, run GC, or enable Shadow/R2b. See [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md), [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md), and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
 | Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED**; PR #221 squash-merged at `722141d31e586151f361ef7006ad74c71cdff534` from final reviewed head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`; bounded writer-boundary and provenance-supersession corrections are on current `main` with Runway integration complete | No further T3 integration work. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
@@ -100,7 +100,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Naturalistic product-value STATUS](../plans/STATUS-naturalistic-product-value.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** `origin/main` is `8a6c876c`: Naturalistic G1–G5 methodology is landed
+**TL;DR:** `origin/main` is `0b6b436c`: Naturalistic G1–G5 methodology is landed
 but non-live; G6 and every study/live/product-disposition step remain
 Ryan-gated. Recovery/CG-2 remain non-live, R2b implementation is landed but
 operational capture is separately gated, and Portland is stopped at

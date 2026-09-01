@@ -2,6 +2,10 @@
 
 **Live ops:** `~/.local/share/convmem/brief.md` — run `convmem brief` on the dev machine.
 
+Live command output and the active arc briefs outrank dated snapshots and
+handoff narratives below. Use this file for the reading order, not as a
+replacement for the session-start checks.
+
 ## Where to read (in order)
 
 1. `brief.md` — corpus stats, services, P0, MCP
