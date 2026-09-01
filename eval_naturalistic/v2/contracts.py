@@ -28,6 +28,7 @@ from eval_naturalistic.v2.identity import (
 
 SCHEMA_NAMESPACE_V2 = "convmem/naturalistic/v2"
 ARTIFACT_ID_PREFIX_V2 = "nps2_"
+_ISSUANCE_TOKEN = object()
 
 P1_FORBIDDEN_FIELDS = frozenset(
     {
@@ -55,14 +56,16 @@ def _header_to(header: ArtifactHeaderV1) -> dict[str, Any]:
     return header.to_dict()
 
 
-@dataclass
+@dataclass(frozen=True)
 class EvidenceSealManifestV2:
-    """P1 evidence seal authority — identity and envelope commitments only."""
+    """P1 evidence seal authority — issuer-finalized only."""
 
     header: ArtifactHeaderV1
     construct_freeze_digest: str
     episode_id: str
     occurrence_reference: OccurrenceReferenceV2
+    occurrence_issuance_digest: str
+    issuer_implementation_revision: str
     physical_instance_id: str
     revision_or_asof_id: str
     evidence_snapshot_id: str
@@ -71,8 +74,9 @@ class EvidenceSealManifestV2:
     canonicalization_profile_digest: str
     adapter_implementation_digest: str
     condition_neutral_evidence_availability: ConditionNeutralEvidenceAvailabilityV2
+    immediate_parents: tuple[Any, ...]
     logical_lineage_id: str | None = None
-    lineage_edges: list[LineageEdgeV2] = field(default_factory=list)
+    lineage_edges: tuple[LineageEdgeV2, ...] = ()
     raw_record_digest: str | None = None
     attachment_reference_inventory_digest: str | None = None
     source_and_snapshot_identity_digest: str | None = None
@@ -83,6 +87,8 @@ class EvidenceSealManifestV2:
         "construct_freeze_digest",
         "episode_id",
         "occurrence_reference",
+        "occurrence_issuance_digest",
+        "issuer_implementation_revision",
         "physical_instance_id",
         "revision_or_asof_id",
         "evidence_snapshot_id",
@@ -91,12 +97,64 @@ class EvidenceSealManifestV2:
         "canonicalization_profile_digest",
         "adapter_implementation_digest",
         "condition_neutral_evidence_availability",
+        "immediate_parents",
         "logical_lineage_id",
         "lineage_edges",
         "raw_record_digest",
         "attachment_reference_inventory_digest",
         "source_and_snapshot_identity_digest",
     }
+
+    def __init__(
+        self,
+        *,
+        _token: object,
+        header: ArtifactHeaderV1,
+        construct_freeze_digest: str,
+        episode_id: str,
+        occurrence_reference: OccurrenceReferenceV2,
+        occurrence_issuance_digest: str,
+        issuer_implementation_revision: str,
+        physical_instance_id: str,
+        revision_or_asof_id: str,
+        evidence_snapshot_id: str,
+        evidence_complete_envelope_digest: str,
+        canonical_content_digest: str,
+        canonicalization_profile_digest: str,
+        adapter_implementation_digest: str,
+        condition_neutral_evidence_availability: ConditionNeutralEvidenceAvailabilityV2,
+        immediate_parents: tuple[Any, ...],
+        logical_lineage_id: str | None = None,
+        lineage_edges: list[LineageEdgeV2] | tuple[LineageEdgeV2, ...] | None = None,
+        raw_record_digest: str | None = None,
+        attachment_reference_inventory_digest: str | None = None,
+        source_and_snapshot_identity_digest: str | None = None,
+    ) -> None:
+        if _token is not _ISSUANCE_TOKEN:
+            raise TypeError(
+                "EvidenceSealManifestV2 is issuer-finalized only; "
+                "use EvidenceSealManifestDraftV2.finalize_and_seal()"
+            )
+        object.__setattr__(self, "header", header)
+        object.__setattr__(self, "construct_freeze_digest", construct_freeze_digest)
+        object.__setattr__(self, "episode_id", episode_id)
+        object.__setattr__(self, "occurrence_reference", occurrence_reference)
+        object.__setattr__(self, "occurrence_issuance_digest", occurrence_issuance_digest)
+        object.__setattr__(self, "issuer_implementation_revision", issuer_implementation_revision)
+        object.__setattr__(self, "physical_instance_id", physical_instance_id)
+        object.__setattr__(self, "revision_or_asof_id", revision_or_asof_id)
+        object.__setattr__(self, "evidence_snapshot_id", evidence_snapshot_id)
+        object.__setattr__(self, "evidence_complete_envelope_digest", evidence_complete_envelope_digest)
+        object.__setattr__(self, "canonical_content_digest", canonical_content_digest)
+        object.__setattr__(self, "canonicalization_profile_digest", canonicalization_profile_digest)
+        object.__setattr__(self, "adapter_implementation_digest", adapter_implementation_digest)
+        object.__setattr__(self, "condition_neutral_evidence_availability", condition_neutral_evidence_availability)
+        object.__setattr__(self, "immediate_parents", tuple(immediate_parents))
+        object.__setattr__(self, "logical_lineage_id", logical_lineage_id)
+        object.__setattr__(self, "lineage_edges", tuple(lineage_edges or ()))
+        object.__setattr__(self, "raw_record_digest", raw_record_digest)
+        object.__setattr__(self, "attachment_reference_inventory_digest", attachment_reference_inventory_digest)
+        object.__setattr__(self, "source_and_snapshot_identity_digest", source_and_snapshot_identity_digest)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "EvidenceSealManifestV2":
@@ -108,64 +166,40 @@ class EvidenceSealManifestV2:
                     f"EvidenceSealManifestV2: forbidden P2/resolver field '{forbidden}'"
                 )
         availability = ConditionNeutralEvidenceAvailabilityV2.from_dict(
-            _require_dict(
-                data["condition_neutral_evidence_availability"],
-                "condition_neutral_evidence_availability",
-            )
+            _require_dict(data["condition_neutral_evidence_availability"], "condition_neutral_evidence_availability")
         )
+        from eval_naturalistic.v2.authority_issuance import ImmediateParentBindingV2
         raw = data.get("raw_record_digest")
         attachment = data.get("attachment_reference_inventory_digest")
         snapshot_identity = data.get("source_and_snapshot_identity_digest")
         return cls(
+            _token=_ISSUANCE_TOKEN,
             header=_header_from(data),
-            construct_freeze_digest=digest_hex(
-                data["construct_freeze_digest"], "construct_freeze_digest"
-            ),
+            construct_freeze_digest=digest_hex(data["construct_freeze_digest"], "construct_freeze_digest"),
             episode_id=_require_str(data["episode_id"], "episode_id"),
-            occurrence_reference=OccurrenceReferenceV2.from_dict(
-                _require_dict(data["occurrence_reference"], "occurrence_reference")
-            ),
-            physical_instance_id=_require_str(
-                data["physical_instance_id"], "physical_instance_id"
-            ),
-            revision_or_asof_id=_require_str(
-                data["revision_or_asof_id"], "revision_or_asof_id"
-            ),
-            evidence_snapshot_id=_require_str(
-                data["evidence_snapshot_id"], "evidence_snapshot_id"
-            ),
-            evidence_complete_envelope_digest=digest_hex(
-                data["evidence_complete_envelope_digest"],
-                "evidence_complete_envelope_digest",
-            ),
-            canonical_content_digest=digest_hex(
-                data["canonical_content_digest"], "canonical_content_digest"
-            ),
-            canonicalization_profile_digest=digest_hex(
-                data["canonicalization_profile_digest"],
-                "canonicalization_profile_digest",
-            ),
-            adapter_implementation_digest=digest_hex(
-                data["adapter_implementation_digest"],
-                "adapter_implementation_digest",
-            ),
+            occurrence_reference=OccurrenceReferenceV2.from_dict(_require_dict(data["occurrence_reference"], "occurrence_reference")),
+            occurrence_issuance_digest=digest_hex(data["occurrence_issuance_digest"], "occurrence_issuance_digest"),
+            issuer_implementation_revision=_require_str(data["issuer_implementation_revision"], "issuer_implementation_revision"),
+            physical_instance_id=_require_str(data["physical_instance_id"], "physical_instance_id"),
+            revision_or_asof_id=_require_str(data["revision_or_asof_id"], "revision_or_asof_id"),
+            evidence_snapshot_id=_require_str(data["evidence_snapshot_id"], "evidence_snapshot_id"),
+            evidence_complete_envelope_digest=digest_hex(data["evidence_complete_envelope_digest"], "evidence_complete_envelope_digest"),
+            canonical_content_digest=digest_hex(data["canonical_content_digest"], "canonical_content_digest"),
+            canonicalization_profile_digest=digest_hex(data["canonicalization_profile_digest"], "canonicalization_profile_digest"),
+            adapter_implementation_digest=digest_hex(data["adapter_implementation_digest"], "adapter_implementation_digest"),
             condition_neutral_evidence_availability=availability,
+            immediate_parents=tuple(
+                ImmediateParentBindingV2.from_dict(item)
+                for item in _require_list(data["immediate_parents"], "immediate_parents")
+            ),
             logical_lineage_id=data.get("logical_lineage_id"),
             lineage_edges=[
                 LineageEdgeV2.from_dict(item)
                 for item in _require_list(data.get("lineage_edges", []), "lineage_edges")
             ],
             raw_record_digest=digest_hex(raw, "raw_record_digest") if raw is not None else None,
-            attachment_reference_inventory_digest=(
-                digest_hex(attachment, "attachment_reference_inventory_digest")
-                if attachment is not None
-                else None
-            ),
-            source_and_snapshot_identity_digest=(
-                digest_hex(snapshot_identity, "source_and_snapshot_identity_digest")
-                if snapshot_identity is not None
-                else None
-            ),
+            attachment_reference_inventory_digest=digest_hex(attachment, "attachment_reference_inventory_digest") if attachment is not None else None,
+            source_and_snapshot_identity_digest=digest_hex(snapshot_identity, "source_and_snapshot_identity_digest") if snapshot_identity is not None else None,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -174,6 +208,8 @@ class EvidenceSealManifestV2:
             "construct_freeze_digest": self.construct_freeze_digest,
             "episode_id": self.episode_id,
             "occurrence_reference": self.occurrence_reference.to_dict(),
+            "occurrence_issuance_digest": self.occurrence_issuance_digest,
+            "issuer_implementation_revision": self.issuer_implementation_revision,
             "physical_instance_id": self.physical_instance_id,
             "revision_or_asof_id": self.revision_or_asof_id,
             "evidence_snapshot_id": self.evidence_snapshot_id,
@@ -181,9 +217,8 @@ class EvidenceSealManifestV2:
             "canonical_content_digest": self.canonical_content_digest,
             "canonicalization_profile_digest": self.canonicalization_profile_digest,
             "adapter_implementation_digest": self.adapter_implementation_digest,
-            "condition_neutral_evidence_availability": (
-                self.condition_neutral_evidence_availability.to_dict()
-            ),
+            "condition_neutral_evidence_availability": self.condition_neutral_evidence_availability.to_dict(),
+            "immediate_parents": [p.to_dict() if hasattr(p, "to_dict") else p for p in self.immediate_parents],
             "lineage_edges": [edge.to_dict() for edge in self.lineage_edges],
         }
         if self.logical_lineage_id is not None:
@@ -191,13 +226,9 @@ class EvidenceSealManifestV2:
         if self.raw_record_digest is not None:
             out["raw_record_digest"] = self.raw_record_digest
         if self.attachment_reference_inventory_digest is not None:
-            out["attachment_reference_inventory_digest"] = (
-                self.attachment_reference_inventory_digest
-            )
+            out["attachment_reference_inventory_digest"] = self.attachment_reference_inventory_digest
         if self.source_and_snapshot_identity_digest is not None:
-            out["source_and_snapshot_identity_digest"] = (
-                self.source_and_snapshot_identity_digest
-            )
+            out["source_and_snapshot_identity_digest"] = self.source_and_snapshot_identity_digest
         return out
 
     def bound_physical_instance(self) -> PhysicalInstanceIdV2:
@@ -210,7 +241,7 @@ class EvidenceSealManifestV2:
         return EvidenceSnapshotIdV2.from_value(self.evidence_snapshot_id)
 
 
-@dataclass
+@dataclass(frozen=True)
 class EvidenceAvailabilityManifestV2:
     """Condition-neutral availability inventory bound to a sealed occurrence."""
 

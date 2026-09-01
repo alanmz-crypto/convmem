@@ -19,6 +19,11 @@ from eval_naturalistic.v2.evidence import (
     VerbatimEvidenceAvailabilityV2,
     normalized_reported_presence,
 )
+from eval_naturalistic.v2.authority_issuance import (
+    SealedP1AuthorityV2,
+    reject_raw_unfinalized_p1,
+    verify_sealed_p1_authority,
+)
 from eval_naturalistic.v2.identity import (
     LineageEdgeV2,
     OccurrenceReferenceV2,
@@ -185,7 +190,7 @@ def validate_evidence_seal_manifest(manifest: EvidenceSealManifestV2) -> Natural
     errors: list[str] = []
     try:
         validate_occurrence_binding(manifest)
-        validate_lineage_preserves_physical_separation(manifest.lineage_edges)
+        validate_lineage_preserves_physical_separation(list(manifest.lineage_edges))
         validate_issue_263_availability(manifest.condition_neutral_evidence_availability)
         if manifest.header.schema_version != EvidenceSealManifestV2.SCHEMA:
             errors.append("EvidenceSealManifestV2 schema_version mismatch")
@@ -224,7 +229,15 @@ def parse_evidence_seal_manifest_v2(data: dict[str, Any]) -> EvidenceSealManifes
     result = validate_evidence_seal_manifest(manifest)
     if not result.ok:
         raise StructuralContractError("; ".join(result.errors))
-    return manifest
+    sealed = verify_sealed_p1_authority(manifest.to_dict())
+    return sealed.manifest
+
+
+def parse_sealed_p1_authority_v2(data: dict[str, Any]) -> SealedP1AuthorityV2:
+    """Parse and independently verify sealed P1 authority bytes."""
+
+    manifest = parse_evidence_seal_manifest_v2(data)
+    return verify_sealed_p1_authority(manifest.to_dict())
 
 
 def parse_evidence_availability_manifest_v2(

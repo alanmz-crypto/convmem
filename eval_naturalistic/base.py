@@ -66,6 +66,15 @@ def _optional_str(value: Any, field_name: str) -> str | None:
     return _require_str(value, field_name)
 
 
+
+
+def _require_bool(value: Any, field_name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    raise StructuralContractError(
+        f"{field_name}: must be a JSON boolean, got {type(value).__name__}"
+    )
+
 def _require_list(value: Any, field_name: str) -> list[Any]:
     if not isinstance(value, list):
         raise StructuralContractError(f"{field_name}: must be a list")

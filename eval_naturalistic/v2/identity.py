@@ -11,6 +11,7 @@ from eval_naturalistic.base import (
     _enum_from_value,
     _require_dict,
     _require_no_unknown_props,
+    _require_bool,
     _require_str,
 )
 
@@ -214,6 +215,9 @@ class LineageEdgeV2:
     to_physical_instance_id: str
     relation_kind: LineageRelationKind
     issuer_attested: bool
+    child_occurrence_digest: str
+    parent_occurrence_digest: str
+    attestation_evidence_digest: str | None = None
 
     _FIELDS = {
         "logical_lineage_id",
@@ -221,12 +225,25 @@ class LineageEdgeV2:
         "to_physical_instance_id",
         "relation_kind",
         "issuer_attested",
+        "child_occurrence_digest",
+        "parent_occurrence_digest",
+        "attestation_evidence_digest",
     }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "LineageEdgeV2":
         data = _require_dict(data, "LineageEdgeV2")
         _require_no_unknown_props(data, cls._FIELDS, "LineageEdgeV2")
+        issuer_attested = _require_bool(data["issuer_attested"], "issuer_attested")
+        attestation = data.get("attestation_evidence_digest")
+        if issuer_attested and attestation is None:
+            raise StructuralContractError(
+                "LineageEdgeV2: issuer_attested requires attestation_evidence_digest"
+            )
+        if not issuer_attested and attestation is not None:
+            raise StructuralContractError(
+                "LineageEdgeV2: attestation_evidence_digest requires issuer_attested=true"
+            )
         return cls(
             logical_lineage_id=_require_str(data["logical_lineage_id"], "logical_lineage_id"),
             from_physical_instance_id=_require_str(
@@ -238,17 +255,33 @@ class LineageEdgeV2:
             relation_kind=_enum_from_value(
                 LineageRelationKind, data["relation_kind"], "relation_kind"
             ),
-            issuer_attested=bool(data["issuer_attested"]),
+            issuer_attested=issuer_attested,
+            child_occurrence_digest=digest_hex(
+                data["child_occurrence_digest"], "child_occurrence_digest"
+            ),
+            parent_occurrence_digest=digest_hex(
+                data["parent_occurrence_digest"], "parent_occurrence_digest"
+            ),
+            attestation_evidence_digest=(
+                digest_hex(attestation, "attestation_evidence_digest")
+                if attestation is not None
+                else None
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "logical_lineage_id": self.logical_lineage_id,
             "from_physical_instance_id": self.from_physical_instance_id,
             "to_physical_instance_id": self.to_physical_instance_id,
             "relation_kind": self.relation_kind.value,
             "issuer_attested": self.issuer_attested,
+            "child_occurrence_digest": self.child_occurrence_digest,
+            "parent_occurrence_digest": self.parent_occurrence_digest,
         }
+        if self.attestation_evidence_digest is not None:
+            out["attestation_evidence_digest"] = self.attestation_evidence_digest
+        return out
 
     def preserves_physical_separation(self) -> bool:
         return self.from_physical_instance_id != self.to_physical_instance_id
