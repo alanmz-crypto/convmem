@@ -11,6 +11,7 @@ from eval_naturalistic.v2.evidence import (
     SummaryEvidenceAvailabilityV2,
     VerbatimEvidenceAvailabilityV2,
 )
+from eval_naturalistic.v2.adapters.profile import EvidenceAdapterProfileV2
 from eval_naturalistic.v2.resolver import ResolverInputV2
 from tests.fixtures.naturalistic_v2_p1 import (
     FIXED_DIGEST,
@@ -45,6 +46,28 @@ def crush_resolver_input(
         evidence_seal=seal,
         evidence_availability=avail_manifest,
         adapter_profile=profile_for_legacy_format(legacy_format),
+        legacy_format=legacy_format,
+        query_occurrence_reference=seal.occurrence_reference,
+    )
+
+
+def summary_only_resolver_input(
+    profile: EvidenceAdapterProfileV2,
+    *,
+    legacy_format: str = "sqlite_crush",
+) -> ResolverInputV2:
+    availability = sample_availability(
+        presence=SourcePresenceV2.PRESENT,
+        verbatim=VerbatimEvidenceAvailabilityV2.UNAVAILABLE,
+        summary=SummaryEvidenceAvailabilityV2.AVAILABLE,
+    )
+    seal = sample_seal_manifest(availability=availability)
+    avail_manifest = _bind_availability_manifest(seal, availability)
+    return ResolverInputV2(
+        construct_freeze_digest=FIXED_DIGEST,
+        evidence_seal=seal,
+        evidence_availability=avail_manifest,
+        adapter_profile=profile,
         legacy_format=legacy_format,
         query_occurrence_reference=seal.occurrence_reference,
     )

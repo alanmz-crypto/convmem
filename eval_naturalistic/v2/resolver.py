@@ -33,7 +33,7 @@ from eval_naturalistic.v2.resolver_contracts import (
     ResolverResultV2,
 )
 
-RESOLVER_IMPLEMENTATION_ID = "v2/opaque-resolver/1"
+RESOLVER_IMPLEMENTATION_ID = "v2/opaque-resolver/2-summary-binding"
 RESOLVER_FORBIDDEN_OUTPUT_FIELDS = frozenset(
     {
         "registry_membership",
@@ -111,9 +111,12 @@ def _bind_capability_from_profile(
     if resolver_result == ResolverResultV2.EXACT_MATCH:
         return vector
     if resolver_result == ResolverResultV2.SUMMARY_ONLY:
-        return vector.with_overrides(
-            evidence_completeness=EvidenceCompletenessCapability.PARTIAL_KNOWN.value
-        )
+        completeness = vector.evidence_completeness
+        if completeness == EvidenceCompletenessCapability.COMPLETE:
+            return vector.with_overrides(
+                evidence_completeness=EvidenceCompletenessCapability.PARTIAL_KNOWN.value
+            )
+        return vector
     if resolver_result in {
         ResolverResultV2.EVIDENCE_UNAVAILABLE,
         ResolverResultV2.NO_MATCH,

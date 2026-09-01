@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -11,6 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval_naturalistic.base import StructuralContractError
 from eval_naturalistic.digest import artifact_content_digest
+from eval_naturalistic.v2.adapters.capability import EvidenceCompletenessCapability
+from eval_naturalistic.v2.adapters.opencode_sqlite import opencode_sqlite_profile_schema_drift
 from eval_naturalistic.v2.adapters.registry import profile_for_legacy_format
 from eval_naturalistic.v2.evidence import (
     SourcePresenceV2,
@@ -40,7 +44,11 @@ from tests.fixtures.naturalistic_v2_p1 import (
     sample_occurrence,
     sample_seal_manifest,
 )
-from tests.fixtures.naturalistic_v2_resolver import crush_resolver_input, unsupported_resolver_input
+from tests.fixtures.naturalistic_v2_resolver import (
+    crush_resolver_input,
+    summary_only_resolver_input,
+    unsupported_resolver_input,
+)
 
 
 class NaturalisticV2ResolverTests(unittest.TestCase):
@@ -297,6 +305,127 @@ class NaturalisticV2ResolverTests(unittest.TestCase):
             resolver_implementation_digest(),
             resolver_implementation_digest(),
         )
+
+
+PRE_CORRECTIVE_RESOLVER_IMPLEMENTATION_ID = "v2/opaque-resolver/1"
+
+
+def _pre_corrective_implementation_digest() -> str:
+    payload = {
+        "implementation_id": PRE_CORRECTIVE_RESOLVER_IMPLEMENTATION_ID,
+        "read_only": True,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+class NaturalisticV2ResolverSummaryBindingCorrectiveTests(unittest.TestCase):
+    def _profile_with_completeness(
+        self, completeness: EvidenceCompletenessCapability
+    ) -> EvidenceAdapterProfileV2:
+        profile = profile_for_legacy_format("sqlite_crush")
+        vector = profile.capability_vector.with_overrides(
+            evidence_completeness=completeness.value
+        )
+        return profile.with_capability_vector(vector)
+
+    def test_summary_only_complete_to_partial_known(self) -> None:
+        manifest = resolve_opaque(
+            summary_only_resolver_input(
+                self._profile_with_completeness(EvidenceCompletenessCapability.COMPLETE)
+            )
+        )
+        self.assertEqual(manifest.resolver_result, ResolverResultV2.SUMMARY_ONLY)
+        self.assertEqual(
+            manifest.capability_vector.evidence_completeness,
+            EvidenceCompletenessCapability.PARTIAL_KNOWN,
+        )
+
+    def test_summary_only_partial_known_stays_partial_known(self) -> None:
+        manifest = resolve_opaque(
+            summary_only_resolver_input(
+                self._profile_with_completeness(EvidenceCompletenessCapability.PARTIAL_KNOWN)
+            )
+        )
+        self.assertEqual(
+            manifest.capability_vector.evidence_completeness,
+            EvidenceCompletenessCapability.PARTIAL_KNOWN,
+        )
+
+    def test_summary_only_unknown_stays_unknown(self) -> None:
+        manifest = resolve_opaque(
+            summary_only_resolver_input(
+                self._profile_with_completeness(EvidenceCompletenessCapability.UNKNOWN)
+            )
+        )
+        self.assertEqual(
+            manifest.capability_vector.evidence_completeness,
+            EvidenceCompletenessCapability.UNKNOWN,
+        )
+
+    def test_summary_only_missing_stays_missing(self) -> None:
+        manifest = resolve_opaque(
+            summary_only_resolver_input(
+                self._profile_with_completeness(EvidenceCompletenessCapability.MISSING)
+            )
+        )
+        self.assertEqual(
+            manifest.capability_vector.evidence_completeness,
+            EvidenceCompletenessCapability.MISSING,
+        )
+
+    def test_opencode_schema_drift_no_longer_promotes_unknown(self) -> None:
+        drift = opencode_sqlite_profile_schema_drift("opencode.message.part.v99")
+        manifest = resolve_opaque(summary_only_resolver_input(drift, legacy_format="sqlite_opencode"))
+        self.assertEqual(manifest.resolver_result, ResolverResultV2.SUMMARY_ONLY)
+        self.assertEqual(
+            manifest.capability_vector.evidence_completeness,
+            EvidenceCompletenessCapability.UNKNOWN,
+        )
+
+    def test_registered_profiles_non_regression(self) -> None:
+        exact = resolve_opaque(crush_resolver_input(legacy_format="sqlite_crush"))
+        self.assertEqual(exact.resolver_result, ResolverResultV2.EXACT_MATCH)
+
+        summary_crush = resolve_opaque(
+            summary_only_resolver_input(profile_for_legacy_format("sqlite_crush"))
+        )
+        self.assertEqual(summary_crush.resolver_result, ResolverResultV2.SUMMARY_ONLY)
+        self.assertEqual(
+            summary_crush.capability_vector.evidence_completeness,
+            EvidenceCompletenessCapability.PARTIAL_KNOWN,
+        )
+
+        for legacy_format in ("sqlite_opencode", "jsonl_cursor", "aider_markdown"):
+            manifest = resolve_opaque(
+                summary_only_resolver_input(
+                    profile_for_legacy_format(legacy_format),
+                    legacy_format=legacy_format,
+                )
+            )
+            self.assertEqual(manifest.resolver_result, ResolverResultV2.SUMMARY_ONLY)
+
+    def test_implementation_digest_changed_from_pre_corrective(self) -> None:
+        self.assertNotEqual(
+            resolver_implementation_digest(),
+            _pre_corrective_implementation_digest(),
+        )
+
+    def test_stale_implementation_digest_fails_closed(self) -> None:
+        manifest = resolve_opaque(crush_resolver_input())
+        with self.assertRaises(StructuralContractError):
+            verify_opaque_resolver_manifest(
+                manifest,
+                resolver_input=crush_resolver_input(),
+                expected_implementation_digest=_pre_corrective_implementation_digest(),
+            )
+
+    def test_summary_binding_deterministic(self) -> None:
+        resolver_input = summary_only_resolver_input(
+            self._profile_with_completeness(EvidenceCompletenessCapability.UNKNOWN)
+        )
+        first = resolve_opaque(resolver_input)
+        second = resolve_opaque(resolver_input)
+        self.assertEqual(first.resolver_output_digest, second.resolver_output_digest)
 
 
 if __name__ == "__main__":
