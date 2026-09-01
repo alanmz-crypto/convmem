@@ -52,7 +52,7 @@ Deploy: `bash scripts/deploy-builder-reference.sh` · Verify: `bash scripts/veri
 | Doc | Role |
 |-----|------|
 | [`builder-reference/README.md`](builder-reference/README.md) | Index — when to read which digest |
-| [`builder-reference/SOURCES.md`](builder-reference/SOURCES.md) | PDF paths + page ranges (local) |
+| [`builder-reference/SOURCES.md`](builder-reference/SOURCES.md) | Bibliographic source identification and page ranges; source PDFs are local-only |
 | [`inter-model/PLAN-2026-07-01-apply-builder-reference.md`](inter-model/PLAN-2026-07-01-apply-builder-reference.md) | Historical application plan; use the builder-reference index for current guidance |
 | [`inter-model/HANDOFF-KIRO-CRUSH-CODEX-2026-07-01-builder-reference.md`](inter-model/HANDOFF-KIRO-CRUSH-CODEX-2026-07-01-builder-reference.md) | Kiro / Crush / Codex — read before builder-reference implementation |
 
