@@ -35,6 +35,7 @@ from eval_naturalistic.v2.validators import (
     validate_revision_binding,
     RevisionBindingObservationV2,
 )
+from eval_naturalistic.v2.lineage_attestation import LineageAttestationRepository
 from tests.fixtures.naturalistic_v2_p1 import (
     ALT_DIGEST,
     clone_lineage_edge,
@@ -49,8 +50,13 @@ class NaturalisticV2P1IdentityTests(unittest.TestCase):
     def test_clone_identity_separation(self) -> None:
         original = sample_occurrence(physical_instance="phys-original", namespace="ns-orig")
         clone = sample_occurrence(physical_instance="phys-clone", namespace="ns-clone")
+        repo = LineageAttestationRepository()
         edge = clone_lineage_edge(
-            from_instance="phys-original", to_instance="phys-clone"
+            child_occurrence=clone,
+            parent_occurrence=original,
+            from_instance="phys-original",
+            to_instance="phys-clone",
+            lineage_repository=repo,
         )
         validate_distinct_occurrences(original, clone, context="clone")
         validate_lineage_preserves_physical_separation([edge])
@@ -201,11 +207,18 @@ class NaturalisticV2P1IdentityTests(unittest.TestCase):
         )
 
     def test_lineage_cannot_collapse_physical_instances(self) -> None:
-        bad_edge = clone_lineage_edge(
-            from_instance="same", to_instance="same"
+        original = sample_occurrence(physical_instance="same")
+        clone = sample_occurrence(physical_instance="same", namespace="ns-clone")
+        repo = LineageAttestationRepository()
+        good_edge = clone_lineage_edge(
+            child_occurrence=clone,
+            parent_occurrence=original,
+            from_instance="same",
+            to_instance="same",
+            lineage_repository=repo,
         )
         bad_edge = LineageEdgeV2(
-            logical_lineage_id=bad_edge.logical_lineage_id,
+            logical_lineage_id=good_edge.logical_lineage_id,
             from_physical_instance_id="same",
             to_physical_instance_id="same",
             relation_kind=LineageRelationKind.RESTORE,
@@ -220,11 +233,11 @@ class NaturalisticV2P1IdentityTests(unittest.TestCase):
     def test_duplicate_digest_different_occurrences_allowed(self) -> None:
         left = sample_seal_manifest(
             occurrence=sample_occurrence(physical_instance="p1"),
-            canonical_digest=ALT_DIGEST,
+            canonical_content_digest=ALT_DIGEST,
         )
         right = sample_seal_manifest(
             occurrence=sample_occurrence(physical_instance="p2"),
-            canonical_digest=ALT_DIGEST,
+            canonical_content_digest=ALT_DIGEST,
         )
         validate_duplicate_content_distinct_occurrences(left, right)
 

@@ -66,6 +66,7 @@ class EvidenceSealManifestV2:
     occurrence_reference: OccurrenceReferenceV2
     occurrence_issuance_digest: str
     issuer_implementation_revision: str
+    source_authority_digest: str
     physical_instance_id: str
     revision_or_asof_id: str
     evidence_snapshot_id: str
@@ -89,6 +90,7 @@ class EvidenceSealManifestV2:
         "occurrence_reference",
         "occurrence_issuance_digest",
         "issuer_implementation_revision",
+        "source_authority_digest",
         "physical_instance_id",
         "revision_or_asof_id",
         "evidence_snapshot_id",
@@ -115,6 +117,7 @@ class EvidenceSealManifestV2:
         occurrence_reference: OccurrenceReferenceV2,
         occurrence_issuance_digest: str,
         issuer_implementation_revision: str,
+        source_authority_digest: str,
         physical_instance_id: str,
         revision_or_asof_id: str,
         evidence_snapshot_id: str,
@@ -141,6 +144,7 @@ class EvidenceSealManifestV2:
         object.__setattr__(self, "occurrence_reference", occurrence_reference)
         object.__setattr__(self, "occurrence_issuance_digest", occurrence_issuance_digest)
         object.__setattr__(self, "issuer_implementation_revision", issuer_implementation_revision)
+        object.__setattr__(self, "source_authority_digest", source_authority_digest)
         object.__setattr__(self, "physical_instance_id", physical_instance_id)
         object.__setattr__(self, "revision_or_asof_id", revision_or_asof_id)
         object.__setattr__(self, "evidence_snapshot_id", evidence_snapshot_id)
@@ -180,6 +184,7 @@ class EvidenceSealManifestV2:
             occurrence_reference=OccurrenceReferenceV2.from_dict(_require_dict(data["occurrence_reference"], "occurrence_reference")),
             occurrence_issuance_digest=digest_hex(data["occurrence_issuance_digest"], "occurrence_issuance_digest"),
             issuer_implementation_revision=_require_str(data["issuer_implementation_revision"], "issuer_implementation_revision"),
+            source_authority_digest=digest_hex(data["source_authority_digest"], "source_authority_digest"),
             physical_instance_id=_require_str(data["physical_instance_id"], "physical_instance_id"),
             revision_or_asof_id=_require_str(data["revision_or_asof_id"], "revision_or_asof_id"),
             evidence_snapshot_id=_require_str(data["evidence_snapshot_id"], "evidence_snapshot_id"),
@@ -210,6 +215,7 @@ class EvidenceSealManifestV2:
             "occurrence_reference": self.occurrence_reference.to_dict(),
             "occurrence_issuance_digest": self.occurrence_issuance_digest,
             "issuer_implementation_revision": self.issuer_implementation_revision,
+            "source_authority_digest": self.source_authority_digest,
             "physical_instance_id": self.physical_instance_id,
             "revision_or_asof_id": self.revision_or_asof_id,
             "evidence_snapshot_id": self.evidence_snapshot_id,
