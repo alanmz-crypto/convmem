@@ -2,9 +2,10 @@
 
 Flat navigation for active docs. **No subfolder taxonomy** — historical material lives under [`archive/`](archive/).
 
-**Fast path:** live operations → `convmem brief --stdout-only`; current project
-state → [`inter-model/STATUS.md`](inter-model/STATUS.md); current handoff
-routing → [`inter-model/LATEST.md`](inter-model/LATEST.md); named arc → its
+**Technical/research orientation:** [`RESEARCH.md`](RESEARCH.md).
+**Live operations:** `convmem brief --stdout-only`; current project state →
+[`inter-model/STATUS.md`](inter-model/STATUS.md); current handoff routing →
+[`inter-model/LATEST.md`](inter-model/LATEST.md); named arc → its
 `plans/STATUS-<slug>.md` brief. Historical material is preserved under
 [`archive/`](archive/) and is not an active work queue.
 
