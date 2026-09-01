@@ -1,12 +1,30 @@
 # Inter-model communication
 
-When you communicate something meant for **other models** (not Ryan), write a file here.
+When you communicate something meant for **other models** (not Ryan), write a
+file here. The active inbox is the direct-child Markdown files that current
+routing links to; it is not a dumping ground for every historical packet.
 
 **Historical context (pre-2026-06-24 soak):** [`docs/archive/inter-model/2026-06-22/`](../archive/inter-model/2026-06-22/) — date-bucketed archive; not scanned by brief staleness.
 
-## Closed debate folder
+## Current-state layers
+
+- [`LATEST.md`](LATEST.md) — short handoff pointer; update it when routing
+  changes.
+- [`STATUS.md`](STATUS.md) — current cross-arc snapshot and authorized next
+  actions.
+- `docs/plans/STATUS-<slug>.md` — current brief for a named arc.
+- `~/.local/share/convmem/brief.md` — live corpus, service, and pending-work
+  state; regenerate it with `convmem brief --stdout-only`.
+
+## Preserved reference packs
+
+These nested directories are retained for provenance, but are not active work
+by default. Open them only when `LATEST.md`, `STATUS.md`, or a current task
+links them:
 
 - [debate-2026-07-15-who-fixes-retrieval/](debate-2026-07-15-who-fixes-retrieval/) — **CLOSED** (2026-07-22). Rounds 1–4 shipped; board closed into P1.3. Keep as reference (not an active contribution board).
+- `handoff-tar-hitl-2026-07-06/` and `handoff-tar-orchestration-approach-2026-07-06/` — preserved bundle snapshots.
+- `research-pack-2026-07-24-backup-neutral/` — closed research pack; do not reopen its authorization decisions.
 
 ## Convention
 
@@ -53,15 +71,16 @@ Do not add a separate governance doc for this. Do not create new taxonomy as a c
 ## Reading order for any new session
 
 1. `~/.local/share/convmem/brief.md` (auto-generated ops truth)
-2. **`docs/inter-model/LATEST.md`** (single pointer — 3 bullets, updated each session)
+2. **`docs/inter-model/LATEST.md`** (short pointer — update when routing changes)
 3. `docs/STATUS.md` (pointer — where to read)
-4. **Newest files in `docs/inter-model/`** (sort by mtime — read all unread since your last message)
-5. `docs/AGENT-ROLES.md` (static routing)
-6. `docs/archive/handoffs/` only for historical context
+4. The linked `docs/plans/STATUS-<slug>.md` brief, if the task belongs to a named arc
+5. Only the dated handoff explicitly linked by current routing or the task
+6. `docs/AGENT-ROLES.md` (static routing)
+7. `docs/archive/` only for historical context
 
 **Codex — cross-model history policy (2026-06-15):** `CURSOR-2026-06-15-cross-model-history-for-codex.md`
 
-**Current direction:** [`config/agent-protocol.md`](../config/agent-protocol.md) — `brief` → `search_fast` / `ask`; session close via `convmem record` + `convmem record --approve-last` (see [`SESSION-CLOSE-RECORD.md`](SESSION-CLOSE-RECORD.md)). Legacy CLI name: `propose_decision`.
+**Current direction:** [`config/agent-protocol.md`](../../config/agent-protocol.md) — `brief` → `search_fast` / `ask`; session close via `convmem record` + `convmem record --approve-last` (see [`SESSION-CLOSE-RECORD.md`](SESSION-CLOSE-RECORD.md)). Legacy CLI name: `propose_decision`.
 
 ## Cursor implementer rule
 
@@ -76,3 +95,12 @@ Long-form handoffs in `docs/HANDOFF-*.md` are being superseded by:
 - Future: `STATUS.md`, `ARCHITECTURE.md`, `DECISIONS.md`
 
 Do not create new `HANDOFF-*.md` files unless archiving a milestone.
+
+## Jargon TL;DR
+
+| Term | Meaning |
+|---|---|
+| Active inbox | The small set of direct-child handoffs linked by current routing. |
+| Cross-arc snapshot | `STATUS.md`, the current state of every named arc. |
+| Handoff | A dated, evidence-backed message for another model; it is not a ledger record. |
+| Reference pack | Preserved historical material that should not be treated as active authorization. |

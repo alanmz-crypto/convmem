@@ -59,3 +59,8 @@ claude-bundle-*.md
 
 # Complete-data restore preflight reports (written to cwd; keep local, not commit)
 complete-data-restore-reports/
+
+# Local agent worktrees and experiment scratch (preserve locally; never commit)
+/.worktrees/
+/.opencode/scratch/
+/.r2b-duration-scratch*/
