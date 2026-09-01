@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from eval_naturalistic.base import StructuralContractError
 from eval_naturalistic.v2.authority_issuance import (
     EvidenceSealManifestDraftV2,
@@ -67,7 +69,12 @@ class FixtureAuthoritySource:
     """
 
     def __init__(self) -> None:
-        _provision_host_authority_source(self)
+        _provision_host_authority_source(
+            self,
+            bootstrap_secret=os.environ[
+                "CONVMEM_NATURALISTIC_V2_AUTHORITY_BOOTSTRAP_SECRET"
+            ],
+        )
         self.construct_freeze_repository = None
         self.capability_repository = None
         self.attestation_repository = None

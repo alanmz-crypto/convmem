@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+import weakref
 from dataclasses import replace
 from pathlib import Path
 from unittest import mock
@@ -24,6 +25,8 @@ from eval_naturalistic.v2.authority_issuance import (
     verify_sealed_p1_authority,
 )
 from eval_naturalistic.v2.authority_substrate import (
+    _HOST_PROVISIONED_SOURCES,
+    _provision_host_authority_source,
     resolve_shared_authority_source,
     validate_authority_source,
 )
@@ -1180,6 +1183,30 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
         repository = InMemoryConstructFreezeRepository(authority_source=source)
         with self.assertRaises(StructuralContractError):
             resolve_shared_authority_source(repositories=(repository,))
+
+    def test_claimant_cannot_self_provision_with_caller_credential(self) -> None:
+        """Importing the internal seam does not create host authority."""
+
+        with self.assertRaisesRegex(
+            StructuralContractError, "bootstrap credential rejected"
+        ):
+            _provision_host_authority_source(
+                _ClaimantControlledAuthoritySource(),
+                bootstrap_secret=b"caller-created-credential",
+            )
+
+    def test_claimant_cannot_mutate_host_registry_directly(self) -> None:
+        source = _ClaimantControlledAuthoritySource()
+        with self.assertRaisesRegex(
+            StructuralContractError, "registry mutation is internal only"
+        ):
+            _HOST_PROVISIONED_SOURCES.register(id(source), weakref.ref(source))
+
+    def test_legitimate_host_bootstrap_provisions_source(self) -> None:
+        repository = sample_p0_repository()
+        source = repository.authority_source()
+        self.assertIsNotNone(source)
+        self.assertIs(validate_authority_source(source), source)
 
     def test_historical_p0_without_grants_preserves_canonical_authority(self) -> None:
         historical = ConstructFreezeManifestV2.from_canonical_bytes(

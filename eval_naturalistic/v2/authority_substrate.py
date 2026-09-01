@@ -9,6 +9,10 @@ never promotes a record solely because its digest is self-consistent.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import inspect
+import os
 import weakref
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -67,10 +71,73 @@ _REQUIRED_SOURCE_METHODS = (
 # The resolver protocol is intentionally structural so a host integration can
 # implement it without inheriting from this package. Structural compatibility
 # is not authority, however. Host provisioning records the exact resolver
-# object in a private registry; claimant-created lookalikes cannot self-enroll
-# through any public API. A weak reference also avoids retaining authority
-# after a host integration has been torn down.
-_HOST_PROVISIONED_SOURCES: dict[int, weakref.ReferenceType[Any]] = {}
+# object in a private registry and requires an out-of-band bootstrap secret
+# supplied by the host before this module is imported. A weak reference also
+# avoids retaining authority after a host integration has been torn down.
+_HOST_BOOTSTRAP_SECRET_ENV = "CONVMEM_NATURALISTIC_V2_AUTHORITY_BOOTSTRAP_SECRET"
+
+
+def _secret_digest(secret: bytes | str | None) -> bytes | None:
+    if secret is None:
+        return None
+    if isinstance(secret, str):
+        secret = secret.encode("utf-8")
+    if not isinstance(secret, bytes):
+        return None
+    if not secret:
+        return None
+    return hashlib.sha256(secret).digest()
+
+
+# Only the host process can establish this value before importing the V2
+# authority substrate. It is retained as a digest so the raw bootstrap secret
+# is not held by this module after import.
+_HOST_BOOTSTRAP_SECRET_DIGEST = _secret_digest(
+    os.environ.get(_HOST_BOOTSTRAP_SECRET_ENV)
+)
+
+
+class _HostProvisionedSourceRegistry:
+    """Host registry whose mutation path is internal and credential-gated."""
+
+    __slots__ = ("_entries",)
+
+    def __init__(self) -> None:
+        self._entries: dict[int, weakref.ReferenceType[Any]] = {}
+
+    def _trusted_frame_active(self, allowed_names: frozenset[str]) -> bool:
+        frame = inspect.currentframe()
+        while frame is not None:
+            if (
+                frame.f_globals.get("__name__") == __name__
+                and frame.f_code.co_name in allowed_names
+            ):
+                return True
+            frame = frame.f_back
+        return False
+
+    def register(self, source_id: int, reference: weakref.ReferenceType[Any]) -> None:
+        if not self._trusted_frame_active(
+            frozenset({"_provision_host_authority_source"})
+        ):
+            raise StructuralContractError(
+                "host authority registry mutation is internal only"
+            )
+        self._entries[source_id] = reference
+
+    def lookup(self, source_id: int) -> weakref.ReferenceType[Any] | None:
+        return self._entries.get(source_id)
+
+    def discard(self, source_id: int, reference: weakref.ReferenceType[Any]) -> None:
+        if not self._trusted_frame_active(frozenset({"_forget_host_source"})):
+            raise StructuralContractError(
+                "host authority registry mutation is internal only"
+            )
+        if self._entries.get(source_id) is reference:
+            del self._entries[source_id]
+
+
+_HOST_PROVISIONED_SOURCES = _HostProvisionedSourceRegistry()
 
 
 def _validate_source_shape(source: Any) -> None:
@@ -85,20 +152,31 @@ def _validate_source_shape(source: Any) -> None:
 
 
 def _forget_host_source(source_id: int, reference: weakref.ReferenceType[Any]) -> None:
-    if _HOST_PROVISIONED_SOURCES.get(source_id) is reference:
-        del _HOST_PROVISIONED_SOURCES[source_id]
+    if _HOST_PROVISIONED_SOURCES.lookup(source_id) is reference:
+        _HOST_PROVISIONED_SOURCES.discard(source_id, reference)
 
 
-def _provision_host_authority_source(source: Any) -> IndependentAuthoritySourceV2:
+def _provision_host_authority_source(
+    source: Any,
+    *,
+    bootstrap_secret: bytes | str,
+) -> IndependentAuthoritySourceV2:
     """Register a resolver from the host-owned integration boundary.
 
-    This is an internal provisioning seam, not a claimant-facing factory. A
-    host owns the resolver's records and explicitly passes that resolver here;
-    authority paths accept only this exact provisioned object identity.
+    The host process supplies ``bootstrap_secret`` from outside the claimant
+    graph. Importing this helper or constructing a resolver-shaped object does
+    not provide that credential. Authority paths accept only this exact
+    provisioned object identity after the host credential is verified.
     """
 
     if source is None:
         raise StructuralContractError("independent authority source required")
+    expected = _HOST_BOOTSTRAP_SECRET_DIGEST
+    actual = _secret_digest(bootstrap_secret)
+    if expected is None:
+        raise StructuralContractError("host authority bootstrap is unavailable")
+    if actual is None or not hmac.compare_digest(actual, expected):
+        raise StructuralContractError("host authority bootstrap credential rejected")
     _validate_source_shape(source)
     try:
         source_id = id(source)
@@ -110,7 +188,7 @@ def _provision_host_authority_source(source: Any) -> IndependentAuthoritySourceV
         raise StructuralContractError(
             "independent authority source must be host-provisioned and weak-referenceable"
         ) from exc
-    _HOST_PROVISIONED_SOURCES[source_id] = reference
+    _HOST_PROVISIONED_SOURCES.register(source_id, reference)
     return source
 
 
@@ -120,7 +198,7 @@ def validate_authority_source(source: Any) -> IndependentAuthoritySourceV2:
     if source is None:
         raise StructuralContractError("independent authority source required")
     _validate_source_shape(source)
-    provisioned = _HOST_PROVISIONED_SOURCES.get(id(source))
+    provisioned = _HOST_PROVISIONED_SOURCES.lookup(id(source))
     if provisioned is None or provisioned() is not source:
         raise StructuralContractError(
             "independent authority source must be provisioned by the host authority"
