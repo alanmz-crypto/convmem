@@ -16,11 +16,22 @@ This README serves two purposes: it explains the architecture for curious reader
 
 ---
 
-## New here? Start with the current truth
+## New here? Choose the right entrance
 
 This README explains the project shape. It is not the live status record, and it does not replace the repository's agent protocol.
 
-For a clean-context agent or developer:
+### Understand the technical/research project
+
+Start with [`docs/RESEARCH.md`](docs/RESEARCH.md). It explains the research
+problem, mechanism, evaluation claims, threats to validity, reproducibility
+boundary, and the code-reading path without requiring the repository's
+agent-governance documents. Then inspect the concrete [evidence-chain
+example](examples/chain-demo.md) and the implementation/evaluation locations it
+links.
+
+### Work on ConvMem as an agent or developer
+
+For a clean-context agent or someone operating the personal system:
 
 1. Run `convmem doctor` and wait for exit 0.
 2. Run `convmem brief --stdout-only`, then `convmem unresolved`. These report current workstation, corpus, and open-observation state; static counts in documents can age.

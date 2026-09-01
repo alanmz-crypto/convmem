@@ -4,7 +4,9 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-09-01 (`origin/main` is at `0b6b436ca054a1b04dc9c5c46eb2533268fe0a90`; branch and PR work named below is not on `main` unless explicitly stated)
+**Snapshot:** 2026-09-01. Verify the exact repository tip from `origin/main`
+before comparing branches; branch and PR work named below is not on `main`
+unless explicitly stated.
 
 > **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. PR #221 is
 > squash-merged onto current main; its bounded writer-boundary and
@@ -15,8 +17,12 @@
 
 ConvMem should answer questions from a durable, locally searchable corpus with
 traceable evidence, honest abstention, and evaluation signals that distinguish
-retrieval failures from synthesis or judge failures. Chroma is a rebuildable
-projection of the ledger/export, and production mutations remain explicitly gated.
+retrieval failures from synthesis or judge failures. ConvMem is moving toward
+an architecture in which serving indexes such as Chroma are rebuildable
+projections of durable authority. Current authority remains record-, path-, and
+arc-specific; consult the current authority and recovery documentation before
+assuming ledger/export completeness. Production mutations remain explicitly
+gated.
 
 ## Current system state
 
@@ -100,11 +106,11 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Naturalistic product-value STATUS](../plans/STATUS-naturalistic-product-value.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** `origin/main` is `0b6b436c`: Naturalistic G1–G5 methodology is landed
-but non-live; G6 and every study/live/product-disposition step remain
-Ryan-gated. Recovery/CG-2 remain non-live, R2b implementation is landed but
-operational capture is separately gated, and Portland is stopped at
-seed-generation failure.
+**TL;DR:** Naturalistic G1–G5 methodology is landed but non-live; G6 and every
+study/live/product-disposition step remain Ryan-gated. Recovery/CG-2 remain
+non-live, R2b implementation is landed but operational capture is separately
+gated, and Portland is stopped at seed-generation failure. Verify the exact
+`origin/main` tip from Git when a commit identity matters.
 
 ## Jargon TL;DR
 
