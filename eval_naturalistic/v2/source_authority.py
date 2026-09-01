@@ -13,6 +13,10 @@ from eval_naturalistic.base import (
     _require_str,
 )
 from eval_naturalistic.digest import canonical_artifact_bytes
+from eval_naturalistic.v2.capture_attestation import (
+    CaptureAttestationRepository,
+    verify_capture_attestation_binding,
+)
 from eval_naturalistic.v2.identity import OccurrenceReferenceV2, digest_hex, reject_hash_or_locator_identity
 
 _SOURCE_AUTHORITY_TOKEN = object()
@@ -100,6 +104,7 @@ def seal_source_capture_package(body: dict[str, Any]) -> SealedSourceCapturePack
         raise StructuralContractError("source capture: envelope digest is assigned at seal time")
     _require_no_unknown_props(working, SealedSourceCapturePackageV2._FIELDS - {"capture_envelope_digest"}, "source capture seal")
     reject_hash_or_locator_identity(working)
+    digest_hex(working["issuer_capture_attestation"], "issuer_capture_attestation")
     envelope_digest = hashlib.sha256(canonical_artifact_bytes(working)).hexdigest()
     working["capture_envelope_digest"] = envelope_digest
     canonical_bytes = canonical_artifact_bytes(working)
@@ -147,9 +152,13 @@ class VerifiedSourceAuthorityV2:
 
 def verify_source_capture_authority(
     capture: SealedSourceCapturePackageV2 | bytes,
+    *,
+    attestation_repository: CaptureAttestationRepository | None = None,
 ) -> VerifiedSourceAuthorityV2:
     """Derive authoritative occurrence identity from verified source capture only."""
 
+    if attestation_repository is None:
+        raise StructuralContractError("source capture authority requires attestation repository")
     if isinstance(capture, bytes):
         sealed = SealedSourceCapturePackageV2.from_canonical_bytes(capture)
     else:
@@ -164,6 +173,15 @@ def verify_source_capture_authority(
         native_id_namespace=fields["native_id_namespace"],
         native_record_id=fields["native_record_id"],
         source_revision_or_asof_id=fields["source_revision_or_asof_id"],
+    )
+    attestation_digest = digest_hex(
+        sealed.issuer_capture_attestation(), "issuer_capture_attestation"
+    )
+    verify_capture_attestation_binding(
+        attestation_digest=attestation_digest,
+        occurrence_reference=occurrence,
+        evidence_snapshot_id=sealed.evidence_snapshot_id(),
+        repository=attestation_repository,
     )
     record_body = {
         "source_capture_digest": sealed.content_digest,

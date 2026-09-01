@@ -32,6 +32,7 @@ from eval_naturalistic.v2.p0_construct import (
     InMemoryConstructFreezeRepository,
     seal_construct_freeze_manifest,
 )
+from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
 from eval_naturalistic.v2.source_authority import (
     VerifiedSourceAuthorityV2,
     seal_source_capture_package,
@@ -46,11 +47,13 @@ from tests.fixtures.naturalistic_v2_p1 import (
     clone_lineage_edge,
     construct_freeze_content_digest,
     sample_availability,
+    sample_capture_attestation_repository,
     sample_construct_parent,
     sample_occurrence,
     sample_p0_repository,
     sample_sealed_authority,
     sample_verified_source_authority,
+    seal_verified_source_capture,
 )
 
 
@@ -102,12 +105,14 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
         )
 
     def test_positive_canonical_sealed_bytes_verify(self) -> None:
-        sealed = sample_sealed_authority()
-        reparsed = verify_sealed_p1_authority(sealed.to_dict())
+        repo = sample_p0_repository()
+        sealed = sample_sealed_authority(p0_repository=repo)
+        reparsed = verify_sealed_p1_authority(sealed.to_dict(), p0_repository=repo)
         self.assertEqual(sealed.content_digest, reparsed.content_digest)
 
     def test_positive_expected_implementation_revision_enforced(self) -> None:
-        sealed = sample_sealed_authority()
+        repo = sample_p0_repository()
+        sealed = sample_sealed_authority(p0_repository=repo)
         self.assertEqual(
             sealed.manifest.issuer_implementation_revision,
             compute_p1_issuer_implementation_revision(),
@@ -376,14 +381,12 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
         p0_repo = sample_p0_repository()
         construct_digest = construct_freeze_content_digest(p0_repo)
         issued = issue_occurrence_reference(
-            verify_source_capture_authority(
-                seal_source_capture_package(
-                    build_source_capture_body(
-                        physical_instance="child",
-                        namespace="ns-child",
-                    )
+            seal_verified_source_capture(
+                build_source_capture_body(
+                    physical_instance="child",
+                    namespace="ns-child",
                 )
-            )
+            )[2]
         )
         draft = EvidenceSealManifestDraftV2(
             construct_freeze_digest=construct_digest,
@@ -421,14 +424,12 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
         p0_repo = sample_p0_repository()
         construct_digest = construct_freeze_content_digest(p0_repo)
         issued = issue_occurrence_reference(
-            verify_source_capture_authority(
-                seal_source_capture_package(
-                    build_source_capture_body(
-                        physical_instance="wrong-child",
-                        namespace="ns-wrong",
-                    )
+            seal_verified_source_capture(
+                build_source_capture_body(
+                    physical_instance="wrong-child",
+                    namespace="ns-wrong",
                 )
-            )
+            )[2]
         )
         draft = EvidenceSealManifestDraftV2(
             construct_freeze_digest=construct_digest,
@@ -480,14 +481,12 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
         p0_repo = sample_p0_repository()
         construct_digest = construct_freeze_content_digest(p0_repo)
         issued = issue_occurrence_reference(
-            verify_source_capture_authority(
-                seal_source_capture_package(
-                    build_source_capture_body(
-                        physical_instance="child",
-                        namespace="ns-child",
-                    )
+            seal_verified_source_capture(
+                build_source_capture_body(
+                    physical_instance="child",
+                    namespace="ns-child",
                 )
-            )
+            )[2]
         )
         draft = EvidenceSealManifestDraftV2(
             construct_freeze_digest=construct_digest,
@@ -532,11 +531,76 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
         self.assertEqual(cached, fresh)
 
     def test_negative_arbitrary_issuer_revision_on_artifact(self) -> None:
-        sealed = sample_sealed_authority()
+        repo = sample_p0_repository()
+        sealed = sample_sealed_authority(p0_repository=repo)
         data = sealed.to_dict()
         data["issuer_implementation_revision"] = "arbitrary-revision"
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data)
+            verify_sealed_p1_authority(data, p0_repository=repo)
+
+    def test_negative_verify_without_p0_repository_fails_closed(self) -> None:
+        repo = sample_p0_repository()
+        sealed = sample_sealed_authority(p0_repository=repo)
+        with self.assertRaises(StructuralContractError):
+            verify_sealed_p1_authority(sealed.to_dict())
+
+    def test_negative_fabricated_construct_freeze_parent_digest_only(self) -> None:
+        p0_repo = InMemoryConstructFreezeRepository()
+        issued = issue_occurrence_reference(sample_verified_source_authority())
+        parent = ImmediateParentBindingV2(
+            parent_kind="construct_freeze",
+            parent_artifact_id=f"nps2_construct-freeze-manifest-v2_{FIXED_DIGEST}",
+            parent_digest=FIXED_DIGEST,
+        )
+        draft = EvidenceSealManifestDraftV2(
+            construct_freeze_digest=FIXED_DIGEST,
+            episode_id="episode-1",
+            issued_occurrence=issued,
+            evidence_complete_envelope_digest=FIXED_DIGEST,
+            canonical_content_digest=FIXED_DIGEST,
+            canonicalization_profile_digest=FIXED_DIGEST,
+            adapter_implementation_digest=FIXED_DIGEST,
+            condition_neutral_evidence_availability=sample_availability(),
+            immediate_parents=(parent,),
+            responsible_role="evidence_capture",
+            created_at=CREATED_AT,
+        )
+        with self.assertRaises(StructuralContractError):
+            draft.finalize_and_seal(seal_time=SEAL_TIME, p0_repository=p0_repo)
+
+    def test_negative_self_attested_source_capture_without_repository(self) -> None:
+        body = build_source_capture_body()
+        body["issuer_capture_attestation"] = ALT_DIGEST
+        capture = seal_source_capture_package(body)
+        with self.assertRaises(StructuralContractError):
+            verify_source_capture_authority(capture)
+
+    def test_negative_fabricated_capture_fields_with_arbitrary_attestation_digest(self) -> None:
+        body = build_source_capture_body(
+            physical_instance="fabricated-phys",
+            native_record="fabricated-record",
+            namespace="fabricated-ns",
+            issuer_capture_attestation=ALT_DIGEST,
+        )
+        capture = seal_source_capture_package(body)
+        with self.assertRaises(StructuralContractError):
+            verify_source_capture_authority(
+                capture,
+                attestation_repository=CaptureAttestationRepository(),
+            )
+
+    def test_negative_self_consistent_capture_claim_graph_cannot_mint_p1(self) -> None:
+        body = build_source_capture_body(
+            physical_instance="forged-phys",
+            issuer_capture_attestation=ALT_DIGEST,
+        )
+        capture = seal_source_capture_package(body)
+        with self.assertRaises(StructuralContractError):
+            authority = verify_source_capture_authority(
+                capture,
+                attestation_repository=CaptureAttestationRepository(),
+            )
+            issue_occurrence_reference(authority)
 
     def test_negative_malformed_nested_authority_object(self) -> None:
         with self.assertRaises((StructuralContractError, KeyError, TypeError)):

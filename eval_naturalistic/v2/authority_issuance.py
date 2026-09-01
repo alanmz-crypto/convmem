@@ -53,6 +53,7 @@ _P1_ISSUER_SEED_MODULES = (
     "eval_naturalistic/v2/validators.py",
     "eval_naturalistic/v2/evidence.py",
     "eval_naturalistic/v2/source_authority.py",
+    "eval_naturalistic/v2/capture_attestation.py",
     "eval_naturalistic/v2/p0_construct.py",
     "eval_naturalistic/v2/lineage_attestation.py",
     "eval_naturalistic/digest.py",
@@ -276,12 +277,10 @@ def _verify_lineage_edges(
     *,
     edges: list[LineageEdgeV2],
     child_occurrence: Any,
-    lineage_repository: LineageAttestationRepository | None,
+    lineage_repository: LineageAttestationRepository,
 ) -> None:
     if not edges:
         return
-    if lineage_repository is None:
-        raise StructuralContractError("lineage repository required for attested edges")
     for edge in edges:
         if not edge.issuer_attested:
             continue
@@ -351,6 +350,9 @@ class EvidenceSealManifestDraftV2:
         lineage_repository: LineageAttestationRepository | None = None,
         issuance_repository: IssuanceAuthorityRepository | None = None,
     ) -> "SealedP1AuthorityV2":
+        has_attested_edges = any(edge.issuer_attested for edge in self.lineage_edges)
+        if has_attested_edges and lineage_repository is None:
+            raise StructuralContractError("lineage repository required for attested edges")
         _verify_immediate_parents(
             parents=self.immediate_parents,
             construct_freeze_digest=self.construct_freeze_digest,
@@ -359,7 +361,7 @@ class EvidenceSealManifestDraftV2:
         _verify_lineage_edges(
             edges=self.lineage_edges,
             child_occurrence=self.issued_occurrence.occurrence_reference,
-            lineage_repository=lineage_repository,
+            lineage_repository=lineage_repository or LineageAttestationRepository(),
         )
         occ = self.issued_occurrence.occurrence_reference
         construct_parent = next(p for p in self.immediate_parents if p.parent_kind == "construct_freeze")
@@ -503,6 +505,8 @@ def verify_sealed_p1_authority(
     lineage_repository: LineageAttestationRepository | None = None,
     issuance_repository: IssuanceAuthorityRepository | None = None,
 ) -> SealedP1AuthorityV2:
+    if p0_repository is None:
+        raise StructuralContractError("P1 authority: construct-freeze repository required")
     if isinstance(authority, dict):
         manifest = EvidenceSealManifestV2.from_dict(authority)
         canonical_bytes = canonical_artifact_bytes(manifest.to_dict())
@@ -539,31 +543,23 @@ def verify_sealed_p1_authority(
         raise StructuralContractError("P1 authority: artifact ID mismatch")
     if not manifest.immediate_parents:
         raise StructuralContractError("P1 authority: missing required immediate parent")
-    if p0_repository is not None:
-        _verify_immediate_parents(
-            parents=manifest.immediate_parents,
-            construct_freeze_digest=manifest.construct_freeze_digest,
-            p0_repository=p0_repository,
-        )
-    else:
-        construct = next(
-            (p for p in manifest.immediate_parents if p.parent_kind == "construct_freeze"),
-            None,
-        )
-        if construct is None:
-            raise StructuralContractError("P1 authority: missing construct_freeze parent")
-        if construct.parent_digest != manifest.construct_freeze_digest:
-            raise StructuralContractError("P1 authority: construct-freeze mismatch")
-    if lineage_repository is not None and manifest.lineage_edges:
-        for edge in manifest.lineage_edges:
-            if edge.issuer_attested:
-                artifact = lineage_repository.resolve(edge.attestation_evidence_digest or "")
-                verify_lineage_edge_attestation(
-                    edge,
-                    child_occurrence=manifest.occurrence_reference,
-                    parent_occurrence=artifact.parent_occurrence,
-                    repository=lineage_repository,
-                )
+    _verify_immediate_parents(
+        parents=manifest.immediate_parents,
+        construct_freeze_digest=manifest.construct_freeze_digest,
+        p0_repository=p0_repository,
+    )
+    attested_edges = [edge for edge in manifest.lineage_edges if edge.issuer_attested]
+    if attested_edges:
+        if lineage_repository is None:
+            raise StructuralContractError("P1 authority: lineage repository required for attested edges")
+        for edge in attested_edges:
+            artifact = lineage_repository.resolve(edge.attestation_evidence_digest or "")
+            verify_lineage_edge_attestation(
+                edge,
+                child_occurrence=manifest.occurrence_reference,
+                parent_occurrence=artifact.parent_occurrence,
+                repository=lineage_repository,
+            )
     if canonical_artifact_bytes(manifest.to_dict()) != canonical_bytes:
         raise StructuralContractError("P1 authority: canonical bytes mismatch")
     return sealed
@@ -574,6 +570,8 @@ def reject_raw_unfinalized_p1(
     *,
     p0_repository: ConstructFreezeAuthorityRepository | None = None,
 ) -> None:
+    if p0_repository is None:
+        raise StructuralContractError("P1 authority: construct-freeze repository required")
     if not manifest.header.sealed:
         raise StructuralContractError("raw P1 manifest: sealed=false")
     if not manifest.occurrence_issuance_digest:

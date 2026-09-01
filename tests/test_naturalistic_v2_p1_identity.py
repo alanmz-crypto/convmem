@@ -42,6 +42,7 @@ from tests.fixtures.naturalistic_v2_p1 import (
     sample_availability,
     sample_availability_manifest,
     sample_occurrence,
+    sample_p0_repository,
     sample_seal_manifest,
 )
 
@@ -168,35 +169,39 @@ class NaturalisticV2P1IdentityTests(unittest.TestCase):
             summary=SummaryEvidenceAvailabilityV2.AVAILABLE,
         )
         availability.validate_issue_263()
-        seal = sample_seal_manifest(availability=availability)
-        parsed = parse_evidence_seal_manifest_v2(seal.to_dict())
+        repo = sample_p0_repository()
+        seal = sample_seal_manifest(availability=availability, p0_repository=repo)
+        parsed = parse_evidence_seal_manifest_v2(seal.to_dict(), p0_repository=repo)
         self.assertEqual(
             parsed.condition_neutral_evidence_availability.summary_evidence_availability,
             SummaryEvidenceAvailabilityV2.AVAILABLE,
         )
 
     def test_malformed_incomplete_identity_tuple(self) -> None:
-        body = sample_seal_manifest().to_dict()
+        repo = sample_p0_repository()
+        body = sample_seal_manifest(p0_repository=repo).to_dict()
         del body["occurrence_reference"]["native_record_id"]
         with self.assertRaises(StructuralContractError):
-            parse_evidence_seal_manifest_v2(body)
+            parse_evidence_seal_manifest_v2(body, p0_repository=repo)
 
     def test_unknown_fields_fail_closed(self) -> None:
-        body = sample_seal_manifest().to_dict()
+        repo = sample_p0_repository()
+        body = sample_seal_manifest(p0_repository=repo).to_dict()
         body["resolver_result"] = "EXACT_MATCH"
         with self.assertRaises(StructuralContractError):
-            parse_evidence_seal_manifest_v2(body)
-        body = sample_seal_manifest().to_dict()
+            parse_evidence_seal_manifest_v2(body, p0_repository=repo)
+        body = sample_seal_manifest(p0_repository=repo).to_dict()
         body["unexpected_field"] = "x"
         with self.assertRaises(StructuralContractError):
-            parse_evidence_seal_manifest_v2(body)
+            parse_evidence_seal_manifest_v2(body, p0_repository=repo)
 
     def test_v1_schema_not_accepted_as_v2_seal(self) -> None:
-        body = sample_seal_manifest().to_dict()
+        repo = sample_p0_repository()
+        body = sample_seal_manifest(p0_repository=repo).to_dict()
         body["header"] = copy.deepcopy(body["header"])
         body["header"]["schema_version"] = "convmem/naturalistic/raw-evidence-manifest-v1"
         with self.assertRaises(StructuralContractError):
-            parse_evidence_seal_manifest_v2(body)
+            parse_evidence_seal_manifest_v2(body, p0_repository=repo)
 
     def test_availability_manifest_binds_to_seal(self) -> None:
         seal = sample_seal_manifest()

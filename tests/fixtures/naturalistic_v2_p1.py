@@ -8,6 +8,10 @@ from eval_naturalistic.v2.authority_issuance import (
     SealedP1AuthorityV2,
     issue_occurrence_reference,
 )
+from eval_naturalistic.v2.capture_attestation import (
+    CaptureAttestationRepository,
+    seal_capture_attestation,
+)
 from eval_naturalistic.v2.contracts import (
     EvidenceAvailabilityManifestV2,
     EvidenceSealManifestV2,
@@ -38,6 +42,7 @@ FIXED_DIGEST = "a" * 64
 ALT_DIGEST = "b" * 64
 CREATED_AT = "2026-08-31T00:00:00Z"
 SEAL_TIME = "2026-08-31T00:00:01Z"
+DEFAULT_ISSUER_IDENTITY = "capture-attestor-v1"
 
 
 def sample_p0_repository(
@@ -89,8 +94,9 @@ def build_source_capture_body(
     revision: str = "rev-1",
     namespace: str = "ns-a",
     snapshot_id: str = "snap-1",
+    issuer_capture_attestation: str | None = None,
 ) -> dict:
-    return {
+    body = {
         "source_system_id": "sys-crush",
         "tenant_or_realm_id": "tenant-1",
         "authority_scope_id": "scope-1",
@@ -100,13 +106,81 @@ def build_source_capture_body(
         "native_record_id": native_record,
         "source_revision_or_asof_id": revision,
         "evidence_snapshot_id": snapshot_id,
-        "issuer_capture_attestation": "capture-attestor-v1",
     }
+    if issuer_capture_attestation is not None:
+        body["issuer_capture_attestation"] = issuer_capture_attestation
+    return body
+
+
+def sample_capture_attestation_repository(
+    *,
+    physical_instance: str = "phys-a",
+    native_record: str = "msg-1",
+    revision: str = "rev-1",
+    namespace: str = "ns-a",
+    snapshot_id: str = "snap-1",
+    issuer_identity: str = DEFAULT_ISSUER_IDENTITY,
+) -> CaptureAttestationRepository:
+    occurrence = OccurrenceReferenceV2(
+        source_system_id="sys-crush",
+        tenant_or_realm_id="tenant-1",
+        authority_scope_id="scope-1",
+        occurrence_namespace_id=namespace,
+        physical_source_instance_id=physical_instance,
+        native_id_namespace="crush.message",
+        native_record_id=native_record,
+        source_revision_or_asof_id=revision,
+    )
+    artifact = seal_capture_attestation(
+        occurrence_reference=occurrence,
+        evidence_snapshot_id=snapshot_id,
+        issuer_identity=issuer_identity,
+        responsible_role="capture_issuer",
+        created_at=CREATED_AT,
+        seal_time=SEAL_TIME,
+    )
+    repo = CaptureAttestationRepository()
+    repo.register(artifact)
+    return repo
+
+
+def seal_verified_source_capture(
+    body: dict,
+    *,
+    attestation_repository: CaptureAttestationRepository | None = None,
+) -> tuple:
+    """Seal capture bytes and return (capture, attestation_repo, authority)."""
+
+    snapshot_id = body["evidence_snapshot_id"]
+    occurrence = OccurrenceReferenceV2(
+        source_system_id=body["source_system_id"],
+        tenant_or_realm_id=body["tenant_or_realm_id"],
+        authority_scope_id=body["authority_scope_id"],
+        occurrence_namespace_id=body["occurrence_namespace_id"],
+        physical_source_instance_id=body["physical_source_instance_id"],
+        native_id_namespace=body["native_id_namespace"],
+        native_record_id=body["native_record_id"],
+        source_revision_or_asof_id=body["source_revision_or_asof_id"],
+    )
+    repo = attestation_repository or sample_capture_attestation_repository(
+        physical_instance=occurrence.physical_source_instance_id,
+        native_record=occurrence.native_record_id,
+        revision=occurrence.source_revision_or_asof_id,
+        namespace=occurrence.occurrence_namespace_id,
+        snapshot_id=snapshot_id,
+    )
+    attestation_digest = next(iter(repo._artifacts))
+    working = dict(body)
+    working["issuer_capture_attestation"] = attestation_digest
+    capture = seal_source_capture_package(working)
+    authority = verify_source_capture_authority(capture, attestation_repository=repo)
+    return capture, repo, authority
 
 
 def sample_verified_source_authority(**kwargs):
-    capture = seal_source_capture_package(build_source_capture_body(**kwargs))
-    return verify_source_capture_authority(capture)
+    body = build_source_capture_body(**kwargs)
+    _, _, authority = seal_verified_source_capture(body)
+    return authority
 
 
 def sample_occurrence(**kwargs):
@@ -154,9 +228,8 @@ def sample_sealed_authority(
                 "native_id_namespace": occurrence.native_id_namespace,
             }
         )
-        issued = issue_occurrence_reference(
-            verify_source_capture_authority(seal_source_capture_package(capture_body))
-        )
+        _, _, authority = seal_verified_source_capture(capture_body)
+        issued = issue_occurrence_reference(authority)
     else:
         issued = issue_occurrence_reference(sample_verified_source_authority())
     draft = EvidenceSealManifestDraftV2(

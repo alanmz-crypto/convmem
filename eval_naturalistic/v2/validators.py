@@ -20,10 +20,13 @@ from eval_naturalistic.v2.evidence import (
     normalized_reported_presence,
 )
 from eval_naturalistic.v2.authority_issuance import (
+    IssuanceAuthorityRepository,
     SealedP1AuthorityV2,
     reject_raw_unfinalized_p1,
     verify_sealed_p1_authority,
 )
+from eval_naturalistic.v2.lineage_attestation import LineageAttestationRepository
+from eval_naturalistic.v2.p0_construct import ConstructFreezeAuthorityRepository
 from eval_naturalistic.v2.identity import (
     LineageEdgeV2,
     OccurrenceReferenceV2,
@@ -222,22 +225,49 @@ def validate_availability_manifest(
     return NaturalisticValidation(errors=errors)
 
 
-def parse_evidence_seal_manifest_v2(data: dict[str, Any]) -> EvidenceSealManifestV2:
+def parse_evidence_seal_manifest_v2(
+    data: dict[str, Any],
+    *,
+    p0_repository: ConstructFreezeAuthorityRepository | None = None,
+    lineage_repository: LineageAttestationRepository | None = None,
+    issuance_repository: IssuanceAuthorityRepository | None = None,
+) -> EvidenceSealManifestV2:
     validate_p1_forbidden_fields(data, label="EvidenceSealManifestV2")
     reject_hash_or_locator_identity(data.get("occurrence_reference", {}))
     manifest = EvidenceSealManifestV2.from_dict(data)
     result = validate_evidence_seal_manifest(manifest)
     if not result.ok:
         raise StructuralContractError("; ".join(result.errors))
-    sealed = verify_sealed_p1_authority(manifest.to_dict())
+    sealed = verify_sealed_p1_authority(
+        manifest.to_dict(),
+        p0_repository=p0_repository,
+        lineage_repository=lineage_repository,
+        issuance_repository=issuance_repository,
+    )
     return sealed.manifest
 
 
-def parse_sealed_p1_authority_v2(data: dict[str, Any]) -> SealedP1AuthorityV2:
+def parse_sealed_p1_authority_v2(
+    data: dict[str, Any],
+    *,
+    p0_repository: ConstructFreezeAuthorityRepository | None = None,
+    lineage_repository: LineageAttestationRepository | None = None,
+    issuance_repository: IssuanceAuthorityRepository | None = None,
+) -> SealedP1AuthorityV2:
     """Parse and independently verify sealed P1 authority bytes."""
 
-    manifest = parse_evidence_seal_manifest_v2(data)
-    return verify_sealed_p1_authority(manifest.to_dict())
+    manifest = parse_evidence_seal_manifest_v2(
+        data,
+        p0_repository=p0_repository,
+        lineage_repository=lineage_repository,
+        issuance_repository=issuance_repository,
+    )
+    return verify_sealed_p1_authority(
+        manifest.to_dict(),
+        p0_repository=p0_repository,
+        lineage_repository=lineage_repository,
+        issuance_repository=issuance_repository,
+    )
 
 
 def parse_evidence_availability_manifest_v2(
