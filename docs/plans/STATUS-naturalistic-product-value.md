@@ -94,7 +94,7 @@ Key invariants:
 | G3 probe construction machinery | **DONE on `main`** | PR #255; no live key or study sample exists |
 | G4 analysis/statistical machinery | **DONE on `main`** | Kiro PASS at exact `fa7d68b`; focused 98 tests + 8 subtests; Pylint 10/10 |
 | G5 dry-run/fixture verification | **DONE on `main`** | PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`; Kiro PASS at `23b2495927a9891070c7c294e45bdb641eaab352`; methodology validation only |
-| PRE-G6 exact contract | **V3 MULTIPLICITY ERRATUM PROPOSED — NOT ACCEPTED** | Successor package awaits outcome-blind independent review, then explicit Ryan acceptance |
+| PRE-G6 exact contract | **V3 MULTIPLICITY ERRATUM HANDED TO KIRO — NOT ACCEPTED** | Frozen target `d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7` awaits outcome-blind independent review, then explicit Ryan acceptance |
 | V2 runtime implementation | **V2-04 CLOSED; V2-04A REQUIRED** | Separate interface corrective and independent review must precede reconsidering V2-05 |
 | G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Closed through authority review, V2-04A, any later implementation, and independent verification; then Ryan explicit G6 grant if warranted |
 | Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
@@ -161,6 +161,7 @@ separately governed.
 | Sole proposed V3 successor authority | [`artifacts/naturalistic-pre-g6-contract-v3.json`](artifacts/naturalistic-pre-g6-contract-v3.json) |
 | V3 schema / conformance / validator / amendment manifest | [`artifacts/naturalistic-pre-g6-contract-v3.schema.json`](artifacts/naturalistic-pre-g6-contract-v3.schema.json), [`artifacts/naturalistic-pre-g6-contract-v3.conformance.json`](artifacts/naturalistic-pre-g6-contract-v3.conformance.json), [`artifacts/validate-naturalistic-pre-g6-contract-v3.mjs`](artifacts/validate-naturalistic-pre-g6-contract-v3.mjs), [`artifacts/naturalistic-pre-g6-contract-v3.amendment.json`](artifacts/naturalistic-pre-g6-contract-v3.amendment.json) |
 | Immutable historical V2 authority | [`artifacts/naturalistic-pre-g6-contract-v2.json`](artifacts/naturalistic-pre-g6-contract-v2.json) |
+| Kiro exact-target authority-review packet | [`../inter-model/CODEX-2026-09-01-naturalistic-pre-g6-v3-authority-review-handoff.md`](../inter-model/CODEX-2026-09-01-naturalistic-pre-g6-v3-authority-review-handoff.md) |
 | Explanatory architecture | [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md) |
 | Serial execution and grant plan | [`EXECUTION-naturalistic-product-value.md`](EXECUTION-naturalistic-product-value.md) |
 | G4 implementation handoff and exact review scope | [`../inter-model/CODEX-2026-08-30-naturalistic-product-value-g4-handoff.md`](../inter-model/CODEX-2026-08-30-naturalistic-product-value-g4-handoff.md) |
@@ -183,6 +184,7 @@ the session transcript separately under Track A.
 - 2026-08-30 — Ryan: squash-merged routing refresh PR #261 to `676d6b5`; locked G6 closed pending the required independent PRE-G6 exact review regardless of synthetic results.
 - 2026-08-31 — Sol: materialized the Issue-#263-rooted PRE-G6 V2 exact-contract corrective after V1 exact review required correction; fresh-seed review next, with G6 separate and closed.
 - 2026-08-31 — Codex Sol: materialized a prospective V3 successor correcting only V2 multiplicity inequality consistency; independent authority review and Ryan acceptance are next.
+- 2026-09-01 — Codex Sol: froze V3 target `d5b03a6c…` and prepared the read-only Kiro authority-review packet; no implementation authority added.
 
 **TL;DR:** PRE-G6 V3 proposes only the multiplicity inequality erratum and now
 awaits independent authority review plus Ryan acceptance; V2-04A, V2-05, and
