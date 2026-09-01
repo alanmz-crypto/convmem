@@ -11,6 +11,7 @@ from eval_naturalistic.v2.authority_issuance import (
 )
 from eval_naturalistic.v2.capture_attestation import (
     CaptureAttestationRepository,
+    commit_authorized_capture_attestation,
     seal_capture_attestation,
 )
 from eval_naturalistic.v2.contracts import (
@@ -39,6 +40,10 @@ from eval_naturalistic.v2.source_authority import (
     seal_source_capture_package,
     verify_source_capture_authority,
 )
+from eval_naturalistic.v2.source_issuer_authority import (
+    SourceIssuerGrantRepository,
+    build_source_issuer_grant_record,
+)
 
 FIXED_DIGEST = "a" * 64
 ALT_DIGEST = "b" * 64
@@ -48,17 +53,33 @@ DEFAULT_ISSUER_IDENTITY = "capture-attestor-v1"
 DEFAULT_RAW_RECORD_DIGEST = "c" * 64
 
 
+def default_study_issuer_grant_record(
+    *,
+    issuer_identity: str = DEFAULT_ISSUER_IDENTITY,
+    source_system_id: str = "sys-crush",
+    authority_scope_id: str = "scope-1",
+) -> dict[str, str]:
+    return build_source_issuer_grant_record(
+        issuer_identity=issuer_identity,
+        source_system_id=source_system_id,
+        authority_scope_id=authority_scope_id,
+    )
+
+
 def sample_p0_repository(
     *,
     construct_policy_digest: str = FIXED_DIGEST,
+    issuer_grant_record: dict[str, str] | None = None,
 ) -> InMemoryConstructFreezeRepository:
     repo = InMemoryConstructFreezeRepository()
+    grant_record = issuer_grant_record or default_study_issuer_grant_record()
     manifest = seal_construct_freeze_manifest(
         construct_policy_digest=construct_policy_digest,
         study_id="study-naturalistic-v2-test",
         responsible_role="study_owner",
         created_at=CREATED_AT,
         seal_time=SEAL_TIME,
+        authorized_capture_issuer_grants=(grant_record,),
     )
     repo.register(manifest)
     return repo
@@ -119,6 +140,7 @@ def build_source_capture_body(
 
 def sample_capture_attestation_repository(
     *,
+    p0_repository: InMemoryConstructFreezeRepository,
     physical_instance: str = "phys-a",
     native_record: str = "msg-1",
     revision: str = "rev-1",
@@ -126,6 +148,9 @@ def sample_capture_attestation_repository(
     snapshot_id: str = "snap-1",
     issuer_identity: str = DEFAULT_ISSUER_IDENTITY,
 ) -> CaptureAttestationRepository:
+    manifest = registered_construct_freeze(p0_repository)
+    construct_digest = construct_freeze_content_digest(p0_repository)
+    grant_repo = SourceIssuerGrantRepository.from_construct_freeze(manifest)
     occurrence = OccurrenceReferenceV2(
         source_system_id="sys-crush",
         tenant_or_realm_id="tenant-1",
@@ -136,26 +161,40 @@ def sample_capture_attestation_repository(
         native_record_id=native_record,
         source_revision_or_asof_id=revision,
     )
+    grant = grant_repo.resolve(
+        issuer_identity=issuer_identity,
+        source_system_id=occurrence.source_system_id,
+        authority_scope_id=occurrence.authority_scope_id,
+    )
     artifact = seal_capture_attestation(
+        grant=grant,
         occurrence_reference=occurrence,
         evidence_snapshot_id=snapshot_id,
-        issuer_identity=issuer_identity,
         responsible_role="capture_issuer",
         created_at=CREATED_AT,
         seal_time=SEAL_TIME,
     )
     repo = CaptureAttestationRepository()
-    repo.register(artifact)
+    commit_authorized_capture_attestation(
+        artifact,
+        attestation_repository=repo,
+        p0_repository=p0_repository,
+        construct_freeze_digest=construct_digest,
+        construct_freeze_artifact_id=manifest.header.artifact_id,
+    )
     return repo
 
 
 def seal_verified_source_capture(
     body: dict,
     *,
+    p0_repository: InMemoryConstructFreezeRepository,
     attestation_repository: CaptureAttestationRepository | None = None,
 ) -> tuple:
-    """Seal capture bytes and return (capture, attestation_repo, authority)."""
+    """Seal capture bytes and return (capture, attestation_repo, p0_repo, authority)."""
 
+    manifest = registered_construct_freeze(p0_repository)
+    construct_digest = construct_freeze_content_digest(p0_repository)
     snapshot_id = body["evidence_snapshot_id"]
     occurrence = OccurrenceReferenceV2(
         source_system_id=body["source_system_id"],
@@ -168,6 +207,7 @@ def seal_verified_source_capture(
         source_revision_or_asof_id=body["source_revision_or_asof_id"],
     )
     repo = attestation_repository or sample_capture_attestation_repository(
+        p0_repository=p0_repository,
         physical_instance=occurrence.physical_source_instance_id,
         native_record=occurrence.native_record_id,
         revision=occurrence.source_revision_or_asof_id,
@@ -178,13 +218,20 @@ def seal_verified_source_capture(
     working = dict(body)
     working["issuer_capture_attestation"] = attestation_digest
     capture = seal_source_capture_package(working)
-    authority = verify_source_capture_authority(capture, attestation_repository=repo)
-    return capture, repo, authority
+    authority = verify_source_capture_authority(
+        capture,
+        attestation_repository=repo,
+        p0_repository=p0_repository,
+        construct_freeze_digest=construct_digest,
+        construct_freeze_artifact_id=manifest.header.artifact_id,
+    )
+    return capture, repo, p0_repository, authority
 
 
 def sample_verified_source_authority(**kwargs):
+    p0_repo = sample_p0_repository()
     body = build_source_capture_body(**kwargs)
-    _, _, authority = seal_verified_source_capture(body)
+    _, _, _, authority = seal_verified_source_capture(body, p0_repository=p0_repo)
     return authority
 
 
@@ -246,15 +293,21 @@ def sample_sealed_authority(
                 "native_id_namespace": occurrence.native_id_namespace,
             }
         )
-        capture, att_repo, authority = seal_verified_source_capture(capture_body)
+        capture, att_repo, _, authority = seal_verified_source_capture(capture_body, p0_repository=repo)
         issued = issue_occurrence_reference(authority, issuance_repository=issuance_repo)
     else:
-        capture, att_repo, authority = seal_verified_source_capture(build_source_capture_body())
+        capture, att_repo, _, authority = seal_verified_source_capture(
+            build_source_capture_body(),
+            p0_repository=repo,
+        )
         issued = issue_occurrence_reference(authority, issuance_repository=issuance_repo)
     commitments = bind_p1_evidence_commitments(
         sealed_capture=capture,
         verified_authority=authority,
         attestation_repository=att_repo,
+        p0_repository=repo,
+        construct_freeze_digest=construct_digest,
+        construct_freeze_artifact_id=parent.parent_artifact_id,
         canonical_content_digest=canonical_content_digest,
         canonicalization_profile_digest=FIXED_DIGEST,
         adapter_implementation_digest=FIXED_DIGEST,
@@ -301,13 +354,20 @@ def build_p1_draft(
     episode_id: str = "episode-1",
 ) -> EvidenceSealManifestDraftV2:
     construct_digest = construct_freeze_content_digest(p0_repository)
+    parent = sample_construct_parent(p0_repository)
     if issued is None:
-        capture, att_repo, authority = seal_verified_source_capture(build_source_capture_body())
+        capture, att_repo, _, authority = seal_verified_source_capture(
+            build_source_capture_body(),
+            p0_repository=p0_repository,
+        )
         issued = issue_occurrence_reference(authority, issuance_repository=issuance_repository)
         evidence_commitments = evidence_commitments or bind_p1_evidence_commitments(
             sealed_capture=capture,
             verified_authority=authority,
             attestation_repository=att_repo,
+            p0_repository=p0_repository,
+            construct_freeze_digest=construct_digest,
+            construct_freeze_artifact_id=parent.parent_artifact_id,
             canonical_content_digest=FIXED_DIGEST,
             canonicalization_profile_digest=FIXED_DIGEST,
             adapter_implementation_digest=FIXED_DIGEST,
@@ -320,7 +380,7 @@ def build_p1_draft(
         issued_occurrence=issued,
         evidence_commitments=evidence_commitments,
         condition_neutral_evidence_availability=sample_availability(),
-        immediate_parents=(sample_construct_parent(p0_repository),),
+        immediate_parents=(parent,),
         responsible_role="evidence_capture",
         created_at=CREATED_AT,
         lineage_edges=lineage_edges or [],

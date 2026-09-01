@@ -18,6 +18,11 @@ from eval_naturalistic.v2.capture_attestation import (
     verify_capture_attestation_binding,
 )
 from eval_naturalistic.v2.identity import OccurrenceReferenceV2, digest_hex, reject_hash_or_locator_identity
+from eval_naturalistic.v2.p0_construct import (
+    ConstructFreezeAuthorityRepository,
+    verify_construct_freeze_parent_binding,
+)
+from eval_naturalistic.v2.source_issuer_authority import SourceIssuerGrantRepository
 
 _SOURCE_AUTHORITY_TOKEN = object()
 
@@ -155,11 +160,28 @@ def verify_source_capture_authority(
     capture: SealedSourceCapturePackageV2 | bytes,
     *,
     attestation_repository: CaptureAttestationRepository | None = None,
+    p0_repository: ConstructFreezeAuthorityRepository | None = None,
+    construct_freeze_digest: str | None = None,
+    construct_freeze_artifact_id: str | None = None,
 ) -> VerifiedSourceAuthorityV2:
     """Derive authoritative occurrence identity from verified source capture only."""
 
     if attestation_repository is None:
         raise StructuralContractError("source capture authority requires attestation repository")
+    if p0_repository is None:
+        raise StructuralContractError("source capture authority requires construct-freeze repository")
+    if not construct_freeze_digest:
+        raise StructuralContractError("source capture authority requires construct-freeze digest")
+    if not construct_freeze_artifact_id:
+        raise StructuralContractError("source capture authority requires construct-freeze artifact id")
+    manifest = verify_construct_freeze_parent_binding(
+        parent_kind="construct_freeze",
+        parent_artifact_id=construct_freeze_artifact_id,
+        parent_digest=construct_freeze_digest,
+        construct_freeze_digest=construct_freeze_digest,
+        repository=p0_repository,
+    )
+    issuer_grant_repository = SourceIssuerGrantRepository.from_construct_freeze(manifest)
     if isinstance(capture, bytes):
         canonical_bytes = capture
     elif isinstance(capture, SealedSourceCapturePackageV2):
@@ -186,6 +208,7 @@ def verify_source_capture_authority(
         occurrence_reference=occurrence,
         evidence_snapshot_id=sealed.evidence_snapshot_id(),
         repository=attestation_repository,
+        issuer_grant_repository=issuer_grant_repository,
     )
     record_body = {
         "source_capture_digest": sealed.content_digest,

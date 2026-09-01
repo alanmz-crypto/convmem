@@ -10,6 +10,7 @@ from eval_naturalistic.base import StructuralContractError
 from eval_naturalistic.digest import canonical_artifact_bytes
 from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
 from eval_naturalistic.v2.identity import OccurrenceReferenceV2, digest_hex
+from eval_naturalistic.v2.p0_construct import ConstructFreezeAuthorityRepository
 from eval_naturalistic.v2.source_authority import (
     SealedSourceCapturePackageV2,
     VerifiedSourceAuthorityV2,
@@ -109,6 +110,9 @@ def bind_p1_evidence_commitments(
     sealed_capture: SealedSourceCapturePackageV2,
     verified_authority: VerifiedSourceAuthorityV2,
     attestation_repository: CaptureAttestationRepository,
+    p0_repository: ConstructFreezeAuthorityRepository,
+    construct_freeze_digest: str,
+    construct_freeze_artifact_id: str,
     canonical_content_digest: str,
     canonicalization_profile_digest: str,
     adapter_implementation_digest: str,
@@ -119,6 +123,9 @@ def bind_p1_evidence_commitments(
     reparsed = verify_source_capture_authority(
         sealed_capture.canonical_bytes,
         attestation_repository=attestation_repository,
+        p0_repository=p0_repository,
+        construct_freeze_digest=construct_freeze_digest,
+        construct_freeze_artifact_id=construct_freeze_artifact_id,
     )
     authority = reverify_source_authority_record(verified_authority)
     if reparsed.authority_record_digest != authority.authority_record_digest:

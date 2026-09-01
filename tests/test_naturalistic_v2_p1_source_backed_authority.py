@@ -34,7 +34,15 @@ from eval_naturalistic.v2.p0_construct import (
     InMemoryConstructFreezeRepository,
     seal_construct_freeze_manifest,
 )
-from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
+from eval_naturalistic.v2.capture_attestation import (
+    CaptureAttestationRepository,
+    commit_authorized_capture_attestation,
+    seal_capture_attestation,
+)
+from eval_naturalistic.v2.source_issuer_authority import (
+    SourceIssuerGrantRepository,
+    build_source_issuer_grant_record,
+)
 from eval_naturalistic.v2.source_authority import (
     SealedSourceCapturePackageV2,
     VerifiedSourceAuthorityV2,
@@ -50,6 +58,7 @@ from tests.fixtures.naturalistic_v2_p1 import (
     build_source_capture_body,
     clone_lineage_edge,
     construct_freeze_content_digest,
+    registered_construct_freeze,
     sample_availability,
     sample_capture_attestation_repository,
     sample_construct_parent,
@@ -214,11 +223,17 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
         )
         p0_repo = sample_p0_repository()
         issuance_repo = IssuanceAuthorityRepository()
-        capture, att_repo, authority = seal_verified_source_capture(build_source_capture_body())
+        capture, att_repo, _, authority = seal_verified_source_capture(
+            build_source_capture_body(),
+            p0_repository=p0_repo,
+        )
         commitments = bind_p1_evidence_commitments(
             sealed_capture=capture,
             verified_authority=authority,
             attestation_repository=att_repo,
+            p0_repository=p0_repo,
+            construct_freeze_digest=construct_freeze_content_digest(p0_repo),
+            construct_freeze_artifact_id=sample_construct_parent(p0_repo).parent_artifact_id,
             canonical_content_digest=FIXED_DIGEST,
             canonicalization_profile_digest=FIXED_DIGEST,
             adapter_implementation_digest=FIXED_DIGEST,
@@ -393,14 +408,18 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
     ) -> tuple[EvidenceSealManifestDraftV2, InMemoryConstructFreezeRepository, IssuanceAuthorityRepository]:
         p0_repo = sample_p0_repository()
         issuance_repo = IssuanceAuthorityRepository()
-        capture, att_repo, authority = seal_verified_source_capture(
-            build_source_capture_body(physical_instance=physical_instance, namespace=namespace)
+        capture, att_repo, _, authority = seal_verified_source_capture(
+            build_source_capture_body(physical_instance=physical_instance, namespace=namespace),
+            p0_repository=p0_repo,
         )
         issued = issue_occurrence_reference(authority, issuance_repository=issuance_repo)
         commitments = bind_p1_evidence_commitments(
             sealed_capture=capture,
             verified_authority=authority,
             attestation_repository=att_repo,
+            p0_repository=p0_repo,
+            construct_freeze_digest=construct_freeze_content_digest(p0_repo),
+            construct_freeze_artifact_id=sample_construct_parent(p0_repo).parent_artifact_id,
             canonical_content_digest=FIXED_DIGEST,
             canonicalization_profile_digest=FIXED_DIGEST,
             adapter_implementation_digest=FIXED_DIGEST,
@@ -600,13 +619,112 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
             issuer_capture_attestation=ALT_DIGEST,
         )
         capture = seal_source_capture_package(body)
+        study_p0 = sample_p0_repository()
+        study_manifest = registered_construct_freeze(study_p0)
         with self.assertRaises(StructuralContractError):
             authority = verify_source_capture_authority(
                 capture,
                 attestation_repository=CaptureAttestationRepository(),
+                p0_repository=study_p0,
+                construct_freeze_digest=study_manifest.header.content_digest or FIXED_DIGEST,
+                construct_freeze_artifact_id=study_manifest.header.artifact_id,
             )
             issue_occurrence_reference(
                 authority,
+                issuance_repository=IssuanceAuthorityRepository(),
+            )
+
+    def test_negative_direct_capture_attestation_registration_rejected(self) -> None:
+        p0_repo = sample_p0_repository()
+        att_repo = sample_capture_attestation_repository(p0_repository=p0_repo)
+        artifact = next(iter(att_repo._artifacts.values()))
+        fresh_repo = CaptureAttestationRepository()
+        with self.assertRaises(AttributeError):
+            fresh_repo.register(artifact)  # type: ignore[attr-defined]
+
+    def test_negative_claimant_minted_attestation_chain_cannot_mint_p1(self) -> None:
+        occurrence = OccurrenceReferenceV2(
+            source_system_id="fabricated-sys",
+            tenant_or_realm_id="fabricated-tenant",
+            authority_scope_id="fabricated-scope",
+            occurrence_namespace_id="fabricated-ns",
+            physical_source_instance_id="fabricated-phys",
+            native_id_namespace="fabricated.native",
+            native_record_id="fabricated-record",
+            source_revision_or_asof_id="fabricated-rev",
+        )
+        forged_grant = build_source_issuer_grant_record(
+            issuer_identity="i-am-not-an-authorized-source-issuer",
+            source_system_id=occurrence.source_system_id,
+            authority_scope_id=occurrence.authority_scope_id,
+        )
+        attacker_p0 = InMemoryConstructFreezeRepository()
+        forged_manifest = seal_construct_freeze_manifest(
+            construct_policy_digest=ALT_DIGEST,
+            study_id="forged-study",
+            responsible_role="study_owner",
+            created_at=CREATED_AT,
+            seal_time=SEAL_TIME,
+            authorized_capture_issuer_grants=(forged_grant,),
+        )
+        attacker_p0.register(forged_manifest)
+        forged_grant_repo = SourceIssuerGrantRepository.from_construct_freeze(forged_manifest)
+        grant = forged_grant_repo.resolve(
+            issuer_identity=forged_grant["issuer_identity"],
+            source_system_id=occurrence.source_system_id,
+            authority_scope_id=occurrence.authority_scope_id,
+        )
+        artifact = seal_capture_attestation(
+            grant=grant,
+            occurrence_reference=occurrence,
+            evidence_snapshot_id="fabricated-snap",
+            responsible_role="capture_issuer",
+            created_at=CREATED_AT,
+            seal_time=SEAL_TIME,
+        )
+        att_repo = CaptureAttestationRepository()
+        commit_authorized_capture_attestation(
+            artifact,
+            attestation_repository=att_repo,
+            p0_repository=attacker_p0,
+            construct_freeze_digest=forged_manifest.header.content_digest or ALT_DIGEST,
+            construct_freeze_artifact_id=forged_manifest.header.artifact_id,
+        )
+        body = build_source_capture_body(
+            physical_instance=occurrence.physical_source_instance_id,
+            native_record=occurrence.native_record_id,
+            revision=occurrence.source_revision_or_asof_id,
+            namespace=occurrence.occurrence_namespace_id,
+            snapshot_id="fabricated-snap",
+            issuer_capture_attestation=artifact.attestation_evidence_digest(),
+        )
+        body.update(
+            {
+                "source_system_id": occurrence.source_system_id,
+                "tenant_or_realm_id": occurrence.tenant_or_realm_id,
+                "authority_scope_id": occurrence.authority_scope_id,
+                "native_id_namespace": occurrence.native_id_namespace,
+            }
+        )
+        capture = seal_source_capture_package(body)
+        study_p0 = sample_p0_repository()
+        study_manifest = registered_construct_freeze(study_p0)
+        with self.assertRaises(StructuralContractError):
+            verify_source_capture_authority(
+                capture,
+                attestation_repository=att_repo,
+                p0_repository=study_p0,
+                construct_freeze_digest=study_manifest.header.content_digest or FIXED_DIGEST,
+                construct_freeze_artifact_id=study_manifest.header.artifact_id,
+            )
+            issue_occurrence_reference(
+                verify_source_capture_authority(
+                    capture,
+                    attestation_repository=att_repo,
+                    p0_repository=study_p0,
+                    construct_freeze_digest=study_manifest.header.content_digest or FIXED_DIGEST,
+                    construct_freeze_artifact_id=study_manifest.header.artifact_id,
+                ),
                 issuance_repository=IssuanceAuthorityRepository(),
             )
 
@@ -624,14 +742,25 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
             seal_source_capture_package(body)
 
     def test_negative_instantiated_capture_with_tampered_canonical_bytes(self) -> None:
-        capture, att_repo, _ = seal_verified_source_capture(build_source_capture_body())
+        p0_repo = sample_p0_repository()
+        capture, att_repo, _, _ = seal_verified_source_capture(
+            build_source_capture_body(),
+            p0_repository=p0_repo,
+        )
+        manifest = registered_construct_freeze(p0_repo)
         tampered = SealedSourceCapturePackageV2(
             capture_body=dict(capture.capture_body),
             canonical_bytes=b"{\"schema_version\":\"tampered\"}",
             content_digest=capture.content_digest,
         )
         with self.assertRaises(StructuralContractError):
-            verify_source_capture_authority(tampered, attestation_repository=att_repo)
+            verify_source_capture_authority(
+                tampered,
+                attestation_repository=att_repo,
+                p0_repository=p0_repo,
+                construct_freeze_digest=construct_freeze_content_digest(p0_repo),
+                construct_freeze_artifact_id=manifest.header.artifact_id,
+            )
 
     def test_negative_token_built_source_authority_lacks_repository_evidence(self) -> None:
         from eval_naturalistic.v2.source_authority import _SOURCE_AUTHORITY_TOKEN
