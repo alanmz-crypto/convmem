@@ -16,7 +16,7 @@ distributed by this repository.
 | *Designing Data-Intensive Applications* | Martin Kleppmann | Ch. 5 (Replication), pp. 157–203; Ch. 9 (Consistency), pp. 322–330; Ch. 11 (Stream Processing), pp. 436–484 |
 | *The Pragmatic Programmer* (2nd ed.) | David Thomas and Andrew Hunt | Selected topics: DRY, orthogonality, tracer bullets, design by contract, decoupling, refactoring |
 | *Architecture Patterns with Python* | Harry Percival and Bob Gregory | Part I (domain, repository, unit of work, aggregates) and Part II (events, message bus, CQRS) |
-| *Building Evolutionary Architectures* (2nd ed.) | Rebecca Parsons, Patrick Kua, and Nate Schutta | Ch. 2–3 (fitness-function chapters), approximately pp. 23–76 |
+| *Building Evolutionary Architectures* (2nd ed.) | Neal Ford, Rebecca Parsons, Patrick Kua, and Pramod Sadalage | Ch. 2–3 (fitness-function chapters), approximately pp. 23–76 |
 
 ## Archive
 
