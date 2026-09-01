@@ -1,8 +1,16 @@
 # Latest cross-model handoff (single pointer — update at session end)
 
-**Updated:** 2026-08-30 (R2b Corrective VII Kiro PASS / Ryan GATE; G5 LANDED; G6 Ryan-LOCKED pending ChatGPT review)
+**Updated:** 2026-09-01 (R2b I1–I3 merged; G5 LANDED; G6 Ryan-LOCKED pending ChatGPT review)
+
+> **Freshness rule:** This is a dated handoff pointer, not an immutable
+> current-state database. Live `doctor`/`brief` output, [`docs/inter-model/STATUS.md`](STATUS.md),
+> and the active arc briefs outrank older entries below. In particular, the
+> 2026-08-30 R2b Corrective VII entries below are superseded by the merged
+> v2 I1–I3 state recorded in [`STATUS-r2b-capture-auth.md`](../plans/STATUS-r2b-capture-auth.md).
 
 ## Current routing
+
+- **[Arc R2b Capture Authorization] Current state (2026-09-01):** PR #264 merged the v2 I1–I3 implementation. The implementation is not operational capture authority: zero-bypass proof, duration policy, packet/lease, operational VERIFY, and Ryan's separate grant sequence remain pending. Use [`STATUS-r2b-capture-auth.md`](../plans/STATUS-r2b-capture-auth.md) as the arc authority; the older Corrective VII bullets below are retained as historical review context.
 
 - **[Arc R2b Capture Authorization] Corrective VII — KIRO PASS / RYAN GATE (2026-08-30, Kiro):** Who/What: Independent re-review closed I1–I3 authority boundary at frozen tip `ea7bc9de10b8eed34a6f8ab11d8f50d3106df614` on branch `fix/2026-08-30-2026-08-30-r2b-v2-corrective-vi`. When: detached worktree review 2026-08-30; 139/139 R2b pytest green. Why: VII removed `_MUTATION_GUARD` and made registry mutation frame-based (same pattern as VI-accepted ledger guard). How: all eight dimensions PASS; Break 1 + Break 2 probes closed; `vault_dispatch.__closure__` is None. **Symmetric note (non-blocker):** low-level `_data` direct write bypass exists for all three guarded sinks — identical to VI-accepted threat-model boundary, not a VII regression. **Does not authorize live capture, I4–I8, duration policy, packet, or grant** — Ryan merge/hold on PR [#260](https://github.com/alanmz-crypto/convmem/pull/260); optional Copilot audit if charter requires before merge. **Resume state:** `BLOCKED_ON_RYAN` (merge/hold). Evidence: [`KIRO-2026-08-30-r2b-v2-corrective-vii-handoff.md`](KIRO-2026-08-30-r2b-v2-corrective-vii-handoff.md) · `git show ea7bc9d -- eval_corpus/r2b_v2/_authority_vault.py`.
 

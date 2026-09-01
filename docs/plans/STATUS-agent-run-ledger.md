@@ -45,18 +45,18 @@ separate evidence-citing proposal stage.
 
 | Surface | State |
 |---|---|
-| `origin/main` | `d10e1d5` — current planning base when this brief was authored |
-| `adapters/detect.py` | Existing client vocabulary in `TOOL_BY_FORMAT`; no run abstraction |
-| `ingest.py` | `_chunk_session_meta()` carries existing `session_id` and workspace; no `agent_run_id` |
+| `main` | Core Runway Ledger implementation is merged via [PR #215](https://github.com/alanmz-crypto/convmem/pull/215) |
+| `adapters/detect.py` | Existing client vocabulary in `TOOL_BY_FORMAT`; run association is additive and unique-match-only |
+| `ingest.py` | `_chunk_session_meta()` carries existing `session_id`, workspace, and forward-only `agent_run_id` when uniquely resolved |
 | `adapters/kiro_session_jsonl.py` | Deterministic Kiro session ID/workspace parser exists |
 | `propose_decision.py` / `conflict_events.py` | Existing JSONL proposal/event patterns; not run identity authority |
 | `shadow_sink.py` | Existing lock/sequence/fsync/tail-validation pattern to reuse conceptually |
-| `chroma_write_store.py` | Existing `WriterAttestation`; no run linkage |
-| `~/.local/share/convmem/agent_runs.jsonl` | **Missing**; no production run log has been created by this plan |
-| `.kiro/hooks/` | **Missing** in the repository; Kiro capture is planned, not installed |
-| Architecture plan | [`ARCHITECTURE-agent-run-ledger.md`](ARCHITECTURE-agent-run-ledger.md) — authored on this planning branch |
-| Execution plan | [`EXECUTION-agent-run-ledger.md`](EXECUTION-agent-run-ledger.md) — authored on this planning branch |
-| Implementation/tests | **PR open** — [#215](https://github.com/alanmz-crypto/convmem/pull/215) tip `a2a2865`; V0–V13 PASS; hooks disabled |
+| `chroma_write_store.py` | Existing `WriterAttestation`; run linkage remains outside Chroma mutation authority |
+| `~/.local/share/convmem/agent_runs.jsonl` | Private runtime event log; its presence and contents depend on host hook/CLI use and are not repository state |
+| `.kiro/hooks/` | Kiro start/stop hook definitions are present on `main`; enablement landed via [PR #216](https://github.com/alanmz-crypto/convmem/pull/216) |
+| Architecture plan | [`ARCHITECTURE-agent-run-ledger.md`](ARCHITECTURE-agent-run-ledger.md) — locked design for the merged implementation |
+| Execution plan | [`EXECUTION-agent-run-ledger.md`](EXECUTION-agent-run-ledger.md) — completed execution contract |
+| Implementation/tests | **Merged** via [PR #215](https://github.com/alanmz-crypto/convmem/pull/215); V0–V13 PASS |
 
 ## 4. Completion State
 
@@ -64,33 +64,32 @@ separate evidence-citing proposal stage.
 |---|---|---|
 | Arc codename and scope | Complete — **Runway Ledger** | — |
 | Kiro architecture investigation | Complete; findings incorporated from the user-provided Kiro handoff | Kiro review of this package may add conditions |
-| Architecture plan | Drafted on `plan/2026-08-20-agent-run-ledger` | Kiro review, then Ryan Architecture HITL |
-| Execution plan | Drafted on `plan/2026-08-20-agent-run-ledger` | Kiro review, then Ryan Execution HITL |
-| STATUS brief and registrations | Included in this planning package | Ryan merge; generated surfaces may need propagation |
-| Core implementation | In progress — Cursor Execute authorized 2026-08-20 | T0 done → T1–T8 |
-| Kiro hook installation/live capture | Not started and not authorized | T0/T4 fixture evidence plus exact Ryan external grant |
+| Architecture plan | **DONE / LOCKED** | Reviewed and carried by the merged implementation |
+| Execution plan | **DONE / ACCEPTED** | T0–T8 execution and focused evidence complete |
+| STATUS brief and registrations | **ON `main`** | This brief is the current-state pointer; generated surfaces follow the protocol source |
+| Core implementation | **DONE / MERGED** via PR #215 | V0–V13 focused evidence PASS |
+| Kiro hook enablement/live capture | **DONE for the shipped Kiro slice** via PR #216 | Host-specific runtime state should be checked with `doctor`/`brief`; other clients are future slices |
 
 ## 5. Your Role
 
-The current lane is **Cursor Execute** on `feat/2026-08-20-agent-run-ledger`
-(worktree under `~/.local/share/convmem/worktrees/feat-2026-08-20-agent-run-ledger`).
-Architecture and Execution are Ryan-locked after Kiro PASS. Implement T0–T8 per
-`EXECUTION-agent-run-ledger.md`. Do not install live hooks or enable forward
-ingest association without Ryan's exact grants. Kiro reviews the exact
-revision after implementation; Ryan owns merges.
+This arc is closed for the shipped implementation. If you are checking the
+personal deployment, use `convmem doctor` and `convmem brief --stdout-only` to
+confirm host-specific hook and run-log state. If you are adding another client
+or changing run association, treat that as a new bounded slice with its own
+review and authorization; do not infer authorization from PR #215 or PR #216.
 
 ## 6. What Remains Before “Live”
 
-All milestones complete:
+No uncompleted repository milestone remains for the Kiro-first slice:
 
-1. ~~Kiro reviews the architecture and execution package~~ — PASS.
-2. ~~Ryan locks Architecture and Execution~~ — granted 2026-08-20.
-3. ~~Cursor proves the Kiro hook contract (T0)~~ — fixtures + contract tests.
-4. ~~Cursor implements T1–T7~~ — merged via PR #215.
-5. ~~V0–V13 focused tests; Claude independent review; Kiro final review~~ — all PASS.
-6. ~~Ryan grants hook enable + soak~~ — soak passed 2026-08-20; PR #216 enables hooks.
-7. ~~Forward-only `agent_run_id` ingest association~~ — active, unique-match-only.
-8. Other clients (Codex, Cursor, Crush, Copilot) — future slices, not required for arc close.
+1. Architecture and Execution were reviewed and locked.
+2. T0–T8 implementation, V0–V13 focused tests, and independent review passed.
+3. The implementation merged via PR #215; Kiro hook enablement and soak merged via PR #216.
+4. Forward-only `agent_run_id` association is active for unique matches.
+
+Host deployment state is operational context, not a claim that every machine
+has hooks installed. Codex, Cursor, Crush, and Copilot integrations remain
+future slices and are not required to reopen or extend this arc.
 
 ## 7. Hard Stops
 
@@ -110,8 +109,8 @@ All milestones complete:
 
 Runway Ledger is an additive correlation layer. Existing indexed units retain
 their `session_id`; existing ledger records retain their IDs, authors,
-signers, and authority; Chroma remains a projection/authority surface exactly
-as defined by current arcs. New units may receive `agent_run_id` only after an
+signers, and authority; Chroma remains a rebuildable search projection as
+defined by current arcs. New units may receive `agent_run_id` only after an
 exact unique native-session match. Existing units are not reindexed or
 rewritten. Run evidence can point at a ledger ID, but it cannot approve,
 supersede, or replace that ledger record.
@@ -148,4 +147,4 @@ session narrative here; session details belong in Track A ingest.
 | 2026-08-20 | Cursor | V13 green; opened PR #215 at tip `a2a2865` |
 | 2026-08-20 | Cursor | Claude Q4/Q7 pre-soak fixes on PR #215 (no-ID collision + stderr) |
 | 2026-08-20 | Kiro | Soak passed; hooks enabled; PR #216 opened; arc closing |
-| 2026-08-20 | Codex | Created Runway Ledger architecture, execution, and STATUS package from Kiro's identity-tracking investigation; implementation remains unauthorized |
+| 2026-09-01 | Codex | Reconciled this brief with merged PRs #215/#216; Kiro-first implementation is closed and other clients remain future slices |
