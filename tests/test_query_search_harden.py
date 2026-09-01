@@ -5,7 +5,13 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from query import query_units
+from query import (
+    MAX_QUERY_RESULTS,
+    _fetch_scoped_units,
+    query_raw,
+    query_units,
+    validate_top_k,
+)
 from serving_authority import ServingBackendTransient
 from tests.serving_repo_mock import patch_query_serving
 
@@ -110,6 +116,47 @@ class QueryUnitsSearchHardenTests(unittest.TestCase):
             [row["retrieval_rank"] for row in out],
             list(range(1, len(out) + 1)),
         )
+
+
+class QueryLimitTests(unittest.TestCase):
+    def test_public_result_limit_is_bounded(self):
+        with self.assertRaises(ValueError):
+            query_units("q", top_k=MAX_QUERY_RESULTS + 1)
+        with self.assertRaises(ValueError):
+            query_raw("q", top_k=0)
+        with self.assertRaises(ValueError):
+            validate_top_k(101)
+        with self.assertRaises(TypeError):
+            validate_top_k(True)
+
+    @patch("query.ollama_embed")
+    @patch("query.load_config")
+    def test_invalid_limit_is_rejected_before_index_or_embedding(
+        self, mock_cfg, mock_embed
+    ):
+        with self.assertRaises(ValueError):
+            query_units("q", top_k=10**9)
+        mock_cfg.assert_not_called()
+        mock_embed.assert_not_called()
+
+    def test_scoped_fetch_adapts_to_collection_size(self):
+        repo = MagicMock()
+        repo.count_units.return_value = 100_000
+        repo.query_units.return_value = []
+
+        self.assertEqual(
+            _fetch_scoped_units(
+                repo,
+                [0.1],
+                candidate_k=20,
+                domain="web_stack",
+                site_norm=None,
+            ),
+            [],
+        )
+        fetch_sizes = [call.args[1] for call in repo.query_units.call_args_list]
+        self.assertGreater(max(fetch_sizes), 300)
+        self.assertLessEqual(max(fetch_sizes), repo.count_units.return_value)
 
 
 if __name__ == "__main__":

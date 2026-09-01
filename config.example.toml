@@ -59,6 +59,11 @@ debounce_seconds = 90
 # Child OOM kills only the scope, not convmem-watch.service.
 # subprocess_memory_max = "2G"
 # subprocess_memory_high = "1500M"
+# Interim liveness backstop for a HUNG (not memory-exceeding) index child.
+# UNRATIFIED placeholder — the per-child memory cap above is the primary OOM control,
+# and a tuned timeout awaits the watch-OOM design. Uncomment only to set an explicit
+# ceiling; the shipped default is an interim backstop, not a recommendation.
+# subprocess_timeout_seconds = 900
 # Optional: override [sources].paths for watch only (defaults to sources.paths)
 # Optional: append repo coordination docs without replacing transcript roots
 # extra_paths = [

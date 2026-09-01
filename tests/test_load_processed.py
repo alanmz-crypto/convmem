@@ -40,6 +40,21 @@ class LoadProcessedTests(unittest.TestCase):
             self.assertEqual(json.loads(p.read_text()), {"b": {"path": "/y"}})
             self.assertFalse(p.with_suffix(p.suffix + ".tmp").exists())
 
+    def test_save_processed_does_not_follow_fixed_temp_symlink(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            p = root / "processed.json"
+            target = root / "unrelated"
+            target.write_text("keep", encoding="utf-8")
+            p.with_suffix(p.suffix + ".tmp").symlink_to(target)
+
+            from ingest import save_processed
+
+            save_processed(str(p), {"safe": {"path": "/x"}})
+
+            self.assertEqual(target.read_text(encoding="utf-8"), "keep")
+            self.assertTrue(p.with_suffix(p.suffix + ".tmp").is_symlink())
+
 
 if __name__ == "__main__":
     unittest.main()

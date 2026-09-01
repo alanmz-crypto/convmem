@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import MagicMock, patch
 
 from chroma_store import ChromaStore
 
@@ -54,6 +55,30 @@ class FlattenOrphanGuardTests(unittest.TestCase):
         out = ChromaStore._flatten(res)
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["metadata"], {})
+
+    def test_units_metadata_reads_in_pages(self):
+        collection = MagicMock()
+        collection.get.side_effect = [
+            {
+                "ids": ["u1", "u2"],
+                "metadatas": [{"title": "one"}, {"title": "two"}],
+            },
+            {"ids": ["u3"], "metadatas": [{"title": "three"}]},
+        ]
+        store = ChromaStore.__new__(ChromaStore)
+        store._collection = MagicMock(return_value=collection)
+
+        with patch("chroma_store._METADATA_PAGE_SIZE", 2):
+            rows = store.units_metadata()
+
+        self.assertEqual([row["id"] for row in rows], ["u1", "u2", "u3"])
+        self.assertEqual(
+            [call.kwargs for call in collection.get.call_args_list],
+            [
+                {"include": ["metadatas"], "limit": 2, "offset": 0},
+                {"include": ["metadatas"], "limit": 2, "offset": 2},
+            ],
+        )
 
 
 if __name__ == "__main__":
