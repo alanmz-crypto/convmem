@@ -173,3 +173,20 @@ class SourceIssuerGrantRepository:
         if grant is None:
             raise StructuralContractError("source issuer grant not found in authority repository")
         return reverify_source_issuer_grant(grant)
+
+    def resolve_for_occurrence(self, occurrence: "OccurrenceReferenceV2") -> SourceIssuerGrantV2:
+        from eval_naturalistic.v2.identity import OccurrenceReferenceV2
+
+        if not isinstance(occurrence, OccurrenceReferenceV2):
+            raise TypeError("resolve_for_occurrence requires OccurrenceReferenceV2")
+        matches = [
+            grant
+            for grant in self._grants.values()
+            if grant.source_system_id == occurrence.source_system_id
+            and grant.authority_scope_id == occurrence.authority_scope_id
+        ]
+        if len(matches) != 1:
+            raise StructuralContractError(
+                "source issuer grant not uniquely resolved for occurrence scope"
+            )
+        return reverify_source_issuer_grant(matches[0])

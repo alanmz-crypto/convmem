@@ -17,6 +17,11 @@ from eval_naturalistic.base import (
 from eval_naturalistic.digest import canonical_artifact_bytes
 from eval_naturalistic.v2.contracts import ARTIFACT_ID_PREFIX_V2, SCHEMA_NAMESPACE_V2
 from eval_naturalistic.v2.identity import OccurrenceReferenceV2
+from eval_naturalistic.v2.issuer_attestation_capability import (
+    IssuerCaptureAttestationCapabilityRepository,
+    IssuerCaptureAttestationCapabilityV2,
+    reverify_issuer_capture_attestation_capability,
+)
 from eval_naturalistic.v2.p0_construct import (
     ConstructFreezeAuthorityRepository,
     verify_construct_freeze_parent_binding,
@@ -39,6 +44,7 @@ class CaptureAttestationArtifactV2:
     evidence_snapshot_id: str
     issuer_identity: str
     issuer_grant_digest: str
+    issuer_attestation_capability_digest: str
 
     _FIELDS = {
         "header",
@@ -46,6 +52,7 @@ class CaptureAttestationArtifactV2:
         "evidence_snapshot_id",
         "issuer_identity",
         "issuer_grant_digest",
+        "issuer_attestation_capability_digest",
     }
 
     @classmethod
@@ -63,6 +70,10 @@ class CaptureAttestationArtifactV2:
             evidence_snapshot_id=_require_str(data["evidence_snapshot_id"], "evidence_snapshot_id"),
             issuer_identity=_require_str(data["issuer_identity"], "issuer_identity"),
             issuer_grant_digest=_require_str(data["issuer_grant_digest"], "issuer_grant_digest"),
+            issuer_attestation_capability_digest=_require_str(
+                data["issuer_attestation_capability_digest"],
+                "issuer_attestation_capability_digest",
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -72,6 +83,7 @@ class CaptureAttestationArtifactV2:
             "evidence_snapshot_id": self.evidence_snapshot_id,
             "issuer_identity": self.issuer_identity,
             "issuer_grant_digest": self.issuer_grant_digest,
+            "issuer_attestation_capability_digest": self.issuer_attestation_capability_digest,
         }
 
     def attestation_evidence_digest(self) -> str:
@@ -80,6 +92,7 @@ class CaptureAttestationArtifactV2:
             "evidence_snapshot_id": self.evidence_snapshot_id,
             "issuer_identity": self.issuer_identity,
             "issuer_grant_digest": self.issuer_grant_digest,
+            "issuer_attestation_capability_digest": self.issuer_attestation_capability_digest,
         }
         return hashlib.sha256(canonical_artifact_bytes(body)).hexdigest()
 
@@ -89,9 +102,10 @@ def _derive_artifact_id(*, schema: str, content_digest: str) -> str:
     return f"{ARTIFACT_ID_PREFIX_V2}{kind}_{content_digest}"
 
 
-def seal_capture_attestation(
+def _seal_capture_attestation(
     *,
     grant: SourceIssuerGrantV2,
+    capability: IssuerCaptureAttestationCapabilityV2,
     occurrence_reference: OccurrenceReferenceV2,
     evidence_snapshot_id: str,
     responsible_role: str,
@@ -99,6 +113,11 @@ def seal_capture_attestation(
     seal_time: str,
 ) -> CaptureAttestationArtifactV2:
     verified_grant = reverify_source_issuer_grant(grant)
+    verified_capability = reverify_issuer_capture_attestation_capability(capability)
+    if verified_grant.grant_digest != verified_capability.issuer_grant_digest:
+        raise StructuralContractError("capture attestation: issuer grant/capability mismatch")
+    if verified_grant.issuer_identity != verified_capability.issuer_identity:
+        raise StructuralContractError("capture attestation: issuer identity mismatch with capability")
     if verified_grant.issuer_identity == "":
         raise StructuralContractError("capture attestation: missing issuer identity")
     if verified_grant.source_system_id != occurrence_reference.source_system_id:
@@ -122,6 +141,7 @@ def seal_capture_attestation(
         "evidence_snapshot_id": evidence_snapshot_id,
         "issuer_identity": verified_grant.issuer_identity,
         "issuer_grant_digest": verified_grant.grant_digest,
+        "issuer_attestation_capability_digest": verified_capability.capability_digest,
     }
     content_digest = hashlib.sha256(canonical_artifact_bytes(strip_digest_metadata(body))).hexdigest()
     artifact_id = _derive_artifact_id(schema=CAPTURE_ATTESTATION_SCHEMA, content_digest=content_digest)
@@ -142,6 +162,7 @@ def seal_capture_attestation(
         evidence_snapshot_id=evidence_snapshot_id,
         issuer_identity=verified_grant.issuer_identity,
         issuer_grant_digest=verified_grant.grant_digest,
+        issuer_attestation_capability_digest=verified_capability.capability_digest,
     )
     verify_capture_attestation_artifact(artifact)
     return artifact
@@ -167,6 +188,8 @@ def verify_capture_attestation_artifact(
         raise StructuralContractError("capture attestation: missing issuer identity")
     if not artifact.issuer_grant_digest:
         raise StructuralContractError("capture attestation: missing issuer grant digest")
+    if not artifact.issuer_attestation_capability_digest:
+        raise StructuralContractError("capture attestation: missing issuer attestation capability digest")
     return artifact
 
 
@@ -194,10 +217,15 @@ class CaptureAttestationRepository:
         artifact: CaptureAttestationArtifactV2,
         *,
         issuer_grant_repository: SourceIssuerGrantRepository,
+        issuer_capability_repository: IssuerCaptureAttestationCapabilityRepository,
         construct_freeze_digest: str,
     ) -> CaptureAttestationArtifactV2:
         if issuer_grant_repository.construct_freeze_digest() != construct_freeze_digest:
             raise StructuralContractError("capture attestation: construct-freeze digest mismatch")
+        if issuer_capability_repository.construct_freeze_digest() != construct_freeze_digest:
+            raise StructuralContractError(
+                "capture attestation: issuer capability construct-freeze digest mismatch"
+            )
         verified = verify_capture_attestation_artifact(artifact)
         occurrence = verified.occurrence_reference
         grant = issuer_grant_repository.resolve(
@@ -207,6 +235,14 @@ class CaptureAttestationRepository:
         )
         if grant.grant_digest != verified.issuer_grant_digest:
             raise StructuralContractError("capture attestation: issuer grant digest mismatch")
+        capability = issuer_capability_repository.resolve(
+            issuer_identity=verified.issuer_identity,
+            issuer_grant_digest=verified.issuer_grant_digest,
+        )
+        if capability.capability_digest != verified.issuer_attestation_capability_digest:
+            raise StructuralContractError(
+                "capture attestation: issuer attestation capability digest mismatch"
+            )
         digest = verified.attestation_evidence_digest()
         self._artifacts[digest] = verified
         return verified
@@ -218,15 +254,24 @@ class CaptureAttestationRepository:
         return verify_capture_attestation_artifact(artifact)
 
 
-def commit_authorized_capture_attestation(
-    artifact: CaptureAttestationArtifactV2,
+def issue_capture_attestation(
+    sealed_capture: object,
     *,
     attestation_repository: CaptureAttestationRepository,
     p0_repository: ConstructFreezeAuthorityRepository,
+    issuer_capability_repository: IssuerCaptureAttestationCapabilityRepository,
     construct_freeze_digest: str,
     construct_freeze_artifact_id: str,
+    responsible_role: str,
+    created_at: str,
+    seal_time: str,
 ) -> CaptureAttestationArtifactV2:
-    """Commit attestation evidence only when issuer grant resolves from construct freeze."""
+    """Issue capture attestation only with issuer capability — grant metadata alone is insufficient."""
+
+    from eval_naturalistic.v2.source_authority import SealedSourceCapturePackageV2
+
+    if not isinstance(sealed_capture, SealedSourceCapturePackageV2):
+        raise TypeError("issue_capture_attestation requires SealedSourceCapturePackageV2")
 
     manifest = verify_construct_freeze_parent_binding(
         parent_kind="construct_freeze",
@@ -236,9 +281,35 @@ def commit_authorized_capture_attestation(
         repository=p0_repository,
     )
     issuer_grant_repository = SourceIssuerGrantRepository.from_construct_freeze(manifest)
+    fields = sealed_capture.occurrence_fields()
+    occurrence = OccurrenceReferenceV2(
+        source_system_id=fields["source_system_id"],
+        tenant_or_realm_id=fields["tenant_or_realm_id"],
+        authority_scope_id=fields["authority_scope_id"],
+        occurrence_namespace_id=fields["occurrence_namespace_id"],
+        physical_source_instance_id=fields["physical_source_instance_id"],
+        native_id_namespace=fields["native_id_namespace"],
+        native_record_id=fields["native_record_id"],
+        source_revision_or_asof_id=fields["source_revision_or_asof_id"],
+    )
+    grant = issuer_grant_repository.resolve_for_occurrence(occurrence)
+    capability = issuer_capability_repository.resolve(
+        issuer_identity=grant.issuer_identity,
+        issuer_grant_digest=grant.grant_digest,
+    )
+    artifact = _seal_capture_attestation(
+        grant=grant,
+        capability=capability,
+        occurrence_reference=occurrence,
+        evidence_snapshot_id=sealed_capture.evidence_snapshot_id(),
+        responsible_role=responsible_role,
+        created_at=created_at,
+        seal_time=seal_time,
+    )
     return attestation_repository._commit_authorized_attestation(
         artifact,
         issuer_grant_repository=issuer_grant_repository,
+        issuer_capability_repository=issuer_capability_repository,
         construct_freeze_digest=construct_freeze_digest,
     )
 
@@ -250,6 +321,7 @@ def verify_capture_attestation_binding(
     evidence_snapshot_id: str,
     repository: CaptureAttestationRepository,
     issuer_grant_repository: SourceIssuerGrantRepository,
+    issuer_capability_repository: IssuerCaptureAttestationCapabilityRepository,
 ) -> CaptureAttestationArtifactV2:
     artifact = repository.resolve(attestation_digest)
     if artifact.occurrence_reference.same_occurrence_as(occurrence_reference) is False:
@@ -265,4 +337,12 @@ def verify_capture_attestation_binding(
     )
     if grant.grant_digest != artifact.issuer_grant_digest:
         raise StructuralContractError("capture attestation: issuer grant digest mismatch")
+    capability = issuer_capability_repository.resolve(
+        issuer_identity=artifact.issuer_identity,
+        issuer_grant_digest=artifact.issuer_grant_digest,
+    )
+    if capability.capability_digest != artifact.issuer_attestation_capability_digest:
+        raise StructuralContractError(
+            "capture attestation: issuer attestation capability digest mismatch"
+        )
     return artifact
