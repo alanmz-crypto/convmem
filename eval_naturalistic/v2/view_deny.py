@@ -98,6 +98,18 @@ _ALIAS_DENY = {
     "capability-vector": "capability_vector",
 }
 
+_CAMEL_BOUNDARY_LOWER_UPPER = re.compile(r"([a-z0-9])([A-Z])")
+_CAMEL_BOUNDARY_UPPER_RUN = re.compile(r"([A-Z]+)([A-Z][a-z])")
+
+
+def _normalize_structural_key_for_deny(key: str) -> str:
+    """Collapse snake/camel/Pascal/hyphen spellings to one comparison token."""
+
+    normalized = key.replace("-", "_")
+    normalized = _CAMEL_BOUNDARY_LOWER_UPPER.sub(r"\1_\2", normalized)
+    normalized = _CAMEL_BOUNDARY_UPPER_RUN.sub(r"\1_\2", normalized)
+    return normalized.lower().replace("_", "")
+
 
 def _is_forbidden_structural_key(key: str, *, allowed: frozenset[str]) -> bool:
     if key in allowed:
@@ -107,8 +119,11 @@ def _is_forbidden_structural_key(key: str, *, allowed: frozenset[str]) -> bool:
         return True
     if key in _ESCAPE_KEYS:
         return True
-    lower = key.lower()
-    return any(fragment in lower for fragment in _FORBIDDEN_KEY_FRAGMENTS)
+    normalized_key = _normalize_structural_key_for_deny(key)
+    return any(
+        _normalize_structural_key_for_deny(fragment) in normalized_key
+        for fragment in _FORBIDDEN_KEY_FRAGMENTS
+    )
 
 
 def validate_adjudication_view_structure(

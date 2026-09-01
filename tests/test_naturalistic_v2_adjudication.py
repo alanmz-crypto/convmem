@@ -296,15 +296,45 @@ class NaturalisticV2AdjudicationNestedDenyTests(unittest.TestCase):
         "fs_time",
     )
 
+    STATUS_CODE_ALIASES = (
+        "status_code",
+        "statusCode",
+        "StatusCode",
+        "status-code",
+    )
+
+    FS_TIME_ALIASES = (
+        "fs_time",
+        "fsTime",
+        "FsTime",
+        "fs-time",
+    )
+
+    CAMEL_CASE_ALIASES = (
+        "attemptCount",
+        "errorCode",
+        "errorCategory",
+        "stackTrace",
+        "fileMtime",
+        "filesystemMtime",
+    )
+
     NESTED_CONTAINERS = (
         "chronology",
         "reply_structure",
         "canonical_evidence_content",
     )
 
+    PROSE_WORDS = ("status", "error", "resolver", "attempt", "stack")
+
     def _payload_with_nested_key(self, container: str, forbidden_key: str) -> dict:
         payload = build_adjudication_evidence_view(sample_p1_bundle()).to_dict()
         payload["items"][0][container] = {forbidden_key: "P2_LEAK"}
+        return payload
+
+    def _payload_with_nested_list_key(self, container: str, forbidden_key: str) -> dict:
+        payload = build_adjudication_evidence_view(sample_p1_bundle()).to_dict()
+        payload["items"][0][container] = {"entries": [{forbidden_key: "P2_LEAK"}]}
         return payload
 
     def test_nested_forbidden_structural_keys_rejected(self) -> None:
@@ -315,17 +345,61 @@ class NaturalisticV2AdjudicationNestedDenyTests(unittest.TestCase):
                     with self.assertRaises(StructuralContractError):
                         validate_adjudication_view_structure(payload, label="view")
 
+    def test_status_code_alias_family_rejected(self) -> None:
+        for alias in self.STATUS_CODE_ALIASES:
+            for container in self.NESTED_CONTAINERS:
+                with self.subTest(alias=alias, container=container):
+                    payload = self._payload_with_nested_key(container, alias)
+                    with self.assertRaises(StructuralContractError):
+                        validate_adjudication_view_structure(payload, label="view")
+
+    def test_fs_time_alias_family_rejected(self) -> None:
+        for alias in self.FS_TIME_ALIASES:
+            for container in self.NESTED_CONTAINERS:
+                with self.subTest(alias=alias, container=container):
+                    payload = self._payload_with_nested_key(container, alias)
+                    with self.assertRaises(StructuralContractError):
+                        validate_adjudication_view_structure(payload, label="view")
+
+    def test_camel_case_alias_family_rejected(self) -> None:
+        for alias in self.CAMEL_CASE_ALIASES:
+            for container in self.NESTED_CONTAINERS:
+                with self.subTest(alias=alias, container=container):
+                    payload = self._payload_with_nested_key(container, alias)
+                    with self.assertRaises(StructuralContractError):
+                        validate_adjudication_view_structure(payload, label="view")
+
+    def test_nested_list_depth_alias_rejection(self) -> None:
+        for alias in (*self.STATUS_CODE_ALIASES, *self.FS_TIME_ALIASES, *self.CAMEL_CASE_ALIASES):
+            for container in self.NESTED_CONTAINERS:
+                with self.subTest(alias=alias, container=container):
+                    payload = self._payload_with_nested_list_key(container, alias)
+                    with self.assertRaises(StructuralContractError):
+                        validate_adjudication_view_structure(payload, label="view")
+
     def test_error_code_in_chronology_rejected(self) -> None:
         payload = build_adjudication_evidence_view(sample_p1_bundle()).to_dict()
         payload["items"][0]["chronology"] = {"error_code": "P2_LEAK"}
         with self.assertRaises(StructuralContractError):
             validate_adjudication_view_structure(payload, label="view")
 
-    def test_evidence_prose_with_error_word_not_rejected(self) -> None:
+    def test_evidence_prose_with_sensitive_words_not_rejected(self) -> None:
         payload = build_adjudication_evidence_view(sample_p1_bundle()).to_dict()
+        for index, word in enumerate(self.PROSE_WORDS):
+            with self.subTest(word=word):
+                payload["items"][0]["chronology"]["ordering_state"] = (
+                    f"ordinary evidence mentions {word} in prose only"
+                )
+                validate_adjudication_view_structure(payload, label="view")
         payload["items"][0]["chronology"]["ordering_state"] = (
-            "the resolver returned an error"
+            "the resolver returned an error after an attempt on the stack"
         )
+        validate_adjudication_view_structure(payload, label="view")
+
+    def test_event_time_remains_allowed(self) -> None:
+        view = build_adjudication_evidence_view(sample_p1_bundle())
+        payload = view.to_dict()
+        self.assertIn("event_time", payload["items"][0])
         validate_adjudication_view_structure(payload, label="view")
 
     def test_allowed_top_level_fields_remain_accepted(self) -> None:
@@ -337,9 +411,18 @@ class NaturalisticV2AdjudicationNestedDenyTests(unittest.TestCase):
     def test_metamorphic_byte_equality_unchanged_after_deny_hardening(self) -> None:
         bundle = sample_p1_bundle()
         baseline = _view_bytes_from_p1(bundle)
+        base_view = build_adjudication_evidence_view(bundle)
+        base_tokens = [item.opaque_occurrence_token for item in base_view.items]
         for result in ResolverResultV2:
             _ = p2_manifest_for_result(result)
-            self.assertEqual(_view_bytes_from_p1(bundle), baseline)
+            view = build_adjudication_evidence_view(bundle)
+            current_bytes = _view_bytes_from_p1(bundle)
+            self.assertEqual(current_bytes, baseline)
+            self.assertEqual(len(current_bytes), len(baseline))
+            self.assertEqual(view.content_digest(), base_view.content_digest())
+            self.assertEqual(
+                [item.opaque_occurrence_token for item in view.items], base_tokens
+            )
 
 
 class NaturalisticV2AdjudicationStaticDependencyTests(unittest.TestCase):
