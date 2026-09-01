@@ -32,6 +32,7 @@ REQUIRED_SOURCE_CAPTURE_FIELDS = frozenset(
         "native_record_id",
         "source_revision_or_asof_id",
         "evidence_snapshot_id",
+        "raw_record_digest",
         "capture_envelope_digest",
         "issuer_capture_attestation",
     }
@@ -160,9 +161,12 @@ def verify_source_capture_authority(
     if attestation_repository is None:
         raise StructuralContractError("source capture authority requires attestation repository")
     if isinstance(capture, bytes):
-        sealed = SealedSourceCapturePackageV2.from_canonical_bytes(capture)
+        canonical_bytes = capture
+    elif isinstance(capture, SealedSourceCapturePackageV2):
+        canonical_bytes = capture.canonical_bytes
     else:
-        sealed = capture
+        raise TypeError("verify_source_capture_authority requires bytes or SealedSourceCapturePackageV2")
+    sealed = SealedSourceCapturePackageV2.from_canonical_bytes(canonical_bytes)
     fields = sealed.occurrence_fields()
     occurrence = OccurrenceReferenceV2(
         source_system_id=fields["source_system_id"],
