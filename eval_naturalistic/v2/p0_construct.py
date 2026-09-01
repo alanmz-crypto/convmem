@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from eval_naturalistic.base import (
@@ -146,12 +146,24 @@ class ConstructFreezeAuthorityRepository(Protocol):
 
 @dataclass
 class InMemoryConstructFreezeRepository:
-    """Test/local authority repository for verified P0 parents."""
+    """Candidate repository for P0 parents.
+
+    Registration proves only artifact structure.  An authority source binding
+    is deliberately kept outside serialized state and is required by the
+    downstream authority paths.
+    """
 
     _artifacts: dict[str, ConstructFreezeManifestV2]
+    _authority_source: Any = field(default=None, repr=False, compare=False)
 
-    def __init__(self) -> None:
+    def __init__(self, *, authority_source: Any = None) -> None:
         self._artifacts = {}
+        self._authority_source = authority_source
+
+    def authority_source(self) -> Any:
+        """Return the host-supplied source binding, never serialized."""
+
+        return self._authority_source
 
     def register(self, manifest: ConstructFreezeManifestV2) -> ConstructFreezeManifestV2:
         verified = verify_construct_freeze_manifest(manifest)
@@ -180,6 +192,7 @@ def verify_construct_freeze_parent_binding(
     parent_digest: str,
     construct_freeze_digest: str,
     repository: ConstructFreezeAuthorityRepository,
+    authority_source: Any = None,
 ) -> ConstructFreezeManifestV2:
     if parent_kind != "construct_freeze":
         raise StructuralContractError(f"unknown immediate parent kind: {parent_kind}")
@@ -188,4 +201,18 @@ def verify_construct_freeze_parent_binding(
     parent = repository.resolve(artifact_id=parent_artifact_id, content_digest=parent_digest)
     if parent.header.content_digest != parent_digest:
         raise StructuralContractError("resolved construct freeze digest mismatch")
-    return parent
+    if authority_source is None:
+        return parent
+    from eval_naturalistic.v2.authority_substrate import validate_authority_source
+
+    source = validate_authority_source(authority_source)
+    trusted_parent = source.resolve_construct_freeze(
+        artifact_id=parent_artifact_id,
+        content_digest=parent_digest,
+    )
+    verified_trusted = verify_construct_freeze_manifest(trusted_parent)
+    if verified_trusted.to_dict() != parent.to_dict():
+        raise StructuralContractError(
+            "construct freeze parent is not the independently resolved study authority"
+        )
+    return verified_trusted

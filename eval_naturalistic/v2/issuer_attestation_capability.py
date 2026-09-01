@@ -179,18 +179,30 @@ def reverify_issuer_capture_attestation_capability(
 
 
 class IssuerCaptureAttestationCapabilityRepository:
-    """Pre-issued issuer capabilities — not self-registered or grant-derived at mint time."""
+    """Candidate capability store with an optional external source binding.
+
+    ``from_capability_records`` intentionally never receives or creates a
+    source binding.  It therefore remains useful for integrity/hydration
+    checks, but cannot be used as authority by the capture or P1 paths.
+    """
 
     def __init__(
         self,
         *,
         construct_freeze_digest: str,
         capabilities: tuple[IssuerCaptureAttestationCapabilityV2, ...],
+        authority_source: Any = None,
     ) -> None:
         self._construct_freeze_digest = construct_freeze_digest
+        self._authority_source = authority_source
         self._capabilities = {
             (cap.issuer_identity, cap.issuer_grant_digest): cap for cap in capabilities
         }
+
+    def authority_source(self) -> Any:
+        """Return the non-serialized study-authority source binding."""
+
+        return self._authority_source
 
     @classmethod
     def from_capabilities(
@@ -198,6 +210,7 @@ class IssuerCaptureAttestationCapabilityRepository:
         *,
         construct_freeze_digest: str,
         capabilities: tuple[IssuerCaptureAttestationCapabilityV2, ...],
+        authority_source: Any = None,
     ) -> "IssuerCaptureAttestationCapabilityRepository":
         digest = digest_hex(construct_freeze_digest, "construct_freeze_digest")
         verified = tuple(
@@ -208,7 +221,11 @@ class IssuerCaptureAttestationCapabilityRepository:
                 raise StructuralContractError(
                     "issuer capture attestation capability: construct-freeze digest mismatch"
                 )
-        return cls(construct_freeze_digest=digest, capabilities=verified)
+        return cls(
+            construct_freeze_digest=digest,
+            capabilities=verified,
+            authority_source=authority_source,
+        )
 
     @classmethod
     def from_capability_records(

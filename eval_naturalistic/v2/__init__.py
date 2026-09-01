@@ -10,6 +10,7 @@ from eval_naturalistic.v2.authority_issuance import (
     issue_occurrence_reference,
     verify_sealed_p1_authority,
 )
+from eval_naturalistic.v2.authority_substrate import IndependentAuthoritySourceV2
 from eval_naturalistic.v2.contracts import (
     EvidenceAvailabilityManifestV2,
     EvidenceSealManifestV2,
@@ -46,6 +47,7 @@ __all__ = [
     "EvidenceSealManifestDraftV2",
     "EvidenceSealManifestV2",
     "ImmediateParentBindingV2",
+    "IndependentAuthoritySourceV2",
     "InMemoryConstructFreezeRepository",
     "IssuanceAuthorityRecordV2",
     "IssuanceAuthorityRepository",

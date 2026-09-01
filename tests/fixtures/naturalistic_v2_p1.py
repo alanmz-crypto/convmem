@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from eval_naturalistic.base import StructuralContractError
 from eval_naturalistic.v2.authority_issuance import (
     EvidenceSealManifestDraftV2,
     ImmediateParentBindingV2,
@@ -55,6 +56,65 @@ DEFAULT_RAW_RECORD_DIGEST = "c" * 64
 PLACEHOLDER_ATTESTATION_DIGEST = "f" * 64
 
 
+class FixtureAuthoritySource:
+    """Test-only stand-in for the host-owned authority substrate.
+
+    The production API has no record-to-authority factory.  This source is
+    kept outside the portable claim graph and is deliberately the only place
+    from which the fixture's P0, capability, attestation, capture, and
+    issuance records resolve as study authority.
+    """
+
+    def __init__(self) -> None:
+        self.construct_freeze_repository = None
+        self.capability_repository = None
+        self.attestation_repository = None
+        self.issuance_repository = None
+        self._captures = {}
+
+    def resolve_construct_freeze(self, *, artifact_id: str, content_digest: str):
+        if self.construct_freeze_repository is None:
+            raise StructuralContractError("fixture authority: construct freeze unavailable")
+        return self.construct_freeze_repository.resolve(
+            artifact_id=artifact_id, content_digest=content_digest
+        )
+
+    def resolve_issuer_capability(
+        self, *, issuer_identity: str, issuer_grant_digest: str, construct_freeze_digest: str
+    ):
+        if self.capability_repository is None:
+            raise StructuralContractError("fixture authority: capability unavailable")
+        capability = self.capability_repository.resolve(
+            issuer_identity=issuer_identity,
+            issuer_grant_digest=issuer_grant_digest,
+        )
+        if capability.construct_freeze_digest != construct_freeze_digest:
+            raise StructuralContractError("fixture authority: capability freeze mismatch")
+        return capability
+
+    def resolve_capture_attestation(self, attestation_digest: str):
+        if self.attestation_repository is None:
+            raise StructuralContractError("fixture authority: attestation unavailable")
+        return self.attestation_repository.resolve(attestation_digest)
+
+    def resolve_source_capture(self, source_capture_digest: str):
+        capture = self._captures.get(source_capture_digest)
+        if capture is None:
+            raise StructuralContractError("fixture authority: source capture unavailable")
+        return capture
+
+    def resolve_issuance(self, issuance_digest: str):
+        if self.issuance_repository is None:
+            raise StructuralContractError("fixture authority: issuance unavailable")
+        return self.issuance_repository.resolve(issuance_digest)
+
+    def register_source_capture(self, capture) -> None:
+        self._captures[capture.source_evidence_digest()] = capture
+
+    def register_issuance_repository(self, repository) -> None:
+        self.issuance_repository = repository
+
+
 def default_study_issuer_grant_record(
     *,
     issuer_identity: str = DEFAULT_ISSUER_IDENTITY,
@@ -73,7 +133,8 @@ def sample_p0_repository(
     construct_policy_digest: str = FIXED_DIGEST,
     issuer_grant_record: dict[str, str] | None = None,
 ) -> InMemoryConstructFreezeRepository:
-    repo = InMemoryConstructFreezeRepository()
+    source = FixtureAuthoritySource()
+    repo = InMemoryConstructFreezeRepository(authority_source=source)
     grant_record = issuer_grant_record or default_study_issuer_grant_record()
     manifest = seal_construct_freeze_manifest(
         construct_policy_digest=construct_policy_digest,
@@ -84,6 +145,7 @@ def sample_p0_repository(
         authorized_capture_issuer_grants=(grant_record,),
     )
     repo.register(manifest)
+    source.construct_freeze_repository = repo
     return repo
 
 
@@ -157,10 +219,13 @@ def sample_issuer_capability_repository(
         grant,
         construct_freeze_digest=construct_digest,
     )
-    return IssuerCaptureAttestationCapabilityRepository.from_capabilities(
+    repo = IssuerCaptureAttestationCapabilityRepository.from_capabilities(
         construct_freeze_digest=construct_digest,
         capabilities=(capability,),
+        authority_source=p0_repository.authority_source(),
     )
+    p0_repository.authority_source().capability_repository = repo
+    return repo
 
 
 def sample_capture_attestation_repository(
@@ -188,7 +253,8 @@ def sample_capture_attestation_repository(
         issuer_capture_attestation=PLACEHOLDER_ATTESTATION_DIGEST,
     )
     temp_capture = seal_source_capture_package(working)
-    repo = CaptureAttestationRepository()
+    repo = CaptureAttestationRepository(authority_source=p0_repository.authority_source())
+    p0_repository.authority_source().attestation_repository = repo
     issue_capture_attestation(
         temp_capture,
         attestation_repository=repo,
@@ -240,6 +306,8 @@ def seal_verified_source_capture(
     working = dict(body)
     working["issuer_capture_attestation"] = attestation_digest
     capture = seal_source_capture_package(working)
+    source = p0_repository.authority_source()
+    source.register_source_capture(capture)
     authority = verify_source_capture_authority(
         capture,
         attestation_repository=repo,
@@ -259,8 +327,11 @@ def sample_verified_source_authority(**kwargs):
 
 
 def sample_issuance_repository(**kwargs) -> IssuanceAuthorityRepository:
-    repo = IssuanceAuthorityRepository()
-    issue_occurrence_reference(sample_verified_source_authority(**kwargs), issuance_repository=repo)
+    authority = sample_verified_source_authority(**kwargs)
+    source_authority = authority.authority_source()
+    repo = IssuanceAuthorityRepository(authority_source=source_authority)
+    source_authority.register_issuance_repository(repo)
+    issue_occurrence_reference(authority, issuance_repository=repo)
     return repo
 
 

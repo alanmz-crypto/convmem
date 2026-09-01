@@ -152,6 +152,27 @@ class OccurrenceReferenceV2:
         return self.identity_key() == other.identity_key()
 
 
+def occurrence_reference_from_fields(fields: dict[str, Any]) -> OccurrenceReferenceV2:
+    """Build occurrence identity from the verified source-capture field set."""
+
+    return OccurrenceReferenceV2(
+        source_system_id=_require_str(fields["source_system_id"], "source_system_id"),
+        tenant_or_realm_id=_require_str(fields["tenant_or_realm_id"], "tenant_or_realm_id"),
+        authority_scope_id=_require_str(fields["authority_scope_id"], "authority_scope_id"),
+        occurrence_namespace_id=_require_str(
+            fields["occurrence_namespace_id"], "occurrence_namespace_id"
+        ),
+        physical_source_instance_id=_require_str(
+            fields["physical_source_instance_id"], "physical_source_instance_id"
+        ),
+        native_id_namespace=_require_str(fields["native_id_namespace"], "native_id_namespace"),
+        native_record_id=_require_str(fields["native_record_id"], "native_record_id"),
+        source_revision_or_asof_id=_require_str(
+            fields["source_revision_or_asof_id"], "source_revision_or_asof_id"
+        ),
+    )
+
+
 @dataclass(frozen=True)
 class PhysicalInstanceIdV2:
     """Physical/source instance identity — distinct from lineage continuity."""

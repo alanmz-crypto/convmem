@@ -13,7 +13,16 @@ from eval_naturalistic.base import (
     _require_str,
 )
 from eval_naturalistic.digest import canonical_artifact_bytes
-from eval_naturalistic.v2.identity import OccurrenceReferenceV2, digest_hex, reject_hash_or_locator_identity
+from eval_naturalistic.v2.identity import (
+    OccurrenceReferenceV2,
+    digest_hex,
+    occurrence_reference_from_fields,
+    reject_hash_or_locator_identity,
+)
+from eval_naturalistic.v2.authority_substrate import (
+    resolve_shared_authority_source,
+    same_authority_object,
+)
 
 if TYPE_CHECKING:
     from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
@@ -99,6 +108,22 @@ class SealedSourceCapturePackageV2:
             self.capture_body["issuer_capture_attestation"], "issuer_capture_attestation"
         )
 
+    def source_evidence_digest(self) -> str:
+        """Digest source evidence independently of its attestation pointer.
+
+        The attestation is written into the capture envelope after issuance is
+        prepared.  Excluding only that authority-link field avoids a circular
+        digest while retaining every source identity, snapshot, raw-record,
+        and capture field in the evidence commitment.
+        """
+
+        body = {
+            key: value
+            for key, value in self.capture_body.items()
+            if key not in {"issuer_capture_attestation", "capture_envelope_digest"}
+        }
+        return hashlib.sha256(canonical_artifact_bytes(body)).hexdigest()
+
 
 def seal_source_capture_package(body: dict[str, Any]) -> SealedSourceCapturePackageV2:
     """Seal ordinary source capture bytes for authority verification."""
@@ -117,7 +142,7 @@ def seal_source_capture_package(body: dict[str, Any]) -> SealedSourceCapturePack
 
 
 @dataclass(frozen=True)
-class VerifiedSourceAuthorityV2:
+class VerifiedSourceAuthorityV2:  # pylint: disable=too-many-instance-attributes
     """Authority record derived from a verified sealed source capture — not caller strings."""
 
     source_capture_digest: str
@@ -125,6 +150,10 @@ class VerifiedSourceAuthorityV2:
     evidence_snapshot_id: str
     issuer_capture_attestation: str
     authority_record_digest: str
+    construct_freeze_digest: str
+    construct_freeze_artifact_id: str
+    raw_record_digest: str
+    _authority_source: Any
 
     def __init__(
         self,
@@ -135,6 +164,10 @@ class VerifiedSourceAuthorityV2:
         evidence_snapshot_id: str,
         issuer_capture_attestation: str,
         authority_record_digest: str,
+        construct_freeze_digest: str = "",
+        construct_freeze_artifact_id: str = "",
+        raw_record_digest: str = "",
+        _authority_source: Any = None,
     ) -> None:
         if _token is not _SOURCE_AUTHORITY_TOKEN:
             raise TypeError(
@@ -145,6 +178,10 @@ class VerifiedSourceAuthorityV2:
         object.__setattr__(self, "evidence_snapshot_id", evidence_snapshot_id)
         object.__setattr__(self, "issuer_capture_attestation", issuer_capture_attestation)
         object.__setattr__(self, "authority_record_digest", authority_record_digest)
+        object.__setattr__(self, "construct_freeze_digest", construct_freeze_digest)
+        object.__setattr__(self, "construct_freeze_artifact_id", construct_freeze_artifact_id)
+        object.__setattr__(self, "raw_record_digest", raw_record_digest)
+        object.__setattr__(self, "_authority_source", _authority_source)
 
     def to_dict(self) -> dict[str, str]:
         return {
@@ -152,7 +189,15 @@ class VerifiedSourceAuthorityV2:
             "evidence_snapshot_id": self.evidence_snapshot_id,
             "issuer_capture_attestation": self.issuer_capture_attestation,
             "authority_record_digest": self.authority_record_digest,
+            "construct_freeze_digest": self.construct_freeze_digest,
+            "construct_freeze_artifact_id": self.construct_freeze_artifact_id,
+            "raw_record_digest": self.raw_record_digest,
         }
+
+    def authority_source(self) -> Any:
+        """Return the non-serialized source that produced this authority."""
+
+        return self._authority_source
 
 
 def verify_source_capture_authority(  # pylint: disable=too-many-arguments
@@ -163,31 +208,53 @@ def verify_source_capture_authority(  # pylint: disable=too-many-arguments
     p0_repository: ConstructFreezeAuthorityRepository | None = None,
     construct_freeze_digest: str | None = None,
     construct_freeze_artifact_id: str | None = None,
+    authority_source: Any = None,
 ) -> VerifiedSourceAuthorityV2:
     """Derive authoritative occurrence identity from verified source capture only."""
 
-    if attestation_repository is None:
-        raise StructuralContractError("source capture authority requires attestation repository")
-    if issuer_capability_repository is None:
-        raise StructuralContractError(
-            "source capture authority requires issuer capability repository"
-        )
-    if p0_repository is None:
-        raise StructuralContractError("source capture authority requires construct-freeze repository")
     if not construct_freeze_digest:
         raise StructuralContractError("source capture authority requires construct-freeze digest")
     if not construct_freeze_artifact_id:
         raise StructuralContractError("source capture authority requires construct-freeze artifact id")
-    from eval_naturalistic.v2.p0_construct import verify_construct_freeze_parent_binding
+    if authority_source is None and attestation_repository is None:
+        raise StructuralContractError("source capture authority requires attestation repository")
+    if authority_source is None and issuer_capability_repository is None:
+        raise StructuralContractError(
+            "source capture authority requires issuer capability repository"
+        )
+    if authority_source is None and p0_repository is None:
+        raise StructuralContractError("source capture authority requires construct-freeze repository")
+    source = resolve_shared_authority_source(
+        explicit=authority_source,
+        repositories=tuple(
+            repo
+            for repo in (p0_repository, issuer_capability_repository, attestation_repository)
+            if repo is not None
+        ),
+    )
+    from eval_naturalistic.v2.p0_construct import (
+        verify_construct_freeze_manifest,
+        verify_construct_freeze_parent_binding,
+    )
     from eval_naturalistic.v2.source_issuer_authority import SourceIssuerGrantRepository
 
-    manifest = verify_construct_freeze_parent_binding(
-        parent_kind="construct_freeze",
-        parent_artifact_id=construct_freeze_artifact_id,
-        parent_digest=construct_freeze_digest,
-        construct_freeze_digest=construct_freeze_digest,
-        repository=p0_repository,
+    trusted_manifest = source.resolve_construct_freeze(
+        artifact_id=construct_freeze_artifact_id,
+        content_digest=construct_freeze_digest,
     )
+    if p0_repository is None:
+        manifest = verify_construct_freeze_manifest(trusted_manifest)
+    else:
+        manifest = verify_construct_freeze_parent_binding(
+            parent_kind="construct_freeze",
+            parent_artifact_id=construct_freeze_artifact_id,
+            parent_digest=construct_freeze_digest,
+            construct_freeze_digest=construct_freeze_digest,
+            repository=p0_repository,
+            authority_source=source,
+        )
+        if trusted_manifest.to_dict() != manifest.to_dict():
+            raise StructuralContractError("source capture authority: P0 source resolution mismatch")
     issuer_grant_repository = SourceIssuerGrantRepository.from_construct_freeze(manifest)
     if isinstance(capture, bytes):
         canonical_bytes = capture
@@ -197,20 +264,14 @@ def verify_source_capture_authority(  # pylint: disable=too-many-arguments
         raise TypeError("verify_source_capture_authority requires bytes or SealedSourceCapturePackageV2")
     sealed = SealedSourceCapturePackageV2.from_canonical_bytes(canonical_bytes)
     fields = sealed.occurrence_fields()
-    occurrence = OccurrenceReferenceV2(
-        source_system_id=fields["source_system_id"],
-        tenant_or_realm_id=fields["tenant_or_realm_id"],
-        authority_scope_id=fields["authority_scope_id"],
-        occurrence_namespace_id=fields["occurrence_namespace_id"],
-        physical_source_instance_id=fields["physical_source_instance_id"],
-        native_id_namespace=fields["native_id_namespace"],
-        native_record_id=fields["native_record_id"],
-        source_revision_or_asof_id=fields["source_revision_or_asof_id"],
-    )
+    occurrence = occurrence_reference_from_fields(fields)
     attestation_digest = digest_hex(
         sealed.issuer_capture_attestation(), "issuer_capture_attestation"
     )
-    if issuer_capability_repository.construct_freeze_digest() != construct_freeze_digest:
+    if (
+        issuer_capability_repository is not None
+        and issuer_capability_repository.construct_freeze_digest() != construct_freeze_digest
+    ):
         raise StructuralContractError(
             "source capture authority: issuer capability construct-freeze digest mismatch"
         )
@@ -218,35 +279,61 @@ def verify_source_capture_authority(  # pylint: disable=too-many-arguments
         attestation_digest=attestation_digest,
         occurrence_reference=occurrence,
         evidence_snapshot_id=sealed.evidence_snapshot_id(),
+        source_capture_digest=sealed.source_evidence_digest(),
+        raw_record_digest=digest_hex(sealed.capture_body["raw_record_digest"], "raw_record_digest"),
+        construct_freeze_digest=construct_freeze_digest,
+        construct_freeze_artifact_id=construct_freeze_artifact_id,
         repository=attestation_repository,
         issuer_grant_repository=issuer_grant_repository,
         issuer_capability_repository=issuer_capability_repository,
+        authority_source=source,
     )
+    trusted_capture = source.resolve_source_capture(sealed.source_evidence_digest())
+    if (
+        trusted_capture.source_evidence_digest() != sealed.source_evidence_digest()
+        or trusted_capture.canonical_bytes != sealed.canonical_bytes
+    ):
+        raise StructuralContractError("source capture authority: capture bytes not independently resolved")
     record_body = {
-        "source_capture_digest": sealed.content_digest,
+        "source_capture_digest": sealed.source_evidence_digest(),
         "occurrence_reference": occurrence.to_dict(),
         "evidence_snapshot_id": sealed.evidence_snapshot_id(),
         "issuer_capture_attestation": sealed.issuer_capture_attestation(),
+        "construct_freeze_digest": construct_freeze_digest,
+        "construct_freeze_artifact_id": construct_freeze_artifact_id,
+        "raw_record_digest": digest_hex(sealed.capture_body["raw_record_digest"], "raw_record_digest"),
     }
     authority_record_digest = hashlib.sha256(canonical_artifact_bytes(record_body)).hexdigest()
     return VerifiedSourceAuthorityV2(
         _token=_SOURCE_AUTHORITY_TOKEN,
-        source_capture_digest=sealed.content_digest,
+        source_capture_digest=sealed.source_evidence_digest(),
         occurrence_reference=occurrence,
         evidence_snapshot_id=sealed.evidence_snapshot_id(),
         issuer_capture_attestation=sealed.issuer_capture_attestation(),
         authority_record_digest=authority_record_digest,
+        construct_freeze_digest=construct_freeze_digest,
+        construct_freeze_artifact_id=construct_freeze_artifact_id,
+        raw_record_digest=digest_hex(sealed.capture_body["raw_record_digest"], "raw_record_digest"),
+        _authority_source=source,
     )
 
 
 def reverify_source_authority_record(record: VerifiedSourceAuthorityV2) -> VerifiedSourceAuthorityV2:
     """Recompute authority digest from embedded fields — integrity check only."""
 
+    digest_hex(record.source_capture_digest, "source_capture_digest")
+    digest_hex(record.construct_freeze_digest, "construct_freeze_digest")
+    digest_hex(record.raw_record_digest, "raw_record_digest")
+    if not record.construct_freeze_artifact_id:
+        raise StructuralContractError("source authority record missing construct-freeze artifact id")
     record_body = {
         "source_capture_digest": record.source_capture_digest,
         "occurrence_reference": record.occurrence_reference.to_dict(),
         "evidence_snapshot_id": record.evidence_snapshot_id,
         "issuer_capture_attestation": record.issuer_capture_attestation,
+        "construct_freeze_digest": record.construct_freeze_digest,
+        "construct_freeze_artifact_id": record.construct_freeze_artifact_id,
+        "raw_record_digest": record.raw_record_digest,
     }
     expected = hashlib.sha256(canonical_artifact_bytes(record_body)).hexdigest()
     if expected != record.authority_record_digest:
@@ -259,17 +346,54 @@ def _verify_capture_attestation_binding(  # pylint: disable=too-many-arguments
     attestation_digest: str,
     occurrence_reference: OccurrenceReferenceV2,
     evidence_snapshot_id: str,
-    repository: CaptureAttestationRepository,
+    source_capture_digest: str,
+    raw_record_digest: str,
+    construct_freeze_digest: str,
+    construct_freeze_artifact_id: str,
+    repository: CaptureAttestationRepository | None,
     issuer_grant_repository: "SourceIssuerGrantRepository",
-    issuer_capability_repository: IssuerCaptureAttestationCapabilityRepository,
+    issuer_capability_repository: IssuerCaptureAttestationCapabilityRepository | None,
+    authority_source: Any,
 ) -> None:
-    artifact = repository.resolve(attestation_digest)
+    from eval_naturalistic.v2.capture_attestation import verify_capture_attestation_artifact
+    from eval_naturalistic.v2.issuer_attestation_capability import (
+        reverify_issuer_capture_attestation_capability,
+    )
+
+    artifact = (
+        repository.resolve(attestation_digest)
+        if repository is not None
+        else authority_source.resolve_capture_attestation(attestation_digest)
+    )
+    trusted_artifact = authority_source.resolve_capture_attestation(attestation_digest)
+    verify_capture_attestation_artifact(artifact)
+    verify_capture_attestation_artifact(trusted_artifact)
+    same_authority_object(
+        artifact,
+        trusted_artifact,
+        message="capture attestation is not independently resolved",
+    )
     if artifact.occurrence_reference.same_occurrence_as(occurrence_reference) is False:
         raise StructuralContractError("capture attestation occurrence mismatch")
     if artifact.evidence_snapshot_id != evidence_snapshot_id:
         raise StructuralContractError("capture attestation evidence snapshot mismatch")
     if artifact.attestation_evidence_digest() != attestation_digest:
         raise StructuralContractError("capture attestation digest mismatch")
+    trusted_parent = authority_source.resolve_construct_freeze(
+        artifact_id=artifact.construct_freeze_artifact_id,
+        content_digest=artifact.construct_freeze_digest,
+    )
+    if (
+        artifact.construct_freeze_digest != construct_freeze_digest
+        or artifact.construct_freeze_artifact_id != construct_freeze_artifact_id
+        or trusted_parent.header.content_digest != artifact.construct_freeze_digest
+        or trusted_parent.header.artifact_id != artifact.construct_freeze_artifact_id
+    ):
+        raise StructuralContractError("capture attestation: construct-freeze authority mismatch")
+    if artifact.source_capture_digest != source_capture_digest:
+        raise StructuralContractError("capture attestation: source capture digest mismatch")
+    if artifact.raw_record_digest != raw_record_digest:
+        raise StructuralContractError("capture attestation: raw record digest mismatch")
     grant = issuer_grant_repository.resolve(
         issuer_identity=artifact.issuer_identity,
         source_system_id=occurrence_reference.source_system_id,
@@ -277,11 +401,34 @@ def _verify_capture_attestation_binding(  # pylint: disable=too-many-arguments
     )
     if grant.grant_digest != artifact.issuer_grant_digest:
         raise StructuralContractError("capture attestation: issuer grant digest mismatch")
-    capability = issuer_capability_repository.resolve(
-        issuer_identity=artifact.issuer_identity,
-        issuer_grant_digest=artifact.issuer_grant_digest,
+    capability = (
+        issuer_capability_repository.resolve(
+            issuer_identity=artifact.issuer_identity,
+            issuer_grant_digest=artifact.issuer_grant_digest,
+        )
+        if issuer_capability_repository is not None
+        else authority_source.resolve_issuer_capability(
+            issuer_identity=artifact.issuer_identity,
+            issuer_grant_digest=artifact.issuer_grant_digest,
+            construct_freeze_digest=construct_freeze_digest,
+        )
     )
+    reverify_issuer_capture_attestation_capability(capability)
     if capability.capability_digest != artifact.issuer_attestation_capability_digest:
         raise StructuralContractError(
             "capture attestation: issuer attestation capability digest mismatch"
         )
+    if capability.construct_freeze_digest != construct_freeze_digest:
+        raise StructuralContractError(
+            "capture attestation: capability construct-freeze binding mismatch"
+        )
+    trusted_capability = authority_source.resolve_issuer_capability(
+        issuer_identity=artifact.issuer_identity,
+        issuer_grant_digest=artifact.issuer_grant_digest,
+        construct_freeze_digest=artifact.construct_freeze_digest,
+    )
+    same_authority_object(
+        capability,
+        trusted_capability,
+        message="capture attestation capability is not independently resolved",
+    )

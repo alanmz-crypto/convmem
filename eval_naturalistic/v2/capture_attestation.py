@@ -27,7 +27,7 @@ CAPTURE_ATTESTATION_SCHEMA = f"{SCHEMA_NAMESPACE_V2}/capture-attestation-v2"
 
 
 @dataclass(frozen=True)
-class CaptureAttestationArtifactV2:
+class CaptureAttestationArtifactV2:  # pylint: disable=too-many-instance-attributes
     """Sealed issuer attestation backing source-capture occurrence authority."""
 
     header: ArtifactHeaderV1
@@ -36,6 +36,10 @@ class CaptureAttestationArtifactV2:
     issuer_identity: str
     issuer_grant_digest: str
     issuer_attestation_capability_digest: str
+    construct_freeze_digest: str
+    construct_freeze_artifact_id: str
+    source_capture_digest: str
+    raw_record_digest: str
 
     _FIELDS = {
         "header",
@@ -44,6 +48,10 @@ class CaptureAttestationArtifactV2:
         "issuer_identity",
         "issuer_grant_digest",
         "issuer_attestation_capability_digest",
+        "construct_freeze_digest",
+        "construct_freeze_artifact_id",
+        "source_capture_digest",
+        "raw_record_digest",
     }
 
     @classmethod
@@ -65,6 +73,14 @@ class CaptureAttestationArtifactV2:
                 data["issuer_attestation_capability_digest"],
                 "issuer_attestation_capability_digest",
             ),
+            construct_freeze_digest=_require_str(
+                data["construct_freeze_digest"], "construct_freeze_digest"
+            ),
+            construct_freeze_artifact_id=_require_str(
+                data["construct_freeze_artifact_id"], "construct_freeze_artifact_id"
+            ),
+            source_capture_digest=_require_str(data["source_capture_digest"], "source_capture_digest"),
+            raw_record_digest=_require_str(data["raw_record_digest"], "raw_record_digest"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -75,6 +91,10 @@ class CaptureAttestationArtifactV2:
             "issuer_identity": self.issuer_identity,
             "issuer_grant_digest": self.issuer_grant_digest,
             "issuer_attestation_capability_digest": self.issuer_attestation_capability_digest,
+            "construct_freeze_digest": self.construct_freeze_digest,
+            "construct_freeze_artifact_id": self.construct_freeze_artifact_id,
+            "source_capture_digest": self.source_capture_digest,
+            "raw_record_digest": self.raw_record_digest,
         }
 
     def attestation_evidence_digest(self) -> str:
@@ -84,6 +104,10 @@ class CaptureAttestationArtifactV2:
             "issuer_identity": self.issuer_identity,
             "issuer_grant_digest": self.issuer_grant_digest,
             "issuer_attestation_capability_digest": self.issuer_attestation_capability_digest,
+            "construct_freeze_digest": self.construct_freeze_digest,
+            "construct_freeze_artifact_id": self.construct_freeze_artifact_id,
+            "source_capture_digest": self.source_capture_digest,
+            "raw_record_digest": self.raw_record_digest,
         }
         return hashlib.sha256(canonical_artifact_bytes(body)).hexdigest()
 
@@ -93,10 +117,14 @@ def _derive_artifact_id(*, schema: str, content_digest: str) -> str:
     return f"{ARTIFACT_ID_PREFIX_V2}{kind}_{content_digest}"
 
 
-def seal_authorized_capture_attestation(
+def seal_authorized_capture_attestation(  # pylint: disable=too-many-arguments
     *,
     grant: SourceIssuerGrantV2,
     issuer_attestation_capability_digest: str,
+    construct_freeze_digest: str,
+    construct_freeze_artifact_id: str,
+    source_capture_digest: str,
+    raw_record_digest: str,
     occurrence_reference: OccurrenceReferenceV2,
     evidence_snapshot_id: str,
     responsible_role: str,
@@ -108,6 +136,11 @@ def seal_authorized_capture_attestation(
         issuer_attestation_capability_digest,
         "issuer_attestation_capability_digest",
     )
+    freeze_digest = digest_hex(construct_freeze_digest, "construct_freeze_digest")
+    capture_digest = digest_hex(source_capture_digest, "source_capture_digest")
+    raw_digest = digest_hex(raw_record_digest, "raw_record_digest")
+    if not construct_freeze_artifact_id:
+        raise StructuralContractError("capture attestation: missing construct-freeze artifact id")
     if verified_grant.issuer_identity == "":
         raise StructuralContractError("capture attestation: missing issuer identity")
     if verified_grant.source_system_id != occurrence_reference.source_system_id:
@@ -132,6 +165,10 @@ def seal_authorized_capture_attestation(
         "issuer_identity": verified_grant.issuer_identity,
         "issuer_grant_digest": verified_grant.grant_digest,
         "issuer_attestation_capability_digest": capability_digest,
+        "construct_freeze_digest": freeze_digest,
+        "construct_freeze_artifact_id": construct_freeze_artifact_id,
+        "source_capture_digest": capture_digest,
+        "raw_record_digest": raw_digest,
     }
     content_digest = hashlib.sha256(canonical_artifact_bytes(strip_digest_metadata(body))).hexdigest()
     artifact_id = _derive_artifact_id(schema=CAPTURE_ATTESTATION_SCHEMA, content_digest=content_digest)
@@ -153,6 +190,10 @@ def seal_authorized_capture_attestation(
         issuer_identity=verified_grant.issuer_identity,
         issuer_grant_digest=verified_grant.grant_digest,
         issuer_attestation_capability_digest=capability_digest,
+        construct_freeze_digest=freeze_digest,
+        construct_freeze_artifact_id=construct_freeze_artifact_id,
+        source_capture_digest=capture_digest,
+        raw_record_digest=raw_digest,
     )
     verify_capture_attestation_artifact(artifact)
     return artifact
@@ -180,14 +221,25 @@ def verify_capture_attestation_artifact(
         raise StructuralContractError("capture attestation: missing issuer grant digest")
     if not artifact.issuer_attestation_capability_digest:
         raise StructuralContractError("capture attestation: missing issuer attestation capability digest")
+    digest_hex(artifact.construct_freeze_digest, "construct_freeze_digest")
+    if not artifact.construct_freeze_artifact_id:
+        raise StructuralContractError("capture attestation: missing construct-freeze artifact id")
+    digest_hex(artifact.source_capture_digest, "source_capture_digest")
+    digest_hex(artifact.raw_record_digest, "raw_record_digest")
     return artifact
 
 
 class CaptureAttestationRepository:
     """Portable capture-attestation substrate — artifacts are committed, not self-registered."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, authority_source: Any = None) -> None:
         self._artifacts: dict[str, CaptureAttestationArtifactV2] = {}
+        self._authority_source = authority_source
+
+    def authority_source(self) -> Any:
+        """Return the non-serialized study-authority source binding."""
+
+        return self._authority_source
 
     @classmethod
     def from_artifacts(
@@ -208,12 +260,20 @@ class CaptureAttestationRepository:
         *,
         issuer_grant_repository: SourceIssuerGrantRepository,
         construct_freeze_digest: str,
+        construct_freeze_artifact_id: str | None = None,
     ) -> CaptureAttestationArtifactV2:
         """Commit attestation only when issuer grant resolves from construct freeze."""
 
         if issuer_grant_repository.construct_freeze_digest() != construct_freeze_digest:
             raise StructuralContractError("capture attestation: construct-freeze digest mismatch")
         verified = verify_capture_attestation_artifact(artifact)
+        if verified.construct_freeze_digest != construct_freeze_digest:
+            raise StructuralContractError("capture attestation: artifact freeze mismatch")
+        if (
+            construct_freeze_artifact_id is not None
+            and verified.construct_freeze_artifact_id != construct_freeze_artifact_id
+        ):
+            raise StructuralContractError("capture attestation: artifact freeze identity mismatch")
         occurrence = verified.occurrence_reference
         grant = issuer_grant_repository.resolve(
             issuer_identity=verified.issuer_identity,
