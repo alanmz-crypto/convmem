@@ -44,7 +44,7 @@ and "snapshots" not in path.parts
 
 The **`sess_` parent-directory check** excludes `cli/*.history` sidecars without needing `cli` in every exclusion rule. `cli/` files are not named `messages.jsonl` under a `sess_*` parent anyway — the `sess_` check is the primary gate.
 
-**Repo status:** ✅ Shipped — [`adapters/kiro_session_jsonl.py`](../adapters/kiro_session_jsonl.py), [`tests/test_kiro_session_jsonl.py`](../tests/test_kiro_session_jsonl.py), [`docs/KIRO-SESSION-ADAPTER.md`](../KIRO-SESSION-ADAPTER.md)
+**Repo status:** ✅ Shipped — [`adapters/kiro_session_jsonl.py`](../../adapters/kiro_session_jsonl.py), [`tests/test_kiro_session_jsonl.py`](../../tests/test_kiro_session_jsonl.py), [`docs/KIRO-SESSION-ADAPTER.md`](../KIRO-SESSION-ADAPTER.md)
 
 ### Backfill gate (Ryan — count before bulk)
 
@@ -79,7 +79,7 @@ convmem search "convmem doctor"
 
 ## Phase 2 — kiro-cli sqlite snapshot (historical)
 
-Legacy `~/.local/share/kiro-cli/data.sqlite3` only. Live DB stays on `is_live_watch_db` deny list. Use [`scripts/index-kiro-cli-snapshot.sh`](../scripts/index-kiro-cli-snapshot.sh).
+Legacy `~/.local/share/kiro-cli/data.sqlite3` only. Live DB stays on `is_live_watch_db` deny list. Use [`scripts/index-kiro-cli-snapshot.sh`](../../scripts/index-kiro-cli-snapshot.sh).
 
 **Repo status:** ✅ Script shipped; Ryan runs once for pre-April history.
 
@@ -122,7 +122,7 @@ If watch is touching a live Crush DB it shouldn’t, that surfaces **before** OO
 
 Tag units with `source_type: prompt_only` in the adapter module docstring **and** on each parsed message / indexed unit metadata. v1: metadata only; ask-path handling deferred — but the hook must exist from day one so ask can branch later.
 
-**Repo status:** ✅ Verified 2026-07-12 (Cursor Stage 2 soak task 2) — adapter previously shipped ([`adapters/codex_history_jsonl.py`](../adapters/codex_history_jsonl.py), [`tests/test_codex_history_jsonl.py`](../tests/test_codex_history_jsonl.py), notes in [`config.example.toml`](../config.example.toml) + [`docs/WORKSPACE-STANDARD.md`](../WORKSPACE-STANDARD.md)). Runtime: `pytest -q tests/test_codex_history_jsonl.py` (3 passed); `convmem doctor` exit 0; `convmem search "Run: convmem doctor && convmem unresolved --site staging2"` hit with `source_path` under `~/.codex/history.jsonl`. No adapter or bulk-index change. Ryan backfill remains Ryan-gated.
+**Repo status:** ✅ Verified 2026-07-12 (Cursor Stage 2 soak task 2) — adapter previously shipped ([`adapters/codex_history_jsonl.py`](../../adapters/codex_history_jsonl.py), [`tests/test_codex_history_jsonl.py`](../../tests/test_codex_history_jsonl.py), notes in [`config.example.toml`](../../config.example.toml) + [`docs/WORKSPACE-STANDARD.md`](../WORKSPACE-STANDARD.md)). Runtime: `pytest -q tests/test_codex_history_jsonl.py` (3 passed); `convmem doctor` exit 0; `convmem search "Run: convmem doctor && convmem unresolved --site staging2"` hit with `source_path` under `~/.codex/history.jsonl`. No adapter or bulk-index change. Ryan backfill remains Ryan-gated.
 
 ---
 
@@ -138,7 +138,7 @@ Tag units with `source_type: prompt_only` in the adapter module docstring **and*
 
 ## Ryan deploy checklist (ordered)
 
-1. Merge `~/.kiro/sessions` into live `~/.config/convmem/config.toml` (see [`config.example.toml`](../config.example.toml))
+1. Merge `~/.kiro/sessions` into live `~/.config/convmem/config.toml` (see [`config.example.toml`](../../config.example.toml))
 2. **Count** jsonl files (`find … | wc -l`) — approve before bulk
 3. Run jsonl backfill (`find … -exec convmem index --file {} \;`)
 4. Run `scripts/index-kiro-cli-snapshot.sh` once (historical sqlite)
