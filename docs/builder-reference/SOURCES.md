@@ -1,28 +1,30 @@
 # Builder Reference Sources
 
-This file records source PDFs and the page ranges used for the builder-reference
-digests. It does not contain any quoted book text.
+This file records bibliographic source identification and the page ranges used
+for the builder-reference digests. It does not contain quoted book text or the
+source PDFs themselves. The PDFs are local-only working materials and are not
+distributed by this repository.
 
 ## Sources
 
-| Book | PDF path | Page range used |
+| Work | Bibliographic identification | Pages/sections used |
 | --- | --- | --- |
-| A Philosophy of Software Design (2nd ed.) | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksClaude/APhilosiphyOfSoftwareDesign.pdf` | pp. 34-92, 95-109, 164-168 |
-| Introduction to Information Retrieval | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksChatGPT/An introduction to information retrieval -- Christopher D_ Manning; Prabhakar Raghavan; Hinrich Schutze -- 1, 2008 -- Cambridge University Press -- isbn13 9780511410802 -- 776b1e479b67f46d692cbd9ab6920478 -- Anna's Archive.pdf` | pp. 100-161, 163-184 |
-| Why Programs Fail | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksClaude/WhyProgramsFailAGuideToSystematicDebugging.pdf` | pp. 130-210 |
-| Software Architecture: The Hard Parts | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksClaude/SoftwareArchitectureTheHardParts.pdf` | pp. 20-95, 249-364 |
-| Designing Data-Intensive Applications | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksChatGPT/DesigningData-IntensiveApplications.pdf` | Ch. 5 (Replication) pp. 157–203, Ch. 9 (Consistency, light touch) pp. 322–330, Ch. 11 (Stream Processing) pp. 436–484 |
-| The Pragmatic Programmer (2nd ed.) | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksClaude/ThePragmaticProgrammer.pdf` | Selected topics (DRY, Orthogonality, Tracer Bullets, Design by Contract, Decoupling, Refactoring) |
-| Architecture Patterns with Python | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksClaude/ArchitecturePatternswithPythonforbuildingandSoftwareArchitectureTheHardParts.pdf` | Part I (Domain, Repository, UoW, Aggregates) and Part II (Events, Message Bus, CQRS) |
-| Building Evolutionary Architectures (2nd ed.) | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksClaude/BuildingEvolutionaryArchitecturesautomatedsoftwaregovernance.pdf` | Ch. 2–3 (fitness-function chapters only, ~pp. 23–76) |
+| *A Philosophy of Software Design* (2nd ed.) | John Ousterhout | pp. 34–92, 95–109, 164–168 |
+| *Introduction to Information Retrieval* | Christopher D. Manning, Prabhakar Raghavan, and Hinrich Schütze; Cambridge University Press, 2008; ISBN-13 978-0-521-86571-5 | pp. 100–161, 163–184 |
+| *Why Programs Fail* | Andreas Zeller | pp. 130–210 |
+| *Software Architecture: The Hard Parts* | Neal Ford, Mark Richards, Pramod Sadalage, and Zhamak Dehghani | pp. 20–95, 249–364 |
+| *Designing Data-Intensive Applications* | Martin Kleppmann | Ch. 5 (Replication), pp. 157–203; Ch. 9 (Consistency), pp. 322–330; Ch. 11 (Stream Processing), pp. 436–484 |
+| *The Pragmatic Programmer* (2nd ed.) | David Thomas and Andrew Hunt | Selected topics: DRY, orthogonality, tracer bullets, design by contract, decoupling, refactoring |
+| *Architecture Patterns with Python* | Harry Percival and Bob Gregory | Part I (domain, repository, unit of work, aggregates) and Part II (events, message bus, CQRS) |
+| *Building Evolutionary Architectures* (2nd ed.) | Neal Ford, Rebecca Parsons, Patrick Kua, and Pramod Sadalage | Ch. 2–3 (fitness-function chapters), approximately pp. 23–76 |
 
 ## Archive
 
-| Book | PDF path | Page range used |
+| Work | Bibliographic identification | Pages/sections used |
 | --- | --- | --- |
-| How to Take Smart Notes | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksChatGPT/HowToTakeSmartNotes.pdf` | pp. 31–38 (four note types), pp. 40–41 (writing as thinking), p. 53 (no one starts from scratch), pp. 66–84 (permanent notes and linking) |
-| Building a Second Brain | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksChatGPT/annas-arch-eaa2571df81d.pdf` | Full text (231pp) — CODE framework, PARA method |
-| The Pragmatic Programmer (2nd ed.) | `/home/lauer/Documents/Computing/Projects/Convmem/SuggestedBooksClaude/ThePragmaticProgrammer.pdf` | Selected topics (DRY, Orthogonality, Tracer Bullets, Design by Contract, Decoupling, Refactoring) |
+| *How to Take Smart Notes* | Sönke Ahrens | pp. 31–38 (four note types), pp. 40–41 (writing as thinking), p. 53 (no one starts from scratch), pp. 66–84 (permanent notes and linking) |
+| *Building a Second Brain* | Tiago Forte | Full text (231 pp.); CODE framework and PARA method |
+| *The Pragmatic Programmer* (2nd ed.) | David Thomas and Andrew Hunt | Selected topics: DRY, orthogonality, tracer bullets, design by contract, decoupling, refactoring |
 
 ## Notes
 

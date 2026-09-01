@@ -9,10 +9,10 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Project baseline:** the checked-in baseline is `origin/main` at
-  `0b6b436` (the current repository-navigation merge, PR #270). Read
-  [`STATUS.md`](STATUS.md) for active versus closed arcs and the next
-  authorized action.
+- **Project baseline:** verify the current `origin/main` tip from Git before
+  comparing branches or attributing work to the baseline. This pointer routes
+  project and arc state; it is not a Git-ref authority. Read [`STATUS.md`](STATUS.md)
+  for active versus closed arcs and the next authorized action.
 - **R2b Capture Authorization:** v2 I1–I3 implementation and Corrective IX
   integration are on `main` (PR #264). Live capture, duration acceptance,
   packet/grant, and I4–I8 remain separately gated. Read
