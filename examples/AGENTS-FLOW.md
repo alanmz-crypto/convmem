@@ -20,7 +20,7 @@ Cursor
 Implementation (headers, CSP, nginx, plugin updates)
         │
         ▼
-convmem index .                    # chat sessions → distilled units
+convmem index                      # chat sessions → distilled units
         │
         ▼
 Kiro
@@ -149,5 +149,5 @@ convmem add --file verification.jsonl
 - Untagged chat units are unchanged; domain filters only match explicitly tagged ledger records
 - `recency_weight` — deferred
 
-This is the product layer on top of vector memory: agents stop repeating mistakes because
-the evidence chain is queryable.
+This is the product layer on top of vector memory: agents can inspect prior evidence across
+sessions because the evidence chain is queryable.
