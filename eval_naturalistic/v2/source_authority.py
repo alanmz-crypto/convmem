@@ -22,6 +22,9 @@ from eval_naturalistic.v2.p0_construct import (
     ConstructFreezeAuthorityRepository,
     verify_construct_freeze_parent_binding,
 )
+from eval_naturalistic.v2.issuer_attestation_capability import (
+    IssuerCaptureAttestationCapabilityRepository,
+)
 from eval_naturalistic.v2.source_issuer_authority import SourceIssuerGrantRepository
 
 _SOURCE_AUTHORITY_TOKEN = object()
@@ -160,6 +163,7 @@ def verify_source_capture_authority(
     capture: SealedSourceCapturePackageV2 | bytes,
     *,
     attestation_repository: CaptureAttestationRepository | None = None,
+    issuer_capability_repository: IssuerCaptureAttestationCapabilityRepository | None = None,
     p0_repository: ConstructFreezeAuthorityRepository | None = None,
     construct_freeze_digest: str | None = None,
     construct_freeze_artifact_id: str | None = None,
@@ -168,6 +172,10 @@ def verify_source_capture_authority(
 
     if attestation_repository is None:
         raise StructuralContractError("source capture authority requires attestation repository")
+    if issuer_capability_repository is None:
+        raise StructuralContractError(
+            "source capture authority requires issuer capability repository"
+        )
     if p0_repository is None:
         raise StructuralContractError("source capture authority requires construct-freeze repository")
     if not construct_freeze_digest:
@@ -203,12 +211,17 @@ def verify_source_capture_authority(
     attestation_digest = digest_hex(
         sealed.issuer_capture_attestation(), "issuer_capture_attestation"
     )
+    if issuer_capability_repository.construct_freeze_digest() != construct_freeze_digest:
+        raise StructuralContractError(
+            "source capture authority: issuer capability construct-freeze digest mismatch"
+        )
     verify_capture_attestation_binding(
         attestation_digest=attestation_digest,
         occurrence_reference=occurrence,
         evidence_snapshot_id=sealed.evidence_snapshot_id(),
         repository=attestation_repository,
         issuer_grant_repository=issuer_grant_repository,
+        issuer_capability_repository=issuer_capability_repository,
     )
     record_body = {
         "source_capture_digest": sealed.content_digest,
