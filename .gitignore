@@ -59,3 +59,7 @@ claude-bundle-*.md
 
 # Complete-data restore preflight reports (written to cwd; keep local, not commit)
 complete-data-restore-reports/
+
+# Raw procedure exports contain command output and may include credentials.
+procedures.jsonl
+**/.crush/

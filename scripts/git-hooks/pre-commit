@@ -4,4 +4,5 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
+python3 "$ROOT/scripts/secret_scan.py" --staged
 exec python3 -c "from git_hooks import main; raise SystemExit(main())" pre-commit
