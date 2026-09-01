@@ -6,6 +6,12 @@ Local-first system that ingests AI chat logs and **tool-sourced evidence** into 
 
 ---
 
+## Status: Personal project
+
+This is an actively developed personal research/tooling repository. The codebase may contain experimental code, rough edges, abandoned approaches, and inconsistent organization. It’s public because I’m happy for people to inspect or use it, but it’s optimized for my own workflow rather than for being a polished general-purpose project. Contributions and cleanup are not expected.
+
+---
+
 ## What this does now
 
 1. **Harvests** chat history (Cursor, Kiro, Continue, Aider, Crush, Open WebUI) → distilled knowledge units
