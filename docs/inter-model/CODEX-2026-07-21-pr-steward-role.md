@@ -22,7 +22,7 @@
 |---------|--------|
 | [`TEAM-CHARTER-2026-07-06.md`](TEAM-CHARTER-2026-07-06.md) | PR Steward lasting Delivery role: activation/brief, judgment boundary, owns, must/must-not, exhaustive GitHub mutation allowlist, report-don't-fix, escalation, v0.1 = temporary training; jargon |
 | [`AGENT-ROLES.md`](../AGENT-ROLES.md) | Delivery role vocabulary; PR Steward subsection; one-line Codex default-actor note |
-| [`config/agent-protocol.md`](../config/agent-protocol.md) `TEAM_CHARTER` | Compressed existing prose; pinned PR Steward routing row + brief-bound clause; ≤350 words |
+| [`config/agent-protocol.md`](../../config/agent-protocol.md) `TEAM_CHARTER` | Compressed existing prose; pinned PR Steward routing row + brief-bound clause; ≤350 words |
 | [`tests/test_team_charter_protocol.py`](../../tests/test_team_charter_protocol.py) | Positive anchors + banned-dump strings for PR Steward |
 | Five TEAM_CHARTER surfaces | Regenerated; ChatGPT pack / mcp-shell unchanged by design |
 

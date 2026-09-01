@@ -2,7 +2,14 @@
 
 Flat navigation for active docs. **No subfolder taxonomy** — historical material lives under [`archive/`](archive/).
 
-**Option A (2026-06-30):** synthesis / cross-project digest lane → [`../SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) at repo root. Protocol handoff → [`inter-model/LATEST.md`](inter-model/LATEST.md) only (runtime SPOF for `brief`, MCP, agent rules).
+**Fast path:** live operations → `convmem brief --stdout-only`; current project
+state → [`inter-model/STATUS.md`](inter-model/STATUS.md); current handoff
+routing → [`inter-model/LATEST.md`](inter-model/LATEST.md); named arc → its
+`plans/STATUS-<slug>.md` brief. Historical material is preserved under
+[`archive/`](archive/) and is not an active work queue.
+
+**Synthesis lane:** [`../SYNTHESIS-STATUS.md`](../SYNTHESIS-STATUS.md) at repo
+root. Keep it separate from the protocol handoff pointer.
 
 ---
 
@@ -44,7 +51,7 @@ Deploy: `bash scripts/deploy-builder-reference.sh` · Verify: `bash scripts/veri
 |-----|------|
 | [`builder-reference/README.md`](builder-reference/README.md) | Index — when to read which digest |
 | [`builder-reference/SOURCES.md`](builder-reference/SOURCES.md) | PDF paths + page ranges (local) |
-| [`inter-model/PLAN-2026-07-01-apply-builder-reference.md`](inter-model/PLAN-2026-07-01-apply-builder-reference.md) | **Active plan** — apply digests to past/future work (paused for literature review) |
+| [`inter-model/PLAN-2026-07-01-apply-builder-reference.md`](inter-model/PLAN-2026-07-01-apply-builder-reference.md) | Historical application plan; use the builder-reference index for current guidance |
 | [`inter-model/HANDOFF-KIRO-CRUSH-CODEX-2026-07-01-builder-reference.md`](inter-model/HANDOFF-KIRO-CRUSH-CODEX-2026-07-01-builder-reference.md) | Kiro / Crush / Codex — read before builder-reference implementation |
 
 ---
@@ -67,7 +74,7 @@ Deploy: `bash scripts/deploy-builder-reference.sh` · Verify: `bash scripts/veri
 
 | Doc | Role |
 |-----|------|
-| [`inter-model/PLAN-2026-07-01-apply-builder-reference.md`](inter-model/PLAN-2026-07-01-apply-builder-reference.md) | **Active** — builder-reference application plan (enriched; execution paused) |
+| [`inter-model/PLAN-2026-07-01-apply-builder-reference.md`](inter-model/PLAN-2026-07-01-apply-builder-reference.md) | Historical plan context; execution is closed/paused |
 | [`MILESTONE-F.md`](MILESTONE-F.md) | Milestone F scope |
 | [`ROADMAP-DRAFT.md`](ROADMAP-DRAFT.md) | Draft roadmap (archival banner; live link from ROADMAP) |
 | [`inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md`](inter-model/BUILT-PLANS-2026-06-24-to-2026-06-29.md) | Filed plans + synthesis gates |
@@ -78,7 +85,7 @@ Deploy: `bash scripts/deploy-builder-reference.sh` · Verify: `bash scripts/veri
 
 ## Inter-model inbox
 
-Active coordination: [`inter-model/`](inter-model/) — read [`inter-model/README.md`](inter-model/README.md) for conventions.
+Active coordination: [`inter-model/`](inter-model/) — read [`inter-model/LATEST.md`](inter-model/LATEST.md), then [`inter-model/STATUS.md`](inter-model/STATUS.md), before opening a dated handoff. Nested packs are preserved reference, not an active queue.
 
 **Archived soak (2026-06-22):** [`archive/inter-model/2026-06-22/`](archive/inter-model/2026-06-22/)  
 **Archived org planning (2026-06-30):** [`archive/inter-model/2026-06-30-org-planning/`](archive/inter-model/2026-06-30-org-planning/) (after Commit 5)
@@ -100,4 +107,5 @@ Session logs: [`logs/`](logs/) — dated operational notes (not inter-model hand
 | [`archive/minipc-deploy/`](archive/minipc-deploy/) | Retired miniPC deploy kit (do not run) |
 | [`archive/residue/`](archive/residue/) | Residue index + non–June-22 one-offs |
 
-Truth for ops state: **`convmem brief`** + ledger — not folder mtime.
+Truth for ops state: **`convmem brief`** + ledger — not folder mtime. Truth for
+project routing: `inter-model/STATUS.md` plus the linked arc brief.
