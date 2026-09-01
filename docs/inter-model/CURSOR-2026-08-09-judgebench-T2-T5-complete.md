@@ -13,10 +13,10 @@ identity/provenance/runner/legacy work was OFF-LIMITS below Tier 5.
 
 | Task | Artifact | VERIFY |
 |------|----------|--------|
-| T2 | [`eval_model_identity.py`](../eval_model_identity.py) — fail-closed classify | — |
-| T3 | [`eval_provenance.py`](../eval_provenance.py) comparison signature | CHK-004 |
-| T4 | [`eval_judgebench/runner.py`](../eval_judgebench/runner.py) — offline runner + gold hash guard | CHK-007 partial, CHK-008 |
-| T5 | [`eval_judge.py`](../eval_judge.py) `legacy=True` gate; scripts require `--legacy` with `--judge` | CHK-005, CHK-006 |
+| T2 | [`eval_model_identity.py`](../../eval_model_identity.py) — fail-closed classify | — |
+| T3 | [`eval_provenance.py`](../../eval_provenance.py) comparison signature | CHK-004 |
+| T4 | [`eval_judgebench/runner.py`](../../eval_judgebench/runner.py) — offline runner + gold hash guard | CHK-007 partial, CHK-008 |
+| T5 | [`eval_judge.py`](../../eval_judge.py) `legacy=True` gate; scripts require `--legacy` with `--judge` | CHK-005, CHK-006 |
 
 **Tests:** `tests/test_judgebench_contracts.py` (S3/S4 contracts + T2–T5 escalation)
 + existing JudgeBench suite — all green.

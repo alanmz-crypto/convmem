@@ -219,4 +219,4 @@ Large `~/.cursor/projects` trees may need higher watch limits — see comments i
 
 *2026-06 — post F2b sign-off. Single-workstation model.*
 
-**Archived:** abandoned miniPC two-host deploy — [`docs/archive/minipc-deploy/`](../archive/minipc-deploy/README.md).
+**Archived:** abandoned miniPC two-host deploy — [`docs/archive/minipc-deploy/`](archive/minipc-deploy/README.md).
