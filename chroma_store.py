@@ -16,6 +16,7 @@ import chromadb
 
 SUMMARIES = "conversation_summaries"
 UNITS = "knowledge_units"
+_METADATA_PAGE_SIZE = 500
 
 _log = logging.getLogger("convmem.chroma_store")
 
@@ -334,15 +335,24 @@ class ChromaStore:
 
     def units_metadata(self, *, include_superseded: bool = False) -> list[dict]:
         col = self._collection(UNITS)
-        res = col.get(include=["metadatas"])
-        ids = res.get("ids") or []
-        metas = res.get("metadatas") or []
         out: list[dict] = []
-        for chroma_id, meta in zip(ids, metas):
-            row = dict(meta or {})
-            row["id"] = chroma_id
-            if include_superseded or not is_superseded(row):
-                out.append(row)
+        offset = 0
+        while True:
+            res = col.get(
+                include=["metadatas"],
+                limit=_METADATA_PAGE_SIZE,
+                offset=offset,
+            )
+            ids = res.get("ids") or []
+            metas = res.get("metadatas") or []
+            for chroma_id, meta in zip(ids, metas):
+                row = dict(meta or {})
+                row["id"] = chroma_id
+                if include_superseded or not is_superseded(row):
+                    out.append(row)
+            if len(ids) < _METADATA_PAGE_SIZE:
+                break
+            offset += len(ids)
         return out
 
     def get_units_with_embeddings(
