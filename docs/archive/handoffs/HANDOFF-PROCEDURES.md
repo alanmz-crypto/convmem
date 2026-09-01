@@ -1,5 +1,9 @@
 # Handoff: Procedure Extraction from Crush (Kiro, 2026-06-18)
 
+> Security: procedure records preserve raw command/output excerpts and can
+> contain credentials. The default output is outside the repository. Never
+> commit `procedures.jsonl` or use `git add -f` to override its ignore rule.
+
 ## What was implemented
 
 `extract_procedures.py` — standalone extractor that reads Crush DBs,
@@ -43,7 +47,8 @@ one LLM call per procedure for a human-readable title + summary.
 ## Usage
 
 ```bash
-# Extract from all Crush DBs (uses LLM — needs Ollama or DEEPSEEK_API_KEY)
+# Extract from all Crush DBs to ~/.local/share/convmem/exports/
+# (uses LLM — needs Ollama or DEEPSEEK_API_KEY)
 source ~/.config/convmem/env.local
 python extract_procedures.py
 
@@ -53,8 +58,8 @@ python extract_procedures.py --db ~/.config/crush/.crush/crush.db
 # Preview
 python extract_procedures.py --print | head -5
 
-# Ingest
-convmem add --file procedures.jsonl --upsert
+# Ingest the local export
+convmem add --file ~/.local/share/convmem/exports/procedures.jsonl --upsert
 ```
 
 ## Validation for Cursor
@@ -80,7 +85,7 @@ python extract_procedures.py --db ~/.config/crush/.crush/crush.db --print
 
 # 4. Ingest + verify retrieval
 python extract_procedures.py --db ~/.config/crush/.crush/crush.db
-convmem add --file procedures.jsonl --upsert
+convmem add --file ~/.local/share/convmem/exports/procedures.jsonl --upsert
 convmem "free GPU VRAM"
 
 # 5. Tests still pass

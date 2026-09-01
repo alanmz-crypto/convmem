@@ -23,6 +23,8 @@ from config import load_config
 from domains import normalize_domain
 from llm import generate
 
+DEFAULT_OUTPUT = Path.home() / ".local" / "share" / "convmem" / "exports" / "procedures.jsonl"
+
 PROCEDURE_PROMPT = """Given these shell commands and their outputs from an AI coding session, write:
 1. A short title (under 10 words) describing what was accomplished
 2. A 1-2 sentence summary of the procedure
@@ -246,7 +248,7 @@ def extract_all(
 def main() -> None:
     ap = argparse.ArgumentParser(description="Extract procedures from Crush tool_call pairs")
     ap.add_argument("--db", type=str, help="Single Crush DB path (default: discover all)")
-    ap.add_argument("-o", "--output", type=Path, default=Path("procedures.jsonl"))
+    ap.add_argument("-o", "--output", type=Path, default=DEFAULT_OUTPUT)
     ap.add_argument("--print", action="store_true", help="Print JSONL to stdout")
     ap.add_argument("--min-steps", type=int, default=2, help="Minimum bash steps per procedure")
     args = ap.parse_args()
@@ -262,7 +264,9 @@ def main() -> None:
     if getattr(args, "print"):
         print("\n".join(lines))
     else:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        args.output.chmod(0o600)
         print(f"Wrote {len(records)} procedure(s) → {args.output}")
         print(f"Ingest: convmem add --file {args.output} --upsert")
 

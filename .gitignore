@@ -64,3 +64,7 @@ complete-data-restore-reports/
 /.worktrees/
 /.opencode/scratch/
 /.r2b-duration-scratch*/
+
+# Raw procedure exports contain command output and may include credentials.
+procedures.jsonl
+**/.crush/
