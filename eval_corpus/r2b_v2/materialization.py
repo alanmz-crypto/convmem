@@ -15,6 +15,7 @@ from eval_corpus.r2b_capture_auth import (
     _validate_snapshot_freshness,
     compare_source_snapshots,
 )
+from eval_corpus.r2b_v2.authority_commit import AuthorityCommitter
 from eval_corpus.r2b_v2.authority_state import (
     AuthorityState,
     AuthorityStateError,
@@ -29,6 +30,7 @@ from eval_corpus.run_manifest import (
     assert_manifest_file_matches_approval,
     load_run_manifest,
     validate_r2b_manifest_schema,
+    write_approval_sidecar,
 )
 
 SnapshotRecomputeFn = Callable[..., dict[str, Any]]
@@ -60,7 +62,7 @@ def _validate_v2_approved_manifest(manifest_path: Path) -> dict[str, Any]:
 
 
 def materialize_v2_packet(
-    machine: AuthorityStateMachine,
+    committer: AuthorityCommitter,
     lease: R2bQuiescenceLease,
     manifest_path: Path,
     *,
@@ -70,6 +72,7 @@ def materialize_v2_packet(
 ) -> V2MaterializationResult:
     """Validate approved packet and derive bindings — no capture_dir creation."""
     del restic_gate_fn
+    machine = committer.machine
     verify_r2b_quiescence_lease(lease, expected_run_id=machine.run_id)
     lease.verify()
     assert_scratch_path(manifest_path, label="manifest_path")
@@ -111,5 +114,6 @@ def materialize_v2_packet(
             "materialization must not create capture_dir"
         )
 
-    machine.transition(AuthorityState.MATERIALIZED, reason="binder validated packet")
-    return V2MaterializationResult(bindings=bindings, manifest_path=manifest_path)
+    result = V2MaterializationResult(bindings=bindings, manifest_path=manifest_path)
+    committer.commit_materialized(result)
+    return result

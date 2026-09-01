@@ -59,15 +59,30 @@ def prepare_scratch_capture_artifacts(
     return {"capture_report": report, "capture_dir": capture_dir}
 
 
-def publish_scratch_completion_marker(
+def finalize_capture_report(capture_dir: Path, *, run_id: str) -> dict[str, Any]:
+    """Finalize capture_report.json before marker computation."""
+    report = {
+        "capture_id": run_id,
+        "capture_timestamp": _now(),
+        "capture_schema_version": 1,
+        "attempt": 1,
+        "status": "COMPLETE",
+    }
+    atomic_write_json(capture_dir / "capture_report.json", report)
+    return report
+
+
+def compute_completion_marker(
     materialized: V2MaterializationResult,
     *,
     capture_dir: Path,
+    final_report: dict[str, Any],
 ) -> dict[str, Any]:
-    """Write completion marker last — only after final source check passes."""
+    """Compute marker from the finalized capture report — no capture-dir writes."""
     bindings = materialized.bindings
     export_dest = capture_dir / "knowledge_units.jsonl"
-    marker = {
+    report_path = capture_dir / "capture_report.json"
+    return {
         "marker_version": 1,
         "status": "CAPTURE_ARTIFACTS_COMPLETE",
         "capture_outcome": "COMPLETE",
@@ -79,17 +94,26 @@ def publish_scratch_completion_marker(
         ),
         "artifact_sha256": {
             "knowledge_units.jsonl": sha256_file(export_dest),
-            "capture_report.json": sha256_file(capture_dir / "capture_report.json"),
+            "capture_report.json": sha256_file(report_path),
         },
+        "final_report_status": final_report.get("status"),
     }
+
+
+def promote_completion_marker(capture_dir: Path, marker: dict[str, Any]) -> dict[str, Any]:
+    """Atomically promote completion marker — no further capture-dir writes permitted."""
     atomic_write_json(capture_dir / "corpus_package_manifest.json", marker)
-    report_path = capture_dir / "capture_report.json"
-    report = {
-        "capture_id": bindings.run_id,
-        "capture_timestamp": _now(),
-        "capture_schema_version": 1,
-        "attempt": 1,
-        "status": "COMPLETE",
-    }
-    atomic_write_json(report_path, report)
-    return {"completion_marker": marker, "capture_report": report}
+    return {"completion_marker": marker, "capture_report_path": capture_dir / "capture_report.json"}
+
+
+def publish_scratch_completion_marker(
+    materialized: V2MaterializationResult,
+    *,
+    capture_dir: Path,
+) -> dict[str, Any]:
+    """Legacy path: finalize report, compute marker, promote marker."""
+    final_report = finalize_capture_report(capture_dir, run_id=materialized.bindings.run_id)
+    marker = compute_completion_marker(
+        materialized, capture_dir=capture_dir, final_report=final_report
+    )
+    return promote_completion_marker(capture_dir, marker)

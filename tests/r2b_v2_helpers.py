@@ -300,9 +300,29 @@ def scratch_transaction_fixture(
     }
 
 
+def make_test_committer(
+    run_id: str,
+    policy: "DurationPolicy | None" = None,
+    *,
+    sm: "AuthorityStateMachine | None" = None,
+    clock: Any | None = None,
+) -> "AuthorityCommitter":
+    from eval_corpus.r2b_v2.authority_commit import AuthorityCommitter
+    from eval_corpus.r2b_v2.duration_policy import DurationPolicy
+
+    resolved_policy = policy or scratch_benchmark_candidate_policy()
+    return AuthorityCommitter.begin(
+        run_id,
+        resolved_policy,
+        clock=clock,
+        machine=sm,
+    )
+
+
 def advance_to_packet_accepted(
     fx: dict[str, Any],
     sm: "AuthorityStateMachine",
+    committer: "AuthorityCommitter | None" = None,
 ) -> Path:
     """Hermetic helper: COVERAGE_PROVEN through PACKET_ACCEPTED (no materialize)."""
     from eval_corpus.r2b_v2.authority_state import (
@@ -317,9 +337,10 @@ def advance_to_packet_accepted(
         transition_snapshot_bound,
     )
 
+    resolved_committer = committer or make_test_committer(fx["run_id"], sm=sm)
     sm.transition(AuthorityState.PREPARED, reason="test prepare")
     sm.transition(AuthorityState.Q_AUTHORIZED, reason="test authorize")
-    transition_to_q_held(sm, fx["lease"], reason="test held")
+    transition_to_q_held(sm, fx["lease"], resolved_committer, reason="test held")
     transition_to_coverage_proven(
         sm, fx["lease"], fx["trusted"], reason="test coverage"
     )
@@ -336,6 +357,7 @@ def advance_to_packet_accepted(
         chroma_dir=Path(fx["paths"]["chroma_dir"]),
         snapshot_recompute_fn=fx["snapshot_recompute_fn"],
     )
+    resolved_committer.tracker.start_phase_once("hitl")
     manifest_path = draft_capture_packet(
         sm,
         fx["lease"],
@@ -349,24 +371,30 @@ def advance_to_packet_accepted(
         gate_identity=fx["gate_identity"],
         implementation_revision=fx["implementation_revision"],
     )
-    accept_capture_packet(sm, fx["lease"], manifest_path)
+    digest = accept_capture_packet(sm, fx["lease"], manifest_path)
+    resolved_committer.commit_packet_accepted(
+        manifest_path=manifest_path,
+        approval_digest=digest,
+    )
     return manifest_path
 
 
 def advance_to_materialized(
     fx: dict[str, Any],
     sm: "AuthorityStateMachine",
-) -> tuple[Path, "V2MaterializationResult"]:
+    committer: "AuthorityCommitter | None" = None,
+) -> tuple[Path, "V2MaterializationResult", "AuthorityCommitter"]:
     """Hermetic helper: COVERAGE_PROVEN through MATERIALIZED."""
     from eval_corpus.r2b_v2.materialization import V2MaterializationResult, materialize_v2_packet
 
-    manifest_path = advance_to_packet_accepted(fx, sm)
+    resolved_committer = committer or make_test_committer(fx["run_id"], sm=sm)
+    manifest_path = advance_to_packet_accepted(fx, sm, resolved_committer)
     mat = materialize_v2_packet(
-        sm,
+        resolved_committer,
         fx["lease"],
         manifest_path,
         runtime=fx["runtime"],
         snapshot_recompute_fn=fx["snapshot_recompute_fn"],
         restic_gate_fn=lambda: None,
     )
-    return manifest_path, mat
+    return manifest_path, mat, resolved_committer

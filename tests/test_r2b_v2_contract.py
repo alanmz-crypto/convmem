@@ -28,7 +28,7 @@ from eval_corpus.r2b_v2.contract import (
     validate_v2_policy_fields,
 )
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
-from tests.r2b_v2_helpers import clean_coverage_bundle
+from tests.r2b_v2_helpers import clean_coverage_bundle, make_test_committer
 from tests.r2b_hermetic import r2b_source_paths
 
 
@@ -103,7 +103,9 @@ class R2bV2AuthorityStateTests(unittest.TestCase):
         sm.transition(AuthorityState.PREPARED, reason="init")
         sm.transition(AuthorityState.Q_AUTHORIZED, reason="prep grant")
         sm.transition(AuthorityState.Q_ACQUIRING, reason="acquire start")
-        sm.transition(AuthorityState.Q_HELD, reason="lease held")
+        from eval_corpus.r2b_v2.authority_state import _guarded_transition
+
+        _guarded_transition(sm, AuthorityState.Q_HELD, reason="lease held")
         sm.transition(AuthorityState.COVERAGE_PROVEN, reason="coverage ok")
         self.assertEqual(sm.state, AuthorityState.COVERAGE_PROVEN)
 
@@ -151,8 +153,9 @@ class R2bV2AuthorityStateTests(unittest.TestCase):
             sm = new_authority_state_machine("evidence-run")
             sm.transition(AuthorityState.PREPARED, reason="init")
             sm.transition(AuthorityState.Q_AUTHORIZED, reason="prep")
+            committer = make_test_committer("evidence-run", sm=sm)
             try:
-                transition_to_q_held(sm, lease, reason="lease held")
+                transition_to_q_held(sm, lease, committer, reason="lease held")
                 transition_to_coverage_proven(
                     sm, lease, trusted, reason="coverage proven"
                 )

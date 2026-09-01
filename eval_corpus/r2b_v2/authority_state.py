@@ -33,6 +33,18 @@ class AuthorityState(str, Enum):
 
 _TERMINAL = frozenset({AuthorityState.ABORTED, AuthorityState.QUARANTINED})
 
+GUARDED_SUCCESS_STATES = frozenset(
+    {
+        AuthorityState.Q_HELD,
+        AuthorityState.PACKET_ACCEPTED,
+        AuthorityState.MATERIALIZED,
+        AuthorityState.CAPTURE_GRANTED,
+        AuthorityState.SEALED,
+        AuthorityState.CLOSING,
+        AuthorityState.CLOSED,
+    }
+)
+
 # Full v2 state machine including I4–I6 scratch-reachable transitions.
 _ALLOWED: dict[AuthorityState, frozenset[AuthorityState]] = {
     AuthorityState.NEW: frozenset({AuthorityState.PREPARED, *_TERMINAL}),
@@ -89,22 +101,11 @@ class AuthorityStateMachine:
         return self._resumed
 
     def transition(self, nxt: AuthorityState, *, reason: str) -> None:
-        if self._resumed:
+        if nxt in GUARDED_SUCCESS_STATES:
             raise AuthorityStateError(
-                "run cannot be resumed or reacquired by reconstructing state"
+                f"{nxt.value} requires AuthorityCommitter guarded commit"
             )
-        if self.terminal:
-            raise AuthorityStateError(
-                f"terminal state {self.state.value} cannot transition to {nxt.value}"
-            )
-        allowed = _ALLOWED.get(self.state, frozenset())
-        if nxt not in allowed:
-            raise AuthorityStateError(
-                f"invalid transition {self.state.value} -> {nxt.value}"
-            )
-        prior = self.state
-        self.state = nxt
-        self._record(prior, nxt, reason=reason)
+        _transition_unchecked(self, nxt, reason=reason)
 
     def abort(self, *, reason: str) -> None:
         if self.state == AuthorityState.ABORTED:
@@ -129,6 +130,41 @@ class AuthorityStateMachine:
         self._record(prior, AuthorityState.QUARANTINED, reason=reason)
 
 
+def _transition_unchecked(
+    machine: AuthorityStateMachine,
+    nxt: AuthorityState,
+    *,
+    reason: str,
+) -> None:
+    if machine._resumed:
+        raise AuthorityStateError(
+            "run cannot be resumed or reacquired by reconstructing state"
+        )
+    if machine.terminal:
+        raise AuthorityStateError(
+            f"terminal state {machine.state.value} cannot transition to {nxt.value}"
+        )
+    allowed = _ALLOWED.get(machine.state, frozenset())
+    if nxt not in allowed:
+        raise AuthorityStateError(
+            f"invalid transition {machine.state.value} -> {nxt.value}"
+        )
+    prior = machine.state
+    machine.state = nxt
+    machine._record(prior, nxt, reason=reason)
+
+
+def _guarded_transition(
+    machine: AuthorityStateMachine,
+    nxt: AuthorityState,
+    *,
+    reason: str,
+) -> None:
+    if nxt not in GUARDED_SUCCESS_STATES:
+        raise AuthorityStateError(f"{nxt.value} is not a guarded success state")
+    _transition_unchecked(machine, nxt, reason=reason)
+
+
 def new_authority_state_machine(run_id: str) -> AuthorityStateMachine:
     """Mint a fresh authority state machine for a new run."""
     return AuthorityStateMachine(run_id=run_id, _resumed=False)
@@ -148,18 +184,13 @@ def observe_authority_state(machine: AuthorityStateMachine) -> dict[str, Any]:
 def transition_to_q_held(
     machine: AuthorityStateMachine,
     lease: R2bQuiescenceLease,
+    committer: Any,
     *,
     reason: str,
 ) -> None:
-    """Evidence-coupled Q_ACQUIRING → Q_HELD; lease must match run_id."""
+    """Evidence-coupled Q_ACQUIRING → Q_HELD via AuthorityCommitter."""
     verify_r2b_quiescence_lease(lease, expected_run_id=machine.run_id)
-    if machine.state == AuthorityState.Q_AUTHORIZED:
-        machine.transition(AuthorityState.Q_ACQUIRING, reason="auto acquire start")
-    if machine.state != AuthorityState.Q_ACQUIRING:
-        raise AuthorityStateError(
-            f"Q_HELD requires Q_ACQUIRING, got {machine.state.value}"
-        )
-    machine.transition(AuthorityState.Q_HELD, reason=reason)
+    committer.commit_q_held(lease, reason=reason)
 
 
 def transition_to_coverage_proven(

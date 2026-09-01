@@ -21,7 +21,7 @@ from eval_corpus.r2b_v2.lease import (
     verify_r2b_quiescence_lease,
 )
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
-from tests.r2b_v2_helpers import clean_coverage_bundle, refuse_wrong_open_evidence_case
+from tests.r2b_v2_helpers import clean_coverage_bundle, make_test_committer, refuse_wrong_open_evidence_case
 
 
 class R2bV2CrossSliceBindingTests(unittest.TestCase):
@@ -63,8 +63,9 @@ class R2bV2CrossSliceBindingTests(unittest.TestCase):
             sm = new_authority_state_machine("bind-run")
             sm.transition(AuthorityState.PREPARED, reason="init")
             sm.transition(AuthorityState.Q_AUTHORIZED, reason="prep")
+            committer = make_test_committer("bind-run", sm=sm)
             try:
-                transition_to_q_held(sm, lease, reason="held")
+                transition_to_q_held(sm, lease, committer, reason="held")
                 transition_to_coverage_proven(sm, lease, trusted, reason="proven")
             finally:
                 lease.release()
@@ -75,9 +76,10 @@ class R2bV2CrossSliceBindingTests(unittest.TestCase):
             sm = new_authority_state_machine("other-run")
             sm.transition(AuthorityState.PREPARED, reason="init")
             sm.transition(AuthorityState.Q_AUTHORIZED, reason="prep")
+            committer = make_test_committer("other-run", sm=sm)
             try:
                 with self.assertRaises(R2bQuiescenceLeaseError):
-                    transition_to_q_held(sm, lease, reason="held")
+                    transition_to_q_held(sm, lease, committer, reason="held")
             finally:
                 lease.release()
 

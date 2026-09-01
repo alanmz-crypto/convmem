@@ -33,6 +33,7 @@ _AUTHORITY_CORE_SEEDS: tuple[str, ...] = (
     "eval_corpus/r2b_v2/trusted.py",
     "eval_corpus/r2b_v2/contract.py",
     "eval_corpus/r2b_v2/authority_state.py",
+    "eval_corpus/r2b_v2/authority_commit.py",
     "eval_corpus/r2b_v2/duration_policy.py",
     "eval_corpus/r2b_v2/capture_close.py",
     "eval_corpus/r2b_v2/transaction.py",

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from eval_corpus.r2b_v2.authority_commit import AuthorityCommitter, PendingLease
 from eval_corpus.r2b_v2.authority_state import (
     AuthorityState,
     new_authority_state_machine,
@@ -33,7 +33,10 @@ from eval_corpus.r2b_v2.duration_policy import (
     PhaseDeadlineExpired,
     PhaseDeadlineTracker,
 )
-from eval_corpus.r2b_v2.lease import R2bQuiescenceLease, acquire_r2b_quiescence_lease
+from eval_corpus.r2b_v2.lease import (
+    R2bQuiescenceLease,
+    acquire_r2b_quiescence_lease_physical,
+)
 from eval_corpus.r2b_v2.materialization import materialize_v2_packet
 from eval_corpus.r2b_v2.packet import (
     accept_capture_packet,
@@ -53,9 +56,8 @@ class ScratchTransactionError(RuntimeError):
 
 
 def perform_scratch_acquisition(  # pylint: disable=too-many-arguments
-    tracker: PhaseDeadlineTracker,
+    committer: AuthorityCommitter,
     *,
-    run_id: str,
     chroma_dir: Path,
     processed_path: Path,
     export_root: Path,
@@ -66,7 +68,9 @@ def perform_scratch_acquisition(  # pylint: disable=too-many-arguments
     authority_digest: str = "scratch-authority",
 ) -> tuple[R2bQuiescenceLease, TrustedCoverageProof]:
     """Coverage proof + writer-gate acquisition under acquisition_bound."""
-    tracker.start_phase("acquisition")
+    tracker = committer.tracker
+    run_id = committer.run_id
+    tracker.start_phase_once("acquisition")
     gate_path.parent.mkdir(parents=True, exist_ok=True)
     if not gate_path.exists():
         gate_path.touch()
@@ -81,15 +85,16 @@ def perform_scratch_acquisition(  # pylint: disable=too-many-arguments
     )
     trusted = mint_trusted_coverage_proof(diag)
     timeout_ms = max(1, int(tracker.policy.acquisition_bound * 1000))
+    absolute_deadline = tracker.absolute_deadline()
     try:
-        lease = acquire_r2b_quiescence_lease(
+        holder = acquire_r2b_quiescence_lease_physical(
             run_id=run_id,
             grant_digest=grant_digest,
             authority_digest=authority_digest,
             test_lock_path=gate_path,
             writer_coverage_digest=trusted.coverage_digest,
             open_evidence_digest=open_evidence_digest,
-            monotonic_deadline=time.monotonic() + tracker.policy.transaction_deadline,
+            monotonic_deadline=absolute_deadline,
             bound_source_paths=(
                 str(export_root),
                 str(processed_path),
@@ -99,12 +104,13 @@ def perform_scratch_acquisition(  # pylint: disable=too-many-arguments
             implementation_revision=implementation_revision,
         )
     except TimeoutError as exc:
-        tracker.mark_consumed(reason="acquisition lock timeout")
+        tracker.consume(reason="acquisition lock timeout")
         raise PhaseDeadlineExpired(
             "acquisition",
             "acquisition lock wait exceeded acquisition_bound",
         ) from exc
-    tracker.check_phase_bound("acquisition", tracker.policy.acquisition_bound)
+    pending = PendingLease(holder=holder, run_id=run_id)
+    lease = committer.commit_acquisition(pending)
     return lease, trusted
 
 
@@ -133,22 +139,22 @@ def run_scratch_transaction(  # pylint: disable=too-many-arguments,too-many-loca
     future_argv: list[str],
     snapshot_recompute_fn: SnapshotRecomputeFn,
     runtime: dict[str, str],
-    tracker: PhaseDeadlineTracker | None = None,
+    committer: AuthorityCommitter | None = None,
 ) -> ScratchTransactionResult:
-    """End-to-end scratch I4→I6 path for benchmark readiness.
-
-    When ``tracker`` is omitted a fresh tracker is created. Acquisition must be
-    enforced separately via :func:`perform_scratch_acquisition` before calling
-    this function with a pre-held lease.
-    """
+    """End-to-end scratch I4→I6 path for benchmark readiness."""
     assert_scratch_transaction_paths(root=root, auth_dir=auth_dir, paths=paths)
-    if tracker is None:
-        tracker = PhaseDeadlineTracker.begin(duration_policy)
+    if committer is None:
+        committer = AuthorityCommitter.begin(run_id, duration_policy)
 
-    machine = new_authority_state_machine(run_id)
-    machine.transition(AuthorityState.PREPARED, reason="scratch prepare")
-    machine.transition(AuthorityState.Q_AUTHORIZED, reason="scratch authorize")
-    transition_to_q_held(machine, lease, reason="scratch lease held")
+    machine = committer.machine
+    if machine.state == AuthorityState.NEW:
+        machine.transition(AuthorityState.PREPARED, reason="scratch prepare")
+        machine.transition(AuthorityState.Q_AUTHORIZED, reason="scratch authorize")
+        transition_to_q_held(machine, lease, committer, reason="scratch lease held")
+    elif machine.state != AuthorityState.Q_HELD:
+        raise ScratchTransactionError(
+            f"unexpected machine state {machine.state.value} at transaction start"
+        )
     transition_to_coverage_proven(
         machine, lease, trusted_coverage, reason="scratch coverage"
     )
@@ -183,7 +189,7 @@ def run_scratch_transaction(  # pylint: disable=too-many-arguments,too-many-loca
         chroma_dir=Path(paths["chroma_dir"]),
         snapshot_recompute_fn=snapshot_recompute_fn,
     )
-    tracker.start_phase("hitl")
+    committer.tracker.start_phase_once("hitl")
     manifest_path = draft_capture_packet(
         machine,
         lease,
@@ -197,31 +203,32 @@ def run_scratch_transaction(  # pylint: disable=too-many-arguments,too-many-loca
         gate_identity=gate_identity,
         implementation_revision=implementation_revision,
     )
-    accept_capture_packet(machine, lease, manifest_path)
-    tracker.check_phase_bound("hitl", duration_policy.hitl_reservation_bound)
+    approval_digest = accept_capture_packet(machine, lease, manifest_path)
+    committer.commit_packet_accepted(
+        manifest_path=manifest_path,
+        approval_digest=approval_digest,
+    )
 
     materialized = materialize_v2_packet(
-        machine,
+        committer,
         lease,
         manifest_path,
         runtime=runtime,
         snapshot_recompute_fn=snapshot_recompute_fn,
         restic_gate_fn=lambda: None,
     )
-    grant_capture(machine, lease, tracker, materialized)
+    grant_capture(committer, lease, materialized)
     capture_result = execute_authorized_capture(
-        machine,
+        committer,
         lease,
-        tracker,
         materialized,
         snapshot_recompute_fn=snapshot_recompute_fn,
     )
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     close_digest = write_close_evidence(
-        machine,
+        committer,
         lease,
-        tracker,
         auth_dir,
         marker_result="marker_written",
         final_source_result="matched",
@@ -232,9 +239,8 @@ def run_scratch_transaction(  # pylint: disable=too-many-arguments,too-many-loca
         gate_identity=gate_identity,
     )
     release_digest = release_gate_and_write_release_evidence(
-        machine,
+        committer,
         lease,
-        tracker,
         auth_dir,
         close_digest=close_digest,
     )
@@ -264,10 +270,9 @@ def run_scratch_transaction_with_acquisition(  # pylint: disable=too-many-argume
     runtime: dict[str, str],
 ) -> ScratchTransactionResult:
     """Composed scratch path: bounded acquisition then I4–I6 transaction."""
-    tracker = PhaseDeadlineTracker.begin(duration_policy)
+    committer = AuthorityCommitter.begin(run_id, duration_policy)
     lease, trusted = perform_scratch_acquisition(
-        tracker,
-        run_id=run_id,
+        committer,
         chroma_dir=Path(paths["chroma_dir"]),
         processed_path=Path(paths["processed"]),
         export_root=Path(paths["export"]).parent,
@@ -290,5 +295,5 @@ def run_scratch_transaction_with_acquisition(  # pylint: disable=too-many-argume
         future_argv=future_argv,
         snapshot_recompute_fn=snapshot_recompute_fn,
         runtime=runtime,
-        tracker=tracker,
+        committer=committer,
     )

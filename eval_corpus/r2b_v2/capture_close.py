@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from eval_corpus.r2b_capture_auth import compare_source_snapshots
+from eval_corpus.r2b_v2.authority_commit import AuthorityCommitter
 from eval_corpus.r2b_v2.authority_state import (
     AuthorityState,
     AuthorityStateError,
@@ -14,18 +15,15 @@ from eval_corpus.r2b_v2.authority_state import (
 )
 from eval_corpus.r2b_v2.duration_policy import (
     PhaseDeadlineExpired,
-    PhaseDeadlineTracker,
     TransactionDeadlineExpired,
 )
 from eval_corpus.r2b_v2.lease import R2bQuiescenceLease, verify_r2b_quiescence_lease
 from eval_corpus.r2b_v2.materialization import V2MaterializationResult
-from eval_corpus.r2b_v2.quiescence_evidence import (
-    write_quiescence_close,
-    write_quiescence_release,
-)
 from eval_corpus.r2b_v2.scratch_capture import (
+    compute_completion_marker,
+    finalize_capture_report,
     prepare_scratch_capture_artifacts,
-    publish_scratch_completion_marker,
+    promote_completion_marker,
 )
 from eval_corpus.r2b_v2.scratch_isolation import assert_scratch_path
 
@@ -34,44 +32,6 @@ SnapshotRecomputeFn = Callable[..., dict[str, Any]]
 
 class R2bV2CaptureCloseError(RuntimeError):
     """Capture, close, or release failure."""
-
-
-def _enforce_phase_elapsed(
-    tracker: PhaseDeadlineTracker,
-    phase: str,
-    bound: float,
-) -> None:
-    """Fail closed when a named phase or the absolute transaction deadline expired."""
-    tracker.check_phase_bound(phase, bound)
-
-
-def _handle_capture_deadline_failure(
-    machine: AuthorityStateMachine,
-    tracker: PhaseDeadlineTracker,
-    capture_dir: Path | None,
-    *,
-    reason: str,
-) -> None:
-    tracker.mark_consumed(reason=reason)
-    if capture_dir is not None:
-        _remove_marker_if_present(capture_dir)
-    if machine.state in (
-        AuthorityState.CAPTURING,
-        AuthorityState.FINAL_SOURCE_CHECKED,
-    ):
-        machine.quarantine(reason=reason)
-
-
-def _handle_release_close_deadline_failure(
-    machine: AuthorityStateMachine,
-    tracker: PhaseDeadlineTracker,
-    *,
-    reason: str,
-    kernel_released: bool,
-) -> None:
-    tracker.mark_consumed(reason=reason)
-    if kernel_released or machine.state == AuthorityState.CLOSING:
-        machine.quarantine(reason=reason)
 
 
 @dataclass(frozen=True)
@@ -83,38 +43,31 @@ class CaptureCloseResult:
 
 
 def grant_capture(
-    machine: AuthorityStateMachine,
+    committer: AuthorityCommitter,
     lease: R2bQuiescenceLease,
-    tracker: PhaseDeadlineTracker,
     materialized: V2MaterializationResult,
     *,
     reason: str = "Ryan ACCEPT AND GRANT",
 ) -> V2MaterializationResult:
-    verify_r2b_quiescence_lease(lease, expected_run_id=machine.run_id)
+    verify_r2b_quiescence_lease(lease, expected_run_id=committer.run_id)
     lease.verify()
-    tracker.prove_remaining_budget_for_grant()
-    if machine.state != AuthorityState.MATERIALIZED:
-        raise AuthorityStateError(
-            f"CAPTURE_GRANTED requires MATERIALIZED, got {machine.state.value}"
-        )
-    if materialized.bindings.capture_dir.exists():
-        raise R2bV2CaptureCloseError("capture_dir must be absent before grant")
-    machine.transition(AuthorityState.CAPTURE_GRANTED, reason=reason)
+    committer.commit_capture_granted(materialized, reason=reason)
     return materialized
 
 
 def execute_authorized_capture(
-    machine: AuthorityStateMachine,
+    committer: AuthorityCommitter,
     lease: R2bQuiescenceLease,
-    tracker: PhaseDeadlineTracker,
     materialized: V2MaterializationResult,
     *,
     snapshot_recompute_fn: SnapshotRecomputeFn,
 ) -> dict[str, Any]:
     """CAPTURING → final source check → marker last → SEALED."""
+    machine = committer.machine
     verify_r2b_quiescence_lease(lease, expected_run_id=machine.run_id)
     lease.verify()
-    tracker.start_phase("capture")
+    if "capture" not in committer.tracker.phase_starts:
+        committer.tracker.start_phase_once("capture")
     if machine.state != AuthorityState.CAPTURE_GRANTED:
         raise AuthorityStateError(
             f"CAPTURING requires CAPTURE_GRANTED, got {machine.state.value}"
@@ -128,10 +81,6 @@ def execute_authorized_capture(
     try:
         prepared = prepare_scratch_capture_artifacts(materialized)
         capture_dir = Path(prepared["capture_dir"])
-        _enforce_phase_elapsed(
-            tracker, "capture", tracker.policy.capture_bound
-        )
-
         final_source_recompute(
             machine,
             lease,
@@ -141,39 +90,28 @@ def execute_authorized_capture(
             chroma_dir=bindings.chroma_dir,
             snapshot_recompute_fn=snapshot_recompute_fn,
         )
-        _enforce_phase_elapsed(
-            tracker, "capture", tracker.policy.capture_bound
+        final_report = finalize_capture_report(capture_dir, run_id=bindings.run_id)
+        marker = compute_completion_marker(
+            materialized,
+            capture_dir=capture_dir,
+            final_report=final_report,
         )
 
-        _enforce_phase_elapsed(
-            tracker, "capture", tracker.policy.capture_bound
-        )
-        sealed = publish_scratch_completion_marker(
-            materialized, capture_dir=capture_dir
-        )
-        _enforce_phase_elapsed(
-            tracker, "capture", tracker.policy.capture_bound
-        )
-        machine.transition(AuthorityState.SEALED, reason="marker last")
-        return {**prepared, **sealed}
+        def promote() -> dict[str, Any]:
+            return promote_completion_marker(capture_dir, marker)
+
+        _observation, sealed = committer.commit_capture_seal(promote_marker=promote)
+        return {**prepared, **sealed, "capture_report": final_report}
     except (PhaseDeadlineExpired, TransactionDeadlineExpired) as exc:
-        _handle_capture_deadline_failure(
-            machine,
-            tracker,
-            capture_dir,
-            reason=f"capture deadline expired: {exc}",
-        )
+        committer.tracker.consume(reason=f"capture deadline expired: {exc}")
+        if capture_dir is not None and machine.state in (
+            AuthorityState.CAPTURING,
+            AuthorityState.FINAL_SOURCE_CHECKED,
+        ):
+            machine.quarantine(reason=f"capture deadline expired: {exc}")
         raise
     except R2bV2CaptureCloseError:
-        if capture_dir is not None:
-            _remove_marker_if_present(capture_dir)
         raise
-
-
-def _remove_marker_if_present(capture_dir: Path) -> None:
-    marker = capture_dir / "corpus_package_manifest.json"
-    if marker.exists():
-        marker.unlink()
 
 
 def final_source_recompute(
@@ -206,9 +144,8 @@ def final_source_recompute(
 
 
 def write_close_evidence(
-    machine: AuthorityStateMachine,
+    committer: AuthorityCommitter,
     lease: R2bQuiescenceLease,
-    tracker: PhaseDeadlineTracker,
     auth_dir: Path,
     *,
     marker_result: str,
@@ -216,91 +153,82 @@ def write_close_evidence(
     preceding_digests: dict[str, str],
     gate_identity: str,
 ) -> str:
+    machine = committer.machine
     verify_r2b_quiescence_lease(lease, expected_run_id=machine.run_id)
     lease.verify()
-    tracker.start_phase("release_close")
-    if machine.state != AuthorityState.SEALED:
-        raise AuthorityStateError(
-            f"CLOSING requires SEALED, got {machine.state.value}"
-        )
+    if "release_close" not in committer.tracker.phase_starts:
+        committer.tracker.start_phase_once("release_close")
     close_path = auth_dir / "quiescence-close.json"
     try:
-        close_digest = write_quiescence_close(
-            close_path,
-            run_id=machine.run_id,
-            terminal_disposition=machine.state.value,
-            marker_result=marker_result,
-            final_source_result=final_source_result,
-            deadline_state="within_budget" if not tracker.consumed else "consumed",
-            gate_identity=gate_identity,
-            release_intent=True,
-            preceding_digests=preceding_digests,
+        _observation, close_digest = committer.commit_closing(
+            close_path=close_path,
+            close_body={
+                "run_id": machine.run_id,
+                "terminal_disposition": machine.state.value,
+                "marker_result": marker_result,
+                "final_source_result": final_source_result,
+                "gate_identity": gate_identity,
+                "release_intent": True,
+                "preceding_digests": preceding_digests,
+            },
         )
-        _enforce_phase_elapsed(
-            tracker, "release_close", tracker.policy.release_close_bound
-        )
-    except (PhaseDeadlineExpired, TransactionDeadlineExpired) as exc:
-        _handle_release_close_deadline_failure(
-            machine,
-            tracker,
-            reason=f"release_close deadline during close evidence: {exc}",
-            kernel_released=False,
-        )
+    except (PhaseDeadlineExpired, TransactionDeadlineExpired):
+        committer.tracker.consume(reason="release_close during close evidence")
         raise
-    machine.transition(AuthorityState.CLOSING, reason="close evidence fsynced")
     return close_digest
 
 
 def release_gate_and_write_release_evidence(
-    machine: AuthorityStateMachine,
+    committer: AuthorityCommitter,
     lease: R2bQuiescenceLease,
-    tracker: PhaseDeadlineTracker,
     auth_dir: Path,
     *,
     close_digest: str,
 ) -> str:
+    machine = committer.machine
     verify_r2b_quiescence_lease(lease, expected_run_id=machine.run_id)
     if machine.state != AuthorityState.CLOSING:
         raise AuthorityStateError(
             f"release requires CLOSING, got {machine.state.value}"
         )
     kernel_released = False
+    release_path = auth_dir / "quiescence-release.json"
     try:
-        try:
-            lease.release()
-        except Exception as exc:
-            machine.quarantine(reason=f"release failure: {exc}")
-            raise R2bV2CaptureCloseError(f"release failure: {exc}") from exc
-        kernel_released = True
-        _enforce_phase_elapsed(
-            tracker, "release_close", tracker.policy.release_close_bound
-        )
-
-        release_path = auth_dir / "quiescence-release.json"
-        release_digest = write_quiescence_release(
-            release_path,
-            run_id=machine.run_id,
-            close_digest=close_digest,
-            release_result="released",
-            post_release_observation={"gate_released": True},
-        )
-        _enforce_phase_elapsed(
-            tracker, "release_close", tracker.policy.release_close_bound
+        lease.release()
+    except Exception as exc:
+        machine.quarantine(reason=f"release failure: {exc}")
+        raise R2bV2CaptureCloseError(f"release failure: {exc}") from exc
+    kernel_released = True
+    try:
+        _observation, release_digest = committer.commit_closed(
+            release_path=release_path,
+            release_body={
+                "run_id": machine.run_id,
+                "close_digest": close_digest,
+                "release_result": "released",
+                "post_release_observation": {"gate_released": True},
+                "kernel_released": True,
+            },
         )
     except (PhaseDeadlineExpired, TransactionDeadlineExpired) as exc:
-        _handle_release_close_deadline_failure(
-            machine,
-            tracker,
-            reason=f"release_close deadline during release: {exc}",
-            kernel_released=kernel_released,
-        )
-        raise
-    except R2bV2CaptureCloseError:
+        committer.tracker.consume(reason=f"release_close during close: {exc}")
+        machine.quarantine(reason=f"release_close deadline after kernel release: {exc}")
+        from eval_corpus.r2b_v2.quiescence_evidence import write_quiescence_release
+
+        try:
+            write_quiescence_release(
+                release_path,
+                run_id=machine.run_id,
+                close_digest=close_digest,
+                release_result="released",
+                post_release_observation={"gate_released": True},
+                kernel_released=True,
+                closure_outcome="deadline_expired",
+            )
+        except Exception:
+            pass
         raise
     except Exception as exc:
         machine.quarantine(reason=f"release evidence failure: {exc}")
-        raise R2bV2CaptureCloseError(
-            f"release evidence failure: {exc}"
-        ) from exc
-    machine.transition(AuthorityState.CLOSED, reason="release evidence written")
+        raise R2bV2CaptureCloseError(f"release evidence failure: {exc}") from exc
     return release_digest

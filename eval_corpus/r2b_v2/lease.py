@@ -27,6 +27,7 @@ from eval_corpus.r2b_v2.authority_registry import (
     AuthorityRegistryError,
     LeaseAuthorityRecord,
     current_authority_epoch,
+    invalidate_lease_handle,
     lookup_custodian,
     lookup_lease_handle,
     release_lease_handle,
@@ -175,7 +176,7 @@ class R2bQuiescenceLease:
         self._holder.release()
 
 
-def acquire_r2b_quiescence_lease(
+def acquire_r2b_quiescence_lease_physical(
     *,
     run_id: str,
     grant_digest: str,
@@ -189,7 +190,8 @@ def acquire_r2b_quiescence_lease(
     test_lock_path: Path | None = None,
     phase_bounds: tuple[str, ...] = (),
     implementation_revision: str | None = None,
-) -> R2bQuiescenceLease:
+) -> _LeaseHolder:
+    """Physical kernel acquisition — not authority commitment."""
     if monotonic_deadline <= time.monotonic():
         raise R2bQuiescenceLeaseError("monotonic_deadline is already expired")
     if timeout_ms <= 0:
@@ -269,11 +271,60 @@ def acquire_r2b_quiescence_lease(
     register_active_authority(key)
     handle = mint_lease_handle(lease_capability, record, custodian=custodian)
     bindings = _LeaseBindingsView(record, monotonic_start)
-    holder = _LeaseHolder(
+    return _LeaseHolder(
         bindings=bindings,
         custodian_id=custodian_id,
         handle=handle,
         custodian=custodian,
+    )
+
+
+def invalidate_pending_lease(holder: _LeaseHolder) -> None:
+    holder.ownership_active = False
+    invalidate_lease_handle(holder.handle)
+
+
+def release_pending_lease_kernel(holder: _LeaseHolder) -> None:
+    if holder.ownership_active:
+        holder.ownership_active = False
+    lookup_custodian(holder.custodian_id).release()
+    release_lease_handle(holder.handle)
+    key = authority_key(
+        holder.bindings.run_id,
+        holder.bindings.grant_digest,
+        holder.bindings.authority_digest,
+    )
+    consume_authority(key)
+
+
+def acquire_r2b_quiescence_lease(
+    *,
+    run_id: str,
+    grant_digest: str,
+    authority_digest: str,
+    writer_coverage_digest: str,
+    open_evidence_digest: str,
+    monotonic_deadline: float,
+    bound_source_paths: tuple[str, ...],
+    timeout_ms: int,
+    gate_policy: GatePolicy | None = None,
+    test_lock_path: Path | None = None,
+    phase_bounds: tuple[str, ...] = (),
+    implementation_revision: str | None = None,
+) -> R2bQuiescenceLease:
+    holder = acquire_r2b_quiescence_lease_physical(
+        run_id=run_id,
+        grant_digest=grant_digest,
+        authority_digest=authority_digest,
+        writer_coverage_digest=writer_coverage_digest,
+        open_evidence_digest=open_evidence_digest,
+        monotonic_deadline=monotonic_deadline,
+        bound_source_paths=bound_source_paths,
+        timeout_ms=timeout_ms,
+        gate_policy=gate_policy,
+        test_lock_path=test_lock_path,
+        phase_bounds=phase_bounds,
+        implementation_revision=implementation_revision,
     )
     return R2bQuiescenceLease(holder)
 

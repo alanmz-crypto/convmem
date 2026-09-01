@@ -142,20 +142,8 @@ def draft_capture_packet(  # pylint: disable=too-many-arguments
     return manifest_path
 
 
-def accept_capture_packet(
-    machine: AuthorityStateMachine,
-    lease: R2bQuiescenceLease,
-    manifest_path: Path,
-    *,
-    reason: str = "Ryan packet ACCEPT",
-) -> str:
-    """Write approval sidecar while lease remains live."""
-    verify_r2b_quiescence_lease(lease, expected_run_id=machine.run_id)
-    lease.verify()
-    if machine.state != AuthorityState.PACKET_DRAFTED:
-        raise AuthorityStateError(
-            f"PACKET_ACCEPTED requires PACKET_DRAFTED, got {machine.state.value}"
-        )
+def prepare_packet_acceptance(manifest_path: Path) -> tuple[dict[str, Any], str]:
+    """Prepare manifest body and approval digest — sidecar not yet authoritative."""
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["operations"] = ["capture"]
     manifest["prohibited_actions"] = sorted(R2B_REQUIRED_PROHIBITED)
@@ -166,8 +154,25 @@ def accept_capture_packet(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    write_approval_sidecar(manifest_path, digest)
-    machine.transition(AuthorityState.PACKET_ACCEPTED, reason=reason)
+    return manifest, digest
+
+
+def accept_capture_packet(
+    machine: AuthorityStateMachine,
+    lease: R2bQuiescenceLease,
+    manifest_path: Path,
+    *,
+    reason: str = "Ryan packet ACCEPT",
+) -> str:
+    """Prepare packet acceptance — guarded PACKET_ACCEPTED requires AuthorityCommitter."""
+    del reason
+    verify_r2b_quiescence_lease(lease, expected_run_id=machine.run_id)
+    lease.verify()
+    if machine.state != AuthorityState.PACKET_DRAFTED:
+        raise AuthorityStateError(
+            f"PACKET_ACCEPTED requires PACKET_DRAFTED, got {machine.state.value}"
+        )
+    _manifest, digest = prepare_packet_acceptance(manifest_path)
     return digest
 
 

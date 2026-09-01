@@ -46,6 +46,7 @@ from eval_corpus.r2b_v2.transaction import run_scratch_transaction
 from eval_corpus.r2b_v2.trusted import _reset_for_tests
 from tests.r2b_v2_helpers import (
     advance_to_materialized,
+    make_test_committer,
     obtain_source_authority,
     scratch_benchmark_candidate_policy,
     scratch_transaction_fixture,
@@ -56,11 +57,16 @@ def _advance_to_coverage_proven(
     sm: AuthorityStateMachine,
     lease,
     trusted,
-) -> None:
+    *,
+    run_id: str,
+    committer=None,
+):
+    resolved_committer = committer or make_test_committer(run_id, sm=sm)
     sm.transition(AuthorityState.PREPARED, reason="test prepare")
     sm.transition(AuthorityState.Q_AUTHORIZED, reason="test authorize")
-    transition_to_q_held(sm, lease, reason="test held")
+    transition_to_q_held(sm, lease, resolved_committer, reason="test held")
     transition_to_coverage_proven(sm, lease, trusted, reason="test coverage")
+    return resolved_committer
 
 
 class R2bV2I4Tests(unittest.TestCase):
@@ -71,7 +77,9 @@ class R2bV2I4Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
-            _advance_to_coverage_proven(sm, fx["lease"], fx["trusted"])
+            _advance_to_coverage_proven(
+                sm, fx["lease"], fx["trusted"], run_id=fx["run_id"]
+            )
             transition_snapshot_bound(
                 sm,
                 fx["lease"],
@@ -107,7 +115,9 @@ class R2bV2I4Tests(unittest.TestCase):
             fx = scratch_transaction_fixture(Path(td))
             Path(fx["paths"]["capture_dir"]).mkdir(parents=True)
             sm = new_authority_state_machine(fx["run_id"])
-            _advance_to_coverage_proven(sm, fx["lease"], fx["trusted"])
+            _advance_to_coverage_proven(
+                sm, fx["lease"], fx["trusted"], run_id=fx["run_id"]
+            )
             transition_snapshot_bound(
                 sm,
                 fx["lease"],
@@ -145,7 +155,9 @@ class R2bV2I4Tests(unittest.TestCase):
             )
             export.write_text('{"id":"mutated"}\n', encoding="utf-8")
             sm = new_authority_state_machine(fx["run_id"])
-            _advance_to_coverage_proven(sm, fx["lease"], fx["trusted"])
+            committer = _advance_to_coverage_proven(
+                sm, fx["lease"], fx["trusted"], run_id=fx["run_id"]
+            )
             transition_snapshot_bound(
                 sm,
                 fx["lease"],
@@ -168,7 +180,7 @@ class R2bV2I4Tests(unittest.TestCase):
             accept_capture_packet(sm, fx["lease"], manifest_path)
             with self.assertRaises(Exception):
                 materialize_v2_packet(
-                    sm,
+                    committer,
                     fx["lease"],
                     manifest_path,
                     runtime=fx["runtime"],
@@ -251,7 +263,9 @@ class R2bV2I6Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
-            _advance_to_coverage_proven(sm, fx["lease"], fx["trusted"])
+            committer = _advance_to_coverage_proven(
+                sm, fx["lease"], fx["trusted"], run_id=fx["run_id"]
+            )
             transition_snapshot_bound(
                 sm,
                 fx["lease"],
@@ -276,9 +290,14 @@ class R2bV2I6Tests(unittest.TestCase):
                 gate_identity=fx["gate_identity"],
                 implementation_revision=fx["implementation_revision"],
             )
-            accept_capture_packet(sm, fx["lease"], manifest_path)
+            committer.tracker.start_phase_once("hitl")
+            digest = accept_capture_packet(sm, fx["lease"], manifest_path)
+            committer.commit_packet_accepted(
+                manifest_path=manifest_path,
+                approval_digest=digest,
+            )
             materialize_v2_packet(
-                sm,
+                committer,
                 fx["lease"],
                 manifest_path,
                 runtime=fx["runtime"],
@@ -297,21 +316,18 @@ class R2bV2FailureInjectionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
-            _manifest_path, mat = advance_to_materialized(fx, sm)
-            tracker = PhaseDeadlineTracker.begin(scratch_benchmark_candidate_policy())
-            grant_capture(sm, fx["lease"], tracker, mat)
+            _manifest_path, mat, committer = advance_to_materialized(fx, sm)
+            grant_capture(committer, fx["lease"], mat)
             execute_authorized_capture(
-                sm,
+                committer,
                 fx["lease"],
-                tracker,
                 mat,
                 snapshot_recompute_fn=fx["snapshot_recompute_fn"],
             )
             with self.assertRaises(AuthorityStateError):
                 execute_authorized_capture(
-                    sm,
+                    committer,
                     fx["lease"],
-                    tracker,
                     mat,
                     snapshot_recompute_fn=fx["snapshot_recompute_fn"],
                 )
@@ -322,17 +338,16 @@ class R2bV2FailureInjectionTests(unittest.TestCase):
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
             sm.state = AuthorityState.CLOSING
-            tracker = PhaseDeadlineTracker.begin(scratch_benchmark_candidate_policy())
-            tracker.start_phase("release_close")
+            committer = make_test_committer(fx["run_id"], sm=sm)
+            committer.tracker.start_phase_once("release_close")
             with mock.patch(
                 "eval_corpus.r2b_v2.lease.R2bQuiescenceLease.release",
                 side_effect=RuntimeError("release failed"),
             ):
                 with self.assertRaises(R2bV2CaptureCloseError):
                     release_gate_and_write_release_evidence(
-                        sm,
+                        committer,
                         fx["lease"],
-                        tracker,
                         fx["auth_dir"],
                         close_digest="abc",
                     )

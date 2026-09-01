@@ -39,6 +39,7 @@ from tests.r2b_v2_helpers import (
     advance_to_materialized,
     advance_to_packet_accepted,
     assert_custodian_force_unlock_breaks_verify,
+    make_test_committer,
     scratch_benchmark_candidate_policy,
     scratch_transaction_fixture,
 )
@@ -97,16 +98,15 @@ class R2bV2CorrectiveFailureMatrix(unittest.TestCase):
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
             sm.state = AuthorityState.SEALED
-            tracker = PhaseDeadlineTracker.begin(scratch_benchmark_candidate_policy())
+            committer = make_test_committer(fx["run_id"], sm=sm)
             with mock.patch(
-                "eval_corpus.r2b_v2.capture_close.write_quiescence_close",
+                "eval_corpus.r2b_v2.authority_commit.write_quiescence_close",
                 side_effect=OSError("fsync failed"),
             ):
                 with self.assertRaises(OSError):
                     write_close_evidence(
-                        sm,
+                        committer,
                         fx["lease"],
-                        tracker,
                         fx["auth_dir"],
                         marker_result="x",
                         final_source_result="x",
@@ -121,11 +121,10 @@ class R2bV2CorrectiveFailureMatrix(unittest.TestCase):
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
             sm.state = AuthorityState.SEALED
-            tracker = PhaseDeadlineTracker.begin(scratch_benchmark_candidate_policy())
+            committer = make_test_committer(fx["run_id"], sm=sm)
             write_close_evidence(
-                sm,
+                committer,
                 fx["lease"],
-                tracker,
                 fx["auth_dir"],
                 marker_result="ok",
                 final_source_result="ok",
@@ -150,17 +149,16 @@ class R2bV2CorrectiveFailureMatrix(unittest.TestCase):
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
             sm.state = AuthorityState.CLOSING
-            tracker = PhaseDeadlineTracker.begin(scratch_benchmark_candidate_policy())
-            tracker.start_phase("release_close")
+            committer = make_test_committer(fx["run_id"], sm=sm)
+            committer.tracker.start_phase_once("release_close")
             with mock.patch(
-                "eval_corpus.r2b_v2.capture_close.write_quiescence_release",
+                "eval_corpus.r2b_v2.authority_commit.write_quiescence_release",
                 side_effect=OSError("release evidence fsync failed"),
             ):
                 with self.assertRaises(R2bV2CaptureCloseError):
                     release_gate_and_write_release_evidence(
-                        sm,
+                        committer,
                         fx["lease"],
-                        tracker,
                         fx["auth_dir"],
                         close_digest="deadbeef" * 8,
                     )
@@ -172,13 +170,12 @@ class R2bV2CorrectiveFailureMatrix(unittest.TestCase):
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
             sm.state = AuthorityState.CLOSING
-            tracker = PhaseDeadlineTracker.begin(scratch_benchmark_candidate_policy())
-            tracker.start_phase("release_close")
+            committer = make_test_committer(fx["run_id"], sm=sm)
+            committer.tracker.start_phase_once("release_close")
             close_digest = "a" * 64
             release_gate_and_write_release_evidence(
-                sm,
+                committer,
                 fx["lease"],
-                tracker,
                 fx["auth_dir"],
                 close_digest=close_digest,
             )
@@ -198,11 +195,12 @@ class R2bV2CorrectiveFailureMatrix(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
-            manifest_path = advance_to_packet_accepted(fx, sm)
+            committer = make_test_committer(fx["run_id"], sm=sm)
+            manifest_path = advance_to_packet_accepted(fx, sm, committer)
             Path(fx["paths"]["capture_dir"]).mkdir(parents=True)
             with self.assertRaises(R2bV2MaterializationError):
                 materialize_v2_packet(
-                    sm,
+                    committer,
                     fx["lease"],
                     manifest_path,
                     runtime=fx["runtime"],
@@ -215,9 +213,8 @@ class R2bV2CorrectiveFailureMatrix(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
-            _manifest_path, mat = advance_to_materialized(fx, sm)
-            tracker = PhaseDeadlineTracker.begin(scratch_benchmark_candidate_policy())
-            grant_capture(sm, fx["lease"], tracker, mat)
+            _manifest_path, mat, committer = advance_to_materialized(fx, sm)
+            grant_capture(committer, fx["lease"], mat)
             original = fx["snapshot_recompute_fn"]
 
             def drift_recompute(**kwargs):
@@ -228,9 +225,8 @@ class R2bV2CorrectiveFailureMatrix(unittest.TestCase):
 
             with self.assertRaises(R2bV2CaptureCloseError):
                 execute_authorized_capture(
-                    sm,
+                    committer,
                     fx["lease"],
-                    tracker,
                     mat,
                     snapshot_recompute_fn=drift_recompute,
                 )
@@ -243,24 +239,21 @@ class R2bV2CorrectiveFailureMatrix(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
-            _manifest_path, mat = advance_to_materialized(fx, sm)
+            _manifest_path, mat, committer = advance_to_materialized(fx, sm)
             sm.state = AuthorityState.QUARANTINED
-            tracker = PhaseDeadlineTracker.begin(scratch_benchmark_candidate_policy())
             with self.assertRaises(AuthorityStateError):
-                grant_capture(sm, fx["lease"], tracker, mat)
+                grant_capture(committer, fx["lease"], mat)
             fx["lease"].release()
 
     def test_capture_ordering_final_source_before_marker(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             fx = scratch_transaction_fixture(Path(td))
             sm = new_authority_state_machine(fx["run_id"])
-            _manifest_path, mat = advance_to_materialized(fx, sm)
-            tracker = PhaseDeadlineTracker.begin(scratch_benchmark_candidate_policy())
-            grant_capture(sm, fx["lease"], tracker, mat)
+            _manifest_path, mat, committer = advance_to_materialized(fx, sm)
+            grant_capture(committer, fx["lease"], mat)
             execute_authorized_capture(
-                sm,
+                committer,
                 fx["lease"],
-                tracker,
                 mat,
                 snapshot_recompute_fn=fx["snapshot_recompute_fn"],
             )
