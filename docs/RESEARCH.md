@@ -207,6 +207,17 @@ stored metrics are:
 | hit@k / P@k | 1.0 | An acceptable target appeared within each query's configured top-k. |
 | MRR | 0.875 | Mean reciprocal rank of the first acceptable target. |
 
+To rerun this regression against the configured local corpus, use the
+[`scripts/eval-retrieval.py`](../scripts/eval-retrieval.py) runner:
+
+```bash
+python scripts/eval-retrieval.py
+```
+
+The command compares current results with the stored baseline. This is an
+engineering regression check, not a public benchmark or broad product-value
+result.
+
 This is a developer-authored retrieval regression fixture for known corpus
 items, not a broad validation of semantic retrieval quality. It has `n=8`, is
 corpus-specific and tied to a private/local environment, and its query
