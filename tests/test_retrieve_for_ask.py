@@ -38,6 +38,10 @@ def _unit(uid: str, score: float) -> dict:
 
 
 class TestRetrieveForAskNoLLM(unittest.TestCase):
+    def test_invalid_top_k_is_rejected(self):
+        with self.assertRaises(ValueError):
+            retrieve_for_ask("q", top_k=0)
+
     @patch("ask.generate_stream")
     @patch("ask.load_config", return_value=_cfg())
     @patch("ask.query_raw", return_value=[])

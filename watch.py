@@ -6,18 +6,21 @@ in a subprocess so Chroma/ML memory is not retained in the watch parent.
 
 from __future__ import annotations
 
+import math
 import os
 import shutil
+import signal
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from adapters.detect import get_parser
-from process_lock import release_lock
+from process_lock import acquire_pid_lock, release_lock
 
 _DEFAULT_INDEX_MEM_MAX = "2G"
 _DEFAULT_INDEX_MEM_HIGH = "1500M"
+_DEFAULT_INDEX_TIMEOUT_SECONDS = 15 * 60
 
 # Live databases that change constantly — watch re-index causes OOM + duplication.
 _LIVE_WATCH_SKIP_SUFFIXES = (
@@ -201,20 +204,51 @@ def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
     from config import load_config
 
     cfg = load_config()
+    watch_cfg = cfg.get("watch") or {}
+    try:
+        timeout = float(
+            watch_cfg.get("subprocess_timeout_seconds", _DEFAULT_INDEX_TIMEOUT_SECONDS)
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "watch.subprocess_timeout_seconds must be a positive number"
+        ) from exc
+    if timeout <= 0 or not math.isfinite(timeout):
+        raise ValueError("watch.subprocess_timeout_seconds must be a positive number")
     inner_cmd = _convmem_cli_argv() + ["index", "--file", path]
     cmd = _scoped_index_cmd(inner_cmd, cfg, verbose=verbose)
     if verbose:
         print(f"[watch] spawn: {' '.join(inner_cmd[-3:])}", file=sys.stderr)
-    proc = subprocess.run(
+    proc = subprocess.Popen(
         cmd,
         text=True,
-        capture_output=not verbose,
+        stdout=subprocess.PIPE if not verbose else None,
+        stderr=subprocess.PIPE if not verbose else None,
+        start_new_session=True,
     )
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            proc.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.communicate()
+        raise RuntimeError(
+            f"index subprocess timed out after {timeout:g} seconds"
+        ) from exc
     if proc.returncode != 0:
-        err = (proc.stderr or proc.stdout or "").strip()
+        err = (stderr or stdout or "").strip()
         raise RuntimeError(err or f"index subprocess exit {proc.returncode}")
-    if verbose and proc.stdout:
-        for line in proc.stdout.splitlines():
+    if verbose and stdout:
+        for line in stdout.splitlines():
             print(line, file=sys.stderr)
     return {"subprocess": True, "path": path}
 
@@ -301,21 +335,12 @@ def _is_live_watch_pid(pid: int) -> bool:
 
 def acquire_lock(lock_path: Path) -> None:
     """Create a PID lock; exit if another live watch holds it."""
-    lock_path.parent.mkdir(parents=True, exist_ok=True)
-    if lock_path.exists():
-        try:
-            other_pid = int(lock_path.read_text().strip())
-        except ValueError:
-            other_pid = 0
-        if _is_live_watch_pid(other_pid):
-            print(
-                f"[watch] another instance is running (pid {other_pid}). "
-                f"Lock: {lock_path}",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        lock_path.unlink(missing_ok=True)
-    lock_path.write_text(str(os.getpid()), encoding="utf-8")
+    acquire_pid_lock(
+        lock_path,
+        pid=os.getpid(),
+        is_live_pid=_is_live_watch_pid,
+        label="watch",
+    )
 
 
 def load_watch_settings(cfg: dict) -> tuple[float, list[str], Path]:

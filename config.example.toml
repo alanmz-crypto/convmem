@@ -59,6 +59,8 @@ debounce_seconds = 90
 # Child OOM kills only the scope, not convmem-watch.service.
 # subprocess_memory_max = "2G"
 # subprocess_memory_high = "1500M"
+# Maximum runtime for one child index operation before the watcher releases it.
+# subprocess_timeout_seconds = 900
 # Optional: override [sources].paths for watch only (defaults to sources.paths)
 # Optional: append repo coordination docs without replacing transcript roots
 # extra_paths = [

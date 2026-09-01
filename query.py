@@ -36,6 +36,17 @@ _LEDGER_ID_RE = re.compile(
     re.IGNORECASE,
 )
 DEFAULT_RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
+MAX_QUERY_RESULTS = 100
+MAX_QUERY_FETCH = MAX_QUERY_RESULTS * 3
+
+
+def validate_top_k(top_k: int) -> int:
+    """Validate the public result limit before embedding or opening the index."""
+    if isinstance(top_k, bool) or not isinstance(top_k, int):
+        raise TypeError("top_k must be an integer from 1 to 100")
+    if not 1 <= top_k <= MAX_QUERY_RESULTS:
+        raise ValueError("top_k must be an integer from 1 to 100")
+    return top_k
 
 
 def _apply_unit_result_postfilters(results: list[dict]) -> list[dict]:
@@ -267,7 +278,9 @@ def _fetch_scoped_units(
         return repo.query_units(embedding, candidate_k)
 
     try:
-        collection_bound = max(candidate_k, int(repo.count_units()))
+        collection_bound = min(
+            max(candidate_k, int(repo.count_units())), MAX_QUERY_FETCH
+        )
     except Exception:  # pylint: disable=broad-exception-caught
         collection_bound = candidate_k
 
@@ -445,6 +458,7 @@ def query_units(
     eval_view: str | None = None,
     retrieval_trace: QueryUnitTrace | None = None,
 ) -> list[dict]:
+    top_k = validate_top_k(top_k)
     if cfg is None:
         cfg = load_config()
     if chroma_dir:
@@ -461,7 +475,10 @@ def query_units(
         text, model=models["embed_model"], host=models["ollama_host"]
     )
 
-    candidate_k = max(top_k, int(qcfg.get("top_k_candidates", 20) or 20))
+    candidate_k = min(
+        max(top_k, int(qcfg.get("top_k_candidates", 20) or 20)),
+        MAX_QUERY_RESULTS,
+    )
     domain = normalize_domain(domain) if domain else None
     site_norm = normalize_site(site) if site else None
     scoped_fetch_k = candidate_k
@@ -469,7 +486,7 @@ def query_units(
         # Domain filtering is hierarchical (parent matches children), which
         # Chroma's exact-match `where` can't express, so over-fetch and
         # filter client-side before reranking/truncating.
-        scoped_fetch_k = candidate_k * 3
+        scoped_fetch_k = min(candidate_k * 3, MAX_QUERY_FETCH)
 
     ledger_extras: list[dict] = []
     from serving_authority import ServingBackendTransient
@@ -571,6 +588,7 @@ def query_raw(
     *,
     cfg: dict | None = None,
 ) -> list[dict]:
+    top_k = validate_top_k(top_k)
     if cfg is None:
         cfg = load_config()
     models = cfg["models"]

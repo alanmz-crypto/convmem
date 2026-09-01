@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from adapters.detect import TOOL_BY_FORMAT, detect_format, get_parser
+from atomic_files import atomic_write_text
 from chroma_write_store import production_chroma_write_session, production_writer_boundary
 from config import load_config
 from distill import (
@@ -117,10 +118,7 @@ def load_processed(path: str) -> dict:
 
 def save_processed(path: str, data: dict) -> None:
     p = Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    tmp.replace(p)
+    atomic_write_text(p, json.dumps(data, indent=2), encoding="utf-8")
 
 
 def processed_lock_path(processed_path: str) -> Path:

@@ -109,7 +109,7 @@ def _guard_write() -> None:
 def search(  # pylint: disable=too-many-positional-arguments
     query: str = typer.Argument(..., help="What you're trying to recall"),
     raw: bool = typer.Option(False, "--raw", help="Search conversation summaries (fallback layer)"),
-    top: int = typer.Option(5, "--top", help="Number of results"),
+    top: int = typer.Option(5, "--top", min=1, max=100, help="Number of results"),
     domain: str | None = typer.Option(
         None, "--domain", help="Scope to a domain and its children, e.g. web_stack.security"
     ),
@@ -204,7 +204,9 @@ def ask_command(  # pylint: disable=too-many-arguments
         False, "-i", "--interactive", help="Multi-turn session with follow-ups"
     ),
     raw: bool = typer.Option(False, "--raw", help="Retrieve from conversation summaries"),
-    top: int = typer.Option(5, "--top", help="Number of excerpts to use as context"),
+    top: int = typer.Option(
+        5, "--top", min=1, max=100, help="Number of excerpts to use as context"
+    ),
     domain: str | None = typer.Option(
         None, "--domain", help="Scope to a domain and its children, e.g. web_stack.wordpress"
     ),

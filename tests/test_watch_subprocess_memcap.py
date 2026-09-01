@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import signal
+import subprocess
 import unittest
 from unittest import mock
 
@@ -39,13 +41,53 @@ class ScopedIndexCmdTests(unittest.TestCase):
 
 
 class FlushPathSubprocessTests(unittest.TestCase):
+    def test_child_has_a_default_timeout(self):
+        completed = mock.Mock(returncode=0)
+        completed.communicate.return_value = ("", "")
+        with (
+            mock.patch("config.load_config", return_value={"watch": {}}),
+            mock.patch(
+                "watch._scoped_index_cmd", side_effect=lambda inner, _cfg, **_: inner
+            ),
+            mock.patch("subprocess.Popen", return_value=completed) as popen,
+        ):
+            _flush_path_subprocess("/tmp/x.jsonl", verbose=False)
+        self.assertEqual(completed.communicate.call_args.kwargs["timeout"], 900)
+        self.assertTrue(popen.call_args.kwargs["start_new_session"])
+
+    def test_child_timeout_is_reported_as_index_failure(self):
+        completed = mock.Mock(pid=4242, returncode=None)
+        completed.communicate.side_effect = [
+            subprocess.TimeoutExpired("cmd", 12),
+            ("", ""),
+        ]
+        with (
+            mock.patch(
+                "config.load_config",
+                return_value={"watch": {"subprocess_timeout_seconds": 12}},
+            ),
+            mock.patch(
+                "watch._scoped_index_cmd", side_effect=lambda inner, _cfg, **_: inner
+            ),
+            mock.patch("subprocess.Popen", return_value=completed),
+            mock.patch("watch.os.killpg") as killpg,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "timed out after 12 seconds"):
+                _flush_path_subprocess("/tmp/x.jsonl", verbose=False)
+        killpg.assert_called_once_with(4242, signal.SIGTERM)
+
     def test_nonzero_child_raises_runtime_error(self):
-        completed = mock.Mock(returncode=137, stdout="", stderr="Killed")
-        with mock.patch("config.load_config", return_value={"watch": {}}):
-            with mock.patch("watch._scoped_index_cmd", side_effect=lambda inner, _cfg, **_: inner):
-                with mock.patch("subprocess.run", return_value=completed):
-                    with self.assertRaises(RuntimeError):
-                        _flush_path_subprocess("/tmp/x.jsonl", verbose=False)
+        completed = mock.Mock(returncode=137)
+        completed.communicate.return_value = ("", "Killed")
+        with (
+            mock.patch("config.load_config", return_value={"watch": {}}),
+            mock.patch(
+                "watch._scoped_index_cmd", side_effect=lambda inner, _cfg, **_: inner
+            ),
+            mock.patch("subprocess.Popen", return_value=completed),
+        ):
+            with self.assertRaises(RuntimeError):
+                _flush_path_subprocess("/tmp/x.jsonl", verbose=False)
 
 
 if __name__ == "__main__":
