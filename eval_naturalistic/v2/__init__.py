@@ -3,6 +3,8 @@
 from eval_naturalistic.v2.authority_issuance import (
     EvidenceSealManifestDraftV2,
     ImmediateParentBindingV2,
+    IssuanceAuthorityRecordV2,
+    IssuanceAuthorityRepository,
     IssuedOccurrenceReferenceV2,
     SealedP1AuthorityV2,
     issue_occurrence_reference,
@@ -32,6 +34,8 @@ __all__ = [
     "EvidenceSealManifestV2",
     "ImmediateParentBindingV2",
     "InMemoryConstructFreezeRepository",
+    "IssuanceAuthorityRecordV2",
+    "IssuanceAuthorityRepository",
     "IssuedOccurrenceReferenceV2",
     "LineageAttestationRepository",
     "OccurrenceReferenceV2",

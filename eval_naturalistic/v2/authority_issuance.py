@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +23,11 @@ from eval_naturalistic.v2.contracts import (
     _ISSUANCE_TOKEN,
 )
 from eval_naturalistic.v2.evidence import ConditionNeutralEvidenceAvailabilityV2
-from eval_naturalistic.v2.identity import LineageEdgeV2, reject_hash_or_locator_identity
+from eval_naturalistic.v2.evidence_commitments import (
+    VerifiedP1EvidenceCommitmentsV2,
+    recompute_evidence_commitments_from_manifest,
+)
+from eval_naturalistic.v2.identity import LineageEdgeV2, OccurrenceReferenceV2, reject_hash_or_locator_identity
 from eval_naturalistic.v2.lineage_attestation import (
     LineageAttestationRepository,
     occurrence_commitment_digest,
@@ -52,6 +55,7 @@ _P1_ISSUER_SEED_MODULES = (
     "eval_naturalistic/v2/contracts.py",
     "eval_naturalistic/v2/validators.py",
     "eval_naturalistic/v2/evidence.py",
+    "eval_naturalistic/v2/evidence_commitments.py",
     "eval_naturalistic/v2/source_authority.py",
     "eval_naturalistic/v2/capture_attestation.py",
     "eval_naturalistic/v2/p0_construct.py",
@@ -128,34 +132,102 @@ class IssuedOccurrenceReferenceV2:
         }
 
 
-_ISSUANCE_REGISTRY: dict[str, "IssuedOccurrenceReferenceV2"] = {}
+@dataclass(frozen=True)
+class IssuanceAuthorityRecordV2:
+    """Portable issuance authority substrate — reconstructable across processes."""
 
+    occurrence_reference: Any
+    issuance_digest: str
+    issuer_implementation_revision: str
+    evidence_snapshot_id: str
+    source_authority_digest: str
+    source_capture_digest: str
 
-def clear_issuance_registry() -> None:
-    _ISSUANCE_REGISTRY.clear()
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "occurrence_reference": self.occurrence_reference.to_dict(),
+            "issuance_digest": self.issuance_digest,
+            "issuer_implementation_revision": self.issuer_implementation_revision,
+            "evidence_snapshot_id": self.evidence_snapshot_id,
+            "source_authority_digest": self.source_authority_digest,
+            "source_capture_digest": self.source_capture_digest,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "IssuanceAuthorityRecordV2":
+        data = _require_dict(data, "IssuanceAuthorityRecordV2")
+        return cls(
+            occurrence_reference=OccurrenceReferenceV2.from_dict(
+                _require_dict(data["occurrence_reference"], "occurrence_reference")
+            ),
+            issuance_digest=_digest_hex(data["issuance_digest"], "issuance_digest"),
+            issuer_implementation_revision=_require_str(
+                data["issuer_implementation_revision"], "issuer_implementation_revision"
+            ),
+            evidence_snapshot_id=_require_str(data["evidence_snapshot_id"], "evidence_snapshot_id"),
+            source_authority_digest=_digest_hex(
+                data["source_authority_digest"], "source_authority_digest"
+            ),
+            source_capture_digest=_digest_hex(
+                data["source_capture_digest"], "source_capture_digest"
+            ),
+        )
 
 
 class IssuanceAuthorityRepository:
-    """Tracks issuer-produced occurrence references for P1 verification."""
+    """Minimal issuance-authority substrate for V2-01C verification."""
 
     def __init__(self) -> None:
-        self._issued: dict[str, IssuedOccurrenceReferenceV2] = {}
+        self._records: dict[str, IssuanceAuthorityRecordV2] = {}
 
-    def register(self, issued: IssuedOccurrenceReferenceV2) -> IssuedOccurrenceReferenceV2:
-        _ISSUANCE_REGISTRY[issued.issuance_digest] = issued
-        self._issued[issued.issuance_digest] = issued
-        return issued
+    @classmethod
+    def from_records(
+        cls, records: tuple[IssuanceAuthorityRecordV2, ...]
+    ) -> "IssuanceAuthorityRepository":
+        repo = cls()
+        for record in records:
+            repo._records[record.issuance_digest] = record
+        return repo
 
-    def resolve(self, issuance_digest: str) -> IssuedOccurrenceReferenceV2:
-        issued = self._issued.get(issuance_digest) or _ISSUANCE_REGISTRY.get(issuance_digest)
-        if issued is None:
+    def records(self) -> tuple[IssuanceAuthorityRecordV2, ...]:
+        return tuple(self._records.values())
+
+    def _commit_verified_issuance(
+        self,
+        issued: IssuedOccurrenceReferenceV2,
+        *,
+        source_authority: VerifiedSourceAuthorityV2,
+        source_capture_digest: str,
+    ) -> IssuanceAuthorityRecordV2:
+        verified = reverify_source_authority_record(source_authority)
+        if issued.source_authority_digest != verified.authority_record_digest:
+            raise StructuralContractError("issuance authority: source authority digest mismatch")
+        if source_capture_digest != verified.source_capture_digest:
+            raise StructuralContractError("issuance authority: source capture digest mismatch")
+        expected = _occurrence_issuance_digest(
+            source_authority=verified,
+            issuer_implementation_revision=issued.issuer_implementation_revision,
+        )
+        if expected != issued.issuance_digest:
+            raise StructuralContractError("issuance authority: issuance digest mismatch")
+        record = IssuanceAuthorityRecordV2(
+            occurrence_reference=issued.occurrence_reference,
+            issuance_digest=issued.issuance_digest,
+            issuer_implementation_revision=issued.issuer_implementation_revision,
+            evidence_snapshot_id=issued.evidence_snapshot_id,
+            source_authority_digest=issued.source_authority_digest,
+            source_capture_digest=source_capture_digest,
+        )
+        self._records[issued.issuance_digest] = record
+        return record
+
+    def resolve(self, issuance_digest: str) -> IssuanceAuthorityRecordV2:
+        record = self._records.get(issuance_digest)
+        if record is None:
             raise StructuralContractError("P1 authority: unregistered occurrence issuance")
-        if issued.issuance_digest != issuance_digest:
+        if record.issuance_digest != issuance_digest:
             raise StructuralContractError("P1 authority: issuance digest mismatch")
-        return issued
-
-
-_DEFAULT_ISSUANCE_REPOSITORY = IssuanceAuthorityRepository()
+        return record
 
 
 def _digest_hex(value: Any, field_name: str) -> str:
@@ -183,18 +255,13 @@ def build_p1_issuer_authority_manifest() -> dict[str, Any]:
 
 
 def clear_p1_issuer_revision_cache() -> None:
-    _cached_p1_issuer_revision.cache_clear()
-
-
-@lru_cache(maxsize=1)
-def _cached_p1_issuer_revision() -> str:
-    manifest = build_p1_issuer_authority_manifest()
-    canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(f"{P1_ISSUER_REVISION_PREFIX}{canonical}".encode()).hexdigest()[:40]
+    """No-op retained for test compatibility — revision is always recomputed."""
 
 
 def compute_p1_issuer_implementation_revision() -> str:
-    return _cached_p1_issuer_revision()
+    manifest = build_p1_issuer_authority_manifest()
+    canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(f"{P1_ISSUER_REVISION_PREFIX}{canonical}".encode()).hexdigest()[:40]
 
 
 def _occurrence_issuance_digest(
@@ -214,7 +281,7 @@ def _occurrence_issuance_digest(
 def issue_occurrence_reference(
     source_authority: VerifiedSourceAuthorityV2,
     *,
-    issuance_repository: IssuanceAuthorityRepository | None = None,
+    issuance_repository: IssuanceAuthorityRepository,
 ) -> IssuedOccurrenceReferenceV2:
     """Mint P1 occurrence authority only from verified source-backed evidence."""
 
@@ -233,8 +300,12 @@ def issue_occurrence_reference(
         evidence_snapshot_id=verified.evidence_snapshot_id,
         source_authority_digest=verified.authority_record_digest,
     )
-    repo = issuance_repository or _DEFAULT_ISSUANCE_REPOSITORY
-    return repo.register(issued)
+    issuance_repository._commit_verified_issuance(
+        issued,
+        source_authority=verified,
+        source_capture_digest=verified.source_capture_digest,
+    )
+    return issued
 
 
 def _derive_artifact_id(*, schema: str, content_digest: str) -> str:
@@ -298,22 +369,17 @@ class EvidenceSealManifestDraftV2:
     construct_freeze_digest: str
     episode_id: str
     issued_occurrence: IssuedOccurrenceReferenceV2
-    evidence_complete_envelope_digest: str
-    canonical_content_digest: str
-    canonicalization_profile_digest: str
-    adapter_implementation_digest: str
+    evidence_commitments: VerifiedP1EvidenceCommitmentsV2
     condition_neutral_evidence_availability: ConditionNeutralEvidenceAvailabilityV2
     immediate_parents: tuple[ImmediateParentBindingV2, ...]
     responsible_role: str
     created_at: str
     logical_lineage_id: str | None = None
     lineage_edges: list[LineageEdgeV2] = field(default_factory=list)
-    raw_record_digest: str | None = None
-    attachment_reference_inventory_digest: str | None = None
-    source_and_snapshot_identity_digest: str | None = None
 
     def _body_without_seal_metadata(self) -> dict[str, Any]:
         occ = self.issued_occurrence.occurrence_reference
+        commitments = self.evidence_commitments
         body: dict[str, Any] = {
             "construct_freeze_digest": self.construct_freeze_digest,
             "episode_id": self.episode_id,
@@ -324,22 +390,25 @@ class EvidenceSealManifestDraftV2:
             "physical_instance_id": occ.physical_source_instance_id,
             "revision_or_asof_id": occ.source_revision_or_asof_id,
             "evidence_snapshot_id": self.issued_occurrence.evidence_snapshot_id,
-            "evidence_complete_envelope_digest": self.evidence_complete_envelope_digest,
-            "canonical_content_digest": self.canonical_content_digest,
-            "canonicalization_profile_digest": self.canonicalization_profile_digest,
-            "adapter_implementation_digest": self.adapter_implementation_digest,
+            "evidence_complete_envelope_digest": commitments.evidence_complete_envelope_digest,
+            "canonical_content_digest": commitments.canonical_content_digest,
+            "canonicalization_profile_digest": commitments.canonicalization_profile_digest,
+            "adapter_implementation_digest": commitments.adapter_implementation_digest,
             "condition_neutral_evidence_availability": self.condition_neutral_evidence_availability.to_dict(),
             "immediate_parents": [p.to_dict() for p in self.immediate_parents],
             "lineage_edges": [edge.to_dict() for edge in self.lineage_edges],
+            "raw_record_digest": commitments.raw_record_digest,
         }
         if self.logical_lineage_id is not None:
             body["logical_lineage_id"] = self.logical_lineage_id
-        if self.raw_record_digest is not None:
-            body["raw_record_digest"] = self.raw_record_digest
-        if self.attachment_reference_inventory_digest is not None:
-            body["attachment_reference_inventory_digest"] = self.attachment_reference_inventory_digest
-        if self.source_and_snapshot_identity_digest is not None:
-            body["source_and_snapshot_identity_digest"] = self.source_and_snapshot_identity_digest
+        if commitments.attachment_reference_inventory_digest is not None:
+            body["attachment_reference_inventory_digest"] = (
+                commitments.attachment_reference_inventory_digest
+            )
+        if commitments.source_and_snapshot_identity_digest is not None:
+            body["source_and_snapshot_identity_digest"] = (
+                commitments.source_and_snapshot_identity_digest
+            )
         return body
 
     def finalize_and_seal(
@@ -347,8 +416,8 @@ class EvidenceSealManifestDraftV2:
         *,
         seal_time: str,
         p0_repository: ConstructFreezeAuthorityRepository,
+        issuance_repository: IssuanceAuthorityRepository,
         lineage_repository: LineageAttestationRepository | None = None,
-        issuance_repository: IssuanceAuthorityRepository | None = None,
     ) -> "SealedP1AuthorityV2":
         has_attested_edges = any(edge.issuer_attested for edge in self.lineage_edges)
         if has_attested_edges and lineage_repository is None:
@@ -358,12 +427,14 @@ class EvidenceSealManifestDraftV2:
             construct_freeze_digest=self.construct_freeze_digest,
             p0_repository=p0_repository,
         )
-        _verify_lineage_edges(
-            edges=self.lineage_edges,
-            child_occurrence=self.issued_occurrence.occurrence_reference,
-            lineage_repository=lineage_repository or LineageAttestationRepository(),
-        )
+        if has_attested_edges:
+            _verify_lineage_edges(
+                edges=self.lineage_edges,
+                child_occurrence=self.issued_occurrence.occurrence_reference,
+                lineage_repository=lineage_repository or LineageAttestationRepository(),
+            )
         occ = self.issued_occurrence.occurrence_reference
+        commitments = self.evidence_commitments
         construct_parent = next(p for p in self.immediate_parents if p.parent_kind == "construct_freeze")
         placeholder_header = ArtifactHeaderV1(
             artifact_id="pending",
@@ -388,17 +459,17 @@ class EvidenceSealManifestDraftV2:
             physical_instance_id=occ.physical_source_instance_id,
             revision_or_asof_id=occ.source_revision_or_asof_id,
             evidence_snapshot_id=self.issued_occurrence.evidence_snapshot_id,
-            evidence_complete_envelope_digest=self.evidence_complete_envelope_digest,
-            canonical_content_digest=self.canonical_content_digest,
-            canonicalization_profile_digest=self.canonicalization_profile_digest,
-            adapter_implementation_digest=self.adapter_implementation_digest,
+            evidence_complete_envelope_digest=commitments.evidence_complete_envelope_digest,
+            canonical_content_digest=commitments.canonical_content_digest,
+            canonicalization_profile_digest=commitments.canonicalization_profile_digest,
+            adapter_implementation_digest=commitments.adapter_implementation_digest,
             condition_neutral_evidence_availability=self.condition_neutral_evidence_availability,
             immediate_parents=self.immediate_parents,
             logical_lineage_id=self.logical_lineage_id,
             lineage_edges=list(self.lineage_edges),
-            raw_record_digest=self.raw_record_digest,
-            attachment_reference_inventory_digest=self.attachment_reference_inventory_digest,
-            source_and_snapshot_identity_digest=self.source_and_snapshot_identity_digest,
+            raw_record_digest=commitments.raw_record_digest,
+            attachment_reference_inventory_digest=commitments.attachment_reference_inventory_digest,
+            source_and_snapshot_identity_digest=commitments.source_and_snapshot_identity_digest,
         )
         content_digest = _compute_manifest_content_digest(placeholder.to_dict())
         artifact_id = _derive_artifact_id(schema=EvidenceSealManifestV2.SCHEMA, content_digest=content_digest)
@@ -425,17 +496,17 @@ class EvidenceSealManifestDraftV2:
             physical_instance_id=occ.physical_source_instance_id,
             revision_or_asof_id=occ.source_revision_or_asof_id,
             evidence_snapshot_id=self.issued_occurrence.evidence_snapshot_id,
-            evidence_complete_envelope_digest=self.evidence_complete_envelope_digest,
-            canonical_content_digest=self.canonical_content_digest,
-            canonicalization_profile_digest=self.canonicalization_profile_digest,
-            adapter_implementation_digest=self.adapter_implementation_digest,
+            evidence_complete_envelope_digest=commitments.evidence_complete_envelope_digest,
+            canonical_content_digest=commitments.canonical_content_digest,
+            canonicalization_profile_digest=commitments.canonicalization_profile_digest,
+            adapter_implementation_digest=commitments.adapter_implementation_digest,
             condition_neutral_evidence_availability=self.condition_neutral_evidence_availability,
             immediate_parents=self.immediate_parents,
             logical_lineage_id=self.logical_lineage_id,
             lineage_edges=list(self.lineage_edges),
-            raw_record_digest=self.raw_record_digest,
-            attachment_reference_inventory_digest=self.attachment_reference_inventory_digest,
-            source_and_snapshot_identity_digest=self.source_and_snapshot_identity_digest,
+            raw_record_digest=commitments.raw_record_digest,
+            attachment_reference_inventory_digest=commitments.attachment_reference_inventory_digest,
+            source_and_snapshot_identity_digest=commitments.source_and_snapshot_identity_digest,
         )
         canonical_bytes = canonical_artifact_bytes(manifest.to_dict())
         sealed = SealedP1AuthorityV2(
@@ -471,8 +542,8 @@ def _verify_issuer_implementation_revision(declared: str) -> None:
 def _verify_issuance_authority(
     manifest: EvidenceSealManifestV2,
     *,
-    issuance_repository: IssuanceAuthorityRepository | None = None,
-) -> None:
+    issuance_repository: IssuanceAuthorityRepository,
+) -> IssuanceAuthorityRecordV2:
     if not manifest.occurrence_issuance_digest:
         raise StructuralContractError("P1 authority: missing occurrence issuance digest")
     if not manifest.source_authority_digest:
@@ -486,16 +557,61 @@ def _verify_issuance_authority(
     expected = hashlib.sha256(canonical_artifact_bytes(body)).hexdigest()
     if expected != manifest.occurrence_issuance_digest:
         raise StructuralContractError("P1 authority: occurrence issuance digest mismatch")
-    repo = issuance_repository or _DEFAULT_ISSUANCE_REPOSITORY
-    issued = repo.resolve(manifest.occurrence_issuance_digest)
-    if issued.source_authority_digest != manifest.source_authority_digest:
+    record = issuance_repository.resolve(manifest.occurrence_issuance_digest)
+    if record.source_authority_digest != manifest.source_authority_digest:
         raise StructuralContractError("P1 authority: source authority digest mismatch")
-    if not issued.occurrence_reference.same_occurrence_as(manifest.occurrence_reference):
+    if not record.occurrence_reference.same_occurrence_as(manifest.occurrence_reference):
         raise StructuralContractError("P1 authority: occurrence reference mismatch")
-    if issued.evidence_snapshot_id != manifest.evidence_snapshot_id:
+    if record.evidence_snapshot_id != manifest.evidence_snapshot_id:
         raise StructuralContractError("P1 authority: evidence snapshot mismatch")
-    if issued.issuer_implementation_revision != manifest.issuer_implementation_revision:
+    if record.issuer_implementation_revision != manifest.issuer_implementation_revision:
         raise StructuralContractError("P1 authority: issuer revision mismatch on issuance record")
+    return record
+
+
+def _verify_evidence_commitments(
+    manifest: EvidenceSealManifestV2,
+    *,
+    issuance_record: IssuanceAuthorityRecordV2,
+) -> None:
+    if manifest.raw_record_digest is None:
+        raise StructuralContractError("P1 authority: missing raw record commitment")
+    recomputed = recompute_evidence_commitments_from_manifest(
+        source_capture_digest=issuance_record.source_capture_digest,
+        source_authority_digest=manifest.source_authority_digest,
+        occurrence=manifest.occurrence_reference,
+        evidence_snapshot_id=manifest.evidence_snapshot_id,
+        raw_record_digest=manifest.raw_record_digest,
+        canonical_content_digest=manifest.canonical_content_digest,
+        canonicalization_profile_digest=manifest.canonicalization_profile_digest,
+        adapter_implementation_digest=manifest.adapter_implementation_digest,
+        attachment_reference_inventory_digest=manifest.attachment_reference_inventory_digest,
+    )
+    recomputed.verify_against_manifest_fields(
+        source_authority_digest=manifest.source_authority_digest,
+        evidence_snapshot_id=manifest.evidence_snapshot_id,
+        evidence_complete_envelope_digest=manifest.evidence_complete_envelope_digest,
+        canonical_content_digest=manifest.canonical_content_digest,
+        canonicalization_profile_digest=manifest.canonicalization_profile_digest,
+        adapter_implementation_digest=manifest.adapter_implementation_digest,
+        raw_record_digest=manifest.raw_record_digest,
+        attachment_reference_inventory_digest=manifest.attachment_reference_inventory_digest,
+        source_and_snapshot_identity_digest=manifest.source_and_snapshot_identity_digest,
+    )
+
+
+def _verify_header_parent_binding(manifest: EvidenceSealManifestV2) -> None:
+    construct_parents = [
+        p for p in manifest.immediate_parents if p.parent_kind == "construct_freeze"
+    ]
+    if len(construct_parents) != 1:
+        raise StructuralContractError("exactly one construct_freeze parent required")
+    parent = construct_parents[0]
+    header = manifest.header
+    if header.parent_artifact_id != parent.parent_artifact_id:
+        raise StructuralContractError("P1 authority: header parent_artifact_id mismatch")
+    if header.parent_digest != parent.parent_digest:
+        raise StructuralContractError("P1 authority: header parent_digest mismatch")
 
 
 def verify_sealed_p1_authority(
@@ -507,6 +623,8 @@ def verify_sealed_p1_authority(
 ) -> SealedP1AuthorityV2:
     if p0_repository is None:
         raise StructuralContractError("P1 authority: construct-freeze repository required")
+    if issuance_repository is None:
+        raise StructuralContractError("P1 authority: issuance repository required")
     if isinstance(authority, dict):
         manifest = EvidenceSealManifestV2.from_dict(authority)
         canonical_bytes = canonical_artifact_bytes(manifest.to_dict())
@@ -532,7 +650,11 @@ def verify_sealed_p1_authority(
     if not header.content_digest:
         raise StructuralContractError("P1 authority: missing content_digest")
     _verify_issuer_implementation_revision(manifest.issuer_implementation_revision)
-    _verify_issuance_authority(manifest, issuance_repository=issuance_repository)
+    issuance_record = _verify_issuance_authority(
+        manifest, issuance_repository=issuance_repository
+    )
+    _verify_evidence_commitments(manifest, issuance_record=issuance_record)
+    _verify_header_parent_binding(manifest)
     recomputed = _compute_manifest_content_digest(manifest.to_dict())
     if recomputed != header.content_digest:
         raise StructuralContractError("P1 authority: content digest mismatch")
@@ -569,9 +691,12 @@ def reject_raw_unfinalized_p1(
     manifest: EvidenceSealManifestV2,
     *,
     p0_repository: ConstructFreezeAuthorityRepository | None = None,
+    issuance_repository: IssuanceAuthorityRepository | None = None,
 ) -> None:
     if p0_repository is None:
         raise StructuralContractError("P1 authority: construct-freeze repository required")
+    if issuance_repository is None:
+        raise StructuralContractError("P1 authority: issuance repository required")
     if not manifest.header.sealed:
         raise StructuralContractError("raw P1 manifest: sealed=false")
     if not manifest.occurrence_issuance_digest:
@@ -583,4 +708,5 @@ def reject_raw_unfinalized_p1(
             content_digest=_compute_manifest_content_digest(manifest.to_dict()),
         ),
         p0_repository=p0_repository,
+        issuance_repository=issuance_repository,
     )

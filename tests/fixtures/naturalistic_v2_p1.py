@@ -5,6 +5,7 @@ from __future__ import annotations
 from eval_naturalistic.v2.authority_issuance import (
     EvidenceSealManifestDraftV2,
     ImmediateParentBindingV2,
+    IssuanceAuthorityRepository,
     SealedP1AuthorityV2,
     issue_occurrence_reference,
 )
@@ -22,6 +23,7 @@ from eval_naturalistic.v2.evidence import (
     SummaryEvidenceAvailabilityV2,
     VerbatimEvidenceAvailabilityV2,
 )
+from eval_naturalistic.v2.evidence_commitments import bind_p1_evidence_commitments
 from eval_naturalistic.v2.identity import LineageEdgeV2, LineageRelationKind, OccurrenceReferenceV2
 from eval_naturalistic.v2.lineage_attestation import (
     LineageAttestationRepository,
@@ -43,6 +45,7 @@ ALT_DIGEST = "b" * 64
 CREATED_AT = "2026-08-31T00:00:00Z"
 SEAL_TIME = "2026-08-31T00:00:01Z"
 DEFAULT_ISSUER_IDENTITY = "capture-attestor-v1"
+DEFAULT_RAW_RECORD_DIGEST = "c" * 64
 
 
 def sample_p0_repository(
@@ -94,6 +97,7 @@ def build_source_capture_body(
     revision: str = "rev-1",
     namespace: str = "ns-a",
     snapshot_id: str = "snap-1",
+    raw_record_digest: str = DEFAULT_RAW_RECORD_DIGEST,
     issuer_capture_attestation: str | None = None,
 ) -> dict:
     body = {
@@ -106,6 +110,7 @@ def build_source_capture_body(
         "native_record_id": native_record,
         "source_revision_or_asof_id": revision,
         "evidence_snapshot_id": snapshot_id,
+        "raw_record_digest": raw_record_digest,
     }
     if issuer_capture_attestation is not None:
         body["issuer_capture_attestation"] = issuer_capture_attestation
@@ -183,8 +188,19 @@ def sample_verified_source_authority(**kwargs):
     return authority
 
 
+def sample_issuance_repository(**kwargs) -> IssuanceAuthorityRepository:
+    repo = IssuanceAuthorityRepository()
+    issue_occurrence_reference(sample_verified_source_authority(**kwargs), issuance_repository=repo)
+    return repo
+
+
 def sample_occurrence(**kwargs):
-    return issue_occurrence_reference(sample_verified_source_authority(**kwargs)).occurrence_reference
+    repo = IssuanceAuthorityRepository()
+    issued = issue_occurrence_reference(
+        sample_verified_source_authority(**kwargs),
+        issuance_repository=repo,
+    )
+    return issued.occurrence_reference
 
 
 def sample_availability(
@@ -203,6 +219,7 @@ def sample_availability(
 def sample_sealed_authority(
     *,
     p0_repository: InMemoryConstructFreezeRepository | None = None,
+    issuance_repository: IssuanceAuthorityRepository | None = None,
     lineage_edges: list[LineageEdgeV2] | None = None,
     lineage_repository: LineageAttestationRepository | None = None,
     occurrence: OccurrenceReferenceV2 | None = None,
@@ -212,6 +229,7 @@ def sample_sealed_authority(
     repo = p0_repository or sample_p0_repository()
     parent = sample_construct_parent(repo)
     construct_digest = construct_freeze_content_digest(repo)
+    issuance_repo = issuance_repository or IssuanceAuthorityRepository()
     if occurrence is not None:
         capture_body = build_source_capture_body(
             physical_instance=occurrence.physical_source_instance_id,
@@ -228,18 +246,24 @@ def sample_sealed_authority(
                 "native_id_namespace": occurrence.native_id_namespace,
             }
         )
-        _, _, authority = seal_verified_source_capture(capture_body)
-        issued = issue_occurrence_reference(authority)
+        capture, att_repo, authority = seal_verified_source_capture(capture_body)
+        issued = issue_occurrence_reference(authority, issuance_repository=issuance_repo)
     else:
-        issued = issue_occurrence_reference(sample_verified_source_authority())
+        capture, att_repo, authority = seal_verified_source_capture(build_source_capture_body())
+        issued = issue_occurrence_reference(authority, issuance_repository=issuance_repo)
+    commitments = bind_p1_evidence_commitments(
+        sealed_capture=capture,
+        verified_authority=authority,
+        attestation_repository=att_repo,
+        canonical_content_digest=canonical_content_digest,
+        canonicalization_profile_digest=FIXED_DIGEST,
+        adapter_implementation_digest=FIXED_DIGEST,
+    )
     draft = EvidenceSealManifestDraftV2(
         construct_freeze_digest=construct_digest,
         episode_id="episode-1",
         issued_occurrence=issued,
-        evidence_complete_envelope_digest=FIXED_DIGEST,
-        canonical_content_digest=canonical_content_digest,
-        canonicalization_profile_digest=FIXED_DIGEST,
-        adapter_implementation_digest=FIXED_DIGEST,
+        evidence_commitments=commitments,
         condition_neutral_evidence_availability=availability or sample_availability(),
         immediate_parents=(parent,),
         responsible_role="evidence_capture",
@@ -250,6 +274,56 @@ def sample_sealed_authority(
         seal_time=SEAL_TIME,
         p0_repository=repo,
         lineage_repository=lineage_repository,
+        issuance_repository=issuance_repo,
+    )
+
+
+def sample_sealed_authority_bundle(
+    **kwargs,
+) -> tuple[SealedP1AuthorityV2, InMemoryConstructFreezeRepository, IssuanceAuthorityRepository]:
+    p0_repo = kwargs.pop("p0_repository", None) or sample_p0_repository()
+    issuance_repo = kwargs.pop("issuance_repository", None) or IssuanceAuthorityRepository()
+    sealed = sample_sealed_authority(
+        p0_repository=p0_repo,
+        issuance_repository=issuance_repo,
+        **kwargs,
+    )
+    return sealed, p0_repo, issuance_repo
+
+
+def build_p1_draft(
+    *,
+    p0_repository: InMemoryConstructFreezeRepository,
+    issuance_repository: IssuanceAuthorityRepository,
+    issued=None,
+    evidence_commitments=None,
+    lineage_edges=None,
+    episode_id: str = "episode-1",
+) -> EvidenceSealManifestDraftV2:
+    construct_digest = construct_freeze_content_digest(p0_repository)
+    if issued is None:
+        capture, att_repo, authority = seal_verified_source_capture(build_source_capture_body())
+        issued = issue_occurrence_reference(authority, issuance_repository=issuance_repository)
+        evidence_commitments = evidence_commitments or bind_p1_evidence_commitments(
+            sealed_capture=capture,
+            verified_authority=authority,
+            attestation_repository=att_repo,
+            canonical_content_digest=FIXED_DIGEST,
+            canonicalization_profile_digest=FIXED_DIGEST,
+            adapter_implementation_digest=FIXED_DIGEST,
+        )
+    if evidence_commitments is None:
+        raise ValueError("evidence_commitments required when issued is supplied")
+    return EvidenceSealManifestDraftV2(
+        construct_freeze_digest=construct_digest,
+        episode_id=episode_id,
+        issued_occurrence=issued,
+        evidence_commitments=evidence_commitments,
+        condition_neutral_evidence_availability=sample_availability(),
+        immediate_parents=(sample_construct_parent(p0_repository),),
+        responsible_role="evidence_capture",
+        created_at=CREATED_AT,
+        lineage_edges=lineage_edges or [],
     )
 
 

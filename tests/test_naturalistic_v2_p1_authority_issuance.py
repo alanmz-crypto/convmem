@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from eval_naturalistic.base import StructuralContractError
 from eval_naturalistic.v2.authority_issuance import (
     EvidenceSealManifestDraftV2,
+    IssuanceAuthorityRepository,
     IssuedOccurrenceReferenceV2,
     SealedP1AuthorityV2,
     issue_occurrence_reference,
@@ -39,54 +40,60 @@ from tests.fixtures.naturalistic_v2_p1 import (
     sample_occurrence,
     sample_p0_repository,
     sample_seal_manifest,
-    sample_sealed_authority,
+    sample_sealed_authority_bundle,
+    build_p1_draft,
     sample_verified_source_authority,
 )
 
 
 class NaturalisticV2P1AuthorityIssuanceTests(unittest.TestCase):
+    def _sealed_context(self) -> tuple[dict, InMemoryConstructFreezeRepository, IssuanceAuthorityRepository]:
+        sealed, p0_repo, issuance_repo = sample_sealed_authority_bundle()
+        return sealed.to_dict(), p0_repo, issuance_repo
+
     def _sealed_dict(self) -> dict:
-        repo = sample_p0_repository()
-        sealed = sample_sealed_authority(p0_repository=repo)
-        return sealed.to_dict()
+        data, _, _ = self._sealed_context()
+        return data
 
     def test_valid_issuance_succeeds(self) -> None:
-        issued = issue_occurrence_reference(sample_verified_source_authority())
+        repo = IssuanceAuthorityRepository()
+        issued = issue_occurrence_reference(
+            sample_verified_source_authority(), issuance_repository=repo
+        )
         self.assertTrue(issued.issuance_digest)
         self.assertTrue(issued.issuer_implementation_revision)
 
     def test_sealed_bytes_reconstruct_independently(self) -> None:
-        repo = sample_p0_repository()
-        sealed = sample_sealed_authority(p0_repository=repo)
+        sealed, repo, issuance_repo = sample_sealed_authority_bundle()
         reparsed = verify_sealed_p1_authority(
-            sealed.to_dict(), p0_repository=repo
+            sealed.to_dict(), p0_repository=repo, issuance_repository=issuance_repo
         )
         self.assertEqual(sealed.content_digest, reparsed.content_digest)
 
     def test_digest_id_recomputation_succeeds(self) -> None:
-        repo = sample_p0_repository()
-        sealed = sample_sealed_authority(p0_repository=repo)
+        sealed, _, _ = sample_sealed_authority_bundle()
         self.assertEqual(sealed.manifest.header.content_digest, sealed.content_digest)
 
     def test_required_parents_verify(self) -> None:
-        repo = sample_p0_repository()
-        sealed = sample_sealed_authority(p0_repository=repo)
+        sealed, _, _ = sample_sealed_authority_bundle()
         parents = sealed.manifest.immediate_parents
         self.assertTrue(any(p.parent_kind == "construct_freeze" for p in parents))
 
     def test_sealed_false_rejected(self) -> None:
-        repo = sample_p0_repository()
-        data = self._sealed_dict()
+        data, p0_repo, issuance_repo = self._sealed_context()
         data["header"]["sealed"] = False
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
     def test_missing_seal_time_rejected(self) -> None:
-        repo = sample_p0_repository()
-        data = self._sealed_dict()
+        data, p0_repo, issuance_repo = self._sealed_context()
         del data["header"]["seal_time"]
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
     def test_malformed_seal_time_rejected(self) -> None:
         data = self._sealed_dict()
@@ -95,65 +102,75 @@ class NaturalisticV2P1AuthorityIssuanceTests(unittest.TestCase):
             parse_evidence_seal_manifest_v2(data)
 
     def test_mismatched_content_digest_rejected(self) -> None:
-        repo = sample_p0_repository()
-        data = self._sealed_dict()
+        data, p0_repo, issuance_repo = self._sealed_context()
         data["header"]["content_digest"] = ALT_DIGEST
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
     def test_mismatched_artifact_id_rejected(self) -> None:
-        repo = sample_p0_repository()
-        data = self._sealed_dict()
+        data, p0_repo, issuance_repo = self._sealed_context()
         data["header"]["artifact_id"] = "nps2_wrong_artifact_id"
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
     def test_wrong_artifact_kind_rejected(self) -> None:
-        repo = sample_p0_repository()
-        data = self._sealed_dict()
+        data, p0_repo, issuance_repo = self._sealed_context()
         data["header"]["schema_version"] = "convmem/naturalistic/raw-evidence-manifest-v1"
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
     def test_wrong_stage_rejected(self) -> None:
-        repo = sample_p0_repository()
-        data = self._sealed_dict()
+        data, p0_repo, issuance_repo = self._sealed_context()
         data["header"]["schema_version"] = "convmem/naturalistic/v2/wrong-stage-v2"
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
     def test_missing_required_parent_rejected(self) -> None:
-        repo = sample_p0_repository()
-        data = self._sealed_dict()
+        data, p0_repo, issuance_repo = self._sealed_context()
         data["immediate_parents"] = []
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
     def test_wrong_parent_digest_rejected(self) -> None:
-        repo = sample_p0_repository()
-        data = sample_sealed_authority(p0_repository=repo).to_dict()
+        sealed, p0_repo, issuance_repo = sample_sealed_authority_bundle()
+        data = sealed.to_dict()
         data["immediate_parents"][0]["parent_digest"] = ALT_DIGEST
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
     def test_construct_freeze_mismatch_rejected(self) -> None:
-        repo = sample_p0_repository()
-        data = sample_sealed_authority(p0_repository=repo).to_dict()
+        sealed, p0_repo, issuance_repo = sample_sealed_authority_bundle()
+        data = sealed.to_dict()
         data["construct_freeze_digest"] = ALT_DIGEST
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
     def test_post_seal_body_mutation_rejected(self) -> None:
-        repo = sample_p0_repository()
-        data = self._sealed_dict()
+        data, p0_repo, issuance_repo = self._sealed_context()
         data["episode_id"] = "mutated-episode"
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
     def test_verify_without_p0_repository_rejected(self) -> None:
-        data = self._sealed_dict()
+        data, _, issuance_repo = self._sealed_context()
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data)
+            verify_sealed_p1_authority(data, issuance_repository=issuance_repo)
 
     def test_arbitrary_occurrence_strings_not_issued_identity(self) -> None:
         repo = sample_p0_repository()
@@ -188,19 +205,23 @@ class NaturalisticV2P1AuthorityIssuanceTests(unittest.TestCase):
 
     def test_native_id_reuse_after_delete_recreate(self) -> None:
         first = issue_occurrence_reference(
-            sample_verified_source_authority(physical_instance="inst-1")
+            sample_verified_source_authority(physical_instance="inst-1"),
+            issuance_repository=IssuanceAuthorityRepository(),
         )
         second = issue_occurrence_reference(
-            sample_verified_source_authority(physical_instance="inst-2")
+            sample_verified_source_authority(physical_instance="inst-2"),
+            issuance_repository=IssuanceAuthorityRepository(),
         )
         self.assertNotEqual(first.issuance_digest, second.issuance_digest)
 
     def test_clone_import_restore_collision(self) -> None:
         original = issue_occurrence_reference(
-            sample_verified_source_authority(physical_instance="orig")
+            sample_verified_source_authority(physical_instance="orig"),
+            issuance_repository=IssuanceAuthorityRepository(),
         )
         clone = issue_occurrence_reference(
-            sample_verified_source_authority(physical_instance="clone", namespace="ns-clone")
+            sample_verified_source_authority(physical_instance="clone", namespace="ns-clone"),
+            issuance_repository=IssuanceAuthorityRepository(),
         )
         self.assertNotEqual(original.issuance_digest, clone.issuance_digest)
 
@@ -247,8 +268,8 @@ class NaturalisticV2P1AuthorityIssuanceTests(unittest.TestCase):
         edge = clone_lineage_edge(
             child_occurrence=child,
             parent_occurrence=parent,
-            from_instance="phys-a",
-            to_instance="phys-b",
+            from_instance="phys-b",
+            to_instance="phys-a",
             lineage_repository=repo,
         )
         with self.assertRaises(StructuralContractError):
@@ -260,21 +281,9 @@ class NaturalisticV2P1AuthorityIssuanceTests(unittest.TestCase):
             )
 
     def test_raw_unfinalized_p1_rejected_by_consumer(self) -> None:
-        repo = sample_p0_repository()
-        issued = issue_occurrence_reference(sample_verified_source_authority())
-        draft = EvidenceSealManifestDraftV2(
-            construct_freeze_digest=construct_freeze_content_digest(repo),
-            episode_id="episode-1",
-            issued_occurrence=issued,
-            evidence_complete_envelope_digest=FIXED_DIGEST,
-            canonical_content_digest=FIXED_DIGEST,
-            canonicalization_profile_digest=FIXED_DIGEST,
-            adapter_implementation_digest=FIXED_DIGEST,
-            condition_neutral_evidence_availability=sample_availability(),
-            immediate_parents=(sample_construct_parent(repo),),
-            responsible_role="evidence_capture",
-            created_at="2026-08-31T00:00:00Z",
-        )
+        p0_repo = sample_p0_repository()
+        issuance_repo = IssuanceAuthorityRepository()
+        draft = build_p1_draft(p0_repository=p0_repo, issuance_repository=issuance_repo)
         body = draft._body_without_seal_metadata()
         with self.assertRaises(StructuralContractError):
             parse_evidence_seal_manifest_v2({
@@ -286,15 +295,16 @@ class NaturalisticV2P1AuthorityIssuanceTests(unittest.TestCase):
                     "sealed": False,
                 },
                 **body,
-            })
+            }, p0_repository=p0_repo, issuance_repository=issuance_repo)
 
     def test_finalized_bytes_modified_after_issuance_rejected(self) -> None:
-        repo = sample_p0_repository()
-        sealed = sample_sealed_authority(p0_repository=repo)
+        sealed, p0_repo, issuance_repo = sample_sealed_authority_bundle()
         data = sealed.to_dict()
         data["canonical_content_digest"] = ALT_DIGEST
         with self.assertRaises(StructuralContractError):
-            verify_sealed_p1_authority(data, p0_repository=repo)
+            verify_sealed_p1_authority(
+                data, p0_repository=p0_repo, issuance_repository=issuance_repo
+            )
 
 
 if __name__ == "__main__":

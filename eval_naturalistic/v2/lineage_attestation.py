@@ -193,6 +193,18 @@ def verify_lineage_edge_attestation(
         return
     if edge.attestation_evidence_digest is None:
         raise StructuralContractError("issuer_attested lineage requires attestation artifact")
+    if edge.from_physical_instance_id != parent_occurrence.physical_source_instance_id:
+        raise StructuralContractError(
+            "lineage edge from_physical_instance_id must match parent occurrence"
+        )
+    if edge.to_physical_instance_id != child_occurrence.physical_source_instance_id:
+        raise StructuralContractError(
+            "lineage edge to_physical_instance_id must match child occurrence"
+        )
+    if not edge.preserves_physical_separation():
+        raise StructuralContractError(
+            "lineage edge must preserve physical instance separation"
+        )
     artifact = repository.resolve(edge.attestation_evidence_digest)
     if artifact.logical_lineage_id != edge.logical_lineage_id:
         raise StructuralContractError("lineage attestation logical_lineage_id mismatch")
