@@ -1,30 +1,42 @@
-# convmem — Conversation Memory for AI Coding Assistants
+# convmem — Personal conversation memory and evidence retrieval for AI coding assistants
 
-Local-first system that ingests AI chat logs and **tool-sourced evidence** into ChromaDB, then lets you search, ask (RAG), verify, and traverse evidence chains.
+A local-first system I use to ingest AI chat logs and **tool-sourced evidence** into ChromaDB, then search, ask (RAG), verify, and traverse evidence chains.
 
-**No cloud database. No web app.** File-based config + Chroma on disk. `convmem ask` uses **DeepSeek v4** (`deepseek-v4-flash`) when `DEEPSEEK_API_KEY` is set.
+**Storage is local:** Chroma and the corpus live on the workstation; there is no cloud database or web app. If `DEEPSEEK_API_KEY` is configured, retrieved context may be sent to the configured generation model for synthesis. My current configuration uses `deepseek-v4-flash`.
 
 ---
 
-## What this does now
+## Status: Personal project
+
+This is an actively developed personal research/tooling repository. The codebase may contain experimental code, rough edges, abandoned approaches, and inconsistent organization. It’s public because I’m happy for people to inspect or use it, but it’s optimized for my own workflow rather than for being a polished general-purpose project. Contributions and cleanup are not expected.
+
+This README serves two purposes: it explains the architecture for curious readers and records the operational commands I use on my own workstation. Paths, hosts, model names, and deployment instructions below may be specific to my setup. If you are an agent helping with this repository, read [`AGENTS.md`](AGENTS.md) for repository workflow and safety rules; this README is project and personal-operations context.
+
+> **Personal-data warning:** My local corpus contains real AI conversations and security findings. The repository does not contain that corpus, but do not publish or share `~/.local/share/convmem/`.
+
+---
+
+## What I use it for now
+
+These are current personal capabilities, not a promise that every path is mature or supported as a general-purpose product.
 
 1. **Harvests** chat history (Cursor, Kiro, Continue, Aider, Crush, Open WebUI) → distilled knowledge units
 2. **Ingests** scanner observations (wp-sec, Lighthouse) via `convmem add` with stable ledger ids
 3. **Searches** via embedding + optional cross-encoder rerank
-4. **Answers** with citations via `convmem ask` (DeepSeek synthesizes from retrieved excerpts)
+4. **Answers** with citations via `convmem ask` (the configured model synthesizes from retrieved excerpts)
 5. **Verifies** cross-model checks via `convmem verify`
 6. **Traverses** evidence graphs via `convmem related`
 7. **Re-ranks** ask results by resolution status via `convmem ask --evidence`
 
-Past conversations and security findings become a **queryable evidence bus** — not live agent-to-agent chat.
+Past conversations and security findings become a **queryable evidence layer** — not live agent-to-agent chat.
 
-**Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
+**Personal development roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
 
-**First webdev target:** `staging2.willowyhollow.com`
+**Current personal deployment:** `staging2.willowyhollow.com`
 
 ---
 
-## Quick start (existing install)
+## Quick start (existing personal install)
 
 ```bash
 source ~/.config/convmem/env.local   # DEEPSEEK_API_KEY + convmem alias
@@ -53,7 +65,7 @@ Tools (wp-sec, Lighthouse) ──► observe.py (add/upsert) ──┘
         ┌───────────────────────────────┼───────────────────────────────┐
         ▼                               ▼                               ▼
    query / search                   convmem ask                    convmem related
-   (semantic)                  (RAG + DeepSeek v4)              (graph traversal)
+   (semantic)             (RAG + configured model)              (graph traversal)
                                         │
                               ask --evidence (evidence.py)
                               unresolved > failed > resolved
@@ -65,7 +77,9 @@ Tools (wp-sec, Lighthouse) ──► observe.py (add/upsert) ──┘
 
 ---
 
-## Milestones (signed off)
+## Personal development milestones
+
+These are internal checkpoints for my own development, not a public release roadmap.
 
 | Milestone | What | Key commands / files |
 |-----------|------|---------------------|
@@ -94,7 +108,7 @@ convmem ask -i                                 # interactive multi-turn
 
 `--evidence` re-ranks by ledger graph: prefers **unresolved** observations and **failed** verifications; deprioritizes resolved/passed. Does not auto-detect intent — flag must be explicit. Skips raw-summary hybrid fallback.
 
-**Ask model:** `config.toml` → `[models] distill_model = "deepseek-v4-flash"`. Requires `DEEPSEEK_API_KEY` in `~/.config/convmem/env.local`.
+**Ask model:** `config.toml` → `[models] distill_model = "deepseek-v4-flash"` in my current setup. The generation model is configurable and requires `DEEPSEEK_API_KEY` in `~/.config/convmem/env.local` when using DeepSeek.
 
 ### Evidence ledger
 
@@ -122,7 +136,7 @@ convmem open PATH
 ```bash
 convmem refine --once --job chroma_dedupe --limit 20
 convmem refine --once --job confidence_audit
-convmem refine --once --job backfill_domain --limit 10   # LLM — uses DeepSeek
+convmem refine --once --job backfill_domain --limit 10   # LLM — uses configured model
 convmem refine --stats
 convmem refine                     # daemon (systemd user units)
 convmem monitor --site staging2.willowyhollow.com          # F2b HTTP probes
@@ -185,17 +199,19 @@ See `examples/chain-demo.md` and `examples/AGENTS-FLOW.md`.
 | `verify.py` | Cross-model verification |
 | `export_lighthouse.py` | Lighthouse LHR → observations.jsonl |
 | `export_report_to_observations.py` | wp-sec results → observations.jsonl |
-| `ask.py` | RAG: retrieve → DeepSeek answer + citations |
+| `ask.py` | RAG: retrieve → configured model answer + citations |
 | `query.py` | Retrieval, rerank, Rich display |
 | `chroma_store.py` | `add_unit`, `update_unit` (doc+embed+meta) |
-| `llm.py` | Ollama embed + DeepSeek generate |
+| `llm.py` | Ollama embedding + configured generation |
 | `domains.py` | Domain taxonomy + hierarchical filter |
 | `scripts/ingest-wp-sec.sh`, `ingest-lighthouse.sh` | Scanner → export → add |
 | `tests/` | Unit tests (see below) |
 
 ---
 
-## Setup (fresh machine)
+## Personal workstation setup
+
+The commands below describe the setup I use on my own workstation. Paths and environment details may need to be adapted elsewhere.
 
 ### Dependencies
 
@@ -251,9 +267,9 @@ convmem stats
 
 ---
 
-## Testing guide (for DeepSeek v4 / automated QA)
+## My current QA workflow
 
-DeepSeek's role: run `convmem ask`, evaluate answer quality against retrieved citations, and report gaps. Use the checklist below.
+This is my current personal QA workflow. It uses the configured generation model (currently DeepSeek v4) to run `convmem ask`, evaluate answer quality against retrieved citations, and report gaps. Use the checklist below as an operating guide, not as a complete public test contract.
 
 ### 1. Unit tests (no API key needed)
 
@@ -357,11 +373,13 @@ Rerank: fetch 20 → CrossEncoder → top 5 (`[query] rerank = true`). Displayed
 | `units_export` on upsert | `knowledge_units.jsonl` only appends on add, not update |
 | `find_unit_by_ledger_id` | Full metadata scan; fine at ~1.5k units |
 | OpenClaw probes | Milestone D deferred |
-| Privacy | Index contains real conversations — don't share `~/.local/share/convmem/` |
+| Personal data | The index contains real conversations — don't share `~/.local/share/convmem/` |
 
 ---
 
-## Agent roles
+## Agents in my current workflow
+
+These roles describe how I currently use multiple agents around this repository; they are not a required public contribution model.
 
 | Agent | Role |
 |-------|------|
@@ -374,7 +392,9 @@ Workflow: `examples/AGENTS-FLOW.md`
 
 ---
 
-## Build history
+## Personal build history
+
+This records internal implementation steps, not a public release history.
 
 | Step | Shipped |
 |------|---------|
