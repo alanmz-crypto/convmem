@@ -28,6 +28,7 @@ class ConstructFreezeManifestV2:
     construct_policy_digest: str
     study_id: str
     authorized_capture_issuer_grants: tuple[dict[str, str], ...]
+    _issuer_grants_field_present: bool = field(default=True, repr=False, compare=False)
 
     _FIELDS = {
         "header",
@@ -43,6 +44,7 @@ class ConstructFreezeManifestV2:
         header = ArtifactHeaderV1.from_dict(_require_dict(data["header"], "header"))
         if header.schema_version != CONSTRUCT_FREEZE_SCHEMA:
             raise StructuralContractError("construct freeze: wrong schema_version")
+        grants_field_present = "authorized_capture_issuer_grants" in data
         grants_raw = data.get("authorized_capture_issuer_grants", [])
         if not isinstance(grants_raw, list):
             raise StructuralContractError("construct freeze: authorized_capture_issuer_grants must be a list")
@@ -52,15 +54,35 @@ class ConstructFreezeManifestV2:
             construct_policy_digest=_require_str(data["construct_policy_digest"], "construct_policy_digest"),
             study_id=_require_str(data["study_id"], "study_id"),
             authorized_capture_issuer_grants=grants,
+            _issuer_grants_field_present=grants_field_present,
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        data = {
             "header": self.header.to_dict(),
             "construct_policy_digest": self.construct_policy_digest,
             "study_id": self.study_id,
-            "authorized_capture_issuer_grants": [dict(grant) for grant in self.authorized_capture_issuer_grants],
         }
+        if self._issuer_grants_field_present:
+            data["authorized_capture_issuer_grants"] = [
+                dict(grant) for grant in self.authorized_capture_issuer_grants
+            ]
+        return data
+
+    @classmethod
+    def from_canonical_bytes(cls, canonical_bytes: bytes) -> "ConstructFreezeManifestV2":
+        """Parse canonical P0 bytes without rewriting their field shape."""
+
+        import json
+
+        try:
+            data = json.loads(canonical_bytes.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise StructuralContractError("construct freeze: invalid canonical bytes") from exc
+        data = _require_dict(data, "ConstructFreezeManifestV2")
+        if canonical_artifact_bytes(data) != canonical_bytes:
+            raise StructuralContractError("construct freeze: canonical bytes mismatch")
+        return cls.from_dict(data)
 
 
 def _derive_artifact_id(*, schema: str, content_digest: str) -> str:
@@ -116,6 +138,7 @@ def seal_construct_freeze_manifest(
         construct_policy_digest=construct_policy_digest,
         study_id=study_id,
         authorized_capture_issuer_grants=authorized_capture_issuer_grants,
+        _issuer_grants_field_present=True,
     )
     verify_construct_freeze_manifest(manifest)
     return manifest

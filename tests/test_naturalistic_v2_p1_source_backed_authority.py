@@ -23,7 +23,12 @@ from eval_naturalistic.v2.authority_issuance import (
     issue_occurrence_reference,
     verify_sealed_p1_authority,
 )
+from eval_naturalistic.v2.authority_substrate import (
+    resolve_shared_authority_source,
+    validate_authority_source,
+)
 from eval_naturalistic.v2.contracts import EvidenceSealManifestV2
+from eval_naturalistic.digest import canonical_artifact_bytes
 from eval_naturalistic.v2.evidence_commitments import bind_p1_evidence_commitments
 from eval_naturalistic.v2.identity import LineageEdgeV2, LineageRelationKind, OccurrenceReferenceV2
 from eval_naturalistic.v2.lineage_attestation import (
@@ -32,8 +37,10 @@ from eval_naturalistic.v2.lineage_attestation import (
     seal_lineage_attestation,
 )
 from eval_naturalistic.v2.p0_construct import (
+    ConstructFreezeManifestV2,
     InMemoryConstructFreezeRepository,
     seal_construct_freeze_manifest,
+    verify_construct_freeze_manifest,
 )
 from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
 from eval_naturalistic.v2.capture_attestation_issuance import issue_capture_attestation
@@ -73,6 +80,40 @@ from tests.fixtures.naturalistic_v2_p1 import (
     sample_sealed_authority_bundle,
     sample_verified_source_authority,
     seal_verified_source_capture,
+)
+
+
+class _ClaimantControlledAuthoritySource:
+    """Resolver-shaped test double with no host trust anchor.
+
+    The methods deliberately fail if invoked.  These tests exercise only the
+    authority-source admission boundary; they never resolve records or mint
+    downstream authority artifacts.
+    """
+
+    def resolve_construct_freeze(self, **_kwargs):
+        raise AssertionError("untrusted resolver must not resolve records")
+
+    def resolve_issuer_capability(self, **_kwargs):
+        raise AssertionError("untrusted resolver must not resolve records")
+
+    def resolve_capture_attestation(self, *_args):
+        raise AssertionError("untrusted resolver must not resolve records")
+
+    def resolve_source_capture(self, *_args):
+        raise AssertionError("untrusted resolver must not resolve records")
+
+    def resolve_issuance(self, *_args):
+        raise AssertionError("untrusted resolver must not resolve records")
+
+
+HISTORICAL_P0_CANONICAL_BYTES = (
+    b'{"construct_policy_digest":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",'
+    b'"header":{"artifact_id":"nps2_construct-freeze-manifest-v2_5891a86576157f9c740c58b77ff0cb352e69ea2efe86c1da93843c2d438a0ad1",'
+    b'"content_digest":"5891a86576157f9c740c58b77ff0cb352e69ea2efe86c1da93843c2d438a0ad1",'
+    b'"created_at":"2026-08-30T00:00:00Z","responsible_role":"study_owner",'
+    b'"schema_version":"convmem/naturalistic/v2/construct-freeze-manifest-v2",'
+    b'"seal_time":"2026-08-30T00:00:01Z","sealed":true},"study_id":"historical-study"}'
 )
 
 
@@ -1125,6 +1166,53 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
             issuance_repository=issuance_repo,
         )
         self.assertEqual(verified.content_digest, sealed.content_digest)
+
+    def test_security_claimant_resolver_is_rejected_at_explicit_boundary(self) -> None:
+        """A callable-shape resolver must not establish authority by itself."""
+
+        with self.assertRaises(StructuralContractError):
+            validate_authority_source(_ClaimantControlledAuthoritySource())
+
+    def test_security_claimant_resolver_is_rejected_when_repository_bound(self) -> None:
+        """Repository injection must not make a claimant resolver authoritative."""
+
+        source = _ClaimantControlledAuthoritySource()
+        repository = InMemoryConstructFreezeRepository(authority_source=source)
+        with self.assertRaises(StructuralContractError):
+            resolve_shared_authority_source(repositories=(repository,))
+
+    def test_historical_p0_without_grants_preserves_canonical_authority(self) -> None:
+        historical = ConstructFreezeManifestV2.from_canonical_bytes(
+            HISTORICAL_P0_CANONICAL_BYTES
+        )
+        verified = verify_construct_freeze_manifest(historical)
+
+        self.assertEqual(
+            verified.header.content_digest,
+            "5891a86576157f9c740c58b77ff0cb352e69ea2efe86c1da93843c2d438a0ad1",
+        )
+        self.assertEqual(
+            verified.header.artifact_id,
+            "nps2_construct-freeze-manifest-v2_5891a86576157f9c740c58b77ff0cb352e69ea2efe86c1da93843c2d438a0ad1",
+        )
+        self.assertNotIn("authorized_capture_issuer_grants", verified.to_dict())
+        self.assertEqual(
+            canonical_artifact_bytes(verified.to_dict()),
+            HISTORICAL_P0_CANONICAL_BYTES,
+        )
+
+    def test_modern_p0_explicit_empty_grants_remains_distinct(self) -> None:
+        modern = seal_construct_freeze_manifest(
+            construct_policy_digest=FIXED_DIGEST,
+            study_id="modern-study",
+            responsible_role="study_owner",
+            created_at=CREATED_AT,
+            seal_time=SEAL_TIME,
+            authorized_capture_issuer_grants=(),
+        )
+        self.assertIn("authorized_capture_issuer_grants", modern.to_dict())
+        self.assertEqual(modern.to_dict()["authorized_capture_issuer_grants"], [])
+        verify_construct_freeze_manifest(modern)
 
 
 if __name__ == "__main__":

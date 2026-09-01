@@ -10,6 +10,7 @@ from eval_naturalistic.v2.authority_issuance import (
     SealedP1AuthorityV2,
     issue_occurrence_reference,
 )
+from eval_naturalistic.v2.authority_substrate import _provision_host_authority_source
 from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
 from eval_naturalistic.v2.capture_attestation_issuance import issue_capture_attestation
 from eval_naturalistic.v2.contracts import (
@@ -66,6 +67,7 @@ class FixtureAuthoritySource:
     """
 
     def __init__(self) -> None:
+        _provision_host_authority_source(self)
         self.construct_freeze_repository = None
         self.capability_repository = None
         self.attestation_repository = None

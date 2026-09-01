@@ -9,6 +9,7 @@ never promotes a record solely because its digest is self-consistent.
 
 from __future__ import annotations
 
+import weakref
 from typing import TYPE_CHECKING, Any, Protocol
 
 from eval_naturalistic.base import StructuralContractError
@@ -63,16 +64,66 @@ _REQUIRED_SOURCE_METHODS = (
     "resolve_issuance",
 )
 
+# The resolver protocol is intentionally structural so a host integration can
+# implement it without inheriting from this package. Structural compatibility
+# is not authority, however. Host provisioning records the exact resolver
+# object in a private registry; claimant-created lookalikes cannot self-enroll
+# through any public API. A weak reference also avoids retaining authority
+# after a host integration has been torn down.
+_HOST_PROVISIONED_SOURCES: dict[int, weakref.ReferenceType[Any]] = {}
 
-def validate_authority_source(source: Any) -> IndependentAuthoritySourceV2:
-    """Require a resolver with every authority-bearing lookup operation."""
 
-    if source is None:
-        raise StructuralContractError("independent authority source required")
-    missing = [name for name in _REQUIRED_SOURCE_METHODS if not callable(getattr(source, name, None))]
+def _validate_source_shape(source: Any) -> None:
+    missing = [
+        name for name in _REQUIRED_SOURCE_METHODS
+        if not callable(getattr(source, name, None))
+    ]
     if missing:
         raise StructuralContractError(
             "independent authority source missing resolver(s): " + ", ".join(missing)
+        )
+
+
+def _forget_host_source(source_id: int, reference: weakref.ReferenceType[Any]) -> None:
+    if _HOST_PROVISIONED_SOURCES.get(source_id) is reference:
+        del _HOST_PROVISIONED_SOURCES[source_id]
+
+
+def _provision_host_authority_source(source: Any) -> IndependentAuthoritySourceV2:
+    """Register a resolver from the host-owned integration boundary.
+
+    This is an internal provisioning seam, not a claimant-facing factory. A
+    host owns the resolver's records and explicitly passes that resolver here;
+    authority paths accept only this exact provisioned object identity.
+    """
+
+    if source is None:
+        raise StructuralContractError("independent authority source required")
+    _validate_source_shape(source)
+    try:
+        source_id = id(source)
+        reference = weakref.ref(
+            source,
+            lambda ref: _forget_host_source(source_id, ref),
+        )
+    except TypeError as exc:
+        raise StructuralContractError(
+            "independent authority source must be host-provisioned and weak-referenceable"
+        ) from exc
+    _HOST_PROVISIONED_SOURCES[source_id] = reference
+    return source
+
+
+def validate_authority_source(source: Any) -> IndependentAuthoritySourceV2:
+    """Require a host-provisioned resolver with every authority lookup."""
+
+    if source is None:
+        raise StructuralContractError("independent authority source required")
+    _validate_source_shape(source)
+    provisioned = _HOST_PROVISIONED_SOURCES.get(id(source))
+    if provisioned is None or provisioned() is not source:
+        raise StructuralContractError(
+            "independent authority source must be provisioned by the host authority"
         )
     return source
 
