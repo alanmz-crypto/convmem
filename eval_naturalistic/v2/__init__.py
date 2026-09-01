@@ -14,6 +14,7 @@ from eval_naturalistic.v2.contracts import (
 )
 from eval_naturalistic.v2.evidence import ConditionNeutralEvidenceAvailabilityV2
 from eval_naturalistic.v2.identity import OccurrenceReferenceV2
+from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
 from eval_naturalistic.v2.lineage_attestation import LineageAttestationRepository
 from eval_naturalistic.v2.p0_construct import InMemoryConstructFreezeRepository
 from eval_naturalistic.v2.source_authority import (
@@ -24,6 +25,7 @@ from eval_naturalistic.v2.source_authority import (
 )
 
 __all__ = [
+    "CaptureAttestationRepository",
     "ConditionNeutralEvidenceAvailabilityV2",
     "EvidenceAvailabilityManifestV2",
     "EvidenceSealManifestDraftV2",
