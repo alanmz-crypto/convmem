@@ -1,11 +1,10 @@
-"""Hermetic fixtures for Naturalistic V2 P1 identity and evidence seal tests."""
+"""Hermetic fixtures for Naturalistic V2 P1 source-backed authority tests."""
 
 from __future__ import annotations
 
 from eval_naturalistic.v2.authority_issuance import (
     EvidenceSealManifestDraftV2,
     ImmediateParentBindingV2,
-    OccurrenceIssuanceEvidenceV2,
     SealedP1AuthorityV2,
     issue_occurrence_reference,
 )
@@ -19,39 +18,99 @@ from eval_naturalistic.v2.evidence import (
     SummaryEvidenceAvailabilityV2,
     VerbatimEvidenceAvailabilityV2,
 )
-from eval_naturalistic.v2.identity import LineageEdgeV2, LineageRelationKind
+from eval_naturalistic.v2.identity import LineageEdgeV2, LineageRelationKind, OccurrenceReferenceV2
+from eval_naturalistic.v2.lineage_attestation import (
+    LineageAttestationRepository,
+    occurrence_commitment_digest,
+    seal_lineage_attestation,
+)
+from eval_naturalistic.v2.p0_construct import (
+    ConstructFreezeManifestV2,
+    InMemoryConstructFreezeRepository,
+    seal_construct_freeze_manifest,
+)
+from eval_naturalistic.v2.source_authority import (
+    seal_source_capture_package,
+    verify_source_capture_authority,
+)
 
 FIXED_DIGEST = "a" * 64
 ALT_DIGEST = "b" * 64
-CONSTRUCT_FREEZE_ARTIFACT_ID = "nps2_construct_freeze_test"
 CREATED_AT = "2026-08-31T00:00:00Z"
 SEAL_TIME = "2026-08-31T00:00:01Z"
 
 
-def sample_issuance_evidence(
+def sample_p0_repository(
+    *,
+    construct_policy_digest: str = FIXED_DIGEST,
+) -> InMemoryConstructFreezeRepository:
+    repo = InMemoryConstructFreezeRepository()
+    manifest = seal_construct_freeze_manifest(
+        construct_policy_digest=construct_policy_digest,
+        study_id="study-naturalistic-v2-test",
+        responsible_role="study_owner",
+        created_at=CREATED_AT,
+        seal_time=SEAL_TIME,
+    )
+    repo.register(manifest)
+    return repo
+
+
+def registered_construct_freeze(
+    repo: InMemoryConstructFreezeRepository,
+) -> ConstructFreezeManifestV2:
+    return next(iter(repo._artifacts.values()))
+
+
+def construct_freeze_content_digest(repo: InMemoryConstructFreezeRepository) -> str:
+    manifest = registered_construct_freeze(repo)
+    digest = manifest.header.content_digest
+    if digest is None:
+        raise ValueError("registered construct freeze missing content digest")
+    return digest
+
+
+def sample_construct_parent(
+    repo: InMemoryConstructFreezeRepository,
+) -> ImmediateParentBindingV2:
+    manifest = registered_construct_freeze(repo)
+    digest = construct_freeze_content_digest(repo)
+    return ImmediateParentBindingV2(
+        parent_kind="construct_freeze",
+        parent_artifact_id=manifest.header.artifact_id,
+        parent_digest=digest,
+    )
+
+
+def build_source_capture_body(
     *,
     physical_instance: str = "phys-a",
     native_record: str = "msg-1",
     revision: str = "rev-1",
     namespace: str = "ns-a",
     snapshot_id: str = "snap-1",
-) -> OccurrenceIssuanceEvidenceV2:
-    return OccurrenceIssuanceEvidenceV2(
-        source_system_id="sys-crush",
-        tenant_or_realm_id="tenant-1",
-        authority_scope_id="scope-1",
-        occurrence_namespace_id=namespace,
-        physical_source_instance_id=physical_instance,
-        native_id_namespace="crush.message",
-        native_record_id=native_record,
-        source_revision_or_asof_id=revision,
-        evidence_snapshot_id=snapshot_id,
-    )
+) -> dict:
+    return {
+        "source_system_id": "sys-crush",
+        "tenant_or_realm_id": "tenant-1",
+        "authority_scope_id": "scope-1",
+        "occurrence_namespace_id": namespace,
+        "physical_source_instance_id": physical_instance,
+        "native_id_namespace": "crush.message",
+        "native_record_id": native_record,
+        "source_revision_or_asof_id": revision,
+        "evidence_snapshot_id": snapshot_id,
+        "issuer_capture_attestation": "capture-attestor-v1",
+    }
+
+
+def sample_verified_source_authority(**kwargs):
+    capture = seal_source_capture_package(build_source_capture_body(**kwargs))
+    return verify_source_capture_authority(capture)
 
 
 def sample_occurrence(**kwargs):
-    issued = issue_occurrence_reference(sample_issuance_evidence(**kwargs))
-    return issued.occurrence_reference
+    return issue_occurrence_reference(sample_verified_source_authority(**kwargs)).occurrence_reference
 
 
 def sample_availability(
@@ -67,59 +126,62 @@ def sample_availability(
     )
 
 
-def sample_construct_parent(*, digest: str = FIXED_DIGEST) -> ImmediateParentBindingV2:
-    return ImmediateParentBindingV2(
-        parent_kind="construct_freeze",
-        parent_artifact_id=CONSTRUCT_FREEZE_ARTIFACT_ID,
-        parent_digest=digest,
-    )
-
-
-def sample_seal_manifest(
+def sample_sealed_authority(
     *,
-    occurrence=None,
-    availability: ConditionNeutralEvidenceAvailabilityV2 | None = None,
-    canonical_digest: str = FIXED_DIGEST,
+    p0_repository: InMemoryConstructFreezeRepository | None = None,
     lineage_edges: list[LineageEdgeV2] | None = None,
-    construct_freeze_digest: str = FIXED_DIGEST,
-) -> EvidenceSealManifestV2:
-    if occurrence is None:
-        issued = issue_occurrence_reference(sample_issuance_evidence())
-    else:
-        issued = issue_occurrence_reference(
-            OccurrenceIssuanceEvidenceV2(
-                source_system_id=occurrence.source_system_id,
-                tenant_or_realm_id=occurrence.tenant_or_realm_id,
-                authority_scope_id=occurrence.authority_scope_id,
-                occurrence_namespace_id=occurrence.occurrence_namespace_id,
-                physical_source_instance_id=occurrence.physical_source_instance_id,
-                native_id_namespace=occurrence.native_id_namespace,
-                native_record_id=occurrence.native_record_id,
-                source_revision_or_asof_id=occurrence.source_revision_or_asof_id,
-                evidence_snapshot_id="snap-1",
-            )
+    lineage_repository: LineageAttestationRepository | None = None,
+    occurrence: OccurrenceReferenceV2 | None = None,
+    availability: ConditionNeutralEvidenceAvailabilityV2 | None = None,
+    canonical_content_digest: str = FIXED_DIGEST,
+) -> SealedP1AuthorityV2:
+    repo = p0_repository or sample_p0_repository()
+    parent = sample_construct_parent(repo)
+    construct_digest = construct_freeze_content_digest(repo)
+    if occurrence is not None:
+        capture_body = build_source_capture_body(
+            physical_instance=occurrence.physical_source_instance_id,
+            native_record=occurrence.native_record_id,
+            revision=occurrence.source_revision_or_asof_id,
+            namespace=occurrence.occurrence_namespace_id,
+            snapshot_id="snap-1",
         )
+        capture_body.update(
+            {
+                "source_system_id": occurrence.source_system_id,
+                "tenant_or_realm_id": occurrence.tenant_or_realm_id,
+                "authority_scope_id": occurrence.authority_scope_id,
+                "native_id_namespace": occurrence.native_id_namespace,
+            }
+        )
+        issued = issue_occurrence_reference(
+            verify_source_capture_authority(seal_source_capture_package(capture_body))
+        )
+    else:
+        issued = issue_occurrence_reference(sample_verified_source_authority())
     draft = EvidenceSealManifestDraftV2(
-        construct_freeze_digest=construct_freeze_digest,
+        construct_freeze_digest=construct_digest,
         episode_id="episode-1",
         issued_occurrence=issued,
         evidence_complete_envelope_digest=FIXED_DIGEST,
-        canonical_content_digest=canonical_digest,
+        canonical_content_digest=canonical_content_digest,
         canonicalization_profile_digest=FIXED_DIGEST,
         adapter_implementation_digest=FIXED_DIGEST,
         condition_neutral_evidence_availability=availability or sample_availability(),
-        immediate_parents=(sample_construct_parent(digest=construct_freeze_digest),),
+        immediate_parents=(parent,),
         responsible_role="evidence_capture",
         created_at=CREATED_AT,
         lineage_edges=lineage_edges or [],
     )
-    return draft.finalize_and_seal(seal_time=SEAL_TIME).manifest
+    return draft.finalize_and_seal(
+        seal_time=SEAL_TIME,
+        p0_repository=repo,
+        lineage_repository=lineage_repository,
+    )
 
 
-def sample_sealed_authority(**kwargs) -> SealedP1AuthorityV2:
-    manifest = sample_seal_manifest(**kwargs)
-    from eval_naturalistic.v2.authority_issuance import verify_sealed_p1_authority
-    return verify_sealed_p1_authority(manifest.to_dict())
+def sample_seal_manifest(**kwargs) -> EvidenceSealManifestV2:
+    return sample_sealed_authority(**kwargs).manifest
 
 
 def sample_availability_manifest(
@@ -128,6 +190,7 @@ def sample_availability_manifest(
     availability: ConditionNeutralEvidenceAvailabilityV2 | None = None,
 ) -> EvidenceAvailabilityManifestV2:
     from eval_naturalistic.base import ArtifactHeaderV1
+
     return EvidenceAvailabilityManifestV2(
         header=ArtifactHeaderV1(
             artifact_id="nps2_avail_test",
@@ -149,19 +212,31 @@ def sample_availability_manifest(
 
 def clone_lineage_edge(
     *,
+    child_occurrence,
+    parent_occurrence,
     from_instance: str,
     to_instance: str,
     lineage_id: str = "lineage-1",
-    child_digest: str = FIXED_DIGEST,
-    parent_digest: str = ALT_DIGEST,
+    lineage_repository: LineageAttestationRepository,
 ) -> LineageEdgeV2:
+    artifact = seal_lineage_attestation(
+        logical_lineage_id=lineage_id,
+        relation_kind=LineageRelationKind.CLONE,
+        child_occurrence=child_occurrence,
+        parent_occurrence=parent_occurrence,
+        issuer_identity="lineage-issuer-v1",
+        responsible_role="lineage_issuer",
+        created_at=CREATED_AT,
+        seal_time=SEAL_TIME,
+    )
+    lineage_repository.register(artifact)
     return LineageEdgeV2(
         logical_lineage_id=lineage_id,
         from_physical_instance_id=from_instance,
         to_physical_instance_id=to_instance,
         relation_kind=LineageRelationKind.CLONE,
         issuer_attested=True,
-        child_occurrence_digest=child_digest,
-        parent_occurrence_digest=parent_digest,
-        attestation_evidence_digest=FIXED_DIGEST,
+        child_occurrence_digest=occurrence_commitment_digest(child_occurrence),
+        parent_occurrence_digest=occurrence_commitment_digest(parent_occurrence),
+        attestation_evidence_digest=artifact.attestation_evidence_digest(),
     )
