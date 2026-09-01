@@ -19,6 +19,7 @@ from eval_naturalistic.v2.evidence import (
     normalized_reported_presence,
 )
 from eval_naturalistic.v2.identity import (
+    LineageEdgeV2,
     LineageRelationKind,
     OccurrenceReferenceV2,
     reject_hash_or_locator_identity,
@@ -203,12 +204,15 @@ class NaturalisticV2P1IdentityTests(unittest.TestCase):
         bad_edge = clone_lineage_edge(
             from_instance="same", to_instance="same"
         )
-        bad_edge = type(bad_edge)(
+        bad_edge = LineageEdgeV2(
             logical_lineage_id=bad_edge.logical_lineage_id,
             from_physical_instance_id="same",
             to_physical_instance_id="same",
             relation_kind=LineageRelationKind.RESTORE,
             issuer_attested=True,
+            child_occurrence_digest=ALT_DIGEST,
+            parent_occurrence_digest=ALT_DIGEST,
+            attestation_evidence_digest=ALT_DIGEST,
         )
         with self.assertRaises(StructuralContractError):
             validate_lineage_preserves_physical_separation([bad_edge])
