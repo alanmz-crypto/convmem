@@ -254,7 +254,7 @@ convmem doctor
 
 **Also shipped in 2026-06-29 session (plan/code):**
 - `obs_806985bc5697` — background synthesis plan pointer in corpus
-- Growing jsonl re-index fix in [`ingest.py`](../ingest.py) + tests
+- Growing jsonl re-index fix in [`ingest.py`](../../ingest.py) + tests
 - `ledger_link` full run → 0 pairs (no duplicate site/title obs to queue)
 
 **Verdict:** Run 3 confirms digest stable after ledger anchors. One more weekly run (or timer fire) before enabling `--propose`.

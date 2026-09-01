@@ -1,14 +1,14 @@
 # convmem — Personal conversation memory and evidence retrieval for AI coding assistants
 
-A local-first system I use to ingest AI chat logs and **tool-sourced evidence** into ChromaDB, then search, ask (RAG), verify, and traverse evidence chains.
+A local-first working system I build and use for my own AI-assisted development workflow. It ingests AI chat logs, inter-model documents, and **tool-sourced evidence**; maintains a local searchable corpus plus durable records and recovery metadata; and exposes retrieval, synthesis, evidence traversal, and guarded operational controls through the CLI and MCP.
 
-**Storage is local:** Chroma and the corpus live on the workstation; there is no cloud database or web app. If `DEEPSEEK_API_KEY` is configured, retrieved context may be sent to the configured generation model for synthesis. My current configuration uses `deepseek-v4-flash`.
+**Storage is local:** the corpus, durable exports, and Chroma projection live on the workstation; there is no cloud database or web app. If a provider-backed model is configured, retrieved context or source material may be sent to that provider for synthesis or distillation. My current configuration uses local Ollama for embeddings/summaries and `deepseek-v4-flash` for provider-backed generation.
 
 ---
 
 ## Status: Personal project
 
-This is an actively developed personal research/tooling repository. The codebase may contain experimental code, rough edges, abandoned approaches, and inconsistent organization. It’s public because I’m happy for people to inspect or use it, but it’s optimized for my own workflow rather than for being a polished general-purpose project. Contributions and cleanup are not expected.
+`convmem` is a working system I build and use for my own AI-assisted development workflow. It is public because I’m happy for people to inspect it, learn from it, or adapt it, but it is not currently packaged or maintained as a turnkey application for general installation. Expect a working but evolving codebase, personal deployment assumptions, experimental features, and documentation that sometimes describes my own environment. Contributions and cleanup are not expected; I optimize the repository for my own workflow first.
 
 This README serves two purposes: it explains the architecture for curious readers and records the operational commands I use on my own workstation. Paths, hosts, model names, and deployment instructions below may be specific to my setup. If you are an agent helping with this repository, read [`AGENTS.md`](AGENTS.md) for repository workflow and safety rules; this README is project and personal-operations context.
 
@@ -16,23 +16,47 @@ This README serves two purposes: it explains the architecture for curious reader
 
 ---
 
-## What I use it for now
+## New here? Start with the current truth
 
-These are current personal capabilities, not a promise that every path is mature or supported as a general-purpose product.
+This README explains the project shape. It is not the live status record, and it does not replace the repository's agent protocol.
 
-1. **Harvests** chat history (Cursor, Kiro, Continue, Aider, Crush, Open WebUI) → distilled knowledge units
-2. **Ingests** scanner observations (wp-sec, Lighthouse) via `convmem add` with stable ledger ids
-3. **Searches** via embedding + optional cross-encoder rerank
-4. **Answers** with citations via `convmem ask` (the configured model synthesizes from retrieved excerpts)
-5. **Verifies** cross-model checks via `convmem verify`
-6. **Traverses** evidence graphs via `convmem related`
-7. **Re-ranks** ask results by resolution status via `convmem ask --evidence`
+For a clean-context agent or developer:
 
-Past conversations and security findings become a **queryable evidence layer** — not live agent-to-agent chat.
+1. Run `convmem doctor` and wait for exit 0.
+2. Run `convmem brief --stdout-only`, then `convmem unresolved`. These report current workstation, corpus, and open-observation state; static counts in documents can age.
+3. Read [`AGENTS.md`](AGENTS.md) for repository safety, branch/worktree, authorization, and session rules.
+4. Follow [`docs/STATUS.md`](docs/STATUS.md), which gives the maintained documentation reading order.
+5. Read [`docs/MODEL-WORKFLOW.md`](docs/MODEL-WORKFLOW.md) for operational routing and the prod/lab boundary.
+6. If the task belongs to a named arc, read its active [`docs/plans/STATUS-*.md`](docs/plans/) brief before changing anything.
+7. Use [`docs/inter-model/STATUS.md`](docs/inter-model/STATUS.md) and dated handoffs for cross-arc context, but verify their date and branch state before treating them as current.
+
+Do not infer current state from an old handoff, a historical milestone label, or a filename alone. Archived documents are historical context; the status pointer explains how to connect them to current work.
+
+## Current capabilities
+
+These are current personal capabilities, not a promise that every path is equally mature or supported as a general-purpose product.
+
+- **Ingests** chat sessions and coordination documents through adapters for Cursor, Kiro, Continue, Aider, Crush, Open WebUI, Codex, Copilot CLI, OpenCode, inter-model documents, and Kiro steering. The adapters recognize several on-disk formats, including JSONL, SQLite, JSON, and Markdown.
+- **Records** tool observations, decisions, and verifications with stable ledger IDs and explicit relationships.
+- **Retrieves** conversation and evidence units with embeddings, lexical fallback, optional cross-encoder reranking, domain/site scope, recency, and provenance-aware signals.
+- **Answers** questions with RAG citations through `convmem ask`; `--evidence` prioritizes unresolved observations and failed verifications.
+- **Traverses and triages** evidence with `convmem related`, `convmem unresolved`, and the ledger-backed decision/verification view.
+- **Orients and operates** agent sessions with `doctor`, `brief`, `tldr`, `scope`, and `agent-run`; the same core is exposed through the local MCP server and generated agent-protocol surfaces.
+- **Experiments under explicit gates** with shadow-ledger, writer-census, provenance, recovery, and evaluation machinery. These are real repository subsystems, but several remain disabled, experimental, blocked, or separately authorized; read the relevant status brief before treating one as live.
+
+Past conversations and security findings become a **queryable evidence layer** — not live agent-to-agent chat. The repository also contains the controls used to test, govern, back up, recover, and evaluate that layer.
 
 **Personal development roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
 
 **Current personal deployment:** `staging2.willowyhollow.com`
+
+**Typical query:**
+
+```bash
+convmem ask "What CSP fixes did we try on staging?"
+```
+
+The answer is synthesized from retrieved excerpts and includes citations. This reflects my current workflow, not a hosted service.
 
 ---
 
@@ -53,33 +77,38 @@ If `convmem` is not defined:
 
 ---
 
-## Architecture
+## Mental model and architecture
 
 ```
-Chat logs ──► ingest.py + distill.py ──► knowledge_units ──┐
-                                                            ├──► ChromaDB
-Tools (wp-sec, Lighthouse) ──► observe.py (add/upsert) ──┘
-                                        │
-                    ledger.py (Observation / Decision / Verification)
-                                        │
-        ┌───────────────────────────────┼───────────────────────────────┐
-        ▼                               ▼                               ▼
-   query / search                   convmem ask                    convmem related
-   (semantic)             (RAG + configured model)              (graph traversal)
-                                        │
-                              ask --evidence (evidence.py)
-                              unresolved > failed > resolved
+Chat logs / SQLite / JSONL / Markdown ──► adapters + ingest ──┐
+Inter-model docs / agent protocols ─────► normalization/chunking ─┤
+Tool observations / decisions / checks ──► ledger + provenance ───┘
+                                      │
+               Chroma corpus + JSONL exports + approval records
+                                      │
+                 retrieval, evidence, and recovery controls
+                                      │
+        ┌─────────────────────────────┼─────────────────────────────┐
+        ▼                             ▼                             ▼
+   search/query                 ask (RAG)                 related/unresolved
+   scope + rerank          configured model + citations     ledger relationships
+        │                             │                             │
+        └────────────── CLI + local MCP + agent protocol ───────────┘
+                                      │
+                    watch / refine / monitor background services
 ```
 
-**Persistence:** JSONL exchange format at ingest + Chroma only. No graph DB.
+**Persistence and authority:** the default data root contains Chroma collections, `knowledge_units.jsonl`, processed/inventory state, decision queues and approval records, agent-run events, and optional shadow/recovery data. Authority is record- and arc-specific: current Phase 0 documentation preserves Chroma `knowledge_units` as the Tier-1 authority for the existing observation/search path, while `decisions-approved.jsonl` remains authoritative for approved decision intent and newer ledger-first/recovery work defines bounded paths toward more rebuildable projections. The JSONL export is useful for backup/replay but is incomplete and mutable today; do not assume it alone reconstructs every current unit. See [the current authority map](docs/audit-ledger-first/CURRENT-OBSERVATION-AUTHORITY.md) and [recovery guidance](docs/RECOVER.md). There is no separate graph database: `related` and evidence-aware ranking traverse ledger metadata and relationships.
 
-**Deployment:** Single workstation. Corpus at `~/.local/share/convmem/`. Optional user systemd units (`watch`, `refine`, `monitor`) on the same machine — see [docs/SYSTEMD-DEPLOY.md](docs/SYSTEMD-DEPLOY.md). No remote corpus host or rsync between machines.
+**Deployment:** This is a single-workstation system. By default, persistent data is under `~/.local/share/convmem/`, configuration is under `~/.config/convmem/`, and Ollama runs locally. Optional user systemd units (`watch`, `refine`, `monitor`, and backup/digest jobs) run on the same machine — see [docs/SYSTEMD-DEPLOY.md](docs/SYSTEMD-DEPLOY.md). MCP clients and agent hooks are local adapters to the same core; this repository does not document a turnkey remote corpus service.
+
+The core retrieval path can run without a hosted model. Provider-backed synthesis/distillation is configurable, and the current personal setup uses DeepSeek for those calls; inspect [`config.example.toml`](config.example.toml) before assuming a provider, model, or data-flow boundary.
 
 ---
 
-## Personal development milestones
+## Historical milestone labels
 
-These are internal checkpoints for my own development, not a public release roadmap.
+These labels are internal checkpoints for my own development, not a public release roadmap or a complete description of current state. For current work, use the status path above and [`docs/ROADMAP.md`](docs/ROADMAP.md) only as planning context.
 
 | Milestone | What | Key commands / files |
 |-----------|------|---------------------|
@@ -93,6 +122,23 @@ These are internal checkpoints for my own development, not a public release road
 ---
 
 ## CLI reference
+
+The complete command surface is available from `convmem --help`. The commands below highlight the stable personal workflow; several lifecycle, shadow, recovery, and evaluation commands are intentionally guarded or status-dependent.
+
+### Orientation and current operations
+
+```bash
+convmem doctor
+convmem brief --stdout-only
+convmem tldr
+convmem unresolved
+convmem scope show
+convmem agent-run --help
+convmem shadow-inventory
+convmem writer-census-status
+```
+
+`doctor`, `brief`, and `unresolved` are read-only orientation checks. `agent-run` records client-neutral run lifecycle evidence. Shadow-ledger and writer-census commands report or advance separately authorized operational paths; they do not imply that Shadow is enabled.
 
 ### Search & ask
 
@@ -108,7 +154,7 @@ convmem ask -i                                 # interactive multi-turn
 
 `--evidence` re-ranks by ledger graph: prefers **unresolved** observations and **failed** verifications; deprioritizes resolved/passed. Does not auto-detect intent — flag must be explicit. Skips raw-summary hybrid fallback.
 
-**Ask model:** `config.toml` → `[models] distill_model = "deepseek-v4-flash"` in my current setup. The generation model is configurable and requires `DEEPSEEK_API_KEY` in `~/.config/convmem/env.local` when using DeepSeek.
+**Ask model:** `config.toml` → `[models] distill_model = "deepseek-v4-flash"` in my current setup. The generation model is configurable; using DeepSeek requires `DEEPSEEK_API_KEY` in `~/.config/convmem/env.local`.
 
 ### Evidence ledger
 
@@ -187,12 +233,13 @@ See `examples/chain-demo.md` and `examples/AGENTS-FLOW.md`.
 
 | File | Role |
 |------|------|
-| `convmem.py` | CLI entry |
+| `convmem.py` | CLI entry, including orientation, retrieval, evidence, run, shadow, and scope commands |
 | `config.py` | Load `~/.config/convmem/config.toml` |
 | `ingest.py` | Chat ingest pipeline |
 | `distill.py` | LLM distillation → knowledge units |
 | `observe.py` | Ledger ingest (`add`, `add --upsert`) |
 | `ledger.py` | Observation/Decision/Verification contract + `build_ledger_index()` |
+| `agent_run_ledger.py` | Durable client-neutral agent-run lifecycle events |
 | `ledger_ids.py` | Stable semantic id helpers |
 | `evidence.py` | Evidence-aware re-ranking for `ask --evidence` |
 | `related.py` | `convmem related` display |
@@ -204,6 +251,9 @@ See `examples/chain-demo.md` and `examples/AGENTS-FLOW.md`.
 | `chroma_store.py` | `add_unit`, `update_unit` (doc+embed+meta) |
 | `llm.py` | Ollama embedding + configured generation |
 | `domains.py` | Domain taxonomy + hierarchical filter |
+| `mcp_server.py` | Local MCP adapter over the shared read/retrieval surfaces |
+| `shadow_*.py`, `recovery_*.py`, `provenance*.py` | Guarded shadow, recovery, and provenance controls; see active status briefs |
+| `eval_*/`, `eval_*.py` | Offline corpus, retrieval, synthesis, JudgeBench, and product-value evaluation machinery |
 | `scripts/ingest-wp-sec.sh`, `ingest-lighthouse.sh` | Scanner → export → add |
 | `tests/` | Unit tests (see below) |
 
@@ -269,7 +319,7 @@ convmem stats
 
 ## My current QA workflow
 
-This is my current personal QA workflow. It uses the configured generation model (currently DeepSeek v4) to run `convmem ask`, evaluate answer quality against retrieved citations, and report gaps. Use the checklist below as an operating guide, not as a complete public test contract.
+This is my current personal QA workflow. It uses the configured generation model (currently `deepseek-v4-flash`) to run `convmem ask`, evaluate answer quality against retrieved citations, and report gaps. Use the checklist below as an operating guide, not as a complete public test contract.
 
 ### 1. Unit tests (no API key needed)
 
@@ -357,7 +407,7 @@ convmem related obs_staging2_wpsec_csp-missing
 | **Primary** | `knowledge_units` | Default; needs ≥50 units for full quality |
 | **Fallback** | `conversation_summaries` | `--raw` flag |
 
-Rerank: fetch 20 → CrossEncoder → top 5 (`[query] rerank = true`). Displayed `score` is embedding similarity, not rerank score.
+Rerank: fetch 20 → semantic/lexical fusion and optional CrossEncoder → top 5 (`[query] rerank = true`). Displayed `score` is embedding similarity, not rerank score. `knowledge_units` is the current Tier-1 search surface; exports and approval records support backup/replay but do not form one complete canonical ledger today.
 
 **Domain filter:** `--domain web_stack.security` matches children. Legacy units without `domain` are **excluded** from domain-scoped queries (still appear in unscoped search).
 
@@ -370,9 +420,11 @@ Rerank: fetch 20 → CrossEncoder → top 5 (`[query] rerank = true`). Displayed
 | Rerank can't fix recall | Right unit must be in top-20 embedding hits |
 | **Cursor `store.db`** | Indexed via `latestRootBlobId` blob walk — Composer chats not covered by JSONL alone |
 | Crush `.crush/crush.db` | Indexed via `**/.crush/crush.db` home glob — run `python inventory.py` after new projects |
-| `units_export` on upsert | `knowledge_units.jsonl` only appends on add, not update |
+| Durable JSONL export | Chat indexing appends then compacts repeated unit IDs; ledger upserts replace the matching ledger row. Use [docs/RECOVER.md](docs/RECOVER.md) and the focused tests before treating the export as immutable event history |
 | `find_unit_by_ledger_id` | Full metadata scan; fine at ~1.5k units |
 | OpenClaw probes | Milestone D deferred |
+| Guarded infrastructure | Shadow activation, live capture, recovery publication, and evaluation calls have separate status/authorization boundaries |
+| Documentation state | Dated handoffs and cross-arc snapshots can age; run `doctor`/`brief` and follow `docs/STATUS.md` before acting |
 | Personal data | The index contains real conversations — don't share `~/.local/share/convmem/` |
 
 ---

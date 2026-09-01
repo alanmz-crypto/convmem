@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-08-30 (`origin/main` is at `787a6ef8077f099820b8ab903777dd67951c9bb7`; branch and PR work named below is not on `main` unless explicitly stated)
+**Snapshot:** 2026-09-01 (`origin/main` is at `0b6b436ca054a1b04dc9c5c46eb2533268fe0a90`; branch and PR work named below is not on `main` unless explicitly stated)
 
 > **Trapdoor Hunt / T3:** CLOSED and Claude whole-surge PASSed. PR #221 is
 > squash-merged onto current main; its bounded writer-boundary and
@@ -29,11 +29,11 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - **Shadow Ledger Phase 0 code + corrective C1–C7 are on `main`** (#122, #126, #131, #134);
   shadow remains **disabled**. Activation requires **activation-ready evidence** then a
   separate Ryan grant — see [`STATUS-shadow-ledger-phase0.md`](../plans/STATUS-shadow-ledger-phase0.md).
-- **R2b capture** v1 code and the v2 normative plan are on `main`, but v2 I1–I3
-  implementation exists only in draft PRs. PR #252 is the current carrier at
-  unreviewed Corrective V tip `20d7f567184500c33c9c82eb0d1c4d90fe6bc5f2`;
-  required Pylint is failing. Live capture remains unauthorized; quarantined v1
-  and `2026-08-27-r2b-capture-02` packets must not be reused.
+- **R2b capture** v1 code, the v2 normative plan, and the v2 I1–I3
+  implementation are on `main`. Corrective IX integration landed via PR #264
+  (merge `58375ad`, reviewed integration `39eab77`); live capture remains
+  unauthorized, and quarantined v1 / `2026-08-27-r2b-capture-02` packets must
+  not be reused.
 - Two non-fatal doctor warnings often present: legacy `embed_collection_identity` metadata
   and external restic freshness. They do not authorize corpus mutation or Shadow activation.
 
@@ -43,7 +43,7 @@ projection of the ledger/export, and production mutations remain explicitly gate
 |---|---|---|
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
-| R2b capture authorization | v2 I1–I3 is **branch-only active corrective implementation**. Draft PR #252 is the current carrier at `20d7f567…`, with required Pylint failing and no review PASS. Draft PRs #246/#248/#249/#251 are superseded but preserved. | Restore all required CI on one immutable tip → fresh Copilot audit → Kiro only after Copilot PASS → Ryan merge decision. No I4–I8, live gate, duration, packet ACCEPT, **ACCEPT AND GRANT**, or capture authority. |
+| R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
 | CG-2 authority migration | Design A Execute-close is **LANDED** via PR #250 at `e930ae4c…`; the accepted D7 source was transplanted onto current main. A later retained-reference-v2 corrective remains branch-only and must not be attributed to `main`. V8c and every production step remain PENDING/unauthorized. | No further Design A landing work. Separately governed reference-v2 review/implementation may proceed only under its own accepted plan/grant. Do not run production D0/D1, publish fence/pointer, activate an owner, run GC, or enable Shadow/R2b. See [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md), [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md), and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
 | Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED**; PR #221 squash-merged at `722141d31e586151f361ef7006ad74c71cdff534` from final reviewed head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`; bounded writer-boundary and provenance-supersession corrections are on current `main` with Runway integration complete | No further T3 integration work. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
@@ -100,7 +100,18 @@ projection of the ledger/export, and production mutations remain explicitly gate
 - [Naturalistic product-value STATUS](../plans/STATUS-naturalistic-product-value.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** `main` is `787a6ef8`: Naturalistic G1–G4 methodology is landed but
-non-live; G5 and every study/live/product-disposition step remain Ryan-gated.
-Recovery/CG-2 remain non-live, R2b remains corrective/blocked, and Portland is
-stopped at seed-generation failure.
+**TL;DR:** `origin/main` is `0b6b436c`: Naturalistic G1–G5 methodology is landed
+but non-live; G6 and every study/live/product-disposition step remain
+Ryan-gated. Recovery/CG-2 remain non-live, R2b implementation is landed but
+operational capture is separately gated, and Portland is stopped at
+seed-generation failure.
+
+## Jargon TL;DR
+
+| Term | Meaning |
+|---|---|
+| Cross-arc snapshot | This file’s current-state rollup across named project arcs. |
+| I1–I3 / I4–I8 | R2b implementation and later operational milestones; landing does not grant live capture. |
+| G6 | The Ryan-gated prospective naturalistic product-value study freeze. |
+| T4 | The next Recovery Authority execution stage; it is not authorized here. |
+| V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
