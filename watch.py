@@ -219,37 +219,37 @@ def _flush_path_subprocess(path: str, *, verbose: bool) -> dict:
     cmd = _scoped_index_cmd(inner_cmd, cfg, verbose=verbose)
     if verbose:
         print(f"[watch] spawn: {' '.join(inner_cmd[-3:])}", file=sys.stderr)
-    proc = subprocess.Popen(
+    with subprocess.Popen(
         cmd,
         text=True,
         stdout=subprocess.PIPE if not verbose else None,
         stderr=subprocess.PIPE if not verbose else None,
         start_new_session=True,
-    )
-    try:
-        stdout, stderr = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired as exc:
+    ) as proc:
         try:
-            os.killpg(proc.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-        try:
-            proc.communicate(timeout=5)
-        except subprocess.TimeoutExpired:
+            stdout, stderr = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
             try:
-                os.killpg(proc.pid, signal.SIGKILL)
+                os.killpg(proc.pid, signal.SIGTERM)
             except ProcessLookupError:
                 pass
-            proc.communicate()
-        raise RuntimeError(
-            f"index subprocess timed out after {timeout:g} seconds"
-        ) from exc
-    if proc.returncode != 0:
-        err = (stderr or stdout or "").strip()
-        raise RuntimeError(err or f"index subprocess exit {proc.returncode}")
-    if verbose and stdout:
-        for line in stdout.splitlines():
-            print(line, file=sys.stderr)
+            try:
+                proc.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                proc.communicate()
+            raise RuntimeError(
+                f"index subprocess timed out after {timeout:g} seconds"
+            ) from exc
+        if proc.returncode != 0:
+            err = (stderr or stdout or "").strip()
+            raise RuntimeError(err or f"index subprocess exit {proc.returncode}")
+        if verbose and stdout:
+            for line in stdout.splitlines():
+                print(line, file=sys.stderr)
     return {"subprocess": True, "path": path}
 
 

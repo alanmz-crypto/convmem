@@ -42,8 +42,9 @@ class ScopedIndexCmdTests(unittest.TestCase):
 
 class FlushPathSubprocessTests(unittest.TestCase):
     def test_child_has_a_default_timeout(self):
-        completed = mock.Mock(returncode=0)
+        completed = mock.MagicMock(returncode=0)
         completed.communicate.return_value = ("", "")
+        completed.__enter__.return_value = completed
         with (
             mock.patch("config.load_config", return_value={"watch": {}}),
             mock.patch(
@@ -56,11 +57,12 @@ class FlushPathSubprocessTests(unittest.TestCase):
         self.assertTrue(popen.call_args.kwargs["start_new_session"])
 
     def test_child_timeout_is_reported_as_index_failure(self):
-        completed = mock.Mock(pid=4242, returncode=None)
+        completed = mock.MagicMock(pid=4242, returncode=None)
         completed.communicate.side_effect = [
             subprocess.TimeoutExpired("cmd", 12),
             ("", ""),
         ]
+        completed.__enter__.return_value = completed
         with (
             mock.patch(
                 "config.load_config",
@@ -77,8 +79,9 @@ class FlushPathSubprocessTests(unittest.TestCase):
         killpg.assert_called_once_with(4242, signal.SIGTERM)
 
     def test_nonzero_child_raises_runtime_error(self):
-        completed = mock.Mock(returncode=137)
+        completed = mock.MagicMock(returncode=137)
         completed.communicate.return_value = ("", "Killed")
+        completed.__enter__.return_value = completed
         with (
             mock.patch("config.load_config", return_value={"watch": {}}),
             mock.patch(

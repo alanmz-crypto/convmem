@@ -33,6 +33,19 @@ class ProcessLockTests(unittest.TestCase):
                 acquire_lock(lock)
             self.assertEqual(target.read_text(encoding="utf-8"), "keep")
 
+    def test_process_lock_refuses_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target_dir = root / "target-dir"
+            target_dir.mkdir()
+            link_dir = root / "link-dir"
+            link_dir.symlink_to(target_dir, target_is_directory=True)
+            lock = link_dir / "process.lock"
+            with mock.patch("process_lock.os.getpid", return_value=4242):
+                with self.assertRaisesRegex(RuntimeError, "unsafe lock directory"):
+                    acquire_lock(lock)
+            self.assertFalse((target_dir / "process.lock").exists())
+
     def test_watch_lock_refuses_leaf_symlink(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
