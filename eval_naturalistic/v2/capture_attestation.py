@@ -17,6 +17,15 @@ from eval_naturalistic.base import (
 from eval_naturalistic.digest import canonical_artifact_bytes
 from eval_naturalistic.v2.contracts import ARTIFACT_ID_PREFIX_V2, SCHEMA_NAMESPACE_V2
 from eval_naturalistic.v2.identity import OccurrenceReferenceV2
+from eval_naturalistic.v2.p0_construct import (
+    ConstructFreezeAuthorityRepository,
+    verify_construct_freeze_parent_binding,
+)
+from eval_naturalistic.v2.source_issuer_authority import (
+    SourceIssuerGrantRepository,
+    SourceIssuerGrantV2,
+    reverify_source_issuer_grant,
+)
 
 CAPTURE_ATTESTATION_SCHEMA = f"{SCHEMA_NAMESPACE_V2}/capture-attestation-v2"
 
@@ -29,12 +38,14 @@ class CaptureAttestationArtifactV2:
     occurrence_reference: OccurrenceReferenceV2
     evidence_snapshot_id: str
     issuer_identity: str
+    issuer_grant_digest: str
 
     _FIELDS = {
         "header",
         "occurrence_reference",
         "evidence_snapshot_id",
         "issuer_identity",
+        "issuer_grant_digest",
     }
 
     @classmethod
@@ -51,6 +62,7 @@ class CaptureAttestationArtifactV2:
             ),
             evidence_snapshot_id=_require_str(data["evidence_snapshot_id"], "evidence_snapshot_id"),
             issuer_identity=_require_str(data["issuer_identity"], "issuer_identity"),
+            issuer_grant_digest=_require_str(data["issuer_grant_digest"], "issuer_grant_digest"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -59,6 +71,7 @@ class CaptureAttestationArtifactV2:
             "occurrence_reference": self.occurrence_reference.to_dict(),
             "evidence_snapshot_id": self.evidence_snapshot_id,
             "issuer_identity": self.issuer_identity,
+            "issuer_grant_digest": self.issuer_grant_digest,
         }
 
     def attestation_evidence_digest(self) -> str:
@@ -66,6 +79,7 @@ class CaptureAttestationArtifactV2:
             "occurrence_reference": self.occurrence_reference.to_dict(),
             "evidence_snapshot_id": self.evidence_snapshot_id,
             "issuer_identity": self.issuer_identity,
+            "issuer_grant_digest": self.issuer_grant_digest,
         }
         return hashlib.sha256(canonical_artifact_bytes(body)).hexdigest()
 
@@ -77,13 +91,20 @@ def _derive_artifact_id(*, schema: str, content_digest: str) -> str:
 
 def seal_capture_attestation(
     *,
+    grant: SourceIssuerGrantV2,
     occurrence_reference: OccurrenceReferenceV2,
     evidence_snapshot_id: str,
-    issuer_identity: str,
     responsible_role: str,
     created_at: str,
     seal_time: str,
 ) -> CaptureAttestationArtifactV2:
+    verified_grant = reverify_source_issuer_grant(grant)
+    if verified_grant.issuer_identity == "":
+        raise StructuralContractError("capture attestation: missing issuer identity")
+    if verified_grant.source_system_id != occurrence_reference.source_system_id:
+        raise StructuralContractError("capture attestation: source system mismatch with grant")
+    if verified_grant.authority_scope_id != occurrence_reference.authority_scope_id:
+        raise StructuralContractError("capture attestation: authority scope mismatch with grant")
     placeholder_header = ArtifactHeaderV1(
         artifact_id="pending",
         schema_version=CAPTURE_ATTESTATION_SCHEMA,
@@ -99,7 +120,8 @@ def seal_capture_attestation(
         "header": placeholder_header.to_dict(),
         "occurrence_reference": occurrence_reference.to_dict(),
         "evidence_snapshot_id": evidence_snapshot_id,
-        "issuer_identity": issuer_identity,
+        "issuer_identity": verified_grant.issuer_identity,
+        "issuer_grant_digest": verified_grant.grant_digest,
     }
     content_digest = hashlib.sha256(canonical_artifact_bytes(strip_digest_metadata(body))).hexdigest()
     artifact_id = _derive_artifact_id(schema=CAPTURE_ATTESTATION_SCHEMA, content_digest=content_digest)
@@ -118,7 +140,8 @@ def seal_capture_attestation(
         header=header,
         occurrence_reference=occurrence_reference,
         evidence_snapshot_id=evidence_snapshot_id,
-        issuer_identity=issuer_identity,
+        issuer_identity=verified_grant.issuer_identity,
+        issuer_grant_digest=verified_grant.grant_digest,
     )
     verify_capture_attestation_artifact(artifact)
     return artifact
@@ -142,15 +165,48 @@ def verify_capture_attestation_artifact(
         raise StructuralContractError("capture attestation: artifact ID mismatch")
     if artifact.issuer_identity == "":
         raise StructuralContractError("capture attestation: missing issuer identity")
+    if not artifact.issuer_grant_digest:
+        raise StructuralContractError("capture attestation: missing issuer grant digest")
     return artifact
 
 
 class CaptureAttestationRepository:
+    """Portable capture-attestation substrate — artifacts are committed, not self-registered."""
+
     def __init__(self) -> None:
         self._artifacts: dict[str, CaptureAttestationArtifactV2] = {}
 
-    def register(self, artifact: CaptureAttestationArtifactV2) -> CaptureAttestationArtifactV2:
+    @classmethod
+    def from_artifacts(
+        cls, artifacts: tuple[CaptureAttestationArtifactV2, ...]
+    ) -> "CaptureAttestationRepository":
+        repo = cls()
+        for artifact in artifacts:
+            verified = verify_capture_attestation_artifact(artifact)
+            repo._artifacts[verified.attestation_evidence_digest()] = verified
+        return repo
+
+    def artifacts(self) -> tuple[CaptureAttestationArtifactV2, ...]:
+        return tuple(self._artifacts.values())
+
+    def _commit_authorized_attestation(
+        self,
+        artifact: CaptureAttestationArtifactV2,
+        *,
+        issuer_grant_repository: SourceIssuerGrantRepository,
+        construct_freeze_digest: str,
+    ) -> CaptureAttestationArtifactV2:
+        if issuer_grant_repository.construct_freeze_digest() != construct_freeze_digest:
+            raise StructuralContractError("capture attestation: construct-freeze digest mismatch")
         verified = verify_capture_attestation_artifact(artifact)
+        occurrence = verified.occurrence_reference
+        grant = issuer_grant_repository.resolve(
+            issuer_identity=verified.issuer_identity,
+            source_system_id=occurrence.source_system_id,
+            authority_scope_id=occurrence.authority_scope_id,
+        )
+        if grant.grant_digest != verified.issuer_grant_digest:
+            raise StructuralContractError("capture attestation: issuer grant digest mismatch")
         digest = verified.attestation_evidence_digest()
         self._artifacts[digest] = verified
         return verified
@@ -162,18 +218,51 @@ class CaptureAttestationRepository:
         return verify_capture_attestation_artifact(artifact)
 
 
+def commit_authorized_capture_attestation(
+    artifact: CaptureAttestationArtifactV2,
+    *,
+    attestation_repository: CaptureAttestationRepository,
+    p0_repository: ConstructFreezeAuthorityRepository,
+    construct_freeze_digest: str,
+    construct_freeze_artifact_id: str,
+) -> CaptureAttestationArtifactV2:
+    """Commit attestation evidence only when issuer grant resolves from construct freeze."""
+
+    manifest = verify_construct_freeze_parent_binding(
+        parent_kind="construct_freeze",
+        parent_artifact_id=construct_freeze_artifact_id,
+        parent_digest=construct_freeze_digest,
+        construct_freeze_digest=construct_freeze_digest,
+        repository=p0_repository,
+    )
+    issuer_grant_repository = SourceIssuerGrantRepository.from_construct_freeze(manifest)
+    return attestation_repository._commit_authorized_attestation(
+        artifact,
+        issuer_grant_repository=issuer_grant_repository,
+        construct_freeze_digest=construct_freeze_digest,
+    )
+
+
 def verify_capture_attestation_binding(
     *,
     attestation_digest: str,
     occurrence_reference: OccurrenceReferenceV2,
     evidence_snapshot_id: str,
     repository: CaptureAttestationRepository,
+    issuer_grant_repository: SourceIssuerGrantRepository,
 ) -> CaptureAttestationArtifactV2:
     artifact = repository.resolve(attestation_digest)
-    if not artifact.occurrence_reference.same_occurrence_as(occurrence_reference):
+    if artifact.occurrence_reference.same_occurrence_as(occurrence_reference) is False:
         raise StructuralContractError("capture attestation occurrence mismatch")
     if artifact.evidence_snapshot_id != evidence_snapshot_id:
         raise StructuralContractError("capture attestation evidence snapshot mismatch")
     if artifact.attestation_evidence_digest() != attestation_digest:
         raise StructuralContractError("capture attestation digest mismatch")
+    grant = issuer_grant_repository.resolve(
+        issuer_identity=artifact.issuer_identity,
+        source_system_id=occurrence_reference.source_system_id,
+        authority_scope_id=occurrence_reference.authority_scope_id,
+    )
+    if grant.grant_digest != artifact.issuer_grant_digest:
+        raise StructuralContractError("capture attestation: issuer grant digest mismatch")
     return artifact

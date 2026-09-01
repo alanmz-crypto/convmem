@@ -16,7 +16,10 @@ from eval_naturalistic.v2.contracts import (
 )
 from eval_naturalistic.v2.evidence import ConditionNeutralEvidenceAvailabilityV2
 from eval_naturalistic.v2.identity import OccurrenceReferenceV2
-from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
+from eval_naturalistic.v2.capture_attestation import (
+    CaptureAttestationRepository,
+    commit_authorized_capture_attestation,
+)
 from eval_naturalistic.v2.lineage_attestation import LineageAttestationRepository
 from eval_naturalistic.v2.p0_construct import InMemoryConstructFreezeRepository
 from eval_naturalistic.v2.source_authority import (
@@ -25,9 +28,15 @@ from eval_naturalistic.v2.source_authority import (
     seal_source_capture_package,
     verify_source_capture_authority,
 )
+from eval_naturalistic.v2.source_issuer_authority import (
+    SourceIssuerGrantRepository,
+    build_source_issuer_grant_record,
+)
 
 __all__ = [
     "CaptureAttestationRepository",
+    "commit_authorized_capture_attestation",
+    "build_source_issuer_grant_record",
     "ConditionNeutralEvidenceAvailabilityV2",
     "EvidenceAvailabilityManifestV2",
     "EvidenceSealManifestDraftV2",
@@ -39,6 +48,7 @@ __all__ = [
     "IssuedOccurrenceReferenceV2",
     "LineageAttestationRepository",
     "OccurrenceReferenceV2",
+    "SourceIssuerGrantRepository",
     "SealedP1AuthorityV2",
     "SealedSourceCapturePackageV2",
     "VerifiedSourceAuthorityV2",

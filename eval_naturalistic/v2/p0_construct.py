@@ -27,8 +27,14 @@ class ConstructFreezeManifestV2:
     header: ArtifactHeaderV1
     construct_policy_digest: str
     study_id: str
+    authorized_capture_issuer_grants: tuple[dict[str, str], ...]
 
-    _FIELDS = {"header", "construct_policy_digest", "study_id"}
+    _FIELDS = {
+        "header",
+        "construct_policy_digest",
+        "study_id",
+        "authorized_capture_issuer_grants",
+    }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ConstructFreezeManifestV2":
@@ -37,10 +43,15 @@ class ConstructFreezeManifestV2:
         header = ArtifactHeaderV1.from_dict(_require_dict(data["header"], "header"))
         if header.schema_version != CONSTRUCT_FREEZE_SCHEMA:
             raise StructuralContractError("construct freeze: wrong schema_version")
+        grants_raw = data.get("authorized_capture_issuer_grants", [])
+        if not isinstance(grants_raw, list):
+            raise StructuralContractError("construct freeze: authorized_capture_issuer_grants must be a list")
+        grants = tuple(_require_dict(item, "authorized_capture_issuer_grant") for item in grants_raw)
         return cls(
             header=header,
             construct_policy_digest=_require_str(data["construct_policy_digest"], "construct_policy_digest"),
             study_id=_require_str(data["study_id"], "study_id"),
+            authorized_capture_issuer_grants=grants,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -48,6 +59,7 @@ class ConstructFreezeManifestV2:
             "header": self.header.to_dict(),
             "construct_policy_digest": self.construct_policy_digest,
             "study_id": self.study_id,
+            "authorized_capture_issuer_grants": [dict(grant) for grant in self.authorized_capture_issuer_grants],
         }
 
 
@@ -67,6 +79,7 @@ def seal_construct_freeze_manifest(
     responsible_role: str,
     created_at: str,
     seal_time: str,
+    authorized_capture_issuer_grants: tuple[dict[str, str], ...] = (),
 ) -> ConstructFreezeManifestV2:
     placeholder_header = ArtifactHeaderV1(
         artifact_id="pending",
@@ -83,6 +96,7 @@ def seal_construct_freeze_manifest(
         "header": placeholder_header.to_dict(),
         "construct_policy_digest": construct_policy_digest,
         "study_id": study_id,
+        "authorized_capture_issuer_grants": [dict(grant) for grant in authorized_capture_issuer_grants],
     }
     content_digest = _compute_content_digest(body)
     artifact_id = _derive_artifact_id(schema=CONSTRUCT_FREEZE_SCHEMA, content_digest=content_digest)
@@ -101,6 +115,7 @@ def seal_construct_freeze_manifest(
         header=header,
         construct_policy_digest=construct_policy_digest,
         study_id=study_id,
+        authorized_capture_issuer_grants=authorized_capture_issuer_grants,
     )
     verify_construct_freeze_manifest(manifest)
     return manifest
