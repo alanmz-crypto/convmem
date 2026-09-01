@@ -7,16 +7,16 @@
 >
 > **Arc:** Naturalistic ConvMem product-value evaluation
 >
-> **PRE-G6 contract status:** V2 corrective package materialized; fresh-seed
-> exact-byte review required; not locked and not authorized for implementation,
-> G6, T0, or naturalistic work.
+> **PRE-G6 contract status:** V3 multiplicity-authority erratum materialized;
+> outcome-blind independent review and explicit Ryan acceptance required; not
+> locked and not authorized for implementation, G6, T0, or naturalistic work.
 >
 > **Normative SSoT:**
-> [`naturalistic-pre-g6-contract-v2.json`](artifacts/naturalistic-pre-g6-contract-v2.json)
+> [`naturalistic-pre-g6-contract-v3.json`](artifacts/naturalistic-pre-g6-contract-v3.json)
 > with its schema, conformance cases, validator, and digest sidecar. The
-> architecture and this execution document are explanatory projections. V1 is
-> the superseded exact-review baseline. The contract is not an implementation
-> or live-study grant.
+> architecture and this execution document are explanatory projections. V2 is
+> the immutable historical parent authority. The successor contract is not an
+> implementation or live-study grant.
 
 ## Planning status and human consequence
 
@@ -40,9 +40,10 @@ accounting, resolver blindness, summary firewall, scorer amendment rule, and
 single controller-side C0/C1 evidence path. No study artifact or runtime
 implementation is authorized.
 
-**Next gate:** fresh-seed Luna xHigh performs an exact-byte V2 review; Ryan then
-accepts or rejects architecture lock. A bounded Cursor implementation plan or
-grant is separate and later.
+**Next gate:** an outcome-blind independent reviewer performs an exact-byte V3
+authority review; Ryan then accepts or rejects the successor. The separately
+bounded V2-04A interface correction is later, and V2-05 may be reconsidered
+only after that correction passes independent review.
 
 ## 1. Locked architecture decisions
 
@@ -98,7 +99,7 @@ P0_T0_CONSTRUCT_FREEZE
   → T10_INFORMATION_GATE
 ```
 
-The exact stage contract is the V2 JSON `stage_graph`; this diagram is derived
+The exact stage contract is the V3 JSON `stage_graph`; this diagram is derived
 and has no independent transition semantics. T0 freezes the construct root; T1
 seals actual evidence identities and produces the condition-neutral blind view;
 P2 computes resolution once; P3/T2 seals blinded adjudication and registry
@@ -731,6 +732,12 @@ the population definition.
 No missing, incomplete, ambiguous, or zero-target state may be collapsed into
 one convenient denominator. `EVIDENCE_INCOMPLETE` is not zero.
 
+Every valid multiplicity record satisfies `0 <= known_count <= lower_bound`
+and either has a null upper or satisfies `lower_bound <= upper_bound`. An exact
+record additionally requires `known_count == lower_bound == upper_bound` and
+the separately required completeness proof. Neither this plan nor V3 selects
+the Ryan-owned source of such proofs.
+
 `TARGET_STATUS_UNKNOWN` and `TARGET_MULTIPLICITY_UNKNOWN` remain visible in the
 opportunity report. If no finite prospectively frozen bound exists for an
 unknown multiplicity, the dependent opportunity quantity is `UNKNOWN` and the
@@ -844,7 +851,7 @@ after implementation and dry-run verification.
 | G3 Probe/leakage machinery | Implement probe/key partitions, role overlap checks, leakage checklist/reviewer sign-off, probe freeze | G1–G2 | Leakage and key-separation fixtures | Real target probes, treatment exposure |
 | G4 Analysis/statistical machinery | Implement bounded within-episode score contract, sparse states, scorer reliability records, co-primary aggregation, information gate slots | G1; architecture decisions | Synthetic paired fixtures; no chosen live numerical values | Product conclusion, real scoring |
 | G5 Dry-run/fixture verification | Exercise T0–T10 mechanics with synthetic episodes, zero-targets, duplicates, leakage, asymmetry, failures, and full lineage | G1–G4 | Independent dry-run PASS report; no natural evidence | Prospective freeze, Agent A/B, live ConvMem |
-| G6 Actual prospective study freeze | Ryan instantiates and approves T0 values, roles, schedule/window, environments, order, parameter slots, and terminal rules | G5 PASS; V2 exact-byte review; Ryan architecture lock and explicit G6 authorization | `FRAME_FROZEN` and T0 verification | Agent A before gate; no result collection |
+| G6 Actual prospective study freeze | Ryan instantiates and approves T0 values, roles, schedule/window, environments, order, parameter slots, and terminal rules | G5 PASS; V3 exact-byte authority review; Ryan successor acceptance, architecture lock, and explicit G6 authorization | `FRAME_FROZEN` and T0 verification | Agent A before gate; no result collection |
 | G7 Agent-A episode execution | Collect only the selected ordinary episodes and seal raw evidence | G6 | T1 complete episode/evidence bundle | Replacement episodes, target selection, B trials |
 | G8 Target census | Two independent adjudicators complete and seal the raw-evidence census; resolve disagreements | G7 | T2 sealed `TargetRegistry` and quality report | Probe construction before seal; capture-based decisions |
 | G9 Census/sample, probe, capture, and C1 readiness | Apply T3; construct/review T4 probes; freeze T5 natural snapshot; qualify T6 | G8; staged sub-gates | Sample/probe/key/capture/environment manifests | Target-directed recapture; B execution before T6 PASS |
@@ -991,7 +998,7 @@ Digest equality alone is not sufficient evidence.
 
 ## 17. Human projection of remaining Ryan value selections
 
-The V2 JSON `decision_registry` is the sole decision inventory. Its 20 entries
+The V3 JSON `decision_registry` is the sole decision inventory. Its 20 entries
 define stable IDs, semantics, allowed domains/states, units, preferred policies,
 owner authority, P0 freeze, evidence, validators, exact failures, downsides,
 and overturning evidence. Ryan chooses concrete live values; no implementer
@@ -1019,10 +1026,10 @@ also covers frame, sampling, identity, source, assurance, attachment/material,
 retention, resolver/blind-view, lineage, multiplicity, scorer/key, and
 implementation-amendment policies.
 
-## 18. Exact questions for fresh-seed V2 review
+## 18. Exact questions for independent V3 authority review
 
-The fresh-seed Luna xHigh reviewer should answer each question with `PASS`,
-`FAIL`, or an explicitly bounded requested correction tied to the exact V2
+The outcome-blind independent reviewer should answer each question with `PASS`,
+`FAIL`, or an explicitly bounded requested correction tied to the exact V3
 artifact SHA and canonical digest:
 
 1. Does T0 enumerate every architecture-required freeze item and prevent Agent
@@ -1065,17 +1072,19 @@ artifact SHA and canonical digest:
 ```text
 PRE-G6 exact review of V1 (Sol) — CORRECTIVE REQUIRED
         ↓
-PRE-G6 V2 corrective materialization (Sol) — this package
+PRE-G6 V2 corrective materialization (Sol) — immutable historical package
         ↓
-Fresh-seed Luna xHigh exact-byte review
+PRE-G6 V3 multiplicity-authority erratum — successor package
         ↓
-Ryan architecture lock decision
+Outcome-blind independent exact-byte authority review
         ↓
-Bounded Cursor implementation planning/grant
+Ryan successor-acceptance decision
         ↓
-Independent implementation verification
+Separately bounded V2-04A implementation corrective
         ↓
-Only afterward reconsider G6/T0
+Independent V2-04A verification
+        ↓
+Only afterward reconsider V2-05; G6/T0 remains closed
 ```
 
 No branch, plan, or dry-run PASS is an implicit grant to run Agent A/B or
@@ -1101,10 +1110,10 @@ collect natural episodes. The live study remains review-required.
 - [x] Identity/lineage, capability-vector, unknown-multiplicity,
       resolver-blindness, snapshot-authority, summary-firewall, scorer-
       amendment, and C0/C1 informative-missingness controls are explicit.
-- [ ] Fresh-seed Luna xHigh exact-byte V2 review.
-- [ ] Ryan architecture lock decision.
+- [ ] Outcome-blind independent exact-byte V3 authority review.
+- [ ] Ryan successor-acceptance decision.
 - [ ] Any implementation or live-study grant.
 
-**Next sequence:** fresh-seed Luna xHigh exact-byte review → Ryan architecture
-lock decision → bounded Cursor implementation planning/grant → independent
-implementation verification → only then reconsider G6/T0.
+**Next sequence:** independent V3 authority review → Ryan successor-acceptance
+decision → separately bounded V2-04A implementation and independent review →
+only then reconsider V2-05; G6/T0 remains closed.

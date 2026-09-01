@@ -6,15 +6,16 @@
 >
 > **Arc:** Naturalistic ConvMem product-value evaluation
 >
-> **PRE-G6 contract status:** V2 corrective package materialized; fresh-seed
-> exact-byte review required; not locked and not authorized for implementation,
-> G6, T0, or naturalistic work.
+> **PRE-G6 contract status:** V3 multiplicity-authority erratum materialized;
+> outcome-blind independent review and explicit Ryan acceptance required; not
+> locked and not authorized for implementation, G6, T0, or naturalistic work.
 >
 > **Canonical contract artifact:**
-> `docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json` with sidecar
-> `naturalistic-pre-g6-contract-v2.json.sha256`. The JSON is the sole normative
-> authority; this prose is an explanatory projection and must be corrected if
-> it conflicts. V1 remains only as the reviewed, superseded baseline.
+> `docs/plans/artifacts/naturalistic-pre-g6-contract-v3.json` with sidecar
+> `naturalistic-pre-g6-contract-v3.json.sha256`. The JSON is the sole normative
+> artifact within the proposed successor package; this prose is an explanatory
+> projection and must be corrected if it conflicts. V2 remains immutable
+> historical authority at its locked digest.
 >
 > **Provenance root:** GitHub Issue #263, “Expose verbatim end-of-chat missives
 > through retrieval,” remains open and anchors the source-resolution invariant:
@@ -130,7 +131,7 @@ preserved as upstream and component diagnostics, never as eligibility gates.
 
 ## 4. Derived lifecycle projection
 
-The canonical `stage_graph` in V2 is the only transition authority. This
+The canonical `stage_graph` in V3 is the only transition authority. This
 projection is derived from its ordered IDs; lifecycle labels and P/T aliases do
 not form independent state machines. A later state may read an earlier artifact
 but may not rewrite it. Violations follow the exact stage's
@@ -151,7 +152,7 @@ P0_T0_CONSTRUCT_FREEZE
   → T10_INFORMATION_GATE
 ```
 
-Each V2 stage records its immediate parent, consumed and produced artifacts,
+Each V3 stage records its immediate parent, consumed and produced artifacts,
 authority created, validator, failure transition, already-required fields, and
 not-yet-knowable forbidden fields. The conformance validator rejects a consumer
 before its producer and rejects any non-immediate parent. In particular, P1
@@ -662,7 +663,7 @@ not generate episodes, targets, or probes merely to populate a stratum.
 
 ## 18. Derived identity and provenance projection
 
-The canonical identity chain is the V2 stage graph and its parent digests. This
+The canonical identity chain is the V3 stage graph and its parent digests. This
 compact view names the corresponding artifact roles; it is not a second chain:
 
 ```text
@@ -694,11 +695,12 @@ raw-evidence or registry link.
 
 This section preserves the explanatory projection reviewed at commit
 `82cc01a94ade8760c08df80512dbada410ca620d`. It is non-normative and superseded
-by V2. Its inconsistent digest, stage, identity, uncertainty, view,
+by V2, which is itself preserved as the immutable historical parent of V3. Its
+inconsistent digest, stage, identity, uncertainty, view,
 implementation, and decision descriptions must not be implemented or used for
-G6 readiness. The sole V2 authority is the canonical JSON named at the top of
-this document; its conflict rule requires this prose to be corrected rather
-than creating a second authority.
+G6 readiness. The sole proposed V3 successor artifact is the canonical JSON
+named at the top of this document; its conflict rule requires this prose to be
+corrected rather than creating a second authority.
 
 <!-- BEGIN ARCHIVED V1 PROJECTION: NON-NORMATIVE; DO NOT IMPLEMENT -->
 
@@ -906,27 +908,32 @@ for exact review, not implementation suggestions.
 
 <!-- END ARCHIVED V1 PROJECTION -->
 
-## 18B. V2 exact-contract projection
+## 18B. V3 exact-contract erratum projection
 
-V2 is byte-addressed as RFC 8785 JCS over UTF-8 with no trailing byte. SHA-256
+V3 is byte-addressed as RFC 8785 JCS over UTF-8 with no trailing byte. SHA-256
 over those canonical bytes is
-`5fec1b40ab2771968c851a4b12c1e0f5740c0eed24ebfb94a7f69e137e97fb34`.
+`f5cc62a3881bc06ddb0d0f1bc3b68d8c3e2cb29b5abda9675e32c84eea04d2a4`.
 The adjacent sidecar contains that digest; the validator checks the sidecar,
 the canonical bytes, a newline-appended negative control, and an RFC 8785
-numeric/order vector. V1 is not amended in place.
+numeric/order vector. V2 is not amended in place: it remains historical
+authority at digest
+`917ad129a4f9641f65b809e143467b1f2c48ea41203166365b8e3efd459b627e`.
 
 The JSON, schema, conformance cases, and validator are one review package:
 
-- `naturalistic-pre-g6-contract-v2.json` is the sole semantic authority;
-- `naturalistic-pre-g6-contract-v2.schema.json` defines required structure;
-- `naturalistic-pre-g6-contract-v2.conformance.json` records the 18 required
+- `naturalistic-pre-g6-contract-v3.json` is the sole successor semantic authority;
+- `naturalistic-pre-g6-contract-v3.schema.json` defines required structure;
+- `naturalistic-pre-g6-contract-v3.conformance.json` records 35 required
   adversarial outcomes and exact blocked transitions;
-- `validate-naturalistic-pre-g6-contract-v2.mjs` checks schema structure,
+- `validate-naturalistic-pre-g6-contract-v3.mjs` checks schema structure,
   digest exactness, causal production/consumption, registry completeness, and
-  the cross-surface invariants.
+  the cross-surface invariants, executes 13 multiplicity cases, and proves all
+  non-allowlisted V2 semantics unchanged;
+- `naturalistic-pre-g6-contract-v3.amendment.json` records the two semantic
+  fields changed and separates them from mechanical successor-package changes.
 
 No field or rule in this architecture prose adds normative meaning. If a rule
-is not represented in the canonical JSON, it is not part of V2.
+is not represented in the canonical JSON, it is not part of V3.
 
 ### Staged authority and source resolution
 
@@ -940,7 +947,7 @@ capability authority; P3/T2 consumes the pre-P2 constant-shape evidence view,
 seals two independent decisions and blinded resolution, then creates registry
 authority.
 
-GitHub Issue #263 is the provenance root for source-resolution semantics. V2
+GitHub Issue #263 is the provenance root for source-resolution semantics. V3
 separates source presence, verbatim-evidence availability, summary-evidence
 availability, and resolver result. A query miss is never source-absence
 authority, and `PRESENT + UNAVAILABLE` cannot be collapsed to `ABSENT`.
@@ -976,7 +983,10 @@ secondary diagnostics, and replay/audit; no scalar label has authority.
 Target state is orthogonal across existence, multiplicity, resolvability,
 evaluability, and integrity. Counts carry `known_count`, `lower_bound`, and
 `upper_bound`, with `null` meaning unbounded upper multiplicity. Recovered
-count is never substituted for possible total. Finite bounds propagate by the
+count is never substituted for possible total. Every valid record satisfies
+`0 <= known_count <= lower_bound` and either has a null upper or satisfies
+`lower_bound <= upper_bound`; exact totals additionally require all three
+counts to be equal and a completeness proof. Finite bounds propagate by the
 canonical registry/aggregation/T10 table; an unbounded dependent quantity
 remains unknown and blocks T10 as non-estimable.
 
@@ -1053,7 +1063,7 @@ The active G6 routing assumptions were inspected and preserved: G5C is
 methodology-only, G6 requires an explicit Ryan grant, and synthetic results do
 not open G6. No source-resolution conflict was found in that lane, so its work
 is neither merged into nor rewritten by this corrective. The dependency is
-explicitly `Issue #263 → PRE-G6 V2 → future G6 readiness`. Issue #263 remains
+explicitly `Issue #263 → PRE-G6 V3 → future G6 readiness`. Issue #263 remains
 open; this planning contract does not claim to implement its retrieval fix.
 
 ## 19. Freeze sequence
@@ -1234,19 +1244,21 @@ digest or a grouped stage flag is insufficient.
 
 ### Sol corrective status
 
-Sol's exact review of V1 required correction, and this V2 package materializes
-that correction. It does not self-certify the architecture. The next review is
-a fresh-seed Luna xHigh exact-byte review of the V2 JSON, schema, conformance
-cases, validator, sidecar, and their prose projections. Routine implementation
-difficulty, sparse data, or scorer disagreement remains outside this gate.
+Sol's exact review of V1 led to the historical V2 package. The V3 successor
+corrects only V2's internally contradictory multiplicity inequality and does
+not self-certify the architecture. The next review is an outcome-blind
+independent exact-byte review of the V3 JSON, schema, conformance cases,
+validator, sidecar, amendment manifest, and prose projections. Routine
+implementation difficulty, sparse data, or scorer disagreement remains outside
+this gate.
 
 ## 23. Next gate
 
-The V2 corrective package is ready for exact independent contract review, not
-for implementation. After that review, Ryan decides whether to lock the
-architecture. Only a later, separate Ryan grant may authorize bounded Cursor
-implementation planning or implementation.
+The V3 multiplicity-authority erratum is ready for exact independent contract
+review, not for implementation. After that review, Ryan decides whether to
+accept the successor authority. Only later, separately bounded grants may
+authorize the V2-04A interface correction and then reconsider V2-05.
 
-**Next sequence:** fresh-seed Luna xHigh exact-byte review → Ryan architecture
-lock decision → bounded Cursor implementation planning/grant → independent
-exact-tip verification → only then reconsider G6/T0.
+**Next sequence:** independent V3 authority review → Ryan successor-acceptance
+decision → separately bounded V2-04A implementation and independent review →
+only then reconsider V2-05; G6/T0 remains closed.

@@ -1,0 +1,101 @@
+{
+  "artifact_type": "naturalistic_pre_g6_contract_amendment_manifest",
+  "manifest_version": "naturalistic-pre-g6-contract-amendment-v1",
+  "arc": "Naturalistic ConvMem product-value evaluation",
+  "status": "PROPOSED_FOR_OUTCOME_BLIND_INDEPENDENT_REVIEW",
+  "prospective_correction": true,
+  "agent_a_or_natural_execution_started": false,
+  "historical_authority": {
+    "contract_version": "naturalistic-pre-g6-contract-v2",
+    "reviewed_commit": "9f4791c2744c02d742fdb9c0fa1e9dd150591ac1",
+    "canonical_contract": "docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json",
+    "canonical_digest": "917ad129a4f9641f65b809e143467b1f2c48ea41203166365b8e3efd459b627e",
+    "preserved_immutable": true
+  },
+  "successor_authority": {
+    "contract_version": "naturalistic-pre-g6-contract-v3",
+    "canonical_contract": "docs/plans/artifacts/naturalistic-pre-g6-contract-v3.json",
+    "canonical_digest": "f5cc62a3881bc06ddb0d0f1bc3b68d8c3e2cb29b5abda9675e32c84eea04d2a4",
+    "canonical_byte_count": 48268,
+    "schema": "docs/plans/artifacts/naturalistic-pre-g6-contract-v3.schema.json",
+    "conformance_cases": "docs/plans/artifacts/naturalistic-pre-g6-contract-v3.conformance.json",
+    "validator": "docs/plans/artifacts/validate-naturalistic-pre-g6-contract-v3.mjs",
+    "digest_sidecar": "docs/plans/artifacts/naturalistic-pre-g6-contract-v3.json.sha256"
+  },
+  "reason": "The V2 denominator rule requires lower_bound to be at least known_count while D_MULTIPLICITY_001 described the reverse inequality. V3 removes that contradiction without changing any bound source or unrelated construct.",
+  "semantic_scope": "multiplicity_inequality_consistency_only",
+  "semantic_changes": [
+    {
+      "json_pointer": "/denominator_model/target_count_bounds/rules",
+      "old_value": [
+        "known_count_equals_number_evidenced_not_total_when_upper_unknown",
+        "lower_bound_must_be_at_least_known_count",
+        "exact_requires_lower_equals_upper",
+        "unbounded_unknown_requires_upper_bound_null"
+      ],
+      "new_value": [
+        "known_count_equals_number_evidenced_not_total_when_upper_unknown",
+        "valid_counts_require_zero_le_known_count_le_lower_bound",
+        "lower_bound_above_known_count_requires_separate_lower_bound_proof_authority",
+        "finite_upper_requires_lower_bound_le_upper_bound_and_bound_proof_authority",
+        "exact_requires_known_count_equals_lower_bound_equals_upper_bound_and_exact_completeness_proof",
+        "unbounded_unknown_requires_upper_bound_null"
+      ],
+      "effect": "Makes 0 <= known_count <= lower_bound and finite lower_bound <= upper_bound mechanically explicit; restates the pre-existing proof requirements for lower bounds above recovered identities, finite uppers, and exact totals."
+    },
+    {
+      "json_pointer": "/decision_registry/18/validator",
+      "decision_id": "D_MULTIPLICITY_001",
+      "old_value": "bounds_prefrozen_lower_le_known_and_upper_ge_lower_or_null",
+      "new_value": "bounds_prefrozen_nonnegative_known_le_lower_and_upper_ge_lower_or_null_with_required_proof_authority",
+      "effect": "Corrects the reversed known/lower inequality and binds finite or strengthened bounds to proof authority without selecting a bound source."
+    }
+  ],
+  "mechanical_changes": [
+    "contract_version_and_supersedes_binding",
+    "v3_canonicalization_and_normative_companion_paths_including_the_changed_field_manifest",
+    "v3_schema_id_title_version_const_and_supersedes_digest_requirement",
+    "thirteen_multiplicity_conformance_cases_and_matching_verification_control_ids",
+    "coordination_dependency_version_reference",
+    "v3_digest_sidecar_and_validator_identity",
+    "architecture_execution_and_status_projection_version_digest_case_count_and_review_routing"
+  ],
+  "bound_source_selection": {
+    "decision_id": "D_MULTIPLICITY_001",
+    "selected": false,
+    "owner_remains": "Ryan_after_design_review"
+  },
+  "regression_proof": {
+    "method": "The V3 validator projects the successor back to V2 by reverting only the enumerated semantic and mechanical paths, then requires exact parsed-JSON equality with the immutable V2 contract. It also requires all 22 historical conformance cases to remain byte-value identical and ordered first.",
+    "result": "PASS",
+    "unchanged_semantics": [
+      "stage_graph",
+      "P1_identity_and_evidence",
+      "P2_resolver_authority",
+      "P1_P2_firewall",
+      "P3_blindness",
+      "capability_vectors",
+      "amendment_policy",
+      "source_present_verbatim_unavailable_invariant",
+      "semantic_dedup_independent_of_physical_identity",
+      "null_upper_blocking",
+      "episode_first_weighting",
+      "C0_C1_governance",
+      "Ryan_owned_unresolved_decisions"
+    ]
+  },
+  "review_requirements": [
+    "outcome_blind_independent_review",
+    "explicit_Ryan_authorization_before_lock_or_dependent_implementation"
+  ],
+  "prohibited_scope": [
+    "V2_04A_runtime_correction",
+    "V2_05_runtime_implementation",
+    "V2_06",
+    "G6_T0",
+    "live_evidence",
+    "Agent_A_B",
+    "scoring",
+    "product_inference"
+  ]
+}
