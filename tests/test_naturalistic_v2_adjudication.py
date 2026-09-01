@@ -276,6 +276,72 @@ class NaturalisticV2AdjudicationTests(unittest.TestCase):
         self.assertEqual(view.schema_version, VIEW_SCHEMA)
 
 
+class NaturalisticV2AdjudicationNestedDenyTests(unittest.TestCase):
+    """Nested-depth structural deny hardening — keys only, not prose values."""
+
+    NESTED_FORBIDDEN_KEYS = (
+        "attempt",
+        "attempt_count",
+        "attemptCount",
+        "error",
+        "error_code",
+        "error_category",
+        "errno",
+        "exception",
+        "stack_trace",
+        "status_code",
+        "filesystem_mtime",
+        "mtime",
+        "file_mtime",
+        "fs_time",
+    )
+
+    NESTED_CONTAINERS = (
+        "chronology",
+        "reply_structure",
+        "canonical_evidence_content",
+    )
+
+    def _payload_with_nested_key(self, container: str, forbidden_key: str) -> dict:
+        payload = build_adjudication_evidence_view(sample_p1_bundle()).to_dict()
+        payload["items"][0][container] = {forbidden_key: "P2_LEAK"}
+        return payload
+
+    def test_nested_forbidden_structural_keys_rejected(self) -> None:
+        for forbidden_key in self.NESTED_FORBIDDEN_KEYS:
+            for container in self.NESTED_CONTAINERS:
+                with self.subTest(forbidden_key=forbidden_key, container=container):
+                    payload = self._payload_with_nested_key(container, forbidden_key)
+                    with self.assertRaises(StructuralContractError):
+                        validate_adjudication_view_structure(payload, label="view")
+
+    def test_error_code_in_chronology_rejected(self) -> None:
+        payload = build_adjudication_evidence_view(sample_p1_bundle()).to_dict()
+        payload["items"][0]["chronology"] = {"error_code": "P2_LEAK"}
+        with self.assertRaises(StructuralContractError):
+            validate_adjudication_view_structure(payload, label="view")
+
+    def test_evidence_prose_with_error_word_not_rejected(self) -> None:
+        payload = build_adjudication_evidence_view(sample_p1_bundle()).to_dict()
+        payload["items"][0]["chronology"]["ordering_state"] = (
+            "the resolver returned an error"
+        )
+        validate_adjudication_view_structure(payload, label="view")
+
+    def test_allowed_top_level_fields_remain_accepted(self) -> None:
+        view = build_adjudication_evidence_view(sample_p1_bundle())
+        validate_adjudication_view_structure(view.to_dict(), label="view")
+        for field in AdjudicationEvidenceViewItemV1.ALLOWED:
+            self.assertIn(field, view.to_dict()["items"][0])
+
+    def test_metamorphic_byte_equality_unchanged_after_deny_hardening(self) -> None:
+        bundle = sample_p1_bundle()
+        baseline = _view_bytes_from_p1(bundle)
+        for result in ResolverResultV2:
+            _ = p2_manifest_for_result(result)
+            self.assertEqual(_view_bytes_from_p1(bundle), baseline)
+
+
 class NaturalisticV2AdjudicationStaticDependencyTests(unittest.TestCase):
     FORBIDDEN_IMPORT_FRAGMENTS = (
         "eval_naturalistic.v2.resolver",

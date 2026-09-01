@@ -60,6 +60,9 @@ _FORBIDDEN_KEY_FRAGMENTS = (
     "cache",
     "join_readiness",
     "capture_timestamp",
+    "capture_time",
+    "resolver_timestamp",
+    "resolved_at",
     "latency",
     "duration",
     "traceback",
@@ -70,6 +73,20 @@ _FORBIDDEN_KEY_FRAGMENTS = (
     "target_census",
     "candidate_id",
     "target_id",
+    # Operational side-channel / error diagnostics (structural keys only).
+    "attempt",
+    "error",
+    "errno",
+    "exception",
+    "stack_trace",
+    "stacktrace",
+    "stack",
+    "status_code",
+    "error_category",
+    "filesystem_mtime",
+    "file_mtime",
+    "fs_time",
+    "mtime",
 )
 
 _ESCAPE_KEYS = frozenset({"metadata", "debug", "extra"})
