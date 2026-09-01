@@ -7,16 +7,19 @@
 **Arc:** Naturalistic ConvMem product-value evaluation
 
 **Current state:** G1–G5 are landed on `main`; classification remains
-**methodology validation, not product evidence**. Historical PRE-G6 V2
-authority is preserved at commit
-`9f4791c2744c02d742fdb9c0fa1e9dd150591ac1` and RFC 8785 digest
+**methodology validation, not product evidence**. Ryan accepts
+`naturalistic-pre-g6-contract-v3` at commit
+`d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7`, canonical RFC 8785/JCS digest
+`f5cc62a3881bc06ddb0d0f1bc3b68d8c3e2cb29b5abda9675e32c84eea04d2a4`, and
+48,268 canonical bytes as the successor PRE-G6 semantic authority. This
+supersedes V2 semantically for future PRE-G6 Naturalistic work but does not
+rewrite V2 history: V2 remains immutable historical authority at commit
+`9f4791c2744c02d742fdb9c0fa1e9dd150591ac1` and digest
 `917ad129a4f9641f65b809e143467b1f2c48ea41203166365b8e3efd459b627e`.
-The proposed V3 successor corrects only V2's contradictory multiplicity
-inequality and awaits outcome-blind independent authority review plus explicit
-Ryan acceptance. V2-04 is closed at descendant tip
-`872390db8ac76157b3a0223d947a8eb5da66473c`; a separate V2-04A output-interface
-corrective is required before V2-05 may be reconsidered. **G6 and T0 remain
-unauthorized.**
+V2-04 is closed at independently passed implementation parent
+`872390db8ac76157b3a0223d947a8eb5da66473c`; V2-04A is prepared as a separate
+bounded output-interface corrective for Ryan's grant decision before V2-05 may
+be reconsidered. **G6 and T0 remain unauthorized.**
 
 ---
 
@@ -72,10 +75,12 @@ Key invariants:
 |---|---|
 | `docs/plans/ARCHITECTURE-naturalistic-product-value.md` | V3 explanatory projection; non-authorizing and not independently normative |
 | `docs/plans/EXECUTION-naturalistic-product-value.md` | V3 stage/grant projection; non-authorizing and not independently normative |
-| `docs/plans/artifacts/naturalistic-pre-g6-contract-v3.json` | Sole proposed successor authority; awaits independent review and Ryan acceptance |
+| `docs/plans/artifacts/naturalistic-pre-g6-contract-v3.json` | Sole accepted successor semantic authority at the exact commit/digest recorded above |
 | V3 schema, conformance JSON, validator, amendment manifest, and `.sha256` sidecar | Exact-byte erratum package; 12 stages, 20 decisions, 20 invariants, 50 controls, 35 conformance cases |
-| `docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json` and companions | Immutable historical V2 authority; not mutated by the erratum |
+| `docs/plans/artifacts/naturalistic-pre-g6-contract-v2.json` and companions | Immutable historical V2 authority/parent; not mutated by the erratum |
 | `naturalistic-pre-g6-contract-v1.json` and sidecar | Superseded exact-review baseline; must not be implemented |
+| V2-04 implementation lineage | Independently passed at implementation parent `872390db8ac76157b3a0223d947a8eb5da66473c`; V2-04A is not implemented |
+| V2-04A planning reconciliation and Cursor packet | Docs-only routing; ready for Ryan decision, not an implementation grant |
 | `eval_naturalistic/contracts.py`, `base.py`, `enums.py`, `digest.py` | G1 contract and identity substrate on `main` |
 | `eval_naturalistic/adjudication.py` and fixtures | G2 target census/adjudication scaffold on `main` |
 | `eval_naturalistic/probe_construction.py` and fixtures | G3 probe/key construction scaffold on `main` |
@@ -94,22 +99,20 @@ Key invariants:
 | G3 probe construction machinery | **DONE on `main`** | PR #255; no live key or study sample exists |
 | G4 analysis/statistical machinery | **DONE on `main`** | Kiro PASS at exact `fa7d68b`; focused 98 tests + 8 subtests; Pylint 10/10 |
 | G5 dry-run/fixture verification | **DONE on `main`** | PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`; Kiro PASS at `23b2495927a9891070c7c294e45bdb641eaab352`; methodology validation only |
-| PRE-G6 exact contract | **V3 MULTIPLICITY ERRATUM HANDED TO KIRO — NOT ACCEPTED** | Frozen target `d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7` awaits outcome-blind independent review, then explicit Ryan acceptance |
-| V2 runtime implementation | **V2-04 CLOSED; V2-04A REQUIRED** | Separate interface corrective and independent review must precede reconsidering V2-05 |
+| PRE-G6 exact contract | **V3 ACCEPTED SUCCESSOR PRE-G6 SEMANTIC AUTHORITY** | Ryan accepted exact commit `d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7`, digest `f5cc62a3881bc06ddb0d0f1bc3b68d8c3e2cb29b5abda9675e32c84eea04d2a4`, 48,268 canonical bytes; V2 remains immutable historical authority |
+| V2 runtime implementation | **V2-04 CLOSED; V2-04A GRANT READY FOR RYAN DECISION** | Existing implementation parent `872390db8ac76157b3a0223d947a8eb5da66473c`; accepted V3 is semantic authority; V2-04A implementation and fresh review remain unstarted |
 | G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Closed through authority review, V2-04A, any later implementation, and independent verification; then Ryan explicit G6 grant if warranted |
 | Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-The next lane is an **outcome-blind independent exact-byte review** of the V3
-JSON, schema, 35 conformance cases, validator, sidecar, amendment manifest, and
-explanatory projections at one exact corrective SHA. The reviewer must verify
-that only multiplicity inequality consistency changed and must not trust this
-materializer's self-checks.
-
-After an authority-review PASS, Ryan alone may accept the V3 successor. The
-separate bounded V2-04A implementation corrective and its independent review
-must then close before V2-05 is reconsidered. G6/T0 remains later and separate.
+The V3 exact-byte authority review is complete and Ryan has accepted the V3
+successor at the exact commit and digest recorded above. The next lane is
+Ryan's separate decision on the bounded Cursor V2-04A implementation packet.
+If granted, Cursor must implement only the sealed P1/P3 semantic-closure
+extension at the existing V2-04 boundary, followed by a fresh independent Kiro
+review. V2-05 may be reconsidered only after that review. G6/T0 remains later
+and separate.
 
 If sent for **G6 or live study**, stop. G6 remains closed. Do not access natural
 evidence, choose live values, build the live registry, run agents, score, or
@@ -127,9 +130,10 @@ interpret synthetic `0.3` as product evidence.
 - [x] Sol exact-review V1 and identify contract blockers.
 - [x] Materialize the isolated V2 corrective with Issue #263 provenance and no G6 lane merge.
 - [x] Materialize the prospective V3 multiplicity-authority erratum without mutating V2.
-- [ ] Outcome-blind independent exact-byte review of one V3 corrective SHA.
-- [ ] Ryan successor-acceptance decision after authority-review PASS.
-- [ ] Separately bounded V2-04A implementation corrective, if Ryan authorizes it.
+- [x] Outcome-blind independent exact-byte review of one V3 corrective SHA; Kiro PASS at `d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7`.
+- [x] Ryan accepts the V3 successor semantic authority at `d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7` / `f5cc62a3881bc06ddb0d0f1bc3b68d8c3e2cb29b5abda9675e32c84eea04d2a4`.
+- [x] Reconcile future implementation routing to accepted V3 while preserving implementation parent `872390db8ac76157b3a0223d947a8eb5da66473c` and historical V2.
+- [ ] Ryan grants the separately bounded V2-04A implementation corrective.
 - [ ] Independent exact-tip V2-04A verification.
 - [ ] Reconsider V2-05 only after the preceding gates close.
 - [ ] Only then may Ryan reconsider G6 prospective freeze and later live gates.
@@ -140,7 +144,8 @@ interpret synthetic `0.3` as product evidence.
 | Stop | Owner / invariant | What it blocks |
 |---|---|---|
 | G4 ceiling | Analysis contract; T10-only disposition rule | Any product conclusion from G1–G4 code or fixtures |
-| V3 successor acceptance | Outcome-blind independent review, then Ryan | Any dependent V2-04A/V2-05 authority; materialization is not self-certification |
+| V3 successor authority | Ryan acceptance after outcome-blind independent review | V3 may govern future bounded PRE-G6 implementation; acceptance is not a runtime, V2-05, G6, or live-study grant |
+| V2-04A grant | Ryan explicit bounded grant | Cursor implementation and later V2-05 reconsideration; no grant is implied by V3 acceptance |
 | G6 grant | Ryan only after authority acceptance, implementation, and independent verification | Prospective study freeze and every live gate; not implied by G5 landing, V3 materialization, or synthetic results |
 | G6 and later grants | Ryan | Prospective frame, agents, episodes, scoring, and live ConvMem |
 | Pre-live numerical slots | Ryan after the required review | Choosing meaningful-advantage, equivalence, precision, sparsity, or scorer thresholds |
@@ -158,9 +163,11 @@ separately governed.
 
 | Purpose | Path |
 |---|---|
-| Sole proposed V3 successor authority | [`artifacts/naturalistic-pre-g6-contract-v3.json`](artifacts/naturalistic-pre-g6-contract-v3.json) |
+| Sole accepted V3 successor authority | [`artifacts/naturalistic-pre-g6-contract-v3.json`](artifacts/naturalistic-pre-g6-contract-v3.json) |
 | V3 schema / conformance / validator / amendment manifest | [`artifacts/naturalistic-pre-g6-contract-v3.schema.json`](artifacts/naturalistic-pre-g6-contract-v3.schema.json), [`artifacts/naturalistic-pre-g6-contract-v3.conformance.json`](artifacts/naturalistic-pre-g6-contract-v3.conformance.json), [`artifacts/validate-naturalistic-pre-g6-contract-v3.mjs`](artifacts/validate-naturalistic-pre-g6-contract-v3.mjs), [`artifacts/naturalistic-pre-g6-contract-v3.amendment.json`](artifacts/naturalistic-pre-g6-contract-v3.amendment.json) |
 | Immutable historical V2 authority | [`artifacts/naturalistic-pre-g6-contract-v2.json`](artifacts/naturalistic-pre-g6-contract-v2.json) |
+| V2-04A planning reconciliation | [`../inter-model/CODEX-2026-09-01-naturalistic-v2-04a-planning-reconciliation.md`](../inter-model/CODEX-2026-09-01-naturalistic-v2-04a-planning-reconciliation.md) |
+| V2-04A Cursor grant packet | [`../inter-model/CURSOR-2026-09-01-naturalistic-v2-04a-implementation-grant.md`](../inter-model/CURSOR-2026-09-01-naturalistic-v2-04a-implementation-grant.md) |
 | Kiro exact-target authority-review packet | [`../inter-model/CODEX-2026-09-01-naturalistic-pre-g6-v3-authority-review-handoff.md`](../inter-model/CODEX-2026-09-01-naturalistic-pre-g6-v3-authority-review-handoff.md) |
 | Explanatory architecture | [`ARCHITECTURE-naturalistic-product-value.md`](ARCHITECTURE-naturalistic-product-value.md) |
 | Serial execution and grant plan | [`EXECUTION-naturalistic-product-value.md`](EXECUTION-naturalistic-product-value.md) |
@@ -185,7 +192,8 @@ the session transcript separately under Track A.
 - 2026-08-31 — Sol: materialized the Issue-#263-rooted PRE-G6 V2 exact-contract corrective after V1 exact review required correction; fresh-seed review next, with G6 separate and closed.
 - 2026-08-31 — Codex Sol: materialized a prospective V3 successor correcting only V2 multiplicity inequality consistency; independent authority review and Ryan acceptance are next.
 - 2026-09-01 — Codex Sol: froze V3 target `d5b03a6c…` and prepared the read-only Kiro authority-review packet; no implementation authority added.
+- 2026-09-01 — Ryan: accepted V3 as the successor PRE-G6 semantic authority; V2 remains immutable historical authority and V2-04A remains separately grant-gated.
 
-**TL;DR:** PRE-G6 V3 proposes only the multiplicity inequality erratum and now
-awaits independent authority review plus Ryan acceptance; V2-04A, V2-05, and
-G6/T0 remain separately gated.
+**TL;DR:** Ryan accepted PRE-G6 V3 as the successor semantic authority;
+V2 remains immutable, and only a separately bounded V2-04A grant decision may
+precede fresh review and later V2-05 reconsideration. G6/T0 remains closed.

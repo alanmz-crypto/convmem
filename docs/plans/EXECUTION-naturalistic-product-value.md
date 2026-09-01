@@ -7,9 +7,13 @@
 >
 > **Arc:** Naturalistic ConvMem product-value evaluation
 >
-> **PRE-G6 contract status:** V3 multiplicity-authority erratum materialized;
-> outcome-blind independent review and explicit Ryan acceptance required; not
-> locked and not authorized for implementation, G6, T0, or naturalistic work.
+> **PRE-G6 contract status:** Ryan accepted V3 as the successor semantic
+> authority at commit `d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7`, canonical RFC
+> 8785/JCS digest
+> `f5cc62a3881bc06ddb0d0f1bc3b68d8c3e2cb29b5abda9675e32c84eea04d2a4`, with
+> 48,268 canonical bytes. This acceptance authorizes only later bounded
+> implementation slices; it does not authorize V2-04A implementation, V2-05,
+> G6, T0, or naturalistic work.
 >
 > **Normative SSoT:**
 > [`naturalistic-pre-g6-contract-v3.json`](artifacts/naturalistic-pre-g6-contract-v3.json)
@@ -40,10 +44,12 @@ accounting, resolver blindness, summary firewall, scorer amendment rule, and
 single controller-side C0/C1 evidence path. No study artifact or runtime
 implementation is authorized.
 
-**Next gate:** an outcome-blind independent reviewer performs an exact-byte V3
-authority review; Ryan then accepts or rejects the successor. The separately
-bounded V2-04A interface correction is later, and V2-05 may be reconsidered
-only after that correction passes independent review.
+**Next gate:** Ryan decides whether to grant the separately bounded V2-04A
+interface correction. If granted, it binds implementation parent
+`872390db8ac76157b3a0223d947a8eb5da66473c` to accepted V3 semantic authority
+commit `d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7` and digest
+`f5cc62a3881bc06ddb0d0f1bc3b68d8c3e2cb29b5abda9675e32c84eea04d2a4`; V2-05
+may be reconsidered only after fresh independent V2-04A review.
 
 ## 1. Locked architecture decisions
 
@@ -851,7 +857,7 @@ after implementation and dry-run verification.
 | G3 Probe/leakage machinery | Implement probe/key partitions, role overlap checks, leakage checklist/reviewer sign-off, probe freeze | G1–G2 | Leakage and key-separation fixtures | Real target probes, treatment exposure |
 | G4 Analysis/statistical machinery | Implement bounded within-episode score contract, sparse states, scorer reliability records, co-primary aggregation, information gate slots | G1; architecture decisions | Synthetic paired fixtures; no chosen live numerical values | Product conclusion, real scoring |
 | G5 Dry-run/fixture verification | Exercise T0–T10 mechanics with synthetic episodes, zero-targets, duplicates, leakage, asymmetry, failures, and full lineage | G1–G4 | Independent dry-run PASS report; no natural evidence | Prospective freeze, Agent A/B, live ConvMem |
-| G6 Actual prospective study freeze | Ryan instantiates and approves T0 values, roles, schedule/window, environments, order, parameter slots, and terminal rules | G5 PASS; V3 exact-byte authority review; Ryan successor acceptance, architecture lock, and explicit G6 authorization | `FRAME_FROZEN` and T0 verification | Agent A before gate; no result collection |
+| G6 Actual prospective study freeze | Ryan instantiates and approves T0 values, roles, schedule/window, environments, order, parameter slots, and terminal rules | G5 PASS; accepted V3 semantic authority; architecture lock; explicit G6 authorization | `FRAME_FROZEN` and T0 verification | Agent A before gate; no result collection |
 | G7 Agent-A episode execution | Collect only the selected ordinary episodes and seal raw evidence | G6 | T1 complete episode/evidence bundle | Replacement episodes, target selection, B trials |
 | G8 Target census | Two independent adjudicators complete and seal the raw-evidence census; resolve disagreements | G7 | T2 sealed `TargetRegistry` and quality report | Probe construction before seal; capture-based decisions |
 | G9 Census/sample, probe, capture, and C1 readiness | Apply T3; construct/review T4 probes; freeze T5 natural snapshot; qualify T6 | G8; staged sub-gates | Sample/probe/key/capture/environment manifests | Target-directed recapture; B execution before T6 PASS |
@@ -1076,9 +1082,11 @@ PRE-G6 V2 corrective materialization (Sol) — immutable historical package
         ↓
 PRE-G6 V3 multiplicity-authority erratum — successor package
         ↓
-Outcome-blind independent exact-byte authority review
+Outcome-blind independent exact-byte authority review — PASS
         ↓
-Ryan successor-acceptance decision
+Ryan successor acceptance — COMPLETE
+        ↓
+Ryan V2-04A grant decision
         ↓
 Separately bounded V2-04A implementation corrective
         ↓
@@ -1110,10 +1118,15 @@ collect natural episodes. The live study remains review-required.
 - [x] Identity/lineage, capability-vector, unknown-multiplicity,
       resolver-blindness, snapshot-authority, summary-firewall, scorer-
       amendment, and C0/C1 informative-missingness controls are explicit.
-- [ ] Outcome-blind independent exact-byte V3 authority review.
-- [ ] Ryan successor-acceptance decision.
-- [ ] Any implementation or live-study grant.
+- [x] Outcome-blind independent exact-byte V3 authority review at exact target
+      `d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7`.
+- [x] Ryan successor-acceptance decision for V3 semantic authority.
+- [x] Bounded V2-04A Cursor handoff prepared with explicit implementation and
+      semantic-authority ancestry.
+- [ ] Ryan V2-04A implementation grant.
+- [ ] Any V2-05 or live-study grant.
 
-**Next sequence:** independent V3 authority review → Ryan successor-acceptance
-decision → separately bounded V2-04A implementation and independent review →
-only then reconsider V2-05; G6/T0 remains closed.
+**Next sequence:** Ryan V2-04A grant decision → separately bounded V2-04A
+implementation at parent `872390db8ac76157b3a0223d947a8eb5da66473c` using
+accepted V3 semantic authority → fresh independent review → only then
+reconsider V2-05; G6/T0 remains closed.

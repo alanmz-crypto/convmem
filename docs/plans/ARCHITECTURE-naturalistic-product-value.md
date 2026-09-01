@@ -6,16 +6,20 @@
 >
 > **Arc:** Naturalistic ConvMem product-value evaluation
 >
-> **PRE-G6 contract status:** V3 multiplicity-authority erratum materialized;
-> outcome-blind independent review and explicit Ryan acceptance required; not
-> locked and not authorized for implementation, G6, T0, or naturalistic work.
+> **PRE-G6 contract status:** Ryan accepted V3 as the successor semantic
+> authority at commit `d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7`, canonical RFC
+> 8785/JCS digest
+> `f5cc62a3881bc06ddb0d0f1bc3b68d8c3e2cb29b5abda9675e32c84eea04d2a4`, with
+> 48,268 canonical bytes. This acceptance authorizes only later bounded
+> implementation slices; it does not authorize V2-04A implementation, V2-05,
+> G6, T0, or naturalistic work.
 >
 > **Canonical contract artifact:**
 > `docs/plans/artifacts/naturalistic-pre-g6-contract-v3.json` with sidecar
 > `naturalistic-pre-g6-contract-v3.json.sha256`. The JSON is the sole normative
-> artifact within the proposed successor package; this prose is an explanatory
+> artifact within the accepted successor package; this prose is an explanatory
 > projection and must be corrected if it conflicts. V2 remains immutable
-> historical authority at its locked digest.
+> historical authority at its locked digest and is not rewritten by acceptance.
 >
 > **Provenance root:** GitHub Issue #263, “Expose verbatim end-of-chat missives
 > through retrieval,” remains open and anchors the source-resolution invariant:
@@ -698,7 +702,7 @@ This section preserves the explanatory projection reviewed at commit
 by V2, which is itself preserved as the immutable historical parent of V3. Its
 inconsistent digest, stage, identity, uncertainty, view,
 implementation, and decision descriptions must not be implemented or used for
-G6 readiness. The sole proposed V3 successor artifact is the canonical JSON
+G6 readiness. The sole accepted V3 successor artifact is the canonical JSON
 named at the top of this document; its conflict rule requires this prose to be
 corrected rather than creating a second authority.
 
@@ -1242,23 +1246,25 @@ digest or a grouped stage flag is insufficient.
 4. Which evidence-based choices should define the still-open sparse-episode,
    scorer-reliability, and null/information thresholds at T0?
 
-### Sol corrective status
+### V3 successor status
 
 Sol's exact review of V1 led to the historical V2 package. The V3 successor
-corrects only V2's internally contradictory multiplicity inequality and does
-not self-certify the architecture. The next review is an outcome-blind
-independent exact-byte review of the V3 JSON, schema, conformance cases,
-validator, sidecar, amendment manifest, and prose projections. Routine
-implementation difficulty, sparse data, or scorer disagreement remains outside
-this gate.
+corrects only V2's internally contradictory multiplicity inequality. Kiro's
+outcome-blind exact-byte review passed at
+`d5b03a6c8c53cfebbb7239ea4fb3ac31721e1ad7`, and Ryan accepted that V3 package
+at its canonical digest. The acceptance changes semantic routing for future
+bounded PRE-G6 work but does not rewrite V2 history or authorize runtime,
+V2-05, G6/T0, evidence, scoring, or product inference.
 
 ## 23. Next gate
 
-The V3 multiplicity-authority erratum is ready for exact independent contract
-review, not for implementation. After that review, Ryan decides whether to
-accept the successor authority. Only later, separately bounded grants may
-authorize the V2-04A interface correction and then reconsider V2-05.
+The V3 successor is accepted as semantic authority. The next gate is Ryan's
+separate decision on the bounded V2-04A interface correction at the existing
+V2-04 implementation boundary. After a granted implementation passes fresh
+independent review, Ryan may reconsider V2-05. V2-05 remains unimplemented and
+G6/T0 remains closed.
 
-**Next sequence:** independent V3 authority review → Ryan successor-acceptance
-decision → separately bounded V2-04A implementation and independent review →
-only then reconsider V2-05; G6/T0 remains closed.
+**Next sequence:** Ryan V2-04A grant decision → bounded V2-04A implementation
+at parent `872390db8ac76157b3a0223d947a8eb5da66473c` using accepted V3
+semantic authority → fresh independent V2-04A review → only then reconsider
+V2-05; G6/T0 remains closed.
