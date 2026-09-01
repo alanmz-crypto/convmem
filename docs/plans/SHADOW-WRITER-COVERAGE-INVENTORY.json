@@ -4,13 +4,13 @@
   "open_chroma_for_write_production_call_sites": [],
   "chroma_write_session_production_call_sites": [],
   "production_chroma_write_session_call_sites": [
-    "convmem.py:385",
-    "convmem.py:489",
-    "convmem.py:654",
-    "convmem.py:1716",
-    "ingest.py:585",
-    "ingest.py:947",
-    "ingest.py:985",
+    "convmem.py:387",
+    "convmem.py:491",
+    "convmem.py:656",
+    "convmem.py:1718",
+    "ingest.py:583",
+    "ingest.py:945",
+    "ingest.py:983",
     "inter_model_index.py:301"
   ],
   "open_production_write_store_call_sites": [
@@ -27,10 +27,10 @@
     "cg2_legacy_vector_attestation.py:930",
     "cg2_rehearsal.py:199",
     "cg2_rehearsal.py:951",
-    "chroma_store.py:74",
-    "chroma_store.py:99",
+    "chroma_store.py:75",
+    "chroma_store.py:100",
     "chroma_write_store.py:660",
-    "convmem.py:638",
+    "convmem.py:640",
     "file_generation_store.py:97",
     "mixed_mode_proof.py:193",
     "mixed_mode_control.py:44",
@@ -42,7 +42,7 @@
   "sites": [
     {
       "file": "chroma_store.py",
-      "line": 74,
+      "line": 75,
       "snippet": "store = ChromaStore(chroma_dir)",
       "class": "read_factory_helper",
       "required_routing": "allowlisted_direct",
@@ -50,7 +50,7 @@
     },
     {
       "file": "chroma_store.py",
-      "line": 99,
+      "line": 100,
       "snippet": "store = ChromaStore(chroma_dir, create_collections=False)",
       "class": "read_factory_helper",
       "required_routing": "allowlisted_direct",
@@ -66,7 +66,7 @@
     },
     {
       "file": "convmem.py",
-      "line": 620,
+      "line": 622,
       "snippet": "store = ChromaStore(str(cfg[\"index\"][\"chroma_dir\"]), mutation_sink=None)",
       "class": "dry_run_no_sink",
       "required_routing": "allowlisted_direct",

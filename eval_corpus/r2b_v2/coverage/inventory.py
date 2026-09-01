@@ -87,7 +87,7 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
-        "governed_mutation_sinks": ("convmem.py:638",),
+        "governed_mutation_sinks": ("convmem.py:640",),
     },
     {
         "route_id": "cg2_file_generation_pointer",
