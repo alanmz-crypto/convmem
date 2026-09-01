@@ -3,6 +3,7 @@
 # pylint: disable=wrong-import-position,too-many-public-methods,too-many-lines
 from __future__ import annotations
 
+import os
 import sys
 import unittest
 import weakref
@@ -25,6 +26,7 @@ from eval_naturalistic.v2.authority_issuance import (
     verify_sealed_p1_authority,
 )
 from eval_naturalistic.v2.authority_substrate import (
+    _HOST_BOOTSTRAP_SECRET_ENV,
     _HOST_PROVISIONED_SOURCES,
     _provision_host_authority_source,
     resolve_shared_authority_source,
@@ -1193,6 +1195,18 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
             _provision_host_authority_source(
                 _ClaimantControlledAuthoritySource(),
                 bootstrap_secret=b"caller-created-credential",
+            )
+
+    def test_post_import_environment_cannot_recover_bootstrap_credential(self) -> None:
+        """The cleared environment cannot provision a claimant resolver."""
+
+        self.assertNotIn(_HOST_BOOTSTRAP_SECRET_ENV, os.environ)
+        with self.assertRaisesRegex(
+            StructuralContractError, "bootstrap credential rejected"
+        ):
+            _provision_host_authority_source(
+                _ClaimantControlledAuthoritySource(),
+                bootstrap_secret=os.environ.get(_HOST_BOOTSTRAP_SECRET_ENV),  # type: ignore[arg-type]
             )
 
     def test_claimant_cannot_mutate_host_registry_directly(self) -> None:

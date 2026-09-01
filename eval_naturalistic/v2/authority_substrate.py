@@ -90,11 +90,13 @@ def _secret_digest(secret: bytes | str | None) -> bytes | None:
 
 
 # Only the host process can establish this value before importing the V2
-# authority substrate. It is retained as a digest so the raw bootstrap secret
-# is not held by this module after import.
+# authority substrate. Capture the digest once, then remove the configured
+# environment value so ordinary post-import callers cannot recover the raw
+# bootstrap credential from this process.
 _HOST_BOOTSTRAP_SECRET_DIGEST = _secret_digest(
     os.environ.get(_HOST_BOOTSTRAP_SECRET_ENV)
 )
+os.environ.pop(_HOST_BOOTSTRAP_SECRET_ENV, None)
 
 
 class _HostProvisionedSourceRegistry:
