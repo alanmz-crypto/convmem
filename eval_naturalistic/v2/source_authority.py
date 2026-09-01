@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from eval_naturalistic.base import (
     StructuralContractError,
@@ -13,19 +13,15 @@ from eval_naturalistic.base import (
     _require_str,
 )
 from eval_naturalistic.digest import canonical_artifact_bytes
-from eval_naturalistic.v2.capture_attestation import (
-    CaptureAttestationRepository,
-    verify_capture_attestation_binding,
-)
 from eval_naturalistic.v2.identity import OccurrenceReferenceV2, digest_hex, reject_hash_or_locator_identity
-from eval_naturalistic.v2.p0_construct import (
-    ConstructFreezeAuthorityRepository,
-    verify_construct_freeze_parent_binding,
-)
-from eval_naturalistic.v2.issuer_attestation_capability import (
-    IssuerCaptureAttestationCapabilityRepository,
-)
-from eval_naturalistic.v2.source_issuer_authority import SourceIssuerGrantRepository
+
+if TYPE_CHECKING:
+    from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
+    from eval_naturalistic.v2.issuer_attestation_capability import (
+        IssuerCaptureAttestationCapabilityRepository,
+    )
+    from eval_naturalistic.v2.p0_construct import ConstructFreezeAuthorityRepository
+    from eval_naturalistic.v2.source_issuer_authority import SourceIssuerGrantRepository
 
 _SOURCE_AUTHORITY_TOKEN = object()
 
@@ -159,7 +155,7 @@ class VerifiedSourceAuthorityV2:
         }
 
 
-def verify_source_capture_authority(
+def verify_source_capture_authority(  # pylint: disable=too-many-arguments
     capture: SealedSourceCapturePackageV2 | bytes,
     *,
     attestation_repository: CaptureAttestationRepository | None = None,
@@ -182,6 +178,9 @@ def verify_source_capture_authority(
         raise StructuralContractError("source capture authority requires construct-freeze digest")
     if not construct_freeze_artifact_id:
         raise StructuralContractError("source capture authority requires construct-freeze artifact id")
+    from eval_naturalistic.v2.p0_construct import verify_construct_freeze_parent_binding
+    from eval_naturalistic.v2.source_issuer_authority import SourceIssuerGrantRepository
+
     manifest = verify_construct_freeze_parent_binding(
         parent_kind="construct_freeze",
         parent_artifact_id=construct_freeze_artifact_id,
@@ -215,7 +214,7 @@ def verify_source_capture_authority(
         raise StructuralContractError(
             "source capture authority: issuer capability construct-freeze digest mismatch"
         )
-    verify_capture_attestation_binding(
+    _verify_capture_attestation_binding(
         attestation_digest=attestation_digest,
         occurrence_reference=occurrence,
         evidence_snapshot_id=sealed.evidence_snapshot_id(),
@@ -253,3 +252,36 @@ def reverify_source_authority_record(record: VerifiedSourceAuthorityV2) -> Verif
     if expected != record.authority_record_digest:
         raise StructuralContractError("source authority record digest mismatch")
     return record
+
+
+def _verify_capture_attestation_binding(  # pylint: disable=too-many-arguments
+    *,
+    attestation_digest: str,
+    occurrence_reference: OccurrenceReferenceV2,
+    evidence_snapshot_id: str,
+    repository: CaptureAttestationRepository,
+    issuer_grant_repository: "SourceIssuerGrantRepository",
+    issuer_capability_repository: IssuerCaptureAttestationCapabilityRepository,
+) -> None:
+    artifact = repository.resolve(attestation_digest)
+    if artifact.occurrence_reference.same_occurrence_as(occurrence_reference) is False:
+        raise StructuralContractError("capture attestation occurrence mismatch")
+    if artifact.evidence_snapshot_id != evidence_snapshot_id:
+        raise StructuralContractError("capture attestation evidence snapshot mismatch")
+    if artifact.attestation_evidence_digest() != attestation_digest:
+        raise StructuralContractError("capture attestation digest mismatch")
+    grant = issuer_grant_repository.resolve(
+        issuer_identity=artifact.issuer_identity,
+        source_system_id=occurrence_reference.source_system_id,
+        authority_scope_id=occurrence_reference.authority_scope_id,
+    )
+    if grant.grant_digest != artifact.issuer_grant_digest:
+        raise StructuralContractError("capture attestation: issuer grant digest mismatch")
+    capability = issuer_capability_repository.resolve(
+        issuer_identity=artifact.issuer_identity,
+        issuer_grant_digest=artifact.issuer_grant_digest,
+    )
+    if capability.capability_digest != artifact.issuer_attestation_capability_digest:
+        raise StructuralContractError(
+            "capture attestation: issuer attestation capability digest mismatch"
+        )

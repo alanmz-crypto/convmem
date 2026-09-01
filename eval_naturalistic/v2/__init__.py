@@ -16,10 +16,8 @@ from eval_naturalistic.v2.contracts import (
 )
 from eval_naturalistic.v2.evidence import ConditionNeutralEvidenceAvailabilityV2
 from eval_naturalistic.v2.identity import OccurrenceReferenceV2
-from eval_naturalistic.v2.capture_attestation import (
-    CaptureAttestationRepository,
-    issue_capture_attestation,
-)
+from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
+from eval_naturalistic.v2.capture_attestation_issuance import issue_capture_attestation
 from eval_naturalistic.v2.issuer_attestation_capability import (
     IssuerCaptureAttestationCapabilityRepository,
     build_issuer_capture_attestation_capability_record,

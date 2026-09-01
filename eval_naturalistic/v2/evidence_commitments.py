@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from eval_naturalistic.base import StructuralContractError
 from eval_naturalistic.digest import canonical_artifact_bytes
 from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
 from eval_naturalistic.v2.identity import OccurrenceReferenceV2, digest_hex
-from eval_naturalistic.v2.issuer_attestation_capability import (
-    IssuerCaptureAttestationCapabilityRepository,
-)
 from eval_naturalistic.v2.p0_construct import ConstructFreezeAuthorityRepository
 from eval_naturalistic.v2.source_authority import (
     SealedSourceCapturePackageV2,
@@ -20,6 +17,11 @@ from eval_naturalistic.v2.source_authority import (
     reverify_source_authority_record,
     verify_source_capture_authority,
 )
+
+if TYPE_CHECKING:
+    from eval_naturalistic.v2.issuer_attestation_capability import (
+        IssuerCaptureAttestationCapabilityRepository,
+    )
 
 
 def compute_source_and_snapshot_identity_digest(
@@ -108,12 +110,12 @@ class VerifiedP1EvidenceCommitmentsV2:
             raise StructuralContractError("P1 authority: source/snapshot identity mismatch")
 
 
-def bind_p1_evidence_commitments(
+def bind_p1_evidence_commitments(  # pylint: disable=too-many-arguments
     *,
     sealed_capture: SealedSourceCapturePackageV2,
     verified_authority: VerifiedSourceAuthorityV2,
     attestation_repository: CaptureAttestationRepository,
-    issuer_capability_repository: IssuerCaptureAttestationCapabilityRepository,
+    issuer_capability_repository: "IssuerCaptureAttestationCapabilityRepository",
     p0_repository: ConstructFreezeAuthorityRepository,
     construct_freeze_digest: str,
     construct_freeze_artifact_id: str,

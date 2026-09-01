@@ -9,10 +9,8 @@ from eval_naturalistic.v2.authority_issuance import (
     SealedP1AuthorityV2,
     issue_occurrence_reference,
 )
-from eval_naturalistic.v2.capture_attestation import (
-    CaptureAttestationRepository,
-    issue_capture_attestation,
-)
+from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
+from eval_naturalistic.v2.capture_attestation_issuance import issue_capture_attestation
 from eval_naturalistic.v2.contracts import (
     EvidenceAvailabilityManifestV2,
     EvidenceSealManifestV2,
@@ -92,7 +90,7 @@ def sample_p0_repository(
 def registered_construct_freeze(
     repo: InMemoryConstructFreezeRepository,
 ) -> ConstructFreezeManifestV2:
-    return next(iter(repo._artifacts.values()))
+    return repo.manifests()[0]
 
 
 def construct_freeze_content_digest(repo: InMemoryConstructFreezeRepository) -> str:
@@ -238,7 +236,7 @@ def seal_verified_source_capture(
         namespace=occurrence.occurrence_namespace_id,
         snapshot_id=snapshot_id,
     )
-    attestation_digest = next(iter(repo._artifacts))
+    attestation_digest = repo.artifacts()[0].attestation_evidence_digest()
     working = dict(body)
     working["issuer_capture_attestation"] = attestation_digest
     capture = seal_source_capture_package(working)

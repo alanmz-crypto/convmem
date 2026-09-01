@@ -58,6 +58,7 @@ _P1_ISSUER_SEED_MODULES = (
     "eval_naturalistic/v2/evidence_commitments.py",
     "eval_naturalistic/v2/source_authority.py",
     "eval_naturalistic/v2/capture_attestation.py",
+    "eval_naturalistic/v2/capture_attestation_issuance.py",
     "eval_naturalistic/v2/source_issuer_authority.py",
     "eval_naturalistic/v2/issuer_attestation_capability.py",
     "eval_naturalistic/v2/p0_construct.py",

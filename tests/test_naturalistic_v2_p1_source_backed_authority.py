@@ -1,8 +1,8 @@
 """V2-01C second corrective — source-backed authority adversarial tests."""
 
+# pylint: disable=wrong-import-position,too-many-public-methods
 from __future__ import annotations
 
-import copy
 import sys
 import unittest
 from pathlib import Path
@@ -34,12 +34,11 @@ from eval_naturalistic.v2.p0_construct import (
     InMemoryConstructFreezeRepository,
     seal_construct_freeze_manifest,
 )
-from eval_naturalistic.v2.capture_attestation import (
-    CaptureAttestationRepository,
-    issue_capture_attestation,
-)
+from eval_naturalistic.v2.capture_attestation import CaptureAttestationRepository
+from eval_naturalistic.v2.capture_attestation_issuance import issue_capture_attestation
 from eval_naturalistic.v2.issuer_attestation_capability import (
     IssuerCaptureAttestationCapabilityRepository,
+    mint_issuer_capture_attestation_capability,
 )
 from eval_naturalistic.v2.source_issuer_authority import (
     SourceIssuerGrantRepository,
@@ -647,7 +646,7 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
     def test_negative_direct_capture_attestation_registration_rejected(self) -> None:
         p0_repo = sample_p0_repository()
         att_repo = sample_capture_attestation_repository(p0_repository=p0_repo)
-        artifact = next(iter(att_repo._artifacts.values()))
+        artifact = att_repo.artifacts()[0]
         fresh_repo = CaptureAttestationRepository()
         with self.assertRaises(AttributeError):
             fresh_repo.register(artifact)  # type: ignore[attr-defined]
@@ -685,11 +684,6 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
             source_system_id=occurrence.source_system_id,
             authority_scope_id=occurrence.authority_scope_id,
         )
-        from eval_naturalistic.v2.issuer_attestation_capability import (
-            IssuerCaptureAttestationCapabilityRepository,
-            mint_issuer_capture_attestation_capability,
-        )
-
         attacker_capability_repo = IssuerCaptureAttestationCapabilityRepository.from_capabilities(
             construct_freeze_digest=forged_digest,
             capabilities=(
@@ -728,7 +722,7 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
             created_at=CREATED_AT,
             seal_time=SEAL_TIME,
         )
-        attestation_digest = next(iter(att_repo._artifacts))
+        attestation_digest = att_repo.artifacts()[0].attestation_evidence_digest()
         body["issuer_capture_attestation"] = attestation_digest
         capture = seal_source_capture_package(body)
         study_p0 = sample_p0_repository()
@@ -975,7 +969,7 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
         sealed, p0_repo, issuance_repo = sample_sealed_authority_bundle()
         portable = IssuanceAuthorityRepository.from_records(issuance_repo.records())
         fresh_p0 = InMemoryConstructFreezeRepository()
-        for manifest in p0_repo._artifacts.values():
+        for manifest in p0_repo.manifests():
             fresh_p0.register(manifest)
         verify_sealed_p1_authority(
             sealed.to_dict(),

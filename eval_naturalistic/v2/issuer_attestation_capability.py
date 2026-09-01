@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from eval_naturalistic.base import (
     StructuralContractError,
@@ -13,9 +13,21 @@ from eval_naturalistic.base import (
     _require_str,
 )
 from eval_naturalistic.digest import canonical_artifact_bytes
-from eval_naturalistic.v2.source_issuer_authority import SourceIssuerGrantV2, reverify_source_issuer_grant
+from eval_naturalistic.v2.identity import digest_hex
+
+if TYPE_CHECKING:
+    from eval_naturalistic.v2.source_issuer_authority import SourceIssuerGrantV2
 
 _CAPABILITY_TOKEN = object()
+
+_CAPABILITY_RECORD_FIELDS = frozenset(
+    {
+        "issuer_identity",
+        "issuer_grant_digest",
+        "construct_freeze_digest",
+        "capability_digest",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -27,12 +39,7 @@ class IssuerCaptureAttestationCapabilityV2:
     construct_freeze_digest: str
     capability_digest: str
 
-    _FIELDS = {
-        "issuer_identity",
-        "issuer_grant_digest",
-        "construct_freeze_digest",
-        "capability_digest",
-    }
+    _FIELDS = _CAPABILITY_RECORD_FIELDS
 
     def __init__(
         self,
@@ -59,15 +66,6 @@ class IssuerCaptureAttestationCapabilityV2:
             "construct_freeze_digest": self.construct_freeze_digest,
             "capability_digest": self.capability_digest,
         }
-
-
-def _digest_hex(value: Any, field_name: str) -> str:
-    digest = _require_str(value, field_name)
-    if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
-        raise StructuralContractError(
-            f"{field_name}: must be 64-character lowercase SHA-256 hex digest"
-        )
-    return digest
 
 
 def _capability_body(
@@ -108,12 +106,12 @@ def build_issuer_capture_attestation_capability_record(
 def _capability_from_record(record: dict[str, Any]) -> IssuerCaptureAttestationCapabilityV2:
     record = _require_dict(record, "issuer capture attestation capability record")
     _require_no_unknown_props(
-        record, IssuerCaptureAttestationCapabilityV2._FIELDS, "issuer capture attestation capability record"
+        record, _CAPABILITY_RECORD_FIELDS, "issuer capture attestation capability record"
     )
     issuer_identity = _require_str(record["issuer_identity"], "issuer_identity")
-    issuer_grant_digest = _digest_hex(record["issuer_grant_digest"], "issuer_grant_digest")
-    construct_freeze_digest = _digest_hex(record["construct_freeze_digest"], "construct_freeze_digest")
-    capability_digest = _digest_hex(record["capability_digest"], "capability_digest")
+    issuer_grant_digest = digest_hex(record["issuer_grant_digest"], "issuer_grant_digest")
+    construct_freeze_digest = digest_hex(record["construct_freeze_digest"], "construct_freeze_digest")
+    capability_digest = digest_hex(record["capability_digest"], "capability_digest")
     expected = hashlib.sha256(
         canonical_artifact_bytes(
             _capability_body(
@@ -135,14 +133,16 @@ def _capability_from_record(record: dict[str, Any]) -> IssuerCaptureAttestationC
 
 
 def mint_issuer_capture_attestation_capability(
-    grant: SourceIssuerGrantV2,
+    grant: "SourceIssuerGrantV2",
     *,
     construct_freeze_digest: str,
 ) -> IssuerCaptureAttestationCapabilityV2:
     """Mint issuer capability at study bootstrap — not from construct-freeze grant records."""
 
+    from eval_naturalistic.v2.source_issuer_authority import reverify_source_issuer_grant
+
     verified_grant = reverify_source_issuer_grant(grant)
-    construct_digest = _digest_hex(construct_freeze_digest, "construct_freeze_digest")
+    construct_digest = digest_hex(construct_freeze_digest, "construct_freeze_digest")
     capability_digest = hashlib.sha256(
         canonical_artifact_bytes(
             _capability_body(
@@ -199,7 +199,7 @@ class IssuerCaptureAttestationCapabilityRepository:
         construct_freeze_digest: str,
         capabilities: tuple[IssuerCaptureAttestationCapabilityV2, ...],
     ) -> "IssuerCaptureAttestationCapabilityRepository":
-        digest = _digest_hex(construct_freeze_digest, "construct_freeze_digest")
+        digest = digest_hex(construct_freeze_digest, "construct_freeze_digest")
         verified = tuple(
             reverify_issuer_capture_attestation_capability(cap) for cap in capabilities
         )

@@ -161,6 +161,9 @@ class InMemoryConstructFreezeRepository:
         self._artifacts[digest] = verified
         return verified
 
+    def manifests(self) -> tuple[ConstructFreezeManifestV2, ...]:
+        return tuple(self._artifacts.values())
+
     def resolve(self, *, artifact_id: str, content_digest: str) -> ConstructFreezeManifestV2:
         manifest = self._artifacts.get(content_digest)
         if manifest is None:
