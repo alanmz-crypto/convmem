@@ -10,7 +10,7 @@ cross-arc snapshot and the linked arc brief below.
 ## Current routing
 
 - **Project baseline:** the checked-in baseline is `origin/main` at
-  `8a6c876` (the kernel-panic durability documentation merge, PR #267). Read
+  `0b6b436` (the current repository-navigation merge, PR #270). Read
   [`STATUS.md`](STATUS.md) for active versus closed arcs and the next
   authorized action.
 - **R2b Capture Authorization:** v2 I1–I3 implementation and Corrective IX
