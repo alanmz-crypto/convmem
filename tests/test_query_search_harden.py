@@ -6,11 +6,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from query import (
-    MAX_QUERY_FETCH,
     MAX_QUERY_RESULTS,
     _fetch_scoped_units,
     query_raw,
     query_units,
+    validate_top_k,
 )
 from serving_authority import ServingBackendTransient
 from tests.serving_repo_mock import patch_query_serving
@@ -124,6 +124,10 @@ class QueryLimitTests(unittest.TestCase):
             query_units("q", top_k=MAX_QUERY_RESULTS + 1)
         with self.assertRaises(ValueError):
             query_raw("q", top_k=0)
+        with self.assertRaises(ValueError):
+            validate_top_k(101)
+        with self.assertRaises(TypeError):
+            validate_top_k(True)
 
     @patch("query.ollama_embed")
     @patch("query.load_config")
@@ -135,7 +139,7 @@ class QueryLimitTests(unittest.TestCase):
         mock_cfg.assert_not_called()
         mock_embed.assert_not_called()
 
-    def test_scoped_fetch_has_an_absolute_cap(self):
+    def test_scoped_fetch_adapts_to_collection_size(self):
         repo = MagicMock()
         repo.count_units.return_value = 100_000
         repo.query_units.return_value = []
@@ -150,10 +154,9 @@ class QueryLimitTests(unittest.TestCase):
             ),
             [],
         )
-        self.assertLessEqual(
-            max(call.args[1] for call in repo.query_units.call_args_list),
-            MAX_QUERY_FETCH,
-        )
+        fetch_sizes = [call.args[1] for call in repo.query_units.call_args_list]
+        self.assertGreater(max(fetch_sizes), 300)
+        self.assertLessEqual(max(fetch_sizes), repo.count_units.return_value)
 
 
 if __name__ == "__main__":

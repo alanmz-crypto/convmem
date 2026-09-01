@@ -37,7 +37,6 @@ _LEDGER_ID_RE = re.compile(
 )
 DEFAULT_RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
 MAX_QUERY_RESULTS = 100
-MAX_QUERY_FETCH = MAX_QUERY_RESULTS * 3
 
 
 def validate_top_k(top_k: int) -> int:
@@ -278,9 +277,7 @@ def _fetch_scoped_units(
         return repo.query_units(embedding, candidate_k)
 
     try:
-        collection_bound = min(
-            max(candidate_k, int(repo.count_units())), MAX_QUERY_FETCH
-        )
+        collection_bound = max(candidate_k, int(repo.count_units()))
     except Exception:  # pylint: disable=broad-exception-caught
         collection_bound = candidate_k
 
@@ -486,7 +483,7 @@ def query_units(
         # Domain filtering is hierarchical (parent matches children), which
         # Chroma's exact-match `where` can't express, so over-fetch and
         # filter client-side before reranking/truncating.
-        scoped_fetch_k = min(candidate_k * 3, MAX_QUERY_FETCH)
+        scoped_fetch_k = candidate_k * 3
 
     ledger_extras: list[dict] = []
     from serving_authority import ServingBackendTransient

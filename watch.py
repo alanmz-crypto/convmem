@@ -20,6 +20,9 @@ from process_lock import acquire_pid_lock, release_lock
 
 _DEFAULT_INDEX_MEM_MAX = "2G"
 _DEFAULT_INDEX_MEM_HIGH = "1500M"
+# Interim liveness backstop only (UNRATIFIED). The primary OOM control is the
+# per-child memory scope (_scoped_index_cmd). A tuned value awaits the watch-OOM
+# full-file-reindex design; do not treat 15*60 as endorsed.
 _DEFAULT_INDEX_TIMEOUT_SECONDS = 15 * 60
 
 # Live databases that change constantly — watch re-index causes OOM + duplication.
