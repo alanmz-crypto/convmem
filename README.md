@@ -8,7 +8,7 @@ A local-first system I use to ingest AI chat logs and **tool-sourced evidence** 
 
 ## Status: Personal project
 
-This is an actively developed personal research/tooling repository. The codebase may contain experimental code, rough edges, abandoned approaches, and inconsistent organization. It’s public because I’m happy for people to inspect or use it, but it’s optimized for my own workflow rather than for being a polished general-purpose project. Contributions and cleanup are not expected.
+`convmem` is a working system I build and use for my own AI-assisted development workflow. It is public because I’m happy for people to inspect it, learn from it, or adapt it, but it is not currently packaged or maintained as a turnkey application for general installation. Expect a working but evolving codebase, personal deployment assumptions, experimental features, and documentation that sometimes describes my own environment. Contributions and cleanup are not expected; I optimize the repository for my own workflow first.
 
 This README serves two purposes: it explains the architecture for curious readers and records the operational commands I use on my own workstation. Paths, hosts, model names, and deployment instructions below may be specific to my setup. If you are an agent helping with this repository, read [`AGENTS.md`](AGENTS.md) for repository workflow and safety rules; this README is project and personal-operations context.
 
@@ -33,6 +33,14 @@ Past conversations and security findings become a **queryable evidence layer** �
 **Personal development roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
 
 **Current personal deployment:** `staging2.willowyhollow.com`
+
+**Typical query:**
+
+```bash
+convmem ask "What CSP fixes did we try on staging?"
+```
+
+The answer is synthesized from retrieved excerpts and includes citations. This reflects my current workflow, not a hosted service.
 
 ---
 
