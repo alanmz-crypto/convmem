@@ -9,9 +9,12 @@
 **Current state:** G1–G5 are landed on `main`. G1–G4 via squash-merged PR #255
 (`787a6ef8…`); G5 synthetic dry-run via squash-merged PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`.
 Kiro independently PASSed G5 at exact implementation SHA `23b2495927a9891070c7c294e45bdb641eaab352` before
-merge. Classification remains **methodology validation, not product evidence**.
-**G6 is not authorized.** Ryan locked G6 closed until independent **ChatGPT**
-review — favorable synthetic dry-run results do not open G6.
+merge. V2-01C’s unified authority/compatibility corrective is implemented and
+pushed at exact review target `8e92af95aad34edc7d558b38e09c5883d7085ec1`,
+awaiting fresh independent review. Classification remains **methodology
+validation, not product evidence**. **G6 is not authorized.** Ryan locked G6
+closed until independent review; favorable synthetic dry-run results do not
+open G6.
 
 ---
 
@@ -73,6 +76,8 @@ Key invariants:
 | `eval_naturalistic/analysis.py` and fixtures | G4 bounded analysis/statistical machinery on `main`; reviewed bytes unchanged at `fa7d68b` |
 | `eval_naturalistic/dry_run.py`, `dry_run_mechanics.py` | G5 synthetic T0–T10 dry-run harness; not a live study controller |
 | `tests/test_naturalistic_{contracts,adjudication,probe,analysis,dry_run}.py` | Focused G1–G5 coverage on `main` |
+| `eval_naturalistic/v2/authority_substrate.py`, `p0_construct.py` | V2-01C host-held authority admission and historical-P0-compatible representation on the review branch |
+| `tests/test_naturalistic_v2_p1_source_backed_authority.py` | V2-01C authority-boundary and historical-P0 compatibility regressions; implementation target `8e92af95…` |
 | PR #255 / PR #259 | G1–G4 via #255; G5 dry-run via #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583` |
 | Live runner, study controller, Agent A/B campaign, and corpus access | Absent and unauthorized; G5 does not add them |
 
@@ -85,13 +90,15 @@ Key invariants:
 | G3 probe construction machinery | **DONE on `main`** | PR #255; no live key or study sample exists |
 | G4 analysis/statistical machinery | **DONE on `main`** | Kiro PASS at exact `fa7d68b`; focused 98 tests + 8 subtests; Pylint 10/10 |
 | G5 dry-run/fixture verification | **DONE on `main`** | PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`; Kiro PASS at `23b2495927a9891070c7c294e45bdb641eaab352`; methodology validation only |
+| V2-01C unified authority/compatibility corrective | **READY FOR INDEPENDENT REVIEW — branch-only** | Luna exact target `8e92af95aad34edc7d558b38e09c5883d7085ec1`; focused 58, V2 113, broader naturalistic 222 + 8 subtests; fresh Kiro review required |
 | G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Closed until ChatGPT review; then Ryan explicit G6 grant if warranted |
 | Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-G5 is **closed on `main`**. Do not reopen dry-run implementation unless Ryan
-explicitly authorizes a corrective.
+G5 is **closed on `main`**. V2-01C’s bounded corrective is complete on its
+review branch at `8e92af95…`; do not modify it while it awaits fresh independent
+review, and do not start V2-02C.
 
 If Ryan sent you for **G6 or live study**, stop. G6 remains **closed** until
 independent **ChatGPT** review completes — synthetic dry-run pass or favorable
@@ -114,6 +121,8 @@ Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 - [x] Cursor implements only the granted G5 dry-run; retain synthetic-only data.
 - [x] Independent Kiro review accepts the exact G5 candidate SHA (`23b2495927a9891070c7c294e45bdb641eaab352`).
 - [x] Ryan merges G5 (squash-merged PR #259).
+- [x] Luna implements the V2-01C unified authority/compatibility corrective at `8e92af95…`; local verification is green for the focused, V2, and broader naturalistic selections.
+- [ ] Fresh independent exact-tip review of V2-01C corrective; Ryan owns the review gate and any later V2-02C decision.
 - [ ] Independent ChatGPT review of G5 methodology / G6 readiness (Ryan GATE).
 - [ ] Ryan separately authorizes G6 prospective freeze and later T7–T11 gates.
 - [ ] Only a fully authorized T10 path may produce a product disposition.
@@ -160,6 +169,8 @@ the session transcript separately under Track A.
 - 2026-08-30 — Kiro: independent G5 PASS at exact SHA `23b2495927a9891070c7c294e45bdb641eaab352`; PR Steward opened merge PR for Ryan.
 - 2026-08-30 — Ryan: squash-merged G5 via PR #259 to `6843bbeebbaed6a109fe94967fdd03fb3569b583`; arc at methodology milestone; G6 Ryan-gated.
 - 2026-08-30 — Ryan: squash-merged routing refresh PR #261 to `676d6b5`; locked G6 closed until ChatGPT review regardless of synthetic results.
+- 2026-09-01 — Kiro: independent V2-01C authority review at exact tip `767d176` returned CORRECTIVE REQUIRED (claimant-controlled graph mints P1; authority substrate is claimant-mintable). DeepSeek takes over ChatGPT's blocked review lane. No merge; G6 stays locked.
+- 2026-09-01 — Luna: implemented and pushed V2-01C unified authority/compatibility corrective at exact target `8e92af95`; focused/V2/naturalistic tests pass; fresh independent review required.
 
 **TL;DR:** G1–G5 are on `main` (routing at `676d6b5` via PR #261). Methodology
 validation only — not product evidence. G6 stays closed until ChatGPT review,
