@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from eval_naturalistic.base import (
@@ -57,7 +57,7 @@ def _header_to(header: ArtifactHeaderV1) -> dict[str, Any]:
 
 
 @dataclass(frozen=True)
-class EvidenceSealManifestV2:
+class EvidenceSealManifestV2:  # pylint: disable=too-many-instance-attributes
     """P1 evidence seal authority — issuer-finalized only."""
 
     header: ArtifactHeaderV1
@@ -107,7 +107,7 @@ class EvidenceSealManifestV2:
         "source_and_snapshot_identity_digest",
     }
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         *,
         _token: object,
@@ -179,19 +179,38 @@ class EvidenceSealManifestV2:
         return cls(
             _token=_ISSUANCE_TOKEN,
             header=_header_from(data),
-            construct_freeze_digest=digest_hex(data["construct_freeze_digest"], "construct_freeze_digest"),
+            construct_freeze_digest=digest_hex(
+                data["construct_freeze_digest"], "construct_freeze_digest"
+            ),
             episode_id=_require_str(data["episode_id"], "episode_id"),
-            occurrence_reference=OccurrenceReferenceV2.from_dict(_require_dict(data["occurrence_reference"], "occurrence_reference")),
-            occurrence_issuance_digest=digest_hex(data["occurrence_issuance_digest"], "occurrence_issuance_digest"),
-            issuer_implementation_revision=_require_str(data["issuer_implementation_revision"], "issuer_implementation_revision"),
+            occurrence_reference=OccurrenceReferenceV2.from_dict(
+                _require_dict(data["occurrence_reference"], "occurrence_reference")
+            ),
+            occurrence_issuance_digest=digest_hex(
+                data["occurrence_issuance_digest"], "occurrence_issuance_digest"
+            ),
+            issuer_implementation_revision=_require_str(
+                data["issuer_implementation_revision"], "issuer_implementation_revision"
+            ),
             source_authority_digest=digest_hex(data["source_authority_digest"], "source_authority_digest"),
             physical_instance_id=_require_str(data["physical_instance_id"], "physical_instance_id"),
             revision_or_asof_id=_require_str(data["revision_or_asof_id"], "revision_or_asof_id"),
             evidence_snapshot_id=_require_str(data["evidence_snapshot_id"], "evidence_snapshot_id"),
-            evidence_complete_envelope_digest=digest_hex(data["evidence_complete_envelope_digest"], "evidence_complete_envelope_digest"),
-            canonical_content_digest=digest_hex(data["canonical_content_digest"], "canonical_content_digest"),
-            canonicalization_profile_digest=digest_hex(data["canonicalization_profile_digest"], "canonicalization_profile_digest"),
-            adapter_implementation_digest=digest_hex(data["adapter_implementation_digest"], "adapter_implementation_digest"),
+            evidence_complete_envelope_digest=digest_hex(
+                data["evidence_complete_envelope_digest"],
+                "evidence_complete_envelope_digest",
+            ),
+            canonical_content_digest=digest_hex(
+                data["canonical_content_digest"], "canonical_content_digest"
+            ),
+            canonicalization_profile_digest=digest_hex(
+                data["canonicalization_profile_digest"],
+                "canonicalization_profile_digest",
+            ),
+            adapter_implementation_digest=digest_hex(
+                data["adapter_implementation_digest"],
+                "adapter_implementation_digest",
+            ),
             condition_neutral_evidence_availability=availability,
             immediate_parents=tuple(
                 ImmediateParentBindingV2.from_dict(item)
@@ -203,8 +222,16 @@ class EvidenceSealManifestV2:
                 for item in _require_list(data.get("lineage_edges", []), "lineage_edges")
             ],
             raw_record_digest=digest_hex(raw, "raw_record_digest") if raw is not None else None,
-            attachment_reference_inventory_digest=digest_hex(attachment, "attachment_reference_inventory_digest") if attachment is not None else None,
-            source_and_snapshot_identity_digest=digest_hex(snapshot_identity, "source_and_snapshot_identity_digest") if snapshot_identity is not None else None,
+            attachment_reference_inventory_digest=(
+                None
+                if attachment is None
+                else digest_hex(attachment, "attachment_reference_inventory_digest")
+            ),
+            source_and_snapshot_identity_digest=(
+                None
+                if snapshot_identity is None
+                else digest_hex(snapshot_identity, "source_and_snapshot_identity_digest")
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:

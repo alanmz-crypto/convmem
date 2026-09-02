@@ -1,6 +1,8 @@
 """V2-01C second corrective — source-backed authority adversarial tests."""
 
-# pylint: disable=wrong-import-position,too-many-public-methods,too-many-lines
+# These are intentionally broad adversarial probes over private boundaries;
+# repeated setup mirrors the independent authority scenarios.
+# pylint: disable=duplicate-code,missing-kwoa,no-member,protected-access,wrong-import-position,too-many-public-methods,too-many-lines
 from __future__ import annotations
 
 import os
@@ -114,7 +116,8 @@ class _ClaimantControlledAuthoritySource:
 
 HISTORICAL_P0_CANONICAL_BYTES = (
     b'{"construct_policy_digest":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",'
-    b'"header":{"artifact_id":"nps2_construct-freeze-manifest-v2_5891a86576157f9c740c58b77ff0cb352e69ea2efe86c1da93843c2d438a0ad1",'
+    b'"header":{"artifact_id":"nps2_construct-freeze-manifest-v2_'
+    b'5891a86576157f9c740c58b77ff0cb352e69ea2efe86c1da93843c2d438a0ad1",'
     b'"content_digest":"5891a86576157f9c740c58b77ff0cb352e69ea2efe86c1da93843c2d438a0ad1",'
     b'"created_at":"2026-08-30T00:00:00Z","responsible_role":"study_owner",'
     b'"schema_version":"convmem/naturalistic/v2/construct-freeze-manifest-v2",'
@@ -582,8 +585,6 @@ class SourceBackedAuthorityAdversarialTests(unittest.TestCase):
             )
 
     def test_negative_behavior_relevant_code_change_invalidates_revision(self) -> None:
-        import hashlib
-
         clear_p1_issuer_revision_cache()
         before = compute_p1_issuer_implementation_revision()
         with mock.patch(

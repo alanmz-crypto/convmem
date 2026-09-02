@@ -73,7 +73,11 @@ def _grant_body(*, issuer_identity: str, source_system_id: str, authority_scope_
 
 def _grant_from_record(record: dict[str, Any]) -> SourceIssuerGrantV2:
     record = _require_dict(record, "source issuer grant record")
-    _require_no_unknown_props(record, SourceIssuerGrantV2._FIELDS, "source issuer grant record")
+    _require_no_unknown_props(
+        record,
+        SourceIssuerGrantV2._FIELDS,  # pylint: disable=protected-access
+        "source issuer grant record",
+    )
     issuer_identity = _require_str(record["issuer_identity"], "issuer_identity")
     source_system_id = _require_str(record["source_system_id"], "source_system_id")
     authority_scope_id = _require_str(record["authority_scope_id"], "authority_scope_id")

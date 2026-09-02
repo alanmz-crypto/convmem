@@ -1,5 +1,8 @@
 """V2-01 — P1 identity and evidence seal core adversarial tests."""
 
+# The import-path bootstrap is required by the hermetic test invocation.
+# pylint: disable=duplicate-code,wrong-import-position
+
 from __future__ import annotations
 
 import copy
@@ -10,7 +13,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval_naturalistic.base import StructuralContractError
-from eval_naturalistic.v2.contracts import EvidenceSealManifestV2
 from eval_naturalistic.v2.evidence import (
     PostSealSourceStateV2,
     SourcePresenceV2,
@@ -35,7 +37,6 @@ from eval_naturalistic.v2.validators import (
     validate_revision_binding,
     RevisionBindingObservationV2,
 )
-from eval_naturalistic.v2.authority_issuance import IssuanceAuthorityRepository
 from eval_naturalistic.v2.lineage_attestation import LineageAttestationRepository
 from tests.fixtures.naturalistic_v2_p1 import (
     ALT_DIGEST,
@@ -43,7 +44,6 @@ from tests.fixtures.naturalistic_v2_p1 import (
     sample_availability,
     sample_availability_manifest,
     sample_occurrence,
-    sample_p0_repository,
     sample_seal_manifest,
     sample_sealed_authority_bundle,
 )

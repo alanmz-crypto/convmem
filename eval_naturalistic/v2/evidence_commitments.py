@@ -63,7 +63,7 @@ def compute_evidence_complete_envelope_digest(
 
 
 @dataclass(frozen=True)
-class VerifiedP1EvidenceCommitmentsV2:
+class VerifiedP1EvidenceCommitmentsV2:  # pylint: disable=too-many-instance-attributes
     """Evidence commitments derived from verified capture — not caller restated."""
 
     source_capture_digest: str
@@ -77,7 +77,7 @@ class VerifiedP1EvidenceCommitmentsV2:
     attachment_reference_inventory_digest: str | None
     source_and_snapshot_identity_digest: str | None
 
-    def verify_against_manifest_fields(
+    def verify_against_manifest_fields(  # pylint: disable=too-many-arguments
         self,
         *,
         source_authority_digest: str,
@@ -193,7 +193,7 @@ def bind_p1_evidence_commitments(  # pylint: disable=too-many-arguments
     )
 
 
-def recompute_evidence_commitments_from_manifest(
+def recompute_evidence_commitments_from_manifest(  # pylint: disable=too-many-arguments
     *,
     source_capture_digest: str,
     source_authority_digest: str,

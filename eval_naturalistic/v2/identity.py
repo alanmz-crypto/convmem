@@ -1,5 +1,8 @@
 """P1 occurrence, physical, native, revision, and lineage identity types."""
 
+# Identity records intentionally repeat field validation and serialization.
+# pylint: disable=duplicate-code,too-many-instance-attributes
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -79,7 +82,7 @@ class NativeRecordIdentityV2:
 
 
 @dataclass(frozen=True)
-class OccurrenceReferenceV2:
+class OccurrenceReferenceV2:  # pylint: disable=too-many-instance-attributes
     """Typed occurrence identity — hashes and locators are never sufficient alone."""
 
     source_system_id: str
@@ -228,7 +231,7 @@ class LineageRelationKind(str, Enum):
 
 
 @dataclass(frozen=True)
-class LineageEdgeV2:
+class LineageEdgeV2:  # pylint: disable=too-many-instance-attributes
     """Records continuity without collapsing physical-instance separation."""
 
     logical_lineage_id: str

@@ -22,7 +22,6 @@ from eval_naturalistic.v2.evidence import (
 from eval_naturalistic.v2.authority_issuance import (
     IssuanceAuthorityRepository,
     SealedP1AuthorityV2,
-    reject_raw_unfinalized_p1,
     verify_sealed_p1_authority,
 )
 from eval_naturalistic.v2.lineage_attestation import LineageAttestationRepository

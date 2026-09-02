@@ -1,5 +1,9 @@
 """Verified source/issuer-backed authority records for P1 occurrence issuance."""
 
+# Source authority and capture artifacts intentionally share contract-shaped
+# validation and serialization.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import hashlib
@@ -132,7 +136,12 @@ def seal_source_capture_package(body: dict[str, Any]) -> SealedSourceCapturePack
     working.setdefault("schema_version", "convmem/naturalistic/v2/sealed-source-capture-v2")
     if "capture_envelope_digest" in working:
         raise StructuralContractError("source capture: envelope digest is assigned at seal time")
-    _require_no_unknown_props(working, SealedSourceCapturePackageV2._FIELDS - {"capture_envelope_digest"}, "source capture seal")
+    _require_no_unknown_props(
+        working,
+        SealedSourceCapturePackageV2._FIELDS  # pylint: disable=protected-access
+        - {"capture_envelope_digest"},
+        "source capture seal",
+    )
     reject_hash_or_locator_identity(working)
     digest_hex(working["issuer_capture_attestation"], "issuer_capture_attestation")
     envelope_digest = hashlib.sha256(canonical_artifact_bytes(working)).hexdigest()

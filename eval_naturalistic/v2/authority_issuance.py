@@ -1,5 +1,8 @@
 """Authoritative P1 occurrence issuance, seal finalization, and byte verification."""
 
+# P1 authority modules intentionally share contract-shaped serialization blocks.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import hashlib
@@ -27,10 +30,9 @@ from eval_naturalistic.v2.evidence_commitments import (
     VerifiedP1EvidenceCommitmentsV2,
     recompute_evidence_commitments_from_manifest,
 )
-from eval_naturalistic.v2.identity import LineageEdgeV2, OccurrenceReferenceV2, reject_hash_or_locator_identity
+from eval_naturalistic.v2.identity import LineageEdgeV2, OccurrenceReferenceV2
 from eval_naturalistic.v2.lineage_attestation import (
     LineageAttestationRepository,
-    occurrence_commitment_digest,
     verify_lineage_edge_attestation,
 )
 from eval_naturalistic.v2.p0_construct import (
@@ -384,7 +386,7 @@ def issue_occurrence_reference(
         source_capture_digest=verified.source_capture_digest,
         raw_record_digest=verified.raw_record_digest,
     )
-    issuance_repository._commit_verified_issuance(
+    issuance_repository._commit_verified_issuance(  # pylint: disable=protected-access
         issued,
         source_authority=verified,
         source_capture_digest=verified.source_capture_digest,

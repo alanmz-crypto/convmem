@@ -1,5 +1,8 @@
 """Capture attestation issuance — binds sealed capture to issuer capability authority."""
 
+# Issuance wiring intentionally mirrors the source-authority verification path.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 from eval_naturalistic.base import StructuralContractError

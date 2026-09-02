@@ -1,5 +1,8 @@
 """Independent lineage attestation artifacts for issuer-attested edges."""
 
+# Attestation serialization intentionally mirrors other V2 artifact records.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import hashlib
@@ -16,7 +19,7 @@ from eval_naturalistic.base import (
 )
 from eval_naturalistic.digest import canonical_artifact_bytes
 from eval_naturalistic.v2.contracts import ARTIFACT_ID_PREFIX_V2, SCHEMA_NAMESPACE_V2
-from eval_naturalistic.v2.identity import LineageEdgeV2, LineageRelationKind, OccurrenceReferenceV2, digest_hex
+from eval_naturalistic.v2.identity import LineageEdgeV2, LineageRelationKind, OccurrenceReferenceV2
 
 LINEAGE_ATTESTATION_SCHEMA = f"{SCHEMA_NAMESPACE_V2}/lineage-attestation-v2"
 

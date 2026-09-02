@@ -1,5 +1,8 @@
 """Hermetic fixtures for Naturalistic V2 P1 source-backed authority tests."""
 
+# Contract fixtures intentionally mirror serialized authority shapes.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 from eval_naturalistic.base import StructuralContractError

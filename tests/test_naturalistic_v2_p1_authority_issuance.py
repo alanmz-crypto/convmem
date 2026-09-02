@@ -1,5 +1,9 @@
 """V2-01C — P1 authority issuance, sealing, and adversarial verification tests."""
 
+# The import-path bootstrap and negative probes intentionally exercise private
+# construction boundaries; the large adversarial class is one test surface.
+# pylint: disable=duplicate-code,missing-kwoa,no-member,protected-access,too-many-public-methods,wrong-import-position
+
 from __future__ import annotations
 
 import sys
@@ -10,22 +14,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval_naturalistic.base import StructuralContractError
 from eval_naturalistic.v2.authority_issuance import (
-    EvidenceSealManifestDraftV2,
     IssuanceAuthorityRepository,
-    IssuedOccurrenceReferenceV2,
-    SealedP1AuthorityV2,
     issue_occurrence_reference,
     verify_sealed_p1_authority,
 )
 from eval_naturalistic.v2.contracts import EvidenceSealManifestV2
 from eval_naturalistic.v2.identity import (
     LineageEdgeV2,
-    LineageRelationKind,
     reject_hash_or_locator_identity,
 )
 from eval_naturalistic.v2.lineage_attestation import (
     LineageAttestationRepository,
-    occurrence_commitment_digest,
     verify_lineage_edge_attestation,
 )
 from eval_naturalistic.v2.p0_construct import InMemoryConstructFreezeRepository
@@ -284,7 +283,7 @@ class NaturalisticV2P1AuthorityIssuanceTests(unittest.TestCase):
         p0_repo = sample_p0_repository()
         issuance_repo = IssuanceAuthorityRepository()
         draft = build_p1_draft(p0_repository=p0_repo, issuance_repository=issuance_repo)
-        body = draft._body_without_seal_metadata()
+        body = draft._body_without_seal_metadata()  # pylint: disable=protected-access
         with self.assertRaises(StructuralContractError):
             parse_evidence_seal_manifest_v2({
                 "header": {

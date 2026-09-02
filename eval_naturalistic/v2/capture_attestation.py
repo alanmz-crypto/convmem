@@ -1,5 +1,8 @@
 """Independent issuer attestation artifacts for sealed source capture authority."""
 
+# Capture and lineage artifacts intentionally share serialized contract blocks.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import hashlib
