@@ -19,9 +19,12 @@ The critical insight: **mixing note types by topic** (e.g., filing everything un
 
 ## Writing is the only thing that matters (pp. 40–41)
 
-> Writing is not the outcome of thinking; it is the medium of thinking.
-
-This principle justifies why convmem's ledger records observations and decisions as written artifacts rather than as structured data. The act of writing a `dec_prop_*` entry forces clarity that a form field or a dropdown cannot. If you cannot state a decision in one sentence with a rationale, you haven't thought it through.
+Ahrens presents writing as the medium through which thinking becomes clear,
+rather than merely the result of thinking (pp. 40–41). This principle justifies
+why convmem's ledger records observations and decisions as written artifacts
+rather than as structured data. The act of writing a `dec_prop_*` entry forces
+clarity that a form field or a dropdown cannot. If you cannot state a decision
+in one sentence with a rationale, you haven't thought it through.
 
 This also justifies why `ask()` synthesizes from evidence units rather than from a single canonical document — the synthesis _is_ the thinking, and forcing the model to assemble evidence from atomic units produces better reasoning than retrieving a pre-written summary.
 
@@ -38,9 +41,13 @@ The book's linking rule applies directly to the ledger: **a permanent note (deci
 
 ## No one ever starts from scratch (p. 53)
 
-> The idea that nobody ever starts from scratch suddenly becomes very concrete. If we take it seriously and work accordingly, we literally never have to start from scratch again.
-
-This is the closest textual argument for convmem's **no-auto-merge, let-duplicates-coexist-until-reviewed** decision. The slip-box does not force consolidation; it lets connections emerge naturally. A new observation that overlaps an existing one is not noise — it's an opportunity for a new connection.
+Ahrens argues that deliberate linking turns prior work into a concrete starting
+point, so that later work need not begin from nothing (p. 53). This is the
+closest textual argument for convmem's **no-auto-merge,
+let-duplicates-coexist-until-reviewed** decision. The slip-box does not force
+consolidation; it lets connections emerge naturally. A new observation that
+overlaps an existing one is not noise — it's an opportunity for a new
+connection.
 
 Applied to convmem: before `convmem record`, run `convmem search` or `ask`. The ledger already contains prior art. Starting from scratch means you missed it.
 

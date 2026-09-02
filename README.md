@@ -440,6 +440,13 @@ Rerank: fetch 20 → semantic/lexical fusion and optional CrossEncoder → top 5
 
 ---
 
+## License
+
+ConvMem's original code and documentation are available under the [MIT
+License](LICENSE). Third-party dependencies, attributed quotations, and other
+source-derived material remain under their respective terms; ConvMem's MIT
+license does not relicense them.
+
 ## Agents in my current workflow
 
 These roles describe how I currently use multiple agents around this repository; they are not a required public contribution model.
