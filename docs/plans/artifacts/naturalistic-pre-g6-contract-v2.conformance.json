@@ -1,0 +1,173 @@
+{
+  "artifact_type": "naturalistic_pre_g6_contract_v2_conformance",
+  "contract_version": "naturalistic-pre-g6-contract-v2",
+  "case_count": 22,
+  "cases": [
+    {
+      "id": "jcs_without_trailing_newline",
+      "scenario": "The contract is serialized with RFC 8785 and compared with the same bytes plus one LF byte.",
+      "input": "canonical_contract_bytes_and_canonical_contract_bytes_plus_0A",
+      "expected": "ONLY_THE_NO_TRAILING_BYTE_DIGEST_MATCHES_THE_SIDECAR",
+      "blocked_transition": "P0_T0_CONSTRUCT_FREEZE"
+    },
+    {
+      "id": "p1_cannot_bind_p2_output",
+      "scenario": "An EvidenceSealManifest attempts to include a resolver result or target census.",
+      "input": "P1_manifest_with_resolver_output_or_target_census",
+      "expected": "V_STAGE_P1_REJECTS_LATER_STAGE_FIELD",
+      "blocked_transition": "P1_T1_EVIDENCE_SEAL"
+    },
+    {
+      "id": "p1_rejects_resolver_result",
+      "scenario": "P1 evidence material independently injects the canonical P2 field resolver_result.",
+      "input": {
+        "surface": "P1_T1_EVIDENCE_SEAL",
+        "field": "resolver_result"
+      },
+      "expected": "V_STAGE_P1_REJECTS_CANONICAL_P2_FIELD",
+      "blocked_transition": "P1_T1_EVIDENCE_SEAL"
+    },
+    {
+      "id": "p1_rejects_capability_vector",
+      "scenario": "P1 evidence material independently injects the canonical P2 field capability_vector.",
+      "input": {
+        "surface": "P1_T1_EVIDENCE_SEAL",
+        "field": "capability_vector"
+      },
+      "expected": "V_STAGE_P1_REJECTS_CANONICAL_P2_FIELD",
+      "blocked_transition": "P1_T1_EVIDENCE_SEAL"
+    },
+    {
+      "id": "adjudicator_view_rejects_resolver_result",
+      "scenario": "The adjudicator-visible evidence view independently injects the canonical P2 field resolver_result.",
+      "input": {
+        "surface": "AdjudicationEvidenceViewV1",
+        "field": "resolver_result"
+      },
+      "expected": "V_ADJUDICATION_VIEW_REJECTS_CANONICAL_P2_FIELD",
+      "blocked_transition": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL"
+    },
+    {
+      "id": "adjudicator_view_rejects_capability_vector",
+      "scenario": "The adjudicator-visible evidence view independently injects the canonical P2 field capability_vector.",
+      "input": {
+        "surface": "AdjudicationEvidenceViewV1",
+        "field": "capability_vector"
+      },
+      "expected": "V_ADJUDICATION_VIEW_REJECTS_CANONICAL_P2_FIELD",
+      "blocked_transition": "P3_T2_BLINDED_ADJUDICATION_REGISTRY_SEAL"
+    },
+    {
+      "id": "clone_with_lineage_remains_distinct",
+      "scenario": "A clone carries a valid immutable lineage edge to its source.",
+      "input": "new_physical_instance_with_attested_parent_lineage",
+      "expected": "NEW_OCCURRENCE_REFERENCE_AND_RETAINED_LOGICAL_CONTINUITY",
+      "blocked_transition": "NONE"
+    },
+    {
+      "id": "restore_preserved_native_ids_remains_distinct",
+      "scenario": "A restore preserves every provider-native identifier.",
+      "input": "restored_physical_instance_with_reused_native_ids",
+      "expected": "NEW_PHYSICAL_INSTANCE_AND_NEW_OCCURRENCE_REFERENCE",
+      "blocked_transition": "NONE"
+    },
+    {
+      "id": "duplicate_content_distinct_occurrences",
+      "scenario": "Two distinct occurrences have byte-identical canonical content.",
+      "input": "two_occurrence_references_one_content_digest",
+      "expected": "BOTH_OCCURRENCES_RETAINED_AND_SEMANTIC_DEDUP_APPLIED_SEPARATELY",
+      "blocked_transition": "NONE"
+    },
+    {
+      "id": "known_present_additional_multiplicity_unknown",
+      "scenario": "One target is confirmed while unavailable evidence may contain more.",
+      "input": "known_count_1_lower_1_upper_null",
+      "expected": "CONFIRMED_PRESENT_WITH_UNBOUNDED_UNKNOWN_MULTIPLICITY",
+      "blocked_transition": "NONE"
+    },
+    {
+      "id": "unbounded_multiplicity_blocks",
+      "scenario": "A dependent estimand requires a finite total target count but one episode has no finite upper bound.",
+      "input": "upper_bound_null_for_dependent_quantity",
+      "expected": "POINT_ESTIMATE_UNKNOWN_AND_T10_BLOCKED_NON_ESTIMABLE",
+      "blocked_transition": "T10_INFORMATION_GATE"
+    },
+    {
+      "id": "incomplete_source_inventory_hidden_resolver",
+      "scenario": "The condition-neutral source inventory is incomplete while resolver state must remain hidden.",
+      "input": "availability_unknown_with_constant_shape_blinded_view",
+      "expected": "UNKNOWN_EXISTENCE_OR_MULTIPLICITY_EXPOSED_WITHOUT_RESOLVER_FIELDS",
+      "blocked_transition": "NONE"
+    },
+    {
+      "id": "source_deleted_after_intact_seal",
+      "scenario": "The source is deleted after a matching, obligation-complete, integrity-valid evidence seal.",
+      "input": "post_seal_source_state_deleted",
+      "expected": "VALID_ASOF_EVIDENCE_WITH_DELETION_DIAGNOSTIC_NOT_NEW_OCCURRENCE_AUTHORITY",
+      "blocked_transition": "NONE"
+    },
+    {
+      "id": "source_modified_after_seal",
+      "scenario": "The source is modified after a matching, obligation-complete, integrity-valid evidence seal.",
+      "input": "post_seal_source_state_modified",
+      "expected": "VALID_ASOF_EVIDENCE_WITH_DRIFT_DIAGNOSTIC_NOT_PRESERVATION_FAILURE",
+      "blocked_transition": "NONE"
+    },
+    {
+      "id": "stripped_origin_legacy_descendant",
+      "scenario": "A ranking removes legacy prose but was derived from a legacy embedding.",
+      "input": "ranking_parent_chain_contains_legacy_embedding",
+      "expected": "TRANSITIVE_TAINT_REMAINS_AND_NORMATIVE_USE_IS_REJECTED",
+      "blocked_transition": "P0_T0_CONSTRUCT_FREEZE"
+    },
+    {
+      "id": "summary_missing_consumed_dependency",
+      "scenario": "A prospective summary omits one output-relevant tool response from its parent DAG.",
+      "input": "summary_with_incomplete_consumed_dependency_set",
+      "expected": "NON_NORMATIVE_DIAGNOSTIC_ONLY",
+      "blocked_transition": "P0_T0_CONSTRUCT_FREEZE"
+    },
+    {
+      "id": "post_freeze_parser_canonicalizer_replacement",
+      "scenario": "The parser or canonicalizer implementation changes after P0 while the semantic contract digest stays unchanged.",
+      "input": "new_component_digest_without_amendment",
+      "expected": "IMPLEMENTATION_MANIFEST_MISMATCH_AND_DEPENDENT_ARTIFACT_INVALIDATION",
+      "blocked_transition": "NEXT_DEPENDENT_STAGE"
+    },
+    {
+      "id": "target_specific_semantic_key_change",
+      "scenario": "Key generation adds a new partial-credit interpretation after natural target inspection.",
+      "input": "substitution_map_with_unlisted_semantic_field",
+      "expected": "KEY_INSTANTIATION_REJECTED_AS_NON_MECHANICAL",
+      "blocked_transition": "T4_PROBE_KEY_SCORER_SEAL"
+    },
+    {
+      "id": "unlisted_implementation_component",
+      "scenario": "A behavior-relevant ranking helper is omitted from the implementation manifest.",
+      "input": "runtime_component_not_in_required_or_extension_inventory",
+      "expected": "P0_VALIDATION_FAILURE",
+      "blocked_transition": "P0_T0_CONSTRUCT_FREEZE"
+    },
+    {
+      "id": "nested_c0_c1_mismatch",
+      "scenario": "The arms use different nested runtime versions while broad environment labels match.",
+      "input": "environment_runtime_versions_value_mismatch",
+      "expected": "T6_INVALID",
+      "blocked_transition": "T6_C0_C1_READINESS"
+    },
+    {
+      "id": "unknown_ryan_decision_value",
+      "scenario": "A decision value is absent or outside its declared allowed domain.",
+      "input": "decision_instance_with_unknown_value",
+      "expected": "DECISION_REGISTRY_VALIDATION_FAILURE",
+      "blocked_transition": "P0_T0_CONSTRUCT_FREEZE"
+    },
+    {
+      "id": "decision_missing_validator_or_authority",
+      "scenario": "A proposed construct choice has a valid-looking value but lacks a validator or owner authority.",
+      "input": "decision_record_missing_validator_or_owner_authority",
+      "expected": "SCHEMA_AND_DECISION_REGISTRY_VALIDATION_FAILURE",
+      "blocked_transition": "P0_T0_CONSTRUCT_FREEZE"
+    }
+  ]
+}

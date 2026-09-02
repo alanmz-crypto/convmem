@@ -133,6 +133,19 @@ _ALLOWED_CYCLIC_PAIRS = frozenset(
         ("serving_authority", "serving_index_repository"),
         ("serving_authority", "source_reconciler"),
         ("logical_accounting", "serving_authority"),
+        # Naturalistic V2 authority substrate — SCC tolerated at V2-01C parent 01b53fb;
+        # capture_attestation <-> issuer_attestation_capability intentionally absent.
+        ("eval_naturalistic.v2.authority_issuance", "eval_naturalistic.v2.contracts"),
+        ("eval_naturalistic.v2.authority_issuance", "eval_naturalistic.v2.evidence_commitments"),
+        ("eval_naturalistic.v2.authority_issuance", "eval_naturalistic.v2.lineage_attestation"),
+        ("eval_naturalistic.v2.authority_issuance", "eval_naturalistic.v2.p0_construct"),
+        ("eval_naturalistic.v2.capture_attestation", "eval_naturalistic.v2.contracts"),
+        ("eval_naturalistic.v2.capture_attestation", "eval_naturalistic.v2.evidence_commitments"),
+        ("eval_naturalistic.v2.capture_attestation", "eval_naturalistic.v2.source_issuer_authority"),
+        ("eval_naturalistic.v2.contracts", "eval_naturalistic.v2.lineage_attestation"),
+        ("eval_naturalistic.v2.contracts", "eval_naturalistic.v2.p0_construct"),
+        ("eval_naturalistic.v2.evidence_commitments", "eval_naturalistic.v2.p0_construct"),
+        ("eval_naturalistic.v2.p0_construct", "eval_naturalistic.v2.source_issuer_authority"),
     }
 )
 

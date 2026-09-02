@@ -17,8 +17,10 @@ cross-arc snapshot and the linked arc brief below.
   integration are on `main` (PR #264). Live capture, duration acceptance,
   packet/grant, and I4–I8 remain separately gated. Read
   [`STATUS-r2b-capture-auth.md`](../plans/STATUS-r2b-capture-auth.md).
-- **Naturalistic product-value evaluation:** G1–G5 methodology is on `main`;
-  G6 remains Ryan-locked pending independent ChatGPT review. Read
+- **Naturalistic product-value evaluation:** G1–G5 methodology and the accepted
+  V2-01C bounded authority/compatibility package are on `main` (`2e091ce…`).
+  Issue #277 remains deferred security-testing debt; G6 remains Ryan-locked
+  and V2-02C is not authorized. Read
   [`STATUS-naturalistic-product-value.md`](../plans/STATUS-naturalistic-product-value.md).
 - **Recovery Authority:** T1–T3 are on `main`; T4 is not authorized and V4k
   remains blocked on the separately governed CG-2 reference-v2 closure. Read
