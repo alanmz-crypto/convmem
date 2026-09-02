@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-01
+**Updated:** 2026-09-02
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -17,10 +17,12 @@ cross-arc snapshot and the linked arc brief below.
   integration are on `main` (PR #264). Live capture, duration acceptance,
   packet/grant, and I4–I8 remain separately gated. Read
   [`STATUS-r2b-capture-auth.md`](../plans/STATUS-r2b-capture-auth.md).
-- **Naturalistic product-value evaluation:** G1–G5 methodology and the accepted
-  V2-01C bounded authority/compatibility package are on `main` (`2e091ce…`).
-  Issue #277 remains deferred security-testing debt; G6 remains Ryan-locked
-  and V2-02C is not authorized. Read
+- **Naturalistic product-value evaluation:** G1–G5 methodology, the accepted
+  V2-01C bounded authority/compatibility package, and V2-02C source-backed
+  capability derivation are on `main`. V2-02C landed through normal merge PR
+  #284 at `4650c8d54aa13db361d91f73337fde4adba58fe6`, preserving reviewed tip
+  `a64df8fc7fe98c66b2d44180846242429f502534`. Issue #277 remains deferred
+  security-testing debt; V2-03C and G6 remain Ryan-locked. Read
   [`STATUS-naturalistic-product-value.md`](../plans/STATUS-naturalistic-product-value.md).
 - **Recovery Authority:** T1–T3 are on `main`; T4 is not authorized and V4k
   remains blocked on the separately governed CG-2 reference-v2 closure. Read
