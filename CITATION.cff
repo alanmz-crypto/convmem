@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: "If you use ConvMem in research or published work, please cite it using these metadata."
+title: "ConvMem"
+authors:
+  - name: "alanmz-crypto"
+type: software
+license: MIT
+repository-code: "https://github.com/alanmz-crypto/convmem"

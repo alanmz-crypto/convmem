@@ -141,9 +141,9 @@ The indexer achieves exactly-once semantics because chunk IDs (`{document}:{chun
 
 ### Event sourcing and the ledger
 
-The book's discussion of event sourcing (pp. 456–459) could describe convmem's ledger directly:
-
-> The fundamental idea is to record an append-only log of events, and derive the current state by replaying events from the log. An append-only ledger captures the fact that the state of the system is the result of the mutations that happened over time.
+The book's discussion of event sourcing describes an append-only event log
+whose current state is derived by replaying the recorded mutations (pp.
+456–459). That model could describe convmem's ledger directly.
 
 This is exactly convmem's architecture. The ledger is the event log. Chroma is a **derived state** built by replaying events. If the derived state is corrupted, you don't try to fix it in place — you delete it and replay from the source.
 
