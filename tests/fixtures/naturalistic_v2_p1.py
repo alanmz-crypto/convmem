@@ -375,6 +375,7 @@ def sample_sealed_authority(
     occurrence: OccurrenceReferenceV2 | None = None,
     availability: ConditionNeutralEvidenceAvailabilityV2 | None = None,
     canonical_content_digest: str = FIXED_DIGEST,
+    adapter_implementation_digest: str = FIXED_DIGEST,
 ) -> SealedP1AuthorityV2:
     repo = p0_repository or sample_p0_repository()
     parent = sample_construct_parent(repo)
@@ -415,7 +416,7 @@ def sample_sealed_authority(
         construct_freeze_artifact_id=parent.parent_artifact_id,
         canonical_content_digest=canonical_content_digest,
         canonicalization_profile_digest=FIXED_DIGEST,
-        adapter_implementation_digest=FIXED_DIGEST,
+        adapter_implementation_digest=adapter_implementation_digest,
     )
     draft = EvidenceSealManifestDraftV2(
         construct_freeze_digest=construct_digest,
