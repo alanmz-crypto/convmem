@@ -14,8 +14,11 @@ merge. V2-01C is also landed through the accepted implementation
 security-testing debt. V2-02C is landed and closed through normal merge PR #284
 at `4650c8d54aa13db361d91f73337fde4adba58fe6`, preserving the independently
 reviewed implementation tip `a64df8fc7fe98c66b2d44180846242429f502534`.
+V2-03C implementation is in progress on the separately pushed branch
+`feat/2026-09-02-naturalistic-v2-03c-resolver`; it is not merged or closed and
+awaits fresh exact-tip Kiro authority review followed by Ryan's gate.
 Classification remains **methodology validation, not product evidence**.
-**V2-03C and G6 are not authorized.**
+**V2-04+ and G6 are not authorized.**
 
 ---
 
@@ -80,6 +83,7 @@ Key invariants:
 | `eval_naturalistic/v2/` and `docs/plans/artifacts/naturalistic-pre-g6-contract-v2.*` | V2-01C pre-G6 authority, evidence, attestation, and contract package on `main`; issue #277 lifecycle testing remains deferred |
 | `tests/test_naturalistic_v2_*.py` | V2-01C authority, P0 compatibility, contract, and bounded admission coverage on `main` |
 | `eval_naturalistic/v2/adapters/` and `tests/test_naturalistic_v2_capability_authority.py` | V2-02C source-backed, occurrence-bound capability manifests on `main` via PR #284; issue #277 lifecycle testing remains deferred |
+| `eval_naturalistic/v2/resolver.py` and `tests/test_naturalistic_v2_resolver_authority.py` | V2-03C bounded, source-backed opaque resolver authority candidate on the implementation branch; not yet reviewed or merged |
 | PR #255 / PR #259 | G1–G4 via #255; G5 dry-run via #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583` |
 | PR #284 | V2-02C normal merge at `4650c8d54aa13db361d91f73337fde4adba58fe6`; reviewed head `a64df8fc7fe98c66b2d44180846242429f502534` remains in `main` ancestry |
 | Live runner, study controller, Agent A/B campaign, and corpus access | Absent and unauthorized; G5 does not add them |
@@ -95,6 +99,7 @@ Key invariants:
 | G5 dry-run/fixture verification | **DONE on `main`** | PR #259 at `6843bbeebbaed6a109fe94967fdd03fb3569b583`; Kiro PASS at `23b2495927a9891070c7c294e45bdb641eaab352`; methodology validation only |
 | V2-01C bounded authority/compatibility package | **DONE on `main` — CLOSED** | Kiro PASS at exact implementation `2e091ce81fe22d9090a525916a96a9177c189912`; focused 62, V2 117, broader naturalistic 226 + 8 subtests; issue #277 deferred |
 | V2-02C source-backed capability manifests | **DONE on `main` — LANDED / CLOSED** | Kiro PASS at exact implementation `a64df8fc7fe98c66b2d44180846242429f502534`; normal merge PR #284 at `4650c8d54aa13db361d91f73337fde4adba58fe6`; focused 35, full V2 152, broader naturalistic 261 + 8 subtests, historical P0, Issue #263, local and GitHub CI green; no downstream authorization |
+| V2-03C opaque resolver authority | **ON IMPLEMENTATION BRANCH — AWAITING KIRO REVIEW** | Ryan granted implementation only; candidate is source-backed by V2-01C/V2-02C and has bounded authority tests; no merge or V2-04+ authorization |
 | G6 prospective study freeze and later T7–T11 gates | **NOT AUTHORIZED — Ryan LOCKED** | Closed until ChatGPT review; then Ryan explicit G6 grant if warranted |
 | Product disposition | **UNAVAILABLE** | T10 is the only later stage permitted to produce one |
 
@@ -117,9 +122,11 @@ Do not infer product value from G1–G5 machinery or synthetic fixtures.
 
 Do not interpret synthetic `0.3` as evidence that ConvMem helps.
 
-If Ryan sent you for **V2-03C or later V2 work**, stop. V2-02C closure does not
-authorize the resolver, adjudication, multiplicity, transitive-DAG, or any live,
-scoring, controller, product-inference, G6/T0, or issue #277 testing work.
+If Ryan sent you for **V2-03C**, implement only the bounded opaque resolver
+authority candidate, then stop for fresh exact-tip Kiro review and Ryan's gate.
+Do not enter V2-04/V2-04A adjudication, multiplicity, transitive-DAG, or any
+live, scoring, controller, product-inference, G6/T0, or issue #277 testing
+work.
 
 ## 6. What Remains Before "Live"
 
@@ -132,7 +139,9 @@ scoring, controller, product-inference, G6/T0, or issue #277 testing work.
 - [x] Ryan merges G5 (squash-merged PR #259).
 - [x] V2-01C accepted implementation `2e091ce…` is integrated and closed on `main`; issue #277 remains deferred.
 - [x] V2-02C exact reviewed tip `a64df8fc…` is integrated and closed on `main` via normal merge PR #284; issue #277 remains deferred.
-- [ ] Ryan separately grants V2-03C or any later V2 stage; closure of V2-02C does not imply downstream authorization.
+- [x] Ryan separately grants V2-03C implementation only; no merge or downstream stage is included.
+- [ ] Fresh exact-tip Kiro authority review of the V2-03C implementation candidate.
+- [ ] Ryan gate for V2-03C integration; V2-04+ remains separately unauthorized.
 - [ ] Independent ChatGPT review of G5 methodology / G6 readiness (Ryan GATE).
 - [ ] Ryan separately authorizes G6 prospective freeze and later T7–T11 gates.
 - [ ] Only a fully authorized T10 path may produce a product disposition.
@@ -181,7 +190,9 @@ the session transcript separately under Track A.
 - 2026-08-30 — Ryan: squash-merged routing refresh PR #261 to `676d6b5`; locked G6 closed until ChatGPT review regardless of synthetic results.
 - 2026-09-01 — Ryan: accepted Kiro-PASSed V2-01C implementation `2e091ce…` for bounded integration; V2-01C is landed/closed, issue #277 remains deferred, and G6/V2-02C stay locked.
 - 2026-09-02 — Ryan: accepted Kiro-PASSed V2-02C exact tip `a64df8fc…`; normal merge PR #284 landed it at `4650c8d…` with V2-03C, G6, issue #277 testing, and downstream execution still unauthorized.
+- 2026-09-02 — Ryan: granted V2-03C implementation only; candidate branch is awaiting fresh exact-tip Kiro authority review and Ryan integration gate.
 
-**TL;DR:** G1–G5, V2-01C, and V2-02C are on `main`; V2-02C is
-LANDED / CLOSED through PR #284. This remains methodology validation only — not
-product evidence; issue #277 is deferred and V2-03C/G6 stay Ryan-locked.
+**TL;DR:** G1–G5, V2-01C, and V2-02C are on `main`; V2-03C is an
+implementation-only candidate awaiting Kiro review and Ryan's gate. This remains
+methodology validation only — not product evidence; issue #277 and G6 remain
+deferred/closed.
