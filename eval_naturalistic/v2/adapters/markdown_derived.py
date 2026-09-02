@@ -1,5 +1,8 @@
 """Markdown-like evidence adapter profiles (Aider/inter-model)."""
 
+# Profile constructors share the explicit schema by design.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 from eval_naturalistic.v2.adapters.capability import (

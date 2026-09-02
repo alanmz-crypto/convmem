@@ -7,6 +7,10 @@ resolves a trusted profile from the closed registry, and seals a manifest whose
 content digest covers every binding and capability value.
 """
 
+# The public boundary receives the complete repository-backed verification
+# context explicitly; those dependencies must not be hidden or defaulted.
+# pylint: disable=too-many-arguments
+
 from __future__ import annotations
 
 import hashlib

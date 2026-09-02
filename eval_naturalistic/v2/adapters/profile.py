@@ -1,4 +1,10 @@
-"""Evidence adapter profile contract — separate from legacy ingest parsers."""
+"""Evidence adapter profile contract — separate from legacy ingest parsers.
+
+The profile and semantics objects intentionally expose every contract axis as a
+field so omission cannot be hidden behind an opaque mapping.
+"""
+
+# pylint: disable=duplicate-code,too-many-instance-attributes
 
 from __future__ import annotations
 
@@ -23,9 +29,6 @@ from eval_naturalistic.v2.adapters.reduction import (
 )
 from eval_naturalistic.v2.evidence import (
     ConditionNeutralEvidenceAvailabilityV2,
-    SourcePresenceV2,
-    SummaryEvidenceAvailabilityV2,
-    VerbatimEvidenceAvailabilityV2,
     normalized_reported_presence,
 )
 

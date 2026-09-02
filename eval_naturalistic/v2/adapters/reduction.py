@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from enum import Enum
 
 from eval_naturalistic.v2.adapters.capability import (
-    AttachmentMaterialSpanCapability,
     CanonicalVerificationCapability,
     CapabilityVectorV2,
     EvidenceCompletenessCapability,

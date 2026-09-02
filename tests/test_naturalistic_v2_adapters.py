@@ -1,8 +1,10 @@
 """V2-02 — evidence adapter profiles and capability vector adversarial tests."""
 
+# The test imports below follow the repository-local sys.path setup.
+# pylint: disable=duplicate-code,too-many-public-methods,wrong-import-position
+
 from __future__ import annotations
 
-import copy
 import sys
 import unittest
 from pathlib import Path

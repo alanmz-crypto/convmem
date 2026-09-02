@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from eval_naturalistic.v2.adapters.capability import (
     AttachmentMaterialSpanCapability,
-    CapabilityVectorV2,
 )
 from eval_naturalistic.v2.adapters.crush_sqlite import crush_sqlite_profile
 from eval_naturalistic.v2.adapters.profile import EvidenceAdapterProfileV2

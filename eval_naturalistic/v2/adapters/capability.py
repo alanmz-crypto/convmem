@@ -1,4 +1,10 @@
-"""Locked nine-axis capability vector for Naturalistic V2 evidence adapters."""
+"""Locked nine-axis capability vector for Naturalistic V2 evidence adapters.
+
+The nine explicit dimensions are intentionally represented as one value object;
+the instance-attribute count is the contract, not accidental state.
+"""
+
+# pylint: disable=too-many-instance-attributes
 
 from __future__ import annotations
 

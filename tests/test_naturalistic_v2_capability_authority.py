@@ -156,6 +156,9 @@ class NaturalisticV2CapabilityAuthorityTests(unittest.TestCase):
     def test_caller_cannot_select_capability_digest_or_profile_label_as_authority(self) -> None:
         p1, p0, issuance, _ = self._bundle()
         with self.assertRaises(TypeError):
+            # Intentional negative control: the public API must not accept a
+            # caller-selected digest, even when the runtime would reject it.
+            # pylint: disable=unexpected-keyword-arg
             derive_capability_manifest(  # type: ignore[call-arg]
                 p1,
                 legacy_format="sqlite_crush",
@@ -264,7 +267,7 @@ class NaturalisticV2CapabilityAuthorityTests(unittest.TestCase):
         availability = sample_availability(
             verbatim=sample_availability().verbatim_evidence_availability.UNAVAILABLE,
         )
-        p1, p0, issuance, capability = self._bundle(availability=availability)
+        p1, _p0, _issuance, capability = self._bundle(availability=availability)
         self.assertEqual(
             capability.manifest.condition_neutral_evidence_availability.source_presence.value,
             "PRESENT",
