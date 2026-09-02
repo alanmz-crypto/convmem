@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-09-01. Verify the exact repository tip from `origin/main`
+**Snapshot:** 2026-09-02. Verify the exact repository tip from `origin/main`
 before comparing branches; branch and PR work named below is not on `main`
 unless explicitly stated.
 
@@ -54,7 +54,7 @@ gated.
 | CG-2 authority migration | Design A Execute-close is **LANDED** via PR #250 at `e930ae4c…`; the accepted D7 source was transplanted onto current main. A later retained-reference-v2 corrective remains branch-only and must not be attributed to `main`. V8c and every production step remain PENDING/unauthorized. | No further Design A landing work. Separately governed reference-v2 review/implementation may proceed only under its own accepted plan/grant. Do not run production D0/D1, publish fence/pointer, activate an owner, run GC, or enable Shadow/R2b. See [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md), [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md), and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
 | Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED**; PR #221 squash-merged at `722141d31e586151f361ef7006ad74c71cdff534` from final reviewed head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`; bounded writer-boundary and provenance-supersession corrections are on current `main` with Runway integration complete | No further T3 integration work. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
 | Recovery Authority | T1 landed via PR #234, T2 via PR #236, and scratch-only T3 via PR #238 at `d250feb2…`. T3 prepares an isolated replacement candidate and does not publish serving state or touch live authority. T4 remains unstarted; V4k remains **BLOCKED** on separately governed CG-2 reference-v2 closure. | T4 is next in the accepted sequence but **NOT AUTHORIZED**. V4k needs a later fresh grant after its dependency closes. No live restore, replacement, projection activation, serving, migration, mutation, or T5 campaign. |
-| Naturalistic product-value evaluation | G1–G5 and accepted V2-01C **LANDED on `main`**; V2-01C implementation identity `2e091ce…` preserved in integration ancestry. Methodology validation complete; not product evidence. Issue #277 remains deferred. Arc brief: [`STATUS-naturalistic-product-value.md`](../plans/STATUS-naturalistic-product-value.md). | **G6 Ryan-LOCKED**; V2-02C is not authorized. Favorable synthetic results or V2-01C landing do not open either path. |
+| Naturalistic product-value evaluation | G1–G5, accepted V2-01C, and V2-02C **LANDED on `main`**; V2-01C identity `2e091ce…` and independently reviewed V2-02C tip `a64df8fc…` are preserved in ancestry. V2-02C merged normally via PR #284 at `4650c8d…`. Methodology validation only, not product evidence; issue #277 remains deferred. Arc brief: [`STATUS-naturalistic-product-value.md`](../plans/STATUS-naturalistic-product-value.md). | **V2-03C and G6 Ryan-LOCKED**; no V2-04+, V2-05+, live study, scoring/controller, product inference, or issue #277 complete-chain testing is authorized. |
 | Portland baseline experiment | Protocol-v3 branch `experiment/2026-08-30-portland-rerun3-v3` ended in **RERUN3 SEED-GENERATION FAILURE** at `9ba72378…`; pre-v3 seed evidence is superseded but preserved. Nothing is on `main`. | No retry and no Agent B execution are authorized. Preserve the failed/superseded evidence; do not treat it as a product verdict. |
 
 ## Closed arcs — reference STATUS only
@@ -106,8 +106,9 @@ gated.
 - [Naturalistic product-value STATUS](../plans/STATUS-naturalistic-product-value.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Naturalistic G1–G5 methodology is landed but non-live; G6 and every
-study/live/product-disposition step remain Ryan-gated. Recovery/CG-2 remain
+**TL;DR:** Naturalistic G1–G5 methodology plus V2-01C and V2-02C authority
+layers are landed but non-live; V2-03C, G6, and every study/live/product-disposition
+step remain Ryan-gated. Recovery/CG-2 remain
 non-live, R2b implementation is landed but operational capture is separately
 gated, and Portland is stopped at seed-generation failure. Verify the exact
 `origin/main` tip from Git when a commit identity matters.
