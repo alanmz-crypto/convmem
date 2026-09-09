@@ -11,12 +11,13 @@
 
 | Field | Value |
 |-------|--------|
-| **State** | `IN_PROGRESS` |
+| **State** | `READY_FOR_PR` |
 | **Branch** | `feat/2026-09-09-jsonl-incremental-chroma-scratch` |
 | **Base** | `origin/main` at `fe2322bc836fc25de1b2b0efb7ef2a04ebd9a07c` |
-| **Push status** | branch exists on origin; push every commit |
+| **Implementation/evidence tip** | `1a38090` |
+| **Push status** | pushed to origin |
 | **PR** | not opened |
-| **Ryan GATE** | implementation and evidence are authorized; canary and production activation are not |
+| **Ryan GATE** | independent review next; canary and production activation are not authorized |
 | **Track A ingest** | required at final handoff only |
 
 ---
@@ -198,12 +199,11 @@ concrete contradictions.
 - [x] Dedicated branch/worktree created from current `origin/main`.
 - [x] Watcher verified inactive; no surviving `convmem index` process found.
 - [x] Scope, stop conditions, matrix, and forbidden actions frozen here.
-- [ ] Handoff and `LATEST.md` committed and pushed.
+- [x] Handoff and `LATEST.md` committed and pushed.
 
 **Luna implementer:**
 
-- [ ] Read this file and the original VERIFY document before the first edit.
-- [ ] Work only in this dedicated worktree/branch.
-- [ ] Push immediately after every commit.
-- [ ] Stop at evidence; do not open a canary or production route.
-
+- [x] Read this file and the original VERIFY document before the first edit.
+- [x] Work only in this dedicated worktree/branch.
+- [x] Push immediately after every commit.
+- [x] Stop at evidence; no canary or production route opened.
