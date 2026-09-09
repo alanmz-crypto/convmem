@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-02
+**Updated:** 2026-09-09
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,6 +9,12 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **JSONL incremental real-Chroma scratch correction:** Ryan authorized a
+  scratch-only implementation and evidence pass on 2026-09-09. Codex froze the
+  isolation boundary and delegated mechanical implementation to Luna on
+  `feat/2026-09-09-jsonl-incremental-chroma-scratch`; no canary, watcher,
+  provider, live-corpus, or production activation is authorized. Resume from
+  [`CODEX-2026-09-09-jsonl-incremental-chroma-scratch-luna-handoff.md`](CODEX-2026-09-09-jsonl-incremental-chroma-scratch-luna-handoff.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
   project and arc state; it is not a Git-ref authority. Read [`STATUS.md`](STATUS.md)
