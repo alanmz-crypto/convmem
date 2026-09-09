@@ -106,6 +106,14 @@ def main() -> int:
             flush=True,
         )
         return 0
+    if command == "chroma-run":
+        install_network_denial()
+        from scratch_jsonl_prototype.chroma_projection import ScratchChromaProjection  # noqa: PLC0415
+        source = boundary.resolve_mutable(sys.argv[2], label="source fixture")
+        projection = ScratchChromaProjection(boundary, source_path=source)
+        projection.upsert([{"id": "worker-row", "document": "worker", "metadata": {}}], "worker-generation")
+        print(json.dumps(projection.authority(), sort_keys=True, default=lambda value: value.tolist()), flush=True)
+        return 0
     raise ValueError(f"unknown command: {command}")
 
 

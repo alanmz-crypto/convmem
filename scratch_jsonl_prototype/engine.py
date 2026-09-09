@@ -324,6 +324,14 @@ class ScratchIncrementalJsonl:
             and snapshot.boundary == int(checkpoint.get("complete_boundary", -1))
             and len(snapshot.messages) == int(checkpoint.get("record_count", -1))
         ):
+            if self.projection is not None:
+                # Repair a torn projection without recomputing transforms.
+                rows = []
+                for start in range(0, len(snapshot.messages), self.chunk_records):
+                    rows.append(self._row(snapshot, start, min(start + self.chunk_records, len(snapshot.messages))))
+                self.fault("before_chroma_repair")
+                self.projection.reconcile(rows, checkpoint["active_generation"])
+                self.fault("after_chroma_repair")
             if self.paths["fallback"].exists():
                 self._transition(
                     "fallback_cleanup",
@@ -399,7 +407,9 @@ class ScratchIncrementalJsonl:
                     state["generations"][generation]["rows"][row_value["id"]] = row_value
                     _atomic_json(self.paths["projection"], state)
                     if self.projection is not None:
+                        self.fault("before_chroma_upsert")
                         self.projection.upsert([row_value], generation)
+                        self.fault("after_chroma_upsert")
 
                 self._transition(f"upsert_{start}", upsert)
                 start = stop
@@ -419,10 +429,14 @@ class ScratchIncrementalJsonl:
             state["generations"] = {generation: state["generations"][generation]}
             _atomic_json(self.paths["projection"], state)
             if self.projection is not None:
+                authoritative_rows = list(state["generations"][generation]["rows"].values())
+                self.projection.reconcile(authoritative_rows, generation)
+                self.fault("before_chroma_prune")
                 self.projection.prune(
                     generation=generation,
                     keep_ids=set(state["generations"][generation]["rows"]),
                 )
+                self.fault("after_chroma_prune")
 
         self._transition("prune", prune)
         checkpoint_value = self._checkpoint_value(snapshot, generation, fallback_reason)
