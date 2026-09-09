@@ -174,14 +174,26 @@ Independent review must include this incident when judging execution discipline.
 
 ## Interpretation limits and largest remaining risk
 
-The prototype deliberately stops short of production integration. Its
-generation store is a deterministic, fsync-and-atomic-replace scratch
-projection under the isolated chroma/ resource root; it does not instantiate
-the production Chroma client or execute the production ingest writer/pruner.
-This isolates the state-machine and crash-authority claims, but it leaves actual
-Chroma transaction, lock, and persistence behavior for a separately reviewed
-corrective scratch pass or canary authorization. Independent review should
-decide whether that storage seam is sufficient prototype evidence.
+### Corrective real-Chroma scratch pass (2026-09-09)
+
+PASS: the bounded corrective pass added
+`scratch_jsonl_prototype/chroma_projection.py` and
+`tests/test_scratch_jsonl_chroma.py` on the dedicated branch
+`feat/2026-09-09-jsonl-incremental-chroma-scratch` (commit `6e5354b`).
+The adapter validates every mutable path under a fresh tokenized root before
+its local imports/resources, writes deterministic fixed-dimension embeddings
+through `production_chroma_write_session` with scratch-local lease,
+attestation, and census paths, and exercises real Chroma add/read/delete
+persistence for both collections.  The focused scratch/Kiro matrix passed
+59 tests; compileall, diff-check, and Pylint passed (10.00/10).  Pruning is
+constrained by exact source path and generation metadata.  This is scratch
+evidence only; no canary or production activation is authorized.
+
+The generation/checkpoint state machine remains deliberately separate from
+production ingest and the real-Chroma adapter is an optional scratch seam.
+Chroma itself does not provide the engine's cross-collection atomic commit, so
+the checkpoint remains the authority for replay; independent review must
+decide whether a separately authorized canary should test that boundary.
 
 The Kiro adapter currently materializes its parsed message list, and this
 prototype materializes the selected complete prefix before parsing. The
