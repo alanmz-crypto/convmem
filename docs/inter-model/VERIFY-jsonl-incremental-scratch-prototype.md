@@ -84,8 +84,9 @@ The matrix covered:
 - initial full scratch build; single append; multiple appends; exact
   two-record-chunk boundary; partial trailing record; next-run completion;
 - validated-prefix mutation; truncation; rotation by atomic replacement;
-  unlink/replacement; transform-fingerprint change; each records an explicit
-  fallback reason and rebuilds from frontier zero;
+  observable unlink/replacement with a guaranteed distinct device/inode;
+  transform-fingerprint change; each records an explicit fallback reason and
+  rebuilds from frontier zero;
 - source append after the selected high-water point while a run is active,
   followed by next-run catch-up;
 - mutation inside the selected prefix at before_publish, which raises
@@ -130,6 +131,17 @@ Static verification also passed:
 - python -m compileall -q on the prototype and its tests;
 - git diff --check;
 - Pylint on the prototype and tests: 10.00/10.
+
+### CI portability correction
+
+The first Python 3.12 CI run exposed nondeterminism in the replacement fixture,
+not in the state machine: after unlinking the source, the runner immediately
+reused the released inode for byte-identical replacement content. The fixture
+now keeps the original inode alive through an open descriptor until the
+replacement exists and asserts that the replacement has a distinct observable
+device/inode identity. This preserves the reviewed replacement-fallback
+contract instead of weakening it. Production code and retrieval behavior were
+unchanged by this correction.
 
 Non-gate context only: the later repository-wide command pytest -q completed
 with 2,207 passed, one failed, 238 subtests passed, and eight warnings in

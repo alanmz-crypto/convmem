@@ -182,8 +182,18 @@ def test_continuity_failures_take_explicit_full_rebuild_fallback(
         rotated.write_bytes(original + _record(4))
         os.replace(rotated, source)
     elif mutation == "replacement":
-        source.unlink()
-        source.write_bytes(original)
+        # Keep the unlinked inode alive until its replacement exists. Some
+        # filesystems immediately reuse a released inode, which would make an
+        # unlink/recreate fixture observationally identical to the original.
+        with source.open("rb") as original_handle:
+            original_stat = os.fstat(original_handle.fileno())
+            source.unlink()
+            source.write_bytes(original)
+            replacement_stat = source.stat()
+            assert (replacement_stat.st_dev, replacement_stat.st_ino) != (
+                original_stat.st_dev,
+                original_stat.st_ino,
+            )
 
     run = ScratchIncrementalJsonl(
         boundary, source, transform_fingerprint=fingerprint
