@@ -5,7 +5,7 @@ bridge used by the bounded scratch evidence pass: all paths are checked by
 ``ScratchBoundary`` before imports/resources are constructed, writes use the
 existing writer session, and rows are selected/pruned by exact source identity.
 """
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,line-too-long
 
 from __future__ import annotations
 
@@ -31,13 +31,16 @@ class ScratchChromaProjection:
     """Real-Chroma generation projection for isolated scratch evidence."""
 
     def __init__(self, boundary: ScratchBoundary, *, source_path: Path | str,
-                 fault: Callable[[str], None] | None = None):
+                 fault: Callable[[str], None] | None = None,
+                 chroma_dir: Path | str | None = None):
         # Importing this module is safe; the heavy Chroma/writer imports happen
         # only after every mutable path has been validated below.
         self.boundary = boundary
         self.source_path = boundary.resolve_mutable(source_path, label="source fixture")
         self.fault = fault or (lambda _point: None)
-        self.chroma_dir = boundary.resolve_mutable("chroma/real-projection", label="chroma")
+        self.chroma_dir = boundary.resolve_mutable(
+            chroma_dir or "chroma/real-projection", label="chroma"
+        )
         self.config_path = boundary.resolve_mutable("config/scratch.toml", label="config")
         self.lock_path = boundary.resolve_mutable("locks/chroma-writer.lock", label="writer lock")
         self.attest_dir = boundary.resolve_mutable("attest", label="attestation directory")
@@ -126,7 +129,7 @@ class ScratchChromaProjection:
             result = collection.get(where={"source_path": str(self.source_path)},
                                     include=["documents", "metadatas", "embeddings"])
         docs, metas, embeds = result.get("documents") or [], result.get("metadatas") or [], result.get("embeddings")
-        return sorted([{"id": doc_id, "document": docs[i], "embedding": embeds[i] if embeds is not None else [],
+        return sorted([{"id": doc_id, "document": docs[i], "embedding": embeds[i].tolist() if embeds is not None and hasattr(embeds[i], "tolist") else (embeds[i] if embeds is not None else []),
                         "metadata": dict(metas[i] or {})} for i, doc_id in enumerate(result.get("ids") or [])],
                       key=lambda row: row["id"])
 
@@ -145,8 +148,10 @@ class ScratchChromaProjection:
         with self._session() as session:
             # Restrict deletion to this exact source; historical rows from a
             # different source are never candidates.
-            for collection_name, delete in ((SUMMARIES, session.store.delete_summaries_for_source),
-                                             (UNITS, session.store.delete_units_for_source)):
+            for collection_name, transition, delete in (
+                (SUMMARIES, "summaries_prune", session.store.delete_summaries_for_source),
+                (UNITS, "units_prune", session.store.delete_units_for_source),
+            ):
                 collection = session.store._collection(collection_name)  # pylint: disable=protected-access
                 found = collection.get(where={"source_path": str(self.source_path)}, include=["metadatas"])
                 obsolete = {
@@ -154,9 +159,9 @@ class ScratchChromaProjection:
                     if doc_id not in keep_ids
                 }
                 if obsolete:
-                    self.fault("before_" + collection_name + "_prune")
+                    self.fault("before_" + transition)
                     removed += delete(str(self.source_path), keep_ids=set(keep_ids), candidate_ids=obsolete)
-                    self.fault("after_" + collection_name + "_prune")
+                    self.fault("after_" + transition)
         return removed
 
     def authority(self) -> dict[str, Any]:

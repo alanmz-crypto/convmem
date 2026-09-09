@@ -174,7 +174,7 @@ Independent review must include this incident when judging execution discipline.
 
 ## Interpretation limits and largest remaining risk
 
-### Corrective real-Chroma scratch pass (2026-09-09) — PENDING
+### Corrective real-Chroma scratch pass (2026-09-09) — PASS
 
 The bounded corrective pass added
 `scratch_jsonl_prototype/chroma_projection.py` and
@@ -184,12 +184,16 @@ The adapter validates every mutable path under a fresh tokenized root before
 its local imports/resources, writes deterministic fixed-dimension embeddings
 through `production_chroma_write_session` with scratch-local lease,
 attestation, and census paths, and exercises real Chroma add/read/delete
-persistence for both collections.  The focused scratch/Kiro matrix passed 60
+persistence for both collections.  The focused scratch/Kiro matrix passed 65
 tests; compileall, diff-check, and Pylint passed (10.00/10).  The real-Chroma
 worker runs after pre-import isolation/network denial, repairs missing rows
 without transforms, and prunes both collections by exact source scope and
-authoritative IDs.  This remains bounded scratch evidence only; no canary or
-production activation is authorized.
+authoritative IDs.  Subprocess crash/replay covers both sides of all summary/
+unit upserts and both collection prunes, retaining cross-source sentinels.
+Constructor interception proves the exact validated PersistentClient path and
+rejects outside paths before construction. Exact incremental/clean rebuild
+equality and zero-transform storage repair pass. This remains bounded scratch
+evidence only; no canary or production activation is authorized.
 
 The generation/checkpoint state machine remains deliberately separate from
 production ingest and the real-Chroma adapter is an optional scratch seam.

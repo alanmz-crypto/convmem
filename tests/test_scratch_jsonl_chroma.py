@@ -1,4 +1,5 @@
 """Focused real-Chroma evidence for the isolated JSONL projection seam."""
+# pylint: disable=line-too-long,multiple-statements,subprocess-run-check,protected-access
 
 from __future__ import annotations
 
@@ -6,11 +7,12 @@ import json
 import os
 import subprocess
 import sys
+import shutil
 from pathlib import Path
 
 from scratch_jsonl_prototype.chroma_projection import CHROMA_DURABLE_TRANSITIONS, ScratchChromaProjection
 from scratch_jsonl_prototype.engine import ScratchIncrementalJsonl
-from scratch_jsonl_prototype.isolation import ScratchBoundary, create_fresh_root
+from scratch_jsonl_prototype.isolation import IsolationViolation, ScratchBoundary, create_fresh_root
 from scratch_jsonl_prototype.isolation import sanitized_worker_env
 
 WORKER = Path(__file__).with_name("scratch_jsonl_isolation_worker.py")
@@ -19,6 +21,9 @@ CHROMA_CRASH_POINTS = tuple(
     f"{side}_{op}"
     for op in ("summary_upsert", "unit_upsert")
     for side in ("before", "after")
+)
+CHROMA_PRUNE_CRASH_POINTS = tuple(
+    f"{side}_{op}" for op in ("summaries_prune", "units_prune") for side in ("before", "after")
 )
 
 
@@ -82,10 +87,76 @@ def test_real_chroma_worker_isolated_and_persistent(tmp_path: Path) -> None:
 
 
 def test_chroma_transition_inventory_has_both_sides() -> None:
-    covered = set(CHROMA_CRASH_POINTS)
-    for transition in CHROMA_DURABLE_TRANSITIONS[:2]:
+    covered = set(CHROMA_CRASH_POINTS) | set(CHROMA_PRUNE_CRASH_POINTS)
+    for transition in CHROMA_DURABLE_TRANSITIONS:
         assert f"before_{transition}" in covered
         assert f"after_{transition}" in covered
+
+
+def test_subprocess_chroma_prune_crashes_retain_other_source(tmp_path: Path) -> None:
+    for point in CHROMA_PRUNE_CRASH_POINTS:
+        root, token = create_fresh_root(tmp_path)
+        source = root / "sources" / "sess_worker" / "messages.jsonl"
+        other = root / "sources" / "sess_other" / "messages.jsonl"
+        source.parent.mkdir(parents=True); other.parent.mkdir(parents=True)
+        source.write_bytes(_record(0)); other.write_bytes(_record(1))
+        args = [sys.executable, "-I", str(WORKER), "chroma-prune", str(source), point]
+        crashed = subprocess.run(args, cwd=root, env=sanitized_worker_env(root, token), close_fds=True, start_new_session=True, capture_output=True, text=True)
+        assert crashed.returncode == 86, (point, crashed.stderr)
+        replay = subprocess.run(args[:5], cwd=root, env=sanitized_worker_env(root, token), close_fds=True, start_new_session=True, capture_output=True, text=True)
+        assert replay.returncode == 0, replay.stderr
+        authority = json.loads(replay.stdout)
+        assert all(row["id"] == "keep" for row in authority["summaries"] + authority["units"])
+        other_projection = ScratchChromaProjection(
+            ScratchBoundary(root, token), source_path=other,
+            chroma_dir=Path(authority["chroma_dir"]),
+        )
+        assert {row["id"] for row in other_projection.authority()["summaries"]} == {"other"}
+
+
+def test_constructor_receives_validated_path_and_rejects_outside(tmp_path: Path, monkeypatch) -> None:
+    root, token = create_fresh_root(tmp_path)
+    boundary = ScratchBoundary(root, token)
+    source = root / "sources" / "sess_scratch" / "messages.jsonl"
+    source.parent.mkdir(parents=True); source.write_bytes(_record(0))
+    projection = ScratchChromaProjection(boundary, source_path=source)
+    import chromadb
+    captured = []
+    original = chromadb.PersistentClient
+    monkeypatch.setattr(chromadb, "PersistentClient", lambda **kwargs: (captured.append(kwargs["path"]) or original(**kwargs)))
+    projection.upsert([{"id": "path", "document": "path", "metadata": {}}], "g")
+    assert Path(captured[0]).resolve() == projection.chroma_dir.resolve()
+    outside = tmp_path / "outside"
+    try:
+        ScratchChromaProjection(boundary, source_path=source, chroma_dir=outside)
+    except IsolationViolation:
+        pass
+    else:
+        raise AssertionError("outside Chroma path was accepted")
+
+
+def test_exact_rebuild_and_zero_transform_storage_repair(tmp_path: Path) -> None:
+    root, token = create_fresh_root(tmp_path)
+    boundary = ScratchBoundary(root, token)
+    source = root / "sources" / "sess_equal" / "messages.jsonl"
+    source.parent.mkdir(parents=True); source.write_bytes(_record(0) + _record(1))
+    projection = ScratchChromaProjection(boundary, source_path=source)
+    engine = ScratchIncrementalJsonl(boundary, source, projection=projection)
+    first = engine.run()
+    expected = projection.authority()
+    with projection._session() as session:  # scratch-only deliberate torn rows
+        session.store.delete_summaries_for_source(str(source), keep_ids=set())
+        session.store.delete_units_for_source(str(source), keep_ids=set())
+    repaired = ScratchIncrementalJsonl(boundary, source, projection=projection).run()
+    assert repaired.transform_calls == 0
+    assert projection.authority() == expected
+    for path in (engine.paths["projection"], engine.paths["checkpoint"]):
+        path.unlink(missing_ok=True)
+    shutil.rmtree(projection.chroma_dir)
+    clean = ScratchChromaProjection(boundary, source_path=source)
+    rebuilt = ScratchIncrementalJsonl(boundary, source, projection=clean).run()
+    assert rebuilt.transform_calls == first.transform_calls
+    assert clean.authority() == expected
 
 
 def test_subprocess_chroma_upsert_crashes_replay_to_both_collections(tmp_path: Path) -> None:

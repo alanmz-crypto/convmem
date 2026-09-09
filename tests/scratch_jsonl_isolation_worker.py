@@ -1,6 +1,6 @@
 """Subprocess entrypoint for the scratch isolation executable gate."""
 
-# pylint: disable=wrong-import-position,broad-exception-caught,consider-using-with
+# pylint: disable=wrong-import-position,broad-exception-caught,consider-using-with,line-too-long
 
 from __future__ import annotations
 
@@ -137,6 +137,21 @@ def main() -> int:
             json.dumps(payload, sort_keys=True, default=lambda value: value.tolist()),
             flush=True,
         )
+        return 0
+    if command == "chroma-prune":
+        from scratch_jsonl_prototype.chroma_projection import ScratchChromaProjection  # noqa: PLC0415
+        source = boundary.resolve_mutable(sys.argv[2], label="source fixture")
+        fault_point = sys.argv[3] if len(sys.argv) > 3 else ""
+        def abrupt_prune(point: str) -> None:
+            if point == fault_point:
+                os._exit(86)
+        projection = ScratchChromaProjection(boundary, source_path=source, fault=abrupt_prune)
+        projection.upsert([{"id": "keep", "document": "keep", "metadata": {}},
+                           {"id": "obsolete", "document": "obsolete", "metadata": {}}], "g")
+        other = ScratchChromaProjection(boundary, source_path=boundary.resolve_mutable("sources/sess_other/messages.jsonl", label="other"))
+        other.upsert([{"id": "other", "document": "other", "metadata": {}}], "g")
+        projection.prune(generation="g", keep_ids={"keep"})
+        print(json.dumps(projection.authority(), sort_keys=True, default=lambda value: value.tolist()), flush=True)
         return 0
     raise ValueError(f"unknown command: {command}")
 
