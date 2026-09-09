@@ -7,8 +7,8 @@ It does not authorize a canary, production routing, watcher changes, migration,
 or any paid/nonlocal provider. Independent review must choose proceed toward a
 separately authorized canary, require a corrective scratch pass, or stop.
 
-The frozen reviewed input was
-/home/lauer/Projects/SubProjects/Relocating_Habitat/Shipping_Transportation/convmem-scratch-prototype-claude-final-check.md,
+The frozen reviewed input is archived unchanged at
+[convmem-scratch-prototype-claude-final-check.md](../archive/inter-model/2026-09-09-jsonl-incremental-indexing-review/convmem-scratch-prototype-claude-final-check.md),
 SHA-256
 bf27b19c3749fd2d00e414c8b150be966a8d98aab78ec9e2a8d9cba46ada2dbf.
 It was not edited or polished during execution. The branch started from
