@@ -114,6 +114,30 @@ def main() -> int:
         projection.upsert([{"id": "worker-row", "document": "worker", "metadata": {}}], "worker-generation")
         print(json.dumps(projection.authority(), sort_keys=True, default=lambda value: value.tolist()), flush=True)
         return 0
+    if command == "chroma-incremental":
+        from scratch_jsonl_prototype.chroma_projection import ScratchChromaProjection  # noqa: PLC0415
+        from scratch_jsonl_prototype.engine import ScratchIncrementalJsonl, evidence_dict  # noqa: PLC0415
+        source = boundary.resolve_mutable(sys.argv[2], label="source fixture")
+        fault_point = sys.argv[3] if len(sys.argv) > 3 else ""
+        def abrupt_chroma(point: str) -> None:
+            if point == fault_point:
+                os._exit(86)
+        projection = ScratchChromaProjection(boundary, source_path=source, fault=abrupt_chroma)
+        run = ScratchIncrementalJsonl(
+            boundary, source, projection=projection, fault=abrupt_chroma
+        ).run()
+        payload = {
+            "run": evidence_dict(run),
+            "checkpoint": ScratchIncrementalJsonl(
+                boundary, source, projection=projection
+            ).checkpoint(),
+            "authority": projection.authority(),
+        }
+        print(
+            json.dumps(payload, sort_keys=True, default=lambda value: value.tolist()),
+            flush=True,
+        )
+        return 0
     raise ValueError(f"unknown command: {command}")
 
 

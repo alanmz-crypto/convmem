@@ -16,6 +16,10 @@ from typing import Any, Callable, Iterable
 
 from scratch_jsonl_prototype.isolation import ScratchBoundary
 
+CHROMA_DURABLE_TRANSITIONS = (
+    "summary_upsert", "unit_upsert", "summaries_prune", "units_prune",
+)
+
 
 def _embedding(value: str, dimension: int = 4) -> list[float]:
     """Return a deterministic, fixed-size local embedding."""
@@ -116,32 +120,21 @@ class ScratchChromaProjection:
                 self.fault("after_unit_upsert")
         return len(missing)
 
+    def _rows_for(self, collection_name: str) -> list[dict[str, Any]]:
+        with self._session() as session:
+            collection = session.store._collection(collection_name)  # pylint: disable=protected-access
+            result = collection.get(where={"source_path": str(self.source_path)},
+                                    include=["documents", "metadatas", "embeddings"])
+        docs, metas, embeds = result.get("documents") or [], result.get("metadatas") or [], result.get("embeddings")
+        return sorted([{"id": doc_id, "document": docs[i], "embedding": embeds[i] if embeds is not None else [],
+                        "metadata": dict(metas[i] or {})} for i, doc_id in enumerate(result.get("ids") or [])],
+                      key=lambda row: row["id"])
+
     def rows(self, generation: str | None = None) -> list[dict[str, Any]]:
         """Read authoritative scratch rows from the real Chroma collections."""
         _ = generation
         from chroma_store import SUMMARIES
-
-        with self._session() as session:
-            collection = session.store._collection(SUMMARIES)  # pylint: disable=protected-access
-            result = collection.get(
-                where={"source_path": str(self.source_path)},
-                include=["documents", "metadatas", "embeddings"],
-            )
-        rows = []
-        documents = result.get("documents") or []
-        metadatas = result.get("metadatas") or []
-        embeddings = result.get("embeddings")
-        for index, doc_id in enumerate(result.get("ids") or []):
-            metadata = dict(metadatas[index] or {})
-            rows.append(
-                {
-                    "id": doc_id,
-                    "document": documents[index],
-                    "embedding": embeddings[index] if embeddings is not None else [],
-                    "metadata": metadata,
-                }
-            )
-        return sorted(rows, key=lambda row: row["id"])
+        return self._rows_for(SUMMARIES)
 
     def prune(self, *, generation: str, keep_ids: set[str]) -> int:
         """Delete obsolete rows, constrained to this exact scratch source."""
@@ -168,11 +161,13 @@ class ScratchChromaProjection:
 
     def authority(self) -> dict[str, Any]:
         """Return exact persisted rows and the validated scratch config path."""
+        from chroma_store import SUMMARIES, UNITS
         return {
             "chroma_dir": str(self.chroma_dir),
             "config_path": str(self.config_path),
-            "rows": self.rows(),
+            "summaries": self._rows_for(SUMMARIES),
+            "units": self._rows_for(UNITS),
         }
 
 
-__all__ = ["ScratchChromaProjection"]
+__all__ = ["CHROMA_DURABLE_TRANSITIONS", "ScratchChromaProjection"]

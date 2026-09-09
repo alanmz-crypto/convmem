@@ -174,7 +174,7 @@ Independent review must include this incident when judging execution discipline.
 
 ## Interpretation limits and largest remaining risk
 
-### Corrective real-Chroma scratch pass (2026-09-09)
+### Corrective real-Chroma scratch pass (2026-09-09) — PENDING
 
 The bounded corrective pass added
 `scratch_jsonl_prototype/chroma_projection.py` and
