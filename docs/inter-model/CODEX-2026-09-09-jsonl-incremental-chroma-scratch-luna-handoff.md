@@ -1,8 +1,8 @@
 # [Arc none (ad-hoc)] Implementation Handoff: real-Chroma scratch seam
 
-**Date:** 2026-09-09  
-**Author:** OpenAI Codex  
-**For:** Codex Luna implementation lane  
+**Date:** 2026-09-09
+**Author:** OpenAI Codex
+**For:** Codex Luna implementation lane
 **Authorization:** Ryan, 2026-09-09 ("Begin it"; delegate light-model work to Luna)
 
 ---
