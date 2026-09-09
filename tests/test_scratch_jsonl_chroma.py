@@ -173,14 +173,35 @@ def test_exact_rebuild_and_zero_transform_storage_repair(tmp_path: Path) -> None
         handle.write(_record(3) + _record(4))
     incremental = ScratchIncrementalJsonl(boundary, source, projection=projection).run()
     assert incremental.transform_calls == 2
-    expected = projection.authority()
+    incremental_checkpoint = engine.checkpoint()
+    expected = {
+        "chroma": projection.authority(),
+        "checkpoint_authority": {
+            key: value
+            for key, value in incremental_checkpoint.items()
+            if key != "fallback_reason"
+        },
+        "projection": engine.active_projection(),
+    }
     for path in (engine.paths["projection"], engine.paths["checkpoint"]):
         path.unlink(missing_ok=True)
     shutil.rmtree(projection.chroma_dir)
     clean = ScratchChromaProjection(boundary, source_path=source)
-    rebuilt = ScratchIncrementalJsonl(boundary, source, projection=clean).run()
+    clean_engine = ScratchIncrementalJsonl(boundary, source, projection=clean)
+    rebuilt = clean_engine.run()
     assert rebuilt.transform_calls > 0
-    assert clean.authority() == expected
+    clean_checkpoint = clean_engine.checkpoint()
+    assert {
+        "chroma": clean.authority(),
+        "checkpoint_authority": {
+            key: value
+            for key, value in clean_checkpoint.items()
+            if key != "fallback_reason"
+        },
+        "projection": clean_engine.active_projection(),
+    } == expected
+    assert incremental_checkpoint["fallback_reason"] is None
+    assert clean_checkpoint["fallback_reason"] == "initial_full"
 
 
 def test_subprocess_chroma_upsert_crashes_replay_to_both_collections(tmp_path: Path) -> None:
@@ -195,11 +216,29 @@ def test_subprocess_chroma_upsert_crashes_replay_to_both_collections(tmp_path: P
             start_new_session=True, capture_output=True, text=True, check=False,
         )
         assert crashed.returncode == 86, (point, crashed.stderr)
+        partial = ScratchChromaProjection(
+            ScratchBoundary(root, token), source_path=source
+        ).authority()
+        partial_counts = {
+            "before_summary_upsert": (0, 0),
+            "after_summary_upsert": (1, 0),
+            "before_unit_upsert": (1, 0),
+            "after_unit_upsert": (1, 1),
+        }
+        assert (
+            len(partial["summaries"]),
+            len(partial["units"]),
+        ) == partial_counts[point]
         replay = subprocess.run(
             [sys.executable, "-I", str(WORKER), "chroma-incremental", str(source)],
             cwd=root, env=sanitized_worker_env(root, token), close_fds=True,
             start_new_session=True, capture_output=True, text=True, check=False,
         )
         assert replay.returncode == 0, (point, replay.stderr)
-        authority = json.loads(replay.stdout)["authority"]
+        payload = json.loads(replay.stdout)
+        authority = payload["authority"]
+        assert payload["checkpoint"]["commit_state"] == "complete"
+        assert payload["checkpoint"]["record_count"] == 4
+        assert len(authority["summaries"]) == 2
+        assert len(authority["units"]) == 2
         assert [row["id"] for row in authority["summaries"]] == [row["id"] for row in authority["units"]]

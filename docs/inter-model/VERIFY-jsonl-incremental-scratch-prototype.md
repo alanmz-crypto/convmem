@@ -174,28 +174,35 @@ Independent review must include this incident when judging execution discipline.
 
 ## Interpretation limits and largest remaining risk
 
-### Corrective real-Chroma scratch pass (2026-09-09) — PASS
+### Corrective real-Chroma scratch pass (2026-09-09) — PASS, awaiting independent review
 
 The bounded corrective pass added
 `scratch_jsonl_prototype/chroma_projection.py` and
 `tests/test_scratch_jsonl_chroma.py` on the dedicated branch
-`feat/2026-09-09-jsonl-incremental-chroma-scratch` (commit `6e5354b`).
+`feat/2026-09-09-jsonl-incremental-chroma-scratch` (implementation commits
+`6e5354b` through `e65a8ea`).
 The adapter validates every mutable path under a fresh tokenized root before
 its local imports/resources, writes deterministic fixed-dimension embeddings
 through `production_chroma_write_session` with scratch-local lease,
 attestation, and census paths, and exercises real Chroma add/read/delete
-persistence for both collections.  The focused scratch/Kiro matrix is being
-rerun after final corrective controls; the earlier 65-test result is not new
-PASS evidence.
-tests; compileall, diff-check, and Pylint passed (10.00/10).  The real-Chroma
+persistence for both collections. Codex independently reran the bounded
+scratch/isolation/incremental/Kiro matrix after strengthening the final
+authority assertions: 65 tests passed in 18.10 seconds. Compileall and
+`git diff --check` exited zero; Pylint reported 10.00/10 and exited zero (its
+attempt to write an optional stats cache under the read-only home cache was
+non-fatal). The real-Chroma
 worker runs after pre-import isolation/network denial, repairs missing rows
 without transforms, and prunes both collections by exact source scope and
 authoritative IDs.  Subprocess crash/replay covers both sides of all summary/
 unit upserts and both collection prunes, retaining cross-source sentinels.
 Constructor interception proves the exact validated PersistentClient path and
 rejects outside paths before construction. Exact incremental/clean rebuild
-equality and zero-transform storage repair pass. This remains bounded scratch
-evidence only; no canary or production activation is authorized.
+equality for Chroma rows, active projection, and checkpoint authority fields,
+plus zero-transform storage repair, passed. The diagnostic
+`fallback_reason` is expected to differ (`None` after append versus
+`initial_full` after a clean rebuild) and is asserted separately rather than
+treated as authority. This remains bounded scratch evidence only; no canary or
+production activation is authorized.
 
 The existing safe-reindex rerun was intentionally excluded from this scratch
 gate because this sandbox reaches the default production writer lock; its
