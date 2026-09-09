@@ -1,5 +1,7 @@
 """Subprocess entrypoint for the scratch isolation executable gate."""
 
+# pylint: disable=wrong-import-position,broad-exception-caught,consider-using-with
+
 from __future__ import annotations
 
 import json
@@ -71,6 +73,39 @@ def main() -> int:
         )
         print(json.dumps({"child_pid": child.pid, "lock": str(lock.path)}), flush=True)
         os._exit(73)
+    if command == "run":
+        from scratch_jsonl_prototype.engine import (  # noqa: PLC0415
+            ScratchIncrementalJsonl,
+            evidence_dict,
+        )
+
+        source = boundary.resolve_mutable(sys.argv[2], label="source fixture")
+        fingerprint = sys.argv[3]
+        fault_point = sys.argv[4] if len(sys.argv) > 4 else ""
+
+        def abrupt(point: str) -> None:
+            if point == fault_point:
+                os._exit(86)
+
+        engine = ScratchIncrementalJsonl(
+            boundary,
+            source,
+            transform_fingerprint=fingerprint,
+            fault=abrupt,
+        )
+        run = engine.run()
+        print(
+            json.dumps(
+                {
+                    "run": evidence_dict(run),
+                    "projection": engine.active_projection(),
+                    "checkpoint": engine.checkpoint(),
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        return 0
     raise ValueError(f"unknown command: {command}")
 
 

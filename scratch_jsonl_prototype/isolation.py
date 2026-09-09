@@ -24,13 +24,13 @@ class IsolationViolation(RuntimeError):
 _T = TypeVar("_T")
 _MARKER = ".convmem-jsonl-scratch-root"
 _CREDENTIAL_MARKERS = ("API_KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL")
-_PRODUCTION_ENV = {
+PRODUCTION_OVERRIDE_ENV = frozenset({
     "CONVMEM_CONFIG",
     "CONVMEM_CONFIG_PATH",
     "CONVMEM_CHROMA_DIR",
     "CONVMEM_DATA_DIR",
     "CONVMEM_PROCESSED_LOG",
-}
+})
 
 
 def create_fresh_root(parent: Path | None = None) -> tuple[Path, str]:
@@ -94,7 +94,7 @@ class ScratchBoundary:
     def from_environment(
         cls, *, forbidden_roots: tuple[Path, ...] = ()
     ) -> "ScratchBoundary":
-        for name in _PRODUCTION_ENV:
+        for name in PRODUCTION_OVERRIDE_ENV:
             if os.environ.get(name):
                 raise IsolationViolation(f"production configuration override set: {name}")
         for name in os.environ:
@@ -185,14 +185,16 @@ class ScratchPidLock:
         while True:
             try:
                 fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            except FileExistsError:
+            except FileExistsError as exc:
                 try:
                     payload = json.loads(self.path.read_text(encoding="utf-8"))
                     owner = int(payload.get("pid", -1))
                 except (OSError, ValueError, TypeError, json.JSONDecodeError):
                     owner = -1
                 if self._alive(owner):
-                    raise IsolationViolation(f"scratch lock held by live pid {owner}")
+                    raise IsolationViolation(
+                        f"scratch lock held by live pid {owner}"
+                    ) from exc
                 self.path.unlink(missing_ok=True)
                 recovered = True
                 continue

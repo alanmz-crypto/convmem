@@ -1,5 +1,7 @@
 """First executable gate: prove the JSONL prototype cannot escape scratch."""
 
+# pylint: disable=consider-using-with
+
 from __future__ import annotations
 
 import json
@@ -13,6 +15,7 @@ import pytest
 
 from scratch_jsonl_prototype.isolation import (
     IsolationViolation,
+    PRODUCTION_OVERRIDE_ENV,
     ScratchBoundary,
     ScratchPidLock,
     create_fresh_root,
@@ -52,14 +55,7 @@ def _boundary(tmp_path: Path) -> tuple[ScratchBoundary, dict[str, str]]:
                 continue
             if any(marker in name.upper() for marker in credential_markers):
                 mp.delenv(name, raising=False)
-        for name in (
-            "CONVMEM_CONFIG",
-            "CONVMEM_CONFIG_PATH",
-            "CONVMEM_CHROMA_DIR",
-            "CONVMEM_DATA_DIR",
-            "CONVMEM_PROCESSED_LOG",
-            "DEEPSEEK_API_KEY",
-        ):
+        for name in (*PRODUCTION_OVERRIDE_ENV, "DEEPSEEK_API_KEY"):
             mp.delenv(name, raising=False)
         boundary = ScratchBoundary.from_environment(
             forbidden_roots=(Path.home() / ".local/share/convmem",)
@@ -128,7 +124,7 @@ def test_paths_symlinks_production_and_provider_rejected_before_factory(
         boundary.require_fake_provider("deepseek", "https://api.deepseek.com")
     with pytest.raises(IsolationViolation, match="deterministic-fake"):
         boundary.require_fake_provider("ollama", "http://127.0.0.1:11434")
-    assert calls == []
+    assert not calls
 
 
 def test_production_config_and_credentials_fail_bootstrap(tmp_path: Path) -> None:
