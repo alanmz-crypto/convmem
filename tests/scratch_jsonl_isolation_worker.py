@@ -107,12 +107,23 @@ def main() -> int:
         )
         return 0
     if command == "chroma-run":
-        install_network_denial()
         from scratch_jsonl_prototype.chroma_projection import ScratchChromaProjection  # noqa: PLC0415
         source = boundary.resolve_mutable(sys.argv[2], label="source fixture")
         projection = ScratchChromaProjection(boundary, source_path=source)
         projection.upsert([{"id": "worker-row", "document": "worker", "metadata": {}}], "worker-generation")
-        print(json.dumps(projection.authority(), sort_keys=True, default=lambda value: value.tolist()), flush=True)
+        try:
+            import socket
+            socket.create_connection(("203.0.113.1", 9), timeout=0.01)
+            network = "unexpected-success"
+        except Exception as exc:  # noqa: BLE001
+            network = type(exc).__name__
+        payload = projection.authority()
+        payload["isolation"] = {
+            "credential_names": [name for name in os.environ if ("KEY" in name or "TOKEN" in name or "SECRET" in name) and name != "CONVMEM_SCRATCH_TOKEN"],
+            "production_override_names": [name for name in os.environ if name.startswith("CONVMEM_") and name not in {"CONVMEM_SCRATCH_ROOT", "CONVMEM_SCRATCH_TOKEN", "CONVMEM_SCRATCH_MODE"}],
+            "network": network,
+        }
+        print(json.dumps(payload, sort_keys=True, default=lambda value: value.tolist()), flush=True)
         return 0
     if command == "chroma-incremental":
         from scratch_jsonl_prototype.chroma_projection import ScratchChromaProjection  # noqa: PLC0415

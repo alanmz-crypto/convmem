@@ -184,7 +184,9 @@ The adapter validates every mutable path under a fresh tokenized root before
 its local imports/resources, writes deterministic fixed-dimension embeddings
 through `production_chroma_write_session` with scratch-local lease,
 attestation, and census paths, and exercises real Chroma add/read/delete
-persistence for both collections.  The focused scratch/Kiro matrix passed 65
+persistence for both collections.  The focused scratch/Kiro matrix is being
+rerun after final corrective controls; the earlier 65-test result is not new
+PASS evidence.
 tests; compileall, diff-check, and Pylint passed (10.00/10).  The real-Chroma
 worker runs after pre-import isolation/network denial, repairs missing rows
 without transforms, and prunes both collections by exact source scope and
@@ -194,6 +196,10 @@ Constructor interception proves the exact validated PersistentClient path and
 rejects outside paths before construction. Exact incremental/clean rebuild
 equality and zero-transform storage repair pass. This remains bounded scratch
 evidence only; no canary or production activation is authorized.
+
+The existing safe-reindex rerun was intentionally excluded from this scratch
+gate because this sandbox reaches the default production writer lock; its
+original reviewed 72-test result remains separate historical evidence.
 
 The generation/checkpoint state machine remains deliberately separate from
 production ingest and the real-Chroma adapter is an optional scratch seam.

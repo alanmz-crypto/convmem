@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 import shutil
@@ -83,7 +82,9 @@ def test_real_chroma_worker_isolated_and_persistent(tmp_path: Path) -> None:
     assert Path(authority["chroma_dir"]).resolve().is_relative_to(root.resolve())
     assert authority["summaries"][0]["id"] == "worker-row"
     assert authority["units"][0]["id"] == "worker-row"
-    assert "CONVMEM_CONFIG" not in os.environ
+    assert authority["isolation"]["credential_names"] == []
+    assert authority["isolation"]["production_override_names"] == []
+    assert authority["isolation"]["network"] == "IsolationViolation"
 
 
 def test_chroma_transition_inventory_has_both_sides() -> None:
@@ -111,7 +112,9 @@ def test_subprocess_chroma_prune_crashes_retain_other_source(tmp_path: Path) -> 
             ScratchBoundary(root, token), source_path=other,
             chroma_dir=Path(authority["chroma_dir"]),
         )
-        assert {row["id"] for row in other_projection.authority()["summaries"]} == {"other"}
+        other_authority = other_projection.authority()
+        assert {row["id"] for row in other_authority["summaries"]} == {"other"}
+        assert {row["id"] for row in other_authority["units"]} == {"other"}
 
 
 def test_constructor_receives_validated_path_and_rejects_outside(tmp_path: Path, monkeypatch) -> None:
@@ -127,35 +130,56 @@ def test_constructor_receives_validated_path_and_rejects_outside(tmp_path: Path,
     projection.upsert([{"id": "path", "document": "path", "metadata": {}}], "g")
     assert Path(captured[0]).resolve() == projection.chroma_dir.resolve()
     outside = tmp_path / "outside"
+    before = len(captured)
     try:
         ScratchChromaProjection(boundary, source_path=source, chroma_dir=outside)
     except IsolationViolation:
         pass
     else:
         raise AssertionError("outside Chroma path was accepted")
+    assert len(captured) == before
+    link = root / "link"
+    link.symlink_to(tmp_path)
+    try:
+        ScratchChromaProjection(boundary, source_path=source, chroma_dir=link / "chroma")
+    except IsolationViolation:
+        pass
+    else:
+        raise AssertionError("symlinked Chroma path was accepted")
+    assert len(captured) == before
 
 
 def test_exact_rebuild_and_zero_transform_storage_repair(tmp_path: Path) -> None:
     root, token = create_fresh_root(tmp_path)
     boundary = ScratchBoundary(root, token)
     source = root / "sources" / "sess_equal" / "messages.jsonl"
-    source.parent.mkdir(parents=True); source.write_bytes(_record(0) + _record(1))
+    source.parent.mkdir(parents=True); source.write_bytes(_record(0) + _record(1) + _record(2))
     projection = ScratchChromaProjection(boundary, source_path=source)
     engine = ScratchIncrementalJsonl(boundary, source, projection=projection)
     first = engine.run()
+    assert first.mode == "full_rebuild_fallback"
     expected = projection.authority()
-    with projection._session() as session:  # scratch-only deliberate torn rows
-        session.store.delete_summaries_for_source(str(source), keep_ids=set())
-        session.store.delete_units_for_source(str(source), keep_ids=set())
+    with projection._session() as session:  # scratch-only deliberate torn row
+        session.store.delete_summaries_for_source(str(source), keep_ids={expected["summaries"][0]["id"]})
     repaired = ScratchIncrementalJsonl(boundary, source, projection=projection).run()
     assert repaired.transform_calls == 0
     assert projection.authority() == expected
+    with projection._session() as session:
+        session.store.delete_units_for_source(str(source), keep_ids={expected["units"][0]["id"]})
+    repaired = ScratchIncrementalJsonl(boundary, source, projection=projection).run()
+    assert repaired.transform_calls == 0
+    assert projection.authority() == expected
+    with source.open("ab") as handle:
+        handle.write(_record(3) + _record(4))
+    incremental = ScratchIncrementalJsonl(boundary, source, projection=projection).run()
+    assert incremental.transform_calls == 2
+    expected = projection.authority()
     for path in (engine.paths["projection"], engine.paths["checkpoint"]):
         path.unlink(missing_ok=True)
     shutil.rmtree(projection.chroma_dir)
     clean = ScratchChromaProjection(boundary, source_path=source)
     rebuilt = ScratchIncrementalJsonl(boundary, source, projection=clean).run()
-    assert rebuilt.transform_calls == first.transform_calls
+    assert rebuilt.transform_calls > 0
     assert clean.authority() == expected
 
 
@@ -164,7 +188,7 @@ def test_subprocess_chroma_upsert_crashes_replay_to_both_collections(tmp_path: P
         root, token = create_fresh_root(tmp_path)
         source = root / "sources" / "sess_worker" / "messages.jsonl"
         source.parent.mkdir(parents=True)
-        source.write_bytes(_record(0) + _record(1))
+        source.write_bytes(_record(0) + _record(1) + _record(2) + _record(3))
         crashed = subprocess.run(
             [sys.executable, "-I", str(WORKER), "chroma-incremental", str(source), point],
             cwd=root, env=sanitized_worker_env(root, token), close_fds=True,
