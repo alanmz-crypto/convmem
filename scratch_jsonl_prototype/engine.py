@@ -14,7 +14,7 @@ import json
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from adapters.detect import detect_format, get_parser
 from scratch_jsonl_prototype.isolation import (
@@ -116,6 +116,7 @@ class ScratchIncrementalJsonl:
         transform_fingerprint: str = "deterministic-transform-v1",
         chunk_records: int = 2,
         fault: FaultHook | None = None,
+        projection: Any | None = None,
     ):
         ScratchBoundary.require_fake_provider("deterministic-fake")
         if chunk_records <= 0:
@@ -125,6 +126,9 @@ class ScratchIncrementalJsonl:
         self.transform_fingerprint = transform_fingerprint
         self.chunk_records = chunk_records
         self.fault = fault or (lambda _point: None)
+        # Optional scratch projection.  Production callers cannot reach this
+        # prototype; the adapter is used only by the real-Chroma evidence pass.
+        self.projection = projection
 
         candidates = {
             "projection": "chroma/prototype-projection.json",
@@ -394,6 +398,8 @@ class ScratchIncrementalJsonl:
                 def upsert(row_value=row) -> None:  # pylint: disable=dangerous-default-value
                     state["generations"][generation]["rows"][row_value["id"]] = row_value
                     _atomic_json(self.paths["projection"], state)
+                    if self.projection is not None:
+                        self.projection.upsert([row_value], generation)
 
                 self._transition(f"upsert_{start}", upsert)
                 start = stop
@@ -412,6 +418,11 @@ class ScratchIncrementalJsonl:
         def prune() -> None:
             state["generations"] = {generation: state["generations"][generation]}
             _atomic_json(self.paths["projection"], state)
+            if self.projection is not None:
+                self.projection.prune(
+                    generation=generation,
+                    keep_ids=set(state["generations"][generation]["rows"]),
+                )
 
         self._transition("prune", prune)
         checkpoint_value = self._checkpoint_value(snapshot, generation, fallback_reason)
