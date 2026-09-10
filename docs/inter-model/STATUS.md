@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-09-02. Verify the exact repository tip from `origin/main`
+**Snapshot:** 2026-09-09. Verify the exact repository tip from `origin/main`
 before comparing branches; branch and PR work named below is not on `main`
 unless explicitly stated.
 
@@ -47,6 +47,7 @@ gated.
 
 | Arc | State | Next authorized action |
 |---|---|---|
+| Codex — Kiro JSONL incremental production integration | Scratch, isolated real-Chroma, and read-only live-source canary evidence is merged on `main` through PR #292. Production Architecture and Execute plan are authored on a pushed planning branch; no implementation or activation exists. | Kiro independently reviews the plan. After PASS, Ryan may separately accept it and grant Cursor Execute. No live indexing, providers, migration, PR, watcher action, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
@@ -104,14 +105,13 @@ gated.
 - [Runway Ledger STATUS](../plans/STATUS-agent-run-ledger.md)
 - [Recovery Authority STATUS](../plans/STATUS-recovery-authority.md)
 - [Naturalistic product-value STATUS](../plans/STATUS-naturalistic-product-value.md)
+- [Arc Codex JSONL production-integration STATUS](../plans/STATUS-codex-jsonl-production-integration.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Naturalistic G1–G5 methodology plus V2-01C and V2-02C authority
-layers are landed but non-live; V2-03C, G6, and every study/live/product-disposition
-step remain Ryan-gated. Recovery/CG-2 remain
-non-live, R2b implementation is landed but operational capture is separately
-gated, and Portland is stopped at seed-generation failure. Verify the exact
-`origin/main` tip from Git when a commit identity matters.
+**TL;DR:** Arc Codex now has a default-off Kiro JSONL production architecture
+and bounded Execute plan awaiting Kiro review; implementation and every live
+action remain unauthorized. Other active arcs retain their existing gates.
+Verify the exact `origin/main` tip from Git when a commit identity matters.
 
 ## Jargon TL;DR
 

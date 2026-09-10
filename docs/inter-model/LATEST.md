@@ -9,18 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **JSONL incremental isolated live-source canary:** Ryan's bounded Execute pass
-  completed with sanitized PASS evidence against one frozen, read-only Kiro
-  transcript at implementation revision `f5503832917c8a4d51292d3d3fa3c27c33d80f28`.
-  Kiro's conditional review found one repeatability defect in a live-bound unit
-  test; correction `fc811fc85312ae901d1896defda7f3fe72ae4e81` now uses only a
-  scratch-contained synthetic fixture, and the 76-test suite is reproducible.
-  The live source remained unchanged; all Chroma and fault/replay writes stayed
-  under temporary roots; the required tests and static gates pass. No PR,
-  production write, provider, watcher change, or activation occurred. Kiro must
-  independently recheck the narrow correction in
-  [`VERIFY-jsonl-incremental-live-source-canary.md`](VERIFY-jsonl-incremental-live-source-canary.md)
-  before Ryan chooses any next disposition.
+- **Arc Codex — Kiro JSONL production integration:** the reviewed scratch,
+  isolated real-Chroma, and read-only live-source canary work is merged on
+  `main` through PR #292. Codex has authored a default-off production
+  architecture and bounded Execute plan; no production code, live indexing,
+  provider call, watcher action, migration, or activation occurred. Kiro must
+  now review the pushed planning tip using
+  [`CODEX-2026-09-09-jsonl-production-integration-review.md`](CODEX-2026-09-09-jsonl-production-integration-review.md).
+  Ryan alone may accept the plan and later grant Cursor implementation.
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
   project and arc state; it is not a Git-ref authority. Read [`STATUS.md`](STATUS.md)
