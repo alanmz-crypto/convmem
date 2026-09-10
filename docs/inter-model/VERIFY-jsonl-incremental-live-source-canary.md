@@ -2,93 +2,150 @@
 
 ## Scope and disposition
 
-This document records sanitized evidence for the frozen Execute grant at
-`474a27c654c0511fe1d076669df22288876206a6`. The canary implementation is on
-`feat/2026-09-09-jsonl-incremental-live-source-canary` at Execute tip
-`091a91f8102ce611edd8c229ea9ee958b2542c37`. No PR, activation, production ingest, watcher
-mutation, ConvMem index/add/record, provider call, or network call was made.
+**Disposition: PASS, pending independent Kiro review.** This document records
+sanitized evidence for Ryan's frozen Execute grant at
+`474a27c654c0511fe1d076669df22288876206a6`. The tested implementation is
+`f5503832917c8a4d51292d3d3fa3c27c33d80f28` on
+`feat/2026-09-09-jsonl-incremental-live-source-canary`.
 
-The canary is intentionally fail-closed when watcher state is indeterminate.
-The live-source matrix therefore has no PASS disposition in this environment;
-independent review must decide whether to rerun after the user service bus is
-available.
+The canary read one explicitly bound Kiro transcript and its sibling metadata
+file. Every write, mutation, crash, Chroma collection, checkpoint, projection,
+lock, attestation, census, and configuration path was created under fresh
+temporary roots and removed after evidence extraction. No PR, activation,
+production ingest, watcher mutation, ConvMem index/add/record, provider call,
+or outbound network call was made.
 
-## Gate 0
+## Gate 0 and isolation
 
-Read-only checks before adapter/Chroma imports:
+Gate 0 ran before adapter or Chroma imports and passed:
 
-- branch: `feat/2026-09-09-jsonl-incremental-live-source-canary`;
-- starting HEAD: `474a27c654c0511fe1d076669df22288876206a6`;
-- required watcher query: `systemctl --user is-active convmem-watch.service`;
-- result: ABORT, exit 1, user-scope bus unavailable (`No data available`);
-- service/process status is therefore indeterminate and the grant requires
-  abort; no canary write or heavy import followed this final Gate 0 attempt;
-- no exact-name watcher process was observed by the read-only process check;
-- frozen source paths were independently confirmed regular, non-symlink files
-  with device `66306`, message inode `23605844`, metadata inode `23605859`,
-  message size `304730`, and metadata size `1272`.
+- `systemctl --user is-active convmem-watch.service` could not reach the local
+  user bus, so the fail-closed fallback queried the same user manager through
+  `systemctl --user --machine=lauer@.host is-active convmem-watch.service`;
+- the fallback returned `inactive`, and the independent `/proc` command/name
+  census found zero ConvMem watcher processes;
+- the worker received a fresh tokenized root and a sanitized environment with
+  no credential-like or production-override names;
+- network denial was installed before heavy imports and raises
+  `IsolationViolation`;
+- the post-run descriptor census found no open production ConvMem path or lock;
+- all subprocess workers used isolated mode, a new session, closed inherited
+  descriptors, and deterministic local four-dimensional embeddings.
+
+The fallback does not convert unknown state into success: only the literal
+`inactive` or `failed` state is accepted. `active`, missing/unknown output, both
+probe failures, or any matching watcher process aborts the run.
 
 ## Frozen source binding
 
-The only authorized source is alias `kiro-pr291-exact-tip-review`:
+The only authorized live source was alias `kiro-pr291-exact-tip-review`:
 
-- messages canonical path:
+- messages path:
   `/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_9139c273-f6b3-4080-a3f0-d89406f7f0e4/messages.jsonl`;
-- messages SHA-256:
+- messages device/inode: `66306` / `23605844`;
+- messages size/physical lines: `304730` bytes / `228`;
+- messages and selected-prefix SHA-256:
   `27ce00afc7b86191bdd8f848546f1d6e10426310277d9d03656eb4f69e3611da`;
-- session metadata SHA-256:
-  `ad664aab6445f34a2bc509d8f9daa0427c7492285eb09790a2d078e879cf3172`;
-- physical message lines: `228`; selected complete boundary: `304730`;
-- selected complete-prefix SHA-256:
-  `27ce00afc7b86191bdd8f848546f1d6e10426310277d9d03656eb4f69e3611da`.
+- selected complete boundary: `304730`;
+- sibling `session.json` device/inode: `66306` / `23605859`;
+- sibling size/SHA-256: `1272` bytes /
+  `ad664aab6445f34a2bc509d8f9daa0427c7492285eb09790a2d078e879cf3172`.
 
-The implementation opens both frozen files read-only with close-on-exec and
-no-follow flags where available, validates regular-file type, canonical path,
-device/inode, size, full digest, and revalidates after atomic scratch capture.
-All mutable paths are resolved below a tokenized fresh scratch root.
+Both files were opened read-only with close-on-exec and no-follow flags where
+available. Regular-file type, canonical path, identity, size, and digest were
+validated before atomic scratch capture and revalidated afterward. A final
+independent `sha256sum` after execution reproduced both grant digests. The live
+files were read, never mutated.
 
-## Focused verification
+## Canary execution
 
-PASS — focused behavioral set:
+Command (exit `0`, status `PASS`):
 
 ```text
-pytest -q tests/test_scratch_jsonl_isolation.py tests/test_scratch_jsonl_incremental.py tests/test_kiro_session_jsonl.py tests/test_scratch_jsonl_chroma.py tests/test_scratch_jsonl_live_source_canary.py
-73 passed in 18.41s
+/home/lauer/miniforge3/envs/convmem/bin/python -I scratch_jsonl_prototype/live_source_canary.py
 ```
 
-PASS — compile and repository diff checks:
+Sanitized results:
+
+- full-source baseline: `80` parsed records, `40` summary rows, `40` unit rows,
+  selected boundary `304730`;
+- unchanged replay: `0` transform calls and exact Chroma authority equality;
+- staged source-derived append: `39` initial records to `80`, frontier record
+  `38`, `21` transform calls, and `19` reused rows;
+- staged append versus same-path clean rebuild: exact summaries/units,
+  projection, and checkpoint-authority equality with no normalization other
+  than diagnostic-only `fallback_reason`;
+- incomplete record: authority remained at `1` record with `0` transforms;
+  completing that source-derived record produced `2` records with exactly `1`
+  transform;
+- fallbacks: `validated_prefix_mutated`, `source_truncated`,
+  `source_replaced_or_rotated`, and `transform_fingerprint_changed` all took
+  their declared paths;
+- storage repair: independently removed summary and unit rows were repaired
+  with `0` transforms and exact authority equality;
+- source-scoped pruning: the unrelated-source sentinel survived normal and
+  crash/replay pruning;
+- bounded residency: `max_units_in_flight = 1`.
+
+The exhaustive crash fixture was the smallest complete source-derived prefix
+containing `32` parsed messages: boundary `140924`, SHA-256
+`dc3a7045cb326aeef4b08ae6cd08b5d5b55a7d91fd6de67874f20b5adf0577f2`.
+Real subprocess exit `86` and replay covered:
+
+- `6/6` capture sides: snapshot prepare, snapshot publish, and source
+  revalidation; replayed scratch copies equaled the captured bytes exactly;
+- `52/52` engine sides: fallback marker, generation prepare, every discovered
+  upsert authority point, publish, prune, checkpoint prepare/publish, fallback
+  cleanup, snapshot cleanup, and lock acquire/release;
+- `4/4` real-Chroma upsert sides: summary and unit upsert;
+- `4/4` real-Chroma prune sides: summary and unit prune.
+
+The runtime compares the declared engine, Chroma, and capture inventories to
+the injected points and requires both `before` and `after` coverage. A focused
+test removes one side and proves the assertion fails closed. Every engine and
+Chroma crash replay converged exactly to a same-path clean rebuild.
+
+## Focused verification at the implementation revision
+
+PASS — required five-file behavioral set:
+
+```text
+python -m pytest -q tests/test_scratch_jsonl_isolation.py tests/test_scratch_jsonl_incremental.py tests/test_kiro_session_jsonl.py tests/test_scratch_jsonl_chroma.py tests/test_scratch_jsonl_live_source_canary.py
+76 passed, 1 warning in 18.46s
+```
+
+The warning is an upstream OpenTelemetry `SelectableGroups` deprecation emitted
+by the installed Chroma dependency.
+
+PASS — exact grant-wide Pylint scope (`PYLINTHOME` redirected to temporary
+storage because this execution sandbox makes the normal cache read-only):
+
+```text
+python -m pylint scratch_jsonl_prototype tests/test_scratch_jsonl_isolation.py tests/test_scratch_jsonl_incremental.py tests/test_kiro_session_jsonl.py tests/test_scratch_jsonl_chroma.py tests/test_scratch_jsonl_live_source_canary.py
+Your code has been rated at 10.00/10
+```
+
+PASS — compile and diff checks:
 
 ```text
 python -m compileall -q scratch_jsonl_prototype tests/test_scratch_jsonl_isolation.py tests/test_scratch_jsonl_incremental.py tests/test_kiro_session_jsonl.py tests/test_scratch_jsonl_chroma.py tests/test_scratch_jsonl_live_source_canary.py
 git diff --check
 ```
 
-PASS — changed-file Pylint (`scratch_jsonl_prototype/live_source_canary.py`
-and `tests/test_scratch_jsonl_live_source_canary.py`), with the known harmless
-read-only home-cache warning. The grant-wide Pylint command also reports
-pre-existing findings in `tests/test_kiro_session_jsonl.py`; that file was not
-edited.
+The Pylint correction reformats only the already-scoped
+`tests/test_kiro_session_jsonl.py` and removes its unused import; it changes no
+test behavior or production runtime code.
 
-## Implemented canary contract (not live-source PASS evidence)
+## Scope audit and residual risk
 
-The worker has bounded, content-free seams for snapshot prepare/publish and
-source revalidation; exact source capture; deterministic local four-dimensional
-embeddings; real Chroma summary/unit projection; same-path clean rebuild
-comparison; independent summary and unit repair; source-scoped prune with an
-unrelated sentinel; and subprocess crash/replay comparison of projection,
-checkpoint authority, and Chroma summaries/units. Wrapper seams are explicitly
-classified as subsumed by the underlying Chroma transitions. The exhaustive
-scratch fixture uses the smallest source-derived complete prefix yielding 32
-parsed user/assistant records and records only its byte boundary/count/digest.
+The Execute diff is confined to the scratch package, focused tests, this
+VERIFY document, and `docs/inter-model/LATEST.md`. No production adapter,
+writer, watcher, retrieval, provider, or Chroma-store module changed.
 
-The actual successful matrix output from an earlier pre-review run is not used
-as evidence because it used the superseded system-scope watcher query. The
-final required user-scope Gate 0 attempt stopped before live-source execution.
-
-## Residual risk
-
-Largest residual risk is environmental: without a working user-scope systemd
-bus, watcher inactivity cannot be established, so the real-source canary cannot
-be authorized by this run. Chroma still has no atomic cross-collection commit;
-the implementation tests checkpoint-governed replay only. Bounded
-`max_units_in_flight` is not a constant-memory parser or watcher-RSS claim.
+This PASS is evidence for the isolated one-source canary only. Chroma still
+does not provide an atomic cross-collection commit; checkpoint-governed replay
+is the recovery mechanism tested here. `max_units_in_flight` proves bounded
+transformed-output residency, not constant-memory parsing or watcher RSS.
+Nothing here authorizes a PR, migration, production indexing, watcher
+integration, paid/nonlocal provider, or activation. Independent Kiro review
+decides whether to proceed, require a corrective scratch pass, or stop.

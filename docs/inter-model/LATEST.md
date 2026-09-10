@@ -9,13 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **JSONL incremental isolated live-source canary:** the synthetic and real-
-  Chroma scratch evidence landed through PR #291 and passed exact-tip Kiro
-  review. Ryan authorized the next bounded Execute pass on 2026-09-09: one
-  frozen Kiro transcript may be read and copied into fresh temporary storage;
-  every mutation and crash remains on the copy. No watcher, provider,
-  production write, PR, or activation is authorized. Execute from
-  [`CODEX-2026-09-09-jsonl-incremental-live-source-canary-execute.md`](CODEX-2026-09-09-jsonl-incremental-live-source-canary-execute.md).
+- **JSONL incremental isolated live-source canary:** Ryan's bounded Execute pass
+  completed with sanitized PASS evidence against one frozen, read-only Kiro
+  transcript at implementation revision `f5503832917c8a4d51292d3d3fa3c27c33d80f28`.
+  The live source remained unchanged; all Chroma and fault/replay writes stayed
+  under temporary roots; the required tests and static gates pass. No PR,
+  production write, provider, watcher change, or activation occurred. Kiro must
+  independently review
+  [`VERIFY-jsonl-incremental-live-source-canary.md`](VERIFY-jsonl-incremental-live-source-canary.md)
+  before Ryan chooses any next disposition.
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
   project and arc state; it is not a Git-ref authority. Read [`STATUS.md`](STATUS.md)
