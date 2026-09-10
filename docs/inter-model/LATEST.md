@@ -13,9 +13,10 @@ cross-arc snapshot and the linked arc brief below.
   coordinator is on `main` via squash-merged PR #293 (`881133d`) and remains
   disabled. The production-canary architecture/plan merged via PR #295
   (`b23cabad`). P1 harness PR #296 is open after Kiro PASS at `7412ce3`;
-  PR CI exposed a missing outer temporary writer lease, now corrected with
-  exact lock-role validation and 128 focused tests passing. Next lane is green
-  CI plus a narrow Kiro delta recheck before Ryan's merge decision. **P2**,
+  PR CI exposed a missing outer temporary writer lease and a test-scoping leak;
+  both are corrected, with exact lock-role validation and 128 focused tests
+  passing. Next lane is green CI plus a narrow Kiro delta recheck before Ryan's
+  merge decision. **P2**,
   indexing, provider calls, watcher action, config change, and activation remain
   unauthorized. Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).

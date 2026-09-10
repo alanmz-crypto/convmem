@@ -27,7 +27,6 @@ from incremental_jsonl_canary import (
     validate_append_profile,
     validate_two_chunk_profile,
 )
-from incremental_jsonl_isolation import install_network_denial
 from tests.incremental_jsonl_canary_helpers import (
     build_grant,
     hermetic_root,
@@ -55,7 +54,6 @@ def test_p1_a6_network_and_credentials_denied(tmp_path: Path) -> None:
         "CONVMEM_CANARY_REVISION": grant.code_revision,
         "DEEPSEEK_API_KEY": "secret",
     }
-    install_network_denial()
     result = worker_run(env, command="refuse-network")
     assert result.returncode == 0
     payload = json.loads(result.stdout)

@@ -28,6 +28,11 @@ the default production writer lock. The correction keeps the outer lease on
 the temporary writer lock for the whole coordinator run and binds the grant's
 four named lock roles to the actual derived lock paths. Production coordinator,
 ingest, watcher, and isolation modules remain unchanged.
+
+The first corrected-tip repo-wide CI run then found that the P1 network test
+installed denial in the parent pytest process before launching its already
+contained worker. Removing that redundant parent mutation keeps denial inside
+the worker and prevents test-order leakage into unrelated JudgeBench tests.
 The harness is canary-only, uses synthetic sources and temporary roots only,
 and does not touch live production paths, providers, watchers, or the dedicated
 Kiro session. P2 and activation remain separately Ryan-gated.

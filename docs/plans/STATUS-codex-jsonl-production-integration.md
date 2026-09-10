@@ -85,10 +85,11 @@ Key invariants:
 PR #293 was squash-merged as `881133d`. PR #295 merged the canary
 architecture/plan at `b23cabad`. P1 hermetic harness is in PR #296. Kiro
 closed the reviewed implementation at PASS on `7412ce3`; PR CI then exposed
-and the Steward corrected a missing outer temporary writer lease plus scoped
-lint findings. The corrected PR tip needs a narrow Kiro delta recheck before
-Ryan's merge decision. No live config, production Chroma, watcher, provider,
-P2 run, or activation exists.
+and the Steward corrected a missing outer temporary writer lease, scoped lint
+findings, and a parent-process network-denial leak from one P1 test. The
+corrected PR tip needs a narrow Kiro delta recheck before Ryan's merge decision.
+No live config, production Chroma, watcher, provider, P2 run, or activation
+exists.
 
 ## 4. Completion State
 
@@ -219,7 +220,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-10 | Codex | Drafted the two-grant production-canary architecture and execution plan around a dedicated new Kiro source; next lane is Kiro design review, with P1/P2 still unauthorized |
 | 2026-09-10 | Codex | Applied Kiro C1–C3: corrected the 110/111 append boundary, canonicalized the embedding tag in the grant, and added plan jargon glossaries; awaiting narrow confirmation |
 | 2026-09-10 | Cursor | Landed hermetic P1 canary harness on `feat/2026-09-10-codex-jsonl-production-canary-p1`; next lane is exact-tip Kiro review. No PR, P2, or activation |
-| 2026-09-10 | Codex | Opened PR #296 after Kiro PASS; corrected CI lint findings and restored the planned grant-listed outer writer lease after sandbox evidence caught a default production-lock escape; corrected tip awaits CI and narrow Kiro recheck |
+| 2026-09-10 | Codex | Opened PR #296 after Kiro PASS; corrected CI lint findings, restored the planned grant-listed outer writer lease after sandbox evidence caught a production-lock escape, and confined network denial to its test worker; corrected tip awaits CI and narrow Kiro recheck |
 
 ## TL;DR
 
