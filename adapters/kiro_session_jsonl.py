@@ -9,9 +9,11 @@ through ~April 2026 may still live in ~/.local/share/kiro-cli/data.sqlite3.
 Thin prompt sidecars at ~/.kiro/sessions/cli/*.history are not indexed.
 """
 
+# Prefix scanning deliberately preserves the reviewed scratch parser contract.
+# pylint: disable=duplicate-code
+
 import hashlib
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -80,7 +82,7 @@ def read_session_meta(filepath: str) -> dict:
 
 
 @dataclass(frozen=True)
-class CompletePrefixView:
+class CompletePrefixView:  # pylint: disable=too-many-instance-attributes
     """Canonical Kiro messages plus the byte-range commitment for one prefix."""
 
     messages: list[dict]

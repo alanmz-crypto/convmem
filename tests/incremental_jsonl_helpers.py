@@ -1,5 +1,8 @@
 """Shared hermetic helpers for incremental JSONL production tests."""
 
+# Helpers intentionally mirror the reviewed scratch fault/replay harness.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import hashlib
@@ -169,7 +172,7 @@ def chroma_authority(boundary: IsolationBoundary, source: Path) -> dict:
     coordinator = IncrementalJsonlCoordinator.from_isolated_boundary(
         boundary, source, enabled=True
     )
-    with coordinator._session() as session:
+    with coordinator._session() as session:  # pylint: disable=protected-access
         summaries = session.store.snapshot_source_rows(SUMMARIES, str(source))
         units = session.store.snapshot_source_rows(UNITS, str(source))
     summaries.sort(key=lambda row: row["id"])

@@ -65,7 +65,7 @@ Key invariants:
 
 | Surface | Current state |
 |---|---|
-| `incremental_jsonl.py` | New production coordinator on `feat/2026-09-10-codex-jsonl-production-integration` at `5341bb1`. Default-off. Live enable without `CONVMEM_INCREMENTAL_ROOT` fail-closed skips rather than writing. |
+| `incremental_jsonl.py` | New production coordinator on `feat/2026-09-10-codex-jsonl-production-integration`; the implementation is default-off and now includes the PR #293 pylint-regression correction. Live enable without `CONVMEM_INCREMENTAL_ROOT` fail-closed skips rather than writing. |
 | `ingest.py` | Build/commit split; default-off dispatch after detect; content-addressed UUID4 ingest assertion IDs |
 | `adapters/kiro_session_jsonl.py` | `parse()` unchanged; `parse_complete_prefix()` adds byte ranges |
 | `config.py` / `config.example.toml` | `[index.incremental_jsonl]` absent/false by default |
@@ -77,8 +77,8 @@ Key invariants:
 | `docs/plans/EXECUTION-codex-jsonl-production-integration.md` | Ryan-authorized bounded Cursor T0–T6 plan |
 | Scratch prototype + canary on `main` | Unchanged inherited evidence |
 
-No live config, production Chroma, watcher, provider, bootstrap, canary, PR, or
-activation exists.
+PR #293 is open for the disabled implementation. No live config, production
+Chroma, watcher, provider, bootstrap, canary, or activation exists.
 
 ## 4. Completion State
 
@@ -90,18 +90,18 @@ activation exists.
 | Production architecture | **PASS at `84ec51a`** | — |
 | Bounded Execute plan | **PASS / AUTHORIZED** | — |
 | Ryan architecture/Execute acceptance | **DONE 2026-09-10** | — |
-| Cursor implementation | **DONE on feature branch `5341bb1`** | Independent Kiro review of VERIFY at `4dfe42e` / branch HEAD |
-| Implementation review/PR | **IN REVIEW** | Kiro exact-tip PASS, then Ryan decides whether to open a PR |
+| Cursor implementation | **DONE on feature branch** (`5341bb1` plus scoped PR #293 lint correction) | Exact-tip correction recheck |
+| Implementation review/PR | **PR #293 OPEN**; Kiro PASS at `162d67f`; local corrected gates PASS | CI green at corrected tip, then Kiro re-binds review before Ryan merge decision |
 | Production bootstrap/canary | **UNAUTHORIZED** | Separate post-merge Ryan grant |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
 ## 5. Your Role
 
-**If Ryan sent you to review now:** you are Kiro. Fetch
-`feat/2026-09-10-codex-jsonl-production-integration`, reproduce
-[`VERIFY-codex-jsonl-production-integration.md`](VERIFY-codex-jsonl-production-integration.md)
-at the exact tip, and answer the seven Execute review questions. Do not open a
-PR, enable the flag, or touch live state.
+**If Ryan sent you to review now:** you are Kiro. After PR #293 CI is green,
+fetch `feat/2026-09-10-codex-jsonl-production-integration` and recheck the
+scoped pylint-regression correction after `162d67f`. Confirm that it removes
+only lint debt, preserves the reviewed safety semantics, and keeps the writer
+inventories revision-bound. Do not enable the flag or touch live state.
 
 **If Ryan sent you to implement:** Cursor T0–T6 is already pushed. Do not
 re-execute unless Kiro returns a concrete contradiction.
@@ -112,14 +112,15 @@ condition are separately authorized. Merge of disabled code is not activation.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro independently reviews the exact implementation/evidence tip.
-2. Ryan decides whether to open/merge the disabled implementation PR.
-3. After merge, Ryan separately chooses a new source or authorizes a one-time
+1. PR #293 CI passes at the corrected feature tip.
+2. Kiro rechecks the correction delta and binds PASS to that exact tip.
+3. Ryan decides whether to squash-merge the disabled implementation PR.
+4. After merge, Ryan separately chooses a new source or authorizes a one-time
    clean bootstrap rebuild and its model-cost ceiling.
-4. A bounded production-path canary measures cross-collection mixed visibility,
+5. A bounded production-path canary measures cross-collection mixed visibility,
    replay time, frontier calls, and rollback under an exact source/grant.
-5. Independent review decides whether watcher/feature activation is safe.
-6. Ryan alone edits live configuration or activates the watcher route.
+6. Independent review decides whether watcher/feature activation is safe.
+7. Ryan alone edits live configuration or activates the watcher route.
 
 ## 7. Hard Stops
 
@@ -195,13 +196,14 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-10 | Codex | Finalized C1 to preserve the standalone processed-state critical section after releasing the source-locked apply; C2/C3 remain confirmed |
 | 2026-09-10 | Codex | Recorded Kiro PASS at `84ec51a` and Ryan's bounded Cursor T0–T6 Execute grant; implementation remains not started and operational actions remain gated |
 | 2026-09-10 | Cursor | Landed hermetic T0–T6 on `feat/2026-09-10-codex-jsonl-production-integration` at `5341bb1`; next lane is exact-tip Kiro review. No PR, live indexing, or activation |
+| 2026-09-10 | Codex | Opened PR #293 after Kiro PASS at `162d67f`; corrected the CI pylint-regression delta without changing the baseline, and routed the new exact tip back to Kiro before merge |
 
 ## TL;DR
 
-- Arc Codex production code is implemented and disabled-by-default on
-  `feat/2026-09-10-codex-jsonl-production-integration` (`5341bb1`).
-- Kiro must reproduce
-  [`VERIFY-codex-jsonl-production-integration.md`](VERIFY-codex-jsonl-production-integration.md)
-  at the exact fetched tip.
+- Arc Codex production code is implemented, disabled by default, and open as
+  PR #293 with a scoped pylint-regression correction after Kiro's `162d67f`
+  PASS.
+- CI must pass at the corrected tip, then Kiro must recheck that exact delta
+  before Ryan's merge decision.
 - Live indexing, providers, migration, PR creation, bootstrap/canary, and
   activation remain separately Ryan-gated.

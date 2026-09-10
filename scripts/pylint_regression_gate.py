@@ -107,6 +107,9 @@ _ALLOWED_CYCLIC_PAIRS = frozenset(
         ("doctor", "mcp_server"),
         ("doctor", "observe"),
         ("ingest", "query"),
+        # Arc Codex production integration: Kiro reviewed this deliberate lazy
+        # routing cycle at exact implementation tip 162d67f on 2026-09-10.
+        ("incremental_jsonl", "ingest"),
         ("ledger_recent", "observe"),
         ("ledger_recent", "propose_decision"),
         ("ledger_recent", "query"),

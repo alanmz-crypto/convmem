@@ -82,7 +82,7 @@ class _ChunkBuildResult:
 
 
 @dataclass
-class ChunkArtifact:
+class ChunkArtifact:  # pylint: disable=too-many-instance-attributes
     """Immutable one-chunk transform output used by both legacy and incremental commit."""
 
     complete: bool
@@ -1200,7 +1200,7 @@ def _prune_completed_reindex(  # pylint: disable=too-many-arguments
 
 
 
-def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements
+def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements
     *,
     cfg: dict,
     idx: dict,

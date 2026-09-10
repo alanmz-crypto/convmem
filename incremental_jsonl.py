@@ -6,7 +6,7 @@ cache plus source-scoped Chroma before-image rollback.
 """
 
 # pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals
-# pylint: disable=too-many-branches,too-many-statements,too-many-lines
+# pylint: disable=too-many-branches,too-many-statements,too-many-lines,duplicate-code
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import json
 import os
 import stat
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable
 
@@ -33,11 +33,8 @@ from incremental_jsonl_isolation import (
 )
 from ingest import (
     ChunkArtifact,
-    _path_is_excluded,
     build_chunk_artifact,
     chunk_messages,
-    commit_chunk_artifact,
-    commit_processed_index_entry,
     load_processed,
     render_chunk,
 )
@@ -215,8 +212,6 @@ def source_state_id(canonical_path: str) -> str:
 def frontier_start(prior_count: int, chunk_size: int, overlap: int) -> int:
     if prior_count <= 0:
         return 0
-    from ingest import chunk_messages
-
     chunks = chunk_messages([{}] * prior_count, chunk_size, overlap)
     if not chunks:
         return 0
@@ -391,9 +386,8 @@ class IncrementalJsonlCoordinator:
         file_hash: str | None = None,
         processed: dict | None = None,
     ):
-        IsolationBoundary.require_fake_provider("deterministic-fake") if os.environ.get(
-            "CONVMEM_INCREMENTAL_ROOT"
-        ) else None
+        if os.environ.get("CONVMEM_INCREMENTAL_ROOT"):
+            IsolationBoundary.require_fake_provider("deterministic-fake")
         self.boundary = boundary
         self.source = boundary.resolve_mutable(source, label="source fixture")
         self.cfg = cfg or self._load_isolated_config()
@@ -779,7 +773,12 @@ class IncrementalJsonlCoordinator:
 
         self._transition("checkpoint_publish", publish)
 
-    def _apply_prepared(self, prepared: list[dict], keep_summaries: set[str], keep_units: set[str]) -> tuple[int, int, list]:
+    def _apply_prepared(
+        self,
+        prepared: list[dict],
+        keep_summaries: set[str],
+        keep_units: set[str],
+    ) -> tuple[int, int, list]:
         from ingest_dedupe import evaluate_ingest_batch
         from provenance_binding import provenance_identity
 
@@ -798,14 +797,14 @@ class IncrementalJsonlCoordinator:
 
                 self._transition("summary_upsert", summary_write)
 
-                def unit_write(current=artifact, collected=events) -> None:
+                def unit_write(current=artifact) -> None:
                     nonlocal chunks, units
                     units_to_add = [
                         (row["unit"], row["document"], row["embedding"], row["metadata"])
                         for row in current["units"]
                     ]
                     dedupe = evaluate_ingest_batch(session.store, session.live_cfg, units_to_add)
-                    collected.append(dedupe)
+                    events.append(dedupe)
                     written = 0
                     for unit, doc, unit_embedding, unit_meta in dedupe.accepted:
                         projection_unit = dict(unit)
@@ -1074,11 +1073,10 @@ class IncrementalJsonlCoordinator:
         fallback: str | None,
         reused: int,
         transaction_id: str,
-        prior_checkpoint: dict | None,
         mode: str,
     ) -> IncrementalRunResult:
         from ingest import _path_is_excluded
-        from purge_locks import export_flock, source_flock
+        from purge_locks import source_flock
 
         keep_summaries = {item["doc_id"] for item in prepared}
         keep_units = {row["id"] for item in prepared for row in item["units"]}
@@ -1224,7 +1222,6 @@ class IncrementalJsonlCoordinator:
                 fallback=None,
                 reused=reused,
                 transaction_id=str(transaction.get("transaction_id") or uuid.uuid4().hex),
-                prior_checkpoint=prior,
                 mode="replay_forward",
             )
         except SourceCaptureError:
@@ -1361,7 +1358,6 @@ class IncrementalJsonlCoordinator:
                 fallback=continuity if continuity != "initial_full" else None,
                 reused=reused,
                 transaction_id=transaction_id,
-                prior_checkpoint=checkpoint,
                 mode=mode,
             )
         finally:
@@ -1393,11 +1389,8 @@ def maybe_route_incremental(
     detected_format: str | None,
 ) -> tuple[str, int, int, int, int] | None:
     """Return ingest tuple when the incremental route owns the file, else None."""
-    _ = (idx, tool, units_export, verbose)
-    try:
-        settings = incremental_jsonl_settings(cfg)
-    except IncrementalJsonlConfigError:
-        raise
+    _ = (idx, path_key, tool, units_export, verbose)
+    settings = incremental_jsonl_settings(cfg)
     if not settings.enabled:
         return None
     if detected_format != ELIGIBLE_FORMAT:

@@ -1,6 +1,6 @@
 """Subprocess entrypoint for the production-integration isolation gate."""
 
-# pylint: disable=wrong-import-position,broad-exception-caught,consider-using-with,line-too-long
+# pylint: disable=wrong-import-position,broad-exception-caught,consider-using-with,line-too-long,duplicate-code
 
 from __future__ import annotations
 

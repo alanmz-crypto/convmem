@@ -14,17 +14,48 @@
 
 **Kiro review tip:** `git fetch origin feat/2026-09-10-codex-jsonl-production-integration && git rev-parse origin/feat/2026-09-10-codex-jsonl-production-integration`
 
-**PR:** not opened
+**PR:** #293 — open; Ryan owns merge
 
 ---
 
 ## Disposition
 
 Hermetic T0–T6 implementation evidence is complete on the feature branch.
-The feature remains **disabled by default**. This is not production PASS, not
-activation, and not authorization to open a PR.
+The feature remains **disabled by default**. Ryan separately authorized PR
+#293; this is not production PASS or activation.
 
-Kiro must independently reproduce the commands below at the exact fetched tip.
+Kiro independently reproduced the commands below at `162d67f`. The scoped CI
+correction that follows requires an exact-tip delta recheck before merge.
+
+## PR #293 CI correction
+
+The first PR run at reviewed tip `162d67f` passed CodeQL and secret scanning,
+but the repository-wide pylint regression gate correctly rejected new findings
+that the focused 9.86/10 score did not evaluate. The correction does not edit
+`ci/pylint-baseline.json` or weaken the global comparison:
+
+- removed unused imports/arguments, a mutable closure default, redundant
+  reimports, an expression-only conditional, and an immediate re-raise;
+- scoped existing complexity suppressions to the reviewed data carriers and
+  store facade;
+- documented duplicate-code suppression only where production isolation,
+  prefix parsing, and hermetic workers deliberately preserve the reviewed
+  scratch contracts;
+- added only the exact `incremental_jsonl` ↔ `ingest` lazy-routing pair to
+  `_ALLOWED_CYCLIC_PAIRS`, after Kiro explicitly reviewed and accepted that
+  disclosed cycle at `162d67f`; and
+- regenerated the R2b inventory from source and moved the Shadow inventory
+  call-site anchor from line 506 to line 500.
+
+Local corrective evidence before push:
+
+- repository-wide `scripts/pylint_regression_gate.py ci`: **PASS** — 460
+  findings, 243 fingerprints, no new/increased findings versus `origin/main`;
+- affected isolation/state/adapter/pylint-gate/C3/R2b set: **159 passed**;
+- `git diff --check`: clean.
+
+Because the correction changes the reviewed tree, Kiro must recheck the exact
+post-correction PR tip before Ryan's merge decision.
 
 ## What this evidence is
 

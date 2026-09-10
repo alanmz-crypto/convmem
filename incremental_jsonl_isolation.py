@@ -4,6 +4,10 @@ This module imports only the standard library. Crash workers activate it before
 importing any ConvMem adapter, ingest, or Chroma module.
 """
 
+# This production gate deliberately preserves the reviewed scratch isolation
+# primitives so the same containment contract is exercised.
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import fcntl
@@ -204,7 +208,7 @@ def sanitized_worker_env(
         import site as _site
 
         user_site = Path(_site.getusersitepackages())
-    except Exception:
+    except (AttributeError, OSError, TypeError, ValueError):
         user_site = Path()
     if user_site.is_dir():
         env[ISOLATION_SITE_ENV] = str(user_site)
@@ -361,7 +365,7 @@ def install_service_denial(invocations: list[str] | None = None) -> None:
 
     def run(args, *rest, **kwargs):  # noqa: ANN001
         _guard(args)
-        return real_run(args, *rest, **kwargs)
+        return real_run(args, *rest, check=kwargs.pop("check", False), **kwargs)
 
     subprocess.Popen = popen  # type: ignore[assignment]
     subprocess.run = run  # type: ignore[assignment]

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -119,7 +118,7 @@ def test_new_empty_authority_is_eligible(tmp_path: Path) -> None:
     )
 
 
-def test_false_flag_does_not_construct_coordinator(tmp_path: Path, monkeypatch) -> None:
+def test_false_flag_does_not_construct_coordinator(monkeypatch) -> None:
     from incremental_jsonl import IncrementalJsonlCoordinator, maybe_route_incremental
 
     constructed = {"count": 0}

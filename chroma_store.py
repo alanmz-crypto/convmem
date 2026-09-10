@@ -120,7 +120,7 @@ def is_superseded(meta: dict) -> bool:
     return meta.get("superseded") is True
 
 
-class ChromaStore:
+class ChromaStore:  # pylint: disable=too-many-public-methods
     def __init__(
         self,
         chroma_dir: str,

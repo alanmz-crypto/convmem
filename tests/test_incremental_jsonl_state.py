@@ -240,7 +240,7 @@ def test_coverage_inventory_requires_both_sides() -> None:
     }
     dropped = {point for point in required if point.endswith("lock_release")}
     remaining = required - dropped
-    assert f"after_lock_release" in dropped
+    assert "after_lock_release" in dropped
     assert remaining
     assert len(required) == 2 * len(DURABLE_TRANSITIONS)
 
