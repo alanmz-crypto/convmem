@@ -4,8 +4,8 @@
 
 This document records sanitized evidence for the frozen Execute grant at
 `474a27c654c0511fe1d076669df22288876206a6`. The canary implementation is on
-`feat/2026-09-09-jsonl-incremental-live-source-canary`; the final Execute tip
-is recorded after commit. No PR, activation, production ingest, watcher
+`feat/2026-09-09-jsonl-incremental-live-source-canary` at Execute tip
+`091a91f8102ce611edd8c229ea9ee958b2542c37`. No PR, activation, production ingest, watcher
 mutation, ConvMem index/add/record, provider call, or network call was made.
 
 The canary is intentionally fail-closed when watcher state is indeterminate.
@@ -53,7 +53,7 @@ PASS — focused behavioral set:
 
 ```text
 pytest -q tests/test_scratch_jsonl_isolation.py tests/test_scratch_jsonl_incremental.py tests/test_kiro_session_jsonl.py tests/test_scratch_jsonl_chroma.py tests/test_scratch_jsonl_live_source_canary.py
-72 passed in 17.73s
+73 passed in 18.41s
 ```
 
 PASS — compile and repository diff checks:
