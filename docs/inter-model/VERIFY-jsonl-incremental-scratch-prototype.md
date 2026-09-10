@@ -218,7 +218,12 @@ writer-route inventory. The call was added to
 production routes plus this one explicitly bounded scratch route. No call was
 hidden from the scanner and no production code changed. The exact failing
 inventory test and its count gate passed (2 tests), followed by the complete
-65-test focused scratch matrix.
+65-test focused scratch matrix. The next PR pytest run then correctly rejected
+the stale revision binding in `R2B-V2-WRITER-COVERAGE-INVENTORY.json`; the
+repository's canonical generator refreshed that derived artifact to include the
+newly classified scratch route. Its 18 identity/regression guards and 29
+writer-route/lease gates passed locally. No runtime code changed in either CI
+correction.
 
 The generation/checkpoint state machine remains deliberately separate from
 production ingest and the real-Chroma adapter is an optional scratch seam.
