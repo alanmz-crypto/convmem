@@ -125,7 +125,7 @@ STATUS files are **arc briefs** — they give you a mental landscape of the desi
 - `docs/plans/STATUS-dependability-provenance.md` — Dependability and provenance Trust Arc (**T3 closed**; later gates deferred)
 - `docs/plans/STATUS-recovery-authority.md` — Recovery Authority T1/T2 execution (**landed via PR #234 and #236; T3 not authorized**)
 - `docs/plans/STATUS-naturalistic-product-value.md` — Naturalistic ConvMem product-value evaluation (**G1–G5 landed; G6 Ryan-gated**)
-- `docs/plans/STATUS-codex-jsonl-production-integration.md` — Arc Codex Kiro JSONL incremental production integration (**planning; Kiro review next**)
+- `docs/plans/STATUS-codex-jsonl-production-integration.md` — Arc Codex Kiro JSONL incremental production integration (**Execute authorized; Cursor implementation next**)
 
 **Cross-arc rollup:** `docs/inter-model/STATUS.md` — active vs closed arcs (not a per-arc brief).
 

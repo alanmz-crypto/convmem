@@ -74,8 +74,9 @@ Key invariants:
 | `adapters/kiro_session_jsonl.py` | Production Kiro parser; currently materializes the full message list and exposes no byte ranges |
 | `watch.py` | Debounced subprocess caller of `convmem index --file`; watcher is currently stopped by Ryan and is not controlled by this arc |
 | `chroma_write_store.py` / `chroma_store.py` | Governed production writer session and source-scoped operations; no production transaction journal |
-| `docs/plans/ARCHITECTURE-codex-jsonl-production-integration.md` | Proposed production architecture on the planning branch; awaiting Kiro review |
-| `docs/plans/EXECUTION-codex-jsonl-production-integration.md` | Proposed bounded Cursor Execute plan on the planning branch; awaiting Kiro review |
+| `docs/plans/ARCHITECTURE-codex-jsonl-production-integration.md` | Kiro-reviewed production architecture on the planning branch; PASS at `84ec51a` |
+| `docs/plans/EXECUTION-codex-jsonl-production-integration.md` | Ryan-authorized bounded Cursor T0–T6 plan on the planning branch |
+| `docs/inter-model/CODEX-2026-09-10-jsonl-production-integration-execute.md` | Current Cursor Execute grant and stop boundary |
 
 No production implementation, live config change, source checkpoint, provider
 call, watcher action, migration, or activation exists in Arc Codex.
@@ -87,25 +88,22 @@ call, watcher action, migration, or activation exists in Arc Codex.
 | Scratch JSONL state machine | **DONE on `main`** (PR #289) | — |
 | Isolated real-Chroma writer/pruner pass | **DONE on `main`** (PR #291) | — |
 | Read-only live-source canary | **DONE on `main`** (PR #292) | — |
-| Production architecture | **CORRECTED on planning branch** | Final narrow Kiro confirmation of C1 |
-| Bounded Execute plan | **CORRECTED on planning branch** | Final narrow Kiro confirmation of C1 |
-| Ryan architecture/Execute acceptance | **NOT STARTED** | Kiro confirms corrected tip |
-| Cursor implementation | **UNAUTHORIZED / NOT STARTED** | Kiro PASS then separate Ryan Execute grant |
+| Production architecture | **PASS at `84ec51a`** | — |
+| Bounded Execute plan | **PASS / AUTHORIZED** | — |
+| Ryan architecture/Execute acceptance | **DONE 2026-09-10** | — |
+| Cursor implementation | **AUTHORIZED / NOT STARTED** | Cursor executes T0–T6 and stops at evidence |
 | Implementation review/PR | **NOT STARTED** | Successful bounded Cursor evidence |
 | Production bootstrap/canary | **UNAUTHORIZED** | Separate post-merge Ryan grant |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
 ## 5. Your Role
 
-**If Ryan sent you to review now:** you are Kiro. C2/C3 are confirmed. Confirm
-only that final C1 preserves today's standalone processed-state transaction
-after the source-locked apply, including the real sidecar lock and exclusion
-check. Do not reopen accepted design or implement/run live indexing.
-
-**If Ryan later sent you to implement:** you are Cursor and must have a
-separate explicit Execute grant. Follow the ordered T0–T6 plan, stop on a
-concrete architecture contradiction, use only temporary paths and deterministic
-fakes, and stop at evidence for Kiro.
+**If Ryan sent you to implement now:** you are Cursor and the bounded T0–T6
+Execute grant is active. Read
+`docs/inter-model/CODEX-2026-09-10-jsonl-production-integration-execute.md`,
+follow the ordered plan, run T0 first, stop on a concrete architecture
+contradiction, use only temporary paths and deterministic fakes, and stop at
+pushed evidence for Kiro. Do not open a PR.
 
 **If Ryan sent you to activate:** stop unless the exact source, live config
 change, provider/cost boundary, watcher state, rollback action, and canary stop
@@ -113,17 +111,16 @@ condition are separately authorized. Merge of disabled code is not activation.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro confirms the final C1 documentation correction at the new exact tip.
-2. Ryan accepts the architecture and separately authorizes Cursor Execute.
-3. Cursor implements T0–T6 with no live resources or provider calls.
-4. Kiro independently reviews the exact implementation/evidence tip.
-5. Ryan decides whether to open/merge the disabled implementation PR.
-6. After merge, Ryan separately chooses a new source or authorizes a one-time
+1. Cursor implements T0–T6 with no live resources or provider calls and stops
+   at pushed evidence.
+2. Kiro independently reviews the exact implementation/evidence tip.
+3. Ryan decides whether to open/merge the disabled implementation PR.
+4. After merge, Ryan separately chooses a new source or authorizes a one-time
    clean bootstrap rebuild and its model-cost ceiling.
-7. A bounded production-path canary measures cross-collection mixed visibility,
+5. A bounded production-path canary measures cross-collection mixed visibility,
    replay time, frontier calls, and rollback under an exact source/grant.
-8. Independent review decides whether watcher/feature activation is safe.
-9. Ryan alone edits live configuration or activates the watcher route.
+6. Independent review decides whether watcher/feature activation is safe.
+7. Ryan alone edits live configuration or activates the watcher route.
 
 ## 7. Hard Stops
 
@@ -169,7 +166,7 @@ visible to readers.
 | Current arc snapshot | `docs/plans/STATUS-codex-jsonl-production-integration.md` |
 | Scratch evidence | `docs/inter-model/VERIFY-jsonl-incremental-scratch-prototype.md` |
 | Live-source canary evidence | `docs/inter-model/VERIFY-jsonl-incremental-live-source-canary.md` |
-| Review handoff | `docs/inter-model/CODEX-2026-09-09-jsonl-production-integration-review.md` |
+| Execute handoff | `docs/inter-model/CODEX-2026-09-10-jsonl-production-integration-execute.md` |
 | Production ingest | `ingest.py` |
 | Kiro adapter | `adapters/kiro_session_jsonl.py` |
 | Production writer/store | `chroma_write_store.py`, `chroma_store.py` |
@@ -194,11 +191,13 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-09 | Codex | Created Arc Codex production-integration architecture, bounded Execute plan, and Kiro review boundary after merged scratch/canary evidence |
 | 2026-09-09 | Codex | Applied Kiro C1–C3 precision review: accurate processed sidecar/source-lock interval, named source-before-export invariant, and explicit new incremental prune trigger |
 | 2026-09-10 | Codex | Finalized C1 to preserve the standalone processed-state critical section after releasing the source-locked apply; C2/C3 remain confirmed |
+| 2026-09-10 | Codex | Recorded Kiro PASS at `84ec51a` and Ryan's bounded Cursor T0–T6 Execute grant; implementation remains not started and operational actions remain gated |
 
 ## TL;DR
 
-- Arc Codex has reviewed scratch and live-source evidence on `main`; only the
-  production Architecture and Execute plan exist on the current branch.
-- Next is final narrow Kiro confirmation of C1, not implementation.
-- Cursor, live indexing, providers, migration, PR creation, and activation all
-  remain separately Ryan-gated.
+- Arc Codex's production Architecture and Execute plan are PASS at `84ec51a`;
+  no production implementation exists yet.
+- Cursor is authorized to execute hermetic T0–T6 and stop at pushed evidence
+  for Kiro.
+- Live indexing, providers, migration, PR creation, bootstrap/canary, and
+  activation remain separately Ryan-gated.

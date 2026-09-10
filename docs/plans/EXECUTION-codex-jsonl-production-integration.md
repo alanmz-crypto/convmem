@@ -6,12 +6,14 @@
 
 **Planning author:** Codex
 
-**Implementation lane:** Cursor, only after Ryan's separate Execute grant
+**Implementation lane:** Cursor; Ryan granted bounded T0–T6 Execute on
+2026-09-10 after Kiro PASS at `84ec51a`
 
-**Review lane:** Kiro must review this plan before implementation
+**Review lane:** Kiro reviewed this plan PASS at `84ec51a` and must independently
+review the exact implementation/evidence tip
 
-**Current authority:** Planning only; do not implement, index, activate, call a
-provider, open a PR, or change a service
+**Current authority:** Cursor may implement T0–T6 under the frozen scope below.
+Do not index, activate, call a provider, open a PR, or change a service.
 
 ## Goal and human consequence
 
@@ -405,9 +407,9 @@ merge, bootstrap/canary authorization, and eventual live activation.
 
 ## TL;DR
 
-- Cursor's later Execute has six serial gates: hermetic isolation, default-off
-  eligibility, source/state, cached transforms, real-Chroma recovery, and
-  compatibility/evidence.
+- Cursor's authorized Execute has six serial gates: hermetic isolation,
+  default-off eligibility, source/state, cached transforms, real-Chroma
+  recovery, and compatibility/evidence.
 - Existing uncheckpointed sources fail without spending; a crash reuses fsynced
   outputs and checkpoint-governed replay/rollback repairs both Chroma
   collections and followers.

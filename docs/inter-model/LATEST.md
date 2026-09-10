@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-09
+**Updated:** 2026-09-10
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -11,15 +11,13 @@ cross-arc snapshot and the linked arc brief below.
 
 - **Arc Codex — Kiro JSONL production integration:** the reviewed scratch,
   isolated real-Chroma, and read-only live-source canary work is merged on
-  `main` through PR #292. Codex has authored a default-off production
-  architecture and bounded Execute plan. Kiro issued `PASS_WITH_CORRECTIONS`
-  at `b68e13a`, then confirmed C2/C3 and requested one final C1 wording change
-  at `65febc8`. Codex now preserves the existing standalone processed-state
-  critical section after the source-locked apply. No production code, live
-  indexing, provider call, watcher action, migration, or activation occurred.
-  Kiro must now confirm only final C1 at the corrected pushed tip using
-  [`CODEX-2026-09-09-jsonl-production-integration-review.md`](CODEX-2026-09-09-jsonl-production-integration-review.md).
-  Ryan alone may accept the plan and later grant Cursor implementation.
+  `main` through PR #292. Kiro reviewed the default-off production
+  Architecture and Execute plan PASS at `84ec51a`, including the final C1
+  standalone processed-state transaction correction. Ryan authorized Cursor's
+  bounded T0–T6 Execute on 2026-09-10. Cursor must start with T0 and stop at
+  pushed hermetic evidence for Kiro; no live indexing, provider call, watcher
+  action, migration, PR, bootstrap/canary, or activation is authorized. Resume
+  from [`CODEX-2026-09-10-jsonl-production-integration-execute.md`](CODEX-2026-09-10-jsonl-production-integration-execute.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
   project and arc state; it is not a Git-ref authority. Read [`STATUS.md`](STATUS.md)
