@@ -20,8 +20,8 @@ from incremental_jsonl_canary import (  # noqa: E402
     CRASH_EXIT,
     CanaryRefused,
     ProductionCanaryBoundary,
-    build_allowlisted_child_env,
     canary_coordinator,
+    canary_writer_scope,
     consume_nonce,
     decode_grant,
     fault_point_for_selector,
@@ -91,7 +91,8 @@ def main() -> int:
                     fault=fault if fault_point else None,
                     counters=guard.counts,
                 )
-                result = coordinator.run()
+                with canary_writer_scope(boundary):
+                    result = coordinator.run()
         if crash:
             os._exit(CRASH_EXIT)
         print(

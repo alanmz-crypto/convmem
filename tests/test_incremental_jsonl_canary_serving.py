@@ -5,8 +5,6 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-import pytest
-
 from incremental_jsonl import IncrementalJsonlCoordinator, frontier_start
 from incremental_jsonl_canary import (
     chunk_starts_for_count,

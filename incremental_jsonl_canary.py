@@ -9,15 +9,11 @@ P1 uses synthetic sources and temporary roots; P2 requires a separate grant.
 
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import json
 import os
-import signal
-import socket
 import stat
 import subprocess
-import tempfile
 import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
@@ -29,15 +25,9 @@ from incremental_jsonl import (
     DURABLE_TRANSITIONS,
     CallCounters,
     IncrementalJsonlCoordinator,
-    frontier_start,
 )
 from incremental_jsonl_isolation import (
-    IsolationBoundary,
-    IsolationViolation,
-    SourceAdvisoryLock,
     create_fresh_root,
-    install_network_denial,
-    install_service_denial,
     known_production_roots,
     terminate_process_group,
 )
@@ -517,10 +507,42 @@ class ProductionCanaryBoundary:
             (root_path / ".convmem-jsonl-canary-root").write_text(token, encoding="ascii")
         forbidden = forbidden_roots or known_production_roots()
         role_map = {item.role: Path(item.path) for item in grant.resources}
+        missing_roles = _RESOURCE_ROLES - set(role_map)
+        if missing_roles:
+            raise CanaryRefused(
+                "canary_boundary_resources",
+                f"missing resource roles: {sorted(missing_roles)}",
+            )
         for role, path in role_map.items():
             _ = role
             if not path.is_absolute():
                 raise CanaryRefused("canary_boundary_path", f"resource must be absolute: {path}")
+            resolved = path.resolve(strict=False)
+            for production_root in forbidden:
+                if _is_relative_to(resolved, production_root) or _is_relative_to(
+                    production_root, resolved
+                ):
+                    raise CanaryRefused(
+                        "canary_boundary_production",
+                        f"resource aliases production: {path}",
+                    )
+        processed = role_map["processed"].resolve(strict=False)
+        export = role_map["export"].resolve(strict=False)
+        source_digest = hashlib.sha256(grant.source.path.encode()).hexdigest()
+        expected_locks = {
+            "writer_lock": processed.parent / "locks/chroma_writer_gate.lock",
+            "source_lock": processed.parent / f"locks/source/{source_digest}.lock",
+            "export_lock": export.with_suffix(export.suffix + ".lock"),
+            "processed_lock": processed.with_name(processed.name + ".lock"),
+        }
+        for role, expected in expected_locks.items():
+            actual = role_map[role].resolve(strict=False)
+            if actual != expected.resolve(strict=False):
+                raise CanaryRefused(
+                    "canary_boundary_lock",
+                    f"{role} must name the lock used by the coordinator",
+                )
+        for path in role_map.values():
             path.parent.mkdir(parents=True, exist_ok=True)
         evidence = Path(grant.evidence_dir)
         evidence.mkdir(parents=True, exist_ok=True)
@@ -543,6 +565,10 @@ class ProductionCanaryBoundary:
             "export": role_map["export"],
             "state": role_map["incremental_state"],
             "dedupe": role_map["dedupe"],
+            "writer_lock": role_map["writer_lock"],
+            "source_lock": role_map["source_lock"],
+            "export_lock": role_map["export_lock"],
+            "processed_lock": role_map["processed_lock"],
             "locks": role_map["writer_lock"].parent,
             "attest": role_map["attestations"],
             "census": role_map["census"],
@@ -796,7 +822,9 @@ def capture_rollback_capsule(
     unrelated_manifest: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Capture a source-scoped rollback capsule with optional unrelated census."""
-    rollback = coordinator._snapshot_before_images()  # noqa: SLF001
+    # The reviewed P1 design deliberately reuses the coordinator's rollback
+    # protocol rather than forking recovery behavior into the canary wrapper.
+    rollback = coordinator._snapshot_before_images()  # pylint: disable=protected-access
     state_bytes: dict[str, str] = {}
     for name, path in coordinator.paths.items():
         if isinstance(path, Path) and path.is_file():
@@ -818,7 +846,10 @@ def restore_rollback_capsule(
     """Restore only the granted source state from a capsule."""
     if capsule.get("source_path") != coordinator.path_key:
         raise CanaryRefused("canary_capsule_source", "capsule source mismatch")
-    coordinator._restore_before_images(dict(capsule["rollback"]))  # noqa: SLF001
+    # See capture_rollback_capsule: recovery remains coordinator-owned.
+    coordinator._restore_before_images(  # pylint: disable=protected-access
+        dict(capsule["rollback"])
+    )
 
 
 def unrelated_sentinel_digest(store, source_paths: list[str]) -> dict[str, Any]:  # noqa: ANN001
@@ -904,8 +935,11 @@ class ServingVisibilityProbe:
         unit_gen = None
         error = None
         try:
-            summaries = self.repo._legacy_store.ids_for_source(SUMMARIES, self.source_path)  # noqa: SLF001
-            units = self.repo._legacy_store.ids_for_source(UNITS, self.source_path)  # noqa: SLF001
+            # The probe intentionally observes the repository's reviewed
+            # backing-store seam; it must not open an independent Chroma path.
+            store = self.repo._legacy_store  # pylint: disable=protected-access
+            summaries = store.ids_for_source(SUMMARIES, self.source_path)
+            units = store.ids_for_source(UNITS, self.source_path)
             summary_gen = "present" if summaries else "empty"
             unit_gen = "present" if units else "empty"
         except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -958,6 +992,24 @@ def canary_coordinator(
         chunk_size=PRODUCTION_CHUNK_SIZE,
         overlap=PRODUCTION_OVERLAP,
     )
+
+
+@contextmanager
+def canary_writer_scope(boundary: ProductionCanaryBoundary) -> Iterator[None]:
+    """Hold the grant-listed outer writer lease for one coordinator run."""
+    from chroma_write_store import production_writer_boundary
+
+    layout = boundary.layout
+    writer_lock = boundary.resolve_mutable(layout["writer_lock"], label="writer lock")
+    attest_dir = boundary.resolve_mutable(layout["attest"], label="writer attestations")
+    census_dir = boundary.resolve_mutable(layout["census"], label="writer census")
+    with production_writer_boundary(
+        lock_path=writer_lock,
+        attest_dir=attest_dir,
+        census_dir=census_dir,
+        entrypoint="incremental_jsonl.apply",
+    ):
+        yield
 
 
 def prove_cli_watcher_unreachable() -> dict[str, str]:
@@ -1055,6 +1107,7 @@ __all__ = [
     "assert_transition_coverage",
     "build_allowlisted_child_env",
     "canary_coordinator",
+    "canary_writer_scope",
     "capture_rollback_capsule",
     "chunk_starts_for_count",
     "consume_nonce",

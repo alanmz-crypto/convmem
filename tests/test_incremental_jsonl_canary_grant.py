@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
-from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from incremental_jsonl_canary import (
-    CanaryGrant,
     CanaryRefused,
+    ProductionCanaryBoundary,
     decode_grant,
     gate0_watcher_probe,
     prove_cli_watcher_unreachable,
@@ -29,7 +27,7 @@ from tests.incremental_jsonl_canary_helpers import (
 )
 
 
-def test_p1_a1_isolation_boundary_still_production_denying(tmp_path: Path) -> None:
+def test_p1_a1_isolation_boundary_still_production_denying() -> None:
     with pytest.raises(Exception):
         IsolationBoundary.from_environment()
 
@@ -78,8 +76,6 @@ def test_p1_a3_nonce_receipt_rejects_second_run(tmp_path: Path) -> None:
 
 
 def test_p1_a4_source_readonly_identity(tmp_path: Path) -> None:
-    from incremental_jsonl_canary import ProductionCanaryBoundary
-
     root = hermetic_root(tmp_path)
     source, source_grant = write_kiro_source(root, 61)
     grant, _digest = build_grant(root, source_grant)
@@ -133,6 +129,23 @@ def test_grant_unknown_field_rejected(tmp_path: Path) -> None:
     os.chmod(path, 0o600)
     with pytest.raises(CanaryRefused):
         decode_grant(path)
+
+
+def test_boundary_rejects_lock_resource_not_used_by_coordinator(tmp_path: Path) -> None:
+    root = hermetic_root(tmp_path)
+    _, source_grant = write_kiro_source(root, 61)
+    grant, _digest = build_grant(root, source_grant)
+    payload = grant.to_payload()
+    for resource in payload["resources"]:
+        if resource["role"] == "processed_lock":
+            resource["path"] = str(root / "unused-processed.lock")
+            break
+    path = root / "bad-lock-grant.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    os.chmod(path, 0o600)
+    loaded = decode_grant(path)
+    with pytest.raises(CanaryRefused, match="canary_boundary_lock"):
+        ProductionCanaryBoundary.from_grant(loaded, root=root)
 
 
 def test_grant_expired_rejected(tmp_path: Path) -> None:

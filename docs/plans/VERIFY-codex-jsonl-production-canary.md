@@ -12,21 +12,25 @@
 
 **Handoff tip reviewed:** `66235b5b26194f9ee74c19e19863ba00737b8ba4`
 
-**Kiro correction:** import `Iterable` in `incremental_jsonl_canary.py` (required
-typing fix for `assert_transition_coverage`).
+**Kiro-reviewed tip:** `7412ce344f5997a454aaab321e7efc6acc5ef1ae`
 
-**Corrected tip:** `a70101f28f567e05b3ee4fc3735ad21d97868014`
-
-**PR:** not opened; Ryan/Kiro exact-tip review is next
+**PR:** #296, opened by the Codex PR Steward after Kiro PASS
 
 ---
 
 ## Disposition
 
-Hermetic P1 canary-harness evidence is complete on the feature branch.
+Hermetic P1 canary-harness evidence is complete on the feature branch. During
+PR CI, the Steward corrected the scoped pylint regression and a sandbox-caught
+hermeticity defect: the worker had omitted the architecture's outer,
+grant-listed writer lease, so replay's final processed-state transaction tried
+the default production writer lock. The correction keeps the outer lease on
+the temporary writer lock for the whole coordinator run and binds the grant's
+four named lock roles to the actual derived lock paths. Production coordinator,
+ingest, watcher, and isolation modules remain unchanged.
 The harness is canary-only, uses synthetic sources and temporary roots only,
 and does not touch live production paths, providers, watchers, or the dedicated
-Kiro session. P2, PR creation, and activation remain separately Ryan-gated.
+Kiro session. P2 and activation remain separately Ryan-gated.
 
 ## What this evidence is
 
@@ -72,7 +76,8 @@ python3 -m pytest \
   -q
 ```
 
-Result: **127 passed** (23 new canary + 104 existing focused regressions).
+Result after the Steward correction: **128 passed** (24 new canary + 104
+existing focused regressions).
 
 Out of scope but attempted once for inventory cross-check:
 `tests/test_serving_index_repository.py` — 3 cases skipped here because this VM
@@ -90,8 +95,8 @@ python3 -m pylint incremental_jsonl_canary.py scripts/run-jsonl-production-canar
   tests/test_incremental_jsonl_canary_*.py
 ```
 
-`compileall`: PASS. `git diff --check`: clean. Scoped pylint on new surfaces:
-**9.69/10** (post-`Iterable` import correction).
+`compileall`: PASS. `git diff --check`: clean. Scoped pylint on the changed P1
+surfaces: **10.00/10**.
 
 ## P1 acceptance mapping
 
@@ -111,6 +116,10 @@ python3 -m pylint incremental_jsonl_canary.py scripts/run-jsonl-production-canar
 | P1-A12 | PASS | 60/10 frontier reuse + zero-call replay |
 | P1-A13 | PASS | CLI/watcher/canary launcher unreachable |
 | P1-A14 | PASS | this VERIFY + reproducible commands |
+
+The P1-A2 boundary evidence now also rejects any grant whose writer, source,
+export, or processed lock role does not resolve to the lock path the reused
+coordinator protocol actually opens.
 
 ## Hermetic proof highlights
 
@@ -134,11 +143,13 @@ git fetch origin feat/2026-09-10-codex-jsonl-production-canary-p1
 git rev-parse origin/feat/2026-09-10-codex-jsonl-production-canary-p1
 ```
 
-Re-run the focused pytest command above from the exact tip. Do not run bare
-`pytest -q` or perform P2/live operations.
+Re-run the focused pytest command above from the PR head. The delta after the
+Kiro-reviewed tip is limited to lint cleanup, the canary-only outer writer
+scope, exact lock-role validation, focused tests, and this current-state
+documentation. Do not run bare `pytest -q` or perform P2/live operations.
 
 ## TL;DR
 
-P1 hermetic canary harness evidence is pushed on
-`feat/2026-09-10-codex-jsonl-production-canary-p1` for exact-tip Kiro review.
-P2, PR creation, and activation remain unauthorized.
+P1 hermetic canary harness is in PR #296. A CI-discovered production-lock
+escape is corrected with the planned outer temporary writer lease; 128 focused
+tests pass and scoped pylint is 10.00/10. P2 and activation remain unauthorized.

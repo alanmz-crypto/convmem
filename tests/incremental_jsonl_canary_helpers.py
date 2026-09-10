@@ -11,14 +11,11 @@ from pathlib import Path
 
 import pytest
 
-from dataclasses import asdict
-
 from incremental_jsonl_canary import (
     CALL_CEILINGS_APPEND,
     CALL_CEILINGS_INITIAL,
     CALL_CEILINGS_WHOLE,
     CANARY_SCHEMA_VERSION,
-    CRASH_EXIT,
     CanaryGrant,
     ProductionCanaryBoundary,
     ProviderGrant,
@@ -26,9 +23,8 @@ from incremental_jsonl_canary import (
     RollbackGrant,
     SourceGrant,
     AppendEnvelope,
-    decode_grant,
 )
-from incremental_jsonl_isolation import create_fresh_root, known_production_roots
+from incremental_jsonl_isolation import create_fresh_root
 from tests.incremental_jsonl_helpers import kiro_record
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -61,19 +57,22 @@ def write_kiro_source(root: Path, count: int, *, name: str = "sess_canary") -> t
     )
 
 
-def build_resource_layout(root: Path) -> dict[str, Path]:
+def build_resource_layout(root: Path, source_path: str) -> dict[str, Path]:
     home = root / "home"
     share = home / ".local/share/convmem"
+    processed = share / "processed.json"
+    export = share / "knowledge_units.jsonl"
+    source_digest = hashlib.sha256(source_path.encode()).hexdigest()
     return {
         "chroma": share / "chroma",
         "incremental_state": share / "incremental-jsonl",
-        "export": share / "knowledge_units.jsonl",
+        "export": export,
         "dedupe": share,
-        "processed": share / "processed.json",
+        "processed": processed,
         "writer_lock": share / "locks/chroma_writer_gate.lock",
-        "source_lock": share / "locks/source.lock",
-        "export_lock": share / "locks/export.lock",
-        "processed_lock": share / "locks/processed.lock",
+        "source_lock": share / f"locks/source/{source_digest}.lock",
+        "export_lock": export.with_suffix(export.suffix + ".lock"),
+        "processed_lock": processed.with_name(processed.name + ".lock"),
         "attestations": share / "writer_attestations",
         "census": share / "writer_census",
     }
@@ -87,11 +86,11 @@ def build_grant(
     code_revision: str = "test-revision",
     expires_at: str = "2099-12-31T23:59:59Z",
 ) -> tuple[CanaryGrant, str]:
-    layout = build_resource_layout(root)
+    layout = build_resource_layout(root, source_grant.path)
     for path in layout.values():
         path.parent.mkdir(parents=True, exist_ok=True)
     overlay = root / "overlay.toml"
-    layout = build_resource_layout(root)
+    layout = build_resource_layout(root, source_grant.path)
     overlay.parent.mkdir(parents=True, exist_ok=True)
     for key in ("chroma", "incremental_state", "export", "dedupe", "processed"):
         layout[key].parent.mkdir(parents=True, exist_ok=True)

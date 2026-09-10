@@ -4,6 +4,10 @@
 Not registered in the normal ConvMem CLI or watcher.
 """
 
+# The reviewed launcher name is intentionally hyphenated, and repository-path
+# bootstrap must precede imports from the repository root.
+# pylint: disable=invalid-name,wrong-import-position
+
 from __future__ import annotations
 
 import argparse

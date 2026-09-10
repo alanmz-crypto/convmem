@@ -1,5 +1,9 @@
 """Network, provider, call-cap, capsule, and fault tests for JSONL production canary."""
 
+# These focused tests intentionally enter the coordinator's governed writer
+# session to verify cross-source sentinels around capsule restoration.
+# pylint: disable=protected-access
+
 from __future__ import annotations
 
 import json
@@ -86,7 +90,7 @@ def test_p1_a8_capsule_round_trip_preserves_sentinels(tmp_path: Path, monkeypatc
             boundary, sentinel, enabled=True
         ).run()
     before = chroma_authority(boundary, primary)
-    with coord_primary._session() as session:  # noqa: SLF001
+    with coord_primary._session() as session:
         manifest = unrelated_sentinel_digest(
             session.store,
             [str(sentinel_a), str(sentinel_b)],
@@ -98,7 +102,7 @@ def test_p1_a8_capsule_round_trip_preserves_sentinels(tmp_path: Path, monkeypatc
     restore_rollback_capsule(coord_primary, capsule)
     after = chroma_authority(boundary, primary)
     assert before == after
-    with coord_primary._session() as session:  # noqa: SLF001
+    with coord_primary._session() as session:
         after_manifest = unrelated_sentinel_digest(
             session.store,
             [str(sentinel_a), str(sentinel_b)],

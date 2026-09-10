@@ -12,10 +12,10 @@ cross-arc snapshot and the linked arc brief below.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator is on `main` via squash-merged PR #293 (`881133d`) and remains
   disabled. The production-canary architecture/plan merged via PR #295
-  (`b23cabad`). Ryan authorized hermetic **P1** Execute; Cursor landed the
-  canary harness on `feat/2026-09-10-codex-jsonl-production-canary-p1` and
-  stopped at pushed evidence — next lane is **Kiro exact-tip review** of P1
-  (`docs/plans/VERIFY-codex-jsonl-production-canary.md`). **P2**, PR creation,
+  (`b23cabad`). P1 harness PR #296 is open after Kiro PASS at `7412ce3`;
+  PR CI exposed a missing outer temporary writer lease, now corrected with
+  exact lock-role validation and 128 focused tests passing. Next lane is green
+  CI plus a narrow Kiro delta recheck before Ryan's merge decision. **P2**,
   indexing, provider calls, watcher action, config change, and activation remain
   unauthorized. Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
