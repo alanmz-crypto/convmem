@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Proof class | code-path static + hermetic (C3 writer gate; not live activation) |
-| `production_chroma_write_session` call sites | **8** |
+| `production_chroma_write_session` call sites | **10** |
 | `open_production_write_store` call sites | **6** |
 | Legacy `open_chroma_for_write` / `chroma_write_session` prod sites | **0** |
 | Sites that must use gated session but bypass | **0** |
@@ -31,20 +31,22 @@ activation against the live corpus is forbidden for this verification slice.
 
 | Site | Via |
 |---|---|
-| `convmem.py:1453` | `production_chroma_write_session` |
-| `convmem.py:375` | `production_chroma_write_session` |
-| `convmem.py:479` | `production_chroma_write_session` |
-| `convmem.py:644` | `production_chroma_write_session` |
-| `ingest.py:478` | `production_chroma_write_session` |
-| `ingest.py:535` | `production_chroma_write_session` |
-| `ingest.py:751` | `production_chroma_write_session` |
+| `convmem.py:387` | `production_chroma_write_session` |
+| `convmem.py:491` | `production_chroma_write_session` |
+| `convmem.py:656` | `production_chroma_write_session` |
+| `convmem.py:1718` | `production_chroma_write_session` |
+| `incremental_jsonl.py:506` | `production_chroma_write_session` |
+| `ingest.py:637` | `production_chroma_write_session` |
+| `ingest.py:1117` | `production_chroma_write_session` |
+| `ingest.py:1155` | `production_chroma_write_session` |
 | `inter_model_index.py:301` | `production_chroma_write_session` |
-| `observe.py:230` | `open_production_write_store` |
+| `scratch_jsonl_prototype/chroma_projection.py:66` | `production_chroma_write_session` |
+| `observe.py:234` | `open_production_write_store` |
 | `propose_decision.py:549` | `open_production_write_store` |
-| `propose_decision.py:582` | `open_production_write_store` |
-| `refine.py:272` | `open_production_write_store` |
-| `refine.py:718` | `open_production_write_store` |
-| `source_purge.py:317` | `open_production_write_store` |
+| `propose_decision.py:581` | `open_production_write_store` |
+| `refine.py:291` | `open_production_write_store` |
+| `refine.py:764` | `open_production_write_store` |
+| `source_purge.py:338` | `open_production_write_store` |
 
 ## allowlisted_direct (not a V3d failure)
 

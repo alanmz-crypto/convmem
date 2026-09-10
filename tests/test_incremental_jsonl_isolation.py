@@ -43,6 +43,7 @@ _STDLIB_ROOTS = {
     "dataclasses",
     "pathlib",
     "typing",
+    "site",
 }
 
 

@@ -14,6 +14,7 @@ import fcntl
 import hashlib
 import json
 import time
+import uuid
 from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -45,7 +46,7 @@ from provenance_binding import (
     provenance_identity,
 )
 
-_SYNTHESIS_FAIL_LOG = Path("~/.local/share/convmem/synthesis_failures.jsonl").expanduser()
+_SYNTHESIS_FAIL_LOG = Path("~/.local/share/convmem/synthesis_failures.jsonl")
 
 # Keep the established ingest.distill patch seam for hermetic tests and other
 # callers while using the response-aware path during ordinary execution.
@@ -80,10 +81,60 @@ class _ChunkBuildResult:
     unit_ids: set[str] = field(default_factory=set)
 
 
+@dataclass
+class ChunkArtifact:
+    """Immutable one-chunk transform output used by both legacy and incremental commit."""
+
+    complete: bool
+    degraded: bool
+    start_offset: int
+    end_offset: int
+    doc_id: str
+    summary: str
+    summary_embedding: list
+    metadata: dict
+    units_to_add: list
+    input_digest: str
+    distill_status: str
+
+
+def _uuid4_from_seed(seed: str) -> uuid.UUID:
+    """Return a RFC 4122 UUID4 whose bytes are a SHA-256 of ``seed``.
+
+    Provenance minting requires UUID4. Clean-rebuild equality also requires the
+    same inputs to mint the same assertion identity, so ingest derives that
+    UUID4 from the chunk/unit locator instead of drawing a random value.
+    """
+    digest = hashlib.sha256(f"convmem-ingest-assertion-v1:{seed}".encode("utf-8")).digest()[:16]
+    data = bytearray(digest)
+    data[6] = (data[6] & 0x0F) | 0x40
+    data[8] = (data[8] & 0x3F) | 0x80
+    return uuid.UUID(bytes=bytes(data))
+
+
+@contextmanager
+def _mint_assertion_from_seed(seed: str):
+    """Scope a content-addressed UUID4 over one provenance mint."""
+    attempt = 0
+    original = uuid.uuid4
+
+    def _next() -> uuid.UUID:
+        nonlocal attempt
+        attempt += 1
+        return _uuid4_from_seed(f"{seed}:{attempt}")
+
+    uuid.uuid4 = _next  # type: ignore[method-assign]
+    try:
+        yield
+    finally:
+        uuid.uuid4 = original
+
+
 def _log_chunk_failure(chunk_id: int, stage: str, session_file: str, error: Exception) -> None:
     """Append one JSONL line per chunk failure. Non-blocking — never raises."""  # pylint: disable=duplicate-code
     try:
-        _SYNTHESIS_FAIL_LOG.parent.mkdir(parents=True, exist_ok=True)
+        log_path = _SYNTHESIS_FAIL_LOG.expanduser()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
         entry = {
             "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "error_type": type(error).__name__,
@@ -92,7 +143,7 @@ def _log_chunk_failure(chunk_id: int, stage: str, session_file: str, error: Exce
             "stage": stage,
             "session_file": session_file,
         }
-        with _SYNTHESIS_FAIL_LOG.open("a", encoding="utf-8") as f:
+        with log_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
     except Exception:  # pylint: disable=broad-exception-caught
         pass  # Telemetry must never break ingest
@@ -566,6 +617,9 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
     units_to_add: list,
     verbose: bool,
     written_unit_ids: set[str] | None = None,
+    write_export: bool = True,
+    persist_dedupe: bool = True,
+    dedupe_events: list | None = None,
 ) -> tuple[bool, int, int, int, int]:
     """Source/export-locked batch write with ingestion dedup statistics."""
     from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
@@ -617,7 +671,7 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
                     projection_unit["id"], doc, unit_embedding, projection_meta
                 )
                 written_projection_ids.add(projection_unit["id"])
-                if units_export:
+                if units_export and write_export:
                     units_export.parent.mkdir(parents=True, exist_ok=True)
                     with export_flock(cfg):
                         with open(units_export, "a", encoding="utf-8") as uf:
@@ -625,7 +679,15 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
                 n_units += 1
             if written_unit_ids is not None:
                 written_unit_ids.update(written_projection_ids)
-        dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
+        if dedupe_events is not None:
+            dedupe_events.append(dedupe)
+        if persist_dedupe:
+            dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
+        else:
+            dedupe_stats = {
+                "exact_suppressed": len(dedupe.exact_suppressions),
+                "semantic_candidates_queued": len(dedupe.semantic_candidates),
+            }
         if verbose:
             for row in dedupe.exact_suppressions:
                 print(
@@ -689,6 +751,290 @@ def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-loca
     return True, n_units, unit_ids
 
 
+def _bump_counter(counters: object | None, name: str) -> None:
+    if counters is None:
+        return
+    setattr(counters, name, int(getattr(counters, name, 0)) + 1)
+
+
+def build_chunk_artifact(  # pylint: disable=too-many-arguments,too-many-locals
+    *,
+    chunk: dict,
+    path: str,
+    path_key: str,
+    models: dict,
+    tool: str,
+    chunk_size: int,
+    overlap: int,
+    min_confidence: float,
+    verbose: bool,
+    counters: object | None = None,
+    retry_sleep: bool = True,
+) -> ChunkArtifact | None:
+    """Transform one chunk into a complete artifact. Performs no Chroma writes."""
+    text = render_chunk(chunk["messages"])
+    if not text.strip():
+        return None
+    chunk_date = _chunk_date(chunk["messages"])
+    summary = ""
+    summary_embedding: list = []
+    for attempt in range(3):
+        try:
+            _bump_counter(counters, "summarize")
+            summary = summarize(
+                text,
+                model=models["summarize_model"],
+                ollama_host=models["ollama_host"],
+                deepseek_base_url=models.get(
+                    "deepseek_base_url", "https://api.deepseek.com"
+                ),
+            )
+            _bump_counter(counters, "summary_embed")
+            summary_embedding = ollama_embed(
+                summary,
+                model=models["embed_model"],
+                host=models["ollama_host"],
+            )
+            break
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            if verbose:
+                print(f"    [warn] chunk {chunk['start_offset']} summarize failed: {exc}")
+            if attempt == 2:
+                _log_chunk_failure(chunk["start_offset"], "summarize", path, exc)
+            if attempt < 2 and retry_sleep:
+                time.sleep(5 if attempt == 0 else 10)
+    else:
+        return None
+
+    distill_failed = False
+    distill_response = ""
+    raw_units: list = []
+    for attempt in range(3):
+        try:
+            _bump_counter(counters, "distill")
+            raw_units, distill_response = _distill_with_provenance(
+                text,
+                model=models["distill_model"],
+                ollama_host=models["ollama_host"],
+                deepseek_base_url=models.get(
+                    "deepseek_base_url", "https://api.deepseek.com"
+                ),
+            )
+            break
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            if verbose:
+                print(f"    [warn] chunk {chunk['start_offset']} distill failed: {exc}")
+            if attempt == 2:
+                _log_chunk_failure(chunk["start_offset"], "distill", path, exc)
+            if attempt < 2 and retry_sleep:
+                time.sleep(5 if attempt == 0 else 10)
+    else:
+        raw_units = []
+        distill_failed = True
+    distill_status = (
+        "degraded" if distill_failed else "empty" if not raw_units else "done"
+    )
+
+    session_meta = _chunk_session_meta(chunk["messages"], path, tool=tool)
+    summary_binding = resolve_generation_binding(models["summarize_model"])
+    distill_binding = resolve_generation_binding(models["distill_model"])
+    message_views = render_chunk_message_views(chunk["messages"])
+    selection_parameters = {
+        "chunk_start": chunk["start_offset"],
+        "chunk_end": chunk["end_offset"],
+        "chunk_size": chunk_size,
+        "overlap": overlap,
+        "message_order": list(range(chunk["start_offset"], chunk["end_offset"] + 1)),
+        "rendered_chunk_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "summary_consumed_view_sha256": hashlib.sha256(
+            summarize_consumed_view(text).encode("utf-8")
+        ).hexdigest(),
+        "distill_consumed_view_sha256": hashlib.sha256(
+            distill_consumed_view(text).encode("utf-8")
+        ).hexdigest(),
+        "summary_provider": summary_binding,
+        "distill_provider": distill_binding,
+    }
+    provider_payload = {
+        "summary": {
+            **summary_binding,
+            "temperature": 0.2,
+            "prompt": summarize_prompt(text),
+            "response_sha256": hashlib.sha256(summary.encode("utf-8")).hexdigest(),
+        },
+        "distill": {
+            **distill_binding,
+            "temperature": 0.2,
+            "prompt": distill_prompt(text),
+            "response_sha256": hashlib.sha256(
+                distill_response.encode("utf-8")
+            ).hexdigest(),
+        },
+    }
+    recipe_spec = {
+        "kind": "normal-ingest-distill-v1",
+        "summary_prompt_version": "locked-summarize-prompt-v1",
+        "distill_prompt_version": "locked-distill-prompt-v1",
+        "summary_temperature": 0.2,
+        "distill_temperature": 0.2,
+        "chunk_size": chunk_size,
+        "overlap": overlap,
+        "summary_max_chars": 8000,
+        "distill_max_chars": 8000,
+    }
+    units_to_add: list[tuple] = []
+    embed_failed = False
+    for unit_idx, raw in enumerate(raw_units):
+        unit = normalize_unit(
+            raw,
+            source_path=path_key,
+            tool=tool,
+            date=chunk_date,
+            min_confidence=min_confidence,
+            author_model=models["distill_model"],
+            start_offset=chunk["start_offset"],
+            unit_index=unit_idx,
+        )
+        if unit is None:
+            continue
+        unit["source_type"] = session_meta.get("source_type", "")
+        output_locator = (
+            f"{path_key}#chunk:{chunk['start_offset']}:unit:{unit_idx}"
+        )
+        assertion_seed = (
+            f"{output_locator}|"
+            f"{selection_parameters['rendered_chunk_sha256']}|"
+            f"{hashlib.sha256(json.dumps(raw, sort_keys=True, default=str).encode()).hexdigest()}"
+        )
+        with _mint_assertion_from_seed(assertion_seed):
+            envelope = build_ingest_envelope(
+                records=chunk["messages"],
+                consumed_views=message_views,
+                source_identity=path_key,
+                locator_prefix=f"chunk:{chunk['start_offset']}",
+                source_type=session_meta.get("source_type"),
+                transformer_class="distill",
+                transformer_identity=str(distill_binding["resolved_model"]),
+                transformer_version="distill-v1",
+                derivation_kind="distill",
+                producer_class="agent",
+                producer_assurance="claimed",
+                selection_parameters=selection_parameters,
+                provider_payload=provider_payload,
+                recipe_id="normal-ingest-distill-v1",
+                recipe_spec=recipe_spec,
+                output_locator=output_locator,
+                output_value=raw,
+            )
+        unit = attach_unit_provenance(unit, envelope)
+        doc = unit["summary"] + " " + " ".join(unit["keywords"])
+        try:
+            _bump_counter(counters, "unit_embed")
+            unit_embedding = ollama_embed(
+                doc,
+                model=models["embed_model"],
+                host=models["ollama_host"],
+            )
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            if verbose:
+                print(f"    [warn] unit embed failed: {exc}")
+            _log_chunk_failure(chunk["start_offset"], "embed", path, exc)
+            embed_failed = True
+            continue
+        unit_meta = {
+            "id": unit["id"],
+            "type": unit["type"],
+            "title": unit["title"],
+            "source_path": unit["source_path"],
+            "confidence": unit["confidence"],
+            "timestamp": unit["timestamp"] or "",
+            "tool": unit["tool"],
+            "start_offset": chunk["start_offset"],
+            "domain": unit["domain"],
+            "author_model": unit["author_model"],
+            "verifier_model": unit["verifier_model"] or "",
+            **projection_metadata(unit),
+            **session_meta,
+        }
+        units_to_add.append((unit, doc, unit_embedding, unit_meta))
+
+    doc_id = hashlib.sha256(f"{path_key}:{chunk['start_offset']}".encode()).hexdigest()
+    metadata = {
+        "source_path": path_key,
+        "tool": tool,
+        "date": _chunk_date(chunk["messages"]),
+        "message_count": len(chunk["messages"]),
+        "start_offset": chunk["start_offset"],
+        "end_offset": chunk["end_offset"],
+        "distill_status": distill_status,
+        **session_meta,
+    }
+    input_digest = hashlib.sha256(
+        json.dumps(
+            {
+                "start": chunk["start_offset"],
+                "end": chunk["end_offset"],
+                "text": text,
+                "messages": chunk["messages"],
+            },
+            sort_keys=True,
+            default=str,
+        ).encode("utf-8")
+    ).hexdigest()
+    complete = not distill_failed and not embed_failed
+    return ChunkArtifact(
+        complete=complete,
+        degraded=distill_failed or embed_failed,
+        start_offset=chunk["start_offset"],
+        end_offset=chunk["end_offset"],
+        doc_id=doc_id,
+        summary=summary,
+        summary_embedding=list(summary_embedding),
+        metadata=metadata,
+        units_to_add=units_to_add,
+        input_digest=input_digest,
+        distill_status=distill_status,
+    )
+
+
+def commit_chunk_artifact(  # pylint: disable=too-many-arguments
+    artifact: ChunkArtifact,
+    *,
+    cfg: dict,
+    idx: dict,
+    path_key: str,
+    path: str,
+    file_hash: str,
+    chroma_dir: str,
+    units_export: Path | None,
+    verbose: bool,
+    written_unit_ids: set[str] | None = None,
+    write_export: bool = True,
+    persist_dedupe: bool = True,
+    dedupe_events: list | None = None,
+) -> tuple[bool, int, int, int, int]:
+    """Commit one built artifact. Performs no model/provider work."""
+    return _commit_chunk_to_stores(
+        cfg=cfg,
+        idx=idx,
+        path_key=path_key,
+        path=path,
+        file_hash=file_hash,
+        chroma_dir=chroma_dir,
+        units_export=units_export,
+        doc_id=artifact.doc_id,
+        summary=artifact.summary,
+        summary_embedding=artifact.summary_embedding,
+        metadata=artifact.metadata,
+        units_to_add=artifact.units_to_add,
+        verbose=verbose,
+        written_unit_ids=written_unit_ids,
+        write_export=write_export,
+        persist_dedupe=persist_dedupe,
+        dedupe_events=dedupe_events,
+    )
+
+
 def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
     *,
     cfg: dict,
@@ -712,196 +1058,27 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
         print(f"  [index] {Path(path).name}  ({len(messages)} msgs, {len(chunks)} chunks)")
 
     result = _ChunkBuildResult()
-    chunk_date = ""
     for ch in chunks:
-        text = render_chunk(ch["messages"])
-        if not text.strip():
-            continue
-        chunk_date = _chunk_date(ch["messages"]) or chunk_date
-        for attempt in range(3):
-            try:
-                summary = summarize(
-                    text,
-                    model=models["summarize_model"],
-                    ollama_host=models["ollama_host"],
-                    deepseek_base_url=models.get(
-                        "deepseek_base_url", "https://api.deepseek.com"
-                    ),
-                )
-                summary_embedding = ollama_embed(
-                    summary,
-                    model=models["embed_model"],
-                    host=models["ollama_host"],
-                )
-                break
-            except Exception as e:
-                if verbose:
-                    print(f"    [warn] chunk {ch['start_offset']} summarize failed: {e}")
-                if attempt == 2:
-                    _log_chunk_failure(ch['start_offset'], "summarize", path, e)
-                if attempt < 2:
-                    time.sleep(5 if attempt == 0 else 10)
-        else:
-            result.completed = False
-            continue
-
-        distill_failed = False
-        distill_response = ""
-        for attempt in range(3):
-            try:
-                raw_units, distill_response = _distill_with_provenance(
-                    text,
-                    model=models["distill_model"],
-                    ollama_host=models["ollama_host"],
-                    deepseek_base_url=models.get(
-                        "deepseek_base_url", "https://api.deepseek.com"
-                    ),
-                )
-                break
-            except Exception as e:
-                if verbose:
-                    print(f"    [warn] chunk {ch['start_offset']} distill failed: {e}")
-                if attempt == 2:
-                    _log_chunk_failure(ch['start_offset'], "distill", path, e)
-                if attempt < 2:
-                    time.sleep(5 if attempt == 0 else 10)
-        else:
-            raw_units = []
-            distill_failed = True
-            result.completed = False
-        distill_status = (
-            "degraded" if distill_failed else "empty" if not raw_units else "done"
+        artifact = build_chunk_artifact(
+            chunk=ch,
+            path=path,
+            path_key=path_key,
+            models=models,
+            tool=tool,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            min_confidence=min_confidence,
+            verbose=verbose,
         )
-
-        session_meta = _chunk_session_meta(ch["messages"], path, tool=tool)
-        summary_binding = resolve_generation_binding(models["summarize_model"])
-        distill_binding = resolve_generation_binding(models["distill_model"])
-        message_views = render_chunk_message_views(ch["messages"])
-        selection_parameters = {
-            "chunk_start": ch["start_offset"],
-            "chunk_end": ch["end_offset"],
-            "chunk_size": chunk_size,
-            "overlap": overlap,
-            "message_order": list(range(ch["start_offset"], ch["end_offset"] + 1)),
-            "rendered_chunk_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
-            "summary_consumed_view_sha256": hashlib.sha256(
-                summarize_consumed_view(text).encode("utf-8")
-            ).hexdigest(),
-            "distill_consumed_view_sha256": hashlib.sha256(
-                distill_consumed_view(text).encode("utf-8")
-            ).hexdigest(),
-            "summary_provider": summary_binding,
-            "distill_provider": distill_binding,
-        }
-        provider_payload = {
-            "summary": {
-                **summary_binding,
-                "temperature": 0.2,
-                "prompt": summarize_prompt(text),
-                "response_sha256": hashlib.sha256(summary.encode("utf-8")).hexdigest(),
-            },
-            "distill": {
-                **distill_binding,
-                "temperature": 0.2,
-                "prompt": distill_prompt(text),
-                "response_sha256": hashlib.sha256(
-                    distill_response.encode("utf-8")
-                ).hexdigest(),
-            },
-        }
-        recipe_spec = {
-            "kind": "normal-ingest-distill-v1",
-            "summary_prompt_version": "locked-summarize-prompt-v1",
-            "distill_prompt_version": "locked-distill-prompt-v1",
-            "summary_temperature": 0.2,
-            "distill_temperature": 0.2,
-            "chunk_size": chunk_size,
-            "overlap": overlap,
-            "summary_max_chars": 8000,
-            "distill_max_chars": 8000,
-        }
-        units_to_add: list[tuple] = []
-        for unit_idx, raw in enumerate(raw_units):
-            unit = normalize_unit(
-                raw,
-                source_path=path_key,
-                tool=tool,
-                date=chunk_date,
-                min_confidence=min_confidence,
-                author_model=models["distill_model"],
-                start_offset=ch["start_offset"],
-                unit_index=unit_idx,
-            )
-            if unit is None:
-                continue
-            unit["source_type"] = session_meta.get("source_type", "")
-            envelope = build_ingest_envelope(
-                records=ch["messages"],
-                consumed_views=message_views,
-                source_identity=path_key,
-                locator_prefix=f"chunk:{ch['start_offset']}",
-                source_type=session_meta.get("source_type"),
-                transformer_class="distill",
-                transformer_identity=str(distill_binding["resolved_model"]),
-                transformer_version="distill-v1",
-                derivation_kind="distill",
-                producer_class="agent",
-                producer_assurance="claimed",
-                selection_parameters=selection_parameters,
-                provider_payload=provider_payload,
-                recipe_id="normal-ingest-distill-v1",
-                recipe_spec=recipe_spec,
-                output_locator=f"{path_key}#chunk:{ch['start_offset']}:unit:{unit_idx}",
-                output_value=raw,
-            )
-            unit = attach_unit_provenance(unit, envelope)
-            doc = unit["summary"] + " " + " ".join(unit["keywords"])
-            try:
-                unit_embedding = ollama_embed(
-                    doc,
-                    model=models["embed_model"],
-                    host=models["ollama_host"],
-                )
-            except Exception as e:
-                if verbose:
-                    print(f"    [warn] unit embed failed: {e}")
-                _log_chunk_failure(ch['start_offset'], "embed", path, e)
-                result.completed = False
-                continue
-            unit_meta = {
-                "id": unit["id"],
-                "type": unit["type"],
-                "title": unit["title"],
-                "source_path": unit["source_path"],
-                "confidence": unit["confidence"],
-                "timestamp": unit["timestamp"] or "",
-                "tool": unit["tool"],
-                "start_offset": ch["start_offset"],
-                "domain": unit["domain"],
-                "author_model": unit["author_model"],
-                "verifier_model": unit["verifier_model"] or "",
-                **projection_metadata(unit),
-                **session_meta,
-            }
-            units_to_add.append((unit, doc, unit_embedding, unit_meta))
-
-        doc_id = hashlib.sha256(
-            f"{path_key}:{ch['start_offset']}".encode()
-        ).hexdigest()
-        metadata = {
-            "source_path": path_key,
-            "tool": tool,
-            "date": _chunk_date(ch["messages"]),
-            "message_count": len(ch["messages"]),
-            "start_offset": ch["start_offset"],
-            "end_offset": ch["end_offset"],
-            "distill_status": distill_status,
-            **session_meta,
-        }
-        # Batch write only — parse/LLM/embed above hold no source/export locks (N17).
+        if artifact is None:
+            result.completed = False
+            continue
+        if not artifact.complete:
+            result.completed = False
         chunk_unit_ids: set[str] = set()
         try:
-            ok, d_idx, d_units, d_exact, d_semantic = _commit_chunk_to_stores(
+            ok, d_idx, d_units, d_exact, d_semantic = commit_chunk_artifact(
+                artifact,
                 cfg=cfg,
                 idx=idx,
                 path_key=path_key,
@@ -909,24 +1086,19 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
                 file_hash=file_hash,
                 chroma_dir=chroma_dir,
                 units_export=units_export if units_export else None,
-                doc_id=doc_id,
-                summary=summary,
-                summary_embedding=summary_embedding,
-                metadata=metadata,
-                units_to_add=units_to_add,
                 verbose=verbose,
                 written_unit_ids=chunk_unit_ids,
             )
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
             if verbose:
                 print(f"    [warn] chunk {ch['start_offset']} write failed: {exc}")
-            _log_chunk_failure(ch['start_offset'], "write", path, exc)
+            _log_chunk_failure(ch["start_offset"], "write", path, exc)
             result.completed = False
             continue
         if not ok:
             result.completed = False
             return result
-        result.summary_ids.add(doc_id)
+        result.summary_ids.add(artifact.doc_id)
         result.unit_ids.update(chunk_unit_ids)
         result.chunks += d_idx
         result.units += d_units
@@ -1077,6 +1249,29 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     fmt = detect_format(path)
     tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
     chroma_dir = idx["chroma_dir"]
+
+    from incremental_jsonl import maybe_route_incremental
+
+    routed = maybe_route_incremental(
+        cfg=cfg,
+        idx=idx,
+        path=path,
+        path_key=path_key,
+        file_hash=file_hash,
+        processed=processed,
+        models=models,
+        tool=tool,
+        units_export=units_export,
+        chunk_size=chunk_size,
+        overlap=overlap,
+        min_confidence=min_confidence,
+        force_reindex=force_reindex,
+        supersede_on_reindex=supersede_on_reindex,
+        verbose=verbose,
+        detected_format=fmt,
+    )
+    if routed is not None:
+        return routed
 
     snapshot = (
         _snapshot_reindex_rows(path=path, path_key=path_key)

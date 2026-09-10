@@ -211,6 +211,16 @@ _STATIC_ROUTES: tuple[dict[str, Any], ...] = (
         "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
         "coverage_status": "gated",
     },
+    {
+        "route_id": "incremental_jsonl_kiro",
+        "category": "chroma_writers",
+        "entrypoint": "incremental_jsonl.py:IncrementalJsonlCoordinator",
+        "mutation_surfaces": ("chroma", "export", "processed"),
+        "gate_path": "~/.local/share/convmem/locks/chroma_writer_gate.lock",
+        "gate_protocol": WRITER_GATE_PROTOCOL_VERSION,
+        "coverage_status": "gated",
+        "governed_mutation_sinks": (),
+    },
 )
 
 

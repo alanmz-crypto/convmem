@@ -49,7 +49,17 @@ ISOLATION_ROOT_ENV = "CONVMEM_INCREMENTAL_ROOT"
 ISOLATION_TOKEN_ENV = "CONVMEM_INCREMENTAL_TOKEN"
 ISOLATION_MODE_ENV = "CONVMEM_INCREMENTAL_MODE"
 ISOLATION_FORBIDDEN_ENV = "CONVMEM_INCREMENTAL_FORBIDDEN"
+ISOLATION_SITE_ENV = "CONVMEM_INCREMENTAL_SITE"
 ISOLATION_MODE = "jsonl-production-integration-v1"
+ISOLATION_ENV_ALLOWLIST = frozenset(
+    {
+        ISOLATION_ROOT_ENV,
+        ISOLATION_TOKEN_ENV,
+        ISOLATION_MODE_ENV,
+        ISOLATION_FORBIDDEN_ENV,
+        ISOLATION_SITE_ENV,
+    }
+)
 _WATCH_MARKERS = (
     "convmem-watch",
     "convmem_watch",
@@ -126,11 +136,11 @@ def write_hermetic_config(root: Path) -> Path:
         "chroma",
         "state",
         "locks",
-        "attest",
-        "census",
         "sources",
     ):
         layout[key].mkdir(parents=True, exist_ok=True)
+        if key in {"locks", "state", "chroma"}:
+            os.chmod(layout[key], 0o700)
     layout["processed"].parent.mkdir(parents=True, exist_ok=True)
     layout["export"].parent.mkdir(parents=True, exist_ok=True)
     layout["user_config"].parent.mkdir(parents=True, exist_ok=True)
@@ -172,7 +182,7 @@ def sanitized_worker_env(
     layout = _layout(root)
     write_hermetic_config(root)
     forbidden = forbidden_roots or known_production_roots()
-    return {
+    env = {
         "PATH": os.defpath,
         "HOME": str(layout["home"]),
         "XDG_CONFIG_HOME": str(layout["xdg_config"]),
@@ -188,6 +198,17 @@ def sanitized_worker_env(
             [str(path.expanduser()) for path in forbidden]
         ),
     }
+    # python -I ignores PYTHONPATH and user site. Pass the host third-party
+    # install so crash workers can import Chroma without reading production state.
+    try:
+        import site as _site
+
+        user_site = Path(_site.getusersitepackages())
+    except Exception:
+        user_site = Path()
+    if user_site.is_dir():
+        env[ISOLATION_SITE_ENV] = str(user_site)
+    return env
 
 
 def _has_symlink_component(path: Path) -> bool:
@@ -239,7 +260,11 @@ class IsolationBoundary:
             if os.environ.get(name):
                 raise IsolationViolation(f"production configuration override set: {name}")
         for name in os.environ:
-            if name in {ISOLATION_TOKEN_ENV, ISOLATION_FORBIDDEN_ENV}:
+            if name in {
+                ISOLATION_TOKEN_ENV,
+                ISOLATION_FORBIDDEN_ENV,
+                ISOLATION_SITE_ENV,
+            }:
                 continue
             if any(marker in name.upper() for marker in _CREDENTIAL_MARKERS):
                 raise IsolationViolation(f"credential inherited by worker: {name}")

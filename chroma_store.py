@@ -653,6 +653,53 @@ class ChromaStore:
             col.delete(ids=list(selected))
         return len(selected)
 
+    def snapshot_source_rows(
+        self, collection_name: str, source_path: str
+    ) -> list[dict]:
+        """Return exact source-scoped rows including documents and embeddings."""
+        col = self._collection(collection_name)
+        res = col.get(
+            where={"source_path": source_path},
+            include=["documents", "embeddings", "metadatas"],
+        )
+        ids = res.get("ids") or []
+        docs = res.get("documents") or []
+        metas = res.get("metadatas") or []
+        embs = res.get("embeddings")
+        if embs is None:
+            embs = []
+        rows: list[dict] = []
+        for index, row_id in enumerate(ids):
+            embedding = embs[index] if index < len(embs) else []
+            if embedding is None:
+                embedding = []
+            if hasattr(embedding, "tolist"):
+                embedding = embedding.tolist()
+            metadata = dict(metas[index] or {}) if index < len(metas) else {}
+            rows.append(
+                {
+                    "id": row_id,
+                    "document": docs[index] if index < len(docs) else "",
+                    "embedding": list(embedding),
+                    "metadata": metadata,
+                    "collection": collection_name,
+                }
+            )
+        return rows
+
+    def restore_source_rows(self, collection_name: str, rows: list[dict]) -> None:
+        """Restore exact before-image rows through the governed writer path."""
+        self._require_authorized_writer()
+        for row in rows:
+            embedding = list(row.get("embedding") or [])
+            metadata = dict(row.get("metadata") or {})
+            document = str(row.get("document") or "")
+            row_id = str(row["id"])
+            if collection_name == SUMMARIES:
+                self.add_summary(row_id, document, embedding, metadata)
+            else:
+                self.add_unit(row_id, document, embedding, metadata)
+
     @staticmethod
     def _flatten(res: dict) -> list[dict]:
         out = []

@@ -8,9 +8,10 @@
     "convmem.py:491",
     "convmem.py:656",
     "convmem.py:1718",
-    "ingest.py:583",
-    "ingest.py:945",
-    "ingest.py:983",
+    "incremental_jsonl.py:506",
+    "ingest.py:637",
+    "ingest.py:1117",
+    "ingest.py:1155",
     "inter_model_index.py:301",
     "scratch_jsonl_prototype/chroma_projection.py:66"
   ],
@@ -173,7 +174,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 585,
+      "line": 637,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -182,7 +183,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 947,
+      "line": 1117,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "reads_reindex_snapshot_under_writer_gate",
       "required_routing": "production_chroma_write_session",
@@ -191,12 +192,22 @@
     },
     {
       "file": "ingest.py",
-      "line": 985,
+      "line": 1155,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
       "uses_open_chroma_for_write": false,
       "uses_production_session": true
+    },
+    {
+      "file": "incremental_jsonl.py",
+      "line": 506,
+      "snippet": "return production_chroma_write_session(",
+      "class": "mutates_units",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true,
+      "note": "Default-off Kiro JSONL incremental apply; hermetic isolated config and paths only in this Execute."
     },
     {
       "file": "inter_model_index.py",

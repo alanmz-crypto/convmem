@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -15,12 +16,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from incremental_jsonl_isolation import (  # noqa: E402
+    ISOLATION_ENV_ALLOWLIST,
     IsolationBoundary,
     IsolationViolation,
     SourceAdvisoryLock,
     install_network_denial,
     install_service_denial,
 )
+
+_SITE = os.environ.get("CONVMEM_INCREMENTAL_SITE", "")
+if _SITE:
+    sys.path.append(_SITE)
 
 
 def _fd_targets() -> list[str]:
@@ -86,13 +92,7 @@ def main() -> int:
                         name
                         for name in os.environ
                         if name.startswith("CONVMEM_")
-                        and name
-                        not in {
-                            "CONVMEM_INCREMENTAL_ROOT",
-                            "CONVMEM_INCREMENTAL_TOKEN",
-                            "CONVMEM_INCREMENTAL_MODE",
-                            "CONVMEM_INCREMENTAL_FORBIDDEN",
-                        }
+                        and name not in ISOLATION_ENV_ALLOWLIST
                     ],
                 }
             ),
@@ -112,11 +112,35 @@ def main() -> int:
         )
         os._exit(73)
     if command == "run":
+        import ingest  # noqa: PLC0415
         from incremental_jsonl import IncrementalJsonlCoordinator  # noqa: PLC0415
 
         source = boundary.resolve_mutable(sys.argv[2], label="source fixture")
         enabled = sys.argv[3] == "1"
         fault_point = sys.argv[4] if len(sys.argv) > 4 else ""
+
+        def fake_summarize(text, **_kwargs):
+            return f"summary:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
+
+        def fake_embed(text, **_kwargs):
+            digest = hashlib.sha256(text.encode()).digest()
+            return [((digest[index] / 255.0) * 2.0) - 1.0 for index in range(8)]
+
+        def fake_distill(text, **_kwargs):
+            return [
+                {
+                    "type": "explanation",
+                    "title": f"Isolated unit {text[:12]}",
+                    "summary": "Reusable isolated knowledge unit for hermetic tests.",
+                    "keywords": ["kiro", "jsonl", "incremental"],
+                    "confidence": 0.95,
+                    "domain": "general",
+                }
+            ]
+
+        ingest.summarize = fake_summarize
+        ingest.ollama_embed = fake_embed
+        ingest.distill = fake_distill
 
         def abrupt(point: str) -> None:
             if point == fault_point:
@@ -129,7 +153,23 @@ def main() -> int:
             fault=abrupt,
         )
         result = coordinator.run()
-        print(json.dumps(result.to_dict(), sort_keys=True, default=str), flush=True)
+        checkpoint = None
+        try:
+            checkpoint = coordinator.checkpoint()
+        except Exception:  # noqa: BLE001
+            checkpoint = None
+        print(
+            json.dumps(
+                {
+                    "run": result.to_dict(),
+                    "checkpoint": checkpoint,
+                    "counters": result.counters.as_dict(),
+                },
+                sort_keys=True,
+                default=str,
+            ),
+            flush=True,
+        )
         return 0
     raise ValueError(f"unknown command: {command}")
 
