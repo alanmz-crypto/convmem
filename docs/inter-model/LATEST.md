@@ -10,13 +10,15 @@ cross-arc snapshot and the linked arc brief below.
 ## Current routing
 
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
-  implementation is on `main` via squash-merged PR #293 (`881133d`), preserving
-  Kiro's exact-tip PASS at `17d7e23`. The feature remains disabled. Resume from
-  [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md):
-  Ryan must separately choose the exact source and bootstrap/cost boundary
-  before Codex may plan a production-path canary. No live indexing, provider
-  call, watcher action, migration, bootstrap, canary, or activation is
-  authorized.
+  implementation is on `main` via squash-merged PR #293 (`881133d`) and remains
+  disabled. Codex has now drafted the separate production-canary
+  [Architecture](../plans/ARCHITECTURE-codex-jsonl-production-canary.md) and
+  [Execution plan](../plans/EXECUTION-codex-jsonl-production-canary.md) around
+  one dedicated, previously unindexed Kiro source. Next lane is exact-tip Kiro
+  design review. P1 harness implementation and P2 live execution are separate,
+  still-unauthorized Ryan grants; no indexing, provider call, watcher action,
+  config change, migration, canary, or activation is authorized. Resume from
+  [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
   project and arc state; it is not a Git-ref authority. Read [`STATUS.md`](STATUS.md)
