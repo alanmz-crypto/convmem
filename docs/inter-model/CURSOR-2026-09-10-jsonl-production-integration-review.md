@@ -20,7 +20,7 @@ plan PASS at `84ec51a`
 | **State** | `IN_REVIEW` — hermetic T0–T6 pushed; Kiro exact-tip review next |
 | **Branch** | `feat/2026-09-10-codex-jsonl-production-integration` |
 | **Implementation SHA** | `5341bb11e274ed1950db11a6b8bc45d5047ef9b6` |
-| **Evidence tip** | branch HEAD after the T6 docs/stamp commits; confirm with `git rev-parse HEAD` |
+| **Evidence tip** | `4dfe42eb484808bbbdb2fbe974713fc18ba51e84` (VERIFY docs); confirm branch HEAD with `git rev-parse origin/feat/2026-09-10-codex-jsonl-production-integration` |
 | **Push status** | pushed to origin with explicit refspec |
 | **PR** | not opened; Execute does not authorize PR creation |
 | **Ryan GATE** | none for review; PR/merge/bootstrap/canary/activation remain separately gated |

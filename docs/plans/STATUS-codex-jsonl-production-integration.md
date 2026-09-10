@@ -90,7 +90,7 @@ activation exists.
 | Production architecture | **PASS at `84ec51a`** | — |
 | Bounded Execute plan | **PASS / AUTHORIZED** | — |
 | Ryan architecture/Execute acceptance | **DONE 2026-09-10** | — |
-| Cursor implementation | **DONE on feature branch `5341bb1`** | Independent Kiro review of the exact evidence tip |
+| Cursor implementation | **DONE on feature branch `5341bb1`** | Independent Kiro review of VERIFY at `4dfe42e` / branch HEAD |
 | Implementation review/PR | **IN REVIEW** | Kiro exact-tip PASS, then Ryan decides whether to open a PR |
 | Production bootstrap/canary | **UNAUTHORIZED** | Separate post-merge Ryan grant |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |

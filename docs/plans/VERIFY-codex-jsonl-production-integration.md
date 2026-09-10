@@ -10,9 +10,9 @@
 
 **Implementation commit:** `5341bb11e274ed1950db11a6b8bc45d5047ef9b6`
 
-**Evidence tip:** recorded in the T6 stamp commit on this branch; Kiro must
-verify `git rev-parse HEAD` after fetch rather than trusting this paragraph
-alone.
+**VERIFY document commit:** `4dfe42eb484808bbbdb2fbe974713fc18ba51e84`
+
+**Kiro review tip:** `git fetch origin feat/2026-09-10-codex-jsonl-production-integration && git rev-parse origin/feat/2026-09-10-codex-jsonl-production-integration`
 
 **PR:** not opened
 
