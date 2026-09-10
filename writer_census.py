@@ -34,6 +34,7 @@ KNOWN_ENTRYPOINTS = frozenset(
         "ingest.processed", "ingest.export",
         "propose_decision.write", "propose_decision.governed",
         "source_purge.execute", "inter_model_index", "production.writer",
+        "incremental_jsonl.apply",
     }
 )
 

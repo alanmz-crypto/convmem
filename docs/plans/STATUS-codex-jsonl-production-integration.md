@@ -74,16 +74,22 @@ Key invariants:
 | `chroma_store.py` | Source-scoped snapshot/restore primitives |
 | `watch.py` | Unchanged; still `convmem index --file` |
 | `incremental_jsonl_isolation.py` | Hermetic T0 boundary; `-I` workers get host site via `CONVMEM_INCREMENTAL_SITE` |
+| `incremental_jsonl_canary.py` | P1 hermetic canary harness in PR #296; grant boundary, Gate 0, capsule, faults, serving probe, chunking rehearsal, and grant-listed outer writer scope |
+| `scripts/run-jsonl-production-canary.py` | Thin explicit launcher; not registered in CLI or watcher |
+| `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` | Kiro-reviewed canary architecture; PASS at `8b48a39` via PR #295 |
+| `docs/plans/EXECUTION-codex-jsonl-production-canary.md` | Two-grant P1/P2 plan merged via PR #295 |
+| `docs/plans/VERIFY-codex-jsonl-production-canary.md` | P1 hermetic harness evidence on the feature branch |
 | `docs/plans/VERIFY-codex-jsonl-production-integration.md` | Cursor T0–T6 evidence |
-| `docs/plans/ARCHITECTURE-codex-jsonl-production-integration.md` | Kiro-reviewed production architecture; PASS at `84ec51a` |
-| `docs/plans/EXECUTION-codex-jsonl-production-integration.md` | Ryan-authorized bounded Cursor T0–T6 plan |
-| `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` | Proposed two-grant, exact-resource canary architecture; awaiting Kiro review |
-| `docs/plans/EXECUTION-codex-jsonl-production-canary.md` | Proposed P1 hermetic harness and separately gated P2 live run; neither authorized |
 | Scratch prototype + canary on `main` | Unchanged inherited evidence |
 
-PR #293 was squash-merged as `881133d` after Kiro's exact-tip PASS at
-`17d7e23`. No live config, production Chroma, watcher, provider, bootstrap,
-canary, or activation exists.
+PR #293 was squash-merged as `881133d`. PR #295 merged the canary
+architecture/plan at `b23cabad`. P1 hermetic harness is in PR #296. Kiro
+closed the reviewed implementation at PASS on `7412ce3`; PR CI then exposed
+and the Steward corrected a missing outer temporary writer lease, scoped lint
+findings, and a parent-process network-denial leak from one P1 test. The
+corrected PR tip needs a narrow Kiro delta recheck before Ryan's merge decision.
+No live config, production Chroma, watcher, provider, P2 run, or activation
+exists.
 
 ## 4. Completion State
 
@@ -97,45 +103,39 @@ canary, or activation exists.
 | Ryan architecture/Execute acceptance | **DONE 2026-09-10** | — |
 | Cursor implementation | **DONE on `main`** via PR #293 (`881133d`) | — |
 | Implementation review/PR | **DONE**; Kiro exact-tip PASS at `17d7e23`, six CI checks PASS, squash-merged as `881133d` | — |
-| Production-canary architecture/plan | **PASS_WITH_CORRECTIONS at `95f1523`; C1–C3 applied on plan branch** | Narrow exact-tip Kiro confirmation |
-| P1 hermetic canary harness | **UNAUTHORIZED** | Kiro plan PASS + separate Ryan Execute grant |
-| P2 one-source live canary | **UNAUTHORIZED** | P1 merge/review + exact grant digest + Ryan authorization |
+| Production-canary architecture/plan | **DONE on `main`** via PR #295 (`b23cabad`); Kiro PASS at `8b48a39` | — |
+| P1 hermetic canary harness | **PR #296 open**; 128 focused tests PASS after Steward correction | CI completion + narrow Kiro delta recheck + Ryan merge decision |
+| P2 one-source live canary | **UNAUTHORIZED** | P1 review/merge + exact grant digest + Ryan authorization |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
 ## 5. Your Role
 
-**If Ryan sent you to confirm the corrections:** you are Kiro. Review only the
-C1–C3 delta after reviewed tip `95f1523`: N=110 remains a two-chunk append and
-N>=111 stops; the embedding alias is canonicalized to an exact installed tag;
-and both plan documents end with a jargon glossary. If accurate, close the
-design review. Do not reopen settled architecture without a concrete
-contradiction, implement, index, operate the watcher, call a provider, open a
-PR, or authorize P1/P2 on Ryan's behalf.
+**If Ryan sent you to review P1:** you are Kiro. Review only the bounded delta
+from `7412ce3` to the current PR #296 tip: scoped lint cleanup, the canary-only
+outer writer scope, exact lock-role validation, focused tests, and evidence
+updates. Re-run the focused hermetic matrix from
+`docs/plans/VERIFY-codex-jsonl-production-canary.md`. Do not run P2, live
+resources, or repo-wide pytest.
 
-**If Ryan sent you to implement:** the disabled T0–T6 implementation is already
-on `main`. Do not add operational behavior without a separately reviewed plan
-and Ryan Execute grant.
+**If Ryan sent you to implement P2 or activate:** stop. P2 and activation remain
+separately authorized. P1 merge does not authorize them.
 
-**If Ryan sent you to activate:** stop unless the exact source, live config
-change, provider/cost boundary, watcher state, rollback action, and canary stop
-condition are separately authorized. Merge of disabled code is not activation.
+**If Ryan sent you to merge:** wait for green PR #296 CI and Kiro's narrow
+corrected-tip PASS. Ryan alone decides and performs the merge.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro narrowly confirms the three documentation corrections applied after
-   its `95f1523` PASS_WITH_CORRECTIONS verdict.
-2. Ryan decides whether to authorize Cursor's hermetic P1 canary-harness
-   implementation; no live resources are in P1 scope.
-3. Cursor implements P1 and stops at pushed evidence for Kiro review, then
-   Ryan separately decides its PR/merge.
-4. The dedicated Kiro session grows through ordinary use from the current 16
+1. CI completes on corrected PR #296 and Kiro narrowly rechecks its delta from
+   the prior PASS tip `7412ce3`.
+2. Ryan separately decides whether to merge P1.
+3. The dedicated Kiro session grows through ordinary use from the current 16
    accepted messages to 61–109; canary tooling never edits it.
-5. After P1 is reviewed and merged, Kiro reviews a fresh exact-source grant
-   packet and Ryan separately decides whether to authorize one P2 run.
-6. P2 measures real frontier calls, selected crash replay, rollback, and
+4. After P1 merges, Kiro reviews a fresh exact-source grant packet and Ryan
+   separately decides whether to authorize one P2 run.
+5. P2 measures real frontier calls, selected crash replay, rollback, and
    cross-collection serving visibility, then stops at evidence.
-7. Independent review decides whether activation should be planned at all.
-8. Ryan alone edits live configuration or activates the watcher route.
+6. Independent review decides whether activation should be planned at all.
+7. Ryan alone edits live configuration or activates the watcher route.
 
 ## 7. Hard Stops
 
@@ -184,7 +184,9 @@ visible to readers.
 | Cursor T0–T6 evidence | `docs/plans/VERIFY-codex-jsonl-production-integration.md` |
 | Scratch evidence | `docs/inter-model/VERIFY-jsonl-incremental-scratch-prototype.md` |
 | Live-source canary evidence | `docs/inter-model/VERIFY-jsonl-incremental-live-source-canary.md` |
-| Execute handoff | `docs/inter-model/CODEX-2026-09-10-jsonl-production-integration-execute.md` |
+| P1 harness evidence | `docs/plans/VERIFY-codex-jsonl-production-canary.md` |
+| P1 Execute handoff | `docs/inter-model/CODEX-2026-09-10-jsonl-production-canary-p1-execute.md` |
+| Canary harness | `incremental_jsonl_canary.py`, `scripts/run-jsonl-production-canary.py` |
 | Kiro review handoff | `docs/inter-model/CURSOR-2026-09-10-jsonl-production-integration-review.md` |
 | Production ingest | `ingest.py` |
 | Incremental coordinator | `incremental_jsonl.py` |
@@ -217,15 +219,15 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-10 | Codex | Recorded Kiro's corrected-tip PASS at `17d7e23` and Ryan's squash merge of disabled production integration via PR #293 as `881133d`; live bootstrap, canary, and activation remain unauthorized |
 | 2026-09-10 | Codex | Drafted the two-grant production-canary architecture and execution plan around a dedicated new Kiro source; next lane is Kiro design review, with P1/P2 still unauthorized |
 | 2026-09-10 | Codex | Applied Kiro C1–C3: corrected the 110/111 append boundary, canonicalized the embedding tag in the grant, and added plan jargon glossaries; awaiting narrow confirmation |
+| 2026-09-10 | Cursor | Landed hermetic P1 canary harness on `feat/2026-09-10-codex-jsonl-production-canary-p1`; next lane is exact-tip Kiro review. No PR, P2, or activation |
+| 2026-09-10 | Codex | Opened PR #296 after Kiro PASS; corrected CI lint findings, restored the planned grant-listed outer writer lease after sandbox evidence caught a production-lock escape, and confined network denial to its test worker; corrected tip awaits CI and narrow Kiro recheck |
 
 ## TL;DR
 
-- Arc Codex production code is on `main` via PR #293 (`881133d`), remains
-  disabled by default, and passed Kiro's corrected-tip review plus all CI.
-- The two-grant production-canary plan received PASS_WITH_CORRECTIONS at
-  `95f1523`; Codex applied the three narrow documentation corrections and the
-  exact new tip awaits Kiro confirmation.
-- The dedicated source is new but has only 16 accepted messages; P2 stays
-  blocked until ordinary use reaches the reviewed 61–109-message window.
-- Live indexing, providers, migration, canary execution, and activation remain
-  separately Ryan-gated.
+- Arc Codex production code is on `main` via PR #293 (`881133d`) and remains
+  disabled by default.
+- The canary architecture/plan merged via PR #295 (`b23cabad`); P1 harness PR
+  #296 is open with 128 focused tests passing after a CI-discovered hermetic
+  writer-scope correction.
+- PR #296 still needs green CI and a narrow Kiro delta recheck. P2, live
+  indexing, providers, and activation remain separately Ryan-gated.
