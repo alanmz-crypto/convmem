@@ -87,8 +87,8 @@ call, watcher action, migration, or activation exists in Arc Codex.
 | Scratch JSONL state machine | **DONE on `main`** (PR #289) | — |
 | Isolated real-Chroma writer/pruner pass | **DONE on `main`** (PR #291) | — |
 | Read-only live-source canary | **DONE on `main`** (PR #292) | — |
-| Production architecture | **CORRECTED on planning branch** | Narrow Kiro confirmation of C1–C3 |
-| Bounded Execute plan | **CORRECTED on planning branch** | Narrow Kiro confirmation of C1–C3 |
+| Production architecture | **CORRECTED on planning branch** | Final narrow Kiro confirmation of C1 |
+| Bounded Execute plan | **CORRECTED on planning branch** | Final narrow Kiro confirmation of C1 |
 | Ryan architecture/Execute acceptance | **NOT STARTED** | Kiro confirms corrected tip |
 | Cursor implementation | **UNAUTHORIZED / NOT STARTED** | Kiro PASS then separate Ryan Execute grant |
 | Implementation review/PR | **NOT STARTED** | Successful bounded Cursor evidence |
@@ -97,11 +97,10 @@ call, watcher action, migration, or activation exists in Arc Codex.
 
 ## 5. Your Role
 
-**If Ryan sent you to review now:** you are Kiro. Confirm only the C1–C3
-precision revision: the real processed-state sidecar lock and source-lock
-commit interval, the named source-before-export invariant, and the new
-incremental prune trigger. Do not reopen accepted design or implement/run live
-indexing.
+**If Ryan sent you to review now:** you are Kiro. C2/C3 are confirmed. Confirm
+only that final C1 preserves today's standalone processed-state transaction
+after the source-locked apply, including the real sidecar lock and exclusion
+check. Do not reopen accepted design or implement/run live indexing.
 
 **If Ryan later sent you to implement:** you are Cursor and must have a
 separate explicit Execute grant. Follow the ordered T0–T6 plan, stop on a
@@ -114,7 +113,7 @@ condition are separately authorized. Merge of disabled code is not activation.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro confirms the C1–C3 documentation correction at the new exact tip.
+1. Kiro confirms the final C1 documentation correction at the new exact tip.
 2. Ryan accepts the architecture and separately authorizes Cursor Execute.
 3. Cursor implements T0–T6 with no live resources or provider calls.
 4. Kiro independently reviews the exact implementation/evidence tip.
@@ -194,11 +193,12 @@ Keep this document a current-state snapshot, not a session diary.
 |---|---|---|
 | 2026-09-09 | Codex | Created Arc Codex production-integration architecture, bounded Execute plan, and Kiro review boundary after merged scratch/canary evidence |
 | 2026-09-09 | Codex | Applied Kiro C1–C3 precision review: accurate processed sidecar/source-lock interval, named source-before-export invariant, and explicit new incremental prune trigger |
+| 2026-09-10 | Codex | Finalized C1 to preserve the standalone processed-state critical section after releasing the source-locked apply; C2/C3 remain confirmed |
 
 ## TL;DR
 
 - Arc Codex has reviewed scratch and live-source evidence on `main`; only the
   production Architecture and Execute plan exist on the current branch.
-- Next is narrow Kiro confirmation of C1–C3, not implementation.
+- Next is final narrow Kiro confirmation of C1, not implementation.
 - Cursor, live indexing, providers, migration, PR creation, and activation all
   remain separately Ryan-gated.

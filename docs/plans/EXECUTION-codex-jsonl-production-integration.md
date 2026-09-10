@@ -257,9 +257,12 @@ allow_full_rebuild = false
    - replace only this source's units-export projection under its existing
      lock, preserving unrelated rows;
    - publish deterministic/idempotent dedupe events;
-   - release the export lock, then call `commit_processed_index_entry()` last
-     while the source lock remains held. That helper retains its existing
-     short-lived `processed.json.lock` sidecar for cross-path atomicity.
+   - release export and source locks after the source-scoped apply, then call
+     `commit_processed_index_entry()` last in its existing standalone short
+     critical section. Its `mutate_processed()` path enters its own
+     `ingest.processed` writer boundary (supported same-thread re-entry under
+     `index()`'s outer writer lease) and retains the short-lived
+     `processed.json.lock` sidecar plus its in-lock exclusion check.
 7. On entry, resolve an incomplete transaction before accepting new work:
    roll forward from valid prepared artifacts; otherwise restore exact before-
    images and remove candidate-only IDs. If proof is insufficient, fail closed.
@@ -304,9 +307,10 @@ than hiding or grouping it away.
    legacy full parse. Keep the coordinator return shape compatible with ingest
    stats.
 2. Preserve source exclusion precedence. Exclusion during capture/apply aborts
-   without checkpoint or processed publication. Recheck exclusion and commit
-   the final processed entry in one source-lock interval; do not remove or
-   bypass the existing processed-state sidecar lock.
+   without checkpoint or processed publication. Preserve the existing
+   standalone `commit_processed_index_entry()` transaction after the
+   source-locked apply; do not remove or bypass its processed-state sidecar
+   lock or in-lock exclusion check.
 3. Preserve `force_reindex`/`supersede_on_reindex` behavior on the legacy path.
    The incremental path must refuse force/supersede unless an exact behavior is
    specified by this plan; v1 returns `incremental_force_unsupported` and makes

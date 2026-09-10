@@ -13,9 +13,11 @@ cross-arc snapshot and the linked arc brief below.
   isolated real-Chroma, and read-only live-source canary work is merged on
   `main` through PR #292. Codex has authored a default-off production
   architecture and bounded Execute plan. Kiro issued `PASS_WITH_CORRECTIONS`
-  at `b68e13a`; Codex applied the three narrow lock/prune precision edits, with
-  no production code, live indexing, provider call, watcher action, migration,
-  or activation. Kiro must now confirm the corrected pushed tip using
+  at `b68e13a`, then confirmed C2/C3 and requested one final C1 wording change
+  at `65febc8`. Codex now preserves the existing standalone processed-state
+  critical section after the source-locked apply. No production code, live
+  indexing, provider call, watcher action, migration, or activation occurred.
+  Kiro must now confirm only final C1 at the corrected pushed tip using
   [`CODEX-2026-09-09-jsonl-production-integration-review.md`](CODEX-2026-09-09-jsonl-production-integration-review.md).
   Ryan alone may accept the plan and later grant Cursor implementation.
 - **Project baseline:** verify the current `origin/main` tip from Git before

@@ -20,7 +20,7 @@ architecture and Execute plan; stop before Cursor implementation
 | **Tip SHA** | Use the pushed branch tip and report the exact reviewed SHA |
 | **Push status** | Pushed to `origin` after every commit |
 | **PR** | Not opened; Ryan has not authorized a PR |
-| **Ryan GATE** | Kiro confirms the C1–C3 precision correction; Ryan separately accepts the plan and grants Cursor Execute |
+| **Ryan GATE** | Kiro confirms the final C1 standalone-critical-section correction; Ryan separately accepts the plan and grants Cursor Execute |
 | **Track A ingest** | Intentionally not run: the current planning grant explicitly prohibits live indexing |
 
 ## What to review
@@ -104,12 +104,15 @@ watcher/service actions, or activation.
 Kiro's design verdict at `b68e13a` was `PASS_WITH_CORRECTIONS`. The corrected
 tip keeps the accepted design and makes three section-local clarifications:
 
-1. **C1, reconciled to source:** `ingest.py` does have a distinct
-   `processed.json.lock` sidecar (`processed_lock_path`, `_processed_lock`, and
-   `mutate_processed`). The plan now requires the future incremental route to
-   keep its source lock held while calling `commit_processed_index_entry()`
-   last; that helper still acquires the existing sidecar lock. It does not
-   repeat the review's inaccurate claim that no processed lock exists.
+1. **C1, reconciled to source and final review:** `ingest.py` does have a
+   distinct `processed.json.lock` sidecar (`processed_lock_path`,
+   `_processed_lock`, and `mutate_processed`). The plan now preserves today's
+   composition: finish and release the source-locked apply, then call
+   `commit_processed_index_entry()` last in its own short critical section.
+   `mutate_processed()` enters its own `ingest.processed` writer boundary
+   (supported same-thread re-entry under `index()`'s outer writer lease),
+   acquires the sidecar lock, and rechecks exclusion. No new source-over-
+   processed nesting is specified.
 2. **C2:** the Architecture names
    `purge_locks.assert_lock_ordering_ok` and its exact prohibition against
    acquiring source under export; the coordinator acquires source first and
@@ -118,13 +121,14 @@ tip keeps the accepted design and makes three section-local clarifications:
    while incremental per-generation prune is a new unconditional success path
    requiring its own complete T4 crash inventory.
 
-Kiro should confirm these narrow edits at the new exact tip. No implementation
-or operational action was added.
+Kiro already confirmed C2 and C3 at `65febc8`; it should confirm only the final
+C1 wording at the new exact tip. No implementation or operational action was
+added.
 
 ## TL;DR
 
-- Arc Codex planning has its C1–C3 precision revision ready for narrow Kiro
-  confirmation at the pushed branch tip.
+- Arc Codex planning has its final C1 standalone-critical-section wording ready
+  for narrow Kiro confirmation at the pushed branch tip.
 - The plan adds default-off Kiro-only routing, durable transform reuse, and
   checkpoint-governed real-Chroma replay/rollback.
 - Nothing operational is authorized; Kiro confirms the revision, then Ryan

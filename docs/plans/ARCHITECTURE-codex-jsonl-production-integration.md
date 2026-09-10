@@ -296,7 +296,8 @@ capture complete prefix
 → atomically publish checkpoint.json (COMMITTED authority)
 → reconcile units export and dedupe followers idempotently
 → release export lock
-→ commit processed.json entry last under the still-held source lock
+→ release source lock, ending the source-locked apply
+→ commit processed.json entry last in its own short critical section
 → transaction COMPLETE and remove rollback/snapshot
 ```
 
@@ -304,21 +305,25 @@ The enforced invariant in `purge_locks.assert_lock_ordering_ok` is specifically
 that a source lock must never be acquired while an export lock is held. The
 coordinator satisfies it by acquiring source before export. The complete order
 is the writer boundary already held by `index` → source → Chroma session
-re-entry → export; export is released before
-`commit_processed_index_entry()` acquires the existing
-`processed.json.lock` sidecar through `_processed_lock`. The source lock stays
-held through that processed commit, so source exclusion and the committed
-checkpoint cannot race the final path marker. No source, export, or processed-
-state lock is held across summarize, distill, or embedding calls. The
-coordinator uses a separate per-source advisory transaction flock across the
-run; kernel release makes stale PID recovery unnecessary.
+re-entry → export. Export and source are then released.
+`commit_processed_index_entry()` runs afterward as today's independent,
+short-lived processed-state transaction: `mutate_processed()` enters its own
+`production_writer_boundary(entrypoint="ingest.processed")` and acquires the
+existing `processed.json.lock` sidecar through `_processed_lock`. Because
+`index()` still holds its outer writer boundary, the writer lease's supported
+same-thread re-entry applies. Its in-lock exclusion check may refuse the commit
+if exclusion won the interval. No source, export, or processed-state lock is
+held across summarize, distill, or embedding calls. The coordinator uses a
+separate per-source advisory transaction flock across the run; kernel release
+makes stale PID recovery unnecessary.
 
-`processed.json` is a derived follower committed last under the source lock;
-its own short-lived sidecar flock serializes atomic read/mutate/write with
+`processed.json` is a derived follower committed last in that standalone
+critical section; its sidecar flock serializes atomic read/mutate/write with
 other paths. Publishing it earlier could make the watcher skip an incomplete
-checkpoint. If a crash occurs after checkpoint publication, replay treats
-Chroma authority as committed and repairs lagging followers with zero model
-calls.
+checkpoint. Releasing the source lock first preserves current lock composition
+rather than introducing source → writer-boundary → processed nesting. If a
+crash occurs after checkpoint publication, replay treats Chroma authority as
+committed and repairs lagging followers with zero model calls.
 
 ## 11. Replay and rollback
 
