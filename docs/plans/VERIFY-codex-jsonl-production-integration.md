@@ -45,7 +45,10 @@ that the focused 9.86/10 score did not evaluate. The correction does not edit
   `_ALLOWED_CYCLIC_PAIRS`, after Kiro explicitly reviewed and accepted that
   disclosed cycle at `162d67f`; and
 - regenerated the R2b inventory from source and moved the Shadow inventory
-  call-site anchor from line 506 to line 500.
+  call-site anchor from line 506 to line 500; and
+- made the malformed-boolean test resolve `IncrementalJsonlConfigError` from
+  the live `config` module, because the full suite deliberately reloads that
+  module and invalidates a class object imported during collection.
 
 Local corrective evidence before push:
 

@@ -6,8 +6,9 @@ from pathlib import Path
 
 import pytest
 
+import config
 from adapters.detect import detect_format
-from config import IncrementalJsonlConfigError, incremental_jsonl_settings, load_config
+from config import incremental_jsonl_settings, load_config
 from incremental_jsonl import decide_eligibility
 from incremental_jsonl_isolation import IsolationViolation
 from tests.incremental_jsonl_helpers import isolated_env, write_source
@@ -49,7 +50,7 @@ def test_malformed_boolean_fails_closed(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     loaded = load_config(cfg_path)
-    with pytest.raises(IncrementalJsonlConfigError, match="invalid_enabled"):
+    with pytest.raises(config.IncrementalJsonlConfigError, match="invalid_enabled"):
         incremental_jsonl_settings(loaded)
 
 
