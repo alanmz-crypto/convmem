@@ -9,14 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **JSONL incremental real-Chroma scratch correction:** Ryan authorized a
-  scratch-only implementation and evidence pass on 2026-09-09. Codex and Luna
-  completed the bounded implementation on
-  `feat/2026-09-09-jsonl-incremental-chroma-scratch`; Codex independently reran
-  the final 65-test focused matrix and static gates. It is ready for independent
-  review. No canary, watcher, provider, live-corpus, or production activation
-  is authorized. Review from
-  [`CODEX-2026-09-09-jsonl-incremental-chroma-scratch-luna-handoff.md`](CODEX-2026-09-09-jsonl-incremental-chroma-scratch-luna-handoff.md).
+- **JSONL incremental isolated live-source canary:** the synthetic and real-
+  Chroma scratch evidence landed through PR #291 and passed exact-tip Kiro
+  review. Ryan authorized the next bounded Execute pass on 2026-09-09: one
+  frozen Kiro transcript may be read and copied into fresh temporary storage;
+  every mutation and crash remains on the copy. No watcher, provider,
+  production write, PR, or activation is authorized. Execute from
+  [`CODEX-2026-09-09-jsonl-incremental-live-source-canary-execute.md`](CODEX-2026-09-09-jsonl-incremental-live-source-canary-execute.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
   project and arc state; it is not a Git-ref authority. Read [`STATUS.md`](STATUS.md)
