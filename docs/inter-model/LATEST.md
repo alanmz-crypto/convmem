@@ -16,14 +16,20 @@ cross-arc snapshot and the linked arc brief below.
   canonicalization, plan glossaries) verified in the
   [Architecture](../plans/ARCHITECTURE-codex-jsonl-production-canary.md) and
   [Execution plan](../plans/EXECUTION-codex-jsonl-production-canary.md).
-  Consolidated review + environment readiness + next actions:
+  Ryan authorized hermetic **P1** Cursor Execute on 2026-09-10, limited to
+  P1-T0–T8 and P1-A1–A14. Cursor resumes from the
+  [`CODEX-2026-09-10-jsonl-production-canary-p1-execute.md`](CODEX-2026-09-10-jsonl-production-canary-p1-execute.md)
+  handoff, creates `feat/2026-09-10-codex-jsonl-production-canary-p1` from
+  current `origin/main`, implements with synthetic sources and temporary roots,
+  pushes evidence, and stops for Kiro without opening a PR. Consolidated design
+  review + environment readiness:
   [`KIRO-2026-09-10-jsonl-production-canary-review-handoff.md`](KIRO-2026-09-10-jsonl-production-canary-review-handoff.md).
-  Next lane is Ryan's decision on hermetic **P1** Cursor Execute; **P2** is
-  additionally blocked on growing the dedicated session to 61–109 accepted
-  messages (currently 16) plus a separate grant digest. Settled architecture
-  should not be reopened without a concrete contradiction. No indexing, provider
-  call, watcher action, config change, migration, canary, or activation is
-  authorized. Resume from
+  **P2** is still unauthorized and additionally blocked on growing the
+  dedicated session to 61–109 accepted messages (currently 16) plus a separate
+  grant digest. Settled architecture should not be reopened without a concrete
+  contradiction. No live source or production-data access, indexing, provider
+  or network call, watcher action, config change, migration, canary run, PR, or
+  activation is authorized by P1. Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes

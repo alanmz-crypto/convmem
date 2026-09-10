@@ -77,8 +77,10 @@ Key invariants:
 | `docs/plans/VERIFY-codex-jsonl-production-integration.md` | Cursor T0–T6 evidence |
 | `docs/plans/ARCHITECTURE-codex-jsonl-production-integration.md` | Kiro-reviewed production architecture; PASS at `84ec51a` |
 | `docs/plans/EXECUTION-codex-jsonl-production-integration.md` | Ryan-authorized bounded Cursor T0–T6 plan |
-| `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` | Proposed two-grant, exact-resource canary architecture; awaiting Kiro review |
-| `docs/plans/EXECUTION-codex-jsonl-production-canary.md` | Proposed P1 hermetic harness and separately gated P2 live run; neither authorized |
+| `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` | Two-grant exact-resource canary architecture on `main`; Kiro review closed PASS at `8b48a39` |
+| `docs/plans/EXECUTION-codex-jsonl-production-canary.md` | P1 hermetic harness and separately gated P2 live run on `main`; Ryan authorized P1 only |
+| `docs/inter-model/CODEX-2026-09-10-jsonl-production-canary-p1-execute.md` | Current Cursor P1 Execute handoff on the pushed plan branch |
+| `docs/inter-model/KIRO-2026-09-10-jsonl-production-canary-review-handoff.md` | Consolidated Kiro design PASS and P1 readiness notes on `main` |
 | Scratch prototype + canary on `main` | Unchanged inherited evidence |
 
 PR #293 was squash-merged as `881133d` after Kiro's exact-tip PASS at
@@ -97,24 +99,20 @@ canary, or activation exists.
 | Ryan architecture/Execute acceptance | **DONE 2026-09-10** | — |
 | Cursor implementation | **DONE on `main`** via PR #293 (`881133d`) | — |
 | Implementation review/PR | **DONE**; Kiro exact-tip PASS at `17d7e23`, six CI checks PASS, squash-merged as `881133d` | — |
-| Production-canary architecture/plan | **PASS_WITH_CORRECTIONS at `95f1523`; C1–C3 applied on plan branch** | Narrow exact-tip Kiro confirmation |
-| P1 hermetic canary harness | **UNAUTHORIZED** | Kiro plan PASS + separate Ryan Execute grant |
+| Production-canary architecture/plan | **DONE on `main`** via PR #295 (`b23cabad`); Kiro PASS at corrected tip `8b48a39` | — |
+| P1 hermetic canary harness | **AUTHORIZED / NOT STARTED** | Cursor Execute T0–T8, then exact-tip Kiro review |
 | P2 one-source live canary | **UNAUTHORIZED** | P1 merge/review + exact grant digest + Ryan authorization |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
 ## 5. Your Role
 
-**If Ryan sent you to confirm the corrections:** you are Kiro. Review only the
-C1–C3 delta after reviewed tip `95f1523`: N=110 remains a two-chunk append and
-N>=111 stops; the embedding alias is canonicalized to an exact installed tag;
-and both plan documents end with a jargon glossary. If accurate, close the
-design review. Do not reopen settled architecture without a concrete
-contradiction, implement, index, operate the watcher, call a provider, open a
-PR, or authorize P1/P2 on Ryan's behalf.
-
-**If Ryan sent you to implement:** the disabled T0–T6 implementation is already
-on `main`. Do not add operational behavior without a separately reviewed plan
-and Ryan Execute grant.
+**If Ryan sent you to implement P1:** you are Cursor. Read the current Codex P1
+Execute handoff, then create the named feature worktree from current
+`origin/main`. Implement only P1-T0–T8 and prove P1-A1–A14 using synthetic
+sources, temporary roots, in-process fakes, and pre-import service/provider/
+network denials. Do not touch the dedicated source or any production data,
+config, model, service, or lock. Push evidence and stop for Kiro; do not open a
+PR.
 
 **If Ryan sent you to activate:** stop unless the exact source, live config
 change, provider/cost boundary, watcher state, rollback action, and canary stop
@@ -122,20 +120,18 @@ condition are separately authorized. Merge of disabled code is not activation.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro narrowly confirms the three documentation corrections applied after
-   its `95f1523` PASS_WITH_CORRECTIONS verdict.
-2. Ryan decides whether to authorize Cursor's hermetic P1 canary-harness
-   implementation; no live resources are in P1 scope.
-3. Cursor implements P1 and stops at pushed evidence for Kiro review, then
+1. Cursor implements the authorized hermetic P1 harness and P1-A1–A14
+   evidence, pushes the exact tip, and stops without opening a PR.
+2. Kiro independently reviews the exact P1 implementation/evidence tip, then
    Ryan separately decides its PR/merge.
-4. The dedicated Kiro session grows through ordinary use from the current 16
+3. The dedicated Kiro session grows through ordinary use from the current 16
    accepted messages to 61–109; canary tooling never edits it.
-5. After P1 is reviewed and merged, Kiro reviews a fresh exact-source grant
+4. After P1 is reviewed and merged, Kiro reviews a fresh exact-source grant
    packet and Ryan separately decides whether to authorize one P2 run.
-6. P2 measures real frontier calls, selected crash replay, rollback, and
+5. P2 measures real frontier calls, selected crash replay, rollback, and
    cross-collection serving visibility, then stops at evidence.
-7. Independent review decides whether activation should be planned at all.
-8. Ryan alone edits live configuration or activates the watcher route.
+6. Independent review decides whether activation should be planned at all.
+7. Ryan alone edits live configuration or activates the watcher route.
 
 ## 7. Hard Stops
 
@@ -217,14 +213,16 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-10 | Codex | Recorded Kiro's corrected-tip PASS at `17d7e23` and Ryan's squash merge of disabled production integration via PR #293 as `881133d`; live bootstrap, canary, and activation remain unauthorized |
 | 2026-09-10 | Codex | Drafted the two-grant production-canary architecture and execution plan around a dedicated new Kiro source; next lane is Kiro design review, with P1/P2 still unauthorized |
 | 2026-09-10 | Codex | Applied Kiro C1–C3: corrected the 110/111 append boundary, canonicalized the embedding tag in the grant, and added plan jargon glossaries; awaiting narrow confirmation |
+| 2026-09-10 | Codex | Recorded Kiro corrected-tip PASS, PR #295 merge `b23cabad`, and Ryan's explicit hermetic P1-T0–T8 / P1-A1–A14 Cursor Execute grant; P2 and live operations remain unauthorized |
 
 ## TL;DR
 
 - Arc Codex production code is on `main` via PR #293 (`881133d`), remains
   disabled by default, and passed Kiro's corrected-tip review plus all CI.
-- The two-grant production-canary plan received PASS_WITH_CORRECTIONS at
-  `95f1523`; Codex applied the three narrow documentation corrections and the
-  exact new tip awaits Kiro confirmation.
+- The two-grant production-canary plan is on `main` via PR #295 (`b23cabad`)
+  after Kiro PASS at corrected tip `8b48a39`.
+- Ryan authorized Cursor's hermetic P1-T0–T8 / P1-A1–A14 implementation; it
+  uses only synthetic sources and temporary resources, then stops for Kiro.
 - The dedicated source is new but has only 16 accepted messages; P2 stays
   blocked until ordinary use reaches the reviewed 61–109-message window.
 - Live indexing, providers, migration, canary execution, and activation remain
