@@ -437,8 +437,34 @@ def _run_prune_worker(
     )
 
 
-def _run_capture_worker(root: Path, token: str, *, fault: str = "") -> subprocess.CompletedProcess[str]:
+def _run_capture_worker(
+    root: Path,
+    token: str,
+    *,
+    fault: str = "",
+    message_spec: FrozenSourceSpec | None = None,
+    meta_spec: FrozenSourceSpec | None = None,
+) -> subprocess.CompletedProcess[str]:
     args = [sys.executable, "-I", str(Path(__file__)), WORKER_FLAG, "capture"]
+    if (message_spec is None) != (meta_spec is None):
+        raise ValueError("capture fixture specs must be provided together")
+    if message_spec is not None and meta_spec is not None:
+        args.extend(
+            (
+                "--messages-path",
+                str(message_spec.path),
+                "--messages-sha256",
+                message_spec.sha256,
+                "--messages-size",
+                str(message_spec.size),
+                "--meta-path",
+                str(meta_spec.path),
+                "--meta-sha256",
+                meta_spec.sha256,
+                "--meta-size",
+                str(meta_spec.size),
+            )
+        )
     if fault:
         args.extend(("--fault", fault))
     return subprocess.run(
@@ -914,6 +940,12 @@ def _worker_main() -> int:
     parser.add_argument("--fingerprint", default="deterministic-transform-v1")
     parser.add_argument("--fault", default="")
     parser.add_argument("--chroma", action="store_true")
+    parser.add_argument("--messages-path")
+    parser.add_argument("--messages-sha256")
+    parser.add_argument("--messages-size", type=int)
+    parser.add_argument("--meta-path")
+    parser.add_argument("--meta-sha256")
+    parser.add_argument("--meta-size", type=int)
     args = parser.parse_args()
     if args.command == "canary":
         print(json.dumps(_worker_run(), sort_keys=True), flush=True)
@@ -961,13 +993,45 @@ def _worker_main() -> int:
     if args.command == "capture":
         boundary = ScratchBoundary.from_environment(forbidden_roots=PRODUCTION_ROOTS)
         install_network_denial()
+        fixture_values = (
+            args.messages_path,
+            args.messages_sha256,
+            args.messages_size,
+            args.meta_path,
+            args.meta_sha256,
+            args.meta_size,
+        )
+        if any(value is not None for value in fixture_values):
+            if any(value is None for value in fixture_values):
+                return 2
+            messages_path = boundary.resolve_mutable(
+                args.messages_path, label="synthetic messages fixture"
+            )
+            meta_path = boundary.resolve_mutable(
+                args.meta_path, label="synthetic metadata fixture"
+            )
+            message_spec = FrozenSourceSpec(
+                "synthetic-messages",
+                messages_path,
+                args.messages_sha256,
+                args.messages_size,
+            )
+            meta_spec = FrozenSourceSpec(
+                "synthetic-session-meta",
+                meta_path,
+                args.meta_sha256,
+                args.meta_size,
+            )
+        else:
+            message_spec = FROZEN_MESSAGES
+            meta_spec = FROZEN_SESSION_META
 
         def abrupt_capture(point: str) -> None:
             if point == args.fault:
                 os._exit(EXIT_CRASH)
 
         message, meta, _complete, _meta_bytes = capture_sources(
-            boundary, fault=abrupt_capture
+            boundary, message_spec, meta_spec, fault=abrupt_capture
         )
         print(
             json.dumps(

@@ -233,8 +233,18 @@ def test_worker_uses_explicit_scratch_env_and_fingerprint_fallback(tmp_path: Pat
 
 def test_capture_worker_fault_name_reaches_explicit_fault_option(tmp_path: Path) -> None:
     root, token = create_fresh_root(tmp_path)
+    source_dir = root / "fixtures" / "sess_synthetic"
+    source_dir.mkdir(parents=True)
+    source = source_dir / "messages.jsonl"
+    meta = source_dir / "session.json"
+    source.write_bytes(_source_bytes())
+    meta.write_text(json.dumps({"id": "sess_synthetic"}), encoding="utf-8")
     crashed = canary._run_capture_worker(
-        root, token, fault="before_snapshot_prepare"
+        root,
+        token,
+        fault="before_snapshot_prepare",
+        message_spec=_spec(source),
+        meta_spec=_spec(meta, "synthetic-meta"),
     )
     assert crashed.returncode == canary.EXIT_CRASH, crashed.stderr
 
