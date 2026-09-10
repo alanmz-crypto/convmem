@@ -257,7 +257,9 @@ allow_full_rebuild = false
    - replace only this source's units-export projection under its existing
      lock, preserving unrelated rows;
    - publish deterministic/idempotent dedupe events;
-   - commit the `processed.json` full selected hash last.
+   - release the export lock, then call `commit_processed_index_entry()` last
+     while the source lock remains held. That helper retains its existing
+     short-lived `processed.json.lock` sidecar for cross-path atomicity.
 7. On entry, resolve an incomplete transaction before accepting new work:
    roll forward from valid prepared artifacts; otherwise restore exact before-
    images and remove candidate-only IDs. If proof is insufficient, fail closed.
@@ -289,6 +291,9 @@ than hiding or grouping it away.
 - a deliberately removed transition side makes coverage assertion fail;
 - a corrupt rollback journal fails closed without broad deletion;
 - `processed.json` never names the new hash before checkpoint publication;
+- the new unconditional per-generation prune runs for normal incremental
+  applies, independent of the legacy force/reindex snapshot trigger, and every
+  prune transition is in the crash inventory;
 - a checkpoint-committed/follower-torn replay repairs followers with zero calls.
 
 ## T5 — Shared routing and compatibility
@@ -299,7 +304,9 @@ than hiding or grouping it away.
    legacy full parse. Keep the coordinator return shape compatible with ingest
    stats.
 2. Preserve source exclusion precedence. Exclusion during capture/apply aborts
-   without checkpoint or processed publication.
+   without checkpoint or processed publication. Recheck exclusion and commit
+   the final processed entry in one source-lock interval; do not remove or
+   bypass the existing processed-state sidecar lock.
 3. Preserve `force_reindex`/`supersede_on_reindex` behavior on the legacy path.
    The incremental path must refuse force/supersede unless an exact behavior is
    specified by this plan; v1 returns `incremental_force_unsupported` and makes

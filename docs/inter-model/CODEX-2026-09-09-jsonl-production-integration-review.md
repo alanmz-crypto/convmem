@@ -15,12 +15,12 @@ architecture and Execute plan; stop before Cursor implementation
 
 | Field | Value |
 |---|---|
-| **State** | `BLOCKED_ON_KIRO_REVIEW` |
+| **State** | `BLOCKED_ON_KIRO_RECHECK` |
 | **Branch** | `plan/2026-09-09-codex-jsonl-production-integration` |
 | **Tip SHA** | Use the pushed branch tip and report the exact reviewed SHA |
 | **Push status** | Pushed to `origin` after every commit |
 | **PR** | Not opened; Ryan has not authorized a PR |
-| **Ryan GATE** | Kiro reviews the plan; Ryan separately accepts it and grants Cursor Execute |
+| **Ryan GATE** | Kiro confirms the C1–C3 precision correction; Ryan separately accepts the plan and grants Cursor Execute |
 | **Track A ingest** | Intentionally not run: the current planning grant explicitly prohibits live indexing |
 
 ## What to review
@@ -99,11 +99,33 @@ watcher/service actions, or activation.
 - Corrective verdict → Codex revises planning only and returns a new exact tip.
 - FAIL → stop; no implementation.
 
+## C1–C3 precision revision
+
+Kiro's design verdict at `b68e13a` was `PASS_WITH_CORRECTIONS`. The corrected
+tip keeps the accepted design and makes three section-local clarifications:
+
+1. **C1, reconciled to source:** `ingest.py` does have a distinct
+   `processed.json.lock` sidecar (`processed_lock_path`, `_processed_lock`, and
+   `mutate_processed`). The plan now requires the future incremental route to
+   keep its source lock held while calling `commit_processed_index_entry()`
+   last; that helper still acquires the existing sidecar lock. It does not
+   repeat the review's inaccurate claim that no processed lock exists.
+2. **C2:** the Architecture names
+   `purge_locks.assert_lock_ordering_ok` and its exact prohibition against
+   acquiring source under export; the coordinator acquires source first and
+   releases export before processed commit.
+3. **C3:** the Architecture states that today's prune is force/reindex-only,
+   while incremental per-generation prune is a new unconditional success path
+   requiring its own complete T4 crash inventory.
+
+Kiro should confirm these narrow edits at the new exact tip. No implementation
+or operational action was added.
+
 ## TL;DR
 
-- Arc Codex planning is ready for independent Kiro review at the pushed branch
-  tip.
+- Arc Codex planning has its C1–C3 precision revision ready for narrow Kiro
+  confirmation at the pushed branch tip.
 - The plan adds default-off Kiro-only routing, durable transform reuse, and
   checkpoint-governed real-Chroma replay/rollback.
-- Nothing operational is authorized; Kiro reviews, then Ryan decides whether
-  Cursor may implement.
+- Nothing operational is authorized; Kiro confirms the revision, then Ryan
+  decides whether Cursor may implement.

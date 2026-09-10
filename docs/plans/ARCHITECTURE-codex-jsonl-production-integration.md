@@ -92,6 +92,14 @@ through summarize/distill/embed, writes each chunk through the production
 writer, then prunes and commits `processed.json`. `watch.py` only detects,
 debounces, and starts that same one-file command in a contained subprocess.
 
+Today's stale-row prune is not an ordinary-index behavior. It runs only when
+`force_file` causes `_snapshot_reindex_rows()` to capture the old generation
+and `_prune_completed_reindex()` runs after a complete replacement. The
+incremental coordinator introduces a new per-generation prune on every
+successful incremental apply. It reuses the existing source-scoped Chroma
+delete/supersede operations, but not the legacy force/reindex trigger. This new
+trigger and every one of its crash sides belong in T4 evidence.
+
 The integration remains one local monolith with deep modules:
 
 ```text
@@ -266,8 +274,8 @@ partially reused.
 
 ## 10. Commit protocol
 
-Expensive work happens before mutation and outside source/export/processed
-locks:
+Expensive work happens before mutation and outside the source, export, and
+processed-state sidecar locks:
 
 ```text
 capture complete prefix
@@ -287,20 +295,30 @@ capture complete prefix
 → revalidate selected source prefix
 → atomically publish checkpoint.json (COMMITTED authority)
 → reconcile units export and dedupe followers idempotently
-→ commit processed.json entry last
+→ release export lock
+→ commit processed.json entry last under the still-held source lock
 → transaction COMPLETE and remove rollback/snapshot
 ```
 
-The lock order remains writer boundary (already held by `index`) → source →
-Chroma session re-entry → export → processed. No source, export, or processed
-lock is held across summarize, distill, or embedding calls. The coordinator
-uses a separate per-source advisory transaction flock across the run; kernel
-release makes stale PID recovery unnecessary.
+The enforced invariant in `purge_locks.assert_lock_ordering_ok` is specifically
+that a source lock must never be acquired while an export lock is held. The
+coordinator satisfies it by acquiring source before export. The complete order
+is the writer boundary already held by `index` → source → Chroma session
+re-entry → export; export is released before
+`commit_processed_index_entry()` acquires the existing
+`processed.json.lock` sidecar through `_processed_lock`. The source lock stays
+held through that processed commit, so source exclusion and the committed
+checkpoint cannot race the final path marker. No source, export, or processed-
+state lock is held across summarize, distill, or embedding calls. The
+coordinator uses a separate per-source advisory transaction flock across the
+run; kernel release makes stale PID recovery unnecessary.
 
-`processed.json` is committed last because publishing it earlier could make the
-watcher skip an incomplete checkpoint. If a crash occurs after checkpoint
-publication, replay treats Chroma authority as committed and repairs lagging
-followers with zero model calls.
+`processed.json` is a derived follower committed last under the source lock;
+its own short-lived sidecar flock serializes atomic read/mutate/write with
+other paths. Publishing it earlier could make the watcher skip an incomplete
+checkpoint. If a crash occurs after checkpoint publication, replay treats
+Chroma authority as committed and repairs lagging followers with zero model
+calls.
 
 ## 11. Replay and rollback
 
