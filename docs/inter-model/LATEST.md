@@ -10,20 +10,14 @@ cross-arc snapshot and the linked arc brief below.
 ## Current routing
 
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
-  implementation is on `main` via squash-merged PR #293 (`881133d`) and remains
-  disabled. Kiro **closed the production-canary plan review as PASS at
-  `8b48a39`** — all three corrections (N=110/N=111 append boundary, embedding-tag
-  canonicalization, plan glossaries) verified in the
-  [Architecture](../plans/ARCHITECTURE-codex-jsonl-production-canary.md) and
-  [Execution plan](../plans/EXECUTION-codex-jsonl-production-canary.md).
-  Consolidated review + environment readiness + next actions:
-  [`KIRO-2026-09-10-jsonl-production-canary-review-handoff.md`](KIRO-2026-09-10-jsonl-production-canary-review-handoff.md).
-  Next lane is Ryan's decision on hermetic **P1** Cursor Execute; **P2** is
-  additionally blocked on growing the dedicated session to 61–109 accepted
-  messages (currently 16) plus a separate grant digest. Settled architecture
-  should not be reopened without a concrete contradiction. No indexing, provider
-  call, watcher action, config change, migration, canary, or activation is
-  authorized. Resume from
+  coordinator is on `main` via squash-merged PR #293 (`881133d`) and remains
+  disabled. The production-canary architecture/plan merged via PR #295
+  (`b23cabad`). Ryan authorized hermetic **P1** Execute; Cursor landed the
+  canary harness on `feat/2026-09-10-codex-jsonl-production-canary-p1` and
+  stopped at pushed evidence — next lane is **Kiro exact-tip review** of P1
+  (`docs/plans/VERIFY-codex-jsonl-production-canary.md`). **P2**, PR creation,
+  indexing, provider calls, watcher action, config change, and activation remain
+  unauthorized. Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
