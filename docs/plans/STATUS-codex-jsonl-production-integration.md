@@ -65,21 +65,20 @@ Key invariants:
 
 | Surface | Current state |
 |---|---|
-| `scratch_jsonl_prototype/engine.py` | Reviewed scratch state machine on `main`: prefix, continuity, frontier, generation, replay, fallback, crash transitions |
-| `scratch_jsonl_prototype/chroma_projection.py` | Reviewed isolated bridge through the real production Chroma writer/pruner on `main` |
-| `scratch_jsonl_prototype/live_source_canary.py` | Reviewed one-shot read-only live-source canary on `main`; no production write or activation |
-| `docs/inter-model/VERIFY-jsonl-incremental-scratch-prototype.md` | Scratch and real-Chroma evidence, limits, and execution incident disclosure |
-| `docs/inter-model/VERIFY-jsonl-incremental-live-source-canary.md` | Frozen-source canary evidence plus deterministic-test correction |
-| `ingest.py` | Production whole-file transform/write/prune path; no incremental dispatch yet |
-| `adapters/kiro_session_jsonl.py` | Production Kiro parser; currently materializes the full message list and exposes no byte ranges |
-| `watch.py` | Debounced subprocess caller of `convmem index --file`; watcher is currently stopped by Ryan and is not controlled by this arc |
-| `chroma_write_store.py` / `chroma_store.py` | Governed production writer session and source-scoped operations; no production transaction journal |
-| `docs/plans/ARCHITECTURE-codex-jsonl-production-integration.md` | Kiro-reviewed production architecture on the planning branch; PASS at `84ec51a` |
-| `docs/plans/EXECUTION-codex-jsonl-production-integration.md` | Ryan-authorized bounded Cursor T0–T6 plan on the planning branch |
-| `docs/inter-model/CODEX-2026-09-10-jsonl-production-integration-execute.md` | Current Cursor Execute grant and stop boundary |
+| `incremental_jsonl.py` | New production coordinator on `feat/2026-09-10-codex-jsonl-production-integration` at `5341bb1`. Default-off. Live enable without `CONVMEM_INCREMENTAL_ROOT` fail-closed skips rather than writing. |
+| `ingest.py` | Build/commit split; default-off dispatch after detect; content-addressed UUID4 ingest assertion IDs |
+| `adapters/kiro_session_jsonl.py` | `parse()` unchanged; `parse_complete_prefix()` adds byte ranges |
+| `config.py` / `config.example.toml` | `[index.incremental_jsonl]` absent/false by default |
+| `chroma_store.py` | Source-scoped snapshot/restore primitives |
+| `watch.py` | Unchanged; still `convmem index --file` |
+| `incremental_jsonl_isolation.py` | Hermetic T0 boundary; `-I` workers get host site via `CONVMEM_INCREMENTAL_SITE` |
+| `docs/plans/VERIFY-codex-jsonl-production-integration.md` | Cursor T0–T6 evidence |
+| `docs/plans/ARCHITECTURE-codex-jsonl-production-integration.md` | Kiro-reviewed production architecture; PASS at `84ec51a` |
+| `docs/plans/EXECUTION-codex-jsonl-production-integration.md` | Ryan-authorized bounded Cursor T0–T6 plan |
+| Scratch prototype + canary on `main` | Unchanged inherited evidence |
 
-No production implementation, live config change, source checkpoint, provider
-call, watcher action, migration, or activation exists in Arc Codex.
+No live config, production Chroma, watcher, provider, bootstrap, canary, PR, or
+activation exists.
 
 ## 4. Completion State
 
@@ -91,19 +90,21 @@ call, watcher action, migration, or activation exists in Arc Codex.
 | Production architecture | **PASS at `84ec51a`** | — |
 | Bounded Execute plan | **PASS / AUTHORIZED** | — |
 | Ryan architecture/Execute acceptance | **DONE 2026-09-10** | — |
-| Cursor implementation | **AUTHORIZED / NOT STARTED** | Cursor executes T0–T6 and stops at evidence |
-| Implementation review/PR | **NOT STARTED** | Successful bounded Cursor evidence |
+| Cursor implementation | **DONE on feature branch `5341bb1`** | Independent Kiro review of the exact evidence tip |
+| Implementation review/PR | **IN REVIEW** | Kiro exact-tip PASS, then Ryan decides whether to open a PR |
 | Production bootstrap/canary | **UNAUTHORIZED** | Separate post-merge Ryan grant |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
 ## 5. Your Role
 
-**If Ryan sent you to implement now:** you are Cursor and the bounded T0–T6
-Execute grant is active. Read
-`docs/inter-model/CODEX-2026-09-10-jsonl-production-integration-execute.md`,
-follow the ordered plan, run T0 first, stop on a concrete architecture
-contradiction, use only temporary paths and deterministic fakes, and stop at
-pushed evidence for Kiro. Do not open a PR.
+**If Ryan sent you to review now:** you are Kiro. Fetch
+`feat/2026-09-10-codex-jsonl-production-integration`, reproduce
+[`VERIFY-codex-jsonl-production-integration.md`](VERIFY-codex-jsonl-production-integration.md)
+at the exact tip, and answer the seven Execute review questions. Do not open a
+PR, enable the flag, or touch live state.
+
+**If Ryan sent you to implement:** Cursor T0–T6 is already pushed. Do not
+re-execute unless Kiro returns a concrete contradiction.
 
 **If Ryan sent you to activate:** stop unless the exact source, live config
 change, provider/cost boundary, watcher state, rollback action, and canary stop
@@ -111,16 +112,14 @@ condition are separately authorized. Merge of disabled code is not activation.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Cursor implements T0–T6 with no live resources or provider calls and stops
-   at pushed evidence.
-2. Kiro independently reviews the exact implementation/evidence tip.
-3. Ryan decides whether to open/merge the disabled implementation PR.
-4. After merge, Ryan separately chooses a new source or authorizes a one-time
+1. Kiro independently reviews the exact implementation/evidence tip.
+2. Ryan decides whether to open/merge the disabled implementation PR.
+3. After merge, Ryan separately chooses a new source or authorizes a one-time
    clean bootstrap rebuild and its model-cost ceiling.
-5. A bounded production-path canary measures cross-collection mixed visibility,
+4. A bounded production-path canary measures cross-collection mixed visibility,
    replay time, frontier calls, and rollback under an exact source/grant.
-6. Independent review decides whether watcher/feature activation is safe.
-7. Ryan alone edits live configuration or activates the watcher route.
+5. Independent review decides whether watcher/feature activation is safe.
+6. Ryan alone edits live configuration or activates the watcher route.
 
 ## 7. Hard Stops
 
@@ -164,10 +163,13 @@ visible to readers.
 | Production architecture | `docs/plans/ARCHITECTURE-codex-jsonl-production-integration.md` |
 | Bounded implementation plan | `docs/plans/EXECUTION-codex-jsonl-production-integration.md` |
 | Current arc snapshot | `docs/plans/STATUS-codex-jsonl-production-integration.md` |
+| Cursor T0–T6 evidence | `docs/plans/VERIFY-codex-jsonl-production-integration.md` |
 | Scratch evidence | `docs/inter-model/VERIFY-jsonl-incremental-scratch-prototype.md` |
 | Live-source canary evidence | `docs/inter-model/VERIFY-jsonl-incremental-live-source-canary.md` |
 | Execute handoff | `docs/inter-model/CODEX-2026-09-10-jsonl-production-integration-execute.md` |
+| Kiro review handoff | `docs/inter-model/CURSOR-2026-09-10-jsonl-production-integration-review.md` |
 | Production ingest | `ingest.py` |
+| Incremental coordinator | `incremental_jsonl.py` |
 | Kiro adapter | `adapters/kiro_session_jsonl.py` |
 | Production writer/store | `chroma_write_store.py`, `chroma_store.py` |
 
@@ -189,15 +191,17 @@ Keep this document a current-state snapshot, not a session diary.
 | Date | Who | Change |
 |---|---|---|
 | 2026-09-09 | Codex | Created Arc Codex production-integration architecture, bounded Execute plan, and Kiro review boundary after merged scratch/canary evidence |
-| 2026-09-09 | Codex | Applied Kiro C1–C3 precision review: accurate processed sidecar/source-lock interval, named source-before-export invariant, and explicit new incremental prune trigger |
+| 2026-09-09 | Codex | Applied Kiro C1–C3 precision review: accurate processed-state sidecar/source-lock interval, named source-before-export invariant, and explicit new incremental prune trigger |
 | 2026-09-10 | Codex | Finalized C1 to preserve the standalone processed-state critical section after releasing the source-locked apply; C2/C3 remain confirmed |
 | 2026-09-10 | Codex | Recorded Kiro PASS at `84ec51a` and Ryan's bounded Cursor T0–T6 Execute grant; implementation remains not started and operational actions remain gated |
+| 2026-09-10 | Cursor | Landed hermetic T0–T6 on `feat/2026-09-10-codex-jsonl-production-integration` at `5341bb1`; next lane is exact-tip Kiro review. No PR, live indexing, or activation |
 
 ## TL;DR
 
-- Arc Codex's production Architecture and Execute plan are PASS at `84ec51a`;
-  no production implementation exists yet.
-- Cursor is authorized to execute hermetic T0–T6 and stop at pushed evidence
-  for Kiro.
+- Arc Codex production code is implemented and disabled-by-default on
+  `feat/2026-09-10-codex-jsonl-production-integration` (`5341bb1`).
+- Kiro must reproduce
+  [`VERIFY-codex-jsonl-production-integration.md`](VERIFY-codex-jsonl-production-integration.md)
+  at the exact fetched tip.
 - Live indexing, providers, migration, PR creation, bootstrap/canary, and
   activation remain separately Ryan-gated.

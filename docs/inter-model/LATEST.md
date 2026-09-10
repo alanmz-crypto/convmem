@@ -9,15 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex — Kiro JSONL production integration:** the reviewed scratch,
-  isolated real-Chroma, and read-only live-source canary work is merged on
-  `main` through PR #292. Kiro reviewed the default-off production
-  Architecture and Execute plan PASS at `84ec51a`, including the final C1
-  standalone processed-state transaction correction. Ryan authorized Cursor's
-  bounded T0–T6 Execute on 2026-09-10. Cursor must start with T0 and stop at
-  pushed hermetic evidence for Kiro; no live indexing, provider call, watcher
-  action, migration, PR, bootstrap/canary, or activation is authorized. Resume
-  from [`CODEX-2026-09-10-jsonl-production-integration-execute.md`](CODEX-2026-09-10-jsonl-production-integration-execute.md).
+- **Arc Codex — Kiro JSONL production integration:** Cursor completed hermetic
+  T0–T6 on `feat/2026-09-10-codex-jsonl-production-integration` (implementation
+  `5341bb1`). The feature remains disabled. Kiro must independently reproduce
+  [`VERIFY-codex-jsonl-production-integration.md`](../plans/VERIFY-codex-jsonl-production-integration.md)
+  at the exact fetched tip and answer the seven Execute questions. Resume from
+  [`CURSOR-2026-09-10-jsonl-production-integration-review.md`](CURSOR-2026-09-10-jsonl-production-integration-review.md).
+  No live indexing, provider call, watcher action, migration, PR, bootstrap,
+  canary, or activation is authorized.
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
   project and arc state; it is not a Git-ref authority. Read [`STATUS.md`](STATUS.md)

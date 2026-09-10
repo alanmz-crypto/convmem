@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-09-09. Verify the exact repository tip from `origin/main`
+**Snapshot:** 2026-09-10. Verify the exact repository tip from `origin/main`
 before comparing branches; branch and PR work named below is not on `main`
 unless explicitly stated.
 
@@ -47,7 +47,7 @@ gated.
 
 | Arc | State | Next authorized action |
 |---|---|---|
-| Codex — Kiro JSONL incremental production integration | Scratch, isolated real-Chroma, and read-only live-source canary evidence is merged on `main` through PR #292. Kiro reviewed the production Architecture/Execute plan PASS at `84ec51a`; Ryan authorized bounded Cursor T0–T6 Execute on 2026-09-10. No production implementation or activation exists. | Cursor executes hermetically and stops at pushed evidence for exact-tip Kiro review. No live indexing, providers, migration, PR, watcher action, bootstrap/canary, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
+| Codex — Kiro JSONL incremental production integration | Hermetic T0–T6 is on `feat/2026-09-10-codex-jsonl-production-integration` at `5341bb1`. Feature remains disabled. Scratch/canary evidence stays on `main` via PR #292. | Kiro reproduces VERIFY at the exact fetched tip and answers the seven Execute questions. No live indexing, providers, migration, PR, watcher action, bootstrap/canary, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
@@ -108,9 +108,9 @@ gated.
 - [Arc Codex JSONL production-integration STATUS](../plans/STATUS-codex-jsonl-production-integration.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Arc Codex's default-off Kiro JSONL production plan passed Kiro review
-at `84ec51a`, and Ryan authorized Cursor's bounded T0–T6 Execute. Implementation
-is not started; every live action and PR creation remain unauthorized. Other
+**TL;DR:** Arc Codex hermetic T0–T6 is pushed on
+`feat/2026-09-10-codex-jsonl-production-integration` (`5341bb1`). Kiro reviews
+the exact tip. Every live action and PR creation remain unauthorized. Other
 active arcs retain their existing gates. Verify the exact `origin/main` tip
 from Git when a commit identity matters.
 
