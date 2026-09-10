@@ -8,7 +8,7 @@ constructed from the captured bytes under a fresh scratch root.
 
 # pylint: disable=too-many-lines,too-many-locals,too-many-branches,too-many-statements
 # pylint: disable=line-too-long,subprocess-run-check,wrong-import-position
-# pylint: disable=too-many-instance-attributes,protected-access
+# pylint: disable=too-many-instance-attributes,protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ import argparse
 import hashlib
 import json
 import os
+import pwd
 import shutil
 import stat
 import subprocess
@@ -280,25 +281,51 @@ def _watcher_processes() -> list[int]:
 
 def gate0() -> dict[str, Any]:
     """Perform the no-import, read-only preflight required by the grant."""
-    try:
-        service = subprocess.run(
+    user = pwd.getpwuid(os.getuid()).pw_name
+    probes = (
+        (
+            "local-user-bus",
             ["systemctl", "--user", "is-active", "convmem-watch.service"],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise IsolationViolation("watcher state indeterminate") from exc
-    status = service.stdout.strip()
-    if service.returncode != 0 and status not in {"inactive", "failed", "unknown"}:
-        raise IsolationViolation("watcher state indeterminate")
-    if status not in {"inactive", "failed"}:
+        ),
+        (
+            "host-user-manager",
+            [
+                "systemctl",
+                "--user",
+                f"--machine={user}@.host",
+                "is-active",
+                "convmem-watch.service",
+            ],
+        ),
+    )
+    status = ""
+    service_probe = ""
+    for service_probe, command in probes:
+        try:
+            service = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=5,
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        status = service.stdout.strip()
+        if status == "active":
+            raise IsolationViolation("watcher service is active or indeterminate")
+        if status in {"inactive", "failed"}:
+            break
+    else:
         raise IsolationViolation("watcher service is active or indeterminate")
     processes = _watcher_processes()
     if processes:
         raise IsolationViolation("ConvMem watcher process is running")
-    return {"service": status, "watcher_processes": len(processes)}
+    return {
+        "service": status,
+        "service_probe": service_probe,
+        "watcher_processes": len(processes),
+    }
 
 
 def _copy_source_bytes(root: Path, data: bytes, meta: bytes, name: str) -> Path:
@@ -312,13 +339,6 @@ def _authority_digest(value: Any) -> str:
     return _sha(json.dumps(value, sort_keys=True, separators=(",", ":")).encode())
 
 
-def _authority_without_paths(authority: dict[str, Any]) -> dict[str, Any]:
-    """Return only authority data; paths are checked separately."""
-    return {
-        key: value for key, value in authority.items() if key not in {"chroma_dir", "config_path"}
-    }
-
-
 def _checkpoint_authority(checkpoint: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in checkpoint.items() if key != "fallback_reason"}
 
@@ -329,8 +349,30 @@ def _payload_signature(payload: dict[str, Any], *, chroma: bool) -> dict[str, An
         "checkpoint": _checkpoint_authority(payload["checkpoint"]),
     }
     if chroma:
-        value["authority"] = _authority_without_paths(payload["authority"])
+        value["authority"] = payload["authority"]
     return value
+
+
+def _assert_transition_coverage(
+    declared: Iterable[str], injected: Iterable[str], *, label: str
+) -> None:
+    """Fail closed unless both sides of every durable transition are injected."""
+    covered: dict[str, set[str]] = {}
+    for point in injected:
+        side, separator, transition = point.partition("_")
+        if not separator or side not in {"before", "after"}:
+            continue
+        if transition.startswith("upsert_"):
+            transition = "upsert"
+        covered.setdefault(transition, set()).add(side)
+    missing = {
+        transition
+        for transition in declared
+        if covered.get(transition) != {"before", "after"}
+    }
+    if missing:
+        names = ", ".join(sorted(missing))
+        raise IsolationViolation(f"{label} transition coverage missing: {names}")
 
 
 def _run_engine_worker(
@@ -342,12 +384,21 @@ def _run_engine_worker(
     chroma: bool = False,
     fingerprint: str = "deterministic-transform-v1",
 ) -> subprocess.CompletedProcess[str]:
-    args = [sys.executable, "-I", str(Path(__file__)), WORKER_FLAG, "run", str(source)]
+    args = [
+        sys.executable,
+        "-I",
+        str(Path(__file__)),
+        WORKER_FLAG,
+        "run",
+        "--source",
+        str(source),
+        "--fingerprint",
+        fingerprint,
+    ]
     if chroma:
         args.append("--chroma")
-    args.append(fingerprint)
     if fault:
-        args.append(fault)
+        args.extend(("--fault", fault))
     return subprocess.run(
         args,
         cwd=root,
@@ -363,9 +414,17 @@ def _run_engine_worker(
 def _run_prune_worker(
     root: Path, token: str, source: Path, *, fault: str = ""
 ) -> subprocess.CompletedProcess[str]:
-    args = [sys.executable, "-I", str(Path(__file__)), WORKER_FLAG, "prune", str(source)]
+    args = [
+        sys.executable,
+        "-I",
+        str(Path(__file__)),
+        WORKER_FLAG,
+        "prune",
+        "--source",
+        str(source),
+    ]
     if fault:
-        args.append(fault)
+        args.extend(("--fault", fault))
     return subprocess.run(
         args,
         cwd=root,
@@ -381,7 +440,7 @@ def _run_prune_worker(
 def _run_capture_worker(root: Path, token: str, *, fault: str = "") -> subprocess.CompletedProcess[str]:
     args = [sys.executable, "-I", str(Path(__file__)), WORKER_FLAG, "capture"]
     if fault:
-        args.append(fault)
+        args.extend(("--fault", fault))
     return subprocess.run(
         args,
         cwd=root,
@@ -463,6 +522,9 @@ def _fallback_cases(parent: Path, data: bytes, meta: bytes) -> dict[str, str]:
 
 def _crash_matrix(parent: Path, data: bytes, meta: bytes) -> dict[str, Any]:
     """Exercise every discovered engine and real-Chroma fault side."""
+    from scratch_jsonl_prototype.chroma_projection import CHROMA_DURABLE_TRANSITIONS
+    from scratch_jsonl_prototype.engine import DURABLE_TRANSITIONS
+
     lines = data.splitlines(keepends=True)
     records = 0
     line_count = 0
@@ -490,6 +552,9 @@ def _crash_matrix(parent: Path, data: bytes, meta: bytes) -> dict[str, Any]:
         for transition in CAPTURE_DURABLE_TRANSITIONS
         for side in ("before", "after")
     ]
+    _assert_transition_coverage(
+        CAPTURE_DURABLE_TRANSITIONS, capture_points, label="capture"
+    )
     capture_crashes = 0
     for point in capture_points:
         root, token = create_fresh_root(parent)
@@ -502,6 +567,11 @@ def _crash_matrix(parent: Path, data: bytes, meta: bytes) -> dict[str, Any]:
         payload = json.loads(replay.stdout)
         if payload.get("status") != "CAPTURED":
             raise IsolationViolation(f"capture replay incomplete: {point}")
+        captured = root / "sources" / "sess_canary"
+        if (captured / "messages.jsonl").read_bytes() != data:
+            raise IsolationViolation(f"capture replay diverged for messages: {point}")
+        if (captured / "session.json").read_bytes() != meta:
+            raise IsolationViolation(f"capture replay diverged for metadata: {point}")
         capture_crashes += 1
         shutil.rmtree(root, ignore_errors=True)
 
@@ -519,6 +589,7 @@ def _crash_matrix(parent: Path, data: bytes, meta: bytes) -> dict[str, Any]:
     engine_points.extend(
         ["before_fallback_marker", "after_fallback_marker", "before_fallback_cleanup", "after_fallback_cleanup"]
     )
+    _assert_transition_coverage(DURABLE_TRANSITIONS, engine_points, label="engine")
     engine_crashes = 0
     for point in engine_points:
         fallback = "fallback" in point
@@ -572,6 +643,11 @@ def _crash_matrix(parent: Path, data: bytes, meta: bytes) -> dict[str, Any]:
         for transition in ("summaries_prune", "units_prune")
         for side in ("before", "after")
     ]
+    _assert_transition_coverage(
+        CHROMA_DURABLE_TRANSITIONS,
+        [*chroma_points, *prune_points],
+        label="Chroma",
+    )
     prune_crashes = 0
     for point in prune_points:
         root, token, source = _fresh_case(parent, crash_data, meta, "sess_prune_crash")
@@ -591,12 +667,8 @@ def _crash_matrix(parent: Path, data: bytes, meta: bytes) -> dict[str, Any]:
         if clean_result.returncode != 0:
             raise IsolationViolation(f"prune clean rebuild failed: {point}")
         clean_payload = json.loads(clean_result.stdout)
-        replay_signature = {
-            key: _authority_without_paths(payload[key]) for key in ("source", "other")
-        }
-        clean_signature = {
-            key: _authority_without_paths(clean_payload[key]) for key in ("source", "other")
-        }
+        replay_signature = {key: payload[key] for key in ("source", "other")}
+        clean_signature = {key: clean_payload[key] for key in ("source", "other")}
         if replay_signature != clean_signature:
             raise IsolationViolation(f"prune replay diverged from clean rebuild: {point}")
         prune_crashes += 1
@@ -616,6 +688,7 @@ def _crash_matrix(parent: Path, data: bytes, meta: bytes) -> dict[str, Any]:
         "chroma_transition_names": chroma_points,
         "prune_points": len(prune_points),
         "prune_crashes_replayed": prune_crashes,
+        "transition_coverage_complete": True,
     }
 
 
@@ -668,19 +741,41 @@ def _run_matrix(
     )
     clean_authority = clean["authority"]
 
-    # Partial trailing record is derived from the last complete source line.
+    # Partial trailing record is derived from a known valid source message.
+    eligible_lines = []
+    for index, line in enumerate(lines):
+        try:
+            record = json.loads(line)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            continue
+        payload = record.get("payload") if isinstance(record, dict) else None
+        if (
+            isinstance(payload, dict)
+            and payload.get("type") in ("user", "assistant")
+            and isinstance(payload.get("content"), str)
+            and payload["content"].strip()
+        ):
+            eligible_lines.append(index)
+    if len(eligible_lines) < 2:
+        raise IsolationViolation("frozen source lacks a partial-record fixture")
+    partial_index = eligible_lines[1]
+    partial_base = b"".join(lines[:partial_index])
+    partial_line = lines[partial_index]
     partial_root, partial_token, partial_source = _fresh_case(
-        parent, message_bytes[: message_desc.complete_boundary], meta_bytes, "sess_partial"
+        parent, partial_base, meta_bytes, "sess_partial"
     )
-    _worker_engine_payload(_run_engine_worker(partial_root, partial_token, partial_source))
-    last = lines[-1]
-    cut = max(1, len(last) // 2)
+    partial_baseline = _worker_engine_payload(
+        _run_engine_worker(partial_root, partial_token, partial_source)
+    )
+    cut = max(1, len(partial_line) // 2)
     with partial_source.open("ab") as handle:
-        handle.write(last[:cut].rstrip(b"\n"))
+        handle.write(partial_line[:cut].rstrip(b"\n"))
     partial = _worker_engine_payload(_run_engine_worker(partial_root, partial_token, partial_source))
     with partial_source.open("ab") as handle:
-        handle.write(last[cut:])
+        handle.write(partial_line[cut:])
     completed = _worker_engine_payload(_run_engine_worker(partial_root, partial_token, partial_source))
+    if completed["run"]["records"] != partial_baseline["run"]["records"] + 1:
+        raise IsolationViolation("completed partial record did not enter authority once")
 
     # Zero-transform storage repair against the real Chroma collections.
     repair_root, repair_token, repair_source = _fresh_case(
@@ -736,13 +831,12 @@ def _run_matrix(
             "selected_boundary": full_run["run"]["selected_boundary"],
             "summary_rows": len(baseline_authority.get("summaries") or []),
             "unit_rows": len(baseline_authority.get("units") or []),
-            "authority_sha256": _authority_digest(_authority_without_paths(baseline_authority)),
+            "authority_sha256": _authority_digest(baseline_authority),
         },
         "unchanged_replay": {
             "mode": replay["run"]["mode"],
             "transform_calls": replay["run"]["transform_calls"],
-            "authority_equal": _authority_without_paths(replay["authority"])
-            == _authority_without_paths(baseline_authority),
+            "authority_equal": replay["authority"] == baseline_authority,
         },
         "frontier_append": {
             "initial_records": staged_first["run"]["records"],
@@ -750,8 +844,7 @@ def _run_matrix(
             "frontier_record": staged_second["run"]["frontier_record"],
             "transform_calls": staged_second["run"]["transform_calls"],
             "reused_rows": staged_second["run"]["reused_rows"],
-            "clean_authority_equal": _authority_without_paths(staged_authority)
-            == _authority_without_paths(clean_authority),
+            "clean_authority_equal": staged_authority == clean_authority,
             "clean_projection_equal": staged_second["projection"] == clean["projection"],
             "clean_checkpoint_authority_equal": _checkpoint_authority(staged_checkpoint)
             == _checkpoint_authority(clean["checkpoint"]),
@@ -760,17 +853,17 @@ def _run_matrix(
             ),
         },
         "partial_record": {
+            "initial_records": partial_baseline["run"]["records"],
             "deferred_mode": partial["run"]["mode"],
             "deferred_transform_calls": partial["run"]["transform_calls"],
             "completed_records": completed["run"]["records"],
+            "completed_transform_calls": completed["run"]["transform_calls"],
         },
         "storage_repair": {
             "summary_transform_calls": repaired_summary["run"]["transform_calls"],
             "unit_transform_calls": repaired_unit["run"]["transform_calls"],
-            "authority_equal": _authority_without_paths(repaired_summary["authority"])
-            == _authority_without_paths(repair["authority"])
-            and _authority_without_paths(repaired_unit["authority"])
-            == _authority_without_paths(repair["authority"]),
+            "authority_equal": repaired_summary["authority"] == repair["authority"]
+            and repaired_unit["authority"] == repair["authority"],
         },
         "source_scope": {"sentinel_survives_prune": scope_survivor == {"scope-other"}},
         "max_units_in_flight": full_run["run"]["max_units_in_flight"],
@@ -817,9 +910,9 @@ def _worker_main() -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument(WORKER_FLAG, action="store_true")
     parser.add_argument("command", nargs="?")
-    parser.add_argument("source", nargs="?")
-    parser.add_argument("fingerprint", nargs="?", default="deterministic-transform-v1")
-    parser.add_argument("fault", nargs="?")
+    parser.add_argument("--source")
+    parser.add_argument("--fingerprint", default="deterministic-transform-v1")
+    parser.add_argument("--fault", default="")
     parser.add_argument("--chroma", action="store_true")
     args = parser.parse_args()
     if args.command == "canary":
@@ -836,7 +929,7 @@ def _worker_main() -> int:
         )
 
         def abrupt_prune(point: str) -> None:
-            if point == args.fingerprint:
+            if point == args.fault:
                 os._exit(EXIT_CRASH)
 
         projection = ScratchChromaProjection(
@@ -870,7 +963,7 @@ def _worker_main() -> int:
         install_network_denial()
 
         def abrupt_capture(point: str) -> None:
-            if point == args.fingerprint:
+            if point == args.fault:
                 os._exit(EXIT_CRASH)
 
         message, meta, _complete, _meta_bytes = capture_sources(

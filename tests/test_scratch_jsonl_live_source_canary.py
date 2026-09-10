@@ -133,6 +133,20 @@ def test_capture_fault_inventory_and_wrapper_subsumption_are_explicit(tmp_path: 
     assert Path("/home/lauer/Projects/convmem") in canary.PRODUCTION_ROOTS
 
 
+def test_transition_coverage_fails_closed_when_declared_point_is_missing() -> None:
+    canary._assert_transition_coverage(
+        ("prepare", "publish"),
+        ("before_prepare", "after_prepare", "before_publish", "after_publish"),
+        label="fixture",
+    )
+    with pytest.raises(IsolationViolation, match="missing: publish"):
+        canary._assert_transition_coverage(
+            ("prepare", "publish"),
+            ("before_prepare", "after_prepare", "before_publish"),
+            label="fixture",
+        )
+
+
 def test_gate0_aborts_active_or_indeterminate_watcher(monkeypatch) -> None:
     calls: list[list[str]] = []
 
@@ -158,6 +172,37 @@ def test_gate0_aborts_active_or_indeterminate_watcher(monkeypatch) -> None:
         canary.gate0()
 
 
+def test_gate0_uses_host_user_manager_when_local_bus_is_unavailable(monkeypatch) -> None:
+    calls: list[list[str]] = []
+
+    class Result:
+        def __init__(self, returncode: int, stdout: str):
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def run(command, **_kwargs):
+        calls.append(command)
+        if len(calls) == 1:
+            return Result(1, "")
+        return Result(3, "inactive\n")
+
+    monkeypatch.setattr(canary.subprocess, "run", run)
+    monkeypatch.setattr(canary, "_watcher_processes", lambda: [])
+    evidence = canary.gate0()
+    assert evidence == {
+        "service": "inactive",
+        "service_probe": "host-user-manager",
+        "watcher_processes": 0,
+    }
+    assert calls[0] == [
+        "systemctl", "--user", "is-active", "convmem-watch.service"
+    ]
+    assert calls[1][:2] == ["systemctl", "--user"]
+    assert calls[1][2].startswith("--machine=")
+    assert calls[1][2].endswith("@.host")
+    assert calls[1][3:] == ["is-active", "convmem-watch.service"]
+
+
 def test_watcher_cmdline_detection_catches_module_and_script_forms() -> None:
     assert canary._watcher_command_matches("python", "python\0-m\0convmem.watch\0")
     assert canary._watcher_command_matches("python", "/opt/convmem-watch.py\0")
@@ -180,6 +225,18 @@ def test_worker_uses_explicit_scratch_env_and_fingerprint_fallback(tmp_path: Pat
     payload = json.loads(changed.stdout)
     assert payload["run"]["fallback_reason"] == "transform_fingerprint_changed"
     assert payload["checkpoint"]["commit_state"] == "complete"
+
+    chroma = canary._run_engine_worker(root, token, source, chroma=True)
+    assert chroma.returncode == 0, chroma.stderr
+    assert json.loads(chroma.stdout)["authority"]["summaries"]
+
+
+def test_capture_worker_fault_name_reaches_explicit_fault_option(tmp_path: Path) -> None:
+    root, token = create_fresh_root(tmp_path)
+    crashed = canary._run_capture_worker(
+        root, token, fault="before_snapshot_prepare"
+    )
+    assert crashed.returncode == canary.EXIT_CRASH, crashed.stderr
 
 
 def test_worker_crash_exit_is_replayable_without_content_evidence(tmp_path: Path) -> None:
