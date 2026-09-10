@@ -174,14 +174,62 @@ Independent review must include this incident when judging execution discipline.
 
 ## Interpretation limits and largest remaining risk
 
-The prototype deliberately stops short of production integration. Its
-generation store is a deterministic, fsync-and-atomic-replace scratch
-projection under the isolated chroma/ resource root; it does not instantiate
-the production Chroma client or execute the production ingest writer/pruner.
-This isolates the state-machine and crash-authority claims, but it leaves actual
-Chroma transaction, lock, and persistence behavior for a separately reviewed
-corrective scratch pass or canary authorization. Independent review should
-decide whether that storage seam is sufficient prototype evidence.
+### Corrective real-Chroma scratch pass (2026-09-09) — PASS, awaiting independent review
+
+The bounded corrective pass added
+`scratch_jsonl_prototype/chroma_projection.py` and
+`tests/test_scratch_jsonl_chroma.py` on the dedicated branch
+`feat/2026-09-09-jsonl-incremental-chroma-scratch` (implementation commits
+`6e5354b` through `e65a8ea`).
+The adapter validates every mutable path under a fresh tokenized root before
+its local imports/resources, writes deterministic fixed-dimension embeddings
+through `production_chroma_write_session` with scratch-local lease,
+attestation, and census paths, and exercises real Chroma add/read/delete
+persistence for both collections. Codex independently reran the bounded
+scratch/isolation/incremental/Kiro matrix after strengthening the final
+authority assertions: 65 tests passed in 18.10 seconds. Compileall and
+`git diff --check` exited zero; Pylint reported 10.00/10 and exited zero (its
+attempt to write an optional stats cache under the read-only home cache was
+non-fatal). The real-Chroma
+worker runs after pre-import isolation/network denial, repairs missing rows
+without transforms, and prunes both collections by exact source scope and
+authoritative IDs.  Subprocess crash/replay covers both sides of all summary/
+unit upserts and both collection prunes, retaining cross-source sentinels.
+Constructor interception proves the exact validated PersistentClient path and
+rejects outside paths before construction. Exact incremental/clean rebuild
+equality for Chroma rows, active projection, and checkpoint authority fields,
+plus zero-transform storage repair, passed. The diagnostic
+`fallback_reason` is expected to differ (`None` after append versus
+`initial_full` after a clean rebuild) and is asserted separately rather than
+treated as authority. This remains bounded scratch evidence only; no canary or
+production activation is authorized.
+
+The existing safe-reindex rerun was intentionally excluded from this scratch
+gate because this sandbox reaches the default production writer lock; its
+original reviewed 72-test result remains separate historical evidence.
+
+### PR CI writer-inventory correction
+
+The first PR pytest run found that the new scratch call to
+`production_chroma_write_session` was absent from the repository's static
+writer-route inventory. The call was added to
+`SHADOW-WRITER-COVERAGE-INVENTORY.json` as a
+`scratch_hermetic_writer_session`, and the count gate now records fourteen
+production routes plus this one explicitly bounded scratch route. No call was
+hidden from the scanner and no production code changed. The exact failing
+inventory test and its count gate passed (2 tests), followed by the complete
+65-test focused scratch matrix. The next PR pytest run then correctly rejected
+the stale revision binding in `R2B-V2-WRITER-COVERAGE-INVENTORY.json`; the
+repository's canonical generator refreshed that derived artifact to include the
+newly classified scratch route. Its 18 identity/regression guards and 29
+writer-route/lease gates passed locally. No runtime code changed in either CI
+correction.
+
+The generation/checkpoint state machine remains deliberately separate from
+production ingest and the real-Chroma adapter is an optional scratch seam.
+Chroma itself does not provide the engine's cross-collection atomic commit, so
+the checkpoint remains the authority for replay; independent review must
+decide whether a separately authorized canary should test that boundary.
 
 The Kiro adapter currently materializes its parsed message list, and this
 prototype materializes the selected complete prefix before parsing. The

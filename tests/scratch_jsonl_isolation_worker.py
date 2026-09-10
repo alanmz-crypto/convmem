@@ -1,6 +1,6 @@
 """Subprocess entrypoint for the scratch isolation executable gate."""
 
-# pylint: disable=wrong-import-position,broad-exception-caught,consider-using-with
+# pylint: disable=wrong-import-position,broad-exception-caught,consider-using-with,line-too-long
 
 from __future__ import annotations
 
@@ -105,6 +105,64 @@ def main() -> int:
             ),
             flush=True,
         )
+        return 0
+    if command == "chroma-run":
+        from scratch_jsonl_prototype.chroma_projection import ScratchChromaProjection  # noqa: PLC0415
+        source = boundary.resolve_mutable(sys.argv[2], label="source fixture")
+        projection = ScratchChromaProjection(boundary, source_path=source)
+        projection.upsert([{"id": "worker-row", "document": "worker", "metadata": {}}], "worker-generation")
+        try:
+            import socket
+            socket.create_connection(("203.0.113.1", 9), timeout=0.01)
+            network = "unexpected-success"
+        except Exception as exc:  # noqa: BLE001
+            network = type(exc).__name__
+        payload = projection.authority()
+        payload["isolation"] = {
+            "credential_names": [name for name in os.environ if ("KEY" in name or "TOKEN" in name or "SECRET" in name) and name != "CONVMEM_SCRATCH_TOKEN"],
+            "production_override_names": [name for name in os.environ if name.startswith("CONVMEM_") and name not in {"CONVMEM_SCRATCH_ROOT", "CONVMEM_SCRATCH_TOKEN", "CONVMEM_SCRATCH_MODE"}],
+            "network": network,
+        }
+        print(json.dumps(payload, sort_keys=True, default=lambda value: value.tolist()), flush=True)
+        return 0
+    if command == "chroma-incremental":
+        from scratch_jsonl_prototype.chroma_projection import ScratchChromaProjection  # noqa: PLC0415
+        from scratch_jsonl_prototype.engine import ScratchIncrementalJsonl, evidence_dict  # noqa: PLC0415
+        source = boundary.resolve_mutable(sys.argv[2], label="source fixture")
+        fault_point = sys.argv[3] if len(sys.argv) > 3 else ""
+        def abrupt_chroma(point: str) -> None:
+            if point == fault_point:
+                os._exit(86)
+        projection = ScratchChromaProjection(boundary, source_path=source, fault=abrupt_chroma)
+        run = ScratchIncrementalJsonl(
+            boundary, source, projection=projection, fault=abrupt_chroma
+        ).run()
+        payload = {
+            "run": evidence_dict(run),
+            "checkpoint": ScratchIncrementalJsonl(
+                boundary, source, projection=projection
+            ).checkpoint(),
+            "authority": projection.authority(),
+        }
+        print(
+            json.dumps(payload, sort_keys=True, default=lambda value: value.tolist()),
+            flush=True,
+        )
+        return 0
+    if command == "chroma-prune":
+        from scratch_jsonl_prototype.chroma_projection import ScratchChromaProjection  # noqa: PLC0415
+        source = boundary.resolve_mutable(sys.argv[2], label="source fixture")
+        fault_point = sys.argv[3] if len(sys.argv) > 3 else ""
+        def abrupt_prune(point: str) -> None:
+            if point == fault_point:
+                os._exit(86)
+        projection = ScratchChromaProjection(boundary, source_path=source, fault=abrupt_prune)
+        projection.upsert([{"id": "keep", "document": "keep", "metadata": {}},
+                           {"id": "obsolete", "document": "obsolete", "metadata": {}}], "g")
+        other = ScratchChromaProjection(boundary, source_path=boundary.resolve_mutable("sources/sess_other/messages.jsonl", label="other"))
+        other.upsert([{"id": "other", "document": "other", "metadata": {}}], "g")
+        projection.prune(generation="g", keep_ids={"keep"})
+        print(json.dumps(projection.authority(), sort_keys=True, default=lambda value: value.tolist()), flush=True)
         return 0
     raise ValueError(f"unknown command: {command}")
 

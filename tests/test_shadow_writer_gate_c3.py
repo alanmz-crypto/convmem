@@ -67,7 +67,7 @@ def test_static_scan_zero_legacy_production_factory_calls() -> None:
     assert not hits, f"legacy production write opens remain: {hits}"
 
 
-def test_fourteen_production_writer_sites_migrated() -> None:
+def test_all_writer_session_sites_inventoried() -> None:
     inv = json.loads(
         (ROOT / "docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json").read_text(
             encoding="utf-8"
@@ -76,7 +76,8 @@ def test_fourteen_production_writer_sites_migrated() -> None:
     total = len(inv["production_chroma_write_session_call_sites"]) + len(
         inv["open_production_write_store_call_sites"]
     )
-    assert total == 14
+    # Fourteen production routes plus one ScratchBoundary-confined prototype.
+    assert total == 15
     assert inv["must_use_factory_count"] == 0
 
 
