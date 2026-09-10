@@ -15,6 +15,8 @@
 **Kiro correction:** import `Iterable` in `incremental_jsonl_canary.py` (required
 typing fix for `assert_transition_coverage`).
 
+**Corrected tip:** `a70101f28f567e05b3ee4fc3735ad21d97868014`
+
 **PR:** not opened; Ryan/Kiro exact-tip review is next
 
 ---
