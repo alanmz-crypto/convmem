@@ -4,9 +4,10 @@
 
 **Disposition: PASS, pending independent Kiro review.** This document records
 sanitized evidence for Ryan's frozen Execute grant at
-`474a27c654c0511fe1d076669df22288876206a6`. The tested implementation is
-`f5503832917c8a4d51292d3d3fa3c27c33d80f28` on
-`feat/2026-09-09-jsonl-incremental-live-source-canary`.
+`474a27c654c0511fe1d076669df22288876206a6`. The one-shot canary execution used
+implementation `f5503832917c8a4d51292d3d3fa3c27c33d80f28`. The independently
+reviewed reproducibility correction is `fc811fc85312ae901d1896defda7f3fe72ae4e81`
+on `feat/2026-09-09-jsonl-incremental-live-source-canary`.
 
 The canary read one explicitly bound Kiro transcript and its sibling metadata
 file. Every write, mutation, crash, Chroma collection, checkpoint, projection,
@@ -136,9 +137,30 @@ The Pylint correction reformats only the already-scoped
 `tests/test_kiro_session_jsonl.py` and removes its unused import; it changes no
 test behavior or production runtime code.
 
+## Post-review reproducibility correction
+
+Kiro's independent review at evidence tip `97c8518` issued a conditional PASS:
+the safety envelope and recorded canary execution were sound, but
+`test_capture_worker_fault_name_reaches_explicit_fault_option` reused the
+point-in-time live grant. Once that active transcript grew, the guard correctly
+failed with `size drift`, making the repeatable suite nondeterministic.
+
+Correction `fc811fc85312ae901d1896defda7f3fe72ae4e81` supplies the capture
+subprocess with explicit synthetic message/metadata descriptors created below
+the tokenized temporary root. The worker rejects partial descriptor sets and
+contains both synthetic paths through `ScratchBoundary` before opening them.
+The default one-shot canary path remains bound to `FROZEN_MESSAGES` and
+`FROZEN_SESSION_META`; no new live-source authority was added.
+
+The exact five-file suite now passes independently of the changed live file:
+`76 passed, 1 warning in 18.66s`; Pylint remains `10.00/10`, and compileall plus
+`git diff --check` remain clean. Per Kiro's recommendation, the live canary was
+not rerun: the recorded execution at `f550383` remains the point-in-time
+evidence, while the unit suite at `fc811fc` is deterministic.
+
 ## Scope audit and residual risk
 
-The Execute diff is confined to the scratch package, focused tests, this
+The Execute and corrective diff is confined to the scratch package, focused tests, this
 VERIFY document, and `docs/inter-model/LATEST.md`. No production adapter,
 writer, watcher, retrieval, provider, or Chroma-store module changed.
 
