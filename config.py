@@ -24,11 +24,31 @@ _PATH_KEYS = {
     "processed_log",
     "units_export",
     "inventory",
+    "state_dir",
     # Phase 0 shadow ledger (optional [shadow_ledger] table)
     "ledger_path",
     "activation_manifest_path",
     "health_path",
 }
+
+DEFAULT_INCREMENTAL_JSONL_STATE_DIR = "~/.local/share/convmem/incremental-jsonl"
+
+
+class IncrementalJsonlConfigError(ValueError):
+    """Malformed ``[index.incremental_jsonl]`` table; fail closed."""
+
+    def __init__(self, code: str, detail: str):
+        super().__init__(f"{code}: {detail}")
+        self.code = code
+        self.detail = detail
+
+
+@dataclass(frozen=True)
+class IncrementalJsonlSettings:
+    enabled: bool
+    state_dir: str
+    allow_full_rebuild: bool
+    table_present: bool
 
 SUPPORTED_SHADOW_CONFIG_FILESYSTEMS = frozenset({"ext4", "xfs", "btrfs", "tmpfs"})
 _SHADOW_HEADER_RE = re.compile(r"^\s*\[shadow_ledger\]\s*(?:#.*)?$")
@@ -342,6 +362,60 @@ def _expand(value):
     return value
 
 
+def _expand_paths_in_mapping(section) -> None:
+    if not isinstance(section, dict):
+        return
+    for key, value in list(section.items()):
+        if isinstance(value, dict):
+            _expand_paths_in_mapping(value)
+        elif key in _PATH_KEYS:
+            section[key] = _expand(value)
+
+
+def incremental_jsonl_settings(cfg: Mapping[str, Any] | None) -> IncrementalJsonlSettings:
+    """Return the default-off incremental JSONL table, failing closed on bad types."""
+    cfg = cfg or {}
+    index = cfg.get("index") if isinstance(cfg.get("index"), dict) else {}
+    table = index.get("incremental_jsonl") if isinstance(index, dict) else None
+    default_state = _expand(DEFAULT_INCREMENTAL_JSONL_STATE_DIR)
+    if table is None:
+        return IncrementalJsonlSettings(
+            enabled=False,
+            state_dir=default_state,
+            allow_full_rebuild=False,
+            table_present=False,
+        )
+    if not isinstance(table, dict):
+        raise IncrementalJsonlConfigError(
+            "invalid_incremental_table",
+            "index.incremental_jsonl must be a table",
+        )
+    enabled = table.get("enabled", False)
+    if enabled not in (True, False):
+        raise IncrementalJsonlConfigError(
+            "invalid_enabled",
+            "index.incremental_jsonl.enabled must be a boolean",
+        )
+    rebuild = table.get("allow_full_rebuild", False)
+    if rebuild not in (True, False):
+        raise IncrementalJsonlConfigError(
+            "invalid_allow_full_rebuild",
+            "index.incremental_jsonl.allow_full_rebuild must be a boolean",
+        )
+    state_dir = table.get("state_dir", DEFAULT_INCREMENTAL_JSONL_STATE_DIR)
+    if not isinstance(state_dir, str) or not state_dir.strip():
+        raise IncrementalJsonlConfigError(
+            "invalid_state_dir",
+            "index.incremental_jsonl.state_dir must be a non-empty string",
+        )
+    return IncrementalJsonlSettings(
+        enabled=bool(enabled),
+        state_dir=str(Path(state_dir).expanduser()),
+        allow_full_rebuild=bool(rebuild),
+        table_present=True,
+    )
+
+
 def parse_env_file(path: Path | str) -> dict[str, str]:
     """Parse KEY=VALUE and export KEY=VALUE lines from a shell env file."""
     env: dict[str, str] = {}
@@ -390,13 +464,9 @@ def load_config(path: Path | str = CONFIG_PATH) -> dict:
     if "sources" in cfg and isinstance(cfg["sources"].get("paths"), list):
         cfg["sources"]["paths"] = _expand(cfg["sources"]["paths"])
 
-    # Expand any path-like scalar fields wherever they appear.
+    # Expand any path-like scalar fields wherever they appear, including nested tables.
     for section in cfg.values():
-        if not isinstance(section, dict):
-            continue
-        for key, value in section.items():
-            if key in _PATH_KEYS:
-                section[key] = _expand(value)
+        _expand_paths_in_mapping(section)
 
     return cfg
 

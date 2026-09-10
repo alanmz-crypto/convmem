@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-09
+**Updated:** 2026-09-10
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,18 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **JSONL incremental isolated live-source canary:** Ryan's bounded Execute pass
-  completed with sanitized PASS evidence against one frozen, read-only Kiro
-  transcript at implementation revision `f5503832917c8a4d51292d3d3fa3c27c33d80f28`.
-  Kiro's conditional review found one repeatability defect in a live-bound unit
-  test; correction `fc811fc85312ae901d1896defda7f3fe72ae4e81` now uses only a
-  scratch-contained synthetic fixture, and the 76-test suite is reproducible.
-  The live source remained unchanged; all Chroma and fault/replay writes stayed
-  under temporary roots; the required tests and static gates pass. No PR,
-  production write, provider, watcher change, or activation occurred. Kiro must
-  independently recheck the narrow correction in
-  [`VERIFY-jsonl-incremental-live-source-canary.md`](VERIFY-jsonl-incremental-live-source-canary.md)
-  before Ryan chooses any next disposition.
+- **Arc Codex — Kiro JSONL production integration:** Cursor completed hermetic
+  T0–T6 on `feat/2026-09-10-codex-jsonl-production-integration` (implementation
+  `5341bb1`). The feature remains disabled. Kiro must independently reproduce
+  [`VERIFY-codex-jsonl-production-integration.md`](../plans/VERIFY-codex-jsonl-production-integration.md)
+  at the exact fetched tip and answer the seven Execute questions. Resume from
+  [`CURSOR-2026-09-10-jsonl-production-integration-review.md`](CURSOR-2026-09-10-jsonl-production-integration-review.md).
+  No live indexing, provider call, watcher action, migration, PR, bootstrap,
+  canary, or activation is authorized.
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
   project and arc state; it is not a Git-ref authority. Read [`STATUS.md`](STATUS.md)

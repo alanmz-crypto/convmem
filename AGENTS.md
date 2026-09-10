@@ -52,6 +52,7 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 - [`docs/plans/STATUS-dependability-provenance.md`](docs/plans/STATUS-dependability-provenance.md) — Dependability and provenance Trust Arc (**T3 closed**; later gates deferred)
 - [`docs/plans/STATUS-recovery-authority.md`](docs/plans/STATUS-recovery-authority.md) — Recovery Authority T1/T2 execution (**landed via PR #234 and #236; T3 not authorized**)
 - [`docs/plans/STATUS-naturalistic-product-value.md`](docs/plans/STATUS-naturalistic-product-value.md) — Naturalistic ConvMem product-value evaluation (**G1–G5 landed; G6 Ryan-gated**)
+- [`docs/plans/STATUS-codex-jsonl-production-integration.md`](docs/plans/STATUS-codex-jsonl-production-integration.md) — Arc Codex Kiro JSONL incremental production integration (**Execute authorized; Cursor implementation next**)
 
 **Cross-arc rollup:** [`docs/inter-model/STATUS.md`](docs/inter-model/STATUS.md) — active vs closed arcs and next authorized actions (not a per-arc brief).
 
@@ -78,6 +79,7 @@ Known arc codenames (canonical list in `config/agent-protocol.md`):
 | CodeQL Complex Therapy | CodeQL merge protection | **Closed** — technical controls PASS; Ryan-owned recurring attestation |
 | Runway Ledger | Agent Run identity tracking | **CLOSED** — implementation merged (#215); soak passed + hooks enabled (#216); other clients are future slices |
 | Recovery Authority | Provenance-aware complete-data recovery and rollback continuity | Active — T1 landed (PR #234); T2 landed (PR #236); T3 not authorized; V4k blocked on CG-2 Design A |
+| Codex | Kiro JSONL incremental production integration | Planning — Kiro review next |
 
 ---
 

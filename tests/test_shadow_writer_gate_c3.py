@@ -76,8 +76,8 @@ def test_all_writer_session_sites_inventoried() -> None:
     total = len(inv["production_chroma_write_session_call_sites"]) + len(
         inv["open_production_write_store_call_sites"]
     )
-    # Fourteen production routes plus one ScratchBoundary-confined prototype.
-    assert total == 15
+    # Fifteen production routes plus one ScratchBoundary-confined prototype.
+    assert total == 16
     assert inv["must_use_factory_count"] == 0
 
 
@@ -531,6 +531,7 @@ def test_nested_shared_lease_rejects_different_lock_and_keeps_outer_usable(
 def test_code_derived_writer_routes_use_universal_or_existing_gate() -> None:
     expected_routes = {
         "ingest.py": ("production_writer_boundary", "production_chroma_write_session"),
+        "incremental_jsonl.py": ("production_chroma_write_session",),
         "observe.py": ("open_production_write_store",),
         "inter_model_index.py": ("production_chroma_write_session",),
         "propose_decision.py": ("production_writer_boundary", "open_production_write_store"),

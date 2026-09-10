@@ -27,6 +27,11 @@ units_export  = "~/.local/share/convmem/knowledge_units.jsonl"
 chunk_size    = 60
 chunk_overlap = 10
 
+[index.incremental_jsonl]
+enabled = false
+state_dir = "~/.local/share/convmem/incremental-jsonl"
+allow_full_rebuild = false
+
 [models]
 embed_model       = "nomic-embed-text"
 summarize_model   = "llama3.1:8b"
