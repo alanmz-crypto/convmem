@@ -11,7 +11,8 @@
     "ingest.py:583",
     "ingest.py:945",
     "ingest.py:983",
-    "inter_model_index.py:301"
+    "inter_model_index.py:301",
+    "scratch_jsonl_prototype/chroma_projection.py:66"
   ],
   "open_production_write_store_call_sites": [
     "observe.py:234",
@@ -207,6 +208,16 @@
       "uses_production_session": true
     },
     {
+      "file": "scratch_jsonl_prototype/chroma_projection.py",
+      "line": 66,
+      "snippet": "return production_chroma_write_session(",
+      "class": "scratch_hermetic_writer_session",
+      "required_routing": "production_chroma_write_session",
+      "uses_open_chroma_for_write": false,
+      "uses_production_session": true,
+      "note": "Bounded JSONL prototype passes an explicit temporary config, Chroma root, writer lock, attestation directory, and census directory after ScratchBoundary containment; it never opens production state."
+    },
+    {
       "file": "observe.py",
       "line": 234,
       "snippet": "_pw = open_production_write_store(",
@@ -300,5 +311,5 @@
   "not_proved": [
     "Live production ingest with shadow_ledger.enabled=true writing a ledger line (activation forbidden in this slice)"
   ],
-  "c3_note": "Production writers use production_chroma_write_session or open_production_write_store (shared lease then live config). open_chroma_for_write remains for hermetic/tests and factory internals. C6 direct constructors are mechanically confined to new private scratch roots and never receive a production Chroma path."
+  "c3_note": "Production writers use production_chroma_write_session or open_production_write_store (shared lease then live config). The inventoried JSONL prototype call uses the same session contract with an explicit ScratchBoundary-confined temporary config and paths. open_chroma_for_write remains for hermetic/tests and factory internals. C6 direct constructors are mechanically confined to new private scratch roots and never receive a production Chroma path."
 }

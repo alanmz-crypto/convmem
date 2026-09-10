@@ -208,6 +208,18 @@ The existing safe-reindex rerun was intentionally excluded from this scratch
 gate because this sandbox reaches the default production writer lock; its
 original reviewed 72-test result remains separate historical evidence.
 
+### PR CI writer-inventory correction
+
+The first PR pytest run found that the new scratch call to
+`production_chroma_write_session` was absent from the repository's static
+writer-route inventory. The call was added to
+`SHADOW-WRITER-COVERAGE-INVENTORY.json` as a
+`scratch_hermetic_writer_session`, and the count gate now records fourteen
+production routes plus this one explicitly bounded scratch route. No call was
+hidden from the scanner and no production code changed. The exact failing
+inventory test and its count gate passed (2 tests), followed by the complete
+65-test focused scratch matrix.
+
 The generation/checkpoint state machine remains deliberately separate from
 production ingest and the real-Chroma adapter is an optional scratch seam.
 Chroma itself does not provide the engine's cross-collection atomic commit, so
