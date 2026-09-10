@@ -12,6 +12,9 @@
 
 **Handoff tip reviewed:** `66235b5b26194f9ee74c19e19863ba00737b8ba4`
 
+**Kiro correction:** import `Iterable` in `incremental_jsonl_canary.py` (required
+typing fix for `assert_transition_coverage`).
+
 **PR:** not opened; Ryan/Kiro exact-tip review is next
 
 ---
@@ -86,7 +89,7 @@ python3 -m pylint incremental_jsonl_canary.py scripts/run-jsonl-production-canar
 ```
 
 `compileall`: PASS. `git diff --check`: clean. Scoped pylint on new surfaces:
-**9.57/10**.
+**9.69/10** (post-`Iterable` import correction).
 
 ## P1 acceptance mapping
 
