@@ -47,7 +47,7 @@ gated.
 
 | Arc | State | Next authorized action |
 |---|---|---|
-| Codex — Kiro JSONL incremental production integration | Hermetic T0–T6 is on `feat/2026-09-10-codex-jsonl-production-integration` at `5341bb1`. Feature remains disabled. Scratch/canary evidence stays on `main` via PR #292. | Kiro reproduces VERIFY at the exact fetched tip and answers the seven Execute questions. No live indexing, providers, migration, PR, watcher action, bootstrap/canary, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
+| Codex — Kiro JSONL incremental production integration | Hermetic T0–T6 is on `main` via squash-merged PR #293 (`881133d`) after Kiro's exact-tip PASS at `17d7e23`. Feature remains disabled. | Ryan separately chooses the exact source and bootstrap/cost boundary before Codex plans a production-path canary. No live indexing, providers, migration, watcher action, bootstrap/canary execution, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
@@ -108,11 +108,12 @@ gated.
 - [Arc Codex JSONL production-integration STATUS](../plans/STATUS-codex-jsonl-production-integration.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Arc Codex hermetic T0–T6 is pushed on
-`feat/2026-09-10-codex-jsonl-production-integration` (`5341bb1`). Kiro reviews
-the exact tip. Every live action and PR creation remain unauthorized. Other
-active arcs retain their existing gates. Verify the exact `origin/main` tip
-from Git when a commit identity matters.
+**TL;DR:** Arc Codex hermetic T0–T6 is on `main` via PR #293 (`881133d`) and
+remains disabled. Ryan must separately choose the exact source and
+bootstrap/cost boundary before a production-path canary can be planned; every
+live action remains unauthorized. Other active arcs retain their existing
+gates. Verify the exact `origin/main` tip from Git when a commit identity
+matters.
 
 ## Jargon TL;DR
 
