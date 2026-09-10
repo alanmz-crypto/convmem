@@ -11,13 +11,16 @@ cross-arc snapshot and the linked arc brief below.
 
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   implementation is on `main` via squash-merged PR #293 (`881133d`) and remains
-  disabled. Codex has now drafted the separate production-canary
+  disabled. Kiro reviewed the separate production-canary plan at `95f1523`
+  with PASS_WITH_CORRECTIONS. Codex then corrected the N=110/N=111 append
+  boundary, exact embedding-tag binding, and plan glossaries in the
   [Architecture](../plans/ARCHITECTURE-codex-jsonl-production-canary.md) and
-  [Execution plan](../plans/EXECUTION-codex-jsonl-production-canary.md) around
-  one dedicated, previously unindexed Kiro source. Next lane is exact-tip Kiro
-  design review. P1 harness implementation and P2 live execution are separate,
-  still-unauthorized Ryan grants; no indexing, provider call, watcher action,
-  config change, migration, canary, or activation is authorized. Resume from
+  [Execution plan](../plans/EXECUTION-codex-jsonl-production-canary.md).
+  Next lane is narrow exact-tip Kiro confirmation; settled architecture should
+  not be reopened without a concrete contradiction. P1 harness implementation
+  and P2 live execution are separate, still-unauthorized Ryan grants; no
+  indexing, provider call, watcher action, config change, migration, canary, or
+  activation is authorized. Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes

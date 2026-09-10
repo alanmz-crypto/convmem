@@ -94,7 +94,9 @@ Before any transform:
 - construct an allowlisted child environment rather than deleting selected
   variables from the parent;
 - require all known external-provider keys absent;
-- pin local model manifest digests;
+- canonicalize the configured `nomic-embed-text` alias to the exact installed
+  tag (expected `nomic-embed-text:latest`) and pin both local model manifest
+  digests in the grant;
 - restrict the endpoint to the granted loopback address;
 - deny DNS and non-loopback sockets in runner and descendants; and
 - install an in-process counter guard that raises before a call exceeding its
@@ -167,14 +169,16 @@ Using synthetic Kiro transcripts and production chunking 60/10:
 
 1. freeze 61 accepted messages and prove exactly two chunk starts, 0 and 50;
 2. run the first generation within call ceilings;
-3. append without reaching 110 accepted messages;
+3. append to no more than 110 accepted messages;
 4. prove start 0 is reused and only start 50 is transformed;
 5. replay unchanged and prove zero transforms; and
 6. rebuild an isolated projection from the same durable prepared artifacts and
    compare exact source-scoped authority without re-running the LLM.
 
-The harness must reject fewer than 61 or 110-or-more accepted messages for the
-live canary profile. It must not alter chunk size or overlap.
+The harness must require 61–109 accepted messages for the baseline and reject
+more than 110 for its append stage. At exactly 110, the two starts remain 0 and
+50; the third start, 100, appears only at 111 or more. It must not alter chunk
+size or overlap.
 
 ### P1-T8 — governance and evidence
 
@@ -308,9 +312,10 @@ Run the incremental generation and require:
   artifacts; and
 - unchanged replay performs zero calls.
 
-If the append crosses 110 messages, the two-chunk proof profile no longer
-applies and P2 stops for a revised plan; it does not silently accept a third
-chunk.
+If the append reaches 111 messages, the third chunk beginning at 100 exists,
+the two-chunk proof profile no longer applies, and P2 stops for a revised plan.
+It does not silently accept the third chunk. Exactly 110 remains a valid
+two-chunk append state.
 
 ### P2-T5 — five selected fault/replay observations
 
@@ -366,7 +371,7 @@ activation, watcher work, and adoption of another source remain Ryan-gated.
 | P2-A2 | Gate 0 passes with watcher/writers absent and local-only execution |
 | P2-A3 | Initial adoption is exactly two chunks and stays within call caps |
 | P2-A4 | Unchanged initial replay has zero transform calls |
-| P2-A5 | Controlled append reuses chunk 0 and transforms only frontier 50 |
+| P2-A5 | Controlled append ending at no more than 110 messages reuses chunk 0 and transforms only frontier 50 |
 | P2-A6 | Append replay has zero transform calls |
 | P2-A7 | All five fault cases converge or exact-restore within 30 seconds |
 | P2-A8 | No unrelated source changes in Chroma or followers |
@@ -414,3 +419,21 @@ repeatable tests.
   source-scoped recovery, and serving-visibility measurement.
 - Both phases stop at evidence. Neither enables persistent config, normal
   indexing, another source, or the watcher.
+
+## Jargon TL;DR
+
+- **P1:** temporary-root-only canary-harness implementation and evidence.
+- **P2:** later one-source production canary governed by a separate exact
+  grant.
+- **Grant:** strict resource-and-operation manifest identified by its SHA-256.
+- **Nonce receipt:** durable proof that one approved grant created only one
+  resumable canary run.
+- **Gate 0:** non-mutating checks that must all pass before calls or writes.
+- **Complete prefix:** source bytes through the last complete JSONL record.
+- **Frontier:** earliest overlap-affected chunk; stable chunks before it reuse
+  prepared artifacts.
+- **Followers:** Chroma and sidecars derived from checkpoint authority.
+- **`recovery_unproven`:** stop state requiring review because safe replay or
+  source-scoped restore cannot be established.
+- **Mixed visibility:** bounded interval in which readers may see summary and
+  unit collections at different generation states.

@@ -97,20 +97,20 @@ canary, or activation exists.
 | Ryan architecture/Execute acceptance | **DONE 2026-09-10** | — |
 | Cursor implementation | **DONE on `main`** via PR #293 (`881133d`) | — |
 | Implementation review/PR | **DONE**; Kiro exact-tip PASS at `17d7e23`, six CI checks PASS, squash-merged as `881133d` | — |
-| Production-canary architecture/plan | **DRAFTED on plan branch** | Exact-tip Kiro design review |
+| Production-canary architecture/plan | **PASS_WITH_CORRECTIONS at `95f1523`; C1–C3 applied on plan branch** | Narrow exact-tip Kiro confirmation |
 | P1 hermetic canary harness | **UNAUTHORIZED** | Kiro plan PASS + separate Ryan Execute grant |
 | P2 one-source live canary | **UNAUTHORIZED** | P1 merge/review + exact grant digest + Ryan authorization |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
 ## 5. Your Role
 
-**If Ryan sent you to review the plan:** you are Kiro. Review the paired
-production-canary Architecture and Execution documents. In particular, decide
-whether the separate capability boundary preserves scratch isolation, the
-61–109-message two-chunk window is correct, the five selected live faults are
-proportionate, and the mixed-visibility acceptance rule is honest. Do not
-implement, index, operate the watcher, call a provider, open a PR, or authorize
-P1/P2 on Ryan's behalf.
+**If Ryan sent you to confirm the corrections:** you are Kiro. Review only the
+C1–C3 delta after reviewed tip `95f1523`: N=110 remains a two-chunk append and
+N>=111 stops; the embedding alias is canonicalized to an exact installed tag;
+and both plan documents end with a jargon glossary. If accurate, close the
+design review. Do not reopen settled architecture without a concrete
+contradiction, implement, index, operate the watcher, call a provider, open a
+PR, or authorize P1/P2 on Ryan's behalf.
 
 **If Ryan sent you to implement:** the disabled T0–T6 implementation is already
 on `main`. Do not add operational behavior without a separately reviewed plan
@@ -122,7 +122,8 @@ condition are separately authorized. Merge of disabled code is not activation.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro reviews the proposed production-canary architecture and P1/P2 plan.
+1. Kiro narrowly confirms the three documentation corrections applied after
+   its `95f1523` PASS_WITH_CORRECTIONS verdict.
 2. Ryan decides whether to authorize Cursor's hermetic P1 canary-harness
    implementation; no live resources are in P1 scope.
 3. Cursor implements P1 and stops at pushed evidence for Kiro review, then
@@ -215,13 +216,15 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-10 | Codex | Opened PR #293 after Kiro PASS at `162d67f`; corrected the CI pylint-regression delta without changing the baseline and removed a full-suite test reload-order dependency, routing the new exact tip back to Kiro before merge |
 | 2026-09-10 | Codex | Recorded Kiro's corrected-tip PASS at `17d7e23` and Ryan's squash merge of disabled production integration via PR #293 as `881133d`; live bootstrap, canary, and activation remain unauthorized |
 | 2026-09-10 | Codex | Drafted the two-grant production-canary architecture and execution plan around a dedicated new Kiro source; next lane is Kiro design review, with P1/P2 still unauthorized |
+| 2026-09-10 | Codex | Applied Kiro C1–C3: corrected the 110/111 append boundary, canonicalized the embedding tag in the grant, and added plan jargon glossaries; awaiting narrow confirmation |
 
 ## TL;DR
 
 - Arc Codex production code is on `main` via PR #293 (`881133d`), remains
   disabled by default, and passed Kiro's corrected-tip review plus all CI.
-- A two-grant production-canary plan is drafted for Kiro review: P1 is a
-  hermetic exact-resource harness; P2 is a later one-source live run.
+- The two-grant production-canary plan received PASS_WITH_CORRECTIONS at
+  `95f1523`; Codex applied the three narrow documentation corrections and the
+  exact new tip awaits Kiro confirmation.
 - The dedicated source is new but has only 16 accepted messages; P2 stays
   blocked until ordinary use reaches the reviewed 61–109-message window.
 - Live indexing, providers, migration, canary execution, and activation remain

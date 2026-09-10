@@ -208,7 +208,9 @@ P2 therefore requires:
 
 - all external-provider credentials scrubbed from the child environment;
 - an explicit local Ollama fallback model, initially proposed as
-  `llama3.1:8b`, and local embedding model `nomic-embed-text:latest`;
+  `llama3.1:8b`; the production embedding value `nomic-embed-text` must be
+  canonicalized to the exact installed tag (expected
+  `nomic-embed-text:latest`) in the grant;
 - installed model manifests/digests captured before execution;
 - only the pinned loopback Ollama endpoint allowed;
 - non-loopback DNS and outbound connections denied in the canary process and
@@ -227,7 +229,7 @@ reuse. Live execution is therefore blocked until the frozen complete prefix
 contains **61 through 109 accepted messages**.
 
 That range yields exactly two baseline chunks, beginning at 0 and 50. After a
-small append that stays below 110 accepted messages:
+small append that leaves the source at **110 or fewer** accepted messages:
 
 - chunk 0 must be loaded from the durable prepared cache;
 - only the frontier chunk beginning at 50 may be transformed;
@@ -363,3 +365,26 @@ source, changes retrieval, or authorizes production rollout.
 - The later live grant permits local-only bounded transforms and five selected
   crash/replay observations, with source-scoped rollback and read visibility
   measurement; it stops at independently reviewed evidence.
+
+## Jargon TL;DR
+
+- **P1:** separately authorized, temporary-root-only implementation and tests
+  for the canary harness.
+- **P2:** separately authorized one-source live canary run after P1 review and
+  merge.
+- **Grant:** closed, SHA-256-bound list of the exact resources and operations a
+  canary run may use.
+- **Nonce:** unique identifier that prevents the grant from creating a second
+  canary run.
+- **Gate 0:** non-mutating preflight that must pass before any live write or
+  model call.
+- **Complete prefix:** JSONL bytes ending at the last fully parsed record; an
+  incomplete trailing record is excluded.
+- **Frontier:** overlap-aware earliest chunk that must be recomputed after an
+  append; earlier chunks are reused.
+- **Followers:** rebuildable projections such as Chroma, export, dedupe, and
+  processed state; the checkpoint governs their recovery.
+- **`recovery_unproven`:** fail-closed state where neither replay nor exact
+  source-scoped restore is proven safe.
+- **Mixed visibility:** temporary reader observation of the two Chroma
+  collections at different generation states.
