@@ -108,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
                 grant,
                 expected_sha256=expected,
                 code_revision=revision,
-                include_faults=False,
+                include_faults=True,
             )
             print(json.dumps({"status": "p2_all", **payload}))
             return 0

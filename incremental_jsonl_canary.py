@@ -1640,6 +1640,141 @@ def run_p2_initial_adoption(
     }
 
 
+
+
+def _synthetic_kiro_record(index: int) -> bytes:
+    row = {
+        "timestamp": f"2026-09-10T00:00:{index % 60:02d}Z",
+        "payload": {
+            "type": "user" if index % 2 == 0 else "assistant",
+            "content": f"message-{index:05d}",
+        },
+    }
+    return (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
+
+
+def simulate_pure_append(source: Path, *, start_index: int, count: int) -> SourceGrant:
+    """Append synthetic records without runner mutation of grant metadata."""
+    data = source.read_bytes()
+    appended = b"".join(_synthetic_kiro_record(i) for i in range(start_index, start_index + count))
+    source.write_bytes(data + appended)
+    meta = source.parent / "session.json"
+    stat_result = source.stat()
+    complete_boundary = (data + appended).rfind(b"\n") + 1
+    prefix_sha = hashlib.sha256((data + appended)[:complete_boundary]).hexdigest()
+    meta_sha = hashlib.sha256(meta.read_bytes()).hexdigest()
+    return SourceGrant(
+        path=str(source.resolve()),
+        metadata_path=str(meta.resolve()),
+        device=stat_result.st_dev,
+        inode=stat_result.st_ino,
+        size=stat_result.st_size,
+        complete_boundary=complete_boundary,
+        prefix_sha256=prefix_sha,
+        metadata_sha256=meta_sha,
+    )
+
+
+def restore_source_to_grant_prefix(source_grant: SourceGrant) -> None:
+    """Restore on-disk source bytes to a grant-bound complete prefix."""
+    path = Path(source_grant.path)
+    data = path.read_bytes()
+    path.write_bytes(data[: source_grant.complete_boundary])
+
+
+def _p2_fault_call_ceilings(boundary: ProductionCanaryBoundary, grant: CanaryGrant) -> dict[str, int]:
+    from adapters.kiro_session_jsonl import parse_complete_prefix
+
+    count = len(parse_complete_prefix(grant.source.path).messages)
+    receipt_path = nonce_receipt_path(boundary.root)
+    stage = ""
+    if receipt_path.is_file():
+        payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+        stage = str(payload.get("stage", ""))
+    if stage.startswith("p2-t3") and count > BASELINE_MIN_MESSAGES:
+        return dict(grant.call_ceilings["append"])
+    if BASELINE_MIN_MESSAGES <= count <= BASELINE_MAX_MESSAGES:
+        return dict(grant.call_ceilings["initial"])
+    return dict(grant.call_ceilings["append"])
+
+
+
+
+
+def reset_p2_baseline_source(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    *,
+    messages: int = BASELINE_MIN_MESSAGES,
+) -> SourceGrant:
+    """Reset derived state and rewrite a synthetic baseline source."""
+    import shutil
+
+    dir_roles = {"chroma", "incremental_state", "dedupe"}
+    file_roles = {"processed", "export", "writer_lock", "source_lock", "export_lock", "processed_lock"}
+    for role in grant.resources:
+        path = Path(role.path)
+        if role.role in dir_roles:
+            if path.is_dir():
+                shutil.rmtree(path, ignore_errors=True)
+            path.mkdir(parents=True, exist_ok=True)
+            os.chmod(path, 0o700)
+        elif role.role in file_roles:
+            if path.is_file():
+                path.unlink()
+            path.parent.mkdir(parents=True, exist_ok=True)
+    state_root = boundary.layout["state"]
+    if state_root.is_dir():
+        shutil.rmtree(state_root, ignore_errors=True)
+    state_root.mkdir(parents=True, exist_ok=True)
+    os.chmod(state_root, 0o700)
+    source_path = Path(grant.source.path)
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    data = b"".join(_synthetic_kiro_record(i) for i in range(messages))
+    source_path.write_bytes(data)
+    meta = source_path.parent / "session.json"
+    if not meta.is_file():
+        meta.write_text(json.dumps({"session": "canary"}, sort_keys=True) + "\n", encoding="utf-8")
+    os.chmod(source_path, 0o600)
+    stat_result = source_path.stat()
+    complete_boundary = data.rfind(b"\n") + 1
+    prefix_sha = hashlib.sha256(data[:complete_boundary]).hexdigest()
+    meta_sha = hashlib.sha256(meta.read_bytes()).hexdigest()
+    return SourceGrant(
+        path=str(source_path.resolve()),
+        metadata_path=str(meta.resolve()),
+        device=stat_result.st_dev,
+        inode=stat_result.st_ino,
+        size=stat_result.st_size,
+        complete_boundary=complete_boundary,
+        prefix_sha256=prefix_sha,
+        metadata_sha256=meta_sha,
+    )
+
+def derive_p2_disposition(sections: Mapping[str, Any]) -> str:
+    """Derive T6 disposition from orchestration section outcomes."""
+    t5 = sections.get("t5")
+    if isinstance(t5, dict) and t5:
+        outcomes = {
+            str(item.get("disposition", ""))
+            for item in t5.values()
+            if isinstance(item, dict)
+        }
+        outcomes.discard("")
+        if "recovery_unproven" in outcomes:
+            return "recovery_unproven"
+        if outcomes and all(value == "restored" for value in outcomes):
+            return "restored"
+        return "recovery_unproven"
+    t3 = sections.get("t3")
+    t4 = sections.get("t4")
+    if isinstance(t3, dict) and t3.get("outcome") == "committed":
+        if isinstance(t4, dict) and t4.get("stage") == "p2-t4":
+            return "converged"
+        if t4 is None:
+            return "converged"
+    return "recovery_unproven"
+
 def bind_p2_append_source(grant: CanaryGrant, source_grant: SourceGrant) -> CanaryGrant:
     """Return a grant with an updated source binding after a pure append."""
     if source_grant.path != grant.source.path:
@@ -1736,7 +1871,7 @@ def run_p2_fault_observation(
     outcome, _counters = _run_coordinator_once(
         boundary,
         grant,
-        ceilings=grant.call_ceilings["append"],
+        ceilings=_p2_fault_call_ceilings(boundary, grant),
         fault=fault,
     )
     if not isinstance(outcome, CanaryFaultExit):
@@ -1805,18 +1940,41 @@ def run_p2_orchestration(
         hooks=hooks,
     )
     write_canary_overlay(boundary)
-    sections: dict[str, Any] = {"t3": run_p2_initial_adoption(boundary, grant, expected_sha256=expected_sha256)}
+    sections: dict[str, Any] = {
+        "t3": run_p2_initial_adoption(boundary, grant, expected_sha256=expected_sha256),
+    }
+    append_count = APPEND_MAX_MESSAGES - BASELINE_MIN_MESSAGES
+    updated_source = simulate_pure_append(
+        Path(grant.source.path),
+        start_index=BASELINE_MIN_MESSAGES,
+        count=append_count,
+    )
+    append_grant = bind_p2_append_source(grant, updated_source)
+    sections["t4"] = run_p2_append_adoption(
+        boundary,
+        append_grant,
+        expected_sha256=expected_sha256,
+    )
     if include_faults:
-        sections["t5"] = {
-            selector: run_p2_fault_observation(
-                boundary,
-                grant,
-                expected_sha256=expected_sha256,
-                fault_selector=selector,
-            )
-            for selector in grant.faults
-        }
-    disposition = "converged"
+        sections["t5"] = {}
+        prior_subprocess = os.environ.get("CONVMEM_CANARY_SUBPROCESS")
+        os.environ["CONVMEM_CANARY_SUBPROCESS"] = "1"
+        try:
+            for selector in grant.faults:
+                reset_p2_baseline_source(boundary, grant)
+                sections["t5"][selector] = run_p2_fault_observation(
+                    boundary,
+                    grant,
+                    expected_sha256=expected_sha256,
+                    fault_selector=selector,
+                )
+        finally:
+            if prior_subprocess is None:
+                os.environ.pop("CONVMEM_CANARY_SUBPROCESS", None)
+            else:
+                os.environ["CONVMEM_CANARY_SUBPROCESS"] = prior_subprocess
+    disposition = derive_p2_disposition(sections)
+    sections["t6"] = {"disposition": disposition}
     digest = freeze_p2_evidence(
         boundary,
         grant,

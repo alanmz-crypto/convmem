@@ -161,6 +161,29 @@ def main() -> int:
         print(json.dumps(payload))
         return 0
 
+
+    if command == "p2-all":
+        grant = decode_grant(os.environ["CONVMEM_CANARY_GRANT"])
+        digest = os.environ["CONVMEM_CANARY_GRANT_SHA256"]
+        revision = os.environ["CONVMEM_CANARY_REVISION"]
+        from incremental_jsonl_canary import is_p2_grant, run_p2_orchestration, validate_p2_grant
+
+        if not is_p2_grant(grant):
+            raise CanaryRefused("canary_mode", "P2 grant required")
+        validate_p2_grant(grant, expected_sha256=digest, code_revision=revision)
+        root = Path(grant.evidence_dir).parent
+        boundary = ProductionCanaryBoundary.from_p2_grant(grant, root=root)
+        write_canary_overlay(boundary)
+        payload = run_p2_orchestration(
+            boundary,
+            grant,
+            expected_sha256=digest,
+            code_revision=revision,
+            include_faults=True,
+        )
+        print(json.dumps(payload))
+        return 0
+
     if command == "refuse-network":
         import socket
 

@@ -13,10 +13,12 @@ import pytest
 
 from chroma_write_store import current_code_revision
 from incremental_jsonl_canary import (
+    FAULT_SELECTORS,
     CanaryRefused,
     ProductionCanaryBoundary,
     bind_p2_append_source,
     decode_grant,
+    derive_p2_disposition,
     freeze_p2_evidence,
     gate0_preflight_p2,
     is_p2_grant,
@@ -24,11 +26,11 @@ from incremental_jsonl_canary import (
     run_p2_append_adoption,
     run_p2_fault_observation,
     run_p2_initial_adoption,
+    run_p2_orchestration,
     validate_grant,
     validate_p2_grant,
     write_canary_overlay,
 )
-from incremental_jsonl_isolation import known_production_roots
 BASELINE_HASHES = {
     "watch.py": "b72fd6380d48bf4256371f4b3f4f8eda03f2ca7f1dd9c107f4d6db60c05da2e2",
     "ingest.py": "03246a6c104ad9bb6d9c4df9ab9d34bac165080c725ed1545b64aef8f76f6d23",
@@ -148,17 +150,105 @@ def test_p2_c4_full_gate0_passes_with_stubs(tmp_path: Path) -> None:
     )
     assert report["mode"] == "p2-exact-resource-v1"
     assert len(report["checks"]) == 12
+
+
+@pytest.mark.parametrize(
+    ("check_id", "error_code", "mutator"),
+    [
+        ("1_grant", "canary_grant_digest", lambda fx: {"expected_sha256": "0" * 64}),
+        ("2_baseline", "canary_gate0_baseline", lambda fx: {"tamper_source_byte": True}),
+        ("3_source", "canary_gate0_source", lambda fx: {"missing_metadata_path": True}),
+        ("4_zero_adoption", "canary_gate0_adoption", lambda fx: {"zero_adoption": False}),
+        ("5_persistent_config", "canary_gate0_config", lambda fx: {"bad_persistent_config": True}),
+        ("6_watcher", "canary_gate0_watcher", lambda fx: {"watcher": False}),
+        ("7_writer", "canary_gate0_writer", lambda fx: {"writer": False}),
+        ("8_paths", "canary_gate0_paths", lambda fx: {"resource_symlink": True}),
+        ("9_models", "canary_gate0_models", lambda fx: {"models": False}),
+        ("10_network", "canary_gate0_network", lambda fx: {"network": False}),
+        ("11_capsule", "canary_gate0_capsule", lambda fx: {"bad_capsule": True}),
+        ("12_restic", "canary_gate0_restic", lambda fx: {"restic": False}),
+    ],
+)
+def test_p2_gate0_checks_fail_closed_individually(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    check_id: str,
+    error_code: str,
+    mutator,
+) -> None:
+    fx = _p2_fixture(tmp_path)
     hooks = p2_gate0_hooks_pass()
-    bad = p2_gate0_hooks_pass()
-    bad.watcher_probe = lambda: {"pass": "false"}
-    with pytest.raises(CanaryRefused, match="canary_gate0_watcher"):
-        gate0_preflight_p2(
-            fx["grant"],
-            fx["boundary"],
-            expected_sha256=fx["digest"],
-            code_revision=current_code_revision(),
-            hooks=bad,
+    kwargs = {
+        "expected_sha256": fx["digest"],
+        "code_revision": current_code_revision(),
+        "hooks": hooks,
+    }
+    flags = mutator(fx)
+    if "expected_sha256" in flags:
+        kwargs["expected_sha256"] = flags["expected_sha256"]
+    if flags.get("tamper_source_byte"):
+        data = bytearray(fx["source"].read_bytes())
+        data[-2] ^= 0x01
+        fx["source"].write_bytes(bytes(data))
+    if flags.get("missing_metadata_path"):
+        monkeypatch.setattr(
+            "incremental_jsonl_canary._gate0_source_binding",
+            lambda _grant: {"accepted_messages": 61},
         )
+        payload = fx["grant"].to_payload()
+        payload["source"]["metadata_path"] = str(fx["root"] / "missing-session.json")
+        bad = fx["root"] / "gate0-missing-metadata.json"
+        bad.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        os.chmod(bad, 0o600)
+        loaded = decode_grant(bad)
+        fx = dict(fx)
+        fx["grant"] = loaded
+        kwargs["expected_sha256"] = hashlib.sha256(loaded.digest_payload()).hexdigest()
+    if flags.get("zero_adoption") is False:
+        hooks.zero_adoption = lambda _b, _g: {"pass": "false"}
+    if flags.get("bad_persistent_config"):
+        cfg = fx["boundary"].layout["home"] / ".config" / "convmem" / "config.toml"
+        cfg.parent.mkdir(parents=True, exist_ok=True)
+        cfg.write_text("[index]\n[index.incremental_jsonl]\nenabled = true\n", encoding="utf-8")
+    if flags.get("watcher") is False:
+        hooks.watcher_probe = lambda: {"pass": "false"}
+    if flags.get("writer") is False:
+        hooks.writer_census = lambda _b: {"pass": "false"}
+    if flags.get("resource_symlink"):
+        target = Path(fx["grant"].resources[0].path)
+        link = target.parent / "escape-link"
+        link.symlink_to(target)
+        payload = fx["grant"].to_payload()
+        payload["resources"][0] = {"role": payload["resources"][0]["role"], "path": str(link)}
+        bad = fx["root"] / f"gate0-{check_id}.json"
+        bad.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        os.chmod(bad, 0o600)
+        loaded = decode_grant(bad)
+        fx = dict(fx)
+        fx["grant"] = loaded
+        kwargs["expected_sha256"] = hashlib.sha256(loaded.digest_payload()).hexdigest()
+    if flags.get("models") is False:
+        hooks.model_manifest = lambda _g: {"pass": "false"}
+    if flags.get("network") is False:
+        hooks.network_self_test = lambda: {"pass": "false"}
+    if flags.get("bad_capsule"):
+        capsule = Path(fx["grant"].rollback.capsule_path)
+        capsule.parent.mkdir(parents=True, exist_ok=True)
+        capsule.write_text('{"version": 1}', encoding="utf-8")
+        os.chmod(capsule, 0o600)
+        payload = fx["grant"].to_payload()
+        payload["rollback"]["expected_digest"] = "1" * 64
+        bad = fx["root"] / "gate0-bad-capsule.json"
+        bad.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        os.chmod(bad, 0o600)
+        loaded = decode_grant(bad)
+        fx = dict(fx)
+        fx["grant"] = loaded
+        kwargs["expected_sha256"] = hashlib.sha256(loaded.digest_payload()).hexdigest()
+    if flags.get("restic") is False:
+        hooks.restic_identifier = lambda: {"pass": "false"}
+    with pytest.raises(CanaryRefused, match=error_code):
+        gate0_preflight_p2(fx["grant"], fx["boundary"], **kwargs)
 
 
 def test_p2_c5_launcher_refuses_p1_mutation(tmp_path: Path) -> None:
@@ -177,7 +267,7 @@ def test_p2_c5_launcher_refuses_p1_mutation(tmp_path: Path) -> None:
         "--stage",
         "p2-t3",
     ]
-    result = subprocess.run(cmd, cwd=str(Path(__file__).resolve().parents[1]), capture_output=True, text=True)
+    result = subprocess.run(cmd, cwd=str(Path(__file__).resolve().parents[1]), capture_output=True, text=True, check=False)
     assert result.returncode == 2
     assert "canary_p2_unauthorized" in result.stderr
 
@@ -213,14 +303,16 @@ def test_p2_c7_append_reuses_chunk_zero(tmp_path: Path) -> None:
     assert payload["accepted_messages"] == 110
 
 
-def test_p2_c8_fault_selector_restores(tmp_path: Path) -> None:
-    fx = _p2_fixture(tmp_path, messages=2)
+@pytest.mark.parametrize("selector", tuple(FAULT_SELECTORS))
+def test_p2_c8_fault_selectors_restore_on_two_chunk_source(tmp_path: Path, selector: str) -> None:
+    fx = _p2_fixture(tmp_path, messages=61)
     payload = run_p2_fault_observation(
         fx["boundary"],
         fx["grant"],
         expected_sha256=fx["digest"],
-        fault_selector="summary_upsert",
+        fault_selector=selector,
     )
+    assert payload["stage"] == "p2-t5"
     assert payload["disposition"] == "restored"
 
 
@@ -253,8 +345,6 @@ def test_p2_c10_baseline_hashes_and_routes_unchanged() -> None:
     assert report["canary_launcher_registered"] == "no"
     root = Path(__file__).resolve().parents[1]
     for name, expected in BASELINE_HASHES.items():
-        import hashlib
-
         actual = hashlib.sha256((root / name).read_bytes()).hexdigest()
         assert actual == expected, name
 
@@ -278,6 +368,39 @@ def test_p2_c11_unrelated_sentinels_unchanged(tmp_path: Path, monkeypatch) -> No
     with coord._session() as session:
         after = unrelated_sentinel_digest(session.store, [str(sentinel)])
     assert before == after
+
+
+
+def test_p2_orchestration_runs_t3_t4_t5_t6_in_order(tmp_path: Path) -> None:
+    fx = _p2_fixture(tmp_path)
+    payload = run_p2_orchestration(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=p2_gate0_hooks_pass(),
+        include_faults=True,
+    )
+    sections = payload["sections"]
+    assert sections["t3"]["stage"] == "p2-t3"
+    assert sections["t4"]["stage"] == "p2-t4"
+    assert set(sections["t5"]) == set(FAULT_SELECTORS)
+    assert sections["t6"]["disposition"] == payload["disposition"]
+    assert payload["disposition"] == "restored"
+    assert derive_p2_disposition(sections) == "restored"
+    evidence = Path(fx["grant"].evidence_dir) / "p2-hermetic-evidence.json"
+    assert evidence.is_file()
+    frozen = json.loads(evidence.read_text(encoding="utf-8"))
+    assert frozen["hermetic"] is True
+    assert frozen["sections"]["disposition"] == "restored"
+
+
+def test_p2_derive_disposition_converged_without_faults() -> None:
+    sections = {
+        "t3": {"stage": "p2-t3", "outcome": "committed"},
+        "t4": {"stage": "p2-t4"},
+    }
+    assert derive_p2_disposition(sections) == "converged"
 
 
 def test_p2_c12_nonce_receipt_one_run(tmp_path: Path) -> None:
