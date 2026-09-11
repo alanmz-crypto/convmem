@@ -14,8 +14,10 @@ cross-arc snapshot and the linked arc brief below.
   disabled. The production-canary architecture/plan merged via PR #295
   (`b23cabad`). The P1 hermetic harness merged via PR #296 (`907c828`). PR #298
   (`8741774`) landed Kiro's PASS on the blocked P2 capability-gap packet at
-  reviewed tip `77e6e2e`. Ryan authorized a hermetic **P2 corrective**
-  implementation pass on 2026-09-11. Next lane is Cursor Execute from
+  reviewed tip `77e6e2e`.   Ryan authorized a hermetic **P2 corrective**
+  implementation pass on 2026-09-11. Kiro closed design review as
+  **PASS_WITH_CORRECTIONS** at `245db63` (matrix P2-C13 numbering only). Next lane
+  is Cursor Execute from
   [`CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md`](CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md):
   positive exact-resource P2 mode, full twelve-part Gate 0, and P2-T3–T6
   orchestration under production-shaped temporary paths — stop at pushed evidence

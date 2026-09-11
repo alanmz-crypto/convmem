@@ -12,6 +12,9 @@
 Kiro PASS on the blocked P2 capability-gap packet (PR #298 merge `8741774`, reviewed
 tip `77e6e2eafc030b5add8d2da47419a2e83d1ade9b`)
 
+**Design review:** Kiro PASS_WITH_CORRECTIONS at `245db63` (2026-09-11). One editorial
+fix applied: acceptance matrix P2-C14 renumbered to P2-C13. Cursor may begin C0–C4.
+
 ---
 
 ## Resume state
@@ -252,7 +255,7 @@ Use `tmp_path`, `-I` workers, and fake providers; never depend on live corpus st
 | P2-C10 | Normal CLI, watcher, default-off ingest unchanged |
 | P2-C11 | Unrelated sentinels and persistent false/false preserved in tests |
 | P2-C12 | No live source, production data, provider, network, config, indexing, live P2, PR, or activation |
-| P2-C14 | Existing P1 focused matrix still PASS |
+| P2-C13 | Existing P1 focused matrix still PASS |
 
 Also require: ruff/pylint clean on touched files; `git diff --check` clean.
 

@@ -103,7 +103,7 @@ Chroma, watcher, provider, P2 run, or activation exists.
 | Implementation review/PR | **DONE**; Kiro exact-tip PASS at `17d7e23`, six CI checks PASS, squash-merged as `881133d` | — |
 | Production-canary architecture/plan | **DONE on `main`** via PR #295 (`b23cabad`); Kiro PASS at `8b48a39` | — |
 | P1 hermetic canary harness | **DONE on `main`** via PR #296 (`907c828`); Kiro PASS at final head `40b8c11`, six CI checks green, 128 focused tests PASS | — |
-| P2 transfer seam corrective | **AUTHORIZED (not yet implemented)**; Ryan 2026-09-11 grant after Kiro PASS on PR #298 packet | Cursor hermetic positive-capability + Gate 0 + P2-T3–T6 orchestration; stop at pushed evidence for Kiro |
+| P2 transfer seam corrective | **AUTHORIZED (not yet implemented)**; Ryan 2026-09-11 grant; Kiro Execute-brief PASS_WITH_CORRECTIONS at `245db63` | Cursor hermetic positive-capability + Gate 0 + P2-T3–T6 orchestration; stop at pushed evidence for Kiro |
 | P2 one-source live canary | **UNAUTHORIZED**; source eligible at 68 accepted messages; no executable grant digest | Corrective merge + Kiro review + fresh Gate 0 + Ryan exact-digest authorization |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
@@ -225,6 +225,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-10 | Codex | Recorded Kiro PASS at final PR #296 head `40b8c11` and Ryan's squash merge of the P1 hermetic canary harness as `907c828`; P2 remains unauthorized pending session readiness and a separately reviewed exact-resource grant |
 | 2026-09-11 | Codex | Froze the eligible source at 68 accepted messages and prepared a blocked P2 review packet after confirming merged P1 rejects live resources and lacks executable P2 Gate 0/orchestration; no grant digest or operation was issued |
 | 2026-09-11 | Codex | Recorded Kiro PASS on PR #298 packet at `77e6e2e` and Ryan's authorization of the hermetic P2 corrective Execute handoff; next lane is Cursor implementation |
+| 2026-09-11 | Kiro | Execute-brief review PASS_WITH_CORRECTIONS at `245db63`; editorial P2-C13 renumber only; Cursor may begin C0–C4 |
 
 ## TL;DR
 
