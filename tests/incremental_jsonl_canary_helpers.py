@@ -13,7 +13,6 @@ import pytest
 
 from incremental_jsonl_canary import (
     Gate0ProbeHooks,
-    P2_CAPABILITY_MODE,
     CALL_CEILINGS_APPEND,
     CALL_CEILINGS_INITIAL,
     CALL_CEILINGS_WHOLE,
@@ -26,7 +25,9 @@ from incremental_jsonl_canary import (
     RollbackGrant,
     SourceGrant,
     AppendEnvelope,
+    write_canary_overlay,
 )
+from chroma_write_store import current_code_revision
 from incremental_jsonl_isolation import create_fresh_root
 from tests.incremental_jsonl_helpers import kiro_record
 
@@ -242,6 +243,44 @@ def canary_fixture(tmp_path: Path):
     }
 
 
+def grant_payload_with_resource_path(
+    root: Path,
+    source_grant: SourceGrant,
+    *,
+    role: str,
+    path_value: str,
+    build_fn=build_grant,
+    **build_kwargs,
+) -> dict:
+    grant, _digest = build_fn(root, source_grant, **build_kwargs)
+    payload = grant.to_payload()
+    for resource in payload["resources"]:
+        if resource["role"] == role:
+            resource["path"] = path_value
+    return payload
+
+
+def build_p2_fixture(tmp_path: Path, *, messages: int = 61) -> dict:
+    root = hermetic_root(tmp_path)
+    source, source_grant = write_kiro_source(root, messages)
+    grant, digest = build_p2_grant(
+        root,
+        source_grant,
+        code_revision=current_code_revision(),
+    )
+    grant_path = root / "p2-grant.json"
+    boundary = ProductionCanaryBoundary.from_p2_grant(grant, root=root)
+    write_canary_overlay(boundary)
+    return {
+        "root": root,
+        "source": source,
+        "grant": grant,
+        "digest": digest,
+        "grant_path": grant_path,
+        "boundary": boundary,
+    }
+
+
 def build_p2_grant(
     root: Path,
     source_grant: SourceGrant,
@@ -288,9 +327,7 @@ def append_kiro_source(source: Path, start_index: int, count: int) -> SourceGran
     )
 
 
-def p2_gate0_hooks_pass() -> "Gate0ProbeHooks":
-    from incremental_jsonl_canary import Gate0ProbeHooks
-
+def p2_gate0_hooks_pass() -> Gate0ProbeHooks:
     return Gate0ProbeHooks(
         watcher_probe=lambda: {"pass": "true", "method": "stub"},
         process_census=lambda: {"pass": "true", "matches": "0"},

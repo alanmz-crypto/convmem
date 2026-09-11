@@ -1159,7 +1159,7 @@ def gate0_preflight_p2(
     capsule_path = Path(grant.rollback.capsule_path)
     if capsule_path.is_file():
         digest = _sha256_file(capsule_path)
-        if digest != grant.rollback.expected_digest and grant.rollback.expected_digest != "0" * 64:
+        if grant.rollback.expected_digest not in (digest, "0" * 64):
             raise CanaryRefused("canary_gate0_capsule", "rollback capsule digest mismatch")
     checks["11_capsule"] = {"path": str(capsule_path), "readable": str(capsule_path.exists() or True)}
     restic = (hooks.restic_identifier or _default_restic_identifier)()
@@ -1226,7 +1226,7 @@ def install_call_budget_guard(ceilings: Mapping[str, int]) -> Iterator[CallBudge
         ingest.summarize,
         ingest.distill,
         ingest.ollama_embed,
-        ingest._bump_counter,
+        ingest._bump_counter,  # pylint: disable=protected-access
     )
     embed_kind: contextvars.ContextVar[str | None] = contextvars.ContextVar(
         "canary_embed_budget_kind", default=None
@@ -1256,14 +1256,14 @@ def install_call_budget_guard(ceilings: Mapping[str, int]) -> Iterator[CallBudge
     ingest.summarize = summarize
     ingest.distill = distill
     ingest.ollama_embed = embed
-    ingest._bump_counter = bump_counter
+    ingest._bump_counter = bump_counter  # pylint: disable=protected-access
     try:
         yield guard
     finally:
         ingest.summarize = original[0]
         ingest.distill = original[1]
         ingest.ollama_embed = original[2]
-        ingest._bump_counter = original[3]
+        ingest._bump_counter = original[3]  # pylint: disable=protected-access
 
 
 def capture_rollback_capsule(
@@ -1538,7 +1538,6 @@ def _delegate_p2_worker(
     extra_env: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     import site
-    import subprocess
 
     worker = Path(__file__).resolve().parent / "tests/incremental_jsonl_canary_worker.py"
     grant_path = Path(grant.evidence_dir).parent / "p2-grant.json"
