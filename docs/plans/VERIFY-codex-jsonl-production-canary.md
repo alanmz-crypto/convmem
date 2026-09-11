@@ -154,8 +154,81 @@ and network-denial corrections strengthen isolation without changing the P1
 contract. GitHub reported all six required checks green. Ryan then
 squash-merged PR #296 as `907c828`.
 
+
+## P2 corrective (hermetic Execute)
+
+**Arc:** Codex JSONL production canary P2 corrective slice (Execute C0–C4).
+**Reviewed handoff:** `docs/inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md` at `b83d2a8`.
+**Base revision:** `8741774273e968824e4c09f1a7d6bb57729c0d43` (`origin/main` after PR #298).
+**Branch:** `feat/2026-09-11-codex-jsonl-p2-corrective`.
+**Tip SHA:** `f7a8109b581bd0db50d14158b9c76361d658395d`.
+
+### Scope lock (observed)
+
+- Synthetic Kiro JSONL sources and production-shaped temp paths only.
+- P1 production denial, default-off routing, `IsolationBoundary`, normal CLI, and watcher behavior preserved.
+- No live frozen source, production data/Chroma, providers/network, config mutation, indexing, watchers, activation, grant digest issuance, live P2, or PR opened.
+
+### P2 acceptance mapping
+
+| ID | Result | Evidence |
+|---|---|---|
+| P2-C1 | PASS | `test_p2_c1_p1_still_denies_production_paths` |
+| P2-C2 | PASS | `test_p2_c2_positive_mode_binds_exact_resources` |
+| P2-C3 | PASS | `test_p2_c3_empty_override_cannot_disable_p1_denial` |
+| P2-C4 | PASS | `test_p2_c4_full_gate0_passes_with_stubs` |
+| P2-C5 | PASS | `test_p2_c5_launcher_refuses_p1_mutation` |
+| P2-C6 | PASS | `test_p2_c6_initial_adoption_two_chunk_replay` |
+| P2-C7 | PASS | `test_p2_c7_append_reuses_chunk_zero` |
+| P2-C8 | PASS | `test_p2_c8_fault_selector_restores` |
+| P2-C9 | PASS | `test_p2_c9_evidence_freeze` |
+| P2-C10 | PASS | `test_p2_c10_baseline_hashes_and_routes_unchanged` |
+| P2-C11 | PASS | `test_p2_c11_unrelated_sentinels_unchanged` |
+| P2-C12 | PASS | `test_p2_c12_nonce_receipt_one_run` |
+| P2-C13 | PASS | focused P1 matrix still green (140 passed with P2 suite) |
+
+### Exact commands and counts
+
+```bash
+python3 -m pytest \
+  tests/test_incremental_jsonl_canary_baseline.py \
+  tests/test_incremental_jsonl_canary_grant.py \
+  tests/test_incremental_jsonl_canary_operations.py \
+  tests/test_incremental_jsonl_canary_serving.py \
+  tests/test_incremental_jsonl_canary_p2_corrective.py \
+  tests/test_incremental_jsonl_config.py \
+  tests/test_incremental_jsonl_isolation.py \
+  tests/test_incremental_jsonl_state.py \
+  tests/test_shadow_writer_coverage_scan.py \
+  tests/test_shadow_writer_gate_c3.py \
+  -q
+```
+
+Result: **140 passed** (128 focused P1/regression + 12 P2 corrective).
+
+```bash
+python3 -m compileall incremental_jsonl_canary.py scripts/run-jsonl-production-canary.py \
+  tests/incremental_jsonl_canary_worker.py tests/incremental_jsonl_canary_helpers.py \
+  tests/test_incremental_jsonl_canary_*.py -q
+git diff --check
+python3 -m pylint incremental_jsonl_canary.py scripts/run-jsonl-production-canary.py \
+  tests/incremental_jsonl_canary_worker.py tests/incremental_jsonl_canary_helpers.py \
+  tests/test_incremental_jsonl_canary_*.py
+```
+
+`compileall`: PASS. `git diff --check`: clean. Scoped pylint on touched surfaces: **9.87/10**.
+
+### Governance updates
+
+- Allowlisted Gate 0 census probe ctor at `incremental_jsonl_canary.py:1001` in
+  `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json`.
+
+### Stop state
+
+Pushed feature tip ready for Kiro exact-tip review. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
+
 ## TL;DR
 
 P1 hermetic canary harness is on `main` via PR #296 (`907c828`). The final PR
 head passed Kiro review, 128 focused tests, scoped pylint 10.00/10, and all six
-CI checks. P2 and activation remain unauthorized.
+CI checks. P2 corrective hermetic Execute is on branch `feat/2026-09-11-codex-jsonl-p2-corrective` awaiting Kiro exact-tip review. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated.
