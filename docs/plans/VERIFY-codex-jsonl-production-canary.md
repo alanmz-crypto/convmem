@@ -6,7 +6,7 @@
 
 **Lane:** Cursor Execute P1-T0–T8 / P1-A1–A14
 
-**Branch:** `feat/2026-09-10-codex-jsonl-production-canary-p1`
+**Current location:** `main` via squash-merged PR #296
 
 **Baseline merge:** `b23cabad3a040bb6fef94cc8db8d9f5714b12a46` (PR #295)
 
@@ -14,13 +14,15 @@
 
 **Kiro-reviewed tip:** `7412ce344f5997a454aaab321e7efc6acc5ef1ae`
 
-**PR:** #296, opened by the Codex PR Steward after Kiro PASS
+**Final Kiro-reviewed PR head:** `40b8c119f9fde04cc3b0fcefacc87c802875d9e0`
+
+**P1 merge:** `907c828e738f90db8f7f292ab46db040fec20c70` (PR #296)
 
 ---
 
 ## Disposition
 
-Hermetic P1 canary-harness evidence is complete on the feature branch. During
+Hermetic P1 canary-harness evidence is complete and is now on `main`. During
 PR CI, the Steward corrected the scoped pylint regression and a sandbox-caught
 hermeticity defect: the worker had omitted the architecture's outer,
 grant-listed writer lease, so replay's final processed-state transaction tried
@@ -35,7 +37,9 @@ contained worker. Removing that redundant parent mutation keeps denial inside
 the worker and prevents test-order leakage into unrelated JudgeBench tests.
 The harness is canary-only, uses synthetic sources and temporary roots only,
 and does not touch live production paths, providers, watchers, or the dedicated
-Kiro session. P2 and activation remain separately Ryan-gated.
+Kiro session. Kiro independently rechecked the final PR delta at `40b8c11` and
+closed P1 as PASS; all six GitHub checks were green before Ryan squash-merged
+PR #296 as `907c828`. P2 and activation remain separately Ryan-gated.
 
 ## What this evidence is
 
@@ -141,20 +145,17 @@ coordinator protocol actually opens.
 - Regenerated `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` with route
   `jsonl_production_canary` → `incremental_jsonl_canary.py:canary_coordinator`.
 
-## Kiro rerun
+## Independent recheck and merge disposition
 
-```bash
-git fetch origin feat/2026-09-10-codex-jsonl-production-canary-p1
-git rev-parse origin/feat/2026-09-10-codex-jsonl-production-canary-p1
-```
-
-Re-run the focused pytest command above from the PR head. The delta after the
-Kiro-reviewed tip is limited to lint cleanup, the canary-only outer writer
-scope, exact lock-role validation, focused tests, and this current-state
-documentation. Do not run bare `pytest -q` or perform P2/live operations.
+Kiro reviewed the full delta from the earlier PASS tip `7412ce3` through final
+PR head `40b8c11`, reproduced 128 focused passing tests, compileall,
+`git diff --check`, and scoped pylint 10.00/10, and confirmed the writer-lease
+and network-denial corrections strengthen isolation without changing the P1
+contract. GitHub reported all six required checks green. Ryan then
+squash-merged PR #296 as `907c828`.
 
 ## TL;DR
 
-P1 hermetic canary harness is in PR #296. A CI-discovered production-lock
-escape is corrected with the planned outer temporary writer lease; 128 focused
-tests pass and scoped pylint is 10.00/10. P2 and activation remain unauthorized.
+P1 hermetic canary harness is on `main` via PR #296 (`907c828`). The final PR
+head passed Kiro review, 128 focused tests, scoped pylint 10.00/10, and all six
+CI checks. P2 and activation remain unauthorized.
