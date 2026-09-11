@@ -161,7 +161,7 @@ squash-merged PR #296 as `907c828`.
 **Reviewed handoff:** [`docs/inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md`](../inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md) at `b83d2a8`.
 **Base revision:** `8741774273e968824e4c09f1a7d6bb57729c0d43` (`origin/main` after PR #298).
 **Branch:** `feat/2026-09-11-codex-jsonl-p2-corrective`.
-**Tip SHA:** `f641a7e9799bcb295e7107759bdb7db743552ca9`.
+**Tip SHA:** `d35a210b3e2369f57006eaec39304dfb1f3db379`.
 
 ### Scope lock (observed)
 
@@ -248,7 +248,7 @@ python3 scripts/pylint_regression_gate.py ci \
 
 ### Stop state
 
-Pushed feature tip `f641a7e9799bcb295e7107759bdb7db743552ca9` ready for Kiro narrow delta recheck. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
+Pushed feature tip `d35a210b3e2369f57006eaec39304dfb1f3db379` ready for Kiro narrow delta recheck. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
 
 
 
