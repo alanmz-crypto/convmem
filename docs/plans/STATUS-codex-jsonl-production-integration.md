@@ -103,17 +103,16 @@ Chroma, watcher, provider, P2 run, or activation exists.
 | Implementation review/PR | **DONE**; Kiro exact-tip PASS at `17d7e23`, six CI checks PASS, squash-merged as `881133d` | — |
 | Production-canary architecture/plan | **DONE on `main`** via PR #295 (`b23cabad`); Kiro PASS at `8b48a39` | — |
 | P1 hermetic canary harness | **DONE on `main`** via PR #296 (`907c828`); Kiro PASS at final head `40b8c11`, six CI checks green, 128 focused tests PASS | — |
-| P2 one-source live canary | **UNAUTHORIZED** | Dedicated session reaches 61–109 accepted messages through ordinary use + exact grant digest + Kiro review + Ryan authorization |
+| P2 one-source live canary | **BLOCKED / UNAUTHORIZED**; source eligible at 68 accepted messages, but merged P1 still rejects live resources and has no executable P2 orchestration | Kiro review of the packet contradiction + Ryan decision on a hermetic corrective implementation pass |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
 ## 5. Your Role
 
-**If Ryan sent you to prepare the next gate:** do not run P2. Let the dedicated
-Kiro session grow through ordinary use from the documented 16 accepted
-messages to 61–109, then stop using it and prepare the exact-source P2 preflight
-and grant packet for Kiro review. Packet preparation must not read production
-Chroma, invoke providers, index the source, change configuration, or start the
-watcher.
+**If Ryan sent you to review the P2 packet:** you are Kiro. Review
+`docs/inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-grant-packet.md`.
+Confirm whether the merged P1 production-root denial, hard P2 launcher refusal,
+and incomplete live Gate 0/orchestration require a corrective implementation
+slice. Do not implement code or run preflight/P2.
 
 **If Ryan sent you to execute P2 or activate:** stop unless Ryan supplied the
 separate, reviewed exact-resource P2 grant and its digest. P1 merge does not
@@ -121,15 +120,19 @@ authorize live operations or activation.
 
 ## 6. What Remains Before Live (sequential)
 
-1. The dedicated Kiro session grows through ordinary use from the documented 16
-   accepted messages to 61–109; canary tooling never edits it.
-2. Codex prepares a fresh exact-source P2 preflight/grant packet without
-   executing it; Kiro reviews the exact packet digest.
-3. Ryan separately decides whether to authorize one P2 run.
-4. Only under that grant, Cursor runs P2 against the named resources and stops
-   at evidence.
-5. P2 measures real frontier calls, selected crash replay, rollback, and
-   cross-collection serving visibility, then stops at evidence.
+1. Kiro reviews the blocked P2 packet and the concrete P1-to-P2 implementation
+   contradiction.
+2. Ryan decides whether to authorize a hermetic corrective implementation
+   pass or stop P2.
+3. If authorized, Cursor implements only the positive P2 capability seam, full
+   Gate 0, and P2 orchestration under temporary production-shaped paths, then
+   stops at evidence for Kiro review and a separate PR decision.
+4. After corrected code is reviewed and merged, revalidate the still-closed
+   source; if it remains eligible, freeze every remaining grant field and
+   obtain Kiro review plus Ryan's exact-digest authorization.
+5. Only under that grant, Cursor runs P2 against the named resources and stops
+   at evidence. P2 measures real frontier calls, selected crash replay,
+   rollback, and cross-collection serving visibility.
 6. Independent review decides whether activation should be planned at all.
 7. Ryan alone edits live configuration or activates the watcher route.
 
@@ -218,6 +221,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-10 | Cursor | Landed hermetic P1 canary harness on `feat/2026-09-10-codex-jsonl-production-canary-p1`; next lane is exact-tip Kiro review. No PR, P2, or activation |
 | 2026-09-10 | Codex | Opened PR #296 after Kiro PASS; corrected CI lint findings, restored the planned grant-listed outer writer lease after sandbox evidence caught a production-lock escape, and confined network denial to its test worker; corrected tip awaits CI and narrow Kiro recheck |
 | 2026-09-10 | Codex | Recorded Kiro PASS at final PR #296 head `40b8c11` and Ryan's squash merge of the P1 hermetic canary harness as `907c828`; P2 remains unauthorized pending session readiness and a separately reviewed exact-resource grant |
+| 2026-09-11 | Codex | Froze the eligible source at 68 accepted messages and prepared a blocked P2 review packet after confirming merged P1 rejects live resources and lacks executable P2 Gate 0/orchestration; no grant digest or operation was issued |
 
 ## TL;DR
 
@@ -225,6 +229,6 @@ Keep this document a current-state snapshot, not a session diary.
   disabled by default.
 - The canary architecture/plan merged via PR #295 (`b23cabad`), and the P1
   hermetic harness merged via PR #296 (`907c828`) after Kiro PASS and green CI.
-- P2 remains unauthorized. The dedicated session must first grow naturally to
-  61–109 accepted messages, followed by an exact grant packet, Kiro review, and
-  Ryan's separate one-shot authorization.
+- The dedicated source is eligible at 68 accepted messages, but no executable
+  P2 grant exists: Kiro must first review the missing positive-capability and
+  live-orchestration seam, then Ryan decides whether to authorize correction.

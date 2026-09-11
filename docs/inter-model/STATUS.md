@@ -47,7 +47,7 @@ gated.
 
 | Arc | State | Next authorized action |
 |---|---|---|
-| Codex — Kiro JSONL incremental production integration | The default-off coordinator, reviewed canary plan, and P1 hermetic harness are on `main` via PRs #293, #295, and #296. Kiro passed final PR #296 head `40b8c11`; Ryan squash-merged it as `907c828` after six green CI checks and 128 focused tests. | Let the dedicated source grow through ordinary use from the documented 16 accepted messages to the reviewed 61–109 window. Then Codex may prepare, but not execute, an exact-source P2 grant packet for Kiro review and Ryan's separate decision. No live indexing, providers, config change, migration, watcher action, P2, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
+| Codex — Kiro JSONL incremental production integration | The default-off coordinator, reviewed canary plan, and P1 hermetic harness are on `main` via PRs #293, #295, and #296. The dedicated source is eligible at 68 accepted messages. Packet preparation found that merged P1 still denies the exact live resources, hard-refuses P2, and lacks full live Gate 0/orchestration; no executable digest was issued. | Kiro reviews the blocked [`P2 packet`](CODEX-2026-09-11-jsonl-production-canary-p2-grant-packet.md). Ryan then decides whether to authorize a hermetic corrective implementation pass or stop P2. No live indexing, providers, config change, migration, watcher action, P2, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
@@ -108,10 +108,10 @@ gated.
 - [Arc Codex JSONL production-integration STATUS](../plans/STATUS-codex-jsonl-production-integration.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Arc Codex hermetic T0–T6, the two-grant canary plan, and the P1
-harness are on `main` via PRs #293, #295, and #296; the feature remains disabled.
-P2 live execution and activation remain separate Ryan gates, with the dedicated
-source still needing to reach 61–109 accepted messages through ordinary use.
+**TL;DR:** Arc Codex's source is eligible at 68 accepted messages, but packet
+preparation found the merged P1 harness cannot accept or execute a live P2
+grant. Kiro must review the corrective capability seam before Ryan decides on
+any implementation; P2 and activation remain unauthorized.
 Other active arcs retain their existing gates. Verify the exact `origin/main`
 tip from Git when a commit identity matters.
 

@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-10
+**Updated:** 2026-09-11
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -14,11 +14,15 @@ cross-arc snapshot and the linked arc brief below.
   disabled. The production-canary architecture/plan merged via PR #295
   (`b23cabad`). The P1 hermetic harness merged via PR #296 (`907c828`) after
   Kiro PASS at final PR head `40b8c11`, six green CI checks, and 128 focused
-  tests. Next, the dedicated Kiro session must grow through ordinary use from
-  the documented 16 accepted messages to 61–109; then Codex may prepare, but
-  not execute, an exact-source P2 grant packet for Kiro review. **P2**, indexing,
-  provider calls, watcher action, config change, and activation remain
-  unauthorized pending Ryan's separate one-shot grant. Resume from
+  tests. The dedicated source is now closed and eligible at 68 accepted
+  messages. During packet preparation, Codex confirmed that the merged P1
+  validator still rejects the exact live source/production resources, the
+  launcher hard-refuses P2, and full P2 Gate 0/orchestration is absent. No
+  executable digest was issued. Next lane is Kiro review of the blocked
+  [`P2 grant packet`](CODEX-2026-09-11-jsonl-production-canary-p2-grant-packet.md),
+  then Ryan decides whether to authorize a hermetic corrective implementation
+  pass or stop P2. Indexing, provider calls, watcher action, config change, P2,
+  and activation remain unauthorized. Resume from the packet and
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
