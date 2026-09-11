@@ -1,8 +1,8 @@
 # Review Packet: Arc Codex JSONL Production Canary P2
 
-**Date:** 2026-09-11  
-**Author:** Codex (planning/handoff lane)  
-**For:** Kiro (design review) → Ryan (disposition)  
+**Date:** 2026-09-11
+**Author:** Codex (planning/handoff lane)
+**For:** Kiro (design review) → Ryan (disposition)
 **Authorization:** Ryan, 2026-09-11 — prepare the P2 packet only
 
 > **Arc: Codex. This is not an executable grant.** Packet preparation found a
