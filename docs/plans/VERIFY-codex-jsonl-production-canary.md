@@ -157,7 +157,7 @@ squash-merged PR #296 as `907c828`.
 
 ## P2 corrective (hermetic Execute)
 
-**Arc:** Codex JSONL production canary P2 corrective slice (Execute C0–C4 + Kiro recheck corrections).
+**Arc:** Codex JSONL production canary P2 corrective slice (Execute C0–C4 + Kiro recheck + lint corrections).
 **Reviewed handoff:** [`docs/inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md`](../inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md) at `b83d2a8`.
 **Base revision:** `8741774273e968824e4c09f1a7d6bb57729c0d43` (`origin/main` after PR #298).
 **Branch:** `feat/2026-09-11-codex-jsonl-p2-corrective`.
@@ -168,6 +168,16 @@ squash-merged PR #296 as `907c828`.
 - Synthetic Kiro JSONL sources and production-shaped temp paths only.
 - P1 production denial, default-off routing, `IsolationBoundary`, normal CLI, and watcher behavior preserved.
 - No live frozen source, production Chroma/data, providers/network, config mutation, indexing, watchers, activation, grant digest issuance, live P2, or PR opened.
+
+### Kiro lint/evidence corrections (narrow delta)
+
+| Item | Correction |
+|---|---|
+| Unused/reimported names | Removed unused imports; dropped lazy `Gate0ProbeHooks` reimport and inner `subprocess` reimport |
+| R1714 | Gate 0 capsule digest check uses `not in` membership test |
+| Long line / import order | Wrapped launcher subprocess call; moved helper imports above module constants |
+| Protected access | Inline `# pylint: disable=protected-access` on intentional ingest/coordinator hooks only |
+| Duplicate code | Shared `build_p2_fixture` / `grant_payload_with_resource_path` helpers; import `BASELINE_HASHES` from baseline tests |
 
 ### Kiro evidence-gap corrections
 
@@ -223,13 +233,23 @@ git diff --check
 python3 -m pylint incremental_jsonl_canary.py scripts/run-jsonl-production-canary.py \
   tests/incremental_jsonl_canary_worker.py tests/incremental_jsonl_canary_helpers.py \
   tests/test_incremental_jsonl_canary_*.py
+set +e
+pylint $(git ls-files "*.py") --output-format=json > pylint-report.json
+pylint_status=$?
+set -e
+python3 scripts/pylint_regression_gate.py ci \
+  --report pylint-report.json \
+  --pylint-status "$pylint_status" \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref origin/main
 ```
 
-`compileall`: PASS. `git diff --check`: clean. Scoped pylint on touched surfaces: **10.00/10**.
+`compileall`: PASS. `git diff --check`: clean. Scoped pylint (`pylint==4.0.6`) on touched surfaces: **10.00/10**. `pylint_regression_gate.py ci`: **PASS** (459 findings, 243 fingerprints; no new/increased vs baseline).
 
 ### Stop state
 
-Pushed feature tip `23e95838d35a419600c5458e3e22fd751ce0bdbc` ready for Kiro exact-tip recheck. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
+Pushed feature tip `ca608dfba977e6155c5816928dd9c17eb522302b` ready for Kiro narrow delta recheck. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
+
 
 
 ## TL;DR

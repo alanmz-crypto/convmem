@@ -130,11 +130,11 @@ live operations or activation.
 3. After corrective merge, revalidate the still-closed
    source; if it remains eligible, freeze every remaining grant field and
    obtain Kiro review plus Ryan's exact-digest authorization.
-5. Only under that grant, Cursor runs P2 against the named resources and stops
+4. Only under that grant, Cursor runs P2 against the named resources and stops
    at evidence. P2 measures real frontier calls, selected crash replay,
    rollback, and cross-collection serving visibility.
-6. Independent review decides whether activation should be planned at all.
-7. Ryan alone edits live configuration or activates the watcher route.
+5. Independent review decides whether activation should be planned at all.
+6. Ryan alone edits live configuration or activates the watcher route.
 
 ## 7. Hard Stops
 
@@ -207,8 +207,6 @@ Keep this document a current-state snapshot, not a session diary.
 
 ### Update Log
 
-- 2026-09-11 — Cursor: P2 corrective implementation complete; Kiro evidence gaps corrected; awaiting exact-tip recheck.
-
 | Date | Who | Change |
 |---|---|---|
 | 2026-09-09 | Codex | Created Arc Codex production-integration architecture, bounded Execute plan, and Kiro review boundary after merged scratch/canary evidence |
@@ -224,6 +222,8 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-10 | Codex | Opened PR #296 after Kiro PASS; corrected CI lint findings, restored the planned grant-listed outer writer lease after sandbox evidence caught a production-lock escape, and confined network denial to its test worker; corrected tip awaits CI and narrow Kiro recheck |
 | 2026-09-10 | Codex | Recorded Kiro PASS at final PR #296 head `40b8c11` and Ryan's squash merge of the P1 hermetic canary harness as `907c828`; P2 remains unauthorized pending session readiness and a separately reviewed exact-resource grant |
 | 2026-09-11 | Codex | Froze the eligible source at 68 accepted messages and prepared a blocked P2 review packet after confirming merged P1 rejects live resources and lacks executable P2 Gate 0/orchestration; no grant digest or operation was issued |
+| 2026-09-11 | Cursor | P2 corrective implementation complete; Kiro evidence gaps corrected; awaiting exact-tip recheck |
+| 2026-09-11 | Cursor | Applied Kiro lint/evidence corrections; scoped pylint and regression gate green; awaiting narrow delta recheck |
 
 ## TL;DR
 
