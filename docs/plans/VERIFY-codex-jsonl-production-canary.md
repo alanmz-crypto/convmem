@@ -161,7 +161,7 @@ squash-merged PR #296 as `907c828`.
 **Reviewed handoff:** `docs/inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md` at `b83d2a8`.
 **Base revision:** `8741774273e968824e4c09f1a7d6bb57729c0d43` (`origin/main` after PR #298).
 **Branch:** `feat/2026-09-11-codex-jsonl-p2-corrective`.
-**Tip SHA:** `488aeb4407c2e4bcd17b5c9e274ab4b34488e19b`.
+**Tip SHA:** `c34617c55efe42210ffbbe724ab0824e12267152`.
 
 ### Scope lock (observed)
 
