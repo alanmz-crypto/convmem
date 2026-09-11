@@ -103,31 +103,31 @@ Chroma, watcher, provider, P2 run, or activation exists.
 | Implementation review/PR | **DONE**; Kiro exact-tip PASS at `17d7e23`, six CI checks PASS, squash-merged as `881133d` | — |
 | Production-canary architecture/plan | **DONE on `main`** via PR #295 (`b23cabad`); Kiro PASS at `8b48a39` | — |
 | P1 hermetic canary harness | **DONE on `main`** via PR #296 (`907c828`); Kiro PASS at final head `40b8c11`, six CI checks green, 128 focused tests PASS | — |
-| P2 one-source live canary | **BLOCKED / UNAUTHORIZED**; source eligible at 68 accepted messages, but merged P1 still rejects live resources and has no executable P2 orchestration | Kiro review of the packet contradiction + Ryan decision on a hermetic corrective implementation pass |
+| P2 transfer seam corrective | **IMPLEMENTED (awaiting Kiro recheck)** on `feat/2026-09-11-codex-jsonl-p2-corrective`; Execute contract `b83d2a8` | Kiro exact-tip review of corrected Gate 0 / fault / p2-all evidence; no live P2 or PR |
+| P2 one-source live canary | **UNAUTHORIZED**; no executable grant digest | Corrective merge + Kiro recheck PASS + fresh Gate 0 + Ryan exact-digest authorization |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
 ## 5. Your Role
 
-**If Ryan sent you to review the P2 packet:** you are Kiro. Review
-`docs/inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-grant-packet.md`.
-Confirm whether the merged P1 production-root denial, hard P2 launcher refusal,
-and incomplete live Gate 0/orchestration require a corrective implementation
-slice. Do not implement code or run preflight/P2.
+**If Ryan sent you to review the P2 corrective pass:** you are Kiro. Review the
+pushed tip of `feat/2026-09-11-codex-jsonl-p2-corrective` against
+[`CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md`](../inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md)
+(`b83d2a8`) and
+[`VERIFY-codex-jsonl-production-canary.md`](VERIFY-codex-jsonl-production-canary.md).
+Confirm twelve Gate 0 fail-closed proofs, five two-chunk fault selectors,
+ordered `p2-all` T3–T6, and derived disposition. Do not implement code or run
+live preflight/P2.
 
-**If Ryan sent you to execute P2 or activate:** stop unless Ryan supplied the
-separate, reviewed exact-resource P2 grant and its digest. P1 merge does not
-authorize live operations or activation.
+**If Ryan sent you to execute live P2 or activate:** stop unless Ryan supplied
+**P2-T2 twelve-part Gate 0** plus **P2-T3–T6 orchestration** and an executable
+grant digest. Hermetic corrective code on the feature branch does not authorize
+live operations or activation.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro reviews the blocked P2 packet and the concrete P1-to-P2 implementation
-   contradiction.
-2. Ryan decides whether to authorize a hermetic corrective implementation
-   pass or stop P2.
-3. If authorized, Cursor implements only the positive P2 capability seam, full
-   Gate 0, and P2 orchestration under temporary production-shaped paths, then
-   stops at evidence for Kiro review and a separate PR decision.
-4. After corrected code is reviewed and merged, revalidate the still-closed
+1. Kiro exact-tip recheck of `feat/2026-09-11-codex-jsonl-p2-corrective`.
+2. Ryan decides on PR merge after Kiro PASS.
+3. After corrective merge, revalidate the still-closed
    source; if it remains eligible, freeze every remaining grant field and
    obtain Kiro review plus Ryan's exact-digest authorization.
 5. Only under that grant, Cursor runs P2 against the named resources and stops
@@ -206,6 +206,8 @@ Keep this document a current-state snapshot, not a session diary.
    this file alone.
 
 ### Update Log
+
+- 2026-09-11 — Cursor: P2 corrective implementation complete; Kiro evidence gaps corrected; awaiting exact-tip recheck.
 
 | Date | Who | Change |
 |---|---|---|

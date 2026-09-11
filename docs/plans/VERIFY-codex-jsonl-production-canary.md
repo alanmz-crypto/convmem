@@ -157,17 +157,26 @@ squash-merged PR #296 as `907c828`.
 
 ## P2 corrective (hermetic Execute)
 
-**Arc:** Codex JSONL production canary P2 corrective slice (Execute C0–C4).
-**Reviewed handoff:** `docs/inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md` at `b83d2a8`.
+**Arc:** Codex JSONL production canary P2 corrective slice (Execute C0–C4 + Kiro recheck corrections).
+**Reviewed handoff:** [`docs/inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md`](../inter-model/CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md) at `b83d2a8`.
 **Base revision:** `8741774273e968824e4c09f1a7d6bb57729c0d43` (`origin/main` after PR #298).
 **Branch:** `feat/2026-09-11-codex-jsonl-p2-corrective`.
-**Tip SHA:** `c34617c55efe42210ffbbe724ab0824e12267152`.
+**Tip SHA:** `22b6444ce3916529fe13c2f45d1d996fb7beadc5`.
 
 ### Scope lock (observed)
 
 - Synthetic Kiro JSONL sources and production-shaped temp paths only.
 - P1 production denial, default-off routing, `IsolationBoundary`, normal CLI, and watcher behavior preserved.
-- No live frozen source, production data/Chroma, providers/network, config mutation, indexing, watchers, activation, grant digest issuance, live P2, or PR opened.
+- No live frozen source, production Chroma/data, providers/network, config mutation, indexing, watchers, activation, grant digest issuance, live P2, or PR opened.
+
+### Kiro evidence-gap corrections
+
+| Gap | Correction |
+|---|---|
+| Twelve Gate 0 checks fail closed individually | `test_p2_gate0_checks_fail_closed_individually` parametrizes all twelve checks |
+| Five fault selectors on 61-message two-chunk source | `test_p2_c8_fault_selectors_restore_on_two_chunk_source` parametrizes all `FAULT_SELECTORS` |
+| `p2-all` runs T3→T4→T5→T6 in order | `run_p2_orchestration()` executes append + fault battery + evidence freeze; launcher `p2-all` uses `include_faults=True` |
+| Disposition derived from outcomes | `derive_p2_disposition()` returns `restored` when all fault observations restore; `converged` when T3+T4 succeed without faults |
 
 ### P2 acceptance mapping
 
@@ -176,16 +185,16 @@ squash-merged PR #296 as `907c828`.
 | P2-C1 | PASS | `test_p2_c1_p1_still_denies_production_paths` |
 | P2-C2 | PASS | `test_p2_c2_positive_mode_binds_exact_resources` |
 | P2-C3 | PASS | `test_p2_c3_empty_override_cannot_disable_p1_denial` |
-| P2-C4 | PASS | `test_p2_c4_full_gate0_passes_with_stubs` |
+| P2-C4 | PASS | `test_p2_c4_full_gate0_passes_with_stubs` + twelve fail-closed parametrized cases |
 | P2-C5 | PASS | `test_p2_c5_launcher_refuses_p1_mutation` |
 | P2-C6 | PASS | `test_p2_c6_initial_adoption_two_chunk_replay` |
 | P2-C7 | PASS | `test_p2_c7_append_reuses_chunk_zero` |
-| P2-C8 | PASS | `test_p2_c8_fault_selector_restores` |
-| P2-C9 | PASS | `test_p2_c9_evidence_freeze` |
+| P2-C8 | PASS | five-selector parametrized fault restore on 61-message source |
+| P2-C9 | PASS | `test_p2_c9_evidence_freeze` + orchestration evidence bundle |
 | P2-C10 | PASS | `test_p2_c10_baseline_hashes_and_routes_unchanged` |
 | P2-C11 | PASS | `test_p2_c11_unrelated_sentinels_unchanged` |
 | P2-C12 | PASS | `test_p2_c12_nonce_receipt_one_run` |
-| P2-C13 | PASS | focused P1 matrix still green (140 passed with P2 suite) |
+| P2-C13 | PASS | focused P1 matrix still green (158 passed with P2 suite) |
 
 ### Exact commands and counts
 
@@ -204,7 +213,7 @@ python3 -m pytest \
   -q
 ```
 
-Result: **140 passed** (128 focused P1/regression + 12 P2 corrective).
+Result: **158 passed** (128 focused P1/regression + 30 P2 corrective).
 
 ```bash
 python3 -m compileall incremental_jsonl_canary.py scripts/run-jsonl-production-canary.py \
@@ -216,19 +225,15 @@ python3 -m pylint incremental_jsonl_canary.py scripts/run-jsonl-production-canar
   tests/test_incremental_jsonl_canary_*.py
 ```
 
-`compileall`: PASS. `git diff --check`: clean. Scoped pylint on touched surfaces: **9.87/10**.
-
-### Governance updates
-
-- Allowlisted Gate 0 census probe ctor at `incremental_jsonl_canary.py:1001` in
-  `docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json`.
+`compileall`: PASS. `git diff --check`: clean. Scoped pylint on touched surfaces: **9.91/10**.
 
 ### Stop state
 
-Pushed feature tip ready for Kiro exact-tip review. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
+Pushed feature tip ready for Kiro exact-tip recheck. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
+
 
 ## TL;DR
 
 P1 hermetic canary harness is on `main` via PR #296 (`907c828`). The final PR
 head passed Kiro review, 128 focused tests, scoped pylint 10.00/10, and all six
-CI checks. P2 corrective hermetic Execute is on branch `feat/2026-09-11-codex-jsonl-p2-corrective` awaiting Kiro exact-tip review. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated.
+CI checks. P2 corrective hermetic Execute on `feat/2026-09-11-codex-jsonl-p2-corrective` includes Kiro evidence-gap corrections and awaits exact-tip recheck. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated.
