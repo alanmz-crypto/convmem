@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-11
+**Updated:** 2026-09-12
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -16,11 +16,14 @@ cross-arc snapshot and the linked arc brief below.
   (`8741774`) landed Kiro's PASS on the blocked P2 capability-gap packet. The
   positive exact-resource **P2 transfer seam is now on `main`** via PR #299
   (`8beda7d`) after Kiro PASS at final head `fe0086c` and six green CI checks.
-  No executable grant or digest has been issued. Ryan's next decision is
-  whether to authorize read-only source/resource revalidation and exact grant
-  packet preparation. Gate 0, live P2, production access, provider calls,
-  config changes, indexing, watcher work, and activation remain unauthorized.
-  Resume from
+  Ryan authorized read-only P2-T1 preparation on 2026-09-12. Codex re-froze
+  the closed source at 68 accepted messages and prepared exact candidate grant
+  digest `6022294b…e4343` against runtime `7360a04`. The candidate has no
+  authority and now awaits fresh Kiro review. Gate 0, live P2, production
+  access, provider calls, config changes, indexing, watcher work, and
+  activation remain unauthorized. Review
+  [`CODEX-2026-09-12-jsonl-production-canary-p2-t1-grant-packet.md`](CODEX-2026-09-12-jsonl-production-canary-p2-t1-grant-packet.md),
+  then resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
