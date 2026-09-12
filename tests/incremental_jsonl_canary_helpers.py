@@ -338,3 +338,149 @@ def p2_gate0_hooks_pass() -> Gate0ProbeHooks:
         restic_identifier=lambda: {"pass": "true", "backup_id": "hermetic-stub"},
         zero_adoption=lambda _boundary, _grant: {"pass": "true"},
     )
+
+
+def _write_manifest(path: Path, payload: str) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(payload, encoding="utf-8")
+    os.chmod(path, 0o600)
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def build_p2_v2_grant(
+    root: Path,
+    source_grant,
+    *,
+    nonce: str | None = None,
+    code_revision: str | None = None,
+    expires_at: str = "2099-12-31T23:59:59Z",
+    messages: int = 61,
+):
+    from incremental_jsonl_canary import (
+        P2_LIVE_CAPABILITY_MODE,
+        ModelManifestGrant,
+        PersistentConfigGrant,
+        ResticGrant,
+        ZERO_DIGEST,
+    )
+    from incremental_jsonl_canary_p2 import capture_path_identity
+    from dataclasses import replace
+
+    del messages
+    grant, _digest = build_grant(
+        root,
+        source_grant,
+        nonce=nonce,
+        code_revision=code_revision or current_code_revision(),
+        expires_at=expires_at,
+    )
+    owner_uid = os.getuid()
+    persistent = root / "persistent" / "config.toml"
+    persistent.parent.mkdir(parents=True, exist_ok=True)
+    persistent.write_text(
+        "[index]\n[index.incremental_jsonl]\nenabled = false\nallow_full_rebuild = false\n",
+        encoding="utf-8",
+    )
+    os.chmod(persistent, 0o600)
+    manifests_dir = root / "model-manifests"
+    summarize_digest = _write_manifest(manifests_dir / "summarize.json", '{"model":"summarize","blob":"aa"}')
+    embed_digest = _write_manifest(manifests_dir / "embed.json", '{"model":"embed","blob":"bb"}')
+    distill_digest = _write_manifest(manifests_dir / "distill.json", '{"model":"distill","blob":"cc"}')
+    identities = [
+        capture_path_identity(Path(grant.source.path), "source", owner_uid),
+        capture_path_identity(Path(grant.source.metadata_path), "metadata", owner_uid),
+        capture_path_identity(Path(grant.config_overlay), "overlay", owner_uid),
+        capture_path_identity(Path(grant.evidence_dir), "evidence_dir", owner_uid),
+        capture_path_identity(Path(grant.rollback.capsule_path), "capsule", owner_uid),
+        capture_path_identity(persistent, "persistent_config", owner_uid),
+    ]
+    for role in grant.resources:
+        identities.append(capture_path_identity(Path(role.path), role.role, owner_uid))
+    live_grant = replace(
+        grant,
+        capability_mode=P2_LIVE_CAPABILITY_MODE,
+        persistent_config=PersistentConfigGrant(
+            path=str(persistent.resolve()),
+            digest=hashlib.sha256(persistent.read_bytes()).hexdigest(),
+        ),
+        model_manifests=(
+            ModelManifestGrant(
+                role="summarize",
+                name=grant.provider.summarize_model,
+                digest=summarize_digest,
+                manifest_path=str((manifests_dir / "summarize.json").resolve()),
+            ),
+            ModelManifestGrant(
+                role="embed",
+                name=grant.provider.embed_canonical_tag,
+                digest=embed_digest,
+                manifest_path=str((manifests_dir / "embed.json").resolve()),
+            ),
+            ModelManifestGrant(
+                role="distill",
+                name=grant.provider.distill_model,
+                digest=distill_digest,
+                manifest_path=str((manifests_dir / "distill.json").resolve()),
+            ),
+        ),
+        restic=ResticGrant(
+            snapshot_id="a" * 64,
+            tag="convmem-data-v2",
+            data_root=str((root / "data-root").resolve()),
+            repository="restic:local-test",
+            require_current_local_day=True,
+        ),
+        resource_identities=tuple(identities),
+        owner_uid=owner_uid,
+        rollback=replace(grant.rollback, expected_digest=ZERO_DIGEST),
+    )
+    path = root / "p2-v2-grant.json"
+    path.write_text(json.dumps(live_grant.to_payload(), indent=2) + "\n", encoding="utf-8")
+    os.chmod(path, 0o600)
+    loaded = decode_grant(path)
+    digest = hashlib.sha256(loaded.digest_payload()).hexdigest()
+    return loaded, digest, path
+
+
+def build_p2_v2_fixture(tmp_path: Path, *, messages: int = 61) -> dict:
+    root = hermetic_root(tmp_path)
+    source, source_grant = write_kiro_source(root, messages)
+    grant, digest, grant_path = build_p2_v2_grant(
+        root,
+        source_grant,
+        code_revision=current_code_revision(),
+        messages=messages,
+    )
+    boundary = ProductionCanaryBoundary.from_p2_live_grant(grant, root=root)
+    return {
+        "root": root,
+        "source": source,
+        "grant": grant,
+        "digest": digest,
+        "grant_path": grant_path,
+        "boundary": boundary,
+    }
+
+
+def live_gate0_hooks_pass():
+    from incremental_jsonl_canary_p2 import LiveGate0Hooks, default_model_manifest, default_zero_adoption
+
+    return LiveGate0Hooks(
+        watcher_probe=lambda: {"pass": "true", "method": "injected"},
+        process_census=lambda: {"pass": "true", "matches": "0"},
+        service_status=lambda: {"pass": "true", "status": "inactive"},
+        writer_census=lambda _boundary: {"pass": "true"},
+        model_manifest=default_model_manifest,
+        network_self_test=lambda _grant: {
+            "pass": "true",
+            "loopback": "ok",
+            "non_loopback": "denied",
+        },
+        restic_identifier=lambda grant: {
+            "pass": "true",
+            "backup_id": grant.restic.snapshot_id,
+            "tag": grant.restic.tag,
+            "restore": "not_authorized",
+        },
+        zero_adoption=default_zero_adoption,
+    )

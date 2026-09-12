@@ -240,6 +240,40 @@ def open_readonly_unit_store(chroma_dir: str | Path) -> ReadonlyUnitStore:
     return ReadonlyUnitStore(chroma_dir)
 
 
+def count_for_source_path(
+    chroma_dir: str | Path, collection_name: str, source_path: str
+) -> int:
+    """Count metadata rows with an exact source_path using SQLite mode=ro.
+
+    Missing database or collection is zero. Never creates files or opens a
+    writable Chroma client.
+    """
+    db = _db_path(chroma_dir)
+    if not db.is_file():
+        return 0
+    return sum(
+        1
+        for row in collection_metadata_rows(chroma_dir, collection_name)
+        if row.get("source_path") == source_path
+    )
+
+
+def ids_for_source_path(
+    chroma_dir: str | Path, collection_name: str, source_path: str
+) -> list[str]:
+    """Return embedding ids whose metadata source_path matches exactly."""
+    db = _db_path(chroma_dir)
+    if not db.is_file():
+        return []
+    return sorted(
+        {
+            str(row.get("id"))
+            for row in collection_metadata_rows(chroma_dir, collection_name)
+            if row.get("source_path") == source_path and row.get("id") is not None
+        }
+    )
+
+
 def collection_uuid(chroma_dir: str | Path, collection_name: str) -> str | None:
     """Return the immutable Chroma collection UUID (collections.id) via mode=ro.
 
