@@ -47,7 +47,7 @@ gated.
 
 | Arc | State | Next authorized action |
 |---|---|---|
-| Codex — Kiro JSONL incremental production integration | The default-off coordinator, reviewed canary plan, P1 harness, and P2 transfer seam are on `main` via PRs #293, #295, #296, and #299. Local Claude FAIL at preserved `5bdc132`; the live-safety corrective is on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness`. | Local Claude re-reviews that exact tip. Do not route to Kiro. No PR, live Gate 0/P2, replacement grant/digest, indexing, providers, config change, watcher action, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
+| Codex — Kiro JSONL incremental production integration | The default-off coordinator, reviewed canary plan, P1 harness, and P2 transfer seam are on `main` via PRs #293, #295, #296, and #299. Local Claude FAIL at preserved `a47f32b`; the R1–R4 sequence-completeness corrective is on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness`. | Local Claude re-reviews that exact tip. Do not route to Kiro. No PR, live Gate 0/P2, replacement grant/digest, indexing, providers, config change, watcher action, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
@@ -108,7 +108,7 @@ gated.
 - [Arc Codex JSONL production-integration STATUS](../plans/STATUS-codex-jsonl-production-integration.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Arc Codex's live-safety corrective is on
+**TL;DR:** Arc Codex's R1–R4 sequence-completeness corrective is on
 `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` awaiting local Claude
 re-review. Do not route to Kiro. No PR, live Gate 0/P2, grant digest, or
 activation.

@@ -422,14 +422,87 @@ Watch, ingest, and isolation hashes are unchanged from `7360a04`. `incremental_j
 
 ### Stop state
 
+Pushed feature tip `a47f32b8a80f5b8c612078835cff23db3da7e897` was the live-safety
+evidence commit. Local Claude re-review returned FAIL (R1–R4). That SHA is
+preserved.
+
+## P2 R1–R4 sequence-completeness corrective
+
+**Who:** Cursor Execute on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness`, addressing local Claude FAIL at preserved `a47f32b8a80f5b8c612078835cff23db3da7e897`.
+
+**What:** Make the documented live sequence completable with genuine `restored` evidence: bounded embedding fidelity, no invalid zero-call replay, stage-aware Gate 0, and an explicit T5 append-bind stage.
+
+**When:** 2026-09-12, additive commits on the same branch. Failed reviewed revision `a47f32b` was not amended, rebased, or rewritten.
+
+**Why:** Chroma restore changes embeddings by one float32 ULP so exact capsule equality could never pass; the `restored` branch then raised; Gate 0 still required pre-prepare absence; T5 had no shipped append-binding caller.
+
+**How:** Implementation commit `f7bcdffb167696f4124dc844b99d4781919da6b1`. This evidence commit is the exact tip for local Claude re-review. Do not route to Kiro.
+
+Bit-exact Chroma restore was not possible: writing a captured float32 embedding through `restore_source_rows` still lands one ULP away. Recovery therefore compares IDs, documents, metadata, state digests, and unrelated manifests exactly, and embeddings within **1 float32 ULP**. Adversarial 2-ULP / id / document / metadata / digest mismatches remain `recovery_unproven`.
+
+Tightly coupled R3 extras (required for later-stage Gate 0 to be applicable at all): previously-absent resource roles may exist after prepare; source size/prefix checks allow a verified append after T3; zero-adoption is skipped after prepare. R5–R8 were not expanded.
+
+### Negative confirmation
+
+No live source, production Chroma, processed/export/locks, provider/network call, watcher start/stop, config edit, indexing, Gate 0 against live resources, live P2 run, replacement grant/digest, PR, merge, or activation occurred. No systemd operation. Worktree remained hermetic.
+
+### Commands and counts
+
+```bash
+python3 -m pytest \
+  tests/test_incremental_jsonl_canary_baseline.py \
+  tests/test_incremental_jsonl_canary_grant.py \
+  tests/test_incremental_jsonl_canary_operations.py \
+  tests/test_incremental_jsonl_canary_serving.py \
+  tests/test_incremental_jsonl_canary_p2_corrective.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py \
+  tests/test_incremental_jsonl_config.py \
+  tests/test_incremental_jsonl_isolation.py \
+  tests/test_incremental_jsonl_state.py \
+  -q
+```
+
+Result: **190 passed** (184 prior focused suite + 6 R1–R4 regressions). Runtime-readiness file: 60 collected.
+
+```bash
+python3 -m compileall -q incremental_jsonl_canary_p2.py \
+  incremental_jsonl_canary_live_worker.py \
+  scripts/run-jsonl-production-canary.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py
+git diff --check
+python3 -m pylint incremental_jsonl_canary_p2.py \
+  incremental_jsonl_canary_live_worker.py \
+  scripts/run-jsonl-production-canary.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py
+python3 -m pylint $(git ls-files "*.py") --output-format=json > pylint-report.json
+python3 scripts/pylint_regression_gate.py ci \
+  --report pylint-report.json \
+  --pylint-status 30 \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref origin/main
+```
+
+`compileall`: PASS. `git diff --check`: clean. Scoped pylint: **10.00/10**. `pylint_regression_gate.py ci`: **PASS** (459 findings, 243 fingerprints; no new/increased vs `origin/main` `7360a04`).
+
+### Mapping
+
+| ID | Result | Evidence |
+|---|---|---|
+| R1 | PASS | `test_r1_one_ulp_embedding_is_restored`, `test_r1_adversarial_mismatches_stay_unproven`, `test_r2_restored_path_does_not_claim_zero_replay` — genuine `restored`; 2-ULP/id/document/metadata/digest mismatches stay `recovery_unproven` |
+| R2 | PASS | `test_r2_restored_path_does_not_claim_zero_replay` — restored path does not call `_replay_zero`; `replay_outcome` is None |
+| R3 | PASS | `test_r3_gate0_passes_after_prepare_and_fails_on_mutation` — Gate 0 passes after prepare; capsule digest and overlay identity mutations fail closed |
+| R4 | PASS | `test_r4_launcher_bind_stage_is_separately_invoked`, `test_r4_documented_sequence_prepare_through_t6` — `t5-bind-append` / `t5-bind`; full prepare→T3→append→T4→bind→five T5 faults→T6 freeze without hand-edited receipts; `p2-all` still refused |
+
+### Stop state
+
 Pushed feature tip after this evidence commit is ready for **local Claude re-review**. Do not route to Kiro. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
 
 ## TL;DR
 
 P1 hermetic canary harness is on `main` via PR #296 (`907c828`). The P2 transfer
-seam is on `main` via PR #299 (`8beda7d`). The P2 runtime-readiness corrective
-at `5bdc132` is a preserved Claude FAIL. The live-safety corrective is on
-`feat/2026-09-12-codex-jsonl-p2-runtime-readiness` and awaits local Claude
+seam is on `main` via PR #299 (`8beda7d`). Preserved Claude FAILs: runtime-readiness
+`5bdc132` and live-safety `a47f32b`. The R1–R4 sequence-completeness corrective is
+on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` and awaits local Claude
 re-review. Live P2 run, grant digest issuance, PR, and activation remain
 Ryan-gated.
 
