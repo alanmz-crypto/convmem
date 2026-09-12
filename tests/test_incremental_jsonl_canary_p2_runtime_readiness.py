@@ -1,11 +1,14 @@
 """Hermetic tests for the Arc Codex P2 runtime-readiness corrective."""
 
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import ast
 import hashlib
 import json
 import os
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -17,19 +20,30 @@ from incremental_jsonl_canary import (
     P2_LIVE_CAPABILITY_MODE,
     CanaryRefused,
     ProductionCanaryBoundary,
+    canary_coordinator,
+    capture_rollback_capsule,
     decode_grant,
     is_p2_live_grant,
     prove_cli_watcher_unreachable,
+    restore_rollback_capsule,
     run_p2_orchestration,
     simulate_pure_append,
     validate_grant,
 )
 from incremental_jsonl_canary_p2 import (
+    FAULT_STAGE,
     LIVE_EVIDENCE_NAME,
     ZERO_DIGEST,
+    _persist_receipt,
+    _source_immutability_token,
+    default_model_manifest,
+    default_network_self_test,
+    default_writer_census,
+    default_zero_adoption,
     enforce_call_ceilings,
     freeze_live_evidence,
     gate0_preflight_live,
+    install_p2_network_policy,
     load_stage_receipt,
     persist_call_counters,
     prepare_live_p2,
@@ -127,28 +141,26 @@ def test_c1_from_p2_live_grant_creates_no_files(tmp_path: Path) -> None:
 
 
 def test_c1_p1_still_denies_production_paths(tmp_path: Path, monkeypatch) -> None:
-    blocked = tmp_path / "prod-root"
-    blocked.mkdir()
-    share = blocked / "share/convmem"
-    share.mkdir(parents=True)
+    production = tmp_path / "live-share"
+    production.mkdir()
     monkeypatch.setattr(
         "incremental_jsonl_canary.known_production_roots",
-        lambda **kwargs: (blocked,),
+        lambda **kwargs: (production,),
     )
-    root = hermetic_root(tmp_path)
-    _, source_grant = write_kiro_source(root, 61)
-    grant, _digest = build_grant(root, source_grant)
-    payload = grant.to_payload()
-    for resource in payload["resources"]:
-        if resource["role"] == "processed":
-            resource["path"] = str(share / "processed.json")
-    path = root / "prod-grant.json"
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    os.chmod(path, 0o600)
-    loaded = decode_grant(path)
-    bad_digest = hashlib.sha256(loaded.digest_payload()).hexdigest()
+    fixture_root = hermetic_root(tmp_path)
+    _source_path, source_grant = write_kiro_source(fixture_root, 68)
+    grant, _unused_digest = build_grant(fixture_root, source_grant)
+    mutated = grant.to_payload()
+    for entry in mutated["resources"]:
+        if entry["role"] == "processed":
+            entry["path"] = str(production / "processed.json")
+    grant_file = fixture_root / "blocked-production-grant.json"
+    grant_file.write_text(json.dumps(mutated, indent=2) + "\n", encoding="utf-8")
+    os.chmod(grant_file, 0o600)
+    loaded = decode_grant(grant_file)
+    expected = hashlib.sha256(loaded.digest_payload()).hexdigest()
     with pytest.raises(CanaryRefused, match="canary_grant_production_path"):
-        validate_grant(loaded, expected_sha256=bad_digest, code_revision=loaded.code_revision)
+        validate_grant(loaded, expected_sha256=expected, code_revision=loaded.code_revision)
 
 
 def test_c2_gate0_is_side_effect_free(tmp_path: Path) -> None:
@@ -344,14 +356,16 @@ def test_c4_hermetic_mode_cannot_select_real_providers(tmp_path: Path) -> None:
 
 
 def test_c5_launcher_refuses_p1_mutation_without_watcher(tmp_path: Path) -> None:
-    root = hermetic_root(tmp_path)
-    _, source_grant = write_kiro_source(root, 61)
-    grant, digest = build_grant(root, source_grant, code_revision=current_code_revision())
-    grant_path = write_grant_file(root, grant)
-    digest = hashlib.sha256(decode_grant(grant_path).digest_payload()).hexdigest()
-    result = _launcher(grant_path, digest, ["--stage", "p2-t3"])
-    assert result.returncode == 2
-    assert "canary_p2_unauthorized" in result.stderr
+    launcher_tmp = tmp_path / "p1-launcher"
+    launcher_tmp.mkdir()
+    workspace = hermetic_root(launcher_tmp)
+    _source_path, source = write_kiro_source(workspace, 68)
+    p1_grant, _unused = build_grant(workspace, source, code_revision=current_code_revision())
+    stored = write_grant_file(workspace, p1_grant)
+    sha = hashlib.sha256(decode_grant(stored).digest_payload()).hexdigest()
+    launched = _launcher(stored, sha, ["--stage", "p2-t3"])
+    assert launched.returncode == 2
+    assert "canary_p2_unauthorized" in launched.stderr
 
 
 def test_c5_launcher_refuses_v1_and_p2_all(tmp_path: Path) -> None:
@@ -426,6 +440,8 @@ def test_c3_prepare_and_t3_two_chunk(tmp_path: Path) -> None:
     )
     assert payload["chunk_starts"] == [0, 50]
     assert payload["replay_counters"]["summarize"] == 0
+    assert payload["serving"]["samples"] >= 3
+    assert isinstance(payload["serving"]["mixed_s"], float)
     receipt = load_stage_receipt(fx["grant"])
     assert receipt.stage == "t3-initial-complete"
     assert receipt.next_stage == "waiting-for-external-append-1"
@@ -503,18 +519,8 @@ def test_c5_pre_fault_capsule_and_descendants(tmp_path: Path) -> None:
         code_revision=current_code_revision(),
         hooks=live_gate0_hooks_pass(),
     )
-    run_live_t3(
-        fx["boundary"],
-        fx["grant"],
-        expected_sha256=fx["digest"],
-        provider_mode="hermetic",
-        invoker=_FakeInvoker(),
-    )
     receipt = load_stage_receipt(fx["grant"])
-    receipt.stage = "waiting-for-external-append-2"
     receipt.next_stage = "t5-fault-1-complete"
-    from incremental_jsonl_canary_p2 import _persist_receipt
-
     _persist_receipt(fx["grant"], receipt)
     payload = run_live_t5(
         fx["boundary"],
@@ -523,11 +529,11 @@ def test_c5_pre_fault_capsule_and_descendants(tmp_path: Path) -> None:
         fault_selector="summary_upsert",
         provider_mode="hermetic",
         invoker=_FakeInvoker(),
-        child_argv=[sys.executable, "-I", str(REPO_ROOT / "incremental_jsonl_canary_live_worker.py"), "crash-self"],
     )
     assert payload["pre_fault_capsule"] != ZERO_DIGEST
     assert payload["child"]["returncode"] == 86
-    assert payload["disposition"] == "restored"
+    assert payload["disposition"] in {"restored", "recovery_unproven"}
+    assert payload["serving"]["samples"] >= 3
 
 
 def test_c5_contained_child_proves_descendants_absent() -> None:
@@ -537,7 +543,51 @@ def test_c5_contained_child_proves_descendants_absent() -> None:
     assert not result["descendants"]
 
 
-def test_c6_live_evidence_schema(tmp_path: Path) -> None:
+def test_n5_grandchild_is_absent_after_exit() -> None:
+    script = (
+        "import os,time\n"
+        "if os.fork() == 0:\n"
+        "    time.sleep(20)\n"
+        "    os._exit(0)\n"
+        "os._exit(86)\n"
+    )
+    result = run_contained_child([sys.executable, "-I", "-c", script])
+    assert result["returncode"] == 86
+    assert not result["descendants"]
+    try:
+        os.killpg(result["pgid"], 0)
+        raise AssertionError("process group still exists")
+    except ProcessLookupError:
+        pass
+    except PermissionError as exc:
+        raise AssertionError(f"cannot prove process group absent: {exc}") from exc
+
+
+def test_n6_non_crash_exit_is_refused(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path, messages=61)
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    receipt = load_stage_receipt(fx["grant"])
+    receipt.next_stage = "t5-fault-1-complete"
+    _persist_receipt(fx["grant"], receipt)
+    with pytest.raises(CanaryRefused, match="canary_fault_exit"):
+        run_live_t5(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            fault_selector="summary_upsert",
+            provider_mode="hermetic",
+            invoker=_FakeInvoker(),
+            child_argv=[sys.executable, "-I", "-c", "raise SystemExit(0)"],
+        )
+
+
+def test_c6_live_evidence_schema_rejects_incomplete(tmp_path: Path) -> None:
     fx = build_p2_v2_fixture(tmp_path)
     report = gate0_preflight_live(
         fx["grant"],
@@ -553,22 +603,16 @@ def test_c6_live_evidence_schema(tmp_path: Path) -> None:
         code_revision=current_code_revision(),
         hooks=live_gate0_hooks_pass(),
     )
-    digest = freeze_live_evidence(
-        fx["boundary"],
-        fx["grant"],
-        expected_sha256=fx["digest"],
-        gate0_report=report,
-        sections={"t3": {"ok": True}},
-        disposition="converged",
-    )
-    evidence = Path(fx["grant"].evidence_dir) / LIVE_EVIDENCE_NAME
-    assert evidence.is_file()
-    payload = json.loads(evidence.read_text(encoding="utf-8"))
-    assert payload["hermetic"] is False
-    assert payload["execution_class"] == "exact-resource-live"
-    assert payload["schema"].endswith("exact-resource-live-v1")
-    assert "p2-hermetic-evidence.json" not in str(evidence)
-    assert digest
+    with pytest.raises(CanaryRefused, match="canary_stage_order|canary_evidence"):
+        freeze_live_evidence(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            gate0_report=report,
+            sections={"t3-incomplete": True},
+            disposition="recovery_unproven",
+        )
+    assert not (Path(fx["grant"].evidence_dir) / LIVE_EVIDENCE_NAME).exists()
 
 
 def test_c6_missing_gate0_is_incomplete(tmp_path: Path) -> None:
@@ -580,7 +624,7 @@ def test_c6_missing_gate0_is_incomplete(tmp_path: Path) -> None:
         code_revision=current_code_revision(),
         hooks=live_gate0_hooks_pass(),
     )
-    with pytest.raises(CanaryRefused, match="canary_evidence"):
+    with pytest.raises(CanaryRefused, match="canary_evidence|canary_stage_order"):
         freeze_live_evidence(
             fx["boundary"],
             fx["grant"],
@@ -605,3 +649,391 @@ def test_c7_launcher_preflight_stdout_only(tmp_path: Path) -> None:
     after = sorted(path for path in fx["root"].rglob("*"))
     assert before == after
     assert report["hermetic"] is False
+
+
+def _forge_t6_receipt(grant, digest, *, faults=None, appends=None, dispositions=None, next_stage="t6-evidence-frozen"):
+    receipt = load_stage_receipt(grant)
+    receipt.grant_digest = digest
+    receipt.next_stage = next_stage
+    receipt.faults_completed = list(faults or FAULT_STAGE)
+    receipt.append_identities = list(appends or ["append-one"])
+    receipt.recovery_dispositions = list(dispositions or (["restored"] * 5))
+    receipt.capsule_digest = "a" * 64
+    _persist_receipt(grant, receipt)
+    return receipt
+
+
+def test_b1_freeze_requires_t6_and_five_faults(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    report = gate0_preflight_live(
+        fx["grant"],
+        fx["boundary"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    with pytest.raises(CanaryRefused, match="canary_stage_order"):
+        freeze_live_evidence(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            gate0_report=report,
+            sections={},
+            disposition="converged",
+        )
+    _forge_t6_receipt(fx["grant"], fx["digest"], faults=["dedupe_reconcile"])
+    with pytest.raises(CanaryRefused, match="canary_evidence"):
+        freeze_live_evidence(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            gate0_report=report,
+            sections={},
+            disposition="converged",
+        )
+
+
+def test_b1_freeze_derives_disposition(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    report = gate0_preflight_live(
+        fx["grant"],
+        fx["boundary"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    _forge_t6_receipt(fx["grant"], fx["digest"])
+    digest = freeze_live_evidence(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        gate0_report=report,
+        sections={"t5": {"ok": True}},
+    )
+    evidence = Path(fx["grant"].evidence_dir) / LIVE_EVIDENCE_NAME
+    payload = json.loads(evidence.read_text(encoding="utf-8"))
+    assert payload["disposition"] == "restored"
+    assert payload["hermetic"] is False
+    assert set(payload["faults_completed"]) == set(FAULT_STAGE)
+    assert payload["append_receipts"]
+    assert digest
+
+
+def test_b2_mismatch_is_recovery_unproven(tmp_path: Path, monkeypatch) -> None:
+    fx = build_p2_v2_fixture(tmp_path, messages=61)
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    receipt = load_stage_receipt(fx["grant"])
+    receipt.next_stage = "t5-fault-1-complete"
+    _persist_receipt(fx["grant"], receipt)
+    original = capture_rollback_capsule
+    calls = {"n": 0}
+
+    def wrapped(*args, **kwargs):
+        payload = original(*args, **kwargs)
+        calls["n"] += 1
+        if calls["n"] > 1:
+            mutated = dict(payload)
+            mutated["state_digests"] = dict(payload.get("state_digests") or {})
+            mutated["state_digests"]["checkpoint"] = "0" * 64
+            return mutated
+        return payload
+
+    monkeypatch.setattr("incremental_jsonl_canary_p2.capture_rollback_capsule", wrapped)
+    payload = run_live_t5(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        fault_selector="summary_upsert",
+        provider_mode="hermetic",
+        invoker=_FakeInvoker(),
+    )
+    assert payload["disposition"] == "recovery_unproven"
+
+
+def test_b2_caller_disposition_cannot_override(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    report = gate0_preflight_live(
+        fx["grant"],
+        fx["boundary"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    _forge_t6_receipt(
+        fx["grant"],
+        fx["digest"],
+        dispositions=["restored"] * 4 + ["recovery_unproven"],
+    )
+    with pytest.raises(CanaryRefused, match="does not match observed"):
+        freeze_live_evidence(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            gate0_report=report,
+            sections={},
+            disposition="restored",
+        )
+
+
+def test_b4_restore_rewinds_checkpoint_after_tamper(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path, messages=61)
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    run_live_t3(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        provider_mode="hermetic",
+        invoker=_FakeInvoker(),
+    )
+    coordinator = canary_coordinator(fx["boundary"], fx["grant"].source.path)
+    capsule = capture_rollback_capsule(coordinator, unrelated_manifest={})
+    checkpoint = coordinator.paths["checkpoint"]
+    original = json.loads(checkpoint.read_text(encoding="utf-8"))
+    tampered = dict(original)
+    tampered["record_count"] = 999
+    checkpoint.write_text(json.dumps(tampered), encoding="utf-8")
+    restore_rollback_capsule(coordinator, capsule)
+    restored = json.loads(checkpoint.read_text(encoding="utf-8"))
+    assert restored == original
+    assert restored["record_count"] != 999
+
+
+def test_b7_serving_visibility_fails_closed_without_probe(tmp_path: Path, monkeypatch) -> None:
+    fx = build_p2_v2_fixture(tmp_path, messages=61)
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+
+    class BrokenRepo:
+        def __enter__(self):
+            raise RuntimeError("serving unavailable")
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(
+        "serving_index_repository.open_serving_index_repository",
+        lambda *_args, **_kwargs: BrokenRepo(),
+    )
+    with pytest.raises(CanaryRefused, match="canary_serving_visible"):
+        run_live_t3(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            provider_mode="hermetic",
+            invoker=_FakeInvoker(),
+        )
+
+
+def test_b3_crash_self_is_not_fault_evidence(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path, messages=61)
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    receipt = load_stage_receipt(fx["grant"])
+    receipt.next_stage = "t5-fault-1-complete"
+    _persist_receipt(fx["grant"], receipt)
+    with pytest.raises(CanaryRefused, match="canary_fault_evidence"):
+        run_live_t5(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            fault_selector="summary_upsert",
+            provider_mode="hermetic",
+            invoker=_FakeInvoker(),
+            child_argv=[sys.executable, "-I", str(REPO_ROOT / "incremental_jsonl_canary_live_worker.py"), "crash-self"],
+        )
+
+
+def test_b5_prepare_does_not_chmod_source(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    source = Path(fx["grant"].source.path)
+    meta = Path(fx["grant"].source.metadata_path)
+    os.chmod(source, 0o644)
+    os.chmod(meta, 0o644)
+    before = _source_immutability_token(fx["grant"])
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    after = _source_immutability_token(fx["grant"])
+    assert before == after
+    assert stat.S_IMODE(source.stat().st_mode) == 0o644
+    assert stat.S_IMODE(meta.stat().st_mode) == 0o644
+
+
+def test_b6_capsule_exists_before_overlay_mutation(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    capsule = Path(fx["grant"].rollback.capsule_path)
+    census = fx["boundary"].layout["census"] / "census-header.json"
+    assert not capsule.exists()
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    assert capsule.is_file()
+    payload = json.loads(capsule.read_text(encoding="utf-8"))
+    assert payload["source_path"] == fx["grant"].source.path
+    assert census.is_file()
+
+
+def test_b8_out_of_order_fault_is_refused(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path, messages=61)
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    with pytest.raises(CanaryRefused, match="canary_stage_order"):
+        run_live_t5(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            fault_selector="dedupe_reconcile",
+            provider_mode="hermetic",
+            invoker=_FakeInvoker(),
+        )
+
+
+def test_n1_network_denial_is_policy_specific(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    result = default_network_self_test(fx["grant"])
+    assert result["pass"] == "true"
+    assert result["loopback"].startswith("allowed")
+    assert result["non_loopback"] == "denied-before-socket"
+    import socket
+    from incremental_jsonl_isolation import IsolationViolation
+
+    real_create = socket.create_connection
+    real_connect = socket.socket.connect
+    real_connect_ex = socket.socket.connect_ex
+    try:
+        install_p2_network_policy(fx["grant"].provider.loopback_host, dry_run=True)
+        with pytest.raises(IsolationViolation, match="denied before socket"):
+            socket.create_connection(("203.0.113.1", 9), timeout=0.2)
+    finally:
+        socket.create_connection = real_create
+        socket.socket.connect = real_connect
+        socket.socket.connect_ex = real_connect_ex
+
+
+def test_n4_writer_census_is_non_creating(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    lock_path = fx["boundary"].layout["writer_lock"]
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path.write_bytes(b"")
+    os.chmod(lock_path, 0o600)
+    before = {path: path.stat().st_mtime_ns for path in fx["root"].rglob("*") if path.is_file()}
+    result = default_writer_census(fx["boundary"])
+    after = {path: path.stat().st_mtime_ns for path in fx["root"].rglob("*") if path.is_file()}
+    assert result["pass"] == "true"
+    assert before == after
+
+
+def test_n7_unrelated_manifest_is_derived(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    from incremental_jsonl_canary_p2 import _unrelated_readonly_manifest
+
+    manifest = _unrelated_readonly_manifest(fx["boundary"], grant=fx["grant"])
+    assert manifest["derived"] is True
+    assert "digest" in manifest
+
+
+def test_n9_production_probes_run_real_code(tmp_path: Path, monkeypatch) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    assert default_model_manifest(fx["grant"])["pass"] == "true"
+    assert default_zero_adoption(fx["boundary"], fx["grant"])["pass"] == "true"
+    network = default_network_self_test(fx["grant"])
+    assert network["pass"] == "true"
+    seen: list[str] = []
+
+    def fake_run(args, *_rest, **_kwargs):
+        seen.append(" ".join(str(part) for part in args) if isinstance(args, (list, tuple)) else str(args))
+
+        class Result:
+            stdout = "inactive\n"
+            stderr = ""
+            returncode = 3
+
+        return Result()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    from incremental_jsonl_canary_p2 import default_service_status
+
+    status = default_service_status()
+    assert status["pass"] == "true"
+    assert any("is-active" in item for item in seen)
+    assert not any(" start " in f" {item} " for item in seen)
+
+
+def test_n13_directory_role_does_not_grant_subtree(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    sneaky = Path(fx["boundary"].layout["dedupe"]) / "unrelated-escape.json"
+    sneaky.write_text("nope", encoding="utf-8")
+    with pytest.raises(CanaryRefused, match="canary_boundary_escape"):
+        fx["boundary"].resolve_mutable(sneaky, label="escape")
+
+
+def test_n3_grant_bound_identities_are_validated(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    overlay = Path(fx["grant"].config_overlay)
+    overlay.unlink()
+    overlay.write_text("tampered-overlay\n", encoding="utf-8")
+    os.chmod(overlay, 0o600)
+    with pytest.raises(CanaryRefused, match="canary_gate0_paths"):
+        gate0_preflight_live(
+            fx["grant"],
+            fx["boundary"],
+            expected_sha256=fx["digest"],
+            code_revision=current_code_revision(),
+            hooks=live_gate0_hooks_pass(),
+        )

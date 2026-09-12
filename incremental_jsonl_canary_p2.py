@@ -17,6 +17,8 @@ import os
 import stat
 import subprocess
 import sys
+import threading
+import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -31,12 +33,16 @@ from incremental_jsonl_canary import (
     BASELINE_MAX_MESSAGES,
     BASELINE_MIN_MESSAGES,
     CALL_CEILINGS_WHOLE,
+    CRASH_EXIT,
     P2_LIVE_CAPABILITY_MODE,
+    STABLE_READ_COUNT,
+    STABLE_READ_MIN_SPAN_S,
     ZERO_DIGEST,
     CanaryGrant,
     CanaryRefused,
     ProductionCanaryBoundary,
     ResourceIdentityGrant,
+    ServingVisibilityProbe,
     _atomic_json,
     _fsync_directory,
     _has_symlink_component,
@@ -58,6 +64,7 @@ from incremental_jsonl_canary import (
     write_canary_overlay,
     write_evidence,
 )
+from incremental_jsonl_canary_network import install_p2_network_policy  # pylint: disable=unused-import
 from incremental_jsonl_isolation import terminate_process_group
 
 LIVE_EVIDENCE_SCHEMA = "convmem/jsonl-production-canary-evidence-exact-resource-live-v1"
@@ -123,6 +130,7 @@ class StageReceipt:
     call_counters: dict[str, int] = field(default_factory=dict)
     append_identities: list[str] = field(default_factory=list)
     faults_completed: list[str] = field(default_factory=list)
+    recovery_dispositions: list[str] = field(default_factory=list)
     receipt_sha256: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -435,7 +443,7 @@ def default_writer_census(boundary: ProductionCanaryBoundary) -> dict[str, str]:
         except OSError as exc:
             raise CanaryRefused("canary_gate0_writer", f"cannot inspect {name}: {exc}") from exc
         try:
-            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
             fcntl.flock(descriptor, fcntl.LOCK_UN)
         except OSError:
             held.append(name)
@@ -460,24 +468,31 @@ def default_model_manifest(grant: CanaryGrant) -> dict[str, str]:
 
 
 def default_network_self_test(grant: CanaryGrant) -> dict[str, str]:
+    repo = str(Path(__file__).resolve().parent)
     script = (
-        "import socket,sys\n"
+        "import sys\n"
+        f"sys.path.insert(0, {repo!r})\n"
+        "import socket\n"
+        "from incremental_jsonl_canary_network import install_p2_network_policy\n"
+        "from incremental_jsonl_isolation import IsolationViolation\n"
         f"host={grant.provider.loopback_host!r}\n"
         "addr, _, port = host.partition(':')\n"
-        "port = int(port or 11434)\n"
+        "install_p2_network_policy(host, dry_run=True)\n"
         "loopback='fail'\n"
         "try:\n"
-        "    socket.create_connection((addr, port), timeout=0.2)\n"
-        "    loopback='ok'\n"
-        "except OSError:\n"
-        "    loopback='denied'\n"
-        "nonlocal_status='fail'\n"
+        "    result=socket.create_connection((addr, int(port or 11434)), timeout=0.2)\n"
+        "    loopback='allowed' if result else 'denied'\n"
+        "except Exception as exc:\n"
+        "    loopback='denied:'+type(exc).__name__\n"
+        "remote='fail'\n"
         "try:\n"
         "    socket.create_connection(('203.0.113.1', 9), timeout=0.2)\n"
-        "    nonlocal_status='connected'\n"
-        "except OSError:\n"
-        "    nonlocal_status='denied'\n"
-        "print(loopback+','+nonlocal_status)\n"
+        "    remote='connected'\n"
+        "except IsolationViolation:\n"
+        "    remote='denied-before-socket'\n"
+        "except Exception as exc:\n"
+        "    remote=type(exc).__name__\n"
+        "print(loopback+','+remote)\n"
     )
     env = dict(os.environ)
     for key in list(env):
@@ -490,12 +505,20 @@ def default_network_self_test(grant: CanaryGrant) -> dict[str, str]:
         check=False,
         timeout=3.0,
         env=env,
+        cwd=str(Path(__file__).resolve().parent),
     )
     if completed.returncode != 0:
         return {"pass": "false", "detail": completed.stderr.strip() or "network child failed"}
     loopback, _, remote = (completed.stdout or "").strip().partition(",")
-    if remote != "denied":
-        return {"pass": "false", "detail": f"non-loopback not denied:{remote}"}
+    if not loopback.startswith("allowed"):
+        return {"pass": "false", "detail": f"loopback not allowed:{loopback}", "loopback": loopback}
+    if remote != "denied-before-socket":
+        return {
+            "pass": "false",
+            "detail": f"non-loopback not policy-denied:{remote}",
+            "loopback": loopback,
+            "non_loopback": remote,
+        }
     return {"pass": "true", "loopback": loopback, "non_loopback": remote}
 
 
@@ -623,10 +646,19 @@ def gate0_preflight_live(
         raise CanaryRefused("canary_gate0_writer", f"writer census failed: {writer}")
     checks["7_writer"] = writer
     identities = {item.role: item for item in grant.resource_identities}
-    _identity_matches(Path(grant.source.path), identities["source"], grant.owner_uid or -1)
-    _identity_matches(Path(grant.source.metadata_path), identities["metadata"], grant.owner_uid or -1)
+    owner_uid = grant.owner_uid or -1
+    capsule_path = Path(grant.rollback.capsule_path)
+    if identities["capsule"].file_type == "absent" and capsule_path.exists():
+        raise CanaryRefused("canary_gate0_capsule", "rollback capsule must be absent before prepare")
+    _identity_matches(Path(grant.source.path), identities["source"], owner_uid)
+    _identity_matches(Path(grant.source.metadata_path), identities["metadata"], owner_uid)
+    _identity_matches(Path(grant.config_overlay), identities["overlay"], owner_uid)
+    _identity_matches(Path(grant.evidence_dir), identities["evidence_dir"], owner_uid)
+    _identity_matches(capsule_path, identities["capsule"], owner_uid)
+    persistent = Path(grant.persistent_config.path)  # type: ignore[union-attr]
+    _identity_matches(persistent, identities["persistent_config"], owner_uid)
     for role in grant.resources:
-        _identity_matches(Path(role.path), identities[role.role], grant.owner_uid or -1)
+        _identity_matches(Path(role.path), identities[role.role], owner_uid)
     checks["8_paths"] = {"roles": len(grant.resource_identities)}
     models = (hooks.model_manifest or default_model_manifest)(grant)
     if models.get("pass") != "true":
@@ -700,6 +732,7 @@ def load_stage_receipt(grant: CanaryGrant) -> StageReceipt:
         call_counters=dict(payload.get("call_counters") or {}),
         append_identities=list(payload.get("append_identities") or []),
         faults_completed=list(payload.get("faults_completed") or []),
+        recovery_dispositions=list(payload.get("recovery_dispositions") or []),
         receipt_sha256=recorded,
     )
 
@@ -728,13 +761,90 @@ def _source_identity_payload(grant: CanaryGrant) -> dict[str, Any]:
     }
 
 
-def _unrelated_readonly_manifest(boundary: ProductionCanaryBoundary, extra_sources: list[str]) -> dict[str, Any]:
+def _source_immutability_token(grant: CanaryGrant) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for label, path_str in (
+        ("source", grant.source.path),
+        ("metadata", grant.source.metadata_path),
+    ):
+        path = Path(path_str)
+        stat_result = path.lstat()
+        payload[label] = {
+            "path": path_str,
+            "device": stat_result.st_dev,
+            "inode": stat_result.st_ino,
+            "mode": stat.S_IMODE(stat_result.st_mode),
+            "mtime_ns": stat_result.st_mtime_ns,
+            "size": stat_result.st_size,
+            "sha256": _sha256_file(path),
+        }
+    return payload
+
+
+def assert_source_immutable(grant: CanaryGrant, token: Mapping[str, Any]) -> None:
+    actual = _source_immutability_token(grant)
+    if actual != dict(token):
+        raise CanaryRefused("canary_source_immutable", "source or session.json identity changed")
+
+
+def _canonical_digest(payload: Any) -> str:
+    return _sha256_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+
+
+def _derive_unrelated_sources(boundary: ProductionCanaryBoundary, grant: CanaryGrant) -> list[str]:
+    from chroma_readonly import collection_metadata_rows
+
+    chroma = boundary.layout["chroma"]
+    discovered: set[str] = set()
+    db = chroma / "chroma.sqlite3"
+    if db.is_file():
+        for collection in (SUMMARIES, UNITS):
+            try:
+                rows = collection_metadata_rows(chroma, collection)
+            except OSError as exc:
+                raise CanaryRefused("canary_unrelated", f"chroma scan failed: {exc}") from exc
+            for row in rows:
+                path = row.get("source_path")
+                if path and path != grant.source.path:
+                    discovered.add(str(path))
+    processed_path = boundary.layout["processed"]
+    if processed_path.is_file():
+        try:
+            payload = json.loads(processed_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise CanaryRefused("canary_unrelated", f"processed scan failed: {exc}") from exc
+        if isinstance(payload, dict):
+            for value in payload.values():
+                if isinstance(value, dict):
+                    path = value.get("path")
+                    if path and path != grant.source.path:
+                        discovered.add(str(path))
+    return sorted(discovered)
+
+
+def _unrelated_readonly_manifest(
+    boundary: ProductionCanaryBoundary,
+    extra_sources: list[str] | None = None,
+    *,
+    grant: CanaryGrant | None = None,
+) -> dict[str, Any]:
     from chroma_readonly import count_for_source_path, ids_for_source_path
 
     chroma = boundary.layout["chroma"]
-    sources = extra_sources
-    manifest = {"sources": {}}
-    for source_path in sources:
+    derived: list[str] = []
+    if grant is not None:
+        derived = _derive_unrelated_sources(boundary, grant)
+    extras = list(extra_sources or [])
+    if extras and grant is not None:
+        unexpected = [item for item in extras if item not in derived and item != grant.source.path]
+        if unexpected and not derived:
+            derived = extras
+        elif unexpected:
+            derived = sorted(set(derived) | set(extras))
+    elif extras and grant is None:
+        derived = extras
+    manifest: dict[str, Any] = {"sources": {}, "derived": True, "source_count": len(derived)}
+    for source_path in derived:
         manifest["sources"][source_path] = {
             "summary_count": count_for_source_path(chroma, SUMMARIES, source_path),
             "unit_count": count_for_source_path(chroma, UNITS, source_path),
@@ -743,6 +853,72 @@ def _unrelated_readonly_manifest(boundary: ProductionCanaryBoundary, extra_sourc
         }
     manifest["digest"] = _sha256_bytes(json.dumps(manifest["sources"], sort_keys=True).encode("utf-8"))
     return manifest
+
+
+def _readonly_live_capsule(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    unrelated: Mapping[str, Any],
+) -> dict[str, Any]:
+    from chroma_readonly import ids_for_source_path
+
+    chroma = boundary.layout["chroma"]
+    summaries = [{"id": item} for item in ids_for_source_path(chroma, SUMMARIES, grant.source.path)]
+    units = [{"id": item} for item in ids_for_source_path(chroma, UNITS, grant.source.path)]
+    export_path = boundary.layout["export"]
+    export_lines: list[Any] = []
+    if export_path.is_file():
+        for line in export_path.read_text(encoding="utf-8").splitlines():
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                export_lines.append(("keep", line))
+                continue
+            if isinstance(row, dict) and row.get("source_path") == grant.source.path:
+                export_lines.append(("source", line))
+            else:
+                export_lines.append(("keep", line))
+    processed_preimage: dict[str, Any] = {}
+    processed_path = boundary.layout["processed"]
+    if processed_path.is_file():
+        payload = json.loads(processed_path.read_text(encoding="utf-8"))
+        if isinstance(payload, dict):
+            processed_preimage = {
+                key: value
+                for key, value in payload.items()
+                if isinstance(value, dict) and value.get("path") == grant.source.path
+            }
+    rollback = {
+        "version": 1,
+        "summaries": summaries,
+        "units": units,
+        "export_lines": export_lines,
+        "processed_preimage": processed_preimage,
+        "source_path": grant.source.path,
+        "state_files": {"checkpoint": None, "transaction": None, "rollback": None},
+        "prepared_files": {},
+        "dedupe_files": {},
+    }
+    return {
+        "version": 1,
+        "rollback": rollback,
+        "state_digests": {},
+        "unrelated_manifest": dict(unrelated),
+        "source_path": grant.source.path,
+    }
+
+
+def _persist_capsule(path: Path, capsule: Mapping[str, Any]) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_json(path, dict(capsule))
+    os.chmod(path, 0o600)
+    _fsync_directory(path.parent)
+    descriptor, _stat = _open_nofollow_readonly(path)
+    os.close(descriptor)
+    digest = _sha256_file(path)
+    if digest == ZERO_DIGEST:
+        raise CanaryRefused("canary_capsule", "captured capsule cannot be the zero sentinel")
+    return digest
 
 
 def prepare_live_p2(
@@ -762,23 +938,15 @@ def prepare_live_p2(
         code_revision=code_revision,
         hooks=hooks,
     )
+    source_token = _source_immutability_token(grant)
+    unrelated = _unrelated_readonly_manifest(boundary, unrelated_sources, grant=grant)
+    capsule = _readonly_live_capsule(boundary, grant, unrelated)
+    capsule_path = Path(grant.rollback.capsule_path)
+    digest = _persist_capsule(capsule_path, capsule)
     write_canary_overlay(boundary)
     Path(grant.evidence_dir).mkdir(parents=True, exist_ok=True)
     os.chmod(Path(grant.evidence_dir), 0o700)
-    coordinator = canary_coordinator(boundary, grant.source.path)
-    unrelated = _unrelated_readonly_manifest(boundary, unrelated_sources or [])
-    with canary_writer_scope(boundary):
-        capsule = capture_rollback_capsule(coordinator, unrelated_manifest=unrelated)
-        capsule_path = Path(grant.rollback.capsule_path)
-        capsule_path.parent.mkdir(parents=True, exist_ok=True)
-        _atomic_json(capsule_path, capsule)
-        os.chmod(capsule_path, 0o600)
-        _fsync_directory(capsule_path.parent)
-    descriptor, _stat = _open_nofollow_readonly(capsule_path)
-    os.close(descriptor)
-    digest = _sha256_file(capsule_path)
-    if digest == ZERO_DIGEST:
-        raise CanaryRefused("canary_capsule", "captured capsule cannot be the zero sentinel")
+    assert_source_immutable(grant, source_token)
     counters = {key: 0 for key in CALL_CEILINGS_WHOLE}
     receipt = StageReceipt(
         nonce=grant.nonce,
@@ -875,6 +1043,136 @@ def prove_external_append(grant: CanaryGrant, receipt: StageReceipt) -> dict[str
     }
 
 
+class HermeticCanaryInvoker:
+    """Production-owned hermetic provider double; must not import tests."""
+
+    def summarize(self, text: str, **_kwargs: Any) -> str:
+        return f"summary:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
+
+    def distill(self, text: str, **_kwargs: Any) -> list[dict[str, Any]]:
+        return [
+            {
+                "type": "explanation",
+                "title": f"Isolated unit {text[:12]}",
+                "summary": "Reusable isolated knowledge unit for hermetic tests.",
+                "keywords": ["kiro", "jsonl", "incremental"],
+                "confidence": 0.95,
+                "domain": "general",
+            }
+        ]
+
+    def embed(self, text: str, **_kwargs: Any) -> list[float]:
+        digest = hashlib.sha256(text.encode()).digest()
+        return [((digest[index] / 255.0) * 2.0) - 1.0 for index in range(8)]
+
+
+def _serving_cfg(boundary: ProductionCanaryBoundary, grant: CanaryGrant) -> dict[str, Any]:
+    layout = boundary.layout
+    return {
+        "models": {
+            "embed_model": grant.provider.embed_model,
+            "ollama_host": grant.provider.loopback_host,
+            "rerank_model": "rerank",
+        },
+        "query": {"rerank": False, "recency_weight": 0.0, "top_k_candidates": 5},
+        "index": {
+            "chroma_dir": str(layout["chroma"]),
+            "generation_root": str(layout["state"] / "file_generations"),
+            "processed_log": str(layout["processed"]),
+        },
+    }
+
+
+@contextmanager
+def _serving_visibility_monitor(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+) -> Iterator[dict[str, Any]]:
+    from serving_index_repository import open_serving_index_repository
+
+    cfg = _serving_cfg(boundary, grant)
+    stop = threading.Event()
+    holder: dict[str, Any] = {"probe": None, "error": None, "mixed_s": 0.0}
+    mixed_started: list[float] = []
+
+    def _loop() -> None:
+        deadline = time.monotonic() + 30.0
+        while not stop.is_set() and time.monotonic() < deadline:
+            try:
+                with open_serving_index_repository(cfg) as repo:
+                    probe = ServingVisibilityProbe(repo, grant.source.path)
+                    holder["probe"] = probe
+                    holder["error"] = None
+                    while not stop.wait(0.05):
+                        obs = probe.sample()
+                        if obs.error:
+                            holder["error"] = obs.error
+                        if obs.mixed:
+                            if not mixed_started:
+                                mixed_started.append(time.monotonic())
+                        elif mixed_started:
+                            holder["mixed_s"] += time.monotonic() - mixed_started.pop()
+                    return
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                holder["error"] = type(exc).__name__
+                time.sleep(0.05)
+
+    thread = threading.Thread(target=_loop, daemon=True)
+    thread.start()
+    try:
+        yield holder
+    finally:
+        stop.set()
+        thread.join(timeout=5)
+        if mixed_started:
+            holder["mixed_s"] += time.monotonic() - mixed_started[0]
+        probe = holder.get("probe")
+        if probe is None:
+            raise CanaryRefused(
+                "canary_serving_visible",
+                f"serving visibility missing or error: {holder.get('error')}",
+            )
+        timeline = []
+        if probe is not None:
+            timeline.extend(
+                {
+                    "monotonic_s": item.monotonic_s,
+                    "summary": item.summary_generation,
+                    "unit": item.unit_generation,
+                    "mixed": item.mixed,
+                    "error": item.error,
+                }
+                for item in probe.observations
+            )
+        try:
+            with open_serving_index_repository(cfg) as repo:
+                settle = ServingVisibilityProbe(repo, grant.source.path)
+                for index in range(STABLE_READ_COUNT):
+                    settle.sample()
+                    if index + 1 < STABLE_READ_COUNT:
+                        time.sleep(STABLE_READ_MIN_SPAN_S / (STABLE_READ_COUNT - 1))
+                settle.assert_stable_reads()
+                timeline.extend(
+                    {
+                        "monotonic_s": item.monotonic_s,
+                        "summary": item.summary_generation,
+                        "unit": item.unit_generation,
+                        "mixed": item.mixed,
+                        "error": item.error,
+                    }
+                    for item in settle.observations
+                )
+        except CanaryRefused:
+            raise
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            raise CanaryRefused(
+                "canary_serving_visible",
+                f"serving visibility missing or error: {type(exc).__name__}",
+            ) from exc
+        holder["timeline"] = timeline
+        holder["probe"] = probe
+
+
 def run_live_t3(
     boundary: ProductionCanaryBoundary,
     grant: CanaryGrant,
@@ -888,18 +1186,21 @@ def run_live_t3(
         raise CanaryRefused("canary_capsule", "zero sentinel cannot satisfy T3 readiness")
     from adapters.kiro_session_jsonl import parse_complete_prefix
 
+    source_token = _source_immutability_token(grant)
     count = len(parse_complete_prefix(grant.source.path).messages)
     validate_two_chunk_profile(count)
     starts = chunk_starts_for_count(count, chunk_size=60, overlap=10)
-    with install_provider_invoker(invoker, provider_mode=provider_mode):
-        with install_call_budget_guard(grant.call_ceilings["initial"]) as guard:
-            coordinator = canary_coordinator(boundary, grant.source.path, counters=guard.counts)
-            with canary_writer_scope(boundary):
-                result = coordinator.run()
-            persist_call_counters(grant, guard.counts.as_dict())
-            if result.outcome != "committed":
-                raise CanaryRefused("canary_p2_t3", f"initial adoption failed: {result.outcome}")
-            replay, replay_guard = _replay_zero(boundary, grant)
+    with _serving_visibility_monitor(boundary, grant) as visibility:
+        with install_provider_invoker(invoker, provider_mode=provider_mode):
+            with install_call_budget_guard(grant.call_ceilings["initial"]) as guard:
+                coordinator = canary_coordinator(boundary, grant.source.path, counters=guard.counts)
+                with canary_writer_scope(boundary):
+                    result = coordinator.run()
+                persist_call_counters(grant, guard.counts.as_dict())
+                if result.outcome != "committed":
+                    raise CanaryRefused("canary_p2_t3", f"initial adoption failed: {result.outcome}")
+                replay, replay_guard = _replay_zero(boundary, grant)
+    assert_source_immutable(grant, source_token)
     receipt.stage = "t3-initial-complete"
     receipt.next_stage = "waiting-for-external-append-1"
     receipt.call_counters = load_call_counters(grant)
@@ -911,6 +1212,10 @@ def run_live_t3(
         "counters": guard.counts.as_dict(),
         "replay_counters": replay_guard.as_dict(),
         "replay_outcome": replay.outcome,
+        "serving": {
+            "mixed_s": visibility["mixed_s"],
+            "samples": len(visibility.get("timeline") or []),
+        },
     }
 
 
@@ -935,16 +1240,19 @@ def run_live_t4(
     invoker: ProviderInvoker | None = None,
 ) -> dict[str, Any]:
     receipt = _require_stage(grant, "waiting-for-external-append-1", expected_sha256=expected_sha256)
+    source_token = _source_immutability_token(grant)
     append = prove_external_append(grant, receipt)
-    with install_provider_invoker(invoker, provider_mode=provider_mode):
-        with install_call_budget_guard(grant.call_ceilings["append"]) as guard:
-            coordinator = canary_coordinator(boundary, grant.source.path, counters=guard.counts)
-            with canary_writer_scope(boundary):
-                result = coordinator.run()
-            persist_call_counters(grant, guard.counts.as_dict())
-    if result.outcome != "committed":
-        raise CanaryRefused("canary_p2_t4", f"append adoption failed: {result.outcome}")
-    replay, replay_guard = _replay_zero(boundary, grant)
+    with _serving_visibility_monitor(boundary, grant) as visibility:
+        with install_provider_invoker(invoker, provider_mode=provider_mode):
+            with install_call_budget_guard(grant.call_ceilings["append"]) as guard:
+                coordinator = canary_coordinator(boundary, grant.source.path, counters=guard.counts)
+                with canary_writer_scope(boundary):
+                    result = coordinator.run()
+                persist_call_counters(grant, guard.counts.as_dict())
+        if result.outcome != "committed":
+            raise CanaryRefused("canary_p2_t4", f"append adoption failed: {result.outcome}")
+        replay, replay_guard = _replay_zero(boundary, grant)
+    assert_source_immutable(grant, source_token)
     receipt.append_identities.append(str(append["append_identity"]))
     receipt.stage = "t4-append-complete"
     receipt.next_stage = "waiting-for-external-append-2"
@@ -956,24 +1264,68 @@ def run_live_t4(
         "counters": guard.counts.as_dict(),
         "replay_counters": replay_guard.as_dict(),
         "replay_outcome": replay.outcome,
+        "serving": {
+            "mixed_s": visibility["mixed_s"],
+            "samples": len(visibility.get("timeline") or []),
+        },
     }
+
+
+def bind_live_append_for_faults(
+    grant: CanaryGrant,
+    *,
+    expected_sha256: str,
+) -> dict[str, Any]:
+    """Record the second external append before T5 without writing the source."""
+    receipt = _require_stage(grant, "waiting-for-external-append-2", expected_sha256=expected_sha256)
+    source_token = _source_immutability_token(grant)
+    append = prove_external_append(grant, receipt)
+    assert_source_immutable(grant, source_token)
+    receipt.append_identities.append(str(append["append_identity"]))
+    receipt.stage = "waiting-for-external-append-2"
+    receipt.next_stage = "t5-fault-1-complete"
+    _persist_receipt(grant, receipt)
+    return {"stage": "waiting-for-external-append-2", "accepted_messages": append["accepted_messages"]}
 
 
 def _capture_pre_fault_capsule(
     boundary: ProductionCanaryBoundary,
     grant: CanaryGrant,
     unrelated_sources: list[str] | None,
-) -> str:
+) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    unrelated = _unrelated_readonly_manifest(boundary, unrelated_sources, grant=grant)
     coordinator = canary_coordinator(boundary, grant.source.path)
-    unrelated = _unrelated_readonly_manifest(boundary, unrelated_sources or [])
     capsule = capture_rollback_capsule(coordinator, unrelated_manifest=unrelated)
     path = Path(grant.rollback.capsule_path)
-    _atomic_json(path, capsule)
-    _fsync_directory(path.parent)
-    digest = _sha256_file(path)
-    if digest == ZERO_DIGEST:
-        raise CanaryRefused("canary_capsule", "pre-fault capsule cannot be the zero sentinel")
-    return digest
+    digest = _persist_capsule(path, capsule)
+    return digest, capsule, unrelated
+
+
+def _pgid_members(pgid: int) -> set[int]:
+    found: set[int] = set()
+    proc = Path("/proc")
+    if not proc.is_dir():
+        return found
+    for entry in proc.iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            stat_text = (entry / "stat").read_text(encoding="utf-8")
+        except OSError:
+            continue
+        close = stat_text.rfind(")")
+        if close < 0:
+            continue
+        fields = stat_text[close + 2 :].split()
+        if len(fields) < 4:
+            continue
+        try:
+            group = int(fields[2])
+        except ValueError:
+            continue
+        if group == pgid:
+            found.add(int(entry.name))
+    return found
 
 
 def run_contained_child(argv: list[str], *, env: Mapping[str, str] | None = None) -> dict[str, Any]:
@@ -985,24 +1337,79 @@ def run_contained_child(argv: list[str], *, env: Mapping[str, str] | None = None
         stderr=subprocess.PIPE,
         text=True,
     )
+    pgid = child.pid
     try:
-        stdout, stderr = child.communicate(timeout=30)
+        stdout, stderr = child.communicate(timeout=60)
     except subprocess.TimeoutExpired:
-        terminate_process_group(child.pid)
+        terminate_process_group(pgid)
         stdout, stderr = child.communicate(timeout=2)
-    descendants = _descendant_pids(child.pid)
-    if descendants:
-        terminate_process_group(child.pid)
-        descendants = _descendant_pids(child.pid)
-    if descendants:
-        raise CanaryRefused("canary_descendants", f"descendants remain: {sorted(descendants)}")
+    remaining = _pgid_members(pgid)
+    if remaining:
+        terminate_process_group(pgid)
+        remaining = _pgid_members(pgid)
+    try:
+        os.killpg(pgid, 0)
+        raise CanaryRefused("canary_descendants", f"process group {pgid} still exists")
+    except ProcessLookupError:
+        pass
+    except PermissionError as exc:
+        raise CanaryRefused("canary_descendants", f"cannot prove process group absent: {exc}") from exc
+    if remaining:
+        raise CanaryRefused("canary_descendants", f"descendants remain: {sorted(remaining)}")
     return {
         "pid": child.pid,
+        "pgid": pgid,
         "returncode": child.returncode,
         "stdout": stdout,
         "stderr": stderr,
         "descendants": [],
     }
+
+
+def _write_live_grant(grant: CanaryGrant) -> Path:
+    path = Path(grant.evidence_dir) / "live-grant.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(grant.to_payload(), indent=2) + "\n", encoding="utf-8")
+    os.chmod(path, 0o600)
+    return path
+
+
+def _observe_recovery_disposition(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    pre_fault: Mapping[str, Any],
+    unrelated: Mapping[str, Any],
+    *,
+    invoker: ProviderInvoker | None,
+    provider_mode: str,
+) -> tuple[str, Any]:
+    coordinator = canary_coordinator(boundary, grant.source.path)
+    restore_rollback_capsule(coordinator, pre_fault)
+    post = capture_rollback_capsule(coordinator, unrelated_manifest=unrelated)
+    pre_token = _canonical_digest(
+        {
+            "rollback": pre_fault.get("rollback"),
+            "state_digests": pre_fault.get("state_digests"),
+            "unrelated": pre_fault.get("unrelated_manifest"),
+        }
+    )
+    post_token = _canonical_digest(
+        {
+            "rollback": post.get("rollback"),
+            "state_digests": post.get("state_digests"),
+            "unrelated": post.get("unrelated_manifest"),
+        }
+    )
+    replay = None
+    if pre_token == post_token:
+        disposition = "restored"
+        checkpoint = coordinator.checkpoint()
+        if checkpoint is not None:
+            with install_provider_invoker(invoker, provider_mode=provider_mode):
+                replay, _replay_guard = _replay_zero(boundary, grant)
+    else:
+        disposition = "recovery_unproven"
+    return disposition, replay
 
 
 def run_live_t5(
@@ -1018,48 +1425,69 @@ def run_live_t5(
 ) -> dict[str, Any]:
     if fault_selector not in FAULT_STAGE:
         raise CanaryRefused("canary_fault_unknown", f"unknown fault selector: {fault_selector}")
+    if child_argv is not None and "crash-self" in child_argv:
+        raise CanaryRefused("canary_fault_evidence", "generic crash-self is not fault evidence")
     expected_next = FAULT_STAGE[fault_selector]
-    receipt = load_stage_receipt(grant)
-    if receipt.nonce != grant.nonce or receipt.grant_digest != expected_sha256:
-        raise CanaryRefused("canary_stage", "receipt does not match grant")
-    if receipt.next_stage not in {expected_next, "waiting-for-external-append-2"} and receipt.stage not in {
-        "t4-append-complete",
-        "waiting-for-external-append-2",
-        "t5-fault-1-complete",
-        "t5-fault-2-complete",
-        "t5-fault-3-complete",
-        "t5-fault-4-complete",
-    }:
-        raise CanaryRefused("canary_stage_order", f"fault {fault_selector} is out of order")
+    receipt = _require_stage(grant, expected_next, expected_sha256=expected_sha256)
     if fault_selector in receipt.faults_completed:
         raise CanaryRefused("canary_stage_order", f"fault {fault_selector} already completed")
-    pre_fault = _capture_pre_fault_capsule(boundary, grant, unrelated_sources)
+    source_token = _source_immutability_token(grant)
+    pre_digest, pre_fault, unrelated = _capture_pre_fault_capsule(boundary, grant, unrelated_sources)
+    grant_path = _write_live_grant(grant)
+    import site
+
+    env = build_allowlisted_child_env(
+        boundary,
+        extra={
+            "CONVMEM_CANARY_GRANT": str(grant_path),
+            "CONVMEM_CANARY_GRANT_SHA256": expected_sha256,
+            "CONVMEM_CANARY_REVISION": grant.code_revision,
+            "CONVMEM_CANARY_FAULT": fault_selector,
+            "CONVMEM_CANARY_PROVIDER_MODE": provider_mode,
+            "CONVMEM_CANARY_LOOPBACK": grant.provider.loopback_host,
+            "CONVMEM_INCREMENTAL_SITE": site.getusersitepackages(),
+        },
+    )
     argv = child_argv or [
         sys.executable,
         "-I",
         str(LIVE_WORKER),
-        "crash-self",
+        "t5-fault",
     ]
-    child = run_contained_child(argv, env=build_allowlisted_child_env(boundary))
-    coordinator = canary_coordinator(boundary, grant.source.path)
-    capsule = json.loads(Path(grant.rollback.capsule_path).read_text(encoding="utf-8"))
-    restore_rollback_capsule(coordinator, capsule)
-    with install_provider_invoker(invoker, provider_mode=provider_mode):
-        replay, replay_guard = _replay_zero(boundary, grant)
+    with _serving_visibility_monitor(boundary, grant) as visibility:
+        child = run_contained_child(argv, env=env)
+        if child["returncode"] != CRASH_EXIT:
+            raise CanaryRefused(
+                "canary_fault_exit",
+                f"expected crash exit {CRASH_EXIT}, got {child['returncode']}: {child['stderr']}",
+            )
+        disposition, replay = _observe_recovery_disposition(
+            boundary,
+            grant,
+            pre_fault,
+            unrelated,
+            invoker=invoker,
+            provider_mode=provider_mode,
+        )
+    assert_source_immutable(grant, source_token)
     receipt.faults_completed.append(fault_selector)
-    receipt.capsule_digest = pre_fault
+    receipt.recovery_dispositions.append(disposition)
+    receipt.capsule_digest = pre_digest
     receipt.stage = expected_next
     next_index = LIVE_STAGE_ORDER.index(expected_next) + 1
     receipt.next_stage = LIVE_STAGE_ORDER[next_index]
     _persist_receipt(grant, receipt)
-    _ = replay
     return {
         "stage": expected_next,
         "fault": fault_selector,
-        "child": {"pid": child["pid"], "returncode": child["returncode"]},
-        "pre_fault_capsule": pre_fault,
-        "replay_counters": replay_guard.as_dict(),
-        "disposition": "restored",
+        "child": {"pid": child["pid"], "returncode": child["returncode"], "pgid": child["pgid"]},
+        "pre_fault_capsule": pre_digest,
+        "replay_outcome": getattr(replay, "outcome", None),
+        "disposition": disposition,
+        "serving": {
+            "mixed_s": visibility["mixed_s"],
+            "samples": len(visibility.get("timeline") or []),
+        },
     }
 
 
@@ -1070,16 +1498,38 @@ def freeze_live_evidence(
     expected_sha256: str,
     gate0_report: Mapping[str, Any],
     sections: Mapping[str, Any],
-    disposition: str,
+    disposition: str | None = None,
 ) -> str:
-    receipt = load_stage_receipt(grant)
-    if disposition not in {"converged", "restored", "recovery_unproven"}:
-        raise CanaryRefused("canary_evidence", f"invalid disposition {disposition}")
-    for required in ("grant_digest",):
-        if required not in {"grant_digest"}:
-            pass
+    receipt = _require_stage(grant, "t6-evidence-frozen", expected_sha256=expected_sha256)
+    if receipt.nonce != grant.nonce or receipt.grant_digest != expected_sha256:
+        raise CanaryRefused("canary_evidence", "receipt does not match grant")
+    required_faults = set(FAULT_STAGE)
+    completed = list(receipt.faults_completed)
+    if set(completed) != required_faults or len(completed) != len(required_faults):
+        raise CanaryRefused(
+            "canary_evidence",
+            f"incomplete or repeated faults: {completed}",
+        )
+    if not receipt.append_identities:
+        raise CanaryRefused("canary_evidence", "append receipts missing")
+    if receipt.capsule_digest in {ZERO_DIGEST, "", None}:
+        raise CanaryRefused("canary_evidence", "capsule digest missing")
     if not gate0_report:
         raise CanaryRefused("canary_evidence", "Gate 0 report missing")
+    observed = list(receipt.recovery_dispositions)
+    if len(observed) != len(required_faults):
+        raise CanaryRefused("canary_evidence", "recovery dispositions incomplete")
+    if all(item == "restored" for item in observed):
+        derived = "restored"
+    elif all(item == "converged" for item in observed):
+        derived = "converged"
+    else:
+        derived = "recovery_unproven"
+    if disposition is not None and disposition != derived:
+        raise CanaryRefused(
+            "canary_evidence",
+            f"caller disposition {disposition} does not match observed {derived}",
+        )
     payload = {
         "schema": LIVE_EVIDENCE_SCHEMA,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -1091,10 +1541,10 @@ def freeze_live_evidence(
         "capsule_digest": receipt.capsule_digest,
         "unrelated_manifest_digest": receipt.unrelated_manifest_digest,
         "append_receipts": list(receipt.append_identities),
-        "faults_completed": list(receipt.faults_completed),
+        "faults_completed": completed,
         "call_counters": dict(receipt.call_counters),
         "source_identity": dict(receipt.source_identity),
-        "disposition": disposition,
+        "disposition": derived,
         "sections": dict(sections),
         "persistent_config_false_false": True,
     }

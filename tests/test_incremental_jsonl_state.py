@@ -367,3 +367,30 @@ def test_processed_does_not_outrun_checkpoint(tmp_path: Path, monkeypatch) -> No
     assert checkpoint is not None
     assert checkpoint["processed_hash"] in processed
     assert processed[checkpoint["processed_hash"]]["path"] == str(source)
+
+
+def test_restore_rewinds_processed_checkpoint_and_state(tmp_path: Path, monkeypatch) -> None:
+    boundary, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    install_fakes(monkeypatch)
+    enable_incremental(boundary)
+    source = write_source(boundary.root, 2)
+    coordinator = IncrementalJsonlCoordinator.from_isolated_boundary(
+        boundary, source, enabled=True
+    )
+    coordinator.run()
+    snapshot = coordinator._snapshot_before_images()  # pylint: disable=protected-access
+    processed_path = Path(boundary.layout["processed"])
+    processed = json.loads(processed_path.read_text(encoding="utf-8"))
+    processed["tampered"] = {"path": str(source), "chunks": 99}
+    processed_path.write_text(json.dumps(processed), encoding="utf-8")
+    checkpoint_path = coordinator.paths["checkpoint"]
+    payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+    payload["record_count"] = 999
+    checkpoint_path.write_text(json.dumps(payload), encoding="utf-8")
+    coordinator._restore_before_images(snapshot)  # pylint: disable=protected-access
+    restored_processed = json.loads(processed_path.read_text(encoding="utf-8"))
+    assert "tampered" not in restored_processed
+    restored_checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+    assert restored_checkpoint["record_count"] != 999
+    assert restored_checkpoint == json.loads(snapshot["state_files"]["checkpoint"])

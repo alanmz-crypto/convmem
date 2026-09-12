@@ -148,7 +148,6 @@ def main(argv: list[str] | None = None) -> int:
                     expected_sha256=expected,
                     gate0_report=report,
                     sections={},
-                    disposition="recovery_unproven",
                 )
                 payload = {"evidence_digest": digest, "hermetic": False}
             else:

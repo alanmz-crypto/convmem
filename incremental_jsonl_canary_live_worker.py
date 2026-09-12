@@ -19,24 +19,33 @@ REPO_ROOT = Path(__file__).resolve().parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from incremental_jsonl_isolation import (  # noqa: E402
-    install_network_denial,
-    install_service_denial,
-)
+from incremental_jsonl_canary_network import install_p2_network_policy  # noqa: E402
+from incremental_jsonl_isolation import install_service_denial  # noqa: E402
 
-install_network_denial()
+_SITE = os.environ.get("CONVMEM_INCREMENTAL_SITE", "")
+if _SITE:
+    sys.path.append(_SITE)
+
+_LOOPBACK = os.environ.get("CONVMEM_CANARY_LOOPBACK", "127.0.0.1:11434")
+install_p2_network_policy(_LOOPBACK)
 install_service_denial()
 
 from incremental_jsonl_canary import (  # noqa: E402
     CRASH_EXIT,
     CanaryRefused,
     ProductionCanaryBoundary,
+    canary_coordinator,
+    canary_writer_scope,
     decode_grant,
+    fault_point_for_selector,
     is_p2_live_grant,
 )
 from incremental_jsonl_canary_p2 import (  # noqa: E402
+    FAULT_STAGE,
+    HermeticCanaryInvoker,
     freeze_live_evidence,
     gate0_preflight_live,
+    install_provider_invoker,
     prepare_live_p2,
     run_live_t3,
     run_live_t4,
@@ -92,10 +101,32 @@ def main() -> int:
             grant,
             expected_sha256=digest,
             fault_selector=os.environ.get("CONVMEM_CANARY_FAULT", ""),
-            provider_mode="live",
+            provider_mode=os.environ.get("CONVMEM_CANARY_PROVIDER_MODE", "live"),
         )
         print(json.dumps(payload, sort_keys=True))
         return 0
+    if command == "t5-fault":
+        selector = os.environ.get("CONVMEM_CANARY_FAULT", "")
+        if selector not in FAULT_STAGE:
+            raise CanaryRefused("canary_fault_unknown", f"unknown fault selector: {selector}")
+        provider_mode = os.environ.get("CONVMEM_CANARY_PROVIDER_MODE", "live")
+        if provider_mode == "live":
+            invoker = None
+        elif provider_mode == "hermetic":
+            invoker = HermeticCanaryInvoker()
+        else:
+            raise CanaryRefused("canary_provider_mode", f"unknown provider mode {provider_mode}")
+        point = fault_point_for_selector(selector)
+
+        def _fault(current: str) -> None:
+            if current == point:
+                os._exit(CRASH_EXIT)
+
+        with install_provider_invoker(invoker, provider_mode=provider_mode):
+            coordinator = canary_coordinator(boundary, grant.source.path, fault=_fault)
+            with canary_writer_scope(boundary):
+                coordinator.run()
+        raise CanaryRefused("canary_fault_missed", f"fault {selector} was not reached")
     if command == "t6":
         digest_out = freeze_live_evidence(
             boundary,
@@ -103,7 +134,6 @@ def main() -> int:
             expected_sha256=digest,
             gate0_report={"mode": "p2-exact-resource-v2"},
             sections={},
-            disposition="recovery_unproven",
         )
         print(json.dumps({"evidence_digest": digest_out}))
         return 0

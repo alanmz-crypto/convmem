@@ -607,8 +607,14 @@ def _assert_authority_mode(path: Path, *, label: str, grant: CanaryGrant | None 
 
 def _harden_grant_paths(grant: CanaryGrant) -> None:
     """Restore grant-listed authority modes after coordinator side effects."""
+    exempt = {
+        Path(grant.source.path).resolve(strict=False),
+        Path(grant.source.metadata_path).resolve(strict=False),
+    }
     for path in _grant_allowlist_paths(grant):
         if not path.exists():
+            continue
+        if path.resolve(strict=False) in exempt:
             continue
         if path.is_dir():
             os.chmod(path, 0o700)
@@ -952,9 +958,27 @@ class ProductionCanaryBoundary:
         if _has_symlink_component(candidate):
             raise CanaryRefused("canary_boundary_escape", f"{label} contains symlink")
         resolved = candidate.resolve(strict=False)
-        allowed = {Path(item.path).resolve(strict=False) for item in self.grant.resources}
-        allowed.add(self.root.resolve(strict=False))
-        if not any(_is_relative_to(resolved, base) or resolved == base for base in allowed):
+        tree_roles = frozenset({"chroma", "incremental_state", "attestations", "census"})
+        exact = {
+            Path(self.grant.source.path).resolve(strict=False),
+            Path(self.grant.source.metadata_path).resolve(strict=False),
+            Path(self.grant.config_overlay).resolve(strict=False),
+            Path(self.grant.evidence_dir).resolve(strict=False),
+            Path(self.grant.rollback.capsule_path).resolve(strict=False),
+            self.root.resolve(strict=False),
+        }
+        trees: set[Path] = set()
+        for item in self.grant.resources:
+            role_path = Path(item.path).resolve(strict=False)
+            exact.add(role_path)
+            if item.role in tree_roles:
+                trees.add(role_path)
+            if item.role == "dedupe" and role_path.is_dir():
+                exact.add(role_path / "dedupe_queue.jsonl")
+                exact.add(role_path / "ingest_duplicate_suppressions.jsonl")
+        in_exact = resolved in exact
+        in_tree = any(_is_relative_to(resolved, base) for base in trees)
+        if not in_exact and not in_tree:
             raise CanaryRefused("canary_boundary_escape", f"{label} not in grant: {resolved}")
         for forbidden in self.forbidden_roots:
             if _is_relative_to(resolved, forbidden) or _is_relative_to(forbidden, resolved):
@@ -1509,6 +1533,17 @@ def restore_rollback_capsule(
     coordinator._restore_before_images(  # pylint: disable=protected-access
         dict(capsule["rollback"])
     )
+    expected = dict(capsule.get("state_digests") or {})
+    actual: dict[str, str] = {}
+    for name, path in coordinator.paths.items():
+        if isinstance(path, Path) and path.is_file():
+            actual[name] = _sha256_file(path)
+    for name, digest in expected.items():
+        if actual.get(name) != digest:
+            raise CanaryRefused(
+                "canary_capsule_state",
+                f"post-restore state digest mismatch for {name}",
+            )
 
 
 def unrelated_sentinel_digest(store, source_paths: list[str]) -> dict[str, Any]:  # noqa: ANN001

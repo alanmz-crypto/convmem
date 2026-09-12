@@ -11,7 +11,7 @@ from incremental_jsonl_canary import assemble_evidence
 BASELINE_HASHES = {
     "watch.py": "b72fd6380d48bf4256371f4b3f4f8eda03f2ca7f1dd9c107f4d6db60c05da2e2",
     "ingest.py": "03246a6c104ad9bb6d9c4df9ab9d34bac165080c725ed1545b64aef8f76f6d23",
-    "incremental_jsonl.py": "e51509c2423db2f2ef5ca414457332aa37d945747b9f7ef8e73a9eb6705db12d",
+    "incremental_jsonl.py": "805c4f5d3871a42e8f4894263462b15181541a6c1be775c2935c7698187da1d0",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 
