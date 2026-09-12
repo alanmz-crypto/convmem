@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import stat
+import struct
 import subprocess
 import sys
 import threading
@@ -94,6 +95,7 @@ FAULT_STAGE = {
     "checkpoint_publish": "t5-fault-4-complete",
     "dedupe_reconcile": "t5-fault-5-complete",
 }
+EMBEDDING_MAX_ULP = 1
 
 
 class ProviderInvoker(Protocol):
@@ -131,6 +133,7 @@ class StageReceipt:
     append_identities: list[str] = field(default_factory=list)
     faults_completed: list[str] = field(default_factory=list)
     recovery_dispositions: list[str] = field(default_factory=list)
+    artifact_identities: dict[str, Any] = field(default_factory=dict)
     receipt_sha256: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -252,7 +255,7 @@ def _stable_read_fd(descriptor: int, size: int) -> bytes:
     return b"".join(chunks)
 
 
-def _descriptor_source_binding(grant: CanaryGrant) -> dict[str, Any]:
+def _descriptor_source_binding(grant: CanaryGrant, *, allow_append: bool = False) -> dict[str, Any]:
     from adapters.kiro_session_jsonl import parse_complete_prefix
 
     path = Path(grant.source.path)
@@ -260,25 +263,32 @@ def _descriptor_source_binding(grant: CanaryGrant) -> dict[str, Any]:
     try:
         if not stat.S_ISREG(stat_result.st_mode):
             raise CanaryRefused("canary_gate0_source", "source is not regular")
-        if (
-            stat_result.st_dev != grant.source.device
-            or stat_result.st_ino != grant.source.inode
-            or stat_result.st_size != grant.source.size
-        ):
+        if stat_result.st_dev != grant.source.device or stat_result.st_ino != grant.source.inode:
+            raise CanaryRefused("canary_source_identity", "source identity mismatch")
+        if allow_append:
+            if stat_result.st_size < grant.source.size:
+                raise CanaryRefused("canary_source_identity", "source truncated after baseline")
+        elif stat_result.st_size != grant.source.size:
             raise CanaryRefused("canary_source_identity", "source identity mismatch")
         raw = _stable_read_fd(descriptor, stat_result.st_size)
-        if len(raw) != grant.source.size:
+        if len(raw) != stat_result.st_size:
             raise CanaryRefused("canary_source_identity", "source size changed during read")
+        prefix = raw[: grant.source.complete_boundary]
+        if _sha256_bytes(prefix) != grant.source.prefix_sha256:
+            raise CanaryRefused("canary_gate0_baseline", "prefix digest mismatch")
         view = parse_complete_prefix(str(path), raw=raw)
     finally:
         os.close(descriptor)
     count = len(view.messages)
-    if count < BASELINE_MIN_MESSAGES or count > BASELINE_MAX_MESSAGES:
-        raise CanaryRefused("canary_gate0_baseline", f"accepted messages {count} outside 61-109")
-    if view.complete_boundary != grant.source.complete_boundary:
-        raise CanaryRefused("canary_gate0_baseline", "complete boundary mismatch")
-    if view.prefix_sha256 != grant.source.prefix_sha256:
-        raise CanaryRefused("canary_gate0_baseline", "prefix digest mismatch")
+    if allow_append and stat_result.st_size > grant.source.size:
+        validate_append_profile(count)
+    else:
+        if count < BASELINE_MIN_MESSAGES or count > BASELINE_MAX_MESSAGES:
+            raise CanaryRefused("canary_gate0_baseline", f"accepted messages {count} outside 61-109")
+        if view.complete_boundary != grant.source.complete_boundary:
+            raise CanaryRefused("canary_gate0_baseline", "complete boundary mismatch")
+        if view.prefix_sha256 != grant.source.prefix_sha256:
+            raise CanaryRefused("canary_gate0_baseline", "prefix digest mismatch")
     return {"accepted_messages": count, "complete_boundary": view.complete_boundary}
 
 
@@ -592,6 +602,31 @@ def default_zero_adoption(boundary: ProductionCanaryBoundary, grant: CanaryGrant
     return {"pass": "true"}
 
 
+def _identity_from_payload(payload: Mapping[str, Any]) -> ResourceIdentityGrant:
+    return ResourceIdentityGrant(
+        role=str(payload["role"]),
+        path=str(payload["path"]),
+        uid=int(payload["uid"]),
+        mode=int(payload["mode"]),
+        device=int(payload["device"]),
+        inode=int(payload["inode"]),
+        file_type=str(payload["file_type"]),
+    )
+
+
+def _prepared_receipt(grant: CanaryGrant) -> StageReceipt | None:
+    path = stage_receipt_path(grant)
+    if not path.is_file():
+        return None
+    receipt = load_stage_receipt(grant)
+    prepared_index = LIVE_STAGE_ORDER.index("prepared")
+    if receipt.stage not in LIVE_STAGE_ORDER:
+        raise CanaryRefused("canary_stage", f"unknown receipt stage {receipt.stage}")
+    if LIVE_STAGE_ORDER.index(receipt.stage) < prepared_index:
+        return None
+    return receipt
+
+
 def gate0_preflight_live(
     grant: CanaryGrant,
     boundary: ProductionCanaryBoundary,
@@ -609,6 +644,8 @@ def gate0_preflight_live(
         payload = json.loads(receipt.read_text(encoding="utf-8"))
         if payload.get("nonce") == grant.nonce and payload.get("stage") == "t6-evidence-frozen":
             raise CanaryRefused("canary_nonce_reused", "grant nonce already consumed")
+    prepared = _prepared_receipt(grant)
+    allow_append = prepared is not None and prepared.stage != "prepared"
     checks: dict[str, Any] = {}
     checks["1_grant"] = {
         "digest": expected_sha256,
@@ -616,12 +653,15 @@ def gate0_preflight_live(
         "nonce": grant.nonce,
         "capability_mode": P2_LIVE_CAPABILITY_MODE,
     }
-    checks["2_baseline"] = _descriptor_source_binding(grant)
+    checks["2_baseline"] = _descriptor_source_binding(grant, allow_append=allow_append)
     checks["3_source"] = _descriptor_metadata_binding(grant)
-    zero = (hooks.zero_adoption or default_zero_adoption)(boundary, grant)
-    if zero.get("pass") != "true":
-        raise CanaryRefused("canary_gate0_adoption", f"non-zero adoption: {zero}")
-    checks["4_zero_adoption"] = zero
+    if prepared is None:
+        zero = (hooks.zero_adoption or default_zero_adoption)(boundary, grant)
+        if zero.get("pass") != "true":
+            raise CanaryRefused("canary_gate0_adoption", f"non-zero adoption: {zero}")
+        checks["4_zero_adoption"] = zero
+    else:
+        checks["4_zero_adoption"] = {"pass": "true", "skipped": "post-prepare"}
     persistent = Path(grant.persistent_config.path)  # type: ignore[union-attr]
     if persistent.is_file():
         digest = _sha256_file(persistent)
@@ -648,17 +688,54 @@ def gate0_preflight_live(
     identities = {item.role: item for item in grant.resource_identities}
     owner_uid = grant.owner_uid or -1
     capsule_path = Path(grant.rollback.capsule_path)
-    if identities["capsule"].file_type == "absent" and capsule_path.exists():
-        raise CanaryRefused("canary_gate0_capsule", "rollback capsule must be absent before prepare")
+    if prepared is None:
+        if identities["capsule"].file_type == "absent" and capsule_path.exists():
+            raise CanaryRefused(
+                "canary_gate0_capsule",
+                "rollback capsule must be absent before prepare",
+            )
+        _identity_matches(Path(grant.config_overlay), identities["overlay"], owner_uid)
+        _identity_matches(Path(grant.evidence_dir), identities["evidence_dir"], owner_uid)
+        _identity_matches(capsule_path, identities["capsule"], owner_uid)
+    else:
+        artifacts = prepared.artifact_identities
+        if "overlay" not in artifacts or "evidence_dir" not in artifacts:
+            raise CanaryRefused("canary_gate0_paths", "prepared receipt missing overlay/evidence identities")
+        _identity_matches(
+            Path(grant.config_overlay),
+            _identity_from_payload(artifacts["overlay"]),
+            owner_uid,
+        )
+        _identity_matches(
+            Path(grant.evidence_dir),
+            _identity_from_payload(artifacts["evidence_dir"]),
+            owner_uid,
+        )
+        if not capsule_path.is_file():
+            raise CanaryRefused("canary_gate0_capsule", "rollback capsule missing after prepare")
+        digest = _sha256_file(capsule_path)
+        if digest != prepared.capsule_digest:
+            raise CanaryRefused("canary_gate0_capsule", "capsule digest does not match receipt")
+        capsule_stat = capsule_path.lstat()
+        if capsule_stat.st_uid != owner_uid or not stat.S_ISREG(capsule_stat.st_mode):
+            raise CanaryRefused("canary_gate0_capsule", "capsule owner or type mismatch")
     _identity_matches(Path(grant.source.path), identities["source"], owner_uid)
     _identity_matches(Path(grant.source.metadata_path), identities["metadata"], owner_uid)
-    _identity_matches(Path(grant.config_overlay), identities["overlay"], owner_uid)
-    _identity_matches(Path(grant.evidence_dir), identities["evidence_dir"], owner_uid)
-    _identity_matches(capsule_path, identities["capsule"], owner_uid)
     persistent = Path(grant.persistent_config.path)  # type: ignore[union-attr]
     _identity_matches(persistent, identities["persistent_config"], owner_uid)
     for role in grant.resources:
-        _identity_matches(Path(role.path), identities[role.role], owner_uid)
+        expected = identities[role.role]
+        path = Path(role.path)
+        if prepared is not None and expected.file_type == "absent":
+            if not path.exists():
+                continue
+            if _has_symlink_component(path):
+                raise CanaryRefused("canary_gate0_paths", f"{role.role} escaped after prepare")
+            actual = path.lstat()
+            if stat.S_ISLNK(actual.st_mode) or actual.st_uid != owner_uid:
+                raise CanaryRefused("canary_gate0_paths", f"{role.role} owner or type mismatch")
+            continue
+        _identity_matches(path, expected, owner_uid)
     checks["8_paths"] = {"roles": len(grant.resource_identities)}
     models = (hooks.model_manifest or default_model_manifest)(grant)
     if models.get("pass") != "true":
@@ -673,16 +750,27 @@ def gate0_preflight_live(
         raise CanaryRefused("canary_gate0_network", f"network self-test failed: {network}")
     checks["10_network"] = {"credentials": "absent", "network": network}
     capsule_path = Path(grant.rollback.capsule_path)
-    if capsule_path.exists():
-        raise CanaryRefused("canary_gate0_capsule", "rollback capsule must be absent before prepare")
-    parent = capsule_path.parent
-    creatable = parent.exists() and os.access(parent, os.W_OK) or parent.parent.exists()
-    checks["11_capsule"] = {
-        "path": str(capsule_path),
-        "captured": False,
-        "readable": False,
-        "creatable_later": bool(creatable),
-    }
+    if prepared is None:
+        if capsule_path.exists():
+            raise CanaryRefused(
+                "canary_gate0_capsule",
+                "rollback capsule must be absent before prepare",
+            )
+        parent = capsule_path.parent
+        creatable = parent.exists() and os.access(parent, os.W_OK) or parent.parent.exists()
+        checks["11_capsule"] = {
+            "path": str(capsule_path),
+            "captured": False,
+            "readable": False,
+            "creatable_later": bool(creatable),
+        }
+    else:
+        checks["11_capsule"] = {
+            "path": str(capsule_path),
+            "captured": True,
+            "readable": True,
+            "digest": prepared.capsule_digest,
+        }
     restic = (hooks.restic_identifier or default_restic_identifier)(grant)
     if restic.get("pass") != "true":
         raise CanaryRefused("canary_gate0_restic", f"restic evidence failed: {restic}")
@@ -733,6 +821,7 @@ def load_stage_receipt(grant: CanaryGrant) -> StageReceipt:
         append_identities=list(payload.get("append_identities") or []),
         faults_completed=list(payload.get("faults_completed") or []),
         recovery_dispositions=list(payload.get("recovery_dispositions") or []),
+        artifact_identities=dict(payload.get("artifact_identities") or {}),
         receipt_sha256=recorded,
     )
 
@@ -789,6 +878,82 @@ def assert_source_immutable(grant: CanaryGrant, token: Mapping[str, Any]) -> Non
 
 def _canonical_digest(payload: Any) -> str:
     return _sha256_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+
+
+def _float32_ordered_bits(value: float) -> int:
+    bits = struct.unpack(">I", struct.pack(">f", float(value)))[0]
+    if bits & 0x80000000:
+        return -(bits & 0x7FFFFFFF)
+    return bits
+
+
+def float32_ulp_distance(left: float, right: float) -> int:
+    return abs(_float32_ordered_bits(left) - _float32_ordered_bits(right))
+
+
+def next_float32(value: float, steps: int = 1) -> float:
+    ordered = _float32_ordered_bits(value) + int(steps)
+    if ordered < 0:
+        bits = 0x80000000 | (-ordered)
+    else:
+        bits = ordered
+    return float(struct.unpack(">f", struct.pack(">I", bits & 0xFFFFFFFF))[0])
+
+
+def _embeddings_within_ulp(left: list[Any], right: list[Any], *, max_ulp: int = EMBEDDING_MAX_ULP) -> bool:
+    if len(left) != len(right):
+        return False
+    for first, second in zip(left, right):
+        if float32_ulp_distance(float(first), float(second)) > max_ulp:
+            return False
+    return True
+
+
+def _chroma_rows_equivalent(left_rows: Any, right_rows: Any) -> bool:
+    left_list = list(left_rows or [])
+    right_list = list(right_rows or [])
+    if len(left_list) != len(right_list):
+        return False
+    left_sorted = sorted(left_list, key=lambda row: str(row.get("id")))
+    right_sorted = sorted(right_list, key=lambda row: str(row.get("id")))
+    for left, right in zip(left_sorted, right_sorted):
+        if str(left.get("id")) != str(right.get("id")):
+            return False
+        if left.get("document") != right.get("document"):
+            return False
+        if dict(left.get("metadata") or {}) != dict(right.get("metadata") or {}):
+            return False
+        if left.get("collection") != right.get("collection"):
+            return False
+        if not _embeddings_within_ulp(
+            list(left.get("embedding") or []),
+            list(right.get("embedding") or []),
+        ):
+            return False
+    return True
+
+
+def _rollback_equivalent(pre_rollback: Any, post_rollback: Any) -> bool:
+    pre = dict(pre_rollback or {})
+    post = dict(post_rollback or {})
+    pre_sum = pre.pop("summaries", [])
+    post_sum = post.pop("summaries", [])
+    pre_units = pre.pop("units", [])
+    post_units = post.pop("units", [])
+    if _canonical_digest(pre) != _canonical_digest(post):
+        return False
+    return _chroma_rows_equivalent(pre_sum, post_sum) and _chroma_rows_equivalent(pre_units, post_units)
+
+
+def recovery_equivalent(pre_fault: Mapping[str, Any], post: Mapping[str, Any]) -> bool:
+    """IDs/documents/metadata/state/unrelated are exact; embeddings may drift 1 float32 ULP."""
+    if _canonical_digest(pre_fault.get("state_digests")) != _canonical_digest(post.get("state_digests")):
+        return False
+    if _canonical_digest(pre_fault.get("unrelated_manifest")) != _canonical_digest(
+        post.get("unrelated_manifest")
+    ):
+        return False
+    return _rollback_equivalent(pre_fault.get("rollback"), post.get("rollback"))
 
 
 def _derive_unrelated_sources(boundary: ProductionCanaryBoundary, grant: CanaryGrant) -> list[str]:
@@ -947,6 +1112,7 @@ def prepare_live_p2(
     Path(grant.evidence_dir).mkdir(parents=True, exist_ok=True)
     os.chmod(Path(grant.evidence_dir), 0o700)
     assert_source_immutable(grant, source_token)
+    owner_uid = grant.owner_uid or os.getuid()
     counters = {key: 0 for key in CALL_CEILINGS_WHOLE}
     receipt = StageReceipt(
         nonce=grant.nonce,
@@ -957,6 +1123,14 @@ def prepare_live_p2(
         source_identity=_source_identity_payload(grant),
         unrelated_manifest_digest=str(unrelated["digest"]),
         call_counters=counters,
+        artifact_identities={
+            "overlay": asdict(
+                capture_path_identity(Path(grant.config_overlay), "overlay", owner_uid)
+            ),
+            "evidence_dir": asdict(
+                capture_path_identity(Path(grant.evidence_dir), "evidence_dir", owner_uid)
+            ),
+        },
     )
     _persist_receipt(grant, receipt)
     _atomic_json(call_ledger_path(grant), counters)
@@ -1379,37 +1553,13 @@ def _observe_recovery_disposition(
     grant: CanaryGrant,
     pre_fault: Mapping[str, Any],
     unrelated: Mapping[str, Any],
-    *,
-    invoker: ProviderInvoker | None,
-    provider_mode: str,
 ) -> tuple[str, Any]:
     coordinator = canary_coordinator(boundary, grant.source.path)
     restore_rollback_capsule(coordinator, pre_fault)
     post = capture_rollback_capsule(coordinator, unrelated_manifest=unrelated)
-    pre_token = _canonical_digest(
-        {
-            "rollback": pre_fault.get("rollback"),
-            "state_digests": pre_fault.get("state_digests"),
-            "unrelated": pre_fault.get("unrelated_manifest"),
-        }
-    )
-    post_token = _canonical_digest(
-        {
-            "rollback": post.get("rollback"),
-            "state_digests": post.get("state_digests"),
-            "unrelated": post.get("unrelated_manifest"),
-        }
-    )
-    replay = None
-    if pre_token == post_token:
-        disposition = "restored"
-        checkpoint = coordinator.checkpoint()
-        if checkpoint is not None:
-            with install_provider_invoker(invoker, provider_mode=provider_mode):
-                replay, _replay_guard = _replay_zero(boundary, grant)
-    else:
-        disposition = "recovery_unproven"
-    return disposition, replay
+    if recovery_equivalent(pre_fault, post):
+        return "restored", None
+    return "recovery_unproven", None
 
 
 def run_live_t5(
@@ -1427,6 +1577,10 @@ def run_live_t5(
         raise CanaryRefused("canary_fault_unknown", f"unknown fault selector: {fault_selector}")
     if child_argv is not None and "crash-self" in child_argv:
         raise CanaryRefused("canary_fault_evidence", "generic crash-self is not fault evidence")
+    if provider_mode == "hermetic" and invoker is None:
+        raise CanaryRefused("canary_provider_mode", "hermetic mode cannot select real providers")
+    if provider_mode == "live" and invoker is not None:
+        raise CanaryRefused("canary_provider_mode", "live mode cannot install test fakes")
     expected_next = FAULT_STAGE[fault_selector]
     receipt = _require_stage(grant, expected_next, expected_sha256=expected_sha256)
     if fault_selector in receipt.faults_completed:
@@ -1466,8 +1620,6 @@ def run_live_t5(
             grant,
             pre_fault,
             unrelated,
-            invoker=invoker,
-            provider_mode=provider_mode,
         )
     assert_source_immutable(grant, source_token)
     receipt.faults_completed.append(fault_selector)

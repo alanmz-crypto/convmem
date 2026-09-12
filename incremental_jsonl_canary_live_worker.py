@@ -43,6 +43,7 @@ from incremental_jsonl_canary import (  # noqa: E402
 from incremental_jsonl_canary_p2 import (  # noqa: E402
     FAULT_STAGE,
     HermeticCanaryInvoker,
+    bind_live_append_for_faults,
     freeze_live_evidence,
     gate0_preflight_live,
     install_provider_invoker,
@@ -93,6 +94,10 @@ def main() -> int:
             expected_sha256=digest,
             provider_mode="live",
         )
+        print(json.dumps(payload, sort_keys=True))
+        return 0
+    if command == "t5-bind":
+        payload = bind_live_append_for_faults(grant, expected_sha256=digest)
         print(json.dumps(payload, sort_keys=True))
         return 0
     if command == "t5":

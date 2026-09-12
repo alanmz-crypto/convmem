@@ -36,6 +36,7 @@ from incremental_jsonl_canary_p2 import (
     ZERO_DIGEST,
     _persist_receipt,
     _source_immutability_token,
+    bind_live_append_for_faults,
     default_model_manifest,
     default_network_self_test,
     default_writer_census,
@@ -45,8 +46,10 @@ from incremental_jsonl_canary_p2 import (
     gate0_preflight_live,
     install_p2_network_policy,
     load_stage_receipt,
+    next_float32,
     persist_call_counters,
     prepare_live_p2,
+    recovery_equivalent,
     run_contained_child,
     run_live_t3,
     run_live_t4,
@@ -533,6 +536,7 @@ def test_c5_pre_fault_capsule_and_descendants(tmp_path: Path) -> None:
     assert payload["pre_fault_capsule"] != ZERO_DIGEST
     assert payload["child"]["returncode"] == 86
     assert payload["disposition"] in {"restored", "recovery_unproven"}
+    assert payload["replay_outcome"] is None
     assert payload["serving"]["samples"] >= 3
 
 
@@ -1037,3 +1041,232 @@ def test_n3_grant_bound_identities_are_validated(tmp_path: Path) -> None:
             code_revision=current_code_revision(),
             hooks=live_gate0_hooks_pass(),
         )
+
+
+def _sample_recovery_capsule(
+    *,
+    embedding: list[float] | None = None,
+    row_id: str = "row-1",
+    document: str = "body",
+    metadata: dict | None = None,
+    checkpoint: str = "a" * 64,
+) -> dict:
+    row = {
+        "id": row_id,
+        "document": document,
+        "embedding": list(embedding or [0.25, -0.9529412388801575]),
+        "metadata": dict(metadata or {"source_path": "/tmp/src"}),
+        "collection": "conversation_summaries",
+    }
+    return {
+        "rollback": {
+            "version": 1,
+            "summaries": [row],
+            "units": [],
+            "export_lines": [],
+            "processed_preimage": {},
+            "source_path": "/tmp/src",
+            "state_files": {},
+            "prepared_files": {},
+            "dedupe_files": {},
+        },
+        "state_digests": {"checkpoint": checkpoint},
+        "unrelated_manifest": {"derived": True, "sources": {}},
+    }
+
+
+def test_r1_one_ulp_embedding_is_restored() -> None:
+    base = -0.9529412388801575
+    pre = _sample_recovery_capsule(embedding=[base])
+    post = _sample_recovery_capsule(embedding=[next_float32(base, 1)])
+    assert recovery_equivalent(pre, post)
+
+
+def test_r1_adversarial_mismatches_stay_unproven() -> None:
+    base = -0.9529412388801575
+    pre = _sample_recovery_capsule(embedding=[base])
+    assert not recovery_equivalent(
+        pre, _sample_recovery_capsule(embedding=[next_float32(base, 2)])
+    )
+    assert not recovery_equivalent(pre, _sample_recovery_capsule(row_id="other"))
+    assert not recovery_equivalent(pre, _sample_recovery_capsule(document="changed"))
+    assert not recovery_equivalent(
+        pre, _sample_recovery_capsule(metadata={"source_path": "/tmp/other"})
+    )
+    assert not recovery_equivalent(
+        pre, _sample_recovery_capsule(checkpoint="b" * 64)
+    )
+
+
+def test_r2_restored_path_does_not_claim_zero_replay(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path, messages=61)
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    run_live_t3(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        provider_mode="hermetic",
+        invoker=_FakeInvoker(),
+    )
+    append_kiro_source(fx["source"], 61, 7)
+    run_live_t4(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        provider_mode="hermetic",
+        invoker=_FakeInvoker(),
+    )
+    append_kiro_source(fx["source"], 68, 7)
+    bound = bind_live_append_for_faults(fx["grant"], expected_sha256=fx["digest"])
+    assert bound["stage"] == "waiting-for-external-append-2"
+    payload = run_live_t5(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        fault_selector="summary_upsert",
+        provider_mode="hermetic",
+        invoker=_FakeInvoker(),
+    )
+    assert payload["disposition"] == "restored"
+    assert payload["replay_outcome"] is None
+
+
+def test_r3_gate0_passes_after_prepare_and_fails_on_mutation(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    report = gate0_preflight_live(
+        fx["grant"],
+        fx["boundary"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    assert report["checks"]["11_capsule"]["captured"] is True
+    capsule = Path(fx["grant"].rollback.capsule_path)
+    original = capsule.read_bytes()
+    capsule.write_text('{"tampered": true}\n', encoding="utf-8")
+    with pytest.raises(CanaryRefused, match="canary_gate0_capsule"):
+        gate0_preflight_live(
+            fx["grant"],
+            fx["boundary"],
+            expected_sha256=fx["digest"],
+            code_revision=current_code_revision(),
+            hooks=live_gate0_hooks_pass(),
+        )
+    capsule.write_bytes(original)
+    overlay = Path(fx["grant"].config_overlay)
+    overlay.unlink()
+    overlay.write_text("mutated-overlay\n", encoding="utf-8")
+    os.chmod(overlay, 0o600)
+    with pytest.raises(CanaryRefused, match="canary_gate0_paths"):
+        gate0_preflight_live(
+            fx["grant"],
+            fx["boundary"],
+            expected_sha256=fx["digest"],
+            code_revision=current_code_revision(),
+            hooks=live_gate0_hooks_pass(),
+        )
+
+
+def test_r4_launcher_bind_stage_is_separately_invoked(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path, messages=61)
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    with pytest.raises(CanaryRefused, match="canary_stage_order"):
+        bind_live_append_for_faults(fx["grant"], expected_sha256=fx["digest"])
+    launcher = (REPO_ROOT / "scripts/run-jsonl-production-canary.py").read_text(encoding="utf-8")
+    assert '"t5-bind-append"' in launcher
+    assert '"p2-t5-bind"' in launcher
+    assert "bind_live_append_for_faults" in launcher
+    worker = (REPO_ROOT / "incremental_jsonl_canary_live_worker.py").read_text(encoding="utf-8")
+    assert 'command == "t5-bind"' in worker
+    all_stages = _launcher(fx["grant_path"], fx["digest"], ["--stage", "p2-all"])
+    assert all_stages.returncode == 2
+    assert "canary_p2_all_refused" in all_stages.stderr
+
+
+def test_r4_documented_sequence_prepare_through_t6(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path, messages=61)
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    run_live_t3(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        provider_mode="hermetic",
+        invoker=_FakeInvoker(),
+    )
+    append_kiro_source(fx["source"], 61, 7)
+    run_live_t4(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        provider_mode="hermetic",
+        invoker=_FakeInvoker(),
+    )
+    after_t4 = gate0_preflight_live(
+        fx["grant"],
+        fx["boundary"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    assert after_t4["checks"]["11_capsule"]["captured"] is True
+    append_kiro_source(fx["source"], 68, 7)
+    bind_live_append_for_faults(fx["grant"], expected_sha256=fx["digest"])
+    dispositions: list[str] = []
+    for selector in FAULT_STAGE:
+        payload = run_live_t5(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            fault_selector=selector,
+            provider_mode="hermetic",
+            invoker=_FakeInvoker(),
+        )
+        assert payload["child"]["returncode"] == 86
+        assert payload["replay_outcome"] is None
+        dispositions.append(payload["disposition"])
+    assert "restored" in dispositions
+    report = gate0_preflight_live(
+        fx["grant"],
+        fx["boundary"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    digest = freeze_live_evidence(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        gate0_report=report,
+        sections={"t5": {"dispositions": dispositions}},
+    )
+    evidence = Path(fx["grant"].evidence_dir) / LIVE_EVIDENCE_NAME
+    payload = json.loads(evidence.read_text(encoding="utf-8"))
+    assert payload["disposition"] in {"restored", "recovery_unproven"}
+    assert set(payload["faults_completed"]) == set(FAULT_STAGE)
+    assert len(payload["append_receipts"]) == 2
+    assert digest

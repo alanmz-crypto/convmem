@@ -28,6 +28,7 @@ from incremental_jsonl_canary import (  # noqa: E402
     validate_grant,
 )
 from incremental_jsonl_canary_p2 import (  # noqa: E402
+    bind_live_append_for_faults,
     freeze_live_evidence,
     gate0_preflight_live,
     prepare_live_p2,
@@ -63,10 +64,12 @@ def main(argv: list[str] | None = None) -> int:
             "prepare",
             "t3-initial",
             "t4-append",
+            "t5-bind-append",
             "t5-fault",
             "t6-evidence",
             "p2-t3",
             "p2-t4",
+            "p2-t5-bind",
             "p2-t5",
             "p2-t6",
             "p2-all",
@@ -131,6 +134,8 @@ def main(argv: list[str] | None = None) -> int:
                     expected_sha256=expected,
                     provider_mode="live",
                 )
+            elif stage in {"t5-bind-append", "p2-t5-bind"}:
+                payload = bind_live_append_for_faults(grant, expected_sha256=expected)
             elif stage in {"t5-fault", "p2-t5"}:
                 if not args.fault:
                     raise CanaryRefused("canary_p2_t5", "--fault required for t5 stage")
@@ -153,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 raise CanaryRefused(
                     "canary_p2_unauthorized",
-                    "P2 mutation requires --stage prepare|t3-initial|t4-append|t5-fault|t6-evidence",
+                    "P2 mutation requires --stage prepare|t3-initial|t4-append|t5-bind-append|t5-fault|t6-evidence",
                 )
             print(json.dumps({"status": "ok", "stage": stage, "payload": payload}, default=str))
             return 0
