@@ -96,6 +96,18 @@ FAULT_STAGE = {
     "dedupe_reconcile": "t5-fault-5-complete",
 }
 EMBEDDING_MAX_ULP = 1
+ALLOWED_RECOVERY_DISPOSITIONS = frozenset({"restored", "recovery_unproven"})
+SERVING_TIMELINE_MAX_SAMPLES = 32
+SERVING_SAMPLE_KEYS = ("monotonic_s", "summary", "unit", "mixed", "error")
+REQUIRED_SERVING_STAGES = (
+    "t3-initial-complete",
+    "t4-append-complete",
+    "t5-fault-1-complete",
+    "t5-fault-2-complete",
+    "t5-fault-3-complete",
+    "t5-fault-4-complete",
+    "t5-fault-5-complete",
+)
 
 
 class ProviderInvoker(Protocol):
@@ -133,6 +145,7 @@ class StageReceipt:
     append_identities: list[str] = field(default_factory=list)
     faults_completed: list[str] = field(default_factory=list)
     recovery_dispositions: list[str] = field(default_factory=list)
+    serving_observations: list[dict[str, Any]] = field(default_factory=list)
     artifact_identities: dict[str, Any] = field(default_factory=dict)
     receipt_sha256: str = ""
 
@@ -821,6 +834,7 @@ def load_stage_receipt(grant: CanaryGrant) -> StageReceipt:
         append_identities=list(payload.get("append_identities") or []),
         faults_completed=list(payload.get("faults_completed") or []),
         recovery_dispositions=list(payload.get("recovery_dispositions") or []),
+        serving_observations=list(payload.get("serving_observations") or []),
         artifact_identities=dict(payload.get("artifact_identities") or {}),
         receipt_sha256=recorded,
     )
@@ -1347,6 +1361,142 @@ def _serving_visibility_monitor(
         holder["probe"] = probe
 
 
+def _bound_serving_timeline(samples: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if len(samples) <= SERVING_TIMELINE_MAX_SAMPLES:
+        return list(samples)
+    last_index = len(samples) - 1
+    bounded: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for index in range(SERVING_TIMELINE_MAX_SAMPLES):
+        chosen = round(index * last_index / (SERVING_TIMELINE_MAX_SAMPLES - 1))
+        if chosen in seen:
+            continue
+        seen.add(chosen)
+        bounded.append(samples[chosen])
+    return bounded
+
+
+def normalize_serving_timeline(timeline: Any) -> list[dict[str, Any]]:
+    if not isinstance(timeline, list) or not timeline:
+        raise CanaryRefused("canary_serving_evidence", "serving timeline missing")
+    normalized: list[dict[str, Any]] = []
+    for item in timeline:
+        if not isinstance(item, Mapping):
+            raise CanaryRefused("canary_serving_evidence", "malformed serving sample")
+        missing = [key for key in SERVING_SAMPLE_KEYS if key not in item]
+        if missing:
+            raise CanaryRefused(
+                "canary_serving_evidence",
+                f"serving sample missing {missing[0]}",
+            )
+        try:
+            monotonic_s = float(item["monotonic_s"])
+        except (TypeError, ValueError) as exc:
+            raise CanaryRefused("canary_serving_evidence", "malformed serving timestamp") from exc
+        normalized.append(
+            {
+                "monotonic_s": monotonic_s,
+                "summary": item["summary"],
+                "unit": item["unit"],
+                "mixed": bool(item["mixed"]),
+                "error": item["error"],
+            }
+        )
+    return normalized
+
+
+def derive_serving_durations(timeline: list[dict[str, Any]]) -> tuple[float, float]:
+    if not timeline:
+        raise CanaryRefused("canary_serving_evidence", "serving timeline missing")
+    if timeline[-1]["mixed"]:
+        raise CanaryRefused("canary_serving_evidence", "serving timeline ended mixed")
+    mixed_s = 0.0
+    last_mixed: float | None = None
+    for index, sample in enumerate(timeline):
+        if sample["mixed"]:
+            last_mixed = float(sample["monotonic_s"])
+            if index + 1 < len(timeline):
+                mixed_s += float(timeline[index + 1]["monotonic_s"]) - float(sample["monotonic_s"])
+    recovery_s = 0.0 if last_mixed is None else float(timeline[-1]["monotonic_s"]) - last_mixed
+    return mixed_s, recovery_s
+
+
+def serving_observation_from_timeline(stage: str, timeline: Any) -> dict[str, Any]:
+    normalized = normalize_serving_timeline(timeline)
+    bounded = _bound_serving_timeline(normalized)
+    mixed_s, recovery_s = derive_serving_durations(bounded)
+    return {
+        "stage": stage,
+        "mixed_s": mixed_s,
+        "recovery_s": recovery_s,
+        "sample_count": len(normalized),
+        "timeline": bounded,
+    }
+
+
+def _record_serving_observation(
+    receipt: StageReceipt,
+    stage: str,
+    visibility: Mapping[str, Any],
+) -> None:
+    receipt.serving_observations.append(
+        serving_observation_from_timeline(stage, visibility.get("timeline"))
+    )
+
+
+def _validate_serving_observation(item: Any) -> dict[str, Any]:
+    if not isinstance(item, Mapping):
+        raise CanaryRefused("canary_serving_evidence", "malformed serving observation")
+    stage = item.get("stage")
+    if stage not in REQUIRED_SERVING_STAGES:
+        raise CanaryRefused("canary_serving_evidence", f"unexpected serving stage {stage}")
+    normalized = normalize_serving_timeline(item.get("timeline"))
+    mixed_s, recovery_s = derive_serving_durations(normalized)
+    try:
+        recorded_mixed = float(item["mixed_s"])
+        recorded_recovery = float(item["recovery_s"])
+        sample_count = int(item["sample_count"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise CanaryRefused("canary_serving_evidence", "malformed serving durations") from exc
+    if sample_count < len(normalized):
+        raise CanaryRefused("canary_serving_evidence", "serving sample_count mismatch")
+    if abs(recorded_mixed - mixed_s) > 1e-9 or abs(recorded_recovery - recovery_s) > 1e-9:
+        raise CanaryRefused("canary_serving_evidence", "serving durations do not match timeline")
+    return {
+        "stage": stage,
+        "mixed_s": recorded_mixed,
+        "recovery_s": recorded_recovery,
+        "sample_count": sample_count,
+        "timeline": list(item["timeline"]),
+    }
+
+
+def _require_serving_evidence(receipt: StageReceipt) -> dict[str, Any]:
+    observed = [_validate_serving_observation(item) for item in receipt.serving_observations]
+    stages = [item["stage"] for item in observed]
+    if stages != list(REQUIRED_SERVING_STAGES):
+        raise CanaryRefused(
+            "canary_serving_evidence",
+            f"incomplete serving timeline: {stages}",
+        )
+    return {
+        "observations": observed,
+        "mixed_s": sum(item["mixed_s"] for item in observed),
+        "recovery_s": sum(item["recovery_s"] for item in observed),
+    }
+
+
+def _derive_live_disposition(observed: list[str]) -> str:
+    if any(item not in ALLOWED_RECOVERY_DISPOSITIONS for item in observed):
+        raise CanaryRefused(
+            "canary_evidence",
+            f"unknown recovery disposition in {observed}",
+        )
+    if all(item == "restored" for item in observed):
+        return "restored"
+    return "recovery_unproven"
+
+
 def run_live_t3(
     boundary: ProductionCanaryBoundary,
     grant: CanaryGrant,
@@ -1375,6 +1525,7 @@ def run_live_t3(
                     raise CanaryRefused("canary_p2_t3", f"initial adoption failed: {result.outcome}")
                 replay, replay_guard = _replay_zero(boundary, grant)
     assert_source_immutable(grant, source_token)
+    _record_serving_observation(receipt, "t3-initial-complete", visibility)
     receipt.stage = "t3-initial-complete"
     receipt.next_stage = "waiting-for-external-append-1"
     receipt.call_counters = load_call_counters(grant)
@@ -1427,6 +1578,7 @@ def run_live_t4(
             raise CanaryRefused("canary_p2_t4", f"append adoption failed: {result.outcome}")
         replay, replay_guard = _replay_zero(boundary, grant)
     assert_source_immutable(grant, source_token)
+    _record_serving_observation(receipt, "t4-append-complete", visibility)
     receipt.append_identities.append(str(append["append_identity"]))
     receipt.stage = "t4-append-complete"
     receipt.next_stage = "waiting-for-external-append-2"
@@ -1622,6 +1774,7 @@ def run_live_t5(
             unrelated,
         )
     assert_source_immutable(grant, source_token)
+    _record_serving_observation(receipt, expected_next, visibility)
     receipt.faults_completed.append(fault_selector)
     receipt.recovery_dispositions.append(disposition)
     receipt.capsule_digest = pre_digest
@@ -1671,17 +1824,13 @@ def freeze_live_evidence(
     observed = list(receipt.recovery_dispositions)
     if len(observed) != len(required_faults):
         raise CanaryRefused("canary_evidence", "recovery dispositions incomplete")
-    if all(item == "restored" for item in observed):
-        derived = "restored"
-    elif all(item == "converged" for item in observed):
-        derived = "converged"
-    else:
-        derived = "recovery_unproven"
+    derived = _derive_live_disposition(observed)
     if disposition is not None and disposition != derived:
         raise CanaryRefused(
             "canary_evidence",
             f"caller disposition {disposition} does not match observed {derived}",
         )
+    serving = _require_serving_evidence(receipt)
     payload = {
         "schema": LIVE_EVIDENCE_SCHEMA,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -1697,6 +1846,7 @@ def freeze_live_evidence(
         "call_counters": dict(receipt.call_counters),
         "source_identity": dict(receipt.source_identity),
         "disposition": derived,
+        "serving": serving,
         "sections": dict(sections),
         "persistent_config_false_false": True,
     }

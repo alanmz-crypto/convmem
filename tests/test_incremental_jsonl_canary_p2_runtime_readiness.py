@@ -30,9 +30,11 @@ from incremental_jsonl_canary import (
     simulate_pure_append,
     validate_grant,
 )
+from incremental_jsonl import IncrementalJsonlError
 from incremental_jsonl_canary_p2 import (
     FAULT_STAGE,
     LIVE_EVIDENCE_NAME,
+    REQUIRED_SERVING_STAGES,
     ZERO_DIGEST,
     _persist_receipt,
     _source_immutability_token,
@@ -54,6 +56,7 @@ from incremental_jsonl_canary_p2 import (
     run_live_t3,
     run_live_t4,
     run_live_t5,
+    serving_observation_from_timeline,
     stage_receipt_path,
     validate_p2_live_grant,
 )
@@ -655,7 +658,31 @@ def test_c7_launcher_preflight_stdout_only(tmp_path: Path) -> None:
     assert report["hermetic"] is False
 
 
-def _forge_t6_receipt(grant, digest, *, faults=None, appends=None, dispositions=None, next_stage="t6-evidence-frozen"):
+def _stable_serving_timeline() -> list[dict]:
+    return [
+        {"monotonic_s": 1.0, "summary": 1, "unit": 1, "mixed": False, "error": None},
+        {"monotonic_s": 1.1, "summary": 1, "unit": 1, "mixed": False, "error": None},
+        {"monotonic_s": 1.2, "summary": 1, "unit": 1, "mixed": False, "error": None},
+    ]
+
+
+def _complete_serving_observations() -> list[dict]:
+    return [
+        serving_observation_from_timeline(stage, _stable_serving_timeline())
+        for stage in REQUIRED_SERVING_STAGES
+    ]
+
+
+def _forge_t6_receipt(
+    grant,
+    digest,
+    *,
+    faults=None,
+    appends=None,
+    dispositions=None,
+    next_stage="t6-evidence-frozen",
+    serving=None,
+):
     receipt = load_stage_receipt(grant)
     receipt.grant_digest = digest
     receipt.next_stage = next_stage
@@ -663,6 +690,9 @@ def _forge_t6_receipt(grant, digest, *, faults=None, appends=None, dispositions=
     receipt.append_identities = list(appends or ["append-one"])
     receipt.recovery_dispositions = list(dispositions or (["restored"] * 5))
     receipt.capsule_digest = "a" * 64
+    receipt.serving_observations = (
+        list(serving) if serving is not None else _complete_serving_observations()
+    )
     _persist_receipt(grant, receipt)
     return receipt
 
@@ -734,6 +764,9 @@ def test_b1_freeze_derives_disposition(tmp_path: Path) -> None:
     assert payload["hermetic"] is False
     assert set(payload["faults_completed"]) == set(FAULT_STAGE)
     assert payload["append_receipts"]
+    assert payload["serving"]["observations"]
+    assert "mixed_s" in payload["serving"]
+    assert "recovery_s" in payload["serving"]
     assert digest
 
 
@@ -1267,6 +1300,106 @@ def test_r4_documented_sequence_prepare_through_t6(tmp_path: Path) -> None:
     evidence = Path(fx["grant"].evidence_dir) / LIVE_EVIDENCE_NAME
     payload = json.loads(evidence.read_text(encoding="utf-8"))
     assert payload["disposition"] in {"restored", "recovery_unproven"}
+    assert payload["disposition"] != "converged"
     assert set(payload["faults_completed"]) == set(FAULT_STAGE)
     assert len(payload["append_receipts"]) == 2
+    serving = payload["serving"]
+    assert [item["stage"] for item in serving["observations"]] == list(REQUIRED_SERVING_STAGES)
+    for item in serving["observations"]:
+        assert item["timeline"]
+        assert "mixed_s" in item
+        assert "recovery_s" in item
+    assert serving["mixed_s"] >= 0
+    assert serving["recovery_s"] >= 0
     assert digest
+
+
+def _prepared_live_fixture(tmp_path: Path, *, messages: int = 61):
+    fx = build_p2_v2_fixture(tmp_path, messages=messages)
+    report = gate0_preflight_live(
+        fx["grant"],
+        fx["boundary"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    prepare_live_p2(
+        fx["boundary"],
+        fx["grant"],
+        expected_sha256=fx["digest"],
+        code_revision=current_code_revision(),
+        hooks=live_gate0_hooks_pass(),
+    )
+    return fx, report
+
+
+def test_c2_converged_disposition_is_refused(tmp_path: Path) -> None:
+    fx, report = _prepared_live_fixture(tmp_path)
+    _forge_t6_receipt(fx["grant"], fx["digest"], dispositions=["converged"] * 5)
+    with pytest.raises(CanaryRefused, match="unknown recovery disposition"):
+        freeze_live_evidence(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            gate0_report=report,
+            sections={},
+        )
+
+
+def test_c3_missing_timeline_fails_closed(tmp_path: Path) -> None:
+    fx, report = _prepared_live_fixture(tmp_path)
+    _forge_t6_receipt(fx["grant"], fx["digest"], serving=[])
+    with pytest.raises(CanaryRefused, match="canary_serving_evidence"):
+        freeze_live_evidence(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            gate0_report=report,
+            sections={},
+        )
+
+
+def test_c3_malformed_timeline_fails_closed(tmp_path: Path) -> None:
+    fx, report = _prepared_live_fixture(tmp_path)
+    malformed = _complete_serving_observations()
+    malformed[0] = dict(malformed[0])
+    malformed[0]["timeline"] = [{"monotonic_s": 1.0}]
+    _forge_t6_receipt(fx["grant"], fx["digest"], serving=malformed)
+    with pytest.raises(CanaryRefused, match="canary_serving_evidence"):
+        freeze_live_evidence(
+            fx["boundary"],
+            fx["grant"],
+            expected_sha256=fx["digest"],
+            gate0_report=report,
+            sections={},
+        )
+
+
+def test_c4_dedupe_outside_granted_role_refused_before_mutation(tmp_path: Path) -> None:
+    fx, _report = _prepared_live_fixture(tmp_path)
+    coordinator = canary_coordinator(fx["boundary"], fx["grant"].source.path)
+    outside = Path(fx["boundary"].layout["chroma"]) / "nested-escape"
+    outside.mkdir(parents=True, exist_ok=True)
+    os.chmod(outside, 0o755)
+    before_mode = stat.S_IMODE(outside.stat().st_mode)
+    sentinel = outside / "untouched"
+    sentinel.write_text("keep", encoding="utf-8")
+    coordinator.cfg["index"]["chroma_dir"] = str(outside)
+    with pytest.raises((IncrementalJsonlError, CanaryRefused), match="outside granted role|canary_boundary"):
+        coordinator._restore_dedupe_files(  # pylint: disable=protected-access
+            {"dedupe_queue.jsonl": "sneaky\n", "ingest_duplicate_suppressions.jsonl": None}
+        )
+    assert stat.S_IMODE(outside.stat().st_mode) == before_mode
+    assert sentinel.read_text(encoding="utf-8") == "keep"
+    assert not (outside / "dedupe_queue.jsonl").exists()
+
+
+def test_c4_valid_exact_role_restore_still_succeeds(tmp_path: Path) -> None:
+    fx, _report = _prepared_live_fixture(tmp_path)
+    coordinator = canary_coordinator(fx["boundary"], fx["grant"].source.path)
+    granted = Path(fx["boundary"].layout["dedupe"]) / "dedupe_queue.jsonl"
+    granted.write_text("keep-me\n", encoding="utf-8")
+    snapshot = coordinator._snapshot_before_images()  # pylint: disable=protected-access
+    granted.write_text("tampered\n", encoding="utf-8")
+    coordinator._restore_before_images(snapshot)  # pylint: disable=protected-access
+    assert granted.read_text(encoding="utf-8") == "keep-me\n"

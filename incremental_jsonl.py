@@ -45,6 +45,7 @@ CHECKPOINT_VERSION = 1
 TRANSACTION_VERSION = 1
 PREPARED_VERSION = 1
 ROLLBACK_VERSION = 1
+DEDUPE_FILENAMES = ("dedupe_queue.jsonl", "ingest_duplicate_suppressions.jsonl")
 CONTINUITY_REASONS = (
     "initial_full",
     "source_identity_changed",
@@ -914,14 +915,44 @@ class IncrementalJsonlCoordinator:
                 captured[child.name] = child.read_text(encoding="utf-8")
         return captured
 
+    def _require_granted_path(self, path: Path | str, *, label: str) -> Path:
+        try:
+            return self.boundary.resolve_mutable(path, label=label)
+        except IsolationViolation as exc:
+            raise IncrementalJsonlError(
+                "recovery_unproven",
+                f"{label} outside granted role",
+            ) from exc
+
+    def _granted_dedupe_paths(self) -> dict[str, Path]:
+        layout = getattr(self.boundary, "layout", None)
+        if not isinstance(layout, dict) or "dedupe" not in layout:
+            raise IncrementalJsonlError("recovery_unproven", "dedupe role missing from boundary")
+        granted = self._require_granted_path(layout["dedupe"], label="dedupe role")
+        paths: dict[str, Path] = {}
+        for name in DEDUPE_FILENAMES:
+            candidate = granted if granted.name == name else granted / name
+            paths[name] = self._require_granted_path(candidate, label=f"dedupe {name}")
+        return paths
+
+    def _dedupe_restore_paths(self) -> dict[str, Path]:
+        granted = self._granted_dedupe_paths()
+        chroma = self._require_granted_path(self.cfg["index"]["chroma_dir"], label="chroma")
+        for name, path in granted.items():
+            derived = self._require_granted_path(
+                chroma.parent / name,
+                label=f"dedupe derived {name}",
+            )
+            if derived != path:
+                raise IncrementalJsonlError(
+                    "recovery_unproven",
+                    f"dedupe location outside granted role: {derived}",
+                )
+        return granted
+
     def _capture_dedupe_files(self) -> dict[str, str | None]:
-        data_dir = Path(self.cfg["index"]["chroma_dir"]).expanduser().parent
-        return {
-            "dedupe_queue.jsonl": self._file_preimage(data_dir / "dedupe_queue.jsonl"),
-            "ingest_duplicate_suppressions.jsonl": self._file_preimage(
-                data_dir / "ingest_duplicate_suppressions.jsonl"
-            ),
-        }
+        paths = self._dedupe_restore_paths()
+        return {name: self._file_preimage(path) for name, path in paths.items()}
 
     def _restore_file_preimage(self, path: Path, payload: str | None) -> None:
         if payload is None:
@@ -965,11 +996,11 @@ class IncrementalJsonlCoordinator:
     def _restore_dedupe_files(self, dedupe_files: dict | None) -> None:
         if not dedupe_files:
             return
-        data_dir = Path(self.cfg["index"]["chroma_dir"]).expanduser().parent
-        for name in ("dedupe_queue.jsonl", "ingest_duplicate_suppressions.jsonl"):
+        paths = self._dedupe_restore_paths()
+        for name in DEDUPE_FILENAMES:
             if name not in dedupe_files:
                 continue
-            self._restore_file_preimage(data_dir / name, dedupe_files[name])
+            self._restore_file_preimage(paths[name], dedupe_files[name])
 
     def _restore_before_images(self, rollback: dict) -> None:
         if rollback.get("version") != ROLLBACK_VERSION:
