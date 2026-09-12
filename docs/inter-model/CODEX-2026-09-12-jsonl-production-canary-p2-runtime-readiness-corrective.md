@@ -1,9 +1,13 @@
 # Implementation Handoff: Make the P2 canary safe to run against exact resources
 
-**Arc: Codex**  
-**Date:** 2026-09-12  
-**Author:** Codex planning lane  
-**For:** Kiro design review, then Cursor implementation only after a separate Ryan grant  
+**Arc: Codex**
+
+**Date:** 2026-09-12
+
+**Author:** Codex planning lane
+
+**For:** Kiro design review, then Cursor implementation only after a separate Ryan grant
+
 **Authorization:** Ryan, 2026-09-12 — continue corrective documentation on a separate branch without changing the frozen review target
 
 This packet authorizes review only. It does not authorize implementation, Gate
