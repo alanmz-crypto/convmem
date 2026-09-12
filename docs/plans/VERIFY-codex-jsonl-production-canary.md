@@ -491,18 +491,95 @@ python3 scripts/pylint_regression_gate.py ci \
 | R1 | PASS | `test_r1_one_ulp_embedding_is_restored`, `test_r1_adversarial_mismatches_stay_unproven`, `test_r2_restored_path_does_not_claim_zero_replay` — genuine `restored`; 2-ULP/id/document/metadata/digest mismatches stay `recovery_unproven` |
 | R2 | PASS | `test_r2_restored_path_does_not_claim_zero_replay` — restored path does not call `_replay_zero`; `replay_outcome` is None |
 | R3 | PASS | `test_r3_gate0_passes_after_prepare_and_fails_on_mutation` — Gate 0 passes after prepare; capsule digest and overlay identity mutations fail closed |
-| R4 | PASS | `test_r4_launcher_bind_stage_is_separately_invoked`, `test_r4_documented_sequence_prepare_through_t6` — `t5-bind-append` / `t5-bind`; full prepare→T3→append→T4→bind→five T5 faults→T6 freeze without hand-edited receipts; `p2-all` still refused |
+| R4 | PASS | `test_r4_launcher_bind_stage_is_separately_invoked`, `test_r4_documented_sequence_prepare_through_t6` — `t5-bind-append` / `t5-bind`; full prepare→T3→append→T4→bind→five T5 faults→T6 freeze without hand-edited receipts; proves **at least one** `restored`, not all five; `p2-all` still refused |
 
 ### Stop state
 
-Pushed feature tip after this evidence commit is ready for **local Claude re-review**. Do not route to Kiro. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
+Pushed feature tip `4acb4c54fe0b332a73cc6c5dea343d6391527806` was the R1–R4
+evidence commit. Kiro returned CONDITIONAL PASS (C1–C4). That SHA is preserved.
+
+## P2 C1–C4 Kiro-condition corrective
+
+**Who:** Cursor Execute on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness`, addressing Kiro CONDITIONAL PASS at preserved `4acb4c54fe0b332a73cc6c5dea343d6391527806`.
+
+**What:** Close four review conditions so the exact-resource P2 runtime can receive an unconditional exact-tip PASS: honest restoration claims, eliminate `converged`, freeze serving timeline/durations, and route dedupe restore through the granted role.
+
+**When:** 2026-09-12, additive commits on the same branch. Conditional-PASS revision `4acb4c5` was not amended, rebased, or rewritten.
+
+**Why:** The suite does not prove all five faults restore; freeze still had an unreachable `converged` branch; frozen evidence omitted the serving-read timeline required by Architecture §11 and EXECUTION P2-T6; dedupe capture/restore used `chroma_dir.parent` without an exact-role check.
+
+**How:** Implementation commit `bd02a4f81da6076fd64c465e4a874a5174429e39`. This evidence commit is the exact tip for Kiro recheck. No Claude re-review.
+
+Honest restoration contract: the hermetic documented sequence proves **at least one** of the five faults yields `restored`. Other faults may yield fail-closed `recovery_unproven`. Freeze derives `restored` only when every observed fault restored; mixed or all-unproven observations derive `recovery_unproven`. This VERIFY does **not** claim all five restore.
+
+Implemented live disposition contract is `restored | recovery_unproven`. The unreachable `converged` freeze branch is removed; recording `converged` as an observed disposition fails closed.
+
+Serving evidence: T3, T4, and each T5 fault record a bounded serving-read timeline (≤32 samples/stage) plus mixed/recovery durations derived from those samples. Freeze refuses missing or malformed timelines.
+
+Dedupe C4: capture/restore resolve the granted `dedupe` role through `boundary.resolve_mutable` and refuse a chroma-derived location that is not that exact role **before** any write or chmod. Watch/ingest/isolation hashes are unchanged. `incremental_jsonl.py` hash is `048a895394629f55fa2c2b0af2f00c9844a9038268899a85eadd97c7d4d88cfe` because C4 changed only that rollback path.
+
+### Negative confirmation
+
+No live source, production Chroma, processed/export/locks, provider/network call, watcher start/stop, config edit, indexing, Gate 0 against live resources, live P2 run, replacement grant/digest, PR, merge, or activation occurred. No systemd operation. Worktree remained hermetic.
+
+### Commands and counts
+
+```bash
+python3 -m pytest \
+  tests/test_incremental_jsonl_canary_baseline.py \
+  tests/test_incremental_jsonl_canary_grant.py \
+  tests/test_incremental_jsonl_canary_operations.py \
+  tests/test_incremental_jsonl_canary_serving.py \
+  tests/test_incremental_jsonl_canary_p2_corrective.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py \
+  tests/test_incremental_jsonl_config.py \
+  tests/test_incremental_jsonl_isolation.py \
+  tests/test_incremental_jsonl_state.py \
+  -q
+```
+
+Result: **196 passed** (190 prior focused suite + 6 C1–C4 regressions).
+
+```bash
+python3 -m compileall -q incremental_jsonl.py incremental_jsonl_canary_p2.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py \
+  tests/test_incremental_jsonl_state.py \
+  tests/test_incremental_jsonl_canary_baseline.py
+git diff --check
+python3 -m pylint incremental_jsonl.py incremental_jsonl_canary_p2.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py \
+  tests/test_incremental_jsonl_state.py \
+  tests/test_incremental_jsonl_canary_baseline.py
+python3 -m pylint $(git ls-files "*.py") --output-format=json > pylint-report.json
+python3 scripts/pylint_regression_gate.py ci \
+  --report pylint-report.json \
+  --pylint-status 30 \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref origin/main
+```
+
+`compileall`: PASS. `git diff --check`: clean. Scoped pylint: **10.00/10**. `pylint_regression_gate.py ci`: **PASS** (459 findings, 243 fingerprints; no new/increased vs `origin/main` `7360a04`).
+
+### Mapping
+
+| ID | Result | Evidence |
+|---|---|---|
+| C1 | PASS | VERIFY/STATUS state at least one fault `restored`; other faults may be `recovery_unproven`; `test_r4_documented_sequence_prepare_through_t6` asserts `"restored" in dispositions` and does not require all five |
+| C2 | PASS | `test_c2_converged_disposition_is_refused` — live freeze contract is `restored \| recovery_unproven`; `converged` is refused |
+| C3 | PASS | `test_r4_documented_sequence_prepare_through_t6`, `test_b1_freeze_derives_disposition`, `test_c3_missing_timeline_fails_closed`, `test_c3_malformed_timeline_fails_closed` — frozen evidence carries bounded serving timeline and derived mixed/recovery durations; missing/malformed fail closed |
+| C4 | PASS | `test_c4_dedupe_outside_granted_role_refused_before_mutation`, `test_c4_isolation_dedupe_outside_role_refused_before_chmod`, `test_c4_valid_exact_role_restore_still_succeeds`, `test_restore_rewinds_processed_checkpoint_and_state` — out-of-role refused before write/chmod; granted-role restore still succeeds |
+
+### Stop state
+
+Pushed feature tip after this evidence commit is ready for **Kiro targeted exact-tip recheck**. No Claude re-review. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
 
 ## TL;DR
 
 P1 hermetic canary harness is on `main` via PR #296 (`907c828`). The P2 transfer
 seam is on `main` via PR #299 (`8beda7d`). Preserved Claude FAILs: runtime-readiness
-`5bdc132` and live-safety `a47f32b`. The R1–R4 sequence-completeness corrective is
-on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` and awaits local Claude
-re-review. Live P2 run, grant digest issuance, PR, and activation remain
-Ryan-gated.
+`5bdc132` and live-safety `a47f32b`. Kiro CONDITIONAL PASS at preserved `4acb4c5`.
+The C1–C4 corrective is on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` and
+awaits Kiro exact-tip recheck. The suite proves at least one fault `restored`;
+it does not claim all five restore. Live P2 run, grant digest issuance, PR, and
+activation remain Ryan-gated.
 

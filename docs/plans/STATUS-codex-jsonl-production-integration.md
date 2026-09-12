@@ -67,7 +67,7 @@ Key invariants:
 
 | Surface | Current state |
 |---|---|
-| `incremental_jsonl.py` | Production coordinator on `main` via PR #293; this branch adds rollback-only capture/restore of processed, checkpoint/state, prepared, and dedupe files. Default-off. Live enable without `CONVMEM_INCREMENTAL_ROOT` fail-closed skips rather than writing. |
+| `incremental_jsonl.py` | Production coordinator on `main` via PR #293; this branch adds rollback-only capture/restore of processed, checkpoint/state, prepared, and dedupe files, with C4 routing dedupe through `boundary.resolve_mutable`. Default-off. Live enable without `CONVMEM_INCREMENTAL_ROOT` fail-closed skips rather than writing. |
 | `ingest.py` | Build/commit split; default-off dispatch after detect; content-addressed UUID4 ingest assertion IDs |
 | `adapters/kiro_session_jsonl.py` | `parse()` unchanged; `parse_complete_prefix()` adds byte ranges |
 | `config.py` / `config.example.toml` | `[index.incremental_jsonl]` absent/false by default |
@@ -75,14 +75,14 @@ Key invariants:
 | `watch.py` | Unchanged; still `convmem index --file` |
 | `incremental_jsonl_isolation.py` | Hermetic T0 boundary; `-I` workers get host site via `CONVMEM_INCREMENTAL_SITE` |
 | `incremental_jsonl_canary.py` | P1 harness plus v1 hermetic P2 fixture on `main`; live P2 now fails closed on v1 after the runtime-readiness corrective |
-| `incremental_jsonl_canary_p2.py` | Production-owned `p2-exact-resource-v2` runtime; R1–R4 corrective after Claude FAIL at `a47f32b` |
+| `incremental_jsonl_canary_p2.py` | Production-owned `p2-exact-resource-v2` runtime; R1–R4 then C1–C4 after Kiro CONDITIONAL PASS at `4acb4c5` |
 | `incremental_jsonl_canary_network.py` | Loopback-allowing, fail-closed network policy shared by Gate 0 and the live worker |
 | `incremental_jsonl_canary_live_worker.py` | Live worker; installs network/service denial before provider imports; `t5-bind` binds the second append before T5 |
 | `scripts/run-jsonl-production-canary.py` | Explicit P1/P2 launcher; live P2 is one-stage only; `--stage t5-bind-append` binds the second append; `p2-all` is refused |
 | `chroma_readonly.py` | Extended with source-path counts for Gate 0; still SQLite `mode=ro` |
 | `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` | Kiro-reviewed canary architecture; PASS at `8b48a39` via PR #295 |
 | `docs/plans/EXECUTION-codex-jsonl-production-canary.md` | Two-grant P1/P2 plan merged via PR #295 |
-| `docs/plans/VERIFY-codex-jsonl-production-canary.md` | P1, hermetic P2-corrective, runtime-readiness, live-safety, and R1–R4 evidence; next lane is local Claude re-review |
+| `docs/plans/VERIFY-codex-jsonl-production-canary.md` | P1, hermetic P2-corrective, runtime-readiness, live-safety, R1–R4, and C1–C4 evidence; next lane is Kiro exact-tip recheck |
 | `docs/plans/VERIFY-codex-jsonl-production-integration.md` | Cursor T0–T6 evidence |
 | Scratch prototype + canary on `main` | Unchanged inherited evidence |
 
@@ -94,7 +94,8 @@ PASS at final head `fe0086c` and six green CI checks. The merged runner at
 `7360a04` was not live-safe. Cursor implemented the Kiro-PASSed C0–C7
 runtime-readiness corrective on
 `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` from that `origin/main`
-base. Local Claude FAIL at preserved tip `5bdc132`; the live-safety
+base. Local Claude FAIL at preserved tip `5bdc132`; live-safety FAIL at
+preserved `a47f32b`; Kiro CONDITIONAL PASS at preserved `4acb4c5`. The C1–C4
 corrective is the later commit on the same branch. No live grant, digest,
 Gate 0, P2 run, or activation exists.
 
@@ -115,20 +116,20 @@ Gate 0, P2 run, or activation exists.
 | P2 transfer seam corrective | **DONE on `main`** via PR #299 (`8beda7d`); Kiro PASS at final head `fe0086c`, six CI checks green | — |
 | P2 runtime-readiness corrective | **CLAUDE_FAIL** at preserved `5bdc132` | Live-safety corrective on the same branch |
 | P2 live-safety corrective | **CLAUDE_FAIL** at preserved `a47f32b` | R1–R4 sequence-completeness corrective on the same branch |
-| P2 R1–R4 sequence corrective | **READY_FOR_CLAUDE_REREVIEW** on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` | Local Claude re-review of the new tip; do not route to Kiro; no PR |
+| P2 R1–R4 sequence corrective | **KIRO_CONDITIONAL_PASS** at preserved `4acb4c5` | C1–C4 exact-tip corrective on the same branch |
+| P2 C1–C4 Kiro-condition corrective | **READY_FOR_KIRO_RECHECK** on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` | Kiro targeted exact-tip recheck; no Claude re-review; no PR |
 | P2 exact-resource grant packet | **UNAUTHORIZED / MUST NOT REUSE** candidate digest `c002385ee2e72e319ddcce2ab5d024c29abbe0031b86cbb26468cb604ee8c621` | Corrective merge + remasured source + fresh packet + Kiro review + Ryan exact-digest authorization |
 | P2 one-source live canary | **UNAUTHORIZED**; no executable grant digest | Fresh packet + Kiro review + Ryan exact-digest authorization + twelve-part Gate 0 |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
 ## 5. Your Role
 
-**If Ryan sent you to review this R1–R4 corrective:** you are local
-Claude. Re-review the exact pushed tip of
-`feat/2026-09-12-codex-jsonl-p2-runtime-readiness` against the FAIL at
-`a47f32b`. Do not route to Kiro. Authorize nothing operationally.
+**If Ryan sent you for exact-tip Kiro review:** recheck the exact pushed tip
+of `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` against the CONDITIONAL
+PASS at preserved `4acb4c5`. No Claude re-review. Authorize nothing operationally.
 
-**If Ryan sent you for exact-tip Kiro review:** stop. Kiro waits until local
-Claude PASSes this corrective.
+**If Ryan sent you to implement further code:** stop unless Ryan names new
+review conditions after this C1–C4 tip.
 
 **If Ryan sent you to prepare a replacement grant packet:** stop until this
 corrective is reviewed and, if Ryan chooses, merged. The previous candidate
@@ -140,8 +141,8 @@ merges. Implementation on this branch does not authorize live operations.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Local Claude re-reviews the exact R1–R4 tip. Do not route to Kiro yet.
-2. If Claude PASSes, Kiro reviews that same tip; Ryan separately decides PR/merge.
+1. Kiro rechecks the exact C1–C4 tip. No Claude re-review.
+2. If Kiro PASSes unconditionally, Ryan separately decides PR/merge.
 3. After merge, revalidate the still-closed source; if it remains eligible,
    freeze every remaining grant field into a **new** packet and digest.
 4. Kiro reviews that packet; Ryan may then authorize its exact digest and
@@ -243,6 +244,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-12 | Cursor | Implemented Kiro-PASSed P2 runtime-readiness C0–C7 on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness`; next lane is exact-tip Kiro review. No PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | Live-safety corrective after local Claude FAIL at preserved `5bdc132`; next lane is local Claude re-review. No Kiro, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | R1–R4 sequence-completeness corrective after Claude FAIL at preserved `a47f32b`; next lane is local Claude re-review. No Kiro, PR, live Gate 0/P2, or replacement grant |
+| 2026-09-12 | Cursor | C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`; next lane is exact-tip Kiro recheck. No Claude, PR, live Gate 0/P2, or replacement grant |
 
 ## TL;DR
 
@@ -253,6 +255,7 @@ Keep this document a current-state snapshot, not a session diary.
 - The positive exact-resource P2 seam is on `main` via PR #299 (`8beda7d`)
   after Kiro PASS and green CI, but that runtime was not live-safe.
 - Cursor implemented the C0–C7 runtime-readiness corrective, a live-safety
-  pass after Claude FAIL at `5bdc132`, then R1–R4 after Claude FAIL at
-  preserved `a47f32b`. Next lane is local Claude re-review of the new tip.
-  No Kiro, PR, live Gate 0/P2, grant digest, or activation.
+  pass after Claude FAIL at `5bdc132`, R1–R4 after Claude FAIL at preserved
+  `a47f32b`, then C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`.
+  Next lane is Kiro exact-tip recheck of the new tip. No Claude, PR, live
+  Gate 0/P2, grant digest, or activation.
