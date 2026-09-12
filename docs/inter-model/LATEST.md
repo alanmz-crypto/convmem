@@ -18,7 +18,7 @@ cross-arc snapshot and the linked arc brief below.
   (`8beda7d`) after Kiro PASS at final head `fe0086c` and six green CI checks.
   Ryan authorized read-only P2-T1 preparation on 2026-09-12. Codex re-froze
   the closed source at 68 accepted messages and prepared exact candidate grant
-  digest `6022294b…e4343` against runtime `7360a04`. The candidate has no
+  digest `c002385e…8c621` against runtime `7360a04`. The candidate has no
   authority and now awaits fresh Kiro review. Gate 0, live P2, production
   access, provider calls, config changes, indexing, watcher work, and
   activation remain unauthorized. Review

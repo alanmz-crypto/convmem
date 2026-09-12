@@ -25,7 +25,7 @@ for fresh Kiro review
 |---|---|
 | State | `READY_FOR_KIRO_REVIEW` |
 | Reviewed runtime base | `7360a04e1e8154eca76eddf72c492251ae830c0f` on merged `main` |
-| Candidate grant SHA-256 | `6022294bb8c00375346fad55f27c8251bd60e58a850a6686484b7fefdd9e4343` |
+| Candidate grant SHA-256 | `c002385ee2e72e319ddcce2ab5d024c29abbe0031b86cbb26468cb604ee8c621` |
 | Grant authority | **None** — candidate digest is review-only |
 | Next decision | Kiro PASS/FAIL on this exact packet and merged runtime revision |
 | After PASS | Ryan alone decides whether to authorize this exact digest and non-mutating Gate 0 |
@@ -61,7 +61,7 @@ therefore remains 68.
 | Complete-prefix SHA-256 | `dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741` |
 | Metadata | `/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_2628159e-d039-4646-a208-0a10a1b3e450/session.json` |
 | Metadata device / inode / size | `66306` / `23605861` / `1272` bytes |
-| Metadata SHA-256 | `68ef7b750290655f00438125e5b3d38bb3ea65d342372acce6e0369c263c662` |
+| Metadata SHA-256 | `68ef7b750290655ef00438125e5b3d38bb3ea65d342372acce6e0369c263c662` |
 | Quiescence | metadata status `idle`; no open file handles; more than 24 hours unchanged at freeze time |
 | Publish cursor | `225091:216`; byte position equals the frozen source EOF |
 
@@ -202,7 +202,7 @@ authorized by the packet-preparation grant.
     "size": 225091,
     "complete_boundary": 225091,
     "prefix_sha256": "dfea479e48e0ec3d934f3d41aa350365c746e3beaaa692a790d2fe6c1a732741",
-    "metadata_sha256": "68ef7b750290655f00438125e5b3d38bb3ea65d342372acce6e0369c263c662"
+    "metadata_sha256": "68ef7b750290655ef00438125e5b3d38bb3ea65d342372acce6e0369c263c662"
   },
   "append_envelope": {
     "max_byte_boundary": 356163,
@@ -329,7 +329,7 @@ The digest is computed over UTF-8 canonical JSON using
 `CanaryGrant.digest_payload()` does at revision `7360a04`.
 
 **Candidate grant SHA-256:**
-`6022294bb8c00375346fad55f27c8251bd60e58a850a6686484b7fefdd9e4343`
+`c002385ee2e72e319ddcce2ab5d024c29abbe0031b86cbb26468cb604ee8c621`
 
 ## Kiro review request
 
@@ -350,7 +350,7 @@ revision `7360a04e1e8154eca76eddf72c492251ae830c0f`. In particular, verify:
 
 A PASS authorizes nothing by itself. After PASS, Ryan decides whether to
 authorize exactly
-`6022294bb8c00375346fad55f27c8251bd60e58a850a6686484b7fefdd9e4343`
+`c002385ee2e72e319ddcce2ab5d024c29abbe0031b86cbb26468cb604ee8c621`
 and the non-mutating twelve-part Gate 0. P2-T3–T6 still require later,
 separately explicit run authority.
 
@@ -386,6 +386,6 @@ This preparation did not and does not authorize:
 - The complete review candidate binds runtime `7360a04`, all eleven resource
   roles, models, caps, faults, rollback/backup expectations, expiry, and nonce.
 - Candidate digest:
-  `6022294bb8c00375346fad55f27c8251bd60e58a850a6686484b7fefdd9e4343`.
+  `c002385ee2e72e319ddcce2ab5d024c29abbe0031b86cbb26468cb604ee8c621`.
 - Stop for Kiro. No digest authority, Gate 0, P2, production access, PR, or
   activation exists.

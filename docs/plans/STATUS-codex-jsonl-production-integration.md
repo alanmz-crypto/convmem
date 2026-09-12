@@ -93,7 +93,7 @@ provider, P2 run, or activation exists.
 
 Ryan authorized read-only P2-T1 packet preparation on 2026-09-12. The closed
 source was re-frozen at 68 accepted messages, and candidate grant digest
-`6022294bb8c00375346fad55f27c8251bd60e58a850a6686484b7fefdd9e4343`
+`c002385ee2e72e319ddcce2ab5d024c29abbe0031b86cbb26468cb604ee8c621`
 was prepared against runtime `7360a04`. It is review-only pending fresh Kiro
 PASS and a later Ryan decision; Gate 0 and all operational actions remain
 unauthorized.
@@ -113,7 +113,7 @@ unauthorized.
 | Production-canary architecture/plan | **DONE on `main`** via PR #295 (`b23cabad`); Kiro PASS at `8b48a39` | — |
 | P1 hermetic canary harness | **DONE on `main`** via PR #296 (`907c828`); Kiro PASS at final head `40b8c11`, six CI checks green, 128 focused tests PASS | — |
 | P2 transfer seam corrective | **DONE on `main`** via PR #299 (`8beda7d`); Kiro PASS at final head `fe0086c`, six CI checks green | — |
-| P2 exact-resource grant packet | **READY FOR KIRO REVIEW**; candidate digest `6022294b…e4343`, no authority | Fresh Kiro review of the exact packet and runtime `7360a04` |
+| P2 exact-resource grant packet | **READY FOR KIRO REVIEW**; candidate digest `c002385e…8c621`, no authority | Fresh Kiro review of the exact packet and runtime `7360a04` |
 | P2 one-source live canary | **UNAUTHORIZED**; candidate digest is not executable authority | Kiro PASS + Ryan exact-digest/Gate 0 decision + later separate P2-T3–T6 run grant |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
 
@@ -121,7 +121,7 @@ unauthorized.
 
 **If Ryan sent you to review the P2 grant packet:** you are Kiro. Review
 `docs/inter-model/CODEX-2026-09-12-jsonl-production-canary-p2-t1-grant-packet.md`
-against runtime `7360a04`, recompute candidate digest `6022294b…e4343`, and
+against runtime `7360a04`, recompute candidate digest `c002385e…8c621`, and
 issue PASS or FAIL. Pay particular attention to rollback-capsule and Gate 0
 backup/model enforcement. Do not run Gate 0, access production data, create
 the machine-local grant, or treat review as operational authority.
@@ -233,7 +233,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-11 | Cursor | P2 corrective implementation complete; Kiro evidence gaps corrected; awaiting exact-tip recheck |
 | 2026-09-11 | Cursor | Applied Kiro lint/evidence corrections; scoped pylint and regression gate green; awaiting narrow delta recheck |
 | 2026-09-11 | Codex | Recorded Kiro PASS at final PR #299 head `fe0086c` and Ryan's squash merge of the disabled P2 transfer seam as `8beda7d`; grant preparation, Gate 0, live P2, and activation remain separately gated |
-| 2026-09-12 | Codex | Re-froze the closed 68-message source and prepared exact P2-T1 candidate digest `6022294b…e4343`; stopped for Kiro review with Gate 0 and live P2 unauthorized |
+| 2026-09-12 | Codex | Re-froze the closed 68-message source and prepared exact P2-T1 candidate digest `c002385e…8c621`; stopped for Kiro review with Gate 0 and live P2 unauthorized |
 
 ## TL;DR
 
@@ -243,5 +243,5 @@ Keep this document a current-state snapshot, not a session diary.
   hermetic harness merged via PR #296 (`907c828`) after Kiro PASS and green CI.
 - The positive exact-resource P2 seam is on `main` via PR #299 (`8beda7d`)
   after Kiro PASS and green CI.
-- Exact P2-T1 candidate digest `6022294b…e4343` is ready for fresh Kiro review;
+- Exact P2-T1 candidate digest `c002385e…8c621` is ready for fresh Kiro review;
   it has no authority. Gate 0, live P2, and activation remain separately gated.
