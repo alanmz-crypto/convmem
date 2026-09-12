@@ -35,7 +35,7 @@ activation against the live corpus is forbidden for this verification slice.
 | `convmem.py:491` | `production_chroma_write_session` |
 | `convmem.py:656` | `production_chroma_write_session` |
 | `convmem.py:1718` | `production_chroma_write_session` |
-| `incremental_jsonl.py:500` | `production_chroma_write_session` |
+| `incremental_jsonl.py:501` | `production_chroma_write_session` |
 | `ingest.py:637` | `production_chroma_write_session` |
 | `ingest.py:1117` | `production_chroma_write_session` |
 | `ingest.py:1155` | `production_chroma_write_session` |
