@@ -75,14 +75,14 @@ Key invariants:
 | `watch.py` | Unchanged; still `convmem index --file` |
 | `incremental_jsonl_isolation.py` | Hermetic T0 boundary; `-I` workers get host site via `CONVMEM_INCREMENTAL_SITE` |
 | `incremental_jsonl_canary.py` | P1 harness plus v1 hermetic P2 fixture on `main`; live P2 now fails closed on v1 after the runtime-readiness corrective |
-| `incremental_jsonl_canary_p2.py` | Production-owned `p2-exact-resource-v2` runtime; R1–R4 then C1–C4 after Kiro CONDITIONAL PASS at `4acb4c5` |
+| `incremental_jsonl_canary_p2.py` | Production-owned `p2-exact-resource-v2` runtime; R1–R4, C1–C4, then a CI overlay-digest Gate 0 corrective after Kiro PASS at preserved `6cb0107` |
 | `incremental_jsonl_canary_network.py` | Loopback-allowing, fail-closed network policy shared by Gate 0 and the live worker |
 | `incremental_jsonl_canary_live_worker.py` | Live worker; installs network/service denial before provider imports; `t5-bind` binds the second append before T5 |
 | `scripts/run-jsonl-production-canary.py` | Explicit P1/P2 launcher; live P2 is one-stage only; `--stage t5-bind-append` binds the second append; `p2-all` is refused |
 | `chroma_readonly.py` | Extended with source-path counts for Gate 0; still SQLite `mode=ro` |
 | `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` | Kiro-reviewed canary architecture; PASS at `8b48a39` via PR #295 |
 | `docs/plans/EXECUTION-codex-jsonl-production-canary.md` | Two-grant P1/P2 plan merged via PR #295 |
-| `docs/plans/VERIFY-codex-jsonl-production-canary.md` | P1, hermetic P2-corrective, runtime-readiness, live-safety, R1–R4, and C1–C4 evidence; next lane is Kiro exact-tip recheck |
+| `docs/plans/VERIFY-codex-jsonl-production-canary.md` | P1, hermetic P2-corrective, runtime-readiness, live-safety, R1–R4, C1–C4, and CI overlay/inventory evidence; next lane is Kiro exact-tip recheck |
 | `docs/plans/VERIFY-codex-jsonl-production-integration.md` | Cursor T0–T6 evidence |
 | Scratch prototype + canary on `main` | Unchanged inherited evidence |
 
@@ -96,8 +96,11 @@ runtime-readiness corrective on
 `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` from that `origin/main`
 base. Local Claude FAIL at preserved tip `5bdc132`; live-safety FAIL at
 preserved `a47f32b`; Kiro CONDITIONAL PASS at preserved `4acb4c5`. The C1–C4
-corrective is the later commit on the same branch. No live grant, digest,
-Gate 0, P2 run, or activation exists.
+corrective Kiro-PASS tip `6cb01076a3c57420d07c2b89bb6df9d4ba1659c8` is a
+preserved ancestor. Repo-wide CI then failed on overlay-inode reuse and
+stale writer inventory. The CI corrective is later commits on the same
+branch and existing PR #301. No live grant, digest, Gate 0, P2 run, or
+activation exists.
 
 ## 4. Completion State
 
@@ -117,7 +120,8 @@ Gate 0, P2 run, or activation exists.
 | P2 runtime-readiness corrective | **CLAUDE_FAIL** at preserved `5bdc132` | Live-safety corrective on the same branch |
 | P2 live-safety corrective | **CLAUDE_FAIL** at preserved `a47f32b` | R1–R4 sequence-completeness corrective on the same branch |
 | P2 R1–R4 sequence corrective | **KIRO_CONDITIONAL_PASS** at preserved `4acb4c5` | C1–C4 exact-tip corrective on the same branch |
-| P2 C1–C4 Kiro-condition corrective | **READY_FOR_KIRO_RECHECK** on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` | Kiro targeted exact-tip recheck; no Claude re-review; no PR |
+| P2 C1–C4 Kiro-condition corrective | **KIRO_PASS** at preserved `6cb0107` | Repo-wide CI then failed; ancestor preserved |
+| P2 CI overlay/inventory corrective | **READY_FOR_KIRO_RECHECK** on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` | Kiro targeted exact-tip recheck of the new tip; existing PR #301; no new PR; no Claude re-review |
 | P2 exact-resource grant packet | **UNAUTHORIZED / MUST NOT REUSE** candidate digest `c002385ee2e72e319ddcce2ab5d024c29abbe0031b86cbb26468cb604ee8c621` | Corrective merge + remasured source + fresh packet + Kiro review + Ryan exact-digest authorization |
 | P2 one-source live canary | **UNAUTHORIZED**; no executable grant digest | Fresh packet + Kiro review + Ryan exact-digest authorization + twelve-part Gate 0 |
 | Watcher/feature activation | **UNAUTHORIZED** | Separate evidence and Ryan decision |
@@ -125,11 +129,14 @@ Gate 0, P2 run, or activation exists.
 ## 5. Your Role
 
 **If Ryan sent you for exact-tip Kiro review:** recheck the exact pushed tip
-of `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` against the CONDITIONAL
-PASS at preserved `4acb4c5`. No Claude re-review. Authorize nothing operationally.
+of `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` after the CI overlay-
+digest and writer-inventory corrective. Preserved ancestor
+`6cb01076a3c57420d07c2b89bb6df9d4ba1659c8` must remain in history. No Claude
+re-review. Authorize nothing operationally. Do not open a new PR; #301 already
+exists.
 
 **If Ryan sent you to implement further code:** stop unless Ryan names new
-review conditions after this C1–C4 tip.
+review conditions after this CI-corrective tip.
 
 **If Ryan sent you to prepare a replacement grant packet:** stop until this
 corrective is reviewed and, if Ryan chooses, merged. The previous candidate
@@ -141,8 +148,9 @@ merges. Implementation on this branch does not authorize live operations.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro rechecks the exact C1–C4 tip. No Claude re-review.
-2. If Kiro PASSes unconditionally, Ryan separately decides PR/merge.
+1. Kiro rechecks the exact CI-corrective tip. No Claude re-review. No new PR.
+2. If Kiro PASSes unconditionally, Ryan separately decides whether to merge
+   existing PR #301.
 3. After merge, revalidate the still-closed source; if it remains eligible,
    freeze every remaining grant field into a **new** packet and digest.
 4. Kiro reviews that packet; Ryan may then authorize its exact digest and
@@ -245,6 +253,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-12 | Cursor | Live-safety corrective after local Claude FAIL at preserved `5bdc132`; next lane is local Claude re-review. No Kiro, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | R1–R4 sequence-completeness corrective after Claude FAIL at preserved `a47f32b`; next lane is local Claude re-review. No Kiro, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`; next lane is exact-tip Kiro recheck. No Claude, PR, live Gate 0/P2, or replacement grant |
+| 2026-09-12 | Cursor | CI overlay-digest and writer-inventory corrective after repo-wide pytest failure on preserved `6cb0107`; next lane is Kiro exact-tip recheck of the new tip. Existing PR #301. No Claude, live Gate 0/P2, or replacement grant |
 
 ## TL;DR
 
@@ -256,6 +265,8 @@ Keep this document a current-state snapshot, not a session diary.
   after Kiro PASS and green CI, but that runtime was not live-safe.
 - Cursor implemented the C0–C7 runtime-readiness corrective, a live-safety
   pass after Claude FAIL at `5bdc132`, R1–R4 after Claude FAIL at preserved
-  `a47f32b`, then C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`.
-  Next lane is Kiro exact-tip recheck of the new tip. No Claude, PR, live
-  Gate 0/P2, grant digest, or activation.
+  `a47f32b`, C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`, then a
+  CI overlay-digest and writer-inventory corrective after repo-wide pytest
+  failed on preserved `6cb0107`. Next lane is Kiro exact-tip recheck of the
+  new tip. Existing PR #301. No Claude, live Gate 0/P2, grant digest, or
+  activation.

@@ -571,15 +571,149 @@ python3 scripts/pylint_regression_gate.py ci \
 
 ### Stop state
 
-Pushed feature tip after this evidence commit is ready for **Kiro targeted exact-tip recheck**. No Claude re-review. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
+Pushed feature tip after this evidence commit was ready for Kiro targeted
+exact-tip recheck. Repo-wide CI then failed on overlay-inode reuse and stale
+writer inventory. That CI corrective is recorded below.
+
+## P2 CI overlay-digest and writer-inventory corrective
+
+**Who:** Cursor Execute on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness`
+and existing PR #301.
+
+**What:** Close the two root causes from GitHub pytest job `103563853581`
+(run `34697675401`): Gate 0 overlay content was not bound, and the governed
+writer inventory drifted.
+
+**When:** 2026-09-12, additive commits after Kiro PASS at preserved
+`6cb01076a3c57420d07c2b89bb6df9d4ba1659c8`. That revision was not amended,
+rebased, or rewritten.
+
+**Why:** `_identity_matches` checked type/uid/mode/device/inode only. CI reused
+the inode after unlink/rewrite, so changed overlay bytes passed Gate 0.
+`jsonl_production_canary` still listed `incremental_jsonl_canary.py:1001` after
+the constructor moved to `:1234`, and the shadow session site still listed
+`incremental_jsonl.py:500` after the call moved to `:501`. Committed R2b
+implementation identity `0ad658b…` no longer matched regenerated `ba7cba8…`.
+
+**How:** Gate 0 now hashes overlay bytes against `grant.config_overlay_digest`
+before prepare and against a durable `overlay_digest` on the stage receipt
+after prepare, while keeping owner/mode/device/inode and symlink checks.
+Source-owned route/shadow sink declarations were updated, then
+`docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` was regenerated with
+`write_v2_inventory_file()` (implementation identity
+`e9a4fca8c2d18eb166e7e3d65a201d26611a0b2a`). No generated revision was
+hand-edited.
+
+Implementation commits:
+`bce855c81a183d1758fb822b4381c2706a035944` (overlay digest) and
+`3582060765b0dde79cb09018d6fd6cca800c7556` (inventory). This evidence commit
+is the exact tip for Kiro recheck. No Claude re-review. No new PR.
+
+### Negative confirmation
+
+No live source, production Chroma, processed/export/locks, provider/network
+call, watcher start/stop, config edit, indexing, Gate 0 against live
+resources, live P2 run, replacement grant/digest, new PR, merge, or
+activation occurred. No systemd operation. Worktree remained hermetic.
+
+### Commands and counts
+
+```bash
+python3 -m pytest \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py::test_n3_grant_bound_identities_are_validated \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py::test_n3_in_place_same_size_overlay_mutation_fails_closed \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py::test_n3_overlay_replacement_fails_closed_without_inode \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py::test_r3_gate0_passes_after_prepare_and_fails_on_mutation \
+  tests/test_r2b_v2_coverage.py \
+  tests/test_r2b_v2_implementation_revision.py \
+  tests/test_r2b_v2_corrective_viii.py \
+  tests/test_shadow_writer_coverage_scan.py \
+  tests/test_r2b_v2_authority_boundary.py \
+  tests/test_r2b_v2_authority_boundary_ii.py \
+  tests/test_r2b_v2_authority_boundary_iii.py \
+  tests/test_r2b_v2_authority_boundary_iv.py \
+  tests/test_r2b_v2_authority_boundary_v.py \
+  tests/test_r2b_v2_lease.py \
+  -q
+```
+
+Focused Gate 0 + R2b/authority/inventory result: **PASS** (124 tests in the
+combined focused run; the two original Gate 0 failures plus two new
+inode-independent overlay tests).
+
+CI-equivalent repo-wide suite (same as `.github/workflows/pylint.yml`):
+
+```bash
+export CONVMEM_CONFIG=/tmp/convmem-ci/config.toml
+export GITHUB_ACTIONS=true
+python -m pytest -q
+```
+
+Local result: **2362 passed, 64 skipped, 0 failed**, 228 subtests passed in
+1196.50s.
+
+GitHub pytest on implementation tip `35820607…` (run `34700444152`, job
+`103571135172`): **2362 passed, 64 skipped, 8 warnings, 228 subtests passed**
+in 1583.21s. `pylint (3.12)` **PASS**. Prior failing job `103563853581` was
+50 failed / 2310 passed / 64 skipped.
+
+```bash
+python3 -m compileall -q incremental_jsonl_canary_p2.py \
+  eval_corpus/r2b_v2/coverage/inventory.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py
+git diff --check
+python3 -m pylint incremental_jsonl_canary_p2.py \
+  eval_corpus/r2b_v2/coverage/inventory.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py
+python3 -m pylint $(git ls-files "*.py") --output-format=json > pylint-report.json
+python3 scripts/pylint_regression_gate.py ci \
+  --report pylint-report.json \
+  --pylint-status 30 \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref origin/main
+```
+
+`compileall`: PASS. `git diff --check`: clean. Scoped pylint: **10.00/10**.
+`pylint_regression_gate.py ci`: **PASS** (460 findings, 243 fingerprints; no
+new/increased vs `origin/main` `7360a04`).
+
+### Mapping
+
+| ID | Result | Evidence |
+|---|---|---|
+| Gate 0 overlay integrity | PASS | Pre-prepare checks `grant.config_overlay_digest`; post-prepare records and checks receipt `overlay_digest`; owner/mode/device/inode/symlink checks remain. `test_n3_in_place_same_size_overlay_mutation_fails_closed` and `test_n3_overlay_replacement_fails_closed_without_inode` do not depend on inode allocation. `test_r3_gate0_passes_after_prepare_and_fails_on_mutation` covers in-place and replacement after prepare. Mode mismatch still refuses `canary_gate0_paths`. |
+| Writer inventory | PASS | Source-owned `jsonl_production_canary` sink is `incremental_jsonl_canary.py:1234`; shadow session site is `incremental_jsonl.py:501`. Regenerated inventory identity `e9a4fca8c2d18eb166e7e3d65a201d26611a0b2a`. R2b coverage, authority, implementation-revision, and Shadow scan tests PASS. |
+| Repo-wide pytest | PASS | Local CI-equivalent **2362 passed, 64 skipped, 0 failed**. GitHub job `103571135172` **2362 passed, 64 skipped**. |
+
+### Hashes
+
+| File | SHA-256 |
+|---|---|
+| `incremental_jsonl_canary_p2.py` | `8125ee0c43df0a928ca01189d149ff333bac10127a2692882da5ec841ae09aee` |
+| `incremental_jsonl.py` | `048a895394629f55fa2c2b0af2f00c9844a9038268899a85eadd97c7d4d88cfe` |
+| `eval_corpus/r2b_v2/coverage/inventory.py` | `cbe95692850c2ddac7e4b459f006a06a5074b0f81800a67f42ab178e7533685a` |
+
+`incremental_jsonl.py` hash is unchanged from the C4 tip. Overlay integrity
+changed only `incremental_jsonl_canary_p2.py`.
+
+Compare from preserved ancestor:
+https://github.com/alanmz-crypto/convmem/compare/6cb01076a3c57420d07c2b89bb6df9d4ba1659c8...feat/2026-09-12-codex-jsonl-p2-runtime-readiness
+
+### Stop state
+
+Pushed feature tip after this evidence commit is ready for **Kiro targeted
+exact-tip recheck**. No Claude re-review. Existing PR #301; no new PR. Live
+P2 run, grant digest issuance, merge, and activation remain Ryan-gated
+separately.
 
 ## TL;DR
 
 P1 hermetic canary harness is on `main` via PR #296 (`907c828`). The P2 transfer
 seam is on `main` via PR #299 (`8beda7d`). Preserved Claude FAILs: runtime-readiness
 `5bdc132` and live-safety `a47f32b`. Kiro CONDITIONAL PASS at preserved `4acb4c5`.
-The C1–C4 corrective is on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` and
-awaits Kiro exact-tip recheck. The suite proves at least one fault `restored`;
-it does not claim all five restore. Live P2 run, grant digest issuance, PR, and
-activation remain Ryan-gated.
+C1–C4 Kiro PASS at preserved `6cb0107`. Repo-wide CI then failed; the overlay-
+digest and writer-inventory corrective is on
+`feat/2026-09-12-codex-jsonl-p2-runtime-readiness` / PR #301 and awaits Kiro
+exact-tip recheck. Repo-wide pytest is **2362 passed, 64 skipped, 0 failed**.
+Live P2 run, grant digest issuance, merge, and activation remain Ryan-gated.
 

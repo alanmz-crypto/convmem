@@ -17,12 +17,14 @@ cross-arc snapshot and the linked arc brief below.
   Cursor implemented the Kiro-PASSed **P2 runtime-readiness corrective (C0–C7)**
   on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` from `origin/main`
   `7360a04`. Local Claude FAIL at preserved `5bdc132`, then again at preserved
-  `a47f32b` (R1–R4). Kiro CONDITIONAL PASS at preserved `4acb4c5` (C1–C4). The
-  C1–C4 corrective is the later commit on that branch. Next lane is Kiro
-  targeted exact-tip recheck of the new tip (see
+  `a47f32b` (R1–R4). Kiro CONDITIONAL PASS at preserved `4acb4c5` (C1–C4).
+  C1–C4 Kiro PASS at preserved `6cb0107`. Repo-wide CI then failed; the
+  overlay-digest and writer-inventory corrective is later on that branch
+  (existing PR #301). Next lane is Kiro targeted exact-tip recheck of the new
+  tip (see
   [`VERIFY-codex-jsonl-production-canary.md`](../plans/VERIFY-codex-jsonl-production-canary.md)).
   No Claude re-review. No live source, Gate 0, P2 run, replacement grant/digest,
-  PR, or activation.
+  new PR, or activation.
   Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
