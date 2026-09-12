@@ -1060,20 +1060,69 @@ def test_n13_directory_role_does_not_grant_subtree(tmp_path: Path) -> None:
         fx["boundary"].resolve_mutable(sneaky, label="escape")
 
 
+def _in_place_same_size_overlay_mutation(path: Path) -> None:
+    """Flip the first byte without changing size, mode, or requiring a new inode."""
+    original = path.read_bytes()
+    assert original, "overlay must not be empty"
+    mutated = bytes([original[0] ^ 0xFF]) + original[1:]
+    assert len(mutated) == len(original)
+    mode = stat.S_IMODE(path.stat().st_mode)
+    flags = os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        written = os.write(descriptor, mutated)
+        assert written == len(mutated)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    os.chmod(path, mode)
+
+
+def _replace_overlay_same_mode(path: Path, payload: bytes) -> None:
+    """Unlink and rewrite while preserving mode. Must not assume inode reuse."""
+    mode = stat.S_IMODE(path.stat().st_mode)
+    path.unlink()
+    path.write_bytes(payload)
+    os.chmod(path, mode)
+
+
+def _gate0_kwargs(fx: dict) -> dict:
+    return {
+        "expected_sha256": fx["digest"],
+        "code_revision": current_code_revision(),
+        "hooks": live_gate0_hooks_pass(),
+    }
+
+
 def test_n3_grant_bound_identities_are_validated(tmp_path: Path) -> None:
     fx = build_p2_v2_fixture(tmp_path)
     overlay = Path(fx["grant"].config_overlay)
-    overlay.unlink()
-    overlay.write_text("tampered-overlay\n", encoding="utf-8")
-    os.chmod(overlay, 0o600)
+    os.chmod(overlay, 0o644)
     with pytest.raises(CanaryRefused, match="canary_gate0_paths"):
-        gate0_preflight_live(
-            fx["grant"],
-            fx["boundary"],
-            expected_sha256=fx["digest"],
-            code_revision=current_code_revision(),
-            hooks=live_gate0_hooks_pass(),
-        )
+        gate0_preflight_live(fx["grant"], fx["boundary"], **_gate0_kwargs(fx))
+
+
+def test_n3_in_place_same_size_overlay_mutation_fails_closed(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    overlay = Path(fx["grant"].config_overlay)
+    before = overlay.stat()
+    _in_place_same_size_overlay_mutation(overlay)
+    after = overlay.stat()
+    assert after.st_ino == before.st_ino
+    assert after.st_dev == before.st_dev
+    assert stat.S_IMODE(after.st_mode) == stat.S_IMODE(before.st_mode)
+    assert after.st_size == before.st_size
+    with pytest.raises(CanaryRefused, match="canary_gate0_overlay"):
+        gate0_preflight_live(fx["grant"], fx["boundary"], **_gate0_kwargs(fx))
+
+
+def test_n3_overlay_replacement_fails_closed_without_inode(tmp_path: Path) -> None:
+    fx = build_p2_v2_fixture(tmp_path)
+    overlay = Path(fx["grant"].config_overlay)
+    original = overlay.read_bytes()
+    _replace_overlay_same_mode(overlay, bytes([original[0] ^ 0xFF]) + original[1:])
+    with pytest.raises(CanaryRefused, match="canary_gate0_overlay"):
+        gate0_preflight_live(fx["grant"], fx["boundary"], **_gate0_kwargs(fx))
 
 
 def _sample_recovery_capsule(
@@ -1179,38 +1228,28 @@ def test_r3_gate0_passes_after_prepare_and_fails_on_mutation(tmp_path: Path) -> 
         code_revision=current_code_revision(),
         hooks=live_gate0_hooks_pass(),
     )
-    report = gate0_preflight_live(
-        fx["grant"],
-        fx["boundary"],
-        expected_sha256=fx["digest"],
-        code_revision=current_code_revision(),
-        hooks=live_gate0_hooks_pass(),
-    )
+    report = gate0_preflight_live(fx["grant"], fx["boundary"], **_gate0_kwargs(fx))
     assert report["checks"]["11_capsule"]["captured"] is True
+    receipt = load_stage_receipt(fx["grant"])
+    assert receipt.overlay_digest
+    assert receipt.overlay_digest != ZERO_DIGEST
+    overlay = Path(fx["grant"].config_overlay)
+    assert hashlib.sha256(overlay.read_bytes()).hexdigest() == receipt.overlay_digest
     capsule = Path(fx["grant"].rollback.capsule_path)
     original = capsule.read_bytes()
     capsule.write_text('{"tampered": true}\n', encoding="utf-8")
     with pytest.raises(CanaryRefused, match="canary_gate0_capsule"):
-        gate0_preflight_live(
-            fx["grant"],
-            fx["boundary"],
-            expected_sha256=fx["digest"],
-            code_revision=current_code_revision(),
-            hooks=live_gate0_hooks_pass(),
-        )
+        gate0_preflight_live(fx["grant"], fx["boundary"], **_gate0_kwargs(fx))
     capsule.write_bytes(original)
-    overlay = Path(fx["grant"].config_overlay)
-    overlay.unlink()
-    overlay.write_text("mutated-overlay\n", encoding="utf-8")
+    overlay_bytes = overlay.read_bytes()
+    _in_place_same_size_overlay_mutation(overlay)
+    with pytest.raises(CanaryRefused, match="canary_gate0_overlay"):
+        gate0_preflight_live(fx["grant"], fx["boundary"], **_gate0_kwargs(fx))
+    overlay.write_bytes(overlay_bytes)
     os.chmod(overlay, 0o600)
-    with pytest.raises(CanaryRefused, match="canary_gate0_paths"):
-        gate0_preflight_live(
-            fx["grant"],
-            fx["boundary"],
-            expected_sha256=fx["digest"],
-            code_revision=current_code_revision(),
-            hooks=live_gate0_hooks_pass(),
-        )
+    _replace_overlay_same_mode(overlay, bytes([overlay_bytes[0] ^ 0xFF]) + overlay_bytes[1:])
+    with pytest.raises(CanaryRefused, match="canary_gate0_overlay"):
+        gate0_preflight_live(fx["grant"], fx["boundary"], **_gate0_kwargs(fx))
 
 
 def test_r4_launcher_bind_stage_is_separately_invoked(tmp_path: Path) -> None:

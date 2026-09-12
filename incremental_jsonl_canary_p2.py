@@ -139,6 +139,7 @@ class StageReceipt:
     stage: str
     next_stage: str
     capsule_digest: str = ZERO_DIGEST
+    overlay_digest: str = ZERO_DIGEST
     source_identity: dict[str, Any] = field(default_factory=dict)
     unrelated_manifest_digest: str = ZERO_DIGEST
     call_counters: dict[str, int] = field(default_factory=dict)
@@ -348,6 +349,34 @@ def _identity_matches(path: Path, expected: ResourceIdentityGrant, owner_uid: in
         raise CanaryRefused("canary_gate0_paths", f"{expected.role} mode mismatch")
     if stat_result.st_dev != expected.device or stat_result.st_ino != expected.inode:
         raise CanaryRefused("canary_gate0_paths", f"{expected.role} identity mismatch")
+
+
+def _overlay_content_digest(path: Path) -> str:
+    """SHA-256 of overlay bytes without following symlinks."""
+    descriptor, stat_result = _open_nofollow_readonly(path)
+    try:
+        if not stat.S_ISREG(stat_result.st_mode):
+            raise CanaryRefused("canary_gate0_overlay", "overlay is not a regular file")
+        raw = _stable_read_fd(descriptor, stat_result.st_size)
+        if len(raw) != stat_result.st_size:
+            raise CanaryRefused("canary_gate0_overlay", "overlay size changed during read")
+        return _sha256_bytes(raw)
+    finally:
+        os.close(descriptor)
+
+
+def _verify_overlay_digest(path: Path, expected_digest: str) -> None:
+    """Fail closed when overlay bytes do not match the bound digest."""
+    if _has_symlink_component(path):
+        raise CanaryRefused("canary_gate0_paths", f"symlink escape: {path}")
+    if not expected_digest or expected_digest == ZERO_DIGEST:
+        raise CanaryRefused("canary_gate0_overlay", "overlay digest missing")
+    try:
+        digest = _overlay_content_digest(path)
+    except OSError as exc:
+        raise CanaryRefused("canary_gate0_overlay", f"cannot read overlay: {exc}") from exc
+    if digest != expected_digest:
+        raise CanaryRefused("canary_gate0_overlay", "overlay digest mismatch")
 
 
 def _ancestor_pids(pid: int) -> set[int]:
@@ -707,15 +736,19 @@ def gate0_preflight_live(
                 "canary_gate0_capsule",
                 "rollback capsule must be absent before prepare",
             )
-        _identity_matches(Path(grant.config_overlay), identities["overlay"], owner_uid)
+        overlay_path = Path(grant.config_overlay)
+        _verify_overlay_digest(overlay_path, grant.config_overlay_digest)
+        _identity_matches(overlay_path, identities["overlay"], owner_uid)
         _identity_matches(Path(grant.evidence_dir), identities["evidence_dir"], owner_uid)
         _identity_matches(capsule_path, identities["capsule"], owner_uid)
     else:
         artifacts = prepared.artifact_identities
         if "overlay" not in artifacts or "evidence_dir" not in artifacts:
             raise CanaryRefused("canary_gate0_paths", "prepared receipt missing overlay/evidence identities")
+        overlay_path = Path(grant.config_overlay)
+        _verify_overlay_digest(overlay_path, prepared.overlay_digest)
         _identity_matches(
-            Path(grant.config_overlay),
+            overlay_path,
             _identity_from_payload(artifacts["overlay"]),
             owner_uid,
         )
@@ -828,6 +861,7 @@ def load_stage_receipt(grant: CanaryGrant) -> StageReceipt:
         stage=str(payload["stage"]),
         next_stage=str(payload["next_stage"]),
         capsule_digest=str(payload.get("capsule_digest", ZERO_DIGEST)),
+        overlay_digest=str(payload.get("overlay_digest", ZERO_DIGEST)),
         source_identity=dict(payload.get("source_identity") or {}),
         unrelated_manifest_digest=str(payload.get("unrelated_manifest_digest", ZERO_DIGEST)),
         call_counters=dict(payload.get("call_counters") or {}),
@@ -1123,6 +1157,9 @@ def prepare_live_p2(
     capsule_path = Path(grant.rollback.capsule_path)
     digest = _persist_capsule(capsule_path, capsule)
     write_canary_overlay(boundary)
+    overlay_digest = _overlay_content_digest(Path(grant.config_overlay))
+    if overlay_digest == ZERO_DIGEST:
+        raise CanaryRefused("canary_overlay_digest", "prepared overlay cannot be the zero sentinel")
     Path(grant.evidence_dir).mkdir(parents=True, exist_ok=True)
     os.chmod(Path(grant.evidence_dir), 0o700)
     assert_source_immutable(grant, source_token)
@@ -1134,6 +1171,7 @@ def prepare_live_p2(
         stage="prepared",
         next_stage="t3-initial-complete",
         capsule_digest=digest,
+        overlay_digest=overlay_digest,
         source_identity=_source_identity_payload(grant),
         unrelated_manifest_digest=str(unrelated["digest"]),
         call_counters=counters,
