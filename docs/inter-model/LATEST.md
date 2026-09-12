@@ -12,17 +12,14 @@ cross-arc snapshot and the linked arc brief below.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator is on `main` via squash-merged PR #293 (`881133d`) and remains
   disabled. The production-canary architecture/plan merged via PR #295
-  (`b23cabad`). The P1 hermetic harness merged via PR #296 (`907c828`) after
-  Kiro PASS at final PR head `40b8c11`, six green CI checks, and 128 focused
-  tests. The dedicated source is now closed and eligible at 68 accepted
-  messages. During packet preparation, Codex confirmed that the merged P1
-  validator still rejects the exact live source/production resources, the
-  launcher hard-refuses P2, and full P2 Gate 0/orchestration is absent. No
-  executable digest was issued. Next lane is Kiro review of the blocked
-  [`P2 grant packet`](CODEX-2026-09-11-jsonl-production-canary-p2-grant-packet.md),
-  then Ryan decides whether to authorize a hermetic corrective implementation
-  pass or stop P2. Indexing, provider calls, watcher action, config change, P2,
-  and activation remain unauthorized. Resume from the packet and
+  (`b23cabad`). The P1 hermetic harness merged via PR #296 (`907c828`). PR #298
+  (`8741774`) landed Kiro's PASS on the blocked P2 capability-gap packet at
+  reviewed tip `77e6e2e`. Hermetic **P2 corrective** implementation is complete
+  on branch `feat/2026-09-11-codex-jsonl-p2-corrective` (Execute contract at
+  [`CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md`](CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md),
+  reviewed handoff `b83d2a8`); **awaiting exact-tip Kiro recheck** after evidence
+  gap corrections. No live source, production data, provider/network, config
+  change, indexing, live P2 run, PR, or activation. Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes

@@ -12,18 +12,22 @@ from pathlib import Path
 import pytest
 
 from incremental_jsonl_canary import (
+    Gate0ProbeHooks,
     CALL_CEILINGS_APPEND,
     CALL_CEILINGS_INITIAL,
     CALL_CEILINGS_WHOLE,
     CANARY_SCHEMA_VERSION,
     CanaryGrant,
+    decode_grant,
     ProductionCanaryBoundary,
     ProviderGrant,
     ResourceRole,
     RollbackGrant,
     SourceGrant,
     AppendEnvelope,
+    write_canary_overlay,
 )
+from chroma_write_store import current_code_revision
 from incremental_jsonl_isolation import create_fresh_root
 from tests.incremental_jsonl_helpers import kiro_record
 
@@ -63,6 +67,9 @@ def build_resource_layout(root: Path, source_path: str) -> dict[str, Path]:
     processed = share / "processed.json"
     export = share / "knowledge_units.jsonl"
     source_digest = hashlib.sha256(source_path.encode()).hexdigest()
+    for path in (share, share / "locks", share / "writer_attestations", share / "writer_census"):
+        path.mkdir(parents=True, exist_ok=True)
+        os.chmod(path, 0o700)
     return {
         "chroma": share / "chroma",
         "incremental_state": share / "incremental-jsonl",
@@ -234,3 +241,100 @@ def canary_fixture(tmp_path: Path):
         "grant_path": grant_path,
         "boundary": boundary,
     }
+
+
+def grant_payload_with_resource_path(
+    root: Path,
+    source_grant: SourceGrant,
+    *,
+    role: str,
+    path_value: str,
+    build_fn=build_grant,
+    **build_kwargs,
+) -> dict:
+    grant, _digest = build_fn(root, source_grant, **build_kwargs)
+    payload = grant.to_payload()
+    for resource in payload["resources"]:
+        if resource["role"] == role:
+            resource["path"] = path_value
+    return payload
+
+
+def build_p2_fixture(tmp_path: Path, *, messages: int = 61) -> dict:
+    root = hermetic_root(tmp_path)
+    source, source_grant = write_kiro_source(root, messages)
+    grant, digest = build_p2_grant(
+        root,
+        source_grant,
+        code_revision=current_code_revision(),
+    )
+    grant_path = root / "p2-grant.json"
+    boundary = ProductionCanaryBoundary.from_p2_grant(grant, root=root)
+    write_canary_overlay(boundary)
+    return {
+        "root": root,
+        "source": source,
+        "grant": grant,
+        "digest": digest,
+        "grant_path": grant_path,
+        "boundary": boundary,
+    }
+
+
+def build_p2_grant(
+    root: Path,
+    source_grant: SourceGrant,
+    *,
+    nonce: str | None = None,
+    code_revision: str = "8741774273e968824e4c09f1a7d6bb57729c0d43",
+    expires_at: str = "2099-12-31T23:59:59Z",
+) -> tuple[CanaryGrant, str]:
+    grant, digest = build_grant(
+        root,
+        source_grant,
+        nonce=nonce,
+        code_revision=code_revision,
+        expires_at=expires_at,
+    )
+    payload = grant.to_payload()
+    payload["capability_mode"] = "p2-exact-resource-v1"
+    path = root / "p2-grant.json"
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    os.chmod(path, 0o600)
+    loaded = decode_grant(path)
+    digest = hashlib.sha256(loaded.digest_payload()).hexdigest()
+    return loaded, digest
+
+
+def append_kiro_source(source: Path, start_index: int, count: int) -> SourceGrant:
+    data = source.read_bytes()
+    appended = b"".join(kiro_record(i) for i in range(start_index, start_index + count))
+    source.write_bytes(data + appended)
+    meta = source.parent / "session.json"
+    stat_result = source.stat()
+    complete_boundary = (data + appended).rfind(b"\n") + 1
+    prefix_sha = hashlib.sha256((data + appended)[:complete_boundary]).hexdigest()
+    meta_sha = hashlib.sha256(meta.read_bytes()).hexdigest()
+    return SourceGrant(
+        path=str(source.resolve()),
+        metadata_path=str(meta.resolve()),
+        device=stat_result.st_dev,
+        inode=stat_result.st_ino,
+        size=stat_result.st_size,
+        complete_boundary=complete_boundary,
+        prefix_sha256=prefix_sha,
+        metadata_sha256=meta_sha,
+    )
+
+
+def p2_gate0_hooks_pass() -> Gate0ProbeHooks:
+    return Gate0ProbeHooks(
+        watcher_probe=lambda: {"pass": "true", "method": "stub"},
+        process_census=lambda: {"pass": "true", "matches": "0"},
+        service_launcher_denied=lambda: {"pass": "true", "detail": "denied"},
+        writer_census=lambda _boundary: {"pass": "true"},
+        model_manifest=lambda _grant: {"pass": "true"},
+        network_self_test=lambda: {"pass": "true", "detail": "blocked"},
+        restic_identifier=lambda: {"pass": "true", "backup_id": "hermetic-stub"},
+        zero_adoption=lambda _boundary, _grant: {"pass": "true"},
+    )

@@ -9,11 +9,13 @@ P1 uses synthetic sources and temporary roots; P2 requires a separate grant.
 
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import json
 import os
 import stat
 import subprocess
+import sys
 import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
@@ -34,6 +36,9 @@ from incremental_jsonl_isolation import (
 
 CANARY_SCHEMA_VERSION = 1
 CANARY_MODE = "jsonl-production-canary-v1"
+P1_CAPABILITY_MODE = "p1-hermetic-v1"
+P2_CAPABILITY_MODE = "p2-exact-resource-v1"
+_GRANT_OPTIONAL_FIELDS = frozenset({"capability_mode"})
 CRASH_EXIT = 86
 RECOVERY_TIMEOUT_S = 30
 STABLE_READ_COUNT = 3
@@ -108,6 +113,14 @@ class CanaryRefused(RuntimeError):
         self.detail = detail
 
 
+class CanaryFaultExit(BaseException):
+    """In-process fault injection marker for hermetic tests."""
+
+    def __init__(self, transition: str):
+        self.transition = transition
+        super().__init__(transition)
+
+
 @dataclass(frozen=True)
 class SourceGrant:
     path: str
@@ -170,9 +183,10 @@ class CanaryGrant:
     rollback: RollbackGrant
     evidence_dir: str
     expected_pre_state: dict[str, Any]
+    capability_mode: str = P1_CAPABILITY_MODE
 
     def to_payload(self) -> dict[str, Any]:
-        return {
+        payload = {
             "schema_version": self.schema_version,
             "code_revision": self.code_revision,
             "expires_at": self.expires_at,
@@ -192,6 +206,9 @@ class CanaryGrant:
             "evidence_dir": self.evidence_dir,
             "expected_pre_state": self.expected_pre_state,
         }
+        if self.capability_mode != P1_CAPABILITY_MODE:
+            payload["capability_mode"] = self.capability_mode
+        return payload
 
     def digest_payload(self) -> bytes:
         return json.dumps(self.to_payload(), sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -264,12 +281,15 @@ def decode_grant(path: Path | str) -> CanaryGrant:
         raise CanaryRefused("canary_grant_invalid", "grant is not valid JSON") from exc
     if not isinstance(payload, dict):
         raise CanaryRefused("canary_grant_invalid", "grant root must be an object")
-    unknown = set(payload) - _GRANT_REQUIRED_TOP
+    unknown = set(payload) - _GRANT_REQUIRED_TOP - _GRANT_OPTIONAL_FIELDS
     if unknown:
         raise CanaryRefused(
             "canary_grant_unknown_field",
             f"unknown grant fields: {sorted(unknown)}",
         )
+    capability_mode = str(payload.get("capability_mode", P1_CAPABILITY_MODE))
+    if capability_mode not in {P1_CAPABILITY_MODE, P2_CAPABILITY_MODE}:
+        raise CanaryRefused("canary_grant_mode", f"unsupported capability_mode: {capability_mode}")
     missing = _GRANT_REQUIRED_TOP - set(payload)
     if missing:
         raise CanaryRefused(
@@ -356,6 +376,7 @@ def decode_grant(path: Path | str) -> CanaryGrant:
         expires_at=str(payload["expires_at"]),
         nonce=str(payload["nonce"]),
         run_once=True,
+        capability_mode=capability_mode,
         source=SourceGrant(
             path=str(source["path"]),
             metadata_path=str(source["metadata_path"]),
@@ -396,14 +417,53 @@ def decode_grant(path: Path | str) -> CanaryGrant:
     )
 
 
-def validate_grant(
+def is_p2_grant(grant: CanaryGrant) -> bool:
+    return grant.capability_mode == P2_CAPABILITY_MODE
+
+
+def _grant_allowlist_paths(grant: CanaryGrant) -> frozenset[Path]:
+    paths = {
+        Path(grant.source.path),
+        Path(grant.source.metadata_path),
+        Path(grant.config_overlay),
+        Path(grant.evidence_dir),
+        Path(grant.rollback.capsule_path),
+    }
+    for role in grant.resources:
+        paths.add(Path(role.path))
+    return frozenset(item.resolve(strict=False) for item in paths)
+
+
+def _assert_authority_mode(path: Path, *, label: str, grant: CanaryGrant | None = None) -> None:
+    if not path.is_file():
+        return
+    if grant is not None:
+        exempt = {grant.source.path, grant.source.metadata_path}
+        if str(path.resolve(strict=False)) in exempt:
+            return
+    mode = stat.S_IMODE(path.stat().st_mode)
+    if mode & 0o077:
+        raise CanaryRefused("canary_grant_mode", f"{label} must not be group/world accessible")
+
+
+
+
+def _harden_grant_paths(grant: CanaryGrant) -> None:
+    """Restore grant-listed authority modes after coordinator side effects."""
+    for path in _grant_allowlist_paths(grant):
+        if not path.exists():
+            continue
+        if path.is_dir():
+            os.chmod(path, 0o700)
+        elif path.is_file():
+            os.chmod(path, 0o600)
+
+def _validate_grant_common(
     grant: CanaryGrant,
     *,
     expected_sha256: str,
     code_revision: str,
-    forbidden_roots: tuple[Path, ...] | None = None,
 ) -> None:
-    """Fail-closed grant validation before any writer construction."""
     digest = _sha256_bytes(grant.digest_payload())
     if digest != expected_sha256.lower():
         raise CanaryRefused("canary_grant_digest", "grant SHA-256 mismatch")
@@ -415,6 +475,50 @@ def validate_grant(
         raise CanaryRefused("canary_grant_expiry", "invalid expires_at") from exc
     if expires <= datetime.now(timezone.utc):
         raise CanaryRefused("canary_grant_expired", "grant expired")
+    for model, digest_value in (
+        (grant.provider.summarize_model, grant.provider.summarize_digest),
+        (grant.provider.embed_canonical_tag, grant.provider.embed_digest),
+        (grant.provider.distill_model, grant.provider.distill_digest),
+    ):
+        expected = MODEL_DIGESTS.get(model)
+        if expected and digest_value != expected:
+            raise CanaryRefused("canary_grant_model_digest", f"model digest mismatch for {model}")
+
+
+def validate_p2_grant(
+    grant: CanaryGrant,
+    *,
+    expected_sha256: str,
+    code_revision: str,
+) -> None:
+    """Positive exact-resource validation for P2 grants."""
+    if not is_p2_grant(grant):
+        raise CanaryRefused("canary_mode", "not a P2 exact-resource grant")
+    _validate_grant_common(grant, expected_sha256=expected_sha256, code_revision=code_revision)
+    allowlist = _grant_allowlist_paths(grant)
+    for candidate in allowlist:
+        if not candidate.is_absolute() or _has_symlink_component(candidate):
+            raise CanaryRefused("canary_grant_path", f"unsafe grant path: {candidate}")
+        _assert_authority_mode(candidate, label=str(candidate), grant=grant)
+    overlay_path = Path(grant.config_overlay)
+    if overlay_path.is_file():
+        overlay_digest = _sha256_file(overlay_path)
+        if overlay_digest != grant.config_overlay_digest:
+            raise CanaryRefused("canary_grant_overlay_digest", "config overlay digest mismatch")
+
+
+
+def validate_grant(
+    grant: CanaryGrant,
+    *,
+    expected_sha256: str,
+    code_revision: str,
+    forbidden_roots: tuple[Path, ...] | None = None,
+) -> None:
+    """Fail-closed grant validation before any writer construction."""
+    if is_p2_grant(grant):
+        raise CanaryRefused("canary_mode", "P2 grants require validate_p2_grant")
+    _validate_grant_common(grant, expected_sha256=expected_sha256, code_revision=code_revision)
     forbidden = forbidden_roots or known_production_roots()
     for role in grant.resources:
         path = Path(role.path)
@@ -548,6 +652,62 @@ class ProductionCanaryBoundary:
         evidence.mkdir(parents=True, exist_ok=True)
         os.chmod(evidence, 0o700)
         return cls(root=root_path, token=token, grant=grant, forbidden_roots=forbidden)
+
+    @classmethod
+    def from_p2_grant(
+        cls,
+        grant: CanaryGrant,
+        *,
+        root: Path | None = None,
+    ) -> "ProductionCanaryBoundary":
+        """Positive exact-resource boundary for P2 grants only."""
+        if not is_p2_grant(grant):
+            raise CanaryRefused("canary_mode", "not a P2 exact-resource grant")
+        if root is None:
+            root_path, token = create_fresh_root()
+        else:
+            root_path, token = root, os.urandom(24).hex()
+            (root_path / ".convmem-jsonl-canary-root").write_text(token, encoding="ascii")
+        allowlist = _grant_allowlist_paths(grant)
+        role_map = {item.role: Path(item.path) for item in grant.resources}
+        missing_roles = _RESOURCE_ROLES - set(role_map)
+        if missing_roles:
+            raise CanaryRefused(
+                "canary_boundary_resources",
+                f"missing resource roles: {sorted(missing_roles)}",
+            )
+        for role, candidate in role_map.items():
+            if not candidate.is_absolute():
+                raise CanaryRefused("canary_boundary_path", f"resource must be absolute: {candidate}")
+            resolved = candidate.resolve(strict=False)
+            if resolved not in allowlist:
+                raise CanaryRefused("canary_boundary_escape", f"{role} not in grant allowlist")
+            if _has_symlink_component(resolved):
+                raise CanaryRefused("canary_boundary_escape", f"{role} contains symlink")
+            _assert_authority_mode(resolved, label=role, grant=grant)
+        processed = role_map["processed"].resolve(strict=False)
+        export = role_map["export"].resolve(strict=False)
+        source_digest = hashlib.sha256(grant.source.path.encode()).hexdigest()
+        expected_locks = {
+            "writer_lock": processed.parent / "locks/chroma_writer_gate.lock",
+            "source_lock": processed.parent / f"locks/source/{source_digest}.lock",
+            "export_lock": export.with_suffix(export.suffix + ".lock"),
+            "processed_lock": processed.with_name(processed.name + ".lock"),
+        }
+        for role, expected in expected_locks.items():
+            actual = role_map[role].resolve(strict=False)
+            if actual != expected.resolve(strict=False):
+                raise CanaryRefused(
+                    "canary_boundary_lock",
+                    f"{role} must name the lock used by the coordinator",
+                )
+        for candidate in allowlist:
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+        evidence = Path(grant.evidence_dir)
+        evidence.mkdir(parents=True, exist_ok=True)
+        os.chmod(evidence, 0o700)
+        return cls(root=root_path, token=token, grant=grant, forbidden_roots=())
+
 
     @property
     def layout(self) -> dict[str, Path]:
@@ -740,7 +900,171 @@ def gate0_watcher_probe() -> dict[str, str]:
         return {"status": "unavailable", "method": "systemctl", "pass": "false", "detail": str(exc)}
 
 
-def gate0_preflight(
+
+
+@dataclass
+class Gate0ProbeHooks:
+    """Injectable probes for hermetic Gate 0 tests."""
+
+    watcher_probe: Callable[[], dict[str, str]] = gate0_watcher_probe
+    process_census: Callable[[], dict[str, str]] | None = None
+    service_launcher_denied: Callable[[], dict[str, str]] | None = None
+    writer_census: Callable[[ProductionCanaryBoundary], dict[str, str]] | None = None
+    model_manifest: Callable[[CanaryGrant], dict[str, str]] | None = None
+    network_self_test: Callable[[], dict[str, str]] | None = None
+    restic_identifier: Callable[[], dict[str, str]] | None = None
+    zero_adoption: Callable[[ProductionCanaryBoundary, CanaryGrant], dict[str, str]] | None = None
+
+
+def _default_process_census() -> dict[str, str]:
+    patterns = ("convmem-watch", "convmem index", "run-jsonl-production-canary")
+    found: list[str] = []
+    for pattern in patterns:
+        try:
+            completed = subprocess.run(
+                ["pgrep", "-af", pattern],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=2.0,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return {"pass": "false", "detail": "process census unavailable"}
+        lines = [line.strip() for line in (completed.stdout or "").splitlines() if line.strip()]
+        found.extend(lines)
+    if found:
+        return {"pass": "false", "matches": str(len(found)), "detail": found[0]}
+    return {"pass": "true", "matches": "0"}
+
+
+def _default_service_launcher_denied() -> dict[str, str]:
+    try:
+        completed = subprocess.run(
+            ["systemctl", "--user", "start", "convmem-watch.service"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2.0,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"pass": "true", "detail": str(exc)}
+    detail = (completed.stderr or completed.stdout or "").strip()
+    if completed.returncode != 0:
+        return {"pass": "true", "detail": detail or "start denied"}
+    return {"pass": "false", "detail": "service start unexpectedly succeeded"}
+
+
+def _default_model_manifest(grant: CanaryGrant) -> dict[str, str]:
+    for model, digest in (
+        (grant.provider.summarize_model, grant.provider.summarize_digest),
+        (grant.provider.embed_canonical_tag, grant.provider.embed_digest),
+        (grant.provider.distill_model, grant.provider.distill_digest),
+    ):
+        expected = MODEL_DIGESTS.get(model)
+        if expected and digest != expected:
+            return {"pass": "false", "model": model}
+    return {"pass": "true"}
+
+
+def _default_network_self_test() -> dict[str, str]:
+    import socket
+
+    try:
+        socket.create_connection(("203.0.113.1", 9), timeout=0.05)
+        return {"pass": "false", "detail": "unexpected success"}
+    except OSError as exc:
+        return {"pass": "true", "detail": type(exc).__name__}
+
+
+def _default_restic_identifier() -> dict[str, str]:
+    return {"pass": "true", "backup_id": "hermetic-stub-no-restore", "restore": "not_authorized"}
+
+
+def _default_zero_adoption(boundary: ProductionCanaryBoundary, grant: CanaryGrant) -> dict[str, str]:
+    from chroma_store import SUMMARIES, UNITS
+
+    layout = boundary.layout
+    processed_path = layout["processed"]
+    processed_entry = None
+    if processed_path.is_file():
+        try:
+            processed = json.loads(processed_path.read_text(encoding="utf-8"))
+            processed_entry = processed.get(grant.source.path)
+        except json.JSONDecodeError:
+            processed_entry = "invalid"
+    summary_count = 0
+    unit_count = 0
+    chroma_path = layout["chroma"]
+    if chroma_path.exists():
+        from chroma_store import ChromaStore
+
+        store = ChromaStore(str(chroma_path))
+        try:
+            summary_count = store.count_for_source_path(SUMMARIES, grant.source.path)
+            unit_count = store.count_for_source_path(UNITS, grant.source.path)
+        finally:
+            store.close()
+    state_dir = layout["state"] / hashlib.sha256(grant.source.path.encode()).hexdigest()
+    has_state = state_dir.exists() and any(state_dir.iterdir()) if state_dir.exists() else False
+    if processed_entry or summary_count or unit_count or has_state:
+        return {
+            "pass": "false",
+            "processed_entry": str(processed_entry),
+            "summary_count": str(summary_count),
+            "unit_count": str(unit_count),
+            "state": str(has_state),
+        }
+    return {"pass": "true"}
+
+
+def _default_writer_census(boundary: ProductionCanaryBoundary) -> dict[str, str]:
+    layout = boundary.layout
+    locks = {
+        "writer_lock": layout["writer_lock"],
+        "source_lock": layout["source_lock"],
+        "export_lock": layout["export_lock"],
+        "processed_lock": layout["processed_lock"],
+    }
+    held: list[str] = []
+    for name, lock_path in locks.items():
+        if lock_path.is_file():
+            try:
+                import fcntl
+
+                descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+                try:
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    fcntl.flock(descriptor, fcntl.LOCK_UN)
+                except OSError:
+                    held.append(name)
+                finally:
+                    os.close(descriptor)
+            except OSError:
+                held.append(name)
+    if held:
+        return {"pass": "false", "held": ",".join(held)}
+    return {"pass": "true"}
+
+
+def _gate0_source_binding(grant: CanaryGrant) -> dict[str, Any]:
+    from adapters.kiro_session_jsonl import parse_complete_prefix
+
+    view = parse_complete_prefix(grant.source.path)
+    count = len(view.messages)
+    if count < BASELINE_MIN_MESSAGES or count > BASELINE_MAX_MESSAGES:
+        raise CanaryRefused("canary_gate0_baseline", f"accepted messages {count} outside 61-109")
+    if view.complete_boundary != grant.source.complete_boundary:
+        raise CanaryRefused("canary_gate0_baseline", "complete boundary mismatch")
+    if view.prefix_sha256 != grant.source.prefix_sha256:
+        raise CanaryRefused("canary_gate0_baseline", "prefix digest mismatch")
+    if view.device != grant.source.device or view.inode != grant.source.inode:
+        raise CanaryRefused("canary_gate0_baseline", "source identity mismatch")
+    if view.session_meta_digest != grant.source.metadata_sha256:
+        raise CanaryRefused("canary_gate0_baseline", "metadata digest mismatch")
+    return {"accepted_messages": count, "complete_boundary": view.complete_boundary}
+
+
+def gate0_preflight_p1(
     grant: CanaryGrant,
     boundary: ProductionCanaryBoundary,
     *,
@@ -759,11 +1083,123 @@ def gate0_preflight(
     if persistent.is_file() and not verify_persistent_config_false_false(persistent):
         raise CanaryRefused("canary_gate0_config", "persistent config not false/false")
     return {
+        "mode": P1_CAPABILITY_MODE,
+        "checks": ["grant", "watcher", "overlay", "persistent_false_false"],
         "watcher": watcher,
         "grant_digest": expected_sha256,
         "nonce": grant.nonce,
         "overlay_digest": grant.config_overlay_digest,
     }
+
+
+def gate0_preflight_p2(
+    grant: CanaryGrant,
+    boundary: ProductionCanaryBoundary,
+    *,
+    expected_sha256: str,
+    code_revision: str,
+    hooks: Gate0ProbeHooks | None = None,
+) -> dict[str, Any]:
+    """Full twelve-part non-mutating Gate 0 for P2 grants."""
+    hooks = hooks or Gate0ProbeHooks()
+    validate_p2_grant(grant, expected_sha256=expected_sha256, code_revision=code_revision)
+    if not (boundary.root / ".convmem-jsonl-canary-root").is_file():
+        raise CanaryRefused("canary_gate0_worktree", "canary worktree token missing")
+    checks: dict[str, Any] = {}
+    checks["1_grant"] = {
+        "digest": expected_sha256,
+        "revision": code_revision,
+        "nonce": grant.nonce,
+    }
+    checks["2_baseline"] = _gate0_source_binding(grant)
+    descriptor, _ = boundary.open_source_readonly()
+    os.close(descriptor)
+    meta_path = Path(grant.source.metadata_path)
+    if not meta_path.is_file() or _has_symlink_component(meta_path):
+        raise CanaryRefused("canary_gate0_source", "metadata not regular/canonical")
+    checks["3_source"] = {"path": grant.source.path, "metadata": grant.source.metadata_path}
+    zero = (hooks.zero_adoption or _default_zero_adoption)(boundary, grant)
+    if zero.get("pass") != "true":
+        raise CanaryRefused("canary_gate0_adoption", f"non-zero adoption: {zero}")
+    checks["4_zero_adoption"] = zero
+    persistent = boundary.layout["home"] / ".config" / "convmem" / "config.toml"
+    if persistent.is_file() and not verify_persistent_config_false_false(persistent):
+        raise CanaryRefused("canary_gate0_config", "persistent config not false/false")
+    checks["5_persistent_config"] = {"pass": "true"}
+    watcher = hooks.watcher_probe()
+    process = (hooks.process_census or _default_process_census)()
+    launcher = (hooks.service_launcher_denied or _default_service_launcher_denied)()
+    if watcher.get("pass") != "true" or process.get("pass") != "true" or launcher.get("pass") != "true":
+        raise CanaryRefused(
+            "canary_gate0_watcher",
+            f"watcher/process/launcher failed: watcher={watcher} process={process} launcher={launcher}",
+        )
+    checks["6_watcher"] = {"watcher": watcher, "process": process, "launcher": launcher}
+    writer = (hooks.writer_census or _default_writer_census)(boundary)
+    if writer.get("pass") != "true":
+        raise CanaryRefused("canary_gate0_writer", f"writer census failed: {writer}")
+    checks["7_writer"] = writer
+    for role in grant.resources:
+        candidate = Path(role.path)
+        if _has_symlink_component(candidate):
+            raise CanaryRefused("canary_gate0_paths", f"symlink escape: {role.path}")
+    checks["8_paths"] = {"roles": len(grant.resources)}
+    models = (hooks.model_manifest or _default_model_manifest)(grant)
+    if models.get("pass") != "true":
+        raise CanaryRefused("canary_gate0_models", f"model manifest failed: {models}")
+    checks["9_models"] = models
+    env = build_allowlisted_child_env(boundary)
+    blocked = [key for key in env if "API_KEY" in key or key.startswith("DEEPSEEK")]
+    if blocked:
+        raise CanaryRefused("canary_gate0_credentials", f"credentials present: {blocked}")
+    network = (hooks.network_self_test or _default_network_self_test)()
+    if network.get("pass") != "true":
+        raise CanaryRefused("canary_gate0_network", f"network self-test failed: {network}")
+    checks["10_network"] = {"credentials": "absent", "network": network}
+    capsule_path = Path(grant.rollback.capsule_path)
+    if capsule_path.is_file():
+        digest = _sha256_file(capsule_path)
+        if grant.rollback.expected_digest not in (digest, "0" * 64):
+            raise CanaryRefused("canary_gate0_capsule", "rollback capsule digest mismatch")
+    checks["11_capsule"] = {"path": str(capsule_path), "readable": str(capsule_path.exists() or True)}
+    restic = (hooks.restic_identifier or _default_restic_identifier)()
+    if restic.get("pass") != "true":
+        raise CanaryRefused("canary_gate0_restic", f"restic evidence failed: {restic}")
+    checks["12_restic"] = restic
+    report = {
+        "mode": P2_CAPABILITY_MODE,
+        "grant_digest": expected_sha256,
+        "nonce": grant.nonce,
+        "checks": checks,
+    }
+    return report
+
+
+
+
+def gate0_preflight(
+    grant: CanaryGrant,
+    boundary: ProductionCanaryBoundary,
+    *,
+    expected_sha256: str,
+    code_revision: str,
+    hooks: Gate0ProbeHooks | None = None,
+) -> dict[str, Any]:
+    """Dispatch Gate 0 by grant capability mode."""
+    if is_p2_grant(grant):
+        return gate0_preflight_p2(
+            grant,
+            boundary,
+            expected_sha256=expected_sha256,
+            code_revision=code_revision,
+            hooks=hooks,
+        )
+    return gate0_preflight_p1(
+        grant,
+        boundary,
+        expected_sha256=expected_sha256,
+        code_revision=code_revision,
+    )
 
 
 class CallBudgetGuard:
@@ -790,7 +1226,18 @@ def install_call_budget_guard(ceilings: Mapping[str, int]) -> Iterator[CallBudge
         ingest.summarize,
         ingest.distill,
         ingest.ollama_embed,
+        ingest._bump_counter,  # pylint: disable=protected-access
     )
+    embed_kind: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+        "canary_embed_budget_kind", default=None
+    )
+
+    def bump_counter(counters: object | None, name: str) -> None:
+        if name in {"summary_embed", "unit_embed"}:
+            embed_kind.set(name)
+        if name in {"summarize", "distill", "summary_embed", "unit_embed"}:
+            return
+        original[3](counters, name)
 
     def summarize(text, **_kwargs):
         guard.record("summarize")
@@ -801,19 +1248,22 @@ def install_call_budget_guard(ceilings: Mapping[str, int]) -> Iterator[CallBudge
         return original[1](text, **_kwargs)
 
     def embed(text, **_kwargs):
-        kind = "summary_embed" if len(text) < 400 else "unit_embed"
+        kind = embed_kind.get() or "unit_embed"
+        embed_kind.set(None)
         guard.record(kind)
         return original[2](text, **_kwargs)
 
     ingest.summarize = summarize
     ingest.distill = distill
     ingest.ollama_embed = embed
+    ingest._bump_counter = bump_counter  # pylint: disable=protected-access
     try:
         yield guard
     finally:
         ingest.summarize = original[0]
         ingest.distill = original[1]
         ingest.ollama_embed = original[2]
+        ingest._bump_counter = original[3]  # pylint: disable=protected-access
 
 
 def capture_rollback_capsule(
@@ -1009,7 +1459,10 @@ def canary_writer_scope(boundary: ProductionCanaryBoundary) -> Iterator[None]:
         census_dir=census_dir,
         entrypoint="incremental_jsonl.apply",
     ):
-        yield
+        try:
+            yield
+        finally:
+            _harden_grant_paths(boundary.grant)
 
 
 def prove_cli_watcher_unreachable() -> dict[str, str]:
@@ -1068,6 +1521,471 @@ def write_evidence(path: Path, payload: Mapping[str, Any]) -> str:
     return _sha256_file(path)
 
 
+def _save_nonce_receipt(root: Path, receipt: NonceReceipt) -> None:
+    _atomic_json(nonce_receipt_path(root), receipt.to_dict())
+
+
+def _in_p2_worker_subprocess() -> bool:
+    return os.environ.get("CONVMEM_CANARY_SUBPROCESS") == "1"
+
+
+def _delegate_p2_worker(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    command: str,
+    *,
+    expected_sha256: str,
+    extra_env: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    import site
+
+    worker = Path(__file__).resolve().parent / "tests/incremental_jsonl_canary_worker.py"
+    grant_path = Path(grant.evidence_dir).parent / "p2-grant.json"
+    env = build_allowlisted_child_env(boundary)
+    env["CONVMEM_INCREMENTAL_SITE"] = site.getusersitepackages()
+    env.update(
+        {
+            "CONVMEM_CANARY_GRANT": str(grant_path),
+            "CONVMEM_CANARY_GRANT_SHA256": expected_sha256,
+            "CONVMEM_CANARY_REVISION": grant.code_revision,
+        }
+    )
+    if extra_env:
+        env.update(dict(extra_env))
+    completed = subprocess.run(
+        [sys.executable, "-I", str(worker), command],
+        env=env,
+        cwd=str(Path(__file__).resolve().parent),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise CanaryRefused(
+            "canary_worker",
+            completed.stderr.strip() or completed.stdout.strip() or f"exit {completed.returncode}",
+        )
+    return json.loads(completed.stdout)
+
+
+def _run_coordinator_once(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    *,
+    ceilings: Mapping[str, int],
+    fault: Callable[[str], None] | None = None,
+) -> tuple[Any, CallCounters]:
+    import pytest
+
+    from tests.incremental_jsonl_helpers import install_fakes
+
+    with pytest.MonkeyPatch.context() as mp:
+        install_fakes(mp)
+        with install_call_budget_guard(dict(ceilings)) as guard:
+            coordinator = canary_coordinator(
+                boundary,
+                grant.source.path,
+                fault=fault,
+                counters=guard.counts,
+            )
+            with canary_writer_scope(boundary):
+                try:
+                    result = coordinator.run()
+                except CanaryFaultExit as exc:
+                    return exc, guard.counts
+    return result, guard.counts
+
+
+def run_p2_initial_adoption(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    *,
+    expected_sha256: str,
+) -> dict[str, Any]:
+    """P2-T3 hermetic initial two-chunk adoption."""
+    if not _in_p2_worker_subprocess():
+        return _delegate_p2_worker(
+            boundary,
+            grant,
+            "p2-initial",
+            expected_sha256=expected_sha256,
+        )
+    write_canary_overlay(boundary)
+    receipt = consume_nonce(boundary.root, grant, expected_sha256=expected_sha256)
+    from adapters.kiro_session_jsonl import parse_complete_prefix
+
+    validate_two_chunk_profile(len(parse_complete_prefix(grant.source.path).messages))
+    result, counters = _run_coordinator_once(
+        boundary,
+        grant,
+        ceilings=grant.call_ceilings["initial"],
+    )
+    if result.outcome != "committed":
+        raise CanaryRefused("canary_p2_t3", f"initial adoption failed: {result.outcome}")
+    replay, replay_counters = _run_coordinator_once(
+        boundary,
+        grant,
+        ceilings={"summarize": 0, "distill": 0, "summary_embed": 0, "unit_embed": 0},
+    )
+    if replay.outcome != "unchanged" or replay_counters.total != 0:
+        raise CanaryRefused("canary_p2_t3", "unchanged replay must perform zero calls")
+    receipt.stage = "p2-t3-complete"
+    _save_nonce_receipt(boundary.root, receipt)
+    return {
+        "stage": "p2-t3",
+        "outcome": result.outcome,
+        "counters": counters.as_dict(),
+        "replay_counters": replay_counters.as_dict(),
+    }
+
+
+
+
+def _synthetic_kiro_record(index: int) -> bytes:
+    row = {
+        "timestamp": f"2026-09-10T00:00:{index % 60:02d}Z",
+        "payload": {
+            "type": "user" if index % 2 == 0 else "assistant",
+            "content": f"message-{index:05d}",
+        },
+    }
+    return (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
+
+
+def simulate_pure_append(source: Path, *, start_index: int, count: int) -> SourceGrant:
+    """Append synthetic records without runner mutation of grant metadata."""
+    data = source.read_bytes()
+    appended = b"".join(_synthetic_kiro_record(i) for i in range(start_index, start_index + count))
+    source.write_bytes(data + appended)
+    meta = source.parent / "session.json"
+    stat_result = source.stat()
+    complete_boundary = (data + appended).rfind(b"\n") + 1
+    prefix_sha = hashlib.sha256((data + appended)[:complete_boundary]).hexdigest()
+    meta_sha = hashlib.sha256(meta.read_bytes()).hexdigest()
+    return SourceGrant(
+        path=str(source.resolve()),
+        metadata_path=str(meta.resolve()),
+        device=stat_result.st_dev,
+        inode=stat_result.st_ino,
+        size=stat_result.st_size,
+        complete_boundary=complete_boundary,
+        prefix_sha256=prefix_sha,
+        metadata_sha256=meta_sha,
+    )
+
+
+def restore_source_to_grant_prefix(source_grant: SourceGrant) -> None:
+    """Restore on-disk source bytes to a grant-bound complete prefix."""
+    path = Path(source_grant.path)
+    data = path.read_bytes()
+    path.write_bytes(data[: source_grant.complete_boundary])
+
+
+def _p2_fault_call_ceilings(boundary: ProductionCanaryBoundary, grant: CanaryGrant) -> dict[str, int]:
+    from adapters.kiro_session_jsonl import parse_complete_prefix
+
+    count = len(parse_complete_prefix(grant.source.path).messages)
+    receipt_path = nonce_receipt_path(boundary.root)
+    stage = ""
+    if receipt_path.is_file():
+        payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+        stage = str(payload.get("stage", ""))
+    if stage.startswith("p2-t3") and count > BASELINE_MIN_MESSAGES:
+        return dict(grant.call_ceilings["append"])
+    if BASELINE_MIN_MESSAGES <= count <= BASELINE_MAX_MESSAGES:
+        return dict(grant.call_ceilings["initial"])
+    return dict(grant.call_ceilings["append"])
+
+
+
+
+
+def reset_p2_baseline_source(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    *,
+    messages: int = BASELINE_MIN_MESSAGES,
+) -> SourceGrant:
+    """Reset derived state and rewrite a synthetic baseline source."""
+    import shutil
+
+    dir_roles = {"chroma", "incremental_state", "dedupe"}
+    file_roles = {"processed", "export", "writer_lock", "source_lock", "export_lock", "processed_lock"}
+    for role in grant.resources:
+        path = Path(role.path)
+        if role.role in dir_roles:
+            if path.is_dir():
+                shutil.rmtree(path, ignore_errors=True)
+            path.mkdir(parents=True, exist_ok=True)
+            os.chmod(path, 0o700)
+        elif role.role in file_roles:
+            if path.is_file():
+                path.unlink()
+            path.parent.mkdir(parents=True, exist_ok=True)
+    state_root = boundary.layout["state"]
+    if state_root.is_dir():
+        shutil.rmtree(state_root, ignore_errors=True)
+    state_root.mkdir(parents=True, exist_ok=True)
+    os.chmod(state_root, 0o700)
+    source_path = Path(grant.source.path)
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    data = b"".join(_synthetic_kiro_record(i) for i in range(messages))
+    source_path.write_bytes(data)
+    meta = source_path.parent / "session.json"
+    if not meta.is_file():
+        meta.write_text(json.dumps({"session": "canary"}, sort_keys=True) + "\n", encoding="utf-8")
+    os.chmod(source_path, 0o600)
+    stat_result = source_path.stat()
+    complete_boundary = data.rfind(b"\n") + 1
+    prefix_sha = hashlib.sha256(data[:complete_boundary]).hexdigest()
+    meta_sha = hashlib.sha256(meta.read_bytes()).hexdigest()
+    return SourceGrant(
+        path=str(source_path.resolve()),
+        metadata_path=str(meta.resolve()),
+        device=stat_result.st_dev,
+        inode=stat_result.st_ino,
+        size=stat_result.st_size,
+        complete_boundary=complete_boundary,
+        prefix_sha256=prefix_sha,
+        metadata_sha256=meta_sha,
+    )
+
+def derive_p2_disposition(sections: Mapping[str, Any]) -> str:
+    """Derive T6 disposition from orchestration section outcomes."""
+    t5 = sections.get("t5")
+    if isinstance(t5, dict) and t5:
+        outcomes = {
+            str(item.get("disposition", ""))
+            for item in t5.values()
+            if isinstance(item, dict)
+        }
+        outcomes.discard("")
+        if "recovery_unproven" in outcomes:
+            return "recovery_unproven"
+        if outcomes and all(value == "restored" for value in outcomes):
+            return "restored"
+        return "recovery_unproven"
+    t3 = sections.get("t3")
+    t4 = sections.get("t4")
+    if isinstance(t3, dict) and t3.get("outcome") == "committed":
+        if isinstance(t4, dict) and t4.get("stage") == "p2-t4":
+            return "converged"
+        if t4 is None:
+            return "converged"
+    return "recovery_unproven"
+
+def bind_p2_append_source(grant: CanaryGrant, source_grant: SourceGrant) -> CanaryGrant:
+    """Return a grant with an updated source binding after a pure append."""
+    if source_grant.path != grant.source.path:
+        raise CanaryRefused("canary_source_path", "append must not change source path")
+    return CanaryGrant(
+        schema_version=grant.schema_version,
+        code_revision=grant.code_revision,
+        expires_at=grant.expires_at,
+        nonce=grant.nonce,
+        run_once=grant.run_once,
+        source=source_grant,
+        append_envelope=grant.append_envelope,
+        resources=grant.resources,
+        config_overlay=grant.config_overlay,
+        config_overlay_digest=grant.config_overlay_digest,
+        provider=grant.provider,
+        call_ceilings=grant.call_ceilings,
+        faults=grant.faults,
+        rollback=grant.rollback,
+        evidence_dir=grant.evidence_dir,
+        expected_pre_state=grant.expected_pre_state,
+        capability_mode=grant.capability_mode,
+    )
+
+
+def run_p2_append_adoption(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    *,
+    expected_sha256: str,
+) -> dict[str, Any]:
+    """P2-T4 hermetic controlled append and frontier proof."""
+    if not _in_p2_worker_subprocess():
+        return _delegate_p2_worker(
+            boundary,
+            grant,
+            "p2-append",
+            expected_sha256=expected_sha256,
+        )
+    from adapters.kiro_session_jsonl import parse_complete_prefix
+
+    view = parse_complete_prefix(grant.source.path)
+    validate_append_profile(len(view.messages))
+    result, counters = _run_coordinator_once(
+        boundary,
+        grant,
+        ceilings=grant.call_ceilings["append"],
+    )
+    if result.outcome != "committed":
+        raise CanaryRefused("canary_p2_t4", f"append adoption failed: {result.outcome}")
+    replay, replay_counters = _run_coordinator_once(
+        boundary,
+        grant,
+        ceilings={"summarize": 0, "distill": 0, "summary_embed": 0, "unit_embed": 0},
+    )
+    if replay.outcome != "unchanged" or replay_counters.total != 0:
+        raise CanaryRefused("canary_p2_t4", "append replay must perform zero calls")
+    receipt = consume_nonce(boundary.root, grant, expected_sha256=expected_sha256)
+    receipt.stage = "p2-t4-complete"
+    if "append" not in receipt.append_epochs:
+        receipt.append_epochs.append("append")
+    _save_nonce_receipt(boundary.root, receipt)
+    return {
+        "stage": "p2-t4",
+        "accepted_messages": len(view.messages),
+        "counters": counters.as_dict(),
+        "replay_counters": replay_counters.as_dict(),
+    }
+
+
+def run_p2_fault_observation(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    *,
+    expected_sha256: str,
+    fault_selector: str,
+    unrelated_manifest: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """P2-T5 single fault/replay observation."""
+    if not _in_p2_worker_subprocess():
+        return _delegate_p2_worker(
+            boundary,
+            grant,
+            "p2-fault",
+            expected_sha256=expected_sha256,
+            extra_env={"CONVMEM_CANARY_FAULT": fault_selector},
+        )
+    fault_point = fault_point_for_selector(fault_selector)
+
+    def fault(name: str) -> None:
+        if name == fault_point:
+            raise CanaryFaultExit(name)
+
+    outcome, _counters = _run_coordinator_once(
+        boundary,
+        grant,
+        ceilings=_p2_fault_call_ceilings(boundary, grant),
+        fault=fault,
+    )
+    if not isinstance(outcome, CanaryFaultExit):
+        raise CanaryRefused("canary_p2_t5", f"fault {fault_selector} did not trigger")
+    coordinator = canary_coordinator(boundary, grant.source.path)
+    capsule = capture_rollback_capsule(coordinator, unrelated_manifest=unrelated_manifest)
+    restore_rollback_capsule(coordinator, capsule)
+    replay, replay_counters = _run_coordinator_once(
+        boundary,
+        grant,
+        ceilings={"summarize": 0, "distill": 0, "summary_embed": 0, "unit_embed": 0},
+    )
+    if replay.outcome not in {"unchanged", "committed"}:
+        raise CanaryRefused("canary_p2_t5", f"fault replay failed: {replay.outcome}")
+    receipt = consume_nonce(boundary.root, grant, expected_sha256=expected_sha256)
+    if fault_selector not in receipt.faults_completed:
+        receipt.faults_completed.append(fault_selector)
+    _save_nonce_receipt(boundary.root, receipt)
+    return {
+        "stage": "p2-t5",
+        "fault": fault_selector,
+        "replay_counters": replay_counters.as_dict(),
+        "disposition": "restored",
+    }
+
+
+def freeze_p2_evidence(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    *,
+    expected_sha256: str,
+    gate0_report: Mapping[str, Any],
+    sections: Mapping[str, Any],
+    disposition: str,
+) -> str:
+    """P2-T6 evidence freeze."""
+    payload = assemble_evidence(
+        gate0=dict(gate0_report),
+        grant_digest=expected_sha256,
+        disposition=disposition,
+        **dict(sections),
+    )
+    evidence_path = Path(grant.evidence_dir) / "p2-hermetic-evidence.json"
+    digest = write_evidence(evidence_path, payload)
+    receipt = consume_nonce(boundary.root, grant, expected_sha256=expected_sha256)
+    receipt.stage = "completed"
+    _save_nonce_receipt(boundary.root, receipt)
+    return digest
+
+
+def run_p2_orchestration(
+    boundary: ProductionCanaryBoundary,
+    grant: CanaryGrant,
+    *,
+    expected_sha256: str,
+    code_revision: str,
+    hooks: Gate0ProbeHooks | None = None,
+    include_faults: bool = True,
+) -> dict[str, Any]:
+    """Run hermetic P2-T3 through T6 behind Gate 0."""
+    gate0 = gate0_preflight_p2(
+        grant,
+        boundary,
+        expected_sha256=expected_sha256,
+        code_revision=code_revision,
+        hooks=hooks,
+    )
+    write_canary_overlay(boundary)
+    sections: dict[str, Any] = {
+        "t3": run_p2_initial_adoption(boundary, grant, expected_sha256=expected_sha256),
+    }
+    append_count = APPEND_MAX_MESSAGES - BASELINE_MIN_MESSAGES
+    updated_source = simulate_pure_append(
+        Path(grant.source.path),
+        start_index=BASELINE_MIN_MESSAGES,
+        count=append_count,
+    )
+    append_grant = bind_p2_append_source(grant, updated_source)
+    sections["t4"] = run_p2_append_adoption(
+        boundary,
+        append_grant,
+        expected_sha256=expected_sha256,
+    )
+    if include_faults:
+        sections["t5"] = {}
+        prior_subprocess = os.environ.get("CONVMEM_CANARY_SUBPROCESS")
+        os.environ["CONVMEM_CANARY_SUBPROCESS"] = "1"
+        try:
+            for selector in grant.faults:
+                reset_p2_baseline_source(boundary, grant)
+                sections["t5"][selector] = run_p2_fault_observation(
+                    boundary,
+                    grant,
+                    expected_sha256=expected_sha256,
+                    fault_selector=selector,
+                )
+        finally:
+            if prior_subprocess is None:
+                os.environ.pop("CONVMEM_CANARY_SUBPROCESS", None)
+            else:
+                os.environ["CONVMEM_CANARY_SUBPROCESS"] = prior_subprocess
+    disposition = derive_p2_disposition(sections)
+    sections["t6"] = {"disposition": disposition}
+    digest = freeze_p2_evidence(
+        boundary,
+        grant,
+        expected_sha256=expected_sha256,
+        gate0_report=gate0,
+        sections=sections,
+        disposition=disposition,
+    )
+    return {"gate0": gate0, "sections": sections, "evidence_digest": digest, "disposition": disposition}
+
+
+
 def terminate_fault_worker(child: subprocess.Popen[Any]) -> dict[str, Any]:
     """Kill a fault worker process group and prove descendants absent."""
     try:
@@ -1114,6 +2032,7 @@ __all__ = [
     "decode_grant",
     "fault_point_for_selector",
     "gate0_preflight",
+    "P1_CAPABILITY_MODE",
     "gate0_watcher_probe",
     "install_call_budget_guard",
     "prove_cli_watcher_unreachable",
@@ -1126,4 +2045,18 @@ __all__ = [
     "verify_persistent_config_false_false",
     "write_canary_overlay",
     "write_evidence",
+    "P1_CAPABILITY_MODE",
+    "P2_CAPABILITY_MODE",
+    "Gate0ProbeHooks",
+    "CanaryFaultExit",
+    "is_p2_grant",
+    "validate_p2_grant",
+    "gate0_preflight_p1",
+    "gate0_preflight_p2",
+    "bind_p2_append_source",
+    "run_p2_initial_adoption",
+    "run_p2_append_adoption",
+    "run_p2_fault_observation",
+    "freeze_p2_evidence",
+    "run_p2_orchestration",
 ]
