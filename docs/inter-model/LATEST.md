@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-11
+**Updated:** 2026-09-12
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -12,14 +12,19 @@ cross-arc snapshot and the linked arc brief below.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator is on `main` via squash-merged PR #293 (`881133d`) and remains
   disabled. The production-canary architecture/plan merged via PR #295
-  (`b23cabad`). The P1 hermetic harness merged via PR #296 (`907c828`). PR #298
-  (`8741774`) landed Kiro's PASS on the blocked P2 capability-gap packet. The
-  positive exact-resource **P2 transfer seam is now on `main`** via PR #299
-  (`8beda7d`) after Kiro PASS at final head `fe0086c` and six green CI checks.
-  No executable grant or digest has been issued. Ryan's next decision is
-  whether to authorize read-only source/resource revalidation and exact grant
-  packet preparation. Gate 0, live P2, production access, provider calls,
-  config changes, indexing, watcher work, and activation remain unauthorized.
+  (`b23cabad`). The P1 hermetic harness merged via PR #296 (`907c828`). The
+  positive exact-resource P2 transfer seam is on `main` via PR #299 (`8beda7d`).
+  Cursor implemented the Kiro-PASSed **P2 runtime-readiness corrective (C0–C7)**
+  on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` from `origin/main`
+  `7360a04`. Local Claude FAIL at preserved `5bdc132`, then again at preserved
+  `a47f32b` (R1–R4). Kiro CONDITIONAL PASS at preserved `4acb4c5` (C1–C4).
+  C1–C4 Kiro PASS at preserved `6cb0107`. Repo-wide CI then failed; the
+  overlay-digest and writer-inventory corrective is later on that branch
+  (existing PR #301). Next lane is Kiro targeted exact-tip recheck of the new
+  tip (see
+  [`VERIFY-codex-jsonl-production-canary.md`](../plans/VERIFY-codex-jsonl-production-canary.md)).
+  No Claude re-review. No live source, Gate 0, P2 run, replacement grant/digest,
+  new PR, or activation.
   Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before

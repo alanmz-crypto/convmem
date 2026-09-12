@@ -24,20 +24,20 @@ from incremental_jsonl_canary import (  # noqa: E402
     decode_grant,
     gate0_preflight,
     is_p2_grant,
-    run_p2_append_adoption,
-    run_p2_fault_observation,
-    run_p2_initial_adoption,
-    run_p2_orchestration,
+    is_p2_live_grant,
     validate_grant,
-    validate_p2_grant,
-    write_canary_overlay,
-    write_evidence,
+)
+from incremental_jsonl_canary_p2 import (  # noqa: E402
+    bind_live_append_for_faults,
+    freeze_live_evidence,
+    gate0_preflight_live,
+    prepare_live_p2,
+    run_live_t3,
+    run_live_t4,
+    run_live_t5,
+    validate_p2_live_grant,
 )
 from chroma_write_store import current_code_revision  # noqa: E402
-
-
-def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _load_grant(grant_path: Path, expected: str):
@@ -46,17 +46,7 @@ def _load_grant(grant_path: Path, expected: str):
     if actual != expected:
         raise CanaryRefused("canary_grant_digest", "CLI digest does not match grant file")
     revision = current_code_revision()
-    if is_p2_grant(grant):
-        validate_p2_grant(grant, expected_sha256=expected, code_revision=revision)
-        boundary = ProductionCanaryBoundary.from_p2_grant(
-            grant, root=Path(grant.evidence_dir).parent
-        )
-    else:
-        validate_grant(grant, expected_sha256=expected, code_revision=revision)
-        boundary = ProductionCanaryBoundary.from_grant(
-            grant, root=Path(grant.evidence_dir).parent
-        )
-    return grant, boundary, revision
+    return grant, revision
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -70,18 +60,112 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--stage",
-        choices=("p2-t3", "p2-t4", "p2-t5", "p2-t6", "p2-all"),
-        help="P2 orchestration stage (P2 grants only)",
+        choices=(
+            "prepare",
+            "t3-initial",
+            "t4-append",
+            "t5-bind-append",
+            "t5-fault",
+            "t6-evidence",
+            "p2-t3",
+            "p2-t4",
+            "p2-t5-bind",
+            "p2-t5",
+            "p2-t6",
+            "p2-all",
+        ),
+        help="P2 orchestration stage",
     )
     parser.add_argument(
         "--fault",
-        help="Fault selector for --stage p2-t5",
+        help="Fault selector for --stage t5-fault/p2-t5",
     )
     args = parser.parse_args(argv)
     grant_path = Path(args.grant).expanduser()
     expected = args.grant_sha256.lower()
     try:
-        grant, boundary, revision = _load_grant(grant_path, expected)
+        grant, revision = _load_grant(grant_path, expected)
+        if not args.preflight_only and not is_p2_live_grant(grant):
+            if is_p2_grant(grant):
+                raise CanaryRefused(
+                    "canary_mode_retired",
+                    "p2-exact-resource-v1 is not live-capable; use p2-exact-resource-v2",
+                )
+            raise CanaryRefused(
+                "canary_p2_unauthorized",
+                "live canary execution requires a P2 exact-resource grant",
+            )
+        if args.stage == "p2-all":
+            raise CanaryRefused(
+                "canary_p2_all_refused",
+                "live P2 has no all-stages command; use one stage transition per invocation",
+            )
+        if is_p2_live_grant(grant):
+            validate_p2_live_grant(grant, expected_sha256=expected, code_revision=revision)
+            boundary = ProductionCanaryBoundary.from_p2_live_grant(grant)
+            report = gate0_preflight_live(
+                grant,
+                boundary,
+                expected_sha256=expected,
+                code_revision=revision,
+            )
+            if args.preflight_only:
+                print(json.dumps({"status": "preflight_pass", "gate0": report}, sort_keys=True))
+                return 0
+            stage = args.stage
+            if stage == "prepare":
+                payload = prepare_live_p2(
+                    boundary,
+                    grant,
+                    expected_sha256=expected,
+                    code_revision=revision,
+                )
+            elif stage in {"t3-initial", "p2-t3"}:
+                payload = run_live_t3(
+                    boundary,
+                    grant,
+                    expected_sha256=expected,
+                    provider_mode="live",
+                )
+            elif stage in {"t4-append", "p2-t4"}:
+                payload = run_live_t4(
+                    boundary,
+                    grant,
+                    expected_sha256=expected,
+                    provider_mode="live",
+                )
+            elif stage in {"t5-bind-append", "p2-t5-bind"}:
+                payload = bind_live_append_for_faults(grant, expected_sha256=expected)
+            elif stage in {"t5-fault", "p2-t5"}:
+                if not args.fault:
+                    raise CanaryRefused("canary_p2_t5", "--fault required for t5 stage")
+                payload = run_live_t5(
+                    boundary,
+                    grant,
+                    expected_sha256=expected,
+                    fault_selector=args.fault,
+                    provider_mode="live",
+                )
+            elif stage in {"t6-evidence", "p2-t6"}:
+                digest = freeze_live_evidence(
+                    boundary,
+                    grant,
+                    expected_sha256=expected,
+                    gate0_report=report,
+                    sections={},
+                )
+                payload = {"evidence_digest": digest, "hermetic": False}
+            else:
+                raise CanaryRefused(
+                    "canary_p2_unauthorized",
+                    "P2 mutation requires --stage prepare|t3-initial|t4-append|t5-bind-append|t5-fault|t6-evidence",
+                )
+            print(json.dumps({"status": "ok", "stage": stage, "payload": payload}, default=str))
+            return 0
+        validate_grant(grant, expected_sha256=expected, code_revision=revision)
+        boundary = ProductionCanaryBoundary.from_grant(
+            grant, root=Path(grant.evidence_dir).parent
+        )
         report = gate0_preflight(
             grant,
             boundary,
@@ -89,55 +173,12 @@ def main(argv: list[str] | None = None) -> int:
             code_revision=revision,
         )
         if args.preflight_only:
-            evidence_path = Path(grant.evidence_dir) / "gate0-preflight.json"
-            digest = write_evidence(
-                evidence_path,
-                {"gate0": report, "grant_sha256": expected},
-            )
-            print(json.dumps({"status": "preflight_pass", "evidence_digest": digest}))
+            print(json.dumps({"status": "preflight_pass", "gate0": report}, sort_keys=True))
             return 0
-        if not is_p2_grant(grant):
-            raise CanaryRefused(
-                "canary_p2_unauthorized",
-                "live canary execution requires a P2 exact-resource grant",
-            )
-        write_canary_overlay(boundary)
-        if args.stage == "p2-all":
-            payload = run_p2_orchestration(
-                boundary,
-                grant,
-                expected_sha256=expected,
-                code_revision=revision,
-                include_faults=True,
-            )
-            print(json.dumps({"status": "p2_all", **payload}))
-            return 0
-        if args.stage == "p2-t3":
-            payload = run_p2_initial_adoption(boundary, grant, expected_sha256=expected)
-        elif args.stage == "p2-t4":
-            payload = run_p2_append_adoption(boundary, grant, expected_sha256=expected)
-        elif args.stage == "p2-t5":
-            if not args.fault:
-                raise CanaryRefused("canary_p2_t5", "--fault required for p2-t5 stage")
-            payload = run_p2_fault_observation(
-                boundary,
-                grant,
-                expected_sha256=expected,
-                fault_selector=args.fault,
-            )
-        elif args.stage == "p2-t6":
-            digest = write_evidence(
-                Path(grant.evidence_dir) / "p2-stage-evidence.json",
-                {"gate0": report, "grant_sha256": expected, "hermetic": True},
-            )
-            payload = {"evidence_digest": digest}
-        else:
-            raise CanaryRefused(
-                "canary_p2_unauthorized",
-                "P2 mutation requires --stage p2-t3|p2-t4|p2-t5|p2-t6|p2-all",
-            )
-        print(json.dumps({"status": "ok", "stage": args.stage, "payload": payload}))
-        return 0
+        raise CanaryRefused(
+            "canary_p2_unauthorized",
+            "live canary execution requires a P2 exact-resource grant",
+        )
     except CanaryRefused as exc:
         print(json.dumps({"status": "refused", "code": exc.code, "detail": exc.detail}), file=sys.stderr)
         return 2

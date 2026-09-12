@@ -18,7 +18,7 @@ import subprocess
 import sys
 import time
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Mapping, TypeVar
@@ -38,7 +38,19 @@ CANARY_SCHEMA_VERSION = 1
 CANARY_MODE = "jsonl-production-canary-v1"
 P1_CAPABILITY_MODE = "p1-hermetic-v1"
 P2_CAPABILITY_MODE = "p2-exact-resource-v1"
-_GRANT_OPTIONAL_FIELDS = frozenset({"capability_mode"})
+P2_LIVE_CAPABILITY_MODE = "p2-exact-resource-v2"
+ABSENT_DIGEST = "absent"
+ZERO_DIGEST = "0" * 64
+_GRANT_V2_FIELDS = frozenset(
+    {
+        "persistent_config",
+        "model_manifests",
+        "restic",
+        "resource_identities",
+        "owner_uid",
+    }
+)
+_GRANT_OPTIONAL_FIELDS = frozenset({"capability_mode"}) | _GRANT_V2_FIELDS
 CRASH_EXIT = 86
 RECOVERY_TIMEOUT_S = 30
 STABLE_READ_COUNT = 3
@@ -166,6 +178,40 @@ class RollbackGrant:
 
 
 @dataclass(frozen=True)
+class PersistentConfigGrant:
+    path: str
+    digest: str
+
+
+@dataclass(frozen=True)
+class ModelManifestGrant:
+    role: str
+    name: str
+    digest: str
+    manifest_path: str
+
+
+@dataclass(frozen=True)
+class ResticGrant:
+    snapshot_id: str
+    tag: str
+    data_root: str
+    repository: str
+    require_current_local_day: bool
+
+
+@dataclass(frozen=True)
+class ResourceIdentityGrant:
+    role: str
+    path: str
+    uid: int
+    mode: int
+    device: int
+    inode: int
+    file_type: str
+
+
+@dataclass(frozen=True)
 class CanaryGrant:
     schema_version: int
     code_revision: str
@@ -184,6 +230,11 @@ class CanaryGrant:
     evidence_dir: str
     expected_pre_state: dict[str, Any]
     capability_mode: str = P1_CAPABILITY_MODE
+    persistent_config: PersistentConfigGrant | None = None
+    model_manifests: tuple[ModelManifestGrant, ...] = ()
+    restic: ResticGrant | None = None
+    resource_identities: tuple[ResourceIdentityGrant, ...] = ()
+    owner_uid: int | None = None
 
     def to_payload(self) -> dict[str, Any]:
         payload = {
@@ -208,6 +259,14 @@ class CanaryGrant:
         }
         if self.capability_mode != P1_CAPABILITY_MODE:
             payload["capability_mode"] = self.capability_mode
+        if self.capability_mode == P2_LIVE_CAPABILITY_MODE:
+            if self.persistent_config is None or self.restic is None or self.owner_uid is None:
+                raise CanaryRefused("canary_grant_live_fields", "live P2 grant missing bindings")
+            payload["persistent_config"] = asdict(self.persistent_config)
+            payload["model_manifests"] = [asdict(item) for item in self.model_manifests]
+            payload["restic"] = asdict(self.restic)
+            payload["resource_identities"] = [asdict(item) for item in self.resource_identities]
+            payload["owner_uid"] = self.owner_uid
         return payload
 
     def digest_payload(self) -> bytes:
@@ -288,8 +347,15 @@ def decode_grant(path: Path | str) -> CanaryGrant:
             f"unknown grant fields: {sorted(unknown)}",
         )
     capability_mode = str(payload.get("capability_mode", P1_CAPABILITY_MODE))
-    if capability_mode not in {P1_CAPABILITY_MODE, P2_CAPABILITY_MODE}:
+    if capability_mode not in {P1_CAPABILITY_MODE, P2_CAPABILITY_MODE, P2_LIVE_CAPABILITY_MODE}:
         raise CanaryRefused("canary_grant_mode", f"unsupported capability_mode: {capability_mode}")
+    if capability_mode == P2_LIVE_CAPABILITY_MODE:
+        missing_live = _GRANT_V2_FIELDS - set(payload)
+        if missing_live:
+            raise CanaryRefused(
+                "canary_grant_missing_field",
+                f"missing live grant fields: {sorted(missing_live)}",
+            )
     missing = _GRANT_REQUIRED_TOP - set(payload)
     if missing:
         raise CanaryRefused(
@@ -414,11 +480,102 @@ def decode_grant(path: Path | str) -> CanaryGrant:
         ),
         evidence_dir=str(payload["evidence_dir"]),
         expected_pre_state=dict(payload["expected_pre_state"]),
+        **_decode_live_bindings(payload, capability_mode),
     )
+
+
+def _decode_live_bindings(payload: Mapping[str, Any], capability_mode: str) -> dict[str, Any]:
+    if capability_mode != P2_LIVE_CAPABILITY_MODE:
+        return {}
+    persistent = payload["persistent_config"]
+    if not isinstance(persistent, dict) or "path" not in persistent or "digest" not in persistent:
+        raise CanaryRefused("canary_grant_config", "persistent_config requires path and digest")
+    manifests_raw = payload["model_manifests"]
+    if not isinstance(manifests_raw, list) or len(manifests_raw) < 3:
+        raise CanaryRefused("canary_grant_models", "model_manifests must list summarize, embed, and distill")
+    manifests: list[ModelManifestGrant] = []
+    seen_roles: set[str] = set()
+    for item in manifests_raw:
+        if not isinstance(item, dict):
+            raise CanaryRefused("canary_grant_models", "each model manifest must be an object")
+        role = str(item.get("role", ""))
+        if role not in {"summarize", "embed", "distill"}:
+            raise CanaryRefused("canary_grant_models", f"unknown model role {role}")
+        if role in seen_roles:
+            raise CanaryRefused("canary_grant_models", f"duplicate model role {role}")
+        for key in ("name", "digest", "manifest_path"):
+            if key not in item:
+                raise CanaryRefused("canary_grant_models", f"missing model_manifests.{key}")
+        seen_roles.add(role)
+        manifests.append(
+            ModelManifestGrant(
+                role=role,
+                name=str(item["name"]),
+                digest=str(item["digest"]),
+                manifest_path=str(item["manifest_path"]),
+            )
+        )
+    if seen_roles != {"summarize", "embed", "distill"}:
+        raise CanaryRefused("canary_grant_models", "model_manifests must cover summarize, embed, distill")
+    restic = payload["restic"]
+    if not isinstance(restic, dict):
+        raise CanaryRefused("canary_grant_restic", "restic must be an object")
+    for key in ("snapshot_id", "tag", "data_root", "repository", "require_current_local_day"):
+        if key not in restic:
+            raise CanaryRefused("canary_grant_restic", f"missing restic.{key}")
+    identities_raw = payload["resource_identities"]
+    if not isinstance(identities_raw, list) or not identities_raw:
+        raise CanaryRefused("canary_grant_identities", "resource_identities must be a non-empty list")
+    identities: list[ResourceIdentityGrant] = []
+    seen_identity_roles: set[str] = set()
+    for item in identities_raw:
+        if not isinstance(item, dict):
+            raise CanaryRefused("canary_grant_identities", "each identity must be an object")
+        role = str(item.get("role", ""))
+        if role in seen_identity_roles:
+            raise CanaryRefused("canary_grant_identities", f"duplicate identity role {role}")
+        for key in ("path", "uid", "mode", "device", "inode", "file_type"):
+            if key not in item:
+                raise CanaryRefused("canary_grant_identities", f"missing identity.{key}")
+        file_type = str(item["file_type"])
+        if file_type not in {"file", "dir", "absent"}:
+            raise CanaryRefused("canary_grant_identities", f"invalid file_type {file_type}")
+        seen_identity_roles.add(role)
+        identities.append(
+            ResourceIdentityGrant(
+                role=role,
+                path=str(item["path"]),
+                uid=int(item["uid"]),
+                mode=int(item["mode"]),
+                device=int(item["device"]),
+                inode=int(item["inode"]),
+                file_type=file_type,
+            )
+        )
+    return {
+        "persistent_config": PersistentConfigGrant(
+            path=str(persistent["path"]),
+            digest=str(persistent["digest"]),
+        ),
+        "model_manifests": tuple(manifests),
+        "restic": ResticGrant(
+            snapshot_id=str(restic["snapshot_id"]),
+            tag=str(restic["tag"]),
+            data_root=str(restic["data_root"]),
+            repository=str(restic["repository"]),
+            require_current_local_day=bool(restic["require_current_local_day"]),
+        ),
+        "resource_identities": tuple(identities),
+        "owner_uid": int(payload["owner_uid"]),
+    }
 
 
 def is_p2_grant(grant: CanaryGrant) -> bool:
     return grant.capability_mode == P2_CAPABILITY_MODE
+
+
+def is_p2_live_grant(grant: CanaryGrant) -> bool:
+    return grant.capability_mode == P2_LIVE_CAPABILITY_MODE
 
 
 def _grant_allowlist_paths(grant: CanaryGrant) -> frozenset[Path]:
@@ -450,8 +607,14 @@ def _assert_authority_mode(path: Path, *, label: str, grant: CanaryGrant | None 
 
 def _harden_grant_paths(grant: CanaryGrant) -> None:
     """Restore grant-listed authority modes after coordinator side effects."""
+    exempt = {
+        Path(grant.source.path).resolve(strict=False),
+        Path(grant.source.metadata_path).resolve(strict=False),
+    }
     for path in _grant_allowlist_paths(grant):
         if not path.exists():
+            continue
+        if path.resolve(strict=False) in exempt:
             continue
         if path.is_dir():
             os.chmod(path, 0o700)
@@ -492,6 +655,8 @@ def validate_p2_grant(
     code_revision: str,
 ) -> None:
     """Positive exact-resource validation for P2 grants."""
+    if is_p2_live_grant(grant):
+        raise CanaryRefused("canary_mode", "live P2 grants require validate_p2_live_grant")
     if not is_p2_grant(grant):
         raise CanaryRefused("canary_mode", "not a P2 exact-resource grant")
     _validate_grant_common(grant, expected_sha256=expected_sha256, code_revision=code_revision)
@@ -516,7 +681,7 @@ def validate_grant(
     forbidden_roots: tuple[Path, ...] | None = None,
 ) -> None:
     """Fail-closed grant validation before any writer construction."""
-    if is_p2_grant(grant):
+    if is_p2_live_grant(grant) or is_p2_grant(grant):
         raise CanaryRefused("canary_mode", "P2 grants require validate_p2_grant")
     _validate_grant_common(grant, expected_sha256=expected_sha256, code_revision=code_revision)
     forbidden = forbidden_roots or known_production_roots()
@@ -661,6 +826,8 @@ class ProductionCanaryBoundary:
         root: Path | None = None,
     ) -> "ProductionCanaryBoundary":
         """Positive exact-resource boundary for P2 grants only."""
+        if is_p2_live_grant(grant):
+            return cls.from_p2_live_grant(grant, root=root)
         if not is_p2_grant(grant):
             raise CanaryRefused("canary_mode", "not a P2 exact-resource grant")
         if root is None:
@@ -708,6 +875,54 @@ class ProductionCanaryBoundary:
         os.chmod(evidence, 0o700)
         return cls(root=root_path, token=token, grant=grant, forbidden_roots=())
 
+    @classmethod
+    def from_p2_live_grant(
+        cls,
+        grant: CanaryGrant,
+        *,
+        root: Path | None = None,
+    ) -> "ProductionCanaryBoundary":
+        """Read-only positive allowlist for live P2 grants. Creates no files."""
+        if not is_p2_live_grant(grant):
+            raise CanaryRefused("canary_mode", "not a live P2 exact-resource grant")
+        allowlist = set(_grant_allowlist_paths(grant))
+        if grant.persistent_config is not None:
+            allowlist.add(Path(grant.persistent_config.path).resolve(strict=False))
+        role_map = {item.role: Path(item.path) for item in grant.resources}
+        missing_roles = _RESOURCE_ROLES - set(role_map)
+        if missing_roles:
+            raise CanaryRefused(
+                "canary_boundary_resources",
+                f"missing resource roles: {sorted(missing_roles)}",
+            )
+        for role, candidate in role_map.items():
+            if not candidate.is_absolute():
+                raise CanaryRefused("canary_boundary_path", f"resource must be absolute: {candidate}")
+            resolved = candidate.resolve(strict=False)
+            if resolved not in allowlist:
+                raise CanaryRefused("canary_boundary_escape", f"{role} not in grant allowlist")
+            if _has_symlink_component(resolved):
+                raise CanaryRefused("canary_boundary_escape", f"{role} contains symlink")
+            _assert_authority_mode(resolved, label=role, grant=grant)
+        processed = role_map["processed"].resolve(strict=False)
+        export = role_map["export"].resolve(strict=False)
+        source_digest = hashlib.sha256(grant.source.path.encode()).hexdigest()
+        expected_locks = {
+            "writer_lock": processed.parent / "locks/chroma_writer_gate.lock",
+            "source_lock": processed.parent / f"locks/source/{source_digest}.lock",
+            "export_lock": export.with_suffix(export.suffix + ".lock"),
+            "processed_lock": processed.with_name(processed.name + ".lock"),
+        }
+        for role, expected in expected_locks.items():
+            actual = role_map[role].resolve(strict=False)
+            if actual != expected.resolve(strict=False):
+                raise CanaryRefused(
+                    "canary_boundary_lock",
+                    f"{role} must name the lock used by the coordinator",
+                )
+        root_path = Path(root) if root is not None else Path(grant.evidence_dir).parent
+        token = hashlib.sha256(grant.digest_payload()).hexdigest()
+        return cls(root=root_path, token=token, grant=grant, forbidden_roots=())
 
     @property
     def layout(self) -> dict[str, Path]:
@@ -743,9 +958,27 @@ class ProductionCanaryBoundary:
         if _has_symlink_component(candidate):
             raise CanaryRefused("canary_boundary_escape", f"{label} contains symlink")
         resolved = candidate.resolve(strict=False)
-        allowed = {Path(item.path).resolve(strict=False) for item in self.grant.resources}
-        allowed.add(self.root.resolve(strict=False))
-        if not any(_is_relative_to(resolved, base) or resolved == base for base in allowed):
+        tree_roles = frozenset({"chroma", "incremental_state", "attestations", "census"})
+        exact = {
+            Path(self.grant.source.path).resolve(strict=False),
+            Path(self.grant.source.metadata_path).resolve(strict=False),
+            Path(self.grant.config_overlay).resolve(strict=False),
+            Path(self.grant.evidence_dir).resolve(strict=False),
+            Path(self.grant.rollback.capsule_path).resolve(strict=False),
+            self.root.resolve(strict=False),
+        }
+        trees: set[Path] = set()
+        for item in self.grant.resources:
+            role_path = Path(item.path).resolve(strict=False)
+            exact.add(role_path)
+            if item.role in tree_roles:
+                trees.add(role_path)
+            if item.role == "dedupe" and role_path.is_dir():
+                exact.add(role_path / "dedupe_queue.jsonl")
+                exact.add(role_path / "ingest_duplicate_suppressions.jsonl")
+        in_exact = resolved in exact
+        in_tree = any(_is_relative_to(resolved, base) for base in trees)
+        if not in_exact and not in_tree:
             raise CanaryRefused("canary_boundary_escape", f"{label} not in grant: {resolved}")
         for forbidden in self.forbidden_roots:
             if _is_relative_to(resolved, forbidden) or _is_relative_to(forbidden, resolved):
@@ -1300,6 +1533,17 @@ def restore_rollback_capsule(
     coordinator._restore_before_images(  # pylint: disable=protected-access
         dict(capsule["rollback"])
     )
+    expected = dict(capsule.get("state_digests") or {})
+    actual: dict[str, str] = {}
+    for name, path in coordinator.paths.items():
+        if isinstance(path, Path) and path.is_file():
+            actual[name] = _sha256_file(path)
+    for name, digest in expected.items():
+        if actual.get(name) != digest:
+            raise CanaryRefused(
+                "canary_capsule_state",
+                f"post-restore state digest mismatch for {name}",
+            )
 
 
 def unrelated_sentinel_digest(store, source_paths: list[str]) -> dict[str, Any]:  # noqa: ANN001
@@ -1652,8 +1896,19 @@ def _synthetic_kiro_record(index: int) -> bytes:
     return (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
 
 
-def simulate_pure_append(source: Path, *, start_index: int, count: int) -> SourceGrant:
-    """Append synthetic records without runner mutation of grant metadata."""
+def simulate_pure_append(
+    source: Path,
+    *,
+    start_index: int,
+    count: int,
+    grant: CanaryGrant | None = None,
+) -> SourceGrant:
+    """Append synthetic records without runner mutation of grant metadata.
+
+    Live P2 grants must never reach this helper; v1 hermetic fixtures may.
+    """
+    if grant is not None and is_p2_live_grant(grant):
+        raise CanaryRefused("canary_source_immutable", "live P2 runtime cannot write source files")
     data = source.read_bytes()
     appended = b"".join(_synthetic_kiro_record(i) for i in range(start_index, start_index + count))
     source.write_bytes(data + appended)
@@ -1674,8 +1929,10 @@ def simulate_pure_append(source: Path, *, start_index: int, count: int) -> Sourc
     )
 
 
-def restore_source_to_grant_prefix(source_grant: SourceGrant) -> None:
+def restore_source_to_grant_prefix(source_grant: SourceGrant, grant: CanaryGrant | None = None) -> None:
     """Restore on-disk source bytes to a grant-bound complete prefix."""
+    if grant is not None and is_p2_live_grant(grant):
+        raise CanaryRefused("canary_source_immutable", "live P2 runtime cannot rewrite source files")
     path = Path(source_grant.path)
     data = path.read_bytes()
     path.write_bytes(data[: source_grant.complete_boundary])
@@ -1707,6 +1964,8 @@ def reset_p2_baseline_source(
     messages: int = BASELINE_MIN_MESSAGES,
 ) -> SourceGrant:
     """Reset derived state and rewrite a synthetic baseline source."""
+    if is_p2_live_grant(grant):
+        raise CanaryRefused("canary_source_immutable", "live P2 runtime cannot reset source files")
     import shutil
 
     dir_roles = {"chroma", "incremental_state", "dedupe"}
@@ -1778,25 +2037,7 @@ def bind_p2_append_source(grant: CanaryGrant, source_grant: SourceGrant) -> Cana
     """Return a grant with an updated source binding after a pure append."""
     if source_grant.path != grant.source.path:
         raise CanaryRefused("canary_source_path", "append must not change source path")
-    return CanaryGrant(
-        schema_version=grant.schema_version,
-        code_revision=grant.code_revision,
-        expires_at=grant.expires_at,
-        nonce=grant.nonce,
-        run_once=grant.run_once,
-        source=source_grant,
-        append_envelope=grant.append_envelope,
-        resources=grant.resources,
-        config_overlay=grant.config_overlay,
-        config_overlay_digest=grant.config_overlay_digest,
-        provider=grant.provider,
-        call_ceilings=grant.call_ceilings,
-        faults=grant.faults,
-        rollback=grant.rollback,
-        evidence_dir=grant.evidence_dir,
-        expected_pre_state=grant.expected_pre_state,
-        capability_mode=grant.capability_mode,
-    )
+    return replace(grant, source=source_grant)
 
 
 def run_p2_append_adoption(
@@ -1931,6 +2172,11 @@ def run_p2_orchestration(
     include_faults: bool = True,
 ) -> dict[str, Any]:
     """Run hermetic P2-T3 through T6 behind Gate 0."""
+    if is_p2_live_grant(grant):
+        raise CanaryRefused(
+            "canary_p2_all_refused",
+            "live P2 has no all-stages command; use one stage transition per invocation",
+        )
     gate0 = gate0_preflight_p2(
         grant,
         boundary,

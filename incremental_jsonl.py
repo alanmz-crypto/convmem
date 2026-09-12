@@ -45,6 +45,7 @@ CHECKPOINT_VERSION = 1
 TRANSACTION_VERSION = 1
 PREPARED_VERSION = 1
 ROLLBACK_VERSION = 1
+DEDUPE_FILENAMES = ("dedupe_queue.jsonl", "ingest_duplicate_suppressions.jsonl")
 CONTINUITY_REASONS = (
     "initial_full",
     "source_identity_changed",
@@ -888,7 +889,118 @@ class IncrementalJsonlCoordinator:
             "export_lines": export_lines,
             "processed_preimage": processed_preimage,
             "source_path": self.path_key,
+            "state_files": self._capture_state_files(),
+            "prepared_files": self._capture_prepared_files(),
+            "dedupe_files": self._capture_dedupe_files(),
         }
+
+    def _file_preimage(self, path: Path) -> str | None:
+        if not path.is_file():
+            return None
+        return path.read_text(encoding="utf-8")
+
+    def _capture_state_files(self) -> dict[str, str | None]:
+        return {
+            name: self._file_preimage(self.paths[name])
+            for name in ("checkpoint", "transaction", "rollback")
+        }
+
+    def _capture_prepared_files(self) -> dict[str, str]:
+        prepared_dir = self.paths["prepared"]
+        captured: dict[str, str] = {}
+        if not prepared_dir.is_dir():
+            return captured
+        for child in sorted(prepared_dir.iterdir()):
+            if child.is_file():
+                captured[child.name] = child.read_text(encoding="utf-8")
+        return captured
+
+    def _require_granted_path(self, path: Path | str, *, label: str) -> Path:
+        try:
+            return self.boundary.resolve_mutable(path, label=label)
+        except IsolationViolation as exc:
+            raise IncrementalJsonlError(
+                "recovery_unproven",
+                f"{label} outside granted role",
+            ) from exc
+
+    def _granted_dedupe_paths(self) -> dict[str, Path]:
+        layout = getattr(self.boundary, "layout", None)
+        if not isinstance(layout, dict) or "dedupe" not in layout:
+            raise IncrementalJsonlError("recovery_unproven", "dedupe role missing from boundary")
+        granted = self._require_granted_path(layout["dedupe"], label="dedupe role")
+        paths: dict[str, Path] = {}
+        for name in DEDUPE_FILENAMES:
+            candidate = granted if granted.name == name else granted / name
+            paths[name] = self._require_granted_path(candidate, label=f"dedupe {name}")
+        return paths
+
+    def _dedupe_restore_paths(self) -> dict[str, Path]:
+        granted = self._granted_dedupe_paths()
+        chroma = self._require_granted_path(self.cfg["index"]["chroma_dir"], label="chroma")
+        for name, path in granted.items():
+            derived = self._require_granted_path(
+                chroma.parent / name,
+                label=f"dedupe derived {name}",
+            )
+            if derived != path:
+                raise IncrementalJsonlError(
+                    "recovery_unproven",
+                    f"dedupe location outside granted role: {derived}",
+                )
+        return granted
+
+    def _capture_dedupe_files(self) -> dict[str, str | None]:
+        paths = self._dedupe_restore_paths()
+        return {name: self._file_preimage(path) for name, path in paths.items()}
+
+    def _restore_file_preimage(self, path: Path, payload: str | None) -> None:
+        if payload is None:
+            path.unlink(missing_ok=True)
+            return
+        _atomic_bytes(path, payload.encode("utf-8"))
+
+    def _restore_processed(self, processed_preimage: dict) -> None:
+        from ingest import save_processed
+
+        processed_path = str(self.cfg["index"]["processed_log"])
+        current = load_processed(processed_path)
+        restored = {
+            key: value
+            for key, value in current.items()
+            if not (isinstance(value, dict) and value.get("path") == self.path_key)
+        }
+        restored.update(processed_preimage)
+        save_processed(processed_path, restored)
+
+    def _restore_state_files(self, state_files: dict | None) -> None:
+        if not state_files:
+            return
+        for name in ("checkpoint", "transaction", "rollback"):
+            if name not in state_files:
+                continue
+            self._restore_file_preimage(self.paths[name], state_files[name])
+
+    def _restore_prepared_files(self, prepared_files: dict | None) -> None:
+        prepared_dir = self.paths["prepared"]
+        prepared_dir.mkdir(parents=True, exist_ok=True)
+        os.chmod(prepared_dir, 0o700)
+        expected = set((prepared_files or {}).keys())
+        if prepared_dir.is_dir():
+            for child in prepared_dir.iterdir():
+                if child.is_file() and child.name not in expected:
+                    child.unlink(missing_ok=True)
+        for name, payload in (prepared_files or {}).items():
+            self._restore_file_preimage(prepared_dir / name, payload)
+
+    def _restore_dedupe_files(self, dedupe_files: dict | None) -> None:
+        if not dedupe_files:
+            return
+        paths = self._dedupe_restore_paths()
+        for name in DEDUPE_FILENAMES:
+            if name not in dedupe_files:
+                continue
+            self._restore_file_preimage(paths[name], dedupe_files[name])
 
     def _restore_before_images(self, rollback: dict) -> None:
         if rollback.get("version") != ROLLBACK_VERSION:
@@ -917,6 +1029,10 @@ class IncrementalJsonlCoordinator:
             session.store.restore_source_rows(SUMMARIES, rollback.get("summaries") or [])
             session.store.restore_source_rows(UNITS, rollback.get("units") or [])
         self._restore_export(rollback.get("export_lines") or [])
+        self._restore_processed(rollback.get("processed_preimage") or {})
+        self._restore_state_files(rollback.get("state_files"))
+        self._restore_prepared_files(rollback.get("prepared_files"))
+        self._restore_dedupe_files(rollback.get("dedupe_files"))
 
     def _restore_export(self, export_lines: list) -> None:
         export_path = Path(self.cfg["index"]["units_export"])
