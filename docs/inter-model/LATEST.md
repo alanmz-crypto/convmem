@@ -13,13 +13,14 @@ cross-arc snapshot and the linked arc brief below.
   coordinator is on `main` via squash-merged PR #293 (`881133d`) and remains
   disabled. The production-canary architecture/plan merged via PR #295
   (`b23cabad`). The P1 hermetic harness merged via PR #296 (`907c828`). PR #298
-  (`8741774`) landed Kiro's PASS on the blocked P2 capability-gap packet at
-  reviewed tip `77e6e2e`. Hermetic **P2 corrective** implementation is complete
-  on branch `feat/2026-09-11-codex-jsonl-p2-corrective` (Execute contract at
-  [`CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md`](CODEX-2026-09-11-jsonl-production-canary-p2-corrective-execute.md),
-  reviewed handoff `b83d2a8`); **awaiting exact-tip Kiro recheck** after evidence
-  gap corrections. No live source, production data, provider/network, config
-  change, indexing, live P2 run, PR, or activation. Resume from
+  (`8741774`) landed Kiro's PASS on the blocked P2 capability-gap packet. The
+  positive exact-resource **P2 transfer seam is now on `main`** via PR #299
+  (`8beda7d`) after Kiro PASS at final head `fe0086c` and six green CI checks.
+  No executable grant or digest has been issued. Ryan's next decision is
+  whether to authorize read-only source/resource revalidation and exact grant
+  packet preparation. Gate 0, live P2, production access, provider calls,
+  config changes, indexing, watcher work, and activation remain unauthorized.
+  Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
