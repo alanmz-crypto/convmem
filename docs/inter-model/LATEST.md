@@ -16,9 +16,12 @@ cross-arc snapshot and the linked arc brief below.
   positive exact-resource P2 transfer seam is on `main` via PR #299 (`8beda7d`).
   Cursor implemented the Kiro-PASSed **P2 runtime-readiness corrective (C0–C7)**
   on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` from `origin/main`
-  `7360a04`. Next lane is exact-tip Kiro review of that branch (see
+  `7360a04`. Local Claude FAIL at preserved `5bdc132`; the live-safety
+  corrective is the later commit on that branch. Next lane is local Claude
+  re-review of the new tip (see
   [`VERIFY-codex-jsonl-production-canary.md`](../plans/VERIFY-codex-jsonl-production-canary.md)).
-  No live source, Gate 0, P2 run, replacement grant/digest, PR, or activation.
+  Do not route to Kiro. No live source, Gate 0, P2 run, replacement grant/digest,
+  PR, or activation.
   Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before

@@ -326,11 +326,110 @@ Unchanged hashes from `7360a04`:
 
 Candidate digest `c002385ee2e72e319ddcce2ab5d024c29abbe0031b86cbb26468cb604ee8c621` remains unauthorized and must not be reused after this runtime change.
 
+## P2 live-safety corrective (Claude FAIL follow-up)
+
+**Who:** Cursor Execute on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness`, addressing local Claude Opus 5 FAIL at preserved `5bdc132950969c9f4473b182f47816d68ccde8e8`.
+
+**What:** Make the exact-resource P2 canary live-safe and incapable of emitting false recovery or convergence evidence.
+
+**When:** 2026-09-12, additive commits on the same branch. Failed reviewed revision `5bdc132` was not amended, rebased, or rewritten.
+
+**Why:** Claude blocked B1–B8 (evidence authority, hardcoded restore, crash-self faults, incomplete rollback, source chmod, capsule-after-mutation, missing serving visibility, out-of-order faults) plus safety-relevant N1, N3–N7, N9, and N13.
+
+**How:** Implementation commit `9969a38c485736e26cd1bcb27ee33ef8d2505aae`. This evidence commit is the exact tip for local Claude re-review. Do not route to Kiro.
+
+### Negative confirmation
+
+No live source, production Chroma, processed/export/locks, provider/network call, watcher start/stop, config edit, indexing, Gate 0 against live resources, live P2 run, replacement grant/digest, PR, merge, or activation occurred. No systemd operation. Worktree remained hermetic.
+
+### Commands and counts
+
+```bash
+python3 -m pytest \
+  tests/test_incremental_jsonl_canary_baseline.py \
+  tests/test_incremental_jsonl_canary_grant.py \
+  tests/test_incremental_jsonl_canary_operations.py \
+  tests/test_incremental_jsonl_canary_serving.py \
+  tests/test_incremental_jsonl_canary_p2_corrective.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py \
+  tests/test_incremental_jsonl_config.py \
+  tests/test_incremental_jsonl_isolation.py \
+  tests/test_incremental_jsonl_state.py \
+  -q
+```
+
+Result: **184 passed** (165 prior focused suite + 19 live-safety regressions). Runtime-readiness file: 54 collected.
+
+```bash
+python3 -m compileall -q incremental_jsonl.py incremental_jsonl_canary.py \
+  incremental_jsonl_canary_p2.py incremental_jsonl_canary_live_worker.py \
+  incremental_jsonl_canary_network.py chroma_readonly.py \
+  scripts/run-jsonl-production-canary.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py \
+  tests/test_incremental_jsonl_state.py
+git diff --check
+python3 -m pylint incremental_jsonl.py incremental_jsonl_canary.py \
+  incremental_jsonl_canary_p2.py incremental_jsonl_canary_live_worker.py \
+  incremental_jsonl_canary_network.py scripts/run-jsonl-production-canary.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py \
+  tests/test_incremental_jsonl_state.py
+python3 -m pylint $(git ls-files "*.py") --output-format=json > pylint-report.json
+python3 scripts/pylint_regression_gate.py ci \
+  --report pylint-report.json \
+  --pylint-status 30 \
+  --branch-baseline ci/pylint-baseline.json \
+  --base-ref origin/main
+```
+
+`compileall`: PASS. `git diff --check`: clean. Scoped pylint: **10.00/10**. `pylint_regression_gate.py ci`: **PASS** (457 findings, 243 fingerprints; no new/increased vs `origin/main` `7360a04`).
+
+### C0 baseline
+
+Watch, ingest, and isolation hashes are unchanged from `7360a04`. `incremental_jsonl.py` changed **rollback capture/restore only** (processed preimage, checkpoint/transaction/state, prepared, and dedupe files) with normal-path regression `test_restore_rewinds_processed_checkpoint_and_state`.
+
+| File | SHA-256 |
+|---|---|
+| `watch.py` | `b72fd6380d48bf4256371f4b3f4f8eda03f2ca7f1dd9c107f4d6db60c05da2e2` |
+| `ingest.py` | `03246a6c104ad9bb6d9c4df9ab9d34bac165080c725ed1545b64aef8f76f6d23` |
+| `incremental_jsonl.py` | `805c4f5d3871a42e8f4894263462b15181541a6c1be775c2935c7698187da1d0` |
+| `incremental_jsonl_isolation.py` | `818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1` |
+
+### Claude blocker mapping
+
+| ID | Result | Evidence |
+|---|---|---|
+| B1 | PASS | `test_b1_freeze_requires_t6_and_five_faults`, `test_b1_freeze_derives_disposition` — T6 stage, five distinct faults, append receipts, derived disposition |
+| B2 | PASS | `test_b2_mismatch_is_recovery_unproven`, `test_b2_caller_disposition_cannot_override` — post-restore capsule compare; caller cannot select `restored` |
+| B3 | PASS | `test_b3_crash_self_is_not_fault_evidence`, `test_c5_pre_fault_capsule_and_descendants` — child runs `t5-fault` with `CONVMEM_CANARY_FAULT`; `crash-self` refused; exit 86 |
+| B4 | PASS | `test_b4_restore_rewinds_checkpoint_after_tamper`, `test_restore_rewinds_processed_checkpoint_and_state` — processed/checkpoint/state/dedupe restore |
+| B5 | PASS | `test_b5_prepare_does_not_chmod_source` — source JSONL and `session.json` keep mode 0o644, inode, and timestamps |
+| B6 | PASS | `test_b6_capsule_exists_before_overlay_mutation` — capsule persisted before overlay/census writes |
+| B7 | PASS | `test_c3_prepare_and_t3_two_chunk` (≥3 samples), `test_b7_serving_visibility_fails_closed_without_probe` — concurrent probe; missing visibility fails closed |
+| B8 | PASS | `test_b8_out_of_order_fault_is_refused` — exact `next_stage == FAULT_STAGE[selector]` |
+
+### Safety-relevant N-finding mapping
+
+| ID | Result | Evidence |
+|---|---|---|
+| N1 | PASS | `test_n1_network_denial_is_policy_specific` — loopback allowed; TEST-NET denied before socket via `install_p2_network_policy` |
+| N3 | PASS | `test_n3_grant_bound_identities_are_validated` — overlay/evidence/capsule/persistent_config identities |
+| N4 | PASS | `test_n4_writer_census_is_non_creating` — `LOCK_SH\|LOCK_NB`; no create/mtime change |
+| N5 | PASS | `test_n5_grandchild_is_absent_after_exit` — `/proc` pgid scan; process group absent after exit |
+| N6 | PASS | `test_n6_non_crash_exit_is_refused` — exact `CRASH_EXIT` (86) required |
+| N7 | PASS | `test_n7_unrelated_manifest_is_derived` — derived unrelated-source manifest; empty default is not proof |
+| N9 | PASS | `test_n9_production_probes_run_real_code` — production defaults exercised; not replaced by `live_gate0_hooks_pass()` |
+| N13 | PASS | `test_n13_directory_role_does_not_grant_subtree` — directory roles do not grant uncontrolled subtrees |
+
+### Stop state
+
+Pushed feature tip after this evidence commit is ready for **local Claude re-review**. Do not route to Kiro. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
+
 ## TL;DR
 
 P1 hermetic canary harness is on `main` via PR #296 (`907c828`). The P2 transfer
 seam is on `main` via PR #299 (`8beda7d`). The P2 runtime-readiness corrective
-is on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` and awaits exact-tip
-Kiro review. Live P2 run, grant digest issuance, PR, and activation remain
+at `5bdc132` is a preserved Claude FAIL. The live-safety corrective is on
+`feat/2026-09-12-codex-jsonl-p2-runtime-readiness` and awaits local Claude
+re-review. Live P2 run, grant digest issuance, PR, and activation remain
 Ryan-gated.
 
