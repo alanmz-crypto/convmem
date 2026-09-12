@@ -250,10 +250,87 @@ python3 scripts/pylint_regression_gate.py ci \
 
 Pushed feature tip `54efdbc99eb1c8fc698dd950d7e682a7e75be896` ready for Kiro narrow delta recheck. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated separately.
 
+## P2 runtime-readiness corrective (C0–C7)
 
+**Who:** Cursor Execute on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness`, implementing the packet Kiro PASSed at `a2560b4db0faebe136b62ce9a8b874e70c74f86a`.
+
+**What:** A live-safe exact-resource P2 runtime: versioned `p2-exact-resource-v2` grants, side-effect-free Gate 0, separately authorized preparation, a production-owned worker, one-stage transitions, and distinct live evidence.
+
+**When:** 2026-09-12, branched from `origin/main` `7360a04e1e8154eca76eddf72c492251ae830c0f`.
+
+**Why:** Merged P2 at `7360a04` could mutate during nominal preflight, treat stubbed backup/model checks as PASS, import test fakes on the live path, rewrite the source, and restore a post-fault image.
+
+**How:** C0–C7 landed in implementation commit `ca88d540819b8d91684d397426511a0028bbcc10`. This evidence commit is the exact tip for Kiro review.
+
+### Negative confirmation
+
+No live source, production Chroma, processed/export/locks, provider/network call, watcher start/stop, config edit, indexing, Gate 0 against live resources, live P2 run, replacement grant/digest, PR, or activation occurred.
+
+### Commands and counts
+
+```bash
+python3 -m pytest \
+  tests/test_incremental_jsonl_canary_baseline.py \
+  tests/test_incremental_jsonl_canary_grant.py \
+  tests/test_incremental_jsonl_canary_operations.py \
+  tests/test_incremental_jsonl_canary_serving.py \
+  tests/test_incremental_jsonl_canary_p2_corrective.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py \
+  tests/test_incremental_jsonl_config.py \
+  tests/test_incremental_jsonl_isolation.py \
+  tests/test_incremental_jsonl_state.py \
+  -q
+```
+
+Result: **165 passed** (128 focused P1/P2-corrective + 37 runtime-readiness).
+
+```bash
+python3 -m compileall -q incremental_jsonl_canary.py incremental_jsonl_canary_p2.py \
+  incremental_jsonl_canary_live_worker.py chroma_readonly.py \
+  scripts/run-jsonl-production-canary.py \
+  tests/incremental_jsonl_canary_helpers.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py
+git diff --check
+python3 -m pylint --score=n incremental_jsonl_canary.py incremental_jsonl_canary_p2.py \
+  incremental_jsonl_canary_live_worker.py chroma_readonly.py \
+  scripts/run-jsonl-production-canary.py \
+  tests/incremental_jsonl_canary_helpers.py \
+  tests/test_incremental_jsonl_canary_p2_runtime_readiness.py
+```
+
+`compileall`: PASS. `git diff --check`: clean. Scoped pylint: **10.00/10**.
+
+### C0 baseline
+
+Unchanged hashes from `7360a04`:
+
+| File | SHA-256 |
+|---|---|
+| `watch.py` | `b72fd6380d48bf4256371f4b3f4f8eda03f2ca7f1dd9c107f4d6db60c05da2e2` |
+| `ingest.py` | `03246a6c104ad9bb6d9c4df9ab9d34bac165080c725ed1545b64aef8f76f6d23` |
+| `incremental_jsonl.py` | `e51509c2423db2f2ef5ca414457332aa37d945747b9f7ef8e73a9eb6705db12d` |
+| `incremental_jsonl_isolation.py` | `818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1` |
+
+### Mapping
+
+| ID | Result | Evidence |
+|---|---|---|
+| C0 | PASS | Baseline hashes unchanged; focused P1/P2 matrix green after the launcher P1-mutation check no longer depends on a live watcher |
+| C1 | PASS | `p2-exact-resource-v2` binds persistent config, full model manifests, restic, and identities; v1 is not live-capable |
+| C2 | PASS | Gate 0 writes nothing; twelve checks fail closed; restic stubs cannot PASS; no `systemctl start`; SQLite `mode=ro` |
+| C3 | PASS | `prepare_live_p2` captures a non-zero capsule before T3 |
+| C4 | PASS | Live module/worker/launcher AST has no `tests`/`pytest`/`install_fakes`; hermetic mode cannot select real providers |
+| C5 | PASS | `p2-all` refused; 68-message case does not append 49; live helpers refuse source writes; stage-order/tamper/cap+1/descendant cases |
+| C6 | PASS | Live evidence uses `p2-exact-resource-live-evidence.json` and `hermetic: false` |
+| C7 | PASS | This section; stop for exact-tip Kiro review |
+
+Candidate digest `c002385ee2e72e319ddcce2ab5d024c29abbe0031b86cbb26468cb604ee8c621` remains unauthorized and must not be reused after this runtime change.
 
 ## TL;DR
 
-P1 hermetic canary harness is on `main` via PR #296 (`907c828`). The final PR
-head passed Kiro review, 128 focused tests, scoped pylint 10.00/10, and all six
-CI checks. P2 corrective hermetic Execute on `feat/2026-09-11-codex-jsonl-p2-corrective` includes Kiro evidence-gap corrections and awaits exact-tip recheck. Live P2 run, grant digest issuance, PR, and activation remain Ryan-gated.
+P1 hermetic canary harness is on `main` via PR #296 (`907c828`). The P2 transfer
+seam is on `main` via PR #299 (`8beda7d`). The P2 runtime-readiness corrective
+is on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` and awaits exact-tip
+Kiro review. Live P2 run, grant digest issuance, PR, and activation remain
+Ryan-gated.
+
