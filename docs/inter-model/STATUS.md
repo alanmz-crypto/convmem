@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-09-10. Verify the exact repository tip from `origin/main`
+**Snapshot:** 2026-09-12. Verify the exact repository tip from `origin/main`
 before comparing branches; branch and PR work named below is not on `main`
 unless explicitly stated.
 
@@ -47,7 +47,7 @@ gated.
 
 | Arc | State | Next authorized action |
 |---|---|---|
-| Codex — Kiro JSONL incremental production integration | The default-off coordinator, reviewed canary plan, P1 harness, and positive exact-resource P2 transfer seam are on `main` via PRs #293, #295, #296, and #299. Kiro PASSed final PR #299 head `fe0086c`; the squash merge is `8beda7d`. The dedicated source was eligible at 68 accepted messages, but no executable grant or digest exists. | Ryan decides whether to authorize read-only source/resource revalidation and exact P2 grant-packet preparation. The packet must stop for Kiro review before exact-digest authorization or Gate 0. No live indexing, providers, config change, migration, watcher action, P2, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
+| Codex — Kiro JSONL incremental production integration | The default-off coordinator, reviewed canary plan, P1 harness, and positive exact-resource P2 transfer seam are on `main` via PRs #293, #295, #296, and #299. A packet from runtime `7360a04` passed Kiro's integrity review, but fresh inspection found that nominal Gate 0 can mutate/use stubs and live P2 still imports test fakes and can rewrite the source. Candidate digest `c002385e…8c621` is superseded for execution and no usable grant exists. | Kiro reviews the exact pushed [`P2 runtime-readiness corrective`](CODEX-2026-09-12-jsonl-production-canary-p2-runtime-readiness-corrective.md). After PASS, Ryan may separately grant Cursor implementation. No implementation, replacement grant, Gate 0, live indexing, providers, config change, migration, watcher action, P2, PR, or activation is authorized. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
@@ -108,10 +108,11 @@ gated.
 - [Arc Codex JSONL production-integration STATUS](../plans/STATUS-codex-jsonl-production-integration.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Arc Codex's positive exact-resource P2 seam is on `main` via PR #299,
-but no executable grant exists. Ryan's next decision is whether to authorize
-read-only grant-packet preparation; Kiro review, Gate 0, live P2, and activation
-remain separately gated.
+**TL;DR:** [Arc Codex] The exact-resource P2 packet passed Kiro's integrity
+review, but its bound runtime is not live-ready; candidate digest
+`c002385e…8c621` is superseded for execution. Kiro review of the isolated
+runtime-readiness corrective is next; implementation, a replacement grant,
+Gate 0, live P2, and activation remain separately Ryan-gated.
 Other active arcs retain their existing gates. Verify the exact `origin/main`
 tip from Git when a commit identity matters.
 

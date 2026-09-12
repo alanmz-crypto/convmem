@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-11
+**Updated:** 2026-09-12
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -16,11 +16,18 @@ cross-arc snapshot and the linked arc brief below.
   (`8741774`) landed Kiro's PASS on the blocked P2 capability-gap packet. The
   positive exact-resource **P2 transfer seam is now on `main`** via PR #299
   (`8beda7d`) after Kiro PASS at final head `fe0086c` and six green CI checks.
-  No executable grant or digest has been issued. Ryan's next decision is
-  whether to authorize read-only source/resource revalidation and exact grant
-  packet preparation. Gate 0, live P2, production access, provider calls,
-  config changes, indexing, watcher work, and activation remain unauthorized.
-  Resume from
+  Codex prepared an exact-resource P2-T1 packet from merged runtime `7360a04`,
+  and Kiro independently PASSed its canonical digest and resource binding.
+  That review authorizes nothing. Fresh runtime inspection found that nominal
+  Gate 0 can mutate resources and accept stub proofs, while the P2 commands
+  remain hermetic/test-owned and can rewrite the source. Ryan therefore
+  withheld digest/Gate 0 authorization. Candidate digest `c002385e…8c621` is
+  superseded for execution and must not be reused. The next action is Kiro
+  review of the isolated
+  [`P2 runtime-readiness corrective`](CODEX-2026-09-12-jsonl-production-canary-p2-runtime-readiness-corrective.md).
+  Implementation, a replacement grant, Gate 0, live P2, production access,
+  provider calls, config changes, indexing, watcher work, a PR, and activation
+  remain unauthorized. Resume arc state from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
@@ -75,3 +82,4 @@ its existing archive/reference location. Use
 | T4 | The next Recovery Authority execution stage; it is not currently authorized. |
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
+| Superseded for execution | Preserved review evidence that must not be authorized or used to run the canary after its bound runtime is replaced. |
