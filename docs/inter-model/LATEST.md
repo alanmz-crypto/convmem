@@ -15,7 +15,9 @@ cross-arc snapshot and the linked arc brief below.
   merged runtime `8983a6fc…` showed the in-memory global export compactor at
   351.88 MiB RSS for a conservative 128 MiB fixture while the production export
   is approximately 2.4 GiB. Codex's narrow bounded-memory/crash-safe corrective
-  plan is ready for **Kiro plan review only** on
+  plan received Kiro CONDITIONAL PASS at `90beef5`; its sole condition was an
+  explicit bounded-read requirement for the 16 MiB record ceiling. That
+  clarification is now ready for **targeted Kiro recheck only** on
   `plan/2026-09-13-watch-oom-bounded-export-compaction`. Read
   [`CODEX-2026-09-13-watch-oom-bounded-export-compaction-plan-handoff.md`](CODEX-2026-09-13-watch-oom-bounded-export-compaction-plan-handoff.md).
   No implementation, live compaction, watcher/config change, re-inclusion, PR,
