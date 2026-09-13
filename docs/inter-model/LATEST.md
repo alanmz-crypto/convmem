@@ -9,24 +9,22 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
-  coordinator is on `main` via squash-merged PR #293 (`881133d`) and remains
-  disabled. The production-canary architecture/plan merged via PR #295
-  (`b23cabad`). The P1 hermetic harness merged via PR #296 (`907c828`). The
-  positive exact-resource P2 transfer seam is on `main` via PR #299 (`8beda7d`).
-  Cursor implemented the Kiro-PASSed **P2 runtime-readiness corrective (C0–C7)**
-  on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` from `origin/main`
-  `7360a04`. Local Claude FAIL at preserved `5bdc132`, then again at preserved
-  `a47f32b` (R1–R4). Kiro CONDITIONAL PASS at preserved `4acb4c5` (C1–C4).
-  C1–C4 Kiro PASS at preserved `6cb0107`. Repo-wide CI then failed; the
-  overlay-digest and writer-inventory corrective is later on that branch
-  (existing PR #301). Next lane is Kiro targeted exact-tip recheck of the new
-  tip (see
-  [`VERIFY-codex-jsonl-production-canary.md`](../plans/VERIFY-codex-jsonl-production-canary.md)).
-  No Claude re-review. No live source, Gate 0, P2 run, replacement grant/digest,
-  new PR, or activation.
-  Resume from
-  [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
+- **Arc Codex — Kiro JSONL production integration:** Cursor's live-safe
+  exact-resource v2 corrective, reviewed by Kiro at head `5dac4c0`, passed all
+  six CI checks and Ryan squash-merged PR #301 as `8983a6fc` on 2026-09-12.
+  Kiro's post-merge audit PASSed packet preparation. Codex then remeasured only
+  the exact authorized source and metadata: the canonical closed source remains
+  stable and eligible at 68 accepted messages and complete boundary 225091.
+  The fresh v2 packet is intentionally **blocked with no executable digest**:
+  required production resource, configuration, model, restic, ownership, and
+  pre-state bindings were outside Ryan's read authority and were not inferred
+  from the retired v1 packet. Next lane is Kiro review of the
+  [source-freeze/blocked grant packet](CODEX-2026-09-12-jsonl-production-canary-p2-v2-grant-packet.md),
+  then Ryan decides whether to authorize a separate exact read-only binding
+  pass. No Gate 0, P2, indexing, provider/network call, configuration or watcher
+  operation, new PR, grant digest, or activation.
+  Resume from the
+  [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before
   comparing branches or attributing work to the baseline. This pointer routes
   project and arc state; it is not a Git-ref authority. Read [`STATUS.md`](STATUS.md)
