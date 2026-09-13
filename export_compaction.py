@@ -236,14 +236,24 @@ def _scan_into_index(fd: int, conn: sqlite3.Connection) -> tuple[int, int]:
 
 
 def _publish_compacted(path: Path, fd: int, identity: _FileIdentity, conn: sqlite3.Connection) -> None:
-    cursor = conn.execute(
-        "SELECT last_offset, last_length FROM retained ORDER BY first_seq"
-    )
+    try:
+        cursor = conn.execute(
+            "SELECT last_offset, last_length FROM retained ORDER BY first_seq"
+        )
+    except sqlite3.Error as exc:
+        raise PrePublicationError(
+            f"compaction index failed for {path}: {exc}"
+        ) from exc
 
     def _write(handle) -> None:
-        for last_offset, last_length in cursor:
-            raw = _pread_exact(fd, int(last_offset), int(last_length))
-            handle.write(raw.strip() + b"\n")
+        try:
+            for last_offset, last_length in cursor:
+                raw = _pread_exact(fd, int(last_offset), int(last_length))
+                handle.write(raw.strip() + b"\n")
+        except sqlite3.Error as exc:
+            raise PrePublicationError(
+                f"compaction index failed for {path}: {exc}"
+            ) from exc
 
     def _validate() -> None:
         _assert_regular_identity(path, identity)

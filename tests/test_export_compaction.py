@@ -249,6 +249,81 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
         self.assertEqual(self.path.read_bytes(), original)
         self.assertEqual(_tree_snapshot(_paths), before)
 
+    def _wrap_index_connection(self, on_publish_select):
+        real_connect = export_compaction_mod._connect_index
+        state = {"rollbacks": 0, "publish_selects": 0}
+
+        def connect_wrap():
+            inner = real_connect()
+
+            class ConnProxy:
+                def execute(self, sql, *args, **kwargs):
+                    if "ORDER BY first_seq" in str(sql):
+                        state["publish_selects"] += 1
+                        return on_publish_select(inner, sql, *args, **kwargs)
+                    return inner.execute(sql, *args, **kwargs)
+
+                def rollback(self):
+                    state["rollbacks"] += 1
+                    return inner.rollback()
+
+                def commit(self):
+                    return inner.commit()
+
+                def close(self):
+                    return inner.close()
+
+                def __getattr__(self, name):
+                    return getattr(inner, name)
+
+            return ConnProxy()
+
+        return connect_wrap, state
+
+    def test_publication_query_sqlite_error_is_prepublication(self) -> None:
+        original = b'{"id":"a","v":1}\n{"id":"a","v":2}\n'
+        _write_export(self.path, original)
+        paths, before = self._plant_foreign_export_dir_objects()
+
+        def on_publish(_inner, _sql, *_args, **_kwargs):
+            raise sqlite3.OperationalError("injected publication query failure")
+
+        connect_wrap, state = self._wrap_index_connection(on_publish)
+        with mock.patch("export_compaction._connect_index", connect_wrap):
+            with self.assertRaises(PrePublicationError) as ctx:
+                compact_units_export(self.path)
+        self.assertNotIsInstance(ctx.exception, PostPublicationDurabilityError)
+        self.assertNotIsInstance(ctx.exception, sqlite3.Error)
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertEqual(_tree_snapshot(paths), before)
+        self.assertEqual(state["rollbacks"], 0)
+        self.assertEqual(state["publish_selects"], 1)
+
+    def test_publication_iteration_sqlite_error_is_prepublication(self) -> None:
+        original = b'{"id":"a","v":1}\n{"id":"a","v":2}\n'
+        _write_export(self.path, original)
+        paths, before = self._plant_foreign_export_dir_objects()
+
+        def on_publish(_inner, _sql, *_args, **_kwargs):
+            class BoomCursor:
+                def __iter__(self):
+                    raise sqlite3.OperationalError(
+                        "injected publication iteration failure"
+                    )
+
+            return BoomCursor()
+
+        connect_wrap, state = self._wrap_index_connection(on_publish)
+        with mock.patch("export_compaction._connect_index", connect_wrap):
+            with self.assertRaises(PrePublicationError) as ctx:
+                compact_units_export(self.path)
+        self.assertNotIsInstance(ctx.exception, PostPublicationDurabilityError)
+        self.assertNotIsInstance(ctx.exception, sqlite3.Error)
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertEqual(_tree_snapshot(paths), before)
+        self.assertEqual(state["rollbacks"], 0)
+        self.assertEqual(state["publish_selects"], 1)
+
     def test_enospc_write_leaves_original(self) -> None:
         original = b'{"id":"a","v":1}\n{"id":"a","v":2}\n'
         _write_export(self.path, original)

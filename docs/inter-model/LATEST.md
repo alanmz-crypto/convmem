@@ -10,12 +10,12 @@ cross-arc snapshot and the linked arc brief below.
 ## Current routing
 
 - **Trapdoor Hunt / issue #268 — bounded export compaction:** Cursor Execute
-  C0–C7 is on `fix/2026-09-13-watch-oom-bounded-export-compaction`. After
-  Copilot FAILs at `b2735c4` / `381d079` / `43dc589`, a Claude trapdoor
-  consult redesigned scratch to SQLite's private `sqlite3.connect("")`
-  database. Findings 1 and 3–5 stay closed. `43dc589` remains an ancestor.
-  Next: Copilot re-audit of the new exact tip. No PR, live compaction,
-  watcher/P2, grant, merge, or activation. Plan:
+  C0–C7 is on `fix/2026-09-13-watch-oom-bounded-export-compaction`. Copilot
+  re-audit FAILed exact tip `65658be206801281de8a9e645a1f7b12807ca1bc` on
+  untyped SQLite errors during the publication SELECT. Closed findings stay
+  closed; `65658be` remains an ancestor. Next: Copilot re-audit of the new
+  exact tip. No PR, live compaction, watcher/P2, grant, merge, or activation.
+  Plan:
   [`EXECUTION-watch-oom-bounded-export-compaction.md`](../plans/EXECUTION-watch-oom-bounded-export-compaction.md).
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
