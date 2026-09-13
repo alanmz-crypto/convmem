@@ -179,6 +179,14 @@ def _validate_record(raw: bytes) -> str:
     return uid
 
 
+def _same_inode(left: os.stat_result, right: os.stat_result) -> bool:
+    return left.st_dev == right.st_dev and left.st_ino == right.st_ino
+
+
+def _dirfd_is_empty(dir_fd: int) -> bool:
+    return not os.listdir(dir_fd)
+
+
 def _create_scratch(export_path: Path) -> _Scratch:
     scratch_path = Path(
         tempfile.mkdtemp(
@@ -187,15 +195,50 @@ def _create_scratch(export_path: Path) -> _Scratch:
         )
     )
     try:
+        created = os.lstat(scratch_path)
+    except OSError as exc:
+        raise PrePublicationError(
+            f"failed to stat compaction scratch: {scratch_path}: {exc}"
+        ) from exc
+    if stat.S_ISLNK(created.st_mode) or not stat.S_ISDIR(created.st_mode):
+        raise PrePublicationError(
+            f"compaction scratch is not a private directory: {scratch_path}"
+        )
+    try:
         dir_fd = os.open(
             str(scratch_path),
             os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC | os.O_NOFOLLOW,
         )
     except OSError as exc:
-        _rmdir_if_still_owned(scratch_path, None)
         raise PrePublicationError(
             f"failed to open compaction scratch: {scratch_path}: {exc}"
         ) from exc
+    try:
+        opened = os.fstat(dir_fd)
+    except OSError as exc:
+        try:
+            os.close(dir_fd)
+        except OSError:
+            pass
+        raise PrePublicationError(
+            f"failed to fstat compaction scratch: {scratch_path}: {exc}"
+        ) from exc
+    if not stat.S_ISDIR(opened.st_mode) or not _same_inode(created, opened):
+        try:
+            os.close(dir_fd)
+        except OSError:
+            pass
+        raise PrePublicationError(
+            f"compaction scratch was replaced before ownership bind: {scratch_path}"
+        )
+    if not _dirfd_is_empty(dir_fd):
+        try:
+            os.close(dir_fd)
+        except OSError:
+            pass
+        raise PrePublicationError(
+            f"compaction scratch is not the empty directory just created: {scratch_path}"
+        )
     try:
         os.fchmod(dir_fd, _SCRATCH_DIR_MODE)
     except OSError as exc:
@@ -206,14 +249,14 @@ def _create_scratch(export_path: Path) -> _Scratch:
     return _Scratch(path=scratch_path, dir_fd=dir_fd)
 
 
-def _rmdir_if_still_owned(path: Path, dir_stat: os.stat_result | None) -> None:
+def _rmdir_if_still_owned(path: Path, dir_stat: os.stat_result) -> None:
     try:
         lst = os.lstat(path)
     except OSError:
         return
     if not stat.S_ISDIR(lst.st_mode):
         return
-    if dir_stat is not None and (lst.st_dev != dir_stat.st_dev or lst.st_ino != dir_stat.st_ino):
+    if not _same_inode(lst, dir_stat):
         return
     try:
         os.rmdir(path)
@@ -224,28 +267,30 @@ def _rmdir_if_still_owned(path: Path, dir_stat: os.stat_result | None) -> None:
 def _remove_owned_scratch(scratch: _Scratch | None) -> None:
     if scratch is None:
         return
-    dir_stat = None
     if scratch.db_fd >= 0:
         try:
             os.close(scratch.db_fd)
         except OSError:
             pass
         scratch.db_fd = -1
-    if scratch.dir_fd >= 0:
+    if scratch.dir_fd < 0:
+        return
+    try:
+        dir_stat = os.fstat(scratch.dir_fd)
+    except OSError:
+        dir_stat = None
+    for name in _SCRATCH_RELATIVES:
         try:
-            dir_stat = os.fstat(scratch.dir_fd)
-        except OSError:
-            dir_stat = None
-        for name in _SCRATCH_RELATIVES:
-            try:
-                os.unlink(name, dir_fd=scratch.dir_fd)
-            except OSError:
-                pass
-        try:
-            os.close(scratch.dir_fd)
+            os.unlink(name, dir_fd=scratch.dir_fd)
         except OSError:
             pass
-        scratch.dir_fd = -1
+    try:
+        os.close(scratch.dir_fd)
+    except OSError:
+        pass
+    scratch.dir_fd = -1
+    if dir_stat is None:
+        return
     _rmdir_if_still_owned(scratch.path, dir_stat)
 
 

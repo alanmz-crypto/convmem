@@ -371,6 +371,42 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
         self.assertEqual(canary.read_text(encoding="utf-8"), "leave-me\n")
         self.assertEqual(self.path.read_bytes(), b'{"id":"a","v":2}\n')
 
+    def test_scratch_replaced_before_dirfd_leaves_foreign_untouched(self) -> None:
+        original = b'{"id":"a","v":1}\n{"id":"a","v":2}\n'
+        _write_export(self.path, original)
+        foreign = self.dir / "foreign-scratch"
+        foreign.mkdir()
+        db = foreign / "index.sqlite"
+        payload = b"FOREIGN-DB-PAYLOAD-DO-NOT-TOUCH\n"
+        db.write_bytes(payload)
+        foreign_mode = stat.S_IMODE(foreign.stat().st_mode)
+        db_mode = stat.S_IMODE(db.stat().st_mode)
+        real_mkdtemp = tempfile.mkdtemp
+        swapped: dict[str, Path] = {}
+
+        def wrapped_mkdtemp(*args, **kwargs):
+            created = Path(real_mkdtemp(*args, **kwargs))
+            aside = created.parent / (created.name + ".aside")
+            os.rename(created, aside)
+            os.rename(foreign, created)
+            swapped["path"] = created
+            swapped["aside"] = aside
+            return str(created)
+
+        with mock.patch("export_compaction.tempfile.mkdtemp", wrapped_mkdtemp):
+            with self.assertRaises(PrePublicationError):
+                compact_units_export(self.path)
+        target = swapped["path"]
+        self.assertTrue(target.is_dir())
+        self.assertFalse(target.is_symlink())
+        self.assertEqual(sorted(p.name for p in target.iterdir()), ["index.sqlite"])
+        self.assertEqual((target / "index.sqlite").read_bytes(), payload)
+        self.assertEqual(stat.S_IMODE(target.stat().st_mode), foreign_mode)
+        self.assertEqual(stat.S_IMODE((target / "index.sqlite").stat().st_mode), db_mode)
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertTrue(swapped["aside"].is_dir())
+        self.assertEqual(list(swapped["aside"].iterdir()), [])
+
     def test_repeated_compact_zero_fd_growth(self) -> None:
         _write_export(self.path, '{"id":"a","v":1}\n{"id":"b","v":2}\n')
         for _ in range(3):

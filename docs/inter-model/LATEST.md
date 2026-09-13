@@ -11,11 +11,11 @@ cross-arc snapshot and the linked arc brief below.
 
 - **Trapdoor Hunt / issue #268 — bounded export compaction:** Cursor Execute
   C0–C7 is on `fix/2026-09-13-watch-oom-bounded-export-compaction`. Copilot
-  audit FAILed exact tip `b2735c4a81599061786b965c9c7841035ed621e7`. A bounded
-  corrective for findings 1–5 (no-op identity, descriptor-safe SQLite scratch,
-  post-chmod fsync, mostly-unique rewrite RSS, LATEST/hash refresh) preserves
-  that FAIL tip as an ancestor. Next: Copilot re-audit of the new exact tip.
-  No PR, live compaction, watcher/P2, grant, merge, or activation. Plan:
+  re-audit FAILed exact tip `381d07975f68384b97ee5c81ac8fd327c77ed1a7` on
+  finding 2 only (mkdtemp-to-dirfd bind). Findings 1 and 3–5 stay closed. A
+  finding-2-only corrective preserves that FAIL tip as an ancestor. Next:
+  Copilot re-audit of the new exact tip. No PR, live compaction, watcher/P2,
+  grant, merge, or activation. Plan:
   [`EXECUTION-watch-oom-bounded-export-compaction.md`](../plans/EXECUTION-watch-oom-bounded-export-compaction.md).
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
