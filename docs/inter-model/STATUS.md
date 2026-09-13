@@ -4,7 +4,7 @@
 > linked `docs/plans/STATUS-*.md` briefs; this file answers what is active, what is
 > closed, and what may proceed next.
 
-**Snapshot:** 2026-09-12. Verify the exact repository tip from `origin/main`
+**Snapshot:** 2026-09-13. Verify the exact repository tip from `origin/main`
 before comparing branches; branch and PR work named below is not on `main`
 unless explicitly stated.
 
@@ -47,13 +47,13 @@ gated.
 
 | Arc | State | Next authorized action |
 |---|---|---|
-| Codex — Kiro JSONL incremental production integration | The default-off coordinator, reviewed canary plan, P1 harness, and P2 transfer seam are on `main` via PRs #293, #295, #296, and #299. Kiro PASS at preserved `6cb0107`; repo-wide CI then failed; the overlay-digest and writer-inventory corrective is on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` / PR #301. | Kiro rechecks that exact CI-corrective tip. No Claude re-review. No new PR, live Gate 0/P2, replacement grant/digest, indexing, providers, config change, watcher action, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
+| Codex — Kiro JSONL incremental production integration | The default-off coordinator and live-safe canary runtime are on `main` through PR #301 (`8983a6fc…`), whose final tree received a post-merge Kiro PASS. A fresh 68-message source-freeze packet at `27518aa…` received Kiro PASS but issued no executable grant or digest. | P2 grant progression is paused on issue #268's shared export-compaction OOM. No Claude re-review, live Gate 0/P2, replacement grant/digest, indexing, providers, config change, watcher action, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
 | Track 1 complete-data backup | v2 rollout complete | Hybrid consistency-bar Copilot audit remains a **separate** open track — not a JudgeBench or Shadow prerequisite. See [`STATUS-complete-data-backup-correction-v2.md`](../plans/STATUS-complete-data-backup-correction-v2.md). |
 | CG-2 authority migration | Design A Execute-close is **LANDED** via PR #250 at `e930ae4c…`; the accepted D7 source was transplanted onto current main. A later retained-reference-v2 corrective remains branch-only and must not be attributed to `main`. V8c and every production step remain PENDING/unauthorized. | No further Design A landing work. Separately governed reference-v2 review/implementation may proceed only under its own accepted plan/grant. Do not run production D0/D1, publish fence/pointer, activate an owner, run GC, or enable Shadow/R2b. See [`ARCHITECTURE-cg2-production-activation.md`](../plans/ARCHITECTURE-cg2-production-activation.md), [`VERIFY-cg2-production-activation.md`](../plans/VERIFY-cg2-production-activation.md), and [`RUNBOOK-cg2-production-activation.md`](../plans/RUNBOOK-cg2-production-activation.md). |
-| Trapdoor Hunt — T3 provenance trust substrate | T3 **CLOSED**; PR #221 squash-merged at `722141d31e586151f361ef7006ad74c71cdff534` from final reviewed head `bfe79f728cde60ec5e8f7021c87dcebf23ee1eca`; bounded writer-boundary and provenance-supersession corrections are on current `main` with Runway integration complete | No further T3 integration work. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
+| Trapdoor Hunt — T3 provenance trust substrate / issue #268 operational follow-up | Provenance T3 remains **CLOSED** and is not reopened. Separately, issue #268's watch child OOM recurred; hermetic evidence identifies global in-memory export compaction as a direct corpus-sized accumulator. A narrow corrective plan is on `plan/2026-09-13-watch-oom-bounded-export-compaction`. | Kiro reviews the plan only. No implementation, live compaction, watcher/config operation, source re-inclusion, or P2 progression is authorized. Bootstrap, migration/backfill, CG-2 activation, Shadow/R2b, GC, T4, and T5 remain separately governed and unauthorized. |
 | Recovery Authority | T1 landed via PR #234, T2 via PR #236, and scratch-only T3 via PR #238 at `d250feb2…`. T3 prepares an isolated replacement candidate and does not publish serving state or touch live authority. T4 remains unstarted; V4k remains **BLOCKED** on separately governed CG-2 reference-v2 closure. | T4 is next in the accepted sequence but **NOT AUTHORIZED**. V4k needs a later fresh grant after its dependency closes. No live restore, replacement, projection activation, serving, migration, mutation, or T5 campaign. |
 | Naturalistic product-value evaluation | G1–G5, accepted V2-01C, and V2-02C **LANDED on `main`**; V2-01C identity `2e091ce…` and independently reviewed V2-02C tip `a64df8fc…` are preserved in ancestry. V2-02C merged normally via PR #284 at `4650c8d…`. Methodology validation only, not product evidence; issue #277 remains deferred. Arc brief: [`STATUS-naturalistic-product-value.md`](../plans/STATUS-naturalistic-product-value.md). | **V2-03C and G6 Ryan-LOCKED**; no V2-04+, V2-05+, live study, scoring/controller, product inference, or issue #277 complete-chain testing is authorized. |
 | Portland baseline experiment | Protocol-v3 branch `experiment/2026-08-30-portland-rerun3-v3` ended in **RERUN3 SEED-GENERATION FAILURE** at `9ba72378…`; pre-v3 seed evidence is superseded but preserved. Nothing is on `main`. | No retry and no Agent B execution are authorized. Preserve the failed/superseded evidence; do not treat it as a product verdict. |
@@ -108,10 +108,10 @@ gated.
 - [Arc Codex JSONL production-integration STATUS](../plans/STATUS-codex-jsonl-production-integration.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR:** Arc Codex's CI overlay-digest and writer-inventory corrective is on
-`feat/2026-09-12-codex-jsonl-p2-runtime-readiness` / PR #301 awaiting exact-tip
-Kiro recheck. Preserved ancestor `6cb0107`. No Claude re-review. No new PR,
-live Gate 0/P2, grant digest, or activation.
+**TL;DR:** Arc Codex's disabled live-safe runtime is merged and post-merge
+Kiro-PASSed, but P2 grant progression is paused on issue #268. A narrow
+bounded-memory export-compaction plan awaits Kiro review; no implementation,
+live Gate 0/P2, grant digest, watcher operation, or activation is authorized.
 Other active arcs retain their existing gates. Verify the exact `origin/main`
 tip from Git when a commit identity matters.
 
