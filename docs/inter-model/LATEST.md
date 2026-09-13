@@ -9,6 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Watch index-child OOM recurrence (2026-09-12) — DIAGNOSTIC, asks Arc Codex:**
+  the convmem watch child OOM-looped tonight (4 kills 18:05–20:30, flat ~12.5 GiB
+  RSS each) on **small** Codex transcripts (5.8–9.7 MB) — size-independent blowup,
+  not the file-growth path of issue #268. Kiro stopped the notification storm by
+  excluding the three looping files (`convmem exclude`, reversible, no purge);
+  verified no kills after 20:30:48. Open question routed to the Arc Codex agent:
+  *is a memory-behavior change on the JSONL index read path expected right now
+  (#293 / P2 corrective), or a regression?* No build authorized. State:
+  `BLOCKED_ON_RYAN` (awaiting Arc Codex answer). See
+  [`KIRO-2026-09-12-arc-codex-watch-oom-recurrence-handoff.md`](KIRO-2026-09-12-arc-codex-watch-oom-recurrence-handoff.md).
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator is on `main` via squash-merged PR #293 (`881133d`) and remains
   disabled. The production-canary architecture/plan merged via PR #295
