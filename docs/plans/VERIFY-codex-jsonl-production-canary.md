@@ -51,14 +51,18 @@ PR #296 as `907c828`. P2 and activation remain separately Ryan-gated.
 | Live source / production corpus / providers / watcher / P2 | **Not run** |
 | Repo-wide pytest | **Not run** (explicitly out of grant) |
 
-## T0 baseline hashes (unchanged)
+## T0 baseline hashes (ingest.py intentionally refreshed)
 
 | File | SHA-256 |
 |---|---|
 | `watch.py` | `b72fd6380d48bf4256371f4b3f4f8eda03f2ca7f1dd9c107f4d6db60c05da2e2` |
-| `ingest.py` | `03246a6c104ad9bb6d9c4df9ab9d34bac165080c725ed1545b64aef8f76f6d23` |
+| `ingest.py` | `36049bc2cae1b9979fa4becb9e83fcca8cbf0c52a91dd78644f215c2a2742cac` |
 | `incremental_jsonl.py` | `e51509c2423db2f2ef5ca414457332aa37d945747b9f7ef8e73a9eb6705db12d` |
 | `incremental_jsonl_isolation.py` | `818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1` |
+
+`ingest.py` was intentionally rebaselined by the issue #268 bounded export-compaction
+implementation. `watch.py` and isolation hashes are unchanged. Default-off and live-denial
+behavior is unchanged.
 
 Default-off branches verified: missing/false incremental table, no watcher import
 of `incremental_jsonl`, canary launcher not registered in `convmem.py`.
