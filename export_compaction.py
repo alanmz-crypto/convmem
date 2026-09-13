@@ -22,6 +22,7 @@ from atomic_files import PrePublicationError, atomic_write_stream
 from purge_locks import export_flock_path
 
 MAX_RECORD_BYTES = 16 * 1024 * 1024
+_READ_CHUNK_BYTES = 64 * 1024
 _SQLITE_CACHE_KIB = 8192
 _SQLITE_BATCH = 512
 _SCRATCH_DIR_MODE = 0o700
@@ -107,7 +108,7 @@ def _read_bounded_record(fd: int) -> bytes | None:
     consumed = 0
     while True:
         remaining = MAX_RECORD_BYTES - consumed
-        buf = os.read(fd, remaining + 1)
+        buf = os.read(fd, min(remaining + 1, _READ_CHUNK_BYTES))
         if not buf:
             if not chunks:
                 return None
