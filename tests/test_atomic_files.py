@@ -18,6 +18,7 @@ from atomic_files import (
     PrePublicationError,
     atomic_write_bytes,
     atomic_write_json,
+    atomic_write_stream,
     atomic_write_text,
 )
 
@@ -199,6 +200,188 @@ class AtomicFilesTests(unittest.TestCase):
         atomic_write_json(fresh, {"ok": True})
         self.assertTrue(fresh.is_file())
         self.assertIn('"ok": true', fresh.read_text(encoding="utf-8"))
+
+
+class AtomicWriteStreamTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        self.path = self.dir / "dest.txt"
+        self.path.write_text("PRIOR\n", encoding="utf-8")
+        os.chmod(self.path, 0o640)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _write_new(self, handle) -> None:
+        handle.write(b"NEW-COMPLETE\n")
+
+    def test_stream_callback_failure_preserves_destination(self) -> None:
+        original = self.path.read_bytes()
+
+        def boom(_handle) -> None:
+            raise RuntimeError("injected callback failure")
+
+        with self.assertRaises(PrePublicationError):
+            atomic_write_stream(self.path, boom)
+        self.assertEqual(self.path.read_bytes(), original)
+        leftovers = list(self.dir.glob(f".{self.path.name}.*.tmp"))
+        self.assertEqual(leftovers, [])
+
+    def test_stream_partial_write_preserves_destination(self) -> None:
+        original = self.path.read_bytes()
+
+        class BoomFile:
+            def __init__(self, real):
+                self._real = real
+
+            def write(self, data):
+                self._real.write(data[: max(1, len(data) // 2)])
+                self._real.flush()
+                raise OSError("injected partial write")
+
+            def flush(self):
+                return self._real.flush()
+
+            def fileno(self):
+                return self._real.fileno()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return self._real.__exit__(*args)
+
+        real_fdopen = os.fdopen
+
+        def fdopen_wrap(fd, mode="r", *args, **kwargs):
+            real = real_fdopen(fd, mode, *args, **kwargs)
+            if "b" in mode:
+                return BoomFile(real)
+            return real
+
+        with mock.patch("os.fdopen", side_effect=fdopen_wrap):
+            with self.assertRaises(PrePublicationError):
+                atomic_write_stream(self.path, self._write_new)
+        self.assertEqual(self.path.read_bytes(), original)
+
+    def test_stream_flush_failure_preserves_destination(self) -> None:
+        original = self.path.read_bytes()
+        real_fdopen = os.fdopen
+
+        class BoomFlush:
+            def __init__(self, real):
+                self._real = real
+
+            def write(self, data):
+                return self._real.write(data)
+
+            def flush(self):
+                raise OSError("injected flush failure")
+
+            def fileno(self):
+                return self._real.fileno()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return self._real.__exit__(*args)
+
+        def fdopen_wrap(fd, mode="r", *args, **kwargs):
+            real = real_fdopen(fd, mode, *args, **kwargs)
+            if "b" in mode:
+                return BoomFlush(real)
+            return real
+
+        with mock.patch("os.fdopen", side_effect=fdopen_wrap):
+            with self.assertRaises(PrePublicationError):
+                atomic_write_stream(self.path, self._write_new)
+        self.assertEqual(self.path.read_bytes(), original)
+
+    def test_stream_temp_fsync_failure_preserves_destination(self) -> None:
+        original = self.path.read_bytes()
+        real_fsync = os.fsync
+
+        def boom(fd: int) -> None:
+            if not _is_dir_fd(fd):
+                raise OSError("injected temp fsync failure")
+            return real_fsync(fd)
+
+        with mock.patch("os.fsync", side_effect=boom):
+            with self.assertRaises(PrePublicationError):
+                atomic_write_stream(self.path, self._write_new)
+        self.assertEqual(self.path.read_bytes(), original)
+
+    def test_stream_mode_preserve_failure_preserves_destination(self) -> None:
+        original = self.path.read_bytes()
+        with mock.patch("os.chmod", side_effect=OSError("injected chmod failure")):
+            with self.assertRaises(PrePublicationError):
+                atomic_write_stream(self.path, self._write_new, preserve_mode=True)
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o640)
+
+    def test_stream_validator_failure_is_pre_publication(self) -> None:
+        original = self.path.read_bytes()
+
+        def refuse() -> None:
+            raise RuntimeError("identity changed")
+
+        with self.assertRaises(PrePublicationError):
+            atomic_write_stream(
+                self.path,
+                self._write_new,
+                validate_before_replace=refuse,
+            )
+        self.assertEqual(self.path.read_bytes(), original)
+        leftovers = list(self.dir.glob(f".{self.path.name}.*.tmp"))
+        self.assertEqual(leftovers, [])
+
+    def test_stream_replace_failure_preserves_destination(self) -> None:
+        original = self.path.read_bytes()
+        with mock.patch("os.replace", side_effect=OSError("injected replace fail")):
+            with self.assertRaises(PrePublicationError):
+                atomic_write_stream(self.path, self._write_new)
+        self.assertEqual(self.path.read_bytes(), original)
+
+    def test_stream_success_and_mode_preservation(self) -> None:
+        atomic_write_stream(self.path, self._write_new, preserve_mode=True)
+        self.assertEqual(self.path.read_bytes(), b"NEW-COMPLETE\n")
+        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o640)
+
+    def test_stream_parent_dir_fsync_failure_after_replace(self) -> None:
+        real_fsync = os.fsync
+
+        def boom(fd: int) -> None:
+            if _is_dir_fd(fd):
+                raise OSError("injected parent-directory fsync failure")
+            return real_fsync(fd)
+
+        with mock.patch("os.fsync", side_effect=boom):
+            with self.assertRaises(PostPublicationDurabilityError):
+                atomic_write_stream(self.path, self._write_new)
+        self.assertEqual(self.path.read_bytes(), b"NEW-COMPLETE\n")
+
+    def test_stream_cleanup_only_own_unpublished_temp(self) -> None:
+        foreign = self.dir / f".{self.path.name}.foreign.tmp"
+        foreign.write_text("leave-me\n", encoding="utf-8")
+        original = self.path.read_bytes()
+        with mock.patch("os.replace", side_effect=OSError("injected replace fail")):
+            with self.assertRaises(PrePublicationError):
+                atomic_write_stream(self.path, self._write_new)
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertTrue(foreign.is_file())
+        self.assertEqual(foreign.read_text(encoding="utf-8"), "leave-me\n")
+        leftovers = list(self.dir.glob(f".{self.path.name}.*.tmp"))
+        self.assertEqual(leftovers, [foreign])
+
+    def test_stream_repeated_call_zero_fd_growth(self) -> None:
+        for i in range(5):
+            atomic_write_stream(self.path, lambda handle, n=i: handle.write(f"warm-{n}\n".encode()))
+        baseline = _fd_count()
+        for i in range(50):
+            atomic_write_stream(self.path, lambda handle, n=i: handle.write(f"steady-{n}\n".encode()))
+        self.assertEqual(_fd_count(), baseline)
 
 
 if __name__ == "__main__":
