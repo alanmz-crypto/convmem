@@ -44,10 +44,11 @@ def atomic_write_stream(
     preserve_mode: bool = True,
     validate_before_replace: Callable[[], None] | None = None,
 ) -> None:
-    """Publish bytes from *writer* via temp → fsync → validate → replace.
+    """Publish bytes from *writer* via temp → fsync → chmod → fsync → validate → replace.
 
     *writer* receives a binary file object for the unpublished temp. After that
-    callback flushes and the temp is fsynced, *validate_before_replace* runs
+    callback flushes and the temp is fsynced, mode is preserved with ``fchmod``
+    and the temp is fsynced again before *validate_before_replace* runs
     immediately before ``os.replace``. A validator failure is a
     ``PrePublicationError``: the original destination remains visible and only
     this invocation's unpublished temp is removed.
@@ -72,20 +73,20 @@ def atomic_write_stream(
                 writer(handle)
                 handle.flush()
                 os.fsync(handle.fileno())
+                if prior_mode is not None:
+                    try:
+                        os.fchmod(handle.fileno(), prior_mode)
+                    except OSError as exc:
+                        raise PrePublicationError(
+                            f"pre-publication mode preserve failed for {dest}: {exc}"
+                        ) from exc
+                    os.fsync(handle.fileno())
         except PrePublicationError:
             raise
         except BaseException as exc:
             raise PrePublicationError(
                 f"pre-publication write failed for {dest}: {exc}"
             ) from exc
-
-        if prior_mode is not None:
-            try:
-                os.chmod(tmp_name, prior_mode)
-            except OSError as exc:
-                raise PrePublicationError(
-                    f"pre-publication mode preserve failed for {dest}: {exc}"
-                ) from exc
 
         if validate_before_replace is not None:
             try:

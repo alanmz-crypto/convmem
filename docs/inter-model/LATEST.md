@@ -9,19 +9,14 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #268 — watch export-compaction OOM:** a September 12
-  recurrence reached the 12 GiB child ceiling on 5.8–9.7 MiB transcripts.
-  Read-only analysis ruled out an Arc Codex regression; hermetic measurement at
-  merged runtime `8983a6fc…` showed the in-memory global export compactor at
-  351.88 MiB RSS for a conservative 128 MiB fixture while the production export
-  is approximately 2.4 GiB. Codex's narrow bounded-memory/crash-safe corrective
-  plan received Kiro CONDITIONAL PASS at `90beef5`; its sole condition was an
-  explicit bounded-read requirement for the 16 MiB record ceiling. That
-  clarification is now ready for **targeted Kiro recheck only** on
-  `plan/2026-09-13-watch-oom-bounded-export-compaction`. Read
-  [`CODEX-2026-09-13-watch-oom-bounded-export-compaction-plan-handoff.md`](CODEX-2026-09-13-watch-oom-bounded-export-compaction-plan-handoff.md).
-  No implementation, live compaction, watcher/config change, re-inclusion, PR,
-  or P2 progression is authorized.
+- **Trapdoor Hunt / issue #268 — bounded export compaction:** Cursor Execute
+  C0–C7 is on `fix/2026-09-13-watch-oom-bounded-export-compaction`. Copilot
+  audit FAILed exact tip `b2735c4a81599061786b965c9c7841035ed621e7`. A bounded
+  corrective for findings 1–5 (no-op identity, descriptor-safe SQLite scratch,
+  post-chmod fsync, mostly-unique rewrite RSS, LATEST/hash refresh) preserves
+  that FAIL tip as an ancestor. Next: Copilot re-audit of the new exact tip.
+  No PR, live compaction, watcher/P2, grant, merge, or activation. Plan:
+  [`EXECUTION-watch-oom-bounded-export-compaction.md`](../plans/EXECUTION-watch-oom-bounded-export-compaction.md).
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
   PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the

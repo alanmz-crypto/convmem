@@ -1,7 +1,7 @@
 """Bounded export compaction: golden parity, fail-closed, crash, and lock tests."""
 
 # Fault-injection fixtures retain resources across setUp/tearDown.
-# pylint: disable=consider-using-with,keyword-arg-before-vararg,duplicate-code
+# pylint: disable=consider-using-with,keyword-arg-before-vararg,duplicate-code,protected-access
 
 from __future__ import annotations
 
@@ -313,6 +313,63 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
         self.assertTrue(foreign_tmp.is_file())
         owned = [p for p in self.dir.glob(f".{self.path.name}.compact.*") if p != foreign_dir]
         self.assertEqual(owned, [])
+
+    def test_noop_validates_identity_before_return(self) -> None:
+        original = b'{"id":"a"}\n{"id":"b"}\n'
+        _write_export(self.path, original)
+        hijacked = b'{"id":"hijack"}\n'
+        real_scan = __import__("export_compaction")._scan_into_index
+
+        def scanning(fd, conn):
+            result = real_scan(fd, conn)
+            other = self.dir / "other.jsonl"
+            other.write_bytes(hijacked)
+            os.replace(other, self.path)
+            return result
+
+        with mock.patch("export_compaction._scan_into_index", scanning):
+            with self.assertRaises(ExportIdentityChangedError):
+                compact_units_export(self.path)
+        self.assertEqual(self.path.read_bytes(), hijacked)
+
+    def test_empty_noop_validates_identity_before_return(self) -> None:
+        _write_export(self.path, b"\n\n")
+        hijacked = b'{"id":"hijack"}\n'
+        real_scan = __import__("export_compaction")._scan_into_index
+
+        def scanning(fd, conn):
+            result = real_scan(fd, conn)
+            other = self.dir / "other.jsonl"
+            other.write_bytes(hijacked)
+            os.replace(other, self.path)
+            return result
+
+        with mock.patch("export_compaction._scan_into_index", scanning):
+            with self.assertRaises(ExportIdentityChangedError):
+                compact_units_export(self.path)
+        self.assertEqual(self.path.read_bytes(), hijacked)
+
+    def test_scratch_pathname_replacement_does_not_delete_foreign(self) -> None:
+        original = b'{"id":"a","v":1}\n{"id":"a","v":2}\n'
+        _write_export(self.path, original)
+        victim = self.dir / "victim"
+        victim.mkdir()
+        canary = victim / "keep"
+        canary.write_text("leave-me\n", encoding="utf-8")
+        real_create = __import__("export_compaction")._create_scratch
+
+        def wrapped(export_path):
+            scratch = real_create(export_path)
+            aside = export_path.parent / (scratch.path.name + ".aside")
+            os.rename(scratch.path, aside)
+            os.symlink(victim, scratch.path)
+            return scratch
+
+        with mock.patch("export_compaction._create_scratch", wrapped):
+            self.assertEqual(compact_units_export(self.path), 1)
+        self.assertTrue(canary.is_file())
+        self.assertEqual(canary.read_text(encoding="utf-8"), "leave-me\n")
+        self.assertEqual(self.path.read_bytes(), b'{"id":"a","v":2}\n')
 
     def test_repeated_compact_zero_fd_growth(self) -> None:
         _write_export(self.path, '{"id":"a","v":1}\n{"id":"b","v":2}\n')

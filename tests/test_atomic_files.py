@@ -315,7 +315,7 @@ class AtomicWriteStreamTests(unittest.TestCase):
 
     def test_stream_mode_preserve_failure_preserves_destination(self) -> None:
         original = self.path.read_bytes()
-        with mock.patch("os.chmod", side_effect=OSError("injected chmod failure")):
+        with mock.patch("os.fchmod", side_effect=OSError("injected chmod failure")):
             with self.assertRaises(PrePublicationError):
                 atomic_write_stream(self.path, self._write_new, preserve_mode=True)
         self.assertEqual(self.path.read_bytes(), original)
@@ -348,6 +348,33 @@ class AtomicWriteStreamTests(unittest.TestCase):
         atomic_write_stream(self.path, self._write_new, preserve_mode=True)
         self.assertEqual(self.path.read_bytes(), b"NEW-COMPLETE\n")
         self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o640)
+
+    def test_stream_fsyncs_after_chmod_before_replace(self) -> None:
+        events: list[str] = []
+        real_fsync = os.fsync
+        real_fchmod = os.fchmod
+        real_replace = os.replace
+
+        def fsync_wrap(fd: int) -> None:
+            events.append("dir-fsync" if _is_dir_fd(fd) else "file-fsync")
+            return real_fsync(fd)
+
+        def fchmod_wrap(fd: int, mode: int) -> None:
+            events.append("fchmod")
+            return real_fchmod(fd, mode)
+
+        def replace_wrap(src, dst):
+            events.append("replace")
+            return real_replace(src, dst)
+
+        with mock.patch("os.fsync", side_effect=fsync_wrap), mock.patch(
+            "os.fchmod", side_effect=fchmod_wrap
+        ), mock.patch("os.replace", side_effect=replace_wrap):
+            atomic_write_stream(self.path, self._write_new, preserve_mode=True)
+        self.assertEqual(
+            events,
+            ["file-fsync", "fchmod", "file-fsync", "replace", "dir-fsync"],
+        )
 
     def test_stream_parent_dir_fsync_failure_after_replace(self) -> None:
         real_fsync = os.fsync

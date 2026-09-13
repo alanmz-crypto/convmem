@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import resource
+import subprocess
 import sys
 import tempfile
 import time
@@ -52,6 +53,40 @@ def _count_nonblank(path: Path) -> int:
     return count
 
 
+def _uid_for(kind: str, n: int) -> str:
+    if kind == "duplicate":
+        return f"id-{n % 8}"
+    if kind == "mostly_unique":
+        if n % 10 == 0:
+            return f"dup-{n % 8}"
+        return f"id-{n}"
+    return f"id-{n}"
+
+
+def _oracle_expected(path: Path) -> dict:
+    last_by_id: dict[str, bytes] = {}
+    order: list[str] = []
+    rows = 0
+    with path.open("rb") as handle:
+        for raw in handle:
+            stripped = raw.strip()
+            if not stripped:
+                continue
+            rows += 1
+            uid = json.loads(stripped)["id"]
+            if uid not in last_by_id:
+                order.append(uid)
+            last_by_id[uid] = stripped + b"\n"
+    expected = b"".join(last_by_id[uid] for uid in order)
+    return {
+        "rows": rows,
+        "unique_ids": len(order),
+        "expected_sha256": hashlib.sha256(expected).hexdigest(),
+        "expected_rows": len(order),
+        "expected_removed": rows - len(order),
+    }
+
+
 def _write_fixture(path: Path, *, kind: str, size_mib: int) -> dict:
     target = size_mib * 1024 * 1024
     last_by_id: dict[str, bytes] = {}
@@ -61,10 +96,7 @@ def _write_fixture(path: Path, *, kind: str, size_mib: int) -> dict:
     n = 0
     with path.open("wb") as handle:
         while written < target:
-            if kind == "duplicate":
-                uid = f"id-{n % 8}"
-            else:
-                uid = f"id-{n}"
+            uid = _uid_for(kind, n)
             pad = "x" * 64
             record = json.dumps({"id": uid, "n": n, "pad": pad}, separators=(",", ":"))
             raw = (record + "\n").encode("utf-8")
@@ -77,30 +109,49 @@ def _write_fixture(path: Path, *, kind: str, size_mib: int) -> dict:
             written += len(raw)
             n += 1
     if kind == "unique":
-        expected_hash = hasher.hexdigest()
-        unique_ids = n
-        expected_rows = n
+        expected = {
+            "rows": n,
+            "unique_ids": n,
+            "expected_sha256": hasher.hexdigest(),
+            "expected_rows": n,
+            "expected_removed": 0,
+        }
+    elif kind == "duplicate":
+        body = b"".join(last_by_id[uid] for uid in order)
+        expected = {
+            "rows": n,
+            "unique_ids": len(order),
+            "expected_sha256": hashlib.sha256(body).hexdigest(),
+            "expected_rows": len(order),
+            "expected_removed": n - len(order),
+        }
     else:
-        expected = b"".join(last_by_id[uid] for uid in order)
-        expected_hash = hashlib.sha256(expected).hexdigest()
-        unique_ids = len(order)
-        expected_rows = unique_ids
-    return {
-        "rows": n,
-        "unique_ids": unique_ids,
-        "bytes": written,
-        "expected_sha256": expected_hash,
-        "expected_rows": expected_rows,
-        "expected_removed": n - expected_rows,
-    }
+        proc = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve()), "--oracle", str(path)],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=str(ROOT),
+        )
+        expected = json.loads(proc.stdout)
+    return {"bytes": written, **expected}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--kind", choices=("duplicate", "unique"), required=True)
-    parser.add_argument("--size-mib", type=int, required=True)
+    parser.add_argument("--kind", choices=("duplicate", "unique", "mostly_unique"))
+    parser.add_argument("--size-mib", type=int, default=0)
     parser.add_argument("--baseline-only", action="store_true")
+    parser.add_argument("--oracle", type=str, default="")
     args = parser.parse_args()
+
+    if args.oracle:
+        json.dump(_oracle_expected(Path(args.oracle)), sys.stdout)
+        sys.stdout.write("\n")
+        return 0
+
+    if args.kind is None:
+        parser.error("--kind is required unless --oracle is set")
 
     # Match the authorized diagnostic's address-space ceiling.
     limit = 2 * 1024 * 1024 * 1024
@@ -131,6 +182,7 @@ def main() -> int:
             "sha256_before": before,
             "sha256_after": after,
             "output_rows": out_rows,
+            "output_bytes": export_path.stat().st_size,
             **meta,
         }
         json.dump(report, sys.stdout)

@@ -16,7 +16,7 @@ MIB = 1024 * 1024
 MAX_PEAK_BYTES = 512 * MIB
 MAX_128_OVER_BASELINE = 96 * MIB
 SIZES = (16, 64, 128)
-KINDS = ("duplicate", "unique")
+KINDS = ("duplicate", "unique", "mostly_unique")
 
 
 def _run_worker(*args: str) -> dict:
@@ -86,3 +86,13 @@ def test_hashes_and_counts_match_golden_oracle(measurements: list[dict]) -> None
         if row["kind"] == "unique":
             assert row["sha256_before"] == row["sha256_after"], row
             assert row["removed"] == 0, row
+
+
+def test_mostly_unique_rewrites_large_retained_output(measurements: list[dict]) -> None:
+    rows = [row for row in measurements if row["kind"] == "mostly_unique"]
+    assert rows
+    for row in rows:
+        assert row["removed"] > 0, row
+        assert row["output_bytes"] > (row["bytes"] * 8) // 10, row
+        if row["size_mib"] == 128:
+            assert row["output_bytes"] > 64 * MIB, row
