@@ -1,3 +1,4 @@
+# pylint: disable=consider-using-with
 """C0 golden freeze of knowledge_units.jsonl export compaction semantics.
 
 Valid-row cases are the replacement oracle. Malformed cases document the
@@ -13,6 +14,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from export_compaction import InvalidExportRecordError
 from ingest import _deduplicate_units_export_impl
 
 
@@ -99,52 +101,52 @@ class ExportCompactionGoldenTests(unittest.TestCase):
             b'{"id":"a"}\n{"id":"b"}\n{"id":"c"}\n',
         )
 
-    def test_legacy_rewrite_does_not_preserve_mode(self) -> None:
-        # Current tmp.write_text/replace publishes umask mode. Replacement must
-        # preserve mode; this records the pre-C1 defect.
+    def test_rewrite_preserves_file_mode(self) -> None:
         _write_export(self.path, '{"id":"a","v":1}\n{"id":"a","v":2}\n', mode=0o600)
         self._compact()
-        self.assertNotEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
 
-    # --- Legacy malformed behavior (intentional fail-closed after C2) ---
-    #
-    # C0 records the current unsafe/contradictory outcomes. After C2 these
-    # inputs must abort before publication and leave the original bytes
-    # unchanged. Do not treat the assertions below as the replacement contract.
+    # --- Intentional fail-closed hardening (C0 recorded the legacy defects) ---
 
-    def test_legacy_malformed_json_is_dropped_on_rewrite(self) -> None:
+    def test_malformed_json_fails_closed(self) -> None:
         original = b'{"id":"a"}\nNOTJSON\n{"id":"b"}\n'
         _write_export(self.path, original)
-        self.assertEqual(self._compact(), 1)
-        self.assertEqual(self.path.read_bytes(), b'{"id":"a"}\n{"id":"b"}\n')
-
-    def test_legacy_all_malformed_rewrites_to_single_newline(self) -> None:
-        _write_export(self.path, "NOTJSON\nALSOBAD\n")
-        self.assertEqual(self._compact(), 2)
-        self.assertEqual(self.path.read_bytes(), b"\n")
-
-    def test_legacy_missing_empty_and_null_ids_are_dropped(self) -> None:
-        _write_export(self.path, '{"id":"a"}\n{"v":1}\n{"id":""}\n{"id":null}\n')
-        self.assertEqual(self._compact(), 3)
-        self.assertEqual(self.path.read_bytes(), b'{"id":"a"}\n')
-
-    def test_legacy_integer_id_is_accepted_as_unique_key(self) -> None:
-        original = b'{"id":"a"}\n{"id":123}\n'
-        _write_export(self.path, original)
-        self.assertEqual(self._compact(), 0)
-        self.assertEqual(self.path.read_bytes(), original)
-
-    def test_legacy_non_object_json_raises_attribute_error(self) -> None:
-        original = b'{"id":"a"}\n[1,2]\n'
-        _write_export(self.path, original)
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(InvalidExportRecordError):
             self._compact()
         self.assertEqual(self.path.read_bytes(), original)
 
-    def test_legacy_invalid_utf8_raises_decode_error(self) -> None:
+    def test_all_malformed_fails_closed(self) -> None:
+        original = b"NOTJSON\nALSOBAD\n"
+        _write_export(self.path, original)
+        with self.assertRaises(InvalidExportRecordError):
+            self._compact()
+        self.assertEqual(self.path.read_bytes(), original)
+
+    def test_missing_empty_null_and_integer_ids_fail_closed(self) -> None:
+        cases = (
+            b'{"id":"a"}\n{"v":1}\n',
+            b'{"id":"a"}\n{"id":""}\n',
+            b'{"id":"a"}\n{"id":null}\n',
+            b'{"id":"a"}\n{"id":123}\n',
+        )
+        for original in cases:
+            with self.subTest(original=original):
+                _write_export(self.path, original)
+                with self.assertRaises(InvalidExportRecordError):
+                    self._compact()
+                self.assertEqual(self.path.read_bytes(), original)
+
+    def test_non_object_json_fails_closed(self) -> None:
+        original = b'{"id":"a"}\n[1,2]\n'
+        _write_export(self.path, original)
+        with self.assertRaises(InvalidExportRecordError):
+            self._compact()
+        self.assertEqual(self.path.read_bytes(), original)
+
+    def test_invalid_utf8_fails_closed(self) -> None:
         original = b'{"id":"a"}\n\xff\n{"id":"b"}\n'
         _write_export(self.path, original)
-        with self.assertRaises(UnicodeDecodeError):
+        with self.assertRaises(InvalidExportRecordError):
             self._compact()
         self.assertEqual(self.path.read_bytes(), original)
 
