@@ -172,6 +172,19 @@ with retained document text. This deliberately exchanges corpus-sized RAM for
 bounded RAM plus local scratch I/O; the implementation must surface disk-full
 errors without publishing or modifying the original export.
 
+**Erratum (2026-09-13, Claude trapdoor consult):** Do not create an
+invocation-owned scratch directory beside the export, and do not stat,
+chmod, open, or delete `.compact.*`, `index.sqlite*`, or any other
+export-directory scratch pathname. SQLite owns an anonymous/deleted
+temporary database opened with `sqlite3.connect("")` outside the export
+directory. That database is disposable, never publication authority, and
+not an adversary-controlled pathname. Use one connection for the entire
+scan; set `journal_mode=OFF`; leave `temp_store` file-backed (do not set
+`MEMORY`). On `sqlite3.Error`, raise `PrePublicationError`, close the
+connection, and do not rollback or retry. The audited adversary boundary
+is the export directory. Stored columns, last-offset semantics, fixed
+page-cache budget, and bounded batch commits are unchanged.
+
 ### 5.4 No-op path
 
 After the scan:
@@ -236,6 +249,15 @@ descriptor is safe and avoids reopening a path that changed outside the lock.
 | Parent-directory fsync fails after replace | Complete new export visible; `PostPublicationDurabilityError` reports uncertain crash durability. |
 | Process is SIGKILLed before replace | Original export remains visible; private scratch/temp may remain but is never published. |
 | Process is SIGKILLed after replace | Complete new export is visible; durability follows whether parent fsync completed. |
+
+**Erratum (2026-09-13):** Handled scan/SQLite failure leaves the original
+export unchanged and does **not** create or remove export-directory
+scratch; SQLite closes its anonymous temp database. SIGKILL before
+replace likewise leaves the original export visible with no
+export-directory scratch residue; the kernel reclaims the deleted SQLite
+temp file. The audited adversary boundary is the export directory.
+Publication-temp cleanup remains the existing `atomic_files.py`
+invocation-owned rule.
 
 Do not add broad stale-temp cleanup. Normal exceptions clean only artifacts
 owned by that invocation, matching the existing `atomic_files.py` safety rule.

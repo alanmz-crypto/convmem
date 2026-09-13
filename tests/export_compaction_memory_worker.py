@@ -1,8 +1,10 @@
+# pylint: disable=protected-access,wrong-import-position
 """Fresh-process RSS worker for bounded export compaction measurements."""
 
 from __future__ import annotations
 
 import argparse
+import os
 import hashlib
 import json
 import resource
@@ -17,6 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 # Keep this import set identical for baseline and workload processes.
+import export_compaction as export_compaction_mod  # noqa: E402  # pylint: disable=wrong-import-position
 from export_compaction import compact_units_export  # noqa: E402  # pylint: disable=wrong-import-position
 
 
@@ -137,6 +140,45 @@ def _write_fixture(path: Path, *, kind: str, size_mib: int) -> dict:
     return {"bytes": written, **expected}
 
 
+def _fstype(path: str) -> str:
+    raw = path.split(" (deleted)", 1)[0]
+    probe = raw if os.path.exists(raw) else os.path.dirname(raw)
+    probe = os.path.realpath(probe)
+    best = ""
+    best_len = -1
+    with open("/proc/mounts", encoding="utf-8") as handle:
+        for line in handle:
+            parts = line.split()
+            if len(parts) < 3:
+                continue
+            mount = parts[1].replace("\\040", " ")
+            fstype = parts[2]
+            if probe == mount or probe.startswith(mount.rstrip("/") + "/"):
+                if len(mount) > best_len:
+                    best = fstype
+                    best_len = len(mount)
+    return best
+
+
+def _deleted_sqlite_fds() -> list[str]:
+    found: list[str] = []
+    for entry in Path("/proc/self/fd").iterdir():
+        try:
+            target = os.readlink(entry)
+        except OSError:
+            continue
+        if "etilqs_" in target:
+            found.append(target)
+    return found
+
+
+def _non_tmpfs_parent() -> Path:
+    for candidate in (Path("/var/tmp"), Path.home()):
+        if candidate.is_dir() and _fstype(str(candidate)) not in {"tmpfs", "ramfs"}:
+            return candidate
+    raise RuntimeError("no non-tmpfs directory available for SQLite temp evidence")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--kind", choices=("duplicate", "unique", "mostly_unique"))
@@ -163,30 +205,63 @@ def main() -> int:
         return 0
 
     baseline = _rss_bytes()
-    with tempfile.TemporaryDirectory() as tmp:
-        export_path = Path(tmp) / "knowledge_units.jsonl"
-        meta = _write_fixture(export_path, kind=args.kind, size_mib=args.size_mib)
-        before = _sha256(export_path)
-        started = time.perf_counter()
-        removed = compact_units_export(export_path)
-        elapsed = time.perf_counter() - started
-        after = _sha256(export_path)
-        out_rows = _count_nonblank(export_path)
-        report = {
-            "kind": args.kind,
-            "size_mib": args.size_mib,
-            "baseline_rss_bytes": baseline,
-            "peak_rss_bytes": _peak_rss_bytes(),
-            "elapsed_s": elapsed,
-            "removed": removed,
-            "sha256_before": before,
-            "sha256_after": after,
-            "output_rows": out_rows,
-            "output_bytes": export_path.stat().st_size,
-            **meta,
-        }
-        json.dump(report, sys.stdout)
-        sys.stdout.write("\n")
+    sqlite_parent = _non_tmpfs_parent()
+    sqlite_tmp = tempfile.mkdtemp(prefix="convmem-sqlite-tmp.", dir=str(sqlite_parent))
+    os.environ["SQLITE_TMPDIR"] = sqlite_tmp
+    os.environ["TMPDIR"] = sqlite_tmp
+    captured: dict[str, object] = {
+        "sqlite_temp_fstype": _fstype(sqlite_tmp),
+        "sqlite_deleted_temp_fds": [],
+        "sqlite_database_file": None,
+        "sqlite_temp_store": None,
+    }
+    real = export_compaction_mod._index_row
+    seen = 0
+
+    def wrapped(conn, uid, seq, offset, length):
+        nonlocal seen
+        real(conn, uid, seq, offset, length)
+        seen += 1
+        if seen % 4096 == 0:
+            fds = _deleted_sqlite_fds()
+            if fds:
+                captured["sqlite_deleted_temp_fds"] = fds
+                db_list = conn.execute("PRAGMA database_list").fetchall()
+                captured["sqlite_database_file"] = db_list[0][2] if db_list else None
+                captured["sqlite_temp_store"] = conn.execute("PRAGMA temp_store").fetchone()[0]
+
+    export_compaction_mod._index_row = wrapped
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            export_path = Path(tmp) / "knowledge_units.jsonl"
+            meta = _write_fixture(export_path, kind=args.kind, size_mib=args.size_mib)
+            before = _sha256(export_path)
+            started = time.perf_counter()
+            removed = compact_units_export(export_path)
+            elapsed = time.perf_counter() - started
+            after = _sha256(export_path)
+            out_rows = _count_nonblank(export_path)
+            report = {
+                "kind": args.kind,
+                "size_mib": args.size_mib,
+                "baseline_rss_bytes": baseline,
+                "peak_rss_bytes": _peak_rss_bytes(),
+                "elapsed_s": elapsed,
+                "removed": removed,
+                "sha256_before": before,
+                "sha256_after": after,
+                "output_rows": out_rows,
+                "output_bytes": export_path.stat().st_size,
+                **captured,
+                **meta,
+            }
+            json.dump(report, sys.stdout)
+            sys.stdout.write("\n")
+    finally:
+        try:
+            os.rmdir(sqlite_tmp)
+        except OSError:
+            pass
     return 0
 
 

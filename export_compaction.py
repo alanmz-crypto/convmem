@@ -13,7 +13,6 @@ import json
 import os
 import sqlite3
 import stat
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,15 +23,6 @@ MAX_RECORD_BYTES = 16 * 1024 * 1024
 _READ_CHUNK_BYTES = 64 * 1024
 _SQLITE_CACHE_KIB = 8192
 _SQLITE_BATCH = 512
-_SCRATCH_DIR_MODE = 0o700
-_SCRATCH_FILE_MODE = 0o600
-_SCRATCH_DB_NAME = "index.sqlite"
-_SCRATCH_RELATIVES = (
-    _SCRATCH_DB_NAME,
-    f"{_SCRATCH_DB_NAME}-journal",
-    f"{_SCRATCH_DB_NAME}-wal",
-    f"{_SCRATCH_DB_NAME}-shm",
-)
 
 
 class InvalidExportRecordError(PrePublicationError):
@@ -57,13 +47,6 @@ class _FileIdentity:  # pylint: disable=too-many-instance-attributes
     gid: int
     mtime_ns: int
     ctime_ns: int
-
-
-@dataclass
-class _Scratch:
-    path: Path
-    dir_fd: int
-    db_fd: int = -1
 
 
 def compact_units_export(export_path: Path) -> int:
@@ -179,138 +162,30 @@ def _validate_record(raw: bytes) -> str:
     return uid
 
 
-def _same_inode(left: os.stat_result, right: os.stat_result) -> bool:
-    return left.st_dev == right.st_dev and left.st_ino == right.st_ino
+def _connect_index() -> sqlite3.Connection:
+    """Open SQLite's private deleted on-disk temp database for this scan.
 
-
-def _dirfd_is_empty(dir_fd: int) -> bool:
-    return not os.listdir(dir_fd)
-
-
-def _create_scratch(export_path: Path) -> _Scratch:
-    scratch_path = Path(
-        tempfile.mkdtemp(
-            prefix=f".{export_path.name}.compact.",
-            dir=str(export_path.parent),
+    ``sqlite3.connect("")`` is disposable scratch, never publication
+    authority, and is not a pathname in the export directory.
+    """
+    conn = sqlite3.connect("")
+    try:
+        conn.execute("PRAGMA journal_mode=OFF")
+        conn.execute(f"PRAGMA cache_size=-{_SQLITE_CACHE_KIB}")
+        conn.execute(
+            "CREATE TABLE retained ("
+            "id TEXT PRIMARY KEY NOT NULL,"
+            "first_seq INTEGER NOT NULL,"
+            "last_offset INTEGER NOT NULL,"
+            "last_length INTEGER NOT NULL)"
         )
-    )
-    try:
-        created = os.lstat(scratch_path)
-    except OSError as exc:
-        raise PrePublicationError(
-            f"failed to stat compaction scratch: {scratch_path}: {exc}"
-        ) from exc
-    if stat.S_ISLNK(created.st_mode) or not stat.S_ISDIR(created.st_mode):
-        raise PrePublicationError(
-            f"compaction scratch is not a private directory: {scratch_path}"
-        )
-    try:
-        dir_fd = os.open(
-            str(scratch_path),
-            os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC | os.O_NOFOLLOW,
-        )
-    except OSError as exc:
-        raise PrePublicationError(
-            f"failed to open compaction scratch: {scratch_path}: {exc}"
-        ) from exc
-    try:
-        opened = os.fstat(dir_fd)
-    except OSError as exc:
+        conn.execute("CREATE INDEX retained_first_seq ON retained(first_seq)")
+    except sqlite3.Error:
         try:
-            os.close(dir_fd)
-        except OSError:
+            conn.close()
+        except sqlite3.Error:
             pass
-        raise PrePublicationError(
-            f"failed to fstat compaction scratch: {scratch_path}: {exc}"
-        ) from exc
-    if not stat.S_ISDIR(opened.st_mode) or not _same_inode(created, opened):
-        try:
-            os.close(dir_fd)
-        except OSError:
-            pass
-        raise PrePublicationError(
-            f"compaction scratch was replaced before ownership bind: {scratch_path}"
-        )
-    if not _dirfd_is_empty(dir_fd):
-        try:
-            os.close(dir_fd)
-        except OSError:
-            pass
-        raise PrePublicationError(
-            f"compaction scratch is not the empty directory just created: {scratch_path}"
-        )
-    try:
-        os.fchmod(dir_fd, _SCRATCH_DIR_MODE)
-    except OSError as exc:
-        _remove_owned_scratch(_Scratch(path=scratch_path, dir_fd=dir_fd))
-        raise PrePublicationError(
-            f"failed to restrict compaction scratch: {scratch_path}: {exc}"
-        ) from exc
-    return _Scratch(path=scratch_path, dir_fd=dir_fd)
-
-
-def _rmdir_if_still_owned(path: Path, dir_stat: os.stat_result) -> None:
-    try:
-        lst = os.lstat(path)
-    except OSError:
-        return
-    if not stat.S_ISDIR(lst.st_mode):
-        return
-    if not _same_inode(lst, dir_stat):
-        return
-    try:
-        os.rmdir(path)
-    except OSError:
-        pass
-
-
-def _remove_owned_scratch(scratch: _Scratch | None) -> None:
-    if scratch is None:
-        return
-    if scratch.db_fd >= 0:
-        try:
-            os.close(scratch.db_fd)
-        except OSError:
-            pass
-        scratch.db_fd = -1
-    if scratch.dir_fd < 0:
-        return
-    try:
-        dir_stat = os.fstat(scratch.dir_fd)
-    except OSError:
-        dir_stat = None
-    for name in _SCRATCH_RELATIVES:
-        try:
-            os.unlink(name, dir_fd=scratch.dir_fd)
-        except OSError:
-            pass
-    try:
-        os.close(scratch.dir_fd)
-    except OSError:
-        pass
-    scratch.dir_fd = -1
-    if dir_stat is None:
-        return
-    _rmdir_if_still_owned(scratch.path, dir_stat)
-
-
-def _connect_index(scratch: _Scratch) -> sqlite3.Connection:
-    flags = os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW
-    db_fd = os.open(_SCRATCH_DB_NAME, flags, _SCRATCH_FILE_MODE, dir_fd=scratch.dir_fd)
-    scratch.db_fd = db_fd
-    os.fchmod(db_fd, _SCRATCH_FILE_MODE)
-    conn = sqlite3.connect(f"file:/proc/self/fd/{db_fd}?mode=rw", uri=True)
-    conn.execute("PRAGMA temp_store=MEMORY")
-    conn.execute(f"PRAGMA cache_size=-{_SQLITE_CACHE_KIB}")
-    conn.execute("PRAGMA journal_mode=OFF")
-    conn.execute(
-        "CREATE TABLE retained ("
-        "id TEXT PRIMARY KEY NOT NULL,"
-        "first_seq INTEGER NOT NULL,"
-        "last_offset INTEGER NOT NULL,"
-        "last_length INTEGER NOT NULL)"
-    )
-    conn.execute("CREATE INDEX retained_first_seq ON retained(first_seq)")
+        raise
     return conn
 
 
@@ -383,7 +258,6 @@ def _publish_compacted(path: Path, fd: int, identity: _FileIdentity, conn: sqlit
 
 def _compact_locked(path: Path) -> int:
     fd = _open_export(path)
-    scratch: _Scratch | None = None
     conn: sqlite3.Connection | None = None
     try:
         fd_st = os.fstat(fd)
@@ -391,11 +265,16 @@ def _compact_locked(path: Path) -> int:
             raise InvalidExportRecordError(f"export is not a regular file: {path}")
         identity = _identity_from_stat(fd_st)
         _assert_regular_identity(path, identity)
-        scratch = _create_scratch(path)
         try:
-            conn = _connect_index(scratch)
+            conn = _connect_index()
             nonblank, retained = _scan_into_index(fd, conn)
         except sqlite3.Error as exc:
+            if conn is not None:
+                try:
+                    conn.close()
+                except sqlite3.Error:
+                    pass
+                conn = None
             raise PrePublicationError(
                 f"compaction index failed for {path}: {exc}"
             ) from exc
@@ -410,7 +289,6 @@ def _compact_locked(path: Path) -> int:
                 conn.close()
             except sqlite3.Error:
                 pass
-        _remove_owned_scratch(scratch)
         try:
             os.close(fd)
         except OSError:

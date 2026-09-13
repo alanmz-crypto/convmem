@@ -7,14 +7,19 @@ from __future__ import annotations
 
 import errno
 import os
+import signal
 import sqlite3
 import stat
+import subprocess
+import sys
 import tempfile
 import threading
 import time
 import unittest
 from pathlib import Path
 from unittest import mock
+
+import export_compaction as export_compaction_mod
 
 from atomic_files import PostPublicationDurabilityError, PrePublicationError
 from export_compaction import (
@@ -41,6 +46,76 @@ def _write_export(path: Path, data: bytes | str, mode: int = 0o640) -> None:
     os.chmod(path, mode)
 
 
+def _fstype(path: str) -> str:
+    raw = path.split(" (deleted)", 1)[0]
+    probe = raw if os.path.exists(raw) else os.path.dirname(raw)
+    probe = os.path.realpath(probe)
+    best = ""
+    best_len = -1
+    with open("/proc/mounts", encoding="utf-8") as handle:
+        for line in handle:
+            parts = line.split()
+            if len(parts) < 3:
+                continue
+            mount = parts[1].replace("\\040", " ")
+            fstype = parts[2]
+            if probe == mount or probe.startswith(mount.rstrip("/") + "/"):
+                if len(mount) > best_len:
+                    best = fstype
+                    best_len = len(mount)
+    return best
+
+
+def _deleted_sqlite_fds(pid: int | None = None) -> list[str]:
+    if pid is None:
+        pid = os.getpid()
+    found: list[str] = []
+    fd_dir = Path(f"/proc/{pid}/fd")
+    for entry in fd_dir.iterdir():
+        try:
+            target = os.readlink(entry)
+        except OSError:
+            continue
+        if "etilqs_" in target:
+            found.append(target)
+    return found
+
+
+def _non_tmpfs_parent() -> Path:
+    for candidate in (Path("/var/tmp"), Path.home()):
+        if candidate.is_dir() and _fstype(str(candidate)) not in {"tmpfs", "ramfs"}:
+            return candidate
+    raise AssertionError("no non-tmpfs directory available for SQLite temp evidence")
+
+
+def _entry_snapshot(path: Path) -> dict:
+    st = os.lstat(path)
+    rec = {
+        "mode": stat.S_IMODE(st.st_mode),
+        "dev": st.st_dev,
+        "ino": st.st_ino,
+        "uid": st.st_uid,
+        "gid": st.st_gid,
+        "nlink": st.st_nlink,
+        "size": st.st_size,
+        "islnk": stat.S_ISLNK(st.st_mode),
+        "isdir": stat.S_ISDIR(st.st_mode),
+        "target": os.readlink(path) if stat.S_ISLNK(st.st_mode) else None,
+        "data": path.read_bytes() if stat.S_ISREG(st.st_mode) else None,
+    }
+    return rec
+
+
+def _tree_snapshot(paths: list[Path]) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for path in paths:
+        out[str(path)] = _entry_snapshot(path)
+        if path.is_dir() and not path.is_symlink():
+            for child in sorted(path.rglob("*")):
+                out[str(child)] = _entry_snapshot(child)
+    return out
+
+
 class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -49,6 +124,24 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
 
     def tearDown(self) -> None:
         self._tmp.cleanup()
+
+    def _plant_foreign_export_dir_objects(self) -> tuple[list[Path], dict[str, dict]]:
+        compact = self.dir / f".{self.path.name}.compact.adversary"
+        compact.mkdir()
+        canary = compact / "canary"
+        canary.write_bytes(b"CANARY-BYTES\n")
+        os.chmod(canary, 0o640)
+        db = self.dir / "index.sqlite"
+        db.write_bytes(b"FOREIGN-INDEX-SQLITE\n")
+        os.chmod(db, 0o600)
+        journal = self.dir / "index.sqlite-journal"
+        journal.write_bytes(b"FOREIGN-JOURNAL\n")
+        os.chmod(journal, 0o600)
+        keep = self.dir / "keep-me"
+        keep.write_bytes(b"KEEP-ME\n")
+        os.chmod(keep, 0o644)
+        paths = [compact, canary, db, journal, keep]
+        return paths, _tree_snapshot(paths)
 
     def test_missing_file_returns_zero(self) -> None:
         missing = self.dir / "absent.jsonl"
@@ -142,9 +235,11 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
         for args in wrapped_read.call_args_list:
             self.assertLessEqual(args.args[1], MAX_RECORD_BYTES + 1)
 
-    def test_sqlite_failure_leaves_original_and_removes_scratch(self) -> None:
+    def test_sqlite_failure_leaves_original_and_foreign_objects(self) -> None:
         original = b'{"id":"a","v":1}\n{"id":"a","v":2}\n'
         _write_export(self.path, original)
+        _paths, before = self._plant_foreign_export_dir_objects()
+
         def boom(*_args, **_kwargs):
             raise sqlite3.OperationalError("injected sqlite failure")
 
@@ -152,7 +247,7 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
             with self.assertRaises(PrePublicationError):
                 compact_units_export(self.path)
         self.assertEqual(self.path.read_bytes(), original)
-        self.assertEqual(list(self.dir.glob(".*compact*")), [])
+        self.assertEqual(_tree_snapshot(_paths), before)
 
     def test_enospc_write_leaves_original(self) -> None:
         original = b'{"id":"a","v":1}\n{"id":"a","v":2}\n'
@@ -296,24 +391,6 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
         self.assertTrue(done)
         self.assertEqual(self.path.read_bytes(), b'{"id":"a","v":2}\n')
 
-    def test_handled_failure_removes_owned_scratch_not_foreign(self) -> None:
-        original = b'{"id":"a","v":1}\n{"id":"a","v":2}\n'
-        _write_export(self.path, original)
-        foreign_dir = self.dir / f".{self.path.name}.compact.foreign"
-        foreign_dir.mkdir()
-        (foreign_dir / "keep").write_text("leave-me\n", encoding="utf-8")
-        foreign_tmp = self.dir / f".{self.path.name}.foreign.tmp"
-        foreign_tmp.write_text("leave-me\n", encoding="utf-8")
-        with mock.patch("os.replace", side_effect=OSError("injected replace fail")):
-            with self.assertRaises(PrePublicationError):
-                compact_units_export(self.path)
-        self.assertEqual(self.path.read_bytes(), original)
-        self.assertTrue(foreign_dir.is_dir())
-        self.assertEqual((foreign_dir / "keep").read_text(encoding="utf-8"), "leave-me\n")
-        self.assertTrue(foreign_tmp.is_file())
-        owned = [p for p in self.dir.glob(f".{self.path.name}.compact.*") if p != foreign_dir]
-        self.assertEqual(owned, [])
-
     def test_noop_validates_identity_before_return(self) -> None:
         original = b'{"id":"a"}\n{"id":"b"}\n'
         _write_export(self.path, original)
@@ -349,63 +426,84 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
                 compact_units_export(self.path)
         self.assertEqual(self.path.read_bytes(), hijacked)
 
-    def test_scratch_pathname_replacement_does_not_delete_foreign(self) -> None:
-        original = b'{"id":"a","v":1}\n{"id":"a","v":2}\n'
-        _write_export(self.path, original)
-        victim = self.dir / "victim"
-        victim.mkdir()
-        canary = victim / "keep"
-        canary.write_text("leave-me\n", encoding="utf-8")
-        real_create = __import__("export_compaction")._create_scratch
-
-        def wrapped(export_path):
-            scratch = real_create(export_path)
-            aside = export_path.parent / (scratch.path.name + ".aside")
-            os.rename(scratch.path, aside)
-            os.symlink(victim, scratch.path)
-            return scratch
-
-        with mock.patch("export_compaction._create_scratch", wrapped):
-            self.assertEqual(compact_units_export(self.path), 1)
-        self.assertTrue(canary.is_file())
-        self.assertEqual(canary.read_text(encoding="utf-8"), "leave-me\n")
+    def test_foreign_export_dir_objects_survive_noop_and_rewrite(self) -> None:
+        paths, before = self._plant_foreign_export_dir_objects()
+        unique = b'{"id":"a","v":1}\n{"id":"b","v":2}\n'
+        _write_export(self.path, unique)
+        self.assertEqual(compact_units_export(self.path), 0)
+        self.assertEqual(self.path.read_bytes(), unique)
+        self.assertEqual(_tree_snapshot(paths), before)
+        _write_export(self.path, b'{"id":"a","v":1}\n{"id":"a","v":2}\n')
+        self.assertEqual(compact_units_export(self.path), 1)
         self.assertEqual(self.path.read_bytes(), b'{"id":"a","v":2}\n')
+        self.assertEqual(_tree_snapshot(paths), before)
 
-    def test_scratch_replaced_before_dirfd_leaves_foreign_untouched(self) -> None:
-        original = b'{"id":"a","v":1}\n{"id":"a","v":2}\n'
-        _write_export(self.path, original)
-        foreign = self.dir / "foreign-scratch"
-        foreign.mkdir()
-        db = foreign / "index.sqlite"
-        payload = b"FOREIGN-DB-PAYLOAD-DO-NOT-TOUCH\n"
-        db.write_bytes(payload)
-        foreign_mode = stat.S_IMODE(foreign.stat().st_mode)
-        db_mode = stat.S_IMODE(db.stat().st_mode)
-        real_mkdtemp = tempfile.mkdtemp
-        swapped: dict[str, Path] = {}
+    def test_large_index_uses_deleted_ondisk_sqlite_temp(self) -> None:
+        rows = []
+        for i in range(90000):
+            # IDs must be large enough that the offset index exceeds the 8 MiB
+            # SQLite page cache and spills to a deleted on-disk temp file.
+            rows.append(f'{{"id":"id-{i:08d}-{"x"*40}","n":{i}}}\n')
+        _write_export(self.path, "".join(rows))
+        original = self.path.read_bytes()
+        paths, before = self._plant_foreign_export_dir_objects()
+        captured: dict[str, object] = {}
+        real = export_compaction_mod._index_row
+        seen = 0
 
-        def wrapped_mkdtemp(*args, **kwargs):
-            created = Path(real_mkdtemp(*args, **kwargs))
-            aside = created.parent / (created.name + ".aside")
-            os.rename(created, aside)
-            os.rename(foreign, created)
-            swapped["path"] = created
-            swapped["aside"] = aside
-            return str(created)
+        def wrapped(conn, uid, seq, offset, length):
+            nonlocal seen
+            real(conn, uid, seq, offset, length)
+            seen += 1
+            if seen >= 70000 and seen % 4096 == 0:
+                captured["database_list"] = conn.execute("PRAGMA database_list").fetchall()
+                captured["temp_store"] = conn.execute("PRAGMA temp_store").fetchone()[0]
+                fds = _deleted_sqlite_fds()
+                if fds:
+                    captured["fds"] = fds
 
-        with mock.patch("export_compaction.tempfile.mkdtemp", wrapped_mkdtemp):
-            with self.assertRaises(PrePublicationError):
-                compact_units_export(self.path)
-        target = swapped["path"]
-        self.assertTrue(target.is_dir())
-        self.assertFalse(target.is_symlink())
-        self.assertEqual(sorted(p.name for p in target.iterdir()), ["index.sqlite"])
-        self.assertEqual((target / "index.sqlite").read_bytes(), payload)
-        self.assertEqual(stat.S_IMODE(target.stat().st_mode), foreign_mode)
-        self.assertEqual(stat.S_IMODE((target / "index.sqlite").stat().st_mode), db_mode)
+        sqlite_parent = _non_tmpfs_parent()
+        with tempfile.TemporaryDirectory(
+            prefix="convmem-sqlite-tmp.", dir=str(sqlite_parent)
+        ) as sqlite_tmp:
+            self.assertNotIn(_fstype(sqlite_tmp), {"tmpfs", "ramfs"})
+            with mock.patch.dict(os.environ, {"SQLITE_TMPDIR": sqlite_tmp, "TMPDIR": sqlite_tmp}):
+                with mock.patch("export_compaction._index_row", wrapped):
+                    self.assertEqual(compact_units_export(self.path), 0)
         self.assertEqual(self.path.read_bytes(), original)
-        self.assertTrue(swapped["aside"].is_dir())
-        self.assertEqual(list(swapped["aside"].iterdir()), [])
+        self.assertEqual(_tree_snapshot(paths), before)
+        db_list = captured["database_list"]
+        self.assertTrue(db_list)
+        self.assertEqual(db_list[0][1], "main")
+        self.assertEqual(db_list[0][2], "")
+        self.assertNotEqual(captured["temp_store"], 2)
+        fds = captured["fds"]
+        self.assertTrue(fds, captured)
+        for target in fds:
+            self.assertNotIn(_fstype(target), {"tmpfs", "ramfs"}, target)
+            self.assertNotIn(str(self.dir), target)
+
+    def test_sigkill_after_batches_leaves_export_dir_untouched(self) -> None:
+        original = (b'{"id":"a","v":1}\n{"id":"a","v":2}\n') * 4000
+        _write_export(self.path, original)
+        paths, before = self._plant_foreign_export_dir_objects()
+        sentinel = self.dir / "pause-ready"
+        worker = Path(__file__).resolve().parent / "export_compaction_sigkill_worker.py"
+        pause_after = export_compaction_mod._SQLITE_BATCH * 2 + 8
+        proc = subprocess.Popen(
+            [sys.executable, str(worker), str(self.path), str(sentinel), str(pause_after)],
+            cwd=str(Path(__file__).resolve().parents[1]),
+        )
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline and not sentinel.is_file():
+            if proc.poll() is not None:
+                raise AssertionError(f"worker exited early with {proc.returncode}")
+            time.sleep(0.05)
+        self.assertTrue(sentinel.is_file(), "worker did not pause after batches")
+        os.kill(proc.pid, signal.SIGKILL)
+        proc.wait(5)
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertEqual(_tree_snapshot(paths), before)
 
     def test_repeated_compact_zero_fd_growth(self) -> None:
         _write_export(self.path, '{"id":"a","v":1}\n{"id":"b","v":2}\n')

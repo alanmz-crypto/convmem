@@ -96,3 +96,18 @@ def test_mostly_unique_rewrites_large_retained_output(measurements: list[dict]) 
         assert row["output_bytes"] > (row["bytes"] * 8) // 10, row
         if row["size_mib"] == 128:
             assert row["output_bytes"] > 64 * MIB, row
+
+
+def test_sqlite_temp_is_disk_backed_not_tmpfs(measurements: list[dict]) -> None:
+    rows = [
+        row for row in measurements
+        if row["kind"] in {"unique", "mostly_unique"} and row["size_mib"] >= 64
+    ]
+    assert rows
+    for row in rows:
+        assert row["sqlite_temp_fstype"] not in {"tmpfs", "ramfs"}, row
+        assert row["sqlite_database_file"] == "", row
+        assert row["sqlite_temp_store"] != 2, row
+        assert row["sqlite_deleted_temp_fds"], row
+        for target in row["sqlite_deleted_temp_fds"]:
+            assert "(deleted)" in target or "etilqs_" in target, row
