@@ -16,10 +16,9 @@ production export was approximately 2.4 GiB. Watch-triggered children have
 repeatedly reached their 12 GiB cgroup ceiling. Exclusions are temporary
 containment, and Arc Codex P2 remains paused.
 
-**Next action:** Kiro performs a targeted recheck of §5.2's explicit
-incremental record-ceiling enforcement, the only condition from its review of
-`90beef5`. No Cursor Execute, PR, live compaction, watcher operation,
-re-inclusion, or P2 progression is authorized.
+**Next action:** superseded by the authorized Cursor Execute handoff after Kiro
+PASSed `36f9069…`. No PR, live compaction, watcher operation, re-inclusion, or
+P2 progression is authorized.
 
 ## Exact review target
 

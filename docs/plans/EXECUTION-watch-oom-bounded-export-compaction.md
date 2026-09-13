@@ -3,8 +3,9 @@
 **Arc:** Trapdoor Hunt (issue #268 operational follow-up; does not reopen the
 closed provenance T3 gate)
 
-**Status:** DRAFT FOR KIRO REVIEW. Planning only. This file authorizes no code,
-configuration, service, corpus, provider, or production operation.
+**Status:** KIRO PASS; CURSOR EXECUTE C0–C7 AUTHORIZED BY RYAN ON 2026-09-13.
+Implementation only. This file authorizes no configuration, service, corpus,
+provider, production operation, PR, merge, or activation.
 
 **Date:** 2026-09-13
 
@@ -273,8 +274,8 @@ compactor defect can be removed without coupling it to watcher state.
 
 ## 7. Cursor implementation sequence
 
-Implementation requires a separate Ryan Execute authorization after Kiro
-accepts this plan.
+Kiro accepted this plan at `36f9069…`; Ryan then explicitly authorized Cursor
+to execute C0–C7. That authorization does not extend beyond this sequence.
 
 ### C0 — Freeze legacy semantics
 

@@ -15,13 +15,12 @@ cross-arc snapshot and the linked arc brief below.
   merged runtime `8983a6fc…` showed the in-memory global export compactor at
   351.88 MiB RSS for a conservative 128 MiB fixture while the production export
   is approximately 2.4 GiB. Codex's narrow bounded-memory/crash-safe corrective
-  plan received Kiro CONDITIONAL PASS at `90beef5`; its sole condition was an
-  explicit bounded-read requirement for the 16 MiB record ceiling. That
-  clarification is now ready for **targeted Kiro recheck only** on
-  `plan/2026-09-13-watch-oom-bounded-export-compaction`. Read
-  [`CODEX-2026-09-13-watch-oom-bounded-export-compaction-plan-handoff.md`](CODEX-2026-09-13-watch-oom-bounded-export-compaction-plan-handoff.md).
-  No implementation, live compaction, watcher/config change, re-inclusion, PR,
-  or P2 progression is authorized.
+  plan received Kiro PASS at `36f9069…`, including its explicit incremental
+  16 MiB record ceiling. Ryan authorized **Cursor Execute C0–C7 only**. Start a
+  fresh worktree and read
+  [`CODEX-2026-09-13-watch-oom-bounded-export-compaction-execute-handoff.md`](CODEX-2026-09-13-watch-oom-bounded-export-compaction-execute-handoff.md).
+  No live compaction, watcher/config change, re-inclusion, PR, or P2 progression
+  is authorized.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
   PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the
