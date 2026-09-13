@@ -140,6 +140,12 @@ error. This numeric bound is intentionally code-owned rather than configurable:
 it prevents one corrupt JSONL record from recreating the OOM class and avoids a
 new operational knob. Kiro must explicitly accept or revise the 16 MiB value.
 
+Enforce the ceiling **incrementally while scanning for the line terminator**:
+each read is bounded by the remaining record budget plus one detection byte,
+and the scanner aborts as soon as consumed bytes exceed 16 MiB. It must never
+call an unbounded line-read operation and then measure the completed result, so
+an unterminated multi-gigabyte record cannot be materialized first.
+
 ### 5.3 Disk-backed offset index
 
 Use Python's standard-library `sqlite3` in an invocation-owned private scratch
