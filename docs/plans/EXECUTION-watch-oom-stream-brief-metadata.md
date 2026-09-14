@@ -187,11 +187,37 @@ Its key allowlist is the documented union required by:
 - recent monitor rows and project matching;
 - project activity;
 - unresolved graph/status calculation; and
-- supersession filtering.
+- scalar lifecycle fields only: `superseded` for current filter parity and
+  `deleted` for the pinned projected contract.
+
+The projected output fields are pinned to this exact union:
+
+```text
+id, ledger_id, ledger_kind, type, relates_to, timestamp, result,
+verification_result, severity, site, domain, title, summary, tool,
+source_path, superseded, deleted, document
+```
+
+`id` comes from `embedding_id`; `document` comes from the
+`chroma:document` row. The SQL metadata-key allowlist is therefore the fields
+above except `id`, plus `chroma:document` when document inclusion is enabled.
+Implementation may change parameter names but may not add fields to this union
+without returning the plan to Kiro.
 
 The allowlist must exclude `provenance_envelope`, provenance commitments,
-embeddings, and every other field not used by the brief contract. A test must
-fail if an unapproved large provenance field appears in the projection.
+embeddings, and every other field not used by the brief contract. In
+particular, `provenance_envelope`, `provenance_commitment`, and
+`provenance_assertion_id` are forbidden. A test must fail if any forbidden or
+unapproved field appears in the projection.
+
+The brief does not call `evidence.filter_superseded_decisions()` or
+`provenance_identity()`. Those search/ask paths validate full provenance
+identity and legitimately require `provenance_envelope`; they are outside this
+brief-read correction and must not be imported or invoked by the new aggregate.
+Brief parity uses only scalar lifecycle fields already present in the projected
+row. The current brief excludes a row only when `superseded is True`;
+projecting `deleted` must not independently change inclusion unless the C0
+oracle proves that behavior already exists.
 
 During the pass:
 
@@ -220,6 +246,14 @@ construct `ReadonlyUnitStore`, call `units_metadata()`, or populate
 `_LEDGER_INDEX_CACHE`. The compact graph may scale with the number of ledger
 records, but its per-record fields are explicitly bounded to the ledger/status
 projection rather than the full corpus metadata payload.
+
+Before building the compact graph, apply exactly the current scalar lifecycle
+filter from `ReadonlyUnitStore.units_metadata()`: exclude a row only when
+`superseded is True`. `deleted` remains available to existing ledger/status
+consumers but is not a new brief exclusion rule.
+Do not substitute provenance-identity or assertion-level supersession logic;
+that would both change semantics and pull the forbidden envelope back into the
+read path.
 
 This avoids a brief-specific fake store and keeps ledger graph semantics in the
 ledger/unresolved modules that own them.
@@ -288,7 +322,10 @@ Implementation requires a separate Ryan Execute authorization after Kiro PASS.
 Build a small deterministic Chroma fixture containing decisions, observations,
 verifications, monitor rows, project rows, superseded rows, equal timestamps,
 documents, and large provenance envelopes. Capture the current normalized brief
-payload and rendered output as the golden oracle before refactoring.
+payload and rendered output as the golden oracle before refactoring. For equal
+timestamps, explicitly record the current stable-sort order (metadata scan order,
+therefore embedding id ascending) so the candidate's deterministic tie-break
+proves parity rather than redefining it.
 
 ### C1 — Add projected streaming iteration
 
@@ -316,7 +353,10 @@ Add adversarial tests for malformed optional values, missing timestamps,
 duplicate ledger ids, superseded rows, project filters, equal timestamps,
 iterator failure at every row boundary, early generator close, and connection
 failure. Assert no unprojected scan and no `_LEDGER_INDEX_CACHE` mutation occur
-during brief generation.
+during brief generation. Assert the requested and returned projection is exactly
+the pinned field union and contains none of `provenance_envelope`,
+`provenance_commitment`, or `provenance_assertion_id`; trap any call to
+`filter_superseded_decisions()` or `provenance_identity()` from the brief path.
 
 ### C5 — Prove the hermetic boundary
 
@@ -363,7 +403,7 @@ for Copilot's targeted safety/evidence audit. No PR or live operation.
 | Risk | Required proof |
 |---|---|
 | Projection silently changes brief meaning | C0 golden payload/render parity and explicit tie tests |
-| Large envelope is still fetched | Projected-key trap plus envelope-size RSS comparison |
+| Large envelope or provenance identity is still fetched | Exact projected-key trap, forbidden provenance-field assertions, and envelope-size RSS comparison |
 | Generator still retains the corpus | 5k/20k/58,825 RSS curve and early-close fd test |
 | Full-row store/cache survives in brief | Trap `ReadonlyUnitStore`; assert ledger cache unchanged |
 | Project titles grow without bound | Top-three per-project accumulator tests |
