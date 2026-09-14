@@ -23,7 +23,7 @@ cross-arc snapshot and the linked arc brief below.
   [`EXECUTION-watch-oom-stream-brief-metadata.md`](../plans/EXECUTION-watch-oom-stream-brief-metadata.md).
   Branch `impl/2026-09-13-watch-oom-stream-brief-metadata`; worktree
   `~/Projects/convmem-watch-oom-brief-metadata` from authorization tip
-  `e0f0774` (not `origin/main` alone). Stop at pushed evidence — no
+  `7e5dbb2` (not `origin/main` alone). Stop at pushed evidence — no
   PR until Copilot audit. No production access, watcher/config/exclusion
   change, source re-inclusion, or Arc Codex P2 progression.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
