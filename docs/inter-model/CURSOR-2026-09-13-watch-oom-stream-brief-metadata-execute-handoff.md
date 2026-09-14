@@ -15,15 +15,15 @@ provenance T3)
 
 | Field | Value |
 |-------|--------|
-| **State** | `NOT_STARTED` |
-| **Authorization tip SHA** | `914c984` (or current tip of authorization branch below) |
+| **State** | `READY_FOR_PR` |
+| **Authorization tip SHA** | `b7882b89b2b413372d561266abe2006f7f581b62` |
 | **Plan tip SHA** | `7bffdfd047648c6f1523cc4b3a1447656149ed56` |
 | **Runtime baseline** | `a91bb28b97aa038fde0d14caeee1b7f75b3ae094` (PR #302 merged; code state at authorization tip) |
 | **Branch** | `impl/2026-09-13-watch-oom-stream-brief-metadata` |
 | **Worktree** | `/home/lauer/Projects/convmem-watch-oom-brief-metadata` |
-| **Push status** | not started — push every commit |
+| **Push status** | push this commit immediately |
 | **PR** | `not opened` — stop after pushed evidence for Copilot audit |
-| **Ryan GATE** | none — Execute authorized |
+| **Ryan GATE** | none — Execute complete; Copilot then Kiro |
 | **Track A ingest** | this session's Cursor agent transcript at handoff |
 
 ---
@@ -190,14 +190,14 @@ memory worker module as the plan specifies. Minimum proof classes:
 
 ## Acceptance criteria
 
-- [ ] C0–C7 complete on branch `impl/2026-09-13-watch-oom-stream-brief-metadata`
-- [ ] Fresh worktree used; no production paths opened in tests/workers
-- [ ] Brief public contract unchanged on golden oracle (including `rationale`)
-- [ ] Memory evidence recorded in commit message or attached evidence file
-- [ ] Focused + repository regression suites green; pylint gates pass
-- [ ] Code-derived writer inventories / baseline hashes refreshed honestly if touched
-- [ ] Branch pushed to `origin`; resume state updated to `READY_FOR_PR` or evidence-ready stop
-- [ ] **No PR opened** — await Copilot audit, then Kiro implementation review
+- [x] C0–C7 complete on branch `impl/2026-09-13-watch-oom-stream-brief-metadata`
+- [x] Fresh worktree used; no production paths opened in tests/workers
+- [x] Brief public contract unchanged on golden oracle (including `rationale`)
+- [x] Memory evidence recorded in commit message or attached evidence file
+- [x] Focused + repository regression suites green; pylint gates pass
+- [x] Code-derived writer inventories / baseline hashes refreshed honestly if touched
+- [x] Branch pushed to `origin`; resume state updated to `READY_FOR_PR` or evidence-ready stop
+- [x] **No PR opened** — await Copilot audit, then Kiro implementation review
 
 ---
 
@@ -235,10 +235,8 @@ memory worker module as the plan specifies. Minimum proof classes:
 
 ## TL;DR
 
-**Arc Trapdoor Hunt:** Ryan authorized Cursor Execute C0–C7 for bounded brief
-metadata reads. Fresh chat + worktree from authorization branch tip
-(`914c984` at grant; not `origin/main` alone):
-`~/Projects/convmem-watch-oom-brief-metadata`, branch
-`impl/2026-09-13-watch-oom-stream-brief-metadata`, runtime baseline `a91bb28`,
-plan tip `7bffdfd`. One projected streaming scan; preserve brief contract;
-hermetic tests only; push and stop for Copilot — no PR.
+**Arc Trapdoor Hunt:** Cursor Execute C0–C7 is complete on
+`impl/2026-09-13-watch-oom-stream-brief-metadata` from authorization tip
+`b7882b8`. One projected streaming scan preserves the brief contract including
+`rationale`. Hermetic RSS 5k/20k/58,825 = 102.3/118.7/156.1 MiB peak. Next:
+Copilot targeted audit on the pushed tip — no PR.

@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-13
+**Updated:** 2026-09-14
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,23 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #268 — bounded brief metadata Execute (AUTHORIZED,
-  not yet implemented):** Ryan authorized Cursor Execute C0–C7 against plan tip
-  `7bffdfd` on 2026-09-13. PR #302 (`a91bb28b`) removed the proven
-  whole-export accumulator; the next corpus-sized floor is repeated full brief
-  metadata reads retaining unused duplicated `provenance_envelope` strings.
-  Kiro conditionally PASSed the projected single-pass design; Codex pinned the
-  exact projection (including `rationale`); Kiro's targeted recheck folded
-  that scalar. **Next lane: fresh Cursor implementation chat + fresh worktree.**
-  Resume from
-  [`CURSOR-2026-09-13-watch-oom-stream-brief-metadata-execute-handoff.md`](CURSOR-2026-09-13-watch-oom-stream-brief-metadata-execute-handoff.md)
-  and
-  [`EXECUTION-watch-oom-stream-brief-metadata.md`](../plans/EXECUTION-watch-oom-stream-brief-metadata.md).
-  Branch `impl/2026-09-13-watch-oom-stream-brief-metadata`; worktree
-  `~/Projects/convmem-watch-oom-brief-metadata` from authorization branch
-  (not `origin/main` alone). Stop at pushed evidence — no
-  PR until Copilot audit. No production access, watcher/config/exclusion
-  change, source re-inclusion, or Arc Codex P2 progression.
+- **Trapdoor Hunt / issue #268 — bounded brief metadata Execute (READY_FOR_PR,
+  evidence pushed, no PR):** Cursor completed C0–C7 on
+  `impl/2026-09-13-watch-oom-stream-brief-metadata` from authorization tip
+  `b7882b8`. One projected streaming metadata read now feeds the brief; C0
+  golden payload/render parity holds; hermetic RSS on 5k/20k/58,825 was
+  102.3 / 118.7 / 156.1 MiB peak (64.8 MiB over import baseline on the full
+  corpus fixture). **Next lane: GitHub Copilot audit** on the pushed impl tip,
+  then Kiro implementation review. No PR, watcher/config/exclusion change,
+  production access, or Arc Codex P2 progression. Resume from
+  [`CURSOR-2026-09-13-watch-oom-stream-brief-metadata-execute-handoff.md`](CURSOR-2026-09-13-watch-oom-stream-brief-metadata-execute-handoff.md).
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
   PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the

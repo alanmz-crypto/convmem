@@ -361,6 +361,27 @@ def find_unit_by_ledger_id(store, ledger_id: str) -> dict | None:
     return store.get_unit(meta["id"])
 
 
+def build_ledger_index_from_metadata(
+    rows,
+) -> tuple[dict[str, dict], dict[str, list[dict]]]:
+    """Build ledger_id / relates_to maps from an iterable of metadata dicts.
+
+    Does not touch the process-lifetime store cache. Callers that already
+    hold a Chroma store should keep using ``build_ledger_index(store)``.
+    """
+    by_ledger_id: dict[str, dict] = {}
+    by_relates_to: dict[str, list[dict]] = {}
+    for meta in rows:
+        lid = (meta.get("ledger_id") or "").strip()
+        if not lid:
+            continue
+        by_ledger_id[lid] = meta
+        parent = (meta.get("relates_to") or "").strip()
+        if parent:
+            by_relates_to.setdefault(parent, []).append(meta)
+    return by_ledger_id, by_relates_to
+
+
 def build_ledger_index(
     store,
 ) -> tuple[dict[str, dict], dict[str, list[dict]]]:
@@ -376,18 +397,7 @@ def build_ledger_index(
     if cache_key and cache_key in _LEDGER_INDEX_CACHE:
         return _LEDGER_INDEX_CACHE[cache_key]
 
-    by_ledger_id: dict[str, dict] = {}
-    by_relates_to: dict[str, list[dict]] = {}
-    for meta in store.units_metadata():
-        lid = (meta.get("ledger_id") or "").strip()
-        if not lid:
-            continue
-        by_ledger_id[lid] = meta
-        parent = (meta.get("relates_to") or "").strip()
-        if parent:
-            by_relates_to.setdefault(parent, []).append(meta)
-
-    result = (by_ledger_id, by_relates_to)
+    result = build_ledger_index_from_metadata(store.units_metadata())
     if cache_key:
         _LEDGER_INDEX_CACHE[cache_key] = result
     return result

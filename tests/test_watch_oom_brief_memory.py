@@ -1,0 +1,225 @@
+# pylint: disable=redefined-outer-name
+"""C5 hermetic path denial and C6 bounded-memory evidence for brief metadata."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+from tests.watch_oom_brief_hermetic import (
+    ENVELOPE_2K,
+    ENVELOPE_32K,
+    write_c0_fixture,
+    write_memory_fixture,
+)
+
+WORKER = Path(__file__).resolve().parent / "watch_oom_brief_memory_worker.py"
+ROOT = Path(__file__).resolve().parents[1]
+MIB = 1024 * 1024
+MAX_PEAK_BYTES = 384 * MIB
+MAX_FULL_OVER_BASELINE = 160 * MIB
+MAX_ENVELOPE_DELTA = 32 * MIB
+FULL_SIZES = (5_000, 20_000, 58_825)
+RUN_FULL = os.environ.get("CONVMEM_C6_FULL") == "1"
+
+
+def _run_worker(*args: str, check: bool = True) -> dict:
+    proc = subprocess.run(
+        [sys.executable, str(WORKER), *args],
+        cwd=str(ROOT),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if check and proc.returncode != 0:
+        raise AssertionError(
+            f"worker failed rc={proc.returncode}\nstdout={proc.stdout}\nstderr={proc.stderr}"
+        )
+    return json.loads(proc.stdout), proc.returncode
+
+
+def test_c5_write_brief_does_not_touch_production(tmp_path: Path) -> None:
+    out = tmp_path / "brief.md"
+    payload, rc = _run_worker(
+        "--mode",
+        "c0",
+        "--tmp-root",
+        str(tmp_path / "c0-run"),
+        "--out-path",
+        str(out),
+    )
+    assert rc == 0
+    assert payload["denied_paths"] == []
+    golden = Path(__file__).resolve().parent / "golden" / "watch-oom-stream-brief"
+    expected = json.loads((golden / "c0-payload.json").read_text(encoding="utf-8"))
+    assert payload["core"] == expected
+    assert "Dropped sixth decision" not in payload["render"]
+
+
+def test_c5_negative_temp_config_without_out_path_is_denied(tmp_path: Path) -> None:
+    fx = write_c0_fixture(tmp_path)
+    payload, rc = _run_worker(
+        "--mode",
+        "c5-negative",
+        "--chroma-dir",
+        str(fx["chroma_dir"]),
+        "--inventory",
+        str(fx["inventory"]),
+        "--processed",
+        str(fx["processed"]),
+        check=False,
+    )
+    assert rc == 0
+    assert payload["denied"] is True
+    assert payload["denied_paths"]
+
+
+def test_c6_five_thousand_stays_under_ceiling(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    source = tmp_path / "Projects" / "convmem" / "session.jsonl"
+    inventory = tmp_path / "inventory.jsonl"
+    processed = tmp_path / "processed.json"
+    write_memory_fixture(
+        chroma,
+        5_000,
+        envelope=ENVELOPE_32K,
+        inventory=inventory,
+        processed=processed,
+        source_path=source,
+    )
+    out = tmp_path / "brief.md"
+    baseline, _rc = _run_worker("--mode", "baseline")
+    payload, rc = _run_worker(
+        "--mode",
+        "memory",
+        "--chroma-dir",
+        str(chroma),
+        "--inventory",
+        str(inventory),
+        "--processed",
+        str(processed),
+        "--out-path",
+        str(out),
+    )
+    assert rc == 0
+    assert payload["denied_paths"] == []
+    assert payload["forbidden_in_rows"] == []
+    assert payload["units"] == 5_000
+    assert payload["peak_rss_bytes"] < MAX_PEAK_BYTES
+    extra = payload["peak_rss_bytes"] - baseline["baseline_rss_bytes"]
+    print(
+        f"c6 5k 32KiB: peak={payload['peak_rss_bytes']/MIB:.1f}MiB "
+        f"baseline={baseline['baseline_rss_bytes']/MIB:.1f}MiB extra={extra/MIB:.1f}MiB",
+        flush=True,
+    )
+    chroma2 = tmp_path / "chroma-2k"
+    source2 = tmp_path / "Projects" / "convmem" / "session-2k.jsonl"
+    inv2 = tmp_path / "inventory-2k.jsonl"
+    proc2 = tmp_path / "processed-2k.json"
+    write_memory_fixture(
+        chroma2,
+        5_000,
+        envelope=ENVELOPE_2K,
+        inventory=inv2,
+        processed=proc2,
+        source_path=source2,
+    )
+    small, rc2 = _run_worker(
+        "--mode",
+        "memory",
+        "--chroma-dir",
+        str(chroma2),
+        "--inventory",
+        str(inv2),
+        "--processed",
+        str(proc2),
+        "--out-path",
+        str(tmp_path / "brief-2k.md"),
+    )
+    assert rc2 == 0
+    delta = abs(payload["peak_rss_bytes"] - small["peak_rss_bytes"])
+    print(
+        f"c6 5k envelope delta={delta/MIB:.1f}MiB "
+        f"2KiB peak={small['peak_rss_bytes']/MIB:.1f}MiB",
+        flush=True,
+    )
+    assert delta <= MAX_ENVELOPE_DELTA, delta
+
+
+@pytest.mark.skipif(not RUN_FULL, reason="full C6 curve is host evidence, not CI RSS gate")
+def test_c6_memory_curve_and_envelope_delta(tmp_path: Path) -> None:
+    baseline, _rc = _run_worker("--mode", "baseline")
+    rows = []
+    for n in FULL_SIZES:
+        chroma = tmp_path / f"chroma-{n}"
+        source = tmp_path / "Projects" / "convmem" / f"session-{n}.jsonl"
+        inventory = tmp_path / f"inventory-{n}.jsonl"
+        processed = tmp_path / f"processed-{n}.json"
+        write_memory_fixture(
+            chroma,
+            n,
+            envelope=ENVELOPE_32K,
+            inventory=inventory,
+            processed=processed,
+            source_path=source,
+        )
+        out = tmp_path / f"brief-{n}.md"
+        payload, rc = _run_worker(
+            "--mode",
+            "memory",
+            "--chroma-dir",
+            str(chroma),
+            "--inventory",
+            str(inventory),
+            "--processed",
+            str(processed),
+            "--out-path",
+            str(out),
+        )
+        assert rc == 0, payload
+        assert payload["denied_paths"] == []
+        assert payload["forbidden_in_rows"] == []
+        assert payload["units"] == n
+        assert payload["peak_rss_bytes"] < MAX_PEAK_BYTES
+        extra = payload["peak_rss_bytes"] - baseline["baseline_rss_bytes"]
+        print(
+            f"c6 {n}: peak={payload['peak_rss_bytes']/MIB:.1f}MiB extra={extra/MIB:.1f}MiB",
+            flush=True,
+        )
+        rows.append(payload)
+    full = rows[-1]
+    extra_full = full["peak_rss_bytes"] - baseline["baseline_rss_bytes"]
+    assert extra_full <= MAX_FULL_OVER_BASELINE, extra_full
+
+    chroma2 = tmp_path / "chroma-5k-2k"
+    source2 = tmp_path / "Projects" / "convmem" / "session-2k.jsonl"
+    inv2 = tmp_path / "inventory-2k.jsonl"
+    proc2 = tmp_path / "processed-2k.json"
+    write_memory_fixture(
+        chroma2,
+        5_000,
+        envelope=ENVELOPE_2K,
+        inventory=inv2,
+        processed=proc2,
+        source_path=source2,
+    )
+    small, rc = _run_worker(
+        "--mode",
+        "memory",
+        "--chroma-dir",
+        str(chroma2),
+        "--inventory",
+        str(inv2),
+        "--processed",
+        str(proc2),
+        "--out-path",
+        str(tmp_path / "brief-2k.md"),
+    )
+    assert rc == 0
+    delta = abs(rows[0]["peak_rss_bytes"] - small["peak_rss_bytes"])
+    assert delta <= MAX_ENVELOPE_DELTA, delta

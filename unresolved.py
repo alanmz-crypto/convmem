@@ -12,23 +12,19 @@ from datetime import datetime
 
 from evidence import evidence_boost, _kind
 from ledger import build_ledger_index, _dedupe_by_ledger_id
+from ledger import build_ledger_index_from_metadata  # pylint: disable=no-name-in-module
 
 OPEN_STATUSES = {"unresolved", "failed_check", "failed_verification"}
+_SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
-def list_unresolved(
-    store,
+def _list_unresolved_from_maps(
+    by_ledger_id: dict,
+    by_relates_to: dict,
     *,
     site: str | None = None,
     domain: str | None = None,
 ) -> list[dict]:
-    """Return open observations sorted by severity descending, then by ledger_id.
-
-    Each entry has: ledger_id, severity, site, domain, title, status,
-    last_touched (ISO), summary, metadata.
-    """
-    by_ledger_id, by_relates_to = build_ledger_index(store)
-
     collected: list[dict] = []
 
     for lid, meta in by_ledger_id.items():
@@ -36,7 +32,7 @@ def list_unresolved(
         if kind != "observation" and (meta.get("type") or "").strip().lower() != "observation":
             continue
 
-        boost, status = evidence_boost(meta, by_relates_to=by_relates_to)
+        _boost, status = evidence_boost(meta, by_relates_to=by_relates_to)
         if status not in OPEN_STATUSES:
             continue
 
@@ -48,7 +44,6 @@ def list_unresolved(
         if domain and meta_domain != domain:
             continue
 
-        # Compute last_touched: most recent timestamp among children
         children = _dedupe_by_ledger_id(
             by_relates_to.get(lid, []) + by_relates_to.get(meta.get("id", ""), [])
         )
@@ -72,18 +67,49 @@ def list_unresolved(
             "metadata": meta,
         })
 
-    # Sort: severity descending (critical > high > medium > low > info),
-    # then by ledger_id for stable ordering.
-    _severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
-
     collected.sort(
         key=lambda r: (
-            _severity_rank.get(r["severity"], 5),
+            _SEVERITY_RANK.get(r["severity"], 5),
             r["ledger_id"],
         )
     )
-
     return collected
+
+
+def list_unresolved_from_metadata(
+    rows,
+    *,
+    site: str | None = None,
+    domain: str | None = None,
+) -> list[dict]:
+    """Same unresolved graph as ``list_unresolved`` from metadata rows only."""
+    by_ledger_id, by_relates_to = build_ledger_index_from_metadata(rows)
+    return _list_unresolved_from_maps(
+        by_ledger_id,
+        by_relates_to,
+        site=site,
+        domain=domain,
+    )
+
+
+def list_unresolved(
+    store,
+    *,
+    site: str | None = None,
+    domain: str | None = None,
+) -> list[dict]:
+    """Return open observations sorted by severity descending, then by ledger_id.
+
+    Each entry has: ledger_id, severity, site, domain, title, status,
+    last_touched (ISO), summary, metadata.
+    """
+    by_ledger_id, by_relates_to = build_ledger_index(store)
+    return _list_unresolved_from_maps(
+        by_ledger_id,
+        by_relates_to,
+        site=site,
+        domain=domain,
+    )
 
 
 def unresolved_items(results: list[dict]) -> list[dict]:
