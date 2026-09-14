@@ -16,8 +16,9 @@ provenance T3)
 | Field | Value |
 |-------|--------|
 | **State** | `NOT_STARTED` |
+| **Authorization tip SHA** | `e0f0774` — worktree start ref (plan + handoff on disk) |
 | **Plan tip SHA** | `7bffdfd047648c6f1523cc4b3a1447656149ed56` |
-| **Implementation baseline** | `origin/main` @ `a91bb28b97aa038fde0d14caeee1b7f75b3ae094` (PR #302 merged) |
+| **Runtime baseline** | `a91bb28b97aa038fde0d14caeee1b7f75b3ae094` (PR #302 merged; code state at authorization tip) |
 | **Branch** | `impl/2026-09-13-watch-oom-stream-brief-metadata` |
 | **Worktree** | `/home/lauer/Projects/convmem-watch-oom-brief-metadata` |
 | **Push status** | not started — push every commit |
@@ -60,18 +61,21 @@ that scalar in. Ryan now authorizes Execute — do not re-plan.
 ## Worktree setup (mandatory)
 
 Use a **fresh** worktree — do not implement in the planning checkout or any
-Arc Codex / P2 corrective tree.
+Arc Codex / P2 corrective tree. Start from the **authorization tip** so the
+approved plan and this handoff are present on disk. Runtime code matches PR
+#302 (`a91bb28`); only docs differ from that baseline.
 
 ```bash
 cd ~/Projects/convmem
 git fetch origin
 git worktree add -b impl/2026-09-13-watch-oom-stream-brief-metadata \
-  ~/Projects/convmem-watch-oom-brief-metadata origin/main
+  ~/Projects/convmem-watch-oom-brief-metadata e0f0774
 cd ~/Projects/convmem-watch-oom-brief-metadata
 convmem doctor
 ```
 
-Rebase onto current `origin/main` if it has moved since `a91bb28`. Do not edit
+Do not start from `origin/main` alone — that omits
+`EXECUTION-watch-oom-stream-brief-metadata.md` and this handoff. Do not edit
 on `main`.
 
 ---
@@ -231,8 +235,8 @@ memory worker module as the plan specifies. Minimum proof classes:
 ## TL;DR
 
 **Arc Trapdoor Hunt:** Ryan authorized Cursor Execute C0–C7 for bounded brief
-metadata reads. Fresh chat + worktree
+metadata reads. Fresh chat + worktree from authorization tip `e0f0774`:
 `~/Projects/convmem-watch-oom-brief-metadata`, branch
-`impl/2026-09-13-watch-oom-stream-brief-metadata`, baseline `origin/main`
-`a91bb28`, plan tip `7bffdfd`. One projected streaming scan; preserve brief
-contract; hermetic tests only; push and stop for Copilot — no PR.
+`impl/2026-09-13-watch-oom-stream-brief-metadata`, runtime baseline `a91bb28`,
+plan tip `7bffdfd`. One projected streaming scan; preserve brief contract;
+hermetic tests only; push and stop for Copilot — no PR.
