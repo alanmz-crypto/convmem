@@ -9,20 +9,22 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #268 — bounded brief metadata plan:** PR #302
-  removed the proven whole-export Python accumulator and squash-merged as
-  `a91bb28b`. A follow-up phase profile exonerated that compactor and isolated
-  the next corpus-sized floor: `collection_metadata_rows()` repeatedly loads
-  and retains unused duplicated provenance envelopes during brief refresh.
-  Kiro conditionally PASSed the projected single-pass read design. Codex then
-  pinned the exact brief projection, excluded provenance-identity paths, and
-  preserved current scalar supersession semantics. Kiro's targeted recheck
-  found one missing rendered scalar, `rationale`; that field is now included.
-  A final targeted Kiro confirmation is next; Cursor Execute is not yet
-  authorized. Review
+- **Trapdoor Hunt / issue #268 — bounded brief metadata Execute (AUTHORIZED,
+  not yet implemented):** Ryan authorized Cursor Execute C0–C7 against plan tip
+  `7bffdfd` on 2026-09-13. PR #302 (`a91bb28b`) removed the proven
+  whole-export accumulator; the next corpus-sized floor is repeated full brief
+  metadata reads retaining unused duplicated `provenance_envelope` strings.
+  Kiro conditionally PASSed the projected single-pass design; Codex pinned the
+  exact projection (including `rationale`); Kiro's targeted recheck folded
+  that scalar. **Next lane: fresh Cursor implementation chat + fresh worktree.**
+  Resume from
+  [`CURSOR-2026-09-13-watch-oom-stream-brief-metadata-execute-handoff.md`](CURSOR-2026-09-13-watch-oom-stream-brief-metadata-execute-handoff.md)
+  and
   [`EXECUTION-watch-oom-stream-brief-metadata.md`](../plans/EXECUTION-watch-oom-stream-brief-metadata.md).
-  No implementation, production access, watcher/config/exclusion change,
-  source re-inclusion, or Arc Codex P2 progression is authorized.
+  Branch `impl/2026-09-13-watch-oom-stream-brief-metadata`; worktree
+  `~/Projects/convmem-watch-oom-brief-metadata`. Stop at pushed evidence — no
+  PR until Copilot audit. No production access, watcher/config/exclusion
+  change, source re-inclusion, or Arc Codex P2 progression.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
   PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the
