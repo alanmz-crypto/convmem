@@ -194,7 +194,7 @@ The projected output fields are pinned to this exact union:
 
 ```text
 id, ledger_id, ledger_kind, type, relates_to, timestamp, result,
-verification_result, severity, site, domain, title, summary, tool,
+verification_result, severity, site, domain, title, summary, rationale, tool,
 source_path, superseded, deleted, document
 ```
 
