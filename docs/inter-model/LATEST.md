@@ -9,14 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #268 — bounded export compaction:** Cursor Execute
-  C0–C7 is on `fix/2026-09-13-watch-oom-bounded-export-compaction`. Copilot
-  re-audit FAILed exact tip `65658be206801281de8a9e645a1f7b12807ca1bc` on
-  untyped SQLite errors during the publication SELECT. Closed findings stay
-  closed; `65658be` remains an ancestor. Next: Copilot re-audit of the new
-  exact tip. No PR, live compaction, watcher/P2, grant, merge, or activation.
-  Plan:
-  [`EXECUTION-watch-oom-bounded-export-compaction.md`](../plans/EXECUTION-watch-oom-bounded-export-compaction.md).
+- **Trapdoor Hunt / issue #268 — bounded brief metadata plan:** PR #302
+  removed the proven whole-export Python accumulator and squash-merged as
+  `a91bb28b`. A follow-up phase profile exonerated that compactor and isolated
+  the next corpus-sized floor: `collection_metadata_rows()` repeatedly loads
+  and retains unused duplicated provenance envelopes during brief refresh.
+  Codex has drafted a projected single-pass read correction for Kiro review in
+  [`EXECUTION-watch-oom-stream-brief-metadata.md`](../plans/EXECUTION-watch-oom-stream-brief-metadata.md).
+  No implementation, production access, watcher/config/exclusion change,
+  source re-inclusion, or Arc Codex P2 progression is authorized.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
   PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the
