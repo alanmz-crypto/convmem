@@ -53,18 +53,21 @@ class BriefProjectTests(unittest.TestCase):
 
         with patch("brief._load_inventory_records", return_value=[]):
             with patch(
-                "brief.collection_metadata_rows",
-                return_value=[
-                    {
-                        "source_path": (
-                            "/home/lauer/.cursor/projects/"
-                            "home-lauer-GitClones-willowyhollow-dev/"
-                            "agent-transcripts/a/a.jsonl"
-                        ),
-                        "title": "Aider handoff",
-                        "timestamp": "2026-06-01T00:00:00Z",
-                    }
-                ],
+                "brief.iter_collection_metadata_rows",
+                return_value=iter(
+                    [
+                        {
+                            "source_path": (
+                                "/home/lauer/.cursor/projects/"
+                                "home-lauer-GitClones-willowyhollow-dev/"
+                                "agent-transcripts/a/a.jsonl"
+                            ),
+                            "title": "Aider handoff",
+                            "timestamp": "2026-06-01T00:00:00Z",
+                            "id": "emb-a",
+                        }
+                    ]
+                ),
             ):
                 rows = gather_project_activity(
                     cfg, "/tmp/chroma", project_filter="willowyhollow-dev"

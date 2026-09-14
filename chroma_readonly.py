@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from collections import defaultdict
+from collections.abc import Collection, Iterator
 from pathlib import Path
 
 
@@ -31,49 +31,122 @@ def _coerce_value(string_value, int_value, float_value, bool_value):
     return None
 
 
-def collection_metadata_rows(chroma_dir: str | Path, collection_name: str) -> list[dict]:
-    """Return one dict per embedding_id from the metadata segment of a collection."""
+def _apply_metadata_row(meta: dict, row: sqlite3.Row, *, include_document: bool) -> None:
+    key = row["key"]
+    if key == "chroma:document":
+        if include_document:
+            meta["document"] = row["string_value"] or ""
+        return
+    meta[key] = _coerce_value(
+        row["string_value"], row["int_value"], row["float_value"], row["bool_value"]
+    )
+
+
+def iter_collection_metadata_rows(
+    chroma_dir: str | Path,
+    collection_name: str,
+    *,
+    metadata_keys: Collection[str] | None = None,
+    include_document: bool = True,
+) -> Iterator[dict]:
+    """Yield one metadata dict per embedding without fetchall or full grouping.
+
+    ``metadata_keys=None`` is full-mode parity with the historical list helper.
+    When keys are provided, SQLite projects only those metadata keys (plus
+    ``chroma:document`` when ``include_document`` is true). Cursor and
+    connection close on exhaustion, exception, or generator close.
+    """
     db = _db_path(chroma_dir)
     conn = _connect_readonly(db)
     conn.row_factory = sqlite3.Row
+    cur = None
     try:
         cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT
-                e.embedding_id,
-                em.key,
-                em.string_value,
-                em.int_value,
-                em.float_value,
-                em.bool_value
-            FROM embeddings e
-            JOIN segments s ON e.segment_id = s.id
-            JOIN collections c ON s.collection = c.id
-            JOIN embedding_metadata em ON em.id = e.id
-            WHERE c.name = ? AND s.scope = 'METADATA'
-            ORDER BY e.embedding_id, em.key
-            """,
-            (collection_name,),
-        )
-        rows = cur.fetchall()
+        sql_keys: list[str] | None = None
+        if metadata_keys is not None:
+            sql_keys = [
+                key
+                for key in metadata_keys
+                if key not in {"id", "document", "chroma:document"}
+            ]
+            if include_document:
+                sql_keys.append("chroma:document")
+        if sql_keys is not None and not sql_keys:
+            cur.execute(
+                """
+                SELECT DISTINCT e.embedding_id
+                FROM embeddings e
+                JOIN segments s ON e.segment_id = s.id
+                JOIN collections c ON s.collection = c.id
+                WHERE c.name = ? AND s.scope = 'METADATA'
+                ORDER BY e.embedding_id
+                """,
+                (collection_name,),
+            )
+            for row in cur:
+                yield {"id": row[0]}
+            return
+        if sql_keys is None:
+            cur.execute(
+                """
+                SELECT
+                    e.embedding_id,
+                    em.key,
+                    em.string_value,
+                    em.int_value,
+                    em.float_value,
+                    em.bool_value
+                FROM embeddings e
+                JOIN segments s ON e.segment_id = s.id
+                JOIN collections c ON s.collection = c.id
+                JOIN embedding_metadata em ON em.id = e.id
+                WHERE c.name = ? AND s.scope = 'METADATA'
+                ORDER BY e.embedding_id, em.key
+                """,
+                (collection_name,),
+            )
+        else:
+            placeholders = ",".join("?" * len(sql_keys))
+            cur.execute(
+                f"""
+                SELECT
+                    e.embedding_id,
+                    em.key,
+                    em.string_value,
+                    em.int_value,
+                    em.float_value,
+                    em.bool_value
+                FROM embeddings e
+                JOIN segments s ON e.segment_id = s.id
+                JOIN collections c ON s.collection = c.id
+                JOIN embedding_metadata em ON em.id = e.id
+                WHERE c.name = ? AND s.scope = 'METADATA'
+                  AND em.key IN ({placeholders})
+                ORDER BY e.embedding_id, em.key
+                """,
+                (collection_name, *sql_keys),
+            )
+        current_id = None
+        current_meta: dict = {}
+        for row in cur:
+            row_id = row["embedding_id"]
+            if current_id is not None and row_id != current_id:
+                yield current_meta
+                current_meta = {}
+            current_id = row_id
+            current_meta["id"] = row_id
+            _apply_metadata_row(current_meta, row, include_document=include_document)
+        if current_id is not None:
+            yield current_meta
     finally:
+        if cur is not None:
+            cur.close()
         conn.close()
 
-    grouped: dict[str, dict] = defaultdict(dict)
-    for row in rows:
-        row_id = row["embedding_id"]
-        meta = grouped[row_id]
-        meta["id"] = row_id
-        key = row["key"]
-        if key == "chroma:document":
-            meta["document"] = row["string_value"] or ""
-            continue
-        meta[key] = _coerce_value(
-            row["string_value"], row["int_value"], row["float_value"], row["bool_value"]
-        )
 
-    return list(grouped.values())
+def collection_metadata_rows(chroma_dir: str | Path, collection_name: str) -> list[dict]:
+    """Return one dict per embedding_id from the metadata segment of a collection."""
+    return list(iter_collection_metadata_rows(chroma_dir, collection_name))
 
 
 def collection_config_metadata(

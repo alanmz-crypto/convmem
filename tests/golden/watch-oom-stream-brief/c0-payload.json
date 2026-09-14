@@ -1,0 +1,87 @@
+{
+  "generated_at": "2026-09-13T12:00:00Z",
+  "projects_norm": [
+    {
+      "formats": [
+        "jsonl"
+      ],
+      "indexed_sources": 1,
+      "knowledge_units": 21,
+      "recent_unit_titles": [
+        "Superseded newest decision",
+        "Newest monitor hit",
+        "Second newest decision"
+      ],
+      "slug": "convmem"
+    }
+  ],
+  "recent_decisions_norm": [
+    {
+      "id": "emb-00",
+      "ledger_id": "dec_prop_superseded",
+      "rationale": "tombstone still listed by current brief scan",
+      "superseded": true,
+      "timestamp": "2026-09-13T18:00:00Z",
+      "title": "Superseded newest decision"
+    },
+    {
+      "id": "emb-12",
+      "ledger_id": "dec_prop_second",
+      "rationale": "keep second",
+      "superseded": null,
+      "timestamp": "2026-09-13T17:00:00Z",
+      "title": "Second newest decision"
+    },
+    {
+      "id": "emb-10",
+      "ledger_id": "dec_prop_equal_a",
+      "rationale": "tie-break A",
+      "superseded": null,
+      "timestamp": "2026-09-13T16:00:00Z",
+      "title": "Equal-ts decision A"
+    },
+    {
+      "id": "emb-11",
+      "ledger_id": "dec_prop_equal_b",
+      "rationale": "tie-break B",
+      "superseded": null,
+      "timestamp": "2026-09-13T16:00:00Z",
+      "title": "Equal-ts decision B"
+    },
+    {
+      "id": "emb-13",
+      "ledger_id": "dec_prop_fifth",
+      "rationale": "keep fifth",
+      "superseded": null,
+      "timestamp": "2026-09-13T15:00:00Z",
+      "title": "Fifth decision"
+    }
+  ],
+  "recent_monitor_norm": [
+    {
+      "id": "emb-m0",
+      "result": "pass",
+      "timestamp": "2026-09-13T18:00:00Z",
+      "title": "Newest monitor hit",
+      "tool": "convmem-monitor"
+    },
+    {
+      "id": "emb-m1",
+      "result": "fail",
+      "timestamp": "2026-09-13T17:00:00Z",
+      "title": "Mid monitor hit",
+      "tool": "convmem-monitor"
+    },
+    {
+      "id": "emb-m2",
+      "result": "pass",
+      "timestamp": "2026-09-13T16:00:00Z",
+      "title": "Third monitor hit",
+      "tool": "convmem-monitor"
+    }
+  ],
+  "rerank": false,
+  "summaries": 2,
+  "units": 21,
+  "unresolved_count": 4
+}

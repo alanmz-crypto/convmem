@@ -9,7 +9,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from chroma_readonly import collection_count, collection_metadata_rows
+from chroma_readonly import (
+    collection_count,
+    iter_collection_metadata_rows,
+)
 from config import load_config
 from ingest import load_processed
 from query import _coverage_counts
@@ -136,14 +139,101 @@ def _kiro_excluded(cfg: dict) -> bool:
     return False
 
 
+BRIEF_METADATA_KEYS = (
+    "ledger_id",
+    "ledger_kind",
+    "type",
+    "relates_to",
+    "timestamp",
+    "result",
+    "verification_result",
+    "severity",
+    "site",
+    "domain",
+    "title",
+    "summary",
+    "rationale",
+    "tool",
+    "source_path",
+    "superseded",
+    "deleted",
+)
+BRIEF_LEDGER_GRAPH_KEYS = (
+    "id",
+    "ledger_id",
+    "ledger_kind",
+    "type",
+    "relates_to",
+    "timestamp",
+    "result",
+    "verification_result",
+    "severity",
+    "site",
+    "domain",
+    "title",
+    "summary",
+)
+BRIEF_PROJECTION_FIELDS = ("id",) + BRIEF_METADATA_KEYS + ("document",)
+_BRIEF_METADATA_KEYS = BRIEF_METADATA_KEYS
+_LEDGER_GRAPH_KEYS = BRIEF_LEDGER_GRAPH_KEYS
+
+
+class _NewerFirst:
+    """Sort key: newer timestamp first, then embedding id ascending."""
+
+    __slots__ = ("ts", "eid")
+
+    def __init__(self, meta: dict, extra: str = ""):
+        self.ts = meta.get("timestamp") or extra or ""
+        self.eid = meta.get("id") or ""
+
+    def __lt__(self, other: "_NewerFirst") -> bool:
+        if self.ts != other.ts:
+            return self.ts > other.ts
+        return self.eid < other.eid
+
+
+def _retain_newest(bucket: list[dict], meta: dict, limit: int) -> None:
+    if limit <= 0:
+        return
+    if len(bucket) < limit:
+        bucket.append(meta)
+        bucket.sort(key=_NewerFirst)
+        return
+    if _NewerFirst(meta) < _NewerFirst(bucket[-1]):
+        bucket.append(meta)
+        bucket.sort(key=_NewerFirst)
+        del bucket[limit:]
+
+
+def _retain_newest_titles(
+    bucket: list[tuple[str, str, str]], ts: str, eid: str, title: str, limit: int
+) -> None:
+    item = {"timestamp": ts, "id": eid, "title": title}
+    tagged = (ts, eid, title)
+    if limit <= 0:
+        return
+    if len(bucket) < limit:
+        bucket.append(tagged)
+        bucket.sort(key=lambda t: _NewerFirst({"timestamp": t[0], "id": t[1]}))
+        return
+    worst = {"timestamp": bucket[-1][0], "id": bucket[-1][1]}
+    if _NewerFirst(item) < _NewerFirst(worst):
+        bucket.append(tagged)
+        bucket.sort(key=lambda t: _NewerFirst({"timestamp": t[0], "id": t[1]}))
+        del bucket[limit:]
+
+
+def _copy_brief_row(meta: dict) -> dict:
+    return dict(meta)
+
+
+def _copy_ledger_row(meta: dict) -> dict:
+    return {key: meta.get(key) for key in _LEDGER_GRAPH_KEYS if key in meta or key == "id"}
+
+
 def _recent_decisions(chroma_dir: str | Path, *, limit: int = 5) -> list[dict]:
-    decisions = [
-        meta
-        for meta in collection_metadata_rows(chroma_dir, "knowledge_units")
-        if str(meta.get("ledger_kind") or "").strip().lower() == "decision"
-    ]
-    decisions.sort(key=lambda m: m.get("timestamp") or "", reverse=True)
-    return decisions[:limit]
+    return _aggregate_brief_chroma(chroma_dir, None)["recent_decisions"][:limit]
 
 
 def _brief_row_matches_project(row: dict, project_slug: str) -> bool:
@@ -265,13 +355,7 @@ def _handoff_staleness(inbox: Path) -> dict | None:
 
 
 def _recent_monitor_units(chroma_dir: str | Path, *, limit: int = 3) -> list[dict]:
-    hits = [
-        meta
-        for meta in collection_metadata_rows(chroma_dir, "knowledge_units")
-        if meta.get("tool") == "convmem-monitor"
-    ]
-    hits.sort(key=lambda m: m.get("timestamp") or "", reverse=True)
-    return hits[:limit]
+    return _aggregate_brief_chroma(chroma_dir, None)["recent_monitor"][:limit]
 
 
 def _mcp_registration() -> dict[str, str]:
@@ -365,17 +449,24 @@ def _load_inventory_records(cfg: dict) -> list[dict]:
     return rows
 
 
-def gather_project_activity(
-    cfg: dict,
-    chroma_dir: str | Path,
-    *,
-    project_filter: str = "",
-    limit: int = 12,
-) -> list[dict]:
-    """Per-repo rollup from inventory paths + Chroma unit metadata."""
-    filt = project_filter.strip().lower()
-    by_slug: dict[str, dict] = {}
+def _empty_project_bucket(slug: str, repo: str) -> dict:
+    return {
+        "slug": slug,
+        "repo_path": repo,
+        "indexed_sources": 0,
+        "newest_source_at": "",
+        "newest_source_mtime": 0.0,
+        "newest_source_path": "",
+        "formats": set(),
+        "unit_titles": [],
+        "knowledge_units": 0,
+    }
 
+
+def _seed_projects_from_inventory(cfg: dict | None, filt: str) -> dict[str, dict]:
+    by_slug: dict[str, dict] = {}
+    if not cfg:
+        return by_slug
     for row in _load_inventory_records(cfg):
         src = row.get("path") or ""
         resolved = resolve_project_from_path(src)
@@ -392,18 +483,7 @@ def gather_project_activity(
         except OSError:
             mtime = 0.0
             mtime_iso = ""
-        bucket = by_slug.setdefault(
-            slug,
-            {
-                "slug": slug,
-                "repo_path": repo,
-                "indexed_sources": 0,
-                "newest_source_at": "",
-                "newest_source_mtime": 0.0,
-                "newest_source_path": "",
-                "formats": set(),
-            },
-        )
+        bucket = by_slug.setdefault(slug, _empty_project_bucket(slug, repo))
         if repo and not bucket.get("repo_path"):
             bucket["repo_path"] = repo
         bucket["indexed_sources"] += 1
@@ -414,50 +494,26 @@ def gather_project_activity(
             bucket["newest_source_mtime"] = mtime
             bucket["newest_source_at"] = mtime_iso
             bucket["newest_source_path"] = src
+    return by_slug
 
-    for meta in collection_metadata_rows(chroma_dir, "knowledge_units"):
-        src = meta.get("source_path") or ""
-        resolved = resolve_project_from_path(src)
-        if not resolved:
-            # Ledger rows like site:staging2 — skip unless site filter elsewhere
-            continue
-        slug, repo = resolved
-        if filt and filt not in slug.lower():
-            continue
-        bucket = by_slug.setdefault(
-            slug,
-            {
-                "slug": slug,
-                "repo_path": repo,
-                "indexed_sources": 0,
-                "newest_source_at": "",
-                "newest_source_mtime": 0.0,
-                "newest_source_path": "",
-                "formats": set(),
-            },
-        )
-        bucket.setdefault("unit_titles", [])
-        bucket["knowledge_units"] = bucket.get("knowledge_units", 0) + 1
-        title = (meta.get("title") or "").strip()
-        ts = meta.get("timestamp") or ""
-        if title:
-            bucket["unit_titles"].append((ts, title))
 
+def _iter_brief_rows(chroma_dir: str | Path):
+    return iter_collection_metadata_rows(
+        chroma_dir,
+        "knowledge_units",
+        metadata_keys=_BRIEF_METADATA_KEYS,
+        include_document=True,
+    )
+
+
+def _finalize_projects(by_slug: dict[str, dict], limit: int) -> list[dict]:
     out: list[dict] = []
     for slug, bucket in by_slug.items():
         repo_path = bucket.get("repo_path") or ""
         agents_md = str(Path(repo_path) / "AGENTS.md") if repo_path else ""
         agents_exists = bool(repo_path and Path(agents_md).is_file())
         titles = bucket.get("unit_titles") or []
-        titles.sort(key=lambda x: x[0], reverse=True)
-        if filt:
-            recent_titles = [
-                t
-                for _, t in titles
-                if _brief_row_matches_project({"title": t, "document": t}, slug)
-            ][:3]
-        else:
-            recent_titles = [t for _, t in titles[:3]]
+        recent_titles = [t[2] for t in titles]
         newest_age = (
             _format_age(
                 max(
@@ -484,12 +540,89 @@ def gather_project_activity(
                 "entry_search": f"{slug} handoff next steps",
             }
         )
-
-    out.sort(
-        key=lambda r: r.get("newest_source_at") or "",
-        reverse=True,
-    )
+    out.sort(key=lambda r: r.get("newest_source_at") or "", reverse=True)
     return out[:limit] if limit else out
+
+
+def _aggregate_brief_chroma(
+    chroma_dir: str | Path,
+    cfg: dict | None,
+    *,
+    project_filter: str = "",
+    project_limit: int = 12,
+    decision_limit: int = 5,
+    monitor_limit: int = 3,
+) -> dict:
+    """One projected metadata pass for decisions, monitor, projects, unresolved."""
+    filt = project_filter.strip().lower()
+    by_slug = _seed_projects_from_inventory(cfg, filt)
+    decisions: list[dict] = []
+    monitor: list[dict] = []
+    ledger_rows: list[dict] = []
+    for meta in _iter_brief_rows(chroma_dir):
+        kind = str(meta.get("ledger_kind") or "").strip().lower()
+        if kind == "decision":
+            _retain_newest(decisions, _copy_brief_row(meta), decision_limit)
+        if meta.get("tool") == "convmem-monitor":
+            _retain_newest(monitor, _copy_brief_row(meta), monitor_limit)
+        src = meta.get("source_path") or ""
+        resolved = resolve_project_from_path(src)
+        if resolved:
+            slug, repo = resolved
+            if not (filt and filt not in slug.lower()):
+                bucket = by_slug.setdefault(slug, _empty_project_bucket(slug, repo))
+                bucket["knowledge_units"] = bucket.get("knowledge_units", 0) + 1
+                title = (meta.get("title") or "").strip()
+                if title:
+                    if not (
+                        filt
+                        and not _brief_row_matches_project(
+                            {"title": title, "document": title}, slug
+                        )
+                    ):
+                        _retain_newest_titles(
+                            bucket.setdefault("unit_titles", []),
+                            meta.get("timestamp") or "",
+                            meta.get("id") or "",
+                            title,
+                            3,
+                        )
+        if meta.get("superseded") is True:
+            continue
+        lid = (meta.get("ledger_id") or "").strip()
+        if lid:
+            ledger_rows.append(_copy_ledger_row(meta))
+    from unresolved import list_unresolved_from_metadata
+
+    try:
+        unresolved = list_unresolved_from_metadata(ledger_rows)
+        unresolved_count: int | None = len(unresolved)
+    except Exception:
+        unresolved = None
+        unresolved_count = None
+    return {
+        "recent_decisions": decisions,
+        "recent_monitor": monitor,
+        "projects": _finalize_projects(by_slug, project_limit),
+        "unresolved_count": unresolved_count,
+        "unresolved": unresolved,
+    }
+
+
+def gather_project_activity(
+    cfg: dict,
+    chroma_dir: str | Path,
+    *,
+    project_filter: str = "",
+    limit: int = 12,
+) -> list[dict]:
+    """Per-repo rollup from inventory paths + Chroma unit metadata."""
+    return _aggregate_brief_chroma(
+        chroma_dir,
+        cfg,
+        project_filter=project_filter,
+        project_limit=limit,
+    )["projects"]
 
 
 def gather_brief_payload(
@@ -532,17 +665,6 @@ def gather_brief_data(
     inbox = Path(__file__).resolve().parent / "docs" / "inter-model"
     proj_limit = 12 if project.strip() else 8
 
-    # Count unresolved observations (fast — no LLM, just ledger graph).
-    try:
-        from chroma_readonly import open_readonly_unit_store
-        from unresolved import list_unresolved
-
-        store = open_readonly_unit_store(chroma_dir)
-        ur_list = list_unresolved(store)
-        unresolved_count = len(ur_list)
-    except Exception:
-        unresolved_count = None
-
     # Layer 2 standing checks due at session start. Lazy import: doctor imports
     # from brief at module load, so a top-level import here would be circular.
     try:
@@ -554,8 +676,14 @@ def gather_brief_data(
         standing_due = None
 
     project_slug = project.strip()
-    recent_decisions = _recent_decisions(chroma_dir)
-    recent_monitor = _recent_monitor_units(chroma_dir)
+    agg = _aggregate_brief_chroma(
+        chroma_dir,
+        cfg,
+        project_filter=project,
+        project_limit=proj_limit,
+    )
+    recent_decisions = agg["recent_decisions"]
+    recent_monitor = agg["recent_monitor"]
     if project_slug:
         recent_decisions = [
             row
@@ -567,6 +695,7 @@ def gather_brief_data(
             for row in recent_monitor
             if _brief_row_matches_project(row, project_slug)
         ]
+    unresolved_count = agg["unresolved_count"]
 
     payload = {
         "generated_at": _now_iso(),
@@ -597,12 +726,7 @@ def gather_brief_data(
         "latest_handoff": _latest_handoff_info(inbox),
         "handoff_staleness": _handoff_staleness(inbox),
         "recent_inter_model_titles": _recent_inter_model_titles(inbox),
-        "projects": gather_project_activity(
-            cfg,
-            chroma_dir,
-            project_filter=project,
-            limit=proj_limit,
-        ),
+        "projects": agg["projects"],
     }
     if project_slug:
         payload["brief_scope"] = "project"

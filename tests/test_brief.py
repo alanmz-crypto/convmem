@@ -130,7 +130,7 @@ class BriefTests(unittest.TestCase):
             Path(cfg["sources"]["inventory"]).write_text("")
             out = Path(td) / "brief.md"
             with patch("brief.collection_count", side_effect=[10, 5]), patch(
-                "brief.collection_metadata_rows", return_value=[]
+                "brief._iter_brief_rows", return_value=iter([])
             ):
                 write_brief(cfg, out_path=out, quiet=True)
             self.assertTrue(out.is_file())
@@ -160,7 +160,7 @@ class BriefTests(unittest.TestCase):
             Path(cfg["sources"]["inventory"]).write_text("")
             with patch("brief.KIRO_DB", kiro), patch(
                 "brief.collection_count", side_effect=[1, 1]
-            ), patch("brief.collection_metadata_rows", return_value=[]):
+            ), patch("brief._iter_brief_rows", return_value=iter([])):
                 data = gather_brief_data(cfg)
             self.assertTrue(data["kiro_db_excluded"])
 
@@ -274,9 +274,7 @@ class BriefTests(unittest.TestCase):
     @patch("brief._mcp_registration", return_value={})
     @patch("brief._watch_process_memory", return_value=None)
     @patch("brief._systemd_state", return_value="enabled/active")
-    @patch("brief._recent_decisions")
-    @patch("brief._recent_monitor_units")
-    @patch("brief.gather_project_activity", return_value=[{"slug": "pavlomassage-practice"}])
+    @patch("brief._aggregate_brief_chroma")
     @patch("brief.collection_count", return_value=1)
     @patch("brief._coverage_counts", return_value=(1, 1, 0, 0))
     @patch("brief.load_config")
@@ -285,9 +283,7 @@ class BriefTests(unittest.TestCase):
         mock_load,
         _cov,
         _count,
-        _proj,
-        mock_monitor,
-        mock_decisions,
+        mock_agg,
         _sysd,
         _watch,
         _mcp,
@@ -297,13 +293,18 @@ class BriefTests(unittest.TestCase):
             "index": {"chroma_dir": "/tmp/x", "processed_log": "/tmp/p.json"},
             "query": {},
         }
-        mock_decisions.return_value = [
-            {"title": "Arch Linux runbook", "document": "pacman"},
-            {"title": "pavlomassage-practice docker stack", "document": "8082"},
-        ]
-        mock_monitor.return_value = [
-            {"site": "staging2.willowyhollow.com", "title": "TLS check"},
-        ]
+        mock_agg.return_value = {
+            "recent_decisions": [
+                {"title": "Arch Linux runbook", "document": "pacman"},
+                {"title": "pavlomassage-practice docker stack", "document": "8082"},
+            ],
+            "recent_monitor": [
+                {"site": "staging2.willowyhollow.com", "title": "TLS check"},
+            ],
+            "projects": [{"slug": "pavlomassage-practice"}],
+            "unresolved_count": 0,
+            "unresolved": [],
+        }
         data = gather_brief_data(project="pavlomassage-practice")
         self.assertEqual(data["brief_scope"], "project")
         self.assertEqual(len(data["recent_decisions"]), 1)
