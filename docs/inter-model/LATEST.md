@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-12
+**Updated:** 2026-09-13
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,22 +9,22 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Trapdoor Hunt / issue #268 — bounded export compaction:** Cursor Execute
+  C0–C7 is on `fix/2026-09-13-watch-oom-bounded-export-compaction`. Copilot
+  re-audit FAILed exact tip `65658be206801281de8a9e645a1f7b12807ca1bc` on
+  untyped SQLite errors during the publication SELECT. Closed findings stay
+  closed; `65658be` remains an ancestor. Next: Copilot re-audit of the new
+  exact tip. No PR, live compaction, watcher/P2, grant, merge, or activation.
+  Plan:
+  [`EXECUTION-watch-oom-bounded-export-compaction.md`](../plans/EXECUTION-watch-oom-bounded-export-compaction.md).
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
-  coordinator is on `main` via squash-merged PR #293 (`881133d`) and remains
-  disabled. The production-canary architecture/plan merged via PR #295
-  (`b23cabad`). The P1 hermetic harness merged via PR #296 (`907c828`). The
-  positive exact-resource P2 transfer seam is on `main` via PR #299 (`8beda7d`).
-  Cursor implemented the Kiro-PASSed **P2 runtime-readiness corrective (C0–C7)**
-  on `feat/2026-09-12-codex-jsonl-p2-runtime-readiness` from `origin/main`
-  `7360a04`. Local Claude FAIL at preserved `5bdc132`, then again at preserved
-  `a47f32b` (R1–R4). Kiro CONDITIONAL PASS at preserved `4acb4c5` (C1–C4).
-  C1–C4 Kiro PASS at preserved `6cb0107`. Repo-wide CI then failed; the
-  overlay-digest and writer-inventory corrective is later on that branch
-  (existing PR #301). Next lane is Kiro targeted exact-tip recheck of the new
-  tip (see
-  [`VERIFY-codex-jsonl-production-canary.md`](../plans/VERIFY-codex-jsonl-production-canary.md)).
-  No Claude re-review. No live source, Gate 0, P2 run, replacement grant/digest,
-  new PR, or activation.
+  coordinator and live-safe canary runtime are on `main` through squash-merged
+  PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the
+  final tree. A fresh 68-message source freeze at packet tip `27518aa…` also
+  received Kiro PASS, but no executable grant or digest was issued. Grant-packet
+  progression is paused while issue #268's shared export-compaction OOM is
+  corrected and reviewed. No Claude re-review, live source, Gate 0, P2 run,
+  replacement grant/digest, new P2 PR, or activation is authorized.
   Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
 - **Project baseline:** verify the current `origin/main` tip from Git before

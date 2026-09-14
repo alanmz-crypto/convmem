@@ -13,7 +13,7 @@ import os
 import stat
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 class AtomicWriteError(OSError):
@@ -37,8 +37,22 @@ class PostPublicationDurabilityError(AtomicWriteError):
     """
 
 
-def atomic_write_bytes(path: Path | str, data: bytes, *, preserve_mode: bool = True) -> None:
-    """Publish *data* to *path* via temp → fsync → replace → parent-dir fsync."""
+def atomic_write_stream(
+    path: Path | str,
+    writer: Callable[[Any], None],
+    *,
+    preserve_mode: bool = True,
+    validate_before_replace: Callable[[], None] | None = None,
+) -> None:
+    """Publish bytes from *writer* via temp → fsync → chmod → fsync → validate → replace.
+
+    *writer* receives a binary file object for the unpublished temp. After that
+    callback flushes and the temp is fsynced, mode is preserved with ``fchmod``
+    and the temp is fsynced again before *validate_before_replace* runs
+    immediately before ``os.replace``. A validator failure is a
+    ``PrePublicationError``: the original destination remains visible and only
+    this invocation's unpublished temp is removed.
+    """
     dest = Path(path)
     dest.parent.mkdir(parents=True, exist_ok=True)
 
@@ -56,20 +70,32 @@ def atomic_write_bytes(path: Path | str, data: bytes, *, preserve_mode: bool = T
         try:
             with os.fdopen(fd, "wb") as handle:
                 fd = -1  # ownership transferred to handle
-                handle.write(data)
+                writer(handle)
                 handle.flush()
                 os.fsync(handle.fileno())
+                if prior_mode is not None:
+                    try:
+                        os.fchmod(handle.fileno(), prior_mode)
+                    except OSError as exc:
+                        raise PrePublicationError(
+                            f"pre-publication mode preserve failed for {dest}: {exc}"
+                        ) from exc
+                    os.fsync(handle.fileno())
+        except PrePublicationError:
+            raise
         except BaseException as exc:
             raise PrePublicationError(
                 f"pre-publication write failed for {dest}: {exc}"
             ) from exc
 
-        if prior_mode is not None:
+        if validate_before_replace is not None:
             try:
-                os.chmod(tmp_name, prior_mode)
-            except OSError as exc:
+                validate_before_replace()
+            except PrePublicationError:
+                raise
+            except BaseException as exc:
                 raise PrePublicationError(
-                    f"pre-publication mode preserve failed for {dest}: {exc}"
+                    f"pre-publication validation failed for {dest}: {exc}"
                 ) from exc
 
         try:
@@ -107,6 +133,15 @@ def atomic_write_bytes(path: Path | str, data: bytes, *, preserve_mode: bool = T
                 except OSError:
                     pass
         raise
+
+
+def atomic_write_bytes(path: Path | str, data: bytes, *, preserve_mode: bool = True) -> None:
+    """Publish *data* to *path* via temp → fsync → replace → parent-dir fsync."""
+
+    def _write(handle: Any) -> None:
+        handle.write(data)
+
+    atomic_write_stream(path, _write, preserve_mode=preserve_mode)
 
 
 def atomic_write_text(

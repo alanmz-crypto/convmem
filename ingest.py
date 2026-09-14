@@ -538,34 +538,9 @@ def _deduplicate_units_export_impl(export_path: Path) -> int:
     This prevents unbounded growth from repeated re-indexing. Returns lines removed.
     Holds the export flock for the full rewrite.
     """
-    from purge_locks import export_flock_path
+    from export_compaction import compact_units_export
 
-    if not export_path.is_file():
-        return 0
-    with export_flock_path(export_path):
-        seen: dict[str, str] = {}  # unit_id -> json_line
-        n_before = 0
-        for line in export_path.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if not stripped:
-                continue
-            n_before += 1
-            try:
-                rec = json.loads(stripped)
-                uid = rec.get("id", "")
-                if uid:
-                    seen[uid] = stripped
-            except json.JSONDecodeError:
-                pass  # preserve unparseable lines
-        if n_before == 0:
-            return 0
-        n_after = len(seen)
-        if n_after >= n_before:
-            return 0  # nothing to compact
-        tmp = export_path.with_suffix(export_path.suffix + ".compact.tmp")
-        tmp.write_text("\n".join(seen.values()) + "\n", encoding="utf-8")
-        tmp.replace(export_path)
-        return n_before - n_after
+    return compact_units_export(export_path)
 
 
 def _echo_neutralize_preview(

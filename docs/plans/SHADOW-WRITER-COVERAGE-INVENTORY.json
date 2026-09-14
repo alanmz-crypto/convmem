@@ -9,9 +9,9 @@
     "convmem.py:656",
     "convmem.py:1718",
     "incremental_jsonl.py:501",
-    "ingest.py:637",
-    "ingest.py:1117",
-    "ingest.py:1155",
+    "ingest.py:612",
+    "ingest.py:1092",
+    "ingest.py:1130",
     "inter_model_index.py:301",
     "scratch_jsonl_prototype/chroma_projection.py:66"
   ],
@@ -175,7 +175,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 637,
+      "line": 612,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
@@ -184,7 +184,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 1117,
+      "line": 1092,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "reads_reindex_snapshot_under_writer_gate",
       "required_routing": "production_chroma_write_session",
@@ -193,7 +193,7 @@
     },
     {
       "file": "ingest.py",
-      "line": 1155,
+      "line": 1130,
       "snippet": "with production_chroma_write_session(entrypoint=\"ingest.write\") as _pw:",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",
