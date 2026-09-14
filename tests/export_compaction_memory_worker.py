@@ -21,22 +21,9 @@ if str(ROOT) not in sys.path:
 # Keep this import set identical for baseline and workload processes.
 import export_compaction as export_compaction_mod  # noqa: E402  # pylint: disable=wrong-import-position
 from export_compaction import compact_units_export  # noqa: E402  # pylint: disable=wrong-import-position
-
-
-def _rss_bytes() -> int:
-    status = Path("/proc/self/status").read_text(encoding="utf-8")
-    for line in status.splitlines():
-        if line.startswith("VmRSS:"):
-            return int(line.split()[1]) * 1024
-    return 0
-
-
-def _peak_rss_bytes() -> int:
-    status = Path("/proc/self/status").read_text(encoding="utf-8")
-    for line in status.splitlines():
-        if line.startswith("VmHWM:"):
-            return int(line.split()[1]) * 1024
-    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
+from tests.linux_proc import peak_rss_bytes as _peak_rss_bytes
+from tests.linux_proc import proc_fd_targets
+from tests.linux_proc import rss_bytes as _rss_bytes
 
 
 def _sha256(path: Path) -> str:
@@ -161,15 +148,7 @@ def _fstype(path: str) -> str:
 
 
 def _deleted_sqlite_fds() -> list[str]:
-    found: list[str] = []
-    for entry in Path("/proc/self/fd").iterdir():
-        try:
-            target = os.readlink(entry)
-        except OSError:
-            continue
-        if "etilqs_" in target:
-            found.append(target)
-    return found
+    return [target for target in proc_fd_targets() if "etilqs_" in target]
 
 
 def _non_tmpfs_parent() -> Path:

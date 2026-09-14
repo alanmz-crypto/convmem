@@ -1,4 +1,4 @@
-# pylint: disable=too-many-arguments,too-many-locals,duplicate-code
+# pylint: disable=too-many-arguments,too-many-locals
 """Hermetic Chroma fixtures for bounded brief-metadata Execute (C0–C6)."""
 
 from __future__ import annotations
@@ -17,32 +17,6 @@ FROZEN_NOW = datetime(2026, 9, 13, 12, 0, 0, tzinfo=timezone.utc)
 ENVELOPE_32K = "E" * 32768
 ENVELOPE_2K = "E" * 2048
 
-# Exact brief projection union (output fields). SQL keys omit `id` and map
-# `document` to chroma:document.
-BRIEF_PROJECTION_FIELDS = (
-    "id",
-    "ledger_id",
-    "ledger_kind",
-    "type",
-    "relates_to",
-    "timestamp",
-    "result",
-    "verification_result",
-    "severity",
-    "site",
-    "domain",
-    "title",
-    "summary",
-    "rationale",
-    "tool",
-    "source_path",
-    "superseded",
-    "deleted",
-    "document",
-)
-BRIEF_SQL_METADATA_KEYS = tuple(
-    key for key in BRIEF_PROJECTION_FIELDS if key not in {"id", "document"}
-)
 FORBIDDEN_BRIEF_KEYS = (
     "provenance_envelope",
     "provenance_commitment",

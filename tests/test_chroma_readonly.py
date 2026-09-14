@@ -7,16 +7,21 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from brief import BRIEF_METADATA_KEYS
 from chroma_readonly import (
     collection_metadata_rows,
     iter_collection_metadata_rows,
 )
+from tests.linux_proc import proc_fd_targets
 from tests.watch_oom_brief_hermetic import (
     FORBIDDEN_BRIEF_KEYS,
-    BRIEF_SQL_METADATA_KEYS,
     write_c0_fixture,
     write_chroma_sqlite,
 )
+
+
+def _chroma_sqlite_fds() -> set[str]:
+    return {target for target in proc_fd_targets() if target.endswith("chroma.sqlite3")}
 
 
 class IterCollectionMetadataTests(unittest.TestCase):
@@ -37,7 +42,7 @@ class IterCollectionMetadataTests(unittest.TestCase):
                 iter_collection_metadata_rows(
                     fx["chroma_dir"],
                     "knowledge_units",
-                    metadata_keys=BRIEF_SQL_METADATA_KEYS,
+                    metadata_keys=BRIEF_METADATA_KEYS,
                     include_document=True,
                 )
             )
@@ -94,22 +99,9 @@ class IterCollectionMetadataTests(unittest.TestCase):
             self.assertEqual(canary.read_text(encoding="utf-8"), "ok")
 
     def test_exception_closes_connection(self) -> None:
-        import os
-
-        def sqlite_fds() -> set[str]:
-            found: set[str] = set()
-            for entry in Path("/proc/self/fd").iterdir():
-                try:
-                    target = os.readlink(entry)
-                except OSError:
-                    continue
-                if target.endswith("chroma.sqlite3"):
-                    found.add(target)
-            return found
-
         with tempfile.TemporaryDirectory() as td:
             fx = write_c0_fixture(Path(td))
-            before = sqlite_fds()
+            before = _chroma_sqlite_fds()
 
             def boom(*_a, **_k):
                 raise RuntimeError("row explode")
@@ -121,30 +113,17 @@ class IterCollectionMetadataTests(unittest.TestCase):
                             fx["chroma_dir"], "knowledge_units"
                         )
                     )
-            self.assertEqual(sqlite_fds(), before)
+            self.assertEqual(_chroma_sqlite_fds(), before)
 
     def test_early_close_closes_connection(self) -> None:
-        import os
-
-        def sqlite_fds() -> set[str]:
-            found: set[str] = set()
-            for entry in Path("/proc/self/fd").iterdir():
-                try:
-                    target = os.readlink(entry)
-                except OSError:
-                    continue
-                if target.endswith("chroma.sqlite3"):
-                    found.add(target)
-            return found
-
         with tempfile.TemporaryDirectory() as td:
             fx = write_c0_fixture(Path(td))
-            before = sqlite_fds()
+            before = _chroma_sqlite_fds()
             it = iter_collection_metadata_rows(fx["chroma_dir"], "knowledge_units")
             self.assertIsNotNone(next(it))
-            self.assertTrue(sqlite_fds() - before)
+            self.assertTrue(_chroma_sqlite_fds() - before)
             it.close()
-            self.assertEqual(sqlite_fds(), before)
+            self.assertEqual(_chroma_sqlite_fds(), before)
 
 
 if __name__ == "__main__":

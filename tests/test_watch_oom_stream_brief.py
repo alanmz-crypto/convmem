@@ -7,22 +7,24 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import ledger as _ledger
+
 from chroma_readonly import open_readonly_unit_store
-from ledger import (
-    _LEDGER_INDEX_CACHE,
-    build_ledger_index,
-    build_ledger_index_from_metadata,
-    invalidate_ledger_index_cache,
-)
 from unresolved import list_unresolved, list_unresolved_from_metadata
-from brief import gather_brief_data, write_brief
+from brief import BRIEF_PROJECTION_FIELDS, gather_brief_data, write_brief
 from tests.watch_oom_brief_hermetic import (
     FORBIDDEN_BRIEF_KEYS,
-    BRIEF_PROJECTION_FIELDS,
     EXPECTED_UNRESOLVED_COUNT,
     freeze_brief_probes,
     write_c0_fixture,
 )
+
+# pylint cannot infer several ledger.py exports (baseline E0611 on the same
+# names). Look them up on the live module instead of a from-import.
+_LEDGER_INDEX_CACHE = _ledger.__dict__["_LEDGER_INDEX_CACHE"]
+build_ledger_index = _ledger.__dict__["build_ledger_index"]
+build_ledger_index_from_metadata = _ledger.__dict__["build_ledger_index_from_metadata"]
+invalidate_ledger_index_cache = _ledger.__dict__["invalidate_ledger_index_cache"]
 
 
 class MetadataIterableLedgerTests(unittest.TestCase):

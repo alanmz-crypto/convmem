@@ -139,7 +139,7 @@ def _kiro_excluded(cfg: dict) -> bool:
     return False
 
 
-_BRIEF_METADATA_KEYS = (
+BRIEF_METADATA_KEYS = (
     "ledger_id",
     "ledger_kind",
     "type",
@@ -158,7 +158,7 @@ _BRIEF_METADATA_KEYS = (
     "superseded",
     "deleted",
 )
-_LEDGER_GRAPH_KEYS = (
+BRIEF_LEDGER_GRAPH_KEYS = (
     "id",
     "ledger_id",
     "ledger_kind",
@@ -173,6 +173,9 @@ _LEDGER_GRAPH_KEYS = (
     "title",
     "summary",
 )
+BRIEF_PROJECTION_FIELDS = ("id",) + BRIEF_METADATA_KEYS + ("document",)
+_BRIEF_METADATA_KEYS = BRIEF_METADATA_KEYS
+_LEDGER_GRAPH_KEYS = BRIEF_LEDGER_GRAPH_KEYS
 
 
 class _NewerFirst:

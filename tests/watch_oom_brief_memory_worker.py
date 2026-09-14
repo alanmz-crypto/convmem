@@ -17,6 +17,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from tests.linux_proc import peak_rss_bytes as _peak_rss_bytes
+from tests.linux_proc import rss_bytes as _rss_bytes
+
 PRODUCTION_PREFIXES = (
     str((Path.home() / ".local/share/convmem").resolve()),
     str((Path.home() / ".config/convmem").resolve()),
@@ -94,22 +97,6 @@ def install_path_denial() -> None:
     io.open = guarded_io_open  # type: ignore[assignment]
     Path.open = guarded_path_open  # type: ignore[assignment]
     sqlite3.connect = guarded_connect  # type: ignore[assignment]
-
-
-def _rss_bytes() -> int:
-    status = Path("/proc/self/status").read_text(encoding="utf-8")
-    for line in status.splitlines():
-        if line.startswith("VmRSS:"):
-            return int(line.split()[1]) * 1024
-    return 0
-
-
-def _peak_rss_bytes() -> int:
-    status = Path("/proc/self/status").read_text(encoding="utf-8")
-    for line in status.splitlines():
-        if line.startswith("VmHWM:"):
-            return int(line.split()[1]) * 1024
-    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
 
 
 def _projected_keys(rows: list[dict]) -> list[str]:
