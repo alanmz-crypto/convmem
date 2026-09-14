@@ -14,7 +14,11 @@ cross-arc snapshot and the linked arc brief below.
   `a91bb28b`. A follow-up phase profile exonerated that compactor and isolated
   the next corpus-sized floor: `collection_metadata_rows()` repeatedly loads
   and retains unused duplicated provenance envelopes during brief refresh.
-  Codex has drafted a projected single-pass read correction for Kiro review in
+  Kiro conditionally PASSed the projected single-pass read design. Codex then
+  pinned the exact brief projection, excluded provenance-identity paths, and
+  preserved current scalar supersession semantics at plan tip `9671c18…`.
+  A targeted Kiro recheck of those two plan conditions is next; Cursor Execute
+  is not yet authorized. Review
   [`EXECUTION-watch-oom-stream-brief-metadata.md`](../plans/EXECUTION-watch-oom-stream-brief-metadata.md).
   No implementation, production access, watcher/config/exclusion change,
   source re-inclusion, or Arc Codex P2 progression is authorized.
