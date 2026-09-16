@@ -14,8 +14,12 @@ cross-arc snapshot and the linked arc brief below.
   brief scans with one projected stream. A post-merge hermetic diagnostic
   confirmed an approximately 2x reduction at 58,825 units but isolated the
   remaining envelope-sized allocation in
-  `doctor._exposure_window_probe()`'s full `ReadonlyUnitStore` read. Codex has
-  drafted the narrow projected-read correction for Kiro review in
+  `doctor._exposure_window_probe()`'s full `ReadonlyUnitStore` read. Kiro
+  returned unconditional PASS on the narrow projected-read plan at exact tip
+  `5672ee9`. The Cursor handoff is prepared but remains `BLOCKED_ON_RYAN`;
+  resume from
+  [`CURSOR-2026-09-15-watch-oom-bound-exposure-probe-execute-handoff.md`](CURSOR-2026-09-15-watch-oom-bound-exposure-probe-execute-handoff.md)
+  and the reviewed plan in
   [`EXECUTION-watch-oom-bound-exposure-probe.md`](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).
   No implementation, production access, watcher/config/exclusion change,
   source re-inclusion, or Arc Codex P2 progression is authorized.
