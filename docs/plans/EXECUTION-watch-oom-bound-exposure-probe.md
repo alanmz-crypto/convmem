@@ -380,6 +380,9 @@ P2, grant issuance, or activation.
 
 **Plan tip:** `5672ee98b93b6d71db5d80bc34f189f1c13460eb` (Kiro PASS).
 
+**Implementation tip:** `a102ed58…` on `impl/2026-09-14-watch-oom-bound-exposure-probe`
+(pushed 2026-09-16).
+
 **Worktree:** `~/Projects/convmem-watch-oom-bound-exposure-probe` from authorization
 tip `5672ee9…`.
 
