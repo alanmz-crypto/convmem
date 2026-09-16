@@ -1,5 +1,5 @@
 ---
-description: Require a jargon glossary at the end of plan documents
+description: Define project jargon and coded terms whenever a response leans on them heavily — authoring or updating plan documents, and dense reviews, verdicts, or handoffs
 alwaysApply: true
 globs: "docs/**/*.md"
 ---
@@ -7,6 +7,8 @@ globs: "docs/**/*.md"
 # Plan jargon glossary requirement
 
 When producing or substantially updating a plan document (`docs/plans/`, `docs/inter-model/`, or any `*.plan.md` file), **append a `## Jargon TL;DR` section at the end** that defines every project-specific term, abbreviation, or coded phrase introduced or relied upon in the document.
+
+This rule also applies to **chat responses** — not just plan documents — whenever a review, verdict, or handoff leans heavily on project-specific jargon (lane names, phase codes, arc codenames, taxonomy slugs, coined acronyms). In that case, append the same `## Jargon TL;DR` table at the end of the response using the format and rules below.
 
 ## Format
 
