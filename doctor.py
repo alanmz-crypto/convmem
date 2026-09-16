@@ -13,7 +13,11 @@ from pathlib import Path
 import requests
 
 from brief import _mcp_registration, _systemd_state, _watch_main_pid, _watch_process_memory
-from chroma_readonly import collection_count, collection_ids, open_readonly_unit_store
+from chroma_readonly import (
+    collection_count,
+    collection_ids,
+    iter_collection_metadata_rows,
+)
 from config import CONFIG_PATH, load_config
 from planning_contract import CONTRACT_VERSION, iter_guide_paths, validate_planning_guides
 
@@ -748,6 +752,32 @@ def _unverified_resting_state_probe(row: dict, root: Path) -> tuple[bool, str]:
     return False, f"no live UNVERIFIED marker in {len(_UNVERIFIED_SCOPE)} design docs"
 
 
+EXPOSURE_WINDOW_METADATA_KEYS = (
+    "ledger_id",
+    "ledger_kind",
+    "type",
+    "relates_to",
+    "timestamp",
+    "result",
+    "verification_result",
+    "severity",
+    "superseded",
+)
+
+
+def _iter_exposure_window_rows(chroma_dir: str | Path):
+    """Projected metadata rows for the exposure-window probe (no full-row store)."""
+    for row in iter_collection_metadata_rows(
+        chroma_dir,
+        "knowledge_units",
+        metadata_keys=EXPOSURE_WINDOW_METADATA_KEYS,
+        include_document=False,
+    ):
+        if row.get("superseded") is True:
+            continue
+        yield row
+
+
 def _exposure_window_probe(row: dict, cfg: dict) -> tuple[bool, str]:
     """Probe: corpus confirmed clean after every critical/high observation close.
 
@@ -763,7 +793,7 @@ def _exposure_window_probe(row: dict, cfg: dict) -> tuple[bool, str]:
     a later note attached to a closed P0 must not re-fire the row.
     """
     from evidence import evidence_boost
-    from ledger import _dedupe_by_ledger_id, _kind, build_ledger_index
+    from ledger import _dedupe_by_ledger_id, _kind, build_ledger_index_from_metadata
     from unresolved import OPEN_STATUSES
 
     raw = str(row.get("last_verified") or "").strip()
@@ -783,8 +813,10 @@ def _exposure_window_probe(row: dict, cfg: dict) -> tuple[bool, str]:
         except (ValueError, TypeError):
             return None
 
-    store = open_readonly_unit_store(cfg["index"]["chroma_dir"])
-    by_ledger_id, by_relates_to = build_ledger_index(store)
+    chroma_dir = cfg["index"]["chroma_dir"]
+    by_ledger_id, by_relates_to = build_ledger_index_from_metadata(
+        _iter_exposure_window_rows(chroma_dir)
+    )
 
     latest_close = None
     latest_lid = ""

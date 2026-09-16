@@ -3,8 +3,9 @@
 **Arc:** Trapdoor Hunt (issue #268 operational follow-up; does not reopen the
 closed provenance T3 gate)
 
-**Status:** DRAFT FOR KIRO REVIEW. Planning only. This file authorizes no code,
-configuration, service, corpus, provider, or production operation.
+**Status:** IMPLEMENTED — Cursor Execute C0–C7 complete on branch
+`impl/2026-09-14-watch-oom-bound-exposure-probe`; awaiting GitHub Copilot
+targeted safety/evidence audit (no PR opened).
 
 **Date:** 2026-09-14
 
@@ -375,7 +376,39 @@ No plan, review, merge, or memory PASS in this sequence authorizes production
 access, watcher operation, configuration change, source re-inclusion, Gate 0,
 P2, grant issuance, or activation.
 
-## 10. Jargon glossary
+## 10. Verification record (Cursor Execute C0–C7)
+
+**Plan tip:** `5672ee98b93b6d71db5d80bc34f189f1c13460eb` (Kiro PASS).
+
+**Worktree:** `~/Projects/convmem-watch-oom-bound-exposure-probe` from authorization
+tip `5672ee9…`.
+
+**Change:** `_exposure_window_probe()` now reads via `iter_collection_metadata_rows()`
+with `EXPOSURE_WINDOW_METADATA_KEYS` (nine SQL keys + embedding `id`), filters
+`superseded is True`, and builds the ledger graph through
+`build_ledger_index_from_metadata()`. No `ReadonlyUnitStore` or
+`collection_metadata_rows()` on this path.
+
+**Hermetic proof (2026-09-16, implementation host):**
+
+| Slice | Evidence |
+|---|---|
+| C0 | `tests/golden/watch-oom-bound-exposure/c0-oracle.json` — 15 scenarios, exact `(due, detail)` |
+| C2–C5 | `tests/test_watch_oom_bound_exposure_probe.py` — projection trap, fail-soft, cleanup, ledger parity |
+| C5 | `tests/test_watch_oom_bound_exposure_memory.py::test_c5_probe_worker_denies_production_default_brief` |
+| C6 smoke | 5k probe + brief chain under 384 MiB peak; 2 KiB/32 KiB envelope delta ≤ 16 MiB |
+| C6 full | `CONVMEM_C6_FULL=1` — 5k/20k/58,825 probe + brief curve PASS (host evidence) |
+| C7 | `compileall` OK; `git diff --check` OK; pylint regression gate 29/29; repo pytest 2516 passed (5 pre-existing R2b inventory artifact failures unrelated to this slice) |
+
+**Residual caveat (unchanged):** this slice removes the last demonstrated
+envelope-sized reader on the measured brief path; it does **not** claim to close
+the live 12.5 GiB watcher OOM.
+
+**Next lane:** GitHub Copilot targeted safety/evidence audit on the pushed
+implementation tip. No production access, watcher operation, config change, or
+Arc Codex Gate 0/P2.
+
+## 11. Jargon glossary
 
 - **Exposure window:** the standing check requiring a corpus-clean scan after a
   critical/high observation closes.

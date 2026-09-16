@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-14
+**Updated:** 2026-09-16
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,16 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #268 — exposure-window probe plan:** PR #303
-  squash-merged as `5c103aa…` after Copilot and Kiro PASS, replacing the main
-  brief scans with one projected stream. A post-merge hermetic diagnostic
-  confirmed an approximately 2x reduction at 58,825 units but isolated the
-  remaining envelope-sized allocation in
-  `doctor._exposure_window_probe()`'s full `ReadonlyUnitStore` read. Codex has
-  drafted the narrow projected-read correction for Kiro review in
-  [`EXECUTION-watch-oom-bound-exposure-probe.md`](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).
-  No implementation, production access, watcher/config/exclusion change,
-  source re-inclusion, or Arc Codex P2 progression is authorized.
+- **Trapdoor Hunt / issue #268 — exposure-window probe Execute (READY_FOR_COPILOT,
+  not yet audited):** Ryan authorized Cursor Execute C0–C7 against Kiro-PASSed
+  plan tip `5672ee9`. Implementation is on
+  `impl/2026-09-14-watch-oom-bound-exposure-probe` (pushed; see branch tip SHA in
+  [`EXECUTION-watch-oom-bound-exposure-probe.md`](../plans/EXECUTION-watch-oom-bound-exposure-probe.md)
+  §10). The probe now uses the merged projected iterator instead of
+  `ReadonlyUnitStore`; hermetic C0–C6 evidence is on the branch. **Next lane:
+  GitHub Copilot targeted safety/evidence audit** — no PR until Copilot PASS. No
+  production access, watcher/config/exclusion change, source re-inclusion, or
+  Arc Codex Gate 0/P2 progression.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
   PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the
