@@ -23,29 +23,15 @@ cross-arc snapshot and the linked arc brief below.
   **Live 12.5 GiB watcher OOM remains OPEN; do not declare #268 closed.** No
   watcher/config/exclusion change, production access, or Arc Codex P2
   progression without that evidence (§9.8, Ryan only).
-- **Trapdoor Hunt / issue #268 — exposure-window probe plan (superseded):** PR #303
-  squash-merged as `5c103aa…` after Copilot and Kiro PASS, replacing the main
-  brief scans with one projected stream. A post-merge hermetic diagnostic
-  confirmed an approximately 2x reduction at 58,825 units but isolated the
-  remaining envelope-sized allocation in
-  `doctor._exposure_window_probe()`'s full `ReadonlyUnitStore` read. Kiro
-  returned unconditional PASS on the narrow projected-read plan at exact tip
-  `5672ee9`. The Cursor handoff is prepared but remains `BLOCKED_ON_RYAN`;
-  resume from
-  [`CURSOR-2026-09-15-watch-oom-bound-exposure-probe-execute-handoff.md`](CURSOR-2026-09-15-watch-oom-bound-exposure-probe-execute-handoff.md)
-  and the reviewed plan in
-  [`EXECUTION-watch-oom-bound-exposure-probe.md`](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).
-  No implementation, production access, watcher/config/exclusion change,
-  source re-inclusion, or Arc Codex P2 progression is authorized.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
   PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the
   final tree. A fresh 68-message source freeze at packet tip `27518aa…` also
   received Kiro PASS, but no executable grant or digest was issued. Grant-packet
   progression is paused while issue #268's shared watch-child OOM is narrowed
-  and reviewed. PRs #302/#303 removed two demonstrated allocators, but the
-  exposure-window probe remains under plan review. No Claude re-review, live
-  source, Gate 0, P2 run,
+  and reviewed. PRs #302/#303/#305 removed three demonstrated allocators; the
+  §9.7 post-merge end-to-end memory comparison remains pending. No Claude
+  re-review, live source, Gate 0, P2 run,
   replacement grant/digest, new P2 PR, or activation is authorized.
   Resume from
   [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md).
