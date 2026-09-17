@@ -239,6 +239,85 @@ def test_corrupt_prepared_crash_replay_refuses_without_publish(tmp_path: Path) -
     assert payload["counters"]["distill"] == 0
 
 
+def _recovery_artifacts(boundary) -> dict[str, list[Path]]:
+    root = Path(boundary.layout["state"])
+    snapshot_dirs = [
+        path
+        for path in root.rglob("snapshots")
+        if path.is_dir() and any(path.iterdir())
+    ]
+    return {
+        "transactions": list(root.rglob("transaction.json")),
+        "rollbacks": list(root.rglob("rollback.json")),
+        "snapshot_dirs": snapshot_dirs,
+    }
+
+
+def _assert_recovery_evidence_cleared(boundary) -> None:
+    artifacts = _recovery_artifacts(boundary)
+    assert not artifacts["transactions"]
+    assert not artifacts["rollbacks"]
+    assert not artifacts["snapshot_dirs"]
+
+
+def test_partial_chroma_write_rollback_restores_before_cleanup(tmp_path: Path) -> None:
+    boundary, env = isolated_env(tmp_path)
+    source = write_source(boundary.root, 2)
+    baseline = worker_run(boundary, env, source)
+    assert baseline.returncode == 0, baseline.stderr[-2000:]
+    assert json.loads(baseline.stdout)["run"]["outcome"] == "committed"
+    before = chroma_authority(boundary, source)
+
+    with source.open("ab") as handle:
+        handle.write(kiro_record(2))
+    crashed = worker_run(boundary, env, source, fault="after_summary_upsert")
+    assert crashed.returncode == CRASH_EXIT, crashed.stderr[-2000:]
+
+    mid_apply = _recovery_artifacts(boundary)
+    assert mid_apply["transactions"]
+    assert mid_apply["rollbacks"]
+    assert mid_apply["snapshot_dirs"]
+    transaction = json.loads(mid_apply["transactions"][0].read_text(encoding="utf-8"))
+    assert transaction.get("phase") == "APPLYING"
+    snapshot_dir = mid_apply["snapshot_dirs"][0]
+    assert snapshot_dir.is_dir()
+
+    prepared_files = [
+        path
+        for path in Path(boundary.layout["state"]).rglob("*.json")
+        if path.parent.name == "prepared"
+    ]
+    assert prepared_files
+    artifact = json.loads(prepared_files[0].read_text(encoding="utf-8"))
+    artifact["summary"] = "tampered-summary-without-digest-refresh"
+    prepared_files[0].write_text(json.dumps(artifact), encoding="utf-8")
+
+    replay = worker_run(boundary, env, source)
+    assert replay.returncode == 0, replay.stderr[-2000:]
+    payload = json.loads(replay.stdout)
+    assert payload["run"]["outcome"] == "rolled_back"
+    assert payload["counters"]["summarize"] == 0
+    _assert_recovery_evidence_cleared(boundary)
+    assert not snapshot_dir.exists() or not any(snapshot_dir.iterdir())
+
+    after_rollback = chroma_authority(boundary, source)
+    assert {row["id"] for row in after_rollback["summaries"]} == {
+        row["id"] for row in before["summaries"]
+    }
+    assert {row["id"] for row in after_rollback["units"]} == {
+        row["id"] for row in before["units"]
+    }
+    assert after_rollback["checkpoint"] == before["checkpoint"]
+
+    recovery = worker_run(boundary, env, source)
+    assert recovery.returncode == 0, recovery.stderr[-2000:]
+    recovered = json.loads(recovery.stdout)
+    assert recovered["run"]["outcome"] == "committed"
+    _assert_recovery_evidence_cleared(boundary)
+    after_commit = chroma_authority(boundary, source)
+    assert len(after_commit["units"]) > len(before["units"])
+
+
 def test_tampered_checkpoint_coverage_refuses_before_unchanged(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

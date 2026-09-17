@@ -1545,10 +1545,11 @@ class IncrementalJsonlCoordinator:
             self._cleanup(snapshot_dir)
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
         except IncrementalJsonlError as exc:
-            self._cleanup(snapshot_dir)
             if rollback is None:
+                self._cleanup(snapshot_dir)
                 return self._refusal(exc.code, mode="aborted", snapshot=snapshot)
             self._restore_before_images(rollback)
+            self._cleanup(snapshot_dir)
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
 
     def run(self) -> IncrementalRunResult:
