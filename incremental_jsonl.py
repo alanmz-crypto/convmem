@@ -20,7 +20,11 @@ from pathlib import Path
 from typing import Any, Callable
 
 from adapters.detect import detect_format, get_parser
-from adapters.jsonl_prefix import serialize_raw_line_coverage
+from adapters.jsonl_prefix import (
+    RawLineOutcome,
+    complete_line_outcomes_cover_prefix,
+    serialize_raw_line_coverage,
+)
 from chroma_store import SUMMARIES, UNITS
 from incremental_jsonl_formats import (
     IncrementalFormatSpec,
@@ -273,6 +277,38 @@ def _read_json(path: Path) -> dict | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _validate_raw_line_coverage(
+    coverage: dict,
+    *,
+    complete_boundary: int,
+    prefix_sha256: str,
+) -> None:
+    if coverage.get("prefix_sha256") != prefix_sha256:
+        raise IncrementalJsonlError("invalid_state", "coverage prefix mismatch")
+    outcomes_raw = coverage.get("outcomes")
+    if not isinstance(outcomes_raw, list):
+        raise IncrementalJsonlError("invalid_state", "coverage outcomes invalid")
+    try:
+        outcomes = [
+            RawLineOutcome(
+                start=int(item["start"]),
+                end=int(item["end"]),
+                outcome=str(item["outcome"]),
+                message_index=item.get("message_index"),
+            )
+            for item in outcomes_raw
+        ]
+    except (KeyError, TypeError, ValueError):
+        raise IncrementalJsonlError("invalid_state", "coverage outcomes malformed")
+    if not complete_line_outcomes_cover_prefix(outcomes, int(complete_boundary)):
+        raise IncrementalJsonlError("invalid_state", "coverage outcomes incomplete")
+    recomputed = serialize_raw_line_coverage(outcomes, prefix_sha256)
+    if coverage.get("coverage_digest") != recomputed["coverage_digest"]:
+        raise IncrementalJsonlError("invalid_state", "coverage digest mismatch")
+    if outcomes_raw != recomputed["outcomes"]:
+        raise IncrementalJsonlError("invalid_state", "coverage outcomes tampered")
+
+
 def validate_checkpoint(
     payload: dict,
     *,
@@ -300,11 +336,11 @@ def validate_checkpoint(
     coverage = payload.get("raw_line_coverage")
     if not isinstance(coverage, dict):
         raise IncrementalJsonlError("invalid_state", "raw_line_coverage missing")
-    if coverage.get("prefix_sha256") != payload.get("prefix_sha256"):
-        raise IncrementalJsonlError("invalid_state", "coverage prefix mismatch")
-    outcomes = coverage.get("outcomes")
-    if not isinstance(outcomes, list):
-        raise IncrementalJsonlError("invalid_state", "coverage outcomes invalid")
+    _validate_raw_line_coverage(
+        coverage,
+        complete_boundary=int(payload.get("complete_boundary") or 0),
+        prefix_sha256=str(payload.get("prefix_sha256") or ""),
+    )
     return payload
 
 
@@ -711,36 +747,63 @@ class IncrementalJsonlCoordinator:
 
         self._transition("prepared_output_publish", publish)
 
-    def _load_prepared(self, key: str, *, expected: dict) -> dict | None:
-        path = self._prepared_path(key)
-        payload = _read_json(path)
+    def _validate_prepared_artifact(
+        self,
+        payload: dict | None,
+        *,
+        expected: dict | None = None,
+        key: str | None = None,
+    ) -> dict:
         if payload is None:
-            return None
+            raise IncrementalJsonlError("recovery_unproven", "prepared artifact unreadable")
+        if payload.get("version") != PREPARED_VERSION:
+            raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared version mismatch")
+        if payload.get("source_identity") != self.source_id:
+            raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared source mismatch")
+        if payload.get("transform_fingerprint") != self.transform_fingerprint:
+            raise IncrementalJsonlError(
+                "prepared_artifact_corrupt", "prepared fingerprint mismatch"
+            )
         try:
-            if payload.get("version") != PREPARED_VERSION:
-                return None
-            if payload.get("source_identity") != self.source_id:
-                return None
-            if payload.get("transform_fingerprint") != self.transform_fingerprint:
-                return None
-            if payload.get("chunk_start") != expected["chunk_start"]:
-                return None
-            if payload.get("input_digest") != expected["input_digest"]:
-                return None
-            if not payload.get("complete"):
-                return None
+            chunk_start = int(payload["chunk_start"])
+            input_digest = str(payload["input_digest"])
+        except (KeyError, TypeError, ValueError):
+            raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared chunk metadata invalid")
+        if expected is not None:
+            if chunk_start != int(expected["chunk_start"]):
+                raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared chunk_start mismatch")
+            if input_digest != str(expected["input_digest"]):
+                raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared input_digest mismatch")
+        cache_key = payload.get("cache_key")
+        derived_key = self._prepared_key(chunk_start, input_digest)
+        if cache_key != derived_key:
+            raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared cache_key mismatch")
+        if key is not None and key != derived_key:
+            raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared key mismatch")
+        if not payload.get("complete"):
+            raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared artifact incomplete")
+        try:
             embeddings = [payload["summary_embedding"]] + [
                 unit["embedding"] for unit in payload.get("units", [])
             ]
-            for embedding in embeddings:
-                if len(embedding) != self.embed_dimension:
-                    return None
-            body = {name: value for name, value in payload.items() if name != "digest"}
-            if payload.get("digest") != _sha(_canonical_json(body)):
-                return None
-        except (TypeError, KeyError, ValueError):
-            return None
+        except (TypeError, KeyError):
+            raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared embeddings missing")
+        for embedding in embeddings:
+            if len(embedding) != self.embed_dimension:
+                raise IncrementalJsonlError(
+                    "prepared_artifact_corrupt", "prepared embedding shape mismatch"
+                )
+        body = {name: value for name, value in payload.items() if name != "digest"}
+        if payload.get("digest") != _sha(_canonical_json(body)):
+            raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared digest mismatch")
         return payload
+
+    def _load_prepared(self, key: str, *, expected: dict) -> dict | None:
+        path = self._prepared_path(key)
+        if not path.is_file():
+            return None
+        payload = _read_json(path)
+        return self._validate_prepared_artifact(payload, expected=expected, key=key)
 
     def _chunk_input_digest(self, chunk: dict) -> str:
         text = render_chunk(chunk["messages"])
@@ -773,7 +836,18 @@ class IncrementalJsonlCoordinator:
                 "input_digest": self._chunk_input_digest(chunk),
             }
             key = self._prepared_key(expected["chunk_start"], expected["input_digest"])
-            cached = self._load_prepared(key, expected=expected)
+            try:
+                cached = self._load_prepared(key, expected=expected)
+            except IncrementalJsonlError as exc:
+                if (
+                    exc.code == "prepared_artifact_corrupt"
+                    and int(chunk["start_offset"]) < cache_required_before
+                ):
+                    raise IncrementalJsonlError(
+                        "historical_cache_unavailable",
+                        f"chunk {chunk['start_offset']}",
+                    ) from exc
+                raise
             if cached is not None:
                 prepared.append(cached)
                 reused += 1
@@ -1424,11 +1498,9 @@ class IncrementalJsonlCoordinator:
             if keys:
                 for key in keys:
                     payload = _read_json(self._prepared_path(key))
-                    if not payload or not payload.get("complete"):
-                        raise IncrementalJsonlError(
-                            "recovery_unproven", "prepared artifact missing"
-                        )
-                    prepared.append(payload)
+                    prepared.append(
+                        self._validate_prepared_artifact(payload, key=key)
+                    )
                 reused = len(prepared)
             else:
                 prior_count = 0
@@ -1466,11 +1538,11 @@ class IncrementalJsonlCoordinator:
             self._restore_before_images(rollback)
             self._cleanup(snapshot_dir)
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
-        except IncrementalJsonlError:
-            if rollback is None:
-                raise
-            self._restore_before_images(rollback)
+        except IncrementalJsonlError as exc:
             self._cleanup(snapshot_dir)
+            if rollback is None:
+                return self._refusal(exc.code, mode="aborted", snapshot=snapshot)
+            self._restore_before_images(rollback)
             return self._refusal("rolled_back", mode="rollback", snapshot=snapshot)
 
     def run(self) -> IncrementalRunResult:
