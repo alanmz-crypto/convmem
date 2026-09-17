@@ -1,5 +1,5 @@
 # pylint: disable=wrong-import-position,protected-access
-"""Hermetic brief-metadata worker: path denial, C0 parity, RSS curve."""
+"""Hermetic exposure-window worker: path denial, probe-only RSS, brief-chain RSS."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -27,56 +28,54 @@ from tests.watch_oom_memory_worker_shared import (
 )
 
 
-def _projected_keys(rows: list[dict]) -> list[str]:
-    keys: set[str] = set()
-    for row in rows:
-        keys.update(row)
-    return sorted(keys)
-
-
 def _dispatch(args: argparse.Namespace) -> int:
-    import brief
-    from tests.watch_oom_brief_hermetic import freeze_brief_probes, write_c0_fixture
-    from tests.test_watch_oom_stream_brief_c0 import _chroma_core, _normalize_render
+    if args.mode == "probe":
+        from doctor import _exposure_window_probe
+        from tests.watch_oom_exposure_hermetic import EXPOSURE_ROW, exposure_cfg
 
-    if args.mode == "c0":
-        tmp = Path(args.tmp_root)
-        fx = write_c0_fixture(tmp)
-        out = Path(args.out_path)
-        with freeze_brief_probes():
-            data = brief.gather_brief_data(fx["cfg"])
-            rendered = _normalize_render(brief.render_brief_markdown(data), tmp)
-            brief.write_brief(fx["cfg"], out_path=out, quiet=True)
-        core = _chroma_core(data)
+        baseline = _rss_bytes()
+        due, detail = _exposure_window_probe(
+            EXPOSURE_ROW, exposure_cfg(Path(args.chroma_dir))
+        )
         emit_worker_json(
             {
-                "core": core,
-                "render_sha256": hashlib.sha256(rendered.encode()).hexdigest(),
-                "render": rendered,
-                "denied_paths": DENIED,
+                "baseline_rss_bytes": baseline,
                 "peak_rss_bytes": _peak_rss_bytes(),
-                "projected_keys": _projected_keys(
-                    data.get("recent_decisions") or []
-                ),
+                "due": due,
+                "detail": detail,
+                "digest": hashlib.sha256(f"{due}|{detail}".encode()).hexdigest(),
+                "denied_paths": DENIED,
             }
         )
         return denied_exit_code()
 
+    import brief
+    from doctor import _exposure_window_probe, standing_register_status
+    from tests.watch_oom_brief_hermetic import freeze_brief_probes
+    from tests.watch_oom_exposure_hermetic import EXPOSURE_ROW, exposure_cfg
+
     cfg = hermetic_brief_cfg(args.chroma_dir, args.processed, args.inventory)
     out = Path(args.out_path)
     baseline = _rss_bytes()
-    with freeze_brief_probes():
+    register = Path(args.register)
+    with freeze_brief_probes(), patch(
+        "doctor.standing_register_status",
+        wraps=standing_register_status,
+    ), patch("doctor._standing_register_path", return_value=register):
         data = brief.gather_brief_data(cfg)
         brief.write_brief(cfg, out_path=out, quiet=True)
     rows = data.get("recent_decisions") or []
+    due, detail = _exposure_window_probe(
+        EXPOSURE_ROW, exposure_cfg(Path(args.chroma_dir))
+    )
+    probe_digest = hashlib.sha256(f"{due}|{detail}".encode()).hexdigest()
     emit_worker_json(
         {
             "baseline_rss_bytes": baseline,
             "peak_rss_bytes": _peak_rss_bytes(),
             "units": data.get("units"),
-            "unresolved_count": data.get("unresolved_count"),
+            "probe_digest": probe_digest,
             "output_digest": hashlib.sha256(out.read_bytes()).hexdigest(),
-            "projected_keys": _projected_keys(rows),
             "denied_paths": DENIED,
             "forbidden_in_rows": forbidden_provenance_keys(rows),
         }
@@ -87,10 +86,10 @@ def _dispatch(args: argparse.Namespace) -> int:
 def main() -> int:
     def _extra_args(parser: argparse.ArgumentParser) -> None:
         parser.add_argument("--out-path", default="")
-        parser.add_argument("--tmp-root", default="")
+        parser.add_argument("--register", default="")
 
     return run_worker_main(
-        mode_choices=("baseline", "c0", "memory", *C5_MODES),
+        mode_choices=("baseline", "probe", "brief", *C5_MODES),
         extra_args=_extra_args,
         dispatch=_dispatch,
     )

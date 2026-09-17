@@ -18,6 +18,7 @@ from tests.watch_oom_brief_hermetic import (
     freeze_brief_probes,
     write_c0_fixture,
 )
+from tests.watch_oom_exposure_hermetic import trap_iter_collection_metadata_rows
 
 # pylint cannot infer several ledger.py exports (baseline E0611 on the same
 # names). Look them up on the live module instead of a from-import.
@@ -71,17 +72,8 @@ class BriefNoRetentionTests(unittest.TestCase):
     def test_projection_trap_and_forbidden_provenance_calls(self) -> None:
         seen_keys: set[str] = set()
 
-        def wrapped(chroma_dir, collection_name, *, metadata_keys=None, include_document=True):
-            from chroma_readonly import iter_collection_metadata_rows as real
-
-            if metadata_keys is not None:
-                seen_keys.update(metadata_keys)
-            return real(
-                chroma_dir,
-                collection_name,
-                metadata_keys=metadata_keys,
-                include_document=include_document,
-            )
+        include_doc: list[bool] = []
+        wrapped = trap_iter_collection_metadata_rows(seen_keys, include_doc)
 
         def forbidden_call(*_a, **_k):
             raise AssertionError("brief path must not call provenance identity helpers")

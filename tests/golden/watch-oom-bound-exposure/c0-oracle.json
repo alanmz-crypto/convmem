@@ -1,0 +1,62 @@
+{
+  "critical_closed_after_last_verified": {
+    "detail": "P0 obs_p0 closed 2026-07-05, corpus-clean scan not recorded (last_verified 2026-07-01)",
+    "due": true
+  },
+  "critical_closed_before_last_verified": {
+    "detail": "clean-scan recorded after last P0 close (1 closed)",
+    "due": false
+  },
+  "critical_still_open": {
+    "detail": "no closed critical/high observations",
+    "due": false
+  },
+  "deleted_not_excluded": {
+    "detail": "P0 obs_del closed 2026-07-05, corpus-clean scan not recorded (last_verified 2026-07-01)",
+    "due": true
+  },
+  "duplicate_ledger_id_last_wins": {
+    "detail": "P0 obs_dup closed 2026-07-05, corpus-clean scan not recorded (last_verified 2026-07-01)",
+    "due": true
+  },
+  "empty_collection": {
+    "detail": "no closed critical/high observations",
+    "due": false
+  },
+  "equal_close_dates_pick_latest_lid": {
+    "detail": "P0 obs_a closed 2026-07-05, corpus-clean scan not recorded (last_verified 2026-07-01)",
+    "due": true
+  },
+  "failed_verification_still_open": {
+    "detail": "no closed critical/high observations",
+    "due": false
+  },
+  "high_observation_level_pass": {
+    "detail": "P0 obs_hp closed 2026-07-10, corpus-clean scan not recorded (last_verified 2026-07-01)",
+    "due": true
+  },
+  "invalid_last_verified": {
+    "detail": "exposure-window: last_verified unparseable ('not-a-date')",
+    "due": true
+  },
+  "later_note_does_not_refire": {
+    "detail": "clean-scan recorded after last P0 close (1 closed)",
+    "due": false
+  },
+  "malformed_child_timestamp_ignored": {
+    "detail": "P0 obs_bad closed 2026-07-05, corpus-clean scan not recorded (last_verified 2026-07-01)",
+    "due": true
+  },
+  "medium_closed_not_eligible": {
+    "detail": "no closed critical/high observations",
+    "due": false
+  },
+  "superseded_row_excluded": {
+    "detail": "no closed critical/high observations",
+    "due": false
+  },
+  "timestamp_fallback_without_verification": {
+    "detail": "P0 obs_fb closed 2026-07-09, corpus-clean scan not recorded (last_verified 2026-07-01)",
+    "due": true
+  }
+}

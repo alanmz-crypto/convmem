@@ -5,8 +5,6 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -17,30 +15,24 @@ from tests.watch_oom_brief_hermetic import (
     write_c0_fixture,
     write_memory_fixture,
 )
+from tests.watch_oom_memory_test_support import (
+    MAX_FULL_OVER_BASELINE,
+    MAX_PEAK_BYTES,
+    MIB,
+    assert_bounded_brief_payload,
+    assert_c5_negative_denies_default_brief,
+    run_memory_worker,
+)
 
 WORKER = Path(__file__).resolve().parent / "watch_oom_brief_memory_worker.py"
 ROOT = Path(__file__).resolve().parents[1]
-MIB = 1024 * 1024
-MAX_PEAK_BYTES = 384 * MIB
-MAX_FULL_OVER_BASELINE = 160 * MIB
 MAX_ENVELOPE_DELTA = 32 * MIB
 FULL_SIZES = (5_000, 20_000, 58_825)
 RUN_FULL = os.environ.get("CONVMEM_C6_FULL") == "1"
 
 
-def _run_worker(*args: str, check: bool = True) -> dict:
-    proc = subprocess.run(
-        [sys.executable, str(WORKER), *args],
-        cwd=str(ROOT),
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if check and proc.returncode != 0:
-        raise AssertionError(
-            f"worker failed rc={proc.returncode}\nstdout={proc.stdout}\nstderr={proc.stderr}"
-        )
-    return json.loads(proc.stdout), proc.returncode
+def _run_worker(*args: str, check: bool = True) -> tuple[dict, int]:
+    return run_memory_worker(WORKER, ROOT, *args, check=check)
 
 
 def test_c5_write_brief_does_not_touch_production(tmp_path: Path) -> None:
@@ -63,20 +55,7 @@ def test_c5_write_brief_does_not_touch_production(tmp_path: Path) -> None:
 
 def test_c5_negative_temp_config_without_out_path_is_denied(tmp_path: Path) -> None:
     fx = write_c0_fixture(tmp_path)
-    payload, rc = _run_worker(
-        "--mode",
-        "c5-negative",
-        "--chroma-dir",
-        str(fx["chroma_dir"]),
-        "--inventory",
-        str(fx["inventory"]),
-        "--processed",
-        str(fx["processed"]),
-        check=False,
-    )
-    assert rc == 0
-    assert payload["denied"] is True
-    assert payload["denied_paths"]
+    assert_c5_negative_denies_default_brief(_run_worker, fx)
 
 
 def test_c6_five_thousand_stays_under_ceiling(tmp_path: Path) -> None:
@@ -106,11 +85,7 @@ def test_c6_five_thousand_stays_under_ceiling(tmp_path: Path) -> None:
         "--out-path",
         str(out),
     )
-    assert rc == 0
-    assert payload["denied_paths"] == []
-    assert payload["forbidden_in_rows"] == []
-    assert payload["units"] == 5_000
-    assert payload["peak_rss_bytes"] < MAX_PEAK_BYTES
+    assert_bounded_brief_payload(payload, rc, units=5_000)
     extra = payload["peak_rss_bytes"] - baseline["baseline_rss_bytes"]
     print(
         f"c6 5k 32KiB: peak={payload['peak_rss_bytes']/MIB:.1f}MiB "

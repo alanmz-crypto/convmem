@@ -602,7 +602,7 @@ def normalize_brief_payload(data: dict) -> dict:
 
 
 @contextmanager
-def freeze_brief_probes() -> Iterator[None]:
+def freeze_brief_probes(*, pin_standing_register: bool = True) -> Iterator[None]:
     """Pin environment probes so C0/C6 compare chroma-derived fields only."""
     import brief  # noqa: F401  # pylint: disable=import-outside-toplevel,unused-import
     import doctor  # noqa: F401  # pylint: disable=import-outside-toplevel,unused-import
@@ -643,12 +643,13 @@ def freeze_brief_probes() -> Iterator[None]:
                 ],
             )
         )
-        stack.enter_context(
-            patch(
-                "doctor.standing_register_status",
-                return_value=(14, []),
+        if pin_standing_register:
+            stack.enter_context(
+                patch(
+                    "doctor.standing_register_status",
+                    return_value=(14, []),
+                )
             )
-        )
         real_datetime = __import__("datetime").datetime
 
         class _FrozenDateTime(real_datetime):

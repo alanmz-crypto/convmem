@@ -3,8 +3,9 @@
 **Arc:** Trapdoor Hunt (issue #268 operational follow-up; does not reopen the
 closed provenance T3 gate)
 
-**Status:** DRAFT FOR KIRO REVIEW. Planning only. This file authorizes no code,
-configuration, service, corpus, provider, or production operation.
+**Status:** IMPLEMENTED (corrective) — Cursor Execute C0–C7 on branch
+`fix/2026-09-16-watch-oom-bound-exposure-probe-corrective`; awaiting GitHub
+Copilot targeted safety/evidence re-audit (no PR opened; not yet Kiro-ready).
 
 **Date:** 2026-09-14
 
@@ -375,7 +376,56 @@ No plan, review, merge, or memory PASS in this sequence authorizes production
 access, watcher operation, configuration change, source re-inclusion, Gate 0,
 P2, grant issuance, or activation.
 
-## 10. Jargon glossary
+## 10. Implementation evidence (corrective tip)
+
+**Authorization ancestor:** `1be3a987472790222e4cc4985796ddced221a865` (Ryan Execute
+handoff routing commit; plan tip `5672ee9…` remains in ancestry).
+
+**Prior audit FAIL tip (preserved, not rewritten):**
+`c9359ae645be10c0469b94e5df2f166b6328e8d9` on
+`impl/2026-09-14-watch-oom-bound-exposure-probe`.
+
+**Corrective branch:** `fix/2026-09-16-watch-oom-bound-exposure-probe-corrective`
+
+**Worktree:** `~/Projects/convmem-watch-oom-exposure-probe-corrective`
+
+**Change:** `_exposure_window_probe()` reads via `iter_collection_metadata_rows()`
+with `EXPOSURE_WINDOW_METADATA_KEYS` (derived from `BRIEF_METADATA_KEYS`),
+filters `superseded is True`, and builds the ledger graph through
+`build_ledger_index_from_metadata()`. Hermetic workers install production-path
+and network denial before target imports.
+
+**Corrective audit fixes (vs `c9359ae…` FAIL):**
+
+| Finding | Fix |
+|---|---|
+| Pylint `E0611` on `build_ledger_index_from_metadata` | Match `unresolved.py` import style; deduplicate worker/hermetic helpers |
+| +16 duplicate-code regressions | Shared `watch_oom_hermetic_isolation.py`, `watch_oom_memory_worker_shared.py`, `watch_oom_memory_test_support.py` |
+| R2b writer inventory drift at failed tip | Regenerated `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` for `doctor.py` + `brief.py` identity |
+| Missing network denial / negative control | `install_network_denial()` before imports; `c5-negative-network` worker mode + test |
+| Incorrect VERIFY routing (false “pre-existing R2b”) | This section records observed gates only |
+
+**Hermetic proof (2026-09-17, corrective host):**
+
+| Slice | Evidence |
+|---|---|
+| C0 | `tests/golden/watch-oom-bound-exposure/c0-oracle.json` — 15 scenarios, exact `(due, detail)` |
+| C2–C5 | `tests/test_watch_oom_bound_exposure_probe.py` — projection trap, fail-soft, cleanup, ledger parity |
+| C5 path | `tests/test_watch_oom_bound_exposure_memory.py::test_c5_probe_worker_denies_production_default_brief` |
+| C5 network | `tests/test_watch_oom_bound_exposure_memory.py::test_c5_probe_worker_denies_outbound_network` |
+| C6 smoke | 5k probe + brief chain under 384 MiB peak; 2 KiB/32 KiB envelope delta ≤ 16 MiB |
+| C6 full | `CONVMEM_C6_FULL=1` — host evidence only (not CI-gated) |
+| C7 | `compileall` PASS; `git diff --check` PASS; pylint regression PASS vs `1be3a98` and `origin/main`; focused pytest 166 passed / 1 skipped; R2b inventory suite 88 passed |
+
+**Residual caveat (unchanged):** this slice removes the last demonstrated
+envelope-sized reader on the measured brief path; it does **not** claim to close
+the live 12.5 GiB watcher OOM.
+
+**Next lane:** GitHub Copilot targeted safety/evidence re-audit on the pushed
+corrective tip. No production access, watcher operation, config change, Kiro, or
+Arc Codex Gate 0/P2.
+
+## 11. Jargon glossary
 
 - **Exposure window:** the standing check requiring a corpus-clean scan after a
   critical/high observation closes.
