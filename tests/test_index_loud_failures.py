@@ -11,6 +11,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from typing import ClassVar
 from unittest import mock
 
 import requests
@@ -77,12 +78,12 @@ if __name__ == "__main__":
 class AbortOnProviderRefusalTests(unittest.TestCase):
     """build_chunk_artifact performs no Chroma writes, so aborting there is safe."""
 
-    CHUNK = {
+    CHUNK: ClassVar[dict] = {
         "messages": [{"role": "user", "content": "hello", "timestamp": None}],
         "start_offset": 0,
         "end_offset": 0,
     }
-    MODELS = {
+    MODELS: ClassVar[dict] = {
         "summarize_model": "deepseek-v4-flash",
         "distill_model": "deepseek-v4-flash",
         "embed_model": "nomic-embed-text:latest",
@@ -104,9 +105,10 @@ class AbortOnProviderRefusalTests(unittest.TestCase):
         )
 
     def test_billing_refusal_aborts_immediately(self):
-        with mock.patch("ingest.summarize", side_effect=_http_error(402)) as sm:
-            with self.assertRaises(ProviderUnavailableError) as ctx:
-                self._build()
+        with mock.patch(
+            "ingest.summarize", side_effect=_http_error(402)
+        ) as sm, self.assertRaises(ProviderUnavailableError) as ctx:
+            self._build()
         self.assertEqual(sm.call_count, 1, "must not retry a doomed call")
         self.assertIn("402", str(ctx.exception))
 
