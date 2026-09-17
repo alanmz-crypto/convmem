@@ -1,4 +1,5 @@
 """Tests for convmem doctor."""
+# pylint: disable=too-many-lines
 
 import json
 import tempfile
@@ -9,6 +10,7 @@ from unittest.mock import patch
 from doctor import (
     DoctorCheck,
     _charter_register_consistency_probe,
+    _check_claude_mcp,
     _check_dirty_main,
     _check_hooks_path,
     _check_standing_register,
@@ -31,6 +33,7 @@ class DoctorTests(unittest.TestCase):
     @patch("doctor._check_restic_external")
     @patch("doctor._check_restic")
     @patch("doctor._check_verify_script")
+    @patch("doctor._check_claude_mcp")
     @patch("doctor._check_copilot_mcp")
     @patch("doctor._check_continue_mcp")
     @patch("doctor._check_mcp_wiring")
@@ -51,6 +54,7 @@ class DoctorTests(unittest.TestCase):
         mock_wire,
         mock_cont,
         mock_copilot,
+        mock_claude,
         mock_verify,
         mock_restic,
         mock_restic_external,
@@ -72,6 +76,7 @@ class DoctorTests(unittest.TestCase):
             mock_wire,
             mock_cont,
             mock_copilot,
+            mock_claude,
         ):
             mock.return_value = ok
         mock_verify.return_value = DoctorCheck("verify_continue", True, "skipped")
@@ -776,10 +781,8 @@ class CharterRegisterConsistencyTests(unittest.TestCase):
 
     def test_shipped_charters_and_register_consistent(self):
         """The real charters + register must be in sync (no dangling/orphan)."""
-        import json as _json
-
         root = Path(__file__).resolve().parent.parent
-        rows = _json.loads(
+        rows = json.loads(
             (root / "docs" / "standing-checks-register.json").read_text(encoding="utf-8")
         )["checks"]
         due, detail = _charter_register_consistency_probe(rows, root)
@@ -957,6 +960,106 @@ class BranchingDoctorTests(unittest.TestCase):
         self.assertTrue(c.ok)
         self.assertEqual(c.effective_status(), "warn")
         self.assertIn("upstream", c.detail.lower())
+
+
+class ClaudeMcpCheckTests(unittest.TestCase):
+    """_check_claude_mcp: optional check — only fails when Claude is installed
+    but the convmem MCP server is unwired. Isolated from the real ~/.claude.json
+    by pointing HOME at a tmp dir and patching shutil.which."""
+
+    def _run(self, home: Path, *, claude_installed: bool) -> DoctorCheck:
+        which = "/fake/bin/claude" if claude_installed else None
+        with (
+            patch.dict("os.environ", {"HOME": str(home)}, clear=False),
+            patch("doctor.shutil.which", return_value=which),
+        ):
+            return _check_claude_mcp()
+
+    def test_not_installed_skips_pass(self):
+        # No claude binary and no ~/.claude dir → skip-PASS.
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)  # no .claude created
+            c = self._run(home, claude_installed=False)
+        self.assertTrue(c.ok)
+        self.assertEqual(c.name, "mcp_claude")
+        self.assertIn("not installed", c.detail)
+
+    def test_installed_unwired_fails(self):
+        # claude present, ~/.claude.json has empty mcpServers → FAIL.
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            (home / ".claude").mkdir()
+            (home / ".claude.json").write_text(
+                json.dumps({"mcpServers": {}}), encoding="utf-8"
+            )
+            c = self._run(home, claude_installed=True)
+        self.assertFalse(c.ok)
+        self.assertIn("no convmem", c.detail)
+
+    def test_wired_top_level_passes(self):
+        # convmem in top-level mcpServers (what `-s user` writes) → PASS.
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            (home / ".claude").mkdir()
+            (home / ".claude.json").write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {
+                            "convmem": {
+                                "type": "stdio",
+                                "command": "/x/python",
+                                "args": ["/x/mcp_server.py"],
+                                "env": {"CONVMEM_MCP_PROFILE": "shell"},
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            c = self._run(home, claude_installed=True)
+        self.assertTrue(c.ok)
+        self.assertIn("has convmem", c.detail)
+
+    def test_wired_project_scope_passes(self):
+        # convmem under projects.<path>.mcpServers (project scope) → PASS.
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            (home / ".claude").mkdir()
+            (home / ".claude.json").write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {},
+                        "projects": {
+                            "/home/lauer/Projects/convmem": {
+                                "mcpServers": {"convmem": {"type": "stdio"}}
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            c = self._run(home, claude_installed=True)
+        self.assertTrue(c.ok)
+        self.assertIn("has convmem", c.detail)
+
+    def test_malformed_json_fails_gracefully(self):
+        # Invalid JSON → FAIL, no traceback.
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            (home / ".claude").mkdir()
+            (home / ".claude.json").write_text("{not valid json", encoding="utf-8")
+            c = self._run(home, claude_installed=True)
+        self.assertFalse(c.ok)
+        self.assertIn("unreadable", c.detail)
+
+    def test_installed_missing_json_fails(self):
+        # claude dir present but no ~/.claude.json → FAIL (not skip).
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            (home / ".claude").mkdir()
+            c = self._run(home, claude_installed=True)
+        self.assertFalse(c.ok)
+        self.assertIn("missing ~/.claude.json", c.detail)
 
 
 if __name__ == "__main__":

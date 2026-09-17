@@ -4,9 +4,11 @@ convmem is a local-first knowledge corpus on this machine. It indexes AI chat tr
 
 **Do not ask "what is convmem" or suggest alternatives.** It exists on this machine. Use it.
 
+**Wired surfaces:** Cursor, Codex, Kiro, Continue, Copilot CLI, opencode, Crush, and **Claude Code** (user memory `~/.claude/CLAUDE.md` + user-scope MCP `mcpServers.convmem` in `~/.claude.json`; `convmem doctor` reports `mcp_claude`).
+
 ---
 
-## Tier A — shell-capable (Cursor, Codex, Kiro, Continue-with-Bash, Crush, Copilot CLI)
+## Tier A — shell-capable (Cursor, Codex, Kiro, Continue-with-Bash, Crush, Copilot CLI, Claude Code)
 
 <!-- TIER_A_START -->
 

@@ -9,6 +9,8 @@
 #   config/kiro-steering-convmem.example.md  — Kiro steering file
 #   config/copilot-agents-convmem.example.md — Copilot CLI optional --agent convmem
 #   config/copilot-instructions-convmem.example.md — always-on (~/.copilot/copilot-instructions.md)
+#   config/claude-memory-convmem.example.md  — Claude Code user memory (~/.claude/CLAUDE.md)
+#   config/claude-mcp.json.example           — Claude Code user-scope MCP block (~/.claude.json)
 #   docs/chatgpt-pack/custom-instructions.txt — ChatGPT paste-only pack
 #
 # Run: bash scripts/generate-agent-protocol.sh
@@ -395,6 +397,91 @@ echo "  -> config/copilot-agents-convmem.example.md"
   echo "Independent checklist: \`docs/CODEX-DEEPSEEK-VERIFY.md\` — pytest, smoke scripts, MCP spot-checks. Do not trust prior chat claims without running it."
 } > config/copilot-instructions-convmem.example.md
 echo "  -> config/copilot-instructions-convmem.example.md"
+
+# --- Claude Code user memory (~/.claude/CLAUDE.md) ---
+# Always-on user memory mirrors Codex global AGENTS.md: the session-start ritual
+# loads on every `claude` session machine-wide. Reuses the same SSoT sections.
+{
+  echo "# convmem — Local knowledge corpus"
+  echo ""
+  echo "You have **shell** (\`convmem\` CLI) and **MCP** (convmem tools via user-scope \`~/.claude.json\`) on this machine."
+  echo ""
+  echo "## If you have shell access (Tier A)"
+  echo ""
+  extract_section TIER_A
+  echo ""
+  echo "## After Tier A — MCP tools (do not repeat brief)"
+  echo ""
+  extract_section MCP_AFTER_TIER_A
+  echo ""
+  echo "## Session close"
+  echo ""
+  extract_section SESSION_CLOSE
+  echo ""
+  echo "## Handoff and resume contract"
+  echo ""
+  extract_section HANDOFF_RESUME_CONTRACT
+  echo ""
+  echo "## Claude — handoff vs record"
+  echo ""
+  echo "- Handoff / **ingest your chat** → \`convmem index --file\` on **this session's** Claude transcript under \`~/.claude/projects/<project>/*.jsonl\` (Track A). **No record block** unless Ryan asks."
+  echo "- Do **not** create new \`logs/*.md\` or handoff markdown unless Ryan requested a file."
+  echo "- \`convmem record\` **only** when Ryan says **record block**, **closing**, or **end session**."
+  echo "- Resume: \`claude --resume <session-id>\`."
+  echo ""
+  echo "## Builder reference"
+  echo ""
+  echo "Before convmem architecture edits, read the relevant digest in \`docs/builder-reference/\`."
+  echo ""
+  echo "- \`ousterhout-builder-digest.md\` for module boundaries and protocol surfaces"
+  echo "- \`manning-builder-digest.md\` for ranking, chunking, retrieval, and evaluation"
+  echo "- \`zeller-builder-digest.md\` for reproduction, triage, and verification"
+  echo "- \`hard-parts-builder-digest.md\` for trade-offs, data ownership, and split decisions"
+  echo ""
+  echo "## Read-only guard"
+  echo ""
+  echo "Do not run \`convmem add\`, bulk \`convmem index\` (no \`--file\`), or \`convmem verify\` without user direction."
+  echo "Allowed: \`convmem index --file <path> [--supersede]\` for session tracking (Tier A)."
+  echo ""
+  extract_section TEAM_CHARTER
+  echo ""
+  echo "## Bounded autonomy"
+  echo ""
+  extract_section BOUNDED_AUTONOMY
+  echo ""
+  echo "## Response TL;DR"
+  echo ""
+  extract_section RESPONSE_TLDR
+  echo ""
+  echo "## Context brief (Who / What / When / Why / How)"
+  echo ""
+  extract_section CONTEXT_BRIEF
+  echo ""
+  echo "## Workflow routing (when unsure)"
+  echo ""
+  extract_section WORKFLOW_ROUTING
+  echo ""
+  echo "Full cheat sheet: \`docs/MODEL-WORKFLOW.md\`"
+} > config/claude-memory-convmem.example.md
+echo "  -> config/claude-memory-convmem.example.md"
+
+# --- Claude Code user-scope MCP block (~/.claude.json) ---
+# Exact shape Claude Code persists via `claude mcp add-json convmem <json> -s user`
+# (verified 2026-09-17): type=stdio, no secrets — mcp_server loads env.local itself.
+# Used by deploy-agent-protocol.sh as the merge source.
+cat > config/claude-mcp.json.example << 'CLAUDE_MCP_JSON'
+{
+  "mcpServers": {
+    "convmem": {
+      "type": "stdio",
+      "command": "/home/lauer/miniforge3/envs/convmem/bin/python",
+      "args": ["/home/lauer/Projects/convmem/mcp_server.py"],
+      "env": { "CONVMEM_MCP_PROFILE": "shell" }
+    }
+  }
+}
+CLAUDE_MCP_JSON
+echo "  -> config/claude-mcp.json.example"
 
 # --- ChatGPT paste-only pack ---
 {

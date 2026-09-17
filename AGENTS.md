@@ -5,6 +5,8 @@ Canonical session-start protocol: `config/agent-protocol.md` (three capability t
 Generated per-surface slices via `scripts/generate-agent-protocol.sh`.
 Deployed via `scripts/deploy-agent-protocol.sh`.
 
+**Wired surfaces:** Cursor, Codex, Kiro, Continue, Copilot CLI, opencode, Crush, and **Claude Code** (user memory `~/.claude/CLAUDE.md` + user-scope MCP `mcpServers.convmem` in `~/.claude.json`; `convmem doctor` reports `mcp_claude`).
+
 **Do not duplicate session-start steps here** — they live in the global rule (Cursor `.mdc`, MCP `instructions=`, Codex global).
 
 **Codex Luna tier at launch — read this before delegating to Codex.** The `codex` CLI exposes a

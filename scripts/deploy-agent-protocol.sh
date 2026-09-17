@@ -433,6 +433,140 @@ else
   SKIPPED+="  - Copilot CLI (no ~/.copilot and no copilot binary)\n"
 fi
 
+# --- Deploy Claude Code user memory + MCP (~/.claude/CLAUDE.md, ~/.claude.json) ---
+# Primary MCP path is `claude mcp add-json ... -s user` (supported, forward-compatible).
+# Fallback is an additive JSON merge into ~/.claude.json that preserves ALL other keys.
+CLAUDE_HOME="$HOME/.claude"
+CLAUDE_JSON="$HOME/.claude.json"
+HAS_CLAUDE="$(command -v claude >/dev/null 2>&1 && echo yes || echo no)"
+
+if [ "$HAS_CLAUDE" = yes ] || [ -d "$CLAUDE_HOME" ]; then
+  mkdir -p "$CLAUDE_HOME"
+  cp config/claude-memory-convmem.example.md "$CLAUDE_HOME/CLAUDE.md"
+  echo "  [deploy] $CLAUDE_HOME/CLAUDE.md (user memory)"
+  DEPLOY_REPORT+="  - Synced Claude user memory (CLAUDE.md)\n"
+
+  # MCP wiring — prefer the CLI, fall back to additive JSON merge.
+  if [ "$HAS_CLAUDE" = yes ]; then
+    if claude mcp get convmem >/dev/null 2>&1; then
+      echo "  [skip]   claude already has convmem MCP server"
+      DEPLOY_REPORT+="  - Claude MCP already present\n"
+    else
+      CLAUDE_MCP_JSON="$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["mcpServers"]["convmem"]))' config/claude-mcp.json.example)"
+      if claude mcp add-json convmem "$CLAUDE_MCP_JSON" -s user >/dev/null 2>&1; then
+        echo "  [deploy] claude mcp add-json convmem -s user"
+        DEPLOY_REPORT+="  - Registered convmem MCP with Claude (user scope)\n"
+      else
+        echo "  [warn]   claude mcp add-json failed — falling back to ~/.claude.json merge"
+        claude_merge=$(python3 - <<'PY' "$CLAUDE_JSON" "$(pwd)/config/claude-mcp.json.example"
+import json, sys
+from pathlib import Path
+
+dest = Path(sys.argv[1])
+src = Path(sys.argv[2])
+with open(src) as f:
+    ex_convmem = json.load(f)["mcpServers"]["convmem"]
+if not dest.is_file():
+    # Do not fabricate a fresh ~/.claude.json — Claude owns that file.
+    print("no_dest")
+    sys.exit(0)
+try:
+    with open(dest) as f:
+        cfg = json.load(f)
+except (OSError, json.JSONDecodeError):
+    print("parse_error")
+    sys.exit(0)
+if not isinstance(cfg, dict):
+    print("parse_error")
+    sys.exit(0)
+# Additive-only: insert one nested key, never rewrite or drop any other key.
+servers = cfg.get("mcpServers")
+if not isinstance(servers, dict):
+    servers = {}
+    cfg["mcpServers"] = servers
+if "convmem" in servers:
+    print("skip")
+else:
+    servers["convmem"] = ex_convmem
+    with open(dest, "w") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    print("merged")
+PY
+)
+        case "$claude_merge" in
+          merged)
+            echo "  [deploy] $CLAUDE_JSON (merged convmem into top-level mcpServers)"
+            DEPLOY_REPORT+="  - Merged convmem into ~/.claude.json (user scope, additive)\n"
+            ;;
+          skip)
+            echo "  [skip]   $CLAUDE_JSON already has convmem"
+            DEPLOY_REPORT+="  - ~/.claude.json already has convmem\n"
+            ;;
+          no_dest)
+            echo "  [warn]   $CLAUDE_JSON not found — run \`claude\` once, then re-deploy"
+            SKIPPED+="  - Claude MCP (no ~/.claude.json; CLI add-json failed)\n"
+            ;;
+          *)
+            echo "  [warn]   Could not merge $CLAUDE_JSON — run \`claude mcp add-json convmem <json> -s user\` manually"
+            SKIPPED+="  - Claude MCP (merge failed)\n"
+            ;;
+        esac
+      fi
+    fi
+  elif [ -f "$CLAUDE_JSON" ]; then
+    # No claude binary but ~/.claude.json exists — JSON merge is the only path.
+    claude_merge=$(python3 - <<'PY' "$CLAUDE_JSON" "$(pwd)/config/claude-mcp.json.example"
+import json, sys
+from pathlib import Path
+
+dest = Path(sys.argv[1])
+src = Path(sys.argv[2])
+with open(src) as f:
+    ex_convmem = json.load(f)["mcpServers"]["convmem"]
+try:
+    with open(dest) as f:
+        cfg = json.load(f)
+except (OSError, json.JSONDecodeError):
+    print("parse_error")
+    sys.exit(0)
+if not isinstance(cfg, dict):
+    print("parse_error")
+    sys.exit(0)
+servers = cfg.get("mcpServers")
+if not isinstance(servers, dict):
+    servers = {}
+    cfg["mcpServers"] = servers
+if "convmem" in servers:
+    print("skip")
+else:
+    servers["convmem"] = ex_convmem
+    with open(dest, "w") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    print("merged")
+PY
+)
+    case "$claude_merge" in
+      merged)
+        echo "  [deploy] $CLAUDE_JSON (merged convmem into top-level mcpServers)"
+        DEPLOY_REPORT+="  - Merged convmem into ~/.claude.json (user scope, additive)\n"
+        ;;
+      skip)
+        echo "  [skip]   $CLAUDE_JSON already has convmem"
+        DEPLOY_REPORT+="  - ~/.claude.json already has convmem\n"
+        ;;
+      *)
+        echo "  [warn]   Could not merge $CLAUDE_JSON — add convmem to mcpServers manually"
+        SKIPPED+="  - Claude MCP (merge failed)\n"
+        ;;
+    esac
+  fi
+else
+  echo "  [skip]   Claude CLI not installed (no ~/.claude, no claude binary)"
+  SKIPPED+="  - Claude (not installed)\n"
+fi
+
 # --- opencode instructions + MCP ---
 # opencode.json (project-local) already references config/opencode-instructions-convmem.example.md.
 # The file is a repo artifact — no user-config copy needed for in-repo use.
@@ -735,6 +869,11 @@ echo "   Soak: start a NEW session in a non-convmem dir — first tool must be \
 echo ""
 echo "5. ChatGPT webUI (optional — ignored if unused):"
 echo "   Pack at docs/chatgpt-pack/custom-instructions.txt — paste into Custom instructions if needed."
+echo ""
+echo "6. Claude Code (~/.claude/):"
+echo "   Memory: ~/.claude/CLAUDE.md (user memory — always-on, loads every session)."
+echo "   MCP: user scope in ~/.claude.json — verify with: claude mcp list  (expect \`convmem\`)."
+echo "   Restart the claude session after deploy to reload memory + MCP."
 echo ""
 echo "=== Deploy report ==="
 echo ""
