@@ -16,9 +16,12 @@ from tests.incremental_jsonl_helpers import (
     install_fakes,
     isolated_env,
     kiro_record,
+    worker_run,
     write_codex_history_source,
     write_source,
 )
+
+CRASH_EXIT = 86
 
 
 def _duplicate_distill(_text, **_kwargs):
@@ -210,3 +213,51 @@ def test_codex_append_traces_build_calls_to_seam_only(
     assert all(offset >= 4 for offset in build_calls)
     assert append.counters.summarize == len(build_calls)
     assert append.reused_artifacts >= 1
+
+
+def test_corrupt_prepared_crash_replay_refuses_without_publish(tmp_path: Path) -> None:
+    boundary, env = isolated_env(tmp_path)
+    source = write_source(boundary.root, 2)
+    crashed = worker_run(
+        boundary, env, source, fault="after_prepared_output_publish"
+    )
+    assert crashed.returncode == CRASH_EXIT, crashed.stderr[-2000:]
+    prepared_files = [
+        path
+        for path in Path(boundary.layout["state"]).rglob("*.json")
+        if path.parent.name == "prepared"
+    ]
+    assert prepared_files
+    artifact = json.loads(prepared_files[0].read_text(encoding="utf-8"))
+    artifact["summary"] = "tampered-summary-without-digest-refresh"
+    prepared_files[0].write_text(json.dumps(artifact), encoding="utf-8")
+    replay = worker_run(boundary, env, source)
+    assert replay.returncode == 0, replay.stderr[-2000:]
+    payload = json.loads(replay.stdout)
+    assert payload["run"]["outcome"] == "prepared_artifact_corrupt"
+    assert payload["counters"]["summarize"] == 0
+    assert payload["counters"]["distill"] == 0
+
+
+def test_tampered_checkpoint_coverage_refuses_before_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    boundary, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    install_fakes(monkeypatch)
+    enable_incremental(boundary)
+    source = write_source(boundary.root, 2)
+    coordinator = IncrementalJsonlCoordinator.from_isolated_boundary(
+        boundary, source, enabled=True
+    )
+    assert coordinator.run().outcome == "committed"
+    checkpoint_paths = list(Path(boundary.layout["state"]).rglob("checkpoint.json"))
+    assert checkpoint_paths
+    checkpoint = json.loads(checkpoint_paths[0].read_text(encoding="utf-8"))
+    checkpoint["raw_line_coverage"]["coverage_digest"] = "0" * 64
+    checkpoint_paths[0].write_text(json.dumps(checkpoint), encoding="utf-8")
+    second = IncrementalJsonlCoordinator.from_isolated_boundary(
+        boundary, source, enabled=True
+    ).run()
+    assert second.outcome == "invalid_state"
+    assert second.counters.total == 0
