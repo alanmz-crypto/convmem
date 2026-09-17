@@ -16,7 +16,7 @@ authorizes a measured rebuild. Tail-only source I/O is not promised.
 
 | Slice | Proposed future deliverable | Exit evidence | Gate |
 |---|---|---|---|
-| S0 — contract inventory | Pin current-main Kiro and Codex parser, chunk, ID, provenance, dedupe, writer, and isolation behavior as fixed oracles. Incorporate Claude 3 memory evidence only when available and attributable to exact revisions. | Code-derived invariant map, focused parity fixtures, unchanged Kiro baseline. | Kiro reviews design first; no runtime change. |
+| S0 — contract inventory | Pin current-main Kiro and Codex parser, chunk, ID, provenance, dedupe, writer, and isolation behavior as fixed oracles. Carry Claude 3's completed, revision-paired memory result with its stated limits; do not rerun it for this correction. | Code-derived invariant map, focused parity fixtures, unchanged Kiro baseline. | Kiro reviews design first; no runtime change. |
 | S1 — Codex prefix adapters | Add separate complete-prefix views for history and rollout, including raw line ranges/outcomes and legacy message parity. No coordinator routing. | Full/partial/malformed-line and rotation fixtures; old `parse()` behavior unchanged. | Cursor after Execute. |
 | S2 — shared state contract | Version format eligibility, source IDs, fingerprints, complete keep-set generation, prepared replay, and physical projection-ID accounting without changing the Kiro route or default-off gate. | Existing Kiro hermetic suite plus fault/replay and source-scope tests on both collections. | Cursor after S1 review. |
 | S3 — isolated fresh-source route | Permit only positively eligible Codex formats under the existing disabled flag and `CONVMEM_INCREMENTAL_ROOT` isolation boundary; run append, rewrite, and crash fixtures. | Zero historical transform calls on verified append; complete-generation parity against clean rebuild; no live access. | Cursor after S2 review. |
@@ -54,15 +54,24 @@ and bytes read separately.
 | A11 | Run with flag absent/false, wrong format, forced/supersede reindex, missing isolated root, or path outside granted root. | Existing path or fail-closed refusal as specified; no newly created state and no Kiro behavior change. |
 | A12 | Simulate concurrent index attempt and watcher-style repeated invocation on one isolated source. | Source lock serializes state; one generation commits; second run is unchanged/replay, not a competing transform. |
 
-The memory check is a separate bounded, hermetic profile against the
-post-#305 baseline, including phase-level RSS and any Claude 3 result once
-available. It tests a hypothesis; it is not permission to change caps or
-claim that #286 fixes the historical OOM. The 900-second timeout remains a
-known limit: it bounds a hang's duration but cannot prevent an earlier OOM.
+Claude 3 completed a paired hermetic, sampled-RSS comparison of pre-#305
+`5c103aa` and post-#305 `ef4a7dd`. At 20,000 synthetic corpus units,
+exposure-probe growth changed from +527.5 to +2.6 MiB for a small trigger
+and +510.4 to +3.0 MiB for a larger trigger; at 5,000 units with a small
+trigger it changed from +43.5 to −2.4 MiB. This supports only that #305
+removed roughly 0.5 GiB of the targeted 20,000-unit probe spike. The run
+used fake providers, synthetic data, only two corpus sizes, a 6 GiB address-space
+ceiling because real Chroma reserves more than 2 GiB virtually, and
+real-Chroma upsert seeding. No harness artifact was committed. It neither
+reproduced the historical ~12.5 GiB OOM nor measured the live corpus; do
+not calculate a remaining OOM “gap” or close #268 from it. No further
+measurement is part of this plan update. The 900-second child timeout
+bounds a hang's duration but cannot prevent an earlier OOM.
 
 ## 3. Review and acceptance gates
 
-1. **Architecture review:** Kiro reviews the exact two-document revision,
+1. **Architecture review:** Kiro reviews the post-evidence commit of both
+   documents by exact SHA, superseding any review begun at `131ab425`,
    writes a PASS/FAIL with any required corrections, and checks the scope
    boundary against Arc Codex P2. A PASS is not Execute authorization.
 2. **Ryan decision:** Ryan chooses whether S0–S3 may proceed, whether S4 is
@@ -96,8 +105,9 @@ bounded below the cgroup cap.
 - **Adoption:** Which existing-source class, if any, can satisfy zero-call
   adoption? What one-time provider budget and source set would a fallback
   rebuild require? Neither is presumed approved.
-- **Memory:** What exact result does Claude 3's post-#305 hermetic comparison
-  establish, and does it warrant a separate #268 intervention?
+- **Memory:** Does the narrow ~0.5 GiB targeted-probe reduction at 20,000
+  synthetic units affect the priority of a separate #268 investigation?
+  This result does not quantify a remaining OOM gap.
 - **Tail I/O:** Is a trusted writer/mutation journal available? Without it,
   do not trade full-prefix authority for a matching-tail heuristic under this
   Execute plan.
@@ -110,8 +120,9 @@ plus this planning branch's two documents. Read the historical
 `watch.py`, `ingest.py`, both Codex adapters, `incremental_jsonl.py`, and
 `ingest_dedupe.py` at the target revision. Claude 2's advisory is in the
 2026-09-17 local Claude transcript; its assertions are incorporated here
-with the per-chunk `accepted_rows` correction. Claude 3's memory result is
-pending, not an established fact in this packet.
+with the per-chunk `accepted_rows` correction. Claude 3's completed paired
+hermetic measurement and its limits are recorded above; there is no
+committed harness artifact. Pin the new branch tip, not ancestor `131ab425`.
 
 **Requested verdict:** PASS or FAIL on whether S0–S3 can safely become a
 bounded future Execute brief, with explicit review of matching-tail rotation,

@@ -47,9 +47,19 @@ the **whole source** was wrong even at `92395e9`: the normal ingest path calls
 it once per chunk. It may still consume memory per chunk, but a proposed
 whole-file “units-in-flight K” fix has no supporting diagnosis. The later
 export-compaction and brief fixes addressed different demonstrated
-accumulators. Claude 3's paired post-#305 hermetic memory result is pending;
-neither #286 nor those fixes may be credited with resolving the historical
-~12.5 GiB watcher OOM without new evidence.
+accumulators. Claude 3's paired hermetic, sampled-RSS comparison of pre-#305
+`5c103aa` and post-#305 `ef4a7dd` measured exposure-probe growth at 20,000
+synthetic units: +527.5 to +2.6 MiB with a small trigger and +510.4 to
++3.0 MiB with a larger trigger. At 5,000 units with a small trigger, growth
+changed from +43.5 to −2.4 MiB. The narrow conclusion is that #305 removed
+roughly 0.5 GiB of the targeted probe spike at 20,000 units.
+
+That diagnostic used fake providers and synthetic data at only 5,000 and
+20,000 corpus units. Its address-space ceiling was 6 GiB because real Chroma
+reserves more than 2 GiB virtually; corpus seeding used real-Chroma upsert.
+There is no committed harness artifact. It did not reproduce the historical
+~12.5 GiB watcher OOM or measure the live corpus. Do not extrapolate a
+remaining OOM “gap,” claim #286 solves that OOM, or close #268 from this result.
 
 `watch.py` now has a 900-second child timeout. It limits a 51-minute hung child
 to roughly 15 minutes, while a child can still OOM before that deadline. The
@@ -215,11 +225,14 @@ claim for #286's transform-reuse slice.
    coordinator contract be amended first?
 4. Is zero-call adoption provable for any existing-source class? If not,
    retain `bootstrap_required` and seek a separate one-time rebuild decision.
-5. Does Claude 3's pending post-#305 hermetic measurement change the memory
-   risk or the priority of a separate #268 slice? Record its exact revision,
-   fixture, and limit before using it.
+5. Does Claude 3's now-available, synthetic post-#305 result change the
+   priority of a separate #268 memory investigation? Keep its exact revisions,
+   two corpus sizes, sampled-RSS method, and 6 GiB address-space limit in
+   view; it is not a live-OOM or remaining-gap measurement.
 
-**Review request:** Kiro should issue a written PASS/FAIL on this exact
-architecture revision and the companion execution plan, especially source
-authority, physical keep-set completeness, adoption, replay, and default-off
-isolation. Review does not grant Execute.
+**Review request:** Kiro should pin the post-evidence commit SHA and issue a
+written PASS/FAIL on that exact architecture and companion execution plan,
+especially source authority, physical keep-set completeness, adoption,
+replay, default-off isolation, and the bounded interpretation of Claude 3's
+measurement. A review of ancestor `131ab425` does not cover this correction.
+Review does not grant Execute.
