@@ -786,8 +786,8 @@ def _exposure_window_probe(row: dict, cfg: dict) -> tuple[bool, str]:
     a later note attached to a closed P0 must not re-fire the row.
     """
     from evidence import evidence_boost
+    import ledger
     from ledger import _dedupe_by_ledger_id, _kind
-    from ledger import build_ledger_index_from_metadata  # pylint: disable=no-name-in-module
     from unresolved import OPEN_STATUSES
 
     raw = str(row.get("last_verified") or "").strip()
@@ -808,9 +808,8 @@ def _exposure_window_probe(row: dict, cfg: dict) -> tuple[bool, str]:
             return None
 
     chroma_dir = cfg["index"]["chroma_dir"]
-    by_ledger_id, by_relates_to = build_ledger_index_from_metadata(
-        _iter_exposure_window_rows(chroma_dir)
-    )
+    build_index = getattr(ledger, "build_ledger_index_from_metadata")
+    by_ledger_id, by_relates_to = build_index(_iter_exposure_window_rows(chroma_dir))
 
     latest_close = None
     latest_lid = ""

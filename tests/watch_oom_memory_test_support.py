@@ -38,11 +38,12 @@ def memory_brief_worker_args(
     processed: Path,
     out: Path,
     *,
+    mode: str = "brief",
     register: Path | None = None,
 ) -> tuple[str, ...]:
     args: tuple[str, ...] = (
         "--mode",
-        "brief",
+        mode,
         "--chroma-dir",
         str(chroma),
         "--inventory",

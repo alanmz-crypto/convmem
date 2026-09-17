@@ -21,6 +21,7 @@ from tests.watch_oom_memory_test_support import (
     MIB,
     assert_bounded_brief_payload,
     assert_c5_negative_denies_default_brief,
+    memory_brief_worker_args,
     run_memory_worker,
 )
 
@@ -74,16 +75,7 @@ def test_c6_five_thousand_stays_under_ceiling(tmp_path: Path) -> None:
     out = tmp_path / "brief.md"
     baseline, _rc = _run_worker("--mode", "baseline")
     payload, rc = _run_worker(
-        "--mode",
-        "memory",
-        "--chroma-dir",
-        str(chroma),
-        "--inventory",
-        str(inventory),
-        "--processed",
-        str(processed),
-        "--out-path",
-        str(out),
+        *memory_brief_worker_args(chroma, inventory, processed, out, mode="memory")
     )
     assert_bounded_brief_payload(payload, rc, units=5_000)
     extra = payload["peak_rss_bytes"] - baseline["baseline_rss_bytes"]
@@ -105,16 +97,9 @@ def test_c6_five_thousand_stays_under_ceiling(tmp_path: Path) -> None:
         source_path=source2,
     )
     small, rc2 = _run_worker(
-        "--mode",
-        "memory",
-        "--chroma-dir",
-        str(chroma2),
-        "--inventory",
-        str(inv2),
-        "--processed",
-        str(proc2),
-        "--out-path",
-        str(tmp_path / "brief-2k.md"),
+        *memory_brief_worker_args(
+            chroma2, inv2, proc2, tmp_path / "brief-2k.md", mode="memory"
+        )
     )
     assert rc2 == 0
     delta = abs(payload["peak_rss_bytes"] - small["peak_rss_bytes"])
@@ -145,16 +130,7 @@ def test_c6_memory_curve_and_envelope_delta(tmp_path: Path) -> None:
         )
         out = tmp_path / f"brief-{n}.md"
         payload, rc = _run_worker(
-            "--mode",
-            "memory",
-            "--chroma-dir",
-            str(chroma),
-            "--inventory",
-            str(inventory),
-            "--processed",
-            str(processed),
-            "--out-path",
-            str(out),
+            *memory_brief_worker_args(chroma, inventory, processed, out, mode="memory")
         )
         assert rc == 0, payload
         assert payload["denied_paths"] == []
