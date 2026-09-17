@@ -1,5 +1,7 @@
 """S0 contract inventory — parity oracles pinned before Codex adapter work."""
 
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import json
@@ -16,7 +18,7 @@ from incremental_jsonl import (
     decide_eligibility,
     compute_transform_fingerprint,
 )
-from tests.incremental_jsonl_helpers import kiro_record, write_source
+from tests.incremental_jsonl_helpers import write_source
 
 
 def test_kiro_is_only_default_eligible_format() -> None:
@@ -26,7 +28,17 @@ def test_kiro_is_only_default_eligible_format() -> None:
 
 
 def test_decide_eligibility_oracle_table() -> None:
-    assert decide_eligibility(enabled=False, detected_format=ELIGIBLE_FORMAT, path_key="/x", processed={}, chroma_row_count=0, checkpoint=None) == "disabled"
+    assert (
+        decide_eligibility(
+            enabled=False,
+            detected_format=ELIGIBLE_FORMAT,
+            path_key="/x",
+            processed={},
+            chroma_row_count=0,
+            checkpoint=None,
+        )
+        == "disabled"
+    )
     assert (
         decide_eligibility(
             enabled=True,

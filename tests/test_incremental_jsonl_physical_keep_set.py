@@ -100,7 +100,7 @@ def test_exact_dedupe_matched_id_retained_in_checkpoint(
     checkpoint = IncrementalJsonlCoordinator.from_isolated_boundary(
         boundary, source, enabled=True, chunk_size=2, overlap=0
     ).checkpoint()
-    physical_summaries, physical_units = _physical_ids(
+    _physical_summaries, physical_units = _physical_ids(
         IncrementalJsonlCoordinator.from_isolated_boundary(
             boundary, source, enabled=True, chunk_size=2, overlap=0
         )
