@@ -34,8 +34,14 @@ cross-arc snapshot and the linked arc brief below.
   `files_processed=0` with **exit 0** for any file no adapter recognizes, and a
   402/401 provider refusal ground through every remaining chunk with 15s of
   retry sleep each — the real cause of the 900s watch timeouts; both now fail
-  loudly. Branch `fix/2026-09-17-watch-skip-hash-parity`, **`READY_FOR_PR`**,
-  pushed, no PR opened (PR Steward's lane). (3) **There is no Claude Code
+  loudly. Branch `fix/2026-09-17-watch-skip-hash-parity`,
+  **`BLOCKED_ON_RYAN`**, pushed, no PR opened. **The branch is red: 53
+  failed / 2483 passed, vs main's 2 failed / 108 passed on the same
+  files.** Not a logic regression — R2b binds an authority-content digest
+  over governed modules, so any `ingest.py` / `convmem.py` edit
+  invalidates it, and a governed Chroma ctor site shifted
+  `convmem.py:640` -> `:655`. The exact two-step rebind is in the handoff
+  doc; it needs the R2b lane or Ryan, not self-attestation by the author. (3) **There is no Claude Code
   adapter**, so the Track A step `CLAUDE.md` tells every Claude session to run
   has been ingesting nothing; resume from
   [`CURSOR-2026-09-17-claude-transcript-adapter-handoff.md`](CURSOR-2026-09-17-claude-transcript-adapter-handoff.md),
