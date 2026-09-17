@@ -434,7 +434,9 @@ class IncrementalJsonlCoordinator:
         self.path_key = str(self.source)
         detected_format = detect_format(self.source)
         self.format_spec: IncrementalFormatSpec | None = get_format_spec(detected_format)
-        self.routed_formats = KIRO_ROUTE_FORMATS
+        self.routed_formats = routed_formats(
+            isolated_codex=bool(os.environ.get("CONVMEM_INCREMENTAL_ROOT"))
+        )
         if self.format_spec is None:
             self.format_spec = get_format_spec(ELIGIBLE_FORMAT)
         self.source_id = source_state_id(
@@ -1564,7 +1566,10 @@ def maybe_route_incremental(
     settings = incremental_jsonl_settings(cfg)
     if not settings.enabled:
         return None
-    if detected_format not in KIRO_ROUTE_FORMATS:
+    allowed = routed_formats(
+        isolated_codex=bool(os.environ.get("CONVMEM_INCREMENTAL_ROOT"))
+    )
+    if detected_format not in allowed:
         return None
     if os.environ.get("CONVMEM_INCREMENTAL_ROOT"):
         boundary = IsolationBoundary.from_environment()
