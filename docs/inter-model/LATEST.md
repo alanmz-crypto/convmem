@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-14
+**Updated:** 2026-09-17
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,7 +9,21 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #268 — exposure-window probe plan:** PR #303
+- **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
+  post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
+  `ef4a7dd…` on 2026-09-17 (Copilot audit + Kiro review + Claude advisory PASS on
+  reviewed tip `ee97911`). The standing exposure-window probe now reads the
+  projected ten-field metadata iterator on `main`. **Next action:** Cursor runs
+  the plan §9.7 hermetic end-to-end `ingest.index(force_file=...)` memory-floor
+  comparison of merged `main` vs baseline `5c103aa` — **requires a Ryan Execute
+  grant to start.** Spec ready in
+  [`CURSOR-2026-09-17-exposure-probe-postmerge-measurement-handoff.md`](CURSOR-2026-09-17-exposure-probe-postmerge-measurement-handoff.md);
+  context in
+  [`KIRO-2026-09-17-exposure-probe-postmerge-handoff.md`](KIRO-2026-09-17-exposure-probe-postmerge-handoff.md).
+  **Live 12.5 GiB watcher OOM remains OPEN; do not declare #268 closed.** No
+  watcher/config/exclusion change, production access, or Arc Codex P2
+  progression without that evidence (§9.8, Ryan only).
+- **Trapdoor Hunt / issue #268 — exposure-window probe plan (superseded):** PR #303
   squash-merged as `5c103aa…` after Copilot and Kiro PASS, replacing the main
   brief scans with one projected stream. A post-merge hermetic diagnostic
   confirmed an approximately 2x reduction at 58,825 units but isolated the
