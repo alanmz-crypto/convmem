@@ -19,6 +19,7 @@ from ingest import (
     ProviderUnavailableError,
     UnsupportedSourceError,
     _provider_fatal,
+    build_chunk_artifact,
     index,
 )
 
@@ -71,3 +72,45 @@ class UnsupportedSourceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AbortOnProviderRefusalTests(unittest.TestCase):
+    """build_chunk_artifact performs no Chroma writes, so aborting there is safe."""
+
+    CHUNK = {
+        "messages": [{"role": "user", "content": "hello", "timestamp": None}],
+        "start_offset": 0,
+        "end_offset": 0,
+    }
+    MODELS = {
+        "summarize_model": "deepseek-v4-flash",
+        "distill_model": "deepseek-v4-flash",
+        "embed_model": "nomic-embed-text:latest",
+        "ollama_host": "http://localhost:11434",
+    }
+
+    def _build(self):
+        return build_chunk_artifact(
+            chunk=self.CHUNK,
+            path="/tmp/session.jsonl",
+            path_key="/tmp/session.jsonl",
+            models=self.MODELS,
+            tool="codex",
+            chunk_size=60,
+            overlap=10,
+            min_confidence=0.6,
+            verbose=False,
+            retry_sleep=False,
+        )
+
+    def test_billing_refusal_aborts_immediately(self):
+        with mock.patch("ingest.summarize", side_effect=_http_error(402)) as sm:
+            with self.assertRaises(ProviderUnavailableError) as ctx:
+                self._build()
+        self.assertEqual(sm.call_count, 1, "must not retry a doomed call")
+        self.assertIn("402", str(ctx.exception))
+
+    def test_server_error_still_retries_then_gives_up_quietly(self):
+        with mock.patch("ingest.summarize", side_effect=_http_error(503)) as sm:
+            self.assertIsNone(self._build())
+        self.assertGreater(sm.call_count, 1, "5xx stays retryable")
