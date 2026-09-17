@@ -582,12 +582,15 @@ class _FakeUnitStore:
 class ExposureWindowProbeTests(unittest.TestCase):
     """P0-close probe: due when a critical/high observation closed after last_verified."""
 
-    CFG = {"index": {"chroma_dir": "/tmp/unused"}, "models": {}}
     ROW = {"id": "exposure-window-tracking", "status": "open", "last_verified": "2026-07-01"}
 
     def _probe(self, metas: list[dict]) -> tuple[bool, str]:
-        with patch("doctor.open_readonly_unit_store", return_value=_FakeUnitStore(metas)):
-            return _exposure_window_probe(dict(self.ROW), self.CFG)
+        from tests.watch_oom_exposure_hermetic import exposure_cfg, write_probe_chroma
+
+        with tempfile.TemporaryDirectory() as td:
+            chroma = Path(td) / "chroma"
+            write_probe_chroma(chroma, [dict(m) for m in metas])
+            return _exposure_window_probe(dict(self.ROW), exposure_cfg(chroma))
 
     @staticmethod
     def _obs(lid: str, severity: str, ts: str, **extra) -> dict:

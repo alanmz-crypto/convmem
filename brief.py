@@ -173,6 +173,22 @@ BRIEF_LEDGER_GRAPH_KEYS = (
     "title",
     "summary",
 )
+_EXPOSURE_WINDOW_METADATA_KEY_SET = frozenset(
+    {
+        "ledger_id",
+        "ledger_kind",
+        "type",
+        "relates_to",
+        "timestamp",
+        "result",
+        "verification_result",
+        "severity",
+        "superseded",
+    }
+)
+EXPOSURE_WINDOW_METADATA_KEYS = tuple(
+    key for key in BRIEF_METADATA_KEYS if key in _EXPOSURE_WINDOW_METADATA_KEY_SET
+)
 BRIEF_PROJECTION_FIELDS = ("id",) + BRIEF_METADATA_KEYS + ("document",)
 _BRIEF_METADATA_KEYS = BRIEF_METADATA_KEYS
 _LEDGER_GRAPH_KEYS = BRIEF_LEDGER_GRAPH_KEYS
