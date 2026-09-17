@@ -781,10 +781,8 @@ class CharterRegisterConsistencyTests(unittest.TestCase):
 
     def test_shipped_charters_and_register_consistent(self):
         """The real charters + register must be in sync (no dangling/orphan)."""
-        import json as _json
-
         root = Path(__file__).resolve().parent.parent
-        rows = _json.loads(
+        rows = json.loads(
             (root / "docs" / "standing-checks-register.json").read_text(encoding="utf-8")
         )["checks"]
         due, detail = _charter_register_consistency_probe(rows, root)
