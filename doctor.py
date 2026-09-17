@@ -247,6 +247,40 @@ def _check_copilot_mcp() -> DoctorCheck:
     return DoctorCheck("mcp_copilot", True, "~/.copilot/mcp-config.json has convmem")
 
 
+def _check_claude_mcp() -> DoctorCheck:
+    """Optional: only fail when Claude Code is installed but MCP is unwired.
+
+    convmem may live in top-level ``mcpServers`` (what ``-s user`` writes) or under
+    a ``projects.<path>.mcpServers`` entry (project scope); either passes.
+    """
+    claude_home = Path("~/.claude").expanduser()
+    claude_json = Path("~/.claude.json").expanduser()
+    has_binary = shutil.which("claude") is not None
+    if not has_binary and not claude_home.is_dir():
+        return DoctorCheck("mcp_claude", True, "Claude CLI not installed (skipped)")
+    if not claude_json.is_file():
+        return DoctorCheck("mcp_claude", False, "missing ~/.claude.json")
+    try:
+        data = json.loads(claude_json.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return DoctorCheck("mcp_claude", False, f".claude.json unreadable: {exc}")
+    servers = data.get("mcpServers") if isinstance(data, dict) else None
+    found = isinstance(servers, dict) and "convmem" in servers
+    if not found and isinstance(data, dict) and isinstance(data.get("projects"), dict):
+        for proj in data["projects"].values():
+            psrv = proj.get("mcpServers") if isinstance(proj, dict) else None
+            if isinstance(psrv, dict) and "convmem" in psrv:
+                found = True
+                break
+    if not found:
+        return DoctorCheck(
+            "mcp_claude",
+            False,
+            "~/.claude.json has no convmem MCP server (run deploy-agent-protocol.sh)",
+        )
+    return DoctorCheck("mcp_claude", True, "~/.claude.json has convmem")
+
+
 def _check_restic() -> DoctorCheck:
     """Local restic health via backup_workflows.check_local_health."""
     from backup_workflows import check_local_health, outcome_to_doctor_fields
@@ -1469,6 +1503,7 @@ def run_doctor(
         _check_mcp_wiring(),
         _check_continue_mcp(),
         _check_copilot_mcp(),
+        _check_claude_mcp(),
         _check_verify_script(run=run_verify),
     ]
     if v1:

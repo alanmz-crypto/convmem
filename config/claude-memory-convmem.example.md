@@ -1,15 +1,8 @@
 # convmem — Local knowledge corpus
 
-You have **shell** (`convmem` CLI) and **MCP** (convmem tools via `~/.copilot/mcp-config.json`) on this machine.
+You have **shell** (`convmem` CLI) and **MCP** (convmem tools via user-scope `~/.claude.json`) on this machine.
 
-**HARD RULE — before answering anything** (including directory listing, git, README, or docker):
-
-1. Run `convmem doctor` alone first. Wait for exit 0.
-2. Then `convmem brief --stdout-only`.
-3. Then `convmem unresolved`.
-4. Only then use `convmem "search"` / `convmem ask` / MCP `search_fast` / `ask` for history questions.
-
-Do **not** start with `ls`, `git status`, README, or folder survey before steps 1–3 complete.
+## If you have shell access (Tier A)
 
 
 1. **`convmem doctor`** — the only tool call in the first batch. Wait for exit 0 before
@@ -192,12 +185,51 @@ convmem record --approve-last
 Do not run convmem record -i directly — Ryan runs CLI commands. **Kiro:** add `--signer kiro-review` on `--approve-last` when signing durable facts.
 
 
-## Copilot CLI — handoff vs record
+## Handoff and resume contract
 
-- Handoff / **ingest your chat** → `convmem index --file` on **this session's** `~/.copilot/session-state/<uuid>/events.jsonl` (Track A). **No record block** unless Ryan asks.
-- Do **not** create new markdown logs unless Ryan requested a file.
+
+**Chat is evidence; handoff docs are the contract.** Do not rely on conversation search to resume work. Use **LATEST → handoff doc → STATUS → git** (local discovery); cloud execution needs pushed branches + handoff on `origin`.
+
+### Picking up work (session start, after Tier A)
+
+When cwd is `~/Projects/convmem` or Ryan says **resume** / **what's in flight** / **continue**:
+
+1. Read top entries in `docs/inter-model/LATEST.md` — look for `AUTHORIZED`, `not yet implemented`, `BLOCKED_ON_RYAN`, `local-only`, `unpushed`.
+2. Glob recent `docs/inter-model/*-handoff.md` (same week first).
+3. If an arc applies: read matching `docs/plans/STATUS-<slug>.md` (Section 4 incomplete + Section 10 Update Log).
+4. `git fetch origin && git branch -a` — check unpushed local commits (invisible to cloud).
+5. `convmem doctor` — heed `arc_staleness` warns when present (advisory).
+6. Point Ryan at the handoff path; state **resume state** from the packet (`NOT_STARTED` | `IN_PROGRESS` | `BLOCKED_ON_RYAN` | `READY_FOR_PR`).
+
+**Do not** start implementation from chat memory alone when a handoff doc exists.
+
+### Leaving work (authorized or mid-flight)
+
+When Ryan **authorizes** implementation for another lane, or you **pause** authorized work before done:
+
+1. Write `docs/inter-model/<LANE>-YYYY-MM-DD-<slug>-handoff.md` using `docs/inter-model/HANDOFF-TEMPLATE.md` (copy structure; fill every section).
+2. Add one bullet to **top** of `docs/inter-model/LATEST.md` under "Recently merged / settled": `AUTHORIZED (not yet implemented)` or current resume state + link.
+3. Update arc `STATUS-*.md` Update Log (one line) if the arc has a STATUS file.
+4. Push branch immediately; note SHA and flag `local-only` if not pushed.
+5. Track A: nudge `convmem index --file` on this session transcript.
+
+**Required handoff sections:** What to build · Integration point (file + line) · Spec/algorithm · Output contract · What NOT to build · Test expectations · Acceptance criteria · Branch convention · Resume state · Ryan GATE (if any).
+
+### When handoff markdown is allowed
+
+| Allowed | Not allowed |
+|---------|-------------|
+| Ryan-authorized cross-lane implementation brief | Ad-hoc `logs/*.md` audit summaries |
+| Pausing authorized Execute with resume packet | Chat-only "I'll remember" with no LATEST line |
+| Kiro/Codex design → Cursor Execute (charter) | Scope expansion beyond authorization |
+
+
+## Claude — handoff vs record
+
+- Handoff / **ingest your chat** → `convmem index --file` on **this session's** Claude transcript under `~/.claude/projects/<project>/*.jsonl` (Track A). **No record block** unless Ryan asks.
+- Do **not** create new `logs/*.md` or handoff markdown unless Ryan requested a file.
 - `convmem record` **only** when Ryan says **record block**, **closing**, or **end session**.
-- Resume: `copilot --resume <session-id>`. Optional specialist: `copilot --agent convmem`.
+- Resume: `claude --resume <session-id>`.
 
 ## Builder reference
 
@@ -332,7 +364,3 @@ Done: result, verification, largest material trade-off/risk, branch/push; Track 
 
 
 Full cheat sheet: `docs/MODEL-WORKFLOW.md`
-
-## Verify shipped work (Codex / DeepSeek)
-
-Independent checklist: `docs/CODEX-DEEPSEEK-VERIFY.md` — pytest, smoke scripts, MCP spot-checks. Do not trust prior chat claims without running it.
