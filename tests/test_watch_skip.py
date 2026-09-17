@@ -33,6 +33,37 @@ class WatchSkipReasonTests(unittest.TestCase):
             reason = watch_skip_reason(path, processed=processed)
             self.assertIsNone(reason)
 
+    def test_content_indexed_under_other_path_skips(self):
+        """A duplicate tree (Copilot audit copy, worktree) records this exact
+        content under its own path. ingest gates on the content hash alone, so
+        watch must not spawn a subprocess that can only no-op."""
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "README.md"
+            path.write_text("# doc\n")
+            path_str = str(path.resolve())
+            file_hash = sha256_file(str(path))
+            processed = {
+                "stale-hash-for-this-path": {"path": path_str},
+                file_hash: {"path": "/elsewhere/audit-copy/README.md"},
+            }
+            self.assertEqual(
+                watch_skip_reason(path, processed=processed), "unchanged"
+            )
+
+    def test_content_indexed_under_other_path_respects_exclusion(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "README.md"
+            path.write_text("# doc\n")
+            path_str = str(path.resolve())
+            file_hash = sha256_file(str(path))
+            processed = {
+                "stale-hash-for-this-path": {"path": path_str},
+                file_hash: {"path": "/elsewhere/copy.md", "excluded": True},
+            }
+            self.assertEqual(
+                watch_skip_reason(path, processed=processed), "excluded"
+            )
+
     def test_hash_only_entry_needs_one_hash(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "sess.jsonl"

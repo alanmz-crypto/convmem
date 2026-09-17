@@ -510,7 +510,12 @@ def watch_skip_reason(
                 return "unreadable"
         if file_hash == path_known_hash:
             return "unchanged"
-        return None
+        # Fall through rather than returning None. This exact content may
+        # already be indexed under a different path (Copilot audit copies,
+        # worktrees, backups all duplicate repo trees). ingest gates on the
+        # content hash alone, so short-circuiting here spawns an index
+        # subprocess that immediately no-ops -- ~1,900 wasted spawns/day
+        # observed on docs/inter-model/*.md.
 
     if file_hash is None:
         try:
