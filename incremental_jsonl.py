@@ -20,8 +20,14 @@ from pathlib import Path
 from typing import Any, Callable
 
 from adapters.detect import detect_format, get_parser
-from adapters.kiro_session_jsonl import parse_complete_prefix
 from chroma_store import SUMMARIES, UNITS
+from incremental_jsonl_formats import (
+    IncrementalFormatSpec,
+    KIRO_ROUTE_FORMATS,
+    get_format_spec,
+    routed_formats,
+    source_state_id as format_source_state_id,
+)
 from config import IncrementalJsonlConfigError, incremental_jsonl_settings, load_config
 from incremental_jsonl_isolation import (
     IsolationBoundary,
@@ -206,8 +212,8 @@ def _atomic_bytes(path: Path, payload: bytes) -> None:
     _fsync_dir(path.parent)
 
 
-def source_state_id(canonical_path: str) -> str:
-    return _sha(f"jsonl_kiro_session:{canonical_path}")
+def source_state_id(canonical_path: str, *, format_id: str = ELIGIBLE_FORMAT) -> str:
+    return format_source_state_id(format_id, canonical_path)
 
 
 def frontier_start(prior_count: int, chunk_size: int, overlap: int) -> int:
@@ -227,10 +233,12 @@ def compute_transform_fingerprint(
     models: dict,
     embed_dimension: int,
     implementation_revision: str,
+    adapter_format: str = ELIGIBLE_FORMAT,
+    adapter_contract_version: str = ADAPTER_CONTRACT_VERSION,
 ) -> str:
     payload = {
-        "adapter_format": ELIGIBLE_FORMAT,
-        "adapter_contract_version": ADAPTER_CONTRACT_VERSION,
+        "adapter_format": adapter_format,
+        "adapter_contract_version": adapter_contract_version,
         "chunk_size": chunk_size,
         "overlap": overlap,
         "rendering_limits": {"summary_max_chars": 8000, "distill_max_chars": 8000},
@@ -263,7 +271,12 @@ def _read_json(path: Path) -> dict | None:
     return payload if isinstance(payload, dict) else None
 
 
-def validate_checkpoint(payload: dict, *, source_path: str | None = None) -> dict:
+def validate_checkpoint(
+    payload: dict,
+    *,
+    source_path: str | None = None,
+    adapter_format: str | None = None,
+) -> dict:
     if not isinstance(payload, dict):
         raise IncrementalJsonlError("invalid_state", "checkpoint is not an object")
     if payload.get("version") != CHECKPOINT_VERSION:
@@ -271,7 +284,8 @@ def validate_checkpoint(payload: dict, *, source_path: str | None = None) -> dic
     missing = [name for name in REQUIRED_CHECKPOINT_FIELDS if name not in payload]
     if missing:
         raise IncrementalJsonlError("invalid_state", f"checkpoint missing {missing}")
-    if payload.get("adapter_format") != ELIGIBLE_FORMAT:
+    expected_format = adapter_format or ELIGIBLE_FORMAT
+    if payload.get("adapter_format") != expected_format:
         raise IncrementalJsonlError("invalid_state", "checkpoint adapter mismatch")
     if source_path is not None and payload.get("source_path") != source_path:
         raise IncrementalJsonlError("invalid_state", "cross-source checkpoint")
@@ -321,11 +335,13 @@ def decide_eligibility(
     checkpoint: dict | None,
     force_reindex: bool = False,
     supersede_on_reindex: bool = False,
+    eligible_formats: frozenset[str] | None = None,
 ) -> str:
     """Pure eligibility decision. Does not construct checkpoint machinery."""
+    allowed = eligible_formats or KIRO_ROUTE_FORMATS
     if not enabled:
         return "disabled"
-    if detected_format != ELIGIBLE_FORMAT:
+    if detected_format not in allowed:
         return "ineligible_format"
     if force_reindex or supersede_on_reindex:
         return "incremental_force_unsupported"
@@ -334,7 +350,11 @@ def decide_eligibility(
             return "bootstrap_required"
         return "eligible_new_source"
     try:
-        validate_checkpoint(checkpoint, source_path=path_key)
+        validate_checkpoint(
+            checkpoint,
+            source_path=path_key,
+            adapter_format=detected_format,
+        )
     except IncrementalJsonlError:
         return "invalid_state"
     return "eligible_checkpointed_source"
@@ -412,7 +432,14 @@ class IncrementalJsonlCoordinator:
         )
         self.models = models or dict(self.cfg.get("models") or {})
         self.path_key = str(self.source)
-        self.source_id = source_state_id(self.path_key)
+        detected_format = detect_format(self.source)
+        self.format_spec: IncrementalFormatSpec | None = get_format_spec(detected_format)
+        self.routed_formats = KIRO_ROUTE_FORMATS
+        if self.format_spec is None:
+            self.format_spec = get_format_spec(ELIGIBLE_FORMAT)
+        self.source_id = source_state_id(
+            self.path_key, format_id=self.format_spec.format_id
+        )
         state_root = boundary.resolve_mutable(settings.state_dir, label="incremental state")
         if state_root.exists() and not stat.S_ISDIR(state_root.stat().st_mode):
             raise IncrementalJsonlConfigError("invalid_state_dir", "state_dir is not a directory")
@@ -452,6 +479,8 @@ class IncrementalJsonlCoordinator:
             models=self.models,
             embed_dimension=self.embed_dimension,
             implementation_revision=str(revision),
+            adapter_format=self.format_spec.format_id,
+            adapter_contract_version=self.format_spec.adapter_contract_version,
         )
         self.last_result: IncrementalRunResult | None = None
         self._lock: SourceAdvisoryLock | None = None
@@ -493,7 +522,11 @@ class IncrementalJsonlCoordinator:
         payload = _read_json(self.paths["checkpoint"])
         if payload is None:
             return None
-        return validate_checkpoint(payload, source_path=self.path_key)
+        return validate_checkpoint(
+            payload,
+            source_path=self.path_key,
+            adapter_format=self.format_spec.format_id,
+        )
 
     def _session(self):
         from chroma_write_store import production_chroma_write_session
@@ -521,13 +554,20 @@ class IncrementalJsonlCoordinator:
         return load_processed(str(self.cfg["index"]["processed_log"]))
 
     def _capture(self, transaction_id: str) -> dict:
+        detected = detect_format(self.source)
+        if detected not in self.routed_formats:
+            raise IsolationViolation(
+                f"incremental route does not support format {detected}"
+            )
         parser = get_parser(self.source)
-        if detect_format(self.source) != ELIGIBLE_FORMAT:
-            raise IsolationViolation("incremental route supports only jsonl_kiro_session")
-        if parser is None or parser.__module__ != "adapters.kiro_session_jsonl":
-            raise IsolationViolation("normal adapter dispatch did not select Kiro JSONL")
+        if (
+            self.format_spec is None
+            or parser is None
+            or parser.__module__ != self.format_spec.adapter_module
+        ):
+            raise IsolationViolation("normal adapter dispatch did not select expected JSONL")
         snapshot_dir = self.paths["snapshots"] / transaction_id
-        snapshot_path = snapshot_dir / "messages.jsonl"
+        snapshot_path = snapshot_dir / self.format_spec.snapshot_basename
 
         def prepare() -> None:
             snapshot_dir.mkdir(parents=True, exist_ok=True)
@@ -548,12 +588,16 @@ class IncrementalJsonlCoordinator:
 
         def publish() -> None:
             _atomic_bytes(snapshot_path, prefix)
-            sibling = self.source.parent / "session.json"
-            if sibling.is_file() and not sibling.is_symlink():
-                _atomic_bytes(snapshot_dir / "session.json", sibling.read_bytes())
+            if self.format_spec.session_meta_path:
+                sibling = self.source.parent / self.format_spec.session_meta_path
+                if sibling.is_file() and not sibling.is_symlink():
+                    _atomic_bytes(
+                        snapshot_dir / self.format_spec.session_meta_path,
+                        sibling.read_bytes(),
+                    )
 
         self._transition("source_snapshot_publish", publish)
-        view = parse_complete_prefix(str(snapshot_path), raw=prefix)
+        view = self.format_spec.parse_complete_prefix(str(snapshot_path), raw=prefix)
         if len(view.messages) != len(view.byte_ranges):
             raise IncrementalJsonlError("invalid_state", "adapter output/byte-range disagreement")
         snapshot = {
@@ -590,12 +634,14 @@ class IncrementalJsonlCoordinator:
                 raise SourceCaptureError("source_truncated", "live size below selected boundary")
             if _sha(raw[: snapshot["complete_boundary"]]) != snapshot["prefix_sha256"]:
                 raise SourceCaptureError("validated_prefix_mutated", "selected prefix changed")
-            sibling = self.source.parent / "session.json"
-            digest = (
-                _sha(sibling.read_bytes())
-                if sibling.is_file() and not sibling.is_symlink()
-                else None
-            )
+            digest = None
+            if self.format_spec.session_meta_path:
+                sibling = self.source.parent / self.format_spec.session_meta_path
+                digest = (
+                    _sha(sibling.read_bytes())
+                    if sibling.is_file() and not sibling.is_symlink()
+                    else None
+                )
             if digest != snapshot["session_meta_digest"]:
                 raise SourceCaptureError("source_identity_changed", "session metadata changed")
 
@@ -692,7 +738,7 @@ class IncrementalJsonlCoordinator:
                 path=self.path_key,
                 path_key=self.path_key,
                 models=self.models,
-                tool="kiro",
+                tool=self.format_spec.tool,
                 chunk_size=self.chunk_size,
                 overlap=self.overlap,
                 min_confidence=self.min_confidence,
@@ -777,17 +823,19 @@ class IncrementalJsonlCoordinator:
     def _apply_prepared(
         self,
         prepared: list[dict],
-        keep_summaries: set[str],
-        keep_units: set[str],
-    ) -> tuple[int, int, list]:
+    ) -> tuple[int, int, list, set[str], set[str]]:
         from ingest_dedupe import evaluate_ingest_batch
         from provenance_binding import provenance_identity
 
         chunks = 0
         units = 0
         events: list = []
+        keep_summaries: set[str] = set()
+        keep_units: set[str] = set()
         with self._session() as session:
             for artifact in prepared:
+                keep_summaries.add(str(artifact["doc_id"]))
+
                 def summary_write(current=artifact) -> None:
                     session.store.add_summary(
                         current["doc_id"],
@@ -831,10 +879,14 @@ class IncrementalJsonlCoordinator:
                             ).hexdigest()
                             projection_unit["id"] = projection_id
                             projection_meta["id"] = projection_id
+                        physical_id = str(projection_unit["id"])
                         session.store.add_unit(
-                            projection_unit["id"], doc, unit_embedding, projection_meta
+                            physical_id, doc, unit_embedding, projection_meta
                         )
+                        keep_units.add(physical_id)
                         written += 1
+                    for suppression in dedupe.exact_suppressions:
+                        keep_units.add(str(suppression["matched_id"]))
                     chunks += 1
                     units += written
 
@@ -857,7 +909,7 @@ class IncrementalJsonlCoordinator:
                 )
 
             self._transition("units_prune", prune_units)
-        return chunks, units, events
+        return chunks, units, events, keep_summaries, keep_units
 
     def _snapshot_before_images(self) -> dict:
         with self._session() as session:
@@ -1167,7 +1219,7 @@ class IncrementalJsonlCoordinator:
             outcome=outcome,
             mode=mode,
             fallback_reason=fallback,
-            adapter_format=ELIGIBLE_FORMAT,
+            adapter_format=self.format_spec.format_id,
             selected_boundary=int(snapshot["complete_boundary"]) if snapshot else 0,
             records=len(snapshot["messages"]) if snapshot else 0,
             frontier_record=0,
@@ -1194,20 +1246,16 @@ class IncrementalJsonlCoordinator:
         from ingest import _path_is_excluded
         from purge_locks import source_flock
 
-        keep_summaries = {item["doc_id"] for item in prepared}
-        keep_units = {row["id"] for item in prepared for row in item["units"]}
         generation = _sha(
-            "jsonl-kiro-generation-v1:"
+            "jsonl-incremental-generation-v1:"
             f"{self.source_id}:{snapshot['prefix_sha256']}:{snapshot['complete_boundary']}:"
             f"{self.transform_fingerprint}"
         )
-        candidate_ids = sorted(keep_summaries | keep_units)
         self._revalidate_live_prefix(snapshot)
         with source_flock(self.cfg, self.path_key):
             if _path_is_excluded(self._processed(), self.path_key):
                 return self._refusal("excluded", snapshot=snapshot)
             rollback = self._snapshot_before_images()
-            rollback["candidate_ids"] = candidate_ids
             self._write_rollback(rollback)
             self._write_transaction(
                 {
@@ -1218,19 +1266,25 @@ class IncrementalJsonlCoordinator:
                     "source_identity": self.source_id,
                     "generation": generation,
                     "prepared_keys": [item["cache_key"] for item in prepared],
-                    "candidate_ids": candidate_ids,
                     "generation_identity": snapshot["generation_identity"],
                     "complete_boundary": snapshot["complete_boundary"],
                     "prefix_sha256": snapshot["prefix_sha256"],
                     "session_meta_digest": snapshot["session_meta_digest"],
                 }
             )
-            chunks, units, events = self._apply_prepared(prepared, keep_summaries, keep_units)
+            chunks, units, events, keep_summaries, keep_units = self._apply_prepared(
+                prepared
+            )
+            candidate_ids = sorted(keep_summaries | keep_units)
+            rollback = _read_json(self.paths["rollback"])
+            if isinstance(rollback, dict):
+                rollback["candidate_ids"] = candidate_ids
+                self._write_rollback(rollback)
             self._revalidate_live_prefix(snapshot)
             checkpoint = {
                 "version": CHECKPOINT_VERSION,
                 "commit_state": "complete",
-                "adapter_format": ELIGIBLE_FORMAT,
+                "adapter_format": self.format_spec.format_id,
                 "source_identity": self.source_id,
                 "source_path": self.path_key,
                 "generation_identity": snapshot["generation_identity"],
@@ -1254,7 +1308,7 @@ class IncrementalJsonlCoordinator:
             outcome="committed" if committed else "excluded_after_checkpoint",
             mode=mode,
             fallback_reason=fallback,
-            adapter_format=ELIGIBLE_FORMAT,
+            adapter_format=self.format_spec.format_id,
             selected_boundary=snapshot["complete_boundary"],
             records=len(snapshot["messages"]),
             frontier_record=frontier,
@@ -1284,9 +1338,9 @@ class IncrementalJsonlCoordinator:
         if not snapshot_dirs:
             raise IncrementalJsonlError("recovery_unproven", "missing snapshot")
         snapshot_dir = Path(snapshot_dirs[0])
-        snapshot_path = snapshot_dir / "messages.jsonl"
+        snapshot_path = snapshot_dir / self.format_spec.snapshot_basename
         raw = snapshot_path.read_bytes()
-        view = parse_complete_prefix(str(snapshot_path), raw=raw)
+        view = self.format_spec.parse_complete_prefix(str(snapshot_path), raw=raw)
         snapshot = {
             "raw": raw,
             "complete_boundary": view.complete_boundary,
@@ -1357,7 +1411,7 @@ class IncrementalJsonlCoordinator:
         if not self.enabled:
             return self._refusal("disabled")
         detected = detect_format(self.source)
-        if detected != ELIGIBLE_FORMAT:
+        if detected not in self.routed_formats:
             return self._refusal("ineligible_format")
         if self.force_reindex or self.supersede_on_reindex:
             return self._refusal("incremental_force_unsupported")
@@ -1391,6 +1445,7 @@ class IncrementalJsonlCoordinator:
                 checkpoint=checkpoint,
                 force_reindex=self.force_reindex,
                 supersede_on_reindex=self.supersede_on_reindex,
+                eligible_formats=self.routed_formats,
             )
             if outcome in {"bootstrap_required", "invalid_state"}:
                 return self._refusal(outcome, snapshot=snapshot)
@@ -1413,7 +1468,7 @@ class IncrementalJsonlCoordinator:
                     outcome="unchanged",
                     mode="unchanged",
                     fallback_reason=None,
-                    adapter_format=ELIGIBLE_FORMAT,
+                    adapter_format=self.format_spec.format_id,
                     selected_boundary=snapshot["complete_boundary"],
                     records=len(snapshot["messages"]),
                     frontier_record=int(checkpoint.get("chunk_frontier") or 0),
@@ -1509,7 +1564,7 @@ def maybe_route_incremental(
     settings = incremental_jsonl_settings(cfg)
     if not settings.enabled:
         return None
-    if detected_format != ELIGIBLE_FORMAT:
+    if detected_format not in KIRO_ROUTE_FORMATS:
         return None
     if os.environ.get("CONVMEM_INCREMENTAL_ROOT"):
         boundary = IsolationBoundary.from_environment()
