@@ -243,6 +243,60 @@ Push immediately after each commit. Open PR when acceptance criteria pass.
 
 ---
 
+## BLOCKER on the branch above: R2b inventory rebind required
+
+`fix/2026-09-17-watch-skip-hash-parity` is **red and not mergeable as-is**.
+Full suite on the branch: **53 failed, 2483 passed**. On `main` the same nine
+files are **2 failed, 108 passed** (two pre-existing static-scan failures,
+`test_static_scan_matches_inventory_routing` and
+`test_static_scan_zero_legacy_production_factory_calls`).
+
+**Cause — not a logic regression.** R2b binds an authority-content identity
+over governed writer / proof / lease / route-entrypoint modules
+(`eval_corpus/r2b_v2/coverage/inventory.py:293`,
+`resolve_r2b_implementation_revision`). Editing `ingest.py` or `convmem.py` at
+all changes that digest:
+
+```
+committed code_revision : 07c20d9c940e9c29adf4b57ad55d88eed0fbf812
+computed from this tree : d04c2f4daa2a71862666fee0b55255cfe8142b7b
+```
+
+Separately, the 15-line insertion in `convmem.py`'s `index` command displaced a
+governed Chroma ctor site. The code at the new line is **byte-identical** to the
+old one; only its coordinate moved:
+
+```
+eval_corpus/r2b_v2/coverage/inventory.py:90
+  "governed_mutation_sinks": ("convmem.py:640",)   ->   ("convmem.py:655",)
+```
+
+**Remediation (two steps, in order):**
+
+1. Rebind the coordinate at `inventory.py:90` from `convmem.py:640` to
+   `convmem.py:655`.
+2. Regenerate the committed artifact:
+   `python3 -c "import sys; sys.path.insert(0,'.'); from eval_corpus.r2b_v2.coverage.inventory import write_v2_inventory_file; print(write_v2_inventory_file())"`
+   which rewrites `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json`.
+
+Then re-run the nine files; expect a return to main's 2-failure baseline.
+
+**Why this was not done here.** Regenerating an authority digest to match code
+the same session just wrote is an attestation action, and the harness refused
+it as a security-control modification. Git history shows the artifact is
+regenerated routinely alongside governed-module changes (`d14f8a6`, `ef4a7dd`,
+`5c103aa`, `a91bb28`, `8983a6f`), so this is expected maintenance rather than a
+gate breach — but it should be done by the R2b lane, or by Ryan, not
+self-attested by the author of the change.
+
+**Verification already done on the branch** (independent of the above): the
+watch re-spawn fix is confirmed live in production (49 spawns/hr to ~0, all 9
+affected files corrected, blast radius swept at 9/9), and the loud-failure
+fixes pass 8 focused tests plus 244 in the ingest/watch/processed/exclude
+sweep.
+
+---
+
 ## Related files
 
 | What | Path |
