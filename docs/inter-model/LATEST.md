@@ -24,6 +24,42 @@ cross-arc snapshot and the linked arc brief below.
   **Live 12.5 GiB watcher OOM remains OPEN; do not declare #268 closed.** No
   watcher/config/exclusion change, production access, or Arc Codex P2
   progression without that evidence (§9.8, Ryan only).
+- **Ingest cost + silent-failure correctives (2026-09-17, ad-hoc):** a Claude
+  session traced the DeepSeek spend and found two defects and one gap.
+  (1) `watch_skip_reason` short-circuited on a stale path hash and never reached
+  the content-hash check `ingest.py` actually gates on, so nine
+  `docs/inter-model/*.md` files whose content was already indexed under a
+  Copilot audit copy re-spawned index subprocesses ~1,900x/day; fixed and
+  verified live (49 spawns/hr to ~0). (2) `convmem index --file` reported
+  `files_processed=0` with **exit 0** for any file no adapter recognizes, and a
+  402/401 provider refusal ground through every remaining chunk with 15s of
+  retry sleep each — the real cause of the 900s watch timeouts; both now fail
+  loudly. Branch `fix/2026-09-17-watch-skip-hash-parity`, **`READY_FOR_PR`**,
+  pushed, no PR opened (PR Steward's lane). (3) **There is no Claude Code
+  adapter**, so the Track A step `CLAUDE.md` tells every Claude session to run
+  has been ingesting nothing; resume from
+  [`CURSOR-2026-09-17-claude-transcript-adapter-handoff.md`](CURSOR-2026-09-17-claude-transcript-adapter-handoff.md),
+  state `NOT_STARTED`, **`BLOCKED_ON_RYAN`** on two gates.
+  Live config changed under Ryan's direct instruction this session:
+  `~/.codex/history.jsonl` soft-excluded (it was 56% of the serving corpus and
+  94% of provider traffic) and its `[sources]` entry narrowed to
+  `~/.codex/sessions`. **Open Ryan decisions:** whether to purge the 44,770
+  units that file left behind, and whether `llm.py:45` should fall back locally
+  on provider failure rather than only on a missing key.
+- **Trapdoor Hunt / issue #268 — exposure-window probe plan:** PR #303
+  squash-merged as `5c103aa…` after Copilot and Kiro PASS, replacing the main
+  brief scans with one projected stream. A post-merge hermetic diagnostic
+  confirmed an approximately 2x reduction at 58,825 units but isolated the
+  remaining envelope-sized allocation in
+  `doctor._exposure_window_probe()`'s full `ReadonlyUnitStore` read. Kiro
+  returned unconditional PASS on the narrow projected-read plan at exact tip
+  `5672ee9`. The Cursor handoff is prepared but remains `BLOCKED_ON_RYAN`;
+  resume from
+  [`CURSOR-2026-09-15-watch-oom-bound-exposure-probe-execute-handoff.md`](CURSOR-2026-09-15-watch-oom-bound-exposure-probe-execute-handoff.md)
+  and the reviewed plan in
+  [`EXECUTION-watch-oom-bound-exposure-probe.md`](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).
+  No implementation, production access, watcher/config/exclusion change,
+  source re-inclusion, or Arc Codex P2 progression is authorized.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
   PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the
