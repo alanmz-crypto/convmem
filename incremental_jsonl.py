@@ -298,8 +298,10 @@ def _validate_raw_line_coverage(
             )
             for item in outcomes_raw
         ]
-    except (KeyError, TypeError, ValueError):
-        raise IncrementalJsonlError("invalid_state", "coverage outcomes malformed")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise IncrementalJsonlError(
+            "invalid_state", "coverage outcomes malformed"
+        ) from exc
     if not complete_line_outcomes_cover_prefix(outcomes, int(complete_boundary)):
         raise IncrementalJsonlError("invalid_state", "coverage outcomes incomplete")
     recomputed = serialize_raw_line_coverage(outcomes, prefix_sha256)
@@ -767,8 +769,10 @@ class IncrementalJsonlCoordinator:
         try:
             chunk_start = int(payload["chunk_start"])
             input_digest = str(payload["input_digest"])
-        except (KeyError, TypeError, ValueError):
-            raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared chunk metadata invalid")
+        except (KeyError, TypeError, ValueError) as exc:
+            raise IncrementalJsonlError(
+                "prepared_artifact_corrupt", "prepared chunk metadata invalid"
+            ) from exc
         if expected is not None:
             if chunk_start != int(expected["chunk_start"]):
                 raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared chunk_start mismatch")
@@ -786,8 +790,10 @@ class IncrementalJsonlCoordinator:
             embeddings = [payload["summary_embedding"]] + [
                 unit["embedding"] for unit in payload.get("units", [])
             ]
-        except (TypeError, KeyError):
-            raise IncrementalJsonlError("prepared_artifact_corrupt", "prepared embeddings missing")
+        except (TypeError, KeyError) as exc:
+            raise IncrementalJsonlError(
+                "prepared_artifact_corrupt", "prepared embeddings missing"
+            ) from exc
         for embedding in embeddings:
             if len(embedding) != self.embed_dimension:
                 raise IncrementalJsonlError(
