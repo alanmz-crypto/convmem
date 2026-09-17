@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-14
+**Updated:** 2026-09-17
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,6 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Trapdoor Hunt / issue #268 — bounded exposure-probe corrective (READY_FOR_PR,
+  reviewed-PASS, no PR):** Corrective tip `ee979112…` on
+  `fix/2026-09-16-watch-oom-bound-exposure-probe-corrective` is pushed and
+  **not** merged (`origin/main` at `5c103aa`). The standing exposure-window probe
+  now reads the projected ten-field iterator instead of constructing a full-row
+  store; ledger/evidence and `superseded is True` semantics preserved. Both
+  required reviewers PASS (Copilot audit + Kiro implementation review 2026-09-17)
+  and Claude advisory PASS. **Next lane: Ryan** decides PR + squash-merge; after
+  merge, run the plan §9.7 post-merge memory measurement. Live 12.5 GiB watcher
+  OOM remains OPEN — do not declare #268 closed. Resume from
+  [`KIRO-2026-09-17-watch-oom-exposure-probe-review-handoff.md`](KIRO-2026-09-17-watch-oom-exposure-probe-review-handoff.md).
 - **Trapdoor Hunt / issue #268 — bounded brief metadata Execute (READY_FOR_PR,
   evidence pushed, no PR):** Cursor completed C0–C7 on
   `impl/2026-09-13-watch-oom-stream-brief-metadata` from authorization tip
