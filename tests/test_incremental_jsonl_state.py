@@ -319,9 +319,8 @@ def test_corrupt_prepared_cache_is_refused(tmp_path: Path, monkeypatch) -> None:
     replay = IncrementalJsonlCoordinator.from_isolated_boundary(
         boundary, source, enabled=True
     ).run()
-    assert replay.outcome == "committed"
-    assert replay.reused_artifacts == 0
-    assert replay.counters.summarize >= 2
+    assert replay.outcome == "historical_cache_unavailable"
+    assert replay.counters.total == 0
 
 
 def test_source_mutation_after_partial_apply_rolls_back(tmp_path: Path) -> None:

@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from adapters.detect import detect_format, get_parser
+from adapters.jsonl_prefix import serialize_raw_line_coverage
 from chroma_store import SUMMARIES, UNITS
 from incremental_jsonl_formats import (
     IncrementalFormatSpec,
@@ -100,6 +101,7 @@ REQUIRED_CHECKPOINT_FIELDS = (
     "summary_ids",
     "unit_ids",
     "processed_hash",
+    "raw_line_coverage",
 )
 
 FaultHook = Callable[[str], None]
@@ -295,6 +297,14 @@ def validate_checkpoint(
         raise IncrementalJsonlError("invalid_state", "manifest must be lists")
     if len(summaries) != len(set(summaries)) or len(units) != len(set(units)):
         raise IncrementalJsonlError("invalid_state", "duplicate manifest ids")
+    coverage = payload.get("raw_line_coverage")
+    if not isinstance(coverage, dict):
+        raise IncrementalJsonlError("invalid_state", "raw_line_coverage missing")
+    if coverage.get("prefix_sha256") != payload.get("prefix_sha256"):
+        raise IncrementalJsonlError("invalid_state", "coverage prefix mismatch")
+    outcomes = coverage.get("outcomes")
+    if not isinstance(outcomes, list):
+        raise IncrementalJsonlError("invalid_state", "coverage outcomes invalid")
     return payload
 
 
@@ -541,6 +551,28 @@ class IncrementalJsonlCoordinator:
             entrypoint="incremental_jsonl.apply",
         )
 
+    @staticmethod
+    def _validate_incremental_prefix_view(view) -> None:
+        if any(item.outcome == "skipped_invalid_utf8" for item in view.line_outcomes):
+            raise IncrementalJsonlError(
+                "invalid_prefix_encoding",
+                "complete line contains invalid UTF-8",
+            )
+
+    @staticmethod
+    def _unit_owned_by_source(store, unit_id: str, source_path: str) -> bool:
+        row = store.get_unit(unit_id)
+        if row is None:
+            return False
+        metadata = row.get("metadata") or {}
+        return metadata.get("source_path") == source_path
+
+    @staticmethod
+    def _export_unit_payload(row: dict) -> dict:
+        payload = dict(row.get("metadata") or {})
+        payload["id"] = row["id"]
+        return payload
+
     def _chroma_row_count(self) -> int:
         chroma_dir = Path(self.cfg["index"]["chroma_dir"])
         if not chroma_dir.exists():
@@ -600,6 +632,7 @@ class IncrementalJsonlCoordinator:
 
         self._transition("source_snapshot_publish", publish)
         view = self.format_spec.parse_complete_prefix(str(snapshot_path), raw=prefix)
+        self._validate_incremental_prefix_view(view)
         if len(view.messages) != len(view.byte_ranges):
             raise IncrementalJsonlError("invalid_state", "adapter output/byte-range disagreement")
         snapshot = {
@@ -608,6 +641,10 @@ class IncrementalJsonlCoordinator:
             "prefix_sha256": view.prefix_sha256,
             "messages": view.messages,
             "byte_ranges": view.byte_ranges,
+            "line_outcomes": view.line_outcomes,
+            "raw_line_coverage": serialize_raw_line_coverage(
+                view.line_outcomes, view.prefix_sha256
+            ),
             "generation_identity": {"device": int(info.st_dev), "inode": int(info.st_ino)},
             "session_meta_digest": view.session_meta_digest,
             "source_identity": self.source_id,
@@ -720,7 +757,13 @@ class IncrementalJsonlCoordinator:
             ).encode("utf-8")
         ).hexdigest()
 
-    def _build_frontier(self, messages: list[dict], frontier: int) -> tuple[list[dict], int]:
+    def _build_frontier(
+        self,
+        messages: list[dict],
+        frontier: int,
+        *,
+        cache_required_before: int = 0,
+    ) -> tuple[list[dict], int]:
         chunks = chunk_messages(messages, self.chunk_size, self.overlap)
         prepared: list[dict] = []
         reused = 0
@@ -735,6 +778,11 @@ class IncrementalJsonlCoordinator:
                 prepared.append(cached)
                 reused += 1
                 continue
+            if int(chunk["start_offset"]) < cache_required_before:
+                raise IncrementalJsonlError(
+                    "historical_cache_unavailable",
+                    f"chunk {chunk['start_offset']}",
+                )
             built = build_chunk_artifact(
                 chunk=chunk,
                 path=self.path_key,
@@ -888,7 +936,11 @@ class IncrementalJsonlCoordinator:
                         keep_units.add(physical_id)
                         written += 1
                     for suppression in dedupe.exact_suppressions:
-                        keep_units.add(str(suppression["matched_id"]))
+                        matched_id = str(suppression["matched_id"])
+                        if self._unit_owned_by_source(
+                            session.store, matched_id, self.path_key
+                        ):
+                            keep_units.add(matched_id)
                     chunks += 1
                     units += written
 
@@ -1117,12 +1169,14 @@ class IncrementalJsonlCoordinator:
         with export_flock(self.cfg):
             _atomic_bytes(export_path, ("".join(f"{line}\n" for line in output)).encode("utf-8"))
 
-    def _reconcile_export(self, prepared: list[dict]) -> None:
+    def _reconcile_export(self) -> None:
         from purge_locks import export_flock
 
         export_path = Path(self.cfg["index"]["units_export"])
 
         def reconcile() -> None:
+            with self._session() as session:
+                rows = session.store.snapshot_source_rows(UNITS, self.path_key)
             existing: list[str] = []
             if export_path.is_file():
                 for line in export_path.read_text(encoding="utf-8").splitlines():
@@ -1134,9 +1188,9 @@ class IncrementalJsonlCoordinator:
                     if isinstance(row, dict) and row.get("source_path") == self.path_key:
                         continue
                     existing.append(line)
-            for artifact in prepared:
-                for row in artifact["units"]:
-                    existing.append(json.dumps(row["unit"], separators=(",", ":")))
+            for row in rows:
+                payload = self._export_unit_payload(row)
+                existing.append(json.dumps(payload, separators=(",", ":")))
             with export_flock(self.cfg):
                 _atomic_bytes(
                     export_path,
@@ -1299,10 +1353,11 @@ class IncrementalJsonlCoordinator:
                 "summary_ids": sorted(keep_summaries),
                 "unit_ids": sorted(keep_units),
                 "processed_hash": snapshot["prefix_sha256"],
+                "raw_line_coverage": snapshot["raw_line_coverage"],
                 "fallback_reason": fallback,
             }
             self._write_checkpoint(checkpoint)
-            self._reconcile_export(prepared)
+            self._reconcile_export()
             exact, semantic = self._reconcile_dedupe(transaction_id, events)
         committed = self._publish_processed(snapshot["prefix_sha256"], chunks, units)
         self._cleanup(snapshot["snapshot_dir"])
@@ -1343,12 +1398,17 @@ class IncrementalJsonlCoordinator:
         snapshot_path = snapshot_dir / self.format_spec.snapshot_basename
         raw = snapshot_path.read_bytes()
         view = self.format_spec.parse_complete_prefix(str(snapshot_path), raw=raw)
+        self._validate_incremental_prefix_view(view)
         snapshot = {
             "raw": raw,
             "complete_boundary": view.complete_boundary,
             "prefix_sha256": view.prefix_sha256,
             "messages": view.messages,
             "byte_ranges": view.byte_ranges,
+            "line_outcomes": view.line_outcomes,
+            "raw_line_coverage": serialize_raw_line_coverage(
+                view.line_outcomes, view.prefix_sha256
+            ),
             "generation_identity": transaction.get("generation_identity")
             or {"device": view.device, "inode": view.inode},
             "session_meta_digest": view.session_meta_digest,
@@ -1378,7 +1438,11 @@ class IncrementalJsonlCoordinator:
                 except IncrementalJsonlError:
                     prior_count = 0
                 frontier = frontier_start(prior_count, self.chunk_size, self.overlap)
-                prepared, reused = self._build_frontier(snapshot["messages"], frontier)
+                prepared, reused = self._build_frontier(
+                    snapshot["messages"],
+                    frontier,
+                    cache_required_before=frontier,
+                )
             prior = None
             try:
                 prior = self.checkpoint()
@@ -1428,7 +1492,10 @@ class IncrementalJsonlCoordinator:
             if existing_tx:
                 return self._roll_forward(existing_tx)
             transaction_id = uuid.uuid4().hex
-            snapshot = self._capture(transaction_id)
+            try:
+                snapshot = self._capture(transaction_id)
+            except IncrementalJsonlError as exc:
+                return self._refusal(exc.code, fallback=exc.detail or None)
             checkpoint = None
             try:
                 checkpoint = self.checkpoint()
@@ -1503,7 +1570,19 @@ class IncrementalJsonlCoordinator:
                     else None,
                 }
             )
-            prepared, reused = self._build_frontier(snapshot["messages"], frontier)
+            mode = "full_rebuild_fallback" if continuity and continuity != "initial_full" else (
+                "initial_full" if continuity == "initial_full" else "incremental"
+            )
+            cache_required_before = frontier if mode == "incremental" else 0
+            try:
+                prepared, reused = self._build_frontier(
+                    snapshot["messages"],
+                    frontier,
+                    cache_required_before=cache_required_before,
+                )
+            except IncrementalJsonlError as exc:
+                self._cleanup(snapshot["snapshot_dir"])
+                return self._refusal(exc.code, fallback=exc.detail or None, snapshot=snapshot)
             self._write_transaction(
                 {
                     "version": TRANSACTION_VERSION,
@@ -1520,9 +1599,6 @@ class IncrementalJsonlCoordinator:
                     if checkpoint
                     else None,
                 }
-            )
-            mode = "full_rebuild_fallback" if continuity and continuity != "initial_full" else (
-                "initial_full" if continuity == "initial_full" else "incremental"
             )
             return self._commit_generation(
                 snapshot=snapshot,

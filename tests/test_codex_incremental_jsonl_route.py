@@ -1,5 +1,7 @@
 """S3 — isolated fresh-source Codex incremental route and adversarial oracles."""
 
+# pylint: disable=duplicate-code,redefined-outer-name
+
 from __future__ import annotations
 
 import json

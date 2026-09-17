@@ -49,6 +49,22 @@ def fake_distill(text, **_kwargs):
     ]
 
 
+def install_build_chunk_tracker(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Return chunk start offsets passed to build_chunk_artifact during a run."""
+    build_calls: list[int] = []
+    import incremental_jsonl
+
+    original = incremental_jsonl.build_chunk_artifact
+
+    def tracking_build(*args, chunk=None, **kwargs):
+        if chunk is not None:
+            build_calls.append(int(chunk["start_offset"]))
+        return original(*args, chunk=chunk, **kwargs)
+
+    monkeypatch.setattr(incremental_jsonl, "build_chunk_artifact", tracking_build)
+    return build_calls
+
+
 def install_fakes(monkeypatch: pytest.MonkeyPatch) -> None:
     import ingest
 
@@ -263,6 +279,7 @@ def chroma_authority(boundary: IsolationBoundary, source: Path) -> dict:
             "summary_ids",
             "unit_ids",
             "processed_hash",
+            "raw_line_coverage",
         )
     }
     return {"summaries": summaries, "units": units, "checkpoint": keep}

@@ -1,5 +1,7 @@
 """S1 — Codex complete-prefix adapters and auditable line outcomes."""
 
+# pylint: disable=redefined-outer-name
+
 from __future__ import annotations
 
 import json
@@ -85,7 +87,7 @@ def test_history_skipped_no_message_is_not_emitted(codex_home: Path) -> None:
     path.parent.mkdir(parents=True)
     path.write_bytes(json.dumps({"session_id": "x"}).encode() + b"\n")
     view = parse_complete_prefix(str(path))
-    assert view.messages == []
+    assert not view.messages
     assert view.line_outcomes[0].outcome == "skipped_no_message"
 
 
