@@ -1,0 +1,147 @@
+# Arc Brief — Generalize the Append Cursor
+
+> **Arc: Codex.** Current-state snapshot for the proposed format extension.
+> This plan is independent of the still-gated Arc Codex P2 canary and does not
+> grant production use.
+
+## 1. What This Is For (product goal)
+
+ConvMem should avoid paying to transform unchanged transcript history after
+small appends, while preserving full source coverage, exact replay, and
+governed projection writes. This extension asks whether the Kiro-only
+coordinator can safely serve one more JSONL format. Done for this planning
+phase means Kiro reviews a defensible architecture and bounded Execute plan;
+done for a future feature would require authorized implementation, hermetic
+proof, separate bootstrap/canary decisions, and separate activation.
+
+## 2. System Design (how the pieces connect)
+
+```text
+exact detected JSONL format + normal parser identity
+                    |
+          closed capability registry
+                    |
+       format-specific complete-prefix view
+                    |
+      existing incremental coordinator
+      source/sidecar continuity + overlap frontier
+      durable prepared cache + rollback journal
+                    |
+          governed writer/pruner
+                    |
+       checkpoint, then derived followers
+```
+
+Source bytes and parse-relevant sidecars are input authority. The checkpoint
+is processing/recovery authority. Chroma and processed/export/dedupe files
+are followers. A complete selected prefix may gain a pure append; it may not
+be rewritten, truncated, replaced, or semantically changed before commit.
+Unknown formats remain on the legacy path or refuse. Eligibility is a
+reviewed code capability, never a broad user-config format list.
+
+## 3. What Exists Right Now (file map)
+
+| Surface | Current state |
+|---|---|
+| `incremental_jsonl.py` | On `main`; default-off and Kiro-only, with literal format/parser/snapshot/sidecar assumptions. |
+| `adapters/kiro_session_jsonl.py` | Only existing `parse_complete_prefix()` provider, with accepted-message byte ranges. |
+| `adapters/jsonl_io.py` | Common whole-file JSONL iterator; no complete-line byte scanner or coverage outcomes. |
+| `adapters/copilot_session_jsonl.py` | Whole-file parser with `workspace.yaml` and `session.start` metadata; no prefix capability or proven writer contract. |
+| Codex rollout, history, Cursor adapters | Whole-file parsers. Rollout/history have a separate Trapdoor Hunt issue #286 draft; history is rolling and excluded. Cursor writer contract is unknown. |
+| `ARCHITECTURE-generalize-append-cursor.md` | Draft here; proposes closed registry and conditional Copilot first slice. |
+| `EXECUTION-generalize-append-cursor.md` | Draft here; E0 writer gate before any route. |
+| `.claude/worktrees/agent-…` under shared ROOT | Locked by a live harness; polluted R2b scan. Verification must use a clean worktree outside ROOT. |
+
+The 2026-09-17 `origin/main` `18f63db` full-suite baseline has one
+deterministic golden retrieval failure and zero R2b failures. It is unrelated
+to this planning change; see the execution plan for the exact count.
+
+## 4. Completion State
+
+| Milestone | State | Next owner |
+|---|---|---|
+| Candidate inventory and design | Draft on `plan/2026-09-17-generalize-append-cursor` | Codex pushes planning packet |
+| Architecture/Execute review | Pending; exact-tip Kiro PASS/FAIL required | Kiro |
+| E0 writer-contract evidence | Not started; no Execute grant | Ryan decides whether Cursor may run it |
+| E1–E4 implementation and hermetic verification | Not started; conditional on E0 and Ryan grant | Cursor if authorized |
+| Existing-source bootstrap | Unauthorized; separate cost/authority decision | Ryan |
+| Live canary and activation | Unauthorized; existing Arc Codex gates remain | Ryan |
+
+## 5. Your Role
+
+**If sent for Kiro planning review:** inspect the exact pushed tip of the
+architecture and execution plan. Check writer-evidence sufficiency, Copilot
+metadata binding, all Kiro-only assumptions, complete physical keep set,
+replay, and the #286 boundary. Return written PASS/FAIL; grant nothing.
+
+**If sent for Cursor implementation:** stop until Ryan issues an exact E0–E4
+Execute grant. E0 failure ends the proposed Copilot route. No substitution,
+live source, provider, or activation is implied.
+
+**If sent for operational work:** consult the existing
+`STATUS-codex-jsonl-production-integration.md` and its Ryan gates. This
+planning brief provides no P2, bootstrap, watcher, or configuration authority.
+
+## 6. What Remains Before Live (sequential)
+
+1. Codex pushes this planning packet; Kiro reviews its exact revision.
+2. Ryan decides whether to authorize E0 alone or E0–E4 in isolated resources.
+3. Cursor proves or rejects Copilot writer eligibility, then implements only
+   the granted slices and supplies clean-worktree hermetic evidence.
+4. Kiro reviews the exact implementation tip; Ryan separately chooses PR
+   disposition.
+5. Existing-source adoption, live canary, and activation each require their
+   own later evidence, review, and Ryan decision. No date is assumed.
+
+## 7. Hard Stops
+
+| Stop | Owner | Blocks |
+|---|---|---|
+| Planning review | Kiro | Treating the draft as an accepted architecture |
+| Execute grant | Ryan | Any coordinator, adapter, test, or config implementation |
+| E0 writer proof | Cursor evidence + Kiro review | Copilot eligibility and E2 routing |
+| Bootstrap cost/authority | Ryan | Adopting or rebuilding already-indexed sources |
+| P2/live canary | Existing Arc Codex gates + Ryan | Production source, Chroma, or provider operations |
+| Activation | Ryan | Live config and watcher route |
+
+No gate implies another.
+
+## 8. Relationship to ConvMem
+
+This is a scoped extension of Arc Codex's ingestion efficiency/recovery
+mechanism. It does not alter retrieval ranking, semantic calibration, R2b
+attestation, Shadow Ledger, or the source/projection authority direction.
+Trapdoor Hunt issue #286 has a separate, overlapping Codex-format draft on an
+unmerged branch. No work in that arc is authorized or superseded here.
+
+## 9. Key Design Files
+
+| Purpose | Path |
+|---|---|
+| Format-extension design | `docs/plans/ARCHITECTURE-generalize-append-cursor.md` |
+| Proposed bounded Execute | `docs/plans/EXECUTION-generalize-append-cursor.md` |
+| Existing Kiro design | `docs/plans/ARCHITECTURE-codex-jsonl-production-integration.md` |
+| Existing Arc Codex state/gates | `docs/plans/STATUS-codex-jsonl-production-integration.md` |
+| Coordinator | `incremental_jsonl.py` |
+| Adapter seam | `adapters/jsonl_io.py`, `adapters/kiro_session_jsonl.py`, `adapters/copilot_session_jsonl.py` |
+| Source handoff | `docs/inter-model/CODEX-2026-09-17-generalize-append-cursor-handoff.md` at `439b5fc` (separate branch) |
+| Distinct Codex-format draft | `plan/2026-09-17-issue-286-incremental-index` at `6b62f0f` |
+
+## 10. How to Update This Brief
+
+After each milestone, overwrite sections 3–6 with current state and the next
+lane. Remove completed checklist items. Add one milestone-level Update Log
+line. Keep this file a snapshot, not a session diary.
+
+### Update Log
+
+| Date | Who | Milestone change |
+|---|---|---|
+| 2026-09-17 | Codex | Created the conditional one-format architecture and proposed Execute packet for Kiro review; no implementation authority |
+
+## TL;DR
+
+- [Arc Codex] The generalization is technically possible only through a
+  reviewed, versioned complete-prefix capability per adapter.
+- Copilot is a conditional first candidate; its writer behavior must be
+  proven before routing. Kiro review and Ryan Execute remain pending.

@@ -9,6 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Arc Codex — append-cursor format extension planning:** Codex drafted a
+  conditional Copilot `events.jsonl` first slice after inspecting the Kiro-only
+  coordinator and the separate Trapdoor Hunt issue #286 Codex-format draft.
+  The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
+  [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
+  and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
+  for exact-tip Kiro review. Copilot writer proof is a hard eligibility gate;
+  no implementation, bootstrap, live canary, or activation is authorized.
+  When merging with the 2026-09-17 R2b corrective's LATEST edit, keep both
+  routing bullets.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
   `ef4a7dd…` on 2026-09-17 (Copilot audit + Kiro review + Claude advisory PASS on
