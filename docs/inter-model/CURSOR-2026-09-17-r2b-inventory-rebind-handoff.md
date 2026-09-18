@@ -174,7 +174,12 @@ handoff is correcting.
 - [ ] Exactly one line changed in `eval_corpus/r2b_v2/coverage/inventory.py`
 - [ ] `R2B-V2-WRITER-COVERAGE-INVENTORY.json` regenerated, digests converge
 - [ ] Nine files at `2 failed, 108 passed`
-- [ ] Full suite run, and the delta against a `main` full-suite run is zero
+- [ ] Full suite run, and the delta against a `main` full-suite run is zero.
+      **`main`'s full-suite baseline was never measured** — only the nine
+      files were (`2 failed, 108 passed`). The implementing lane must
+      produce that baseline itself (~23 min) rather than assume one
+      exists. A branch-only full-suite run cannot distinguish "restored"
+      from "still broken elsewhere".
 - [ ] Ruff / pylint clean per repo gates
 - [ ] Kiro reviews the exact pushed tip before any PR
 - [ ] No R2b test suppressed, skipped or weakened
