@@ -52,8 +52,9 @@ scratch canary is a safety pattern, not a Claude parser or execution engine.
 
 | Surface | Current state |
 |---|---|
-| `adapters/claude_session_jsonl.py` | Gate 1 adapter exists on pushed branch `feat/2026-09-18-claude-transcript-adapter` at `cbdc88b`; absent from `origin/main`, with no PR or written code-review verdict found at handoff. |
-| `adapters/detect.py` | Claude registration is on the Gate 1 branch only, not `origin/main`. |
+| `adapters/claude_session_jsonl.py` | Gate 1 adapter is on open PR #310 at exact Kiro-PASSed tip `ab8a9e16`; absent from `origin/main` at this handoff. |
+| `adapters/detect.py` | Claude registration is on PR #310 only, not `origin/main`. |
+| `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json` | PR #310 rebinds revision/digest metadata; route payloads unchanged. PR body reports Ryan authorization for this cross-arc update; confirm at merge. |
 | `adapters/jsonl_prefix.py` | Complete-line boundary, byte-range, and line-outcome helpers on `main`. |
 | `incremental_jsonl_formats.py` | Kiro production set and isolated Codex set on `main`; no Claude spec or isolated set. |
 | `incremental_jsonl.py` | Existing coordinator, default Kiro-only route; no Claude-specific core work needed. |
@@ -63,14 +64,14 @@ scratch canary is a safety pattern, not a Claude parser or execution engine.
 
 The isolated Codex JSONL integration landed through PR #307 (`d657767`). The
 current `origin/main` checked for this handoff was `63cd3bc` (PR #309). Neither
-that substrate nor the Gate 1 branch authorizes automatic Claude capture.
+that substrate nor Gate 1 PR #310 authorizes automatic Claude capture.
 
 ## 4. Completion State
 
 | Milestone | State | Next gate |
 |---|---|---|
 | Arc assignment | **CONFIRMED** by Ryan, 2026-09-18 | — |
-| Gate 1 on-demand adapter | **BRANCH PUSHED** at `cbdc88b`, based on current `origin/main`; no PR or code-review verdict found | Kiro exact-tip code review, then Ryan PR/merge disposition |
+| Gate 1 on-demand adapter | **KIRO CODE PASS / PR OPEN** at `ab8a9e16` (#310); not on `main`; final PR pytest pending at handoff | Ryan confirms final CI and cross-arc R2b rebind, then decides merge |
 | Incremental substrate | **ON `main`** through PR #307; isolated Codex route exists | — |
 | Gate 2 execution plan | **KIRO PASS WITH CONDITIONS** at `a811f58` | Ryan bounded Execute grant |
 | Isolated Claude format and canary | **NOT STARTED** | Gate 1 merged and reviewed, Ryan bounded Execute grant |
@@ -79,15 +80,13 @@ that substrate nor the Gate 1 branch authorizes automatic Claude capture.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Kiro review lane (next):** review the pushed Gate 1 adapter at exact tip
-`cbdc88b` using the [review handoff](../inter-model/CODEX-2026-09-18-claude-watch-parity-gate1-review-handoff.md).
-Return a written code `PASS` or specific conditions. The earlier Gate 1 brief
-reviewed the spec, not the implementation.
-
-**Ryan decision lane:** after Kiro's Gate 1 code verdict, decide the PR/merge
-path. Kiro PASSed the Gate 2 plan at `a811f58` with conditions; decide a
-bounded isolated Execute grant only when Gate 1 is reviewed and merged. That
-grant does not select a live source or authorize production promotion.
+**Ryan decision lane (next):** use the [PR decision handoff](../inter-model/CODEX-2026-09-18-claude-watch-parity-gate1-pr-decision-handoff.md).
+Kiro reports code PASS at exact Gate 1 tip `ab8a9e16`; PR #310 is open and
+awaiting final CI at this handoff. Confirm the R2b inventory metadata rebind,
+then decide merge. Kiro also PASSed the Gate 2 plan at `a811f58` with
+conditions; a bounded isolated Execute grant is a separate decision after
+Gate 1 lands. It does not select a live source or authorize production
+promotion.
 
 **Cursor implementation lane:** start only after the Gate 1 adapter is merged
 and Kiro-reviewed and Ryan grants Execute. Recheck Gate 1's mapper before the
@@ -101,10 +100,11 @@ and inactive watcher. Lock the production-code diff to the Claude adapter and
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro reviews the pushed Gate 1 Claude adapter at an exact tip; Cursor fixes
-   any conditions, and Ryan decides PR/merge disposition.
-2. After Gate 1 lands, Ryan decides a bounded isolated Execute grant against the reviewed
-   `a811f58` plan, carrying Kiro's four conditions.
+1. Ryan verifies final PR #310 CI and unchanged Kiro-PASSed Gate 1 tip,
+   confirms the R2b inventory rebind, and decides merge.
+2. After Gate 1 lands, update this snapshot from the merged tree. Ryan then
+   decides a bounded isolated Execute grant against the reviewed `a811f58`
+   plan, carrying Kiro's four conditions.
 3. Cursor adds prefix parsing, the Claude format spec, isolated eligibility,
    tests, and an isolated canary harness; Kiro reviews the exact implementation.
 4. Ryan may authorize one frozen Claude transcript for read-only canary capture.
@@ -117,7 +117,7 @@ and inactive watcher. Lock the production-code diff to the Claude adapter and
 
 | Stop | Owner | Blocks |
 |---|---|---|
-| Gate 1 adapter review | Kiro | Claude prefix implementation against an absent/unstable adapter |
+| Gate 1 PR/merge | Ryan | Claude prefix implementation against an unmerged adapter; Kiro reported code PASS at `ab8a9e16` |
 | Bounded Execute grant | Ryan | Cursor isolated implementation; Kiro plan review passed at `a811f58` |
 | Exact live-source grant | Ryan | Reading a live Claude transcript for the canary |
 | Production promotion | Ryan | Adding Claude to `KIRO_ROUTE_FORMATS` or watch/source paths |
@@ -161,8 +161,9 @@ brief and identify the next authorized action.
 | 2026-09-18 | Codex | Created Ryan-confirmed Claude Watch Parity arc and Gate 2 plan for Kiro review; no implementation or live grant. |
 | 2026-09-18 | Codex | Recorded Kiro PASS with Execute conditions on exact plan tip `a811f58`; next gate is Ryan's bounded Execute decision. |
 | 2026-09-18 | Codex | Gate 1 adapter found on pushed `cbdc88b` branch but not `main`; routed exact-tip code review to Kiro before Execute. |
+| 2026-09-18 | Codex | Routed Kiro-PASSed Gate 1 PR #310 at `ab8a9e16` to Ryan for final CI and merge decision; Execute remains separate. |
 
-**TL;DR [Arc Claude Watch Parity]:** Gate 1 is on a pushed branch awaiting Kiro
-code review and Ryan merge disposition. The isolated Gate 2 plan passed Kiro
-review at `a811f58`; Execute, live-source canary, and production watch capture
-remain separate Ryan gates.
+**TL;DR [Arc Claude Watch Parity]:** Gate 1 passed Kiro's exact-tip code review
+and PR #310 awaits Ryan's decision after final CI; it is not on `main`. The
+isolated Gate 2 plan passed Kiro review at `a811f58`; Execute, live-source
+canary, and production watch capture remain separate Ryan gates.
