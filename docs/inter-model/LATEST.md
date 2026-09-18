@@ -9,34 +9,29 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #286 — reviewed integration PR open:**
-  [PR #307](https://github.com/alanmz-crypto/convmem/pull/307) is open from
-  `feat/2026-09-17-issue-286-main-integration` at exact tip `19d34a5`.
-  The delta from prior reviewed tip `e99856e` is three
-  docs only; `git diff --check origin/main..19d34a5` passes. At `e99856e`,
-  [Kiro PASSed](KIRO-2026-09-18-issue-286-integration-recheck-handoff.md)
-  S0–S3 behavior and [Copilot FAILed](COPILOT-2026-09-18-issue-286-integration-recheck-handoff.md)
-  documentation acceptance. Kiro and Copilot have now each returned written
-  **PASS** on the **same full SHA** `19d34a5e235bf436803ad8a2f15427fa9a84ef88`:
-  Kiro for S0–S3 continuity and corrected routing; Copilot for closure of all
-  three documentation findings and unchanged runtime. All six PR checks pass;
-  GitHub reports the PR mergeable with no unresolved review threads. Ryan owns
-  merge disposition. No live or new Execute authority is granted.
+- **Trapdoor Hunt / issue #286 — shared seam MERGED:** Ryan squash-merged
+  [PR #307](https://github.com/alanmz-crypto/convmem/pull/307) to `main` as
+  `d657767d9351ce4c49e584ec14dfb0a7b8d9e77b` after Kiro and Copilot
+  PASSed exact head `19d34a5e235bf436803ad8a2f15427fa9a84ef88` and all
+  six CI checks passed. The merged registry/scanner and fresh isolated Codex
+  routes are now the base for later work. This merge grants no S4/S5,
+  production indexing, watcher/config, issue #268 closure, Arc Codex P2,
+  bootstrap, or activation.
 - **Arc Codex — append-cursor format extension planning:** Kiro PASSed the
-  conditional Copilot `events.jsonl` plan at stated tip `9e2d0ef`; Codex
-  independently verified that local and remote branch tips match. Trapdoor
-  Hunt issue #286 has since pushed an unmerged shared-registry integration
-  successor at `19d34a5` in PR #307. Kiro and Copilot PASSed the exact tip;
-  PR checks pass and Ryan owns merge disposition.
+  original conditional Copilot `events.jsonl` plan at `9e2d0ef`. The
+  post-#286-merge revision on this branch now reuses the landed
+  `incremental_jsonl_formats.py` registry and `adapters/jsonl_prefix.py`
+  scanner; targeted Kiro recheck of the revised plan is next.
   The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
-  ready for a later Ryan Execute decision. [Codex-to-Codex ownership handoff](CODEX-2026-09-18-append-cursor-ownership-handoff.md)
+  ready for targeted Kiro recheck before a later Ryan Execute decision.
+  [Codex-to-Codex ownership handoff](CODEX-2026-09-18-append-cursor-ownership-handoff.md)
   records Ryan's selection of the authoring Codex Sol-medium lane as
-  coordination owner and its delegated decision to assign the existing #286
-  Cursor integrator as sole shared-code writer through integration disposition.
-  Copilot E0 is deferred pending an exact action/cost bound and the #286
-  review/disposition; it is not granted.
+  coordination owner. The shared-code base is settled by the merge; Ryan must
+  name a Copilot implementation writer in a later grant. Copilot E0 is
+  deferred pending an exact real-client action/provider-cost bound; it is not
+  granted.
   Conditions: E3 must prove Copilot `session_id`/YAML precedence and the chosen
   sidecar invalidation rule. Copilot writer proof remains a hard E0 gate;
   no implementation, bootstrap, live canary, or activation is authorized.

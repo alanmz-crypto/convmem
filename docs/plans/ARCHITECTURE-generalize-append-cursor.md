@@ -1,22 +1,26 @@
 # ARCHITECTURE — Generalize the append cursor by proven format capability
 
-**Arc: Codex** · **State: draft for Kiro review; no Execute or activation grant** · 2026-09-17
+**Arc: Codex** · **State: Kiro PASS at `9e2d0ef`; post-merge reconciliation for targeted recheck; no Execute or activation grant** · 2026-09-18
 
 Companion: [execution plan](EXECUTION-generalize-append-cursor.md) and
 [current-state brief](STATUS-generalize-append-cursor.md). This packet answers
 the [Claude planning handoff at `439b5fc`](https://github.com/alanmz-crypto/convmem/blob/439b5fc/docs/inter-model/CODEX-2026-09-17-generalize-append-cursor-handoff.md),
-which lives on a separate pushed branch. Baseline inspected: `origin/main`
-`18f63db`.
+which lives on a separate pushed branch. The original review inspected
+`origin/main` at `18f63db`. This revision reconciles the plan with issue #286,
+squash-merged through [PR #307](https://github.com/alanmz-crypto/convmem/pull/307)
+as `d657767d9351ce4c49e584ec14dfb0a7b8d9e77b` on `main`.
 
 ## 1. Decision and scope
 
 **Yes, the coordinator's mechanism can be generalized, but JSONL syntax or an
 adapter's `parse()` method alone is insufficient eligibility.** The current
-Kiro coordinator binds format identity, complete-prefix parsing, source and
+coordinator binds format identity, complete-prefix parsing, source and
 sidecar continuity, chunk identity, prepared replay, and two-collection
-rollback. Extend it through a *closed, versioned adapter capability registry*,
+rollback. Issue #286 has now landed the *closed, versioned adapter capability
+registry* and complete-line scanner on `main`. Extend that reviewed seam by
 one approved format at a time. The registry is code authority; configuration
-can only turn an approved route off. A broad `eligible_formats` config list
+cannot introduce a format, and isolated routes require their explicit boundary.
+A broad `eligible_formats` config list
 would allow an unreviewed format to inherit authority claims it cannot prove.
 
 The first proposed format is **Copilot `events.jsonl`**, contingent on writer
@@ -31,11 +35,11 @@ exclusion, config, or activation action follows from this design.
 
 | Detected format | Evidence available now | Disposition |
 |---|---|---|
-| `jsonl_kiro_session` | `adapters/kiro_session_jsonl.py:151` returns a `CompletePrefixView`; production coordinator and fault/replay tests already target it. | Existing route; preserve behavior. |
-| `jsonl_codex_rollout` | Local adapter reads `~/.codex/sessions/**/rollout-*.jsonl`; [OpenAI's rollout recorder tests](https://github.com/openai/codex/blob/main/codex-rs/rollout/src/recorder_tests.rs) exercise append, while [rollout persistence](https://github.com/openai/codex/blob/main/codex-rs/rollout/src/lib.rs) also exposes compression/materialization. Append in a normal writer path does not establish a permanent path/inode contract. | Separate Trapdoor Hunt issue #286 draft at `6b62f0f` already plans this. Do not duplicate or grant it here. |
+| `jsonl_kiro_session` | `adapters/kiro_session_jsonl.py` provides a `CompletePrefixView`; production coordinator and fault/replay tests target it. | Existing route; preserve behavior. |
+| `jsonl_codex_rollout` | Issue #286 added a complete-prefix adapter and an isolated route on `main`. [OpenAI's rollout recorder tests](https://github.com/openai/codex/blob/main/codex-rs/rollout/src/recorder_tests.rs) exercise append, while [rollout persistence](https://github.com/openai/codex/blob/main/codex-rs/rollout/src/lib.rs) also exposes compression/materialization. | Existing isolated #286 route; this plan grants no production use or change to it. |
 | `jsonl_copilot_session` | Local adapter reads per-session `events.jsonl` and `workspace.yaml`; [GitHub's CLI reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference) calls it an event log used for resume. This does not promise no rewrite, truncation, or sidecar change. | First *candidate*, still ineligible until a controlled writer/resume/rotation trace and parser parity pass. |
 | `jsonl_cursor` | `adapters/jsonl_chat.py` parses agent transcripts, but `detect.py` recognizes any JSONL path containing `agent-transcripts`; no writer or lifecycle contract is documented in the inspected repo. | Excluded until exact path scope and append/rewrite behavior are independently established. |
-| `jsonl_codex_history` | The handoff records a rolling, prompts-only file; the 3,281-line cost source has been excluded from watch/index. Its selected prefix can disappear as old entries age out. | Excluded. No append-cursor eligibility or savings claim. |
+| `jsonl_codex_history` | Issue #286 added a complete-prefix adapter but restricts its route to fresh isolated sources. The observed production `~/.codex/history.jsonl` is rolling, prompts-only, and excluded from watch/index; its selected prefix can disappear as entries age out. | Keep the existing isolated route separate. Production history remains excluded, with no Copilot-plan savings claim. |
 | `jsonl_claude_session` | No adapter exists. Its separate Cursor handoff has independent gates. | Excluded; a future adapter could implement this same capability after its own review. |
 
 SQLite, markdown, and other formats are out of scope. A snapshot of a growing
@@ -50,30 +54,30 @@ writer trace passes, since clients can change behavior later.
 
 ## 3. Shared seam
 
-`adapters/jsonl_io.py` currently yields dictionaries and skips bad lines; it
-cannot report complete byte boundaries or accepted-record ranges. Add one
-low-level *read-only* complete-line scanner there, accepting an already
-captured byte prefix and returning raw line ranges and parse outcomes. It
-must never decide which records are messages. Each eligible adapter owns a
-versioned `parse_complete_prefix(snapshot, raw=...)` equivalent that maps
-records into the **same ordered canonical messages as its legacy `parse()`**,
-with accepted-message byte ranges and declared sidecar dependencies.
+Issue #286 already added a read-only complete-line scanner in
+`adapters/jsonl_prefix.py`, with `CompletePrefixView`, accepted-message byte
+ranges, and per-line outcomes. `adapters/jsonl_io.py` remains the whole-file
+legacy iterator. Reuse the landed scanner; do not create a second one. It
+reports raw line outcomes but leaves message classification to each adapter.
+The proposed Copilot adapter must own a versioned
+`parse_complete_prefix(snapshot, raw=...)` equivalent that maps records into
+the **same ordered canonical messages as its legacy `parse()`**, with declared
+sidecar dependencies.
 
-The coordinator owns one registry entry per reviewed format:
+The landed `incremental_jsonl_formats.py` registry records:
 
 ```text
-format id → legacy parser identity + prefix parser + contract version
-          + snapshot filename + sidecar capture/revalidation rules
+format id → expected legacy adapter module + prefix parser + contract version
+          + tool + snapshot filename + optional sidecar path
 ```
 
-It selects the entry only after normal `detect_format()` and `get_parser()`
-agree. It never falls through to a generic JSONL parser. A missing method,
-unlisted format, mismatched parser, unsupported sidecar, or invalid prefix
-returns a refusal before model calls or projection writes. Preserve the Kiro
-adapter's public `CompletePrefixView` and current outputs as a compatibility
-boundary; a new shared scanner may sit beneath it only after exact Kiro parity
-tests. The existing coordinator, not `watch.py`, continues to own state,
-replay, writer/pruner use, and processed publication.
+The coordinator checks normal `detect_format()` and `get_parser()` dispatch
+against the expected adapter module, then calls the registered prefix parser.
+The proposed Copilot entry must preserve that check. An unlisted format,
+mismatched parser, unsupported sidecar, or invalid prefix must refuse before
+model calls or projection writes. Preserve the now-landed Kiro and isolated
+Codex routes as regression oracles. The coordinator, not `watch.py`, continues
+to own state, replay, writer/pruner use, and processed publication.
 
 For Copilot, `workspace.yaml` can affect `session_id` and workspace, while a
 `session.start` event can supply fallback values. Capture the sidecar (or its
@@ -118,11 +122,13 @@ only the preceding complete prefix; the trailing bytes remain pending.
    isolation remains mandatory for this Execute. The normal watcher path is
    unchanged. No live canary, source adoption, or activation is implied.
 
-The current implementation has literal Kiro format/contract constants,
-Kiro-only snapshot names, and a `session.json` revalidation path in
-`incremental_jsonl.py` (`:42`, `:526–600`, `:1287–1300`, `:1512`). The
-registry must replace all of these assumptions together. Changing only the
-eligibility comparison would produce a false continuity claim.
+The merged coordinator retains Kiro constants as defaults but obtains the
+active format, contract version, snapshot filename, and optional sidecar path
+from `IncrementalFormatSpec`. Its route allowlist still defaults to Kiro and
+adds Codex only under `CONVMEM_INCREMENTAL_ROOT`. A Copilot entry must update
+both the code-owned registry and isolated route policy without widening the
+normal production route. Changing only the allowlist would still produce a
+false continuity claim.
 
 ## 5. Cost and performance claim
 
@@ -133,7 +139,7 @@ checkpoint and one complete appended message, the existing final chunk is
 the frontier, so the analogous incremental pass normally transforms one
 chunk: about two such calls, or 130 fewer (98.5%). This is an illustrative
 per-touch transform saving, **not** a forecast for Copilot or rollout traffic.
-The 3,281-line Codex `history.jsonl` is already excluded, so this plan saves
+The observed 3,281-line production Codex `history.jsonl` is already excluded, so this plan saves
 zero additional calls on that file. Copilot source sizes, touch rates, and
 eligibility have not been measured; aggregate savings cannot yet be stated.
 One-time bootstrap may pay the full transform cost and must be measured and
@@ -146,19 +152,17 @@ separate source-mutation authority design.
 
 ## 6. Relationship to issue #286 and review decision
 
-The pushed [issue #286 architecture](https://github.com/alanmz-crypto/convmem/blob/plan/2026-09-17-issue-286-incremental-index/docs/plans/ARCHITECTURE-watch-incremental-index.md)
-and companion execution plan already propose Codex history/rollout work under
-**Arc Trapdoor Hunt**. This packet does not review, supersede, merge, or grant
-that work. Its overlap is the need for a versioned complete-prefix contract
-and fail-closed coordinator; Kiro and Ryan should choose one owner for any
-eventual shared-code change before either Execute. In particular, the #286
-draft includes Codex *history*, whereas this packet excludes it because the
-new handoff reports rolling behavior and production exclusion. That factual
-conflict needs resolution before any Codex-format implementation.
+The [issue #286 architecture](https://github.com/alanmz-crypto/convmem/blob/d657767d9351ce4c49e584ec14dfb0a7b8d9e77b/docs/plans/ARCHITECTURE-watch-incremental-index.md)
+and companion execution plan landed under **Arc Trapdoor Hunt** through PR
+#307. This packet reuses their shared registry and scanner; it does not grant
+or modify the isolated Codex routes. The apparent history conflict is now
+bounded: #286 permits fresh isolated Codex history sources, while the observed
+rolling production `~/.codex/history.jsonl` stays excluded. Copilot E0 still
+must prove its own writer behavior before a Copilot route can be considered.
 
-**Kiro review request:** Is the closed registry plus per-adapter prefix
-contract sufficient to preserve Kiro authority/replay while adding one
-proven Copilot format? Does the writer-evidence gate establish enough to make
-Copilot eligible? Is another per-format sidecar or projection invariant missing?
+**Targeted Kiro recheck request:** Does this post-merge reconciliation reuse
+the landed registry/scanner and preserve the prior E0 hard gate, Kiro/Codex
+route isolation, sidecar authority, and fail-closed replay? Does Copilot need
+any additional per-format sidecar or projection invariant before Execute?
 Return PASS/FAIL and conditions on this exact revision. Kiro review does not
 authorize Execute; Ryan decides whether to grant the bounded first slice.
