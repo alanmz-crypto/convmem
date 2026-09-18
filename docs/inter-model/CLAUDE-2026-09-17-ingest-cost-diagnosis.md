@@ -80,6 +80,21 @@ file ingest would immediately skip — ~1,900 wasted spawns/day. A sweep of all
 2,045 live processed entries found exactly **9** files in this state, matching
 the journal precisely. Any duplicated tree arms it.
 
+### Upstream cause: the repo watches copies of itself
+
+The duplicate content was not incidental. `~/.copilot/session-state` is a watch
+root, and **six convmem git worktrees currently live inside it**
+(`git worktree list | grep .copilot/session-state`). Copilot audit runs place
+full checkouts of the repository into a directory convmem indexes, so
+`docs/inter-model/*.md` from those copies are ingested as `inter_model_doc`
+records under Copilot paths. That is exactly how `README.md`'s content hash came
+to be stored under `audit-b2735c4a`.
+
+This is a standing generator, not a one-off: every audit worktree creates a
+fresh set of duplicate-content records. The skip-logic fix makes the duplication
+harmless to watch, but the underlying arrangement — an indexed root containing
+checkouts of the indexed project — remains and deserves a decision of its own.
+
 These spawns cost no provider calls: `inter_model_doc` ingest uses only local
 Ollama embeddings, which is why the markdown storm logged zero provider
 failures while burning CPU.
