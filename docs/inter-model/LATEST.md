@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **willowyhollow review-gate comparison (2026-09-18, ad-hoc, `REVIEW_READY`):** A
+- **willowyhollow review-gate comparison (2026-09-18, ad-hoc, `CLAUDE_AUDIT_READY`):** A
   Claude session auditing willowyhollow's open staging2 CSP/HSTS/Referrer-Policy
   observations found the deploy path is gated by GitHub rulesets on both
   `willowyhollow-dev` (`main-integrity-gates` id 19155375,
@@ -20,14 +20,16 @@ cross-arc snapshot and the linked arc brief below.
   staging2), not a sequential pipeline, and neither ruleset's required status
   checks cover the open security-header gaps. Ryan asked for Codex to compare
   a proposed target-state ruleset design against both repos' real
-  configuration. Codex's corrected implementation draft now lives in
+  configuration. Codex's revised implementation draft now lives in
   [`IMPLEMENTATION-willowyhollow-review-gate-enforcement.md`](../plans/IMPLEMENTATION-willowyhollow-review-gate-enforcement.md),
   with the execution handoff in
   [`CODEX-2026-09-18-willowyhollow-review-gate-implementation-handoff.md`](CODEX-2026-09-18-willowyhollow-review-gate-implementation-handoff.md).
-  The draft requires check-context verification before ruleset edits, gives
-  Claude an adversarial architecture/model-allocation role, keeps ConvMem's
-  bounded autonomy separate, and does not authorize ruleset, workflow, or live
-  SiteGround changes without a new Ryan grant naming the exact repo/field/value.
+  Live GitHub checks corrected the earlier local-checkout assumption: both
+  required contexts already exist and passed on historical PRs. The only listed
+  collaborator is the repository owner, so a one-approval gate requires a
+  second eligible human before it can be enabled safely. Claude audits this
+  revision next, then Kiro signs off. The plan keeps ConvMem's bounded autonomy
+  separate and authorizes no ruleset, access, workflow, or SiteGround change.
 
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
