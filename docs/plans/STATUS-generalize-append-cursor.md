@@ -63,6 +63,7 @@ to this planning change; see the execution plan for the exact count.
 | Candidate inventory and design | Complete on pushed `plan/2026-09-17-generalize-append-cursor` at `9e2d0ef` | — |
 | Architecture/Execute review | Kiro PASS on stated `9e2d0ef`; Codex verified the reviewed revision at the time, and later status/routing commits did not change the reviewed plan docs | Ryan decides later Execute scope after #286 disposition |
 | Cross-arc coordination | Ryan selected the Codex Sol-medium lane that authored the coordination handoff; it assigned the current #286 writer, tracks overlap, and returns later Execute choices to Ryan without implementation authority | Codex Sol-medium |
+| #286 integration rechecks | Targeted read-only Copilot safety audit and Kiro S0–S3 contract recheck handoffs are ready for exact tip `e99856e`; no successor verdict or PR yet | Copilot audit lane and Kiro |
 | Condition A — Copilot metadata evidence | Pending: E3 must exercise `workspace.yaml` id changes, `session.start` versus YAML precedence, and chosen digest-versus-effective-fields invalidation | Cursor if granted; Kiro verifies evidence |
 | Condition B — shared-code writer | Resolved for current integration by Ryan-delegated choice: the existing #286 Cursor integrator is sole writer through review and branch disposition. A later Copilot writer assignment must use the resulting base. Isolated Codex history and rolling production history remain separate scopes. | Existing #286 Cursor integrator |
 | E0 writer-contract evidence | Not started; Execute deferred until #286 review/disposition and an exact provider-action/cost bound are named | Ryan decides whether Cursor may run it later |
@@ -99,7 +100,9 @@ planning brief provides no P2, bootstrap, watcher, or configuration authority.
 ## 6. What Remains Before Live (sequential)
 
 1. The existing #286 Cursor integrator carries the sole shared-code writer
-   assignment through targeted Copilot/Kiro rechecks and Ryan's branch
+   assignment through [Copilot](../inter-model/COPILOT-2026-09-18-issue-286-integration-recheck-handoff.md)
+   and [Kiro](../inter-model/KIRO-2026-09-18-issue-286-integration-recheck-handoff.md)
+   targeted rechecks of `e99856e`, then Ryan's branch
    disposition. The coordinating Codex lane then reconciles the Copilot packet
    with the resulting base. Isolated Codex history does not establish
    eligibility for rolling production history.
@@ -165,6 +168,7 @@ line. Keep this file a snapshot, not a session diary.
 | 2026-09-18 | Codex | Reassessed the pushed #286 integration successor and handed Codex Sol a single-owner recommendation; Ryan's ownership and E0 decisions remain pending |
 | 2026-09-18 | Ryan / Codex | Ryan selected the authoring Codex Sol-medium lane for cross-arc coordination; shared-code writer and E0 gates remain pending |
 | 2026-09-18 | Ryan / Codex | Ryan delegated the writer choice; Codex assigned the existing #286 Cursor integrator through branch disposition and deferred Copilot E0 |
+| 2026-09-18 | Codex | Prepared exact-tip Copilot and Kiro read-only recheck handoffs for the unmerged #286 integration successor |
 
 ## TL;DR
 

@@ -9,6 +9,13 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Trapdoor Hunt / issue #286 — integration rechecks requested:** the pushed
+  successor `e99856e` on `feat/2026-09-17-issue-286-main-integration` remains
+  unmerged and has no PR. The [Copilot safety/isolation audit handoff](COPILOT-2026-09-18-issue-286-integration-recheck-handoff.md)
+  and [Kiro S0–S3 contract recheck handoff](KIRO-2026-09-18-issue-286-integration-recheck-handoff.md)
+  target the **same exact tip** and its delta from previously reviewed
+  `506afc1`. Neither prior PASS covers the successor. Return written verdicts
+  to Ryan before a PR decision; no live or new Execute authority is granted.
 - **Arc Codex — append-cursor format extension planning:** Kiro PASSed the
   conditional Copilot `events.jsonl` plan at stated tip `9e2d0ef`; Codex
   independently verified that local and remote branch tips match. Trapdoor
