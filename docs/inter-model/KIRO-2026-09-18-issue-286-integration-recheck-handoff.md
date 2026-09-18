@@ -31,4 +31,10 @@ Give a written **PASS or FAIL for `e99856e49e42ad670d16ad0c22e8523afafb8ba1`** o
 
 Do not re-open S4 adoption, S5 tail-only I/O, issue #268 OOM closure, Arc Codex P2, production indexing, watcher/config operations, bootstrap, or activation.
 
-**TL;DR:** [Arc Trapdoor Hunt] Recheck the pushed #286 successor `e99856e` against the previously PASSed S0–S3 contract and integration evidence. Return an exact-tip PASS/FAIL; no implementation or live grant follows.
+## Returned verdict (Ryan-relayed Kiro review, 2026-09-18)
+
+**PASS for `e99856e49e42ad670d16ad0c22e8523afafb8ba1`.** Kiro independently fetched the refs, confirmed the top commit is docs-only, paired all eleven commits with range-diff, and found the S0–S3 implementation and focused tests byte-identical to the reviewed predecessor. Kiro checked that the R2b inventory delta contains only its content-derived `code_revision` and `inventory_digest`, with #304 route entrypoints preserved. At the exact target, 20 R2b coverage/revision tests and 96 focused route, adapter, isolation, physical-keep-set, and state tests passed. Kiro concluded that the previously reviewed S0–S3 contract carries through integration without a behavioral change.
+
+The Copilot audit verdict is still pending. Kiro's PASS grants no PR, merge, S4/S5, or live operation; Ryan decides PR disposition after both exact-tip verdicts.
+
+**TL;DR:** [Arc Trapdoor Hunt] Kiro PASSed `e99856e` with 116 exact-tip tests and confirmed the S0–S3 contract carries through main integration. Copilot's audit and Ryan's PR decision remain pending.

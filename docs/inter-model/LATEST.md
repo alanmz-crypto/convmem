@@ -9,19 +9,20 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #286 — integration rechecks requested:** the pushed
+- **Trapdoor Hunt / issue #286 — Kiro PASS; Copilot pending:** the pushed
   successor `e99856e` on `feat/2026-09-17-issue-286-main-integration` remains
   unmerged and has no PR. The [Copilot safety/isolation audit handoff](COPILOT-2026-09-18-issue-286-integration-recheck-handoff.md)
   and [Kiro S0–S3 contract recheck handoff](KIRO-2026-09-18-issue-286-integration-recheck-handoff.md)
   target the **same exact tip** and its delta from previously reviewed
-  `506afc1`. Neither prior PASS covers the successor. Return written verdicts
-  to Ryan before a PR decision; no live or new Execute authority is granted.
+  `506afc1`. Kiro returned a new PASS on `e99856e` after 20 R2b and 96 focused
+  S0–S3 tests passed; the Copilot audit verdict is pending. Ryan decides PR
+  disposition after both verdicts; no live or new Execute authority is granted.
 - **Arc Codex — append-cursor format extension planning:** Kiro PASSed the
   conditional Copilot `events.jsonl` plan at stated tip `9e2d0ef`; Codex
   independently verified that local and remote branch tips match. Trapdoor
   Hunt issue #286 has since pushed an unmerged shared-registry integration
-  successor at `e99856e`, ready for targeted Copilot/Kiro rechecks; its
-  reviewed original PASS does not cover this successor tip.
+  successor at `e99856e`. Kiro has PASSed the successor; Copilot audit remains
+  pending. The original reviews alone did not cover this successor tip.
   The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
