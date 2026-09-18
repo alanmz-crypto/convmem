@@ -5,8 +5,13 @@ Full user/assistant turns — unlike ~/.codex/history.jsonl (prompts only).
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
+
+from adapters.jsonl_prefix import (
+    CompletePrefixView,
+    complete_prefix_view,
+    legacy_parse_jsonl_messages,
+)
 
 
 def is_codex_rollout_jsonl(path: Path | str) -> bool:
@@ -54,51 +59,36 @@ def _message_from_payload(payload: dict) -> tuple[str, str] | None:
     return None
 
 
+def _message_from_record(record: object) -> dict | None:
+    if not isinstance(record, dict):
+        return None
+    ts = record.get("timestamp")
+    timestamp = ts if isinstance(ts, str) else None
+    rtype = record.get("type")
+    payload = record.get("payload")
+    if not isinstance(payload, dict):
+        return None
+    if rtype not in ("response_item", "event_msg"):
+        return None
+    pair = _message_from_payload(payload)
+    if not pair:
+        return None
+    role, content = pair
+    return {
+        "role": role,
+        "content": content,
+        "timestamp": timestamp,
+        "source_type": "codex_rollout",
+    }
+
+
 def parse(filepath: str) -> list[dict]:
     """Parse a Codex rollout jsonl into canonical messages."""
-    messages: list[dict] = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if not isinstance(record, dict):
-                continue
+    return legacy_parse_jsonl_messages(filepath, _message_from_record)
 
-            ts = record.get("timestamp")
-            timestamp = ts if isinstance(ts, str) else None
-            rtype = record.get("type")
-            payload = record.get("payload")
-            if not isinstance(payload, dict):
-                continue
 
-            if rtype == "response_item":
-                pair = _message_from_payload(payload)
-                if pair:
-                    role, content = pair
-                    messages.append(
-                        {
-                            "role": role,
-                            "content": content,
-                            "timestamp": timestamp,
-                            "source_type": "codex_rollout",
-                        }
-                    )
-            elif rtype == "event_msg":
-                pair = _message_from_payload(payload)
-                if pair:
-                    role, content = pair
-                    messages.append(
-                        {
-                            "role": role,
-                            "content": content,
-                            "timestamp": timestamp,
-                            "source_type": "codex_rollout",
-                        }
-                    )
-
-    return messages
+def parse_complete_prefix(filepath: str, *, raw: bytes | None = None) -> CompletePrefixView:
+    """Return messages, line outcomes, and prefix identity for rollout JSONL."""
+    return complete_prefix_view(
+        filepath, raw=raw, message_from_record=_message_from_record
+    )

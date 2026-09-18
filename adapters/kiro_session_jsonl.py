@@ -14,13 +14,18 @@ Thin prompt sidecars at ~/.kiro/sessions/cli/*.history are not indexed.
 
 import hashlib
 import json
-from dataclasses import dataclass
 from pathlib import Path
 
 from adapters.jsonl_io import (
     iter_jsonl_dicts,
     nonempty_stripped,
     session_parse_context,
+)
+from adapters.jsonl_prefix import (
+    CompletePrefixView,
+    RawLineOutcome,
+    prefix_boundary,
+    prefix_sha256,
 )
 
 _SKIP_PAYLOAD_TYPES = frozenset(
@@ -81,21 +86,6 @@ def read_session_meta(filepath: str) -> dict:
     }
 
 
-@dataclass(frozen=True)
-class CompletePrefixView:  # pylint: disable=too-many-instance-attributes
-    """Canonical Kiro messages plus the byte-range commitment for one prefix."""
-
-    messages: list[dict]
-    byte_ranges: list[tuple[int, int]]
-    complete_boundary: int
-    prefix_sha256: str
-    device: int
-    inode: int
-    session_meta: dict
-    session_meta_digest: str | None
-    raw_prefix: bytes
-
-
 def _accepted_message(record: object, *, session_id: str, workspace: str) -> dict | None:
     if not isinstance(record, dict):
         return None
@@ -119,22 +109,48 @@ def _accepted_message(record: object, *, session_id: str, workspace: str) -> dic
     }
 
 
-def _scan_prefix_records(raw: bytes, *, session_id: str, workspace: str) -> tuple[list[dict], list[tuple[int, int]]]:
+def _scan_prefix_records(
+    raw: bytes, *, session_id: str, workspace: str
+) -> tuple[list[dict], list[tuple[int, int]], list[RawLineOutcome]]:
     messages: list[dict] = []
     ranges: list[tuple[int, int]] = []
+    outcomes: list[RawLineOutcome] = []
     offset = 0
     for line in raw.splitlines(keepends=True):
         end = offset + len(line)
+        stripped = line.strip()
+        if not stripped:
+            outcomes.append(RawLineOutcome(offset, end, "skipped_blank"))
+            offset = end
+            continue
         try:
-            record = json.loads(line)
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            record = None
+            text = line.decode("utf-8")
+        except UnicodeDecodeError:
+            outcomes.append(RawLineOutcome(offset, end, "skipped_invalid_utf8"))
+            offset = end
+            continue
+        try:
+            record = json.loads(text.strip())
+        except json.JSONDecodeError:
+            outcomes.append(RawLineOutcome(offset, end, "skipped_malformed_json"))
+            offset = end
+            continue
+        if not isinstance(record, dict):
+            outcomes.append(RawLineOutcome(offset, end, "skipped_non_object"))
+            offset = end
+            continue
         message = _accepted_message(record, session_id=session_id, workspace=workspace)
-        if message is not None:
-            messages.append(message)
-            ranges.append((offset, end))
+        if message is None:
+            outcomes.append(RawLineOutcome(offset, end, "skipped_no_message"))
+            offset = end
+            continue
+        messages.append(message)
+        ranges.append((offset, end))
+        outcomes.append(
+            RawLineOutcome(offset, end, "emitted", message_index=len(messages) - 1)
+        )
         offset = end
-    return messages, ranges
+    return messages, ranges, outcomes
 
 
 def parse(filepath: str) -> list[dict]:
@@ -158,9 +174,9 @@ def parse_complete_prefix(filepath: str, *, raw: bytes | None = None) -> Complet
     else:
         data = raw
         stat_info = path.stat()
-    boundary = data.rfind(b"\n") + 1
+    boundary = prefix_boundary(data)
     prefix = data[:boundary]
-    messages, ranges = _scan_prefix_records(
+    messages, ranges, outcomes = _scan_prefix_records(
         prefix, session_id=session_id, workspace=workspace
     )
     session_json = path.parent / "session.json"
@@ -171,8 +187,9 @@ def parse_complete_prefix(filepath: str, *, raw: bytes | None = None) -> Complet
     return CompletePrefixView(
         messages=messages,
         byte_ranges=ranges,
+        line_outcomes=outcomes,
         complete_boundary=boundary,
-        prefix_sha256=hashlib.sha256(prefix).hexdigest(),
+        prefix_sha256=prefix_sha256(prefix),
         device=int(stat_info.st_dev),
         inode=int(stat_info.st_ino),
         session_meta=session_meta,

@@ -8,7 +8,7 @@
     "convmem.py:491",
     "convmem.py:656",
     "convmem.py:1718",
-    "incremental_jsonl.py:501",
+    "incremental_jsonl.py:584",
     "ingest.py:612",
     "ingest.py:1092",
     "ingest.py:1130",
@@ -202,7 +202,7 @@
     },
     {
       "file": "incremental_jsonl.py",
-      "line": 501,
+      "line": 584,
       "snippet": "return production_chroma_write_session(",
       "class": "mutates_units",
       "required_routing": "production_chroma_write_session",

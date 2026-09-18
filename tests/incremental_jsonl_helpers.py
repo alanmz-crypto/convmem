@@ -49,6 +49,22 @@ def fake_distill(text, **_kwargs):
     ]
 
 
+def install_build_chunk_tracker(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Return chunk start offsets passed to build_chunk_artifact during a run."""
+    build_calls: list[int] = []
+    import incremental_jsonl
+
+    original = incremental_jsonl.build_chunk_artifact
+
+    def tracking_build(*args, chunk=None, **kwargs):
+        if chunk is not None:
+            build_calls.append(int(chunk["start_offset"]))
+        return original(*args, chunk=chunk, **kwargs)
+
+    monkeypatch.setattr(incremental_jsonl, "build_chunk_artifact", tracking_build)
+    return build_calls
+
+
 def install_fakes(monkeypatch: pytest.MonkeyPatch) -> None:
     import ingest
 
@@ -63,6 +79,77 @@ def kiro_record(index: int, *, content: str | None = None) -> bytes:
         "payload": {
             "type": "user" if index % 2 == 0 else "assistant",
             "content": content or f"message-{index:05d}",
+        },
+    }
+    return (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
+
+
+def _isolation_home(root: Path) -> Path:
+    home = root / "home"
+    return home if home.is_dir() else root
+
+
+def write_codex_history_source(root: Path, count: int) -> Path:
+    path = _isolation_home(root) / ".codex" / "history.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for index in range(count):
+        rows.append(
+            json.dumps(
+                {
+                    "text": f"codex-history-{index:05d}",
+                    "session_id": "sess-codex",
+                    "ts": 1_700_000_000 + index,
+                },
+                sort_keys=True,
+            )
+        )
+    path.write_text("\n".join(rows) + ("\n" if rows else ""), encoding="utf-8")
+    return path
+
+
+def write_codex_rollout_source(root: Path, count: int, *, name: str = "rollout-test") -> Path:
+    path = _isolation_home(root) / ".codex" / "sessions" / "2026" / f"{name}.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    for index in range(count):
+        role = "user" if index % 2 == 0 else "assistant"
+        payload_type = "user_message" if role == "user" else "agent_message"
+        lines.append(
+            json.dumps(
+                {
+                    "type": "response_item",
+                    "timestamp": f"2026-01-01T00:00:{index % 60:02d}Z",
+                    "payload": {
+                        "type": payload_type,
+                        "message": f"codex-rollout-{index:05d}",
+                    },
+                },
+                sort_keys=True,
+            )
+        )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def codex_history_record(index: int, *, text: str | None = None) -> bytes:
+    row = {
+        "text": text or f"codex-history-{index:05d}",
+        "session_id": "sess-codex",
+        "ts": 1_700_000_000 + index,
+    }
+    return (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
+
+
+def codex_rollout_record(index: int, *, text: str | None = None) -> bytes:
+    role = "user" if index % 2 == 0 else "assistant"
+    payload_type = "user_message" if role == "user" else "agent_message"
+    row = {
+        "type": "response_item",
+        "timestamp": f"2026-01-01T00:00:{index % 60:02d}Z",
+        "payload": {
+            "type": payload_type,
+            "message": text or f"codex-rollout-{index:05d}",
         },
     }
     return (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
@@ -192,6 +279,7 @@ def chroma_authority(boundary: IsolationBoundary, source: Path) -> dict:
             "summary_ids",
             "unit_ids",
             "processed_hash",
+            "raw_line_coverage",
         )
     }
     return {"summaries": summaries, "units": units, "checkpoint": keep}
