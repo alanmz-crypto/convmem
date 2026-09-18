@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-17
+**Updated:** 2026-09-18
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,13 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Arc Codex — append-cursor format extension planning:** Codex drafted a
-  conditional Copilot `events.jsonl` first slice after inspecting the Kiro-only
-  coordinator and the separate Trapdoor Hunt issue #286 Codex-format draft.
+- **Arc Codex — append-cursor format extension planning:** Kiro PASSed the
+  conditional Copilot `events.jsonl` plan at stated tip `9e2d0ef`; Codex
+  independently verified that local and remote branch tips match. The separate
+  Trapdoor Hunt issue #286 Codex-format draft remains distinct.
   The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
-  for exact-tip Kiro review. Copilot writer proof is a hard eligibility gate;
+  ready for Ryan's Execute decision. Conditions: E3 must prove Copilot
+  `session_id`/YAML precedence and the chosen sidecar invalidation rule; Ryan
+  must name one owner of shared `incremental_jsonl.py` changes before this or
+  issue #286 Execute touches it. Copilot writer proof remains a hard E0 gate;
   no implementation, bootstrap, live canary, or activation is authorized.
   When merging with the 2026-09-17 R2b corrective's LATEST edit, keep both
   routing bullets.
