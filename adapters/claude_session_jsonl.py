@@ -12,7 +12,6 @@ from pathlib import Path
 
 from adapters.jsonl_io import (
     iter_jsonl_dicts,
-    nonempty_stripped,
     session_parse_context,
 )
 
@@ -32,6 +31,7 @@ _STRIP_RE = re.compile(
     r"<(" + "|".join(_STRIP_TAGS) + r")>.*?</\1>",
     re.DOTALL,
 )
+_OPEN_TAG_RE = re.compile(r"<(" + "|".join(_STRIP_TAGS) + r")>")
 
 
 def _claude_projects_root() -> Path:
@@ -103,21 +103,36 @@ def read_session_meta(filepath: str) -> dict:
     return meta
 
 
-def strip_injected_context(text: str) -> str:
-    """Remove Claude Code injected wrappers and their contents."""
-    return _STRIP_RE.sub("", text).strip()
+def strip_injected_context(text: str) -> str | None:
+    """Remove Claude Code injected wrappers and their contents.
+
+    Returns None when an unclosed strip tag remains after removing well-formed
+    pairs (fail-closed — do not index partially sanitized injection).
+    """
+    cleaned = _STRIP_RE.sub("", text).strip()
+    if _OPEN_TAG_RE.search(cleaned):
+        return None
+    return cleaned or None
 
 
-def _text_from_content(raw: object) -> str | None:
+def text_from_message_content(raw: object) -> str | None:
+    """Map Claude message.content (str or block list) to sanitized speech text.
+
+    Shared mapper for on-demand parse() and future Gate 2 parse_complete_prefix().
+    """
     if isinstance(raw, str):
-        text = strip_injected_context(raw)
-        return text or None
+        return strip_injected_context(raw)
     if isinstance(raw, list):
         parts: list[str] = []
         for block in raw:
             if isinstance(block, dict) and block.get("type") == "text":
-                text = nonempty_stripped(block.get("text"))
-                if text is not None:
+                text_raw = block.get("text")
+                if not isinstance(text_raw, str):
+                    continue
+                text = strip_injected_context(text_raw)
+                if text is None:
+                    return None
+                if text:
                     parts.append(text)
         joined = "\n".join(parts)
         return joined or None
@@ -139,7 +154,7 @@ def parse(filepath: str) -> list[dict]:
         message = record.get("message")
         if not isinstance(message, dict):
             continue
-        content = _text_from_content(message.get("content"))
+        content = text_from_message_content(message.get("content"))
         if content is None:
             continue
 

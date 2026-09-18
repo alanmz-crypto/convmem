@@ -10,6 +10,7 @@ from adapters.claude_session_jsonl import (
     is_claude_session_jsonl,
     parse,
     strip_injected_context,
+    text_from_message_content,
 )
 from adapters.detect import TOOL_BY_FORMAT, detect_format, get_parser
 
@@ -186,6 +187,80 @@ class TestClaudeSessionJsonl(unittest.TestCase):
             "<command-name>/status</command-name>"
         )
         self.assertEqual(strip_injected_context(raw), "Actual user question")
+
+    def test_strip_injected_context_fail_closed_on_unclosed_wrapper(self):
+        self.assertIsNone(
+            strip_injected_context("<system-reminder>truncated injection")
+        )
+        self.assertIsNone(
+            strip_injected_context("speech <local-command-caveat>no close")
+        )
+
+    def test_text_from_message_content_strips_list_form_wrappers(self):
+        content = text_from_message_content(
+            [
+                {
+                    "type": "text",
+                    "text": (
+                        "<system-reminder>boilerplate</system-reminder>"
+                        "assistant answer"
+                    ),
+                },
+                {"type": "thinking", "thinking": "drop me"},
+                {
+                    "type": "text",
+                    "text": " second paragraph",
+                },
+            ]
+        )
+        self.assertEqual(content, "assistant answer\nsecond paragraph")
+
+    def test_text_from_message_content_fail_closed_on_unclosed_list_block(self):
+        self.assertIsNone(
+            text_from_message_content(
+                [{"type": "text", "text": "<system-reminder>leak"}]
+            )
+        )
+
+    def test_parse_strips_list_form_wrappers_and_keeps_speech(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_claude_transcript(
+                Path(tmp),
+                [
+                    _claude_record(
+                        rtype="assistant",
+                        content=[
+                            {"type": "thinking", "thinking": "internal"},
+                            {
+                                "type": "text",
+                                "text": (
+                                    "<system-reminder>injected</system-reminder>"
+                                    "visible reply"
+                                ),
+                            },
+                        ],
+                    ),
+                ],
+            )
+            messages = parse(str(path))
+            self.assertEqual(len(messages), 1)
+            self.assertEqual(messages[0]["content"], "visible reply")
+
+    def test_parse_drops_message_with_unclosed_wrapper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_claude_transcript(
+                Path(tmp),
+                [
+                    _claude_record(
+                        rtype="user",
+                        content="<system-reminder>only opening tag",
+                    ),
+                    _claude_record(rtype="user", content="safe follow-up"),
+                ],
+            )
+            messages = parse(str(path))
+            self.assertEqual(len(messages), 1)
+            self.assertEqual(messages[0]["content"], "safe follow-up")
 
     def test_parse_strips_wrappers_and_drops_empty_messages(self):
         with tempfile.TemporaryDirectory() as tmp:
