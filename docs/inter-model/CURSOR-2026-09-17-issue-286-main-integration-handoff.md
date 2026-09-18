@@ -17,9 +17,11 @@
 - **Main at grant:** `18f63dbb6a9ea9f7c569862f29e176a49e3323a5`. Fetch and record the actual `origin/main` at integration start; stop if new changes make the conflict or scope materially different.
 - **Integration:** performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…`; R2b inventory regenerated; affected runtime gates PASS (146 pytest, pylint 10/10, compileall, diff-check).
 - **Review verdicts on prior exact tip `e99856e…`:** Kiro PASS (S0–S3 contract preservation); Copilot FAIL (documentation acceptance — trailing whitespace, stale resume state, wrong tip routing in `LATEST.md`/`STATUS.md`).
-- **State:** docs correction in progress to address Copilot findings; no PR, merge, or live operation until fresh Copilot and Kiro exact-tip reviews on the corrected pushed head (`git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch).
+- **State:** `READY_FOR_RECHECK` — integration and docs correction are pushed on `feat/2026-09-17-issue-286-main-integration`; no PR, merge, or live operation until fresh Copilot and Kiro exact-tip reviews on the current pushed head (`git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch).
 
-## Authorized work
+## Authorized work (completed history)
+
+The following grant steps were completed during integration; preserved here as history.
 
 1. Preserve the reviewed remote branch at `506afc1`. Repository policy forbids force-push, so create a **successor integration branch** from that tip, rebase the successor onto the freshly fetched `origin/main`, and push the successor with an explicit refspec. Do not rewrite the reviewed remote ref. Keep the work in a dedicated worktree; do not switch the shared checkout.
 2. Resolve only the main-integration conflicts. Preserve both the #304 main-only changes and the reviewed S0–S3 implementation. Review any reused `rerere` resolution with `git rerere diff`.
@@ -40,4 +42,4 @@ This grant does not authorize S4 existing-source adoption, S5 tail-only I/O, wat
 
 **Next lane:** Existing Cursor session → Copilot targeted integration audit → Kiro targeted recheck → Ryan PR decision.
 
-**TL;DR:** [Arc Trapdoor Hunt] Ryan authorized integration of reviewed issue #286 S0–S3 onto current main, with generated evidence and no force-push. Push a successor tip and stop for fresh targeted reviews; no PR or live operation.
+**TL;DR:** [Arc Trapdoor Hunt] Issue #286 S0–S3 integration and docs correction are pushed on `feat/2026-09-17-issue-286-main-integration`. Prior exact tip `e99856e…`: Kiro PASS (S0–S3), Copilot FAIL (documentation). Current state is `READY_FOR_RECHECK` pending fresh Copilot and Kiro exact-tip reviews on the pushed head after fetch; no PR or live operation.
