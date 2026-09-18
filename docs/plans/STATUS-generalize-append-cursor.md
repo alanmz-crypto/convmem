@@ -12,7 +12,9 @@ governed projection writes. This extension asks whether the landed incremental
 coordinator can safely serve one more JSONL format. Kiro PASSed the original
 architecture and bounded Execute plan at stated tip `9e2d0ef`. Issue #286's
 shared seam has since landed on `main`, and Kiro PASSed the reconciled plan at
-`53e7b42`. Ryan has granted only a preliminary offline local writer trace.
+`53e7b42`. Ryan granted a preliminary offline local writer trace, which has
+returned evidence but has **not** passed E0: the source inode changed on every
+observed action, and an unexpected tool call occurred on the final action.
 A live feature would still require authorized
 implementation, hermetic proof, separate bootstrap/canary decisions, and
 separate activation.
@@ -71,7 +73,7 @@ to this planning change; see the execution plan for the exact count.
 | #286 shared base | [PR #307](https://github.com/alanmz-crypto/convmem/pull/307) squash-merged to `main` as `d657767`; its registry/scanner are the base for this Copilot proposal and Kiro confirmed the revised plan uses them | — |
 | Condition A — Copilot metadata evidence | Pending: E1/E2 need a distinct versioned Copilot registry entry with `workspace.yaml` sidecar path; E3 must exercise `workspace.yaml` id changes, `session.start` versus YAML precedence, and the chosen digest-versus-effective-fields invalidation before checkpoint advance | Cursor if granted; Kiro verifies evidence |
 | Condition B — shared-code base | Resolved: issue #286 landed as `d657767`, so Copilot work must extend the merged registry/scanner. A later Copilot code-writer assignment belongs to Ryan's Execute grant. | Ryan |
-| E0 writer-contract evidence | Ryan granted one preliminary offline local-provider trace: one fresh temporary session, create/append/resume/compact/close, at most six model-using actions and 15 minutes, zero external provider calls. Cursor has not yet returned evidence. Hosted writer parity and unobserved rotation remain open even if the trace is clean. | Cursor returns bounded trace; Ryan decides any further E0 scope |
+| E0 writer-contract evidence | Cursor returned the granted local trace: all prior bytes remained exact prefixes, but the inode changed at every action (create/append/resume/compact/close), `workspace.yaml` changed on each action (`updated_at`; compaction also changed `summary_count`), and the last action triggered an unexpected `read_agent` tool call. The merged coordinator treats changed device/inode as `source_replaced_or_rotated`, requiring refusal or a separately authorized full rebuild. This is **not an E0 PASS** or proof of transform reuse. Hosted parity and automatic/size-threshold behavior remain unknown. | Kiro targeted evidence recheck, then Ryan decides whether to stop or replan |
 | E1–E4 implementation and hermetic verification | Not started; conditional on E0 evidence/review and a later Ryan grant | Cursor if authorized |
 | Existing-source bootstrap | Unauthorized; separate cost/authority decision | Ryan |
 | Live canary and activation | Unauthorized; existing Arc Codex gates remain | Ryan |
@@ -82,7 +84,8 @@ to this planning change; see the execution plan for the exact count.
 authored the [coordination handoff](../inter-model/CODEX-2026-09-18-append-cursor-ownership-handoff.md).
 The plan reconciliation and targeted Kiro PASS are complete. Ryan granted the
 preliminary local trace in the [Cursor handoff](../inter-model/CODEX-2026-09-18-copilot-e0-local-trace-handoff.md).
-Route that handoff to Cursor and keep Copilot ineligible. This role carries no
+The trace is back. Route the observed inode replacement and tool-call stop
+condition for a targeted Kiro evidence recheck; keep Copilot ineligible. This role carries no
 implementation or Sol-High authority.
 
 **If Ryan sent you to decide Execute:** Kiro PASSed the original planning
@@ -93,9 +96,10 @@ is granted; full E0 eligibility and E1–E4 require later evidence
 and a separate grant. Kiro's PASS grants no operation. See the
 [Codex-to-Codex coordination handoff](../inter-model/CODEX-2026-09-18-append-cursor-ownership-handoff.md).
 
-**If sent for Cursor implementation:** run only the explicitly granted
-[offline local writer trace](../inter-model/CODEX-2026-09-18-copilot-e0-local-trace-handoff.md).
-E1–E4 require a later separate grant. E0 failure ends the proposed
+**If sent for Cursor implementation:** the granted
+[offline local writer trace](../inter-model/CODEX-2026-09-18-copilot-e0-local-trace-handoff.md)
+has returned. Do not run another trace or E1–E4 without a new Ryan grant.
+An E0 failure ends the proposed
 Copilot route. If E3 is
 granted, show sidecar `session_id` change and `session.start` versus YAML
 precedence explicitly, and state whether digest change or effective-field
@@ -108,14 +112,16 @@ planning brief provides no P2, bootstrap, watcher, or configuration authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Cursor runs the [granted offline local writer trace](../inter-model/CODEX-2026-09-18-copilot-e0-local-trace-handoff.md)
-   and returns measured evidence. A clean local trace alone does not prove
-   hosted writer parity or complete E0. GitHub's
+1. Kiro gives a targeted read-only assessment of Cursor's local trace against
+   the reviewed E0 and continuity contract. The saved evidence is under
+   `/tmp/convmem-copilot-e0-local.farpf1dl/`; its `analysis.json` and five
+   snapshots show byte-prefix preservation alongside a changed inode on each
+   action. The final snapshot records an unexpected `read_agent` execution.
+2. Ryan decides whether to close the current Copilot proposal or authorize a
+   revised E0 design/evidence scope. No hosted trace is authorized. GitHub's
    [CLI session limit](https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/set-session-limit)
    is soft and has a 30-credit minimum, so it is not a hard hosted-cost bound.
-2. Ryan reviews that trace and decides whether further E0 evidence needs a
-   separate grant. A writer-contract failure returns
-   `NO_COPILOT_ROUTE` without substituting another format.
+   A `NO_COPILOT_ROUTE` outcome permits no substitute format.
 3. If E0 passes review, Ryan separately grants a bounded E1–E4 implementation
    against the merged base; Cursor supplies clean-worktree hermetic evidence.
 4. E3 evidence exercises sidecar id change and `session.start`/YAML
@@ -186,12 +192,14 @@ line. Keep this file a snapshot, not a session diary.
 | 2026-09-18 | Ryan / Codex | Ryan squash-merged #286 as `d657767`; Codex reconciled the Copilot plan with the landed registry/scanner for targeted Kiro recheck |
 | 2026-09-18 | Kiro / Codex | Kiro PASSed post-merge plan tip `53e7b42` against `main` `d657767`; E0 remains ungranted pending Ryan's bounded action/provider choice |
 | 2026-09-18 | Ryan / Codex | Ryan granted a bounded preliminary offline local Copilot writer trace; full E0 eligibility, hosted proof, and E1–E4 remain gated |
+| 2026-09-18 | Cursor / Codex | Local trace preserved prior bytes but replaced the inode on every action and fired an unexpected tool call; E0 did not pass and targeted Kiro evidence recheck is next |
 
 ## TL;DR
 
 - [Arc Codex] The generalization is technically possible only through a
   reviewed, versioned complete-prefix capability per adapter.
 - Kiro PASSed the post-merge plan at exact tip `53e7b42` against merged
-  `main` code `d657767`. Ryan granted Cursor one bounded offline local writer
-  trace. Copilot writer eligibility, E1–E4 implementation, and live operation
-  remain ungranted.
+  `main` code `d657767`. Cursor's bounded local trace found inode replacement
+  on every action; the current coordinator would refuse incremental reuse.
+  E0 has not passed. Kiro rechecks this evidence before Ryan decides whether
+  to stop or replan; implementation and live operation remain ungranted.

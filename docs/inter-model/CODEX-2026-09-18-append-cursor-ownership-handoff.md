@@ -24,7 +24,7 @@ Ryan selected the **Codex Sol-medium lane that authored this handoff** to coordi
 
 1. **Completed writer assignment:** the existing #286 Cursor integrator was the sole writer of shared `incremental_jsonl.py` and its format registry through integration, review, and Ryan's merge. The coordination lane did not edit that code. A later Copilot implementation needs a separate Ryan writer assignment against merged `main`, with no concurrent shared-code writer.
 2. **Sequence:** #286 is merged as `d657767`; Codex reconciled the Copilot packet and Kiro PASSed `53e7b42`. Ryan granted one preliminary offline local writer trace, specified in the [Cursor handoff](CODEX-2026-09-18-copilot-e0-local-trace-handoff.md). E1–E4 remain pending until E0 evidence/review and a later Ryan writer/grant decision.
-3. **E0 scope decision:** the local trace is granted with one fresh temporary session, at most six model-using actions and 15 minutes, and zero external provider calls. It can reject a bad writer, but cannot alone prove hosted writer parity or complete E0. GitHub-hosted inference has a 30-credit minimum soft session limit that can overshoot on the final response; any hosted proof needs a separate Ryan grant. No substitute format is implied on E0 failure.
+3. **E0 result:** Cursor returned the granted local trace. Prior bytes remained exact prefixes, but each action used a new inode and the final action triggered an unexpected `read_agent` tool call. The merged coordinator regards inode change as `source_replaced_or_rotated`, preventing incremental reuse under the current contract. This is not an E0 PASS. Kiro's targeted evidence recheck precedes Ryan's stop-or-replan decision; hosted proof needs a separate grant. No substitute format is implied on E0 failure.
 
 ## What the other Codex Sol should carry
 
@@ -35,14 +35,14 @@ Ryan selected the **Codex Sol-medium lane that authored this handoff** to coordi
 
 ## Next handoff
 
-**Ryan:** receive Cursor's local trace and decide whether further E0 proof is warranted; assign a Copilot code writer only if E1–E4 are later granted.
+**Ryan:** after Kiro's targeted evidence recheck, decide whether to stop the current Copilot route or authorize replanning; assign a Copilot code writer only if E1–E4 are later granted.
 
-**Kiro:** targeted post-merge planning recheck complete and PASS at `53e7b42`; later evidence review only if E0 is granted.
+**Kiro:** targeted post-merge planning recheck complete and PASS at `53e7b42`; now assess the local trace's inode replacement and unexpected tool call against the E0 gate and continuity contract.
 
-**Codex Sol-medium (authoring lane):** record Ryan's limited grant and route the bounded trace to Cursor.
+**Codex Sol-medium (authoring lane):** record Cursor's evidence and route a targeted read-only recheck to Kiro.
 
 **Other Codex Sol:** no assignment on this lane; remain available only if a separately authorized task or qualifying review-conflict gate arises.
 
 **Existing #286 Cursor integrator:** completed the shared-code integration; no new Execute scope is implied.
 
-**TL;DR:** [Arc Codex] Issue #286's shared code is on `main`; Kiro PASSed the reconciled Copilot plan at `53e7b42`. Ryan granted one bounded offline local writer trace. Full E0 eligibility, implementation, and live operation remain gated.
+**TL;DR:** [Arc Codex] Issue #286's shared code is on `main`; Kiro PASSed the reconciled Copilot plan at `53e7b42`. The granted local trace found inode replacement on every action and an unexpected tool call, so E0 has not passed. Kiro rechecks the evidence before Ryan's stop-or-replan decision.
