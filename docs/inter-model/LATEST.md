@@ -19,14 +19,18 @@ cross-arc snapshot and the linked arc brief below.
   [`IMPLEMENTATION-willowyhollow-review-gate-enforcement.md`](../plans/IMPLEMENTATION-willowyhollow-review-gate-enforcement.md),
   with routing in
   [`CODEX-2026-09-18-willowyhollow-review-gate-implementation-handoff.md`](CODEX-2026-09-18-willowyhollow-review-gate-implementation-handoff.md).
-  A six-page static CSP spot check found no definite source mismatch but did
-  not test browser interactions. **Next:** Kiro reviews the candidate; a safe
-  browser or separately granted report-only canary and exact-value re-review
-  precede any Ryan SiteGround grant. **Track B remains deferred:** a second
+  Kiro PASSed the Phase 1 design at `12401a1`, not enforcement. A six-page
+  static CSP check found no definite source mismatch, but runtime behavior
+  remains untested. A later read-only probe found Cloudflare's `/wp-admin/`
+  `403` challenge has its own CSP/Referrer-Policy; it is not controlled by
+  origin `.htaccess`. **Next:** Kiro rechecks that response-class distinction;
+  Crush's local Chrome override canary or a separately granted report-only
+  trial, Ryan's HSTS choice, and exact-value review precede any SiteGround
+  grant. **Track B remains deferred:** a second
   repo writer could reach repository-scoped SiteGround secrets, and Cursor
-  App approvals make count `1`
-  alone non-human. Approval count stays `0`, no writer is invited, and no
-  external change is granted. The local web-design model question is separate.
+  App approvals make count `1` alone non-human. Approval count stays `0`, no
+  writer is invited, and no external change is granted. The local web-design
+  model question is separate.
 
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as

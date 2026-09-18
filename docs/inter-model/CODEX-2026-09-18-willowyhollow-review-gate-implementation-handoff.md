@@ -4,7 +4,7 @@
 **Author:** OpenAI Codex
 **For:** Ryan, Kiro, Cursor, and the GitHub Copilot audit lane
 **Arc:** none (ad-hoc)
-**Status:** `PHASE1_REPAIR_CANDIDATE` (2026-09-18; Track A sequence passed Kiro at `1363056`, Phase 0 attribution and static CSP spot check are in hand, runtime CSP evidence/Kiro re-review/Ryan grant remain; Track B deferred)
+**Status:** `PHASE1_REPAIR_CANDIDATE` (2026-09-18; Kiro design PASS at `12401a1`, followed by a read-only Cloudflare challenge finding requiring targeted acceptance recheck; runtime CSP evidence, Ryan's HSTS choice, exact-value review, and grant remain; Track B deferred)
 
 ## Goal
 
@@ -51,17 +51,27 @@ Cloudflare setting, or live SiteGround state.
 8. Ryan's original local web-design model quality/cost question remains a
    separate unanswered model-routing slice. Claude's audit of the ruleset plan
    does not answer it or create a standing Claude review requirement.
+9. A fresh public GET found a Cloudflare-generated `/wp-admin/` `403`
+   (`cf-mitigated: challenge`) with its own CSP and Referrer-Policy. That is a
+   separate edge-owned response, not a duplicate origin policy. The SiteGround
+   `.htaccess` candidate cannot control it. Public origin-served `200`/`404`
+   responses still lack all three headers; no browser canary was run because
+   this Codex session had no connected browser.
 
 ## Lane sequence
 
 1. **Crush:** Phase 0 attribution and a read-only six-page static CSP spot
    check are complete. No definite static source mismatch was found, but
-   current browser interactions and CSP violations remain untested.
+   current browser interactions and CSP violations remain untested. The
+   proposed local Chrome DevTools override canary is Crush's next
+   investigative slice; it changes no hosted response. This Codex session
+   had no connected browser to run it.
 2. **Codex:** this draft frames a narrow `.htaccess` repair candidate and
    stop/rollback gates; it does not approve the policy or an external write.
-3. **Kiro:** the Track A sequence passed at `1363056`; review the exact Phase 1
-   candidate and current-site CSP evidence on the new revision. Track B still
-   awaits Ryan's credential-isolation decision and an exact execution plan.
+3. **Kiro:** the Track A sequence passed at `1363056` and the Phase 1 design
+   passed at `12401a1`. Targeted recheck is needed for the newly documented
+   edge-challenge response split, then exact-value review after runtime CSP
+   evidence. Track B still awaits Ryan's credential-isolation decision.
 4. **Ryan:** grants each exact external change, chooses whether Track B is worth
    its access cost, and owns merge/ledger authority.
 5. **Cursor:** implements separately granted header, workflow, or ruleset work.
@@ -103,13 +113,16 @@ checks are in:
       lifetime/subdomain/preload an explicit Ryan decision.
 - [x] The six-page static CSP spot check is recorded without treating it as
       browser compatibility proof.
-- [ ] Kiro reviews the Phase 1 candidate; a safe browser or separately
-      authorized report-only canary demonstrates runtime CSP compatibility.
+- [x] Kiro PASSed the Phase 1 design at `12401a1`, without granting an
+      enforcing SiteGround change.
+- [ ] Kiro rechecks the edge-challenge acceptance clarification. Crush's
+      local Chrome override canary, or a separately authorized report-only
+      trial implemented by Cursor, demonstrates runtime CSP compatibility.
       Kiro reviews the exact final values/evidence before Ryan grants an
       enforcing SiteGround change. Ryan explicitly accepts or revises the
       HSTS/CSP values, with Kiro re-review if they change.
 
-I finished: [Arc none (ad-hoc)] integrated Crush's attribution and Kiro's two repair conditions into a Phase 1 candidate.
-Next step: Kiro reviews the Phase 1 candidate; obtain runtime CSP canary evidence and exact-value re-review before Ryan's enforcing grant.
-Next lane: Kiro, then a separately authorized canary/verification lane, Kiro, and Ryan; Cursor only after an exact grant.
+I finished: [Arc none (ad-hoc)] narrowed the header acceptance gate to origin-served responses after finding a Cloudflare challenge.
+Next step: Kiro rechecks that distinction; obtain runtime CSP canary evidence and Ryan's HSTS choice before exact-value review and any enforcing grant.
+Next lane: Kiro, a separately authorized canary/verification lane, Ryan for policy, Kiro for exact values, then Ryan/Cursor for any grant and execution.
 See my work: `docs/plans/IMPLEMENTATION-willowyhollow-review-gate-enforcement.md`

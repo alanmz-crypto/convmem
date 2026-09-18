@@ -3,7 +3,7 @@
 **Date:** 2026-09-18
 **Author:** OpenAI Codex
 **Arc:** none (ad-hoc)
-**State:** Track A sequence PASS from Kiro at `1363056`; Crush's read-only attribution is in hand; the Phase 1 candidate below requires Kiro re-review and Ryan's exact policy/grant decision; Track B remains deferred; no external change authorized
+**State:** Track A sequence PASS at `1363056` and Phase 1 design PASS at `12401a1`; a new Cloudflare edge-challenge finding narrows acceptance and needs Kiro's targeted recheck; runtime CSP evidence, Ryan's HSTS choice, and exact-value review remain; Track B deferred; no external change authorized
 **Input:** `docs/inter-model/CLAUDE-2026-09-18-willowyhollow-review-gate-comparison-handoff.md`
 
 ## Decision for this audit
@@ -256,24 +256,54 @@ behavior, booking, and browser violations remain untested. Before an
 *enforcing* grant, exercise today's pages/interactions with the candidate in
 a safe browser canary or separately granted
 `Content-Security-Policy-Report-Only` trial, recording network and violation
-evidence. Any staging report-only write needs its own exact Ryan grant and
-Cursor implementation; a local browser canary must not mutate the hosted
-site. Report-only alone will not close the enforcing-CSP observation. If
+evidence. **Default canary lane:** Crush tests the exact candidate against
+today's staging2 pages in a local Chrome browser using
+[DevTools response-header overrides](https://developer.chrome.com/docs/devtools/overrides),
+adding only the candidate CSP to document responses in that browser, not
+changing the hosted site or locally asserting HSTS.
+Record which document responses were overridden, verify the browser actually
+enforced the policy, and capture Network/Console violations and functional
+results for each required interaction. DevTools disables its cache while
+local overrides are enabled; note that limit in the evidence. If that local
+method is unavailable or inconclusive, a hosted report-only write needs its
+own exact Ryan grant and Cursor implementation. Report-only alone will not
+close the enforcing-CSP observation. If
 any required source would be blocked, revise the value and return it to Kiro;
 do not install the old string merely to turn the presence-only monitor green.
 The [CSP specification](https://www.w3.org/TR/CSP/)
 requires browsers to apply every enforced policy, so a second policy can
 break a page even if the proposed one is permissive.
 
+**Public response split (read-only GET, 2026-09-18):** `/` returned HTTPS
+`200`, a natural missing path returned `404`, and `/wp-json/` returned `200`;
+all still lacked CSP, HSTS, and Referrer-Policy. `/wp-admin/` returned a
+Cloudflare-generated `403` with `cf-mitigated: challenge`, its own CSP and
+`Referrer-Policy: same-origin`, and no HSTS. The HTTP home request returned
+a Cloudflare `301` to HTTPS. The challenge policy is **not** a duplicate
+header on an origin-served response. It is a distinct edge-owned response
+that the proposed `.htaccess` edit cannot change. No accessible origin-owned
+`401` was found in these public probes. The six [monitor checks](../../monitor.py)
+probe the site root, so the edge challenge neither satisfies nor invalidates
+those root-header observations. Cloudflare [documents the `cf-mitigated`
+marker](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/challenge-pages/detect-response/)
+and [warns that custom CSP transforms can disrupt challenge
+pages](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/challenge-pages/additional-configuration/);
+do not add a zone-wide edge CSP as a shortcut for this origin repair.
+
 **Pre-grant gates:** capture the current server file's contents, hash, owner,
 and mode through read-only access; diff its current content, the July backup,
-and only the candidate block. Confirm Cloudflare rules, SiteGround/Apache, active
-plugins, and page-level CSP meta tags will not create a second enforcing
-policy or conflicting final value. Capture raw, uncombined public and origin
+and only the candidate block. Confirm Cloudflare rules, SiteGround/Apache,
+active plugins, and page-level CSP meta tags will not create a second
+enforcing policy or conflicting final value on *origin-served* responses.
+Capture raw, uncombined public and origin
 response headers, including duplicate counts, for representative HTTPS
-`200`, natural `404`, HTTPS redirects, and an existing authenticated/`401`
-path if available. The Cloudflare-generated HTTP-to-HTTPS `301` is checked
-for continued redirection; HSTS on that HTTP response is not required.
+`200`, natural `404`, HTTPS redirects, and an origin-owned authenticated/`401`
+path if available. Record Cloudflare-generated challenges separately with
+their `cf-mitigated` marker; do not interpret their different CSP or
+Referrer-Policy as an origin duplicate. The Cloudflare-generated
+HTTP-to-HTTPS `301` is checked for continued redirection; HSTS on that HTTP
+response is not required. If Ryan requires the same header posture on
+Cloudflare-owned responses, that is a separate edge-policy design and grant.
 Apache's [`always` and `onsuccess` header tables](https://httpd.apache.org/docs/2.4/mod/mod_headers.html)
 can otherwise produce duplicate final fields; a dictionary-style header
 readout is not sufficient for this gate.
@@ -281,7 +311,8 @@ If SiteGround/nginx serves a relevant response without applying `.htaccess`,
 this owner choice must be revised before an Execute grant.
 GitHub's current `staging` branch and the live server file must be reread
 immediately before execution, not inferred from a dirty local checkout.
-Resolve `~` to the exact SiteGround account path before Ryan's grant.
+**Do not grant execution until `~` is resolved to the exact absolute
+SiteGround account path.**
 
 **Conditional one-shot execution, only after Kiro review and Ryan's exact
 grant:** Cursor saves a fresh pre-change backup outside the webroot, verifies
@@ -294,12 +325,15 @@ otherwise stop for Ryan. Removing an HSTS header does not instantly clear
 browsers that cached it; a valid HTTPS `max-age=0` response may be needed
 for an authorized rollback, and even that reaches only returning clients.
 
-**Post-change acceptance:** raw origin and public HTTPS responses show exactly one
-Content-Security-Policy, one Strict-Transport-Security, and one
-Referrer-Policy field with the approved values and no second source;
-X-Content-Type-Options, the HTTP-to-HTTPS redirect, and normal status codes
-remain intact. Check applicable `200`, natural `404`, HTTPS redirect, and
-existing auth/error responses separately, without `curl -L` hiding a hop.
+**Post-change acceptance:** raw origin and public *origin-served* HTTPS
+responses show exactly one Content-Security-Policy, one
+Strict-Transport-Security, and one Referrer-Policy field with the approved
+values and no second source; X-Content-Type-Options, the HTTP-to-HTTPS
+redirect, and normal status codes remain intact. Check applicable `200`,
+natural `404`, HTTPS redirect, and origin-owned auth/error responses
+separately, without `curl -L` hiding a hop. Check Cloudflare-owned challenge
+responses separately for regressions; do not require the origin's exact
+values on them or claim this SiteGround-only repair covers them.
 Browser-test current layout and interactions, fonts, media, Cal.com, Maps,
 navigation, and forms for CSP violations; roll back on material breakage.
 Then run the staging2 monitor dry-run and recheck all six listed ledger
@@ -404,8 +438,10 @@ credential-access and Cursor-App approval problems treated as blockers here.
 It was an audit, not Kiro sign-off. Kiro then PASSed Track A's sequence at
 `1363056`, with two conditions for Phase 1: prove a single noncontradictory
 owner/value for each final header and make HSTS on staging an explicit policy
-decision. The candidate above incorporates both but has **not** received
-Kiro's exact-revision repair review. The human-review gate still needs Ryan's
+decision. The candidate above incorporates both. Kiro PASSed that design at
+`12401a1`, explicitly withholding an enforcing grant. The response-class
+clarification above postdates that verdict and needs a targeted recheck.
+The human-review gate still needs Ryan's
 access-architecture choice and a concrete secret-isolation plan before Kiro
 signs off on its execution. Copilot's audit lane remains a targeted
 security/deployment recheck if the later implementation warrants one; Cursor
@@ -465,10 +501,13 @@ Acceptance for **Track A (headers)**:
   runtime CSP canary evidence. Ryan explicitly chooses staging HSTS `max-age`,
   `includeSubDomains`, and `preload` posture before an enforcing grant; any DB
   mutation follows a backup.
-- Raw HTTPS responses have exactly one intended value for each of the three
-  headers, with no second Cloudflare, SiteGround, plugin, or meta-CSP owner.
-  Applicable `200`, `404`, HTTPS redirect, and auth/error responses preserve
-  their behavior; current pages/interactions have no material CSP breakage.
+- Raw origin-served HTTPS responses have exactly one intended value for each
+  of the three headers, with no second Cloudflare, SiteGround, plugin, or
+  meta-CSP owner on the same response. Applicable `200`, `404`, HTTPS
+  redirect, and origin-owned auth/error responses preserve their behavior;
+  Cloudflare-generated challenge responses are assessed separately, without
+  attributing their policy to `.htaccess`. Current pages/interactions have
+  no material CSP breakage.
   All six observations are rechecked, but monitor presence alone is not a
   functional or security-policy proof.
 
@@ -493,7 +532,7 @@ gate costs more than changing the approval count. Keeping count `0` preserves
 the present access boundary and availability, but independent review remains
 procedural.
 
-I finished: [Arc none (ad-hoc)] integrated Phase 0 attribution and a conditional Phase 1 repair candidate.
-Next step: Kiro reviews this candidate; obtain runtime CSP evidence and exact-value re-review before Ryan's enforcing grant.
-Next lane: Kiro, a separately authorized canary/verification lane, Kiro, and Ryan; then Cursor only after an exact grant.
+I finished: [Arc none (ad-hoc)] distinguished origin-served responses from Cloudflare's edge challenge in the Phase 1 acceptance gate.
+Next step: Kiro rechecks this narrow acceptance delta; obtain runtime CSP evidence and Ryan's HSTS choice before exact-value review and any enforcing grant.
+Next lane: Kiro, a separately authorized canary/verification lane, Ryan for policy, Kiro for exact values, then Ryan/Cursor for any grant and execution.
 See my work: `docs/plans/IMPLEMENTATION-willowyhollow-review-gate-enforcement.md`
