@@ -9,6 +9,21 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Append-cursor generalization (2026-09-17, planning not started):** the
+  measured root cause of the ingest spend is that convmem re-summarizes an
+  entire transcript on every append (`processed.json` keyed by whole-file hash,
+  `ingest.py:1219`), and the existing fix is hard-scoped to
+  `jsonl_kiro_session` (`incremental_jsonl.py:42`). Excluding
+  `~/.codex/history.jsonl` stopped the bleed; the mechanism is untouched and
+  still applies to Codex rollouts, Copilot sessions and Cursor transcripts.
+  Planning handoff for Codex:
+  [`CODEX-2026-09-17-generalize-append-cursor-handoff.md`](CODEX-2026-09-17-generalize-append-cursor-handoff.md)
+  — `NOT_STARTED`, gate-independent (planning may begin without a Ryan grant;
+  implementation and activation remain Arc Codex gates). Full measurements and
+  the session's own corrections:
+  [`CLAUDE-2026-09-17-ingest-cost-diagnosis.md`](CLAUDE-2026-09-17-ingest-cost-diagnosis.md).
+  **Note:** this branch also edits `LATEST.md`; `fix/2026-09-17-watch-skip-hash-parity`
+  edits it too, so expect a small conflict at merge — keep both bullets.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
   `ef4a7dd…` on 2026-09-17 (Copilot audit + Kiro review + Claude advisory PASS on
