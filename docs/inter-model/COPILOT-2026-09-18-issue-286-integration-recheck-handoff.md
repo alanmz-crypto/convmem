@@ -29,4 +29,10 @@ Give a written **PASS or FAIL for `e99856e49e42ad670d16ad0c22e8523afafb8ba1`**, 
 
 Do not audit Copilot `events.jsonl` E0–E4, issue #268 OOM closure, S4 adoption, S5 tail-only I/O, production indexing, watcher/config changes, or live activation here. Sol-High is only a later charter gate for materially conflicting Copilot/Kiro PASS-versus-FAIL verdicts on the same exact revision.
 
-**TL;DR:** [Arc Trapdoor Hunt] Audit the pushed #286 successor `e99856e` for safety and isolation regressions introduced by main integration. Return an exact-tip PASS/FAIL; no corrective or live authority follows from this request.
+## Returned verdict (Ryan-relayed Copilot audit, 2026-09-18)
+
+**FAIL for `e99856e49e42ad670d16ad0c22e8523afafb8ba1` on exact-tip acceptance.** Copilot accepted runtime S0–S3 safety continuity, main ancestry, exact R2b inventory regeneration, and preserved writer routes/sinks. It found three documentation defects: `git diff --check origin/main..e99856e` exits 2 on trailing whitespace in the Cursor integration handoff lines 3–6; `LATEST.md:12` and `STATUS.md:56` route to last code commit `5f142e2` rather than exact branch tip `e99856e`; and the integration handoff lines 14–15 still describe work as pending. The clean diff-check on this separate planning branch does not fix the target branch.
+
+The [bounded Cursor corrective handoff](CURSOR-2026-09-18-issue-286-exact-tip-doc-corrective-handoff.md) requests a docs-only successor. Both Copilot and Kiro must review its new exact tip before Ryan's PR decision. This FAIL grants no correction by itself.
+
+**TL;DR:** [Arc Trapdoor Hunt] Copilot FAILed `e99856e` for exact-tip documentation acceptance while affirming S0–S3 runtime safety. A bounded docs correction and fresh exact-tip reviews are next.

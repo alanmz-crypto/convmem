@@ -35,6 +35,6 @@ Do not re-open S4 adoption, S5 tail-only I/O, issue #268 OOM closure, Arc Codex 
 
 **PASS for `e99856e49e42ad670d16ad0c22e8523afafb8ba1`.** Kiro independently fetched the refs, confirmed the top commit is docs-only, paired all eleven commits with range-diff, and found the S0–S3 implementation and focused tests byte-identical to the reviewed predecessor. Kiro checked that the R2b inventory delta contains only its content-derived `code_revision` and `inventory_digest`, with #304 route entrypoints preserved. At the exact target, 20 R2b coverage/revision tests and 96 focused route, adapter, isolation, physical-keep-set, and state tests passed. Kiro concluded that the previously reviewed S0–S3 contract carries through integration without a behavioral change.
 
-The Copilot audit verdict is still pending. Kiro's PASS grants no PR, merge, S4/S5, or live operation; Ryan decides PR disposition after both exact-tip verdicts.
+Copilot later returned FAIL on exact-tip documentation acceptance at `e99856e`, while affirming runtime safety. Kiro's S0–S3 PASS remains the verdict for that exact historical tip; the corrected successor will need a fresh Kiro recheck. Neither old verdict grants PR, merge, S4/S5, or live operation. See the [bounded Cursor corrective handoff](CURSOR-2026-09-18-issue-286-exact-tip-doc-corrective-handoff.md).
 
-**TL;DR:** [Arc Trapdoor Hunt] Kiro PASSed `e99856e` with 116 exact-tip tests and confirmed the S0–S3 contract carries through main integration. Copilot's audit and Ryan's PR decision remain pending.
+**TL;DR:** [Arc Trapdoor Hunt] Kiro PASSed the S0–S3 contract at `e99856e` with 116 exact-tip tests. Copilot FAILed that tip's documentation acceptance; a corrected successor needs fresh exact-tip reviews before any PR decision.
