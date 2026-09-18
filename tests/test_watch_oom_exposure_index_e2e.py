@@ -24,6 +24,9 @@ from tests.watch_oom_exposure_index_e2e_support import (
     harness_file_hash,
     preflight_host,
     prepare_arm_paths,
+    production_canary_contract,
+    production_canary_paths,
+    refresh_canary_stats,
     should_stop_between_arms,
     snapshot_canaries,
     write_synthetic_transcript,
@@ -132,7 +135,7 @@ def _finalize_arm_canaries(
     n: int,
     canary_ambiguity: list[str],
 ) -> None:
-    after = snapshot_canaries()
+    after = refresh_canary_stats(before)
     drift = canary_drift_report(before, after)
     if drift:
         canary_ambiguity.extend(
@@ -140,6 +143,19 @@ def _finalize_arm_canaries(
         )
         return
     assert_canaries_unchanged(before, after)
+
+
+def test_production_canary_contract_covers_handoff_surfaces() -> None:
+    contract = production_canary_contract()
+    assert set(contract) == {
+        "brief",
+        "chroma",
+        "config",
+        "export",
+        "watcher_service",
+        "writer_gate",
+    }
+    assert len(production_canary_paths()) == 9
 
 
 def test_e2e_negative_control_denies_production_default_brief() -> None:
@@ -339,6 +355,7 @@ def test_e2e_paired_ingest_index_measurement(tmp_path: Path) -> None:
         "candidate_sha": candidate_sha,
         "baseline_sha": BASELINE_SHA,
         "harness_hash": harness_hash,
+        "canary_contract": production_canary_contract(),
         "worker_as_limit_gib": 2,
         "worker_timeout_seconds": WORKER_TIMEOUT_SECONDS,
         "outcome_counts": outcome_counts,

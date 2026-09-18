@@ -29,6 +29,7 @@ STOP_RAM_GIB = 4
 @dataclass(frozen=True)
 class PathCanary:
     path: str
+    surface: str
     exists: bool
     size: int | None
     mode: int | None
@@ -46,24 +47,49 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def production_canary_paths() -> list[Path]:
-    """File canaries only — live chroma/ is a directory whose mtime drifts under watch."""
-    home_share = Path.home() / ".local/share/convmem"
-    home_cfg = Path.home() / ".config/convmem"
-    return [
-        home_share / "knowledge_units.jsonl",
-        home_share / "processed.json",
-        home_share / "locks/chroma_writer_gate.lock",
-        home_cfg / "config.toml",
-    ]
+# Handoff § Hermetic rules: Chroma, brief, config, export, watcher/service paths.
+CANARY_SURFACE_CONTRACT: dict[str, tuple[Path, ...]] = {
+    "brief": (Path.home() / ".local/share/convmem/brief.md",),
+    "chroma": (Path.home() / ".local/share/convmem/chroma/chroma.sqlite3",),
+    "config": (Path.home() / ".config/convmem/config.toml",),
+    "export": (
+        Path.home() / ".local/share/convmem/knowledge_units.jsonl",
+        Path.home() / ".local/share/convmem/processed.json",
+    ),
+    "watcher_service": (
+        Path.home() / ".config/systemd/user/convmem-watch.service",
+        Path.home() / ".config/systemd/user/convmem-refine.service",
+        Path.home() / ".config/systemd/user/convmem-monitor.timer",
+    ),
+    "writer_gate": (
+        Path.home() / ".local/share/convmem/locks/chroma_writer_gate.lock",
+    ),
+}
+
+
+def production_canary_paths() -> list[tuple[str, Path]]:
+    """Return (surface, path) pairs for every required production canary."""
+    out: list[tuple[str, Path]] = []
+    for surface, paths in CANARY_SURFACE_CONTRACT.items():
+        for path in paths:
+            out.append((surface, path))
+    return out
+
+
+def production_canary_contract() -> dict[str, list[str]]:
+    """Audit-friendly map of handoff surfaces to absolute canary paths."""
+    return {
+        surface: [str(path) for path in paths]
+        for surface, paths in CANARY_SURFACE_CONTRACT.items()
+    }
 
 
 def snapshot_canaries() -> dict[str, PathCanary]:
     out: dict[str, PathCanary] = {}
-    for path in production_canary_paths():
+    for surface, path in production_canary_paths():
         key = str(path)
         if not path.exists():
-            out[key] = PathCanary(key, False, None, None, None, None, None, None)
+            out[key] = PathCanary(key, surface, False, None, None, None, None, None, None)
             continue
         stat = path.stat()
         sha = None
@@ -71,6 +97,44 @@ def snapshot_canaries() -> dict[str, PathCanary]:
             sha = _file_sha256(path)
         out[key] = PathCanary(
             key,
+            surface,
+            True,
+            stat.st_size,
+            stat.st_mode,
+            stat.st_mtime_ns,
+            sha,
+            stat.st_dev,
+            stat.st_ino,
+        )
+    return out
+
+
+def refresh_canary_stats(before: dict[str, PathCanary]) -> dict[str, PathCanary]:
+    """Re-stat canaries after an arm; reuse prior sha256 when metadata is unchanged."""
+    out: dict[str, PathCanary] = {}
+    for key, left in before.items():
+        path = Path(key)
+        if not path.exists():
+            out[key] = PathCanary(
+                key, left.surface, False, None, None, None, None, None, None
+            )
+            continue
+        stat = path.stat()
+        unchanged = (
+            left.exists
+            and stat.st_size == left.size
+            and stat.st_mode == left.mode
+            and stat.st_mtime_ns == left.mtime_ns
+            and stat.st_dev == left.device
+            and stat.st_ino == left.inode
+        )
+        if unchanged:
+            out[key] = left
+            continue
+        sha = _file_sha256(path) if path.is_file() else None
+        out[key] = PathCanary(
+            key,
+            left.surface,
             True,
             stat.st_size,
             stat.st_mode,
@@ -98,7 +162,9 @@ def canary_drift_report(
         left = before[key]
         right = after.get(key)
         if right is None or left != right:
-            drift.append(f"{key}: before={left} after={right}")
+            drift.append(
+                f"{left.surface} {key}: before={left} after={right}"
+            )
     return drift
 
 

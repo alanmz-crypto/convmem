@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-17
+**Updated:** 2026-09-18
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -12,13 +12,14 @@ cross-arc snapshot and the linked arc brief below.
 - **Trapdoor Hunt / issue #268 — §9.7 post-merge measurement CORRECTED (archlinux;
   READY_FOR_COPILOT_REAUDIT):** Cursor corrected Copilot FAIL findings on
   `fix/2026-09-17-exposure-probe-postmerge-measurement` at exact tip
-  `58f32771a326a7f1dbc8900baefd598106a50a5c` (pushed; **no PR**). Host evidence:
+  `f39339e7e529681e2cce828b9f5be8a24a8ca470` (pushed; **no PR**). Host evidence:
   [`docs/plans/EVIDENCE-watch-oom-exposure-index-e2e.json`](../plans/EVIDENCE-watch-oom-exposure-index-e2e.json).
   Under the mandated **2 GiB `RLIMIT_AS`**, the corrected harness records distinct
-  outcomes and stops on production-canary drift when the watch is active; **no
-  remaining-floor delta is claimed for §9.8.** **Next:** GitHub Copilot targeted
-  re-audit on exact tip `58f3277`. **Live 12.5 GiB watcher OOM remains OPEN; do
-  not declare #268 closed.** Handoff:
+  outcomes, snapshots all required production canaries (brief/Chroma/config/export/
+  watcher-service), and stops on drift when the watch is active; **no remaining-floor
+  delta is claimed for §9.8.** **Next:** GitHub Copilot targeted re-audit on exact
+  tip `f39339e`. **Live 12.5 GiB watcher OOM remains OPEN; do not declare #268
+  closed.** Handoff:
   [`CURSOR-2026-09-17-exposure-probe-postmerge-measurement-handoff.md`](CURSOR-2026-09-17-exposure-probe-postmerge-measurement-handoff.md).
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged

@@ -1,8 +1,31 @@
 {
   "hostname": "archlinux",
-  "candidate_sha": "dda924ae24d0b4e09c30200f40105999af531ca8",
+  "candidate_sha": "f39339e7e529681e2cce828b9f5be8a24a8ca470",
   "baseline_sha": "5c103aa2f11f54de74be3a7eab90c433c0c019cd",
   "harness_hash": "4e47846f7563875a91da1e5548e1e1ac0eb4210098fcaecedac56eb1885db6ae",
+  "canary_contract": {
+    "brief": [
+      "/home/lauer/.local/share/convmem/brief.md"
+    ],
+    "chroma": [
+      "/home/lauer/.local/share/convmem/chroma/chroma.sqlite3"
+    ],
+    "config": [
+      "/home/lauer/.config/convmem/config.toml"
+    ],
+    "export": [
+      "/home/lauer/.local/share/convmem/knowledge_units.jsonl",
+      "/home/lauer/.local/share/convmem/processed.json"
+    ],
+    "watcher_service": [
+      "/home/lauer/.config/systemd/user/convmem-watch.service",
+      "/home/lauer/.config/systemd/user/convmem-refine.service",
+      "/home/lauer/.config/systemd/user/convmem-monitor.timer"
+    ],
+    "writer_gate": [
+      "/home/lauer/.local/share/convmem/locks/chroma_writer_gate.lock"
+    ]
+  },
   "worker_as_limit_gib": 2,
   "worker_timeout_seconds": 90,
   "outcome_counts": {
@@ -12,8 +35,8 @@
     "succeeded": 0
   },
   "canary_ambiguity": [
-    "baseline n=5000: /home/lauer/.local/share/convmem/knowledge_units.jsonl: before=PathCanary(path='/home/lauer/.local/share/convmem/knowledge_units.jsonl', exists=True, size=3295660654, mode=33188, mtime_ns=1789707070382216293, sha256='22bd81ee0eef5057c5a97fb053844d1e4a08e72048b93352ceda74350d45e441', device=66306, inode=20878871) after=PathCanary(path='/home/lauer/.local/share/convmem/knowledge_units.jsonl', exists=True, size=3295749683, mode=33188, mtime_ns=1789707251048850577, sha256='916bed8b3bb9408c9dc704972d6552294b9ebcdf2a3c78161a69a70f72389df9', device=66306, inode=20877367)",
-    "baseline n=5000: /home/lauer/.local/share/convmem/processed.json: before=PathCanary(path='/home/lauer/.local/share/convmem/processed.json', exists=True, size=510237, mode=33188, mtime_ns=1789706605829895132, sha256='285e35ede876fbf787e8ba8528ea40a773d0064248965dd28b0a9b2cc080f65a', device=66306, inode=20878864) after=PathCanary(path='/home/lauer/.local/share/convmem/processed.json', exists=True, size=510237, mode=33188, mtime_ns=1789707241497428430, sha256='53fe4122c682aeadf9e20bbf96f17f56ab660413507ff998a28f5a6cf7eab589', device=66306, inode=20878866)"
+    "baseline n=5000: chroma /home/lauer/.local/share/convmem/chroma/chroma.sqlite3: before=PathCanary(path='/home/lauer/.local/share/convmem/chroma/chroma.sqlite3', surface='chroma', exists=True, size=4072722432, mode=33188, mtime_ns=1789708044004041468, sha256='bc56db761036ef01fb4d84b7759fceb961adb2eb6ad8476cc3d4f02c8d6d2513', device=66306, inode=20881067) after=PathCanary(path='/home/lauer/.local/share/convmem/chroma/chroma.sqlite3', surface='chroma', exists=True, size=4072722432, mode=33188, mtime_ns=1789708147868869376, sha256='54ab2108dc159edc4d7512c012802badcfa6ff7ffacd85c78dbf6c83994de0ff', device=66306, inode=20881067)",
+    "baseline n=5000: export /home/lauer/.local/share/convmem/knowledge_units.jsonl: before=PathCanary(path='/home/lauer/.local/share/convmem/knowledge_units.jsonl', surface='export', exists=True, size=3304713535, mode=33188, mtime_ns=1789708044007041578, sha256='a31e461af85b2893dee6a9fcde9f5e50bd95eea20e57caf6778b4d006e494146', device=66306, inode=20878866) after=PathCanary(path='/home/lauer/.local/share/convmem/knowledge_units.jsonl', surface='export', exists=True, size=3306082134, mode=33188, mtime_ns=1789708147871869487, sha256='81811e21a67d5009b1c5015744a3f159419806b0888d8abc11e212a1c307e4cf', device=66306, inode=20878866)"
   ],
   "measurement_blocked": true,
   "rows": [
@@ -23,7 +46,7 @@
       "baseline": {
         "status": "timed_out",
         "returncode": null,
-        "elapsed_seconds": 90.099,
+        "elapsed_seconds": 90.007,
         "detail": "[e2e-worker] config set\n[e2e-worker] target imports ready\n[e2e-worker] starting ingest.index"
       },
       "candidate": null
