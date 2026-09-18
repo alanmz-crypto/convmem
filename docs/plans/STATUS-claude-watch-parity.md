@@ -61,6 +61,8 @@ scratch canary is a safety pattern, not a Claude parser or execution engine.
 | `scratch_jsonl_prototype/live_source_canary.py` | Reviewed Kiro exact-source canary pattern; its engine is Kiro-specific. |
 | `docs/inter-model/CODEX-2026-09-18-claude-watch-parity-gate2-execute.md` | Gate 2 plan Kiro PASS with Execute conditions at exact reviewed commit `a811f58`; the plan text is unchanged by this status update. |
 | `docs/inter-model/CODEX-2026-09-18-claude-gate1-real-smoke-handoff.md` | Cursor handoff for hermetic isolated smoke preparation; no live source or run grant. |
+| `claude_gate1_smoke.py` and smoke worker/tests | Synthetic CLI path on pushed `feat/2026-09-18-claude-gate1-real-smoke` at `e4e41ca`; seven focused tests pass, but configured output containment is not yet proven fail-closed. Not on `main`. |
+| `docs/inter-model/CODEX-2026-09-18-claude-gate1-smoke-containment-corrective-handoff.md` | Cursor corrective brief for pre-import config/output containment and adversarial scratch tests; no live-source grant. |
 | Production `[sources].paths` / `[watch].extra_paths` | Claude absent; no change authorized. |
 
 The isolated Codex JSONL integration landed through PR #307 (`d657767`). The
@@ -72,7 +74,8 @@ that substrate nor the merged Gate 1 adapter authorizes automatic Claude capture
 | Milestone | State | Next gate |
 |---|---|---|
 | Arc assignment | **CONFIRMED** by Ryan, 2026-09-18 | — |
-| Gate 1 on-demand adapter | **MERGED** via PR #310 at `aadf137`, after Kiro exact-tip PASS at `ab8a9e16` | Original real-transcript acceptance still `NOT_RUN`; prepare isolated smoke, then Ryan exact-source grants |
+| Gate 1 on-demand adapter | **MERGED** via PR #310 at `aadf137`, after Kiro exact-tip PASS at `ab8a9e16` | Original real-transcript acceptance still `NOT_RUN`; finish smoke containment correction, then Ryan exact-source grants |
+| Gate 1 synthetic smoke | **PUSHED / CORRECTIVE OPEN** at `e4e41ca`; seven hermetic tests pass, but output-path fail-closed evidence is incomplete | Cursor closes containment gap; targeted safety audit of exact tip before real indexing |
 | Incremental substrate | **ON `main`** through PR #307; isolated Codex route exists | — |
 | Gate 2 execution plan | **KIRO PASS WITH CONDITIONS** at `a811f58` | Ryan bounded Execute grant |
 | Isolated Claude format and canary | **NOT STARTED** | Gate 1 merged and reviewed, Ryan bounded Execute grant |
@@ -81,17 +84,19 @@ that substrate nor the merged Gate 1 adapter authorizes automatic Claude capture
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Cursor Gate 1 smoke-preparation lane (next):** use the [real-smoke handoff](../inter-model/CODEX-2026-09-18-claude-gate1-real-smoke-handoff.md).
-Prove a scratch-only invocation of the merged CLI with a synthetic Claude
-fixture; implement a minimal fail-closed launcher only if the existing CLI
-cannot be isolated safely. Stop before live-source access and return a
-one-shot packet to Ryan. The missing acceptance is real-source
-`files_processed=1`, `units_indexed>0`, not parser/CI coverage.
+**Cursor Gate 1 containment-corrective lane (next):** use the [corrective handoff](../inter-model/CODEX-2026-09-18-claude-gate1-smoke-containment-corrective-handoff.md).
+The synthetic CLI smoke exists and passes, but its worker validates the source
+without proving every configured output path is scratch-confined before index
+imports. Add that fail-closed preflight and adversarial `tmp_path` tests on the
+existing smoke branch. Stop before live-source access and return the pushed
+tip for targeted GitHub Copilot isolation audit. The missing real-source
+acceptance remains `files_processed=1`, `units_indexed>0` on a Ryan-granted
+transcript, not synthetic parser/CI coverage.
 
-**Ryan decision lane:** name one exact file and authorize a read-only
-fingerprint preflight; after the content-free packet, separately authorize or
-decline one bounded real-source smoke. Kiro also PASSed the Gate 2 plan at
-`a811f58` with conditions; its bounded isolated Execute grant remains a
+**Ryan decision lane:** may separately name one exact file and authorize a
+read-only fingerprint preflight; after the content-free packet and containment
+review, separately authorize or decline one bounded real-source smoke. Kiro
+also PASSed the Gate 2 plan at `a811f58` with conditions; its bounded isolated Execute grant remains a
 separate decision. None of these grants implies production promotion.
 
 **Cursor implementation lane:** start only after the Gate 1 adapter is merged
@@ -106,11 +111,12 @@ and inactive watcher. Lock the production-code diff to the Claude adapter and
 
 ## 6. What Remains Before Live (sequential)
 
-1. Cursor prepares and hermetically verifies a scratch-confined one-file Gate 1
-   CLI smoke procedure; if new code is required, Cursor implements and submits
-   only that bounded harness for review.
-2. Ryan names one exact Claude transcript for read-only fingerprinting, then
-   separately grants or declines one bounded real-source smoke. Record
+1. Cursor corrects the pushed synthetic Gate 1 CLI smoke so effective config,
+   output paths, locks, and caches fail closed under scratch before index
+   imports; targeted GitHub Copilot safety audit reviews the exact tip.
+2. Ryan may name one exact Claude transcript for read-only fingerprinting;
+   after a content-free packet and containment review, Ryan separately grants
+   or declines one bounded real-source smoke. Record
    `files_processed=1` and nonzero `units_indexed` or an honest FAIL/NOT_RUN;
    do not equate merge with full real-source acceptance.
 3. Ryan separately decides a bounded isolated Gate 2 Execute grant against
@@ -173,8 +179,10 @@ brief and identify the next authorized action.
 | 2026-09-18 | Codex | Gate 1 adapter found on pushed `cbdc88b` branch but not `main`; routed exact-tip code review to Kiro before Execute. |
 | 2026-09-18 | Codex | Routed Kiro-PASSed Gate 1 PR #310 at `ab8a9e16` to Ryan for final CI and merge decision; Execute remains separate. |
 | 2026-09-18 | Codex | PR #310 merged Gate 1 at `aadf137`; routed still-open real-transcript acceptance to Cursor for hermetic preparation and Ryan exact-source grants. |
+| 2026-09-18 | Codex | Synthetic Gate 1 smoke pushed at `e4e41ca`; routed incomplete config/output containment evidence to Cursor for correction before real indexing. |
 
-**TL;DR [Arc Claude Watch Parity]:** Gate 1 adapter is on `main`, but a real
-Claude transcript has not yet passed the on-demand CLI smoke. Cursor prepares
-that isolated test; Ryan owns exact-source grants. Gate 2 Execute, its live
+**TL;DR [Arc Claude Watch Parity]:** Gate 1 adapter is on `main`; synthetic CLI
+smoke passes, but configured output containment needs a corrective and audit.
+Real-transcript acceptance remains `NOT_RUN`; Ryan owns exact-source grants.
+Gate 2 Execute, its live
 canary, and production watch capture remain separate Ryan gates.
