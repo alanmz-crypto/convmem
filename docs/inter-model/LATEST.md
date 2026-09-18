@@ -19,15 +19,15 @@ cross-arc snapshot and the linked arc brief below.
   documentation acceptance. Kiro and Copilot have now each returned written
   **PASS** on the **same full SHA** `19d34a5e235bf436803ad8a2f15427fa9a84ef88`:
   Kiro for S0–S3 continuity and corrected routing; Copilot for closure of all
-  three documentation findings and unchanged runtime. Initial PR checks are
-  pending; Ryan owns merge disposition. No live or new Execute authority is
-  granted.
+  three documentation findings and unchanged runtime. All six PR checks pass;
+  GitHub reports the PR mergeable with no unresolved review threads. Ryan owns
+  merge disposition. No live or new Execute authority is granted.
 - **Arc Codex — append-cursor format extension planning:** Kiro PASSed the
   conditional Copilot `events.jsonl` plan at stated tip `9e2d0ef`; Codex
   independently verified that local and remote branch tips match. Trapdoor
   Hunt issue #286 has since pushed an unmerged shared-registry integration
   successor at `19d34a5` in PR #307. Kiro and Copilot PASSed the exact tip;
-  PR checks are pending and Ryan owns merge disposition.
+  PR checks pass and Ryan owns merge disposition.
   The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
