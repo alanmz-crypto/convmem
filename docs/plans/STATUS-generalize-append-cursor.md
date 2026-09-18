@@ -105,8 +105,10 @@ planning brief provides no P2, bootstrap, watcher, or configuration authority.
 ## 6. What Remains Before Live (sequential)
 
 1. Kiro rechecks this post-merge planning tip against the landed #286
-   registry/scanner and prior design conditions. Isolated Codex history does
-   not establish eligibility for rolling production history.
+   registry/scanner and prior design conditions. Inspect the plan at this
+   branch tip and code at `origin/main` `d657767`; the planning checkout's code
+   predates the squash merge. Isolated Codex history does not establish
+   eligibility for rolling production history.
 2. Ryan decides whether to grant **E0 alone** in temporary isolated resources,
    with exact real-client actions and a provider-call/cost ceiling. E0 remains
    ungranted until that decision.

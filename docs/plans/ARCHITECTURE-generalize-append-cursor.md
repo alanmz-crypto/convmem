@@ -9,6 +9,9 @@ which lives on a separate pushed branch. The original review inspected
 `origin/main` at `18f63db`. This revision reconciles the plan with issue #286,
 squash-merged through [PR #307](https://github.com/alanmz-crypto/convmem/pull/307)
 as `d657767d9351ce4c49e584ec14dfb0a7b8d9e77b` on `main`.
+This published planning branch predates that squash merge; reviewers must read
+the plan at this branch tip and inspect the landed implementation at `d657767`
+on `origin/main`, not in the planning worktree's older code checkout.
 
 ## 1. Decision and scope
 
