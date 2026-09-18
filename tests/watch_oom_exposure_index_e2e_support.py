@@ -89,6 +89,19 @@ def assert_canaries_unchanged(before: dict[str, PathCanary], after: dict[str, Pa
         assert left == right, f"production canary changed: {key}\n{left}\n{right}"
 
 
+def canary_drift_report(
+    before: dict[str, PathCanary], after: dict[str, PathCanary]
+) -> list[str]:
+    """Return human-readable drift lines; empty when unchanged."""
+    drift: list[str] = []
+    for key in sorted(before.keys()):
+        left = before[key]
+        right = after.get(key)
+        if right is None or left != right:
+            drift.append(f"{key}: before={left} after={right}")
+    return drift
+
+
 def available_ram_gib() -> float:
     meminfo = Path("/proc/meminfo").read_text(encoding="utf-8")
     available_kib = 0

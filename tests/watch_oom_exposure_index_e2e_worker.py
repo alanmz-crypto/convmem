@@ -11,22 +11,8 @@ import sys
 import time
 from contextlib import ExitStack
 from pathlib import Path
-from unittest.mock import patch
 
-HARNES_ROOT = Path(__file__).resolve().parents[1]
-if str(HARNES_ROOT) not in sys.path:
-    sys.path.insert(0, str(HARNES_ROOT))
-
-from tests.linux_proc import peak_rss_bytes as _peak_rss_bytes
-from tests.linux_proc import proc_fd_targets as _proc_fd_targets
-from tests.linux_proc import rss_bytes as _rss_bytes
-from tests.watch_oom_hermetic_isolation import DENIED
-from tests.watch_oom_memory_worker_shared import (
-    denied_exit_code,
-    emit_worker_json,
-    prepare_worker,
-)
-from tests.watch_oom_exposure_index_e2e_support import EMBED_VECTOR
+EMBED_VECTOR = [0.1, 0.2]
 
 
 def _purge_target_modules() -> None:
@@ -39,7 +25,7 @@ def _purge_target_modules() -> None:
             "chroma_readonly",
             "chroma_store",
             "chroma_write_store",
-        } or name.startswith(("ingest.", "brief.", "doctor.", "config.")):
+        } or name.startswith(("ingest.", "brief.", "doctor.", "config.", "chroma_")):
             sys.modules.pop(name, None)
 
 
@@ -81,14 +67,21 @@ def _log(step: str) -> None:
     print(f"[e2e-worker] {step}", file=sys.stderr, flush=True)
 
 
-def _dispatch(args: argparse.Namespace) -> int:
+def _dispatch(args: argparse.Namespace, import_order: list[str]) -> int:
+    from unittest.mock import patch
+
+    from tests.linux_proc import peak_rss_bytes as peak_rss_bytes_fn
+    from tests.linux_proc import proc_fd_targets as proc_fd_targets_fn
+    from tests.linux_proc import rss_bytes as rss_bytes_fn
+    from tests.watch_oom_hermetic_isolation import DENIED
+    from tests.watch_oom_memory_worker_shared import denied_exit_code, emit_worker_json
+
     target_root = Path(args.target_root).resolve()
     config_path = Path(args.config_path).resolve()
     writer_root = Path(args.writer_root).resolve()
     brief_path = Path(args.brief_path).resolve()
     register_path = Path(args.register_path).resolve()
     transcript = Path(args.transcript).resolve()
-    chroma_dir = Path(args.chroma_dir).resolve()
 
     os.environ["CONVMEM_CONFIG"] = str(config_path)
     _log("config set")
@@ -96,10 +89,24 @@ def _dispatch(args: argparse.Namespace) -> int:
     _configure_target_imports(target_root)
 
     import config as config_mod
+
+    import_order.append("config")
+
     import ingest
+
+    import_order.append("ingest")
+
     import brief
+
+    import_order.append("brief")
+
     import doctor
+
+    import_order.append("doctor")
+
     import chroma_readonly
+
+    import_order.append("chroma_readonly")
     _log("target imports ready")
 
     target_paths = _assert_target_paths(
@@ -113,7 +120,7 @@ def _dispatch(args: argparse.Namespace) -> int:
         },
     )
 
-    import_baseline = _rss_bytes()
+    import_baseline = rss_bytes_fn()
     started = time.monotonic()
 
     real_write_session = ingest.production_chroma_write_session
@@ -132,7 +139,7 @@ def _dispatch(args: argparse.Namespace) -> int:
         kwargs["census_dir"] = writer_root / "census"
         return real_writer_boundary(entrypoint=entrypoint, **kwargs)
 
-    units_before = chroma_readonly.collection_count(str(chroma_dir), "knowledge_units")
+    units_before = chroma_readonly.collection_count(str(chroma_dir := Path(args.chroma_dir).resolve()), "knowledge_units")
 
     with ExitStack() as stack:
         stack.enter_context(patch.object(brief, "DEFAULT_BRIEF_PATH", brief_path))
@@ -199,10 +206,12 @@ def _dispatch(args: argparse.Namespace) -> int:
 
     emit_worker_json(
         {
+            "status": "succeeded",
             "target_sha": args.target_sha,
             "harness_hash": args.harness_hash,
+            "import_order": import_order,
             "import_baseline_rss_bytes": import_baseline,
-            "peak_rss_bytes": _peak_rss_bytes(),
+            "peak_rss_bytes": peak_rss_bytes_fn(),
             "elapsed_seconds": round(elapsed, 3),
             "index_stats": stats,
             "units_before": units_before,
@@ -213,7 +222,7 @@ def _dispatch(args: argparse.Namespace) -> int:
             "brief_digest": hashlib.sha256(brief_path.read_bytes()).hexdigest(),
             "brief_bytes": brief_path.stat().st_size,
             "target_module_paths": target_paths,
-            "opened_paths": sorted(set(_proc_fd_targets())),
+            "opened_paths": sorted(set(proc_fd_targets_fn())),
             "denied_paths": DENIED,
             "transcript_sha256": hashlib.sha256(transcript.read_bytes()).hexdigest(),
         }
@@ -222,6 +231,10 @@ def _dispatch(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
+    harness_root = Path(__file__).resolve().parents[1]
+    if str(harness_root) not in sys.path:
+        sys.path.insert(0, str(harness_root))
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--target-root", required=True)
     parser.add_argument("--target-sha", required=True)
@@ -233,8 +246,24 @@ def main() -> int:
     parser.add_argument("--register-path", required=True)
     parser.add_argument("--transcript", required=True)
     args = parser.parse_args()
+
+    from tests.watch_oom_memory_worker_shared import prepare_worker
+
+    import_order = ["hermetic_guards_installed", "rlimit_as_2gib"]
     prepare_worker()
-    return _dispatch(args)
+    try:
+        return _dispatch(args, import_order)
+    except Exception as exc:  # pylint: disable=broad-except
+        from tests.watch_oom_memory_worker_shared import emit_worker_json
+
+        emit_worker_json(
+            {
+                "status": "exited",
+                "detail": str(exc),
+                "import_order": import_order,
+            }
+        )
+        return 1
 
 
 if __name__ == "__main__":

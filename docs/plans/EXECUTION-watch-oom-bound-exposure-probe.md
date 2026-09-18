@@ -442,11 +442,12 @@ Arc Codex Gate 0/P2.
 **Mandated worker ceiling:** 2 GiB `RLIMIT_AS` + path/network denial before
 target imports (per handoff).
 
-**Outcome:** All six paired worker arms (baseline + candidate at 5k / 20k /
-58,825) **timed out at 90s** under the 2 GiB ceiling while opening the writable
-Chroma path inside `ingest.index`. Separate host characterization (not a handoff
-arm) shows the same control flow completes in a few seconds when virtual address
-space is raised to **3+ GiB**. **No paired peak/floor delta is reported.**
+**Outcome:** Under the mandated 2 GiB ceiling and **90s** worker timeout, paired arms
+record distinct outcomes (`timed_out` with `returncode: null`, `exited`,
+`invalid_output`, `succeeded`). On archlinux with the production watch active,
+the first baseline arm **timed out** at 90s and production export-canary drift
+stopped the run (`measurement_blocked: true` in evidence). **No paired
+peak/floor delta is claimed.**
 
 **Wiring proof:** `test_e2e_5k_harness_wiring_without_as_ceiling` passes
 (in-process, no `RLIMIT_AS`).
