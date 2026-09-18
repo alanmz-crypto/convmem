@@ -9,6 +9,15 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Trapdoor Hunt / issue #286 — S0–S3 integration authorized:** the default-off,
+  isolated Codex JSONL transform-reuse implementation at `506afc1…` received
+  Copilot and Kiro PASS but is not on `main`; no PR is open. Ryan authorized the
+  existing Cursor session to integrate it onto current `origin/main`, regenerate
+  governed evidence, push a successor exact tip without force-pushing, and stop
+  for targeted Copilot/Kiro rechecks. Resume from
+  [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md).
+  No S4 adoption, S5 tail-only I/O, production indexing, watcher/config change,
+  PR, merge, Arc Codex P2, or issue #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
   `ef4a7dd…` on 2026-09-17 (Copilot audit + Kiro review + Claude advisory PASS on
