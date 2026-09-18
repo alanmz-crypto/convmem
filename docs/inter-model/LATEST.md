@@ -26,15 +26,18 @@ cross-arc snapshot and the linked arc brief below.
   The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
-  ready for Ryan's E0-only scope decision. No Execute is granted.
+  the reviewed basis for Ryan's preliminary local E0 trace grant.
+  [Cursor's bounded trace handoff](CODEX-2026-09-18-copilot-e0-local-trace-handoff.md)
+  gives the exact temporary resources, client actions, six-action/15-minute
+  bound, zero external provider spend, observations, and stop conditions.
   [Codex-to-Codex ownership handoff](CODEX-2026-09-18-append-cursor-ownership-handoff.md)
   records Ryan's selection of the authoring Codex Sol-medium lane as
   coordination owner. The shared-code base is settled by the merge; Ryan must
-  name a Copilot implementation writer in a later grant. Copilot E0 is
-  deferred pending exact client actions and provider/stop controls. Installed
-  Copilot CLI 1.0.86 has a 30-credit minimum **soft** session limit; a local
-  offline-provider trace could avoid external inference but would not by
-  itself prove online writer parity. No E0 grant has been made.
+  name a Copilot implementation writer in a later grant. Ryan granted only
+  the preliminary offline local-provider trace. Installed Copilot CLI 1.0.86
+  has a 30-credit minimum **soft** session limit; the local trace avoids
+  external inference but cannot by itself prove hosted writer parity.
+  Cursor's evidence is next; full E0 eligibility remains undecided.
   Conditions: E3 must prove Copilot `session_id`/YAML precedence and the chosen
   sidecar invalidation rule. Copilot writer proof remains a hard E0 gate;
   no implementation, bootstrap, live canary, or activation is authorized.
