@@ -19,8 +19,10 @@ cross-arc snapshot and the linked arc brief below.
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
   ready for Ryan's Execute decision. [Codex-to-Codex ownership handoff](CODEX-2026-09-18-append-cursor-ownership-handoff.md)
-  recommends a single #286 shared-code owner through integration disposition
-  and an optional E0-only Copilot writer trace; Ryan has not decided either.
+  records Ryan's selection of the authoring Codex Sol-medium lane as
+  coordination owner. It recommends the existing #286 Cursor integrator as
+  sole shared-code writer through integration disposition and an optional
+  E0-only Copilot writer trace; Ryan has not decided those two gates.
   Conditions: E3 must prove Copilot `session_id`/YAML precedence and the chosen
   sidecar invalidation rule. Copilot writer proof remains a hard E0 gate;
   no implementation, bootstrap, live canary, or activation is authorized.
