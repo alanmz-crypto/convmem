@@ -34,21 +34,35 @@ cross-arc snapshot and the linked arc brief below.
   `files_processed=0` with **exit 0** for any file no adapter recognizes, and a
   402/401 provider refusal ground through every remaining chunk with 15s of
   retry sleep each — the real cause of the 900s watch timeouts; both now fail
-  loudly. Branch `fix/2026-09-17-watch-skip-hash-parity`,
-  **`BLOCKED_ON_RYAN`**, pushed, no PR opened. **The branch is red: 53
-  failed / 2483 passed, vs main's 2 failed / 108 passed on the same
-  files.** Not a logic regression — R2b binds an authority-content digest
-  over governed modules, so any `ingest.py` / `convmem.py` edit
-  invalidates it, and a governed Chroma ctor site shifted
-  `convmem.py:640` -> `:655`. The exact two-step rebind is in the handoff
-  doc; it needs the R2b lane or Ryan, not self-attestation by the author.
-  **Next step is specified in
-  [`CURSOR-2026-09-17-r2b-inventory-rebind-handoff.md`](CURSOR-2026-09-17-r2b-inventory-rebind-handoff.md)**
-  — Cursor implements, Kiro reviews, Ryan clears the attestation gate. (3) **There is no Claude Code
-  adapter**, so the Track A step `CLAUDE.md` tells every Claude session to run
-  has been ingesting nothing; resume from
-  [`CURSOR-2026-09-17-claude-transcript-adapter-handoff.md`](CURSOR-2026-09-17-claude-transcript-adapter-handoff.md),
-  state `NOT_STARTED`, **`BLOCKED_ON_RYAN`** on two gates.
+  loudly. Branch `fix/2026-09-17-watch-skip-hash-parity`. **R2b blocker
+  RESOLVED (2026-09-18); branch is GREEN at tip `f8dfbb1` and awaiting a
+  Ryan force-push.** Not a logic regression — R2b binds an authority-content digest
+  over governed modules. A clean-worktree investigation disproved the
+  original "one coordinate" premise: the branch was 24-red on the nine R2b
+  files at its pristine tip (main clean 110/110), from 8 governed
+  coordinates that drifted (`convmem.py` +15 x5, `ingest.py` +25/+46/+46)
+  when commit `38421fc` inserted lines without regenerating the two
+  inventory artifacts. Under Ryan's option **R2**, the branch was rebased
+  onto `origin/main` (`d657767`) and **both** inventories refreshed against
+  the result (`incremental_jsonl.py` inventory coordinate already correct —
+  runtime untouched, no Arc Codex change). New tip **`f8dfbb1`** received
+  **Kiro exact-tip PASS** (nine focused R2b files 110/0 in a clean
+  worktree; delta = 3 correctives + 2 inventory JSONs + the one-line
+  `640`->`655`). **Next:** the rebase made the remote non-fast-forward;
+  **Ryan publishes `f8dfbb1` with an exact-SHA `--force-with-lease`
+  (force-push reserved to Ryan by protocol)**, then PR stewardship needs
+  its own grant. Diagnosis + investigation in
+  [`KIRO-2026-09-18-r2b-rebind-blocker-corrected-handoff.md`](KIRO-2026-09-18-r2b-rebind-blocker-corrected-handoff.md).
+  (3) **The Claude Code
+  adapter** (the Track A step `CLAUDE.md` tells every Claude session to run
+  has been ingesting nothing): **Gate 1 APPROVED by Ryan 2026-09-18 —
+  Option 2 (adapter only, on-demand `index --file`); Gate 2 auto-capture
+  stays closed** (recorded to ledger, relates-to `dec_prop_20260623_161428_c311`).
+  Decision brief:
+  [`KIRO-2026-09-18-claude-transcript-corpus-decision-brief.md`](KIRO-2026-09-18-claude-transcript-corpus-decision-brief.md);
+  implementation spec (Kiro-reviewed, Cursor lane) in
+  [`CURSOR-2026-09-17-claude-transcript-adapter-handoff.md`](CURSOR-2026-09-17-claude-transcript-adapter-handoff.md).
+  **Build stays behind the green base** — proceeds once `f8dfbb1` is pushed.
   Live config changed under Ryan's direct instruction this session:
   `~/.codex/history.jsonl` soft-excluded (it was 56% of the serving corpus and
   94% of provider traffic) and its `[sources]` entry narrowed to
