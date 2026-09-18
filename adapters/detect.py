@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from adapters import (
+    claude_session_jsonl,
     codex_history_jsonl,
     codex_rollout_jsonl,
     copilot_session_jsonl,
@@ -32,6 +33,7 @@ TOOL_BY_FORMAT = {
     "jsonl_codex_history": "codex",
     "jsonl_codex_rollout": "codex",
     "jsonl_copilot_session": "copilot",
+    "jsonl_claude_session": "claude",
     "sqlite_openwebui": "openwebui",
     "sqlite_kiro": "kiro",
     "json_continue_sessions": "continue",
@@ -51,6 +53,7 @@ _PARSERS: dict[str, Optional[Callable[[str], list[dict]]]] = {
     "jsonl_codex_history": codex_history_jsonl.parse,
     "jsonl_codex_rollout": codex_rollout_jsonl.parse,
     "jsonl_copilot_session": copilot_session_jsonl.parse,
+    "jsonl_claude_session": claude_session_jsonl.parse,
     "sqlite_openwebui": sqlite_chat.parse,
     "sqlite_kiro": sqlite_chat.parse,
     "json_continue_sessions": json_chat.parse,
@@ -80,6 +83,7 @@ def detect_format(path: Path | str) -> Optional[str]:
         if "agent-transcripts" in path.parts:
             return "jsonl_cursor"
         for fmt, checker in (
+            ("jsonl_claude_session", claude_session_jsonl.is_claude_session_jsonl),
             ("jsonl_kiro_session", kiro_session_jsonl.is_kiro_session_jsonl),
             ("jsonl_copilot_session", copilot_session_jsonl.is_copilot_session_jsonl),
             ("jsonl_codex_history", codex_history_jsonl.is_codex_history_jsonl),
