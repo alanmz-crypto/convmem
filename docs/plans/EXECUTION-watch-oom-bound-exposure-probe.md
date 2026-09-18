@@ -425,6 +425,41 @@ the live 12.5 GiB watcher OOM.
 corrective tip. No production access, watcher operation, config change, Kiro, or
 Arc Codex Gate 0/P2.
 
+### §9.7 post-merge ingest.index measurement (2026-09-18, archlinux)
+
+**Branch:** `fix/2026-09-17-exposure-probe-postmerge-measurement` (pushed; no PR)
+
+**Candidate SHA:** frozen at Execute start on `main` (see evidence JSON).
+
+**Baseline SHA:** `5c103aa2f11f54de74be3a7eab90c433c0c019cd`
+
+**Harness:** `tests/watch_oom_exposure_index_e2e_worker.py`,
+`tests/test_watch_oom_exposure_index_e2e.py`,
+`tests/watch_oom_exposure_index_e2e_support.py`
+
+**Host:** `archlinux` (Ryan-authorized Execute lane)
+
+**Mandated worker ceiling:** 2 GiB `RLIMIT_AS` + path/network denial before
+target imports (per handoff).
+
+**Outcome:** All six paired worker arms (baseline + candidate at 5k / 20k /
+58,825) **timed out at 90s** under the 2 GiB ceiling while opening the writable
+Chroma path inside `ingest.index`. Separate host characterization (not a handoff
+arm) shows the same control flow completes in a few seconds when virtual address
+space is raised to **3+ GiB**. **No paired peak/floor delta is reported.**
+
+**Wiring proof:** `test_e2e_5k_harness_wiring_without_as_ceiling` passes
+(in-process, no `RLIMIT_AS`).
+
+**Evidence file:** `docs/plans/EVIDENCE-watch-oom-exposure-index-e2e.json`
+
+**Verdict (unchanged):** the live **12.5 GiB** watcher OOM remains unexplained;
+issue **#268** is **not** closed. No watcher exclusion or Arc Codex P2
+progression is authorized from this result alone (§9.8, Ryan only).
+
+**Next lane:** GitHub Copilot targeted safety/evidence audit on the pushed §9.7
+tip; then Kiro honesty review.
+
 ## 11. Jargon glossary
 
 - **Exposure window:** the standing check requiring a corpus-clean scan after a

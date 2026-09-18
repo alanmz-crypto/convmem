@@ -13,7 +13,7 @@
 
 | Field | Value |
 |-------|--------|
-| **State** | `NOT_STARTED` (BLOCKED_ON_RYAN) |
+| **State** | `READY_FOR_COPILOT_AUDIT` (Execute complete on **archlinux**; no PR) |
 | **Depends on** | PR **#305** merged (`ef4a7dd972435de1fbb684cd3aba43076b8232f6` on `main`) — the exposure-probe corrective is live |
 | **Baseline for comparison** | `5c103aa2f11f54de74be3a7eab90c433c0c019cd` (PR #303) |
 | **Candidate** | Freeze and record the exact `origin/main` tip at Execute start; verify `ef4a7dd` is its ancestor. Do not advance the candidate during the paired run. |

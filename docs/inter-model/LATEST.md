@@ -9,20 +9,18 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
-  post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
-  `ef4a7dd…` on 2026-09-17 (Copilot audit + Kiro review + Claude advisory PASS on
-  reviewed tip `ee97911`). The standing exposure-window probe now reads the
-  projected ten-field metadata iterator on `main`. **Next action:** Cursor runs
-  the plan §9.7 hermetic end-to-end `ingest.index(force_file=...)` memory-floor
-  comparison of merged `main` vs baseline `5c103aa` — **requires a Ryan Execute
-  grant to start.** Spec ready in
-  [`CURSOR-2026-09-17-exposure-probe-postmerge-measurement-handoff.md`](CURSOR-2026-09-17-exposure-probe-postmerge-measurement-handoff.md);
-  context in
-  [`KIRO-2026-09-17-exposure-probe-postmerge-handoff.md`](KIRO-2026-09-17-exposure-probe-postmerge-handoff.md).
-  **Live 12.5 GiB watcher OOM remains OPEN; do not declare #268 closed.** No
-  watcher/config/exclusion change, production access, or Arc Codex P2
-  progression without that evidence (§9.8, Ryan only).
+- **Trapdoor Hunt / issue #268 — §9.7 post-merge measurement EXECUTED (archlinux;
+  READY_FOR_COPILOT_AUDIT):** Cursor landed the §9.7 harness on
+  `fix/2026-09-17-exposure-probe-postmerge-measurement` (pushed; **no PR**).
+  Host evidence:
+  [`docs/plans/EVIDENCE-watch-oom-exposure-index-e2e.json`](../plans/EVIDENCE-watch-oom-exposure-index-e2e.json).
+  Under the mandated **2 GiB `RLIMIT_AS`**, every paired worker arm timed out
+  during `ingest.index` (ChromaDB PersistentClient needs ~3+ GiB virtual on this
+  host); **no remaining-floor delta is claimed for §9.8.** Harness wiring
+  without the AS ceiling passes at 5k. **Next:** GitHub Copilot targeted
+  safety/evidence audit on the pushed tip; then Kiro honesty review. **Live 12.5
+  GiB watcher OOM remains OPEN; do not declare #268 closed.** Handoff:
+  [`CURSOR-2026-09-17-exposure-probe-postmerge-measurement-handoff.md`](CURSOR-2026-09-17-exposure-probe-postmerge-measurement-handoff.md).
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
   PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the
