@@ -41,10 +41,14 @@ cross-arc snapshot and the linked arc brief below.
   but the inode changed on every action and the last action made an unexpected
   `read_agent` tool call. The merged coordinator treats an inode change as
   `source_replaced_or_rotated`, so this is **not an E0 PASS** for the proposed
-  transform-reuse route. A targeted Kiro evidence recheck is next; Ryan then
-  decides whether to stop or replan. No hosted trace or further Execute is
-  authorized. Evidence: `/tmp/convmem-copilot-e0-local.farpf1dl/analysis.json`
-  and the five saved snapshots.
+  transform-reuse route. Kiro's targeted read-only recheck confirmed that
+  decisive finding. Its additional claim that changing `workspace.yaml` digests
+  independently block reuse needs correction: the merged sidecar digest check
+  compares against the current run's snapshot, and no digest is stored in the
+  checkpoint for cross-run comparison. Ryan now decides whether to stop under
+  the current contract or authorize revised-E0 planning. No hosted trace or
+  further Execute is authorized. Evidence:
+  `/tmp/convmem-copilot-e0-local.farpf1dl/analysis.json` and five snapshots.
   Conditions: E3 must prove Copilot `session_id`/YAML precedence and the chosen
   sidecar invalidation rule. Copilot writer proof remains a hard E0 gate;
   no implementation, bootstrap, live canary, or activation is authorized.

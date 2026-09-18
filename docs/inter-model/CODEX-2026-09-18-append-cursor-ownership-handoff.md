@@ -12,7 +12,7 @@
 
 ## Resume state
 
-- The Arc Codex Copilot `events.jsonl` extension remains a **planning-only** proposal on `plan/2026-09-17-generalize-append-cursor`. Kiro PASSed the original architecture and execution plan at `9e2d0ef` with two carry-forward conditions, then PASSed the post-merge correction at exact plan tip `53e7b42` against merged code `d657767`. No Execute was granted; verify the pushed tip before acting.
+- The Arc Codex Copilot `events.jsonl` extension remains a **planning-only** proposal on `plan/2026-09-17-generalize-append-cursor`. Kiro PASSed the original architecture and execution plan at `9e2d0ef` with two carry-forward conditions, then PASSed the post-merge correction at exact plan tip `53e7b42` against merged code `d657767`. Ryan granted one bounded local trace, now complete; no implementation or hosted Execute was granted. Verify the pushed tip before acting.
 - Trapdoor Hunt issue #286's S0–S3 shared-registry implementation was squash-merged to `main` in [PR #307](https://github.com/alanmz-crypto/convmem/pull/307) as `d657767`. Kiro and Copilot PASSed exact reviewed head `19d34a5`, and all six CI checks passed. The merged registry/scanner and fresh isolated Codex routes are now the base for the Copilot proposal; plan reconciliation and targeted Kiro recheck are complete.
 - The #286 implementation on `main` changes `incremental_jsonl.py` and adds `incremental_jsonl_formats.py` plus `adapters/jsonl_prefix.py`, including Kiro, Codex history, and Codex rollout entries. Its Codex route is restricted to fresh isolated sources. The Arc Codex proposal excludes rolling production `history.jsonl` and conditionally proposes Copilot only after E0 writer proof. These are different scopes; neither authorizes production history routing.
 
@@ -24,7 +24,7 @@ Ryan selected the **Codex Sol-medium lane that authored this handoff** to coordi
 
 1. **Completed writer assignment:** the existing #286 Cursor integrator was the sole writer of shared `incremental_jsonl.py` and its format registry through integration, review, and Ryan's merge. The coordination lane did not edit that code. A later Copilot implementation needs a separate Ryan writer assignment against merged `main`, with no concurrent shared-code writer.
 2. **Sequence:** #286 is merged as `d657767`; Codex reconciled the Copilot packet and Kiro PASSed `53e7b42`. Ryan granted one preliminary offline local writer trace, specified in the [Cursor handoff](CODEX-2026-09-18-copilot-e0-local-trace-handoff.md). E1–E4 remain pending until E0 evidence/review and a later Ryan writer/grant decision.
-3. **E0 result:** Cursor returned the granted local trace. Prior bytes remained exact prefixes, but each action used a new inode and the final action triggered an unexpected `read_agent` tool call. The merged coordinator regards inode change as `source_replaced_or_rotated`, preventing incremental reuse under the current contract. This is not an E0 PASS. Kiro's targeted evidence recheck precedes Ryan's stop-or-replan decision; hosted proof needs a separate grant. No substitute format is implied on E0 failure.
+3. **E0 result:** Cursor returned the granted local trace. Prior bytes remained exact prefixes, but each action used a new inode and the final action triggered an unexpected `read_agent` tool call. The merged coordinator regards inode change as `source_replaced_or_rotated`, preventing incremental reuse under the current contract. This is not an E0 PASS, and Kiro's read-only evidence recheck confirmed it. Kiro also called changed `workspace.yaml` digests an independent blocker; the merged `_revalidate_live_prefix()` compares each digest to the current run's snapshot, while the checkpoint and `_continuity_reason()` do not compare it across runs. Correct that assertion before using it in a revised design. Ryan's stop-or-replan decision is next; hosted proof needs a separate grant. No substitute format is implied on E0 failure.
 
 ## What the other Codex Sol should carry
 
@@ -35,14 +35,14 @@ Ryan selected the **Codex Sol-medium lane that authored this handoff** to coordi
 
 ## Next handoff
 
-**Ryan:** after Kiro's targeted evidence recheck, decide whether to stop the current Copilot route or authorize replanning; assign a Copilot code writer only if E1–E4 are later granted.
+**Ryan:** decide whether to stop the current Copilot route under its existing contract or authorize revised-E0 planning; assign a Copilot code writer only if E1–E4 are later granted.
 
-**Kiro:** targeted post-merge planning recheck complete and PASS at `53e7b42`; now assess the local trace's inode replacement and unexpected tool call against the E0 gate and continuity contract.
+**Kiro:** targeted plan and trace rechecks complete; correct the separate sidecar-refusal assertion if a revised E0 design is pursued.
 
-**Codex Sol-medium (authoring lane):** record Cursor's evidence and route a targeted read-only recheck to Kiro.
+**Codex Sol-medium (authoring lane):** give Ryan the reconciled trace verdict and a stop-or-replan recommendation.
 
 **Other Codex Sol:** no assignment on this lane; remain available only if a separately authorized task or qualifying review-conflict gate arises.
 
 **Existing #286 Cursor integrator:** completed the shared-code integration; no new Execute scope is implied.
 
-**TL;DR:** [Arc Codex] Issue #286's shared code is on `main`; Kiro PASSed the reconciled Copilot plan at `53e7b42`. The granted local trace found inode replacement on every action and an unexpected tool call, so E0 has not passed. Kiro rechecks the evidence before Ryan's stop-or-replan decision.
+**TL;DR:** [Arc Codex] Issue #286's shared code is on `main`; Kiro PASSed the reconciled Copilot plan at `53e7b42`. The granted local trace found inode replacement on every action, so E0 has not passed; Kiro confirmed this. Its independent sidecar-blocker claim needs correction. Ryan's stop-or-replan decision is next.
