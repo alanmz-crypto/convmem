@@ -11,15 +11,18 @@ cross-arc snapshot and the linked arc brief below.
 
 - **Arc Codex — append-cursor format extension planning:** Kiro PASSed the
   conditional Copilot `events.jsonl` plan at stated tip `9e2d0ef`; Codex
-  independently verified that local and remote branch tips match. The separate
-  Trapdoor Hunt issue #286 Codex-format draft remains distinct.
+  independently verified that local and remote branch tips match. Trapdoor
+  Hunt issue #286 has since pushed an unmerged shared-registry integration
+  successor at `e99856e`, ready for targeted Copilot/Kiro rechecks; its
+  reviewed original PASS does not cover this successor tip.
   The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
-  ready for Ryan's Execute decision. Conditions: E3 must prove Copilot
-  `session_id`/YAML precedence and the chosen sidecar invalidation rule; Ryan
-  must name one owner of shared `incremental_jsonl.py` changes before this or
-  issue #286 Execute touches it. Copilot writer proof remains a hard E0 gate;
+  ready for Ryan's Execute decision. [Codex-to-Codex ownership handoff](CODEX-2026-09-18-append-cursor-ownership-handoff.md)
+  recommends a single #286 shared-code owner through integration disposition
+  and an optional E0-only Copilot writer trace; Ryan has not decided either.
+  Conditions: E3 must prove Copilot `session_id`/YAML precedence and the chosen
+  sidecar invalidation rule. Copilot writer proof remains a hard E0 gate;
   no implementation, bootstrap, live canary, or activation is authorized.
   When merging with the 2026-09-17 R2b corrective's LATEST edit, keep both
   routing bullets.

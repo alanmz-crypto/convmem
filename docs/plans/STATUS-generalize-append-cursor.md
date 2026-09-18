@@ -47,7 +47,7 @@ reviewed code capability, never a broad user-config format list.
 | `adapters/kiro_session_jsonl.py` | Only existing `parse_complete_prefix()` provider, with accepted-message byte ranges. |
 | `adapters/jsonl_io.py` | Common whole-file JSONL iterator; no complete-line byte scanner or coverage outcomes. |
 | `adapters/copilot_session_jsonl.py` | Whole-file parser with `workspace.yaml` and `session.start` metadata; no prefix capability or proven writer contract. |
-| Codex rollout, history, Cursor adapters | Whole-file parsers. Rollout/history have a separate Trapdoor Hunt issue #286 draft; history is rolling and excluded. Cursor writer contract is unknown. |
+| Codex rollout, history, Cursor adapters | On `main`, whole-file parsers. Trapdoor Hunt issue #286's unmerged integration successor has isolated Codex prefix routes and a shared registry; rolling production history remains excluded from this Copilot proposal. Cursor writer contract is unknown. |
 | `ARCHITECTURE-generalize-append-cursor.md` | Kiro PASS on planning tip `9e2d0ef`; closed registry and conditional Copilot first slice. |
 | `EXECUTION-generalize-append-cursor.md` | Kiro PASS on planning tip `9e2d0ef`; E0 writer gate before any route. |
 | `.claude/worktrees/agent-…` under shared ROOT | Locked by a live harness; polluted R2b scan. Verification must use a clean worktree outside ROOT. |
@@ -61,9 +61,9 @@ to this planning change; see the execution plan for the exact count.
 | Milestone | State | Next owner |
 |---|---|---|
 | Candidate inventory and design | Complete on pushed `plan/2026-09-17-generalize-append-cursor` at `9e2d0ef` | — |
-| Architecture/Execute review | Kiro PASS on stated `9e2d0ef`; Codex verified local and remote tips match that revision | Ryan decides grant and shared-code ownership |
+| Architecture/Execute review | Kiro PASS on stated `9e2d0ef`; Codex verified the reviewed revision at the time, and later status/routing commits did not change the reviewed plan docs | Ryan decides grant and shared-code ownership |
 | Condition A — Copilot metadata evidence | Pending: E3 must exercise `workspace.yaml` id changes, `session.start` versus YAML precedence, and chosen digest-versus-effective-fields invalidation | Cursor if granted; Kiro verifies evidence |
-| Condition B — shared coordinator owner | Pending: Ryan names one owner before either this Execute or Trapdoor Hunt issue #286 touches `incremental_jsonl.py`; resolve the history-format scope conflict | Ryan |
+| Condition B — shared coordinator owner | Pending Ryan decision. Issue #286's Cursor lane has already changed `incremental_jsonl.py` on an unmerged integration successor ready for targeted rechecks; recommend it own shared code through disposition, then base Copilot work on the reviewed outcome. Isolated Codex history and rolling production history are separate scopes. | Ryan |
 | E0 writer-contract evidence | Not started; no Execute grant | Ryan decides whether Cursor may run it |
 | E1–E4 implementation and hermetic verification | Not started; conditional on E0, Condition B, and Ryan grant | Cursor if authorized |
 | Existing-source bootstrap | Unauthorized; separate cost/authority decision | Ryan |
@@ -72,10 +72,12 @@ to this planning change; see the execution plan for the exact count.
 ## 5. Your Role
 
 **If Ryan sent you to decide Execute:** Kiro has PASSed the planning packet at
-stated tip `9e2d0ef`. Decide whether to grant E0 alone or bounded E0–E4 in
-named isolated resources. Before either this Execute or issue #286 changes
-`incremental_jsonl.py`, name a single shared-code owner and settle the
-Codex-history eligibility conflict. Kiro's PASS grants no operation.
+stated tip `9e2d0ef`. Issue #286 has already changed shared coordinator code on
+an unmerged successor, so name one owner for that integration and the later
+Copilot extension. Decide whether to grant E0 alone now in named isolated
+resources; E1–E4 should await the #286 exact-tip reviews and branch
+disposition. Kiro's PASS grants no operation. See the
+[Codex-to-Codex coordination handoff](../inter-model/CODEX-2026-09-18-append-cursor-ownership-handoff.md).
 
 **If sent for Cursor implementation:** stop until Ryan issues an exact E0 or
 E0–E4 Execute grant. E0 failure ends the proposed Copilot route. If E3 is
@@ -90,9 +92,11 @@ planning brief provides no P2, bootstrap, watcher, or configuration authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Ryan decides whether to authorize E0 alone or E0–E4 in isolated resources,
-   and names one owner for shared coordinator code before either Execute
-   touches it. Resolve Codex-history scope with issue #286 at that boundary.
+1. Ryan names a single shared-code owner and decides whether to authorize E0
+   alone in isolated resources. Issue #286's unmerged integration awaits
+   targeted Copilot/Kiro rechecks; E1–E4 should use its reviewed disposition as
+   their base. Isolated Codex history does not establish eligibility for
+   rolling production history.
 2. Cursor proves or rejects Copilot writer eligibility, then implements only
    the granted slices and supplies clean-worktree hermetic evidence.
 3. E3 evidence exercises sidecar id change and `session.start`/YAML
@@ -107,7 +111,7 @@ planning brief provides no P2, bootstrap, watcher, or configuration authority.
 | Stop | Owner | Blocks |
 |---|---|---|
 | Execute grant | Ryan | Any coordinator, adapter, test, or config implementation |
-| Shared-code ownership | Ryan | Either Execute touching `incremental_jsonl.py` before one owner is named |
+| Shared-code ownership | Ryan | Arc Codex E1–E4 touching `incremental_jsonl.py` before one owner and base are named |
 | E0 writer proof | Cursor evidence + Kiro review | Copilot eligibility and E2 routing |
 | Bootstrap cost/authority | Ryan | Adopting or rebuilding already-indexed sources |
 | P2/live canary | Existing Arc Codex gates + Ryan | Production source, Chroma, or provider operations |
@@ -148,6 +152,7 @@ line. Keep this file a snapshot, not a session diary.
 |---|---|---|
 | 2026-09-17 | Codex | Created the conditional one-format architecture and proposed Execute packet for Kiro review; no implementation authority |
 | 2026-09-18 | Kiro / Codex | Kiro PASSed planning tip `9e2d0ef` with metadata-evidence and shared-code-owner conditions; Codex verified the local and remote tip; Ryan's Execute decision is next |
+| 2026-09-18 | Codex | Reassessed the pushed #286 integration successor and handed Codex Sol a single-owner recommendation; Ryan's ownership and E0 decisions remain pending |
 
 ## TL;DR
 
