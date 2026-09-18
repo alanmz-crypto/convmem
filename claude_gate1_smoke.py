@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,33 @@ _SYNTHETIC_UNIT: dict[str, Any] = {
     "confidence": 0.95,
     "domain": "general",
 }
+
+# Mirror config.py path keys without importing ConvMem runtime modules.
+_CONFIG_PATH_KEYS = frozenset(
+    {
+        "chroma_dir",
+        "processed_log",
+        "units_export",
+        "inventory",
+        "state_dir",
+        "ledger_path",
+        "activation_manifest_path",
+        "health_path",
+    }
+)
+_DEFAULT_INCREMENTAL_STATE_DIR = "~/.local/share/convmem/incremental-jsonl"
+_DEFAULT_WRITER_LOCK = "~/.local/share/convmem/locks/chroma_writer_gate.lock"
+_DEFAULT_WRITER_ATTEST_DIR = "~/.local/share/convmem/writer_attestations"
+_DEFAULT_WRITER_CENSUS_DIR = "~/.local/share/convmem/writer-census"
+_DEFAULT_BRIEF_PATH = "~/.local/share/convmem/brief.md"
+
+
+@dataclass(frozen=True)
+class OutputContainmentPreflight:
+    """Proof that scratch config and mutable targets are confined before imports."""
+
+    config_path: Path
+    validated_targets: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -190,6 +218,194 @@ def install_fake_providers() -> None:
     ingest.distill = fake_distill
 
 
+def _expand_path_value(value: object) -> object:
+    if isinstance(value, str):
+        return str(Path(value).expanduser())
+    if isinstance(value, list):
+        return [_expand_path_value(item) for item in value]
+    return value
+
+
+def _expand_section_paths(section: dict[str, Any]) -> None:
+    for key, value in list(section.items()):
+        if isinstance(value, dict):
+            _expand_section_paths(value)
+        elif key in _CONFIG_PATH_KEYS:
+            section[key] = _expand_path_value(value)
+
+
+def _expand_config_paths(cfg: dict[str, Any]) -> None:
+    sources = cfg.get("sources")
+    if isinstance(sources, dict) and isinstance(sources.get("paths"), list):
+        sources["paths"] = _expand_path_value(sources["paths"])
+    for section in cfg.values():
+        if isinstance(section, dict):
+            _expand_section_paths(section)
+
+
+def _require_env_path(name: str) -> Path:
+    raw = os.environ.get(name, "")
+    if not raw:
+        raise IsolationViolation(f"{name} missing for scratch config discovery")
+    return Path(raw)
+
+
+def _resolved_path(path: Path) -> Path:
+    return path.expanduser().resolve(strict=False)
+
+
+def validate_scratch_environment(boundary: IsolationBoundary) -> dict[str, Path]:
+    """Bind scratch HOME/XDG roots to the isolated layout before config load."""
+    layout = boundary.layout
+    bindings = {
+        "HOME": layout["home"],
+        "XDG_CONFIG_HOME": layout["xdg_config"],
+        "XDG_DATA_HOME": layout["xdg_data"],
+        "XDG_CACHE_HOME": layout["xdg_cache"],
+    }
+    resolved: dict[str, Path] = {}
+    for env_name, expected in bindings.items():
+        actual = boundary.resolve_mutable(
+            _require_env_path(env_name),
+            label=env_name,
+        )
+        expected_resolved = boundary.resolve_mutable(
+            expected,
+            label=f"expected {env_name}",
+        )
+        if actual != expected_resolved:
+            raise IsolationViolation(
+                f"{env_name} does not match scratch isolation layout"
+            )
+        resolved[env_name.lower()] = actual
+    config_path = layout["user_config"]
+    if not config_path.is_file():
+        raise IsolationViolation("scratch config missing under isolated HOME")
+    resolved["config_path"] = boundary.resolve_mutable(
+        config_path,
+        label="effective config",
+    )
+    return resolved
+
+
+def _load_scratch_config(config_path: Path) -> dict[str, Any]:
+    try:
+        raw = config_path.read_bytes()
+    except OSError as exc:
+        raise IsolationViolation(f"cannot read scratch config: {exc}") from exc
+    try:
+        cfg = tomllib.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+        raise IsolationViolation("scratch config is not valid TOML") from exc
+    if not isinstance(cfg, dict):
+        raise IsolationViolation("scratch config must be a TOML table")
+    _expand_config_paths(cfg)
+    return cfg
+
+
+def _assert_scratch_config_layout(cfg: dict[str, Any], boundary: IsolationBoundary) -> None:
+    """Prove HOME-based discovery selected the generated scratch config."""
+    layout = boundary.layout
+    index = cfg.get("index")
+    if not isinstance(index, dict):
+        raise IsolationViolation("scratch config index table missing")
+    expected_pairs = (
+        ("chroma_dir", layout["chroma"]),
+        ("processed_log", layout["processed"]),
+        ("units_export", layout["export"]),
+    )
+    for key, expected in expected_pairs:
+        actual = index.get(key)
+        if not isinstance(actual, str) or not actual.strip():
+            raise IsolationViolation(f"scratch config missing index.{key}")
+        if _resolved_path(Path(actual)) != _resolved_path(expected):
+            raise IsolationViolation(
+                f"scratch config index.{key} does not match isolated layout"
+            )
+    incremental = index.get("incremental_jsonl")
+    if not isinstance(incremental, dict):
+        raise IsolationViolation("scratch config incremental_jsonl table missing")
+    state_dir = incremental.get("state_dir", _DEFAULT_INCREMENTAL_STATE_DIR)
+    if not isinstance(state_dir, str) or not state_dir.strip():
+        raise IsolationViolation("scratch config state_dir must be a non-empty string")
+    if _resolved_path(Path(state_dir)) != _resolved_path(layout["state"]):
+        raise IsolationViolation(
+            "scratch config state_dir does not match isolated layout"
+        )
+
+
+def collect_index_mutable_targets(cfg: dict[str, Any]) -> list[tuple[str, Path]]:
+    """Return every path the index command may create or mutate."""
+    targets: list[tuple[str, Path]] = []
+    index = cfg.get("index")
+    if isinstance(index, dict):
+        for key in ("chroma_dir", "processed_log", "units_export", "inventory"):
+            value = index.get(key)
+            if isinstance(value, str) and value.strip():
+                targets.append((f"index.{key}", Path(value)))
+        incremental = index.get("incremental_jsonl")
+        if isinstance(incremental, dict):
+            state_dir = incremental.get("state_dir", _DEFAULT_INCREMENTAL_STATE_DIR)
+            if isinstance(state_dir, str) and state_dir.strip():
+                targets.append(
+                    ("index.incremental_jsonl.state_dir", Path(state_dir))
+                )
+    sources = cfg.get("sources")
+    if isinstance(sources, dict):
+        inventory = sources.get("inventory")
+        if isinstance(inventory, str) and inventory.strip():
+            targets.append(("sources.inventory", Path(inventory)))
+    shadow = cfg.get("shadow_ledger")
+    if isinstance(shadow, dict):
+        for key in ("ledger_path", "activation_manifest_path", "health_path"):
+            value = shadow.get(key)
+            if isinstance(value, str) and value.strip():
+                targets.append((f"shadow_ledger.{key}", Path(value)))
+    for label, raw in (
+        ("writer_lock(default)", _DEFAULT_WRITER_LOCK),
+        ("writer_attestations(default)", _DEFAULT_WRITER_ATTEST_DIR),
+        ("writer_census(default)", _DEFAULT_WRITER_CENSUS_DIR),
+        ("brief(default)", _DEFAULT_BRIEF_PATH),
+    ):
+        targets.append((label, Path(raw).expanduser()))
+    expanded: list[tuple[str, Path]] = []
+    seen: set[str] = set()
+    for label, path in targets:
+        resolved = _resolved_path(path)
+        token = str(resolved)
+        if token in seen:
+            continue
+        seen.add(token)
+        expanded.append((label, resolved))
+        parent = resolved.parent
+        parent_token = str(parent)
+        if parent_token not in seen:
+            seen.add(parent_token)
+            expanded.append((f"{label}:parent", parent))
+    return expanded
+
+
+def validate_output_containment(boundary: IsolationBoundary) -> OutputContainmentPreflight:
+    """Fail closed on config/env/output paths before ConvMem indexing imports."""
+    env_paths = validate_scratch_environment(boundary)
+    config_path = env_paths["config_path"]
+    cfg = _load_scratch_config(config_path)
+    _assert_scratch_config_layout(cfg, boundary)
+    validated: list[str] = []
+    seen: set[str] = set()
+    for label, path in collect_index_mutable_targets(cfg):
+        token = f"{label}:{path}"
+        if token in seen:
+            continue
+        seen.add(token)
+        boundary.resolve_mutable(path, label=label)
+        validated.append(label)
+    return OutputContainmentPreflight(
+        config_path=config_path,
+        validated_targets=tuple(validated),
+    )
+
+
 def assert_transcript_under_claude_projects(transcript: Path, home: Path) -> None:
     """Fail closed when the fixture is not under the scratch Claude tree."""
     projects_root = (home / ".claude" / "projects").resolve()
@@ -201,8 +417,16 @@ def assert_transcript_under_claude_projects(transcript: Path, home: Path) -> Non
         ) from exc
 
 
-def run_hermetic_index_cli(transcript: Path) -> tuple[int, dict[str, int], str]:
+def run_hermetic_index_cli(
+    transcript: Path,
+    *,
+    preflight: OutputContainmentPreflight,
+) -> tuple[int, dict[str, int], str]:
     """Invoke the real ``convmem index --file`` command in-process after guards."""
+    if not isinstance(preflight, OutputContainmentPreflight):
+        raise IsolationViolation(
+            "output containment preflight required before index CLI"
+        )
     from typer.testing import CliRunner  # noqa: PLC0415
 
     from convmem import app  # noqa: PLC0415
@@ -298,7 +522,11 @@ def run_hermetic_smoke(parent: Path | None = None) -> HermeticEvidence:
     after = production_fingerprints()
     if before != after:
         raise IsolationViolation("production fingerprint drift during hermetic smoke")
-    payload = json.loads(completed.stdout or "{}")
+    worker_exit = completed.returncode
+    try:
+        payload = json.loads(completed.stdout or "{}")
+    except json.JSONDecodeError:
+        payload = {}
     return HermeticEvidence(
         files_processed=int(payload.get("files_processed", 0)),
         files_skipped=int(payload.get("files_skipped", 0)),
@@ -308,7 +536,7 @@ def run_hermetic_smoke(parent: Path | None = None) -> HermeticEvidence:
         scratch_root=str(root),
         transcript_digest=hashlib.sha256(transcript.read_bytes()).hexdigest(),
         config_path=str(Path(env["HOME"]) / ".config" / "convmem" / "config.toml"),
-        exit_code=int(payload.get("exit_code", completed.returncode)),
+        exit_code=worker_exit,
     )
 
 

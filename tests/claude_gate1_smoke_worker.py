@@ -15,6 +15,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from claude_gate1_smoke import (  # noqa: E402
     assert_transcript_under_claude_projects,
     run_hermetic_index_cli,
+    validate_output_containment,
 )
 from incremental_jsonl_isolation import (  # noqa: E402
     IsolationBoundary,
@@ -34,6 +35,7 @@ def _emit(payload: dict) -> None:
 def _run_index(transcript: Path) -> int:
     boundary = IsolationBoundary.from_environment()
     install_network_denial()
+    preflight = validate_output_containment(boundary)
     resolved = boundary.resolve_mutable(transcript, label="claude transcript")
     assert_transcript_under_claude_projects(resolved, Path(os.environ["HOME"]))
     from adapters.detect import detect_format  # noqa: PLC0415
@@ -41,7 +43,10 @@ def _run_index(transcript: Path) -> int:
     fmt = detect_format(resolved)
     if fmt != "jsonl_claude_session":
         raise IsolationViolation(f"unexpected format for synthetic fixture: {fmt}")
-    exit_code, stats, _stdout = run_hermetic_index_cli(resolved)
+    exit_code, stats, _stdout = run_hermetic_index_cli(
+        resolved,
+        preflight=preflight,
+    )
     _emit(
         {
             "exit_code": exit_code,
