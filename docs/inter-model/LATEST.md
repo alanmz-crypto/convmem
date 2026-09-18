@@ -21,17 +21,20 @@ cross-arc snapshot and the linked arc brief below.
   original conditional Copilot `events.jsonl` plan at `9e2d0ef`. The
   post-#286-merge revision on this branch now reuses the landed
   `incremental_jsonl_formats.py` registry and `adapters/jsonl_prefix.py`
-  scanner; targeted Kiro recheck of the revised plan is next.
+  scanner; Kiro returned a written targeted PASS at exact plan tip `53e7b42`
+  against merged code `d657767`.
   The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
-  ready for targeted Kiro recheck before a later Ryan Execute decision.
+  ready for Ryan's E0-only scope decision. No Execute is granted.
   [Codex-to-Codex ownership handoff](CODEX-2026-09-18-append-cursor-ownership-handoff.md)
   records Ryan's selection of the authoring Codex Sol-medium lane as
   coordination owner. The shared-code base is settled by the merge; Ryan must
   name a Copilot implementation writer in a later grant. Copilot E0 is
-  deferred pending an exact real-client action/provider-cost bound; it is not
-  granted.
+  deferred pending exact client actions and provider/stop controls. Installed
+  Copilot CLI 1.0.86 has a 30-credit minimum **soft** session limit; a local
+  offline-provider trace could avoid external inference but would not by
+  itself prove online writer parity. No E0 grant has been made.
   Conditions: E3 must prove Copilot `session_id`/YAML precedence and the chosen
   sidecar invalidation rule. Copilot writer proof remains a hard E0 gate;
   no implementation, bootstrap, live canary, or activation is authorized.

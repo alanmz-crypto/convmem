@@ -65,12 +65,12 @@ to this planning change; see the execution plan for the exact count.
 | Milestone | State | Next owner |
 |---|---|---|
 | Candidate inventory and design | Complete on pushed `plan/2026-09-17-generalize-append-cursor` at `9e2d0ef` | — |
-| Architecture/Execute review | Kiro PASS on original `9e2d0ef`; post-merge plan correction on this branch awaits targeted Kiro recheck before any Execute grant | Kiro |
+| Architecture/Execute review | Kiro PASS on original `9e2d0ef` and targeted PASS on the post-merge plan at exact tip `53e7b42`, checked against `main` `d657767`; neither review grants Execute | Ryan decides E0 scope |
 | Cross-arc coordination | Ryan selected the Codex Sol-medium lane that authored the coordination handoff; it assigned the completed #286 writer, reconciles the merged base, and returns later Execute choices to Ryan without implementation authority | Codex Sol-medium |
-| #286 shared base | [PR #307](https://github.com/alanmz-crypto/convmem/pull/307) squash-merged to `main` as `d657767`; Kiro/Copilot PASSed reviewed tip and all six CI checks passed. The shared registry/scanner are now the base for this Copilot proposal. | Codex reconciles plan; Kiro rechecks |
-| Condition A — Copilot metadata evidence | Pending: E3 must exercise `workspace.yaml` id changes, `session.start` versus YAML precedence, and chosen digest-versus-effective-fields invalidation | Cursor if granted; Kiro verifies evidence |
+| #286 shared base | [PR #307](https://github.com/alanmz-crypto/convmem/pull/307) squash-merged to `main` as `d657767`; its registry/scanner are the base for this Copilot proposal and Kiro confirmed the revised plan uses them | — |
+| Condition A — Copilot metadata evidence | Pending: E1/E2 need a distinct versioned Copilot registry entry with `workspace.yaml` sidecar path; E3 must exercise `workspace.yaml` id changes, `session.start` versus YAML precedence, and the chosen digest-versus-effective-fields invalidation before checkpoint advance | Cursor if granted; Kiro verifies evidence |
 | Condition B — shared-code base | Resolved: issue #286 landed as `d657767`, so Copilot work must extend the merged registry/scanner. A later Copilot code-writer assignment belongs to Ryan's Execute grant. | Ryan |
-| E0 writer-contract evidence | Not started; ungranted pending targeted plan recheck and an exact real-client action/provider-cost bound | Ryan decides whether Cursor may run it later |
+| E0 writer-contract evidence | Not started and ungranted. Installed Copilot CLI 1.0.86 has a 30-credit minimum soft session limit; an isolated offline local-provider trace is a possible zero-external-cost first probe but cannot alone prove online writer parity. Exact permitted actions and stop bound still need Ryan's decision. | Ryan |
 | E1–E4 implementation and hermetic verification | Not started; conditional on E0 evidence/review and a later Ryan grant | Cursor if authorized |
 | Existing-source bootstrap | Unauthorized; separate cost/authority decision | Ryan |
 | Live canary and activation | Unauthorized; existing Arc Codex gates remain | Ryan |
@@ -79,14 +79,14 @@ to this planning change; see the execution plan for the exact count.
 
 **If sent for coordination:** Ryan selected the Codex Sol-medium lane that
 authored the [coordination handoff](../inter-model/CODEX-2026-09-18-append-cursor-ownership-handoff.md).
-Reconcile the Copilot plan with the merged #286 seam, obtain targeted Kiro
-recheck, and return a concrete E0-only choice to Ryan. This role carries no
+The plan reconciliation and targeted Kiro PASS are complete. Return a concrete
+E0-only choice to Ryan while keeping Copilot ineligible. This role carries no
 implementation or Sol-High authority.
 
 **If Ryan sent you to decide Execute:** Kiro PASSed the original planning
-packet at `9e2d0ef`; the post-merge correction needs targeted Kiro recheck.
-The shared-code base is now `main` at `d657767`. E0 remains ungranted until
-an exact action/provider-cost bound is approved; E1–E4 require later evidence
+packet at `9e2d0ef` and post-merge correction at `53e7b42`. The shared-code
+base is now `main` at `d657767`. E0 remains ungranted until exact actions and
+provider cost/stop controls are approved; E1–E4 require later evidence
 and a separate grant. Kiro's PASS grants no operation. See the
 [Codex-to-Codex coordination handoff](../inter-model/CODEX-2026-09-18-append-cursor-ownership-handoff.md).
 
@@ -104,23 +104,22 @@ planning brief provides no P2, bootstrap, watcher, or configuration authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Kiro rechecks this post-merge planning tip against the landed #286
-   registry/scanner and prior design conditions. Inspect the plan at this
-   branch tip and code at `origin/main` `d657767`; the planning checkout's code
-   predates the squash merge. Isolated Codex history does not establish
-   eligibility for rolling production history.
-2. Ryan decides whether to grant **E0 alone** in temporary isolated resources,
-   with exact real-client actions and a provider-call/cost ceiling. E0 remains
-   ungranted until that decision.
-3. Cursor proves or rejects Copilot writer eligibility; E0 failure returns
+1. Ryan decides whether to grant **E0 alone** in named temporary isolated
+   resources, with exact client actions and a provider/stop bound. GitHub's
+   [CLI session limit](https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/set-session-limit)
+   is soft and has a 30-credit minimum; do not present it as a hard ceiling.
+   A [local offline provider](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/use-byok-models)
+   can avoid external inference for a first trace, but online parity would
+   remain to prove. E0 is ungranted until Ryan chooses the exact scope.
+2. Cursor proves or rejects Copilot writer eligibility; E0 failure returns
    `NO_COPILOT_ROUTE` without substituting another format.
-4. If E0 passes review, Ryan separately grants a bounded E1–E4 implementation
+3. If E0 passes review, Ryan separately grants a bounded E1–E4 implementation
    against the merged base; Cursor supplies clean-worktree hermetic evidence.
-5. E3 evidence exercises sidecar id change and `session.start`/YAML
+4. E3 evidence exercises sidecar id change and `session.start`/YAML
    precedence, and declares the implemented invalidation discipline.
-6. Kiro reviews the exact implementation tip; Ryan separately chooses PR
+5. Kiro reviews the exact implementation tip; Ryan separately chooses PR
    disposition.
-7. Existing-source adoption, live canary, and activation each require their
+6. Existing-source adoption, live canary, and activation each require their
    own later evidence, review, and Ryan decision. No date is assumed.
 
 ## 7. Hard Stops
@@ -182,12 +181,13 @@ line. Keep this file a snapshot, not a session diary.
 | 2026-09-18 | Ryan / Codex | Ryan authorized PR steward; PR #307 opened at reviewed `19d34a5` with initial CI pending and merge reserved to Ryan |
 | 2026-09-18 | Codex | PR #307 reached mergeable state with all six checks PASS and no unresolved threads; Ryan owns merge |
 | 2026-09-18 | Ryan / Codex | Ryan squash-merged #286 as `d657767`; Codex reconciled the Copilot plan with the landed registry/scanner for targeted Kiro recheck |
+| 2026-09-18 | Kiro / Codex | Kiro PASSed post-merge plan tip `53e7b42` against `main` `d657767`; E0 remains ungranted pending Ryan's bounded action/provider choice |
 
 ## TL;DR
 
 - [Arc Codex] The generalization is technically possible only through a
   reviewed, versioned complete-prefix capability per adapter.
-- Kiro PASSed the planning packet at stated tip `9e2d0ef`; Copilot's writer
-  behavior still must be proven. Codex Sol-medium coordinates, and the existing
-  #286 Cursor integrator owns shared-code edits through disposition. E0 and
-  later implementation remain ungranted; no live operation is granted.
+- Kiro PASSed the post-merge plan at exact tip `53e7b42` against merged
+  `main` code `d657767`. Copilot writer behavior remains unproven. Ryan's
+  E0-only scope decision is next; E0, implementation, and live operation remain
+  ungranted.
