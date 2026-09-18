@@ -24,6 +24,65 @@ cross-arc snapshot and the linked arc brief below.
   **Live 12.5 GiB watcher OOM remains OPEN; do not declare #268 closed.** No
   watcher/config/exclusion change, production access, or Arc Codex P2
   progression without that evidence (§9.8, Ryan only).
+- **Ingest cost + silent-failure correctives (2026-09-17, ad-hoc):** a Claude
+  session traced the DeepSeek spend and found two defects and one gap.
+  (1) `watch_skip_reason` short-circuited on a stale path hash and never reached
+  the content-hash check `ingest.py` actually gates on, so nine
+  `docs/inter-model/*.md` files whose content was already indexed under a
+  Copilot audit copy re-spawned index subprocesses ~1,900x/day; fixed and
+  verified live (49 spawns/hr to ~0). (2) `convmem index --file` reported
+  `files_processed=0` with **exit 0** for any file no adapter recognizes, and a
+  402/401 provider refusal ground through every remaining chunk with 15s of
+  retry sleep each — the real cause of the 900s watch timeouts; both now fail
+  loudly. Branch `fix/2026-09-17-watch-skip-hash-parity`. **R2b blocker
+  RESOLVED (2026-09-18); branch is GREEN at tip `f8dfbb1` and awaiting a
+  Ryan force-push.** Not a logic regression — R2b binds an authority-content digest
+  over governed modules. A clean-worktree investigation disproved the
+  original "one coordinate" premise: the branch was 24-red on the nine R2b
+  files at its pristine tip (main clean 110/110), from 8 governed
+  coordinates that drifted (`convmem.py` +15 x5, `ingest.py` +25/+46/+46)
+  when commit `38421fc` inserted lines without regenerating the two
+  inventory artifacts. Under Ryan's option **R2**, the branch was rebased
+  onto `origin/main` (`d657767`) and **both** inventories refreshed against
+  the result (`incremental_jsonl.py` inventory coordinate already correct —
+  runtime untouched, no Arc Codex change). New tip **`f8dfbb1`** received
+  **Kiro exact-tip PASS** (nine focused R2b files 110/0 in a clean
+  worktree; delta = 3 correctives + 2 inventory JSONs + the one-line
+  `640`->`655`). **Next:** the rebase made the remote non-fast-forward;
+  **Ryan publishes `f8dfbb1` with an exact-SHA `--force-with-lease`
+  (force-push reserved to Ryan by protocol)**, then PR stewardship needs
+  its own grant. Diagnosis + investigation in
+  [`KIRO-2026-09-18-r2b-rebind-blocker-corrected-handoff.md`](KIRO-2026-09-18-r2b-rebind-blocker-corrected-handoff.md).
+  (3) **The Claude Code
+  adapter** (the Track A step `CLAUDE.md` tells every Claude session to run
+  has been ingesting nothing): **Gate 1 APPROVED by Ryan 2026-09-18 —
+  Option 2 (adapter only, on-demand `index --file`); Gate 2 auto-capture
+  stays closed** (recorded to ledger, relates-to `dec_prop_20260623_161428_c311`).
+  Decision brief:
+  [`KIRO-2026-09-18-claude-transcript-corpus-decision-brief.md`](KIRO-2026-09-18-claude-transcript-corpus-decision-brief.md);
+  implementation spec (Kiro-reviewed, Cursor lane) in
+  [`CURSOR-2026-09-17-claude-transcript-adapter-handoff.md`](CURSOR-2026-09-17-claude-transcript-adapter-handoff.md).
+  **Build stays behind the green base** — proceeds once `f8dfbb1` is pushed.
+  Live config changed under Ryan's direct instruction this session:
+  `~/.codex/history.jsonl` soft-excluded (it was 56% of the serving corpus and
+  94% of provider traffic) and its `[sources]` entry narrowed to
+  `~/.codex/sessions`. **Open Ryan decisions:** whether to purge the 44,770
+  units that file left behind, and whether `llm.py:45` should fall back locally
+  on provider failure rather than only on a missing key.
+- **Trapdoor Hunt / issue #268 — exposure-window probe plan:** PR #303
+  squash-merged as `5c103aa…` after Copilot and Kiro PASS, replacing the main
+  brief scans with one projected stream. A post-merge hermetic diagnostic
+  confirmed an approximately 2x reduction at 58,825 units but isolated the
+  remaining envelope-sized allocation in
+  `doctor._exposure_window_probe()`'s full `ReadonlyUnitStore` read. Kiro
+  returned unconditional PASS on the narrow projected-read plan at exact tip
+  `5672ee9`. The Cursor handoff is prepared but remains `BLOCKED_ON_RYAN`;
+  resume from
+  [`CURSOR-2026-09-15-watch-oom-bound-exposure-probe-execute-handoff.md`](CURSOR-2026-09-15-watch-oom-bound-exposure-probe-execute-handoff.md)
+  and the reviewed plan in
+  [`EXECUTION-watch-oom-bound-exposure-probe.md`](../plans/EXECUTION-watch-oom-bound-exposure-probe.md).
+  No implementation, production access, watcher/config/exclusion change,
+  source re-inclusion, or Arc Codex P2 progression is authorized.
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
   PR #301 (`8983a6fc…`) and remain disabled. Kiro's post-merge audit PASSed the

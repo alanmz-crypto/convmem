@@ -10,7 +10,7 @@ from incremental_jsonl_canary import assemble_evidence
 
 BASELINE_HASHES = {
     "watch.py": "b72fd6380d48bf4256371f4b3f4f8eda03f2ca7f1dd9c107f4d6db60c05da2e2",
-    "ingest.py": "36049bc2cae1b9979fa4becb9e83fcca8cbf0c52a91dd78644f215c2a2742cac",
+    "ingest.py": "cacf15a4d8d0f96061530e0dfaee6d66a5d904b83b2ba9f4119c196985c5893b",
     "incremental_jsonl.py": "33cb607b306a406399af68c0b0c28dc3b1155c96ad466399249b69d11d4d9cb8",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }

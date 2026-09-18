@@ -292,14 +292,29 @@ def index(
 ):
     """Ingest all sources (skip unchanged), or one file (--file; add --force to re-ingest)."""
     _guard_write()
-    from ingest import index as run_index
-
-    stats = run_index(
-        force_file=file,
-        limit_files=limit,
-        force_reindex=force,
-        supersede_on_reindex=supersede,
+    from ingest import (
+        ProviderUnavailableError,
+        UnsupportedSourceError,
+        index as run_index,
     )
+    from query import render_error
+
+    try:
+        stats = run_index(
+            force_file=file,
+            limit_files=limit,
+            force_reindex=force,
+            supersede_on_reindex=supersede,
+        )
+    except UnsupportedSourceError as exc:
+        render_error(str(exc))
+        raise typer.Exit(1) from exc
+    except ProviderUnavailableError as exc:
+        render_error(
+            f"{exc}\nCheck the provider balance/credential, then re-run. "
+            "Nothing was marked processed, so the file re-indexes cleanly."
+        )
+        raise typer.Exit(1) from exc
     typer.echo("")
     typer.echo(
         f"Done. files_processed={stats['files_processed']} "

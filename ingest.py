@@ -48,6 +48,26 @@ from provenance_binding import (
 
 _SYNTHESIS_FAIL_LOG = Path("~/.local/share/convmem/synthesis_failures.jsonl")
 
+
+class UnsupportedSourceError(ValueError):
+    """`index --file` names a path no adapter can parse."""
+
+
+class ProviderUnavailableError(RuntimeError):
+    """The synthesis provider rejected the credential or the account balance."""
+
+
+# 401/402/403 mean the credential or the balance is wrong. No amount of
+# retrying fixes that mid-run, and every remaining chunk will fail identically.
+_FATAL_PROVIDER_STATUS = frozenset({401, 402, 403})
+
+
+def _provider_fatal(exc: BaseException) -> int | None:
+    """Return the HTTP status when ``exc`` is an unrecoverable provider refusal."""
+    response = getattr(exc, "response", None)
+    status = getattr(response, "status_code", None)
+    return status if status in _FATAL_PROVIDER_STATUS else None
+
 # Keep the established ingest.distill patch seam for hermetic tests and other
 # callers while using the response-aware path during ordinary execution.
 distill = _distill
@@ -510,7 +530,12 @@ def watch_skip_reason(
                 return "unreadable"
         if file_hash == path_known_hash:
             return "unchanged"
-        return None
+        # Fall through rather than returning None. This exact content may
+        # already be indexed under a different path (Copilot audit copies,
+        # worktrees, backups all duplicate repo trees). ingest gates on the
+        # content hash alone, so short-circuiting here spawns an index
+        # subprocess that immediately no-ops -- ~1,900 wasted spawns/day
+        # observed on docs/inter-model/*.md.
 
     if file_hash is None:
         try:
@@ -772,6 +797,13 @@ def build_chunk_artifact(  # pylint: disable=too-many-arguments,too-many-locals
             )
             break
         except Exception as exc:  # pylint: disable=broad-exception-caught
+            fatal_status = _provider_fatal(exc)
+            if fatal_status is not None:
+                _log_chunk_failure(chunk["start_offset"], "summarize", path, exc)
+                raise ProviderUnavailableError(
+                    f"provider refused summarize with HTTP {fatal_status}; "
+                    "aborting this run instead of retrying every remaining chunk"
+                ) from exc
             if verbose:
                 print(f"    [warn] chunk {chunk['start_offset']} summarize failed: {exc}")
             if attempt == 2:
@@ -797,6 +829,13 @@ def build_chunk_artifact(  # pylint: disable=too-many-arguments,too-many-locals
             )
             break
         except Exception as exc:  # pylint: disable=broad-exception-caught
+            fatal_status = _provider_fatal(exc)
+            if fatal_status is not None:
+                _log_chunk_failure(chunk["start_offset"], "distill", path, exc)
+                raise ProviderUnavailableError(
+                    f"provider refused distill with HTTP {fatal_status}; "
+                    "aborting this run instead of retrying every remaining chunk"
+                ) from exc
             if verbose:
                 print(f"    [warn] chunk {chunk['start_offset']} distill failed: {exc}")
             if attempt == 2:
@@ -911,6 +950,13 @@ def build_chunk_artifact(  # pylint: disable=too-many-arguments,too-many-locals
                 host=models["ollama_host"],
             )
         except Exception as exc:  # pylint: disable=broad-exception-caught
+            fatal_status = _provider_fatal(exc)
+            if fatal_status is not None:
+                _log_chunk_failure(chunk["start_offset"], "embed", path, exc)
+                raise ProviderUnavailableError(
+                    f"provider refused embed with HTTP {fatal_status}; "
+                    "aborting this run instead of retrying every remaining chunk"
+                ) from exc
             if verbose:
                 print(f"    [warn] unit embed failed: {exc}")
             _log_chunk_failure(chunk["start_offset"], "embed", path, exc)
@@ -1433,6 +1479,18 @@ def _index_impl(
         path = rec["path"]
         parser = get_parser(path)
         if parser is None:
+            if force_file:
+                # An explicitly named file that no adapter recognizes is a
+                # user-visible failure, not a silent no-op. `index --file` is
+                # the documented session-handoff step, and reporting
+                # files_processed=0 with exit 0 has silently dropped whole
+                # transcripts that callers believed were ingested.
+                raise UnsupportedSourceError(
+                    f"No adapter recognizes {path!r} — nothing was ingested.\n"
+                    f"Supported: {', '.join(sorted(TOOL_BY_FORMAT))}.\n"
+                    "If this is a session transcript, its adapter is missing; "
+                    "indexing it is a no-op until one exists."
+                )
             continue  # unsupported / deferred — ignore, do not consume limit_files
 
         if limit_files is not None and seen_files >= limit_files:
