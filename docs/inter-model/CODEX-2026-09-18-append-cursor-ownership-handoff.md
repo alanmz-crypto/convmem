@@ -6,9 +6,9 @@
 
 **Author:** Codex
 
-**For:** Codex Sol and Ryan
+**For:** Codex Sol, Ryan, and the existing #286 Cursor integrator
 
-**Authorization:** Ryan asked for a handoff to avoid confusion, then selected the Codex lane that authored it as coordination owner on 2026-09-18. This assigns coordination only; Ryan has not assigned the shared-code writer or granted Execute.
+**Authorization:** Ryan selected the authoring Codex lane as coordination owner, then said, “Use your best judgement for this decision, and I agree.” This handoff records the resulting shared-code writer choice. No Copilot E0, implementation, PR, or live Execute is granted.
 
 ## Resume state
 
@@ -18,24 +18,24 @@
 
 ## Coordination owner
 
-Ryan selected the **Codex Sol-medium lane that authored this handoff** to coordinate the overlap. That lane tracks exact branch and review state, maintains this planning boundary, and returns code-writer and Execute choices to Ryan. It does not take over Cursor implementation or invoke Sol-High. No qualifying Copilot/Kiro PASS-versus-FAIL conflict has been identified.
+Ryan selected the **Codex Sol-medium lane that authored this handoff** to coordinate the overlap. That lane tracks exact branch and review state, maintains this planning boundary, and returns later Execute choices to Ryan. It does not take over Cursor implementation or invoke Sol-High. No qualifying Copilot/Kiro PASS-versus-FAIL conflict has been identified.
 
-## Remaining recommendation for Ryan
+## Shared-code decision and remaining gate
 
-1. Name the existing #286 Cursor integrator the **single shared-code writer through its current integration, targeted reviews, and disposition**. This is a recommendation awaiting Ryan's code-writer decision; the Codex coordination assignment above does not settle it.
-2. Keep Arc Codex E1–E4 coordinator and adapter implementation pending until #286's exact-tip review and branch disposition establish the base to extend. After that, the coordinating Codex lane can reconcile the Copilot Execute packet with the actual resulting base, and Cursor can implement only after Ryan's grant. Do not start a second concurrent `incremental_jsonl.py` edit.
-3. If Ryan wants independent progress before #286 lands, an **E0-only** grant is the narrow choice: Cursor gathers controlled Copilot writer evidence in named temporary resources and returns an eligibility finding. The grant must explicitly state whether provider-backed CLI actions are permitted and bound any cost; the planning packet itself authorizes none. E0 grants no routing, coordinator implementation, bootstrap, live source, canary, or activation. E0 failure returns `NO_COPILOT_ROUTE`; no substitute format is implied.
+1. **Assigned writer:** the existing #286 Cursor integrator is the sole writer of shared `incremental_jsonl.py` and its format registry through the current integration, targeted rechecks, and Ryan's branch disposition. The coordination lane does not edit that code. A later Copilot implementation is a separate assignment against the resulting base, with no concurrent shared-code writer.
+2. **Sequence:** targeted Copilot and Kiro rechecks of the exact #286 successor tip come next. Keep Arc Codex E1–E4 coordinator and adapter implementation pending until review and disposition establish the base to extend. Then the coordinating Codex lane reconciles the Copilot Execute packet with that base; Cursor acts only under a later Ryan grant.
+3. **E0 scope decision:** defer a Copilot E0 Execute grant for now. The controlled writer trace may need provider-backed CLI actions, and no exact permitted action/cost bound has been named. After the #286 review and branch disposition, Ryan can choose an E0-only grant with named temporary resources, provider-action permission and cap, and the `NO_COPILOT_ROUTE` stop rule. No substitute format is implied on E0 failure.
 
 ## What the other Codex Sol should carry
 
-- Treat the shared-code writer and E0 choice above as **recommendations awaiting Ryan**, not as an authorization or review verdict. The authoring Codex lane owns coordination.
+- Treat the #286 writer assignment above as the coordination decision Ryan delegated to this lane. E0 is deferred and ungranted. The authoring Codex lane owns coordination; the existing #286 Cursor integrator owns shared-code edits through disposition.
 - Keep Kiro's Condition A in any later Execute: E3 must explicitly exercise `workspace.yaml` session-id changes, `session.start` versus YAML precedence, and state whether digest or effective-field changes trigger rebuild.
 - Refresh exact remote tips and review state before changing the plan. Do not infer that the original #286 Copilot/Kiro PASS covers the successor integration tip, or that the Arc Codex planning PASS covers implementation.
 - Keep Arc Codex P2, issue #268 OOM measurement, existing-source adoption, live canary, and activation in their separate gates.
 
 ## Next handoff
 
-**Ryan:** decide the shared-code writer and whether E0 alone may start.
+**Ryan:** decide #286 PR/merge disposition after exact-tip reviews; later decide whether to grant E0 alone with bounded actions and cost.
 
 **Copilot audit and Kiro:** targeted rechecks of the pushed #286 integration tip.
 
@@ -43,6 +43,6 @@ Ryan selected the **Codex Sol-medium lane that authored this handoff** to coordi
 
 **Other Codex Sol:** no assignment on this lane; remain available only if a separately authorized task or qualifying review-conflict gate arises.
 
-**Cursor:** act only within the relevant Ryan Execute grant.
+**Existing #286 Cursor integrator:** sole shared-code writer through integration review and disposition; no new Execute scope is implied.
 
-**TL;DR:** [Arc Codex] Ryan selected the authoring Codex Sol-medium lane to coordinate. The #286 Cursor integrator remains the recommended sole shared-code writer, pending Ryan's decision. E0, implementation, PR, and live work remain ungranted.
+**TL;DR:** [Arc Codex] Ryan delegated the writer choice; the existing #286 Cursor integrator is the sole shared-code writer through branch disposition. The authoring Codex lane coordinates. Copilot E0 and all later implementation/live gates remain ungranted.

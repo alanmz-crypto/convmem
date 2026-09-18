@@ -61,11 +61,11 @@ to this planning change; see the execution plan for the exact count.
 | Milestone | State | Next owner |
 |---|---|---|
 | Candidate inventory and design | Complete on pushed `plan/2026-09-17-generalize-append-cursor` at `9e2d0ef` | — |
-| Architecture/Execute review | Kiro PASS on stated `9e2d0ef`; Codex verified the reviewed revision at the time, and later status/routing commits did not change the reviewed plan docs | Ryan decides grant and shared-code writer |
-| Cross-arc coordination | Ryan selected the Codex Sol-medium lane that authored the coordination handoff; this role tracks overlap and returns writer/Execute choices to Ryan, without implementation authority | Codex Sol-medium |
+| Architecture/Execute review | Kiro PASS on stated `9e2d0ef`; Codex verified the reviewed revision at the time, and later status/routing commits did not change the reviewed plan docs | Ryan decides later Execute scope after #286 disposition |
+| Cross-arc coordination | Ryan selected the Codex Sol-medium lane that authored the coordination handoff; it assigned the current #286 writer, tracks overlap, and returns later Execute choices to Ryan without implementation authority | Codex Sol-medium |
 | Condition A — Copilot metadata evidence | Pending: E3 must exercise `workspace.yaml` id changes, `session.start` versus YAML precedence, and chosen digest-versus-effective-fields invalidation | Cursor if granted; Kiro verifies evidence |
-| Condition B — shared-code writer | Pending Ryan decision. Issue #286's Cursor lane has already changed `incremental_jsonl.py` on an unmerged integration successor ready for targeted rechecks; recommend that integrator be the sole writer through disposition, then base Copilot work on the reviewed outcome. Isolated Codex history and rolling production history are separate scopes. | Ryan |
-| E0 writer-contract evidence | Not started; no Execute grant | Ryan decides whether Cursor may run it |
+| Condition B — shared-code writer | Resolved for current integration by Ryan-delegated choice: the existing #286 Cursor integrator is sole writer through review and branch disposition. A later Copilot writer assignment must use the resulting base. Isolated Codex history and rolling production history remain separate scopes. | Existing #286 Cursor integrator |
+| E0 writer-contract evidence | Not started; Execute deferred until #286 review/disposition and an exact provider-action/cost bound are named | Ryan decides whether Cursor may run it later |
 | E1–E4 implementation and hermetic verification | Not started; conditional on E0, Condition B, and Ryan grant | Cursor if authorized |
 | Existing-source bootstrap | Unauthorized; separate cost/authority decision | Ryan |
 | Live canary and activation | Unauthorized; existing Arc Codex gates remain | Ryan |
@@ -75,15 +75,14 @@ to this planning change; see the execution plan for the exact count.
 **If sent for coordination:** Ryan selected the Codex Sol-medium lane that
 authored the [coordination handoff](../inter-model/CODEX-2026-09-18-append-cursor-ownership-handoff.md).
 Track exact #286 integration/review state, prevent concurrent shared-code
-assignments, and return the writer and E0 decisions to Ryan. This role carries
-no implementation or Sol-High authority.
+assignments, and return later E0 and implementation choices to Ryan. This role
+carries no implementation or Sol-High authority.
 
 **If Ryan sent you to decide Execute:** Kiro has PASSed the planning packet at
-stated tip `9e2d0ef`. Issue #286 has already changed shared coordinator code on
-an unmerged successor, so name one writer for that integration and the later
-Copilot extension. Decide whether to grant E0 alone now in named isolated
-resources; E1–E4 should await the #286 exact-tip reviews and branch
-disposition. Kiro's PASS grants no operation. See the
+stated tip `9e2d0ef`. The existing #286 Cursor integrator is assigned as sole
+shared-code writer through review and disposition. E0 is deferred and
+ungranted until the #286 outcome and an exact action/cost bound are available;
+E1–E4 should await the resulting base. Kiro's PASS grants no operation. See the
 [Codex-to-Codex coordination handoff](../inter-model/CODEX-2026-09-18-append-cursor-ownership-handoff.md).
 
 **If sent for Cursor implementation:** stop until Ryan issues an exact E0 or
@@ -99,18 +98,20 @@ planning brief provides no P2, bootstrap, watcher, or configuration authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Ryan names a single shared-code writer and decides whether to authorize E0
-   alone in isolated resources. Issue #286's unmerged integration awaits
-   targeted Copilot/Kiro rechecks; E1–E4 should use its reviewed disposition as
-   their base. Isolated Codex history does not establish eligibility for
-   rolling production history.
-2. Cursor proves or rejects Copilot writer eligibility, then implements only
+1. The existing #286 Cursor integrator carries the sole shared-code writer
+   assignment through targeted Copilot/Kiro rechecks and Ryan's branch
+   disposition. The coordinating Codex lane then reconciles the Copilot packet
+   with the resulting base. Isolated Codex history does not establish
+   eligibility for rolling production history.
+2. Ryan decides whether to grant E0 alone in isolated resources, with an exact
+   provider-action/cost bound. E0 remains ungranted until that later decision.
+3. Cursor proves or rejects Copilot writer eligibility, then implements only
    the granted slices and supplies clean-worktree hermetic evidence.
-3. E3 evidence exercises sidecar id change and `session.start`/YAML
+4. E3 evidence exercises sidecar id change and `session.start`/YAML
    precedence, and declares the implemented invalidation discipline.
-4. Kiro reviews the exact implementation tip; Ryan separately chooses PR
+5. Kiro reviews the exact implementation tip; Ryan separately chooses PR
    disposition.
-5. Existing-source adoption, live canary, and activation each require their
+6. Existing-source adoption, live canary, and activation each require their
    own later evidence, review, and Ryan decision. No date is assumed.
 
 ## 7. Hard Stops
@@ -118,7 +119,7 @@ planning brief provides no P2, bootstrap, watcher, or configuration authority.
 | Stop | Owner | Blocks |
 |---|---|---|
 | Execute grant | Ryan | Any coordinator, adapter, test, or config implementation |
-| Shared-code writer assignment | Ryan | Arc Codex E1–E4 touching `incremental_jsonl.py` before one writer and base are named |
+| Shared-code writer/base for Copilot | Ryan | Arc Codex E1–E4 touching `incremental_jsonl.py` before #286 disposition and a later writer assignment |
 | E0 writer proof | Cursor evidence + Kiro review | Copilot eligibility and E2 routing |
 | Bootstrap cost/authority | Ryan | Adopting or rebuilding already-indexed sources |
 | P2/live canary | Existing Arc Codex gates + Ryan | Production source, Chroma, or provider operations |
@@ -131,8 +132,10 @@ No gate implies another.
 This is a scoped extension of Arc Codex's ingestion efficiency/recovery
 mechanism. It does not alter retrieval ranking, semantic calibration, R2b
 attestation, Shadow Ledger, or the source/projection authority direction.
-Trapdoor Hunt issue #286 has a separate, overlapping Codex-format draft on an
-unmerged branch. No work in that arc is authorized or superseded here.
+Trapdoor Hunt issue #286 has a separate, overlapping Codex-format implementation
+on an unmerged branch. Its existing Cursor integrator is the sole shared-code
+writer through review and branch disposition. This coordination decision grants
+no new work in that arc.
 
 ## 9. Key Design Files
 
@@ -145,7 +148,7 @@ unmerged branch. No work in that arc is authorized or superseded here.
 | Coordinator | `incremental_jsonl.py` |
 | Adapter seam | `adapters/jsonl_io.py`, `adapters/kiro_session_jsonl.py`, `adapters/copilot_session_jsonl.py` |
 | Source handoff | `docs/inter-model/CODEX-2026-09-17-generalize-append-cursor-handoff.md` at `439b5fc` (separate branch) |
-| Distinct Codex-format draft | `plan/2026-09-17-issue-286-incremental-index` at `6b62f0f` |
+| Distinct Codex-format implementation | `feat/2026-09-17-issue-286-main-integration` at `e99856e` (unmerged, awaiting targeted rechecks) |
 
 ## 10. How to Update This Brief
 
@@ -161,12 +164,13 @@ line. Keep this file a snapshot, not a session diary.
 | 2026-09-18 | Kiro / Codex | Kiro PASSed planning tip `9e2d0ef` with metadata-evidence and shared-code-owner conditions; Codex verified the local and remote tip; Ryan's Execute decision is next |
 | 2026-09-18 | Codex | Reassessed the pushed #286 integration successor and handed Codex Sol a single-owner recommendation; Ryan's ownership and E0 decisions remain pending |
 | 2026-09-18 | Ryan / Codex | Ryan selected the authoring Codex Sol-medium lane for cross-arc coordination; shared-code writer and E0 gates remain pending |
+| 2026-09-18 | Ryan / Codex | Ryan delegated the writer choice; Codex assigned the existing #286 Cursor integrator through branch disposition and deferred Copilot E0 |
 
 ## TL;DR
 
 - [Arc Codex] The generalization is technically possible only through a
   reviewed, versioned complete-prefix capability per adapter.
 - Kiro PASSed the planning packet at stated tip `9e2d0ef`; Copilot's writer
-  behavior still must be proven. Codex Sol-medium coordinates; Ryan's Execute
-  and shared-code writer decisions are next. No implementation or live
-  operation is granted.
+  behavior still must be proven. Codex Sol-medium coordinates, and the existing
+  #286 Cursor integrator owns shared-code edits through disposition. E0 and
+  later implementation remain ungranted; no live operation is granted.
