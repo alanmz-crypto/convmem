@@ -1,9 +1,13 @@
 # Cursor handoff — issue #286 main integration
 
-**Arc:** Trapdoor Hunt (issue #286 operational follow-up; T3 stays closed)  
-**Date:** 2026-09-17  
-**Author:** Codex  
-**For:** The existing Cursor S0–S3 implementation session  
+**Arc:** Trapdoor Hunt (issue #286 operational follow-up; T3 stays closed)
+
+**Date:** 2026-09-17
+
+**Author:** Codex
+
+**For:** The existing Cursor S0–S3 implementation session
+
 **Authorization:** Ryan directly authorized a bounded rebase/integration on 2026-09-17. This is not PR, merge, live-indexing, watcher, or Arc Codex P2 authority.
 
 ## Resume state
@@ -11,8 +15,9 @@
 - **Reviewed implementation:** `506afc1ff07ffab19c017f1b40b331bc3000ba7c` on `feat/2026-09-17-issue-286-incremental-index`; pushed, Copilot PASS, Kiro PASS, no PR.
 - **Reviewed plan:** `6b62f0f5ab88286e201405e3dc6f40418c74f85a`.
 - **Main at grant:** `18f63dbb6a9ea9f7c569862f29e176a49e3323a5`. Fetch and record the actual `origin/main` at integration start; stop if new changes make the conflict or scope materially different.
-- **Current conflict:** main-only #304 changed `docs/plans/R2B-V2-WRITER-COVERAGE-INVENTORY.json`; `LATEST.md` and `STATUS.md` also need truthful reconciliation. Kiro confirmed main is not an ancestor of the reviewed implementation.
-- **State:** `IN_PROGRESS` only after Cursor resumes; the integration has not been performed by this handoff.
+- **Integration:** performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…`; R2b inventory regenerated; affected runtime gates PASS (146 pytest, pylint 10/10, compileall, diff-check).
+- **Review verdicts on prior exact tip `e99856e…`:** Kiro PASS (S0–S3 contract preservation); Copilot FAIL (documentation acceptance — trailing whitespace, stale resume state, wrong tip routing in `LATEST.md`/`STATUS.md`).
+- **State:** docs correction in progress to address Copilot findings; no PR, merge, or live operation until fresh Copilot and Kiro exact-tip reviews on the corrected pushed head (`git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch).
 
 ## Authorized work
 
