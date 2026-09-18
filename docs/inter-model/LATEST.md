@@ -9,23 +9,23 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #286 — exact-tip docs corrective:** the pushed
-  successor `e99856e` on `feat/2026-09-17-issue-286-main-integration` remains
-  unmerged and has no PR. [Kiro PASSed](KIRO-2026-09-18-issue-286-integration-recheck-handoff.md)
-  its S0–S3 contract with 116 exact-tip tests; [Copilot FAILed](COPILOT-2026-09-18-issue-286-integration-recheck-handoff.md)
-  exact-tip documentation acceptance while affirming runtime safety. These
-  verdicts address compatible facts, so no Sol-High conflict gate is met.
-  The [bounded Cursor docs corrective](CURSOR-2026-09-18-issue-286-exact-tip-doc-corrective-handoff.md)
-  fixes trailing whitespace, stale state, and wrong tip routing on the
-  successor. The new pushed tip needs fresh Copilot/Kiro reviews before Ryan's
-  PR decision; no live or new Execute authority is granted.
+- **Trapdoor Hunt / issue #286 — corrected tip READY_FOR_RECHECK:**
+  `19d34a5` is pushed on `feat/2026-09-17-issue-286-main-integration`,
+  unmerged with no PR. The delta from prior reviewed tip `e99856e` is three
+  docs only; `git diff --check origin/main..19d34a5` passes. At `e99856e`,
+  [Kiro PASSed](KIRO-2026-09-18-issue-286-integration-recheck-handoff.md)
+  S0–S3 behavior and [Copilot FAILed](COPILOT-2026-09-18-issue-286-integration-recheck-handoff.md)
+  documentation acceptance. The [fresh Copilot audit](COPILOT-2026-09-18-issue-286-doc-corrective-recheck-handoff.md)
+  and [fresh Kiro recheck](KIRO-2026-09-18-issue-286-doc-corrective-recheck-handoff.md)
+  target the **same full SHA** `19d34a5e235bf436803ad8a2f15427fa9a84ef88`.
+  Their written verdicts precede Ryan's PR decision; no live or new Execute
+  authority is granted.
 - **Arc Codex — append-cursor format extension planning:** Kiro PASSed the
   conditional Copilot `events.jsonl` plan at stated tip `9e2d0ef`; Codex
   independently verified that local and remote branch tips match. Trapdoor
   Hunt issue #286 has since pushed an unmerged shared-registry integration
-  successor at `e99856e`. Kiro PASSed its S0–S3 behavior; Copilot FAILed its
-  exact-tip documentation acceptance. A bounded docs correction and fresh
-  exact-tip reviews precede branch disposition.
+  successor at `19d34a5`. Its docs-only corrective is pushed and fresh
+  Copilot/Kiro exact-tip reviews are pending before branch disposition.
   The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
