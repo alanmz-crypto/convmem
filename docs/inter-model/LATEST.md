@@ -9,23 +9,25 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Trapdoor Hunt / issue #286 — exact-tip reviews PASS, Ryan PR decision next:**
-  `19d34a5` is pushed on `feat/2026-09-17-issue-286-main-integration`,
-  unmerged with no PR. The delta from prior reviewed tip `e99856e` is three
+- **Trapdoor Hunt / issue #286 — reviewed integration PR open:**
+  [PR #307](https://github.com/alanmz-crypto/convmem/pull/307) is open from
+  `feat/2026-09-17-issue-286-main-integration` at exact tip `19d34a5`.
+  The delta from prior reviewed tip `e99856e` is three
   docs only; `git diff --check origin/main..19d34a5` passes. At `e99856e`,
   [Kiro PASSed](KIRO-2026-09-18-issue-286-integration-recheck-handoff.md)
   S0–S3 behavior and [Copilot FAILed](COPILOT-2026-09-18-issue-286-integration-recheck-handoff.md)
   documentation acceptance. Kiro and Copilot have now each returned written
   **PASS** on the **same full SHA** `19d34a5e235bf436803ad8a2f15427fa9a84ef88`:
   Kiro for S0–S3 continuity and corrected routing; Copilot for closure of all
-  three documentation findings and unchanged runtime. Ryan's PR disposition
-  is next. No PR, live, or new Execute authority is granted.
+  three documentation findings and unchanged runtime. Initial PR checks are
+  pending; Ryan owns merge disposition. No live or new Execute authority is
+  granted.
 - **Arc Codex — append-cursor format extension planning:** Kiro PASSed the
   conditional Copilot `events.jsonl` plan at stated tip `9e2d0ef`; Codex
   independently verified that local and remote branch tips match. Trapdoor
   Hunt issue #286 has since pushed an unmerged shared-registry integration
-  successor at `19d34a5`. Its docs-only corrective is pushed; Kiro and Copilot
-  PASSed the exact tip. Ryan's PR disposition is next.
+  successor at `19d34a5` in PR #307. Kiro and Copilot PASSed the exact tip;
+  PR checks are pending and Ryan owns merge disposition.
   The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are

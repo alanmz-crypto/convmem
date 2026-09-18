@@ -63,7 +63,7 @@ to this planning change; see the execution plan for the exact count.
 | Candidate inventory and design | Complete on pushed `plan/2026-09-17-generalize-append-cursor` at `9e2d0ef` | — |
 | Architecture/Execute review | Kiro PASS on stated `9e2d0ef`; Codex verified the reviewed revision at the time, and later status/routing commits did not change the reviewed plan docs | Ryan decides later Execute scope after #286 disposition |
 | Cross-arc coordination | Ryan selected the Codex Sol-medium lane that authored the coordination handoff; it assigned the current #286 writer, tracks overlap, and returns later Execute choices to Ryan without implementation authority | Codex Sol-medium |
-| #286 integration rechecks | Corrective tip `19d34a5` is pushed, unmerged, with no PR. Kiro and Copilot each returned written PASS on that exact tip; the earlier `e99856e` Copilot FAIL is historical. Ryan decides PR disposition. | Ryan |
+| #286 integration PR | [PR #307](https://github.com/alanmz-crypto/convmem/pull/307) is open at reviewed exact tip `19d34a5`; Kiro and Copilot each returned written PASS. Initial CI is pending; Ryan owns merge disposition. | PR steward monitors checks; Ryan merges |
 | Condition A — Copilot metadata evidence | Pending: E3 must exercise `workspace.yaml` id changes, `session.start` versus YAML precedence, and chosen digest-versus-effective-fields invalidation | Cursor if granted; Kiro verifies evidence |
 | Condition B — shared-code writer | Resolved for current integration by Ryan-delegated choice: the existing #286 Cursor integrator is sole writer through review and branch disposition. A later Copilot writer assignment must use the resulting base. Isolated Codex history and rolling production history remain separate scopes. | Existing #286 Cursor integrator |
 | E0 writer-contract evidence | Not started; Execute deferred until #286 review/disposition and an exact provider-action/cost bound are named | Ryan decides whether Cursor may run it later |
@@ -99,13 +99,12 @@ planning brief provides no P2, bootstrap, watcher, or configuration authority.
 
 ## 6. What Remains Before Live (sequential)
 
-1. Ryan decides PR disposition for the pushed #286 corrective tip `19d34a5`.
-   Kiro and Copilot have each PASSed that same exact tip; the prior Copilot
-   FAIL on `e99856e` is historical. The existing #286 Cursor integrator
-   remains the sole shared-code writer through branch disposition. The
-   coordinating Codex lane then reconciles the Copilot packet with the
-   resulting base. Isolated Codex history
-   does not establish eligibility for rolling production history.
+1. PR steward watches [PR #307](https://github.com/alanmz-crypto/convmem/pull/307)
+   checks on exact tip `19d34a5`; Kiro and Copilot PASSed that tip. Ryan decides
+   merge disposition. The existing #286 Cursor integrator remains the sole
+   shared-code writer through branch disposition. The coordinating Codex lane
+   then reconciles the Copilot packet with the resulting base. Isolated Codex
+   history does not establish eligibility for rolling production history.
 2. Ryan decides whether to grant E0 alone in isolated resources, with an exact
    provider-action/cost bound. E0 remains ungranted until that later decision.
 3. Cursor proves or rejects Copilot writer eligibility, then implements only
@@ -151,7 +150,7 @@ no new work in that arc.
 | Coordinator | `incremental_jsonl.py` |
 | Adapter seam | `adapters/jsonl_io.py`, `adapters/kiro_session_jsonl.py`, `adapters/copilot_session_jsonl.py` |
 | Source handoff | `docs/inter-model/CODEX-2026-09-17-generalize-append-cursor-handoff.md` at `439b5fc` (separate branch) |
-| Distinct Codex-format implementation | `feat/2026-09-17-issue-286-main-integration` at `19d34a5` (unmerged, exact-tip Copilot/Kiro PASS, Ryan PR decision next) |
+| Distinct Codex-format implementation | [PR #307](https://github.com/alanmz-crypto/convmem/pull/307) at `19d34a5` (open, exact-tip Copilot/Kiro PASS, CI pending) |
 
 ## 10. How to Update This Brief
 
@@ -174,6 +173,7 @@ line. Keep this file a snapshot, not a session diary.
 | 2026-09-18 | Cursor / Codex | Cursor pushed three-doc correction at `19d34a5`; Codex verified clean diff-check and issued fresh exact-tip Copilot/Kiro recheck handoffs |
 | 2026-09-18 | Kiro / Codex | Kiro PASSed corrected #286 exact tip `19d34a5` for S0–S3 continuity and routing; Copilot audit remains pending |
 | 2026-09-18 | Copilot / Codex | Copilot PASSed corrected #286 exact tip `19d34a5`; both reviewers now PASS and Ryan's PR decision is next |
+| 2026-09-18 | Ryan / Codex | Ryan authorized PR steward; PR #307 opened at reviewed `19d34a5` with initial CI pending and merge reserved to Ryan |
 
 ## TL;DR
 
