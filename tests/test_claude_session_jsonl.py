@@ -222,6 +222,50 @@ class TestClaudeSessionJsonl(unittest.TestCase):
             )
         )
 
+    def test_text_from_message_content_skips_blank_or_stripped_list_blocks(self):
+        self.assertEqual(
+            text_from_message_content(
+                [
+                    {"type": "text", "text": ""},
+                    {
+                        "type": "text",
+                        "text": "<system-reminder>only boilerplate</system-reminder>",
+                    },
+                    {"type": "text", "text": "   "},
+                    {"type": "text", "text": "safe speech"},
+                ]
+            ),
+            "safe speech",
+        )
+
+    def test_parse_keeps_speech_when_list_has_blank_or_stripped_blocks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_claude_transcript(
+                Path(tmp),
+                [
+                    _claude_record(
+                        rtype="assistant",
+                        content=[
+                            {"type": "text", "text": ""},
+                            {
+                                "type": "text",
+                                "text": (
+                                    "<system-reminder>injected</system-reminder>"
+                                ),
+                            },
+                            {"type": "text", "text": "visible reply"},
+                        ],
+                    ),
+                    _claude_record(
+                        rtype="user",
+                        content="<system-reminder>only opening tag",
+                    ),
+                ],
+            )
+            messages = parse(str(path))
+            self.assertEqual(len(messages), 1)
+            self.assertEqual(messages[0]["content"], "visible reply")
+
     def test_parse_strips_list_form_wrappers_and_keeps_speech(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = self._write_claude_transcript(

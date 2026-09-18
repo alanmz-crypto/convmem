@@ -107,12 +107,14 @@ def strip_injected_context(text: str) -> str | None:
     """Remove Claude Code injected wrappers and their contents.
 
     Returns None when an unclosed strip tag remains after removing well-formed
-    pairs (fail-closed — do not index partially sanitized injection).
+    pairs (fail-closed — do not index partially sanitized injection). Returns
+    an empty string when stripping removes all speech; callers decide whether
+    to drop a whole message or skip one list block.
     """
     cleaned = _STRIP_RE.sub("", text).strip()
     if _OPEN_TAG_RE.search(cleaned):
         return None
-    return cleaned or None
+    return cleaned
 
 
 def text_from_message_content(raw: object) -> str | None:
@@ -121,7 +123,10 @@ def text_from_message_content(raw: object) -> str | None:
     Shared mapper for on-demand parse() and future Gate 2 parse_complete_prefix().
     """
     if isinstance(raw, str):
-        return strip_injected_context(raw)
+        text = strip_injected_context(raw)
+        if text is None:
+            return None
+        return text or None
     if isinstance(raw, list):
         parts: list[str] = []
         for block in raw:
