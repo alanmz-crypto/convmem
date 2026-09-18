@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-17
+**Updated:** 2026-09-18
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,24 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **willowyhollow review-gate comparison (2026-09-18, ad-hoc, `NOT_STARTED`):** A
+  Claude session auditing willowyhollow's open staging2 CSP/HSTS/Referrer-Policy
+  observations found the deploy path is gated by GitHub rulesets on both
+  `willowyhollow-dev` (`main-integrity-gates` id 19155375,
+  `staging-integrity-gates` id 19155380) and this repo (`Protect Main` id
+  19156572) — but **all three require zero approving reviews**, so "review
+  required" is unenforced policy, not mechanism, on either repo. `main` and
+  `staging` on willowyhollow are parallel deploy targets (production vs.
+  staging2), not a sequential pipeline, and neither ruleset's required status
+  checks cover the open security-header gaps. Ryan asked for Codex to compare
+  a proposed target-state ruleset design against both repos' real
+  configuration and produce an execution-plan brief.
+  **Next step is specified in
+  [`CLAUDE-2026-09-18-willowyhollow-review-gate-comparison-handoff.md`](CLAUDE-2026-09-18-willowyhollow-review-gate-comparison-handoff.md)**
+  — Codex reads it, produces the comparison + target-state doc; no ruleset or
+  workflow file may be edited without a separate Ryan grant naming the exact
+  repo/field/value.
 
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
