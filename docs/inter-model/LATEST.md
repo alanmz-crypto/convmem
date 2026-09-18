@@ -9,27 +9,25 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **willowyhollow review-gate comparison (2026-09-18, ad-hoc, `CLAUDE_AUDIT_READY`):** A
-  Claude session auditing willowyhollow's open staging2 CSP/HSTS/Referrer-Policy
-  observations found the deploy path is gated by GitHub rulesets on both
-  `willowyhollow-dev` (`main-integrity-gates` id 19155375,
-  `staging-integrity-gates` id 19155380) and this repo (`Protect Main` id
-  19156572) — but **all three require zero approving reviews**, so "review
-  required" is unenforced policy, not mechanism, on either repo. `main` and
-  `staging` on willowyhollow are parallel deploy targets (production vs.
-  staging2), not a sequential pipeline, and neither ruleset's required status
-  checks cover the open security-header gaps. Ryan asked for Codex to compare
-  a proposed target-state ruleset design against both repos' real
-  configuration. Codex's revised implementation draft now lives in
+- **willowyhollow review-gate comparison (2026-09-18, ad-hoc,
+  `POST_CLAUDE_AUDIT_REVISED`):** Claude audited the Codex draft at `626d3ba`
+  and confirmed its live facts, then found two blocking design omissions. This
+  private personal repository has four repository-scoped `SG_*` Actions secrets,
+  including the SiteGround SSH key; a second GitHub approver would receive
+  write access and a path to those secrets. The installed Cursor App has PR
+  write permission and previously submitted an `APPROVED` review, so count `1`
+  alone is not a verified human gate. Codex's revised comparison and two-track
+  implementation draft is in
   [`IMPLEMENTATION-willowyhollow-review-gate-enforcement.md`](../plans/IMPLEMENTATION-willowyhollow-review-gate-enforcement.md),
-  with the execution handoff in
+  with routing in
   [`CODEX-2026-09-18-willowyhollow-review-gate-implementation-handoff.md`](CODEX-2026-09-18-willowyhollow-review-gate-implementation-handoff.md).
-  Live GitHub checks corrected the earlier local-checkout assumption: both
-  required contexts already exist and passed on historical PRs. The only listed
-  collaborator is the repository owner, so a one-approval gate requires a
-  second eligible human before it can be enabled safely. Claude audits this
-  revision next, then Kiro signs off. The plan keeps ConvMem's bounded autonomy
-  separate and authorizes no ruleset, access, workflow, or SiteGround change.
+  **Track A:** Kiro reviews live staging2 header attribution/repair starting at
+  Cloudflare, the locked header plugin, and preserved `.htaccess`; the six open
+  observations arose after the last July merge. **Track B:**
+  Ryan chooses whether credential isolation plus a human-specific gate is worth
+  pursuing; approval count stays `0` and no writer is invited meanwhile.
+  ConvMem policy stays separate. The local web-design model quality/cost
+  question remains a separate unanswered slice. No external change is granted.
 
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as

@@ -3,26 +3,26 @@
 **Date:** 2026-09-18
 **Author:** OpenAI Codex
 **Arc:** none (ad-hoc)
-**State:** revised draft for Claude adversarial audit; no repository, ruleset, access, or SiteGround change authorized
+**State:** revised after Claude's audit of `626d3ba`; Track A sequence ready for Kiro plan review, exact repair design awaits live attribution, Track B awaits Ryan's access decision; no repository, ruleset, access, Cloudflare, or SiteGround change authorized
 **Input:** `docs/inter-model/CLAUDE-2026-09-18-willowyhollow-review-gate-comparison-handoff.md`
 
 ## Decision for this audit
 
-The two required WordPress PR checks already exist and have reported under the
-exact names configured in both rulesets. There is no missing `theme-engine` or
-`plugin-lock` PR job to implement. The first missing enforcement primitive is an
-independent approving reviewer. The private, user-owned
-`alanmz-crypto/willowyhollow-dev` repository currently lists only
-`alanmz-crypto` as a collaborator. GitHub does not let a PR author approve their
-own PR. Setting the review count to one before a second eligible human has
-accepted access would block owner-authored PRs. Do not make that mutation yet.
+The two required WordPress PR checks already run. The live defect is missing
+staging2 security headers, while neither deploy branch has received a merge
+since 2026-07-19. Prioritize the header-source investigation and repair. The
+review gate is a separate, slower governance track.
 
-The recommended target is one qualifying human approval **and** approval of the
-most recent reviewable push on both deploy branches, after the reviewer exists
-and a test PR proves the gate. Keep the existing two required checks, loose
-status freshness, and empty bypass list. Treat staging2 response-header repair
-as a separate deployment/security slice: current live evidence arrives after
-merge and cannot truthfully be called a pre-merge gate.
+**Do not invite a reviewer or set the approval count to one now.** This private,
+user-owned repository has only its owner as a collaborator. A second reviewer
+needs write access, and GitHub says a repository writer can access repository
+Actions secrets. The four `SG_*` values include the SiteGround SSH key and are
+repository scoped. An installed Cursor App has `pull_requests:write` and has
+already submitted an `APPROVED` review on PR #2. A numeric count alone cannot
+be presented as a verified human gate. First isolate deployment credentials
+and prove a bot-only approval cannot satisfy the proposed rule. If Ryan chooses
+not to fund that redesign, retain zero required approvals and describe review
+as procedural.
 
 ## Evidence snapshot and comparison
 
@@ -40,17 +40,17 @@ GitHub workflow contents.
 |---|---|---|---|---|
 | Ruleset | [`main-integrity-gates` 19155375](https://github.com/alanmz-crypto/willowyhollow-dev/rules/19155375) | [`staging-integrity-gates` 19155380](https://github.com/alanmz-crypto/willowyhollow-dev/rules/19155380) | [`Protect Main` 19156572](https://github.com/alanmz-crypto/convmem/rules/19156572) | Keep existing IDs and branch conditions |
 | Enforcement and target | Active; branch `main` | Active; branch `staging` | Active; branch `main` | Keep active |
-| PR approval count | 0 | 0 | 0 | 1, only after a second eligible human reviewer is available |
-| Reviewer capacity | One listed collaborator: owner `alanmz-crypto` | Same repository | One listed collaborator: owner `alanmz-crypto` | Add an independently controlled human collaborator; exact account and access need Ryan's separate decision |
-| Last-push approval / stale dismissal | `false` / `false` | `false` / `false` | `false` / `false` | `true` / `false` when enabling one approval; reapproval after the last reviewable push |
-| Extra approval for unattributed Copilot changes | `true` | `true` | `true` | Keep; an unattributed Copilot PR may need another approval beyond the configured count |
+| PR approval count | 0 | 0 | 0 | Keep 0 now; propose 1 only after secret isolation and a proven human-specific gate |
+| Reviewer capacity | One listed collaborator: owner `alanmz-crypto` | Same repository | One listed collaborator: owner `alanmz-crypto` | A second human would receive write access to this private personal repository |
+| Last-push approval / stale dismissal | `false` / `false` | `false` / `false` | `false` / `false` | Keep now; propose `true` / `false` with a future human gate |
+| Extra approval for unattributed Copilot changes | `true` | `true` | `true` | Keep; GitHub says this has no effect while the required count is 0 |
 | Required PR checks | `theme-engine`, `plugin-lock` | Same | `pylint (3.12)`, `pytest (3.12)`, `Analyze (actions)`, `Analyze (python)`, `CodeQL` | Keep the two existing WordPress contexts |
 | Required-check freshness | Loose (`strict_required_status_checks_policy=false`) | Loose | Strict (`true`) | Keep loose for this slice; review after measuring merge behavior |
 | Enforce required checks on branch creation | `do_not_enforce_on_create=false` | Same | Same | Keep |
 | Check publisher | No `integration_id` pinned in ruleset | Same | Four checks pinned to GitHub Actions; CodeQL pinned to GitHub Advanced Security | Verify publisher on fresh PR; consider source pinning in a later grant |
-| Review threads / code owners | Resolution `false`; code-owner review `false`; no required reviewers | Same | Resolution `true`; no required reviewers | Keep current WordPress values; no invented AI/team identities |
+| Review threads / code owners | Resolution `false`; code-owner review `false`; no required reviewers | Same | Resolution `true`; no required reviewers | Human CODEOWNERS review is a candidate future safeguard; verify it on both branches |
 | Allowed merge methods | `merge` | `merge` | `merge`, `squash`, `rebase` | Keep current WordPress value |
-| Bypass | Empty; current user `never` | Empty; current user `never` | `RepositoryRole` actor id `5`, mode `always`; current user `always` | Keep WordPress empty; assess ConvMem separately |
+| Bypass | Empty; current user `never` | Empty; current user `never` | Admin `RepositoryRole` actor id `5`, mode `always`; current user `always` | Keep WordPress empty; assess ConvMem separately |
 | Non-fast-forward / deletion | Both rules present | Both rules present | Both rules present | Keep both |
 
 The live [`pr-theme-gate.yml` on `main`](https://github.com/alanmz-crypto/willowyhollow-dev/blob/main/.github/workflows/pr-theme-gate.yml)
@@ -72,131 +72,235 @@ states that PR authors cannot approve their own PRs. `cursor[bot]` left
 approvals. The `alanmz-crypto` account owns the repository, so an
 organization team is not currently a reviewer mechanism here.
 
+Claude's audit prompted further read-only checks on 2026-09-18:
+
+- The repository has four repository-scoped Actions secrets: `SG_HOST`,
+  `SG_USERNAME`, `SG_PRIVATE_KEY`, and `SG_PASSPHRASE`. Its Actions setting allows
+  all actions without SHA pinning; `GITHUB_TOKEN` defaults to read and has
+  `can_approve_pull_request_reviews=false`. The sole existing `copilot`
+  environment has no secrets or protection rules. GitHub's
+  [Actions security guidance](https://docs.github.com/en/actions/reference/security/secure-use)
+  says users with repository write access can read repository secrets. On a
+  [personal private repository](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/repository-access-and-collaboration/permission-levels-for-a-personal-account-repository),
+  collaborators can only be granted write access. Granting an approver access
+  therefore expands the SSH credential's trust boundary unless those secrets
+  are moved or otherwise isolated first.
+- The public Cursor App metadata reports `pull_requests:write`; its
+  [`cursor[bot]` review on PR #2](https://github.com/alanmz-crypto/willowyhollow-dev/pull/2)
+  has state `APPROVED`. Both PR #24 and #25 also have a successful `Cursor
+  Approval Agent: Pull Request Router and Approver` check, although their
+  reviews were comments. The repository's `GITHUB_TOKEN` approval setting does
+  not settle what this separate App can do. The App's ability to submit an
+  approval is proven; whether GitHub would count its approval under a proposed
+  one-review rule is not yet proven. A future test must show a bot-only approval
+  leaves a PR blocked if the promised control is human review.
+- The latest of 25 recorded WordPress PRs merged on 2026-07-19. The six
+  staging2 observations were filed on 2026-09-08, with no intervening merge to
+  either deploy branch. A PR gate would not have detected this live defect.
+- Live `curl -I` on 2026-09-18 returned `server: cloudflare` and HTTP 200 for
+  staging2; CSP, HSTS, and Referrer-Policy were absent. Production returned
+  Cloudflare HTTP 401. Cloudflare is on the response path, but that alone does
+  not identify which layer omitted a header. The tracked plugin lock includes
+  `headers-security-advanced-hsts-wp`; installed files do not establish its
+  activation or settings on staging2.
+
+GitHub [documents](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
+that `require_extra_approval_for_unattributed_changes=true` has no effect when
+the required count is zero, resolving the suspected current AI-PR deadlock for
+that rule. The count-one behavior should still be included in later test PRs.
+GitHub's [maintained Terraform provider reference](https://github.com/integrations/terraform-provider-github/blob/main/docs/resources/organization_ruleset.md)
+maps `RepositoryRole` id `5` to Admin, closing the ConvMem bypass identity
+question. ConvMem's owner can bypass `Protect Main`; this is a separate policy
+decision, not a reason to copy that bypass to WordPress.
+
 ## Verdict on Claude's six proposals
 
-1. **One approval on deploy branches — adopt with a prerequisite.** Use one
-   independent human approval on both WordPress branches only after the
-   collaborator exists and a test PR proves the account can approve. Do not
-   carry this value over to ConvMem automatically; its bypass and bounded
-   autonomy policy need a separate decision.
-2. **Risk-tiered approval counts — adopt.** The deploy branches merit a stronger
-   human gate than routine reversible ConvMem changes. The selected count must
-   also be operable with the people who actually have repository access.
+1. **One approval on deploy branches — defer the mutation.** A real human gate
+   requires a second writer; current repository secrets make that an SSH
+   credential access decision. The Cursor App can submit `APPROVED` reviews.
+   Isolate credentials and prove bot-only approval cannot pass before proposing
+   count `1`. ConvMem remains a separate bounded-autonomy decision.
+2. **Risk-tiered approval counts — adopt as a design rule.** Deploy branches
+   merit stronger review, but a count without secret isolation and human
+   reviewer identity could reduce safety. Keep the operationally honest count
+   `0` while those prerequisites are unresolved.
 3. **Make live staging2 headers a required PR check — reject as phrased.** A
    monitor of the current staging2 site measures the previously deployed
    `staging` commit, not the PR candidate. A passing result can be unrelated to
-   the proposed change. Retain live monitoring and design a candidate deploy
-   only if Ryan wants true pre-merge live-header enforcement.
+   the proposed change. There have been no merges since before the observations
+   opened. Investigate and repair the live header source first; consider a
+   candidate deployment only if pre-merge live-header evidence becomes valuable.
 4. **Set strict required-check freshness on WordPress — defer.** The existing
    loose checks run on PRs to both branches. Strict mode would force more
    updates and CI; adopt only after a branch-concurrency or stale-check failure
    warrants it. This is a distinct choice from requiring the last push to be
    approved by someone else.
-5. **Resolve bypass asymmetry — adopt as a policy decision, not symmetry.**
-   WordPress currently has no bypass and should keep it. ConvMem's actor id `5`
-   and `current_user_can_bypass=always` mean its rule is bypassable by this
-   account; identify the role and document when it may be used in a separate
-   ConvMem review. Do not copy that bypass to WordPress or remove it without a
-   recovery/operations decision.
-6. **Map AI lanes into GitHub review — adopt only at the human boundary.** Kiro,
-   Claude, and Copilot audit evidence can be linked in the PR, but none is a
-   required human approval simply because it appears in a comment or check.
-   The invited human reviewer is the GitHub enforcement actor; Ryan remains
-   merge/ledger owner. No CODEOWNERS or required-team rule is proposed for this
-   user-owned repository.
+5. **Resolve bypass asymmetry — document the actual role.** WordPress has no
+   bypass and should keep it. ConvMem's id `5` is the Admin role with an
+   `always` bypass; `current_user_can_bypass=always` confirms this account can
+   use it. Any change to that recovery posture belongs in a separate ConvMem
+   decision.
+6. **Map AI lanes into GitHub review — require a human-specific mechanism.**
+   Kiro, Claude, Copilot, and Cursor evidence can be linked in the PR, but the
+   Cursor App has already submitted an approval. A future numeric gate needs
+   either a tested all-path human CODEOWNERS requirement or another proven
+   mechanism that rejects bot-only approvals. Ryan remains merge/ledger owner.
 
 ## Implementation sequence
 
-### Phase 0 — finish evidence, no mutation
+### Phase 0 — identify the live header owner first (read-only)
 
-**Owner:** Crush or Codex. The historical ruleset and check-context inventory
-above is complete. Before any ruleset change, verify a fresh PR to each branch
-reports both required jobs on the relevant head or test-merge commit. Record
-the exact app publisher and whether GitHub considers each check satisfied. Check
-current branch conditions, bypass actors, and collaborator access again on the
-day of change. GitHub [documents](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)
-that path-filtered or skipped workflows may leave a required context pending;
-the present workflow has no PR path filter.
+**Owner:** Crush investigates; Codex frames the repair; Kiro reviews its
+design. On staging2, inspect Cloudflare Response Header Transform Rules and
+Managed Transforms, the origin response and preserved `.htaccess`, and the
+activation/settings of `headers-security-advanced-hsts-wp` and other
+header-writing plugins. Compare the public Cloudflare response with the origin
+response where a safe authenticated read is available. Cloudflare
+[can add, replace, or remove](https://developers.cloudflare.com/rules/transform/response-header-modification/)
+response headers, so `server: cloudflare` proves the proxy path, not the source
+of the omission. The plugin lock proves files are tracked, not that the plugin
+is active or configured. Existing history suggests an `.htaccess` header block
+was tested in practice; verify its current state rather than treating that
+session as a live deployment.
 
-### Phase 1 — choose an operable reviewer model
+Capture the actual CSP/HSTS/Referrer-Policy policy target, response classes
+(`200`, redirects, and `401`), and which layer should own each header. Keep
+Cloudflare, SiteGround, and WordPress writes out of this read-only phase.
+The six open observations remain evidence until live verification passes.
+Their ledger ids are `obs_staging2_monitor_csp-missing`,
+`obs_staging2_monitor_header-hsts`,
+`obs_staging2_monitor_header-referrer-policy`, `ver_staging2_mon_csp`,
+`ver_staging2_mon_hsts`, and `ver_staging2_mon_referrer-policy`.
 
-**Owner:** Ryan. For one required human approval, name a second real person
-with an independent GitHub account, confirm their willingness and response
-time, and separately authorize an invitation to this private repository. The
-owner can then approve that person's PRs; the second person can approve
-owner-authored PRs. Grant only the access GitHub permits for a personal private
-repository and verify acceptance before changing the ruleset. This access
-change is material and is **not** authorized by this draft.
+### Phase 1 — repair and verify staging2 headers (separate grant)
 
-If Ryan does not choose a second eligible human, keep the count at zero and
-retain PR + required checks. Require an explicit out-of-band Ryan/Kiro review
-record in the working process, but label it **procedural review, not a GitHub
-approval gate**. Do not introduce a bot or second account controlled by the PR
-author to manufacture an approval. GitHub allows repository owners to edit
-rulesets; the owner must also agree to treat rule edits as an audited exception.
+**Owner:** Cursor implements the Kiro-reviewed repair after Ryan names the
+exact host, configuration surface, operations, and final header values. Choose
+one controlling layer for each header and avoid accidental duplicate or
+contradictory CSP values. If WordPress/plugin settings or another database
+value must change, take a `practice_backup` or `mysqldump` before that DB
+mutation. If `.htaccess` is the chosen surface, account for the deployment
+workflow's preservation of the server copy; a tracked-file edit alone will not
+update it. A Cloudflare Managed Transform may add some security headers but
+does not by itself define an application-compatible CSP or HSTS policy.
 
-### Phase 2 — ruleset change after the reviewer prerequisite
+After the authorized change, check live HTTPS response headers for staging2's
+home and representative pages, redirects, and authenticated paths as
+applicable. Compare them with the intended values, check for site breakage,
+then recheck all six observations. The monitor remains post-deploy evidence;
+there is no current pre-merge candidate environment or staging-to-production
+promotion path. This track does not depend on recruiting a reviewer or changing
+a ruleset.
 
-**Owner:** an operator specifically named in Ryan's grant; Kiro reviews the
-exact plan and Claude audits this draft before that grant. On each WordPress
-ruleset, change only the pull-request parameters below:
+### Phase 2 — choose whether an enforced human gate is worth the access redesign
+
+**Owner:** Ryan chooses; Codex designs; Kiro reviews. The default at this
+milestone is **no access or ruleset mutation**. With only the owner writing and
+no merges in two months, keeping count `0` plus documented Ryan/Kiro review is
+an honest, low-blast-radius choice. It is procedural review, not GitHub-enforced
+independent approval.
+
+If Ryan wants GitHub enforcement, first remove the SiteGround credentials from
+the trust boundary of arbitrary repository branches. Two candidate
+architectures need an exact, separately reviewed implementation plan:
+
+1. **Restricted GitHub Environments:** verify the account's private-repository
+   plan supports environment secrets and deployment branch policies. Place
+   deployment credentials in `production` and `staging` environments, restrict
+   each to its corresponding protected branch, make each deploy job reference
+   its environment, then remove the four repository-scoped `SG_*` secrets only
+   after successful cutover and rollback verification. No second writer gets
+   access during migration. The protected branches must also have a proven
+   human gate before that writer is invited; branch restrictions alone are
+   insufficient if a writer can self-merge a malicious workflow. Do not assume
+   environment *required reviewers* are available: GitHub
+   [limits them to public repositories on Free, Pro, and Team](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
+2. **Separate owner-controlled deployment repository or service:** keep the SSH
+   credentials outside `willowyhollow-dev` entirely. Its deployer must accept
+   only an identified commit from the protected branch and never run untrusted
+   workflow code from a contributor branch. This costs another repository or
+   service, credential rotation, and a carefully tested trigger/rollback path.
+
+Moving the code repository to an organization alone does not isolate a secret
+that remains repository scoped: GitHub's write-access rule still applies. Nor
+do `allowed_actions` restrictions or a read-only `GITHUB_TOKEN` prevent a
+writer from using a workflow to access a repository secret. Do not invite a
+second writer until the chosen isolation is effective and verified. If neither
+architecture is justified, retain the current reviewer model.
+
+### Phase 3 — conditional human gate after credential isolation
+
+**Owner:** Cursor prepares the exact WordPress repository/ruleset changes after
+Ryan grants them; Kiro reviews the design and the implementation tip. The
+desired gate is one **human code-owner** approval on every changed path, with
+the latest reviewable push approved by someone other than its pusher. A numeric
+count without the code-owner rule is insufficient while Cursor can submit an
+`APPROVED` review. GitHub
+[defines code owners as people or teams with write access](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners);
+the final `CODEOWNERS` file must cover every deployable and workflow path on
+both branches. A user-owned repository has no team target.
+
+One safe candidate sequence, subject to an exact Kiro-reviewed execution plan:
+
+1. Verify the chosen credential isolation, remove repository-scoped `SG_*`, and
+   prove a workflow on an unprotected branch cannot obtain deployment secrets.
+   Keep collaborator access unchanged.
+2. Land `.github/CODEOWNERS` on both `main` and `staging`, initially assigning
+   all paths and the CODEOWNERS file itself to `@alanmz-crypto`. Verify GitHub
+   recognizes the file on each base branch.
+3. With only the owner holding write access, set each ruleset's pull-request
+   parameters to count `1`, `require_code_owner_review=true`, and
+   `require_last_push_approval=true`. This intentionally freezes owner-authored
+   merges until the second human can review. Confirm a PR with only a Cursor
+   App approval remains blocked, or withhold the collaborator invitation if
+   the human-only guarantee cannot be demonstrated.
+4. Invite the exact second human account named by Ryan. That person authors a
+   CODEOWNERS update on both branches adding their handle as an owner alongside
+   `@alanmz-crypto`; Ryan approves those PRs. Then test an owner-authored PR
+   with no review, bot-only review, and qualifying human review. The gate is
+   live only after both branches pass the same tests.
+
+Proposed conditional ruleset deltas, **not authorized now**:
 
 ```text
 alanmz-crypto/willowyhollow-dev / 19155375 / refs/heads/main:
   rules[type=pull_request].parameters.required_approving_review_count: 0 -> 1
+  rules[type=pull_request].parameters.require_code_owner_review: false -> true
   rules[type=pull_request].parameters.require_last_push_approval: false -> true
 
 alanmz-crypto/willowyhollow-dev / 19155380 / refs/heads/staging:
   rules[type=pull_request].parameters.required_approving_review_count: 0 -> 1
+  rules[type=pull_request].parameters.require_code_owner_review: false -> true
   rules[type=pull_request].parameters.require_last_push_approval: false -> true
 ```
 
-Preserve `name`, `enforcement`, branch conditions, all other rules and their
-parameters, `bypass_actors=[]`, and both required check names. Before an API
-update, reread the full ruleset, prepare the complete request payload required
-by GitHub's update endpoint, and review its diff: a nested-field shorthand is
-not a safe API payload. Re-read both rulesets after the update. If a fresh PR
-reveals a name or publisher mismatch, correct that evidence first; do not
-replace the already proven contexts based on the old local checkout. No
-workflow-file change is in this phase.
+Preserve `name`, `enforcement`, branch conditions, all other rule parameters,
+`bypass_actors=[]`, and both required check names. Reread each full ruleset,
+prepare GitHub's required complete update payload, review its diff, and reread
+the result. Verify fresh `theme-engine` and `plugin-lock` checks on PRs to both
+branches before any count change. The current PR workflow has no path filter.
+GitHub's [required-check guidance](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)
+explains why a skipped required workflow can otherwise block merging.
 
-### Phase 3 — actual staging2 header control, separately scoped
+## Review lanes, cost, and the separate model-routing question
 
-**Owner:** Codex designs, Claude challenges the trust boundary, Kiro reviews,
-and Cursor implements only after Ryan authorizes the exact deployment or
-SiteGround change. The six open ConvMem observations are:
-`obs_staging2_monitor_csp-missing`, `obs_staging2_monitor_header-hsts`,
-`obs_staging2_monitor_header-referrer-policy`, `ver_staging2_mon_csp`,
-`ver_staging2_mon_hsts`, and `ver_staging2_mon_referrer-policy`.
+Claude's adversarial audit of `626d3ba` found no factual errors and raised the
+credential-access and Cursor-App approval problems treated as blockers here.
+It was an audit, not Kiro sign-off. Kiro can review Track A's sequence now;
+the exact header repair design follows live attribution. The human-review gate needs Ryan's access-architecture
+choice and a concrete secret-isolation plan before Kiro signs off on its
+execution. Copilot's audit lane remains a targeted security/deployment recheck
+if the later implementation warrants one; Cursor implements only granted work.
 
-First locate the active header source (SiteGround/server configuration,
-preserved `.htaccess`, WordPress/plugin configuration, or a combination), choose
-the desired CSP/HSTS/Referrer-Policy values, and repair that source. Verify live
-HTTPS responses, including redirects and any authenticated staging path. A
-post-deploy workflow step or independent monitor can fail and alert on missing
-headers, but it runs **after** the triggering merge and deployment. Specify
-rollback/incident ownership before making it a deploy failure. A static test of
-a tracked file is useful only if that file controls the live response; it is
-not a substitute for the live probe. A true pre-merge gate requires an isolated
-PR candidate deployment with credentials, cleanup, and cost accounted for.
-There is no current staging-to-production promotion path, so do not present a
-promotion gate as an existing low-cost option.
+The existing two PR checks need no new Actions job. A human gate adds reviewer
+availability and, in this repository, credential-isolation work. A candidate
+deployment adds server credentials, cleanup, and runtime cost. Claude's audit
+is not a standing cost on routine WordPress PRs.
 
-## Audit scope and operating cost
-
-Claude should challenge the reviewer-capacity conclusion, whether one approval
-plus last-push approval closes the practical unreviewed-change path, the
-preserved `.htaccess` trust boundary, and whether the proposed WordPress
-ruleset update can be made without changing unrelated parameters. Kiro remains
-the design sign-off lane. Copilot's audit lane is for a targeted security or
-deployment recheck if that later implementation warrants it; Cursor implements
-the granted change. Claude's audit is requested for this high-impact ruleset
-decision, not a standing model cost on each routine WordPress PR.
-
-This first slice adds no Actions job: the two required checks already run.
-Reviewer availability is its recurring cost. Fresh PR verification consumes
-ordinary CI runs. Isolated candidate deployments would add server credentials,
-cleanup, runtime, and operational cost and are outside the first slice.
+Ryan's original question about which model gives the best local web-design
+quality per dollar remains unanswered. That is a separate model-routing slice;
+this ruleset plan neither chooses a default design model nor treats a GitHub
+approval setting as a proxy for model quality.
 
 ## Artifact ownership and GitHub home
 
@@ -207,47 +311,59 @@ WordPress ruleset or workflow implementation: a reviewer of
 `willowyhollow-dev` cannot see the controlling plan in the same PR as the
 change, and the two repositories can drift.
 
-After Claude's audit and Ryan's scope decision, put the executable WordPress
-plan, tests, and verification record in `alanmz-crypto/willowyhollow-dev`
-alongside the workflow or as a linked plan in that repository's PR. Keep this
-document as the comparison and decision record, then replace its active
-implementation pointer in `docs/inter-model/LATEST.md` with the WordPress PR
-link. Keep any ConvMem-only bypass/autonomy decision in ConvMem. A new GitHub
-repository would add another place to synchronize without owning either gate.
+After Ryan's scope decision, put an executable WordPress plan, tests, and
+verification record in `alanmz-crypto/willowyhollow-dev` alongside the changed
+workflow or in its PR. Both repositories are private, so check that each
+intended reviewer can actually read the chosen plan; a future WordPress
+collaborator would not automatically see this ConvMem document. Keep this
+comparison as the decision record and point `docs/inter-model/LATEST.md` to the
+WordPress PR when one exists. ConvMem-only bypass/autonomy work stays here. A
+new central GitHub repository would add synchronization without owning either
+site or ConvMem policy.
 
 ## Authorization and acceptance
 
-**Authorized external changes in this draft: none.** Read-only inventory is
-complete. Distinct future grants would be needed for (a) the exact GitHub
-account invited to the private WordPress repository and its access, (b) each
-ruleset ID and both exact final parameter values above, (c) any repository
-workflow edit, and (d) the selected SiteGround/header change with its final
-configuration. Approval of one does not authorize the others. ConvMem ruleset
-`19156572` is outside this WordPress implementation slice.
+**Authorized external changes in this draft: none.** Header repair needs a
+separate grant naming the controlling Cloudflare, SiteGround, WordPress, or
+tracked-workflow resource and exact final header values. A DB settings change
+also requires a backup before mutation. Credential redesign would need its
+own exact environment/deployer, secret migration, branch-policy, workflow, and
+rollback grants. A later reviewer invitation requires the person's handle and
+write-access decision. Each ruleset mutation requires the exact ID and final
+values above. These grants are independent. ConvMem ruleset `19156572` is
+outside the WordPress implementation slice.
 
-Acceptance for a later execution:
+Acceptance for **Track A (headers)**:
 
-- A second independent human can review a fresh owner-authored PR to both
-  `main` and `staging`; the invited account is identified in the grant.
-- `theme-engine` and `plugin-lock` appear from the expected publisher and pass
-  on fresh PRs to each branch before ruleset changes.
-- Each active ruleset reads back with count `1`, last-push approval `true`,
-  unchanged required checks, branch conditions, and empty bypass list.
-- A PR with no qualifying approval is blocked; a final review after the last
-  reviewable push plus passing checks permits merge. Verify via GitHub's merge
-  state without performing an unauthorized live merge.
-- Staging2 header verification is labeled by the event it can block (candidate
-  merge, post-deploy alert/rollback, or a newly designed promotion), and the
-  six observations are rechecked only after an authorized live change.
-- Claude's audit and Kiro's sign-off identify the same document revision;
-  Ryan's final grant names exact resources, operations, and values.
+- Read-only evidence identifies where Cloudflare, SiteGround, `.htaccess`, and
+  the locked header plugin affect the final staging2 response.
+- Kiro reviews an exact, compatible CSP/HSTS/Referrer-Policy proposal before
+  Ryan grants a change; any DB mutation follows a backup.
+- Live staging2 `200` and relevant redirect/auth responses carry the intended
+  headers without functional breakage, and all six observations are rechecked.
 
-**Largest trade-off:** One human approval creates a real availability dependency
-for this solo-owned site. Keeping zero approvals preserves availability but
-leaves independent review procedural. Neither choice should be described as
-achieving the other.
+Acceptance for **Track B only if Ryan chooses GitHub-enforced human review**:
 
-I finished: [Arc none (ad-hoc)] revised implementation draft for Claude audit.
-Next step: Claude audits this revision, then Kiro reviews the agreed target.
-Next lane: Claude, then Kiro and Ryan; Cursor only after an exact grant.
+- No repository-scoped SiteGround credentials remain, and a workflow from an
+  unprotected branch cannot obtain deployment credentials before a second
+  writer is invited.
+- Both base branches recognize all-path human CODEOWNERS. A PR with only a
+  Cursor App `APPROVED` review remains unmergeable; a qualifying human owner
+  approval after the last reviewable push can satisfy the review gate.
+- Fresh `theme-engine` and `plugin-lock` checks pass on PRs to both branches.
+  Each ruleset reads back with count `1`, code-owner review `true`, last-push
+  approval `true`, unchanged branch conditions/check names, and empty bypass.
+- The exact invited human can review owner-authored PRs; no live merge is made
+  merely to test this plan. Ryan's grants name all resources, operations, and
+  final values, and Kiro reviews the exact implementation tip.
+
+**Largest trade-off:** A second repository writer currently gets a path to the
+SiteGround SSH credential. Isolating that credential and proving a human-only
+gate costs more than changing the approval count. Keeping count `0` preserves
+the present access boundary and availability, but independent review remains
+procedural.
+
+I finished: [Arc none (ad-hoc)] revised the review-gate design after Claude's audit.
+Next step: Kiro reviews Track A's sequence while Crush attributes the live headers; Ryan decides whether Track B's access redesign is worth pursuing.
+Next lane: Kiro and Crush for Track A, Ryan for Track B, then Cursor for separately granted implementation.
 See my work: `docs/plans/IMPLEMENTATION-willowyhollow-review-gate-enforcement.md`
