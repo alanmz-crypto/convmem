@@ -12,15 +12,16 @@ cross-arc snapshot and the linked arc brief below.
 - **Trapdoor Hunt / issue #268 — §9.7 post-merge measurement CORRECTED (archlinux;
   READY_FOR_COPILOT_REAUDIT):** Cursor corrected Copilot FAIL findings on
   `fix/2026-09-17-exposure-probe-postmerge-measurement` (pushed; **no PR**; exact
-  tip = `git rev-parse origin/fix/2026-09-17-exposure-probe-postmerge-measurement`,
-  currently `6e384a3da916b211c8d81f3f9de967072cb5965e`). Host evidence:
+  tip = `git rev-parse origin/fix/2026-09-17-exposure-probe-postmerge-measurement`).
+  Host evidence:
   [`docs/plans/EVIDENCE-watch-oom-exposure-index-e2e.json`](../plans/EVIDENCE-watch-oom-exposure-index-e2e.json).
   Under the mandated **2 GiB `RLIMIT_AS`**, the corrected harness records distinct
   outcomes, snapshots all required production canaries (brief/Chroma/config/export/
   watcher-service), and stops on drift when the watch is active; **no remaining-floor
   delta is claimed for §9.8.** **Next:** GitHub Copilot targeted re-audit on the
-  pushed branch exact tip (`6e384a3…` at last push). **Live 12.5 GiB watcher OOM
-  remains OPEN; do not declare #268 closed.** Handoff:
+  pushed branch exact tip from `git rev-parse origin/fix/2026-09-17-exposure-probe-
+  postmerge-measurement`. **Live 12.5 GiB watcher OOM remains OPEN; do not declare
+  #268 closed.** Handoff:
   [`CURSOR-2026-09-17-exposure-probe-postmerge-measurement-handoff.md`](CURSOR-2026-09-17-exposure-probe-postmerge-measurement-handoff.md).
 - **Arc Codex — Kiro JSONL production integration:** the reviewed, hermetic
   coordinator and live-safe canary runtime are on `main` through squash-merged
