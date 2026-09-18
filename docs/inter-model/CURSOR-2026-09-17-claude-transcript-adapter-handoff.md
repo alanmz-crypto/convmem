@@ -258,9 +258,14 @@ over governed writer / proof / lease / route-entrypoint modules
 all changes that digest:
 
 ```
-committed code_revision : 07c20d9c940e9c29adf4b57ad55d88eed0fbf812
-computed from this tree : d04c2f4daa2a71862666fee0b55255cfe8142b7b
+committed in artifact   : d04c2f4daa2a71862666fee0b55255cfe8142b7b
+computed from this tree : 7e1dd72e255476418db7b5653818621749daae4e   (at a544493)
 ```
+
+Full remediation, digests and acceptance criteria now live in a dedicated
+handoff: [`CURSOR-2026-09-17-r2b-inventory-rebind-handoff.md`](CURSOR-2026-09-17-r2b-inventory-rebind-handoff.md).
+Treat that document as authoritative for the rebind; the summary below is
+context only.
 
 Separately, the 15-line insertion in `convmem.py`'s `index` command displaced a
 governed Chroma ctor site. The code at the new line is **byte-identical** to the

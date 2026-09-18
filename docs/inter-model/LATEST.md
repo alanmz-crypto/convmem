@@ -41,7 +41,10 @@ cross-arc snapshot and the linked arc brief below.
   over governed modules, so any `ingest.py` / `convmem.py` edit
   invalidates it, and a governed Chroma ctor site shifted
   `convmem.py:640` -> `:655`. The exact two-step rebind is in the handoff
-  doc; it needs the R2b lane or Ryan, not self-attestation by the author. (3) **There is no Claude Code
+  doc; it needs the R2b lane or Ryan, not self-attestation by the author.
+  **Next step is specified in
+  [`CURSOR-2026-09-17-r2b-inventory-rebind-handoff.md`](CURSOR-2026-09-17-r2b-inventory-rebind-handoff.md)**
+  — Cursor implements, Kiro reviews, Ryan clears the attestation gate. (3) **There is no Claude Code
   adapter**, so the Track A step `CLAUDE.md` tells every Claude session to run
   has been ingesting nothing; resume from
   [`CURSOR-2026-09-17-claude-transcript-adapter-handoff.md`](CURSOR-2026-09-17-claude-transcript-adapter-handoff.md),
