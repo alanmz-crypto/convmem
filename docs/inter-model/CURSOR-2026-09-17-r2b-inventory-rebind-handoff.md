@@ -33,15 +33,53 @@ purely because R2b binds a content digest over governed modules — editing
 `ingest.py` or `convmem.py` at all invalidates it. No logic regression is
 involved.
 
-| Scope | Failed | Passed |
-|---|---|---|
-| Branch `a544493`, full suite | **53** | 2483 |
-| `main`, the 9 affected files | **2** | 108 |
-| Branch `d4056e4` (watch fix alone), those 9 files | 7 | 103 |
+| Scope | Failed | Passed | Environment |
+|---|---|---|---|
+| Branch `a544493`, full suite | **53** | 2483 | shared checkout |
+| Branch `d4056e4` (watch fix alone), the 9 files | 7 | 103 | shared checkout |
+| `main`, the 9 files | 2 | 108 | shared checkout — **polluted, do not use** |
+| **`main` @ `18f63db`, FULL suite** | **1** | **2527** | **clean worktree — this is the baseline** |
 
-The 2 on `main` are pre-existing and out of scope:
-`test_static_scan_matches_inventory_routing` and
-`test_static_scan_zero_legacy_production_factory_calls`.
+### CORRECTED BASELINE — read this before running anything
+
+An earlier revision of this handoff told you to expect `2 failed, 108 passed`
+on the nine files. **That figure was wrong.** It was measured on the shared
+checkout, whose untracked directories the R2b static scanners walk. Measured in
+a clean worktree at `origin/main` (`18f63db`), the full suite is:
+
+```
+1 failed, 2527 passed, 2 skipped, 8 warnings, 248 subtests passed in 1361.61s (0:22:41)
+FAILED tests/test_eval_golden.py::GoldenEvalTests::test_golden_questions
+```
+
+That one failure is **deterministic** — reproduced twice standalone, not a
+contention artifact. It is `AssertionError: Golden eval: 6/10 below pass bar of
+8`, a retrieval/ranking quality failure (golden questions Q02, Q05, Q07, Q10).
+It is unrelated to this rebind and expected to persist unless the corpus or
+ranking changes.
+
+**On a clean checkout, `main` has zero R2b failures.** So after the rebind the
+nine files should be **`0 failed`**, not 2. If you see R2b static-scan failures
+in a clean worktree after rebinding, the rebind did not work — stop and report.
+
+### You must verify in a clean worktree, not the shared checkout
+
+The shared checkout at `/home/lauer/Projects/convmem` currently contains
+`.claude/worktrees/agent-ac725f26c915cce94`, a full second copy of the repo.
+`_scan_repo_pattern` (`inventory.py:315`) does `ROOT.rglob("*.py")` and skips
+only `tests/ docs/ .worktrees/ .tmp/ .git/ node_modules/` — **`.claude/` is not
+skipped**, and a nested copy's `tests/` files do not match the `tests/` prefix
+either. Live measurement: **82 of 83** scanned ChromaStore ctor sites came from
+that copy; the only real one is `convmem.py:655`.
+
+That worktree is held by a live harness lock and could not be removed. So:
+
+```bash
+git worktree add ~/.local/share/convmem/worktrees/r2b-verify-<slug> <branch-tip>
+```
+
+Run every verification suite there and compare against the clean-`main` numbers
+above. Do **not** certify from a run inside `/home/lauer/Projects/convmem`.
 
 ---
 
@@ -150,8 +188,9 @@ python3 -m pytest \
   tests/test_shadow_writer_gate_c3.py -q --tb=short
 ```
 
-1. **Baseline restored:** `2 failed, 108 passed` — the same two that fail on
-   `main`, no others.
+1. **Baseline restored:** `0 failed` on the nine files, in a clean worktree.
+   (`2 failed, 108 passed` was the polluted shared-checkout figure — do not
+   use it as the target.)
 2. **Coordinate drift cleared:** `test_static_inventory_binds_revision` reports
    no `unlisted direct ChromaStore ctor sites`, `stale governed sinks`, or
    `undocumented mutation sink sites` for route `convmem_cli_index`.
@@ -174,12 +213,13 @@ handoff is correcting.
 - [ ] Exactly one line changed in `eval_corpus/r2b_v2/coverage/inventory.py`
 - [ ] `R2B-V2-WRITER-COVERAGE-INVENTORY.json` regenerated, digests converge
 - [ ] Nine files at `2 failed, 108 passed`
-- [ ] Full suite run, and the delta against a `main` full-suite run is zero.
-      **`main`'s full-suite baseline was never measured** — only the nine
-      files were (`2 failed, 108 passed`). The implementing lane must
-      produce that baseline itself (~23 min) rather than assume one
-      exists. A branch-only full-suite run cannot distinguish "restored"
-      from "still broken elsewhere".
+- [ ] Full suite run **in a clean worktree**, matching `main`'s measured
+      baseline of `1 failed, 2527 passed, 2 skipped`
+      (`test_eval_golden.py::GoldenEvalTests::test_golden_questions`, a
+      deterministic ranking-quality failure unrelated to this change). Any
+      other failure is a regression.
+- [ ] Verification was NOT run inside `/home/lauer/Projects/convmem` (see the
+      corrected-baseline section)
 - [ ] Ruff / pylint clean per repo gates
 - [ ] Kiro reviews the exact pushed tip before any PR
 - [ ] No R2b test suppressed, skipped or weakened
