@@ -48,7 +48,7 @@ gated.
 | Arc | State | Next authorized action |
 |---|---|---|
 | Codex — Kiro JSONL incremental production integration | The default-off coordinator and live-safe canary runtime are on `main` through PR #301 (`8983a6fc…`), whose final tree received a post-merge Kiro PASS. A fresh 68-message source-freeze packet at `27518aa…` received Kiro PASS but issued no executable grant or digest. | P2 grant progression is paused on issue #268's shared watch-child OOM. PRs #302/#303/#305 removed three demonstrated allocators; the §9.7 end-to-end memory comparison is pending. No Claude re-review, live Gate 0/P2, replacement grant/digest, indexing, providers, config change, watcher action, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
-| Claude Watch Parity | Ryan assigned a separate arc on 2026-09-18. Kiro reports Gate 1 code PASS at exact tip `ab8a9e16`; [PR #310](https://github.com/alanmz-crypto/convmem/pull/310) is open and not on `main`, with final pytest CI pending at handoff. The incremental substrate landed via PR #307 (`d657767`). Kiro PASSed the [Gate 2 plan](CODEX-2026-09-18-claude-watch-parity-gate2-execute.md) at `a811f58` with four Execute conditions. No Claude isolated spec or live canary exists. | Ryan verifies final CI and the R2b inventory rebind, then decides Gate 1 PR merge using the [handoff](CODEX-2026-09-18-claude-watch-parity-gate1-pr-decision-handoff.md). After landing, a separate Ryan bounded Gate 2 Execute grant is needed before Cursor starts. Live-source canary and production watch promotion remain later Ryan gates. See [`STATUS-claude-watch-parity.md`](../plans/STATUS-claude-watch-parity.md). |
+| Claude Watch Parity | Ryan assigned a separate arc on 2026-09-18. Gate 1 on-demand adapter [PR #310](https://github.com/alanmz-crypto/convmem/pull/310) merged at `aadf137` after Kiro exact-tip code PASS, but its real-transcript CLI smoke remains `NOT_RUN`. The incremental substrate landed via PR #307 (`d657767`). Kiro PASSed the [Gate 2 plan](CODEX-2026-09-18-claude-watch-parity-gate2-execute.md) at `a811f58` with four Execute conditions. No Claude isolated spec or live canary exists. | Cursor prepares a hermetic scratch-only Gate 1 smoke using the [handoff](CODEX-2026-09-18-claude-gate1-real-smoke-handoff.md); Ryan separately names and grants a real source/run. A bounded Gate 2 Execute grant, live canary, and production watch promotion remain separate Ryan gates. See [`STATUS-claude-watch-parity.md`](../plans/STATUS-claude-watch-parity.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
@@ -111,10 +111,10 @@ gated.
 - [Claude Watch Parity STATUS](../plans/STATUS-claude-watch-parity.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR [Arc Claude Watch Parity]:** Gate 1 adapter code passed Kiro's exact-tip
-review, and open PR #310 awaits final CI and Ryan's merge decision. Kiro PASSed
-the Gate 2 plan at `a811f58`; bounded Execute, an exact-source canary, and
-production watch promotion remain separate Ryan gates. Verify
+**TL;DR [Arc Claude Watch Parity]:** Gate 1 adapter is merged, but its real
+transcript smoke is still unrun. Cursor prepares a safe isolated test; Ryan
+owns the source and run grants. Gate 2 Execute, its canary, and watch promotion
+remain separate gates. Verify
 `origin/main` when a commit identity matters.
 
 ## Jargon TL;DR
