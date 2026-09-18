@@ -15,17 +15,18 @@ cross-arc snapshot and the linked arc brief below.
   docs only; `git diff --check origin/main..19d34a5` passes. At `e99856e`,
   [Kiro PASSed](KIRO-2026-09-18-issue-286-integration-recheck-handoff.md)
   S0–S3 behavior and [Copilot FAILed](COPILOT-2026-09-18-issue-286-integration-recheck-handoff.md)
-  documentation acceptance. The [fresh Copilot audit](COPILOT-2026-09-18-issue-286-doc-corrective-recheck-handoff.md)
-  and [fresh Kiro recheck](KIRO-2026-09-18-issue-286-doc-corrective-recheck-handoff.md)
-  target the **same full SHA** `19d34a5e235bf436803ad8a2f15427fa9a84ef88`.
-  Their written verdicts precede Ryan's PR decision; no live or new Execute
+  documentation acceptance. Kiro has now returned a written **PASS** on
+  corrected `19d34a5` for S0–S3 continuity and routing. The
+  [Copilot audit](COPILOT-2026-09-18-issue-286-doc-corrective-recheck-handoff.md)
+  remains pending on that **same full SHA** `19d34a5e235bf436803ad8a2f15427fa9a84ef88`.
+  Its written verdict precedes Ryan's PR decision; no live or new Execute
   authority is granted.
 - **Arc Codex — append-cursor format extension planning:** Kiro PASSed the
   conditional Copilot `events.jsonl` plan at stated tip `9e2d0ef`; Codex
   independently verified that local and remote branch tips match. Trapdoor
   Hunt issue #286 has since pushed an unmerged shared-registry integration
-  successor at `19d34a5`. Its docs-only corrective is pushed and fresh
-  Copilot/Kiro exact-tip reviews are pending before branch disposition.
+  successor at `19d34a5`. Its docs-only corrective is pushed; Kiro PASSed the
+  exact tip and Copilot's audit is pending before branch disposition.
   The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
   [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
   and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are

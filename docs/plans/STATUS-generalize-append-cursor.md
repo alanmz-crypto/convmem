@@ -63,7 +63,7 @@ to this planning change; see the execution plan for the exact count.
 | Candidate inventory and design | Complete on pushed `plan/2026-09-17-generalize-append-cursor` at `9e2d0ef` | — |
 | Architecture/Execute review | Kiro PASS on stated `9e2d0ef`; Codex verified the reviewed revision at the time, and later status/routing commits did not change the reviewed plan docs | Ryan decides later Execute scope after #286 disposition |
 | Cross-arc coordination | Ryan selected the Codex Sol-medium lane that authored the coordination handoff; it assigned the current #286 writer, tracks overlap, and returns later Execute choices to Ryan without implementation authority | Codex Sol-medium |
-| #286 integration rechecks | Docs-only corrective pushed at exact tip `19d34a5`, clean diff-check, no PR. Kiro PASSed S0–S3 and Copilot FAILed docs acceptance at earlier `e99856e`; fresh exact-tip verdicts on `19d34a5` are pending. | Copilot audit lane and Kiro |
+| #286 integration rechecks | Corrective tip `19d34a5` is pushed, unmerged, with no PR. Kiro PASSed the exact tip for S0–S3 continuity and corrected routing; Copilot's exact-tip audit is pending. Earlier `e99856e` Copilot FAIL remains historical. | Copilot audit lane, then Ryan |
 | Condition A — Copilot metadata evidence | Pending: E3 must exercise `workspace.yaml` id changes, `session.start` versus YAML precedence, and chosen digest-versus-effective-fields invalidation | Cursor if granted; Kiro verifies evidence |
 | Condition B — shared-code writer | Resolved for current integration by Ryan-delegated choice: the existing #286 Cursor integrator is sole writer through review and branch disposition. A later Copilot writer assignment must use the resulting base. Isolated Codex history and rolling production history remain separate scopes. | Existing #286 Cursor integrator |
 | E0 writer-contract evidence | Not started; Execute deferred until #286 review/disposition and an exact provider-action/cost bound are named | Ryan decides whether Cursor may run it later |
@@ -100,14 +100,12 @@ planning brief provides no P2, bootstrap, watcher, or configuration authority.
 ## 6. What Remains Before Live (sequential)
 
 1. The existing #286 Cursor integrator carries the sole shared-code writer
-   assignment through fresh [Copilot](../inter-model/COPILOT-2026-09-18-issue-286-doc-corrective-recheck-handoff.md)
-   and [Kiro](../inter-model/KIRO-2026-09-18-issue-286-doc-corrective-recheck-handoff.md)
-   exact-tip reviews of corrected `19d34a5`, then Ryan's branch disposition.
-   Kiro PASSed S0–S3 behavior and Copilot FAILed documentation acceptance at
-   earlier `e99856e`; neither verdict covers the corrected tip. The
-   coordinating Codex lane then reconciles the Copilot packet
-   with the resulting base. Isolated Codex history does not establish
-   eligibility for rolling production history.
+   assignment through the pending [Copilot exact-tip audit](../inter-model/COPILOT-2026-09-18-issue-286-doc-corrective-recheck-handoff.md)
+   of corrected `19d34a5`, then Ryan's branch disposition. Kiro has PASSed
+   that exact tip for S0–S3 continuity and corrected routing; Copilot's FAIL
+   on earlier `e99856e` is historical. The coordinating Codex lane then
+   reconciles the Copilot packet with the resulting base. Isolated Codex history
+   does not establish eligibility for rolling production history.
 2. Ryan decides whether to grant E0 alone in isolated resources, with an exact
    provider-action/cost bound. E0 remains ungranted until that later decision.
 3. Cursor proves or rejects Copilot writer eligibility, then implements only
@@ -174,6 +172,7 @@ line. Keep this file a snapshot, not a session diary.
 | 2026-09-18 | Kiro / Codex | Kiro returned exact-tip PASS on #286 integration with 116 passing focused tests; Copilot audit remains pending |
 | 2026-09-18 | Copilot / Codex | Copilot returned exact-tip FAIL on #286 documentation acceptance while affirming runtime safety; bounded Cursor docs correction and fresh reviews are next |
 | 2026-09-18 | Cursor / Codex | Cursor pushed three-doc correction at `19d34a5`; Codex verified clean diff-check and issued fresh exact-tip Copilot/Kiro recheck handoffs |
+| 2026-09-18 | Kiro / Codex | Kiro PASSed corrected #286 exact tip `19d34a5` for S0–S3 continuity and routing; Copilot audit remains pending |
 
 ## TL;DR
 
