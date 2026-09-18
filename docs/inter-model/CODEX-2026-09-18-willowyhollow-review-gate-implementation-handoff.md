@@ -4,7 +4,7 @@
 **Author:** OpenAI Codex
 **For:** Ryan, Kiro, Cursor, and the GitHub Copilot audit lane
 **Arc:** none (ad-hoc)
-**Status:** `POST_CLAUDE_AUDIT_REVISED` (2026-09-18; Track A plan to Kiro and live attribution to Crush, Track B to Ryan for an access decision)
+**Status:** `PHASE1_REPAIR_CANDIDATE` (2026-09-18; Track A sequence passed Kiro at `1363056`, Phase 0 attribution and static CSP spot check are in hand, runtime CSP evidence/Kiro re-review/Ryan grant remain; Track B deferred)
 
 ## Goal
 
@@ -18,10 +18,13 @@ Cloudflare setting, or live SiteGround state.
 ## Accepted conclusions
 
 1. **Track A is the live defect.** The latest of 25 WordPress PRs merged on
-   2026-07-19; six staging2 header observations opened on 2026-09-08. Current
-   staging2 replies through Cloudflare without CSP, HSTS, or Referrer-Policy.
-   Investigate Cloudflare transforms, the pinned header plugin's live status,
-   SiteGround, and preserved `.htaccess`; then seek an exact repair grant.
+   2026-07-19; six staging2 header observations opened on 2026-09-08. Crush's
+   read-only origin check found that the server `.htaccess` lost a previously
+   deployed header block during a July 12 rewrite. The header plugin is
+   installed but inactive; the deploy workflow preserves the server file.
+   Kiro PASSed the attribution-first sequence at `1363056`, requiring a
+   single-owner header check and an explicit staging HSTS decision in the
+   repair proposal.
 2. **Track B cannot begin with a reviewer invite.** This private personal repo
    has only its owner as collaborator. A second approver gets write access;
    repository-scoped `SG_*` Actions secrets include the SiteGround SSH key.
@@ -51,13 +54,14 @@ Cloudflare setting, or live SiteGround state.
 
 ## Lane sequence
 
-1. **Crush:** read-only attribution of the missing live headers across
-   Cloudflare, SiteGround, preserved `.htaccess`, and WordPress plugins.
-2. **Codex:** frames the exact Track A repair and any later Track B access
-   architecture; Claude's adversarial audit of `626d3ba` is incorporated here.
-3. **Kiro:** reviews Track A's sequence now and the exact repair design after
-   attribution; reviews Track B only after Ryan chooses a credential-isolation
-   path and an exact execution plan exists.
+1. **Crush:** Phase 0 attribution and a read-only six-page static CSP spot
+   check are complete. No definite static source mismatch was found, but
+   current browser interactions and CSP violations remain untested.
+2. **Codex:** this draft frames a narrow `.htaccess` repair candidate and
+   stop/rollback gates; it does not approve the policy or an external write.
+3. **Kiro:** the Track A sequence passed at `1363056`; review the exact Phase 1
+   candidate and current-site CSP evidence on the new revision. Track B still
+   awaits Ryan's credential-isolation decision and an exact execution plan.
 4. **Ryan:** grants each exact external change, chooses whether Track B is worth
    its access cost, and owns merge/ledger authority.
 5. **Cursor:** implements separately granted header, workflow, or ruleset work.
@@ -66,7 +70,7 @@ Cloudflare setting, or live SiteGround state.
 
 ## Next artifact
 
-The detailed sequence, proposed values, authorization block, and acceptance
+The detailed sequence, proposed values, authorization boundary, and acceptance
 checks are in:
 
 `docs/plans/IMPLEMENTATION-willowyhollow-review-gate-enforcement.md`
@@ -94,8 +98,18 @@ checks are in:
 - [x] Kiro, Copilot audit, Cursor, and Ryan retain distinct responsibilities.
 - [x] The local web-design model-routing question is identified as a separate
       open slice.
+- [x] Kiro's two Phase 1 conditions are incorporated: verify one effective
+      noncontradictory owner/value for each header, and make staging HSTS
+      lifetime/subdomain/preload an explicit Ryan decision.
+- [x] The six-page static CSP spot check is recorded without treating it as
+      browser compatibility proof.
+- [ ] Kiro reviews the Phase 1 candidate; a safe browser or separately
+      authorized report-only canary demonstrates runtime CSP compatibility.
+      Kiro reviews the exact final values/evidence before Ryan grants an
+      enforcing SiteGround change. Ryan explicitly accepts or revises the
+      HSTS/CSP values, with Kiro re-review if they change.
 
-I finished: [Arc none (ad-hoc)] incorporated Claude's adversarial audit.
-Next step: Kiro reviews Track A's sequence while Crush attributes the live headers; Ryan decides whether to fund Track B.
-Next lane: Kiro and Crush for Track A, Ryan for Track B, then Cursor after exact grants.
+I finished: [Arc none (ad-hoc)] integrated Crush's attribution and Kiro's two repair conditions into a Phase 1 candidate.
+Next step: Kiro reviews the Phase 1 candidate; obtain runtime CSP canary evidence and exact-value re-review before Ryan's enforcing grant.
+Next lane: Kiro, then a separately authorized canary/verification lane, Kiro, and Ryan; Cursor only after an exact grant.
 See my work: `docs/plans/IMPLEMENTATION-willowyhollow-review-gate-enforcement.md`

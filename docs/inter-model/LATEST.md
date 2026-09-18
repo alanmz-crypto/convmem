@@ -9,25 +9,24 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **willowyhollow review-gate comparison (2026-09-18, ad-hoc,
-  `POST_CLAUDE_AUDIT_REVISED`):** Claude audited the Codex draft at `626d3ba`
-  and confirmed its live facts, then found two blocking design omissions. This
-  private personal repository has four repository-scoped `SG_*` Actions secrets,
-  including the SiteGround SSH key; a second GitHub approver would receive
-  write access and a path to those secrets. The installed Cursor App has PR
-  write permission and previously submitted an `APPROVED` review, so count `1`
-  alone is not a verified human gate. Codex's revised comparison and two-track
-  implementation draft is in
+- **willowyhollow header repair / review gate (2026-09-18, ad-hoc,
+  `PHASE1_REPAIR_CANDIDATE`):** Kiro PASSed the header-first Track A sequence
+  at `1363056` but required a single-owner/no-duplicate header check and an
+  explicit staging HSTS policy. Crush's read-only attribution found a July 8
+  `.htaccess` header block stripped during a July 12 server rewrite; the
+  header plugin remains inactive and Git deploy preserves `.htaccess`. Codex's
+  conditional Phase 1 candidate, values, and rollback/verification gates are in
   [`IMPLEMENTATION-willowyhollow-review-gate-enforcement.md`](../plans/IMPLEMENTATION-willowyhollow-review-gate-enforcement.md),
   with routing in
   [`CODEX-2026-09-18-willowyhollow-review-gate-implementation-handoff.md`](CODEX-2026-09-18-willowyhollow-review-gate-implementation-handoff.md).
-  **Track A:** Kiro reviews live staging2 header attribution/repair starting at
-  Cloudflare, the locked header plugin, and preserved `.htaccess`; the six open
-  observations arose after the last July merge. **Track B:**
-  Ryan chooses whether credential isolation plus a human-specific gate is worth
-  pursuing; approval count stays `0` and no writer is invited meanwhile.
-  ConvMem policy stays separate. The local web-design model quality/cost
-  question remains a separate unanswered slice. No external change is granted.
+  A six-page static CSP spot check found no definite source mismatch but did
+  not test browser interactions. **Next:** Kiro reviews the candidate; a safe
+  browser or separately granted report-only canary and exact-value re-review
+  precede any Ryan SiteGround grant. **Track B remains deferred:** a second
+  repo writer could reach repository-scoped SiteGround secrets, and Cursor
+  App approvals make count `1`
+  alone non-human. Approval count stays `0`, no writer is invited, and no
+  external change is granted. The local web-design model question is separate.
 
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as

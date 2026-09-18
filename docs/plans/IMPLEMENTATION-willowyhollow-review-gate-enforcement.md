@@ -3,7 +3,7 @@
 **Date:** 2026-09-18
 **Author:** OpenAI Codex
 **Arc:** none (ad-hoc)
-**State:** revised after Claude's audit of `626d3ba`; Track A sequence ready for Kiro plan review, exact repair design awaits live attribution, Track B awaits Ryan's access decision; no repository, ruleset, access, Cloudflare, or SiteGround change authorized
+**State:** Track A sequence PASS from Kiro at `1363056`; Crush's read-only attribution is in hand; the Phase 1 candidate below requires Kiro re-review and Ryan's exact policy/grant decision; Track B remains deferred; no external change authorized
 **Input:** `docs/inter-model/CLAUDE-2026-09-18-willowyhollow-review-gate-comparison-handoff.md`
 
 ## Decision for this audit
@@ -172,6 +172,21 @@ Their ledger ids are `obs_staging2_monitor_csp-missing`,
 `obs_staging2_monitor_header-referrer-policy`, `ver_staging2_mon_csp`,
 `ver_staging2_mon_hsts`, and `ver_staging2_mon_referrer-policy`.
 
+**Phase 0 result (Crush, 2026-09-18T11:18Z):** the public HTTPS `200`,
+natural `404`, and `/wp-json/` responses and the SiteGround origin all lack
+the three headers. The current origin `.htaccess` has no `Header` directives;
+its preserved July 8 backup contains the old three-header block, apparently
+stripped during a July 12 server rewrite. The live header plugin is inactive;
+`sg-security` emits the already-present X-Content-Type-Options and
+X-XSS-Protection, not these three. Cloudflare is on the public path but was
+not observed adding the missing headers. The exact source of the July 12
+rewrite is an inference, not an attribution of an actor. Recheck the live
+file, backup, Cloudflare rules, and plugin state immediately before any grant:
+Codex independently confirmed the practice snippet and remote deploy/lock
+files, but could not reread the server backup through its sandbox.
+The `1363056` review identifier is a ConvMem documentation commit, not a
+`willowyhollow-dev` commit; its absence from WordPress refs is expected.
+
 ### Phase 1 — repair and verify staging2 headers (separate grant)
 
 **Owner:** Cursor implements the Kiro-reviewed repair after Ryan names the
@@ -191,6 +206,106 @@ then recheck all six observations. The monitor remains post-deploy evidence;
 there is no current pre-merge candidate environment or staging-to-production
 promotion path. This track does not depend on recruiting a reviewer or changing
 a ruleset.
+
+#### Phase 1 candidate for Kiro review — not an Execute grant
+
+**Proposed owner and resource:** only the SiteGround origin's
+`~/www/staging2.willowyhollow.com/public_html/.htaccess`, using `mod_headers`.
+The practice file `scripts/staging2-security-headers.htaccess.snippet` was
+committed as `deca4ba2ad8d543e35b37245c3cc05ae6aede62c` on July 8 and
+is unchanged locally. The remote `staging` deploy workflow preserves this
+server file across checkout. The plugin lock expects
+`headers-security-advanced-hsts-wp` to remain inactive; activating it would
+introduce additional unreviewed headers and is not proposed.
+
+Candidate *enforcing* values, subject to the gates below:
+
+```apache
+<IfModule mod_headers.c>
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://app.cal.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://app.cal.com; frame-src 'self' https://app.cal.com https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'"
+  Header always set Strict-Transport-Security "max-age=300"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+```
+
+The CSP and Referrer-Policy values copy the July snippet. The proposed HSTS
+value is **different**: `max-age=300` is a short, staging-host-only canary;
+neither `includeSubDomains` nor `preload` is set. The saved one-year value
+(`31536000`) would keep returning browsers on HTTPS for much longer and is
+not silently restored. Ryan must explicitly choose the HSTS lifetime and
+whether staging2 should emit HSTS at all. If `300` is approved, it is a
+canary, not a durable security target; a later increase needs a separate
+decision. Any value Ryan chooses instead must go back to Kiro on the exact
+revised proposal before a grant. The [HSTS standard](https://www.rfc-editor.org/info/rfc6797/)
+describes browser caching and the optional subdomain scope.
+If Ryan chooses no HSTS, the HSTS observation cannot pass or close under the
+current monitor; that outcome needs an explicit exception and revised Track A
+acceptance, not a claimed six-observation closure.
+
+The July CSP allows inline scripts/styles and any HTTPS image origin; it
+restores the old monitored baseline, **not** a claim of strong XSS or
+exfiltration resistance. Its July layout check predates the current
+theme/UAGB content. A read-only public HTML spot check at
+2026-09-18T13:27–13:31Z covered home, Services, Thai, Therapeutic,
+Relaxation, and Contact; it found no definite static resource-origin mismatch
+with this candidate. A Maps iframe matched `frame-src`; the Cal.com URL was
+an outbound link, not evidence of a required Cal.com fetch. Inline script and
+style tags were present and permitted by this candidate. This is **not**
+dynamic CSP compatibility evidence: combined assets, lazy loading, plugin
+behavior, booking, and browser violations remain untested. Before an
+*enforcing* grant, exercise today's pages/interactions with the candidate in
+a safe browser canary or separately granted
+`Content-Security-Policy-Report-Only` trial, recording network and violation
+evidence. Any staging report-only write needs its own exact Ryan grant and
+Cursor implementation; a local browser canary must not mutate the hosted
+site. Report-only alone will not close the enforcing-CSP observation. If
+any required source would be blocked, revise the value and return it to Kiro;
+do not install the old string merely to turn the presence-only monitor green.
+The [CSP specification](https://www.w3.org/TR/CSP/)
+requires browsers to apply every enforced policy, so a second policy can
+break a page even if the proposed one is permissive.
+
+**Pre-grant gates:** capture the current server file's contents, hash, owner,
+and mode through read-only access; diff its current content, the July backup,
+and only the candidate block. Confirm Cloudflare rules, SiteGround/Apache, active
+plugins, and page-level CSP meta tags will not create a second enforcing
+policy or conflicting final value. Capture raw, uncombined public and origin
+response headers, including duplicate counts, for representative HTTPS
+`200`, natural `404`, HTTPS redirects, and an existing authenticated/`401`
+path if available. The Cloudflare-generated HTTP-to-HTTPS `301` is checked
+for continued redirection; HSTS on that HTTP response is not required.
+Apache's [`always` and `onsuccess` header tables](https://httpd.apache.org/docs/2.4/mod/mod_headers.html)
+can otherwise produce duplicate final fields; a dictionary-style header
+readout is not sufficient for this gate.
+If SiteGround/nginx serves a relevant response without applying `.htaccess`,
+this owner choice must be revised before an Execute grant.
+GitHub's current `staging` branch and the live server file must be reread
+immediately before execution, not inferred from a dirty local checkout.
+Resolve `~` to the exact SiteGround account path before Ryan's grant.
+
+**Conditional one-shot execution, only after Kiro review and Ryan's exact
+grant:** Cursor saves a fresh pre-change backup outside the webroot, verifies
+the live file hash still matches the reviewed preflight, and atomically
+inserts only the approved block while preserving unrelated directives,
+ownership, and mode. The July backup is evidence, **not** a rollback image:
+copying it wholesale could erase later server rules. On failure, restore the
+fresh backup only if the post-edit file hash still matches Cursor's write;
+otherwise stop for Ryan. Removing an HSTS header does not instantly clear
+browsers that cached it; a valid HTTPS `max-age=0` response may be needed
+for an authorized rollback, and even that reaches only returning clients.
+
+**Post-change acceptance:** raw origin and public HTTPS responses show exactly one
+Content-Security-Policy, one Strict-Transport-Security, and one
+Referrer-Policy field with the approved values and no second source;
+X-Content-Type-Options, the HTTP-to-HTTPS redirect, and normal status codes
+remain intact. Check applicable `200`, natural `404`, HTTPS redirect, and
+existing auth/error responses separately, without `curl -L` hiding a hop.
+Browser-test current layout and interactions, fonts, media, Cal.com, Maps,
+navigation, and forms for CSP violations; roll back on material breakage.
+Then run the staging2 monitor dry-run and recheck all six listed ledger
+observations. The [monitor implementation](../../monitor.py) checks only
+for nonempty CSP/HSTS/Referrer-Policy values; a green monitor is **not** proof of correct policy
+or page compatibility. Ryan, not Cursor, owns any ledger closure.
 
 ### Phase 2 — choose whether an enforced human gate is worth the access redesign
 
@@ -286,11 +401,15 @@ explains why a skipped required workflow can otherwise block merging.
 
 Claude's adversarial audit of `626d3ba` found no factual errors and raised the
 credential-access and Cursor-App approval problems treated as blockers here.
-It was an audit, not Kiro sign-off. Kiro can review Track A's sequence now;
-the exact header repair design follows live attribution. The human-review gate needs Ryan's access-architecture
-choice and a concrete secret-isolation plan before Kiro signs off on its
-execution. Copilot's audit lane remains a targeted security/deployment recheck
-if the later implementation warrants one; Cursor implements only granted work.
+It was an audit, not Kiro sign-off. Kiro then PASSed Track A's sequence at
+`1363056`, with two conditions for Phase 1: prove a single noncontradictory
+owner/value for each final header and make HSTS on staging an explicit policy
+decision. The candidate above incorporates both but has **not** received
+Kiro's exact-revision repair review. The human-review gate still needs Ryan's
+access-architecture choice and a concrete secret-isolation plan before Kiro
+signs off on its execution. Copilot's audit lane remains a targeted
+security/deployment recheck if the later implementation warrants one; Cursor
+implements only granted work.
 
 The existing two PR checks need no new Actions job. A human gate adds reviewer
 availability and, in this repository, credential-isolation work. A candidate
@@ -325,8 +444,13 @@ site or ConvMem policy.
 
 **Authorized external changes in this draft: none.** Header repair needs a
 separate grant naming the controlling Cloudflare, SiteGround, WordPress, or
-tracked-workflow resource and exact final header values. A DB settings change
-also requires a backup before mutation. Credential redesign would need its
+tracked-workflow resource and exact final header values. For the SiteGround
+candidate above, the grant must name the resolved absolute staging2
+`.htaccess` path, its reviewed preflight hash, the exact three approved
+header strings (including HSTS lifetime and flags), the one-shot backup/edit
+operation, rollback image/path, and verification/stop conditions. It does not
+include production, plugin activation, Cloudflare changes, or a DB write.
+A DB settings change also requires a backup before mutation. Credential redesign would need its
 own exact environment/deployer, secret migration, branch-policy, workflow, and
 rollback grants. A later reviewer invitation requires the person's handle and
 write-access decision. Each ruleset mutation requires the exact ID and final
@@ -337,10 +461,16 @@ Acceptance for **Track A (headers)**:
 
 - Read-only evidence identifies where Cloudflare, SiteGround, `.htaccess`, and
   the locked header plugin affect the final staging2 response.
-- Kiro reviews an exact, compatible CSP/HSTS/Referrer-Policy proposal before
-  Ryan grants a change; any DB mutation follows a backup.
-- Live staging2 `200` and relevant redirect/auth responses carry the intended
-  headers without functional breakage, and all six observations are rechecked.
+- Kiro reviews this repair candidate now, then the exact final values after
+  runtime CSP canary evidence. Ryan explicitly chooses staging HSTS `max-age`,
+  `includeSubDomains`, and `preload` posture before an enforcing grant; any DB
+  mutation follows a backup.
+- Raw HTTPS responses have exactly one intended value for each of the three
+  headers, with no second Cloudflare, SiteGround, plugin, or meta-CSP owner.
+  Applicable `200`, `404`, HTTPS redirect, and auth/error responses preserve
+  their behavior; current pages/interactions have no material CSP breakage.
+  All six observations are rechecked, but monitor presence alone is not a
+  functional or security-policy proof.
 
 Acceptance for **Track B only if Ryan chooses GitHub-enforced human review**:
 
@@ -363,7 +493,7 @@ gate costs more than changing the approval count. Keeping count `0` preserves
 the present access boundary and availability, but independent review remains
 procedural.
 
-I finished: [Arc none (ad-hoc)] revised the review-gate design after Claude's audit.
-Next step: Kiro reviews Track A's sequence while Crush attributes the live headers; Ryan decides whether Track B's access redesign is worth pursuing.
-Next lane: Kiro and Crush for Track A, Ryan for Track B, then Cursor for separately granted implementation.
+I finished: [Arc none (ad-hoc)] integrated Phase 0 attribution and a conditional Phase 1 repair candidate.
+Next step: Kiro reviews this candidate; obtain runtime CSP evidence and exact-value re-review before Ryan's enforcing grant.
+Next lane: Kiro, a separately authorized canary/verification lane, Kiro, and Ryan; then Cursor only after an exact grant.
 See my work: `docs/plans/IMPLEMENTATION-willowyhollow-review-gate-enforcement.md`
