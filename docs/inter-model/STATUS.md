@@ -48,7 +48,7 @@ gated.
 | Arc | State | Next authorized action |
 |---|---|---|
 | Codex — Kiro JSONL incremental production integration | The default-off coordinator and live-safe canary runtime are on `main` through PR #301 (`8983a6fc…`), whose final tree received a post-merge Kiro PASS. A fresh 68-message source-freeze packet at `27518aa…` received Kiro PASS but issued no executable grant or digest. | P2 grant progression is paused on issue #268's shared watch-child OOM. PRs #302/#303/#305 removed three demonstrated allocators; the §9.7 end-to-end memory comparison is pending. No Claude re-review, live Gate 0/P2, replacement grant/digest, indexing, providers, config change, watcher action, or activation. See [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
-| Claude Watch Parity | Ryan assigned a separate arc on 2026-09-18. Gate 1 on-demand adapter is approved but not on this planning base; the incremental substrate landed on `main` via PR #307 (`d657767`). Kiro PASSed the [Gate 2 plan](CODEX-2026-09-18-claude-watch-parity-gate2-execute.md) at exact commit `a811f58` with four Execute conditions. No Claude isolated spec or live canary exists. | Ryan decides the bounded isolated Execute grant. Cursor starts only after Gate 1 lands and must retain Kiro's isolation, mapper, `NOT_RUN` canary, and diff-scope conditions. Live-source canary and production watch promotion are separate Ryan gates. See [`STATUS-claude-watch-parity.md`](../plans/STATUS-claude-watch-parity.md). |
+| Claude Watch Parity | Ryan assigned a separate arc on 2026-09-18. Gate 1 on-demand adapter is pushed at `cbdc88b` but absent from `origin/main`, with no PR or written code verdict found. The incremental substrate landed via PR #307 (`d657767`). Kiro PASSed the [Gate 2 plan](CODEX-2026-09-18-claude-watch-parity-gate2-execute.md) at exact commit `a811f58` with four Execute conditions. No Claude isolated spec or live canary exists. | Kiro reviews the exact Gate 1 code tip using the [handoff](CODEX-2026-09-18-claude-watch-parity-gate1-review-handoff.md); Ryan then decides PR/merge and a separate bounded Gate 2 Execute grant. Cursor starts only after Gate 1 lands. Live-source canary and production watch promotion remain separate Ryan gates. See [`STATUS-claude-watch-parity.md`](../plans/STATUS-claude-watch-parity.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
 | Shadow Ledger Phase 0 | Code + VERIFY complete; **disabled** | **Activation-ready path:** C6 event-size evidence → C7 7-day census report → C6 canary PASS → fresh writer census → runbook → Ryan readiness sign-off → **then** live activation grant + `shadow-activate`. Do not hand-edit config. |
 | R2b capture authorization | v2 I1–I3 implementation and Corrective IX integration are **landed** via PR #264; implementation review is complete. Draft PRs #246/#248/#249/#251 are closed as superseded, with their branches preserved. | Separately accept zero-bypass coverage and duration policy, then obtain fresh writer-gate/packet/grant authority. No live gate, packet ACCEPT, **ACCEPT AND GRANT**, capture, or I4–I8 advancement is authorized. |
@@ -111,10 +111,10 @@ gated.
 - [Claude Watch Parity STATUS](../plans/STATUS-claude-watch-parity.md)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
-**TL;DR [Arc Claude Watch Parity]:** Kiro PASSed the Gate 2 plan at `a811f58`
-with Execute conditions. Gate 1 adapter implementation, Ryan's bounded Execute
-grant, an exact-source canary, and production watch promotion remain separate
-steps. Verify
+**TL;DR [Arc Claude Watch Parity]:** Gate 1 adapter code is pushed and awaits
+Kiro exact-tip review before Ryan's merge decision. Kiro PASSed the Gate 2 plan
+at `a811f58` with Execute conditions; Ryan's bounded Execute grant, an
+exact-source canary, and production watch promotion remain separate. Verify
 `origin/main` when a commit identity matters.
 
 ## Jargon TL;DR
