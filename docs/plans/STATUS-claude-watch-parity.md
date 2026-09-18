@@ -58,7 +58,7 @@ scratch canary is a safety pattern, not a Claude parser or execution engine.
 | `incremental_jsonl_formats.py` | Kiro production set and isolated Codex set on `main`; no Claude spec or isolated set. |
 | `incremental_jsonl.py` | Existing coordinator, default Kiro-only route; no Claude-specific core work needed. |
 | `scratch_jsonl_prototype/live_source_canary.py` | Reviewed Kiro exact-source canary pattern; its engine is Kiro-specific. |
-| `docs/inter-model/CODEX-2026-09-18-claude-watch-parity-gate2-execute.md` | Gate 2 plan on `plan/2026-09-18-claude-watch-parity`, awaiting Kiro review. |
+| `docs/inter-model/CODEX-2026-09-18-claude-watch-parity-gate2-execute.md` | Gate 2 plan Kiro PASS with Execute conditions at exact reviewed commit `a811f58`; the plan text is unchanged by this status update. |
 | Production `[sources].paths` / `[watch].extra_paths` | Claude absent; no change authorized. |
 
 The isolated Codex JSONL integration is on `main` at planning base
@@ -71,28 +71,32 @@ The isolated Codex JSONL integration is on `main` at planning base
 | Arc assignment | **CONFIRMED** by Ryan, 2026-09-18 | — |
 | Gate 1 on-demand adapter decision | **APPROVED** (Option 2); code not on planning base | Cursor implementation on a green base, then Kiro code review |
 | Incremental substrate | **ON `main`** through PR #307; isolated Codex route exists | — |
-| Gate 2 execution plan | **DRAFT ON PUSHED PLAN BRANCH** | Kiro design review |
-| Isolated Claude format and canary | **NOT STARTED** | Gate 1 merged, Kiro plan PASS, Ryan bounded Execute grant |
+| Gate 2 execution plan | **KIRO PASS WITH CONDITIONS** at `a811f58` | Ryan bounded Execute grant |
+| Isolated Claude format and canary | **NOT STARTED** | Gate 1 merged and reviewed, Ryan bounded Execute grant |
 | Exact-source live canary | **NOT AUTHORIZED** | Separate Ryan source grant after hermetic implementation |
 | Production promotion and watch wiring | **NOT AUTHORIZED** | Ryan decision after reviewed canary evidence |
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Kiro review lane:** review the Gate 2 plan on its exact pushed tip. Check
-that Claude cannot enter the default production set, Gate 1 is a prerequisite,
-the canary binds one authorized source without content leakage, and promotion
-stays with Ryan. Return written PASS or specific conditions.
+**Ryan decision lane:** Kiro PASSed the exact `a811f58` plan with conditions.
+Decide whether to grant bounded isolated Execute. That grant does not select a
+live source or authorize production promotion.
 
-**Cursor implementation lane:** start only after Kiro plan review and Ryan's
-bounded Execute grant. Build and test the Claude prefix/spec and isolated
-canary; stop at evidence. Do not infer watch authorization from implementation.
+**Cursor implementation lane:** start only after the Gate 1 adapter is merged
+and Kiro-reviewed and Ryan grants Execute. Recheck Gate 1's mapper before the
+first edit. State in VERIFY that `CONVMEM_INCREMENTAL_ROOT` enables one shared
+Kiro+Codex+Claude isolated set; assert default Kiro-only routing and unchanged
+Kiro/Codex behavior. Keep the live canary `NOT_RUN` without an exact Ryan grant
+and inactive watcher. Lock the production-code diff to the Claude adapter and
+`incremental_jsonl_formats.py`; stop at evidence for review.
 
 **Ryan:** own the live-source grant and the later production promotion decision.
 
 ## 6. What Remains Before Live (sequential)
 
 1. Land and review the Gate 1 Claude on-demand adapter on a green base.
-2. Kiro reviews this Gate 2 plan; Ryan grants bounded isolated implementation.
+2. Ryan decides a bounded isolated Execute grant against the reviewed
+   `a811f58` plan, carrying Kiro's four conditions.
 3. Cursor adds prefix parsing, the Claude format spec, isolated eligibility,
    tests, and an isolated canary harness; Kiro reviews the exact implementation.
 4. Ryan may authorize one frozen Claude transcript for read-only canary capture.
@@ -106,7 +110,7 @@ canary; stop at evidence. Do not infer watch authorization from implementation.
 | Stop | Owner | Blocks |
 |---|---|---|
 | Gate 1 adapter review | Kiro | Claude prefix implementation against an absent/unstable adapter |
-| Gate 2 plan review + Execute grant | Kiro + Ryan | Cursor isolated implementation |
+| Bounded Execute grant | Ryan | Cursor isolated implementation; Kiro plan review passed at `a811f58` |
 | Exact live-source grant | Ryan | Reading a live Claude transcript for the canary |
 | Production promotion | Ryan | Adding Claude to `KIRO_ROUTE_FORMATS` or watch/source paths |
 | Arc boundary | Ryan | Changes to Arc Codex plans, STATUS, canary grants, or operational state |
@@ -147,7 +151,8 @@ brief and identify the next authorized action.
 | Date | Who | Milestone-level change |
 |---|---|---|
 | 2026-09-18 | Codex | Created Ryan-confirmed Claude Watch Parity arc and Gate 2 plan for Kiro review; no implementation or live grant. |
+| 2026-09-18 | Codex | Recorded Kiro PASS with Execute conditions on exact plan tip `a811f58`; next gate is Ryan's bounded Execute decision. |
 
 **TL;DR [Arc Claude Watch Parity]:** Gate 1 is approved but not landed. The
-isolated Gate 2 plan awaits Kiro review; Claude production routing and watch
-capture remain Ryan-gated.
+isolated Gate 2 plan passed Kiro review at `a811f58`; Execute, live-source
+canary, and production watch capture remain Ryan-gated.
