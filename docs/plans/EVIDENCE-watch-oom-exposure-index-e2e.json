@@ -1,54 +1,33 @@
 {
   "hostname": "archlinux",
-  "candidate_sha": "18f63dbb6a9ea9f7c569862f29e176a49e3323a5",
+  "candidate_sha": "dda924ae24d0b4e09c30200f40105999af531ca8",
   "baseline_sha": "5c103aa2f11f54de74be3a7eab90c433c0c019cd",
-  "harness_hash": "d249f1a4c62887e242d786356b3d7bcd2833c4696187cf21933cdfc098d0e43e",
+  "harness_hash": "4e47846f7563875a91da1e5548e1e1ac0eb4210098fcaecedac56eb1885db6ae",
   "worker_as_limit_gib": 2,
-  "worker_timeout_seconds": 45,
-  "worker_failures": 6,
+  "worker_timeout_seconds": 90,
+  "outcome_counts": {
+    "timed_out": 1,
+    "exited": 0,
+    "invalid_output": 0,
+    "succeeded": 0
+  },
+  "canary_ambiguity": [
+    "baseline n=5000: /home/lauer/.local/share/convmem/knowledge_units.jsonl: before=PathCanary(path='/home/lauer/.local/share/convmem/knowledge_units.jsonl', exists=True, size=3295660654, mode=33188, mtime_ns=1789707070382216293, sha256='22bd81ee0eef5057c5a97fb053844d1e4a08e72048b93352ceda74350d45e441', device=66306, inode=20878871) after=PathCanary(path='/home/lauer/.local/share/convmem/knowledge_units.jsonl', exists=True, size=3295749683, mode=33188, mtime_ns=1789707251048850577, sha256='916bed8b3bb9408c9dc704972d6552294b9ebcdf2a3c78161a69a70f72389df9', device=66306, inode=20877367)",
+    "baseline n=5000: /home/lauer/.local/share/convmem/processed.json: before=PathCanary(path='/home/lauer/.local/share/convmem/processed.json', exists=True, size=510237, mode=33188, mtime_ns=1789706605829895132, sha256='285e35ede876fbf787e8ba8528ea40a773d0064248965dd28b0a9b2cc080f65a', device=66306, inode=20878864) after=PathCanary(path='/home/lauer/.local/share/convmem/processed.json', exists=True, size=510237, mode=33188, mtime_ns=1789707241497428430, sha256='53fe4122c682aeadf9e20bbf96f17f56ab660413507ff998a28f5a6cf7eab589', device=66306, inode=20878866)"
+  ],
+  "measurement_blocked": true,
   "rows": [
     {
       "n": 5000,
       "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
       "baseline": {
-        "status": "worker_failed",
-        "returncode": -9,
+        "status": "timed_out",
+        "returncode": null,
+        "elapsed_seconds": 90.099,
         "detail": "[e2e-worker] config set\n[e2e-worker] target imports ready\n[e2e-worker] starting ingest.index"
       },
-      "candidate": {
-        "status": "worker_failed",
-        "returncode": -9,
-        "detail": "[e2e-worker] config set\n[e2e-worker] target imports ready\n[e2e-worker] starting ingest.index"
-      }
-    },
-    {
-      "n": 20000,
-      "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
-      "baseline": {
-        "status": "worker_failed",
-        "returncode": -9,
-        "detail": "[e2e-worker] config set\n[e2e-worker] target imports ready\n[e2e-worker] starting ingest.index"
-      },
-      "candidate": {
-        "status": "worker_failed",
-        "returncode": -9,
-        "detail": "[e2e-worker] config set\n[e2e-worker] target imports ready\n[e2e-worker] starting ingest.index"
-      }
-    },
-    {
-      "n": 58825,
-      "transcript_sha256": "a70673fd9162d0493ae30853c1fcd97f04c3343a55a6e16fdebd874fe84d90bf",
-      "baseline": {
-        "status": "worker_failed",
-        "returncode": -9,
-        "detail": "[e2e-worker] config set\n[e2e-worker] target imports ready\n[e2e-worker] starting ingest.index"
-      },
-      "candidate": {
-        "status": "worker_failed",
-        "returncode": -9,
-        "detail": "[e2e-worker] config set\n[e2e-worker] target imports ready\n[e2e-worker] starting ingest.index"
-      }
+      "candidate": null
     }
   ],
-  "verdict": "On archlinux, real ingest.index(force_file=...) under the mandated 2 GiB RLIMIT_AS worker ceiling did not complete within the timeout for writable Chroma fixtures (ChromaDB PersistentClient needs roughly 3+ GiB virtual address space on this host). No remaining-floor delta is claimed for \u00a79.8. The live 12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
+  "verdict": "Measurement stopped: production canary drift detected during the paired run (active watch may have changed a canary). Do not operate the watcher from this evidence. No remaining-floor delta is claimed for \u00a79.8. The live 12.5 GiB watcher OOM remains unexplained and issue #268 is not closed."
 }
