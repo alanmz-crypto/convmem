@@ -12,6 +12,7 @@ from pathlib import Path
 
 from adapters.jsonl_io import (
     iter_jsonl_dicts,
+    nonempty_stripped,
     session_parse_context,
 )
 
@@ -65,9 +66,9 @@ def _probe_claude_session(path: Path) -> bool:
                     break
                 try:
                     record = json.loads(line)
+                    if not isinstance(record, dict):
+                        continue
                 except json.JSONDecodeError:
-                    continue
-                if not isinstance(record, dict):
                     continue
                 sid = record.get("sessionId") or record.get("session_id")
                 if isinstance(sid, str) and sid:
@@ -114,13 +115,10 @@ def _text_from_content(raw: object) -> str | None:
     if isinstance(raw, list):
         parts: list[str] = []
         for block in raw:
-            if not isinstance(block, dict):
-                continue
-            if block.get("type") != "text":
-                continue
-            t = block.get("text")
-            if isinstance(t, str) and t.strip():
-                parts.append(t.strip())
+            if isinstance(block, dict) and block.get("type") == "text":
+                text = nonempty_stripped(block.get("text"))
+                if text is not None:
+                    parts.append(text)
         joined = "\n".join(parts)
         return joined or None
     return None
