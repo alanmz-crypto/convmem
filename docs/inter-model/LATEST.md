@@ -17,43 +17,15 @@ cross-arc snapshot and the linked arc brief below.
   routes are now the base for later work. This merge grants no S4/S5,
   production indexing, watcher/config, issue #268 closure, Arc Codex P2,
   bootstrap, or activation.
-- **Arc Codex — append-cursor format extension planning:** Kiro PASSed the
-  original conditional Copilot `events.jsonl` plan at `9e2d0ef`. The
-  post-#286-merge revision on this branch now reuses the landed
-  `incremental_jsonl_formats.py` registry and `adapters/jsonl_prefix.py`
-  scanner; Kiro returned a written targeted PASS at exact plan tip `53e7b42`
-  against merged code `d657767`.
-  The [architecture](../plans/ARCHITECTURE-generalize-append-cursor.md),
-  [bounded Execute proposal](../plans/EXECUTION-generalize-append-cursor.md),
-  and [current-state brief](../plans/STATUS-generalize-append-cursor.md) are
-  the reviewed basis for Ryan's preliminary local E0 trace grant.
-  [Cursor's bounded trace handoff](CODEX-2026-09-18-copilot-e0-local-trace-handoff.md)
-  gives the exact temporary resources, client actions, six-action/15-minute
-  bound, zero external provider spend, observations, and stop conditions.
-  [Codex-to-Codex ownership handoff](CODEX-2026-09-18-append-cursor-ownership-handoff.md)
-  records Ryan's selection of the authoring Codex Sol-medium lane as
-  coordination owner. The shared-code base is settled by the merge; Ryan must
-  name a Copilot implementation writer in a later grant. Ryan granted only
-  the preliminary offline local-provider trace. Installed Copilot CLI 1.0.86
-  has a 30-credit minimum **soft** session limit; the local trace avoids
-  external inference but cannot by itself prove hosted writer parity.
-  Cursor returned the bounded local trace: prior bytes remained exact prefixes,
-  but the inode changed on every action and the last action made an unexpected
-  `read_agent` tool call. The merged coordinator treats an inode change as
-  `source_replaced_or_rotated`, so this is **not an E0 PASS** for the proposed
-  transform-reuse route. Kiro's targeted read-only recheck confirmed that
-  decisive finding. Its additional claim that changing `workspace.yaml` digests
-  independently block reuse needs correction: the merged sidecar digest check
-  compares against the current run's snapshot, and no digest is stored in the
-  checkpoint for cross-run comparison. Ryan now decides whether to stop under
-  the current contract or authorize revised-E0 planning. No hosted trace or
-  further Execute is authorized. Evidence:
-  `/tmp/convmem-copilot-e0-local.farpf1dl/analysis.json` and five snapshots.
-  Conditions: E3 must prove Copilot `session_id`/YAML precedence and the chosen
-  sidecar invalidation rule. Copilot writer proof remains a hard E0 gate;
-  no implementation, bootstrap, live canary, or activation is authorized.
-  When merging with the 2026-09-17 R2b corrective's LATEST edit, keep both
-  routing bullets.
+- **Arc Codex — Copilot append-cursor candidate STOPPED:** Ryan chose
+  `NO_COPILOT_ROUTE` on 2026-09-18 under the current continuity contract.
+  Cursor's bounded local trace preserved prior bytes but changed inode on every
+  action; Kiro confirmed that the merged coordinator refuses reuse. No hosted
+  trace, E1–E4, substitute format, bootstrap, canary, or activation is
+  authorized. The [current-state brief](../plans/STATUS-generalize-append-cursor.md)
+  records the evidence and reopening conditions. The shared registry/scanner
+  merged through issue #286 and the separate Arc Codex production gates are
+  unaffected. Keep this bullet when reconciling other LATEST edits.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
   `ef4a7dd…` on 2026-09-17 (Copilot audit + Kiro review + Claude advisory PASS on
