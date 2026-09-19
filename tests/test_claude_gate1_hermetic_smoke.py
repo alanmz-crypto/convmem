@@ -10,7 +10,6 @@ import os
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any
 from unittest import mock
 
 import pytest
@@ -18,6 +17,7 @@ import pytest
 from claude_gate1_smoke import (
     WORKER,
     HermeticEvidence,
+    SealedConfigSession,
     _F_SEAL_GROW,
     _F_SEAL_SEAL,
     _F_SEAL_SHRINK,
@@ -34,11 +34,9 @@ from claude_gate1_smoke import (
     run_hermetic_smoke,
     run_worker,
     scrub_credentials,
-    sealed_config_session,
     sealed_fd_open,
     sealed_storage_available,
     validate_output_containment,
-    verify_sealed_ftruncate_blocked,
     verify_sealed_writes_blocked,
     write_synthetic_claude_transcript,
 )
@@ -157,7 +155,7 @@ def test_inherited_credentials_rejected(tmp_path: Path) -> None:
 
 def test_zero_units_is_not_pass(tmp_path: Path) -> None:
     """Document that units_indexed=0 is FAIL for Gate 1 acceptance."""
-    root, _token, env, transcript = prepare_hermetic_fixture(tmp_path)
+    _root, _token, env, transcript = prepare_hermetic_fixture(tmp_path)
     env = dict(env)
     env["CONVMEM_GATE1_FORCE_ZERO_UNITS"] = "1"
     payload = _worker(env, "run", transcript)
@@ -194,7 +192,7 @@ def test_launcher_binds_sealed_bytes_before_invoke() -> None:
     from claude_gate1_smoke import REPO_ROOT
 
     text = (REPO_ROOT / "claude_gate1_smoke.py").read_text(encoding="utf-8")
-    bind_at = text.index("with sealed_config_session(preflight, boundary):")
+    bind_at = text.index("with SealedConfigSession(preflight, boundary):")
     hook_at = text.index("maybe_apply_test_post_binding_tamper(preflight.config_path)")
     invoke_at = text.index("runner.invoke")
     assert bind_at < hook_at < invoke_at
@@ -317,7 +315,7 @@ def test_verify_writes_blocked_failure_closes_descriptor(
 ) -> None:
     if not sys.platform.startswith("linux"):
         pytest.skip("verified memfd sealing requires Linux")
-    _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    _env, _boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
     captured_fd: list[int] = []
 
     def _fail_verify(sealed: object) -> None:
@@ -341,10 +339,10 @@ def test_verify_ftruncate_failure_closes_descriptor(
 ) -> None:
     if not sys.platform.startswith("linux"):
         pytest.skip("verified memfd sealing requires Linux")
-    _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    _env, _boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
     captured_fd: list[int] = []
 
-    def _fail_ftruncate(fd: int, current_size: int) -> None:
+    def _fail_ftruncate(fd: int, _current_size: int) -> None:
         captured_fd.append(fd)
         raise IsolationViolation("forced ftruncate verify failure")
 
@@ -363,7 +361,7 @@ def test_unavailable_libc_memfd_refuses(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    _env, _boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
     monkeypatch.setattr(
         "claude_gate1_smoke._libc_memfd_create",
         mock.Mock(side_effect=OSError(errno.ENOSYS, "memfd_create")),
@@ -376,7 +374,7 @@ def test_seal_application_failure_refuses(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    _env, _boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
     monkeypatch.setattr(
         "claude_gate1_smoke._apply_required_seals",
         mock.Mock(side_effect=OSError(errno.EINVAL, "seal apply failed")),
@@ -389,7 +387,7 @@ def test_seal_verification_failure_refuses(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    _env, _boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
     monkeypatch.setattr(
         "claude_gate1_smoke._verify_required_seals",
         mock.Mock(side_effect=OSError(errno.EINVAL, "seal verify failed")),
@@ -426,7 +424,7 @@ def test_partial_loader_patch_failure_restores(
 
     monkeypatch.setattr("builtins.setattr", _flaky_setattr)
     with pytest.raises(RuntimeError, match="forced patch failure"):
-        with sealed_config_session(preflight, boundary):
+        with SealedConfigSession(preflight, boundary):
             pass
     assert config.load_config is original
     assert config.CONFIG_PATH == original_path
@@ -437,7 +435,7 @@ def test_descriptor_closed_after_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
-    with sealed_config_session(preflight, boundary) as sealed:
+    with SealedConfigSession(preflight, boundary) as sealed:
         assert sealed_fd_open(sealed) is True
     assert sealed_fd_open(sealed) is False
 
@@ -449,7 +447,7 @@ def test_descriptor_closed_after_failure(
     _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
     held: list[object] = []
     with pytest.raises(RuntimeError, match="forced failure"):
-        with sealed_config_session(preflight, boundary) as sealed:
+        with SealedConfigSession(preflight, boundary) as sealed:
             held.append(sealed)
             raise RuntimeError("forced failure")
     assert held
@@ -461,14 +459,27 @@ def test_descriptor_closed_when_patch_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    captured: list[object] = []
+    real_create = create_verified_sealed_binding
+
+    def _capture_binding(raw: bytes) -> object:
+        sealed = real_create(raw)
+        captured.append(sealed)
+        return sealed
+
+    monkeypatch.setattr(
+        "claude_gate1_smoke.create_verified_sealed_binding",
+        _capture_binding,
+    )
     monkeypatch.setattr(
         "claude_gate1_smoke._patch_config_loader",
         mock.Mock(side_effect=RuntimeError("forced patch failure")),
     )
-    session = sealed_config_session(preflight, boundary)
     with pytest.raises(RuntimeError, match="forced patch failure"):
-        session.__enter__()
-    assert session._sealed is None
+        with SealedConfigSession(preflight, boundary):
+            pass
+    assert captured
+    assert sealed_fd_open(captured[0]) is False
 
 
 def test_loader_bindings_restored_after_success(
@@ -480,7 +491,7 @@ def test_loader_bindings_restored_after_success(
     _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
     original = config.load_config
     original_path = config.CONFIG_PATH
-    with sealed_config_session(preflight, boundary):
+    with SealedConfigSession(preflight, boundary):
         assert config.load_config is not original
         assert config.CONFIG_PATH != original_path
     assert config.load_config is original
@@ -496,7 +507,7 @@ def test_loader_bindings_restored_after_failure(
     _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
     original = config.load_config
     with pytest.raises(RuntimeError, match="forced failure"):
-        with sealed_config_session(preflight, boundary):
+        with SealedConfigSession(preflight, boundary):
             raise RuntimeError("forced failure")
     assert config.load_config is original
 
@@ -525,7 +536,7 @@ def test_invalid_transcript_refuses_before_descriptor_alloc(
     )
     with pytest.raises(IsolationViolation, match="transcript"):
         run_hermetic_index_cli(outside, preflight=preflight)
-    assert created == []
+    assert not created
 
 
 def test_unsupported_sealed_storage_refuses_before_index(

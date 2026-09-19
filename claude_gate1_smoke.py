@@ -5,6 +5,10 @@ list, or index live Claude transcripts. Uses deterministic fake providers and
 reuses the reviewed jsonl production-integration isolation boundary.
 """
 
+# The standalone harness intentionally mirrors small boundary and result shapes
+# from production modules so it can exercise them without importing first.
+# pylint: disable=duplicate-code,too-many-lines
+
 from __future__ import annotations
 
 import ctypes
@@ -25,10 +29,6 @@ from typing import Any, Callable
 
 from incremental_jsonl_isolation import (
     ISOLATION_ENV_ALLOWLIST,
-    ISOLATION_MODE,
-    ISOLATION_MODE_ENV,
-    ISOLATION_ROOT_ENV,
-    ISOLATION_TOKEN_ENV,
     IsolationBoundary,
     IsolationViolation,
     create_fresh_root,
@@ -146,7 +146,7 @@ class _ConfigLoaderRestoreState:
 
 
 @dataclass(frozen=True)
-class HermeticEvidence:
+class HermeticEvidence:  # pylint: disable=too-many-instance-attributes
     """Content-free smoke result for Ryan review."""
 
     files_processed: int
@@ -270,9 +270,11 @@ def install_fake_providers() -> None:
         ollama_host: str,
         deepseek_base_url: str = "https://api.deepseek.com",
     ) -> str:
+        del model, ollama_host, deepseek_base_url
         return f"summary:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
 
     def fake_embed(text: str, model: str, host: str) -> list[float]:
+        del model, host
         digest = hashlib.sha256(text.encode()).digest()
         return [((digest[index] / 255.0) * 2.0) - 1.0 for index in range(8)]
 
@@ -282,6 +284,7 @@ def install_fake_providers() -> None:
         ollama_host: str,
         deepseek_base_url: str = "https://api.deepseek.com",
     ) -> list[dict[str, Any]]:
+        del text, model, ollama_host, deepseek_base_url
         return [dict(_SYNTHETIC_UNIT)]
 
     ingest.summarize = fake_summarize
@@ -822,7 +825,7 @@ def _restore_config_loader(restore: _ConfigLoaderRestoreState) -> None:
         ingest_mod.load_config = restore.ingest_load_config
 
 
-class sealed_config_session(AbstractContextManager[SealedConfigBinding]):
+class SealedConfigSession(AbstractContextManager[SealedConfigBinding]):
     """Own memfd creation, loader patching, and descriptor cleanup on every path."""
 
     def __init__(
@@ -915,7 +918,7 @@ def run_hermetic_index_cli(
     from convmem import app  # noqa: PLC0415
 
     install_fake_providers()
-    with sealed_config_session(preflight, boundary):
+    with SealedConfigSession(preflight, boundary):
         maybe_apply_test_post_binding_tamper(preflight.config_path)
         runner = CliRunner()
         result = runner.invoke(app, ["index", "--file", str(resolved)])

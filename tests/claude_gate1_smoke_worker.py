@@ -1,6 +1,6 @@
 """Subprocess worker for hermetic Claude Gate 1 ``index --file`` smoke."""
 
-# pylint: disable=wrong-import-position,broad-exception-caught
+# pylint: disable=wrong-import-position,broad-exception-caught,duplicate-code
 
 from __future__ import annotations
 
