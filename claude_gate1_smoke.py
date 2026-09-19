@@ -75,12 +75,12 @@ _MFD_CLOEXEC = 0x0001
 _MFD_ALLOW_SEALING = 0x0002
 _F_ADD_SEALS = 1033
 _F_GET_SEALS = 1034
-_F_SEAL_SHRINK = 0x0001
-_F_SEAL_GROW = 0x0002
-_F_SEAL_WRITE = 0x0008
-_F_SEAL_SEAL = 0x0010
+_F_SEAL_SEAL = 0x01
+_F_SEAL_SHRINK = 0x02
+_F_SEAL_GROW = 0x04
+_F_SEAL_WRITE = 0x08
 _REQUIRED_SEAL_FLAGS = (
-    _F_SEAL_SHRINK | _F_SEAL_GROW | _F_SEAL_WRITE | _F_SEAL_SEAL
+    _F_SEAL_SEAL | _F_SEAL_SHRINK | _F_SEAL_GROW | _F_SEAL_WRITE
 )
 _SEALED_WRITE_BLOCK_ERRNOS = frozenset({errno.EPERM, errno.EACCES})
 _MEMFD_PROBE_NAME = "convmem-gate1-memfd-probe"
@@ -585,6 +585,8 @@ def _write_fd(fd: int, raw: bytes) -> None:
 
 def _apply_required_seals(fd: int) -> None:
     add_seals = getattr(fcntl, "F_ADD_SEALS", _F_ADD_SEALS)
+    # Apply every required seal in one call; F_SEAL_SEAL must not be added first alone
+    # because it blocks further seals from being added to the inode.
     fcntl.fcntl(fd, add_seals, _REQUIRED_SEAL_FLAGS)
 
 
@@ -595,10 +597,11 @@ def _read_applied_seals(fd: int) -> int:
 
 def _verify_required_seals(fd: int) -> None:
     applied = _read_applied_seals(fd)
-    if (applied & _REQUIRED_SEAL_FLAGS) != _REQUIRED_SEAL_FLAGS:
+    if applied != _REQUIRED_SEAL_FLAGS:
         raise OSError(
             errno.EINVAL,
-            "memfd missing required seal flags",
+            f"memfd seal mask mismatch: got 0x{applied:02x}, "
+            f"expected 0x{_REQUIRED_SEAL_FLAGS:02x}",
         )
 
 
@@ -630,6 +633,25 @@ def verify_sealed_writes_blocked(sealed: SealedConfigBinding) -> None:
     raise IsolationViolation("sealed memfd accepted write via proc fd path")
 
 
+def _attempt_ftruncate_blocked(fd: int, size: int, operation: str) -> None:
+    try:
+        os.ftruncate(fd, size)
+    except OSError as exc:
+        if exc.errno in _SEALED_WRITE_BLOCK_ERRNOS:
+            return
+        raise IsolationViolation(
+            f"unexpected errno on ftruncate {operation} sealed memfd: {exc}"
+        ) from exc
+    raise IsolationViolation(f"sealed memfd accepted ftruncate {operation}")
+
+
+def verify_sealed_ftruncate_blocked(fd: int, current_size: int) -> None:
+    """Prove ftruncate cannot grow or shrink the sealed memfd."""
+    _attempt_ftruncate_blocked(fd, current_size + 1, "grow")
+    if current_size > 0:
+        _attempt_ftruncate_blocked(fd, current_size - 1, "shrink")
+
+
 def sealed_storage_available() -> bool:
     """Return whether this Linux runtime can create and verify a sealed memfd."""
     if not sys.platform.startswith("linux"):
@@ -639,6 +661,7 @@ def sealed_storage_available() -> bool:
         fd = _libc_memfd_create(_MEMFD_PROBE_NAME)
         _apply_required_seals(fd)
         _verify_required_seals(fd)
+        verify_sealed_ftruncate_blocked(fd, 0)
         verify_sealed_writes_blocked(
             SealedConfigBinding(
                 digest="probe",
@@ -666,29 +689,35 @@ def create_verified_sealed_binding(raw: bytes) -> SealedConfigBinding:
             "cannot seal validated configuration bytes: memfd unavailable"
         )
     fd = -1
+    ownership_transferred = False
     try:
         fd = _libc_memfd_create(_MEMFD_CONFIG_NAME)
         _write_fd(fd, raw)
         os.lseek(fd, 0, os.SEEK_SET)
+        size = len(raw)
         _apply_required_seals(fd)
         _verify_required_seals(fd)
+        verify_sealed_ftruncate_blocked(fd, size)
+        descriptor_path = f"/proc/self/fd/{fd}"
         sealed = SealedConfigBinding(
             digest=digest,
             raw=raw,
             fd=fd,
-            descriptor_path=f"/proc/self/fd/{fd}",
+            descriptor_path=descriptor_path,
         )
         verify_sealed_writes_blocked(sealed)
+        ownership_transferred = True
         return sealed
     except OSError as exc:
-        if fd >= 0:
+        raise IsolationViolation(
+            f"cannot seal validated configuration bytes: {exc}"
+        ) from exc
+    finally:
+        if fd >= 0 and not ownership_transferred:
             try:
                 os.close(fd)
             except OSError:
                 pass
-        raise IsolationViolation(
-            f"cannot seal validated configuration bytes: {exc}"
-        ) from exc
 
 
 def _validated_preflight_bytes(

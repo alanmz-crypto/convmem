@@ -18,6 +18,12 @@ import pytest
 from claude_gate1_smoke import (
     WORKER,
     HermeticEvidence,
+    _F_SEAL_GROW,
+    _F_SEAL_SEAL,
+    _F_SEAL_SHRINK,
+    _F_SEAL_WRITE,
+    _REQUIRED_SEAL_FLAGS,
+    _read_applied_seals,
     bind_validated_config_bytes,
     close_sealed_config,
     create_verified_sealed_binding,
@@ -32,6 +38,7 @@ from claude_gate1_smoke import (
     sealed_fd_open,
     sealed_storage_available,
     validate_output_containment,
+    verify_sealed_ftruncate_blocked,
     verify_sealed_writes_blocked,
     write_synthetic_claude_transcript,
 )
@@ -238,6 +245,118 @@ def test_sealed_proc_fd_write_blocked(tmp_path: Path, monkeypatch: pytest.Monkey
             handle.write(b"tamper")
     assert excinfo.value.errno in {errno.EPERM, errno.EACCES}
     close_sealed_config(sealed)
+
+
+def test_linux_memfd_seal_uapi_constants_are_canonical() -> None:
+    canonical_seal = 0x01
+    canonical_shrink = 0x02
+    canonical_grow = 0x04
+    canonical_write = 0x08
+    canonical_mask = 0x0f
+    assert canonical_mask == (
+        canonical_seal | canonical_shrink | canonical_grow | canonical_write
+    )
+    assert _F_SEAL_SEAL == canonical_seal
+    assert _F_SEAL_SHRINK == canonical_shrink
+    assert _F_SEAL_GROW == canonical_grow
+    assert _F_SEAL_WRITE == canonical_write
+    assert _REQUIRED_SEAL_FLAGS == canonical_mask
+
+
+def test_required_seals_applied_and_read_back(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if not sys.platform.startswith("linux"):
+        pytest.skip("verified memfd sealing requires Linux")
+    _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    sealed = bind_validated_config_bytes(preflight, boundary)
+    applied = _read_applied_seals(sealed.fd)
+    assert applied == 0x0f
+    assert applied & _F_SEAL_SEAL == _F_SEAL_SEAL
+    assert applied & _F_SEAL_SHRINK == _F_SEAL_SHRINK
+    assert applied & _F_SEAL_GROW == _F_SEAL_GROW
+    assert applied & _F_SEAL_WRITE == _F_SEAL_WRITE
+    close_sealed_config(sealed)
+
+
+def test_sealed_ftruncate_grow_blocked(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if not sys.platform.startswith("linux"):
+        pytest.skip("verified memfd sealing requires Linux")
+    _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    sealed = bind_validated_config_bytes(preflight, boundary)
+    current_size = len(preflight.config_bytes)
+    with pytest.raises(Exception) as excinfo:
+        os.ftruncate(sealed.fd, current_size + 1)
+    assert excinfo.value.errno in {errno.EPERM, errno.EACCES}
+    close_sealed_config(sealed)
+
+
+def test_sealed_ftruncate_shrink_blocked(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if not sys.platform.startswith("linux"):
+        pytest.skip("verified memfd sealing requires Linux")
+    _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    sealed = bind_validated_config_bytes(preflight, boundary)
+    current_size = len(preflight.config_bytes)
+    assert current_size > 0
+    with pytest.raises(Exception) as excinfo:
+        os.ftruncate(sealed.fd, current_size - 1)
+    assert excinfo.value.errno in {errno.EPERM, errno.EACCES}
+    close_sealed_config(sealed)
+
+
+def test_verify_writes_blocked_failure_closes_descriptor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if not sys.platform.startswith("linux"):
+        pytest.skip("verified memfd sealing requires Linux")
+    _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    captured_fd: list[int] = []
+
+    def _fail_verify(sealed: object) -> None:
+        captured_fd.append(sealed.fd)  # type: ignore[attr-defined]
+        raise IsolationViolation("forced verify failure")
+
+    monkeypatch.setattr(
+        "claude_gate1_smoke.verify_sealed_writes_blocked",
+        _fail_verify,
+    )
+    with pytest.raises(IsolationViolation, match="forced verify failure"):
+        create_verified_sealed_binding(preflight.config_bytes)
+    assert captured_fd
+    with pytest.raises(OSError):
+        os.fstat(captured_fd[0])
+
+
+def test_verify_ftruncate_failure_closes_descriptor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if not sys.platform.startswith("linux"):
+        pytest.skip("verified memfd sealing requires Linux")
+    _env, boundary, preflight = _preflight_for_env(tmp_path, monkeypatch)
+    captured_fd: list[int] = []
+
+    def _fail_ftruncate(fd: int, current_size: int) -> None:
+        captured_fd.append(fd)
+        raise IsolationViolation("forced ftruncate verify failure")
+
+    monkeypatch.setattr(
+        "claude_gate1_smoke.verify_sealed_ftruncate_blocked",
+        _fail_ftruncate,
+    )
+    with pytest.raises(IsolationViolation, match="forced ftruncate verify failure"):
+        create_verified_sealed_binding(preflight.config_bytes)
+    assert captured_fd
+    with pytest.raises(OSError):
+        os.fstat(captured_fd[0])
 
 
 def test_unavailable_libc_memfd_refuses(
