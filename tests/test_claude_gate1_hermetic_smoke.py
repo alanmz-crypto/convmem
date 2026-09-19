@@ -7,6 +7,7 @@ from __future__ import annotations
 import errno
 import json
 import os
+import socket
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -47,6 +48,26 @@ from incremental_jsonl_isolation import (
     install_network_denial,
     sanitized_worker_env,
 )
+
+
+@pytest.fixture(autouse=True)
+def _restore_network_bindings_after_test():
+    """Keep worker-only network denial from leaking into later test modules."""
+    originals = (
+        socket.create_connection,
+        socket.getaddrinfo,
+        socket.socket.connect,
+        socket.socket.connect_ex,
+    )
+    try:
+        yield
+    finally:
+        (
+            socket.create_connection,
+            socket.getaddrinfo,
+            socket.socket.connect,
+            socket.socket.connect_ex,
+        ) = originals
 
 
 def _worker(
