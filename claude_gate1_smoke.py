@@ -7,6 +7,8 @@ reuses the reviewed jsonl production-integration isolation boundary.
 
 from __future__ import annotations
 
+import ctypes
+import errno
 import fcntl
 import hashlib
 import json
@@ -14,7 +16,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 import tomllib
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
@@ -69,6 +70,22 @@ _DEFAULT_WRITER_ATTEST_DIR = "~/.local/share/convmem/writer_attestations"
 _DEFAULT_WRITER_CENSUS_DIR = "~/.local/share/convmem/writer-census"
 _DEFAULT_BRIEF_PATH = "~/.local/share/convmem/brief.md"
 
+# Linux memfd / fcntl seal UAPI constants (stable when Python omits exports).
+_MFD_CLOEXEC = 0x0001
+_MFD_ALLOW_SEALING = 0x0002
+_F_ADD_SEALS = 1033
+_F_GET_SEALS = 1034
+_F_SEAL_SHRINK = 0x0001
+_F_SEAL_GROW = 0x0002
+_F_SEAL_WRITE = 0x0008
+_F_SEAL_SEAL = 0x0010
+_REQUIRED_SEAL_FLAGS = (
+    _F_SEAL_SHRINK | _F_SEAL_GROW | _F_SEAL_WRITE | _F_SEAL_SEAL
+)
+_SEALED_WRITE_BLOCK_ERRNOS = frozenset({errno.EPERM, errno.EACCES})
+_MEMFD_PROBE_NAME = "convmem-gate1-memfd-probe"
+_MEMFD_CONFIG_NAME = "convmem-gate1-sealed-config"
+
 
 @dataclass(frozen=True)
 class ConfigIdentity:
@@ -94,13 +111,12 @@ class OutputContainmentPreflight:
 
 @dataclass(frozen=True)
 class SealedConfigBinding:
-    """Validated config bytes bound to a sealed, reopen-proof descriptor."""
+    """Validated config bytes bound to a kernel-sealed memfd descriptor."""
 
     digest: str
     raw: bytes
     fd: int
     descriptor_path: str
-    backend: str = "memfd"
 
     def load(self) -> dict[str, Any]:
         """Read the sealed descriptor; never reopen the original pathname."""
@@ -541,19 +557,23 @@ def _validate_index_output_containment(
         boundary.resolve_mutable(path, label=label)
 
 
-def sealed_storage_available() -> bool:
-    """Return whether this runtime can construct sealed immutable config storage."""
+def _libc_memfd_create(name: str) -> int:
+    """Create a sealable memfd via ``os`` or libc when Python omits the binding."""
+    flags = _MFD_CLOEXEC | _MFD_ALLOW_SEALING
     if hasattr(os, "memfd_create"):
-        return True
-    if getattr(os, "O_TMPFILE", None) is not None:
-        return True
-    try:
-        fd, path = tempfile.mkstemp(prefix="convmem-gate1-probe-")
-        os.close(fd)
-        os.unlink(path)
-    except OSError:
-        return False
-    return True
+        mfd_cloexec = getattr(os, "MFD_CLOEXEC", _MFD_CLOEXEC)
+        mfd_allow_sealing = getattr(os, "MFD_ALLOW_SEALING", _MFD_ALLOW_SEALING)
+        return os.memfd_create(name, mfd_cloexec | mfd_allow_sealing)
+    if not sys.platform.startswith("linux"):
+        raise OSError(errno.ENOSYS, "memfd_create requires Linux")
+    libc = ctypes.CDLL("libc.so.6", use_errno=True)
+    libc.memfd_create.argtypes = [ctypes.c_char_p, ctypes.c_uint]
+    libc.memfd_create.restype = ctypes.c_int
+    fd = libc.memfd_create(name.encode(), flags)
+    if fd < 0:
+        err = ctypes.get_errno()
+        raise OSError(err, os.strerror(err), "memfd_create")
+    return fd
 
 
 def _write_fd(fd: int, raw: bytes) -> None:
@@ -563,107 +583,118 @@ def _write_fd(fd: int, raw: bytes) -> None:
         written += os.write(fd, view[written:])
 
 
-def _try_apply_fcntl_seals(fd: int) -> bool:
-    add_seals = getattr(fcntl, "F_ADD_SEALS", None)
-    if add_seals is None:
-        return False
-    seal_flags = 0
-    for name in ("F_SEAL_SHRINK", "F_SEAL_GROW", "F_SEAL_WRITE", "F_SEAL_SEAL"):
-        value = getattr(fcntl, name, None)
-        if value is None:
-            return False
-        seal_flags |= value
+def _apply_required_seals(fd: int) -> None:
+    add_seals = getattr(fcntl, "F_ADD_SEALS", _F_ADD_SEALS)
+    fcntl.fcntl(fd, add_seals, _REQUIRED_SEAL_FLAGS)
+
+
+def _read_applied_seals(fd: int) -> int:
+    get_seals = getattr(fcntl, "F_GET_SEALS", _F_GET_SEALS)
+    return int(fcntl.fcntl(fd, get_seals, 0))
+
+
+def _verify_required_seals(fd: int) -> None:
+    applied = _read_applied_seals(fd)
+    if (applied & _REQUIRED_SEAL_FLAGS) != _REQUIRED_SEAL_FLAGS:
+        raise OSError(
+            errno.EINVAL,
+            "memfd missing required seal flags",
+        )
+
+
+def _attempt_write_blocked(fd: int, label: str) -> None:
     try:
-        fcntl.fcntl(fd, add_seals, seal_flags)
-    except OSError:
-        return False
-    return True
+        os.write(fd, b"tamper")
+    except OSError as exc:
+        if exc.errno in _SEALED_WRITE_BLOCK_ERRNOS:
+            return
+        raise IsolationViolation(
+            f"unexpected errno writing sealed memfd via {label}: {exc}"
+        ) from exc
+    raise IsolationViolation(f"sealed memfd accepted write via {label}")
 
 
-def _seal_via_memfd(digest: str, raw: bytes) -> SealedConfigBinding:
-    fd = os.memfd_create(
-        "convmem-gate1-sealed-config",
-        os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING,
-    )
+def verify_sealed_writes_blocked(sealed: SealedConfigBinding) -> None:
+    """Prove writes through the retained fd and ``/proc/self/fd`` path fail."""
+    _attempt_write_blocked(sealed.fd, "retained descriptor")
+    proc_path = sealed.descriptor_path
     try:
-        _write_fd(fd, raw)
-        os.lseek(fd, 0, os.SEEK_SET)
-        if not _try_apply_fcntl_seals(fd):
-            raise OSError("kernel refused memfd seal flags")
-    except OSError:
-        os.close(fd)
-        raise
-    return SealedConfigBinding(
-        digest=digest,
-        raw=raw,
-        fd=fd,
-        descriptor_path=f"/proc/self/fd/{fd}",
-        backend="memfd",
-    )
+        with open(proc_path, "r+b") as handle:
+            handle.write(b"tamper")
+    except OSError as exc:
+        if exc.errno in _SEALED_WRITE_BLOCK_ERRNOS:
+            return
+        raise IsolationViolation(
+            f"unexpected errno writing sealed memfd via proc path: {exc}"
+        ) from exc
+    raise IsolationViolation("sealed memfd accepted write via proc fd path")
 
 
-def _seal_via_anonymous_fd(digest: str, raw: bytes) -> SealedConfigBinding:
+def sealed_storage_available() -> bool:
+    """Return whether this Linux runtime can create and verify a sealed memfd."""
+    if not sys.platform.startswith("linux"):
+        return False
     fd = -1
-    tmp_path: str | None = None
     try:
-        o_tmpfile = getattr(os, "O_TMPFILE", None)
-        if o_tmpfile is not None:
+        fd = _libc_memfd_create(_MEMFD_PROBE_NAME)
+        _apply_required_seals(fd)
+        _verify_required_seals(fd)
+        verify_sealed_writes_blocked(
+            SealedConfigBinding(
+                digest="probe",
+                raw=b"",
+                fd=fd,
+                descriptor_path=f"/proc/self/fd/{fd}",
+            )
+        )
+        return True
+    except OSError:
+        return False
+    finally:
+        if fd >= 0:
             try:
-                fd = os.open(tempfile.gettempdir(), os.O_RDWR | o_tmpfile, 0o600)
+                os.close(fd)
             except OSError:
-                fd = -1
-        if fd < 0:
-            fd, tmp_path = tempfile.mkstemp(prefix="convmem-gate1-sealed-")
+                pass
+
+
+def create_verified_sealed_binding(raw: bytes) -> SealedConfigBinding:
+    """Create a kernel-sealed memfd and verify immutability before use."""
+    digest = hashlib.sha256(raw).hexdigest()
+    if not sealed_storage_available():
+        raise IsolationViolation(
+            "cannot seal validated configuration bytes: memfd unavailable"
+        )
+    fd = -1
+    try:
+        fd = _libc_memfd_create(_MEMFD_CONFIG_NAME)
         _write_fd(fd, raw)
         os.lseek(fd, 0, os.SEEK_SET)
-        if tmp_path is not None:
-            os.unlink(tmp_path)
-            tmp_path = None
-        _try_apply_fcntl_seals(fd)
-        return SealedConfigBinding(
+        _apply_required_seals(fd)
+        _verify_required_seals(fd)
+        sealed = SealedConfigBinding(
             digest=digest,
             raw=raw,
             fd=fd,
             descriptor_path=f"/proc/self/fd/{fd}",
-            backend="anonymous_fd",
         )
-    except OSError:
+        verify_sealed_writes_blocked(sealed)
+        return sealed
+    except OSError as exc:
         if fd >= 0:
-            os.close(fd)
-        if tmp_path is not None:
             try:
-                os.unlink(tmp_path)
+                os.close(fd)
             except OSError:
                 pass
-        raise
-
-
-def _seal_config_bytes(raw: bytes) -> SealedConfigBinding:
-    digest = hashlib.sha256(raw).hexdigest()
-    if not sealed_storage_available():
-        raise IsolationViolation(
-            "cannot seal validated configuration bytes: no supported storage backend"
-        )
-    if hasattr(os, "memfd_create"):
-        try:
-            return _seal_via_memfd(digest, raw)
-        except OSError as exc:
-            raise IsolationViolation(
-                f"cannot seal validated configuration bytes: {exc}"
-            ) from exc
-    try:
-        return _seal_via_anonymous_fd(digest, raw)
-    except OSError as exc:
         raise IsolationViolation(
             f"cannot seal validated configuration bytes: {exc}"
         ) from exc
 
 
-def bind_validated_config_bytes(
+def _validated_preflight_bytes(
     preflight: OutputContainmentPreflight,
     boundary: IsolationBoundary,
-) -> SealedConfigBinding:
-    """Seal preflight bytes so later pathname mutation cannot change outputs."""
+) -> bytes:
     raw = preflight.config_bytes
     digest = hashlib.sha256(raw).hexdigest()
     if digest != preflight.config_identity.digest:
@@ -671,7 +702,17 @@ def bind_validated_config_bytes(
     cfg = _parse_scratch_config(raw)
     _assert_scratch_config_layout(cfg, boundary)
     _validate_index_output_containment(cfg, boundary)
-    return _seal_config_bytes(raw)
+    return raw
+
+
+def bind_validated_config_bytes(
+    preflight: OutputContainmentPreflight,
+    boundary: IsolationBoundary,
+) -> SealedConfigBinding:
+    """Validate preflight bytes and return a verified sealed memfd binding."""
+    return create_verified_sealed_binding(
+        _validated_preflight_bytes(preflight, boundary)
+    )
 
 
 def sealed_fd_open(sealed: SealedConfigBinding) -> bool:
@@ -710,24 +751,29 @@ def _patch_config_loader(sealed: SealedConfigBinding) -> _ConfigLoaderRestoreSta
     def load_sealed_config(_path: Path | str = descriptor) -> dict[str, Any]:
         return sealed.load()
 
-    for module in list(sys.modules.values()):
-        if module is None:
-            continue
-        try:
-            current = getattr(module, "load_config", None)
-        except Exception:  # pylint: disable=broad-exception-caught
-            continue
-        if current is original:
+    applied: list[tuple[ModuleType, str, Callable[..., Any]]] = []
+    try:
+        for module in list(sys.modules.values()):
+            if module is None:
+                continue
             try:
+                current = getattr(module, "load_config", None)
+            except Exception:  # pylint: disable=broad-exception-caught
+                continue
+            if current is original:
                 setattr(module, "load_config", load_sealed_config)
-                restore.module_bindings.append(
-                    (module, "load_config", current),
-                )
+                applied.append((module, "load_config", current))
+                restore.module_bindings.append((module, "load_config", current))
+        config_mod.load_config = load_sealed_config
+        config_mod.CONFIG_PATH = descriptor
+        ingest_mod.load_config = load_sealed_config
+    except Exception:
+        for module, attribute, prior in reversed(applied):
+            try:
+                setattr(module, attribute, prior)
             except (AttributeError, TypeError):
                 continue
-    config_mod.load_config = load_sealed_config
-    config_mod.CONFIG_PATH = descriptor
-    ingest_mod.load_config = load_sealed_config
+        raise
     return restore
 
 
@@ -747,16 +793,30 @@ def _restore_config_loader(restore: _ConfigLoaderRestoreState) -> None:
         ingest_mod.load_config = restore.ingest_load_config
 
 
-class sealed_config_loader(AbstractContextManager[SealedConfigBinding]):
-    """Scope sealed loader replacement and always close the sealed descriptor."""
+class sealed_config_session(AbstractContextManager[SealedConfigBinding]):
+    """Own memfd creation, loader patching, and descriptor cleanup on every path."""
 
-    def __init__(self, sealed: SealedConfigBinding) -> None:
-        self._sealed = sealed
+    def __init__(
+        self,
+        preflight: OutputContainmentPreflight,
+        boundary: IsolationBoundary,
+    ) -> None:
+        self._preflight = preflight
+        self._boundary = boundary
+        self._sealed: SealedConfigBinding | None = None
         self._restore: _ConfigLoaderRestoreState | None = None
 
     def __enter__(self) -> SealedConfigBinding:
-        self._restore = _patch_config_loader(self._sealed)
-        return self._sealed
+        raw = _validated_preflight_bytes(self._preflight, self._boundary)
+        sealed = create_verified_sealed_binding(raw)
+        self._sealed = sealed
+        try:
+            self._restore = _patch_config_loader(sealed)
+        except Exception:
+            close_sealed_config(sealed)
+            self._sealed = None
+            raise
+        return sealed
 
     def __exit__(
         self,
@@ -768,7 +828,9 @@ class sealed_config_loader(AbstractContextManager[SealedConfigBinding]):
             if self._restore is not None:
                 _restore_config_loader(self._restore)
         finally:
-            close_sealed_config(self._sealed)
+            if self._sealed is not None:
+                close_sealed_config(self._sealed)
+                self._sealed = None
         return False
 
 
@@ -812,16 +874,19 @@ def run_hermetic_index_cli(
         )
     boundary = IsolationBoundary.from_environment()
     install_network_denial()
-    sealed = bind_validated_config_bytes(preflight, boundary)
     home = Path(os.environ["HOME"])
     resolved = boundary.resolve_mutable(transcript, label="claude transcript")
     assert_transcript_under_claude_projects(resolved, home)
+    if not sealed_storage_available():
+        raise IsolationViolation(
+            "cannot seal validated configuration bytes: memfd unavailable"
+        )
     from typer.testing import CliRunner  # noqa: PLC0415
 
     from convmem import app  # noqa: PLC0415
 
     install_fake_providers()
-    with sealed_config_loader(sealed):
+    with sealed_config_session(preflight, boundary):
         maybe_apply_test_post_binding_tamper(preflight.config_path)
         runner = CliRunner()
         result = runner.invoke(app, ["index", "--file", str(resolved)])
