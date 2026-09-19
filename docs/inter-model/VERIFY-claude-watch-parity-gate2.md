@@ -1,9 +1,10 @@
 # VERIFY — Claude Watch Parity Gate 2
 
-**Arc:** Claude Watch Parity  
-**Implementation revision:** `a6d70eaa7cc4445a236078a381b339cccf935ae9` on `cursor/claude-watch-parity-gate2-b20a`  
-**Base:** `e6a0634c214cf07c89b551d13410bb276a93b38d` (`origin/main` after Gate 1 #311)  
-**Plan:** `a811f58` — `docs/inter-model/CODEX-2026-09-18-claude-watch-parity-gate2-execute.md`  
+**Arc:** Claude Watch Parity
+**Code revision:** `a6d70eaa7cc4445a236078a381b339cccf935ae9` (last implementation/test commit)
+**Review tip:** `cursor/claude-watch-parity-gate2-b20a` — Kiro reviews the exact pushed branch HEAD after this VERIFY correction
+**Base:** `e6a0634c214cf07c89b551d13410bb276a93b38d` (`origin/main` after Gate 1 #311)
+**Plan:** `a811f58` — `docs/inter-model/CODEX-2026-09-18-claude-watch-parity-gate2-execute.md`
 **Live-source canary:** `NOT_RUN` (Ryan grant required; hermetic harness only)
 
 ## Scope delivered
@@ -57,7 +58,7 @@ cd /tmp/convmem-gate2-worktrees/claude-watch-parity-gate2
   tests/test_claude_incremental_canary.py
 # rated 9.85/10 (informational warnings only)
 
-git diff --check
+git diff --check e6a0634c214cf07c89b551d13410bb276a93b38d..HEAD
 # exit 0
 
 git diff origin/main -- incremental_jsonl.py watch.py config/
