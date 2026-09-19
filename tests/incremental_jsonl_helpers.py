@@ -155,6 +155,31 @@ def codex_rollout_record(index: int, *, text: str | None = None) -> bytes:
     return (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
 
 
+def claude_record(index: int, *, content: str | None = None, role: str | None = None) -> bytes:
+    rtype = role or ("user" if index % 2 == 0 else "assistant")
+    text = content if content is not None else f"claude-message-{index:05d}"
+    row = {
+        "type": rtype,
+        "sessionId": "sess-claude-hermetic",
+        "uuid": f"rec-{index:05d}",
+        "cwd": "/tmp/hermetic",
+        "isSidechain": False,
+        "timestamp": f"2026-09-18T00:00:{index % 60:02d}Z",
+    }
+    if rtype in ("user", "assistant"):
+        row["message"] = {"role": rtype, "content": text}
+    return (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
+
+
+def write_claude_source(root: Path, count: int, *, name: str = "session-uuid-hermetic") -> Path:
+    path = _isolation_home(root) / ".claude" / "projects" / "hermetic-slug" / f"{name}.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [json.dumps({"type": "system", "sessionId": "sess-claude-hermetic"}) + "\n"]
+    lines.extend(claude_record(index).decode() for index in range(count))
+    path.write_text("".join(lines), encoding="utf-8")
+    return path
+
+
 def write_source(root: Path, count: int, *, name: str = "sess_prod") -> Path:
     source = root / "sources" / "hash" / name / "messages.jsonl"
     source.parent.mkdir(parents=True, exist_ok=True)
