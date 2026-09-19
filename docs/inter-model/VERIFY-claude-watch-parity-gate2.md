@@ -1,7 +1,7 @@
 # VERIFY — Claude Watch Parity Gate 2
 
 **Arc:** Claude Watch Parity  
-**Implementation revision:** `cursor/claude-watch-parity-gate2-b20a` (exact pushed tip)  
+**Implementation revision:** `a6d70eaa7cc4445a236078a381b339cccf935ae9` on `cursor/claude-watch-parity-gate2-b20a`  
 **Base:** `e6a0634c214cf07c89b551d13410bb276a93b38d` (`origin/main` after Gate 1 #311)  
 **Plan:** `a811f58` — `docs/inter-model/CODEX-2026-09-18-claude-watch-parity-gate2-execute.md`  
 **Live-source canary:** `NOT_RUN` (Ryan grant required; hermetic harness only)
