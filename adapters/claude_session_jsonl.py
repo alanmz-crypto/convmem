@@ -14,6 +14,7 @@ from adapters.jsonl_io import (
     iter_jsonl_dicts,
     session_parse_context,
 )
+from adapters.jsonl_prefix import CompletePrefixView, complete_prefix_view
 
 _MESSAGE_TYPES = frozenset({"user", "assistant"})
 _SIGNAL_TYPES = frozenset({"user", "assistant", "system"})
@@ -89,15 +90,32 @@ def read_session_meta(filepath: str) -> dict:
         "session_id": "",
         "workspace_directory": "",
     }
-    for record in iter_jsonl_dicts(filepath):
-        sid = record.get("sessionId") or record.get("session_id")
-        if isinstance(sid, str) and sid and not meta["session_id"]:
-            meta["session_id"] = sid
-        cwd = record.get("cwd")
-        if isinstance(cwd, str) and cwd and not meta["workspace_directory"]:
-            meta["workspace_directory"] = cwd
-        if meta["session_id"] and meta["workspace_directory"]:
-            break
+    try:
+        with open(filepath, "rb") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line:
+                    continue
+                try:
+                    text = line.decode("utf-8")
+                except UnicodeDecodeError:
+                    continue
+                try:
+                    record = json.loads(text)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(record, dict):
+                    continue
+                sid = record.get("sessionId") or record.get("session_id")
+                if isinstance(sid, str) and sid and not meta["session_id"]:
+                    meta["session_id"] = sid
+                cwd = record.get("cwd")
+                if isinstance(cwd, str) and cwd and not meta["workspace_directory"]:
+                    meta["workspace_directory"] = cwd
+                if meta["session_id"] and meta["workspace_directory"]:
+                    break
+    except OSError:
+        pass
     if not meta["session_id"]:
         meta["session_id"] = Path(filepath).stem
     return meta
@@ -120,7 +138,7 @@ def strip_injected_context(text: str) -> str | None:
 def text_from_message_content(raw: object) -> str | None:
     """Map Claude message.content (str or block list) to sanitized speech text.
 
-    Shared mapper for on-demand parse() and future Gate 2 parse_complete_prefix().
+    Shared mapper for on-demand parse() and parse_complete_prefix().
     """
     if isinstance(raw, str):
         text = strip_injected_context(raw)
@@ -144,41 +162,65 @@ def text_from_message_content(raw: object) -> str | None:
     return None
 
 
+def _accepted_message(
+    record: object,
+    *,
+    session_id: str,
+    workspace: str,
+) -> dict | None:
+    """Map one Claude JSONL record to a canonical message, or skip it."""
+    if not isinstance(record, dict):
+        return None
+    rtype = record.get("type")
+    if rtype not in _MESSAGE_TYPES:
+        return None
+    if record.get("isSidechain") is True:
+        return None
+
+    message = record.get("message")
+    if not isinstance(message, dict):
+        return None
+    content = text_from_message_content(message.get("content"))
+    if content is None:
+        return None
+
+    ts = record.get("timestamp")
+    timestamp = ts if isinstance(ts, str) else None
+    cwd = record.get("cwd")
+    workspace_dir = cwd if isinstance(cwd, str) and cwd else workspace
+    sid = record.get("sessionId") or record.get("session_id")
+    rec_session = sid if isinstance(sid, str) and sid else session_id
+
+    return {
+        "role": rtype,
+        "content": content,
+        "timestamp": timestamp,
+        "session_id": rec_session,
+        "workspace_directory": workspace_dir,
+        "source_type": "claude_session",
+    }
+
+
 def parse(filepath: str) -> list[dict]:
     """Parse a Claude Code session jsonl into canonical messages."""
     session_id, workspace = session_parse_context(filepath, read_session_meta)
 
     messages: list[dict] = []
     for record in iter_jsonl_dicts(filepath):
-        rtype = record.get("type")
-        if rtype not in _MESSAGE_TYPES:
-            continue
-        if record.get("isSidechain") is True:
-            continue
-
-        message = record.get("message")
-        if not isinstance(message, dict):
-            continue
-        content = text_from_message_content(message.get("content"))
-        if content is None:
-            continue
-
-        ts = record.get("timestamp")
-        timestamp = ts if isinstance(ts, str) else None
-        cwd = record.get("cwd")
-        workspace_dir = cwd if isinstance(cwd, str) and cwd else workspace
-        sid = record.get("sessionId") or record.get("session_id")
-        rec_session = sid if isinstance(sid, str) and sid else session_id
-
-        messages.append(
-            {
-                "role": rtype,
-                "content": content,
-                "timestamp": timestamp,
-                "session_id": rec_session,
-                "workspace_directory": workspace_dir,
-                "source_type": "claude_session",
-            }
-        )
+        message = _accepted_message(record, session_id=session_id, workspace=workspace)
+        if message is not None:
+            messages.append(message)
 
     return messages
+
+
+def parse_complete_prefix(filepath: str, *, raw: bytes | None = None) -> CompletePrefixView:
+    """Return messages, line outcomes, and prefix identity for Claude session JSONL."""
+    session_id, workspace = session_parse_context(filepath, read_session_meta)
+
+    def message_from_record(record: object) -> dict | None:
+        return _accepted_message(record, session_id=session_id, workspace=workspace)
+
+    return complete_prefix_view(
+        filepath, raw=raw, message_from_record=message_from_record
+    )

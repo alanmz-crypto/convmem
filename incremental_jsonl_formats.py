@@ -5,7 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from adapters import codex_history_jsonl, codex_rollout_jsonl, kiro_session_jsonl
+from adapters import (
+    claude_session_jsonl,
+    codex_history_jsonl,
+    codex_rollout_jsonl,
+    kiro_session_jsonl,
+)
 from adapters.jsonl_prefix import CompletePrefixView
 
 ParsePrefix = Callable[..., CompletePrefixView]
@@ -50,16 +55,29 @@ _CODEX_ROLLOUT = IncrementalFormatSpec(
     snapshot_basename="rollout.jsonl",
 )
 
+_CLAUDE = IncrementalFormatSpec(
+    format_id="jsonl_claude_session",
+    adapter_module="adapters.claude_session_jsonl",
+    adapter_contract_version="claude-complete-prefix-v1",
+    tool="claude",
+    parse_complete_prefix=claude_session_jsonl.parse_complete_prefix,
+    snapshot_basename="session.jsonl",
+)
+
 FORMAT_SPECS: dict[str, IncrementalFormatSpec] = {
     _KIRO.format_id: _KIRO,
     _CODEX_HISTORY.format_id: _CODEX_HISTORY,
     _CODEX_ROLLOUT.format_id: _CODEX_ROLLOUT,
+    _CLAUDE.format_id: _CLAUDE,
 }
 
-# S2 keeps production routing on Kiro only; S3 enables Codex under isolation.
+# S2 keeps production routing on Kiro only; S3 enables Codex/Claude under isolation.
 KIRO_ROUTE_FORMATS = frozenset({_KIRO.format_id})
 ISOLATED_CODEX_FORMATS = frozenset({_CODEX_HISTORY.format_id, _CODEX_ROLLOUT.format_id})
-ALL_ISOLATED_FORMATS = KIRO_ROUTE_FORMATS | ISOLATED_CODEX_FORMATS
+ISOLATED_CLAUDE_FORMATS = frozenset({_CLAUDE.format_id})
+ALL_ISOLATED_FORMATS = (
+    KIRO_ROUTE_FORMATS | ISOLATED_CODEX_FORMATS | ISOLATED_CLAUDE_FORMATS
+)
 
 
 def get_format_spec(format_id: str | None) -> IncrementalFormatSpec | None:
