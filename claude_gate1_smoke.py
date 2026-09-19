@@ -16,9 +16,11 @@ import subprocess
 import sys
 import tempfile
 import tomllib
-from dataclasses import dataclass
+from contextlib import AbstractContextManager
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from types import ModuleType
+from typing import Any, Callable
 
 from incremental_jsonl_isolation import (
     ISOLATION_ENV_ALLOWLIST,
@@ -98,6 +100,7 @@ class SealedConfigBinding:
     raw: bytes
     fd: int
     descriptor_path: str
+    backend: str = "memfd"
 
     def load(self) -> dict[str, Any]:
         """Read the sealed descriptor; never reopen the original pathname."""
@@ -113,6 +116,17 @@ class SealedConfigBinding:
         if hashlib.sha256(data).hexdigest() != self.digest:
             raise IsolationViolation("sealed configuration digest diverged")
         return _parse_scratch_config(data)
+
+
+@dataclass
+class _ConfigLoaderRestoreState:
+    """Captured process-global loader bindings replaced during indexing."""
+
+    module_bindings: list[tuple[ModuleType, str, Callable[..., Any]]] = field(
+        default_factory=list
+    )
+    config_path: Path | None = None
+    ingest_load_config: Callable[..., Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -527,39 +541,122 @@ def _validate_index_output_containment(
         boundary.resolve_mutable(path, label=label)
 
 
-def _seal_config_bytes(raw: bytes) -> SealedConfigBinding:
-    digest = hashlib.sha256(raw).hexdigest()
-    fd = -1
+def sealed_storage_available() -> bool:
+    """Return whether this runtime can construct sealed immutable config storage."""
+    if hasattr(os, "memfd_create"):
+        return True
+    if getattr(os, "O_TMPFILE", None) is not None:
+        return True
     try:
-        fd = os.memfd_create(
-            "convmem-gate1-sealed-config",
-            os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING,
-        )
-        written = 0
-        view = memoryview(raw)
-        while written < len(raw):
-            written += os.write(fd, view[written:])
+        fd, path = tempfile.mkstemp(prefix="convmem-gate1-probe-")
+        os.close(fd)
+        os.unlink(path)
+    except OSError:
+        return False
+    return True
+
+
+def _write_fd(fd: int, raw: bytes) -> None:
+    written = 0
+    view = memoryview(raw)
+    while written < len(raw):
+        written += os.write(fd, view[written:])
+
+
+def _try_apply_fcntl_seals(fd: int) -> bool:
+    add_seals = getattr(fcntl, "F_ADD_SEALS", None)
+    if add_seals is None:
+        return False
+    seal_flags = 0
+    for name in ("F_SEAL_SHRINK", "F_SEAL_GROW", "F_SEAL_WRITE", "F_SEAL_SEAL"):
+        value = getattr(fcntl, name, None)
+        if value is None:
+            return False
+        seal_flags |= value
+    try:
+        fcntl.fcntl(fd, add_seals, seal_flags)
+    except OSError:
+        return False
+    return True
+
+
+def _seal_via_memfd(digest: str, raw: bytes) -> SealedConfigBinding:
+    fd = os.memfd_create(
+        "convmem-gate1-sealed-config",
+        os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING,
+    )
+    try:
+        _write_fd(fd, raw)
         os.lseek(fd, 0, os.SEEK_SET)
-        fcntl.fcntl(
-            fd,
-            fcntl.F_ADD_SEALS,
-            fcntl.F_SEAL_SHRINK
-            | fcntl.F_SEAL_GROW
-            | fcntl.F_SEAL_WRITE
-            | fcntl.F_SEAL_SEAL,
-        )
-    except OSError as exc:
-        if fd >= 0:
-            os.close(fd)
-        raise IsolationViolation(
-            f"cannot seal validated configuration bytes: {exc}"
-        ) from exc
+        if not _try_apply_fcntl_seals(fd):
+            raise OSError("kernel refused memfd seal flags")
+    except OSError:
+        os.close(fd)
+        raise
     return SealedConfigBinding(
         digest=digest,
         raw=raw,
         fd=fd,
         descriptor_path=f"/proc/self/fd/{fd}",
+        backend="memfd",
     )
+
+
+def _seal_via_anonymous_fd(digest: str, raw: bytes) -> SealedConfigBinding:
+    fd = -1
+    tmp_path: str | None = None
+    try:
+        o_tmpfile = getattr(os, "O_TMPFILE", None)
+        if o_tmpfile is not None:
+            try:
+                fd = os.open(tempfile.gettempdir(), os.O_RDWR | o_tmpfile, 0o600)
+            except OSError:
+                fd = -1
+        if fd < 0:
+            fd, tmp_path = tempfile.mkstemp(prefix="convmem-gate1-sealed-")
+        _write_fd(fd, raw)
+        os.lseek(fd, 0, os.SEEK_SET)
+        if tmp_path is not None:
+            os.unlink(tmp_path)
+            tmp_path = None
+        _try_apply_fcntl_seals(fd)
+        return SealedConfigBinding(
+            digest=digest,
+            raw=raw,
+            fd=fd,
+            descriptor_path=f"/proc/self/fd/{fd}",
+            backend="anonymous_fd",
+        )
+    except OSError:
+        if fd >= 0:
+            os.close(fd)
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+        raise
+
+
+def _seal_config_bytes(raw: bytes) -> SealedConfigBinding:
+    digest = hashlib.sha256(raw).hexdigest()
+    if not sealed_storage_available():
+        raise IsolationViolation(
+            "cannot seal validated configuration bytes: no supported storage backend"
+        )
+    if hasattr(os, "memfd_create"):
+        try:
+            return _seal_via_memfd(digest, raw)
+        except OSError as exc:
+            raise IsolationViolation(
+                f"cannot seal validated configuration bytes: {exc}"
+            ) from exc
+    try:
+        return _seal_via_anonymous_fd(digest, raw)
+    except OSError as exc:
+        raise IsolationViolation(
+            f"cannot seal validated configuration bytes: {exc}"
+        ) from exc
 
 
 def bind_validated_config_bytes(
@@ -577,13 +674,38 @@ def bind_validated_config_bytes(
     return _seal_config_bytes(raw)
 
 
-def install_sealed_config_loader(sealed: SealedConfigBinding) -> None:
-    """Make every imported ``load_config`` consume the sealed descriptor."""
+def sealed_fd_open(sealed: SealedConfigBinding) -> bool:
+    """Return whether the sealed descriptor is still open in this process."""
+    if sealed.fd < 0:
+        return False
+    try:
+        os.fstat(sealed.fd)
+    except OSError:
+        return False
+    return True
+
+
+def close_sealed_config(sealed: SealedConfigBinding) -> None:
+    """Close the sealed descriptor if it is still open."""
+    if sealed.fd < 0:
+        return
+    try:
+        os.close(sealed.fd)
+    except OSError:
+        pass
+
+
+def _patch_config_loader(sealed: SealedConfigBinding) -> _ConfigLoaderRestoreState:
+    """Replace every imported ``load_config`` with the sealed descriptor loader."""
     import config as config_mod  # noqa: PLC0415
     import ingest as ingest_mod  # noqa: PLC0415
 
     original = config_mod.load_config
     descriptor = Path(sealed.descriptor_path)
+    restore = _ConfigLoaderRestoreState(
+        config_path=config_mod.CONFIG_PATH,
+        ingest_load_config=ingest_mod.load_config,
+    )
 
     def load_sealed_config(_path: Path | str = descriptor) -> dict[str, Any]:
         return sealed.load()
@@ -598,11 +720,56 @@ def install_sealed_config_loader(sealed: SealedConfigBinding) -> None:
         if current is original:
             try:
                 setattr(module, "load_config", load_sealed_config)
+                restore.module_bindings.append(
+                    (module, "load_config", current),
+                )
             except (AttributeError, TypeError):
                 continue
     config_mod.load_config = load_sealed_config
     config_mod.CONFIG_PATH = descriptor
     ingest_mod.load_config = load_sealed_config
+    return restore
+
+
+def _restore_config_loader(restore: _ConfigLoaderRestoreState) -> None:
+    """Restore every process-global loader binding captured during patching."""
+    import config as config_mod  # noqa: PLC0415
+    import ingest as ingest_mod  # noqa: PLC0415
+
+    for module, attribute, original in restore.module_bindings:
+        try:
+            setattr(module, attribute, original)
+        except (AttributeError, TypeError):
+            continue
+    if restore.config_path is not None:
+        config_mod.CONFIG_PATH = restore.config_path
+    if restore.ingest_load_config is not None:
+        ingest_mod.load_config = restore.ingest_load_config
+
+
+class sealed_config_loader(AbstractContextManager[SealedConfigBinding]):
+    """Scope sealed loader replacement and always close the sealed descriptor."""
+
+    def __init__(self, sealed: SealedConfigBinding) -> None:
+        self._sealed = sealed
+        self._restore: _ConfigLoaderRestoreState | None = None
+
+    def __enter__(self) -> SealedConfigBinding:
+        self._restore = _patch_config_loader(self._sealed)
+        return self._sealed
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: object | None,
+    ) -> bool:
+        try:
+            if self._restore is not None:
+                _restore_config_loader(self._restore)
+        finally:
+            close_sealed_config(self._sealed)
+        return False
 
 
 def maybe_apply_test_post_binding_tamper(config_path: Path) -> None:
@@ -653,11 +820,11 @@ def run_hermetic_index_cli(
 
     from convmem import app  # noqa: PLC0415
 
-    install_sealed_config_loader(sealed)
     install_fake_providers()
-    maybe_apply_test_post_binding_tamper(preflight.config_path)
-    runner = CliRunner()
-    result = runner.invoke(app, ["index", "--file", str(resolved)])
+    with sealed_config_loader(sealed):
+        maybe_apply_test_post_binding_tamper(preflight.config_path)
+        runner = CliRunner()
+        result = runner.invoke(app, ["index", "--file", str(resolved)])
     stats = _parse_index_stats(result.stdout)
     return result.exit_code, stats, result.stdout
 

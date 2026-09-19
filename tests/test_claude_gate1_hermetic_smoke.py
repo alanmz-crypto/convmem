@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -12,15 +14,27 @@ import pytest
 from claude_gate1_smoke import (
     WORKER,
     HermeticEvidence,
+    bind_validated_config_bytes,
+    close_sealed_config,
     prepare_hermetic_fixture,
     production_fingerprints,
     replace_config_scalar,
+    run_hermetic_index_cli,
     run_hermetic_smoke,
     run_worker,
     scrub_credentials,
+    sealed_config_loader,
+    sealed_fd_open,
+    sealed_storage_available,
+    validate_output_containment,
     write_synthetic_claude_transcript,
 )
-from incremental_jsonl_isolation import create_fresh_root, sanitized_worker_env
+from incremental_jsonl_isolation import (
+    IsolationBoundary,
+    create_fresh_root,
+    install_network_denial,
+    sanitized_worker_env,
+)
 
 
 def _worker(
@@ -48,6 +62,15 @@ def _outside_sentinel(tmp_path: Path, name: str) -> Path:
 
 def _sentinel_unchanged(sentinel: Path) -> None:
     assert (sentinel / "marker").read_text(encoding="utf-8") == "untouched"
+
+
+def _apply_worker_env(monkeypatch: pytest.MonkeyPatch, env: dict[str, str]) -> None:
+    """Mirror the worker subprocess: only the scrubbed isolation env is visible."""
+    for key in list(os.environ):
+        if key not in env:
+            monkeypatch.delenv(key, raising=False)
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
 
 
 def test_hermetic_cli_index_passes(tmp_path: Path) -> None:
@@ -145,11 +168,121 @@ def test_launcher_binds_sealed_bytes_before_invoke() -> None:
     from claude_gate1_smoke import REPO_ROOT
 
     text = (REPO_ROOT / "claude_gate1_smoke.py").read_text(encoding="utf-8")
-    bind_at = text.index("install_sealed_config_loader(sealed)")
+    bind_at = text.index("with sealed_config_loader(sealed):")
     hook_at = text.index("maybe_apply_test_post_binding_tamper(preflight.config_path)")
     invoke_at = text.index("runner.invoke")
     assert bind_at < hook_at < invoke_at
     assert "assert_config_identity_unchanged" not in text
+
+
+def test_pinned_runtime_can_construct_sealed_storage() -> None:
+    assert sys.version_info[:2] >= (3, 13)
+    assert sealed_storage_available() is True
+
+
+def test_fallback_seals_without_memfd(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _root, _token, env, _transcript = prepare_hermetic_fixture(tmp_path)
+    _apply_worker_env(monkeypatch, env)
+    monkeypatch.delattr(os, "memfd_create", raising=False)
+    boundary = IsolationBoundary.from_environment()
+    install_network_denial()
+    preflight = validate_output_containment(boundary)
+    sealed = bind_validated_config_bytes(preflight, boundary)
+    assert sealed.backend == "anonymous_fd"
+    assert sealed.load()["index"]["chroma_dir"]
+    close_sealed_config(sealed)
+
+
+def test_sealed_descriptor_closed_after_success(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _root, _token, env, _transcript = prepare_hermetic_fixture(tmp_path)
+    _apply_worker_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    install_network_denial()
+    preflight = validate_output_containment(boundary)
+    sealed = bind_validated_config_bytes(preflight, boundary)
+    with sealed_config_loader(sealed):
+        assert sealed_fd_open(sealed) is True
+    assert sealed_fd_open(sealed) is False
+
+
+def test_sealed_descriptor_closed_after_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _root, _token, env, _transcript = prepare_hermetic_fixture(tmp_path)
+    _apply_worker_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    install_network_denial()
+    preflight = validate_output_containment(boundary)
+    sealed = bind_validated_config_bytes(preflight, boundary)
+    with pytest.raises(RuntimeError, match="forced failure"):
+        with sealed_config_loader(sealed):
+            raise RuntimeError("forced failure")
+    assert sealed_fd_open(sealed) is False
+
+
+def test_loader_bindings_restored_after_success(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import config
+
+    _root, _token, env, _transcript = prepare_hermetic_fixture(tmp_path)
+    _apply_worker_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    install_network_denial()
+    preflight = validate_output_containment(boundary)
+    sealed = bind_validated_config_bytes(preflight, boundary)
+    original = config.load_config
+    original_path = config.CONFIG_PATH
+    with sealed_config_loader(sealed):
+        assert config.load_config is not original
+        assert config.CONFIG_PATH != original_path
+    assert config.load_config is original
+    assert config.CONFIG_PATH == original_path
+
+
+def test_loader_bindings_restored_after_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import config
+
+    _root, _token, env, _transcript = prepare_hermetic_fixture(tmp_path)
+    _apply_worker_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    install_network_denial()
+    preflight = validate_output_containment(boundary)
+    sealed = bind_validated_config_bytes(preflight, boundary)
+    original = config.load_config
+    with pytest.raises(RuntimeError, match="forced failure"):
+        with sealed_config_loader(sealed):
+            raise RuntimeError("forced failure")
+    assert config.load_config is original
+
+
+def test_unsupported_sealed_storage_refuses_before_index(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _root, _token, env, transcript = prepare_hermetic_fixture(tmp_path)
+    _apply_worker_env(monkeypatch, env)
+    monkeypatch.setattr(
+        "claude_gate1_smoke.sealed_storage_available",
+        lambda: False,
+    )
+    boundary = IsolationBoundary.from_environment()
+    install_network_denial()
+    preflight = validate_output_containment(boundary)
+    with pytest.raises(Exception) as excinfo:
+        run_hermetic_index_cli(transcript, preflight=preflight)
+    assert "cannot seal" in str(excinfo.value).lower()
 
 
 @pytest.mark.parametrize(
