@@ -136,8 +136,20 @@ def test_worker_imports_only_reviewed_modules() -> None:
     assert "claude_gate1_smoke" in text
     assert "incremental_jsonl_isolation" in text
     assert "validate_output_containment" in text
-    assert "maybe_apply_test_post_preflight_tamper" in text
+    assert "run_hermetic_index_cli" in text
+    assert "maybe_apply_test_post_binding_tamper" not in text
     assert "ingest" not in text.split("def main")[0]
+
+
+def test_launcher_binds_sealed_bytes_before_invoke() -> None:
+    from claude_gate1_smoke import REPO_ROOT
+
+    text = (REPO_ROOT / "claude_gate1_smoke.py").read_text(encoding="utf-8")
+    bind_at = text.index("install_sealed_config_loader(sealed)")
+    hook_at = text.index("maybe_apply_test_post_binding_tamper(preflight.config_path)")
+    invoke_at = text.index("runner.invoke")
+    assert bind_at < hook_at < invoke_at
+    assert "assert_config_identity_unchanged" not in text
 
 
 @pytest.mark.parametrize(
@@ -165,22 +177,53 @@ def test_tampered_config_output_paths_refuse_before_mutation(
     _sentinel_unchanged(sentinel)
 
 
-def test_post_preflight_config_replacement_refuses(tmp_path: Path) -> None:
-    """Prove TOCTOU config swap after preflight cannot create outside-root writes."""
-    _root, _token, env, transcript = prepare_hermetic_fixture(tmp_path)
-    sentinel = _outside_sentinel(tmp_path, "outside-chroma-post-preflight")
+@pytest.mark.parametrize("mode", ["rewrite", "replace", "symlink"])
+def test_post_binding_config_tamper_cannot_redirect_outputs(
+    tmp_path: Path,
+    mode: str,
+) -> None:
+    """Prove post-binding pathname attacks cannot change sealed output targets."""
+    root, _token, env, transcript = prepare_hermetic_fixture(tmp_path)
+    sentinel = _outside_sentinel(tmp_path, f"outside-chroma-post-binding-{mode}")
     outside_target = sentinel / "chroma_dir"
+    config_path = _scratch_config_path(env)
+    original_text = config_path.read_text(encoding="utf-8")
     env = dict(env)
-    env["CONVMEM_GATE1_TEST_POST_PREFLIGHT_TAMPER_KEY"] = "chroma_dir"
-    env["CONVMEM_GATE1_TEST_POST_PREFLIGHT_TAMPER_PATH"] = str(outside_target)
+    env["CONVMEM_GATE1_TEST_POST_BINDING_TAMPER"] = mode
+    env["CONVMEM_GATE1_TEST_POST_BINDING_TAMPER_KEY"] = "chroma_dir"
+    env["CONVMEM_GATE1_TEST_POST_BINDING_TAMPER_PATH"] = str(outside_target)
     completed = run_worker("run", transcript, env)
-    assert completed.returncode == 74
-    payload = json.loads(completed.stdout)
-    assert payload["error"] == "IsolationViolation"
-    assert "after preflight" in payload["detail"]
-    assert "files_processed" not in payload
+    payload = json.loads(completed.stdout or "{}")
+    tampered_text = config_path.read_text(encoding="utf-8")
+    assert str(outside_target) in tampered_text
+    assert tampered_text != original_text
+    if mode == "symlink":
+        assert config_path.is_symlink()
+    else:
+        assert not config_path.is_symlink()
+    assert completed.returncode == 0
+    assert payload.get("error") != "IsolationViolation"
+    assert payload["files_processed"] == 1
+    assert payload["files_skipped"] == 0
+    assert payload["units_indexed"] > 0
+    assert payload["scratch_root"] == str(root)
     assert not outside_target.exists()
+    chroma = Path(env["HOME"]) / ".local/share/convmem/chroma"
+    assert chroma.is_dir()
+    assert any(chroma.iterdir())
     _sentinel_unchanged(sentinel)
+    evidence = HermeticEvidence(
+        files_processed=int(payload["files_processed"]),
+        files_skipped=int(payload["files_skipped"]),
+        chunks_indexed=int(payload["chunks_indexed"]),
+        units_indexed=int(payload["units_indexed"]),
+        format_name=str(payload["format_name"]),
+        scratch_root=str(payload["scratch_root"]),
+        transcript_digest="unused",
+        config_path=str(config_path),
+        exit_code=completed.returncode,
+    )
+    assert evidence.passed is True
 
 
 def test_missing_scratch_config_refuses(tmp_path: Path) -> None:

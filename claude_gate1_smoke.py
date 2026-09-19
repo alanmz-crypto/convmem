@@ -7,6 +7,7 @@ reuses the reviewed jsonl production-integration isolation boundary.
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
@@ -84,8 +85,34 @@ class OutputContainmentPreflight:
     """Proof that scratch config and mutable targets are confined before imports."""
 
     config_path: Path
+    config_bytes: bytes
     config_identity: ConfigIdentity
     validated_targets: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class SealedConfigBinding:
+    """Validated config bytes bound to a sealed, reopen-proof descriptor."""
+
+    digest: str
+    raw: bytes
+    fd: int
+    descriptor_path: str
+
+    def load(self) -> dict[str, Any]:
+        """Read the sealed descriptor; never reopen the original pathname."""
+        try:
+            with open(self.descriptor_path, "rb") as handle:
+                data = handle.read()
+        except OSError as exc:
+            raise IsolationViolation(
+                f"sealed configuration descriptor unreadable: {exc}"
+            ) from exc
+        if data != self.raw:
+            raise IsolationViolation("sealed configuration bytes diverged")
+        if hashlib.sha256(data).hexdigest() != self.digest:
+            raise IsolationViolation("sealed configuration digest diverged")
+        return _parse_scratch_config(data)
 
 
 @dataclass(frozen=True)
@@ -322,26 +349,7 @@ def _parse_scratch_config(raw: bytes) -> dict[str, Any]:
     return cfg
 
 
-def _load_scratch_config(config_path: Path) -> dict[str, Any]:
-    return _parse_scratch_config(_read_scratch_config_bytes(config_path))
-
-
-def _capture_config_identity(config_path: Path) -> ConfigIdentity:
-    raw = _read_scratch_config_bytes(config_path)
-    stat_result = config_path.stat()
-    return ConfigIdentity(
-        path=str(config_path),
-        digest=hashlib.sha256(raw).hexdigest(),
-        device=stat_result.st_dev,
-        inode=stat_result.st_ino,
-        size=stat_result.st_size,
-        mtime_ns=stat_result.st_mtime_ns,
-    )
-
-
-def replace_config_scalar(config_path: Path, key: str, value: Path) -> None:
-    """Rewrite one top-level scalar in the scratch TOML config."""
-    text = config_path.read_text(encoding="utf-8")
+def _rewrite_config_text(text: str, key: str, value: Path) -> str:
     replacement = f'{key} = {json.dumps(str(value))}'
     updated, count = re.subn(
         rf"^{key} = .*$",
@@ -352,7 +360,41 @@ def replace_config_scalar(config_path: Path, key: str, value: Path) -> None:
     )
     if count != 1:
         raise ValueError(f"could not rewrite config key {key}")
-    config_path.write_text(updated, encoding="utf-8")
+    return updated
+
+
+def replace_config_scalar(config_path: Path, key: str, value: Path) -> None:
+    """Rewrite one top-level scalar in the scratch TOML config."""
+    text = config_path.read_text(encoding="utf-8")
+    config_path.write_text(_rewrite_config_text(text, key, value), encoding="utf-8")
+
+
+def _apply_config_pathname_tamper(
+    config_path: Path,
+    *,
+    mode: str,
+    key: str,
+    target: Path,
+) -> None:
+    """Mutate the original config pathname after sealed bytes are bound."""
+    text = config_path.read_text(encoding="utf-8")
+    updated = _rewrite_config_text(text, key, target)
+    if mode == "rewrite":
+        config_path.write_text(updated, encoding="utf-8")
+        return
+    if mode == "replace":
+        staging = config_path.with_name(f".{config_path.name}.tamper")
+        staging.write_text(updated, encoding="utf-8")
+        os.replace(staging, config_path)
+        return
+    if mode == "symlink":
+        malicious = target.parent / "malicious-config.toml"
+        malicious.write_text(updated, encoding="utf-8")
+        os.chmod(malicious, 0o600)
+        config_path.unlink()
+        config_path.symlink_to(malicious)
+        return
+    raise ValueError(f"unknown post-binding tamper mode: {mode}")
 
 
 def _assert_scratch_config_layout(cfg: dict[str, Any], boundary: IsolationBoundary) -> None:
@@ -441,7 +483,8 @@ def validate_output_containment(boundary: IsolationBoundary) -> OutputContainmen
     """Fail closed on config/env/output paths before ConvMem indexing imports."""
     env_paths = validate_scratch_environment(boundary)
     config_path = env_paths["config_path"]
-    cfg = _load_scratch_config(config_path)
+    raw = _read_scratch_config_bytes(config_path)
+    cfg = _parse_scratch_config(raw)
     _assert_scratch_config_layout(cfg, boundary)
     validated: list[str] = []
     seen: set[str] = set()
@@ -452,9 +495,21 @@ def validate_output_containment(boundary: IsolationBoundary) -> OutputContainmen
         seen.add(token)
         boundary.resolve_mutable(path, label=label)
         validated.append(label)
+    try:
+        stat_result = config_path.stat()
+    except OSError as exc:
+        raise IsolationViolation(f"cannot stat scratch config: {exc}") from exc
     return OutputContainmentPreflight(
         config_path=config_path,
-        config_identity=_capture_config_identity(config_path),
+        config_bytes=raw,
+        config_identity=ConfigIdentity(
+            path=str(config_path),
+            digest=hashlib.sha256(raw).hexdigest(),
+            device=stat_result.st_dev,
+            inode=stat_result.st_ino,
+            size=stat_result.st_size,
+            mtime_ns=stat_result.st_mtime_ns,
+        ),
         validated_targets=tuple(validated),
     )
 
@@ -472,56 +527,99 @@ def _validate_index_output_containment(
         boundary.resolve_mutable(path, label=label)
 
 
-def assert_config_identity_unchanged(
+def _seal_config_bytes(raw: bytes) -> SealedConfigBinding:
+    digest = hashlib.sha256(raw).hexdigest()
+    fd = -1
+    try:
+        fd = os.memfd_create(
+            "convmem-gate1-sealed-config",
+            os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING,
+        )
+        written = 0
+        view = memoryview(raw)
+        while written < len(raw):
+            written += os.write(fd, view[written:])
+        os.lseek(fd, 0, os.SEEK_SET)
+        fcntl.fcntl(
+            fd,
+            fcntl.F_ADD_SEALS,
+            fcntl.F_SEAL_SHRINK
+            | fcntl.F_SEAL_GROW
+            | fcntl.F_SEAL_WRITE
+            | fcntl.F_SEAL_SEAL,
+        )
+    except OSError as exc:
+        if fd >= 0:
+            os.close(fd)
+        raise IsolationViolation(
+            f"cannot seal validated configuration bytes: {exc}"
+        ) from exc
+    return SealedConfigBinding(
+        digest=digest,
+        raw=raw,
+        fd=fd,
+        descriptor_path=f"/proc/self/fd/{fd}",
+    )
+
+
+def bind_validated_config_bytes(
     preflight: OutputContainmentPreflight,
     boundary: IsolationBoundary,
-) -> None:
-    """Fail closed when the validated config changes before ConvMem consumes it."""
-    identity = preflight.config_identity
-    config_path = boundary.resolve_mutable(
-        preflight.config_path,
-        label="effective config",
-    )
-    if str(config_path) != identity.path:
-        raise IsolationViolation("scratch config path changed after preflight")
-    if config_path.is_symlink():
-        raise IsolationViolation("scratch config must not be a symlink")
-    try:
-        stat_result = config_path.stat()
-    except OSError as exc:
-        raise IsolationViolation(
-            f"scratch config unreadable after preflight: {exc}"
-        ) from exc
-    current_identity = (
-        stat_result.st_dev,
-        stat_result.st_ino,
-        stat_result.st_size,
-        stat_result.st_mtime_ns,
-    )
-    expected_identity = (
-        identity.device,
-        identity.inode,
-        identity.size,
-        identity.mtime_ns,
-    )
-    if current_identity != expected_identity:
-        raise IsolationViolation("scratch config identity changed after preflight")
-    raw = _read_scratch_config_bytes(config_path)
+) -> SealedConfigBinding:
+    """Seal preflight bytes so later pathname mutation cannot change outputs."""
+    raw = preflight.config_bytes
     digest = hashlib.sha256(raw).hexdigest()
-    if digest != identity.digest:
-        raise IsolationViolation("scratch config contents changed after preflight")
+    if digest != preflight.config_identity.digest:
+        raise IsolationViolation("validated configuration bytes digest mismatch")
     cfg = _parse_scratch_config(raw)
     _assert_scratch_config_layout(cfg, boundary)
     _validate_index_output_containment(cfg, boundary)
+    return _seal_config_bytes(raw)
 
 
-def maybe_apply_test_post_preflight_tamper(config_path: Path) -> None:
-    """Test-only hook: mutate config after preflight to prove TOCTOU refusal."""
-    key = os.environ.get("CONVMEM_GATE1_TEST_POST_PREFLIGHT_TAMPER_KEY", "")
-    target = os.environ.get("CONVMEM_GATE1_TEST_POST_PREFLIGHT_TAMPER_PATH", "")
-    if not key or not target:
+def install_sealed_config_loader(sealed: SealedConfigBinding) -> None:
+    """Make every imported ``load_config`` consume the sealed descriptor."""
+    import config as config_mod  # noqa: PLC0415
+    import ingest as ingest_mod  # noqa: PLC0415
+
+    original = config_mod.load_config
+    descriptor = Path(sealed.descriptor_path)
+
+    def load_sealed_config(_path: Path | str = descriptor) -> dict[str, Any]:
+        return sealed.load()
+
+    for module in list(sys.modules.values()):
+        if module is None:
+            continue
+        try:
+            current = getattr(module, "load_config", None)
+        except Exception:  # pylint: disable=broad-exception-caught
+            continue
+        if current is original:
+            try:
+                setattr(module, "load_config", load_sealed_config)
+            except (AttributeError, TypeError):
+                continue
+    config_mod.load_config = load_sealed_config
+    config_mod.CONFIG_PATH = descriptor
+    ingest_mod.load_config = load_sealed_config
+
+
+def maybe_apply_test_post_binding_tamper(config_path: Path) -> None:
+    """Test-only hook: mutate the original pathname after immutable binding."""
+    mode = os.environ.get("CONVMEM_GATE1_TEST_POST_BINDING_TAMPER", "")
+    if not mode:
         return
-    replace_config_scalar(config_path, key, Path(target))
+    key = os.environ.get("CONVMEM_GATE1_TEST_POST_BINDING_TAMPER_KEY", "")
+    target = os.environ.get("CONVMEM_GATE1_TEST_POST_BINDING_TAMPER_PATH", "")
+    if not key or not target:
+        raise IsolationViolation("post-binding tamper requested without key/path")
+    _apply_config_pathname_tamper(
+        config_path,
+        mode=mode,
+        key=key,
+        target=Path(target),
+    )
 
 
 def assert_transcript_under_claude_projects(transcript: Path, home: Path) -> None:
@@ -547,7 +645,7 @@ def run_hermetic_index_cli(
         )
     boundary = IsolationBoundary.from_environment()
     install_network_denial()
-    assert_config_identity_unchanged(preflight, boundary)
+    sealed = bind_validated_config_bytes(preflight, boundary)
     home = Path(os.environ["HOME"])
     resolved = boundary.resolve_mutable(transcript, label="claude transcript")
     assert_transcript_under_claude_projects(resolved, home)
@@ -555,7 +653,9 @@ def run_hermetic_index_cli(
 
     from convmem import app  # noqa: PLC0415
 
+    install_sealed_config_loader(sealed)
     install_fake_providers()
+    maybe_apply_test_post_binding_tamper(preflight.config_path)
     runner = CliRunner()
     result = runner.invoke(app, ["index", "--file", str(resolved)])
     stats = _parse_index_stats(result.stdout)

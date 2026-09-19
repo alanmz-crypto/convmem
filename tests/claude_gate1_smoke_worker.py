@@ -14,7 +14,6 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from claude_gate1_smoke import (  # noqa: E402
     assert_transcript_under_claude_projects,
-    maybe_apply_test_post_preflight_tamper,
     run_hermetic_index_cli,
     validate_output_containment,
 )
@@ -37,7 +36,6 @@ def _run_index(transcript: Path) -> int:
     boundary = IsolationBoundary.from_environment()
     install_network_denial()
     preflight = validate_output_containment(boundary)
-    maybe_apply_test_post_preflight_tamper(preflight.config_path)
     resolved = boundary.resolve_mutable(transcript, label="claude transcript")
     assert_transcript_under_claude_projects(resolved, Path(os.environ["HOME"]))
     from adapters.detect import detect_format  # noqa: PLC0415
