@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -15,6 +14,7 @@ from claude_gate1_smoke import (
     HermeticEvidence,
     prepare_hermetic_fixture,
     production_fingerprints,
+    replace_config_scalar,
     run_hermetic_smoke,
     run_worker,
     scrub_credentials,
@@ -44,21 +44,6 @@ def _outside_sentinel(tmp_path: Path, name: str) -> Path:
     sentinel.mkdir()
     (sentinel / "marker").write_text("untouched", encoding="utf-8")
     return sentinel
-
-
-def _replace_config_scalar(config_path: Path, key: str, value: Path) -> None:
-    text = config_path.read_text(encoding="utf-8")
-    replacement = f'{key} = {json.dumps(str(value))}'
-    updated, count = re.subn(
-        rf"^{key} = .*$",
-        replacement,
-        text,
-        count=1,
-        flags=re.MULTILINE,
-    )
-    if count != 1:
-        raise AssertionError(f"could not rewrite config key {key}")
-    config_path.write_text(updated, encoding="utf-8")
 
 
 def _sentinel_unchanged(sentinel: Path) -> None:
@@ -151,6 +136,7 @@ def test_worker_imports_only_reviewed_modules() -> None:
     assert "claude_gate1_smoke" in text
     assert "incremental_jsonl_isolation" in text
     assert "validate_output_containment" in text
+    assert "maybe_apply_test_post_preflight_tamper" in text
     assert "ingest" not in text.split("def main")[0]
 
 
@@ -171,11 +157,29 @@ def test_tampered_config_output_paths_refuse_before_mutation(
     _root, _token, env, transcript = prepare_hermetic_fixture(tmp_path)
     sentinel = _outside_sentinel(tmp_path, sentinel_name)
     config_path = _scratch_config_path(env)
-    _replace_config_scalar(config_path, key, sentinel / key)
+    replace_config_scalar(config_path, key, sentinel / key)
     completed = run_worker("run", transcript, env)
     assert completed.returncode == 74
     payload = json.loads(completed.stdout)
     assert payload["error"] == "IsolationViolation"
+    _sentinel_unchanged(sentinel)
+
+
+def test_post_preflight_config_replacement_refuses(tmp_path: Path) -> None:
+    """Prove TOCTOU config swap after preflight cannot create outside-root writes."""
+    _root, _token, env, transcript = prepare_hermetic_fixture(tmp_path)
+    sentinel = _outside_sentinel(tmp_path, "outside-chroma-post-preflight")
+    outside_target = sentinel / "chroma_dir"
+    env = dict(env)
+    env["CONVMEM_GATE1_TEST_POST_PREFLIGHT_TAMPER_KEY"] = "chroma_dir"
+    env["CONVMEM_GATE1_TEST_POST_PREFLIGHT_TAMPER_PATH"] = str(outside_target)
+    completed = run_worker("run", transcript, env)
+    assert completed.returncode == 74
+    payload = json.loads(completed.stdout)
+    assert payload["error"] == "IsolationViolation"
+    assert "after preflight" in payload["detail"]
+    assert "files_processed" not in payload
+    assert not outside_target.exists()
     _sentinel_unchanged(sentinel)
 
 

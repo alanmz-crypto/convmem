@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -67,10 +68,23 @@ _DEFAULT_BRIEF_PATH = "~/.local/share/convmem/brief.md"
 
 
 @dataclass(frozen=True)
+class ConfigIdentity:
+    """Immutable fingerprint of the validated scratch config."""
+
+    path: str
+    digest: str
+    device: int
+    inode: int
+    size: int
+    mtime_ns: int
+
+
+@dataclass(frozen=True)
 class OutputContainmentPreflight:
     """Proof that scratch config and mutable targets are confined before imports."""
 
     config_path: Path
+    config_identity: ConfigIdentity
     validated_targets: tuple[str, ...]
 
 
@@ -288,11 +302,16 @@ def validate_scratch_environment(boundary: IsolationBoundary) -> dict[str, Path]
     return resolved
 
 
-def _load_scratch_config(config_path: Path) -> dict[str, Any]:
+def _read_scratch_config_bytes(config_path: Path) -> bytes:
+    if config_path.is_symlink():
+        raise IsolationViolation("scratch config must not be a symlink")
     try:
-        raw = config_path.read_bytes()
+        return config_path.read_bytes()
     except OSError as exc:
         raise IsolationViolation(f"cannot read scratch config: {exc}") from exc
+
+
+def _parse_scratch_config(raw: bytes) -> dict[str, Any]:
     try:
         cfg = tomllib.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
@@ -301,6 +320,39 @@ def _load_scratch_config(config_path: Path) -> dict[str, Any]:
         raise IsolationViolation("scratch config must be a TOML table")
     _expand_config_paths(cfg)
     return cfg
+
+
+def _load_scratch_config(config_path: Path) -> dict[str, Any]:
+    return _parse_scratch_config(_read_scratch_config_bytes(config_path))
+
+
+def _capture_config_identity(config_path: Path) -> ConfigIdentity:
+    raw = _read_scratch_config_bytes(config_path)
+    stat_result = config_path.stat()
+    return ConfigIdentity(
+        path=str(config_path),
+        digest=hashlib.sha256(raw).hexdigest(),
+        device=stat_result.st_dev,
+        inode=stat_result.st_ino,
+        size=stat_result.st_size,
+        mtime_ns=stat_result.st_mtime_ns,
+    )
+
+
+def replace_config_scalar(config_path: Path, key: str, value: Path) -> None:
+    """Rewrite one top-level scalar in the scratch TOML config."""
+    text = config_path.read_text(encoding="utf-8")
+    replacement = f'{key} = {json.dumps(str(value))}'
+    updated, count = re.subn(
+        rf"^{key} = .*$",
+        replacement,
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if count != 1:
+        raise ValueError(f"could not rewrite config key {key}")
+    config_path.write_text(updated, encoding="utf-8")
 
 
 def _assert_scratch_config_layout(cfg: dict[str, Any], boundary: IsolationBoundary) -> None:
@@ -402,8 +454,74 @@ def validate_output_containment(boundary: IsolationBoundary) -> OutputContainmen
         validated.append(label)
     return OutputContainmentPreflight(
         config_path=config_path,
+        config_identity=_capture_config_identity(config_path),
         validated_targets=tuple(validated),
     )
+
+
+def _validate_index_output_containment(
+    cfg: dict[str, Any],
+    boundary: IsolationBoundary,
+) -> None:
+    seen: set[str] = set()
+    for label, path in collect_index_mutable_targets(cfg):
+        token = f"{label}:{path}"
+        if token in seen:
+            continue
+        seen.add(token)
+        boundary.resolve_mutable(path, label=label)
+
+
+def assert_config_identity_unchanged(
+    preflight: OutputContainmentPreflight,
+    boundary: IsolationBoundary,
+) -> None:
+    """Fail closed when the validated config changes before ConvMem consumes it."""
+    identity = preflight.config_identity
+    config_path = boundary.resolve_mutable(
+        preflight.config_path,
+        label="effective config",
+    )
+    if str(config_path) != identity.path:
+        raise IsolationViolation("scratch config path changed after preflight")
+    if config_path.is_symlink():
+        raise IsolationViolation("scratch config must not be a symlink")
+    try:
+        stat_result = config_path.stat()
+    except OSError as exc:
+        raise IsolationViolation(
+            f"scratch config unreadable after preflight: {exc}"
+        ) from exc
+    current_identity = (
+        stat_result.st_dev,
+        stat_result.st_ino,
+        stat_result.st_size,
+        stat_result.st_mtime_ns,
+    )
+    expected_identity = (
+        identity.device,
+        identity.inode,
+        identity.size,
+        identity.mtime_ns,
+    )
+    if current_identity != expected_identity:
+        raise IsolationViolation("scratch config identity changed after preflight")
+    raw = _read_scratch_config_bytes(config_path)
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest != identity.digest:
+        raise IsolationViolation("scratch config contents changed after preflight")
+    cfg = _parse_scratch_config(raw)
+    _assert_scratch_config_layout(cfg, boundary)
+    _validate_index_output_containment(cfg, boundary)
+
+
+def maybe_apply_test_post_preflight_tamper(config_path: Path) -> None:
+    """Test-only hook: mutate config after preflight to prove TOCTOU refusal."""
+    key = os.environ.get("CONVMEM_GATE1_TEST_POST_PREFLIGHT_TAMPER_KEY", "")
+    target = os.environ.get("CONVMEM_GATE1_TEST_POST_PREFLIGHT_TAMPER_PATH", "")
+    if not key or not target:
+        return
+    replace_config_scalar(config_path, key, Path(target))
 
 
 def assert_transcript_under_claude_projects(transcript: Path, home: Path) -> None:
@@ -427,15 +545,16 @@ def run_hermetic_index_cli(
         raise IsolationViolation(
             "output containment preflight required before index CLI"
         )
+    boundary = IsolationBoundary.from_environment()
+    install_network_denial()
+    assert_config_identity_unchanged(preflight, boundary)
+    home = Path(os.environ["HOME"])
+    resolved = boundary.resolve_mutable(transcript, label="claude transcript")
+    assert_transcript_under_claude_projects(resolved, home)
     from typer.testing import CliRunner  # noqa: PLC0415
 
     from convmem import app  # noqa: PLC0415
 
-    boundary = IsolationBoundary.from_environment()
-    install_network_denial()
-    home = Path(os.environ["HOME"])
-    resolved = boundary.resolve_mutable(transcript, label="claude transcript")
-    assert_transcript_under_claude_projects(resolved, home)
     install_fake_providers()
     runner = CliRunner()
     result = runner.invoke(app, ["index", "--file", str(resolved)])
