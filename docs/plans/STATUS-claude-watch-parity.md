@@ -29,8 +29,8 @@ exports are derived. Default routing stays Kiro-only.
 | Gate 1 adapter and containment harness | On `main` through PRs #310 and #311 |
 | Gate 2 prefix/spec/isolated route | Branch-only; not production-routed |
 | Local safety corrective | Pushed at `e007a22b24754a93d9cbd15d02269d422d371c4a`; findings #1 and #3–#6 addressed; 43 focused tests reported passing |
-| Shared-boundary finding #2 | Open; coordinator pathname authority remains on the branch |
-| Namespace architecture | Kiro PASS at `290294d`; C1–C4 incorporated on this docs-only successor |
+| Shared-boundary finding #2 | Architecture resolved without shared-runtime edits; namespace implementation pending |
+| Namespace architecture | Kiro PASS carried forward to exact normative plan `2f09469`; C1–C4 incorporated |
 | Live-source canary | `NOT_RUN`; no exact source grant |
 | Production watch/source routing | Absent and unauthorized |
 
@@ -41,43 +41,37 @@ exports are derived. Default routing stays Kiro-only.
 | Gate 1 | **MERGED** | remains on-demand |
 | Gate 2 original implementation | **SECURITY FAIL** at `10322a6` | superseded by corrective work |
 | Five local findings | **CORRECTED / UNREVIEWED** at `e007a22b24754a93d9cbd15d02269d422d371c4a` | integrate with reviewed boundary solution |
-| Finding #2 architecture | **KIRO PASS WITH C1–C4 CONDITIONS** at `290294d`; conditions folded into successor plan | exact-tip carry-forward check |
-| Namespace implementation | **NOT AUTHORIZED** | Ryan Execute grant after plan PASS |
-| Exact-tip security audit | **NOT_RUN** | fresh Ryan exception after implementation |
+| Finding #2 architecture | **KIRO PASS** carried forward to `2f09469`; C1–C4 normative | complete |
+| Namespace implementation | **AUTHORIZED / NOT_STARTED** from `e007a22` | Cursor implements and stops for Security Review |
+| Exact-tip security audit | **NOT_RUN** | OpenAI Security Review after Cursor returns one pushed exact tip |
 | Live canary / promotion | **NOT AUTHORIZED** | separate later decisions |
 
 ## 5. Your Role
 
-**Kiro:** perform a narrow exact-tip carry-forward check that C1–C4 were copied
-faithfully: create/reopen validation, `CRASH_EXIT`-only recovery evidence,
-terminal marker invariant, and pipe-only worker output. The namespace decision
-already received PASS at `290294d`; do not reopen unrelated design questions
-without a changed fact.
+**Cursor:** implement the bounded namespace from exact base `e007a22` under
+normative plan `2f09469` and C1–C4. Use a clean external worktree, touch only
+the authorized canary/test/evidence surfaces, push with an explicit refspec, and
+stop for OpenAI Security Review. No PR or live source.
 
-**Ryan:** after Kiro's verdict, either grant the bounded namespace Execute or
-close Gate 2 at Gate 1 on-demand support.
-
-**Cursor:** no further implementation until that grant.
+**Ryan:** no action until Cursor returns a pushed exact tip, unless Cursor hits a
+stop condition and returns `NO_GATE2_ROUTE`.
 
 ## 6. What Remains Before Live
 
-1. Kiro confirms the C1–C4 successor tip carries forward the `290294d` PASS.
-2. Ryan accepts the namespace dependency or selects `NO_GATE2_ROUTE`.
-3. If granted, Cursor implements from verified
-   `e007a22b24754a93d9cbd15d02269d422d371c4a` without shared-code
-   changes.
-4. OpenAI Security Review audits the exact implementation tip under a fresh
-   exception while Copilot is unavailable.
-5. Kiro reviews the same passing tip.
-6. Ryan separately decides PR, exact-source canary, production route, and watch
+1. Cursor implements from verified `e007a22` under C1–C4 without shared-code
+   changes and pushes the exact tip.
+2. OpenAI Security Review audits the exact implementation tip named by Cursor;
+   Copilot remains unavailable.
+3. Kiro reviews the same passing tip.
+4. Ryan separately decides PR, exact-source canary, production route, and watch
    wiring. None is implied by earlier gates.
 
 ## 7. Hard Stops
 
 | Stop | Owner | Blocks |
 |---|---|---|
-| Namespace Execute | Ryan | any new Gate 2 code |
-| Security-review substitution | Ryan | OpenAI review of a successor SHA |
+| Namespace Execute | **CLEARED for bounded handoff only** | shared-code or scope widening remains blocked |
+| Exact review target | Cursor | Security Review cannot start until one pushed successor SHA exists |
 | Exact source | Ryan | reading a real Claude transcript |
 | PR stewardship | Ryan | opening a PR |
 | Promotion and watch wiring | Ryan | any production route/config/service change |
@@ -100,8 +94,8 @@ remain separate.
 
 | Date | Who | Milestone-level change |
 |---|---|---|
-| 2026-09-20 | Codex | Folded Kiro PASS conditions C1–C4 into the plan; narrow exact-tip carry-forward check is next. |
+| 2026-09-20 | Codex | Ryan granted bounded namespace Execute from `e007a22` under Kiro-PASSed plan `2f09469`; Cursor next. |
 
-**TL;DR [Arc Claude Watch Parity]:** Gate 1 is merged; five local Gate 2
-correctives are pushed but unreviewed. Finding #2 has Kiro design PASS with
-C1–C4 incorporated for exact-tip carry-forward; Gate 2 remains closed.
+**TL;DR [Arc Claude Watch Parity]:** Gate 1 is merged; Gate 2 architecture has
+Kiro PASS and bounded namespace Execute is authorized from `e007a22` under
+C1–C4. Cursor implements next; live and production gates remain closed.
