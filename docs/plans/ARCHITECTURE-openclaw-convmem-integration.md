@@ -1,21 +1,22 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
-**Status:** FOURTH CLAUDE `ADVISORY FAIL` ON COMMIT `d3ab126`; CORRECTIONS
-APPLIED FOR RE-REVIEW; KIRO REVIEW BLOCKED UNTIL ADVISORY RECHECK — no
-implementation, OpenClaw configuration, production smoke, or capture is
-authorized
+**Status:** CLAUDE `ADVISORY PASS` ON COMMIT `9395144`; TWO RECORDED
+CLARIFICATIONS APPLIED; READY FOR KIRO BINARY DESIGN REVIEW — no implementation,
+OpenClaw configuration, production smoke, or capture is authorized
 
 **Date:** 2026-09-20
 
 **Arc:** none (ad-hoc integration)
 
 **Authority:** Codex architecture/planning lane. Claude's local advisory
-re-review of commit `d3ab12637c4dad8fc28fcc171f0e1f0531eba017` returned
-`ADVISORY FAIL` after finding the security core sound but identifying five
-compatibility/availability contradictions and two lower-severity specification
-gaps. This revision incorporates all seven corrections. Kiro remains the
-required design-review lane and Ryan remains the approval authority. Claude
-cannot authorize execution.
+re-review of commit `9395144c51c8951892ca3ef619bfc63ec4f110e5` returned
+`ADVISORY PASS` after verifying that the prior seven findings were closed and
+finding no confidentiality leak, authority widening, or existence oracle. This
+revision also incorporates Claude's two recorded non-security clarifications:
+observation-shaped non-expanding roots have explicit precedence, and root lists
+are deployment-local and may be empty. Kiro remains the required binary
+design-review lane and Ryan remains the approval authority. Claude cannot
+authorize execution.
 
 **Supersedes for review:** the untracked local draft whose SHA-256 was
 `9846e4df1211359b30427fc4ceebe108616e1dd6de9cb773648ed6cf0ed67f09`.
@@ -300,10 +301,13 @@ an ingest-owned assertion with three parts:
    have a domain root exactly equal to the scope's bound domain, not merely an
    ancestor.
    Each binding record also has a closed `non_expanding_roots` list for
-   high-degree protocol anchors. Each entry must be a valid stored ledger ID resolving
-   unambiguously inside the binding; missing, duplicate, or cross-binding roots
-   prevent startup. The initial list contains only the installed fallback ID
-   named in Section 8.3.
+   high-degree protocol anchors. The list may be empty. Every declared entry
+   must be a valid stored ledger ID resolving unambiguously inside that
+   deployment's binding; missing, duplicate, or cross-binding declared roots
+   prevent startup. The production registry declares the installed fallback ID
+   named in Section 8.3 only after binding materialization proves that it
+   resolves. Hermetic and synthetic registries declare only roots that exist in
+   their own fixture stores; they do not inherit the production root.
 2. During trusted ingestion, after source parsing, ConvMem constructs exactly
    four reserved scalar keys because Chroma metadata is flat:
    `_convmem_auth.project_binding_id`, `_convmem_auth.site`,
@@ -712,12 +716,16 @@ whole undirected connected component:
    kind. This includes a verification attached to a target decision.
 3. If step 1 found an observation anchor, collect that observation's descendant
    subtree to depth two, including sibling decisions, direct verifications,
-   verifications attached to decisions, and unknown kinds.
+   verifications attached to decisions, and unknown kinds. This step does not
+   run when that observation is also a registered non-expanding root.
 4. If step 1 found a non-expanding root, include that root as lineage context
-   but never enumerate its other children. The registry's immutable
-   `non_expanding_roots` list initially contains only the installed protocol
-   fallback `dec_prop_20260623_161428_c311`; request or corpus text cannot add a
-   root.
+   but never enumerate its other children. Non-expanding-root status takes
+   precedence over observation-anchor status: a node that is both is governed
+   by this step, not step 3. The production registry's immutable
+   `non_expanding_roots` list contains the installed protocol fallback
+   `dec_prop_20260623_161428_c311` after materialization proves that it resolves;
+   hermetic and synthetic deployments use only their own declared fixture
+   roots. Request or corpus text cannot add a root.
 
 Traversal uses a visited set and collects no more than 200 nodes. The complete
 neighborhood either passes authorization and renders or receives the generic
@@ -947,12 +955,11 @@ defines false background completion out of existence for the initial phases.
 
 ### Gate A — plan review
 
-- Claude returned a fourth `ADVISORY FAIL` on commit `d3ab126`; its five
-  compatibility/availability contradictions and two lower-severity gaps are
-  corrected in this revision and require advisory recheck.
-- Kiro review remains blocked until that recheck finds no material unresolved
-  bypass, then Kiro performs the charter-required binary review on the same
-  exact revision.
+- Claude returned `ADVISORY PASS` on commit `9395144` after verifying that the
+  prior seven findings were closed. Its two recorded non-security
+  clarifications are incorporated in this revision.
+- Kiro now performs the charter-required binary review on this corrected exact
+  revision.
 - Ryan approves or rejects architecture and execution planning.
 
 No code or OpenClaw configuration is authorized by Gate A.
@@ -1164,7 +1171,11 @@ unexpected surface, or reports false completion.
     hops, or a required neighborhood beyond 200 nodes receive generic denial.
     Add more than 200 unrelated children to the registered protocol fallback
     and prove a target below that non-expanding root still returns its useful
-    lineage plus target descendants without enumerating the hub.
+    lineage plus target descendants without enumerating the hub. Separately
+    register a high-degree observation as a non-expanding root and prove its
+    target still returns useful lineage and target descendants without running
+    observation-anchor expansion. Prove an empty root list starts successfully
+    in a fixture that contains no high-degree protocol anchor.
 25. Request an out-of-scope, unknown, malformed, embedded, trailing-text, and
     raw-Chroma ID; prove byte-equivalent public denial shapes.
 26. Put one out-of-effective-scope decision, verification, sibling,
@@ -1403,9 +1414,9 @@ and crash-loop failure modes.
 
 ## 17. Adversarial re-review questions
 
-Claude returned a fourth `ADVISORY FAIL` on commit `d3ab126`. A fresh advisory
-reviewer must independently try to falsify this corrected exact revision and
-answer with exact references before Kiro review resumes:
+Claude returned `ADVISORY PASS` on commit `9395144`. Its two recorded
+clarifications are incorporated in this corrected exact revision. Kiro must
+independently try to falsify the design and answer with exact references:
 
 1. Can any request-time input affect the bound scope or connector process
    launch before server authorization?
@@ -1453,11 +1464,11 @@ implementation after a Kiro `PASS`.
 
 ## 18. Exit state
 
-This document stops at architecture. It is not an Execute grant. The findings
-from the fourth advisory FAIL on commit `d3ab126` are incorporated, but Kiro
-remains blocked until the corrected exact revision receives advisory re-review.
-A separate execution plan and Cursor handoff are created only after advisory
-PASS, Kiro PASS, and Ryan architecture approval.
+This document stops at architecture. It is not an Execute grant. Claude's seven
+prior findings and two recorded PASS-with-corrections clarifications are
+incorporated. Kiro binary design review is the next gate. A separate execution
+plan and Cursor handoff are created only after Kiro PASS and Ryan architecture
+approval.
 
 ## Jargon TL;DR
 
