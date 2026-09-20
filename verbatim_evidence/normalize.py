@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import unicodedata
 
 
@@ -17,6 +18,18 @@ def normalize_evidence_text(text: str) -> str:
         return ""
     normalized = unicodedata.normalize("NFC", text)
     return normalized.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def message_matches(normalized_message: str, normalized_query: str) -> bool:
+    """Conservative exact match with length-preserving IGNORECASE fallback."""
+    query = normalized_query.strip()
+    if not query:
+        return False
+    if query in normalized_message:
+        return True
+    return (
+        re.search(re.escape(query), normalized_message, flags=re.IGNORECASE) is not None
+    )
 
 
 def digest_excerpt(excerpt: str) -> str:

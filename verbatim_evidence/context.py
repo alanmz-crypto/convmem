@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from verbatim_evidence.types import EvidenceResult, EvidenceStatus
+from verbatim_evidence.escape import escape_metadata, quote_block
+from verbatim_evidence.types import EvidenceResult, EvidenceScope, EvidenceStatus
 
 LABEL_SUMMARY = "summary"
 LABEL_VERBATIM_SOURCE = "verbatim_source"
@@ -12,6 +13,11 @@ _UNAVAILABLE_GUIDANCE = (
     "Exact source evidence is unavailable for this candidate. "
     "Do not claim the source does not exist; keep the summary as "
     "summary-origin context only."
+)
+
+_SESSION_SCOPE_NOTE = (
+    "Session-scoped evidence may come from elsewhere in the session, "
+    "not only the summarized message window."
 )
 
 _VERBATIM_PREAMBLE = (
@@ -61,10 +67,19 @@ def format_labeled_context(
                         "truncated": excerpt.truncated,
                         "content_digest_sha256": excerpt.content_digest_sha256,
                         "evidence_status": evidence.status.value,
+                        "scope": (evidence.scope or excerpt.scope).value,
+                        "partial": evidence.partial,
+                        "partial_reason": evidence.partial_reason,
+                        "reason": evidence.reason,
                     },
                 }
             )
     else:
+        status = evidence.status
+        if status is EvidenceStatus.SCAN_LIMIT:
+            unavailable_reason = evidence.reason or "scan_limit"
+        else:
+            unavailable_reason = evidence.reason
         items.append(
             {
                 "label": LABEL_UNAVAILABLE,
@@ -72,57 +87,83 @@ def format_labeled_context(
                 "metadata": {
                     "source_path": evidence.source_path or meta.get("source_path"),
                     "adapter_kind": evidence.adapter_kind,
-                    "evidence_status": evidence.status.value,
-                    "reason": evidence.reason,
+                    "evidence_status": status.value,
+                    "reason": unavailable_reason,
+                    "scope": evidence.scope.value if evidence.scope else None,
+                    "partial": evidence.partial,
+                    "partial_reason": evidence.partial_reason,
                 },
             }
         )
 
     lines: list[str] = [_VERBATIM_PREAMBLE.rstrip()]
+    if evidence.scope is EvidenceScope.SESSION or any(
+        item.get("metadata", {}).get("scope") == EvidenceScope.SESSION.value
+        for item in items
+        if item.get("label") == LABEL_VERBATIM_SOURCE
+    ):
+        lines.append(_SESSION_SCOPE_NOTE)
+    if evidence.reason == "offsets_ignored_session_scope":
+        lines.append("offsets_ignored_session_scope")
+
     citations: list[dict] = []
     n = citation_start
     for item in items:
         label = item["label"]
         text = (item.get("text") or "").strip()
         item_meta = item.get("metadata") or {}
-        src = item_meta.get("source_path") or ""
+        src = escape_metadata(item_meta.get("source_path") or "")
         if label == LABEL_SUMMARY:
-            tool = item_meta.get("tool") or "?"
-            when = item_meta.get("when") or ""
+            tool = escape_metadata(item_meta.get("tool") or "?")
+            when = escape_metadata(item_meta.get("when") or "")
             start = item_meta.get("start_offset")
             end = item_meta.get("end_offset")
-            header = f"[{n}] (label={label}, {tool}"
+            header = f"[{n}] (label={escape_metadata(label)}, {tool}"
             if when:
                 header += f", {when}"
             header += f") messages {start}–{end}"
-            lines.append(f"{header}\n    {text}\n    Source: {src}")
-        elif label == LABEL_VERBATIM_SOURCE:
-            role = item_meta.get("role") or "?"
-            mid = item_meta.get("message_id") or ""
-            digest = item_meta.get("content_digest_sha256") or ""
-            trunc = " truncated=true" if item_meta.get("truncated") else ""
             lines.append(
-                f"[{n}] (label={label}, role={role}, message_id={mid}"
-                f"{trunc})\n    {text}\n"
+                f"{header}\n{quote_block(text)}\n    Source: {src}"
+            )
+        elif label == LABEL_VERBATIM_SOURCE:
+            role = escape_metadata(item_meta.get("role") or "?")
+            mid = escape_metadata(item_meta.get("message_id") or "")
+            digest = escape_metadata(item_meta.get("content_digest_sha256") or "")
+            scope = escape_metadata(item_meta.get("scope") or "")
+            trunc = " truncated=true" if item_meta.get("truncated") else ""
+            partial = ""
+            if item_meta.get("partial"):
+                partial = f", partial=true, partial_reason={escape_metadata(item_meta.get('partial_reason') or '')}"
+            reason = item_meta.get("reason")
+            reason_suffix = ""
+            if reason:
+                reason_suffix = f", reason={escape_metadata(reason)}"
+            lines.append(
+                f"[{n}] (label={escape_metadata(label)}, role={role}, "
+                f"message_id={mid}, scope={scope}{trunc}{partial}{reason_suffix})\n"
+                f"{quote_block(text)}\n"
                 f"    Source: {src}\n    Digest: {digest}"
             )
         else:
-            status = item_meta.get("evidence_status") or "unknown"
-            reason = item_meta.get("reason") or ""
+            status = escape_metadata(item_meta.get("evidence_status") or "unknown")
+            reason = escape_metadata(item_meta.get("reason") or "")
             lines.append(
-                f"[{n}] (label={label}, status={status}, reason={reason})\n"
-                f"    {text}\n    Source: {src}"
+                f"[{n}] (label={escape_metadata(label)}, status={status}, reason={reason})\n"
+                f"{quote_block(text)}\n    Source: {src}"
             )
         citations.append(
             {
                 "n": n,
                 "context_label": label,
-                "source_path": src,
+                "source_path": item_meta.get("source_path") or "",
                 "evidence_status": item_meta.get("evidence_status"),
                 "session_id": item_meta.get("session_id") or meta.get("session_id"),
                 "message_id": item_meta.get("message_id"),
                 "content_digest_sha256": item_meta.get("content_digest_sha256"),
                 "reason": item_meta.get("reason"),
+                "scope": item_meta.get("scope"),
+                "partial": item_meta.get("partial"),
+                "partial_reason": item_meta.get("partial_reason"),
             }
         )
         n += 1

@@ -1,157 +1,417 @@
-"""Read-only Crush SQLite adapter for bounded verbatim evidence."""
+"""Read-only Crush SQLite adapter for bounded session-only verbatim evidence."""
 
 from __future__ import annotations
 
+import json
+import re
 import sqlite3
+import time
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+from urllib.parse import quote
 
 from adapters.sqlite_chat import (
-    _crush_parts_to_content,
     _crush_timestamp_to_iso,
     is_sqlite_crush_schema,
 )
-from verbatim_evidence.normalize import digest_excerpt, normalize_evidence_text
+from verbatim_evidence.normalize import (
+    digest_excerpt,
+    message_matches,
+    normalize_evidence_text,
+)
 from verbatim_evidence.types import (
     EvidenceExcerpt,
     EvidenceLocator,
     EvidenceResult,
+    EvidenceScope,
     EvidenceStatus,
 )
 
 ADAPTER_KIND_CRUSH = "sqlite_crush"
 
-# API-contract budgets (not live config). Keep first slice conservative.
-DEFAULT_MAX_CANDIDATE_MESSAGES = 64
-DEFAULT_MAX_RESULT_MESSAGES = 3
-DEFAULT_MAX_EXCERPT_CHARS = 2000
+MAX_SCAN_ROWS = 10_000
+MAX_SCAN_BYTES = 16 * 1024 * 1024
+MAX_PARTS_BYTES = 1 * 1024 * 1024
+MAX_RESULTS = 3
+MAX_EXCERPT_CHARS = 2_000
+MAX_QUERY_CHARS = 2_000
+
+DEFAULT_MAX_SCAN_ROWS = MAX_SCAN_ROWS
+DEFAULT_MAX_CANDIDATE_MESSAGES = MAX_SCAN_ROWS
+DEFAULT_MAX_RESULT_MESSAGES = MAX_RESULTS
+DEFAULT_MAX_EXCERPT_CHARS = MAX_EXCERPT_CHARS
+
+TOTAL_READ_DEADLINE_SECONDS = 2.0
+BUSY_TIMEOUT_MAX_SECONDS = 0.25
+PROGRESS_OPCODE_INTERVAL = 1_000
+
 TRUNCATION_MARKER = "…[truncated]"
 
-_MSG_SELECT = (
-    "SELECT id, session_id, role, parts, created_at "
-    "FROM messages "
-    "WHERE role IN ('user', 'assistant') "
-    "ORDER BY session_id, created_at, id"
-)
+_SHADOW_ID_COLUMNS = frozenset({"rowid", "oid", "_rowid_"})
+_ALLOWED_READ_TABLES = frozenset({"messages", "sqlite_master"})
+_ALLOWED_PRAGMAS = frozenset({"table_info", "query_only", "trusted_schema"})
 
-_MSG_SELECT_SESSION = (
-    "SELECT id, session_id, role, parts, created_at "
-    "FROM messages "
-    "WHERE session_id = ? AND role IN ('user', 'assistant') "
-    "ORDER BY created_at, id"
-)
+_STAGE1_SQL = """
+SELECT id, session_id, role, created_at, length(CAST(parts AS BLOB)) AS parts_len
+FROM messages
+WHERE session_id = ? AND role IN ('user', 'assistant')
+ORDER BY created_at, id
+LIMIT ?
+"""
 
-
-def _connect_readonly(path: Path) -> sqlite3.Connection:
-    """Open SQLite URI mode=ro; never creates WAL/SHM or mutates the file."""
-    uri = f"file:{path.resolve().as_posix()}?mode=ro"
-    return sqlite3.connect(uri, uri=True)
+_STAGE2_SQL = """
+SELECT id, session_id, role, parts, created_at
+FROM messages
+WHERE id = ? AND session_id = ?
+"""
 
 
-def _locator_usable(locator: EvidenceLocator) -> bool:
-    has_offsets = locator.start_offset is not None and locator.end_offset is not None
-    has_session = bool((locator.session_id or "").strip())
-    has_conversation = bool((locator.conversation_id or "").strip())
-    return has_offsets or has_session or has_conversation
+@dataclass
+class _ReadState:
+    deadline_hit: bool = False
 
 
-def _resolve_session_key(locator: EvidenceLocator) -> str | None:
-    session = (locator.session_id or "").strip() or None
-    conversation = (locator.conversation_id or "").strip() or None
+@dataclass(frozen=True)
+class _SourceSnapshot:
+    resolved: Path
+    st_dev: int
+    st_ino: int
+
+
+def _validate_positive_int(
+    name: str,
+    value: object,
+    *,
+    minimum: int,
+    maximum: int,
+) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if value < minimum or value > maximum:
+        return None
+    return value
+
+
+def _validate_budgets(
+    *,
+    max_scan_rows: int,
+    max_candidate_messages: int,
+    max_result_messages: int,
+    max_excerpt_chars: int,
+) -> str | None:
+    checks = (
+        ("max_scan_rows", max_scan_rows, 1, MAX_SCAN_ROWS),
+        ("max_candidate_messages", max_candidate_messages, 1, MAX_SCAN_ROWS),
+        ("max_result_messages", max_result_messages, 1, MAX_RESULTS),
+        ("max_excerpt_chars", max_excerpt_chars, 1, MAX_EXCERPT_CHARS),
+    )
+    for name, value, minimum, maximum in checks:
+        if _validate_positive_int(name, value, minimum=minimum, maximum=maximum) is None:
+            return "invalid_budget"
+    return None
+
+
+def _session_key(locator: EvidenceLocator) -> str | None:
+    session = locator.session_id if isinstance(locator.session_id, str) else None
+    conversation = (
+        locator.conversation_id if isinstance(locator.conversation_id, str) else None
+    )
+    session = (session or "").strip() or None
+    conversation = (conversation or "").strip() or None
     if session and conversation and session != conversation:
-        # Crush has no separate conversation_id column; conflicting ids are
-        # unsafe to widen over — refuse rather than scan both.
         return None
     return session or conversation
 
 
-def _message_matches(normalized_message: str, normalized_query: str) -> bool:
-    query = normalized_query.strip()
-    if not query:
+def _has_offsets(locator: EvidenceLocator) -> bool:
+    return locator.start_offset is not None and locator.end_offset is not None
+
+
+def _sqlite_uri(path: Path) -> str:
+    encoded = quote(path.as_posix(), safe="/")
+    return f"file:{encoded}?mode=ro"
+
+
+def _source_snapshot(path: Path) -> _SourceSnapshot | None:
+    try:
+        resolved = path.resolve()
+        stat = resolved.stat()
+    except OSError:
+        return None
+    return _SourceSnapshot(resolved=resolved, st_dev=stat.st_dev, st_ino=stat.st_ino)
+
+
+def _snapshot_unchanged(before: _SourceSnapshot) -> bool:
+    after = _source_snapshot(before.resolved)
+    if after is None:
         return False
-    if query in normalized_message:
-        return True
-    return query.casefold() in normalized_message.casefold()
+    return before.st_dev == after.st_dev and before.st_ino == after.st_ino
 
 
-def _bound_excerpt(text: str, max_chars: int) -> tuple[str, bool]:
+def _sqlite_authorizer(
+    action: int,
+    arg1: str | None,
+    arg2: str | None,
+    _arg3: str | None,
+    _arg4: str | None,
+) -> int:
+    if action == sqlite3.SQLITE_SELECT:
+        if arg2 in _ALLOWED_READ_TABLES or arg2 is None:
+            return sqlite3.SQLITE_OK
+        return sqlite3.SQLITE_DENY
+    if action == sqlite3.SQLITE_READ:
+        if arg1 in _ALLOWED_READ_TABLES:
+            return sqlite3.SQLITE_OK
+        return sqlite3.SQLITE_DENY
+    if action == sqlite3.SQLITE_FUNCTION:
+        func_name = (arg2 or arg1 or "").lower()
+        if func_name == "length":
+            return sqlite3.SQLITE_OK
+        return sqlite3.SQLITE_DENY
+    if action == sqlite3.SQLITE_PRAGMA:
+        if arg1 in _ALLOWED_PRAGMAS:
+            return sqlite3.SQLITE_OK
+        return sqlite3.SQLITE_DENY
+    if action in (
+        sqlite3.SQLITE_INSERT,
+        sqlite3.SQLITE_UPDATE,
+        sqlite3.SQLITE_DELETE,
+        sqlite3.SQLITE_CREATE_TABLE,
+        sqlite3.SQLITE_DROP_TABLE,
+        sqlite3.SQLITE_ALTER_TABLE,
+        sqlite3.SQLITE_CREATE_INDEX,
+        sqlite3.SQLITE_DROP_INDEX,
+        sqlite3.SQLITE_CREATE_VIEW,
+        sqlite3.SQLITE_DROP_VIEW,
+        sqlite3.SQLITE_CREATE_TRIGGER,
+        sqlite3.SQLITE_DROP_TRIGGER,
+        sqlite3.SQLITE_TRANSACTION,
+        sqlite3.SQLITE_ATTACH,
+        sqlite3.SQLITE_DETACH,
+    ):
+        return sqlite3.SQLITE_DENY
+    return sqlite3.SQLITE_DENY
+
+
+def _make_progress_handler(state: _ReadState, deadline: float):
+    def _handler() -> int:
+        if time.monotonic() >= deadline:
+            state.deadline_hit = True
+            return 1
+        return 0
+
+    return _handler
+
+
+def _connect_readonly(path: Path, *, timeout: float, state: _ReadState, deadline: float):
+    conn = sqlite3.connect(
+        _sqlite_uri(path),
+        uri=True,
+        timeout=max(0.0, min(timeout, BUSY_TIMEOUT_MAX_SECONDS)),
+    )
+    conn.set_progress_handler(_make_progress_handler(state, deadline), PROGRESS_OPCODE_INTERVAL)
+    conn.execute("PRAGMA query_only=ON")
+    conn.execute("PRAGMA trusted_schema=OFF")
+    conn.execute("BEGIN")
+    conn.set_authorizer(_sqlite_authorizer)
+    return conn
+
+
+def _reject_shadow_rowid(conn: sqlite3.Connection) -> bool:
+    rows = conn.execute("PRAGMA table_info(messages)").fetchall()
+    for row in rows:
+        name = row[1]
+        if isinstance(name, str) and name.casefold() in _SHADOW_ID_COLUMNS:
+            return True
+    return False
+
+
+def _extract_text_parts(parts_raw: Any) -> tuple[str | None, str | None]:
+    """Return (content, row_error) where row_error is malformed_row or oversized_row."""
+    if parts_raw is None:
+        return None, None
+    if isinstance(parts_raw, bytes):
+        if len(parts_raw) > MAX_PARTS_BYTES:
+            return None, "oversized_row"
+        parts_raw = parts_raw.decode("utf-8", errors="replace")
+    elif isinstance(parts_raw, str):
+        if len(parts_raw.encode("utf-8")) > MAX_PARTS_BYTES:
+            return None, "oversized_row"
+    else:
+        return None, "malformed_row"
+
+    try:
+        parts = json.loads(parts_raw)
+    except (json.JSONDecodeError, TypeError, RecursionError):
+        return None, "malformed_row"
+    if not isinstance(parts, list):
+        return None, "malformed_row"
+
+    texts: list[str] = []
+    for part in parts:
+        if not isinstance(part, dict):
+            continue
+        ptype = part.get("type")
+        data = part.get("data")
+        if not isinstance(data, dict):
+            continue
+        if ptype == "text":
+            text = data.get("text")
+            if isinstance(text, str) and text.strip():
+                texts.append(text.strip())
+    if not texts:
+        return None, None
+    return "\n\n".join(texts), None
+
+
+def _bound_excerpt(
+    text: str,
+    max_chars: int,
+    *,
+    query_hint: str = "",
+) -> tuple[str, bool]:
     if max_chars <= 0:
         return TRUNCATION_MARKER, True
     if len(text) <= max_chars:
         return text, False
-    keep = max(0, max_chars - len(TRUNCATION_MARKER))
+
+    query = query_hint.strip()
+
+    marker_len = len(TRUNCATION_MARKER)
+    leading_marker = False
+
+    if query:
+        match = None
+        for candidate in (query, query.casefold()):
+            found = text.find(candidate)
+            if found >= 0:
+                match = (found, len(candidate))
+                break
+        if match is None:
+            regex = re.search(re.escape(query), text, flags=re.IGNORECASE)
+            if regex is not None:
+                match = (regex.start(), len(regex.group(0)))
+        if match is not None:
+            idx, query_len = match
+            budget = max(0, max_chars - marker_len)
+            if budget <= 0:
+                return TRUNCATION_MARKER, True
+            start = max(0, idx - max(0, (budget - query_len) // 2))
+            end = min(len(text), start + budget)
+            start = max(0, end - budget)
+            excerpt = text[start:end]
+            leading_marker = start > 0
+            if end < len(text):
+                excerpt = excerpt + TRUNCATION_MARKER
+            if leading_marker:
+                excerpt = TRUNCATION_MARKER + excerpt
+            return excerpt, True
+
+    keep = max(0, max_chars - marker_len)
     return text[:keep] + TRUNCATION_MARKER, True
 
 
-def _load_ordered_messages(
-    conn: sqlite3.Connection,
-    *,
-    session_key: str | None,
-    max_candidate_messages: int,
-) -> list[dict]:
-    if session_key:
-        rows = conn.execute(_MSG_SELECT_SESSION, (session_key,)).fetchall()
-    else:
-        rows = conn.execute(_MSG_SELECT).fetchall()
-
-    messages: list[dict] = []
-    for row in rows:
-        message_id, session_id, role, parts_raw, created_at = row
-        content = _crush_parts_to_content(parts_raw)
-        if not content:
-            continue
-        messages.append(
-            {
-                "id": message_id if isinstance(message_id, str) else None,
-                "session_id": session_id if isinstance(session_id, str) else None,
-                "role": role if isinstance(role, str) else "",
-                "content": content,
-                "timestamp": _crush_timestamp_to_iso(created_at),
-            }
-        )
-        if len(messages) >= max_candidate_messages:
-            break
-    return messages
-
-
-def _apply_offset_window(
-    messages: list[dict],
+def _prevalidate_locator(
     locator: EvidenceLocator,
+    query_text: str,
     *,
+    max_scan_rows: int,
     max_candidate_messages: int,
-) -> list[dict]:
-    start = locator.start_offset
-    end = locator.end_offset
-    assert start is not None and end is not None
-    if start < 0 or end < start:
-        return []
-    window = messages[start : end + 1]
-    if len(window) > max_candidate_messages:
-        return window[:max_candidate_messages]
-    return window
-
-
-def _select_candidates(
-    messages: list[dict],
-    locator: EvidenceLocator,
-    *,
-    max_candidate_messages: int,
-) -> list[dict] | None:
-    """Return the bounded candidate window, or None for invalid_locator."""
-    has_offsets = locator.start_offset is not None and locator.end_offset is not None
-    session_key = _resolve_session_key(locator)
-
-    if has_offsets:
-        # Offsets are untrusted hints over the ordered message list already
-        # constrained by session when a session key is present.
-        return _apply_offset_window(
-            messages, locator, max_candidate_messages=max_candidate_messages
+    max_result_messages: int,
+    max_excerpt_chars: int,
+) -> EvidenceResult | None:
+    if _validate_budgets(
+        max_scan_rows=max_scan_rows,
+        max_candidate_messages=max_candidate_messages,
+        max_result_messages=max_result_messages,
+        max_excerpt_chars=max_excerpt_chars,
+    ):
+        return EvidenceResult(
+            status=EvidenceStatus.INVALID_LOCATOR,
+            reason="invalid_budget",
         )
 
-    if session_key:
-        # Session (and optional conversation alias) already applied in SQL.
-        if len(messages) > max_candidate_messages:
-            return messages[:max_candidate_messages]
-        return messages
+    for field_name, value in (
+        ("source_path", locator.source_path),
+        ("session_id", locator.session_id),
+        ("conversation_id", locator.conversation_id),
+    ):
+        if value is not None and not isinstance(value, str):
+            return EvidenceResult(
+                status=EvidenceStatus.INVALID_LOCATOR,
+                reason="invalid_locator_field",
+            )
+
+    for field_name, value in (("start_offset", locator.start_offset), ("end_offset", locator.end_offset)):
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
+            return EvidenceResult(
+                status=EvidenceStatus.INVALID_LOCATOR,
+                reason="invalid_locator_field",
+            )
+
+    source = (locator.source_path or "").strip()
+    if not source:
+        return EvidenceResult(
+            status=EvidenceStatus.INVALID_LOCATOR,
+            reason="missing_source_path",
+        )
+
+    path = Path(source).expanduser()
+    if not path.is_absolute():
+        return EvidenceResult(
+            status=EvidenceStatus.INVALID_LOCATOR,
+            source_path=source,
+            reason="relative_source_path",
+        )
+
+    if len(normalize_evidence_text(query_text or "")) > MAX_QUERY_CHARS:
+        return EvidenceResult(
+            status=EvidenceStatus.INVALID_LOCATOR,
+            source_path=source,
+            reason="query_too_long",
+        )
+
+    normalized_query = normalize_evidence_text(query_text or "")
+    if not normalized_query.strip():
+        return EvidenceResult(
+            status=EvidenceStatus.INVALID_LOCATOR,
+            source_path=source,
+            reason="empty_query",
+        )
+
+    session_hint = _session_key(locator)
+    has_offsets = _has_offsets(locator)
+
+    if has_offsets and not session_hint:
+        return EvidenceResult(
+            status=EvidenceStatus.INVALID_LOCATOR,
+            source_path=source,
+            adapter_kind=ADAPTER_KIND_CRUSH,
+            reason="offset_retrieval_unavailable",
+        )
+
+    if not session_hint:
+        return EvidenceResult(
+            status=EvidenceStatus.INVALID_LOCATOR,
+            source_path=source,
+            adapter_kind=ADAPTER_KIND_CRUSH,
+            reason="missing_session_conversation_or_offsets",
+        )
+
+    if (
+        isinstance(locator.session_id, str)
+        and isinstance(locator.conversation_id, str)
+        and locator.session_id.strip()
+        and locator.conversation_id.strip()
+        and locator.session_id.strip() != locator.conversation_id.strip()
+    ):
+        return EvidenceResult(
+            status=EvidenceStatus.INVALID_LOCATOR,
+            source_path=source,
+            adapter_kind=ADAPTER_KIND_CRUSH,
+            reason="conflicting_session_and_conversation",
+        )
 
     return None
 
@@ -160,42 +420,35 @@ def retrieve_crush_evidence(
     locator: EvidenceLocator,
     query_text: str,
     *,
+    max_scan_rows: int = DEFAULT_MAX_SCAN_ROWS,
     max_candidate_messages: int = DEFAULT_MAX_CANDIDATE_MESSAGES,
     max_result_messages: int = DEFAULT_MAX_RESULT_MESSAGES,
     max_excerpt_chars: int = DEFAULT_MAX_EXCERPT_CHARS,
 ) -> EvidenceResult:
-    """Look up bounded Crush message evidence for ``query_text``.
+    """Look up bounded Crush session evidence for ``query_text``.
 
-    Never writes to the source database. Never scans an entire source when the
-    locator is missing or ambiguous.
+    Session-only slice: offset-only locators are rejected before open. Locators
+    with both offsets and a session key ignore offsets and search the session.
     """
+    pre = _prevalidate_locator(
+        locator,
+        query_text,
+        max_scan_rows=max_scan_rows,
+        max_candidate_messages=max_candidate_messages,
+        max_result_messages=max_result_messages,
+        max_excerpt_chars=max_excerpt_chars,
+    )
+    if pre is not None:
+        return pre
+
     source = (locator.source_path or "").strip()
-    if not source:
-        return EvidenceResult(
-            status=EvidenceStatus.INVALID_LOCATOR,
-            reason="missing_source_path",
-        )
-    if not _locator_usable(locator):
-        return EvidenceResult(
-            status=EvidenceStatus.INVALID_LOCATOR,
-            source_path=source,
-            reason="missing_session_conversation_or_offsets",
-        )
-
-    session_key = _resolve_session_key(locator)
-    has_offsets = locator.start_offset is not None and locator.end_offset is not None
-    raw_session = (locator.session_id or "").strip()
-    raw_conversation = (locator.conversation_id or "").strip()
-    if raw_session and raw_conversation and raw_session != raw_conversation:
-        return EvidenceResult(
-            status=EvidenceStatus.INVALID_LOCATOR,
-            source_path=source,
-            adapter_kind=ADAPTER_KIND_CRUSH,
-            reason="conflicting_session_and_conversation",
-        )
-
     path = Path(source).expanduser()
-    if not path.is_file():
+    session_hint = _session_key(locator)
+    assert session_hint is not None
+    offsets_ignored = _has_offsets(locator)
+
+    snapshot_before = _source_snapshot(path)
+    if snapshot_before is None:
         return EvidenceResult(
             status=EvidenceStatus.UNAVAILABLE_SOURCE,
             source_path=source,
@@ -203,103 +456,257 @@ def retrieve_crush_evidence(
             reason="source_missing",
         )
 
-    try:
-        conn = _connect_readonly(path)
-    except sqlite3.Error:
+    if not snapshot_before.resolved.is_file():
         return EvidenceResult(
             status=EvidenceStatus.UNAVAILABLE_SOURCE,
-            source_path=source,
+            source_path=str(snapshot_before.resolved),
             adapter_kind=ADAPTER_KIND_CRUSH,
-            reason="source_unreadable",
+            reason="source_missing",
         )
 
+    deadline = time.monotonic() + TOTAL_READ_DEADLINE_SECONDS
+    state = _ReadState()
+    normalized_query = normalize_evidence_text(query_text or "")
+
+    conn: sqlite3.Connection | None = None
     try:
+        remaining = max(0.0, deadline - time.monotonic())
+        conn = _connect_readonly(
+            snapshot_before.resolved,
+            timeout=remaining,
+            state=state,
+            deadline=deadline,
+        )
+
         if not is_sqlite_crush_schema(conn):
             return EvidenceResult(
                 status=EvidenceStatus.UNAVAILABLE_SOURCE,
-                source_path=source,
+                source_path=str(snapshot_before.resolved),
                 adapter_kind=ADAPTER_KIND_CRUSH,
                 reason="unsupported_source",
             )
 
-        # Without offsets, Crush requires a session/conversation identity so
-        # we never fall through to a source-wide scan.
-        if not has_offsets and not session_key:
+        if _reject_shadow_rowid(conn):
             return EvidenceResult(
-                status=EvidenceStatus.INVALID_LOCATOR,
-                source_path=source,
+                status=EvidenceStatus.UNAVAILABLE_SOURCE,
+                source_path=str(snapshot_before.resolved),
                 adapter_kind=ADAPTER_KIND_CRUSH,
-                reason="missing_session_conversation_or_offsets",
+                reason="unsupported_source",
             )
 
-        ordered = _load_ordered_messages(
+        result = _scan_session(
             conn,
-            session_key=session_key,
-            max_candidate_messages=max(
-                max_candidate_messages,
-                (locator.end_offset or 0) + 1 if has_offsets else max_candidate_messages,
-            ),
+            session_key=session_hint,
+            normalized_query=normalized_query,
+            query_text=query_text or "",
+            resolved_path=str(snapshot_before.resolved),
+            max_scan_rows=min(max_scan_rows, max_candidate_messages),
+            max_result_messages=max_result_messages,
+            max_excerpt_chars=max_excerpt_chars,
+            state=state,
+            deadline=deadline,
+            offsets_ignored=offsets_ignored,
         )
-        candidates = _select_candidates(
-            ordered,
-            locator,
-            max_candidate_messages=max_candidate_messages,
-        )
-        if candidates is None:
+    except sqlite3.OperationalError as exc:
+        if state.deadline_hit:
             return EvidenceResult(
-                status=EvidenceStatus.INVALID_LOCATOR,
-                source_path=source,
+                status=EvidenceStatus.UNAVAILABLE_SOURCE,
+                source_path=str(snapshot_before.resolved),
                 adapter_kind=ADAPTER_KIND_CRUSH,
-                reason="ambiguous_locator",
+                reason="deadline",
             )
-
-        normalized_query = normalize_evidence_text(query_text or "")
-        matches: list[EvidenceExcerpt] = []
-        for ordinal, message in enumerate(candidates):
-            if len(matches) >= max_result_messages:
-                break
-            normalized_content = normalize_evidence_text(message["content"])
-            if not _message_matches(normalized_content, normalized_query):
-                continue
-            excerpt_text, truncated = _bound_excerpt(
-                normalized_content, max_excerpt_chars
-            )
-            matches.append(
-                EvidenceExcerpt(
-                    source_path=str(path),
-                    adapter_kind=ADAPTER_KIND_CRUSH,
-                    session_id=message["session_id"],
-                    message_id=message["id"],
-                    role=message["role"],
-                    timestamp=message["timestamp"],
-                    message_ordinal=ordinal,
-                    excerpt=excerpt_text,
-                    truncated=truncated,
-                    content_digest_sha256=digest_excerpt(excerpt_text),
-                )
-            )
-
-        if not matches:
+        if exc.sqlite_errorcode == sqlite3.SQLITE_BUSY:
             return EvidenceResult(
-                status=EvidenceStatus.UNAVAILABLE_MATCH,
-                source_path=str(path),
+                status=EvidenceStatus.UNAVAILABLE_SOURCE,
+                source_path=str(snapshot_before.resolved),
                 adapter_kind=ADAPTER_KIND_CRUSH,
-                reason="no_message_match",
+                reason="source_busy",
             )
-
-        return EvidenceResult(
-            status=EvidenceStatus.AVAILABLE,
-            excerpts=tuple(matches),
-            source_path=str(path),
-            adapter_kind=ADAPTER_KIND_CRUSH,
-            reason=None,
-        )
-    except sqlite3.Error:
         return EvidenceResult(
             status=EvidenceStatus.UNAVAILABLE_SOURCE,
-            source_path=source,
+            source_path=str(snapshot_before.resolved),
+            adapter_kind=ADAPTER_KIND_CRUSH,
+            reason="source_unreadable",
+        )
+    except sqlite3.Error:
+        if state.deadline_hit:
+            return EvidenceResult(
+                status=EvidenceStatus.UNAVAILABLE_SOURCE,
+                source_path=str(snapshot_before.resolved),
+                adapter_kind=ADAPTER_KIND_CRUSH,
+                reason="deadline",
+            )
+        return EvidenceResult(
+            status=EvidenceStatus.UNAVAILABLE_SOURCE,
+            source_path=str(snapshot_before.resolved),
             adapter_kind=ADAPTER_KIND_CRUSH,
             reason="source_unreadable",
         )
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
+
+    if not _snapshot_unchanged(snapshot_before):
+        return EvidenceResult(
+            status=EvidenceStatus.UNAVAILABLE_SOURCE,
+            source_path=str(snapshot_before.resolved),
+            adapter_kind=ADAPTER_KIND_CRUSH,
+            reason="source_identity_changed",
+        )
+
+    return result
+
+
+def _scan_session(
+    conn: sqlite3.Connection,
+    *,
+    session_key: str,
+    normalized_query: str,
+    query_text: str,
+    resolved_path: str,
+    max_scan_rows: int,
+    max_result_messages: int,
+    max_excerpt_chars: int,
+    state: _ReadState,
+    deadline: float,
+    offsets_ignored: bool,
+) -> EvidenceResult:
+    if len(normalized_query.strip()) > max_excerpt_chars:
+        return EvidenceResult(
+            status=EvidenceStatus.UNAVAILABLE_MATCH,
+            source_path=resolved_path,
+            adapter_kind=ADAPTER_KIND_CRUSH,
+            reason="query_exceeds_excerpt_budget",
+            scope=EvidenceScope.SESSION,
+        )
+
+    matches: list[EvidenceExcerpt] = []
+    seen_keys: set[tuple[str, str]] = set()
+    session_ordinal = 0
+    bytes_scanned = 0
+    partial_reason: str | None = None
+    scan_capped = False
+
+    stage1_rows = conn.execute(_STAGE1_SQL, (session_key, max_scan_rows + 1)).fetchall()
+    if len(stage1_rows) > max_scan_rows:
+        scan_capped = True
+        stage1_rows = stage1_rows[:max_scan_rows]
+
+    for message_id, row_session_id, role, created_at, parts_len in stage1_rows:
+        if time.monotonic() >= deadline:
+            state.deadline_hit = True
+            raise sqlite3.OperationalError("deadline")
+
+        bytes_scanned += int(parts_len or 0)
+        if bytes_scanned > MAX_SCAN_BYTES:
+            scan_capped = True
+            break
+
+        if not isinstance(message_id, str) or not isinstance(row_session_id, str):
+            partial_reason = partial_reason or "malformed_row"
+            continue
+        key = (message_id, row_session_id)
+        if key in seen_keys:
+            return EvidenceResult(
+                status=EvidenceStatus.UNAVAILABLE_SOURCE,
+                source_path=resolved_path,
+                adapter_kind=ADAPTER_KIND_CRUSH,
+                reason="duplicate_row_identity",
+            )
+        seen_keys.add(key)
+
+        if int(parts_len or 0) > MAX_PARTS_BYTES:
+            partial_reason = partial_reason or "oversized_row"
+            continue
+
+        row = conn.execute(_STAGE2_SQL, key).fetchone()
+        if row is None:
+            partial_reason = partial_reason or "malformed_row"
+            continue
+        _, verified_session, verified_role, parts_raw, verified_created_at = row
+        if verified_session != session_key:
+            partial_reason = partial_reason or "malformed_row"
+            continue
+        if verified_role not in ("user", "assistant"):
+            continue
+
+        content, row_error = _extract_text_parts(parts_raw)
+        if row_error:
+            partial_reason = partial_reason or row_error
+            continue
+        if not content:
+            continue
+
+        normalized_content = normalize_evidence_text(content)
+        current_ordinal = session_ordinal
+        session_ordinal += 1
+
+        if not message_matches(normalized_content, normalized_query):
+            continue
+
+        excerpt_text, truncated = _bound_excerpt(
+            normalized_content,
+            max_excerpt_chars,
+            query_hint=query_text,
+        )
+
+        matches.append(
+            EvidenceExcerpt(
+                source_path=resolved_path,
+                adapter_kind=ADAPTER_KIND_CRUSH,
+                session_id=verified_session,
+                message_id=message_id,
+                role=verified_role if isinstance(verified_role, str) else "",
+                timestamp=_crush_timestamp_to_iso(verified_created_at),
+                message_ordinal=current_ordinal,
+                excerpt=excerpt_text,
+                truncated=truncated,
+                content_digest_sha256=digest_excerpt(excerpt_text),
+                scope=EvidenceScope.SESSION,
+            )
+        )
+        if len(matches) >= max_result_messages:
+            break
+
+    if not matches:
+        if scan_capped:
+            return EvidenceResult(
+                status=EvidenceStatus.SCAN_LIMIT,
+                source_path=resolved_path,
+                adapter_kind=ADAPTER_KIND_CRUSH,
+                reason="max_scan_rows_exceeded",
+                scope=EvidenceScope.SESSION,
+            )
+        if state.deadline_hit:
+            return EvidenceResult(
+                status=EvidenceStatus.UNAVAILABLE_SOURCE,
+                source_path=resolved_path,
+                adapter_kind=ADAPTER_KIND_CRUSH,
+                reason="deadline",
+                scope=EvidenceScope.SESSION,
+            )
+        return EvidenceResult(
+            status=EvidenceStatus.UNAVAILABLE_MATCH,
+            source_path=resolved_path,
+            adapter_kind=ADAPTER_KIND_CRUSH,
+            reason="no_message_match",
+            scope=EvidenceScope.SESSION,
+        )
+
+    partial = bool(partial_reason or scan_capped)
+    if partial and not partial_reason:
+        partial_reason = "max_scan_rows_exceeded" if scan_capped else None
+
+    status = EvidenceStatus.AVAILABLE
+    reason = "offsets_ignored_session_scope" if offsets_ignored else None
+
+    return EvidenceResult(
+        status=status,
+        excerpts=tuple(matches),
+        source_path=resolved_path,
+        adapter_kind=ADAPTER_KIND_CRUSH,
+        reason=reason,
+        scope=EvidenceScope.SESSION,
+        partial=partial,
+        partial_reason=partial_reason,
+    )

@@ -13,6 +13,13 @@ class EvidenceStatus(str, Enum):
     UNAVAILABLE_SOURCE = "unavailable_source"
     UNAVAILABLE_MATCH = "unavailable_match"
     INVALID_LOCATOR = "invalid_locator"
+    SCAN_LIMIT = "scan_limit"
+
+
+class EvidenceScope(str, Enum):
+    """How the adapter bounded the lookup."""
+
+    SESSION = "session"
 
 
 @dataclass(frozen=True)
@@ -40,6 +47,7 @@ class EvidenceExcerpt:
     excerpt: str
     truncated: bool
     content_digest_sha256: str
+    scope: EvidenceScope = EvidenceScope.SESSION
 
 
 @dataclass(frozen=True)
@@ -51,6 +59,9 @@ class EvidenceResult:
     adapter_kind: str | None = None
     source_path: str | None = None
     reason: str | None = None
+    scope: EvidenceScope | None = None
+    partial: bool = False
+    partial_reason: str | None = None
 
     @property
     def available(self) -> bool:
