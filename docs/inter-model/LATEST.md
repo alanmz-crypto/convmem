@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-18
+**Updated:** 2026-09-20
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,6 +9,16 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **Issue #315 — invalid export record at line 147814 (BLOCKED_ON_RYAN):**
+  read-only Crush diagnosis complete; **no production export mutation performed**.
+  The record is **not** invalid UTF-8 — it is valid JSON byte-identical to clean
+  writer output, preceded by **1661 NUL bytes** (sparse-hole / lost append
+  durability). Exactly one anomalous record in 148,324; Chroma still holds the
+  unit with a matching `content_hash`. Introduced between 2026-09-20 00:18 and
+  04:03 CDT (restic `e51f849a` and `48fde3d7` both scan clean). **Next:** Ryan
+  approves Repair Option A (strip the NUL span, atomic publish) or Option B
+  (reconstruct from Chroma). Diagnosis + authorization packet:
+  [`CRUSH-2026-09-20-issue-315-invalid-export-record-diagnosis.md`](CRUSH-2026-09-20-issue-315-invalid-export-record-diagnosis.md).
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
