@@ -1,10 +1,9 @@
 # VERIFY — Claude Watch Parity Gate 2
 
 **Arc:** Claude Watch Parity
-**Code revision:** namespace execute — bubblewrap launcher, vault capture, control-root lifecycle
-**Review tip:** exact HEAD of `fix/2026-09-20-claude-gate2-namespace-execute` (worktree
-`/tmp/convmem-gate2-namespace-execute`, base `e007a22`)
-**Predecessor:** local safety corrective `e007a22` (findings #1, #3–#6)
+**Code revision:** namespace execute + OpenAI Security Review corrective (post `52bdc02`)
+**Review tip:** exact HEAD of `fix/2026-09-20-claude-gate2-namespace-execute` after Security Review corrective push
+**Predecessor review:** OpenAI Security Review FAIL at `52bdc02c9e4e9862ae5d1e0efbb3f2e5e565ef6e` (10 blockers)
 **Architecture:** `2f09469` — `docs/plans/ARCHITECTURE-claude-watch-parity.md`
 **Plan:** `EXECUTION-claude-watch-parity-boundary.md` (E1–E4)
 **Live-source canary:** `NOT_RUN` (Ryan grant required; hermetic harness only)
@@ -60,7 +59,7 @@ architecture `2f09469` and handoff C1–C4:
 /home/lauer/Projects/convmem/.venv/bin/python -m pytest \
   tests/test_claude_incremental_canary.py \
   tests/test_claude_incremental_canary_namespace.py -q
-# 56 passed (43 unit + 13 namespace integration)
+# 63 passed (45 unit + 18 namespace integration)
 
 /home/lauer/Projects/convmem/.venv/bin/python -m pytest \
   tests/test_claude_gate1_hermetic_smoke.py \
@@ -91,9 +90,8 @@ architecture `2f09469` and handoff C1–C4:
 
 - Live-source canary **NOT_RUN**.
 - `NO_GATE2_ROUTE` fallback remains if bubblewrap fitness gates fail on a future host.
-- Matrix append inside namespace copies grant to writable `canary-slug` path when grant mount is read-only (host still owns vault capture).
-- Full E5 regression matrix (Kiro/Codex route suites) not run in this slice.
+- OpenAI Security Review corrective at tip after `52bdc02` (10 blockers addressed).
 
-**TL;DR [Arc Claude Watch Parity]:** Namespace execute landed on
-`fix/2026-09-20-claude-gate2-namespace-execute`; 56 focused tests PASS on primary host;
-finding #2 mechanism implemented per `2f09469` C1–C4; live canary NOT_RUN; Gate 2 PASS not claimed.
+**TL;DR [Arc Claude Watch Parity]:** Namespace execute + Security Review correctives on
+`fix/2026-09-20-claude-gate2-namespace-execute`; 63 focused + 112 E5 tests PASS;
+finding #2 mechanism per `2f09469` C1–C4; live canary NOT_RUN; Gate 2 PASS not claimed.

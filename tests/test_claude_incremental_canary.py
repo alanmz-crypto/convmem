@@ -35,6 +35,7 @@ from claude_incremental_canary import (
     RelativePath,
     Sha256Digest,
     SourceAlias,
+    SourceDescriptor,
     SourceEvidence,
     WatcherMethod,
     WatcherStatus,
@@ -866,3 +867,40 @@ def test_capture_descriptor_closed_on_failure_path(
     with pytest.raises(IsolationViolation, match="publish blocked"):
         capture_source(boundary, spec)
     assert_no_snapshot_artifacts(boundary, spec.alias)
+
+
+def test_source_descriptor_rejects_coercive_values() -> None:
+    digest = "a" * 64
+    with pytest.raises(IsolationViolation, match="int"):
+        SourceDescriptor(
+            alias="fixture",
+            relative_path="home/.claude/projects/granted/fixture.jsonl",
+            device=True,  # type: ignore[arg-type]
+            inode=1,
+            size=1,
+            complete_boundary=1,
+            prefix_sha256=digest,
+            sha256=digest,
+            physical_lines=1,
+            durability=PublicationDurability.CONFIRMED,
+        )
+
+
+def test_publish_refuses_existing_snapshot_destination(tmp_path: Path) -> None:
+    parent = tmp_path / "vault"
+    parent.mkdir()
+    parent_fd = os.open(str(parent), os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+    existing_fd = os.open(
+        "existing.jsonl",
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC,
+        0o600,
+        dir_fd=parent_fd,
+    )
+    os.write(existing_fd, b"existing")
+    os.close(existing_fd)
+    anon_fd = _stage_anonymous_dirfd(parent_fd, b"payload")
+    try:
+        with pytest.raises(IsolationViolation, match="already exists"):
+            _publish_anonymous_dirfd(parent_fd, anon_fd, "existing.jsonl")
+    finally:
+        os.close(parent_fd)

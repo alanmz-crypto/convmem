@@ -11,57 +11,49 @@
 
 | Field | Value |
 |---|---|
-| **State** | `READY_FOR_REVIEW` |
+| **State** | `READY_FOR_REVIEW` (Security Review corrective pushed) |
 | **Branch** | `fix/2026-09-20-claude-gate2-namespace-execute` |
 | **Base** | `e007a22b24754a93d9cbd15d02269d422d371c4a` |
-| **Tip SHA** | see `git rev-parse HEAD` after fetch |
+| **Prior review FAIL** | `52bdc02c9e4e9862ae5d1e0efbb3f2e5e565ef6e` (10 blockers) |
+| **Tip SHA** | see `git rev-parse origin/fix/2026-09-20-claude-gate2-namespace-execute` |
 | **Push status** | pushed to origin with explicit refspec |
 | **PR** | not authorized |
-| **Ryan GATE** | none for Security Review; live canary / PR / activation remain closed |
-| **Review target** | full exact pushed SHA for OpenAI Security Review; Kiro only after Security Review PASS |
+| **Ryan GATE** | none for Security Review re-run; live canary / PR / activation remain closed |
 
 ---
 
-## What was built
+## Security Review corrective (10 blockers)
 
-Descriptor-bound bubblewrap namespace for Claude Gate 2 finding #2 per
-architecture `2f09469` and execute handoff C1–C4:
-
-- Host control root with sibling `scratch` and `snapshot-vault` (C1)
-- Exclusive lifecycle lock and `.active`/`.quarantined` marker invariant (C3)
-- Host vault capture via `O_TMPFILE`/`linkat` with 128-bit capture ids
-- bwrap launcher with fixed allowlist, `pass_fds`, and pipe stdout/stderr (C4)
-- Recoverable crash limited to injected `CRASH_EXIT=86` with one diagnostic rerun (C2)
-- Unchanged coordinator and Chroma writer inside `/canary-root`
+| # | Fix summary |
+|---|---|
+| 1 | Host env via `_namespace_worker_env`; scratch init dirfd-only; config memfd only |
+| 2 | `FrozenSourceSpec` built after lock + host Gate 0 + `.active` marker |
+| 3 | `_build_gate0_evidence_host` never bypasses on `ISOLATION_MODE`; watch config fail-closed |
+| 4 | Symlink-safe parent; `.convmem-claude-gate2-issued` marker required on reopen |
+| 5 | Robust finally; quarantine on failure; CRASH_EXIT cleanup without quarantine |
+| 6 | `SourceDescriptor` validation; vault publish refuses collision |
+| 7 | Diagnostic rerun uses `fresh_control=True` |
+| 8 | Vault inventory before capture; EEXIST refused |
+| 9 | Host-orchestrated matrix (`_run_host_matrix`) with grant append on host |
+| 10 | FD cleanup on create/reopen/capture failure paths |
 
 ## Verification summary
 
 | Check | Result |
 |---|---|
-| Focused tests | 56 passed (43 unit + 13 namespace integration) |
-| E5 route regressions | 112 passed (Claude/Kiro/Codex suites) |
-| `compileall` | exit 0 |
-| `pylint` touched Python | 9.91/10 |
+| Focused tests | **63 passed** (45 unit + 18 namespace) |
+| E5 route regressions | **112 passed** |
 | Protected runtime diffs from `e6a0634` | empty |
-| `git diff --check` | clean |
 | Live canary | **NOT_RUN** |
 | Gate 2 PASS claimed | **no** |
-
-## What NOT to build (still closed)
-
-- Real Claude transcript access
-- Live canary
-- PR or issue changes (#313 tracker unchanged)
-- Watcher, routing, activation, or shared runtime edits
 
 ---
 
 ## Next lane
 
-1. **OpenAI Security Review** — full exact pushed SHA on this branch
+1. **OpenAI Security Review** — full exact pushed SHA (corrective tip)
 2. **Kiro** — same SHA only after Security Review PASS
-3. **Ryan** — live canary grant remains separate
 
-**See my work:** `git fetch origin && git log -1 --oneline origin/fix/2026-09-20-claude-gate2-namespace-execute` and [`VERIFY-claude-watch-parity-gate2.md`](VERIFY-claude-watch-parity-gate2.md)
+**See my work:** `git fetch origin && git log -1 --oneline origin/fix/2026-09-20-claude-gate2-namespace-execute`
 
-**TL;DR [Arc Claude Watch Parity]:** Namespace execute landed on `fix/2026-09-20-claude-gate2-namespace-execute`; stop for OpenAI Security Review on the pushed tip; no live or production authority.
+**TL;DR [Arc Claude Watch Parity]:** All ten Security Review blockers corrected; new tip pushed for re-review; Kiro blocked until PASS.

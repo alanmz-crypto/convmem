@@ -193,3 +193,125 @@ def test_signal_exit_not_recoverable_crash(tmp_path: Path, signal_num: int) -> N
     # Host-side namespace cannot inject signals easily; assert CRASH_EXIT constant contract.
     assert CRASH_EXIT == 86
     assert signal_num != CRASH_EXIT
+
+
+def test_reopen_requires_issued_marker(tmp_path: Path) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir()
+    parent_fd = os.open(str(parent), os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+    root_id = "manual-root-id00"
+    try:
+        os.mkdir(root_id, 0o700, dir_fd=parent_fd)
+        control_fd = os.open(root_id, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC, dir_fd=parent_fd)
+        try:
+            os.mkdir("scratch", 0o700, dir_fd=control_fd)
+            os.mkdir("snapshot-vault", 0o700, dir_fd=control_fd)
+        finally:
+            os.close(control_fd)
+    finally:
+        os.close(parent_fd)
+    with pytest.raises(IsolationViolation, match="never issued"):
+        _reopen_control_root(parent, root_id)
+
+
+def test_vault_collision_refused(tmp_path: Path) -> None:
+    root, token, _env, source, _spec = prepare_fixture_env(tmp_path)
+    control_path = root.parent
+    vault = control_path / _CONTROL_VAULT_NAME
+    (vault / "unexpected-residue").write_text("blocked\n", encoding="utf-8")
+    result = run_worker("capture", root=root, token=token, source=source)
+    assert result.returncode == 74
+    assert "unexpected vault entry" in result.stdout
+
+
+def test_crash_exit_does_not_quarantine(tmp_path: Path) -> None:
+    root, token, _env, source, _spec = prepare_fixture_env(tmp_path)
+    control_path = root.parent
+    crashed = run_worker(
+        "capture",
+        root=root,
+        token=token,
+        source=source,
+        extra_env={"CONVMEM_CLAUDE_CANARY_FAULT": "before_snapshot_publish"},
+    )
+    assert crashed.returncode == CRASH_EXIT
+    assert not (control_path / _MARKER_QUARANTINED).exists()
+    assert not (control_path / _MARKER_ACTIVE).exists()
+
+
+def test_host_gate0_not_bypassed_by_isolation_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from claude_incremental_canary import (
+        WatcherMethod,
+        WatcherProbeResult,
+        WatcherStatus,
+        PassToken,
+        _build_gate0_evidence_host,
+        _probe_watcher_status_host,
+        _scrub_host_credentials,
+    )
+    from incremental_jsonl_isolation import ISOLATION_MODE, ISOLATION_MODE_ENV
+
+    monkeypatch.setenv(ISOLATION_MODE_ENV, ISOLATION_MODE)
+    calls: list[str] = []
+
+    def track_probe() -> WatcherProbeResult:
+        calls.append("host")
+        return WatcherProbeResult(
+            status=WatcherStatus.INACTIVE,
+            method=WatcherMethod.TEST,
+            passed=PassToken.TRUE,
+        )
+
+    monkeypatch.setattr(
+        "claude_incremental_canary._probe_watcher_status_host",
+        track_probe,
+    )
+    with _scrub_host_credentials():
+        _build_gate0_evidence_host()
+    assert calls == ["host"]
+
+
+def test_source_read_after_gate0_lock_and_markers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, _env, source, _spec = prepare_fixture_env(tmp_path)
+    events: list[str] = []
+    original_read_bytes = Path.read_bytes
+    original_gate0 = __import__(
+        "claude_incremental_canary", fromlist=["_build_gate0_evidence_host"]
+    )._build_gate0_evidence_host
+    original_active = __import__(
+        "claude_incremental_canary", fromlist=["_create_active_marker"]
+    )._create_active_marker
+
+    def track_read_bytes(self: Path) -> bytes:
+        if self == source:
+            events.append("read_bytes")
+        return original_read_bytes(self)
+
+    def track_gate0() -> object:
+        events.append("gate0")
+        return original_gate0()
+
+    def track_active(control_fd: int) -> None:
+        events.append("active_marker")
+        original_active(control_fd)
+
+    monkeypatch.setattr(Path, "read_bytes", track_read_bytes)
+    monkeypatch.setattr(
+        "claude_incremental_canary._build_gate0_evidence_host",
+        track_gate0,
+    )
+    monkeypatch.setattr(
+        "claude_incremental_canary._create_active_marker",
+        track_active,
+    )
+    result = run_worker("capture", root=root, token=token, source=source)
+    assert result.returncode == 0, result.stderr
+    assert "gate0" in events
+    assert "active_marker" in events
+    assert "read_bytes" in events
+    assert events.index("gate0") < events.index("active_marker")
+    assert events.index("active_marker") < events.index("read_bytes")

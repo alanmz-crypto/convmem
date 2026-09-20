@@ -16,12 +16,12 @@ sys.path.insert(0, str(REPO_ROOT))
 from claude_incremental_canary import (  # noqa: E402
     CANARY_INTERNAL_ROOT,
     CRASH_EXIT,
+    PublicationDurability,
     _CAPTURE_TRANSITIONS,
     _build_gate0_evidence,
     _granted_source_relative,
     capture_source,
     run_coordinator,
-    run_hermetic_matrix,
     validate_frozen_source,
 )
 from incremental_jsonl_isolation import (  # noqa: E402
@@ -154,7 +154,7 @@ def main() -> int:
             "prefix_sha256": view.prefix_sha256,
             "sha256": hashlib.sha256(view.raw_prefix).hexdigest(),
             "physical_lines": view.raw_prefix.count(b"\n"),
-            "durability": "confirmed",
+            "durability": str(PublicationDurability.CONFIRMED),
         }
         print(
             _scrub_mountinfo_leaks(
@@ -170,14 +170,7 @@ def main() -> int:
         return 0
     if command == "matrix":
         source = boundary.resolve_mutable(sys.argv[2], label="canary source")
-        writable = source
-        if not os.access(source, os.W_OK):
-            writable = boundary.resolve_mutable(
-                Path("home") / ".claude" / "projects" / "canary-slug" / source.name,
-                label="writable canary source",
-            )
-            writable.write_bytes(source.read_bytes())
-        payload = run_hermetic_matrix(boundary, writable)
+        payload = run_coordinator(boundary, source)
         print(_scrub_mountinfo_leaks(json.dumps(payload, sort_keys=True)))
         return 0
     if command == "run":
