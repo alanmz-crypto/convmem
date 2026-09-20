@@ -1,7 +1,7 @@
 # VERIFY — Claude Watch Parity Gate 2
 
 **Arc:** Claude Watch Parity
-**Code revision:** pending push (Gate 2 safety corrective — four Sol-High findings)
+**Code revision:** `abbe1b6a` (Gate 2 safety corrective — four Sol-High findings)
 **Review tip:** `cursor/claude-watch-parity-gate2-b20a` — Copilot and Kiro re-review the exact pushed branch HEAD
 **Base:** `e6a0634c214cf07c89b551d13410bb276a93b38d` (`origin/main` after Gate 1 #311)
 **Plan:** `a811f58` — `docs/inter-model/CODEX-2026-09-18-claude-watch-parity-gate2-execute.md`
