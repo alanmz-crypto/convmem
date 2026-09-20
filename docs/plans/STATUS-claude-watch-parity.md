@@ -49,7 +49,8 @@ exports are derived. Default routing stays Kiro-only.
 ## 5. Your Role
 
 **Kiro:** review the corrected namespace decision, unbound snapshot vault,
-per-run digest revalidation, durable quarantine, Claude-compatible fixed mount,
+per-run digest revalidation, locked durable quarantine, mountinfo disclosure
+containment, Claude-compatible fixed mount,
 watch-root disjointness, host-owned capture,
 explicit merged/runtime baselines, CI skip semantics, and `NO_GATE2_ROUTE`
 exit. Confirm that coordinator, isolation, and Chroma runtime files remain
@@ -102,7 +103,7 @@ remain separate.
 
 | Date | Who | Milestone-level change |
 |---|---|---|
-| 2026-09-20 | Codex | Moved snapshots to an unbound vault and added tamper-proof digest revalidation, durable quarantine, and application-specific host identity; Kiro review next. |
+| 2026-09-20 | Codex | Added exclusive control-root locking, precise worker-crash recovery, and literal mountinfo-string exclusion to the unbound-vault plan; Kiro review next. |
 
 **TL;DR [Arc Claude Watch Parity]:** Gate 1 is merged; five local Gate 2
 correctives are pushed but unreviewed. Finding #2 now has a namespace design

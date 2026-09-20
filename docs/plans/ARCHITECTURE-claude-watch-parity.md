@@ -54,8 +54,9 @@ are never bound. Bubblewrap mounts the scratch root at `/canary-root` and the
 snapshot read-only at
 `/canary-root/home/.claude/projects/granted/<alias>.jsonl`. The worker uses
 `HOME=/canary-root/home`, so normal `detect_format()` dispatch recognizes the
-source as Claude input. It sees no host pathname alias and no production home or
-data directories.
+source as Claude input. It sees no traversable host pathname alias and no
+production home or data directories. Linux mount metadata can disclose host
+mount-source names; section 8 bounds that non-authoritative exposure.
 
 Advantages:
 
@@ -181,10 +182,12 @@ new name once; `EEXIST` fails closed and generates no replacement attempt.
 The host filename is never coordinator identity. Each fresh snapshot fd is
 mounted at the same Claude-compatible path
 `/canary-root/home/.claude/projects/granted/<alias>.jsonl`. Therefore first run,
-unchanged replay, append, repair, and crash recovery preserve the coordinator's
-source path and `path_key` even though their host snapshot inodes and names are
-different. An append run captures the new complete source bytes; it does not
-mutate a prior snapshot.
+unchanged replay, append, repair, and injected worker/coordinator crash recovery
+preserve the coordinator's source path and `path_key` while the host launcher
+remains alive, even though their host snapshot inodes and names are different.
+An append run captures the new complete source bytes; it does not mutate a prior
+snapshot. Launcher crash is not same-root recovery: `.active` causes durable
+quarantine on the next lock holder.
 
 The launcher owns snapshot retention:
 
@@ -270,14 +273,23 @@ watched root can be inside a canary root. Evidence records only a closed
 `watch_roots_disjoint=true` result. A control root from a failed post-run watcher
 check is quarantined and must not be reused for replay or later evidence.
 
-Quarantine is durable, not launcher memory. Before each invocation the launcher
-creates an unbound `.active` marker through the held control-root dirfd and
-fsyncs that directory. After verified snapshot cleanup and passing post-run
-checks, it removes `.active` and fsyncs again. Finding `.active` at startup means
-the prior launcher did not close cleanly: create and fsync a fixed
-`.quarantined` marker and refuse the root. Any failure that requires quarantine
-creates the same marker before returning. A root with `.quarantined` is never
-reused; removal is a separate host cleanup action outside evidence production.
+Quarantine is durable, not launcher memory. Immediately after opening the
+control root, the launcher acquires a nonblocking exclusive `flock` on the held
+control dirfd and retains it through snapshot cleanup, post-run checks, and
+marker removal. Lock contention refuses without inspecting or modifying
+markers; it never quarantines the active owner. Kernel lock release on process
+exit makes a found `.active` marker unambiguously stale after the new launcher
+has acquired the lock.
+
+Under that lock, the launcher creates an unbound `.active` marker through the
+held control-root dirfd and fsyncs that directory before opening transcript
+content. Failure to create or fsync `.active` refuses before capture. After
+verified snapshot cleanup and passing post-run checks, it removes `.active` and
+fsyncs again. Finding `.active` at startup means the prior launcher did not
+close cleanly: create and fsync a fixed `.quarantined` marker and refuse the
+root. Any failure that requires quarantine creates the same marker before
+returning. A root with `.quarantined` is never reused; removal is a separate
+host cleanup action outside evidence production.
 
 The worker independently verifies namespace properties, fixed paths, config,
 source identity, network denial, and production-path absence. It does not
@@ -302,6 +314,11 @@ The design protects against:
 It does not protect against a privileged host administrator, kernel compromise,
 or malicious modification of the bubblewrap executable. It also does not make
 the production watcher safe or authorize watching Claude transcripts.
+`/proc/self/mountinfo` can reveal the literal host control-root prefix and the
+capture-id filename used as mount sources. Those strings are disclosure-only,
+not authority: the corresponding host paths are absent and cannot be traversed
+inside the namespace. The worker, evidence assembler, and persistence surfaces
+must not copy either string into output or state.
 
 ## 9. Fitness gates
 
@@ -317,15 +334,20 @@ Implementation is acceptable only if adversarial tests prove:
   deprecated scratch capture path is absent;
 - write, truncate, and unlink attempts against every reachable source alias
   fail while the host snapshot identity and digest remain unchanged;
+- control-lock contention refuses without changing markers; marker creation or
+  directory-fsync failure refuses before capture;
 - normal `detect_format()` returns `jsonl_claude_session` for the mounted path;
 - first-run evidence asserts the explicit expected session id and sanitized unit
   content; missing-id input is refused by normal detection, and a separate
   metadata-contract test asserts its fallback id equals the validated alias
   rather than the generic name `session`;
-- first run, replay, append, repair, and crash recovery use the same stable
-  `/canary-root` paths;
+- first run, replay, append, repair, and worker/coordinator crash recovery with
+  a surviving host launcher use the same stable `/canary-root` paths;
 - checkpoints and evidence contain no host path, fd number, transcript text,
   environment content, or credential material;
+- stdout, stderr, evidence, checkpoints, exports, and processed state contain
+  neither the literal control-root prefix nor the capture id observed in
+  `/proc/self/mountinfo`;
 - bubblewrap setup failure leaves no snapshot or coordinator mutation;
 - Kiro-only default routing and isolated Codex behavior remain unchanged.
 

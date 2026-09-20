@@ -78,14 +78,18 @@ remove it through the same dirfd, including worker-crash paths. If the launcher
 crashes, treat the
 remaining allowlisted regular snapshot as stale: never reuse it, inventory it
 on the next invocation, and remove it only after descriptor-relative identity
-checks. Unexpected entries or cleanup uncertainty quarantine the scratch root;
+checks. Unexpected entries or cleanup uncertainty quarantine the control root;
 start replay from a new clean root instead of accepting prior evidence.
 
-Create and fsync an unbound `.active` control marker before every invocation.
-Remove and fsync it only after snapshot digest verification, cleanup, and
-passing post-run checks. A pre-existing `.active` marker or any quarantine
-condition creates and fsyncs `.quarantined`; a marked control root is refused on
-all later starts. Its deletion is not part of a canary run.
+Acquire a nonblocking exclusive `flock` on the held control dirfd before reading
+or changing markers, and retain it for the full invocation. Lock contention
+refuses without quarantining the active owner. Under the lock, create and fsync
+an unbound `.active` control marker before capture. Creation or fsync failure
+refuses before transcript access. Remove and fsync it only after snapshot digest
+verification, cleanup, and passing post-run checks. A pre-existing `.active`
+marker after lock acquisition or any quarantine condition creates and fsyncs
+`.quarantined`; a marked control root is refused on all later starts. Its
+deletion is not part of a canary run.
 
 Mount the runtime and application code read-only. Start with an empty root,
 clear environment, isolated network/PID/IPC/UTS/cgroup/user namespaces, new
@@ -123,7 +127,8 @@ Add hermetic tests for:
 8. normal Claude detection plus first-run explicit session-id and
    sanitized-unit-content assertions; missing-id detection refusal and a
    separate metadata-helper alias-fallback assertion;
-9. stable paths across first run, unchanged replay, append, repair, and crash;
+9. stable paths across first run, unchanged replay, append, repair, and worker
+   or coordinator crash while the host launcher remains alive;
 10. namespace setup failure before coordinator mutation;
 11. descriptor closure after success, ordinary exception, timeout, and
     `BaseException` fault injection;
@@ -139,14 +144,27 @@ after worker exit.
 Add lifecycle tests proving unique host snapshot names across first run,
 unchanged replay, append, repair, and crash; fresh capture on every run; fixed
 internal source path and `path_key`; ordinary and worker-crash cleanup; stale
-snapshot non-reuse after launcher crash; and scratch-root quarantine on unknown
+snapshot non-reuse after launcher crash; and control-root quarantine on unknown
 entries or cleanup uncertainty.
+
+Define crash evidence precisely: same-root checkpoint recovery covers injected
+worker/coordinator crashes for which the host launcher survives and completes
+snapshot verification and cleanup. A launcher crash leaves `.active`, durably
+quarantines the control root on the next lock holder, and never claims same-root
+recovery.
 
 Add namespace tamper tests that try to write, truncate, and unlink the mounted
 source and every discoverable alias. Assert the vault, control root, and former
 scratch-capture path are absent; no snapshot, vault, or control descriptor is
 inherited by the worker; the host snapshot's device, inode, size, bytes, and
 digest remain unchanged; and the post-run digest recheck gates cleanup.
+
+Add lock/marker tests for two concurrent launchers, kernel lock release after a
+launcher crash, stale `.active` handling, and create/fsync failure before
+capture. Read `/proc/self/mountinfo` in the worker to obtain the literal control
+prefix and capture id, then assert those exact strings are absent from stdout,
+stderr, evidence, checkpoints, exports, processed state, and every other
+persisted artifact.
 
 Gate 0 must prove the canonical control, scratch, and vault roots are disjoint
 in both directions from every configured watch root. Recheck after worker exit.

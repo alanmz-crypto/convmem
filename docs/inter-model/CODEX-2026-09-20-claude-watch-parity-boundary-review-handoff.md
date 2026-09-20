@@ -50,6 +50,9 @@ inputs, not accepted evidence. Gate 2 still has no PASS.
 10. Does the unbound sibling vault eliminate every worker-writable alias to the
     snapshot, with post-run digest revalidation and durable quarantine closing
     cleanup failures?
+11. Do the full-invocation `flock`, pre-capture marker failure rules, precise
+    worker-crash definition, and literal mountinfo-string exclusion close the
+    remaining operational advisories?
 
 The baseline is intentionally precise: Gate 2 adds the Claude adapter and
 `incremental_jsonl_formats.py` registry entry, while `incremental_jsonl.py`,
@@ -61,5 +64,5 @@ grants no implementation, PR, live source, canary, routing, watcher, or
 activation action.
 
 **TL;DR [Arc Claude Watch Parity]:** Review the namespace architecture, unbound
-snapshot vault, and per-run lifecycle only; Gate 2 remains closed and protected
-shared runtime files remain unchanged.
+snapshot vault, locked durable lifecycle, and mountinfo disclosure containment;
+Gate 2 remains closed and protected shared runtime files remain unchanged.
