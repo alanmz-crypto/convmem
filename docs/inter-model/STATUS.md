@@ -63,6 +63,7 @@ gated.
 
 | Arc | State | Notes |
 |---|---|---|
+| Claude Watch Parity | **Closed — `NO_GATE2_ROUTE`** | Gate 1 on-demand indexing remains supported. Gate 2 automatic capture was rejected after three Security Review FAIL tips; Kiro stood down. Tagged experiments are reference-only. See [`STATUS-claude-watch-parity.md`](../plans/STATUS-claude-watch-parity.md); follow-ups are #316 and #317. |
 | Chroma Reconcile Tier L | **Closed GREEN** (#161) | Optional R5 anomaly disposition; Ryan-gated watch/refine ops only. Do not re-run R4 without regression request. |
 | Pinwheel Pytest CI | **Closed** (#191; closeout #195/#196/#197) | Reproducible pytest gate live on `main`. No further Pinwheel work. |
 | CodeQL Complex Therapy | **Closed/PASS** (#202) | `Protect Main` requires the five CodeQL/Pylint/Pytest contexts. Ryan owns the quarterly + config-drift attestation. No technical execution remains. |
@@ -107,6 +108,7 @@ gated.
 - [Recovery Authority STATUS](../plans/STATUS-recovery-authority.md)
 - [Naturalistic product-value STATUS](../plans/STATUS-naturalistic-product-value.md)
 - [Arc Codex JSONL production-integration STATUS](../plans/STATUS-codex-jsonl-production-integration.md)
+- [Claude Watch Parity STATUS](../plans/STATUS-claude-watch-parity.md) (closed; reference only)
 - [Agent workflow cheat sheet](../MODEL-WORKFLOW.md)
 
 **TL;DR:** Ryan authorized Cursor Execute C0–C7 for issue #268's bounded brief
