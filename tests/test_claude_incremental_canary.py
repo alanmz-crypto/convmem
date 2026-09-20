@@ -14,17 +14,24 @@ import pytest
 from claude_incremental_canary import (
     CRASH_EXIT,
     DURABLE_TRANSITIONS,
+    EVIDENCE_SECTION_ALLOWLIST,
+    GATE0_DIGEST_ENV,
     FrozenSourceSpec,
     Gate0ProbeHooks,
     PRODUCTION_ROOTS,
     _CAPTURE_TRANSITIONS,
     assemble_evidence,
     assert_transition_coverage,
+    bind_frozen_source,
+    bind_gate0,
     capture_source,
+    derive_snapshot_destination,
     gate0,
     prepare_fixture_env,
+    revalidate_source_identity,
     run_worker,
     validate_frozen_source,
+    validate_source_alias,
 )
 from incremental_jsonl_isolation import IsolationBoundary, IsolationViolation
 
@@ -187,3 +194,137 @@ def test_durable_transition_inventory_is_available() -> None:
         f"{side}_{name}" for name in DURABLE_TRANSITIONS for side in ("before", "after")
     }
     assert len(required) == 2 * len(DURABLE_TRANSITIONS)
+
+
+def test_snapshot_destination_derives_from_boundary_not_home_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    destination = derive_snapshot_destination(boundary, spec.alias)
+    assert destination.is_relative_to(boundary.root)
+    assert destination == boundary.layout["sources"] / "claude-capture" / f"{spec.alias}.jsonl"
+    outside = tmp_path / "escaped-home"
+    outside.mkdir()
+    monkeypatch.setenv("HOME", str(outside))
+    still = derive_snapshot_destination(boundary, spec.alias)
+    assert still == destination
+
+
+def test_snapshot_destination_rejects_alias_escape_and_symlink_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, _source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    for bad_alias in ("../escape", "nested/alias", ".."):
+        with pytest.raises(IsolationViolation, match="alias"):
+            validate_source_alias(bad_alias)
+        with pytest.raises(IsolationViolation, match="alias"):
+            derive_snapshot_destination(boundary, bad_alias)
+    escape = tmp_path / "outside"
+    escape.mkdir()
+    alias_link = boundary.root / "alias"
+    alias_link.symlink_to(escape, target_is_directory=True)
+    with pytest.raises(IsolationViolation, match="symlink"):
+        boundary.resolve_mutable(
+            alias_link / ".claude/projects/canary-slug/x.jsonl",
+            label="snapshot destination",
+        )
+
+
+def test_worker_mutable_commands_require_bound_gate0(tmp_path: Path) -> None:
+    root, token, _env, source, _spec = prepare_fixture_env(tmp_path)
+    gate = run_worker("gate0", root=root, token=token)
+    assert gate.returncode == 0, gate.stderr
+    digest = bind_gate0(json.loads(gate.stdout)).digest
+    for command in ("capture-transitions", "matrix", "capture", "run", "validate-source"):
+        blocked = run_worker(
+            command,
+            root=root,
+            token=token,
+            source=source,
+            extra_env={GATE0_DIGEST_ENV: "deadbeef"},
+        )
+        assert blocked.returncode == 74, command
+        payload = json.loads(blocked.stdout)
+        assert payload["error"] == "IsolationViolation"
+        assert "gate0" in payload["detail"].lower()
+    allowed = run_worker(
+        "matrix",
+        root=root,
+        token=token,
+        source=source,
+        gate0_digest=digest,
+    )
+    assert allowed.returncode == 0, allowed.stderr
+
+
+def test_capture_rejects_same_size_identity_rewrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    binding, data = bind_frozen_source(spec)
+    original = bytearray(data)
+    tampered = bytearray(data)
+    tampered[0] ^= 1
+    source.write_bytes(bytes(tampered))
+    with pytest.raises(IsolationViolation, match="digest drift"):
+        revalidate_source_identity(spec, binding)
+    source.write_bytes(bytes(original))
+    replacement = source.parent / "replacement.jsonl"
+    replacement.write_bytes(bytes(original))
+    source.unlink()
+    replacement.rename(source)
+    with pytest.raises(IsolationViolation, match="identity"):
+        revalidate_source_identity(spec, binding)
+
+
+def test_capture_rejects_same_size_rewrite_during_fault_window(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    original = source.read_bytes()
+
+    def swap_on_revalidation(name: str) -> None:
+        if name == "before_source_revalidation":
+            tampered = bytearray(original)
+            tampered[-2] ^= 1
+            source.write_bytes(bytes(tampered))
+
+    with pytest.raises(IsolationViolation, match="digest drift"):
+        capture_source(boundary, spec, fault=swap_on_revalidation)
+
+
+def test_evidence_rejects_unknown_sections_and_credential_like_values() -> None:
+    assert EVIDENCE_SECTION_ALLOWLIST == frozenset(
+        {"gate0", "matrix", "capture", "coordinator", "source"}
+    )
+    with pytest.raises(IsolationViolation, match="unknown evidence sections"):
+        assemble_evidence(transcript={"text": "canary-message-00000"})
+    with pytest.raises(IsolationViolation, match="unknown keys"):
+        assemble_evidence(gate0={"watcher": {"status": "inactive", "api_key": "secret"}})
+    with pytest.raises(IsolationViolation, match="credential-like"):
+        assemble_evidence(
+            gate0={
+                "watcher": {"status": "inactive", "pass": "true"},
+                "network": {"pass": "true"},
+                "mode": "token-leak",
+            }
+        )
+    with pytest.raises(IsolationViolation, match="transcript-like"):
+        assemble_evidence(
+            matrix={
+                "first_outcome": "canary-message-00001",
+                "second_outcome": "unchanged",
+                "third_outcome": "committed",
+                "third_mode": "incremental",
+                "append_summarize": 1,
+                "append_reused": 1,
+            }
+        )

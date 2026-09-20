@@ -18,6 +18,7 @@ from claude_incremental_canary import (  # noqa: E402
     _hermetic_gate0_hooks,
     capture_source,
     gate0,
+    require_bound_gate0,
     run_coordinator,
     run_hermetic_matrix,
     validate_frozen_source,
@@ -46,6 +47,10 @@ def _frozen_spec(source: Path):
     )
 
 
+def _require_gate0() -> None:
+    require_bound_gate0(hooks=_hermetic_gate0_hooks())
+
+
 def main() -> int:
     install_network_denial()
     command = sys.argv[1]
@@ -54,6 +59,7 @@ def main() -> int:
         report = gate0(hooks=_hermetic_gate0_hooks())
         print(json.dumps(report, sort_keys=True))
         return 0
+    _require_gate0()
     if command == "refuse-network":
         import socket
 

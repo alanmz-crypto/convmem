@@ -1,8 +1,8 @@
 # VERIFY — Claude Watch Parity Gate 2
 
 **Arc:** Claude Watch Parity
-**Code revision:** `a6d70eaa7cc4445a236078a381b339cccf935ae9` (last implementation/test commit)
-**Review tip:** `cursor/claude-watch-parity-gate2-b20a` — Kiro reviews the exact pushed branch HEAD after this VERIFY correction
+**Code revision:** pending push (Gate 2 safety corrective — four Sol-High findings)
+**Review tip:** `cursor/claude-watch-parity-gate2-b20a` — Copilot and Kiro re-review the exact pushed branch HEAD
 **Base:** `e6a0634c214cf07c89b551d13410bb276a93b38d` (`origin/main` after Gate 1 #311)
 **Plan:** `a811f58` — `docs/inter-model/CODEX-2026-09-18-claude-watch-parity-gate2-execute.md`
 **Live-source canary:** `NOT_RUN` (Ryan grant required; hermetic harness only)
@@ -16,8 +16,11 @@
   (`claude-complete-prefix-v1`); `ISOLATED_CLAUDE_FORMATS`; union into
   `ALL_ISOLATED_FORMATS`; `KIRO_ROUTE_FORMATS` unchanged.
 - `claude_incremental_canary.py` + `tests/claude_incremental_canary_worker.py`:
-  hermetic Gate 0, frozen-source validation, read-only capture, scratch matrix
-  using production `IncrementalJsonlCoordinator` inside `IsolationBoundary`.
+  hermetic Gate 0 (bound digest required for every mutable worker command),
+  frozen-source identity binding/revalidation, isolation-derived snapshot
+  destinations with alias allowlisting, closed typed evidence sections, read-only
+  capture, scratch matrix using production `IncrementalJsonlCoordinator` inside
+  `IsolationBoundary`.
 - Focused tests: prefix, route/replay/fallback/repair/isolation, canary contract.
 - Production surfaces **not** changed: `incremental_jsonl.py`, watcher config,
   sources, services, activation.
@@ -46,7 +49,7 @@ cd /tmp/convmem-gate2-worktrees/claude-watch-parity-gate2
   tests/test_codex_jsonl_prefix_adapters.py \
   tests/test_codex_incremental_jsonl_route.py \
   -q
-# 72 passed in ~21s
+# 78 passed in ~27s
 
 .venv/bin/python -m compileall -q .
 # exit 0
@@ -107,6 +110,7 @@ git diff origin/main -- incremental_jsonl.py watch.py config/
 - Canary capture emits descriptor fields (alias, size, digests, boundaries) only;
   no transcript text in evidence payloads.
 
-**TL;DR [Arc Claude Watch Parity]:** Isolated Claude incremental route registered;
-default production routing remains Kiro-only; hermetic tests PASS; live canary
-NOT_RUN; stopped for Kiro exact-tip review.
+**TL;DR [Arc Claude Watch Parity]:** Four Sol-High Gate 2 safety defects corrected
+(snapshot containment, bound Gate 0, source identity revalidation, typed evidence);
+hermetic adversarial regressions PASS; live canary NOT_RUN; stopped for Copilot
+and Kiro exact-tip re-review.
