@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-18
+**Updated:** 2026-09-20
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,6 +9,20 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **ComfyUI shutdown investigation (2026-09-20, ad-hoc — INSPECTION_REQUESTED):**
+  Ryan asked why ComfyUI does not disconnect when run. Crush's investigation found
+  no server shutdown path exists at all: `main.py:412-418` gathers an infinite
+  `publish_loop` (`server.py:1402-1405`), so `run_until_complete` (`main.py:581`)
+  can only exit via `KeyboardInterrupt`, and no `runner.cleanup()`,
+  `site.stop()`, `client_session.close()`, websocket close,
+  `unload_all_models()`, or `comfy_aimdo.control.deinit()` exists anywhere.
+  Verified by live runs: `SIGTERM` dies with zero cleanup, `SIGINT` runs only the
+  asset-manager `finally` (`main.py:585`). **Next:** Kiro inspects seven claims
+  (C1–C7) against `ee71d5c4` and returns an inspection table; **no fix is
+  authorized**, no branch created, no ComfyUI files changed. Resume from
+  [`CRUSH-2026-09-20-comfyui-shutdown-inspection-handoff.md`](CRUSH-2026-09-20-comfyui-shutdown-inspection-handoff.md).
+  Upstream `Comfy-Org/ComfyUI` owns the code, so any fix would be an upstream
+  discussion, not a local patch.
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
