@@ -47,6 +47,9 @@ inputs, not accepted evidence. Gate 2 still has no PASS.
    while preventing snapshot reuse after ordinary or crash exits?
 9. Are watch-root disjointness, failed-root quarantine, and named-host evidence
    sufficient operational gates?
+10. Does the unbound sibling vault eliminate every worker-writable alias to the
+    snapshot, with post-run digest revalidation and durable quarantine closing
+    cleanup failures?
 
 The baseline is intentionally precise: Gate 2 adds the Claude adapter and
 `incremental_jsonl_formats.py` registry entry, while `incremental_jsonl.py`,
@@ -57,6 +60,6 @@ Return PASS or specific blocking corrections on the full exact SHA. Review
 grants no implementation, PR, live source, canary, routing, watcher, or
 activation action.
 
-**TL;DR [Arc Claude Watch Parity]:** Review the namespace architecture and
-per-run snapshot lifecycle only; Gate 2 remains closed and protected shared
-runtime files remain unchanged.
+**TL;DR [Arc Claude Watch Parity]:** Review the namespace architecture, unbound
+snapshot vault, and per-run lifecycle only; Gate 2 remains closed and protected
+shared runtime files remain unchanged.

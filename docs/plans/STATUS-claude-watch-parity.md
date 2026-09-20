@@ -48,8 +48,9 @@ exports are derived. Default routing stays Kiro-only.
 
 ## 5. Your Role
 
-**Kiro:** review the corrected namespace decision, per-run snapshot lifecycle,
-Claude-compatible fixed mount, watch-root disjointness, host-owned capture,
+**Kiro:** review the corrected namespace decision, unbound snapshot vault,
+per-run digest revalidation, durable quarantine, Claude-compatible fixed mount,
+watch-root disjointness, host-owned capture,
 explicit merged/runtime baselines, CI skip semantics, and `NO_GATE2_ROUTE`
 exit. Confirm that coordinator, isolation, and Chroma runtime files remain
 outside the implementation slice while the expected Claude format-registry
@@ -101,7 +102,7 @@ remain separate.
 
 | Date | Who | Milestone-level change |
 |---|---|---|
-| 2026-09-20 | Codex | Defined fresh per-run snapshot capture/cleanup, fixed mounted identity, watch-root exclusion, and named-host evidence; Kiro review next. |
+| 2026-09-20 | Codex | Moved snapshots to an unbound vault and added tamper-proof digest revalidation, durable quarantine, and application-specific host identity; Kiro review next. |
 
 **TL;DR [Arc Claude Watch Parity]:** Gate 1 is merged; five local Gate 2
 correctives are pushed but unreviewed. Finding #2 now has a namespace design

@@ -47,9 +47,11 @@ environment, or a generic sandbox helper.
 
 ## E2 — Descriptor-bind the fixed filesystem
 
-Open and retain the scratch root and exact source. Host capture runs before the
-namespace: publish the snapshot through the held root descriptor, then open the
-published snapshot read-only. Pass the root and snapshot with
+Create one mode-0700 host control root with sibling `scratch` and
+`snapshot-vault` directories through a held control dirfd. Open and retain both
+directory descriptors plus the exact source. Host capture runs before the
+namespace: publish the snapshot through the held vault descriptor, then open the
+published snapshot read-only. Pass only the scratch and snapshot with
 `subprocess.run(..., pass_fds=...)` to bubblewrap:
 
 - scratch root fd -> `--bind-fd ... /canary-root`;
@@ -64,18 +66,26 @@ the zero-length source mountpoint as a declared scratch-only artifact; assert it
 is unchanged and never selected as a host source.
 
 For every worker invocation, generate a fresh 128-bit lowercase hexadecimal
-capture id and publish at
-`sources/claude-capture/runs/<capture-id>.jsonl`. Re-capture even for unchanged
-replay. Append tests capture the new complete fixture rather than modifying an
-old snapshot. Mount each new snapshot fd at the same internal alias path so the
-coordinator `path_key` remains stable.
+capture id and publish as `<capture-id>.jsonl` in the unbound vault. Re-capture
+even for unchanged replay. Append tests capture the new complete fixture rather
+than modifying an old snapshot. Mount each new snapshot fd at the same internal
+alias path so the coordinator `path_key` remains stable. Do not bind the vault,
+control root, or their descriptors into the namespace.
 
-Remove the per-run snapshot through the held parent descriptor after the worker
-fd closes, including worker-crash paths. If the launcher crashes, treat the
+After the worker fd closes, reopen the snapshot through the vault dirfd and
+require its original device, inode, size, full bytes, and digest. Only then
+remove it through the same dirfd, including worker-crash paths. If the launcher
+crashes, treat the
 remaining allowlisted regular snapshot as stale: never reuse it, inventory it
 on the next invocation, and remove it only after descriptor-relative identity
 checks. Unexpected entries or cleanup uncertainty quarantine the scratch root;
 start replay from a new clean root instead of accepting prior evidence.
+
+Create and fsync an unbound `.active` control marker before every invocation.
+Remove and fsync it only after snapshot digest verification, cleanup, and
+passing post-run checks. A pre-existing `.active` marker or any quarantine
+condition creates and fsyncs `.quarantined`; a marked control root is refused on
+all later starts. Its deletion is not part of a canary run.
 
 Mount the runtime and application code read-only. Start with an empty root,
 clear environment, isolated network/PID/IPC/UTS/cgroup/user namespaces, new
@@ -132,10 +142,16 @@ internal source path and `path_key`; ordinary and worker-crash cleanup; stale
 snapshot non-reuse after launcher crash; and scratch-root quarantine on unknown
 entries or cleanup uncertainty.
 
-Gate 0 must prove the canonical scratch root is disjoint in both directions
-from every configured watch root. Recheck after worker exit. A failed post-run
-watcher or watch-root result marks the evidence failed and permanently
-quarantines that scratch root from replay.
+Add namespace tamper tests that try to write, truncate, and unlink the mounted
+source and every discoverable alias. Assert the vault, control root, and former
+scratch-capture path are absent; no snapshot, vault, or control descriptor is
+inherited by the worker; the host snapshot's device, inode, size, bytes, and
+digest remain unchanged; and the post-run digest recheck gates cleanup.
+
+Gate 0 must prove the canonical control, scratch, and vault roots are disjoint
+in both directions from every configured watch root. Recheck after worker exit.
+A failed post-run watcher or watch-root result marks the evidence failed and
+durably quarantines the control root from replay.
 
 Use synthetic fixtures only.
 
@@ -157,9 +173,10 @@ integration suite may skip only with the explicit reason
 `namespace prerequisite unavailable`. Report the count. A skip is never PASS
 evidence for finding #2; the intended execution host must run the complete
 namespace suite with zero skips before exact-tip review. Evidence must bind that
-host as closed enum `primary_convmem_host` plus a SHA-256 machine-identity
-digest; VERIFY names the host role, kernel, and bubblewrap version without
-serializing the raw hostname or machine-id.
+host as closed enum `primary_convmem_host` plus
+`HMAC-SHA256(key=machine-id, message="convmem-gate2")`; VERIFY names the host
+role, kernel, and bubblewrap version without serializing the raw hostname or
+machine-id.
 
 Static assertions must show empty diffs for:
 
