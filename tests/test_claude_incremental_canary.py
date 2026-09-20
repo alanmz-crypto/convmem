@@ -15,21 +15,26 @@ from claude_incremental_canary import (
     CRASH_EXIT,
     DURABLE_TRANSITIONS,
     EVIDENCE_SECTION_ALLOWLIST,
-    GATE0_DIGEST_ENV,
     FrozenSourceSpec,
+    Gate0Authority,
     Gate0ProbeHooks,
     PRODUCTION_ROOTS,
     _CAPTURE_TRANSITIONS,
+    _hermetic_gate0_hooks,
     assemble_evidence,
+    assert_no_snapshot_artifacts,
     assert_transition_coverage,
     bind_frozen_source,
-    bind_gate0,
     capture_source,
     derive_snapshot_destination,
+    enable_incremental,
+    establish_gate0_authority,
     gate0,
+    list_snapshot_artifacts,
     prepare_fixture_env,
     revalidate_source_identity,
     run_worker,
+    snapshot_publication_paths,
     validate_frozen_source,
     validate_source_alias,
 )
@@ -84,10 +89,10 @@ def test_capture_is_atomic_read_only_and_content_free(
     calls: list[tuple[str, int]] = []
     original_open = os.open
 
-    def record_open(path, flags, *args):
+    def record_open(path, flags, *args, **kwargs):
         if str(path) == str(source.resolve()):
             calls.append((str(path), flags))
-        return original_open(path, flags, *args)
+        return original_open(path, flags, *args, **kwargs)
 
     monkeypatch.setattr(os, "open", record_open)
     descriptor = capture_source(boundary, spec)
@@ -177,7 +182,11 @@ def test_worker_network_denied(tmp_path: Path) -> None:
 
 def test_evidence_is_content_free() -> None:
     payload = assemble_evidence(
-        gate0={"watcher": {"status": "inactive"}},
+        gate0={
+            "watcher": {"status": "inactive", "method": "hermetic", "pass": "true"},
+            "network": {"pass": "true", "detail": "hermetic"},
+            "mode": "claude-incremental-canary-v1",
+        },
         matrix={"first_outcome": "committed", "append_summarize": 1},
     )
     text = json.dumps(payload, sort_keys=True)
@@ -234,31 +243,109 @@ def test_snapshot_destination_rejects_alias_escape_and_symlink_root(
         )
 
 
-def test_worker_mutable_commands_require_bound_gate0(tmp_path: Path) -> None:
+def test_worker_mutable_commands_establish_in_process_gate0(tmp_path: Path) -> None:
     root, token, _env, source, _spec = prepare_fixture_env(tmp_path)
-    gate = run_worker("gate0", root=root, token=token)
-    assert gate.returncode == 0, gate.stderr
-    digest = bind_gate0(json.loads(gate.stdout)).digest
     for command in ("capture-transitions", "matrix", "capture", "run", "validate-source"):
-        blocked = run_worker(
-            command,
-            root=root,
-            token=token,
-            source=source,
-            extra_env={GATE0_DIGEST_ENV: "deadbeef"},
-        )
-        assert blocked.returncode == 74, command
-        payload = json.loads(blocked.stdout)
-        assert payload["error"] == "IsolationViolation"
-        assert "gate0" in payload["detail"].lower()
-    allowed = run_worker(
+        allowed = run_worker(command, root=root, token=token, source=source)
+        assert allowed.returncode == 0, allowed.stderr
+
+
+def test_gate0_authority_rejects_cross_root_replay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root_a, token_a, env_a, _source_a, _spec_a = prepare_fixture_env(tmp_path, alias="root-a")
+    _root_b, token_b, env_b, _source_b, _spec_b = prepare_fixture_env(tmp_path, alias="root-b")
+    _apply_env(monkeypatch, env_a)
+    authority_a = establish_gate0_authority(
+        IsolationBoundary.from_environment(), hooks=_hermetic_gate0_hooks()
+    )
+    _apply_env(monkeypatch, env_b)
+    boundary_b = IsolationBoundary.from_environment()
+    with pytest.raises(IsolationViolation, match="root mismatch"):
+        authority_a.verify_live(boundary_b)
+    with pytest.raises(IsolationViolation, match="token mismatch"):
+        Gate0Authority(
+            root=str(boundary_b.root.resolve()),
+            token=token_a,
+            config_digest=authority_a.config_digest,
+            report=authority_a.report,
+            digest=authority_a.digest,
+        ).verify_live(boundary_b)
+
+
+def test_gate0_authority_rejects_stale_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, _source, _spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    authority = establish_gate0_authority(boundary, hooks=_hermetic_gate0_hooks())
+    enable_incremental(boundary)
+    with pytest.raises(IsolationViolation, match="config mismatch"):
+        authority.verify_live(boundary)
+
+
+def test_gate0_env_digest_replay_grants_nothing(tmp_path: Path) -> None:
+    root, token, _env, source, _spec = prepare_fixture_env(tmp_path)
+    blocked = run_worker(
         "matrix",
         root=root,
         token=token,
         source=source,
-        gate0_digest=digest,
+        extra_env={"CONVMEM_CLAUDE_CANARY_GATE0_DIGEST": "deadbeef" * 8},
     )
-    assert allowed.returncode == 0, allowed.stderr
+    assert blocked.returncode == 0, blocked.stderr
+
+
+def test_capture_refusal_cleans_snapshot_and_leaves_no_residue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    original = source.read_bytes()
+
+    def swap_on_revalidation(name: str) -> None:
+        if name == "before_source_revalidation":
+            tampered = bytearray(original)
+            tampered[-2] ^= 1
+            source.write_bytes(bytes(tampered))
+
+    with pytest.raises(IsolationViolation, match="digest drift"):
+        capture_source(boundary, spec, fault=swap_on_revalidation)
+    assert_no_snapshot_artifacts(boundary, spec.alias)
+    assert list_snapshot_artifacts(boundary, spec.alias) == []
+
+
+def test_snapshot_publication_rejects_directory_substitution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, token, env, source, spec = prepare_fixture_env(tmp_path)
+    _apply_env(monkeypatch, env)
+    boundary = IsolationBoundary.from_environment()
+    capture_dir, filename = snapshot_publication_paths(boundary, spec.alias)
+    capture_dir.mkdir(parents=True, exist_ok=True)
+    outside = tmp_path / "outside-substitution"
+    outside.mkdir()
+    capture_dir.rmdir()
+    capture_dir.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(IsolationViolation, match="symlink"):
+        capture_source(boundary, spec)
+    assert list(outside.iterdir()) == []
+
+
+def test_evidence_rejects_innocuous_short_string_injection() -> None:
+    with pytest.raises(IsolationViolation, match="not an allowed coordinator outcome"):
+        assemble_evidence(
+            matrix={
+                "first_outcome": "ok",
+                "second_outcome": "unchanged",
+                "third_outcome": "committed",
+                "third_mode": "incremental",
+                "append_summarize": 1,
+                "append_reused": 1,
+            }
+        )
 
 
 def test_capture_rejects_same_size_identity_rewrite(
@@ -309,7 +396,7 @@ def test_evidence_rejects_unknown_sections_and_credential_like_values() -> None:
         assemble_evidence(transcript={"text": "canary-message-00000"})
     with pytest.raises(IsolationViolation, match="unknown keys"):
         assemble_evidence(gate0={"watcher": {"status": "inactive", "api_key": "secret"}})
-    with pytest.raises(IsolationViolation, match="credential-like"):
+    with pytest.raises(IsolationViolation, match="credential-like|not an allowed enum"):
         assemble_evidence(
             gate0={
                 "watcher": {"status": "inactive", "pass": "true"},
@@ -317,7 +404,7 @@ def test_evidence_rejects_unknown_sections_and_credential_like_values() -> None:
                 "mode": "token-leak",
             }
         )
-    with pytest.raises(IsolationViolation, match="transcript-like"):
+    with pytest.raises(IsolationViolation, match="not an allowed coordinator outcome"):
         assemble_evidence(
             matrix={
                 "first_outcome": "canary-message-00001",
