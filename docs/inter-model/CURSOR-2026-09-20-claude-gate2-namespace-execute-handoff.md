@@ -1,8 +1,8 @@
 # [Arc Claude Watch Parity] Gate 2 Namespace Execute Handoff
 
-**Date:** 2026-09-20  
-**Author:** Codex architecture  
-**For:** Cursor Composer  
+**Date:** 2026-09-20
+**Author:** Codex architecture
+**For:** Cursor Composer
 **Authorization:** Ryan, 2026-09-20, explicit bounded Execute grant in session
 
 ---
