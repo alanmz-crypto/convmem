@@ -1,8 +1,8 @@
 # Handoff: bounded verbatim evidence retrieval for issue #263
 
-**Date:** 2026-09-20  
-**Author:** Codex (architecture/planning lane)  
-**For:** Kiro review, then Cursor implementation if approved  
+**Date:** 2026-09-20
+**Author:** Codex (architecture/planning lane)
+**For:** Kiro review, then Cursor implementation if approved
 **Authorization:** Ryan's instruction to begin unattended work outside the
 72-hour active-agent window; implementation remains review-gated
 
@@ -148,4 +148,3 @@ Do not:
 - [ ] Start/resume an implementation branch from the reviewed plan/base.
 - [ ] Use fixtures only; keep the adapter read-only and bounded.
 - [ ] Stop at evidence and hand off for review; do not alter live routing.
-
