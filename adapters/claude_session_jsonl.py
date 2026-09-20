@@ -36,23 +36,40 @@ def _claude_projects_root() -> Path:
     return (Path.home() / ".claude" / "projects").resolve()
 
 
-def _iter_claude_jsonl_dicts(filepath: str) -> Iterator[dict]:
-    """Yield dict records; skip blank, invalid UTF-8, and bad JSON lines."""
+def _iter_claude_jsonl_entries(
+    filepath: str, *, max_nonblank: int | None = None
+) -> Iterator[dict | None]:
+    """Yield dict records; yield None for tolerated non-blank line skips."""
+    count = 0
     with open(filepath, "rb") as f:
         for raw_line in f:
             stripped = raw_line.strip()
             if not stripped:
                 continue
+            count += 1
+            if max_nonblank is not None and count > max_nonblank:
+                return
             try:
                 text = stripped.decode("utf-8")
             except UnicodeDecodeError:
+                yield None
                 continue
             try:
                 record = json.loads(text)
             except json.JSONDecodeError:
+                yield None
                 continue
             if isinstance(record, dict):
                 yield record
+            else:
+                yield None
+
+
+def _iter_claude_jsonl_dicts(filepath: str) -> Iterator[dict]:
+    """Yield dict records; skip blank, invalid UTF-8, and bad JSON lines."""
+    for entry in _iter_claude_jsonl_entries(filepath):
+        if entry is not None:
+            yield entry
 
 
 def is_claude_session_jsonl(path: Path | str) -> bool:
@@ -71,34 +88,20 @@ def _probe_claude_session(path: Path) -> bool:
     """First N non-blank lines must carry sessionId and a signal type."""
     seen_session = False
     seen_type = False
-    count = 0
     try:
-        with open(path, "rb") as f:
-            for raw_line in f:
-                stripped = raw_line.strip()
-                if not stripped:
-                    continue
-                count += 1
-                if count > _PROBE_LINES:
-                    break
-                try:
-                    text = stripped.decode("utf-8")
-                except UnicodeDecodeError:
-                    continue
-                try:
-                    record = json.loads(text)
-                    if not isinstance(record, dict):
-                        continue
-                except json.JSONDecodeError:
-                    continue
-                sid = record.get("sessionId") or record.get("session_id")
-                if isinstance(sid, str) and sid:
-                    seen_session = True
-                rtype = record.get("type")
-                if rtype in _SIGNAL_TYPES:
-                    seen_type = True
-                if seen_session and seen_type:
-                    return True
+        for record in _iter_claude_jsonl_entries(
+            str(path), max_nonblank=_PROBE_LINES
+        ):
+            if record is None:
+                continue
+            sid = record.get("sessionId") or record.get("session_id")
+            if isinstance(sid, str) and sid:
+                seen_session = True
+            rtype = record.get("type")
+            if rtype in _SIGNAL_TYPES:
+                seen_type = True
+            if seen_session and seen_type:
+                return True
     except OSError:
         return False
     return False

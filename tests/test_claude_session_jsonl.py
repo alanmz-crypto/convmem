@@ -47,17 +47,6 @@ class TestClaudeSessionJsonl(unittest.TestCase):
         path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
         return path
 
-    def _write_claude_transcript_bytes(self, tmp: Path, parts: list[bytes]) -> Path:
-        root = tmp / ".claude" / "projects" / "my-project-slug"
-        root.mkdir(parents=True)
-        path = root / "session-uuid.jsonl"
-        path.write_bytes(b"".join(parts))
-        return path
-
-    @staticmethod
-    def _invalid_utf8_line() -> bytes:
-        return b"\xff\xfe stray invalid bytes\n"
-
     def test_is_claude_session_jsonl_detects_well_formed_transcript(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = self._write_claude_transcript(
@@ -381,6 +370,48 @@ class TestClaudeSessionJsonl(unittest.TestCase):
             self.assertEqual(len(messages), 1)
             self.assertIsNone(messages[0]["timestamp"])
 
+    def test_parse_tolerates_malformed_lines(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_claude_transcript(
+                Path(tmp),
+                [_claude_record(rtype="user", content="survives")],
+            )
+            existing = path.read_text(encoding="utf-8")
+            path.write_text("not json\n" + existing, encoding="utf-8")
+            messages = parse(str(path))
+            self.assertEqual(len(messages), 1)
+            self.assertEqual(messages[0]["content"], "survives")
+
+    def test_kiro_still_classifies(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / ".kiro" / "sessions" / "hash1" / "sess_test-uuid"
+            root.mkdir(parents=True)
+            msg_path = root / "messages.jsonl"
+            msg_path.write_text(
+                json.dumps(
+                    {
+                        "timestamp": "2026-06-29T06:29:07.854Z",
+                        "payload": {"type": "user", "content": "convmem doctor"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(detect_format(msg_path), "jsonl_kiro_session")
+
+
+class TestClaudeSessionJsonlInvalidUtf8(unittest.TestCase):
+    def _write_claude_transcript_bytes(self, tmp: Path, parts: list[bytes]) -> Path:
+        root = tmp / ".claude" / "projects" / "my-project-slug"
+        root.mkdir(parents=True)
+        path = root / "session-uuid.jsonl"
+        path.write_bytes(b"".join(parts))
+        return path
+
+    @staticmethod
+    def _invalid_utf8_line() -> bytes:
+        return b"\xff\xfe stray invalid bytes\n"
+
     def test_read_session_meta_survives_invalid_utf8(self):
         with tempfile.TemporaryDirectory() as tmp:
             meta_record = _claude_record(
@@ -454,35 +485,6 @@ class TestClaudeSessionJsonl(unittest.TestCase):
             serialized = json.dumps({"meta": meta, "messages": messages})
             self.assertNotIn("\xff", serialized)
             self.assertNotIn("\xfe", serialized)
-
-    def test_parse_tolerates_malformed_lines(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_claude_transcript(
-                Path(tmp),
-                [_claude_record(rtype="user", content="survives")],
-            )
-            existing = path.read_text(encoding="utf-8")
-            path.write_text("not json\n" + existing, encoding="utf-8")
-            messages = parse(str(path))
-            self.assertEqual(len(messages), 1)
-            self.assertEqual(messages[0]["content"], "survives")
-
-    def test_kiro_still_classifies(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp) / ".kiro" / "sessions" / "hash1" / "sess_test-uuid"
-            root.mkdir(parents=True)
-            msg_path = root / "messages.jsonl"
-            msg_path.write_text(
-                json.dumps(
-                    {
-                        "timestamp": "2026-06-29T06:29:07.854Z",
-                        "payload": {"type": "user", "content": "convmem doctor"},
-                    }
-                )
-                + "\n",
-                encoding="utf-8",
-            )
-            self.assertEqual(detect_format(msg_path), "jsonl_kiro_session")
 
 
 if __name__ == "__main__":
