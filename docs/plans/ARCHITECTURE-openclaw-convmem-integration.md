@@ -1,16 +1,17 @@
 # Architecture Plan — OpenClaw orchestration with a bounded ConvMem evidence surface
 
-**Status:** DRAFT FOR CLAUDE ADVERSARIAL REVIEW — advisory review only; no
-implementation, OpenClaw configuration, production smoke, or capture is
-authorized
+**Status:** CLAUDE ADVISORY PASS; TWO PREVENTIVE CORRECTIONS APPLIED; KIRO
+DESIGN REVIEW PENDING — no implementation, OpenClaw configuration, production
+smoke, or capture is authorized
 
 **Date:** 2026-09-20
 
 **Arc:** none (ad-hoc integration)
 
-**Authority:** Codex architecture/planning lane. Kiro remains the required
-design-review lane and Ryan remains the approval authority. Claude's requested
-adversarial review may find blockers but cannot authorize execution.
+**Authority:** Codex architecture/planning lane. Claude issued `ADVISORY PASS`
+on commit `4f5e42c9620518dc8bbf041f82eed86b4d38dc20`; its two implementation-risk
+findings are incorporated here. Kiro remains the required design-review lane
+and Ryan remains the approval authority. Claude cannot authorize execution.
 
 **Supersedes for review:** the untracked local draft whose SHA-256 was
 `9846e4df1211359b30427fc4ceebe108616e1dd6de9cb773648ed6cf0ed67f09`.
@@ -395,7 +396,22 @@ envelope.
 ### 8.3 `related`
 
 Strict `related` accepts only a syntactically valid external ledger ID, never a
-raw Chroma UUID.
+raw Chroma storage ID. `ledger_ids.py` becomes the single owner of the input
+grammar and exposes a validator that applies full-string matching, not search
+or extraction:
+
+```text
+(?:dec_prop|obs|dec|ver)_[A-Za-z0-9_.-]+
+```
+
+The separate extraction regexes currently in `query.py`,
+`cross_project_digest.py`, and `agent_run_ledger.py` are not authorization
+APIs. Gate B either replaces their validation uses with the centralized helper
+or leaves them explicitly extraction-only. Strict input validation rejects
+Unicode confusables, whitespace, slashes, colons, missing suffixes, embedded
+IDs, trailing text, and values longer than the bound below. Compatibility tests
+must accept representative IDs produced by `ledger_ids.py` and every supported
+ledger writer.
 
 The traversal must collect before rendering:
 
@@ -487,6 +503,7 @@ Normative settings for Phase 1A and Phase 1B are:
     allow: ["convmem_search", "convmem_unresolved", "convmem_related"],
     deny: [
       "session_status",
+      "group:openclaw",
       "group:runtime",
       "group:fs",
       "group:sessions",
@@ -531,6 +548,11 @@ config file. Exactly the three ConvMem plugin tools may reach the model and no
 skill or workspace instruction may be injected. OpenClaw `memory_search`,
 `memory_get`, `exec`, filesystem, browser, sessions, messaging, cron, gateway,
 node, and ACP tools must be absent.
+
+`group:openclaw` denies all built-in tools, including present or future tools
+outside the nine named groups. The named group denies remain readable defense
+in depth, but neither list is accepted as proof: the exact effective runtime
+inventory is the authority and must still contain only the three plugin tools.
 
 ACP remains disabled through Phase 1B. A future ACP phase requires a new plan
 because ACP workers run on the host and may inherit harness-specific MCP,
@@ -593,9 +615,8 @@ defines false background completion out of existence for the initial phases.
 
 ### Gate A — plan review
 
-- Claude adversarially reviews this exact Git revision and returns written
-  findings or an advisory PASS.
-- Codex resolves material findings in the plan.
+- Claude advisory review passed the prior exact revision; its two preventive
+  findings are resolved in this revision.
 - Kiro performs the charter-required binary design review on the corrected
   exact revision.
 - Ryan approves or rejects architecture and execution planning.
@@ -725,7 +746,10 @@ unexpected surface, or reports false completion.
 
 19. Retrieve a fully in-scope chain.
 20. Request an out-of-scope, unknown, malformed, and raw-Chroma ID; prove
-    byte-equivalent public denial shapes.
+    byte-equivalent public denial shapes. Exercise the centralized
+    `ledger_ids.py` full-string validator with IDs from every supported writer,
+    embedded-ID strings, trailing text, Unicode confusables, missing suffixes,
+    and all three legacy extraction regex shapes.
 21. Put one out-of-scope decision, verification, sibling, unknown-kind child,
     or metadata-incomplete node behind an in-scope target; prove the entire
     chain is denied without partial output.
@@ -739,7 +763,9 @@ unexpected surface, or reports false completion.
     session.
 24. Prove `memory-core`, `memory_search`, `memory_get`, automatic memory flush,
     filesystem, runtime, browser, session, messaging, cron, gateway, and node
-    tools are absent.
+    tools are absent. Prove the ungrouped built-in `image` tool is absent and
+    `group:openclaw` does not suppress the three explicitly allowed plugin
+    tools.
 25. Attempt ACP spawn through natural language, slash command, and tool call;
     prove no child session is created.
 26. Retrieve hostile corpus content containing tool calls, role labels, scope
@@ -781,6 +807,8 @@ set is already fixed:
   bindings;
 - focused MCP inventory tests for tools, resources, and templates;
 - focused related-chain graph tests;
+- centralized external-ledger-ID grammar tests against real generator/writer
+  samples and adversarial embedded or trailing-text inputs;
 - existing retrieval, brief, resource, and ledger regression tests;
 - ConvMem smoke checks from `docs/CODEX-DEEPSEEK-VERIFY.md` where relevant;
 - `openclaw --version`, command inventory, config validation, plugin inventory,
@@ -810,6 +838,8 @@ Stop and return FAIL if any of the following occurs:
 - `cross_domain=true` widens retrieval;
 - a resource or unexpected tool appears;
 - `related()` reveals any partial or existence information across scope;
+- strict ledger-ID authorization uses an extraction regex or anything other
+  than the centralized full-string validator;
 - OpenClaw native memory or ACP is active;
 - an eligible skill, workspace instruction, hook, or plugin prompt is injected;
 - a same-ID plugin resolves outside the approved path or has the wrong digest;
@@ -860,10 +890,11 @@ tools and memory outside the initial integration's proof boundary.
 Rejected because capture has independent ingestion, quarantine, completeness,
 and crash-loop failure modes.
 
-## 17. Review questions for Claude
+## 17. Formal review questions for Kiro
 
-Claude should try to falsify the plan, not restate it. A useful review answers
-these questions with exact references:
+Claude answered these questions on the prior revision and returned advisory
+PASS with the two preventive findings now incorporated. Kiro must independently
+try to falsify this corrected exact revision and answer with exact references:
 
 1. Can any request-time input affect the bound scope or connector process
    launch before server authorization?
@@ -887,21 +918,16 @@ these questions with exact references:
 12. Is any acceptance test circular, unverifiable, or dependent on current web
     documentation rather than the installed binary?
 
-Claude should return one of:
-
-- `ADVISORY PASS` — no material bypass found;
-- `ADVISORY FAIL` — one or more material bypasses, each with an exploit path,
-  affected section, and required correction;
-- `INCOMPLETE` — evidence needed to evaluate a named proposition.
-
-Only Kiro may issue the required design-review PASS/FAIL, and only Ryan may
-authorize implementation.
+Kiro returns the charter-required binary design-review `PASS` or `FAIL`. A
+`FAIL` names each material bypass, exact affected section, exploit path, and
+required correction. Only Ryan may authorize implementation after a Kiro
+`PASS`.
 
 ## 18. Exit state
 
-This document stops at architecture. It is not an Execute grant. After Claude
-adversarial review, Codex incorporates justified findings and presents an exact
-revision to Kiro. A separate execution plan and Cursor handoff are created only
+This document stops at architecture. It is not an Execute grant. Claude's
+advisory findings are incorporated; this exact corrected revision is presented
+to Kiro next. A separate execution plan and Cursor handoff are created only
 after Kiro PASS and Ryan architecture approval.
 
 ## Jargon TL;DR
