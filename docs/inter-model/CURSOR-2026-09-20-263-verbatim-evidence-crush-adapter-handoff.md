@@ -15,7 +15,7 @@
 |-------|--------|
 | **State** | `READY_FOR_REVIEW` |
 | **Branch** | `feat/2026-09-20-263-verbatim-evidence-crush-adapter` |
-| **Tip SHA** | `d32bf716b08b2ad7dc4c76e44d62fd531ba7f0de` |
+| **Tip SHA** | `c7cae91bfc5591ec2636b66789429660ee0be8b7` (audit this pushed tip) |
 | **Push status** | pushed to `origin` |
 | **PR** | not opened |
 | **Ryan GATE** | none for audit; PR open remains Ryan-gated |
