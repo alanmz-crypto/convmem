@@ -43,6 +43,10 @@ inputs, not accepted evidence. Gate 2 still has no PASS.
    runtime files untouched?
 7. Are host capture ownership, pre/post watcher evidence, and namespace-test
    skip semantics now explicit enough to prevent a false PASS?
+8. Does the fresh capture-id lifecycle preserve a fixed coordinator `path_key`
+   while preventing snapshot reuse after ordinary or crash exits?
+9. Are watch-root disjointness, failed-root quarantine, and named-host evidence
+   sufficient operational gates?
 
 The baseline is intentionally precise: Gate 2 adds the Claude adapter and
 `incremental_jsonl_formats.py` registry entry, while `incremental_jsonl.py`,
@@ -53,5 +57,6 @@ Return PASS or specific blocking corrections on the full exact SHA. Review
 grants no implementation, PR, live source, canary, routing, watcher, or
 activation action.
 
-**TL;DR [Arc Claude Watch Parity]:** Review the namespace architecture only;
-Gate 2 remains closed and protected shared runtime files remain unchanged.
+**TL;DR [Arc Claude Watch Parity]:** Review the namespace architecture and
+per-run snapshot lifecycle only; Gate 2 remains closed and protected shared
+runtime files remain unchanged.

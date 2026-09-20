@@ -63,6 +63,20 @@ bytes before the overlay and assert its host digest remains unchanged. Treat
 the zero-length source mountpoint as a declared scratch-only artifact; assert it
 is unchanged and never selected as a host source.
 
+For every worker invocation, generate a fresh 128-bit lowercase hexadecimal
+capture id and publish at
+`sources/claude-capture/runs/<capture-id>.jsonl`. Re-capture even for unchanged
+replay. Append tests capture the new complete fixture rather than modifying an
+old snapshot. Mount each new snapshot fd at the same internal alias path so the
+coordinator `path_key` remains stable.
+
+Remove the per-run snapshot through the held parent descriptor after the worker
+fd closes, including worker-crash paths. If the launcher crashes, treat the
+remaining allowlisted regular snapshot as stale: never reuse it, inventory it
+on the next invocation, and remove it only after descriptor-relative identity
+checks. Unexpected entries or cleanup uncertainty quarantine the scratch root;
+start replay from a new clean root instead of accepting prior evidence.
+
 Mount the runtime and application code read-only. Start with an empty root,
 clear environment, isolated network/PID/IPC/UTS/cgroup/user namespaces, new
 session, parent-death handling, and nested-user-namespace disablement.
@@ -112,6 +126,17 @@ descriptor-anchored, the config overlay leaves no zero-byte replacement, and
 the real watcher probe passes both immediately before capture and immediately
 after worker exit.
 
+Add lifecycle tests proving unique host snapshot names across first run,
+unchanged replay, append, repair, and crash; fresh capture on every run; fixed
+internal source path and `path_key`; ordinary and worker-crash cleanup; stale
+snapshot non-reuse after launcher crash; and scratch-root quarantine on unknown
+entries or cleanup uncertainty.
+
+Gate 0 must prove the canonical scratch root is disjoint in both directions
+from every configured watch root. Recheck after worker exit. A failed post-run
+watcher or watch-root result marks the evidence failed and permanently
+quarantines that scratch root from replay.
+
 Use synthetic fixtures only.
 
 ## E5 — Regression matrix
@@ -131,7 +156,10 @@ real bubblewrap integration tests. On a runner without the prerequisite, the
 integration suite may skip only with the explicit reason
 `namespace prerequisite unavailable`. Report the count. A skip is never PASS
 evidence for finding #2; the intended execution host must run the complete
-namespace suite with zero skips before exact-tip review.
+namespace suite with zero skips before exact-tip review. Evidence must bind that
+host as closed enum `primary_convmem_host` plus a SHA-256 machine-identity
+digest; VERIFY names the host role, kernel, and bubblewrap version without
+serializing the raw hostname or machine-id.
 
 Static assertions must show empty diffs for:
 
