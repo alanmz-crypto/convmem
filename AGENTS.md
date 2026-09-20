@@ -55,6 +55,7 @@ Every active arc has a `docs/plans/STATUS-<slug>.md` — an **arc brief** that g
 - [`docs/plans/STATUS-recovery-authority.md`](docs/plans/STATUS-recovery-authority.md) — Recovery Authority T1/T2 execution (**landed via PR #234 and #236; T3 not authorized**)
 - [`docs/plans/STATUS-naturalistic-product-value.md`](docs/plans/STATUS-naturalistic-product-value.md) — Naturalistic ConvMem product-value evaluation (**G1–G5 landed; G6 Ryan-gated**)
 - [`docs/plans/STATUS-codex-jsonl-production-integration.md`](docs/plans/STATUS-codex-jsonl-production-integration.md) — Arc Codex Kiro JSONL incremental production integration (**implementation merged; production canary Ryan-gated**)
+- [`docs/plans/STATUS-claude-watch-parity.md`](docs/plans/STATUS-claude-watch-parity.md) — Claude on-demand indexing and isolated incremental watch-parity proof (**Gate 1 merged; Gate 2 boundary review pending**)
 
 **Cross-arc rollup:** [`docs/inter-model/STATUS.md`](docs/inter-model/STATUS.md) — active vs closed arcs and next authorized actions (not a per-arc brief).
 
@@ -82,6 +83,7 @@ Known arc codenames (canonical list in `config/agent-protocol.md`):
 | Runway Ledger | Agent Run identity tracking | **CLOSED** — implementation merged (#215); soak passed + hooks enabled (#216); other clients are future slices |
 | Recovery Authority | Provenance-aware complete-data recovery and rollback continuity | Active — T1 landed (PR #234); T2 landed (PR #236); T3 not authorized; V4k blocked on CG-2 Design A |
 | Codex | Kiro JSONL incremental production integration | Planning — Kiro review next |
+| Claude Watch Parity | Claude on-demand indexing and isolated incremental capture proof | Active — Gate 2 boundary architecture awaiting Kiro review |
 
 ---
 

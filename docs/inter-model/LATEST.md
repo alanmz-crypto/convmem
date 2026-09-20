@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-09-18
+**Updated:** 2026-09-20
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,8 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **Claude Watch Parity — Gate 2 boundary architecture (`READY_FOR_KIRO_REVIEW`):** Gate 1 is merged. OpenAI Security Review failed Gate 2 tip `10322a6…`; Cursor's local corrective `e007a22` addresses findings #1 and #3–#6 but leaves finding #2 as `OPEN_SHARED_BOUNDARY_BLOCKER`. Codex chose a descriptor-bound bubblewrap namespace rather than shared coordinator/Chroma changes. **Next:** Kiro reviews the exact tip of `plan/2026-09-20-claude-watch-parity-boundary`; Ryan then accepts bounded namespace Execute or `NO_GATE2_ROUTE`. No implementation, PR, live source, canary, routing, watcher, issue #314 work, or activation is authorized. Resume from [`CODEX-2026-09-20-claude-watch-parity-boundary-review-handoff.md`](CODEX-2026-09-20-claude-watch-parity-boundary-review-handoff.md).
 
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
