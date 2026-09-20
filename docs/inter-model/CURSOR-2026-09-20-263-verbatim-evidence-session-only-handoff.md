@@ -160,3 +160,80 @@ No Chroma, watcher, routing, production configuration, live corpus, or live
 Crush DB changes are authorized. After implementation, commit and push a new
 exact tip, request independent security review, then Copilot audit when
 available. No PR or activation yet.
+
+## Excerpt-loop addendum
+
+This addendum is part of the canonical contract. It supersedes any chat-only
+excerpt corrections.
+
+### Window oracle and span validation
+
+`_bound_excerpt` requires a non-optional `match_span` and validates:
+
+```text
+0 <= start < end <= len(text)
+```
+
+Invalid or missing spans raise `ValueError` in direct unit tests. The production
+adapter does not catch this programming error because `find_match_span` always
+returns a valid span. There is no no-span or head-truncation fallback.
+
+For small test strings, the oracle must exhaustively enumerate only windows
+with `s <= match_start` and `e >= match_end`. A window is feasible when:
+
+```text
+(e - s) + M * (s > 0) + M * (e < len(text)) <= max_excerpt_chars
+```
+
+For every non-`None` implementation result, the test must also find an oracle
+window whose rendered content exactly equals:
+
+```text
+(TRUNCATION_MARKER if s > 0 else "")
++ text[s:e]
++ (TRUNCATION_MARKER if e < len(text) else "")
+```
+
+The test must assert `cut_leading == (s > 0)` and
+`cut_trailing == (e < len(text))`. It must assert that the implementation
+returns `None` exactly when no feasible oracle window exists. Include the
+feasibility boundaries at `M`, `M + query_length`, `2*M + query_length`, and
+message lengths at, just above, and far above the budget. Include the 1,976 /
+1,977 / 1,978 query cliff at the 2,000-character production budget.
+
+### Stream outcomes and terminal conditions
+
+A usable extra excerpt is the only condition that proves `result_limit`.
+Matching messages whose excerpts return `None` are dropped, not counted, and
+scanning continues.
+
+The only terminal conditions are a usable extra match, EOF, source failure,
+deadline, row cap, or byte cap. A dropped excerpt is non-terminal and can
+co-occur with each terminal condition.
+
+Test the matrix as follows:
+
+- dropped excerpt + EOF → `available, partial=true,
+  partial_reason=excerpt_budget` if a usable result exists; otherwise
+  `unavailable_match/query_exceeds_excerpt_budget`;
+- dropped excerpt + usable extra → `available, partial=true,
+  partial_reason=result_limit`;
+- dropped excerpt + scan cap → `scan_limit` if there is no prior usable
+  excerpt, otherwise `available, partial=true, partial_reason=scan_limit`;
+- dropped excerpt + byte cap → the analogous byte-cap outcome;
+- dropped excerpt + source/deadline failure → `unavailable_source` if there is
+  no prior usable excerpt, otherwise `available, partial=true` with the source
+  or deadline reason.
+
+“No prior usable excerpt” means dropped matches do not count as evidence.
+
+When multiple terminal conditions occur on the same row, use this deterministic
+tie-break order:
+
+```text
+deadline > row_cap > byte_cap > oversized/malformed
+```
+
+Test each terminal condition alone and test dropped-excerpt combinations with
+each terminal condition. Do not write impossible tests that require a stream to
+reach two mutually exclusive terminal conditions in sequence.
