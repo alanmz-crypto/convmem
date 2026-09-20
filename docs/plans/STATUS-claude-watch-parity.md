@@ -30,7 +30,7 @@ exports are derived. Default routing stays Kiro-only.
 | Gate 2 prefix/spec/isolated route | Branch-only; not production-routed |
 | Local safety corrective | Pushed at `e007a22b24754a93d9cbd15d02269d422d371c4a`; findings #1 and #3–#6 addressed; 43 focused tests reported passing |
 | Shared-boundary finding #2 | Open; coordinator pathname authority remains on the branch |
-| Namespace architecture | This docs-only branch; Kiro review pending |
+| Namespace architecture | Kiro PASS at `290294d`; C1–C4 incorporated on this docs-only successor |
 | Live-source canary | `NOT_RUN`; no exact source grant |
 | Production watch/source routing | Absent and unauthorized |
 
@@ -41,21 +41,18 @@ exports are derived. Default routing stays Kiro-only.
 | Gate 1 | **MERGED** | remains on-demand |
 | Gate 2 original implementation | **SECURITY FAIL** at `10322a6` | superseded by corrective work |
 | Five local findings | **CORRECTED / UNREVIEWED** at `e007a22b24754a93d9cbd15d02269d422d371c4a` | integrate with reviewed boundary solution |
-| Finding #2 architecture | **READY_FOR_KIRO_REVIEW** after conditional-FAIL corrections | Kiro PASS or correction |
+| Finding #2 architecture | **KIRO PASS WITH C1–C4 CONDITIONS** at `290294d`; conditions folded into successor plan | exact-tip carry-forward check |
 | Namespace implementation | **NOT AUTHORIZED** | Ryan Execute grant after plan PASS |
 | Exact-tip security audit | **NOT_RUN** | fresh Ryan exception after implementation |
 | Live canary / promotion | **NOT AUTHORIZED** | separate later decisions |
 
 ## 5. Your Role
 
-**Kiro:** review the corrected namespace decision, unbound snapshot vault,
-per-run digest revalidation, locked durable quarantine, mountinfo disclosure
-containment, Claude-compatible fixed mount,
-watch-root disjointness, host-owned capture,
-explicit merged/runtime baselines, CI skip semantics, and `NO_GATE2_ROUTE`
-exit. Confirm that coordinator, isolation, and Chroma runtime files remain
-outside the implementation slice while the expected Claude format-registry
-addition stays visible.
+**Kiro:** perform a narrow exact-tip carry-forward check that C1–C4 were copied
+faithfully: create/reopen validation, `CRASH_EXIT`-only recovery evidence,
+terminal marker invariant, and pipe-only worker output. The namespace decision
+already received PASS at `290294d`; do not reopen unrelated design questions
+without a changed fact.
 
 **Ryan:** after Kiro's verdict, either grant the bounded namespace Execute or
 close Gate 2 at Gate 1 on-demand support.
@@ -64,7 +61,7 @@ close Gate 2 at Gate 1 on-demand support.
 
 ## 6. What Remains Before Live
 
-1. Kiro reviews the exact planning tip.
+1. Kiro confirms the C1–C4 successor tip carries forward the `290294d` PASS.
 2. Ryan accepts the namespace dependency or selects `NO_GATE2_ROUTE`.
 3. If granted, Cursor implements from verified
    `e007a22b24754a93d9cbd15d02269d422d371c4a` without shared-code
@@ -103,8 +100,8 @@ remain separate.
 
 | Date | Who | Milestone-level change |
 |---|---|---|
-| 2026-09-20 | Codex | Added exclusive control-root locking, precise worker-crash recovery, and literal mountinfo-string exclusion to the unbound-vault plan; Kiro review next. |
+| 2026-09-20 | Codex | Folded Kiro PASS conditions C1–C4 into the plan; narrow exact-tip carry-forward check is next. |
 
 **TL;DR [Arc Claude Watch Parity]:** Gate 1 is merged; five local Gate 2
-correctives are pushed but unreviewed. Finding #2 now has a namespace design
-ready for Kiro; Gate 2 remains closed.
+correctives are pushed but unreviewed. Finding #2 has Kiro design PASS with
+C1–C4 incorporated for exact-tip carry-forward; Gate 2 remains closed.

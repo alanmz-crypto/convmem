@@ -60,6 +60,12 @@ published snapshot read-only. Pass only the scratch and snapshot with
 - final configuration fd -> `--ro-bind-data ...
   /canary-root/home/.config/convmem/config.toml`.
 
+Create new roots only with `mkdirat(..., 0o700)` beneath one trusted parent
+dirfd. Reopen only a previously issued opaque root id beneath that parent. Use
+dirfd-relative no-follow opens and reject unless control, scratch, and vault are
+directories owned by the effective uid, have exact mode `0700`, and share one
+`st_dev`. Complete these checks before the lifecycle lock, markers, or capture.
+
 Set `HOME=/canary-root/home`. Pre-create the final config with the validated
 bytes before the overlay and assert its host digest remains unchanged. Treat
 the zero-length source mountpoint as a declared scratch-only artifact; assert it
@@ -87,9 +93,11 @@ refuses without quarantining the active owner. Under the lock, create and fsync
 an unbound `.active` control marker before capture. Creation or fsync failure
 refuses before transcript access. Remove and fsync it only after snapshot digest
 verification, cleanup, and passing post-run checks. A pre-existing `.active`
-marker after lock acquisition or any quarantine condition creates and fsyncs
-`.quarantined`; a marked control root is refused on all later starts. Its
-deletion is not part of a canary run.
+marker after lock acquisition or any post-run quarantine condition is atomically
+renamed through the held dirfd to `.quarantined`, then the directory is fsynced.
+The required terminal set is `.quarantined` present and `.active` absent. Tests
+must reject both-present and neither-present outcomes. A marked control root is
+refused on all later starts. Its deletion is not part of a canary run.
 
 Mount the runtime and application code read-only. Start with an empty root,
 clear environment, isolated network/PID/IPC/UTS/cgroup/user namespaces, new
@@ -127,8 +135,9 @@ Add hermetic tests for:
 8. normal Claude detection plus first-run explicit session-id and
    sanitized-unit-content assertions; missing-id detection refusal and a
    separate metadata-helper alias-fallback assertion;
-9. stable paths across first run, unchanged replay, append, repair, and worker
-   or coordinator crash while the host launcher remains alive;
+9. stable paths across first run, unchanged replay, append, repair, and an
+   injected `CRASH_EXIT` worker/coordinator crash while the host launcher
+   remains alive;
 10. namespace setup failure before coordinator mutation;
 11. descriptor closure after success, ordinary exception, timeout, and
     `BaseException` fault injection;
@@ -148,10 +157,12 @@ snapshot non-reuse after launcher crash; and control-root quarantine on unknown
 entries or cleanup uncertainty.
 
 Define crash evidence precisely: same-root checkpoint recovery covers injected
-worker/coordinator crashes for which the host launcher survives and completes
-snapshot verification and cleanup. A launcher crash leaves `.active`, durably
-quarantines the control root on the next lock holder, and never claims same-root
-recovery.
+`CRASH_EXIT` worker/coordinator crashes for which the host launcher survives and
+completes snapshot verification and cleanup. Any signal, unexpected exit code,
+or other termination fails evidence and triggers exactly one diagnostic rerun
+in a fresh process and clean root. Record both outcomes; neither is recovery
+evidence. A launcher crash leaves `.active`, durably quarantines the control
+root on the next lock holder, and never claims same-root recovery.
 
 Add namespace tamper tests that try to write, truncate, and unlink the mounted
 source and every discoverable alias. Assert the vault, control root, and former
@@ -165,6 +176,18 @@ capture. Read `/proc/self/mountinfo` in the worker to obtain the literal control
 prefix and capture id, then assert those exact strings are absent from stdout,
 stderr, evidence, checkpoints, exports, processed state, and every other
 persisted artifact.
+
+Add create/reopen tests for symlink leaves and parents, wrong uid, group/other
+mode bits, non-directory entries, unknown opaque root ids, and mismatched
+filesystems. Add termination tests distinguishing `CRASH_EXIT`, signals,
+unexpected exit codes, and the single clean diagnostic rerun. Assert every
+post-run failure ends with exactly `.quarantined` and no `.active`.
+
+Launch the worker with launcher-created `subprocess.PIPE` stdout and stderr,
+`close_fds=True`, and only the fixed bubblewrap setup descriptors in
+`pass_fds`. Never redirect either stream to a host file. Assert fd 1 and fd 2
+are pipes inside the worker and apply the literal mountinfo-string exclusion to
+both captured streams.
 
 Gate 0 must prove the canonical control, scratch, and vault roots are disjoint
 in both directions from every configured watch root. Recheck after worker exit.

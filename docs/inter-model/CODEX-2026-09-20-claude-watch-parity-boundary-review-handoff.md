@@ -20,7 +20,7 @@ Primary files:
 
 The plan chooses a descriptor-bound bubblewrap namespace for Gate 2 finding #2.
 The existing coordinator runs unchanged at `/canary-root`; host capture first
-publishes an immutable snapshot through the held scratch-root descriptor, then
+publishes an immutable snapshot through the held unbound-vault descriptor, then
 the launcher binds that snapshot at a normal Claude project path under
 `HOME=/canary-root/home`.
 Shared-code authority changes are rejected for this slice because they would
@@ -28,41 +28,36 @@ touch the production Chroma writer and `convmem.py add` path.
 
 Cursor's five local corrections are separately pushed at
 `e007a22b24754a93d9cbd15d02269d422d371c4a`; they are
-inputs, not accepted evidence. Gate 2 still has no PASS.
+inputs, not accepted evidence. The architecture has Kiro PASS; Gate 2
+implementation still has no PASS.
 
-## Review questions
+## Review state
 
-1. Does `--bind-fd` provide the right authority boundary for root replacement
-   without persisting fd paths?
-2. Is the filesystem/environment allowlist narrow enough?
-3. Are host Gate 0 and worker namespace checks placed correctly?
-4. Is bubblewrap 0.12.0+ a reasonable host prerequisite for this optional
-   canary?
-5. Are the regression matrix and `NO_GATE2_ROUTE` exit sufficient?
-6. Does the plan preserve Kiro/Codex/shared-writer behavior by leaving shared
-   runtime files untouched?
-7. Are host capture ownership, pre/post watcher evidence, and namespace-test
-   skip semantics now explicit enough to prevent a false PASS?
-8. Does the fresh capture-id lifecycle preserve a fixed coordinator `path_key`
-   while preventing snapshot reuse after ordinary or crash exits?
-9. Are watch-root disjointness, failed-root quarantine, and named-host evidence
-   sufficient operational gates?
-10. Does the unbound sibling vault eliminate every worker-writable alias to the
-    snapshot, with post-run digest revalidation and durable quarantine closing
-    cleanup failures?
-11. Do the full-invocation `flock`, pre-capture marker failure rules, precise
-    worker-crash definition, and literal mountinfo-string exclusion close the
-    remaining operational advisories?
+Kiro PASSed exact tip `290294d093fc723313bc396518b14000857b6f1a`
+with four required Execute conditions. The successor copies those conditions
+into the normative plan without changing the selected architecture.
+
+## Carry-forward questions
+
+1. C1: Does create/reopen now require trusted-parent dirfd operations,
+   no-follow directory opens, effective-uid ownership, exact `0700`, and one
+   filesystem?
+2. C2: Is recoverable crash evidence limited to injected `CRASH_EXIT`, with one
+   clean diagnostic rerun for every other termination?
+3. C3: Does post-run failure end atomically with `.quarantined` present and
+   `.active` absent, followed by directory fsync?
+4. C4: Are stdout/stderr launcher-created pipes with no host-file redirection,
+   plus pipe and literal-leak assertions?
 
 The baseline is intentionally precise: Gate 2 adds the Claude adapter and
 `incremental_jsonl_formats.py` registry entry, while `incremental_jsonl.py`,
 `incremental_jsonl_isolation.py`, and `chroma_write_store.py` remain unchanged
 from merged base `e6a0634`. Do not treat either category as the other.
 
-Return PASS or specific blocking corrections on the full exact SHA. Review
-grants no implementation, PR, live source, canary, routing, watcher, or
-activation action.
+Return PASS carry-forward or identify an inaccurate C1–C4 transcription on the
+full exact SHA. Review grants no implementation, PR, live source, canary,
+routing, watcher, or activation action.
 
-**TL;DR [Arc Claude Watch Parity]:** Review the namespace architecture, unbound
-snapshot vault, locked durable lifecycle, and mountinfo disclosure containment;
-Gate 2 remains closed and protected shared runtime files remain unchanged.
+**TL;DR [Arc Claude Watch Parity]:** Check only the C1–C4 transcription into the
+already-PASSed namespace architecture; Gate 2 implementation remains closed and
+protected shared runtime files remain unchanged.

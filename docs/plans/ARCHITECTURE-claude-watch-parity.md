@@ -2,7 +2,7 @@
 
 **Arc:** Claude Watch Parity
 
-**State:** `READY_FOR_KIRO_REVIEW` (conditional-FAIL corrections applied)
+**State:** `KIRO_PASS_WITH_CONDITIONS` at `290294d`; C1–C4 incorporated for carry-forward check
 
 **Decision scope:** Gate 2 isolation-boundary blocker only
 
@@ -170,7 +170,27 @@ The launcher must build one fixed command shape:
 10. Run the worker at a stable read-only application path and use
    `/canary-root` for every mutable output.
 
-## 5.1 Snapshot lifecycle
+### 5.1 Control-root create and reopen contract
+
+The launcher never accepts an arbitrary absolute control-root path. A new root
+is created with `mkdirat(..., 0o700)` under one trusted canary parent dirfd and
+opened with `O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC`. Replay may reopen only the
+previously issued opaque root id beneath that same parent, using dirfd-relative
+operations and the same no-follow flags.
+
+Before reading markers or source bytes, `fstat` must prove that the control,
+scratch, and vault descriptors:
+
+- are directories rather than symlinks or other file types;
+- are owned by the current effective uid;
+- have exact mode `0700`, rejecting any group or other permission bits;
+- share one `st_dev`, so the control/vault publication and lifecycle assumptions
+  do not cross filesystems.
+
+Any mismatch refuses before capture. The launcher then acquires the lifecycle
+lock described in section 7.
+
+### 5.2 Snapshot lifecycle
 
 Every worker invocation performs a new host capture. The host publishes the
 snapshot under the unbound vault as `<capture-id>.jsonl`, where
@@ -286,10 +306,12 @@ held control-root dirfd and fsyncs that directory before opening transcript
 content. Failure to create or fsync `.active` refuses before capture. After
 verified snapshot cleanup and passing post-run checks, it removes `.active` and
 fsyncs again. Finding `.active` at startup means the prior launcher did not
-close cleanly: create and fsync a fixed `.quarantined` marker and refuse the
-root. Any failure that requires quarantine creates the same marker before
-returning. A root with `.quarantined` is never reused; removal is a separate
-host cleanup action outside evidence production.
+close cleanly: atomically rename `.active` to `.quarantined` through the held
+dirfd, fsync the directory, and refuse the root. Every post-run failure uses the
+same transition. Its terminal marker invariant is exactly
+`.quarantined=present` and `.active=absent`; never both and never neither. Tests
+assert the marker set after each failure. A root with `.quarantined` is never
+reused; removal is a separate host cleanup action outside evidence production.
 
 The worker independently verifies namespace properties, fixed paths, config,
 source identity, network denial, and production-path absence. It does not
@@ -343,11 +365,19 @@ Implementation is acceptable only if adversarial tests prove:
   rather than the generic name `session`;
 - first run, replay, append, repair, and worker/coordinator crash recovery with
   a surviving host launcher use the same stable `/canary-root` paths;
+- only the designated injected `CRASH_EXIT` sentinel counts as recoverable
+  worker/coordinator crash evidence; a signal, another exit code, or an
+  unexpected process termination fails evidence and receives exactly one
+  diagnostic rerun in a fresh clean process and root, with both outcomes
+  recorded and neither counted as recovery;
 - checkpoints and evidence contain no host path, fd number, transcript text,
   environment content, or credential material;
 - stdout, stderr, evidence, checkpoints, exports, and processed state contain
   neither the literal control-root prefix nor the capture id observed in
   `/proc/self/mountinfo`;
+- worker stdout and stderr are launcher-created pipes, never host files;
+  `close_fds=True` and the fixed setup `pass_fds` set are verified before
+  execution, and the worker confirms fd 1 and fd 2 are pipes;
 - bubblewrap setup failure leaves no snapshot or coordinator mutation;
 - Kiro-only default routing and isolated Codex behavior remain unchanged.
 
