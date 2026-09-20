@@ -804,6 +804,56 @@ class RetrievalBundle:  # pylint: disable=too-many-instance-attributes
     trace: dict | None
 
 
+def _locator_from_result(result: dict) -> "EvidenceLocator":
+    from verbatim_evidence.types import EvidenceLocator
+
+    meta = result.get("metadata") or {}
+    return EvidenceLocator(
+        source_path=str(meta.get("source_path") or ""),
+        session_id=(meta.get("session_id") or None) or None,
+        conversation_id=(meta.get("conversation_id") or None) or None,
+        start_offset=meta.get("start_offset"),
+        end_offset=meta.get("end_offset"),
+    )
+
+
+def _attach_verbatim_source_context(
+    selection: list[dict],
+    *,
+    query_text: str,
+) -> tuple[str, list[dict], list[str]]:
+    """Opt-in: label summary vs verbatim_source for the top summary candidate.
+
+    Does not invent verbatim text from summary similarity. Uses the Crush
+    read-only adapter when the locator points at a supported source.
+    """
+    from verbatim_evidence import format_labeled_context, retrieve_verbatim_evidence
+    from verbatim_evidence.types import EvidenceResult, EvidenceStatus
+
+    if not selection:
+        return "", [], []
+
+    primary = selection[0]
+    meta = dict(primary.get("metadata") or {})
+    meta.setdefault("when", when_label(meta))
+    summary_text = (primary.get("document") or "").strip()
+    locator = _locator_from_result(primary)
+    if not (locator.source_path or "").strip():
+        evidence = EvidenceResult(
+            status=EvidenceStatus.INVALID_LOCATOR,
+            reason="missing_source_path",
+        )
+    else:
+        evidence = retrieve_verbatim_evidence(locator, query_text)
+
+    context, citations, _items = format_labeled_context(
+        summary_text=summary_text,
+        summary_meta=meta,
+        evidence=evidence,
+    )
+    return context, citations, [context]
+
+
 def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
     question: str,
     *,
@@ -813,6 +863,7 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
     domain: str | None = None,
     site: str | None = None,
     evidence: bool = False,
+    verbatim_source: bool = False,
     trace: bool = False,
     cross_domain: bool = False,
     cfg: dict | None = None,
@@ -857,7 +908,12 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
         selection, dropped = _diversify_by_source(results, limit=fetch_k)
         unit_flags = [False] * len(selection)
         origins = ["raw_summary"] * len(selection)
-        context, citations, blocks = _format_selection(selection, unit_flags)
+        if verbatim_source:
+            context, citations, blocks = _attach_verbatim_source_context(
+                selection, query_text=search_q
+            )
+        else:
+            context, citations, blocks = _format_selection(selection, unit_flags)
     else:
         from query import QueryUnitTrace
 
@@ -927,6 +983,10 @@ def retrieve_for_ask(  # pylint: disable=too-many-locals,too-many-arguments
             evidence=evidence,
             cfg=cfg,
         )
+        if verbatim_source and selection:
+            context, citations, blocks = _attach_verbatim_source_context(
+                selection, query_text=search_q
+            )
 
     if trace:
         stages["final_context"] = _trace_stage(
@@ -1003,6 +1063,7 @@ def ask(  # pylint: disable=too-many-arguments
     domain: str | None = None,
     site: str | None = None,
     evidence: bool = False,
+    verbatim_source: bool = False,
     trace: bool = False,
     cross_domain: bool = False,
     return_eval_trace: bool = False,
@@ -1015,6 +1076,9 @@ def ask(  # pylint: disable=too-many-arguments
             applies to the units layer — raw summaries aren't domain-tagged.
         site: Optional site hostname (e.g. staging2.willowyhollow.com).
         evidence: Re-rank units by ledger graph (unresolved > failed > resolved).
+        verbatim_source: When True, attempt bounded read-only source evidence
+            for the top candidate and label summary vs verbatim_source in
+            context. Default False (opt-in).
         trace: When True, include versioned retrieval trace (convmem.ask.trace.v1).
         return_eval_trace: When True, include the exact question and delivered
             synthesis context for an evaluation judge.
@@ -1033,6 +1097,7 @@ def ask(  # pylint: disable=too-many-arguments
         domain=domain,
         site=site,
         evidence=evidence,
+        verbatim_source=verbatim_source,
         trace=trace,
         cross_domain=cross_domain,
         cfg=cfg,
