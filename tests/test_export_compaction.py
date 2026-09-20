@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import errno
+import hashlib
 import os
 import signal
 import sqlite3
@@ -27,6 +28,7 @@ from export_compaction import (
     ExportIdentityChangedError,
     InvalidExportRecordError,
     OversizedExportRecordError,
+    ZeroFilledExportRecordError,
     compact_units_export,
 )
 from purge_locks import export_flock_path
@@ -214,6 +216,51 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
         with self.assertRaises(InvalidExportRecordError):
             compact_units_export(self.path)
         self.assertEqual(self.path.read_bytes(), original)
+
+    def test_zero_filled_record_is_reported_apart_from_other_invalid_rows(self) -> None:
+        original = b'{"id":"a"}\n' + (b"\x00" * 40) + b'{"id":"b"}\n'
+        _write_export(self.path, original)
+        with self.assertRaises(ZeroFilledExportRecordError) as caught:
+            compact_units_export(self.path)
+        self.assertIn("leading_zero_bytes=40", str(caught.exception))
+        self.assertIsInstance(caught.exception, InvalidExportRecordError)
+        self.assertEqual(self.path.read_bytes(), original)
+
+    def test_zero_filled_payload_intact_but_still_fails_closed(self) -> None:
+        payload = b'{"id":"b","v":1}'
+        original = b'{"id":"a"}\n' + (b"\x00" * 12) + payload + b"\n"
+        _write_export(self.path, original)
+        with self.assertRaises(ZeroFilledExportRecordError):
+            compact_units_export(self.path)
+        self.assertEqual(self.path.read_bytes(), original)
+
+    def test_invalid_row_reports_offset_length_and_digest(self) -> None:
+        first = b'{"id":"a"}\n'
+        bad = b"NOTJSON\n"
+        original = first + bad
+        _write_export(self.path, original)
+        with self.assertRaises(InvalidExportRecordError) as caught:
+            compact_units_export(self.path)
+        message = str(caught.exception)
+        self.assertIn("nonblank_record=2", message)
+        self.assertIn(f"byte_offset={len(first)}", message)
+        self.assertIn(f"length={len(bad)}", message)
+        digest = hashlib.sha256(bad).hexdigest()
+        self.assertIn(f"sha256={digest}", message)
+        self.assertNotIn("NOTJSON", message)
+        self.assertEqual(self.path.read_bytes(), original)
+
+    def test_reported_offset_identifies_the_offending_record(self) -> None:
+        rows = [b'{"id":"a"}\n', b'{"id":"b"}\n', b'{"id":"c"}\n', b"BROKEN\n"]
+        original = b"".join(rows)
+        _write_export(self.path, original)
+        with self.assertRaises(InvalidExportRecordError) as caught:
+            compact_units_export(self.path)
+        expected_offset = sum(len(r) for r in rows[:-1])
+        self.assertIn(f"byte_offset={expected_offset}", str(caught.exception))
+        with open(self.path, "rb") as handle:
+            handle.seek(expected_offset)
+            self.assertEqual(handle.read(len(rows[-1])), rows[-1])
 
     def test_symlink_fails_closed(self) -> None:
         target = self.dir / "real.jsonl"

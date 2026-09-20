@@ -21,6 +21,70 @@
 
 ---
 
+## RESOLUTION UPDATE (2026-09-20, later same session)
+
+**The defect self-resolved and was observed disappearing.** This is now a
+*confirmed data-loss* incident, not a pending repair.
+
+| Observation | Value |
+|---|---|
+| Corrupt record at diagnosis | offset `3712694659`, len `11583`, run `1661`, SHA `30b21251…5740e` |
+| Export after last night's rewrite | dev `66306`, ino `20884043`, size `3771679862` |
+| NUL-prefixed records remaining | **0** |
+| Full read-only scan result | **zero anomalies** across 149,601 nonblank records |
+| `compact_units_export` scan | completes in **7.3 s**, `nonblank=149601 retained=149601` |
+| `convmem doctor` `logical_projection` | **PASS** (`serving_units=80996 physical_units=81029`) |
+
+### The unit was DROPPED, not healed
+
+Export records for the affected `source_path` went from **8 → 7**; Chroma still
+holds all **8**. The missing unit is `ca9e3739736068c7…` (`type=pattern`,
+`content_hash=349edcd651731bb7…`). Its record and ID are absent from the export
+entirely — it is not relocated.
+
+The compaction rewrite (`_publish_compacted`, `export_compaction.py:229-263`)
+orders output by `first_seq` and re-reads only retained rows. A row with a
+zero-fill prefix fails `_validate_record` during the *scan* — so a scan that
+succeeds cannot have processed that row. The record was therefore removed by an
+**out-of-band rewrite** of the export, not by compaction.
+
+### Root cause of the rewrite: Chroma HNSW corruption
+
+[`KIRO-2026-09-20-chroma-upsert-heap-corruption-handoff.md`](KIRO-2026-09-20-chroma-upsert-heap-corruption-handoff.md)
+independently documents a deterministic SIGSEGV in the Chroma Rust HNSW upsert
+path and a **re-corruption loop** requiring repeated rebuilds of the HNSW index
+from clean SQLite. Those rebuilds rewrote the export while this session was
+running — matching the three distinct inodes observed (`20883997` →
+`20879023` → `20884043`).
+
+**Implication:** #315's export corruption and the Chroma upsert crash are not
+independent bugs. The NUL-prefixed row was a *symptom* of an interrupted append
+during a rebuild; its disappearance was *collateral* of the next rebuild.
+
+### Consequence for the requested repair
+
+- **Option A (strip the NUL span) is now moot** — there is no span to strip.
+- **The real loss is one active unit** present in Chroma
+  (`ca9e3739736068c7…`) but absent from the export. Chroma is intact and is the
+  recovery source; the unit's bytes are fully recoverable from Chroma metadata
+  plus the stored doc (whose SHA-256 equals its `content_hash`).
+- **Authorizable repair is now:** restore that one unit row from Chroma, or
+  accept the export/Chroma divergence if the export is treated as derived.
+- **Highest-value prevention is upstream** — the poison-pill skiplist and upsert
+  isolation specified in the Kiro handoff. While the crash loop continues,
+  further export rewrites and further silent unit loss are expected.
+
+### Confidence (added)
+
+| Finding | Confidence | Basis |
+|---|---|---|
+| Defect is gone; export currently has zero anomalies | **high** | full read-only scan, 149,601 records |
+| Exactly one unit (8→7) was dropped by the rewrite | **high** | per-`source_path` count vs Chroma |
+| Rewrite cause is the Chroma HNSW crash/rebuild loop | **medium-high** | timing + inode churn + independent Kiro root cause |
+| Unit is fully recoverable from Chroma | **high** | doc SHA-256 == `content_hash` |
+
+---
+
 ## Headline
 
 **The record is not invalid UTF-8.** It is valid UTF-8, valid JSON, and

@@ -9,6 +9,7 @@ fail-closed refusal on malformed or oversized records.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -27,6 +28,15 @@ _SQLITE_BATCH = 512
 
 class InvalidExportRecordError(PrePublicationError):
     """A nonblank row is not a valid UTF-8 JSON object with a string ID."""
+
+
+class ZeroFilledExportRecordError(InvalidExportRecordError):
+    """A nonblank row is prefixed by zero-fill rather than missing content.
+
+    A leading run of NUL bytes is the signature of a torn or partially
+    materialized append, not of bad content. It is reported apart from other
+    invalid rows because the payload behind the zero run is usually intact.
+    """
 
 
 class OversizedExportRecordError(PrePublicationError):
@@ -146,12 +156,19 @@ def _pread_exact(fd: int, offset: int, length: int) -> bytes:
 
 
 def _validate_record(raw: bytes) -> str:
+    text = raw.strip()
+    stripped = text.lstrip(b"\x00")
+    if stripped != text:
+        raise ZeroFilledExportRecordError(
+            "export record is zero-filled"
+            f" (leading_zero_bytes={len(text) - len(stripped)})"
+        )
     try:
-        text = raw.strip().decode("utf-8")
+        decoded = text.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise InvalidExportRecordError("export record is not valid UTF-8") from exc
     try:
-        parsed = json.loads(text)
+        parsed = json.loads(decoded)
     except json.JSONDecodeError as exc:
         raise InvalidExportRecordError("export record is not valid JSON") from exc
     if not isinstance(parsed, dict):
@@ -222,7 +239,14 @@ def _scan_into_index(fd: int, conn: sqlite3.Connection) -> tuple[int, int]:
         if not record.strip():
             continue
         nonblank += 1
-        uid = _validate_record(record)
+        try:
+            uid = _validate_record(record)
+        except InvalidExportRecordError as exc:
+            raise type(exc)(
+                f"{exc} at nonblank_record={nonblank}"
+                f" byte_offset={start} length={length}"
+                f" sha256={hashlib.sha256(record).hexdigest()}"
+            ) from exc
         seq += 1
         _index_row(conn, uid, seq, start, length)
         pending += 1
