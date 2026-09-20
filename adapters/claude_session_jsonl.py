@@ -8,12 +8,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterator
 from pathlib import Path
 
-from adapters.jsonl_io import (
-    iter_jsonl_dicts,
-    session_parse_context,
-)
+from adapters.jsonl_io import session_parse_context
 
 _MESSAGE_TYPES = frozenset({"user", "assistant"})
 _SIGNAL_TYPES = frozenset({"user", "assistant", "system"})
@@ -38,6 +36,25 @@ def _claude_projects_root() -> Path:
     return (Path.home() / ".claude" / "projects").resolve()
 
 
+def _iter_claude_jsonl_dicts(filepath: str) -> Iterator[dict]:
+    """Yield dict records; skip blank, invalid UTF-8, and bad JSON lines."""
+    with open(filepath, "rb") as f:
+        for raw_line in f:
+            stripped = raw_line.strip()
+            if not stripped:
+                continue
+            try:
+                text = stripped.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+            try:
+                record = json.loads(text)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(record, dict):
+                yield record
+
+
 def is_claude_session_jsonl(path: Path | str) -> bool:
     """True for Claude Code project session *.jsonl files."""
     p = Path(path)
@@ -56,16 +73,20 @@ def _probe_claude_session(path: Path) -> bool:
     seen_type = False
     count = 0
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
+        with open(path, "rb") as f:
+            for raw_line in f:
+                stripped = raw_line.strip()
+                if not stripped:
                     continue
                 count += 1
                 if count > _PROBE_LINES:
                     break
                 try:
-                    record = json.loads(line)
+                    text = stripped.decode("utf-8")
+                except UnicodeDecodeError:
+                    continue
+                try:
+                    record = json.loads(text)
                     if not isinstance(record, dict):
                         continue
                 except json.JSONDecodeError:
@@ -89,7 +110,7 @@ def read_session_meta(filepath: str) -> dict:
         "session_id": "",
         "workspace_directory": "",
     }
-    for record in iter_jsonl_dicts(filepath):
+    for record in _iter_claude_jsonl_dicts(filepath):
         sid = record.get("sessionId") or record.get("session_id")
         if isinstance(sid, str) and sid and not meta["session_id"]:
             meta["session_id"] = sid
@@ -149,7 +170,7 @@ def parse(filepath: str) -> list[dict]:
     session_id, workspace = session_parse_context(filepath, read_session_meta)
 
     messages: list[dict] = []
-    for record in iter_jsonl_dicts(filepath):
+    for record in _iter_claude_jsonl_dicts(filepath):
         rtype = record.get("type")
         if rtype not in _MESSAGE_TYPES:
             continue
