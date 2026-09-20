@@ -27,6 +27,8 @@ cross-arc snapshot and the linked arc brief below.
   the divergence as derived-state; and the Kiro poison-pill/upsert fix is the
   real prevention. Diagnosis:
   [`CRUSH-2026-09-20-issue-315-invalid-export-record-diagnosis.md`](CRUSH-2026-09-20-issue-315-invalid-export-record-diagnosis.md).
+  Implementation handoff (open decisions, tip `cf9f19b`, no PR yet):
+  [`CURSOR-2026-09-20-issue-315-export-record-loss-handoff.md`](CURSOR-2026-09-20-issue-315-export-record-loss-handoff.md).
 - **Trapdoor Hunt / issue #286 — S0–S3 main integration (READY_FOR_RECHECK):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`; last code commit `5f142e2…` (not the review tip). Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance). **Next:** fresh Copilot and Kiro exact-tip reviews on `git rev-parse origin/feat/2026-09-17-issue-286-main-integration` after fetch; **no PR** until Ryan authorizes after those reviews. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
