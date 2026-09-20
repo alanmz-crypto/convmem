@@ -140,13 +140,21 @@ only bypasses the unchanged-skip gate. There is no insert-versus-update distinct
   holds normalized, provenance-attached units. Everything downstream stays real: `normalize_unit`,
   envelope minting, `ollama_embed`, `evaluate_ingest_batch`, `production_chroma_write_session`,
   `add_summary` / `add_unit`.
-- **Mandatory id-fidelity preflight (new).** `assertion_seed` at `ingest.py:918-922` is
-  `output_locator | rendered_chunk_sha256 | sha256(json.dumps(raw, sort_keys=True, default=str))`
-  — it hashes the **raw** distill dict, and only `response_sha256` is persisted
-  (`ingest.py:877-886`), never the raw text. So replay preserves ids only if the reconstruction
-  serializes byte-identically. Replay one chunk, compare minted unit ids against the golden
-  export's ids for that `source_path`. **If they differ, the replay is an insert of new ids, not
-  the observed condition — report and stop.**
+- **Id and provenance fidelity: verified offline, 2026-09-20.** `normalize_unit` returns
+  `make_unit_id(source_path, start_offset, title, unit_index)` — the Chroma unit id never touches
+  the raw dict. The raw-dict sha enters only `assertion_seed` (`ingest.py:918-922`), which mints
+  `assertion_id`; and `_commit_chunk_to_stores` (`ingest.py:645-670`) compares **provenance
+  identity** `(assertion_id, commitment)` and, on divergence, re-keys the write to a fresh
+  `projection_id` — i.e. an INSERT, not the observed upsert. So provenance fidelity, not id
+  fidelity, is the thing that must hold.
+  **It holds.** Reconstructing the raw dict as
+  `{type, title, summary, keywords, confidence, domain}` from the export's own normalized values
+  and re-minting via `_uuid4_from_seed(f"{seed}:1")` reproduces the stored `assertion_id` for
+  **3,548 of 3,548** poison-transcript units — 100%, zero mismatches, first mint attempt.
+  `normalize_unit` was value-preserving for every one. Replay through the seam will therefore
+  match provenance identity and take the upsert path. Keep the check as a preflight assertion
+  per unit and drop any unit that fails it.
+
 - Summaries: `summarize` is called directly inside `build_chunk_artifact` with no ingest-level
   indirection. Patch `ingest.summarize` to avoid a provider call, or declare the summary path
   **UNREPLAYED** in the hand-back. Do not silently leave `add_summary` (`chroma_store.py:227`)
@@ -171,6 +179,58 @@ only; never open the live directory with a Chroma client. After-proof: sha256 + 
 Chroma and the convmem DB against the golden manifest.
 
 ---
+
+## Offline findings that change the replay set (2026-09-20, pre-gate)
+
+### The export holds ~67 re-index generations, not one
+
+`make_unit_id` hashes the **title**, and each retry produced a fresh DeepSeek response with fresh
+titles, so every retry minted brand-new unit ids and appended them. For the poison transcript the
+export holds **3,548 units across 14 chunks** (`chunk_start` 0…650, stride 50 — contiguous, so the
+stored units cover the whole file; the handoff's "13 chunks" was one short). Distinct
+`provider_payload_sha256` values per chunk show the generation count: **67 for chunk 0**, 51, 47,
+39, 31, 20, 22, 23, 23, 21, 19, 18, 9, and **2 for chunk 650**.
+
+The live projection is far smaller: the quarantined 09-20 store holds **449 ids** for this source
+— **436 knowledge units + 13 summaries** — and those 436 are a *patchwork* of **42 generation
+fragments** (5 generations contribute to chunk 0, 4 to chunk 50, 3 to most others, 2 to chunk 600,
+**none to chunk 650**). Prune only removes rows the completing run did not re-emit, and almost no
+run completed, so no single generation survives intact.
+
+**Therefore: do not replay the 3,548 units.** That would insert ~3,100 ids Chroma has never seen
+and measure the wrong operation. The replay set is **exactly the export rows whose `id` is one of
+the 436 unit ids the golden store holds for that `source_path`**, reconstructed raw-faithfully per
+the verified method above. Compute the intersection in preflight and report its size; if it is not
+436 against the golden snapshot, say so before running anything.
+
+### The survival curve argues against a payload-specific cause
+
+Generations reaching each chunk: 67 → 51 → 47 → 39 → 31 → 20 → 22 → 23 → 23 → 21 → 19 → 18 → 9 → 2.
+Runs die **throughout** the file, not at one chunk. A deterministic payload defect at "chunk 13"
+would hold flat and then cliff to zero; a roughly constant per-chunk death rate with only ~3% of
+runs completing is the signature of a **stochastic** failure. This is independent support for
+hypothesis (d) and against (a).
+
+*Caveat:* the curve counts generations that committed ≥1 unit for a chunk, and a chunk can
+legitimately yield zero accepted units (`min_confidence` / `normalize_unit` rejections) — which is
+why the count ticks up at chunks 300 and 350. It is directional evidence, not a clean survival
+function.
+
+### Two store inconsistencies to report, not to fix here
+
+- **13 summaries for 14 chunks.** The `conversation_summaries` collection has no row for
+  `chunk_start 650`, and no live unit generation covers that chunk either.
+- **Export vs projection drift.** 3,548 export rows against 436 live units for one source. This
+  file alone accounts for ~3,100 of the ~69,020 "historical-only" ids `doctor index_drift`
+  reports corpus-wide. Export compaction dedupes by id, and these ids are all distinct, so it
+  cannot reclaim them.
+
+### Cost note
+
+Sixty-seven distill passes over a 40 MB transcript went to `deepseek-v4-flash` (unit timestamps:
+2,864 on 09-18, 661 on 09-19, 23 on 09-20). The 2026-09-17 loud-failure corrective does not catch
+this, because a signal death is not a non-zero exit. The circuit breaker below is the control that
+would have stopped it.
 
 ## What NOT to build
 

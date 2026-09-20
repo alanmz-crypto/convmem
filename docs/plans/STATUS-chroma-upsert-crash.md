@@ -37,6 +37,7 @@ do not take that lease.
 | Live `~/.local/share/convmem/chroma` | Rebuilt 2026-09-20 04:57; last write 09:53:01; all writers stopped 09:57:02 |
 | Poison-pill quarantine / circuit breaker | **Does not exist** — no code written |
 | Phase C′ replay harness | **Does not exist** — Cursor's to build, after the gate |
+| Replay set + raw reconstruction method | **Verified offline**; specified in the Phase C′ handoff |
 
 ## 4. Completion State
 
@@ -45,6 +46,8 @@ do not take that lease.
 - [x] Chroma writers stopped; quiet window opened 2026-09-20T09:57:02-05:00
 - [x] Read-only forensics on both quarantined indices and the live index
 - [x] Experiment redesigned (Phase C′) against the evidence
+- [x] Replay fidelity **proven offline**: 3,548/3,548 assertion ids reconstruct from the export
+- [x] Replay set identified: the 436 live unit ids, not the 3,548 export rows (~67 generations)
 - [ ] **Ryan platform gate** — kernel A/B, memtest86+, quiet verdict
 - [ ] Phase C′ execution (Cursor) — blocked on the gate
 - [ ] Remediation: per-file quarantine + global crash circuit breaker (Cursor)
@@ -77,7 +80,8 @@ and do not reintroduce the "poison transcript" framing — it is refuted (§ 6).
 **Hypothesis status:** (a) poison payload — **refuted** (`LATEST.md` and `refine` crash identically).
 (b) index size / accumulated state — open; rebuild halves the element count and buys ~2 h.
 (c) residual on-disk corruption — **unsupported**; the quarantined indices and the live index at
-crash time all validate clean. (d) platform-level memory corruption — **strongly indicated**, untested.
+crash time all validate clean. (d) platform-level memory corruption — **strongly indicated**, untested; the distill survival
+curve (67 runs start, 2 finish, deaths spread across all 14 chunks) is independent support.
 
 ## 7. Hard Stops (models cannot cross)
 
