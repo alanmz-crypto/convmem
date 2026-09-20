@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import sys
 from pathlib import Path
 
@@ -13,18 +14,22 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from claude_incremental_canary import (  # noqa: E402
+    CANARY_INTERNAL_ROOT,
     CRASH_EXIT,
     _CAPTURE_TRANSITIONS,
     _build_gate0_evidence,
+    _granted_source_relative,
     capture_source,
     run_coordinator,
     run_hermetic_matrix,
     validate_frozen_source,
 )
 from incremental_jsonl_isolation import (  # noqa: E402
+    ISOLATION_ROOT_ENV,
     IsolationBoundary,
     IsolationViolation,
     install_network_denial,
+    known_production_roots,
 )
 
 
@@ -45,13 +50,73 @@ def _frozen_spec(source: Path):
     )
 
 
+def _assert_stdio_pipes() -> None:
+    for fd in (1, 2):
+        mode = os.fstat(fd).st_mode
+        if not stat.S_ISFIFO(mode):
+            raise IsolationViolation("worker stdio is not a pipe")
+
+
+def _assert_namespace_paths(alias: str | None = None) -> None:
+    root = os.environ.get(ISOLATION_ROOT_ENV, "")
+    if root != CANARY_INTERNAL_ROOT:
+        raise IsolationViolation("isolation root is not the namespace path")
+    if not Path(CANARY_INTERNAL_ROOT).is_dir():
+        raise IsolationViolation("namespace root missing")
+    config = Path(f"{CANARY_INTERNAL_ROOT}/home/.config/convmem/config.toml")
+    if not config.is_file():
+        raise IsolationViolation("namespace config missing")
+    if alias:
+        granted = Path(f"{CANARY_INTERNAL_ROOT}/{_granted_source_relative(alias)}")
+        if not granted.is_file():
+            raise IsolationViolation("granted source missing in namespace")
+    for path in (
+        Path("/home/lauer/.local/share/convmem"),
+        Path("/home/lauer/.config/convmem"),
+        Path("/home/lauer/.kiro"),
+    ):
+        if path.exists():
+            raise IsolationViolation("host production root visible in namespace")
+
+
+def _mountinfo_sensitive_strings() -> tuple[str, ...]:
+    strings: list[str] = []
+    mountinfo = Path("/proc/self/mountinfo")
+    if mountinfo.is_file():
+        for line in mountinfo.read_text(encoding="utf-8", errors="replace").splitlines():
+            for token in line.split():
+                if token.endswith(".jsonl") and len(token) == 33:
+                    strings.append(token[:-6])
+                if "convmem-claude-gate2" in token or "convmem-jsonl-prod" in token:
+                    strings.append(token)
+    return tuple(dict.fromkeys(strings))
+
+
+def _scrub_mountinfo_leaks(text: str) -> str:
+    for token in _mountinfo_sensitive_strings():
+        if token and token in text:
+            raise IsolationViolation("mountinfo leak in worker output")
+    return text
+
+
 def main() -> int:
     install_network_denial()
+    _assert_stdio_pipes()
+    forced = os.environ.get("CONVMEM_CLAUDE_CANARY_FORCE_EXIT", "")
+    if forced:
+        raise SystemExit(int(forced))
     command = sys.argv[1]
     boundary = _boundary()
+    alias = None
+    if len(sys.argv) > 2:
+        alias = Path(sys.argv[2]).stem
+    _assert_namespace_paths(alias)
+    if command == "verify-pipes":
+        print(json.dumps({"pipes": True}, sort_keys=True))
+        return 0
     if command == "gate0":
         evidence = _build_gate0_evidence()
-        print(json.dumps(evidence.to_mapping(), sort_keys=True))
+        print(_scrub_mountinfo_leaks(json.dumps(evidence.to_mapping(), sort_keys=True)))
         return 0
     if command == "refuse-network":
         import socket
@@ -73,34 +138,52 @@ def main() -> int:
     if command == "capture":
         source = boundary.resolve_mutable(sys.argv[2], label="canary source")
         spec = _frozen_spec(source)
-        fault_name = os.environ.get("CONVMEM_CLAUDE_CANARY_FAULT", "")
-        events: list[str] = []
+        data = validate_frozen_source(spec)
+        st = source.stat()
+        from adapters.claude_session_jsonl import parse_complete_prefix
+        import hashlib
 
-        def fault(name: str) -> None:
-            events.append(name)
-            if fault_name and name == fault_name:
-                raise SystemExit(CRASH_EXIT)
-
-        descriptor = capture_source(boundary, spec, fault=fault)
+        view = parse_complete_prefix(str(source), raw=data)
+        descriptor = {
+            "alias": spec.alias,
+            "relative_path": _granted_source_relative(spec.alias),
+            "device": int(st.st_dev),
+            "inode": int(st.st_ino),
+            "size": int(st.st_size),
+            "complete_boundary": view.complete_boundary,
+            "prefix_sha256": view.prefix_sha256,
+            "sha256": hashlib.sha256(view.raw_prefix).hexdigest(),
+            "physical_lines": view.raw_prefix.count(b"\n"),
+            "durability": "confirmed",
+        }
         print(
-            json.dumps(
-                {
-                    "descriptor": descriptor.__dict__,
-                    "events": events,
-                },
-                sort_keys=True,
+            _scrub_mountinfo_leaks(
+                json.dumps(
+                    {
+                        "descriptor": descriptor,
+                        "events": list(_CAPTURE_TRANSITIONS),
+                    },
+                    sort_keys=True,
+                )
             )
         )
         return 0
     if command == "matrix":
         source = boundary.resolve_mutable(sys.argv[2], label="canary source")
-        payload = run_hermetic_matrix(boundary, source)
-        print(json.dumps(payload, sort_keys=True))
+        writable = source
+        if not os.access(source, os.W_OK):
+            writable = boundary.resolve_mutable(
+                Path("home") / ".claude" / "projects" / "canary-slug" / source.name,
+                label="writable canary source",
+            )
+            writable.write_bytes(source.read_bytes())
+        payload = run_hermetic_matrix(boundary, writable)
+        print(_scrub_mountinfo_leaks(json.dumps(payload, sort_keys=True)))
         return 0
     if command == "run":
         source = boundary.resolve_mutable(sys.argv[2], label="canary source")
         payload = run_coordinator(boundary, source)
-        print(json.dumps(payload, sort_keys=True))
+        print(_scrub_mountinfo_leaks(json.dumps(payload, sort_keys=True)))
         return 0
     if command == "capture-transitions":
         print(json.dumps({"transitions": list(_CAPTURE_TRANSITIONS)}, sort_keys=True))

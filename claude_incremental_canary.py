@@ -12,38 +12,60 @@ fallible checks; Gate 0 is internal-only; evidence is closed typed objects.
 
 from __future__ import annotations
 
+import contextlib
 import enum
+import fcntl
 import hashlib
 import json
 import os
 import re
+import secrets
 import stat
 import subprocess
-import sys
+import tempfile
 from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from adapters.claude_session_jsonl import parse_complete_prefix
 from incremental_jsonl import DURABLE_TRANSITIONS, IncrementalJsonlCoordinator
 from incremental_jsonl_isolation import (
     ISOLATION_MODE,
     ISOLATION_MODE_ENV,
+    ISOLATION_ROOT_ENV,
+    ISOLATION_TOKEN_ENV,
     IsolationBoundary,
     IsolationViolation,
-    create_fresh_root,
     known_production_roots,
     sanitized_worker_env,
 )
 
 CANARY_MODE = "claude-incremental-canary-v1"
 CRASH_EXIT = 86
+
+
+class _RecoverableWorkerCrash(Exception):
+    """Host-side sentinel for injected CRASH_EXIT during capture."""
 _SOURCE_ALIAS_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 _SAFE_DETAIL = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]{0,63}$")
 _REBUILD_REASON = re.compile(r"^[a-z_]+$")
 _SNAPSHOT_CAPTURE_PARTS = ("sources", "claude-capture")
 _MARKER_NAME = ".convmem-jsonl-production-root"
+BWRAP_PATH = Path("/usr/bin/bwrap")
+BWRAP_MIN_VERSION = (0, 12, 0)
+CANARY_INTERNAL_ROOT = "/canary-root"
+_CONTROL_SCRATCH_NAME = "scratch"
+_CONTROL_VAULT_NAME = "snapshot-vault"
+_MARKER_ACTIVE = ".active"
+_MARKER_QUARANTINED = ".quarantined"
+_CONTROL_PARENT_ENV = "CONVMEM_CLAUDE_GATE2_CONTROL_PARENT"
+_GRANTED_PROJECTS = ("home", ".claude", "projects", "granted")
+_NAMESPACE_APP_ROOT = "/app"
+_MINIFORGE_PREFIX = Path("/home/lauer/miniforge3")
+_VENV_SITE = Path(
+    "/home/lauer/Projects/convmem/.venv/lib/python3.13/site-packages"
+)
 _CONFIG_REL_PARTS = ("home", ".config", "convmem", "config.toml")
 _CREDENTIAL_MARKERS = ("API_KEY", "SECRET", "PASSWORD", "CREDENTIAL", "TOKEN")
 PRODUCTION_ROOTS = known_production_roots()
@@ -812,32 +834,54 @@ def _publish_anonymous_dirfd(
     return PublicationResult(stat=stat_result, durability=durability)
 
 
+def _granted_source_parts(alias: str) -> tuple[str, ...]:
+    validate_source_alias(alias)
+    return (*_GRANTED_PROJECTS, f"{alias}.jsonl")
+
+
+def _granted_source_relative(alias: str) -> str:
+    return "/".join(_granted_source_parts(alias))
+
+
+def _discover_control_root(scratch_root: Path) -> Path:
+    control = scratch_root.parent.resolve()
+    scratch_name = _CONTROL_SCRATCH_NAME
+    vault_name = _CONTROL_VAULT_NAME
+    if not (control / scratch_name).exists():
+        raise IsolationViolation("control root layout missing scratch")
+    if not (control / vault_name).exists():
+        raise IsolationViolation("control root layout missing snapshot-vault")
+    try:
+        if not (control / scratch_name).resolve().samefile(scratch_root):
+            raise IsolationViolation("scratch not bound to control root")
+    except OSError as exc:
+        raise IsolationViolation("scratch control binding unavailable") from exc
+    return control
+
+
 def snapshot_publication_paths(
     boundary: IsolationBoundary, alias: str
 ) -> tuple[Path, Path]:
-    """Return capture directory and filename derived from the boundary."""
+    """Return granted placeholder directory and filename inside the scratch root."""
     validate_source_alias(alias)
     capture_dir = boundary.resolve_mutable(
-        Path(*_SNAPSHOT_CAPTURE_PARTS),
-        label="snapshot capture directory",
+        Path(*_GRANTED_PROJECTS),
+        label="granted source directory",
     )
     return capture_dir, Path(f"{alias}.jsonl")
 
 
 def list_snapshot_artifacts(boundary: IsolationBoundary, alias: str) -> list[str]:
-    """List regular snapshot artifacts for one alias under the capture directory."""
-    capture_dir, filename = snapshot_publication_paths(boundary, alias)
-    if not capture_dir.exists():
+    """List vault snapshot artifacts for the current control root, if any."""
+    control = _discover_control_root(boundary.root)
+    vault = control / _CONTROL_VAULT_NAME
+    if not vault.is_dir():
         return []
-    artifacts: list[str] = []
-    for entry in capture_dir.iterdir():
-        if entry.is_file() and entry.name == filename.name:
-            artifacts.append(str(entry.resolve()))
-    return artifacts
+    return sorted(str(entry.resolve()) for entry in vault.iterdir() if entry.is_file())
 
 
 def assert_no_snapshot_artifacts(boundary: IsolationBoundary, alias: str) -> None:
-    """Fail closed when snapshot publication left residue behind."""
+    """Fail closed when vault snapshot publication left residue behind."""
     artifacts = list_snapshot_artifacts(boundary, alias)
     if artifacts:
         names = ", ".join(sorted(artifacts))
@@ -872,9 +916,9 @@ def validate_source_alias(alias: Any) -> str:
 def derive_snapshot_destination(
     boundary: IsolationBoundary, alias: str
 ) -> Path:
-    """Derive the snapshot path exclusively from a validated isolation boundary."""
+    """Derive the granted placeholder path inside the scratch root."""
     validate_source_alias(alias)
-    relative = Path("sources") / "claude-capture" / f"{alias}.jsonl"
+    relative = Path(*_granted_source_parts(alias))
     return boundary.resolve_mutable(relative, label="snapshot destination")
 
 
@@ -943,15 +987,30 @@ def revalidate_source_identity(
         raise IsolationViolation("live source identity changed during capture")
 
 
+def _generate_capture_id() -> str:
+    return secrets.token_hex(16)
+
+
+def _open_vault_dirfd(control_path: Path) -> int:
+    control_fd = os.open(str(control_path), _dir_open_flags())
+    try:
+        try:
+            return os.open(_CONTROL_VAULT_NAME, _dir_open_flags(), dir_fd=control_fd)
+        except OSError as exc:
+            raise IsolationViolation("snapshot vault unavailable") from exc
+    finally:
+        os.close(control_fd)
+
+
 def capture_source(
     boundary: IsolationBoundary,
     spec: FrozenSourceSpec,
     *,
     fault: Callable[[str], None] | None = None,
 ) -> SourceDescriptor:
-    """Copy the complete prefix under isolation; publication is the final step."""
+    """Publish the complete prefix into the unbound vault; worker sees granted path."""
     root_cap: IsolationRootCapability | None = None
-    capture_dir_fd = -1
+    vault_fd = -1
     anon_fd = -1
     snapshot_name = ""
     published = False
@@ -964,22 +1023,19 @@ def capture_source(
     try:
         root_cap = _enforce_gate0_for_mutable(boundary)
         root_cap.assert_still_bound(boundary)
+        control_path = _discover_control_root(boundary.root)
+        vault_fd = _open_vault_dirfd(control_path)
 
         emit("before_snapshot_prepare")
         binding, data = bind_frozen_source(spec)
         emit("after_snapshot_prepare")
         view = parse_complete_prefix(binding.canonical_path, raw=data)
 
-        _capture_dir, filename = snapshot_publication_paths(boundary, spec.alias)
-        snapshot_name = filename.name
-        capture_dir_fd = root_cap.open_subdir(
-            _SNAPSHOT_CAPTURE_PARTS,
-            label="snapshot capture directory",
-        )
+        snapshot_name = f"{_generate_capture_id()}.jsonl"
 
         emit("before_temp_stage")
         try:
-            anon_fd = _stage_anonymous_dirfd(capture_dir_fd, view.raw_prefix)
+            anon_fd = _stage_anonymous_dirfd(vault_fd, view.raw_prefix)
         except FileNotFoundError as exc:
             raise IsolationViolation("snapshot destination unavailable") from exc
         emit("after_temp_stage")
@@ -993,13 +1049,11 @@ def capture_source(
         emit("before_snapshot_publish")
         publish_fd = anon_fd
         anon_fd = -1
-        publication = _publish_anonymous_dirfd(
-            capture_dir_fd, publish_fd, snapshot_name
-        )
+        publication = _publish_anonymous_dirfd(vault_fd, publish_fd, snapshot_name)
         published = True
         emit("after_snapshot_publish")
 
-        relative = RelativePath.from_parts(*_SNAPSHOT_CAPTURE_PARTS, snapshot_name)
+        relative = RelativePath.from_parts(*_granted_source_parts(spec.alias))
         copied_stat = publication.stat
         return SourceDescriptor(
             alias=spec.alias,
@@ -1019,9 +1073,9 @@ def capture_source(
         if anon_fd >= 0:
             os.close(anon_fd)
             anon_fd = -1
-        if capture_dir_fd >= 0:
-            os.close(capture_dir_fd)
-            capture_dir_fd = -1
+        if vault_fd >= 0:
+            os.close(vault_fd)
+            vault_fd = -1
         if root_cap is not None:
             root_cap.close()
             root_cap = None
@@ -1103,6 +1157,19 @@ def _probe_network_isolation() -> NetworkProbeResult:
             passed=PassToken.TRUE,
             detail=DetailToken(value=type(exc).__name__),
         )
+
+
+@contextlib.contextmanager
+def _scrub_host_credentials():
+    removed: dict[str, str] = {}
+    for name in list(os.environ):
+        if any(marker in name.upper() for marker in _CREDENTIAL_MARKERS):
+            if name not in {"CONVMEM_INCREMENTAL_TOKEN"}:
+                removed[name] = os.environ.pop(name)
+    try:
+        yield
+    finally:
+        os.environ.update(removed)
 
 
 def _refuse_inherited_gate0_authority() -> None:
@@ -1197,15 +1264,153 @@ def scrub_credentials(env: dict[str, str]) -> dict[str, str]:
     return cleaned
 
 
+def _trusted_control_parent(parent: Path | None = None) -> Path:
+    if parent is not None:
+        return parent
+    raw = os.environ.get(_CONTROL_PARENT_ENV, "")
+    if raw:
+        path = Path(raw).expanduser()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    return Path(tempfile.gettempdir()) / "convmem-claude-gate2-control-parent"
+
+
+def _assert_dir_identity(fd: int, *, label: str) -> os.stat_result:
+    st = os.fstat(fd)
+    if not stat.S_ISDIR(st.st_mode):
+        raise IsolationViolation(f"{label} is not a directory")
+    if stat.S_ISLNK(st.st_mode):
+        raise IsolationViolation(f"{label} is symlinked")
+    if st.st_uid != os.geteuid():
+        raise IsolationViolation(f"{label} uid mismatch")
+    mode = stat.S_IMODE(st.st_mode)
+    if mode != 0o700:
+        raise IsolationViolation(f"{label} mode is not 0700")
+    return st
+
+
+@dataclass
+class ControlRootSession:
+    """Held control-root descriptors for scratch and snapshot vault."""
+
+    root_id: str
+    control_path: Path
+    control_fd: int
+    scratch_fd: int
+    vault_fd: int
+    scratch_path: Path
+    scratch_dev: int
+    _closed: bool = field(default=False, repr=False)
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        for fd in (self.vault_fd, self.scratch_fd, self.control_fd):
+            if fd >= 0:
+                os.close(fd)
+        self._closed = True
+
+    def __enter__(self) -> ControlRootSession:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.close()
+
+
+def _mkdirat_open(parent_fd: int, name: str, *, label: str) -> int:
+    try:
+        os.mkdir(name, 0o700, dir_fd=parent_fd)
+    except FileExistsError:
+        pass
+    fd = os.open(name, _dir_open_flags(), dir_fd=parent_fd)
+    _assert_dir_identity(fd, label=label)
+    return fd
+
+
+def create_control_root(parent: Path | None = None) -> ControlRootSession:
+    """Create a mode-0700 control root with sibling scratch and vault."""
+    parent_path = _trusted_control_parent(parent)
+    parent_path.mkdir(parents=True, exist_ok=True)
+    parent_fd = os.open(str(parent_path), _dir_open_flags())
+    root_id = secrets.token_hex(12)
+    try:
+        os.mkdir(root_id, 0o700, dir_fd=parent_fd)
+        control_fd = os.open(root_id, _dir_open_flags(), dir_fd=parent_fd)
+        control_st = _assert_dir_identity(control_fd, label="control root")
+        scratch_fd = _mkdirat_open(control_fd, _CONTROL_SCRATCH_NAME, label="scratch")
+        vault_fd = _mkdirat_open(control_fd, _CONTROL_VAULT_NAME, label="snapshot-vault")
+        scratch_st = os.fstat(scratch_fd)
+        vault_st = os.fstat(vault_fd)
+        if scratch_st.st_dev != vault_st.st_dev or control_st.st_dev != scratch_st.st_dev:
+            raise IsolationViolation("control root crosses filesystems")
+        control_path = (parent_path / root_id).resolve()
+        scratch_path = (control_path / _CONTROL_SCRATCH_NAME).resolve()
+        return ControlRootSession(
+            root_id=root_id,
+            control_path=control_path,
+            control_fd=control_fd,
+            scratch_fd=scratch_fd,
+            vault_fd=vault_fd,
+            scratch_path=scratch_path,
+            scratch_dev=int(scratch_st.st_dev),
+        )
+    finally:
+        os.close(parent_fd)
+
+
+def _reopen_control_root(parent: Path, root_id: str) -> ControlRootSession:
+    if not root_id or "/" in root_id or root_id in {".", ".."}:
+        raise IsolationViolation("invalid control root id")
+    parent_fd = os.open(str(parent), _dir_open_flags())
+    try:
+        control_fd = os.open(root_id, _dir_open_flags(), dir_fd=parent_fd)
+        _assert_dir_identity(control_fd, label="control root")
+        scratch_fd = os.open(
+            _CONTROL_SCRATCH_NAME, _dir_open_flags(), dir_fd=control_fd
+        )
+        vault_fd = os.open(
+            _CONTROL_VAULT_NAME, _dir_open_flags(), dir_fd=control_fd
+        )
+        control_st = os.fstat(control_fd)
+        scratch_st = _assert_dir_identity(scratch_fd, label="scratch")
+        vault_st = _assert_dir_identity(vault_fd, label="snapshot-vault")
+        if scratch_st.st_dev != vault_st.st_dev or control_st.st_dev != scratch_st.st_dev:
+            raise IsolationViolation("control root crosses filesystems")
+        control_path = (parent / root_id).resolve()
+        return ControlRootSession(
+            root_id=root_id,
+            control_path=control_path,
+            control_fd=control_fd,
+            scratch_fd=scratch_fd,
+            vault_fd=vault_fd,
+            scratch_path=(control_path / _CONTROL_SCRATCH_NAME).resolve(),
+            scratch_dev=int(scratch_st.st_dev),
+        )
+    finally:
+        os.close(parent_fd)
+
+
 def prepare_fixture_env(
     parent: Path,
     *,
     count: int = 4,
     alias: str = "canary-fixture",
 ) -> tuple[Path, str, dict[str, str], Path, FrozenSourceSpec]:
-    """Create scratch root, env, Claude fixture, and frozen spec."""
+    """Create control root, scratch root, env, Claude fixture, and frozen spec."""
     parent_home = Path.home()
-    root, token = create_fresh_root(parent)
+    control = create_control_root(parent)
+    root = control.scratch_path
+    token = os.urandom(24).hex()
+    (root / _MARKER_NAME).write_text(token, encoding="ascii")
+    from incremental_jsonl_isolation import write_hermetic_config
+
+    write_hermetic_config(root)
+    granted_dir = root.joinpath(*_GRANTED_PROJECTS)
+    granted_dir.mkdir(parents=True, exist_ok=True)
+    placeholder = granted_dir / f"{alias}.jsonl"
+    placeholder.touch()
+    os.chmod(placeholder, 0o600)
+    control.close()
     env = scrub_credentials(
         sanitized_worker_env(
             root,
@@ -1299,7 +1504,10 @@ def _rewrite_config_enabled(root_cap: IsolationRootCapability) -> None:
             data = os.read(fd, st.st_size)
         finally:
             os.close(fd)
-        text = data.decode("utf-8").replace("enabled = false", "enabled = true", 1)
+        text = data.decode("utf-8")
+        if "enabled = true" in text:
+            return
+        text = text.replace("enabled = false", "enabled = true", 1)
         payload = text.encode("utf-8")
         anon_fd = _stage_anonymous_dirfd(parent_fd, payload)
         _publish_anonymous_dirfd(parent_fd, anon_fd, name)
@@ -1386,6 +1594,546 @@ def run_hermetic_matrix(
         }
 
 
+def _parse_bwrap_version(text: str) -> tuple[int, int, int]:
+    match = re.search(r"(\d+)\.(\d+)\.(\d+)", text)
+    if not match:
+        raise IsolationViolation("bubblewrap version unavailable")
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
+
+
+def validate_bwrap_binary() -> None:
+    """Validate bubblewrap binary path, version, and ownership."""
+    path = BWRAP_PATH
+    if not path.is_file():
+        raise IsolationViolation("bubblewrap binary missing")
+    if path.is_symlink():
+        raise IsolationViolation("bubblewrap binary is symlinked")
+    st = path.stat()
+    if st.st_uid == 0 and (st.st_mode & stat.S_ISUID):
+        raise IsolationViolation("bubblewrap binary is setuid")
+    completed = subprocess.run(
+        [str(path), "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=5.0,
+    )
+    version = _parse_bwrap_version((completed.stdout or completed.stderr or "").strip())
+    if version < BWRAP_MIN_VERSION:
+        raise IsolationViolation("bubblewrap version below minimum")
+
+
+def _probe_bwrap_namespace() -> None:
+    """Run a disposable descriptor-bind probe in a real namespace."""
+    validate_bwrap_binary()
+    scratch = tempfile.mkdtemp(prefix="convmem-bwrap-probe-")
+    scratch_fd = os.open(scratch, _dir_open_flags())
+    try:
+        cmd = _base_bwrap_command(scratch_fd=scratch_fd, snapshot_fd=None, config_fd=None)
+        cmd.extend(["--", "/bin/true"])
+        completed = subprocess.run(
+            cmd,
+            pass_fds=[scratch_fd],
+            close_fds=True,
+            check=False,
+            timeout=10.0,
+        )
+        if completed.returncode != 0:
+            raise IsolationViolation("bubblewrap namespace probe failed")
+    finally:
+        os.close(scratch_fd)
+
+
+def _configured_watch_roots() -> list[Path]:
+    """Return configured watch roots; hermetic callers use empty/synthetic lists."""
+    if os.environ.get(ISOLATION_MODE_ENV) == ISOLATION_MODE:
+        return []
+    try:
+        from watch import watch_roots as _watch_roots
+
+        config_path = Path.home() / ".config" / "convmem" / "config.toml"
+        if not config_path.is_file():
+            return []
+        import tomllib
+
+        payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        watch_cfg = payload.get("watch") or {}
+        sources_cfg = payload.get("sources") or {}
+        paths = watch_cfg.get("paths") or sources_cfg.get("paths") or []
+        return _watch_roots([str(item) for item in paths if isinstance(item, str)])
+    except Exception:
+        return []
+
+
+def _paths_disjoint(left: Path, right: Path) -> bool:
+    try:
+        left.resolve().relative_to(right.resolve())
+        return False
+    except ValueError:
+        pass
+    try:
+        right.resolve().relative_to(left.resolve())
+        return False
+    except ValueError:
+        return True
+
+
+def assert_watch_roots_disjoint(
+    control: Path,
+    scratch: Path,
+    vault: Path,
+    *,
+    watch_roots_list: Sequence[Path] | None = None,
+) -> None:
+    """Fail closed unless canary roots and watch roots are disjoint both ways."""
+    canary_roots = (control.resolve(), scratch.resolve(), vault.resolve())
+    roots = list(watch_roots_list or _configured_watch_roots())
+    for watch_root in roots:
+        watch = watch_root.expanduser().resolve(strict=False)
+        for canary in canary_roots:
+            if not _paths_disjoint(canary, watch):
+                raise IsolationViolation("watch root overlaps canary root")
+
+
+def _marker_present(control_fd: int, name: str) -> bool:
+    try:
+        os.stat(name, dir_fd=control_fd, follow_symlinks=False)
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def _acquire_control_lock(control_fd: int) -> None:
+    try:
+        fcntl.flock(control_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        raise IsolationViolation("control root lock contention") from exc
+
+
+def _release_control_lock(control_fd: int) -> None:
+    try:
+        fcntl.flock(control_fd, fcntl.LOCK_UN)
+    except OSError:
+        pass
+
+
+def _fsync_dir(fd: int) -> None:
+    os.fsync(fd)
+
+
+def _create_active_marker(control_fd: int) -> None:
+    fd = os.open(_MARKER_ACTIVE, _file_open_flags(write=True, create=True), dir_fd=control_fd)
+    try:
+        os.write(fd, b"1")
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    _fsync_dir(control_fd)
+
+
+def _remove_active_marker(control_fd: int) -> None:
+    try:
+        os.unlink(_MARKER_ACTIVE, dir_fd=control_fd)
+    except FileNotFoundError:
+        pass
+    _fsync_dir(control_fd)
+
+
+def _quarantine_control_root(control_fd: int) -> None:
+    if _marker_present(control_fd, _MARKER_ACTIVE):
+        os.rename(_MARKER_ACTIVE, _MARKER_QUARANTINED, src_dir_fd=control_fd, dst_dir_fd=control_fd)
+    elif not _marker_present(control_fd, _MARKER_QUARANTINED):
+        fd = os.open(
+            _MARKER_QUARANTINED,
+            _file_open_flags(write=True, create=True),
+            dir_fd=control_fd,
+        )
+        os.close(fd)
+    _fsync_dir(control_fd)
+
+
+def _assert_marker_terminal_state(control_fd: int) -> None:
+    active = _marker_present(control_fd, _MARKER_ACTIVE)
+    quarantined = _marker_present(control_fd, _MARKER_QUARANTINED)
+    if active and quarantined:
+        raise IsolationViolation("control markers both present")
+    if not active and not quarantined:
+        raise IsolationViolation("control markers neither present")
+
+
+def _namespace_config_bytes() -> bytes:
+    root = CANARY_INTERNAL_ROOT
+    payload = (
+        "[index]\n"
+        f'chroma_dir = "{root}/home/.local/share/convmem/chroma"\n'
+        f'processed_log = "{root}/home/.local/share/convmem/processed.json"\n'
+        f'units_export = "{root}/home/.local/share/convmem/knowledge_units.jsonl"\n'
+        "chunk_size = 2\n"
+        "chunk_overlap = 0\n"
+        "\n"
+        "[index.incremental_jsonl]\n"
+        "enabled = true\n"
+        f'state_dir = "{root}/home/.local/share/convmem/incremental-jsonl"\n'
+        "allow_full_rebuild = false\n"
+        "\n"
+        "[models]\n"
+        'embed_model = "deterministic-fake"\n'
+        'summarize_model = "deterministic-fake"\n'
+        'distill_model = "deterministic-fake"\n'
+        'ollama_host = ""\n'
+        "\n"
+        "[distill]\n"
+        "min_confidence = 0.6\n"
+    )
+    return payload.encode("utf-8")
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parent
+
+
+def _python_executable() -> str:
+    return str(_MINIFORGE_PREFIX / "bin" / "python3")
+
+
+def _base_bwrap_command(
+    *,
+    scratch_fd: int,
+    snapshot_fd: int | None,
+    config_fd: int | None,
+    alias: str | None = None,
+) -> list[str]:
+    repo = _repo_root()
+    cmd = [
+        str(BWRAP_PATH),
+        "--proc",
+        "/proc",
+        "--dev",
+        "/dev",
+        "--unshare-all",
+        "--unshare-user",
+        "--disable-userns",
+        "--die-with-parent",
+        "--new-session",
+        "--clearenv",
+        "--setenv",
+        "PATH",
+        "/usr/bin:/bin",
+        "--setenv",
+        "HOME",
+        f"{CANARY_INTERNAL_ROOT}/home",
+        "--setenv",
+        "PYTHONPATH",
+        f"{_NAMESPACE_APP_ROOT}:{_VENV_SITE}",
+        "--setenv",
+        "PYTHONIOENCODING",
+        "utf-8",
+        "--setenv",
+        "PYTHONDONTWRITEBYTECODE",
+        "1",
+        "--setenv",
+        "LC_ALL",
+        "C.UTF-8",
+        "--setenv",
+        ISOLATION_MODE_ENV,
+        ISOLATION_MODE,
+        "--setenv",
+        "CONVMEM_CLAUDE_CANARY_MODE",
+        CANARY_MODE,
+        "--ro-bind",
+        "/usr",
+        "/usr",
+        "--ro-bind",
+        "/bin",
+        "/bin",
+        "--ro-bind",
+        "/lib",
+        "/lib",
+        "--ro-bind",
+        "/lib64",
+        "/lib64",
+        "--ro-bind",
+        str(_MINIFORGE_PREFIX),
+        str(_MINIFORGE_PREFIX),
+        "--ro-bind",
+        str(repo),
+        _NAMESPACE_APP_ROOT,
+        "--tmpfs",
+        "/tmp",
+        "--tmpfs",
+        "/run",
+        f"--bind-fd",
+        str(scratch_fd),
+        CANARY_INTERNAL_ROOT,
+    ]
+    if snapshot_fd is not None and alias is not None:
+        granted = f"{CANARY_INTERNAL_ROOT}/{_granted_source_relative(alias)}"
+        cmd.extend(["--ro-bind-fd", str(snapshot_fd), granted])
+    if config_fd is not None:
+        config_path = f"{CANARY_INTERNAL_ROOT}/home/.config/convmem/config.toml"
+        cmd.extend(["--ro-bind-data", str(config_fd), config_path])
+    return cmd
+
+
+def _host_capture_to_vault(
+    vault_fd: int,
+    spec: FrozenSourceSpec,
+    *,
+    fault: Callable[[str], None] | None = None,
+) -> tuple[str, SourceIdentityBinding, bytes, str]:
+    def emit(name: str) -> None:
+        if fault is not None:
+            fault(name)
+
+    emit("before_snapshot_prepare")
+    binding, data = bind_frozen_source(spec)
+    emit("after_snapshot_prepare")
+    view = parse_complete_prefix(binding.canonical_path, raw=data)
+    capture_id = _generate_capture_id()
+    snapshot_name = f"{capture_id}.jsonl"
+    emit("before_temp_stage")
+    anon_fd = _stage_anonymous_dirfd(vault_fd, view.raw_prefix)
+    emit("after_temp_stage")
+    emit("before_source_revalidation")
+    revalidate_source_identity(spec, binding)
+    emit("after_source_revalidation")
+    emit("before_snapshot_publish")
+    publication = _publish_anonymous_dirfd(vault_fd, anon_fd, snapshot_name)
+    emit("after_snapshot_publish")
+    digest = hashlib.sha256(view.raw_prefix).hexdigest()
+    if publication.stat.st_size != binding.size:
+        raise IsolationViolation("vault snapshot size mismatch")
+    return capture_id, binding, data, digest
+
+
+def _open_vault_snapshot(vault_fd: int, capture_id: str) -> int:
+    name = f"{capture_id}.jsonl"
+    fd = os.open(name, _file_open_flags(), dir_fd=vault_fd)
+    st = os.fstat(fd)
+    if not stat.S_ISREG(st.st_mode):
+        os.close(fd)
+        raise IsolationViolation("vault snapshot is not regular")
+    return fd
+
+
+def _revalidate_vault_snapshot(
+    vault_fd: int,
+    capture_id: str,
+    *,
+    expected_stat: os.stat_result,
+    expected_digest: str,
+) -> None:
+    name = f"{capture_id}.jsonl"
+    fd = os.open(name, _file_open_flags(), dir_fd=vault_fd)
+    try:
+        st = os.fstat(fd)
+        if (st.st_dev, st.st_ino, st.st_size) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+            expected_stat.st_size,
+        ):
+            raise IsolationViolation("vault snapshot identity changed")
+        data = os.read(fd, st.st_size)
+    finally:
+        os.close(fd)
+    if hashlib.sha256(data).hexdigest() != expected_digest:
+        raise IsolationViolation("vault snapshot digest changed")
+
+
+def _cleanup_vault_snapshot(vault_fd: int, capture_id: str) -> None:
+    os.unlink(f"{capture_id}.jsonl", dir_fd=vault_fd)
+    _fsync_dir(vault_fd)
+
+
+def _scrub_sensitive_output(text: str, *, control_prefix: str, capture_id: str) -> str:
+    cleaned = text.replace(control_prefix, "<redacted-control>")
+    cleaned = cleaned.replace(capture_id, "<redacted-capture>")
+    return cleaned
+
+
+def _namespace_worker_path(command: str, source: Path | None) -> list[str]:
+    worker = _NAMESPACE_APP_ROOT + "/tests/claude_incremental_canary_worker.py"
+    args = [_python_executable(), "-I", worker, command]
+    if source is not None:
+        args.append(str(source))
+    return args
+
+
+def _run_namespace_once(
+    command: str,
+    *,
+    root: Path,
+    token: str,
+    source: Path | None,
+    spec: FrozenSourceSpec | None,
+    extra_env: dict[str, str] | None,
+    diagnostic: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    validate_bwrap_binary()
+    control_path = _discover_control_root(root)
+    control = _reopen_control_root(control_path.parent, control_path.name)
+    capture_id = ""
+    capture_stat: os.stat_result | None = None
+    capture_digest = ""
+    snapshot_fd = -1
+    config_fd = -1
+    config_bytes = _namespace_config_bytes()
+    if hasattr(os, "memfd_create"):
+        config_fd = os.memfd_create("convmem-canary-config")
+        os.write(config_fd, config_bytes)
+        os.lseek(config_fd, 0, os.SEEK_SET)
+    else:
+        reader, writer = os.pipe()
+        os.write(writer, config_bytes)
+        os.close(writer)
+        config_fd = reader
+
+    try:
+        _acquire_control_lock(control.control_fd)
+        if _marker_present(control.control_fd, _MARKER_QUARANTINED):
+            raise IsolationViolation("control root quarantined")
+        if _marker_present(control.control_fd, _MARKER_ACTIVE):
+            _quarantine_control_root(control.control_fd)
+            raise IsolationViolation("control root stale active marker")
+        assert_watch_roots_disjoint(
+            control.control_path,
+            control.scratch_path,
+            control.control_path / _CONTROL_VAULT_NAME,
+        )
+        with _scrub_host_credentials():
+            _build_gate0_evidence()
+        _create_active_marker(control.control_fd)
+
+        alias = spec.alias if spec is not None else ""
+        if spec is not None:
+            fault_name = (extra_env or {}).get("CONVMEM_CLAUDE_CANARY_FAULT", "")
+
+            def host_fault(name: str) -> None:
+                if fault_name and name == fault_name:
+                    raise _RecoverableWorkerCrash()
+
+            try:
+                capture_id, _binding, _data, capture_digest = _host_capture_to_vault(
+                    control.vault_fd,
+                    spec,
+                    fault=host_fault if command == "capture" else None,
+                )
+            except _RecoverableWorkerCrash:
+                return subprocess.CompletedProcess(
+                    args=[],
+                    returncode=CRASH_EXIT,
+                    stdout="",
+                    stderr="",
+                )
+            snapshot_fd = _open_vault_snapshot(control.vault_fd, capture_id)
+            capture_stat = os.fstat(snapshot_fd)
+
+        env = worker_env(root, token, extra=extra_env)
+        env[ISOLATION_ROOT_ENV] = CANARY_INTERNAL_ROOT
+        env["HOME"] = f"{CANARY_INTERNAL_ROOT}/home"
+        env["XDG_CONFIG_HOME"] = f"{CANARY_INTERNAL_ROOT}/xdg-config"
+        env["XDG_DATA_HOME"] = f"{CANARY_INTERNAL_ROOT}/xdg-data"
+        env["XDG_CACHE_HOME"] = f"{CANARY_INTERNAL_ROOT}/xdg-cache"
+        env["PYTHONPATH"] = f"{_NAMESPACE_APP_ROOT}:{_VENV_SITE}"
+        if diagnostic:
+            env["CONVMEM_CLAUDE_CANARY_DIAGNOSTIC"] = "1"
+
+        bwrap_cmd = _base_bwrap_command(
+            scratch_fd=control.scratch_fd,
+            snapshot_fd=snapshot_fd if snapshot_fd >= 0 else None,
+            config_fd=config_fd,
+            alias=alias or None,
+        )
+        worker_source: Path | None = source
+        if spec is not None:
+            worker_source = Path(*_granted_source_parts(spec.alias))
+        for key, value in env.items():
+            if key == "PATH":
+                continue
+            bwrap_cmd.extend(["--setenv", key, value])
+        bwrap_cmd.extend(
+            [
+                "--setenv",
+                ISOLATION_ROOT_ENV,
+                CANARY_INTERNAL_ROOT,
+                "--setenv",
+                ISOLATION_TOKEN_ENV,
+                token,
+            ]
+        )
+        worker_args = _namespace_worker_path(command, worker_source)
+        bwrap_cmd.extend(["--chdir", _NAMESPACE_APP_ROOT, "--"])
+        bwrap_cmd.extend(worker_args)
+
+        pass_fds = [control.scratch_fd, config_fd]
+        if snapshot_fd >= 0:
+            pass_fds.append(snapshot_fd)
+        completed = subprocess.run(
+            bwrap_cmd,
+            pass_fds=pass_fds,
+            close_fds=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            start_new_session=True,
+        )
+        stdout = _scrub_sensitive_output(
+            completed.stdout or "",
+            control_prefix=str(control.control_path),
+            capture_id=capture_id,
+        )
+        stderr = _scrub_sensitive_output(
+            completed.stderr or "",
+            control_prefix=str(control.control_path),
+            capture_id=capture_id,
+        )
+        completed = subprocess.CompletedProcess(
+            args=completed.args,
+            returncode=completed.returncode,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        if completed.returncode == 0 and capture_id and capture_stat is not None:
+            _revalidate_vault_snapshot(
+                control.vault_fd,
+                capture_id,
+                expected_stat=capture_stat,
+                expected_digest=capture_digest,
+            )
+            _cleanup_vault_snapshot(control.vault_fd, capture_id)
+            with _scrub_host_credentials():
+                _build_gate0_evidence()
+            assert_watch_roots_disjoint(
+                control.control_path,
+                control.scratch_path,
+                control.control_path / _CONTROL_VAULT_NAME,
+            )
+            _remove_active_marker(control.control_fd)
+        else:
+            if capture_id and capture_stat is not None:
+                try:
+                    _revalidate_vault_snapshot(
+                        control.vault_fd,
+                        capture_id,
+                        expected_stat=capture_stat,
+                        expected_digest=capture_digest,
+                    )
+                    _cleanup_vault_snapshot(control.vault_fd, capture_id)
+                except IsolationViolation:
+                    pass
+            _quarantine_control_root(control.control_fd)
+        return completed
+    finally:
+        if snapshot_fd >= 0:
+            os.close(snapshot_fd)
+        if config_fd >= 0:
+            os.close(config_fd)
+        _release_control_lock(control.control_fd)
+        control.close()
+
+
 def worker_env(
     root: Path,
     token: str,
@@ -1417,20 +2165,61 @@ def run_worker(
     source: Path | None = None,
     extra_env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    worker = Path(__file__).resolve().parent / "tests" / "claude_incremental_canary_worker.py"
-    args = [sys.executable, "-I", str(worker), command]
+    """Launch the canary worker inside a bubblewrap namespace."""
+    spec: FrozenSourceSpec | None = None
     if source is not None:
-        args.append(str(source))
-    return subprocess.run(
-        args,
-        cwd=root,
-        env=worker_env(root, token, extra=extra_env),
-        close_fds=True,
-        start_new_session=True,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+        data = source.read_bytes()
+        spec = FrozenSourceSpec(
+            alias=source.stem,
+            path=source,
+            sha256=hashlib.sha256(data).hexdigest(),
+            size=len(data),
+        )
+    try:
+        completed = _run_namespace_once(
+            command,
+            root=root,
+            token=token,
+            source=source,
+            spec=spec,
+            extra_env=extra_env,
+        )
+    except IsolationViolation as exc:
+        return subprocess.CompletedProcess(
+            args=[],
+            returncode=74,
+            stdout=json.dumps({"error": "IsolationViolation", "detail": str(exc)}),
+            stderr="",
+        )
+    if completed.returncode == CRASH_EXIT:
+        return completed
+    if completed.returncode not in {0, 74, CRASH_EXIT}:
+        try:
+            diagnostic = _run_namespace_once(
+                command,
+                root=root,
+                token=token,
+                source=source,
+                spec=spec,
+                extra_env=extra_env,
+                diagnostic=True,
+            )
+        except IsolationViolation as exc:
+            diagnostic = subprocess.CompletedProcess(
+                args=[],
+                returncode=74,
+                stdout=json.dumps({"error": "IsolationViolation", "detail": str(exc)}),
+                stderr="",
+            )
+        combined_stdout = (completed.stdout or "") + (diagnostic.stdout or "")
+        combined_stderr = (completed.stderr or "") + (diagnostic.stderr or "")
+        return subprocess.CompletedProcess(
+            args=completed.args,
+            returncode=completed.returncode,
+            stdout=combined_stdout,
+            stderr=combined_stderr,
+        )
+    return completed
 
 
 __all__ = [
@@ -1486,6 +2275,9 @@ __all__ = [
     "run_hermetic_matrix",
     "run_worker",
     "scrub_credentials",
+    "assert_watch_roots_disjoint",
+    "create_control_root",
+    "validate_bwrap_binary",
     "snapshot_publication_paths",
     "validate_frozen_source",
     "validate_source_alias",

@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 from pathlib import Path
@@ -140,7 +141,7 @@ def test_capture_is_atomic_read_only_and_content_free(
     assert all(not (flags & write_flags) for _path, flags in calls)
     copied = derive_snapshot_destination(boundary, descriptor.alias)
     assert copied.is_file()
-    assert descriptor.relative_path == f"sources/claude-capture/{spec.alias}.jsonl"
+    assert descriptor.relative_path == f"home/.claude/projects/granted/{spec.alias}.jsonl"
     evidence = json.dumps(descriptor.__dict__, sort_keys=True)
     assert "canary-message" not in evidence
     assert not descriptor.relative_path.startswith("/")
@@ -262,7 +263,7 @@ def test_snapshot_destination_derives_from_boundary_not_home_env(
     boundary = IsolationBoundary.from_environment()
     destination = derive_snapshot_destination(boundary, spec.alias)
     assert destination.is_relative_to(boundary.root)
-    assert destination == boundary.layout["sources"] / "claude-capture" / f"{spec.alias}.jsonl"
+    assert destination == boundary.root / "home" / ".claude" / "projects" / "granted" / f"{spec.alias}.jsonl"
     outside = tmp_path / "escaped-home"
     outside.mkdir()
     monkeypatch.setenv("HOME", str(outside))
@@ -375,13 +376,14 @@ def test_snapshot_publication_rejects_directory_substitution(
     root, token, env, source, spec = prepare_fixture_env(tmp_path)
     _apply_env(monkeypatch, env)
     boundary = IsolationBoundary.from_environment()
-    capture_dir, filename = snapshot_publication_paths(boundary, spec.alias)
-    capture_dir.mkdir(parents=True, exist_ok=True)
+    control = boundary.root.parent
+    vault = control / "snapshot-vault"
     outside = tmp_path / "outside-substitution"
     outside.mkdir()
-    capture_dir.rmdir()
-    capture_dir.symlink_to(outside, target_is_directory=True)
-    with pytest.raises(IsolationViolation, match="symlink"):
+    if vault.exists():
+        shutil.rmtree(vault)
+    vault.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(IsolationViolation, match="symlink|not a directory|snapshot vault"):
         capture_source(boundary, spec)
     assert list(outside.iterdir()) == []
 
@@ -513,16 +515,14 @@ def test_refuse_destination_directory_and_symlink_substitution(
     root, token, env, source, spec = prepare_fixture_env(tmp_path)
     _apply_env(monkeypatch, env)
     boundary = IsolationBoundary.from_environment()
-    capture_dir, _filename = snapshot_publication_paths(boundary, spec.alias)
-    capture_dir.mkdir(parents=True, exist_ok=True)
+    control = boundary.root.parent
+    vault = control / "snapshot-vault"
     outside = tmp_path / "symlink-dest"
     outside.mkdir()
-    # Replace parent "sources" with a symlink.
-    sources = boundary.root / "sources"
-    if sources.exists():
-        shutil.rmtree(sources)
-    sources.symlink_to(outside, target_is_directory=True)
-    with pytest.raises(IsolationViolation, match="symlink"):
+    if vault.exists():
+        shutil.rmtree(vault)
+    vault.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(IsolationViolation, match="symlink|not a directory|snapshot vault"):
         capture_source(boundary, spec)
     assert list(outside.rglob("*")) == []
 
@@ -681,7 +681,9 @@ def test_evidence_rejects_unknown_and_nested_values() -> None:
     payload = assemble_evidence(
         capture=CaptureEvidence(
             alias=SourceAlias(value="fixture"),
-            relative_path=RelativePath.from_parts("sources", "claude-capture", "fixture.jsonl"),
+            relative_path=RelativePath.from_parts(
+                "home", ".claude", "projects", "granted", "fixture.jsonl"
+            ),
             device=BoundedInt(value=1),
             inode=BoundedInt(value=2),
             size=BoundedInt(value=3),
@@ -832,10 +834,11 @@ def test_publication_uses_linkat_and_reports_unconfirmed_durability(
 
     monkeypatch.setattr(os, "fsync", fail_dir_fsync_only)
     descriptor = capture_source(boundary, spec)
-    assert linked == [f"{spec.alias}.jsonl"]
+    assert len(linked) == 1
+    assert re.fullmatch(r"[0-9a-f]{32}\.jsonl", linked[0])
     assert descriptor.durability is PublicationDurability.UNCONFIRMED
-    copied = derive_snapshot_destination(boundary, spec.alias)
-    assert copied.is_file()
+    vault_files = list((boundary.root.parent / "snapshot-vault").iterdir())
+    assert len(vault_files) == 1
 
 
 def test_capture_descriptor_closed_on_failure_path(
